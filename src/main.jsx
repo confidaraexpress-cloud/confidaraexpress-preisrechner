@@ -28,10 +28,8 @@ const Icon = ({ n, s = 18, c = "currentColor" }) => {
     plus: "M12 5v14M5 12h14",
     logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
     arrow: "M5 12h14M12 5l7 7-7 7",
-    check: "M20 6L9 17l-5-5",
     map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6zM9 3v18M15 6v18",
     settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",
-    bell: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0",
     search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
     x: "M18 6L6 18M6 6l12 12",
     eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z",
@@ -77,113 +75,14 @@ function PasswordField({ label, value, onChange, onKeyDown, placeholder }) {
   const [show, setShow] = useState(false);
   return (
     <div className="field">
-      {label && <label className="field-label">{label}</label>}
+      {label && <label className="field-label-dark">{label}</label>}
       <div className="field-input-wrap">
-        <input type={show ? "text" : "password"} className="field-input" value={value} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder || "Passwort"} />
+        <input type={show ? "text" : "password"} className="field-input-dark" value={value} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder || "••••••••"} />
         <button type="button" className="field-eye-btn" onClick={() => setShow(s => !s)}>
-          <Icon n={show ? "eyeOff" : "eye"} s={16} />
+          <Icon n={show ? "eyeOff" : "eye"} s={16} c="rgba(255,255,255,0.5)" />
         </button>
       </div>
     </div>
-  );
-}
-
-// ─── Mobile Sidebar ───────────────────────────────────────────────────────────
-function MobileSidebar({ open, onClose, onNavigate, authed }) {
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  return (
-    <>
-      <div className={`sidebar-overlay ${open ? "open" : ""}`} onClick={onClose} />
-      <div className={`mobile-drawer ${open ? "open" : ""}`}>
-        <div className="mobile-drawer-header">
-          <div className="navbar-logo">
-            <div className="logo-mark">CE</div>
-            <span className="logo-text">ConfidaraExpress</span>
-          </div>
-          <button className="drawer-close-btn" onClick={onClose}>
-            <Icon n="close" s={20} />
-          </button>
-        </div>
-        <nav className="mobile-drawer-nav">
-          <button className="drawer-nav-item" onClick={() => { onNavigate("home"); onClose(); }}>
-            <Icon n="globe" s={18} /> Startseite
-          </button>
-          <button className="drawer-nav-item" onClick={() => { onNavigate("calculator"); onClose(); }}>
-            <Icon n="zap" s={18} /> Preisrechner
-          </button>
-          <button className="drawer-nav-item" onClick={() => { onNavigate("tracking"); onClose(); }}>
-            <Icon n="map" s={18} /> Tracking
-          </button>
-          {authed ? (
-            <button className="drawer-nav-item" onClick={() => { onNavigate("dashboard"); onClose(); }}>
-              <Icon n="dashboard" s={18} /> Dashboard
-            </button>
-          ) : (
-            <>
-              <button className="drawer-nav-item" onClick={() => { onNavigate("login"); onClose(); }}>
-                <Icon n="user" s={18} /> Anmelden
-              </button>
-              <div className="drawer-cta">
-                <button className="btn btn-primary btn-full" onClick={() => { onNavigate("register"); onClose(); }}>
-                  Kostenlos starten
-                </button>
-              </div>
-            </>
-          )}
-        </nav>
-        <div className="mobile-drawer-footer">
-          <div className="hero-perks" style={{ flexDirection: "column", gap: 10 }}>
-            {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(p => (
-              <div key={p} className="hero-perk">
-                <div className="hero-perk-icon">✓</div>
-                <span>{p}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar({ onNavigate, authed }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  return (
-    <>
-      <nav className="navbar">
-        <div className="container navbar-inner">
-          <button className="hamburger-btn" onClick={() => setDrawerOpen(true)}>
-            <Icon n="menu" s={22} />
-          </button>
-          <div className="navbar-logo" onClick={() => onNavigate("home")}>
-            <div className="logo-mark">CE</div>
-            <span className="logo-text">ConfidaraExpress</span>
-          </div>
-          <ul className="navbar-nav">
-            <li><a onClick={() => onNavigate("home")}>Startseite</a></li>
-            <li><a onClick={() => onNavigate("calculator")}>Preisrechner</a></li>
-            <li><a onClick={() => onNavigate("tracking")}>Tracking</a></li>
-          </ul>
-          <div className="navbar-actions">
-            {authed ? (
-              <button className="btn btn-primary btn-sm" onClick={() => onNavigate("dashboard")}>Dashboard</button>
-            ) : (
-              <>
-                <button className="btn btn-ghost btn-sm navbar-login-btn" onClick={() => onNavigate("login")}>Anmelden</button>
-                <button className="btn btn-primary btn-sm" onClick={() => onNavigate("register")}>Kostenlos starten</button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-      <MobileSidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} onNavigate={onNavigate} authed={authed} />
-    </>
   );
 }
 
@@ -201,17 +100,13 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [regForm, setRegForm] = useState({ name: "", email: "", password: "", company_name: "", vat_id: "", street: "", zip: "", city: "", country: "DE" });
-  const [verifyEmail, setVerifyEmail] = useState("");
-  const [verifyCode, setVerifyCode] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("reset");
     if (t) {
-      setResetToken(t);
-      setStep("reset");
-      fetch(`${API}/auth/validate-reset-token/${t}`)
-        .then(r => r.json())
+      setResetToken(t); setStep("reset");
+      fetch(`${API}/auth/validate-reset-token/${t}`).then(r => r.json())
         .then(d => { if (!d.valid) { setStep("credentials"); setError("Reset-Link ungültig oder abgelaufen."); } })
         .catch(() => setStep("credentials"));
     }
@@ -274,23 +169,33 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
       <div className="auth-dark-bg">
         <div className="auth-dark-glow glow-1" />
         <div className="auth-dark-glow glow-2" />
+        <div className="auth-dark-glow glow-3" />
       </div>
       <div className="auth-dark-container">
         {/* Left: Marketing */}
         <div className="auth-dark-left animate-fadeUp">
-          <div className="auth-logo-link" onClick={() => onNavigate("home")} style={{ marginBottom: 48 }}>
+          <div className="auth-logo-row" onClick={() => onNavigate("calculator")}>
             <div className="logo-mark">CE</div>
-            <span className="logo-text" style={{ color: "white" }}>ConfidaraExpress</span>
+            <span className="logo-text-white">ConfidaraExpress</span>
           </div>
-          <div className="auth-dark-badge">B2B Versandplattform — Live Preise</div>
-          <h1 className="auth-dark-title">Internationalen Versand in <span>Sekunden</span> buchen.</h1>
-          <p className="auth-dark-sub">Vergleichen Sie DHL, UPS, FedEx, GLS & mehr in Echtzeit. Sofort buchbar, Tracking inklusive, Zahlung auf Rechnung.</p>
+          <div className="auth-dark-badge">✦ B2B Versandplattform — Live Preise</div>
+          <h1 className="auth-dark-title">
+            Internationalen Versand in <span className="auth-dark-highlight">Sekunden</span> buchen.
+          </h1>
+          <p className="auth-dark-sub">
+            Vergleichen Sie DHL, UPS, FedEx, GLS & mehr in Echtzeit. Sofort buchbar, Tracking inklusive, Zahlung auf Rechnung.
+          </p>
           <div className="auth-dark-perks">
-            {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(p => (
-              <div key={p} className="auth-dark-perk">
+            {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(perk => (
+              <div key={perk} className="auth-dark-perk">
                 <div className="auth-dark-perk-check">✓</div>
-                <span>{p}</span>
+                <span>{perk}</span>
               </div>
+            ))}
+          </div>
+          <div className="auth-dark-carriers">
+            {["DHL", "UPS", "FedEx", "GLS", "DPD"].map(c => (
+              <div key={c} className="auth-dark-carrier">{c}</div>
             ))}
           </div>
         </div>
@@ -298,19 +203,25 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
         {/* Right: Form */}
         <div className="auth-dark-right animate-fadeUp-1">
           <div className="auth-glass-card">
+
             {step === "forgot" && (
               <>
                 <h2 className="auth-card-title">Passwort vergessen</h2>
                 <p className="auth-card-sub">Reset-Link wird per E-Mail gesendet</p>
                 {error && <div className="alert alert-error">{error}</div>}
                 {success && <div className="alert alert-success">{success}</div>}
-                {!success && <>
-                  <div className="field"><label className="field-label-dark">E-Mail</label><input className="field-input-dark" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleForgot()} placeholder="firma@beispiel.de" autoFocus /></div>
-                  <button className="btn btn-primary btn-full" onClick={handleForgot} disabled={loading || !forgotEmail}>
-                    {loading ? <span className="spinner" /> : "Reset-Link senden"}
-                  </button>
-                </>}
-                <button onClick={() => { setStep("credentials"); reset(); }} className="btn btn-ghost btn-full mt-8" style={{ color: "rgba(255,255,255,0.6)" }}>← Zurück zum Login</button>
+                {!success && (
+                  <>
+                    <div className="field">
+                      <label className="field-label-dark">E-Mail</label>
+                      <input className="field-input-dark" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleForgot()} placeholder="firma@beispiel.de" autoFocus />
+                    </div>
+                    <button className="btn btn-primary btn-full" onClick={handleForgot} disabled={loading || !forgotEmail}>
+                      {loading ? <span className="spinner" /> : "Reset-Link senden"}
+                    </button>
+                  </>
+                )}
+                <button onClick={() => { setStep("credentials"); reset(); }} className="btn-ghost-dark mt-8">← Zurück zum Login</button>
               </>
             )}
 
@@ -320,13 +231,15 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
                 <p className="auth-card-sub">Mindestens 8 Zeichen</p>
                 {error && <div className="alert alert-error">{error}</div>}
                 {success && <div className="alert alert-success">{success}</div>}
-                {!success && <>
-                  <div className="field"><label className="field-label-dark">Neues Passwort</label><div className="field-input-wrap"><input type="password" className="field-input-dark" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div></div>
-                  <div className="field"><label className="field-label-dark">Bestätigen</label><div className="field-input-wrap"><input type="password" className="field-input-dark" value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReset()} /></div></div>
-                  <button className="btn btn-primary btn-full" onClick={handleReset} disabled={loading || !newPassword}>
-                    {loading ? <span className="spinner" /> : "Passwort speichern"}
-                  </button>
-                </>}
+                {!success && (
+                  <>
+                    <PasswordField label="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <PasswordField label="Passwort bestätigen" value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReset()} />
+                    <button className="btn btn-primary btn-full" onClick={handleReset} disabled={loading || !newPassword}>
+                      {loading ? <span className="spinner" /> : "Passwort speichern"}
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -344,17 +257,20 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
                   <>
                     <h2 className="auth-card-title">Willkommen zurück</h2>
                     <p className="auth-card-sub">Melden Sie sich in Ihrem Konto an</p>
-                    <div className="field"><label className="field-label-dark">E-Mail</label><input className="field-input-dark" type="email" value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="firma@beispiel.de" autoFocus /></div>
-                    <div className="field"><label className="field-label-dark">Passwort</label><div className="field-input-wrap"><input type="password" className="field-input-dark" value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} placeholder="••••••••" /></div></div>
-                    <div className="flex-between mb-16" style={{ flexWrap: "wrap", gap: 8 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", color: "rgba(255,255,255,0.6)" }}>
+                    <div className="field">
+                      <label className="field-label-dark">E-Mail</label>
+                      <input className="field-input-dark" type="email" value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="firma@beispiel.de" autoFocus />
+                    </div>
+                    <PasswordField label="Passwort" value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                    <div className="auth-remember-row">
+                      <label className="auth-remember-label">
                         <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
                         Angemeldet bleiben
                       </label>
                       <span className="link-dark" onClick={() => { setStep("forgot"); reset(); }}>Passwort vergessen?</span>
                     </div>
                     <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={loading}>
-                      {loading ? <span className="spinner" /> : "Anmelden"}
+                      {loading ? <span className="spinner" /> : "Anmelden →"}
                     </button>
                   </>
                 ) : (
@@ -365,7 +281,7 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
                       <div className="field"><label className="field-label-dark">Name</label><input className="field-input-dark" value={regForm.name} onChange={e => setRegForm(p => ({ ...p, name: e.target.value }))} /></div>
                       <div className="field"><label className="field-label-dark">E-Mail</label><input className="field-input-dark" type="email" value={regForm.email} onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} /></div>
                     </div>
-                    <div className="field"><label className="field-label-dark">Passwort (min. 8 Zeichen)</label><div className="field-input-wrap"><input type="password" className="field-input-dark" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} /></div></div>
+                    <PasswordField label="Passwort (min. 8 Zeichen)" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} />
                     <div className="field-row field-row-2">
                       <div className="field"><label className="field-label-dark">Firmenname</label><input className="field-input-dark" value={regForm.company_name} onChange={e => setRegForm(p => ({ ...p, company_name: e.target.value }))} /></div>
                       <div className="field"><label className="field-label-dark">USt-ID</label><input className="field-input-dark" value={regForm.vat_id} onChange={e => setRegForm(p => ({ ...p, vat_id: e.target.value }))} placeholder="DE123456789" /></div>
@@ -377,7 +293,7 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
                       <div className="field"><label className="field-label-dark">Land</label><select className="field-input-dark field-select" value={regForm.country} onChange={e => setRegForm(p => ({ ...p, country: e.target.value }))}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
                     </div>
                     <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={loading}>
-                      {loading ? <span className="spinner" /> : "Konto beantragen"}
+                      {loading ? <span className="spinner" /> : "Konto beantragen →"}
                     </button>
                   </>
                 )}
@@ -395,7 +311,6 @@ function CalculatorPage({ authed, onNavigate }) {
   const [form, setForm] = useState({
     from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
     weight: "", length: "", width: "", height: "",
-    ship_type: "standard", insurance: false, fragile: false,
     max_price: "", max_days: "",
   });
   const [tariffs, setTariffs] = useState([]);
@@ -738,10 +653,15 @@ function Dashboard({ user, onNavigate, onLogout }) {
 
   return (
     <div className="app-shell">
-      {/* Overlay for mobile sidebar */}
-      {sidebarOpen && <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay open"
+          onClick={() => setSidebarOpen(false)}
+          style={{ zIndex: 198 }}
+        />
+      )}
 
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
+      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="sidebar-brand">
           <div className="logo-mark" style={{ width: 30, height: 30, fontSize: 12 }}>CE</div>
           <div style={{ flex: 1 }}>
@@ -758,7 +678,7 @@ function Dashboard({ user, onNavigate, onLogout }) {
             </button>
           ))}
           <div className="nav-section-label" style={{ marginTop: 8 }}>Plattform</div>
-          <button className="nav-item" onClick={() => onNavigate("home")}><Icon n="globe" s={16} /> Zur Website</button>
+          <button className="nav-item" onClick={() => onNavigate("calculator")}><Icon n="zap" s={16} /> Preisrechner</button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-card">
@@ -773,7 +693,6 @@ function Dashboard({ user, onNavigate, onLogout }) {
       </aside>
 
       <main className="main-content">
-        {/* Mobile top bar */}
         <div className="mobile-topbar">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
           <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 15, color: "var(--navy)" }}>ConfidaraExpress</div>
@@ -960,6 +879,70 @@ function TrackingPage() {
   );
 }
 
+// ─── Navbar ───────────────────────────────────────────────────────────────────
+function Navbar({ onNavigate, authed }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  return (
+    <>
+      <nav className="navbar">
+        <div className="container navbar-inner">
+          <button className="hamburger-btn" onClick={() => setDrawerOpen(true)}>
+            <Icon n="menu" s={22} />
+          </button>
+          <div className="navbar-logo" onClick={() => onNavigate("auth")}>
+            <div className="logo-mark">CE</div>
+            <span className="logo-text">ConfidaraExpress</span>
+          </div>
+          <ul className="navbar-nav">
+            <li><a onClick={() => onNavigate("calculator")}>Preisrechner</a></li>
+            <li><a onClick={() => onNavigate("tracking")}>Tracking</a></li>
+          </ul>
+          <div className="navbar-actions">
+            {authed ? (
+              <button className="btn btn-primary btn-sm" onClick={() => onNavigate("dashboard")}>Dashboard</button>
+            ) : (
+              <>
+                <button className="btn btn-ghost btn-sm navbar-login-btn" onClick={() => onNavigate("auth")}>Anmelden</button>
+                <button className="btn btn-primary btn-sm" onClick={() => onNavigate("register")}>Registrieren</button>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+      {drawerOpen && (
+        <>
+          <div className="sidebar-overlay open" onClick={() => setDrawerOpen(false)} style={{ zIndex: 998 }} />
+          <div className="mobile-drawer open" style={{ zIndex: 999 }}>
+            <div className="mobile-drawer-header">
+              <div className="navbar-logo">
+                <div className="logo-mark">CE</div>
+                <span className="logo-text">ConfidaraExpress</span>
+              </div>
+              <button className="drawer-close-btn" onClick={() => setDrawerOpen(false)}>
+                <Icon n="close" s={20} />
+              </button>
+            </div>
+            <nav className="mobile-drawer-nav">
+              <button className="drawer-nav-item" onClick={() => { onNavigate("calculator"); setDrawerOpen(false); }}><Icon n="zap" s={18} /> Preisrechner</button>
+              <button className="drawer-nav-item" onClick={() => { onNavigate("tracking"); setDrawerOpen(false); }}><Icon n="map" s={18} /> Tracking</button>
+              {authed ? (
+                <button className="drawer-nav-item" onClick={() => { onNavigate("dashboard"); setDrawerOpen(false); }}><Icon n="dashboard" s={18} /> Dashboard</button>
+              ) : (
+                <>
+                  <button className="drawer-nav-item" onClick={() => { onNavigate("auth"); setDrawerOpen(false); }}><Icon n="user" s={18} /> Anmelden</button>
+                  <div className="drawer-cta">
+                    <button className="btn btn-primary btn-full" onClick={() => { onNavigate("register"); setDrawerOpen(false); }}>Registrieren</button>
+                  </div>
+                </>
+              )}
+            </nav>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
   const [page, setPage] = useState("auth");
@@ -994,10 +977,13 @@ function App() {
   }, []);
 
   const logout = () => { localStorage.removeItem("ce_token"); setAuthed(false); setUser(null); setPage("auth"); };
-  const navigate = (p, data = null) => { setPage(p); setPageData(data); window.scrollTo(0, 0); };
+
+  const navigate = (p, data = null) => {
+    setPage(p); setPageData(data); window.scrollTo(0, 0);
+  };
 
   if (loadingUser) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--navy)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#060e1f" }}>
       <div className="text-center">
         <div className="logo-mark" style={{ margin: "0 auto 16px", width: 48, height: 48, fontSize: 20 }}>CE</div>
         <div className="spinner" style={{ width: 28, height: 28, margin: "0 auto" }} />
@@ -1005,13 +991,12 @@ function App() {
     </div>
   );
 
-  const showNavbar = !["auth", "dashboard"].includes(page);
+  const showNavbar = !["auth", "login", "register", "dashboard"].includes(page);
 
   return (
     <>
       {showNavbar && <Navbar onNavigate={navigate} authed={authed} />}
-      {page === "auth" && <AuthPage onLogin={handleLogin} defaultTab="login" onNavigate={navigate} />}
-      {page === "login" && <AuthPage onLogin={handleLogin} defaultTab="login" onNavigate={navigate} />}
+      {(page === "auth" || page === "login") && <AuthPage onLogin={handleLogin} defaultTab="login" onNavigate={navigate} />}
       {page === "register" && <AuthPage onLogin={handleLogin} defaultTab="register" onNavigate={navigate} />}
       {page === "calculator" && <CalculatorPage authed={authed} onNavigate={navigate} />}
       {page === "tracking" && <TrackingPage />}

@@ -165,176 +165,141 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
   const reset = () => { setError(""); setSuccess(""); };
 
   return (
-    <div className="auth-root">
-      {/* Animated background */}
-      <div className="auth-bg">
-        <div className="auth-orb orb-1" />
-        <div className="auth-orb orb-2" />
-        <div className="auth-orb orb-3" />
-        <div className="auth-grid-overlay" />
+    <div className="auth-page-dark">
+      <div className="auth-dark-bg">
+        <div className="auth-dark-glow glow-1" />
+        <div className="auth-dark-glow glow-2" />
+        <div className="auth-dark-glow glow-3" />
       </div>
-
-      {/* Left: Marketing */}
-      <div className="auth-left animate-fadeUp">
-        <div className="auth-brand" onClick={() => onNavigate("calculator")}>
-          <div className="logo-mark">CE</div>
-          <span className="logo-text-white">ConfidaraExpress</span>
-        </div>
-
-        <div className="auth-marketing">
-          <div className="auth-eyebrow">✦ B2B Versandplattform — Live Preise</div>
-          <h1 className="auth-headline">
-            Internationalen<br />
-            Versand in{" "}
-            <span className="auth-headline-accent">Sekunden</span><br />
-            buchen.
+      <div className="auth-dark-container">
+        {/* Left: Marketing */}
+        <div className="auth-dark-left animate-fadeUp">
+          <div className="auth-logo-row" onClick={() => onNavigate("calculator")}>
+            <div className="logo-mark">CE</div>
+            <span className="logo-text-white">ConfidaraExpress</span>
+          </div>
+          <div className="auth-dark-badge">✦ B2B Versandplattform — Live Preise</div>
+          <h1 className="auth-dark-title">
+            Internationalen Versand in <span className="auth-dark-highlight">Sekunden</span> buchen.
           </h1>
-          <p className="auth-desc">
-            Vergleichen Sie DHL, UPS, FedEx, GLS & mehr in Echtzeit.
-            Sofort buchbar, Tracking inklusive, Zahlung auf Rechnung.
+          <p className="auth-dark-sub">
+            Vergleichen Sie DHL, UPS, FedEx, GLS & mehr in Echtzeit. Sofort buchbar, Tracking inklusive, Zahlung auf Rechnung.
           </p>
-
-          <div className="auth-checks">
+          <div className="auth-dark-perks">
             {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(perk => (
-              <div key={perk} className="auth-check-item">
-                <div className="auth-check-icon">✓</div>
+              <div key={perk} className="auth-dark-perk">
+                <div className="auth-dark-perk-check">✓</div>
                 <span>{perk}</span>
               </div>
             ))}
           </div>
-
-          <div className="auth-carriers">
+          <div className="auth-dark-carriers">
             {["DHL", "UPS", "FedEx", "GLS", "DPD"].map(c => (
-              <div key={c} className="auth-carrier-badge">{c}</div>
+              <div key={c} className="auth-dark-carrier">{c}</div>
             ))}
           </div>
         </div>
 
-        <div className="auth-left-footer">
-          <div className="auth-stat">
-            <div className="auth-stat-value">10+</div>
-            <div className="auth-stat-label">Carrier</div>
+        {/* Right: Form */}
+        <div className="auth-dark-right animate-fadeUp-1">
+          <div className="auth-glass-card">
+
+            {step === "forgot" && (
+              <>
+                <h2 className="auth-card-title">Passwort vergessen</h2>
+                <p className="auth-card-sub">Reset-Link wird per E-Mail gesendet</p>
+                {error && <div className="alert alert-error">{error}</div>}
+                {success && <div className="alert alert-success">{success}</div>}
+                {!success && (
+                  <>
+                    <div className="field">
+                      <label className="field-label-dark">E-Mail</label>
+                      <input className="field-input-dark" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleForgot()} placeholder="firma@beispiel.de" autoFocus />
+                    </div>
+                    <button className="btn btn-primary btn-full" onClick={handleForgot} disabled={loading || !forgotEmail}>
+                      {loading ? <span className="spinner" /> : "Reset-Link senden"}
+                    </button>
+                  </>
+                )}
+                <button onClick={() => { setStep("credentials"); reset(); }} className="btn-ghost-dark mt-8">← Zurück zum Login</button>
+              </>
+            )}
+
+            {step === "reset" && (
+              <>
+                <h2 className="auth-card-title">Neues Passwort</h2>
+                <p className="auth-card-sub">Mindestens 8 Zeichen</p>
+                {error && <div className="alert alert-error">{error}</div>}
+                {success && <div className="alert alert-success">{success}</div>}
+                {!success && (
+                  <>
+                    <PasswordField label="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <PasswordField label="Passwort bestätigen" value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReset()} />
+                    <button className="btn btn-primary btn-full" onClick={handleReset} disabled={loading || !newPassword}>
+                      {loading ? <span className="spinner" /> : "Passwort speichern"}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            {step === "credentials" && (
+              <>
+                <div className="auth-dark-tabs">
+                  <button className={`auth-dark-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); reset(); }}>Anmelden</button>
+                  <button className={`auth-dark-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); reset(); }}>Registrieren</button>
+                </div>
+
+                {error && <div className="alert alert-error">{error}</div>}
+                {success && <div className="alert alert-success">{success}</div>}
+
+                {tab === "login" ? (
+                  <>
+                    <h2 className="auth-card-title">Willkommen zurück</h2>
+                    <p className="auth-card-sub">Melden Sie sich in Ihrem Konto an</p>
+                    <div className="field">
+                      <label className="field-label-dark">E-Mail</label>
+                      <input className="field-input-dark" type="email" value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="firma@beispiel.de" autoFocus />
+                    </div>
+                    <PasswordField label="Passwort" value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                    <div className="auth-remember-row">
+                      <label className="auth-remember-label">
+                        <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
+                        Angemeldet bleiben
+                      </label>
+                      <span className="link-dark" onClick={() => { setStep("forgot"); reset(); }}>Passwort vergessen?</span>
+                    </div>
+                    <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={loading}>
+                      {loading ? <span className="spinner" /> : "Anmelden →"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="auth-card-title">Konto erstellen</h2>
+                    <p className="auth-card-sub">Starten Sie kostenlos mit ConfidaraExpress</p>
+                    <div className="field-row field-row-2">
+                      <div className="field"><label className="field-label-dark">Name</label><input className="field-input-dark" value={regForm.name} onChange={e => setRegForm(p => ({ ...p, name: e.target.value }))} /></div>
+                      <div className="field"><label className="field-label-dark">E-Mail</label><input className="field-input-dark" type="email" value={regForm.email} onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} /></div>
+                    </div>
+                    <PasswordField label="Passwort (min. 8 Zeichen)" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} />
+                    <div className="field-row field-row-2">
+                      <div className="field"><label className="field-label-dark">Firmenname</label><input className="field-input-dark" value={regForm.company_name} onChange={e => setRegForm(p => ({ ...p, company_name: e.target.value }))} /></div>
+                      <div className="field"><label className="field-label-dark">USt-ID</label><input className="field-input-dark" value={regForm.vat_id} onChange={e => setRegForm(p => ({ ...p, vat_id: e.target.value }))} placeholder="DE123456789" /></div>
+                    </div>
+                    <div className="field"><label className="field-label-dark">Straße & Hausnummer</label><input className="field-input-dark" value={regForm.street} onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} /></div>
+                    <div className="field-row field-row-3">
+                      <div className="field"><label className="field-label-dark">PLZ</label><input className="field-input-dark" value={regForm.zip} onChange={e => setRegForm(p => ({ ...p, zip: e.target.value }))} /></div>
+                      <div className="field"><label className="field-label-dark">Stadt</label><input className="field-input-dark" value={regForm.city} onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} /></div>
+                      <div className="field"><label className="field-label-dark">Land</label><select className="field-input-dark field-select" value={regForm.country} onChange={e => setRegForm(p => ({ ...p, country: e.target.value }))}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
+                    </div>
+                    <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={loading}>
+                      {loading ? <span className="spinner" /> : "Konto beantragen →"}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
-          <div className="auth-stat-divider" />
-          <div className="auth-stat">
-            <div className="auth-stat-value">200+</div>
-            <div className="auth-stat-label">Länder</div>
-          </div>
-          <div className="auth-stat-divider" />
-          <div className="auth-stat">
-            <div className="auth-stat-value">B2B</div>
-            <div className="auth-stat-label">Rechnungskauf</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: Form */}
-      <div className="auth-right animate-fadeUp-1">
-        <div className="auth-form-card">
-
-          {step === "forgot" && (
-            <div className="auth-form-inner">
-              <div className="auth-form-header">
-                <h2 className="auth-form-title">Passwort vergessen</h2>
-                <p className="auth-form-sub">Reset-Link wird per E-Mail gesendet</p>
-              </div>
-              {error && <div className="alert alert-error">{error}</div>}
-              {success && <div className="alert alert-success">{success}</div>}
-              {!success && (
-                <>
-                  <div className="field">
-                    <label className="field-label-dark">E-Mail</label>
-                    <input className="field-input-dark" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleForgot()} placeholder="firma@beispiel.de" autoFocus />
-                  </div>
-                  <button className="btn btn-primary btn-full" onClick={handleForgot} disabled={loading || !forgotEmail}>
-                    {loading ? <span className="spinner" /> : "Reset-Link senden"}
-                  </button>
-                </>
-              )}
-              <button onClick={() => { setStep("credentials"); reset(); }} className="auth-back-btn">← Zurück zum Login</button>
-            </div>
-          )}
-
-          {step === "reset" && (
-            <div className="auth-form-inner">
-              <div className="auth-form-header">
-                <h2 className="auth-form-title">Neues Passwort</h2>
-                <p className="auth-form-sub">Mindestens 8 Zeichen</p>
-              </div>
-              {error && <div className="alert alert-error">{error}</div>}
-              {success && <div className="alert alert-success">{success}</div>}
-              {!success && (
-                <>
-                  <PasswordField label="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                  <PasswordField label="Passwort bestätigen" value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReset()} />
-                  <button className="btn btn-primary btn-full" onClick={handleReset} disabled={loading || !newPassword}>
-                    {loading ? <span className="spinner" /> : "Passwort speichern"}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {step === "credentials" && (
-            <div className="auth-form-inner">
-              <div className="auth-tab-bar">
-                <button className={`auth-tab-btn ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); reset(); }}>Anmelden</button>
-                <button className={`auth-tab-btn ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); reset(); }}>Registrieren</button>
-              </div>
-
-              {error && <div className="alert alert-error">{error}</div>}
-              {success && <div className="alert alert-success">{success}</div>}
-
-              {tab === "login" ? (
-                <>
-                  <div className="auth-form-header">
-                    <h2 className="auth-form-title">Willkommen zurück</h2>
-                    <p className="auth-form-sub">Melden Sie sich in Ihrem Konto an</p>
-                  </div>
-                  <div className="field">
-                    <label className="field-label-dark">E-Mail</label>
-                    <input className="field-input-dark" type="email" value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="firma@beispiel.de" autoFocus />
-                  </div>
-                  <PasswordField label="Passwort" value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-                  <div className="auth-remember-row">
-                    <label className="auth-remember-label">
-                      <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                      Angemeldet bleiben
-                    </label>
-                    <span className="link-dark" onClick={() => { setStep("forgot"); reset(); }}>Passwort vergessen?</span>
-                  </div>
-                  <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={loading}>
-                    {loading ? <span className="spinner" /> : "Anmelden →"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="auth-form-header">
-                    <h2 className="auth-form-title">Konto erstellen</h2>
-                    <p className="auth-form-sub">Starten Sie kostenlos mit ConfidaraExpress</p>
-                  </div>
-                  <div className="field-row field-row-2">
-                    <div className="field"><label className="field-label-dark">Name</label><input className="field-input-dark" value={regForm.name} onChange={e => setRegForm(p => ({ ...p, name: e.target.value }))} /></div>
-                    <div className="field"><label className="field-label-dark">E-Mail</label><input className="field-input-dark" type="email" value={regForm.email} onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} /></div>
-                  </div>
-                  <PasswordField label="Passwort (min. 8 Zeichen)" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} />
-                  <div className="field-row field-row-2">
-                    <div className="field"><label className="field-label-dark">Firmenname</label><input className="field-input-dark" value={regForm.company_name} onChange={e => setRegForm(p => ({ ...p, company_name: e.target.value }))} /></div>
-                    <div className="field"><label className="field-label-dark">USt-ID</label><input className="field-input-dark" value={regForm.vat_id} onChange={e => setRegForm(p => ({ ...p, vat_id: e.target.value }))} placeholder="DE123456789" /></div>
-                  </div>
-                  <div className="field"><label className="field-label-dark">Straße & Hausnummer</label><input className="field-input-dark" value={regForm.street} onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} /></div>
-                  <div className="field-row field-row-3">
-                    <div className="field"><label className="field-label-dark">PLZ</label><input className="field-input-dark" value={regForm.zip} onChange={e => setRegForm(p => ({ ...p, zip: e.target.value }))} /></div>
-                    <div className="field"><label className="field-label-dark">Stadt</label><input className="field-input-dark" value={regForm.city} onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} /></div>
-                    <div className="field"><label className="field-label-dark">Land</label><select className="field-input-dark field-select" value={regForm.country} onChange={e => setRegForm(p => ({ ...p, country: e.target.value }))}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-                  </div>
-                  <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={loading}>
-                    {loading ? <span className="spinner" /> : "Konto beantragen →"}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -688,7 +653,14 @@ function Dashboard({ user, onNavigate, onLogout }) {
 
   return (
     <div className="app-shell">
-      {sidebarOpen && <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay open"
+          onClick={() => setSidebarOpen(false)}
+          style={{ zIndex: 198 }}
+        />
+      )}
+
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="sidebar-brand">
           <div className="logo-mark" style={{ width: 30, height: 30, fontSize: 12 }}>CE</div>
@@ -890,7 +862,9 @@ function TrackingPage() {
   return (
     <div style={{ paddingTop: 88, minHeight: "100vh", background: "var(--gray50)" }}>
       <div className="container" style={{ paddingTop: 48, paddingBottom: 48, maxWidth: 600 }}>
-        <div className="text-center mb-32"><h1 className="section-title">Sendung verfolgen</h1></div>
+        <div className="text-center mb-32">
+          <h1 className="section-title">Sendung verfolgen</h1>
+        </div>
         <div className="calc-panel">
           <div className="calc-panel-body">
             <div className="field"><label className="field-label">Sendungs-ID</label><input className="field-input" value={id} onChange={e => setId(e.target.value)} onKeyDown={e => e.key === "Enter" && track()} placeholder="z.B. 12345678901234" /></div>
@@ -912,7 +886,9 @@ function Navbar({ onNavigate, authed }) {
     <>
       <nav className="navbar">
         <div className="container navbar-inner">
-          <button className="hamburger-btn" onClick={() => setDrawerOpen(true)}><Icon n="menu" s={22} /></button>
+          <button className="hamburger-btn" onClick={() => setDrawerOpen(true)}>
+            <Icon n="menu" s={22} />
+          </button>
           <div className="navbar-logo" onClick={() => onNavigate("auth")}>
             <div className="logo-mark">CE</div>
             <span className="logo-text">ConfidaraExpress</span>
@@ -938,8 +914,13 @@ function Navbar({ onNavigate, authed }) {
           <div className="sidebar-overlay open" onClick={() => setDrawerOpen(false)} style={{ zIndex: 998 }} />
           <div className="mobile-drawer open" style={{ zIndex: 999 }}>
             <div className="mobile-drawer-header">
-              <div className="navbar-logo"><div className="logo-mark">CE</div><span className="logo-text">ConfidaraExpress</span></div>
-              <button className="drawer-close-btn" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
+              <div className="navbar-logo">
+                <div className="logo-mark">CE</div>
+                <span className="logo-text">ConfidaraExpress</span>
+              </div>
+              <button className="drawer-close-btn" onClick={() => setDrawerOpen(false)}>
+                <Icon n="close" s={20} />
+              </button>
             </div>
             <nav className="mobile-drawer-nav">
               <button className="drawer-nav-item" onClick={() => { onNavigate("calculator"); setDrawerOpen(false); }}><Icon n="zap" s={18} /> Preisrechner</button>
@@ -949,7 +930,9 @@ function Navbar({ onNavigate, authed }) {
               ) : (
                 <>
                   <button className="drawer-nav-item" onClick={() => { onNavigate("auth"); setDrawerOpen(false); }}><Icon n="user" s={18} /> Anmelden</button>
-                  <div className="drawer-cta"><button className="btn btn-primary btn-full" onClick={() => { onNavigate("register"); setDrawerOpen(false); }}>Registrieren</button></div>
+                  <div className="drawer-cta">
+                    <button className="btn btn-primary btn-full" onClick={() => { onNavigate("register"); setDrawerOpen(false); }}>Registrieren</button>
+                  </div>
                 </>
               )}
             </nav>
@@ -994,7 +977,10 @@ function App() {
   }, []);
 
   const logout = () => { localStorage.removeItem("ce_token"); setAuthed(false); setUser(null); setPage("auth"); };
-  const navigate = (p, data = null) => { setPage(p); setPageData(data); window.scrollTo(0, 0); };
+
+  const navigate = (p, data = null) => {
+    setPage(p); setPageData(data); window.scrollTo(0, 0);
+  };
 
   if (loadingUser) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#060e1f" }}>

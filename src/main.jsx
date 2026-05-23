@@ -88,7 +88,7 @@ function PasswordField({ label, value, onChange, onKeyDown, placeholder, dark = 
   );
 }
 
-// ─── Auth Page — Resend-inspired centered design ──────────────────────────────
+// ─── Auth Page ────────────────────────────────────────────────────────────────
 function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
   const [tab, setTab] = useState(defaultTab);
   const [loading, setLoading] = useState(false);
@@ -169,14 +169,11 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
 
   return (
     <div className="auth-page">
-      {/* Background */}
       <div className="auth-bg">
         <div className="auth-bg-orb orb-1" />
         <div className="auth-bg-orb orb-2" />
         <div className="auth-bg-grid" />
       </div>
-
-      {/* Top bar */}
       <header className="auth-header">
         <div className="auth-header-inner">
           <div className="auth-brand" onClick={() => onNavigate("calculator")}>
@@ -189,10 +186,7 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
           </div>
         </div>
       </header>
-
-      {/* Main centered content */}
       <main className="auth-main">
-
         {step === "forgot" && (
           <div className="auth-card animate-fadeUp">
             <div className="auth-card-top">
@@ -216,7 +210,6 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
             <button className="auth-btn-ghost" onClick={() => { setStep("credentials"); reset(); }}>← Zurück zum Login</button>
           </div>
         )}
-
         {step === "reset" && (
           <div className="auth-card animate-fadeUp">
             <div className="auth-card-top">
@@ -237,32 +230,20 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
             )}
           </div>
         )}
-
         {step === "credentials" && (
           <>
-            {/* Hero text above card */}
             <div className="auth-hero animate-fadeUp">
               <div className="auth-hero-badge">B2B Versandplattform</div>
-              <h1 className="auth-hero-title">
-                {tab === "login" ? "Willkommen zurück" : "Konto erstellen"}
-              </h1>
-              <p className="auth-hero-sub">
-                {tab === "login"
-                  ? "Melden Sie sich an und verwalten Sie Ihre Sendungen."
-                  : "Starten Sie kostenlos und versenden Sie international."}
-              </p>
+              <h1 className="auth-hero-title">{tab === "login" ? "Willkommen zurück" : "Konto erstellen"}</h1>
+              <p className="auth-hero-sub">{tab === "login" ? "Melden Sie sich an und verwalten Sie Ihre Sendungen." : "Starten Sie kostenlos und versenden Sie international."}</p>
             </div>
-
             <div className="auth-card animate-fadeUp-1">
-              {/* Tab switcher */}
               <div className="auth-tabs">
                 <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); reset(); }}>Anmelden</button>
                 <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); reset(); }}>Registrieren</button>
               </div>
-
               {error && <div className="auth-alert auth-alert-error">{error}</div>}
               {success && <div className="auth-alert auth-alert-success">{success}</div>}
-
               {tab === "login" ? (
                 <>
                   <div className="field">
@@ -307,8 +288,6 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
                 </>
               )}
             </div>
-
-            {/* Trust bar below card */}
             <div className="auth-trust animate-fadeUp-2">
               {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(p => (
                 <div key={p} className="auth-trust-item">
@@ -477,6 +456,7 @@ function BookingPage({ user, bookingData, onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
+  const [agbAccepted, setAgbAccepted] = useState(false);
   const [form, setForm] = useState({
     sender_name: user?.company_name || "", sender_street: user?.street || "",
     sender_zip: user?.zip || "", sender_city: user?.city || "", sender_country: user?.country || "DE",
@@ -487,6 +467,7 @@ function BookingPage({ user, bookingData, onNavigate }) {
   const tariff = bookingData?.tariff;
 
   const doBook = async () => {
+    if (!agbAccepted) return;
     setError(""); setLoading(true);
     try {
       const r = await fetch(`${API}/api/jumingo/book`, {
@@ -502,7 +483,7 @@ function BookingPage({ user, bookingData, onNavigate }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
-      setBooking(d); setStep(4);
+      setBooking(d); setStep(5);
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -513,7 +494,8 @@ function BookingPage({ user, bookingData, onNavigate }) {
     </div>
   );
 
-  const steps = ["Angebot", "Adressen", "Übersicht", "Bestätigung"];
+  const steps = ["Angebot", "Adressen", "Übersicht", "Bestätigung", "Fertig"];
+
   return (
     <div style={{ paddingTop: 88, background: "var(--gray50)", minHeight: "100vh" }}>
       <div className="container" style={{ paddingTop: 32, paddingBottom: 48, maxWidth: 760 }}>
@@ -530,13 +512,17 @@ function BookingPage({ user, bookingData, onNavigate }) {
           ))}
         </div>
         {error && <div className="alert alert-error mb-16">{error}</div>}
+
         {step === 1 && (
           <div>
             <div className="calc-panel">
               <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
               <div className="calc-panel-body">
                 <div className="flex-between">
-                  <div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--navy)" }}>{tariff.carrier}</div><div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div></div>
+                  <div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--navy)" }}>{tariff.carrier}</div>
+                    <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
+                  </div>
                   <div style={{ fontSize: 28, fontWeight: 700, color: "var(--navy)", fontFamily: "DM Mono, monospace" }}>{money(tariff.finalPrice)}</div>
                 </div>
               </div>
@@ -544,13 +530,14 @@ function BookingPage({ user, bookingData, onNavigate }) {
             <button className="btn btn-primary btn-full mt-16" onClick={() => setStep(2)}>Weiter: Adressen <Icon n="arrow" s={16} /></button>
           </div>
         )}
+
         {step === 2 && (
           <div>
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Absender</h3></div>
               <div className="calc-panel-body">
-                <div className="field"><label className="field-label">Name</label><input className="field-input" value={form.sender_name} onChange={e => upd("sender_name", e.target.value)} /></div>
-                <div className="field"><label className="field-label">Straße</label><input className="field-input" value={form.sender_street} onChange={e => upd("sender_street", e.target.value)} /></div>
+                <div className="field"><label className="field-label">Name / Firma</label><input className="field-input" value={form.sender_name} onChange={e => upd("sender_name", e.target.value)} /></div>
+                <div className="field"><label className="field-label">Straße & Hausnummer</label><input className="field-input" value={form.sender_street} onChange={e => upd("sender_street", e.target.value)} /></div>
                 <div className="field-row field-row-3">
                   <div className="field"><label className="field-label">PLZ</label><input className="field-input" value={form.sender_zip} onChange={e => upd("sender_zip", e.target.value)} /></div>
                   <div className="field"><label className="field-label">Stadt</label><input className="field-input" value={form.sender_city} onChange={e => upd("sender_city", e.target.value)} /></div>
@@ -561,50 +548,109 @@ function BookingPage({ user, bookingData, onNavigate }) {
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Empfänger</h3></div>
               <div className="calc-panel-body">
-                <div className="field"><label className="field-label">Name</label><input className="field-input" value={form.rec_name} onChange={e => upd("rec_name", e.target.value)} /></div>
-                <div className="field"><label className="field-label">Straße</label><input className="field-input" value={form.rec_street} onChange={e => upd("rec_street", e.target.value)} /></div>
+                <div className="field"><label className="field-label">Name / Firma</label><input className="field-input" value={form.rec_name} onChange={e => upd("rec_name", e.target.value)} /></div>
+                <div className="field"><label className="field-label">Straße & Hausnummer</label><input className="field-input" value={form.rec_street} onChange={e => upd("rec_street", e.target.value)} /></div>
                 <div className="field-row field-row-3">
                   <div className="field"><label className="field-label">PLZ</label><input className="field-input" value={form.rec_zip} onChange={e => upd("rec_zip", e.target.value)} /></div>
                   <div className="field"><label className="field-label">Stadt</label><input className="field-input" value={form.rec_city} onChange={e => upd("rec_city", e.target.value)} /></div>
                   <div className="field"><label className="field-label">Land</label><select className="field-input field-select" value={form.rec_country} onChange={e => upd("rec_country", e.target.value)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
                 </div>
-                <div className="field"><label className="field-label">Inhalt</label><input className="field-input" value={form.content} onChange={e => upd("content", e.target.value)} placeholder="z.B. Elektronik" /></div>
+                <div className="field"><label className="field-label">Sendungsinhalt</label><input className="field-input" value={form.content} onChange={e => upd("content", e.target.value)} placeholder="z.B. Elektronik" /></div>
               </div>
             </div>
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => setStep(1)}>← Zurück</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(3)} disabled={!form.rec_name || !form.rec_zip}>Weiter →</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(3)} disabled={!form.rec_name || !form.rec_zip || !form.sender_name || !form.sender_zip}>Weiter: Übersicht →</button>
             </div>
           </div>
         )}
+
         {step === 3 && (
           <div>
             <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Übersicht</h3></div>
+              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Zusammenfassung</h3></div>
               <div className="calc-panel-body">
-                {[["Carrier", tariff.carrier], ["Preis", money(tariff.finalPrice)], ["Absender", `${form.sender_name}, ${form.sender_zip} ${form.sender_city}`], ["Empfänger", `${form.rec_name}, ${form.rec_zip} ${form.rec_city}`]].map(([k, v], i, arr) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <span className="text-sm text-muted">{k}</span>
-                    <span className="text-sm font-bold" style={{ color: "var(--navy)" }}>{v}</span>
+                {[
+                  ["Carrier", tariff.carrier],
+                  ["Service", tariff.tariffName],
+                  ["Lieferzeit", tariff.deliveryTime || "Auf Anfrage"],
+                  ["Preis", money(tariff.finalPrice)],
+                  ["Absender", `${form.sender_name}, ${form.sender_street}, ${form.sender_zip} ${form.sender_city}`],
+                  ["Empfänger", `${form.rec_name}, ${form.rec_street}, ${form.rec_zip} ${form.rec_city}, ${form.rec_country}`],
+                  ["Inhalt", form.content || "—"],
+                ].map(([k, v], i, arr) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", gap: 16 }}>
+                    <span className="text-sm text-muted" style={{ flexShrink: 0 }}>{k}</span>
+                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{v}</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => setStep(2)}>← Zurück</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={doBook} disabled={loading}>
-                {loading ? <><span className="spinner" /> Buche…</> : "✓ Jetzt buchen"}
-              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(4)}>Weiter: Verbindlich bestellen →</button>
             </div>
           </div>
         )}
-        {step === 4 && booking && (
+
+        {step === 4 && (
+          <div>
+            <div className="calc-panel mb-16" style={{ border: "2px solid var(--blue)" }}>
+              <div className="calc-panel-header" style={{ background: "linear-gradient(135deg, var(--navy), var(--blue2))" }}>
+                <Icon n="shield" s={18} c="white" />
+                <h3 style={{ color: "white" }}>Verbindliche Bestellung</h3>
+              </div>
+              <div className="calc-panel-body">
+                <div style={{ background: "var(--gray50)", borderRadius: "var(--radius)", padding: "16px", marginBottom: "20px", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span className="text-sm text-muted">Carrier</span>
+                    <span className="text-sm font-bold" style={{ color: "var(--navy)" }}>{tariff.carrier} — {tariff.tariffName}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span className="text-sm text-muted">Absender</span>
+                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{form.sender_name}, {form.sender_zip} {form.sender_city}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                    <span className="text-sm text-muted">Empfänger</span>
+                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{form.rec_name}, {form.rec_zip} {form.rec_city}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12, borderTop: "2px solid var(--border)" }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--navy)" }}>Gesamtbetrag</span>
+                    <span style={{ fontSize: 22, fontWeight: 800, color: "var(--blue2)", fontFamily: "DM Mono, monospace" }}>{money(tariff.finalPrice)}</span>
+                  </div>
+                  <div style={{ textAlign: "right", fontSize: 11, color: "var(--gray400)", marginTop: 4 }}>
+                    inkl. MwSt. · Zahlung auf Rechnung · {user?.payment_term || 28} Tage Zahlungsziel
+                  </div>
+                </div>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", marginBottom: 20 }}>
+                  <input type="checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--blue)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: "var(--gray600)", lineHeight: 1.6 }}>
+                    Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
+                    <span style={{ color: "var(--blue2)", fontWeight: 600 }}>Allgemeinen Geschäftsbedingungen</span>{" "}
+                    zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
+                  </span>
+                </label>
+                {error && <div className="alert alert-error">{error}</div>}
+                <button className="btn btn-primary btn-full" onClick={doBook} disabled={loading || !agbAccepted} style={{ fontSize: 15, padding: "13px", opacity: agbAccepted ? 1 : 0.5 }}>
+                  {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
+                </button>
+                <p style={{ textAlign: "center", fontSize: 12, color: "var(--gray400)", marginTop: 12 }}>
+                  Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {user?.email}
+                </p>
+              </div>
+            </div>
+            <button className="btn btn-outline btn-full" onClick={() => setStep(3)} disabled={loading}>← Zurück zur Übersicht</button>
+          </div>
+        )}
+
+        {step === 5 && booking && (
           <div className="text-center" style={{ padding: "40px 0" }}>
-            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--success-bg)", border: "2px solid var(--success)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 32 }}>✓</div>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--navy)", marginBottom: 8 }}>Sendung gebucht!</h2>
-            <p className="text-muted mb-24">Bestätigung an {user?.email} gesendet.</p>
+            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--success-bg)", border: "3px solid var(--success)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✓</div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--navy)", marginBottom: 8 }}>Sendung gebucht!</h2>
+            <p className="text-muted mb-8">Rechnungsnummer: <strong style={{ color: "var(--navy)" }}>{booking.invoiceNumber}</strong></p>
+            <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
             <div className="flex-center gap-12">
-              <button className="btn btn-primary" onClick={() => onNavigate("dashboard")}>Dashboard</button>
+              <button className="btn btn-primary" onClick={() => onNavigate("dashboard")}>Zum Dashboard</button>
               <button className="btn btn-outline" onClick={() => onNavigate("calculator")}>Neue Sendung</button>
             </div>
           </div>
@@ -702,7 +748,6 @@ function Dashboard({ user, onNavigate, onLogout }) {
           </div>
         </div>
       </aside>
-
       <main className="main-content">
         <div className="mobile-topbar">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>

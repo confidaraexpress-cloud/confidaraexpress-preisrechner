@@ -1,92 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
-
-const API = "https://api.confidaraexpress.de";
-const money = (v) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(Number(v) || 0);
-const dateDE = (d) => d ? new Date(d).toLocaleDateString("de-DE") : "—";
-const dtDE = (d) => d ? new Date(d).toLocaleString("de-DE") : "—";
-const token = () => localStorage.getItem("ce_token");
-const authH = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${token()}` });
-const jsonH = { "Content-Type": "application/json" };
-
-const countries = [
-  { code: "DE", name: "Deutschland" }, { code: "AT", name: "Österreich" },
-  { code: "CH", name: "Schweiz" }, { code: "NL", name: "Niederlande" },
-  { code: "FR", name: "Frankreich" }, { code: "IT", name: "Italien" },
-  { code: "ES", name: "Spanien" }, { code: "PL", name: "Polen" },
-  { code: "GB", name: "Großbritannien" }, { code: "US", name: "USA" },
-  { code: "TR", name: "Türkei" }, { code: "BE", name: "Belgien" },
-];
-
-const Icon = ({ n, s = 18, c = "currentColor" }) => {
-  const p = {
-    dashboard: "M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z",
-    package: "M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
-    invoice: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
-    user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
-    plus: "M12 5v14M5 12h14",
-    logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9",
-    arrow: "M5 12h14M12 5l7 7-7 7",
-    map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6zM9 3v18M15 6v18",
-    settings: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",
-    search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-    x: "M18 6L6 18M6 6l12 12",
-    eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 100 6 3 3 0 000-6z",
-    eyeOff: "M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22",
-    shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
-    zap: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-    globe: "M12 2a10 10 0 100 20A10 10 0 0012 2zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z",
-    clock: "M12 2a10 10 0 100 20A10 10 0 0012 2zM12 6v6l4 2",
-    filter: "M22 3H2l8 9.46V19l4 2v-8.54L22 3",
-    refresh: "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15",
-    download: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3",
-    menu: "M3 12h18M3 6h18M3 18h18",
-    close: "M18 6L6 18M6 6l12 12",
-    admin: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",
-  };
-  if (n === "truck") return (
-    <svg width={s} height={s} fill="none" stroke={c} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/>
-      <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-    </svg>
-  );
-  return (
-    <svg width={s} height={s} fill="none" stroke={c} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <path d={p[n] || ""} />
-    </svg>
-  );
-};
-
-function StatusBadge({ status }) {
-  const map = {
-    approved: ["badge-green", "Aktiv"], active: ["badge-green", "Aktiv"],
-    pending: ["badge-yellow", "Ausstehend"], blocked: ["badge-red", "Gesperrt"],
-    booked: ["badge-blue", "Gebucht"], label_ready: ["badge-blue", "Label bereit"],
-    draft: ["badge-gray", "Entwurf"], paid: ["badge-green", "Bezahlt"],
-    unpaid: ["badge-yellow", "Offen"], delivered: ["badge-green", "Zugestellt"],
-    in_transit: ["badge-blue", "Unterwegs"], delayed: ["badge-yellow", "Verzögert"],
-  };
-  const [cls, label] = map[status] || ["badge-gray", status];
-  return <span className={`badge ${cls}`}>{label}</span>;
-}
-
-function PasswordField({ label, value, onChange, onKeyDown, placeholder, dark = true }) {
-  const [show, setShow] = useState(false);
-  const cls = dark ? "field-input-dark" : "field-input";
-  const labelCls = dark ? "field-label-dark" : "field-label";
-  return (
-    <div className="field">
-      {label && <label className={labelCls}>{label}</label>}
-      <div className="field-input-wrap">
-        <input type={show ? "text" : "password"} className={cls} value={value} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder || "••••••••"} />
-        <button type="button" className="field-eye-btn" onClick={() => setShow(s => !s)}>
-          <Icon n={show ? "eyeOff" : "eye"} s={16} c={dark ? "rgba(255,255,255,0.4)" : "var(--gray400)"} />
-        </button>
-      </div>
-    </div>
-  );
-}
+import { money, dateDE, dtDE } from "./utils/formatters";
+import { countries } from "./utils/countries";
+import { API, token, authH, jsonH } from "./api/client";
+import { Icon } from "./components/ui/Icon";
+import { StatusBadge } from "./components/ui/StatusBadge";
+import { PasswordField } from "./components/ui/PasswordField";
+import { LoginForm } from "./components/auth/LoginForm";
+import { RegisterForm } from "./components/auth/RegisterForm";
+import { ForgotPasswordForm } from "./components/auth/ForgotPasswordForm";
+import { ResetPasswordForm } from "./components/auth/ResetPasswordForm";
+import { Overview } from "./components/dashboard/Overview";
+import { ShipmentsList } from "./components/dashboard/ShipmentsList";
+import { InvoicesList } from "./components/dashboard/InvoicesList";
+import { Profile } from "./components/dashboard/Profile";
 
 // ─── Auth Page ────────────────────────────────────────────────────────────────
 function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
@@ -101,7 +29,10 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [regForm, setRegForm] = useState({ name: "", email: "", password: "", company_name: "", vat_id: "", street: "", zip: "", city: "", country: "DE" });
+  const [regForm, setRegForm] = useState({
+    name: "", email: "", password: "", company_name: "",
+    vat_id: "", street: "", zip: "", city: "", country: "DE",
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -165,7 +96,7 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
     setLoading(false);
   };
 
-  const reset = () => { setError(""); setSuccess(""); };
+  const clearMessages = () => { setError(""); setSuccess(""); };
 
   return (
     <div className="auth-page">
@@ -188,47 +119,27 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
       </header>
       <main className="auth-main">
         {step === "forgot" && (
-          <div className="auth-card animate-fadeUp">
-            <div className="auth-card-top">
-              <div className="auth-card-icon">🔑</div>
-              <h1 className="auth-card-title">Passwort vergessen</h1>
-              <p className="auth-card-desc">Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Reset-Link.</p>
-            </div>
-            {error && <div className="auth-alert auth-alert-error">{error}</div>}
-            {success && <div className="auth-alert auth-alert-success">{success}</div>}
-            {!success && (
-              <>
-                <div className="field">
-                  <label className="auth-label">E-Mail-Adresse</label>
-                  <input className="auth-input" type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleForgot()} placeholder="firma@beispiel.de" autoFocus />
-                </div>
-                <button className="auth-btn-primary" onClick={handleForgot} disabled={loading || !forgotEmail}>
-                  {loading ? <span className="spinner" /> : "Reset-Link senden"}
-                </button>
-              </>
-            )}
-            <button className="auth-btn-ghost" onClick={() => { setStep("credentials"); reset(); }}>← Zurück zum Login</button>
-          </div>
+          <ForgotPasswordForm
+            email={forgotEmail}
+            onChange={setForgotEmail}
+            onSubmit={handleForgot}
+            onBack={() => { setStep("credentials"); clearMessages(); }}
+            loading={loading}
+            error={error}
+            success={success}
+          />
         )}
         {step === "reset" && (
-          <div className="auth-card animate-fadeUp">
-            <div className="auth-card-top">
-              <div className="auth-card-icon">🔒</div>
-              <h1 className="auth-card-title">Neues Passwort</h1>
-              <p className="auth-card-desc">Wählen Sie ein sicheres Passwort mit mindestens 8 Zeichen.</p>
-            </div>
-            {error && <div className="auth-alert auth-alert-error">{error}</div>}
-            {success && <div className="auth-alert auth-alert-success">{success}</div>}
-            {!success && (
-              <>
-                <PasswordField label="Neues Passwort" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                <PasswordField label="Passwort bestätigen" value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReset()} />
-                <button className="auth-btn-primary" onClick={handleReset} disabled={loading || !newPassword}>
-                  {loading ? <span className="spinner" /> : "Passwort speichern"}
-                </button>
-              </>
-            )}
-          </div>
+          <ResetPasswordForm
+            password={newPassword}
+            confirmPassword={newPasswordConfirm}
+            onPasswordChange={setNewPassword}
+            onConfirmChange={setNewPasswordConfirm}
+            onSubmit={handleReset}
+            loading={loading}
+            error={error}
+            success={success}
+          />
         )}
         {step === "credentials" && (
           <>
@@ -239,53 +150,28 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
             </div>
             <div className="auth-card animate-fadeUp-1">
               <div className="auth-tabs">
-                <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); reset(); }}>Anmelden</button>
-                <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); reset(); }}>Registrieren</button>
+                <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); clearMessages(); }}>Anmelden</button>
+                <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); clearMessages(); }}>Registrieren</button>
               </div>
               {error && <div className="auth-alert auth-alert-error">{error}</div>}
               {success && <div className="auth-alert auth-alert-success">{success}</div>}
               {tab === "login" ? (
-                <>
-                  <div className="field">
-                    <label className="auth-label">E-Mail-Adresse</label>
-                    <input className="auth-input" type="email" value={loginForm.email} onChange={e => setLoginForm(p => ({ ...p, email: e.target.value }))} placeholder="firma@beispiel.de" autoFocus />
-                  </div>
-                  <div className="field">
-                    <div className="auth-label-row">
-                      <label className="auth-label">Passwort</label>
-                      <span className="auth-link" onClick={() => { setStep("forgot"); reset(); }}>Vergessen?</span>
-                    </div>
-                    <PasswordField value={loginForm.password} onChange={e => setLoginForm(p => ({ ...p, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-                  </div>
-                  <label className="auth-check-label">
-                    <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                    <span>30 Tage angemeldet bleiben</span>
-                  </label>
-                  <button className="auth-btn-primary" onClick={handleLogin} disabled={loading}>
-                    {loading ? <span className="spinner" /> : "Anmelden →"}
-                  </button>
-                </>
+                <LoginForm
+                  form={loginForm}
+                  onChange={(k, v) => setLoginForm(p => ({ ...p, [k]: v }))}
+                  onLogin={handleLogin}
+                  onForgot={() => { setStep("forgot"); clearMessages(); }}
+                  loading={loading}
+                  rememberMe={rememberMe}
+                  onRememberMe={setRememberMe}
+                />
               ) : (
-                <>
-                  <div className="field-row field-row-2">
-                    <div className="field"><label className="auth-label">Name</label><input className="auth-input" value={regForm.name} onChange={e => setRegForm(p => ({ ...p, name: e.target.value }))} /></div>
-                    <div className="field"><label className="auth-label">E-Mail</label><input className="auth-input" type="email" value={regForm.email} onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} /></div>
-                  </div>
-                  <PasswordField label="Passwort (min. 8 Zeichen)" value={regForm.password} onChange={e => setRegForm(p => ({ ...p, password: e.target.value }))} dark={false} />
-                  <div className="field-row field-row-2">
-                    <div className="field"><label className="auth-label">Firmenname</label><input className="auth-input" value={regForm.company_name} onChange={e => setRegForm(p => ({ ...p, company_name: e.target.value }))} /></div>
-                    <div className="field"><label className="auth-label">USt-ID</label><input className="auth-input" value={regForm.vat_id} onChange={e => setRegForm(p => ({ ...p, vat_id: e.target.value }))} placeholder="DE123456789" /></div>
-                  </div>
-                  <div className="field"><label className="auth-label">Straße & Hausnummer</label><input className="auth-input" value={regForm.street} onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} /></div>
-                  <div className="field-row field-row-3">
-                    <div className="field"><label className="auth-label">PLZ</label><input className="auth-input" value={regForm.zip} onChange={e => setRegForm(p => ({ ...p, zip: e.target.value }))} /></div>
-                    <div className="field"><label className="auth-label">Stadt</label><input className="auth-input" value={regForm.city} onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} /></div>
-                    <div className="field"><label className="auth-label">Land</label><select className="auth-input auth-select" value={regForm.country} onChange={e => setRegForm(p => ({ ...p, country: e.target.value }))}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-                  </div>
-                  <button className="auth-btn-primary" onClick={handleRegister} disabled={loading}>
-                    {loading ? <span className="spinner" /> : "Konto beantragen →"}
-                  </button>
-                </>
+                <RegisterForm
+                  form={regForm}
+                  onChange={(k, v) => setRegForm(p => ({ ...p, [k]: v }))}
+                  onRegister={handleRegister}
+                  loading={loading}
+                />
               )}
             </div>
             <div className="auth-trust animate-fadeUp-2">
@@ -667,9 +553,6 @@ function Dashboard({ user, onNavigate, onLogout }) {
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [trackingId, setTrackingId] = useState(null);
-  const [tracking, setTracking] = useState(null);
-  const [trackLoading, setTrackLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -682,27 +565,6 @@ function Dashboard({ user, onNavigate, onLogout }) {
     }).catch(() => setLoading(false));
   }, []);
 
-  const loadTracking = async (id) => {
-    if (trackingId === id) { setTrackingId(null); return; }
-    setTrackLoading(true); setTrackingId(id); setTracking(null);
-    try {
-      const r = await fetch(`${API}/api/tracking/${id}`, { headers: authH() });
-      const d = await r.json();
-      setTracking(d.tracking);
-    } catch { setTracking({ error: "Tracking nicht verfügbar" }); }
-    setTrackLoading(false);
-  };
-
-  const downloadLabel = async (id) => {
-    try {
-      const r = await fetch(`${API}/api/jumingo/label/${id}`, { headers: authH() });
-      const d = await r.json();
-      if (d.label) { const a = document.createElement("a"); a.href = `data:application/pdf;base64,${d.label}`; a.download = `label-${id}.pdf`; a.click(); }
-    } catch { alert("Label nicht verfügbar"); }
-  };
-
-  const unpaid = invoices.filter(i => i.status === "unpaid");
-  const unpaidAmt = unpaid.reduce((s, i) => s + Number(i.amount), 0);
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
   const navItems = [
@@ -756,140 +618,35 @@ function Dashboard({ user, onNavigate, onLogout }) {
         </div>
 
         {page === "overview" && (
-          <>
-            <div className="page-header">
-              <div><div className="page-header-title">Guten Tag, {user?.company_name || user?.name} 👋</div><div className="page-header-sub">Ihr Dashboard</div></div>
-              <button className="btn btn-primary btn-sm" onClick={() => setPage("new")}><Icon n="plus" s={14} /> Neue Sendung</button>
-            </div>
-            <div className="page-body">
-              {loading ? <div className="loading-center"><span className="spinner spinner-dark" /></div> : (
-                <>
-                  <div className="kpi-grid">
-                    <div className="kpi-card"><div className="kpi-label">Sendungen</div><div className="kpi-value">{shipments.length}</div></div>
-                    <div className="kpi-card"><div className="kpi-label">Offen</div><div className="kpi-value">{unpaid.length}</div><div className="kpi-sub">{money(unpaidAmt)}</div></div>
-                    <div className="kpi-card"><div className="kpi-label">Status</div><div style={{ marginTop: 8 }}><StatusBadge status={user?.status} /></div></div>
-                    <div className="kpi-card"><div className="kpi-label">Konto</div><div className="kpi-value" style={{ fontSize: 18, marginTop: 4 }}>B2B</div></div>
-                  </div>
-                  <div className="table-card">
-                    <div className="table-card-header"><span className="table-card-title">Letzte Sendungen</span><button className="btn btn-ghost btn-sm" onClick={() => setPage("shipments")}>Alle</button></div>
-                    {shipments.length === 0 ? <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">Noch keine Sendungen</div></div> : (
-                      <div className="table-scroll">
-                        <table>
-                          <thead><tr><th>Carrier</th><th>Preis</th><th>Status</th><th>Datum</th></tr></thead>
-                          <tbody>{shipments.slice(0, 5).map(s => (<tr key={s.id}><td>{s.selected_carrier || "—"}</td><td className="font-bold">{money(s.price_final)}</td><td><StatusBadge status={s.status} /></td><td className="text-muted">{dateDE(s.created_at)}</td></tr>))}</tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </>
+          <Overview
+            user={user}
+            shipments={shipments}
+            invoices={invoices}
+            loading={loading}
+            onNewShipment={() => setPage("new")}
+            onAllShipments={() => setPage("shipments")}
+          />
         )}
 
         {page === "new" && (
           <>
             <div className="page-header"><div><div className="page-header-title">Neue Sendung</div></div></div>
-            <div className="page-body"><CalculatorPage authed={true} onNavigate={(p, data) => { if (p === "booking") onNavigate("booking", data); }} /></div>
+            <div className="page-body">
+              <CalculatorPage authed={true} onNavigate={(p, data) => { if (p === "booking") onNavigate("booking", data); }} />
+            </div>
           </>
         )}
 
         {page === "shipments" && (
-          <>
-            <div className="page-header"><div><div className="page-header-title">Sendungen</div></div></div>
-            <div className="page-body">
-              {loading ? <div className="loading-center"><span className="spinner spinner-dark" /></div> : shipments.length === 0 ? (
-                <div className="empty"><div className="empty-icon">📦</div><div className="empty-title">Noch keine Sendungen</div></div>
-              ) : (
-                <div className="table-card">
-                  <div className="table-scroll">
-                    <table>
-                      <thead><tr><th>Carrier</th><th>Gewicht</th><th>Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr></thead>
-                      <tbody>
-                        {shipments.map(s => (
-                          <React.Fragment key={s.id}>
-                            <tr>
-                              <td>{s.selected_carrier || "—"}</td>
-                              <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
-                              <td className="font-bold">{money(s.price_final)}</td>
-                              <td><StatusBadge status={s.status} /></td>
-                              <td className="text-muted">{dateDE(s.created_at)}</td>
-                              <td>
-                                <div className="flex gap-8">
-                                  {s.jumingo_shipment_id && <button className="btn btn-ghost btn-sm" onClick={() => loadTracking(s.jumingo_shipment_id)}>Track</button>}
-                                  {(s.status === "booked" || s.status === "label_ready") && <button className="btn btn-ghost btn-sm" onClick={() => downloadLabel(s.jumingo_shipment_id)}>Label</button>}
-                                </div>
-                              </td>
-                            </tr>
-                            {trackingId === s.jumingo_shipment_id && (
-                              <tr><td colSpan={6} style={{ background: "var(--gray50)", padding: "20px 24px" }}>
-                                {trackLoading ? <div className="loading-center"><span className="spinner spinner-dark" /></div> : tracking?.error ? <p className="text-muted text-sm">{tracking.error}</p> : (
-                                  <div className="tracking-timeline">
-                                    {tracking?.data?.tracking_events?.map((ev, i) => (
-                                      <div key={i} className="track-event">
-                                        <div className={`track-dot ${i === 0 ? "active" : "done"}`}>{i === 0 ? "●" : "✓"}</div>
-                                        <div className="track-info"><div className="track-title">{ev.description || ev.status}</div><div className="track-time">{ev.timestamp ? dtDE(ev.timestamp) : ""}</div></div>
-                                      </div>
-                                    )) || <p className="text-muted text-sm">Keine Events</p>}
-                                  </div>
-                                )}
-                              </td></tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+          <ShipmentsList shipments={shipments} loading={loading} />
         )}
 
         {page === "invoices" && (
-          <>
-            <div className="page-header"><div><div className="page-header-title">Rechnungen</div></div></div>
-            <div className="page-body">
-              {unpaid.length > 0 && <div className="alert alert-info mb-16"><Icon n="invoice" s={16} />Offen: <strong>{money(unpaidAmt)}</strong></div>}
-              {invoices.length === 0 ? <div className="empty"><div className="empty-icon">🧾</div><div className="empty-title">Keine Rechnungen</div></div> : (
-                <div className="table-card">
-                  <div className="table-scroll">
-                    <table>
-                      <thead><tr><th>Nummer</th><th>Betrag</th><th>Status</th><th>Fällig</th></tr></thead>
-                      <tbody>{invoices.map(inv => (<tr key={inv.id}><td className="mono" style={{ fontSize: 12 }}>{inv.invoice_number}</td><td className="font-bold">{money(inv.amount)}</td><td><StatusBadge status={inv.status} /></td><td className="text-muted">{dateDE(inv.due_date)}</td></tr>))}</tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+          <InvoicesList invoices={invoices} loading={loading} />
         )}
 
         {page === "profile" && (
-          <>
-            <div className="page-header"><div><div className="page-header-title">Mein Profil</div></div></div>
-            <div className="page-body">
-              <div style={{ maxWidth: 600, display: "flex", flexDirection: "column", gap: 16 }}>
-                {[
-                  { title: "Kontakt", items: [["Name", user?.name], ["E-Mail", user?.email]] },
-                  { title: "Firma", items: [["Firmenname", user?.company_name], ["USt-ID", user?.vat_id || "—"], ["Adresse", `${user?.street}, ${user?.zip} ${user?.city}`]] },
-                  { title: "Konto", items: [["Status", <StatusBadge status={user?.status} />], ["Zahlungsart", "Rechnung (B2B)"]] },
-                ].map((section, si) => (
-                  <div key={si} className="table-card">
-                    <div className="table-card-header"><span className="table-card-title">{section.title}</span></div>
-                    <div style={{ padding: "8px 20px 16px" }}>
-                      {section.items.map(([k, v], i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < section.items.length - 1 ? "1px solid var(--border)" : "none" }}>
-                          <span className="text-sm text-muted">{k}</span>
-                          <span className="text-sm font-bold" style={{ color: "var(--navy)" }}>{v || "—"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
+          <Profile user={user} />
         )}
       </main>
     </div>

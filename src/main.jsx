@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 import { money, dateDE, dtDE } from "./utils/formatters";
 import { countries } from "./utils/countries";
-import { API, token, authH, jsonH } from "./api/client";
+import { API, authH, jsonH } from "./api/client";
 import { Icon } from "./components/ui/Icon";
 import { StatusBadge } from "./components/ui/StatusBadge";
 import { PasswordField } from "./components/ui/PasswordField";
@@ -15,9 +15,11 @@ import { Overview } from "./components/dashboard/Overview";
 import { ShipmentsList } from "./components/dashboard/ShipmentsList";
 import { InvoicesList } from "./components/dashboard/InvoicesList";
 import { Profile } from "./components/dashboard/Profile";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // ─── Auth Page ────────────────────────────────────────────────────────────────
-function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
+function AuthPage({ defaultTab = "login", onNavigate }) {
+  const { login } = useAuth();
   const [tab, setTab] = useState(defaultTab);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -51,8 +53,11 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
       const r = await fetch(`${API}/login`, { method: "POST", headers: jsonH, body: JSON.stringify({ ...loginForm, rememberMe }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Login fehlgeschlagen");
-      if (d.token) { localStorage.setItem("ce_token", d.token); onLogin(d.token); }
-      else throw new Error("Kein Token erhalten");
+      if (d.token) {
+        localStorage.setItem("ce_token", d.token);
+        await login(d.token);
+        onNavigate("dashboard");
+      } else throw new Error("Kein Token erhalten");
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -190,7 +195,8 @@ function AuthPage({ onLogin, defaultTab = "login", onNavigate }) {
 }
 
 // ─── Calculator Page ──────────────────────────────────────────────────────────
-function CalculatorPage({ authed, onNavigate }) {
+function CalculatorPage({ onNavigate }) {
+  const { authed } = useAuth();
   const [form, setForm] = useState({
     from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
     weight: "", length: "", width: "", height: "",
@@ -337,7 +343,8 @@ function CalculatorPage({ authed, onNavigate }) {
 }
 
 // ─── Booking Page ─────────────────────────────────────────────────────────────
-function BookingPage({ user, bookingData, onNavigate }) {
+function BookingPage({ bookingData, onNavigate }) {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -547,7 +554,8 @@ function BookingPage({ user, bookingData, onNavigate }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ user, onNavigate, onLogout }) {
+function Dashboard({ onNavigate }) {
+  const { user, logout } = useAuth();
   const [page, setPage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shipments, setShipments] = useState([]);
@@ -606,7 +614,7 @@ function Dashboard({ user, onNavigate, onLogout }) {
               <div className="user-name">{user?.company_name || user?.name}</div>
               <div className="user-role">Kunde</div>
             </div>
-            <button className="logout-btn" onClick={onLogout} title="Abmelden"><Icon n="logout" s={14} /></button>
+            <button className="logout-btn" onClick={() => { logout(); onNavigate("auth"); }} title="Abmelden"><Icon n="logout" s={14} /></button>
           </div>
         </div>
       </aside>
@@ -632,7 +640,7 @@ function Dashboard({ user, onNavigate, onLogout }) {
           <>
             <div className="page-header"><div><div className="page-header-title">Neue Sendung</div></div></div>
             <div className="page-body">
-              <CalculatorPage authed={true} onNavigate={(p, data) => { if (p === "booking") onNavigate("booking", data); }} />
+              <CalculatorPage onNavigate={(p, data) => { if (p === "booking") onNavigate("booking", data); }} />
             </div>
           </>
         )}
@@ -691,7 +699,8 @@ function TrackingPage() {
 }
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar({ onNavigate, authed }) {
+function Navbar({ onNavigate }) {
+  const { authed } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   return (
     <>
@@ -747,38 +756,18 @@ function Navbar({ onNavigate, authed }) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 function App() {
+  const { authed, loadingUser } = useAuth();
   const [page, setPage] = useState("auth");
   const [pageData, setPageData] = useState(null);
-  const [authed, setAuthed] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loadingUser, setLoadingUser] = useState(true);
 
-  const loadUser = useCallback(async () => {
-    const t = token();
-    if (!t) { setLoadingUser(false); return; }
-    try {
-      const r = await fetch(`${API}/kundenbereich`, { headers: authH() });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      setUser(d.user); setAuthed(true); setPage("dashboard");
-    } catch { localStorage.removeItem("ce_token"); }
-    setLoadingUser(false);
-  }, []);
+  const initialized = React.useRef(false);
+  useEffect(() => {
+    if (!loadingUser && !initialized.current) {
+      initialized.current = true;
+      if (authed) setPage("dashboard");
+    }
+  }, [loadingUser, authed]);
 
-  useEffect(() => { loadUser(); }, [loadUser]);
-
-  const handleLogin = useCallback(async (t) => {
-    setLoadingUser(true);
-    try {
-      const r = await fetch(`${API}/kundenbereich`, { headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` } });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      setUser(d.user); setAuthed(true); setPage("dashboard");
-    } catch { localStorage.removeItem("ce_token"); }
-    setLoadingUser(false);
-  }, []);
-
-  const logout = () => { localStorage.removeItem("ce_token"); setAuthed(false); setUser(null); setPage("auth"); };
   const navigate = (p, data = null) => { setPage(p); setPageData(data); window.scrollTo(0, 0); };
 
   if (loadingUser) return (
@@ -794,15 +783,19 @@ function App() {
 
   return (
     <>
-      {showNavbar && <Navbar onNavigate={navigate} authed={authed} />}
-      {(page === "auth" || page === "login") && <AuthPage onLogin={handleLogin} defaultTab="login" onNavigate={navigate} />}
-      {page === "register" && <AuthPage onLogin={handleLogin} defaultTab="register" onNavigate={navigate} />}
-      {page === "calculator" && <CalculatorPage authed={authed} onNavigate={navigate} />}
+      {showNavbar && <Navbar onNavigate={navigate} />}
+      {(page === "auth" || page === "login") && <AuthPage defaultTab="login" onNavigate={navigate} />}
+      {page === "register" && <AuthPage defaultTab="register" onNavigate={navigate} />}
+      {page === "calculator" && <CalculatorPage onNavigate={navigate} />}
       {page === "tracking" && <TrackingPage />}
-      {page === "booking" && authed && <BookingPage user={user} bookingData={pageData} onNavigate={navigate} />}
-      {page === "dashboard" && authed && <Dashboard user={user} onNavigate={navigate} onLogout={logout} />}
+      {page === "booking" && authed && <BookingPage bookingData={pageData} onNavigate={navigate} />}
+      {page === "dashboard" && authed && <Dashboard onNavigate={navigate} />}
     </>
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <AuthProvider>
+    <App />
+  </AuthProvider>
+);

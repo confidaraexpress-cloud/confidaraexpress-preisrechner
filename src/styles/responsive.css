@@ -44,6 +44,7 @@
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
   .field-row-2, .field-row-3 { grid-template-columns: 1fr; }
+  .overview-empty { padding: 36px 16px 28px; }
   /* Auth — 480px */
   .auth-shell { padding: 20px 14px; }
   .auth-badge { font-size: 10px; padding: 7px 14px 7px 10px; letter-spacing: 0.18em; }

@@ -73,7 +73,7 @@ export default function DashboardPage() {
             <div className="user-avatar">{initials}</div>
             <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
               <div className="user-name">{user?.company_name || user?.name}</div>
-              <div className="user-role">Kunde</div>
+              <div className="user-role">{user?.email || "B2B Konto"}</div>
             </div>
             <button className="logout-btn" onClick={() => { logout(); navigate("/login"); }} title="Abmelden"><Icon n="logout" s={14} /></button>
           </div>

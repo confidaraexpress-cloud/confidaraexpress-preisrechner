@@ -83,6 +83,14 @@ export default function BookingPage() {
                   <div>
                     <div className="booking-carrier-name">{tariff.carrier}</div>
                     <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
+                    {tariff.serviceType && (
+                      <div className="booking-service-info">
+                        {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}
+                        {tariff.shopName && ` · ${tariff.shopName}`}
+                        {tariff.pickupToday && " · Abholung heute"}
+                        {tariff.printerRequired && " · Drucker erforderlich"}
+                      </div>
+                    )}
                   </div>
                   <div className="booking-price-display">{money(tariff.finalPrice)}</div>
                 </div>

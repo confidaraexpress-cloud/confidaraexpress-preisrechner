@@ -6,9 +6,17 @@ import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
 import { useAuth } from "../context/AuthContext";
 
+const SERVICE_OPTIONS = [
+  { id: "all",     icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
+  { id: "pickup",  icon: "truck",     label: "Nur Abholung",          desc: "Abholung Zuhause oder im Büro" },
+  { id: "dropoff", icon: "map",       label: "Nur Abgabe",            desc: "Abgabe in einem Paketshop" },
+  { id: "pickup_today", icon: "zap",   label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
+];
+
 export default function CalculatorPage() {
   const { authed } = useAuth();
   const navigate = useNavigate();
+  const [serviceFilter, setServiceFilter] = useState("all");
   const [form, setForm] = useState({
     from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
     weight: "", length: "", width: "", height: "",
@@ -37,6 +45,15 @@ export default function CalculatorPage() {
 
   useEffect(() => { applyFilter(tariffs); }, [tariffs, applyFilter]);
 
+  const handleServiceFilter = (id) => {
+    setServiceFilter(id);
+    // Clear results so user recalculates with the new filter
+    setHasResults(false);
+    setTariffs([]);
+    setFiltered([]);
+    setSelected(null);
+  };
+
   const calculate = async () => {
     if (!form.weight) { setError("Bitte Gewicht angeben"); return; }
     setError(""); setLoading(true); setSelected(null);
@@ -48,6 +65,7 @@ export default function CalculatorPage() {
           width: Number(form.width) || 20, height: Number(form.height) || 15,
           from_country: form.from_country, from_zip: form.from_zip,
           to_country: form.to_country, to_zip: form.to_zip,
+          serviceFilter: serviceFilter,
         })
       });
       const d = await r.json();
@@ -67,6 +85,29 @@ export default function CalculatorPage() {
         {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
         <div className="calc-wrap">
           <div>
+            {/* Service Filter */}
+            <div className="calc-panel mb-16">
+              <div className="calc-panel-header"><Icon n="zap" s={18} c="#1D4ED8" /><h3>Welchen Service bevorzugen Sie?</h3></div>
+              <div className="calc-panel-body">
+                <div className="service-filter-grid">
+                  {SERVICE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.id}
+                      className={`service-filter-card ${serviceFilter === opt.id ? "selected" : ""}`}
+                      onClick={() => handleServiceFilter(opt.id)}
+                    >
+                      <div className="service-filter-card-title">
+                        <Icon n={opt.icon} s={13} c={serviceFilter === opt.id ? "#1d4ed8" : "#64748b"} />
+                        {opt.label}
+                      </div>
+                      <div className="service-filter-card-desc">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Route */}
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Versandroute</h3></div>
               <div className="calc-panel-body">
@@ -82,6 +123,8 @@ export default function CalculatorPage() {
                 </div>
               </div>
             </div>
+
+            {/* Package */}
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
               <div className="calc-panel-body">
@@ -99,6 +142,8 @@ export default function CalculatorPage() {
                 )}
               </div>
             </div>
+
+            {/* Mobile CTA */}
             {!hasResults && (
               <div className="calc-mobile-cta">
                 <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
@@ -106,6 +151,8 @@ export default function CalculatorPage() {
                 </button>
               </div>
             )}
+
+            {/* Client-side filter (only after results) */}
             {hasResults && (
               <div className="calc-panel">
                 <div className="calc-panel-header"><Icon n="filter" s={18} c="#1D4ED8" /><h3>Filtern</h3></div>
@@ -118,14 +165,50 @@ export default function CalculatorPage() {
               </div>
             )}
           </div>
+
+          {/* Results panel */}
           <div className="results-panel">
             <div className="results-header">
               <h3>{hasResults ? `${filtered.length} Angebote gefunden` : "Versandangebote"}</h3>
               <p>{hasResults ? "Wählen Sie Ihr Angebot" : "Füllen Sie das Formular aus"}</p>
             </div>
             <div className="results-body">
-              {!hasResults && !loading && <div className="results-empty"><div className="results-empty-icon">📦</div><p className="text-sm text-muted">Preise berechnen um Angebote zu sehen</p></div>}
-              {loading && <div className="loading-center"><span className="spinner spinner-dark" /><span className="text-sm text-muted">Preise werden geladen…</span></div>}
+
+              {/* Initial state */}
+              {!hasResults && !loading && (
+                <div className="results-empty">
+                  <div className="results-empty-icon">📦</div>
+                  <p className="text-sm text-muted">Preise berechnen um Angebote zu sehen</p>
+                </div>
+              )}
+
+              {/* Loading */}
+              {loading && (
+                <div className="loading-center">
+                  <span className="spinner spinner-dark" />
+                  <span className="text-sm text-muted">Preise werden geladen…</span>
+                </div>
+              )}
+
+              {/* API returned 0 tariffs */}
+              {!loading && hasResults && tariffs.length === 0 && (
+                <div className="results-empty">
+                  <div className="results-empty-icon">🔍</div>
+                  <p className="results-empty-title">Keine Tarife gefunden</p>
+                  <p className="text-sm text-muted">Für diese Route wurden keine Tarife für den gewählten Servicetyp gefunden. Wählen Sie „Alle Dienstleistungen" und berechnen Sie erneut.</p>
+                </div>
+              )}
+
+              {/* Client filter reduced to 0 */}
+              {!loading && hasResults && tariffs.length > 0 && filtered.length === 0 && (
+                <div className="results-empty">
+                  <div className="results-empty-icon">🎯</div>
+                  <p className="results-empty-title">Filter anpassen</p>
+                  <p className="text-sm text-muted">Alle Tarife wurden durch Ihre Preisfilter ausgeblendet. Erhöhen Sie das Preislimit oder entfernen Sie den Filter.</p>
+                </div>
+              )}
+
+              {/* Tariff cards */}
               {!loading && filtered.map(t => (
                 <div key={t.id} className={`tariff-card ${selected?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t)}>
                   <div className="tariff-card-top">
@@ -135,9 +218,29 @@ export default function CalculatorPage() {
                   <div className="tariff-tags">
                     {t.deliveryTime && <span className="tariff-tag">⏱ {t.deliveryTime}</span>}
                     {t.trackingAvailable && <span className="tariff-tag green">✓ Tracking</span>}
+                    {t.serviceType === "pickup"  && <span className="tariff-tag blue">🚐 Abholung</span>}
+                    {t.serviceType === "dropoff" && <span className="tariff-tag">🏪 Shopabgabe</span>}
                   </div>
+                  {(t.shopName || t.pickupDate || t.pickupToday || t.printerRequired) && (
+                    <div className="tariff-service-row">
+                      {t.serviceType === "dropoff" && t.shopName && (
+                        <span className="tariff-service-detail"><Icon n="map" s={11} /> {t.shopName}</span>
+                      )}
+                      {t.serviceType === "pickup" && t.pickupToday && (
+                        <span className="tariff-service-detail pickup-today"><Icon n="zap" s={11} /> Abholung heute möglich</span>
+                      )}
+                      {t.serviceType === "pickup" && t.pickupDate && !t.pickupToday && (
+                        <span className="tariff-service-detail"><Icon n="truck" s={11} /> Abholung: {t.pickupDate}</span>
+                      )}
+                      {t.printerRequired && (
+                        <span className="tariff-printer-note"><Icon n="x" s={11} /> Drucker erforderlich</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
+
+              {/* CTA */}
               {hasResults && !loading && (
                 <div className="results-cta">
                   {selected ? (
@@ -150,6 +253,7 @@ export default function CalculatorPage() {
                   <button className="btn btn-ghost btn-full mt-8" onClick={calculate}><Icon n="refresh" s={14} /> Neu berechnen</button>
                 </div>
               )}
+
               {!loading && !hasResults && (
                 <div className="calc-desktop-cta">
                   <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>

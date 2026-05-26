@@ -59,10 +59,10 @@ export default function CalculatorPage() {
 
   return (
     <div className="page-with-navbar">
-      <div className="container" style={{ paddingTop: 32, paddingBottom: 48 }}>
+      <div className="container calc-page-wrap">
         <div className="mb-24">
-          <h1 className="heading" style={{ fontSize: 28, color: "var(--navy)", marginBottom: 6 }}>Versandpreis berechnen</h1>
-          <p style={{ color: "var(--gray500)", fontSize: 15 }}>Vergleichen Sie Preise von 10+ Carriern in Echtzeit</p>
+          <h1 className="heading calc-page-title">Versandpreis berechnen</h1>
+          <p className="calc-page-sub">Vergleichen Sie Preise von 10+ Carriern in Echtzeit</p>
         </div>
         {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
         <div className="calc-wrap">
@@ -139,7 +139,7 @@ export default function CalculatorPage() {
                 </div>
               ))}
               {hasResults && !loading && (
-                <div style={{ marginTop: 16 }}>
+                <div className="results-cta">
                   {selected ? (
                     <button className="btn btn-primary btn-full" onClick={() => authed
                       ? navigate("/booking", { state: { tariff: selected, shipmentId, form } })

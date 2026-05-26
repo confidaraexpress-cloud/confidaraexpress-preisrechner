@@ -375,6 +375,7 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; font-weight: 700; }
 }
 .auth-input option { background: #0a1628; color: white; }
 .auth-select { appearance: none; cursor: pointer; }
+.auth-input-no-icon { padding-left: 14px; }
 
 .auth-input-ico {
   position: absolute; left: 16px;

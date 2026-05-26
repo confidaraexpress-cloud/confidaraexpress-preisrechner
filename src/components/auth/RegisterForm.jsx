@@ -62,10 +62,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-field-row">
             <label className="auth-field-label">Firmenname</label>
           </div>
-          <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+          <div className="auth-input-wrap">
             <input
-              className="auth-input"
-              style={{ paddingLeft: "14px" }}
+              className="auth-input auth-input-no-icon"
               value={form.company_name}
               onChange={(e) => upd("company_name", e.target.value)}
             />
@@ -75,10 +74,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-field-row">
             <label className="auth-field-label">USt-ID</label>
           </div>
-          <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+          <div className="auth-input-wrap">
             <input
-              className="auth-input"
-              style={{ paddingLeft: "14px" }}
+              className="auth-input auth-input-no-icon"
               value={form.vat_id}
               onChange={(e) => upd("vat_id", e.target.value)}
               placeholder="DE123456789"
@@ -93,10 +91,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
         <div className="auth-field-row">
           <label className="auth-field-label">Straße &amp; Hausnummer</label>
         </div>
-        <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+        <div className="auth-input-wrap">
           <input
-            className="auth-input"
-            style={{ paddingLeft: "14px" }}
+            className="auth-input auth-input-no-icon"
             value={form.street}
             onChange={(e) => upd("street", e.target.value)}
           />
@@ -108,10 +105,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-field-row">
             <label className="auth-field-label">PLZ</label>
           </div>
-          <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+          <div className="auth-input-wrap">
             <input
-              className="auth-input"
-              style={{ paddingLeft: "14px" }}
+              className="auth-input auth-input-no-icon"
               value={form.zip}
               onChange={(e) => upd("zip", e.target.value)}
             />
@@ -121,10 +117,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-field-row">
             <label className="auth-field-label">Stadt</label>
           </div>
-          <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+          <div className="auth-input-wrap">
             <input
-              className="auth-input"
-              style={{ paddingLeft: "14px" }}
+              className="auth-input auth-input-no-icon"
               value={form.city}
               onChange={(e) => upd("city", e.target.value)}
             />
@@ -134,10 +129,9 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-field-row">
             <label className="auth-field-label">Land</label>
           </div>
-          <div className="auth-input-wrap" style={{ paddingLeft: 0 }}>
+          <div className="auth-input-wrap">
             <select
-              className="auth-input auth-select"
-              style={{ paddingLeft: "14px" }}
+              className="auth-input auth-select auth-input-no-icon"
               value={form.country}
               onChange={(e) => upd("country", e.target.value)}
             >

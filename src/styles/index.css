@@ -1,0 +1,10 @@
+@import './variables.css';
+@import './globals.css';
+@import './animations.css';
+@import './layout.css';
+@import './buttons.css';
+@import './forms.css';
+@import './auth.css';
+@import './calculator.css';
+@import './dashboard.css';
+@import './responsive.css';

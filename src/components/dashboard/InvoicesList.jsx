@@ -3,6 +3,12 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 
+// PDF-Download: Benötigt Backend-Endpunkt GET /kunde/invoices/:id/pdf
+// Analog zu GET /api/jumingo/label/:id (gibt PDF als base64 zurück).
+// Sobald vorhanden: invoice_pdf_url im Invoice-Objekt setzen ODER
+// Download-Funktion mit authH() gegen den Endpunkt implementieren.
+// Button wird erst angezeigt, wenn invoice_pdf_url im Invoice-Objekt vorhanden ist.
+
 export function InvoicesList({ invoices, loading }) {
   const unpaid = invoices.filter((i) => i.status === "unpaid");
   const unpaidAmt = unpaid.reduce((s, i) => s + Number(i.amount), 0);
@@ -30,7 +36,13 @@ export function InvoicesList({ invoices, loading }) {
             <div className="table-scroll">
               <table>
                 <thead>
-                  <tr><th>Nummer</th><th>Betrag</th><th>Status</th><th>Fällig</th></tr>
+                  <tr>
+                    <th>Nummer</th>
+                    <th>Betrag</th>
+                    <th>Status</th>
+                    <th>Fällig</th>
+                    <th>PDF</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {invoices.map((inv) => (
@@ -39,6 +51,18 @@ export function InvoicesList({ invoices, loading }) {
                       <td className="font-bold">{money(inv.amount)}</td>
                       <td><StatusBadge status={inv.status} /></td>
                       <td className="text-muted">{dateDE(inv.due_date)}</td>
+                      <td>
+                        {inv.invoice_pdf_url && (
+                          <a
+                            className="btn btn-ghost btn-sm"
+                            href={inv.invoice_pdf_url}
+                            download={`rechnung-${inv.invoice_number}.pdf`}
+                            title="Rechnung als PDF herunterladen"
+                          >
+                            <Icon n="download" s={14} /> PDF
+                          </a>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

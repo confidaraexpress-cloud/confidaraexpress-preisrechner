@@ -1,5 +1,5 @@
-import React, { useState, useEffect, Suspense } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { API, authH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { Overview } from "../components/dashboard/Overview";
@@ -13,14 +13,18 @@ const CalculatorPage = React.lazy(() => import("./CalculatorPage"));
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [page, setPage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [bookingToast, setBookingToast] = useState(false);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    setLoadError("");
     Promise.all([
       fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
       fetch(`${API}/kunde/invoices`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
@@ -33,6 +37,18 @@ export default function DashboardPage() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Show success toast when returning from a completed booking
+  useEffect(() => {
+    if (location.state?.justBooked) {
+      setBookingToast(true);
+      navigate(location.pathname, { replace: true, state: {} });
+      const t = setTimeout(() => setBookingToast(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
@@ -85,6 +101,14 @@ export default function DashboardPage() {
           <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 15, color: "var(--navy)" }}>ConfidaraExpress</div>
           <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>{initials}</div>
         </div>
+
+        {bookingToast && (
+          <div style={{ padding: "16px 28px 0" }}>
+            <div className="alert alert-success">
+              <Icon n="shield" s={16} /> Sendung erfolgreich gebucht! Ihre Sendungsliste wurde aktualisiert.
+            </div>
+          </div>
+        )}
 
         {loadError && (
           <div style={{ padding: "16px 28px 0" }}>

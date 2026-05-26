@@ -47,7 +47,7 @@ export default function BookingPage() {
   };
 
   if (!tariff) return (
-    <div style={{ paddingTop: 88, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+    <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
         <p className="text-muted mb-16">Kein Angebot ausgewählt</p>
         <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
@@ -59,8 +59,8 @@ export default function BookingPage() {
 
   return (
     <div className="page-with-navbar">
-      <div className="container" style={{ paddingTop: 32, paddingBottom: 48, maxWidth: 760 }}>
-        <h1 className="heading mb-24" style={{ fontSize: 24, color: "var(--navy)" }}>Sendung buchen</h1>
+      <div className="container booking-wrap">
+        <h1 className="heading booking-title mb-24">Sendung buchen</h1>
         <div className="steps-bar mb-24">
           {steps.map((s, i) => (
             <div key={i} className="step-item">
@@ -81,10 +81,10 @@ export default function BookingPage() {
               <div className="calc-panel-body">
                 <div className="flex-between">
                   <div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "var(--navy)" }}>{tariff.carrier}</div>
+                    <div className="booking-carrier-name">{tariff.carrier}</div>
                     <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: "var(--navy)", fontFamily: "DM Mono, monospace" }}>{money(tariff.finalPrice)}</div>
+                  <div className="booking-price-display">{money(tariff.finalPrice)}</div>
                 </div>
               </div>
             </div>
@@ -140,9 +140,9 @@ export default function BookingPage() {
                   ["Empfänger", `${form.rec_name}, ${form.rec_street}, ${form.rec_zip} ${form.rec_city}, ${form.rec_country}`],
                   ["Inhalt", form.content || "—"],
                 ].map(([k, v], i, arr) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", gap: 16 }}>
-                    <span className="text-sm text-muted" style={{ flexShrink: 0 }}>{k}</span>
-                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{v}</span>
+                  <div key={i} className={`summary-detail-row${i < arr.length - 1 ? " summary-detail-row-border" : ""}`}>
+                    <span className="text-sm text-muted summary-detail-key">{k}</span>
+                    <span className="text-sm font-bold summary-detail-val">{v}</span>
                   </div>
                 ))}
               </div>
@@ -156,46 +156,46 @@ export default function BookingPage() {
 
         {step === 4 && (
           <div>
-            <div className="calc-panel mb-16" style={{ border: "2px solid var(--blue)" }}>
-              <div className="calc-panel-header" style={{ background: "linear-gradient(135deg, var(--navy), var(--blue2))" }}>
+            <div className="calc-panel booking-confirm-panel mb-16">
+              <div className="calc-panel-header booking-confirm-header">
                 <Icon n="shield" s={18} c="white" />
-                <h3 style={{ color: "white" }}>Verbindliche Bestellung</h3>
+                <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
-                <div style={{ background: "var(--gray50)", borderRadius: "var(--radius)", padding: "16px", marginBottom: "20px", border: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <div className="booking-confirm-box">
+                  <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
-                    <span className="text-sm font-bold" style={{ color: "var(--navy)" }}>{tariff.carrier} — {tariff.tariffName}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{tariff.carrier} — {tariff.tariffName}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>
-                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{form.sender_name}, {form.sender_zip} {form.sender_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{form.sender_name}, {form.sender_zip} {form.sender_city}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div className="booking-confirm-row mb-16">
                     <span className="text-sm text-muted">Empfänger</span>
-                    <span className="text-sm font-bold" style={{ color: "var(--navy)", textAlign: "right" }}>{form.rec_name}, {form.rec_zip} {form.rec_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{form.rec_name}, {form.rec_zip} {form.rec_city}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12, borderTop: "2px solid var(--border)" }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--navy)" }}>Gesamtbetrag</span>
-                    <span style={{ fontSize: 22, fontWeight: 800, color: "var(--blue2)", fontFamily: "DM Mono, monospace" }}>{money(tariff.finalPrice)}</span>
+                  <div className="booking-total-row">
+                    <span className="booking-total-label">Gesamtbetrag</span>
+                    <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
                   </div>
-                  <div style={{ textAlign: "right", fontSize: 11, color: "var(--gray400)", marginTop: 4 }}>
+                  <p className="booking-payment-note">
                     inkl. MwSt. · Zahlung auf Rechnung · {user?.payment_term || 28} Tage Zahlungsziel
-                  </div>
+                  </p>
                 </div>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", marginBottom: 20 }}>
-                  <input type="checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} style={{ marginTop: 3, width: 16, height: 16, accentColor: "var(--blue)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "var(--gray600)", lineHeight: 1.6 }}>
+                <label className="booking-agb-label">
+                  <input type="checkbox" className="booking-agb-checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} />
+                  <span className="booking-agb-text">
                     Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
-                    <span style={{ color: "var(--blue2)", fontWeight: 600 }}>Allgemeinen Geschäftsbedingungen</span>{" "}
+                    <span className="booking-agb-link">Allgemeinen Geschäftsbedingungen</span>{" "}
                     zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
                   </span>
                 </label>
                 {error && <div className="alert alert-error">{error}</div>}
-                <button className="btn btn-primary btn-full" onClick={doBook} disabled={loading || !agbAccepted} style={{ fontSize: 15, padding: "13px", opacity: agbAccepted ? 1 : 0.5 }}>
+                <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
                   {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
                 </button>
-                <p style={{ textAlign: "center", fontSize: 12, color: "var(--gray400)", marginTop: 12 }}>
+                <p className="booking-email-note">
                   Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {user?.email}
                 </p>
               </div>
@@ -205,13 +205,13 @@ export default function BookingPage() {
         )}
 
         {step === 5 && booking && (
-          <div className="text-center" style={{ padding: "40px 0" }}>
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--success-bg)", border: "3px solid var(--success)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36 }}>✓</div>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--navy)", marginBottom: 8 }}>Sendung gebucht!</h2>
+          <div className="booking-success-wrap">
+            <div className="booking-success-icon">✓</div>
+            <h2 className="booking-success-title">Sendung gebucht!</h2>
             <p className="text-muted mb-8">Rechnungsnummer: <strong style={{ color: "var(--navy)" }}>{booking.invoiceNumber}</strong></p>
             <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
             <div className="flex-center gap-12">
-              <button className="btn btn-primary" onClick={() => navigate("/dashboard")}>Zum Dashboard</button>
+              <button className="btn btn-primary" onClick={() => navigate("/dashboard", { state: { justBooked: true } })}>Zum Dashboard</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
             </div>
           </div>

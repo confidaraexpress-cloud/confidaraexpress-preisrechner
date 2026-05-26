@@ -5,6 +5,9 @@ import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
 import { ForgotPasswordForm } from "../components/auth/ForgotPasswordForm";
 import { ResetPasswordForm } from "../components/auth/ResetPasswordForm";
+import { AuthAurora } from "../components/auth/AuthAurora";
+import { TrustBar } from "../components/auth/TrustBar";
+import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../context/AuthContext";
 
 export default function AuthPage() {
@@ -98,24 +101,10 @@ export default function AuthPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-bg">
-        <div className="auth-bg-orb orb-1" />
-        <div className="auth-bg-orb orb-2" />
-        <div className="auth-bg-grid" />
-      </div>
-      <header className="auth-header">
-        <div className="auth-header-inner">
-          <div className="auth-brand" onClick={() => navigate("/calculator")}>
-            <div className="logo-mark">CE</div>
-            <span className="logo-text-white">ConfidaraExpress</span>
-          </div>
-          <div className="auth-header-links">
-            <a className="auth-header-link" onClick={() => navigate("/calculator")}>Preisrechner</a>
-            <a className="auth-header-link" onClick={() => navigate("/tracking")}>Tracking</a>
-          </div>
-        </div>
-      </header>
-      <main className="auth-main">
+      <AuthAurora />
+
+      <div className="auth-shell">
+
         {step === "forgot" && (
           <ForgotPasswordForm
             email={forgotEmail}
@@ -127,6 +116,7 @@ export default function AuthPage() {
             success={success}
           />
         )}
+
         {step === "reset" && (
           <ResetPasswordForm
             password={newPassword}
@@ -139,20 +129,47 @@ export default function AuthPage() {
             success={success}
           />
         )}
+
         {step === "credentials" && (
           <>
-            <div className="auth-hero animate-fadeUp">
-              <div className="auth-hero-badge">B2B Versandplattform</div>
-              <h1 className="auth-hero-title">{tab === "login" ? "Willkommen zurück" : "Konto erstellen"}</h1>
-              <p className="auth-hero-sub">{tab === "login" ? "Melden Sie sich an und verwalten Sie Ihre Sendungen." : "Starten Sie kostenlos und versenden Sie international."}</p>
-            </div>
-            <div className="auth-card animate-fadeUp-1">
-              <div className="auth-tabs">
-                <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); clearMessages(); }}>Anmelden</button>
-                <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); clearMessages(); }}>Registrieren</button>
+            <div className="auth-hero">
+              <div className="auth-badge auth-anim">
+                <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
+                <span>Ihr verlässlicher Partner</span>
               </div>
-              {error && <div className="auth-alert auth-alert-error">{error}</div>}
+              <h1 className="auth-title auth-anim delay-1">
+                Wir verbinden Welten.<br />
+                Sie erreichen <em>mehr.</em>
+              </h1>
+              <div className="auth-sub-1 auth-anim delay-2">Sicher. Schnell. Persönlich.</div>
+              <p className="auth-sub-2 auth-anim delay-2">
+                Loggen Sie sich ein und entdecken Sie grenzüberschreitende Exzellenz.
+              </p>
+            </div>
+
+            <div className="auth-card auth-anim delay-3">
+              <div className="auth-tabs">
+                <button
+                  type="button"
+                  className={`auth-tab ${tab === "login" ? "active" : ""}`}
+                  onClick={() => { setTab("login"); clearMessages(); }}
+                >
+                  <span className="auth-tab-ico"><Icon n="user" s={16} /></span>
+                  <span>Anmelden</span>
+                </button>
+                <button
+                  type="button"
+                  className={`auth-tab ${tab === "register" ? "active" : ""}`}
+                  onClick={() => { setTab("register"); clearMessages(); }}
+                >
+                  <span className="auth-tab-ico"><Icon n="userPlus" s={16} /></span>
+                  <span>Registrieren</span>
+                </button>
+              </div>
+
+              {error   && <div className="auth-alert auth-alert-error">{error}</div>}
               {success && <div className="auth-alert auth-alert-success">{success}</div>}
+
               {tab === "login" ? (
                 <LoginForm
                   form={loginForm}
@@ -172,17 +189,12 @@ export default function AuthPage() {
                 />
               )}
             </div>
-            <div className="auth-trust animate-fadeUp-2">
-              {["Live Preise", "Sofort buchbar", "Tracking inklusive", "Rechnungskauf"].map(p => (
-                <div key={p} className="auth-trust-item">
-                  <span className="auth-trust-check">✓</span>
-                  <span>{p}</span>
-                </div>
-              ))}
-            </div>
+
+            <TrustBar />
           </>
         )}
-      </main>
+
+      </div>
     </div>
   );
 }

@@ -3,6 +3,8 @@
   .calc-wrap { grid-template-columns: 1fr; }
   .results-panel { position: static; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .calc-mobile-cta { display: block; margin-top: 12px; }
+  .calc-desktop-cta { display: none; }
 }
 
 @media (max-width: 768px) {

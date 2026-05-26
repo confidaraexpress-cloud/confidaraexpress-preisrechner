@@ -58,7 +58,7 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div style={{ paddingTop: 88, background: "var(--gray50)", minHeight: "100vh" }}>
+    <div className="page-with-navbar">
       <div className="container" style={{ paddingTop: 32, paddingBottom: 48 }}>
         <div className="mb-24">
           <h1 className="heading" style={{ fontSize: 28, color: "var(--navy)", marginBottom: 6 }}>Versandpreis berechnen</h1>
@@ -99,6 +99,13 @@ export default function CalculatorPage() {
                 )}
               </div>
             </div>
+            {!hasResults && (
+              <div className="calc-mobile-cta">
+                <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
+                  {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={16} /> Preise berechnen</>}
+                </button>
+              </div>
+            )}
             {hasResults && (
               <div className="calc-panel">
                 <div className="calc-panel-header"><Icon n="filter" s={18} c="#1D4ED8" /><h3>Filtern</h3></div>
@@ -144,9 +151,11 @@ export default function CalculatorPage() {
                 </div>
               )}
               {!loading && !hasResults && (
-                <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
-                  {loading ? <span className="spinner" /> : <><Icon n="zap" s={16} /> Preise berechnen</>}
-                </button>
+                <div className="calc-desktop-cta">
+                  <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
+                    {loading ? <span className="spinner" /> : <><Icon n="zap" s={16} /> Preise berechnen</>}
+                  </button>
+                </div>
               )}
             </div>
           </div>

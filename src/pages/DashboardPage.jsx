@@ -18,16 +18,20 @@ export default function DashboardPage() {
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => r.json()),
-      fetch(`${API}/kunde/invoices`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch(`${API}/kunde/invoices`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ]).then(([s, inv]) => {
       setShipments(s.shipments || []);
       setInvoices(inv.invoices || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
+      setLoading(false);
+    });
   }, []);
 
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
@@ -81,6 +85,14 @@ export default function DashboardPage() {
           <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 15, color: "var(--navy)" }}>ConfidaraExpress</div>
           <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>{initials}</div>
         </div>
+
+        {loadError && (
+          <div style={{ padding: "16px 28px 0" }}>
+            <div className="alert alert-error" style={{ gap: 8 }}>
+              <Icon n="x" s={16} />{loadError}
+            </div>
+          </div>
+        )}
 
         {page === "overview" && (
           <Overview

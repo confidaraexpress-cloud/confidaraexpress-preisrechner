@@ -1,5 +1,6 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
+import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
 import { API, authH } from "../../api/client";
 
@@ -7,6 +8,7 @@ export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
+  const [labelError, setLabelError] = React.useState("");
 
   const loadTracking = async (id) => {
     if (trackingId === id) { setTrackingId(null); return; }
@@ -20,6 +22,7 @@ export function ShipmentsList({ shipments, loading }) {
   };
 
   const downloadLabel = async (id) => {
+    setLabelError("");
     try {
       const r = await fetch(`${API}/api/jumingo/label/${id}`, { headers: authH() });
       const d = await r.json();
@@ -28,8 +31,12 @@ export function ShipmentsList({ shipments, loading }) {
         a.href = `data:application/pdf;base64,${d.label}`;
         a.download = `label-${id}.pdf`;
         a.click();
+      } else {
+        setLabelError("Label für diese Sendung ist noch nicht verfügbar.");
       }
-    } catch { alert("Label nicht verfügbar"); }
+    } catch {
+      setLabelError("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+    }
   };
 
   return (
@@ -38,6 +45,11 @@ export function ShipmentsList({ shipments, loading }) {
         <div><div className="page-header-title">Sendungen</div></div>
       </div>
       <div className="page-body">
+        {labelError && (
+          <div className="alert alert-error mb-16">
+            <Icon n="x" s={16} />{labelError}
+          </div>
+        )}
         {loading ? (
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
         ) : shipments.length === 0 ? (

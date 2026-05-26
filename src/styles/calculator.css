@@ -35,6 +35,35 @@
 .tariff-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 .tariff-tag { padding: 2px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; background: var(--gray100); color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
 .tariff-tag.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.20); }
+.tariff-tag.blue  { background: #eff6ff; color: var(--blue2); border: 1px solid rgba(29,78,216,0.18); }
+
+/* ─── Service filter cards ───────────────────────────────────────────────── */
+.service-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.service-filter-card {
+  border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px;
+  cursor: pointer; transition: all 0.18s cubic-bezier(.2,.7,.3,1);
+  background: white; display: flex; flex-direction: column; gap: 4px;
+  text-align: left; width: 100%; font-family: 'DM Sans', sans-serif;
+  box-shadow: 0 1px 3px rgba(14,30,80,0.04);
+}
+.service-filter-card:hover { border-color: var(--blue3); background: var(--gray50); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(29,78,216,0.09); }
+.service-filter-card.selected { border-color: var(--blue); background: #eff6ff; box-shadow: 0 0 0 3px rgba(29,78,216,0.10), 0 2px 8px rgba(29,78,216,0.10); }
+.service-filter-card-title { font-size: 13px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 6px; }
+.service-filter-card.selected .service-filter-card-title { color: var(--blue2); }
+.service-filter-card-desc { font-size: 11px; color: var(--gray500); line-height: 1.45; }
+
+/* ─── Tariff service details ─────────────────────────────────────────────── */
+.tariff-service-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.tariff-service-detail { font-size: 11px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
+.tariff-service-detail.pickup-today { color: var(--success); font-weight: 600; }
+.tariff-printer-note { font-size: 11px; color: var(--warn); font-weight: 600; display: flex; align-items: center; gap: 3px; }
+
+/* ─── Enhanced empty state ───────────────────────────────────────────────── */
+.results-empty-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.results-empty p { line-height: 1.55; }
+
+/* ─── Booking service info ───────────────────────────────────────────────── */
+.booking-service-info { font-size: 13px; color: var(--gray500); margin-top: 4px; }
 
 /* Mobile-only CTA button after form; desktop CTA stays in results panel */
 .calc-mobile-cta { display: none; }

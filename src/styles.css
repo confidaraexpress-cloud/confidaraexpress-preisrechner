@@ -36,6 +36,31 @@
   --radius-xl: 20px;
   --radius-full: 9999px;
   --sidebar-width: 248px;
+
+  /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ───────────────── */
+  --auth-bg-0: #01030a;
+  --auth-bg-1: #060c1d;
+  --auth-bg-2: #0a1226;
+  --auth-card-fill: rgba(8, 14, 32, 0.55);
+  --auth-card-fill-strong: rgba(6, 12, 28, 0.78);
+  --auth-line-1: rgba(255, 255, 255, 0.06);
+  --auth-line-2: rgba(120, 160, 255, 0.18);
+  --auth-line-3: rgba(150, 180, 255, 0.32);
+  --auth-ink-1: #ffffff;
+  --auth-ink-2: #c6d0e6;
+  --auth-ink-3: #8a93ad;
+  --auth-ink-4: #5b6480;
+  --auth-ink-placeholder: #6b7390;
+  --auth-blue: #2e5cff;
+  --auth-blue-2: #3b6cff;
+  --auth-blue-3: #6189ff;
+  --auth-blue-soft: #a8bdff;
+  --auth-blue-glow: rgba(46, 92, 255, 0.55);
+  --auth-blue-glow-soft: rgba(95, 137, 255, 0.22);
+  --auth-radius-sm: 8px;
+  --auth-radius: 14px;
+  --auth-radius-lg: 22px;
+  --auth-radius-xl: 28px;
 }
 
 html { scroll-behavior: smooth; }

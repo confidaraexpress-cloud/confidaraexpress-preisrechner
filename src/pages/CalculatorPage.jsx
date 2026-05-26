@@ -10,7 +10,7 @@ const SERVICE_OPTIONS = [
   { id: "all",     icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
   { id: "pickup",  icon: "truck",     label: "Nur Abholung",          desc: "Abholung Zuhause oder im Büro" },
   { id: "dropoff", icon: "map",       label: "Nur Abgabe",            desc: "Abgabe in einem Paketshop" },
-  { id: "today",   icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
+  { id: "pickup_today", icon: "zap",   label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
 ];
 
 export default function CalculatorPage() {
@@ -65,7 +65,7 @@ export default function CalculatorPage() {
           width: Number(form.width) || 20, height: Number(form.height) || 15,
           from_country: form.from_country, from_zip: form.from_zip,
           to_country: form.to_country, to_zip: form.to_zip,
-          service_filter: serviceFilter,
+          serviceFilter: serviceFilter,
         })
       });
       const d = await r.json();

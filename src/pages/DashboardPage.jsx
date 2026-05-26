@@ -69,8 +69,8 @@ export default function DashboardPage() {
         <div className="sidebar-brand">
           <div className="logo-mark" style={{ width: 30, height: 30, fontSize: 12 }}>CE</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--navy)" }}>ConfidaraExpress</div>
-            <div style={{ fontSize: 10, color: "var(--gray400)" }}>B2B Versand</div>
+            <div className="sidebar-brand-name">ConfidaraExpress</div>
+            <div className="sidebar-brand-sub">B2B Versand</div>
           </div>
           <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)}><Icon n="close" s={18} /></button>
         </div>

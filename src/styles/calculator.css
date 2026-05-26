@@ -1,8 +1,8 @@
 /* ─── Calculator ─────────────────────────────────────────────────────────── */
 .calc-wrap { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
-.calc-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
-.calc-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: linear-gradient(to right, var(--gray50), white); }
-.calc-panel-header h3 { font-size: 15px; font-weight: 700; color: var(--navy); }
+.calc-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 10px rgba(14,30,80,0.07), 0 0 0 1px rgba(14,30,80,0.03); }
+.calc-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: linear-gradient(to right, #eef3fc, #f8faff); }
+.calc-panel-header h3 { font-size: 15px; font-weight: 700; color: var(--navy); font-family: 'Syne', sans-serif; }
 .calc-panel-body { padding: 22px; }
 .calc-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray400); margin: 18px 0 10px; }
 .calc-section-title:first-child { margin-top: 0; }
@@ -11,17 +11,22 @@
 .vol-weight-label { font-size: 13px; color: var(--blue2); font-weight: 500; }
 .vol-weight-value { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 600; color: var(--navy); }
 
-.results-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); position: sticky; top: 80px; }
-.results-header { padding: 16px 18px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, var(--navy), var(--blue2)); }
-.results-header h3 { color: white; font-size: 14px; font-weight: 700; }
-.results-header p { color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 2px; }
+.results-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 10px rgba(14,30,80,0.07), 0 0 0 1px rgba(14,30,80,0.03); position: sticky; top: 80px; }
+.results-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  background: linear-gradient(135deg, var(--navy) 0%, #1e40af 60%, var(--blue2) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 12px rgba(29,78,216,0.22);
+}
+.results-header h3 { color: white; font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.results-header p { color: rgba(255,255,255,0.70); font-size: 12px; margin-top: 2px; }
 .results-body { padding: 14px; }
 .results-empty { text-align: center; padding: 36px 16px; color: var(--gray400); }
 .results-empty-icon { font-size: 36px; margin-bottom: 10px; }
 
-.tariff-card { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px; margin-bottom: 8px; cursor: pointer; transition: all 0.18s; }
-.tariff-card:hover { border-color: var(--blue3); box-shadow: var(--shadow); transform: translateY(-1px); }
-.tariff-card.selected { border-color: var(--blue); background: #eff6ff; box-shadow: 0 0 0 3px rgba(29,78,216,0.1); }
+.tariff-card { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s cubic-bezier(.2,.7,.3,1); box-shadow: 0 1px 3px rgba(14,30,80,0.04); }
+.tariff-card:hover { border-color: var(--blue3); box-shadow: 0 4px 16px rgba(29,78,216,0.11), 0 1px 4px rgba(14,30,80,0.06); transform: translateY(-1px); }
+.tariff-card.selected { border-color: var(--blue); background: #eff6ff; box-shadow: 0 0 0 3px rgba(29,78,216,0.10), 0 4px 14px rgba(29,78,216,0.12); }
 .tariff-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .tariff-carrier { font-size: 14px; font-weight: 700; color: var(--navy); }
 .tariff-service { font-size: 12px; color: var(--gray500); margin-top: 2px; }

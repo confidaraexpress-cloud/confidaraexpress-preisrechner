@@ -31,6 +31,9 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; font-weight: 700; }
 .hamburger-btn { display: none; background: none; border: none; cursor: pointer; color: var(--navy); padding: 8px; border-radius: var(--radius-sm); flex-shrink: 0; }
 .hamburger-btn:hover { background: var(--gray100); }
 
+/* ─── Page layout helpers ────────────────────────────────────────────────── */
+.page-with-navbar { padding-top: 88px; background: var(--gray50); min-height: 100vh; }
+
 /* ─── Misc ───────────────────────────────────────────────────────────────── */
 .section-title { font-size: clamp(26px, 3vw, 38px); font-family: 'Syne', sans-serif; font-weight: 800; color: var(--navy); line-height: 1.1; letter-spacing: -0.025em; margin-bottom: 14px; }
 .text-center { text-align: center; }

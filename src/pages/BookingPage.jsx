@@ -58,7 +58,7 @@ export default function BookingPage() {
   const steps = ["Angebot", "Adressen", "Übersicht", "Bestätigung", "Fertig"];
 
   return (
-    <div style={{ paddingTop: 88, background: "var(--gray50)", minHeight: "100vh" }}>
+    <div className="page-with-navbar">
       <div className="container" style={{ paddingTop: 32, paddingBottom: 48, maxWidth: 760 }}>
         <h1 className="heading mb-24" style={{ fontSize: 24, color: "var(--navy)" }}>Sendung buchen</h1>
         <div className="steps-bar mb-24">

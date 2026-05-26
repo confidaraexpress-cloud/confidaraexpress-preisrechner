@@ -34,3 +34,39 @@
 /* Mobile-only CTA button after form; desktop CTA stays in results panel */
 .calc-mobile-cta { display: none; }
 /* .calc-desktop-cta is visible by default */
+
+/* ─── Booking ─────────────────────────────────────────────────────────────── */
+.booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 760px; }
+.booking-title { font-size: 24px; font-weight: 800; color: var(--navy); }
+.booking-carrier-name { font-size: 20px; font-weight: 800; color: var(--navy); }
+.booking-price-display { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 700; color: var(--navy); }
+.booking-no-tariff { display: flex; align-items: center; justify-content: center; }
+
+/* Step 4 — confirm panel overrides */
+.booking-confirm-panel.calc-panel { border: 2px solid var(--blue); }
+.calc-panel-header.booking-confirm-header { background: linear-gradient(135deg, var(--navy), var(--blue2)); }
+.calc-panel-header.booking-confirm-header h3 { color: white; }
+.booking-confirm-box { background: var(--gray50); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; border: 1px solid var(--border); }
+.booking-confirm-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.booking-confirm-val { color: var(--navy); text-align: right; }
+.booking-total-row { display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid var(--border); }
+.booking-total-label { font-size: 15px; font-weight: 700; color: var(--navy); }
+.booking-total-amount { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 800; color: var(--blue2); }
+.booking-payment-note { text-align: right; font-size: 11px; color: var(--gray400); margin-top: 4px; }
+.booking-agb-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-bottom: 20px; }
+.booking-agb-checkbox { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--blue); flex-shrink: 0; }
+.booking-agb-text { font-size: 13px; color: var(--gray600); line-height: 1.6; }
+.booking-agb-link { color: var(--blue2); font-weight: 600; }
+.booking-book-btn { font-size: 15px; padding: 13px; }
+.booking-email-note { text-align: center; font-size: 12px; color: var(--gray400); margin-top: 12px; }
+
+/* Step 5 — success */
+.booking-success-wrap { text-align: center; padding: 40px 0; }
+.booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; }
+.booking-success-title { font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+
+/* Step 3 — summary rows */
+.summary-detail-row { display: flex; justify-content: space-between; padding: 10px 0; gap: 16px; }
+.summary-detail-row-border { border-bottom: 1px solid var(--border); }
+.summary-detail-key { flex-shrink: 0; }
+.summary-detail-val { text-align: right; }

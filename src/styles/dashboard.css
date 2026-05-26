@@ -149,3 +149,12 @@ tr:hover td { background: var(--gray50); }
 /* ─── Shipment row ───────────────────────────────────────────────────────── */
 .shipment-carrier { font-weight: 600; color: var(--navy); display: block; line-height: 1.3; }
 .shipment-weight { font-size: 11px; color: var(--gray400); }
+
+/* ─── Profile ─────────────────────────────────────────────────────────────── */
+.profile-layout { max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+.profile-section-body { padding: 8px 20px 16px; }
+.profile-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+.profile-row-border { border-bottom: 1px solid var(--border); }
+.profile-row-val { color: var(--navy); }
+.profile-form-body { padding: 16px 20px; }
+.profile-form-actions { display: flex; gap: 12px; justify-content: flex-end; }

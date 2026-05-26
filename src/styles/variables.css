@@ -22,12 +22,12 @@
   --warn-bg: #fffbeb;
   --danger: #ef4444;
   --danger-bg: #fef2f2;
-  --border: #e2e8f0;
-  --border2: #cbd5e1;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
-  --shadow-blue: 0 8px 32px rgba(29,78,216,0.25);
+  --border: #dde6f0;
+  --border2: #c8d5e8;
+  --shadow-sm: 0 1px 3px rgba(14,30,80,0.06);
+  --shadow: 0 4px 16px rgba(14,30,80,0.09), 0 2px 6px rgba(14,30,80,0.04);
+  --shadow-lg: 0 12px 40px rgba(14,30,80,0.12);
+  --shadow-blue: 0 8px 28px rgba(29,78,216,0.30);
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 16px;

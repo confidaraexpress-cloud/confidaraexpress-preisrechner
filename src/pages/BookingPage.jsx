@@ -121,7 +121,7 @@ export default function BookingPage() {
             </div>
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => setStep(1)}>← Zurück</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(3)} disabled={!form.rec_name || !form.rec_zip || !form.sender_name || !form.sender_zip}>Weiter: Übersicht →</button>
+              <button className="btn btn-primary btn-grow" onClick={() => setStep(3)} disabled={!form.rec_name || !form.rec_zip || !form.sender_name || !form.sender_zip}>Weiter: Übersicht →</button>
             </div>
           </div>
         )}
@@ -149,7 +149,7 @@ export default function BookingPage() {
             </div>
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => setStep(2)}>← Zurück</button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(4)}>Weiter: Verbindlich bestellen →</button>
+              <button className="btn btn-primary btn-grow" onClick={() => setStep(4)}>Weiter: Verbindlich bestellen →</button>
             </div>
           </div>
         )}

@@ -3,14 +3,14 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { API, authH } from "../../api/client";
 import { countries } from "../../utils/countries";
+import { useAuth } from "../../context/AuthContext";
 
 // Benötigt Backend: PATCH /kunde/profil
 // Request-Body: { name, company_name, vat_id, street, zip, city, country }
 // Response:     { user: { ...aktualisiertes User-Objekt } }
-// Nach dem Speichern zeigt die Sidebar erst nach Seiten-Reload die neuen Daten,
-// da der AuthContext user beim Login gecacht wird (kein updateUser vorhanden).
 
 export function Profile({ user }) {
+  const { updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -46,6 +46,7 @@ export function Profile({ user }) {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Speichern fehlgeschlagen");
+      if (d.user) updateUser(d.user);
       setSaveSuccess(true);
       setEditing(false);
     } catch (e) {

@@ -6,12 +6,13 @@ import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
+import { DashboardSidebar } from "../components/layout/DashboardSidebar";
 import { useAuth } from "../context/AuthContext";
 
 const CalculatorPage = React.lazy(() => import("./CalculatorPage"));
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [page, setPage] = useState("overview");
@@ -27,7 +28,7 @@ export default function DashboardPage() {
     setLoadError("");
     Promise.all([
       fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`${API}/kunde/invoices`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch(`${API}/kunde/invoices`,  { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ]).then(([s, inv]) => {
       setShipments(s.shipments || []);
       setInvoices(inv.invoices || []);
@@ -51,59 +52,25 @@ export default function DashboardPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
-
-  const navItems = [
-    { id: "overview", label: "Übersicht", icon: "dashboard" },
-    { id: "new", label: "Neue Sendung", icon: "plus" },
-    { id: "shipments", label: "Sendungen", icon: "truck" },
-    { id: "invoices", label: "Rechnungen", icon: "invoice" },
-    { id: "profile", label: "Mein Profil", icon: "user" },
-  ];
-
   const navigateTo = (id) => { setPage(id); setSidebarOpen(false); };
 
   return (
     <div className="app-shell">
-      {sidebarOpen && <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />}
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
-        <div className="sidebar-brand">
-          <div className="logo-mark" style={{ width: 30, height: 30, fontSize: 12 }}>CE</div>
-          <div style={{ flex: 1 }}>
-            <div className="sidebar-brand-name">ConfidaraExpress</div>
-            <div className="sidebar-brand-sub">B2B Versand</div>
-          </div>
-          <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)}><Icon n="close" s={18} /></button>
-        </div>
-        <nav className="sidebar-nav">
-          <div className="nav-section-label">Navigation</div>
-          {navItems.map(item => (
-            <button key={item.id} className={`nav-item ${page === item.id ? "active" : ""}`} onClick={() => navigateTo(item.id)}>
-              <Icon n={item.icon} s={16} /> {item.label}
-            </button>
-          ))}
-          <div className="nav-section-label" style={{ marginTop: 8 }}>Plattform</div>
-          <button className="nav-item" onClick={() => navigate("/calculator")}><Icon n="zap" s={16} /> Preisrechner</button>
-        </nav>
-        <div className="sidebar-footer">
-          <div className="user-card">
-            <div className="user-avatar">{initials}</div>
-            <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
-              <div className="user-name">{user?.company_name || user?.name}</div>
-              <div className="user-role">{user?.email || "B2B Konto"}</div>
-            </div>
-            <button className="logout-btn" onClick={() => { logout(); navigate("/login"); }} title="Abmelden"><Icon n="logout" s={14} /></button>
-          </div>
-        </div>
-      </aside>
+      <DashboardSidebar
+        page={page}
+        navigateTo={navigateTo}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
       <main className="main-content">
         <div className="mobile-topbar">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
-          <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 15, color: "var(--navy)" }}>ConfidaraExpress</div>
-          <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>{initials}</div>
+          <div className="topbar-brand">ConfidaraExpress</div>
+          <div className="user-avatar">{initials}</div>
         </div>
 
         {bookingToast && (
-          <div style={{ padding: "16px 28px 0" }}>
+          <div className="alert-wrapper">
             <div className="alert alert-success">
               <Icon n="shield" s={16} /> Sendung erfolgreich gebucht! Ihre Sendungsliste wurde aktualisiert.
             </div>
@@ -111,7 +78,7 @@ export default function DashboardPage() {
         )}
 
         {loadError && (
-          <div style={{ padding: "16px 28px 0" }}>
+          <div className="alert-wrapper">
             <div className="alert alert-error" style={{ gap: 8 }}>
               <Icon n="x" s={16} />{loadError}
             </div>
@@ -140,17 +107,9 @@ export default function DashboardPage() {
           </>
         )}
 
-        {page === "shipments" && (
-          <ShipmentsList shipments={shipments} loading={loading} />
-        )}
-
-        {page === "invoices" && (
-          <InvoicesList invoices={invoices} loading={loading} />
-        )}
-
-        {page === "profile" && (
-          <Profile user={user} />
-        )}
+        {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}
+        {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}
+        {page === "profile"   && <Profile user={user} />}
       </main>
     </div>
   );

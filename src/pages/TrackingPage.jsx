@@ -31,7 +31,7 @@ export default function TrackingPage() {
 
   return (
     <div className="page-with-navbar">
-      <div className="container" style={{ paddingTop: 48, paddingBottom: 48, maxWidth: 600 }}>
+      <div className="container tracking-page-wrap">
         <div className="text-center mb-32">
           <h1 className="section-title">Sendung verfolgen</h1>
         </div>
@@ -61,20 +61,18 @@ export default function TrackingPage() {
         </div>
 
         {result && (
-          <div className="calc-panel" style={{ marginTop: 16 }}>
+          <div className="calc-panel mt-16">
             <div className="calc-panel-header">
               <Icon n="map" s={18} c="#1D4ED8" />
               <h3>Sendungsverlauf</h3>
               {carrier && (
-                <span className="text-sm text-muted" style={{ marginLeft: "auto" }}>{carrier}</span>
+                <span className="text-sm text-muted ml-auto">{carrier}</span>
               )}
             </div>
             <div className="calc-panel-body">
               {currentStatus && (
-                <div style={{ marginBottom: 16, padding: "10px 14px", background: "var(--blue-light)", borderRadius: "var(--radius)", border: "1px solid rgba(29,78,216,0.12)" }}>
-                  <span className="text-sm" style={{ color: "var(--blue2)", fontWeight: 600 }}>
-                    Status: {currentStatus}
-                  </span>
+                <div className="tracking-status-box">
+                  <span className="tracking-status-text">Status: {currentStatus}</span>
                 </div>
               )}
               {events.length > 0 ? (
@@ -97,10 +95,10 @@ export default function TrackingPage() {
                   ))}
                 </div>
               ) : (
-                <div className="empty" style={{ padding: "24px 0" }}>
+                <div className="empty tracking-events-empty">
                   <div className="empty-icon">📦</div>
                   <div className="empty-title">Keine Ereignisse verfügbar</div>
-                  <p className="text-sm text-muted" style={{ marginTop: 6 }}>
+                  <p className="text-sm text-muted mt-8">
                     Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden.
                   </p>
                 </div>

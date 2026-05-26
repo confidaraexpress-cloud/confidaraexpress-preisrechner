@@ -124,7 +124,7 @@ tr:hover td { background: var(--gray50); }
 .step-label.active { color: var(--blue2); }
 .step-label.done { color: var(--success); }
 .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; }
-.step-line.done { background: var(--success); }
+.step-line.done { background: linear-gradient(90deg, var(--success), #34d399); }
 
 /* ─── Mobile Drawer ──────────────────────────────────────────────────────── */
 .mobile-drawer {

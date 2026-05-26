@@ -7,7 +7,7 @@
 .calc-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray400); margin: 18px 0 10px; }
 .calc-section-title:first-child { margin-top: 0; }
 
-.vol-weight-box { background: linear-gradient(135deg, var(--blue-light), #eff6ff); border: 1px solid rgba(29,78,216,0.12); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+.vol-weight-box { background: linear-gradient(135deg, var(--blue-light), #eff6ff); border: 1px solid rgba(29,78,216,0.12); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; box-shadow: 0 2px 8px rgba(29,78,216,0.07); }
 .vol-weight-label { font-size: 13px; color: var(--blue2); font-weight: 500; }
 .vol-weight-value { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 600; color: var(--navy); }
 
@@ -33,8 +33,8 @@
 .tariff-price { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: var(--navy); text-align: right; }
 .tariff-price-sub { font-size: 11px; color: var(--gray400); text-align: right; }
 .tariff-tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.tariff-tag { padding: 2px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; background: var(--gray100); color: var(--gray600); }
-.tariff-tag.green { background: var(--success-bg); color: var(--success); }
+.tariff-tag { padding: 2px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; background: var(--gray100); color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
+.tariff-tag.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.20); }
 
 /* Mobile-only CTA button after form; desktop CTA stays in results panel */
 .calc-mobile-cta { display: none; }
@@ -67,7 +67,7 @@
 
 /* Step 5 — success */
 .booking-success-wrap { text-align: center; padding: 40px 0; }
-.booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; }
+.booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; box-shadow: 0 0 0 6px rgba(16,185,129,0.10), 0 8px 24px rgba(16,185,129,0.22); }
 .booking-success-title { font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
 
 /* Step 3 — summary rows */
@@ -75,3 +75,15 @@
 .summary-detail-row-border { border-bottom: 1px solid var(--border); }
 .summary-detail-key { flex-shrink: 0; }
 .summary-detail-val { text-align: right; }
+
+/* ─── Calculator page header ─────────────────────────────────────────────── */
+.calc-page-wrap { padding-top: 32px; padding-bottom: 48px; }
+.calc-page-title { font-size: 28px; color: var(--navy); margin-bottom: 6px; }
+.calc-page-sub { color: var(--gray500); font-size: 15px; }
+.results-cta { margin-top: 16px; }
+
+/* ─── Tracking page ──────────────────────────────────────────────────────── */
+.tracking-page-wrap { padding-top: 48px; padding-bottom: 48px; max-width: 600px; }
+.tracking-status-box { margin-bottom: 16px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); border: 1px solid rgba(29,78,216,0.12); box-shadow: 0 2px 8px rgba(29,78,216,0.06); }
+.tracking-status-text { font-size: 13px; color: var(--blue2); font-weight: 600; }
+.tracking-events-empty { padding: 24px 0; }

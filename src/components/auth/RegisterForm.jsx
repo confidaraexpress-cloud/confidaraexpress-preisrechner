@@ -9,7 +9,7 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
       <div className="field-row field-row-2">
         <div className="field">
           <label className="auth-label">Name</label>
-          <input className="auth-input" value={form.name} onChange={(e) => upd("name", e.target.value)} />
+          <input className="auth-input" value={form.name} onChange={(e) => upd("name", e.target.value)} autoFocus />
         </div>
         <div className="field">
           <label className="auth-label">E-Mail</label>
@@ -20,8 +20,8 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
         label="Passwort (min. 8 Zeichen)"
         value={form.password}
         onChange={(e) => upd("password", e.target.value)}
-        dark={false}
       />
+      <span className="auth-section-label">Unternehmen</span>
       <div className="field-row field-row-2">
         <div className="field">
           <label className="auth-label">Firmenname</label>
@@ -32,6 +32,7 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <input className="auth-input" value={form.vat_id} onChange={(e) => upd("vat_id", e.target.value)} placeholder="DE123456789" />
         </div>
       </div>
+      <span className="auth-section-label">Adresse</span>
       <div className="field">
         <label className="auth-label">Straße &amp; Hausnummer</label>
         <input className="auth-input" value={form.street} onChange={(e) => upd("street", e.target.value)} />

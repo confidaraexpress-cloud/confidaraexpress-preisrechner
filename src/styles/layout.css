@@ -1,0 +1,49 @@
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+.heading { font-family: 'Syne', sans-serif; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+h1, h2, h3, h4 { font-family: 'Syne', sans-serif; font-weight: 700; }
+.mono { font-family: 'DM Mono', monospace; }
+
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* ─── Navbar ─────────────────────────────────────────────────────────────── */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(226,232,240,0.8);
+}
+.navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.navbar-logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.logo-mark {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--blue), var(--blue3));
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: white;
+  box-shadow: 0 4px 16px rgba(29,78,216,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--navy); letter-spacing: -0.02em; }
+.logo-text-white { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: white; letter-spacing: -0.02em; }
+.navbar-nav { display: flex; align-items: center; gap: 4px; list-style: none; }
+.navbar-nav a { text-decoration: none; color: var(--gray600); font-size: 14px; font-weight: 500; padding: 7px 12px; border-radius: var(--radius-sm); transition: all 0.15s; cursor: pointer; }
+.navbar-nav a:hover { color: var(--navy); background: var(--gray50); }
+.navbar-actions { display: flex; align-items: center; gap: 8px; }
+.hamburger-btn { display: none; background: none; border: none; cursor: pointer; color: var(--navy); padding: 8px; border-radius: var(--radius-sm); flex-shrink: 0; }
+.hamburger-btn:hover { background: var(--gray100); }
+
+/* ─── Misc ───────────────────────────────────────────────────────────────── */
+.section-title { font-size: clamp(26px, 3vw, 38px); font-family: 'Syne', sans-serif; font-weight: 800; color: var(--navy); line-height: 1.1; letter-spacing: -0.025em; margin-bottom: 14px; }
+.text-center { text-align: center; }
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+.text-sm { font-size: 13px; }
+.text-muted { color: var(--gray400); }
+.font-bold { font-weight: 700; }

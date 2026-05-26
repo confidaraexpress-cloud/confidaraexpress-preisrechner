@@ -1,7 +1,7 @@
 import React, { Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
-import "./styles.css";
+import "./styles/index.css";
 import { Icon } from "./components/ui/Icon";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 

@@ -71,7 +71,7 @@ export default function BookingPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
-      setBooking(d); setStep(4);
+      setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -93,7 +93,7 @@ export default function BookingPage() {
     </div>
   );
 
-  const steps = ["Angebot", "Übersicht", "Bestätigung", "Fertig"];
+  const steps = ["Übersicht", "Buchung", "Fertig"];
 
   return (
     <div className="page-with-navbar">
@@ -117,9 +117,10 @@ export default function BookingPage() {
 
         {error && <div className="alert alert-error mb-16">{error}</div>}
 
-        {/* ── Step 1: Ausgewähltes Angebot ── */}
+        {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
           <div>
+            {/* Tariff */}
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
               <div className="calc-panel-body">
@@ -130,8 +131,8 @@ export default function BookingPage() {
                     {tariff.serviceType && (
                       <div className="booking-service-info">
                         {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}
-                        {tariff.shopName     && ` · ${tariff.shopName}`}
-                        {tariff.pickupToday  && " · Abholung heute"}
+                        {tariff.shopName        && ` · ${tariff.shopName}`}
+                        {tariff.pickupToday     && " · Abholung heute"}
                         {tariff.printerRequired && " · Drucker erforderlich"}
                       </div>
                     )}
@@ -154,9 +155,20 @@ export default function BookingPage() {
               </div>
             </div>
 
+            {/* Sendungsdetails */}
             <div className="calc-panel mb-16">
+              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Sendungsdetails</h3></div>
               <div className="calc-panel-body">
-                <div className="field booking-content-field">
+                {[
+                  ["Absender",  fmtAddr("s")],
+                  ["Empfänger", fmtAddr("r")],
+                ].map(([k, v], i) => (
+                  <div key={i} className="summary-detail-row summary-detail-row-border">
+                    <span className="text-sm text-muted summary-detail-key">{k}</span>
+                    <span className="text-sm font-bold summary-detail-val">{v}</span>
+                  </div>
+                ))}
+                <div className="field mt-12 booking-content-field">
                   <label className="field-label">
                     Sendungsinhalt <span className="field-optional">(optional)</span>
                   </label>
@@ -170,45 +182,17 @@ export default function BookingPage() {
               </div>
             </div>
 
-            <button className="btn btn-primary btn-full" onClick={() => setStep(2)}>
-              Weiter: Übersicht <Icon n="arrow" s={16} />
-            </button>
-          </div>
-        )}
-
-        {/* ── Step 2: Zusammenfassung ── */}
-        {step === 2 && (
-          <div>
-            <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Zusammenfassung</h3></div>
-              <div className="calc-panel-body">
-                {[
-                  ["Carrier",              tariff.carrier],
-                  ["Service",              tariff.tariffName],
-                  ["Lieferzeit",           tariff.deliveryTime || "Auf Anfrage"],
-                  ...(tariff.netPrice  != null ? [["Netto",             money(tariff.netPrice)]]  : []),
-                  ...(tariff.vatAmount != null ? [["MwSt. 19%",         money(tariff.vatAmount)]] : []),
-                  ["Gesamtbetrag (brutto)", money(tariff.finalPrice)],
-                  ["Absender",             fmtAddr("s")],
-                  ["Empfänger",            fmtAddr("r")],
-                  ["Inhalt",               form.content || "—"],
-                ].map(([k, v], i, arr) => (
-                  <div key={i} className={`summary-detail-row${i < arr.length - 1 ? " summary-detail-row-border" : ""}`}>
-                    <span className="text-sm text-muted summary-detail-key">{k}</span>
-                    <span className="text-sm font-bold summary-detail-val">{v}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="flex gap-12">
-              <button className="btn btn-outline" onClick={() => setStep(1)}>← Zurück</button>
-              <button className="btn btn-primary btn-grow" onClick={() => setStep(3)}>Weiter: Verbindlich bestellen →</button>
+              <button className="btn btn-outline" onClick={() => navigate(-1)}>← Zurück</button>
+              <button className="btn btn-primary btn-grow" onClick={() => setStep(2)}>
+                Weiter: Buchung <Icon n="arrow" s={16} />
+              </button>
             </div>
           </div>
         )}
 
-        {/* ── Step 3: Verbindliche Bestellung ── */}
-        {step === 3 && (
+        {/* ── Step 2: Buchung ── */}
+        {step === 2 && (
           <div>
             <div className="calc-panel booking-confirm-panel mb-16">
               <div className="calc-panel-header booking-confirm-header">
@@ -223,11 +207,15 @@ export default function BookingPage() {
                   </div>
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>
-                    <span className="text-sm font-bold booking-confirm-val">{bookingData?.form?.s_fullName}, {bookingData?.form?.s_zip} {bookingData?.form?.s_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">
+                      {bookingData.form.s_fullName}, {bookingData.form.s_zip} {bookingData.form.s_city}
+                    </span>
                   </div>
                   <div className="booking-confirm-row mb-16">
                     <span className="text-sm text-muted">Empfänger</span>
-                    <span className="text-sm font-bold booking-confirm-val">{bookingData?.form?.r_fullName}, {bookingData?.form?.r_zip} {bookingData?.form?.r_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">
+                      {bookingData.form.r_fullName}, {bookingData.form.r_zip} {bookingData.form.r_city}
+                    </span>
                   </div>
                   {tariff.netPrice != null && (
                     <div className="booking-confirm-row">
@@ -266,12 +254,12 @@ export default function BookingPage() {
                 </p>
               </div>
             </div>
-            <button className="btn btn-outline btn-full" onClick={() => setStep(2)} disabled={loading}>← Zurück zur Übersicht</button>
+            <button className="btn btn-outline btn-full" onClick={() => setStep(1)} disabled={loading}>← Zurück zur Übersicht</button>
           </div>
         )}
 
-        {/* ── Step 4: Buchung erfolgreich ── */}
-        {step === 4 && booking && (
+        {/* ── Step 3: Buchung erfolgreich ── */}
+        {step === 3 && booking && (
           <div className="booking-success-wrap">
             <div className="booking-success-icon">✓</div>
             <h2 className="booking-success-title">Sendung gebucht!</h2>

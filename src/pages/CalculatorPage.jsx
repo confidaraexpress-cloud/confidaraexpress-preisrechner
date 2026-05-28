@@ -450,7 +450,17 @@ export default function CalculatorPage() {
                 <div key={t.id} className={`tariff-card ${selected?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t)}>
                   <div className="tariff-card-top">
                     <div><div className="tariff-carrier">{t.carrier}</div><div className="tariff-service">{t.tariffName}</div></div>
-                    <div><div className="tariff-price">{money(t.finalPrice)}</div><div className="tariff-price-sub">inkl. Marge</div></div>
+                    <div>
+                      <div className="tariff-price">{money(t.finalPrice)}</div>
+                      <div className="tariff-price-sub">inkl. 19% MwSt.</div>
+                      {t.netPrice != null && t.vatAmount != null && (
+                        <div className="tariff-price-detail">
+                          <span>Netto {money(t.netPrice)}</span>
+                          <span className="tariff-price-detail-sep">·</span>
+                          <span>MwSt. {money(t.vatAmount)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="tariff-tags">
                     {t.deliveryTime && <span className="tariff-tag">⏱ {t.deliveryTime}</span>}

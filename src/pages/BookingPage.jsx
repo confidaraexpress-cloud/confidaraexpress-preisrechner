@@ -43,7 +43,8 @@ export default function BookingPage() {
     parts.push(f[`${p}_fullName`]);
     parts.push(f[`${p}_street`]);
     if (f[`${p}_addition`]) parts.push(f[`${p}_addition`]);
-    parts.push(`${f[`${p}_zip`]} ${f[`${p}_city`]}`);
+    const zipCity = [f[`${p}_zip`], f[`${p}_city`]].filter(Boolean).join(" ");
+    if (zipCity) parts.push(zipCity);
     const cName = countries.find(c => c.code === f[`${p}_country`])?.name || f[`${p}_country`];
     parts.push(cName);
     return parts.filter(Boolean).join(", ");
@@ -75,10 +76,18 @@ export default function BookingPage() {
     setLoading(false);
   };
 
-  if (!tariff) return (
+  const addrReady =
+    !!bookingData?.form?.s_fullName && !!bookingData?.form?.s_street &&
+    !!bookingData?.form?.s_zip      && !!bookingData?.form?.s_city   &&
+    !!bookingData?.form?.r_fullName && !!bookingData?.form?.r_street &&
+    !!bookingData?.form?.r_zip      && !!bookingData?.form?.r_city;
+
+  if (!tariff || !addrReady) return (
     <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
-        <p className="text-muted mb-16">Kein Angebot ausgewählt</p>
+        <p className="text-muted mb-16">
+          {!tariff ? "Kein Angebot ausgewählt" : "Adressdaten unvollständig — bitte im Preisrechner ausfüllen"}
+        </p>
         <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
       </div>
     </div>

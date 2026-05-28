@@ -7,16 +7,17 @@ import { money } from "../utils/formatters";
 import { useAuth } from "../context/AuthContext";
 
 const SERVICE_OPTIONS = [
-  { id: "all",     icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
-  { id: "pickup",  icon: "truck",     label: "Nur Abholung",          desc: "Abholung Zuhause oder im Büro" },
-  { id: "dropoff", icon: "map",       label: "Nur Abgabe",            desc: "Abgabe in einem Paketshop" },
-  { id: "pickup_today", icon: "zap",   label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
+  { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
+  { id: "pickup",       icon: "truck",     label: "Nur Abholung",          desc: "Abholung Zuhause oder im Büro"  },
+  { id: "dropoff",      icon: "map",       label: "Nur Abgabe",            desc: "Abgabe in einem Paketshop"      },
+  { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
 ];
 
 export default function CalculatorPage() {
   const { authed } = useAuth();
   const navigate = useNavigate();
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
   const [form, setForm] = useState({
     from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
     weight: "", length: "", width: "", height: "",
@@ -29,6 +30,8 @@ export default function CalculatorPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [hasResults, setHasResults] = useState(false);
+
+  const selectedOption = SERVICE_OPTIONS.find(o => o.id === serviceFilter) || SERVICE_OPTIONS[0];
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const volWeight = form.length && form.width && form.height
@@ -47,7 +50,7 @@ export default function CalculatorPage() {
 
   const handleServiceFilter = (id) => {
     setServiceFilter(id);
-    // Clear results so user recalculates with the new filter
+    setServiceFilterOpen(false);
     setHasResults(false);
     setTariffs([]);
     setFiltered([]);
@@ -85,26 +88,42 @@ export default function CalculatorPage() {
         {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
         <div className="calc-wrap">
           <div>
-            {/* Service Filter */}
+            {/* Service Filter — collapsible */}
             <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="zap" s={18} c="#1D4ED8" /><h3>Welchen Service bevorzugen Sie?</h3></div>
-              <div className="calc-panel-body">
-                <div className="service-filter-grid">
+              <button
+                className="service-filter-trigger"
+                onClick={() => setServiceFilterOpen(o => !o)}
+                aria-expanded={serviceFilterOpen}
+              >
+                <div className="service-filter-trigger-left">
+                  <Icon n={selectedOption.icon} s={15} c="#1D4ED8" />
+                  <div>
+                    <div className="service-filter-trigger-title">Welchen Service bevorzugen Sie?</div>
+                    <div className="service-filter-trigger-val">{selectedOption.label} · {selectedOption.desc}</div>
+                  </div>
+                </div>
+                <div className={`service-filter-chevron ${serviceFilterOpen ? "open" : ""}`}>
+                  <Icon n="chevron" s={16} c="#64748b" />
+                </div>
+              </button>
+              {serviceFilterOpen && (
+                <div className="service-filter-dropdown">
                   {SERVICE_OPTIONS.map(opt => (
                     <button
                       key={opt.id}
-                      className={`service-filter-card ${serviceFilter === opt.id ? "selected" : ""}`}
+                      className={`service-filter-option ${serviceFilter === opt.id ? "selected" : ""}`}
                       onClick={() => handleServiceFilter(opt.id)}
                     >
-                      <div className="service-filter-card-title">
-                        <Icon n={opt.icon} s={13} c={serviceFilter === opt.id ? "#1d4ed8" : "#64748b"} />
-                        {opt.label}
+                      <Icon n={opt.icon} s={15} c={serviceFilter === opt.id ? "#1d4ed8" : "#64748b"} />
+                      <div className="service-filter-option-text">
+                        <div className="service-filter-option-label">{opt.label}</div>
+                        <div className="service-filter-option-desc">{opt.desc}</div>
                       </div>
-                      <div className="service-filter-card-desc">{opt.desc}</div>
+                      {serviceFilter === opt.id && <span className="service-filter-option-check">✓</span>}
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Route */}
@@ -173,24 +192,18 @@ export default function CalculatorPage() {
               <p>{hasResults ? "Wählen Sie Ihr Angebot" : "Füllen Sie das Formular aus"}</p>
             </div>
             <div className="results-body">
-
-              {/* Initial state */}
               {!hasResults && !loading && (
                 <div className="results-empty">
                   <div className="results-empty-icon">📦</div>
                   <p className="text-sm text-muted">Preise berechnen um Angebote zu sehen</p>
                 </div>
               )}
-
-              {/* Loading */}
               {loading && (
                 <div className="loading-center">
                   <span className="spinner spinner-dark" />
                   <span className="text-sm text-muted">Preise werden geladen…</span>
                 </div>
               )}
-
-              {/* API returned 0 tariffs */}
               {!loading && hasResults && tariffs.length === 0 && (
                 <div className="results-empty">
                   <div className="results-empty-icon">🔍</div>
@@ -198,8 +211,6 @@ export default function CalculatorPage() {
                   <p className="text-sm text-muted">Für diese Route wurden keine Tarife für den gewählten Servicetyp gefunden. Wählen Sie „Alle Dienstleistungen" und berechnen Sie erneut.</p>
                 </div>
               )}
-
-              {/* Client filter reduced to 0 */}
               {!loading && hasResults && tariffs.length > 0 && filtered.length === 0 && (
                 <div className="results-empty">
                   <div className="results-empty-icon">🎯</div>
@@ -207,8 +218,6 @@ export default function CalculatorPage() {
                   <p className="text-sm text-muted">Alle Tarife wurden durch Ihre Preisfilter ausgeblendet. Erhöhen Sie das Preislimit oder entfernen Sie den Filter.</p>
                 </div>
               )}
-
-              {/* Tariff cards */}
               {!loading && filtered.map(t => (
                 <div key={t.id} className={`tariff-card ${selected?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t)}>
                   <div className="tariff-card-top">
@@ -239,8 +248,6 @@ export default function CalculatorPage() {
                   )}
                 </div>
               ))}
-
-              {/* CTA */}
               {hasResults && !loading && (
                 <div className="results-cta">
                   {selected ? (
@@ -253,7 +260,6 @@ export default function CalculatorPage() {
                   <button className="btn btn-ghost btn-full mt-8" onClick={calculate}><Icon n="refresh" s={14} /> Neu berechnen</button>
                 </div>
               )}
-
               {!loading && !hasResults && (
                 <div className="calc-desktop-cta">
                   <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>

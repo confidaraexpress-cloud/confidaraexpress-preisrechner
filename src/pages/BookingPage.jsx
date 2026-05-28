@@ -92,7 +92,16 @@ export default function BookingPage() {
                       </div>
                     )}
                   </div>
-                  <div className="booking-price-display">{money(tariff.finalPrice)}</div>
+                  <div className="booking-price-col">
+                    <div className="booking-price-display">{money(tariff.finalPrice)}</div>
+                    <div className="tariff-price-sub">inkl. 19% MwSt.</div>
+                    {tariff.netPrice != null && tariff.vatAmount != null && (
+                      <div className="booking-price-detail">
+                        <div>Netto {money(tariff.netPrice)}</div>
+                        <div>MwSt. {money(tariff.vatAmount)}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -143,7 +152,9 @@ export default function BookingPage() {
                   ["Carrier", tariff.carrier],
                   ["Service", tariff.tariffName],
                   ["Lieferzeit", tariff.deliveryTime || "Auf Anfrage"],
-                  ["Preis", money(tariff.finalPrice)],
+                  ...(tariff.netPrice != null ? [["Netto", money(tariff.netPrice)]] : []),
+                  ...(tariff.vatAmount != null ? [["MwSt. 19%", money(tariff.vatAmount)]] : []),
+                  ["Gesamtbetrag (brutto)", money(tariff.finalPrice)],
                   ["Absender", `${form.sender_name}, ${form.sender_street}, ${form.sender_zip} ${form.sender_city}`],
                   ["Empfänger", `${form.rec_name}, ${form.rec_street}, ${form.rec_zip} ${form.rec_city}, ${form.rec_country}`],
                   ["Inhalt", form.content || "—"],
@@ -183,12 +194,24 @@ export default function BookingPage() {
                     <span className="text-sm text-muted">Empfänger</span>
                     <span className="text-sm font-bold booking-confirm-val">{form.rec_name}, {form.rec_zip} {form.rec_city}</span>
                   </div>
+                  {tariff.netPrice != null && (
+                    <div className="booking-confirm-row">
+                      <span className="text-sm text-muted">Nettobetrag</span>
+                      <span className="text-sm font-bold booking-confirm-val">{money(tariff.netPrice)}</span>
+                    </div>
+                  )}
+                  {tariff.vatAmount != null && (
+                    <div className="booking-confirm-row">
+                      <span className="text-sm text-muted">MwSt. 19%</span>
+                      <span className="text-sm font-bold booking-confirm-val">{money(tariff.vatAmount)}</span>
+                    </div>
+                  )}
                   <div className="booking-total-row">
-                    <span className="booking-total-label">Gesamtbetrag</span>
+                    <span className="booking-total-label">Gesamtbetrag brutto</span>
                     <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
                   </div>
                   <p className="booking-payment-note">
-                    inkl. MwSt. · Zahlung auf Rechnung · {user?.payment_term || 28} Tage Zahlungsziel
+                    inkl. 19% MwSt. · Zahlung auf Rechnung · {user?.payment_term || 7} Tage Zahlungsziel
                   </p>
                 </div>
                 <label className="booking-agb-label">

@@ -149,6 +149,14 @@
 .tariff-date-info { font-size: 11px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
 .tariff-unavail-note { font-size: 11px; color: var(--danger); font-weight: 600; }
 
+/* ─── Tariff price detail (Netto · MwSt under finalPrice) ───────────────── */
+.tariff-price-detail { display: flex; gap: 5px; justify-content: flex-end; font-size: 10px; color: var(--gray400); margin-top: 2px; flex-wrap: wrap; line-height: 1.4; }
+.tariff-price-detail-sep { color: var(--border2); }
+
+/* ─── Booking step 1 price column ────────────────────────────────────────── */
+.booking-price-col { text-align: right; flex-shrink: 0; }
+.booking-price-detail { font-size: 11px; color: var(--gray400); margin-top: 4px; line-height: 1.6; }
+
 /* ─── Sort bar ───────────────────────────────────────────────────────────── */
 .sort-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
 .sort-bar-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--gray400); flex-shrink: 0; margin-right: 2px; }

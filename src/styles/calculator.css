@@ -156,6 +156,7 @@
 /* ─── Booking step 1 price column ────────────────────────────────────────── */
 .booking-price-col { text-align: right; flex-shrink: 0; }
 .booking-price-detail { font-size: 11px; color: var(--gray400); margin-top: 4px; line-height: 1.6; }
+.booking-price-detail-total { font-weight: 700; color: var(--navy); padding-top: 3px; border-top: 1px solid var(--border); margin-top: 3px; }
 
 /* ─── Sort bar ───────────────────────────────────────────────────────────── */
 .sort-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }

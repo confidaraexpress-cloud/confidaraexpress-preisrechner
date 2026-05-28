@@ -6,6 +6,8 @@ import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
 import { useAuth } from "../context/AuthContext";
 
+const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || "").trim());
+
 export default function BookingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -15,14 +17,64 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
+
   const [form, setForm] = useState({
-    sender_name: user?.company_name || "", sender_street: user?.street || "",
-    sender_zip: user?.zip || "", sender_city: user?.city || "", sender_country: user?.country || "DE",
-    rec_name: "", rec_street: "", rec_zip: "", rec_city: "", rec_country: "DE",
+    // Absender
+    s_company:  user?.company_name || "",
+    s_fullName: user?.name         || "",
+    s_street:   user?.street       || "",
+    s_addition: "",
+    s_zip:      user?.zip          || "",
+    s_city:     user?.city         || "",
+    s_country:  bookingData?.form?.from_country || user?.country || "DE",
+    s_phone:    user?.phone        || "",
+    s_email:    user?.email        || "",
+    // Empfänger
+    r_company:  "",
+    r_fullName: "",
+    r_street:   "",
+    r_addition: "",
+    r_zip:      bookingData?.form?.to_zip || "",
+    r_city:     "",
+    r_country:  bookingData?.form?.to_country || "DE",
+    r_phone:    "",
+    r_email:    "",
+    // Sendung
     content: "",
   });
+
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const tariff = bookingData?.tariff;
+
+  const step2Valid =
+    !!form.s_fullName && !!form.s_street && !!form.s_zip && !!form.s_city &&
+    !!form.s_phone    && isEmail(form.s_email) &&
+    !!form.r_fullName && !!form.r_street && !!form.r_zip && !!form.r_city &&
+    !!form.r_phone    && isEmail(form.r_email);
+
+  const buildParty = (p) => ({
+    ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
+    fullName:        form[`${p}_fullName`],
+    streetAndNumber: form[`${p}_street`],
+    ...(form[`${p}_addition`] ? { addressAddition: form[`${p}_addition`] } : {}),
+    postalCode:      form[`${p}_zip`],
+    city:            form[`${p}_city`],
+    country:         form[`${p}_country`],
+    phone:           form[`${p}_phone`],
+    email:           form[`${p}_email`],
+  });
+
+  const fmtAddr = (p) => {
+    const parts = [];
+    if (form[`${p}_company`])  parts.push(form[`${p}_company`]);
+    parts.push(form[`${p}_fullName`]);
+    parts.push(form[`${p}_street`]);
+    if (form[`${p}_addition`]) parts.push(form[`${p}_addition`]);
+    parts.push(`${form[`${p}_zip`]} ${form[`${p}_city`]}`);
+    const cName = countries.find(c => c.code === form[`${p}_country`])?.name || form[`${p}_country`];
+    parts.push(cName);
+    return parts.join(", ");
+  };
 
   const doBook = async () => {
     if (!agbAccepted) return;
@@ -31,13 +83,17 @@ export default function BookingPage() {
       const r = await fetch(`${API}/api/jumingo/book`, {
         method: "POST", headers: authH(),
         body: JSON.stringify({
-          shipmentId: bookingData?.shipmentId, tariffId: tariff?.id,
-          shipperTariffId: tariff?.shipper_tariff_id, carrier: tariff?.carrier,
-          price_original: tariff?.originalPrice, price_final: tariff?.finalPrice,
-          senderAddress: `${form.sender_name}, ${form.sender_street}, ${form.sender_zip} ${form.sender_city}`,
-          recipientAddress: `${form.rec_name}, ${form.rec_street}, ${form.rec_zip} ${form.rec_city}, ${form.rec_country}`,
-          weight: bookingData?.form?.weight, content: form.content,
-        })
+          shipmentId:      bookingData?.shipmentId,
+          tariffId:        tariff?.id,
+          shipperTariffId: tariff?.shipper_tariff_id,
+          carrier:         tariff?.carrier,
+          price_original:  tariff?.originalPrice,
+          price_final:     tariff?.finalPrice,
+          sender:          buildParty("s"),
+          recipient:       buildParty("r"),
+          weight:          bookingData?.form?.weight,
+          content:         form.content,
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
@@ -57,23 +113,58 @@ export default function BookingPage() {
 
   const steps = ["Angebot", "Adressen", "Übersicht", "Bestätigung", "Fertig"];
 
+  // Render-Helper für Adressfelder (kein Hook, nur JSX)
+  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => (
+    <div className="field">
+      <label className="field-label">
+        {label}{optional && <span className="field-optional"> (optional)</span>}
+      </label>
+      <input
+        className="field-input"
+        type={type}
+        value={form[`${p}_${key}`]}
+        onChange={e => upd(`${p}_${key}`, e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  const countrySelect = (p) => (
+    <div className="field">
+      <label className="field-label">Land</label>
+      <select
+        className="field-input field-select"
+        value={form[`${p}_country`]}
+        onChange={e => upd(`${p}_country`, e.target.value)}
+      >
+        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+      </select>
+    </div>
+  );
+
   return (
     <div className="page-with-navbar">
       <div className="container booking-wrap">
         <h1 className="heading booking-title mb-24">Sendung buchen</h1>
+
+        {/* Step-Indicator */}
         <div className="steps-bar mb-24">
           {steps.map((s, i) => (
             <div key={i} className="step-item">
               <div className="step-wrap">
-                <div className={`step-circle ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>{i + 1 < step ? "✓" : i + 1}</div>
+                <div className={`step-circle ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
+                  {i + 1 < step ? "✓" : i + 1}
+                </div>
                 <span className={`step-label ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>{s}</span>
               </div>
               {i < steps.length - 1 && <div className={`step-line ${i + 1 < step ? "done" : ""}`} />}
             </div>
           ))}
         </div>
+
         {error && <div className="alert alert-error mb-16">{error}</div>}
 
+        {/* ── Step 1: Ausgewähltes Angebot ── */}
         {step === 1 && (
           <div>
             <div className="calc-panel">
@@ -86,8 +177,8 @@ export default function BookingPage() {
                     {tariff.serviceType && (
                       <div className="booking-service-info">
                         {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}
-                        {tariff.shopName && ` · ${tariff.shopName}`}
-                        {tariff.pickupToday && " · Abholung heute"}
+                        {tariff.shopName     && ` · ${tariff.shopName}`}
+                        {tariff.pickupToday  && " · Abholung heute"}
                         {tariff.printerRequired && " · Drucker erforderlich"}
                       </div>
                     )}
@@ -109,59 +200,113 @@ export default function BookingPage() {
                 </div>
               </div>
             </div>
-            <button className="btn btn-primary btn-full mt-16" onClick={() => setStep(2)}>Weiter: Adressen <Icon n="arrow" s={16} /></button>
+            <button className="btn btn-primary btn-full mt-16" onClick={() => setStep(2)}>
+              Weiter: Adressen <Icon n="arrow" s={16} />
+            </button>
           </div>
         )}
 
+        {/* ── Step 2: Adressen ── */}
         {step === 2 && (
           <div>
+            <div className="booking-addr-grid mb-16">
+
+              {/* Absenderadresse */}
+              <div className="calc-panel">
+                <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Absenderadresse</h3></div>
+                <div className="calc-panel-body">
+                  {addrField("s", "company",  "Unternehmen",       "text",  "Firma GmbH",       true)}
+                  {addrField("s", "fullName", "Vor- und Nachname", "text",  "Max Mustermann")}
+                  {addrField("s", "street",   "Straße & Hausnummer","text", "Musterstraße 1")}
+                  {addrField("s", "addition", "Adresszusatz",      "text",  "Etage, c/o …",     true)}
+                  <div className="field-row field-row-2">
+                    <div className="field">
+                      <label className="field-label">PLZ</label>
+                      <input className="field-input" value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
+                    </div>
+                    <div className="field">
+                      <label className="field-label">Stadt</label>
+                      <input className="field-input" value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
+                    </div>
+                  </div>
+                  {countrySelect("s")}
+                  {addrField("s", "phone", "Telefonnummer",   "tel",   "+49 711 …")}
+                  {addrField("s", "email", "E-Mail-Adresse",  "email", "max@beispiel.de")}
+                </div>
+              </div>
+
+              {/* Lieferadresse */}
+              <div className="calc-panel">
+                <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Lieferadresse</h3></div>
+                <div className="calc-panel-body">
+                  {addrField("r", "company",  "Unternehmen",       "text",  "Firma GmbH",       true)}
+                  {addrField("r", "fullName", "Vor- und Nachname", "text",  "Erika Muster")}
+                  {addrField("r", "street",   "Straße & Hausnummer","text", "Beispielweg 5")}
+                  {addrField("r", "addition", "Adresszusatz",      "text",  "Etage, c/o …",     true)}
+                  <div className="field-row field-row-2">
+                    <div className="field">
+                      <label className="field-label">PLZ</label>
+                      <input className="field-input" value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
+                    </div>
+                    <div className="field">
+                      <label className="field-label">Stadt</label>
+                      <input className="field-input" value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
+                    </div>
+                  </div>
+                  {countrySelect("r")}
+                  {addrField("r", "phone", "Telefonnummer",   "tel",   "+41 44 …")}
+                  {addrField("r", "email", "E-Mail-Adresse",  "email", "erika@beispiel.ch")}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Sendungsinhalt */}
             <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Absender</h3></div>
               <div className="calc-panel-body">
-                <div className="field"><label className="field-label">Name / Firma</label><input className="field-input" value={form.sender_name} onChange={e => upd("sender_name", e.target.value)} /></div>
-                <div className="field"><label className="field-label">Straße & Hausnummer</label><input className="field-input" value={form.sender_street} onChange={e => upd("sender_street", e.target.value)} /></div>
-                <div className="field-row field-row-3">
-                  <div className="field"><label className="field-label">PLZ</label><input className="field-input" value={form.sender_zip} onChange={e => upd("sender_zip", e.target.value)} /></div>
-                  <div className="field"><label className="field-label">Stadt</label><input className="field-input" value={form.sender_city} onChange={e => upd("sender_city", e.target.value)} /></div>
-                  <div className="field"><label className="field-label">Land</label><select className="field-input field-select" value={form.sender_country} onChange={e => upd("sender_country", e.target.value)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
+                <div className="field booking-content-field">
+                  <label className="field-label">
+                    Sendungsinhalt <span className="field-optional">(optional)</span>
+                  </label>
+                  <input
+                    className="field-input"
+                    value={form.content}
+                    onChange={e => upd("content", e.target.value)}
+                    placeholder="z.B. Elektronik, Dokumente …"
+                  />
                 </div>
               </div>
             </div>
-            <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Empfänger</h3></div>
-              <div className="calc-panel-body">
-                <div className="field"><label className="field-label">Name / Firma</label><input className="field-input" value={form.rec_name} onChange={e => upd("rec_name", e.target.value)} /></div>
-                <div className="field"><label className="field-label">Straße & Hausnummer</label><input className="field-input" value={form.rec_street} onChange={e => upd("rec_street", e.target.value)} /></div>
-                <div className="field-row field-row-3">
-                  <div className="field"><label className="field-label">PLZ</label><input className="field-input" value={form.rec_zip} onChange={e => upd("rec_zip", e.target.value)} /></div>
-                  <div className="field"><label className="field-label">Stadt</label><input className="field-input" value={form.rec_city} onChange={e => upd("rec_city", e.target.value)} /></div>
-                  <div className="field"><label className="field-label">Land</label><select className="field-input field-select" value={form.rec_country} onChange={e => upd("rec_country", e.target.value)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-                </div>
-                <div className="field"><label className="field-label">Sendungsinhalt</label><input className="field-input" value={form.content} onChange={e => upd("content", e.target.value)} placeholder="z.B. Elektronik" /></div>
-              </div>
-            </div>
+
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => setStep(1)}>← Zurück</button>
-              <button className="btn btn-primary btn-grow" onClick={() => setStep(3)} disabled={!form.rec_name || !form.rec_zip || !form.sender_name || !form.sender_zip}>Weiter: Übersicht →</button>
+              <button
+                className="btn btn-primary btn-grow"
+                onClick={() => setStep(3)}
+                disabled={!step2Valid}
+              >
+                Weiter: Übersicht →
+              </button>
             </div>
           </div>
         )}
 
+        {/* ── Step 3: Zusammenfassung ── */}
         {step === 3 && (
           <div>
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Zusammenfassung</h3></div>
               <div className="calc-panel-body">
                 {[
-                  ["Carrier", tariff.carrier],
-                  ["Service", tariff.tariffName],
-                  ["Lieferzeit", tariff.deliveryTime || "Auf Anfrage"],
-                  ...(tariff.netPrice != null ? [["Netto", money(tariff.netPrice)]] : []),
-                  ...(tariff.vatAmount != null ? [["MwSt. 19%", money(tariff.vatAmount)]] : []),
+                  ["Carrier",              tariff.carrier],
+                  ["Service",              tariff.tariffName],
+                  ["Lieferzeit",           tariff.deliveryTime || "Auf Anfrage"],
+                  ...(tariff.netPrice  != null ? [["Netto",             money(tariff.netPrice)]]  : []),
+                  ...(tariff.vatAmount != null ? [["MwSt. 19%",         money(tariff.vatAmount)]] : []),
                   ["Gesamtbetrag (brutto)", money(tariff.finalPrice)],
-                  ["Absender", `${form.sender_name}, ${form.sender_street}, ${form.sender_zip} ${form.sender_city}`],
-                  ["Empfänger", `${form.rec_name}, ${form.rec_street}, ${form.rec_zip} ${form.rec_city}, ${form.rec_country}`],
-                  ["Inhalt", form.content || "—"],
+                  ["Absender",             fmtAddr("s")],
+                  ["Empfänger",            fmtAddr("r")],
+                  ["Inhalt",               form.content || "—"],
                 ].map(([k, v], i, arr) => (
                   <div key={i} className={`summary-detail-row${i < arr.length - 1 ? " summary-detail-row-border" : ""}`}>
                     <span className="text-sm text-muted summary-detail-key">{k}</span>
@@ -177,6 +322,7 @@ export default function BookingPage() {
           </div>
         )}
 
+        {/* ── Step 4: Verbindliche Bestellung ── */}
         {step === 4 && (
           <div>
             <div className="calc-panel booking-confirm-panel mb-16">
@@ -192,11 +338,11 @@ export default function BookingPage() {
                   </div>
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>
-                    <span className="text-sm font-bold booking-confirm-val">{form.sender_name}, {form.sender_zip} {form.sender_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{form.s_fullName}, {form.s_zip} {form.s_city}</span>
                   </div>
                   <div className="booking-confirm-row mb-16">
                     <span className="text-sm text-muted">Empfänger</span>
-                    <span className="text-sm font-bold booking-confirm-val">{form.rec_name}, {form.rec_zip} {form.rec_city}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{form.r_fullName}, {form.r_zip} {form.r_city}</span>
                   </div>
                   {tariff.netPrice != null && (
                     <div className="booking-confirm-row">
@@ -239,11 +385,12 @@ export default function BookingPage() {
           </div>
         )}
 
+        {/* ── Step 5: Buchung erfolgreich ── */}
         {step === 5 && booking && (
           <div className="booking-success-wrap">
             <div className="booking-success-icon">✓</div>
             <h2 className="booking-success-title">Sendung gebucht!</h2>
-            <p className="text-muted mb-8">Rechnungsnummer: <strong style={{ color: "var(--navy)" }}>{booking.invoiceNumber}</strong></p>
+            <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
             <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
             <div className="flex-center gap-12">
               <button className="btn btn-primary" onClick={() => navigate("/dashboard", { state: { justBooked: true } })}>Zum Dashboard</button>
@@ -251,6 +398,7 @@ export default function BookingPage() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -138,7 +138,7 @@ export default function CalculatorPage() {
 
   const applyFilter = useCallback((list) => {
     let f = [...list];
-    if (form.max_price) f = f.filter(t => t.finalPrice <= Number(form.max_price));
+    if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
     if (form.max_days) f = f.filter(t => { const m = t.deliveryTime?.match(/(\d+)/); return m ? Number(m[1]) <= Number(form.max_days) : true; });
     setFiltered(f);
   }, [form.max_price, form.max_days]);
@@ -148,8 +148,8 @@ export default function CalculatorPage() {
   const sorted = React.useMemo(() => {
     if (sortMode === "recommended") return filtered;
     const copy = [...filtered];
-    if (sortMode === "cheapest") return copy.sort((a, b) => a.finalPrice - b.finalPrice);
-    if (sortMode === "priciest") return copy.sort((a, b) => b.finalPrice - a.finalPrice);
+    if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
+    if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
     if (sortMode === "fastest")  return copy.sort((a, b) => parseDeliveryDays(a) - parseDeliveryDays(b));
     return copy;
   }, [filtered, sortMode]);
@@ -451,14 +451,13 @@ export default function CalculatorPage() {
                   <div className="tariff-card-top">
                     <div><div className="tariff-carrier">{t.carrier}</div><div className="tariff-service">{t.tariffName}</div></div>
                     <div>
-                      <div className="tariff-price">{money(t.finalPrice)}</div>
-                      <div className="tariff-price-sub">inkl. 19% MwSt.</div>
-                      {t.netPrice != null && t.vatAmount != null && (
-                        <div className="tariff-price-detail">
-                          <span>Netto {money(t.netPrice)}</span>
-                          <span className="tariff-price-detail-sep">·</span>
-                          <span>MwSt. {money(t.vatAmount)}</span>
-                        </div>
+                      {t.netPrice != null ? (
+                        <>
+                          <div className="tariff-price">{money(t.netPrice)}</div>
+                          <div className="tariff-price-sub">exkl. MwSt.</div>
+                        </>
+                      ) : (
+                        <div className="tariff-price-na">Preis fehlt</div>
                       )}
                     </div>
                   </div>

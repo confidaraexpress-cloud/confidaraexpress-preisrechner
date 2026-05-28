@@ -93,12 +93,16 @@ export default function BookingPage() {
                     )}
                   </div>
                   <div className="booking-price-col">
-                    <div className="booking-price-display">{money(tariff.finalPrice)}</div>
-                    <div className="tariff-price-sub">inkl. 19% MwSt.</div>
-                    {tariff.netPrice != null && tariff.vatAmount != null && (
+                    {tariff.netPrice != null ? (
+                      <div className="booking-price-display">{money(tariff.netPrice)}</div>
+                    ) : (
+                      <div className="tariff-price-na">Preis fehlt</div>
+                    )}
+                    {tariff.netPrice != null && <div className="tariff-price-sub">exkl. MwSt.</div>}
+                    {tariff.vatAmount != null && tariff.finalPrice != null && (
                       <div className="booking-price-detail">
-                        <div>Netto {money(tariff.netPrice)}</div>
-                        <div>MwSt. {money(tariff.vatAmount)}</div>
+                        <div>MwSt. 19% {money(tariff.vatAmount)}</div>
+                        <div className="booking-price-detail-total">Brutto {money(tariff.finalPrice)}</div>
                       </div>
                     )}
                   </div>

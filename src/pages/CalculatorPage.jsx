@@ -57,7 +57,7 @@ const SERVICE_OPTIONS = [
 ];
 
 export default function CalculatorPage() {
-  const { authed } = useAuth();
+  const { authed, user } = useAuth();
   const navigate = useNavigate();
 
   // ── Service filter ──
@@ -79,8 +79,29 @@ export default function CalculatorPage() {
 
   // ── Form ──
   const [form, setForm] = useState({
-    from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
+    // Absender
+    s_company:  user?.company_name || "",
+    s_fullName: user?.name         || "",
+    s_street:   user?.street       || "",
+    s_addition: "",
+    s_zip:      user?.zip          || "",
+    s_city:     user?.city         || "",
+    s_country:  user?.country      || "DE",
+    s_phone:    user?.phone        || "",
+    s_email:    user?.email        || "",
+    // Empfänger
+    r_company:  "",
+    r_fullName: "",
+    r_street:   "",
+    r_addition: "",
+    r_zip:      "",
+    r_city:     "",
+    r_country:  "CH",
+    r_phone:    "",
+    r_email:    "",
+    // Paket
     weight: "", length: "", width: "", height: "",
+    // Filter
     max_price: "", max_days: "",
   });
 
@@ -101,10 +122,28 @@ export default function CalculatorPage() {
     `${carrierFilters.length} ausgewählt`;
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
+
+  const calcValid =
+    !!form.weight &&
+    !!form.s_fullName && !!form.s_street && !!form.s_zip && !!form.s_city &&
+    !!form.r_fullName && !!form.r_street && !!form.r_zip && !!form.r_city;
+
+  const buildParty = (p) => ({
+    ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
+    fullName:        form[`${p}_fullName`],
+    streetAndNumber: form[`${p}_street`],
+    ...(form[`${p}_addition`] ? { addressAddition: form[`${p}_addition`] } : {}),
+    postalCode:      form[`${p}_zip`],
+    city:            form[`${p}_city`],
+    country:         form[`${p}_country`],
+    ...(form[`${p}_phone`] ? { phone: form[`${p}_phone`] } : {}),
+    ...(form[`${p}_email`] ? { email: form[`${p}_email`] } : {}),
+  });
 
   const resetResults = () => {
     setHasResults(false);
@@ -168,7 +207,7 @@ export default function CalculatorPage() {
   };
 
   const calculate = async () => {
-    if (!form.weight) { setError("Bitte Gewicht angeben"); return; }
+    if (!calcValid) { setError("Bitte alle Pflichtfelder ausfüllen (Absender, Empfänger, Gewicht)"); return; }
     setError(""); setLoading(true); setSelected(null);
     try {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
@@ -176,8 +215,8 @@ export default function CalculatorPage() {
         body: JSON.stringify({
           weight: Number(form.weight), length: Number(form.length) || 30,
           width: Number(form.width) || 20, height: Number(form.height) || 15,
-          from_country: form.from_country, from_zip: form.from_zip,
-          to_country: form.to_country, to_zip: form.to_zip,
+          sender:    buildParty("s"),
+          recipient: buildParty("r"),
           serviceFilter: serviceFilter,
           shippingDate: shippingDate,
           carrierFilters: carrierFilters,
@@ -193,6 +232,35 @@ export default function CalculatorPage() {
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
+
+  // ── Render helpers for address fields ──
+  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => (
+    <div className="field">
+      <label className="field-label">
+        {label}{optional && <span className="field-optional"> (optional)</span>}
+      </label>
+      <input
+        className="field-input"
+        type={type}
+        value={form[`${p}_${key}`]}
+        onChange={e => upd(`${p}_${key}`, e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  const countrySelect = (p) => (
+    <div className="field">
+      <label className="field-label">Land</label>
+      <select
+        className="field-input field-select"
+        value={form[`${p}_country`]}
+        onChange={e => upd(`${p}_country`, e.target.value)}
+      >
+        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+      </select>
+    </div>
+  );
 
   return (
     <div className="page-with-navbar">
@@ -334,19 +402,56 @@ export default function CalculatorPage() {
               )}
             </div>
 
-            {/* ── Route ── */}
+            {/* ── Versandroute — full address forms ── */}
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Versandroute</h3></div>
               <div className="calc-panel-body">
-                <div className="calc-section-title">Absender</div>
-                <div className="field-row field-row-2">
-                  <div className="field"><label className="field-label">Land</label><select className="field-input field-select" value={form.from_country} onChange={e => upd("from_country", e.target.value)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-                  <div className="field"><label className="field-label">PLZ (optional)</label><input className="field-input" value={form.from_zip} onChange={e => upd("from_zip", e.target.value)} placeholder="z.B. 70173" /></div>
-                </div>
-                <div className="calc-section-title">Empfänger</div>
-                <div className="field-row field-row-2">
-                  <div className="field"><label className="field-label">Land</label><select className="field-input field-select" value={form.to_country} onChange={e => upd("to_country", e.target.value)}>{countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-                  <div className="field"><label className="field-label">PLZ (optional)</label><input className="field-input" value={form.to_zip} onChange={e => upd("to_zip", e.target.value)} placeholder="z.B. 8001" /></div>
+                <div className="booking-addr-grid">
+
+                  {/* Absenderadresse */}
+                  <div>
+                    <div className="calc-section-title">Absender</div>
+                    {addrField("s", "company",  "Unternehmen",         "text",  "Firma GmbH",       true)}
+                    {addrField("s", "fullName", "Vor- und Nachname *", "text",  "Max Mustermann")}
+                    {addrField("s", "street",   "Straße & Hausnr. *",  "text",  "Musterstraße 1")}
+                    {addrField("s", "addition", "Adresszusatz",        "text",  "Etage, c/o …",     true)}
+                    <div className="field-row field-row-2">
+                      <div className="field">
+                        <label className="field-label">PLZ *</label>
+                        <input className="field-input" value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Stadt *</label>
+                        <input className="field-input" value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
+                      </div>
+                    </div>
+                    {countrySelect("s")}
+                    {addrField("s", "phone", "Telefon",  "tel",   "+49 711 …",    true)}
+                    {addrField("s", "email", "E-Mail",   "email", "max@firma.de", true)}
+                  </div>
+
+                  {/* Empfängeradresse */}
+                  <div>
+                    <div className="calc-section-title">Empfänger</div>
+                    {addrField("r", "company",  "Unternehmen",         "text",  "Firma AG",          true)}
+                    {addrField("r", "fullName", "Vor- und Nachname *", "text",  "Erika Muster")}
+                    {addrField("r", "street",   "Straße & Hausnr. *",  "text",  "Beispielweg 5")}
+                    {addrField("r", "addition", "Adresszusatz",        "text",  "Etage, c/o …",      true)}
+                    <div className="field-row field-row-2">
+                      <div className="field">
+                        <label className="field-label">PLZ *</label>
+                        <input className="field-input" value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Stadt *</label>
+                        <input className="field-input" value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
+                      </div>
+                    </div>
+                    {countrySelect("r")}
+                    {addrField("r", "phone", "Telefon",  "tel",   "+41 44 …",       true)}
+                    {addrField("r", "email", "E-Mail",   "email", "erika@firma.ch", true)}
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -373,7 +478,7 @@ export default function CalculatorPage() {
             {/* ── Mobile CTA ── */}
             {!hasResults && (
               <div className="calc-mobile-cta">
-                <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
+                <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
                   {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={16} /> Preise berechnen</>}
                 </button>
               </div>
@@ -523,7 +628,7 @@ export default function CalculatorPage() {
 
               {!loading && !hasResults && (
                 <div className="calc-desktop-cta">
-                  <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading}>
+                  <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
                     {loading ? <span className="spinner" /> : <><Icon n="zap" s={16} /> Preise berechnen</>}
                   </button>
                 </div>

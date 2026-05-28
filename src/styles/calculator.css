@@ -85,7 +85,13 @@
 .calc-mobile-cta { display: none; }
 /* .calc-desktop-cta is visible by default */
 
-/* ─── Booking ─────────────────────────────────────────────────────────────── */
+/* ─── Booking address grid (2-col desktop, 1-col mobile) ────────────────── */
+.booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.field-optional { font-size: 11px; color: var(--gray400); font-weight: 400; }
+.booking-content-field { margin-bottom: 0; }
+.booking-invoice-num { color: var(--navy); }
+
+/* ─── Booking address grid ────────────────────────────────────────────────── */
 .booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 760px; }
 .booking-title { font-size: 24px; font-weight: 800; color: var(--navy); }
 .booking-carrier-name { font-size: 20px; font-weight: 800; color: var(--navy); }

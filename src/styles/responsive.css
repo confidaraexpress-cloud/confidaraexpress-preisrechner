@@ -41,6 +41,10 @@
   .container { padding: 0 14px; }
 }
 
+@media (max-width: 640px) {
+  .booking-addr-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 480px) {
   .kpi-grid { grid-template-columns: 1fr; }
   .field-row-2, .field-row-3, .field-row-4 { grid-template-columns: 1fr; }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
@@ -45,6 +45,12 @@ export default function CalculatorPage() {
   const [shippingDate, setShippingDate] = useState(() => todayISO());
   const [datePickerOpen, setDatePickerOpen]   = useState(false);
 
+  // ── Carrier filter ──
+  const [carrierFilters, setCarrierFilters]           = useState([]);
+  const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
+  const [availableCarriers, setAvailableCarriers]     = useState([]);
+  const carrierRef = useRef(null);
+
   // ── Form ──
   const [form, setForm] = useState({
     from_country: "DE", from_zip: "", to_country: "CH", to_zip: "",
@@ -63,6 +69,11 @@ export default function CalculatorPage() {
 
   const selectedOption = SERVICE_OPTIONS.find(o => o.id === serviceFilter) || SERVICE_OPTIONS[0];
 
+  const carrierLabel =
+    carrierFilters.length === 0   ? "Alle Dienstleister" :
+    carrierFilters.length <= 2    ? carrierFilters.join(", ") :
+    `${carrierFilters.length} ausgewählt`;
+
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
@@ -76,6 +87,28 @@ export default function CalculatorPage() {
     setSelected(null);
     setError("");
   };
+
+  const toggleCarrier = (carrier) => {
+    setCarrierFilters(prev =>
+      prev.includes(carrier) ? prev.filter(c => c !== carrier) : [...prev, carrier]
+    );
+    resetResults();
+  };
+
+  useEffect(() => {
+    if (!carrierDropdownOpen) return;
+    const onOutside = (e) => {
+      if (carrierRef.current && !carrierRef.current.contains(e.target))
+        setCarrierDropdownOpen(false);
+    };
+    const onEscape = (e) => { if (e.key === "Escape") setCarrierDropdownOpen(false); };
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [carrierDropdownOpen]);
 
   const applyFilter = useCallback((list) => {
     let f = [...list];
@@ -112,10 +145,15 @@ export default function CalculatorPage() {
           to_country: form.to_country, to_zip: form.to_zip,
           serviceFilter: serviceFilter,
           shippingDate: shippingDate,
+          carrierFilters: carrierFilters,
         })
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Fehler bei Preisberechnung");
+      const newCarriers = d.availableCarriers || [];
+      setAvailableCarriers(newCarriers);
+      if (newCarriers.length > 0)
+        setCarrierFilters(prev => prev.filter(c => newCarriers.includes(c)));
       setTariffs(d.tariffs || []); setShipmentId(d.shipmentId); setHasResults(true);
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -202,6 +240,61 @@ export default function CalculatorPage() {
                     min={todayISO()}
                     onChange={e => handleDateChange(e.target.value)}
                   />
+                </div>
+              )}
+            </div>
+
+            {/* ── Carrier Filter — collapsible ── */}
+            <div className="calc-panel mb-16" ref={carrierRef}>
+              <button
+                className="service-filter-trigger"
+                onClick={() => setCarrierDropdownOpen(o => !o)}
+                aria-expanded={carrierDropdownOpen}
+              >
+                <div className="service-filter-trigger-left">
+                  <Icon n="truck" s={15} c="#1D4ED8" />
+                  <div>
+                    <div className="service-filter-trigger-title">Versanddienst</div>
+                    <div className="service-filter-trigger-val">{carrierLabel}</div>
+                  </div>
+                  {carrierFilters.length > 0 && (
+                    <span className="carrier-badge">{carrierFilters.length}</span>
+                  )}
+                </div>
+                <div className={`service-filter-chevron ${carrierDropdownOpen ? "open" : ""}`}>
+                  <Icon n="chevron" s={16} c="#64748b" />
+                </div>
+              </button>
+              {carrierDropdownOpen && (
+                <div className="carrier-dropdown">
+                  {availableCarriers.length === 0 ? (
+                    <div className="carrier-empty-hint">Zuerst Preise berechnen, um Carrier-Filter zu aktivieren</div>
+                  ) : (
+                    <>
+                      <label className={`carrier-option carrier-option-all ${carrierFilters.length === 0 ? "selected" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={carrierFilters.length === 0}
+                          onChange={() => { setCarrierFilters([]); resetResults(); }}
+                        />
+                        <span className="carrier-option-label">Alle Dienstleister</span>
+                      </label>
+                      <div className="carrier-divider" />
+                      {availableCarriers.map(carrier => (
+                        <label
+                          key={carrier}
+                          className={`carrier-option ${carrierFilters.includes(carrier) ? "selected" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={carrierFilters.includes(carrier)}
+                            onChange={() => toggleCarrier(carrier)}
+                          />
+                          <span className="carrier-option-label">{carrier}</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </div>

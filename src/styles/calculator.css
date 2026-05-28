@@ -32,6 +32,7 @@
 .tariff-service { font-size: 12px; color: var(--gray500); margin-top: 2px; }
 .tariff-price { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: var(--navy); text-align: right; }
 .tariff-price-sub { font-size: 11px; color: var(--gray400); text-align: right; }
+.tariff-price-na  { font-size: 12px; color: var(--danger); font-weight: 600; text-align: right; }
 .tariff-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 .tariff-tag { padding: 2px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; background: var(--gray100); color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
 .tariff-tag.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.20); }

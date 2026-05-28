@@ -25,6 +25,29 @@ const labelForDate = (iso) => {
   return fmtDE(iso);
 };
 
+// ─── Delivery-day parser (robust: string → days integer, fallback to date diff) ─
+const parseDeliveryDays = (t) => {
+  if (t.deliveryTime) {
+    const m = t.deliveryTime.match(/(\d+)/);
+    if (m) return Number(m[1]);
+  }
+  if (t.deliveryDate) {
+    const today = new Date(new Date().toISOString().split("T")[0]);
+    const dd    = new Date(t.deliveryDate.split("T")[0]);
+    const diff  = Math.round((dd - today) / 86400000);
+    return diff >= 0 ? diff : 999;
+  }
+  return 999;
+};
+
+// ─── Sort options ─────────────────────────────────────────────────────────────
+const SORT_OPTIONS = [
+  { id: "recommended", label: "Empfehlung" },
+  { id: "cheapest",    label: "Günstigste" },
+  { id: "fastest",     label: "Schnellste" },
+  { id: "priciest",    label: "Teuerste"   },
+];
+
 // ─── Service options ─────────────────────────────────────────────────────────
 const SERVICE_OPTIONS = [
   { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
@@ -44,6 +67,9 @@ export default function CalculatorPage() {
   // ── Shipping date ──
   const [shippingDate, setShippingDate] = useState(() => todayISO());
   const [datePickerOpen, setDatePickerOpen]   = useState(false);
+
+  // ── Sort ──
+  const [sortMode, setSortMode] = useState("recommended");
 
   // ── Carrier filter ──
   const [carrierFilters, setCarrierFilters]           = useState([]);
@@ -118,6 +144,15 @@ export default function CalculatorPage() {
   }, [form.max_price, form.max_days]);
 
   useEffect(() => { applyFilter(tariffs); }, [tariffs, applyFilter]);
+
+  const sorted = React.useMemo(() => {
+    if (sortMode === "recommended") return filtered;
+    const copy = [...filtered];
+    if (sortMode === "cheapest") return copy.sort((a, b) => a.finalPrice - b.finalPrice);
+    if (sortMode === "priciest") return copy.sort((a, b) => b.finalPrice - a.finalPrice);
+    if (sortMode === "fastest")  return copy.sort((a, b) => parseDeliveryDays(a) - parseDeliveryDays(b));
+    return copy;
+  }, [filtered, sortMode]);
 
   const handleServiceFilter = (id) => {
     setServiceFilter(id);
@@ -396,7 +431,22 @@ export default function CalculatorPage() {
                 </div>
               )}
 
-              {!loading && filtered.map(t => (
+              {hasResults && !loading && tariffs.length > 0 && (
+                <div className="sort-bar">
+                  <span className="sort-bar-label">Sortierung</span>
+                  {SORT_OPTIONS.map(o => (
+                    <button
+                      key={o.id}
+                      className={`sort-btn ${sortMode === o.id ? "active" : ""}`}
+                      onClick={() => setSortMode(o.id)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!loading && sorted.map(t => (
                 <div key={t.id} className={`tariff-card ${selected?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t)}>
                   <div className="tariff-card-top">
                     <div><div className="tariff-carrier">{t.carrier}</div><div className="tariff-service">{t.tariffName}</div></div>

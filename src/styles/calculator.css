@@ -131,3 +131,20 @@
 .tracking-status-box { margin-bottom: 16px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); border: 1px solid rgba(29,78,216,0.12); box-shadow: 0 2px 8px rgba(29,78,216,0.06); }
 .tracking-status-text { font-size: 13px; color: var(--blue2); font-weight: 600; }
 .tracking-events-empty { padding: 24px 0; }
+
+/* ─── Date picker — collapsible ──────────────────────────────────────────── */
+.date-picker-body { border-top: 1px solid var(--border); padding: 12px 14px 14px; }
+.date-quick-options { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.date-quick-btn {
+  padding: 5px 13px; border-radius: var(--radius-full);
+  border: 1.5px solid var(--border); background: white;
+  font-size: 12px; font-weight: 600; color: var(--gray600);
+  cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+}
+.date-quick-btn:hover { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
+.date-quick-btn.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
+
+/* ─── Tariff date info row ───────────────────────────────────────────────── */
+.tariff-date-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.tariff-date-info { font-size: 11px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
+.tariff-unavail-note { font-size: 11px; color: var(--danger); font-weight: 600; }

@@ -52,7 +52,20 @@ export default function DashboardPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
-  const navigateTo = (id) => { setPage(id); setSidebarOpen(false); };
+  // Navigate from calculator route back into dashboard pages
+  useEffect(() => {
+    const p = new URLSearchParams(location.search).get("page");
+    if (p && ["overview", "new", "shipments", "invoices", "profile"].includes(p)) {
+      setPage(p);
+      navigate("/dashboard", { replace: true });
+    }
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const navigateTo = (id) => {
+    if (id === "calculator") { navigate("/calculator"); return; }
+    setPage(id);
+    setSidebarOpen(false);
+  };
 
   return (
     <div className="app-shell">

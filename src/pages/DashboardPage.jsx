@@ -9,7 +9,7 @@ import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
 import { useAuth } from "../context/AuthContext";
 
-const CalculatorPage = React.lazy(() => import("./CalculatorPage"));
+const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -114,7 +114,7 @@ export default function DashboardPage() {
             <div className="page-header"><div><div className="page-header-title">Neue Sendung</div></div></div>
             <div className="page-body">
               <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-                <CalculatorPage />
+                <NewShipmentPage />
               </Suspense>
             </div>
           </>

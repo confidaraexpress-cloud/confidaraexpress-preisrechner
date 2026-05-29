@@ -3,10 +3,10 @@ import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { countries } from "../../utils/countries";
 
-export function RegisterForm({ form, onChange, onRegister, loading }) {
+export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true }) {
   const upd = (k, v) => onChange(k, v);
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
+    <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
       <div className="field-row field-row-2">
         <div className="auth-field">
           <div className="auth-field-row">
@@ -15,13 +15,14 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-input-wrap">
             <span className="auth-input-ico"><Icon n="user" s={18} /></span>
             <input
-              className="auth-input"
+              className={`auth-input${errors.name ? " auth-input-error" : ""}`}
               value={form.name}
               onChange={(e) => upd("name", e.target.value)}
               placeholder="Max Mustermann"
               autoFocus
             />
           </div>
+          {errors.name && <span className="auth-field-error">{errors.name}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -30,13 +31,14 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           <div className="auth-input-wrap">
             <span className="auth-input-ico"><Icon n="mail" s={18} /></span>
             <input
-              className="auth-input"
+              className={`auth-input${errors.email ? " auth-input-error" : ""}`}
               type="email"
               value={form.email}
               onChange={(e) => upd("email", e.target.value)}
               placeholder="firma@beispiel.de"
             />
           </div>
+          {errors.email && <span className="auth-field-error">{errors.email}</span>}
         </div>
       </div>
 
@@ -53,6 +55,7 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
             placeholder="Mind. 8 Zeichen"
           />
         </div>
+        {errors.password && <span className="auth-field-error">{errors.password}</span>}
       </div>
 
       <span className="auth-section-label">Unternehmen</span>
@@ -64,11 +67,12 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           </div>
           <div className="auth-input-wrap">
             <input
-              className="auth-input auth-input-no-icon"
+              className={`auth-input auth-input-no-icon${errors.company_name ? " auth-input-error" : ""}`}
               value={form.company_name}
               onChange={(e) => upd("company_name", e.target.value)}
             />
           </div>
+          {errors.company_name && <span className="auth-field-error">{errors.company_name}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -76,12 +80,13 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           </div>
           <div className="auth-input-wrap">
             <input
-              className="auth-input auth-input-no-icon"
+              className={`auth-input auth-input-no-icon${errors.vat_id ? " auth-input-error" : ""}`}
               value={form.vat_id}
               onChange={(e) => upd("vat_id", e.target.value)}
               placeholder="DE123456789"
             />
           </div>
+          {errors.vat_id && <span className="auth-field-error">{errors.vat_id}</span>}
         </div>
       </div>
 
@@ -93,11 +98,12 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
         </div>
         <div className="auth-input-wrap">
           <input
-            className="auth-input auth-input-no-icon"
+            className={`auth-input auth-input-no-icon${errors.street ? " auth-input-error" : ""}`}
             value={form.street}
             onChange={(e) => upd("street", e.target.value)}
           />
         </div>
+        {errors.street && <span className="auth-field-error">{errors.street}</span>}
       </div>
 
       <div className="field-row field-row-3">
@@ -107,11 +113,12 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           </div>
           <div className="auth-input-wrap">
             <input
-              className="auth-input auth-input-no-icon"
+              className={`auth-input auth-input-no-icon${errors.zip ? " auth-input-error" : ""}`}
               value={form.zip}
               onChange={(e) => upd("zip", e.target.value)}
             />
           </div>
+          {errors.zip && <span className="auth-field-error">{errors.zip}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -119,11 +126,12 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
           </div>
           <div className="auth-input-wrap">
             <input
-              className="auth-input auth-input-no-icon"
+              className={`auth-input auth-input-no-icon${errors.city ? " auth-input-error" : ""}`}
               value={form.city}
               onChange={(e) => upd("city", e.target.value)}
             />
           </div>
+          {errors.city && <span className="auth-field-error">{errors.city}</span>}
         </div>
         <div className="auth-field">
           <div className="auth-field-row">
@@ -143,7 +151,7 @@ export function RegisterForm({ form, onChange, onRegister, loading }) {
         </div>
       </div>
 
-      <button type="submit" className="auth-cta" disabled={loading}>
+      <button type="submit" className="auth-cta" disabled={loading || !regValid}>
         <span>{loading ? "Wird erstellt…" : "Konto beantragen"}</span>
         <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
       </button>

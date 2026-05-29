@@ -25,19 +25,6 @@ const labelForDate = (iso) => {
 };
 
 // ─── Delivery-day parser ──────────────────────────────────────────────────────
-const parseDeliveryDays = (t) => {
-  if (t.deliveryTime) {
-    const m = t.deliveryTime.match(/(\d+)/);
-    if (m) return Number(m[1]);
-  }
-  if (t.deliveryDate) {
-    const today = new Date(new Date().toISOString().split("T")[0]);
-    const dd    = new Date(t.deliveryDate.split("T")[0]);
-    const diff  = Math.round((dd - today) / 86400000);
-    return diff >= 0 ? diff : 999;
-  }
-  return 999;
-};
 
 // ─── Sort options ─────────────────────────────────────────────────────────────
 const SORT_OPTIONS = [
@@ -153,7 +140,15 @@ export default function CalculatorPage() {
     const copy = [...filtered];
     if (sortMode === "cheapest") return copy.sort((a, b) => (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity));
     if (sortMode === "priciest") return copy.sort((a, b) => (b.netPrice ?? -1) - (a.netPrice ?? -1));
-    if (sortMode === "fastest")  return copy.sort((a, b) => parseDeliveryDays(a) - parseDeliveryDays(b));
+    if (sortMode === "fastest")  return copy.sort((a, b) => {
+      const aMax = a.transitDaysMax ?? 999;
+      const bMax = b.transitDaysMax ?? 999;
+      if (aMax !== bMax) return aMax - bMax;
+      const aMin = a.transitDaysMin ?? 999;
+      const bMin = b.transitDaysMin ?? 999;
+      if (aMin !== bMin) return aMin - bMin;
+      return (a.netPrice ?? Infinity) - (b.netPrice ?? Infinity);
+    });
     return copy;
   }, [filtered, sortMode]);
 

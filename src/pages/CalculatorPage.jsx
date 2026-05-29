@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { API, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
-import { money } from "../utils/formatters";
+import { money, fmtDelivery } from "../utils/formatters";
 import { useAuth } from "../context/AuthContext";
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -510,7 +510,7 @@ export default function CalculatorPage() {
                     </div>
                   </div>
                   <div className="tariff-tags">
-                    {t.deliveryTime && <span className="tariff-tag">⏱ {t.deliveryTime}</span>}
+                    {fmtDelivery(t) && <span className="tariff-tag">⏱ {fmtDelivery(t)}</span>}
                     {t.trackingAvailable && <span className="tariff-tag green">✓ Tracking</span>}
                     {t.serviceType === "pickup"  && <span className="tariff-tag blue">🚐 Abholung</span>}
                     {t.serviceType === "dropoff" && <span className="tariff-tag">🏪 Shopabgabe</span>}

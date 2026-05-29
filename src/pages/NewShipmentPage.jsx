@@ -178,7 +178,7 @@ export default function NewShipmentPage() {
   const applyFilter = useCallback((list) => {
     let f = [...list];
     if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
-    if (form.max_days) f = f.filter(t => { const m = t.deliveryTime?.match(/(\d+)/); return m ? Number(m[1]) <= Number(form.max_days) : true; });
+    if (form.max_days)  f = f.filter(t => t.transitDaysMax != null && t.transitDaysMax <= Number(form.max_days));
     setFiltered(f);
   }, [form.max_price, form.max_days]);
 

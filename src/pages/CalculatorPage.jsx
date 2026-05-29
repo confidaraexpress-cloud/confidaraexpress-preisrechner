@@ -24,7 +24,8 @@ const labelForDate = (iso) => {
   return fmtDE(iso);
 };
 
-// ─── Delivery-day parser ──────────────────────────────────────────────────────
+// ─── Validation ──────────────────────────────────────────────────────────────
+const ZIP_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
 
 // ─── Sort options ─────────────────────────────────────────────────────────────
 const SORT_OPTIONS = [
@@ -88,6 +89,29 @@ export default function CalculatorPage() {
     `${carrierFilters.length} ausgewählt`;
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const getValidationError = () => {
+    const w = Number(form.weight);
+    if (!form.weight)                          return "Gewicht ist ein Pflichtfeld.";
+    if (isNaN(w) || w < 0.1 || w > 1000)      return "Gewicht muss zwischen 0,1 und 1.000 kg liegen.";
+    if (form.length) {
+      const v = Number(form.length);
+      if (isNaN(v) || v < 0.1 || v > 300)     return "Länge muss zwischen 0,1 und 300 cm liegen.";
+    }
+    if (form.width) {
+      const v = Number(form.width);
+      if (isNaN(v) || v < 0.1 || v > 300)     return "Breite muss zwischen 0,1 und 300 cm liegen.";
+    }
+    if (form.height) {
+      const v = Number(form.height);
+      if (isNaN(v) || v < 0.1 || v > 300)     return "Höhe muss zwischen 0,1 und 300 cm liegen.";
+    }
+    if (!form.from_zip)                        return "Herkunfts-PLZ ist ein Pflichtfeld.";
+    if (!ZIP_RE.test(form.from_zip.trim()))    return "Herkunfts-PLZ hat ein ungültiges Format (z. B. 70173 oder 8001).";
+    if (!form.to_zip)                          return "Ziel-PLZ ist ein Pflichtfeld.";
+    if (!ZIP_RE.test(form.to_zip.trim()))      return "Ziel-PLZ hat ein ungültiges Format (z. B. 70173 oder 8001).";
+    return null;
+  };
 
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
@@ -166,7 +190,8 @@ export default function CalculatorPage() {
   };
 
   const calculate = async () => {
-    if (!calcValid) { setError("Bitte Herkunfts-PLZ, Ziel-PLZ und Gewicht angeben"); return; }
+    const validErr = getValidationError();
+    if (validErr) { setError(validErr); return; }
     setError(""); setLoading(true); setSelected(null);
     try {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {

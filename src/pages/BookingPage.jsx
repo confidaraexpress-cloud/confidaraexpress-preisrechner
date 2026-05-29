@@ -177,6 +177,7 @@ export default function BookingPage() {
                     value={form.content}
                     onChange={e => upd("content", e.target.value)}
                     placeholder="z.B. Elektronik, Dokumente …"
+                    maxLength={200}
                   />
                 </div>
               </div>

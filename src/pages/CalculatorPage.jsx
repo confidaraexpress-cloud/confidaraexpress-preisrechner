@@ -61,12 +61,12 @@ export default function CalculatorPage() {
   const navigate = useNavigate();
 
   // ── Service filter ──
-  const [serviceFilter, setServiceFilter]         = useState("all");
+  const [serviceFilter, setServiceFilter]     = useState("all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
 
   // ── Shipping date ──
   const [shippingDate, setShippingDate] = useState(() => todayISO());
-  const [datePickerOpen, setDatePickerOpen]       = useState(false);
+  const [datePickerOpen, setDatePickerOpen]   = useState(false);
 
   // ── Sort ──
   const [sortMode, setSortMode] = useState("recommended");
@@ -77,30 +77,48 @@ export default function CalculatorPage() {
   const [availableCarriers, setAvailableCarriers]     = useState([]);
   const carrierRef = useRef(null);
 
-  // ── Form — only route + package fields ──
+  // ── Form ──
   const [form, setForm] = useState({
-    from_country: user?.country || "DE",
-    from_zip:     user?.zip     || "",
-    to_country:   "CH",
-    to_zip:       "",
+    // Absender
+    s_company:  user?.company_name || "",
+    s_fullName: user?.name         || "",
+    s_street:   user?.street       || "",
+    s_addition: "",
+    s_zip:      user?.zip          || "",
+    s_city:     user?.city         || "",
+    s_country:  user?.country      || "DE",
+    s_phone:    user?.phone        || "",
+    s_email:    user?.email        || "",
+    // Empfänger
+    r_company:  "",
+    r_fullName: "",
+    r_street:   "",
+    r_addition: "",
+    r_zip:      "",
+    r_city:     "",
+    r_country:  "CH",
+    r_phone:    "",
+    r_email:    "",
+    // Paket
     weight: "", length: "", width: "", height: "",
+    // Filter
     max_price: "", max_days: "",
   });
 
   // ── Results ──
-  const [tariffs, setTariffs]       = useState([]);
-  const [filtered, setFiltered]     = useState([]);
+  const [tariffs, setTariffs]     = useState([]);
+  const [filtered, setFiltered]   = useState([]);
   const [shipmentId, setShipmentId] = useState(null);
-  const [selected, setSelected]     = useState(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState("");
+  const [selected, setSelected]   = useState(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState("");
   const [hasResults, setHasResults] = useState(false);
 
   const selectedOption = SERVICE_OPTIONS.find(o => o.id === serviceFilter) || SERVICE_OPTIONS[0];
 
   const carrierLabel =
-    carrierFilters.length === 0 ? "Alle Dienstleister" :
-    carrierFilters.length <= 2  ? carrierFilters.join(", ") :
+    carrierFilters.length === 0   ? "Alle Dienstleister" :
+    carrierFilters.length <= 2    ? carrierFilters.join(", ") :
     `${carrierFilters.length} ausgewählt`;
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -111,7 +129,21 @@ export default function CalculatorPage() {
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
   const calcValid =
-    !!form.from_zip && !!form.to_zip && !!form.weight;
+    !!form.weight &&
+    !!form.s_fullName && !!form.s_street && !!form.s_zip && !!form.s_city &&
+    !!form.r_fullName && !!form.r_street && !!form.r_zip && !!form.r_city;
+
+  const buildParty = (p) => ({
+    ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
+    fullName:        form[`${p}_fullName`],
+    streetAndNumber: form[`${p}_street`],
+    ...(form[`${p}_addition`] ? { addressAddition: form[`${p}_addition`] } : {}),
+    postalCode:      form[`${p}_zip`],
+    city:            form[`${p}_city`],
+    country:         form[`${p}_country`],
+    ...(form[`${p}_phone`] ? { phone: form[`${p}_phone`] } : {}),
+    ...(form[`${p}_email`] ? { email: form[`${p}_email`] } : {}),
+  });
 
   const resetResults = () => {
     setHasResults(false);
@@ -175,22 +207,18 @@ export default function CalculatorPage() {
   };
 
   const calculate = async () => {
-    if (!calcValid) { setError("Bitte Herkunfts-PLZ, Ziel-PLZ und Gewicht angeben"); return; }
+    if (!calcValid) { setError("Bitte alle Pflichtfelder ausfüllen (Absender, Empfänger, Gewicht)"); return; }
     setError(""); setLoading(true); setSelected(null);
     try {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
         method: "POST", headers: jsonH,
         body: JSON.stringify({
-          from_country:   form.from_country,
-          from_zip:       form.from_zip,
-          to_country:     form.to_country,
-          to_zip:         form.to_zip,
-          weight:         Number(form.weight),
-          length:         Number(form.length) || 30,
-          width:          Number(form.width)  || 20,
-          height:         Number(form.height) || 15,
-          serviceFilter:  serviceFilter,
-          shippingDate:   shippingDate,
+          weight: Number(form.weight), length: Number(form.length) || 30,
+          width: Number(form.width) || 20, height: Number(form.height) || 15,
+          sender:    buildParty("s"),
+          recipient: buildParty("r"),
+          serviceFilter: serviceFilter,
+          shippingDate: shippingDate,
           carrierFilters: carrierFilters,
         })
       });
@@ -204,6 +232,35 @@ export default function CalculatorPage() {
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
+
+  // ── Render helpers for address fields ──
+  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => (
+    <div className="field">
+      <label className="field-label">
+        {label}{optional && <span className="field-optional"> (optional)</span>}
+      </label>
+      <input
+        className="field-input"
+        type={type}
+        value={form[`${p}_${key}`]}
+        onChange={e => upd(`${p}_${key}`, e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  const countrySelect = (p) => (
+    <div className="field">
+      <label className="field-label">Land</label>
+      <select
+        className="field-input field-select"
+        value={form[`${p}_country`]}
+        onChange={e => upd(`${p}_country`, e.target.value)}
+      >
+        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+      </select>
+    </div>
+  );
 
   return (
     <div className="page-with-navbar">
@@ -345,58 +402,54 @@ export default function CalculatorPage() {
               )}
             </div>
 
-            {/* ── Versandroute — Land + PLZ ── */}
+            {/* ── Versandroute — full address forms ── */}
             <div className="calc-panel mb-16">
               <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Versandroute</h3></div>
               <div className="calc-panel-body">
                 <div className="booking-addr-grid">
 
-                  {/* Herkunft */}
+                  {/* Absenderadresse */}
                   <div>
-                    <div className="calc-section-title">Herkunft</div>
-                    <div className="field">
-                      <label className="field-label">Land</label>
-                      <select
-                        className="field-input field-select"
-                        value={form.from_country}
-                        onChange={e => { upd("from_country", e.target.value); resetResults(); }}
-                      >
-                        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                      </select>
+                    <div className="calc-section-title">Absender</div>
+                    {addrField("s", "company",  "Unternehmen",         "text",  "Firma GmbH",       true)}
+                    {addrField("s", "fullName", "Vor- und Nachname *", "text",  "Max Mustermann")}
+                    {addrField("s", "street",   "Straße & Hausnr. *",  "text",  "Musterstraße 1")}
+                    {addrField("s", "addition", "Adresszusatz",        "text",  "Etage, c/o …",     true)}
+                    <div className="field-row field-row-2">
+                      <div className="field">
+                        <label className="field-label">PLZ *</label>
+                        <input className="field-input" value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Stadt *</label>
+                        <input className="field-input" value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
+                      </div>
                     </div>
-                    <div className="field">
-                      <label className="field-label">PLZ *</label>
-                      <input
-                        className="field-input"
-                        value={form.from_zip}
-                        onChange={e => { upd("from_zip", e.target.value); resetResults(); }}
-                        placeholder="70173"
-                      />
-                    </div>
+                    {countrySelect("s")}
+                    {addrField("s", "phone", "Telefon",  "tel",   "+49 711 …",    true)}
+                    {addrField("s", "email", "E-Mail",   "email", "max@firma.de", true)}
                   </div>
 
-                  {/* Ziel */}
+                  {/* Empfängeradresse */}
                   <div>
-                    <div className="calc-section-title">Ziel</div>
-                    <div className="field">
-                      <label className="field-label">Land</label>
-                      <select
-                        className="field-input field-select"
-                        value={form.to_country}
-                        onChange={e => { upd("to_country", e.target.value); resetResults(); }}
-                      >
-                        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                      </select>
+                    <div className="calc-section-title">Empfänger</div>
+                    {addrField("r", "company",  "Unternehmen",         "text",  "Firma AG",          true)}
+                    {addrField("r", "fullName", "Vor- und Nachname *", "text",  "Erika Muster")}
+                    {addrField("r", "street",   "Straße & Hausnr. *",  "text",  "Beispielweg 5")}
+                    {addrField("r", "addition", "Adresszusatz",        "text",  "Etage, c/o …",      true)}
+                    <div className="field-row field-row-2">
+                      <div className="field">
+                        <label className="field-label">PLZ *</label>
+                        <input className="field-input" value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
+                      </div>
+                      <div className="field">
+                        <label className="field-label">Stadt *</label>
+                        <input className="field-input" value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
+                      </div>
                     </div>
-                    <div className="field">
-                      <label className="field-label">PLZ *</label>
-                      <input
-                        className="field-input"
-                        value={form.to_zip}
-                        onChange={e => { upd("to_zip", e.target.value); resetResults(); }}
-                        placeholder="8001"
-                      />
-                    </div>
+                    {countrySelect("r")}
+                    {addrField("r", "phone", "Telefon",  "tel",   "+41 44 …",       true)}
+                    {addrField("r", "email", "E-Mail",   "email", "erika@firma.ch", true)}
                   </div>
 
                 </div>
@@ -409,7 +462,7 @@ export default function CalculatorPage() {
               <div className="calc-panel-body">
                 <div className="field-row field-row-4">
                   <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
-                  <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" /></div>
+                  <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width} onChange={e => upd("width", e.target.value)} placeholder="20" /></div>
                   <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
                   <div className="field"><label className="field-label">Gewicht kg *</label><input className="field-input" type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" /></div>
                 </div>
@@ -438,7 +491,7 @@ export default function CalculatorPage() {
                 <div className="calc-panel-body">
                   <div className="field-row field-row-2">
                     <div className="field"><label className="field-label">Max. Preis (€)</label><input className="field-input" type="number" value={form.max_price} onChange={e => upd("max_price", e.target.value)} placeholder="Alle" /></div>
-                    <div className="field"><label className="field-label">Max. Lieferzeit (Tage)</label><input className="field-input" type="number" value={form.max_days}  onChange={e => upd("max_days",  e.target.value)} placeholder="Alle" /></div>
+                    <div className="field"><label className="field-label">Max. Lieferzeit (Tage)</label><input className="field-input" type="number" value={form.max_days} onChange={e => upd("max_days", e.target.value)} placeholder="Alle" /></div>
                   </div>
                 </div>
               </div>
@@ -520,6 +573,7 @@ export default function CalculatorPage() {
                     {t.serviceType === "dropoff" && <span className="tariff-tag">🏪 Shopabgabe</span>}
                   </div>
 
+                  {/* Service details (shop name, pickup info, printer) */}
                   {(t.shopName || t.pickupDate || t.pickupToday || t.printerRequired) && (
                     <div className="tariff-service-row">
                       {t.serviceType === "dropoff" && t.shopName && (
@@ -537,6 +591,7 @@ export default function CalculatorPage() {
                     </div>
                   )}
 
+                  {/* Date info (delivery date/time, pickup window, availability) */}
                   {(t.availableForDate === false || t.deliveryDate || t.pickupTimeFrom) && (
                     <div className="tariff-date-row">
                       {t.availableForDate === false && (

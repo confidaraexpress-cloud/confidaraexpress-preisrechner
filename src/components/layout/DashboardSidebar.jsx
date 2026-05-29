@@ -44,6 +44,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <Icon n={item.icon} s={16} /> {item.label}
             </button>
           ))}
+          <button
+            className="nav-item"
+            onClick={() => { logout(); navigate("/login"); }}
+          >
+            <Icon n="logout" s={16} /> Abmelden
+          </button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-card">
@@ -52,13 +58,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <div className="user-name">{user?.company_name || user?.name}</div>
               <div className="user-role">{user?.email || "B2B Konto"}</div>
             </div>
-            <button
-              className="logout-btn"
-              onClick={() => { logout(); navigate("/login"); }}
-              title="Abmelden"
-            >
-              <Icon n="logout" s={14} />
-            </button>
           </div>
         </div>
       </aside>

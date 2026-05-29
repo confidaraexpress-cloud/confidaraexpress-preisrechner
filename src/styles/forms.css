@@ -17,3 +17,6 @@
 .field-input-wrap { position: relative; }
 .field-input-wrap .field-input { padding-right: 42px; }
 .field-input-wrap .field-input-dark { padding-right: 42px; }
+.field-input-error { border-color: #dc2626 !important; }
+.field-input-error:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.1) !important; }
+.field-error { display: block; font-size: 12px; color: #dc2626; margin-top: 4px; }

@@ -25,7 +25,74 @@ const labelForDate = (iso) => {
   return fmtDE(iso);
 };
 
-// ─── Delivery-day parser ──────────────────────────────────────────────────────
+// ─── Validation ──────────────────────────────────────────────────────────────
+const ZIP_RE   = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getErrors(form) {
+  const e = {};
+
+  // ── Absender ──
+  if (!form.s_fullName?.trim())                          e.s_fullName  = "Name ist ein Pflichtfeld.";
+  else if (form.s_fullName.length > 100)                 e.s_fullName  = "Name darf maximal 100 Zeichen enthalten.";
+
+  if (form.s_company?.length > 200)                      e.s_company   = "Unternehmen darf maximal 200 Zeichen enthalten.";
+
+  if (!form.s_street?.trim())                            e.s_street    = "Straße ist ein Pflichtfeld.";
+  else if (form.s_street.length > 200)                   e.s_street    = "Straße darf maximal 200 Zeichen enthalten.";
+
+  if (form.s_addition?.length > 100)                     e.s_addition  = "Adresszusatz darf maximal 100 Zeichen enthalten.";
+
+  if (!form.s_zip?.trim())                               e.s_zip       = "PLZ ist ein Pflichtfeld.";
+  else if (!ZIP_RE.test(form.s_zip.trim()))              e.s_zip       = "PLZ ist ungültig.";
+
+  if (!form.s_city?.trim())                              e.s_city      = "Stadt ist ein Pflichtfeld.";
+  else if (form.s_city.length > 100)                     e.s_city      = "Stadt darf maximal 100 Zeichen enthalten.";
+
+  if (form.s_email) {
+    if (form.s_email.length > 254)                       e.s_email     = "E-Mail darf maximal 254 Zeichen enthalten.";
+    else if (!EMAIL_RE.test(form.s_email))               e.s_email     = "E-Mail-Adresse ist ungültig.";
+  }
+
+  // ── Empfänger ──
+  if (!form.r_fullName?.trim())                          e.r_fullName  = "Name ist ein Pflichtfeld.";
+  else if (form.r_fullName.length > 100)                 e.r_fullName  = "Name darf maximal 100 Zeichen enthalten.";
+
+  if (form.r_company?.length > 200)                      e.r_company   = "Unternehmen darf maximal 200 Zeichen enthalten.";
+
+  if (!form.r_street?.trim())                            e.r_street    = "Straße ist ein Pflichtfeld.";
+  else if (form.r_street.length > 200)                   e.r_street    = "Straße darf maximal 200 Zeichen enthalten.";
+
+  if (form.r_addition?.length > 100)                     e.r_addition  = "Adresszusatz darf maximal 100 Zeichen enthalten.";
+
+  if (!form.r_zip?.trim())                               e.r_zip       = "PLZ ist ein Pflichtfeld.";
+  else if (!ZIP_RE.test(form.r_zip.trim()))              e.r_zip       = "PLZ ist ungültig.";
+
+  if (!form.r_city?.trim())                              e.r_city      = "Stadt ist ein Pflichtfeld.";
+  else if (form.r_city.length > 100)                     e.r_city      = "Stadt darf maximal 100 Zeichen enthalten.";
+
+  if (form.r_email) {
+    if (form.r_email.length > 254)                       e.r_email     = "E-Mail darf maximal 254 Zeichen enthalten.";
+    else if (!EMAIL_RE.test(form.r_email))               e.r_email     = "E-Mail-Adresse ist ungültig.";
+  }
+
+  // ── Paket ──
+  if (!form.weight)                                      e.weight      = "Gewicht ist ein Pflichtfeld.";
+  else { const w = Number(form.weight);
+    if (isNaN(w) || w < 0.1 || w > 1000)                e.weight      = "Gewicht muss zwischen 0,1 und 1.000 kg liegen.";
+  }
+  if (form.length) { const v = Number(form.length);
+    if (isNaN(v) || v < 0.1 || v > 300)                 e.length      = "Länge muss zwischen 0,1 und 300 cm liegen.";
+  }
+  if (form.width)  { const v = Number(form.width);
+    if (isNaN(v) || v < 0.1 || v > 300)                 e.width       = "Breite muss zwischen 0,1 und 300 cm liegen.";
+  }
+  if (form.height) { const v = Number(form.height);
+    if (isNaN(v) || v < 0.1 || v > 300)                 e.height      = "Höhe muss zwischen 0,1 und 300 cm liegen.";
+  }
+
+  return e;
+}
 
 // ─── Sort options ─────────────────────────────────────────────────────────────
 const SORT_OPTIONS = [
@@ -100,6 +167,7 @@ export default function NewShipmentPage() {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
   const [hasResults, setHasResults] = useState(false);
+  const [errors, setErrors]       = useState({});
 
   const selectedOption = SERVICE_OPTIONS.find(o => o.id === serviceFilter) || SERVICE_OPTIONS[0];
 
@@ -108,17 +176,17 @@ export default function NewShipmentPage() {
     carrierFilters.length <= 2    ? carrierFilters.join(", ") :
     `${carrierFilters.length} ausgewählt`;
 
-  const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const upd = (k, v) => {
+    setForm(p => ({ ...p, [k]: v }));
+    setErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
+  };
 
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
-  const calcValid =
-    !!form.weight &&
-    !!form.s_fullName && !!form.s_street && !!form.s_zip && !!form.s_city &&
-    !!form.r_fullName && !!form.r_street && !!form.r_zip && !!form.r_city;
+  const calcValid = Object.keys(getErrors(form)).length === 0;
 
   const buildParty = (p) => ({
     ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
@@ -202,7 +270,13 @@ export default function NewShipmentPage() {
   };
 
   const calculate = async () => {
-    if (!calcValid) { setError("Bitte alle Pflichtfelder ausfüllen (Absender, Empfänger, Gewicht)"); return; }
+    const errs = getErrors(form);
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      setError("Bitte korrigieren Sie die markierten Felder.");
+      return;
+    }
+    setErrors({});
     setError(""); setLoading(true); setSelected(null);
     try {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
@@ -229,20 +303,25 @@ export default function NewShipmentPage() {
   };
 
   // ── Render helpers for address fields ──
-  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => (
-    <div className="field">
-      <label className="field-label">
-        {label}{optional && <span className="field-optional"> (optional)</span>}
-      </label>
-      <input
-        className="field-input"
-        type={type}
-        value={form[`${p}_${key}`]}
-        onChange={e => upd(`${p}_${key}`, e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
-  );
+  const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
+    const fk = `${p}_${key}`;
+    const errMsg = errors[fk];
+    return (
+      <div className="field">
+        <label className="field-label">
+          {label}{optional && <span className="field-optional"> (optional)</span>}
+        </label>
+        <input
+          className={`field-input${errMsg ? " field-input-error" : ""}`}
+          type={type}
+          value={form[fk]}
+          onChange={e => upd(fk, e.target.value)}
+          placeholder={placeholder}
+        />
+        {errMsg && <span className="field-error">{errMsg}</span>}
+      </div>
+    );
+  };
 
   const countrySelect = (p) => (
     <div className="field">
@@ -413,11 +492,13 @@ export default function NewShipmentPage() {
                     <div className="field-row field-row-2">
                       <div className="field">
                         <label className="field-label">PLZ *</label>
-                        <input className="field-input" value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
+                        <input className={`field-input${errors.s_zip  ? " field-input-error" : ""}`} value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
+                        {errors.s_zip  && <span className="field-error">{errors.s_zip}</span>}
                       </div>
                       <div className="field">
                         <label className="field-label">Stadt *</label>
-                        <input className="field-input" value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
+                        <input className={`field-input${errors.s_city ? " field-input-error" : ""}`} value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
+                        {errors.s_city && <span className="field-error">{errors.s_city}</span>}
                       </div>
                     </div>
                     {countrySelect("s")}
@@ -435,11 +516,13 @@ export default function NewShipmentPage() {
                     <div className="field-row field-row-2">
                       <div className="field">
                         <label className="field-label">PLZ *</label>
-                        <input className="field-input" value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
+                        <input className={`field-input${errors.r_zip  ? " field-input-error" : ""}`} value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
+                        {errors.r_zip  && <span className="field-error">{errors.r_zip}</span>}
                       </div>
                       <div className="field">
                         <label className="field-label">Stadt *</label>
-                        <input className="field-input" value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
+                        <input className={`field-input${errors.r_city ? " field-input-error" : ""}`} value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
+                        {errors.r_city && <span className="field-error">{errors.r_city}</span>}
                       </div>
                     </div>
                     {countrySelect("r")}
@@ -456,10 +539,26 @@ export default function NewShipmentPage() {
               <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
               <div className="calc-panel-body">
                 <div className="field-row field-row-4">
-                  <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
-                  <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width} onChange={e => upd("width", e.target.value)} placeholder="20" /></div>
-                  <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
-                  <div className="field"><label className="field-label">Gewicht kg *</label><input className="field-input" type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" /></div>
+                  <div className="field">
+                    <label className="field-label">Länge cm</label>
+                    <input className={`field-input${errors.length ? " field-input-error" : ""}`} type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" />
+                    {errors.length && <span className="field-error">{errors.length}</span>}
+                  </div>
+                  <div className="field">
+                    <label className="field-label">Breite cm</label>
+                    <input className={`field-input${errors.width  ? " field-input-error" : ""}`} type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" />
+                    {errors.width  && <span className="field-error">{errors.width}</span>}
+                  </div>
+                  <div className="field">
+                    <label className="field-label">Höhe cm</label>
+                    <input className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" />
+                    {errors.height && <span className="field-error">{errors.height}</span>}
+                  </div>
+                  <div className="field">
+                    <label className="field-label">Gewicht kg *</label>
+                    <input className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" />
+                    {errors.weight && <span className="field-error">{errors.weight}</span>}
+                  </div>
                 </div>
                 {volWeight && (
                   <div className="vol-weight-box">

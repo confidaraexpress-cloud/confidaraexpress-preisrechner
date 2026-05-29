@@ -10,6 +10,25 @@ import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../context/AuthContext";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getRegErrors(form) {
+  const e = {};
+  if (!form.email?.trim())                      e.email        = "E-Mail ist ein Pflichtfeld.";
+  else if (!EMAIL_RE.test(form.email.trim()))   e.email        = "Bitte eine gültige E-Mail-Adresse eingeben.";
+  if (!form.password)                            e.password     = "Passwort ist ein Pflichtfeld.";
+  else if (form.password.length < 8)             e.password     = "Passwort muss mindestens 8 Zeichen enthalten.";
+  else if (form.password.length > 128)           e.password     = "Passwort darf maximal 128 Zeichen enthalten.";
+  if (!form.name?.trim())                        e.name         = "Name ist ein Pflichtfeld.";
+  else if (form.name.length > 100)               e.name         = "Name darf maximal 100 Zeichen enthalten.";
+  if (form.company_name?.length > 200)           e.company_name = "Firma darf maximal 200 Zeichen enthalten.";
+  if (form.vat_id?.length > 30)                 e.vat_id       = "USt-ID darf maximal 30 Zeichen enthalten.";
+  if (form.street?.length > 200)                e.street       = "Straße darf maximal 200 Zeichen enthalten.";
+  if (form.zip?.length > 10)                    e.zip          = "PLZ darf maximal 10 Zeichen enthalten.";
+  if (form.city?.length > 100)                  e.city         = "Stadt darf maximal 100 Zeichen enthalten.";
+  return e;
+}
+
 export default function AuthPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +50,7 @@ export default function AuthPage() {
     name: "", email: "", password: "", company_name: "",
     vat_id: "", street: "", zip: "", city: "", country: "DE",
   });
+  const [regErrors, setRegErrors] = useState({});
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -59,6 +79,9 @@ export default function AuthPage() {
   };
 
   const handleRegister = async () => {
+    const errs = getRegErrors(regForm);
+    if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
+    setRegErrors({});
     setError(""); setLoading(true);
     try {
       const r = await fetch(`${API}/register`, { method: "POST", headers: jsonH, body: JSON.stringify(regForm) });
@@ -98,6 +121,13 @@ export default function AuthPage() {
   };
 
   const clearMessages = () => { setError(""); setSuccess(""); };
+
+  const handleRegChange = (k, v) => {
+    setRegForm(p => ({ ...p, [k]: v }));
+    setRegErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
+  };
+
+  const regValid = Object.keys(getRegErrors(regForm)).length === 0;
 
   return (
     <div className="auth-page">
@@ -183,9 +213,11 @@ export default function AuthPage() {
               ) : (
                 <RegisterForm
                   form={regForm}
-                  onChange={(k, v) => setRegForm(p => ({ ...p, [k]: v }))}
+                  onChange={handleRegChange}
                   onRegister={handleRegister}
                   loading={loading}
+                  errors={regErrors}
+                  regValid={regValid}
                 />
               )}
             </div>

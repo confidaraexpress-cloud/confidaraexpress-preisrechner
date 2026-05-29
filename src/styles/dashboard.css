@@ -1,6 +1,12 @@
 /* ─── Dashboard Shell ────────────────────────────────────────────────────── */
 .app-shell { display: flex; min-height: 100vh; background: #f0f4fa; }
 
+/* Override navbar padding when CalculatorPage runs inside dashboard layout */
+.main-content > .page-with-navbar {
+  padding-top: 24px;
+  min-height: auto;
+}
+
 .sidebar-overlay {
   position: fixed; inset: 0; z-index: 198;
   background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;

@@ -4,11 +4,12 @@ import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 
 const NAV_ITEMS = [
-  { id: "overview", label: "Übersicht",     icon: "dashboard" },
-  { id: "new",      label: "Neue Sendung",  icon: "plus"      },
-  { id: "shipments",label: "Sendungen",     icon: "truck"     },
-  { id: "invoices", label: "Rechnungen",    icon: "invoice"   },
-  { id: "profile",  label: "Mein Profil",   icon: "user"      },
+  { id: "overview",    label: "Übersicht",    icon: "dashboard" },
+  { id: "new",         label: "Neue Sendung", icon: "plus"      },
+  { id: "shipments",   label: "Sendungen",    icon: "truck"     },
+  { id: "invoices",    label: "Rechnungen",   icon: "invoice"   },
+  { id: "profile",     label: "Mein Profil",  icon: "user"      },
+  { id: "calculator",  label: "Preisrechner", icon: "zap"       },
 ];
 
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen }) {
@@ -43,10 +44,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <Icon n={item.icon} s={16} /> {item.label}
             </button>
           ))}
-          <div className="nav-section-label" style={{ marginTop: 8 }}>Plattform</div>
-          <button className="nav-item" onClick={() => navigate("/calculator")}>
-            <Icon n="zap" s={16} /> Preisrechner
-          </button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-card">

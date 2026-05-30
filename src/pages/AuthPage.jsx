@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { API, jsonH } from "../api/client";
 import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
@@ -226,6 +226,19 @@ export default function AuthPage() {
           </>
         )}
 
+        <div style={{ marginTop: "auto", paddingTop: 24, display: "flex", gap: "6px 16px", flexWrap: "wrap", justifyContent: "center" }}>
+          {[["Impressum", "/impressum"], ["Datenschutz", "/datenschutz"], ["AGB", "/agb"]].map(([label, to]) => (
+            <Link
+              key={to}
+              to={to}
+              style={{ color: "rgba(255,255,255,0.30)", fontSize: 12, textDecoration: "none" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.60)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.30)"; }}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

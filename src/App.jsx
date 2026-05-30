@@ -7,11 +7,15 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 
-const AuthPage       = React.lazy(() => import("./pages/AuthPage"));
-const CalculatorPage = React.lazy(() => import("./pages/CalculatorPage"));
-const BookingPage    = React.lazy(() => import("./pages/BookingPage"));
-const DashboardPage  = React.lazy(() => import("./pages/DashboardPage"));
-const TrackingPage   = React.lazy(() => import("./pages/TrackingPage"));
+const AuthPage        = React.lazy(() => import("./pages/AuthPage"));
+const CalculatorPage  = React.lazy(() => import("./pages/CalculatorPage"));
+const BookingPage     = React.lazy(() => import("./pages/BookingPage"));
+const DashboardPage   = React.lazy(() => import("./pages/DashboardPage"));
+const TrackingPage    = React.lazy(() => import("./pages/TrackingPage"));
+const ImpressumPage   = React.lazy(() => import("./pages/ImpressumPage"));
+const DatenschutzPage = React.lazy(() => import("./pages/DatenschutzPage"));
+const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
+const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -31,11 +35,15 @@ export default function App() {
           </Route>
         )}
 
-        {/* Public routes: tracking + unauthenticated calculator under navbar */}
+        {/* Public routes: tracking + unauthenticated calculator + legal pages under navbar */}
         <Route element={<NavbarLayout />}>
           {!authed && <Route path="/calculator" element={<CalculatorPage />} />}
-          <Route path="/tracking" element={<TrackingPage />} />
-          <Route path="/booking"  element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+          <Route path="/tracking"    element={<TrackingPage />} />
+          <Route path="/booking"     element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+          <Route path="/impressum"   element={<ImpressumPage />} />
+          <Route path="/datenschutz" element={<DatenschutzPage />} />
+          <Route path="/agb"         element={<AGBPage />} />
+          <Route path="/widerruf"    element={<WiderrufPage />} />
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

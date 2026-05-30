@@ -2,6 +2,7 @@ import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
+import { Footer } from "./Footer";
 
 function Navbar() {
   const { authed } = useAuth();
@@ -64,6 +65,7 @@ export function NavbarLayout() {
     <>
       <Navbar />
       <Outlet />
+      <Footer />
     </>
   );
 }

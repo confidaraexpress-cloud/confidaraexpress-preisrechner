@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { API, authH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
@@ -242,7 +242,7 @@ export default function BookingPage() {
                   <input type="checkbox" className="booking-agb-checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} />
                   <span className="booking-agb-text">
                     Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
-                    <span className="booking-agb-link">Allgemeinen Geschäftsbedingungen</span>{" "}
+                    <Link to="/agb" className="booking-agb-link">Allgemeinen Geschäftsbedingungen</Link>{" "}
                     zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
                   </span>
                 </label>

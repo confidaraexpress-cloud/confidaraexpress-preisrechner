@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 
@@ -58,19 +58,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <div className="user-name">{user?.company_name || user?.name}</div>
               <div className="user-role">{user?.email || "B2B Konto"}</div>
             </div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", paddingTop: 10 }}>
-            {[["Impressum", "/impressum"], ["Datenschutz", "/datenschutz"], ["AGB", "/agb"], ["Widerruf", "/widerruf"]].map(([label, to]) => (
-              <Link
-                key={to}
-                to={to}
-                style={{ color: "rgba(255,255,255,0.28)", fontSize: 10.5, textDecoration: "none", whiteSpace: "nowrap", lineHeight: 1.8 }}
-                onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.28)"; }}
-              >
-                {label}
-              </Link>
-            ))}
           </div>
         </div>
       </aside>

@@ -11,5 +11,8 @@
     "react-dom": "latest",
     "react-router-dom": "^7.15.1",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }

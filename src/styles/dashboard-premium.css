@@ -488,41 +488,42 @@
 /*  CARRIER NETWORK                                                          */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-carriers-card { padding: 28px 30px 30px; }
+.ce-carriers-card { padding: 22px 24px 20px; }
 .ce-carriers-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin: 22px 0 20px;
+  gap: 10px;
+  margin: 16px 0 14px;
 }
 .ce-carrier-tile {
-  height: 86px;
+  height: 52px;
   background: #ffffff;
-  border-radius: 10px;
-  border-top: 3px solid var(--ce-carrier-accent, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
   display: grid;
   place-items: center;
-  padding: 12px 16px;
-  box-shadow:
-    0 4px 16px -6px rgba(0, 0, 0, 0.18),
-    0 1px 3px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  padding: 8px 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 .ce-carrier-tile:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 12px 32px -8px rgba(0, 0, 0, 0.22),
-    0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10);
 }
-.ce-carrier-tile img { max-width: 100%; max-height: 38px; object-fit: contain; }
-.ce-carrier-wordmark {
+.ce-carrier-logo-img {
+  max-height: 28px;
+  max-width: 90%;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+.ce-carrier-fallback {
   font-family: 'Syne', sans-serif;
   font-weight: 800;
-  font-size: 17px;
-  letter-spacing: -0.025em;
-  color: #0b1f4d;
-  text-align: center;
+  font-size: 13.5px;
+  letter-spacing: -0.02em;
   line-height: 1;
+  text-align: center;
   user-select: none;
 }
 .ce-carriers-note {

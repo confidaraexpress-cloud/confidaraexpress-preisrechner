@@ -29,7 +29,16 @@ const STEPS = [
   },
 ];
 
-const CARRIERS = ["DHL", "DPD", "GLS", "UPS", "Hermes"];
+const CARRIERS = [
+  { name: "DHL",    color: "#FFCC00" },
+  { name: "DPD",    color: "#DC0032" },
+  { name: "GLS",    color: "#FF7300" },
+  { name: "UPS",    color: "#FFB500" },
+  { name: "Hermes", color: "#8B0078" },
+  { name: "FedEx",  color: "#4D148C" },
+  { name: "TNT",    color: "#E84320" },
+  { name: "Jumingo",color: "#1A5FB8" },
+];
 
 function DashboardFooter() {
   return (
@@ -267,9 +276,13 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
               <div className="ce-card ce-carriers-card">
                 <div className="ce-section-title">Unser Carrier-Netzwerk</div>
                 <div className="ce-carriers-grid">
-                  {CARRIERS.map((name) => (
-                    <div className="ce-carrier-tile" key={name}>
-                      <div className="ce-carrier-wordmark">{name}</div>
+                  {CARRIERS.map((c) => (
+                    <div
+                      className="ce-carrier-tile"
+                      key={c.name}
+                      style={{ "--ce-carrier-accent": c.color }}
+                    >
+                      <div className="ce-carrier-wordmark">{c.name}</div>
                     </div>
                   ))}
                 </div>

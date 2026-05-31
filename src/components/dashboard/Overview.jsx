@@ -29,15 +29,16 @@ const STEPS = [
   },
 ];
 
+// logo: import from src/assets/carriers/<name>.svg once available, then set here
 const CARRIERS = [
-  { name: "DHL",    color: "#FFCC00" },
-  { name: "DPD",    color: "#DC0032" },
-  { name: "GLS",    color: "#FF7300" },
-  { name: "UPS",    color: "#FFB500" },
-  { name: "Hermes", color: "#8B0078" },
-  { name: "FedEx",  color: "#4D148C" },
-  { name: "TNT",    color: "#E84320" },
-  { name: "Jumingo",color: "#1A5FB8" },
+  { name: "UPS",    logo: null, accentColor: "#351C15" },
+  { name: "DHL",    logo: null, accentColor: "#D40511" },
+  { name: "TNT",    logo: null, accentColor: "#E84320" },
+  { name: "FedEx",  logo: null, accentColor: "#4D148C" },
+  { name: "GLS",    logo: null, accentColor: "#FF6600" },
+  { name: "DPD",    logo: null, accentColor: "#DC0032" },
+  { name: "Jumingo",logo: null, accentColor: "#1A5FB8" },
+  { name: "Hermes", logo: null, accentColor: "#8B0078" },
 ];
 
 function DashboardFooter() {
@@ -277,12 +278,11 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
                 <div className="ce-section-title">Unser Carrier-Netzwerk</div>
                 <div className="ce-carriers-grid">
                   {CARRIERS.map((c) => (
-                    <div
-                      className="ce-carrier-tile"
-                      key={c.name}
-                      style={{ "--ce-carrier-accent": c.color }}
-                    >
-                      <div className="ce-carrier-wordmark">{c.name}</div>
+                    <div className="ce-carrier-tile" key={c.name}>
+                      {c.logo
+                        ? <img src={c.logo} alt={c.name} className="ce-carrier-logo-img" />
+                        : <span className="ce-carrier-fallback" style={{ color: c.accentColor }}>{c.name}</span>
+                      }
                     </div>
                   ))}
                 </div>

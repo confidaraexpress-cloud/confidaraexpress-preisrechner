@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
+import dhlLogo    from "../../assets/carriers/dhl.svg";
+import upsLogo    from "../../assets/carriers/ups.svg";
+import fedexLogo  from "../../assets/carriers/fedex.svg";
+import tntLogo    from "../../assets/carriers/tnt.svg";
+import dpdLogo    from "../../assets/carriers/dpd.svg";
+import glsLogo    from "../../assets/carriers/gls.svg";
+import jumingoLogo from "../../assets/carriers/jumingo.svg";
+import emonsLogo  from "../../assets/carriers/emons.svg";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -29,16 +37,15 @@ const STEPS = [
   },
 ];
 
-// logo: import from src/assets/carriers/<name>.svg once available, then set here
 const CARRIERS = [
-  { name: "UPS",    logo: null, accentColor: "#351C15" },
-  { name: "DHL",    logo: null, accentColor: "#D40511" },
-  { name: "TNT",    logo: null, accentColor: "#E84320" },
-  { name: "FedEx",  logo: null, accentColor: "#4D148C" },
-  { name: "GLS",    logo: null, accentColor: "#FF6600" },
-  { name: "DPD",    logo: null, accentColor: "#DC0032" },
-  { name: "Jumingo",logo: null, accentColor: "#1A5FB8" },
-  { name: "Hermes", logo: null, accentColor: "#8B0078" },
+  { name: "DHL",    logo: dhlLogo    },
+  { name: "UPS",    logo: upsLogo    },
+  { name: "FedEx",  logo: fedexLogo  },
+  { name: "TNT",    logo: tntLogo    },
+  { name: "DPD",    logo: dpdLogo    },
+  { name: "GLS",    logo: glsLogo    },
+  { name: "Jumingo",logo: jumingoLogo},
+  { name: "Emons",  logo: emonsLogo  },
 ];
 
 function DashboardFooter() {

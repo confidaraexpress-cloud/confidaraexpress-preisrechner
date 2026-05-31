@@ -488,7 +488,14 @@
 /*  CARRIER NETWORK                                                          */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-carriers-card { padding: 18px 22px 16px; }
+.ce-carriers-card {
+  padding: 18px 22px 16px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
 .ce-carriers-card .ce-section-title {
   font-size: 15px;
   font-weight: 600;
@@ -498,26 +505,25 @@
 .ce-carriers-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 12px 0 10px;
+  gap: 8px;
+  margin: 14px 0 12px;
 }
 .ce-carrier-tile {
-  height: 44px;
+  height: 64px;
   background: transparent;
-  border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: none;
   display: grid;
   place-items: center;
-  padding: 6px 10px;
-  transition: background 150ms ease, border-color 150ms ease;
+  padding: 10px 16px;
+  transition: opacity 150ms ease, transform 150ms ease;
 }
 .ce-carrier-tile:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.18);
+  opacity: 0.72;
+  transform: scale(1.05);
 }
 .ce-carrier-logo-img {
-  max-height: 26px;
-  max-width: 88%;
+  max-height: 40px;
+  max-width: 80%;
   width: auto;
   object-fit: contain;
   display: block;
@@ -525,7 +531,7 @@
 .ce-carrier-fallback {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   line-height: 1;
   text-align: center;
@@ -642,15 +648,17 @@
   .ce-kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .ce-stat { padding: 16px; }
   .ce-stat-value { font-size: 24px; }
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ce-carrier-tile { height: 56px; padding: 8px 12px; }
   .ce-hero-title { font-size: 30px; }
   .ce-hero-sub { font-size: 14px; }
   .ce-table-card, .ce-steps-card { padding: 20px 18px; }
-  .ce-carriers-card { padding: 16px 16px 14px; }
+  .ce-carriers-card { padding: 14px 14px 12px; }
 }
 
 @media (max-width: 420px) {
   .ce-kpi-grid { grid-template-columns: 1fr; }
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ce-carrier-tile { height: 52px; padding: 6px 10px; }
   .ce-footer-grid { grid-template-columns: 1fr; }
 }

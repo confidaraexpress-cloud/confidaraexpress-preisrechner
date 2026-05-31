@@ -35,8 +35,8 @@ export default function ImpressumPage() {
               <p style={P_STYLE}>
                 Telefon: 015118003775<br />
                 E-Mail:{" "}
-                <a href="mailto:confidaraexpress@gmail.com" style={{ color: "inherit" }}>
-                  confidaraexpress@gmail.com
+                <a href="mailto:support@confidaraexpress.de" style={{ color: "inherit" }}>
+                  support@confidaraexpress.de
                 </a>
               </p>
             </div>

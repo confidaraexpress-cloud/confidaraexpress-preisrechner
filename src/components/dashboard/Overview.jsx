@@ -66,18 +66,10 @@ function DashboardFooter() {
             <a href="#" aria-label="LinkedIn">
               <Icon n="linkedin" s={16} />
             </a>
-            <a href="mailto:confidaraexpress@gmail.com" aria-label="E-Mail">
+            <a href="mailto:support@confidaraexpress.de" aria-label="E-Mail">
               <Icon n="mail" s={16} />
             </a>
           </div>
-        </div>
-
-        <div className="ce-footer-col">
-          <h4>Plattform</h4>
-          <Link to="/dashboard">Übersicht</Link>
-          <Link to="/dashboard?page=shipments">Sendungen</Link>
-          <Link to="/dashboard?page=invoices">Rechnungen</Link>
-          <Link to="/calculator">Preisrechner</Link>
         </div>
 
         <div className="ce-footer-col">
@@ -92,7 +84,7 @@ function DashboardFooter() {
           <h4>Kontakt</h4>
           <div className="ce-footer-contact-row">
             <Icon n="mail" s={14} />
-            confidaraexpress@gmail.com
+            support@confidaraexpress.de
           </div>
           <div className="ce-footer-contact-row">
             <Icon n="phone" s={14} />

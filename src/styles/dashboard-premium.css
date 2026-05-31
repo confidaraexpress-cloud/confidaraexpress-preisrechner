@@ -556,7 +556,7 @@
 }
 .ce-footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+  grid-template-columns: 1.6fr 1fr 1.2fr;
   gap: 32px;
   margin-bottom: 32px;
 }

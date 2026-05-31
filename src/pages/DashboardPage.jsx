@@ -68,7 +68,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}

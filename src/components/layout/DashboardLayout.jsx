@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { LegalLinks } from "./LegalLinks";
 
 export function DashboardLayout() {
   const { user } = useAuth();
@@ -41,6 +42,7 @@ export function DashboardLayout() {
           <div className="user-avatar">{initials}</div>
         </div>
         <Outlet />
+        <LegalLinks />
       </main>
     </div>
   );

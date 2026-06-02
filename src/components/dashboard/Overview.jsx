@@ -60,7 +60,7 @@ function DashboardFooter() {
             </span>
           </div>
           <p className="ce-footer-tag">
-            B2B-Versandplattform für professionellen Paketversand. Schnell, transparent, zuverlässig.
+            B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
           </p>
           <div className="ce-footer-social">
             <a href="#" aria-label="LinkedIn">

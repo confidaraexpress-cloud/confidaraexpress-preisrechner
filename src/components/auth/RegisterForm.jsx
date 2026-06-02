@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { countries } from "../../utils/countries";
@@ -155,6 +156,12 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
         <span>{loading ? "Wird erstellt…" : "Konto beantragen"}</span>
         <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>
       </button>
+
+      <p className="auth-form-legal">
+        Mit der Registrierung akzeptieren Sie die{" "}
+        <Link to="/agb" target="_blank" rel="noopener noreferrer">AGB</Link> und{" "}
+        <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutzerklärung</Link>.
+      </p>
     </form>
   );
 }

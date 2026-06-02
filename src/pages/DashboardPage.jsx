@@ -7,6 +7,7 @@ import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
+import { LegalLinks } from "../components/layout/LegalLinks";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
@@ -123,6 +124,8 @@ export default function DashboardPage() {
         {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}
         {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}
         {page === "profile"   && <Profile user={user} />}
+
+        {page !== "overview" && <LegalLinks />}
       </main>
     </div>
   );

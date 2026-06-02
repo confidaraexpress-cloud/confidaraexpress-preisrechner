@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { API, jsonH } from "../api/client";
 import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
@@ -225,6 +225,13 @@ export default function AuthPage() {
             <TrustBar />
           </>
         )}
+
+        <nav className="auth-legal" aria-label="Rechtliche Informationen">
+          <Link to="/impressum"   target="_blank" rel="noopener noreferrer">Impressum</Link>
+          <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</Link>
+          <Link to="/agb"         target="_blank" rel="noopener noreferrer">AGB</Link>
+          <Link to="/widerruf"    target="_blank" rel="noopener noreferrer">Widerruf</Link>
+        </nav>
 
       </div>
     </div>

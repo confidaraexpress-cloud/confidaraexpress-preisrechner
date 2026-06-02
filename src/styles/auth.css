@@ -379,6 +379,25 @@
 .auth-foot-ico { width: 14px; height: 14px; color: var(--auth-ink-4); flex-shrink: 0; }
 .auth-foot strong { color: var(--auth-ink-3); font-weight: 500; }
 
+/* ── Legal links (all auth views, shell-level) ──────────────────────────── */
+.auth-legal {
+  margin-top: 20px;
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 8px 18px;
+  font-size: 12px; line-height: 1.5;
+}
+.auth-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
+.auth-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
+
+/* ── Register form legal hint ───────────────────────────────────────────── */
+.auth-form-legal {
+  margin-top: 14px; text-align: center;
+  font-size: 12px; line-height: 1.55;
+  color: var(--auth-ink-4);
+}
+.auth-form-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
+.auth-form-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
+
 /* ── Animations ─────────────────────────────────────────────────────────── */
 
 @keyframes auth-fade-up {

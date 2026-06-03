@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { API, authH, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
@@ -44,7 +45,8 @@ const SERVICE_OPTIONS = [
 ];
 
 export default function CalculatorPage() {
-  const { user } = useAuth();
+  const { user, authed } = useAuth();
+  const navigate = useNavigate();
 
   // ── Service filter ──
   const [serviceFilter, setServiceFilter]         = useState("all");
@@ -581,6 +583,25 @@ export default function CalculatorPage() {
                   )}
                 </div>
               ))}
+
+              {hasResults && !loading && tariffs.length > 0 && (
+                <div className="results-cta-book">
+                  {authed ? (
+                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=new")}>
+                      <Icon n="package" s={16} /> Sendung anlegen &amp; buchen
+                    </button>
+                  ) : (
+                    <>
+                      <button className="btn btn-primary btn-full" onClick={() => navigate("/register")}>
+                        <Icon n="userPlus" s={16} /> Jetzt registrieren
+                      </button>
+                      <button className="btn btn-outline btn-full" onClick={() => navigate("/login")}>
+                        Anmelden
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {hasResults && !loading && (
                 <div className="results-cta">

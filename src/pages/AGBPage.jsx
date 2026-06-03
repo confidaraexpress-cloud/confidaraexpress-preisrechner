@@ -63,7 +63,7 @@ export default function AGBPage() {
               <p style={P_STYLE}>
                 <strong>1.1</strong> Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB") gelten für alle
                 Geschäftsbeziehungen zwischen der <strong>Confidara Express GbR</strong>, vertreten durch die
-                Gesellschafter Miguel Vance und Patrick Werner, [Geschäftsanschrift vor Go-Live einzutragen],
+                Gesellschafter Miguel Vance und Patrick Werner, Weiherstraße 25,
                 73207 Plochingen, Deutschland (nachfolgend „Confidara Express" oder „CE") und ihren Kunden.
               </p>
               <p style={P_STYLE}>
@@ -794,17 +794,6 @@ export default function AGBPage() {
                 <strong>17.6 Kein Verzicht:</strong> Das Unterlassen der Geltendmachung von Rechten aus
                 diesen AGB durch Confidara Express in einem Einzelfall stellt keinen Verzicht auf diese
                 Rechte für die Zukunft dar.
-              </p>
-            </div>
-
-            {/* ── Stand-Hinweis ── */}
-            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--border, #e5e7eb)" }}>
-              <p style={{ fontSize: 13, color: "var(--text-muted, #6b7280)", lineHeight: 1.65, margin: 0 }}>
-                <strong>Stand: Mai 2026.</strong>{" "}
-                Diese AGB enthalten aktuell noch eine Platzhalteranschrift des Unternehmens in § 1.1.
-                Die tatsächliche Geschäftsanschrift muss vor dem produktiven Go-Live eingetragen werden.
-                Eine abschließende rechtliche Prüfung durch einen zugelassenen Rechtsanwalt wird vor
-                Veröffentlichung ausdrücklich empfohlen.
               </p>
             </div>
 

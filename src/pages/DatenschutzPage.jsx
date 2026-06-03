@@ -70,7 +70,7 @@ export default function DatenschutzPage() {
               </p>
               <p style={P_STYLE}>
                 <strong>Confidara Express GbR</strong><br />
-                [Tatsächliche Geschäftsanschrift — vor Go-Live einzutragen]<br />
+                Weiherstraße 25<br />
                 73207 Plochingen<br />
                 Deutschland
               </p>
@@ -647,17 +647,6 @@ export default function DatenschutzPage() {
                 <br /><br />
                 Bei wesentlichen Änderungen werden registrierte Nutzer über ihre hinterlegte
                 E-Mail-Adresse informiert.
-              </p>
-            </div>
-
-            {/* ── Stand-Hinweis ── */}
-            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid var(--border, #e5e7eb)" }}>
-              <p style={{ fontSize: 13, color: "var(--text-muted, #6b7280)", lineHeight: 1.65, margin: 0 }}>
-                <strong>Stand: Mai 2026.</strong>{" "}
-                Diese Datenschutzerklärung enthält aktuell noch eine Platzhalteranschrift des
-                Verantwortlichen. Die tatsächliche Geschäftsanschrift muss vor dem produktiven
-                Go-Live eingetragen werden. Eine abschließende rechtliche Prüfung durch einen
-                zugelassenen Rechtsanwalt oder zertifizierten Datenschutzbeauftragten wird empfohlen.
               </p>
             </div>
 

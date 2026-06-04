@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /booking
+
+Sitemap: https://confidaraexpress.de/sitemap.xml

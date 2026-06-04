@@ -132,6 +132,9 @@
 .calc-page-title { font-size: 28px; color: var(--navy); margin-bottom: 6px; }
 .calc-page-sub { color: var(--gray500); font-size: 15px; }
 .results-cta { margin-top: 16px; }
+.results-cta-book { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
+.booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 
 /* ─── Tracking page ──────────────────────────────────────────────────────── */
 .tracking-page-wrap { padding-top: 48px; padding-bottom: 48px; max-width: 600px; }

@@ -15,6 +15,7 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
+  const [conflict, setConflict] = useState("");
 
   const [form, setForm] = useState({ content: "" });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -52,7 +53,7 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
-    setError(""); setLoading(true);
+    setError(""); setConflict(""); setLoading(true);
     try {
       const r = await fetch(`${API}/api/jumingo/book`, {
         method: "POST", headers: authH(),
@@ -70,6 +71,11 @@ export default function BookingPage() {
         }),
       });
       const d = await r.json();
+      if (r.status === 409) {
+        setConflict(d.error || "Diese Sendung wurde bereits verarbeitet oder befindet sich bereits in Bearbeitung.");
+        setLoading(false);
+        return;
+      }
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
@@ -247,9 +253,18 @@ export default function BookingPage() {
                   </span>
                 </label>
                 {error && <div className="alert alert-error">{error}</div>}
-                <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
-                  {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
-                </button>
+                {conflict ? (
+                  <div className="booking-conflict-box">
+                    <p className="booking-conflict-text"><Icon n="shield" s={16} c="#1D4ED8" /> {conflict}</p>
+                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=shipments")}>
+                      Zu meinen Sendungen
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
+                    {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
+                  </button>
+                )}
                 <p className="booking-email-note">
                   Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {user?.email}
                 </p>

@@ -59,9 +59,6 @@ function DashboardFooter() {
             B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
           </p>
           <div className="ce-footer-social">
-            <a href="#" aria-label="LinkedIn">
-              <Icon n="linkedin" s={16} />
-            </a>
             <a href="mailto:support@confidaraexpress.de" aria-label="E-Mail">
               <Icon n="mail" s={16} />
             </a>

@@ -72,7 +72,7 @@ export function Profile({ user }) {
       title: "Konto",
       items: [
         ["Status", <StatusBadge key="status" status={user?.status} />],
-        ["Zahlungsart", "Rechnung (B2B)"],
+        ["Zahlungsart", "Auf Rechnung (14 Tage Zahlungsziel)"],
       ],
     },
   ];

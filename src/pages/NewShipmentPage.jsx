@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { API, authH, jsonH } from "../api/client";
+import { API, apiFetch, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
@@ -244,7 +244,7 @@ export default function NewShipmentPage() {
   }, [carrierDropdownOpen]);
 
   useEffect(() => {
-    fetch(`${API}/api/jumingo/carriers`, { headers: authH() })
+    apiFetch(`/api/jumingo/carriers`, { auth: true })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => { if (d.carriers?.length) setAvailableCarriers(d.carriers); })
       .catch(() => {});

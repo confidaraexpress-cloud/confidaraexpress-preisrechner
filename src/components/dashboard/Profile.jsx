@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
-import { API, authH } from "../../api/client";
+import { apiFetch } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 
@@ -39,9 +39,9 @@ export function Profile({ user }) {
     setSaving(true);
     setSaveError("");
     try {
-      const r = await fetch(`${API}/kunde/profil`, {
+      const r = await apiFetch(`/kunde/profil`, {
         method: "PATCH",
-        headers: authH(),
+        auth: true,
         body: JSON.stringify(form),
       });
       const d = await r.json();

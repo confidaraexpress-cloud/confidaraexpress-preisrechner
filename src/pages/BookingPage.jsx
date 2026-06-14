@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { API, authH } from "../api/client";
+import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -55,8 +55,8 @@ export default function BookingPage() {
     if (!agbAccepted) return;
     setError(""); setConflict(""); setLoading(true);
     try {
-      const r = await fetch(`${API}/api/jumingo/book`, {
-        method: "POST", headers: authH(),
+      const r = await apiFetch(`/api/jumingo/book`, {
+        method: "POST", auth: true,
         body: JSON.stringify({
           shipmentId:      bookingData?.shipmentId,
           tariffId:        tariff?.id,

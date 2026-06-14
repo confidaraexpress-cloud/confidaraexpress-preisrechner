@@ -2,7 +2,7 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
-import { API, authH } from "../../api/client";
+import { apiFetch } from "../../api/client";
 
 export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
@@ -14,7 +14,7 @@ export function ShipmentsList({ shipments, loading }) {
     if (trackingId === id) { setTrackingId(null); return; }
     setTrackLoading(true); setTrackingId(id); setTracking(null);
     try {
-      const r = await fetch(`${API}/api/tracking/${id}`, { headers: authH() });
+      const r = await apiFetch(`/api/tracking/${id}`, { auth: true });
       const d = await r.json();
       setTracking(d.tracking);
     } catch { setTracking({ error: "Tracking nicht verfügbar" }); }
@@ -24,7 +24,7 @@ export function ShipmentsList({ shipments, loading }) {
   const downloadLabel = async (id) => {
     setLabelError("");
     try {
-      const r = await fetch(`${API}/api/jumingo/label/${id}`, { headers: authH() });
+      const r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
       const d = await r.json();
       if (d.label) {
         const a = document.createElement("a");

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API, authH } from "../api/client";
+import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
@@ -28,8 +28,8 @@ export default function DashboardPage() {
     setLoading(true);
     setLoadError("");
     Promise.all([
-      fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`${API}/kunde/invoices`,  { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
     ]).then(([s, inv]) => {
       setShipments(s.shipments || []);
       setInvoices(inv.invoices || []);

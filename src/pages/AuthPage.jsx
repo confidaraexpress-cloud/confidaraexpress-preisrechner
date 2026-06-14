@@ -30,7 +30,7 @@ function getRegErrors(form) {
 }
 
 export default function AuthPage() {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const defaultTab = location.pathname === "/register" ? "register" : "login";
@@ -197,6 +197,11 @@ export default function AuthPage() {
                 </button>
               </div>
 
+              {sessionExpired && (
+                <div className="auth-alert auth-alert-info">
+                  Ihre Sitzung ist abgelaufen oder Ihr Konto wurde deaktiviert. Bitte melden Sie sich erneut an.
+                </div>
+              )}
               {error   && <div className="auth-alert auth-alert-error">{error}</div>}
               {success && <div className="auth-alert auth-alert-success">{success}</div>}
 

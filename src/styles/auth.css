@@ -343,6 +343,9 @@
 .auth-alert-success {
   background: rgba(46, 200, 130, 0.08); border-color: rgba(46, 200, 130, 0.25); color: #b8f0d4;
 }
+.auth-alert-info {
+  background: rgba(46, 92, 255, 0.08); border-color: rgba(120, 160, 255, 0.25); color: var(--auth-blue-soft);
+}
 
 /* ── Trust Bar ──────────────────────────────────────────────────────────── */
 

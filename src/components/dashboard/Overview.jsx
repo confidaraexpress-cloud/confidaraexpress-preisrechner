@@ -9,8 +9,6 @@ import fedexLogo  from "../../assets/carriers/fedex.svg";
 import tntLogo    from "../../assets/carriers/tnt.svg";
 import dpdLogo    from "../../assets/carriers/dpd.svg";
 import glsLogo    from "../../assets/carriers/gls.svg";
-import jumingoLogo from "../../assets/carriers/jumingo.svg";
-import emonsLogo  from "../../assets/carriers/emons.svg";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -38,14 +36,12 @@ const STEPS = [
 ];
 
 const CARRIERS = [
-  { name: "DHL",    logo: dhlLogo    },
-  { name: "UPS",    logo: upsLogo    },
-  { name: "FedEx",  logo: fedexLogo  },
-  { name: "TNT",    logo: tntLogo    },
-  { name: "DPD",    logo: dpdLogo    },
-  { name: "GLS",    logo: glsLogo    },
-  { name: "Jumingo",logo: jumingoLogo},
-  { name: "Emons",  logo: emonsLogo  },
+  { name: "DHL",   logo: dhlLogo   },
+  { name: "UPS",   logo: upsLogo   },
+  { name: "FedEx", logo: fedexLogo },
+  { name: "TNT",   logo: tntLogo   },
+  { name: "DPD",   logo: dpdLogo   },
+  { name: "GLS",   logo: glsLogo   },
 ];
 
 function DashboardFooter() {
@@ -105,12 +101,6 @@ function DashboardFooter() {
 }
 
 export function Overview({ user, shipments, invoices, loading, onNewShipment, onAllShipments }) {
-  const unpaid = invoices.filter((i) => i.status === "unpaid");
-  const unpaidAmt = unpaid.reduce((sum, i) => sum + Number(i.amount), 0);
-  const inTransit = shipments.filter((s) =>
-    ["in_transit", "booked", "label_ready"].includes(s.status)
-  ).length;
-
   return (
     <div className="ce-overview">
       <div className="ce-aurora" aria-hidden="true">
@@ -122,7 +112,7 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
         {/* Topbar */}
         <div className="ce-topbar">
           <div className="ce-greeting">
-            {getGreeting()}, {user?.company_name || user?.name}
+            {getGreeting()}, {user?.name || user?.company_name || "Kunde"}
           </div>
           <button className="ce-icon-btn" aria-label="Benachrichtigungen">
             <Icon n="bell" s={18} />
@@ -148,56 +138,6 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </div>
         ) : (
           <>
-            {/* KPI Stats */}
-            <div className="ce-kpi-grid">
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Sendungen gesamt</span>
-                  <div className="ce-stat-ico"><Icon n="package" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  {shipments.length}
-                  <span className="ce-delta up">+12%</span>
-                </div>
-                <div className="ce-stat-foot">Sendungen insgesamt</div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Unterwegs</span>
-                  <div className="ce-stat-ico"><Icon n="truck" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  {inTransit}
-                  <span className="ce-delta up">+8%</span>
-                </div>
-                <div className="ce-stat-foot">Aktiv in Zustellung</div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Offene Rechnungen</span>
-                  <div className="ce-stat-ico"><Icon n="invoice" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">{unpaid.length}</div>
-                <div className="ce-stat-foot">
-                  {unpaid.length > 0 ? `${money(unpaidAmt)} ausstehend` : "Alle Rechnungen bezahlt"}
-                </div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Ø Laufzeit</span>
-                  <div className="ce-stat-ico"><Icon n="clock" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  2,4
-                  <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ce-ink-3)" }}>Tage</span>
-                </div>
-                <div className="ce-stat-foot">Durchschnittliche Zustellzeit</div>
-              </div>
-            </div>
-
             {/* Recent Shipments */}
             <div className="ce-section">
               <div className="ce-card ce-table-card">

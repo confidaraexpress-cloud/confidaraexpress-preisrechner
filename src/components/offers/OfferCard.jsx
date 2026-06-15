@@ -116,7 +116,9 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
           </div>
           <div>
             <div className="offer-carrier-name">{carrierName}</div>
-            <div className="offer-service-type">{t.tariffName}</div>
+            <div className="offer-service-type">
+              {t.shippingModeLabel || t.tariffName || "Standard"}
+            </div>
           </div>
         </div>
 
@@ -137,9 +139,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
             {t.serviceType === "dropoff" && (
               <span className="offer-chip offer-chip-service">🏪 Shopabgabe</span>
             )}
-            {t.shippingModeLabel && (
-              <span className="offer-chip offer-chip-service">{t.shippingModeLabel}</span>
-            )}
+
           </div>
 
           {hasStatus && (

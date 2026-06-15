@@ -189,9 +189,9 @@
 
 .offer-price-block { text-align: right; margin-bottom: 14px; }
 .offer-price {
-  font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500;
-  color: var(--navy); letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap;
-  font-feature-settings: 'tnum' 1;
+  font-family: 'DM Sans', sans-serif; font-size: 30px; font-weight: 700;
+  font-variation-settings: 'opsz' 40, 'wght' 700;
+  color: var(--navy); letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap;
 }
 .offer-price-sub { font-size: 12px; color: var(--gray400); margin-top: 3px; }
 .offer-price-na  { font-size: 14px; font-weight: 600; color: var(--danger); text-align: right; }
@@ -312,7 +312,7 @@
   .offer-carrier-name { font-size: 20px; }
   .offer-zone-c { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 12px; }
   .offer-price-block { text-align: left; margin-bottom: 0; }
-  .offer-price { font-size: 24px; }
+  .offer-price { font-size: 26px; }
   .offer-cta-btn { min-width: 160px; width: auto; }
   .offer-details-link { margin-top: 0; }
   .offers-trust-strip { grid-template-columns: 1fr 1fr; }
@@ -333,7 +333,7 @@
   .offers-body { padding: 14px; }
   .offer-card { padding: 18px 16px; border-radius: 14px; }
   .offer-carrier-name { font-size: 18px; }
-  .offer-price { font-size: 22px; }
+  .offer-price { font-size: 24px; }
   .offer-zone-c {
     flex-direction: column; align-items: stretch; gap: 8px;
   }

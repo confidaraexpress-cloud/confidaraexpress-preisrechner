@@ -116,7 +116,7 @@ export default function AuthPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       setSuccess("Passwort zurückgesetzt!");
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, "", "/login");
       setTimeout(() => { setStep("credentials"); setSuccess(""); }, 2000);
     } catch (e) { setError(e.message); }
     setLoading(false);

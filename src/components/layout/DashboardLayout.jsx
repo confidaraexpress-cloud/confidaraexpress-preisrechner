@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { DashboardSectionHeader } from "./DashboardSectionHeader";
 import { LegalLinks } from "./LegalLinks";
 
 export function DashboardLayout() {
@@ -41,6 +42,9 @@ export function DashboardLayout() {
           <div className="topbar-brand">ConfidaraExpress</div>
           <div className="user-avatar">{initials}</div>
         </div>
+        {activePage === "calculator" && (
+          <DashboardSectionHeader title="Preisrechner" />
+        )}
         <Outlet />
         <LegalLinks />
       </main>

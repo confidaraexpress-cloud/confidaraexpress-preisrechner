@@ -62,6 +62,8 @@
 .offers-filter-btn { display: inline-flex; align-items: center; gap: 5px; }
 .offers-filter-btn.has-filter { border-color: var(--blue2); color: var(--blue2); background: #eff6ff; }
 
+.offers-vat-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
 .offers-filter-panel {
   padding: 14px 20px 18px;
   background: white; border-bottom: 1px solid var(--border);

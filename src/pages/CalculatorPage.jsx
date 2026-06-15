@@ -52,6 +52,9 @@ export default function CalculatorPage() {
   // ── Sort ──
   const [sortMode, setSortMode] = useState("recommended");
 
+  // ── VAT display mode ──
+  const [vatMode, setVatMode] = useState("net");
+
   // ── Carrier filter ──
   const [carrierFilters, setCarrierFilters]           = useState([]);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
@@ -472,6 +475,8 @@ export default function CalculatorPage() {
             maxDays={form.max_days}
             onMaxPriceChange={v => upd("max_price", v)}
             onMaxDaysChange={v => upd("max_days", v)}
+            vatMode={vatMode}
+            onVatToggle={setVatMode}
           />
         )}
       </div>

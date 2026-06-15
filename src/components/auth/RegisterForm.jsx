@@ -4,7 +4,7 @@ import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { countries } from "../../utils/countries";
 
-export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true }) {
+export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange }) {
   const upd = (k, v) => onChange(k, v);
   return (
     <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
@@ -57,6 +57,23 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
           />
         </div>
         {errors.password && <span className="auth-field-error">{errors.password}</span>}
+      </div>
+
+      <div className="auth-field">
+        <div className="auth-field-row">
+          <label className="auth-field-label">Passwort wiederholen</label>
+        </div>
+        <div className="auth-input-wrap">
+          <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
+          <PasswordField
+            slim
+            value={passwordRepeat}
+            onChange={(e) => onPasswordRepeatChange(e.target.value)}
+            placeholder="Passwort erneut eingeben"
+            autoComplete="new-password"
+          />
+        </div>
+        {errors.passwordRepeat && <span className="auth-field-error">{errors.passwordRepeat}</span>}
       </div>
 
       <span className="auth-section-label">Unternehmen</span>

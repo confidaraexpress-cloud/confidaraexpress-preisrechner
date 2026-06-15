@@ -56,60 +56,28 @@
 .page-header-sub { font-size: 13px; color: var(--gray400); margin-top: 2px; }
 .page-body { padding: 24px 28px; }
 
-/* ─── DashboardTabBar ────────────────────────────────────────────────────── */
-.dash-tabbar {
-  background: var(--gray50);
+/* ─── DashboardSectionHeader ─────────────────────────────────────────────── */
+.dash-section-header {
+  background: white;
   border-bottom: 1px solid var(--border);
+  padding: 16px 28px 15px;
   position: sticky;
   top: 0;
   z-index: 99;
   box-shadow: 0 2px 10px rgba(14, 30, 80, 0.06);
 }
-.dash-tabbar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 8px 28px;
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.dash-tabbar-inner::-webkit-scrollbar { display: none; }
-.dash-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 16px;
+.dash-section-title {
+  margin: 0;
   font-family: 'Syne', sans-serif;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--gray500);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: none;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  background: linear-gradient(120deg, var(--navy) 0%, var(--blue) 55%, var(--blue3) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-.dash-tab:hover {
-  color: var(--navy);
-  background: rgba(29, 78, 216, 0.05);
-  border-color: rgba(29, 78, 216, 0.08);
-}
-.dash-tab.active {
-  color: var(--blue2);
-  background: var(--blue-light);
-  border-color: rgba(37, 99, 235, 0.18);
-  box-shadow: 0 1px 4px rgba(29, 78, 216, 0.10);
-}
-.dash-tab:focus-visible {
-  outline: 2px solid var(--blue2);
-  outline-offset: 1px;
-}
-.dash-tab-ico { display: inline-flex; align-items: center; opacity: 0.65; }
-.dash-tab.active .dash-tab-ico { opacity: 1; }
 
 /* ─── Profile meta row (replaces page-header on profile page) ───────────── */
 .profile-page-meta {

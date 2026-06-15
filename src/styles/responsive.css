@@ -27,6 +27,12 @@
   .mobile-topbar { display: flex; }
   .page-header { display: none; }
   .page-body { padding: 14px; }
+
+  /* DashboardTabBar — scrollable on mobile, not sticky (avoids topbar collision) */
+  .dash-tabbar { position: static; box-shadow: none; }
+  .dash-tabbar-inner { padding: 6px 12px; gap: 2px; }
+  .dash-tab { padding: 8px 12px; font-size: 12.5px; gap: 5px; }
+  .dash-tab-label { white-space: nowrap; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi-value { font-size: 22px; }
 

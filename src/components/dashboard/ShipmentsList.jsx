@@ -42,9 +42,6 @@ export function ShipmentsList({ shipments, loading }) {
 
   return (
     <>
-      <div className="page-header">
-        <div><div className="page-header-title">Sendungen</div></div>
-      </div>
       <div className="page-body">
         {labelError && (
           <div className="alert alert-error mb-16">

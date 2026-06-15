@@ -7,6 +7,7 @@ import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
+import { DashboardTabBar } from "../components/layout/DashboardTabBar";
 import { LegalLinks } from "../components/layout/LegalLinks";
 import { useAuth } from "../context/AuthContext";
 
@@ -110,15 +111,16 @@ export default function DashboardPage() {
           />
         )}
 
+        {page !== "overview" && (
+          <DashboardTabBar page={page} navigateTo={navigateTo} />
+        )}
+
         {page === "new" && (
-          <>
-            <div className="page-header"><div><div className="page-header-title">Neue Sendung</div></div></div>
-            <div className="page-body">
-              <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-                <NewShipmentPage />
-              </Suspense>
-            </div>
-          </>
+          <div className="page-body">
+            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+              <NewShipmentPage />
+            </Suspense>
+          </div>
         )}
 
         {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}

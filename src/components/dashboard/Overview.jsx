@@ -4,6 +4,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
+import { ContactMailMenu } from "../common/ContactMailMenu";
 import dhlLogo    from "../../assets/carriers/dhl.svg";
 import upsLogo    from "../../assets/carriers/ups.svg";
 import fedexLogo  from "../../assets/carriers/fedex.svg";
@@ -45,15 +46,7 @@ const CARRIERS = [
   { name: "GLS",   logo: glsLogo   },
 ];
 
-function DashboardFooter() {
-  const [copied, setCopied] = useState(false);
-
-  const copyMail = () => {
-    navigator.clipboard?.writeText("support@confidaraexpress.de").catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+function DashboardFooter({ onMailClick }) {
   return (
     <footer className="ce-footer">
       <div className="ce-footer-grid">
@@ -68,9 +61,15 @@ function DashboardFooter() {
             B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
           </p>
           <div className="ce-footer-social">
-            <a href="mailto:support@confidaraexpress.de" aria-label="E-Mail" title="support@confidaraexpress.de">
+            <button
+              type="button"
+              className="ce-footer-mail-btn"
+              onClick={onMailClick}
+              aria-label="E-Mail schreiben"
+              title="support@confidaraexpress.de"
+            >
               <Icon n="mail" s={16} />
-            </a>
+            </button>
           </div>
         </div>
 
@@ -86,15 +85,12 @@ function DashboardFooter() {
           <h4>Kontakt</h4>
           <div className="ce-footer-contact-row">
             <Icon n="mail" s={14} />
-            <a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a>
             <button
               type="button"
-              className="ce-footer-copy-btn"
-              onClick={copyMail}
-              aria-label="E-Mail-Adresse kopieren"
-              title={copied ? "Kopiert!" : "E-Mail-Adresse kopieren"}
+              className="ce-footer-mail-link"
+              onClick={onMailClick}
             >
-              <Icon n={copied ? "check" : "copy"} s={13} />
+              support@confidaraexpress.de
             </button>
           </div>
           <div className="ce-footer-contact-row">
@@ -116,6 +112,17 @@ function DashboardFooter() {
 }
 
 export function Overview({ user, shipments, invoices, loading, onNewShipment, onAllShipments }) {
+  const [mailOpen, setMailOpen] = useState(false);
+
+  const handleMailClick = () => {
+    const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (isDesktop) {
+      setMailOpen(true);
+    } else {
+      window.location.href = "mailto:support@confidaraexpress.de";
+    }
+  };
+
   return (
     <div className="ce-overview">
       <div className="ce-aurora" aria-hidden="true">
@@ -249,8 +256,10 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </>
         )}
 
-        <DashboardFooter />
+        <DashboardFooter onMailClick={handleMailClick} />
       </div>
+
+      <ContactMailMenu open={mailOpen} onClose={() => setMailOpen(false)} />
     </div>
   );
 }

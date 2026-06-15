@@ -28,9 +28,9 @@
   .page-header { display: none; }
   .page-body { padding: 14px; }
 
-  /* DashboardSectionHeader — not sticky on mobile (below topbar, avoids collision) */
-  .dash-section-header { position: static; box-shadow: none; padding: 14px 16px 13px; }
-  .dash-section-title { font-size: 18px; }
+  /* DashboardSectionHeader — static on mobile (below sticky topbar, no overlap) */
+  .dash-section-header { position: static; box-shadow: none; padding: 13px 18px 12px; }
+  .dash-section-title { font-size: 19px; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi-value { font-size: 22px; }
 

@@ -58,22 +58,23 @@
 
 /* ─── DashboardSectionHeader ─────────────────────────────────────────────── */
 .dash-section-header {
-  background: white;
-  border-bottom: 1px solid var(--border);
-  padding: 16px 28px 15px;
+  background: linear-gradient(135deg, #eef3ff 0%, #e8f0ff 50%, #edf1ff 100%);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.14);
+  padding: 17px 28px 16px;
   position: sticky;
   top: 0;
   z-index: 99;
-  box-shadow: 0 2px 10px rgba(14, 30, 80, 0.06);
+  box-shadow: 0 2px 14px rgba(29, 78, 216, 0.09);
+  text-align: center;
 }
 .dash-section-title {
   margin: 0;
   font-family: 'Syne', sans-serif;
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.028em;
   line-height: 1.15;
-  background: linear-gradient(120deg, var(--navy) 0%, var(--blue) 55%, var(--blue3) 100%);
+  background: linear-gradient(115deg, var(--navy) 0%, var(--blue) 48%, var(--blue3) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

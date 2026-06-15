@@ -14,6 +14,7 @@ import { useAuth } from "../context/AuthContext";
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
 
 const PAGE_TITLES = {
+  overview:  "Übersicht",
   new:       "Neue Sendung",
   shipments: "Sendungen",
   invoices:  "Rechnungen",
@@ -107,6 +108,10 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {PAGE_TITLES[page] && (
+          <DashboardSectionHeader title={PAGE_TITLES[page]} />
+        )}
+
         {page === "overview" && (
           <Overview
             user={user}
@@ -116,10 +121,6 @@ export default function DashboardPage() {
             onNewShipment={() => setPage("new")}
             onAllShipments={() => setPage("shipments")}
           />
-        )}
-
-        {PAGE_TITLES[page] && (
-          <DashboardSectionHeader title={PAGE_TITLES[page]} />
         )}
 
         {page === "new" && (

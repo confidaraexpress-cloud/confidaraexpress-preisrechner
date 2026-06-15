@@ -59,7 +59,7 @@ function DashboardFooter() {
             B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
           </p>
           <div className="ce-footer-social">
-            <a href="mailto:support@confidaraexpress.de" aria-label="E-Mail">
+            <a href="mailto:support@confidaraexpress.de" aria-label="E-Mail" title="support@confidaraexpress.de">
               <Icon n="mail" s={16} />
             </a>
           </div>
@@ -77,7 +77,7 @@ function DashboardFooter() {
           <h4>Kontakt</h4>
           <div className="ce-footer-contact-row">
             <Icon n="mail" s={14} />
-            support@confidaraexpress.de
+            <a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a>
           </div>
           <div className="ce-footer-contact-row">
             <Icon n="phone" s={14} />

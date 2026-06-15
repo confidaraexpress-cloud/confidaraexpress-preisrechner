@@ -7,11 +7,18 @@ import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
-import { DashboardTabBar } from "../components/layout/DashboardTabBar";
+import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
 import { LegalLinks } from "../components/layout/LegalLinks";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
+
+const PAGE_TITLES = {
+  new:       "Neue Sendung",
+  shipments: "Sendungen",
+  invoices:  "Rechnungen",
+  profile:   "Mein Profil",
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -111,8 +118,8 @@ export default function DashboardPage() {
           />
         )}
 
-        {page !== "overview" && (
-          <DashboardTabBar page={page} navigateTo={navigateTo} />
+        {PAGE_TITLES[page] && (
+          <DashboardSectionHeader title={PAGE_TITLES[page]} />
         )}
 
         {page === "new" && (

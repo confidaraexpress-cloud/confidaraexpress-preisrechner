@@ -2,6 +2,7 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
+import { resolveCarrierName } from "../../utils/carrierMap";
 import { apiFetch } from "../../api/client";
 
 export function ShipmentsList({ shipments, loading }) {
@@ -68,7 +69,7 @@ export function ShipmentsList({ shipments, loading }) {
                   {shipments.map((s) => (
                     <React.Fragment key={s.id}>
                       <tr>
-                        <td>{s.selected_carrier || "—"}</td>
+                        <td>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</td>
                         <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
                         <td className="font-bold">{money(s.price_final)}</td>
                         <td><StatusBadge status={s.status} /></td>

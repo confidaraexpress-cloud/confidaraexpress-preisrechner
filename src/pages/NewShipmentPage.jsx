@@ -4,6 +4,7 @@ import { API, apiFetch, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
+import { resolveCarrier, resolveCarrierName } from "../utils/carrierMap";
 import { useAuth } from "../context/AuthContext";
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -186,7 +187,7 @@ export default function NewShipmentPage() {
 
   const carrierLabel =
     carrierFilters.length === 0   ? "Alle Dienstleister" :
-    carrierFilters.length <= 2    ? carrierFilters.join(", ") :
+    carrierFilters.length <= 2    ? carrierFilters.map(resolveCarrierName).join(", ") :
     `${carrierFilters.length} ausgewählt`;
 
   const upd = (k, v) => {
@@ -532,7 +533,7 @@ export default function NewShipmentPage() {
                             checked={carrierFilters.includes(carrier)}
                             onChange={() => toggleCarrier(carrier)}
                           />
-                          <span className="carrier-option-label">{carrier}</span>
+                          <span className="carrier-option-label">{resolveCarrierName(carrier)}</span>
                         </label>
                       ))}
                     </>
@@ -710,10 +711,18 @@ export default function NewShipmentPage() {
                 </div>
               )}
 
-              {!loading && sorted.map(t => (
+              {!loading && sorted.map(t => {
+                const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
+                return (
                 <div key={t.id} className={`tariff-card ${selected?.id === t.id ? "selected" : ""}`} onClick={() => setSelected(t)}>
                   <div className="tariff-card-top">
-                    <div><div className="tariff-carrier">{t.carrier}</div><div className="tariff-service">{t.tariffName}</div></div>
+                    <div>
+                      <div className="tariff-carrier-wrap">
+                        {carrierLogo && <img src={carrierLogo} alt="" aria-hidden="true" className="tariff-carrier-logo" />}
+                        <span className="tariff-carrier">{carrierName}</span>
+                      </div>
+                      <div className="tariff-service">{t.tariffName}</div>
+                    </div>
                     <div>
                       {t.netPrice != null ? (
                         <>
@@ -771,7 +780,8 @@ export default function NewShipmentPage() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {hasResults && !loading && (
                 <div className="results-cta">

@@ -1,20 +1,6 @@
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .calc-wrap { grid-template-columns: 1fr; }
-  .results-panel { position: static; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .calc-mobile-cta { display: block; margin-top: 12px; }
-  .calc-desktop-cta { display: none; }
-}
-
-/* ─── Calculator — wider, premium offer column on laptop & desktop ────────── */
-/* The offers (right column) carry the key decision info, so they get the extra
-   horizontal space on larger screens instead of leaving it on the form side. */
-@media (min-width: 1100px) {
-  .calc-wrap { grid-template-columns: minmax(0, 1fr) 460px; gap: 26px; }
-}
-@media (min-width: 1400px) {
-  .calc-wrap { grid-template-columns: minmax(0, 1fr) 520px; gap: 30px; }
 }
 
 @media (max-width: 768px) {
@@ -75,10 +61,4 @@
   .auth-trust-sub { font-size: 10.5px; }
   .auth-card { padding: 22px 14px; border-radius: 20px; }
   .page-body { padding: 10px; }
-
-  /* Calculator — keep premium card readable but compact on small phones */
-  .results-body { padding: 12px; }
-  .tariff-card { padding: 15px 16px; border-radius: 12px; }
-  .tariff-carrier { font-size: 16px; }
-  .tariff-price { font-size: 22px; }
 }

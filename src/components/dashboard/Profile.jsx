@@ -79,19 +79,15 @@ export function Profile({ user }) {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <div className="page-header-title">Mein Profil</div>
-          <div className="page-header-sub">{user?.email}</div>
-        </div>
-        {!editing && (
-          <button className="btn btn-outline btn-sm" onClick={startEdit}>
-            <Icon n="settings" s={14} /> Bearbeiten
-          </button>
-        )}
-      </div>
-
       <div className="page-body">
+        <div className="profile-page-meta">
+          <span className="page-header-sub">{user?.email}</span>
+          {!editing && (
+            <button className="btn btn-outline btn-sm" onClick={startEdit}>
+              <Icon n="settings" s={14} /> Bearbeiten
+            </button>
+          )}
+        </div>
         {saveSuccess && !editing && (
           <div className="alert alert-success mb-16">
             <Icon n="shield" s={16} /> Profil erfolgreich gespeichert.

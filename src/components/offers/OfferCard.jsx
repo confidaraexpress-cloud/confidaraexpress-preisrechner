@@ -72,7 +72,7 @@ function DetailsPanel({ tariff: t }) {
   );
 }
 
-export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook }) {
+export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode }) {
   const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -202,8 +202,14 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook 
           <div className="offer-price-block">
             {t.netPrice != null ? (
               <>
-                <div className="offer-price">{money(t.netPrice)}</div>
-                <div className="offer-price-sub">exkl. MwSt.</div>
+                <div className="offer-price">
+                  {vatMode === "gross"
+                    ? money(t.finalPrice ?? t.netPrice)
+                    : money(t.netPrice)}
+                </div>
+                <div className="offer-price-sub">
+                  {vatMode === "gross" ? "inkl. MwSt." : "exkl. MwSt."}
+                </div>
               </>
             ) : (
               <div className="offer-price-na">Preis fehlt</div>

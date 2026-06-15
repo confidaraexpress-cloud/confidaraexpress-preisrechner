@@ -111,6 +111,9 @@ export default function NewShipmentPage() {
   // ── Sort ──
   const [sortMode, setSortMode] = useState("recommended");
 
+  // ── VAT display mode ──
+  const [vatMode, setVatMode] = useState("net");
+
   // ── Form ──
   const [form, setForm] = useState({
     s_company:  user?.company_name || "",
@@ -623,6 +626,8 @@ export default function NewShipmentPage() {
             maxDays={form.max_days}
             onMaxPriceChange={v => upd("max_price", v)}
             onMaxDaysChange={v => upd("max_days", v)}
+            vatMode={vatMode}
+            onVatToggle={setVatMode}
           />
         )}
       </div>

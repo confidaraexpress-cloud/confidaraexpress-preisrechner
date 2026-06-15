@@ -23,6 +23,7 @@ export function OffersList({
   sortMode, onSortChange,
   onRecalculate,
   maxPrice, maxDays, onMaxPriceChange, onMaxDaysChange,
+  vatMode, onVatToggle,
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
@@ -84,6 +85,23 @@ export function OffersList({
             <Icon n="filter" s={12} c="currentColor" />
             Filter{hasFilter ? " ●" : ""}
           </button>
+          <div className="offers-sort-sep" />
+          <div className="offers-vat-toggle" role="group" aria-label="Preisdarstellung">
+            <button
+              className={`offers-sort-btn${vatMode !== "gross" ? " active" : ""}`}
+              onClick={() => onVatToggle("net")}
+              type="button"
+            >
+              exkl. MwSt.
+            </button>
+            <button
+              className={`offers-sort-btn${vatMode === "gross" ? " active" : ""}`}
+              onClick={() => onVatToggle("gross")}
+              type="button"
+            >
+              inkl. MwSt.
+            </button>
+          </div>
         </div>
       )}
 
@@ -155,6 +173,7 @@ export function OffersList({
             selected={selected?.id === t.id}
             onSelect={onSelect}
             onBook={onBook}
+            vatMode={vatMode}
           />
         ))}
 

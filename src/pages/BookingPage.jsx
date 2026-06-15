@@ -4,6 +4,7 @@ import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
+import { resolveCarrier, resolveCarrierName } from "../utils/carrierMap";
 import { useAuth } from "../context/AuthContext";
 
 export default function BookingPage() {
@@ -132,7 +133,12 @@ export default function BookingPage() {
               <div className="calc-panel-body">
                 <div className="flex-between">
                   <div>
-                    <div className="booking-carrier-name">{tariff.carrier}</div>
+                    <div className="booking-carrier-wrap">
+                      {resolveCarrier(tariff.carrier).logo && (
+                        <img src={resolveCarrier(tariff.carrier).logo} alt="" aria-hidden="true" className="booking-carrier-logo" />
+                      )}
+                      <span className="booking-carrier-name">{resolveCarrierName(tariff.carrier)}</span>
+                    </div>
                     <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
                     {tariff.serviceType && (
                       <div className="booking-service-info">
@@ -210,7 +216,7 @@ export default function BookingPage() {
                 <div className="booking-confirm-box">
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
-                    <span className="text-sm font-bold booking-confirm-val">{tariff.carrier} — {tariff.tariffName}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
                   </div>
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>

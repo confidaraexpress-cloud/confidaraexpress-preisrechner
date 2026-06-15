@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
+import { resolveCarrierName } from "../../utils/carrierMap";
 import dhlLogo    from "../../assets/carriers/dhl.svg";
 import upsLogo    from "../../assets/carriers/ups.svg";
 import fedexLogo  from "../../assets/carriers/fedex.svg";
@@ -172,7 +173,7 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
                         {shipments.slice(0, 5).map((s) => (
                           <tr key={s.id} onClick={onAllShipments}>
                             <td className="ce-track-id">{s.jumingo_shipment_id || s.id || "—"}</td>
-                            <td className="ce-carrier">{s.selected_carrier || "—"}</td>
+                            <td className="ce-carrier">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</td>
                             <td style={{ fontWeight: 600, color: "var(--ce-ink-1)" }}>{money(s.price_final)}</td>
                             <td><StatusBadge status={s.status} /></td>
                             <td className="ce-date">{dateDE(s.created_at)}</td>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
@@ -46,6 +46,14 @@ const CARRIERS = [
 ];
 
 function DashboardFooter() {
+  const [copied, setCopied] = useState(false);
+
+  const copyMail = () => {
+    navigator.clipboard?.writeText("support@confidaraexpress.de").catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <footer className="ce-footer">
       <div className="ce-footer-grid">
@@ -79,6 +87,15 @@ function DashboardFooter() {
           <div className="ce-footer-contact-row">
             <Icon n="mail" s={14} />
             <a href="mailto:support@confidaraexpress.de">support@confidaraexpress.de</a>
+            <button
+              type="button"
+              className="ce-footer-copy-btn"
+              onClick={copyMail}
+              aria-label="E-Mail-Adresse kopieren"
+              title={copied ? "Kopiert!" : "E-Mail-Adresse kopieren"}
+            >
+              <Icon n={copied ? "check" : "copy"} s={13} />
+            </button>
           </div>
           <div className="ce-footer-contact-row">
             <Icon n="phone" s={14} />

@@ -13,30 +13,32 @@
 
 .results-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 10px rgba(14,30,80,0.07), 0 0 0 1px rgba(14,30,80,0.03); position: sticky; top: 80px; }
 .results-header {
-  padding: 16px 18px;
+  padding: 18px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.10);
   background: linear-gradient(135deg, var(--navy) 0%, #1e40af 60%, var(--blue2) 100%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 12px rgba(29,78,216,0.22);
 }
-.results-header h3 { color: white; font-size: 14px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.results-header h3 { color: white; font-size: 15px; font-weight: 700; font-family: 'Syne', sans-serif; }
 .results-header p { color: rgba(255,255,255,0.70); font-size: 12px; margin-top: 2px; }
-.results-body { padding: 14px; }
+.results-body { padding: 16px; }
 .results-empty { text-align: center; padding: 36px 16px; color: var(--gray400); }
 .results-empty-icon { font-size: 36px; margin-bottom: 10px; }
 
-.tariff-card { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s cubic-bezier(.2,.7,.3,1); box-shadow: 0 1px 3px rgba(14,30,80,0.04); }
-.tariff-card:hover { border-color: var(--blue3); box-shadow: 0 4px 16px rgba(29,78,216,0.11), 0 1px 4px rgba(14,30,80,0.06); transform: translateY(-1px); }
+.tariff-card { border: 1.5px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s cubic-bezier(.2,.7,.3,1); box-shadow: 0 1px 3px rgba(14,30,80,0.04); }
+.tariff-card:hover { border-color: var(--blue3); box-shadow: 0 6px 22px rgba(29,78,216,0.12), 0 1px 4px rgba(14,30,80,0.06); transform: translateY(-1px); }
 .tariff-card.selected { border-color: var(--blue); background: #eff6ff; box-shadow: 0 0 0 3px rgba(29,78,216,0.10), 0 4px 14px rgba(29,78,216,0.12); }
-.tariff-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-.tariff-carrier { font-size: 14px; font-weight: 700; color: var(--navy); }
-.tariff-service { font-size: 12px; color: var(--gray500); margin-top: 2px; }
-.tariff-carrier-wrap { display: flex; align-items: center; gap: 6px; }
-.tariff-carrier-logo { height: 16px; width: auto; object-fit: contain; display: block; flex-shrink: 0; }
-.tariff-price { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: var(--navy); text-align: right; }
-.tariff-price-sub { font-size: 11px; color: var(--gray400); text-align: right; }
-.tariff-price-na  { font-size: 12px; color: var(--danger); font-weight: 600; text-align: right; }
-.tariff-tags { display: flex; gap: 5px; flex-wrap: wrap; }
-.tariff-tag { padding: 2px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; background: var(--gray100); color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
+.tariff-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 4px; }
+.tariff-carrier { font-size: 17px; font-weight: 700; color: var(--navy); letter-spacing: -0.01em; }
+.tariff-service { font-size: 13px; color: var(--gray500); margin-top: 4px; }
+.tariff-carrier-wrap { display: flex; align-items: center; gap: 9px; }
+.tariff-carrier-logo { height: 22px; width: auto; max-width: 64px; object-fit: contain; display: block; flex-shrink: 0; }
+.tariff-price { font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em; color: var(--navy); text-align: right; white-space: nowrap; }
+.tariff-price-sub { font-size: 12px; color: var(--gray400); text-align: right; margin-top: 3px; }
+.tariff-price-na  { font-size: 13px; color: var(--danger); font-weight: 600; text-align: right; }
+.tariff-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.tariff-tags:empty { display: none; }
+.tariff-tag { padding: 4px 11px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; background: var(--gray100); color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
+.tariff-tag-eta { background: #eef3fc; color: var(--blue2); border-color: rgba(29,78,216,0.20); font-weight: 700; }
 .tariff-tag.green { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.20); }
 .tariff-tag.blue  { background: #eff6ff; color: var(--blue2); border: 1px solid rgba(29,78,216,0.18); }
 
@@ -71,8 +73,8 @@
 .service-filter-option-check { font-size: 13px; font-weight: 800; color: var(--blue2); flex-shrink: 0; }
 
 /* ─── Tariff service details ─────────────────────────────────────────────── */
-.tariff-service-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-.tariff-service-detail { font-size: 11px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
+.tariff-service-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.tariff-service-detail { font-size: 12px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
 .tariff-service-detail.pickup-today { color: var(--success); font-weight: 600; }
 .tariff-printer-note { font-size: 11px; color: var(--warn); font-weight: 600; display: flex; align-items: center; gap: 3px; }
 
@@ -159,8 +161,8 @@
 .date-quick-btn.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
 
 /* ─── Tariff date info row ───────────────────────────────────────────────── */
-.tariff-date-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
-.tariff-date-info { font-size: 11px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
+.tariff-date-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.tariff-date-info { font-size: 12px; color: var(--gray500); display: flex; align-items: center; gap: 3px; }
 .tariff-unavail-note { font-size: 11px; color: var(--danger); font-weight: 600; }
 
 /* ─── Tariff price detail (Netto · MwSt under finalPrice) ───────────────── */

@@ -549,7 +549,7 @@ export default function CalculatorPage() {
                     </div>
                   </div>
                   <div className="tariff-tags">
-                    {fmtDelivery(t) && <span className="tariff-tag">⏱ {fmtDelivery(t)}</span>}
+                    {fmtDelivery(t) && <span className="tariff-tag tariff-tag-eta">⏱ {fmtDelivery(t)}</span>}
                     {t.trackingAvailable && <span className="tariff-tag green">✓ Tracking</span>}
                     {t.serviceType === "pickup"  && <span className="tariff-tag blue">🚐 Abholung</span>}
                     {t.serviceType === "dropoff" && <span className="tariff-tag">🏪 Shopabgabe</span>}

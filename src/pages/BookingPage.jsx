@@ -5,6 +5,7 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
 import { resolveCarrier, resolveCarrierName } from "../utils/carrierMap";
+import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 
 export default function BookingPage() {
@@ -17,6 +18,8 @@ export default function BookingPage() {
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
   const [conflict, setConflict] = useState("");
+  const [labelLoading, setLabelLoading] = useState(false);
+  const [labelError, setLabelError] = useState("");
 
   const [form, setForm] = useState({ content: "" });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -81,6 +84,17 @@ export default function BookingPage() {
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
     setLoading(false);
+  };
+
+  const handleDownloadLabel = async () => {
+    if (!booking?.shipmentId) return;
+    setLabelLoading(true); setLabelError("");
+    try {
+      await downloadLabel(booking.shipmentId);
+    } catch (e) {
+      setLabelError(e.message);
+    }
+    setLabelLoading(false);
   };
 
   const addrReady =
@@ -284,11 +298,17 @@ export default function BookingPage() {
         {step === 3 && booking && (
           <div className="booking-success-wrap">
             <div className="booking-success-icon">✓</div>
-            <h2 className="booking-success-title">Sendung gebucht!</h2>
+            <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
             <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
             <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
+            {labelError && <div className="alert alert-error mb-16">{labelError}</div>}
+            {booking?.shipmentId && (
+              <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
+                {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+              </button>
+            )}
             <div className="flex-center gap-12">
-              <button className="btn btn-primary" onClick={() => navigate("/dashboard", { state: { justBooked: true } })}>Zum Dashboard</button>
+              <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
             </div>
           </div>

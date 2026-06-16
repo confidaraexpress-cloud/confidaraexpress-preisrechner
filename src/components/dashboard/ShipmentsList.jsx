@@ -4,6 +4,7 @@ import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { apiFetch } from "../../api/client";
+import { downloadLabel } from "../../utils/downloadLabel";
 
 export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
@@ -22,21 +23,12 @@ export function ShipmentsList({ shipments, loading }) {
     setTrackLoading(false);
   };
 
-  const downloadLabel = async (id) => {
+  const handleDownloadLabel = async (id) => {
     setLabelError("");
     try {
-      const r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
-      const d = await r.json();
-      if (d.label) {
-        const a = document.createElement("a");
-        a.href = `data:application/pdf;base64,${d.label}`;
-        a.download = `label-${id}.pdf`;
-        a.click();
-      } else {
-        setLabelError("Label für diese Sendung ist noch nicht verfügbar.");
-      }
-    } catch {
-      setLabelError("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+      await downloadLabel(id);
+    } catch (e) {
+      setLabelError(e.message);
     }
   };
 
@@ -77,7 +69,7 @@ export function ShipmentsList({ shipments, loading }) {
                               <button className="btn btn-ghost btn-sm" onClick={() => loadTracking(s.jumingo_shipment_id)}>Track</button>
                             )}
                             {(s.status === "booked" || s.status === "label_ready") && (
-                              <button className="btn btn-ghost btn-sm" onClick={() => downloadLabel(s.jumingo_shipment_id)}>Label</button>
+                              <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadLabel(s.jumingo_shipment_id)}>Label</button>
                             )}
                           </div>
                         </td>

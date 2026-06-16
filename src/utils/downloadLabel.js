@@ -1,18 +1,34 @@
 import { apiFetch } from "../api/client";
 
 export async function downloadLabel(id) {
-  let d;
+  let r;
   try {
-    const r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
-    d = await r.json();
+    r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
   } catch {
     throw new Error("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
   }
-  if (!d.label) {
-    throw new Error("Label für diese Sendung ist noch nicht verfügbar.");
+
+  if (!r.ok) {
+    let message =
+      r.status === 404 ? "Label für diese Sendung ist noch nicht verfügbar."
+      : r.status === 429 ? "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut."
+      : "Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.";
+    try {
+      const d = await r.json();
+      if (d?.error) message = d.error;
+    } catch { /* Response hat keinen JSON-Body */ }
+    throw new Error(message);
   }
+
+  const blob = await r.blob();
+  if (!blob || blob.size === 0) {
+    throw new Error("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+  }
+
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = `data:application/pdf;base64,${d.label}`;
+  a.href = url;
   a.download = `label-${id}.pdf`;
   a.click();
+  URL.revokeObjectURL(url);
 }

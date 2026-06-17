@@ -22,13 +22,14 @@ export function OffersList({
   selected, onSelect, onBook,
   sortMode, onSortChange,
   onRecalculate,
-  maxPrice, maxDays, onMaxPriceChange, onMaxDaysChange,
+  maxPrice, maxDays, onMaxPriceChange, onMaxDaysChange, onClearFilters,
   vatMode, onVatToggle,
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
 
-  const hasFilter  = !!(maxPrice || maxDays);
+  const activeFilterCount = [maxPrice, maxDays].filter(Boolean).length;
+  const hasFilter  = activeFilterCount > 0;
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
   const showTrust  = hasResults && !loading && tariffs.length > 0;
@@ -42,7 +43,9 @@ export function OffersList({
             {loading
               ? "Preise werden geladen…"
               : hasResults
-                ? `${filtered.length} Angebot${filtered.length !== 1 ? "e" : ""} gefunden`
+                ? (hasFilter
+                    ? `${filtered.length} von ${tariffs.length} Angeboten angezeigt`
+                    : `${tariffs.length} Angebot${tariffs.length !== 1 ? "e" : ""} gefunden`)
                 : "Versandangebote"
             }
           </div>
@@ -83,8 +86,20 @@ export function OffersList({
             type="button"
           >
             <Icon n="filter" s={12} c="currentColor" />
-            Filter{hasFilter ? " ●" : ""}
+            Filter
           </button>
+          {hasFilter && (
+            <>
+              <span className="offers-filter-active-badge">
+                <span className="offers-filter-active-dot" />
+                {activeFilterCount > 1 ? `${activeFilterCount} Filter aktiv` : "Filter aktiv"}
+              </span>
+              <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
+                <Icon n="x" s={11} c="currentColor" />
+                Filter zurücksetzen
+              </button>
+            </>
+          )}
           <div className="offers-sort-sep" />
           <div className="offers-vat-toggle" role="group" aria-label="Preisdarstellung">
             <button

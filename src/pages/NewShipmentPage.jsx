@@ -195,6 +195,11 @@ export default function NewShipmentPage() {
     resetResults();
   };
 
+  const clearFilters = () => {
+    upd("max_price", "");
+    upd("max_days", "");
+  };
+
   useEffect(() => {
     if (!carrierDropdownOpen) return;
     const onOutside = (e) => {
@@ -626,6 +631,7 @@ export default function NewShipmentPage() {
             maxDays={form.max_days}
             onMaxPriceChange={v => upd("max_price", v)}
             onMaxDaysChange={v => upd("max_days", v)}
+            onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}
           />

@@ -3,6 +3,13 @@ import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { dtDE } from "../utils/formatters";
 
+const ERROR_MESSAGES = {
+  400: "Bitte gib eine gültige Trackingnummer ein.",
+  404: "Sendung nicht gefunden.",
+  429: "Zu viele Anfragen. Bitte später erneut versuchen.",
+  500: "Tracking aktuell nicht verfügbar.",
+};
+
 export default function TrackingPage() {
   const [id, setId] = useState("");
   const [result, setResult] = useState(null);
@@ -10,12 +17,13 @@ export default function TrackingPage() {
   const [error, setError] = useState("");
 
   const track = async () => {
-    if (!id) return;
+    const trackingKey = id.trim();
+    if (!trackingKey) return;
     setError(""); setLoading(true); setResult(null);
     try {
-      const r = await fetch(`${API}/api/tracking/public/${id}`);
+      const r = await fetch(`${API}/api/tracking/public/${encodeURIComponent(trackingKey)}`);
+      if (!r.ok) throw new Error(ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar.");
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Sendung nicht gefunden");
       setResult(d);
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -39,13 +47,13 @@ export default function TrackingPage() {
         <div className="calc-panel">
           <div className="calc-panel-body">
             <div className="field">
-              <label className="field-label">Sendungs-ID</label>
+              <label className="field-label">Trackingnummer</label>
               <input
                 className="field-input"
                 value={id}
                 onChange={e => setId(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && track()}
-                placeholder="z.B. 12345678901234"
+                placeholder="Trackingnummer aus Ihrer Buchungsbestätigung"
                 autoFocus
               />
             </div>
@@ -54,7 +62,7 @@ export default function TrackingPage() {
                 <Icon n="x" s={16} />{error}
               </div>
             )}
-            <button className="btn btn-primary btn-full" onClick={track} disabled={loading || !id}>
+            <button className="btn btn-primary btn-full" onClick={track} disabled={loading || !id.trim()}>
               {loading ? <><span className="spinner" /> Suche…</> : <><Icon n="search" s={16} /> Verfolgen</>}
             </button>
           </div>

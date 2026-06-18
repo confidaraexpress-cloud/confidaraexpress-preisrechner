@@ -82,11 +82,26 @@
 .offers-vat-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
 .offers-filter-panel {
-  padding: 14px 20px 18px;
-  background: white; border-bottom: 1px solid var(--border);
+  padding: 18px 20px 20px;
+  background: var(--gray50); border-bottom: 1px solid var(--border);
+}
+.offers-filter-panel-head { margin-bottom: 14px; }
+.offers-filter-panel-title {
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--navy); margin: 0 0 2px;
+}
+.offers-filter-panel-sub { font-size: 12px; color: var(--gray500); margin: 0; }
+.offers-filter-row { gap: 14px; }
+
+/* Shared "soft card" box for each filter block — consolidates the formerly
+   duplicated layout rules from .offers-price-filter / .offers-days-filter. */
+.offers-filter-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: white; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
 }
 
-.offers-price-filter { display: flex; flex-direction: column; gap: 8px; }
 .offers-price-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .offers-price-filter-label { margin-bottom: 0; }
 .offers-price-filter-value {
@@ -94,7 +109,7 @@
   color: var(--blue2); white-space: nowrap;
 }
 .offers-price-slider {
-  width: 100%; height: 6px; border-radius: var(--radius-full);
+  width: 100%; height: 8px; border-radius: var(--radius-full);
   background: var(--gray100); accent-color: var(--blue);
   cursor: pointer; outline: none;
 }
@@ -103,15 +118,18 @@
   display: flex; justify-content: space-between;
   font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--gray400);
 }
+.offers-price-slider:disabled ~ .offers-price-scale { opacity: 0.5; }
 
-.offers-days-filter { display: flex; flex-direction: column; gap: 8px; }
 .offers-days-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .offers-days-filter-label { margin-bottom: 0; }
 .offers-days-filter-value {
   font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
   color: var(--blue2); white-space: nowrap;
 }
-.offers-days-quick-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.offers-days-quick-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.offers-days-quick-group .offers-sort-btn {
+  flex: 1 1 auto; min-width: 64px; padding: 7px 12px; text-align: center;
+}
 
 /* ─── Body + Empty states ───────────────────────────────────────────────────── */
 .offers-body { padding: 20px 28px; }
@@ -390,7 +408,9 @@
   .offers-trust-item:last-child { border-bottom: none; }
   .offers-tipp { padding: 14px 16px; }
   .offers-recalc { padding: 8px 14px 4px; }
-  .offers-filter-panel { padding: 12px 14px 16px; }
+  .offers-filter-panel { padding: 14px 14px 16px; }
+  .offers-filter-row { gap: 12px; }
+  .offers-filter-card { padding: 14px 16px; }
 }
 
 @media (max-width: 480px) {

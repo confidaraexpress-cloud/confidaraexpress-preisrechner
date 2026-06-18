@@ -104,6 +104,15 @@
   font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--gray400);
 }
 
+.offers-days-filter { display: flex; flex-direction: column; gap: 8px; }
+.offers-days-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.offers-days-filter-label { margin-bottom: 0; }
+.offers-days-filter-value {
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--blue2); white-space: nowrap;
+}
+.offers-days-quick-group { display: flex; flex-wrap: wrap; gap: 6px; }
+
 /* ─── Body + Empty states ───────────────────────────────────────────────────── */
 .offers-body { padding: 20px 28px; }
 .offers-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; }

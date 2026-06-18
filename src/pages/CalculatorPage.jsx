@@ -37,6 +37,13 @@ const SERVICE_OPTIONS = [
   { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
 ];
 
+const SHIPPING_MODE_OPTIONS = [
+  { id: "all",      icon: "package", label: "Alle Versandarten", desc: "Standard, Express und Economy anzeigen" },
+  { id: "standard", icon: "truck",   label: "Standard",          desc: "Regulärer Versand ohne Aufpreis"        },
+  { id: "express",  icon: "zap",     label: "Express",           desc: "Schnellste verfügbare Zustellung"       },
+  { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
+];
+
 export default function CalculatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,6 +51,10 @@ export default function CalculatorPage() {
   // ── Service filter ──
   const [serviceFilter, setServiceFilter]         = useState("all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
+
+  // ── Shipping mode filter ──
+  const [shippingModeFilter, setShippingModeFilter] = useState("all");
+  const [shippingModeOpen, setShippingModeOpen]     = useState(false);
 
   // ── Shipping date ──
   const [shippingDate, setShippingDate]     = useState(() => todayISO());
@@ -79,7 +90,8 @@ export default function CalculatorPage() {
   const [error, setError]           = useState("");
   const [hasResults, setHasResults] = useState(false);
 
-  const selectedOption = SERVICE_OPTIONS.find(o => o.id === serviceFilter) || SERVICE_OPTIONS[0];
+  const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)            || SERVICE_OPTIONS[0];
+  const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter) || SHIPPING_MODE_OPTIONS[0];
 
   const carrierLabel =
     carrierFilters.length === 0 ? "Alle Dienstleister" :
@@ -193,6 +205,12 @@ export default function CalculatorPage() {
     resetResults();
   };
 
+  const handleShippingMode = (id) => {
+    setShippingModeFilter(id);
+    setShippingModeOpen(false);
+    resetResults();
+  };
+
   const handleDateChange = (iso) => {
     if (!iso || iso < todayISO()) return;
     setShippingDate(iso);
@@ -208,17 +226,18 @@ export default function CalculatorPage() {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
         method: "POST", headers: jsonH,
         body: JSON.stringify({
-          from_country:   form.from_country,
-          from_zip:       form.from_zip,
-          to_country:     form.to_country,
-          to_zip:         form.to_zip,
-          weight:         Number(form.weight),
-          length:         Number(form.length) || 30,
-          width:          Number(form.width)  || 20,
-          height:         Number(form.height) || 15,
-          serviceFilter:  serviceFilter,
-          shippingDate:   shippingDate,
-          carrierFilters: carrierFilters,
+          from_country:       form.from_country,
+          from_zip:           form.from_zip,
+          to_country:         form.to_country,
+          to_zip:             form.to_zip,
+          weight:             Number(form.weight),
+          length:             Number(form.length) || 30,
+          width:              Number(form.width)  || 20,
+          height:             Number(form.height) || 15,
+          serviceFilter:      serviceFilter,
+          shippingModeFilter: shippingModeFilter,
+          shippingDate:       shippingDate,
+          carrierFilters:     carrierFilters,
         })
       });
       const d = await r.json();
@@ -280,6 +299,44 @@ export default function CalculatorPage() {
                       <div className="service-filter-option-desc">{opt.desc}</div>
                     </div>
                     {serviceFilter === opt.id && <span className="service-filter-option-check">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Versandart — collapsible ── */}
+          <div className="calc-panel mb-16">
+            <button
+              className="service-filter-trigger"
+              onClick={() => setShippingModeOpen(o => !o)}
+              aria-expanded={shippingModeOpen}
+            >
+              <div className="service-filter-trigger-left">
+                <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
+                <div>
+                  <div className="service-filter-trigger-title">Versandart</div>
+                  <div className="service-filter-trigger-val">{selectedShippingMode.label} · {selectedShippingMode.desc}</div>
+                </div>
+              </div>
+              <div className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`}>
+                <Icon n="chevron" s={16} c="#64748b" />
+              </div>
+            </button>
+            {shippingModeOpen && (
+              <div className="service-filter-dropdown">
+                {SHIPPING_MODE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`service-filter-option ${shippingModeFilter === opt.id ? "selected" : ""}`}
+                    onClick={() => handleShippingMode(opt.id)}
+                  >
+                    <Icon n={opt.icon} s={15} c={shippingModeFilter === opt.id ? "#1d4ed8" : "#64748b"} />
+                    <div className="service-filter-option-text">
+                      <div className="service-filter-option-label">{opt.label}</div>
+                      <div className="service-filter-option-desc">{opt.desc}</div>
+                    </div>
+                    {shippingModeFilter === opt.id && <span className="service-filter-option-check">✓</span>}
                   </button>
                 ))}
               </div>

@@ -10,10 +10,11 @@ export default function TrackingPage() {
   const [error, setError] = useState("");
 
   const track = async () => {
-    if (!id) return;
+    const trimmed = id.trim();
+    if (!trimmed) return;
     setError(""); setLoading(true); setResult(null);
     try {
-      const r = await fetch(`${API}/api/tracking/public/${id}`);
+      const r = await fetch(`${API}/api/tracking/public/${encodeURIComponent(trimmed)}`);
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Sendung nicht gefunden");
       setResult(d);
@@ -39,7 +40,7 @@ export default function TrackingPage() {
         <div className="calc-panel">
           <div className="calc-panel-body">
             <div className="field">
-              <label className="field-label">Sendungs-ID</label>
+              <label className="field-label">Trackingnummer</label>
               <input
                 className="field-input"
                 value={id}
@@ -54,7 +55,7 @@ export default function TrackingPage() {
                 <Icon n="x" s={16} />{error}
               </div>
             )}
-            <button className="btn btn-primary btn-full" onClick={track} disabled={loading || !id}>
+            <button className="btn btn-primary btn-full" onClick={track} disabled={loading || !id.trim()}>
               {loading ? <><span className="spinner" /> Suche…</> : <><Icon n="search" s={16} /> Verfolgen</>}
             </button>
           </div>

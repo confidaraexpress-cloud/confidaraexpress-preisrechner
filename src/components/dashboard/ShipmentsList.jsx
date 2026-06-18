@@ -16,7 +16,7 @@ export function ShipmentsList({ shipments, loading }) {
     if (trackingId === id) { setTrackingId(null); return; }
     setTrackLoading(true); setTrackingId(id); setTracking(null);
     try {
-      const r = await apiFetch(`/api/tracking/${id}`, { auth: true });
+      const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
       const d = await r.json();
       setTracking(d.tracking);
     } catch { setTracking({ error: "Tracking nicht verfügbar" }); }

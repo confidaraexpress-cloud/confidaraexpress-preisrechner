@@ -154,8 +154,12 @@ export function OffersList({
       {/* ── Filter Panel ── */}
       {showSortBar && filterOpen && (
         <div className="offers-filter-panel">
-          <div className="field-row field-row-2">
-            <div className="field offers-price-filter">
+          <div className="offers-filter-panel-head">
+            <h4 className="offers-filter-panel-title">Filter verfeinern</h4>
+            <p className="offers-filter-panel-sub">Grenzen Sie die angezeigten Tarife weiter ein</p>
+          </div>
+          <div className="field-row field-row-2 offers-filter-row">
+            <div className="offers-filter-card offers-price-filter">
               <div className="offers-price-filter-head">
                 <label className="field-label offers-price-filter-label">Maximaler Preis</label>
                 <span className="offers-price-filter-value">
@@ -177,7 +181,7 @@ export function OffersList({
                 <span>{hasPriceRange ? money(priceSliderMax) : "—"}</span>
               </div>
             </div>
-            <div className="field offers-days-filter">
+            <div className="offers-filter-card offers-days-filter">
               <div className="offers-days-filter-head">
                 <label className="field-label offers-days-filter-label">Späteste Lieferzeit</label>
                 <span className="offers-days-filter-value">

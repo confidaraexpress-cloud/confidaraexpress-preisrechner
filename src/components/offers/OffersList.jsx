@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
+import { money } from "../../utils/formatters";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -27,6 +28,28 @@ export function OffersList({
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
+
+  // Slider-Obergrenze aus der ungefilterten Tarifliste ableiten, damit der
+  // aktive Preisfilter den eigenen Maximalwert nicht selbst verkleinert.
+  const priceSliderMax = useMemo(() => {
+    const values = tariffs
+      .map(t => t.netPrice)
+      .filter(v => typeof v === "number" && Number.isFinite(v));
+    if (values.length === 0) return null;
+    const rawMax = Math.max(...values);
+    if (rawMax <= 100) return Math.ceil(rawMax / 10) * 10;
+    if (rawMax <= 500) return Math.ceil(rawMax / 25) * 25;
+    return Math.ceil(rawMax / 50) * 50;
+  }, [tariffs]);
+  const hasPriceRange = priceSliderMax != null && priceSliderMax > 0;
+  const priceSliderValue = maxPrice
+    ? Math.min(Number(maxPrice), hasPriceRange ? priceSliderMax : 0)
+    : (hasPriceRange ? priceSliderMax : 0);
+  const handlePriceSlider = (e) => {
+    const val = Number(e.target.value);
+    if (!hasPriceRange || val >= priceSliderMax) onMaxPriceChange("");
+    else onMaxPriceChange(String(val));
+  };
 
   const activeFilterCount = [maxPrice, maxDays].filter(Boolean).length;
   const hasFilter  = activeFilterCount > 0;
@@ -124,15 +147,27 @@ export function OffersList({
       {showSortBar && filterOpen && (
         <div className="offers-filter-panel">
           <div className="field-row field-row-2">
-            <div className="field">
-              <label className="field-label">Max. Preis (€)</label>
+            <div className="field offers-price-filter">
+              <div className="offers-price-filter-head">
+                <label className="field-label offers-price-filter-label">Maximaler Preis</label>
+                <span className="offers-price-filter-value">
+                  {maxPrice ? `bis ${money(Number(maxPrice))} netto` : "Alle Preise"}
+                </span>
+              </div>
               <input
-                className="field-input"
-                type="number"
-                value={maxPrice}
-                onChange={e => onMaxPriceChange(e.target.value)}
-                placeholder="Kein Limit"
+                type="range"
+                className="offers-price-slider"
+                min={0}
+                max={hasPriceRange ? priceSliderMax : 0}
+                step={1}
+                value={priceSliderValue}
+                onChange={handlePriceSlider}
+                disabled={!hasPriceRange}
               />
+              <div className="offers-price-scale">
+                <span>0 €</span>
+                <span>{hasPriceRange ? money(priceSliderMax) : "—"}</span>
+              </div>
             </div>
             <div className="field">
               <label className="field-label">Max. Lieferzeit (Tage)</label>

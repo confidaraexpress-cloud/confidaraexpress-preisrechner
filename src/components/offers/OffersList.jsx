@@ -11,6 +11,14 @@ const SORT_OPTIONS = [
   { id: "priciest",    label: "Teuerste"   },
 ];
 
+const DAYS_QUICK_OPTIONS = [
+  { id: "all", label: "Alle",      value: "" },
+  { id: "1",   label: "bis 1 Tag",  value: "1" },
+  { id: "2",   label: "bis 2 Tage", value: "2" },
+  { id: "3",   label: "bis 3 Tage", value: "3" },
+  { id: "5",   label: "bis 5 Tage", value: "5" },
+];
+
 const TRUST_ITEMS = [
   { icon: "shield",  title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselt, DSGVO-konform" },
   { icon: "leaf",    title: "Nachhaltige Optionen",   desc: "Umweltfreundliche Versandwege" },
@@ -169,15 +177,25 @@ export function OffersList({
                 <span>{hasPriceRange ? money(priceSliderMax) : "—"}</span>
               </div>
             </div>
-            <div className="field">
-              <label className="field-label">Max. Lieferzeit (Tage)</label>
-              <input
-                className="field-input"
-                type="number"
-                value={maxDays}
-                onChange={e => onMaxDaysChange(e.target.value)}
-                placeholder="Kein Limit"
-              />
+            <div className="field offers-days-filter">
+              <div className="offers-days-filter-head">
+                <label className="field-label offers-days-filter-label">Späteste Lieferzeit</label>
+                <span className="offers-days-filter-value">
+                  {maxDays ? (maxDays === "1" ? "bis 1 Tag" : `bis ${maxDays} Tage`) : "Alle Lieferzeiten"}
+                </span>
+              </div>
+              <div className="offers-days-quick-group" role="group" aria-label="Späteste Lieferzeit">
+                {DAYS_QUICK_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`offers-sort-btn${maxDays === opt.value ? " active" : ""}`}
+                    onClick={() => onMaxDaysChange(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -704,6 +704,49 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
+/*  SOFT PREMIUM (Sendungen / Rechnungen)                                    */
+/*  Heller, dezenter Premium-Hintergrund — bewusst KEIN .ce-dark, KEINE      */
+/*  Wiederverwendung von .ce-overview/.ce-aurora (dort zu dunkel/zu stark).  */
+/*  Gesetzt von DashboardPage.jsx als .dashboard-soft-premium auf .app-shell,*/
+/*  ausschließlich für page === "shipments" | "invoices".                   */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.dashboard-soft-premium .main-content {
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(37, 99, 235, 0.07), transparent 62%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(11, 31, 77, 0.04), transparent 65%),
+    linear-gradient(180deg, #eef1f8 0%, #e6eaf4 100%);
+}
+
+.dashboard-soft-premium .empty {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(11, 31, 77, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.dashboard-soft-premium .empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px; height: 76px;
+  margin: 0 auto 16px;
+  font-size: 32px;
+  opacity: 1;
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(37,99,235,0.14), rgba(37,99,235,0.04));
+  border: 1px solid rgba(37,99,235,0.16);
+}
+.dashboard-soft-premium .empty-title { color: var(--navy); }
+
+.dashboard-soft-premium .table-card {
+  border-color: rgba(11, 31, 77, 0.10);
+  box-shadow: 0 6px 22px rgba(15, 35, 90, 0.08), 0 1px 3px rgba(15, 35, 90, 0.05);
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
@@ -720,6 +763,12 @@
   .ce-page { padding: 20px 18px 0; }
   .ce-steps-grid { grid-template-columns: 1fr; gap: 22px; }
   .ce-step-connector { display: none; }
+
+  .dashboard-soft-premium .main-content {
+    background:
+      radial-gradient(ellipse 90% 26% at 100% 0%, rgba(37, 99, 235, 0.05), transparent 60%),
+      linear-gradient(180deg, #eef1f8 0%, #e9edf6 100%);
+  }
 }
 
 @media (max-width: 600px) {

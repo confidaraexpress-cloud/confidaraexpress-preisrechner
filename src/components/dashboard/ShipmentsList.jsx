@@ -6,6 +6,13 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { apiFetch } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 
+const TRACKING_ERROR_MESSAGES = {
+  400: "Bitte gib eine gültige Trackingnummer ein.",
+  404: "Sendung nicht gefunden.",
+  429: "Zu viele Anfragen. Bitte später erneut versuchen.",
+  500: "Tracking aktuell nicht verfügbar.",
+};
+
 export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
@@ -17,9 +24,13 @@ export function ShipmentsList({ shipments, loading }) {
     setTrackLoading(true); setTrackingId(id); setTracking(null);
     try {
       const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
-      const d = await r.json();
-      setTracking(d.tracking);
-    } catch { setTracking({ error: "Tracking nicht verfügbar" }); }
+      if (!r.ok) {
+        setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
+      } else {
+        const d = await r.json();
+        setTracking(d.tracking);
+      }
+    } catch { setTracking({ error: "Tracking aktuell nicht verfügbar." }); }
     setTrackLoading(false);
   };
 

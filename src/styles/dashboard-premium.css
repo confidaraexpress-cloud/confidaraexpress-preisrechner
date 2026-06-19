@@ -754,26 +754,82 @@
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  PROFILE (Mein Profil) — eigener Premium-Scope, losgelöst von Sendungen/ */
-/*  Rechnungen. Übernimmt die Farbwelt der AuthPage (Navy/Blau, mehrere     */
-/*  Glow-Blobs, stärkeres Ambient-Glow) in heller, gedämpfter Form — bewusst*/
-/*  kein --auth- bzw. --ce--Token, kein Dark Mode. Gesetzt von DashboardPage.jsx*/
-/*  als .dashboard-profile-premium auf .app-shell, ausschließlich für       */
-/*  page === "profile". Verändert .dashboard-soft-premium (Sendungen/      */
-/*  Rechnungen) nicht — eigene .main-content-Regel, kein gemeinsamer Selektor.*/
+/*  Rechnungen. Direkter Port der AuthPage-Hintergrundmechanik (siehe       */
+/*  auth.css: .auth-page, .auth-aurora-sun/-ray-top/-ray-right/-dust/       */
+/*  -vignette) — Navy/Blue-Black-Basis, Sonnen-Glow, Staub, Vignette und    */
+/*  zwei Lichtstrahlen, in Helligkeit leicht über dem AuthPage-Original.    */
+/*  Bewusst kein --auth- bzw. --ce--Token, kein Dark Mode. Gesetzt von       */
+/*  DashboardPage.jsx als .dashboard-profile-premium auf .app-shell,        */
+/*  ausschließlich für page === "profile". Verändert .dashboard-soft-premium*/
+/*  (Sendungen/Rechnungen) nicht — eigene .main-content-Regel, kein         */
+/*  gemeinsamer Selektor. Die ::before/::after-Strahlen liegen via          */
+/*  z-index:-1 hinter dem statischen .page-body-Inhalt (Cards/Text), aber   */
+/*  vor der eigenen background-Fläche von .main-content — siehe CSS-       */
+/*  Painting-Order (eigener Hintergrund immer Schritt 1, danach negative   */
+/*  z-index-Kinder vor in-flow-Inhalt). Die geschwungene Aurora-Welle der   */
+/*  AuthPage (.auth-aurora-wave, ein inline-SVG) wird bewusst NICHT          */
+/*  übernommen — sie würde neues JSX/DOM in Profile.jsx erfordern.          */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .dashboard-profile-premium .main-content {
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse 62% 32% at 50% 0%, rgba(255, 255, 255, 0.40) 0%, rgba(219, 234, 254, 0.20) 42%, transparent 76%),
-    radial-gradient(ellipse 58% 48% at 97% 4%, rgba(255, 255, 255, 0.52) 0%, rgba(165, 213, 250, 0.30) 36%, transparent 72%),
-    radial-gradient(ellipse 62% 52% at 0% 36%, rgba(56, 189, 248, 0.36) 0%, rgba(96, 165, 250, 0.16) 42%, transparent 76%),
-    radial-gradient(ellipse 56% 46% at 16% 98%, rgba(29, 78, 216, 0.30) 0%, rgba(96, 165, 250, 0.10) 46%, transparent 74%),
-    radial-gradient(ellipse 48% 40% at 96% 94%, rgba(11, 31, 77, 0.34) 0%, rgba(11, 31, 77, 0.10) 42%, transparent 74%),
-    radial-gradient(ellipse 50% 42% at 32% 8%, rgba(29, 78, 216, 0.24) 0%, transparent 68%),
-    linear-gradient(165deg, #f3f9ff 0%, #dceafd 30%, #b9d8f4 60%, #93bdec 86%, #7aa7e3 100%);
+    radial-gradient(ellipse 70% 50% at 50% 62%, rgba(0, 0, 0, 0.46) 0%, transparent 72%),
+    radial-gradient(1.2px 1.2px at 12% 78%, rgba(200,220,255,0.65), transparent 60%),
+    radial-gradient(1px 1px at 17% 65%, rgba(180,210,255,0.5), transparent 60%),
+    radial-gradient(1px 1px at 22% 82%, rgba(220,235,255,0.6), transparent 60%),
+    radial-gradient(1.5px 1.5px at 8% 70%, rgba(200,225,255,0.5), transparent 60%),
+    radial-gradient(1px 1px at 28% 88%, rgba(190,215,255,0.55), transparent 60%),
+    radial-gradient(1px 1px at 14% 92%, rgba(220,235,255,0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 5% 84%, rgba(180,210,255,0.45), transparent 60%),
+    radial-gradient(1px 1px at 91% 22%, rgba(255,250,235,0.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 95% 8%, rgba(255,250,235,0.65), transparent 60%),
+    radial-gradient(1px 1px at 86% 30%, rgba(230,235,255,0.5), transparent 60%),
+    radial-gradient(1px 1px at 78% 14%, rgba(255,250,235,0.55), transparent 60%),
+    radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.58) 0%, rgba(222, 232, 255, 0.34) 9%, rgba(124, 164, 244, 0.18) 24%, transparent 58%),
+    radial-gradient(ellipse 72% 52% at 50% 16%, rgba(56, 84, 170, 0.24) 0%, transparent 72%),
+    linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
 }
+
+.dashboard-profile-premium .main-content::before {
+  content: '';
+  position: absolute;
+  top: -120px; right: -120px;
+  width: 1400px; height: 700px;
+  transform: rotate(-22deg); transform-origin: top right;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(220, 232, 255, 0.06) 30%,
+    rgba(190, 215, 255, 0.20) 48%,
+    rgba(220, 235, 255, 0.34) 50%,
+    rgba(190, 215, 255, 0.20) 52%,
+    rgba(220, 232, 255, 0.06) 70%,
+    transparent 100%);
+  filter: blur(0.5px);
+  mask-image: radial-gradient(ellipse 70% 100% at 90% 0%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 100% at 90% 0%, black, transparent 75%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dashboard-profile-premium .main-content::after {
+  content: '';
+  position: absolute;
+  top: 46%; right: -100px;
+  width: 700px; height: 200px;
+  transform: translateY(-50%) rotate(-8deg);
+  background: radial-gradient(ellipse 60% 50% at 90% 50%,
+    rgba(200, 220, 255, 0.55) 0%,
+    rgba(150, 185, 255, 0.20) 25%,
+    transparent 60%);
+  filter: blur(6px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dashboard-profile-premium .dash-section-title { color: #f5f8ff; }
+.dashboard-profile-premium .dash-section-sub { color: rgba(205, 215, 235, 0.82); }
 
 .dashboard-profile-premium .profile-layout {
   max-width: 840px;
@@ -921,11 +977,25 @@
 
   .dashboard-profile-premium .main-content {
     background:
-      radial-gradient(ellipse 92% 26% at 50% 0%, rgba(255, 255, 255, 0.42) 0%, rgba(219, 234, 254, 0.20) 46%, transparent 78%),
-      radial-gradient(ellipse 82% 32% at 100% 4%, rgba(255, 255, 255, 0.46) 0%, rgba(165, 213, 250, 0.26) 40%, transparent 74%),
-      radial-gradient(ellipse 74% 36% at 0% 46%, rgba(56, 189, 248, 0.30) 0%, rgba(125, 211, 252, 0.14) 46%, transparent 76%),
-      radial-gradient(ellipse 60% 30% at 92% 98%, rgba(11, 31, 77, 0.24) 0%, transparent 72%),
-      linear-gradient(165deg, #f3f9ff 0%, #dceafd 30%, #b9d8f4 60%, #93bdec 86%, #7aa7e3 100%);
+      radial-gradient(ellipse 80% 46% at 50% 64%, rgba(0, 0, 0, 0.40) 0%, transparent 74%),
+      radial-gradient(1.2px 1.2px at 12% 78%, rgba(200,220,255,0.55), transparent 60%),
+      radial-gradient(1px 1px at 22% 82%, rgba(220,235,255,0.5), transparent 60%),
+      radial-gradient(1px 1px at 28% 88%, rgba(190,215,255,0.45), transparent 60%),
+      radial-gradient(1px 1px at 91% 22%, rgba(255,250,235,0.55), transparent 60%),
+      radial-gradient(1.2px 1.2px at 95% 8%, rgba(255,250,235,0.5), transparent 60%),
+      radial-gradient(circle at 90% 2%, rgba(255, 255, 255, 0.46) 0%, rgba(222, 232, 255, 0.26) 10%, rgba(124, 164, 244, 0.14) 24%, transparent 56%),
+      radial-gradient(ellipse 90% 40% at 50% 10%, rgba(56, 84, 170, 0.20) 0%, transparent 70%),
+      linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
+  }
+
+  .dashboard-profile-premium .main-content::before {
+    width: 900px; height: 480px;
+    top: -90px; right: -90px;
+  }
+
+  .dashboard-profile-premium .main-content::after {
+    width: 420px; height: 140px;
+    right: -70px;
   }
 
   .dashboard-profile-premium .profile-account-header { padding: 20px; }

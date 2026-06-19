@@ -774,21 +774,31 @@
 /*  14→9, ::before-Ray 1400×700→900×480 (an .ce-aurora-ray-Referenz aus     */
 /*  der Übersicht angelehnt) — reduziert Paint-/Mask-Fläche beim Scrollen,  */
 /*  Navy-Basis/Ambient-Glow/Sonnen-Glow/Vignette/Strahl-Charakter bleiben.  */
+/*  Hierarchie-/Glow-Pass (nach 42ae2ae): Vignette/Sonnen-Falloff/Ambient-  */
+/*  Glow/Basis auf #473C8B (violett, Tiefe, unten/seitlich) und #436EEE     */
+/*  (blau, oben/seitlich) umgetönt statt neu hinzugefügt; genau ein neuer   */
+/*  weicher Violett-Blob unten links ergänzt (Layer-Anzahl 9→10, kein       */
+/*  Dust/Mask/Filter-Zuwachs). Account-Header + Karten von Glassy auf       */
+/*  opakes Off-White (#fbfcff) umgestellt, backdrop-filter entfernt —       */
+/*  Lesbarkeits- UND Performance-Gewinn. Bearbeiten-Button + StatusBadge    */
+/*  aus dem Header entfernt, Button lebt jetzt in .profile-toolbar          */
+/*  (Profile.jsx), Status nur noch in der Konto-Karte.                     */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .dashboard-profile-premium .main-content {
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 62%, rgba(0, 0, 0, 0.46) 0%, transparent 72%),
+    radial-gradient(ellipse 70% 50% at 50% 62%, rgba(71, 60, 139, 0.34) 0%, transparent 72%),
     radial-gradient(2.5px 2.5px at 14% 78%, rgba(200,220,255,0.55), transparent 65%),
     radial-gradient(2px 2px at 24% 88%, rgba(190,215,255,0.45), transparent 65%),
     radial-gradient(2.5px 2.5px at 8% 68%, rgba(210,225,255,0.40), transparent 65%),
     radial-gradient(2.5px 2.5px at 91% 10%, rgba(255,250,235,0.55), transparent 65%),
     radial-gradient(2px 2px at 80% 22%, rgba(230,235,255,0.40), transparent 65%),
-    radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.58) 0%, rgba(222, 232, 255, 0.34) 9%, rgba(124, 164, 244, 0.18) 24%, transparent 58%),
-    radial-gradient(ellipse 72% 52% at 50% 16%, rgba(56, 84, 170, 0.24) 0%, transparent 72%),
-    linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
+    radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.58) 0%, rgba(222, 232, 255, 0.34) 9%, rgba(67, 110, 238, 0.16) 24%, transparent 58%),
+    radial-gradient(ellipse 72% 52% at 50% 16%, rgba(67, 110, 238, 0.22) 0%, transparent 72%),
+    radial-gradient(ellipse 65% 45% at 8% 88%, rgba(71, 60, 139, 0.26) 0%, transparent 70%),
+    linear-gradient(180deg, #11163f 0%, #0d1233 55%, #080b22 100%);
 }
 
 .dashboard-profile-premium .main-content::before {
@@ -840,45 +850,51 @@
   margin: 0 auto 16px;
 }
 
+.dashboard-profile-premium .profile-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 840px;
+  margin: 0 auto 14px;
+}
+
 .dashboard-profile-premium .profile-account-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 18px;
-  padding: 28px 32px;
-  margin: 0 auto 26px;
-  border-radius: 26px;
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.60));
-  border: 1px solid rgba(11, 31, 77, 0.12);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  gap: 14px;
+  max-width: 840px;
+  padding: 16px 22px;
+  margin: 0 auto 20px;
+  border-radius: 20px;
+  background: #fbfcff;
+  border: 1px solid rgba(11, 31, 77, 0.08);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 20px 48px rgba(15, 35, 90, 0.16),
-    0 2px 6px rgba(15, 35, 90, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 14px 32px rgba(15, 35, 90, 0.12),
+    0 2px 6px rgba(15, 35, 90, 0.05);
 }
 
 .dashboard-profile-premium .profile-account-identity {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   min-width: 0;
 }
 
 .dashboard-profile-premium .profile-avatar-lg {
-  width: 64px; height: 64px;
+  width: 50px; height: 50px;
   flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Syne', sans-serif;
-  font-size: 23px;
+  font-size: 18px;
   font-weight: 700;
   color: white;
   background: linear-gradient(135deg, var(--blue), var(--accent));
-  box-shadow: 0 8px 22px rgba(29, 78, 216, 0.38), 0 0 0 5px rgba(96, 165, 250, 0.16);
+  box-shadow: 0 6px 16px rgba(29, 78, 216, 0.32), 0 0 0 4px rgba(96, 165, 250, 0.14);
 }
 
 .dashboard-profile-premium .profile-account-info { min-width: 0; }
@@ -908,13 +924,6 @@
 }
 .dashboard-profile-premium .profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
 
-.dashboard-profile-premium .profile-account-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
-}
-
 .dashboard-profile-premium .profile-edit-btn {
   padding: 10px 20px;
   box-shadow:
@@ -926,12 +935,10 @@
 
 .dashboard-profile-premium .profile-layout .table-card {
   border-radius: 24px;
-  border-color: rgba(11, 31, 77, 0.10);
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.58));
-  backdrop-filter: blur(16px) saturate(135%);
-  -webkit-backdrop-filter: blur(16px) saturate(135%);
+  border-color: rgba(11, 31, 77, 0.08);
+  background: #fbfcff;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
     0 16px 40px rgba(15, 35, 90, 0.13),
     0 2px 6px rgba(15, 35, 90, 0.05);
 }
@@ -976,15 +983,15 @@
 
   .dashboard-profile-premium .main-content {
     background:
-      radial-gradient(ellipse 80% 46% at 50% 64%, rgba(0, 0, 0, 0.40) 0%, transparent 74%),
+      radial-gradient(ellipse 80% 46% at 50% 64%, rgba(71, 60, 139, 0.28) 0%, transparent 74%),
       radial-gradient(2px 2px at 12% 78%, rgba(200,220,255,0.50), transparent 65%),
       radial-gradient(1.8px 1.8px at 22% 82%, rgba(220,235,255,0.45), transparent 65%),
       radial-gradient(1.8px 1.8px at 28% 88%, rgba(190,215,255,0.40), transparent 65%),
       radial-gradient(1.8px 1.8px at 91% 22%, rgba(255,250,235,0.50), transparent 65%),
       radial-gradient(2px 2px at 95% 8%, rgba(255,250,235,0.45), transparent 65%),
-      radial-gradient(circle at 90% 2%, rgba(255, 255, 255, 0.46) 0%, rgba(222, 232, 255, 0.26) 10%, rgba(124, 164, 244, 0.14) 24%, transparent 56%),
-      radial-gradient(ellipse 90% 40% at 50% 10%, rgba(56, 84, 170, 0.20) 0%, transparent 70%),
-      linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
+      radial-gradient(circle at 90% 2%, rgba(255, 255, 255, 0.46) 0%, rgba(222, 232, 255, 0.26) 10%, rgba(67, 110, 238, 0.14) 24%, transparent 56%),
+      radial-gradient(ellipse 90% 40% at 50% 10%, rgba(67, 110, 238, 0.20) 0%, transparent 70%),
+      linear-gradient(180deg, #11163f 0%, #0d1233 55%, #080b22 100%);
   }
 
   .dashboard-profile-premium .main-content::before {
@@ -997,9 +1004,8 @@
     right: -70px;
   }
 
-  .dashboard-profile-premium .profile-account-header { padding: 20px; }
+  .dashboard-profile-premium .profile-account-header { padding: 14px 16px; }
   .dashboard-profile-premium .profile-account-identity { min-width: 100%; }
-  .dashboard-profile-premium .profile-account-actions { width: 100%; justify-content: space-between; }
 }
 
 @media (max-width: 600px) {

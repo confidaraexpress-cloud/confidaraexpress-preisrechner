@@ -715,11 +715,11 @@
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse 55% 42% at 92% 4%, rgba(255, 255, 255, 0.42) 0%, rgba(191, 219, 254, 0.20) 40%, transparent 75%),
-    radial-gradient(ellipse 50% 40% at 8% 42%, rgba(96, 165, 250, 0.22), transparent 72%),
-    radial-gradient(ellipse 58% 46% at 90% 95%, rgba(29, 78, 216, 0.16), transparent 74%),
-    radial-gradient(ellipse 44% 36% at 28% 90%, rgba(125, 211, 252, 0.14), transparent 70%),
-    linear-gradient(165deg, #eef9ff 0%, #dbeafe 45%, #c7e2fb 100%);
+    radial-gradient(ellipse 52% 40% at 92% 4%, rgba(255, 255, 255, 0.40) 0%, rgba(191, 219, 254, 0.18) 42%, transparent 76%),
+    radial-gradient(ellipse 48% 38% at 8% 46%, rgba(125, 211, 252, 0.24), transparent 72%),
+    radial-gradient(ellipse 58% 48% at 92% 96%, rgba(11, 31, 77, 0.22), transparent 76%),
+    radial-gradient(ellipse 50% 40% at 26% 4%, rgba(29, 78, 216, 0.16), transparent 72%),
+    linear-gradient(165deg, #f1f9ff 0%, #dbeafe 42%, #bcd8f4 100%);
 }
 
 .dashboard-soft-premium .empty {
@@ -770,9 +770,9 @@
 
   .dashboard-soft-premium .main-content {
     background:
-      radial-gradient(ellipse 80% 26% at 100% 0%, rgba(255, 255, 255, 0.35) 0%, rgba(191, 219, 254, 0.16) 40%, transparent 70%),
-      radial-gradient(ellipse 70% 24% at 0% 100%, rgba(29, 78, 216, 0.13), transparent 70%),
-      linear-gradient(165deg, #eef9ff 0%, #dbeafe 45%, #c7e2fb 100%);
+      radial-gradient(ellipse 78% 26% at 100% 0%, rgba(255, 255, 255, 0.32) 0%, rgba(191, 219, 254, 0.15) 42%, transparent 72%),
+      radial-gradient(ellipse 70% 30% at 0% 100%, rgba(11, 31, 77, 0.15), transparent 74%),
+      linear-gradient(165deg, #f1f9ff 0%, #dbeafe 42%, #bcd8f4 100%);
   }
 }
 

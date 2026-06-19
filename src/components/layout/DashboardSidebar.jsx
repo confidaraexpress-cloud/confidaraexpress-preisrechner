@@ -46,6 +46,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
           ))}
           <button
             className="nav-item"
+            onClick={() => navigate("/tracking")}
+          >
+            <Icon n="map" s={16} /> Sendungsverfolgung
+          </button>
+          <button
+            className="nav-item"
             onClick={() => { logout(); navigate("/login"); }}
           >
             <Icon n="logout" s={16} /> Abmelden

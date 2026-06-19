@@ -331,6 +331,27 @@
 }
 .auth-btn-ghost:hover { color: var(--auth-ink-2); }
 
+/* ── Public tracking entry (secondary action under the card) ────────────── */
+.auth-track {
+  margin-top: 18px;
+  width: 100%; max-width: 560px; padding: 13px 20px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  background: rgba(8, 14, 32, 0.5);
+  border: 1px solid rgba(120, 160, 255, 0.20);
+  border-radius: var(--auth-radius);
+  color: var(--auth-ink-2); font-size: 14px; font-weight: 600; font-family: inherit;
+  text-decoration: none; cursor: pointer;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transition: color 0.15s, border-color 0.15s, background 0.2s, transform 120ms;
+}
+.auth-track:hover {
+  color: var(--auth-ink-1);
+  border-color: rgba(120, 160, 255, 0.40);
+  background: rgba(20, 30, 60, 0.55);
+  transform: translateY(-1px);
+}
+.auth-track-ico { display: inline-flex; color: var(--auth-blue-3); flex-shrink: 0; }
+
 /* ── Alerts ─────────────────────────────────────────────────────────────── */
 
 .auth-alert {

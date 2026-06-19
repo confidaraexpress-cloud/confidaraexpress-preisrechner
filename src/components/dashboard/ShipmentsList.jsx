@@ -23,7 +23,7 @@ export function ShipmentsList({ shipments, loading }) {
     if (trackingId === id) { setTrackingId(null); return; }
     setTrackLoading(true); setTrackingId(id); setTracking(null);
     try {
-      const r = await apiFetch(`/api/tracking/${encodeURIComponent(id)}`, { auth: true });
+      const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
       if (!r.ok) {
         setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
       } else {

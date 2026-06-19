@@ -33,9 +33,9 @@ export default function App() {
           <Route path="/calculator" element={<CalculatorPage />} />
         </Route>
 
-        {/* Legal pages public; all other sub-routes require auth */}
+        {/* Public: tracking + legal pages. Booking still requires auth. */}
         <Route element={<NavbarLayout />}>
-          <Route path="/tracking"    element={<ProtectedRoute><TrackingPage /></ProtectedRoute>} />
+          <Route path="/tracking"    element={<TrackingPage />} />
           <Route path="/booking"     element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
           <Route path="/impressum"   element={<ImpressumPage />} />
           <Route path="/datenschutz" element={<DatenschutzPage />} />

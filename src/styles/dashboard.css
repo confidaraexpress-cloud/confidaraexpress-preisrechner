@@ -58,26 +58,25 @@
 
 /* ─── DashboardSectionHeader ─────────────────────────────────────────────── */
 .dash-section-header {
-  background: linear-gradient(135deg, #eef3ff 0%, #e8f0ff 50%, #edf1ff 100%);
-  border-bottom: 1px solid rgba(37, 99, 235, 0.14);
-  padding: 17px 28px 16px;
-  position: sticky;
-  top: 0;
-  z-index: 99;
-  box-shadow: 0 2px 14px rgba(29, 78, 216, 0.09);
+  background: transparent;
+  padding: 30px 28px 22px;
   text-align: center;
 }
 .dash-section-title {
   margin: 0;
   font-family: 'Syne', sans-serif;
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
-  letter-spacing: -0.028em;
-  line-height: 1.15;
-  background: linear-gradient(115deg, var(--navy) 0%, var(--blue) 48%, var(--blue3) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: var(--navy);
+}
+.dash-section-sub {
+  margin: 8px auto 0;
+  max-width: 480px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--gray500);
 }
 
 /* ─── Profile meta row (replaces page-header on profile page) ───────────── */

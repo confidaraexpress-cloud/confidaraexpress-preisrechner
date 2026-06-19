@@ -43,7 +43,10 @@ export function DashboardLayout() {
           <div className="user-avatar">{initials}</div>
         </div>
         {activePage === "calculator" && (
-          <DashboardSectionHeader title="Preisrechner" />
+          <DashboardSectionHeader
+            title="Preisrechner"
+            subtitle="Berechnen Sie Versandkosten transparent auf Basis aktueller Carrier-Tarife."
+          />
         )}
         <Outlet />
         <LegalLinks />

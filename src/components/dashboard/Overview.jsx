@@ -142,15 +142,11 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </button>
         </div>
 
-        {/* Hero */}
+        {/* Hero — dient zugleich als Seitenkopf der Übersicht */}
         <div className="ce-hero">
-          <div className="ce-hero-title">
-            Ihr B2B-Versand
-            <span className="ce-accent">auf einem Blick.</span>
-          </div>
+          <h1 className="ce-hero-title">Übersicht</h1>
           <p className="ce-hero-sub">
-            Verwalten Sie alle Ihre Sendungen, vergleichen Sie Carrier-Preise und behalten
-            Sie Ihre Rechnungen im Überblick – alles an einem Ort.
+            Ihr zentraler Kontrollpunkt für Sendungen, Kosten und Versandprozesse.
           </p>
         </div>
 

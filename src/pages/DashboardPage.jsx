@@ -13,12 +13,25 @@ import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
 
-const PAGE_TITLES = {
-  overview:  "Übersicht",
-  new:       "Neue Sendung",
-  shipments: "Sendungen",
-  invoices:  "Rechnungen",
-  profile:   "Mein Profil",
+// Übersicht hat keinen Eintrag: Titel/Subline laufen dort über den Overview-Hero,
+// damit kein doppelter Seitenkopf entsteht.
+const PAGE_HEADERS = {
+  new: {
+    title: "Neue Sendung",
+    subtitle: "Führen Sie neue Versandaufträge sicher und nachvollziehbar durch den Buchungsprozess.",
+  },
+  shipments: {
+    title: "Sendungen",
+    subtitle: "Alle Versandaufträge übersichtlich dokumentiert und jederzeit nachverfolgbar.",
+  },
+  invoices: {
+    title: "Rechnungen",
+    subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
+  },
+  profile: {
+    title: "Mein Profil",
+    subtitle: "Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort.",
+  },
 };
 
 export default function DashboardPage() {
@@ -108,8 +121,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {PAGE_TITLES[page] && (
-          <DashboardSectionHeader title={PAGE_TITLES[page]} />
+        {PAGE_HEADERS[page] && (
+          <DashboardSectionHeader title={PAGE_HEADERS[page].title} subtitle={PAGE_HEADERS[page].subtitle} />
         )}
 
         {page === "overview" && (

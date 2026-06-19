@@ -82,6 +82,13 @@ export function Profile({ user }) {
   return (
     <>
       <div className="page-body">
+        {!editing && (
+          <div className="profile-toolbar">
+            <button className="btn btn-primary profile-edit-btn" onClick={startEdit}>
+              <Icon n="settings" s={14} /> Bearbeiten
+            </button>
+          </div>
+        )}
         <div className="profile-account-header">
           <div className="profile-account-identity">
             <div className="profile-avatar-lg">{initials}</div>
@@ -91,14 +98,6 @@ export function Profile({ user }) {
                 <Icon n="mail" s={13} /> {user?.email || "—"}
               </div>
             </div>
-          </div>
-          <div className="profile-account-actions">
-            <StatusBadge status={user?.status} />
-            {!editing && (
-              <button className="btn btn-primary profile-edit-btn" onClick={startEdit}>
-                <Icon n="settings" s={14} /> Bearbeiten
-              </button>
-            )}
           </div>
         </div>
         {saveSuccess && !editing && (

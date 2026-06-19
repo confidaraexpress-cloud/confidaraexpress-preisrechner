@@ -1013,6 +1013,7 @@
   .ce-carrier-tile { height: 56px; padding: 8px 12px; }
   .ce-hero-title { font-size: 28px; }
   .ce-hero-sub { font-size: 14px; }
+  .dash-section-title { font-size: 28px; }
   .ce-table-card, .ce-steps-card { padding: 20px 18px; }
   .ce-carriers-card { padding: 14px 14px 12px; }
 }

@@ -769,6 +769,11 @@
 /*  z-index-Kinder vor in-flow-Inhalt). Die geschwungene Aurora-Welle der   */
 /*  AuthPage (.auth-aurora-wave, ein inline-SVG) wird bewusst NICHT          */
 /*  übernommen — sie würde neues JSX/DOM in Profile.jsx erfordern.          */
+/*  Performance-Pass (nach 4f4cf18): Dust-Punkte 11→5 (größerer Radius,     */
+/*  weicherer Falloff statt scharfer 1px-Kreise), Layer-Anzahl gesamt       */
+/*  14→9, ::before-Ray 1400×700→900×480 (an .ce-aurora-ray-Referenz aus     */
+/*  der Übersicht angelehnt) — reduziert Paint-/Mask-Fläche beim Scrollen,  */
+/*  Navy-Basis/Ambient-Glow/Sonnen-Glow/Vignette/Strahl-Charakter bleiben.  */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .dashboard-profile-premium .main-content {
@@ -776,17 +781,11 @@
   overflow-x: hidden;
   background:
     radial-gradient(ellipse 70% 50% at 50% 62%, rgba(0, 0, 0, 0.46) 0%, transparent 72%),
-    radial-gradient(1.2px 1.2px at 12% 78%, rgba(200,220,255,0.65), transparent 60%),
-    radial-gradient(1px 1px at 17% 65%, rgba(180,210,255,0.5), transparent 60%),
-    radial-gradient(1px 1px at 22% 82%, rgba(220,235,255,0.6), transparent 60%),
-    radial-gradient(1.5px 1.5px at 8% 70%, rgba(200,225,255,0.5), transparent 60%),
-    radial-gradient(1px 1px at 28% 88%, rgba(190,215,255,0.55), transparent 60%),
-    radial-gradient(1px 1px at 14% 92%, rgba(220,235,255,0.5), transparent 60%),
-    radial-gradient(1.5px 1.5px at 5% 84%, rgba(180,210,255,0.45), transparent 60%),
-    radial-gradient(1px 1px at 91% 22%, rgba(255,250,235,0.7), transparent 60%),
-    radial-gradient(1.2px 1.2px at 95% 8%, rgba(255,250,235,0.65), transparent 60%),
-    radial-gradient(1px 1px at 86% 30%, rgba(230,235,255,0.5), transparent 60%),
-    radial-gradient(1px 1px at 78% 14%, rgba(255,250,235,0.55), transparent 60%),
+    radial-gradient(2.5px 2.5px at 14% 78%, rgba(200,220,255,0.55), transparent 65%),
+    radial-gradient(2px 2px at 24% 88%, rgba(190,215,255,0.45), transparent 65%),
+    radial-gradient(2.5px 2.5px at 8% 68%, rgba(210,225,255,0.40), transparent 65%),
+    radial-gradient(2.5px 2.5px at 91% 10%, rgba(255,250,235,0.55), transparent 65%),
+    radial-gradient(2px 2px at 80% 22%, rgba(230,235,255,0.40), transparent 65%),
     radial-gradient(circle at 88% 4%, rgba(255, 255, 255, 0.58) 0%, rgba(222, 232, 255, 0.34) 9%, rgba(124, 164, 244, 0.18) 24%, transparent 58%),
     radial-gradient(ellipse 72% 52% at 50% 16%, rgba(56, 84, 170, 0.24) 0%, transparent 72%),
     linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
@@ -795,8 +794,8 @@
 .dashboard-profile-premium .main-content::before {
   content: '';
   position: absolute;
-  top: -120px; right: -120px;
-  width: 1400px; height: 700px;
+  top: -60px; right: -120px;
+  width: 900px; height: 480px;
   transform: rotate(-22deg); transform-origin: top right;
   background: linear-gradient(180deg,
     transparent 0%,
@@ -978,19 +977,19 @@
   .dashboard-profile-premium .main-content {
     background:
       radial-gradient(ellipse 80% 46% at 50% 64%, rgba(0, 0, 0, 0.40) 0%, transparent 74%),
-      radial-gradient(1.2px 1.2px at 12% 78%, rgba(200,220,255,0.55), transparent 60%),
-      radial-gradient(1px 1px at 22% 82%, rgba(220,235,255,0.5), transparent 60%),
-      radial-gradient(1px 1px at 28% 88%, rgba(190,215,255,0.45), transparent 60%),
-      radial-gradient(1px 1px at 91% 22%, rgba(255,250,235,0.55), transparent 60%),
-      radial-gradient(1.2px 1.2px at 95% 8%, rgba(255,250,235,0.5), transparent 60%),
+      radial-gradient(2px 2px at 12% 78%, rgba(200,220,255,0.50), transparent 65%),
+      radial-gradient(1.8px 1.8px at 22% 82%, rgba(220,235,255,0.45), transparent 65%),
+      radial-gradient(1.8px 1.8px at 28% 88%, rgba(190,215,255,0.40), transparent 65%),
+      radial-gradient(1.8px 1.8px at 91% 22%, rgba(255,250,235,0.50), transparent 65%),
+      radial-gradient(2px 2px at 95% 8%, rgba(255,250,235,0.45), transparent 65%),
       radial-gradient(circle at 90% 2%, rgba(255, 255, 255, 0.46) 0%, rgba(222, 232, 255, 0.26) 10%, rgba(124, 164, 244, 0.14) 24%, transparent 56%),
       radial-gradient(ellipse 90% 40% at 50% 10%, rgba(56, 84, 170, 0.20) 0%, transparent 70%),
       linear-gradient(180deg, #070d22 0%, #060b1d 55%, #040813 100%);
   }
 
   .dashboard-profile-premium .main-content::before {
-    width: 900px; height: 480px;
-    top: -90px; right: -90px;
+    width: 640px; height: 340px;
+    top: -70px; right: -70px;
   }
 
   .dashboard-profile-premium .main-content::after {

@@ -63,11 +63,11 @@
 }
 
 .ce-dark .sidebar-brand {
-  padding: 22px 18px 18px;
+  padding: 18px 18px 14px;
   border-bottom: 1px solid var(--ce-line-1);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 .ce-dark .sidebar-brand .ce-brand-name {
   font-family: 'Syne', sans-serif;
@@ -86,7 +86,7 @@
 
 .ce-dark .sidebar-close-btn { color: var(--ce-ink-3); }
 
-.ce-dark .sidebar-nav { flex: 1; padding: 16px 14px; overflow-y: auto; }
+.ce-dark .sidebar-nav { flex: 1; padding: 10px; overflow-y: auto; }
 .ce-dark .nav-section-label {
   font-size: 10px;
   font-weight: 700;
@@ -99,8 +99,8 @@
 .ce-dark .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
+  gap: 10px;
+  padding: 9px 11px;
   border-radius: var(--ce-r);
   color: var(--ce-ink-3);
   font-size: 14px;
@@ -112,7 +112,7 @@
   width: 100%;
   text-align: left;
   font-family: 'DM Sans', sans-serif;
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 .ce-dark .nav-item svg { flex-shrink: 0; opacity: 0.85; }
 .ce-dark .nav-item:hover { background: rgba(120, 160, 255, 0.07); color: var(--ce-ink-1); }

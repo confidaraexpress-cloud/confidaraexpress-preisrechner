@@ -715,10 +715,11 @@
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse 40% 32% at 96% 2%, rgba(37, 99, 235, 0.19), transparent 72%),
-    radial-gradient(ellipse 38% 30% at 4% 48%, rgba(59, 130, 246, 0.15), transparent 74%),
-    radial-gradient(ellipse 44% 34% at 88% 98%, rgba(11, 31, 77, 0.13), transparent 72%),
-    linear-gradient(160deg, #eaf2fd 0%, #d9e6f9 50%, #c9dcf5 100%);
+    radial-gradient(ellipse 55% 42% at 92% 4%, rgba(255, 255, 255, 0.42) 0%, rgba(191, 219, 254, 0.20) 40%, transparent 75%),
+    radial-gradient(ellipse 50% 40% at 8% 42%, rgba(96, 165, 250, 0.22), transparent 72%),
+    radial-gradient(ellipse 58% 46% at 90% 95%, rgba(29, 78, 216, 0.16), transparent 74%),
+    radial-gradient(ellipse 44% 36% at 28% 90%, rgba(125, 211, 252, 0.14), transparent 70%),
+    linear-gradient(165deg, #eef9ff 0%, #dbeafe 45%, #c7e2fb 100%);
 }
 
 .dashboard-soft-premium .empty {
@@ -769,9 +770,9 @@
 
   .dashboard-soft-premium .main-content {
     background:
-      radial-gradient(ellipse 72% 24% at 100% 0%, rgba(37, 99, 235, 0.15), transparent 68%),
-      radial-gradient(ellipse 62% 22% at 0% 100%, rgba(59, 130, 246, 0.11), transparent 70%),
-      linear-gradient(160deg, #eaf2fd 0%, #d9e6f9 50%, #c9dcf5 100%);
+      radial-gradient(ellipse 80% 26% at 100% 0%, rgba(255, 255, 255, 0.35) 0%, rgba(191, 219, 254, 0.16) 40%, transparent 70%),
+      radial-gradient(ellipse 70% 24% at 0% 100%, rgba(29, 78, 216, 0.13), transparent 70%),
+      linear-gradient(165deg, #eef9ff 0%, #dbeafe 45%, #c7e2fb 100%);
   }
 }
 

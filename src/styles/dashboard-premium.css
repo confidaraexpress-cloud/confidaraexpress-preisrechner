@@ -715,20 +715,19 @@
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse 38% 30% at 96% 4%, rgba(37, 99, 235, 0.17), transparent 70%),
-    radial-gradient(ellipse 36% 28% at 6% 46%, rgba(59, 130, 246, 0.13), transparent 72%),
-    radial-gradient(ellipse 42% 32% at 90% 96%, rgba(11, 31, 77, 0.12), transparent 70%),
-    linear-gradient(160deg, #eef5fe 0%, #dde9fb 55%, #d2e1f7 100%);
+    radial-gradient(ellipse 40% 32% at 96% 2%, rgba(37, 99, 235, 0.19), transparent 72%),
+    radial-gradient(ellipse 38% 30% at 4% 48%, rgba(59, 130, 246, 0.15), transparent 74%),
+    radial-gradient(ellipse 44% 34% at 88% 98%, rgba(11, 31, 77, 0.13), transparent 72%),
+    linear-gradient(160deg, #eaf2fd 0%, #d9e6f9 50%, #c9dcf5 100%);
 }
 
 .dashboard-soft-premium .empty {
-  max-width: 460px;
+  max-width: 420px;
   margin: 0 auto;
-  padding: 44px 32px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(37, 99, 235, 0.14);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 14px 36px rgba(15, 35, 90, 0.12), 0 2px 8px rgba(15, 35, 90, 0.05);
+  padding: 40px 24px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .dashboard-soft-premium .empty-icon {
   display: flex;
@@ -770,9 +769,9 @@
 
   .dashboard-soft-premium .main-content {
     background:
-      radial-gradient(ellipse 70% 22% at 100% 0%, rgba(37, 99, 235, 0.13), transparent 66%),
-      radial-gradient(ellipse 60% 20% at 0% 100%, rgba(59, 130, 246, 0.09), transparent 68%),
-      linear-gradient(160deg, #eef5fe 0%, #dde9fb 55%, #d2e1f7 100%);
+      radial-gradient(ellipse 72% 24% at 100% 0%, rgba(37, 99, 235, 0.15), transparent 68%),
+      radial-gradient(ellipse 62% 22% at 0% 100%, rgba(59, 130, 246, 0.11), transparent 70%),
+      linear-gradient(160deg, #eaf2fd 0%, #d9e6f9 50%, #c9dcf5 100%);
   }
 }
 

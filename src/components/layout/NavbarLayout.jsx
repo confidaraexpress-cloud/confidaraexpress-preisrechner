@@ -17,10 +17,6 @@ function Navbar() {
             <div className="logo-mark">CE</div>
             <span className="logo-text">ConfidaraExpress</span>
           </div>
-          <ul className="navbar-nav">
-            <li><a onClick={() => navigate("/calculator")}>Preisrechner</a></li>
-            <li><a onClick={() => navigate("/tracking")}>Tracking</a></li>
-          </ul>
           <div className="navbar-actions">
             {authed ? (
               <button className="btn btn-primary btn-sm" onClick={() => navigate("/dashboard")}>Dashboard</button>
@@ -42,8 +38,6 @@ function Navbar() {
               <button className="drawer-close-btn" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
             </div>
             <nav className="mobile-drawer-nav">
-              <button className="drawer-nav-item" onClick={() => { navigate("/calculator"); setDrawerOpen(false); }}><Icon n="zap" s={18} /> Preisrechner</button>
-              <button className="drawer-nav-item" onClick={() => { navigate("/tracking"); setDrawerOpen(false); }}><Icon n="map" s={18} /> Tracking</button>
               {authed ? (
                 <button className="drawer-nav-item" onClick={() => { navigate("/dashboard"); setDrawerOpen(false); }}><Icon n="dashboard" s={18} /> Dashboard</button>
               ) : (

@@ -249,11 +249,6 @@ export default function AuthPage() {
               )}
             </div>
 
-            <Link to="/tracking" className="auth-track">
-              <span className="auth-track-ico"><Icon n="map" s={16} /></span>
-              <span>Sendung verfolgen</span>
-            </Link>
-
             <TrustBar />
           </>
         )}

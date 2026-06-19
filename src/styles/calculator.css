@@ -99,8 +99,16 @@
 
 /* ─── Tracking page ──────────────────────────────────────────────────────── */
 .tracking-page-wrap { padding-top: 48px; padding-bottom: 48px; max-width: 600px; }
+.tracking-page-sub { color: var(--gray500); font-size: 14px; margin-top: -6px; }
 .tracking-status-box { margin-bottom: 16px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); border: 1px solid rgba(29,78,216,0.12); box-shadow: 0 2px 8px rgba(29,78,216,0.06); }
 .tracking-status-text { font-size: 13px; color: var(--blue2); font-weight: 600; }
+.tracking-status-box-lg { padding: 14px 16px; }
+.tracking-status-box-lg .tracking-status-text { font-size: 15px; }
+.tracking-meta-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; color: var(--gray500); }
+.tracking-meta-id strong { color: var(--navy); font-weight: 700; }
+.tracking-meta-updated { color: var(--gray400); white-space: nowrap; }
+.tracking-day-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray400); margin: 18px 0 8px; }
+.tracking-day-label:first-child { margin-top: 0; }
 .tracking-events-empty { padding: 24px 0; }
 
 /* ─── Date picker — collapsible ──────────────────────────────────────────── */

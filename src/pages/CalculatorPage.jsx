@@ -259,10 +259,6 @@ export default function CalculatorPage() {
   return (
     <div className="page-with-navbar">
       <div className="container calc-page-wrap">
-        <div className="mb-24">
-          <h1 className="heading calc-page-title">Versandpreis berechnen</h1>
-          <p className="calc-page-sub">Vergleichen Sie Preise von 10+ Carriern in Echtzeit</p>
-        </div>
         {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
 
         <div className="offers-form-section">

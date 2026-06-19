@@ -282,8 +282,11 @@
   position: relative; z-index: 2;
   padding: 18px 0 30px;
   max-width: 620px;
+  margin: 0 auto;
+  text-align: center;
 }
 .ce-hero-title {
+  margin: 0;
   font-family: 'Cormorant Garamond', 'Times New Roman', serif;
   font-weight: 500;
   font-size: clamp(34px, 5vw, 64px);
@@ -291,16 +294,8 @@
   letter-spacing: -0.015em;
   color: var(--ce-ink-1);
 }
-.ce-hero-title .ce-accent {
-  display: block;
-  font-style: italic;
-  background: linear-gradient(100deg, #6189ff 0%, #3b6cff 55%, #2e5cff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 .ce-hero-sub {
-  margin-top: 20px;
+  margin: 20px auto 0;
   font-size: 15.5px;
   line-height: 1.65;
   color: var(--ce-ink-3);

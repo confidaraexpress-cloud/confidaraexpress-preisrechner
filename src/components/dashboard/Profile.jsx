@@ -55,6 +55,8 @@ export function Profile({ user }) {
     setSaving(false);
   };
 
+  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
+
   const readSections = [
     {
       title: "Kontakt",
@@ -80,13 +82,24 @@ export function Profile({ user }) {
   return (
     <>
       <div className="page-body">
-        <div className="profile-page-meta">
-          <span className="page-header-sub">{user?.email}</span>
-          {!editing && (
-            <button className="btn btn-outline btn-sm" onClick={startEdit}>
-              <Icon n="settings" s={14} /> Bearbeiten
-            </button>
-          )}
+        <div className="profile-account-header">
+          <div className="profile-account-identity">
+            <div className="profile-avatar-lg">{initials}</div>
+            <div className="profile-account-info">
+              <div className="profile-account-name">{user?.company_name || user?.name || "—"}</div>
+              <div className="profile-account-email">
+                <Icon n="mail" s={13} /> {user?.email || "—"}
+              </div>
+            </div>
+          </div>
+          <div className="profile-account-actions">
+            <StatusBadge status={user?.status} />
+            {!editing && (
+              <button className="btn btn-primary profile-edit-btn" onClick={startEdit}>
+                <Icon n="settings" s={14} /> Bearbeiten
+              </button>
+            )}
+          </div>
         </div>
         {saveSuccess && !editing && (
           <div className="alert alert-success mb-16">

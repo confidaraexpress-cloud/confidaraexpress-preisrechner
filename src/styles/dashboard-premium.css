@@ -753,6 +753,96 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
+/*  PROFILE (Mein Profil) — auth-inspirierter, aber heller Account-Bereich   */
+/*  Nutzt denselben Soft-Premium-Hintergrund wie Sendungen/Rechnungen.      */
+/*  Alle Regeln scoped unter .dashboard-soft-premium .profile-* — keine     */
+/*  globalen .field-input/.btn/.table-card-Basisregeln verändert.           */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.dashboard-soft-premium .profile-layout {
+  max-width: 680px;
+}
+
+.dashboard-soft-premium .profile-account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.80), rgba(255, 255, 255, 0.52));
+  border: 1px solid rgba(11, 31, 77, 0.10);
+  box-shadow: 0 10px 32px rgba(15, 35, 90, 0.10), 0 1px 3px rgba(15, 35, 90, 0.05);
+}
+
+.dashboard-soft-premium .profile-account-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dashboard-soft-premium .profile-avatar-lg {
+  width: 60px; height: 60px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--blue), var(--accent));
+  box-shadow: 0 6px 18px rgba(29, 78, 216, 0.32), 0 0 0 4px rgba(96, 165, 250, 0.14);
+}
+
+.dashboard-soft-premium .profile-account-info { min-width: 0; }
+
+.dashboard-soft-premium .profile-account-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-soft-premium .profile-account-email {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--gray500);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-soft-premium .profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
+
+.dashboard-soft-premium .profile-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.dashboard-soft-premium .profile-layout .table-card {
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 26px rgba(15, 35, 90, 0.09), 0 1px 3px rgba(15, 35, 90, 0.05);
+}
+
+.dashboard-soft-premium .profile-section-body { padding: 10px 22px 18px; }
+.dashboard-soft-premium .profile-row { padding: 12px 0; }
+.dashboard-soft-premium .profile-row-val { color: var(--navy); }
+
+/* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
@@ -778,6 +868,10 @@
       radial-gradient(ellipse 56% 28% at 90% 98%, rgba(11, 31, 77, 0.18) 0%, transparent 72%),
       linear-gradient(165deg, #eef8ff 0%, #d8e9fb 38%, #b9d8f4 72%, #a9cdf0 100%);
   }
+
+  .dashboard-soft-premium .profile-account-header { padding: 18px; }
+  .dashboard-soft-premium .profile-account-identity { min-width: 100%; }
+  .dashboard-soft-premium .profile-account-actions { width: 100%; justify-content: space-between; }
 }
 
 @media (max-width: 600px) {

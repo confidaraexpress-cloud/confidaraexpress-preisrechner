@@ -59,23 +59,23 @@
 /* ─── DashboardSectionHeader ─────────────────────────────────────────────── */
 .dash-section-header {
   background: transparent;
-  padding: 30px 28px 22px;
+  padding: 24px 28px 26px;
   text-align: center;
 }
 .dash-section-title {
   margin: 0;
   font-family: 'Syne', sans-serif;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.022em;
-  line-height: 1.2;
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
   color: var(--navy);
 }
 .dash-section-sub {
-  margin: 8px auto 0;
-  max-width: 480px;
-  font-size: 14.5px;
-  line-height: 1.55;
+  margin: 12px auto 0;
+  max-width: 540px;
+  font-size: 15.5px;
+  line-height: 1.6;
   color: var(--gray500);
 }
 

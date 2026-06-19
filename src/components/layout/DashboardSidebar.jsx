@@ -16,7 +16,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
-  const navItems = page === "overview" ? NAV_ITEMS : NAV_ITEMS.filter(item => item.id !== "calculator");
 
   return (
     <>
@@ -36,7 +35,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section-label">Navigation</div>
-          {navItems.map(item => (
+          {NAV_ITEMS.map(item => (
             <button
               key={item.id}
               className={`nav-item ${page === item.id ? "active" : ""}`}
@@ -45,14 +44,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <Icon n={item.icon} s={16} /> {item.label}
             </button>
           ))}
-          {page === "overview" && (
-            <button
-              className="nav-item"
-              onClick={() => navigate("/tracking")}
-            >
-              <Icon n="map" s={16} /> Sendungsverfolgung
-            </button>
-          )}
+          <button
+            className="nav-item"
+            onClick={() => navigate("/tracking")}
+          >
+            <Icon n="map" s={16} /> Sendungsverfolgung
+          </button>
           <button
             className="nav-item"
             onClick={() => { logout(); navigate("/login"); }}

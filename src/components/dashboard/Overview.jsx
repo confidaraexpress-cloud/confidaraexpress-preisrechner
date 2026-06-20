@@ -5,12 +5,14 @@ import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { ContactMailMenu } from "../common/ContactMailMenu";
-import dhlLogo    from "../../assets/carriers/dhl.svg";
-import upsLogo    from "../../assets/carriers/ups.svg";
-import fedexLogo  from "../../assets/carriers/fedex.svg";
-import tntLogo    from "../../assets/carriers/tnt.svg";
-import dpdLogo    from "../../assets/carriers/dpd.svg";
-import glsLogo    from "../../assets/carriers/gls.svg";
+import dhlLogo         from "../../assets/carriers/dhl.svg";
+import upsLogo         from "../../assets/carriers/ups.svg";
+import fedexLogo       from "../../assets/carriers/fedex.svg";
+import tntLogo         from "../../assets/carriers/tnt.svg";
+import dpdLogo         from "../../assets/carriers/dpd.svg";
+import glsLogo         from "../../assets/carriers/gls.svg";
+import derKurierLogo   from "../../assets/carriers/der-kurier.svg";
+import transOFlexLogo  from "../../assets/carriers/trans-o-flex.svg";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -38,12 +40,14 @@ const STEPS = [
 ];
 
 const CARRIERS = [
-  { name: "DHL",   logo: dhlLogo   },
-  { name: "UPS",   logo: upsLogo   },
-  { name: "FedEx", logo: fedexLogo },
-  { name: "TNT",   logo: tntLogo   },
-  { name: "DPD",   logo: dpdLogo   },
-  { name: "GLS",   logo: glsLogo   },
+  { name: "DHL",          logo: dhlLogo        },
+  { name: "UPS",          logo: upsLogo        },
+  { name: "FedEx",        logo: fedexLogo      },
+  { name: "TNT",          logo: tntLogo        },
+  { name: "DPD",          logo: dpdLogo        },
+  { name: "GLS",          logo: glsLogo        },
+  { name: "Der Kurier",   logo: derKurierLogo  },
+  { name: "trans-o-flex", logo: transOFlexLogo },
 ];
 
 function DashboardFooter({ onMailClick }) {

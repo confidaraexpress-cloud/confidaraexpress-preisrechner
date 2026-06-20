@@ -1,7 +1,7 @@
 /* ─── Calculator ─────────────────────────────────────────────────────────── */
 .calc-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 10px rgba(14,30,80,0.07), 0 0 0 1px rgba(14,30,80,0.03); }
 .calc-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: linear-gradient(to right, #eef3fc, #f8faff); }
-.calc-panel-header h3 { font-size: 15px; font-weight: 700; color: var(--navy); font-family: 'Syne', sans-serif; }
+.calc-panel-header h3 { font-size: 15px; font-weight: 700; color: var(--navy); font-family: 'DM Sans', -apple-system, sans-serif; }
 .calc-panel-body { padding: 22px; }
 .calc-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray400); margin: 18px 0 10px; }
 .calc-section-title:first-child { margin-top: 0; }
@@ -48,7 +48,7 @@
 
 /* ─── Booking page ────────────────────────────────────────────────────────── */
 .booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 760px; }
-.booking-title { font-size: 24px; font-weight: 800; color: var(--navy); }
+.booking-title { font-size: 24px; font-weight: 800; color: var(--navy); font-family: 'DM Sans', -apple-system, sans-serif; }
 .booking-carrier-name { font-size: 20px; font-weight: 800; color: var(--navy); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .booking-carrier-logo { height: 22px; width: auto; object-fit: contain; display: block; flex-shrink: 0; }

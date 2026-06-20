@@ -39,6 +39,7 @@ export function groupCarriers(rawCarriers) {
   const groups = new Map();
   for (const raw of rawCarriers || []) {
     const label = resolveCarrierName(raw);
+    if (label === "DHL") continue; // DHL ist im Versanddienst-Filter nicht wählbar — nur "DHL Express" bleibt
     if (!groups.has(label)) groups.set(label, { label, rawValues: [] });
     groups.get(label).rawValues.push(raw);
   }

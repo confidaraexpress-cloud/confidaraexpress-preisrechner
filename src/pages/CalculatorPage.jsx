@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API, apiFetch, jsonH } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
-import { resolveCarrierName } from "../utils/carrierMap";
+import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
 
@@ -93,10 +93,16 @@ export default function CalculatorPage() {
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)            || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter) || SHIPPING_MODE_OPTIONS[0];
 
+  const carrierGroups = useMemo(() => groupCarriers(availableCarriers), [availableCarriers]);
+  const selectedGroups = useMemo(
+    () => carrierGroups.filter(g => isCarrierGroupSelected(g, carrierFilters)),
+    [carrierGroups, carrierFilters]
+  );
+
   const carrierLabel =
-    carrierFilters.length === 0 ? "Alle Dienstleister" :
-    carrierFilters.length <= 2  ? carrierFilters.map(resolveCarrierName).join(", ") :
-    `${carrierFilters.length} ausgewählt`;
+    selectedGroups.length === 0 ? "Alle Dienstleister" :
+    selectedGroups.length <= 2  ? selectedGroups.map(g => g.label).join(", ") :
+    `${selectedGroups.length} ausgewählt`;
 
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -138,10 +144,8 @@ export default function CalculatorPage() {
     setError("");
   };
 
-  const toggleCarrier = (carrier) => {
-    setCarrierFilters(prev =>
-      prev.includes(carrier) ? prev.filter(c => c !== carrier) : [...prev, carrier]
-    );
+  const handleToggleCarrierGroup = (group) => {
+    setCarrierFilters(prev => toggleCarrierGroup(group, prev));
     resetResults();
   };
 
@@ -388,8 +392,8 @@ export default function CalculatorPage() {
                   <div className="service-filter-trigger-title">Versanddienst</div>
                   <div className="service-filter-trigger-val">{carrierLabel}</div>
                 </div>
-                {carrierFilters.length > 0 && (
-                  <span className="carrier-badge">{carrierFilters.length}</span>
+                {selectedGroups.length > 0 && (
+                  <span className="carrier-badge">{selectedGroups.length}</span>
                 )}
               </div>
               <div className={`service-filter-chevron ${carrierDropdownOpen ? "open" : ""}`}>
@@ -398,30 +402,30 @@ export default function CalculatorPage() {
             </button>
             {carrierDropdownOpen && (
               <div className="carrier-dropdown">
-                {availableCarriers.length === 0 ? (
+                <label className={`carrier-option carrier-option-all ${carrierFilters.length === 0 ? "selected" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={carrierFilters.length === 0}
+                    onChange={() => { setCarrierFilters([]); resetResults(); }}
+                  />
+                  <span className="carrier-option-label">Alle Dienstleister</span>
+                </label>
+                {carrierGroups.length === 0 ? (
                   <div className="carrier-empty-hint">Zuerst Preise berechnen, um Carrier-Filter zu aktivieren</div>
                 ) : (
                   <>
-                    <label className={`carrier-option carrier-option-all ${carrierFilters.length === 0 ? "selected" : ""}`}>
-                      <input
-                        type="checkbox"
-                        checked={carrierFilters.length === 0}
-                        onChange={() => { setCarrierFilters([]); resetResults(); }}
-                      />
-                      <span className="carrier-option-label">Alle Dienstleister</span>
-                    </label>
                     <div className="carrier-divider" />
-                    {availableCarriers.map(carrier => (
+                    {carrierGroups.map(group => (
                       <label
-                        key={carrier}
-                        className={`carrier-option ${carrierFilters.includes(carrier) ? "selected" : ""}`}
+                        key={group.label}
+                        className={`carrier-option ${isCarrierGroupSelected(group, carrierFilters) ? "selected" : ""}`}
                       >
                         <input
                           type="checkbox"
-                          checked={carrierFilters.includes(carrier)}
-                          onChange={() => toggleCarrier(carrier)}
+                          checked={isCarrierGroupSelected(group, carrierFilters)}
+                          onChange={() => handleToggleCarrierGroup(group)}
                         />
-                        <span className="carrier-option-label">{resolveCarrierName(carrier)}</span>
+                        <span className="carrier-option-label">{group.label}</span>
                       </label>
                     ))}
                   </>

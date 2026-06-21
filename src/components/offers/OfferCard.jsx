@@ -127,7 +127,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
   // bereits der Start-Knoten in Zone 2.
   const metaItems = [];
   if (t.trackingAvailable) {
-    metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "default" });
+    metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "info" });
   }
   if (t.printerRequired === true) {
     metaItems.push({ icon: "printer", label: "Drucker erforderlich", tone: "warn" });
@@ -255,12 +255,16 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
             Fehlen Tracking/Drucker, bleibt die Zeile bewusst leer (Mindesthöhe
             sorgt für gleiche Kartenhöhe) — kein redundanter Fallback-Text. */}
         <div className="offer-zone-4">
-          {metaItems.map((m, i) => (
-            <span key={i} className={`offer-meta-item${m.tone === "warn" ? " offer-meta-item--warn" : ""}`}>
-              <Icon n={m.icon} s={14} c="currentColor" />
-              {m.label}
-            </span>
-          ))}
+          {metaItems.map((m, i) => {
+            const toneClass = m.tone === "warn" ? " offer-meta-item--warn"
+                            : m.tone === "info" ? " offer-meta-item--info" : "";
+            return (
+              <span key={i} className={`offer-meta-item${toneClass}`}>
+                <Icon n={m.icon} s={14} c="currentColor" />
+                {m.label}
+              </span>
+            );
+          })}
         </div>
       </div>
 

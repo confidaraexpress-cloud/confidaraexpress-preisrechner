@@ -210,11 +210,12 @@
   color: var(--navy); line-height: 1.25; margin-bottom: 3px;
 }
 /* Laufzeit — ruhig & hochwertig in DM Sans (Hausschrift, konsistent mit dem
-   Preis). Kein font-variation-settings: die Fonts sind statisch, der Wert
-   bliebe wirkungslos. */
+   Preis). Bewusst keine Display-Font (Syne): die Laufzeit soll sachlich und
+   schnell scanbar wirken, nicht charakterstark. Kein font-variation-settings:
+   die Fonts sind statisch, der Wert bliebe wirkungslos. */
 .offer-eta {
   font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 700;
-  color: var(--navy); letter-spacing: -0.02em; line-height: 1.02; margin-bottom: 2px;
+  color: var(--navy); letter-spacing: -0.02em; line-height: 1.0; margin-bottom: 2px;
 }
 .offer-service-type {
   font-size: 13px; font-weight: 500; color: var(--gray500); line-height: 1.35;
@@ -222,16 +223,17 @@
 
 /* ── Zone 2: Versandablauf / Timeline ────────────────────────────────────────── */
 .offer-zone-2 { grid-area: zone-2; align-self: center; min-width: 0; }
-/* Kompakte, zentrierte Timeline — Start & Ziel rücken näher zusammen, die
-   Linie wirkt edler und weniger gestreckt; Typografie deutlich klarer. */
-.offer-timeline { display: flex; flex-direction: column; gap: 6px; max-width: 480px; margin: 0 auto; }
-.offer-tl-rail { display: flex; align-items: center; padding: 0 4px; }
+/* Kompakte, zentrierte Timeline — Start & Ziel rücken enger zusammen, die
+   Linie ist kürzer und bewusst zurückhaltend (dezenter Konnektor), damit die
+   farbigen Punkte und die Texte dominieren, nicht die Linie. */
+.offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
+.offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
 .offer-tl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .offer-tl-dot--start { background: var(--blue); }
 .offer-tl-dot--end   { background: var(--navy); }
 .offer-tl-track {
-  flex: 1; height: 2px; margin: 0 6px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--blue), var(--navy));
+  flex: 1; height: 2px; margin: 0 8px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(29,78,216,0.45), rgba(11,31,77,0.40));
 }
 .offer-tl-labels { display: flex; justify-content: space-between; gap: 14px; }
 .offer-tl-node { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 52%; }
@@ -260,9 +262,14 @@
 .offer-badge-blue   { background: #eef3fc; color: var(--blue2); border-color: rgba(29,78,216,0.24); }
 
 .offer-price-block { text-align: right; margin-bottom: 12px; }
+/* Preis bleibt stark (32/700). word-spacing weitet gezielt das geschützte
+   Leerzeichen (U+00A0) vor dem €-Zeichen, das Intl.NumberFormat liefert —
+   so wird aus dem optisch engen "15,26 €" ein sauberes "15,26 €", ganz ohne
+   Eingriff in die Preis-/Formatierungslogik. */
 .offer-price {
   font-family: 'DM Sans', sans-serif; font-size: 32px; font-weight: 700;
-  color: var(--navy); letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;
+  color: var(--navy); letter-spacing: -0.02em; word-spacing: 0.08em;
+  line-height: 1.05; white-space: nowrap;
 }
 .offer-price-sub { font-size: 12px; color: var(--gray400); margin-top: 4px; }
 .offer-price-na  { font-size: 14px; font-weight: 600; color: var(--gray500); text-align: right; }
@@ -297,23 +304,27 @@
 .offer-details-chevron { transition: transform 0.22s cubic-bezier(.2,.7,.3,1); display: inline-flex; }
 .offer-details-chevron.open { transform: rotate(180deg); }
 
-/* ── Zone 4: Meta-/Hinweis-Fußzeile (volle Breite, ruhig) ────────────────────── */
+/* ── Zone 4: Meta-/Hinweis-Fußzeile (volle Breite, ruhig & kompakt) ──────────── */
 .offer-zone-4 {
   grid-area: zone-4;
   display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px;
-  margin-top: 12px; padding-top: 10px;
+  margin-top: 10px; padding-top: 9px;
   border-top: 1px solid var(--border);
-  min-height: 38px;
+  min-height: 34px;
 }
+/* Alle Meta-Texte teilen dieselbe ruhige Textfarbe; nur die Icons tragen einen
+   dezenten Akzent — so wirken Tracking- und Druckerhinweis zusammengehörig und
+   nie lauter als Timeline, Laufzeit oder Preis. */
 .offer-meta-item {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 500; color: var(--gray600);
 }
 .offer-meta-item svg { color: var(--gray400); flex-shrink: 0; }
-.offer-meta-item--warn { color: var(--warn); }
+/* Sendungsverfolgung: ruhiger, vertrauensvoller Blau-Akzent nur am Icon. */
+.offer-meta-item--info svg { color: var(--blue2); }
+/* Drucker erforderlich: Text bleibt ruhig (geerbtes gray600), nur das Icon
+   setzt einen sehr dezenten Warn-Akzent — kein dominanter Orange-Text mehr. */
 .offer-meta-item--warn svg { color: var(--warn); }
-.offer-meta-item--muted { color: var(--gray400); }
-.offer-meta-item--muted svg { color: var(--gray400); }
 
 /* ─── Details Panel (lazy accordion) ────────────────────────────────────────── */
 .offer-details-panel--closed { display: none; }
@@ -437,7 +448,9 @@
   .offer-zone-1-main { min-width: 0; }
   .offer-eta { font-size: 23px; }
 
-  /* Zone 2 als vertikale Mini-Timeline */
+  /* Zone 2 als vertikale Mini-Timeline — Desktop-Breitenlimit aufheben, damit
+     die vertikale Variante volle Breite links bündig nutzt (nicht zentriert). */
+  .offer-timeline { max-width: none; margin: 0; }
   .offer-tl-rail { display: none; }
   .offer-tl-labels { flex-direction: column; gap: 14px; padding-left: 18px; position: relative; }
   .offer-tl-labels::before {
@@ -463,7 +476,7 @@
   .offer-details-link { align-self: flex-start; }
 
   /* Zone 4 darf umbrechen, bleibt ruhig */
-  .offer-zone-4 { min-height: 38px; margin-top: 14px; padding-top: 12px; gap: 6px 14px; }
+  .offer-zone-4 { min-height: 34px; margin-top: 12px; padding-top: 10px; gap: 6px 14px; }
 
   /* Liste */
   .offers-trust-strip { grid-template-columns: 1fr; }

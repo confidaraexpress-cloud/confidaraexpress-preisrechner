@@ -72,10 +72,14 @@ function DetailsPanel({ tariff: t }) {
   );
 }
 
+// isTop bleibt Teil des Props-Vertrags (von OffersList übergeben), löst aber
+// bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
 export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode }) {
   const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
+
+  const unavailable = t.availableForDate === false;
 
   const toggleDetails = (e) => {
     e.stopPropagation();
@@ -83,122 +87,98 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
     setDetailsOpen(o => !o);
   };
 
+  const handleSelect = () => {
+    if (unavailable) return;
+    onSelect(t);
+  };
+
   const handleBook = (e) => {
     e.stopPropagation();
+    if (unavailable) return;
     onBook(t);
   };
 
-  const delivery  = fmtDelivery(t);
-  const hasStatus = (t.serviceType === "pickup" && t.pickupToday) || t.printerRequired;
-  const hasMeta   = (t.serviceType === "dropoff" && t.shopName) ||
-                    (t.serviceType === "pickup" && t.pickupDate && !t.pickupToday);
-  const hasDate   = t.availableForDate === false || t.deliveryDate || t.pickupTimeFrom;
+  const delivery = fmtDelivery(t);
+
+  // ── Zone 2: Versandablauf ──
+  const startLabel    = t.serviceType === "dropoff" ? "Shopabgabe" : "Abholung";
+  const startDate     = t.pickupDate ? fmtDE(t.pickupDate) : null;
+  const startTime     = (t.pickupTimeFrom && t.pickupTimeUntil)
+    ? `${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr` : null;
+  const shopName      = t.serviceType === "dropoff" && t.shopName ? t.shopName : null;
+  const deliveryDate  = t.deliveryDate ? fmtDE(t.deliveryDate) : null;
+  const deliveryUntil = t.deliveryTimeUntil ? `bis ${t.deliveryTimeUntil} Uhr` : null;
+  // Absolute Termin-/Zeitdaten vorhanden? Sonst graceful fallback auf rel. Laufzeit.
+  const hasTimeline   = !!(startDate || startTime || shopName || deliveryDate || deliveryUntil);
 
   return (
     <div
-      className={`offer-card${isTop ? " offer-card--top" : ""}${selected ? " offer-card--selected" : ""}`}
-      onClick={() => onSelect(t)}
+      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}`}
+      onClick={handleSelect}
+      aria-disabled={unavailable || undefined}
     >
-      {isTop && (
-        <div className="offer-ribbon" aria-label="Empfohlenes Angebot">
-          ★ Top Empfehlung
-        </div>
+      {/* Objektives Label — dezenter Eck-Pill, verändert die Kartenhöhe nicht */}
+      {badge && (
+        <div className={`offer-label offer-label--${badge.key}`}>{badge.label}</div>
       )}
 
       <div className="offer-card-inner">
-        {/* ── Zone A: Carrier ── */}
+        {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-a">
           <div className="offer-logo-tile">
             {carrierLogo
-              ? <img src={carrierLogo} alt={carrierName} width="46" height="46" />
+              ? <img src={carrierLogo} alt={carrierName} width="40" height="40" />
               : <span className="offer-logo-tile-text">{carrierName}</span>
             }
           </div>
-          <div>
-            <div className="offer-carrier-name">{carrierName}</div>
-            <div className="offer-service-type">
-              {t.shippingModeLabel || t.tariffName || "Standard"}
-            </div>
+          <div className="offer-carrier-name">{carrierName}</div>
+          {delivery
+            ? <div className="offer-eta">{delivery}</div>
+            : <div className="offer-eta offer-eta--na">Laufzeit auf Anfrage</div>
+          }
+          <div className="offer-service-type">
+            {t.shippingModeLabel || t.tariffName || "Standardversand"}
           </div>
         </div>
 
-        {/* ── Zone B: Chips + Status + Meta + Dates ── */}
+        {/* ── Zone 2: Versandablauf / Timeline ── */}
         <div className="offer-zone-b">
-          <div className="offer-chips">
-            {delivery && (
-              <span className="offer-chip offer-chip-eta">
-                <Icon n="clock" s={13} c="currentColor" /> {delivery}
-              </span>
-            )}
-            {t.trackingAvailable && (
-              <span className="offer-chip offer-chip-tracking">✓ Tracking</span>
-            )}
-            {t.serviceType === "pickup" && (
-              <span className="offer-chip offer-chip-service">🚐 Abholung</span>
-            )}
-            {t.serviceType === "dropoff" && (
-              <span className="offer-chip offer-chip-service">🏪 Shopabgabe</span>
-            )}
-
-          </div>
-
-          {hasStatus && (
-            <div className="offer-status-row">
-              {t.serviceType === "pickup" && t.pickupToday && (
-                <span className="offer-status-pickup-today">
-                  <Icon n="zap" s={13} c="currentColor" /> Abholung heute möglich
-                </span>
-              )}
-              {t.printerRequired && (
-                <span className="offer-status-printer">
-                  <Icon n="info" s={13} c="currentColor" /> Drucker erforderlich
-                </span>
-              )}
+          {unavailable ? (
+            <div className="offer-timeline-empty">
+              <Icon n="info" s={15} c="currentColor" />
+              <span>Nicht verfügbar für dieses Datum</span>
             </div>
-          )}
+          ) : (
+            <div className="offer-timeline">
+              <div className="offer-tl-node">
+                <div className="offer-tl-head">
+                  <span className="offer-tl-dot offer-tl-dot--start" aria-hidden="true" />
+                  <span className="offer-tl-label">{startLabel}</span>
+                </div>
+                {startDate && <div className="offer-tl-sub">{startDate}</div>}
+                {startTime && <div className="offer-tl-sub">{startTime}</div>}
+                {shopName  && <div className="offer-tl-sub">{shopName}</div>}
+                {!hasTimeline && delivery && (
+                  <div className="offer-tl-sub">Laufzeit {delivery}</div>
+                )}
+              </div>
 
-          {hasMeta && (
-            <div className="offer-meta-row">
-              {t.serviceType === "dropoff" && t.shopName && (
-                <span className="offer-meta-text">
-                  <Icon n="mapPin" s={13} c="currentColor" /> {t.shopName}
-                </span>
-              )}
-              {t.serviceType === "pickup" && t.pickupDate && !t.pickupToday && (
-                <span className="offer-meta-text">
-                  <Icon n="truck" s={13} c="currentColor" /> Abholung: {fmtDE(t.pickupDate)}
-                </span>
-              )}
-            </div>
-          )}
+              <div className="offer-tl-connector" aria-hidden="true" />
 
-          {hasDate && (
-            <div className="offer-date-row">
-              {t.availableForDate === false && (
-                <span className="offer-unavail-note">⚠ Nicht verfügbar für dieses Datum</span>
-              )}
-              {t.deliveryDate && t.availableForDate !== false && (
-                <span className="offer-date-text">
-                  📅 Lieferung: {fmtDE(t.deliveryDate)}
-                  {t.deliveryTimeUntil ? ` bis ${t.deliveryTimeUntil} Uhr` : ""}
-                </span>
-              )}
-              {t.pickupTimeFrom && t.pickupTimeUntil && t.availableForDate !== false && (
-                <span className="offer-date-text">
-                  🕐 {t.pickupTimeFrom}–{t.pickupTimeUntil} Uhr
-                </span>
-              )}
+              <div className="offer-tl-node offer-tl-node--end">
+                <div className="offer-tl-head">
+                  <span className="offer-tl-dot offer-tl-dot--end" aria-hidden="true" />
+                  <span className="offer-tl-label">Lieferung</span>
+                </div>
+                {deliveryDate  && <div className="offer-tl-sub">{deliveryDate}</div>}
+                {deliveryUntil && <div className="offer-tl-sub">{deliveryUntil}</div>}
+              </div>
             </div>
           )}
         </div>
 
-        {/* ── Zone C: Badge + Price + CTA ── */}
+        {/* ── Zone 3: Preis & Aktion ── */}
         <div className="offer-zone-c">
-          {badge && badge.key !== "top" && (
-            <div className={`offer-badge offer-badge-${badge.color}`}>
-              {badge.label}
-            </div>
-          )}
           <div className="offer-price-block">
             {t.netPrice != null ? (
               <>
@@ -212,16 +192,27 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
                 </div>
               </>
             ) : (
-              <div className="offer-price-na">Preis fehlt</div>
+              <div className="offer-price-na">Preis auf Anfrage</div>
             )}
           </div>
           <button
-            className={`offer-cta-btn${isTop || selected ? " offer-cta-btn--primary" : " offer-cta-btn--outline"}`}
+            className={`offer-cta-btn${
+              unavailable ? " offer-cta-btn--disabled"
+              : selected ? " offer-cta-btn--primary"
+              : " offer-cta-btn--outline"}`}
             onClick={handleBook}
             type="button"
-            aria-label={`${carrierName} auswählen und buchen`}
+            disabled={unavailable}
+            aria-label={unavailable
+              ? `${carrierName} – nicht verfügbar`
+              : `${carrierName} – Angebot auswählen`}
           >
-            Auswählen →
+            {unavailable ? "Nicht verfügbar" : (
+              <>
+                {selected && <Icon n="check" s={16} c="currentColor" />}
+                Angebot auswählen
+              </>
+            )}
           </button>
           <button
             className="offer-details-link"
@@ -235,6 +226,28 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
               <Icon n="chevron" s={14} c="currentColor" />
             </span>
           </button>
+        </div>
+
+        {/* ── Zone 4: Meta-/Hinweis-Fußzeile ── */}
+        <div className="offer-zone-d">
+          {t.trackingAvailable && (
+            <span className="offer-meta-item">
+              <Icon n="mapPin" s={14} c="currentColor" />
+              Sendungsverfolgung
+            </span>
+          )}
+          {t.printerRequired != null && (
+            <span className={`offer-meta-item${t.printerRequired ? " offer-meta-item--warn" : ""}`}>
+              <Icon n="printer" s={14} c="currentColor" />
+              {t.printerRequired ? "Drucker erforderlich" : "Kein Drucker nötig"}
+            </span>
+          )}
+          {t.serviceType === "pickup" && t.pickupToday && (
+            <span className="offer-meta-item">
+              <Icon n="zap" s={14} c="currentColor" />
+              Abholung heute möglich
+            </span>
+          )}
         </div>
       </div>
 

@@ -144,7 +144,7 @@
   position: relative;
   border: 1.5px solid var(--border);
   border-radius: 16px;
-  padding: 22px 24px;
+  padding: 18px 22px;
   margin-bottom: 16px;
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -188,27 +188,29 @@
 /* ── Zone 1: Anbieter & Hauptnutzen ──────────────────────────────────────────── */
 .offer-zone-1 { grid-area: zone-1; }
 .offer-logo-tile {
-  width: 54px; height: 54px;
+  width: 50px; height: 50px;
   border-radius: 12px; background: white;
   border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 12px; overflow: hidden;
+  margin-bottom: 10px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(14,30,80,0.07);
   flex-shrink: 0;
 }
-.offer-logo-tile img { width: 40px; height: 40px; object-fit: contain; display: block; }
+.offer-logo-tile img { width: 38px; height: 38px; object-fit: contain; display: block; }
 .offer-logo-tile-text {
   font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700;
   color: var(--navy); text-align: center; line-height: 1.25; padding: 4px; word-break: break-word;
 }
 .offer-carrier-name {
   font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
-  color: var(--navy); line-height: 1.25; margin-bottom: 4px;
+  color: var(--navy); line-height: 1.25; margin-bottom: 3px;
 }
+/* Laufzeit — ruhig & hochwertig in DM Sans (Hausschrift, konsistent mit dem
+   Preis). Kein font-variation-settings: die Fonts sind statisch, der Wert
+   bliebe wirkungslos. */
 .offer-eta {
-  font-family: 'DM Sans', sans-serif; font-size: 28px; font-weight: 700;
-  font-variation-settings: 'opsz' 36, 'wght' 700;
-  color: var(--navy); letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 3px;
+  font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 700;
+  color: var(--navy); letter-spacing: -0.02em; line-height: 1.02; margin-bottom: 2px;
 }
 .offer-service-type {
   font-size: 13px; font-weight: 500; color: var(--gray500); line-height: 1.35;
@@ -216,7 +218,9 @@
 
 /* ── Zone 2: Versandablauf / Timeline ────────────────────────────────────────── */
 .offer-zone-2 { grid-area: zone-2; align-self: center; min-width: 0; }
-.offer-timeline { display: flex; flex-direction: column; gap: 8px; }
+/* Kompakte, zentrierte Timeline — Start & Ziel rücken näher zusammen, die
+   Linie wirkt edler und weniger gestreckt; Typografie deutlich klarer. */
+.offer-timeline { display: flex; flex-direction: column; gap: 6px; max-width: 480px; margin: 0 auto; }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 4px; }
 .offer-tl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .offer-tl-dot--start { background: var(--blue); }
@@ -225,11 +229,12 @@
   flex: 1; height: 2px; margin: 0 6px; border-radius: 2px;
   background: linear-gradient(90deg, var(--blue), var(--navy));
 }
-.offer-tl-labels { display: flex; justify-content: space-between; gap: 16px; }
-.offer-tl-node { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 52%; }
+.offer-tl-labels { display: flex; justify-content: space-between; gap: 14px; }
+.offer-tl-node { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 52%; }
 .offer-tl-node--end { align-items: flex-end; text-align: right; }
-.offer-tl-title { font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.3; }
-.offer-tl-sub { font-size: 12px; color: var(--gray500); line-height: 1.35; }
+.offer-tl-title   { font-size: 15px; font-weight: 700; color: var(--navy); line-height: 1.25; }
+.offer-tl-primary { font-size: 14px; font-weight: 600; color: var(--gray700); line-height: 1.3; margin-top: 1px; }
+.offer-tl-sub     { font-size: 13px; font-weight: 500; color: var(--gray500); line-height: 1.3; }
 
 .offer-unavail {
   display: inline-flex; align-items: center; gap: 7px;
@@ -239,28 +244,27 @@
 /* ── Zone 3: Preis & Aktion ──────────────────────────────────────────────────── */
 .offer-zone-3 { grid-area: zone-3; display: flex; flex-direction: column; align-items: flex-end; }
 /* Reservierter Label-Slot: hält die Kartenhöhe konstant, egal ob ein Label da ist */
-.offer-zone-3-top { min-height: 22px; margin-bottom: 6px; display: flex; justify-content: flex-end; }
+.offer-zone-3-top { min-height: 20px; margin-bottom: 4px; display: flex; justify-content: flex-end; }
 .offer-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.01em;
-  padding: 3px 10px; border-radius: var(--radius-full);
-  white-space: nowrap; border: 1px solid;
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.005em;
+  padding: 3px 9px; border-radius: var(--radius-full);
+  white-space: nowrap; border: 1px solid; line-height: 1.45;
 }
 .offer-badge-green  { background: var(--success-bg); color: var(--success); border-color: rgba(16,185,129,0.28); }
 .offer-badge-violet { background: #f5f3ff; color: #7c3aed; border-color: rgba(124,58,237,0.22); }
 .offer-badge-blue   { background: #eef3fc; color: var(--blue2); border-color: rgba(29,78,216,0.24); }
 
-.offer-price-block { text-align: right; margin-bottom: 14px; }
+.offer-price-block { text-align: right; margin-bottom: 12px; }
 .offer-price {
-  font-family: 'DM Sans', sans-serif; font-size: 30px; font-weight: 700;
-  font-variation-settings: 'opsz' 40, 'wght' 700;
-  color: var(--navy); letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif; font-size: 32px; font-weight: 700;
+  color: var(--navy); letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;
 }
 .offer-price-sub { font-size: 12px; color: var(--gray400); margin-top: 3px; }
 .offer-price-na  { font-size: 14px; font-weight: 600; color: var(--danger); text-align: right; }
 
 .offer-cta-btn {
-  width: 100%; min-width: 180px; height: 46px;
+  width: 100%; min-width: 180px; height: 44px;
   border-radius: var(--radius); border: 1.5px solid var(--blue);
   font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
   cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -277,10 +281,10 @@
 }
 
 .offer-details-link {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 10px;
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
   font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
-  color: var(--blue2); cursor: pointer; background: none; border: none; padding: 5px 0;
-  min-height: 40px; /* hit target */
+  color: var(--blue2); cursor: pointer; background: none; border: none; padding: 4px 0;
+  min-height: 36px; /* hit target */
 }
 .offer-details-link:hover { color: var(--navy); }
 .offer-details-chevron { transition: transform 0.22s cubic-bezier(.2,.7,.3,1); display: inline-flex; }
@@ -289,14 +293,14 @@
 /* ── Zone 4: Meta-/Hinweis-Fußzeile (volle Breite, ruhig) ────────────────────── */
 .offer-zone-4 {
   grid-area: zone-4;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
-  margin-top: 16px; padding-top: 13px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px;
+  margin-top: 12px; padding-top: 10px;
   border-top: 1px solid var(--border);
-  min-height: 44px;
+  min-height: 38px;
 }
 .offer-meta-item {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12.5px; font-weight: 500; color: var(--gray600);
+  font-size: 12px; font-weight: 500; color: var(--gray600);
 }
 .offer-meta-item svg { color: var(--gray400); flex-shrink: 0; }
 .offer-meta-item--warn { color: var(--warn); }

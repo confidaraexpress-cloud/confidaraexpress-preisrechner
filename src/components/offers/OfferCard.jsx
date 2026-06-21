@@ -24,25 +24,28 @@ const fmtDay = (iso) => {
 // ── Zone 2: Versandablauf-Knoten aus vorhandenen Daten ableiten ──
 // Es werden ausschließlich real vorhandene Felder genutzt; fehlt alles,
 // fällt der Ziel-Knoten sauber auf die relative Laufzeit zurück.
+// Knoten als { title, primary, secondary[] }: der Titel (Abholung/Lieferung)
+// und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
+// Gewicht; Uhrzeit/Shopname bleiben sekundär und dezent.
 function buildStart(t) {
   let title;
   if (t.serviceType === "dropoff")     title = "Shopabgabe";
   else if (t.serviceType === "pickup") title = t.pickupToday ? "Abholung heute" : "Abholung";
   else                                 title = "Versand";
 
-  const subs = [];
-  if (t.pickupDate)                            subs.push(fmtDay(t.pickupDate));
-  if (t.pickupTimeFrom && t.pickupTimeUntil)   subs.push(`${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr`);
-  if (t.serviceType === "dropoff" && t.shopName) subs.push(t.shopName);
-  return { title, subs };
+  const primary = t.pickupDate ? fmtDay(t.pickupDate) : null;
+  const secondary = [];
+  if (t.pickupTimeFrom && t.pickupTimeUntil)     secondary.push(`${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr`);
+  if (t.serviceType === "dropoff" && t.shopName) secondary.push(t.shopName);
+  return { title, primary, secondary };
 }
 
 function buildEnd(t, etaLabel) {
-  const subs = [];
-  if (t.deliveryDate)      subs.push(fmtDay(t.deliveryDate));
-  if (t.deliveryTimeUntil) subs.push(`bis ${t.deliveryTimeUntil} Uhr`);
-  if (subs.length === 0)   subs.push(etaLabel); // graceful fallback: relative Laufzeit
-  return { title: "Lieferung", subs };
+  // Absolutes Lieferdatum bevorzugt; fehlt es, sauberer Fallback auf relative Laufzeit.
+  const primary = t.deliveryDate ? fmtDay(t.deliveryDate) : etaLabel;
+  const secondary = [];
+  if (t.deliveryTimeUntil) secondary.push(`bis ${t.deliveryTimeUntil} Uhr`);
+  return { title: "Lieferung", primary, secondary };
 }
 
 function DetailRow({ label, value, strong }) {
@@ -122,7 +125,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
   // bereits der Start-Knoten in Zone 2.
   const metaItems = [];
   if (t.trackingAvailable) {
-    metaItems.push({ icon: "mapPin", label: "Sendungsverfolgung", tone: "default" });
+    metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "default" });
   }
   if (t.printerRequired === true) {
     metaItems.push({ icon: "printer", label: "Drucker erforderlich", tone: "warn" });
@@ -184,11 +187,13 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
               <div className="offer-tl-labels">
                 <div className="offer-tl-node offer-tl-node--start">
                   <span className="offer-tl-title">{start.title}</span>
-                  {start.subs.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                  {start.primary && <span className="offer-tl-primary">{start.primary}</span>}
+                  {start.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
-                  {end.subs.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                  {end.primary && <span className="offer-tl-primary">{end.primary}</span>}
+                  {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
                 </div>
               </div>
             </div>
@@ -243,21 +248,16 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
           </button>
         </div>
 
-        {/* ── Zone 4: Meta-/Hinweis-Fußzeile ── */}
+        {/* ── Zone 4: Meta-/Hinweis-Fußzeile ──
+            Fehlen Tracking/Drucker, bleibt die Zeile bewusst leer (Mindesthöhe
+            sorgt für gleiche Kartenhöhe) — kein redundanter Fallback-Text. */}
         <div className="offer-zone-4">
-          {metaItems.length > 0 ? (
-            metaItems.map((m, i) => (
-              <span key={i} className={`offer-meta-item${m.tone === "warn" ? " offer-meta-item--warn" : ""}`}>
-                <Icon n={m.icon} s={14} c="currentColor" />
-                {m.label}
-              </span>
-            ))
-          ) : (
-            <span className="offer-meta-item offer-meta-item--muted">
-              <Icon n="clock" s={14} c="currentColor" />
-              Zustellung {etaLabel}
+          {metaItems.map((m, i) => (
+            <span key={i} className={`offer-meta-item${m.tone === "warn" ? " offer-meta-item--warn" : ""}`}>
+              <Icon n={m.icon} s={14} c="currentColor" />
+              {m.label}
             </span>
-          )}
+          ))}
         </div>
       </div>
 

@@ -110,6 +110,8 @@ function DetailsPanel({ tariff: t }) {
   );
 }
 
+// isTop bleibt Teil des Props-Vertrags (von OffersList übergeben), löst aber
+// bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
 export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode }) {
   const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
   const [detailsOpen, setDetailsOpen]       = useState(false);
@@ -153,6 +155,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
     <div
       className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}`}
       onClick={handleSelect}
+      aria-disabled={unavailable || undefined}
     >
       <div className="offer-card-inner">
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
@@ -220,7 +223,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
                 </div>
               </>
             ) : (
-              <div className="offer-price-na">Preis fehlt</div>
+              <div className="offer-price-na">Preis auf Anfrage</div>
             )}
           </div>
           <button

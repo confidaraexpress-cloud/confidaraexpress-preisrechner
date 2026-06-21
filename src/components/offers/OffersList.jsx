@@ -216,7 +216,7 @@ export function OffersList({
 
         {!loading && hasResults && tariffs.length === 0 && (
           <div className="offers-empty">
-            <div className="offers-empty-icon">🔍</div>
+            <div className="offers-empty-icon"><Icon n="search" s={26} c="currentColor" /></div>
             <p className="offers-empty-title">Keine Tarife gefunden</p>
             <p className="offers-empty-sub">
               Für diese Route und das gewählte Datum wurden keine Tarife gefunden.
@@ -227,7 +227,7 @@ export function OffersList({
 
         {!loading && hasResults && tariffs.length > 0 && filtered.length === 0 && (
           <div className="offers-empty">
-            <div className="offers-empty-icon">🎯</div>
+            <div className="offers-empty-icon"><Icon n="filter" s={26} c="currentColor" /></div>
             <p className="offers-empty-title">Filter anpassen</p>
             <p className="offers-empty-sub">
               Alle Tarife wurden durch Ihre Preisfilter ausgeblendet.

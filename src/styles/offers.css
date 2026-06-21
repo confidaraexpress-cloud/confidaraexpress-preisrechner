@@ -135,7 +135,11 @@
 .offers-body { padding: 20px 28px; }
 .offers-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; }
 .offers-empty { text-align: center; padding: 48px 24px; }
-.offers-empty-icon { font-size: 40px; margin-bottom: 12px; }
+.offers-empty-icon {
+  width: 56px; height: 56px; margin: 0 auto 14px;
+  border-radius: 50%; background: var(--gray100); color: var(--gray400);
+  display: flex; align-items: center; justify-content: center;
+}
 .offers-empty-title { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
 .offers-empty-sub { font-size: 14px; color: var(--gray500); line-height: 1.55; max-width: 440px; margin: 0 auto; }
 
@@ -260,8 +264,10 @@
   font-family: 'DM Sans', sans-serif; font-size: 32px; font-weight: 700;
   color: var(--navy); letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap;
 }
-.offer-price-sub { font-size: 12px; color: var(--gray400); margin-top: 3px; }
-.offer-price-na  { font-size: 14px; font-weight: 600; color: var(--danger); text-align: right; }
+.offer-price-sub { font-size: 12px; color: var(--gray400); margin-top: 4px; }
+.offer-price-na  { font-size: 14px; font-weight: 600; color: var(--gray500); text-align: right; }
+/* Nicht verfügbar: Preis bleibt sichtbar, aber weniger dominant */
+.offer-card--unavailable .offer-price { font-size: 24px; color: var(--gray500); }
 
 .offer-cta-btn {
   width: 100%; min-width: 180px; height: 44px;
@@ -270,11 +276,12 @@
   cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
   display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px;
 }
-.offer-cta-btn--primary { background: var(--blue); color: white; }
-.offer-cta-btn--primary:hover { background: var(--navy); border-color: var(--navy); }
 .offer-cta-btn--outline { background: white; color: var(--blue2); }
 .offer-cta-btn--outline:hover { background: #eff6ff; border-color: var(--blue2); color: var(--blue); }
+/* Hover auf der Karte: CTA-Kontrast leicht verstärken */
 .offer-card:hover .offer-cta-btn--outline { border-color: var(--blue2); }
+.offer-cta-btn--primary { background: var(--blue); color: white; }
+.offer-cta-btn--primary:hover { background: var(--navy); border-color: var(--navy); }
 .offer-cta-btn--disabled {
   background: var(--gray100); color: var(--gray400);
   border-color: var(--border); cursor: not-allowed;

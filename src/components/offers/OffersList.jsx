@@ -282,8 +282,7 @@ export function OffersList({
             <Icon n="lightbulb" s={15} c="#d97706" />
           </div>
           <p className="offers-tipp-text">
-            <strong>Tipp:</strong> Der empfohlene Tarif bietet das optimale Preis-Leistungs-Verhältnis für Ihre Sendung.
-            Bei regelmäßigen Sendungen sparen Sie mit einem Vertragstarif noch mehr.
+            <strong>Tipp:</strong> Vergleichen Sie Preis, Laufzeit und Abholart, bevor Sie ein Angebot auswählen.
           </p>
         </div>
       )}

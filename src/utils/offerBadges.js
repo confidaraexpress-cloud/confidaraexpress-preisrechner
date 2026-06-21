@@ -1,42 +1,37 @@
-// Objektive Angebots-Labels für die Karten.
-//
-// Bewusst reduziert auf zwei neutrale, objektiv überprüfbare Aussagen:
-//   • "Günstigste"  – niedrigster Netto-Preis
-//   • "Schnellste"  – kürzeste Laufzeit
-// Ist ein Angebot gleichzeitig günstigste UND schnellste Option, wird ein
-// dezentes kombiniertes Label vergeben. Es gibt KEINE "Top Empfehlung",
-// kein "Empfohlen" und kein "Teuerste"-Label mehr.
+// Objektive Auszeichnungen für Angebotskarten.
+// Bewusst nur faktische Labels: "Günstigste" und "Schnellste".
+// Kein "Top Empfehlung"/Ribbon und kein "Teuerste" mehr — diese werteten
+// Angebote subjektiv bzw. negativ und erzeugten visuelle Unruhe.
 export function assignBadges(sorted) {
-  if (!sorted || sorted.length === 0) return new Map();
   const map = new Map();
+  if (!sorted || sorted.length === 0) return map;
 
   const withPrice   = sorted.filter(t => t.netPrice != null);
   const withTransit = sorted.filter(t => t.transitDaysMax != null);
 
-  let cheapestId = null;
-  let fastestId  = null;
-
-  // "Günstigste" nur sinnvoll, wenn mindestens zwei Preise vergleichbar sind.
+  // Günstigste — nur sinnvoll ab 2 vergleichbaren Preisen
+  let cheapest = null;
   if (withPrice.length >= 2) {
-    const cheapest = withPrice.reduce((a, b) => (a.netPrice <= b.netPrice ? a : b));
-    cheapestId = cheapest.id;
+    cheapest = withPrice.reduce((a, b) => (a.netPrice <= b.netPrice ? a : b));
   }
 
-  // "Schnellste" nach kürzester Laufzeit (transitDaysMax, dann transitDaysMin).
+  // Schnellste — nach max. Laufzeit, bei Gleichstand nach min. Laufzeit
+  let fastest = null;
   if (withTransit.length >= 2) {
-    const fastest = withTransit.reduce((a, b) => {
+    fastest = withTransit.reduce((a, b) => {
       if (a.transitDaysMax !== b.transitDaysMax) return a.transitDaysMax < b.transitDaysMax ? a : b;
       return (a.transitDaysMin ?? 999) < (b.transitDaysMin ?? 999) ? a : b;
     });
-    fastestId = fastest.id;
   }
 
-  if (cheapestId != null && cheapestId === fastestId) {
-    map.set(cheapestId, { key: "both", label: "Günstigste · Schnellste" });
-  } else {
-    if (cheapestId != null) map.set(cheapestId, { key: "cheapest", label: "Günstigste" });
-    if (fastestId  != null) map.set(fastestId,  { key: "fastest",  label: "Schnellste" });
+  // Ist dasselbe Angebot günstigste UND schnellste Option → dezentes kombiniertes Label.
+  if (cheapest && fastest && cheapest.id === fastest.id) {
+    map.set(cheapest.id, { key: "best", label: "Günstigste · Schnellste", color: "blue" });
+    return map;
   }
+
+  if (cheapest) map.set(cheapest.id, { key: "cheapest", label: "Günstigste", color: "green"  });
+  if (fastest)  map.set(fastest.id,  { key: "fastest",  label: "Schnellste", color: "violet" });
 
   return map;
 }

@@ -48,9 +48,9 @@ function buildEnd(t, etaLabel) {
   return { title: "Lieferung", primary, secondary };
 }
 
-function DetailRow({ label, value, strong }) {
+function DetailRow({ label, value, strong, subtle }) {
   return (
-    <div className={`offer-detail-row${strong ? " offer-detail-row--strong" : ""}`}>
+    <div className={`offer-detail-row${strong ? " offer-detail-row--strong" : ""}${subtle ? " offer-detail-row--subtle" : ""}`}>
       <span className="offer-detail-label">{label}</span>
       <span className="offer-detail-value">{value}</span>
     </div>
@@ -58,30 +58,55 @@ function DetailRow({ label, value, strong }) {
 }
 
 function DetailsPanel({ tariff: t }) {
-  const hasPrice   = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
-  const hasService = t.trackingAvailable != null || t.printerRequired != null || t.serviceType;
-  const hasTermin  = t.shopName || t.pickupDate || t.pickupTimeFrom || t.deliveryDate;
+  // Alle Felder werden defensiv gerendert: Eine Zeile erscheint ausschließlich,
+  // wenn der Wert im (roh durchgereichten) tariff-Objekt real vorhanden ist.
+  // Es werden keine Werte erfunden und keine null/undefined/Rohwerte gezeigt.
+
+  // Versandart als lesbares Label.
+  const serviceLabel =
+    t.serviceType === "pickup"  ? "Abholung"   :
+    t.serviceType === "dropoff" ? "Shopabgabe" :
+    t.serviceType || null;
+
+  // Tarif-ID nur sekundär (Support/Abgleich) — Jumingo-seitige ID bevorzugt.
+  const tariffId = t.shipper_tariff_id ?? t.id ?? null;
+
+  // Versicherung nur, wenn eindeutig als Boolean geliefert — keine Annahme,
+  // keine Behauptung über enthaltenen Schutz (nur "Buchbar"/"Nicht verfügbar").
+  const hasInsurance = typeof t.insuranceAvailable === "boolean";
+
+  // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
+  const hasDeliveryRange = !!(t.deliveryDateMin && t.deliveryDateMax);
+  const deliveryRange = hasDeliveryRange
+    ? `${fmtDE(t.deliveryDateMin)} – ${fmtDE(t.deliveryDateMax)}`
+    : null;
+
+  // Abholzuschlag nur als neutraler Hinweis — niemals als zusätzlicher Preis.
+  const showPickupSurcharge = t.hasPickupSurcharge === true;
+
+  const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
+  const hasMain  = !!(t.tariffName || serviceLabel || t.trackingAvailable != null
+                   || t.printerRequired != null || hasInsurance || tariffId != null);
+  const hasTermin = !!(t.shopName || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
+                   || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
+  const hasHinweise = showPickupSurcharge;
 
   return (
     <>
       {hasPrice && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Preisaufschlüsselung</div>
-          {t.netPrice != null && <DetailRow label="Netto" value={money(t.netPrice)} />}
-          {t.vatAmount != null && <DetailRow label="MwSt." value={money(t.vatAmount)} />}
+          {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
+          {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
           {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
         </div>
       )}
 
-      {hasService && (
+      {hasMain && (
         <div className="offer-details-section">
-          <div className="offer-detail-section-title">Leistungsumfang</div>
-          {t.serviceType && (
-            <DetailRow
-              label="Versandart"
-              value={t.serviceType === "pickup" ? "Abholung" : t.serviceType === "dropoff" ? "Shopabgabe" : t.serviceType}
-            />
-          )}
+          <div className="offer-detail-section-title">Hauptmerkmale</div>
+          {t.tariffName && <DetailRow label="Tarif" value={t.tariffName} />}
+          {serviceLabel && <DetailRow label="Versandart" value={serviceLabel} />}
           {t.trackingAvailable != null && (
             <DetailRow label="Sendungsverfolgung" value={t.trackingAvailable ? "Inklusive" : "Nicht verfügbar"} />
           )}
@@ -91,6 +116,10 @@ function DetailsPanel({ tariff: t }) {
               value={t.printerRequired ? "Erforderlich (Versandlabel)" : "Nicht erforderlich (QR-Code)"}
             />
           )}
+          {hasInsurance && (
+            <DetailRow label="Versicherungsschutz" value={t.insuranceAvailable ? "Buchbar" : "Nicht verfügbar"} />
+          )}
+          {tariffId != null && <DetailRow label="Tarif-ID" value={String(tariffId)} subtle />}
         </div>
       )}
 
@@ -102,8 +131,19 @@ function DetailsPanel({ tariff: t }) {
           {t.pickupTimeFrom && t.pickupTimeUntil && (
             <DetailRow label="Zeitfenster" value={`${t.pickupTimeFrom} – ${t.pickupTimeUntil} Uhr`} />
           )}
-          {t.deliveryDate && <DetailRow label="Liefertermin" value={fmtDE(t.deliveryDate)} />}
+          {hasDeliveryRange
+            ? <DetailRow label="Lieferzeitraum" value={deliveryRange} />
+            : t.deliveryDate && <DetailRow label="Liefertermin" value={fmtDE(t.deliveryDate)} />}
           {t.deliveryTimeUntil && <DetailRow label="Lieferung bis" value={`${t.deliveryTimeUntil} Uhr`} />}
+        </div>
+      )}
+
+      {hasHinweise && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Zusatzhinweise</div>
+          {showPickupSurcharge && (
+            <DetailRow label="Abholzuschlag" value="Im Tarif berücksichtigt" />
+          )}
         </div>
       )}
     </>

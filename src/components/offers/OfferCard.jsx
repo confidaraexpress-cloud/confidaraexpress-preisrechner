@@ -48,6 +48,71 @@ function buildEnd(t, etaLabel) {
   return { title: "Lieferung", primary, secondary };
 }
 
+// ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
+// Lokale Variante (Arbeitstage-Wording), ohne den geteilten fmtDelivery-Helfer
+// zu verändern (der weiterhin Karte/ETA & BookingPage versorgt).
+function fmtTransitDetail(t) {
+  const a = t.transitDaysMin, b = t.transitDaysMax;
+  if (a != null && b != null) {
+    if (a === b) return a === 0 ? "Noch heute" : a === 1 ? "1 Arbeitstag" : `${a} Arbeitstage`;
+    return `${a}–${b} Arbeitstage`;
+  }
+  return fmtDelivery(t) || null;
+}
+
+// ── tariffLimits: technische Operanten → kundenverständliche deutsche Labels ──
+// Nur bekannte Operanten werden übersetzt; unbekannte werden bewusst übersprungen
+// (keine falsche Übersetzung). `order` steuert die fachliche Sortierung.
+const LIMIT_LABELS = {
+  weight:                    { label: "Gewicht je Packstück",           unit: "kg", order: 1 },
+  chargeableWeight:          { label: "Frachtpflichtiges Gewicht",      unit: "kg", order: 1 },
+  length:                    { label: "Länge",                          unit: "cm", order: 2 },
+  width:                     { label: "Breite",                         unit: "cm", order: 2 },
+  height:                    { label: "Höhe",                           unit: "cm", order: 2 },
+  first_length:              { label: "Längste Seite",                  unit: "cm", order: 2 },
+  second_length:             { label: "Zweitlängste Seite",             unit: "cm", order: 2 },
+  shortest_and_longest_side: { label: "Kürzeste + längste Seite",       unit: "cm", order: 2 },
+  girth:                     { label: "Gurtmaß",                        unit: "cm", order: 3 },
+  packages_count:            { label: "Packstücke pro Sendung",         unit: "",   order: 4 },
+  packages_total_weight:     { label: "Gesamtgewicht aller Packstücke", unit: "kg", order: 5 },
+};
+const LIMIT_OPERATORS = { "<=": "max.", "<": "unter", ">=": "mindestens", ">": "größer als" };
+
+function buildLimitLines(tariffLimits) {
+  if (!Array.isArray(tariffLimits)) return [];
+  const lines = [];
+  tariffLimits.forEach((lim, i) => {
+    if (!lim || typeof lim !== "object") return;
+    const { operant, operator, value } = lim;
+    // value 0 darf nicht via || verloren gehen → explizite Zahl-Prüfung.
+    const num = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(num)) return;
+    // Nutzlose untere 0-Grenzen ausblenden (z. B. shortest_and_longest_side > 0).
+    if (num === 0 && (operator === ">" || operator === ">=")) return;
+    const field  = LIMIT_LABELS[operant];
+    const opWord = LIMIT_OPERATORS[operator];
+    if (!field || !opWord) return; // unbekannte Operanten/Operatoren überspringen
+    const unitStr = field.unit ? ` ${field.unit}` : "";
+    lines.push({ key: `${operant}-${operator}-${i}`, order: field.order, text: `${field.label} ${opWord} ${num}${unitStr}` });
+  });
+  return lines.sort((a, b) => a.order - b.order);
+}
+
+// ── carrierLinks: nur valide http(s)-URLs, neutrale deutsche Labels ──
+const CARRIER_LINK_DEFS = [
+  { key: "agb",         label: "AGB / Versandbedingungen" },
+  { key: "tracking",    label: "Sendungsverfolgung beim Carrier" },
+  { key: "transitTime", label: "Laufzeitinformationen" },
+];
+const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v);
+
+function buildCarrierLinks(carrierLinks) {
+  if (!carrierLinks || typeof carrierLinks !== "object") return [];
+  return CARRIER_LINK_DEFS
+    .map(d => ({ ...d, url: typeof carrierLinks[d.key] === "string" ? carrierLinks[d.key].trim() : "" }))
+    .filter(d => isHttpUrl(d.url));
+}
+
 function DetailRow({ label, value, strong, subtle }) {
   return (
     <div className={`offer-detail-row${strong ? " offer-detail-row--strong" : ""}${subtle ? " offer-detail-row--subtle" : ""}`}>
@@ -58,9 +123,9 @@ function DetailRow({ label, value, strong, subtle }) {
 }
 
 function DetailsPanel({ tariff: t }) {
-  // Alle Felder werden defensiv gerendert: Eine Zeile erscheint ausschließlich,
-  // wenn der Wert im (roh durchgereichten) tariff-Objekt real vorhanden ist.
-  // Es werden keine Werte erfunden und keine null/undefined/Rohwerte gezeigt.
+  // Alle Felder/Sektionen werden defensiv gerendert: Eine Zeile/Sektion erscheint
+  // ausschließlich, wenn der Wert real vorhanden ist. Keine erfundenen Werte,
+  // kein null/undefined, keine technischen Rohwerte.
 
   // Versandart als lesbares Label.
   const serviceLabel =
@@ -71,9 +136,16 @@ function DetailsPanel({ tariff: t }) {
   // Tarif-ID nur sekundär (Support/Abgleich) — Jumingo-seitige ID bevorzugt.
   const tariffId = t.shipper_tariff_id ?? t.id ?? null;
 
-  // Versicherung nur, wenn eindeutig als Boolean geliefert — keine Annahme,
-  // keine Behauptung über enthaltenen Schutz (nur "Buchbar"/"Nicht verfügbar").
-  const hasInsurance = typeof t.insuranceAvailable === "boolean";
+  // Versandlaufzeit als sachliche Detailzeile (nicht überdominant).
+  const transitDetail = fmtTransitDetail(t);
+
+  // Versicherung aus insuranceDetails (reales Backend-Feld), defensiv geprüft.
+  const ins = t.insuranceDetails && typeof t.insuranceDetails === "object" ? t.insuranceDetails : null;
+  const hasInsurableFlag = ins != null && typeof ins.isInsurable === "boolean";
+  // Versicherungswert nur bei positiver Zahl (0/fehlend → keine Haftungszeile),
+  // bewusst neutrale Formulierung "lt. Tarifdaten" — keine Haftungsgarantie.
+  const insValue = ins != null && typeof ins.insuranceValue === "number" ? ins.insuranceValue : null;
+  const showInsValue = insValue != null && insValue > 0;
 
   // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
   const hasDeliveryRange = !!(t.deliveryDateMin && t.deliveryDateMax);
@@ -84,12 +156,18 @@ function DetailsPanel({ tariff: t }) {
   // Abholzuschlag nur als neutraler Hinweis — niemals als zusätzlicher Preis.
   const showPickupSurcharge = t.hasPickupSurcharge === true;
 
+  // Neue Jumingo-Felder: Einschränkungen (tariffLimits) & Carrier-Links.
+  const limitLines = buildLimitLines(t.tariffLimits);
+  const carrierLinkItems = buildCarrierLinks(t.carrierLinks);
+
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
-  const hasMain  = !!(t.tariffName || serviceLabel || t.trackingAvailable != null
-                   || t.printerRequired != null || hasInsurance || tariffId != null);
+  const hasMain  = !!(t.tariffName || transitDetail || serviceLabel || t.trackingAvailable != null
+                   || t.printerRequired != null || hasInsurableFlag || showInsValue || tariffId != null);
+  const hasLimits = limitLines.length > 0;
   const hasTermin = !!(t.shopName || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
                    || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
   const hasHinweise = showPickupSurcharge;
+  const hasLinks = carrierLinkItems.length > 0;
 
   return (
     <>
@@ -106,6 +184,7 @@ function DetailsPanel({ tariff: t }) {
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Hauptmerkmale</div>
           {t.tariffName && <DetailRow label="Tarif" value={t.tariffName} />}
+          {transitDetail && <DetailRow label="Versandlaufzeit" value={transitDetail} />}
           {serviceLabel && <DetailRow label="Versandart" value={serviceLabel} />}
           {t.trackingAvailable != null && (
             <DetailRow label="Sendungsverfolgung" value={t.trackingAvailable ? "Inklusive" : "Nicht verfügbar"} />
@@ -116,10 +195,24 @@ function DetailsPanel({ tariff: t }) {
               value={t.printerRequired ? "Erforderlich (Versandlabel)" : "Nicht erforderlich (QR-Code)"}
             />
           )}
-          {hasInsurance && (
-            <DetailRow label="Versicherungsschutz" value={t.insuranceAvailable ? "Buchbar" : "Nicht verfügbar"} />
+          {hasInsurableFlag && (
+            <DetailRow label="Versicherungsschutz" value={ins.isInsurable ? "Buchbar" : "Nicht verfügbar"} />
+          )}
+          {showInsValue && (
+            <DetailRow label="Haftung / Versicherung" value={`max. ${money(insValue)} (lt. Tarifdaten)`} />
           )}
           {tariffId != null && <DetailRow label="Tarif-ID" value={String(tariffId)} subtle />}
+        </div>
+      )}
+
+      {hasLimits && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Einschränkungen</div>
+          <ul className="offer-limit-list">
+            {limitLines.map(l => (
+              <li key={l.key} className="offer-limit-item">{l.text}</li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -144,6 +237,26 @@ function DetailsPanel({ tariff: t }) {
           {showPickupSurcharge && (
             <DetailRow label="Abholzuschlag" value="Im Tarif berücksichtigt" />
           )}
+        </div>
+      )}
+
+      {hasLinks && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Links &amp; Bedingungen</div>
+          <div className="offer-links-list">
+            {carrierLinkItems.map(link => (
+              <a
+                key={link.key}
+                className="offer-link-row"
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="offer-link-label">{link.label}</span>
+                <Icon n="external" s={13} c="currentColor" />
+              </a>
+            ))}
+          </div>
         </div>
       )}
     </>

@@ -356,6 +356,31 @@
   font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--gray400);
 }
 
+/* Einschränkungen — kompakte, ruhige Liste mit dezentem Punkt-Marker
+   (bewusst kein Tabellen-/Formular-Look). */
+.offer-limit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.offer-limit-item {
+  position: relative; padding-left: 16px;
+  font-size: 13px; line-height: 1.4; color: var(--gray700);
+}
+.offer-limit-item::before {
+  content: ""; position: absolute; left: 3px; top: 0.55em;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--blue3);
+}
+
+/* Links & Bedingungen — dezente, klar klickbare Zeilen, extern. */
+.offer-links-list { display: flex; flex-direction: column; }
+.offer-link-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  color: var(--blue2); text-decoration: none; transition: color 0.15s;
+}
+.offer-link-row:last-child { border-bottom: none; }
+.offer-link-row:hover { color: var(--blue); }
+.offer-link-row svg { color: var(--gray400); flex-shrink: 0; transition: color 0.15s; }
+.offer-link-row:hover svg { color: var(--blue); }
+
 /* ─── Trust Strip ────────────────────────────────────────────────────────────── */
 .offers-trust-strip {
   display: grid; grid-template-columns: repeat(4, 1fr);

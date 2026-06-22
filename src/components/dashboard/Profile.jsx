@@ -74,7 +74,8 @@ export function Profile({ user }) {
       title: "Konto",
       items: [
         ["Status", <StatusBadge key="status" status={user?.status} />],
-        ["Zahlungsart", "Auf Rechnung (14 Tage Zahlungsziel)"],
+        ["Zahlungsart", "Auf Rechnung"],
+        ["Zahlungsziel", user?.payment_term ? `${user.payment_term} Tage` : "Nicht hinterlegt"],
       ],
     },
   ];

@@ -900,15 +900,16 @@
 .dashboard-profile-premium .profile-account-info { min-width: 0; }
 
 .dashboard-profile-premium .profile-account-name {
-  font-family: 'Syne', sans-serif;
-  font-size: 20px;
-  font-weight: 800;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 21px;
+  font-weight: 700;
   color: var(--navy);
   letter-spacing: -0.01em;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .dashboard-profile-premium .profile-account-email {

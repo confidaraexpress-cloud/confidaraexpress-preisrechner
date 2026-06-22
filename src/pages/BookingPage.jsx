@@ -261,7 +261,10 @@ export default function BookingPage() {
                     <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
                   </div>
                   <p className="booking-payment-note">
-                    inkl. 19 % MwSt. · Abrechnung per Rechnung · zahlbar innerhalb von {user?.payment_term || 14} Tagen
+                    inkl. 19 % MwSt. · Abrechnung per Rechnung ·{" "}
+                    {user?.payment_term
+                      ? `zahlbar innerhalb von ${user.payment_term} Tagen`
+                      : "zahlbar gemäß vereinbartem Zahlungsziel"}
                   </p>
                 </div>
                 <label className="booking-agb-label">

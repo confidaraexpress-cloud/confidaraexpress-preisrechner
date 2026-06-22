@@ -780,12 +780,13 @@
 /*  weicher Violett-Blob unten links ergänzt (Layer-Anzahl 9→10, kein       */
 /*  Dust/Mask/Filter-Zuwachs). Account-Header + Karten von Glassy auf       */
 /*  opakes Off-White (#fbfcff) umgestellt, backdrop-filter entfernt —       */
-/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign (Variante A):     */
-/*  Bearbeiten-Button + Status-/B2B-/Zahlungsziel-Chips zurück in den       */
-/*  Account-Header integriert (.profile-account-actions / .profile-meta-   */
-/*  row) statt isolierter .profile-toolbar (entfernt). Einspaltige         */
-/*  .profile-layout-Kartenliste ersetzt durch .profile-grid (2 Spalten,    */
-/*  Desktop) bzw. .profile-edit-stack (Edit-Formular, schmaler).           */
+/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign: Bearbeiten-      */
+/*  Button in den Seitenkopf (.profile-page-head, neben dem Titel)          */
+/*  verschoben; Status-/B2B-/Zahlungsziel-Chips im Hero (.profile-meta-     */
+/*  row). Hero + Datenkarten (.profile-grid / .profile-edit-stack) auf      */
+/*  ein dunkles Navy-/Glass-Theme umgestellt (Icon-Kacheln, Sublines,       */
+/*  Hinweis-Boxen) — passend zum Profil-Referenzmockup, vollständig unter   */
+/*  .dashboard-profile-premium gescoped (andere Sub-Seiten unberührt).      */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .dashboard-profile-premium .main-content {
@@ -843,6 +844,21 @@
 .dashboard-profile-premium .dash-section-title { color: #f5f8ff; }
 .dashboard-profile-premium .dash-section-sub { color: rgba(205, 215, 235, 0.82); }
 
+/* Seitenkopf: Titel/Subline links, „Profil bearbeiten“ rechts (wie Mockup) */
+.dashboard-profile-premium .profile-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 26px 0 24px;
+}
+.dashboard-profile-premium .profile-page-head-text { min-width: 0; text-align: left; }
+.dashboard-profile-premium .profile-page-head .dash-section-title { text-align: left; }
+.dashboard-profile-premium .profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
+.dashboard-profile-premium .profile-page-head .profile-edit-btn { flex-shrink: 0; margin-top: 12px; }
+
 .dashboard-profile-premium .profile-grid {
   max-width: 1000px;
   margin: 0 auto;
@@ -860,24 +876,38 @@
 }
 
 .dashboard-profile-premium .profile-account-header {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 16px;
   max-width: 1000px;
-  padding: 18px 24px;
-  margin: 0 auto 20px;
-  border-radius: 20px;
-  background: #fbfcff;
-  border: 1px solid rgba(11, 31, 77, 0.08);
+  padding: 22px 26px;
+  margin: 0 auto 22px;
+  border-radius: 24px;
+  background:
+    radial-gradient(135% 150% at 0% 0%, rgba(58, 100, 210, 0.22) 0%, transparent 55%),
+    linear-gradient(158deg, rgba(26, 35, 78, 0.94) 0%, rgba(13, 18, 46, 0.94) 100%);
+  border: 1px solid rgba(120, 160, 255, 0.20);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 14px 32px rgba(15, 35, 90, 0.12),
-    0 2px 6px rgba(15, 35, 90, 0.05);
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 22px 50px rgba(4, 8, 26, 0.50);
+}
+.dashboard-profile-premium .profile-account-header::after {
+  content: '';
+  position: absolute;
+  top: -50%; right: -4%;
+  width: 360px; height: 200%;
+  background: radial-gradient(ellipse 46% 50% at 70% 50%, rgba(99, 140, 255, 0.20) 0%, transparent 70%);
+  transform: rotate(-14deg);
+  pointer-events: none;
 }
 
 .dashboard-profile-premium .profile-account-identity {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -885,27 +915,30 @@
 }
 
 .dashboard-profile-premium .profile-avatar-lg {
-  width: 50px; height: 50px;
+  width: 58px; height: 58px;
   flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Syne', sans-serif;
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 700;
   color: white;
   background: linear-gradient(135deg, var(--blue), var(--accent));
-  box-shadow: 0 6px 16px rgba(29, 78, 216, 0.32), 0 0 0 4px rgba(96, 165, 250, 0.14);
+  box-shadow:
+    0 8px 22px rgba(29, 78, 216, 0.45),
+    0 0 0 1px rgba(120, 160, 255, 0.30),
+    0 0 0 5px rgba(96, 165, 250, 0.12);
 }
 
 .dashboard-profile-premium .profile-account-info { min-width: 0; }
 
 .dashboard-profile-premium .profile-account-name {
   font-family: 'Syne', sans-serif;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
-  color: var(--navy);
+  color: #f4f7ff;
   letter-spacing: -0.01em;
   line-height: 1.2;
   white-space: nowrap;
@@ -918,13 +951,45 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: var(--gray500);
+  color: rgba(198, 210, 234, 0.82);
   margin-top: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .dashboard-profile-premium .profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
+
+/* Chips/Badges auf dem dunklen Hero: translucentes Pill, heller Text.       */
+/* Nur unter .dashboard-profile-premium — Tabellen-Badges anderer Seiten     */
+/* (Sendungen/Rechnungen) bleiben im Light-Theme unberührt.                  */
+.dashboard-profile-premium .badge {
+  background: rgba(120, 150, 230, 0.12);
+  border-color: rgba(140, 170, 255, 0.22);
+}
+.dashboard-profile-premium .badge-green  { color: #5fe0b0; }
+.dashboard-profile-premium .badge-yellow { color: #fbbf24; }
+.dashboard-profile-premium .badge-red    { color: #fb7185; }
+.dashboard-profile-premium .badge-blue   { color: #9dbcff; }
+.dashboard-profile-premium .badge-gray   { color: #c2cce0; }
+.dashboard-profile-premium .profile-meta-row .badge { gap: 6px; }
+.dashboard-profile-premium .profile-meta-row .badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.dashboard-profile-premium .profile-meta-chip {
+  background: rgba(120, 150, 230, 0.12);
+  color: #ccd8f5;
+  border-color: rgba(140, 170, 255, 0.22);
+}
+.dashboard-profile-premium .profile-meta-chip svg { opacity: 0.8; }
+.dashboard-profile-premium .profile-meta-chip-accent {
+  background: rgba(45, 108, 255, 0.20);
+  color: #bcd0ff;
+  border-color: rgba(95, 137, 255, 0.42);
+}
 
 .dashboard-profile-premium .profile-edit-btn {
   padding: 10px 20px;
@@ -938,24 +1003,71 @@
 .dashboard-profile-premium .profile-grid .table-card,
 .dashboard-profile-premium .profile-edit-stack .table-card {
   border-radius: 24px;
-  border-color: rgba(11, 31, 77, 0.08);
-  background: #fbfcff;
+  border: 1px solid rgba(120, 160, 255, 0.16);
+  background:
+    radial-gradient(130% 130% at 0% 0%, rgba(60, 100, 210, 0.10) 0%, transparent 58%),
+    linear-gradient(165deg, rgba(22, 30, 68, 0.92) 0%, rgba(12, 17, 42, 0.93) 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 16px 40px rgba(15, 35, 90, 0.13),
-    0 2px 6px rgba(15, 35, 90, 0.05);
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 18px 44px rgba(4, 8, 26, 0.42);
+}
+
+/* Karten-Kopf: Icon-Kachel + Titel/Subline auf dunklem Grund */
+.dashboard-profile-premium .profile-card-head {
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(130, 160, 230, 0.12);
+}
+.dashboard-profile-premium .table-card-title { color: #f1f5ff; font-size: 15px; }
+.dashboard-profile-premium .profile-card-sub { color: rgba(184, 197, 226, 0.62); }
+.dashboard-profile-premium .profile-card-icon {
+  color: #9dbcff;
+  background: linear-gradient(150deg, rgba(56, 108, 235, 0.32) 0%, rgba(40, 70, 170, 0.18) 100%);
+  border: 1px solid rgba(120, 160, 255, 0.28);
+  box-shadow: 0 6px 16px -7px rgba(40, 90, 220, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .dashboard-profile-premium .profile-section-body { padding: 10px 24px 20px; }
 .dashboard-profile-premium .profile-row { padding: 13px 0; }
-.dashboard-profile-premium .profile-row-val { color: var(--navy); }
+.dashboard-profile-premium .profile-row-border { border-bottom-color: rgba(130, 160, 230, 0.10); }
+.dashboard-profile-premium .profile-row-key { color: rgba(178, 191, 222, 0.72); }
+.dashboard-profile-premium .profile-row-val { color: #e9eefc; }
+.dashboard-profile-premium .profile-row-empty { color: rgba(150, 166, 205, 0.5); }
 
-/* P4 — optionaler Fokus-Glow für Profil-Inputs im Edit-Modus. Rein lokal   */
-/* gescoped, .field-input-Basisregel in forms.css bleibt unverändert.       */
-.dashboard-profile-premium .profile-form-body .field-input:focus {
-  border-color: var(--blue3);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 22px -6px rgba(37, 99, 235, 0.30);
+.dashboard-profile-premium .profile-hint {
+  background: rgba(70, 104, 200, 0.10);
+  border-color: rgba(120, 160, 255, 0.16);
 }
+.dashboard-profile-premium .profile-hint svg { color: #9dbcff; opacity: 0.95; }
+.dashboard-profile-premium .profile-hint p { color: rgba(198, 210, 234, 0.82); }
+
+/* Edit-Modus: Inputs/Labels/Buttons auf das dunkle Profil-Theme angepasst.  */
+/* Rein lokal gescoped, die Basisregeln in forms.css/buttons.css bleiben     */
+/* unverändert (andere Formulare im Light-Theme unberührt).                  */
+.dashboard-profile-premium .profile-form-body .field-label { color: rgba(202, 214, 238, 0.85); }
+.dashboard-profile-premium .profile-form-body .field-input {
+  background: rgba(9, 14, 36, 0.55);
+  border-color: rgba(120, 160, 255, 0.20);
+  color: #eef2ff;
+}
+.dashboard-profile-premium .profile-form-body .field-input::placeholder { color: rgba(150, 165, 200, 0.5); }
+.dashboard-profile-premium .profile-form-body .field-input:focus {
+  background: rgba(12, 18, 46, 0.78);
+  border-color: var(--blue3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 22px -6px rgba(37, 99, 235, 0.34);
+}
+.dashboard-profile-premium .profile-form-body .field-select option { color: #0B1F4D; }
+.dashboard-profile-premium .profile-form-actions .btn-outline {
+  color: #d6e0f5;
+  border-color: rgba(140, 170, 255, 0.30);
+}
+.dashboard-profile-premium .profile-form-actions .btn-outline:hover {
+  background: rgba(120, 150, 230, 0.10);
+  border-color: rgba(140, 170, 255, 0.48);
+}
+
+/* Footer-Links auf dem dunklen Profil-Hintergrund lesbar halten */
+.dashboard-profile-premium .legal-links a { color: rgba(176, 190, 222, 0.55); }
+.dashboard-profile-premium .legal-links a:hover { color: #cdd9f5; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
@@ -1007,10 +1119,10 @@
     right: -70px;
   }
 
-  .dashboard-profile-premium .profile-account-header { padding: 14px 16px; }
+  .dashboard-profile-premium .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
+  .dashboard-profile-premium .profile-page-head .profile-edit-btn { width: 100%; justify-content: center; margin-top: 0; }
+  .dashboard-profile-premium .profile-account-header { padding: 18px 18px; }
   .dashboard-profile-premium .profile-account-identity { min-width: 100%; }
-  .dashboard-profile-premium .profile-account-actions { margin-left: 0; width: 100%; }
-  .dashboard-profile-premium .profile-edit-btn { width: 100%; justify-content: center; }
   .dashboard-profile-premium .profile-grid { flex-direction: column; }
 }
 

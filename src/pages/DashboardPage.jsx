@@ -13,8 +13,9 @@ import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
 
-// Übersicht hat keinen Eintrag: Titel/Subline laufen dort über den Overview-Hero,
-// damit kein doppelter Seitenkopf entsteht.
+// Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
+// das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
+// (Profile.jsx). So entsteht auf keiner Seite ein doppelter Seitenkopf.
 const PAGE_HEADERS = {
   new: {
     title: "Neue Sendung",
@@ -27,10 +28,6 @@ const PAGE_HEADERS = {
   invoices: {
     title: "Rechnungen",
     subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
-  },
-  profile: {
-    title: "Mein Profil",
-    subtitle: "Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort.",
   },
 };
 

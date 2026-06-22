@@ -54,6 +54,8 @@ const paths = {
   check:        "M20 6L9 17l-5-5",
   printer:      "M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v8H6z",
   external:     "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3",
+  building:     "M3 21h18M6 21V4a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v17M15 21V9h3a1 1 0 0 1 1 1v11M9 7h3M9 11h3M9 15h3",
+  card:         "M2 7.5A2.5 2.5 0 0 1 4.5 5h15A2.5 2.5 0 0 1 22 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 16.5v-9ZM2 10h20M6 14.5h4",
 };
 
 export function Icon({ n, s = 18, c = "currentColor" }) {

@@ -245,7 +245,7 @@ function DetailsPanel({ tariff: t }) {
           {hasDeliveryRange
             ? <DetailRow label="Lieferzeitraum" value={deliveryRange} />
             : t.deliveryDate && <DetailRow label="Liefertermin" value={fmtDE(t.deliveryDate)} />}
-          {t.deliveryTimeUntil && <DetailRow label="Lieferung bis" value={fmtUntil(t.deliveryTimeUntil)} />}
+          {t.deliveryTimeUntil && <DetailRow label="Lieferung" value={fmtUntil(t.deliveryTimeUntil)} />}
         </div>
       )}
 

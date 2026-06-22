@@ -11,13 +11,6 @@
   0%, 100% { box-shadow: 0 0 0 0 var(--tl-ring, transparent); opacity: 1; }
   50%      { box-shadow: 0 0 0 4px var(--tl-ring, transparent); opacity: 0.85; }
 }
-/* Variante für die mobilen Pseudo-Element-Punkte: kombiniert den bestehenden
-   weißen Trennring mit dem animierten Farbring (Multi-Shadow). */
-@keyframes offerTlDotPulseInset {
-  0%, 100% { box-shadow: 0 0 0 2px white, 0 0 0 0 var(--tl-ring, transparent); opacity: 1; }
-  50%      { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--tl-ring, transparent); opacity: 0.85; }
-}
-
 .animate-fadeUp   { animation: fadeUp 600ms cubic-bezier(.2,.7,.3,1) both; }
 .animate-fadeUp-1 { animation: fadeUp 600ms 80ms cubic-bezier(.2,.7,.3,1) both; }
 .animate-fadeUp-2 { animation: fadeUp 600ms 160ms cubic-bezier(.2,.7,.3,1) both; }

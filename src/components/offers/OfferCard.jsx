@@ -364,7 +364,9 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
             <div className="offer-timeline">
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
-                <span className="offer-tl-track" />
+                <span className="offer-tl-track">
+                  <span className="offer-tl-dot offer-tl-dot--transport" />
+                </span>
                 <span className="offer-tl-dot offer-tl-dot--end" />
               </div>
               <div className="offer-tl-labels">
@@ -372,6 +374,13 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
                   <span className="offer-tl-title">{start.title}</span>
                   {start.primary && <span className="offer-tl-primary">{start.primary}</span>}
                   {start.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                </div>
+                {/* Rein visuelle Zwischenstation — bewusst ohne Datum/Uhrzeit und
+                    ohne Live-Tracking-Wortwahl: reine Angebots-/Tarif-Timeline,
+                    kein Echtzeitstatus. */}
+                <div className="offer-tl-node offer-tl-node--transport">
+                  <span className="offer-tl-transport-label">Transport</span>
+                  <span className="offer-tl-transport-icon"><Icon n="truck" s={12} c="currentColor" /></span>
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>

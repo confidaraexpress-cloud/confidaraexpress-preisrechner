@@ -60,23 +60,27 @@ function fmtTransitDetail(t) {
   return fmtDelivery(t) || null;
 }
 
-// ── tariffLimits: technische Operanten → kundenverständliche deutsche Labels ──
-// Nur bekannte Operanten werden übersetzt; unbekannte werden bewusst übersprungen
-// (keine falsche Übersetzung). `order` steuert die fachliche Sortierung.
-const LIMIT_LABELS = {
-  weight:                    { label: "Gewicht je Packstück",           unit: "kg", order: 1 },
-  chargeableWeight:          { label: "Frachtpflichtiges Gewicht",      unit: "kg", order: 1 },
-  length:                    { label: "Länge",                          unit: "cm", order: 2 },
-  width:                     { label: "Breite",                         unit: "cm", order: 2 },
-  height:                    { label: "Höhe",                           unit: "cm", order: 2 },
-  first_length:              { label: "Längste Seite",                  unit: "cm", order: 2 },
-  second_length:             { label: "Zweitlängste Seite",             unit: "cm", order: 2 },
-  shortest_and_longest_side: { label: "Kürzeste + längste Seite",       unit: "cm", order: 2 },
-  girth:                     { label: "Gurtmaß",                        unit: "cm", order: 3 },
-  packages_count:            { label: "Packstücke pro Sendung",         unit: "",   order: 4 },
-  packages_total_weight:     { label: "Gesamtgewicht aller Packstücke", unit: "kg", order: 5 },
+// ── tariffLimits → natürliche, kundennahe deutsche Sätze ──
+// Jeder bekannte Operant hat ein Satz-Template mit Slot für Operator-Wort + Wert.
+// Das Operator-Wort steht im Satz (z. B. "max."), sodass der häufige <=-Fall
+// natürlich klingt. Unbekannte Operanten/Operatoren werden bewusst übersprungen
+// (keine falsche Übersetzung, keine Rohwerte). `order` steuert die fachliche
+// Reihenfolge: Gewicht → Maße/Seiten → Gurtmaß → Packstücke → Gesamtgewicht.
+const LIMIT_OPERATORS = { "<=": "max.", "<": "weniger als", ">=": "mindestens", ">": "größer als" };
+
+const LIMIT_RULES = {
+  weight:                    { order: 1, tpl: (op, v) => `Packstücke dürfen ${op} ${v} kg wiegen.` },
+  chargeableWeight:          { order: 1, tpl: (op, v) => `Das frachtpflichtige Gewicht darf ${op} ${v} kg betragen.` },
+  length:                    { order: 2, tpl: (op, v) => `Die Länge darf ${op} ${v} cm betragen.` },
+  width:                     { order: 2, tpl: (op, v) => `Die Breite darf ${op} ${v} cm betragen.` },
+  height:                    { order: 2, tpl: (op, v) => `Die Höhe darf ${op} ${v} cm betragen.` },
+  first_length:              { order: 2, tpl: (op, v) => `Die längste Seite eines Packstücks darf ${op} ${v} cm lang sein.` },
+  second_length:             { order: 2, tpl: (op, v) => `Die zweitlängste Seite eines Packstücks darf ${op} ${v} cm lang sein.` },
+  shortest_and_longest_side: { order: 2, tpl: (op, v) => `Die kürzeste und die längste Seite eines Packstücks dürfen zusammen ${op} ${v} cm lang sein.` },
+  girth:                     { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks darf ${op} ${v} cm betragen.` },
+  packages_count:            { order: 4, tpl: (op, v) => `Mit diesem Versandtarif können ${op} ${v} Packstücke pro Sendung verschickt werden.` },
+  packages_total_weight:     { order: 5, tpl: (op, v) => `Das Gesamtgewicht aller Packstücke darf ${op} ${v} kg betragen.` },
 };
-const LIMIT_OPERATORS = { "<=": "max.", "<": "unter", ">=": "mindestens", ">": "größer als" };
 
 function buildLimitLines(tariffLimits) {
   if (!Array.isArray(tariffLimits)) return [];
@@ -85,15 +89,16 @@ function buildLimitLines(tariffLimits) {
     if (!lim || typeof lim !== "object") return;
     const { operant, operator, value } = lim;
     // value 0 darf nicht via || verloren gehen → explizite Zahl-Prüfung.
+    // null/undefined/leer aber überspringen (Number(null) wäre 0 → kein "max. 0").
+    if (value == null || value === "") return;
     const num = typeof value === "number" ? value : Number(value);
     if (!Number.isFinite(num)) return;
     // Nutzlose untere 0-Grenzen ausblenden (z. B. shortest_and_longest_side > 0).
     if (num === 0 && (operator === ">" || operator === ">=")) return;
-    const field  = LIMIT_LABELS[operant];
+    const rule   = LIMIT_RULES[operant];
     const opWord = LIMIT_OPERATORS[operator];
-    if (!field || !opWord) return; // unbekannte Operanten/Operatoren überspringen
-    const unitStr = field.unit ? ` ${field.unit}` : "";
-    lines.push({ key: `${operant}-${operator}-${i}`, order: field.order, text: `${field.label} ${opWord} ${num}${unitStr}` });
+    if (!rule || !opWord) return; // unbekannte Operanten/Operatoren überspringen
+    lines.push({ key: `${operant}-${operator}-${i}`, order: rule.order, text: rule.tpl(opWord, num) });
   });
   return lines.sort((a, b) => a.order - b.order);
 }
@@ -160,9 +165,22 @@ function DetailsPanel({ tariff: t }) {
   const limitLines = buildLimitLines(t.tariffLimits);
   const carrierLinkItems = buildCarrierLinks(t.carrierLinks);
 
+  // ── Hauptmerkmale als Feature-Grid: dezentes Label + starker Wert + kleines
+  // Icon aus der bestehenden Icon-Sprache. Nur real vorhandene Felder. Infos,
+  // die "Termin & Abholung" konkreter zeigt (Abgabestelle, Lieferzeit), werden
+  // hier bewusst NICHT wiederholt. Der Tarifname spannt die volle Breite.
+  const features = [];
+  if (transitDetail)               features.push({ icon: "clock",   label: "Versandlaufzeit",        value: transitDetail });
+  if (showInsValue)                features.push({ icon: "shield",  label: "Haftung / Versicherung", value: `max. ${money(insValue)} lt. Tarifdaten` });
+  if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
+  if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
+  if (hasInsurableFlag)            features.push({ icon: "shield",  label: "Versicherungsschutz",    value: ins.isInsurable ? "Buchbar" : "Nicht verfügbar" });
+  if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
+  if (t.tariffName)                features.push({ icon: "cube",    label: "Tarif",                  value: t.tariffName, wide: true });
+  if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
+
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
-  const hasMain  = !!(t.tariffName || transitDetail || serviceLabel || t.trackingAvailable != null
-                   || t.printerRequired != null || hasInsurableFlag || showInsValue || tariffId != null);
+  const hasMain  = features.length > 0;
   const hasLimits = limitLines.length > 0;
   const hasTermin = !!(t.shopName || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
                    || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
@@ -171,37 +189,20 @@ function DetailsPanel({ tariff: t }) {
 
   return (
     <>
-      {hasPrice && (
-        <div className="offer-details-section">
-          <div className="offer-detail-section-title">Preisaufschlüsselung</div>
-          {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
-          {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
-          {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
-        </div>
-      )}
-
       {hasMain && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Hauptmerkmale</div>
-          {t.tariffName && <DetailRow label="Tarif" value={t.tariffName} />}
-          {transitDetail && <DetailRow label="Versandlaufzeit" value={transitDetail} />}
-          {serviceLabel && <DetailRow label="Versandart" value={serviceLabel} />}
-          {t.trackingAvailable != null && (
-            <DetailRow label="Sendungsverfolgung" value={t.trackingAvailable ? "Inklusive" : "Nicht verfügbar"} />
-          )}
-          {t.printerRequired != null && (
-            <DetailRow
-              label="Drucker"
-              value={t.printerRequired ? "Erforderlich (Versandlabel)" : "Nicht erforderlich (QR-Code)"}
-            />
-          )}
-          {hasInsurableFlag && (
-            <DetailRow label="Versicherungsschutz" value={ins.isInsurable ? "Buchbar" : "Nicht verfügbar"} />
-          )}
-          {showInsValue && (
-            <DetailRow label="Haftung / Versicherung" value={`max. ${money(insValue)} (lt. Tarifdaten)`} />
-          )}
-          {tariffId != null && <DetailRow label="Tarif-ID" value={String(tariffId)} subtle />}
+          <div className="offer-feature-grid">
+            {features.map(f => (
+              <div key={f.label} className={`offer-feature${f.wide ? " offer-feature--wide" : ""}`}>
+                <span className="offer-feature-icon"><Icon n={f.icon} s={15} c="currentColor" /></span>
+                <span className="offer-feature-body">
+                  <span className="offer-feature-label">{f.label}</span>
+                  <span className={`offer-feature-value${f.subtle ? " offer-feature-value--subtle" : ""}`}>{f.value}</span>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -231,12 +232,12 @@ function DetailsPanel({ tariff: t }) {
         </div>
       )}
 
-      {hasHinweise && (
-        <div className="offer-details-section">
-          <div className="offer-detail-section-title">Zusatzhinweise</div>
-          {showPickupSurcharge && (
-            <DetailRow label="Abholzuschlag" value="Im Tarif berücksichtigt" />
-          )}
+      {hasPrice && (
+        <div className="offer-details-section offer-details-section--price">
+          <div className="offer-detail-section-title">Preisaufschlüsselung</div>
+          {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
+          {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
+          {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
         </div>
       )}
 
@@ -257,6 +258,15 @@ function DetailsPanel({ tariff: t }) {
               </a>
             ))}
           </div>
+        </div>
+      )}
+
+      {hasHinweise && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Zusatzhinweise</div>
+          {showPickupSurcharge && (
+            <DetailRow label="Abholzuschlag" value="Im Tarif berücksichtigt" />
+          )}
         </div>
       )}
     </>

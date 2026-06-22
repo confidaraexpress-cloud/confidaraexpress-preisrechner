@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { dateDE, dtDE } from "../utils/formatters";
+import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 
 const ERROR_MESSAGES = {
   400: "Bitte gib eine gültige Trackingnummer ein.",
-  404: "Sendung nicht gefunden.",
+  404: TRACKING_NOT_FOUND,
   429: "Zu viele Anfragen. Bitte versuche es später erneut.",
   500: "Tracking aktuell nicht verfügbar.",
 };

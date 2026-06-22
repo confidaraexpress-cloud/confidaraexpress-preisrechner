@@ -5,10 +5,11 @@ import { money, dateDE, dtDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { apiFetch } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
+import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte gib eine gültige Trackingnummer ein.",
-  404: "Sendung nicht gefunden.",
+  404: TRACKING_NOT_FOUND,
   429: "Zu viele Anfragen. Bitte später erneut versuchen.",
   500: "Tracking aktuell nicht verfügbar.",
 };

@@ -228,12 +228,17 @@
    farbigen Punkte und die Texte dominieren, nicht die Linie. */
 .offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
-.offer-tl-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.offer-tl-dot--start { background: var(--blue); }
-.offer-tl-dot--end   { background: var(--navy); }
+.offer-tl-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  animation: offerTlDotPulse 2.8s ease-in-out infinite;
+}
+/* Start = Blau (Shopabgabe/Versand), Ziel = dezentes Premium-Grün (Lieferung) —
+   die Linie führt den Verlauf weiter; Ziel-Punkt pulsiert leicht zeitversetzt. */
+.offer-tl-dot--start { background: var(--blue); --tl-ring: rgba(29,78,216,0.3); }
+.offer-tl-dot--end   { background: var(--success); --tl-ring: rgba(16,185,129,0.3); animation-delay: 0.4s; }
 .offer-tl-track {
   flex: 1; height: 2px; margin: 0 8px; border-radius: 2px;
-  background: linear-gradient(90deg, rgba(29,78,216,0.45), rgba(11,31,77,0.40));
+  background: linear-gradient(90deg, rgba(29,78,216,0.45), rgba(16,185,129,0.40));
 }
 .offer-tl-labels { display: flex; justify-content: space-between; gap: 14px; }
 .offer-tl-node { display: flex; flex-direction: column; gap: 1px; min-width: 0; max-width: 52%; }
@@ -510,16 +515,19 @@
   .offer-tl-labels::before {
     content: ""; position: absolute; left: 4px; top: 8px; bottom: 8px;
     width: 2px; border-radius: 2px;
-    background: linear-gradient(var(--blue), var(--navy));
+    background: linear-gradient(var(--blue), var(--success));
   }
   .offer-tl-node { max-width: none; position: relative; }
   .offer-tl-node--end { align-items: flex-start; text-align: left; }
   .offer-tl-node::before {
     content: ""; position: absolute; left: -18px; top: 5px;
     width: 10px; height: 10px; border-radius: 50%;
-    background: var(--blue); box-shadow: 0 0 0 2px white;
+    background: var(--blue); --tl-ring: rgba(29,78,216,0.3);
+    animation: offerTlDotPulseInset 2.8s ease-in-out infinite;
   }
-  .offer-tl-node--end::before { background: var(--navy); }
+  .offer-tl-node--end::before {
+    background: var(--success); --tl-ring: rgba(16,185,129,0.3); animation-delay: 0.4s;
+  }
 
   /* Zone 3 volle Breite, CTA full-width */
   .offer-zone-3 { align-items: stretch; }
@@ -551,4 +559,9 @@
   .offer-logo-tile img { width: 34px; height: 34px; }
   .offer-eta { font-size: 22px; }
   .offer-price { font-size: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer-tl-dot,
+  .offer-tl-node::before { animation: none; }
 }

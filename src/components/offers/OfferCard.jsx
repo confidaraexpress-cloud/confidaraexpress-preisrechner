@@ -21,6 +21,11 @@ const fmtDay = (iso) => {
   });
 };
 
+// "bis 17:00 Uhr" — Cutoff-Uhrzeit konsistent oben (Timeline) & unten
+// (DetailsPanel "Lieferung bis"). Präfix nur ergänzen, falls noch nicht
+// vorhanden (defensiv, falls das Backend künftig selbst "bis" mitliefert).
+const fmtUntil = (time) => (/^bis\b/i.test(time || "") ? `${time} Uhr` : `bis ${time} Uhr`);
+
 // ── Zone 2: Versandablauf-Knoten aus vorhandenen Daten ableiten ──
 // Es werden ausschließlich real vorhandene Felder genutzt; fehlt alles,
 // fällt der Ziel-Knoten sauber auf die relative Laufzeit zurück.
@@ -41,10 +46,22 @@ function buildStart(t) {
 }
 
 function buildEnd(t, etaLabel) {
-  // Absolutes Lieferdatum bevorzugt; fehlt es, sauberer Fallback auf relative Laufzeit.
-  const primary = t.deliveryDate ? fmtDay(t.deliveryDate) : etaLabel;
+  // Lieferzeitraum (deliveryDateMin/Max) hat Vorrang vor dem Einzeldatum —
+  // exakt dieselbe Priorität wie im DetailsPanel (siehe hasDeliveryRange),
+  // damit Timeline und Details nie auseinanderlaufen. Sind Min und Max
+  // derselbe Tag, wird wie bei einem Einzeldatum nur ein Tag gezeigt.
+  const minDay = t.deliveryDateMin?.split("T")[0];
+  const maxDay = t.deliveryDateMax?.split("T")[0];
+  const hasRange = !!(minDay && maxDay);
+
+  let primary;
+  if (hasRange && minDay !== maxDay) primary = `${fmtDay(t.deliveryDateMin)} – ${fmtDay(t.deliveryDateMax)}`;
+  else if (hasRange)                 primary = fmtDay(t.deliveryDateMin);
+  else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
+  else                                primary = etaLabel;
+
   const secondary = [];
-  if (t.deliveryTimeUntil) secondary.push(`bis ${t.deliveryTimeUntil} Uhr`);
+  if (t.deliveryTimeUntil) secondary.push(fmtUntil(t.deliveryTimeUntil));
   return { title: "Lieferung", primary, secondary };
 }
 
@@ -228,7 +245,7 @@ function DetailsPanel({ tariff: t }) {
           {hasDeliveryRange
             ? <DetailRow label="Lieferzeitraum" value={deliveryRange} />
             : t.deliveryDate && <DetailRow label="Liefertermin" value={fmtDE(t.deliveryDate)} />}
-          {t.deliveryTimeUntil && <DetailRow label="Lieferung bis" value={`${t.deliveryTimeUntil} Uhr`} />}
+          {t.deliveryTimeUntil && <DetailRow label="Lieferung" value={fmtUntil(t.deliveryTimeUntil)} />}
         </div>
       )}
 

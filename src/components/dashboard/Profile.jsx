@@ -55,7 +55,6 @@ export function Profile({ user }) {
     setSaving(false);
   };
 
-  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
   const countryName = countries.find(c => c.code === user?.country)?.name;
   const paymentTermLabel = user?.payment_term ? `${user.payment_term} Tage` : "Nicht hinterlegt";
   const address = user?.street ? `${user.street}, ${user.zip} ${user.city}` : null;
@@ -116,7 +115,7 @@ export function Profile({ user }) {
   const renderCard = (section, key) => (
     <div key={key} className="table-card profile-card">
       <div className="table-card-header profile-card-head">
-        <div className="profile-card-icon"><Icon n={section.icon} s={19} /></div>
+        <div className="profile-card-icon"><Icon n={section.icon} s={21} /></div>
         <div className="profile-card-heading">
           <span className="table-card-title">{section.title}</span>
           {section.subtitle && <span className="profile-card-sub">{section.subtitle}</span>}
@@ -150,23 +149,23 @@ export function Profile({ user }) {
         </div>
         {!editing && (
           <button className="btn btn-primary profile-edit-btn" onClick={startEdit}>
-            <Icon n="settings" s={14} /> Profil bearbeiten
+            <Icon n="settings" s={15} /> Profil bearbeiten
           </button>
         )}
       </div>
 
       <div className="profile-account-header">
         <div className="profile-account-identity">
-          <div className="profile-avatar-lg">{initials}</div>
+          <div className="profile-avatar-lg">CE</div>
           <div className="profile-account-info">
             <div className="profile-account-name">{user?.company_name || user?.name || "Nicht angegeben"}</div>
             <div className="profile-account-email">
-              <Icon n="mail" s={13} /> {user?.email || "Nicht angegeben"}
+              <Icon n="mail" s={14} /> {user?.email || "Nicht angegeben"}
             </div>
             <div className="profile-meta-row">
               <StatusBadge status={user?.status} />
-              <span className="profile-meta-chip"><Icon n="building" s={12} /> B2B-Konto</span>
-              <span className="profile-meta-chip profile-meta-chip-accent"><Icon n="clock" s={12} /> Zahlungsziel: {paymentTermLabel}</span>
+              <span className="profile-meta-chip"><Icon n="building" s={13} /> B2B-Konto</span>
+              <span className="profile-meta-chip profile-meta-chip-accent"><Icon n="clock" s={13} /> Zahlungsziel: {paymentTermLabel}</span>
             </div>
           </div>
         </div>

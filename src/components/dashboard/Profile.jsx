@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
-import { apiFetch, authH } from "../../api/client";
+import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 
@@ -88,7 +88,16 @@ export function Profile({ user }) {
         setPwSuccess(true);
         setPwForm(EMPTY_PW_FORM);
       } else if (r.status === 401) {
-        setPwError("Das aktuelle Passwort ist nicht korrekt.");
+        const d = await r.json().catch(() => ({}));
+        // P3: Token wurde serverseitig bereits invalidiert (z.B. Passwort in
+        // einem anderen Tab geändert) — dann ist es keine Falscheingabe,
+        // sondern eine abgelaufene Session. Gleicher Logout-Pfad wie bei
+        // jedem anderen 401 auf einem `auth: true`-Request.
+        if (d.error === "Sitzung abgelaufen. Bitte melden Sie sich erneut an.") {
+          triggerAuthError();
+        } else {
+          setPwError("Das aktuelle Passwort ist nicht korrekt.");
+        }
       } else if (r.status === 429) {
         setPwError("Zu viele Versuche. Bitte versuchen Sie es später erneut.");
       } else {

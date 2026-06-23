@@ -15,6 +15,12 @@ export const jsonH = { "Content-Type": "application/json" };
 let authErrorHandler = null;
 export const setAuthErrorHandler = (fn) => { authErrorHandler = fn; };
 
+// Macht den registrierten Handler für Sonderfälle aufrufbar, die bewusst kein
+// `auth: true` nutzen (z.B. Passwortänderung, wo ein 401 meist "falsches
+// Passwort" statt "Session ungültig" bedeutet, aber im P3-Fall doch Session-
+// Invalidierung sein kann).
+export const triggerAuthError = () => { if (authErrorHandler) authErrorHandler(); };
+
 // ── Minimal central fetch wrapper (no dependency, no global fetch patch) ─────
 // apiFetch("/path", { auth, method, body, headers, ... })
 //   - auth: true  → adds Authorization (Bearer) + JSON Content-Type via authH()

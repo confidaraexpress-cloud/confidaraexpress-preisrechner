@@ -216,7 +216,12 @@ tr:hover td { background: var(--gray50); }
 .profile-row-val { font-size: 13px; font-weight: 700; color: var(--navy); text-align: right; min-width: 0; }
 .profile-row-empty { font-weight: 500; color: var(--gray400); }
 .profile-form-body { padding: 16px 20px; }
-.profile-form-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.profile-form-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+
+/* Passwort-ändern-Bereich innerhalb der Sicherheitskarte */
+.profile-password-section { border-top: 1px solid var(--border); padding-top: 18px; }
+.profile-password-title { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.profile-password-desc { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray500); }
 
 /* Karten-Kopf mit Icon-Kachel + Titel/Subline */
 .profile-card-head { justify-content: flex-start; gap: 13px; }

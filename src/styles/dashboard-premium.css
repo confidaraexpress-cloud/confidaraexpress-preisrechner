@@ -1090,6 +1090,11 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 22px -6px rgba(37, 99, 235, 0.34);
 }
 .dashboard-profile-premium .profile-form-body .field-select option { color: #0B1F4D; }
+
+.dashboard-profile-premium .profile-password-section { border-top-color: rgba(130, 160, 230, 0.12); }
+.dashboard-profile-premium .profile-password-title { color: #f1f5ff; }
+.dashboard-profile-premium .profile-password-desc { color: rgba(184, 197, 226, 0.62); }
+
 .dashboard-profile-premium .profile-form-actions .btn-outline {
   color: #d6e0f5;
   border-color: rgba(140, 170, 255, 0.30);

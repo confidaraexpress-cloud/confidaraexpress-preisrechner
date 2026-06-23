@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
-import { apiFetch } from "../../api/client";
+import { PasswordField } from "../ui/PasswordField";
+import { apiFetch, authH } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 
 // Benötigt Backend: PATCH /kunde/profil
 // Request-Body: { name, company_name, vat_id, street, zip, city, country }
 // Response:     { user: { ...aktualisiertes User-Objekt } }
+
+// Benötigt Backend: PATCH /kunde/password
+// Request-Body: { currentPassword, newPassword, newPasswordConfirm }
+// Response:     { message } bei Erfolg, { error } bei Fehler
+
+const EMPTY_PW_FORM = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
 
 export function Profile({ user }) {
   const { updateUser } = useAuth();
@@ -16,6 +23,11 @@ export function Profile({ user }) {
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [form, setForm] = useState({});
+
+  const [pwForm, setPwForm] = useState(EMPTY_PW_FORM);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   const startEdit = () => {
     setForm({
@@ -34,6 +46,60 @@ export function Profile({ user }) {
 
   const cancelEdit = () => { setEditing(false); setSaveError(""); };
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const updPw = (k, v) => setPwForm(p => ({ ...p, [k]: v }));
+
+  const resetPwForm = () => {
+    setPwForm(EMPTY_PW_FORM);
+    setPwError("");
+    setPwSuccess(false);
+  };
+
+  const validatePwForm = () => {
+    const { currentPassword, newPassword, newPasswordConfirm } = pwForm;
+    if (!currentPassword) return "Bitte geben Sie Ihr aktuelles Passwort ein.";
+    if (!newPassword) return "Bitte geben Sie ein neues Passwort ein.";
+    if (newPassword.length < 8) return "Das neue Passwort muss mindestens 8 Zeichen lang sein.";
+    if (newPassword.length > 128) return "Das neue Passwort darf höchstens 128 Zeichen lang sein.";
+    if (newPassword === currentPassword) return "Das neue Passwort darf nicht mit dem aktuellen Passwort identisch sein.";
+    if (newPasswordConfirm !== newPassword) return "Die neuen Passwörter stimmen nicht überein.";
+    return "";
+  };
+
+  const handlePasswordChange = async () => {
+    setPwSuccess(false);
+    const validationError = validatePwForm();
+    if (validationError) { setPwError(validationError); return; }
+
+    setPwError("");
+    setPwSaving(true);
+    try {
+      // Bewusst kein `auth: true`: apiFetch würde bei 401 automatisch das
+      // Token entfernen + Logout auslösen. Ein 401 hier bedeutet aber
+      // "aktuelles Passwort falsch", nicht "Session ungültig" — die gültige
+      // Session darf erhalten bleiben. Der Auth-Header wird daher manuell
+      // über authH() gesetzt.
+      const r = await apiFetch(`/kunde/password`, {
+        method: "PATCH",
+        headers: authH(),
+        body: JSON.stringify(pwForm),
+      });
+      if (r.ok) {
+        setPwSuccess(true);
+        setPwForm(EMPTY_PW_FORM);
+      } else if (r.status === 401) {
+        setPwError("Das aktuelle Passwort ist nicht korrekt.");
+      } else if (r.status === 429) {
+        setPwError("Zu viele Versuche. Bitte versuchen Sie es später erneut.");
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setPwError(d.error || "Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.");
+      }
+    } catch {
+      setPwError("Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.");
+    }
+    setPwSaving(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -139,6 +205,82 @@ export function Profile({ user }) {
       </div>
     </div>
   );
+
+  const renderSecurityCard = () => {
+    const section = cards[3];
+    return (
+      <div key="security" className="table-card profile-card">
+        <div className="table-card-header profile-card-head">
+          <div className="profile-card-icon"><Icon n={section.icon} s={21} /></div>
+          <div className="profile-card-heading">
+            <span className="table-card-title">{section.title}</span>
+            {section.subtitle && <span className="profile-card-sub">{section.subtitle}</span>}
+          </div>
+        </div>
+        <div className="profile-section-body">
+          {section.items.map((it, i) => (
+            <div key={i} className={`profile-row${i < section.items.length - 1 ? " profile-row-border" : ""}`}>
+              <span className="profile-row-key">{it.k}</span>
+              <span className={`profile-row-val${it.empty ? " profile-row-empty" : ""}`}>{it.v}</span>
+            </div>
+          ))}
+          {section.hint && (
+            <div className="profile-hint">
+              <Icon n={section.hint.icon} s={15} />
+              <div className="profile-hint-text">
+                {section.hint.lines.map((line, i) => <p key={i}>{line}</p>)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="profile-form-body profile-password-section">
+          <span className="profile-password-title">Passwort ändern</span>
+          <p className="profile-password-desc">Ändern Sie Ihr Passwort regelmäßig, um Ihr Konto zu schützen.</p>
+
+          {pwSuccess && (
+            <div className="alert alert-success mb-16">
+              <Icon n="shield" s={16} /> Passwort erfolgreich geändert.
+            </div>
+          )}
+          {pwError && (
+            <div className="alert alert-error mb-16">
+              <Icon n="x" s={16} />{pwError}
+            </div>
+          )}
+
+          <PasswordField
+            dark={false}
+            label="Aktuelles Passwort"
+            value={pwForm.currentPassword}
+            onChange={(e) => updPw("currentPassword", e.target.value)}
+            autoComplete="current-password"
+          />
+          <PasswordField
+            dark={false}
+            label="Neues Passwort"
+            value={pwForm.newPassword}
+            onChange={(e) => updPw("newPassword", e.target.value)}
+            autoComplete="new-password"
+          />
+          <PasswordField
+            dark={false}
+            label="Neues Passwort wiederholen"
+            value={pwForm.newPasswordConfirm}
+            onChange={(e) => updPw("newPasswordConfirm", e.target.value)}
+            autoComplete="new-password"
+          />
+
+          <div className="profile-form-actions">
+            <button className="btn btn-outline" onClick={resetPwForm} disabled={pwSaving}>Zurücksetzen</button>
+            <button className="btn btn-primary" onClick={handlePasswordChange} disabled={pwSaving}>
+              {pwSaving ? <><span className="spinner" /> Wird geändert…</> : <><Icon n="lock" s={14} /> Passwort ändern</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="page-body">
@@ -256,7 +398,7 @@ export function Profile({ user }) {
           </div>
           <div className="profile-col">
             {renderCard(cards[1], "account")}
-            {renderCard(cards[3], "security")}
+            {renderSecurityCard()}
           </div>
         </div>
       )}

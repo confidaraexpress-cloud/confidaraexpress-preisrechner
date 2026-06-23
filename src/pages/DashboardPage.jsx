@@ -46,16 +46,18 @@ export default function DashboardPage() {
   const fetchData = useCallback(() => {
     setLoading(true);
     setLoadError("");
+    const toErr = (r) => { const e = new Error(); e.status = r.status; return e; };
     Promise.all([
-      apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
+      apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
     ]).then(([s, inv]) => {
       setShipments(s.shipments || []);
       setInvoices(inv.invoices || []);
       setLoading(false);
-    }).catch(() => {
-      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
+    }).catch((e) => {
       setLoading(false);
+      if (e?.status === 401 || e?.status === 403) return; // globaler Auth-Redirect übernimmt
+      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
     });
   }, []);
 

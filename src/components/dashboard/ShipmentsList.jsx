@@ -26,7 +26,9 @@ export function ShipmentsList({ shipments, loading }) {
     try {
       const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
       if (!r.ok) {
-        setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
+        if (r.status !== 401 && r.status !== 403) { // globaler Auth-Redirect übernimmt sonst
+          setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
+        }
       } else {
         const d = await r.json();
         setTracking(d.tracking);
@@ -40,7 +42,7 @@ export function ShipmentsList({ shipments, loading }) {
     try {
       await downloadLabel(id);
     } catch (e) {
-      setLabelError(e.message);
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
   };
 

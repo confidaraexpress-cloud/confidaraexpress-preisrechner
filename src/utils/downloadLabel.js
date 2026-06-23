@@ -17,7 +17,9 @@ export async function downloadLabel(id) {
       const d = await r.json();
       if (d?.error) message = d.error;
     } catch { /* Response hat keinen JSON-Body */ }
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = r.status;
+    throw err;
   }
 
   const blob = await r.blob();

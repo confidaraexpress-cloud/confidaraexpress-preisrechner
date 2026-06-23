@@ -80,6 +80,7 @@ export default function BookingPage() {
         setLoading(false);
         return;
       }
+      if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
@@ -92,7 +93,7 @@ export default function BookingPage() {
     try {
       await downloadLabel(booking.shipmentId);
     } catch (e) {
-      setLabelError(e.message);
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
     setLabelLoading(false);
   };

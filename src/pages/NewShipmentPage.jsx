@@ -256,6 +256,7 @@ export default function NewShipmentPage() {
   };
 
   const calculate = async () => {
+    setHasResults(false); setTariffs([]);
     const errs = getErrors(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -287,7 +288,11 @@ export default function NewShipmentPage() {
       setTariffs(d.tariffs || []);
       setShipmentId(d.shipmentId);
       setHasResults(true);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message === "Keine Preise gefunden"
+        ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
+        : e.message);
+    }
     setLoading(false);
   };
 
@@ -340,8 +345,6 @@ export default function NewShipmentPage() {
           <h1 className="heading calc-page-title">Versandpreis berechnen</h1>
           <p className="calc-page-sub">Vergleichen Sie Preise von 8+ Carriern in Echtzeit</p>
         </div>
-
-        {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
 
         {/* ── Form section ── */}
         <div className="offers-form-section">
@@ -614,6 +617,7 @@ export default function NewShipmentPage() {
                 : <><Icon n="zap" s={16} /> Preise berechnen</>
               }
             </button>
+            {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
           </div>
         </div>
 

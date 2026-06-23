@@ -223,6 +223,7 @@ export default function CalculatorPage() {
   };
 
   const calculate = async () => {
+    setHasResults(false); setTariffs([]);
     const validErr = getValidationError();
     if (validErr) { setError(validErr); return; }
     setError(""); setLoading(true); setSelected(null);
@@ -251,7 +252,11 @@ export default function CalculatorPage() {
       if (newCarriers.length > 0)
         setCarrierFilters(prev => prev.filter(c => newCarriers.includes(c)));
       setTariffs(d.tariffs || []); setHasResults(true);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message === "Keine Preise gefunden"
+        ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
+        : e.message);
+    }
     setLoading(false);
   };
 
@@ -263,8 +268,6 @@ export default function CalculatorPage() {
   return (
     <div className="page-with-navbar">
       <div className="container calc-page-wrap">
-        {error && <div className="alert alert-error mb-16"><Icon n="x" s={16} />{error}</div>}
-
         <div className="offers-form-section">
 
           {/* ── Service Filter — collapsible ── */}
@@ -516,6 +519,7 @@ export default function CalculatorPage() {
             <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
               {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={16} /> Preise berechnen</>}
             </button>
+            {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
           </div>
         </div>
 

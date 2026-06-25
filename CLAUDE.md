@@ -39,7 +39,8 @@ Funktionierende Buchungen schlagen jede Eleganz und jeden Refactor.
 - **API nur über `src/api/client.js`** — keine verstreuten fetch/axios-Aufrufe.
 - **Auth-State nur über `AuthContext`** — keine parallele Auth-Logik; bestehende
   Fehlerbehandlung für Auth/`sessionExpired` nicht beschädigen.
-- **Secrets** bleiben in `.env` (nur `VITE_`-Variablen sind clientseitig sichtbar).
+- **Keine Secrets im Frontend-Repo.** `VITE_`-Variablen sind clientseitig sichtbar und
+  dürfen nur öffentliche Konfiguration enthalten.
 
 ### Dropoff/Paketshop-Guardrail (zwingend)
 
@@ -78,7 +79,8 @@ Felder/Übergabe: stoppen, Analyse liefern und nachfragen.
 3. Bestehende UI-/UX-Sprache fortführen, nicht neu erfinden.
 4. Keine unnötigen Refactorings.
 5. Kleine, kontrollierte Änderungen.
-6. API-Aufrufe bevorzugt über `src/api/client.js`.
+6. API-Aufrufe über `src/api/client.js`; Abweichungen nur mit klarer Begründung und
+   expliziter Freigabe.
 7. Auth-State über `AuthContext`, keine parallele Auth-Logik.
 8. Preise/Tarife nur anzeigen, nie als Quelle der Wahrheit.
 9. Bestehende Fehlerbehandlung für Auth/`sessionExpired` nicht beschädigen.

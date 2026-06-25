@@ -544,6 +544,7 @@ export default function CalculatorPage() {
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}
+            senderPrefill={{ postCode: form.from_zip, city: "", country: form.from_country }}
           />
         )}
       </div>

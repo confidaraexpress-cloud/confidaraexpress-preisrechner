@@ -2,6 +2,10 @@
 
 B2B-Versandplattform. React 18 + Vite SPA. Kein TypeScript. Backend-API ist extern (nicht in diesem Repo).
 
+## Mission & oberste Priorität
+
+Oberste Priorität: **zuverlässige, korrekte Buchungen über ConfidaraExpress** — für **Abholung/Pickup** *und* **Paketshop/Dropoff**. **Jumingo-Parität** ist dabei kritisch: Felder, Werte und Abläufe müssen exakt dem entsprechen, was Backend/Jumingo erwartet. Funktionierende Buchungen haben Vorrang vor Eleganz und Refactors. Die konkreten Buchungsregeln stehen unter „ConfidaraExpress — Buchung, Preise & Jumingo".
+
 ## Tech Stack
 
 - **Framework:** React 18, Vite
@@ -145,6 +149,8 @@ export const jsonH = { "Content-Type": "application/json" };
 - Login speichert JWT unter `ce_token`
 - Registrierung benötigt Admin-Freischaltung (kein Self-Signup)
 - `ProtectedRoute` leitet bei fehlendem Token auf `/login` um
+- **API-Aufrufe über `src/api/client.js`** (Helper `token()`/`authH()`/`jsonH`) — Abweichungen nur mit klarer Begründung und expliziter Freigabe
+- **Auth-State nur über `AuthContext`** — keine parallele Auth-Logik; bestehende Fehlerbehandlung für `sessionExpired` nicht beschädigen
 
 ## Icon-Komponente
 
@@ -199,6 +205,16 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 ## Aktiver Feature-Branch
 
 Entwicklung läuft auf `claude/charming-fermat-cpJ3f`. Nicht auf `main` pushen ohne explizite Freigabe.
+
+## ConfidaraExpress — Buchung, Preise & Jumingo
+
+- **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.
+- **Preise/Tarife nur anzeigen**, niemals als Quelle der Wahrheit behandeln oder clientseitig berechnen/überschreiben.
+- **Keine geratenen Jumingo-Daten:** Felder, Tarife, `serviceType`, `pickup`/`dropoff`, Access-Point-/Paketshop-Daten nicht erfinden — nur belegte Werte verwenden.
+
+### Dropoff/Paketshop-Guardrail (zwingend)
+
+Dropoff/Paketshop darf im UI **nicht** so dargestellt werden, als sei eine verbindliche Buchung möglich, wenn der **Backend-Guard dies noch blockiert**. Wenn das Backend eine Dropoff-Buchung blockiert, muss das Frontend diese Realität respektieren. **Keine UI-Texte, die dem tatsächlichen Backend-Verhalten widersprechen.** Bei Unklarheit über Felder/Übergabe: stoppen, Analyse liefern und nachfragen.
 
 ## Sicherheitsregeln
 

@@ -18,9 +18,36 @@ import { accessPointCarrierCode } from "../../utils/carrierMap";
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
 
-// Entfernung nur als belegte Zahl anzeigen (de-DE, max. 1 Nachkommastelle).
-const fmtDistance = (km) =>
-  `${km.toLocaleString("de-DE", { maximumFractionDigits: 1 })} km`;
+// Entfernung robust als Zahl lesen: number direkt; numerische Strings ("1.2"
+// oder "1,2") werden geparst; alles andere → null (keine falschen Werte).
+const toDistanceNumber = (v) => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const n = Number(v.trim().replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+// Entfernung formatiert (de-DE, max. 1 Nachkommastelle). Einheit aus dem
+// Backend-Feld distanceCode, falls vorhanden (verbatim, KEINE Umrechnung),
+// sonst sinnvoller Default "km".
+const fmtDistance = (value, code) => {
+  const unit = typeof code === "string" && code.trim() ? code.trim() : "km";
+  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ${unit}`;
+};
+
+// Öffnungszeiten nur sicher renderbar machen: String direkt; Array reiner
+// Strings sauber joinen; Objekte/komplexe Strukturen werden verworfen (keine
+// Interpretation, kein blindes Rendern von Objekten).
+const normalizeHours = (v) => {
+  if (typeof v === "string") return v.trim() || null;
+  if (Array.isArray(v)) {
+    const parts = v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim());
+    return parts.length ? parts.join(" · ") : null;
+  }
+  return null;
+};
 
 // Ersten vorhandenen, nicht-leeren Wert aus einer Liste möglicher Feldnamen.
 const pick = (obj, keys) => {
@@ -32,12 +59,13 @@ const pick = (obj, keys) => {
 };
 
 // ── Defensive Normalisierung eines Ergebnis-Items ────────────────────────────
-// Das exakte Response-Schema von POST /api/jumingo/access-points-search ist im
-// Frontend-Repo NICHT belegt (Backend ist ein separates Repo). Deshalb lesen
-// wir ausschließlich konventionelle Feldnamen defensiv aus und rendern NUR real
-// vorhandene, typgeprüfte Werte — niemals erfundene Daten, niemals Objekte.
-// Fehlt alles Brauchbare, wird das Item übersprungen (→ sauberer Empty-State).
-// Sobald das reale Schema bestätigt ist: ausschließlich hier anpassen.
+// Der Backend-Vertrag (access-points-search, commit 63baf58) normalisiert Access
+// Points u. a. mit: name, type, street, postCode, city, countryCode, distance,
+// distanceCode, workState, hoursOfOperation. Wir lesen diese Felder defensiv aus
+// und rendern NUR sicher renderbare, vorhandene Werte — niemals erfundene Daten,
+// niemals Objekte, keine fachliche Interpretation von Statuswerten. Zusätzliche
+// konventionelle Aliasse bleiben als Fallback erhalten. Fehlt alles Brauchbare,
+// wird das Item übersprungen (→ sauberer Empty-State).
 function normalizeItem(raw) {
   if (!raw || typeof raw !== "object") return null;
 
@@ -57,20 +85,32 @@ function normalizeItem(raw) {
     address = [line1, line2].filter(Boolean).join(", ") || null;
   }
 
-  // Entfernung: nur echte, endliche Zahl.
-  const distRaw = pick(raw, ["distance", "distanceKm", "distanceInKm"]);
-  const distance = typeof distRaw === "number" && Number.isFinite(distRaw) ? distRaw : null;
+  // Entfernung: number ODER numerischer String ("1.2"/"1,2"); sonst null.
+  const distance = toDistanceNumber(pick(raw, ["distance", "distanceKm", "distanceInKm"]));
+  // Einheit aus distanceCode (Backend) verbatim, falls nicht-leerer String.
+  const distCodeRaw = pick(raw, ["distanceCode"]);
+  const distanceCode = typeof distCodeRaw === "string" && distCodeRaw.trim() ? distCodeRaw.trim() : null;
 
-  // Öffnungszeiten: nur reine Zeichenkette (nie Objekte/Arrays rendern).
-  const hoursRaw = pick(raw, ["openingHours", "hours", "openingTimes"]);
-  const hours = typeof hoursRaw === "string" ? hoursRaw : null;
+  // Öffnungszeiten: hoursOfOperation (Backend) + bisherige Aliasse; nur sicher
+  // renderbare Werte (String oder Array aus Strings), nie Objekte.
+  const hours = normalizeHours(pick(raw, ["hoursOfOperation", "openingHours", "hours", "openingTimes"]));
 
-  // Offen-Status: nur echter Boolean.
+  // Offen-Status: bestehendes Boolean-Verhalten erhalten (isOpen/open/openNow).
   const openRaw = pick(raw, ["isOpen", "open", "openNow"]);
   const isOpen = typeof openRaw === "boolean" ? openRaw : null;
+  // workState ist laut Backend-Vertrag ein String mit (noch) unbewiesener
+  // Semantik: NICHT als Geöffnet/Geschlossen interpretieren — nur neutral als
+  // Rohtext anzeigen, ausschließlich wenn nicht-leerer String.
+  const wsRaw = pick(raw, ["workState"]);
+  const statusText = typeof wsRaw === "string" && wsRaw.trim() ? wsRaw.trim() : null;
+
+  // Ländercode roh übernehmen; ob angezeigt wird, entscheidet der Renderer
+  // kontextabhängig (nur wenn vom gesuchten Land abweichend → kein Clutter).
+  const ccRaw = pick(raw, ["countryCode"]);
+  const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  return { name, address, distance, hours, isOpen };
+  return { name, address, distance, distanceCode, hours, isOpen, statusText, countryCode };
 }
 
 function normalizeList(data) {
@@ -245,32 +285,40 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
 
       {!loading && !error && results !== null && results.length > 0 && (
         <ul className="ap-result-list">
-          {results.map((s, i) => (
-            <li className="ap-result" key={i}>
-              <div className="ap-result-main">
-                <div className="ap-result-name">{s.name || s.address}</div>
-                {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
-                {s.hours && (
-                  <div className="ap-result-hours">
-                    <Icon n="clock" s={13} c="currentColor" />
-                    <span>{s.hours}</span>
-                  </div>
-                )}
-              </div>
-              {(s.distance != null || s.isOpen != null) && (
-                <div className="ap-result-meta">
-                  {s.distance != null && (
-                    <span className="ap-result-dist">{fmtDistance(s.distance)}</span>
-                  )}
-                  {s.isOpen != null && (
-                    <span className={`ap-result-status ${s.isOpen ? "is-open" : "is-closed"}`}>
-                      {s.isOpen ? "Geöffnet" : "Geschlossen"}
-                    </span>
+          {results.map((s, i) => {
+            // Ländercode nur zeigen, wenn er vom gesuchten Land abweicht
+            // (vermeidet redundantes "DE" bei inländischer Suche).
+            const showCc = s.countryCode && s.countryCode !== countryCode;
+            return (
+              <li className="ap-result" key={i}>
+                <div className="ap-result-main">
+                  <div className="ap-result-name">{s.name || s.address}</div>
+                  {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
+                  {s.hours && (
+                    <div className="ap-result-hours">
+                      <Icon n="clock" s={13} c="currentColor" />
+                      <span>{s.hours}</span>
+                    </div>
                   )}
                 </div>
-              )}
-            </li>
-          ))}
+                {(s.distance != null || s.isOpen != null || s.statusText || showCc) && (
+                  <div className="ap-result-meta">
+                    {s.distance != null && (
+                      <span className="ap-result-dist">{fmtDistance(s.distance, s.distanceCode)}</span>
+                    )}
+                    {s.isOpen != null ? (
+                      <span className={`ap-result-status ${s.isOpen ? "is-open" : "is-closed"}`}>
+                        {s.isOpen ? "Geöffnet" : "Geschlossen"}
+                      </span>
+                    ) : s.statusText ? (
+                      <span className="ap-result-status is-neutral">Status: {s.statusText}</span>
+                    ) : null}
+                    {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

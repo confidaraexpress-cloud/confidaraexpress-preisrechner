@@ -1,10 +1,6 @@
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
-  .calc-wrap { grid-template-columns: 1fr; }
-  .results-panel { position: static; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .calc-mobile-cta { display: block; margin-top: 12px; }
-  .calc-desktop-cta { display: none; }
 }
 
 @media (max-width: 768px) {
@@ -31,6 +27,10 @@
   .mobile-topbar { display: flex; }
   .page-header { display: none; }
   .page-body { padding: 14px; }
+
+  /* DashboardSectionHeader — below sticky topbar */
+  .dash-section-header { padding: 20px 18px 16px; }
+  .dash-section-sub { font-size: 14px; max-width: 100%; padding: 0 6px; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi-value { font-size: 22px; }
 

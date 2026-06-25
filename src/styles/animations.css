@@ -5,6 +5,12 @@
 @keyframes orbDrift { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px, -30px) scale(1.05); } }
 @keyframes pulse-dot { 0%, 100% { opacity: 1; box-shadow: 0 0 6px #3b82f6; } 50% { opacity: 0.6; box-shadow: 0 0 14px #3b82f6, 0 0 4px #93c5fd; } }
 
+/* Sehr dezenter Timeline-Punkt-Puls (Offer-Karten): nur Opacity + feiner Ring,
+   kein Scaling, kein Glow. Ringfarbe kommt pro Punkt über --tl-ring. */
+@keyframes offerTlDotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--tl-ring, transparent); opacity: 1; }
+  50%      { box-shadow: 0 0 0 4px var(--tl-ring, transparent); opacity: 0.85; }
+}
 .animate-fadeUp   { animation: fadeUp 600ms cubic-bezier(.2,.7,.3,1) both; }
 .animate-fadeUp-1 { animation: fadeUp 600ms 80ms cubic-bezier(.2,.7,.3,1) both; }
 .animate-fadeUp-2 { animation: fadeUp 600ms 160ms cubic-bezier(.2,.7,.3,1) both; }

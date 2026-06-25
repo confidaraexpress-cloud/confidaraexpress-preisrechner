@@ -1,8 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
+import { resolveCarrierName } from "../../utils/carrierMap";
+import { ContactMailMenu } from "../common/ContactMailMenu";
+import dhlLogo         from "../../assets/carriers/dhl.svg";
+import upsLogo         from "../../assets/carriers/ups.svg";
+import fedexLogo       from "../../assets/carriers/fedex.svg";
+import tntLogo         from "../../assets/carriers/tnt.svg";
+import dpdLogo         from "../../assets/carriers/dpd.svg";
+import glsLogo         from "../../assets/carriers/gls.svg";
+import derKurierLogo   from "../../assets/carriers/der-kurier.svg";
+import transOFlexLogo  from "../../assets/carriers/trans-o-flex.svg";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -29,19 +39,18 @@ const STEPS = [
   },
 ];
 
-// logo: import from src/assets/carriers/<name>.svg once available, then set here
 const CARRIERS = [
-  { name: "UPS",    logo: null, accentColor: "#351C15" },
-  { name: "DHL",    logo: null, accentColor: "#D40511" },
-  { name: "TNT",    logo: null, accentColor: "#E84320" },
-  { name: "FedEx",  logo: null, accentColor: "#4D148C" },
-  { name: "GLS",    logo: null, accentColor: "#FF6600" },
-  { name: "DPD",    logo: null, accentColor: "#DC0032" },
-  { name: "Jumingo",logo: null, accentColor: "#1A5FB8" },
-  { name: "Hermes", logo: null, accentColor: "#8B0078" },
+  { name: "DHL",          logo: dhlLogo        },
+  { name: "UPS",          logo: upsLogo        },
+  { name: "FedEx",        logo: fedexLogo      },
+  { name: "TNT",          logo: tntLogo        },
+  { name: "DPD",          logo: dpdLogo        },
+  { name: "GLS",          logo: glsLogo        },
+  { name: "Der Kurier",   logo: derKurierLogo  },
+  { name: "trans-o-flex", logo: transOFlexLogo },
 ];
 
-function DashboardFooter() {
+function DashboardFooter({ onMailClick }) {
   return (
     <footer className="ce-footer">
       <div className="ce-footer-grid">
@@ -53,24 +62,19 @@ function DashboardFooter() {
             </span>
           </div>
           <p className="ce-footer-tag">
-            B2B-Versandplattform für professionellen Paketversand. Schnell, transparent, zuverlässig.
+            B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
           </p>
           <div className="ce-footer-social">
-            <a href="#" aria-label="LinkedIn">
-              <Icon n="linkedin" s={16} />
-            </a>
-            <a href="mailto:confidaraexpress@gmail.com" aria-label="E-Mail">
+            <button
+              type="button"
+              className="ce-footer-mail-btn"
+              onClick={onMailClick}
+              aria-label="E-Mail schreiben"
+              title="support@confidaraexpress.de"
+            >
               <Icon n="mail" s={16} />
-            </a>
+            </button>
           </div>
-        </div>
-
-        <div className="ce-footer-col">
-          <h4>Plattform</h4>
-          <Link to="/dashboard">Übersicht</Link>
-          <Link to="/dashboard?page=shipments">Sendungen</Link>
-          <Link to="/dashboard?page=invoices">Rechnungen</Link>
-          <Link to="/calculator">Preisrechner</Link>
         </div>
 
         <div className="ce-footer-col">
@@ -85,7 +89,13 @@ function DashboardFooter() {
           <h4>Kontakt</h4>
           <div className="ce-footer-contact-row">
             <Icon n="mail" s={14} />
-            confidaraexpress@gmail.com
+            <button
+              type="button"
+              className="ce-footer-mail-link"
+              onClick={onMailClick}
+            >
+              support@confidaraexpress.de
+            </button>
           </div>
           <div className="ce-footer-contact-row">
             <Icon n="phone" s={14} />
@@ -106,11 +116,16 @@ function DashboardFooter() {
 }
 
 export function Overview({ user, shipments, invoices, loading, onNewShipment, onAllShipments }) {
-  const unpaid = invoices.filter((i) => i.status === "unpaid");
-  const unpaidAmt = unpaid.reduce((sum, i) => sum + Number(i.amount), 0);
-  const inTransit = shipments.filter((s) =>
-    ["in_transit", "booked", "label_ready"].includes(s.status)
-  ).length;
+  const [mailOpen, setMailOpen] = useState(false);
+
+  const handleMailClick = () => {
+    const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (isDesktop) {
+      setMailOpen(true);
+    } else {
+      window.location.href = "mailto:support@confidaraexpress.de";
+    }
+  };
 
   return (
     <div className="ce-overview">
@@ -123,7 +138,7 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
         {/* Topbar */}
         <div className="ce-topbar">
           <div className="ce-greeting">
-            {getGreeting()}, {user?.company_name || user?.name}
+            {getGreeting()}, {user?.name || user?.company_name || "Kunde"}
           </div>
           <button className="ce-icon-btn" aria-label="Benachrichtigungen">
             <Icon n="bell" s={18} />
@@ -131,15 +146,11 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </button>
         </div>
 
-        {/* Hero */}
+        {/* Hero — dient zugleich als Seitenkopf der Übersicht */}
         <div className="ce-hero">
-          <div className="ce-hero-title">
-            Ihr B2B-Versand
-            <span className="ce-accent">auf einem Blick.</span>
-          </div>
+          <h1 className="ce-hero-title">Übersicht</h1>
           <p className="ce-hero-sub">
-            Verwalten Sie alle Ihre Sendungen, vergleichen Sie Carrier-Preise und behalten
-            Sie Ihre Rechnungen im Überblick – alles an einem Ort.
+            Ihr zentraler Kontrollpunkt für Sendungen, Kosten und Versandprozesse.
           </p>
         </div>
 
@@ -149,56 +160,6 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </div>
         ) : (
           <>
-            {/* KPI Stats */}
-            <div className="ce-kpi-grid">
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Sendungen gesamt</span>
-                  <div className="ce-stat-ico"><Icon n="package" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  {shipments.length}
-                  <span className="ce-delta up">+12%</span>
-                </div>
-                <div className="ce-stat-foot">Sendungen insgesamt</div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Unterwegs</span>
-                  <div className="ce-stat-ico"><Icon n="truck" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  {inTransit}
-                  <span className="ce-delta up">+8%</span>
-                </div>
-                <div className="ce-stat-foot">Aktiv in Zustellung</div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Offene Rechnungen</span>
-                  <div className="ce-stat-ico"><Icon n="invoice" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">{unpaid.length}</div>
-                <div className="ce-stat-foot">
-                  {unpaid.length > 0 ? `${money(unpaidAmt)} ausstehend` : "Alle Rechnungen bezahlt"}
-                </div>
-              </div>
-
-              <div className="ce-stat ce-card">
-                <div className="ce-stat-top">
-                  <span className="ce-stat-label">Ø Laufzeit</span>
-                  <div className="ce-stat-ico"><Icon n="clock" s={18} /></div>
-                </div>
-                <div className="ce-stat-value">
-                  2,4
-                  <span style={{ fontSize: 16, fontWeight: 500, color: "var(--ce-ink-3)" }}>Tage</span>
-                </div>
-                <div className="ce-stat-foot">Durchschnittliche Zustellzeit</div>
-              </div>
-            </div>
-
             {/* Recent Shipments */}
             <div className="ce-section">
               <div className="ce-card ce-table-card">
@@ -236,7 +197,7 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
                         {shipments.slice(0, 5).map((s) => (
                           <tr key={s.id} onClick={onAllShipments}>
                             <td className="ce-track-id">{s.jumingo_shipment_id || s.id || "—"}</td>
-                            <td className="ce-carrier">{s.selected_carrier || "—"}</td>
+                            <td className="ce-carrier">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</td>
                             <td style={{ fontWeight: 600, color: "var(--ce-ink-1)" }}>{money(s.price_final)}</td>
                             <td><StatusBadge status={s.status} /></td>
                             <td className="ce-date">{dateDE(s.created_at)}</td>
@@ -295,8 +256,10 @@ export function Overview({ user, shipments, invoices, loading, onNewShipment, on
           </>
         )}
 
-        <DashboardFooter />
+        <DashboardFooter onMailClick={handleMailClick} />
       </div>
+
+      <ContactMailMenu open={mailOpen} onClose={() => setMailOpen(false)} />
     </div>
   );
 }

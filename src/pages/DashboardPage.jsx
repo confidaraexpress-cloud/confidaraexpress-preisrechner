@@ -1,15 +1,35 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { API, authH } from "../api/client";
+import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
 import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
+import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
+import { LegalLinks } from "../components/layout/LegalLinks";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
+
+// Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
+// das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
+// (Profile.jsx). So entsteht auf keiner Seite ein doppelter Seitenkopf.
+const PAGE_HEADERS = {
+  new: {
+    title: "Neue Sendung",
+    subtitle: "Führen Sie neue Versandaufträge sicher und nachvollziehbar durch den Buchungsprozess.",
+  },
+  shipments: {
+    title: "Sendungen",
+    subtitle: "Alle Versandaufträge übersichtlich dokumentiert und jederzeit nachverfolgbar.",
+  },
+  invoices: {
+    title: "Rechnungen",
+    subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
+  },
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -26,16 +46,18 @@ export default function DashboardPage() {
   const fetchData = useCallback(() => {
     setLoading(true);
     setLoadError("");
+    const toErr = (r) => { const e = new Error(); e.status = r.status; return e; };
     Promise.all([
-      fetch(`${API}/kunde/shipments`, { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
-      fetch(`${API}/kunde/invoices`,  { headers: authH() }).then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
+      apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
     ]).then(([s, inv]) => {
       setShipments(s.shipments || []);
       setInvoices(inv.invoices || []);
       setLoading(false);
-    }).catch(() => {
-      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
+    }).catch((e) => {
       setLoading(false);
+      if (e?.status === 401 || e?.status === 403) return; // globaler Auth-Redirect übernimmt
+      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
     });
   }, []);
 
@@ -68,7 +90,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}
@@ -98,6 +120,10 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {PAGE_HEADERS[page] && (
+          <DashboardSectionHeader title={PAGE_HEADERS[page].title} subtitle={PAGE_HEADERS[page].subtitle} />
+        )}
+
         {page === "overview" && (
           <Overview
             user={user}
@@ -110,19 +136,18 @@ export default function DashboardPage() {
         )}
 
         {page === "new" && (
-          <>
-            <div className="page-header"><div><div className="page-header-title">Neue Sendung</div></div></div>
-            <div className="page-body">
-              <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-                <NewShipmentPage />
-              </Suspense>
-            </div>
-          </>
+          <div className="page-body">
+            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+              <NewShipmentPage />
+            </Suspense>
+          </div>
         )}
 
         {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}
         {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}
         {page === "profile"   && <Profile user={user} />}
+
+        {page !== "overview" && <LegalLinks />}
       </main>
     </div>
   );

@@ -63,11 +63,11 @@
 }
 
 .ce-dark .sidebar-brand {
-  padding: 22px 18px 18px;
+  padding: 18px 18px 14px;
   border-bottom: 1px solid var(--ce-line-1);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 .ce-dark .sidebar-brand .ce-brand-name {
   font-family: 'Syne', sans-serif;
@@ -86,7 +86,7 @@
 
 .ce-dark .sidebar-close-btn { color: var(--ce-ink-3); }
 
-.ce-dark .sidebar-nav { flex: 1; padding: 16px 14px; overflow-y: auto; }
+.ce-dark .sidebar-nav { flex: 1; padding: 10px; overflow-y: auto; }
 .ce-dark .nav-section-label {
   font-size: 10px;
   font-weight: 700;
@@ -99,8 +99,8 @@
 .ce-dark .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
+  gap: 10px;
+  padding: 9px 11px;
   border-radius: var(--ce-r);
   color: var(--ce-ink-3);
   font-size: 14px;
@@ -112,7 +112,7 @@
   width: 100%;
   text-align: left;
   font-family: 'DM Sans', sans-serif;
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 .ce-dark .nav-item svg { flex-shrink: 0; opacity: 0.85; }
 .ce-dark .nav-item:hover { background: rgba(120, 160, 255, 0.07); color: var(--ce-ink-1); }
@@ -166,6 +166,7 @@
 /* Overview wrapper — provides dark bg only for the overview page */
 .ce-overview {
   background:
+    radial-gradient(ellipse 55% 45% at 0% 58%, rgba(28, 48, 115, 0.09), transparent 65%),
     radial-gradient(ellipse 80% 60% at 100% 0%, rgba(40, 70, 150, 0.16), transparent 60%),
     linear-gradient(180deg, var(--ce-bg-1) 0%, var(--ce-bg-0) 100%);
   min-height: 100vh;
@@ -201,8 +202,7 @@
 
 .ce-aurora {
   position: absolute;
-  top: 0; right: 0;
-  width: 720px; height: 420px;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
@@ -215,24 +215,24 @@
   transform-origin: top right;
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(170, 200, 255, 0.05) 32%,
-    rgba(150, 190, 255, 0.16) 49%,
-    rgba(200, 225, 255, 0.30) 50%,
-    rgba(150, 190, 255, 0.16) 51%,
+    rgba(170, 200, 255, 0.06) 32%,
+    rgba(150, 190, 255, 0.20) 49%,
+    rgba(200, 225, 255, 0.36) 50%,
+    rgba(150, 190, 255, 0.20) 51%,
     transparent 72%);
-  filter: blur(1px);
+  filter: blur(1.5px);
   mask-image: radial-gradient(ellipse 70% 100% at 95% 0%, black, transparent 72%);
   -webkit-mask-image: radial-gradient(ellipse 70% 100% at 95% 0%, black, transparent 72%);
 }
 .ce-aurora-glow {
   position: absolute;
-  top: -200px; right: -160px;
-  width: 560px; height: 560px;
-  background: radial-gradient(circle at 40% 60%,
-    rgba(120, 160, 245, 0.20) 0%,
-    rgba(80, 120, 220, 0.10) 28%,
-    transparent 60%);
-  filter: blur(16px);
+  top: -180px; right: -120px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle at 40% 55%,
+    rgba(180, 210, 255, 0.28) 0%,
+    rgba(100, 145, 230, 0.12) 30%,
+    transparent 62%);
+  filter: blur(24px);
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
@@ -282,24 +282,20 @@
   position: relative; z-index: 2;
   padding: 18px 0 30px;
   max-width: 620px;
+  margin: 0 auto;
+  text-align: center;
 }
 .ce-hero-title {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: clamp(32px, 4vw, 50px);
+  margin: 0;
+  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-weight: 500;
+  font-size: clamp(34px, 5vw, 64px);
   line-height: 1.05;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   color: var(--ce-ink-1);
 }
-.ce-hero-title .ce-accent {
-  display: block;
-  background: linear-gradient(100deg, #6189ff 0%, #3b6cff 55%, #2e5cff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 .ce-hero-sub {
-  margin-top: 20px;
+  margin: 20px auto 0;
   font-size: 15.5px;
   line-height: 1.65;
   color: var(--ce-ink-3);
@@ -332,60 +328,6 @@
   font-size: 19px;
   color: var(--ce-ink-1);
   letter-spacing: -0.01em;
-}
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  KPI / STAT CARDS                                                         */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-kpi-grid {
-  position: relative; z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 26px;
-}
-.ce-stat {
-  padding: 22px 22px 20px;
-  border-radius: var(--ce-r-lg);
-}
-.ce-stat-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.ce-stat-label { font-size: 13.5px; color: var(--ce-ink-3); font-weight: 500; }
-.ce-stat-ico {
-  width: 38px; height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(80,120,220,0.16), rgba(40,70,180,0.10));
-  border: 1px solid rgba(120,160,255,0.20);
-  display: grid; place-items: center;
-  color: var(--ce-blue-3);
-}
-.ce-stat-value {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  color: var(--ce-ink-1);
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-}
-.ce-delta {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
-}
-.ce-delta.up { color: var(--ce-green); }
-.ce-delta.down { color: var(--ce-green); }
-.ce-stat-foot {
-  margin-top: 8px;
-  font-size: 12.5px;
-  color: var(--ce-ink-4);
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
@@ -488,7 +430,14 @@
 /*  CARRIER NETWORK                                                          */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-carriers-card { padding: 18px 22px 16px; }
+.ce-carriers-card {
+  padding: 18px 22px 16px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
 .ce-carriers-card .ce-section-title {
   font-size: 15px;
   font-weight: 600;
@@ -498,26 +447,25 @@
 .ce-carriers-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 12px 0 10px;
+  gap: 8px;
+  margin: 14px 0 12px;
 }
 .ce-carrier-tile {
-  height: 40px;
-  background: #ffffff;
-  border-radius: 5px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  height: 64px;
+  background: transparent;
+  border: none;
   display: grid;
   place-items: center;
-  padding: 6px 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 150ms ease;
+  padding: 10px 16px;
+  transition: opacity 150ms ease, transform 150ms ease;
 }
 .ce-carrier-tile:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  opacity: 0.72;
+  transform: scale(1.05);
 }
 .ce-carrier-logo-img {
-  max-height: 22px;
-  max-width: 88%;
+  max-height: 40px;
+  max-width: 80%;
   width: auto;
   object-fit: contain;
   display: block;
@@ -525,7 +473,7 @@
 .ce-carrier-fallback {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.04em;
   line-height: 1;
   text-align: center;
@@ -550,7 +498,7 @@
 }
 .ce-footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+  grid-template-columns: 1.6fr 1fr 1.2fr;
   gap: 32px;
   margin-bottom: 32px;
 }
@@ -592,6 +540,30 @@
   color: var(--ce-ink-3);
   margin-bottom: 10px;
 }
+.ce-footer-contact-row a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 150ms;
+}
+.ce-footer-contact-row a:hover { color: var(--ce-ink-1); }
+.ce-footer-mail-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid transparent; border-radius: 8px;
+  color: var(--ce-ink-4); cursor: pointer; padding: 5px 7px;
+  transition: color 150ms, border-color 150ms, background 150ms;
+  line-height: 0;
+}
+.ce-footer-mail-btn:hover { color: var(--ce-ink-2); border-color: var(--ce-line-2); background: rgba(120,160,255,0.07); }
+.ce-footer-mail-btn:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+.ce-footer-mail-link {
+  background: none; border: none; padding: 0;
+  color: var(--ce-ink-3); font-size: inherit; cursor: pointer;
+  text-decoration: underline; text-decoration-color: transparent;
+  transition: color 150ms, text-decoration-color 150ms;
+  font-family: inherit;
+}
+.ce-footer-mail-link:hover { color: var(--ce-ink-1); text-decoration-color: var(--ce-ink-3); }
+.ce-footer-mail-link:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; border-radius: 3px; }
 .ce-footer-bottom {
   border-top: 1px solid var(--ce-line-1);
   padding-top: 22px;
@@ -599,6 +571,119 @@
   font-size: 12.5px;
   color: var(--ce-ink-4);
 }
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  CONTACT MAIL DIALOG                                                        */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.ce-mail-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(360px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--ce-line-2);
+  border-radius: var(--ce-r-lg);
+  background: var(--ce-bg-1);
+  color: var(--ce-ink-1);
+  box-shadow: 0 24px 64px rgba(0, 0, 8, 0.72), 0 0 0 1px rgba(120, 160, 255, 0.08);
+  outline: none;
+}
+.ce-mail-dialog::backdrop {
+  background: rgba(0, 0, 12, 0.68);
+  backdrop-filter: blur(4px);
+}
+.ce-mail-dialog-inner {
+  padding: 22px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ce-mail-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.ce-mail-dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ce-ink-1);
+  letter-spacing: -0.01em;
+}
+.ce-mail-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ce-ink-4);
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 0;
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+.ce-mail-dialog-close:hover { color: var(--ce-ink-2); border-color: var(--ce-line-2); background: rgba(120,160,255,0.07); }
+.ce-mail-dialog-close:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+
+.ce-mail-dialog-addr {
+  font-size: 12.5px;
+  color: var(--ce-ink-3);
+  margin: 0 0 16px;
+  font-family: monospace;
+  letter-spacing: 0.01em;
+}
+
+.ce-mail-dialog-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ce-mail-dialog-provider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-radius: var(--ce-r-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ce-line-1);
+  color: var(--ce-ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+.ce-mail-dialog-provider:hover {
+  background: rgba(120, 160, 255, 0.10);
+  border-color: var(--ce-line-2);
+  color: var(--ce-ink-1);
+}
+.ce-mail-dialog-provider:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+
+.ce-mail-dialog-divider {
+  height: 1px;
+  background: var(--ce-line-1);
+  margin: 14px 0;
+}
+
+.ce-mail-dialog-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--ce-r-sm);
+  background: none;
+  border: 1px solid var(--ce-line-2);
+  color: var(--ce-ink-3);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+.ce-mail-dialog-copy:hover { color: var(--ce-ink-1); border-color: var(--ce-line-3); background: rgba(120,160,255,0.07); }
+.ce-mail-dialog-copy:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  OVERVIEW LOADING SPINNER                                                  */
@@ -619,11 +704,415 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
+/*  SOFT PREMIUM (Sendungen / Rechnungen)                                    */
+/*  Heller, dezenter Premium-Hintergrund — bewusst KEIN .ce-dark, KEINE      */
+/*  Wiederverwendung von .ce-overview/.ce-aurora (dort zu dunkel/zu stark).  */
+/*  Gesetzt von DashboardPage.jsx als .dashboard-soft-premium auf .app-shell,*/
+/*  ausschließlich für page === "shipments" | "invoices".                   */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.dashboard-soft-premium .main-content {
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255, 255, 255, 0.30) 0%, rgba(219, 234, 254, 0.16) 45%, transparent 78%),
+    radial-gradient(ellipse 56% 46% at 94% 6%, rgba(255, 255, 255, 0.46) 0%, rgba(186, 230, 253, 0.24) 38%, transparent 74%),
+    radial-gradient(ellipse 56% 46% at 6% 44%, rgba(56, 189, 248, 0.30) 0%, rgba(125, 211, 252, 0.14) 45%, transparent 74%),
+    radial-gradient(ellipse 50% 42% at 22% 92%, rgba(96, 165, 250, 0.22) 0%, transparent 72%),
+    radial-gradient(ellipse 42% 34% at 92% 94%, rgba(11, 31, 77, 0.24) 0%, rgba(11, 31, 77, 0.08) 42%, transparent 72%),
+    radial-gradient(ellipse 44% 36% at 18% 6%, rgba(29, 78, 216, 0.18) 0%, transparent 70%),
+    linear-gradient(165deg, #eef8ff 0%, #d8e9fb 38%, #b9d8f4 72%, #a9cdf0 100%);
+}
+
+.dashboard-soft-premium .empty {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.dashboard-soft-premium .empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px; height: 76px;
+  margin: 0 auto 16px;
+  font-size: 32px;
+  opacity: 1;
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(37,99,235,0.20), rgba(37,99,235,0.06));
+  border: 1px solid rgba(37,99,235,0.22);
+  box-shadow: 0 4px 16px rgba(37,99,235,0.16);
+}
+.dashboard-soft-premium .empty-title { color: var(--navy); }
+
+.dashboard-soft-premium .table-card {
+  border-color: rgba(11, 31, 77, 0.10);
+  box-shadow: 0 6px 22px rgba(15, 35, 90, 0.08), 0 1px 3px rgba(15, 35, 90, 0.05);
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  PROFILE (Mein Profil) — eigener Premium-Scope, losgelöst von Sendungen/ */
+/*  Rechnungen. Direkter Port der AuthPage-Hintergrundmechanik (siehe       */
+/*  auth.css: .auth-page, .auth-aurora-sun/-ray-top/-ray-right/-dust/       */
+/*  -vignette) — Navy/Blue-Black-Basis, Sonnen-Glow, Staub, Vignette und    */
+/*  zwei Lichtstrahlen, in Helligkeit leicht über dem AuthPage-Original.    */
+/*  Bewusst kein --auth- bzw. --ce--Token, kein Dark Mode. Gesetzt von       */
+/*  DashboardPage.jsx als .dashboard-profile-premium auf .app-shell,        */
+/*  ausschließlich für page === "profile". Verändert .dashboard-soft-premium*/
+/*  (Sendungen/Rechnungen) nicht — eigene .main-content-Regel, kein         */
+/*  gemeinsamer Selektor. Die ::before/::after-Strahlen liegen via          */
+/*  z-index:-1 hinter dem statischen .page-body-Inhalt (Cards/Text), aber   */
+/*  vor der eigenen background-Fläche von .main-content — siehe CSS-       */
+/*  Painting-Order (eigener Hintergrund immer Schritt 1, danach negative   */
+/*  z-index-Kinder vor in-flow-Inhalt). Die geschwungene Aurora-Welle der   */
+/*  AuthPage (.auth-aurora-wave, ein inline-SVG) wird bewusst NICHT          */
+/*  übernommen — sie würde neues JSX/DOM in Profile.jsx erfordern.          */
+/*  Performance-Pass (nach 4f4cf18): Dust-Punkte 11→5 (größerer Radius,     */
+/*  weicherer Falloff statt scharfer 1px-Kreise), Layer-Anzahl gesamt       */
+/*  14→9, ::before-Ray 1400×700→900×480 (an .ce-aurora-ray-Referenz aus     */
+/*  der Übersicht angelehnt) — reduziert Paint-/Mask-Fläche beim Scrollen,  */
+/*  Navy-Basis/Ambient-Glow/Sonnen-Glow/Vignette/Strahl-Charakter bleiben.  */
+/*  Hierarchie-/Glow-Pass (nach 42ae2ae): Vignette/Sonnen-Falloff/Ambient-  */
+/*  Glow/Basis auf #473C8B (violett, Tiefe, unten/seitlich) und #436EEE     */
+/*  (blau, oben/seitlich) umgetönt statt neu hinzugefügt; genau ein neuer   */
+/*  weicher Violett-Blob unten links ergänzt (Layer-Anzahl 9→10, kein       */
+/*  Dust/Mask/Filter-Zuwachs). Account-Header + Karten von Glassy auf       */
+/*  opakes Off-White (#fbfcff) umgestellt, backdrop-filter entfernt —       */
+/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign: Bearbeiten-      */
+/*  Button in den Seitenkopf (.profile-page-head, neben dem Titel)          */
+/*  verschoben; Status-/B2B-/Zahlungsziel-Chips im Hero (.profile-meta-     */
+/*  row). Hero + Datenkarten (.profile-grid / .profile-edit-stack) auf      */
+/*  ein dunkles Navy-/Glass-Theme umgestellt (Icon-Kacheln, Sublines,       */
+/*  Hinweis-Boxen) — passend zum Profil-Referenzmockup, vollständig unter   */
+/*  .dashboard-profile-premium gescoped (andere Sub-Seiten unberührt).      */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+.dashboard-profile-premium .main-content {
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 62%, rgba(71, 60, 139, 0.34) 0%, transparent 72%),
+    radial-gradient(2.5px 2.5px at 14% 78%, rgba(200,220,255,0.55), transparent 65%),
+    radial-gradient(2px 2px at 24% 88%, rgba(190,215,255,0.45), transparent 65%),
+    radial-gradient(2.5px 2.5px at 8% 68%, rgba(210,225,255,0.40), transparent 65%),
+    radial-gradient(2.5px 2.5px at 91% 10%, rgba(255,250,235,0.50), transparent 65%),
+    radial-gradient(2px 2px at 80% 22%, rgba(230,235,255,0.38), transparent 65%),
+    radial-gradient(circle at 92% 2%, rgba(210, 225, 255, 0.36) 0%, rgba(180, 205, 255, 0.20) 8%, rgba(67, 110, 238, 0.12) 20%, transparent 44%),
+    radial-gradient(ellipse 72% 52% at 50% 16%, rgba(67, 110, 238, 0.20) 0%, transparent 72%),
+    radial-gradient(ellipse 65% 45% at 8% 88%, rgba(71, 60, 139, 0.26) 0%, transparent 70%),
+    linear-gradient(180deg, #0f1438 0%, #0b1030 55%, #06081c 100%);
+}
+
+.dashboard-profile-premium .main-content::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -160px;
+  width: 900px; height: 480px;
+  transform: rotate(-22deg); transform-origin: top right;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(220, 232, 255, 0.04) 30%,
+    rgba(190, 215, 255, 0.14) 48%,
+    rgba(220, 235, 255, 0.24) 50%,
+    rgba(190, 215, 255, 0.14) 52%,
+    rgba(220, 232, 255, 0.04) 70%,
+    transparent 100%);
+  filter: blur(0.5px);
+  mask-image: radial-gradient(ellipse 58% 85% at 92% -4%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 58% 85% at 92% -4%, black, transparent 75%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dashboard-profile-premium .main-content::after {
+  content: '';
+  position: absolute;
+  top: 44%; right: -140px;
+  width: 700px; height: 200px;
+  transform: translateY(-50%) rotate(-8deg);
+  background: radial-gradient(ellipse 60% 50% at 90% 50%,
+    rgba(180, 205, 255, 0.38) 0%,
+    rgba(140, 175, 255, 0.14) 25%,
+    transparent 60%);
+  filter: blur(6px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dashboard-profile-premium .dash-section-title { color: #f5f8ff; }
+.dashboard-profile-premium .dash-section-sub { color: rgba(205, 215, 235, 0.82); }
+
+/* Seitenkopf: Titel/Subline links, „Profil bearbeiten“ rechts (wie Mockup) */
+.dashboard-profile-premium .profile-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 0 28px;
+}
+.dashboard-profile-premium .profile-page-head-text { min-width: 0; text-align: left; }
+.dashboard-profile-premium .profile-page-head .dash-section-title { text-align: left; }
+.dashboard-profile-premium .profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
+.dashboard-profile-premium .profile-page-head .profile-edit-btn { flex-shrink: 0; margin-top: 12px; }
+
+.dashboard-profile-premium .profile-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 28px;
+}
+.dashboard-profile-premium .profile-col { gap: 20px; }
+
+.dashboard-profile-premium .profile-edit-stack {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.dashboard-profile-premium .page-body > .alert-success {
+  max-width: 1180px;
+  margin: 0 auto 16px;
+}
+
+.dashboard-profile-premium .profile-account-header {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-width: 1180px;
+  padding: 34px 40px;
+  margin: 0 auto 26px;
+  border-radius: 26px;
+  background:
+    radial-gradient(135% 150% at 0% 0%, rgba(58, 100, 210, 0.22) 0%, transparent 55%),
+    linear-gradient(158deg, rgba(26, 35, 78, 0.94) 0%, rgba(13, 18, 46, 0.94) 100%);
+  border: 1px solid rgba(120, 160, 255, 0.20);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 22px 50px rgba(4, 8, 26, 0.50);
+}
+.dashboard-profile-premium .profile-account-header::after {
+  content: '';
+  position: absolute;
+  top: -20%; right: -10%;
+  width: 480px; height: 140%;
+  transform: rotate(-18deg);
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(150, 185, 255, 0.08) 38%,
+    rgba(180, 210, 255, 0.20) 49%,
+    rgba(150, 185, 255, 0.08) 60%,
+    transparent 100%);
+  filter: blur(1px);
+  mask-image: radial-gradient(ellipse 60% 90% at 85% 50%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 90% at 85% 50%, black, transparent 75%);
+  pointer-events: none;
+}
+
+.dashboard-profile-premium .profile-account-identity {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.dashboard-profile-premium .profile-avatar-lg {
+  width: 74px; height: 74px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: white;
+  background: linear-gradient(135deg, var(--blue), var(--accent));
+  box-shadow:
+    0 10px 28px rgba(29, 78, 216, 0.50),
+    0 0 0 1px rgba(140, 175, 255, 0.38),
+    0 0 0 7px rgba(96, 165, 250, 0.16),
+    0 0 38px -4px rgba(59, 130, 246, 0.45);
+}
+
+.dashboard-profile-premium .profile-account-info { min-width: 0; }
+
+.dashboard-profile-premium .profile-account-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #f4f7ff;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.dashboard-profile-premium .profile-account-email {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: rgba(198, 210, 234, 0.82);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-profile-premium .profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
+
+/* Chips/Badges auf dem dunklen Hero: translucentes Pill, heller Text.       */
+/* Nur unter .dashboard-profile-premium — Tabellen-Badges anderer Seiten     */
+/* (Sendungen/Rechnungen) bleiben im Light-Theme unberührt.                  */
+.dashboard-profile-premium .badge {
+  background: rgba(120, 150, 230, 0.12);
+  border-color: rgba(140, 170, 255, 0.22);
+}
+.dashboard-profile-premium .badge-green  { color: #5fe0b0; }
+.dashboard-profile-premium .badge-yellow { color: #fbbf24; }
+.dashboard-profile-premium .badge-red    { color: #fb7185; }
+.dashboard-profile-premium .badge-blue   { color: #9dbcff; }
+.dashboard-profile-premium .badge-gray   { color: #c2cce0; }
+.dashboard-profile-premium .profile-meta-row .badge { gap: 6px; }
+.dashboard-profile-premium .profile-meta-row { margin-top: 16px; gap: 10px; }
+.dashboard-profile-premium .profile-meta-row .badge,
+.dashboard-profile-premium .profile-meta-chip {
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+.dashboard-profile-premium .profile-meta-row .badge::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.dashboard-profile-premium .profile-meta-chip {
+  background: rgba(120, 150, 230, 0.12);
+  color: #ccd8f5;
+  border-color: rgba(140, 170, 255, 0.22);
+}
+.dashboard-profile-premium .profile-meta-chip svg { opacity: 0.8; }
+.dashboard-profile-premium .profile-meta-chip-accent {
+  background: rgba(45, 108, 255, 0.20);
+  color: #bcd0ff;
+  border-color: rgba(95, 137, 255, 0.42);
+}
+
+.dashboard-profile-premium .profile-edit-btn {
+  padding: 12px 24px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  gap: 8px;
+  background: linear-gradient(155deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.22) inset,
+    0 0 0 1px rgba(255,255,255,0.08) inset,
+    0 8px 22px -4px rgba(29,78,216,0.50),
+    0 0 38px -6px rgba(59,130,246,0.38);
+}
+.dashboard-profile-premium .profile-edit-btn:hover {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.26) inset,
+    0 0 0 1px rgba(255,255,255,0.10) inset,
+    0 10px 26px -4px rgba(29,78,216,0.56),
+    0 0 46px -6px rgba(59,130,246,0.46);
+}
+
+.dashboard-profile-premium .profile-grid .table-card,
+.dashboard-profile-premium .profile-edit-stack .table-card {
+  border-radius: 24px;
+  border: 1px solid rgba(120, 160, 255, 0.16);
+  background:
+    radial-gradient(130% 130% at 0% 0%, rgba(60, 100, 210, 0.10) 0%, transparent 58%),
+    linear-gradient(165deg, rgba(22, 30, 68, 0.92) 0%, rgba(12, 17, 42, 0.93) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 18px 44px rgba(4, 8, 26, 0.42);
+}
+
+/* Karten-Kopf: Icon-Kachel + Titel/Subline auf dunklem Grund */
+.dashboard-profile-premium .profile-card-head {
+  padding: 20px 26px;
+  border-bottom: 1px solid rgba(130, 160, 230, 0.12);
+}
+.dashboard-profile-premium .table-card-title { color: #f1f5ff; font-size: 16px; }
+.dashboard-profile-premium .profile-card-sub { color: rgba(184, 197, 226, 0.62); }
+.dashboard-profile-premium .profile-card-icon {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  color: #9dbcff;
+  background: linear-gradient(150deg, rgba(56, 108, 235, 0.32) 0%, rgba(40, 70, 170, 0.18) 100%);
+  border: 1px solid rgba(120, 160, 255, 0.28);
+  box-shadow: 0 6px 16px -7px rgba(40, 90, 220, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.dashboard-profile-premium .profile-section-body { padding: 14px 26px 24px; }
+.dashboard-profile-premium .profile-row { padding: 15px 0; }
+.dashboard-profile-premium .profile-row-border { border-bottom-color: rgba(130, 160, 230, 0.10); }
+.dashboard-profile-premium .profile-row-key { color: rgba(178, 191, 222, 0.72); font-size: 13.5px; }
+.dashboard-profile-premium .profile-row-val { color: #e9eefc; font-size: 13.5px; }
+.dashboard-profile-premium .profile-row-empty { color: rgba(150, 166, 205, 0.5); }
+
+.dashboard-profile-premium .profile-hint {
+  padding: 13px 15px;
+  border-radius: 13px;
+  background: rgba(70, 104, 200, 0.10);
+  border-color: rgba(120, 160, 255, 0.16);
+}
+.dashboard-profile-premium .profile-hint svg { color: #9dbcff; opacity: 0.95; }
+.dashboard-profile-premium .profile-hint p { color: rgba(198, 210, 234, 0.82); }
+
+/* Edit-Modus: Inputs/Labels/Buttons auf das dunkle Profil-Theme angepasst.  */
+/* Rein lokal gescoped, die Basisregeln in forms.css/buttons.css bleiben     */
+/* unverändert (andere Formulare im Light-Theme unberührt).                  */
+.dashboard-profile-premium .profile-form-body { padding: 20px 26px; }
+.dashboard-profile-premium .profile-form-body .field-label { color: rgba(202, 214, 238, 0.85); }
+.dashboard-profile-premium .profile-form-body .field-input {
+  background: rgba(9, 14, 36, 0.55);
+  border-color: rgba(120, 160, 255, 0.20);
+  color: #eef2ff;
+}
+.dashboard-profile-premium .profile-form-body .field-input::placeholder { color: rgba(150, 165, 200, 0.5); }
+.dashboard-profile-premium .profile-form-body .field-input:focus {
+  background: rgba(12, 18, 46, 0.78);
+  border-color: var(--blue3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 22px -6px rgba(37, 99, 235, 0.34);
+}
+.dashboard-profile-premium .profile-form-body .field-select option { color: #0B1F4D; }
+
+.dashboard-profile-premium .profile-password-section { border-top-color: rgba(130, 160, 230, 0.12); }
+.dashboard-profile-premium .profile-password-title { color: #f1f5ff; }
+.dashboard-profile-premium .profile-password-desc { color: rgba(184, 197, 226, 0.62); }
+
+.dashboard-profile-premium .profile-form-actions .btn-outline {
+  color: #d6e0f5;
+  border-color: rgba(140, 170, 255, 0.30);
+}
+.dashboard-profile-premium .profile-form-actions .btn-outline:hover {
+  background: rgba(120, 150, 230, 0.10);
+  border-color: rgba(140, 170, 255, 0.48);
+}
+
+/* Footer-Links auf dem dunklen Profil-Hintergrund lesbar halten */
+.dashboard-profile-premium .legal-links a { color: rgba(176, 190, 222, 0.55); }
+.dashboard-profile-premium .legal-links a:hover { color: #cdd9f5; }
+
+/* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1100px) {
-  .ce-kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .ce-footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
 }
 
@@ -636,21 +1125,66 @@
   .ce-page { padding: 20px 18px 0; }
   .ce-steps-grid { grid-template-columns: 1fr; gap: 22px; }
   .ce-step-connector { display: none; }
+
+  .dashboard-soft-premium .main-content {
+    background:
+      radial-gradient(ellipse 90% 24% at 50% 0%, rgba(255, 255, 255, 0.34) 0%, rgba(219, 234, 254, 0.16) 46%, transparent 78%),
+      radial-gradient(ellipse 80% 30% at 100% 4%, rgba(255, 255, 255, 0.40) 0%, rgba(186, 230, 253, 0.20) 40%, transparent 74%),
+      radial-gradient(ellipse 70% 34% at 0% 48%, rgba(56, 189, 248, 0.24) 0%, rgba(125, 211, 252, 0.12) 46%, transparent 76%),
+      radial-gradient(ellipse 56% 28% at 90% 98%, rgba(11, 31, 77, 0.18) 0%, transparent 72%),
+      linear-gradient(165deg, #eef8ff 0%, #d8e9fb 38%, #b9d8f4 72%, #a9cdf0 100%);
+  }
+
+  .dashboard-profile-premium .main-content {
+    background:
+      radial-gradient(ellipse 80% 46% at 50% 64%, rgba(71, 60, 139, 0.28) 0%, transparent 74%),
+      radial-gradient(2px 2px at 12% 78%, rgba(200,220,255,0.50), transparent 65%),
+      radial-gradient(1.8px 1.8px at 22% 82%, rgba(220,235,255,0.45), transparent 65%),
+      radial-gradient(1.8px 1.8px at 28% 88%, rgba(190,215,255,0.40), transparent 65%),
+      radial-gradient(1.8px 1.8px at 91% 22%, rgba(255,250,235,0.45), transparent 65%),
+      radial-gradient(2px 2px at 95% 8%, rgba(255,250,235,0.40), transparent 65%),
+      radial-gradient(circle at 92% 2%, rgba(210, 225, 255, 0.32) 0%, rgba(180, 205, 255, 0.18) 10%, rgba(67, 110, 238, 0.12) 22%, transparent 46%),
+      radial-gradient(ellipse 90% 40% at 50% 10%, rgba(67, 110, 238, 0.18) 0%, transparent 70%),
+      linear-gradient(180deg, #0f1438 0%, #0b1030 55%, #06081c 100%);
+  }
+
+  .dashboard-profile-premium .main-content::before {
+    width: 640px; height: 340px;
+    top: -70px; right: -110px;
+  }
+
+  .dashboard-profile-premium .main-content::after {
+    width: 420px; height: 140px;
+    right: -100px;
+  }
+
+  .dashboard-profile-premium .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
+  .dashboard-profile-premium .profile-page-head .profile-edit-btn { width: 100%; justify-content: center; margin-top: 0; }
+  .dashboard-profile-premium .profile-account-header { padding: 22px 22px; gap: 14px; }
+  .dashboard-profile-premium .profile-account-identity { min-width: 100%; gap: 14px; }
+  .dashboard-profile-premium .profile-avatar-lg { width: 62px; height: 62px; font-size: 23px; }
+  .dashboard-profile-premium .profile-account-name { font-size: 22px; }
+  .dashboard-profile-premium .profile-grid { flex-direction: column; }
+  .dashboard-profile-premium .profile-card-head { padding: 17px 20px; }
+  .dashboard-profile-premium .profile-section-body { padding: 12px 20px 18px; }
+  .dashboard-profile-premium .profile-form-body { padding: 16px 20px; }
 }
 
 @media (max-width: 600px) {
-  .ce-kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-  .ce-stat { padding: 16px; }
-  .ce-stat-value { font-size: 24px; }
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
-  .ce-hero-title { font-size: 30px; }
+  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ce-carrier-tile { height: 56px; padding: 8px 12px; }
+  .ce-hero-title { font-size: 28px; }
   .ce-hero-sub { font-size: 14px; }
+  .dash-section-title { font-size: 28px; }
   .ce-table-card, .ce-steps-card { padding: 20px 18px; }
-  .ce-carriers-card { padding: 16px 16px 14px; }
+  .ce-carriers-card { padding: 14px 14px 12px; }
+
+  .dashboard-profile-premium .profile-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .dashboard-profile-premium .profile-row-val { text-align: left; width: 100%; word-break: break-word; }
 }
 
 @media (max-width: 420px) {
-  .ce-kpi-grid { grid-template-columns: 1fr; }
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ce-carrier-tile { height: 52px; padding: 6px 10px; }
   .ce-footer-grid { grid-template-columns: 1fr; }
 }

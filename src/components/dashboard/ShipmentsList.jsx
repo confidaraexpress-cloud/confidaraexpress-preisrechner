@@ -2,7 +2,17 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
-import { API, authH } from "../../api/client";
+import { resolveCarrierName } from "../../utils/carrierMap";
+import { apiFetch } from "../../api/client";
+import { downloadLabel } from "../../utils/downloadLabel";
+import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
+
+const TRACKING_ERROR_MESSAGES = {
+  400: "Bitte gib eine gültige Trackingnummer ein.",
+  404: TRACKING_NOT_FOUND,
+  429: "Zu viele Anfragen. Bitte später erneut versuchen.",
+  500: "Tracking aktuell nicht verfügbar.",
+};
 
 export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
@@ -14,36 +24,30 @@ export function ShipmentsList({ shipments, loading }) {
     if (trackingId === id) { setTrackingId(null); return; }
     setTrackLoading(true); setTrackingId(id); setTracking(null);
     try {
-      const r = await fetch(`${API}/api/tracking/${id}`, { headers: authH() });
-      const d = await r.json();
-      setTracking(d.tracking);
-    } catch { setTracking({ error: "Tracking nicht verfügbar" }); }
+      const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
+      if (!r.ok) {
+        if (r.status !== 401 && r.status !== 403) { // globaler Auth-Redirect übernimmt sonst
+          setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
+        }
+      } else {
+        const d = await r.json();
+        setTracking(d.tracking);
+      }
+    } catch { setTracking({ error: "Tracking aktuell nicht verfügbar." }); }
     setTrackLoading(false);
   };
 
-  const downloadLabel = async (id) => {
+  const handleDownloadLabel = async (id) => {
     setLabelError("");
     try {
-      const r = await fetch(`${API}/api/jumingo/label/${id}`, { headers: authH() });
-      const d = await r.json();
-      if (d.label) {
-        const a = document.createElement("a");
-        a.href = `data:application/pdf;base64,${d.label}`;
-        a.download = `label-${id}.pdf`;
-        a.click();
-      } else {
-        setLabelError("Label für diese Sendung ist noch nicht verfügbar.");
-      }
-    } catch {
-      setLabelError("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+      await downloadLabel(id);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
   };
 
   return (
     <>
-      <div className="page-header">
-        <div><div className="page-header-title">Sendungen</div></div>
-      </div>
       <div className="page-body">
         {labelError && (
           <div className="alert alert-error mb-16">
@@ -68,7 +72,7 @@ export function ShipmentsList({ shipments, loading }) {
                   {shipments.map((s) => (
                     <React.Fragment key={s.id}>
                       <tr>
-                        <td>{s.selected_carrier || "—"}</td>
+                        <td>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</td>
                         <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
                         <td className="font-bold">{money(s.price_final)}</td>
                         <td><StatusBadge status={s.status} /></td>
@@ -79,7 +83,7 @@ export function ShipmentsList({ shipments, loading }) {
                               <button className="btn btn-ghost btn-sm" onClick={() => loadTracking(s.jumingo_shipment_id)}>Track</button>
                             )}
                             {(s.status === "booked" || s.status === "label_ready") && (
-                              <button className="btn btn-ghost btn-sm" onClick={() => downloadLabel(s.jumingo_shipment_id)}>Label</button>
+                              <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadLabel(s.jumingo_shipment_id)}>Label</button>
                             )}
                           </div>
                         </td>

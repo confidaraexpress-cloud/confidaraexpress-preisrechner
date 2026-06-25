@@ -28,16 +28,13 @@ export default function App() {
         <Route path="/login"    element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
 
-        {/* Authenticated users: calculator inside dashboard layout (sidebar visible) */}
-        {authed && (
-          <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route path="/calculator" element={<CalculatorPage />} />
-          </Route>
-        )}
+        {/* Protected: calculator inside dashboard layout (sidebar visible) */}
+        <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+          <Route path="/calculator" element={<CalculatorPage />} />
+        </Route>
 
-        {/* Public routes: tracking + unauthenticated calculator + legal pages under navbar */}
+        {/* Public: tracking + legal pages. Booking still requires auth. */}
         <Route element={<NavbarLayout />}>
-          {!authed && <Route path="/calculator" element={<CalculatorPage />} />}
           <Route path="/tracking"    element={<TrackingPage />} />
           <Route path="/booking"     element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
           <Route path="/impressum"   element={<ImpressumPage />} />
@@ -47,8 +44,8 @@ export default function App() {
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route index element={<Navigate to={authed ? "/dashboard" : "/calculator"} replace />} />
-        <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/calculator"} replace />} />
+        <Route index element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
+        <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Suspense>
   );

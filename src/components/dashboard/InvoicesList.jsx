@@ -15,9 +15,6 @@ export function InvoicesList({ invoices, loading }) {
 
   return (
     <>
-      <div className="page-header">
-        <div><div className="page-header-title">Rechnungen</div></div>
-      </div>
       <div className="page-body">
         {unpaid.length > 0 && (
           <div className="alert alert-info mb-16">

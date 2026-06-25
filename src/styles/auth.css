@@ -331,6 +331,27 @@
 }
 .auth-btn-ghost:hover { color: var(--auth-ink-2); }
 
+/* ── Public tracking entry (secondary action under the card) ────────────── */
+.auth-track {
+  margin-top: 18px;
+  width: 100%; max-width: 560px; padding: 13px 20px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  background: rgba(8, 14, 32, 0.5);
+  border: 1px solid rgba(120, 160, 255, 0.20);
+  border-radius: var(--auth-radius);
+  color: var(--auth-ink-2); font-size: 14px; font-weight: 600; font-family: inherit;
+  text-decoration: none; cursor: pointer;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  transition: color 0.15s, border-color 0.15s, background 0.2s, transform 120ms;
+}
+.auth-track:hover {
+  color: var(--auth-ink-1);
+  border-color: rgba(120, 160, 255, 0.40);
+  background: rgba(20, 30, 60, 0.55);
+  transform: translateY(-1px);
+}
+.auth-track-ico { display: inline-flex; color: var(--auth-blue-3); flex-shrink: 0; }
+
 /* ── Alerts ─────────────────────────────────────────────────────────────── */
 
 .auth-alert {
@@ -342,6 +363,9 @@
 }
 .auth-alert-success {
   background: rgba(46, 200, 130, 0.08); border-color: rgba(46, 200, 130, 0.25); color: #b8f0d4;
+}
+.auth-alert-info {
+  background: rgba(46, 92, 255, 0.08); border-color: rgba(120, 160, 255, 0.25); color: var(--auth-blue-soft);
 }
 
 /* ── Trust Bar ──────────────────────────────────────────────────────────── */
@@ -378,6 +402,27 @@
 }
 .auth-foot-ico { width: 14px; height: 14px; color: var(--auth-ink-4); flex-shrink: 0; }
 .auth-foot strong { color: var(--auth-ink-3); font-weight: 500; }
+.auth-foot a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
+.auth-foot a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
+
+/* ── Legal links (all auth views, shell-level) ──────────────────────────── */
+.auth-legal {
+  margin-top: 20px;
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 8px 18px;
+  font-size: 12px; line-height: 1.5;
+}
+.auth-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
+.auth-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
+
+/* ── Register form legal hint ───────────────────────────────────────────── */
+.auth-form-legal {
+  margin-top: 14px; text-align: center;
+  font-size: 12px; line-height: 1.55;
+  color: var(--auth-ink-4);
+}
+.auth-form-legal a { color: var(--auth-ink-3); text-decoration: none; transition: color 0.15s; }
+.auth-form-legal a:hover { color: var(--auth-blue-soft); text-decoration: underline; }
 
 /* ── Animations ─────────────────────────────────────────────────────────── */
 

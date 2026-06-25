@@ -1,3 +1,4 @@
+@import './fonts.css';
 @import './variables.css';
 @import './globals.css';
 @import './animations.css';
@@ -9,3 +10,4 @@
 @import './dashboard.css';
 @import './responsive.css';
 @import './dashboard-premium.css';
+@import './offers.css';

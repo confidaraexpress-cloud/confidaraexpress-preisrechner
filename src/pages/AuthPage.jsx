@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { API, jsonH } from "../api/client";
 import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
@@ -12,13 +12,14 @@ import { useAuth } from "../context/AuthContext";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function getRegErrors(form) {
+function getRegErrors(form, passwordRepeat) {
   const e = {};
   if (!form.email?.trim())                      e.email        = "E-Mail ist ein Pflichtfeld.";
   else if (!EMAIL_RE.test(form.email.trim()))   e.email        = "Bitte eine gültige E-Mail-Adresse eingeben.";
   if (!form.password)                            e.password     = "Passwort ist ein Pflichtfeld.";
   else if (form.password.length < 8)             e.password     = "Passwort muss mindestens 8 Zeichen enthalten.";
   else if (form.password.length > 128)           e.password     = "Passwort darf maximal 128 Zeichen enthalten.";
+  if (form.password && passwordRepeat !== form.password) e.passwordRepeat = "Die Passwörter stimmen nicht überein.";
   if (!form.name?.trim())                        e.name         = "Name ist ein Pflichtfeld.";
   else if (form.name.length > 100)               e.name         = "Name darf maximal 100 Zeichen enthalten.";
   if (form.company_name?.length > 200)           e.company_name = "Firma darf maximal 200 Zeichen enthalten.";
@@ -30,7 +31,7 @@ function getRegErrors(form) {
 }
 
 export default function AuthPage() {
-  const { login } = useAuth();
+  const { login, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const defaultTab = location.pathname === "/register" ? "register" : "login";
@@ -50,6 +51,7 @@ export default function AuthPage() {
     name: "", email: "", password: "", company_name: "",
     vat_id: "", street: "", zip: "", city: "", country: "DE",
   });
+  const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function AuthPage() {
   };
 
   const handleRegister = async () => {
-    const errs = getRegErrors(regForm);
+    const errs = getRegErrors(regForm, regPasswordRepeat);
     if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
     setRegErrors({});
     setError(""); setLoading(true);
@@ -114,7 +116,7 @@ export default function AuthPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       setSuccess("Passwort zurückgesetzt!");
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, "", "/login");
       setTimeout(() => { setStep("credentials"); setSuccess(""); }, 2000);
     } catch (e) { setError(e.message); }
     setLoading(false);
@@ -124,10 +126,28 @@ export default function AuthPage() {
 
   const handleRegChange = (k, v) => {
     setRegForm(p => ({ ...p, [k]: v }));
-    setRegErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
+    setRegErrors(p => {
+      const n = { ...p };
+      if (n[k]) delete n[k];
+      if (k === "password") {
+        if (regPasswordRepeat && regPasswordRepeat !== v) n.passwordRepeat = "Die Passwörter stimmen nicht überein.";
+        else delete n.passwordRepeat;
+      }
+      return n;
+    });
   };
 
-  const regValid = Object.keys(getRegErrors(regForm)).length === 0;
+  const handleRegPasswordRepeat = (v) => {
+    setRegPasswordRepeat(v);
+    setRegErrors(p => {
+      const n = { ...p };
+      if (v && v !== regForm.password) n.passwordRepeat = "Die Passwörter stimmen nicht überein.";
+      else delete n.passwordRepeat;
+      return n;
+    });
+  };
+
+  const regValid = Object.keys(getRegErrors(regForm, regPasswordRepeat)).length === 0;
 
   return (
     <div className="auth-page">
@@ -197,6 +217,11 @@ export default function AuthPage() {
                 </button>
               </div>
 
+              {sessionExpired && (
+                <div className="auth-alert auth-alert-info">
+                  Ihre Sitzung ist abgelaufen oder Ihr Konto wurde deaktiviert. Bitte melden Sie sich erneut an.
+                </div>
+              )}
               {error   && <div className="auth-alert auth-alert-error">{error}</div>}
               {success && <div className="auth-alert auth-alert-success">{success}</div>}
 
@@ -218,6 +243,8 @@ export default function AuthPage() {
                   loading={loading}
                   errors={regErrors}
                   regValid={regValid}
+                  passwordRepeat={regPasswordRepeat}
+                  onPasswordRepeatChange={handleRegPasswordRepeat}
                 />
               )}
             </div>
@@ -225,6 +252,13 @@ export default function AuthPage() {
             <TrustBar />
           </>
         )}
+
+        <nav className="auth-legal" aria-label="Rechtliche Informationen">
+          <Link to="/impressum"   target="_blank" rel="noopener noreferrer">Impressum</Link>
+          <Link to="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</Link>
+          <Link to="/agb"         target="_blank" rel="noopener noreferrer">AGB</Link>
+          <Link to="/widerruf"    target="_blank" rel="noopener noreferrer">Widerruf</Link>
+        </nav>
 
       </div>
     </div>

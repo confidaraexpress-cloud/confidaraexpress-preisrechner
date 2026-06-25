@@ -16,7 +16,7 @@ export default function ImpressumPage() {
               <h2 style={H2_STYLE}>Angaben gemäß § 5 DDG</h2>
               <p style={P_STYLE}>
                 Confidara Express GbR<br />
-                Musterstraße 1<br />
+                Weiherstraße 25<br />
                 73207 Plochingen<br />
                 Deutschland
               </p>
@@ -35,20 +35,20 @@ export default function ImpressumPage() {
               <p style={P_STYLE}>
                 Telefon: 015118003775<br />
                 E-Mail:{" "}
-                <a href="mailto:confidaraexpress@gmail.com" style={{ color: "inherit" }}>
-                  confidaraexpress@gmail.com
+                <a href="mailto:support@confidaraexpress.de" style={{ color: "inherit" }}>
+                  support@confidaraexpress.de
                 </a>
               </p>
             </div>
 
             <div style={SECTION_STYLE}>
               <h2 style={H2_STYLE}>Umsatzsteuer-Identifikationsnummer</h2>
-              <p style={P_STYLE}>Wird nachgetragen, sofern vorhanden.</p>
+              <p style={P_STYLE}>Eine Umsatzsteuer-Identifikationsnummer ist nicht vorhanden.</p>
             </div>
 
             <div style={SECTION_STYLE}>
               <h2 style={H2_STYLE}>Handelsregister</h2>
-              <p style={P_STYLE}>Wird nachgetragen, sofern vorhanden.</p>
+              <p style={P_STYLE}>Die Gesellschaft ist nicht im Handelsregister eingetragen.</p>
             </div>
 
             <div style={SECTION_STYLE}>
@@ -56,7 +56,7 @@ export default function ImpressumPage() {
               <p style={P_STYLE}>
                 Miguel Vance<br />
                 Patrick Werner<br />
-                Musterstraße 1<br />
+                Weiherstraße 25<br />
                 73207 Plochingen<br />
                 Deutschland
               </p>
@@ -67,14 +67,6 @@ export default function ImpressumPage() {
               <p style={P_STYLE}>
                 Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
                 Verbraucherschlichtungsstelle teilzunehmen.
-              </p>
-            </div>
-
-            <div style={{ ...SECTION_STYLE, marginBottom: 0, paddingTop: 20, borderTop: "1px solid var(--border, #e5e7eb)" }}>
-              <p style={{ ...P_STYLE, fontSize: 13, color: "var(--text-muted, #6b7280)" }}>
-                <strong>Hinweis:</strong> Dieses Impressum enthält aktuell noch eine Platzhalteranschrift.
-                Die Angabe „Musterstraße 1" muss vor dem produktiven Go-Live durch die tatsächliche
-                Geschäftsanschrift ersetzt werden.
               </p>
             </div>
 

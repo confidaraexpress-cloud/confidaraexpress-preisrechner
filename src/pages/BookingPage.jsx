@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { API, authH } from "../api/client";
+import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
+import { resolveCarrier, resolveCarrierName } from "../utils/carrierMap";
+import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 
 export default function BookingPage() {
@@ -15,6 +17,9 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
+  const [conflict, setConflict] = useState("");
+  const [labelLoading, setLabelLoading] = useState(false);
+  const [labelError, setLabelError] = useState("");
 
   const [form, setForm] = useState({ content: "" });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -52,10 +57,10 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
-    setError(""); setLoading(true);
+    setError(""); setConflict(""); setLoading(true);
     try {
-      const r = await fetch(`${API}/api/jumingo/book`, {
-        method: "POST", headers: authH(),
+      const r = await apiFetch(`/api/jumingo/book`, {
+        method: "POST", auth: true,
         body: JSON.stringify({
           shipmentId:      bookingData?.shipmentId,
           tariffId:        tariff?.id,
@@ -70,10 +75,27 @@ export default function BookingPage() {
         }),
       });
       const d = await r.json();
+      if (r.status === 409) {
+        setConflict(d.error || "Diese Sendung wurde bereits verarbeitet oder befindet sich bereits in Bearbeitung.");
+        setLoading(false);
+        return;
+      }
+      if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
     setLoading(false);
+  };
+
+  const handleDownloadLabel = async () => {
+    if (!booking?.shipmentId) return;
+    setLabelLoading(true); setLabelError("");
+    try {
+      await downloadLabel(booking.shipmentId);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
+    }
+    setLabelLoading(false);
   };
 
   const addrReady =
@@ -126,7 +148,12 @@ export default function BookingPage() {
               <div className="calc-panel-body">
                 <div className="flex-between">
                   <div>
-                    <div className="booking-carrier-name">{tariff.carrier}</div>
+                    <div className="booking-carrier-wrap">
+                      {resolveCarrier(tariff.carrier).logo && (
+                        <img src={resolveCarrier(tariff.carrier).logo} alt="" aria-hidden="true" className="booking-carrier-logo" />
+                      )}
+                      <span className="booking-carrier-name">{resolveCarrierName(tariff.carrier)}</span>
+                    </div>
                     <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
                     {tariff.serviceType && (
                       <div className="booking-service-info">
@@ -204,7 +231,7 @@ export default function BookingPage() {
                 <div className="booking-confirm-box">
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
-                    <span className="text-sm font-bold booking-confirm-val">{tariff.carrier} — {tariff.tariffName}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
                   </div>
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>
@@ -235,7 +262,10 @@ export default function BookingPage() {
                     <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
                   </div>
                   <p className="booking-payment-note">
-                    inkl. 19% MwSt. · Zahlung auf Rechnung · {user?.payment_term || 7} Tage Zahlungsziel
+                    inkl. 19 % MwSt. · Abrechnung per Rechnung ·{" "}
+                    {user?.payment_term
+                      ? `zahlbar innerhalb von ${user.payment_term} Tagen`
+                      : "zahlbar gemäß vereinbartem Zahlungsziel"}
                   </p>
                 </div>
                 <label className="booking-agb-label">
@@ -247,9 +277,18 @@ export default function BookingPage() {
                   </span>
                 </label>
                 {error && <div className="alert alert-error">{error}</div>}
-                <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
-                  {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
-                </button>
+                {conflict ? (
+                  <div className="booking-conflict-box">
+                    <p className="booking-conflict-text"><Icon n="shield" s={16} c="#1D4ED8" /> {conflict}</p>
+                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=shipments")}>
+                      Zu meinen Sendungen
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
+                    {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
+                  </button>
+                )}
                 <p className="booking-email-note">
                   Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {user?.email}
                 </p>
@@ -263,11 +302,17 @@ export default function BookingPage() {
         {step === 3 && booking && (
           <div className="booking-success-wrap">
             <div className="booking-success-icon">✓</div>
-            <h2 className="booking-success-title">Sendung gebucht!</h2>
+            <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
             <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
             <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
+            {labelError && <div className="alert alert-error mb-16">{labelError}</div>}
+            {booking?.shipmentId && (
+              <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
+                {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+              </button>
+            )}
             <div className="flex-center gap-12">
-              <button className="btn btn-primary" onClick={() => navigate("/dashboard", { state: { justBooked: true } })}>Zum Dashboard</button>
+              <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
             </div>
           </div>

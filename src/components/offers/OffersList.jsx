@@ -33,6 +33,7 @@ export function OffersList({
   onRecalculate,
   maxPrice, maxDays, onMaxPriceChange, onMaxDaysChange, onClearFilters,
   vatMode, onVatToggle,
+  senderPrefill,
 }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
@@ -246,6 +247,7 @@ export function OffersList({
             onSelect={onSelect}
             onBook={onBook}
             vatMode={vatMode}
+            senderPrefill={senderPrefill}
           />
         ))}
 

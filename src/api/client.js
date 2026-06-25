@@ -40,3 +40,18 @@ export async function apiFetch(pathOrUrl, options = {}) {
   }
   return res;
 }
+
+// ── Jumingo Access-Point / Paketshop-Suche (read-only) ───────────────────────
+// Dünner Wrapper um POST /api/jumingo/access-points-search (auth-geschützt,
+// read-only Proxy). Reine Orientierungs-/Anzeigesuche: KEINE Buchung, KEINE
+// Persistenz — die Auswahl fließt bewusst NICHT in den /book-Payload. Die
+// `carrierCodes` setzt der Aufrufer und sie müssen serverseitig allowlisted
+// sein (aktuell ausschließlich "ups"). Gibt die rohe Response zurück; der
+// Aufrufer wertet Status/JSON selbst aus (konsistent mit den übrigen Callern).
+export function searchAccessPoints({ carrierCodes, countryCode, postCode, city, street, radius, onlyOpen }) {
+  return apiFetch(`/api/jumingo/access-points-search`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ carrierCodes, countryCode, postCode, city, street, radius, onlyOpen }),
+  });
+}

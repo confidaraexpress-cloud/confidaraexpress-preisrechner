@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
 import { resolveCarrier } from "../../utils/carrierMap";
+import { AccessPointFinder } from "./AccessPointFinder";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -144,7 +145,7 @@ function DetailRow({ label, value, strong, subtle }) {
   );
 }
 
-function DetailsPanel({ tariff: t }) {
+function DetailsPanel({ tariff: t, senderPrefill }) {
   // Alle Felder/Sektionen werden defensiv gerendert: Eine Zeile/Sektion erscheint
   // ausschließlich, wenn der Wert real vorhanden ist. Keine erfundenen Werte,
   // kein null/undefined, keine technischen Rohwerte.
@@ -286,13 +287,23 @@ function DetailsPanel({ tariff: t }) {
           )}
         </div>
       )}
+
+      {/* Read-only Paketshop-Suche — NUR bei Shopabgabe/Dropoff. Reine
+          Orientierung, keine Buchung: die Auswahl wird nirgends gespeichert
+          und fließt nicht in den /book-Payload (siehe AccessPointFinder). */}
+      {t.serviceType === "dropoff" && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Paketshop finden</div>
+          <AccessPointFinder tariff={t} senderPrefill={senderPrefill} />
+        </div>
+      )}
     </>
   );
 }
 
 // isTop bleibt Teil des Props-Vertrags (von OffersList übergeben), löst aber
 // bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
-export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode }) {
+export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill }) {
   const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -465,7 +476,7 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
           role="region"
           aria-label={`Details für ${carrierName}`}
         >
-          <DetailsPanel tariff={t} />
+          <DetailsPanel tariff={t} senderPrefill={senderPrefill} />
         </div>
       )}
     </div>

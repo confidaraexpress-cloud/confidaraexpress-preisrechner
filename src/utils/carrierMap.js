@@ -27,6 +27,17 @@ export function resolveCarrier(raw) {
 
 export const resolveCarrierName = (raw) => resolveCarrier(raw).name;
 
+// ─── Access-Point / Paketshop-Carrier-Code (Jumingo) ────────────────────────
+// Liefert NUR einen Carrier-Code, der vom Backend für die Access-Point-Suche
+// allowlisted ist. Aktuell ausschließlich UPS ("ups") — sicher erkannt über die
+// bestehende /UPS/i-Regel in resolveCarrier. Für jeden anderen Carrier bewusst
+// null (kein Raten): die UI zeigt dann „Paketshop-Suche … wird noch vorbereitet"
+// statt einen unbelegten Code zu senden. Keine weiteren Codes ergänzen, bevor
+// das Backend sie freigegeben hat.
+export function accessPointCarrierCode(raw) {
+  return resolveCarrierName(raw) === "UPS" ? "ups" : null;
+}
+
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────
 // Referenz-Reihenfolge für die Anzeige im Carrier-Filter. Unbekannte Carrier
 // (kein Treffer in dieser Liste) werden danach alphabetisch nach Anzeigename

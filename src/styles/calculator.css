@@ -67,6 +67,14 @@
 .booking-total-label { font-size: 15px; font-weight: 700; color: var(--navy); }
 .booking-total-amount { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 800; color: var(--blue2); }
 .booking-payment-note { text-align: right; font-size: 11px; color: var(--gray400); margin-top: 4px; }
+.booking-printer-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; margin-bottom: 16px;
+  border-radius: var(--radius); background: var(--gray50);
+  border: 1px solid var(--border);
+}
+.booking-printer-note svg { color: var(--blue2); flex-shrink: 0; margin-top: 1px; }
+.booking-printer-note span { font-size: 12.5px; line-height: 1.5; color: var(--gray700); }
 .booking-agb-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-bottom: 20px; }
 .booking-agb-checkbox { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--blue); flex-shrink: 0; }
 .booking-agb-text { font-size: 13px; color: var(--gray600); line-height: 1.6; }

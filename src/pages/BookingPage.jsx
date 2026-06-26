@@ -56,7 +56,9 @@ export default function BookingPage() {
   };
 
   const doBook = async () => {
-    if (!agbAccepted) return;
+    // Defensive Zweitsicherung: kein /book-Call für Dropoff/Paketshop, auch
+    // falls ein Tarif mit serviceType "dropoff" hier ankommen sollte.
+    if (!agbAccepted || tariff?.serviceType === "dropoff") return;
     setError(""); setConflict(""); setLoading(true);
     try {
       const r = await apiFetch(`/api/jumingo/book`, {
@@ -104,12 +106,35 @@ export default function BookingPage() {
     !!bookingData?.form?.r_fullName && !!bookingData?.form?.r_street &&
     !!bookingData?.form?.r_zip      && !!bookingData?.form?.r_city;
 
-  if (!tariff || !addrReady) return (
+  if (!tariff) return (
+    <div className="page-with-navbar booking-no-tariff">
+      <div className="text-center">
+        <p className="text-muted mb-16">Kein Angebot ausgewählt</p>
+        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
+      </div>
+    </div>
+  );
+
+  // Defensive Zweitsicherung: Dropoff/Paketshop bleibt backendseitig (/book-
+  // Guard) blockiert — landet hier dennoch ein Dropoff-Tarif (z. B. alter
+  // Browser-State), zeigt BookingPage keine "Verbindliche Bestellung",
+  // sondern einen sachlichen Hinweis mit Rückkehr zur Tarifauswahl.
+  if (tariff.serviceType === "dropoff") return (
     <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
         <p className="text-muted mb-16">
-          {!tariff ? "Kein Angebot ausgewählt" : "Adressdaten unvollständig — bitte im Preisrechner ausfüllen"}
+          Paketshop-Abgabe ist aktuell noch nicht online buchbar. Bitte kehren Sie zur
+          Tarifauswahl zurück und wählen Sie einen Abholungs-Tarif.
         </p>
+        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zur Tarifauswahl</button>
+      </div>
+    </div>
+  );
+
+  if (!addrReady) return (
+    <div className="page-with-navbar booking-no-tariff">
+      <div className="text-center">
+        <p className="text-muted mb-16">Adressdaten unvollständig — bitte im Preisrechner ausfüllen</p>
         <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
       </div>
     </div>
@@ -268,6 +293,15 @@ export default function BookingPage() {
                       : "zahlbar gemäß vereinbartem Zahlungsziel"}
                   </p>
                 </div>
+                {tariff.printerRequired === true && (
+                  <div className="booking-printer-note" role="note">
+                    <Icon n="printer" s={15} c="currentColor" />
+                    <span>
+                      Für diesen Tarif ist ein Drucker erforderlich, da das Versandlabel
+                      vor Übergabe ausgedruckt werden muss.
+                    </span>
+                  </div>
+                )}
                 <label className="booking-agb-label">
                   <input type="checkbox" className="booking-agb-checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} />
                   <span className="booking-agb-text">

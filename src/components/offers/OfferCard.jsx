@@ -309,6 +309,9 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
   const [detailsMounted, setDetailsMounted] = useState(false);
 
   const unavailable = t.availableForDate === false;
+  // Dropoff/Paketshop ist backendseitig (/book-Guard) noch blockiert — die
+  // Karte darf das nicht als verbindlich buchbar darstellen (Guardrail).
+  const isDropoff   = t.serviceType === "dropoff";
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
   const start = buildStart(t);
   const end   = buildEnd(t, etaLabel);
@@ -335,12 +338,14 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
   const handleSelect = () => { if (!unavailable) onSelect(t); };
   const handleBook = (e) => {
     e.stopPropagation();
-    if (!unavailable) onBook(t);
+    if (!unavailable && !isDropoff) onBook(t);
   };
 
   const ctaClass = unavailable
     ? "offer-cta-btn--disabled"
-    : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
+    : isDropoff
+      ? "offer-cta-btn--pending"
+      : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
 
   return (
     <div
@@ -430,12 +435,18 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
             className={`offer-cta-btn ${ctaClass}`}
             onClick={handleBook}
             type="button"
-            disabled={unavailable}
-            aria-label={unavailable ? `${carrierName} nicht verfügbar` : `${carrierName} Angebot auswählen`}
+            disabled={unavailable || isDropoff}
+            aria-label={
+              unavailable ? `${carrierName} nicht verfügbar`
+              : isDropoff  ? `${carrierName}: Paketshop-Abgabe ist aktuell noch nicht online buchbar`
+              : `${carrierName} Angebot auswählen`
+            }
           >
             {unavailable
               ? "Nicht verfügbar"
-              : <>Angebot auswählen <Icon n="arrow" s={15} c="currentColor" /></>}
+              : isDropoff
+                ? "Paketshop-Abgabe in Vorbereitung"
+                : <>Angebot auswählen <Icon n="arrow" s={15} c="currentColor" /></>}
           </button>
           <button
             className="offer-details-link"

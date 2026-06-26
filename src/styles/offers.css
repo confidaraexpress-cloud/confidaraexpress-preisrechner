@@ -322,6 +322,14 @@
   background: var(--gray100); color: var(--gray400);
   border-color: var(--border); cursor: not-allowed;
 }
+/* Dropoff/Paketshop: noch nicht buchbar (Backend-Guard) — wie --disabled,
+   aber mit Zeilenumbruch für den längeren Hinweistext statt fixer Höhe. */
+.offer-cta-btn--pending {
+  background: var(--gray100); color: var(--gray500);
+  border-color: var(--border); cursor: not-allowed;
+  height: auto; min-height: 44px; white-space: normal;
+  line-height: 1.3; font-size: 13px; text-align: center;
+}
 
 .offer-details-link {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;

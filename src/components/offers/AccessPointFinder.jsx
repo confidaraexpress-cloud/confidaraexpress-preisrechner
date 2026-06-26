@@ -150,12 +150,26 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     );
   }
 
-  const canSearch = postCode.trim().length >= 3 && !loading;
+  // UPS verlangt laut Backend-Guard (api PR #58) zusätzlich zur PLZ die Stadt;
+  // ohne city beantwortet das Backend die Suche mit 400. Die Anforderung wird
+  // gezielt an den UPS-Code geknüpft (aktuell der einzige allowlistete Carrier,
+  // für den dieses Formular überhaupt rendert) — kein Raten für andere Codes.
+  const cityRequired = carrierCode === "ups";
+  const cityMissing  = cityRequired && city.trim().length < 2;
+  const canSearch    = postCode.trim().length >= 3 && !cityMissing && !loading;
 
   const doSearch = async (e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
-    if (!canSearch) return;
+    if (loading || postCode.trim().length < 3) return;
+    // Defensive Zweitsicherung gegen den Submit-per-Enter-Pfad: ohne Stadt kein
+    // Request an /access-points-search — stattdessen eine klare, fachliche
+    // Meldung. So trifft kein UPS-Aufruf ohne city den Backend-Guard.
+    if (cityMissing) {
+      setResults(null);
+      setError("Für die UPS Paketshop-Suche wird zusätzlich zur Postleitzahl die Stadt benötigt.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -214,7 +228,9 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
           </div>
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-city-${tariff?.id}`}>
-              Ort <span className="ap-finder-optional">(optional)</span>
+              Ort {cityRequired
+                ? <span className="ap-finder-required">(erforderlich)</span>
+                : <span className="ap-finder-optional">(optional)</span>}
             </label>
             <input
               id={`ap-city-${tariff?.id}`}

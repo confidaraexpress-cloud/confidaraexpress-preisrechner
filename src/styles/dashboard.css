@@ -154,6 +154,16 @@ tr:hover td { background: var(--gray50); }
 .track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
 .track-time { font-size: 12px; color: var(--gray400); margin-top: 2px; }
 
+/* Post-Order Tracking-Detail in der Sendungsliste (Light-Theme Sub-Seite) */
+.shipment-track-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+.shipment-track-number { font-size: 13px; color: var(--gray600); }
+.shipment-track-number strong { color: var(--navy); font-weight: 700; }
+.shipment-track-chip { display: inline-flex; align-items: center; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--blue); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; }
+.shipment-track-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; }
+.shipment-track-link:hover { color: var(--blue); text-decoration: underline; }
+.shipment-track-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.shipment-track-noevents { margin-top: 4px; }
+
 /* ─── Steps ──────────────────────────────────────────────────────────────── */
 .steps-bar { display: flex; align-items: center; overflow-x: auto; }
 .step-item { display: flex; align-items: center; flex: 1; min-width: 0; }

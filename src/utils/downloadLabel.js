@@ -10,7 +10,8 @@ export async function downloadLabel(id) {
 
   if (!r.ok) {
     let message =
-      r.status === 404 ? "Label für diese Sendung ist noch nicht verfügbar."
+      r.status === 409 ? "Das Versandlabel ist noch nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
+      : r.status === 404 ? "Label für diese Sendung ist noch nicht verfügbar."
       : r.status === 429 ? "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut."
       : "Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.";
     try {

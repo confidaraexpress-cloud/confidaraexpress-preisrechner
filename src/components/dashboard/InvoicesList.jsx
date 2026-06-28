@@ -4,9 +4,10 @@ import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 
 // PDF-Download: Benötigt Backend-Endpunkt GET /kunde/invoices/:id/pdf
-// Analog zu GET /api/jumingo/label/:id (gibt PDF als base64 zurück).
-// Sobald vorhanden: invoice_pdf_url im Invoice-Objekt setzen ODER
-// Download-Funktion mit authH() gegen den Endpunkt implementieren.
+// Analog zu GET /api/jumingo/label/:id (liefert einen PDF-Stream,
+// Content-Type: application/pdf — KEIN Base64). Sobald vorhanden: entweder
+// invoice_pdf_url im Invoice-Objekt setzen ODER analog zu downloadLabel() einen
+// auth-Blob-Download (apiFetch + r.blob() + ObjectURL) implementieren.
 // Button wird erst angezeigt, wenn invoice_pdf_url im Invoice-Objekt vorhanden ist.
 
 export function InvoicesList({ invoices, loading }) {

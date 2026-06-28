@@ -363,6 +363,16 @@ export default function BookingPage() {
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
               </button>
             )}
+            {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling
+                direkt nach der Buchung (Status wäre ohnehin „new"/nicht verfügbar).
+                Der Trackingstatus erscheint später in „Meine Sendungen". */}
+            <p className="booking-tracking-note">
+              <Icon n="truck" s={15} c="currentColor" />
+              <span>
+                Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
+                Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
+              </span>
+            </p>
             <div className="flex-center gap-12">
               <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>

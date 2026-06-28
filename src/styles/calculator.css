@@ -81,6 +81,8 @@
 .booking-agb-link { color: var(--blue2); font-weight: 600; }
 .booking-book-btn { font-size: 15px; padding: 13px; }
 .booking-email-note { text-align: center; font-size: 12px; color: var(--gray400); margin-top: 12px; }
+.booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray600); text-align: left; background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.12); border-radius: var(--radius); }
+.booking-tracking-note svg { color: var(--blue2); flex-shrink: 0; margin-top: 1px; }
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 

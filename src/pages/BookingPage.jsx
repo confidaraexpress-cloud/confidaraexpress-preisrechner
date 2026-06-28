@@ -57,9 +57,7 @@ export default function BookingPage() {
   };
 
   const doBook = async () => {
-    // Defensive Zweitsicherung: kein /book-Call für Dropoff/Paketshop, auch
-    // falls ein Tarif mit serviceType "dropoff" hier ankommen sollte.
-    if (!agbAccepted || tariff?.serviceType === "dropoff") return;
+    if (!agbAccepted) return;
     setError(""); setConflict(""); setAddressError(""); setLoading(true);
     try {
       const r = await apiFetch(`/api/jumingo/book`, {
@@ -125,22 +123,6 @@ export default function BookingPage() {
       <div className="text-center">
         <p className="text-muted mb-16">Kein Angebot ausgewählt</p>
         <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
-      </div>
-    </div>
-  );
-
-  // Defensive Zweitsicherung: Dropoff/Paketshop bleibt backendseitig (/book-
-  // Guard) blockiert — landet hier dennoch ein Dropoff-Tarif (z. B. alter
-  // Browser-State), zeigt BookingPage keine "Verbindliche Bestellung",
-  // sondern einen sachlichen Hinweis mit Rückkehr zur Tarifauswahl.
-  if (tariff.serviceType === "dropoff") return (
-    <div className="page-with-navbar booking-no-tariff">
-      <div className="text-center">
-        <p className="text-muted mb-16">
-          Paketshop-Abgabe ist aktuell noch nicht online buchbar. Bitte kehren Sie zur
-          Tarifauswahl zurück und wählen Sie einen Abholungs-Tarif.
-        </p>
-        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zur Tarifauswahl</button>
       </div>
     </div>
   );

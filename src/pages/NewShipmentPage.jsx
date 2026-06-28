@@ -317,10 +317,6 @@ export default function NewShipmentPage() {
   };
 
   const handleBook = (tariff) => {
-    // Defensive Zweitsicherung: Dropoff/Paketshop bleibt backendseitig
-    // blockiert — die Buchung darf den Tarifauswahl-Flow nie verlassen,
-    // selbst falls ein CTA das Backend-Verbot umgehen sollte.
-    if (tariff?.serviceType === "dropoff") return;
     setSelected(tariff);
     if (authed) {
       navigate("/booking", { state: { tariff, shipmentId, form } });

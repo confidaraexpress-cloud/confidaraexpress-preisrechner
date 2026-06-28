@@ -31,6 +31,12 @@ const labelForDate = (iso) => {
 const ZIP_RE   = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Buchungsrelevante Felder lösen bei Änderung ein Verwerfen alter Ergebnisse
+// aus. Nur die rein clientseitigen Anzeige-Filter (max_price, max_days) lassen
+// Tarife + shipmentId unangetastet — sie filtern lediglich die bereits
+// berechnete Liste, ohne die Buchungsgrundlage zu ändern.
+const FILTER_ONLY_FIELDS = new Set(["max_price", "max_days"]);
+
 function getErrors(form) {
   const e = {};
 
@@ -165,6 +171,12 @@ export default function NewShipmentPage() {
   const upd = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
     setErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
+    // Stale-State-Schutz: Ändert sich ein buchungsrelevantes Feld (Absender-,
+    // Empfänger-, Paket- oder Routendaten), werden alte Tarife UND die
+    // shipmentId verworfen. So kann niemals ein veralteter Tarif / eine alte
+    // shipmentId mit nachträglich geänderten Daten an /book gehen — der Nutzer
+    // muss zwingend erneut „Preise berechnen“ ausführen.
+    if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
   };
 
   const volWeight = form.length && form.width && form.height
@@ -191,7 +203,15 @@ export default function NewShipmentPage() {
     setTariffs([]);
     setFiltered([]);
     setSelected(null);
+    setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
     setError("");
+  };
+
+  // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert.
+  // Vermeidet unnötige Re-Renders bei jedem Tastendruck im noch leeren
+  // Formular (vor der ersten Preisberechnung gibt es nichts zu invalidieren).
+  const invalidateResults = () => {
+    if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
   };
 
   const handleToggleCarrierGroup = (group) => {

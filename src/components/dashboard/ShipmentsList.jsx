@@ -3,7 +3,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import { apiFetch } from "../../api/client";
+import { getTracking } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 
@@ -14,27 +14,42 @@ const TRACKING_ERROR_MESSAGES = {
   500: "Tracking aktuell nicht verfügbar.",
 };
 
+// Nur valide http(s)-Carrier-Links öffnen (sicher: target=_blank + noopener).
+const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v);
+
+// trackingStatus dezent darstellen: bekannter Vertragswert "new" wird
+// kundenfreundlich übersetzt, sonst der Backend-Status unverändert gezeigt
+// (keine geratenen Werte). Reine Anzeige.
+const TRACK_STATUS_LABELS = { new: "In Vorbereitung" };
+const labelForTrackStatus = (s) =>
+  s == null || s === "" ? null : (TRACK_STATUS_LABELS[String(s).toLowerCase()] || String(s));
+
 export function ShipmentsList({ shipments, loading }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
   const [labelError, setLabelError] = React.useState("");
 
-  const loadTracking = async (id) => {
-    if (trackingId === id) { setTrackingId(null); return; }
-    setTrackLoading(true); setTrackingId(id); setTracking(null);
+  // Holt den Trackingstand (auch für „Aktualisieren“), ohne die Zeile zu togglen.
+  // Nutzt die zentrale getTracking-Funktion (defensives Feld-Lesen, Auth zentral).
+  const fetchTracking = async (id) => {
+    setTrackLoading(true); setTracking(null);
     try {
-      const r = await apiFetch(`/api/tracking/${encodeURIComponent(String(id).trim())}`, { auth: true });
-      if (!r.ok) {
-        if (r.status !== 401 && r.status !== 403) { // globaler Auth-Redirect übernimmt sonst
-          setTracking({ error: TRACKING_ERROR_MESSAGES[r.status] || "Tracking aktuell nicht verfügbar." });
-        }
+      const res = await getTracking(id);
+      if (!res.ok) {
+        if (res.status !== 401 && res.status !== 403) // globaler Auth-Redirect übernimmt sonst
+          setTracking({ error: TRACKING_ERROR_MESSAGES[res.status] || "Tracking aktuell nicht verfügbar." });
       } else {
-        const d = await r.json();
-        setTracking(d.tracking);
+        setTracking(res);
       }
     } catch { setTracking({ error: "Tracking aktuell nicht verfügbar." }); }
     setTrackLoading(false);
+  };
+
+  const loadTracking = (id) => {
+    if (trackingId === id) { setTrackingId(null); return; } // erneuter Klick = einklappen
+    setTrackingId(id);
+    fetchTracking(id);
   };
 
   const handleDownloadLabel = async (id) => {
@@ -95,19 +110,64 @@ export function ShipmentsList({ shipments, loading }) {
                               <div className="loading-center"><span className="spinner spinner-dark" /></div>
                             ) : tracking?.error ? (
                               <p className="text-muted text-sm">{tracking.error}</p>
-                            ) : (
-                              <div className="tracking-timeline">
-                                {tracking?.data?.tracking_events?.map((ev, i) => (
-                                  <div key={i} className="track-event">
-                                    <div className={`track-dot ${i === 0 ? "active" : "done"}`}>{i === 0 ? "●" : "✓"}</div>
-                                    <div className="track-info">
-                                      <div className="track-title">{ev.description || ev.status}</div>
-                                      <div className="track-time">{ev.timestamp ? dtDE(ev.timestamp) : ""}</div>
-                                    </div>
+                            ) : (() => {
+                              const number = tracking?.trackingNumber;
+                              const statusLabel = labelForTrackStatus(tracking?.trackingStatus);
+                              const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
+                              const events = Array.isArray(tracking?.tracking?.data?.tracking_events)
+                                ? tracking.tracking.data.tracking_events : [];
+
+                              // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
+                              // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.
+                              if (tracking?.trackingAvailable === false && !number) {
+                                return (
+                                  <div className="shipment-track-pending">
+                                    <p className="text-muted text-sm">
+                                      Tracking ist noch nicht verfügbar. Die Sendungsverfolgung erscheint,
+                                      sobald der Versanddienstleister die Sendung übernommen hat.
+                                    </p>
+                                    <button className="btn btn-ghost btn-sm" onClick={() => fetchTracking(s.jumingo_shipment_id)}>
+                                      <Icon n="refresh" s={13} /> Aktualisieren
+                                    </button>
                                   </div>
-                                )) || <p className="text-muted text-sm">Keine Events</p>}
-                              </div>
-                            )}
+                                );
+                              }
+
+                              return (
+                                <div className="shipment-track-detail">
+                                  {(number || statusLabel || carrierUrl) && (
+                                    <div className="shipment-track-head">
+                                      {number && (
+                                        <span className="shipment-track-number">
+                                          Trackingnummer: <strong>{number}</strong>
+                                        </span>
+                                      )}
+                                      {statusLabel && <span className="shipment-track-chip">{statusLabel}</span>}
+                                      {carrierUrl && (
+                                        <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
+                                          Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {events.length > 0 ? (
+                                    <div className="tracking-timeline">
+                                      {events.map((ev, i) => (
+                                        <div key={i} className="track-event">
+                                          <div className={`track-dot ${i === 0 ? "active" : "done"}`}>{i === 0 ? "●" : "✓"}</div>
+                                          <div className="track-info">
+                                            <div className="track-title">{ev.description || ev.status}</div>
+                                            <div className="track-time">{ev.timestamp ? dtDE(ev.timestamp) : ""}</div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-muted text-sm shipment-track-noevents">Noch keine Ereignisse vorhanden.</p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       )}

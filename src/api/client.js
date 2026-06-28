@@ -55,3 +55,40 @@ export function searchAccessPoints({ carrierCodes, countryCode, postCode, city, 
     body: JSON.stringify({ carrierCodes, countryCode, postCode, city, street, radius, onlyOpen }),
   });
 }
+
+// ── Tracking (auth) ──────────────────────────────────────────────────────────
+// Liest die additiven Tracking-Felder defensiv: Der Backend-Vertrag legt noch
+// nicht endgültig fest, ob trackingAvailable/trackingNumber/trackingStatus/
+// carrierTrackingPage top-level oder unter `tracking` liegen — daher beide
+// Positionen prüfen (top-level hat Vorrang). Die bestehende verschachtelte
+// Struktur (`tracking` inkl. `tracking.data.tracking_events`) wird unverändert
+// weitergereicht, damit die vorhandene Timeline-Anzeige nicht bricht.
+function selectTracking(d) {
+  const payload = d && typeof d === "object" ? d : {};
+  const nested  = payload.tracking && typeof payload.tracking === "object" ? payload.tracking : null;
+  const pick = (key) =>
+    payload[key] !== undefined ? payload[key]
+    : nested && nested[key] !== undefined ? nested[key]
+    : undefined;
+  return {
+    trackingAvailable:   pick("trackingAvailable"),
+    trackingNumber:      pick("trackingNumber"),
+    trackingStatus:      pick("trackingStatus"),
+    carrierTrackingPage: pick("carrierTrackingPage"),
+    tracking:            payload.tracking, // bestehende Struktur/Events unverändert weiterreichen
+  };
+}
+
+// getTracking(shipmentId): GET /api/tracking/:shipmentId über das zentrale
+// apiFetch (Bearer-Auth; 401/403 → zentraler Logout/Redirect). Wirft NICHT bei
+// HTTP-Fehlern, sondern liefert { ok:false, status } zurück, damit der Aufrufer
+// wie gewohnt eine kundenfreundliche Statusmeldung wählen kann. Bei Erfolg:
+// { ok:true, status, ...defensiv selektierte Felder }. Kein Logging von Daten.
+export async function getTracking(shipmentId) {
+  const id = encodeURIComponent(String(shipmentId ?? "").trim());
+  const r = await apiFetch(`/api/tracking/${id}`, { auth: true });
+  if (!r.ok) return { ok: false, status: r.status };
+  let d = {};
+  try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }
+  return { ok: true, status: r.status, ...selectTracking(d) };
+}

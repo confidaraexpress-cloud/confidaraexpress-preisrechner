@@ -18,6 +18,7 @@ export default function BookingPage() {
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
   const [conflict, setConflict] = useState("");
+  const [addressError, setAddressError] = useState("");
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
 
@@ -59,7 +60,7 @@ export default function BookingPage() {
     // Defensive Zweitsicherung: kein /book-Call für Dropoff/Paketshop, auch
     // falls ein Tarif mit serviceType "dropoff" hier ankommen sollte.
     if (!agbAccepted || tariff?.serviceType === "dropoff") return;
-    setError(""); setConflict(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setLoading(true);
     try {
       const r = await apiFetch(`/api/jumingo/book`, {
         method: "POST", auth: true,
@@ -83,6 +84,19 @@ export default function BookingPage() {
         return;
       }
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
+      if (r.status === 400 || r.status === 422) {
+        // Das Backend lehnt unvollständige/ungültige (Pickup-)Adressdaten früh
+        // mit 400/422 ab. Wir zeigen die Backend-Meldung kundentauglich an und
+        // führen klar zurück zur vollständigen Adresseingabe — kein stilles
+        // Scheitern, kein hängender Loading-State. Beim erneuten Berechnen wird
+        // eine frische shipmentId erzeugt, der alte Tarif also nie weiterverbucht.
+        setAddressError(
+          d.error ||
+          "Die Absender- oder Empfängeradresse ist unvollständig oder ungültig. Bitte vervollständigen Sie alle Pflichtfelder und berechnen Sie die Preise neu."
+        );
+        setLoading(false);
+        return;
+      }
       if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
@@ -287,10 +301,7 @@ export default function BookingPage() {
                     <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
                   </div>
                   <p className="booking-payment-note">
-                    inkl. 19 % MwSt. · Abrechnung per Rechnung ·{" "}
-                    {user?.payment_term
-                      ? `zahlbar innerhalb von ${user.payment_term} Tagen`
-                      : "zahlbar gemäß vereinbartem Zahlungsziel"}
+                    inkl. 19 % MwSt. · Zahlung: {user?.payment_term || 7} Tage auf Rechnung
                   </p>
                 </div>
                 {tariff.printerRequired === true && (
@@ -318,9 +329,16 @@ export default function BookingPage() {
                       Zu meinen Sendungen
                     </button>
                   </div>
+                ) : addressError ? (
+                  <div className="booking-conflict-box">
+                    <p className="booking-conflict-text"><Icon n="info" s={16} c="#1D4ED8" /> {addressError}</p>
+                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=new")}>
+                      Adressen vervollständigen &amp; neu berechnen
+                    </button>
+                  </div>
                 ) : (
                   <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
-                    {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "✓ Jetzt verbindlich bestellen"}
+                    {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "Kostenpflichtig buchen"}
                   </button>
                 )}
                 <p className="booking-email-note">

@@ -29,16 +29,22 @@ export const resolveCarrierName = (raw) => resolveCarrier(raw).name;
 
 // ─── Access-Point / Paketshop-Carrier-Code (Jumingo) ────────────────────────
 // Liefert NUR einen Carrier-Code, der vom Backend für die Access-Point-Suche
-// allowlisted ist. Backendseitig freigegeben sind aktuell UPS ("ups") und DPD
-// ("dpd") — beide sicher erkannt über die bestehenden /UPS/i- bzw. /DPD/i-Regeln
-// in resolveCarrier (kein Regex-Duplikat). Für jeden anderen Carrier bewusst
-// null (kein Raten): die UI zeigt dann „Paketshop-Suche … wird noch vorbereitet"
-// statt einen unbelegten Code zu senden. GLS und DHL/DHL Express bleiben damit
-// gesperrt. Keine weiteren Codes ergänzen, bevor das Backend sie freigegeben hat.
+// allowlisted ist. Backendseitig freigegeben sind aktuell UPS ("ups"), DPD
+// ("dpd") und DHL Express ("dhlexpress") — alle sicher erkannt über die
+// bestehenden /UPS/i-, /DPD/i- bzw. /DHL Express/i-Regeln in resolveCarrier
+// (kein Regex-Duplikat). Wichtig: Der Mapping-Schlüssel ist der normalisierte
+// Anzeigename, daher trifft "dhlexpress" ausschließlich echtes DHL Express —
+// normales DHL/DHL Paket normalisiert zu "DHL" und bleibt null. Das emittierte
+// Literal ist exakt "dhlexpress" (NICHT "dhl"/"dhl_express"/"dhl-express", die
+// backendseitig unsupported sind). Für jeden anderen Carrier bewusst null (kein
+// Raten): die UI zeigt dann „Paketshop-Suche … wird noch vorbereitet" statt
+// einen unbelegten Code zu senden. GLS und DHL/DHL Paket bleiben damit gesperrt.
+// Keine weiteren Codes ergänzen, bevor das Backend sie freigegeben hat.
 export function accessPointCarrierCode(raw) {
   const carrier = resolveCarrierName(raw);
   if (carrier === "UPS") return "ups";
   if (carrier === "DPD") return "dpd";
+  if (carrier === "DHL Express") return "dhlexpress";
   return null;
 }
 

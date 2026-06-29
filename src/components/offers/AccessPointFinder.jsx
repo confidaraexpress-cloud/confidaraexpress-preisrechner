@@ -12,7 +12,7 @@ import { accessPointCarrierCode } from "../../utils/carrierMap";
 //  • KEINE Buchung: die Auswahl wird nirgends gespeichert und fließt NICHT in
 //    den /book-Payload. Es gibt keine "Shop auswählen"-Aktion.
 //  • Dropoff bleibt backendseitig blockiert — diese Anzeige umgeht das nicht.
-//  • Nur Carrier mit serverseitig allowlistetem Code (aktuell nur UPS) lösen
+//  • Nur Carrier mit serverseitig allowlistetem Code (aktuell UPS und DPD) lösen
 //    eine echte Suche aus; sonst klarer "wird vorbereitet"-Hinweis.
 //  • Keine Roh-Fehler/Secrets im UI — nur generische, sichere Meldungen.
 
@@ -150,11 +150,12 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     );
   }
 
-  // UPS verlangt laut Backend-Guard (api PR #58) zusätzlich zur PLZ die Stadt;
-  // ohne city beantwortet das Backend die Suche mit 400. Die Anforderung wird
-  // gezielt an den UPS-Code geknüpft (aktuell der einzige allowlistete Carrier,
-  // für den dieses Formular überhaupt rendert) — kein Raten für andere Codes.
-  const cityRequired = carrierCode === "ups";
+  // Der Backend-Guard verlangt für die Access-Point-Suche zusätzlich zur PLZ die
+  // Stadt; ohne city beantwortet das Backend die Suche mit 400. Die Anforderung
+  // gilt für jeden allowlisteten Carrier (aktuell UPS und DPD) — also immer, wenn
+  // ein echter carrierCode vorliegt und dieses Formular überhaupt rendert. Für
+  // unsupported Carrier (carrierCode === null) wird gar kein Formular gezeigt.
+  const cityRequired = Boolean(carrierCode);
   const cityMissing  = cityRequired && city.trim().length < 2;
   const canSearch    = postCode.trim().length >= 3 && !cityMissing && !loading;
 
@@ -164,10 +165,10 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     if (loading || postCode.trim().length < 3) return;
     // Defensive Zweitsicherung gegen den Submit-per-Enter-Pfad: ohne Stadt kein
     // Request an /access-points-search — stattdessen eine klare, fachliche
-    // Meldung. So trifft kein UPS-Aufruf ohne city den Backend-Guard.
+    // Meldung. So trifft kein Suchaufruf ohne city den Backend-Guard.
     if (cityMissing) {
       setResults(null);
-      setError("Für die UPS Paketshop-Suche wird zusätzlich zur Postleitzahl die Stadt benötigt.");
+      setError("Für die Paketshop-Suche wird zusätzlich zur PLZ die Stadt benötigt.");
       return;
     }
     setLoading(true);
@@ -206,8 +207,8 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       <div className="ap-finder-banner" role="note">
         <Icon n="info" s={15} c="currentColor" />
         <span className="ap-finder-banner-text">
-          Dieser Shop dient aktuell zur Orientierung. Die verbindliche
-          Paketshop-Buchung wird noch vorbereitet.
+          Die Paketshops dienen aktuell zur Orientierung. Die Buchung erfolgt
+          ohne verbindliche Auswahl eines konkreten Shops.
         </span>
       </div>
 

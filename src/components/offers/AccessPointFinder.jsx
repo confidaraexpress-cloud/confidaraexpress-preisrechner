@@ -124,8 +124,11 @@ function normalizeList(data) {
 }
 
 export function AccessPointFinder({ tariff, senderPrefill }) {
-  // Nur belegter (allowlisteter) Carrier-Code löst eine echte Suche aus.
-  const carrierCode = accessPointCarrierCode(tariff?.carrier);
+  // Nur belegter (allowlisteter) Carrier-Code löst eine echte Suche aus. Das
+  // ganze Tarifobjekt übergeben (nicht nur tariff.carrier): DHL-Express-Shop-
+  // abgabe trägt den Express-Beleg im shopName ("DHL Express Paketshop"),
+  // während carrier nur "DHL national Paket VK" (→ "DHL") lautet.
+  const carrierCode = accessPointCarrierCode(tariff);
   const countryCode = (senderPrefill?.country || "DE").toUpperCase();
 
   const [postCode, setPostCode] = useState(senderPrefill?.postCode || "");

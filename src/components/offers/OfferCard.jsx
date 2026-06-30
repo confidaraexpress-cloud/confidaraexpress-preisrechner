@@ -162,13 +162,30 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // Versandlaufzeit als sachliche Detailzeile (nicht überdominant).
   const transitDetail = fmtTransitDetail(t);
 
-  // Versicherung aus insuranceDetails (reales Backend-Feld), defensiv geprüft.
-  const ins = t.insuranceDetails && typeof t.insuranceDetails === "object" ? t.insuranceDetails : null;
-  const hasInsurableFlag = ins != null && typeof ins.isInsurable === "boolean";
-  // Versicherungswert nur bei positiver Zahl (0/fehlend → keine Haftungszeile),
-  // bewusst neutrale Formulierung "lt. Tarifdaten" — keine Haftungsgarantie.
-  const insValue = ins != null && typeof ins.insuranceValue === "number" ? ins.insuranceValue : null;
-  const showInsValue = insValue != null && insValue > 0;
+  // ── Versicherung (read-only, Backend Phase 1 / commit d798534) ──────────────
+  // Reine Anzeige vorhandener Backend-Felder: KEINE Auswahl, keine Buchbarkeit,
+  // keine Berechnung. Jeder Wert wird defensiv geprüft und nur gerendert, wenn er
+  // real vorhanden ist (Zahl > 0 bzw. nicht-leerer String) — nie null/undefined,
+  // nie erfundene Preise. Geldwerte über money() formatiert ("lt. Tarifdaten" —
+  // keine Haftungsgarantie).
+  const ins      = t.insuranceDetails && typeof t.insuranceDetails === "object" ? t.insuranceDetails : null;
+  const insModel = t.insuranceModel   && typeof t.insuranceModel   === "object" ? t.insuranceModel   : null;
+  const posNum = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+  const neStr  = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  // Grunddeckung + indikative Zusatzversicherungspreise (brutto, vorausgewählt) —
+  // ausschließlich eindeutig benannte Preisfelder. Mehrdeutige insuranceModel-
+  // Regionalwerte werden bewusst NICHT als Preise interpretiert (keine Spekulation).
+  const insBaseCoverage  = posNum(ins?.insuranceValue);
+  const insStandardPrice = posNum(ins?.extraInsurancePriceBruttoPreselect);
+  const insPremiumPrice  = posNum(ins?.extraInsurancePremiumPriceBruttoPreselect);
+  const insProvider      = neStr(ins?.insuranceProvider) || neStr(insModel?.provider);
+  // Versicherbarkeit nur aus expliziten Backend-Signalen ableiten (kein Raten).
+  const insInsurable =
+    t.insuranceAvailable === true || ins?.isInsurable === true ||
+    insBaseCoverage != null || insStandardPrice != null || insPremiumPrice != null;
+  const insExplicitlyUnavailable =
+    !insInsurable && (t.insuranceAvailable === false || ins?.isInsurable === false);
+  const hasInsuranceSection = insInsurable || insExplicitlyUnavailable;
 
   // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
   const hasDeliveryRange = !!(t.deliveryDateMin && t.deliveryDateMax);
@@ -189,10 +206,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // hier bewusst NICHT wiederholt. Der Tarifname spannt die volle Breite.
   const features = [];
   if (transitDetail)               features.push({ icon: "clock",   label: "Versandlaufzeit",        value: transitDetail });
-  if (showInsValue)                features.push({ icon: "shield",  label: "Haftung / Versicherung", value: `max. ${money(insValue)} lt. Tarifdaten` });
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
-  if (hasInsurableFlag)            features.push({ icon: "shield",  label: "Versicherungsschutz",    value: ins.isInsurable ? "Buchbar" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
   if (t.tariffName)                features.push({ icon: "cube",    label: "Tarif",                  value: t.tariffName, wide: true });
   if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
@@ -232,6 +247,36 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
               <li key={l.key} className="offer-limit-item">{l.text}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* ── Versicherung: reine read-only Anzeige (Phase 1) ──
+          Keine Auswahl, keine Checkbox, kein Button, keine Buchbarkeit.
+          Nur vorhandene Backend-Werte; der Hinweis stellt klar, dass eine
+          Zusatzversicherung (noch) nicht online auswählbar ist. */}
+      {hasInsuranceSection && (
+        <div className="offer-details-section">
+          <div className="offer-detail-section-title">Versicherung</div>
+          {insInsurable ? (
+            <>
+              {insBaseCoverage != null && (
+                <DetailRow label="Grunddeckung" value={`max. ${money(insBaseCoverage)} lt. Tarifdaten`} />
+              )}
+              <DetailRow label="Zusatzversicherung" value="Möglich" />
+              {insStandardPrice != null && (
+                <DetailRow label="Standard" value={`ab ${money(insStandardPrice)}`} />
+              )}
+              {insPremiumPrice != null && (
+                <DetailRow label="Premium" value={`ab ${money(insPremiumPrice)}`} />
+              )}
+              {insProvider && <DetailRow label="Versicherer" value={insProvider} />}
+              <p className="offer-insurance-note">
+                Zusatzversicherung ist derzeit nicht online auswählbar.
+              </p>
+            </>
+          ) : (
+            <p className="offer-insurance-note">Keine Zusatzversicherung verfügbar.</p>
+          )}
         </div>
       )}
 

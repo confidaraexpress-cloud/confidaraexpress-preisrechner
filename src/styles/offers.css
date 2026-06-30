@@ -429,6 +429,9 @@
   width: 5px; height: 5px; border-radius: 50%; background: var(--blue3);
 }
 
+/* Versicherung — dezenter read-only Hinweis (keine Buchbarkeit). */
+.offer-insurance-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--gray500); }
+
 /* Links & Bedingungen — hochwertige, klar klickbare Zeilen mit dezenter
    Hover-Fläche (gute Klickfläche, auch mobil), externes Ziel. */
 .offer-links-list { display: flex; flex-direction: column; gap: 2px; }

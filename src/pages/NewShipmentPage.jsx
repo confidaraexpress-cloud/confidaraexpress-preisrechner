@@ -662,7 +662,7 @@ export default function NewShipmentPage() {
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}
-            senderPrefill={{ postCode: form.s_zip, city: form.s_city, country: form.s_country }}
+            senderPrefill={{ postCode: form.s_zip, city: form.s_city, country: form.s_country, street: form.s_street }}
           />
         )}
       </div>

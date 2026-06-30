@@ -46,10 +46,14 @@ export const resolveCarrierName = (raw) => resolveCarrier(raw).name;
 // pauschales DHL→dhlexpress.
 //
 // Wichtig: Das emittierte Literal ist exakt "dhlexpress" (NICHT "dhl"/
-// "dhl_express"/"dhl-express", die backendseitig unsupported sind). Für jeden
-// anderen Carrier bewusst null (kein Raten): die UI zeigt dann „Paketshop-Suche
-// … wird noch vorbereitet". GLS und DHL/DHL Paket bleiben damit gesperrt. Keine
-// weiteren Codes ergänzen, bevor das Backend sie freigegeben hat.
+// "dhl_express"/"dhl-express", die backendseitig unsupported sind). GLS ist
+// backendseitig freigegeben und wird auf "gls" gemappt (eigene /GLS/i-Regel,
+// keine Kollision mit DHL national/DHL Paket, die zu "DHL" → null normalisieren).
+// GLS verlangt backendseitig zusätzlich eine Straße — das erzwingt der Aufrufer
+// (AccessPointFinder), nicht diese reine Code-Zuordnung. Für jeden anderen
+// Carrier bewusst null (kein Raten): die UI zeigt dann „Paketshop-Suche … wird
+// noch vorbereitet". DHL/DHL Paket bleiben gesperrt. Keine weiteren Codes
+// ergänzen, bevor das Backend sie freigegeben hat.
 export function accessPointCarrierCode(input) {
   const raw = typeof input === "string"
     ? input
@@ -59,6 +63,7 @@ export function accessPointCarrierCode(input) {
   if (carrier === "UPS") return "ups";
   if (carrier === "DPD") return "dpd";
   if (carrier === "DHL Express") return "dhlexpress";
+  if (carrier === "GLS") return "gls";
   return null;
 }
 

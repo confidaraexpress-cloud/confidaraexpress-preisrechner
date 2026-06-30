@@ -12,8 +12,10 @@ import { accessPointCarrierCode } from "../../utils/carrierMap";
 //  • KEINE Buchung: die Auswahl wird nirgends gespeichert und fließt NICHT in
 //    den /book-Payload. Es gibt keine "Shop auswählen"-Aktion.
 //  • Dropoff bleibt backendseitig blockiert — diese Anzeige umgeht das nicht.
-//  • Nur Carrier mit serverseitig allowlistetem Code (aktuell UPS und DPD) lösen
-//    eine echte Suche aus; sonst klarer "wird vorbereitet"-Hinweis.
+//  • Nur Carrier mit serverseitig allowlistetem Code (UPS, DPD, DHL Express, GLS)
+//    lösen eine echte Suche aus; sonst klarer "wird vorbereitet"-Hinweis.
+//  • GLS verlangt zusätzlich eine Straße (Backend-400 ohne street) — daher ein
+//    GLS-spezifisches Pflicht-Straßenfeld; andere Carrier bleiben unverändert.
 //  • Keine Roh-Fehler/Secrets im UI — nur generische, sichere Meldungen.
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
@@ -133,6 +135,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
 
   const [postCode, setPostCode] = useState(senderPrefill?.postCode || "");
   const [city, setCity]         = useState(senderPrefill?.city || "");
+  const [street, setStreet]     = useState(senderPrefill?.street || "");
   const [radius, setRadius]     = useState(10);
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [loading, setLoading]   = useState(false);
@@ -155,12 +158,17 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
 
   // Der Backend-Guard verlangt für die Access-Point-Suche zusätzlich zur PLZ die
   // Stadt; ohne city beantwortet das Backend die Suche mit 400. Die Anforderung
-  // gilt für jeden allowlisteten Carrier (aktuell UPS und DPD) — also immer, wenn
-  // ein echter carrierCode vorliegt und dieses Formular überhaupt rendert. Für
-  // unsupported Carrier (carrierCode === null) wird gar kein Formular gezeigt.
+  // gilt für jeden allowlisteten Carrier — also immer, wenn ein echter
+  // carrierCode vorliegt und dieses Formular überhaupt rendert. Für unsupported
+  // Carrier (carrierCode === null) wird gar kein Formular gezeigt.
   const cityRequired = Boolean(carrierCode);
   const cityMissing  = cityRequired && city.trim().length < 2;
-  const canSearch    = postCode.trim().length >= 3 && !cityMissing && !loading;
+  // GLS verlangt backendseitig (commit 8d41251) ZUSÄTZLICH eine Straße; ohne
+  // street → 400. Die Pflicht gilt gezielt nur für GLS — UPS/DPD/DHL Express
+  // bleiben unverändert (kein street-Zwang, kein zusätzliches Feld).
+  const streetRequired = carrierCode === "gls";
+  const streetMissing  = streetRequired && street.trim().length < 1;
+  const canSearch      = postCode.trim().length >= 3 && !cityMissing && !streetMissing && !loading;
 
   const doSearch = async (e) => {
     e?.preventDefault?.();
@@ -174,6 +182,13 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       setError("Für die Paketshop-Suche wird zusätzlich zur PLZ die Stadt benötigt.");
       return;
     }
+    // Defensive Zweitsicherung für GLS: ohne Straße kein Request an
+    // /access-points-search — sonst träfe der Aufruf den Backend-400-Guard.
+    if (streetMissing) {
+      setResults(null);
+      setError("Für die GLS-Paketshop-Suche wird zusätzlich zur PLZ eine Straße benötigt.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -182,7 +197,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         countryCode,
         postCode: postCode.trim(),
         city: city.trim(),
-        street: "",
+        street: streetRequired ? street.trim() : "",
         radius,
         onlyOpen,
       });
@@ -246,6 +261,22 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
               maxLength={100}
             />
           </div>
+          {streetRequired && (
+            <div className="ap-finder-field">
+              <label className="ap-finder-label" htmlFor={`ap-street-${tariff?.id}`}>
+                Straße <span className="ap-finder-required">(erforderlich)</span>
+              </label>
+              <input
+                id={`ap-street-${tariff?.id}`}
+                className="ap-finder-input"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                placeholder="z. B. Weiherstraße 25"
+                autoComplete="off"
+                maxLength={200}
+              />
+            </div>
+          )}
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-radius-${tariff?.id}`}>Umkreis</label>
             <select

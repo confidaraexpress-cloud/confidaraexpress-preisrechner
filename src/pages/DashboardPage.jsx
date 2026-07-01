@@ -132,6 +132,7 @@ export default function DashboardPage() {
             loading={loading}
             onNewShipment={() => setPage("new")}
             onAllShipments={() => setPage("shipments")}
+            onProfile={() => setPage("profile")}
           />
         )}
 

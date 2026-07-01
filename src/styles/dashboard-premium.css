@@ -198,7 +198,7 @@
 /*  CONTENT WRAPPER + AURORA                                                 */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-page { position: relative; z-index: 1; padding: 30px 38px 0; max-width: 1180px; margin: 0 auto; }
+.ce-page { position: relative; z-index: 1; padding: 30px 38px 0; max-width: 1280px; margin: 0 auto; }
 
 .ce-aurora {
   position: absolute;
@@ -1259,14 +1259,14 @@
   transition: transform 180ms, border-color 180ms;
 }
 .ce-kpi-card:hover { transform: translateY(-2px); border-color: var(--ce-line-3); }
-.ce-kpi-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.ce-kpi-ico { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
+.ce-kpi-head { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ce-kpi-ico { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex-shrink: 0; }
 .ce-kpi-ico-blue   { background: rgba(97,137,255,0.14); color: #8aa8ff; }
 .ce-kpi-ico-cyan   { background: rgba(56,189,248,0.14); color: #63d1fb; }
 .ce-kpi-ico-green  { background: rgba(52,211,153,0.14); color: var(--ce-green); }
 .ce-kpi-ico-amber  { background: rgba(251,191,36,0.14); color: var(--ce-amber); }
 .ce-kpi-ico-violet { background: rgba(167,139,250,0.16); color: #c4b5fd; }
-.ce-kpi-label { font-size: 13px; font-weight: 500; color: var(--ce-ink-3); line-height: 1.25; }
+.ce-kpi-label { font-size: 12.5px; font-weight: 500; color: var(--ce-ink-3); line-height: 1.25; letter-spacing: -0.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ce-kpi-mid { display: flex; align-items: flex-end; gap: 10px; margin-top: auto; min-width: 0; }
 .ce-kpi-value {
   font-family: 'Syne', sans-serif; font-weight: 800;
@@ -1389,8 +1389,10 @@
 .ce-dark .sidebar-copy span { display: block; color: rgba(139,147,173,0.65); }
 
 /* ── Responsive (Overview-Redesign) ── */
-@media (max-width: 1100px) {
+@media (max-width: 1400px) {
   .ce-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
   .ce-cn-grid { grid-template-columns: repeat(4, 1fr); }
 }
 @media (max-width: 860px) {

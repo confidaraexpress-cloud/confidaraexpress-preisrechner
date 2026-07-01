@@ -200,7 +200,7 @@ function DashboardFooter({ onMailClick }) {
   );
 }
 
-export function Overview({ user, shipments, loading, onNewShipment }) {
+export function Overview({ user, shipments, loading, onNewShipment, onProfile }) {
   const [mailOpen, setMailOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -254,7 +254,7 @@ export function Overview({ user, shipments, loading, onNewShipment }) {
             <button
               type="button"
               className="ce-user-pill"
-              onClick={() => navigate("/dashboard?page=profile")}
+              onClick={onProfile}
               title="Zu meinem Profil"
             >
               <span className="ce-user-pill-avatar">{initials}</span>

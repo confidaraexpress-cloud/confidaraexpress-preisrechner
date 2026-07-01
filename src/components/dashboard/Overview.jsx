@@ -1,16 +1,70 @@
-import React, { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
-import { ContactMailMenu } from "../common/ContactMailMenu";
-import dhlLogo         from "../../assets/carriers/dhl.svg";
-import upsLogo         from "../../assets/carriers/ups.svg";
-import fedexLogo       from "../../assets/carriers/fedex.svg";
-import tntLogo         from "../../assets/carriers/tnt.svg";
-import dpdLogo         from "../../assets/carriers/dpd.svg";
-import glsLogo         from "../../assets/carriers/gls.svg";
-import derKurierLogo   from "../../assets/carriers/der-kurier.svg";
-import transOFlexLogo  from "../../assets/carriers/trans-o-flex.svg";
+import dhlLogo        from "../../assets/carriers/dhl.svg";
+import upsLogo        from "../../assets/carriers/ups.svg";
+import dpdLogo        from "../../assets/carriers/dpd.svg";
+import glsLogo        from "../../assets/carriers/gls.svg";
+import fedexLogo      from "../../assets/carriers/fedex.svg";
+import tntLogo        from "../../assets/carriers/tnt.svg";
+import transOFlexLogo from "../../assets/carriers/trans-o-flex-light.svg";
+
+/* ── Design-Handoff: neu erstellte Marken-SVGs (verbatim übernommen) ──────── */
+
+// Firmen-Squircle (§5.1). Monogramm = echte Firmen-/Kontoinitiale (dynamisch).
+function CompanyMark({ initial }) {
+  return (
+    <svg className="dpx-companymark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="dpxCoMark" x1="4" y1="3" x2="34" y2="37" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4A86FF" />
+          <stop offset="0.52" stopColor="#2A50D6" />
+          <stop offset="1" stopColor="#182A8C" />
+        </linearGradient>
+        <linearGradient id="dpxCoTop" x1="20" y1="2" x2="20" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.34" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#dpxCoMark)" />
+      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#dpxCoTop)" />
+      <rect x="1.6" y="1.6" width="36.8" height="36.8" rx="10.9" fill="none" stroke="#ffffff" strokeOpacity="0.24" />
+      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="700" fontSize="17" fill="#ffffff">{initial}</text>
+    </svg>
+  );
+}
+
+// „Der Kurier" — flaches Wortzeichen (§5.2), ersetzt das 185-KB-Raster-Siegel.
+function DerKurierLogo() {
+  return (
+    <svg viewBox="0 0 106 32" width="101" height="30" fill="none" aria-label="Der Kurier">
+      <defs>
+        <linearGradient id="dpxDkRed" x1="13" y1="3" x2="13" y2="29" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#F04A3C" />
+          <stop offset="1" stopColor="#C71C1C" />
+        </linearGradient>
+      </defs>
+      <rect x="0.5" y="3" width="26" height="26" rx="7.5" fill="url(#dpxDkRed)" />
+      <rect x="0.5" y="3" width="26" height="26" rx="7.5" fill="none" stroke="#ffffff" strokeOpacity="0.2" />
+      <g stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8.4 11.2 13 16l-4.6 4.8" />
+        <path d="M14 11.2 18.6 16 14 20.8" opacity="0.6" />
+      </g>
+      <text x="34" y="14" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="700" fontSize="10.5" letterSpacing="0.04em" fill="#93A6C6">Der</text>
+      <text x="34" y="27.6" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="800" fontSize="15" letterSpacing="-0.01em" fill="#EEF3FB">Kurier</text>
+    </svg>
+  );
+}
+
+// KPI-Zahlen-Styling: führende Null gedämpft (.z) bzw. Einheit-Suffix (.u).
+function KpiValue({ v }) {
+  const lead = v.match(/^(0+)(\d.*)$/);
+  if (lead) return (<><span className="z">{lead[1]}</span>{lead[2]}</>);
+  const unit = v.match(/^([\d.,]+)(\D.*)$/);
+  if (unit) return (<>{unit[1]}<span className="u">{unit[2]}</span></>);
+  return <>{v}</>;
+}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -19,48 +73,46 @@ function getGreeting() {
   return "Guten Abend";
 }
 
-// Verbindliches Aktiv-Set (siehe Analyse). „in_transit" zählt bewusst mit —
-// eine Sendung in Zustellung ist zugleich eine aktive Sendung.
-const ACTIVE_STATUSES = ["approved", "active", "pending", "booked", "label_ready", "in_transit"];
-// Status, die bekannt und NICHT aktiv sind (dienen nur der Erkennung unbekannter Status).
-const INACTIVE_STATUSES = ["delivered", "blocked", "draft", "cancelled", "canceled", "delayed"];
-const KNOWN_STATUSES = new Set([...ACTIVE_STATUSES, ...INACTIVE_STATUSES]);
+/* ── Statische Inhalte (Copy verbatim aus dem Handoff) ────────────────────── */
 
-const PROCESS = [
+const STEPS = [
   { icon: "invoice", title: "Paketdaten eingeben", desc: "Geben Sie Abhol- und Lieferadresse, Maße, Gewicht und weitere Details ein." },
-  { icon: "cube",    title: "Angebote vergleichen", desc: "Vergleichen Sie Preise und Laufzeiten aller führenden Carrier in Echtzeit." },
+  { icon: "package", title: "Angebote vergleichen", desc: "Vergleichen Sie Preise und Laufzeiten aller führenden Carrier in Echtzeit." },
   { icon: "cart",    title: "Versand buchen",       desc: "Wählen Sie das beste Angebot und buchen Sie Ihren Versand." },
   { icon: "mapPin",  title: "Tracking verfolgen",   desc: "Behalten Sie Ihre Sendung jederzeit im Blick – in Echtzeit." },
 ];
 
 const WHY = [
-  { icon: "shield",   title: "Beste Preise",             desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern – für das beste Angebot." },
-  { icon: "truck",    title: "Express & Standard",       desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
-  { icon: "building", title: "Geschäftskunden Fokus",    desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
-  { icon: "eye",      title: "Vollständige Transparenz", desc: "Verfolgen Sie jede Sendung in Echtzeit und behalten Sie alle wichtigen Informationen im Blick." },
+  { icon: "shieldCheck", title: "Beste Preise",             desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern – für das beste Angebot." },
+  { icon: "truck",       title: "Express & Standard",       desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
+  { icon: "briefcase",   title: "Geschäftskunden Fokus",    desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
+  { icon: "mapPin",      title: "Vollständige Transparenz", desc: "Verfolgen Sie jede Sendung in Echtzeit und behalten Sie alle wichtigen Informationen im Blick." },
 ];
 
-// Reihenfolge exakt wie in der Designvorlage. Laufzeiten sind Marketing-Copy,
-// KEINE verbindlichen Live-Tarife (die Buchung ermittelt echte Tarife serverseitig).
+// Laufzeiten = Marketing-Copy (keine verbindlichen Live-Tarife).
 const CARRIERS = [
-  { name: "DHL",          logo: dhlLogo,        service: "Express",  days: "1–2 Tage" },
-  { name: "UPS",          logo: upsLogo,        service: "Standard", days: "1–3 Tage" },
-  { name: "dpd",          logo: dpdLogo,        service: "Classic",  days: "1–2 Tage" },
-  { name: "GLS",          logo: glsLogo,        service: "Standard", days: "1–2 Tage" },
-  { name: "FedEx",        logo: fedexLogo,      service: "Express",  days: "1–2 Tage" },
-  { name: "TNT",          logo: tntLogo,        service: "Economy",  days: "2–3 Tage" },
-  { name: "Der Kurier",   logo: derKurierLogo,  service: "Standard", days: "2–4 Tage" },
-  { name: "trans-o-flex", logo: transOFlexLogo, service: "Express",  days: "1–2 Tage" },
+  { key: "dhl",          logo: dhlLogo,        alt: "DHL",          service: "Express",  time: "1–2 Tage" },
+  { key: "ups",          logo: upsLogo,        alt: "UPS",          service: "Standard", time: "1–3 Tage" },
+  { key: "dpd",          logo: dpdLogo,        alt: "DPD",          service: "Classic",  time: "1–2 Tage" },
+  { key: "gls",          logo: glsLogo,        alt: "GLS",          service: "Standard", time: "1–2 Tage" },
+  { key: "fedex",        logo: fedexLogo,      alt: "FedEx",        service: "Express",  time: "1–2 Tage" },
+  { key: "tnt",          logo: tntLogo,        alt: "TNT",          service: "Economy",  time: "2–3 Tage" },
+  { key: "der-kurier",   logo: null,           alt: "Der Kurier",   service: "Standard", time: "2–4 Tage" },
+  { key: "trans-o-flex", logo: transOFlexLogo, alt: "trans-o-flex", service: "Express",  time: "1–2 Tage" },
 ];
 
 const TRUST = [
-  { icon: "shield",  title: "Sicher & DSGVO-konform", desc: "Ihre Daten sind sicher und werden DSGVO-konform verarbeitet." },
-  { icon: "headset", title: "Persönlicher Support",   desc: "Unser Team ist für Sie da – schnell und zuverlässig." },
-  { icon: "star",    title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
+  { tone: "blue",   icon: "shieldCheck", title: "Sicher & DSGVO-konform", desc: "Ihre Daten sind sicher und werden DSGVO-konform verarbeitet." },
+  { tone: "violet", icon: "headset",     title: "Persönlicher Support",   desc: "Unser Team ist für Sie da – schnell und zuverlässig." },
+  { tone: "violet", icon: "star",        title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
 ];
 
-// Alle KPI-Werte werden ausschließlich aus echten, bereits geladenen Sendungsdaten
-// berechnet — keine Mock-Zahlen, keine erfundenen Deltas/Zeitreihen.
+// Aktiv-Set (verbindlich). in_transit zählt bewusst mit.
+const ACTIVE_STATUSES = ["approved", "active", "pending", "booked", "label_ready", "in_transit"];
+const INACTIVE_STATUSES = ["delivered", "blocked", "draft", "cancelled", "canceled", "delayed"];
+const KNOWN_STATUSES = new Set([...ACTIVE_STATUSES, ...INACTIVE_STATUSES]);
+
+// Alle KPI-Werte aus echten, bereits geladenen Sendungsdaten — keine Mock-Zahlen.
 function computeKpis(shipments) {
   const list = Array.isArray(shipments) ? shipments : [];
   const now = new Date();
@@ -74,8 +126,6 @@ function computeKpis(shipments) {
   let active = 0, inTransit = 0, delivered = 0, delayed = 0, new24 = 0;
   let hasCreatedAt = false;
   let spendThis = 0, spendPrev = 0;
-  const dayBuckets = {};
-  const unknown = new Set();
 
   for (const s of list) {
     const st = s?.status;
@@ -83,7 +133,6 @@ function computeKpis(shipments) {
     if (st === "in_transit") inTransit++;
     if (st === "delivered") delivered++;
     if (st === "delayed") delayed++;
-    if (st && !KNOWN_STATUSES.has(st)) unknown.add(st); // unbekannt → NICHT blind als aktiv gezählt
 
     if (s?.created_at) {
       const t = new Date(s.created_at).getTime();
@@ -94,267 +143,170 @@ function computeKpis(shipments) {
         const amt = Number(s.price_final);
         if (Number.isFinite(amt) && amt > 0) {
           const d = new Date(t);
-          if (d >= startThis && d < startNext) {
-            spendThis += amt;
-            const day = d.getDate();
-            dayBuckets[day] = (dayBuckets[day] || 0) + amt;
-          } else if (d >= startPrev && d < startThis) {
-            spendPrev += amt;
-          }
+          if (d >= startThis && d < startNext) spendThis += amt;
+          else if (d >= startPrev && d < startThis) spendPrev += amt;
         }
       }
     }
   }
 
   const deltaPct = spendPrev > 0 ? Math.round(((spendThis - spendPrev) / spendPrev) * 100) : null;
-  const today = now.getDate();
-  const spark = [];
-  for (let day = 1; day <= today; day++) spark.push(dayBuckets[day] || 0);
-
-  return {
-    active, inTransit, delivered, delayed, new24, hasCreatedAt,
-    spendThis, spendPrev, deltaPct, spark, hasSpend: spendThis > 0,
-    unknownStatuses: Array.from(unknown),
-  };
+  return { active, inTransit, delivered, delayed, new24, hasCreatedAt, spendThis, spendPrev, deltaPct, hasSpend: spendThis > 0 };
 }
 
-// Echte Sparkline aus der Tagesverteilung der Monatsausgaben (created_at + price_final).
-function Sparkline({ data, w = 96, h = 30 }) {
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const range = max - min || 1;
-  const n = data.length;
-  const step = n > 1 ? w / (n - 1) : w;
-  const pts = data
-    .map((v, i) => `${(i * step).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
-    .join(" ");
-  return (
-    <svg className="ce-kpi-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke="#c4b5fd" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function DashboardFooter({ onMailClick }) {
-  return (
-    <footer className="ce-footer">
-      <div className="ce-footer-grid">
-        <div>
-          <div className="ce-footer-brand">
-            <div className="logo-mark" style={{ width: 34, height: 34, fontSize: 13 }}>CE</div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "var(--ce-ink-1)" }}>
-              Confidara<b style={{ color: "var(--ce-blue-3)" }}>Express</b>
-            </span>
-          </div>
-          <p className="ce-footer-tag">
-            B2B-Versandplattform für professionellen Paketversand. Transparente Preise, starke Carrier, alles an einem Ort.
-          </p>
-          <div className="ce-footer-social">
-            <button
-              type="button"
-              className="ce-footer-mail-btn"
-              onClick={onMailClick}
-              aria-label="E-Mail schreiben"
-              title="support@confidaraexpress.de"
-            >
-              <Icon n="mail" s={16} />
-            </button>
-          </div>
-        </div>
-
-        <div className="ce-footer-col">
-          <h4>Rechtliches</h4>
-          <Link to="/impressum">Impressum</Link>
-          <Link to="/datenschutz">Datenschutz</Link>
-          <Link to="/agb">AGB</Link>
-          <Link to="/widerruf">Widerruf</Link>
-        </div>
-
-        <div className="ce-footer-col">
-          <h4>Kontakt</h4>
-          <div className="ce-footer-contact-row">
-            <Icon n="mail" s={14} />
-            <button
-              type="button"
-              className="ce-footer-mail-link"
-              onClick={onMailClick}
-            >
-              support@confidaraexpress.de
-            </button>
-          </div>
-          <div className="ce-footer-contact-row">
-            <Icon n="phone" s={14} />
-            015118003775
-          </div>
-          <div className="ce-footer-contact-row">
-            <Icon n="mapPin" s={14} />
-            Deutschland
-          </div>
-        </div>
-      </div>
-
-      <div className="ce-footer-bottom">
-        © 2026 Confidara Express GbR · Alle Rechte vorbehalten
-      </div>
-    </footer>
-  );
-}
+const pad2 = (n) => String(n).padStart(2, "0");
 
 export function Overview({ user, shipments, loading, onNewShipment, onProfile }) {
-  const [mailOpen, setMailOpen] = useState(false);
   const navigate = useNavigate();
-
   const name = user?.name || user?.company_name || "Kunde";
-  const company = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
-  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
+  const org = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
+  const initial = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
   const k = useMemo(() => computeKpis(shipments), [shipments]);
 
-  const handleMailClick = () => {
-    const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-    if (isDesktop) setMailOpen(true);
-    else window.location.href = "mailto:support@confidaraexpress.de";
-  };
-
+  // Fußzeilen: echte, neutrale Angaben — keine erfundenen Deltas.
+  const activeFoot = k.hasCreatedAt && k.new24 > 0
+    ? { delta: `+${k.new24}`, deltaClass: "d-violet", label: "neu · 24 h" }
+    : { label: "Live aus Ihren Sendungen" };
   const spendFoot = !k.hasSpend
-    ? "Keine Ausgaben im aktuellen Monat"
+    ? { label: "Keine Ausgaben im aktuellen Monat" }
     : k.deltaPct !== null
-      ? <span className={`ce-kpi-delta ${k.deltaPct >= 0 ? "up" : "down"}`}>
-          {k.deltaPct >= 0 ? "+" : ""}{k.deltaPct}% vs. letzter Monat
-        </span>
-      : "Aktueller Monat";
+      ? { delta: `${k.deltaPct >= 0 ? "+" : ""}${k.deltaPct} %`, deltaClass: k.deltaPct >= 0 ? "d-green" : "d-amber", label: "vs. letzter Monat" }
+      : { label: "Aktueller Monat" };
 
-  const kpiCards = [
-    { key: "active",    icon: "cube",  tone: "blue",   label: "Aktive Sendungen", value: k.active,
-      foot: k.hasCreatedAt ? `${k.new24} neu in 24 h` : "Live aus Ihren Sendungen" },
-    { key: "transit",   icon: "truck", tone: "cyan",   label: "In Zustellung", value: k.inTransit, foot: "Aktueller Stand" },
-    { key: "delivered", icon: "check", tone: "green",  label: "Zugestellt",    value: k.delivered, foot: "Aktueller Stand" },
-    { key: "delayed",   icon: "clock", tone: "amber",  label: "Verzögert",     value: k.delayed,   foot: "Aktueller Stand" },
-    { key: "spend",     icon: "euro",  tone: "violet", label: "Ausgaben (Monat)", value: moneyCompact(k.spendThis),
-      foot: spendFoot, spark: k.hasSpend && k.spark.length >= 2 ? k.spark : null },
+  const KPIS = [
+    { key: "active",    tone: "violet", icon: "package", label: "Aktive Sendungen", value: pad2(k.active),    foot: activeFoot },
+    { key: "transit",   tone: "blue",   icon: "truck",   label: "In Zustellung",    value: pad2(k.inTransit), foot: { label: "Aktueller Stand" } },
+    { key: "delivered", tone: "green",  icon: "check",   label: "Zugestellt",       value: pad2(k.delivered), foot: { dot: true, label: "Aktueller Stand" } },
+    { key: "delayed",   tone: "amber",  icon: "clock",   label: "Verzögert",        value: pad2(k.delayed),   foot: { label: "Aktueller Stand" } },
+    { key: "spend",     tone: "spend",  glyph: "€",      label: "Ausgaben (Monat)", value: moneyCompact(k.spendThis), foot: spendFoot },
   ];
 
   return (
-    <div className="ce-overview">
-      <div className="ce-aurora" aria-hidden="true">
-        <div className="ce-aurora-ray" />
-        <div className="ce-aurora-glow" />
-      </div>
+    <div className="dpx-main">
+      <div className="dpx-aurora" aria-hidden="true" />
+      <div className="dpx-inner">
 
-      <div className="ce-page">
-        {/* ── Header / Greeting / Actions ── */}
-        <div className="ce-head">
-          <div className="ce-head-greet">
-            <h1 className="ce-greeting-lg">
-              {getGreeting()}, <span className="ce-greeting-name">{name}</span>
-            </h1>
-            <p className="ce-greeting-sub">Hier ist Ihre Übersicht für heute.</p>
+        {/* ── Topbar ── */}
+        <div className="dpx-topbar">
+          <div>
+            <div className="dpx-greeting">{getGreeting()}, <span className="accent">{name}</span></div>
+            <div className="dpx-greeting-sub">Hier ist Ihre Übersicht für heute.</div>
           </div>
-          <div className="ce-head-actions">
-            <button
-              type="button"
-              className="ce-user-pill"
-              onClick={onProfile}
-              title="Zu meinem Profil"
-            >
-              <span className="ce-user-pill-avatar">{initials}</span>
-              <span className="ce-user-pill-info">
-                <span className="ce-user-pill-name">{name}</span>
-                {company && <span className="ce-user-pill-company">{company}</span>}
-              </span>
-            </button>
-            <button type="button" className="ce-btn-primary" onClick={onNewShipment}>
-              <Icon n="plus" s={18} /> Neue Sendung
+          <div className="dpx-head-right">
+            <div className="dpx-head-row">
+              {/* Dekorativ, ohne Fake-Zähler und nicht klickbar (kein Notification-System). */}
+              <span className="dpx-iconbtn dpx-iconbtn-static" aria-hidden="true"><Icon n="bell" s={21} /></span>
+              <button type="button" className="dpx-userpill" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
+                <CompanyMark initial={initial} />
+                <div className="dpx-userpill-text">
+                  <div className="dpx-user-name">{name}</div>
+                  {org && <div className="dpx-user-org">{org}</div>}
+                </div>
+                <Icon n="chevron" s={18} />
+              </button>
+            </div>
+            <button type="button" className="dpx-btn-new" onClick={onNewShipment}>
+              <Icon n="plus" s={20} c="#fff" />Neue Sendung
             </button>
           </div>
         </div>
 
         {/* ── KPI-Reihe (echte Daten) ── */}
-        <div className="ce-kpi-grid">
-          {kpiCards.map((c) => (
-            <div className="ce-kpi-card" key={c.key}>
-              <div className="ce-kpi-head">
-                <div className={`ce-kpi-ico ce-kpi-ico-${c.tone}`}><Icon n={c.icon} s={22} /></div>
-                <div className="ce-kpi-label">{c.label}</div>
-              </div>
-              <div className="ce-kpi-mid">
-                <div className={`ce-kpi-value${c.key === "spend" ? " money" : ""}`}>
-                  {loading ? <span className="ce-kpi-skel" /> : c.value}
+        <div className="dpx-kpis">
+          {KPIS.map((kpi) => (
+            <div className={"dpx-kpi k-" + kpi.tone} key={kpi.key}>
+              <div className="dpx-kpi-head">
+                <div className="dpx-kpi-badge">
+                  {kpi.icon ? <Icon n={kpi.icon} s={26} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
                 </div>
-                {!loading && c.spark && <Sparkline data={c.spark} />}
+                <div className="dpx-kpi-body">
+                  <div className="dpx-kpi-label">{kpi.label}</div>
+                  <div className="dpx-kpi-value"><KpiValue v={loading ? "—" : kpi.value} /></div>
+                </div>
               </div>
-              <div className="ce-kpi-foot">{loading ? "Wird geladen…" : c.foot}</div>
+              <div className="dpx-kpi-foot">
+                {loading ? (
+                  <span className="dpx-foot-label">Wird geladen…</span>
+                ) : (
+                  <>
+                    {kpi.foot.dot && <span className="dpx-foot-dot" />}
+                    {kpi.foot.delta && <span className={"dpx-kpi-delta " + kpi.foot.deltaClass}>{kpi.foot.delta}</span>}
+                    <span className="dpx-foot-label">{kpi.foot.label}</span>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
 
         {/* ── So einfach funktioniert es ── */}
-        <section className="ce-panel">
-          <h2 className="ce-panel-title">So einfach funktioniert es</h2>
-          <div className="ce-proc-grid">
-            {PROCESS.map((p) => (
-              <div className="ce-proc-step" key={p.title}>
-                <div className="ce-proc-node"><Icon n={p.icon} s={24} /></div>
-                <div className="ce-proc-title">{p.title}</div>
-                <p className="ce-proc-desc">{p.desc}</p>
+        <section className="dpx-panel">
+          <div className="dpx-panel-title">So einfach funktioniert es</div>
+          <div className="dpx-steps">
+            {STEPS.map((s, i) => (
+              <div className="dpx-step" key={i}>
+                <div className="dpx-step-icon"><Icon n={s.icon} s={26} /></div>
+                <div className="dpx-step-connector" />
+                <div className="dpx-step-title">{s.title}</div>
+                <div className="dpx-step-desc">{s.desc}</div>
               </div>
             ))}
           </div>
         </section>
 
         {/* ── Warum ConfidaraExpress? ── */}
-        <section className="ce-panel">
-          <h2 className="ce-panel-title">Warum ConfidaraExpress?</h2>
-          <div className="ce-why-grid">
-            {WHY.map((wcard) => (
-              <div className="ce-why-card" key={wcard.title}>
-                <div className="ce-why-ico"><Icon n={wcard.icon} s={22} /></div>
-                <div className="ce-why-title">{wcard.title}</div>
-                <p className="ce-why-desc">{wcard.desc}</p>
+        <section className="dpx-panel">
+          <div className="dpx-panel-title">Warum ConfidaraExpress?</div>
+          <div className="dpx-why">
+            {WHY.map((w, i) => (
+              <div className="dpx-why-card" key={i}>
+                <div className="dpx-why-badge"><Icon n={w.icon} s={22} /></div>
+                <div>
+                  <div className="dpx-why-title">{w.title}</div>
+                  <div className="dpx-why-desc">{w.desc}</div>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── Carrier-Netzwerk ── */}
-        <section className="ce-panel">
-          <h2 className="ce-panel-title">Carrier Netzwerk</h2>
-          <p className="ce-panel-sub">
-            Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.
-          </p>
-          <div className="ce-cn-grid">
+        {/* ── Carrier Netzwerk ── */}
+        <section className="dpx-panel dpx-carriers">
+          <div className="dpx-panel-title">Carrier Netzwerk</div>
+          <div className="dpx-panel-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
+          <div className="dpx-carrier-grid">
             {CARRIERS.map((c) => (
-              <div className="ce-cn-tile" key={c.name}>
-                <img src={c.logo} alt={c.name} className="ce-cn-logo" />
-                <div className="ce-cn-service">{c.service}</div>
-                <div className="ce-cn-days">{c.days}</div>
+              <div className="dpx-carrier-tile" key={c.key}>
+                <div className="dpx-carrier-logo">
+                  {c.key === "der-kurier" ? <DerKurierLogo /> : <img src={c.logo} alt={c.alt} />}
+                </div>
+                <div className="dpx-carrier-service">{c.service}</div>
+                <div className="dpx-carrier-time">{c.time}</div>
               </div>
             ))}
           </div>
-          <div className="ce-cn-cta">
-            <button type="button" className="ce-btn-primary" onClick={() => navigate("/calculator")}>
-              Preise vergleichen <Icon n="arrowRight" s={18} />
+          <div className="dpx-carrier-cta">
+            <button type="button" className="dpx-btn-compare" onClick={() => navigate("/calculator")}>
+              Preise vergleichen<Icon n="arrowRight" s={18} c="#cfe0ff" />
             </button>
           </div>
         </section>
 
         {/* ── Trust-Bar ── */}
-        <div className="ce-trust">
-          {TRUST.map((t) => (
-            <div className="ce-trust-item" key={t.title}>
-              <div className="ce-trust-ico"><Icon n={t.icon} s={20} /></div>
+        <div className="dpx-trust">
+          {TRUST.map((t, i) => (
+            <div className={"dpx-trust-item tr-" + t.tone} key={i}>
+              <div className="dpx-trust-badge"><Icon n={t.icon} s={23} /></div>
               <div>
-                <div className="ce-trust-title">{t.title}</div>
-                <p className="ce-trust-desc">{t.desc}</p>
+                <div className="dpx-trust-title">{t.title}</div>
+                <div className="dpx-trust-desc">{t.desc}</div>
               </div>
             </div>
           ))}
         </div>
 
-        <DashboardFooter onMailClick={handleMailClick} />
       </div>
-
-      <ContactMailMenu open={mailOpen} onClose={() => setMailOpen(false)} />
     </div>
   );
 }

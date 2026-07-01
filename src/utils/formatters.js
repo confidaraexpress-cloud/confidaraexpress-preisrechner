@@ -1,16 +1,17 @@
 export const money = (v) =>
   new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(Number(v) || 0);
 
-// Kompakte Geldanzeige für KPI-Karten (stabile, kurze Breite).
-// Beträge ≥ 1.000 werden als „x,xxk €“ / „x,xx Mio. €“ verkürzt,
-// darunter wird der volle de-DE-Euro-Betrag ausgegeben.
+// Kompakte Geldanzeige für KPI-Karten: garantiert kurze, in die Badge-Karte
+// passende Breite (≤ ~7 Glyphen). ≥ 1 Mio → „x,x Mio. €“, ≥ 10.000 → „xxk €“,
+// ≥ 1.000 → „x,xxk €“ (wie im Handoff), darunter gerundeter Euro-Betrag „xxx €“.
 export const moneyCompact = (v) => {
   const n = Number(v) || 0;
   const abs = Math.abs(n);
   const fmt = (x, frac) => x.toLocaleString("de-DE", { maximumFractionDigits: frac });
-  if (abs >= 1_000_000) return `${fmt(n / 1_000_000, 2)} Mio. €`;
-  if (abs >= 1_000) return `${fmt(n / 1_000, 2)}k €`;
-  return money(n);
+  if (abs >= 1_000_000) return `${fmt(n / 1_000_000, 1)} Mio. €`;
+  if (abs >= 10_000)    return `${fmt(n / 1_000, 0)}k €`;
+  if (abs >= 1_000)     return `${fmt(n / 1_000, 2)}k €`;
+  return `${fmt(Math.round(n), 0)} €`;
 };
 
 export const dateDE = (d) => (d ? new Date(d).toLocaleDateString("de-DE") : "—");

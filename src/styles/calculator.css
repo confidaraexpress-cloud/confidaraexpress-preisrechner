@@ -83,6 +83,26 @@
 .booking-email-note { text-align: center; font-size: 12px; color: var(--gray400); margin-top: 12px; }
 .booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray600); text-align: left; background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.12); border-radius: var(--radius); }
 .booking-tracking-note svg { color: var(--blue2); flex-shrink: 0; margin-top: 1px; }
+
+/* ─── Zusatzversicherung (read-only Auswahl + Repricing) ─────────────────────── */
+.booking-insurance-box { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; background: var(--gray50); }
+.booking-insurance-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--navy); }
+.booking-insurance-title svg { color: var(--blue2); }
+.booking-insurance-sub { font-size: 12px; color: var(--gray500); margin: 4px 0 12px; line-height: 1.5; }
+.booking-ins-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.booking-ins-option { flex: 1; min-width: 88px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); background: white; font-size: 13px; font-weight: 600; color: var(--gray600); cursor: pointer; transition: all 0.15s; }
+.booking-ins-option:hover { border-color: var(--blue3); color: var(--navy); }
+.booking-ins-option.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
+.booking-ins-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.booking-ins-meta { font-size: 12px; color: var(--gray600); line-height: 1.7; margin: 0 0 12px; }
+.booking-ins-meta strong { color: var(--navy); font-weight: 700; }
+.booking-ins-fields { display: flex; flex-direction: column; gap: 12px; }
+.booking-ins-reprice-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.booking-ins-ok { font-size: 12.5px; font-weight: 600; color: var(--success); }
+.booking-ins-stale { font-size: 12.5px; color: var(--warn, #b45309); margin: 0; }
+.booking-ins-note { font-size: 12px; color: var(--gray500); line-height: 1.5; margin: 0; }
+.booking-ins-unavailable { font-size: 12.5px; color: var(--gray500); margin-bottom: 16px; }
+.booking-insurance-free { color: var(--success); }
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 

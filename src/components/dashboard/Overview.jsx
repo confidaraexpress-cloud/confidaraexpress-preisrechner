@@ -57,10 +57,9 @@ function DerKurierLogo() {
   );
 }
 
-// KPI-Zahlen-Styling: führende Null gedämpft (.z) bzw. Einheit-Suffix (.u).
+// KPI-Zahlen-Styling: Einheit-Suffix (z. B. „ €"/„k €") dezent (.u).
+// Keine führende Null mehr — echte Werte werden unverändert angezeigt.
 function KpiValue({ v }) {
-  const lead = v.match(/^(0+)(\d.*)$/);
-  if (lead) return (<><span className="z">{lead[1]}</span>{lead[2]}</>);
   const unit = v.match(/^([\d.,]+)(\D.*)$/);
   if (unit) return (<>{unit[1]}<span className="u">{unit[2]}</span></>);
   return <>{v}</>;
@@ -154,8 +153,6 @@ function computeKpis(shipments) {
   return { active, inTransit, delivered, delayed, new24, hasCreatedAt, spendThis, spendPrev, deltaPct, hasSpend: spendThis > 0 };
 }
 
-const pad2 = (n) => String(n).padStart(2, "0");
-
 export function Overview({ user, shipments, loading, onNewShipment, onProfile }) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
@@ -175,10 +172,10 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
       : { label: "Aktueller Monat" };
 
   const KPIS = [
-    { key: "active",    tone: "violet", icon: "package", label: "Aktive Sendungen", value: pad2(k.active),    foot: activeFoot },
-    { key: "transit",   tone: "blue",   icon: "truck",   label: "In Zustellung",    value: pad2(k.inTransit), foot: { label: "Aktueller Stand" } },
-    { key: "delivered", tone: "green",  icon: "check",   label: "Zugestellt",       value: pad2(k.delivered), foot: { dot: true, label: "Aktueller Stand" } },
-    { key: "delayed",   tone: "amber",  icon: "clock",   label: "Verzögert",        value: pad2(k.delayed),   foot: { label: "Aktueller Stand" } },
+    { key: "active",    tone: "violet", icon: "package", label: "Aktive Sendungen", value: String(k.active),    foot: activeFoot },
+    { key: "transit",   tone: "blue",   icon: "truck",   label: "In Zustellung",    value: String(k.inTransit), foot: { label: "Aktueller Stand" } },
+    { key: "delivered", tone: "green",  icon: "check",   label: "Zugestellt",       value: String(k.delivered), foot: { dot: true, label: "Aktueller Stand" } },
+    { key: "delayed",   tone: "amber",  icon: "clock",   label: "Verzögert",        value: String(k.delayed),   foot: { label: "Aktueller Stand" } },
     { key: "spend",     tone: "spend",  glyph: "€",      label: "Ausgaben (Monat)", value: moneyCompact(k.spendThis), foot: spendFoot },
   ];
 
@@ -279,7 +276,9 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             {CARRIERS.map((c) => (
               <div className="dpx-carrier-tile" key={c.key}>
                 <div className="dpx-carrier-logo">
-                  {c.key === "der-kurier" ? <DerKurierLogo /> : <img src={c.logo} alt={c.alt} />}
+                  {c.key === "der-kurier"
+                    ? <DerKurierLogo />
+                    : <img src={c.logo} alt={c.alt} className={c.key === "trans-o-flex" ? "is-transoflex" : undefined} />}
                 </div>
                 <div className="dpx-carrier-service">{c.service}</div>
                 <div className="dpx-carrier-time">{c.time}</div>

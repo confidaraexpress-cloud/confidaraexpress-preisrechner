@@ -1256,7 +1256,22 @@
 }
 .dpx-support-kontakt { font-size: 12.5px; color: var(--ce-ink-3); }
 .dpx-support-live { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 15px; font-weight: 700; color: #fff; }
-.dpx-support-live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ce-green); box-shadow: 0 0 8px var(--ce-green); }
+.dpx-support-live .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ce-green);
+  box-shadow: 0 0 8px var(--ce-green);
+  animation: dpx-live-pulse 2.4s ease-out infinite;
+}
+/* Dezenter Online-Status-Puls: weicher grüner Kern-Glow + sanft expandierender
+   Ring. Kein Scaling/Layout-Shift (nur box-shadow) → performant. */
+@keyframes dpx-live-pulse {
+  0%   { box-shadow: 0 0 6px 0 rgba(52, 211, 153, 0.85), 0 0 0 0 rgba(52, 211, 153, 0.50); }
+  70%  { box-shadow: 0 0 6px 0 rgba(52, 211, 153, 0.85), 0 0 0 7px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 6px 0 rgba(52, 211, 153, 0.85), 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dpx-support-live .dot { animation: none; }
+}
 .dpx-support-note { font-size: 12.5px; line-height: 1.5; color: var(--ce-ink-4); margin-top: 12px; }
 .dpx-copyright { padding: 14px 22px 22px; }
 .dpx-copyright div { font-size: 12px; color: var(--ce-ink-4); line-height: 1.5; }
@@ -1264,12 +1279,14 @@
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  MAIN                                                                      */
 /* ════════════════════════════════════════════════════════════════════════ */
-.dpx-main { flex: 1; min-width: 0; position: relative; padding: 22px 0 32px 36px; font-family: var(--font-sans); color: var(--ce-ink-1); }
-.dpx-inner { width: 100%; max-width: 1240px; position: relative; z-index: 2; }
+.dpx-main { flex: 1; min-width: 0; position: relative; overflow-x: clip; padding: 22px 40px 32px 36px; font-family: var(--font-sans); color: var(--ce-ink-1); }
+/* Linksbündig (handoff-treu); wächst kontrolliert bis 1560, gedeckelt gegen
+   überbreite Karten auf Ultrawide. Sidebar bleibt 268px. */
+.dpx-inner { width: 100%; max-width: clamp(1240px, calc(100vw - 360px), 1560px); position: relative; z-index: 2; }
 
 .dpx-aurora {
   position: absolute; z-index: 1; pointer-events: none;
-  top: 96px; left: 120px; right: -40px; height: 120px;
+  top: 96px; left: 120px; right: 0; height: 120px;
   background:
     radial-gradient(ellipse 38% 130% at 64% 50%, rgba(255, 232, 224, 0.34) 0%, rgba(150, 150, 255, 0.16) 26%, transparent 60%),
     linear-gradient(90deg, transparent 0%, rgba(120, 150, 255, 0.10) 30%, rgba(180, 200, 255, 0.18) 55%, rgba(120, 150, 255, 0.08) 78%, transparent 100%);
@@ -1341,8 +1358,7 @@
 .dpx-kpi-body { min-width: 0; flex: 1; }
 .dpx-kpi-label { font-size: 13.5px; color: var(--ce-ink-3); font-weight: 500; letter-spacing: 0.01em; line-height: 1.25; }
 .dpx-kpi-value { font-family: var(--font-heading); font-weight: 700; font-size: 40px; line-height: 1; color: #fff; white-space: nowrap; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 8px; }
-.dpx-kpi-value .z { color: var(--ce-ink-4); font-weight: 600; }
-.dpx-kpi-value .u { font-size: 22px; font-weight: 600; color: var(--ce-ink-3); margin-left: 3px; letter-spacing: 0; }
+.dpx-kpi-value .u { font-size: 26px; font-weight: 600; color: var(--ce-ink-3); margin-left: 4px; letter-spacing: -0.01em; }
 .dpx-kpi-foot { display: flex; align-items: center; gap: 9px; margin-top: 13px; padding-left: 76px; font-size: 13px; font-weight: 600; position: relative; z-index: 1; }
 .dpx-kpi-delta { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; line-height: 1; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--ce-line-2); }
 .dpx-kpi-delta.d-violet { color: #a99bff; background: rgba(138, 124, 255, 0.13); border-color: rgba(138, 124, 255, 0.26); }
@@ -1411,7 +1427,13 @@
 .dpx-carrier-tile:hover { border-color: var(--ce-line-3); transform: translateY(-2px); }
 .dpx-carrier-logo { height: 36px; display: grid; place-items: center; margin-bottom: 6px; }
 .dpx-carrier-logo img { max-height: 28px; max-width: 96px; width: auto; object-fit: contain; display: block; }
-.dpx-carrier-logo svg { display: block; }
+/* Nur „Der Kurier" ist ein Inline-SVG in der Carrier-Reihe → auf einheitliche
+   optische Höhe cappen (leicht kleiner, da das rote Badge optisch schwerer wirkt). */
+.dpx-carrier-logo svg { display: block; height: 26px; width: auto; }
+/* trans-o-flex füllt seinen Rahmen vertikal weniger (interne Whitespace-Ränder)
+   → auf feste Höhe skalieren (über die 30px-Eigengröße hinaus), damit die
+   sichtbare Wortmarke optisch gleich groß wie die übrigen ~28px-Logos wirkt. */
+.dpx-carrier-logo img.is-transoflex { height: 34px; width: auto; max-height: none; }
 .dpx-carrier-service { font-size: 12.5px; font-weight: 600; color: var(--ce-ink-1); }
 .dpx-carrier-time { font-size: 12px; color: var(--ce-ink-4); margin-top: 3px; }
 .dpx-carrier-cta { display: flex; justify-content: center; margin-top: 12px; position: relative; z-index: 1; }

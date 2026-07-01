@@ -174,7 +174,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
   const KPIS = [
     { key: "active",    tone: "violet", icon: "package", label: "Aktive Sendungen", value: String(k.active),    foot: activeFoot },
     { key: "transit",   tone: "blue",   icon: "truck",   label: "In Zustellung",    value: String(k.inTransit), foot: { label: "Aktueller Stand" } },
-    { key: "delivered", tone: "green",  icon: "check",   label: "Zugestellt",       value: String(k.delivered), foot: { dot: true, label: "Aktueller Stand" } },
+    { key: "delivered", tone: "green",  icon: "check",   label: "Zugestellt",       value: String(k.delivered), foot: { label: "Aktueller Stand" } },
     { key: "delayed",   tone: "amber",  icon: "clock",   label: "Verzögert",        value: String(k.delayed),   foot: { label: "Aktueller Stand" } },
     { key: "spend",     tone: "spend",  glyph: "€",      label: "Ausgaben (Monat)", value: moneyCompact(k.spendThis), foot: spendFoot },
   ];
@@ -215,7 +215,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             <div className={"dpx-kpi k-" + kpi.tone} key={kpi.key}>
               <div className="dpx-kpi-head">
                 <div className="dpx-kpi-badge">
-                  {kpi.icon ? <Icon n={kpi.icon} s={26} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
+                  {kpi.icon ? <Icon n={kpi.icon} s={28} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
                 </div>
                 <div className="dpx-kpi-body">
                   <div className="dpx-kpi-label">{kpi.label}</div>

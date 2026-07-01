@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { apiFetch } from "../api/client";
+import { apiFetch, repriceInsurance } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -22,10 +22,120 @@ export default function BookingPage() {
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
 
+  // ── Versicherung (F1/F2): Auswahl + Live-Repricing + Übergabe an /book ──────
+  const [insuranceType, setInsuranceType]   = useState("none"); // "none" | "standard" | "premium"
+  const [insuredValue, setInsuredValue]     = useState("");     // Versicherter Wert (EUR), String-Eingabe
+  const [insContent, setInsContent]         = useState("");     // Inhaltsbeschreibung (max. 35), Default "Paket"
+  const [repriceResult, setRepriceResult]   = useState(null);
+  const [repriceLoading, setRepriceLoading] = useState(false);
+  const [repriceError, setRepriceError]     = useState("");
+  const [repriceStale, setRepriceStale]     = useState(false);
+  const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
+  const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
+
   const [form, setForm] = useState({ content: "" });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const tariff = bookingData?.tariff;
+
+  // ── Versicherung: abgeleitete Werte, Validierung, Repricing ────────────────
+  const asNum = (v) => { const n = typeof v === "number" ? v : Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
+  const asPos = (v) => { const n = asNum(v); return n != null && n > 0 ? n : null; };
+  const asStr = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+
+  const insurable = tariff?.insuranceAvailable === true || tariff?.insuranceDetails?.isInsurable === true;
+  const isInsured = insuranceType === "standard" || insuranceType === "premium";
+  const valueNum  = asNum(insuredValue);
+  // Inhaltsbeschreibung: eigenes Feld → sonst Sendungsinhalt → sonst "Paket"; hart auf 35 Zeichen.
+  const contentDescription = (insContent.trim() || form.content.trim() || "Paket").slice(0, 35);
+
+  // Read-only Anzeigewerte (Reprice-Response bevorzugt, sonst Tarif-Felder).
+  const insDetails   = tariff?.insuranceDetails && typeof tariff.insuranceDetails === "object" ? tariff.insuranceDetails : null;
+  const insModel     = tariff?.insuranceModel   && typeof tariff.insuranceModel   === "object" ? tariff.insuranceModel   : null;
+  const insBase      = asNum(repriceResult?.includedInsuranceValue) ?? asNum(insDetails?.insuranceValue);
+  const insProvider  = asStr(repriceResult?.insuranceProvider) || asStr(insDetails?.insuranceProvider) || asStr(insModel?.provider);
+  const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
+  const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
+
+  // Clientseitige Validierung (nur Standard/Premium). contentDescription ist per
+  // maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
+  const insValueError =
+    !isInsured                 ? "" :
+    !insuredValue.trim()       ? "Bitte geben Sie den Warenwert an." :
+    valueNum == null           ? "Bitte geben Sie einen gültigen Betrag ein." :
+    valueNum <= 0              ? "Der Wert muss größer als 0 € sein." :
+    valueNum > 20000           ? "Der versicherte Wert darf höchstens 20.000 € betragen." :
+    "";
+  const insValid = !isInsured || insValueError === "";
+
+  // Reprice-Request mit Seq-/Abort-Schutz: veraltete Antworten überschreiben den
+  // State nie. Sendet insuranceType FLACH, keine Client-Preise (Backend-Vertrag).
+  const runReprice = async (type, valNum, content) => {
+    const seq = ++repriceSeq.current;
+    if (repriceAbort.current) repriceAbort.current.abort();
+    const ac = new AbortController(); repriceAbort.current = ac;
+    setRepriceLoading(true); setRepriceError("");
+    try {
+      const r = await repriceInsurance({
+        shipmentId:          bookingData?.shipmentId,
+        tariffId:            tariff?.id,
+        shipperTariffId:     tariff?.shipper_tariff_id,
+        insuranceType:       type,
+        goodsValue:          valNum,
+        extraInsuranceValue: valNum,
+        contentDescription:  content,
+      }, { signal: ac.signal });
+      if (seq !== repriceSeq.current) return; // veraltet → ignorieren
+      if (r.status === 401 || r.status === 403) { setRepriceLoading(false); return; } // zentraler Auth-Redirect
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (!r.ok) {
+        setRepriceResult(null); setRepriceStale(true);
+        setRepriceError(
+          r.status === 400 ? (asStr(d?.error) || "Die Angaben zur Versicherung sind ungültig.") :
+          r.status === 409 ? "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis." :
+          r.status === 429 ? "Zu viele Anfragen. Bitte später erneut versuchen." :
+          "Versicherungspreis konnte nicht bestätigt werden."
+        );
+        setRepriceLoading(false);
+        return;
+      }
+      setRepriceResult(d); setRepriceStale(false); setRepriceLoading(false);
+    } catch (e) {
+      if (e?.name === "AbortError") return;        // durch neueren Request ersetzt
+      if (seq !== repriceSeq.current) return;
+      setRepriceResult(null); setRepriceStale(true);
+      setRepriceError("Versicherungspreis konnte nicht bestätigt werden.");
+      setRepriceLoading(false);
+    }
+  };
+
+  // Auto-Reprice bei Typwechsel oder Wertänderung (debounced 500 ms). Jede
+  // Änderung markiert das letzte Ergebnis als veraltet → Buchung erst nach
+  // frischem Reprice. contentDescription beeinflusst den Preis nicht und ist
+  // bewusst NICHT in den Deps.
+  useEffect(() => {
+    if (insuranceType === "none") {
+      setRepriceResult(null); setRepriceStale(false); setRepriceError("");
+      repriceSeq.current++; if (repriceAbort.current) repriceAbort.current.abort();
+      return;
+    }
+    setRepriceStale(true);
+    if (!insValid) { setRepriceResult(null); return; }
+    const id = setTimeout(() => runReprice(insuranceType, valueNum, contentDescription), 500);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insuranceType, insuredValue]);
+
+  // Laufende Requests beim Unmount abbrechen.
+  useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
+
+  const onManualReprice = () => { if (insValid && isInsured) runReprice(insuranceType, valueNum, contentDescription); };
+
+  // Preis-/Total-Aufteilung ausschließlich aus der Reprice-Response.
+  const rt = repriceResult?.totals || null;
+  const showRepriceTotals = isInsured && rt && asPos(rt.insuranceGross) != null;
+  // Buchung bei versicherter Auswahl nur mit frischem, gültigem Reprice.
+  const insuranceBlocksBooking = isInsured && (repriceLoading || repriceStale || !repriceResult || !!repriceError || !insValid);
 
   const buildParty = (p) => {
     const f = bookingData?.form || {};
@@ -58,8 +168,28 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
+    // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
+    // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
+    if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
+      setError("Bitte aktualisieren Sie den Versicherungspreis, bevor Sie buchen.");
+      return;
+    }
     setError(""); setConflict(""); setAddressError(""); setLoading(true);
     try {
+      // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
+      // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
+      // Standard/Premium senden. Für "none" nur { type: "none" }.
+      const insurancePayload = isInsured
+        ? {
+            insuranceSelection: {
+              type:               repriceResult?.selectedInsurance || insuranceType,
+              value:              valueNum,
+              goodsValue:         valueNum,
+              contentDescription,
+            },
+            confirmedTotalGross: repriceResult?.totals?.customerTotalGross,
+          }
+        : { insuranceSelection: { type: "none" } };
       const r = await apiFetch(`/api/jumingo/book`, {
         method: "POST", auth: true,
         body: JSON.stringify({
@@ -73,10 +203,20 @@ export default function BookingPage() {
           recipient:       buildParty("r"),
           weight:          bookingData?.form?.weight,
           content:         form.content,
+          ...insurancePayload,
         }),
       });
       const d = await r.json();
       if (r.status === 409) {
+        // Bei versicherter Buchung deutet 409 auf Preis-Drift → Reprice erzwingen
+        // (auf der Seite bleiben). Ohne Versicherung bleibt das bisherige
+        // Duplikat-Verhalten (Sendung bereits verarbeitet) unverändert.
+        if (isInsured) {
+          setRepriceStale(true);
+          setError(asStr(d.error) || "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis und bestätigen Sie erneut.");
+          setLoading(false);
+          return;
+        }
         setConflict(d.error || "Diese Sendung wurde bereits verarbeitet oder befindet sich bereits in Bearbeitung.");
         setLoading(false);
         return;
@@ -249,6 +389,99 @@ export default function BookingPage() {
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
+                {/* ── Zusatzversicherung (read-only Repricing, keine tote UI) ── */}
+                {insurable ? (
+                  <div className="booking-insurance-box">
+                    <div className="booking-insurance-title">
+                      <Icon n="shield" s={16} c="currentColor" /> Zusatzversicherung
+                    </div>
+                    <p className="booking-insurance-sub">
+                      Optional. Die Zusatzversicherung ist steuerfrei und wird separat ausgewiesen.
+                    </p>
+                    <div className="booking-ins-options" role="radiogroup" aria-label="Zusatzversicherung wählen">
+                      {[
+                        { id: "none",     label: "Keine" },
+                        { id: "standard", label: "Standard" },
+                        { id: "premium",  label: "Premium" },
+                      ].map(opt => (
+                        <label key={opt.id} className={`booking-ins-option${insuranceType === opt.id ? " active" : ""}`}>
+                          <input
+                            type="radio"
+                            name="insuranceType"
+                            value={opt.id}
+                            checked={insuranceType === opt.id}
+                            onChange={() => setInsuranceType(opt.id)}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
+
+                    {(insBase != null || insStdPrice != null || insPremPrice != null || insProvider) && (
+                      <p className="booking-ins-meta">
+                        {insBase != null && <>Grunddeckung: <strong>max. {money(insBase)}</strong> lt. Tarifdaten<br /></>}
+                        {insStdPrice != null && <>Standard ab {money(insStdPrice)}<br /></>}
+                        {insPremPrice != null && <>Premium ab {money(insPremPrice)}<br /></>}
+                        {insProvider && <>Versicherer: {insProvider}</>}
+                      </p>
+                    )}
+
+                    {isInsured && (
+                      <div className="booking-ins-fields">
+                        <div className="field">
+                          <label className="field-label" htmlFor="ins-value">Versicherter Wert (EUR)</label>
+                          <input
+                            id="ins-value"
+                            className={`field-input${insValueError ? " field-input-error" : ""}`}
+                            type="number" inputMode="decimal" min="0" max="20000" step="0.01"
+                            value={insuredValue}
+                            onChange={e => setInsuredValue(e.target.value)}
+                            placeholder="z. B. 500"
+                          />
+                          {insValueError && <span className="field-error">{insValueError}</span>}
+                        </div>
+                        <div className="field">
+                          <label className="field-label" htmlFor="ins-content">
+                            Inhaltsbeschreibung <span className="field-optional">(max. 35 Zeichen)</span>
+                          </label>
+                          <input
+                            id="ins-content"
+                            className="field-input"
+                            value={insContent}
+                            onChange={e => setInsContent(e.target.value)}
+                            placeholder={form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket"}
+                            maxLength={35}
+                          />
+                        </div>
+                        <div className="booking-ins-reprice-row">
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={onManualReprice}
+                            disabled={repriceLoading || !insValid}
+                          >
+                            {repriceLoading ? <><span className="spinner" /> Preis wird aktualisiert…</> : "Preis aktualisieren"}
+                          </button>
+                          {!repriceLoading && repriceResult && !repriceStale && !repriceError && (
+                            <span className="booking-ins-ok">Preis aktualisiert.</span>
+                          )}
+                        </div>
+                        {repriceError && <div className="alert alert-error">{repriceError}</div>}
+                        {!repriceError && repriceStale && !repriceLoading && insValid && (
+                          <p className="booking-ins-stale">Bitte aktualisieren Sie den Versicherungspreis.</p>
+                        )}
+                        <p className="booking-ins-note">
+                          Die Zusatzversicherung ist steuerfrei und wird nicht mit 19 % MwSt. belegt.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="booking-ins-unavailable">
+                    Für diesen Tarif ist keine Zusatzversicherung verfügbar.
+                  </p>
+                )}
+
                 <div className="booking-confirm-box">
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
@@ -266,24 +499,53 @@ export default function BookingPage() {
                       {bookingData.form.r_fullName}, {bookingData.form.r_zip} {bookingData.form.r_city}
                     </span>
                   </div>
-                  {tariff.netPrice != null && (
-                    <div className="booking-confirm-row">
-                      <span className="text-sm text-muted">Nettobetrag</span>
-                      <span className="text-sm font-bold booking-confirm-val">{money(tariff.netPrice)}</span>
-                    </div>
+                  {showRepriceTotals ? (
+                    // Preisaufteilung ausschließlich aus response.totals — keine
+                    // clientseitige Addition, keine MwSt./Marge auf Versicherung.
+                    <>
+                      <div className="booking-confirm-row">
+                        <span className="text-sm text-muted">Versand netto</span>
+                        <span className="text-sm font-bold booking-confirm-val">{money(rt.customerShippingNet)}</span>
+                      </div>
+                      <div className="booking-confirm-row">
+                        <span className="text-sm text-muted">MwSt. 19 % auf Versand</span>
+                        <span className="text-sm font-bold booking-confirm-val">{money(rt.shippingVat)}</span>
+                      </div>
+                      <div className="booking-confirm-row">
+                        <span className="text-sm text-muted">Versand brutto</span>
+                        <span className="text-sm font-bold booking-confirm-val">{money(rt.customerShippingGross)}</span>
+                      </div>
+                      <div className="booking-confirm-row">
+                        <span className="text-sm text-muted">Zusatzversicherung steuerfrei</span>
+                        <span className="text-sm font-bold booking-confirm-val booking-insurance-free">{money(rt.insuranceGross)}</span>
+                      </div>
+                      <div className="booking-total-row">
+                        <span className="booking-total-label">Gesamtbetrag</span>
+                        <span className="booking-total-amount">{money(rt.customerTotalGross)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {tariff.netPrice != null && (
+                        <div className="booking-confirm-row">
+                          <span className="text-sm text-muted">Nettobetrag</span>
+                          <span className="text-sm font-bold booking-confirm-val">{money(tariff.netPrice)}</span>
+                        </div>
+                      )}
+                      {tariff.vatAmount != null && (
+                        <div className="booking-confirm-row">
+                          <span className="text-sm text-muted">MwSt. 19%</span>
+                          <span className="text-sm font-bold booking-confirm-val">{money(tariff.vatAmount)}</span>
+                        </div>
+                      )}
+                      <div className="booking-total-row">
+                        <span className="booking-total-label">Gesamtbetrag brutto</span>
+                        <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
+                      </div>
+                    </>
                   )}
-                  {tariff.vatAmount != null && (
-                    <div className="booking-confirm-row">
-                      <span className="text-sm text-muted">MwSt. 19%</span>
-                      <span className="text-sm font-bold booking-confirm-val">{money(tariff.vatAmount)}</span>
-                    </div>
-                  )}
-                  <div className="booking-total-row">
-                    <span className="booking-total-label">Gesamtbetrag brutto</span>
-                    <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
-                  </div>
                   <p className="booking-payment-note">
-                    inkl. 19 % MwSt. · Zahlung: {user?.payment_term || 7} Tage auf Rechnung
+                    inkl. 19 % MwSt. auf Versand · Zahlung: {user?.payment_term || 7} Tage auf Rechnung
                   </p>
                 </div>
                 {tariff.printerRequired === true && (
@@ -319,7 +581,7 @@ export default function BookingPage() {
                     </button>
                   </div>
                 ) : (
-                  <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted}>
+                  <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted || insuranceBlocksBooking}>
                     {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "Kostenpflichtig buchen"}
                   </button>
                 )}

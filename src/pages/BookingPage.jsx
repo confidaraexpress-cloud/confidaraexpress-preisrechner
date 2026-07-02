@@ -1,12 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch, repriceInsurance } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
-import { resolveCarrier, resolveCarrierName } from "../utils/carrierMap";
+import { resolveCarrierName } from "../utils/carrierMap";
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
+import { getBookingModules } from "../utils/bookingModules";
+import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
+import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
+import { InsuranceModule } from "../components/booking/InsuranceModule";
+import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
+import { TermsModule } from "../components/booking/TermsModule";
+import { BookingActionModule } from "../components/booking/BookingActionModule";
 
 export default function BookingPage() {
   const { user } = useAuth();
@@ -43,7 +50,10 @@ export default function BookingPage() {
   const asPos = (v) => { const n = asNum(v); return n != null && n > 0 ? n : null; };
   const asStr = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-  const insurable = tariff?.insuranceAvailable === true || tariff?.insuranceDetails?.isInsurable === true;
+  // Dünne Sichtbarkeits-/Modul-Konfiguration (Phase 1): entscheidet aus belegten
+  // Tarif-Feldern, welche Buchungsmodule sichtbar sind (bildet exakt das bisherige
+  // Verhalten ab). `modules.insurance` ersetzt das frühere `insurable`-Gate.
+  const modules = getBookingModules(tariff);
   const isInsured = insuranceType === "standard" || insuranceType === "premium";
   const valueNum  = asNum(insuredValue);
   // Inhaltsbeschreibung: eigenes Feld → sonst Sendungsinhalt → sonst "Paket"; hart auf 35 Zeichen.
@@ -174,6 +184,8 @@ export default function BookingPage() {
   const repricePending = isInsured && (repriceLoading || (repriceStale && insValid && !repriceError));
   // Buchung bei versicherter Auswahl nur mit frischem, gültigem Reprice.
   const insuranceBlocksBooking = isInsured && (repriceLoading || repriceStale || !repriceResult || !!repriceError || !insValid);
+  // Platzhalter für das Inhaltsbeschreibungs-Feld (unverändert: Sendungsinhalt → "Paket").
+  const insContentPlaceholder = form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket";
 
   const buildParty = (p) => {
     const f = bookingData?.form || {};
@@ -341,73 +353,14 @@ export default function BookingPage() {
         {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
           <div>
-            {/* Tariff */}
-            <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
-              <div className="calc-panel-body">
-                <div className="flex-between">
-                  <div>
-                    <div className="booking-carrier-wrap">
-                      {resolveCarrier(tariff.carrier).logo && (
-                        <img src={resolveCarrier(tariff.carrier).logo} alt="" aria-hidden="true" className="booking-carrier-logo" />
-                      )}
-                      <span className="booking-carrier-name">{resolveCarrierName(tariff.carrier)}</span>
-                    </div>
-                    <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
-                    {tariff.serviceType && (
-                      <div className="booking-service-info">
-                        {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}
-                        {tariff.shopName        && ` · ${tariff.shopName}`}
-                        {tariff.pickupToday     && " · Abholung heute"}
-                        {tariff.printerRequired && " · Drucker erforderlich"}
-                      </div>
-                    )}
-                  </div>
-                  <div className="booking-price-col">
-                    {tariff.netPrice != null ? (
-                      <div className="booking-price-display">{money(tariff.netPrice)}</div>
-                    ) : (
-                      <div className="tariff-price-na">Preis fehlt</div>
-                    )}
-                    {tariff.netPrice != null && <div className="tariff-price-sub">exkl. MwSt.</div>}
-                    {tariff.vatAmount != null && tariff.finalPrice != null && (
-                      <div className="booking-price-detail">
-                        <div>MwSt. 19% {money(tariff.vatAmount)}</div>
-                        <div className="booking-price-detail-total">Brutto {money(tariff.finalPrice)}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OfferSummaryModule tariff={tariff} />
 
-            {/* Sendungsdetails */}
-            <div className="calc-panel mb-16">
-              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Sendungsdetails</h3></div>
-              <div className="calc-panel-body">
-                {[
-                  ["Absender",  fmtAddr("s")],
-                  ["Empfänger", fmtAddr("r")],
-                ].map(([k, v], i) => (
-                  <div key={i} className="summary-detail-row summary-detail-row-border">
-                    <span className="text-sm text-muted summary-detail-key">{k}</span>
-                    <span className="text-sm font-bold summary-detail-val">{v}</span>
-                  </div>
-                ))}
-                <div className="field mt-12 booking-content-field">
-                  <label className="field-label">
-                    Sendungsinhalt <span className="field-optional">(optional)</span>
-                  </label>
-                  <input
-                    className="field-input"
-                    value={form.content}
-                    onChange={e => upd("content", e.target.value)}
-                    placeholder="z.B. Elektronik, Dokumente …"
-                    maxLength={200}
-                  />
-                </div>
-              </div>
-            </div>
+            <ShipmentSummaryModule
+              senderAddr={fmtAddr("s")}
+              recipientAddr={fmtAddr("r")}
+              content={form.content}
+              onContentChange={(v) => upd("content", v)}
+            />
 
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => navigate(-1)}>← Zurück</button>
@@ -427,93 +380,24 @@ export default function BookingPage() {
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
-                {/* ── Zusatzversicherung: Auswahl-Cards + Live-Preis (Darstellung) ── */}
-                {insurable ? (
-                  <div className="booking-insurance-box">
-                    <div className="ins-head">
-                      <span className="ins-head-title"><Icon n="shield" s={16} c="currentColor" /> Zusatzversicherung</span>
-                      <span className="ins-badge-taxfree">steuerfrei</span>
-                    </div>
-                    <p className="ins-head-sub">
-                      Optional — sichern Sie den Warenwert Ihrer Sendung zusätzlich ab.
-                    </p>
-
-                    <div className="ins-cards" role="radiogroup" aria-label="Zusatzversicherung wählen">
-                      {insCards.map(c => {
-                        const selected = insuranceType === c.id;
-                        return (
-                          <label
-                            key={c.id}
-                            className={`ins-card${selected ? " ins-card--selected" : ""}${c.muted ? " ins-card--muted" : ""}${c.hero ? " ins-card--hero" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="insuranceType"
-                              value={c.id}
-                              checked={selected}
-                              onChange={() => setInsuranceType(c.id)}
-                            />
-                            <span className="ins-card-radio" aria-hidden="true" />
-                            <span className="ins-card-main">
-                              <span className="ins-card-name">{c.name}</span>
-                              <span className="ins-card-desc">{c.desc}</span>
-                              {c.trust && <span className="ins-card-trust">{c.trust}</span>}
-                            </span>
-                            <span className="ins-card-price">
-                              {c.priceVal != null && (
-                                <span className="ins-card-price-val">{c.pricePrefix}{c.priceVal}</span>
-                              )}
-                              {c.priceSub && <span className="ins-card-price-sub">{c.priceSub}</span>}
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    {isInsured && (
-                      <div className="ins-fields">
-                        <div className="field">
-                          <label className="field-label" htmlFor="ins-value">Versicherter Wert (EUR)</label>
-                          <input
-                            id="ins-value"
-                            className={`field-input${insValueError ? " field-input-error" : ""}`}
-                            type="number" inputMode="decimal" min="0" max="20000" step="0.01"
-                            value={insuredValue}
-                            onChange={e => setInsuredValue(e.target.value)}
-                            placeholder="z. B. 500"
-                          />
-                          {insValueError && <span className="field-error">{insValueError}</span>}
-                        </div>
-                        <div className="field">
-                          <label className="field-label" htmlFor="ins-content">
-                            Inhaltsbeschreibung <span className="field-optional">(max. 35 Zeichen)</span>
-                          </label>
-                          <input
-                            id="ins-content"
-                            className="field-input"
-                            value={insContent}
-                            onChange={e => setInsContent(e.target.value)}
-                            placeholder={form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket"}
-                            maxLength={35}
-                          />
-                        </div>
-                        {/* Live-Status statt manuellem Button — der debounced Reprice
-                            läuft automatisch (Logik unverändert). */}
-                        <div className="ins-status" aria-live="polite">
-                          {repriceError ? (
-                            <span className="ins-status-error"><Icon n="info" s={14} c="currentColor" /> {repriceError}</span>
-                          ) : repricePending ? (
-                            <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
-                          ) : (repriceResult && !repriceStale) ? (
-                            <span className="ins-status-ok">✓ Preis aktualisiert</span>
-                          ) : null}
-                        </div>
-                        <p className="ins-note">
-                          Die Zusatzversicherung ist steuerfrei und wird ohne 19 % MwSt. separat ausgewiesen.
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                {/* ── Zusatzversicherung (Modul) — Sichtbarkeit über die Config ── */}
+                {modules.insurance ? (
+                  <InsuranceModule
+                    insCards={insCards}
+                    insuranceType={insuranceType}
+                    onSelectType={setInsuranceType}
+                    isInsured={isInsured}
+                    insuredValue={insuredValue}
+                    onInsuredValueChange={setInsuredValue}
+                    insContent={insContent}
+                    onInsContentChange={setInsContent}
+                    insValueError={insValueError}
+                    contentPlaceholder={insContentPlaceholder}
+                    repriceError={repriceError}
+                    repricePending={repricePending}
+                    repriceResult={repriceResult}
+                    repriceStale={repriceStale}
+                  />
                 ) : (
                   <p className="booking-ins-unavailable">
                     Für diesen Tarif ist keine Zusatzversicherung verfügbar.
@@ -537,55 +421,14 @@ export default function BookingPage() {
                       {bookingData.form.r_fullName}, {bookingData.form.r_zip} {bookingData.form.r_city}
                     </span>
                   </div>
-                  {showRepriceTotals ? (
-                    // Preisaufteilung ausschließlich aus response.totals — keine
-                    // clientseitige Addition, keine MwSt./Marge auf Versicherung.
-                    <>
-                      <div className="booking-confirm-row">
-                        <span className="text-sm text-muted">Versand (brutto)</span>
-                        <span className="text-sm font-bold booking-confirm-val">{money(rt.customerShippingGross)}</span>
-                      </div>
-                      <div className="booking-confirm-subrow">
-                        <span className="booking-confirm-subnote">
-                          Netto {money(rt.customerShippingNet)} · MwSt. 19 % {money(rt.shippingVat)}
-                        </span>
-                      </div>
-                      <div className="booking-confirm-row mb-16">
-                        <span className="text-sm text-muted">
-                          Zusatzversicherung <span className="booking-tax-chip">steuerfrei</span>
-                        </span>
-                        <span className="text-sm font-bold booking-confirm-val">{money(rt.insuranceGross)}</span>
-                      </div>
-                      <div className="booking-total-row">
-                        <span className="booking-total-label">Gesamtbetrag</span>
-                        <span className="booking-total-amount">{money(rt.customerTotalGross)}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {tariff.netPrice != null && (
-                        <div className="booking-confirm-row">
-                          <span className="text-sm text-muted">Nettobetrag</span>
-                          <span className="text-sm font-bold booking-confirm-val">{money(tariff.netPrice)}</span>
-                        </div>
-                      )}
-                      {tariff.vatAmount != null && (
-                        <div className="booking-confirm-row">
-                          <span className="text-sm text-muted">MwSt. 19%</span>
-                          <span className="text-sm font-bold booking-confirm-val">{money(tariff.vatAmount)}</span>
-                        </div>
-                      )}
-                      <div className="booking-total-row">
-                        <span className="booking-total-label">Gesamtbetrag brutto</span>
-                        <span className="booking-total-amount">{money(tariff.finalPrice)}</span>
-                      </div>
-                    </>
-                  )}
-                  <p className="booking-payment-note">
-                    inkl. 19 % MwSt. auf Versand · Zahlung: {user?.payment_term || 7} Tage auf Rechnung
-                  </p>
+                  <PriceSummaryModule
+                    showRepriceTotals={showRepriceTotals}
+                    rt={rt}
+                    tariff={tariff}
+                    paymentTerm={user?.payment_term || 7}
+                  />
                 </div>
-                {tariff.printerRequired === true && (
+                {modules.printerNote && (
                   <div className="booking-printer-note" role="note">
                     <Icon n="printer" s={15} c="currentColor" />
                     <span>
@@ -594,37 +437,19 @@ export default function BookingPage() {
                     </span>
                   </div>
                 )}
-                <label className="booking-agb-label">
-                  <input type="checkbox" className="booking-agb-checkbox" checked={agbAccepted} onChange={e => setAgbAccepted(e.target.checked)} />
-                  <span className="booking-agb-text">
-                    Ich bestätige die oben genannten Sendungsdaten und stimme den{" "}
-                    <Link to="/agb" className="booking-agb-link">Allgemeinen Geschäftsbedingungen</Link>{" "}
-                    zu. Mir ist bewusst, dass diese Bestellung verbindlich ist und eine Zahlungsverpflichtung auslöst.
-                  </span>
-                </label>
-                {error && <div className="alert alert-error">{error}</div>}
-                {conflict ? (
-                  <div className="booking-conflict-box">
-                    <p className="booking-conflict-text"><Icon n="shield" s={16} c="#1D4ED8" /> {conflict}</p>
-                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=shipments")}>
-                      Zu meinen Sendungen
-                    </button>
-                  </div>
-                ) : addressError ? (
-                  <div className="booking-conflict-box">
-                    <p className="booking-conflict-text"><Icon n="info" s={16} c="#1D4ED8" /> {addressError}</p>
-                    <button className="btn btn-primary btn-full" onClick={() => navigate("/dashboard?page=new")}>
-                      Adressen vervollständigen &amp; neu berechnen
-                    </button>
-                  </div>
-                ) : (
-                  <button className="btn btn-primary btn-full booking-book-btn" onClick={doBook} disabled={loading || !agbAccepted || insuranceBlocksBooking}>
-                    {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "Kostenpflichtig buchen"}
-                  </button>
-                )}
-                <p className="booking-email-note">
-                  Nach der Buchung erhalten Sie eine Bestätigung per E-Mail an {user?.email}
-                </p>
+                <TermsModule accepted={agbAccepted} onChange={setAgbAccepted} />
+                <BookingActionModule
+                  error={error}
+                  conflict={conflict}
+                  addressError={addressError}
+                  loading={loading}
+                  agbAccepted={agbAccepted}
+                  insuranceBlocksBooking={insuranceBlocksBooking}
+                  onBook={doBook}
+                  onNavigateShipments={() => navigate("/dashboard?page=shipments")}
+                  onNavigateNew={() => navigate("/dashboard?page=new")}
+                  userEmail={user?.email}
+                />
               </div>
             </div>
             <button className="btn btn-outline btn-full" onClick={() => setStep(1)} disabled={loading}>← Zurück zur Übersicht</button>

@@ -87,7 +87,12 @@ export function ShipmentsList({ shipments, loading }) {
                   {shipments.map((s) => (
                     <React.Fragment key={s.id}>
                       <tr>
-                        <td>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</td>
+                        <td>
+                          {s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}
+                          {s.reference_number && (
+                            <div className="text-muted mono" style={{ fontSize: 12, marginTop: 2 }}>Ref: {s.reference_number}</div>
+                          )}
+                        </td>
                         <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
                         <td className="font-bold">{money(s.price_final)}</td>
                         <td><StatusBadge status={s.status} /></td>

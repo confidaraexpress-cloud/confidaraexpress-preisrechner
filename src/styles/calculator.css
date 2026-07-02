@@ -43,6 +43,7 @@
 /* ─── Booking address grid (2-col desktop, 1-col mobile) ────────────────── */
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .field-optional { font-size: 11px; color: var(--gray400); font-weight: 400; }
+.field-hint { display: block; margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--gray400); }
 .booking-content-field { margin-bottom: 0; }
 .booking-invoice-num { color: var(--navy); }
 

@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
+import { ReferenceModule } from "../components/booking/ReferenceModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
 import { TermsModule } from "../components/booking/TermsModule";
@@ -40,8 +41,11 @@ export default function BookingPage() {
   const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
   const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
 
-  const [form, setForm] = useState({ content: "" });
+  const [form, setForm] = useState({ content: "", reference: "" });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >
+  // entfernen, hart auf 35 Zeichen kappen (optional → kein Fehlerzustand).
+  const updReference = (v) => upd("reference", v.replace(/[<>]/g, "").slice(0, 35));
 
   const tariff = bookingData?.tariff;
 
@@ -253,6 +257,9 @@ export default function BookingPage() {
           recipient:       buildParty("r"),
           weight:          bookingData?.form?.weight,
           content:         form.content,
+          // Optionale Referenznummer nur senden, wenn nach trim ein Wert
+          // vorliegt → leerer Fall lässt den bestehenden Payload unverändert.
+          ...(form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
           ...insurancePayload,
         }),
       });
@@ -361,6 +368,8 @@ export default function BookingPage() {
               content={form.content}
               onContentChange={(v) => upd("content", v)}
             />
+
+            <ReferenceModule value={form.reference} onChange={updReference} />
 
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => navigate(-1)}>← Zurück</button>

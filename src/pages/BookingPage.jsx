@@ -57,6 +57,43 @@ export default function BookingPage() {
   const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
   const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
 
+  // Auswahl-Cards (reine Darstellung): Name + Beschreibung + Trust + Preis. Alle
+  // Werte stammen aus vorhandenen read-only Feldern — keine erfundenen Daten.
+  const insTrust = insProvider ? `Versicherer: ${insProvider}` : null;
+  const insCards = [
+    {
+      id: "none",
+      name: "Keine Zusatzversicherung",
+      desc: "Nur die im Tarif enthaltene Grunddeckung.",
+      trust: insBase != null
+        ? `Grunddeckung: max. ${money(insBase)}${insProvider ? ` · ${insProvider}` : ""}`
+        : insTrust,
+      priceVal: insBase != null ? `max. ${money(insBase)}` : "inklusive",
+      priceSub: "Grunddeckung",
+      pricePrefix: "",
+      muted: true,
+    },
+    {
+      id: "standard",
+      name: "Standard",
+      desc: "Absicherung Ihres Warenwerts.",
+      trust: insTrust,
+      priceVal: insStdPrice != null ? money(insStdPrice) : null,
+      priceSub: insStdPrice != null ? "steuerfrei" : "nach Warenwert",
+      pricePrefix: insStdPrice != null ? "ab " : "",
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      desc: "Absicherung Ihres Warenwerts.",
+      trust: insTrust,
+      priceVal: insPremPrice != null ? money(insPremPrice) : null,
+      priceSub: insPremPrice != null ? "steuerfrei" : "nach Warenwert",
+      pricePrefix: insPremPrice != null ? "ab " : "",
+      hero: true,
+    },
+  ];
+
   // Clientseitige Validierung (nur Standard/Premium). contentDescription ist per
   // maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
   const insValueError =
@@ -129,11 +166,12 @@ export default function BookingPage() {
   // Laufende Requests beim Unmount abbrechen.
   useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
 
-  const onManualReprice = () => { if (insValid && isInsured) runReprice(insuranceType, valueNum, contentDescription); };
-
   // Preis-/Total-Aufteilung ausschließlich aus der Reprice-Response.
   const rt = repriceResult?.totals || null;
   const showRepriceTotals = isInsured && rt && asPos(rt.insuranceGross) != null;
+  // Dezenter Live-Status: ein Reprice ist ausstehend, sobald sich Auswahl/Wert
+  // geändert haben und die Eingabe gültig ist (der debounced Effekt feuert dann).
+  const repricePending = isInsured && (repriceLoading || (repriceStale && insValid && !repriceError));
   // Buchung bei versicherter Auswahl nur mit frischem, gültigem Reprice.
   const insuranceBlocksBooking = isInsured && (repriceLoading || repriceStale || !repriceResult || !!repriceError || !insValid);
 
@@ -389,45 +427,51 @@ export default function BookingPage() {
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
-                {/* ── Zusatzversicherung (read-only Repricing, keine tote UI) ── */}
+                {/* ── Zusatzversicherung: Auswahl-Cards + Live-Preis (Darstellung) ── */}
                 {insurable ? (
                   <div className="booking-insurance-box">
-                    <div className="booking-insurance-title">
-                      <Icon n="shield" s={16} c="currentColor" /> Zusatzversicherung
+                    <div className="ins-head">
+                      <span className="ins-head-title"><Icon n="shield" s={16} c="currentColor" /> Zusatzversicherung</span>
+                      <span className="ins-badge-taxfree">steuerfrei</span>
                     </div>
-                    <p className="booking-insurance-sub">
-                      Optional. Die Zusatzversicherung ist steuerfrei und wird separat ausgewiesen.
+                    <p className="ins-head-sub">
+                      Optional — sichern Sie den Warenwert Ihrer Sendung zusätzlich ab.
                     </p>
-                    <div className="booking-ins-options" role="radiogroup" aria-label="Zusatzversicherung wählen">
-                      {[
-                        { id: "none",     label: "Keine" },
-                        { id: "standard", label: "Standard" },
-                        { id: "premium",  label: "Premium" },
-                      ].map(opt => (
-                        <label key={opt.id} className={`booking-ins-option${insuranceType === opt.id ? " active" : ""}`}>
-                          <input
-                            type="radio"
-                            name="insuranceType"
-                            value={opt.id}
-                            checked={insuranceType === opt.id}
-                            onChange={() => setInsuranceType(opt.id)}
-                          />
-                          {opt.label}
-                        </label>
-                      ))}
-                    </div>
 
-                    {(insBase != null || insStdPrice != null || insPremPrice != null || insProvider) && (
-                      <p className="booking-ins-meta">
-                        {insBase != null && <>Grunddeckung: <strong>max. {money(insBase)}</strong> lt. Tarifdaten<br /></>}
-                        {insStdPrice != null && <>Standard ab {money(insStdPrice)}<br /></>}
-                        {insPremPrice != null && <>Premium ab {money(insPremPrice)}<br /></>}
-                        {insProvider && <>Versicherer: {insProvider}</>}
-                      </p>
-                    )}
+                    <div className="ins-cards" role="radiogroup" aria-label="Zusatzversicherung wählen">
+                      {insCards.map(c => {
+                        const selected = insuranceType === c.id;
+                        return (
+                          <label
+                            key={c.id}
+                            className={`ins-card${selected ? " ins-card--selected" : ""}${c.muted ? " ins-card--muted" : ""}${c.hero ? " ins-card--hero" : ""}`}
+                          >
+                            <input
+                              type="radio"
+                              name="insuranceType"
+                              value={c.id}
+                              checked={selected}
+                              onChange={() => setInsuranceType(c.id)}
+                            />
+                            <span className="ins-card-radio" aria-hidden="true" />
+                            <span className="ins-card-main">
+                              <span className="ins-card-name">{c.name}</span>
+                              <span className="ins-card-desc">{c.desc}</span>
+                              {c.trust && <span className="ins-card-trust">{c.trust}</span>}
+                            </span>
+                            <span className="ins-card-price">
+                              {c.priceVal != null && (
+                                <span className="ins-card-price-val">{c.pricePrefix}{c.priceVal}</span>
+                              )}
+                              {c.priceSub && <span className="ins-card-price-sub">{c.priceSub}</span>}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
 
                     {isInsured && (
-                      <div className="booking-ins-fields">
+                      <div className="ins-fields">
                         <div className="field">
                           <label className="field-label" htmlFor="ins-value">Versicherter Wert (EUR)</label>
                           <input
@@ -453,25 +497,19 @@ export default function BookingPage() {
                             maxLength={35}
                           />
                         </div>
-                        <div className="booking-ins-reprice-row">
-                          <button
-                            type="button"
-                            className="btn btn-outline btn-sm"
-                            onClick={onManualReprice}
-                            disabled={repriceLoading || !insValid}
-                          >
-                            {repriceLoading ? <><span className="spinner" /> Preis wird aktualisiert…</> : "Preis aktualisieren"}
-                          </button>
-                          {!repriceLoading && repriceResult && !repriceStale && !repriceError && (
-                            <span className="booking-ins-ok">Preis aktualisiert.</span>
-                          )}
+                        {/* Live-Status statt manuellem Button — der debounced Reprice
+                            läuft automatisch (Logik unverändert). */}
+                        <div className="ins-status" aria-live="polite">
+                          {repriceError ? (
+                            <span className="ins-status-error"><Icon n="info" s={14} c="currentColor" /> {repriceError}</span>
+                          ) : repricePending ? (
+                            <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
+                          ) : (repriceResult && !repriceStale) ? (
+                            <span className="ins-status-ok">✓ Preis aktualisiert</span>
+                          ) : null}
                         </div>
-                        {repriceError && <div className="alert alert-error">{repriceError}</div>}
-                        {!repriceError && repriceStale && !repriceLoading && insValid && (
-                          <p className="booking-ins-stale">Bitte aktualisieren Sie den Versicherungspreis.</p>
-                        )}
-                        <p className="booking-ins-note">
-                          Die Zusatzversicherung ist steuerfrei und wird nicht mit 19 % MwSt. belegt.
+                        <p className="ins-note">
+                          Die Zusatzversicherung ist steuerfrei und wird ohne 19 % MwSt. separat ausgewiesen.
                         </p>
                       </div>
                     )}
@@ -504,20 +542,19 @@ export default function BookingPage() {
                     // clientseitige Addition, keine MwSt./Marge auf Versicherung.
                     <>
                       <div className="booking-confirm-row">
-                        <span className="text-sm text-muted">Versand netto</span>
-                        <span className="text-sm font-bold booking-confirm-val">{money(rt.customerShippingNet)}</span>
-                      </div>
-                      <div className="booking-confirm-row">
-                        <span className="text-sm text-muted">MwSt. 19 % auf Versand</span>
-                        <span className="text-sm font-bold booking-confirm-val">{money(rt.shippingVat)}</span>
-                      </div>
-                      <div className="booking-confirm-row">
-                        <span className="text-sm text-muted">Versand brutto</span>
+                        <span className="text-sm text-muted">Versand (brutto)</span>
                         <span className="text-sm font-bold booking-confirm-val">{money(rt.customerShippingGross)}</span>
                       </div>
-                      <div className="booking-confirm-row">
-                        <span className="text-sm text-muted">Zusatzversicherung steuerfrei</span>
-                        <span className="text-sm font-bold booking-confirm-val booking-insurance-free">{money(rt.insuranceGross)}</span>
+                      <div className="booking-confirm-subrow">
+                        <span className="booking-confirm-subnote">
+                          Netto {money(rt.customerShippingNet)} · MwSt. 19 % {money(rt.shippingVat)}
+                        </span>
+                      </div>
+                      <div className="booking-confirm-row mb-16">
+                        <span className="text-sm text-muted">
+                          Zusatzversicherung <span className="booking-tax-chip">steuerfrei</span>
+                        </span>
+                        <span className="text-sm font-bold booking-confirm-val">{money(rt.insuranceGross)}</span>
                       </div>
                       <div className="booking-total-row">
                         <span className="booking-total-label">Gesamtbetrag</span>

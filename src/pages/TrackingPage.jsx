@@ -1,15 +1,39 @@
 import React, { useState } from "react";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
-import { dateDE, dtDE } from "../utils/formatters";
+import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 
 const ERROR_MESSAGES = {
-  400: "Bitte gib eine gültige Trackingnummer ein.",
+  400: "Bitte geben Sie eine gültige Trackingnummer ein.",
   404: TRACKING_NOT_FOUND,
-  429: "Zu viele Anfragen. Bitte versuche es später erneut.",
+  429: "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
   500: "Tracking aktuell nicht verfügbar.",
 };
+
+// Bekannte Backend-/Carrier-Status → verständliches Deutsch für die große
+// Status-Box. Unbekannte ECHTE Statuswerte werden weiterhin roh angezeigt;
+// Titel-/Metatexte wie "UPS shipment tracking" (erkennbar am Wort "tracking")
+// erscheinen nie als Hauptstatus — dann entfällt die Box, der Stufenbalken
+// kommuniziert den Zustand weiter.
+const STATUS_LABELS = {
+  success:     "Zugestellt",
+  delivered:   "Zugestellt",
+  transit:     "Unterwegs",
+  pickup:      "Sendung übernommen",
+  exception:   "Ausnahme",
+  undelivered: "Nicht zustellbar",
+  new:         "Sendung erstellt",
+};
+
+function statusLabelFor(raw) {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const s = raw.trim();
+  const known = STATUS_LABELS[s.toLowerCase()];
+  if (known) return known;
+  if (/tracking/i.test(s)) return null; // Titel/Metatext, kein Sendungsstatus
+  return s;
+}
 
 const STATUS_STEPS = [
   "Daten übermittelt",
@@ -71,14 +95,15 @@ export default function TrackingPage() {
     || result?.data?.tracking_events
     || result?.tracking_events
     || [];
-  const events = rawSteps.length > 0
+  const mapped = rawSteps.length > 0
     ? rawSteps.map((s) => ({
         description: s.type || s.description || s.status || "Ereignis",
-        day: s.date || null,
+        day: s.date ? isoDayDE(s.date) : null,
         timeText: s.time ? `${s.time} Uhr` : null,
         location: s.location || null,
-        groupKey: s.date || "Ohne Datum",
+        groupKey: s.date ? isoDayDE(s.date) : "Ohne Datum",
         timestamp: null,
+        sortTs: s.date ? Date.parse(`${s.date}T${s.time || "00:00"}`) : NaN,
       }))
     : (Array.isArray(rawEvents) ? rawEvents : []).map((ev) => {
         const ts = ev.timestamp || ev.date || ev.time || ev.datetime || null;
@@ -89,8 +114,21 @@ export default function TrackingPage() {
           location: ev.location || ev.city || ev.place || null,
           groupKey: ts ? dateDE(ts) : "Ohne Datum",
           timestamp: ts,
+          sortTs: ts ? Date.parse(ts) : NaN,
         };
       });
+
+  // Garantie „neuestes Ereignis oben": Liefert das Backend bereits absteigend,
+  // bleibt die Reihenfolge unangetastet. Nur wenn die Chronologie nachweislich
+  // aufsteigend ist (erstes Event älter als letztes), wird intern gedreht.
+  // Nicht parsebare Datumswerte → keine Annahme, keine Umsortierung.
+  const events =
+    mapped.length >= 2 &&
+    Number.isFinite(mapped[0].sortTs) &&
+    Number.isFinite(mapped[mapped.length - 1].sortTs) &&
+    mapped[0].sortTs < mapped[mapped.length - 1].sortTs
+      ? [...mapped].reverse()
+      : mapped;
 
   // carrier kann String ODER Objekt ({ code, name, image, phone, id }) sein →
   // niemals das Objekt direkt rendern (React-Crash). Nur den Namen anzeigen.
@@ -99,16 +137,19 @@ export default function TrackingPage() {
   const carrierName = typeof carrierRaw === "string" ? carrierRaw
     : (carrierRaw && typeof carrierRaw === "object" ? (carrierRaw.name || null) : null);
 
-  // Status defensiv nur als String übernehmen (kein Objekt rendern).
+  // Status defensiv nur als String übernehmen (kein Objekt rendern) und für
+  // die Anzeige übersetzen. Der Stufenbalken nutzt bevorzugt das übersetzte
+  // Label (z. B. "success" → "Zugestellt" → Stufe 4), sonst den Rohwert.
   const statusRaw = result?.tracking?.status || result?.tracking?.data?.status
     || result?.data?.status || result?.status;
   const currentStatus = typeof statusRaw === "string" ? statusRaw : null;
+  const statusLabel = statusLabelFor(currentStatus);
 
   const first = events[0];
   const lastUpdateLabel = !first ? null
     : first.timestamp ? dtDE(first.timestamp)
     : ([first.day, first.timeText].filter(Boolean).join(" ").trim() || null);
-  const stepIndex = resolveStepIndex(`${currentStatus || ""} ${first?.description || ""}`);
+  const stepIndex = resolveStepIndex(`${statusLabel || currentStatus || ""} ${first?.description || ""}`);
 
   // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten
   const dayGroups = [];
@@ -166,9 +207,9 @@ export default function TrackingPage() {
                 {lastUpdateLabel && <span className="tracking-meta-updated">Aktualisiert: {lastUpdateLabel}</span>}
               </div>
 
-              {currentStatus && (
+              {statusLabel && (
                 <div className="tracking-status-box tracking-status-box-lg">
-                  <span className="tracking-status-text">{currentStatus}</span>
+                  <span className="tracking-status-text">{statusLabel}</span>
                 </div>
               )}
 

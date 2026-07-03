@@ -1,14 +1,14 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
-import { money, dateDE, dtDE } from "../../utils/formatters";
+import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 
 const TRACKING_ERROR_MESSAGES = {
-  400: "Bitte gib eine gültige Trackingnummer ein.",
+  400: "Bitte geben Sie eine gültige Trackingnummer ein.",
   404: TRACKING_NOT_FOUND,
   429: "Zu viele Anfragen. Bitte später erneut versuchen.",
   500: "Tracking aktuell nicht verfügbar.",
@@ -125,17 +125,29 @@ export function ShipmentsList({ shipments, loading }) {
                               const trackData = tracking?.tracking?.data || {};
                               const rawSteps = Array.isArray(trackData.steps) ? trackData.steps : [];
                               const rawEvents = Array.isArray(trackData.tracking_events) ? trackData.tracking_events : [];
-                              const events = rawSteps.length > 0
+                              const mapped = rawSteps.length > 0
                                 ? rawSteps.map((s) => ({
                                     title: s.type || s.description || s.status || "Ereignis",
-                                    when: [s.date, s.time].filter(Boolean).join(" "),
+                                    when: [s.date ? isoDayDE(s.date) : null, s.time].filter(Boolean).join(" "),
                                     location: s.location || null,
+                                    sortTs: s.date ? Date.parse(`${s.date}T${s.time || "00:00"}`) : NaN,
                                   }))
                                 : rawEvents.map((ev) => ({
                                     title: ev.description || ev.status || "Ereignis",
                                     when: ev.timestamp ? dtDE(ev.timestamp) : "",
                                     location: ev.location || null,
+                                    sortTs: ev.timestamp ? Date.parse(ev.timestamp) : NaN,
                                   }));
+                              // „Neuestes zuerst" garantieren (aktiver Punkt = Index 0):
+                              // nur bei nachweislich aufsteigender Chronologie intern drehen,
+                              // sonst Backend-Reihenfolge unangetastet lassen.
+                              const events =
+                                mapped.length >= 2 &&
+                                Number.isFinite(mapped[0].sortTs) &&
+                                Number.isFinite(mapped[mapped.length - 1].sortTs) &&
+                                mapped[0].sortTs < mapped[mapped.length - 1].sortTs
+                                  ? [...mapped].reverse()
+                                  : mapped;
 
                               // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
                               // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.

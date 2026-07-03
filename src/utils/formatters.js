@@ -3,6 +3,14 @@ export const money = (v) =>
 
 export const dateDE = (d) => (d ? new Date(d).toLocaleDateString("de-DE") : "—");
 
+// Tracking-Tagesdatum: ISO "YYYY-MM-DD" (auch mit Zeitanteil) → "DD.MM.YYYY".
+// Alle anderen Formate werden unverändert durchgereicht — kein Date-Parsing,
+// damit unbekannte Werte nie zu "Invalid Date" werden.
+export const isoDayDE = (v) => {
+  const m = typeof v === "string" ? v.trim().match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : v;
+};
+
 export const dtDE = (d) => (d ? new Date(d).toLocaleString("de-DE") : "—");
 
 export const fmtDelivery = (t) => {

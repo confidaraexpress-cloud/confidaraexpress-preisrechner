@@ -1,16 +1,20 @@
-// ── Sichtbarkeits-/Modul-Konfiguration der BookingPage (Phase 1) ─────────────
-// Dünne, rein datengetriebene Schicht: entscheidet anhand BELEGTER Tarif-/
-// Backend-Felder, welche Buchungsmodule sichtbar sind. Bewusst minimal — sie
-// bildet exakt das bestehende Verhalten ab (keine geratenen Zoll-/Carrier-/
-// EU-Regeln, keine Customs-/Referenz-/Labelformat-Logik, keine neuen Backend-
-// Annahmen). Später erweiterbar, sobald das Backend die nötigen Flags liefert.
-export function getBookingModules(tariff) {
+// ── Sichtbarkeits-/Modul-Konfiguration der BookingPage ───────────────────────
+// Dünne, rein datengetriebene Schicht: entscheidet anhand BELEGTER Backend-
+// Felder, welche Buchungsmodule sichtbar sind. `tariff` = pro-Tarif-Felder,
+// `route` = routenbezogene Top-Level-Felder aus calculate-price (z. B.
+// customsRequired). Keine geratenen EU-/Carrier-Regeln — customsRequired
+// entscheidet ausschließlich das Backend.
+export function getBookingModules(tariff, route) {
   const t = tariff || {};
+  const r = route || {};
   const insuranceAvailable = t.insuranceAvailable === true || t.insuranceDetails?.isInsurable === true;
   return {
     // Zusatzversicherungs-Modul: nur wenn der Tarif Versicherung unterstützt
     // (entspricht 1:1 dem bisherigen `insurable`-Gate).
     insurance: insuranceAvailable,
+    // Zollangaben-Modul: nur wenn das Backend die Route als zollpflichtig
+    // markiert (customsRequired === true) — sonst nie (EU/DE unverändert).
+    customs: r.customsRequired === true,
     // Drucker-Hinweis: nur wenn der Tarif einen Ausdruck verlangt
     // (entspricht 1:1 dem bisherigen `tariff.printerRequired === true`).
     printerNote: t.printerRequired === true,

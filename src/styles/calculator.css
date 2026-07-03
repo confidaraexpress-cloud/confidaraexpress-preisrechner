@@ -128,6 +128,21 @@
 .booking-confirm-subnote { font-size: 11px; color: var(--gray400); }
 .booking-tax-chip { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
 
+/* ─── Zollangaben (Angaben zum Wareninhalt) ──────────────────────────────────── */
+.customs-hint { font-size: 12.5px; line-height: 1.5; color: var(--gray600); margin: 0 0 16px; }
+.customs-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin: 12px 0; background: var(--gray50); }
+.customs-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.customs-item-title { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray400); }
+.customs-item-remove { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0; font-size: 12px; font-weight: 600; color: var(--gray400); cursor: pointer; }
+.customs-item-remove:hover:not(:disabled) { color: var(--danger); }
+.customs-item-remove:disabled { opacity: 0.4; cursor: not-allowed; }
+.customs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.customs-col-full { grid-column: 1 / -1; }
+.customs-add-btn { margin-top: 4px; }
+.customs-summary { display: flex; justify-content: flex-end; gap: 12px 28px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--gray600); }
+.customs-summary-item strong { color: var(--navy); font-weight: 700; }
+@media (max-width: 600px) { .customs-grid { grid-template-columns: 1fr; } }
+
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 

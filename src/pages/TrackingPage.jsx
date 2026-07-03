@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
+import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 
 const ERROR_MESSAGES = {
@@ -41,6 +42,20 @@ const STATUS_STEPS = [
   "In Zustellung",
   "Zugestellt",
 ];
+
+// Kurze, kundenfreundliche Beschreibung je bekanntem Anzeige-Status (reine
+// Darstellung im Header — das Statusmapping selbst bleibt unverändert).
+// Unbekannte Statuswerte erhalten bewusst keine Beschreibung (kein Raten).
+const STATUS_DESCRIPTIONS = {
+  "Zugestellt":         "Ihre Sendung wurde erfolgreich zugestellt.",
+  "In Zustellung":      "Ihre Sendung befindet sich in der Zustellung.",
+  "Unterwegs":          "Ihre Sendung befindet sich aktuell im Transport.",
+  "Sendung übernommen": "Der Versanddienstleister hat Ihre Sendung übernommen.",
+  "Sendung erstellt":   "Ihre Sendungsdaten wurden übermittelt.",
+  "Daten übermittelt":  "Ihre Sendungsdaten wurden übermittelt.",
+  "Nicht zustellbar":   "Ihre Sendung konnte leider nicht zugestellt werden.",
+  "Ausnahme":           "Bei der Zustellung Ihrer Sendung ist eine Ausnahme aufgetreten.",
+};
 
 // Best-effort: ordnet den (von Carrier zu Carrier unterschiedlichen) Statustext
 // auf eine der vier Stufen ab. Bei unbekanntem Text bleibt Stufe 0 aktiv.
@@ -146,10 +161,21 @@ export default function TrackingPage() {
   const statusLabel = statusLabelFor(currentStatus);
 
   const first = events[0];
-  const lastUpdateLabel = !first ? null
-    : first.timestamp ? dtDE(first.timestamp)
-    : ([first.day, first.timeText].filter(Boolean).join(" ").trim() || null);
   const stepIndex = resolveStepIndex(`${statusLabel || currentStatus || ""} ${first?.description || ""}`);
+
+  // ── Header-Anzeigewerte (reine Darstellung, keine Logikänderung) ────────────
+  // Großer Status: übersetzter/roher Status (Mapping unverändert); fehlt er
+  // (z. B. unterdrückter Titeltext), dient die bereits berechnete Fortschritts-
+  // stufe als neutraler Fallback — so ist der Hero-Status immer vorhanden.
+  const heroStatus = statusLabel || STATUS_STEPS[stepIndex];
+  const heroDesc = STATUS_DESCRIPTIONS[heroStatus] || null;
+  // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr".
+  const heroWhen = !first ? null
+    : first.timestamp ? dtDE(first.timestamp)
+    : ([first.day, first.timeText].filter(Boolean).join(" · ") || null);
+  // Carrier nur als reiner Name ("UPS", "DHL Express", …) — resolveCarrierName
+  // normalisiert Werte wie "UPS shipment tracking" auf den bekannten Namen.
+  const carrierDisplay = carrierName ? resolveCarrierName(carrierName) : null;
 
   // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten
   const dayGroups = [];
@@ -196,22 +222,30 @@ export default function TrackingPage() {
           <div className="calc-panel mt-16">
             <div className="calc-panel-header">
               <Icon n="map" s={18} c="#1D4ED8" />
-              <h3>Sendungsverlauf</h3>
-              {carrierName && (
-                <span className="text-sm text-muted ml-auto">{carrierName}</span>
-              )}
+              <h3>Sendungsverfolgung</h3>
             </div>
             <div className="calc-panel-body">
-              <div className="tracking-meta-row">
-                <span className="tracking-meta-id">Trackingnummer: <strong>{searchedKey}</strong></span>
-                {lastUpdateLabel && <span className="tracking-meta-updated">Aktualisiert: {lastUpdateLabel}</span>}
+              {/* ── Header: Status zuerst (wichtigste Information), Meta darunter ── */}
+              <div className="tracking-hero">
+                <div className="tracking-hero-status">{heroStatus}</div>
+                {heroDesc && <p className="tracking-hero-desc">{heroDesc}</p>}
+                {heroWhen && <div className="tracking-hero-when">{heroWhen}</div>}
               </div>
 
-              {statusLabel && (
-                <div className="tracking-status-box tracking-status-box-lg">
-                  <span className="tracking-status-text">{statusLabel}</span>
+              <div className="tracking-hero-meta">
+                <div className="tracking-hero-meta-item">
+                  <span className="tracking-hero-meta-label">Trackingnummer</span>
+                  {/* .tracking-id-value: user-select all — vorbereitet für eine
+                      spätere Copy-Funktion (bewusst noch ohne Button). */}
+                  <span className="tracking-hero-meta-value tracking-id-value">{searchedKey}</span>
                 </div>
-              )}
+                {carrierDisplay && (
+                  <div className="tracking-hero-meta-item">
+                    <span className="tracking-hero-meta-label">Versanddienstleister</span>
+                    <span className="tracking-hero-meta-value">{carrierDisplay}</span>
+                  </div>
+                )}
+              </div>
 
               <div className="steps-bar mb-24">
                 {STATUS_STEPS.map((label, i) => (

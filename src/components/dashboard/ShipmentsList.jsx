@@ -119,8 +119,23 @@ export function ShipmentsList({ shipments, loading }) {
                               const number = tracking?.trackingNumber;
                               const statusLabel = labelForTrackStatus(tracking?.trackingStatus);
                               const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
-                              const events = Array.isArray(tracking?.tracking?.data?.tracking_events)
-                                ? tracking.tracking.data.tracking_events : [];
+                              // Live-Format: Events unter tracking.data.steps[]
+                              // (date/time/type/location). tracking_events[] bleibt
+                              // defensiver Fallback.
+                              const trackData = tracking?.tracking?.data || {};
+                              const rawSteps = Array.isArray(trackData.steps) ? trackData.steps : [];
+                              const rawEvents = Array.isArray(trackData.tracking_events) ? trackData.tracking_events : [];
+                              const events = rawSteps.length > 0
+                                ? rawSteps.map((s) => ({
+                                    title: s.type || s.description || s.status || "Ereignis",
+                                    when: [s.date, s.time].filter(Boolean).join(" "),
+                                    location: s.location || null,
+                                  }))
+                                : rawEvents.map((ev) => ({
+                                    title: ev.description || ev.status || "Ereignis",
+                                    when: ev.timestamp ? dtDE(ev.timestamp) : "",
+                                    location: ev.location || null,
+                                  }));
 
                               // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
                               // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.
@@ -161,8 +176,9 @@ export function ShipmentsList({ shipments, loading }) {
                                         <div key={i} className="track-event">
                                           <div className={`track-dot ${i === 0 ? "active" : "done"}`}>{i === 0 ? "●" : "✓"}</div>
                                           <div className="track-info">
-                                            <div className="track-title">{ev.description || ev.status}</div>
-                                            <div className="track-time">{ev.timestamp ? dtDE(ev.timestamp) : ""}</div>
+                                            <div className="track-title">{ev.title}</div>
+                                            {ev.when && <div className="track-time">{ev.when}</div>}
+                                            {ev.location && <div className="track-time">{ev.location}</div>}
                                           </div>
                                         </div>
                                       ))}

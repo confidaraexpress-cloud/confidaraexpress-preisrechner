@@ -63,27 +63,57 @@ export default function TrackingPage() {
     setLoading(false);
   };
 
-  // Defensiv: verschiedene mögliche API-Response-Strukturen und Feldnamen abdecken
+  // Live-Format: Events liegen unter tracking.data.steps[] (date/time/type/
+  // location). Das frühere tracking_events[] bleibt defensiver Fallback.
+  const trackData = result?.tracking?.data || result?.data || result || {};
+  const rawSteps = Array.isArray(trackData.steps) ? trackData.steps : [];
   const rawEvents = result?.tracking?.data?.tracking_events
     || result?.data?.tracking_events
     || result?.tracking_events
     || [];
-  const events = rawEvents.map((ev) => ({
-    description: ev.description || ev.status || ev.event || ev.message || "Ereignis",
-    timestamp: ev.timestamp || ev.date || ev.time || ev.datetime || null,
-    location: ev.location || ev.city || ev.place || null,
-  }));
-  const carrier = result?.tracking?.carrier || result?.tracking?.data?.carrier
-    || result?.data?.carrier || result?.carrier;
-  const currentStatus = result?.tracking?.status || result?.tracking?.data?.status
-    || result?.data?.status || result?.status;
-  const lastUpdate = events[0]?.timestamp;
-  const stepIndex = resolveStepIndex(`${currentStatus || ""} ${events[0]?.description || ""}`);
+  const events = rawSteps.length > 0
+    ? rawSteps.map((s) => ({
+        description: s.type || s.description || s.status || "Ereignis",
+        day: s.date || null,
+        timeText: s.time ? `${s.time} Uhr` : null,
+        location: s.location || null,
+        groupKey: s.date || "Ohne Datum",
+        timestamp: null,
+      }))
+    : (Array.isArray(rawEvents) ? rawEvents : []).map((ev) => {
+        const ts = ev.timestamp || ev.date || ev.time || ev.datetime || null;
+        return {
+          description: ev.description || ev.status || ev.event || ev.message || "Ereignis",
+          day: ts ? dateDE(ts) : null,
+          timeText: ts ? `${timeDE(ts)} Uhr` : null,
+          location: ev.location || ev.city || ev.place || null,
+          groupKey: ts ? dateDE(ts) : "Ohne Datum",
+          timestamp: ts,
+        };
+      });
 
-  // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten (neueste zuerst)
+  // carrier kann String ODER Objekt ({ code, name, image, phone, id }) sein →
+  // niemals das Objekt direkt rendern (React-Crash). Nur den Namen anzeigen.
+  const carrierRaw = result?.tracking?.carrier || result?.tracking?.data?.carrier
+    || result?.data?.carrier || result?.carrier;
+  const carrierName = typeof carrierRaw === "string" ? carrierRaw
+    : (carrierRaw && typeof carrierRaw === "object" ? (carrierRaw.name || null) : null);
+
+  // Status defensiv nur als String übernehmen (kein Objekt rendern).
+  const statusRaw = result?.tracking?.status || result?.tracking?.data?.status
+    || result?.data?.status || result?.status;
+  const currentStatus = typeof statusRaw === "string" ? statusRaw : null;
+
+  const first = events[0];
+  const lastUpdateLabel = !first ? null
+    : first.timestamp ? dtDE(first.timestamp)
+    : ([first.day, first.timeText].filter(Boolean).join(" ").trim() || null);
+  const stepIndex = resolveStepIndex(`${currentStatus || ""} ${first?.description || ""}`);
+
+  // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten
   const dayGroups = [];
   events.forEach((ev) => {
-    const day = ev.timestamp ? dateDE(ev.timestamp) : "Ohne Datum";
+    const day = ev.groupKey;
     const last = dayGroups[dayGroups.length - 1];
     if (last && last.day === day) last.items.push(ev);
     else dayGroups.push({ day, items: [ev] });
@@ -126,14 +156,14 @@ export default function TrackingPage() {
             <div className="calc-panel-header">
               <Icon n="map" s={18} c="#1D4ED8" />
               <h3>Sendungsverlauf</h3>
-              {carrier && (
-                <span className="text-sm text-muted ml-auto">{carrier}</span>
+              {carrierName && (
+                <span className="text-sm text-muted ml-auto">{carrierName}</span>
               )}
             </div>
             <div className="calc-panel-body">
               <div className="tracking-meta-row">
                 <span className="tracking-meta-id">Trackingnummer: <strong>{searchedKey}</strong></span>
-                {lastUpdate && <span className="tracking-meta-updated">Aktualisiert: {dtDE(lastUpdate)}</span>}
+                {lastUpdateLabel && <span className="tracking-meta-updated">Aktualisiert: {lastUpdateLabel}</span>}
               </div>
 
               {currentStatus && (
@@ -168,8 +198,8 @@ export default function TrackingPage() {
                           </div>
                           <div className="track-info">
                             <div className="track-title">{ev.description}</div>
-                            {ev.timestamp && (
-                              <div className="track-time">{timeDE(ev.timestamp)} Uhr</div>
+                            {ev.timeText && (
+                              <div className="track-time">{ev.timeText}</div>
                             )}
                             {ev.location && (
                               <div className="track-time">{ev.location}</div>

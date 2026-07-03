@@ -159,6 +159,17 @@
 .tracking-status-text { font-size: 13px; color: var(--blue2); font-weight: 600; }
 .tracking-status-box-lg { padding: 14px 16px; }
 .tracking-status-box-lg .tracking-status-text { font-size: 15px; }
+/* Tracking-Header: Status als Hero (wichtigste Info), Meta-Block darunter */
+.tracking-hero { text-align: center; padding: 6px 0 18px; }
+.tracking-hero-status { font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1.2; overflow-wrap: anywhere; }
+.tracking-hero-desc { font-size: 14px; color: var(--gray600); margin: 6px 0 0; line-height: 1.5; }
+.tracking-hero-when { font-size: 12.5px; color: var(--gray400); margin-top: 6px; }
+.tracking-hero-meta { display: flex; gap: 12px 32px; flex-wrap: wrap; padding: 14px 0; margin-bottom: 20px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.tracking-hero-meta-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tracking-hero-meta-label { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray400); }
+.tracking-hero-meta-value { font-size: 14px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+.tracking-id-value { font-family: 'DM Mono', monospace; user-select: all; }
+
 .tracking-meta-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; color: var(--gray500); }
 .tracking-meta-id strong { color: var(--navy); font-weight: 700; }
 .tracking-meta-updated { color: var(--gray400); white-space: nowrap; }

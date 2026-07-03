@@ -133,15 +133,16 @@ export default function TrackingPage() {
         };
       });
 
-  // Garantie „neuestes Ereignis oben": Liefert das Backend bereits absteigend,
-  // bleibt die Reihenfolge unangetastet. Nur wenn die Chronologie nachweislich
-  // aufsteigend ist (erstes Event älter als letztes), wird intern gedreht.
-  // Nicht parsebare Datumswerte → keine Annahme, keine Umsortierung.
+  // Garantie „chronologisch aufsteigend": ältestes Ereignis oben, neuestes
+  // unten (letzter Timeline-Punkt = aktueller Status). Liefert das Backend
+  // bereits aufsteigend, bleibt die Reihenfolge unangetastet. Nur wenn die
+  // Chronologie nachweislich absteigend ist (erstes Event neuer als letztes),
+  // wird intern gedreht. Nicht parsebare Datumswerte → keine Annahme.
   const events =
     mapped.length >= 2 &&
     Number.isFinite(mapped[0].sortTs) &&
     Number.isFinite(mapped[mapped.length - 1].sortTs) &&
-    mapped[0].sortTs < mapped[mapped.length - 1].sortTs
+    mapped[0].sortTs > mapped[mapped.length - 1].sortTs
       ? [...mapped].reverse()
       : mapped;
 
@@ -160,8 +161,10 @@ export default function TrackingPage() {
   const currentStatus = typeof statusRaw === "string" ? statusRaw : null;
   const statusLabel = statusLabelFor(currentStatus);
 
-  const first = events[0];
-  const stepIndex = resolveStepIndex(`${statusLabel || currentStatus || ""} ${first?.description || ""}`);
+  // Neuestes Ereignis = LETZTES Element der aufsteigenden Timeline. Es treibt
+  // weiterhin Hero-Status/-Zeitpunkt und den Fortschrittsbalken (unverändert).
+  const newest = events[events.length - 1];
+  const stepIndex = resolveStepIndex(`${statusLabel || currentStatus || ""} ${newest?.description || ""}`);
 
   // ── Header-Anzeigewerte (reine Darstellung, keine Logikänderung) ────────────
   // Großer Status: übersetzter/roher Status (Mapping unverändert); fehlt er
@@ -170,9 +173,9 @@ export default function TrackingPage() {
   const heroStatus = statusLabel || STATUS_STEPS[stepIndex];
   const heroDesc = STATUS_DESCRIPTIONS[heroStatus] || null;
   // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr".
-  const heroWhen = !first ? null
-    : first.timestamp ? dtDE(first.timestamp)
-    : ([first.day, first.timeText].filter(Boolean).join(" · ") || null);
+  const heroWhen = !newest ? null
+    : newest.timestamp ? dtDE(newest.timestamp)
+    : ([newest.day, newest.timeText].filter(Boolean).join(" · ") || null);
   // Carrier nur als reiner Name ("UPS", "DHL Express", …) — resolveCarrierName
   // normalisiert Werte wie "UPS shipment tracking" auf den bekannten Namen.
   const carrierDisplay = carrierName ? resolveCarrierName(carrierName) : null;
@@ -266,10 +269,14 @@ export default function TrackingPage() {
                   {dayGroups.map((group, gi) => (
                     <div key={gi} className="tracking-day-group">
                       <div className="tracking-day-label">{group.day}</div>
-                      {group.items.map((ev, i) => (
+                      {group.items.map((ev, i) => {
+                        // Aktiver Punkt = neuestes Ereignis = letztes Element
+                        // der letzten Tagesgruppe (Timeline läuft aufsteigend).
+                        const isLatest = gi === dayGroups.length - 1 && i === group.items.length - 1;
+                        return (
                         <div key={i} className="track-event">
-                          <div className={`track-dot ${gi === 0 && i === 0 ? "active" : "done"}`}>
-                            {gi === 0 && i === 0 ? "●" : "✓"}
+                          <div className={`track-dot ${isLatest ? "active" : "done"}`}>
+                            {isLatest ? "●" : "✓"}
                           </div>
                           <div className="track-info">
                             <div className="track-title">{ev.description}</div>
@@ -281,7 +288,8 @@ export default function TrackingPage() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ))}
                 </div>

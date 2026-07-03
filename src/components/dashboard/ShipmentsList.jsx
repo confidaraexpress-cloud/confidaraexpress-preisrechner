@@ -138,14 +138,15 @@ export function ShipmentsList({ shipments, loading }) {
                                     location: ev.location || null,
                                     sortTs: ev.timestamp ? Date.parse(ev.timestamp) : NaN,
                                   }));
-                              // „Neuestes zuerst" garantieren (aktiver Punkt = Index 0):
-                              // nur bei nachweislich aufsteigender Chronologie intern drehen,
+                              // Chronologisch aufsteigend garantieren (ältestes oben,
+                              // neuestes unten; aktiver Punkt = letztes Event): nur bei
+                              // nachweislich absteigender Chronologie intern drehen,
                               // sonst Backend-Reihenfolge unangetastet lassen.
                               const events =
                                 mapped.length >= 2 &&
                                 Number.isFinite(mapped[0].sortTs) &&
                                 Number.isFinite(mapped[mapped.length - 1].sortTs) &&
-                                mapped[0].sortTs < mapped[mapped.length - 1].sortTs
+                                mapped[0].sortTs > mapped[mapped.length - 1].sortTs
                                   ? [...mapped].reverse()
                                   : mapped;
 
@@ -186,7 +187,8 @@ export function ShipmentsList({ shipments, loading }) {
                                     <div className="tracking-timeline">
                                       {events.map((ev, i) => (
                                         <div key={i} className="track-event">
-                                          <div className={`track-dot ${i === 0 ? "active" : "done"}`}>{i === 0 ? "●" : "✓"}</div>
+                                          {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
+                                          <div className={`track-dot ${i === events.length - 1 ? "active" : "done"}`}>{i === events.length - 1 ? "●" : "✓"}</div>
                                           <div className="track-info">
                                             <div className="track-title">{ev.title}</div>
                                             {ev.when && <div className="track-time">{ev.when}</div>}

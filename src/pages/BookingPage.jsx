@@ -11,6 +11,7 @@ import { getBookingModules } from "../utils/bookingModules";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { ReferenceModule } from "../components/booking/ReferenceModule";
+import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
 import { TermsModule } from "../components/booking/TermsModule";
@@ -47,6 +48,18 @@ export default function BookingPage() {
   // entfernen, hart auf 35 Zeichen kappen (optional → kein Fehlerzustand).
   const updReference = (v) => upd("reference", v.replace(/[<>]/g, "").slice(0, 35));
 
+  // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
+  const makeCustomsItem = () => ({
+    description: "", value: "", quantity: "1", unitOfMeasurement: "PCS",
+    netWeight: "", originCountry: bookingData?.form?.s_country || "DE", hsTariffNumber: "",
+  });
+  const [customsExportReason, setCustomsExportReason] = useState("");
+  const [customsItems, setCustomsItems]               = useState(() => [makeCustomsItem()]);
+  const [customsShowErrors, setCustomsShowErrors]     = useState(false);
+  const addCustomsItem    = () => setCustomsItems(items => [...items, makeCustomsItem()]);
+  const removeCustomsItem = (idx) => setCustomsItems(items => items.length > 1 ? items.filter((_, i) => i !== idx) : items);
+  const updCustomsItem    = (idx, key, value) => setCustomsItems(items => items.map((it, i) => i === idx ? { ...it, [key]: value } : it));
+
   const tariff = bookingData?.tariff;
 
   // ── Versicherung: abgeleitete Werte, Validierung, Repricing ────────────────
@@ -54,10 +67,11 @@ export default function BookingPage() {
   const asPos = (v) => { const n = asNum(v); return n != null && n > 0 ? n : null; };
   const asStr = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-  // Dünne Sichtbarkeits-/Modul-Konfiguration (Phase 1): entscheidet aus belegten
-  // Tarif-Feldern, welche Buchungsmodule sichtbar sind (bildet exakt das bisherige
-  // Verhalten ab). `modules.insurance` ersetzt das frühere `insurable`-Gate.
-  const modules = getBookingModules(tariff);
+  // Dünne Sichtbarkeits-/Modul-Konfiguration: aus belegten Tarif- (pro-Tarif) und
+  // Routen-Feldern (Top-Level customsRequired) — bildet das bisherige Verhalten ab.
+  // `modules.insurance` ersetzt das frühere `insurable`-Gate, `modules.customs`
+  // schaltet die Zollangaben nur bei backendseitig zollpflichtiger Route.
+  const modules = getBookingModules(tariff, bookingData?.customs);
   const isInsured = insuranceType === "standard" || insuranceType === "premium";
   const valueNum  = asNum(insuredValue);
   // Inhaltsbeschreibung: eigenes Feld → sonst Sendungsinhalt → sonst "Paket"; hart auf 35 Zeichen.
@@ -191,6 +205,28 @@ export default function BookingPage() {
   // Platzhalter für das Inhaltsbeschreibungs-Feld (unverändert: Sendungsinhalt → "Paket").
   const insContentPlaceholder = form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket";
 
+  // ── Zoll: Validierung (nur wenn Route zollpflichtig) ────────────────────────
+  const customsRequired = modules.customs;
+  const hsRequired = tariff?.hsTariffNumberRequired === true;
+  const intPos = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0; };
+  const validateCustomsItem = (it) => {
+    const e = {};
+    if (!it.description.trim())                   e.description = "Warenbeschreibung erforderlich.";
+    if (asPos(it.value) == null)                  e.value = "Warenwert größer als 0 erforderlich.";
+    if (!intPos(it.quantity))                     e.quantity = "Ganze Zahl größer als 0.";
+    if (asPos(it.netWeight) == null)              e.netWeight = "Gewicht größer als 0 erforderlich.";
+    if (!it.originCountry)                        e.originCountry = "Ursprungsland erforderlich.";
+    if (hsRequired && !it.hsTariffNumber.trim())  e.hsTariffNumber = "HS-Code erforderlich.";
+    return e;
+  };
+  const customsItemErrors = customsItems.map(validateCustomsItem);
+  const customsExportReasonError = customsRequired && !customsExportReason ? "Bitte wählen Sie einen Exportgrund." : "";
+  const customsValid = !customsRequired || (
+    !customsExportReasonError &&
+    customsItems.length >= 1 &&
+    customsItemErrors.every(e => Object.keys(e).length === 0)
+  );
+
   const buildParty = (p) => {
     const f = bookingData?.form || {};
     return {
@@ -228,6 +264,13 @@ export default function BookingPage() {
       setError("Bitte aktualisieren Sie den Versicherungspreis, bevor Sie buchen.");
       return;
     }
+    // Bei zollpflichtiger Sendung erst buchen, wenn die Wareninhalt-Angaben
+    // vollständig sind → Fehler einblenden statt in einen 400 zu laufen.
+    if (customsRequired && !customsValid) {
+      setCustomsShowErrors(true);
+      setError("Bitte vervollständigen Sie die Angaben zum Wareninhalt.");
+      return;
+    }
     setError(""); setConflict(""); setAddressError(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
@@ -244,6 +287,25 @@ export default function BookingPage() {
             confirmedTotalGross: repriceResult?.totals?.customerTotalGross,
           }
         : { insuranceSelection: { type: "none" } };
+      // customsData NUR bei zollpflichtiger Route (Backend-Vertrag). Sonst bleibt
+      // der bestehende Payload unverändert (EU/DE ohne customsData).
+      const customsPayload = customsRequired
+        ? {
+            customsData: {
+              exportReason: customsExportReason,
+              currency: "EUR",
+              items: customsItems.map((it) => ({
+                description:   it.description.trim(),
+                quantity:      Number(it.quantity),
+                netWeight:     Number(String(it.netWeight).replace(",", ".")),
+                value:         Number(String(it.value).replace(",", ".")),
+                originCountry: it.originCountry,
+                unitOfMeasurement: it.unitOfMeasurement,
+                ...(it.hsTariffNumber.trim() ? { hsTariffNumber: it.hsTariffNumber.trim() } : {}),
+              })),
+            },
+          }
+        : {};
       const r = await apiFetch(`/api/jumingo/book`, {
         method: "POST", auth: true,
         body: JSON.stringify({
@@ -261,6 +323,7 @@ export default function BookingPage() {
           // vorliegt → leerer Fall lässt den bestehenden Payload unverändert.
           ...(form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
           ...insurancePayload,
+          ...customsPayload,
         }),
       });
       const d = await r.json();
@@ -280,13 +343,20 @@ export default function BookingPage() {
       }
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (r.status === 400 || r.status === 422) {
-        // Das Backend lehnt unvollständige/ungültige (Pickup-)Adressdaten früh
-        // mit 400/422 ab. Wir zeigen die Backend-Meldung kundentauglich an und
-        // führen klar zurück zur vollständigen Adresseingabe — kein stilles
-        // Scheitern, kein hängender Loading-State. Beim erneuten Berechnen wird
-        // eine frische shipmentId erzeugt, der alte Tarif also nie weiterverbucht.
+        const backendMsg = asStr(d.error);
+        // Bei zollpflichtiger Sendung stammt ein 400 typischerweise aus dem
+        // Customs-Gate → konkrete Backend-Meldung anzeigen und auf der Seite
+        // bleiben (NICHT in den Adressen-"neu berechnen"-Flow leiten).
+        if (customsRequired) {
+          setCustomsShowErrors(true);
+          setError(backendMsg || "Die Zollangaben sind unvollständig oder ungültig. Bitte prüfen Sie die Angaben zum Wareninhalt.");
+          setLoading(false);
+          return;
+        }
+        // Sonst wie bisher: das Backend lehnt unvollständige/ungültige Adressdaten
+        // früh ab → kundentaugliche Meldung + Rückführung zur Adresseingabe.
         setAddressError(
-          d.error ||
+          backendMsg ||
           "Die Absender- oder Empfängeradresse ist unvollständig oder ungültig. Bitte vervollständigen Sie alle Pflichtfelder und berechnen Sie die Preise neu."
         );
         setLoading(false);
@@ -370,6 +440,21 @@ export default function BookingPage() {
             />
 
             <ReferenceModule value={form.reference} onChange={updReference} />
+
+            {modules.customs && (
+              <CustomsModule
+                exportReason={customsExportReason}
+                onExportReasonChange={setCustomsExportReason}
+                items={customsItems}
+                onItemChange={updCustomsItem}
+                onAddItem={addCustomsItem}
+                onRemoveItem={removeCustomsItem}
+                hsRequired={hsRequired}
+                itemErrors={customsItemErrors}
+                exportReasonError={customsExportReasonError}
+                showErrors={customsShowErrors}
+              />
+            )}
 
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => navigate(-1)}>← Zurück</button>

@@ -148,6 +148,9 @@ export default function NewShipmentPage() {
   const [tariffs, setTariffs]       = useState([]);
   const [filtered, setFiltered]     = useState([]);
   const [shipmentId, setShipmentId] = useState(null);
+  // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
+  // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
+  const [customs, setCustoms]       = useState(null);
   const [selected, setSelected]     = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
@@ -204,6 +207,7 @@ export default function NewShipmentPage() {
     setFiltered([]);
     setSelected(null);
     setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
+    setCustoms(null);    // alte Zollentscheidung mit verwerfen
     setError("");
   };
 
@@ -307,6 +311,13 @@ export default function NewShipmentPage() {
         setCarrierFilters(prev => prev.filter(c => newCarriers.includes(c)));
       setTariffs(d.tariffs || []);
       setShipmentId(d.shipmentId);
+      // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
+      setCustoms({
+        customsRequired:   d.customsRequired === true,
+        fromCountryCode:   d.fromCountryCode ?? null,
+        toCountryCode:     d.toCountryCode ?? null,
+        exportDeclaration: d.exportDeclaration ?? null,
+      });
       setHasResults(true);
     } catch (e) {
       setError(e.message === "Keine Preise gefunden"
@@ -319,7 +330,7 @@ export default function NewShipmentPage() {
   const handleBook = (tariff) => {
     setSelected(tariff);
     if (authed) {
-      navigate("/booking", { state: { tariff, shipmentId, form } });
+      navigate("/booking", { state: { tariff, shipmentId, form, customs } });
     } else {
       navigate("/login");
     }

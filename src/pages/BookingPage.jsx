@@ -457,7 +457,7 @@ export default function BookingPage() {
             )}
 
             <div className="flex gap-12">
-              <button className="btn btn-outline" onClick={() => navigate(-1)}>← Zurück</button>
+              <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=new")}>← Zurück</button>
               <button className="btn btn-primary btn-grow" onClick={() => setStep(2)}>
                 Weiter: Buchung <Icon n="arrow" s={16} />
               </button>

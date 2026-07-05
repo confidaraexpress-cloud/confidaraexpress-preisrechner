@@ -1,6 +1,6 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
-import { money } from "../../utils/formatters";
+import { money, isoDayDE } from "../../utils/formatters";
 import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
 
 // Step 1 — „Ausgewähltes Angebot". Reine Darstellung des gewählten Tarifs,
@@ -43,6 +43,56 @@ export function OfferSummaryModule({ tariff }) {
             )}
           </div>
         </div>
+
+        {/* Termin & Ablauf — ausschließlich real vorhandene Tarif-Felder, keine
+            erfundenen Werte, keine Platzhalter bei fehlenden Angaben. */}
+        {(tariff.pickupDate || (tariff.pickupTimeFrom && tariff.pickupTimeUntil) ||
+          tariff.deliveryDate || (tariff.deliveryDateMin && tariff.deliveryDateMax) ||
+          tariff.deliveryTimeUntil || tariff.hasPickupSurcharge === true ||
+          tariff.trackingAvailable != null) && (
+          <div className="mt-12">
+            {tariff.pickupDate && (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Abholtermin</span>
+                <span className="text-sm font-bold summary-detail-val">{isoDayDE(tariff.pickupDate)}</span>
+              </div>
+            )}
+            {tariff.pickupTimeFrom && tariff.pickupTimeUntil && (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Abholzeitfenster</span>
+                <span className="text-sm font-bold summary-detail-val">{tariff.pickupTimeFrom}–{tariff.pickupTimeUntil} Uhr</span>
+              </div>
+            )}
+            {tariff.deliveryDateMin && tariff.deliveryDateMax ? (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Lieferzeitraum</span>
+                <span className="text-sm font-bold summary-detail-val">{isoDayDE(tariff.deliveryDateMin)} – {isoDayDE(tariff.deliveryDateMax)}</span>
+              </div>
+            ) : tariff.deliveryDate && (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Liefertermin</span>
+                <span className="text-sm font-bold summary-detail-val">{isoDayDE(tariff.deliveryDate)}</span>
+              </div>
+            )}
+            {tariff.deliveryTimeUntil && (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Lieferung</span>
+                <span className="text-sm font-bold summary-detail-val">
+                  {/^bis\b/i.test(tariff.deliveryTimeUntil) ? tariff.deliveryTimeUntil : `bis ${tariff.deliveryTimeUntil}`} Uhr
+                </span>
+              </div>
+            )}
+            {tariff.trackingAvailable != null && (
+              <div className="summary-detail-row summary-detail-row-border">
+                <span className="text-sm text-muted summary-detail-key">Sendungsverfolgung</span>
+                <span className="text-sm font-bold summary-detail-val">{tariff.trackingAvailable ? "Inklusive" : "Nicht verfügbar"}</span>
+              </div>
+            )}
+            {tariff.hasPickupSurcharge === true && (
+              <div className="booking-price-detail">Abholzuschlag im Tarif berücksichtigt.</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

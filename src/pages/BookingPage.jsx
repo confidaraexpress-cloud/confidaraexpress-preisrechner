@@ -9,6 +9,7 @@ import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
+import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { ReferenceModule } from "../components/booking/ReferenceModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
@@ -61,6 +62,17 @@ export default function BookingPage() {
   const updCustomsItem    = (idx, key, value) => setCustomsItems(items => items.map((it, i) => i === idx ? { ...it, [key]: value } : it));
 
   const tariff = bookingData?.tariff;
+
+  // Paketdaten (Gewicht/Maße) als fertiger Anzeige-String — einmal abgeleitet,
+  // in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung) verwendet.
+  // Kein erzwungener Platzhalter: ergibt "" (falsy), wenn beides fehlt.
+  const packageDims = bookingData?.form || {};
+  const packageInfo = [
+    packageDims.weight ? `${packageDims.weight} kg` : null,
+    (packageDims.length && packageDims.width && packageDims.height)
+      ? `${packageDims.length}×${packageDims.width}×${packageDims.height} cm`
+      : null,
+  ].filter(Boolean).join(" · ") || null;
 
   // ── Versicherung: abgeleitete Werte, Validierung, Repricing ────────────────
   const asNum = (v) => { const n = typeof v === "number" ? v : Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
@@ -432,9 +444,22 @@ export default function BookingPage() {
           <div>
             <OfferSummaryModule tariff={tariff} />
 
+            {tariff.serviceType === "dropoff" && (
+              <DropoffNoticeModule
+                tariff={tariff}
+                senderPrefill={{
+                  postCode: bookingData?.form?.s_zip,
+                  city:     bookingData?.form?.s_city,
+                  country:  bookingData?.form?.s_country,
+                  street:   bookingData?.form?.s_street,
+                }}
+              />
+            )}
+
             <ShipmentSummaryModule
               senderAddr={fmtAddr("s")}
               recipientAddr={fmtAddr("r")}
+              packageInfo={packageInfo}
               content={form.content}
               onContentChange={(v) => upd("content", v)}
             />
@@ -503,18 +528,28 @@ export default function BookingPage() {
                     <span className="text-sm text-muted">Carrier</span>
                     <span className="text-sm font-bold booking-confirm-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
                   </div>
+                  {tariff.serviceType && (
+                    <div className="booking-confirm-row">
+                      <span className="text-sm text-muted">Serviceart</span>
+                      <span className="text-sm font-bold booking-confirm-val">
+                        {tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}{tariff.shopName ? ` · ${tariff.shopName}` : ""}
+                      </span>
+                    </div>
+                  )}
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Absender</span>
-                    <span className="text-sm font-bold booking-confirm-val">
-                      {bookingData.form.s_fullName}, {bookingData.form.s_zip} {bookingData.form.s_city}
-                    </span>
+                    <span className="text-sm font-bold booking-confirm-val">{fmtAddr("s")}</span>
                   </div>
-                  <div className="booking-confirm-row mb-16">
+                  <div className={`booking-confirm-row${packageInfo ? "" : " mb-16"}`}>
                     <span className="text-sm text-muted">Empfänger</span>
-                    <span className="text-sm font-bold booking-confirm-val">
-                      {bookingData.form.r_fullName}, {bookingData.form.r_zip} {bookingData.form.r_city}
-                    </span>
+                    <span className="text-sm font-bold booking-confirm-val">{fmtAddr("r")}</span>
                   </div>
+                  {packageInfo && (
+                    <div className="booking-confirm-row mb-16">
+                      <span className="text-sm text-muted">Paket</span>
+                      <span className="text-sm font-bold booking-confirm-val">{packageInfo}</span>
+                    </div>
+                  )}
                   <PriceSummaryModule
                     showRepriceTotals={showRepriceTotals}
                     rt={rt}
@@ -557,6 +592,35 @@ export default function BookingPage() {
             <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
             <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
             <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
+
+            {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
+                Formular-State abgeleitet, keine neue Server-Anfrage. */}
+            <div className="calc-panel booking-success-recap mb-16">
+              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Ihre Buchung</h3></div>
+              <div className="calc-panel-body">
+                <div className="summary-detail-row summary-detail-row-border">
+                  <span className="text-sm text-muted summary-detail-key">Carrier</span>
+                  <span className="text-sm font-bold summary-detail-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
+                </div>
+                <div className="summary-detail-row summary-detail-row-border">
+                  <span className="text-sm text-muted summary-detail-key">Route</span>
+                  <span className="text-sm font-bold summary-detail-val">{bookingData.form.s_city} → {bookingData.form.r_city}</span>
+                </div>
+                {tariff.serviceType && (
+                  <div className="summary-detail-row summary-detail-row-border">
+                    <span className="text-sm text-muted summary-detail-key">Serviceart</span>
+                    <span className="text-sm font-bold summary-detail-val">{tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}</span>
+                  </div>
+                )}
+                <PriceSummaryModule
+                  showRepriceTotals={showRepriceTotals}
+                  rt={rt}
+                  tariff={tariff}
+                  paymentTerm={user?.payment_term || 7}
+                />
+              </div>
+            </div>
+
             {labelError && <div className="alert alert-error mb-16">{labelError}</div>}
             {booking?.shipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
@@ -565,14 +629,23 @@ export default function BookingPage() {
             )}
             {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling
                 direkt nach der Buchung (Status wäre ohnehin „new"/nicht verfügbar).
-                Der Trackingstatus erscheint später in „Meine Sendungen". */}
-            <p className="booking-tracking-note">
-              <Icon n="truck" s={15} c="currentColor" />
-              <span>
-                Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
-                Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
-              </span>
-            </p>
+                Der Trackingstatus erscheint später in „Meine Sendungen". Ist
+                trackingAvailable am Tarif explizit false, würde der optimistische
+                Text irreführen — dann ehrlicher Hinweis statt „wird vorbereitet". */}
+            {tariff.trackingAvailable === false ? (
+              <p className="booking-tracking-note">
+                <Icon n="truck" s={15} c="currentColor" />
+                <span>Für diesen Tarif ist keine Sendungsverfolgung verfügbar.</span>
+              </p>
+            ) : (
+              <p className="booking-tracking-note">
+                <Icon n="truck" s={15} c="currentColor" />
+                <span>
+                  Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
+                  Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
+                </span>
+              </p>
+            )}
             <div className="flex-center gap-12">
               <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>

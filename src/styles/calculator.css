@@ -150,6 +150,7 @@
 .booking-success-wrap { text-align: center; padding: 40px 0; }
 .booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; box-shadow: 0 0 0 6px rgba(16,185,129,0.10), 0 8px 24px rgba(16,185,129,0.22); }
 .booking-success-title { font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.booking-success-recap { text-align: left; max-width: 480px; margin: 0 auto 16px; }
 
 /* Step 3 — summary rows */
 .summary-detail-row { display: flex; justify-content: space-between; padding: 10px 0; gap: 16px; }

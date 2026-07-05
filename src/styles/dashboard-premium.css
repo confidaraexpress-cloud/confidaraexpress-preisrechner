@@ -2236,3 +2236,199 @@
   .ce-dark .dpx-aurora::after { display: none; }
   .ce-dark .dpx-main::before { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT 3.0 · ART-DIRECTION-PASS (Bühne · Lichtführung · Luxusmaterial)
+   ──────────────────────────────────────────────────────────────────────────
+   Creative-Director-Neukomposition der Atmosphäre. Rein visuell: kein
+   Markup, keine Logik, keine Struktur-/Text-/Reihenfolge-/Klickpfad-
+   Änderung. Steht als LETZTE Sektion und deklariert die atmosphäre-
+   bestimmenden Elemente vollständig neu (autoritativ), damit eine
+   kohärente Komposition entsteht statt gestapelter Teilüberschreibungen.
+
+   Leitidee: „Apple-Keynote / Luxus-Showroom" — von oben natürlich
+   belichtet. Der Hero wird zur beleuchteten Bühne; Helligkeit ist bewusst
+   ungleich verteilt (Lichtinseln statt Flächenweiß); Karten wirken wie fein
+   lackierte Premium-Flächen (Material, nicht Transparenz).
+
+   Ebenen (alle bereits vorhandenen Paint-Flächen, kein neues DOM):
+     1 Basis        .dpx-main            Pearl-Verlauf + Overhead-Aufhellung
+     2 Lichtinseln  .dpx-main::before    Bühnenpool über Hero + diffuse Inseln
+     3 Aurora       .dpx-aurora(+ ::b/a) Blau/Violett, Band, Nebelbogen
+     4 Atmosphäre   .dpx-main::after     Tageslichtschleier + Fokus-Vignette
+     5 Material     Karten               Lack-Verlauf, Lichtkante, Innenraum
+
+   Performance: große Ebenen rein aus Gradient-Falloffs (kein blur-Filter);
+   Blur nur auf der kompakten Aurora. Animation ausschließlich opacity/
+   transform (compositor-freundlich), 60–72s, kaum wahrnehmbar. Reduced-
+   Motion und Mobile schalten Bewegung am Ende dieser Sektion erneut ab
+   (da spätere Quell-Reihenfolge sonst die früheren Schutzregeln überböte).
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Luxus-Tokens: lackiertes Material, kühl-weiche Tiefe aus Licht ── */
+.app-shell.ce-dark {
+  --dpx-material:      linear-gradient(180deg, #ffffff 0%, #fdfeff 60%, #f6f9ff 100%);
+  --dpx-material-soft: linear-gradient(180deg, #fdfeff 0%, #f3f7fe 100%);
+  --dpx-surface:   var(--dpx-material);
+  --dpx-surface-2: var(--dpx-material-soft);
+
+  --dpx-hair:   rgba(66, 82, 162, 0.085);
+  --dpx-hair-2: rgba(66, 82, 162, 0.14);
+
+  /* Tiefe aus Licht, nicht aus schwereren Schatten: weit, weich, kühl, leise */
+  --dpx-shadow-rest:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(52,64,140,0.03),
+    0 1px 2px rgba(40,50,100,0.035),
+    0 14px 30px -18px rgba(48,54,120,0.13),
+    0 34px 72px -40px rgba(56,60,140,0.16);
+  --dpx-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,0.96),
+    inset 0 -1px 0 rgba(52,64,140,0.035),
+    0 2px 5px rgba(40,50,100,0.05),
+    0 22px 48px -20px rgba(48,54,120,0.18),
+    0 52px 100px -46px rgba(60,60,150,0.22);
+
+  background: #eef2fb;
+}
+
+/* ── Ebene 1 · Basis: Pearl-Verlauf, oben-mittig heller (Overhead-Licht) ── */
+.ce-dark .dpx-main {
+  background:
+    radial-gradient(132% 88% at 50% -14%, #ffffff 0%, rgba(255,255,255,0) 46%),
+    linear-gradient(170deg, #f8fbff 0%, #f1f6fe 30%, #edf2fc 56%, #eef0fb 78%, #f3f6fd 100%);
+}
+
+/* ── Ebene 2 · Lichtinseln + Bühnenlicht hinter dem Hero (::before) ── */
+.ce-dark .dpx-main::before {
+  content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(68% 40% at 36% 2%,  rgba(255,255,255,0.88), rgba(255,255,255,0) 60%),
+    radial-gradient(44% 32% at 90% 0%,  rgba(255,255,255,0.66), transparent 66%),
+    radial-gradient(48% 40% at 6% 64%,  rgba(246,250,255,0.52), transparent 72%),
+    radial-gradient(44% 36% at 97% 74%, rgba(243,244,254,0.48), transparent 72%);
+  animation: dpx-clouds-breathe 72s ease-in-out infinite;
+}
+
+/* ── Ebene 4 · Atmosphäre: Tageslichtschleier oben + weiche Fokus-Vignette ── */
+.ce-dark .dpx-main::after {
+  content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.40), rgba(255,255,255,0) 300px),
+    radial-gradient(126% 108% at 50% 22%, rgba(255,255,255,0) 60%, rgba(78,90,155,0.05) 100%);
+}
+
+/* ── Ebene 3 · Aurora: Blau + Violett, sehr groß, sehr weich, ultra-langsam ── */
+.ce-dark .dpx-aurora {
+  display:block;
+  top:-140px; left:-100px; right:-100px; height:820px;
+  background:
+    radial-gradient(ellipse 44% 52% at 12% 14%, rgba(103,90,220,0.085), transparent 72%),
+    radial-gradient(ellipse 54% 56% at 88% 2%,  rgba(58,112,246,0.11),  transparent 68%),
+    radial-gradient(ellipse 60% 48% at 52% 34%, rgba(150,170,255,0.05), transparent 74%);
+  filter: blur(72px);
+  opacity: 0.9;
+  animation: dpx-atelier-drift 60s ease-in-out infinite;
+}
+.ce-dark .dpx-aurora::before {
+  content:''; position:absolute; top:12%; left:-16%; width:132%; height:170px;
+  background: linear-gradient(100deg,
+    transparent 0%, rgba(103,90,220,0.035) 26%, rgba(58,112,246,0.08) 50%,
+    rgba(103,90,220,0.06) 68%, transparent 92%);
+  transform: rotate(-4deg); filter: blur(30px);
+}
+.ce-dark .dpx-aurora::after {
+  content:''; position:absolute; top:-38%; right:-20%; width:1200px; height:980px;
+  background: radial-gradient(ellipse at center,
+    transparent 57%, rgba(112,122,238,0.04) 59%, rgba(58,112,246,0.055) 60.5%,
+    rgba(112,122,238,0.035) 62%, transparent 65%);
+  filter: blur(4px);
+}
+
+/* ── Hero als Bühne: mehr Luft, mehr Präsenz (nur Desktop; Mobile unberührt) ── */
+@media (min-width: 861px) {
+  .ce-dark .dpx-main { padding-top: 40px; }
+}
+.ce-dark .dpx-greeting { font-size: clamp(30px, 3vw, 46px); letter-spacing: -0.008em; line-height: 1.04; }
+.ce-dark .dpx-greeting .accent { font-style: italic; }
+.ce-dark .dpx-greeting-sub { margin-top: 13px; letter-spacing: 0.015em; }
+.ce-dark .dpx-kpis { margin-top: 38px; }
+
+/* Delta-Pille nie umbrechen (z. B. „-38 %" in der schmalen 5-Spalten-KPI) */
+.ce-dark .dpx-kpi-delta { white-space: nowrap; flex-shrink: 0; }
+
+/* ── Ebene 5 · Material: Karten als lackierte Premium-Flächen ──
+   Lack-Sheen oben-links über dem Material-Verlauf; Lichtkante (::before,
+   z-index:-1 im eigenen Stacking-Context) als feiner Glanzstrich. ── */
+.ce-dark .dpx-kpi {
+  padding: 24px 24px 20px;
+  background:
+    radial-gradient(118% 78% at 0% 0%, rgba(255,255,255,0.92), rgba(255,255,255,0) 46%),
+    var(--dpx-material);
+  border-color: var(--dpx-hair);
+  box-shadow: var(--dpx-shadow-rest);
+}
+.ce-dark .dpx-kpi:hover { transform: translateY(-4px); box-shadow: var(--dpx-shadow-hover); border-color: var(--dpx-hair-2); }
+.ce-dark .dpx-kpi::before {
+  left: 20px; right: 20px;
+  background: linear-gradient(90deg,
+    transparent, rgba(58,112,246,0.22) 30%, rgba(103,90,220,0.18) 68%, transparent);
+}
+
+.ce-dark .dpx-panel {
+  background:
+    radial-gradient(86% 58% at 0% 0%, rgba(255,255,255,0.82), rgba(255,255,255,0) 42%),
+    var(--dpx-material);
+  border-color: var(--dpx-hair);
+  box-shadow: var(--dpx-shadow-rest);
+}
+.ce-dark .dpx-trust {
+  background:
+    radial-gradient(80% 60% at 0% 0%, rgba(255,255,255,0.78), rgba(255,255,255,0) 42%),
+    var(--dpx-material);
+  border-color: var(--dpx-hair);
+  box-shadow: var(--dpx-shadow-rest);
+}
+
+/* Icon-Kacheln der KPIs — etwas ruhiger, edler Innenraum */
+.ce-dark .dpx-kpi-icon { width: 38px; height: 38px; border-radius: 12px; }
+
+/* ── Buttons: gefertigt, nicht lauter (bestätigt aus Atelier, hier fixiert) ── */
+.ce-dark .dpx-btn-new {
+  background: linear-gradient(180deg, #4a80f6 0%, #2563eb 55%, #1d55d8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.34),
+    inset 0 -1px 0 rgba(12,35,100,0.24),
+    0 12px 30px -12px rgba(37,99,235,0.42),
+    0 1px 2px rgba(22,45,95,0.10);
+}
+.ce-dark .dpx-btn-new:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    inset 0 -1px 0 rgba(12,35,100,0.24),
+    0 16px 36px -12px rgba(37,99,235,0.5),
+    0 1px 2px rgba(22,45,95,0.10);
+}
+
+/* ── Ruhe wiederherstellen: Bewegung reduzieren (muss NACH den obigen
+   Animations-Deklarationen stehen, sonst überböte die Quell-Reihenfolge
+   die früheren Schutzregeln). ── */
+@media (prefers-reduced-motion: reduce) {
+  .ce-dark .dpx-aurora,
+  .ce-dark .dpx-main::before { animation: none; }
+}
+@media (max-width: 760px) {
+  .ce-dark .dpx-main { padding-top: 16px; }
+  .ce-dark .dpx-aurora {
+    top:-40px; left:-30px; right:-30px; height:380px;
+    background:
+      radial-gradient(ellipse 60% 70% at 62% 10%, rgba(58,112,246,0.10), transparent 70%),
+      radial-gradient(ellipse 50% 60% at 12% 24%, rgba(103,90,220,0.07), transparent 72%);
+    filter: blur(46px);
+    animation: none;
+  }
+  .ce-dark .dpx-aurora::before,
+  .ce-dark .dpx-aurora::after { display: none; }
+  .ce-dark .dpx-main::before { animation: none; }
+}

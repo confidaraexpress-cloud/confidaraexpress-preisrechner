@@ -1991,3 +1991,248 @@
   .ce-dark .dpx-trust::before { left: 14px; right: 14px; }
   .ce-dark .sidebar::before { width: 300px; height: 300px; top: -110px; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT 2.0 · ATELIER-VEREDELUNG (Atmosphäre · Licht · Materialität)
+   ──────────────────────────────────────────────────────────────────────────
+   Creative-Director-Pass: ausschließlich visuelle Qualität. Kein Markup,
+   keine Logik, keine Layout-/Struktur-/Textänderung. Steht als LETZTE
+   Sektion und verfeinert die akzeptierte helle Übersicht zu einem
+   atmosphärischen Raum aus fünf Ebenen:
+
+     Ebene 1  Grundfläche   — fließender Ice-White→Frost-Blue→Lavender-Verlauf
+     Ebene 2  Lichtwolken   — große diffuse weiße Lichtinseln (.dpx-main::before)
+     Ebene 3  Lichtschleifen— blau-violette Aurora, sehr langsam (.dpx-aurora)
+     Ebene 4  Atmosphäre    — Tageslicht-Schleier + feine Energy-Curve
+     Ebene 5  Material      — Karten als gefertigte Flächen (Verlauf, Licht-
+                              kante oben, minimaler Inner-Shadow unten)
+
+   Technik: reine CSS-Gradients (die großen Ebenen ohne filter:blur —
+   Weichheit steckt in den Verlaufsstops, performant beim Scrollen); Blur
+   nur auf der kompakten Aurora. Bewegung: zwei kaum wahrnehmbare Zyklen
+   (52 s Drift, 64 s Wolken-Atmung), deaktiviert bei prefers-reduced-motion
+   und auf Mobile. Alle Dekor-Layer pointer-events:none.
+
+   Stacking-Fix: .dpx-kpi/.dpx-panel/.dpx-trust erhalten z-index:0 und
+   werden damit eigene Stacking-Contexts — erst dadurch werden die im
+   Polish-Pass eingeführten z-index:-1-Lichtkanten überhaupt sichtbar
+   (vorher lagen sie hinter dem opaken Kartenhintergrund).
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Material- und Lichttokens ── */
+.app-shell.ce-dark {
+  /* Karten als gefertigte Fläche: oben Licht, unten hauchzart kühler */
+  --dpx-material:      linear-gradient(180deg, #ffffff 0%, #fdfeff 55%, #f7faff 100%);
+  --dpx-material-soft: linear-gradient(180deg, #fcfdff 0%, #f4f7fe 100%);
+  --dpx-surface:   var(--dpx-material);
+  --dpx-surface-2: var(--dpx-material-soft);
+
+  /* Haarlinien einen Hauch in Richtung Lavendel — wärmer als reines Grau */
+  --dpx-hair:   rgba(64, 78, 158, 0.09);
+  --dpx-hair-2: rgba(64, 78, 158, 0.15);
+
+  /* Dreistufig-diffuse Tiefe + eingebaute Lichtkante (inset oben weiß,
+     inset unten kühl) — wirkt automatisch überall, wo die Tokens greifen */
+  --dpx-shadow-rest:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    inset 0 -1px 0 rgba(40,60,130,0.035),
+    0 1px 2px rgba(35,45,95,0.04),
+    0 10px 24px -14px rgba(45,50,120,0.14),
+    0 24px 60px -30px rgba(50,55,130,0.16);
+  --dpx-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(40,60,130,0.04),
+    0 2px 5px rgba(35,45,95,0.06),
+    0 18px 40px -18px rgba(45,50,120,0.20),
+    0 36px 80px -34px rgba(60,60,140,0.24);
+
+  background: #f2f5fc;
+}
+
+/* ── Ebene 1 · Grundfläche: fließender, heller Farbverlauf ── */
+.ce-dark .dpx-main {
+  background: linear-gradient(168deg,
+    #fcfdff 0%, #f4f8fe 26%, #eef3fc 48%, #efeefb 72%, #f3f6fd 100%);
+}
+
+/* ── Ebene 2 · Lichtwolken: große, diffuse weiße Inseln ── */
+.ce-dark .dpx-main::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 30% at 16% 10%, rgba(255,255,255,0.85), transparent 68%),
+    radial-gradient(ellipse 50% 34% at 84% 6%,  rgba(255,255,255,0.70), transparent 70%),
+    radial-gradient(ellipse 52% 40% at 55% 55%, rgba(244,248,255,0.60), transparent 74%),
+    radial-gradient(ellipse 44% 32% at 8% 82%,  rgba(240,242,253,0.55), transparent 74%),
+    radial-gradient(ellipse 40% 30% at 94% 88%, rgba(242,241,252,0.50), transparent 74%);
+  animation: dpx-clouds-breathe 64s ease-in-out infinite;
+}
+@keyframes dpx-clouds-breathe {
+  0%, 100% { opacity: 0.88; }
+  50%      { opacity: 1; }
+}
+
+/* ── Ebene 4 · Atmosphäre: Tageslicht-Schleier oben + hauchzarte
+   Fokus-Vignette (Ränder minimal kühler → Blick ruht auf der Mitte) ── */
+.ce-dark .dpx-main::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.50), rgba(255,255,255,0) 240px),
+    radial-gradient(120% 100% at 50% 24%, rgba(255,255,255,0) 58%, rgba(76,88,150,0.045) 100%);
+}
+
+/* ── Ebene 3 · Lichtschleifen: blau-violette Aurora, größer, weicher,
+   deutlich langsamer als im Polish-Pass ── */
+.ce-dark .dpx-aurora {
+  display: block;
+  top: -120px; left: -80px; right: -80px; height: 760px;
+  background:
+    radial-gradient(ellipse 46% 52% at 14% 16%, rgba(99,86,214,0.10), transparent 70%),
+    radial-gradient(ellipse 52% 56% at 86% 4%,  rgba(56,110,245,0.12), transparent 68%),
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(140,160,255,0.06), transparent 72%);
+  filter: blur(64px);
+  opacity: 0.95;
+  animation: dpx-atelier-drift 52s ease-in-out infinite;
+}
+@keyframes dpx-atelier-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1);          opacity: 0.9;  }
+  50%      { transform: translate3d(18px, 10px, 0) scale(1.03); opacity: 1;    }
+}
+/* Weiches diagonales Lichtband — wie Licht, nicht wie Effekt */
+.ce-dark .dpx-aurora::before {
+  content: '';
+  position: absolute;
+  top: 10%; left: -15%;
+  width: 130%; height: 150px;
+  background: linear-gradient(100deg,
+    transparent 0%,
+    rgba(99,86,214,0.04) 24%,
+    rgba(56,110,245,0.09) 48%,
+    rgba(99,86,214,0.07) 66%,
+    transparent 90%);
+  transform: rotate(-3.5deg);
+  filter: blur(26px);
+}
+/* Feine Energy-Curve: ein kaum sichtbarer Lichtbogen oben rechts */
+.ce-dark .dpx-aurora::after {
+  content: '';
+  position: absolute;
+  top: -34%; right: -18%;
+  width: 1100px; height: 900px;
+  background: radial-gradient(ellipse at center,
+    transparent 56%,
+    rgba(110,120,235,0.045) 58.5%,
+    rgba(56,110,245,0.065) 60%,
+    rgba(110,120,235,0.04) 61.5%,
+    transparent 64%);
+  filter: blur(3px);
+}
+
+/* ── Ebene 5 · Materialität der Karten ── */
+/* Eigener Stacking-Context (z-index:0): macht die z-index:-1-Lichtkanten
+   des Polish-Passes erstmals sichtbar und hält sie unter dem Inhalt. */
+.ce-dark .dpx-kpi,
+.ce-dark .dpx-panel,
+.ce-dark .dpx-trust { z-index: 0; }
+
+/* Lichtkanten dezenter — in der weicheren Welt reicht ein Flüstern */
+.ce-dark .dpx-kpi::before {
+  background: linear-gradient(90deg,
+    transparent, rgba(37,99,235,0.26) 30%, rgba(91,79,206,0.22) 68%, transparent);
+}
+.ce-dark .dpx-panel::before,
+.ce-dark .dpx-trust::before {
+  background: linear-gradient(90deg,
+    transparent, rgba(37,99,235,0.20) 32%, rgba(91,79,206,0.17) 66%, transparent);
+}
+
+/* Kachel-Hover auf die Materialsprache abgestimmt (statt hartem #fff) */
+.ce-dark .dpx-carrier-tile:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+}
+.ce-dark .dpx-why-card:hover {
+  background: linear-gradient(180deg, #fdfeff 0%, #f2f6fe 100%);
+}
+
+/* ── Typografische Veredelung (nur Präsentation, keine Textänderung) ── */
+.ce-dark .dpx-greeting { font-size: clamp(30px, 2.6vw, 39px); letter-spacing: -0.005em; }
+.ce-dark .dpx-greeting .accent { font-style: italic; }   /* Cormorant-Kursive: die Signatur */
+.ce-dark .dpx-greeting-sub { letter-spacing: 0.015em; }
+
+/* KPI-Beischriften als stille Kapitälchen-Zeile — die Zahl wird zum Star */
+.ce-dark .dpx-kpi-label {
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--dpx-ink-3);
+}
+.ce-dark .dpx-kpi-value { margin-top: 16px; }
+
+/* ── Buttons: gefertigt statt lauter ── */
+.ce-dark .dpx-btn-new {
+  background: linear-gradient(180deg, #4a80f6 0%, #2563eb 55%, #1d55d8 100%);
+  letter-spacing: 0.004em;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.32),
+    inset 0 -1px 0 rgba(12,35,100,0.22),
+    0 12px 28px -12px rgba(37,99,235,0.45),
+    0 1px 2px rgba(22,45,95,0.10);
+}
+.ce-dark .dpx-btn-new:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.38),
+    inset 0 -1px 0 rgba(12,35,100,0.22),
+    0 16px 34px -12px rgba(37,99,235,0.52),
+    0 1px 2px rgba(22,45,95,0.10);
+}
+.ce-dark .dpx-btn-compare {
+  background: var(--dpx-material);
+  border-color: rgba(58,92,200,0.20);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 1px 2px rgba(35,45,95,0.05),
+    0 8px 18px -12px rgba(45,60,140,0.25);
+}
+.ce-dark .dpx-btn-compare:hover {
+  transform: translateY(-1px);
+  border-color: rgba(58,92,200,0.34);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 2px 4px rgba(35,45,95,0.06),
+    0 14px 28px -14px rgba(45,60,140,0.32);
+}
+
+/* ── Sidebar: leiser Lavendel-Grund unten (Raumabschluss) ── */
+.ce-dark .sidebar::after {
+  content: '';
+  position: absolute;
+  bottom: -140px; left: 50%; transform: translateX(-50%);
+  width: 380px; height: 380px;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(91,79,206,0.07) 0%, rgba(56,110,245,0.04) 45%, transparent 72%);
+  filter: blur(46px);
+  pointer-events: none;
+}
+
+/* ── Ruhe: Bewegung reduzieren, wo gewünscht oder nötig ── */
+@media (prefers-reduced-motion: reduce) {
+  .ce-dark .dpx-aurora,
+  .ce-dark .dpx-main::before { animation: none; }
+}
+@media (max-width: 760px) {
+  .ce-dark .dpx-aurora {
+    top: -40px; left: -30px; right: -30px; height: 380px;
+    background:
+      radial-gradient(ellipse 60% 70% at 62% 10%, rgba(56,110,245,0.10), transparent 70%),
+      radial-gradient(ellipse 50% 60% at 12% 24%, rgba(99,86,214,0.07), transparent 72%);
+    filter: blur(44px);
+    animation: none;
+  }
+  .ce-dark .dpx-aurora::before,
+  .ce-dark .dpx-aurora::after { display: none; }
+  .ce-dark .dpx-main::before { animation: none; }
+}

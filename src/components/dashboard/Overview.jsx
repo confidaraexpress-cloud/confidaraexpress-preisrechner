@@ -8,7 +8,7 @@ import dpdLogo        from "../../assets/carriers/dpd.svg";
 import glsLogo        from "../../assets/carriers/gls.svg";
 import fedexLogo      from "../../assets/carriers/fedex.svg";
 import tntLogo        from "../../assets/carriers/tnt.svg";
-import transOFlexLogo from "../../assets/carriers/trans-o-flex-light.svg";
+import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
 
 /* ── Design-Handoff: neu erstellte Marken-SVGs (verbatim übernommen) ──────── */
 
@@ -51,8 +51,8 @@ function DerKurierLogo() {
         <path d="M8.4 11.2 13 16l-4.6 4.8" />
         <path d="M14 11.2 18.6 16 14 20.8" opacity="0.6" />
       </g>
-      <text x="34" y="14" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="700" fontSize="10.5" letterSpacing="0.04em" fill="#93A6C6">Der</text>
-      <text x="34" y="27.6" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="800" fontSize="15" letterSpacing="-0.01em" fill="#EEF3FB">Kurier</text>
+      <text x="34" y="14" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="700" fontSize="10.5" letterSpacing="0.04em" fill="#5D6B85">Der</text>
+      <text x="34" y="27.6" fontFamily="'Syne', 'DM Sans', sans-serif" fontWeight="800" fontSize="15" letterSpacing="-0.01em" fill="#1E2A44">Kurier</text>
     </svg>
   );
 }
@@ -213,15 +213,13 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
         <div className="dpx-kpis">
           {KPIS.map((kpi) => (
             <div className={"dpx-kpi k-" + kpi.tone} key={kpi.key}>
-              <div className="dpx-kpi-head">
-                <div className="dpx-kpi-badge">
-                  {kpi.icon ? <Icon n={kpi.icon} s={28} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
-                </div>
-                <div className="dpx-kpi-body">
-                  <div className="dpx-kpi-label">{kpi.label}</div>
-                  <div className="dpx-kpi-value"><KpiValue v={loading ? "—" : kpi.value} /></div>
-                </div>
+              <div className="dpx-kpi-top">
+                <span className="dpx-kpi-icon">
+                  {kpi.icon ? <Icon n={kpi.icon} s={20} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
+                </span>
+                <span className="dpx-kpi-label">{kpi.label}</span>
               </div>
+              <div className="dpx-kpi-value"><KpiValue v={loading ? "—" : kpi.value} /></div>
               <div className="dpx-kpi-foot">
                 {loading ? (
                   <span className="dpx-foot-label">Wird geladen…</span>
@@ -287,7 +285,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
           </div>
           <div className="dpx-carrier-cta">
             <button type="button" className="dpx-btn-compare" onClick={() => navigate("/calculator")}>
-              Preise vergleichen<Icon n="arrowRight" s={18} c="#cfe0ff" />
+              Preise vergleichen<Icon n="arrowRight" s={18} />
             </button>
           </div>
         </section>

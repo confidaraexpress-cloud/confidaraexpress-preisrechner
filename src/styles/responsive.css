@@ -19,12 +19,9 @@
   .auth-aurora-sun { width: 600px; height: 600px; top: -200px; right: -180px; }
   .auth-aurora-wave { width: 700px; height: 480px; bottom: -80px; left: -120px; }
 
-  /* Dashboard */
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.sidebar-open { transform: translateX(0); }
-  .sidebar-close-btn { display: flex; }
-  .main-content { margin-left: 0; }
-  .mobile-topbar { display: flex; }
+  /* Dashboard — Sidebar-Drawer-Schwelle liegt bei 860px (siehe
+     dashboard-premium.css), damit die (jetzt einheitliche) Sidebar auf
+     jeder Seite bei derselben Breite kollabiert, nicht erst hier. */
   .page-header { display: none; }
   .page-body { padding: 14px; }
 

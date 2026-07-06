@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
@@ -35,7 +35,11 @@ export function OffersList({
   vatMode, onVatToggle,
   senderPrefill,
 }) {
-  const [filterOpen, setFilterOpen] = useState(false);
+  // Aktives Filter-Dropdown: "price" | "days" | null. Es ist immer höchstens
+  // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
+  // kombinierten Inline-Panel-Toggle durch rechts angedockte JUMiNGO-Dropdowns.
+  const [openFilter, setOpenFilter] = useState(null);
+  const filterZoneRef = useRef(null);
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
 
   // Slider-Obergrenze aus der ungefilterten Tarifliste ableiten, damit der
@@ -65,6 +69,30 @@ export function OffersList({
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
   const showTrust  = hasResults && !loading && tariffs.length > 0;
+
+  // Kurzlabel des aktiven Lieferzeit-Filters für Chip + Dropdown-Status.
+  const daysChipLabel = maxDays ? (maxDays === "1" ? "bis 1 Tag" : `bis ${maxDays} Tage`) : "";
+
+  // Offenes Dropdown bei Klick außerhalb der Filterzone bzw. per Escape schließen.
+  useEffect(() => {
+    if (!openFilter) return;
+    const onDown = (e) => {
+      if (filterZoneRef.current && !filterZoneRef.current.contains(e.target)) setOpenFilter(null);
+    };
+    const onEsc = (e) => { if (e.key === "Escape") setOpenFilter(null); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [openFilter]);
+
+  // Wird die Leiste ausgeblendet (Laden/Neuberechnung), offenes Dropdown
+  // schließen, damit es nach dem Remount nicht ungewollt sichtbar bleibt.
+  useEffect(() => {
+    if (!showSortBar) setOpenFilter(null);
+  }, [showSortBar]);
 
   return (
     <div className="offers-section">
@@ -97,76 +125,93 @@ export function OffersList({
         </div>
       </div>
 
-      {/* ── Sort + Filter Bar ── */}
+      {/* ── Sortier- + Filterzone (JUMiNGO-artige Filter-Chips mit rechts
+             angedockten Dropdowns). Die Zone umschließt Leiste UND Dropdowns,
+             damit die Dropdowns nicht vom horizontal scrollenden Bar-Container
+             (Mobile) abgeschnitten werden. ── */}
       {showSortBar && (
-        <div className="offers-sort-bar">
-          <span className="offers-sort-label">Sortierung</span>
-          {SORT_OPTIONS.map(o => (
+        <div className="offers-filter-zone" ref={filterZoneRef}>
+          <div className="offers-sort-bar">
+            <span className="offers-sort-label">Sortierung</span>
+            {SORT_OPTIONS.map(o => (
+              <button
+                key={o.id}
+                className={`offers-sort-btn${sortMode === o.id ? " active" : ""}`}
+                onClick={() => onSortChange(o.id)}
+                type="button"
+              >
+                {o.label}
+              </button>
+            ))}
+            <div className="offers-sort-sep" />
+
+            {/* Filterpunkt „Preis" → rechts angedocktes Dropdown */}
             <button
-              key={o.id}
-              className={`offers-sort-btn${sortMode === o.id ? " active" : ""}`}
-              onClick={() => onSortChange(o.id)}
+              className={`offers-sort-btn offers-filter-chip${maxPrice ? " has-filter" : ""}${openFilter === "price" ? " open" : ""}`}
+              onClick={() => setOpenFilter(o => (o === "price" ? null : "price"))}
               type="button"
+              aria-haspopup="dialog"
+              aria-expanded={openFilter === "price"}
             >
-              {o.label}
-            </button>
-          ))}
-          <div className="offers-sort-sep" />
-          <button
-            className={`offers-sort-btn offers-filter-btn${hasFilter ? " has-filter" : ""}`}
-            onClick={() => setFilterOpen(o => !o)}
-            type="button"
-          >
-            <Icon n="filter" s={12} c="currentColor" />
-            Filter
-          </button>
-          {hasFilter && (
-            <>
-              <span className="offers-filter-active-badge">
-                <span className="offers-filter-active-dot" />
-                {activeFilterCount > 1 ? `${activeFilterCount} Filter aktiv` : "Filter aktiv"}
+              <Icon n="filter" s={12} c="currentColor" />
+              {maxPrice ? `Preis · bis ${money(Number(maxPrice))}` : "Preis"}
+              <span className="offers-filter-chip-caret" aria-hidden="true">
+                <Icon n="chevron" s={13} c="currentColor" />
               </span>
+            </button>
+
+            {/* Filterpunkt „Lieferzeit" (bestehender max_days-Filter, gleiche Logik) */}
+            <button
+              className={`offers-sort-btn offers-filter-chip${maxDays ? " has-filter" : ""}${openFilter === "days" ? " open" : ""}`}
+              onClick={() => setOpenFilter(o => (o === "days" ? null : "days"))}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={openFilter === "days"}
+            >
+              <Icon n="clock" s={12} c="currentColor" />
+              {maxDays ? `Lieferzeit · ${daysChipLabel}` : "Lieferzeit"}
+              <span className="offers-filter-chip-caret" aria-hidden="true">
+                <Icon n="chevron" s={13} c="currentColor" />
+              </span>
+            </button>
+
+            {hasFilter && (
               <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
                 <Icon n="x" s={11} c="currentColor" />
-                Filter zurücksetzen
+                Zurücksetzen
               </button>
-            </>
-          )}
-          <div className="offers-sort-sep" />
-          <div className="offers-vat-toggle" role="group" aria-label="Preisdarstellung">
-            <button
-              className={`offers-sort-btn${vatMode !== "gross" ? " active" : ""}`}
-              onClick={() => onVatToggle("net")}
-              type="button"
-            >
-              exkl. MwSt.
-            </button>
-            <button
-              className={`offers-sort-btn${vatMode === "gross" ? " active" : ""}`}
-              onClick={() => onVatToggle("gross")}
-              type="button"
-            >
-              inkl. MwSt.
-            </button>
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* ── Filter Panel ── */}
-      {showSortBar && filterOpen && (
-        <div className="offers-filter-panel">
-          <div className="offers-filter-panel-head">
-            <h4 className="offers-filter-panel-title">Filter verfeinern</h4>
-            <p className="offers-filter-panel-sub">Grenzen Sie die angezeigten Tarife weiter ein</p>
+            <div className="offers-sort-sep" />
+            <div className="offers-vat-toggle" role="group" aria-label="Preisdarstellung">
+              <button
+                className={`offers-sort-btn${vatMode !== "gross" ? " active" : ""}`}
+                onClick={() => onVatToggle("net")}
+                type="button"
+              >
+                exkl. MwSt.
+              </button>
+              <button
+                className={`offers-sort-btn${vatMode === "gross" ? " active" : ""}`}
+                onClick={() => onVatToggle("gross")}
+                type="button"
+              >
+                inkl. MwSt.
+              </button>
+            </div>
           </div>
-          <div className="field-row field-row-2 offers-filter-row">
-            <div className="offers-filter-card offers-price-filter">
-              <div className="offers-price-filter-head">
-                <label className="field-label offers-price-filter-label">Maximaler Preis</label>
-                <span className="offers-price-filter-value">
-                  {maxPrice ? `bis ${money(Number(maxPrice))} netto` : "Alle Preise"}
+
+          {/* ── Preis-Dropdown: filtert live nach netPrice über den bestehenden
+                 max_price-Mechanismus (kein API-Request). Am Maximum kein Filter. ── */}
+          {openFilter === "price" && (
+            <div className="offers-filter-dropdown offers-price-dropdown" role="dialog" aria-label="Preisfilter">
+              <div className="offers-filter-dd-head">
+                <span className="offers-filter-dd-title">Preis</span>
+                <span className={`offers-filter-dd-status${maxPrice ? " is-set" : ""}`}>
+                  {maxPrice ? `bis ${money(Number(maxPrice))}` : "Beliebiger Preis"}
                 </span>
               </div>
+              <p className="offers-filter-dd-sub">Bitte wählen Sie Ihren max. Preis</p>
               <input
                 type="range"
                 className="offers-price-slider"
@@ -176,19 +221,32 @@ export function OffersList({
                 value={priceSliderValue}
                 onChange={handlePriceSlider}
                 disabled={!hasPriceRange}
+                aria-label="Maximaler Preis"
               />
               <div className="offers-price-scale">
                 <span>0 €</span>
                 <span>{hasPriceRange ? money(priceSliderMax) : "—"}</span>
               </div>
+              {maxPrice && (
+                <div className="offers-filter-dd-foot">
+                  <button className="offers-filter-dd-clear" onClick={() => onMaxPriceChange("")} type="button">
+                    Preisfilter zurücksetzen
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="offers-filter-card offers-days-filter">
-              <div className="offers-days-filter-head">
-                <label className="field-label offers-days-filter-label">Späteste Lieferzeit</label>
-                <span className="offers-days-filter-value">
-                  {maxDays ? (maxDays === "1" ? "bis 1 Tag" : `bis ${maxDays} Tage`) : "Alle Lieferzeiten"}
+          )}
+
+          {/* ── Lieferzeit-Dropdown (bestehende Schnellauswahl, unveränderte Logik) ── */}
+          {openFilter === "days" && (
+            <div className="offers-filter-dropdown offers-days-dropdown" role="dialog" aria-label="Lieferzeitfilter">
+              <div className="offers-filter-dd-head">
+                <span className="offers-filter-dd-title">Späteste Lieferzeit</span>
+                <span className={`offers-filter-dd-status${maxDays ? " is-set" : ""}`}>
+                  {maxDays ? daysChipLabel : "Alle Lieferzeiten"}
                 </span>
               </div>
+              <p className="offers-filter-dd-sub">Nur Angebote bis zur gewählten Laufzeit anzeigen</p>
               <div className="offers-days-quick-group" role="group" aria-label="Späteste Lieferzeit">
                 {DAYS_QUICK_OPTIONS.map(opt => (
                   <button
@@ -202,7 +260,7 @@ export function OffersList({
                 ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

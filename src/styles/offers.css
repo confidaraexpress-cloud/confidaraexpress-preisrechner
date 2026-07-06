@@ -59,17 +59,13 @@
 .offers-sort-btn:hover { border-color: var(--blue3); color: var(--navy); background: #f8faff; }
 .offers-sort-btn.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
 .offers-sort-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
-.offers-filter-btn { display: inline-flex; align-items: center; gap: 5px; }
-.offers-filter-btn.has-filter { border-color: var(--blue2); color: var(--blue2); background: #eff6ff; }
-
-.offers-filter-active-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: var(--radius-full);
-  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
-  color: var(--blue2); background: #eff6ff; border: 1.5px solid rgba(29,78,216,0.22);
-  white-space: nowrap;
-}
-.offers-filter-active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue2); flex-shrink: 0; }
+/* Filter-Chips „Preis" / „Lieferzeit" — Basis ist .offers-sort-btn, ergänzt um
+   Dropdown-Caret + aktive/geöffnete Zustände. */
+.offers-filter-chip { display: inline-flex; align-items: center; gap: 6px; }
+.offers-filter-chip.has-filter { border-color: var(--blue2); color: var(--blue2); background: #eff6ff; }
+.offers-filter-chip.open { border-color: var(--blue); color: var(--blue2); background: #eff6ff; }
+.offers-filter-chip-caret { display: inline-flex; align-items: center; margin-left: -1px; transition: transform 0.2s ease; }
+.offers-filter-chip.open .offers-filter-chip-caret { transform: rotate(180deg); }
 .offers-filter-reset-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 13px; border-radius: var(--radius-full);
@@ -81,33 +77,41 @@
 
 .offers-vat-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
-.offers-filter-panel {
-  padding: 18px 20px 20px;
-  background: var(--gray50); border-bottom: 1px solid var(--border);
-}
-.offers-filter-panel-head { margin-bottom: 14px; }
-.offers-filter-panel-title {
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
-  color: var(--navy); margin: 0 0 2px;
-}
-.offers-filter-panel-sub { font-size: 12px; color: var(--gray500); margin: 0; }
-.offers-filter-row { gap: 14px; }
+/* ─── Filter-Zone + rechts angedockte Dropdowns (JUMiNGO-artig) ────────────── */
+/* Die Zone umschließt Sortierleiste UND Dropdowns. Die Leiste selbst scrollt
+   auf Mobile horizontal (overflow) — die Dropdowns hängen daher bewusst an der
+   Zone statt am Chip, damit sie nicht vom Scroll-Container abgeschnitten werden.
+   Desktop: absolut, rechts angedockt über den Angeboten. Mobile: Block unter
+   der Leiste (siehe Media-Query < 768px). */
+.offers-filter-zone { position: relative; }
 
-/* Shared "soft card" box for each filter block — consolidates the formerly
-   duplicated layout rules from .offers-price-filter / .offers-days-filter. */
-.offers-filter-card {
-  display: flex; flex-direction: column; gap: 10px;
-  background: white; border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px 18px;
-  box-shadow: var(--shadow-sm);
+.offers-filter-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 20px; z-index: 40;
+  width: 320px; max-width: calc(100% - 40px);
+  background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); padding: 18px 18px 16px;
+  animation: offers-dd-in 0.16s ease;
 }
+@keyframes offers-dd-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.offers-filter-dd-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.offers-filter-dd-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy); }
+.offers-filter-dd-status {
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  color: var(--gray400); white-space: nowrap;
+}
+.offers-filter-dd-status.is-set { color: var(--blue2); font-weight: 700; }
+.offers-filter-dd-sub { font-size: 12.5px; color: var(--gray500); margin: 4px 0 16px; }
+.offers-filter-dd-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.offers-filter-dd-clear {
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--blue2);
+}
+.offers-filter-dd-clear:hover { text-decoration: underline; }
+.offers-days-dropdown .offers-days-quick-group { margin-top: 2px; }
 
-.offers-price-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.offers-price-filter-label { margin-bottom: 0; }
-.offers-price-filter-value {
-  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
-  color: var(--blue2); white-space: nowrap;
-}
 .offers-price-slider {
   width: 100%; height: 8px; border-radius: var(--radius-full);
   background: var(--gray100); accent-color: var(--blue);
@@ -120,12 +124,8 @@
 }
 .offers-price-slider:disabled ~ .offers-price-scale { opacity: 0.5; }
 
-.offers-days-filter-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.offers-days-filter-label { margin-bottom: 0; }
-.offers-days-filter-value {
-  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
-  color: var(--blue2); white-space: nowrap;
-}
+/* (Frühere .offers-days-filter-* Label-Regeln entfernt — der Lieferzeit-Filter
+   nutzt jetzt den gemeinsamen Dropdown-Kopf .offers-filter-dd-*.) */
 .offers-days-quick-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .offers-days-quick-group .offers-sort-btn {
   flex: 1 1 auto; min-width: 64px; padding: 7px 12px; text-align: center;
@@ -525,7 +525,7 @@
   .offers-sort-bar { padding: 10px 14px; gap: 5px; overflow-x: auto; flex-wrap: nowrap; }
   .offers-sort-label { display: none; }
   .offers-sort-btn { font-size: 11px; padding: 5px 10px; }
-  .offers-filter-active-badge, .offers-filter-reset-btn { font-size: 11px; padding: 5px 10px; }
+  .offers-filter-reset-btn { font-size: 11px; padding: 5px 10px; }
   .offers-body { padding: 14px; }
 
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
@@ -574,9 +574,14 @@
   .offers-trust-item:last-child { border-bottom: none; }
   .offers-tipp { padding: 14px 16px; }
   .offers-recalc { padding: 8px 14px 4px; }
-  .offers-filter-panel { padding: 14px 14px 16px; }
-  .offers-filter-row { gap: 12px; }
-  .offers-filter-card { padding: 14px 16px; }
+  /* Dropdowns auf Mobile als Block sauber unter der Leiste (die Leiste selbst
+     scrollt horizontal — Zone/Dropdown tun das nicht, daher kein Clipping). */
+  .offers-filter-dropdown {
+    position: static; width: auto; max-width: none; right: auto; top: auto;
+    border-radius: 0; border-left: none; border-right: none; border-top: none;
+    border-bottom: 1px solid var(--border); box-shadow: none; animation: none;
+    padding: 16px 14px; background: var(--gray50);
+  }
 }
 
 @media (max-width: 480px) {

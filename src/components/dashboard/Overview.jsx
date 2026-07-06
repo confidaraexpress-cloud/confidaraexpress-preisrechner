@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
+import { computeKpis } from "../../utils/kpis";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
@@ -115,52 +116,9 @@ const TRUST = [
   { tone: "violet", icon: "star",        title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
 ];
 
-// Aktiv-Set (verbindlich). in_transit zählt bewusst mit.
-const ACTIVE_STATUSES = ["approved", "active", "pending", "booked", "label_ready", "in_transit"];
-const INACTIVE_STATUSES = ["delivered", "blocked", "draft", "cancelled", "canceled", "delayed"];
-const KNOWN_STATUSES = new Set([...ACTIVE_STATUSES, ...INACTIVE_STATUSES]);
-
-// Alle KPI-Werte aus echten, bereits geladenen Sendungsdaten — keine Mock-Zahlen.
-function computeKpis(shipments) {
-  const list = Array.isArray(shipments) ? shipments : [];
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const startThis = new Date(y, m, 1);
-  const startNext = new Date(y, m + 1, 1);
-  const startPrev = new Date(y, m - 1, 1);
-  const DAY = 86_400_000;
-
-  let active = 0, inTransit = 0, delivered = 0, delayed = 0, new24 = 0;
-  let hasCreatedAt = false;
-  let spendThis = 0, spendPrev = 0;
-
-  for (const s of list) {
-    const st = s?.status;
-    if (ACTIVE_STATUSES.includes(st)) active++;
-    if (st === "in_transit") inTransit++;
-    if (st === "delivered") delivered++;
-    if (st === "delayed") delayed++;
-
-    if (s?.created_at) {
-      const t = new Date(s.created_at).getTime();
-      if (!Number.isNaN(t)) {
-        hasCreatedAt = true;
-        const diff = now.getTime() - t;
-        if (diff >= 0 && diff <= DAY) new24++;
-        const amt = Number(s.price_final);
-        if (Number.isFinite(amt) && amt > 0) {
-          const d = new Date(t);
-          if (d >= startThis && d < startNext) spendThis += amt;
-          else if (d >= startPrev && d < startThis) spendPrev += amt;
-        }
-      }
-    }
-  }
-
-  const deltaPct = spendPrev > 0 ? Math.round(((spendThis - spendPrev) / spendPrev) * 100) : null;
-  return { active, inTransit, delivered, delayed, new24, hasCreatedAt, spendThis, spendPrev, deltaPct, hasSpend: spendThis > 0 };
-}
+// Die KPI-Berechnung (inkl. Tracking-Modell: aktiv/in Zustellung/zugestellt/
+// verzögert + Ausgaben) liegt rein und testbar in ../../utils/kpis. Overview
+// rendert nur das Ergebnis — keine Mock-Zahlen, keine Logik hier.
 
 export function Overview({ user, shipments, loading, onNewShipment, onProfile }) {
   const navigate = useNavigate();

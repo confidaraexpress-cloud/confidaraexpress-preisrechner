@@ -5,11 +5,10 @@
    sodass Sendungen, Rechnungen, Profil und Neue Sendung inhaltlich (Light-
    Theme) unberührt bleiben. Ausnahme: die Sidebar — die ist bewusst KEIN
    Teil des Übersicht-Themes mehr, sondern globales Chrome (siehe Sektion
-   „SIDEBAR (Standard, alle Dashboard-Seiten)" weiter unten) und rendert
-   überall identisch. --font-heading/--font-sans sind deshalb hier auf
-   :root gehoben (nicht mehr nur unter .ce-dark verfügbar), da die Sidebar
-   sie jetzt auf jeder Seite braucht. --font-display/--font-mono bleiben
-   .ce-dark-gescoped (nur für Übersicht-Inhalte: Hero-Serife, Schritt-Zähler).
+   „§17 SIDEBAR (Premium Navy-Glas · alle Seiten)" weiter unten) und rendert
+   überall identisch, mit eigenen --fh/--fs-Tokens (siehe dort). --font-
+   display/--font-mono bleiben .ce-dark-gescoped (nur für Übersicht-Inhalte:
+   Hero-Serife, Schritt-Zähler).
    ──────────────────────────────────────────────────────────────────────── */
 
 /* === Premium-Tokens ======================================================= */
@@ -66,10 +65,9 @@
 
 /* ───────── Sidebar ─────────
    Alle Sidebar-Regeln (Struktur + Theme) sind konsolidiert in der Sektion
-   „ÜBERSICHT · SIDEBAR (Standard, alle Seiten)" weiter unten im File — das
-   ist die einzige Quelle der Wahrheit. Hier bewusst keine Sidebar-Regeln
-   mehr (frühere .sidebar-brand/.nav-item/.user-card-Deklarationen entfernt:
-   sie zielten auf einen JSX-Zweig, der nicht mehr existiert). */
+   „§17 SIDEBAR (Premium Navy-Glas · alle Seiten)" weiter unten im File —
+   das ist die einzige Quelle der Wahrheit. Hier bewusst keine Sidebar-
+   Regeln mehr. */
 
 /* ───────── Main content area (layout only — background lives in .ce-overview) ───────── */
 .ce-dark .main-content {
@@ -1134,87 +1132,6 @@
   --font-display: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
   --font-mono:    'DM Mono', 'SF Mono', ui-monospace, Menlo, monospace;
 }
-
-/* Sidebar-Breite via --ce-sidebar-w; Hintergrund/Material siehe konsolidierte
-   Sidebar-Sektion weiter unten (einzige Quelle der Wahrheit für Theme). */
-
-/* ── Sidebar-Innenleben (Handoff .dpx-*) ── */
-.dpx-brand { padding: 24px 18px 20px; display: flex; align-items: center; gap: 10px; }
-.dpx-brand-mark { width: 40px; height: 40px; flex-shrink: 0; }
-.dpx-brand-name { font-family: var(--font-heading); font-weight: 700; font-size: 18px; letter-spacing: -0.02em; line-height: 1; color: #fff; white-space: nowrap; }
-.dpx-brand-name b { color: var(--ce-blue-3); font-weight: 700; }
-.dpx-brand-sub { font-size: 12.5px; color: var(--ce-ink-4); margin-top: 6px; letter-spacing: 0.01em; }
-.dpx-close { margin-left: auto; }
-
-/* ── Identität (Firma/Nutzer) — eigener Block im Header-Stack, unabhängig
-   vom Topbar-User-Pill der Übersicht (.dpx-user-name/.dpx-user-org dort). ── */
-.dpx-identity { display: flex; align-items: center; gap: 12px; margin: 0 14px 14px; padding: 12px 14px; border-radius: 14px; }
-.dpx-identity-avatar {
-  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px;
-  display: grid; place-items: center;
-  font-family: var(--font-heading); font-weight: 700; font-size: 13px; color: #fff;
-  background: linear-gradient(135deg, #4a86ff 0%, #2a50d6 55%, #182a8c 100%);
-}
-.dpx-identity-text { min-width: 0; }
-.dpx-identity-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dpx-identity-email { font-size: 11.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.dpx-nav { flex: 1; padding: 12px 14px 8px; overflow-y: auto; }
-.dpx-nav-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ce-ink-4); padding: 18px 12px 9px; }
-.dpx-nav-item {
-  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
-  padding: 12px 14px; border-radius: 13px; margin-bottom: 2px;
-  color: var(--ce-ink-3); font-family: var(--font-sans); font-size: 15px; font-weight: 500;
-  background: transparent; border: 1px solid transparent; cursor: pointer;
-  transition: background 200ms cubic-bezier(.2,.7,.3,1), color 200ms cubic-bezier(.2,.7,.3,1), border-color 200ms cubic-bezier(.2,.7,.3,1);
-}
-.dpx-nav-item svg { flex-shrink: 0; opacity: 0.9; }
-.dpx-nav-item:hover { background: rgba(120, 160, 255, 0.07); color: var(--ce-ink-1); }
-.dpx-nav-item.is-active {
-  position: relative; color: #fff;
-  background: linear-gradient(100deg, rgba(70, 110, 255, 0.20) 0%, rgba(80, 60, 200, 0.15) 60%, rgba(120, 90, 220, 0.12) 100%);
-  border-color: rgba(130, 160, 255, 0.24);
-  box-shadow: 0 0 0 1px rgba(180, 210, 255, 0.06) inset, 0 6px 18px -12px rgba(60, 90, 230, 0.45);
-}
-.dpx-nav-item.is-active::before {
-  content: ''; position: absolute; left: -14px; top: 9px; bottom: 9px; width: 3px;
-  border-radius: 0 3px 3px 0; background: var(--ce-blue-3); box-shadow: 0 0 8px 0 rgba(95, 137, 255, 0.55);
-}
-.dpx-nav-item.is-active svg { opacity: 1; color: #cfd9ff; }
-
-.dpx-support {
-  display: block; text-decoration: none; margin: 12px 14px; padding: 16px; border-radius: 16px;
-  background: rgba(120, 160, 255, 0.05); border: 1px solid var(--ce-line-2);
-  transition: border-color 160ms, background 160ms;
-}
-.dpx-support:hover { border-color: var(--ce-line-3); background: rgba(120, 160, 255, 0.09); }
-.dpx-support-top { display: flex; align-items: center; gap: 12px; }
-.dpx-support-badge {
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: #cfc6ff;
-  background: radial-gradient(circle at 42% 36%, rgba(140, 124, 255, 0.42), rgba(60, 48, 140, 0.30) 82%);
-  border: 1px solid rgba(140, 120, 255, 0.20);
-}
-.dpx-support-kontakt { font-size: 12.5px; color: var(--ce-ink-3); }
-.dpx-support-live { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 15px; font-weight: 700; color: #fff; }
-.dpx-support-live .dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  background: radial-gradient(circle at 40% 35%, #6ff0c0, var(--ce-green) 70%);
-  box-shadow: 0 0 6px 0 rgba(52, 211, 153, 0.8);
-  animation: dpx-live-pulse 2.8s cubic-bezier(.4, 0, .2, 1) infinite;
-}
-/* Organischer Online-Status: Kern-Glow „atmet" leicht + weich expandierender,
-   ausblendender Ring. Nur box-shadow → kein Layout-Shift, performant. */
-@keyframes dpx-live-pulse {
-  0%   { box-shadow: 0 0 5px 0 rgba(52, 211, 153, 0.70), 0 0 0 0 rgba(52, 211, 153, 0.42); }
-  55%  { box-shadow: 0 0 9px 0 rgba(52, 211, 153, 0.92), 0 0 0 8px rgba(52, 211, 153, 0); }
-  100% { box-shadow: 0 0 5px 0 rgba(52, 211, 153, 0.70), 0 0 0 0 rgba(52, 211, 153, 0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dpx-support-live .dot { animation: none; box-shadow: 0 0 7px 0 rgba(52, 211, 153, 0.8); }
-}
-.dpx-support-note { font-size: 12.5px; line-height: 1.5; color: var(--ce-ink-4); margin-top: 12px; }
-.dpx-copyright { padding: 14px 22px 22px; }
-.dpx-copyright div { font-size: 12px; color: var(--ce-ink-4); line-height: 1.5; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  MAIN                                                                      */
@@ -2477,15 +2394,6 @@
 .ce-dark .dpx-kpi.k-amber  .dpx-kpi-icon { color: var(--dpx-amber);  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(217,147,10,0.09), 0 8px 18px -8px rgba(217,147,10,0.24); }
 .ce-dark .dpx-kpi.k-spend  .dpx-kpi-icon { color: var(--dpx-violet); box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(91,79,206,0.09),  0 8px 18px -8px rgba(91,79,206,0.28); }
 
-/* .dpx-support-badge (Sidebar) teilt sich dieselbe Grundform/Materialität —
-   NICHT .ce-dark-gescoped, da die Sidebar auf jeder Seite rendert. Der
-   violette Farbakzent + eigene Ring-Farbe sitzen in der Sidebar-Sektion. */
-.dpx-support-badge {
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 30%, #ffffff 0%, #eaf1ff 78%);
-  border: none;
-}
-
 /* ── Nummerierte Schritte 01–04 (CSS-Counter, DM Mono) ── */
 .ce-dark .dpx-steps { counter-reset: dpx-step; }
 .ce-dark .dpx-step { counter-increment: dpx-step; }
@@ -2530,141 +2438,11 @@
   .ce-dark .dpx-ray { display: none; }
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   SIDEBAR (Standard, alle Dashboard-Seiten) — einzige Quelle der Wahrheit
-   ──────────────────────────────────────────────────────────────────────────
-   Vorher gab es zwei Sidebar-Varianten (Übersicht vs. übrige Seiten, per
-   JSX-Fork in DashboardSidebar.jsx) UND bis zu sechs übereinanderliegende
-   .ce-dark-gescopte Theme-Iterationen in dieser Datei. Beides wurde
-   konsolidiert: der JSX-Fork ist entfernt (eine Sidebar für den gesamten
-   eingeloggten Bereich, inkl. Calculator via DashboardLayout), und diese
-   Sektion ist jetzt die EINZIGE, die Sidebar-Theme deklariert — bewusst
-   NICHT mehr an .ce-dark gekoppelt (die Sidebar ist keine Eigenschaft der
-   Übersicht-Seite, sondern ein globales Chrome-Element). Alle älteren
-   .ce-dark-gescopten Sidebar- und Support-Blöcke im File wurden entfernt
-   oder durch Kommentar-Verweise auf diese Sektion ersetzt.
-
-   Echtes Glas-Objekt: transparente Navy-/Blau-Verläufe + backdrop-filter,
-   sodass die Aurora der Bühne SUBTIL durch die Sidebar hindurchscheint.
-   Dazu: innere Lichtreflexionen, weicher Glanzsaum am rechten Rand, feines
-   Korn gegen Banding, leuchtender Active-State, Hover mit blauem Glass-Glow,
-   Support-Karte als eigenständiges Glasobjekt. Neu: Identitäts-Block (Firma/
-   Nutzer) im Header-Stack — Wunsch war „User-Infos bleiben, nur kombiniert
-   mit der Marke, nicht mehr im Footer". Nur Darstellung — alle Nav-
-   Funktionen/Routen/Klickpfade unverändert. Letzte Sektion → gewinnt die
-   Kaskade (auch gegenüber den unscoped Struktur-Regeln weiter oben im File).
-   ──────────────────────────────────────────────────────────────────────── */
-
-.app-shell {
-  --nav-navy-1: #1a365d;   /* oben, minimal heller (Licht von oben) */
-  --nav-navy-2: #0f2942;   /* unten, tiefes Marineblau */
-  --nav-accent: #2563eb;   /* Akzentblau */
-  --nav-accent-soft: #5b8def;
-  --nav-ink-1: #ffffff;
-  --nav-ink-2: rgba(255,255,255,0.74);
-  --nav-ink-3: rgba(255,255,255,0.52);
-  --nav-ink-4: rgba(255,255,255,0.40);
-  --nav-line:  rgba(255,255,255,0.10);
-}
-
-.sidebar {
-  /* KEIN position-Override: Basis ist position:fixed (dashboard.css) für den
-     Mobile-Off-Canvas-Drawer (translateX). fixed ist bereits ein Containing
-     Block für die absolut positionierten Pseudo-Elemente unten. */
-  overflow: hidden;
-  background:
-    radial-gradient(120% 60% at 10% 0%, rgba(91,141,239,0.24), transparent 58%),
-    radial-gradient(90% 66% at 100% 100%, rgba(120,90,255,0.16), transparent 62%),
-    linear-gradient(180deg, rgba(26,54,93,0.90) 0%, rgba(15,41,66,0.94) 100%);
-  -webkit-backdrop-filter: blur(22px) saturate(165%);
-          backdrop-filter: blur(22px) saturate(165%);
-  border-right: 1px solid rgba(140,170,255,0.20);
-  box-shadow:
-    inset 1px 0 0 rgba(255,255,255,0.05),
-    inset 0 1px 0 rgba(255,255,255,0.08),
-    0 30px 70px -40px rgba(6,14,34,0.65);
-}
-/* Feines Korn gegen Banding auf der großen Glasfläche — sehr zurückhaltend */
-.sidebar::before {
-  display: block; content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  opacity: 0.05; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
-}
-/* Weicher Glanzsaum am rechten Rand — Licht „kommt durch die Kante" */
-.sidebar::after {
-  display: block; content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 40px; z-index: 0; pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(91,141,239,0.09) 82%, rgba(160,190,255,0.20) 100%);
-}
-.dpx-brand,
-.dpx-identity,
-.dpx-nav,
-.dpx-support,
-.dpx-copyright { position: relative; z-index: 1; }
-
-/* Marke */
-.dpx-brand { border-bottom: 1px solid var(--nav-line); }
-.dpx-brand-name { color: var(--nav-ink-1); }
-.dpx-brand-name b { color: var(--nav-accent-soft); }
-.dpx-brand-sub { color: var(--nav-ink-3); }
-.sidebar-close-btn { color: var(--nav-ink-3); }
-
-/* Identität (Firma/Nutzer) — eigenes Glas-Chip direkt unter der Marke */
-.dpx-identity {
-  background: linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
-}
-.dpx-identity-avatar { box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 10px -4px rgba(30,60,180,0.6); }
-.dpx-identity-name { color: var(--nav-ink-1); }
-.dpx-identity-email { color: var(--nav-ink-3); }
-
-/* Navigation */
-.dpx-nav-label { color: var(--nav-ink-4); }
-.dpx-nav-item {
-  color: var(--nav-ink-2); border-color: transparent;
-  /* --dpx-ease ist nur unter .ce-dark definiert (Übersicht-Token) — die
-     Sidebar braucht die Kurve überall, daher mit Fallback referenziert. */
-  transition: background 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), color 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), box-shadow 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1));
-}
-.dpx-nav-item svg { color: currentColor; opacity: 0.85; transition: filter 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), opacity 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)); }
-.dpx-nav-item:hover {
-  background: linear-gradient(100deg, rgba(91,141,239,0.16) 0%, rgba(37,99,235,0.06) 100%);
-  color: var(--nav-ink-1);
-  box-shadow: inset 0 0 0 1px rgba(120,160,255,0.14);
-}
-.dpx-nav-item:hover svg { opacity: 1; filter: drop-shadow(0 0 6px rgba(120,160,255,0.55)); }
-.dpx-nav-item.is-active {
-  background: linear-gradient(100deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.15) 100%);
-  border-color: rgba(120,160,255,0.32);
-  color: var(--nav-ink-1);
-  box-shadow: inset 0 0 0 1px rgba(120,160,255,0.16), 0 8px 26px -10px rgba(37,99,235,0.55), 0 0 26px -6px rgba(59,130,246,0.42);
-}
-.dpx-nav-item.is-active::before { background: var(--nav-accent-soft); box-shadow: 0 0 14px rgba(91,141,239,0.85); }
-.dpx-nav-item.is-active svg { color: #cfe0ff; opacity: 1; filter: drop-shadow(0 0 6px rgba(150,180,255,0.6)); }
-
-/* Support-Karte — eigenständiges Glasobjekt statt flacher Fläche */
-.dpx-support {
-  background: linear-gradient(160deg, rgba(255,255,255,0.13), rgba(255,255,255,0.03));
-  border: 1px solid rgba(255,255,255,0.16);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-          backdrop-filter: blur(16px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 18px 40px -28px rgba(6,14,34,0.6);
-  transition: transform 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), box-shadow 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), border-color 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), background 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1));
-}
-.dpx-support:hover {
-  transform: translateY(-2px);
-  background: linear-gradient(160deg, rgba(255,255,255,0.17), rgba(255,255,255,0.05));
-  border-color: rgba(150,180,255,0.32);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 26px 52px -26px rgba(6,14,34,0.68), 0 0 0 1px rgba(91,141,239,0.16);
-}
-/* Farbakzent des Support-Medaillons (Violett) — Materialität/Glow/Hairline
-   teilt es sich mit KPI-/Step-/Why-/Trust-Icons (siehe Medaillon-Regel). */
-.dpx-support-badge { color: var(--dpx-violet, #5b4fce); box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(91,79,206,0.09), 0 8px 18px -8px rgba(91,79,206,0.28); }
-.dpx-support-kontakt { color: var(--nav-ink-3); }
-.dpx-support-live { color: var(--nav-ink-1); }
-.dpx-support-note { color: var(--nav-ink-4); }
-.dpx-copyright div { color: var(--nav-ink-4); }
+/* Sidebar-Theme (Struktur + Farbe, alle Dashboard-Seiten) lebt vollständig in
+   „§17 SIDEBAR (Premium Navy-Glas · alle Seiten)" weiter unten in dieser
+   Datei — dort die einzige Quelle der Wahrheit. Frühere JSX-Fork- und
+   .dpx-*-Sidebar-Deklarationen an dieser Stelle wurden entfernt (toter Code:
+   die Sidebar rendert seit der Konsolidierung ausschließlich .pp-*-Klassen). */
 
 /* ════════════════════════════════════════════════════════════════════════
    ÜBERSICHT · COMMAND-CENTER (Materialitäts-Korrektur)

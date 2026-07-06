@@ -25,7 +25,7 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
 }
 .offers-result-count {
-  font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700;
+  font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 700;
   color: white; line-height: 1.2;
 }
 .offers-result-sub {
@@ -97,7 +97,7 @@
   to   { opacity: 1; transform: none; }
 }
 .offers-filter-dd-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.offers-filter-dd-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy); }
+.offers-filter-dd-title { font-family: 'Libre Franklin', sans-serif; font-size: 15px; font-weight: 700; color: var(--navy); }
 .offers-filter-dd-status {
   font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
   color: var(--gray400); white-space: nowrap;
@@ -210,9 +210,9 @@
   color: var(--navy); line-height: 1.25; margin-bottom: 3px;
 }
 /* Laufzeit — ruhig & hochwertig in DM Sans (Hausschrift, konsistent mit dem
-   Preis). Bewusst keine Display-Font (Syne): die Laufzeit soll sachlich und
-   schnell scanbar wirken, nicht charakterstark. Kein font-variation-settings:
-   die Fonts sind statisch, der Wert bliebe wirkungslos. */
+   Preis). Bewusst keine Display-Font (Libre Franklin): die Laufzeit soll
+   sachlich und schnell scanbar wirken, nicht charakterstark. Kein
+   font-variation-settings: die Fonts sind statisch, der Wert bliebe wirkungslos. */
 .offer-eta {
   font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 700;
   color: var(--navy); letter-spacing: -0.02em; line-height: 1.0; margin-bottom: 2px;

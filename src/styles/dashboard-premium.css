@@ -2660,3 +2660,74 @@
   .ce-dark .dpx-bloom { animation: none; opacity: 0.5; }
   .ce-dark .dpx-ray { display: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT · SIDEBAR NAVY (60-30-10)
+   ──────────────────────────────────────────────────────────────────────────
+   Corporate-Navy-Navigationsschiene als „30%"-Sekundärfläche: gibt der
+   hellen Bühne (60% weiß/Datenkacheln) einen stabilen, seriösen Rahmen.
+   Akzentblau (#2563EB, 10%) bleibt der Primäraktion vorbehalten
+   („Neue Sendung"-CTA im Hero, unverändert). Nur Darstellung — alle Nav-
+   Funktionen/Routen/Klickpfade unverändert. Gescoped auf die Übersicht
+   (.ce-dark), letzte Sektion → gewinnt gegen die frühere Glas-Sidebar.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.app-shell.ce-dark {
+  --nav-navy-1: #1a365d;   /* oben, minimal heller (Licht von oben) */
+  --nav-navy-2: #0f2942;   /* unten, tiefes Marineblau */
+  --nav-accent: #2563eb;   /* Akzentblau */
+  --nav-accent-soft: #5b8def;
+  --nav-ink-1: #ffffff;
+  --nav-ink-2: rgba(255,255,255,0.74);
+  --nav-ink-3: rgba(255,255,255,0.52);
+  --nav-ink-4: rgba(255,255,255,0.40);
+  --nav-line:  rgba(255,255,255,0.10);
+}
+
+.ce-dark .sidebar {
+  background: linear-gradient(180deg, var(--nav-navy-1) 0%, var(--nav-navy-2) 100%);
+  border-right: 1px solid var(--nav-line);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 1px 0 0 rgba(255,255,255,0.04) inset, 0 30px 60px -40px rgba(6,16,34,0.6);
+}
+.ce-dark .sidebar::before,
+.ce-dark .sidebar::after { display: none; }   /* helle Sidebar-Glows entfallen auf Navy */
+
+/* Marke */
+.ce-dark .dpx-brand { border-bottom: 1px solid var(--nav-line); }
+.ce-dark .dpx-brand-name { color: var(--nav-ink-1); }
+.ce-dark .dpx-brand-name b { color: var(--nav-accent-soft); }
+.ce-dark .dpx-brand-sub { color: var(--nav-ink-3); }
+.ce-dark .sidebar-close-btn { color: var(--nav-ink-3); }
+
+/* Navigation */
+.ce-dark .dpx-nav-label { color: var(--nav-ink-4); }
+.ce-dark .dpx-nav-item { color: var(--nav-ink-2); border-color: transparent; }
+.ce-dark .dpx-nav-item svg { color: currentColor; opacity: 0.85; }
+.ce-dark .dpx-nav-item:hover { background: rgba(255,255,255,0.07); color: var(--nav-ink-1); }
+.ce-dark .dpx-nav-item:hover svg { opacity: 1; }
+.ce-dark .dpx-nav-item.is-active {
+  background: linear-gradient(100deg, rgba(59,130,246,0.30) 0%, rgba(37,99,235,0.16) 100%);
+  border-color: rgba(120,160,255,0.28);
+  color: var(--nav-ink-1);
+  box-shadow: 0 6px 18px -10px rgba(37,99,235,0.6);
+}
+.ce-dark .dpx-nav-item.is-active::before { background: var(--nav-accent-soft); box-shadow: 0 0 10px rgba(91,141,239,0.7); }
+.ce-dark .dpx-nav-item.is-active svg { color: #cfe0ff; opacity: 1; }
+
+/* Support-Karte */
+.ce-dark .dpx-support {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--nav-line);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.ce-dark .dpx-support:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.16); }
+.ce-dark .dpx-support-badge {
+  background: radial-gradient(circle at 42% 36%, rgba(120,160,255,0.34), rgba(37,99,235,0.16) 82%);
+  border: 1px solid rgba(140,175,255,0.3);
+  color: #dbe4ff;
+}
+.ce-dark .dpx-support-kontakt { color: var(--nav-ink-3); }
+.ce-dark .dpx-support-live { color: var(--nav-ink-1); }
+.ce-dark .dpx-support-note { color: var(--nav-ink-4); }
+.ce-dark .dpx-copyright div { color: var(--nav-ink-4); }

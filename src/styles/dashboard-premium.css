@@ -715,11 +715,18 @@
 .pbg-soft .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 62%, rgba(11,31,77,.07) 100%); }
 
 /* Inhalt der Soft-Premium-Seiten über die fixe Atmosphäre (.pbg-soft, z-index:0)
-   heben. .mobile-topbar bleibt bewusst unberührt (sticky, z-index:100 > 0). */
+   heben. .mobile-topbar bleibt bewusst unberührt (sticky, z-index:100 > 0).
+   .page-with-navbar deckt „Sendung verfolgen" ab (TrackingPage-Wrapper);
+   Sendungen/Rechnungen nutzen .page-body, das öffentliche /tracking hat diesen
+   Scope nicht — daher greift die Regel ausschließlich im Dashboard-Tracking. */
 .dashboard-soft-premium .dash-section-header,
 .dashboard-soft-premium .page-body,
+.dashboard-soft-premium .page-with-navbar,
 .dashboard-soft-premium .alert-wrapper,
 .dashboard-soft-premium .legal-links { position:relative; z-index:1; }
+/* Opaken .page-with-navbar-Grund (#f0f4fa) nur in diesem Scope transparent
+   schalten, damit die Soft-Premium-Grundfarbe + Atmosphäre durchscheinen. */
+.dashboard-soft-premium .page-with-navbar { background: transparent; }
 
 /* Reduced Motion: Ambient/Bewegung aus, driftende Pakete ausblenden. Die
    Blob-Selektoren .g1/.g2/.g3 werden explizit aufgeführt, damit die

@@ -47,7 +47,7 @@
 
   /* Sidebar-Typografie — global, damit Marke/Nav/Support auf jeder Seite
      dieselbe Schrift verwenden (vorher nur unter .ce-dark definiert). */
-  --font-heading: 'Syne', 'DM Sans', system-ui, sans-serif;
+  --font-heading: 'Libre Franklin', 'DM Sans', system-ui, sans-serif;
   --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -103,7 +103,7 @@
   color: #fff;
   border-radius: 9px;
   display: grid; place-items: center;
-  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-family: 'Libre Franklin', sans-serif; font-weight: 800;
   letter-spacing: -0.02em;
   box-shadow: 0 6px 18px -6px var(--ce-blue-glow);
 }
@@ -162,7 +162,7 @@
   margin-bottom: 4px;
 }
 .ce-greeting {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Libre Franklin', sans-serif;
   font-weight: 700;
   font-size: clamp(18px, 2vw, 22px);
   color: var(--ce-ink-1);
@@ -237,7 +237,7 @@
 
 .ce-section { position: relative; z-index: 2; margin-bottom: 26px; }
 .ce-section-title {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Libre Franklin', sans-serif;
   font-weight: 700;
   font-size: 19px;
   color: var(--ce-ink-1);
@@ -385,7 +385,7 @@
   display: block;
 }
 .ce-carrier-fallback {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Libre Franklin', sans-serif;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.04em;
@@ -844,7 +844,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Libre Franklin', sans-serif;
   font-size: 27px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -2697,7 +2697,7 @@
 
 /* ── §23 Design-Tokens (global) ── */
 .app-shell {
-  --fd: 'Cormorant Garamond', Georgia, serif; --fh: 'Syne', sans-serif;
+  --fd: 'Cormorant Garamond', Georgia, serif; --fh: 'Libre Franklin', sans-serif;
   --fs: 'DM Sans', system-ui, sans-serif;     --fm: 'DM Mono', ui-monospace, monospace;
   --bg0:#04091a; --bg1:#071022; --bg2:#0b1830;
   --ink1:#eaf1ff; --ink2:#b9c6e6; --ink3:#8493b8; --ink4:#59668c;

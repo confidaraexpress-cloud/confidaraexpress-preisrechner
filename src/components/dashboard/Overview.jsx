@@ -32,12 +32,16 @@ function CompanyMark({ initial }) {
       <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoMark)" />
       <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoTop)" />
       <rect x="1.6" y="1.6" width="36.8" height="36.8" rx="10.9" fill="none" stroke="#ffffff" strokeOpacity="0.28" />
-      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Syne','DM Sans',sans-serif" fontWeight="700" fontSize="17" fill="#ffffff">{initial}</text>
+      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Libre Franklin','DM Sans',sans-serif" fontWeight="700" fontSize="17" fill="#ffffff">{initial}</text>
     </svg>
   );
 }
 
 // „Der Kurier" Wortzeichen (Carrier-Chip, dunkle Schrift für helle Chips, §19-B2).
+// Bewusste Ausnahme von der ConfidaraExpress-Haustypografie: dies ist die
+// nachgebaute Wortmarke des externen Carriers „Der Kurier" (kein eigenes
+// Markenelement) — die Schrift bleibt an das reale Fremd-Logo gebunden und
+// wird daher nicht mit der übrigen Site-Typografie mitgeführt.
 function DerKurierLogo() {
   return (
     <svg className="car-logo" viewBox="0 0 106 32" width="101" height="30" fill="none" aria-label="Der Kurier">

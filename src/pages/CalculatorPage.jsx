@@ -272,8 +272,11 @@ export default function CalculatorPage() {
       <div className="container calc-page-wrap">
         <div className="offers-form-section">
 
+          {/* ── Obere Premium-Filterleiste: vier Filter nebeneinander (Desktop),
+                 responsives Grid auf Tablet/Mobile. Reine Darstellung. ── */}
+          <div className="calc-filter-bar mb-16">
           {/* ── Service Filter — collapsible ── */}
-          <div className="calc-panel mb-16">
+          <div className="calc-panel">
             <button
               className="service-filter-trigger"
               onClick={() => setServiceFilterOpen(o => !o)}
@@ -311,7 +314,7 @@ export default function CalculatorPage() {
           </div>
 
           {/* ── Versandart — collapsible ── */}
-          <div className="calc-panel mb-16">
+          <div className="calc-panel">
             <button
               className="service-filter-trigger"
               onClick={() => setShippingModeOpen(o => !o)}
@@ -349,7 +352,7 @@ export default function CalculatorPage() {
           </div>
 
           {/* ── Versanddatum — collapsible ── */}
-          <div className="calc-panel mb-16">
+          <div className="calc-panel">
             <button
               className="service-filter-trigger"
               onClick={() => setDatePickerOpen(o => !o)}
@@ -385,7 +388,7 @@ export default function CalculatorPage() {
           </div>
 
           {/* ── Carrier Filter — collapsible ── */}
-          <div className="calc-panel mb-16" ref={carrierRef}>
+          <div className="calc-panel" ref={carrierRef}>
             <button
               className="service-filter-trigger"
               onClick={() => setCarrierDropdownOpen(o => !o)}
@@ -438,6 +441,8 @@ export default function CalculatorPage() {
               </div>
             )}
           </div>
+
+          </div>{/* /calc-filter-bar */}
 
           {/* ── Versandroute — Land + PLZ ── */}
           <div className="calc-panel mb-16">

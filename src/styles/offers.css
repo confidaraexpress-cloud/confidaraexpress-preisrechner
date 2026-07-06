@@ -2,9 +2,6 @@
 
 /* Form layout for the new stacked design */
 .offers-form-section { }
-.offers-filter-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 0;
-}
 .offers-calc-cta { margin-top: 20px; }
 
 /* Full section container */
@@ -514,7 +511,6 @@
   .offers-trust-item:nth-child(2) { border-right: none; }
   .offers-trust-item:nth-child(1),
   .offers-trust-item:nth-child(2) { border-bottom: 1px solid var(--border); }
-  .offers-filter-grid { grid-template-columns: 1fr; }
 }
 
 /* ─── Responsive: Mobile (< 768px) ──────────────────────────────────────────── */

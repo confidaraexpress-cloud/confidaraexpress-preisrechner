@@ -382,8 +382,9 @@ export default function NewShipmentPage() {
         {/* ── Form section ── */}
         <div className="offers-form-section">
 
-          {/* 4 filter dropdowns in 2×2 grid */}
-          <div className="offers-filter-grid mb-16">
+          {/* Obere Premium-Filterleiste: vier Filter nebeneinander (Desktop),
+              responsives Grid auf Tablet/Mobile. Reine Darstellung. */}
+          <div className="calc-filter-bar mb-16">
             {/* Service Filter */}
             <div className="calc-panel">
               <button

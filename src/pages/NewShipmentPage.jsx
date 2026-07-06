@@ -608,16 +608,18 @@ export default function NewShipmentPage() {
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
+              {/* Reihenfolge: Gewicht · Länge · Höhe · Breite (nur Anzeige;
+                  Bindings/State-Keys/Validierung unverändert). */}
               <div className="field-row field-row-4">
+                <div className="field">
+                  <label className="field-label">Gewicht kg *</label>
+                  <input className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" />
+                  {errors.weight && <span className="field-error">{errors.weight}</span>}
+                </div>
                 <div className="field">
                   <label className="field-label">Länge cm</label>
                   <input className={`field-input${errors.length ? " field-input-error" : ""}`} type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" />
                   {errors.length && <span className="field-error">{errors.length}</span>}
-                </div>
-                <div className="field">
-                  <label className="field-label">Breite cm</label>
-                  <input className={`field-input${errors.width  ? " field-input-error" : ""}`} type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" />
-                  {errors.width  && <span className="field-error">{errors.width}</span>}
                 </div>
                 <div className="field">
                   <label className="field-label">Höhe cm</label>
@@ -625,9 +627,9 @@ export default function NewShipmentPage() {
                   {errors.height && <span className="field-error">{errors.height}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Gewicht kg *</label>
-                  <input className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" />
-                  {errors.weight && <span className="field-error">{errors.weight}</span>}
+                  <label className="field-label">Breite cm</label>
+                  <input className={`field-input${errors.width  ? " field-input-error" : ""}`} type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" />
+                  {errors.width  && <span className="field-error">{errors.width}</span>}
                 </div>
               </div>
               {volWeight && (

@@ -181,7 +181,14 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
 
   return (
     <div className="dpx-main">
-      <div className="dpx-aurora" aria-hidden="true" />
+      <div className="dpx-aurora" aria-hidden="true">
+        <span className="dpx-blob dpx-blob-1" />
+        <span className="dpx-blob dpx-blob-2" />
+        <span className="dpx-blob dpx-blob-3" />
+        <span className="dpx-bloom" />
+        <span className="dpx-ray" />
+        <span className="dpx-noise" />
+      </div>
       <div className="dpx-inner">
 
         {/* ── Topbar ── */}

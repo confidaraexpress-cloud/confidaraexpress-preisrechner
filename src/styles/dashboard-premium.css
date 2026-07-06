@@ -2432,3 +2432,231 @@
   .ce-dark .dpx-aurora::after { display: none; }
   .ce-dark .dpx-main::before { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT · EXECUTIVE (Handoff-Intent, aufs Ist-Repo adaptiert)
+   ──────────────────────────────────────────────────────────────────────────
+   Umsetzung der Design-Absicht des Executive-Handoffs (§1–§5, §10) MIT dem
+   vorhandenen dpx- und ce--System — ohne DS-Komponentenbibliothek, ohne die
+   fehlende Referenzdatei. Exakte Werte sind Interpretation (vom Nutzer
+   ausdrücklich freigegeben), nicht aus der Referenz abgelesen. Rein visuell:
+   kein Markup außer den bereits ergänzten aria-hidden-Atmosphäre-Kindern,
+   keine Logik/Daten/Routing/Props-Änderung. Letzte Sektion → gewinnt Kaskade.
+
+   Umgesetzt: fixe Aurora-Atmosphäre (3 driftende Blobs, Bloom, Ray, Noise,
+   Vignette) · Glasmorphismus auf schwebenden Flächen · dunkle Featured-KPI ·
+   Medaillon-Icons · nummerierte Schritte 01–04 · Premium-Hover. Reduced-
+   Motion & Mobile schalten Bewegung am Ende erneut ab (Quell-Reihenfolge).
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Glas-Tokens ── */
+.app-shell.ce-dark {
+  --dpx-glass:        linear-gradient(168deg, rgba(255,255,255,0.86), rgba(255,255,255,0.60));
+  --dpx-glass-strong: linear-gradient(168deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72));
+  --dpx-glass-border: rgba(255,255,255,0.78);
+  --dpx-glass-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 0 0 1px rgba(105,130,220,0.13),
+    0 28px 56px -32px rgba(35,54,130,0.30);
+  --dpx-glass-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 0 0 1px rgba(105,130,220,0.18),
+    0 40px 74px -34px rgba(35,54,130,0.38);
+}
+
+/* ── Ebene 1 · Basis-Verlauf (Off-White, nie Reinweiß großflächig) ── */
+.ce-dark .dpx-main {
+  background: linear-gradient(180deg, #f8faff 0%, #f1f4fc 52%, #edf1fa 100%);
+}
+.ce-dark .dpx-main::before { display: none; }            /* alte Insel-Ebene ersetzt durch Aurora-Kinder */
+.ce-dark .dpx-main::after {                               /* Ebene 6 · Vignette (fix) */
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(132% 112% at 50% 28%, transparent 60%, rgba(40,54,110,0.06) 100%);
+  animation: none;
+}
+
+/* ── Ebene 2–5 · Aurora-Atmosphäre als FIXE Ebene hinter allem ── */
+.ce-dark .dpx-aurora {
+  display: block;
+  position: fixed; inset: 0; z-index: 0;
+  top: auto; left: auto; right: auto; bottom: auto; inset: 0;   /* frühere top/left/right/height neutralisieren */
+  height: auto; width: auto;
+  background: none; filter: none; opacity: 1; animation: none;
+  pointer-events: none; overflow: hidden;
+}
+.ce-dark .dpx-aurora > span { position: absolute; pointer-events: none; display: block; }
+
+.ce-dark .dpx-blob { border-radius: 50%; filter: blur(72px); will-change: transform; }
+.ce-dark .dpx-blob-1 {                                   /* Eisblau · oben links */
+  width: 660px; height: 580px; top: -140px; left: -90px;
+  background: radial-gradient(circle at 50% 50%, rgba(120,165,255,0.50), transparent 70%);
+  animation: dpx-drift-1 70s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-blob-2 {                                   /* Lavendel · oben rechts */
+  width: 620px; height: 600px; top: -170px; right: -120px;
+  background: radial-gradient(circle at 50% 50%, rgba(168,150,255,0.42), transparent 70%);
+  animation: dpx-drift-2 90s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-blob-3 {                                   /* Blau-Frost · unten mittig */
+  width: 940px; height: 560px; bottom: -280px; left: 28%;
+  background: radial-gradient(circle at 50% 50%, rgba(150,195,255,0.34), transparent 72%);
+  animation: dpx-drift-3 110s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-bloom {                                    /* Soft Bloom · großer, fast weißer Kern */
+  width: 1120px; height: 820px; top: -300px; left: 24%;
+  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.72), transparent 62%);
+  filter: blur(42px);
+  animation: dpx-bloom-pulse 18s ease-in-out infinite;
+}
+.ce-dark .dpx-ray {                                      /* schräger, maskierter Lichtstrahl */
+  top: -160px; right: 7%; width: 520px; height: 940px;
+  transform: rotate(-24deg); transform-origin: top center;
+  background: linear-gradient(180deg, transparent, rgba(212,226,255,0.50) 46%, rgba(190,210,255,0.26) 56%, transparent);
+  filter: blur(14px);
+  -webkit-mask-image: radial-gradient(ellipse 58% 78% at 50% 20%, #000, transparent 72%);
+          mask-image: radial-gradient(ellipse 58% 78% at 50% 20%, #000, transparent 72%);
+  opacity: 0.42;
+}
+.ce-dark .dpx-noise {                                    /* fraktales Rauschen gegen Banding */
+  inset: 0; opacity: 0.05; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+@keyframes dpx-drift-1 { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(40px,26px,0) scale(1.08); } }
+@keyframes dpx-drift-2 { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-34px,20px,0) scale(1.06); } }
+@keyframes dpx-drift-3 { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(30px,-24px,0) scale(1.05); } }
+@keyframes dpx-bloom-pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 0.85; } }
+
+/* ── Glasmorphismus · schwebende Flächen ── */
+.ce-dark .dpx-kpi,
+.ce-dark .dpx-panel,
+.ce-dark .dpx-trust {
+  background:
+    radial-gradient(120% 78% at 0% 0%, rgba(255,255,255,0.55), rgba(255,255,255,0) 46%),
+    var(--dpx-glass);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+          backdrop-filter: blur(26px) saturate(150%);
+  border: 1px solid var(--dpx-glass-border);
+  box-shadow: var(--dpx-glass-shadow);
+}
+.ce-dark .dpx-kpi::before,
+.ce-dark .dpx-panel::before,
+.ce-dark .dpx-trust::before { display: none; }           /* frühere Lichtkante → jetzt über Glas/Sheen */
+
+.ce-dark .dpx-kpi { transition: transform 0.5s var(--dpx-ease), box-shadow 0.5s var(--dpx-ease); }
+.ce-dark .dpx-kpi:hover { transform: translateY(-5px); box-shadow: var(--dpx-glass-shadow-hover); }
+
+/* Value-Cards (im Panel) — bewusst OHNE backdrop-filter: sie liegen im bereits
+   gläsernen Panel; geschachteltes Glas ist teuer/verboten (Handoff §8). Statt-
+   dessen leicht deckendes Weiß als „Inset-Kachel". Gleiche Hover-Physik. */
+.ce-dark .dpx-why-card {
+  background: linear-gradient(168deg, rgba(255,255,255,0.82), rgba(255,255,255,0.6));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 18px 40px -30px rgba(35,54,130,0.24);
+  transition: transform 0.5s var(--dpx-ease), box-shadow 0.5s var(--dpx-ease);
+}
+.ce-dark .dpx-why-card:hover { transform: translateY(-5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.96), 0 30px 56px -30px rgba(35,54,130,0.32); }
+
+/* Carrier-Kacheln — ebenfalls ohne backdrop-filter (im Glas-Panel verschachtelt) */
+.ce-dark .dpx-carrier-tile {
+  background: linear-gradient(168deg, rgba(255,255,255,0.78), rgba(255,255,255,0.55));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid rgba(255,255,255,0.75);
+}
+.ce-dark .dpx-carrier-tile:hover { transform: translateY(-4px); background: linear-gradient(168deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72)); box-shadow: 0 22px 44px -26px rgba(35,54,130,0.30); }
+
+/* ── Featured-KPI · erste Kachel als dunkler Navy-Anker ── */
+.ce-dark .dpx-kpis .dpx-kpi:first-child {
+  background:
+    radial-gradient(88% 70% at 16% 0%, rgba(96,134,255,0.38), transparent 60%),
+    radial-gradient(80% 80% at 102% 104%, rgba(150,130,255,0.30), transparent 62%),
+    linear-gradient(160deg, #121b45 0%, #1b2b72 52%, #2a49ce 100%);
+  border: 1px solid rgba(120,150,255,0.28);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 30px 62px -30px rgba(18,27,80,0.55);
+}
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-label { color: rgba(214,224,255,0.82); }
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-value { color: #ffffff; text-shadow: 0 0 26px rgba(120,150,255,0.42); }
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-value .u { color: rgba(200,212,255,0.7); }
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-foot-label { color: rgba(198,210,255,0.68); }
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-icon {
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,0.28), rgba(255,255,255,0.10) 78%);
+  color: #dbe4ff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.20), 0 0 0 5px rgba(150,175,255,0.10);
+}
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-delta.d-violet,
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-delta.d-green,
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-kpi-delta.d-blue {
+  color: #dbe4ff; background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22);
+}
+.ce-dark .dpx-kpis .dpx-kpi:first-child .dpx-foot-dot { background: #7ef0c0; box-shadow: 0 0 8px rgba(126,240,192,0.7); }
+
+/* ── Medaillon-Icons (rund, Weiß→Eisblau, Licht-Ring, Tonfarbe) ── */
+.ce-dark .dpx-kpi-icon,
+.ce-dark .dpx-step-icon,
+.ce-dark .dpx-why-badge,
+.ce-dark .dpx-trust-badge {
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #ffffff 0%, #eaf1ff 78%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(90,120,220,0.06), 0 8px 18px -8px rgba(50,70,160,0.28);
+  border: none;
+}
+.ce-dark .dpx-kpi.k-blue   .dpx-kpi-icon,
+.ce-dark .dpx-kpi.k-violet .dpx-kpi-icon { color: var(--dpx-blue);   box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(37,99,235,0.07),  0 8px 18px -8px rgba(37,99,235,0.28); }
+.ce-dark .dpx-kpi.k-green  .dpx-kpi-icon { color: var(--dpx-green);  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(14,159,110,0.08), 0 8px 18px -8px rgba(14,159,110,0.26); }
+.ce-dark .dpx-kpi.k-amber  .dpx-kpi-icon { color: var(--dpx-amber);  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(217,147,10,0.09), 0 8px 18px -8px rgba(217,147,10,0.24); }
+.ce-dark .dpx-kpi.k-spend  .dpx-kpi-icon { color: var(--dpx-violet); box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(91,79,206,0.09),  0 8px 18px -8px rgba(91,79,206,0.28); }
+
+/* ── Nummerierte Schritte 01–04 (CSS-Counter, DM Mono) ── */
+.ce-dark .dpx-steps { counter-reset: dpx-step; }
+.ce-dark .dpx-step { counter-increment: dpx-step; }
+.ce-dark .dpx-step-icon { position: relative; }
+.ce-dark .dpx-step-icon::after {
+  content: counter(dpx-step, decimal-leading-zero);
+  position: absolute; top: -9px; right: -9px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500; line-height: 1;
+  color: var(--dpx-blue-ink); background: #ffffff;
+  border: 1px solid var(--dpx-hair-2); border-radius: 999px;
+  padding: 3px 7px;
+  box-shadow: 0 3px 8px -3px rgba(50,70,160,0.32);
+}
+
+/* ── Glas-Sidebar + Chips ── */
+.ce-dark .sidebar {
+  background: var(--dpx-glass-strong);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+          backdrop-filter: blur(26px) saturate(150%);
+  border-right: 1px solid var(--dpx-glass-border);
+}
+.ce-dark .dpx-userpill,
+.ce-dark .dpx-iconbtn {
+  background: var(--dpx-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+          backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--dpx-glass-border);
+  box-shadow: var(--dpx-glass-shadow);
+  transition: transform 0.35s var(--dpx-ease), box-shadow 0.35s var(--dpx-ease);
+}
+.ce-dark .dpx-userpill:hover { transform: translateY(-2px); box-shadow: var(--dpx-glass-shadow-hover); }
+.ce-dark .dpx-support {
+  background: linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.34));
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+          backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.68);
+}
+.ce-dark .dpx-btn-new:hover,
+.ce-dark .dpx-btn-compare:hover { transform: translateY(-2px); }
+
+/* ── Ruhe: Ambient-Bewegung abschalten (nach den Deklarationen) ── */
+@media (prefers-reduced-motion: reduce) {
+  .ce-dark .dpx-blob,
+  .ce-dark .dpx-bloom { animation: none; }
+}
+@media (max-width: 760px) {
+  /* Aurora dezenter, Bewegung aus, Ray weg — Grundstimmung bleibt */
+  .ce-dark .dpx-blob { animation: none; filter: blur(56px); opacity: 0.7; }
+  .ce-dark .dpx-blob-3 { display: none; }
+  .ce-dark .dpx-bloom { animation: none; opacity: 0.5; }
+  .ce-dark .dpx-ray { display: none; }
+}

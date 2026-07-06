@@ -506,11 +506,13 @@ export default function CalculatorPage() {
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
+              {/* Reihenfolge: Gewicht · Länge · Höhe · Breite (nur Anzeige;
+                  Bindings/State-Keys unverändert). */}
               <div className="field-row field-row-4">
-                <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
-                <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" /></div>
-                <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
                 <div className="field"><label className="field-label">Gewicht kg *</label><input className="field-input" type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" /></div>
+                <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
+                <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
+                <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" /></div>
               </div>
               {volWeight && (
                 <div className="vol-weight-box">

@@ -5,6 +5,7 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
+import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -267,6 +268,7 @@ export default function CalculatorPage() {
 
   return (
     <div className="page-with-navbar">
+      <PremiumBackground variant="neutral" />
       <div className="container calc-page-wrap">
         <div className="offers-form-section">
 

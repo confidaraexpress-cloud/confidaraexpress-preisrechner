@@ -6,6 +6,7 @@ import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
+import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -371,6 +372,7 @@ export default function NewShipmentPage() {
 
   return (
     <div className="page-with-navbar">
+      <PremiumBackground variant="neutral" />
       <div className="container calc-page-wrap">
         <div className="mb-24">
           <h1 className="heading calc-page-title">Versandpreis berechnen</h1>

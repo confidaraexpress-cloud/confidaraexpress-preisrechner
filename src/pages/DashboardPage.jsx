@@ -91,7 +91,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${page === "new" ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}

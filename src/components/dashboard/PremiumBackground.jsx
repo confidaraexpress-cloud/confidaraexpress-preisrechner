@@ -17,6 +17,10 @@ import React from "react";
      • variant="soft"  → dunklere, gesättigte Blautöne für Sendungen/Rechnungen
                          (Regeln unter „.pbg-soft"), damit deren bestehende helle
                          Soft-Premium-Farbwelt erhalten bleibt (keine Navy-Basis).
+     • variant="neutral" → Slate-/Anthrazit-Töne für „Neue Sendung" & Preisrechner
+                         (Regeln unter „.pbg-neutral") auf einer neutralen
+                         #DCDCDC-Grundfarbe. Slate = Grau mit dezentem Navy-
+                         Unterton (bleibt in der ConfidaraExpress-Farbfamilie).
 
    Enthält KEINE Inhalte (keine KPIs/Hero/Widgets). aria-hidden,
    pointer-events:none. Styling: src/styles/dashboard-premium.css.
@@ -31,6 +35,9 @@ const PALETTES = {
   dark: { node: ["#bcd6ff", "#5b8cff", "#2e5cff"], line: ["#4d8bff", "#6ea8ff", "#4d8bff"], lineMid: 0.85, core: "#eaf2ff", ring: "#7fb0ff", parcel: "#dbe8ff" },
   // „soft": dunklere Blautöne, damit die Atmosphäre auf hellem Grund liest.
   soft: { node: ["#60a5fa", "#2563eb", "#1d4ed8"], line: ["#2563eb", "#1d4ed8", "#2563eb"], lineMid: 0.55, core: "#1d4ed8", ring: "#2563eb", parcel: "#1d4ed8" },
+  // „neutral": Slate-/Anthrazit-Töne (Grau mit dezentem Navy-Unterton), damit die
+  // Atmosphäre auf der #DCDCDC-Grundfarbe sichtbar und hochwertig wirkt.
+  neutral: { node: ["#94a3b8", "#64748b", "#475569"], line: ["#64748b", "#475569", "#64748b"], lineMid: 0.5, core: "#334155", ring: "#64748b", parcel: "#475569" },
 };
 
 // Hintergrund-Glyphen (§19-B3) — Line-Icons in dünnem Duktus (stroke 1.1).

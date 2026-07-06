@@ -27,7 +27,7 @@ export function DashboardLayout() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${activePage === "calculator" ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={activePage}
         navigateTo={navigateTo}

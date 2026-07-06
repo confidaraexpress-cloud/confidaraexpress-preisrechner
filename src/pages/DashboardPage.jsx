@@ -12,6 +12,7 @@ import { LegalLinks } from "../components/layout/LegalLinks";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
+const TrackingPage    = React.lazy(() => import("./TrackingPage"));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -77,7 +78,7 @@ export default function DashboardPage() {
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
     const p = new URLSearchParams(location.search).get("page");
-    if (p && ["overview", "new", "shipments", "invoices", "profile"].includes(p)) {
+    if (p && ["overview", "new", "shipments", "invoices", "profile", "tracking"].includes(p)) {
       setPage(p);
       navigate("/dashboard", { replace: true });
     }
@@ -145,6 +146,22 @@ export default function DashboardPage() {
         )}
 
         {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}
+
+        {/* Kein .page-body-Wrapper: TrackingPage bringt mit .page-with-navbar
+            bereits einen eigenen Seiten-Wrapper mit. Als direktes Kind von
+            .main-content greift automatisch die bestehende Regel
+            „.main-content > .page-with-navbar" (dashboard.css) — dieselbe,
+            die CalculatorPage im DashboardLayout schon nutzt. Kein eigener
+            PAGE_HEADERS-Eintrag: TrackingPage rendert ihre Überschrift selbst
+            (sonst doppelter Seitenkopf, wie bei Übersicht/Profil). Backend-/
+            Tracking-Logik unverändert — TrackingPage ruft weiterhin den
+            öffentlichen, nicht authentifizierten Endpunkt auf. */}
+        {page === "tracking" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <TrackingPage />
+          </Suspense>
+        )}
+
         {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}
         {page === "profile"   && <Profile user={user} />}
 

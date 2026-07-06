@@ -36,7 +36,7 @@ const NAV_GROUPS = [
     items: [
       { id: "new",       label: "Neue Sendung",       icon: "plus"    },
       { id: "shipments", label: "Sendungen",          icon: "package" },
-      { id: "tracking",  label: "Sendungsverfolgung", icon: "search", route: "/tracking" },
+      { id: "tracking",  label: "Sendungsverfolgung", icon: "search" },
     ],
   },
   { label: "Abrechnung", items: [{ id: "invoices", label: "Rechnungen", icon: "invoice" }] },

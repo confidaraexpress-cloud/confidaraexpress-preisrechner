@@ -187,6 +187,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
         <span className="dpx-blob dpx-blob-3" />
         <span className="dpx-bloom" />
         <span className="dpx-ray" />
+        <span className="dpx-routes" />
         <span className="dpx-noise" />
       </div>
       <div className="dpx-inner">

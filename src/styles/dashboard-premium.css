@@ -2731,3 +2731,130 @@
 .ce-dark .dpx-support-live { color: var(--nav-ink-1); }
 .ce-dark .dpx-support-note { color: var(--nav-ink-4); }
 .ce-dark .dpx-copyright div { color: var(--nav-ink-4); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT · ENTERPRISE LUXURY (Final Polish)
+   ──────────────────────────────────────────────────────────────────────────
+   Letzte Veredelung der bestehenden Designsprache — keine Neuerfindung,
+   keine neuen Farben, keine funktionalen Änderungen. Nur Komposition,
+   Präzision, Tiefe. Autoritative Schlusssektion (gewinnt Kaskade). Scoped
+   auf die Übersicht (.ce-dark). Ein dekoratives aria-hidden Kind
+   (Routenmotiv) wurde in Overview.jsx ergänzt; sonst reines CSS.
+
+   P1 Hero-Bühne · P2 organische Atmosphäre + Hero-Lichtpool + kühle Ränder ·
+   P3 Präzisions-Material (Hairline + Nahschatten + Ambient + Innenreflex) ·
+   P4 Marketing zurückgenommen, KPI-Arbeitsfläche im Vordergrund ·
+   Markensignatur (abstrahiertes Versandnetz) · dezente Asymmetrie.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── P3 · Präzisions-Material-Tokens ── */
+.app-shell.ce-dark {
+  --dpx-hair-cool:    rgba(120,140,190,0.20);
+  --dpx-shadow-rest:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 1px 2px rgba(30,42,90,0.06),
+    0 18px 40px -22px rgba(38,48,105,0.20);
+  --dpx-shadow-hover:
+    inset 0 1px 0 rgba(255,255,255,0.97),
+    0 2px 5px rgba(30,42,90,0.09),
+    0 34px 66px -28px rgba(38,48,105,0.30);
+}
+
+/* ── P2 · Basis + Hero-Lichtpool (asymmetrisch) + kühle Ränder ── */
+.ce-dark .dpx-main {
+  background: linear-gradient(172deg, #f9fbff 0%, #f2f5fd 46%, #eef1fb 72%, #eef0fb 100%);
+}
+/* Konzentrierter, asymmetrischer Lichtpool hinter dem Hero (links-oben) */
+.ce-dark .dpx-main::before {
+  display: block; content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(56% 42% at 33% 2%, rgba(255,255,255,0.72), rgba(255,255,255,0) 60%);
+  animation: none;
+}
+/* Kühlere Randzonen + zarter Tageslichtschleier oben (Tiefe, Fokus) */
+.ce-dark .dpx-main::after {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 240px),
+    radial-gradient(142% 122% at 50% 34%, transparent 54%, rgba(42,56,112,0.075) 100%);
+}
+
+/* ── P2 · Organische, nicht-kreisförmige Aurora (Ellipsen, gedreht, asymmetrisch) ── */
+.ce-dark .dpx-blob-1 {
+  width: 820px; height: 460px; top: -170px; left: -160px;
+  transform: rotate(-18deg);
+  background: radial-gradient(closest-side, rgba(120,165,255,0.50), transparent);
+  animation: dpx-drift-1 84s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-blob-2 {
+  width: 700px; height: 540px; top: -120px; right: -180px;
+  transform: rotate(14deg);
+  background: radial-gradient(closest-side, rgba(168,150,255,0.42), transparent);
+  animation: dpx-drift-2 104s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-blob-3 {
+  width: 1120px; height: 520px; bottom: -330px; left: 20%;
+  transform: rotate(-6deg);
+  background: radial-gradient(closest-side, rgba(150,195,255,0.30), transparent);
+  animation: dpx-drift-3 128s ease-in-out infinite alternate;
+}
+.ce-dark .dpx-bloom { animation: dpx-bloom-pulse 24s ease-in-out infinite; }
+
+/* ── Markensignatur · abstrahiertes Versandnetz (Routen + Knoten), sehr fein.
+   Greift die Formensprache der Schritt-Konnektoren auf. Fix, asymmetrisch
+   oben rechts hinter dem Hero. Keine neue Farbe (Navy aus der Palette). ── */
+.ce-dark .dpx-routes {
+  top: -30px; right: -40px; width: 680px; height: 440px;
+  opacity: 0.10;
+  background: no-repeat top right / contain
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420' fill='none'%3E%3Cg stroke='%232a3f6a' stroke-width='1'%3E%3Cpath d='M40 300 L220 140 L430 210 L600 90'/%3E%3Cpath d='M120 380 L300 250 L520 310'/%3E%3Cpath d='M220 140 L300 250'/%3E%3Cpath d='M430 210 L520 310'/%3E%3C/g%3E%3Cg fill='%232a3f6a'%3E%3Ccircle cx='40' cy='300' r='3'/%3E%3Ccircle cx='220' cy='140' r='3.5'/%3E%3Ccircle cx='430' cy='210' r='3'/%3E%3Ccircle cx='600' cy='90' r='3'/%3E%3Ccircle cx='300' cy='250' r='3'/%3E%3Ccircle cx='520' cy='310' r='3'/%3E%3Ccircle cx='120' cy='380' r='2.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── P1 · Hero-Bühne: mehr Präsenz, mehr Luft (nur Desktop) ── */
+.ce-dark .dpx-greeting { font-size: clamp(32px, 3.4vw, 52px); line-height: 1.02; letter-spacing: -0.012em; }
+.ce-dark .dpx-greeting-sub { margin-top: 15px; font-size: 15.5px; }
+@media (min-width: 861px) {
+  .ce-dark .dpx-main { padding-top: 48px; }
+  .ce-dark .dpx-kpis { margin-top: 46px; }
+}
+/* Rechte Aktionsleiste als geschlossener Cluster (Ausrichtung/Rhythmus) */
+.ce-dark .dpx-head-right { gap: 14px; }
+.ce-dark .dpx-head-row { gap: 12px; }
+
+/* ── P3 · KPI-Karten als präzise physische Objekte ── */
+.ce-dark .dpx-kpi {
+  background:
+    radial-gradient(120% 78% at 0% 0%, rgba(255,255,255,0.6), rgba(255,255,255,0) 46%),
+    linear-gradient(168deg, rgba(255,255,255,0.9), rgba(255,255,255,0.68));
+  border: 1px solid var(--dpx-hair-cool);
+  box-shadow: var(--dpx-shadow-rest);
+}
+.ce-dark .dpx-kpi:hover { transform: translateY(-5px); box-shadow: var(--dpx-shadow-hover); }
+.ce-dark .dpx-trust {
+  border: 1px solid var(--dpx-hair-cool);
+  box-shadow: var(--dpx-shadow-rest);
+}
+
+/* ── P4 · Marketing-/Info-Panels zurückgenommen (recessed regions statt Cards)
+   → die KPI-Arbeitsfläche führt eindeutig. Flacher, ruhiger, leiseres Blur. ── */
+.ce-dark .dpx-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.56), rgba(255,255,255,0.42));
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+          backdrop-filter: blur(10px) saturate(120%);
+  border: 1px solid rgba(120,140,190,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 26px -22px rgba(38,48,105,0.16);
+}
+.ce-dark .dpx-panel-title { font-size: 17px; color: var(--dpx-ink-2); letter-spacing: -0.005em; }
+.ce-dark .dpx-panel-sub { color: var(--dpx-ink-4); }
+
+/* ── Motion-Guards erneut (nach den obigen Deklarationen) ── */
+@media (prefers-reduced-motion: reduce) {
+  .ce-dark .dpx-blob,
+  .ce-dark .dpx-bloom { animation: none; }
+}
+@media (max-width: 760px) {
+  .ce-dark .dpx-blob { animation: none; }
+  .ce-dark .dpx-blob-3 { display: none; }
+  .ce-dark .dpx-bloom { animation: none; }
+  .ce-dark .dpx-ray,
+  .ce-dark .dpx-routes { display: none; }
+}

@@ -286,27 +286,57 @@
 .ins-badge-taxfree { flex-shrink: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.22); border-radius: 999px; padding: 3px 9px; }
 .ins-head-sub { font-size: 12px; color: var(--gray500); margin: 5px 0 14px; line-height: 1.5; }
 
-.ins-cards { display: flex; flex-direction: column; gap: 10px; }
-.ins-card { position: relative; display: flex; align-items: center; gap: 12px; padding: 13px 15px; border: 1.5px solid var(--border); border-radius: var(--radius); background: white; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s; }
-.ins-card:hover { border-color: var(--blue3); }
+/* Eingabefelder oben (immer sichtbar), Optionskarten darunter. */
+.ins-inputs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+
+/* Drei Optionskarten nebeneinander (JUMiNGO-nah), mobil untereinander. Gleiche
+   Höhe (stretch) + Link per margin-top:auto unten bündig. */
+.ins-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.ins-card {
+  position: relative; display: flex; flex-direction: column; gap: 11px;
+  padding: 16px; border: 1.5px solid var(--border); border-radius: 14px;
+  background: #fff; cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+.ins-card:hover { box-shadow: 0 8px 20px -12px rgba(20, 40, 100, 0.22); }
 .ins-card input { position: absolute; opacity: 0; width: 0; height: 0; }
-.ins-card-radio { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2, #c8d5e8); background: white; position: relative; transition: border-color 0.15s; }
-.ins-card--selected .ins-card-radio { border-color: var(--blue); }
-.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
-.ins-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ins-card-name { font-size: 14px; font-weight: 700; color: var(--navy); }
-.ins-card-desc { font-size: 12px; color: var(--gray600); line-height: 1.4; }
-.ins-card-trust { font-size: 11.5px; color: var(--gray500); margin-top: 2px; }
-.ins-card-price { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
-.ins-card-price-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--navy); white-space: nowrap; }
-.ins-card-price-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
-.ins-card--selected { border-color: var(--blue); background: #f5f9ff; box-shadow: 0 2px 10px rgba(29, 78, 216, 0.10); }
-.ins-card--muted { background: var(--gray50); }
-.ins-card--muted .ins-card-name { color: var(--gray700); font-weight: 600; }
-.ins-card--muted .ins-card-price-val { color: var(--gray600); font-size: 13px; }
-.ins-card--hero { border-color: rgba(29, 78, 216, 0.28); }
-.ins-card--hero .ins-card-price-val { color: var(--blue2); }
-.ins-card--hero.ins-card--selected { box-shadow: 0 4px 16px rgba(29, 78, 216, 0.16); }
+
+/* Kopf gestapelt: Titel volle Breite (1 Zeile bzw. sauber getrennt), Preis
+   darunter — verhindert Überlappung in schmalen 3-Spalten-Karten. */
+.ins-card-head { display: flex; flex-direction: column; gap: 7px; }
+.ins-card-head-l { display: flex; align-items: center; gap: 9px; }
+.ins-card-radio { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2, #c8d5e8); background: #fff; position: relative; transition: border-color 0.15s; }
+.ins-card-name { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--navy); line-height: 1.25; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.ins-card-price { display: flex; align-items: baseline; gap: 7px; padding-left: 27px; }
+.ins-card-price-val { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.ins-card-price-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+
+.ins-card-bullets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.ins-card-bullet { display: flex; align-items: flex-start; gap: 8px; }
+.ins-bullet-ico { flex-shrink: 0; margin-top: 1px; display: inline-flex; }
+.ins-bullet-ico--check { color: var(--success); }
+.ins-bullet-ico--info { color: var(--gray400); }
+.ins-bullet-txt { font-size: 12.5px; color: var(--gray700); line-height: 1.35; }
+
+.ins-card-cond { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
+.ins-card-cond-link { font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; border-bottom: 1px solid rgba(29, 78, 216, 0.35); line-height: 1.3; }
+.ins-card-cond-link:hover { border-bottom-color: var(--blue2); }
+.ins-card-cond-link--static { color: var(--gray500); border-bottom-style: dotted; border-bottom-color: var(--gray300, #cbd5e1); cursor: default; }
+.ins-card-provider { font-size: 11.5px; font-weight: 600; color: var(--gray400); }
+
+/* Zustände: Standard/Premium leicht positiv (grünlich), Kein Schutz neutral/weiß. */
+.ins-card--positive { background: #f5fdf8; border-color: rgba(16, 185, 129, 0.24); }
+.ins-card--neutral { background: #fff; }
+.ins-card--selected { box-shadow: 0 6px 18px -10px rgba(20, 40, 100, 0.20); }
+.ins-card--positive.ins-card--selected { border-color: var(--success); background: #eafaf1; box-shadow: 0 8px 22px -10px rgba(16, 185, 129, 0.30); }
+.ins-card--positive.ins-card--selected .ins-card-radio { border-color: var(--success); }
+.ins-card--positive.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--success); }
+.ins-card--neutral.ins-card--selected { border-color: var(--blue); background: #f5f9ff; }
+.ins-card--neutral.ins-card--selected .ins-card-radio { border-color: var(--blue); }
+.ins-card--neutral.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
+
+.ins-after { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 680px) { .ins-cards { grid-template-columns: 1fr; } }
 
 .ins-fields { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .ins-status { min-height: 18px; display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
@@ -327,7 +357,7 @@
    Reiner Optik-Uplift, ConfidaraExpress-Premium. Alles über booking-spezifische
    Klassen (.booking-insurance-box / .ins-* / .addopt-* / .labelfmt-*) gescoped —
    trifft KEINE globalen Klassen und keine anderen Seiten. Kein JUMiNGO-Branding,
-   keine erfundenen Deckungsaussagen. ───────────────────────────────────────── */
+   keine fremden Logos. Bulletpoints sind bewusst übernommene statische Inhalte. */
 
 /* Versicherungs-Container: weichere Rundung, subtilere Tiefe. */
 .booking-insurance-box {
@@ -341,37 +371,13 @@
     0 2px 6px -3px rgba(20, 40, 100, 0.08);
 }
 
-/* Auswahl-Karten: klarere Tier-Hierarchie (none/standard/premium). */
-.ins-card { border-radius: 12px; padding: 14px 16px; transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease; }
-.ins-card:hover { box-shadow: 0 6px 16px -10px rgba(20, 40, 100, 0.20); }
-.ins-card--selected { box-shadow: 0 6px 18px -8px rgba(29, 78, 216, 0.22); }
-.ins-card--hero.ins-card--selected { box-shadow: 0 8px 22px -8px rgba(29, 78, 216, 0.28); }
 /* Tastatur-Fokus sichtbar auf dem visuellen Radio (Inputs sind visuell versteckt). */
-.ins-card input:focus-visible ~ .ins-card-radio,
+.ins-card input:focus-visible ~ .ins-card-head .ins-card-radio,
 .labelfmt-card input:focus-visible ~ .labelfmt-radio { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
-
-/* Deckungsfakten-Streifen: objektive, real belegte Werte in einer Zeile. */
-.ins-facts {
-  display: flex; flex-wrap: wrap; gap: 10px 22px;
-  padding: 12px 15px; margin-bottom: 2px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(120, 150, 210, 0.18);
-  border-radius: 12px;
-}
-.ins-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ins-fact-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
-.ins-fact-val { font-size: 13px; font-weight: 700; color: var(--navy); }
 
 /* Warenwert / Versicherungswert: getrennte Felder, nebeneinander (mobil gestapelt). */
 .ins-value-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 560px) { .ins-value-grid { grid-template-columns: 1fr; } }
-
-/* Sehr schmale Telefone: Preis sauber unter den Kartentext setzen (statt neben
-   langen Tarifnamen wie „Keine Zusatzversicherung" zu drängen). */
-@media (max-width: 430px) {
-  .ins-card { flex-wrap: wrap; row-gap: 6px; }
-  .ins-card-price { width: 100%; flex-direction: row; align-items: baseline; gap: 6px; padding-left: 30px; text-align: left; }
-}
 
 .ins-status-ok { display: inline-flex; align-items: center; gap: 6px; }
 

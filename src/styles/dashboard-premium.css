@@ -2734,8 +2734,22 @@
 }
 
 /* ══════════ §17 SIDEBAR (Premium Navy-Glas · alle Seiten) ══════════ */
+/* .pp-side-in ist ein Glas-Objekt: teiltransparenter Verlauf + backdrop-
+   filter. backdrop-filter blendet dabei zwangsläufig das ein, was dahinter
+   liegt — vorher war das direkt der Seiten-Hintergrund von .app-shell, und
+   der ist pro Seite verschieden (Übersicht dunkles Navy, alle anderen
+   Dashboard-Seiten helles #f0f4fa). Dadurch wirkte dieselbe Glas-Regel auf
+   der Übersicht satt und woanders ausgewaschen/hell, obwohl .pp-side-in
+   selbst überall identisch war. Fix: .sidebar.pp-side bekommt eine eigene,
+   VOLLSTÄNDIG DECKENDE Navy-Basis (keine Alpha-Kanäle in der untersten
+   Ebene) — das ist jetzt der einzige Hintergrund, den backdrop-filter noch
+   sieht, unabhängig vom jeweiligen .app-shell-Theme der Seite. */
 .sidebar.pp-side {
-  padding:20px 0 20px 20px; background:none; border-right:none;
+  padding:20px 0 20px 20px;
+  background:
+    radial-gradient(130% 70% at 12% 0%, rgba(46,92,255,.18), transparent 62%),
+    linear-gradient(180deg, #071022 0%, #04091a 55%, #030713 100%);
+  border-right:none;
   -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none; overflow:visible;
 }
 .sidebar.pp-side::before, .sidebar.pp-side::after { display:none; }

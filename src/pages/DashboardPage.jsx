@@ -9,6 +9,7 @@ import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
 import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
 import { LegalLinks } from "../components/layout/LegalLinks";
+import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
@@ -91,7 +92,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${page === "new" ? " dashboard-neutral-premium" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${page === "new" ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}
@@ -157,9 +158,15 @@ export default function DashboardPage() {
             Tracking-Logik unverändert — TrackingPage ruft weiterhin den
             öffentlichen, nicht authentifizierten Endpunkt auf. */}
         {page === "tracking" && (
-          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <TrackingPage />
-          </Suspense>
+          <>
+            {/* Soft-Premium-Atmosphäre NUR im Dashboard-Kontext (nicht im
+                öffentlichen /tracking über NavbarLayout, das TrackingPage
+                ebenfalls rendert): hier gemountet, nicht in TrackingPage. */}
+            <PremiumBackground variant="soft" />
+            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+              <TrackingPage />
+            </Suspense>
+          </>
         )}
 
         {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}

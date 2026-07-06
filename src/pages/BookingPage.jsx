@@ -11,7 +11,7 @@ import { getBookingModules } from "../utils/bookingModules";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
-import { ReferenceModule } from "../components/booking/ReferenceModule";
+import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
@@ -34,7 +34,11 @@ export default function BookingPage() {
 
   // ── Versicherung (F1/F2): Auswahl + Live-Repricing + Übergabe an /book ──────
   const [insuranceType, setInsuranceType]   = useState("none"); // "none" | "standard" | "premium"
-  const [insuredValue, setInsuredValue]     = useState("");     // Versicherter Wert (EUR), String-Eingabe
+  // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
+  // Validierung, eigene Payload-Felder: goodsValue → details.value_amount,
+  // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
+  const [goodsValue, setGoodsValue]         = useState("");     // Warenwert (EUR)
+  const [insuranceValue, setInsuranceValue] = useState("");     // Versicherungswert (EUR)
   const [insContent, setInsContent]         = useState("");     // Inhaltsbeschreibung (max. 35), Default "Paket"
   const [repriceResult, setRepriceResult]   = useState(null);
   const [repriceLoading, setRepriceLoading] = useState(false);
@@ -48,6 +52,11 @@ export default function BookingPage() {
   // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >
   // entfernen, hart auf 35 Zeichen kappen (optional → kein Fehlerzustand).
   const updReference = (v) => upd("reference", v.replace(/[<>]/g, "").slice(0, 35));
+
+  // ── Zusatzoption: Labeldruckformat (A4/A6) ──────────────────────────────────
+  // Reiner /book-Payload-Wert (Default A4), NUR A4|A6. Kein Einfluss auf Preis
+  // oder Reprice — bewusst NICHT in den Reprice-Deps und ohne Stale-Gate.
+  const [labelFormat, setLabelFormat] = useState("A4");
 
   // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
   const makeCustomsItem = () => ({
@@ -85,7 +94,8 @@ export default function BookingPage() {
   // schaltet die Zollangaben nur bei backendseitig zollpflichtiger Route.
   const modules = getBookingModules(tariff, bookingData?.customs);
   const isInsured = insuranceType === "standard" || insuranceType === "premium";
-  const valueNum  = asNum(insuredValue);
+  const goodsValueNum     = asNum(goodsValue);
+  const insuranceValueNum = asNum(insuranceValue);
   // Inhaltsbeschreibung: eigenes Feld → sonst Sendungsinhalt → sonst "Paket"; hart auf 35 Zeichen.
   const contentDescription = (insContent.trim() || form.content.trim() || "Paket").slice(0, 35);
 
@@ -94,20 +104,22 @@ export default function BookingPage() {
   const insModel     = tariff?.insuranceModel   && typeof tariff.insuranceModel   === "object" ? tariff.insuranceModel   : null;
   const insBase      = asNum(repriceResult?.includedInsuranceValue) ?? asNum(insDetails?.insuranceValue);
   const insProvider  = asStr(repriceResult?.insuranceProvider) || asStr(insDetails?.insuranceProvider) || asStr(insModel?.provider);
+  // Gewichtsabhängige Haftung — nur aus eindeutig benannten Backend-Feldern und
+  // nur, wenn real vorhanden (mehrdeutige insuranceModel-Werte NICHT als Haftung
+  // interpretieren, konsistent mit OfferCard). Fehlt das Feld → keine Anzeige.
+  const insLiability = asPos(repriceResult?.liabilityValue) ?? asPos(insDetails?.liabilityValue);
   const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
   const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
 
-  // Auswahl-Cards (reine Darstellung): Name + Beschreibung + Trust + Preis. Alle
-  // Werte stammen aus vorhandenen read-only Feldern — keine erfundenen Daten.
-  const insTrust = insProvider ? `Versicherer: ${insProvider}` : null;
+  // Auswahl-Cards (reine Darstellung): Name + Beschreibung + Preis. Alle Werte
+  // stammen aus vorhandenen read-only Feldern — keine erfundenen Daten. Objektive
+  // Deckungsfakten (Grunddeckung/Versicherer/Haftung) zeigt der Faktenstreifen im
+  // Modul → hier bewusst keine Trust-Zeile mehr (keine Dopplung).
   const insCards = [
     {
       id: "none",
       name: "Keine Zusatzversicherung",
       desc: "Nur die im Tarif enthaltene Grunddeckung.",
-      trust: insBase != null
-        ? `Grunddeckung: max. ${money(insBase)}${insProvider ? ` · ${insProvider}` : ""}`
-        : insTrust,
       priceVal: insBase != null ? `max. ${money(insBase)}` : "inklusive",
       priceSub: "Grunddeckung",
       pricePrefix: "",
@@ -117,7 +129,6 @@ export default function BookingPage() {
       id: "standard",
       name: "Standard",
       desc: "Absicherung Ihres Warenwerts.",
-      trust: insTrust,
       priceVal: insStdPrice != null ? money(insStdPrice) : null,
       priceSub: insStdPrice != null ? "steuerfrei" : "nach Warenwert",
       pricePrefix: insStdPrice != null ? "ab " : "",
@@ -126,7 +137,6 @@ export default function BookingPage() {
       id: "premium",
       name: "Premium",
       desc: "Absicherung Ihres Warenwerts.",
-      trust: insTrust,
       priceVal: insPremPrice != null ? money(insPremPrice) : null,
       priceSub: insPremPrice != null ? "steuerfrei" : "nach Warenwert",
       pricePrefix: insPremPrice != null ? "ab " : "",
@@ -134,20 +144,29 @@ export default function BookingPage() {
     },
   ];
 
-  // Clientseitige Validierung (nur Standard/Premium). contentDescription ist per
-  // maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
+  // Clientseitige Validierung (nur Standard/Premium), GETRENNT nach Backend-
+  // Grenzen. Warenwert (goodsValue): 1..9.999.999. Versicherungswert (value):
+  // 1..20.000. Komma-Eingaben werden über asNum() unterstützt. contentDescription
+  // ist per maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
+  const goodsValueError =
+    !isInsured                 ? "" :
+    !goodsValue.trim()         ? "Bitte geben Sie den Warenwert an." :
+    goodsValueNum == null      ? "Bitte geben Sie einen gültigen Betrag ein." :
+    goodsValueNum <= 0         ? "Der Warenwert muss größer als 0 € sein." :
+    goodsValueNum > 9999999    ? "Der Warenwert darf höchstens 9.999.999 € betragen." :
+    "";
   const insValueError =
     !isInsured                 ? "" :
-    !insuredValue.trim()       ? "Bitte geben Sie den Warenwert an." :
-    valueNum == null           ? "Bitte geben Sie einen gültigen Betrag ein." :
-    valueNum <= 0              ? "Der Wert muss größer als 0 € sein." :
-    valueNum > 20000           ? "Der versicherte Wert darf höchstens 20.000 € betragen." :
+    !insuranceValue.trim()     ? "Bitte geben Sie den Versicherungswert an." :
+    insuranceValueNum == null  ? "Bitte geben Sie einen gültigen Betrag ein." :
+    insuranceValueNum <= 0     ? "Der Versicherungswert muss größer als 0 € sein." :
+    insuranceValueNum > 20000  ? "Der Versicherungswert darf höchstens 20.000 € betragen." :
     "";
-  const insValid = !isInsured || insValueError === "";
+  const insValid = !isInsured || (goodsValueError === "" && insValueError === "");
 
   // Reprice-Request mit Seq-/Abort-Schutz: veraltete Antworten überschreiben den
   // State nie. Sendet insuranceType FLACH, keine Client-Preise (Backend-Vertrag).
-  const runReprice = async (type, valNum, content) => {
+  const runReprice = async (type, goodsNum, insNum, content) => {
     const seq = ++repriceSeq.current;
     if (repriceAbort.current) repriceAbort.current.abort();
     const ac = new AbortController(); repriceAbort.current = ac;
@@ -158,8 +177,8 @@ export default function BookingPage() {
         tariffId:            tariff?.id,
         shipperTariffId:     tariff?.shipper_tariff_id,
         insuranceType:       type,
-        goodsValue:          valNum,
-        extraInsuranceValue: valNum,
+        goodsValue:          goodsNum,
+        extraInsuranceValue: insNum,
         contentDescription:  content,
       }, { signal: ac.signal });
       if (seq !== repriceSeq.current) return; // veraltet → ignorieren
@@ -198,10 +217,10 @@ export default function BookingPage() {
     }
     setRepriceStale(true);
     if (!insValid) { setRepriceResult(null); return; }
-    const id = setTimeout(() => runReprice(insuranceType, valueNum, contentDescription), 500);
+    const id = setTimeout(() => runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription), 500);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insuranceType, insuredValue]);
+  }, [insuranceType, goodsValue, insuranceValue]);
 
   // Laufende Requests beim Unmount abbrechen.
   useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
@@ -292,8 +311,8 @@ export default function BookingPage() {
         ? {
             insuranceSelection: {
               type:               repriceResult?.selectedInsurance || insuranceType,
-              value:              valueNum,
-              goodsValue:         valueNum,
+              value:              insuranceValueNum, // → extra_insurance_value
+              goodsValue:         goodsValueNum,     // → details.value_amount
               contentDescription,
             },
             confirmedTotalGross: repriceResult?.totals?.customerTotalGross,
@@ -334,6 +353,9 @@ export default function BookingPage() {
           // Optionale Referenznummer nur senden, wenn nach trim ein Wert
           // vorliegt → leerer Fall lässt den bestehenden Payload unverändert.
           ...(form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
+          // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
+          // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
+          labelFormat,
           ...insurancePayload,
           ...customsPayload,
         }),
@@ -464,7 +486,12 @@ export default function BookingPage() {
               onContentChange={(v) => upd("content", v)}
             />
 
-            <ReferenceModule value={form.reference} onChange={updReference} />
+            <AdditionalOptionsModule
+              reference={form.reference}
+              onReferenceChange={updReference}
+              labelFormat={labelFormat}
+              onLabelFormatChange={setLabelFormat}
+            />
 
             {modules.customs && (
               <CustomsModule
@@ -506,12 +533,18 @@ export default function BookingPage() {
                     insuranceType={insuranceType}
                     onSelectType={setInsuranceType}
                     isInsured={isInsured}
-                    insuredValue={insuredValue}
-                    onInsuredValueChange={setInsuredValue}
+                    goodsValue={goodsValue}
+                    onGoodsValueChange={setGoodsValue}
+                    goodsValueError={goodsValueError}
+                    insuranceValue={insuranceValue}
+                    onInsuranceValueChange={setInsuranceValue}
+                    insValueError={insValueError}
                     insContent={insContent}
                     onInsContentChange={setInsContent}
-                    insValueError={insValueError}
                     contentPlaceholder={insContentPlaceholder}
+                    insBase={insBase}
+                    insProvider={insProvider}
+                    insLiability={insLiability}
                     repriceError={repriceError}
                     repricePending={repricePending}
                     repriceResult={repriceResult}

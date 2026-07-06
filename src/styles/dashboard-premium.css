@@ -2,7 +2,14 @@
    ConfidaraExpress — Hauptlayout (Dashboard · Premium Dark)
    Alle neuen Klassen sind mit .ce- geprefixt (keine Kollision).
    Theme-Modifier .app-shell.ce-dark wird NUR auf der Übersicht gesetzt,
-   sodass Sendungen, Rechnungen, Profil und Neue Sendung unberührt bleiben.
+   sodass Sendungen, Rechnungen, Profil und Neue Sendung inhaltlich (Light-
+   Theme) unberührt bleiben. Ausnahme: die Sidebar — die ist bewusst KEIN
+   Teil des Übersicht-Themes mehr, sondern globales Chrome (siehe Sektion
+   „SIDEBAR (Standard, alle Dashboard-Seiten)" weiter unten) und rendert
+   überall identisch. --font-heading/--font-sans sind deshalb hier auf
+   :root gehoben (nicht mehr nur unter .ce-dark verfügbar), da die Sidebar
+   sie jetzt auf jeder Seite braucht. --font-display/--font-mono bleiben
+   .ce-dark-gescoped (nur für Übersicht-Inhalte: Hero-Serife, Schritt-Zähler).
    ──────────────────────────────────────────────────────────────────────── */
 
 /* === Premium-Tokens ======================================================= */
@@ -38,6 +45,11 @@
   --ce-r-xl: 26px;
 
   --ce-sidebar-w: 256px;
+
+  /* Sidebar-Typografie — global, damit Marke/Nav/Support auf jeder Seite
+     dieselbe Schrift verwenden (vorher nur unter .ce-dark definiert). */
+  --font-heading: 'Syne', 'DM Sans', system-ui, sans-serif;
+  --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
@@ -52,108 +64,12 @@
   color: var(--ce-ink-1);
 }
 
-/* ───────── Sidebar (dunkel) ───────── */
-.ce-dark .sidebar {
-  width: var(--ce-sidebar-w);
-  background:
-    linear-gradient(180deg, rgba(10, 18, 42, 0.9), rgba(4, 9, 22, 0.95));
-  border-right: 1px solid var(--ce-line-1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-.ce-dark .sidebar-brand {
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--ce-line-1);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.ce-dark .sidebar-brand .ce-brand-name {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--ce-ink-1);
-  letter-spacing: -0.01em;
-}
-.ce-dark .sidebar-brand .ce-brand-name b { color: var(--ce-blue-3); font-weight: 700; }
-.ce-dark .sidebar-brand .ce-brand-sub {
-  font-size: 10.5px;
-  color: var(--ce-ink-4);
-  letter-spacing: 0.04em;
-  margin-top: 1px;
-}
-
-.ce-dark .sidebar-close-btn { color: var(--ce-ink-3); }
-
-.ce-dark .sidebar-nav { flex: 1; padding: 10px; overflow-y: auto; }
-.ce-dark .nav-section-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ce-ink-4);
-  padding: 6px 12px 10px;
-}
-
-.ce-dark .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
-  border-radius: var(--ce-r);
-  color: var(--ce-ink-3);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 160ms, color 160ms, border-color 160ms;
-  border: 1px solid transparent;
-  background: none;
-  width: 100%;
-  text-align: left;
-  font-family: 'DM Sans', sans-serif;
-  margin-bottom: 1px;
-}
-.ce-dark .nav-item svg { flex-shrink: 0; opacity: 0.85; }
-.ce-dark .nav-item:hover { background: rgba(120, 160, 255, 0.07); color: var(--ce-ink-1); }
-.ce-dark .nav-item.active {
-  background: linear-gradient(180deg, rgba(60, 110, 255, 0.28), rgba(40, 80, 220, 0.16));
-  border-color: rgba(120, 160, 255, 0.30);
-  color: var(--ce-ink-1);
-  box-shadow:
-    0 0 0 1px rgba(180, 210, 255, 0.10) inset,
-    0 6px 16px -6px rgba(46, 92, 255, 0.45);
-}
-.ce-dark .nav-item.active svg { opacity: 1; color: var(--ce-blue-3); }
-
-.ce-dark .sidebar-footer { padding: 14px; border-top: 1px solid var(--ce-line-1); }
-.ce-dark .user-card {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 10px 12px;
-  border-radius: var(--ce-r);
-  background: rgba(120, 160, 255, 0.06);
-  border: 1px solid var(--ce-line-2);
-}
-.ce-dark .user-avatar {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(160deg, var(--ce-blue-3), var(--ce-blue));
-  display: grid; place-items: center;
-  font-size: 13px; font-weight: 700; color: #fff;
-  flex-shrink: 0;
-}
-.ce-dark .user-name { font-size: 13px; font-weight: 600; color: var(--ce-ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ce-dark .user-role { font-size: 11px; color: var(--ce-ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ce-dark .logout-btn,
-.ce-dark .ce-usercard-chevron {
-  background: none; border: none; cursor: pointer;
-  color: var(--ce-ink-4); padding: 4px; border-radius: 6px;
-  display: flex; transition: color 150ms;
-}
-.ce-dark .logout-btn:hover { color: #ff8d8d; }
-.ce-dark .ce-usercard-chevron:hover { color: var(--ce-ink-2); }
+/* ───────── Sidebar ─────────
+   Alle Sidebar-Regeln (Struktur + Theme) sind konsolidiert in der Sektion
+   „ÜBERSICHT · SIDEBAR (Standard, alle Seiten)" weiter unten im File — das
+   ist die einzige Quelle der Wahrheit. Hier bewusst keine Sidebar-Regeln
+   mehr (frühere .sidebar-brand/.nav-item/.user-card-Deklarationen entfernt:
+   sie zielten auf einen JSX-Zweig, der nicht mehr existiert). */
 
 /* ───────── Main content area (layout only — background lives in .ce-overview) ───────── */
 .ce-dark .main-content {
@@ -1117,11 +1033,26 @@
 }
 
 @media (max-width: 860px) {
-  .ce-dark .sidebar { transform: translateX(-100%); }
-  .ce-dark .sidebar.sidebar-open { transform: translateX(0); }
-  .ce-dark .sidebar-close-btn { display: flex; }
-  .ce-dark .main-content { margin-left: 0; }
-  .ce-dark .mobile-topbar { display: flex; }
+  /* Sidebar-Drawer-Schwelle — bewusst NICHT mehr .ce-dark-gescoped: die
+     Sidebar ist auf jeder Dashboard-Seite gleich, also kollabiert sie auch
+     überall bei derselben Breite (vorher: 860px nur auf der Übersicht,
+     768px auf allen anderen Seiten — eine zweite, unsichtbare Sidebar-
+     Inkonsistenz neben Farbe/Material). */
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.sidebar-open { transform: translateX(0); }
+  .sidebar-close-btn { display: flex; }
+  /* .app-shell (nicht nur .main-content) hält die Spezifität auf Augenhöhe
+     mit der älteren, unconditional .ce-dark .main-content-Regel (Zeile ~75,
+     margin-left:var(--ce-sidebar-w)) — sonst gewinnt die alte Regel auf der
+     Übersicht weiter, der Content bliebe dort um die Sidebar-Breite
+     eingerückt, obwohl die Sidebar längst als Drawer ausgeblendet ist. */
+  .app-shell .main-content { margin-left: 0; }
+  .mobile-topbar { display: flex; }
+  /* .hamburger-btn selbst ist generisch (auch von NavbarLayout mit eigener
+     768px-Schwelle genutzt) — hier gezielt nur die Dashboard-Instanz
+     (innerhalb .mobile-topbar) an die 860px-Schwelle angleichen, ohne die
+     öffentliche Navbar anzufassen. */
+  .mobile-topbar .hamburger-btn { display: flex; }
   .ce-page { padding: 20px 18px 0; }
   .ce-steps-grid { grid-template-columns: 1fr; gap: 22px; }
   .ce-step-connector { display: none; }
@@ -1198,18 +1129,14 @@
 
 .ce-dark {
   --ce-sidebar-w: 268px;
+  /* Nur für Übersicht-Inhalte (Hero-Serife, Schritt-Zähler) — die Sidebar
+     nutzt --font-heading/--font-sans, die jetzt global auf :root liegen. */
   --font-display: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
-  --font-heading: 'Syne', 'DM Sans', system-ui, sans-serif;
-  --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono:    'DM Mono', 'SF Mono', ui-monospace, Menlo, monospace;
 }
 
-/* Sidebar-Container an das Handoff angleichen (Breite via --ce-sidebar-w) */
-.ce-dark .sidebar {
-  background: linear-gradient(180deg, rgba(10, 18, 42, 0.92), rgba(4, 9, 22, 0.96));
-  border-right: 1px solid var(--ce-line-1);
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
+/* Sidebar-Breite via --ce-sidebar-w; Hintergrund/Material siehe konsolidierte
+   Sidebar-Sektion weiter unten (einzige Quelle der Wahrheit für Theme). */
 
 /* ── Sidebar-Innenleben (Handoff .dpx-*) ── */
 .dpx-brand { padding: 24px 18px 20px; display: flex; align-items: center; gap: 10px; }
@@ -1218,6 +1145,19 @@
 .dpx-brand-name b { color: var(--ce-blue-3); font-weight: 700; }
 .dpx-brand-sub { font-size: 12.5px; color: var(--ce-ink-4); margin-top: 6px; letter-spacing: 0.01em; }
 .dpx-close { margin-left: auto; }
+
+/* ── Identität (Firma/Nutzer) — eigener Block im Header-Stack, unabhängig
+   vom Topbar-User-Pill der Übersicht (.dpx-user-name/.dpx-user-org dort). ── */
+.dpx-identity { display: flex; align-items: center; gap: 12px; margin: 0 14px 14px; padding: 12px 14px; border-radius: 14px; }
+.dpx-identity-avatar {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px;
+  display: grid; place-items: center;
+  font-family: var(--font-heading); font-weight: 700; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, #4a86ff 0%, #2a50d6 55%, #182a8c 100%);
+}
+.dpx-identity-text { min-width: 0; }
+.dpx-identity-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dpx-identity-email { font-size: 11.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .dpx-nav { flex: 1; padding: 12px 14px 8px; overflow-y: auto; }
 .dpx-nav-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ce-ink-4); padding: 18px 12px 9px; }
@@ -1567,49 +1507,8 @@
 }
 .ce-dark .dpx-aurora { display: none; }   /* dunkler Aurora-Balken entfällt */
 
-/* ── Sidebar (hell) ── */
-.ce-dark .sidebar {
-  background: linear-gradient(180deg, #ffffff 0%, #f6f9ff 100%);
-  border-right: 1px solid var(--dpx-hair);
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-}
-.ce-dark .dpx-brand { border-bottom: 1px solid var(--dpx-hair); }
-.ce-dark .dpx-brand-name { color: var(--dpx-ink-1); }
-.ce-dark .dpx-brand-name b { color: var(--dpx-blue); }
-.ce-dark .dpx-brand-sub { color: var(--dpx-ink-3); }
-.ce-dark .sidebar-close-btn { color: var(--dpx-ink-3); }
-
-.ce-dark .dpx-nav-label { color: var(--dpx-ink-4); }
-.ce-dark .dpx-nav-item { color: var(--dpx-ink-2); }
-.ce-dark .dpx-nav-item svg { opacity: 0.7; }
-.ce-dark .dpx-nav-item:hover { background: rgba(37,99,235,0.06); color: var(--dpx-ink-1); }
-.ce-dark .dpx-nav-item:hover svg { opacity: 1; }
-.ce-dark .dpx-nav-item.is-active {
-  background: linear-gradient(100deg, rgba(37,99,235,0.10) 0%, rgba(37,99,235,0.05) 100%);
-  border-color: rgba(37,99,235,0.18);
-  color: var(--dpx-blue-ink);
-  box-shadow: 0 1px 2px rgba(37,99,235,0.06);
-}
-.ce-dark .dpx-nav-item.is-active::before { background: var(--dpx-blue); box-shadow: none; }
-.ce-dark .dpx-nav-item.is-active svg { color: var(--dpx-blue); opacity: 1; }
-
-.ce-dark .dpx-support {
-  background: linear-gradient(160deg, rgba(37,99,235,0.06), rgba(37,99,235,0.02));
-  border: 1px solid var(--dpx-hair-2);
-}
-.ce-dark .dpx-support:hover {
-  border-color: rgba(37,99,235,0.24);
-  background: linear-gradient(160deg, rgba(37,99,235,0.10), rgba(37,99,235,0.03));
-}
-.ce-dark .dpx-support-badge {
-  background: radial-gradient(circle at 42% 36%, rgba(37,99,235,0.20), rgba(37,99,235,0.07) 82%);
-  border: 1px solid rgba(37,99,235,0.20);
-  color: var(--dpx-blue);
-}
-.ce-dark .dpx-support-kontakt { color: var(--dpx-ink-3); }
-.ce-dark .dpx-support-live { color: var(--dpx-ink-1); }
-.ce-dark .dpx-support-note { color: var(--dpx-ink-4); }
-.ce-dark .dpx-copyright div { color: var(--dpx-ink-4); }
+/* Sidebar-Theme (Farbe/Glas/Glow) lebt jetzt ausschließlich in der
+   konsolidierten Sidebar-Sektion weiter unten. */
 
 /* ── Mobile-Topbar (hell) ── */
 .ce-dark .mobile-topbar {
@@ -1955,28 +1854,11 @@
   pointer-events: none;
 }
 
-/* ── Sidebar: weiche Premium-Tiefe hinter Logo/Navigation — bewusst hell
-   und freundlich statt dunkel. z-index:-1, da die Sidebar-Inhalte (Logo,
-   Nav, Support) unpositioniert sind und sonst über dem Glow lägen. ── */
-/* Kein position:relative hier — die Basisregel (dashboard.css) setzt bereits
-   position:fixed, das reicht als Positionierungskontext für den Glow völlig
-   aus. Ein Überschreiben auf relative würde den Off-Canvas-Mechanismus auf
-   Mobile brechen (Sidebar bliebe im Fluss statt vollständig aus dem Layout
-   herauszutreten) und horizontalen Overflow erzeugen. */
-.ce-dark .sidebar { overflow: hidden; }
-.ce-dark .sidebar::before {
-  content: '';
-  position: absolute;
-  top: -160px; left: 50%; transform: translateX(-50%);
-  width: 420px; height: 420px;
-  z-index: -1;
-  background: radial-gradient(circle, rgba(91,79,206,0.11) 0%, rgba(37,99,235,0.06) 45%, transparent 72%);
-  filter: blur(50px);
-  pointer-events: none;
-}
-.ce-dark .dpx-nav-item.is-active {
-  box-shadow: 0 1px 2px rgba(37,99,235,0.07), 0 8px 20px -12px rgba(37,99,235,0.40);
-}
+/* Wichtige Lektion (bleibt dokumentiert): NIE position auf .sidebar
+   überschreiben — die Basisregel (dashboard.css) setzt position:fixed, das
+   ist Voraussetzung für den Mobile-Off-Canvas-Drawer (translateX). Ein
+   Überschreiben auf relative bricht den Drawer und erzeugt horizontalen
+   Overflow. Sidebar-Glow/Theme siehe konsolidierte Sektion weiter unten. */
 
 /* ── Mobile/Tablet: Effekte reduzieren statt überlagern ── */
 @media (max-width: 760px) {
@@ -1989,7 +1871,6 @@
   .ce-dark .dpx-aurora::before { display: none; }
   .ce-dark .dpx-panel::before,
   .ce-dark .dpx-trust::before { left: 14px; right: 14px; }
-  .ce-dark .sidebar::before { width: 300px; height: 300px; top: -110px; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -2204,18 +2085,6 @@
     inset 0 1px 0 #ffffff,
     0 2px 4px rgba(35,45,95,0.06),
     0 14px 28px -14px rgba(45,60,140,0.32);
-}
-
-/* ── Sidebar: leiser Lavendel-Grund unten (Raumabschluss) ── */
-.ce-dark .sidebar::after {
-  content: '';
-  position: absolute;
-  bottom: -140px; left: 50%; transform: translateX(-50%);
-  width: 380px; height: 380px;
-  z-index: -1;
-  background: radial-gradient(circle, rgba(91,79,206,0.07) 0%, rgba(56,110,245,0.04) 45%, transparent 72%);
-  filter: blur(46px);
-  pointer-events: none;
 }
 
 /* ── Ruhe: Bewegung reduzieren, wo gewünscht oder nötig ── */
@@ -2608,6 +2477,15 @@
 .ce-dark .dpx-kpi.k-amber  .dpx-kpi-icon { color: var(--dpx-amber);  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(217,147,10,0.09), 0 8px 18px -8px rgba(217,147,10,0.24); }
 .ce-dark .dpx-kpi.k-spend  .dpx-kpi-icon { color: var(--dpx-violet); box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(91,79,206,0.09),  0 8px 18px -8px rgba(91,79,206,0.28); }
 
+/* .dpx-support-badge (Sidebar) teilt sich dieselbe Grundform/Materialität —
+   NICHT .ce-dark-gescoped, da die Sidebar auf jeder Seite rendert. Der
+   violette Farbakzent + eigene Ring-Farbe sitzen in der Sidebar-Sektion. */
+.dpx-support-badge {
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #ffffff 0%, #eaf1ff 78%);
+  border: none;
+}
+
 /* ── Nummerierte Schritte 01–04 (CSS-Counter, DM Mono) ── */
 .ce-dark .dpx-steps { counter-reset: dpx-step; }
 .ce-dark .dpx-step { counter-increment: dpx-step; }
@@ -2622,29 +2500,20 @@
   box-shadow: 0 3px 8px -3px rgba(50,70,160,0.32);
 }
 
-/* ── Glas-Sidebar + Chips ── */
-.ce-dark .sidebar {
-  background: var(--dpx-glass-strong);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
-          backdrop-filter: blur(26px) saturate(150%);
-  border-right: 1px solid var(--dpx-glass-border);
-}
+/* ── Topbar-Chips (User-Pill/Bell in der Übersicht-Bühne; Sidebar-Theme
+   siehe konsolidierte Sektion weiter unten) ── */
 .ce-dark .dpx-userpill,
 .ce-dark .dpx-iconbtn {
   background: var(--dpx-glass);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
           backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--dpx-glass-border);
-  box-shadow: var(--dpx-glass-shadow);
+  /* Gleiche Schattenlogik wie KPI-/Info-Kacheln — eigene Form (Squircle),
+     gleiche Materialität/Lichtwirkung. */
+  box-shadow: var(--dpx-shadow-rest);
   transition: transform 0.35s var(--dpx-ease), box-shadow 0.35s var(--dpx-ease);
 }
-.ce-dark .dpx-userpill:hover { transform: translateY(-2px); box-shadow: var(--dpx-glass-shadow-hover); }
-.ce-dark .dpx-support {
-  background: linear-gradient(160deg, rgba(255,255,255,0.6), rgba(255,255,255,0.34));
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-          backdrop-filter: blur(16px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.68);
-}
+.ce-dark .dpx-userpill:hover { transform: translateY(-2px); box-shadow: var(--dpx-shadow-hover); }
 .ce-dark .dpx-btn-new:hover,
 .ce-dark .dpx-btn-compare:hover { transform: translateY(-2px); }
 
@@ -2662,20 +2531,31 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT · SIDEBAR GLASS-NAVY (Premium-Korrektur)
+   SIDEBAR (Standard, alle Dashboard-Seiten) — einzige Quelle der Wahrheit
    ──────────────────────────────────────────────────────────────────────────
-   Aus der zuvor flachen, blickdichten Navy-Fläche wird ein echtes Glas-
-   Objekt: transparente Navy-/Blau-Verläufe + backdrop-filter, sodass die
-   Aurora-Atmosphäre der Bühne SUBTIL durch die Sidebar hindurchscheint
-   (Tiefe zwischen Sidebar und Content). Dazu: innere Lichtreflexionen,
-   ein weicher Glanzsaum am rechten Rand, feines Korn gegen Banding,
-   leuchtender Active-State und Hover mit blauem Glass-Glow. Support-Karte
-   als eigenständiges Glasobjekt inszeniert. Nur Darstellung — alle Nav-
-   Funktionen/Routen/Klickpfade unverändert. Gescoped auf die Übersicht
-   (.ce-dark), letzte Sektion → gewinnt die Kaskade.
+   Vorher gab es zwei Sidebar-Varianten (Übersicht vs. übrige Seiten, per
+   JSX-Fork in DashboardSidebar.jsx) UND bis zu sechs übereinanderliegende
+   .ce-dark-gescopte Theme-Iterationen in dieser Datei. Beides wurde
+   konsolidiert: der JSX-Fork ist entfernt (eine Sidebar für den gesamten
+   eingeloggten Bereich, inkl. Calculator via DashboardLayout), und diese
+   Sektion ist jetzt die EINZIGE, die Sidebar-Theme deklariert — bewusst
+   NICHT mehr an .ce-dark gekoppelt (die Sidebar ist keine Eigenschaft der
+   Übersicht-Seite, sondern ein globales Chrome-Element). Alle älteren
+   .ce-dark-gescopten Sidebar- und Support-Blöcke im File wurden entfernt
+   oder durch Kommentar-Verweise auf diese Sektion ersetzt.
+
+   Echtes Glas-Objekt: transparente Navy-/Blau-Verläufe + backdrop-filter,
+   sodass die Aurora der Bühne SUBTIL durch die Sidebar hindurchscheint.
+   Dazu: innere Lichtreflexionen, weicher Glanzsaum am rechten Rand, feines
+   Korn gegen Banding, leuchtender Active-State, Hover mit blauem Glass-Glow,
+   Support-Karte als eigenständiges Glasobjekt. Neu: Identitäts-Block (Firma/
+   Nutzer) im Header-Stack — Wunsch war „User-Infos bleiben, nur kombiniert
+   mit der Marke, nicht mehr im Footer". Nur Darstellung — alle Nav-
+   Funktionen/Routen/Klickpfade unverändert. Letzte Sektion → gewinnt die
+   Kaskade (auch gegenüber den unscoped Struktur-Regeln weiter oben im File).
    ──────────────────────────────────────────────────────────────────────── */
 
-.app-shell.ce-dark {
+.app-shell {
   --nav-navy-1: #1a365d;   /* oben, minimal heller (Licht von oben) */
   --nav-navy-2: #0f2942;   /* unten, tiefes Marineblau */
   --nav-accent: #2563eb;   /* Akzentblau */
@@ -2687,7 +2567,7 @@
   --nav-line:  rgba(255,255,255,0.10);
 }
 
-.ce-dark .sidebar {
+.sidebar {
   /* KEIN position-Override: Basis ist position:fixed (dashboard.css) für den
      Mobile-Off-Canvas-Drawer (translateX). fixed ist bereits ein Containing
      Block für die absolut positionierten Pseudo-Elemente unten. */
@@ -2705,75 +2585,86 @@
     0 30px 70px -40px rgba(6,14,34,0.65);
 }
 /* Feines Korn gegen Banding auf der großen Glasfläche — sehr zurückhaltend */
-.ce-dark .sidebar::before {
+.sidebar::before {
   display: block; content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   opacity: 0.05; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
 }
 /* Weicher Glanzsaum am rechten Rand — Licht „kommt durch die Kante" */
-.ce-dark .sidebar::after {
+.sidebar::after {
   display: block; content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 40px; z-index: 0; pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(91,141,239,0.09) 82%, rgba(160,190,255,0.20) 100%);
 }
-.ce-dark .dpx-brand,
-.ce-dark .dpx-nav,
-.ce-dark .dpx-support,
-.ce-dark .dpx-copyright { position: relative; z-index: 1; }
+.dpx-brand,
+.dpx-identity,
+.dpx-nav,
+.dpx-support,
+.dpx-copyright { position: relative; z-index: 1; }
 
 /* Marke */
-.ce-dark .dpx-brand { border-bottom: 1px solid var(--nav-line); }
-.ce-dark .dpx-brand-name { color: var(--nav-ink-1); }
-.ce-dark .dpx-brand-name b { color: var(--nav-accent-soft); }
-.ce-dark .dpx-brand-sub { color: var(--nav-ink-3); }
-.ce-dark .sidebar-close-btn { color: var(--nav-ink-3); }
+.dpx-brand { border-bottom: 1px solid var(--nav-line); }
+.dpx-brand-name { color: var(--nav-ink-1); }
+.dpx-brand-name b { color: var(--nav-accent-soft); }
+.dpx-brand-sub { color: var(--nav-ink-3); }
+.sidebar-close-btn { color: var(--nav-ink-3); }
+
+/* Identität (Firma/Nutzer) — eigenes Glas-Chip direkt unter der Marke */
+.dpx-identity {
+  background: linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.dpx-identity-avatar { box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 10px -4px rgba(30,60,180,0.6); }
+.dpx-identity-name { color: var(--nav-ink-1); }
+.dpx-identity-email { color: var(--nav-ink-3); }
 
 /* Navigation */
-.ce-dark .dpx-nav-label { color: var(--nav-ink-4); }
-.ce-dark .dpx-nav-item {
+.dpx-nav-label { color: var(--nav-ink-4); }
+.dpx-nav-item {
   color: var(--nav-ink-2); border-color: transparent;
-  transition: background 220ms var(--dpx-ease), color 220ms var(--dpx-ease), box-shadow 220ms var(--dpx-ease);
+  /* --dpx-ease ist nur unter .ce-dark definiert (Übersicht-Token) — die
+     Sidebar braucht die Kurve überall, daher mit Fallback referenziert. */
+  transition: background 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), color 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), box-shadow 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1));
 }
-.ce-dark .dpx-nav-item svg { color: currentColor; opacity: 0.85; transition: filter 220ms var(--dpx-ease), opacity 220ms var(--dpx-ease); }
-.ce-dark .dpx-nav-item:hover {
+.dpx-nav-item svg { color: currentColor; opacity: 0.85; transition: filter 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), opacity 220ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)); }
+.dpx-nav-item:hover {
   background: linear-gradient(100deg, rgba(91,141,239,0.16) 0%, rgba(37,99,235,0.06) 100%);
   color: var(--nav-ink-1);
   box-shadow: inset 0 0 0 1px rgba(120,160,255,0.14);
 }
-.ce-dark .dpx-nav-item:hover svg { opacity: 1; filter: drop-shadow(0 0 6px rgba(120,160,255,0.55)); }
-.ce-dark .dpx-nav-item.is-active {
+.dpx-nav-item:hover svg { opacity: 1; filter: drop-shadow(0 0 6px rgba(120,160,255,0.55)); }
+.dpx-nav-item.is-active {
   background: linear-gradient(100deg, rgba(59,130,246,0.34) 0%, rgba(37,99,235,0.15) 100%);
   border-color: rgba(120,160,255,0.32);
   color: var(--nav-ink-1);
   box-shadow: inset 0 0 0 1px rgba(120,160,255,0.16), 0 8px 26px -10px rgba(37,99,235,0.55), 0 0 26px -6px rgba(59,130,246,0.42);
 }
-.ce-dark .dpx-nav-item.is-active::before { background: var(--nav-accent-soft); box-shadow: 0 0 14px rgba(91,141,239,0.85); }
-.ce-dark .dpx-nav-item.is-active svg { color: #cfe0ff; opacity: 1; filter: drop-shadow(0 0 6px rgba(150,180,255,0.6)); }
+.dpx-nav-item.is-active::before { background: var(--nav-accent-soft); box-shadow: 0 0 14px rgba(91,141,239,0.85); }
+.dpx-nav-item.is-active svg { color: #cfe0ff; opacity: 1; filter: drop-shadow(0 0 6px rgba(150,180,255,0.6)); }
 
 /* Support-Karte — eigenständiges Glasobjekt statt flacher Fläche */
-.ce-dark .dpx-support {
+.dpx-support {
   background: linear-gradient(160deg, rgba(255,255,255,0.13), rgba(255,255,255,0.03));
   border: 1px solid rgba(255,255,255,0.16);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
           backdrop-filter: blur(16px) saturate(160%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 18px 40px -28px rgba(6,14,34,0.6);
-  transition: transform 260ms var(--dpx-ease), box-shadow 260ms var(--dpx-ease), border-color 260ms var(--dpx-ease), background 260ms var(--dpx-ease);
+  transition: transform 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), box-shadow 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), border-color 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1)), background 260ms var(--dpx-ease, cubic-bezier(.2,.7,.3,1));
 }
-.ce-dark .dpx-support:hover {
+.dpx-support:hover {
   transform: translateY(-2px);
   background: linear-gradient(160deg, rgba(255,255,255,0.17), rgba(255,255,255,0.05));
   border-color: rgba(150,180,255,0.32);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 26px 52px -26px rgba(6,14,34,0.68), 0 0 0 1px rgba(91,141,239,0.16);
 }
-.ce-dark .dpx-support-badge {
-  background: radial-gradient(circle at 42% 36%, rgba(120,160,255,0.34), rgba(37,99,235,0.16) 82%);
-  border: 1px solid rgba(140,175,255,0.3);
-  color: #dbe4ff;
-}
-.ce-dark .dpx-support-kontakt { color: var(--nav-ink-3); }
-.ce-dark .dpx-support-live { color: var(--nav-ink-1); }
-.ce-dark .dpx-support-note { color: var(--nav-ink-4); }
-.ce-dark .dpx-copyright div { color: var(--nav-ink-4); }
+/* Farbakzent des Support-Medaillons (Violett) — Materialität/Glow/Hairline
+   teilt es sich mit KPI-/Step-/Why-/Trust-Icons (siehe Medaillon-Regel). */
+.dpx-support-badge { color: var(--dpx-violet, #5b4fce); box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 5px rgba(91,79,206,0.09), 0 8px 18px -8px rgba(91,79,206,0.28); }
+.dpx-support-kontakt { color: var(--nav-ink-3); }
+.dpx-support-live { color: var(--nav-ink-1); }
+.dpx-support-note { color: var(--nav-ink-4); }
+.dpx-copyright div { color: var(--nav-ink-4); }
 
 /* ════════════════════════════════════════════════════════════════════════
    ÜBERSICHT · COMMAND-CENTER (Materialitäts-Korrektur)

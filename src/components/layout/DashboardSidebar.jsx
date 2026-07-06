@@ -49,11 +49,14 @@ const NAV_GROUPS = [
   },
 ];
 
+// Einzige Sidebar für den gesamten eingeloggten Bereich (kein Page-Fork mehr).
+// Vorher gab es zwei Render-Zweige (Übersicht vs. übrige Seiten) mit jeweils
+// eigenem Markup/CSS — daraus resultierte eine sichtbar andere Sidebar sobald
+// man die Seite wechselte. Jetzt: ein Zweig, ein Look, überall.
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
-  const isOverview = page === "overview";
 
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
@@ -61,117 +64,71 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   };
   const handleLogout = () => { logout(); navigate("/login"); };
 
-  // ── Übersicht: Sidebar exakt nach Design-Handoff (.dpx-*), nur echte Funktionen ──
-  if (isOverview) {
-    return (
-      <>
-        {sidebarOpen && (
-          <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />
-        )}
-        <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
-          <div className="dpx-brand">
-            <CubeMark />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="dpx-brand-name">Confidara<b>Express</b></div>
-              <div className="dpx-brand-sub">B2B Versandplattform.</div>
-            </div>
-            <button className="sidebar-close-btn dpx-close" onClick={() => setSidebarOpen(false)}>
-              <Icon n="close" s={18} />
-            </button>
-          </div>
-
-          <nav className="dpx-nav">
-            <button className="dpx-nav-item is-active" onClick={() => navigateTo("overview")}>
-              <Icon n="dashboard" s={22} /><span>Übersicht</span>
-            </button>
-            {NAV_GROUPS.map((group) => (
-              <React.Fragment key={group.label}>
-                <div className="dpx-nav-label">{group.label}</div>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`dpx-nav-item ${page === item.id ? "is-active" : ""}`}
-                    onClick={() => handleNav(item)}
-                  >
-                    <Icon n={item.icon} s={22} /><span>{item.label}</span>
-                  </button>
-                ))}
-              </React.Fragment>
-            ))}
-            <button className="dpx-nav-item" onClick={handleLogout}>
-              <Icon n="logout" s={22} /><span>Abmelden</span>
-            </button>
-          </nav>
-
-          <a className="dpx-support" href="mailto:support@confidaraexpress.de">
-            <div className="dpx-support-top">
-              <div className="dpx-support-badge"><Icon n="headset" s={22} /></div>
-              <div>
-                <div className="dpx-support-kontakt">Ihr persönlicher Kontakt</div>
-                <div className="dpx-support-live"><span className="dot" />Live Support</div>
-              </div>
-            </div>
-            <div className="dpx-support-note">Ihre Antwort wird zeitnah beantwortet.</div>
-          </a>
-
-          <div className="dpx-copyright">
-            <div>© 2026 ConfidaraExpress</div>
-            <div>Alle Rechte vorbehalten.</div>
-          </div>
-        </aside>
-      </>
-    );
-  }
-
-  // ── Übrige Dashboard-/Calculator-Seiten: unverändertes Light-/Standard-Sidebar-Layout ──
   return (
     <>
       {sidebarOpen && (
         <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />
       )}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
-        <div className="sidebar-brand">
-          <div className="logo-mark" style={{ width: 30, height: 30, fontSize: 12 }}>CE</div>
-          <div style={{ flex: 1 }}>
-            <div className="sidebar-brand-name">ConfidaraExpress</div>
-            <div className="sidebar-brand-sub">B2B Versand</div>
+        <div className="dpx-brand">
+          <CubeMark />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="dpx-brand-name">Confidara<b>Express</b></div>
+            <div className="dpx-brand-sub">B2B Versandplattform.</div>
           </div>
-          <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)}>
-            <Icon n="close" s={18} />
+          <button className="sidebar-close-btn dpx-close" onClick={() => setSidebarOpen(false)}>
+            <Icon n="close" s={16} />
           </button>
         </div>
 
-        <nav className="sidebar-nav">
-          <button className={`nav-item ${page === "overview" ? "active" : ""}`} onClick={() => navigateTo("overview")}>
-            <Icon n="dashboard" s={16} /> Übersicht
+        {/* Benutzerinformationen — oben im Header-Stack (Wunsch: nicht verschwinden,
+            sondern mit der Marke kombiniert), unabhängig vom Topbar-User-Pill der
+            Übersicht (eigener Klassenname, keine Kollision/Wiederverwendung). */}
+        <div className="dpx-identity">
+          <div className="dpx-identity-avatar">{initials}</div>
+          <div className="dpx-identity-text">
+            <div className="dpx-identity-name">{user?.company_name || user?.name}</div>
+            <div className="dpx-identity-email">{user?.email || "B2B Konto"}</div>
+          </div>
+        </div>
+
+        <nav className="dpx-nav">
+          <button className={`dpx-nav-item ${page === "overview" ? "is-active" : ""}`} onClick={() => navigateTo("overview")}>
+            <Icon n="dashboard" s={24} /><span>Übersicht</span>
           </button>
           {NAV_GROUPS.map((group) => (
             <React.Fragment key={group.label}>
-              <div className="nav-section-label">{group.label}</div>
+              <div className="dpx-nav-label">{group.label}</div>
               {group.items.map((item) => (
                 <button
                   key={item.id}
-                  className={`nav-item ${page === item.id ? "active" : ""}`}
+                  className={`dpx-nav-item ${page === item.id ? "is-active" : ""}`}
                   onClick={() => handleNav(item)}
                 >
-                  <Icon n={item.icon} s={16} /> {item.label}
+                  <Icon n={item.icon} s={24} /><span>{item.label}</span>
                 </button>
               ))}
             </React.Fragment>
           ))}
-          <button className="nav-item" onClick={handleLogout}>
-            <Icon n="logout" s={16} /> Abmelden
+          <button className="dpx-nav-item" onClick={handleLogout}>
+            <Icon n="logout" s={24} /><span>Abmelden</span>
           </button>
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="user-card">
-            <div className="user-avatar">{initials}</div>
-            <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
-              <div className="user-name">{user?.company_name || user?.name}</div>
-              <div className="user-role">{user?.email || "B2B Konto"}</div>
+        <a className="dpx-support" href="mailto:support@confidaraexpress.de">
+          <div className="dpx-support-top">
+            <div className="dpx-support-badge"><Icon n="headset" s={24} /></div>
+            <div>
+              <div className="dpx-support-kontakt">Ihr persönlicher Kontakt</div>
+              <div className="dpx-support-live"><span className="dot" />Live Support</div>
             </div>
           </div>
+          <div className="dpx-support-note">Ihre Antwort wird zeitnah beantwortet.</div>
+        </a>
+
+        <div className="dpx-copyright">
+          <div>© 2026 ConfidaraExpress</div>
+          <div>Alle Rechte vorbehalten.</div>
         </div>
       </aside>
     </>

@@ -211,10 +211,10 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             <div className="dpx-deck-lead">
               <div className="dpx-eyebrow">
                 {todayLabel && (
-                  <span className="dpx-chip"><Icon n="calendar" s={15} />{todayLabel}</span>
+                  <span className="dpx-chip"><Icon n="calendar" s={16} />{todayLabel}</span>
                 )}
                 <span className="dpx-chip dpx-chip-live"><span className="dpx-chip-dot" aria-hidden="true" />Live-Übersicht</span>
-                <span className="dpx-chip"><Icon n="shieldCheck" s={15} />DSGVO-konform</span>
+                <span className="dpx-chip"><Icon n="shieldCheck" s={16} />DSGVO-konform</span>
               </div>
               <div className="dpx-greeting">{getGreeting()}, <span className="accent">{name}</span></div>
               <div className="dpx-greeting-sub">Hier ist Ihre Übersicht für heute.</div>
@@ -222,14 +222,14 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             <div className="dpx-head-right">
               <div className="dpx-head-row">
                 {/* Dekorativ, ohne Fake-Zähler und nicht klickbar (kein Notification-System). */}
-                <span className="dpx-iconbtn dpx-iconbtn-static" aria-hidden="true"><Icon n="bell" s={21} /></span>
+                <span className="dpx-iconbtn dpx-iconbtn-static" aria-hidden="true"><Icon n="bell" s={20} /></span>
                 <button type="button" className="dpx-userpill" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
                   <CompanyMark initial={initial} />
                   <div className="dpx-userpill-text">
                     <div className="dpx-user-name">{name}</div>
                     {org && <div className="dpx-user-org">{org}</div>}
                   </div>
-                  <Icon n="chevron" s={18} />
+                  <Icon n="chevron" s={16} />
                 </button>
               </div>
               <button type="button" className="dpx-btn-new" onClick={onNewShipment}>
@@ -275,7 +275,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             <div className="dpx-steps">
               {STEPS.map((s, i) => (
                 <div className="dpx-step" key={i}>
-                  <div className="dpx-step-icon"><Icon n={s.icon} s={26} /></div>
+                  <div className="dpx-step-icon"><Icon n={s.icon} s={24} /></div>
                   <div className="dpx-step-connector" />
                   <div className="dpx-step-title">{s.title}</div>
                   <div className="dpx-step-desc">{s.desc}</div>
@@ -290,7 +290,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             <div className="dpx-why">
               {WHY.map((w, i) => (
                 <div className="dpx-why-card" key={i}>
-                  <div className="dpx-why-badge"><Icon n={w.icon} s={22} /></div>
+                  <div className="dpx-why-badge"><Icon n={w.icon} s={24} /></div>
                   <div>
                     <div className="dpx-why-title">{w.title}</div>
                     <div className="dpx-why-desc">{w.desc}</div>
@@ -319,7 +319,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             </div>
             <div className="dpx-carrier-cta">
               <button type="button" className="dpx-btn-compare" onClick={() => navigate("/calculator")}>
-                Preise vergleichen<Icon n="arrowRight" s={18} />
+                Preise vergleichen<Icon n="arrowRight" s={16} />
               </button>
             </div>
           </section>
@@ -328,7 +328,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
           <div className="dpx-trust">
             {TRUST.map((t, i) => (
               <div className={"dpx-trust-item tr-" + t.tone} key={i}>
-                <div className="dpx-trust-badge"><Icon n={t.icon} s={23} /></div>
+                <div className="dpx-trust-badge"><Icon n={t.icon} s={24} /></div>
                 <div>
                   <div className="dpx-trust-title">{t.title}</div>
                   <div className="dpx-trust-desc">{t.desc}</div>

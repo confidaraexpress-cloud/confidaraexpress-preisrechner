@@ -2,6 +2,7 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
+import { PremiumBackground } from "./PremiumBackground";
 
 // PDF-Download: Benötigt Backend-Endpunkt GET /kunde/invoices/:id/pdf
 // Analog zu GET /api/jumingo/label/:id (liefert einen PDF-Stream,
@@ -16,6 +17,7 @@ export function InvoicesList({ invoices, loading }) {
 
   return (
     <>
+      <PremiumBackground variant="soft" />
       <div className="page-body">
         {unpaid.length > 0 && (
           <div className="alert alert-info mb-16">

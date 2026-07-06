@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
+import { PremiumBackground } from "./PremiumBackground";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
@@ -58,90 +59,6 @@ function DerKurierLogo() {
       <text x="34" y="14" fontFamily="'Syne',sans-serif" fontWeight="700" fontSize="10.5" letterSpacing="0.04em" fill="#6B7A93">Der</text>
       <text x="34" y="27.6" fontFamily="'Syne',sans-serif" fontWeight="800" fontSize="15" letterSpacing="-0.01em" fill="#14243F">Kurier</text>
     </svg>
-  );
-}
-
-// Hintergrund-Glyphen (§19-B3) — Line-Icons in dünnem Duktus (stroke 1.1).
-function Glyph({ n }) {
-  const P = {
-    parcel:   "M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
-    envelope: "M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9ZM4 7l8 6 8-6",
-    pin:      "M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-    plane:    "M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z",
-  };
-  if (n === "truck") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="1" y="4" width="14" height="12" rx="1" /><path d="M15 8h4l3 3v5h-7V8z" />
-        <circle cx="5.5" cy="18.5" r="2.3" /><circle cx="17.5" cy="18.5" r="2.3" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
-      <path d={P[n]} />
-    </svg>
-  );
-}
-
-const GLYPHS = [
-  { cls: "g-a", n: "parcel" }, { cls: "g-b", n: "envelope" }, { cls: "g-c", n: "pin" },
-  { cls: "g-d", n: "plane" },  { cls: "g-e", n: "truck" },    { cls: "g-f", n: "parcel" },
-];
-
-// Fixe Postal-Logistics-Hintergrundebene (§8/§19). aria-hidden, pointer-events:none.
-function PostalBackground() {
-  const nodes = [[120,760],[820,430],[1470,210],[180,300],[900,340],[1500,640],[300,880],[1120,820]];
-  return (
-    <div className="pbg" aria-hidden="true">
-      <div className="pbg-grad" />
-      <span className="pbg-glow g1" /><span className="pbg-glow g2" /><span className="pbg-glow g3" />
-      <div className="pbg-dots" />
-      <svg className="pbg-routes" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <radialGradient id="pgNode" cx="50%" cy="50%" r="50%">
-            <stop offset="0" stopColor="#bcd6ff" /><stop offset="0.5" stopColor="#5b8cff" /><stop offset="1" stopColor="#2e5cff" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="pgLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#4d8bff" stopOpacity="0" /><stop offset="0.5" stopColor="#6ea8ff" stopOpacity="0.85" /><stop offset="1" stopColor="#4d8bff" stopOpacity="0" />
-          </linearGradient>
-          <filter id="pgGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
-        <g className="pbg-lines" fill="none" stroke="url(#pgLine)" strokeWidth="1.6" strokeDasharray="3 9" strokeLinecap="round">
-          <path d="M120 760 C 360 560, 560 600, 820 430" />
-          <path d="M820 430 C 1040 300, 1180 360, 1470 210" />
-          <path d="M180 300 C 420 360, 620 260, 900 340" />
-          <path d="M900 340 C 1160 410, 1280 620, 1500 640" />
-          <path d="M300 880 C 620 820, 760 900, 1120 820" />
-        </g>
-        <g className="pbg-nodes">
-          {nodes.map(([x, y], i) => (
-            <g key={i} transform={`translate(${x},${y})`}>
-              <circle r="26" fill="url(#pgNode)" className="pbg-halo" />
-              <circle r="3.4" fill="#eaf2ff" filter="url(#pgGlow)" />
-              <circle r="7" fill="none" stroke="#7fb0ff" strokeWidth="1" opacity="0.5" className="pbg-ring" />
-            </g>
-          ))}
-        </g>
-        <g className="pbg-parcels" fill="#dbe8ff">
-          <rect x="-4" y="-4" width="8" height="8" rx="2">
-            <animateMotion dur="18s" repeatCount="indefinite" rotate="auto" path="M120 760 C 360 560, 560 600, 820 430 C 1040 300, 1180 360, 1470 210" />
-          </rect>
-          <rect x="-4" y="-4" width="8" height="8" rx="2">
-            <animateMotion dur="24s" begin="-8s" repeatCount="indefinite" rotate="auto" path="M180 300 C 420 360, 620 260, 900 340 C 1160 410, 1280 620, 1500 640" />
-          </rect>
-        </g>
-      </svg>
-      <div className="pbg-glyphs">
-        {GLYPHS.map((g) => (
-          <span className={`pbg-glyph ${g.cls}`} key={g.cls}><Glyph n={g.n} /></span>
-        ))}
-      </div>
-      <div className="pbg-noise" />
-      <div className="pbg-vig" />
-    </div>
   );
 }
 
@@ -220,7 +137,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
 
   return (
     <>
-      <PostalBackground />
+      <PremiumBackground variant="dark" />
 
       <div className="pp-main">
         {/* ── Header ── */}

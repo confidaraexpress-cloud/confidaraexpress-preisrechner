@@ -6,6 +6,7 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
+import { PremiumBackground } from "./PremiumBackground";
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -63,6 +64,7 @@ export function ShipmentsList({ shipments, loading }) {
 
   return (
     <>
+      <PremiumBackground variant="soft" />
       <div className="page-body">
         {labelError && (
           <div className="alert alert-error mb-16">

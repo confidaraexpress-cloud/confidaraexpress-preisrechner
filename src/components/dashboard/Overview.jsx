@@ -72,6 +72,15 @@ function getGreeting() {
   return "Guten Abend";
 }
 
+// Heutiges Datum als Kontext-Chip (nur Anzeige, keine Geschäftsdaten).
+function getTodayLabel() {
+  try {
+    return new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  } catch {
+    return null;
+  }
+}
+
 /* ── Statische Inhalte (Copy verbatim aus dem Handoff) ────────────────────── */
 
 const STEPS = [
@@ -160,6 +169,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
   const initial = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
   const k = useMemo(() => computeKpis(shipments), [shipments]);
+  const todayLabel = getTodayLabel();
 
   // Fußzeilen: echte, neutrale Angaben — keine erfundenen Deltas.
   const activeFoot = k.hasCreatedAt && k.new24 > 0
@@ -192,123 +202,140 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
       </div>
       <div className="dpx-inner">
 
-        {/* ── Topbar ── */}
-        <div className="dpx-topbar">
-          <div>
-            <div className="dpx-greeting">{getGreeting()}, <span className="accent">{name}</span></div>
-            <div className="dpx-greeting-sub">Hier ist Ihre Übersicht für heute.</div>
-          </div>
-          <div className="dpx-head-right">
-            <div className="dpx-head-row">
-              {/* Dekorativ, ohne Fake-Zähler und nicht klickbar (kein Notification-System). */}
-              <span className="dpx-iconbtn dpx-iconbtn-static" aria-hidden="true"><Icon n="bell" s={21} /></span>
-              <button type="button" className="dpx-userpill" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
-                <CompanyMark initial={initial} />
-                <div className="dpx-userpill-text">
-                  <div className="dpx-user-name">{name}</div>
-                  {org && <div className="dpx-user-org">{org}</div>}
-                </div>
-                <Icon n="chevron" s={18} />
+        {/* ══ Kommandozentrale: Kontext, Aktionen & KPI-Regal auf einer Glasfläche ══ */}
+        <section className="dpx-deck">
+          <span className="dpx-deck-glow" aria-hidden="true" />
+          <span className="dpx-deck-motif" aria-hidden="true" />
+
+          <div className="dpx-deck-top">
+            <div className="dpx-deck-lead">
+              <div className="dpx-eyebrow">
+                {todayLabel && (
+                  <span className="dpx-chip"><Icon n="calendar" s={15} />{todayLabel}</span>
+                )}
+                <span className="dpx-chip dpx-chip-live"><span className="dpx-chip-dot" aria-hidden="true" />Live-Übersicht</span>
+                <span className="dpx-chip"><Icon n="shieldCheck" s={15} />DSGVO-konform</span>
+              </div>
+              <div className="dpx-greeting">{getGreeting()}, <span className="accent">{name}</span></div>
+              <div className="dpx-greeting-sub">Hier ist Ihre Übersicht für heute.</div>
+            </div>
+            <div className="dpx-head-right">
+              <div className="dpx-head-row">
+                {/* Dekorativ, ohne Fake-Zähler und nicht klickbar (kein Notification-System). */}
+                <span className="dpx-iconbtn dpx-iconbtn-static" aria-hidden="true"><Icon n="bell" s={21} /></span>
+                <button type="button" className="dpx-userpill" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
+                  <CompanyMark initial={initial} />
+                  <div className="dpx-userpill-text">
+                    <div className="dpx-user-name">{name}</div>
+                    {org && <div className="dpx-user-org">{org}</div>}
+                  </div>
+                  <Icon n="chevron" s={18} />
+                </button>
+              </div>
+              <button type="button" className="dpx-btn-new" onClick={onNewShipment}>
+                <Icon n="plus" s={20} c="#fff" />Neue Sendung
               </button>
             </div>
-            <button type="button" className="dpx-btn-new" onClick={onNewShipment}>
-              <Icon n="plus" s={20} c="#fff" />Neue Sendung
-            </button>
           </div>
-        </div>
 
-        {/* ── KPI-Reihe (echte Daten) ── */}
-        <div className="dpx-kpis">
-          {KPIS.map((kpi) => (
-            <div className={"dpx-kpi k-" + kpi.tone} key={kpi.key}>
-              <div className="dpx-kpi-top">
-                <span className="dpx-kpi-icon">
-                  {kpi.icon ? <Icon n={kpi.icon} s={20} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
-                </span>
-                <span className="dpx-kpi-label">{kpi.label}</span>
-              </div>
-              <div className="dpx-kpi-value"><KpiValue v={loading ? "—" : kpi.value} /></div>
-              <div className="dpx-kpi-foot">
-                {loading ? (
-                  <span className="dpx-foot-label">Wird geladen…</span>
-                ) : (
-                  <>
-                    {kpi.foot.dot && <span className="dpx-foot-dot" />}
-                    {kpi.foot.delta && <span className={"dpx-kpi-delta " + kpi.foot.deltaClass}>{kpi.foot.delta}</span>}
-                    <span className="dpx-foot-label">{kpi.foot.label}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── So einfach funktioniert es ── */}
-        <section className="dpx-panel">
-          <div className="dpx-panel-title">So einfach funktioniert es</div>
-          <div className="dpx-steps">
-            {STEPS.map((s, i) => (
-              <div className="dpx-step" key={i}>
-                <div className="dpx-step-icon"><Icon n={s.icon} s={26} /></div>
-                <div className="dpx-step-connector" />
-                <div className="dpx-step-title">{s.title}</div>
-                <div className="dpx-step-desc">{s.desc}</div>
+          {/* ── KPI-Regal (echte Daten) · Leitkennzahl hervorgehoben ── */}
+          <div className="dpx-kpis">
+            {KPIS.map((kpi) => (
+              <div className={"dpx-kpi k-" + kpi.tone + (kpi.key === "active" ? " is-featured" : "")} key={kpi.key}>
+                <div className="dpx-kpi-top">
+                  <span className="dpx-kpi-icon">
+                    {kpi.icon ? <Icon n={kpi.icon} s={20} /> : <span className="dpx-kpi-glyph">{kpi.glyph}</span>}
+                  </span>
+                  <span className="dpx-kpi-label">{kpi.label}</span>
+                </div>
+                <div className="dpx-kpi-value"><KpiValue v={loading ? "—" : kpi.value} /></div>
+                <div className="dpx-kpi-foot">
+                  {loading ? (
+                    <span className="dpx-foot-label">Wird geladen…</span>
+                  ) : (
+                    <>
+                      {kpi.foot.dot && <span className="dpx-foot-dot" />}
+                      {kpi.foot.delta && <span className={"dpx-kpi-delta " + kpi.foot.deltaClass}>{kpi.foot.delta}</span>}
+                      <span className="dpx-foot-label">{kpi.foot.label}</span>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── Warum ConfidaraExpress? ── */}
-        <section className="dpx-panel">
-          <div className="dpx-panel-title">Warum ConfidaraExpress?</div>
-          <div className="dpx-why">
-            {WHY.map((w, i) => (
-              <div className="dpx-why-card" key={i}>
-                <div className="dpx-why-badge"><Icon n={w.icon} s={22} /></div>
+        {/* ══ Sekundärzone: Erklärung, Netzwerk & Vertrauen (bewusst zurückgenommen) ══ */}
+        <div className="dpx-learn">
+          <div className="dpx-learn-eyebrow">Gut zu wissen</div>
+
+          {/* ── So einfach funktioniert es ── */}
+          <section className="dpx-panel">
+            <div className="dpx-panel-title">So einfach funktioniert es</div>
+            <div className="dpx-steps">
+              {STEPS.map((s, i) => (
+                <div className="dpx-step" key={i}>
+                  <div className="dpx-step-icon"><Icon n={s.icon} s={26} /></div>
+                  <div className="dpx-step-connector" />
+                  <div className="dpx-step-title">{s.title}</div>
+                  <div className="dpx-step-desc">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Warum ConfidaraExpress? ── */}
+          <section className="dpx-panel">
+            <div className="dpx-panel-title">Warum ConfidaraExpress?</div>
+            <div className="dpx-why">
+              {WHY.map((w, i) => (
+                <div className="dpx-why-card" key={i}>
+                  <div className="dpx-why-badge"><Icon n={w.icon} s={22} /></div>
+                  <div>
+                    <div className="dpx-why-title">{w.title}</div>
+                    <div className="dpx-why-desc">{w.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Carrier Netzwerk ── */}
+          <section className="dpx-panel dpx-carriers">
+            <div className="dpx-panel-title">Carrier Netzwerk</div>
+            <div className="dpx-panel-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
+            <div className="dpx-carrier-grid">
+              {CARRIERS.map((c) => (
+                <div className="dpx-carrier-tile" key={c.key}>
+                  <div className="dpx-carrier-logo">
+                    {c.key === "der-kurier"
+                      ? <DerKurierLogo />
+                      : <img src={c.logo} alt={c.alt} className={c.key === "trans-o-flex" ? "is-transoflex" : undefined} />}
+                  </div>
+                  <div className="dpx-carrier-service">{c.service}</div>
+                  <div className="dpx-carrier-time">{c.time}</div>
+                </div>
+              ))}
+            </div>
+            <div className="dpx-carrier-cta">
+              <button type="button" className="dpx-btn-compare" onClick={() => navigate("/calculator")}>
+                Preise vergleichen<Icon n="arrowRight" s={18} />
+              </button>
+            </div>
+          </section>
+
+          {/* ── Trust-Bar ── */}
+          <div className="dpx-trust">
+            {TRUST.map((t, i) => (
+              <div className={"dpx-trust-item tr-" + t.tone} key={i}>
+                <div className="dpx-trust-badge"><Icon n={t.icon} s={23} /></div>
                 <div>
-                  <div className="dpx-why-title">{w.title}</div>
-                  <div className="dpx-why-desc">{w.desc}</div>
+                  <div className="dpx-trust-title">{t.title}</div>
+                  <div className="dpx-trust-desc">{t.desc}</div>
                 </div>
               </div>
             ))}
           </div>
-        </section>
-
-        {/* ── Carrier Netzwerk ── */}
-        <section className="dpx-panel dpx-carriers">
-          <div className="dpx-panel-title">Carrier Netzwerk</div>
-          <div className="dpx-panel-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
-          <div className="dpx-carrier-grid">
-            {CARRIERS.map((c) => (
-              <div className="dpx-carrier-tile" key={c.key}>
-                <div className="dpx-carrier-logo">
-                  {c.key === "der-kurier"
-                    ? <DerKurierLogo />
-                    : <img src={c.logo} alt={c.alt} className={c.key === "trans-o-flex" ? "is-transoflex" : undefined} />}
-                </div>
-                <div className="dpx-carrier-service">{c.service}</div>
-                <div className="dpx-carrier-time">{c.time}</div>
-              </div>
-            ))}
-          </div>
-          <div className="dpx-carrier-cta">
-            <button type="button" className="dpx-btn-compare" onClick={() => navigate("/calculator")}>
-              Preise vergleichen<Icon n="arrowRight" s={18} />
-            </button>
-          </div>
-        </section>
-
-        {/* ── Trust-Bar ── */}
-        <div className="dpx-trust">
-          {TRUST.map((t, i) => (
-            <div className={"dpx-trust-item tr-" + t.tone} key={i}>
-              <div className="dpx-trust-badge"><Icon n={t.icon} s={23} /></div>
-              <div>
-                <div className="dpx-trust-title">{t.title}</div>
-                <div className="dpx-trust-desc">{t.desc}</div>
-              </div>
-            </div>
-          ))}
         </div>
 
       </div>

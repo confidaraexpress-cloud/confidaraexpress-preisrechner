@@ -2733,21 +2733,22 @@
 .ce-dark .dpx-copyright div { color: var(--nav-ink-4); }
 
 /* ════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT · ENTERPRISE LUXURY (Final Polish)
+   ÜBERSICHT · COMMAND-CENTER-REKOMPOSITION (Enterprise)
    ──────────────────────────────────────────────────────────────────────────
-   Letzte Veredelung der bestehenden Designsprache — keine Neuerfindung,
-   keine neuen Farben, keine funktionalen Änderungen. Nur Komposition,
-   Präzision, Tiefe. Autoritative Schlusssektion (gewinnt Kaskade). Scoped
-   auf die Übersicht (.ce-dark). Ein dekoratives aria-hidden Kind
-   (Routenmotiv) wurde in Overview.jsx ergänzt; sonst reines CSS.
+   Sichtbare Neukomposition — kein reiner Feinschliff. Hero + KPIs werden zu
+   EINER gläsernen Kommandozentrale (.dpx-deck) zusammengefasst: Kontext-Chips,
+   Leitkennzahl groß (Navy-Anker, 2 Reihen), 4 Satelliten 2×2, Markensignatur
+   (abstrahiertes Versandnetz) und Innenlicht. Die Marketing-/Infoflächen
+   werden als ruhige Sekundärzone (.dpx-learn) darunter gebündelt und optisch
+   zurückgenommen. Autoritative Schlusssektion (gewinnt Kaskade). Rein
+   präsentationsseitig, scoped auf .ce-dark. Keine Logik/API/Routing/Daten.
 
-   P1 Hero-Bühne · P2 organische Atmosphäre + Hero-Lichtpool + kühle Ränder ·
-   P3 Präzisions-Material (Hairline + Nahschatten + Ambient + Innenreflex) ·
-   P4 Marketing zurückgenommen, KPI-Arbeitsfläche im Vordergrund ·
-   Markensignatur (abstrahiertes Versandnetz) · dezente Asymmetrie.
+   Materialdisziplin: die Bühne ist das Glas (backdrop-filter); die Kacheln
+   darauf sind DECKENDE Inset-Objekte ohne eigenes Blur (kein geschachteltes
+   Glas, Handoff §8) — senkt zugleich die Zahl der Blur-Flächen.
    ──────────────────────────────────────────────────────────────────────── */
 
-/* ── P3 · Präzisions-Material-Tokens ── */
+/* ── Präzisions-Material-Tokens ── */
 .app-shell.ce-dark {
   --dpx-hair-cool:    rgba(120,140,190,0.20);
   --dpx-shadow-rest:
@@ -2760,93 +2761,168 @@
     0 34px 66px -28px rgba(38,48,105,0.30);
 }
 
-/* ── P2 · Basis + Hero-Lichtpool (asymmetrisch) + kühle Ränder ── */
+/* ── Hintergrund: räumlicher Verlauf + asymmetrischer Lichtpool + kühle Tiefe ── */
 .ce-dark .dpx-main {
-  background: linear-gradient(172deg, #f9fbff 0%, #f2f5fd 46%, #eef1fb 72%, #eef0fb 100%);
+  background: linear-gradient(172deg, #f9fbff 0%, #f2f5fd 46%, #eef1fb 72%, #eceffb 100%);
 }
-/* Konzentrierter, asymmetrischer Lichtpool hinter dem Hero (links-oben) */
 .ce-dark .dpx-main::before {
   display: block; content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: radial-gradient(56% 42% at 33% 2%, rgba(255,255,255,0.72), rgba(255,255,255,0) 60%);
+  background:
+    radial-gradient(52% 40% at 30% -2%, rgba(255,255,255,0.80), rgba(255,255,255,0) 62%),
+    radial-gradient(40% 32% at 88% 6%, rgba(150,180,255,0.12), transparent 70%);
   animation: none;
 }
-/* Kühlere Randzonen + zarter Tageslichtschleier oben (Tiefe, Fokus) */
 .ce-dark .dpx-main::after {
   content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0) 240px),
-    radial-gradient(142% 122% at 50% 34%, transparent 54%, rgba(42,56,112,0.075) 100%);
+    radial-gradient(142% 122% at 50% 34%, transparent 52%, rgba(42,56,112,0.085) 100%);
 }
 
-/* ── P2 · Organische, nicht-kreisförmige Aurora (Ellipsen, gedreht, asymmetrisch) ── */
+/* ── Organische Aurora (Ellipsen, gedreht) — sichtbarer, edel ── */
 .ce-dark .dpx-blob-1 {
-  width: 820px; height: 460px; top: -170px; left: -160px;
-  transform: rotate(-18deg);
-  background: radial-gradient(closest-side, rgba(120,165,255,0.50), transparent);
+  width: 860px; height: 480px; top: -180px; left: -160px; transform: rotate(-18deg);
+  background: radial-gradient(closest-side, rgba(120,165,255,0.55), transparent);
   animation: dpx-drift-1 84s ease-in-out infinite alternate;
 }
 .ce-dark .dpx-blob-2 {
-  width: 700px; height: 540px; top: -120px; right: -180px;
-  transform: rotate(14deg);
-  background: radial-gradient(closest-side, rgba(168,150,255,0.42), transparent);
+  width: 720px; height: 560px; top: -130px; right: -190px; transform: rotate(14deg);
+  background: radial-gradient(closest-side, rgba(168,150,255,0.46), transparent);
   animation: dpx-drift-2 104s ease-in-out infinite alternate;
 }
 .ce-dark .dpx-blob-3 {
-  width: 1120px; height: 520px; bottom: -330px; left: 20%;
-  transform: rotate(-6deg);
-  background: radial-gradient(closest-side, rgba(150,195,255,0.30), transparent);
+  width: 1160px; height: 540px; bottom: -340px; left: 18%; transform: rotate(-6deg);
+  background: radial-gradient(closest-side, rgba(150,195,255,0.32), transparent);
   animation: dpx-drift-3 128s ease-in-out infinite alternate;
 }
 .ce-dark .dpx-bloom { animation: dpx-bloom-pulse 24s ease-in-out infinite; }
+.ce-dark .dpx-routes { display: none; }   /* Markensignatur lebt jetzt in der Bühne (.dpx-deck-motif) */
 
-/* ── Markensignatur · abstrahiertes Versandnetz (Routen + Knoten), sehr fein.
-   Greift die Formensprache der Schritt-Konnektoren auf. Fix, asymmetrisch
-   oben rechts hinter dem Hero. Keine neue Farbe (Navy aus der Palette). ── */
-.ce-dark .dpx-routes {
-  top: -30px; right: -40px; width: 680px; height: 440px;
-  opacity: 0.10;
+/* ══════════ KOMMANDOZENTRALE · gläserne Bühne (Hero + KPIs = eine Fläche) ══════════ */
+.ce-dark .dpx-deck {
+  position: relative; overflow: hidden;
+  margin-top: 8px; padding: 30px 32px 32px;
+  border-radius: 28px;
+  background: linear-gradient(168deg, rgba(255,255,255,0.78), rgba(255,255,255,0.50));
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+          backdrop-filter: blur(26px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    0 0 0 1px rgba(105,130,220,0.10),
+    0 40px 90px -46px rgba(30,44,104,0.42);
+}
+/* Innenlicht: weicher Pool oben-links, damit die Bühne „bewohnt" wirkt */
+.ce-dark .dpx-deck-glow {
+  position: absolute; z-index: 0; pointer-events: none;
+  top: -40%; left: -10%; width: 70%; height: 150%;
+  background: radial-gradient(closest-side, rgba(150,180,255,0.20), transparent 72%);
+}
+/* Markensignatur: abstrahiertes Versandnetz (Routen + Knoten) rechts, links ausblendend */
+.ce-dark .dpx-deck-motif {
+  position: absolute; z-index: 0; pointer-events: none;
+  top: -26px; right: -20px; width: 560px; height: 320px; opacity: 0.16;
   background: no-repeat top right / contain
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420' fill='none'%3E%3Cg stroke='%232a3f6a' stroke-width='1'%3E%3Cpath d='M40 300 L220 140 L430 210 L600 90'/%3E%3Cpath d='M120 380 L300 250 L520 310'/%3E%3Cpath d='M220 140 L300 250'/%3E%3Cpath d='M430 210 L520 310'/%3E%3C/g%3E%3Cg fill='%232a3f6a'%3E%3Ccircle cx='40' cy='300' r='3'/%3E%3Ccircle cx='220' cy='140' r='3.5'/%3E%3Ccircle cx='430' cy='210' r='3'/%3E%3Ccircle cx='600' cy='90' r='3'/%3E%3Ccircle cx='300' cy='250' r='3'/%3E%3Ccircle cx='520' cy='310' r='3'/%3E%3Ccircle cx='120' cy='380' r='2.5'/%3E%3C/g%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='320' fill='none'%3E%3Cg stroke='%2324386a' stroke-width='1.2'%3E%3Cpath d='M30 250 C 130 180 210 120 320 150 S 470 120 540 60'/%3E%3Cpath d='M60 120 L 200 210 L 360 150 L 520 220'/%3E%3Cpath d='M200 210 L 320 150'/%3E%3Cpath d='M360 150 L 380 60'/%3E%3C/g%3E%3Cg stroke='%2324386a' stroke-width='1' stroke-dasharray='3 6' opacity='0.7'%3E%3Cpath d='M30 250 Q 280 20 540 60'/%3E%3C/g%3E%3Cg fill='%2324386a'%3E%3Ccircle cx='30' cy='250' r='3.5'/%3E%3Ccircle cx='200' cy='210' r='3'/%3E%3Ccircle cx='320' cy='150' r='4'/%3E%3Ccircle cx='360' cy='150' r='3'/%3E%3Ccircle cx='520' cy='220' r='3'/%3E%3Ccircle cx='540' cy='60' r='3.5'/%3E%3Ccircle cx='380' cy='60' r='2.5'/%3E%3Ccircle cx='60' cy='120' r='2.5'/%3E%3C/g%3E%3C/svg%3E");
+  -webkit-mask-image: linear-gradient(105deg, transparent 0%, #000 58%);
+          mask-image: linear-gradient(105deg, transparent 0%, #000 58%);
+}
+.ce-dark .dpx-deck-top,
+.ce-dark .dpx-deck .dpx-kpis { position: relative; z-index: 1; }
+.ce-dark .dpx-deck-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.ce-dark .dpx-deck-lead { min-width: 0; }
+
+/* Kontrollen auf der Bühne: kein geschachteltes Glas — deckende Chips */
+.ce-dark .dpx-deck .dpx-userpill,
+.ce-dark .dpx-deck .dpx-iconbtn {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: rgba(255,255,255,0.74);
 }
 
-/* ── P1 · Hero-Bühne: mehr Präsenz, mehr Luft (nur Desktop) ── */
-.ce-dark .dpx-greeting { font-size: clamp(32px, 3.4vw, 52px); line-height: 1.02; letter-spacing: -0.012em; }
-.ce-dark .dpx-greeting-sub { margin-top: 15px; font-size: 15.5px; }
-@media (min-width: 861px) {
-  .ce-dark .dpx-main { padding-top: 48px; }
-  .ce-dark .dpx-kpis { margin-top: 46px; }
+/* ── Kontext-Chips ── */
+.ce-dark .dpx-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ce-dark .dpx-chip {
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px;
+  border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--dpx-ink-2);
+  background: rgba(255,255,255,0.66); border: 1px solid var(--dpx-hair-2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
 }
-/* Rechte Aktionsleiste als geschlossener Cluster (Ausrichtung/Rhythmus) */
+.ce-dark .dpx-chip svg { color: var(--dpx-blue); }
+.ce-dark .dpx-chip-live { color: var(--dpx-ink-1); }
+.ce-dark .dpx-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dpx-green); box-shadow: 0 0 8px rgba(14,159,110,0.6); }
+
+/* Hero-Typografie in der Bühne */
+.ce-dark .dpx-deck .dpx-greeting {
+  margin-top: 14px; font-size: clamp(34px, 3.5vw, 54px); line-height: 1.0; letter-spacing: -0.014em;
+}
+.ce-dark .dpx-deck .dpx-greeting-sub { margin-top: 12px; font-size: 15.5px; }
 .ce-dark .dpx-head-right { gap: 14px; }
 .ce-dark .dpx-head-row { gap: 12px; }
 
-/* ── P3 · KPI-Karten als präzise physische Objekte ── */
+/* ══════════ KPI-REGAL · Leitkennzahl groß (links, hoch), 4 Satelliten 2×2 ══════════ */
+.ce-dark .dpx-deck .dpx-kpis {
+  margin-top: 28px;
+  display: grid; gap: 14px;
+  grid-template-columns: 1.32fr 1fr 1fr;
+  grid-auto-rows: minmax(118px, auto);
+}
+/* Kacheln = deckende Inset-Objekte (kein Blur auf der Glasbühne) */
 .ce-dark .dpx-kpi {
-  background:
-    radial-gradient(120% 78% at 0% 0%, rgba(255,255,255,0.6), rgba(255,255,255,0) 46%),
-    linear-gradient(168deg, rgba(255,255,255,0.9), rgba(255,255,255,0.68));
+  background: linear-gradient(168deg, rgba(255,255,255,0.94), rgba(255,255,255,0.80));
+  -webkit-backdrop-filter: none; backdrop-filter: none;
   border: 1px solid var(--dpx-hair-cool);
   box-shadow: var(--dpx-shadow-rest);
 }
 .ce-dark .dpx-kpi:hover { transform: translateY(-5px); box-shadow: var(--dpx-shadow-hover); }
-.ce-dark .dpx-trust {
-  border: 1px solid var(--dpx-hair-cool);
-  box-shadow: var(--dpx-shadow-rest);
-}
+/* Ausgaben (Geschäftskennzahl) subtil gewichtet */
+.ce-dark .dpx-kpi.k-spend { border-color: rgba(91,79,206,0.24); }
 
-/* ── P4 · Marketing-/Info-Panels zurückgenommen (recessed regions statt Cards)
-   → die KPI-Arbeitsfläche führt eindeutig. Flacher, ruhiger, leiseres Blur. ── */
+/* Leitkennzahl — Navy-Anker, groß, über 2 Reihen (die Navy-Optik kommt aus der
+   bestehenden :first-child-Regel; hier nur Größe/Anordnung) */
+.ce-dark .dpx-kpi.is-featured {
+  grid-column: 1; grid-row: 1 / span 2;
+  display: flex; flex-direction: column;
+  padding: 26px 26px 24px;
+}
+.ce-dark .dpx-kpi.is-featured .dpx-kpi-value { font-size: clamp(46px, 4.4vw, 66px); margin-top: 18px; }
+.ce-dark .dpx-kpi.is-featured .dpx-kpi-foot { margin-top: auto; padding-top: 20px; }
+
+/* ══════════ SEKUNDÄRZONE · Marketing/Info bewusst zurückgenommen ══════════ */
+.ce-dark .dpx-learn { margin-top: 30px; }
+.ce-dark .dpx-learn-eyebrow {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--dpx-ink-4);
+  padding-top: 22px; border-top: 1px solid var(--dpx-hair);
+}
+.ce-dark .dpx-learn .dpx-panel:first-of-type { margin-top: 18px; }
 .ce-dark .dpx-panel {
-  background: linear-gradient(180deg, rgba(255,255,255,0.56), rgba(255,255,255,0.42));
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-          backdrop-filter: blur(10px) saturate(120%);
-  border: 1px solid rgba(120,140,190,0.14);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 26px -22px rgba(38,48,105,0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.54), rgba(255,255,255,0.40));
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+          backdrop-filter: blur(8px) saturate(115%);
+  border: 1px solid rgba(120,140,190,0.13);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.66), 0 8px 26px -22px rgba(38,48,105,0.14);
 }
-.ce-dark .dpx-panel-title { font-size: 17px; color: var(--dpx-ink-2); letter-spacing: -0.005em; }
+.ce-dark .dpx-panel-title { font-size: 16.5px; color: var(--dpx-ink-2); letter-spacing: -0.005em; }
 .ce-dark .dpx-panel-sub { color: var(--dpx-ink-4); }
+.ce-dark .dpx-trust { border: 1px solid var(--dpx-hair-cool); box-shadow: var(--dpx-shadow-rest); }
 
-/* ── Motion-Guards erneut (nach den obigen Deklarationen) ── */
+/* ── Responsive ── */
+@media (max-width: 1080px) {
+  .ce-dark .dpx-deck .dpx-kpis { grid-template-columns: repeat(2, 1fr); }
+  .ce-dark .dpx-kpi.is-featured { grid-column: 1 / -1; grid-row: auto; }
+  .ce-dark .dpx-kpi.is-featured .dpx-kpi-value { font-size: clamp(40px, 7vw, 52px); }
+  .ce-dark .dpx-kpi.is-featured .dpx-kpi-foot { margin-top: 16px; }
+}
+@media (max-width: 620px) {
+  .ce-dark .dpx-deck { padding: 22px 18px 24px; border-radius: 22px; }
+  .ce-dark .dpx-deck-top { flex-direction: column; }
+  .ce-dark .dpx-head-right { align-items: flex-start; width: 100%; }
+  .ce-dark .dpx-deck .dpx-kpis { grid-template-columns: 1fr; }
+  .ce-dark .dpx-kpi.is-featured { grid-column: auto; }
+  .ce-dark .dpx-deck-motif { display: none; }
+}
+
+/* ── Motion-Guards (nach den obigen Deklarationen) ── */
 @media (prefers-reduced-motion: reduce) {
   .ce-dark .dpx-blob,
   .ce-dark .dpx-bloom { animation: none; }
@@ -2855,6 +2931,5 @@
   .ce-dark .dpx-blob { animation: none; }
   .ce-dark .dpx-blob-3 { display: none; }
   .ce-dark .dpx-bloom { animation: none; }
-  .ce-dark .dpx-ray,
-  .ce-dark .dpx-routes { display: none; }
+  .ce-dark .dpx-ray { display: none; }
 }

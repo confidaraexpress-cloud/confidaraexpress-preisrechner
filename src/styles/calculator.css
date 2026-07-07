@@ -506,6 +506,39 @@
 .date-quick-btn:hover { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
 .date-quick-btn.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
 
+/* ─── Versanddatum-Kalender (DateCalendar) — Premium, im Popover/Accordion ──── */
+.dc { margin-top: 4px; user-select: none; }
+.dc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dc-nav {
+  width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px; border: 1.5px solid var(--border); background: #fff; color: var(--gray600);
+  cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.dc-nav:hover:not(:disabled) { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
+.dc-nav:disabled { opacity: 0.4; cursor: not-allowed; }
+.dc-nav:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.dc-title { font-size: 13.5px; font-weight: 700; color: var(--navy); font-family: 'DM Sans', sans-serif; }
+.dc-weekdays, .dc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.dc-weekdays { margin-bottom: 4px; }
+.dc-weekday { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.dc-blank { aspect-ratio: 1 / 1; }
+.dc-day {
+  position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid transparent; border-radius: 10px; background: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--navy);
+  cursor: pointer; transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+.dc-day:hover:not(:disabled):not(.dc-day--selected) { background: var(--gray50); border-color: var(--border); }
+.dc-day:disabled { color: var(--gray300, #cbd5e1); cursor: not-allowed; }
+.dc-day:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.dc-day--today:not(.dc-day--selected) { border-color: var(--blue3); color: var(--blue2); }
+.dc-day--selected { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 3px 10px -2px rgba(29, 78, 216, 0.4); }
+.dc-day-num { line-height: 1; }
+/* VORBEREITUNG für echte Marker (Feiertage / kein Service): rendert nur, wenn
+   Daten via markedDays übergeben werden. Aktuell keine Datenquelle → kein Punkt. */
+.dc-day-dot { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--danger); }
+.dc-day--selected .dc-day-dot { background: #fff; }
+
 /* ─── Carrier filter dropdown ────────────────────────────────────────────── */
 .carrier-dropdown {
   border-top: 1px solid var(--border); padding: 6px;

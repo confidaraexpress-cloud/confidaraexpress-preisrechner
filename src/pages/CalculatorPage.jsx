@@ -7,25 +7,8 @@ import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../ut
 import { OffersList } from "../components/offers/OffersList";
 import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
-
-// ─── Date helpers ────────────────────────────────────────────────────────────
-const todayISO = () => new Date().toISOString().split("T")[0];
-const addDaysISO = (n) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
-};
-const fmtDE = (iso) => {
-  if (!iso) return "";
-  const date = iso.split("T")[0];
-  const [y, m, d] = date.split("-");
-  return `${d}.${m}.${y}`;
-};
-const labelForDate = (iso) => {
-  if (iso === todayISO())    return `Heute, ${fmtDE(iso)}`;
-  if (iso === addDaysISO(1)) return `Morgen, ${fmtDE(iso)}`;
-  return fmtDE(iso);
-};
+import { todayISO, addDaysISO, labelForDate } from "../utils/date";
+import { DateCalendar } from "../components/common/DateCalendar";
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 const ZIP_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
@@ -402,12 +385,11 @@ export default function CalculatorPage() {
                   <button className={`date-quick-btn ${shippingDate === addDaysISO(1) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(1))}>Morgen</button>
                   <button className={`date-quick-btn ${shippingDate === addDaysISO(2) ? "active" : ""}`} onClick={() => handleDateChange(addDaysISO(2))}>Übermorgen</button>
                 </div>
-                <input
-                  type="date"
-                  className="field-input"
+                <DateCalendar
                   value={shippingDate}
-                  min={todayISO()}
-                  onChange={e => handleDateChange(e.target.value)}
+                  onSelect={handleDateChange}
+                  minDate={todayISO()}
+                  onClose={() => setDatePickerOpen(false)}
                 />
               </div>
             )}

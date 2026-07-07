@@ -717,7 +717,7 @@ export default function NewShipmentPage() {
             >
               {loading
                 ? <><span className="spinner" /> Berechne…</>
-                : <><Icon n="zap" s={16} /> Preise berechnen</>
+                : <><Icon n="zap" s={18} /> Angebote vergleichen</>
               }
             </button>
             {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}

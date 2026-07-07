@@ -648,6 +648,10 @@ export default function NewShipmentPage() {
                   {errors.width  && <span className="field-error">{errors.width}</span>}
                 </div>
               </div>
+              <p className="pkg-count-note">
+                <Icon n="info" s={13} c="currentColor" />
+                <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
+              </p>
               {volWeight && (
                 <div className="vol-weight-box">
                   <span className="vol-weight-label">Volumengewicht: {volWeight} kg</span>

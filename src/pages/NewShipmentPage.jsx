@@ -491,32 +491,41 @@ export default function NewShipmentPage() {
                 </div>
               </button>
               {carrierDropdownOpen && (
-                <div className="carrier-dropdown">
-                  <label className={`carrier-option carrier-option-all ${carrierFilters.length === 0 ? "selected" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={carrierFilters.length === 0}
-                      onChange={() => { setCarrierFilters([]); resetResults(); }}
-                    />
-                    <span className="carrier-option-label">Alle Dienstleister</span>
-                  </label>
+                <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
+                  {/* Multi-Select mit Premium-Radio-Optik (wie „Versandart"): runder
+                      Auswahlkreis + Label. role="checkbox" behält die Mehrfachauswahl-
+                      Semantik; carrierFilters-Logik/-Werte bleiben unverändert. */}
+                  <button
+                    type="button"
+                    className={`service-filter-option service-filter-option--radio ${carrierFilters.length === 0 ? "selected" : ""}`}
+                    role="checkbox"
+                    aria-checked={carrierFilters.length === 0}
+                    onClick={() => { setCarrierFilters([]); resetResults(); }}
+                  >
+                    <span className="service-filter-radio" aria-hidden="true" />
+                    <div className="service-filter-option-text">
+                      <div className="service-filter-option-label">Alle Dienstleister</div>
+                    </div>
+                  </button>
                   {carrierGroups.length === 0 ? (
                     <div className="carrier-empty-hint">Noch keine Versanddienstleister verfügbar</div>
                   ) : (
                     <>
                       <div className="carrier-divider" />
                       {carrierGroups.map(group => (
-                        <label
+                        <button
                           key={group.label}
-                          className={`carrier-option ${isCarrierGroupSelected(group, carrierFilters) ? "selected" : ""}`}
+                          type="button"
+                          className={`service-filter-option service-filter-option--radio ${isCarrierGroupSelected(group, carrierFilters) ? "selected" : ""}`}
+                          role="checkbox"
+                          aria-checked={isCarrierGroupSelected(group, carrierFilters)}
+                          onClick={() => handleToggleCarrierGroup(group)}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isCarrierGroupSelected(group, carrierFilters)}
-                            onChange={() => handleToggleCarrierGroup(group)}
-                          />
-                          <span className="carrier-option-label">{group.label}</span>
-                        </label>
+                          <span className="service-filter-radio" aria-hidden="true" />
+                          <div className="service-filter-option-text">
+                            <div className="service-filter-option-label">{group.label}</div>
+                          </div>
+                        </button>
                       ))}
                     </>
                   )}

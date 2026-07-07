@@ -349,7 +349,7 @@ export default function CalculatorPage() {
                 <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
                 <div>
                   <div className="service-filter-trigger-title">Versandart</div>
-                  <div className="service-filter-trigger-val">{selectedShippingMode.label} · {selectedShippingMode.desc}</div>
+                  <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
                 </div>
               </div>
               <div className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`}>
@@ -357,19 +357,20 @@ export default function CalculatorPage() {
               </div>
             </button>
             {shippingModeOpen && (
-              <div className="service-filter-dropdown">
+              <div className="service-filter-dropdown" role="radiogroup" aria-label="Versandart">
                 {SHIPPING_MODE_OPTIONS.map(opt => (
                   <button
                     key={opt.id}
-                    className={`service-filter-option ${shippingModeFilter === opt.id ? "selected" : ""}`}
+                    className={`service-filter-option service-filter-option--radio ${shippingModeFilter === opt.id ? "selected" : ""}`}
                     onClick={() => handleShippingMode(opt.id)}
+                    role="radio"
+                    aria-checked={shippingModeFilter === opt.id}
                   >
-                    <Icon n={opt.icon} s={15} c={shippingModeFilter === opt.id ? "#1d4ed8" : "#64748b"} />
+                    <span className="service-filter-radio" aria-hidden="true" />
                     <div className="service-filter-option-text">
                       <div className="service-filter-option-label">{opt.label}</div>
                       <div className="service-filter-option-desc">{opt.desc}</div>
                     </div>
-                    {shippingModeFilter === opt.id && <span className="service-filter-option-check">✓</span>}
                   </button>
                 ))}
               </div>

@@ -5,6 +5,7 @@ import { PasswordField } from "../ui/PasswordField";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
+import { PremiumBackground } from "./PremiumBackground";
 
 // Benötigt Backend: PATCH /kunde/profil
 // Request-Body: { name, company_name, vat_id, street, zip, city, country }
@@ -292,7 +293,9 @@ export function Profile({ user }) {
   };
 
   return (
-    <div className="page-body">
+    <>
+      <PremiumBackground variant="profile" />
+      <div className="page-body">
       <div className="profile-page-head">
         <div className="profile-page-head-text">
           <h1 className="dash-section-title">Mein Profil</h1>
@@ -411,6 +414,7 @@ export function Profile({ user }) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

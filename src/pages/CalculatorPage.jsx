@@ -30,6 +30,11 @@ const labelForDate = (iso) => {
 // ─── Validation ──────────────────────────────────────────────────────────────
 const ZIP_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
 
+// Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
+// hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
+// (Route + Paketdaten inkl. packageCount) invalidieren dagegen alte Angebote.
+const FILTER_ONLY_FIELDS = new Set(["max_price", "max_days"]);
+
 // ─── Service options ─────────────────────────────────────────────────────────
 const SERVICE_OPTIONS = [
   { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
@@ -106,7 +111,14 @@ export default function CalculatorPage() {
     selectedGroups.length <= 2  ? selectedGroups.map(g => g.label).join(", ") :
     `${selectedGroups.length} ausgewählt`;
 
-  const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const upd = (k, v) => {
+    setForm(p => ({ ...p, [k]: v }));
+    // Stale-State-Schutz (Muster wie NewShipmentPage): Ändert sich ein route-/
+    // paketrelevantes Feld (nicht die reinen Client-Filter max_price/max_days),
+    // werden alte Angebote sofort verworfen → nie veraltete Preise zu neuen
+    // Eingaben (z. B. 1-Paket-Angebote nach Wechsel der Anzahl auf 3).
+    if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
+  };
 
   const getValidationError = () => {
     const pc = Number(form.packageCount);
@@ -147,6 +159,13 @@ export default function CalculatorPage() {
     setFiltered([]);
     setSelected(null);
     setError("");
+  };
+
+  // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert —
+  // vermeidet unnötige Re-Renders bei jedem Tastendruck im noch leeren Formular
+  // (vor der ersten Berechnung gibt es nichts zu invalidieren).
+  const invalidateResults = () => {
+    if (hasResults || tariffs.length > 0 || selected) resetResults();
   };
 
   const handleToggleCarrierGroup = (group) => {
@@ -525,6 +544,10 @@ export default function CalculatorPage() {
                 <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
                 <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" /></div>
               </div>
+              <p className="pkg-count-note">
+                <Icon n="info" s={13} c="currentColor" />
+                <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
+              </p>
               {volWeight && (
                 <div className="vol-weight-box">
                   <span className="vol-weight-label">Volumengewicht: {volWeight} kg</span>

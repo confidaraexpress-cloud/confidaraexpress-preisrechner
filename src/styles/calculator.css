@@ -210,10 +210,14 @@
   background-repeat: no-repeat; background-position: right 13px center; background-size: 16px;
 }
 
-/* ── D/F) Paketdaten-Raster: 4 Spalten (Desktop/Laptop/Tablet), sauberer
-   2-spaltiger Umbruch erst auf Telefonen (bleibt horizontal). ── */
-@media (max-width: 560px) {
-  .offers-form-section .field-row-4 { grid-template-columns: repeat(2, 1fr); }
+/* ── D/F) Paketdaten-Raster: 5 Spalten (Anzahl · Gewicht · Länge · Höhe · Breite)
+   auf Desktop/Laptop; sauberer Umbruch auf Tablet (3-spaltig) und Telefon
+   (2-spaltig) — bleibt horizontal, kein Überlauf. ── */
+@media (max-width: 720px) {
+  .offers-form-section .field-row-5 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 460px) {
+  .offers-form-section .field-row-5 { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ── E) CTA „Preise berechnen" — Premium-Button ── */

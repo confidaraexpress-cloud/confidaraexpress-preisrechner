@@ -71,6 +71,12 @@ function getErrors(form) {
     else if (!EMAIL_RE.test(form.r_email))  e.r_email    = "E-Mail-Adresse ist ungültig.";
   }
 
+  if (!form.packageCount) {
+    e.packageCount = "Anzahl muss zwischen 1 und 99 liegen.";
+  } else {
+    const pc = Number(form.packageCount);
+    if (!Number.isInteger(pc) || pc < 1 || pc > 99) e.packageCount = "Anzahl muss zwischen 1 und 99 liegen.";
+  }
   if (!form.weight) {
     e.weight = "Gewicht ist ein Pflichtfeld.";
   } else {
@@ -141,6 +147,7 @@ export default function NewShipmentPage() {
     r_country:  "CH",
     r_phone:    "",
     r_email:    "",
+    packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", max_days: "",
   });
@@ -294,6 +301,7 @@ export default function NewShipmentPage() {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
         method: "POST", headers: jsonH,
         body: JSON.stringify({
+          packageCount: Number(form.packageCount),
           weight: Number(form.weight), length: Number(form.length) || 30,
           width: Number(form.width) || 20, height: Number(form.height) || 15,
           sender:             buildParty("s"),
@@ -608,9 +616,17 @@ export default function NewShipmentPage() {
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
-              {/* Reihenfolge: Gewicht · Länge · Höhe · Breite (nur Anzeige;
-                  Bindings/State-Keys/Validierung unverändert). */}
-              <div className="field-row field-row-4">
+              {/* Reihenfolge: Anzahl · Gewicht · Länge · Höhe · Breite (nur Anzeige;
+                  Bindings/State-Keys/Validierung unverändert). Anzahl = Anzahl
+                  identischer Pakete (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
+              <div className="field-row field-row-5">
+                <div className="field">
+                  <label className="field-label">Anzahl</label>
+                  <input className={`field-input${errors.packageCount ? " field-input-error" : ""}`} type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder="1" />
+                  {errors.packageCount
+                    ? <span className="field-error">{errors.packageCount}</span>
+                    : <span className="field-hint">Identische Pakete</span>}
+                </div>
                 <div className="field">
                   <label className="field-label">Gewicht kg *</label>
                   <input className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" />

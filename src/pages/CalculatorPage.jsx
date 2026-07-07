@@ -79,6 +79,7 @@ export default function CalculatorPage() {
     from_zip:     user?.zip     || "",
     to_country:   "CH",
     to_zip:       "",
+    packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", max_days: "",
   });
@@ -108,6 +109,9 @@ export default function CalculatorPage() {
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const getValidationError = () => {
+    const pc = Number(form.packageCount);
+    if (!form.packageCount || !Number.isInteger(pc) || pc < 1 || pc > 99)
+                                               return "Anzahl muss zwischen 1 und 99 liegen.";
     const w = Number(form.weight);
     if (!form.weight)                          return "Gewicht ist ein Pflichtfeld.";
     if (isNaN(w) || w < 0.1 || w > 1000)      return "Gewicht muss zwischen 0,1 und 1.000 kg liegen.";
@@ -135,7 +139,7 @@ export default function CalculatorPage() {
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
-  const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight;
+  const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight && !!form.packageCount;
 
   const resetResults = () => {
     setHasResults(false);
@@ -236,6 +240,7 @@ export default function CalculatorPage() {
           from_zip:           form.from_zip,
           to_country:         form.to_country,
           to_zip:             form.to_zip,
+          packageCount:       Number(form.packageCount),
           weight:             Number(form.weight),
           length:             Number(form.length) || 30,
           width:              Number(form.width)  || 20,
@@ -506,9 +511,15 @@ export default function CalculatorPage() {
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
-              {/* Reihenfolge: Gewicht · Länge · Höhe · Breite (nur Anzeige;
-                  Bindings/State-Keys unverändert). */}
-              <div className="field-row field-row-4">
+              {/* Reihenfolge: Anzahl · Gewicht · Länge · Höhe · Breite (nur Anzeige;
+                  Bindings/State-Keys unverändert). Anzahl = Anzahl identischer Pakete
+                  (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
+              <div className="field-row field-row-5">
+                <div className="field">
+                  <label className="field-label">Anzahl</label>
+                  <input className="field-input" type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder="1" />
+                  <span className="field-hint">Identische Pakete</span>
+                </div>
                 <div className="field"><label className="field-label">Gewicht kg *</label><input className="field-input" type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" /></div>
                 <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
                 <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>

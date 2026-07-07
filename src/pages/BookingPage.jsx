@@ -102,45 +102,36 @@ export default function BookingPage() {
   // Read-only Anzeigewerte (Reprice-Response bevorzugt, sonst Tarif-Felder).
   const insDetails   = tariff?.insuranceDetails && typeof tariff.insuranceDetails === "object" ? tariff.insuranceDetails : null;
   const insModel     = tariff?.insuranceModel   && typeof tariff.insuranceModel   === "object" ? tariff.insuranceModel   : null;
-  const insBase      = asNum(repriceResult?.includedInsuranceValue) ?? asNum(insDetails?.insuranceValue);
   const insProvider  = asStr(repriceResult?.insuranceProvider) || asStr(insDetails?.insuranceProvider) || asStr(insModel?.provider);
-  // Gewichtsabhängige Haftung — nur aus eindeutig benannten Backend-Feldern und
-  // nur, wenn real vorhanden (mehrdeutige insuranceModel-Werte NICHT als Haftung
-  // interpretieren, konsistent mit OfferCard). Fehlt das Feld → keine Anzeige.
-  const insLiability = asPos(repriceResult?.liabilityValue) ?? asPos(insDetails?.liabilityValue);
   const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
   const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
 
-  // Auswahl-Cards (reine Darstellung): Name + Beschreibung + Preis. Alle Werte
-  // stammen aus vorhandenen read-only Feldern — keine erfundenen Daten. Objektive
-  // Deckungsfakten (Grunddeckung/Versicherer/Haftung) zeigt der Faktenstreifen im
-  // Modul → hier bewusst keine Trust-Zeile mehr (keine Dopplung).
+  // Auswahl-Cards (reine Darstellung): Titel + echter Preis (Fallback
+  // „nach Warenwert"). Reihenfolge wie JUMiNGO: Standard · Premium · Kein Schutz.
+  // Bulletpoints und Bedingungs-Links liefert das InsuranceModule (bewusst
+  // übernommene statische Inhalte). Preise stammen aus echten Tariffeldern.
   const insCards = [
     {
-      id: "none",
-      name: "Keine Zusatzversicherung",
-      desc: "Nur die im Tarif enthaltene Grunddeckung.",
-      priceVal: insBase != null ? `max. ${money(insBase)}` : "inklusive",
-      priceSub: "Grunddeckung",
-      pricePrefix: "",
-      muted: true,
-    },
-    {
       id: "standard",
-      name: "Standard",
-      desc: "Absicherung Ihres Warenwerts.",
-      priceVal: insStdPrice != null ? money(insStdPrice) : null,
-      priceSub: insStdPrice != null ? "steuerfrei" : "nach Warenwert",
+      name: "Standardversicherung",
+      tone: "positive",
+      priceVal: insStdPrice != null ? money(insStdPrice) : "nach Warenwert",
+      priceSub: insStdPrice != null ? "steuerfrei" : null,
       pricePrefix: insStdPrice != null ? "ab " : "",
     },
     {
       id: "premium",
-      name: "Premium",
-      desc: "Absicherung Ihres Warenwerts.",
-      priceVal: insPremPrice != null ? money(insPremPrice) : null,
-      priceSub: insPremPrice != null ? "steuerfrei" : "nach Warenwert",
+      name: "Premiumversicherung",
+      tone: "positive",
+      priceVal: insPremPrice != null ? money(insPremPrice) : "nach Warenwert",
+      priceSub: insPremPrice != null ? "steuerfrei" : null,
       pricePrefix: insPremPrice != null ? "ab " : "",
-      hero: true,
+    },
+    {
+      id: "none",
+      name: "Kein Versicherungsschutz",
+      tone: "neutral",
+      priceVal: null,
     },
   ];
 
@@ -542,9 +533,7 @@ export default function BookingPage() {
                     insContent={insContent}
                     onInsContentChange={setInsContent}
                     contentPlaceholder={insContentPlaceholder}
-                    insBase={insBase}
                     insProvider={insProvider}
-                    insLiability={insLiability}
                     repriceError={repriceError}
                     repricePending={repricePending}
                     repriceResult={repriceResult}

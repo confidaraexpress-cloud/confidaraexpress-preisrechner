@@ -54,8 +54,9 @@
 }
 
 /* ─── Obere Premium-Filterleiste ─────────────────────────────────────────────
-   Die vier oberen Filter (Service · Versandart · Versanddatum · Versanddienst)
-   als hochwertige horizontale Reihe auf Desktop, responsives Grid darunter.
+   Die fünf oberen Filter (Service · Versanddatum · Versanddienst · Versandart ·
+   Späteste Lieferzeit) als hochwertige horizontale Reihe auf Desktop, responsives
+   Grid darunter.
    Alles über .calc-filter-bar gescoped — andere .calc-panel/.service-filter-*
    (Versandroute, Paketdaten …) bleiben unberührt. Reine Darstellung: keine
    State-/Logik-/Payload-Änderung; die bestehenden Toggle-/Reset-/Auswahl-Pfade
@@ -65,11 +66,11 @@
    überdeckt. ───────────────────────────────────────────────────────────────── */
 .calc-filter-bar {
   display: grid;
-  /* minmax(0, 1fr): erzwingt VIER GLEICH breite Spalten; ohne die 0-Untergrenze
+  /* minmax(0, 1fr): erzwingt FÜNF GLEICH breite Spalten; ohne die 0-Untergrenze
      würden lange Labels (Service/Versandart) ihre Spalte aufblähen und die
-     vierte abschneiden. Lange Texte werden stattdessen in der Pill via
+     fünfte abschneiden. Lange Texte werden stattdessen in der Pill via
      line-clamp/Ellipse gekürzt. */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -141,6 +142,18 @@
 .calc-filter-bar .service-filter-dropdown { padding: 8px; }
 .calc-filter-bar .date-picker-body { padding: 14px; }
 .calc-filter-bar .carrier-dropdown { padding: 6px; max-height: 260px; overflow-y: auto; }
+
+/* 5-Spalten-Leiste (Desktop): Das Kalender-Popover (Versanddatum · Späteste
+   Lieferzeit) ist breiter als die schmale 1/5-Karte, damit das 7-Spalten-Raster
+   lesbar bleibt. Das rechteste Popover („Späteste Lieferzeit") öffnet nach LINKS
+   (right:0 statt left:0), damit der Kalender am rechten Rand nicht abgeschnitten
+   wird. Nur Desktop: unter 1001px sind die Dropdowns in-flow (static) und füllen
+   die breitere Spalte — dort kein min-width / kein Links-Öffnen nötig (verhindert
+   Mobile-Overflow). */
+@media (min-width: 1001px) {
+  .calc-filter-bar .date-picker-body { min-width: 288px; }
+  .calc-filter-bar .date-picker-body--latest { left: auto; right: 0; }
+}
 
 /* Tablet: 2 Spalten. Mehrzeilig → Dropdowns wieder in-flow (Akkordeon), damit
    sie die darunterliegenden Filter nicht verdecken. */

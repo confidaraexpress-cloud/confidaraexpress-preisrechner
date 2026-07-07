@@ -45,3 +45,12 @@ export const labelForDate = (iso) => {
   if (iso === addDaysISO(1)) return `Morgen, ${fmtDE(iso)}`;
   return fmtDE(iso);
 };
+
+// Kurzformat mit Wochentag: „Do., 06. Aug." (lokal). Leerer String bei ungültig.
+const WD_SHORT_DE  = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const MON_SHORT_DE = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+export const fmtShortDE = (iso) => {
+  const d = parseISODateLocal(iso);
+  if (!d) return "";
+  return `${WD_SHORT_DE[d.getDay()]}., ${String(d.getDate()).padStart(2, "0")}. ${MON_SHORT_DE[d.getMonth()]}`;
+};

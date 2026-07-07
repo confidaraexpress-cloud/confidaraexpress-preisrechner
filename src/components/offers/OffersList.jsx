@@ -11,14 +11,6 @@ const SORT_OPTIONS = [
   { id: "priciest",    label: "Teuerste"   },
 ];
 
-const DAYS_QUICK_OPTIONS = [
-  { id: "all", label: "Alle",      value: "" },
-  { id: "1",   label: "bis 1 Tag",  value: "1" },
-  { id: "2",   label: "bis 2 Tage", value: "2" },
-  { id: "3",   label: "bis 3 Tage", value: "3" },
-  { id: "5",   label: "bis 5 Tage", value: "5" },
-];
-
 const TRUST_ITEMS = [
   { icon: "shield",  title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselt, DSGVO-konform" },
   { icon: "leaf",    title: "Nachhaltige Optionen",   desc: "Umweltfreundliche Versandwege" },
@@ -31,7 +23,7 @@ export function OffersList({
   selected, onSelect, onBook,
   sortMode, onSortChange,
   onRecalculate,
-  maxPrice, maxDays, onMaxPriceChange, onMaxDaysChange, onClearFilters,
+  maxPrice, onMaxPriceChange, onClearFilters,
   vatMode, onVatToggle,
   senderPrefill,
 }) {
@@ -64,14 +56,11 @@ export function OffersList({
     else onMaxPriceChange(String(val));
   };
 
-  const activeFilterCount = [maxPrice, maxDays].filter(Boolean).length;
+  const activeFilterCount = [maxPrice].filter(Boolean).length;
   const hasFilter  = activeFilterCount > 0;
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
   const showTrust  = hasResults && !loading && tariffs.length > 0;
-
-  // Kurzlabel des aktiven Lieferzeit-Filters für Chip + Dropdown-Status.
-  const daysChipLabel = maxDays ? (maxDays === "1" ? "bis 1 Tag" : `bis ${maxDays} Tage`) : "";
 
   // Offenes Dropdown bei Klick außerhalb der Filterzone bzw. per Escape schließen.
   useEffect(() => {
@@ -160,21 +149,6 @@ export function OffersList({
               </span>
             </button>
 
-            {/* Filterpunkt „Lieferzeit" (bestehender max_days-Filter, gleiche Logik) */}
-            <button
-              className={`offers-sort-btn offers-filter-chip${maxDays ? " has-filter" : ""}${openFilter === "days" ? " open" : ""}`}
-              onClick={() => setOpenFilter(o => (o === "days" ? null : "days"))}
-              type="button"
-              aria-haspopup="dialog"
-              aria-expanded={openFilter === "days"}
-            >
-              <Icon n="clock" s={12} c="currentColor" />
-              {maxDays ? `Lieferzeit · ${daysChipLabel}` : "Lieferzeit"}
-              <span className="offers-filter-chip-caret" aria-hidden="true">
-                <Icon n="chevron" s={13} c="currentColor" />
-              </span>
-            </button>
-
             {hasFilter && (
               <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
                 <Icon n="x" s={11} c="currentColor" />
@@ -234,31 +208,6 @@ export function OffersList({
                   </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ── Lieferzeit-Dropdown (bestehende Schnellauswahl, unveränderte Logik) ── */}
-          {openFilter === "days" && (
-            <div className="offers-filter-dropdown offers-days-dropdown" role="dialog" aria-label="Lieferzeitfilter">
-              <div className="offers-filter-dd-head">
-                <span className="offers-filter-dd-title">Späteste Lieferzeit</span>
-                <span className={`offers-filter-dd-status${maxDays ? " is-set" : ""}`}>
-                  {maxDays ? daysChipLabel : "Alle Lieferzeiten"}
-                </span>
-              </div>
-              <p className="offers-filter-dd-sub">Nur Angebote bis zur gewählten Laufzeit anzeigen</p>
-              <div className="offers-days-quick-group" role="group" aria-label="Späteste Lieferzeit">
-                {DAYS_QUICK_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`offers-sort-btn${maxDays === opt.value ? " active" : ""}`}
-                    onClick={() => onMaxDaysChange(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
         </div>

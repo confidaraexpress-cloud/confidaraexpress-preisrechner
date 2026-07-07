@@ -7,7 +7,7 @@ import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../ut
 import { OffersList } from "../components/offers/OffersList";
 import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
-import { todayISO, addDaysISO, labelForDate } from "../utils/date";
+import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
 
 // ─── Validation ──────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ const ZIP_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
 // (Route + Paketdaten inkl. packageCount) invalidieren dagegen alte Angebote.
-const FILTER_ONLY_FIELDS = new Set(["max_price", "max_days"]);
+const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate"]);
 
 // ─── Service options ─────────────────────────────────────────────────────────
 const SERVICE_OPTIONS = [
@@ -61,6 +61,9 @@ export default function CalculatorPage() {
   const [availableCarriers, setAvailableCarriers]     = useState([]);
   const carrierRef = useRef(null);
 
+  // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
+  const [latestOpen, setLatestOpen] = useState(false);
+
   // ── Form — route (country + zip) + package data only ──
   const [form, setForm] = useState({
     from_country: user?.country || "DE",
@@ -69,7 +72,7 @@ export default function CalculatorPage() {
     to_zip:       "",
     packageCount: "1",
     weight: "", length: "", width: "", height: "",
-    max_price: "", max_days: "",
+    max_price: "", latestDeliveryDate: "",
   });
 
   // ── Results ──
@@ -97,7 +100,7 @@ export default function CalculatorPage() {
   const upd = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
     // Stale-State-Schutz (Muster wie NewShipmentPage): Ändert sich ein route-/
-    // paketrelevantes Feld (nicht die reinen Client-Filter max_price/max_days),
+    // paketrelevantes Feld (nicht die reinen Client-Filter max_price/latestDeliveryDate),
     // werden alte Angebote sofort verworfen → nie veraltete Preise zu neuen
     // Eingaben (z. B. 1-Paket-Angebote nach Wechsel der Anzahl auf 3).
     if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
@@ -158,7 +161,6 @@ export default function CalculatorPage() {
 
   const clearFilters = () => {
     upd("max_price", "");
-    upd("max_days", "");
   };
 
   useEffect(() => {
@@ -187,9 +189,16 @@ export default function CalculatorPage() {
   const applyFilter = useCallback((list) => {
     let f = [...list];
     if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
-    if (form.max_days)  f = f.filter(t => t.transitDaysMax != null && t.transitDaysMax <= Number(form.max_days));
+    // Client-Filter „Späteste Lieferzeit": spätestes Lieferdatum (deliveryDateMax →
+    // deliveryDate). Tarife ohne Lieferdatum bleiben sichtbar (kein gültiges Angebot
+    // ausblenden). Rein clientseitig — kein Recalc, kein /calculate-price-Request.
+    if (form.latestDeliveryDate) f = f.filter(t => {
+      const dd = t.deliveryDateMax || t.deliveryDate;
+      if (!dd) return true;
+      return String(dd).split("T")[0] <= form.latestDeliveryDate;
+    });
     setFiltered(f);
-  }, [form.max_price, form.max_days]);
+  }, [form.max_price, form.latestDeliveryDate]);
 
   useEffect(() => { applyFilter(tariffs); }, [tariffs, applyFilter]);
 
@@ -226,7 +235,16 @@ export default function CalculatorPage() {
     if (!iso || iso < todayISO()) return;
     setShippingDate(iso);
     setDatePickerOpen(false);
+    // Späteste Lieferzeit darf nie vor dem Versanddatum liegen → ungültige
+    // Auswahl beim Vorziehen des Versanddatums verwerfen.
+    if (form.latestDeliveryDate && form.latestDeliveryDate < iso) upd("latestDeliveryDate", "");
     resetResults();
+  };
+
+  // Auswahl im „Späteste Lieferzeit"-Kalender (reiner Client-Filter, kein Recalc).
+  const handleLatestDeliveryChange = (iso) => {
+    upd("latestDeliveryDate", iso || "");
+    setLatestOpen(false);
   };
 
   const calculate = async () => {
@@ -309,45 +327,6 @@ export default function CalculatorPage() {
                     onClick={() => handleServiceFilter(opt.id)}
                     role="radio"
                     aria-checked={serviceFilter === opt.id}
-                  >
-                    <span className="service-filter-radio" aria-hidden="true" />
-                    <div className="service-filter-option-text">
-                      <div className="service-filter-option-label">{opt.label}</div>
-                      <div className="service-filter-option-desc">{opt.desc}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Versandart — collapsible ── */}
-          <div className="calc-panel">
-            <button
-              className="service-filter-trigger"
-              onClick={() => setShippingModeOpen(o => !o)}
-              aria-expanded={shippingModeOpen}
-            >
-              <div className="service-filter-trigger-left">
-                <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
-                <div>
-                  <div className="service-filter-trigger-title">Versandart</div>
-                  <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
-                </div>
-              </div>
-              <div className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`}>
-                <Icon n="chevron" s={16} c="#64748b" />
-              </div>
-            </button>
-            {shippingModeOpen && (
-              <div className="service-filter-dropdown" role="radiogroup" aria-label="Versandart">
-                {SHIPPING_MODE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    className={`service-filter-option service-filter-option--radio ${shippingModeFilter === opt.id ? "selected" : ""}`}
-                    onClick={() => handleShippingMode(opt.id)}
-                    role="radio"
-                    aria-checked={shippingModeFilter === opt.id}
                   >
                     <span className="service-filter-radio" aria-hidden="true" />
                     <div className="service-filter-option-text">
@@ -446,6 +425,78 @@ export default function CalculatorPage() {
                     ))}
                   </>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Versandart — collapsible ── */}
+          <div className="calc-panel">
+            <button
+              className="service-filter-trigger"
+              onClick={() => setShippingModeOpen(o => !o)}
+              aria-expanded={shippingModeOpen}
+            >
+              <div className="service-filter-trigger-left">
+                <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
+                <div>
+                  <div className="service-filter-trigger-title">Versandart</div>
+                  <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
+                </div>
+              </div>
+              <div className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`}>
+                <Icon n="chevron" s={16} c="#64748b" />
+              </div>
+            </button>
+            {shippingModeOpen && (
+              <div className="service-filter-dropdown" role="radiogroup" aria-label="Versandart">
+                {SHIPPING_MODE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`service-filter-option service-filter-option--radio ${shippingModeFilter === opt.id ? "selected" : ""}`}
+                    onClick={() => handleShippingMode(opt.id)}
+                    role="radio"
+                    aria-checked={shippingModeFilter === opt.id}
+                  >
+                    <span className="service-filter-radio" aria-hidden="true" />
+                    <div className="service-filter-option-text">
+                      <div className="service-filter-option-label">{opt.label}</div>
+                      <div className="service-filter-option-desc">{opt.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Späteste Lieferzeit — collapsible (reiner Client-Filter, kein Recalc) ── */}
+          <div className="calc-panel">
+            <button
+              className="service-filter-trigger"
+              onClick={() => setLatestOpen(o => !o)}
+              aria-expanded={latestOpen}
+            >
+              <div className="service-filter-trigger-left">
+                <Icon n="calendar" s={15} c="#1D4ED8" />
+                <div>
+                  <div className="service-filter-trigger-title">Späteste Lieferzeit</div>
+                  <div className="service-filter-trigger-val">{form.latestDeliveryDate ? fmtShortDE(form.latestDeliveryDate) : "Beliebig"}</div>
+                </div>
+              </div>
+              <div className={`service-filter-chevron ${latestOpen ? "open" : ""}`}>
+                <Icon n="chevron" s={16} c="#64748b" />
+              </div>
+            </button>
+            {latestOpen && (
+              <div className="date-picker-body date-picker-body--latest">
+                <div className="date-quick-options">
+                  <button className={`date-quick-btn ${!form.latestDeliveryDate ? "active" : ""}`} onClick={() => { upd("latestDeliveryDate", ""); setLatestOpen(false); }}>Beliebig</button>
+                </div>
+                <DateCalendar
+                  value={form.latestDeliveryDate}
+                  onSelect={handleLatestDeliveryChange}
+                  minDate={shippingDate}
+                  onClose={() => setLatestOpen(false)}
+                />
               </div>
             )}
           </div>
@@ -565,9 +616,7 @@ export default function CalculatorPage() {
             onSortChange={setSortMode}
             onRecalculate={calculate}
             maxPrice={form.max_price}
-            maxDays={form.max_days}
             onMaxPriceChange={v => upd("max_price", v)}
-            onMaxDaysChange={v => upd("max_days", v)}
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}

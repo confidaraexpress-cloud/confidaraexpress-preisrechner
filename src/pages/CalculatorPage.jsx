@@ -604,7 +604,7 @@ export default function CalculatorPage() {
           {/* ── Calculate CTA ── */}
           <div className="offers-calc-cta">
             <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
-              {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={16} /> Preise berechnen</>}
+              {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={18} /> Angebote vergleichen</>}
             </button>
             {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
           </div>

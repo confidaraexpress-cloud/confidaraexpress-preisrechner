@@ -252,22 +252,42 @@
 .pkg-count-note { display: flex; align-items: flex-start; gap: 6px; margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--gray500); }
 .pkg-count-note svg { flex-shrink: 0; margin-top: 1px; color: var(--gray400); }
 
-/* ── E) CTA „Preise berechnen" — Premium-Button ── */
+/* ── E) CTA „Angebote vergleichen" — Premium-Button (Enterprise-SaaS-Anmutung,
+   nicht wie ein Standard-Formularbutton). Höhe/Gewicht/Letterspacing bewusst
+   über der .btn-Basis (600/normal) angehoben; Verhalten (onClick/disabled/
+   Loading-Spinner) unverändert — reine Optik. ── */
 .offers-calc-cta .btn-primary {
-  height: 52px; padding: 0 26px; border-radius: 14px;
-  font-size: 15px; letter-spacing: 0.01em;
-  background: linear-gradient(150deg, #3b6cff 0%, #2563eb 50%, #1d4ed8 100%);
+  height: 58px; padding: 0 28px; border-radius: 16px;
+  font-size: 16px; font-weight: 700; letter-spacing: 0.2px;
+  gap: 9px;
+  background: linear-gradient(155deg, #5b82ff 0%, #3b6cff 24%, #2563eb 56%, #1d4ed8 82%, #163eb0 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 10px 26px -6px rgba(29, 78, 216, 0.45), 0 0 40px -10px rgba(46, 92, 255, 0.35);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.30), inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -10px 18px -12px rgba(8, 26, 80, 0.35),
+    0 4px 12px -4px rgba(29, 78, 216, 0.32), 0 14px 30px -8px rgba(29, 78, 216, 0.46),
+    0 0 46px -8px rgba(59, 108, 255, 0.40);
+  transition: transform 0.2s cubic-bezier(.2,.7,.3,1), box-shadow 0.2s ease, background 0.2s ease;
 }
 .offers-calc-cta .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 16px 34px -8px rgba(29, 78, 216, 0.52), 0 0 52px -10px rgba(46, 92, 255, 0.42);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 -10px 18px -12px rgba(8, 26, 80, 0.30),
+    0 6px 16px -4px rgba(29, 78, 216, 0.38), 0 20px 40px -10px rgba(29, 78, 216, 0.54),
+    0 0 58px -8px rgba(59, 108, 255, 0.48);
 }
-.offers-calc-cta .btn-primary:active { transform: translateY(0); }
+/* Sauberer Press-State: Lift zurückgesetzt + Schatten/Glow spürbar eingezogen
+   (nicht nur der eingefrorene Hover-Zustand minus Lift) — schnellerer Übergang
+   simuliert echtes „Eindrücken". */
+.offers-calc-cta .btn-primary:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20), inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -4px 10px -8px rgba(8, 26, 80, 0.32),
+    0 3px 10px -4px rgba(29, 78, 216, 0.36), 0 0 26px -8px rgba(59, 108, 255, 0.30);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.offers-calc-cta .btn-primary svg { flex-shrink: 0; }
 
 /* ─── Booking address grid (2-col desktop, 1-col mobile) ────────────────── */
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }

@@ -92,10 +92,10 @@ function getErrors(form) {
 
 // ─── Filter / Sort options ─────────────────────────────────────────────────────
 const SERVICE_OPTIONS = [
-  { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Abholung und Shopabgabe anzeigen" },
-  { id: "pickup",       icon: "truck",     label: "Nur Abholung",          desc: "Abholung Zuhause oder im Büro"  },
-  { id: "dropoff",      icon: "map",       label: "Nur Abgabe",            desc: "Abgabe in einem Paketshop"      },
-  { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute" },
+  { id: "all",          icon: "dashboard", label: "Alle Dienstleistungen", desc: "Tarife für die Abholung Zuhause / im Büro und für die Shopabgabe anzeigen" },
+  { id: "pickup",       icon: "truck",     label: "Nur Abholung",          desc: "Tarife für die Abholung Zuhause / im Büro anzeigen"  },
+  { id: "dropoff",      icon: "map",       label: "Nur Abgabe",            desc: "Tarife für die Abgabe in einem Paketshop anzeigen"      },
+  { id: "pickup_today", icon: "zap",       label: "Abholung heute",        desc: "Tarife mit Abholung noch heute anzeigen" },
 ];
 
 const SHIPPING_MODE_OPTIONS = [
@@ -403,8 +403,8 @@ export default function NewShipmentPage() {
                 <div className="service-filter-trigger-left">
                   <Icon n={selectedOption.icon} s={15} c="#1D4ED8" />
                   <div>
-                    <div className="service-filter-trigger-title">Welchen Service bevorzugen Sie?</div>
-                    <div className="service-filter-trigger-val">{selectedOption.label} · {selectedOption.desc}</div>
+                    <div className="service-filter-trigger-title">Abholung / Shopabgabe</div>
+                    <div className="service-filter-trigger-val">{selectedOption.label}</div>
                   </div>
                 </div>
                 <div className={`service-filter-chevron ${serviceFilterOpen ? "open" : ""}`}>
@@ -412,19 +412,20 @@ export default function NewShipmentPage() {
                 </div>
               </button>
               {serviceFilterOpen && (
-                <div className="service-filter-dropdown">
+                <div className="service-filter-dropdown" role="radiogroup" aria-label="Abholung / Shopabgabe">
                   {SERVICE_OPTIONS.map(opt => (
                     <button
                       key={opt.id}
-                      className={`service-filter-option ${serviceFilter === opt.id ? "selected" : ""}`}
+                      className={`service-filter-option service-filter-option--radio ${serviceFilter === opt.id ? "selected" : ""}`}
                       onClick={() => handleServiceFilter(opt.id)}
+                      role="radio"
+                      aria-checked={serviceFilter === opt.id}
                     >
-                      <Icon n={opt.icon} s={15} c={serviceFilter === opt.id ? "#1d4ed8" : "#64748b"} />
+                      <span className="service-filter-radio" aria-hidden="true" />
                       <div className="service-filter-option-text">
                         <div className="service-filter-option-label">{opt.label}</div>
                         <div className="service-filter-option-desc">{opt.desc}</div>
                       </div>
-                      {serviceFilter === opt.id && <span className="service-filter-option-check">✓</span>}
                     </button>
                   ))}
                 </div>

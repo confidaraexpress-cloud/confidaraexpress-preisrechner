@@ -40,6 +40,19 @@
 .service-filter-option-desc { font-size: 11px; color: var(--gray500); margin-top: 2px; line-height: 1.4; }
 .service-filter-option-check { font-size: 13px; font-weight: 800; color: var(--blue2); flex-shrink: 0; }
 
+/* Service-Filter „Abholung / Shopabgabe" — Radio-/Punkt-Auswahl (JUMiNGO-nah).
+   Nur die Service-Optionen (--radio); das Versandart-Dropdown bleibt icon-basiert. */
+.service-filter-option--radio { align-items: flex-start; }
+.service-filter-radio {
+  flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px;
+  border-radius: 50%; border: 2px solid var(--border2, #c8d5e8);
+  background: #fff; position: relative; transition: border-color 0.15s;
+}
+.service-filter-option--radio.selected .service-filter-radio { border-color: var(--blue); }
+.service-filter-option--radio.selected .service-filter-radio::after {
+  content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue);
+}
+
 /* ─── Obere Premium-Filterleiste ─────────────────────────────────────────────
    Die vier oberen Filter (Service · Versandart · Versanddatum · Versanddienst)
    als hochwertige horizontale Reihe auf Desktop, responsives Grid darunter.
@@ -140,9 +153,11 @@
   }
 }
 
-/* Mobile: 1 Spalte (Stack). */
+/* Mobile: 1 Spalte (Stack). minmax(0,1fr) statt 1fr, damit die Spalte unter die
+   Content-Min-Breite schrumpfen darf → lange Service-Beschreibungen brechen sauber
+   um (sonst würde das In-Flow-Dropdown die Spalte über die Viewport-Breite ziehen). */
 @media (max-width: 560px) {
-  .calc-filter-bar { grid-template-columns: 1fr; }
+  .calc-filter-bar { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

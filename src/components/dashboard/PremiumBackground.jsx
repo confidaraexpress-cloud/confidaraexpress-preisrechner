@@ -21,6 +21,11 @@ import React from "react";
                          (Regeln unter „.pbg-neutral") auf einer neutralen
                          #DCDCDC-Grundfarbe. Slate = Grau mit dezentem Navy-
                          Unterton (bleibt in der ConfidaraExpress-Farbfamilie).
+     • variant="profile" → Blau/Violett auf Navy-Basis für „Mein Profil"
+                         (Regeln unter „.pbg-profile"), abgeleitet aus den dort
+                         bereits vorhandenen Tönen (#0f1438/#0b1030/#06081c Navy,
+                         ~#473C8B Violett, ~#436EEE Blau) — bewusst NICHT die
+                         Übersicht-Farben (kein .ce-dark-Bezug).
 
    Enthält KEINE Inhalte (keine KPIs/Hero/Widgets). aria-hidden,
    pointer-events:none. Styling: src/styles/dashboard-premium.css.
@@ -38,6 +43,12 @@ const PALETTES = {
   // „neutral": Slate-/Anthrazit-Töne (Grau mit dezentem Navy-Unterton), damit die
   // Atmosphäre auf der #DCDCDC-Grundfarbe sichtbar und hochwertig wirkt.
   neutral: { node: ["#94a3b8", "#64748b", "#475569"], line: ["#64748b", "#475569", "#64748b"], lineMid: 0.5, core: "#334155", ring: "#64748b", parcel: "#475569" },
+  // „profile": aus den bereits vorhandenen Profil-Farben abgeleitet (NICHT die
+  // Übersicht-Palette) — Violett #473C8B als äußerer Node-/Ring-Ton, Blau
+  // #436EEE für Linien/Ring, ein helles Off-White/Lavendel (dezentes
+  // „Champagner"-Licht) nur für den hellsten Node-Kern/-Innenstop, analog zu
+  // „dark"s hellem Kern auf dunkler Navy-Basis.
+  profile: { node: ["#e7e1fb", "#6f5fc9", "#473C8B"], line: ["#436EEE", "#7c93ff", "#436EEE"], lineMid: 0.7, core: "#f3eeff", ring: "#7c93ff", parcel: "#e7e1fb" },
 };
 
 // Hintergrund-Glyphen (§19-B3) — Line-Icons in dünnem Duktus (stroke 1.1).

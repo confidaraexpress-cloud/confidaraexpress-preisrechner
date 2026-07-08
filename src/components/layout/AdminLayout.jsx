@@ -1,0 +1,33 @@
+import React, { useState } from "react";
+import { Outlet } from "react-router-dom";
+import { Icon } from "../ui/Icon";
+import { AdminSidebar } from "./AdminSidebar";
+
+// Eigenständiger Adminbereich-Rahmen (Light-Theme, adm- Prefix, URL-basiertes
+// Routing). Kein Bezug zum State-basierten Kunden-Dashboard und keine
+// Vermischung mit ce-dark-/auth-Themes. Die eigentlichen Seiten werden über
+// <Outlet /> gerendert.
+export function AdminLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const close = () => setSidebarOpen(false);
+
+  return (
+    <div className="adm-shell">
+      <AdminSidebar open={sidebarOpen} onClose={close} />
+      <main className="adm-main">
+        <div className="adm-topbar">
+          <button
+            className="adm-topbar-burger"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Menü öffnen"
+          >
+            <Icon n="menu" s={22} />
+          </button>
+          <span className="adm-topbar-title">Adminbereich</span>
+          <span className="adm-topbar-spacer" aria-hidden="true" />
+        </div>
+        <Outlet />
+      </main>
+    </div>
+  );
+}

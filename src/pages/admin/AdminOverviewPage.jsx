@@ -1,0 +1,56 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { Icon } from "../../components/ui/Icon";
+
+// Einfache Admin-Landing. Bewusst KEINE (Fake-)KPIs — Backend-Statistiken gibt
+// es in diesem Schritt noch nicht. Nur der aktive Bereich (Audit-Logs) ist
+// verlinkt; kommende Bereiche sind sichtbare, aber inaktive Platzhalter.
+export default function AdminOverviewPage() {
+  return (
+    <div className="adm-page">
+      <header className="adm-page-head">
+        <h1 className="adm-title">Adminbereich</h1>
+        <p className="adm-sub">
+          Zentrale Verwaltung für ConfidaraExpress. Dieser Bereich ist ausschließlich
+          für Administrator:innen zugänglich und zusätzlich serverseitig geschützt.
+        </p>
+      </header>
+
+      <div className="adm-tiles">
+        <Link to="/admin/audit-logs" className="adm-tile">
+          <span className="adm-tile-ic"><Icon n="shieldCheck" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Audit-Logs</span>
+            <span className="adm-tile-desc">Protokollierte Administrationsvorgänge einsehen und filtern.</span>
+          </span>
+          <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
+        </Link>
+
+        {/* Platzhalter — folgen in späteren Schritten. Kein aktiver Link. */}
+        <div className="adm-tile adm-tile-soon" aria-disabled="true">
+          <span className="adm-tile-ic"><Icon n="admin" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Kunden <span className="adm-soon-badge">bald</span></span>
+            <span className="adm-tile-desc">Freischaltung, Sperrung und Anonymisierung.</span>
+          </span>
+        </div>
+        <div className="adm-tile adm-tile-soon" aria-disabled="true">
+          <span className="adm-tile-ic"><Icon n="invoice" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Rechnungen <span className="adm-soon-badge">bald</span></span>
+            <span className="adm-tile-desc">Rechnungsübersicht und Zahlungsstatus.</span>
+          </span>
+        </div>
+        <div className="adm-tile adm-tile-soon" aria-disabled="true">
+          <span className="adm-tile-ic"><Icon n="package" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Sendungen <span className="adm-soon-badge">bald</span></span>
+            <span className="adm-tile-desc">Sendungssuche und Support-Einsicht.</span>
+          </span>
+        </div>
+      </div>
+
+      <p className="adm-foot-note">Weitere Bereiche folgen in den nächsten Schritten.</p>
+    </div>
+  );
+}

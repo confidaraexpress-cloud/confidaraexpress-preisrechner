@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminUser } from "../../api/adminApi";
+import { getAdminUser, anonymizeAdminUser } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 
@@ -12,6 +12,16 @@ const ERROR_MESSAGES = {
   500: "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
 const GENERIC_ERROR = "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Fehlertexte für die Anonymisierung (verständlich, kein roher Backend-Body).
+const ANON_ERRORS = {
+  400: "Bestätigung ungültig oder Aktion nicht erlaubt.",
+  404: "Kunde wurde nicht gefunden.",
+  409: "Anonymisierung konnte aufgrund eines Konflikts nicht durchgeführt werden.",
+  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
+  500: "Account konnte nicht anonymisiert werden.",
+  default: "Account konnte nicht anonymisiert werden.",
+};
 
 // Backend-Vertrag: { user: {...}, summary: {...} }. Defensiv entpacken.
 function selectUser(d) {
@@ -91,6 +101,10 @@ export default function AdminUserDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [anonOpen, setAnonOpen] = useState(false);   // Type-to-confirm-Modal
+  const [anonInput, setAnonInput] = useState("");    // getippter Bestätigungstext
+  const [anonBusy, setAnonBusy] = useState(false);   // Anonymisierung läuft
+  const [anonMsg, setAnonMsg] = useState(null);      // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,6 +132,10 @@ export default function AdminUserDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Beim Wechsel auf einen anderen Kunden Modal/Meldung zurücksetzen (nicht bei
+  // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
+  useEffect(() => { setAnonOpen(false); setAnonInput(""); setAnonMsg(null); }, [id]);
 
   const back = (
     <Link to="/admin/users" className="adm-back">
@@ -155,9 +173,50 @@ export default function AdminUserDetailPage() {
   const [roleCls, roleLabel] = userRoleMeta(roleOf(u));
   const anonAt = anonymizedAtOf(u);
 
+  const isAnonymized = statusOf(u) === "anonymized" || !!anonAt;
+  // Minimale Ziel-Identität im Modal — maximal ID/Firma/Name, KEINE Adresse.
+  const targetLabel = `#${dash(idOf(u))} · ${companyOf(u) || nameOf(u) || "Kunde"}`;
+  const confirmed = anonInput.trim() === "ANONYMIZE_USER";
+
+  const openAnon = () => { setAnonMsg(null); setAnonInput(""); setAnonOpen(true); };
+  const closeAnon = () => { if (!anonBusy) { setAnonOpen(false); setAnonInput(""); } };
+  const confirmAnon = async () => {
+    const confirmation = anonInput.trim();
+    if (confirmation !== "ANONYMIZE_USER") return; // ohne exakte Eingabe kein Request
+    setAnonBusy(true);
+    setAnonMsg(null);
+    try {
+      const r = await anonymizeAdminUser(id, confirmation);
+      if (!r.ok) {
+        // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
+        if (r.status !== 401 && r.status !== 403) {
+          setAnonMsg({ type: "error", text: ANON_ERRORS[r.status] || ANON_ERRORS.default });
+        }
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const noOp = !!(d && (d.no_op === true || d.noop === true || d.already_anonymized === true || d.changed === false));
+      setAnonMsg({ type: "success", text: noOp ? "Account war bereits anonymisiert." : "Account wurde anonymisiert." });
+      load(); // Detail neu laden — Backend-Realität, kein lokales Raten
+    } catch {
+      setAnonMsg({ type: "error", text: ANON_ERRORS.default });
+    } finally {
+      setAnonBusy(false);
+      setAnonOpen(false);
+      setAnonInput("");
+    }
+  };
+
   return (
     <div className="adm-page">
       {back}
+
+      {anonMsg && (
+        <div className={`alert ${anonMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+          <Icon n={anonMsg.type === "success" ? "check" : "x"} s={16} />{anonMsg.text}
+        </div>
+      )}
 
       {/* 1) Kopfbereich */}
       <div className="adm-card">
@@ -236,25 +295,96 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* 6) Aktionsbereich — Platzhalter, in diesem Schritt bewusst inaktiv */}
-        <div className="adm-card">
-          <div className="adm-card-head"><Icon n="settings" s={17} /> Aktionen</div>
+        {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) */}
+        <div className="adm-card adm-danger-zone">
+          <div className="adm-card-head adm-danger-head"><Icon n="shield" s={17} /> Gefahrenzone</div>
           <div className="adm-card-body">
-            <div className="adm-support">
-              <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt in einem späteren, abgesicherten Schritt">
-                <Icon n="user" s={14} /> Anonymisieren — folgt
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt in einem späteren, abgesicherten Schritt">
-                <Icon n="x" s={14} /> Löschen — folgt
-              </button>
+            <div className="adm-danger-item">
+              <div className="adm-danger-item-text">
+                <div className="adm-danger-item-title">Account anonymisieren</div>
+                <p className="adm-danger-item-desc">
+                  Diese Aktion entfernt personenbezogene Kontodaten dauerhaft. Sendungen und Rechnungen bleiben
+                  aus Nachweis- und Abrechnungsgründen erhalten. Diese Aktion kann nicht rückgängig gemacht werden.
+                </p>
+                <p className="adm-support-hint" style={{ marginTop: 6 }}>Die Aktion wird protokolliert.</p>
+              </div>
+              <div className="adm-danger-item-action">
+                <button
+                  type="button"
+                  className="btn btn-sm adm-danger-button"
+                  onClick={openAnon}
+                  disabled={isAnonymized}
+                >
+                  <Icon n="user" s={13} /> Account anonymisieren
+                </button>
+              </div>
             </div>
-            <p className="adm-support-hint">
-              Anonymisieren und Löschen folgen in separaten, abgesicherten Schritten. Die Statusänderung
-              (Freischalten/Blockieren) ist bereits in der Kundenliste verfügbar.
-            </p>
+            {isAnonymized && <p className="adm-danger-note">Dieser Account ist bereits anonymisiert.</p>}
+
+            {/* Löschen bleibt Platzhalter — folgt in einem separaten Schritt. */}
+            <div className="adm-danger-item adm-danger-item-soon">
+              <div className="adm-danger-item-text">
+                <div className="adm-danger-item-title">Account löschen</div>
+                <p className="adm-danger-item-desc">Endgültiges Löschen folgt in einem separaten, abgesicherten Schritt.</p>
+              </div>
+              <div className="adm-danger-item-action">
+                <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt in einem späteren Schritt">
+                  <Icon n="x" s={13} /> Löschen — folgt
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Type-to-confirm-Modal — irreversibel, exakt „ANONYMIZE_USER" nötig. */}
+      {anonOpen && (
+        <div className="adm-modal-overlay" role="presentation" onClick={closeAnon}>
+          <div
+            className="adm-modal adm-modal-danger"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-anon-title"
+            aria-describedby="adm-anon-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="shield" s={22} /></div>
+            <h2 id="adm-anon-title" className="adm-modal-title">Account wirklich anonymisieren?</h2>
+            <p id="adm-anon-desc" className="adm-modal-text">
+              Diese Aktion ist irreversibel. Der Kunde kann sich danach nicht mehr anmelden. Personenbezogene Kontodaten werden entfernt.
+            </p>
+            <p className="adm-modal-sub">{targetLabel}</p>
+            <label className="adm-modal-label" htmlFor="adm-anon-input">Tippe ANONYMIZE_USER ein, um fortzufahren.</label>
+            <input
+              id="adm-anon-input"
+              className="adm-modal-input"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoFocus
+              placeholder="ANONYMIZE_USER"
+              value={anonInput}
+              onChange={(e) => setAnonInput(e.target.value)}
+              disabled={anonBusy}
+            />
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={closeAnon} disabled={anonBusy}>Abbrechen</button>
+              <button
+                type="button"
+                className="btn btn-sm adm-danger-button"
+                onClick={confirmAnon}
+                disabled={anonBusy || !confirmed}
+              >
+                {anonBusy
+                  ? <><span className="spinner spinner-dark" /> Anonymisiere…</>
+                  : <><Icon n="shield" s={14} /> Anonymisierung bestätigen</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

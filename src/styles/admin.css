@@ -173,6 +173,26 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-btn-danger { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
 .adm-btn-danger:hover { background: #dc2626; border-color: #dc2626; }
 
+/* ── Gefahrenzone (Kundendetail — DSGVO-Anonymisierung) ──────────────────── */
+.adm-danger-zone { border-color: rgba(239,68,68,0.35); box-shadow: 0 1px 4px rgba(239,68,68,0.07); }
+.adm-danger-head { color: var(--danger); }
+.adm-danger-head svg { color: var(--danger); }
+.adm-danger-item { display: flex; gap: 16px 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.adm-danger-item + .adm-danger-item { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.adm-danger-item-text { flex: 1; min-width: 240px; }
+.adm-danger-item-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+.adm-danger-item-desc { font-size: 13px; line-height: 1.55; color: var(--gray500); }
+.adm-danger-item-action { flex-shrink: 0; }
+.adm-danger-item-soon { opacity: 0.75; }
+.adm-danger-note { margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--danger); }
+.adm-danger-button { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
+.adm-danger-button:hover { background: #dc2626; border-color: #dc2626; }
+
+/* Type-to-confirm-Eingabe im Danger-Modal */
+.adm-modal-label { display: block; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--gray600); margin-bottom: 6px; }
+.adm-modal-input { width: 100%; padding: 9px 11px; font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 0.04em; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; margin-bottom: 16px; }
+.adm-modal-input:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .adm-side { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); box-shadow: 4px 0 24px rgba(10,22,40,0.18); }

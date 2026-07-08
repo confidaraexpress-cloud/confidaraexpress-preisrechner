@@ -200,3 +200,16 @@ export function anonymizeAdminUser(id, confirmation) {
     body: JSON.stringify({ confirm: ANONYMIZE_CONFIRM, targetUserId }),
   });
 }
+
+// DELETE /admin/users/:id — harte Löschung eines Kunden. Nur ohne abhängige
+// Sendungs-/Rechnungsdaten möglich: der Backend-Delete-Guard blockiert andernfalls
+// mit 409 (dann ist Anonymisierung der richtige Weg). Kein Body — der Endpunkt und
+// die :id identifizieren das Ziel eindeutig. Bearer kommt aus apiFetch(auth:true).
+// Die Aktion wird backendseitig auditiert (user.delete bzw. user.delete_denied).
+// Kein Cache, kein Logging von Response-Daten; 401/403 behandelt apiFetch zentral.
+export function deleteAdminUser(id) {
+  return apiFetch(`/admin/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}

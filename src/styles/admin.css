@@ -184,6 +184,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-danger-item-desc { font-size: 13px; line-height: 1.55; color: var(--gray500); }
 .adm-danger-item-action { flex-shrink: 0; }
 .adm-danger-item-soon { opacity: 0.75; }
+/* Löschaktion immer sichtbar von der Anonymisierung getrennt (auch wenn der
+   „bereits anonymisiert"-Hinweis dazwischen die Geschwister-Adjazenz bricht). */
+.adm-danger-item-split { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .adm-danger-note { margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--danger); }
 .adm-danger-button { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
 .adm-danger-button:hover { background: #dc2626; border-color: #dc2626; }

@@ -68,6 +68,7 @@ const paths = {
   form:         "M9 4h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM8 6H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2M8.5 12.5h7M8.5 16.5h4",
   layers:       "M12 2 21 7 12 12 3 7ZM3 12l9 5 9-5M3 17l9 5 9-5",
   trendingUp:   "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
+  trash:        "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6",
 };
 
 export function Icon({ n, s = 18, c = "currentColor" }) {

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminUser, anonymizeAdminUser } from "../../api/adminApi";
+import { getAdminUser, anonymizeAdminUser, deleteAdminUser } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 
@@ -21,6 +21,15 @@ const ANON_ERRORS = {
   429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
   500: "Account konnte nicht anonymisiert werden.",
   default: "Account konnte nicht anonymisiert werden.",
+};
+
+// Fehlertexte für die harte Löschung. 409 ist kein Fehlerfall, sondern der
+// erwartete Delete-Guard (abhängige Sendungs-/Rechnungsdaten) → Anonymisierung.
+const DELETE_ERRORS = {
+  404: "Kunde wurde nicht gefunden.",
+  409: "Kunde kann aufgrund vorhandener Sendungs-/Rechnungsdaten nicht hart gelöscht werden. Bitte Anonymisierung verwenden.",
+  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
+  default: "Kunde konnte nicht gelöscht werden.",
 };
 
 // Backend-Vertrag: { user: {...}, summary: {...} }. Defensiv entpacken.
@@ -96,6 +105,7 @@ function Stat({ label, value }) {
 
 export default function AdminUserDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -105,6 +115,10 @@ export default function AdminUserDetailPage() {
   const [anonInput, setAnonInput] = useState("");    // getippter Bestätigungstext
   const [anonBusy, setAnonBusy] = useState(false);   // Anonymisierung läuft
   const [anonMsg, setAnonMsg] = useState(null);      // { type, text }
+  const [delOpen, setDelOpen] = useState(false);     // Type-to-confirm-Modal (Löschen)
+  const [delInput, setDelInput] = useState("");      // getippter Bestätigungstext
+  const [delBusy, setDelBusy] = useState(false);     // Löschung läuft
+  const [delMsg, setDelMsg] = useState(null);        // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,7 +149,10 @@ export default function AdminUserDetailPage() {
 
   // Beim Wechsel auf einen anderen Kunden Modal/Meldung zurücksetzen (nicht bei
   // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
-  useEffect(() => { setAnonOpen(false); setAnonInput(""); setAnonMsg(null); }, [id]);
+  useEffect(() => {
+    setAnonOpen(false); setAnonInput(""); setAnonMsg(null);
+    setDelOpen(false); setDelInput(""); setDelMsg(null);
+  }, [id]);
 
   const back = (
     <Link to="/admin/users" className="adm-back">
@@ -208,6 +225,41 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  const delConfirmed = delInput.trim() === "DELETE_USER";
+
+  const openDel = () => { setDelMsg(null); setDelInput(""); setDelOpen(true); };
+  const closeDel = () => { if (!delBusy) { setDelOpen(false); setDelInput(""); } };
+  const confirmDelete = async () => {
+    if (delInput.trim() !== "DELETE_USER") return; // ohne exakte Eingabe kein Request
+    setDelBusy(true);
+    setDelMsg(null);
+    try {
+      const r = await deleteAdminUser(id);
+      if (r.ok) {
+        // Erfolg: Der Kunde existiert nicht mehr — zurück zur Liste, Erfolgshinweis
+        // dort als Flash. Kein Nachladen dieser (nun toten) Detailseite.
+        navigate("/admin/users", { replace: true, state: { flash: "Kunde wurde gelöscht." } });
+        return;
+      }
+      // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
+      if (r.status === 401 || r.status === 403) return;
+      // 409 ist der erwartete Delete-Guard (Hinweis auf Anonymisierung), kein Fehler.
+      setDelMsg({
+        type: r.status === 409 ? "info" : "error",
+        text: DELETE_ERRORS[r.status] || DELETE_ERRORS.default,
+      });
+    } catch {
+      setDelMsg({ type: "error", text: DELETE_ERRORS.default });
+    } finally {
+      // Modal in jedem Fall schließen: Bei 409 würde ein erneuter Versuch dieselbe
+      // Guard-Antwort liefern — der Hinweis (Anonymisierung) steht sichtbar auf der
+      // Detailseite, der Anonymisieren-Button ist direkt daneben.
+      setDelBusy(false);
+      setDelOpen(false);
+      setDelInput("");
+    }
+  };
+
   return (
     <div className="adm-page">
       {back}
@@ -215,6 +267,12 @@ export default function AdminUserDetailPage() {
       {anonMsg && (
         <div className={`alert ${anonMsg.type === "success" ? "alert-success" : "alert-error"}`}>
           <Icon n={anonMsg.type === "success" ? "check" : "x"} s={16} />{anonMsg.text}
+        </div>
+      )}
+
+      {delMsg && (
+        <div className={`alert ${delMsg.type === "info" ? "alert-info" : "alert-error"}`}>
+          <Icon n={delMsg.type === "info" ? "info" : "x"} s={16} />{delMsg.text}
         </div>
       )}
 
@@ -321,15 +379,23 @@ export default function AdminUserDetailPage() {
             </div>
             {isAnonymized && <p className="adm-danger-note">Dieser Account ist bereits anonymisiert.</p>}
 
-            {/* Löschen bleibt Platzhalter — folgt in einem separaten Schritt. */}
-            <div className="adm-danger-item adm-danger-item-soon">
+            {/* Harte Löschung — nur ohne abhängige Daten; sonst greift der Backend-Guard (409). */}
+            <div className="adm-danger-item adm-danger-item-split">
               <div className="adm-danger-item-text">
-                <div className="adm-danger-item-title">Account löschen</div>
-                <p className="adm-danger-item-desc">Endgültiges Löschen folgt in einem separaten, abgesicherten Schritt.</p>
+                <div className="adm-danger-item-title">Kunde löschen</div>
+                <p className="adm-danger-item-desc">
+                  Diese Aktion ist nur für Kunden ohne Sendungs- oder Rechnungsdaten möglich.
+                  Bei bestehenden Daten muss anonymisiert werden.
+                </p>
+                <p className="adm-support-hint" style={{ marginTop: 6 }}>Die Aktion wird protokolliert.</p>
               </div>
               <div className="adm-danger-item-action">
-                <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt in einem späteren Schritt">
-                  <Icon n="x" s={13} /> Löschen — folgt
+                <button
+                  type="button"
+                  className="btn btn-sm adm-danger-button"
+                  onClick={openDel}
+                >
+                  <Icon n="trash" s={13} /> Kunde löschen
                 </button>
               </div>
             </div>
@@ -380,6 +446,56 @@ export default function AdminUserDetailPage() {
                 {anonBusy
                   ? <><span className="spinner spinner-dark" /> Anonymisiere…</>
                   : <><Icon n="shield" s={14} /> Anonymisierung bestätigen</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Type-to-confirm-Modal (Löschen) — hart & irreversibel, exakt „DELETE_USER" nötig. */}
+      {delOpen && (
+        <div className="adm-modal-overlay" role="presentation" onClick={closeDel}>
+          <div
+            className="adm-modal adm-modal-danger"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-del-title"
+            aria-describedby="adm-del-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="trash" s={22} /></div>
+            <h2 id="adm-del-title" className="adm-modal-title">Kunde wirklich löschen?</h2>
+            <p id="adm-del-desc" className="adm-modal-text">
+              Diese Aktion löscht den Kunden hart, sofern keine abhängigen Sendungs- oder Rechnungsdaten
+              existieren. Die Aktion wird protokolliert.
+            </p>
+            <p className="adm-modal-sub">{targetLabel}</p>
+            <label className="adm-modal-label" htmlFor="adm-del-input">Tippe DELETE_USER ein, um fortzufahren.</label>
+            <input
+              id="adm-del-input"
+              className="adm-modal-input"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoFocus
+              placeholder="DELETE_USER"
+              value={delInput}
+              onChange={(e) => setDelInput(e.target.value)}
+              disabled={delBusy}
+            />
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={closeDel} disabled={delBusy}>Abbrechen</button>
+              <button
+                type="button"
+                className="btn btn-sm adm-danger-button"
+                onClick={confirmDelete}
+                disabled={delBusy || !delConfirmed}
+              >
+                {delBusy
+                  ? <><span className="spinner spinner-dark" /> Lösche…</>
+                  : <><Icon n="trash" s={14} /> Löschung bestätigen</>}
               </button>
             </div>
           </div>

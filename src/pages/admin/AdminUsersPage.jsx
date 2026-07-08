@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -113,6 +113,8 @@ function matchUser(u, q) {
 }
 
 export default function AdminUsersPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
@@ -155,6 +157,18 @@ export default function AdminUsersPage() {
   }, [page]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Flash nach Redirect (z. B. „Kunde wurde gelöscht." aus dem Detail). Genau
+  // einmal anzeigen, dann den Router-State löschen, damit ein Reload/Zurück den
+  // Hinweis nicht wiederholt. Kein Storage — reiner In-Memory-Router-State.
+  useEffect(() => {
+    const flash = location.state && location.state.flash;
+    if (flash) {
+      setActionMsg({ type: "success", text: String(flash) });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };

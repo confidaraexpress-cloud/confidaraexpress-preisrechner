@@ -232,3 +232,12 @@ export function listAdminInvoices(params = {}) {
   const query = { ...filters, limit: size, offset: (p - 1) * size };
   return apiFetch(`/admin/invoices${buildQuery(query, INVOICE_PARAMS)}`, { auth: true });
 }
+
+// GET /admin/invoices/:id — read-only Einzelrechnung (Backend-Vertrag: liefert
+// { invoice: {...} }). Keine Query-Parameter, kein Body, kein Cache, kein Logging
+// von Response-Daten. Rohe Response zurück; der Aufrufer selektiert defensiv nur
+// erlaubte Felder (nie password/hash/token/secret, keine Adressen/Label/Tracking)
+// und rendert nie das ganze Objekt. 401/403 behandelt apiFetch zentral.
+export function getAdminInvoice(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}`, { auth: true });
+}

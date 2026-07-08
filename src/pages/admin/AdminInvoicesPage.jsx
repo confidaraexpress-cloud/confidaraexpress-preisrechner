@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminInvoices } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -235,7 +236,11 @@ export default function AdminInvoicesPage() {
                   return (
                     <tr key={rowKeyOf(row, i)}>
                       <td className="adm-td-time">{fmtDate(createdOf(row))}</td>
-                      <td className="adm-mono">{dash(invoiceNoOf(row))}</td>
+                      <td className="adm-mono">
+                        {idOf(row) != null
+                          ? <Link className="adm-idlink" to={`/admin/invoices/${encodeURIComponent(idOf(row))}`}>{dash(invoiceNoOf(row))}</Link>
+                          : dash(invoiceNoOf(row))}
+                      </td>
                       <td className="adm-mono">{firstDefined(userIdOf(row)) ?? "—"}</td>
                       <td>
                         <div>{dash(company || name)}</div>

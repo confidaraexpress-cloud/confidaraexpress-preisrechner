@@ -76,3 +76,11 @@ export function listAdminShipments(params = {}) {
   const query = { ...filters, limit: size, offset: (p - 1) * size };
   return apiFetch(`/admin/shipments${buildQuery(query, SHIPMENT_PARAMS)}`, { auth: true });
 }
+
+// GET /admin/shipments/:id — read-only Detail. Der Detailabruf wird backendseitig
+// auditiert (admin.shipment.view). Keine Query-Parameter, kein persistenter Cache.
+// Rohe Response zurück; der Aufrufer liest den Body defensiv und rendert nie das
+// ganze Objekt.
+export function getAdminShipment(id) {
+  return apiFetch(`/admin/shipments/${encodeURIComponent(id)}`, { auth: true });
+}

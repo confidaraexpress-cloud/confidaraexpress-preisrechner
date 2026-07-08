@@ -24,6 +24,7 @@ const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 const AdminOverviewPage  = React.lazy(() => import("./pages/admin/AdminOverviewPage"));
 const AuditLogPage       = React.lazy(() => import("./pages/admin/AuditLogPage"));
 const AdminShipmentsPage = React.lazy(() => import("./pages/admin/AdminShipmentsPage"));
+const AdminShipmentDetailPage = React.lazy(() => import("./pages/admin/AdminShipmentDetailPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -56,9 +57,10 @@ export default function App() {
         {/* Admin: eigenes Layout, URL-basiert, hinter AdminRoute (UX-Gate).
             requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route path="/admin"            element={<AdminOverviewPage />} />
-          <Route path="/admin/shipments"  element={<AdminShipmentsPage />} />
-          <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+          <Route path="/admin"              element={<AdminOverviewPage />} />
+          <Route path="/admin/shipments"    element={<AdminShipmentsPage />} />
+          <Route path="/admin/shipments/:id" element={<AdminShipmentDetailPage />} />
+          <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 
         <Route index element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />

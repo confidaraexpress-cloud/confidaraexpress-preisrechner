@@ -113,6 +113,38 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 .adm-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
 .adm-page-ind { font-size: 13px; font-weight: 600; color: var(--gray500); }
+.adm-idlink { font-family: 'DM Mono', monospace; color: var(--blue2); text-decoration: none; font-weight: 600; }
+.adm-idlink:hover { text-decoration: underline; }
+
+/* ── Sendungsdetail ──────────────────────────────────────────────────────── */
+.adm-back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--gray500); text-decoration: none; margin-bottom: 14px; }
+.adm-back:hover { color: var(--blue2); }
+.adm-detail-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+.adm-detail-id { font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
+.adm-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--gray100); color: var(--gray600); border: 1px solid var(--border); white-space: nowrap; }
+
+.adm-cards { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.adm-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.04); overflow: hidden; }
+.adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--navy); }
+.adm-card-head svg { color: var(--blue2); }
+.adm-card-body { padding: 16px 18px; }
+
+.adm-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px 22px; }
+.adm-kv-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-kv-item dt { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.adm-kv-item dd { font-size: 13.5px; color: var(--navy); word-break: break-word; }
+
+.adm-pii-warn { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); color: #8a5a06; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+.adm-pii-warn svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+
+.adm-addr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.adm-addr-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray500); margin-bottom: 10px; }
+.adm-addr-note { font-size: 13px; color: var(--gray400); font-style: italic; }
+.adm-addr-str { font-size: 13.5px; color: var(--navy); white-space: pre-line; }
+
+.adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
+.adm-support-hint { font-size: 12px; color: var(--gray400); margin-top: 10px; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {

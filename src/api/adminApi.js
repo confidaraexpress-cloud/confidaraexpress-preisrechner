@@ -179,3 +179,24 @@ export function setAdminUserStatus(userId, status) {
 export function getAdminUser(id) {
   return apiFetch(`/admin/users/${encodeURIComponent(id)}`, { auth: true });
 }
+
+// Erforderlicher Bestätigungswert für die irreversible Anonymisierung.
+const ANONYMIZE_CONFIRM = "ANONYMIZE_USER";
+
+// POST /admin/users/:id/anonymize — DSGVO-Anonymisierung (irreversibel). Der Body
+// ist exakt { confirm: "ANONYMIZE_USER", targetUserId: <id> } — keine weiteren
+// Felder. Defensiver Guard: es wird NUR gesendet, wenn im UI exakt
+// „ANONYMIZE_USER" getippt wurde (der Aufrufer übergibt den getippten Wert).
+// Bearer + Content-Type kommen aus apiFetch(auth:true). Kein Cache, kein Logging;
+// 401/403 behandelt apiFetch zentral.
+export function anonymizeAdminUser(id, confirmation) {
+  if (confirmation !== ANONYMIZE_CONFIRM) {
+    return Promise.reject(new Error("confirm_mismatch"));
+  }
+  const targetUserId = /^\d+$/.test(String(id)) ? Number(id) : id;
+  return apiFetch(`/admin/users/${encodeURIComponent(id)}/anonymize`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ confirm: ANONYMIZE_CONFIRM, targetUserId }),
+  });
+}

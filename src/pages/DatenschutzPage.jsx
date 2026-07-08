@@ -25,8 +25,8 @@ const TOC = [
   [9,  "Sendungsverfolgung"],
   [10, "Rechnungs- und Geschäftsdaten"],
   [11, "E-Mail-Kommunikation (Resend)"],
-  [12, "localStorage und JWT-Authentifizierungstoken"],
-  [13, "Google Fonts"],
+  [12, "Cookies und lokale Speichertechnologien"],
+  [13, "Schriftarten"],
   [14, "Auftragsverarbeiter"],
   [15, "Speicherdauern im Überblick"],
   [16, "Ihre Rechte als betroffene Person"],
@@ -44,7 +44,7 @@ export default function DatenschutzPage() {
 
             {/* ── Stand ── */}
             <p style={{ ...P_STYLE, color: "var(--gray400, #94a3b8)", fontSize: 13, marginBottom: 24 }}>
-              Stand: Mai 2026
+              Stand: Juli 2026
             </p>
 
             {/* ── Inhaltsverzeichnis ── */}
@@ -122,9 +122,11 @@ export default function DatenschutzPage() {
 
               <h3 style={H3_STYLE}>2.3 Kein Einsatz von Werbe- und Analyse-Tracking</h3>
               <p style={P_LAST}>
-                Wir setzen keinerlei Werbe- oder Analyse-Tracking ein. Auf dieser Plattform sind weder
-                Google Analytics, Google Ads, Meta Pixel, Matomo, Hotjar, Microsoft Clarity noch
-                vergleichbare Tools integriert.
+                Wir setzen keinerlei Werbe- oder Analyse-Tracking ein. Auf dieser Plattform findet keine
+                Webanalyse statt; es kommen keine Marketing-Pixel, kein Session-Recording und keine
+                Heatmaps zum Einsatz. Es sind weder Google Analytics, Google Ads, Meta Pixel, Matomo,
+                Hotjar, Microsoft Clarity noch vergleichbare Tools oder externe Tracking-Skripte
+                eingebunden.
               </p>
             </div>
 
@@ -408,25 +410,43 @@ export default function DatenschutzPage() {
 
             <hr style={HR_STYLE} />
 
-            {/* ── 12. localStorage ── */}
+            {/* ── 12. Cookies und lokale Speichertechnologien ── */}
             <div id="abschnitt-12" style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>12. localStorage und JWT-Authentifizierungstoken</h2>
+              <h2 style={H2_STYLE}>12. Cookies und lokale Speichertechnologien</h2>
+
+              <h3 style={H3_STYLE}>12.1 Keine Cookies</h3>
               <p style={P_STYLE}>
-                Nach erfolgreicher Anmeldung wird in Ihrem Browser ein Authentifizierungstoken (JSON
-                Web Token, kurz JWT) in der <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code>-Funktion
-                Ihres Browsers gespeichert. Dieser Token dient ausschließlich der sicheren
-                Identifikation Ihres Kontos bei nachfolgenden Zugriffen auf die Plattform.
+                ConfidaraExpress setzt derzeit keine Cookies ein — weder technisch notwendige noch
+                Analyse-, Marketing- oder Tracking-Cookies. Ebenso wird kein{" "}
+                <code style={{ fontFamily: "monospace", fontSize: 13 }}>sessionStorage</code> verwendet.
+                Da keine Cookies gesetzt werden, wird kein Cookie-Banner angezeigt.
+              </p>
+
+              <h3 style={H3_STYLE}>12.2 Technisch notwendige Speicherung im localStorage (Login)</h3>
+              <p style={P_STYLE}>
+                Für den Login wird eine technisch notwendige Speicherung im{" "}
+                <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code> Ihres
+                Browsers verwendet. Nach erfolgreicher Anmeldung wird dort ein Authentifizierungstoken
+                (JSON Web Token, kurz JWT) abgelegt.
               </p>
               <p style={P_STYLE}>
-                <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code> ist kein
-                Cookie im technischen Sinne und unterliegt nicht den Regelungen der ePrivacy-Richtlinie
-                für Cookies. Eine Einwilligung ist für diese technisch notwendige Speicherung nicht
-                erforderlich.
+                <strong>Schlüssel:</strong>{" "}
+                <code style={{ fontFamily: "monospace", fontSize: 13 }}>ce_token</code><br />
+                <strong>Inhalt:</strong> JWT mit einer Konto-Kennung (ID), Ihrer E-Mail-Adresse und
+                Ihrer Rolle<br />
+                <strong>Zweck:</strong> Authentifizierung und Aufrechterhaltung der Login-Sitzung
+              </p>
+              <p style={P_STYLE}>
+                Ohne diese Speicherung kann der Login bzw. der Kundenbereich nicht zuverlässig
+                funktionieren. Der Token wird ausschließlich zur Authentifizierung gegenüber unseren
+                Backend-Systemen verwendet; bei der Abmeldung wird er aus dem Browser entfernt.
               </p>
               <p style={P_LAST}>
-                Der Token enthält eine eindeutige Kennung Ihres Nutzerkontos und wird ausschließlich zur
-                Authentifizierung gegenüber unseren Backend-Systemen verwendet. Bei der Abmeldung wird
-                der Token aus dem Browser entfernt.
+                <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code> ist kein
+                Cookie im technischen Sinne und unterliegt nicht den Cookie-Regelungen der
+                ePrivacy-Richtlinie. Eine Einwilligung ist für diese technisch notwendige Speicherung
+                nicht erforderlich. Es werden keine Analyse-, Marketing- oder Tracking-Technologien in
+                der lokalen Speicherung abgelegt.
                 <br /><br />
                 <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (technisch notwendig für
                 die Vertragserfüllung).
@@ -435,33 +455,19 @@ export default function DatenschutzPage() {
 
             <hr style={HR_STYLE} />
 
-            {/* ── 13. Google Fonts ── */}
+            {/* ── 13. Schriftarten ── */}
             <div id="abschnitt-13" style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>13. Google Fonts</h2>
+              <h2 style={H2_STYLE}>13. Schriftarten</h2>
               <p style={P_STYLE}>
-                Auf unserer Plattform verwenden wir die Schriftart <em>Cormorant Garamond</em>, die
-                über den Dienst <strong>Google Fonts</strong> (Google LLC, 1600 Amphitheatre Parkway,
-                Mountain View, CA 94043, USA) eingebunden ist.
-              </p>
-              <p style={P_STYLE}>
-                Beim Aufruf der Plattform stellt Ihr Browser eine direkte Verbindung zu Servern von
-                Google her, um die Schriftart herunterzuladen. Dabei wird Ihre IP-Adresse an
-                Google-Server übertragen. Diese Übertragung erfolgt automatisch ohne gesonderte
-                Einwilligung.
-              </p>
-              <p style={P_STYLE}>
-                Google ist nach dem EU-US Data Privacy Framework zertifiziert. Weitere Informationen zur
-                Datenverarbeitung durch Google finden Sie in der Datenschutzerklärung von Google unter:{" "}
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--blue, #1D4ED8)", wordBreak: "break-all" }}>
-                  https://policies.google.com/privacy
-                </a>
+                Die auf unserer Plattform verwendeten Schriftarten (u. a. <em>Cormorant Garamond</em>,{" "}
+                <em>Libre Franklin</em> und <em>DM Sans</em>) werden lokal von unserem eigenen Server
+                ausgeliefert. Die Schriftdateien sind Bestandteil unserer Anwendung und werden von
+                derselben Domain geladen wie die übrige Plattform.
               </p>
               <p style={P_LAST}>
-                Wir arbeiten daran, Google Fonts künftig lokal zu hosten, um diese Datenübertragung zu
-                vermeiden.
-                <br /><br />
-                <strong>Rechtsgrundlage (solange extern eingebunden):</strong> Art. 6 Abs. 1 lit. f
-                DSGVO (berechtigtes Interesse an der einheitlichen Darstellung der Plattform).
+                Beim Aufruf der Plattform wird <strong>keine Verbindung zu Google Fonts oder anderen
+                externen Anbietern</strong> hergestellt, um Schriftarten zu laden. Zu diesem Zweck
+                werden keine Daten — insbesondere nicht Ihre IP-Adresse — an Dritte übertragen.
               </p>
             </div>
 
@@ -485,14 +491,9 @@ export default function DatenschutzPage() {
                   Standort: gemäß Jumingo-Vertrag
                 </dd>
                 <dt style={DT_STYLE}>Resend Inc.</dt>
-                <dd style={DD_STYLE}>
+                <dd style={DD_LAST}>
                   Funktion: Transaktionaler E-Mail-Versand · Standort: USA (Standardvertragsklauseln
                   vorhanden)
-                </dd>
-                <dt style={DT_STYLE}>Google LLC</dt>
-                <dd style={DD_LAST}>
-                  Funktion: Bereitstellung von Webschriftarten (Google Fonts, solange extern
-                  eingebunden) · Standort: USA (EU-US Data Privacy Framework)
                 </dd>
               </dl>
               <p style={{ ...P_STYLE, marginTop: 12 }}>

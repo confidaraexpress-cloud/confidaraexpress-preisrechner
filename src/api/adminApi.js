@@ -84,3 +84,44 @@ export function listAdminShipments(params = {}) {
 export function getAdminShipment(id) {
   return apiFetch(`/admin/shipments/${encodeURIComponent(id)}`, { auth: true });
 }
+
+// GET /admin/shipments/:id/label — lädt das Versandlabel als PDF-Blob und stößt
+// einen Browser-Download an. Bewusst wie utils/downloadLabel.js (Kundenpfad),
+// nur gegen den Admin-Endpunkt — der Kundenpfad selbst bleibt unangetastet.
+// Sicherheit/Datenschutz:
+//   • KEINE JSON-Annahme bei Erfolg (Blob), KEIN Speichern der Bytes: der Blob
+//     lebt nur lokal, die ObjectURL wird sofort nach dem Klick revoked.
+//   • KEIN Preview/Inline-Render, KEIN Logging von Labeldaten.
+//   • Bei Fehlern wird eine Error mit .status geworfen (der Aufrufer mappt auf
+//     verständliche Texte) — es wird KEIN roher Backend-Body ausgegeben.
+//   • Der Abruf wird backendseitig auditiert (admin.shipment.label_download).
+export async function downloadAdminShipmentLabel(id) {
+  let r;
+  try {
+    r = await apiFetch(`/admin/shipments/${encodeURIComponent(id)}/label`, { auth: true });
+  } catch {
+    const err = new Error("Label konnte nicht heruntergeladen werden.");
+    err.network = true;
+    throw err;
+  }
+  if (!r.ok) {
+    const err = new Error("Label konnte nicht heruntergeladen werden.");
+    err.status = r.status; // 401/403 hat apiFetch bereits zentral behandelt
+    throw err;
+  }
+  const blob = await r.blob();
+  if (!blob || blob.size === 0) {
+    const err = new Error("Label konnte nicht heruntergeladen werden.");
+    err.empty = true;
+    throw err;
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `confidara-label-${id}.pdf`;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url); // Blob-URL sofort freigeben — nichts bleibt liegen
+  }
+}

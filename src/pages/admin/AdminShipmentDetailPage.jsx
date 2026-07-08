@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminShipment } from "../../api/adminApi";
+import { getAdminShipment, downloadAdminShipmentLabel } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import {
@@ -18,6 +18,15 @@ const ERROR_MESSAGES = {
   500: "Die Sendung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
 const GENERIC_ERROR = "Die Sendung konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Fehlertexte für den Label-Download (verständlich, kein roher Backend-Body).
+const LABEL_ERRORS = {
+  404: "Label oder Sendung wurde nicht gefunden.",
+  409: "Für diese Sendung ist noch kein Label verfügbar.",
+  429: "Zu viele Labelabrufe. Bitte später erneut versuchen.",
+  502: "Der Labeldienst ist momentan nicht erreichbar.",
+  default: "Label konnte nicht heruntergeladen werden.",
+};
 
 // Sendungsobjekt defensiv aus der Response ziehen (evtl. unter { shipment }).
 function selectShipment(d) {
@@ -156,12 +165,17 @@ export default function AdminShipmentDetailPage() {
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [showPii, setShowPii] = useState(false); // Adressen initial NICHT im DOM
+  const [confirmLabel, setConfirmLabel] = useState(false); // Bestätigungsdialog
+  const [labelBusy, setLabelBusy] = useState(false);       // Download läuft
+  const [labelMsg, setLabelMsg] = useState(null);          // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     setNotFound(false);
     setShowPii(false); // jede Sendung startet eingeklappt; kein Merken (localStorage)
+    setConfirmLabel(false);
+    setLabelMsg(null);
     try {
       const r = await getAdminShipment(id);
       if (!r.ok) {
@@ -226,6 +240,27 @@ export default function AdminShipmentDetailPage() {
   const [statusCls, statusLabel] = shipmentStatusMeta(statusOf(s));
   const hasTracking = hasTrackingOf(s);
   const invoice = invoiceOf(s);
+  const labelAvailable = labelAvailOf(s) === true || labelAvailOf(s) === "true";
+
+  const openLabelConfirm = () => { setLabelMsg(null); setConfirmLabel(true); };
+  const confirmDownload = async () => {
+    setConfirmLabel(false);
+    setLabelBusy(true);
+    setLabelMsg(null);
+    try {
+      // Blob-Download + sofortiges revokeObjectURL passieren in adminApi; hier
+      // wird nichts vom Label gehalten (kein State, kein DOM, kein Log).
+      await downloadAdminShipmentLabel(id);
+      setLabelMsg({ type: "success", text: "Label wurde heruntergeladen." });
+    } catch (e) {
+      // 401/403 hat apiFetch bereits zentral behandelt (Logout/Redirect).
+      if (e?.status !== 401 && e?.status !== 403) {
+        setLabelMsg({ type: "error", text: LABEL_ERRORS[e?.status] || LABEL_ERRORS.default });
+      }
+    } finally {
+      setLabelBusy(false);
+    }
+  };
 
   return (
     <div className="adm-page">
@@ -335,22 +370,62 @@ export default function AdminShipmentDetailPage() {
           </div>
         </div>
 
-        {/* Support-Aktionen — Platzhalter, in diesem Schritt bewusst inaktiv */}
+        {/* Support-Aktionen — „Label herunterladen" aktiv; Tracking folgt später */}
         <div className="adm-card">
           <div className="adm-card-head"><Icon n="headset" s={17} /> Support-Aktionen</div>
           <div className="adm-card-body">
+            {labelMsg && (
+              <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} style={{ marginBottom: 12 }}>
+                <Icon n={labelMsg.type === "success" ? "check" : "x"} s={16} />{labelMsg.text}
+              </div>
+            )}
             <div className="adm-support">
-              <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt im nächsten Schritt">
-                <Icon n="download" s={14} /> Label herunterladen
-              </button>
+              {labelAvailable ? (
+                <button type="button" className="btn btn-outline btn-sm" onClick={openLabelConfirm} disabled={labelBusy}>
+                  {labelBusy
+                    ? <><span className="spinner spinner-dark" /> Wird geladen…</>
+                    : <><Icon n="download" s={14} /> Label herunterladen</>}
+                </button>
+              ) : (
+                <button type="button" className="btn btn-outline btn-sm" disabled title="Label noch nicht verfügbar">
+                  <Icon n="download" s={14} /> Label herunterladen
+                </button>
+              )}
               <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt im nächsten Schritt">
                 <Icon n="mapPin" s={14} /> Tracking prüfen
               </button>
             </div>
-            <p className="adm-support-hint">Diese Aktionen folgen in einem späteren Schritt.</p>
+            {!labelAvailable && <p className="adm-support-hint">Label für diese Sendung noch nicht verfügbar.</p>}
+            <p className="adm-support-hint">Labelabrufe werden protokolliert. Die Tracking-Prüfung folgt in einem späteren Schritt.</p>
           </div>
         </div>
       </div>
+
+      {/* Bestätigungsdialog — Download erst nach bewusster Bestätigung. */}
+      {confirmLabel && (
+        <div className="adm-modal-overlay" role="presentation" onClick={() => setConfirmLabel(false)}>
+          <div
+            className="adm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-label-title"
+            aria-describedby="adm-label-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon" aria-hidden="true"><Icon n="download" s={22} /></div>
+            <h2 id="adm-label-title" className="adm-modal-title">Label herunterladen</h2>
+            <p id="adm-label-desc" className="adm-modal-text">
+              Dieses Label enthält Absender- und Empfängeradressen. Der Download wird protokolliert.
+            </p>
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setConfirmLabel(false)}>Abbrechen</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={confirmDownload}>
+                <Icon n="download" s={14} /> Download bestätigen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

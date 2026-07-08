@@ -146,6 +146,14 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
 .adm-support-hint { font-size: 12px; color: var(--gray400); margin-top: 10px; }
 
+/* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
+.adm-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(10,22,40,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.adm-modal { background: #fff; border-radius: var(--radius-lg); max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(10,22,40,0.35); text-align: center; }
+.adm-modal-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--warn-bg); color: #b45309; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+.adm-modal-title { font-family: 'Libre Franklin', sans-serif; font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.adm-modal-text { font-size: 13.5px; line-height: 1.55; color: var(--gray600); margin-bottom: 18px; }
+.adm-modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .adm-side { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); box-shadow: 4px 0 24px rgba(10,22,40,0.18); }

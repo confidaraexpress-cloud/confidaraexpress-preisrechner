@@ -1,24 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
+import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 
 const PAGE_SIZE = 25;
-
-// ── Anzeige-Labels (reine Übersetzung) ───────────────────────────────────────
-const USER_STATUS_META = {
-  pending: ["badge-yellow", "Wartet"],
-  approved: ["badge-green", "Freigegeben"],
-  blocked: ["badge-red", "Blockiert"],
-  anonymized: ["badge-gray", "Anonymisiert"],
-};
-const userStatusMeta = (s) => USER_STATUS_META[s] || ["badge-gray", "Unbekannt"];
-
-const USER_ROLE_META = {
-  admin: ["badge-blue", "Admin"],
-  customer: ["badge-gray", "Kunde"],
-};
-const userRoleMeta = (r) => USER_ROLE_META[r] || ["badge-gray", r ? String(r) : "—"];
 
 const ERROR_MESSAGES = {
   400: "Ungültige Anfrage.",
@@ -107,11 +94,6 @@ function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("de-DE");
-}
-// Zahlungsziel anzeigen; leer → Default "7 Tage" (nur Anzeige, KEINE Logik/Änderung).
-function paymentTermLabel(v) {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? `${n} Tage` : "7 Tage";
 }
 const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
 
@@ -289,7 +271,11 @@ export default function AdminUsersPage() {
                 {filtered.map((u, i) => (
                   <tr key={rowKeyOf(u, i)}>
                     <td className="adm-td-time">{fmtDate(createdOf(u))}</td>
-                    <td className="adm-mono">{dash(idOf(u))}</td>
+                    <td className="adm-mono">
+                      {idOf(u) != null
+                        ? <Link className="adm-idlink" to={`/admin/users/${encodeURIComponent(idOf(u))}`}>{idOf(u)}</Link>
+                        : "—"}
+                    </td>
                     <td>{dash(companyOf(u))}</td>
                     <td>{dash(nameOf(u))}</td>
                     <td className="adm-nowrap">{dash(emailOf(u))}</td>

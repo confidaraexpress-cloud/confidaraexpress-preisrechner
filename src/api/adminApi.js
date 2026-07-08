@@ -171,3 +171,11 @@ export function setAdminUserStatus(userId, status) {
     body: JSON.stringify({ status }),
   });
 }
+
+// GET /admin/users/:id — read-only Kundendetail (User + Aggregat-Summary).
+// Keine Query-Parameter, kein Cache, kein Logging von Response-Daten. Rohe
+// Response zurück; der Aufrufer selektiert defensiv nur erlaubte Felder (nie
+// password/hash/token/secret) und rendert nie das ganze Objekt.
+export function getAdminUser(id) {
+  return apiFetch(`/admin/users/${encodeURIComponent(id)}`, { auth: true });
+}

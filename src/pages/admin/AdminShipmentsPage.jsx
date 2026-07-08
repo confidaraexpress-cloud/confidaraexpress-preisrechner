@@ -2,28 +2,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminShipments } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
+import { Link } from "react-router-dom";
 import { resolveCarrierName } from "../../utils/carrierMap";
+import { maskTail, shipmentStatusMeta, serviceLabel, SHIPMENT_STATUS_OPTIONS } from "../../utils/adminShipments";
 
 const PAGE_SIZE = 25;
-
-// ── Anzeige-Labels (reine Übersetzung, keine Logik) ──────────────────────────
-// [badge-Klasse, Label]. Unbekannte Status → grau + Rohwert (harmlos).
-const STATUS_META = {
-  draft: ["badge-gray", "Entwurf"],
-  booking: ["badge-yellow", "In Buchung"],
-  booked: ["badge-blue", "Gebucht"],
-  label_ready: ["badge-blue", "Label bereit"],
-};
-
-// Serviceart: nur die belegten Werte pickup/dropoff werden übersetzt, alles
-// andere → „Unbekannt" (kein Raten, keine rohe Anzeige technischer Werte).
-const SERVICE_LABELS = { pickup: "Abholung", dropoff: "Paketshop" };
-const serviceLabel = (v) => {
-  if (v === undefined || v === null || v === "") return "Unbekannt";
-  return SERVICE_LABELS[String(v).toLowerCase()] || "Unbekannt";
-};
-
-const STATUS_OPTIONS = Object.keys(STATUS_META);
 
 const EMPTY_FILTERS = {
   user_id: "",
@@ -92,16 +75,6 @@ const jumingoOf = (r) =>
   firstDefined(r.jumingo_shipment_id_masked, r.masked_jumingo_id, r.jumingo_shipment_id, r.jumingoShipmentId, r.jumingo_id);
 const rowKeyOf = (r, i) => firstDefined(r.id, r.shipment_id, r.uuid) ?? `row-${i}`;
 
-// Zeigt AUSSCHLIESSLICH die letzten 4 Zeichen — unabhängig davon, ob das
-// Backend bereits maskiert oder (versehentlich) eine volle ID liefert. So kann
-// nie eine vollständige tracking_number / jumingo_shipment_id ins DOM gelangen.
-function maskTail(v) {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim();
-  if (!s) return null;
-  return `••••${s.slice(-4)}`;
-}
-
 function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -129,7 +102,7 @@ function toApiFilters(f) {
 }
 
 function StatusBadge({ status }) {
-  const [cls, label] = STATUS_META[status] || ["badge-gray", status ?? "—"];
+  const [cls, label] = shipmentStatusMeta(status);
   return <span className={`badge ${cls}`}>{label}</span>;
 }
 
@@ -217,7 +190,7 @@ export default function AdminShipmentsPage() {
           <label htmlFor="f-status">Status</label>
           <select id="f-status" value={draft.status} onChange={(e) => setField("status", e.target.value)}>
             <option value="">Alle</option>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_META[s][1]}</option>)}
+            {SHIPMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{shipmentStatusMeta(s)[1]}</option>)}
           </select>
         </div>
         <div className="adm-filter-field">
@@ -285,10 +258,12 @@ export default function AdminShipmentsPage() {
                   <th>Label</th>
                   <th>Tracking-Nr.</th>
                   <th>JUMiNGO-ID</th>
+                  <th>Details</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
+                  const sid = idOf(row);
                   const price = priceOf(row);
                   const route = routeOf(row);
                   const track = maskTail(trackingOf(row));
@@ -297,7 +272,11 @@ export default function AdminShipmentsPage() {
                   return (
                     <tr key={rowKeyOf(row, i)}>
                       <td className="adm-td-time">{fmtDate(dateOf(row))}</td>
-                      <td className="adm-mono">{firstDefined(idOf(row)) ?? "—"}</td>
+                      <td className="adm-mono">
+                        {sid != null
+                          ? <Link className="adm-idlink" to={`/admin/shipments/${encodeURIComponent(sid)}`}>{sid}</Link>
+                          : "—"}
+                      </td>
                       <td className="adm-mono">{firstDefined(userIdOf(row)) ?? "—"}</td>
                       <td>{carrierOf(row) ? resolveCarrierName(carrierOf(row)) : "—"}</td>
                       <td><StatusBadge status={statusOf(row)} /></td>
@@ -309,6 +288,13 @@ export default function AdminShipmentsPage() {
                       <td><YesNo value={labelAvailOf(row)} /></td>
                       <td>{track ? <span className="adm-mask">{track}</span> : <span className="adm-muted">—</span>}</td>
                       <td>{jum ? <span className="adm-mask">{jum}</span> : <span className="adm-muted">—</span>}</td>
+                      <td>
+                        {sid != null && (
+                          <Link className="btn btn-ghost btn-sm" to={`/admin/shipments/${encodeURIComponent(sid)}`}>
+                            Details <Icon n="chevronRight" s={13} />
+                          </Link>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}

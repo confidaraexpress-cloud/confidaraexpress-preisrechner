@@ -4,8 +4,10 @@ import { useAuth } from "./context/AuthContext";
 import { LoadingScreen } from "./components/common/LoadingScreen";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { AdminRoute } from "./routes/AdminRoute";
 import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { AdminLayout } from "./components/layout/AdminLayout";
 
 const AuthPage        = React.lazy(() => import("./pages/AuthPage"));
 const CalculatorPage  = React.lazy(() => import("./pages/CalculatorPage"));
@@ -16,6 +18,11 @@ const ImpressumPage   = React.lazy(() => import("./pages/ImpressumPage"));
 const DatenschutzPage = React.lazy(() => import("./pages/DatenschutzPage"));
 const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
 const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
+
+// Admin (separater, URL-basierter Bereich — hinter AdminRoute-UX-Gate;
+// serverseitig zusätzlich durch requireAdmin geschützt).
+const AdminOverviewPage = React.lazy(() => import("./pages/admin/AdminOverviewPage"));
+const AuditLogPage      = React.lazy(() => import("./pages/admin/AuditLogPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -44,6 +51,14 @@ export default function App() {
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+
+        {/* Admin: eigenes Layout, URL-basiert, hinter AdminRoute (UX-Gate).
+            requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
+        <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route path="/admin"            element={<AdminOverviewPage />} />
+          <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+        </Route>
+
         <Route index element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
         <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
       </Routes>

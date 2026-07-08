@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { API, apiFetch, jsonH } from "../api/client";
+import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
@@ -337,8 +337,8 @@ export default function NewShipmentPage() {
     calcAbort.current = ac;
 
     try {
-      const r = await fetch(`${API}/api/jumingo/calculate-price`, {
-        method: "POST", headers: jsonH, signal: ac.signal,
+      const r = await apiFetch(`/api/jumingo/calculate-price`, {
+        method: "POST", auth: true, signal: ac.signal,
         body: JSON.stringify({
           packageCount: Number(form.packageCount),
           weight: Number(form.weight), length: Number(form.length) || 30,
@@ -352,6 +352,10 @@ export default function NewShipmentPage() {
         })
       });
       if (seq !== calcSeq.current) return;                              // durch neueren Aufruf ersetzt
+      // Session ungültig/abgelaufen (Backend-Auth-Guard): apiFetch(auth:true) hat den
+      // Token entfernt und den zentralen Auth-Redirect (AuthContext) bereits ausgelöst
+      // → hier nur sauber aussteigen (kein irreführender Preisfehler, kein hängendes Loading).
+      if (r.status === 401 || r.status === 403) { setLoading(false); return; }
       const d = await r.json();
       if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
       if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen

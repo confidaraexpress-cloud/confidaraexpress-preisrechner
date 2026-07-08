@@ -125,3 +125,12 @@ export async function downloadAdminShipmentLabel(id) {
     URL.revokeObjectURL(url); // Blob-URL sofort freigeben — nichts bleibt liegen
   }
 }
+
+// GET /admin/shipments/:id/tracking — read-only, liefert ausschließlich
+// minimierte Trackingdaten (nie rohe JUMiNGO-Response). Der Abruf wird
+// backendseitig auditiert (admin.shipment.tracking_view). KEIN Cache, KEINE
+// Persistierung, kein Logging. Rohe Response zurück; der Aufrufer selektiert
+// defensiv nur die erlaubten Felder (nie das ganze Objekt, keine Events).
+export function getAdminShipmentTracking(id) {
+  return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/tracking`, { auth: true });
+}

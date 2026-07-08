@@ -146,6 +146,12 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
 .adm-support-hint { font-size: 12px; color: var(--gray400); margin-top: 10px; }
 
+/* ── Inline-Tracking-Karte (direkt unter den Support-Aktionen) ───────────── */
+.adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--gray50); }
+.adm-track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.adm-track-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+.adm-track-link { margin-top: 12px; }
+
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
 .adm-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(10,22,40,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .adm-modal { background: #fff; border-radius: var(--radius-lg); max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(10,22,40,0.35); text-align: center; }

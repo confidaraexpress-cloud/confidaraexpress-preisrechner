@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminShipment, downloadAdminShipmentLabel } from "../../api/adminApi";
+import { getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import {
@@ -27,6 +27,57 @@ const LABEL_ERRORS = {
   502: "Der Labeldienst ist momentan nicht erreichbar.",
   default: "Label konnte nicht heruntergeladen werden.",
 };
+
+// Fehlertexte für den Tracking-Abruf.
+const TRACK_ERRORS = {
+  404: "Sendung wurde nicht gefunden.",
+  409: "Für diese Sendung sind noch keine Trackinginformationen verfügbar.",
+  502: "Trackingdienst momentan nicht erreichbar.",
+  default: "Tracking konnte nicht geladen werden.",
+};
+
+// Nur valide http(s)-Links als Carrier-Link zulassen (verhindert javascript:-URLs).
+const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v.trim());
+const yesNoText = (v) =>
+  v === true || v === "true" || v === 1 || v === "1" ? "Ja"
+  : v === false || v === "false" || v === 0 || v === "0" ? "Nein"
+  : "—";
+
+// [badge-Klasse, Anzeigetext]. Farbe heuristisch nach Status-Schlüsselwort,
+// unbekannt → neutral. Angezeigt wird der minimierte Backend-Status als Text.
+function trackStatusMeta(status) {
+  if (status === undefined || status === null || status === "") return ["badge-gray", "Unbekannt"];
+  const s = String(status).toLowerCase();
+  if (/deliver|zugestellt/.test(s)) return ["badge-green", String(status)];
+  if (/transit|unterwegs|zustellung|out.?for/.test(s)) return ["badge-blue", String(status)];
+  if (/delay|verzöger|verzoeger|exception|problem|hold/.test(s)) return ["badge-yellow", String(status)];
+  if (/fail|fehl|return|retoure|cancel|storn/.test(s)) return ["badge-red", String(status)];
+  return ["badge-gray", String(status)];
+}
+
+// Selektiert AUSSCHLIESSLICH die minimierten Felder — nie Events/Steps oder ein
+// ganzes JUMiNGO-Objekt. Liest top-level und (defensiv) unter `tracking`, aber
+// immer nur die erlaubten Skalar-Schlüssel.
+function selectTracking(d) {
+  const o = d && typeof d === "object" ? d : {};
+  const nested = o.tracking && typeof o.tracking === "object" ? o.tracking : null;
+  const pick = (...keys) => {
+    for (const k of keys) {
+      const v = o[k] !== undefined ? o[k] : nested ? nested[k] : undefined;
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return undefined;
+  };
+  const link = pick("carrierTrackingPage", "carrier_tracking_url", "carrier_tracking_page", "carrierTrackingUrl", "tracking_url");
+  return {
+    available: pick("trackingAvailable", "tracking_available", "available"),
+    status: pick("trackingStatus", "tracking_status", "status"),
+    number: pick("trackingNumber", "tracking_number"),
+    link: isHttpUrl(link) ? String(link).trim() : null,
+    carrier: pick("carrier", "carrier_name", "carrierName"),
+    source: pick("source", "quelle"),
+  };
+}
 
 // Sendungsobjekt defensiv aus der Response ziehen (evtl. unter { shipment }).
 function selectShipment(d) {
@@ -168,6 +219,9 @@ export default function AdminShipmentDetailPage() {
   const [confirmLabel, setConfirmLabel] = useState(false); // Bestätigungsdialog
   const [labelBusy, setLabelBusy] = useState(false);       // Download läuft
   const [labelMsg, setLabelMsg] = useState(null);          // { type, text }
+  const [trackBusy, setTrackBusy] = useState(false);       // Tracking-Abruf läuft
+  const [trackData, setTrackData] = useState(null);        // nur minimierte Felder
+  const [trackError, setTrackError] = useState(null);      // Fehlertext
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,6 +230,8 @@ export default function AdminShipmentDetailPage() {
     setShowPii(false); // jede Sendung startet eingeklappt; kein Merken (localStorage)
     setConfirmLabel(false);
     setLabelMsg(null);
+    setTrackData(null); // kein Cache über Sendungen hinweg
+    setTrackError(null);
     try {
       const r = await getAdminShipment(id);
       if (!r.ok) {
@@ -259,6 +315,32 @@ export default function AdminShipmentDetailPage() {
       }
     } finally {
       setLabelBusy(false);
+    }
+  };
+
+  // Tracking wird NUR nach bewusstem Klick geladen. Jeder Klick lädt neu (kein
+  // Cache). Es werden ausschließlich die minimierten Felder im State gehalten —
+  // nie das rohe Objekt, keine Events, kein Logging, keine Persistierung.
+  const loadTracking = async () => {
+    setTrackBusy(true);
+    setTrackError(null);
+    setTrackData(null);
+    try {
+      const r = await getAdminShipmentTracking(id);
+      if (!r.ok) {
+        // 401/403 hat apiFetch bereits zentral behandelt (Logout/Redirect).
+        if (r.status !== 401 && r.status !== 403) {
+          setTrackError(TRACK_ERRORS[r.status] || TRACK_ERRORS.default);
+        }
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      setTrackData(selectTracking(d));
+    } catch {
+      setTrackError(TRACK_ERRORS.default);
+    } finally {
+      setTrackBusy(false);
     }
   };
 
@@ -391,12 +473,43 @@ export default function AdminShipmentDetailPage() {
                   <Icon n="download" s={14} /> Label herunterladen
                 </button>
               )}
-              <button type="button" className="btn btn-outline btn-sm" disabled title="Folgt im nächsten Schritt">
-                <Icon n="mapPin" s={14} /> Tracking prüfen
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadTracking} disabled={trackBusy}>
+                {trackBusy
+                  ? <><span className="spinner spinner-dark" /> Lade Tracking…</>
+                  : <><Icon n="mapPin" s={14} /> Tracking prüfen</>}
               </button>
             </div>
             {!labelAvailable && <p className="adm-support-hint">Label für diese Sendung noch nicht verfügbar.</p>}
-            <p className="adm-support-hint">Labelabrufe werden protokolliert. Die Tracking-Prüfung folgt in einem späteren Schritt.</p>
+            <p className="adm-support-hint">Label- und Trackingabrufe werden protokolliert.</p>
+
+            {trackError && (
+              <div className="alert alert-error" style={{ marginTop: 12 }}>
+                <Icon n="x" s={16} />{trackError}
+              </div>
+            )}
+            {trackData && (
+              <div className="adm-track">
+                <div className="adm-track-head">
+                  <span className="adm-track-title">Trackinginformationen</span>
+                  {(() => { const [c, l] = trackStatusMeta(trackData.status); return <span className={`badge ${c}`}>{l}</span>; })()}
+                </div>
+                <dl className="adm-kv">
+                  <div className="adm-kv-item"><dt>Tracking verfügbar</dt><dd>{yesNoText(trackData.available)}</dd></div>
+                  <div className="adm-kv-item"><dt>Trackingnummer</dt><dd className="adm-mono">{dash(trackData.number)}</dd></div>
+                  <div className="adm-kv-item"><dt>Carrier</dt><dd>{trackData.carrier ? resolveCarrierName(trackData.carrier) : "—"}</dd></div>
+                  <div className="adm-kv-item"><dt>Quelle</dt><dd>{dash(trackData.source)}</dd></div>
+                </dl>
+                <div className="adm-track-link">
+                  {trackData.link ? (
+                    <a className="btn btn-outline btn-sm" href={trackData.link} target="_blank" rel="noopener noreferrer">
+                      <Icon n="external" s={14} /> Beim Versanddienstleister öffnen
+                    </a>
+                  ) : (
+                    <span className="adm-support-hint">Kein Carrier-Link vorhanden</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

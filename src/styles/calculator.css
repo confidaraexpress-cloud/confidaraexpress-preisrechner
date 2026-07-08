@@ -480,6 +480,55 @@
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 
+/* ── F3: Preisdrift-Dialog („Preisänderung erkannt") — Premium-Overlay ──────────
+   Erscheint bei /book 409 PRICE_CHANGED (none-Pfad). Ruhige Blau/Navy-Optik
+   (bewusst kein Rot/kein Fehler-Look), alter vs. neuer Preis gegenübergestellt,
+   neuer Preis dezent hervorgehoben. z-index über Sidebar (999)/Navbar. Mobil
+   stapeln Vergleich und Aktionen; die fixe Ebene scrollt bei Bedarf. */
+.price-drift-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow-y: auto;
+  background: rgba(11, 31, 77, 0.55);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  animation: price-drift-fade 0.18s ease;
+}
+@keyframes price-drift-fade { from { opacity: 0; } to { opacity: 1; } }
+.price-drift-card {
+  width: 100%; max-width: 440px; box-sizing: border-box;
+  background: #fff; border-radius: 20px; padding: 28px 26px 24px;
+  border: 1px solid var(--border2, #c8d5e8); text-align: center;
+  box-shadow: 0 24px 60px -12px rgba(11, 31, 77, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  animation: price-drift-rise 0.22s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes price-drift-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.price-drift-badge {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--blue-light, #dbeafe);
+}
+.price-drift-title { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--navy); margin: 0 0 8px; }
+.price-drift-desc { font-size: 14px; line-height: 1.55; color: var(--gray500); margin: 0 0 20px; }
+.price-drift-compare {
+  display: flex; align-items: stretch; gap: 12px;
+  background: var(--gray50); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; margin-bottom: 22px;
+}
+.price-drift-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.price-drift-col-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.price-drift-old { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: var(--gray500); }
+.price-drift-col--new { background: #eff6ff; border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 10px; padding: 8px 6px; }
+.price-drift-new { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 800; color: var(--blue2); }
+.price-drift-arrow { display: flex; align-items: center; flex-shrink: 0; color: var(--gray400); }
+.price-drift-actions { display: flex; gap: 12px; }
+.price-drift-btn { flex: 1; }
+@media (max-width: 440px) {
+  .price-drift-card { padding: 24px 18px 20px; }
+  .price-drift-compare { flex-direction: column; gap: 10px; }
+  .price-drift-arrow { transform: rotate(90deg); }
+  .price-drift-actions { flex-direction: column; }
+}
+
 /* Step success */
 .booking-success-wrap { text-align: center; padding: 40px 0; }
 .booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; box-shadow: 0 0 0 6px rgba(16,185,129,0.10), 0 8px 24px rgba(16,185,129,0.22); }

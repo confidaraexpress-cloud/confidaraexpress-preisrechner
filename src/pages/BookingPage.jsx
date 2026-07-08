@@ -32,6 +32,16 @@ export default function BookingPage() {
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
 
+  // ── F3: Preisdrift OHNE Versicherung — /book 409 PRICE_CHANGED ──────────────
+  // Der Backend-Gate im none-Pfad vergleicht price_final. Hat sich der Preis seit
+  // der Angebotsberechnung geändert, antwortet /book mit 409
+  // { code:"PRICE_CHANGED", oldPrice, newPrice }. `priceChange` steuert den
+  // Premium-Dialog; `confirmedFinalPriceRef` hält den vom Nutzer bewusst
+  // bestätigten neuen Preis, der beim erneuten /book als price_final gesendet
+  // wird (ausschließlich none-Pfad — der Versicherungspfad bleibt unberührt).
+  const [priceChange, setPriceChange] = useState(null); // { oldPrice, newPrice } | null
+  const confirmedFinalPriceRef = useRef(null);
+
   // ── Versicherung (F1/F2): Auswahl + Live-Repricing + Übergabe an /book ──────
   const [insuranceType, setInsuranceType]   = useState("none"); // "none" | "standard" | "premium"
   // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
@@ -336,7 +346,13 @@ export default function BookingPage() {
           shipperTariffId: tariff?.shipper_tariff_id,
           carrier:         tariff?.carrier,
           price_original:  tariff?.originalPrice,
-          price_final:     tariff?.finalPrice,
+          // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
+          // Serverpreis als price_final senden — sonst der ursprüngliche
+          // Tarifpreis. Der Versicherungspfad nutzt weiterhin tariff.finalPrice
+          // (Drift-Gate dort ist confirmedTotalGross, unverändert).
+          price_final:     (!isInsured && confirmedFinalPriceRef.current != null)
+                             ? confirmedFinalPriceRef.current
+                             : tariff?.finalPrice,
           sender:          buildParty("s"),
           recipient:       buildParty("r"),
           weight:          bookingData?.form?.weight,
@@ -353,6 +369,15 @@ export default function BookingPage() {
       });
       const d = await r.json();
       if (r.status === 409) {
+        // F3 — Preisdrift OHNE Versicherung: zuerst und getrennt von Duplikat-/
+        // Versicherungskonflikten abfangen. Nur dieser Konflikt trägt den Code
+        // "PRICE_CHANGED" (Duplikate/Versicherungsdrift tun das nicht) → sauber
+        // unterscheidbar, kein Duplikat-Text. Öffnet den Preisdrift-Dialog.
+        if (d?.code === "PRICE_CHANGED") {
+          setPriceChange({ oldPrice: d.oldPrice, newPrice: d.newPrice });
+          setLoading(false);
+          return;
+        }
         // Bei versicherter Buchung deutet 409 auf Preis-Drift → Reprice erzwingen
         // (auf der Seite bleiben). Ohne Versicherung bleibt das bisherige
         // Duplikat-Verhalten (Sendung bereits verarbeitet) unverändert.
@@ -391,6 +416,29 @@ export default function BookingPage() {
       setBooking(d); setStep(3);
     } catch (e) { setError(e.message); }
     setLoading(false);
+  };
+
+  // F3 — „Angebote neu berechnen": den nun veralteten Buchungs-Flow bewusst
+  // verlassen und zur „+ Neue Sendung"-Seite führen, wo frische Angebote
+  // berechnet werden. Kein erneuter /book, keine alte Buchung, keine kaputte
+  // Navigation (gleicher Zielpfad wie „Zurück").
+  const handlePriceChangeRecalculate = () => {
+    setPriceChange(null);
+    navigate("/dashboard?page=new");
+  };
+
+  // F3 — „Zum neuen Preis fortfahren": den bestätigten neuen Preis als price_final
+  // festhalten und erneut buchen. Der nächste /book sendet nie wieder den alten
+  // Preis. Ändert sich der Preis erneut, öffnet doBook den Dialog mit den neuen
+  // Werten; bei Erfolg greift der normale Erfolgspfad. Keine Endlosschleife —
+  // jede Bestätigung nutzt den aktuellen Serverpreis, der Nutzer entscheidet
+  // je Runde bewusst.
+  const continueWithNewPrice = () => {
+    const np = asNum(priceChange?.newPrice);
+    if (np == null) return;                  // ungültiger newPrice → nur Neuberechnung möglich
+    confirmedFinalPriceRef.current = np;     // neuer price_final für den nächsten /book
+    setPriceChange(null);
+    doBook();
   };
 
   const handleDownloadLabel = async () => {
@@ -676,6 +724,59 @@ export default function BookingPage() {
         )}
 
       </div>
+
+      {/* ── F3: Preisdrift-Dialog („Preisänderung erkannt") — Premium-Overlay ──
+          Erscheint bei /book-Antwort 409 PRICE_CHANGED (none-Pfad). Ruhige,
+          nicht-aggressive Optik; der Nutzer entscheidet bewusst zwischen
+          Neuberechnung und Fortfahren zum neuen Preis. */}
+      {priceChange && (
+        <div className="price-drift-overlay" role="presentation">
+          <div
+            className="price-drift-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="price-drift-title"
+            aria-describedby="price-drift-desc"
+          >
+            <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="#1D4ED8" /></div>
+            <h2 id="price-drift-title" className="price-drift-title">Preisänderung erkannt</h2>
+            <p id="price-drift-desc" className="price-drift-desc">
+              Der Preis hat sich seit Ihrer Angebotsberechnung geändert.
+            </p>
+
+            <div className="price-drift-compare">
+              <div className="price-drift-col">
+                <span className="price-drift-col-label">Bisheriger Preis</span>
+                <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
+              </div>
+              <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="#94a3b8" /></span>
+              <div className="price-drift-col price-drift-col--new">
+                <span className="price-drift-col-label">Neuer Preis</span>
+                <span className="price-drift-new">{money(priceChange.newPrice)}</span>
+              </div>
+            </div>
+
+            <div className="price-drift-actions">
+              <button
+                type="button"
+                className="btn btn-outline price-drift-btn"
+                onClick={handlePriceChangeRecalculate}
+                disabled={loading}
+              >
+                Angebote neu berechnen
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary price-drift-btn"
+                onClick={continueWithNewPrice}
+                disabled={loading || asNum(priceChange.newPrice) == null}
+              >
+                {loading ? <><span className="spinner" /> Wird gebucht…</> : "Zum neuen Preis fortfahren"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

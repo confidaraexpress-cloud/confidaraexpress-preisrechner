@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "../../components/ui/Icon";
-import { listAdminUsers } from "../../api/adminApi";
+import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 
 const PAGE_SIZE = 25;
@@ -27,6 +27,35 @@ const ERROR_MESSAGES = {
   500: "Kunden konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
 const GENERIC_ERROR = "Kunden konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Statusaktion je aktuellem Status. „anonymized"/unbekannt → keine Aktion.
+// Es wird NIE „anonymized" als Ziel erzeugt (nur approved/blocked).
+function statusAction(status) {
+  if (status === "pending" || status === "blocked") return { target: "approved", label: "Freischalten", kind: "approve" };
+  if (status === "approved") return { target: "blocked", label: "Blockieren", kind: "block" };
+  return null;
+}
+
+const CONFIRM_COPY = {
+  approve: {
+    title: "Kunde freischalten",
+    text: "Dieser Kunde erhält Zugriff auf ConfidaraExpress. Die Aktion wird protokolliert.",
+    cta: "Freischalten bestätigen",
+  },
+  block: {
+    title: "Kunde blockieren",
+    text: "Dieser Kunde kann sich danach nicht mehr normal anmelden. Die Aktion wird protokolliert.",
+    cta: "Blockieren bestätigen",
+  },
+};
+
+const STATUS_CHANGE_ERRORS = {
+  400: "Der gewünschte Status ist ungültig.",
+  404: "Kunde wurde nicht gefunden.",
+  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
+  500: "Status konnte nicht geändert werden.",
+  default: "Status konnte nicht geändert werden.",
+};
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -109,6 +138,9 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [query, setQuery] = useState("");
+  const [confirm, setConfirm] = useState(null);       // { id, target, kind, name }
+  const [actionBusy, setActionBusy] = useState(false); // Statusänderung läuft
+  const [actionMsg, setActionMsg] = useState(null);    // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -145,6 +177,42 @@ export default function AdminUsersPage() {
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };
 
+  const openConfirm = (u, action) => {
+    setActionMsg(null);
+    setConfirm({ id: idOf(u), target: action.target, kind: action.kind, name: companyOf(u) || nameOf(u) || `#${dash(idOf(u))}` });
+  };
+  const closeConfirm = () => { if (!actionBusy) setConfirm(null); };
+
+  const confirmStatusChange = async () => {
+    if (!confirm) return;
+    const { id, target } = confirm;
+    setActionBusy(true);
+    setActionMsg(null);
+    try {
+      const r = await setAdminUserStatus(id, target);
+      if (!r.ok) {
+        // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
+        if (r.status !== 401 && r.status !== 403) {
+          setActionMsg({ type: "error", text: STATUS_CHANGE_ERRORS[r.status] || STATUS_CHANGE_ERRORS.default });
+        }
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const noOp = !!(d && (d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
+      setActionMsg({
+        type: "success",
+        text: noOp ? "Status war bereits gesetzt." : (target === "approved" ? "Kunde wurde freigeschaltet." : "Kunde wurde blockiert."),
+      });
+      load(); // Backend-Realität neu laden (kein optimistisches Raten)
+    } catch {
+      setActionMsg({ type: "error", text: STATUS_CHANGE_ERRORS.default });
+    } finally {
+      setActionBusy(false);
+      setConfirm(null);
+    }
+  };
+
   const q = query.trim().toLowerCase();
   const filtered = useMemo(() => (q ? rows.filter((u) => matchUser(u, q)) : rows), [rows, q]);
   const showPagination = !error && (rows.length > 0 || page > 1);
@@ -154,7 +222,7 @@ export default function AdminUsersPage() {
       <header className="adm-page-head adm-page-head-row">
         <div>
           <h1 className="adm-title">Kunden</h1>
-          <p className="adm-sub">Read-only Kundenübersicht — nur Einsicht, noch keine Änderungen.</p>
+          <p className="adm-sub">Kundenübersicht mit Freischalten/Blockieren. Statusänderungen werden protokolliert.</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
@@ -176,6 +244,12 @@ export default function AdminUsersPage() {
           Die Suche wirkt nur auf die aktuell geladene Seite ({rows.length} Einträge). Das Backend bietet noch keine serverseitige Suche.
         </p>
       </form>
+
+      {actionMsg && (
+        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+          <Icon n={actionMsg.type === "success" ? "check" : "x"} s={16} />{actionMsg.text}
+        </div>
+      )}
 
       {loading ? (
         <div className="table-card">
@@ -208,7 +282,7 @@ export default function AdminUsersPage() {
                   <th>Zahlungsziel</th>
                   <th>Kredit genutzt</th>
                   <th>Kreditlimit</th>
-                  <th>Details</th>
+                  <th>Aktion</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,7 +299,26 @@ export default function AdminUsersPage() {
                     <td className="adm-nowrap">{paymentTermLabel(paymentTermOf(u))}</td>
                     <td className="adm-num">{moneyOrDash(creditUsedOf(u))}</td>
                     <td className="adm-num">{moneyOrDash(creditLimitOf(u))}</td>
-                    <td><span className="adm-muted">Details folgt</span></td>
+                    <td>
+                      {(() => {
+                        const st = statusOf(u);
+                        const action = statusAction(st);
+                        if (action) {
+                          return (
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${action.kind === "block" ? "adm-btn-danger" : "btn-outline"}`}
+                              onClick={() => openConfirm(u, action)}
+                              disabled={actionBusy}
+                            >
+                              <Icon n={action.kind === "block" ? "lock" : "check"} s={13} /> {action.label}
+                            </button>
+                          );
+                        }
+                        if (st === "anonymized") return <span className="adm-muted">Keine Statusänderung möglich</span>;
+                        return <span className="adm-muted">—</span>;
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -247,6 +340,44 @@ export default function AdminUsersPage() {
           </button>
         </div>
       )}
+
+      {confirm && (() => {
+        const copy = CONFIRM_COPY[confirm.kind];
+        const danger = confirm.kind === "block";
+        return (
+          <div className="adm-modal-overlay" role="presentation" onClick={closeConfirm}>
+            <div
+              className="adm-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="adm-status-title"
+              aria-describedby="adm-status-desc"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
+                <Icon n={danger ? "lock" : "check"} s={22} />
+              </div>
+              <h2 id="adm-status-title" className="adm-modal-title">{copy.title}</h2>
+              <p className="adm-modal-sub">{confirm.name}</p>
+              <p id="adm-status-desc" className="adm-modal-text">{copy.text}</p>
+              <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
+              <div className="adm-modal-actions">
+                <button type="button" className="btn btn-outline btn-sm" onClick={closeConfirm} disabled={actionBusy}>Abbrechen</button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${danger ? "adm-btn-danger" : "btn-primary"}`}
+                  onClick={confirmStatusChange}
+                  disabled={actionBusy}
+                >
+                  {actionBusy
+                    ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
+                    : <><Icon n={danger ? "lock" : "check"} s={14} /> {copy.cta}</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

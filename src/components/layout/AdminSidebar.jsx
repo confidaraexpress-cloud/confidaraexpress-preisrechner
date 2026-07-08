@@ -7,6 +7,7 @@ import { Icon } from "../ui/Icon";
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
 const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
+  { to: "/admin/users", label: "Kunden", icon: "admin" },
   { to: "/admin/shipments", label: "Sendungen", icon: "package" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];
@@ -15,7 +16,6 @@ const PRIMARY_NAV = [
 // deaktivierte Einträge sichtbar (Roadmap erkennbar), aber keine funktionierenden
 // Links, die ins Leere führen.
 const SOON_NAV = [
-  { label: "Kunden", icon: "admin" },
   { label: "Rechnungen", icon: "invoice" },
 ];
 

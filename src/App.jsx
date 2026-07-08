@@ -25,6 +25,7 @@ const AdminOverviewPage  = React.lazy(() => import("./pages/admin/AdminOverviewP
 const AuditLogPage       = React.lazy(() => import("./pages/admin/AuditLogPage"));
 const AdminShipmentsPage = React.lazy(() => import("./pages/admin/AdminShipmentsPage"));
 const AdminShipmentDetailPage = React.lazy(() => import("./pages/admin/AdminShipmentDetailPage"));
+const AdminUsersPage = React.lazy(() => import("./pages/admin/AdminUsersPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -58,6 +59,7 @@ export default function App() {
             requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route path="/admin"              element={<AdminOverviewPage />} />
+          <Route path="/admin/users"        element={<AdminUsersPage />} />
           <Route path="/admin/shipments"    element={<AdminShipmentsPage />} />
           <Route path="/admin/shipments/:id" element={<AdminShipmentDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />

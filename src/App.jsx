@@ -21,8 +21,9 @@ const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 
 // Admin (separater, URL-basierter Bereich — hinter AdminRoute-UX-Gate;
 // serverseitig zusätzlich durch requireAdmin geschützt).
-const AdminOverviewPage = React.lazy(() => import("./pages/admin/AdminOverviewPage"));
-const AuditLogPage      = React.lazy(() => import("./pages/admin/AuditLogPage"));
+const AdminOverviewPage  = React.lazy(() => import("./pages/admin/AdminOverviewPage"));
+const AuditLogPage       = React.lazy(() => import("./pages/admin/AuditLogPage"));
+const AdminShipmentsPage = React.lazy(() => import("./pages/admin/AdminShipmentsPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -56,6 +57,7 @@ export default function App() {
             requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route path="/admin"            element={<AdminOverviewPage />} />
+          <Route path="/admin/shipments"  element={<AdminShipmentsPage />} />
           <Route path="/admin/audit-logs" element={<AuditLogPage />} />
         </Route>
 

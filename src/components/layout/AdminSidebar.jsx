@@ -7,6 +7,7 @@ import { Icon } from "../ui/Icon";
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
 const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
+  { to: "/admin/shipments", label: "Sendungen", icon: "package" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];
 
@@ -16,7 +17,6 @@ const PRIMARY_NAV = [
 const SOON_NAV = [
   { label: "Kunden", icon: "admin" },
   { label: "Rechnungen", icon: "invoice" },
-  { label: "Sendungen", icon: "package" },
 ];
 
 export function AdminSidebar({ open, onClose }) {

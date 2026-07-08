@@ -17,6 +17,15 @@ export default function AdminOverviewPage() {
       </header>
 
       <div className="adm-tiles">
+        <Link to="/admin/shipments" className="adm-tile">
+          <span className="adm-tile-ic"><Icon n="package" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Sendungen</span>
+            <span className="adm-tile-desc">PII-arme Sendungsliste mit Filtern (read-only).</span>
+          </span>
+          <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
+        </Link>
+
         <Link to="/admin/audit-logs" className="adm-tile">
           <span className="adm-tile-ic"><Icon n="shieldCheck" s={22} /></span>
           <span className="adm-tile-body">
@@ -39,13 +48,6 @@ export default function AdminOverviewPage() {
           <span className="adm-tile-body">
             <span className="adm-tile-title">Rechnungen <span className="adm-soon-badge">bald</span></span>
             <span className="adm-tile-desc">Rechnungsübersicht und Zahlungsstatus.</span>
-          </span>
-        </div>
-        <div className="adm-tile adm-tile-soon" aria-disabled="true">
-          <span className="adm-tile-ic"><Icon n="package" s={22} /></span>
-          <span className="adm-tile-body">
-            <span className="adm-tile-title">Sendungen <span className="adm-soon-badge">bald</span></span>
-            <span className="adm-tile-desc">Sendungssuche und Support-Einsicht.</span>
           </span>
         </div>
       </div>

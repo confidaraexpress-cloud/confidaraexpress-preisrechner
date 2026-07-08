@@ -50,3 +50,29 @@ function buildQuery(params, allow) {
 export function listAuditLogs(params = {}) {
   return apiFetch(`/admin/audit-logs${buildQuery(params, AUDIT_LOG_PARAMS)}`, { auth: true });
 }
+
+// Erlaubte Query-Parameter für GET /admin/shipments (Backend-Vertrag). Bewusst
+// allowlisted; Pagination läuft serverseitig über limit/offset.
+const SHIPMENT_PARAMS = [
+  "user_id",
+  "status",
+  "carrier",
+  "created_from",
+  "created_to",
+  "has_tracking",
+  "limit",
+  "offset",
+];
+
+// GET /admin/shipments — read-only, PII-arm. Die UI arbeitet mit page/pageSize;
+// hier zentral auf den Backend-Vertrag limit/offset gemappt (page ist 1-basiert):
+//   page=1,pageSize=25 → limit=25&offset=0 · page=2 → limit=25&offset=25.
+// Übrige Filter werden unverändert (aber allowlisted) durchgereicht; keine
+// erfundenen Felder, kein persistenter Cache. Rohe Response zurück.
+export function listAdminShipments(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/shipments${buildQuery(query, SHIPMENT_PARAMS)}`, { auth: true });
+}

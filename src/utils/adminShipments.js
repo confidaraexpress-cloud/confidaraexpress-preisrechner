@@ -31,11 +31,5 @@ export function serviceLabel(v) {
   return SERVICE_LABELS[String(v).toLowerCase()] || "Unbekannt";
 }
 
-// [badge-Klasse, Label] für Rechnungsstatus (nur Anzeige).
-const INVOICE_STATUS_META = {
-  paid: ["badge-green", "Bezahlt"],
-  unpaid: ["badge-yellow", "Offen"],
-  overdue: ["badge-red", "Überfällig"],
-  cancelled: ["badge-gray", "Storniert"],
-};
-export const invoiceStatusMeta = (status) => INVOICE_STATUS_META[status] || ["badge-gray", status ?? "—"];
+// Rechnungsstatus-Anzeige (invoiceStatusMeta) ist nach utils/adminInvoices.mjs
+// umgezogen — dort liegt die gesamte Rechnungs-Anzeigelogik als testbare Einheit.

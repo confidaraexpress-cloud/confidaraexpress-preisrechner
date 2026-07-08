@@ -35,6 +35,15 @@ export default function AdminOverviewPage() {
           <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
         </Link>
 
+        <Link to="/admin/invoices" className="adm-tile">
+          <span className="adm-tile-ic"><Icon n="invoice" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Rechnungen</span>
+            <span className="adm-tile-desc">Read-only Rechnungsübersicht mit Zahlungsstatus und Filtern.</span>
+          </span>
+          <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
+        </Link>
+
         <Link to="/admin/audit-logs" className="adm-tile">
           <span className="adm-tile-ic"><Icon n="shieldCheck" s={22} /></span>
           <span className="adm-tile-body">
@@ -43,15 +52,6 @@ export default function AdminOverviewPage() {
           </span>
           <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
         </Link>
-
-        {/* Platzhalter — folgt in einem späteren Schritt. Kein aktiver Link. */}
-        <div className="adm-tile adm-tile-soon" aria-disabled="true">
-          <span className="adm-tile-ic"><Icon n="invoice" s={22} /></span>
-          <span className="adm-tile-body">
-            <span className="adm-tile-title">Rechnungen <span className="adm-soon-badge">bald</span></span>
-            <span className="adm-tile-desc">Rechnungsübersicht und Zahlungsstatus.</span>
-          </span>
-        </div>
       </div>
 
       <p className="adm-foot-note">Weitere Bereiche folgen in den nächsten Schritten.</p>

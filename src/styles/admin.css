@@ -102,6 +102,11 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .adm-nowrap { white-space: nowrap; }
 .adm-mask { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.02em; color: var(--gray600); white-space: nowrap; }
+/* Überfällige Fälligkeit deutlich markieren (nur Anzeige, keine Zahlungslogik). */
+.adm-overdue { color: var(--danger); font-weight: 600; }
+.adm-overdue-tag { font-size: 11.5px; font-weight: 600; }
+/* Zweite, dezente Zeile in einer Tabellenzelle (z. B. Kontaktname unter Firma). */
+.adm-cell-sub { font-size: 12px; margin-top: 2px; }
 .adm-meta-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.16); border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
 .adm-meta-toggle:hover { background: #cfe0ff; }
 .adm-meta-row td { background: var(--gray50); }

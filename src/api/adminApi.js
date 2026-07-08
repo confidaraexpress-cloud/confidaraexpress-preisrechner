@@ -150,3 +150,24 @@ export function listAdminUsers(params = {}) {
   const query = { limit: size, offset: (p - 1) * size };
   return apiFetch(`/admin/users${buildQuery(query, USER_PARAMS)}`, { auth: true });
 }
+
+// Über die normale Statusroute setzbare Werte. „anonymized" ist bewusst NICHT
+// dabei — Anonymisierung läuft über eine eigene, separat abzusichernde Aktion.
+const SETTABLE_USER_STATUS = ["pending", "approved", "blocked"];
+
+// PATCH /admin/users/:id/status — Kundenstatus setzen. Content-Type
+// application/json + Bearer kommen aus apiFetch(auth:true). Es wird
+// AUSSCHLIESSLICH { status } gesendet (keine weiteren Felder). Die Änderung wird
+// backendseitig auditiert (user.status_change). Kein Cache, kein Logging von
+// Response-Daten; 401/403 behandelt apiFetch zentral. Defensiver Guard: nur
+// pending/approved/blocked werden je gesendet — nie „anonymized" o. Ä.
+export function setAdminUserStatus(userId, status) {
+  if (!SETTABLE_USER_STATUS.includes(status)) {
+    return Promise.reject(new Error("invalid_status"));
+  }
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/status`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify({ status }),
+  });
+}

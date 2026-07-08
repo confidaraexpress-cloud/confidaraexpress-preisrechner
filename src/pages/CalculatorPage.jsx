@@ -83,6 +83,19 @@ export default function CalculatorPage() {
   const [error, setError]           = useState("");
   const [hasResults, setHasResults] = useState(false);
 
+  // ── Race-Schutz für /calculate-price (Audit F1) ──
+  // Verhindert, dass eine spät eintreffende Antwort neuere Eingaben überschreibt.
+  //  • calcSeq    — steigende Sequence; nur die Antwort des jeweils neuesten
+  //                 Aufrufs darf State/Loading verändern.
+  //  • calcAbort  — bricht einen noch laufenden Request ab, sobald ein neuer
+  //                 startet (und beim Unmount). Genau ein aktiver Request.
+  //  • calcKeyRef — Live-Schlüssel der Payload-bestimmenden Eingaben (bei jedem
+  //                 Render aktualisiert); erkennt, ob sich die Eingaben seit dem
+  //                 Absenden geändert haben → veraltete Antwort verwerfen.
+  const calcSeq    = useRef(0);
+  const calcAbort  = useRef(null);
+  const calcKeyRef = useRef("");
+
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)            || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter) || SHIPPING_MODE_OPTIONS[0];
 
@@ -186,6 +199,10 @@ export default function CalculatorPage() {
       .catch(() => {});
   }, []);
 
+  // Laufenden /calculate-price-Request beim Unmount abbrechen (kein setState
+  // nach Unmount, keine hängende Antwort).
+  useEffect(() => () => { if (calcAbort.current) calcAbort.current.abort(); }, []);
+
   const applyFilter = useCallback((list) => {
     let f = [...list];
     if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
@@ -247,14 +264,34 @@ export default function CalculatorPage() {
     setLatestOpen(false);
   };
 
+  // Live-Schlüssel der Payload-bestimmenden Eingaben (bewusst OHNE die reinen
+  // Client-Filter max_price/latestDeliveryDate — diese lösen keinen Recalc aus
+  // und dürfen eine laufende Antwort nicht verwerfen). Bei jedem Render gesetzt.
+  calcKeyRef.current = JSON.stringify({
+    from_country: form.from_country, from_zip: form.from_zip,
+    to_country:   form.to_country,   to_zip:   form.to_zip,
+    packageCount: form.packageCount, weight:   form.weight,
+    length:       form.length,       width:    form.width, height: form.height,
+    serviceFilter, shippingModeFilter, shippingDate, carrierFilters,
+  });
+
   const calculate = async () => {
     setHasResults(false); setTariffs([]);
     const validErr = getValidationError();
     if (validErr) { setError(validErr); return; }
     setError(""); setLoading(true); setSelected(null);
+
+    // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
+    // abbrechen und die aktuellen Eingaben als Referenz festhalten.
+    const seq    = ++calcSeq.current;
+    const reqKey = calcKeyRef.current;
+    if (calcAbort.current) calcAbort.current.abort();
+    const ac = new AbortController();
+    calcAbort.current = ac;
+
     try {
       const r = await fetch(`${API}/api/jumingo/calculate-price`, {
-        method: "POST", headers: jsonH,
+        method: "POST", headers: jsonH, signal: ac.signal,
         body: JSON.stringify({
           from_country:       form.from_country,
           from_zip:           form.from_zip,
@@ -271,19 +308,25 @@ export default function CalculatorPage() {
           carrierFilters:     carrierFilters,
         })
       });
+      if (seq !== calcSeq.current) return;                              // durch neueren Aufruf ersetzt
       const d = await r.json();
+      if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
+      if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen
       if (!r.ok) throw new Error(d.error || "Fehler bei Preisberechnung");
       const newCarriers = d.availableCarriers || [];
       setAvailableCarriers(newCarriers);
       if (newCarriers.length > 0)
         setCarrierFilters(prev => prev.filter(c => newCarriers.includes(c)));
       setTariffs(d.tariffs || []); setHasResults(true);
+      setLoading(false);
     } catch (e) {
+      if (e?.name === "AbortError") return;      // abgebrochen (neuer Request/Unmount) → kein Fehler, Loading gehört dem neuen Request
+      if (seq !== calcSeq.current) return;       // veralteter Request → ignorieren
       setError(e.message === "Keine Preise gefunden"
         ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
         : e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Preisrechner has no full address form → redirect to "Neue Sendung" to complete booking

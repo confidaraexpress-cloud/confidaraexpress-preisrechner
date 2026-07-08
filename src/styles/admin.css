@@ -146,6 +146,12 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
 .adm-support-hint { font-size: 12px; color: var(--gray400); margin-top: 10px; }
 
+/* ── Summary-Kacheln (Kundendetail — nur Aggregate) ──────────────────────── */
+.adm-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
+.adm-stat { background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.adm-stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.adm-stat-value { font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); margin-top: 5px; word-break: break-word; }
+
 /* ── Inline-Tracking-Karte (direkt unter den Support-Aktionen) ───────────── */
 .adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--gray50); }
 .adm-track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }

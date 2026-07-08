@@ -134,3 +134,19 @@ export async function downloadAdminShipmentLabel(id) {
 export function getAdminShipmentTracking(id) {
   return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/tracking`, { auth: true });
 }
+
+// Erlaubte Query-Parameter für GET /admin/users. Das Backend bietet aktuell
+// KEINE Server-Filter — nur Pagination über limit/offset. Bewusst allowlisted.
+const USER_PARAMS = ["limit", "offset"];
+
+// GET /admin/users — read-only Kundenliste. UI arbeitet mit page/pageSize; hier
+// zentral auf limit/offset gemappt (page=1→offset=0, page=2→offset=25). Keine
+// Server-Filter, keine erfundenen Felder, kein Cache. Rohe Response zurück; der
+// Aufrufer selektiert defensiv nur erlaubte Felder (nie password/hash/token).
+export function listAdminUsers(params = {}) {
+  const { page = 1, pageSize = 25 } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/users${buildQuery(query, USER_PARAMS)}`, { auth: true });
+}

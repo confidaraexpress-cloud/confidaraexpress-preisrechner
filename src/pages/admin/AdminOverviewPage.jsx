@@ -17,6 +17,15 @@ export default function AdminOverviewPage() {
       </header>
 
       <div className="adm-tiles">
+        <Link to="/admin/users" className="adm-tile">
+          <span className="adm-tile-ic"><Icon n="admin" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Kunden</span>
+            <span className="adm-tile-desc">Read-only Kundenliste mit Status (Freischaltung folgt).</span>
+          </span>
+          <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
+        </Link>
+
         <Link to="/admin/shipments" className="adm-tile">
           <span className="adm-tile-ic"><Icon n="package" s={22} /></span>
           <span className="adm-tile-body">
@@ -35,14 +44,7 @@ export default function AdminOverviewPage() {
           <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
         </Link>
 
-        {/* Platzhalter — folgen in späteren Schritten. Kein aktiver Link. */}
-        <div className="adm-tile adm-tile-soon" aria-disabled="true">
-          <span className="adm-tile-ic"><Icon n="admin" s={22} /></span>
-          <span className="adm-tile-body">
-            <span className="adm-tile-title">Kunden <span className="adm-soon-badge">bald</span></span>
-            <span className="adm-tile-desc">Freischaltung, Sperrung und Anonymisierung.</span>
-          </span>
-        </div>
+        {/* Platzhalter — folgt in einem späteren Schritt. Kein aktiver Link. */}
         <div className="adm-tile adm-tile-soon" aria-disabled="true">
           <span className="adm-tile-ic"><Icon n="invoice" s={22} /></span>
           <span className="adm-tile-body">

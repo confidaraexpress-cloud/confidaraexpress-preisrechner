@@ -4,12 +4,8 @@ import { Icon } from "../../components/ui/Icon";
 import { getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import {
-  maskTail,
-  shipmentStatusMeta,
-  serviceLabel,
-  invoiceStatusMeta,
-} from "../../utils/adminShipments";
+import { maskTail, shipmentStatusMeta, serviceLabel } from "../../utils/adminShipments";
+import { invoiceStatusMeta } from "../../utils/adminInvoices";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 

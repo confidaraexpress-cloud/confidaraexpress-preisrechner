@@ -3,7 +3,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test src/utils/kpis.test.mjs"
+    "test": "node --test src/utils/kpis.test.mjs src/utils/adminInvoices.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

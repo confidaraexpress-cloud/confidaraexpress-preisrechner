@@ -213,3 +213,22 @@ export function deleteAdminUser(id) {
     auth: true,
   });
 }
+
+// Erlaubte Query-Parameter für GET /admin/invoices (Backend-Vertrag). Bewusst
+// allowlisted; Pagination über limit/offset, `overdue` nur als "true".
+const INVOICE_PARAMS = ["status", "user_id", "overdue", "limit", "offset"];
+
+// GET /admin/invoices — read-only Rechnungsliste (read-only Forderungsübersicht,
+// KEINE Zahlungs-/Mutationsaktion in diesem Schritt). UI arbeitet mit page/
+// pageSize; hier zentral auf den Backend-Vertrag limit/offset gemappt (page=1→
+// offset=0, page=2→offset=25). Filter status/user_id/overdue werden allowlisted
+// durchgereicht — keine erfundenen Felder, kein Cache, kein Logging. Rohe Response
+// zurück; der Aufrufer selektiert defensiv nur erlaubte Felder (nie password/
+// hash/token) und rendert nie das ganze Objekt.
+export function listAdminInvoices(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/invoices${buildQuery(query, INVOICE_PARAMS)}`, { auth: true });
+}

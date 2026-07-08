@@ -9,15 +9,14 @@ const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
   { to: "/admin/users", label: "Kunden", icon: "admin" },
   { to: "/admin/shipments", label: "Sendungen", icon: "package" },
+  { to: "/admin/invoices", label: "Rechnungen", icon: "invoice" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];
 
 // Bewusst noch NICHT verlinkt — folgen in späteren, separaten Schritten. Als
 // deaktivierte Einträge sichtbar (Roadmap erkennbar), aber keine funktionierenden
-// Links, die ins Leere führen.
-const SOON_NAV = [
-  { label: "Rechnungen", icon: "invoice" },
-];
+// Links, die ins Leere führen. Aktuell leer (Rechnungen sind live).
+const SOON_NAV = [];
 
 export function AdminSidebar({ open, onClose }) {
   const { user, logout } = useAuth();
@@ -63,20 +62,24 @@ export function AdminSidebar({ open, onClose }) {
             </NavLink>
           ))}
 
-          <div className="adm-nsec">Bald verfügbar</div>
-          {SOON_NAV.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="adm-nitem adm-nitem-soon"
-              disabled
-              aria-disabled="true"
-              title="Folgt in einem späteren Schritt"
-            >
-              <Icon n={item.icon} s={18} /><span>{item.label}</span>
-              <span className="adm-soon-badge">bald</span>
-            </button>
-          ))}
+          {SOON_NAV.length > 0 && (
+            <>
+              <div className="adm-nsec">Bald verfügbar</div>
+              {SOON_NAV.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="adm-nitem adm-nitem-soon"
+                  disabled
+                  aria-disabled="true"
+                  title="Folgt in einem späteren Schritt"
+                >
+                  <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                  <span className="adm-soon-badge">bald</span>
+                </button>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="adm-side-foot">

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminInvoice } from "../../api/adminApi";
+import { getAdminInvoice, markAdminInvoicePaid } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { invoiceDisplayMeta, isInvoiceOverdue } from "../../utils/adminInvoices";
 
@@ -12,6 +12,15 @@ const ERROR_MESSAGES = {
   500: "Die Rechnung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
 const GENERIC_ERROR = "Die Rechnung konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Fehlertexte für „als bezahlt markieren" (verständlich, kein roher Backend-Body,
+// keine PII). 401/403 behandelt apiFetch zentral.
+const PAY_ERRORS = {
+  404: "Rechnung wurde nicht gefunden oder existiert nicht mehr.",
+  429: "Zu viele Admin-Aktionen. Bitte kurz warten.",
+  500: "Rechnung konnte nicht als bezahlt markiert werden.",
+  default: "Rechnung konnte nicht als bezahlt markiert werden.",
+};
 
 // Backend-Vertrag: { invoice: {...} }. Defensiv entpacken (auch { data } / roh).
 function selectInvoice(d) {
@@ -68,6 +77,9 @@ export default function AdminInvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [payOpen, setPayOpen] = useState(false); // Bestätigungsmodal
+  const [payBusy, setPayBusy] = useState(false); // PATCH läuft
+  const [payMsg, setPayMsg] = useState(null);    // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +106,10 @@ export default function AdminInvoiceDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Beim Wechsel auf eine andere Rechnung Modal/Meldung zurücksetzen (nicht bei
+  // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
+  useEffect(() => { setPayOpen(false); setPayMsg(null); }, [id]);
 
   const back = (
     <Link to="/admin/invoices" className="adm-back">
@@ -132,10 +148,44 @@ export default function AdminInvoiceDetailPage() {
   const [statusCls, statusLabel] = invoiceDisplayMeta(statusOf(inv), dueOf(inv), now);
   const sid = shipmentIdOf(inv);
   const vat = vatOf(inv);
+  const isPaid = statusOf(inv) === "paid"; // ECHTER Status (nicht die Overdue-Anzeige)
+
+  const openPay = () => { setPayMsg(null); setPayOpen(true); };
+  const closePay = () => { if (!payBusy) setPayOpen(false); };
+  const confirmPay = async () => {
+    setPayBusy(true);
+    setPayMsg(null);
+    try {
+      const r = await markAdminInvoicePaid(id);
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect via apiFetch
+        setPayMsg({ type: "error", text: PAY_ERRORS[r.status] || PAY_ERRORS.default });
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const alreadyPaid = d.alreadyPaid === true || d.already_paid === true;
+      setPayMsg(alreadyPaid
+        ? { type: "info", text: "Diese Rechnung war bereits als bezahlt markiert." }
+        : { type: "success", text: "Rechnung wurde als bezahlt markiert." });
+      load(); // Backend-Realität neu laden — kein optimistisches UI
+    } catch {
+      setPayMsg({ type: "error", text: PAY_ERRORS.default });
+    } finally {
+      setPayBusy(false);
+      setPayOpen(false);
+    }
+  };
 
   return (
     <div className="adm-page">
       {back}
+
+      {payMsg && (
+        <div className={`alert ${payMsg.type === "success" ? "alert-success" : payMsg.type === "info" ? "alert-info" : "alert-error"}`}>
+          <Icon n={payMsg.type === "success" ? "check" : payMsg.type === "info" ? "info" : "x"} s={16} />{payMsg.text}
+        </div>
+      )}
 
       {/* 1) Kopfbereich */}
       <div className="adm-card">
@@ -192,7 +242,61 @@ export default function AdminInvoiceDetailPage() {
             ]} />
           </div>
         </div>
+
+        {/* 5) Admin-Aktion — Rechnung als bezahlt markieren (mutierend, auditiert) */}
+        <div className="adm-card">
+          <div className="adm-card-head"><Icon n="euro" s={17} /> Admin-Aktion</div>
+          <div className="adm-card-body">
+            {isPaid ? (
+              <p className="adm-support-hint" style={{ marginTop: 0 }}>
+                Rechnung ist als bezahlt markiert{paidAtOf(inv) ? ` (am ${fmtDate(paidAtOf(inv))})` : ""}.
+              </p>
+            ) : (
+              <>
+                <p className="adm-support-hint" style={{ marginTop: 0 }}>
+                  Setzt den Rechnungsstatus auf bezahlt und gibt den reservierten Kundenkredit frei.
+                  Die Aktion wird im Admin-Audit protokolliert.
+                </p>
+                <div className="adm-support">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={openPay} disabled={payBusy}>
+                    <Icon n="check" s={14} /> Als bezahlt markieren
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Bestätigungsmodal — mutierend; erst nach bewusster Bestätigung. */}
+      {payOpen && (
+        <div className="adm-modal-overlay" role="presentation" onClick={closePay}>
+          <div
+            className="adm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-pay-title"
+            aria-describedby="adm-pay-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="check" s={22} /></div>
+            <h2 id="adm-pay-title" className="adm-modal-title">Diese Rechnung wirklich als bezahlt markieren?</h2>
+            <p id="adm-pay-desc" className="adm-modal-text">
+              Diese Aktion setzt den Rechnungsstatus auf bezahlt und gibt den reservierten Kundenkredit frei.
+            </p>
+            <p className="adm-modal-sub">Rechnung {dash(invoiceNoOf(inv))} · #{dash(idOf(inv))}</p>
+            <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert.</p>
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={closePay} disabled={payBusy}>Abbrechen</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={confirmPay} disabled={payBusy}>
+                {payBusy
+                  ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
+                  : <><Icon n="check" s={14} /> Als bezahlt markieren</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

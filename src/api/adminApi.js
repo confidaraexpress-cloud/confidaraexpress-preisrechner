@@ -241,3 +241,17 @@ export function listAdminInvoices(params = {}) {
 export function getAdminInvoice(id) {
   return apiFetch(`/admin/invoices/${encodeURIComponent(id)}`, { auth: true });
 }
+
+// PATCH /admin/invoices/:id/paid — markiert eine Rechnung als bezahlt. Der Endpunkt
+// ist backendseitig idempotent + transaktional (setzt status='paid'/paid_at, gibt
+// den reservierten Kundenkredit einmalig frei, auditiert invoice.mark_paid). KEIN
+// Body — Endpunkt und :id identifizieren das Ziel eindeutig. Bearer aus
+// apiFetch(auth:true); kein Cache, kein Logging, kein direkter fetch. 401/403
+// behandelt apiFetch zentral. Rohe Response zurück; der Aufrufer liest defensiv
+// { message, alreadyPaid } und rendert nie das ganze Objekt.
+export function markAdminInvoicePaid(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/paid`, {
+    method: "PATCH",
+    auth: true,
+  });
+}

@@ -227,3 +227,25 @@ Paginierung Kundenrouten (F-11) · Label-Storage extern (F-12) · Indizes user_i
 Begründung: Zwei kleine, aber harte Blocker — (1) die Plattform bucht echte, kostenpflichtige, irreversible JUMiNGO-Orders auf 7-Tage-Rechnung, ohne das Kreditlimit der Kunden durchzusetzen (unbegrenztes Forderungsrisiko, keinerlei Warnung), und (2) der Passwort-Reset — ein Kern-Workflow für echte Geschäftskunden — ist über den einzigen ausgelieferten Weg (E-Mail-Link) funktional tot. Beides ist in Summe in 1–2 Personentagen inklusive Tests behebbar. Zusammen mit dem Doku-Drift-Fix (F-3) und einem minimalen Betriebs-Runbook (F-5) ist ConfidaraExpress danach aus technischer Sicht produktionsreif: Der Buchungskern, das Adminpanel, die Sicherheitsarchitektur und die DSGVO-technische Substanz sind überdurchschnittlich solide und vollständig getestet.
 
 *Dieses Audit hat keinerlei Quellcode verändert. Alle Feststellungen sind mit Datei:Zeile belegt und gegen den Stand des Branches `claude/confidara-express-audit-05pov6` (identisch mit `main`, Arbeitsbaum sauber) erhoben.*
+
+---
+
+## Addendum — Zweiter Prüfdurchgang (gleicher Tag)
+
+**Baseline-Verifikation:** Beide Repos seit dem ersten Durchgang unverändert (nur die Audit-Report-Commits obenauf; `main` unverändert; Arbeitsbäume sauber). Alle Befunde F-1 bis F-32 bleiben unverändert gültig.
+
+**Zusätzlich vollständig gelesen (im ersten Durchgang nur pattern-geprüft):**
+
+| Bereich | Ergebnis |
+|---|---|
+| `services/trackingSync.js` (komplett) | ✅ Vorbildlich: Advisory-Lock (Key 528491), Circuit-Breaker (5 Fehler in Folge), Batch-/Freshness-/MaxAge-Kappung, `ORDER BY last_tracked_at NULLS FIRST` (kein Verhungern), schreibt **nie** `shipments.status`, maskiertes Logging, wirft nie. Terminale Status (delivered/expired) werden nicht erneut gepollt |
+| `AdminShipmentDetailPage.jsx` (komplett) | ✅ PII standardmäßig eingeklappt mit Protokollierungs-Hinweis (Z. 214, 425–447), Label-Download nur nach Bestätigungsdialog mit korrektem ARIA (`role="dialog"`, `aria-modal`, Z. 514–537), `isHttpUrl`-Guard gegen `javascript:`-Links (Z. 36), nur minimierte Tracking-Felder im State, maskierte IDs, saubere 404-/Fehler-/Ladezustände |
+| `AdminUserDetailPage.jsx` (Kernpfade) | ✅ Type-to-confirm-Modals für Anonymisierung (exakte Eingabe `ANONYMIZE_USER`, Z. 196–206) **und** harte Löschung; Delete-Guard-409 wird als erwarteter Ausgang mit Handlungsanweisung („Anonymisierung verwenden") dargestellt |
+| `OfferCard.jsx` / `OffersList.jsx` (Dropoff-Darstellung) | ✅ Dropoff = „Shopabgabe" (Z. 38, 155–156), Abgabestelle wird angezeigt, read-only „Paketshop finden" nur bei Dropoff (Z. 336–341) — keine irreführenden Texte, konsistent mit dem scharfen Backend-Verhalten |
+| `AGBPage.jsx` / `WiderrufPage.jsx` (Inhalt) | ✅ Substanzielle B2B-Texte (AGB mit 52 §-Verweisen inkl. „Kein Widerrufsrecht"; Widerruf korrekt: kein gesetzliches Widerrufsrecht für Unternehmer i. S. d. § 14 BGB). Keine Platzhalter. Juristische Vollständigkeit = organisatorische Prüfung |
+| `TrackingPage.jsx` | ✅ nutzt bewusst den öffentlichen Endpunkt (`/api/tracking/public/…`) — dokumentierte Architekturentscheidung |
+| `public/admin.html` (Endpunkt-Inventar) | Bestätigt F-6: ruft nur `/login`, `/admin/users`, `/admin/invoices` — kennt die neueren Admin-Endpunkte nicht → veraltetes Legacy-Duplikat ohne Rechte-Umgehung (Server-Auth greift), aber entfernen |
+
+**Ergänzung zu F-23:** Auch `TRACKING_SYNC_INTERVAL_MS` / `TRACKING_SYNC_BATCH_SIZE` / `TRACKING_SYNC_MIN_AGE_MS` / `TRACKING_SYNC_MAX_AGE_DAYS` fehlen in `.env.example`.
+
+**Konsequenz:** Keine neuen P0/P1/P2-Befunde. Das Urteil des Hauptberichts — **„Go-Live noch nicht freigeben"** bis zur Erledigung von F-1, F-2, F-3, F-4, F-5 — bleibt unverändert bestehen; die Positivliste wird um die oben genannten Punkte erweitert.

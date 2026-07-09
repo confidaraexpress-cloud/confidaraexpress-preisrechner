@@ -28,6 +28,7 @@ const AdminShipmentDetailPage = React.lazy(() => import("./pages/admin/AdminShip
 const AdminUsersPage = React.lazy(() => import("./pages/admin/AdminUsersPage"));
 const AdminUserDetailPage = React.lazy(() => import("./pages/admin/AdminUserDetailPage"));
 const AdminInvoicesPage = React.lazy(() => import("./pages/admin/AdminInvoicesPage"));
+const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="/admin/shipments"    element={<AdminShipmentsPage />} />
           <Route path="/admin/shipments/:id" element={<AdminShipmentDetailPage />} />
           <Route path="/admin/invoices"     element={<AdminInvoicesPage />} />
+          <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 

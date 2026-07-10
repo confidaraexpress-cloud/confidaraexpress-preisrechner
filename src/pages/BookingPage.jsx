@@ -9,6 +9,8 @@ import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
+import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, commercialRequirementsMet } from "../utils/customsInvoiceMode";
+import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
@@ -88,6 +90,11 @@ export default function BookingPage() {
   const [customsInvoiceNumber, setCustomsInvoiceNumber] = useState("");
   const [customsInvoiceDate,   setCustomsInvoiceDate]   = useState("");
   const [customsInvoiceRemark, setCustomsInvoiceRemark] = useState("");
+  // Interner Confidara-Rechnungstyp (nur UI/Validierung; KEIN /book-Key, KEIN
+  // JUMiNGO-Feld). customsInvoiceMode ist die bewusste Nutzerpräferenz für nicht
+  // gewerbliche Exportgründe (Default proforma); der effektive Modus wird abgeleitet.
+  const [customsInvoiceMode, setCustomsInvoiceMode]     = useState(PROFORMA);
+  const [proformaBlockedHint, setProformaBlockedHint]   = useState("");
 
   const tariff = bookingData?.tariff;
 
@@ -249,6 +256,47 @@ export default function BookingPage() {
   // ── Zoll: Validierung (nur wenn Route zollpflichtig) ────────────────────────
   const customsRequired = modules.customs;
   const hsRequired = tariff?.hsTariffNumberRequired === true;
+
+  // ── Zoll-Handelsrechnung: Statusautomat (GET/Upload/Delete) — nur bei
+  // zollpflichtiger Route mit interner shipmentId. Der Hook lädt den Status
+  // einmal und hält present/absent/… vor. ──────────────────────────────────────
+  const ci = useCommercialInvoice({ shipmentId: bookingData?.shipmentId, enabled: customsRequired });
+  const commercialOnly = isCommercialOnly(customsExportReason); // „Commercial"/Verkauf → Handelsrechnung zwingend
+  const docActive = ci.status === "present" || ci.status === "uploading" || ci.status === "deleting";
+  // Effektiver Rechnungstyp: gewerblich ODER Dokument aktiv → commercial; sonst
+  // die bewusste Nutzerpräferenz (Default proforma) via resolveInvoiceMode.
+  const invoiceMode = docActive ? COMMERCIAL : resolveInvoiceMode(customsExportReason, customsInvoiceMode);
+
+  // Radio-Wechsel: Proforma bei gewerblich (disabled) oder bei vorhandenem/aktivem
+  // Dokument (H-Regel) NICHT still zulassen — stattdessen klarer Hinweis.
+  const selectInvoiceMode = (m) => {
+    if (m === PROFORMA) {
+      if (commercialOnly) return;
+      if (!canSelectProforma(customsExportReason, ci.status)) {
+        setProformaBlockedHint("Entfernen Sie zuerst die hinterlegte Handelsrechnung, bevor Sie zur Proforma-Rechnung wechseln.");
+        return;
+      }
+      setProformaBlockedHint(""); setCustomsInvoiceMode(PROFORMA);
+    } else {
+      setProformaBlockedHint(""); setCustomsInvoiceMode(COMMERCIAL);
+    }
+  };
+
+  // Exportgrund-Wechsel persistiert die gespeicherte Präferenz gemäß Confidara-
+  // Regel: gewerblich → commercial; Wechsel weg von gewerblich darf commercial
+  // behalten (resolveInvoiceMode ist idempotent, sobald der Effekt gelaufen ist).
+  useEffect(() => {
+    setCustomsInvoiceMode((prev) => resolveInvoiceMode(customsExportReason, prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customsExportReason]);
+
+  // Ein bestätigtes Dokument fixiert commercial (H-Regel): bleibt nach einem
+  // späteren Delete erhalten, bis der Nutzer bewusst Proforma wählt.
+  useEffect(() => {
+    if (ci.status === "present") setCustomsInvoiceMode(COMMERCIAL);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ci.status]);
+
   const intPos = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0; };
   const validateCustomsItem = (it) => {
     const e = {};
@@ -272,14 +320,33 @@ export default function BookingPage() {
     const dt = new Date(y, m - 1, d);
     return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
   };
-  const customsInvoiceDateError = (customsRequired && customsInvoiceDate.trim() && !isValidISODate(customsInvoiceDate.trim()))
-    ? "Bitte ein gültiges Datum (Format TT.MM.JJJJ) wählen."
+  // Rechnungsnummer/-datum sind NUR im commercial-Modus sichtbar UND dann Pflicht.
+  // In proforma keine Zusatzpflicht (Felder sind ausgeblendet).
+  const commercialActive = customsRequired && invoiceMode === COMMERCIAL;
+  const invoiceNumberError = commercialActive && !customsInvoiceNumber.trim()
+    ? "Bitte geben Sie die Rechnungsnummer an." : "";
+  const invoiceDateTrim = customsInvoiceDate.trim();
+  const invoiceDateValid = invoiceDateTrim !== "" && isValidISODate(invoiceDateTrim);
+  const customsInvoiceDateError = commercialActive
+    ? (!invoiceDateTrim
+        ? "Bitte geben Sie das Rechnungsdatum an."
+        : !invoiceDateValid ? "Bitte ein gültiges Datum (Format TT.MM.JJJJ) wählen." : "")
+    : "";
+  // Zusätzliche commercial-Pflichten (Nummer + gültiges Datum + backend-bestätigtes
+  // Dokument). Proforma → true. Blockiert auch während checking/uploading/deleting.
+  const commercialInvoiceMet = commercialRequirementsMet({
+    mode: invoiceMode, invoiceNumber: customsInvoiceNumber, invoiceDateValid, docStatus: ci.status,
+  });
+  // Fehlender/unbestätigter Upload → klare Meldung im Uploadbereich (bei Weiter-/Buchungsversuch).
+  const commercialDocError = (customsShowErrors && commercialActive
+    && ci.status !== "present" && ci.status !== "checking" && ci.status !== "uploading")
+    ? "Bitte hinterlegen Sie eine gültige Handelsrechnung (PDF)."
     : "";
   const customsValid = !customsRequired || (
     !customsExportReasonError &&
-    !customsInvoiceDateError &&
     customsItems.length >= 1 &&
-    customsItemErrors.every(e => Object.keys(e).length === 0)
+    customsItemErrors.every(e => Object.keys(e).length === 0) &&
+    commercialInvoiceMet
   );
 
   const buildParty = (p) => {
@@ -365,11 +432,13 @@ export default function BookingPage() {
                 unitOfMeasurement: it.unitOfMeasurement,
                 ...(it.hsTariffNumber.trim() ? { hsTariffNumber: it.hsTariffNumber.trim() } : {}),
               })),
-              // Optionale Rechnungs-Metadaten additiv (nur bei nicht-leerem, getrimmtem Wert;
-              // kein leerer String, kein null, kein invoiceMode/Upload). Eine testbare Quelle.
+              // Rechnungs-Metadaten je nach internem Modus (KEIN invoiceMode-Key, KEIN
+              // document/Upload-Key): Proforma sendet invoiceNumber/invoiceDate NICHT
+              // (nur remarks), Commercial sendet Nummer (getrimmt) + Datum + remarks.
+              // Der Helper lässt leere Werte weg (kein "" / kein null).
               ...buildCustomsInvoiceMeta({
-                invoiceNumber: customsInvoiceNumber,
-                invoiceDate:   customsInvoiceDate,
+                invoiceNumber: invoiceMode === COMMERCIAL ? customsInvoiceNumber : "",
+                invoiceDate:   invoiceMode === COMMERCIAL ? customsInvoiceDate : "",
                 invoiceRemark: customsInvoiceRemark,
               }),
             },
@@ -513,6 +582,18 @@ export default function BookingPage() {
     </div>
   );
 
+  // Weiter-Gate (Step 1 → 2): bei zollpflichtiger Sendung erst fortfahren, wenn die
+  // Zollangaben vollständig sind — inkl. commercial (Nummer/Datum/bestätigtes Dokument).
+  // Erste Hälfte der doppelten Absicherung; die zweite ist der Guard in doBook.
+  const goToStep2 = () => {
+    if (customsRequired && !customsValid) {
+      setCustomsShowErrors(true);
+      setError("Bitte vervollständigen Sie die Zollangaben, bevor Sie fortfahren.");
+      return;
+    }
+    setError(""); setStep(2);
+  };
+
   const steps = ["Übersicht", "Buchung", "Fertig"];
 
   return (
@@ -581,19 +662,32 @@ export default function BookingPage() {
                 itemErrors={customsItemErrors}
                 exportReasonError={customsExportReasonError}
                 showErrors={customsShowErrors}
+                invoiceMode={invoiceMode}
+                onSelectInvoiceMode={selectInvoiceMode}
+                commercialOnly={commercialOnly}
+                proformaHint={docActive ? proformaBlockedHint : ""}
                 invoiceNumber={customsInvoiceNumber}
                 onInvoiceNumberChange={setCustomsInvoiceNumber}
+                invoiceNumberError={invoiceNumberError}
                 invoiceDate={customsInvoiceDate}
                 onInvoiceDateChange={setCustomsInvoiceDate}
                 invoiceDateError={customsInvoiceDateError}
                 invoiceRemark={customsInvoiceRemark}
                 onInvoiceRemarkChange={setCustomsInvoiceRemark}
+                ci={{
+                  status: ci.status,
+                  message: ci.message,
+                  messageType: ci.messageType,
+                  onFileSelected: ci.upload,
+                  onRemove: ci.remove,
+                  requiredError: commercialDocError,
+                }}
               />
             )}
 
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=new")}>← Zurück</button>
-              <button className="btn btn-primary btn-grow" onClick={() => setStep(2)}>
+              <button className="btn btn-primary btn-grow" onClick={goToStep2}>
                 Weiter: Buchung <Icon n="arrow" s={16} />
               </button>
             </div>

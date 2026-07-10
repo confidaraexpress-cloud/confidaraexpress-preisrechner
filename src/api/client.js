@@ -32,7 +32,12 @@ export const triggerAuthError = () => { if (authErrorHandler) authErrorHandler()
 export async function apiFetch(pathOrUrl, options = {}) {
   const { auth = false, headers, ...rest } = options;
   const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${API}${pathOrUrl}`;
-  const finalHeaders = auth ? { ...authH(), ...headers } : headers;
+  // FormData (Multipart-Upload): der Browser MUSS den Content-Type inklusive
+  // Boundary selbst setzen. Daher bei auth:true nur den Bearer-Header, KEINEN
+  // JSON-Content-Type. Rückwärtskompatibel — greift ausschließlich für FormData.
+  const isFormData = typeof FormData !== "undefined" && rest.body instanceof FormData;
+  const authHeaders = auth ? (isFormData ? { Authorization: `Bearer ${token()}` } : authH()) : null;
+  const finalHeaders = auth ? { ...authHeaders, ...headers } : headers;
   const res = await fetch(url, { ...rest, headers: finalHeaders });
   if (auth && (res.status === 401 || res.status === 403)) {
     localStorage.removeItem("ce_token");
@@ -107,4 +112,33 @@ export async function getTracking(shipmentId) {
   let d = {};
   try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }
   return { ok: true, status: r.status, ...selectTracking(d) };
+}
+
+// ── Zoll-Handelsrechnung (Customs commercial invoice) ────────────────────────
+// Dünne Wrapper um das bereits gemergte, auth-geschützte Confidara-Gateway.
+// `:shipmentId` ist AUSSCHLIESSLICH die interne Confidara-Shipment-ID. Die PDF
+// wird NUR über dieses Gateway übertragen — NIE direkt an JUMiNGO aus dem Browser.
+// Kein Logging von Datei-/Body-Daten, keine Base64, keine Client-Persistenz.
+const ciPath = (shipmentId) =>
+  `/api/jumingo/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/commercial-invoice`;
+
+// GET → { present: true|false, document: {...}|null }. Rohe Response zurück; der
+// Aufrufer liest Status/JSON defensiv (kein rohes Objekt rendern).
+export function getCommercialInvoiceStatus(shipmentId) {
+  return apiFetch(ciPath(shipmentId), { auth: true });
+}
+
+// POST multipart/form-data mit GENAU einem Feld `file`. Content-Type setzt der
+// Browser (Boundary) — daher hier bewusst NICHT manuell gesetzt (apiFetch lässt
+// ihn bei FormData weg). Keine UUID, kein Dokumenttyp, kein Multipart-Key aus
+// UI-Eingaben — nur die interne shipmentId im Pfad.
+export function uploadCommercialInvoice(shipmentId, file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch(ciPath(shipmentId), { method: "POST", auth: true, body: formData });
+}
+
+// DELETE → entfernt ausschließlich die commercial-invoice (idempotent). Kein Body.
+export function deleteCommercialInvoice(shipmentId) {
+  return apiFetch(ciPath(shipmentId), { method: "DELETE", auth: true });
 }

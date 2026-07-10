@@ -31,7 +31,9 @@ export function TermsModule({ accepted, onChange, prohibitedAccepted, onProhibit
         />
         <span className="booking-agb-text">
           Ich bestätige, dass die Sendung keine{" "}
-          <Link to="/agb#paragraf-8" className="booking-agb-link">verbotenen oder vom Transport ausgeschlossenen Gegenstände</Link>{" "}
+          <Link to="/agb#paragraf-8" className="booking-agb-link" target="_blank" rel="noopener noreferrer">
+            verbotenen oder vom Transport ausgeschlossenen Gegenstände
+          </Link>{" "}
           enthält.
         </span>
       </label>

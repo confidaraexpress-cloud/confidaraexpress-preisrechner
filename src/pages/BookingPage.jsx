@@ -8,6 +8,7 @@ import { resolveCarrierName } from "../utils/carrierMap";
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
+import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
@@ -83,6 +84,10 @@ export default function BookingPage() {
   const addCustomsItem    = () => setCustomsItems(items => [...items, makeCustomsItem()]);
   const removeCustomsItem = (idx) => setCustomsItems(items => items.length > 1 ? items.filter((_, i) => i !== idx) : items);
   const updCustomsItem    = (idx, key, value) => setCustomsItems(items => items.map((it, i) => i === idx ? { ...it, [key]: value } : it));
+  // Optionale Zollrechnungs-Metadaten (nur customs_invoice; ohne Einfluss auf Kundenpreis/-rechnung).
+  const [customsInvoiceNumber, setCustomsInvoiceNumber] = useState("");
+  const [customsInvoiceDate,   setCustomsInvoiceDate]   = useState("");
+  const [customsInvoiceRemark, setCustomsInvoiceRemark] = useState("");
 
   const tariff = bookingData?.tariff;
 
@@ -257,8 +262,22 @@ export default function BookingPage() {
   };
   const customsItemErrors = customsItems.map(validateCustomsItem);
   const customsExportReasonError = customsRequired && !customsExportReason ? "Bitte wählen Sie einen Exportgrund." : "";
+  // Optionales Rechnungsdatum: leer erlaubt; wenn gesetzt, exakt YYYY-MM-DD + echte
+  // Kalendergültigkeit (spiegelt die Backend-Regel; <input type="date"> liefert i. d. R.
+  // valide Werte, getippte/ungültige werden hier defensiv abgefangen). invoiceNumber/
+  // -Remark sind reine Freitext-Optionalfelder ohne clientseitige Formatpflicht.
+  const isValidISODate = (s) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = s.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  };
+  const customsInvoiceDateError = (customsRequired && customsInvoiceDate.trim() && !isValidISODate(customsInvoiceDate.trim()))
+    ? "Bitte ein gültiges Datum (Format TT.MM.JJJJ) wählen."
+    : "";
   const customsValid = !customsRequired || (
     !customsExportReasonError &&
+    !customsInvoiceDateError &&
     customsItems.length >= 1 &&
     customsItemErrors.every(e => Object.keys(e).length === 0)
   );
@@ -346,6 +365,13 @@ export default function BookingPage() {
                 unitOfMeasurement: it.unitOfMeasurement,
                 ...(it.hsTariffNumber.trim() ? { hsTariffNumber: it.hsTariffNumber.trim() } : {}),
               })),
+              // Optionale Rechnungs-Metadaten additiv (nur bei nicht-leerem, getrimmtem Wert;
+              // kein leerer String, kein null, kein invoiceMode/Upload). Eine testbare Quelle.
+              ...buildCustomsInvoiceMeta({
+                invoiceNumber: customsInvoiceNumber,
+                invoiceDate:   customsInvoiceDate,
+                invoiceRemark: customsInvoiceRemark,
+              }),
             },
           }
         : {};
@@ -555,6 +581,13 @@ export default function BookingPage() {
                 itemErrors={customsItemErrors}
                 exportReasonError={customsExportReasonError}
                 showErrors={customsShowErrors}
+                invoiceNumber={customsInvoiceNumber}
+                onInvoiceNumberChange={setCustomsInvoiceNumber}
+                invoiceDate={customsInvoiceDate}
+                onInvoiceDateChange={setCustomsInvoiceDate}
+                invoiceDateError={customsInvoiceDateError}
+                invoiceRemark={customsInvoiceRemark}
+                onInvoiceRemarkChange={setCustomsInvoiceRemark}
               />
             )}
 

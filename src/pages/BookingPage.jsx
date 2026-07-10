@@ -9,7 +9,7 @@ import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
-import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, commercialRequirementsMet } from "../utils/customsInvoiceMode";
+import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, isCommercialInvoiceStatusResolved, customsInvoiceReady } from "../utils/customsInvoiceMode";
 import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
@@ -20,6 +20,16 @@ import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
 import { TermsModule } from "../components/booking/TermsModule";
 import { BookingActionModule } from "../components/booking/BookingActionModule";
+
+// Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
+// (keine Backend-Rohtexte/Stacks). Verhalten je Code steuert doBook (zurück zum
+// Customs-Schritt, ggf. commercial erzwingen, genau EIN Status-GET).
+const COMMERCIAL_INVOICE_BOOK_ERRORS = {
+  COMMERCIAL_INVOICE_METADATA_INCOMPLETE: "Rechnungsnummer und Rechnungsdatum müssen gemeinsam angegeben werden.",
+  COMMERCIAL_INVOICE_METADATA_REQUIRED: "Bei gewerblichen Waren sind Rechnungsnummer und Rechnungsdatum erforderlich.",
+  COMMERCIAL_INVOICE_DOCUMENT_REQUIRED: "Für die eigene Handelsrechnung muss zuerst eine PDF erfolgreich hinterlegt werden.",
+  COMMERCIAL_INVOICE_MODE_CONFLICT: "Für diese Sendung ist noch eine eigene Handelsrechnung hinterlegt. Entfernen Sie diese oder vervollständigen Sie die Angaben zur Handelsrechnung.",
+};
 
 export default function BookingPage() {
   const { user } = useAuth();
@@ -332,21 +342,28 @@ export default function BookingPage() {
         ? "Bitte geben Sie das Rechnungsdatum an."
         : !invoiceDateValid ? "Bitte ein gültiges Datum (Format TT.MM.JJJJ) wählen." : "")
     : "";
-  // Zusätzliche commercial-Pflichten (Nummer + gültiges Datum + backend-bestätigtes
-  // Dokument). Proforma → true. Blockiert auch während checking/uploading/deleting.
-  const commercialInvoiceMet = commercialRequirementsMet({
-    mode: invoiceMode, invoiceNumber: customsInvoiceNumber, invoiceDateValid, docStatus: ci.status,
+  // Zentrale Buchbarkeitsregel: Dokumentstatus muss GEKLÄRT sein (absent/present);
+  // proforma nur bei absent, commercial nur bei present + Nummer + gültigem Datum.
+  const customsInvoiceOk = customsInvoiceReady({
+    mode: invoiceMode, docStatus: ci.status, invoiceNumber: customsInvoiceNumber, invoiceDateValid,
   });
-  // Fehlender/unbestätigter Upload → klare Meldung im Uploadbereich (bei Weiter-/Buchungsversuch).
-  const commercialDocError = (customsShowErrors && commercialActive
-    && ci.status !== "present" && ci.status !== "checking" && ci.status !== "uploading")
+  // Statusabhängige Blockmeldung bei ungeklärtem Dokumentstatus (Weiter-Gate + doBook-Guard).
+  const customsStatusBlockMessage =
+    (ci.status === "idle" || ci.status === "checking") ? "Der Status der Zollrechnung wird geprüft." :
+    ci.status === "uploading" ? "Die Handelsrechnung wird hochgeladen." :
+    ci.status === "deleting"  ? "Die Handelsrechnung wird entfernt." :
+    ci.status === "error"     ? "Der Status der Zollrechnung konnte nicht geprüft werden. Prüfen Sie den Status erneut." :
+    "";
+  // Fehlendes/unbestätigtes Dokument → klare Meldung im Uploadbereich (bei
+  // Weiter-/Buchungsversuch). Bei ungeklärtem Status übernimmt die Statusmeldung.
+  const commercialDocError = (customsShowErrors && commercialActive && ci.status === "absent")
     ? "Bitte hinterlegen Sie eine gültige Handelsrechnung (PDF)."
     : "";
   const customsValid = !customsRequired || (
     !customsExportReasonError &&
     customsItems.length >= 1 &&
     customsItemErrors.every(e => Object.keys(e).length === 0) &&
-    commercialInvoiceMet
+    customsInvoiceOk
   );
 
   const buildParty = (p) => {
@@ -394,10 +411,15 @@ export default function BookingPage() {
       return;
     }
     // Bei zollpflichtiger Sendung erst buchen, wenn die Wareninhalt-Angaben
-    // vollständig sind → Fehler einblenden statt in einen 400 zu laufen.
+    // vollständig UND der Dokumentstatus geklärt ist (dieselbe zentrale Regel wie
+    // das Weiter-Gate). Gilt auch bei direktem Funktionsaufruf → kein /book-Request.
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
-      setError("Bitte vervollständigen Sie die Angaben zum Wareninhalt.");
+      setError(
+        !isCommercialInvoiceStatusResolved(ci.status)
+          ? customsStatusBlockMessage
+          : "Bitte vervollständigen Sie die Angaben zum Wareninhalt."
+      );
       return;
     }
     setError(""); setConflict(""); setAddressError(""); setLoading(true);
@@ -474,6 +496,25 @@ export default function BookingPage() {
         }),
       });
       const d = await r.json();
+      // Serverseitiger Zollrechnungs-Guard (stabile Codes, statusunabhängig). Zurück
+      // zum Customs-/Übersichtsschritt, Felder markieren, KEIN Auto-Retry/-Upload/
+      // -Delete/-Book. Bei DOCUMENT_REQUIRED/MODE_CONFLICT genau EIN kontrollierter GET.
+      if (d?.code && COMMERCIAL_INVOICE_BOOK_ERRORS[d.code]) {
+        setLoading(false);
+        setStep(1);
+        setCustomsShowErrors(true);
+        setError(COMMERCIAL_INVOICE_BOOK_ERRORS[d.code]);
+        if (d.code === "COMMERCIAL_INVOICE_METADATA_INCOMPLETE"
+          || d.code === "COMMERCIAL_INVOICE_METADATA_REQUIRED"
+          || d.code === "COMMERCIAL_INVOICE_DOCUMENT_REQUIRED") {
+          setCustomsInvoiceMode(COMMERCIAL); // commercial erzwingen/erhalten
+        }
+        if (d.code === "COMMERCIAL_INVOICE_DOCUMENT_REQUIRED"
+          || d.code === "COMMERCIAL_INVOICE_MODE_CONFLICT") {
+          ci.refreshStatus(); // genau EIN GET; present-Effekt setzt danach ggf. commercial
+        }
+        return;
+      }
       if (r.status === 409) {
         // F3 — Preisdrift OHNE Versicherung: zuerst und getrennt von Duplikat-/
         // Versicherungskonflikten abfangen. Nur dieser Konflikt trägt den Code
@@ -588,7 +629,13 @@ export default function BookingPage() {
   const goToStep2 = () => {
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
-      setError("Bitte vervollständigen Sie die Zollangaben, bevor Sie fortfahren.");
+      // Ungeklärter Dokumentstatus (idle/checking/uploading/deleting/error) blockiert
+      // auch Proforma → statusabhängige Meldung; sonst generische Zollmeldung.
+      setError(
+        !isCommercialInvoiceStatusResolved(ci.status)
+          ? customsStatusBlockMessage
+          : "Bitte vervollständigen Sie die Zollangaben, bevor Sie fortfahren."
+      );
       return;
     }
     setError(""); setStep(2);
@@ -680,6 +727,7 @@ export default function BookingPage() {
                   messageType: ci.messageType,
                   onFileSelected: ci.upload,
                   onRemove: ci.remove,
+                  onRetryStatus: ci.refreshStatus,
                   requiredError: commercialDocError,
                 }}
               />

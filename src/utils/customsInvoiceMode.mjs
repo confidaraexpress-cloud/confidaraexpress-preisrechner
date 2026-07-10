@@ -40,3 +40,23 @@ export function commercialRequirementsMet({ mode, invoiceNumber, invoiceDateVali
   const numOk = typeof invoiceNumber === "string" && invoiceNumber.trim().length > 0;
   return numOk && invoiceDateValid === true && docStatus === "present";
 }
+
+// Zentrale Regel: Ist der Dokumentstatus ABSCHLIESSEND geklärt? Nur absent/present
+// gelten als geklärt; idle/checking/uploading/deleting/error sind NICHT geklärt
+// und blockieren (Weiter-Gate + doBook-Guard nutzen dieselbe Regel).
+export function isCommercialInvoiceStatusResolved(status) {
+  return status === "absent" || status === "present";
+}
+
+// Zentrale Buchbarkeitsregel der Zollrechnung (Modus + Status + Metadaten).
+// Erweitert commercialRequirementsMet um die Status-Auflösung UND die Proforma-
+// Status-Konsistenz: ein vorhandenes/ungeklärtes Dokument darf nie hinter einem
+// scheinbaren Proforma-Zustand verborgen bleiben → Proforma ist nur bei absent gültig.
+export function customsInvoiceReady({ mode, docStatus, invoiceNumber, invoiceDateValid } = {}) {
+  if (!isCommercialInvoiceStatusResolved(docStatus)) return false;
+  if (mode === COMMERCIAL) {
+    const numOk = typeof invoiceNumber === "string" && invoiceNumber.trim().length > 0;
+    return docStatus === "present" && numOk && invoiceDateValid === true;
+  }
+  return docStatus === "absent";
+}

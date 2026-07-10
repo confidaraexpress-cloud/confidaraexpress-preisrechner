@@ -67,6 +67,11 @@ export function CustomsModule({
             {EXPORT_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           {showErrors && exportReasonError && <span className="field-error">{exportReasonError}</span>}
+          {exportReason === "Personal" && (
+            <span className="field-hint">
+              „Persönlich" bezeichnet persönliche oder nicht zum Verkauf bestimmte Waren Ihres Unternehmens und keinen privaten Kundenaccount.
+            </span>
+          )}
         </div>
 
         {items.map((it, i) => (

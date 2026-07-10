@@ -42,14 +42,15 @@ export function CommercialInvoiceUpload({ status, message, messageType, required
         </div>
       )}
 
+      {/* Checking/Error werden zentral von der Status-Region der Sektion angezeigt. */}
       <div id="ci-upload-status" className="ci-upload-status" aria-live="polite">
-        {checking && <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Status der Handelsrechnung wird geprüft…</span>}
         {uploading && <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Handelsrechnung wird hochgeladen…</span>}
         {deleting && <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Handelsrechnung wird entfernt…</span>}
         {present && <span className="ci-status ci-status-ok"><Icon n="check" s={15} c="currentColor" /> Handelsrechnung erfolgreich hinterlegt</span>}
       </div>
 
-      {message && (
+      {/* Upload-spezifische Meldung (Vorprüfung/Info). Status-„error" behandelt die Sektion. */}
+      {message && status !== "error" && status !== "checking" && (
         <span
           className={`ci-upload-msg ${messageType === "info" ? "ci-notice" : "field-error"}`}
           role={messageType === "error" ? "alert" : undefined}

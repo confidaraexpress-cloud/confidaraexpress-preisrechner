@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, commercialRequirementsMet,
+  isCommercialInvoiceStatusResolved, customsInvoiceReady,
 } from "./customsInvoiceMode.mjs";
 
 const NON_COMMERCIAL = ["Gift", "Sample", "Return", "Personal", "Claim", "Temporary", "Relocation"];
@@ -63,4 +64,37 @@ test("Commercial ohne gültiges Datum → false", () => {
 test("Commercial ohne bestätigtes Dokument → false", () => {
   for (const s of ["absent", "checking", "uploading", "deleting", "error", "idle"])
     assert.equal(commercialRequirementsMet({ mode: COMMERCIAL, invoiceNumber: "RE-1", invoiceDateValid: true, docStatus: s }), false);
+});
+
+// ── isCommercialInvoiceStatusResolved (zentrale Regel) ───────────────────────
+test("absent/present gelten als geklärt", () => {
+  assert.equal(isCommercialInvoiceStatusResolved("absent"), true);
+  assert.equal(isCommercialInvoiceStatusResolved("present"), true);
+});
+test("idle/checking/uploading/deleting/error sind NICHT geklärt", () => {
+  for (const s of ["idle", "checking", "uploading", "deleting", "error"])
+    assert.equal(isCommercialInvoiceStatusResolved(s), false);
+});
+
+// ── customsInvoiceReady (kombinierte Buchbarkeit) ────────────────────────────
+test("Proforma + absent → bereit", () => {
+  assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: "absent" }), true);
+});
+test("Proforma + present → NICHT bereit (Dokument darf nicht verborgen sein)", () => {
+  assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: "present" }), false);
+});
+test("Proforma + ungeklärter Status → NICHT bereit", () => {
+  for (const s of ["idle", "checking", "uploading", "deleting", "error"])
+    assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: s }), false);
+});
+test("Commercial + present + Nummer + Datum → bereit", () => {
+  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "RE-1", invoiceDateValid: true }), true);
+});
+test("Commercial + absent/ungeklärt → NICHT bereit", () => {
+  for (const s of ["absent", "idle", "checking", "uploading", "deleting", "error"])
+    assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: s, invoiceNumber: "RE-1", invoiceDateValid: true }), false);
+});
+test("Commercial + present ohne Nummer/ohne Datum → NICHT bereit", () => {
+  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "  ", invoiceDateValid: true }), false);
+  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "RE-1", invoiceDateValid: false }), false);
 });

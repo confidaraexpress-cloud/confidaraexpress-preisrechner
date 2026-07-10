@@ -63,7 +63,12 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
   const upload = useCallback(async (file) => {
     if (busyRef.current) return; // kein zweiter POST durch Doppelklick/Re-Render
     const pre = validateCommercialInvoiceFile(file); // Client-Vorprüfung (Backend bleibt autoritativ)
-    if (!pre.ok) { applyError(pre.code); return; }
+    if (!pre.ok) {
+      // Reine Client-Vorprüfung: nur Meldung, KEIN Status-„error" (der Dokument-
+      // status bleibt geklärt, z. B. absent → Nutzer wählt einfach neu aus).
+      setMessageType("error"); setMessage(commercialInvoiceErrorMessage(pre.code));
+      return;
+    }
     busyRef.current = true;
     const seq = ++seqRef.current;
     setStatus("uploading"); clearMsg();
@@ -116,5 +121,8 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
     setStatus("absent"); clearMsg();
   }, [shipmentId, readStatus]);
 
-  return { status, message, messageType, upload, remove, refresh: readStatus };
+  // refreshStatus: kontrollierter, einmaliger GET (Status → checking → present/
+  // absent/error). Keine Timer, kein Polling, kein Auto-Upload/-Delete; die
+  // Sequence-/Mounted-Ref-Absicherung greift unverändert.
+  return { status, message, messageType, upload, remove, refreshStatus: readStatus };
 }

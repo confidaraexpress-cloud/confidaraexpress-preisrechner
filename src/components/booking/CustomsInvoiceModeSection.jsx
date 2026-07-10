@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import { CommercialInvoiceUpload } from "./CommercialInvoiceUpload";
 
 // „Zollrechnung" — REINE DARSTELLUNG. Radio-Gruppe (Proforma / eigene Handels-
@@ -41,7 +42,8 @@ export function CustomsInvoiceModeSection({
           <span className="ci-mode-option-text">
             <span className="ci-mode-option-title">Proforma-Rechnung erstellen lassen</span>
             <span id="ci-mode-proforma-help" className="field-hint">
-              Geeignet für nicht gewerbliche Waren, Geschenke, Muster oder Waren ohne kommerziellen Verkaufszweck.
+              Geeignet für persönliche oder nicht zum Verkauf bestimmte Waren eines Geschäftskunden sowie für
+              Geschenke, Muster, Rücksendungen und vergleichbare nicht gewerbliche Exportzwecke.
             </span>
           </span>
         </label>
@@ -60,7 +62,7 @@ export function CustomsInvoiceModeSection({
           <span className="ci-mode-option-text">
             <span className="ci-mode-option-title">Eigene Handelsrechnung verwenden</span>
             <span id="ci-mode-commercial-help" className="field-hint">
-              Erforderlich, wenn die Sendung einen kommerziellen Hintergrund hat.
+              Bei gewerblichen Waren oder einem kommerziellen Verkaufszweck ist eine eigene Handelsrechnung erforderlich.
             </span>
           </span>
         </label>
@@ -74,6 +76,28 @@ export function CustomsInvoiceModeSection({
           <p className="field-error ci-mode-blocked" role="alert">{proformaHint}</p>
         )}
       </fieldset>
+
+      {/* Autoritativer Dokumentstatus (beide Modi): geprüft/Fehler + manueller Retry.
+          absent/present sind geklärt und erzeugen hier keinen Block. */}
+      {(ci.status === "checking" || ci.status === "error") && (
+        <div className="ci-status-region" aria-live="polite">
+          {ci.status === "checking" ? (
+            <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Der Status der Zollrechnung wird geprüft…</span>
+          ) : (
+            <span className="ci-status ci-status-err">
+              {ci.message || "Der Status der Zollrechnung konnte nicht geprüft werden. Prüfen Sie den Status erneut."}
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-outline btn-sm ci-retry-btn"
+            onClick={ci.onRetryStatus}
+            disabled={ci.status === "checking"}
+          >
+            <Icon n="refresh" s={14} c="currentColor" /> Status erneut prüfen
+          </button>
+        </div>
+      )}
 
       {/* Zollwert-Währung — in beiden Modi sichtbar, read-only, unverändert. */}
       <div className="customs-grid">

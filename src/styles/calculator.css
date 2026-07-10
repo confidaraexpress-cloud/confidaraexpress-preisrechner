@@ -508,6 +508,10 @@
 .ci-remove-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius); background: var(--gray50, #f8fafc); }
 .ci-remove-confirm-text { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .ci-remove-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Autoritative Dokumentstatus-Region (checking/error + manueller Retry) */
+.ci-status-region { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius); background: var(--gray50, #f8fafc); }
+.ci-status-err { color: #dc2626; font-size: 13px; font-weight: 600; }
+.ci-retry-btn { flex-shrink: 0; }
 
 @media (max-width: 600px) { .customs-grid { grid-template-columns: 1fr; } }
 

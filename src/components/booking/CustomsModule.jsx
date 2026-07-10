@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { countries } from "../../utils/countries";
+import { CustomsInvoiceModeSection } from "./CustomsInvoiceModeSection";
 
 // Exportgründe: Anzeige deutsch, gesendet wird der englische Enum-Wert.
 const EXPORT_REASONS = [
@@ -34,9 +35,11 @@ export function CustomsModule({
   exportReason, onExportReasonChange,
   items, onItemChange, onAddItem, onRemoveItem,
   hsRequired, itemErrors, exportReasonError, showErrors,
-  invoiceNumber, onInvoiceNumberChange,
+  invoiceMode, onSelectInvoiceMode, commercialOnly, proformaHint,
+  invoiceNumber, onInvoiceNumberChange, invoiceNumberError,
   invoiceDate, onInvoiceDateChange, invoiceDateError,
   invoiceRemark, onInvoiceRemarkChange,
+  ci,
 }) {
   const totalValue = items.reduce((s, it) => s + asNum(it.value), 0);
   const totalWeight = items.reduce((s, it) => s + asNum(it.netWeight), 0);
@@ -64,6 +67,11 @@ export function CustomsModule({
             {EXPORT_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           {showErrors && exportReasonError && <span className="field-error">{exportReasonError}</span>}
+          {exportReason === "Personal" && (
+            <span className="field-hint">
+              „Persönlich" bezeichnet persönliche oder nicht zum Verkauf bestimmte Waren Ihres Unternehmens und keinen privaten Kundenaccount.
+            </span>
+          )}
         </div>
 
         {items.map((it, i) => (
@@ -183,71 +191,24 @@ export function CustomsModule({
           <span className="customs-summary-item">Nettogewicht gesamt: <strong>{weightFmt} kg</strong></span>
         </div>
 
-        {/* Zusätzliche Zollrechnungsangaben — optionale CustomsInvoiceInput-Metadaten.
-            Betreffen ausschließlich die Zollrechnung, nie die ConfidaraExpress-Kundenrechnung. */}
-        <div className="customs-invoice-meta">
-          <h4 className="customs-invoice-meta-title">Zusätzliche Zollrechnungsangaben</h4>
-          <p className="customs-hint">
-            Diese Angaben werden ausschließlich für die Zollabwicklung verwendet und ändern weder
-            Ihre ConfidaraExpress-Rechnung noch das Zahlungsziel.
-          </p>
-
-          <div className="customs-grid">
-            <div className="field">
-              <label className="field-label" htmlFor="customs-invoice-currency">Zollwert-Währung</label>
-              <input
-                id="customs-invoice-currency"
-                className="field-input"
-                value="EUR"
-                readOnly
-                aria-readonly="true"
-                aria-describedby="customs-invoice-currency-hint"
-              />
-              <span id="customs-invoice-currency-hint" className="field-hint">
-                Währung der Zollwertangaben. Ihre ConfidaraExpress-Rechnung bleibt in EUR.
-              </span>
-            </div>
-
-            <div className="field">
-              <label className="field-label" htmlFor="customs-invoice-number">Rechnungsnummer (optional)</label>
-              <input
-                id="customs-invoice-number"
-                className="field-input"
-                value={invoiceNumber}
-                onChange={e => onInvoiceNumberChange(e.target.value)}
-                placeholder="z. B. RE-2026-0042"
-              />
-            </div>
-
-            <div className="field">
-              <label className="field-label" htmlFor="customs-invoice-date">Rechnungsdatum (optional)</label>
-              <input
-                id="customs-invoice-date"
-                type="date"
-                className={`field-input${showErrors && invoiceDateError ? " field-input-error" : ""}`}
-                value={invoiceDate}
-                onChange={e => onInvoiceDateChange(e.target.value)}
-                aria-invalid={showErrors && invoiceDateError ? "true" : undefined}
-                aria-describedby={showErrors && invoiceDateError ? "customs-invoice-date-error" : undefined}
-              />
-              {showErrors && invoiceDateError && (
-                <span id="customs-invoice-date-error" className="field-error">{invoiceDateError}</span>
-              )}
-            </div>
-
-            <div className="field customs-col-full">
-              <label className="field-label" htmlFor="customs-invoice-remark">Rechnungshinweis (optional)</label>
-              <textarea
-                id="customs-invoice-remark"
-                className="field-input customs-invoice-remark"
-                value={invoiceRemark}
-                onChange={e => onInvoiceRemarkChange(e.target.value)}
-                rows={2}
-                placeholder="z. B. Warensendung ohne Handelswert"
-              />
-            </div>
-          </div>
-        </div>
+        {/* Zollrechnung — Rechnungstyp (Proforma/Handelsrechnung) + abhängige Felder.
+            Betrifft ausschließlich die Zollrechnung, nie die ConfidaraExpress-Kundenrechnung. */}
+        <CustomsInvoiceModeSection
+          mode={invoiceMode}
+          onSelectMode={onSelectInvoiceMode}
+          commercialOnly={commercialOnly}
+          proformaHint={proformaHint}
+          invoiceNumber={invoiceNumber}
+          onInvoiceNumberChange={onInvoiceNumberChange}
+          invoiceNumberError={invoiceNumberError}
+          invoiceDate={invoiceDate}
+          onInvoiceDateChange={onInvoiceDateChange}
+          invoiceDateError={invoiceDateError}
+          invoiceRemark={invoiceRemark}
+          onInvoiceRemarkChange={onInvoiceRemarkChange}
+          showErrors={showErrors}
+          ci={ci}
+        />
       </div>
     </div>
   );

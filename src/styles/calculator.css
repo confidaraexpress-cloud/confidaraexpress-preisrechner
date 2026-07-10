@@ -481,6 +481,38 @@
 .customs-invoice-meta { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 .customs-invoice-meta-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--navy); }
 .customs-invoice-remark { min-height: 60px; resize: vertical; font-family: inherit; }
+
+/* Zollrechnung — Rechnungstyp-Radiogruppe (Proforma / eigene Handelsrechnung) */
+.ci-mode { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin: 4px 0 14px; }
+.ci-mode-legend { padding: 0 6px; font-size: 12.5px; font-weight: 700; color: var(--navy); }
+.ci-mode-option { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; cursor: pointer; }
+.ci-mode-radio { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--blue); flex-shrink: 0; }
+.ci-mode-radio:disabled { cursor: not-allowed; }
+.ci-mode-option-text { display: flex; flex-direction: column; gap: 2px; }
+.ci-mode-option-title { font-size: 13.5px; font-weight: 600; color: var(--navy); }
+.ci-mode-forced { margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--blue2); }
+.ci-mode-blocked { margin: 6px 0 0; }
+
+/* Handelsrechnungs-Upload */
+.ci-upload { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.ci-upload-input { padding: 8px; font-size: 13px; }
+.ci-upload-status { margin-top: 8px; min-height: 20px; }
+.ci-status { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.ci-status-busy { color: var(--gray600); }
+.ci-status-ok { color: #15803d; }
+.ci-upload-msg { display: block; margin-top: 6px; }
+.ci-notice { font-size: 12.5px; color: var(--blue2); font-weight: 600; }
+.ci-remove-btn { margin-top: 10px; }
+.ci-remove-danger { background: var(--danger, #dc2626); color: #fff; border: 1px solid var(--danger, #dc2626); }
+.ci-remove-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+.ci-remove-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius); background: var(--gray50, #f8fafc); }
+.ci-remove-confirm-text { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
+.ci-remove-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Autoritative Dokumentstatus-Region (checking/error + manueller Retry) */
+.ci-status-region { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 4px; padding: 10px 12px; border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius); background: var(--gray50, #f8fafc); }
+.ci-status-err { color: #dc2626; font-size: 13px; font-weight: 600; }
+.ci-retry-btn { flex-shrink: 0; }
+
 @media (max-width: 600px) { .customs-grid { grid-template-columns: 1fr; } }
 
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }

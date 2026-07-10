@@ -329,6 +329,8 @@
 .booking-agb-checkbox { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--blue); flex-shrink: 0; }
 .booking-agb-text { font-size: 13px; color: var(--gray600); line-height: 1.6; }
 .booking-agb-link { color: var(--blue2); font-weight: 600; }
+/* Fehlermeldung der Ausschlussgüter-Bestätigung direkt unter der Checkbox. */
+.booking-prohibited-error { margin: -14px 0 20px; }
 .booking-book-btn { font-size: 15px; padding: 13px; }
 .booking-email-note { text-align: center; font-size: 12px; color: var(--gray400); margin-top: 12px; }
 .booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray600); text-align: left; background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.12); border-radius: var(--radius); }

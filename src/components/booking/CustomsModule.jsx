@@ -34,6 +34,9 @@ export function CustomsModule({
   exportReason, onExportReasonChange,
   items, onItemChange, onAddItem, onRemoveItem,
   hsRequired, itemErrors, exportReasonError, showErrors,
+  invoiceNumber, onInvoiceNumberChange,
+  invoiceDate, onInvoiceDateChange, invoiceDateError,
+  invoiceRemark, onInvoiceRemarkChange,
 }) {
   const totalValue = items.reduce((s, it) => s + asNum(it.value), 0);
   const totalWeight = items.reduce((s, it) => s + asNum(it.netWeight), 0);
@@ -178,6 +181,72 @@ export function CustomsModule({
         <div className="customs-summary">
           <span className="customs-summary-item">Warenwert gesamt: <strong>{money(totalValue)}</strong></span>
           <span className="customs-summary-item">Nettogewicht gesamt: <strong>{weightFmt} kg</strong></span>
+        </div>
+
+        {/* Zusätzliche Zollrechnungsangaben — optionale CustomsInvoiceInput-Metadaten.
+            Betreffen ausschließlich die Zollrechnung, nie die ConfidaraExpress-Kundenrechnung. */}
+        <div className="customs-invoice-meta">
+          <h4 className="customs-invoice-meta-title">Zusätzliche Zollrechnungsangaben</h4>
+          <p className="customs-hint">
+            Diese Angaben werden ausschließlich für die Zollabwicklung verwendet und ändern weder
+            Ihre ConfidaraExpress-Rechnung noch das Zahlungsziel.
+          </p>
+
+          <div className="customs-grid">
+            <div className="field">
+              <label className="field-label" htmlFor="customs-invoice-currency">Zollwert-Währung</label>
+              <input
+                id="customs-invoice-currency"
+                className="field-input"
+                value="EUR"
+                readOnly
+                aria-readonly="true"
+                aria-describedby="customs-invoice-currency-hint"
+              />
+              <span id="customs-invoice-currency-hint" className="field-hint">
+                Währung der Zollwertangaben. Ihre ConfidaraExpress-Rechnung bleibt in EUR.
+              </span>
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="customs-invoice-number">Rechnungsnummer (optional)</label>
+              <input
+                id="customs-invoice-number"
+                className="field-input"
+                value={invoiceNumber}
+                onChange={e => onInvoiceNumberChange(e.target.value)}
+                placeholder="z. B. RE-2026-0042"
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="customs-invoice-date">Rechnungsdatum (optional)</label>
+              <input
+                id="customs-invoice-date"
+                type="date"
+                className={`field-input${showErrors && invoiceDateError ? " field-input-error" : ""}`}
+                value={invoiceDate}
+                onChange={e => onInvoiceDateChange(e.target.value)}
+                aria-invalid={showErrors && invoiceDateError ? "true" : undefined}
+                aria-describedby={showErrors && invoiceDateError ? "customs-invoice-date-error" : undefined}
+              />
+              {showErrors && invoiceDateError && (
+                <span id="customs-invoice-date-error" className="field-error">{invoiceDateError}</span>
+              )}
+            </div>
+
+            <div className="field customs-col-full">
+              <label className="field-label" htmlFor="customs-invoice-remark">Rechnungshinweis (optional)</label>
+              <textarea
+                id="customs-invoice-remark"
+                className="field-input customs-invoice-remark"
+                value={invoiceRemark}
+                onChange={e => onInvoiceRemarkChange(e.target.value)}
+                rows={2}
+                placeholder="z. B. Warensendung ohne Handelswert"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

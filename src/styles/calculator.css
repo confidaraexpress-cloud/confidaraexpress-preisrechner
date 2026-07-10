@@ -477,6 +477,10 @@
 .customs-add-btn { margin-top: 4px; }
 .customs-summary { display: flex; justify-content: flex-end; gap: 12px 28px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--gray600); }
 .customs-summary-item strong { color: var(--navy); font-weight: 700; }
+/* Zusätzliche Zollrechnungsangaben — klar abgegrenzter, optionaler Abschnitt */
+.customs-invoice-meta { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.customs-invoice-meta-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--navy); }
+.customs-invoice-remark { min-height: 60px; resize: vertical; font-family: inherit; }
 @media (max-width: 600px) { .customs-grid { grid-template-columns: 1fr; } }
 
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }

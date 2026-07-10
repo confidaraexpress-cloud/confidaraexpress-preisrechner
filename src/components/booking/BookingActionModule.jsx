@@ -1,13 +1,17 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
+import { canSubmitBooking } from "../../utils/bookingGate";
 
 // Buchungsaktion — Fehlermeldung, Konflikt-/Adressfehler-Zweige und der
 // verbindliche Buchen-Button. REINE DARSTELLUNG; alle Zustände/Handler kommen
-// aus dem Orchestrator (BookingPage). Verhalten und Gating unverändert.
+// aus dem Orchestrator (BookingPage). Der Button ist über canSubmitBooking
+// deaktiviert — dieselbe Freigabe-Bedingung, die auch der Guard in doBook nutzt
+// (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
-  error, conflict, addressError, loading, agbAccepted, insuranceBlocksBooking,
+  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking,
   onBook, onNavigateShipments, onNavigateNew, userEmail,
 }) {
+  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking });
   return (
     <>
       {error && <div className="alert alert-error">{error}</div>}
@@ -26,7 +30,7 @@ export function BookingActionModule({
           </button>
         </div>
       ) : (
-        <button className="btn btn-primary btn-full booking-book-btn" onClick={onBook} disabled={loading || !agbAccepted || insuranceBlocksBooking}>
+        <button className="btn btn-primary btn-full booking-book-btn" onClick={onBook} disabled={!bookingAllowed}>
           {loading ? <><span className="spinner" /> Sendung wird gebucht…</> : "Kostenpflichtig buchen"}
         </button>
       )}

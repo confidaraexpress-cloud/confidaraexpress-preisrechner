@@ -27,6 +27,10 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
   const [agbAccepted, setAgbAccepted] = useState(false);
+  // Separate Pflichtbestätigung „keine ausgeschlossenen Güter" (eigenständig,
+  // ersetzt/schwächt die AGB-Bestätigung nicht). Reines Frontend-Buchungs-Gate.
+  const [prohibitedGoodsAccepted, setProhibitedGoodsAccepted] = useState(false);
+  const [prohibitedShowError, setProhibitedShowError] = useState(false);
   const [conflict, setConflict] = useState("");
   const [addressError, setAddressError] = useState("");
   const [labelLoading, setLabelLoading] = useState(false);
@@ -290,6 +294,13 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
+    // Ausschlussgüter-Bestätigung ist Pflicht — zweite Sicherung gegen einen
+    // programmatisch ausgelösten Submit (der Buchen-Button ist zusätzlich
+    // deaktiviert). Fehlt sie, klare, an der Checkbox aria-verknüpfte Meldung.
+    if (!prohibitedGoodsAccepted) {
+      setProhibitedShowError(true);
+      return;
+    }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
@@ -636,13 +647,22 @@ export default function BookingPage() {
                     </span>
                   </div>
                 )}
-                <TermsModule accepted={agbAccepted} onChange={setAgbAccepted} />
+                <TermsModule
+                  accepted={agbAccepted}
+                  onChange={setAgbAccepted}
+                  prohibitedAccepted={prohibitedGoodsAccepted}
+                  onProhibitedChange={(v) => { setProhibitedGoodsAccepted(v); if (v) setProhibitedShowError(false); }}
+                  prohibitedError={prohibitedShowError && !prohibitedGoodsAccepted
+                    ? "Bitte bestätigen Sie, dass die Sendung keine ausgeschlossenen Gegenstände enthält."
+                    : ""}
+                />
                 <BookingActionModule
                   error={error}
                   conflict={conflict}
                   addressError={addressError}
                   loading={loading}
                   agbAccepted={agbAccepted}
+                  prohibitedGoodsAccepted={prohibitedGoodsAccepted}
                   insuranceBlocksBooking={insuranceBlocksBooking}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}

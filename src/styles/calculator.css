@@ -202,9 +202,8 @@
 .offers-form-section > .calc-panel {
   border: 1px solid rgba(120, 150, 210, 0.20);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.80);
-  -webkit-backdrop-filter: blur(14px) saturate(125%);
-          backdrop-filter: blur(14px) saturate(125%);
+  /* Matte helle Premiumoberfläche statt Live-Blur (große, wiederholte Formularkarten). */
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(247, 250, 255, 0.93));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 10px 30px -14px rgba(20, 40, 100, 0.18),

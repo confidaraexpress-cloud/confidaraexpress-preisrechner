@@ -348,7 +348,12 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
 
 // isTop bleibt Teil des Props-Vertrags (von OffersList übergeben), löst aber
 // bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
-export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill }) {
+// React.memo (Standard-Shallow-Vergleich): Eine Karte rendert nur neu, wenn sich
+// eine ihrer Props referenziell ändert (tariff, badge, selected, vatMode,
+// senderPrefill, onSelect, onBook, isTop). Interner Zustand (Details auf/zu)
+// löst weiterhin normal ein Re-Render genau dieser Karte aus. Voraussetzung für
+// den Nutzen: OffersList/Pages reichen stabile Callbacks & senderPrefill herein.
+function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill }) {
   const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -530,3 +535,5 @@ export function OfferCard({ tariff: t, badge, isTop, selected, onSelect, onBook,
     </div>
   );
 }
+
+export const OfferCard = React.memo(OfferCardBase);

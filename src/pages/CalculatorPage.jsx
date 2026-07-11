@@ -77,7 +77,6 @@ export default function CalculatorPage() {
 
   // ── Results ──
   const [tariffs, setTariffs]       = useState([]);
-  const [filtered, setFiltered]     = useState([]);
   const [selected, setSelected]     = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
@@ -155,7 +154,6 @@ export default function CalculatorPage() {
   const resetResults = () => {
     setHasResults(false);
     setTariffs([]);
-    setFiltered([]);
     setSelected(null);
     setError("");
   };
@@ -203,8 +201,14 @@ export default function CalculatorPage() {
   // nach Unmount, keine hängende Antwort).
   useEffect(() => () => { if (calcAbort.current) calcAbort.current.abort(); }, []);
 
-  const applyFilter = useCallback((list) => {
-    let f = [...list];
+  // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
+  // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
+  // useEffect + setFiltered. Das spart pro Filteränderung (v. a. Preis-Slider)
+  // den zusätzlichen zweiten Render (setFiltered) und wendet den Filter im selben
+  // Render an. Filterbedingungen und Reihenfolge sind unverändert; tariffs wird
+  // nie mutiert (Kopie via Spread).
+  const filtered = useMemo(() => {
+    let f = [...tariffs];
     if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
     // Client-Filter „Späteste Lieferzeit": spätestes Lieferdatum (deliveryDateMax →
     // deliveryDate). Tarife ohne Lieferdatum bleiben sichtbar (kein gültiges Angebot
@@ -214,10 +218,8 @@ export default function CalculatorPage() {
       if (!dd) return true;
       return String(dd).split("T")[0] <= form.latestDeliveryDate;
     });
-    setFiltered(f);
-  }, [form.max_price, form.latestDeliveryDate]);
-
-  useEffect(() => { applyFilter(tariffs); }, [tariffs, applyFilter]);
+    return f;
+  }, [tariffs, form.max_price, form.latestDeliveryDate]);
 
   const sorted = React.useMemo(() => {
     if (sortMode === "recommended") return filtered;
@@ -334,9 +336,19 @@ export default function CalculatorPage() {
   };
 
   // Preisrechner has no full address form → redirect to "Neue Sendung" to complete booking
-  const handleBook = () => {
+  // useCallback: stabile Referenz, damit die memoisierten OfferCards durch onBook
+  // nicht unnötig neu rendern (navigate ist von react-router her stabil).
+  const handleBook = useCallback(() => {
     navigate("/dashboard?page=new");
-  };
+  }, [navigate]);
+
+  // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es).
+  // useMemo verhindert ein neues Objekt bei jedem Render → sonst würde es den
+  // React.memo-Vergleich der OfferCards bei jeder Parent-Änderung brechen.
+  const senderPrefill = useMemo(
+    () => ({ postCode: form.from_zip, city: "", country: form.from_country }),
+    [form.from_zip, form.from_country]
+  );
 
   return (
     <div className="page-with-navbar">
@@ -676,7 +688,7 @@ export default function CalculatorPage() {
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}
-            senderPrefill={{ postCode: form.from_zip, city: "", country: form.from_country }}
+            senderPrefill={senderPrefill}
           />
         )}
       </div>

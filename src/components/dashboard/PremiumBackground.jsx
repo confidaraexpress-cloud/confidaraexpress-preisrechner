@@ -80,7 +80,7 @@ const GLYPHS = [
   { cls: "g-d", n: "plane" },  { cls: "g-e", n: "truck" },    { cls: "g-f", n: "parcel" },
 ];
 
-export function PremiumBackground({ variant = "dark" }) {
+function PremiumBackgroundBase({ variant = "dark" }) {
   const v = PALETTES[variant] || PALETTES.dark;
   const sfx = `-${variant}`; // eindeutige SVG-defs-IDs je Variant (keine Kollision)
   const nodes = [[120,760],[820,430],[1470,210],[180,300],[900,340],[1500,640],[300,880],[1120,820]];
@@ -136,3 +136,9 @@ export function PremiumBackground({ variant = "dark" }) {
     </div>
   );
 }
+
+// Rein präsentational, nur eine primitive `variant`-Prop, kein State/Context/
+// Effekt → React.memo vermeidet die Reconciliation dieses großen SVG-/Layer-
+// Baums bei jedem übergeordneten Render (z. B. Formulareingaben, Preis-Slider),
+// solange sich `variant` nicht ändert. Struktur/SVG/CSS unverändert.
+export const PremiumBackground = React.memo(PremiumBackgroundBase);

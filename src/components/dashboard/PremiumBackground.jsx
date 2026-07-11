@@ -3,14 +3,15 @@ import React from "react";
 /* ═══════════════════════════════════════════════════════════════════════════
    PremiumBackground — wiederverwendbare Premium-Atmosphäre (nur Präsentation)
    ───────────────────────────────────────────────────────────────────────────
-   Aus der Übersicht („Highend Blue") extrahierte, reine Hintergrund-Architektur:
-   fixe Ebene mit Ambient-Blobs, Punkt-Raster, animierten Routen-/Verbindungs-
-   linien, leuchtenden Knoten (Halo · Ring · Lichtpunkt-Kern), driftenden
-   Paketen (SVG-SMIL), schwebenden Glyphen/Partikeln, feinem Korn (Noise) und
-   Vignette.
+   Aus der Übersicht („Highend Blue") extrahierte, reine Hintergrund-Architektur —
+   jetzt VOLLSTÄNDIG STATISCH: fixe Ebene mit statischer Farbtiefe (radiale
+   Verläufe im .pbg-grad statt Glow-Blobs), Punkt-Raster, feinen Routen-/
+   Verbindungslinien, ruhigen Knoten (statischer Halo + Lichtpunkt-Kern),
+   dezenten Glyphen und Vignette. Keine Animation, kein SMIL, keine großen
+   Blur-Blobs, kein will-change.
 
-   Struktur, SVG-Geometrie, Positionen, Blur- und Animationstimings sind für ALLE
-   Varianten IDENTISCH — nur die Farben unterscheiden sich:
+   Struktur, SVG-Geometrie und Positionen sind für ALLE Varianten IDENTISCH —
+   nur die Farben unterscheiden sich:
      • variant="dark"  → exakt die bisherige Übersicht (Farb-/Layer-Regeln unter
                          „.ce-dark .pbg*"; die dark-Palette hier = die alten
                          Inline-SVG-Werte 1:1 → pixelgleich).
@@ -87,7 +88,6 @@ function PremiumBackgroundBase({ variant = "dark" }) {
   return (
     <div className={`pbg pbg${sfx}`} aria-hidden="true">
       <div className="pbg-grad" />
-      <span className="pbg-glow g1" /><span className="pbg-glow g2" /><span className="pbg-glow g3" />
       <div className="pbg-dots" />
       <svg className="pbg-routes" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
         <defs>
@@ -97,9 +97,6 @@ function PremiumBackgroundBase({ variant = "dark" }) {
           <linearGradient id={`pgLine${sfx}`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor={v.line[0]} stopOpacity="0" /><stop offset="0.5" stopColor={v.line[1]} stopOpacity={v.lineMid} /><stop offset="1" stopColor={v.line[2]} stopOpacity="0" />
           </linearGradient>
-          <filter id={`pgGlow${sfx}`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
         </defs>
         <g className="pbg-lines" fill="none" stroke={`url(#pgLine${sfx})`} strokeWidth="1.6" strokeDasharray="3 9" strokeLinecap="round">
           <path d="M120 760 C 360 560, 560 600, 820 430" />
@@ -112,18 +109,9 @@ function PremiumBackgroundBase({ variant = "dark" }) {
           {nodes.map(([x, y], i) => (
             <g key={i} transform={`translate(${x},${y})`}>
               <circle r="26" fill={`url(#pgNode${sfx})`} className="pbg-halo" />
-              <circle r="3.4" fill={v.core} filter={`url(#pgGlow${sfx})`} />
-              <circle r="7" fill="none" stroke={v.ring} strokeWidth="1" opacity="0.5" className="pbg-ring" />
+              <circle r="3.4" fill={v.core} />
             </g>
           ))}
-        </g>
-        <g className="pbg-parcels" fill={v.parcel}>
-          <rect x="-4" y="-4" width="8" height="8" rx="2">
-            <animateMotion dur="18s" repeatCount="indefinite" rotate="auto" path="M120 760 C 360 560, 560 600, 820 430 C 1040 300, 1180 360, 1470 210" />
-          </rect>
-          <rect x="-4" y="-4" width="8" height="8" rx="2">
-            <animateMotion dur="24s" begin="-8s" repeatCount="indefinite" rotate="auto" path="M180 300 C 420 360, 620 260, 900 340 C 1160 410, 1280 620, 1500 640" />
-          </rect>
         </g>
       </svg>
       <div className="pbg-glyphs">
@@ -131,7 +119,6 @@ function PremiumBackgroundBase({ variant = "dark" }) {
           <span className={`pbg-glyph ${g.cls}`} key={g.cls}><Glyph n={g.n} /></span>
         ))}
       </div>
-      <div className="pbg-noise" />
       <div className="pbg-vig" />
     </div>
   );
@@ -140,5 +127,6 @@ function PremiumBackgroundBase({ variant = "dark" }) {
 // Rein präsentational, nur eine primitive `variant`-Prop, kein State/Context/
 // Effekt → React.memo vermeidet die Reconciliation dieses großen SVG-/Layer-
 // Baums bei jedem übergeordneten Render (z. B. Formulareingaben, Preis-Slider),
-// solange sich `variant` nicht ändert. Struktur/SVG/CSS unverändert.
+// solange sich `variant` nicht ändert. Der Baum ist rein statisch — keine
+// Animation, kein SMIL, kein will-change; die öffentliche API (variant) bleibt.
 export const PremiumBackground = React.memo(PremiumBackgroundBase);

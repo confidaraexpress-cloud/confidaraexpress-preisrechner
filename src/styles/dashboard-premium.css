@@ -675,15 +675,21 @@
    Premium-Farbwelt angepasst (dunklere, gesättigte Blautöne statt heller Navy-
    on-Dark-Werte). KEINE dunkle Navy-Basis: der bestehende
    .dashboard-soft-premium .main-content-Verlauf bleibt die Grundfarbe und
-   scheint durch die halbtransparenten Layer. Wiederverwendete Keyframes:
-   ppGlow1/2/3, ppDash, ppHalo, ppRing, ppFloat (global, weiter unten definiert).
+   scheint durch die halbtransparenten Layer. Diese Atmosphäre ist jetzt
+   vollständig statisch (keine Animation, kein SMIL, keine Glow-Blobs).
    ════════════════════════════════════════════════════════════════════════ */
 .pbg-soft { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.pbg-soft .pbg-grad { position:absolute; inset:0; background:radial-gradient(900px 600px at 50% 120%, rgba(56,189,248,.14), transparent 70%); }
-.pbg-soft .pbg-glow { position:absolute; border-radius:50%; filter:blur(60px); opacity:.5; will-change:transform; }
-.pbg-soft .pbg-glow.g1 { width:780px; height:780px; left:-220px; top:-240px; background:rgba(56,189,248,.24); animation:ppGlow1 26s ease-in-out infinite alternate; }
-.pbg-soft .pbg-glow.g2 { width:720px; height:720px; right:-240px; top:6%; background:rgba(96,165,250,.20); animation:ppGlow2 32s ease-in-out infinite alternate; }
-.pbg-soft .pbg-glow.g3 { width:900px; height:640px; left:28%; bottom:-320px; background:rgba(37,99,235,.15); animation:ppGlow3 38s ease-in-out infinite alternate; }
+/* Statische Farbtiefe: die früheren drei animierten Glow-Blobs (blur60 +
+   will-change) sind als ruhige radiale Verläufe in den Grund gelegt — gleiche
+   Farbidentität/Regionen, weich auslaufend, ohne Blur-DOM/Compositor-Layer. */
+.pbg-soft .pbg-grad {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(820px 820px at -4% -8%, rgba(56,189,248,.14), transparent 60%),
+    radial-gradient(760px 760px at 104% 8%, rgba(96,165,250,.11), transparent 60%),
+    radial-gradient(940px 680px at 34% 118%, rgba(37,99,235,.09), transparent 62%),
+    radial-gradient(900px 600px at 50% 120%, rgba(56,189,248,.10), transparent 70%);
+}
 .pbg-soft .pbg-dots {
   position:absolute; inset:0; opacity:.6;
   background-image:radial-gradient(rgba(37,99,235,.10) 1px, transparent 1.6px); background-size:46px 46px;
@@ -691,27 +697,16 @@
           mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
 }
 .pbg-soft .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.85; }
-.pbg-soft .pbg-lines path { animation:ppDash 3.2s linear infinite; }
-.pbg-soft .pbg-halo { opacity:.4; animation:ppHalo 5s ease-in-out infinite; }
-.pbg-soft .pbg-ring { transform-box:fill-box; transform-origin:center; animation:ppRing 5s ease-out infinite; }
-.pbg-soft .pbg-nodes g:nth-child(2n) .pbg-halo { animation-delay:-2s; }
-.pbg-soft .pbg-nodes g:nth-child(2n) .pbg-ring { animation-delay:-1.6s; }
-.pbg-soft .pbg-nodes g:nth-child(3n) .pbg-halo { animation-delay:-3.4s; }
-.pbg-soft .pbg-nodes g:nth-child(3n) .pbg-ring { animation-delay:-3s; }
-.pbg-soft .pbg-parcels rect { filter:drop-shadow(0 0 6px rgba(37,99,235,.55)); }
+.pbg-soft .pbg-halo { opacity:.4; }
 .pbg-soft .pbg-glyphs { position:absolute; inset:0; }
-.pbg-soft .pbg-glyph { position:absolute; color:rgba(37,99,235,.07); filter:blur(.4px); animation:ppFloat 22s ease-in-out infinite; }
+.pbg-soft .pbg-glyph { position:absolute; color:rgba(37,99,235,.07); filter:blur(.4px); }
 .pbg-soft .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-soft .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(37,99,235,.09); animation-delay:0s;   }
-.pbg-soft .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(37,99,235,.06); animation-delay:-6s;  }
-.pbg-soft .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(37,99,235,.09); animation-delay:-3s;  }
-.pbg-soft .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(37,99,235,.07); animation-delay:-11s; }
-.pbg-soft .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(37,99,235,.09); animation-delay:-8s;  }
-.pbg-soft .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(37,99,235,.06); animation-delay:-14s; }
-.pbg-soft .pbg-noise {
-  position:absolute; inset:0; opacity:.03; mix-blend-mode:soft-light;
-  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
-}
+.pbg-soft .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(37,99,235,.09); }
+.pbg-soft .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(37,99,235,.06); }
+.pbg-soft .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(37,99,235,.09); }
+.pbg-soft .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(37,99,235,.07); }
+.pbg-soft .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(37,99,235,.09); }
+.pbg-soft .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(37,99,235,.06); }
 .pbg-soft .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 62%, rgba(11,31,77,.07) 100%); }
 
 /* Inhalt der Soft-Premium-Seiten über die fixe Atmosphäre (.pbg-soft, z-index:0)
@@ -728,14 +723,8 @@
    schalten, damit die Soft-Premium-Grundfarbe + Atmosphäre durchscheinen. */
 .dashboard-soft-premium .page-with-navbar { background: transparent; }
 
-/* Reduced Motion: Ambient/Bewegung aus, driftende Pakete ausblenden. Die
-   Blob-Selektoren .g1/.g2/.g3 werden explizit aufgeführt, damit die
-   Abschaltung ihre Spezifität (0,3,0) erreicht und die Drift wirklich stoppt. */
-@media (prefers-reduced-motion: reduce) {
-  .pbg-soft .pbg-glow.g1, .pbg-soft .pbg-glow.g2, .pbg-soft .pbg-glow.g3,
-  .pbg-soft .pbg-lines path, .pbg-soft .pbg-halo, .pbg-soft .pbg-ring, .pbg-soft .pbg-glyph { animation:none; }
-  .pbg-soft .pbg-parcels { display:none; }
-}
+/* Reduced-Motion-Block entfällt: die .pbg-soft-Atmosphäre ist jetzt vollständig
+   statisch (keine Animation, kein SMIL, keine driftenden Pakete mehr). */
 
 /* ════════════════════════════════════════════════════════════════════════
    PREMIUM-ATMOSPHÄRE · Neutral-Variante (+ Neue Sendung / Preisrechner)
@@ -747,8 +736,8 @@
    Markenfamilie) plus weiche weiße Glanzpunkte für Tiefe. Keine Navy-Basis der
    Übersicht, kein Soft-Blau der Sendungen/Rechnungen. Die #DCDCDC-Grundfarbe
    liegt auf .dashboard-neutral-premium .main-content und scheint durch die
-   halbtransparenten Layer. Wiederverwendete Keyframes: ppGlow1/2/3, ppDash,
-   ppHalo, ppRing, ppFloat.
+   halbtransparenten Layer. Diese Atmosphäre ist jetzt vollständig statisch
+   (keine Animation, kein SMIL, keine Glow-Blobs).
 
    Gesetzt von DashboardPage.jsx (page === "new") bzw. DashboardLayout.jsx
    (Preisrechner) als .dashboard-neutral-premium auf .app-shell.
@@ -780,11 +769,16 @@
 .dashboard-neutral-premium .legal-links { position:relative; z-index:1; }
 
 .pbg-neutral { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.pbg-neutral .pbg-grad { position:absolute; inset:0; background:radial-gradient(900px 600px at 50% 120%, rgba(100,116,139,.10), transparent 70%); }
-.pbg-neutral .pbg-glow { position:absolute; border-radius:50%; filter:blur(60px); opacity:.5; will-change:transform; }
-.pbg-neutral .pbg-glow.g1 { width:780px; height:780px; left:-220px; top:-240px; background:rgba(255,255,255,.5); animation:ppGlow1 26s ease-in-out infinite alternate; }
-.pbg-neutral .pbg-glow.g2 { width:720px; height:720px; right:-240px; top:6%; background:rgba(148,163,184,.20); animation:ppGlow2 32s ease-in-out infinite alternate; }
-.pbg-neutral .pbg-glow.g3 { width:900px; height:640px; left:28%; bottom:-320px; background:rgba(100,116,139,.16); animation:ppGlow3 38s ease-in-out infinite alternate; }
+/* Statische Farbtiefe (siehe .pbg-soft): Glow-Blobs → ruhige radiale Verläufe.
+   Auf #DCDCDC bewusst subtil (weiches oberes Weiß + dezente Slate-Ecken). */
+.pbg-neutral .pbg-grad {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(820px 820px at -4% -8%, rgba(255,255,255,.24), transparent 62%),
+    radial-gradient(760px 760px at 104% 8%, rgba(148,163,184,.10), transparent 62%),
+    radial-gradient(940px 680px at 34% 118%, rgba(100,116,139,.09), transparent 62%),
+    radial-gradient(900px 600px at 50% 120%, rgba(100,116,139,.07), transparent 70%);
+}
 .pbg-neutral .pbg-dots {
   position:absolute; inset:0; opacity:.55;
   background-image:radial-gradient(rgba(71,85,105,.10) 1px, transparent 1.6px); background-size:46px 46px;
@@ -792,36 +786,20 @@
           mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
 }
 .pbg-neutral .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.8; }
-.pbg-neutral .pbg-lines path { animation:ppDash 3.2s linear infinite; }
-.pbg-neutral .pbg-halo { opacity:.4; animation:ppHalo 5s ease-in-out infinite; }
-.pbg-neutral .pbg-ring { transform-box:fill-box; transform-origin:center; animation:ppRing 5s ease-out infinite; }
-.pbg-neutral .pbg-nodes g:nth-child(2n) .pbg-halo { animation-delay:-2s; }
-.pbg-neutral .pbg-nodes g:nth-child(2n) .pbg-ring { animation-delay:-1.6s; }
-.pbg-neutral .pbg-nodes g:nth-child(3n) .pbg-halo { animation-delay:-3.4s; }
-.pbg-neutral .pbg-nodes g:nth-child(3n) .pbg-ring { animation-delay:-3s; }
-.pbg-neutral .pbg-parcels rect { filter:drop-shadow(0 0 6px rgba(51,65,85,.5)); }
+.pbg-neutral .pbg-halo { opacity:.4; }
 .pbg-neutral .pbg-glyphs { position:absolute; inset:0; }
-.pbg-neutral .pbg-glyph { position:absolute; color:rgba(71,85,105,.07); filter:blur(.4px); animation:ppFloat 22s ease-in-out infinite; }
+.pbg-neutral .pbg-glyph { position:absolute; color:rgba(71,85,105,.07); filter:blur(.4px); }
 .pbg-neutral .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-neutral .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(71,85,105,.09); animation-delay:0s;   }
-.pbg-neutral .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(71,85,105,.06); animation-delay:-6s;  }
-.pbg-neutral .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(71,85,105,.09); animation-delay:-3s;  }
-.pbg-neutral .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(71,85,105,.07); animation-delay:-11s; }
-.pbg-neutral .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(71,85,105,.09); animation-delay:-8s;  }
-.pbg-neutral .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(71,85,105,.06); animation-delay:-14s; }
-.pbg-neutral .pbg-noise {
-  position:absolute; inset:0; opacity:.035; mix-blend-mode:soft-light;
-  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
-}
+.pbg-neutral .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(71,85,105,.09); }
+.pbg-neutral .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(71,85,105,.06); }
+.pbg-neutral .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(71,85,105,.09); }
+.pbg-neutral .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(71,85,105,.07); }
+.pbg-neutral .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(71,85,105,.09); }
+.pbg-neutral .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(71,85,105,.06); }
 .pbg-neutral .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 62%, rgba(51,65,85,.09) 100%); }
 
-/* Reduced Motion (analog Soft): alle Bewegungen aus, Pakete ausblenden;
-   .g1/.g2/.g3 explizit (Spezifität 0,3,0), damit auch die Blobs stoppen. */
-@media (prefers-reduced-motion: reduce) {
-  .pbg-neutral .pbg-glow.g1, .pbg-neutral .pbg-glow.g2, .pbg-neutral .pbg-glow.g3,
-  .pbg-neutral .pbg-lines path, .pbg-neutral .pbg-halo, .pbg-neutral .pbg-ring, .pbg-neutral .pbg-glyph { animation:none; }
-  .pbg-neutral .pbg-parcels { display:none; }
-}
+/* Reduced-Motion-Block entfällt: die .pbg-neutral-Atmosphäre ist jetzt
+   vollständig statisch. */
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  PROFILE (Mein Profil) — eigener Premium-Scope, losgelöst von Sendungen/ */
@@ -1171,15 +1149,19 @@
    über .dashboard-profile-premium .main-content, Violett ~#473C8B und Blau
    ~#436EEE als Node-/Linien-/Glow-Akzente, dazu ein helles Off-White-/
    Lavendel-Licht nur an den hellsten Punkten — Node-Kern, Parcels). Bewusst
-   KEIN Bezug zur Übersicht-Palette. Wiederverwendete Keyframes: ppGlow1/2/3,
-   ppDash, ppHalo, ppRing, ppFloat (global, weiter unten definiert).
+   KEIN Bezug zur Übersicht-Palette. Diese Atmosphäre ist jetzt vollständig
+   statisch (keine Animation, kein SMIL, keine Glow-Blobs).
    ════════════════════════════════════════════════════════════════════════ */
 .pbg-profile { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.pbg-profile .pbg-grad { position:absolute; inset:0; background:radial-gradient(900px 600px at 50% 120%, rgba(67,110,238,.16), transparent 70%); }
-.pbg-profile .pbg-glow { position:absolute; border-radius:50%; filter:blur(60px); opacity:.5; will-change:transform; }
-.pbg-profile .pbg-glow.g1 { width:780px; height:780px; left:-220px; top:-240px; background:rgba(67,110,238,.38); animation:ppGlow1 26s ease-in-out infinite alternate; }
-.pbg-profile .pbg-glow.g2 { width:720px; height:720px; right:-240px; top:6%; background:rgba(71,60,139,.34); animation:ppGlow2 32s ease-in-out infinite alternate; }
-.pbg-profile .pbg-glow.g3 { width:900px; height:640px; left:28%; bottom:-320px; background:rgba(67,110,238,.28); animation:ppGlow3 38s ease-in-out infinite alternate; }
+/* Statische Farbtiefe (siehe .pbg-soft): Glow-Blobs → ruhige radiale Verläufe. */
+.pbg-profile .pbg-grad {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(820px 820px at -4% -8%, rgba(67,110,238,.20), transparent 60%),
+    radial-gradient(760px 760px at 104% 8%, rgba(71,60,139,.18), transparent 60%),
+    radial-gradient(940px 680px at 34% 118%, rgba(67,110,238,.15), transparent 62%),
+    radial-gradient(900px 600px at 50% 120%, rgba(67,110,238,.12), transparent 70%);
+}
 .pbg-profile .pbg-dots {
   position:absolute; inset:0; opacity:.55;
   background-image:radial-gradient(rgba(230,225,250,.16) 1px, transparent 1.6px); background-size:46px 46px;
@@ -1187,34 +1169,20 @@
           mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
 }
 .pbg-profile .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.85; }
-.pbg-profile .pbg-lines path { animation:ppDash 3.2s linear infinite; }
-.pbg-profile .pbg-halo { opacity:.5; animation:ppHalo 5s ease-in-out infinite; }
-.pbg-profile .pbg-ring { transform-box:fill-box; transform-origin:center; animation:ppRing 5s ease-out infinite; }
-.pbg-profile .pbg-nodes g:nth-child(2n) .pbg-halo { animation-delay:-2s; }
-.pbg-profile .pbg-nodes g:nth-child(2n) .pbg-ring { animation-delay:-1.6s; }
-.pbg-profile .pbg-nodes g:nth-child(3n) .pbg-halo { animation-delay:-3.4s; }
-.pbg-profile .pbg-nodes g:nth-child(3n) .pbg-ring { animation-delay:-3s; }
-.pbg-profile .pbg-parcels rect { filter:drop-shadow(0 0 6px rgba(231,225,251,.9)); }
+.pbg-profile .pbg-halo { opacity:.5; }
 .pbg-profile .pbg-glyphs { position:absolute; inset:0; }
-.pbg-profile .pbg-glyph { position:absolute; color:rgba(67,110,238,.14); filter:blur(.4px); animation:ppFloat 22s ease-in-out infinite; }
+.pbg-profile .pbg-glyph { position:absolute; color:rgba(67,110,238,.14); filter:blur(.4px); }
 .pbg-profile .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-profile .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(67,110,238,.16); animation-delay:0s;   }
-.pbg-profile .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(67,110,238,.12); animation-delay:-6s;  }
-.pbg-profile .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(67,110,238,.16); animation-delay:-3s;  }
-.pbg-profile .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(67,110,238,.13); animation-delay:-11s; }
-.pbg-profile .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(67,110,238,.16); animation-delay:-8s;  }
-.pbg-profile .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(67,110,238,.12); animation-delay:-14s; }
-.pbg-profile .pbg-noise {
-  position:absolute; inset:0; opacity:.04; mix-blend-mode:soft-light;
-  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
-}
+.pbg-profile .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(67,110,238,.16); }
+.pbg-profile .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(67,110,238,.12); }
+.pbg-profile .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(67,110,238,.16); }
+.pbg-profile .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(67,110,238,.13); }
+.pbg-profile .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(67,110,238,.16); }
+.pbg-profile .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(67,110,238,.12); }
 .pbg-profile .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 58%, rgba(6,8,28,.55) 100%); }
 
-@media (prefers-reduced-motion: reduce) {
-  .pbg-profile .pbg-glow.g1, .pbg-profile .pbg-glow.g2, .pbg-profile .pbg-glow.g3,
-  .pbg-profile .pbg-lines path, .pbg-profile .pbg-halo, .pbg-profile .pbg-ring, .pbg-profile .pbg-glyph { animation:none; }
-  .pbg-profile .pbg-parcels { display:none; }
-}
+/* Reduced-Motion-Block entfällt: die .pbg-profile-Atmosphäre ist jetzt
+   vollständig statisch. */
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
@@ -2898,7 +2866,9 @@
   background:radial-gradient(circle at 40% 35%, #6ff0c0, var(--green) 70%);
   box-shadow:0 0 8px 1px rgba(52,211,153,.8);
 }
-.ce-live::after { content:''; position:absolute; inset:0; border-radius:50%; background:var(--green); opacity:.5; animation:ppLive 3.4s ease-in-out infinite; }
+/* Live-Indikator ist jetzt statisch: der grüne Kernpunkt (.ce-live, oben, inkl.
+   box-shadow-Glow) trägt den Status weiterhin eindeutig — der frühere pulsierende
+   ::after-Ring (ppLive) entfällt. Gleiche Farbe, gleiche semantische Bedeutung. */
 .pp-medal {
   display:grid; place-items:center; border-radius:50%; flex-shrink:0; color:var(--mc);
   background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.14), rgba(120,160,255,.05) 72%);
@@ -3005,14 +2975,20 @@
     radial-gradient(1200px 700px at 82% -8%, rgba(30,60,150,.35), transparent 60%),
     radial-gradient(1000px 800px at -6% 40%, rgba(20,42,110,.28), transparent 62%),
     linear-gradient(180deg, #071022 0%, #04091a 60%, #030713 100%);
-  background-attachment: fixed; color:var(--ink1);
+  color:var(--ink1);
 }
 .ce-dark .pbg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-.ce-dark .pbg-grad { position:absolute; inset:0; background:radial-gradient(900px 600px at 50% 120%, rgba(40,70,150,.18), transparent 70%); }
-.ce-dark .pbg-glow { position:absolute; border-radius:50%; filter:blur(60px); opacity:.55; will-change:transform; }
-.ce-dark .pbg-glow.g1 { width:780px; height:780px; left:-220px; top:-240px; background:rgba(46,92,255,.42); animation:ppGlow1 26s ease-in-out infinite alternate; }
-.ce-dark .pbg-glow.g2 { width:720px; height:720px; right:-240px; top:6%; background:rgba(90,80,220,.32); animation:ppGlow2 32s ease-in-out infinite alternate; }
-.ce-dark .pbg-glow.g3 { width:900px; height:640px; left:28%; bottom:-320px; background:rgba(30,80,200,.30); animation:ppGlow3 38s ease-in-out infinite alternate; }
+/* Statische Farbtiefe (siehe .pbg-soft): die früheren drei animierten Glow-Blobs
+   (blur60 + will-change) als ruhige radiale Verläufe im Grund — gleiche Navy-/
+   Blau-/Violett-Identität, ohne Blur-DOM/Compositor-Layer. */
+.ce-dark .pbg-grad {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(820px 820px at -4% -8%, rgba(46,92,255,.24), transparent 60%),
+    radial-gradient(760px 760px at 104% 8%, rgba(90,80,220,.18), transparent 60%),
+    radial-gradient(940px 680px at 34% 118%, rgba(30,80,200,.17), transparent 62%),
+    radial-gradient(900px 600px at 50% 120%, rgba(40,70,150,.16), transparent 70%);
+}
 .ce-dark .pbg-dots {
   position:absolute; inset:0; opacity:.5;
   background-image:radial-gradient(rgba(140,170,255,.16) 1px, transparent 1.6px); background-size:46px 46px;
@@ -3020,27 +2996,16 @@
           mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
 }
 .ce-dark .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.9; }
-.ce-dark .pbg-lines path { animation:ppDash 3.2s linear infinite; }
-.ce-dark .pbg-halo { opacity:.5; animation:ppHalo 5s ease-in-out infinite; }
-.ce-dark .pbg-ring { transform-box:fill-box; transform-origin:center; animation:ppRing 5s ease-out infinite; }
-.ce-dark .pbg-nodes g:nth-child(2n) .pbg-halo { animation-delay:-2s; }
-.ce-dark .pbg-nodes g:nth-child(2n) .pbg-ring { animation-delay:-1.6s; }
-.ce-dark .pbg-nodes g:nth-child(3n) .pbg-halo { animation-delay:-3.4s; }
-.ce-dark .pbg-nodes g:nth-child(3n) .pbg-ring { animation-delay:-3s; }
-.ce-dark .pbg-parcels rect { filter:drop-shadow(0 0 6px rgba(150,190,255,.9)); }
+.ce-dark .pbg-halo { opacity:.5; }
 .ce-dark .pbg-glyphs { position:absolute; inset:0; }
-.ce-dark .pbg-glyph { position:absolute; color:rgba(120,160,255,.14); filter:blur(.4px); animation:ppFloat 22s ease-in-out infinite; }
+.ce-dark .pbg-glyph { position:absolute; color:rgba(120,160,255,.14); filter:blur(.4px); }
 .ce-dark .pbg-glyph svg { width:100%; height:100%; display:block; }
-.ce-dark .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(120,160,255,.16); animation-delay:0s;   }
-.ce-dark .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(120,160,255,.12); animation-delay:-6s;  }
-.ce-dark .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(120,160,255,.16); animation-delay:-3s;  }
-.ce-dark .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(120,160,255,.13); animation-delay:-11s; }
-.ce-dark .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(120,160,255,.16); animation-delay:-8s;  }
-.ce-dark .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(120,160,255,.12); animation-delay:-14s; }
-.ce-dark .pbg-noise {
-  position:absolute; inset:0; opacity:.045; mix-blend-mode:soft-light;
-  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="180" height="180" filter="url(%23n)" opacity="0.6"/></svg>');
-}
+.ce-dark .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(120,160,255,.16); }
+.ce-dark .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(120,160,255,.12); }
+.ce-dark .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(120,160,255,.16); }
+.ce-dark .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(120,160,255,.13); }
+.ce-dark .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(120,160,255,.16); }
+.ce-dark .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(120,160,255,.12); }
 .ce-dark .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 58%, rgba(2,6,16,.55) 100%); }
 
 /* ══════════ §16 Main + Header (Hero) ══════════ */
@@ -3174,14 +3139,10 @@
 .ce-dark .hamburger-btn { color:var(--ink2); }
 
 /* ══════════ §12 Keyframes ══════════ */
-@keyframes ppGlow1 { from { transform:translate3d(0,0,0) scale(1); } to { transform:translate3d(60px,40px,0) scale(1.08); } }
-@keyframes ppGlow2 { from { transform:translate3d(0,0,0) scale(1); } to { transform:translate3d(-50px,36px,0) scale(1.06); } }
-@keyframes ppGlow3 { from { transform:translate3d(0,0,0) scale(1); } to { transform:translate3d(44px,-38px,0) scale(1.1); } }
-@keyframes ppDash { to { stroke-dashoffset:-48; } }
-@keyframes ppHalo { 0%,100% { opacity:.5; } 50% { opacity:.95; } }
-@keyframes ppRing { from { transform:scale(1); opacity:.5; } to { transform:scale(3.2); opacity:0; } }
-@keyframes ppFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-22px); } }
-@keyframes ppLive { from { transform:scale(1); opacity:.5; } to { transform:scale(3); opacity:0; } }
+/* Die früheren PremiumBackground-/Live-Keyframes ppGlow1/2/3, ppDash, ppHalo,
+   ppRing, ppFloat und ppLive wurden entfernt — die Atmosphäre ist jetzt
+   vollständig statisch (Slice: PremiumBackground statisch). Keine .pbg-Regel und
+   kein .ce-live::after referenziert sie mehr. */
 
 /* ══════════ §18 Responsive ══════════ */
 @media (max-width:1279px) {
@@ -3210,8 +3171,5 @@
   .ce-dark .pp-actions { flex-wrap:wrap; }
 }
 
-/* ══════════ §12/§21 Reduced-Motion: Ambient aus, Pakete ausblenden ══════════ */
-@media (prefers-reduced-motion: reduce) {
-  .ce-dark .pbg-glow, .ce-dark .pbg-lines path, .ce-dark .pbg-halo, .ce-dark .pbg-ring, .ce-dark .pbg-glyph, .ce-live::after { animation:none; }
-  .ce-dark .pbg-parcels { display:none; }
-}
+/* Reduced-Motion-Block entfällt: die .ce-dark-Atmosphäre und der Live-Indikator
+   sind jetzt vollständig statisch (keine Ambient-Animation, keine Pakete). */

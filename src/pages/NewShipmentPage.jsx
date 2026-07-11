@@ -140,7 +140,6 @@ export default function NewShipmentPage() {
 
   // ── Results ──
   const [tariffs, setTariffs]       = useState([]);
-  const [filtered, setFiltered]     = useState([]);
   const [shipmentId, setShipmentId] = useState(null);
   // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
   // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
@@ -211,7 +210,6 @@ export default function NewShipmentPage() {
   const resetResults = () => {
     setHasResults(false);
     setTariffs([]);
-    setFiltered([]);
     setSelected(null);
     setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
     setCustoms(null);    // alte Zollentscheidung mit verwerfen
@@ -260,8 +258,13 @@ export default function NewShipmentPage() {
   // nach Unmount, keine hängende Antwort).
   useEffect(() => () => { if (calcAbort.current) calcAbort.current.abort(); }, []);
 
-  const applyFilter = useCallback((list) => {
-    let f = [...list];
+  // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
+  // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
+  // useEffect + setFiltered. Das spart pro Filteränderung (v. a. Preis-Slider)
+  // den zusätzlichen zweiten Render (setFiltered). Filterbedingungen und
+  // Reihenfolge sind unverändert; tariffs wird nie mutiert (Kopie via Spread).
+  const filtered = useMemo(() => {
+    let f = [...tariffs];
     if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
     // Client-Filter „Späteste Lieferzeit": spätestes Lieferdatum (deliveryDateMax →
     // deliveryDate). Tarife ohne Lieferdatum bleiben sichtbar (kein gültiges Angebot
@@ -271,10 +274,8 @@ export default function NewShipmentPage() {
       if (!dd) return true;
       return String(dd).split("T")[0] <= form.latestDeliveryDate;
     });
-    setFiltered(f);
-  }, [form.max_price, form.latestDeliveryDate]);
-
-  useEffect(() => { applyFilter(tariffs); }, [tariffs, applyFilter]);
+    return f;
+  }, [tariffs, form.max_price, form.latestDeliveryDate]);
 
   const sorted = React.useMemo(() => {
     if (sortMode === "recommended") return filtered;
@@ -385,14 +386,27 @@ export default function NewShipmentPage() {
     }
   };
 
-  const handleBook = (tariff) => {
+  // useCallback mit vollständigen Dependencies: Der Buchungs-Payload (tariff,
+  // shipmentId, form, customs) bleibt exakt gleich; die Referenz ist nur stabil,
+  // solange sich diese Werte nicht ändern → memoisierte OfferCards rendern durch
+  // onBook nicht unnötig neu (bei reinen Angebots-Interaktionen ändern sie sich
+  // nicht). setSelected ist als State-Setter stabil.
+  const handleBook = useCallback((tariff) => {
     setSelected(tariff);
     if (authed) {
       navigate("/booking", { state: { tariff, shipmentId, form, customs } });
     } else {
       navigate("/login");
     }
-  };
+  }, [authed, shipmentId, form, customs, navigate]);
+
+  // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es) →
+  // sonst bräche ein neues Objekt bei jedem Render den React.memo-Vergleich der
+  // OfferCards. Werte 1:1 wie zuvor.
+  const senderPrefill = useMemo(
+    () => ({ postCode: form.s_zip, city: form.s_city, country: form.s_country, street: form.s_street }),
+    [form.s_zip, form.s_city, form.s_country, form.s_street]
+  );
 
   // ── Address field helpers ──
   const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
@@ -790,7 +804,7 @@ export default function NewShipmentPage() {
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}
-            senderPrefill={{ postCode: form.s_zip, city: form.s_city, country: form.s_country, street: form.s_street }}
+            senderPrefill={senderPrefill}
           />
         )}
       </div>

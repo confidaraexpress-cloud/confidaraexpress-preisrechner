@@ -10,8 +10,8 @@ import { Icon } from "../ui/Icon";
 // Aufbau bewusst nah an JUMiNGO: Header + Erklärung, Eingabefelder oben, drei
 // Optionskarten nebeneinander mit Bulletpoints und Bedingungs-Link je Karte —
 // optisch aber im ConfidaraExpress-Premium-Stil, ohne JUMiNGO-Branding und ohne
-// fremde Logos. Die Bulletpoints sind bewusst übernommene statische Inhalte; der
-// Versicherer wird nur als Text gezeigt, wenn er aus echten Daten kommt (insProvider).
+// fremde Logos. Die Bulletpoints sind bewusst übernommene statische Inhalte. Ein
+// interner Versicherer-/Providername wird im Kundenfrontend bewusst NICHT gezeigt.
 
 // Statische Karteninhalte (bewusst übernommen). `info` → dezentes Info-Icon,
 // sonst grüner Haken. `href: null` → nicht-navigierender Info-Link (keine lokale
@@ -50,7 +50,6 @@ export function InsuranceModule({
   goodsValue, onGoodsValueChange, goodsValueError,
   insuranceValue, onInsuranceValueChange, insValueError,
   insContent, onInsContentChange, contentPlaceholder,
-  insProvider,
   repriceError, repricePending, repriceResult, repriceStale,
 }) {
   return (
@@ -158,7 +157,6 @@ export function InsuranceModule({
                   {copy.link.href
                     ? <Link to={copy.link.href} className="ins-card-cond-link">{copy.link.label}</Link>
                     : <span className="ins-card-cond-link ins-card-cond-link--static" role="note">{copy.link.label}</span>}
-                  {c.id !== "none" && insProvider && <span className="ins-card-provider">· {insProvider}</span>}
                 </span>
               )}
             </label>

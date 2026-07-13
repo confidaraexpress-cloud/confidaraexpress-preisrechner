@@ -137,8 +137,6 @@ export default function BookingPage() {
 
   // Read-only Anzeigewerte (Reprice-Response bevorzugt, sonst Tarif-Felder).
   const insDetails   = tariff?.insuranceDetails && typeof tariff.insuranceDetails === "object" ? tariff.insuranceDetails : null;
-  const insModel     = tariff?.insuranceModel   && typeof tariff.insuranceModel   === "object" ? tariff.insuranceModel   : null;
-  const insProvider  = asStr(repriceResult?.insuranceProvider) || asStr(insDetails?.insuranceProvider) || asStr(insModel?.provider);
   const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
   const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
 
@@ -479,7 +477,6 @@ export default function BookingPage() {
           tariffId:        tariff?.id,
           shipperTariffId: tariff?.shipper_tariff_id,
           carrier:         tariff?.carrier,
-          price_original:  tariff?.originalPrice,
           // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
           // Serverpreis als price_final senden — sonst der ursprüngliche
           // Tarifpreis. Der Versicherungspfad nutzt weiterhin tariff.finalPrice
@@ -774,7 +771,6 @@ export default function BookingPage() {
                     insContent={insContent}
                     onInsContentChange={setInsContent}
                     contentPlaceholder={insContentPlaceholder}
-                    insProvider={insProvider}
                     repriceError={repriceError}
                     repricePending={repricePending}
                     repriceResult={repriceResult}

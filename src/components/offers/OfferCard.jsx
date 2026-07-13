@@ -169,16 +169,14 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // nie erfundene Preise. Geldwerte über money() formatiert ("lt. Tarifdaten" —
   // keine Haftungsgarantie).
   const ins      = t.insuranceDetails && typeof t.insuranceDetails === "object" ? t.insuranceDetails : null;
-  const insModel = t.insuranceModel   && typeof t.insuranceModel   === "object" ? t.insuranceModel   : null;
   const posNum = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
-  const neStr  = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
   // Grunddeckung + indikative Zusatzversicherungspreise (brutto, vorausgewählt) —
-  // ausschließlich eindeutig benannte Preisfelder. Mehrdeutige insuranceModel-
-  // Regionalwerte werden bewusst NICHT als Preise interpretiert (keine Spekulation).
+  // ausschließlich eindeutig benannte Kunden-Preisfelder. Interne Supplier-/
+  // Versichererdaten (insuranceProvider, insuranceModel) werden im Kundenfrontend
+  // bewusst NICHT gelesen oder angezeigt.
   const insBaseCoverage  = posNum(ins?.insuranceValue);
   const insStandardPrice = posNum(ins?.extraInsurancePriceBruttoPreselect);
   const insPremiumPrice  = posNum(ins?.extraInsurancePremiumPriceBruttoPreselect);
-  const insProvider      = neStr(ins?.insuranceProvider) || neStr(insModel?.provider);
   // Versicherbarkeit nur aus expliziten Backend-Signalen ableiten (kein Raten).
   const insInsurable =
     t.insuranceAvailable === true || ins?.isInsurable === true ||
@@ -269,7 +267,6 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
               {insPremiumPrice != null && (
                 <DetailRow label="Premium" value={`ab ${money(insPremiumPrice)}`} />
               )}
-              {insProvider && <DetailRow label="Versicherer" value={insProvider} />}
               <p className="offer-insurance-note">
                 Zusatzversicherung ist derzeit nicht online auswählbar.
               </p>

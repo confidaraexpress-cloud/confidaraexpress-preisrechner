@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
-import { resolveCarrier } from "../../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { AccessPointFinder } from "./AccessPointFinder";
 
 const fmtDE = (iso) => {
@@ -207,7 +207,6 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
-  if (t.tariffName)                features.push({ icon: "cube",    label: "Tarif",                  value: t.tariffName, wide: true });
   if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
 
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
@@ -351,7 +350,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
 // löst weiterhin normal ein Re-Render genau dieser Karte aus. Voraussetzung für
 // den Nutzen: OffersList/Pages reichen stabile Callbacks & senderPrefill herein.
 function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill }) {
-  const { name: carrierName, logo: carrierLogo } = resolveCarrier(t.carrier);
+  const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
 
@@ -407,7 +406,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           <div className="offer-zone-1-main">
             <div className="offer-carrier-name">{carrierName}</div>
             <div className="offer-eta">{etaLabel}</div>
-            <div className="offer-service-type">{t.shippingModeLabel || t.tariffName || "Standardversand"}</div>
+            <div className="offer-service-type">{publicServiceName(t)}</div>
           </div>
         </div>
 

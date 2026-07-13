@@ -4,7 +4,7 @@ import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
-import { groupCarriers, isCarrierGroupSelected, toggleCarrierGroup } from "../utils/carrierMap";
+import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
 import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
@@ -99,9 +99,9 @@ export default function NewShipmentPage() {
   const [shippingModeOpen, setShippingModeOpen]     = useState(false);
   const [shippingDate, setShippingDate]             = useState(() => todayISO());
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
-  const [carrierFilters, setCarrierFilters]         = useState([]);
+  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState([]);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
-  const [availableCarriers, setAvailableCarriers]   = useState([]);
+  const [publicCarriers, setPublicCarriers]         = useState([]);
   const carrierRef = useRef(null);
 
   // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
@@ -166,16 +166,18 @@ export default function NewShipmentPage() {
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)             || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter)  || SHIPPING_MODE_OPTIONS[0];
 
-  const carrierGroups = useMemo(() => groupCarriers(availableCarriers), [availableCarriers]);
-  const selectedGroups = useMemo(
-    () => carrierGroups.filter(g => isCarrierGroupSelected(g, carrierFilters)),
-    [carrierGroups, carrierFilters]
+  // Filter-State enthält ausschließlich öffentliche IDs; die deduplizierte
+  // publicCarriers-Liste des Backends wird unverändert für die Chips verwendet.
+  const selectedPublicSet = useMemo(() => new Set(selectedPublicCarrierIds), [selectedPublicCarrierIds]);
+  const selectedLabels = useMemo(
+    () => publicCarriers.filter(pc => selectedPublicSet.has(pc.id)).map(publicCarrierChipLabel),
+    [publicCarriers, selectedPublicSet]
   );
 
   const carrierLabel =
-    selectedGroups.length === 0 ? "Alle Dienstleister" :
-    selectedGroups.length <= 2  ? selectedGroups.map(g => g.label).join(", ") :
-    `${selectedGroups.length} ausgewählt`;
+    selectedPublicCarrierIds.length === 0 ? "Alle Dienstleister" :
+    selectedLabels.length <= 2  ? selectedLabels.join(", ") :
+    `${selectedPublicCarrierIds.length} ausgewählt`;
 
   const upd = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
@@ -223,8 +225,8 @@ export default function NewShipmentPage() {
     if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
   };
 
-  const handleToggleCarrierGroup = (group) => {
-    setCarrierFilters(prev => toggleCarrierGroup(group, prev));
+  const handleTogglePublicCarrier = (id) => {
+    setSelectedPublicCarrierIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     resetResults();
   };
 
@@ -247,12 +249,9 @@ export default function NewShipmentPage() {
     };
   }, [carrierDropdownOpen]);
 
-  useEffect(() => {
-    apiFetch(`/api/jumingo/carriers`, { auth: true })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => { if (d.carriers?.length) setAvailableCarriers(d.carriers); })
-      .catch(() => {});
-  }, []);
+  // Der Versanddienst-Filter wird ausschließlich aus der publicCarriers-Liste der
+  // calculate-price-Antwort gespeist (öffentlicher Carrier-Vertrag). Vor der ersten
+  // Berechnung bleibt er bewusst leer (neutraler Hinweis) — keine Rohwert-Vorbefüllung.
 
   // Laufenden /calculate-price-Request beim Unmount abbrechen (kein setState
   // nach Unmount, keine hängende Antwort).
@@ -315,7 +314,7 @@ export default function NewShipmentPage() {
     length: form.length, width: form.width, height: form.height,
     s: [form.s_company, form.s_fullName, form.s_street, form.s_addition, form.s_zip, form.s_city, form.s_country, form.s_phone, form.s_email],
     r: [form.r_company, form.r_fullName, form.r_street, form.r_addition, form.r_zip, form.r_city, form.r_country, form.r_phone, form.r_email],
-    serviceFilter, shippingModeFilter, shippingDate, carrierFilters,
+    serviceFilter, shippingModeFilter, shippingDate, publicCarrierIds: selectedPublicCarrierIds,
   });
 
   const calculate = async () => {
@@ -349,7 +348,7 @@ export default function NewShipmentPage() {
           serviceFilter:      serviceFilter,
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
-          carrierFilters:     carrierFilters,
+          publicCarrierIds:   selectedPublicCarrierIds,
         })
       });
       if (seq !== calcSeq.current) return;                              // durch neueren Aufruf ersetzt
@@ -361,10 +360,14 @@ export default function NewShipmentPage() {
       if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
       if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen
       if (!r.ok) throw new Error(d.error || "Fehler bei Preisberechnung");
-      const newCarriers = d.availableCarriers || [];
-      setAvailableCarriers(newCarriers);
-      if (newCarriers.length > 0)
-        setCarrierFilters(prev => prev.filter(c => newCarriers.includes(c)));
+      // Öffentliche Carrier-Liste (deduplziert vom Backend) übernehmen; die
+      // bestehende Auswahl bleibt erhalten, auf noch verfügbare IDs gefiltert.
+      const newPublicCarriers = Array.isArray(d.publicCarriers) ? d.publicCarriers : [];
+      setPublicCarriers(newPublicCarriers);
+      if (newPublicCarriers.length > 0) {
+        const validIds = new Set(newPublicCarriers.map(pc => pc.id));
+        setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
+      }
       setTariffs(d.tariffs || []);
       setShipmentId(d.shipmentId);
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
@@ -543,8 +546,8 @@ export default function NewShipmentPage() {
                     <div className="service-filter-trigger-title">Versanddienst</div>
                     <div className="service-filter-trigger-val">{carrierLabel}</div>
                   </div>
-                  {selectedGroups.length > 0 && (
-                    <span className="carrier-badge">{selectedGroups.length}</span>
+                  {selectedPublicCarrierIds.length > 0 && (
+                    <span className="carrier-badge">{selectedPublicCarrierIds.length}</span>
                   )}
                 </div>
                 <div className={`service-filter-chevron ${carrierDropdownOpen ? "open" : ""}`}>
@@ -555,36 +558,37 @@ export default function NewShipmentPage() {
                 <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
                   {/* Multi-Select mit Premium-Radio-Optik (wie „Versandart"): runder
                       Auswahlkreis + Label. role="checkbox" behält die Mehrfachauswahl-
-                      Semantik; carrierFilters-Logik/-Werte bleiben unverändert. */}
+                      Semantik; Chip-Key = publicCarrier.id, Label = publicCarrier.name
+                      („other" → „Versanddienstleister"). */}
                   <button
                     type="button"
-                    className={`service-filter-option service-filter-option--radio ${carrierFilters.length === 0 ? "selected" : ""}`}
+                    className={`service-filter-option service-filter-option--radio ${selectedPublicCarrierIds.length === 0 ? "selected" : ""}`}
                     role="checkbox"
-                    aria-checked={carrierFilters.length === 0}
-                    onClick={() => { setCarrierFilters([]); resetResults(); }}
+                    aria-checked={selectedPublicCarrierIds.length === 0}
+                    onClick={() => { setSelectedPublicCarrierIds([]); resetResults(); }}
                   >
                     <span className="service-filter-radio" aria-hidden="true" />
                     <div className="service-filter-option-text">
                       <div className="service-filter-option-label">Alle Dienstleister</div>
                     </div>
                   </button>
-                  {carrierGroups.length === 0 ? (
+                  {publicCarriers.length === 0 ? (
                     <div className="carrier-empty-hint">Noch keine Versanddienstleister verfügbar</div>
                   ) : (
                     <>
                       <div className="carrier-divider" />
-                      {carrierGroups.map(group => (
+                      {publicCarriers.map(pc => (
                         <button
-                          key={group.label}
+                          key={pc.id}
                           type="button"
-                          className={`service-filter-option service-filter-option--radio ${isCarrierGroupSelected(group, carrierFilters) ? "selected" : ""}`}
+                          className={`service-filter-option service-filter-option--radio ${selectedPublicSet.has(pc.id) ? "selected" : ""}`}
                           role="checkbox"
-                          aria-checked={isCarrierGroupSelected(group, carrierFilters)}
-                          onClick={() => handleToggleCarrierGroup(group)}
+                          aria-checked={selectedPublicSet.has(pc.id)}
+                          onClick={() => handleTogglePublicCarrier(pc.id)}
                         >
                           <span className="service-filter-radio" aria-hidden="true" />
                           <div className="service-filter-option-text">
-                            <div className="service-filter-option-label">{group.label}</div>
+                            <div className="service-filter-option-label">{publicCarrierChipLabel(pc)}</div>
                           </div>
                         </button>
                       ))}

@@ -80,6 +80,25 @@ export function publicCarrierChipLabel(pc) {
   return (typeof pc.name === "string" && pc.name.trim()) ? pc.name.trim() : resolvePublicCarrier(pc.id).name;
 }
 
+// Neutraler, providerneutraler Abgabestellen-Text für Dropoff-Tarife. Quelle ist
+// AUSSCHLIESSLICH die kontrollierte publicCarrierId/-Name — NIE tariff.shopName/
+// carrier/tariffName und NICHT der Access-Point-Provider. Kein Text bei Pickup;
+// für generische/unbekannte/fehlende Carrier neutral „Paketshop".
+//   dropoff + ups         → „UPS Paketshop"
+//   dropoff + dhl         → „DHL Express Paketshop"
+//   dropoff + other/leer  → „Paketshop"
+//   pickup/kein dropoff   → null (kein Abgabetext)
+export function publicDropoffLabel(tariff) {
+  if (tariff?.serviceType !== "dropoff") return null;
+  const id = tariff?.publicCarrierId;
+  const meta = (id && id !== "other") ? PUBLIC_CARRIERS[id] : null;
+  if (!meta) return "Paketshop";
+  const name = (typeof tariff?.publicCarrierName === "string" && tariff.publicCarrierName.trim())
+    ? tariff.publicCarrierName.trim()
+    : meta.name;
+  return `${name} Paketshop`;
+}
+
 // ─── Access-Point / Paketshop-Provider-Adapter (Capability-Vertrag) ─────────
 // Übersetzt den providerneutralen Capability-Provider (tariff.accessPoint.provider:
 // "ups" | "dpd" | "dhl-express" | "gls" | null) in den technischen Code, den die

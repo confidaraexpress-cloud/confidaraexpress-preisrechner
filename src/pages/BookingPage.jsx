@@ -4,7 +4,7 @@ import { apiFetch, repriceInsurance } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
-import { publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../utils/carrierMap";
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
@@ -790,7 +790,7 @@ export default function BookingPage() {
                     <div className="booking-confirm-row">
                       <span className="text-sm text-muted">Serviceart</span>
                       <span className="text-sm font-bold booking-confirm-val">
-                        {tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}{tariff.shopName ? ` · ${tariff.shopName}` : ""}
+                        {tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}{publicDropoffLabel(tariff) ? ` · ${publicDropoffLabel(tariff)}` : ""}
                       </span>
                     </div>
                   )}

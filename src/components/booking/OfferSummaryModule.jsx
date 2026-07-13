@@ -1,12 +1,13 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
-import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 
 // Step 1 — „Ausgewähltes Angebot". Reine Darstellung des gewählten Tarifs,
 // unverändert aus BookingPage extrahiert. Keine Logik, keine State.
 export function OfferSummaryModule({ tariff }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
+  const dropoffLabel = publicDropoffLabel(tariff);
   return (
     <div className="calc-panel mb-16">
       <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
@@ -23,7 +24,7 @@ export function OfferSummaryModule({ tariff }) {
             {tariff.serviceType && (
               <div className="booking-service-info">
                 {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}
-                {tariff.shopName        && ` · ${tariff.shopName}`}
+                {dropoffLabel           && ` · ${dropoffLabel}`}
                 {tariff.pickupToday     && " · Abholung heute"}
                 {tariff.printerRequired && " · Drucker erforderlich"}
               </div>

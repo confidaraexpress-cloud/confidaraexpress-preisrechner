@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, commercialRequirementsMet,
-  isCommercialInvoiceStatusResolved, customsInvoiceReady,
+  isCommercialInvoiceStatusResolved, customsInvoiceFieldsValid, commercialInvoiceMutationBusy,
 } from "./customsInvoiceMode.mjs";
 
 const NON_COMMERCIAL = ["Gift", "Sample", "Return", "Personal", "Claim", "Temporary", "Relocation"];
@@ -76,25 +76,72 @@ test("idle/checking/uploading/deleting/error sind NICHT geklärt", () => {
     assert.equal(isCommercialInvoiceStatusResolved(s), false);
 });
 
-// ── customsInvoiceReady (kombinierte Buchbarkeit) ────────────────────────────
-test("Proforma + absent → bereit", () => {
-  assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: "absent" }), true);
+// ── customsInvoiceFieldsValid (fachliche Metadaten, dokument-UNABHÄNGIG) ──────
+// Kern der „PDF-optional"-Regel: der Dokumentstatus ist NICHT mehr Teil der
+// fachlichen Zollrechnungs-Gültigkeit. Nur Rechnungsart + Pflichtmetadaten zählen.
+test("Proforma → fachlich gültig (keine Zusatzpflicht, PDF irrelevant)", () => {
+  assert.equal(customsInvoiceFieldsValid({ mode: PROFORMA }), true);
+  assert.equal(customsInvoiceFieldsValid({ mode: PROFORMA, invoiceNumber: "", invoiceDateValid: false }), true);
 });
-test("Proforma + present → NICHT bereit (Dokument darf nicht verborgen sein)", () => {
-  assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: "present" }), false);
+test("Commercial + Nummer + gültiges Datum → fachlich gültig (auch OHNE PDF)", () => {
+  assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "RE-1", invoiceDateValid: true }), true);
 });
-test("Proforma + ungeklärter Status → NICHT bereit", () => {
-  for (const s of ["idle", "checking", "uploading", "deleting", "error"])
-    assert.equal(customsInvoiceReady({ mode: PROFORMA, docStatus: s }), false);
+test("Commercial ohne Rechnungsnummer → NICHT gültig", () => {
+  assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "", invoiceDateValid: true }), false);
+  assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "   ", invoiceDateValid: true }), false);
 });
-test("Commercial + present + Nummer + Datum → bereit", () => {
-  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "RE-1", invoiceDateValid: true }), true);
+test("Commercial ohne gültiges Rechnungsdatum → NICHT gültig", () => {
+  assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "RE-1", invoiceDateValid: false }), false);
 });
-test("Commercial + absent/ungeklärt → NICHT bereit", () => {
-  for (const s of ["absent", "idle", "checking", "uploading", "deleting", "error"])
-    assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: s, invoiceNumber: "RE-1", invoiceDateValid: true }), false);
+test("Dokumentstatus hat KEINEN Einfluss auf die fachliche Gültigkeit", () => {
+  // Die Funktion kennt den Dokumentstatus bewusst nicht → für jeden Status gleich.
+  for (const _s of ["absent", "present", "error", "checking", "idle", "uploading", "deleting"]) {
+    assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "RE-1", invoiceDateValid: true }), true);
+    assert.equal(customsInvoiceFieldsValid({ mode: COMMERCIAL, invoiceNumber: "", invoiceDateValid: true }), false);
+  }
 });
-test("Commercial + present ohne Nummer/ohne Datum → NICHT bereit", () => {
-  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "  ", invoiceDateValid: true }), false);
-  assert.equal(customsInvoiceReady({ mode: COMMERCIAL, docStatus: "present", invoiceNumber: "RE-1", invoiceDateValid: false }), false);
+
+// ── commercialInvoiceMutationBusy (nur echte Upload-/Löschmutation) ───────────
+test("Nur uploading/deleting gelten als laufende Dokument-Mutation", () => {
+  assert.equal(commercialInvoiceMutationBusy("uploading"), true);
+  assert.equal(commercialInvoiceMutationBusy("deleting"), true);
+});
+test("idle/checking/absent/present/error sind KEINE Mutation (blockieren nie)", () => {
+  for (const s of ["idle", "checking", "absent", "present", "error"])
+    assert.equal(commercialInvoiceMutationBusy(s), false);
+});
+
+// ── Kombinierte Buchbarkeit der Zollrechnungs-Dimension ──────────────────────
+// Bildet die neue BookingPage-Regel nach: fachlich gültig UND keine laufende
+// Mutation. (Warenpositionen/Exportgrund/HS-Code prüft BookingPage zusätzlich.)
+const invoiceBookable = (mode, status, invoiceNumber = "RE-1", invoiceDateValid = true) =>
+  customsInvoiceFieldsValid({ mode, invoiceNumber, invoiceDateValid }) && !commercialInvoiceMutationBusy(status);
+
+test("Handelsrechnung, vollständige Metadaten, status=absent → buchbar (kein PDF nötig)", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "absent"), true);
+});
+test("Handelsrechnung, vollständige Metadaten, status=present → buchbar", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "present"), true);
+});
+test("Handelsrechnung, vollständige Metadaten, status=error → buchbar (nicht blockierend)", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "error"), true);
+});
+test("Handelsrechnung, initialer status=checking/idle → buchbar (kein fachliches Blockieren)", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "checking"), true);
+  assert.equal(invoiceBookable(COMMERCIAL, "idle"), true);
+});
+test("Handelsrechnung, Rechnungsnummer fehlt → blockiert (unabhängig vom Status)", () => {
+  for (const s of ["absent", "present", "error", "checking"])
+    assert.equal(invoiceBookable(COMMERCIAL, s, "", true), false);
+});
+test("Handelsrechnung, Rechnungsdatum ungültig → blockiert", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "absent", "RE-1", false), false);
+});
+test("Aktive Mutation (uploading/deleting) → kurzfristig gegen Race gesperrt", () => {
+  assert.equal(invoiceBookable(COMMERCIAL, "uploading"), false);
+  assert.equal(invoiceBookable(COMMERCIAL, "deleting"), false);
+});
+test("Proforma ohne PDF → jederzeit buchbar (kein Dokumentstatus blockiert)", () => {
+  for (const s of ["absent", "checking", "idle", "error"])
+    assert.equal(invoiceBookable(PROFORMA, s, "", false), true);
 });

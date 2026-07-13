@@ -77,15 +77,21 @@ export function CustomsInvoiceModeSection({
         )}
       </fieldset>
 
-      {/* Autoritativer Dokumentstatus (beide Modi): geprüft/Fehler + manueller Retry.
-          absent/present sind geklärt und erzeugen hier keinen Block. */}
+      {/* Optionaler Dokumentstatus (beide Modi) — rein informativ und NICHT
+          blockierend: Die Handelsrechnungs-PDF ist optional, der Status ist nicht
+          Teil der fachlichen Buchbarkeit. Formulierungen suggerieren keine
+          PDF-Pflicht und behaupten keinen unbelegten Upload-Erfolg. */}
       {(ci.status === "checking" || ci.status === "error") && (
         <div className="ci-status-region" aria-live="polite">
           {ci.status === "checking" ? (
-            <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Der Status der Zollrechnung wird geprüft…</span>
+            <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Dokumentstatus wird geprüft … Sie können das Formular bereits ausfüllen.</span>
           ) : (
             <span className="ci-status ci-status-err">
-              {ci.message || "Der Status der Zollrechnung konnte nicht geprüft werden. Prüfen Sie den Status erneut."}
+              {ci.errorScope === "upload"
+                ? "Die PDF konnte nicht hochgeladen werden. Sie können es erneut versuchen oder ohne PDF fortfahren."
+                : ci.errorScope === "delete"
+                ? "Die Handelsrechnung konnte nicht entfernt werden. Bitte versuchen Sie es erneut."
+                : "Der Dokumentstatus konnte nicht geprüft werden. Sie können den Status erneut prüfen oder ohne PDF fortfahren."}
             </span>
           )}
           <button
@@ -169,7 +175,6 @@ export function CustomsInvoiceModeSection({
           status={ci.status}
           message={ci.message}
           messageType={ci.messageType}
-          requiredError={ci.requiredError}
           onFileSelected={ci.onFileSelected}
           onRemove={ci.onRemove}
         />

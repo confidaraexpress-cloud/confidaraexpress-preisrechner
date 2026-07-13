@@ -9,7 +9,7 @@ import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
-import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, isCommercialInvoiceStatusResolved, customsInvoiceReady } from "../utils/customsInvoiceMode";
+import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, customsInvoiceFieldsValid, commercialInvoiceMutationBusy } from "../utils/customsInvoiceMode";
 import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
@@ -342,29 +342,33 @@ export default function BookingPage() {
         ? "Bitte geben Sie das Rechnungsdatum an."
         : !invoiceDateValid ? "Bitte ein gültiges Datum (Format TT.MM.JJJJ) wählen." : "")
     : "";
-  // Zentrale Buchbarkeitsregel: Dokumentstatus muss GEKLÄRT sein (absent/present);
-  // proforma nur bei absent, commercial nur bei present + Nummer + gültigem Datum.
-  const customsInvoiceOk = customsInvoiceReady({
-    mode: invoiceMode, docStatus: ci.status, invoiceNumber: customsInvoiceNumber, invoiceDateValid,
+  // ── A. Fachliche Zollrechnungs-Metadaten (dokument-UNABHÄNGIG) ──────────────
+  // Die Handelsrechnungs-PDF ist optional; der Dokumentstatus ist NICHT Teil der
+  // fachlichen Gültigkeit. Proforma stellt keine Zusatzpflicht, commercial
+  // verlangt Rechnungsnummer + gültiges Datum (die PDF darf fehlen).
+  const customsInvoiceMetaValid = customsInvoiceFieldsValid({
+    mode: invoiceMode, invoiceNumber: customsInvoiceNumber, invoiceDateValid,
   });
-  // Statusabhängige Blockmeldung bei ungeklärtem Dokumentstatus (Weiter-Gate + doBook-Guard).
-  const customsStatusBlockMessage =
-    (ci.status === "idle" || ci.status === "checking") ? "Der Status der Zollrechnung wird geprüft." :
-    ci.status === "uploading" ? "Die Handelsrechnung wird hochgeladen." :
-    ci.status === "deleting"  ? "Die Handelsrechnung wird entfernt." :
-    ci.status === "error"     ? "Der Status der Zollrechnung konnte nicht geprüft werden. Prüfen Sie den Status erneut." :
+  // ── B. Optionale Dokument-MUTATION (Upload/Löschen läuft) ───────────────────
+  // Nur eine tatsächlich laufende Mutation schützt kurzfristig gegen einen Race
+  // (Doppel-Submit während Upload/Löschen). Nur im commercial-Modus möglich →
+  // Proforma wird nie durch einen Dokumentstatus blockiert. Initiales Loading
+  // (idle/checking) und ein Statusfehler (error) blockieren bewusst NICHT.
+  const commercialInvoiceBusy = commercialActive && commercialInvoiceMutationBusy(ci.status);
+  const customsInvoiceBusyMessage =
+    ci.status === "uploading" ? "Die Handelsrechnung wird noch hochgeladen. Bitte warten Sie einen Moment." :
+    ci.status === "deleting"  ? "Die Handelsrechnung wird noch entfernt. Bitte warten Sie einen Moment." :
     "";
-  // Fehlendes/unbestätigtes Dokument → klare Meldung im Uploadbereich (bei
-  // Weiter-/Buchungsversuch). Bei ungeklärtem Status übernimmt die Statusmeldung.
-  const commercialDocError = (customsShowErrors && commercialActive && ci.status === "absent")
-    ? "Bitte hinterlegen Sie eine gültige Handelsrechnung (PDF)."
-    : "";
-  const customsValid = !customsRequired || (
+  // Fachliche Zollformular-Gültigkeit (A): Exportgrund + Warenpositionen (inkl.
+  // HS-Code, wenn tarifbedingt erforderlich) + Rechnungsmetadaten. KEIN
+  // Dokumentstatus. Die kurzfristige Mutations-Sperre (B) ist bewusst getrennt.
+  const customsFieldsValid = !customsRequired || (
     !customsExportReasonError &&
     customsItems.length >= 1 &&
     customsItemErrors.every(e => Object.keys(e).length === 0) &&
-    customsInvoiceOk
+    customsInvoiceMetaValid
   );
+  const customsValid = customsFieldsValid && !commercialInvoiceBusy;
 
   const buildParty = (p) => {
     const f = bookingData?.form || {};
@@ -410,14 +414,16 @@ export default function BookingPage() {
       setError("Bitte aktualisieren Sie den Versicherungspreis, bevor Sie buchen.");
       return;
     }
-    // Bei zollpflichtiger Sendung erst buchen, wenn die Wareninhalt-Angaben
-    // vollständig UND der Dokumentstatus geklärt ist (dieselbe zentrale Regel wie
-    // das Weiter-Gate). Gilt auch bei direktem Funktionsaufruf → kein /book-Request.
+    // Bei zollpflichtiger Sendung erst buchen, wenn die FACHLICHEN Zollangaben
+    // vollständig sind (dieselbe zentrale Regel wie das Weiter-Gate). Der optionale
+    // Dokumentstatus (PDF) ist NICHT Teil dieser Prüfung; nur eine tatsächlich
+    // laufende Upload-/Löschmutation schützt kurzfristig gegen einen Race. Gilt auch
+    // bei direktem Funktionsaufruf → kein /book-Request.
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
       setError(
-        !isCommercialInvoiceStatusResolved(ci.status)
-          ? customsStatusBlockMessage
+        commercialInvoiceBusy
+          ? customsInvoiceBusyMessage
           : "Bitte vervollständigen Sie die Angaben zum Wareninhalt."
       );
       return;
@@ -629,11 +635,12 @@ export default function BookingPage() {
   const goToStep2 = () => {
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
-      // Ungeklärter Dokumentstatus (idle/checking/uploading/deleting/error) blockiert
-      // auch Proforma → statusabhängige Meldung; sonst generische Zollmeldung.
+      // Blockiert wird ausschließlich wegen unvollständiger FACHLICHER Zollangaben
+      // ODER einer aktuell laufenden Dokument-Mutation (Upload/Löschen). Ein
+      // fehlendes/ungeklärtes/fehlerhaftes Dokument blockiert NICHT (PDF optional).
       setError(
-        !isCommercialInvoiceStatusResolved(ci.status)
-          ? customsStatusBlockMessage
+        commercialInvoiceBusy
+          ? customsInvoiceBusyMessage
           : "Bitte vervollständigen Sie die Zollangaben, bevor Sie fortfahren."
       );
       return;
@@ -725,10 +732,10 @@ export default function BookingPage() {
                   status: ci.status,
                   message: ci.message,
                   messageType: ci.messageType,
+                  errorScope: ci.errorScope,
                   onFileSelected: ci.upload,
                   onRemove: ci.remove,
                   onRetryStatus: ci.refreshStatus,
-                  requiredError: commercialDocError,
                 }}
               />
             )}

@@ -21,6 +21,10 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(null); // "error" | "info" | null
+  // Herkunft des letzten Status-„error": "status" (Status-GET), "upload" oder
+  // "delete". Erlaubt der UI, den optionalen Dokumentfehler nicht-blockierend und
+  // korrekt zu formulieren (Statusprüfung vs. optionaler Upload). Kein Fachgate.
+  const [errorScope, setErrorScope] = useState(null); // "status" | "upload" | "delete" | null
 
   const mountedRef = useRef(true);
   const seqRef = useRef(0);
@@ -32,8 +36,8 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
   }, []);
 
   const live = (seq) => mountedRef.current && seq === seqRef.current;
-  const applyError = (code) => { setStatus("error"); setMessageType("error"); setMessage(commercialInvoiceErrorMessage(code)); };
-  const clearMsg = () => { setMessageType(null); setMessage(""); };
+  const applyError = (code, scope = "status") => { setStatus("error"); setMessageType("error"); setMessage(commercialInvoiceErrorMessage(code)); setErrorScope(scope); };
+  const clearMsg = () => { setMessageType(null); setMessage(""); setErrorScope(null); };
 
   // GET-Status laden. `notice` (optional) wird nach erfolgreichem Sync als
   // Info-Meldung gesetzt (z. B. „bereits hinterlegt" nach 409).
@@ -43,12 +47,12 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
     setStatus("checking"); clearMsg();
     let r;
     try { r = await getCommercialInvoiceStatus(shipmentId); }
-    catch { if (live(seq)) applyError("UPSTREAM_ERROR"); return; }
+    catch { if (live(seq)) applyError("UPSTREAM_ERROR", "status"); return; }
     if (!live(seq)) return;
     if (r.status === 401 || r.status === 403) return; // zentraler Auth-Redirect
     let d = {}; try { d = await r.json(); } catch { d = {}; }
     if (!live(seq)) return;
-    if (!r.ok) { applyError(pickErrorCode(d)); return; }
+    if (!r.ok) { applyError(pickErrorCode(d), "status"); return; }
     setStatus(d?.present === true ? "present" : "absent");
     if (opts.notice) { setMessageType("info"); setMessage(opts.notice); }
     else clearMsg();
@@ -74,7 +78,7 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
     setStatus("uploading"); clearMsg();
     let r;
     try { r = await uploadCommercialInvoice(shipmentId, file); }
-    catch { busyRef.current = false; if (live(seq)) applyError("UPSTREAM_ERROR"); return; }
+    catch { busyRef.current = false; if (live(seq)) applyError("UPSTREAM_ERROR", "upload"); return; }
     busyRef.current = false;
     if (!live(seq)) return;
     if (r.status === 401 || r.status === 403) return;
@@ -85,14 +89,14 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
       if (code && code !== "COMMERCIAL_INVOICE_EXISTS") {
         // z. B. COMMERCIAL_INVOICE_LOCKED → klarer, retry-fähiger Fehler, KEIN
         // Auto-Retry, KEIN „present"-Vortäuschen.
-        applyError(code);
+        applyError(code, "upload");
         return;
       }
       // bereits vorhanden → per GET synchronisieren + verständliche Info anzeigen.
       readStatus({ notice: commercialInvoiceErrorMessage("COMMERCIAL_INVOICE_EXISTS") });
       return;
     }
-    if (!r.ok) { applyError(pickErrorCode(d)); return; }
+    if (!r.ok) { applyError(pickErrorCode(d), "upload"); return; }
     // Erfolg erst nach bestätigendem Backend-Readback → present.
     setStatus("present"); clearMsg();
   }, [shipmentId, readStatus]);
@@ -104,7 +108,7 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
     setStatus("deleting"); clearMsg();
     let r;
     try { r = await deleteCommercialInvoice(shipmentId); }
-    catch { busyRef.current = false; if (live(seq)) applyError("UPSTREAM_ERROR"); return; }
+    catch { busyRef.current = false; if (live(seq)) applyError("UPSTREAM_ERROR", "delete"); return; }
     busyRef.current = false;
     if (!live(seq)) return;
     if (r.status === 401 || r.status === 403) return;
@@ -113,7 +117,7 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
     if (!r.ok) {
       // keine optimistische Falschdarstellung → harten Fehler zeigen und Status
       // autoritativ per GET nachziehen.
-      applyError(pickErrorCode(d));
+      applyError(pickErrorCode(d), "delete");
       readStatus();
       return;
     }
@@ -124,5 +128,5 @@ export function useCommercialInvoice({ shipmentId, enabled }) {
   // refreshStatus: kontrollierter, einmaliger GET (Status → checking → present/
   // absent/error). Keine Timer, kein Polling, kein Auto-Upload/-Delete; die
   // Sequence-/Mounted-Ref-Absicherung greift unverändert.
-  return { status, message, messageType, upload, remove, refreshStatus: readStatus };
+  return { status, message, messageType, errorScope, upload, remove, refreshStatus: readStatus };
 }

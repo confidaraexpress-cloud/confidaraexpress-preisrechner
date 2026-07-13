@@ -6,7 +6,7 @@ import { Icon } from "../ui/Icon";
 // Dateiname wird dauerhaft angezeigt/gespeichert (Datenschutz); der Datei-Input
 // wird nach jeder Auswahl sofort zurückgesetzt. Entfernen erfolgt nur nach
 // expliziter Bestätigung (kleines Inline-Muster, kein Modal).
-export function CommercialInvoiceUpload({ status, message, messageType, requiredError, onFileSelected, onRemove }) {
+export function CommercialInvoiceUpload({ status, message, messageType, onFileSelected, onRemove }) {
   const [confirming, setConfirming] = useState(false);
 
   const checking = status === "checking";
@@ -27,7 +27,7 @@ export function CommercialInvoiceUpload({ status, message, messageType, required
     <div className="ci-upload">
       {!present && (
         <div className="field">
-          <label className="field-label" htmlFor="commercial-invoice-file">Handelsrechnung (PDF)</label>
+          <label className="field-label" htmlFor="commercial-invoice-file">Handelsrechnung (PDF, optional)</label>
           <input
             id="commercial-invoice-file"
             className="field-input ci-upload-input"
@@ -37,8 +37,10 @@ export function CommercialInvoiceUpload({ status, message, messageType, required
             disabled={busy}
             aria-describedby="ci-upload-hint ci-upload-status"
           />
-          <span id="ci-upload-hint" className="field-hint">Genau eine PDF-Datei, maximal 10 MB. Die Datei wird sicher an unseren Versandpartner übergeben.</span>
-          {requiredError && <span className="field-error" role="alert">{requiredError}</span>}
+          <span id="ci-upload-hint" className="field-hint">Optional: genau eine PDF-Datei, maximal 10 MB. Die Datei wird sicher an unseren Versandpartner übergeben. Sie können auch ohne PDF fortfahren.</span>
+          {status === "absent" && (
+            <span className="field-hint ci-upload-optional">Keine Handelsrechnungs-PDF hinterlegt. Der Upload ist optional.</span>
+          )}
         </div>
       )}
 

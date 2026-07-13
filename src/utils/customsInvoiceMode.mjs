@@ -48,15 +48,25 @@ export function isCommercialInvoiceStatusResolved(status) {
   return status === "absent" || status === "present";
 }
 
-// Zentrale Buchbarkeitsregel der Zollrechnung (Modus + Status + Metadaten).
-// Erweitert commercialRequirementsMet um die Status-Auflösung UND die Proforma-
-// Status-Konsistenz: ein vorhandenes/ungeklärtes Dokument darf nie hinter einem
-// scheinbaren Proforma-Zustand verborgen bleiben → Proforma ist nur bei absent gültig.
-export function customsInvoiceReady({ mode, docStatus, invoiceNumber, invoiceDateValid } = {}) {
-  if (!isCommercialInvoiceStatusResolved(docStatus)) return false;
-  if (mode === COMMERCIAL) {
-    const numOk = typeof invoiceNumber === "string" && invoiceNumber.trim().length > 0;
-    return docStatus === "present" && numOk && invoiceDateValid === true;
-  }
-  return docStatus === "absent";
+// ── Fachliche Zollrechnungs-Gültigkeit (NUR Metadaten, dokument-UNABHÄNGIG) ──
+// Die Handelsrechnungs-PDF ist OPTIONAL (der JUMiNGO-Order-Vertrag verlangt kein
+// Dokument; der Upload läuft über einen separaten optionalen Endpunkt). Diese
+// fachliche Prüfung betrifft daher AUSSCHLIESSLICH Rechnungsart + Pflichtmetadaten
+// und kennt den Dokumentstatus bewusst NICHT: Proforma stellt keine Zusatzpflicht;
+// eine eigene Handelsrechnung verlangt getrimmte Rechnungsnummer + gültiges Datum.
+// Warenpositionen/Exportgrund/HS-Code prüft der Orchestrator (BookingPage) separat.
+export function customsInvoiceFieldsValid({ mode, invoiceNumber, invoiceDateValid } = {}) {
+  if (mode !== COMMERCIAL) return true;
+  const numOk = typeof invoiceNumber === "string" && invoiceNumber.trim().length > 0;
+  return numOk && invoiceDateValid === true;
+}
+
+// ── Läuft aktuell eine optionale Dokument-MUTATION? ─────────────────────────
+// NUR ein tatsächlich laufender Upload-/Löschvorgang (uploading/deleting) darf
+// Navigation/Buchung kurzfristig gegen einen Race-Condition-Zustand schützen.
+// Ein initiales Status-Loading (idle/checking), ein geklärter Status
+// (absent/present) und ein Statusfehler (error) sind KEINE Mutation und
+// blockieren die fachliche Buchbarkeit niemals.
+export function commercialInvoiceMutationBusy(status) {
+  return status === "uploading" || status === "deleting";
 }

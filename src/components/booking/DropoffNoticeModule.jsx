@@ -1,6 +1,6 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
-import { resolveCarrierName } from "../../utils/carrierMap";
+import { publicCarrierDisplay } from "../../utils/carrierMap";
 import { AccessPointFinder } from "../offers/AccessPointFinder";
 
 // Step 1 — Hinweis bei Shopabgabe (serviceType === "dropoff"): macht unmissver-
@@ -10,7 +10,7 @@ import { AccessPointFinder } from "../offers/AccessPointFinder";
 // KEINE Buchung eines konkreten Shops — AccessPointFinder trägt seinen eigenen
 // "nur Orientierung"-Hinweis bereits selbst und speichert keine Auswahl.
 export function DropoffNoticeModule({ tariff, senderPrefill }) {
-  const carrierName = resolveCarrierName(tariff?.carrier);
+  const carrierName = publicCarrierDisplay(tariff).name;
   return (
     <div className="calc-panel mb-16">
       <div className="calc-panel-header"><Icon n="map" s={18} c="#1D4ED8" /><h3>Abgabe im Paketshop erforderlich</h3></div>

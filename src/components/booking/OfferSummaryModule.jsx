@@ -1,11 +1,12 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
-import { resolveCarrier, resolveCarrierName } from "../../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 
 // Step 1 — „Ausgewähltes Angebot". Reine Darstellung des gewählten Tarifs,
 // unverändert aus BookingPage extrahiert. Keine Logik, keine State.
 export function OfferSummaryModule({ tariff }) {
+  const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
   return (
     <div className="calc-panel mb-16">
       <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
@@ -13,12 +14,12 @@ export function OfferSummaryModule({ tariff }) {
         <div className="flex-between">
           <div>
             <div className="booking-carrier-wrap">
-              {resolveCarrier(tariff.carrier).logo && (
-                <img src={resolveCarrier(tariff.carrier).logo} alt="" aria-hidden="true" className="booking-carrier-logo" />
+              {carrierLogo && (
+                <img src={carrierLogo} alt="" aria-hidden="true" className="booking-carrier-logo" />
               )}
-              <span className="booking-carrier-name">{resolveCarrierName(tariff.carrier)}</span>
+              <span className="booking-carrier-name">{carrierName}</span>
             </div>
-            <div className="text-sm text-muted">{tariff.tariffName} · {tariff.deliveryTime || "Auf Anfrage"}</div>
+            <div className="text-sm text-muted">{publicServiceName(tariff)} · {tariff.deliveryTime || "Auf Anfrage"}</div>
             {tariff.serviceType && (
               <div className="booking-service-info">
                 {tariff.serviceType === "pickup" ? "🚐 Abholung" : "🏪 Shopabgabe"}

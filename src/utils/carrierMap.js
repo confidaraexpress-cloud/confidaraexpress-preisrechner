@@ -27,6 +27,59 @@ export function resolveCarrier(raw) {
 
 export const resolveCarrierName = (raw) => resolveCarrier(raw).name;
 
+// ─── Öffentlicher Carrier-Vertrag (publicCarrierId) ─────────────────────────
+// EINZIGE Quelle für Carrier-Anzeige/-Logo/-Metadaten der calculate-price-Tarife
+// im Kundenbereich. Ausschließlich die kontrollierte publicCarrierId
+// (ups|dhl|fedex|tnt|der-kurier|other) — KEINE Rohstring-/Regex-/includes-
+// Erkennung, KEIN Fallback auf tariff.carrier / tariff.tariffName. Bestehende
+// Logos werden weiterverwendet.
+const PUBLIC_CARRIERS = {
+  ups:          { name: "UPS",                  logo: upsLogo       },
+  dhl:          { name: "DHL Express",          logo: dhlLogo       },
+  fedex:        { name: "FedEx",                logo: fedexLogo     },
+  tnt:          { name: "TNT",                  logo: tntLogo       },
+  "der-kurier": { name: "DER KURIER",           logo: derKurierLogo },
+  other:        { name: "Versanddienstleister", logo: null          },
+};
+
+// Logo + kanonischer Name allein aus der ID (Teil C). Unbekannte/fehlende ID →
+// generisches „Versanddienstleister" (kein Logo, kein Layoutbruch).
+export function resolvePublicCarrier(publicCarrierId) {
+  return PUBLIC_CARRIERS[publicCarrierId] || PUBLIC_CARRIERS.other;
+}
+
+// Kundenanzeige eines Tarifs (Teil B): bevorzugt den Backend-publicCarrierName,
+// sonst der kanonische Name der publicCarrierId; NIEMALS carrier/tariffName. Das
+// Logo kommt strikt aus der publicCarrierId.
+export function publicCarrierDisplay(tariff) {
+  const meta = resolvePublicCarrier(tariff?.publicCarrierId);
+  const name = (typeof tariff?.publicCarrierName === "string" && tariff.publicCarrierName.trim())
+    ? tariff.publicCarrierName.trim()
+    : meta.name;
+  return { name, logo: meta.logo };
+}
+
+// Öffentlicher Servicename (Teil B): bevorzugt publicServiceName, sonst ein
+// neutraler, vom shippingMode abgeleiteter Text — NIEMALS der Rohwert tariffName.
+const PUBLIC_SERVICE_BY_MODE = {
+  express:  "Expressversand",
+  standard: "Standardversand",
+  economy:  "Economyversand",
+};
+export function publicServiceName(tariff) {
+  const s = tariff?.publicServiceName;
+  if (typeof s === "string" && s.trim()) return s.trim();
+  return PUBLIC_SERVICE_BY_MODE[tariff?.shippingMode] || "Versandservice";
+}
+
+// Filter-Chip-Label eines publicCarriers-Eintrags (Teil A): „other" stets neutral
+// als „Versanddienstleister", sonst der Backend-Name (Fallback: kanonischer
+// ID-Name). Kein Rohwert, keine Rückübersetzung.
+export function publicCarrierChipLabel(pc) {
+  if (!pc || pc.id === "other") return "Versanddienstleister";
+  return (typeof pc.name === "string" && pc.name.trim()) ? pc.name.trim() : resolvePublicCarrier(pc.id).name;
+}
+
 // ─── Access-Point / Paketshop-Carrier-Code (Jumingo) ────────────────────────
 // Liefert NUR einen Carrier-Code, der vom Backend für die Access-Point-Suche
 // allowlisted ist. Backendseitig freigegeben sind aktuell UPS ("ups"), DPD

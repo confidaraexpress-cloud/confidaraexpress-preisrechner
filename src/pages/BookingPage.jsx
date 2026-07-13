@@ -4,7 +4,7 @@ import { apiFetch, repriceInsurance } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
-import { resolveCarrierName } from "../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
@@ -476,7 +476,6 @@ export default function BookingPage() {
           shipmentId:      bookingData?.shipmentId,
           tariffId:        tariff?.id,
           shipperTariffId: tariff?.shipper_tariff_id,
-          carrier:         tariff?.carrier,
           // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
           // Serverpreis als price_final senden — sonst der ursprüngliche
           // Tarifpreis. Der Versicherungspfad nutzt weiterhin tariff.finalPrice
@@ -785,7 +784,7 @@ export default function BookingPage() {
                 <div className="booking-confirm-box">
                   <div className="booking-confirm-row">
                     <span className="text-sm text-muted">Carrier</span>
-                    <span className="text-sm font-bold booking-confirm-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
+                    <span className="text-sm font-bold booking-confirm-val">{publicCarrierDisplay(tariff).name} — {publicServiceName(tariff)}</span>
                   </div>
                   {tariff.serviceType && (
                     <div className="booking-confirm-row">
@@ -868,7 +867,7 @@ export default function BookingPage() {
               <div className="calc-panel-body">
                 <div className="summary-detail-row summary-detail-row-border">
                   <span className="text-sm text-muted summary-detail-key">Carrier</span>
-                  <span className="text-sm font-bold summary-detail-val">{resolveCarrierName(tariff.carrier)} — {tariff.tariffName}</span>
+                  <span className="text-sm font-bold summary-detail-val">{publicCarrierDisplay(tariff).name} — {publicServiceName(tariff)}</span>
                 </div>
                 <div className="summary-detail-row summary-detail-row-border">
                   <span className="text-sm text-muted summary-detail-key">Route</span>

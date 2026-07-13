@@ -80,44 +80,25 @@ export function publicCarrierChipLabel(pc) {
   return (typeof pc.name === "string" && pc.name.trim()) ? pc.name.trim() : resolvePublicCarrier(pc.id).name;
 }
 
-// ─── Access-Point / Paketshop-Carrier-Code (Jumingo) ────────────────────────
-// Liefert NUR einen Carrier-Code, der vom Backend für die Access-Point-Suche
-// allowlisted ist. Backendseitig freigegeben sind aktuell UPS ("ups"), DPD
-// ("dpd") und DHL Express ("dhlexpress") — alle sicher erkannt über die
-// bestehenden /UPS/i-, /DPD/i- bzw. /DHL Express/i-Regeln in resolveCarrier
-// (kein Regex-Duplikat).
-//
-// Akzeptiert entweder einen rohen Carrier-String ODER ein ganzes Tarifobjekt.
-// Hintergrund: Ein DHL-Express-Shopabgabe-Tarif trägt den Express-Beleg NICHT
-// im carrier-Feld (live: carrier:"DHL national Paket VK" → normalisiert zu
-// "DHL"), sondern im shopName ("DHL Express Paketshop"). Beim Tarifobjekt werden
-// daher die belegten Hinweisfelder (carrier + shopName + shopsName + tariffName)
-// zu einem Suchstring zusammengeführt, sodass resolveCarrierName das echte DHL
-// Express erkennt. Die /DHL Express/i-Regel verlangt die exakte Sequenz
-// "DHL Express" — normales DHL/DHL Paket/DHL Paketshop/Deutsche Post DHL
-// enthalten diese nicht und normalisieren zu "DHL" → bleiben null. Kein
-// pauschales DHL→dhlexpress.
-//
-// Wichtig: Das emittierte Literal ist exakt "dhlexpress" (NICHT "dhl"/
-// "dhl_express"/"dhl-express", die backendseitig unsupported sind). GLS ist
-// backendseitig freigegeben und wird auf "gls" gemappt (eigene /GLS/i-Regel,
-// keine Kollision mit DHL national/DHL Paket, die zu "DHL" → null normalisieren).
-// GLS verlangt backendseitig zusätzlich eine Straße — das erzwingt der Aufrufer
-// (AccessPointFinder), nicht diese reine Code-Zuordnung. Für jeden anderen
-// Carrier bewusst null (kein Raten): die UI zeigt dann „Paketshop-Suche … wird
-// noch vorbereitet". DHL/DHL Paket bleiben gesperrt. Keine weiteren Codes
-// ergänzen, bevor das Backend sie freigegeben hat.
-export function accessPointCarrierCode(input) {
-  const raw = typeof input === "string"
-    ? input
-    : [input?.carrier, input?.shopName, input?.shopsName, input?.tariffName]
-        .filter(Boolean).join(" ");
-  const carrier = resolveCarrierName(raw);
-  if (carrier === "UPS") return "ups";
-  if (carrier === "DPD") return "dpd";
-  if (carrier === "DHL Express") return "dhlexpress";
-  if (carrier === "GLS") return "gls";
-  return null;
+// ─── Access-Point / Paketshop-Provider-Adapter (Capability-Vertrag) ─────────
+// Übersetzt den providerneutralen Capability-Provider (tariff.accessPoint.provider:
+// "ups" | "dpd" | "dhl-express" | "gls" | null) in den technischen Code, den die
+// bestehende Backend-Suchroute erwartet. EXAKTE 1:1-Zuordnung, KEINE unscharfe
+// Normalisierung, KEIN Regex/includes/Teilstring, KEIN Rohfeld (carrier/
+// tariffName/shopName) und KEINE Ableitung aus publicCarrierId. Alles Unbekannte
+// oder null → null (fail-closed → keine Suche, neutraler Hinweis).
+//   ups         → ups
+//   dpd         → dpd
+//   dhl-express → dhlexpress   (NICHT aus publicCarrierId "dhl" ableiten)
+//   gls         → gls
+export function toAccessPointSearchCode(provider) {
+  switch (provider) {
+    case "ups":         return "ups";
+    case "dpd":         return "dpd";
+    case "dhl-express": return "dhlexpress";
+    case "gls":         return "gls";
+    default:            return null;
+  }
 }
 
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────

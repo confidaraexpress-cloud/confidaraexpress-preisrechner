@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { searchAccessPoints } from "../../api/client";
-import { accessPointCarrierCode } from "../../utils/carrierMap";
+import { toAccessPointSearchCode } from "../../utils/carrierMap";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
 // Zeigt — ähnlich wie Jumingo — eine reine Orientierungssuche für Dropoff-/
@@ -126,11 +126,14 @@ function normalizeList(data) {
 }
 
 export function AccessPointFinder({ tariff, senderPrefill }) {
-  // Nur belegter (allowlisteter) Carrier-Code löst eine echte Suche aus. Das
-  // ganze Tarifobjekt übergeben (nicht nur tariff.carrier): DHL-Express-Shop-
-  // abgabe trägt den Express-Beleg im shopName ("DHL Express Paketshop"),
-  // während carrier nur "DHL national Paket VK" (→ "DHL") lautet.
-  const carrierCode = accessPointCarrierCode(tariff);
+  // Die technische Suchbarkeit richtet sich AUSSCHLIESSLICH nach dem provider-
+  // neutralen Capability-Vertrag: tariff.accessPoint.available === true UND ein
+  // vom Adapter übersetzter, allowlisteter Provider-Code. KEINE Ableitung aus
+  // carrier/tariffName/shopName/shopsName oder publicCarrierId — Unbekanntes
+  // degradiert fail-closed (carrierCode === null → neutraler Hinweis, keine Suche).
+  const carrierCode = tariff?.accessPoint?.available === true
+    ? toAccessPointSearchCode(tariff.accessPoint.provider)
+    : null;
   const countryCode = (senderPrefill?.country || "DE").toUpperCase();
 
   const [postCode, setPostCode] = useState(senderPrefill?.postCode || "");

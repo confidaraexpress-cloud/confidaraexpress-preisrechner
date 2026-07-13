@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
-import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
+import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { AccessPointFinder } from "./AccessPointFinder";
 
 const fmtDE = (iso) => {
@@ -42,7 +42,8 @@ function buildStart(t) {
   const primary = t.pickupDate ? fmtDay(t.pickupDate) : null;
   const secondary = [];
   if (t.pickupTimeFrom && t.pickupTimeUntil)     secondary.push(`${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr`);
-  if (t.serviceType === "dropoff" && t.shopName) secondary.push(t.shopName);
+  const dropoffLabel = publicDropoffLabel(t);
+  if (dropoffLabel)                              secondary.push(dropoffLabel);
   return { title, primary, secondary };
 }
 
@@ -212,7 +213,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
   const hasMain  = features.length > 0;
   const hasLimits = limitLines.length > 0;
-  const hasTermin = !!(t.shopName || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
+  const dropoffLabel = publicDropoffLabel(t);
+  const hasTermin = !!(dropoffLabel || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
                    || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
   const hasHinweise = showPickupSurcharge;
   const hasLinks = carrierLinkItems.length > 0;
@@ -279,7 +281,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
       {hasTermin && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Termin &amp; Abholung</div>
-          {t.serviceType === "dropoff" && t.shopName && <DetailRow label="Abgabestelle" value={t.shopName} />}
+          {dropoffLabel && <DetailRow label="Abgabestelle" value={dropoffLabel} />}
           {t.pickupDate && <DetailRow label="Abholtermin" value={fmtDE(t.pickupDate)} />}
           {t.pickupTimeFrom && t.pickupTimeUntil && (
             <DetailRow label="Zeitfenster" value={`${t.pickupTimeFrom} – ${t.pickupTimeUntil} Uhr`} />

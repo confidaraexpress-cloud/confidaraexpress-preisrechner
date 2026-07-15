@@ -486,6 +486,11 @@ export default function BookingPage() {
           sender:          buildParty("s"),
           recipient:       buildParty("r"),
           weight:          bookingData?.form?.weight,
+          // `content` bleibt unveränderter Teil des /book-Payloads. Das wirkungs-
+          // lose Eingabefeld wurde aus „Sendungsdetails" entfernt; der State
+          // `form.content` bleibt bewusst intern bestehen (Default "") und dient
+          // weiterhin als Fallback der Versicherungs-Inhaltsbeschreibung
+          // (contentDescription). Kein neu erzeugter content-Wert in diesem Slice.
           content:         form.content,
           // Optionale Referenznummer nur senden, wenn nach trim ein Wert
           // vorliegt → leerer Fall lässt den bestehenden Payload unverändert.
@@ -689,8 +694,6 @@ export default function BookingPage() {
               senderAddr={fmtAddr("s")}
               recipientAddr={fmtAddr("r")}
               packageInfo={packageInfo}
-              content={form.content}
-              onContentChange={(v) => upd("content", v)}
             />
 
             <AdditionalOptionsModule

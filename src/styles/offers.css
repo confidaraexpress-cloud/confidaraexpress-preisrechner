@@ -584,26 +584,44 @@
 }
 
 /* ─── Access-Point / Paketshop-Finder (read-only Orientierung) ──────────────── */
+
+/* Dropoff-Karte: konsolidierte Einleitung (der Titel steht in der Panel-Kopf-
+   zeile). Eine Beschreibung + optionaler, dezenter Absender-Hinweis — ersetzt
+   den früheren Absatz samt Warn-Banner. */
+.dropoff-intro { margin-bottom: 14px; }
+.dropoff-intro-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--gray600); }
+.dropoff-intro-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--gray400); }
+
 .ap-finder { display: flex; flex-direction: column; gap: 12px; }
 
 /* Nicht unterstützter Carrier: ruhiger, dezenter Hinweis (keine Suche). */
 .ap-finder--unsupported { gap: 0; }
 .ap-finder-note { font-size: 13px; color: var(--gray500); line-height: 1.5; margin: 0; }
 
-/* Klarer "noch nicht verbindlich buchbar"-Hinweis — bewusst sichtbar, aber
-   nicht alarmierend (sanftes Amber, konsistent mit der Tipp-Leiste). */
-.ap-finder-banner {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 10px 12px; border-radius: var(--radius);
-  background: linear-gradient(to right, #fffbeb, #fefce8);
-  border: 1px solid rgba(245,158,11,0.22);
+/* Kompakter Orientierungshinweis (ersetzt die frühere Amber-Warn-Banner-Optik):
+   dezente, nicht alarmierende Zeile — reine Orientierung, keine Auswahl. */
+.ap-finder-hint {
+  display: flex; align-items: flex-start; gap: 7px; margin: 0;
+  font-size: 12.5px; line-height: 1.5; color: var(--gray500);
 }
-.ap-finder-banner svg { color: var(--warn); flex-shrink: 0; margin-top: 1px; }
-.ap-finder-banner-text { font-size: 12.5px; line-height: 1.5; color: var(--gray700); }
+.ap-finder-hint svg { color: var(--gray400); flex-shrink: 0; margin-top: 2px; }
+
+/* Nur für Screenreader (Ladephase/Trefferzahl) — visuell verborgen. */
+.ap-finder-sr {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 /* Suchformular */
 .ap-finder-form { display: flex; flex-direction: column; gap: 12px; }
-.ap-finder-fields { display: grid; grid-template-columns: 1fr 1fr 0.7fr; gap: 10px; }
+.ap-finder-fields {
+  display: grid; gap: 10px 12px; align-items: end;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.7fr) minmax(0, 0.85fr);
+}
+/* GLS: vier Felder ohne Gedränge — PLZ · Ort · Umkreis in Zeile 1, die
+   Pflicht-Straße volle Breite in Zeile 2 (Raum für lange Adressen). */
+.ap-finder-fields--gls .ap-finder-field--street { grid-column: 1 / -1; }
 .ap-finder-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ap-finder-label { font-size: 11px; font-weight: 600; color: var(--gray500); }
 .ap-finder-optional { font-weight: 500; color: var(--gray400); }
@@ -637,12 +655,11 @@
   background: var(--gray100); color: var(--gray400);
   border-color: var(--border); cursor: not-allowed;
 }
-
-/* Zustände: Lade-/Fehler-/Empty */
-.ap-finder-status {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 4px; font-size: 13px; color: var(--gray500);
+.ap-finder-search-btn:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
 }
+
+/* Zustände: Fehler-/Empty (die sichtbare Ladeanzeige liefert allein der Button). */
 .ap-finder-error {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 10px 12px; border-radius: var(--radius);
@@ -655,15 +672,16 @@
 /* Ergebnisliste */
 .ap-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ap-result {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: white;
 }
+.ap-result-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .ap-result-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ap-result-name { font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.3; overflow-wrap: anywhere; }
 .ap-result-addr { font-size: 13px; color: var(--gray600); line-height: 1.4; overflow-wrap: anywhere; }
 .ap-result-hours {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12.5px; color: var(--gray500); line-height: 1.4; margin-top: 1px;
+  font-size: 12.5px; color: var(--gray500); line-height: 1.4;
 }
 .ap-result-hours svg { color: var(--gray400); flex-shrink: 0; }
 .ap-result-meta {
@@ -683,13 +701,26 @@
 /* Ländercode-Chip (nur bei abweichendem Land sichtbar) */
 .ap-result-cc { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--gray400); white-space: nowrap; }
 
+/* „Weitere Paketshops anzeigen" — sekundärer, ruhiger Button (kein CTA-Blau). */
+.ap-more-btn {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 38px; padding: 0 16px; border-radius: var(--radius);
+  border: 1.5px solid var(--border2); background: white; color: var(--blue2);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.ap-more-btn:hover { background: var(--gray50); border-color: var(--blue2); }
+.ap-more-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+
 @media (max-width: 767px) {
-  .ap-finder-fields { grid-template-columns: 1fr; }
+  .ap-finder-fields, .ap-finder-fields--gls { grid-template-columns: 1fr; }
   .ap-finder-controls { flex-direction: column; align-items: stretch; }
   .ap-finder-search-btn { width: 100%; }
-  .ap-result { flex-direction: column; }
+  .ap-result-top { flex-direction: column; }
   .ap-result-meta {
     flex-direction: row; align-items: center; align-self: flex-start;
-    text-align: left; gap: 8px;
+    text-align: left; gap: 8px; flex-wrap: wrap;
   }
+  .ap-more-btn { align-self: stretch; }
 }

@@ -38,6 +38,8 @@ const PUBLIC_CARRIERS = {
   dhl:          { name: "DHL Express",          logo: dhlLogo       },
   fedex:        { name: "FedEx",                logo: fedexLogo     },
   tnt:          { name: "TNT",                  logo: tntLogo       },
+  dpd:          { name: "DPD",                  logo: dpdLogo       },
+  gls:          { name: "GLS",                  logo: glsLogo       },
   "der-kurier": { name: "DER KURIER",           logo: derKurierLogo },
   other:        { name: "Versanddienstleister", logo: null          },
 };

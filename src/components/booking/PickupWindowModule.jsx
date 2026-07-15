@@ -4,11 +4,16 @@ import { isoDayDE } from "../../utils/formatters";
 import { getDraftPickupWindow, saveDraftPickupWindow } from "../../api/client";
 import {
   pickupTimeToMinutes as toMin,
+  minutesToHHMM,
   toHHMM,
   formatDuration as fmtDur,
   isPickupWindowAdjustable,
   validatePickupSelection,
   isFullCarrierWindow,
+  rangePercent,
+  pickupSliderGap,
+  clampPickupFrom,
+  clampPickupUntil,
 } from "../../utils/pickupWindowClient";
 
 // Step 1 — „Gewünschter Abholtermin" (NUR Pickup). Datum read-only; zusätzlich ein frei
@@ -72,6 +77,27 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
   const belowMin = sel.reason === "BELOW_MINIMUM_DURATION";
   const isFull = isFullCarrierWindow({ from, until, boundFrom, boundUntil });
 
+  // ── Dual-Range-Slider: Minutenachse, 15-Min-Raster, hervorgehobener Bereich ──
+  // Beide Griffe halten jederzeit Carriergrenzen UND Mindestdauer ein — die
+  // zentralen Clamp-Helfer sind die einzige Interaktions-Wahrheit (keine
+  // Duplikat-Logik). from/until bleiben HH:mm-Strings; der Slider rechnet nur in
+  // Minuten und schreibt via minutesToHHMM zurück (verträgt Off-Raster-Draftwerte).
+  const SLIDER_STEP = 15;
+  const selMin = toMin(from), selMax = toMin(until);
+  const gap = pickupSliderGap(minDur, SLIDER_STEP);
+  const fromPct = rangePercent(selMin, bMin, bMax);
+  const untilPct = rangePercent(selMax, bMin, bMax);
+  const onFromRange = (e) => {
+    const v = clampPickupFrom(Number(e.target.value), selMax, bMin, gap);
+    if (v == null) return;
+    setTouched(true); setFrom(minutesToHHMM(v));
+  };
+  const onUntilRange = (e) => {
+    const v = clampPickupUntil(Number(e.target.value), selMin, bMax, gap);
+    if (v == null) return;
+    setTouched(true); setUntil(minutesToHHMM(v));
+  };
+
   // ── Debounced-Persistenz NUR nach echter Nutzeränderung (nicht bei Hydrierung) ──
   useEffect(() => {
     if (!adjustable || !shipmentId || !touched || !valid || hydrating) return;
@@ -119,22 +145,38 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
           <div className="text-sm text-muted mt-12"><span className="spinner spinner-dark" /> Abholzeitfenster wird geladen…</div>
         ) : (
           <>
-            <div className="mt-12" style={{ display: "flex", gap: "16px", alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div className="field" style={{ flex: "1 1 140px", margin: 0 }}>
-                <label className="field-label" htmlFor="pw-from">Frühestens</label>
-                <input id="pw-from" type="time" className="field-input" value={from} min={boundFrom} max={boundUntil} step={900}
-                  onChange={(e) => { setTouched(true); setFrom(e.target.value); }} />
-              </div>
-              <span aria-hidden="true" style={{ paddingBottom: "10px", color: "var(--gray-500, #6b7280)" }}>–</span>
-              <div className="field" style={{ flex: "1 1 140px", margin: 0 }}>
-                <label className="field-label" htmlFor="pw-until">Spätestens</label>
-                <input id="pw-until" type="time" className="field-input" value={until} min={boundFrom} max={boundUntil} step={900}
-                  onChange={(e) => { setTouched(true); setUntil(e.target.value); }} />
-              </div>
+            {/* Zeit — live, ändert sich unmittelbar beim Ziehen der Griffe. */}
+            <div className="summary-detail-row summary-detail-row-border pw-time-row">
+              <span className="text-sm text-muted summary-detail-key">Zeit</span>
+              <span className="font-bold summary-detail-val pw-time-val">{from}–{until} Uhr</span>
             </div>
-            <p className="text-sm text-muted mt-12">
-              Innerhalb {boundFrom}–{boundUntil} Uhr{minDur > 0 ? ` · Mindestdauer ${fmtDur(minDur)}` : ""}. Die Abholung erfolgt innerhalb des gewählten Fensters.
+
+            {/* Dual-Range-Slider — zwei verschiebbare Griffe, hervorgehobener Bereich.
+                Native <input type=range> übereinander (nur Griffe interaktiv) → volle
+                Tastatur-/Touch-Bedienung; Start/Ende bleiben im Tariffenster, die
+                Mindestdauer bleibt jederzeit erhalten. */}
+            <div className="pw-slider">
+              <div className="pw-slider-rail" aria-hidden="true">
+                <div className="pw-slider-fill" style={{ left: `${fromPct}%`, width: `${Math.max(0, untilPct - fromPct)}%` }} />
+              </div>
+              <input
+                type="range" className="pw-range pw-range--from"
+                min={bMin} max={bMax} step={SLIDER_STEP} value={selMin != null ? selMin : bMin}
+                aria-label="Frühester Abholzeitpunkt" aria-valuetext={`${from} Uhr`}
+                onChange={onFromRange}
+              />
+              <input
+                type="range" className="pw-range pw-range--until"
+                min={bMin} max={bMax} step={SLIDER_STEP} value={selMax != null ? selMax : bMax}
+                aria-label="Spätester Abholzeitpunkt" aria-valuetext={`${until} Uhr`}
+                onChange={onUntilRange}
+              />
+            </div>
+
+            <p className="text-sm text-muted mt-12 pw-caption">
+              Verfügbar: {boundFrom}–{boundUntil} Uhr{minDur > 0 ? ` · Mindestdauer: ${fmtDur(minDur)}` : ""}
             </p>
+
             {!valid && (
               <div className="alert alert-error mt-12" role="alert">
                 {belowMin
@@ -146,7 +188,7 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
               <div className="alert alert-error mt-12" role="alert">Speichern des Abholfensters fehlgeschlagen. Bitte erneut versuchen.</div>
             )}
             {valid && touched && !isFull && saveState === "saved" && (
-              <p className="text-sm text-muted mt-12">Abholfenster gespeichert.</p>
+              <p className="text-sm mt-8 pw-saved"><Icon n="check" s={14} c="currentColor" /> Abholfenster gespeichert</p>
             )}
           </>
         )}

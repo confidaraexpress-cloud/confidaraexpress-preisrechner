@@ -718,3 +718,79 @@
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 5px; flex-shrink: 0; margin-left: 6px;
 }
+
+/* ═══ Abholzeitfenster — Premium Dual-Range-Slider (PickupWindowModule) ═══════
+   Scope ausschließlich .pw-* im Light-Theme (Booking). Nutzt Light-Theme-Tokens
+   (--navy, --blue-Familie, --gray-Familie). Zwei native Range-Inputs überlagern eine
+   gemeinsame Schiene (gleiche Minuten-Achse → Griffe fluchten); nur die Griffe
+   sind interaktiv (pointer-events), die farbige Füllung markiert das gewählte
+   Fenster. Volle Tastatur-/Touch-Bedienung, ruhig & hochwertig. */
+.pw-time-row { align-items: baseline; }
+.pw-time-val {
+  font-family: 'DM Sans', -apple-system, sans-serif; font-size: 16px;
+  letter-spacing: -0.01em; color: var(--navy); font-variant-numeric: tabular-nums;
+}
+
+.pw-slider { position: relative; height: 44px; margin: 20px 2px 6px; touch-action: none; }
+.pw-slider-rail {
+  position: absolute; left: 0; right: 0; top: 50%; height: 6px;
+  transform: translateY(-50%); background: var(--gray100);
+  border-radius: var(--radius-full); box-shadow: inset 0 1px 2px rgba(14,30,80,0.08);
+}
+.pw-slider-fill {
+  position: absolute; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--blue3), var(--blue));
+  border-radius: var(--radius-full); box-shadow: 0 1px 5px rgba(29,78,216,0.35);
+}
+
+/* Beide Regler liegen deckungsgleich über der Schiene; die Spuren sind
+   transparent und durchlässig, nur die Griffe fangen Zeiger-/Touch-Events. */
+.pw-range {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0;
+  background: transparent; -webkit-appearance: none; appearance: none;
+  pointer-events: none;
+}
+.pw-range:focus { outline: none; }
+.pw-range--from { z-index: 4; }
+.pw-range--until { z-index: 3; }
+
+/* WebKit/Blink */
+.pw-range::-webkit-slider-runnable-track { height: 100%; background: transparent; border: none; }
+.pw-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto;
+  width: 22px; height: 22px; margin-top: 11px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--blue);
+  box-shadow: 0 2px 6px rgba(14,30,80,0.20);
+  cursor: grab; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pw-range:hover::-webkit-slider-thumb { transform: scale(1.08); border-color: var(--blue2); }
+.pw-range:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.14); box-shadow: 0 4px 12px rgba(29,78,216,0.28); }
+.pw-range:focus-visible::-webkit-slider-thumb { border-color: var(--blue); box-shadow: 0 2px 6px rgba(14,30,80,0.20), 0 0 0 4px rgba(37,99,235,0.20); }
+
+/* Firefox */
+.pw-range::-moz-range-track { height: 100%; background: transparent; border: none; }
+.pw-range::-moz-range-thumb {
+  pointer-events: auto; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--blue);
+  box-shadow: 0 2px 6px rgba(14,30,80,0.20);
+  cursor: grab; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pw-range:hover::-moz-range-thumb { transform: scale(1.08); border-color: var(--blue2); }
+.pw-range:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.14); box-shadow: 0 4px 12px rgba(29,78,216,0.28); }
+.pw-range:focus-visible::-moz-range-thumb { border-color: var(--blue); box-shadow: 0 2px 6px rgba(14,30,80,0.20), 0 0 0 4px rgba(37,99,235,0.20); }
+
+.pw-caption { font-size: 12.5px; }
+.pw-saved { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }
+
+/* Mobile: größere Griffe / Trefferfläche */
+@media (max-width: 600px) {
+  .pw-slider { height: 48px; }
+  .pw-range::-webkit-slider-thumb { width: 26px; height: 26px; margin-top: 11px; }
+  .pw-range::-moz-range-thumb { width: 26px; height: 26px; }
+}
+
+/* Reduced-motion: keine Griff-Transitionen */
+@media (prefers-reduced-motion: reduce) {
+  .pw-range::-webkit-slider-thumb { transition: none; }
+  .pw-range::-moz-range-thumb { transition: none; }
+}

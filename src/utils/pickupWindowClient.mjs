@@ -74,3 +74,40 @@ export function pickupWindowBlocksBooking({ serviceType, hydration } = {}) {
   const h = hydration || {};
   return h.loading === true || h.error === true;
 }
+
+// ── Dual-Range-Slider: reine Anzeige-/Interaktionsmathematik ─────────────────
+// KEINE Geschäftslogik — die Auswahl bleibt über validatePickupSelection gültig,
+// die Persistenz-/Buchungsentscheidung liegt weiterhin serverseitig im /book.
+
+// Positionsprozent (0..100) eines Minutenwerts auf der Carrier-Achse [min..max].
+// Für Fill-/Griff-Position. Ungültige/degenerierte Achse → 0.
+export function rangePercent(value, min, max) {
+  const v = Number(value), lo = Number(min), hi = Number(max);
+  if (!Number.isFinite(v) || !Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return 0;
+  return Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100));
+}
+
+// Mindestabstand der beiden Griffe (Minuten): die tarifabhängige Mindestdauer,
+// aber nie kleiner als ein Rasterschritt — sonst könnten Griffe zusammenfallen
+// (from == until). Hält from<until UND die Mindestdauer gleichzeitig ein.
+export function pickupSliderGap(minMinutes, step = 15) {
+  const m = Math.max(0, Number(minMinutes) || 0);
+  const s = Math.max(0, Number(step) || 0);
+  return Math.max(m, s);
+}
+
+// Griff „Frühestens" auf [boundFromMin .. untilMin - gap] begrenzen (ganze Minuten).
+// Garantiert: from ≥ Carrierbeginn und Abstand ≥ gap zum Ende. Unsinn → null.
+export function clampPickupFrom(proposedMin, untilMin, boundFromMin, gap) {
+  const p = Number(proposedMin), u = Number(untilMin), lo = Number(boundFromMin), g = Number(gap) || 0;
+  if (!Number.isFinite(p) || !Number.isFinite(u) || !Number.isFinite(lo)) return null;
+  return Math.round(Math.max(lo, Math.min(p, u - g)));
+}
+
+// Griff „Spätestens" auf [fromMin + gap .. boundUntilMin] begrenzen (ganze Minuten).
+// Garantiert: until ≤ Carrierende und Abstand ≥ gap zum Beginn. Unsinn → null.
+export function clampPickupUntil(proposedMin, fromMin, boundUntilMin, gap) {
+  const p = Number(proposedMin), f = Number(fromMin), hi = Number(boundUntilMin), g = Number(gap) || 0;
+  if (!Number.isFinite(p) || !Number.isFinite(f) || !Number.isFinite(hi)) return null;
+  return Math.round(Math.min(hi, Math.max(p, f + g)));
+}

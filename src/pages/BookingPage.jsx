@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { apiFetch, repriceInsurance } from "../api/client";
+import { apiFetch, repriceInsurance, saveDraftPickupWindow } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -8,6 +8,7 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
 import { getBookingModules } from "../utils/bookingModules";
+import { pickupWindowBlocksBooking, formatDuration } from "../utils/pickupWindowClient";
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
 import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, customsInvoiceFieldsValid, commercialInvoiceMutationBusy } from "../utils/customsInvoiceMode";
 import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
@@ -40,6 +41,13 @@ export default function BookingPage() {
   // Kundengewähltes Abholzeitfenster (nur Pickup) — im Seiten-State, damit die Auswahl den
   // Schrittwechsel übersteht; die Draft-Persistenz übernimmt PickupWindowModule. {from,until}|null.
   const [pickupWindow, setPickupWindow] = useState(null);
+  // P0: Hydrierungsstatus des gespeicherten Abholfensters, vom PickupWindowModule gemeldet —
+  // blockiert die Buchung, solange geladen wird ODER ein Ladefehler vorliegt. pickupWindowChanged
+  // hält die /book-409-Antwort (neue frische Carrier-Grenzen) für den Spezialdialog.
+  const [pickupHydration, setPickupHydration] = useState({ loading: false, error: false });
+  const [pickupWindowChanged, setPickupWindowChanged] = useState(null); // { availableFrom, availableUntil, minimumMinutes, adjustable } | null
+  const [pickupResetting, setPickupResetting] = useState(false);
+  const [pickupResetError, setPickupResetError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
@@ -262,6 +270,9 @@ export default function BookingPage() {
   const repricePending = isInsured && (repriceLoading || (repriceStale && insValid && !repriceError));
   // Buchung bei versicherter Auswahl nur mit frischem, gültigem Reprice.
   const insuranceBlocksBooking = isInsured && (repriceLoading || repriceStale || !repriceResult || !!repriceError || !insValid);
+  // P0: Abholfenster-Hydrierung blockiert die Buchung (nur Pickup) — laufend ODER Ladefehler.
+  // Gemeinsame Wahrheit für Button-Deaktivierung (BookingActionModule) und doBook-Guard.
+  const pickupHydrationBlocks = pickupWindowBlocksBooking({ serviceType: tariff?.serviceType, hydration: pickupHydration });
   // Platzhalter für das Inhaltsbeschreibungs-Feld (unverändert: Sendungsinhalt → "Paket").
   const insContentPlaceholder = form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket";
 
@@ -410,6 +421,16 @@ export default function BookingPage() {
       setProhibitedShowError(true);
       return;
     }
+    // Abholzeitfenster: nicht buchen, solange das gespeicherte Fenster noch geladen
+    // wird ODER ein Ladefehler vorliegt (kein unbemerktes Buchen mit einem anderen
+    // als dem angezeigten Fenster). Nur Pickup betroffen; der finale /book bleibt
+    // zusätzlich der autoritative fail-closed Gate (409 PICKUP_WINDOW_CHANGED).
+    if (pickupHydrationBlocks) {
+      setError(pickupHydration.error
+        ? "Das gespeicherte Abholzeitfenster konnte nicht geladen werden. Bitte laden Sie die Seite neu."
+        : "Das Abholzeitfenster wird noch geladen. Bitte einen Moment warten.");
+      return;
+    }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
@@ -527,6 +548,21 @@ export default function BookingPage() {
         return;
       }
       if (r.status === 409) {
+        // P0 — Abholzeitfenster-Drift: das gespeicherte individuelle Fenster ist
+        // gegen den frischen Tarif nicht mehr gültig. Eigener Code (NICHT Duplikat/
+        // Preis) → Spezialdialog mit den neuen verfügbaren Grenzen; Buchung gestoppt,
+        // das Fenster wird NICHT still überschrieben. Erst nach bewusster Bestätigung
+        // wird der Wunsch verworfen (NULL/NULL) und eine erneute Buchung erlaubt.
+        if (d?.code === "PICKUP_WINDOW_CHANGED") {
+          setPickupWindowChanged({
+            availableFrom: d.availableFrom,
+            availableUntil: d.availableUntil,
+            minimumMinutes: d.minimumMinutes,
+            adjustable: d.adjustable,
+          });
+          setLoading(false);
+          return;
+        }
         // F3 — Preisdrift OHNE Versicherung: zuerst und getrennt von Duplikat-/
         // Versicherungskonflikten abfangen. Nur dieser Konflikt trägt den Code
         // "PRICE_CHANGED" (Duplikate/Versicherungsdrift tun das nicht) → sauber
@@ -599,6 +635,40 @@ export default function BookingPage() {
     doBook();
   };
 
+  // P0 — „Angebote neu berechnen" aus dem Abholfenster-Dialog: den nun veralteten
+  // Buchungs-Flow bewusst verlassen und frische Angebote berechnen (gleiches Ziel
+  // wie „Zurück"). Kein erneuter /book, kein Draft-Reset.
+  const handlePickupWindowRecalculate = () => {
+    setPickupWindowChanged(null);
+    navigate("/dashboard?page=new");
+  };
+
+  // P0 — „Neues Zeitfenster übernehmen": den gespeicherten individuellen Wunsch
+  // bewusst verwerfen (Draft NULL/NULL → volles frisches Carrier-Fenster) und den
+  // Dialog schließen. KEIN Auto-Rebook — erst nach dieser Bestätigung ist eine
+  // erneute Buchung möglich (der Nutzer klickt bewusst erneut „Kostenpflichtig
+  // buchen"). Schlägt das Zurücksetzen fehl, bleibt der Dialog offen: der alte
+  // Wunsch bliebe sonst gespeichert und würde beim nächsten /book erneut 409 → das
+  // ist fail-closed und wird als Fehler im Dialog gemeldet.
+  const acceptNewPickupWindow = async () => {
+    const sid = bookingData?.shipmentId;
+    setPickupResetError("");
+    setPickupResetting(true);
+    try {
+      if (sid) {
+        const r = await saveDraftPickupWindow({ shipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null });
+        if (r.status === 401 || r.status === 403) { setPickupResetting(false); return; } // zentraler Auth-Redirect
+        if (!r.ok) { setPickupResetting(false); setPickupResetError("Das Zeitfenster konnte nicht zurückgesetzt werden. Bitte erneut versuchen."); return; }
+      }
+      setPickupWindow(null);
+      setPickupWindowChanged(null);
+      setPickupResetting(false);
+    } catch {
+      setPickupResetting(false);
+      setPickupResetError("Das Zeitfenster konnte nicht zurückgesetzt werden. Bitte erneut versuchen.");
+    }
+  };
+
   const handleDownloadLabel = async () => {
     if (!booking?.shipmentId) return;
     setLabelLoading(true); setLabelError("");
@@ -638,6 +708,13 @@ export default function BookingPage() {
   // Zollangaben vollständig sind — inkl. commercial (Nummer/Datum/bestätigtes Dokument).
   // Erste Hälfte der doppelten Absicherung; die zweite ist der Guard in doBook.
   const goToStep2 = () => {
+    // Abholfenster-Ladefehler: auf Step 1 bleiben, wo die Fehlermeldung des Moduls
+    // (mit Reload-Hinweis) sichtbar ist. Ein laufender Ladevorgang ist kurz und wird
+    // hier nicht blockiert — der finale Buchungs-Guard fängt beide Fälle ohnehin ab.
+    if (tariff?.serviceType === "pickup" && pickupHydration.error) {
+      setError("Das gespeicherte Abholzeitfenster konnte nicht geladen werden. Bitte laden Sie die Seite neu, bevor Sie fortfahren.");
+      return;
+    }
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
       // Blockiert wird ausschließlich wegen unvollständiger FACHLICHER Zollangaben
@@ -700,6 +777,7 @@ export default function BookingPage() {
                 shipmentId={bookingData?.shipmentId}
                 value={pickupWindow}
                 onChange={setPickupWindow}
+                onHydrationChange={setPickupHydration}
               />
             )}
 
@@ -857,6 +935,7 @@ export default function BookingPage() {
                   agbAccepted={agbAccepted}
                   prohibitedGoodsAccepted={prohibitedGoodsAccepted}
                   insuranceBlocksBooking={insuranceBlocksBooking}
+                  pickupBlocksBooking={pickupHydrationBlocks}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}
@@ -985,6 +1064,62 @@ export default function BookingPage() {
                 disabled={loading || asNum(priceChange.newPrice) == null}
               >
                 {loading ? <><span className="spinner" /> Wird gebucht…</> : "Zum neuen Preis fortfahren"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── P0: Abholzeitfenster-Drift-Dialog („Abholzeitfenster geändert") ──
+          Erscheint bei /book-Antwort 409 PICKUP_WINDOW_CHANGED. Zeigt die neuen
+          verfügbaren Grenzen, stoppt die Buchung und überschreibt das gewählte
+          Fenster NICHT still. Der Nutzer entscheidet bewusst: Angebote neu
+          berechnen ODER das neue vollständige Fenster übernehmen (Draft NULL/NULL,
+          erst danach erneut buchbar). Bewusst KEINE generische Duplikatmeldung. */}
+      {pickupWindowChanged && (
+        <div className="price-drift-overlay" role="presentation">
+          <div
+            className="price-drift-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pickup-drift-title"
+            aria-describedby="pickup-drift-desc"
+          >
+            <div className="price-drift-badge" aria-hidden="true"><Icon n="clock" s={24} c="#1D4ED8" /></div>
+            <h2 id="pickup-drift-title" className="price-drift-title">Abholzeitfenster geändert</h2>
+            <p id="pickup-drift-desc" className="price-drift-desc">
+              Das verfügbare Abholzeitfenster hat sich seit Ihrer Auswahl geändert. Ihr zuvor
+              gewähltes Fenster ist nicht mehr verfügbar.
+            </p>
+
+            <div className="price-drift-compare" style={{ justifyContent: "center" }}>
+              <div className="price-drift-col price-drift-col--new">
+                <span className="price-drift-col-label">Neu verfügbar</span>
+                <span className="price-drift-new">{pickupWindowChanged.availableFrom}–{pickupWindowChanged.availableUntil} Uhr</span>
+              </div>
+            </div>
+            {Number.isFinite(pickupWindowChanged.minimumMinutes) && pickupWindowChanged.minimumMinutes > 0 && (
+              <p className="price-drift-desc">Mindestdauer des Fensters: {formatDuration(pickupWindowChanged.minimumMinutes)}.</p>
+            )}
+
+            {pickupResetError && <div className="alert alert-error mb-16">{pickupResetError}</div>}
+
+            <div className="price-drift-actions">
+              <button
+                type="button"
+                className="btn btn-outline price-drift-btn"
+                onClick={handlePickupWindowRecalculate}
+                disabled={pickupResetting}
+              >
+                Angebote neu berechnen
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary price-drift-btn"
+                onClick={acceptNewPickupWindow}
+                disabled={pickupResetting}
+              >
+                {pickupResetting ? <><span className="spinner" /> Wird übernommen…</> : "Neues Zeitfenster übernehmen"}
               </button>
             </div>
           </div>

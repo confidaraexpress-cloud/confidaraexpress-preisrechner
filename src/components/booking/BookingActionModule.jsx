@@ -8,10 +8,10 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 // deaktiviert — dieselbe Freigabe-Bedingung, die auch der Guard in doBook nutzt
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
-  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking,
+  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking,
   onBook, onNavigateShipments, onNavigateNew, userEmail,
 }) {
-  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking });
+  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking });
   return (
     <>
       {error && <div className="alert alert-error">{error}</div>}

@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { canSubmitBooking } from "./bookingGate.mjs";
 
-const OK = { agbAccepted: true, prohibitedGoodsAccepted: true, loading: false, insuranceBlocksBooking: false };
+const OK = { agbAccepted: true, prohibitedGoodsAccepted: true, loading: false, insuranceBlocksBooking: false, pickupBlocksBooking: false };
 
 // ── Beide Bestätigungen als Voraussetzung ────────────────────────────────────
 test("keine Bestätigung → blockiert", () => {
@@ -31,6 +31,10 @@ test("beide akzeptiert, aber loading → blockiert", () => {
 
 test("beide akzeptiert, aber Versicherung blockiert → blockiert", () => {
   assert.equal(canSubmitBooking({ ...OK, insuranceBlocksBooking: true }), false);
+});
+
+test("beide akzeptiert, aber Abholfenster-Hydrierung blockiert → blockiert", () => {
+  assert.equal(canSubmitBooking({ ...OK, pickupBlocksBooking: true }), false);
 });
 
 // ── Robustheit: nur echtes true zählt (kein truthy-Bypass) ───────────────────

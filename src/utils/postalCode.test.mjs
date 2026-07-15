@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
   validatePostalCode, normalizePostalCode, isPostalCodeRequired, hasPostalCode,
@@ -16,10 +17,11 @@ import { rules } from "./generated/postalCodeRules.mjs";
 import { countries } from "./countries.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rawText  = fs.readFileSync(path.join(__dirname, "libaddressinput-raw.json"), "utf8");
 const snapshot = JSON.parse(fs.readFileSync(path.join(__dirname, "address-metadata.json"), "utf8"));
 
 // Gemeinsame Versionskennung Frontend↔Backend (identischer Snapshot).
-const EXPECTED_VERSION = "2026-07-15.1";
+const EXPECTED_VERSION = "2026-07-15.2";
 
 const ok  = (cc, v) => assert.equal(validatePostalCode(cc, v).valid, true,  `${cc} ${JSON.stringify(v)} sollte gültig sein`);
 const bad = (cc, v, code) => {
@@ -53,9 +55,10 @@ test("Kanada: alphanumerisch, Normalisierung, ungültige Buchstaben", () => {
 test("USA: ZIP und ZIP+4; falsche Länge", () => {
   ok("US", "95014"); ok("US", "95014-1234"); bad("US", "9501"); bad("US", "950140");
 });
-test("Niederlande: 4 Ziffern + 2 Buchstaben; Case; falsche Länge", () => {
-  ok("NL", "1071 DK");
-  assert.equal(validatePostalCode("NL", "1071dk").normalizedValue, "1071DK");
+test("Niederlande: 4 Ziffern + 2 Buchstaben; case-insensitiv gültig; falsche Länge", () => {
+  ok("NL", "1071 DK"); ok("NL", "1071dk"); // case-insensitiv gültig
+  // libaddressinput NL trägt kein upper=Z → keine Uppercase-Normalisierung (Quelle faithful):
+  assert.equal(validatePostalCode("NL", "1071dk").normalizedValue, "1071dk");
   bad("NL", "107 DK"); bad("NL", "1071 D");
 });
 test("Pflichtland leer → POSTAL_CODE_REQUIRED; kein-PLZ-Land leer → gültig", () => {
@@ -71,7 +74,7 @@ test("Normalisierung fügt nie Ziffern hinzu (CN 10096 bleibt 10096 → ungülti
 
 // ── UI-Guidance-Helfer ───────────────────────────────────────────────────────
 test("postalCodeExample/inputMode/hasPostalCode liefern sinnvolle Werte", () => {
-  assert.equal(postalCodeExample("CN"), "100096");
+  assert.equal(postalCodeExample("CN"), "266033"); // libaddressinput zipex[0] für CN
   assert.equal(postalCodeInputMode("DE"), "numeric"); // reine Ziffern
   assert.equal(postalCodeInputMode("GB"), "text");    // alphanumerisch
   assert.equal(hasPostalCode("DE"), true);
@@ -122,4 +125,20 @@ test("Keine Regel fällt auf eine generische Global-Regex zurück", () => {
     assert.equal(validatePostalCode(cc, v).valid, false, `${cc} ${v} dürfte nicht generisch akzeptiert werden`);
   }
   assert.equal(getPostalCodeRule("ZZ"), null); // unbekanntes Land → keine erfundene Regel
+});
+
+test("Metadaten deterministisch aus dem Roh-Snapshot (rawSnapshotSha256 = SHA-256 der Rohdatei)", () => {
+  const actual = crypto.createHash("sha256").update(rawText).digest("hex");
+  assert.equal(snapshot.rawSnapshotSha256, actual);
+  assert.equal(snapshot.generatedFrom, "libaddressinput-raw.json");
+});
+
+test("ZZ-require-Fallback + korrigierte Länder (maschinell, keine Handannahme)", () => {
+  const raw = JSON.parse(rawText);
+  assert.equal(raw.ZZ.require, "AC"); // Default: keine Pflicht-PLZ
+  assert.equal(rules.AL.pattern, "\\d{4}"); assert.equal(rules.AL.required, false);
+  assert.equal(rules.IE.pattern, "[\\dA-Z]{3} ?[\\dA-Z]{4}"); assert.equal(rules.IE.example, "A65 F4E2");
+  assert.equal(rules.XK.pattern, "[1-7]\\d{4}");
+  assert.equal(rules.AE.pattern, null); assert.equal(rules.HK.pattern, null); // nur diese ohne PLZ-System
+  assert.equal(rules.DE.required, true); assert.equal(rules.XK.required, false);
 });

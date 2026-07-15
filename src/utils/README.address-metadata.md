@@ -1,41 +1,54 @@
 # Address / Postal-Code Metadata (Paket 1 — Frontend)
 
-Länderspezifische Postleitzahl-Validierung + Eingabehilfe für die Adressformulare
-(NewShipmentPage). Spiegelt exakt die Backend-Regeln (autoritativ bleibt der Server).
+Länderspezifische PLZ-Validierung + Eingabehilfe (NewShipmentPage), **maschinell** aus
+einem hash-gepinnten Roh-Snapshot der autoritativen Quelle abgeleitet — identisch zum
+Backend (autoritativ bleibt der Server).
 
 ## Quelle & Lizenz
 
-- **Quelle:** Google **libaddressinput** (Chrome i18n Address Metadata), Apache-2.0.
-  Übernommen: `zip`→`postalCodePattern`, `zipex`→`postalCodeExample`, `require⊃Z`→`postalCodeRequired`.
-- **Snapshot-Version:** `2026-07-15.1` (identisch zum Backend-Snapshot).
-- Live-Endpoint in der Build-Umgebung durch Egress-Policy gesperrt → Werte transkribiert
-  (Details/Quelle/Attribution im JSON-Kopf von `address-metadata.json`).
+- **Upstream:** Google **libaddressinput** (Chrome i18n Address Metadata), Felder
+  `zip`/`zipex`/`require`/`upper` verbatim + `ZZ`-Fallback.
+- **Bezogen über:** PyPI **`google-i18n-address==3.1.1`** (Wheel-SHA-256
+  `f66f4fd2…76fc23d`) — versionierte, prüfbare Kopie derselben Responses (Live-Endpoint
+  in der Build-Umgebung egress-gesperrt).
+- **Lizenz:** Daten Apache-2.0 (Google libaddressinput); Bezugspaket BSD-3-Clause
+  (google-i18n-address, Mirumee). Siehe `address-metadata.json`.
+- **Snapshot-Version:** `2026-07-15.2` (identisch zum Backend).
 
-## Kanonische Quelle + Generator
+## Pipeline
 
 ```
-src/utils/address-metadata.json           ← EINZIGE Quelle der Wahrheit (= Backend-Kopie, gleiche version)
-scripts/generate-postal-code-rules.mjs    ← deterministischer Generator
-src/utils/generated/postalCodeRules.mjs   ← generiertes Artefakt (nicht von Hand editieren)
-src/utils/postalCode.mjs                  ← Helfer + UI-Guidance (nur Interpretation)
+src/utils/libaddressinput-raw.json         ← ROH: unveränderte Country-Responses (74 + ZZ)
+scripts/build-address-metadata.mjs         ← maschinelle Ableitung (ZZ require/upper-Fallback)
+src/utils/address-metadata.json            ← kanonische Metadaten (generiert, rawSnapshotSha256)
+scripts/generate-postal-code-rules.mjs     ← Regel-Generator
+src/utils/generated/postalCodeRules.mjs    ← Laufzeitregeln (nicht von Hand editieren)
+src/utils/postalCode.mjs                   ← Helfer + UI-Guidance
+scripts/fetch-libaddressinput.mjs          ← offizieller Refresh direkt vom Endpoint (netzabhängig)
 ```
+
+Ableitung je Land: `pattern = Country.zip`; `example = zipex[0]`;
+`required = (Country.require ?? ZZ.require "AC").includes("Z")`;
+`uppercase = (Country.upper ?? ZZ.upper).includes("Z")`. Der ZZ-Fallback bedeutet:
+Länder ohne eigenes `require` erben "AC" → **keine** Pflicht-PLZ.
 
 ```bash
-node scripts/generate-postal-code-rules.mjs          # neu generieren
-node scripts/generate-postal-code-rules.mjs --check  # Drift-Check (vor Commit)
-npm test                                             # enthält postalCode.test.mjs (Matrix + Abdeckung)
+node scripts/build-address-metadata.mjs --check      # Drift-Check
+node scripts/generate-postal-code-rules.mjs --check
+npm test                                             # postalCode.test.mjs (Matrix + Abdeckung + Hash-Check)
+node scripts/fetch-libaddressinput.mjs               # nur netz-freigegeben
 ```
 
 ## Verhalten
 
-- **Validierung** (`validatePostalCode`) blockiert „Preise berechnen" bei hartem Formatfehler
-  (fließt in `getErrors`). Backend re-validiert identisch — der Client kann nichts überspringen.
-- **Eingabehilfe:** länderspezifischer Platzhalter/Beispiel, `inputMode` (numeric/text), `maxLength` (10).
-- **Länderwechsel:** manueller Landwechsel mit vorhandenen Adressdaten öffnet einen
-  Bestätigungsdialog; bei Bestätigung werden Straße/Zusatz/PLZ/Ort geleert (Firma/Kontakt bleiben).
-- **Länder ohne PLZ-System** (z. B. AE, HK): Feld optional, kein künstlicher Zwang.
+- **Validierung** blockiert „Preise berechnen" bei hartem Formatfehler; Backend
+  re-validiert identisch (kein Client-Bypass).
+- **Eingabehilfe:** landesspezifischer Platzhalter/Beispiel, `inputMode` (numeric/text),
+  `maxLength` (10).
+- **Länderwechsel:** Bestätigungsdialog → Straße/Zusatz/PLZ/Ort leeren, Firma/Kontakt behalten.
+- **Länder ohne PLZ-System** (AE, HK): Feld optional.
 
-## Fachliche Grenze
+## Grenze
 
 Nur **Format** (Länge/Struktur/Pflicht). KEINE Existenz- oder PLZ-Ort-Prüfung.
 `FR + 63743` bleibt formal gültig. Kein UI-Text darf das Gegenteil behaupten.

@@ -1,88 +1,462 @@
 {
-  "version": "2026-07-15.1",
-  "source": "Google libaddressinput (Chrome i18n address metadata)",
-  "sourceEndpoint": "https://chromium-i18n.appspot.com/ssl-address/data/{regionCode}",
+  "version": "2026-07-15.2",
+  "generatedFrom": "libaddressinput-raw.json",
+  "rawSnapshotSha256": "cf82e2c20acd19435d5bfbdfe9569fccf04f0f409c93e93a502ea9de885b4524",
+  "source": "Google libaddressinput (Chrome i18n address metadata) — zip/zipex/require/upper fields, verbatim",
+  "sourceUpstream": "https://chromium-i18n.appspot.com/ssl-address/data/{regionCode}",
+  "sourcePackage": "google-i18n-address==3.1.1 (PyPI), bundles the libaddressinput dataset under i18naddress/data/",
+  "sourcePackageWheelSha256": "f66f4fd2b75d1cd371fc0a7678a1d656da4aa3b32932279e78dd6cae776fc23d",
   "retrievedAt": "2026-07-15",
-  "license": "Apache-2.0",
-  "attribution": "Address metadata derived from the Google libaddressinput project (https://github.com/google/libaddressinput), licensed under the Apache License 2.0. ConfidaraExpress transcribes only the postal-code fields (zip / zipex / require) for the destinations it supports; no full region/subregion metadata is redistributed.",
-  "fieldMapping": "libaddressinput 'zip' -> postalCodePattern (raw body, character classes only, anchored ^(?:...)$ at compile time); 'zipex' first value -> postalCodeExample; 'require' containing 'Z' -> postalCodeRequired.",
-  "note": "The live libaddressinput endpoint (chromium-i18n.appspot.com) is blocked by this build environment's egress policy (403 organization-policy denial), so the values below were transcribed from the libaddressinput dataset rather than fetched at build time. To refresh: run scripts/generate-postal-code-rules against the live endpoint from a network that permits it, then re-run the coverage tests and review the country-rule diff. Runtime validation is 100% local — no network call per keystroke or per booking.",
-  "limitation": "Format check only. A pattern-valid postal code is NOT proven to exist, nor proven to match the entered city/street. Example: FR + 63743 stays format-valid for France.",
+  "dataLicense": "Apache-2.0 (Google libaddressinput address data)",
+  "packageLicense": "BSD-3-Clause (google-i18n-address, Mirumee Software)",
+  "requireSemantics": "postalCodeRequired = (Country.require ?? ZZ.require='AC').includes('Z'); postalCodeUppercase likewise from `upper`.",
+  "limitation": "Format only. A pattern-valid code is NOT proven to exist, nor proven to match the entered city/street (e.g. FR + 63743 stays valid).",
+  "refresh": "node scripts/fetch-libaddressinput.mjs (needs network to the upstream endpoint), then re-run this builder + the coverage tests and review the country-rule diff.",
   "count": 74,
   "countries": {
-    "DE": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "26133", "postalCodeUppercase": false },
-    "AT": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1010", "postalCodeUppercase": false },
-    "CH": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "8002", "postalCodeUppercase": false },
-    "AL": { "postalCodeRequired": false, "postalCodePattern": null, "postalCodeExample": null, "postalCodeUppercase": false },
-    "BE": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "4000", "postalCodeUppercase": false },
-    "BA": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "71000", "postalCodeUppercase": false },
-    "BG": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1000", "postalCodeUppercase": false },
-    "DK": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "8660", "postalCodeUppercase": false },
-    "EE": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "69501", "postalCodeUppercase": false },
-    "FI": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "00550", "postalCodeUppercase": false },
-    "FR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "33380", "postalCodeUppercase": false },
-    "GR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3} ?[0-9]{2}", "postalCodeExample": "151 24", "postalCodeUppercase": false },
-    "GB": { "postalCodeRequired": true,  "postalCodePattern": "(GIR ?0AA)|((([A-Z][0-9]{1,2})|(([A-Z][A-HJ-Y][0-9]{1,2})|(([A-Z][0-9][A-Z])|([A-Z][A-HJ-Y][0-9]?[A-Z])))) ?[0-9][A-Z]{2})", "postalCodeExample": "SW1A 1AA", "postalCodeUppercase": true },
-    "IE": { "postalCodeRequired": false, "postalCodePattern": null, "postalCodeExample": "D02 AF30", "postalCodeUppercase": true },
-    "IS": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3}", "postalCodeExample": "320", "postalCodeUppercase": false },
-    "IT": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "00144", "postalCodeUppercase": false },
-    "XK": { "postalCodeRequired": false, "postalCodePattern": "[0-9]{5}", "postalCodeExample": "10000", "postalCodeUppercase": false },
-    "HR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "10000", "postalCodeUppercase": false },
-    "LV": { "postalCodeRequired": true,  "postalCodePattern": "(LV-)?[0-9]{4}", "postalCodeExample": "LV-1073", "postalCodeUppercase": true },
-    "LI": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "9490", "postalCodeUppercase": false },
-    "LT": { "postalCodeRequired": true,  "postalCodePattern": "(LT-)?[0-9]{5}", "postalCodeExample": "LT-01100", "postalCodeUppercase": true },
-    "LU": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1653", "postalCodeUppercase": false },
-    "MT": { "postalCodeRequired": true,  "postalCodePattern": "[A-Z]{3} ?[0-9]{4}", "postalCodeExample": "VLT 1117", "postalCodeUppercase": true },
-    "MD": { "postalCodeRequired": true,  "postalCodePattern": "(MD-?)?[0-9]{4}", "postalCodeExample": "MD-2001", "postalCodeUppercase": true },
-    "ME": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "81000", "postalCodeUppercase": false },
-    "NL": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4} ?[A-Z]{2}", "postalCodeExample": "1071 DK", "postalCodeUppercase": true },
-    "MK": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1314", "postalCodeUppercase": false },
-    "NO": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "0025", "postalCodeUppercase": false },
-    "PL": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{2}-[0-9]{3}", "postalCodeExample": "00-950", "postalCodeUppercase": false },
-    "PT": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}-[0-9]{3}", "postalCodeExample": "2725-079", "postalCodeUppercase": false },
-    "RO": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "060274", "postalCodeUppercase": false },
-    "RU": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "101000", "postalCodeUppercase": false },
-    "SE": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3} ?[0-9]{2}", "postalCodeExample": "114 55", "postalCodeUppercase": false },
-    "RS": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5,6}", "postalCodeExample": "106314", "postalCodeUppercase": false },
-    "SK": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3} ?[0-9]{2}", "postalCodeExample": "010 01", "postalCodeUppercase": false },
-    "SI": { "postalCodeRequired": true,  "postalCodePattern": "(SI-)?[0-9]{4}", "postalCodeExample": "SI-1000", "postalCodeUppercase": true },
-    "ES": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "28039", "postalCodeUppercase": false },
-    "CZ": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3} ?[0-9]{2}", "postalCodeExample": "100 00", "postalCodeUppercase": false },
-    "TR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "06101", "postalCodeUppercase": false },
-    "UA": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "15432", "postalCodeUppercase": false },
-    "HU": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1037", "postalCodeUppercase": false },
-    "BY": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "223016", "postalCodeUppercase": false },
-    "CY": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "2008", "postalCodeUppercase": false },
-    "AR": { "postalCodeRequired": true,  "postalCodePattern": "([A-Z][0-9]{4}[A-Z]{3}|[0-9]{4})", "postalCodeExample": "C1084ABB", "postalCodeUppercase": true },
-    "BR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}-?[0-9]{3}", "postalCodeExample": "40301-110", "postalCodeUppercase": false },
-    "CL": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{7}", "postalCodeExample": "8340457", "postalCodeUppercase": false },
-    "CA": { "postalCodeRequired": true,  "postalCodePattern": "[ABCEGHJ-NPRSTVXY][0-9][ABCEGHJ-NPRSTV-Z] ?[0-9][ABCEGHJ-NPRSTV-Z][0-9]", "postalCodeExample": "K1A 0B1", "postalCodeUppercase": true },
-    "CO": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "111121", "postalCodeUppercase": false },
-    "MX": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "02860", "postalCodeUppercase": false },
-    "US": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}(-[0-9]{4})?", "postalCodeExample": "95014", "postalCodeUppercase": false },
-    "AE": { "postalCodeRequired": false, "postalCodePattern": null, "postalCodeExample": null, "postalCodeUppercase": false },
-    "AU": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "2060", "postalCodeUppercase": false },
-    "CN": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "100096", "postalCodeUppercase": false },
-    "IN": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "110001", "postalCodeUppercase": false },
-    "ID": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "40115", "postalCodeUppercase": false },
-    "IL": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}([0-9]{2})?", "postalCodeExample": "9438303", "postalCodeUppercase": false },
-    "JP": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3}-?[0-9]{4}", "postalCodeExample": "154-0023", "postalCodeUppercase": false },
-    "KZ": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "040900", "postalCodeUppercase": false },
-    "MY": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "43000", "postalCodeUppercase": false },
-    "NZ": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "6001", "postalCodeUppercase": false },
-    "PH": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "1008", "postalCodeUppercase": false },
-    "SA": { "postalCodeRequired": false, "postalCodePattern": "[0-9]{5}(-[0-9]{4})?", "postalCodeExample": "11564", "postalCodeUppercase": false },
-    "SG": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "238857", "postalCodeUppercase": false },
-    "KR": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "03187", "postalCodeUppercase": false },
-    "TW": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{3}([0-9]{2})?", "postalCodeExample": "104", "postalCodeUppercase": false },
-    "TH": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "10150", "postalCodeUppercase": false },
-    "VN": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{6}", "postalCodeExample": "700000", "postalCodeUppercase": false },
-    "HK": { "postalCodeRequired": false, "postalCodePattern": null, "postalCodeExample": null, "postalCodeUppercase": false },
-    "DZ": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "16000", "postalCodeUppercase": false },
-    "EG": { "postalCodeRequired": false, "postalCodePattern": "[0-9]{5}", "postalCodeExample": "12411", "postalCodeUppercase": false },
-    "KE": { "postalCodeRequired": false, "postalCodePattern": "[0-9]{5}", "postalCodeExample": "40406", "postalCodeUppercase": false },
-    "MA": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{5}", "postalCodeExample": "20000", "postalCodeUppercase": false },
-    "NG": { "postalCodeRequired": false, "postalCodePattern": "[0-9]{6}", "postalCodeExample": "930283", "postalCodeUppercase": false },
-    "ZA": { "postalCodeRequired": true,  "postalCodePattern": "[0-9]{4}", "postalCodeExample": "0083", "postalCodeUppercase": false }
+    "DE": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "26133",
+      "postalCodeUppercase": false
+    },
+    "AT": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1010",
+      "postalCodeUppercase": false
+    },
+    "CH": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "2544",
+      "postalCodeUppercase": false
+    },
+    "AL": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1001",
+      "postalCodeUppercase": false
+    },
+    "BE": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "4000",
+      "postalCodeUppercase": false
+    },
+    "BA": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "71000",
+      "postalCodeUppercase": false
+    },
+    "BG": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1000",
+      "postalCodeUppercase": false
+    },
+    "DK": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "8660",
+      "postalCodeUppercase": false
+    },
+    "EE": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "69501",
+      "postalCodeUppercase": false
+    },
+    "FI": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "00550",
+      "postalCodeUppercase": false
+    },
+    "FR": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{2} ?\\d{3}",
+      "postalCodeExample": "33380",
+      "postalCodeUppercase": false
+    },
+    "GR": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3} ?\\d{2}",
+      "postalCodeExample": "151 24",
+      "postalCodeUppercase": false
+    },
+    "GB": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "GIR ?0AA|(?:(?:AB|AL|B|BA|BB|BD|BF|BH|BL|BN|BR|BS|BT|BX|CA|CB|CF|CH|CM|CO|CR|CT|CV|CW|DA|DD|DE|DG|DH|DL|DN|DT|DY|E|EC|EH|EN|EX|FK|FY|G|GL|GY|GU|HA|HD|HG|HP|HR|HS|HU|HX|IG|IM|IP|IV|JE|KA|KT|KW|KY|L|LA|LD|LE|LL|LN|LS|LU|M|ME|MK|ML|N|NE|NG|NN|NP|NR|NW|OL|OX|PA|PE|PH|PL|PO|PR|RG|RH|RM|S|SA|SE|SG|SK|SL|SM|SN|SO|SP|SR|SS|ST|SW|SY|TA|TD|TF|TN|TQ|TR|TS|TW|UB|W|WA|WC|WD|WF|WN|WR|WS|WV|YO|ZE)(?:\\d[\\dA-Z]? ?\\d[ABD-HJLN-UW-Z]{2}))|BFPO ?\\d{1,4}",
+      "postalCodeExample": "EC1Y 8SY",
+      "postalCodeUppercase": true
+    },
+    "IE": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "[\\dA-Z]{3} ?[\\dA-Z]{4}",
+      "postalCodeExample": "A65 F4E2",
+      "postalCodeUppercase": false
+    },
+    "IS": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{3}",
+      "postalCodeExample": "320",
+      "postalCodeUppercase": false
+    },
+    "IT": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "00144",
+      "postalCodeUppercase": false
+    },
+    "XK": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "[1-7]\\d{4}",
+      "postalCodeExample": "10000",
+      "postalCodeUppercase": false
+    },
+    "HR": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "10000",
+      "postalCodeUppercase": false
+    },
+    "LV": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "LV-\\d{4}",
+      "postalCodeExample": "LV-1073",
+      "postalCodeUppercase": false
+    },
+    "LI": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "948[5-9]|949[0-8]",
+      "postalCodeExample": "9496",
+      "postalCodeUppercase": false
+    },
+    "LT": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "04340",
+      "postalCodeUppercase": false
+    },
+    "LU": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "4750",
+      "postalCodeUppercase": false
+    },
+    "MT": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "[A-Z]{3} ?\\d{2,4}",
+      "postalCodeExample": "NXR 01",
+      "postalCodeUppercase": true
+    },
+    "MD": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "2012",
+      "postalCodeUppercase": false
+    },
+    "ME": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "8\\d{4}",
+      "postalCodeExample": "81257",
+      "postalCodeUppercase": false
+    },
+    "NL": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "[1-9]\\d{3} ?(?:[A-RT-Z][A-Z]|S[BCE-RT-Z])",
+      "postalCodeExample": "1234 AB",
+      "postalCodeUppercase": false
+    },
+    "MK": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1314",
+      "postalCodeUppercase": false
+    },
+    "NO": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "0025",
+      "postalCodeUppercase": false
+    },
+    "PL": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{2}-\\d{3}",
+      "postalCodeExample": "00-950",
+      "postalCodeUppercase": false
+    },
+    "PT": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}-\\d{3}",
+      "postalCodeExample": "2725-079",
+      "postalCodeUppercase": false
+    },
+    "RO": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "060274",
+      "postalCodeUppercase": false
+    },
+    "RU": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "247112",
+      "postalCodeUppercase": false
+    },
+    "SE": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3} ?\\d{2}",
+      "postalCodeExample": "11455",
+      "postalCodeUppercase": false
+    },
+    "RS": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5,6}",
+      "postalCodeExample": "106314",
+      "postalCodeUppercase": false
+    },
+    "SK": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3} ?\\d{2}",
+      "postalCodeExample": "010 01",
+      "postalCodeUppercase": false
+    },
+    "SI": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "4000",
+      "postalCodeUppercase": false
+    },
+    "ES": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "28039",
+      "postalCodeUppercase": false
+    },
+    "CZ": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3} ?\\d{2}",
+      "postalCodeExample": "100 00",
+      "postalCodeUppercase": false
+    },
+    "TR": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "01960",
+      "postalCodeUppercase": false
+    },
+    "UA": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "15432",
+      "postalCodeUppercase": false
+    },
+    "HU": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1037",
+      "postalCodeUppercase": false
+    },
+    "BY": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "223016",
+      "postalCodeUppercase": false
+    },
+    "CY": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "2008",
+      "postalCodeUppercase": false
+    },
+    "AR": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "((?:[A-HJ-NP-Z])?\\d{4})([A-Z]{3})?",
+      "postalCodeExample": "C1070AAM",
+      "postalCodeUppercase": true
+    },
+    "BR": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}-?\\d{3}",
+      "postalCodeExample": "40301-110",
+      "postalCodeUppercase": false
+    },
+    "CL": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{7}",
+      "postalCodeExample": "8340457",
+      "postalCodeUppercase": false
+    },
+    "CA": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "[ABCEGHJKLMNPRSTVXY]\\d[ABCEGHJ-NPRSTV-Z] ?\\d[ABCEGHJ-NPRSTV-Z]\\d",
+      "postalCodeExample": "H3Z 2Y7",
+      "postalCodeUppercase": true
+    },
+    "CO": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "111221",
+      "postalCodeUppercase": false
+    },
+    "MX": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "02860",
+      "postalCodeUppercase": true
+    },
+    "US": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "(\\d{5})(?:[ \\-](\\d{4}))?",
+      "postalCodeExample": "95014",
+      "postalCodeUppercase": false
+    },
+    "AE": {
+      "postalCodeRequired": false,
+      "postalCodePattern": null,
+      "postalCodeExample": null,
+      "postalCodeUppercase": false
+    },
+    "AU": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "2060",
+      "postalCodeUppercase": false
+    },
+    "CN": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "266033",
+      "postalCodeUppercase": false
+    },
+    "IN": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "110034",
+      "postalCodeUppercase": false
+    },
+    "ID": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "40115",
+      "postalCodeUppercase": false
+    },
+    "IL": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}(?:\\d{2})?",
+      "postalCodeExample": "9614303",
+      "postalCodeUppercase": false
+    },
+    "JP": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3}-?\\d{4}",
+      "postalCodeExample": "154-0023",
+      "postalCodeUppercase": false
+    },
+    "KZ": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "040900",
+      "postalCodeUppercase": false
+    },
+    "MY": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "43000",
+      "postalCodeUppercase": false
+    },
+    "NZ": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "6001",
+      "postalCodeUppercase": false
+    },
+    "PH": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "1008",
+      "postalCodeUppercase": false
+    },
+    "SA": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "11564",
+      "postalCodeUppercase": false
+    },
+    "SG": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "546080",
+      "postalCodeUppercase": false
+    },
+    "KR": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "03051",
+      "postalCodeUppercase": true
+    },
+    "TW": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{3}(?:\\d{2,3})?",
+      "postalCodeExample": "104",
+      "postalCodeUppercase": false
+    },
+    "TH": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "10150",
+      "postalCodeUppercase": false
+    },
+    "VN": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}\\d?",
+      "postalCodeExample": "70010",
+      "postalCodeUppercase": false
+    },
+    "HK": {
+      "postalCodeRequired": false,
+      "postalCodePattern": null,
+      "postalCodeExample": null,
+      "postalCodeUppercase": false
+    },
+    "DZ": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "40304",
+      "postalCodeUppercase": false
+    },
+    "EG": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "12411",
+      "postalCodeUppercase": false
+    },
+    "KE": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "20100",
+      "postalCodeUppercase": false
+    },
+    "MA": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{5}",
+      "postalCodeExample": "53000",
+      "postalCodeUppercase": false
+    },
+    "NG": {
+      "postalCodeRequired": false,
+      "postalCodePattern": "\\d{6}",
+      "postalCodeExample": "930283",
+      "postalCodeUppercase": false
+    },
+    "ZA": {
+      "postalCodeRequired": true,
+      "postalCodePattern": "\\d{4}",
+      "postalCodeExample": "0083",
+      "postalCodeUppercase": false
+    }
   }
 }

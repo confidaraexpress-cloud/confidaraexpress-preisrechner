@@ -86,11 +86,14 @@ export function postalCodeExample(country) {
   return rule && rule.example ? rule.example : "";
 }
 
-// "numeric" when the pattern is digits/spaces/hyphens only; otherwise "text".
+// "numeric" when the pattern accepts digits/spaces/hyphens only; otherwise "text".
+// Regex escapes like \d/\w contain a Latin letter in the pattern STRING — strip
+// backslash-escapes first so e.g. "\d{5}" (DE) is correctly detected as numeric.
 export function postalCodeInputMode(country) {
   const rule = getPostalCodeRule(country);
   if (!rule || !rule.pattern) return "text";
-  return /[A-Z]/i.test(rule.pattern) ? "text" : "numeric";
+  const stripped = rule.pattern.replace(/\\[a-zA-Z]/g, "");
+  return /[A-Za-z]/.test(stripped) ? "text" : "numeric";
 }
 
 export function postalCodeMaxLength() {

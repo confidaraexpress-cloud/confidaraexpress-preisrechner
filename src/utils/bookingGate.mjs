@@ -8,6 +8,7 @@
 //   - prohibitedGoodsAccepted  : Bestätigung „keine ausgeschlossenen Güter" (neu)
 //   - loading                  : Buchung läuft bereits
 //   - insuranceBlocksBooking   : Versicherungspfad ohne frischen/gültigen Reprice
+//   - pickupBlocksBooking      : Abholfenster wird noch geladen ODER Ladefehler (nur Pickup)
 //
 // Buchung nur, wenn BEIDE Bestätigungen gesetzt sind und kein bestehendes Gate
 // blockiert. Die AGB-Bedingung bleibt eigenständig erhalten (nicht ersetzt).
@@ -16,11 +17,13 @@ export function canSubmitBooking({
   prohibitedGoodsAccepted,
   loading,
   insuranceBlocksBooking,
+  pickupBlocksBooking,
 } = {}) {
   return (
     agbAccepted === true &&
     prohibitedGoodsAccepted === true &&
     !loading &&
-    !insuranceBlocksBooking
+    !insuranceBlocksBooking &&
+    !pickupBlocksBooking
   );
 }

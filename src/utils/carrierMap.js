@@ -122,6 +122,25 @@ export function toAccessPointSearchCode(provider) {
   }
 }
 
+// Kontrollierter FALLBACK für die Access-Point-Suche, wenn KEIN Capability-Provider
+// (accessPoint.provider) vorliegt: Ableitung aus der kontrollierten, öffentlichen
+// publicCarrierId. Bewusst getrennt von toAccessPointSearchCode gehalten (das strikt
+// providerbasiert bleibt). Nur die vier vom bestehenden Backend-Suchendpunkt
+// akzeptierten Carrier; alles andere (fedex/tnt/der-kurier/other/unbekannt) → null.
+// KEIN Rohfeld/Regex/includes — reine 1:1-Zuordnung der klassifizierten ID.
+// Achtung DHL-Kennung: publicCarrierId "dhl" ↔ Access-Point-Code "dhlexpress"
+// (der Capability-Provider hieße "dhl-express").
+//   ups → ups · dpd → dpd · dhl → dhlexpress · gls → gls · sonst → null
+export function publicCarrierIdToAccessPointSearchCode(publicCarrierId) {
+  switch (publicCarrierId) {
+    case "ups": return "ups";
+    case "dpd": return "dpd";
+    case "dhl": return "dhlexpress";
+    case "gls": return "gls";
+    default:    return null;
+  }
+}
+
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────
 // Referenz-Reihenfolge für die Anzeige im Carrier-Filter. Unbekannte Carrier
 // (kein Treffer in dieser Liste) werden danach alphabetisch nach Anzeigename

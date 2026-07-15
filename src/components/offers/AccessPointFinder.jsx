@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { searchAccessPoints } from "../../api/client";
-import { toAccessPointSearchCode } from "../../utils/carrierMap";
+import { toAccessPointSearchCode, publicCarrierIdToAccessPointSearchCode } from "../../utils/carrierMap";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
 // Zeigt — ähnlich wie Jumingo — eine reine Orientierungssuche für Dropoff-/
@@ -126,14 +126,19 @@ function normalizeList(data) {
 }
 
 export function AccessPointFinder({ tariff, senderPrefill }) {
-  // Die technische Suchbarkeit richtet sich AUSSCHLIESSLICH nach dem provider-
-  // neutralen Capability-Vertrag: tariff.accessPoint.available === true UND ein
-  // vom Adapter übersetzter, allowlisteter Provider-Code. KEINE Ableitung aus
-  // carrier/tariffName/shopName/shopsName oder publicCarrierId — Unbekanntes
-  // degradiert fail-closed (carrierCode === null → neutraler Hinweis, keine Suche).
-  const carrierCode = tariff?.accessPoint?.available === true
-    ? toAccessPointSearchCode(tariff.accessPoint.provider)
-    : null;
+  // Suchanbieter-Auflösung — kontrolliert & allowlisted (KEIN Rohfeld, KEIN Regex,
+  // KEINE Ableitung aus carrier/tariffName/shopName/Logo/Servicebezeichnung/
+  // shipper_tariff_id). Priorität:
+  //   1) Capability-Provider (accessPoint.provider) via toAccessPointSearchCode
+  //   2) Fallback über die kontrollierte, öffentliche publicCarrierId
+  //      (ups/dpd/dhl/gls) — der öffentliche Carrier ist zuverlässig klassifiziert
+  //      und der bestehende Backend-Suchendpunkt akzeptiert genau diese vier.
+  // `accessPoint.available` ist BEWUSST KEIN Sichtbarkeits-Guard mehr — die
+  // Sichtbarkeit der Paketshop-Karte steuert allein serviceType==="dropoff" im
+  // Parent. Unbekannt/nicht unterstützt → null → ehrlicher Hinweis, KEINE Suche.
+  const carrierCode =
+    toAccessPointSearchCode(tariff?.accessPoint?.provider) ||
+    publicCarrierIdToAccessPointSearchCode(tariff?.publicCarrierId);
   const countryCode = (senderPrefill?.country || "DE").toUpperCase();
 
   const [postCode, setPostCode] = useState(senderPrefill?.postCode || "");
@@ -151,12 +156,15 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   // Klicks im Finder nicht zur Karte durchreichen (Karte hat onClick=select).
   const stop = (e) => e.stopPropagation();
 
-  // ── Nicht unterstützter Carrier: sauberer Hinweis, keine Suche ──
+  // ── Nicht (noch) unterstützter Suchanbieter: Die Paketshop-Karte bleibt sicht-
+  // bar (Titel + Orientierung liefert der Parent), aber statt des Formulars ein
+  // ehrlicher Hinweis — KEIN API-Aufruf, keine vorgetäuschte Shopauswahl. ──
   if (!carrierCode) {
     return (
       <div className="ap-finder ap-finder--unsupported" onClick={stop}>
         <p className="ap-finder-note">
-          Paketshop-Suche für diesen Anbieter wird noch vorbereitet.
+          Die direkte Paketshop-Suche ist für diesen Versanddienstleister derzeit
+          noch nicht verfügbar.
         </p>
       </div>
     );

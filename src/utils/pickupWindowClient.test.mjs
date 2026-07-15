@@ -18,6 +18,10 @@ import {
   validatePickupSelection,
   isFullCarrierWindow,
   pickupWindowBlocksBooking,
+  rangePercent,
+  pickupSliderGap,
+  clampPickupFrom,
+  clampPickupUntil,
 } from "./pickupWindowClient.mjs";
 
 // Belegter Tarif-Ausschnitt: Carrier-Fenster 11:00–18:00, Mindestdauer 120 Min, verstellbar.
@@ -106,4 +110,38 @@ test("(24) Dropoff/kein Pickup nie blockiert; formatDuration rendert die neue Mi
   assert.equal(formatDuration(120), "2 Std.");
   assert.equal(formatDuration(90), "1 Std. 30 Min.");
   assert.equal(formatDuration(0), "0 Min.");
+});
+
+// ── Dual-Range-Slider-Helfer (reine Anzeige-/Interaktionsmathematik) ─────────
+// Carrier-Achse 11:00–18:00 = 660..1080 Min, Mindestdauer 120, Raster 15.
+
+test("(25) rangePercent: Position auf der Achse, geklemmt auf 0..100", () => {
+  assert.equal(rangePercent(660, 660, 1080), 0);    // Anfang
+  assert.equal(rangePercent(1080, 660, 1080), 100); // Ende
+  assert.equal(rangePercent(870, 660, 1080), 50);   // Mitte (13:30)
+  assert.equal(rangePercent(600, 660, 1080), 0);    // unter min → geklemmt
+  assert.equal(rangePercent(2000, 660, 1080), 100); // über max → geklemmt
+  assert.equal(rangePercent(700, 660, 660), 0);     // degenerierte Achse → 0
+});
+
+test("(26) pickupSliderGap: Mindestdauer, aber nie kleiner als ein Rasterschritt", () => {
+  assert.equal(pickupSliderGap(120, 15), 120); // Mindestdauer dominiert
+  assert.equal(pickupSliderGap(0, 15), 15);    // ohne Mindestdauer → mind. 1 Schritt (from < until)
+  assert.equal(pickupSliderGap(90, 15), 90);
+});
+
+test("(27) clampPickupFrom: hält Carrierbeginn UND Mindestabstand zum Ende ein", () => {
+  const bMin = 660, gap = 120;
+  assert.equal(clampPickupFrom(705, 900, bMin, gap), 705);  // 11:45 zulässig (bis 13:00)
+  assert.equal(clampPickupFrom(600, 900, bMin, gap), 660);  // vor Carrierbeginn → 11:00
+  assert.equal(clampPickupFrom(880, 900, bMin, gap), 780);  // würde Mindestdauer verletzen → until-gap (13:00)
+  assert.equal(clampPickupFrom("x", 900, bMin, gap), null); // Unsinn → null
+});
+
+test("(28) clampPickupUntil: hält Carrierende UND Mindestabstand zum Beginn ein", () => {
+  const bMax = 1080, gap = 120;
+  assert.equal(clampPickupUntil(900, 705, 1080, gap), 900);  // 15:00 zulässig (ab 13:45)
+  assert.equal(clampPickupUntil(1200, 705, bMax, gap), 1080); // nach Carrierende → 18:00
+  assert.equal(clampPickupUntil(800, 705, bMax, gap), 825);  // würde Mindestdauer verletzen → from+gap (13:45)
+  assert.equal(clampPickupUntil(900, "x", bMax, gap), null); // Unsinn → null
 });

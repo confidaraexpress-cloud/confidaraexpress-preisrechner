@@ -61,6 +61,19 @@ export function searchAccessPoints({ carrierCodes, countryCode, postCode, city, 
   });
 }
 
+// ── Abholzeitfenster: kundengewähltes Von/Bis-Fenster auf dem Draft speichern ──
+// POST /api/jumingo/draft/pickup-window (auth). Zeiten als "HH:mm"/"HH:mm:ss";
+// beide null/leer → Fenster löschen (volles Carrier-Fenster). Buchungswirksam erst
+// serverseitig im /book (dort autoritativ gegen den Tarif geprüft). Gibt die rohe
+// Response zurück — der Aufrufer wertet Status/JSON selbst aus.
+export function saveDraftPickupWindow({ shipmentId, pickupMinTime, pickupMaxTime }) {
+  return apiFetch(`/api/jumingo/draft/pickup-window`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ shipmentId, pickupMinTime, pickupMaxTime }),
+  });
+}
+
 // ── Versicherung: Live-Repricing (auth) ──────────────────────────────────────
 // POST /api/jumingo/reprice-insurance — read-only Preisberechnung für eine
 // gewählte Zusatzversicherung. WICHTIG (Backend-Vertrag): `insuranceType` wird

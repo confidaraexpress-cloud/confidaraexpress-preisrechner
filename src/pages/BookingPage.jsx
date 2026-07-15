@@ -13,6 +13,7 @@ import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectPr
 import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
+import { PickupWindowModule } from "../components/booking/PickupWindowModule";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
@@ -36,6 +37,9 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const { state: bookingData } = useLocation();
   const [step, setStep] = useState(1);
+  // Kundengewähltes Abholzeitfenster (nur Pickup) — im Seiten-State, damit die Auswahl den
+  // Schrittwechsel übersteht; die Draft-Persistenz übernimmt PickupWindowModule. {from,until}|null.
+  const [pickupWindow, setPickupWindow] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
@@ -687,6 +691,15 @@ export default function BookingPage() {
                   country:  bookingData?.form?.s_country,
                   street:   bookingData?.form?.s_street,
                 }}
+              />
+            )}
+
+            {tariff.serviceType === "pickup" && tariff.pickupTimeFrom && tariff.pickupTimeUntil && (
+              <PickupWindowModule
+                tariff={tariff}
+                shipmentId={bookingData?.shipmentId}
+                value={pickupWindow}
+                onChange={setPickupWindow}
               />
             )}
 

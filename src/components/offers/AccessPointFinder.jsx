@@ -144,6 +144,9 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [results, setResults]   = useState(null); // null = noch nicht gesucht
+  // Reine Anzeige-Ausklappung der Ergebnisliste (max. 5 → alle). Lokal, NICHT
+  // persistiert; jede neue Suche setzt wieder auf die kompakte Ansicht zurück.
+  const [expanded, setExpanded] = useState(false);
 
   // Klicks im Finder nicht zur Karte durchreichen (Karte hat onClick=select).
   const stop = (e) => e.stopPropagation();
@@ -194,6 +197,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     }
     setLoading(true);
     setError("");
+    setExpanded(false); // neue Suche → wieder kompakte Liste (max. 5)
     try {
       const r = await searchAccessPoints({
         carrierCodes: [carrierCode],
@@ -222,19 +226,47 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     setLoading(false);
   };
 
+  const streetField = streetRequired && (
+    <div className="ap-finder-field ap-finder-field--street">
+      <label className="ap-finder-label" htmlFor={`ap-street-${tariff?.id}`}>
+        Straße <span className="ap-finder-required">(erforderlich)</span>
+      </label>
+      <input
+        id={`ap-street-${tariff?.id}`}
+        className="ap-finder-input"
+        value={street}
+        onChange={(e) => setStreet(e.target.value)}
+        placeholder="z. B. Weiherstraße 25"
+        autoComplete="off"
+        maxLength={200}
+      />
+    </div>
+  );
+
+  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer (bereits vom Backend
+  // sortiert — KEINE eigene Sortierung/Umordnung), der Rest auf Wunsch per
+  // Button. Reiner Anzeigezustand (expanded), nicht persistiert.
+  const MAX_COMPACT = 5;
+  const hasResults  = !loading && !error && results !== null && results.length > 0;
+  const shownResults = hasResults ? (expanded ? results : results.slice(0, MAX_COMPACT)) : [];
+  const extraResults = hasResults ? results.length - MAX_COMPACT : 0;
+
   return (
-    <div className="ap-finder" onClick={stop}>
-      {/* Klarer Hinweis: Orientierung, noch keine verbindliche Buchung. */}
-      <div className="ap-finder-banner" role="note">
-        <Icon n="info" s={15} c="currentColor" />
-        <span className="ap-finder-banner-text">
-          Die Paketshops dienen aktuell zur Orientierung. Die Buchung erfolgt
-          ohne verbindliche Auswahl eines konkreten Shops.
+    <div className="ap-finder" onClick={stop} aria-busy={loading}>
+      {/* Kompakter Orientierungshinweis (ersetzt die frühere Warn-Banner-Optik):
+          hält die Backend-Realität fest — reine Orientierung, KEINE verbindliche
+          Shopauswahl. Bewusst dezent statt alarmierend; gilt für beide Einsatz-
+          orte (Buchungskarte & Angebots-Details), da geteilte Finder-Anzeige. */}
+      <p className="ap-finder-hint">
+        <Icon n="info" s={14} c="currentColor" />
+        <span>
+          Die Paketshop-Suche dient der Orientierung – eine verbindliche Auswahl
+          eines Shops ist nicht erforderlich.
         </span>
-      </div>
+      </p>
 
       <form className="ap-finder-form" onSubmit={doSearch}>
-        <div className="ap-finder-fields">
+        <div className={`ap-finder-fields${streetRequired ? " ap-finder-fields--gls" : ""}`}>
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-zip-${tariff?.id}`}>PLZ</label>
             <input
@@ -264,22 +296,6 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
               maxLength={100}
             />
           </div>
-          {streetRequired && (
-            <div className="ap-finder-field">
-              <label className="ap-finder-label" htmlFor={`ap-street-${tariff?.id}`}>
-                Straße <span className="ap-finder-required">(erforderlich)</span>
-              </label>
-              <input
-                id={`ap-street-${tariff?.id}`}
-                className="ap-finder-input"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-                placeholder="z. B. Weiherstraße 25"
-                autoComplete="off"
-                maxLength={200}
-              />
-            </div>
-          )}
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-radius-${tariff?.id}`}>Umkreis</label>
             <select
@@ -293,6 +309,10 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
               ))}
             </select>
           </div>
+          {/* GLS verlangt zusätzlich eine Straße → volle Breite in Zeile 2
+              (siehe .ap-finder-fields--gls), damit vier Felder nicht gedrängt in
+              einer Zeile stehen. Andere Carrier zeigen dieses Feld nicht. */}
+          {streetField}
         </div>
 
         <div className="ap-finder-controls">
@@ -310,7 +330,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
             disabled={!canSearch}
           >
             {loading
-              ? <><span className="spinner" /> Suche…</>
+              ? <><span className="spinner" /> Paketshops werden gesucht …</>
               : <><Icon n="search" s={15} c="currentColor" /> Paketshops suchen</>}
           </button>
         </div>
@@ -324,12 +344,19 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         </div>
       )}
 
-      {loading && (
-        <div className="ap-finder-status">
-          <span className="spinner spinner-dark" />
-          <span>Paketshops werden gesucht…</span>
-        </div>
-      )}
+      {/* Lade-/Ergebnis-Ankündigung NUR für Screenreader: die sichtbare Lade-
+          Rückmeldung liefert bereits der Button-Text „Paketshops werden gesucht …"
+          (genau EINE sichtbare Ladeanzeige). role="status" (polite) macht Ladephase
+          und Trefferzahl dennoch zugänglich, ohne visuelle Dopplung. */}
+      <p className="ap-finder-sr" role="status">
+        {loading
+          ? "Paketshops werden gesucht …"
+          : results !== null
+            ? (results.length === 0
+                ? "Keine Paketshops gefunden."
+                : `${results.length} Paketshop${results.length === 1 ? "" : "s"} gefunden.`)
+            : ""}
+      </p>
 
       {!loading && !error && results !== null && results.length === 0 && (
         <div className="ap-finder-empty">
@@ -337,43 +364,59 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         </div>
       )}
 
-      {!loading && !error && results !== null && results.length > 0 && (
+      {hasResults && (
         <ul className="ap-result-list">
-          {results.map((s, i) => {
+          {shownResults.map((s, i) => {
             // Ländercode nur zeigen, wenn er vom gesuchten Land abweicht
             // (vermeidet redundantes "DE" bei inländischer Suche).
             const showCc = s.countryCode && s.countryCode !== countryCode;
+            const hasMeta = s.distance != null || s.isOpen != null || s.statusText || showCc;
             return (
               <li className="ap-result" key={i}>
-                <div className="ap-result-main">
-                  <div className="ap-result-name">{s.name || s.address}</div>
-                  {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
-                  {s.hours && (
-                    <div className="ap-result-hours">
-                      <Icon n="clock" s={13} c="currentColor" />
-                      <span>{s.hours}</span>
+                {/* Hierarchie: 1 Name · 2 Adresse · 3 Entfernung+Status (rechts) ·
+                    4 Öffnungszeiten (sekundär, volle Breite darunter). Rein
+                    informativ — KEINE Auswahl/kein Radio/keine gebundene Auswahl. */}
+                <div className="ap-result-top">
+                  <div className="ap-result-main">
+                    <div className="ap-result-name">{s.name || s.address}</div>
+                    {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
+                  </div>
+                  {hasMeta && (
+                    <div className="ap-result-meta">
+                      {s.distance != null && (
+                        <span className="ap-result-dist">{fmtDistance(s.distance, s.distanceCode)}</span>
+                      )}
+                      {s.isOpen != null ? (
+                        <span className={`ap-result-status ${s.isOpen ? "is-open" : "is-closed"}`}>
+                          {s.isOpen ? "Geöffnet" : "Geschlossen"}
+                        </span>
+                      ) : s.statusText ? (
+                        <span className="ap-result-status is-neutral">Status: {s.statusText}</span>
+                      ) : null}
+                      {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
                     </div>
                   )}
                 </div>
-                {(s.distance != null || s.isOpen != null || s.statusText || showCc) && (
-                  <div className="ap-result-meta">
-                    {s.distance != null && (
-                      <span className="ap-result-dist">{fmtDistance(s.distance, s.distanceCode)}</span>
-                    )}
-                    {s.isOpen != null ? (
-                      <span className={`ap-result-status ${s.isOpen ? "is-open" : "is-closed"}`}>
-                        {s.isOpen ? "Geöffnet" : "Geschlossen"}
-                      </span>
-                    ) : s.statusText ? (
-                      <span className="ap-result-status is-neutral">Status: {s.statusText}</span>
-                    ) : null}
-                    {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
+                {s.hours && (
+                  <div className="ap-result-hours">
+                    <Icon n="clock" s={13} c="currentColor" />
+                    <span>{s.hours}</span>
                   </div>
                 )}
               </li>
             );
           })}
         </ul>
+      )}
+
+      {extraResults > 0 && (
+        <button
+          type="button"
+          className="ap-more-btn"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Weniger anzeigen" : `Weitere Paketshops anzeigen (${extraResults})`}
+        </button>
       )}
     </div>
   );

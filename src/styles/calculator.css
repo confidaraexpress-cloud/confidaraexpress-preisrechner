@@ -292,7 +292,6 @@
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .field-optional { font-size: 11px; color: var(--gray400); font-weight: 400; }
 .field-hint { display: block; margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--gray400); }
-.booking-content-field { margin-bottom: 0; }
 .booking-invoice-num { color: var(--navy); }
 
 /* ─── Booking page ────────────────────────────────────────────────────────── */
@@ -601,11 +600,19 @@
 .booking-success-title { font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
 .booking-success-recap { text-align: left; max-width: 480px; margin: 0 auto 16px; }
 
-/* Step 3 — summary rows */
+/* Step 3 — summary rows (auch Karte 3 „Sendungsdetails") */
 .summary-detail-row { display: flex; justify-content: space-between; padding: 10px 0; gap: 16px; }
 .summary-detail-row-border { border-bottom: 1px solid var(--border); }
 .summary-detail-key { flex-shrink: 0; }
 .summary-detail-val { text-align: right; }
+
+/* Karte 3 „Sendungsdetails": auf schmalen Screens lange Adressen gestapelt
+   (Label über Wert, linksbündig) statt gequetscht zweispaltig. Bewusst NUR auf
+   diese Karte gescoped — die kurzen Step-3-Recap-Zeilen bleiben unberührt. */
+@media (max-width: 600px) {
+  .shipment-summary-card .summary-detail-row { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .shipment-summary-card .summary-detail-val { text-align: left; }
+}
 
 /* ─── Calculator page header ─────────────────────────────────────────────── */
 .calc-page-wrap { padding-top: 32px; padding-bottom: 48px; }

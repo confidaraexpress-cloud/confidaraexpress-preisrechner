@@ -3,7 +3,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test src/utils/kpis.test.mjs src/utils/adminInvoices.test.mjs src/utils/bookingGate.test.mjs src/utils/customsInvoiceMeta.test.mjs src/utils/customsInvoiceMode.test.mjs src/utils/commercialInvoice.test.mjs src/utils/pickupWindowClient.test.mjs src/utils/postalCode.test.mjs"
+    "test": "node --test src/utils/kpis.test.mjs src/utils/adminInvoices.test.mjs src/utils/bookingGate.test.mjs src/utils/customsInvoiceMeta.test.mjs src/utils/customsInvoiceMode.test.mjs src/utils/commercialInvoice.test.mjs src/utils/pickupWindowClient.test.mjs src/utils/postalCode.test.mjs src/utils/bookingPriceView.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

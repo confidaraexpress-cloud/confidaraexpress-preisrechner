@@ -1,21 +1,26 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
+import { money } from "../../utils/formatters";
 
-// Transportversicherung — REINE DARSTELLUNG. Die gesamte Logik (State, Reprice,
-// Validierung, Stale-Gating, /book-Übergabe) bleibt im Orchestrator (BookingPage)
-// und wird über Props hereingereicht. Warenwert und Versicherungswert bleiben
-// getrennte Felder mit eigener Validierung.
+// Transportversicherung — REINE DARSTELLUNG. Auswahl, Reprice, Validierung,
+// Preis-View-Model und /book-Übergabe bleiben im Orchestrator (BookingPage) und
+// kommen über Props herein.
 //
-// Aufbau bewusst nah an JUMiNGO: Header + Erklärung, Eingabefelder oben, drei
-// Optionskarten nebeneinander mit Bulletpoints und Bedingungs-Link je Karte —
-// optisch aber im ConfidaraExpress-Premium-Stil, ohne JUMiNGO-Branding und ohne
-// fremde Logos. Die Bulletpoints sind bewusst übernommene statische Inhalte. Ein
-// interner Versicherer-/Providername wird im Kundenfrontend bewusst NICHT gezeigt.
+// Progressive Disclosure: bei „Kein Versicherungsschutz" werden keine Wertfelder
+// gezeigt. Bei Standard/Premium ist der Warenwert das primäre Feld; der
+// Versicherungswert wird automatisch aus dem Warenwert vorbelegt und nur bei
+// Bedarf über „Versicherungswert anpassen" eingeblendet. Das frühere
+// Inhaltsbeschreibungs-Feld ist bewusst entfernt (der technische
+// contentDescription-Default bleibt im Orchestrator unverändert erhalten).
+//
+// Karten: neutraler Grundzustand, nur die AUSGEWÄHLTE Karte ist blau hervorgehoben.
+// Preise stammen aus dem zentralen Price-View-Model (nur „ab"-Preselect ODER exakter
+// Aufpreis der ausgewählten, bestätigten Stufe) — keine lokale Prämienberechnung,
+// keine zweite Reprice-Anfrage für die nicht gewählte Stufe.
 
-// Statische Karteninhalte (bewusst übernommen). `info` → dezentes Info-Icon,
-// sonst grüner Haken. `href: null` → nicht-navigierender Info-Link (keine lokale
-// Versicherungsbedingungen-Seite vorhanden). Haftungsbedingungen → AGB § 10.
+// Statische Karteninhalte (bewusst übernommen, unverändert). `info` → dezentes
+// neutrales Icon, sonst dezenter grüner Haken. Haftungsbedingungen → AGB § 10.
 const CARD_COPY = {
   standard: {
     bullets: [
@@ -44,14 +49,34 @@ const CARD_COPY = {
   },
 };
 
+function CardPrice({ price }) {
+  const p = price || { kind: "zero", value: 0 };
+  if (p.kind === "unknown") {
+    return (
+      <span className="ins-card-price">
+        <span className="ins-card-price-val ins-card-price-val--muted">Preis nach Warenwert</span>
+      </span>
+    );
+  }
+  const prefix = p.kind === "exact" ? "+ " : p.kind === "preselect" ? "ab " : "";
+  const withSub = p.kind === "exact" || p.kind === "preselect";
+  return (
+    <span className="ins-card-price">
+      <span className="ins-card-price-val">{prefix}{money(p.value)}</span>
+      {withSub && <span className="ins-card-price-sub">steuerfrei</span>}
+    </span>
+  );
+}
+
 export function InsuranceModule({
   insCards, insuranceType, onSelectType,
   isInsured,
   goodsValue, onGoodsValueChange, goodsValueError,
   insuranceValue, onInsuranceValueChange, insValueError,
-  insContent, onInsContentChange, contentPlaceholder,
-  repriceError, repricePending, repriceResult, repriceStale,
+  insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
+  repriceError, isRepricing, isStale, repriceConfirmed,
 }) {
+  const pending = isRepricing || isStale;
   return (
     <div className="booking-insurance-box">
       <div className="ins-head">
@@ -63,64 +88,13 @@ export function InsuranceModule({
         zuverlässig vor Verlust, Diebstahl und Transportschäden.
       </p>
 
-      {/* Eingabefelder oben — Warenwert und Versicherungswert bewusst GETRENNT. */}
-      <div className="ins-inputs">
-        <div className="ins-value-grid">
-          <div className="field">
-            <label className="field-label" htmlFor="ins-goods">Warenwert (EUR)</label>
-            <input
-              id="ins-goods"
-              className={`field-input${goodsValueError ? " field-input-error" : ""}`}
-              type="number" inputMode="decimal" min="0" max="9999999" step="0.01"
-              value={goodsValue}
-              onChange={e => onGoodsValueChange(e.target.value)}
-              placeholder="z. B. 500"
-            />
-            {goodsValueError
-              ? <span className="field-error">{goodsValueError}</span>
-              : <span className="field-hint">Tatsächlicher Warenwert der Sendung.</span>}
-          </div>
-          <div className="field">
-            <label className="field-label" htmlFor="ins-value">Versicherungswert (EUR)</label>
-            <input
-              id="ins-value"
-              className={`field-input${insValueError ? " field-input-error" : ""}`}
-              type="number" inputMode="decimal" min="0" max="20000" step="0.01"
-              value={insuranceValue}
-              onChange={e => onInsuranceValueChange(e.target.value)}
-              placeholder="z. B. 500"
-            />
-            {insValueError
-              ? <span className="field-error">{insValueError}</span>
-              : <span className="field-hint">Gewünschte zusätzliche Versicherungssumme (max. 20.000 €).</span>}
-          </div>
-        </div>
-        <div className="field">
-          <label className="field-label" htmlFor="ins-content">
-            Inhaltsbeschreibung <span className="field-optional">(max. 35 Zeichen)</span>
-          </label>
-          <input
-            id="ins-content"
-            className="field-input"
-            value={insContent}
-            onChange={e => onInsContentChange(e.target.value)}
-            placeholder={contentPlaceholder}
-            maxLength={35}
-          />
-          <span className="field-hint">Kurze Beschreibung des Sendungsinhalts für die Versicherung.</span>
-        </div>
-      </div>
-
-      {/* Drei Optionskarten nebeneinander (mobil untereinander). */}
+      {/* Drei Optionskarten — Grundzustand neutral, nur die Auswahl blau. */}
       <div className="ins-cards" role="radiogroup" aria-label="Transportversicherung wählen">
         {insCards.map(c => {
           const selected = insuranceType === c.id;
           const copy = CARD_COPY[c.id] || { bullets: [], link: null };
           return (
-            <label
-              key={c.id}
-              className={`ins-card ins-card--${c.tone}${selected ? " ins-card--selected" : ""}`}
-            >
+            <label key={c.id} className={`ins-card${selected ? " ins-card--selected" : ""}`}>
               <input
                 type="radio"
                 name="insuranceType"
@@ -133,13 +107,15 @@ export function InsuranceModule({
                   <span className="ins-card-radio" aria-hidden="true" />
                   <span className="ins-card-name" lang="de">{c.name}</span>
                 </span>
-                {c.priceVal != null && (
-                  <span className="ins-card-price">
-                    <span className="ins-card-price-val">{c.pricePrefix}{c.priceVal}</span>
-                    {c.priceSub && <span className="ins-card-price-sub">{c.priceSub}</span>}
-                  </span>
-                )}
+                {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
+                <CardPrice price={c.price} />
               </span>
+
+              {selected && isInsured && pending && (
+                <span className="ins-card-calc" aria-live="polite">
+                  <span className="spinner spinner-dark" /> Preis wird berechnet …
+                </span>
+              )}
 
               <ul className="ins-card-bullets">
                 {copy.bullets.map((b, i) => (
@@ -164,15 +140,66 @@ export function InsuranceModule({
         })}
       </div>
 
+      {/* Wertfelder NUR bei Standard/Premium (Progressive Disclosure). */}
+      {isInsured && (
+        <div className="ins-inputs">
+          <div className="field">
+            <label className="field-label" htmlFor="ins-goods">Warenwert der Sendung (EUR)</label>
+            <input
+              id="ins-goods"
+              className={`field-input${goodsValueError ? " field-input-error" : ""}`}
+              type="number" inputMode="decimal" min="0" max="9999999" step="0.01"
+              value={goodsValue}
+              onChange={e => onGoodsValueChange(e.target.value)}
+              placeholder="z. B. 500"
+            />
+            {goodsValueError
+              ? <span className="field-error">{goodsValueError}</span>
+              : <span className="field-hint">Tatsächlicher Warenwert der Sendung.</span>}
+          </div>
+
+          {goodsOverMax && (
+            <p className="ins-overmax" role="note">
+              <Icon n="info" s={14} c="currentColor" />
+              <span>
+                Der Warenwert liegt über dem maximal versicherbaren Betrag.
+                Bitte wählen Sie einen Versicherungswert bis {money(insuranceValueMax)}.
+              </span>
+            </p>
+          )}
+
+          {insValueFieldVisible ? (
+            <div className="field">
+              <label className="field-label" htmlFor="ins-value">Versicherungswert (EUR)</label>
+              <input
+                id="ins-value"
+                className={`field-input${insValueError ? " field-input-error" : ""}`}
+                type="number" inputMode="decimal" min="0" max={insuranceValueMax} step="0.01"
+                value={insuranceValue}
+                onChange={e => onInsuranceValueChange(e.target.value)}
+                placeholder="z. B. 500"
+              />
+              {insValueError
+                ? <span className="field-error">{insValueError}</span>
+                : <span className="field-hint">Maximal {money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.</span>}
+            </div>
+          ) : (
+            <button type="button" className="ins-adjust-btn" onClick={onRevealInsValue}>
+              Versicherungswert anpassen
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Reprice-Status + steuerfrei-Hinweis (nur bei versicherter Auswahl). */}
       {isInsured && (
         <div className="ins-after">
           <div className="ins-status" aria-live="polite">
             {repriceError ? (
               <span className="ins-status-error"><Icon n="info" s={14} c="currentColor" /> {repriceError}</span>
-            ) : repricePending ? (
+            ) : pending ? (
               <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
-            ) : (repriceResult && !repriceStale) ? (
+            ) : repriceConfirmed ? (
               <span className="ins-status-ok"><Icon n="check" s={14} c="currentColor" /> Versicherungspreis bestätigt</span>
             ) : null}
           </div>

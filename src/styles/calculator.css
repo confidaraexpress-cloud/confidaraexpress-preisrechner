@@ -295,7 +295,11 @@
 .booking-invoice-num { color: var(--navy); }
 
 /* ─── Booking page ────────────────────────────────────────────────────────── */
-.booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 760px; }
+/* max-width geringfügig von 760 → 800 erhöht (nur BookingPage), damit das
+   Versicherungsmodul zwei seriös lesbare Karten nebeneinander trägt, ohne dass
+   deutsche Namen brechen. Live-Leiste und Buchungskarte bleiben bündig (beide im
+   selben Container). Keine globale Dashboard-Breite betroffen. */
+.booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 800px; }
 .booking-title { font-size: 24px; font-weight: 800; color: var(--navy); font-family: 'DM Sans', -apple-system, sans-serif; }
 .booking-carrier-name { font-size: 20px; font-weight: 800; color: var(--navy); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -364,7 +368,10 @@
 .booking-tracking-note svg { color: var(--blue2); flex-shrink: 0; margin-top: 1px; }
 
 /* ─── Zusatzversicherung: Auswahl-Cards + Live-Preis ─────────────────────────── */
-.booking-insurance-box { border: 1px solid var(--border); border-radius: var(--radius-lg, 14px); padding: 18px; margin-bottom: 16px; background: linear-gradient(180deg, #fbfcff, #f6f9fe); box-shadow: 0 1px 3px rgba(14, 30, 80, 0.04); }
+/* container-type: inline-size → die Kartenanordnung reagiert auf die tatsächliche
+   MODULBREITE (nicht den Viewport). Auf breitem Desktop mit schmalem Booking-
+   Container greift so die richtige Spaltenzahl. */
+.booking-insurance-box { container-type: inline-size; container-name: insurance; border: 1px solid var(--border); border-radius: var(--radius-lg, 14px); padding: 18px; margin-bottom: 16px; background: linear-gradient(180deg, #fbfcff, #f6f9fe); box-shadow: 0 1px 3px rgba(14, 30, 80, 0.04); }
 .ins-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ins-head-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--navy); }
 .ins-head-title svg { color: var(--blue2); }
@@ -376,7 +383,7 @@
 
 /* Drei Optionskarten nebeneinander (JUMiNGO-nah), mobil untereinander. Gleiche
    Höhe (stretch) + Link per margin-top:auto unten bündig. */
-.ins-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.ins-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .ins-card {
   position: relative; display: flex; flex-direction: column; gap: 11px;
   padding: 16px; border: 1.5px solid var(--border); border-radius: 14px;
@@ -389,20 +396,28 @@
 /* Stabiler Kartenkopf als Grid: Name links (schrumpfbar), Preis rechts (fix),
    Premium-Badge in Zeile 2 unter dem Namen. Ein langer Name kann so den Preis
    nie verdrängen oder umbrechen. */
-.ins-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 6px; align-items: baseline; }
-.ins-card-head-name { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* Stabiler 2-Spalten-Kopf: links Titelbereich (Name + Badge darunter), rechts der
+   Preis. Beide Spalten unabhängig → ein langer Name verdrängt den Preis nie, und
+   das Badge sitzt immer direkt unter dem Namen (egal wie hoch der Preis ist). */
+.ins-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: start; }
+.ins-card-title-area { grid-column: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ins-card-head-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .ins-card-radio { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2, #c8d5e8); background: #fff; position: relative; transition: border-color 0.15s; }
-.ins-card-name { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--navy); line-height: 1.25; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
-.ins-card-price { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+/* Deutsche Versicherungsnamen NIE mitten im Wort trennen (kein break-word / auto-
+   Silbentrennung). Die Kartenbreite (Container-Query unten) sorgt dafür, dass die
+   Namen einzeilig passen; nur bei extrem schmalem Modul stapelt der Kopf. */
+.ins-card-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--navy); line-height: 1.3; min-width: 0; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.ins-card-price { grid-column: 2; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
 .ins-card-price-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 800; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ins-card-price-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.ins-card-price-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
 
 .ins-card-bullets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
 .ins-card-bullet { display: flex; align-items: flex-start; gap: 8px; }
 .ins-bullet-ico { flex-shrink: 0; margin-top: 1px; display: inline-flex; }
 .ins-bullet-ico--check { color: var(--success); }
 .ins-bullet-ico--info { color: var(--gray400); }
-.ins-bullet-txt { font-size: 12.5px; color: var(--gray700); line-height: 1.35; }
+.ins-bullet-txt { font-size: 12.5px; color: var(--gray700); line-height: 1.4; overflow-wrap: normal; word-break: normal; hyphens: none; }
+.ins-nowrap { white-space: nowrap; }
 
 .ins-card-cond { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
 .ins-card-cond-link { font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; border-bottom: 1px solid rgba(29, 78, 216, 0.35); line-height: 1.3; }
@@ -421,12 +436,12 @@
 .ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
 
 /* Premium-Badge (dezent, sachlich — keine manipulative Upsell-Optik). */
-.ins-card-badge { grid-column: 1; grid-row: 2; justify-self: start; margin-left: 27px; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 /* „Preis wird berechnet" auf der ausgewählten, gerade gerepricten Karte. */
 .ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: 11.5px; font-weight: 600; color: var(--blue2); }
 /* „Preis nach Warenwert" (kein Preselect): lesbar, NICHT deaktiviert wirkend; darf
    im schmalen Preis-Slot auf zwei Zeilen umbrechen. */
-.ins-card-price-val--muted { max-width: 96px; color: var(--gray600, #475569); font-weight: 600; font-size: 11.5px; line-height: 1.2; white-space: normal; text-align: right; }
+.ins-card-price-val--muted { max-width: 84px; color: var(--gray700, #334155); font-weight: 600; font-size: 12.5px; line-height: 1.25; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; text-align: right; }
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
 .ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12.5px; font-weight: 600; color: var(--blue2); cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
@@ -501,7 +516,34 @@
 }
 
 .ins-after { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-@media (max-width: 680px) { .ins-cards { grid-template-columns: 1fr; } }
+/* Responsive Kartenanordnung — reagiert auf die MODULBREITE (Container-Query),
+   mobile-first: 1 Karte → 2 Karten (mit „Kein Schutz" über die volle Breite) →
+   3 Karten. Aufgestuft wird NUR, wenn die deutschen Namen einzeilig passen; die
+   Breakpoints sind an der real gemessenen Kartenbreite ausgerichtet (nicht am
+   Viewport). Ohne Container-Query-Support bleibt die sichere 1-Karten-Spalte. */
+@container insurance (min-width: 656px) {
+  .ins-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ins-card:nth-child(3) { grid-column: 1 / -1; }
+}
+/* KEIN 3-Spalten-Layout: Drei deutsche Namen („Kein Versicherungsschutz" u. a.)
+   plus „Preis nach Warenwert" passen erst jenseits ~980px Modulbreite dreispaltig,
+   die real nie erreicht wird — dreispaltig würde die Namen brechen. Zwei Karten
+   (mit „Kein Schutz" über die volle Breite) sind die maximal saubere Anordnung. */
+
+/* Sehr schmales Modul: Kopf kontrolliert stapeln (Name-Zeile über Preis-Zeile) —
+   besser als ein zerstückelter Name. */
+@container insurance (max-width: 300px) {
+  .ins-card-head { grid-template-columns: 1fr; }
+  .ins-card-price { grid-column: 1; justify-self: start; align-items: flex-start; text-align: left; margin-top: 2px; }
+  .ins-card-price-val--muted { max-width: none; text-align: left; }
+}
+/* Extrem schmale Telefone (~≤320px): die langen Komposita „Standardversicherung"/
+   „Premiumversicherung" passen bei 14px nicht mehr randlos. 13px bleibt seriös
+   lesbar und verhindert einen Überstand — KEINE generelle Schriftverkleinerung. */
+@container insurance (max-width: 250px) {
+  .ins-card-name { font-size: 13px; }
+  .ins-card { padding: 14px; }
+}
 
 .ins-fields { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .ins-status { min-height: 18px; display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }

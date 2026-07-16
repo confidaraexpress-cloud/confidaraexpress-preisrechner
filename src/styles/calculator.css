@@ -409,16 +409,68 @@
 .ins-card-cond-link--static { color: var(--gray500); border-bottom-style: dotted; border-bottom-color: var(--gray300, #cbd5e1); cursor: default; }
 .ins-card-provider { font-size: 11.5px; font-weight: 600; color: var(--gray400); }
 
-/* Zustände: Standard/Premium leicht positiv (grünlich), Kein Schutz neutral/weiß. */
-.ins-card--positive { background: #f5fdf8; border-color: rgba(16, 185, 129, 0.24); }
-.ins-card--neutral { background: #fff; }
-.ins-card--selected { box-shadow: 0 6px 18px -10px rgba(20, 40, 100, 0.20); }
-.ins-card--positive.ins-card--selected { border-color: var(--success); background: #eafaf1; box-shadow: 0 8px 22px -10px rgba(16, 185, 129, 0.30); }
-.ins-card--positive.ins-card--selected .ins-card-radio { border-color: var(--success); }
-.ins-card--positive.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--success); }
-.ins-card--neutral.ins-card--selected { border-color: var(--blue); background: #f5f9ff; }
-.ins-card--neutral.ins-card--selected .ins-card-radio { border-color: var(--blue); }
-.ins-card--neutral.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
+/* Zustände: ALLE Karten neutral im Grundzustand (gleiche Wertigkeit); nur die
+   AUSGEWÄHLTE Karte wird blau hervorgehoben (kein großflächiges Dauergrün). */
+.ins-card--selected {
+  border-color: var(--blue);
+  background: #f5f9ff;
+  box-shadow: 0 8px 22px -12px rgba(37, 99, 235, 0.28);
+}
+.ins-card--selected .ins-card-radio { border-color: var(--blue); }
+.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
+
+/* Premium-Badge (dezent, sachlich — keine manipulative Upsell-Optik). */
+.ins-card-badge { flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+/* „Preis wird berechnet" auf der ausgewählten, gerade gerepricten Karte. */
+.ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: 11.5px; font-weight: 600; color: var(--blue2); }
+.ins-card-price-val--muted { color: var(--gray400); font-weight: 600; font-size: 12px; }
+/* „Versicherungswert anpassen" — dezente Sekundäraktion. */
+.ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12.5px; font-weight: 600; color: var(--blue2); cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35); }
+.ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
+.ins-adjust-btn:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 3px; border-radius: 3px; }
+/* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
+.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.45; color: var(--gray700); background: #fff8ec; border: 1px solid rgba(217, 119, 6, 0.22); border-radius: 10px; }
+.ins-overmax svg { color: #b45309; flex-shrink: 0; margin-top: 1px; }
+/* Preiszusammenfassung: noch nicht bestätigter Preis (Repricing/stale/Fehler). */
+.booking-price-pending { display: flex; align-items: center; gap: 8px; padding: 12px 0 14px; font-size: 13px; font-weight: 600; color: var(--blue2); }
+.booking-price-pending--error { color: var(--danger); }
+
+/* ─── Permanente Live-Zusammenfassungsleiste (BookingPage, Schritt 1 + 2) ─────
+   Providerneutral, ruhig, kompakt — KEINE JUMiNGO-Kopfzeilen-Kopie. Vier Zonen;
+   der Preis rechts stammt aus demselben zentralen Price-View-Model. */
+.booking-livesum {
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 20px; align-items: center;
+  padding: 14px 18px; margin-bottom: 20px;
+  background: linear-gradient(180deg, #ffffff, #f6f9fe);
+  border: 1px solid rgba(120, 150, 210, 0.22); border-radius: 14px;
+  box-shadow: 0 8px 22px -16px rgba(20, 40, 100, 0.18);
+}
+.blsum-zone { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.blsum-product { flex-direction: row; align-items: center; gap: 10px; }
+.blsum-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.blsum-product-txt { display: flex; flex-direction: column; min-width: 0; }
+.blsum-carrier { font-size: 13.5px; font-weight: 700; color: var(--navy); overflow-wrap: break-word; hyphens: auto; }
+.blsum-service { font-size: 11.5px; color: var(--gray500); overflow-wrap: break-word; }
+.blsum-label, .blsum-price-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray400); }
+.blsum-val { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; }
+.blsum-sub { font-size: 11.5px; color: var(--gray500); }
+.blsum-price { align-items: flex-end; text-align: right; }
+.blsum-price-box { display: flex; flex-direction: column; align-items: flex-end; }
+.blsum-price-net { font-size: 12px; color: var(--gray500); font-family: 'DM Mono', monospace; }
+.blsum-price-gross { font-size: 17px; font-weight: 800; color: var(--navy); font-family: 'DM Mono', monospace; letter-spacing: -0.01em; }
+.blsum-price-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--blue2); }
+.blsum-price-note--error { color: var(--danger); }
+
+@media (max-width: 860px) {
+  .booking-livesum { grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .blsum-product { grid-column: 1 / -1; }
+  .blsum-price { grid-column: 1 / -1; align-items: stretch; text-align: left; border-top: 1px solid var(--border); padding-top: 10px; }
+  .blsum-price-box { flex-direction: row; align-items: baseline; gap: 10px; }
+}
+@media (max-width: 380px) {
+  .booking-livesum { padding: 12px 14px; }
+  .blsum-price-gross { font-size: 16px; }
+}
 
 .ins-after { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 680px) { .ins-cards { grid-template-columns: 1fr; } }

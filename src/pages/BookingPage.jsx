@@ -20,8 +20,13 @@ import { AdditionalOptionsModule } from "../components/booking/AdditionalOptions
 import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
+import { BookingLiveSummary } from "../components/booking/BookingLiveSummary";
 import { TermsModule } from "../components/booking/TermsModule";
 import { BookingActionModule } from "../components/booking/BookingActionModule";
+import {
+  buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
+  autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
+} from "../utils/bookingPriceView.mjs";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
 // (keine Backend-Rohtexte/Stacks). Verhalten je Code steuert doBook (zurück zum
@@ -78,7 +83,11 @@ export default function BookingPage() {
   // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
   const [goodsValue, setGoodsValue]         = useState("");     // Warenwert (EUR)
   const [insuranceValue, setInsuranceValue] = useState("");     // Versicherungswert (EUR)
-  const [insContent, setInsContent]         = useState("");     // Inhaltsbeschreibung (max. 35), Default "Paket"
+  // Progressive Disclosure: der Versicherungswert spiegelt den Warenwert, bis der
+  // Nutzer ihn bewusst anpasst (insValueManual); das Feld ist bei Bedarf einblendbar
+  // (insValueRevealed) und wird bei Warenwert über dem Maximum automatisch gezeigt.
+  const [insValueManual, setInsValueManual]     = useState(false);
+  const [insValueRevealed, setInsValueRevealed] = useState(false);
   const [repriceResult, setRepriceResult]   = useState(null);
   const [repriceLoading, setRepriceLoading] = useState(false);
   const [repriceError, setRepriceError]     = useState("");
@@ -144,42 +153,19 @@ export default function BookingPage() {
   const isInsured = insuranceType === "standard" || insuranceType === "premium";
   const goodsValueNum     = asNum(goodsValue);
   const insuranceValueNum = asNum(insuranceValue);
-  // Inhaltsbeschreibung: eigenes Feld → sonst Sendungsinhalt → sonst "Paket"; hart auf 35 Zeichen.
-  const contentDescription = (insContent.trim() || form.content.trim() || "Paket").slice(0, 35);
+  // Inhaltsbeschreibung: das sichtbare Feld wurde aus dem Versicherungsbereich
+  // ENTFERNT. Der technische contentDescription-Vertrag bleibt UNVERÄNDERT — es wird
+  // weiter der bestehende sichere Default (Sendungsinhalt → "Paket") an /reprice und
+  // /book übergeben. Kein neues öffentliches Feld, keine Zoll-/Backend-Änderung.
+  const contentDescription = (form.content.trim() || "Paket").slice(0, 35);
 
   // Read-only Anzeigewerte (Reprice-Response bevorzugt, sonst Tarif-Felder).
   const insDetails   = tariff?.insuranceDetails && typeof tariff.insuranceDetails === "object" ? tariff.insuranceDetails : null;
   const insStdPrice  = asPos(insDetails?.extraInsurancePriceBruttoPreselect);
   const insPremPrice = asPos(insDetails?.extraInsurancePremiumPriceBruttoPreselect);
 
-  // Auswahl-Cards (reine Darstellung): Titel + echter Preis (Fallback
-  // „nach Warenwert"). Reihenfolge wie JUMiNGO: Standard · Premium · Kein Schutz.
-  // Bulletpoints und Bedingungs-Links liefert das InsuranceModule (bewusst
-  // übernommene statische Inhalte). Preise stammen aus echten Tariffeldern.
-  const insCards = [
-    {
-      id: "standard",
-      name: "Standardversicherung",
-      tone: "positive",
-      priceVal: insStdPrice != null ? money(insStdPrice) : "nach Warenwert",
-      priceSub: insStdPrice != null ? "steuerfrei" : null,
-      pricePrefix: insStdPrice != null ? "ab " : "",
-    },
-    {
-      id: "premium",
-      name: "Premiumversicherung",
-      tone: "positive",
-      priceVal: insPremPrice != null ? money(insPremPrice) : "nach Warenwert",
-      priceSub: insPremPrice != null ? "steuerfrei" : null,
-      pricePrefix: insPremPrice != null ? "ab " : "",
-    },
-    {
-      id: "none",
-      name: "Kein Versicherungsschutz",
-      tone: "neutral",
-      priceVal: null,
-    },
-  ];
+  // insCards (Kartenpreise) werden nach dem zentralen Price-View-Model gebaut —
+  // sie hängen von der bestätigten/gewählten Stufe ab (siehe unten, nach insValid).
 
   // Clientseitige Validierung (nur Standard/Premium), GETRENNT nach Backend-
   // Grenzen. Warenwert (goodsValue): 1..9.999.999. Versicherungswert (value):
@@ -200,6 +186,38 @@ export default function BookingPage() {
     insuranceValueNum > 20000  ? "Der Versicherungswert darf höchstens 20.000 € betragen." :
     "";
   const insValid = !isInsured || (goodsValueError === "" && insValueError === "");
+
+  // ── Zentrales Price-View-Model (Paket B) ────────────────────────────────────
+  // EINZIGE Preisquelle für Live-Leiste, Versicherungskarten, Preiszusammenfassung
+  // und Buchungs-Gate. Kein Preselect wird lokal zum Gesamtpreis addiert; der
+  // Gesamtbetrag stammt immer aus dem Tarif (none) ODER 1:1 aus repriceResult.totals.
+  const priceView = buildBookingPriceView({
+    tariff, insuranceType, repriceResult, repriceLoading, repriceStale, repriceError, insValid,
+  });
+
+  // Kartenpreise: „ab"-Preselect ODER — nur für die AUSGEWÄHLTE, bestätigte Stufe —
+  // der exakte Aufpreis aus dem Reprice. Keine zweite Reprice-Anfrage für die andere Stufe.
+  const insCards = [
+    { id: "standard", name: "Standardversicherung",    price: insuranceCardPrice({ cardType: "standard", selectedType: insuranceType, view: priceView, preselectGross: insStdPrice }) },
+    { id: "premium",  name: "Premiumversicherung",     price: insuranceCardPrice({ cardType: "premium",  selectedType: insuranceType, view: priceView, preselectGross: insPremPrice }) },
+    { id: "none",     name: "Kein Versicherungsschutz", price: insuranceCardPrice({ cardType: "none",     selectedType: insuranceType, view: priceView, preselectGross: null }) },
+  ];
+
+  // Progressive Disclosure des Versicherungswert-Felds + Warenwert-über-Maximum.
+  const goodsOverMax = goodsExceedsInsuranceMax(goodsValue);
+  const insValueFieldVisible = insValueRevealed || insValueManual || goodsOverMax;
+
+  // Auto-Vorbelegung Versicherungswert = Warenwert, bis der Nutzer ihn manuell ändert.
+  const handleGoodsValueChange = (v) => {
+    setGoodsValue(v);
+    const next = autofillInsuranceValue({ goodsValue: v, insuranceValueManual: insValueManual });
+    if (next != null) setInsuranceValue(next);
+  };
+  const handleInsuranceValueChange = (v) => { setInsuranceValue(v); setInsValueManual(true); };
+  const handleSelectInsuranceType = (id) => {
+    setInsuranceType(id);
+    if ((id === "standard" || id === "premium") && !insValueManual) setInsuranceValue(goodsValue);
+  };
 
   // Reprice-Request mit Seq-/Abort-Schutz: veraltete Antworten überschreiben den
   // State nie. Sendet insuranceType FLACH, keine Client-Preise (Backend-Vertrag).
@@ -262,19 +280,12 @@ export default function BookingPage() {
   // Laufende Requests beim Unmount abbrechen.
   useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
 
-  // Preis-/Total-Aufteilung ausschließlich aus der Reprice-Response.
-  const rt = repriceResult?.totals || null;
-  const showRepriceTotals = isInsured && rt && asPos(rt.insuranceGross) != null;
-  // Dezenter Live-Status: ein Reprice ist ausstehend, sobald sich Auswahl/Wert
-  // geändert haben und die Eingabe gültig ist (der debounced Effekt feuert dann).
-  const repricePending = isInsured && (repriceLoading || (repriceStale && insValid && !repriceError));
-  // Buchung bei versicherter Auswahl nur mit frischem, gültigem Reprice.
-  const insuranceBlocksBooking = isInsured && (repriceLoading || repriceStale || !repriceResult || !!repriceError || !insValid);
+  // Buchung bei versicherter Auswahl nur mit BESTÄTIGTEM Preis-View (Basis ODER
+  // frischer Reprice). Identisch zum bisherigen Gate — jetzt aus der einen Quelle.
+  const insuranceBlocksBooking = priceViewBlocksBooking(priceView);
   // P0: Abholfenster-Hydrierung blockiert die Buchung (nur Pickup) — laufend ODER Ladefehler.
   // Gemeinsame Wahrheit für Button-Deaktivierung (BookingActionModule) und doBook-Guard.
   const pickupHydrationBlocks = pickupWindowBlocksBooking({ serviceType: tariff?.serviceType, hydration: pickupHydration });
-  // Platzhalter für das Inhaltsbeschreibungs-Feld (unverändert: Sendungsinhalt → "Paket").
-  const insContentPlaceholder = form.content?.trim() ? form.content.trim().slice(0, 35) : "Paket";
 
   // ── Zoll: Validierung (nur wenn Route zollpflichtig) ────────────────────────
   const customsRequired = modules.customs;
@@ -752,6 +763,12 @@ export default function BookingPage() {
           ))}
         </div>
 
+        {/* Permanente Live-Zusammenfassung (Schritt 1 + 2) — dieselbe Preisquelle
+            wie Karten und Preiszusammenfassung (zentrales Price-View-Model). */}
+        {(step === 1 || step === 2) && (
+          <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
+        )}
+
         {error && <div className="alert alert-error mb-16">{error}</div>}
 
         {/* ── Step 1: Übersicht ── */}
@@ -853,21 +870,22 @@ export default function BookingPage() {
                   <InsuranceModule
                     insCards={insCards}
                     insuranceType={insuranceType}
-                    onSelectType={setInsuranceType}
+                    onSelectType={handleSelectInsuranceType}
                     isInsured={isInsured}
                     goodsValue={goodsValue}
-                    onGoodsValueChange={setGoodsValue}
+                    onGoodsValueChange={handleGoodsValueChange}
                     goodsValueError={goodsValueError}
                     insuranceValue={insuranceValue}
-                    onInsuranceValueChange={setInsuranceValue}
+                    onInsuranceValueChange={handleInsuranceValueChange}
                     insValueError={insValueError}
-                    insContent={insContent}
-                    onInsContentChange={setInsContent}
-                    contentPlaceholder={insContentPlaceholder}
+                    insValueFieldVisible={insValueFieldVisible}
+                    onRevealInsValue={() => setInsValueRevealed(true)}
+                    goodsOverMax={goodsOverMax}
+                    insuranceValueMax={INSURANCE_VALUE_MAX}
                     repriceError={repriceError}
-                    repricePending={repricePending}
-                    repriceResult={repriceResult}
-                    repriceStale={repriceStale}
+                    isRepricing={priceView.isRepricing}
+                    isStale={priceView.isStale}
+                    repriceConfirmed={priceView.status === PRICE_STATUS.REPRICE_CONFIRMED}
                   />
                 ) : (
                   <p className="booking-ins-unavailable">
@@ -902,12 +920,7 @@ export default function BookingPage() {
                       <span className="text-sm font-bold booking-confirm-val">{packageInfo}</span>
                     </div>
                   )}
-                  <PriceSummaryModule
-                    showRepriceTotals={showRepriceTotals}
-                    rt={rt}
-                    tariff={tariff}
-                    paymentTerm={user?.payment_term || 7}
-                  />
+                  <PriceSummaryModule priceView={priceView} paymentTerm={user?.payment_term || 7} />
                 </div>
                 {modules.printerNote && (
                   <div className="booking-printer-note" role="note">
@@ -974,12 +987,7 @@ export default function BookingPage() {
                     <span className="text-sm font-bold summary-detail-val">{tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}</span>
                   </div>
                 )}
-                <PriceSummaryModule
-                  showRepriceTotals={showRepriceTotals}
-                  rt={rt}
-                  tariff={tariff}
-                  paymentTerm={user?.payment_term || 7}
-                />
+                <PriceSummaryModule priceView={priceView} paymentTerm={user?.payment_term || 7} />
               </div>
             </div>
 

@@ -6,14 +6,17 @@ Backend (autoritativ bleibt der Server).
 
 ## Quelle & Lizenz
 
-- **Upstream:** Google **libaddressinput** (Chrome i18n Address Metadata), Felder
-  `zip`/`zipex`/`require`/`upper` verbatim + `ZZ`-Fallback.
-- **Bezogen über:** PyPI **`google-i18n-address==3.1.1`** (Wheel-SHA-256
-  `f66f4fd2…76fc23d`) — versionierte, prüfbare Kopie derselben Responses (Live-Endpoint
-  in der Build-Umgebung egress-gesperrt).
-- **Lizenz:** Daten Apache-2.0 (Google libaddressinput); Bezugspaket BSD-3-Clause
-  (google-i18n-address, Mirumee). Siehe `address-metadata.json`.
-- **Snapshot-Version:** `2026-07-15.2` (identisch zum Backend).
+- **Upstream:** Google **Address Data Service metadata** (Felder `zip`/`zipex`/`require`/
+  `upper` verbatim + `ZZ`-Fallback).
+- **Bezogen über:** PyPI **`google-i18n-address==3.1.1`** (Release **2024-09-04**, Wheel-SHA-256
+  `f66f4fd2…76fc23d`) — **Kopie**/Mirror der Metadaten, **kein Live-Abruf** (Endpoint
+  egress-gesperrt). Das Paket ist nicht die primäre autoritative Quelle.
+- **Lizenzmatrix (getrennt):** Metadaten (Adressdaten) = **CC-BY-4.0**; libaddressinput
+  **Quellcode** = Apache-2.0; **google-i18n-address** Paketcode = BSD-3-Clause. Attribution:
+  „Google LLC – Address Data Service metadata". **Keine** Apache-2.0-Aussage auf die Metadaten.
+- **Snapshot-Version:** `2026-07-15.2` = **ConfidaraExpress-Snapshotversion** (nicht der
+  Upstream-Datenstand), identisch zum Backend. Rohsnapshot-SHA-256 + semantischer
+  `rulesSha256` sind in beiden Repos identisch.
 
 ## Pipeline
 

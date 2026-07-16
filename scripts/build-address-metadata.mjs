@@ -22,20 +22,34 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// MUST match the backend builder + the coverage tests' EXPECTED_VERSION in both repos.
+// ConfidaraExpress-Snapshotversion (NICHT der Upstream-Datenstand). MUSS mit dem Backend-
+// Builder + der EXPECTED_VERSION der Coverage-Tests übereinstimmen.
 const VERSION = "2026-07-15.2";
+// Datum, an dem ConfidaraExpress diesen Snapshot erzeugt hat (KEIN Live-Abruf bei Google).
+const SNAPSHOT_GENERATED_AT = "2026-07-15";
 
 const RAW = path.join(__dirname, "..", "src", "utils", "libaddressinput-raw.json");
 const OUT = path.join(__dirname, "..", "src", "utils", "address-metadata.json");
 
 const PROVENANCE = {
-  source: "Google libaddressinput (Chrome i18n address metadata) — zip/zipex/require/upper fields, verbatim",
-  sourceUpstream: "https://chromium-i18n.appspot.com/ssl-address/data/{regionCode}",
-  sourcePackage: "google-i18n-address==3.1.1 (PyPI), bundles the libaddressinput dataset under i18naddress/data/",
-  sourcePackageWheelSha256: "f66f4fd2b75d1cd371fc0a7678a1d656da4aa3b32932279e78dd6cae776fc23d",
-  retrievedAt: "2026-07-15",
-  dataLicense: "Apache-2.0 (Google libaddressinput address data)",
-  packageLicense: "BSD-3-Clause (google-i18n-address, Mirumee Software)",
+  // Herkunft — präzise: maschinell aus dem versionierten PyPI-Paket extrahiert (Kopie der
+  // Google-i18n-Adressmetadaten). KEIN Live-Abruf; das Paket ist ein Mirror, nicht die primäre
+  // autoritative Quelle. Kein Anspruch auf „aktueller Google-Datenstand".
+  source: "Google Address Data Service metadata (via google-i18n-address==3.1.1)",
+  upstreamOrigin: "Google Address Data Service, endpoint https://chromium-i18n.appspot.com/ssl-address/data/{regionCode}",
+  provenance: "Machine-extracted from the versioned PyPI package google-i18n-address (a bundled copy of Google's i18n address metadata). NOT fetched live in this build; the PyPI package is a mirror, not the primary authoritative source.",
+  packageName: "google-i18n-address",
+  packageVersion: "3.1.1",
+  packageWheelSha256: "f66f4fd2b75d1cd371fc0a7678a1d656da4aa3b32932279e78dd6cae776fc23d",
+  upstreamPackageReleasedAt: "2024-09-04",
+  snapshotVersionKind: "ConfidaraExpress snapshot version (not the upstream data date)",
+  // ── Lizenzmatrix (verbindlich getrennt) ──────────────────────────────────────
+  // Google Address Data Service METADATA (die zip/require/upper-Daten): CC-BY-4.0.
+  // Google libaddressinput SOURCE CODE: Apache-2.0. google-i18n-address (Bezugspaket-Code): BSD-3-Clause.
+  metadataLicense: "CC-BY-4.0",
+  metadataAttribution: "Google LLC – Address Data Service metadata",
+  sourceCodeLicense: "Apache-2.0",
+  packageCodeLicense: "BSD-3-Clause",
   requireSemantics: "postalCodeRequired = (Country.require ?? ZZ.require='AC').includes('Z'); postalCodeUppercase likewise from `upper`.",
   limitation: "Format only. A pattern-valid code is NOT proven to exist, nor proven to match the entered city/street (e.g. FR + 63743 stays valid).",
   refresh: "node scripts/fetch-libaddressinput.mjs (needs network to the upstream endpoint), then re-run this builder + the coverage tests and review the country-rule diff.",
@@ -87,6 +101,7 @@ function build() {
 
   const meta = {
     version: VERSION,
+    snapshotGeneratedAt: SNAPSHOT_GENERATED_AT,
     generatedFrom: "libaddressinput-raw.json",
     rawSnapshotSha256,
     ...PROVENANCE,

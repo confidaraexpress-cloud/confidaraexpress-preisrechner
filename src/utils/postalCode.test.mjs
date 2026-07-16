@@ -13,7 +13,7 @@ import {
   validatePostalCode, normalizePostalCode, isPostalCodeRequired, hasPostalCode,
   getPostalCodeRule, postalCodeExample, postalCodeInputMode, postalRulesVersion,
 } from "./postalCode.mjs";
-import { rules } from "./generated/postalCodeRules.mjs";
+import { rules, rulesSha256 } from "./generated/postalCodeRules.mjs";
 import { countries } from "./countries.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +22,8 @@ const snapshot = JSON.parse(fs.readFileSync(path.join(__dirname, "address-metada
 
 // Gemeinsame Versionskennung Frontend↔Backend (identischer Snapshot).
 const EXPECTED_VERSION = "2026-07-15.2";
+// Semantischer Rules-Hash — MUSS identisch zur gleichnamigen Konstante im Backend sein.
+const EXPECTED_RULES_SHA256 = "bf3ab1ac01864565b7d34abfd537595cacb7b7bb5fc6123a29072872b8e09d9e";
 
 const ok  = (cc, v) => assert.equal(validatePostalCode(cc, v).valid, true,  `${cc} ${JSON.stringify(v)} sollte gültig sein`);
 const bad = (cc, v, code) => {
@@ -131,6 +133,22 @@ test("Metadaten deterministisch aus dem Roh-Snapshot (rawSnapshotSha256 = SHA-25
   const actual = crypto.createHash("sha256").update(rawText).digest("hex");
   assert.equal(snapshot.rawSnapshotSha256, actual);
   assert.equal(snapshot.generatedFrom, "libaddressinput-raw.json");
+});
+
+test("Semantischer Rules-Hash: selbstkonsistent + gepinnt (Frontend=Backend)", () => {
+  const actual = crypto.createHash("sha256").update(JSON.stringify(rules)).digest("hex");
+  assert.equal(rulesSha256, actual);
+  assert.equal(rulesSha256, EXPECTED_RULES_SHA256);
+});
+
+test("Lizenzmatrix korrekt getrennt (Metadaten CC-BY-4.0; kein Apache-2.0 auf Metadaten)", () => {
+  assert.equal(snapshot.metadataLicense, "CC-BY-4.0");
+  assert.equal(snapshot.sourceCodeLicense, "Apache-2.0");
+  assert.equal(snapshot.packageCodeLicense, "BSD-3-Clause");
+  assert.equal(snapshot.metadataAttribution, "Google LLC – Address Data Service metadata");
+  assert.equal(snapshot.upstreamPackageReleasedAt, "2024-09-04");
+  assert.ok(!("dataLicense" in snapshot));
+  assert.ok(!("retrievedAt" in snapshot));
 });
 
 test("ZZ-require-Fallback + korrigierte Länder (maschinell, keine Handannahme)", () => {

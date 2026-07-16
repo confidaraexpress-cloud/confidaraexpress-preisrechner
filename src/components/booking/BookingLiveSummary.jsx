@@ -42,6 +42,17 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   // ── Preis (aus dem View-Model) ──
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
+  const insured = v.selectedInsuranceType === "standard" || v.selectedInsuranceType === "premium";
+
+  // Sekundärzeile zum Versicherungszustand, wenn NOCH KEIN Gesamtpreis bestätigt ist.
+  // Der Versandpreis bleibt in jedem Fall sichtbar; ein „ab"-Betrag wird nie addiert.
+  let insNote = null, insNoteError = false, insNoteLoading = false;
+  if (!confirmed && insured) {
+    if (v.hasError)                      { insNote = "Versicherungspreis nicht bestätigt"; insNoteError = true; }
+    else if (v.isRepricing || v.isStale) { insNote = "Versicherung wird berechnet …";     insNoteLoading = true; }
+    else if (v.hasInsurancePreselect)    { insNote = `Versicherung ab ${money(v.selectedInsurancePreselectGross)}`; }
+    else                                 { insNote = "Versicherungspreis nach Warenwert"; }
+  }
 
   return (
     <div className="booking-livesum" aria-label="Zusammenfassung Ihrer Sendung">
@@ -71,20 +82,33 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
         {deliveryUntil && <span className="blsum-sub">{deliveryUntil} Uhr</span>}
       </div>
 
-      {/* Zone 4 — Aktueller Preis */}
+      {/* Zone 4 — Preis (Gesamt bei bestätigtem Preis, sonst Versand + Versicherungshinweis) */}
       <div className="blsum-zone blsum-price" aria-live="polite">
-        <span className="blsum-price-label">Aktueller Preis</span>
         {confirmed ? (
-          <span className="blsum-price-box">
-            {v.totalNet != null && <span className="blsum-price-net">{money(v.totalNet)} netto</span>}
-            <span className="blsum-price-gross">{money(v.totalGross)} brutto</span>
-          </span>
-        ) : v.hasError ? (
-          <span className="blsum-price-note blsum-price-note--error">Preis konnte nicht bestätigt werden</span>
-        ) : (v.isRepricing || v.isStale) ? (
-          <span className="blsum-price-note"><span className="spinner spinner-dark" /> Preis wird aktualisiert …</span>
+          <>
+            <span className="blsum-price-label">Gesamt</span>
+            <span className="blsum-price-box">
+              <span className="blsum-price-gross">{money(v.totalGross)}<span className="blsum-price-unit"> brutto</span></span>
+              {v.totalNet != null && <span className="blsum-price-net">{money(v.totalNet)} netto</span>}
+            </span>
+          </>
         ) : (
-          <span className="blsum-price-note">Preis nach Warenwert</span>
+          <>
+            <span className="blsum-price-label">Versand</span>
+            <span className="blsum-price-box">
+              <span className="blsum-price-gross">
+                {v.baseShippingGross != null ? money(v.baseShippingGross) : "—"}
+                <span className="blsum-price-unit"> brutto</span>
+              </span>
+              {v.baseShippingNet != null && <span className="blsum-price-net">{money(v.baseShippingNet)} netto</span>}
+            </span>
+            {insNote && (
+              <span className={`blsum-ins-note${insNoteError ? " blsum-ins-note--error" : ""}`}>
+                {insNoteLoading && <span className="spinner spinner-dark" />}
+                {insNote}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>

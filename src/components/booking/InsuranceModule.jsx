@@ -61,6 +61,17 @@ function cardAriaLabel(c) {
   return `${c.name}: ${priceTxt}`;
 }
 
+// „50,00 €"-artige Beträge typografisch zusammenhalten (kein Umbruch zwischen Zahl
+// und Eurozeichen) — rein darstellend, OHNE die Kartentexte fachlich zu verändern.
+const AMOUNT_RE = /(\d[\d.]*,\d{2}\s?€)/;
+function withAmountNoWrap(text) {
+  return text.split(AMOUNT_RE).map((part, i) =>
+    AMOUNT_RE.test(part)
+      ? <span key={i} className="ins-nowrap">{part}</span>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  );
+}
+
 function CardPrice({ price }) {
   const p = price || { kind: "zero", value: 0 };
   if (p.kind === "unknown") {
@@ -115,15 +126,18 @@ export function InsuranceModule({
                 onChange={() => onSelectType(c.id)}
                 aria-label={cardAriaLabel(c)}
               />
-              {/* Stabiler Kartenkopf: Name links, Preis rechts (eine Zeile); Badge
-                  darunter. Grid-Platzierung → Name kann nie den Preis verdrängen. */}
+              {/* Stabiler Kartenkopf als 2-Spalten-Grid: links Titelbereich (Name +
+                  Badge darunter), rechts der Preis. Name und Preis konkurrieren nie
+                  um dieselbe Zeile; das Badge sitzt immer direkt unter dem Namen. */}
               <span className="ins-card-head">
-                <span className="ins-card-head-name">
-                  <span className="ins-card-radio" aria-hidden="true" />
-                  <span className="ins-card-name" lang="de">{c.name}</span>
+                <span className="ins-card-title-area">
+                  <span className="ins-card-head-name">
+                    <span className="ins-card-radio" aria-hidden="true" />
+                    <span className="ins-card-name" lang="de">{c.name}</span>
+                  </span>
+                  {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
                 </span>
                 <CardPrice price={c.price} />
-                {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
               </span>
 
               {selected && isInsured && pending && (
@@ -138,7 +152,7 @@ export function InsuranceModule({
                     <span className={`ins-bullet-ico ins-bullet-ico--${b.info ? "info" : "check"}`}>
                       <Icon n={b.info ? "info" : "check"} s={14} c="currentColor" />
                     </span>
-                    <span className="ins-bullet-txt">{b.text}</span>
+                    <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
                   </li>
                 ))}
               </ul>

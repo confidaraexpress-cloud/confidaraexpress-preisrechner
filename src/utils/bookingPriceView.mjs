@@ -12,6 +12,13 @@
 // NIEMALS lokal zum Gesamtpreis addiert. Fehlt ein belegter Preis, gilt er als
 // NICHT bestätigt (fail-closed) — nie als geschätzter Gesamtbetrag.
 //
+// Zusätzlich (rein additiv, reine Anzeige) stellt das View-Model den IMMER
+// verfügbaren Basis-Versandpreis (baseShipping*) und den „ab"-Preselect der
+// gewählten Stufe (selectedInsurancePreselectGross / hasInsurancePreselect, plus
+// beide Rohwerte) bereit — damit die obere Preiszone und die Live-Leiste bereits
+// bei Standard/Premium-Auswahl OHNE Warenwert reagieren können, ohne je einen
+// unbestätigten Gesamtpreis zu erfinden.
+//
 // Framework-frei und mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -33,6 +40,14 @@ function num(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// Wie num(), aber nur strikt positive Werte gelten (0/negativ → null). Semantik
+// identisch zum `asPos`/`posNum` der Konsumenten (BookingPage/OfferCard): ein „ab"-
+// Preselect zählt nur, wenn er ein echter, positiver Betrag ist — nie 0,00 €.
+function pos(v) {
+  const n = num(v);
+  return n != null && n > 0 ? n : null;
 }
 
 function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
@@ -79,6 +94,24 @@ export function buildBookingPriceView({
     ? repriceResult.totals : null;
   const hasError = repriceError === true || (typeof repriceError === "string" && repriceError.trim() !== "");
 
+  // ── Basis-Versandpreis + „ab"-Preselect (REINE ANZEIGE) ─────────────────────
+  // Der Versandpreis des Tarifs ist IMMER bekannt und wird in jedem Status ausgewiesen
+  // (auch während Reprice/Fehler) — er ist NIE der bestätigte Gesamtpreis. Der „ab"-
+  // Preselect stammt aus den belegten Tariffeldern (nur positiv; sonst null) und dient
+  // ausschließlich der „ab X €"-Anzeige der gewählten Stufe. Er wird NIEMALS zum
+  // Gesamtpreis addiert.
+  const baseShippingNet   = num(t.netPrice);
+  const baseShippingVat   = num(t.vatAmount);
+  const baseShippingGross = num(t.finalPrice);
+  const insDet = (t.insuranceDetails && typeof t.insuranceDetails === "object") ? t.insuranceDetails : null;
+  const standardPreselectGross = pos(insDet?.extraInsurancePriceBruttoPreselect);
+  const premiumPreselectGross  = pos(insDet?.extraInsurancePremiumPriceBruttoPreselect);
+  const selectedInsuranceType = isInsuredType(insuranceType) ? insuranceType : "none";
+  const selectedInsurancePreselectGross =
+    selectedInsuranceType === "standard" ? standardPreselectGross :
+    selectedInsuranceType === "premium"  ? premiumPreselectGross  : null;
+  const hasInsurancePreselect = selectedInsurancePreselectGross != null;
+
   // ── Status ──
   let status;
   if (!isInsuredType(insuranceType))      status = PRICE_STATUS.BASE_CONFIRMED;
@@ -94,6 +127,11 @@ export function buildBookingPriceView({
     source: null,
     shippingNet: null, shippingVat: null, shippingGross: null,
     insuranceGross: null, totalNet: null, totalGross: null,
+    // Immer verfügbarer Basis-Versandpreis (Referenz, nie bestätigter Gesamtpreis).
+    baseShippingNet, baseShippingVat, baseShippingGross,
+    // „ab"-Preselect der gewählten Stufe (+ beide Rohwerte); reine Anzeige.
+    selectedInsuranceType, selectedInsurancePreselectGross, hasInsurancePreselect,
+    standardPreselectGross, premiumPreselectGross,
     hasConfirmedPrice: false,
     isRepricing: status === PRICE_STATUS.REPRICING,
     isStale:     status === PRICE_STATUS.STALE,

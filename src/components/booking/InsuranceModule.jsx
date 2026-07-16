@@ -49,6 +49,18 @@ const CARD_COPY = {
   },
 };
 
+// Barrierefreier Name des nativen Radios: Kartenname + Preis in Worten, damit der
+// Preis NICHT nur farblich/visuell transportiert wird (Screenreader lesen ihn mit).
+function cardAriaLabel(c) {
+  const p = (c && c.price) || { kind: "zero", value: 0 };
+  const priceTxt =
+    p.kind === "exact"     ? `Aufpreis ${money(p.value)}` :
+    p.kind === "preselect" ? `ab ${money(p.value)}, steuerfrei` :
+    p.kind === "unknown"   ? "Preis nach Warenwert" :
+                             money(0);
+  return `${c.name}: ${priceTxt}`;
+}
+
 function CardPrice({ price }) {
   const p = price || { kind: "zero", value: 0 };
   if (p.kind === "unknown") {
@@ -101,14 +113,17 @@ export function InsuranceModule({
                 value={c.id}
                 checked={selected}
                 onChange={() => onSelectType(c.id)}
+                aria-label={cardAriaLabel(c)}
               />
+              {/* Stabiler Kartenkopf: Name links, Preis rechts (eine Zeile); Badge
+                  darunter. Grid-Platzierung → Name kann nie den Preis verdrängen. */}
               <span className="ins-card-head">
-                <span className="ins-card-head-l">
+                <span className="ins-card-head-name">
                   <span className="ins-card-radio" aria-hidden="true" />
                   <span className="ins-card-name" lang="de">{c.name}</span>
                 </span>
-                {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
                 <CardPrice price={c.price} />
+                {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
               </span>
 
               {selected && isInsured && pending && (

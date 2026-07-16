@@ -250,3 +250,145 @@ test("(x) INSURANCE_VALUE_MAX = 20000 (zentralisierte bestehende Grenze)", () =>
   assert.equal(INSURANCE_VALUE_MAX, 20000);
   assert.equal(isInsuredType("none"), false);
 });
+
+// ─── Basis-Versandpreis + „ab"-Preselect im View-Model (Paket 3/5) ────────────
+test("(P1) none → Basis-Versandpreis präsent, kein Preselect", () => {
+  const v = view({ insuranceType: "none" });
+  assert.equal(v.baseShippingNet, 31.25);
+  assert.equal(v.baseShippingVat, 5.94);
+  assert.equal(v.baseShippingGross, 37.19);
+  assert.equal(v.selectedInsuranceType, "none");
+  assert.equal(v.selectedInsurancePreselectGross, null);
+  assert.equal(v.hasInsurancePreselect, false);
+});
+test("(P2) Standard ohne Warenwert (REQUIRED) → Versand + ab-Preis 3,99 sichtbar, kein Total", () => {
+  const v = view({ insuranceType: "standard", insValid: false });
+  assert.equal(v.status, PRICE_STATUS.REPRICE_REQUIRED);
+  assert.equal(v.baseShippingGross, 37.19);                 // Versand bleibt sichtbar
+  assert.equal(v.selectedInsurancePreselectGross, 3.99);    // „ab"-Preselect der Stufe
+  assert.equal(v.hasInsurancePreselect, true);
+  assert.equal(v.totalGross, null);                         // KEIN erfundener Gesamtpreis
+  assert.equal(v.hasConfirmedPrice, false);
+});
+test("(P3) Premium ohne Warenwert → Preselect 7,99 (Premium-Rohwert, nicht Standard)", () => {
+  const v = view({ insuranceType: "premium", insValid: false });
+  assert.equal(v.selectedInsurancePreselectGross, 7.99);
+  assert.equal(v.standardPreselectGross, 3.99);
+  assert.equal(v.premiumPreselectGross, 7.99);
+});
+test("(P4) Versandpreis überlebt REPRICING (bleibt sichtbar)", () => {
+  const v = view({ insuranceType: "standard", repriceLoading: true, repriceStale: true });
+  assert.equal(v.status, PRICE_STATUS.REPRICING);
+  assert.equal(v.baseShippingGross, 37.19);
+  assert.equal(v.hasConfirmedPrice, false);
+});
+test("(P5) Versandpreis überlebt REPRICE_ERROR (bleibt sichtbar, Buchung blockiert)", () => {
+  const v = view({ insuranceType: "standard", repriceError: "boom" });
+  assert.equal(v.status, PRICE_STATUS.REPRICE_ERROR);
+  assert.equal(v.baseShippingGross, 37.19);
+  assert.equal(priceViewBlocksBooking(v), true);
+});
+test("(P6) Versandpreis überlebt STALE", () => {
+  const v = view({ insuranceType: "standard", repriceResult: REPRICE_STD, repriceStale: true });
+  assert.equal(v.status, PRICE_STATUS.STALE);
+  assert.equal(v.baseShippingGross, 37.19);
+});
+test("(P7) bestätigter Reprice → Basis-Versandpreis weiterhin präsent (neben Totals)", () => {
+  const v = view({ insuranceType: "standard", repriceResult: REPRICE_STD });
+  assert.equal(v.baseShippingGross, 37.19);
+  assert.equal(v.totalGross, 41.68);
+});
+test("(P8) Preselect = 0 → kein Preselect (nie 0,00 € als Gratisversicherung)", () => {
+  const v = buildBookingPriceView({ tariff: { ...TARIFF, insuranceDetails: { isInsurable: true, extraInsurancePriceBruttoPreselect: 0 } }, insuranceType: "standard", insValid: false });
+  assert.equal(v.selectedInsurancePreselectGross, null);
+  assert.equal(v.hasInsurancePreselect, false);
+});
+test("(P9) negativer Preselect → null", () => {
+  const v = buildBookingPriceView({ tariff: { ...TARIFF, insuranceDetails: { isInsurable: true, extraInsurancePriceBruttoPreselect: -1 } }, insuranceType: "standard", insValid: false });
+  assert.equal(v.selectedInsurancePreselectGross, null);
+});
+test("(P10) fehlende insuranceDetails → Preselect null (kein Crash)", () => {
+  const v = buildBookingPriceView({ tariff: { netPrice: 10, vatAmount: 1.9, finalPrice: 11.9 }, insuranceType: "standard", insValid: false });
+  assert.equal(v.selectedInsurancePreselectGross, null);
+  assert.equal(v.baseShippingGross, 11.9);
+});
+test("(P11) selectedInsuranceType spiegelt die Auswahl (none/standard/premium)", () => {
+  assert.equal(view({ insuranceType: "none" }).selectedInsuranceType, "none");
+  assert.equal(view({ insuranceType: "standard", insValid: false }).selectedInsuranceType, "standard");
+  assert.equal(view({ insuranceType: "premium", insValid: false }).selectedInsuranceType, "premium");
+});
+test("(P12) Preselect wird NIE zum Gesamtbetrag addiert (auch mit sichtbarem ab-Preis)", () => {
+  const v = view({ insuranceType: "standard", insValid: false });
+  assert.equal(v.hasInsurancePreselect, true);
+  assert.equal(v.totalGross, null);                    // 37.19 + 3.99 wäre 41.18 — kommt NICHT vor
+  assert.notEqual(v.totalGross, 41.18);
+});
+test("(P13) none-Total bleibt Versandpreis trotz vorhandener Preselect-Rohwerte", () => {
+  const v = view({ insuranceType: "none" });
+  assert.equal(v.totalGross, 37.19);
+  assert.equal(v.standardPreselectGross, 3.99);        // Rohwert exponiert, aber nie addiert
+});
+
+// ─── Komponenten-Redesign (Quelltext-Scan; keine React-Runtime) ───────────────
+test("(P14) PriceSummaryModule: Versandpreis IMMER sichtbar (baseShipping* + Versand netto)", () => {
+  const psm = read("../components/booking/PriceSummaryModule.jsx");
+  assert.ok(/Versand netto/.test(psm), "Versand-netto-Zeile fehlt");
+  assert.ok(/baseShippingNet/.test(psm) && /baseShippingGross/.test(psm), "Basis-Versandwerte werden nicht gelesen");
+});
+test("(P15) PriceSummaryModule: Versicherungszustand ab/nach Warenwert/aktualisiert/Fehler", () => {
+  const psm = read("../components/booking/PriceSummaryModule.jsx");
+  assert.ok(/selectedInsurancePreselectGross/.test(psm), "ab-Preselect wird nicht angezeigt");
+  assert.ok(/nach Warenwert/.test(psm), "nach-Warenwert-Hinweis fehlt");
+  assert.ok(/wird aktualisiert/.test(psm), "Repricing-Zustand fehlt");
+  assert.ok(/nicht bestätigt/.test(psm), "Fehlerzustand fehlt");
+});
+test("(P16) PriceSummaryModule addiert den Preselect NICHT clientseitig zum Versand", () => {
+  const psm = read("../components/booking/PriceSummaryModule.jsx");
+  assert.ok(!/baseShipping\w*\s*\+/.test(psm), "keine Addition auf den Versandpreis erlaubt");
+  assert.ok(!/selectedInsurancePreselectGross\s*\+/.test(psm), "Preselect darf nicht aufaddiert werden");
+});
+test("(P17) BookingLiveSummary: Versand sichtbar + Versicherungshinweis wenn unbestätigt", () => {
+  const bls = read("../components/booking/BookingLiveSummary.jsx");
+  assert.ok(/baseShippingGross/.test(bls), "Basis-Versandpreis wird nicht angezeigt");
+  assert.ok(/blsum-ins-note/.test(bls), "Versicherungshinweiszeile fehlt");
+  assert.ok(/Versicherung ab \$\{money\(v\.selectedInsurancePreselectGross\)\}/.test(bls), "Versicherung-ab-Hinweis fehlt");
+  assert.ok(/nach Warenwert/.test(bls), "nach-Warenwert-Hinweis fehlt");
+});
+test("(P18) BookingLiveSummary: kontextuelles Label (Gesamt/Versand) statt fixem Kopf", () => {
+  const bls = read("../components/booking/BookingLiveSummary.jsx");
+  assert.ok(/Gesamt/.test(bls) && /Versand/.test(bls), "kontextuelle Preis-Labels fehlen");
+  assert.ok(!/Aktueller Preis/.test(bls), "statischer Aktueller-Preis-Kopf soll entfallen");
+});
+test("(P19) InsuranceModule: stabiler Grid-Kopf (Name links, Preis rechts) + Badge", () => {
+  const ins = read("../components/booking/InsuranceModule.jsx");
+  assert.ok(/ins-card-head-name/.test(ins), "Grid-Kopf-Namensspalte fehlt");
+  assert.ok(/Erweiterter Schutz/.test(ins), "Premium-Badge fehlt");
+});
+test("(P20) InsuranceModule: natives Radio trägt Preis im barrierefreien Namen (aria-label)", () => {
+  const ins = read("../components/booking/InsuranceModule.jsx");
+  assert.ok(/aria-label=\{cardAriaLabel\(c\)\}/.test(ins), "aria-label am Radio fehlt");
+  assert.ok(/function cardAriaLabel/.test(ins), "cardAriaLabel-Helfer fehlt");
+});
+test("(P21) calculator.css: Grid-Kartenkopf + Live-Leisten-Trenner + Ins-State-Klassen", () => {
+  const css = read("../styles/calculator.css");
+  assert.ok(/\.ins-card-head\s*\{[^}]*grid/.test(css), "Kartenkopf-Grid fehlt");
+  assert.ok(/\.blsum-zone \+ \.blsum-zone/.test(css), "vertikale Live-Leisten-Trenner fehlen");
+  assert.ok(/\.booking-ins-state/.test(css), "Preis-Zustandsklassen fehlen");
+});
+test("(P22) keine JUMiNGO-Rohfelder (insuranceModel/insuranceProvider) im Booking-UI", () => {
+  for (const f of ["../components/booking/BookingLiveSummary.jsx", "../components/booking/PriceSummaryModule.jsx", "../components/booking/InsuranceModule.jsx"]) {
+    const s = read(f);
+    assert.ok(!/insuranceModel/.test(s), `insuranceModel darf nicht in ${f} gelesen werden`);
+    assert.ok(!/insuranceProvider/.test(s), `insuranceProvider darf nicht in ${f} gelesen werden`);
+  }
+});
+test("(P23) BookingPage übergibt dasselbe priceView an Live-Leiste UND Preiszusammenfassung", () => {
+  const page = read("../pages/BookingPage.jsx");
+  assert.ok(/<BookingLiveSummary[^>]*priceView=\{priceView\}/.test(page), "Live-Leiste erhält priceView");
+  assert.ok(/<PriceSummaryModule[^>]*priceView=\{priceView\}/.test(page), "Preiszusammenfassung erhält priceView");
+});
+test("(P24) INSURANCE_VALUE_MAX/Gate/Reprice-Vertrag unverändert (Regression)", () => {
+  const page = read("../pages/BookingPage.jsx");
+  assert.ok(/priceViewBlocksBooking/.test(page), "Buchungs-Gate bleibt am View-Model");
+  assert.ok(/repriceInsurance/.test(page), "Reprice-Aufruf bleibt erhalten");
+});

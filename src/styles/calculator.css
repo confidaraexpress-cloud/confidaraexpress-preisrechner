@@ -386,14 +386,15 @@
 .ins-card:hover { box-shadow: 0 8px 20px -12px rgba(20, 40, 100, 0.22); }
 .ins-card input { position: absolute; opacity: 0; width: 0; height: 0; }
 
-/* Kopf gestapelt: Titel volle Breite (1 Zeile bzw. sauber getrennt), Preis
-   darunter — verhindert Überlappung in schmalen 3-Spalten-Karten. */
-.ins-card-head { display: flex; flex-direction: column; gap: 7px; }
-.ins-card-head-l { display: flex; align-items: center; gap: 9px; }
+/* Stabiler Kartenkopf als Grid: Name links (schrumpfbar), Preis rechts (fix),
+   Premium-Badge in Zeile 2 unter dem Namen. Ein langer Name kann so den Preis
+   nie verdrängen oder umbrechen. */
+.ins-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; row-gap: 6px; align-items: baseline; }
+.ins-card-head-name { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 9px; min-width: 0; }
 .ins-card-radio { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2, #c8d5e8); background: #fff; position: relative; transition: border-color 0.15s; }
 .ins-card-name { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: var(--navy); line-height: 1.25; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
-.ins-card-price { display: flex; align-items: baseline; gap: 7px; padding-left: 27px; }
-.ins-card-price-val { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.ins-card-price { grid-column: 2; grid-row: 1; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+.ins-card-price-val { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 800; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ins-card-price-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
 
 .ins-card-bullets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -420,10 +421,12 @@
 .ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
 
 /* Premium-Badge (dezent, sachlich — keine manipulative Upsell-Optik). */
-.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+.ins-card-badge { grid-column: 1; grid-row: 2; justify-self: start; margin-left: 27px; font-size: 9px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
 /* „Preis wird berechnet" auf der ausgewählten, gerade gerepricten Karte. */
 .ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: 11.5px; font-weight: 600; color: var(--blue2); }
-.ins-card-price-val--muted { color: var(--gray400); font-weight: 600; font-size: 12px; }
+/* „Preis nach Warenwert" (kein Preselect): lesbar, NICHT deaktiviert wirkend; darf
+   im schmalen Preis-Slot auf zwei Zeilen umbrechen. */
+.ins-card-price-val--muted { max-width: 96px; color: var(--gray600, #475569); font-weight: 600; font-size: 11.5px; line-height: 1.2; white-space: normal; text-align: right; }
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
 .ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12.5px; font-weight: 600; color: var(--blue2); cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
@@ -435,41 +438,66 @@
 .booking-price-pending { display: flex; align-items: center; gap: 8px; padding: 12px 0 14px; font-size: 13px; font-weight: 600; color: var(--blue2); }
 .booking-price-pending--error { color: var(--danger); }
 
+/* Versicherungszustand im UNBESTÄTIGTEN Preisblock — reine Anzeige, NIE ein Gesamtpreis.
+   Der Versandpreis bleibt darüber sichtbar; hier steht nur der „ab"-Hinweis bzw. der
+   Repricing-/Fehler-/„nach Warenwert"-Zustand. */
+.booking-ins-state { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 9px 11px; border-radius: 10px; font-size: 12.5px; font-weight: 600; line-height: 1.4; background: var(--gray50); border: 1px solid var(--border); color: var(--navy); }
+.booking-ins-state--preselect { color: var(--blue2); background: var(--blue-light, #eff4ff); border-color: rgba(29, 78, 216, 0.16); }
+.booking-ins-state--loading { color: var(--blue2); }
+.booking-ins-state--unknown { color: var(--gray600, #475569); }
+.booking-ins-state--error { color: var(--danger); background: #fff5f5; border-color: rgba(220, 38, 38, 0.2); }
+.booking-ins-state-txt { min-width: 0; }
+.booking-total-pending { margin: 8px 0 0; font-size: 11.5px; color: var(--gray500); line-height: 1.45; }
+
 /* ─── Permanente Live-Zusammenfassungsleiste (BookingPage, Schritt 1 + 2) ─────
    Providerneutral, ruhig, kompakt — KEINE JUMiNGO-Kopfzeilen-Kopie. Vier Zonen;
    der Preis rechts stammt aus demselben zentralen Price-View-Model. */
 .booking-livesum {
-  display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; gap: 20px; align-items: center;
-  padding: 14px 18px; margin-bottom: 20px;
-  background: linear-gradient(180deg, #ffffff, #f6f9fe);
-  border: 1px solid rgba(120, 150, 210, 0.22); border-radius: 14px;
-  box-shadow: 0 8px 22px -16px rgba(20, 40, 100, 0.18);
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr auto; align-items: stretch;
+  margin-bottom: 20px; overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(20, 40, 100, 0.05);
 }
-.blsum-zone { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.blsum-product { flex-direction: row; align-items: center; gap: 10px; }
-.blsum-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.blsum-zone { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 13px 18px; }
+.blsum-zone + .blsum-zone { border-left: 1px solid var(--border); }
+.blsum-product { flex-direction: row; align-items: center; gap: 11px; }
+.blsum-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
 .blsum-product-txt { display: flex; flex-direction: column; min-width: 0; }
-.blsum-carrier { font-size: 13.5px; font-weight: 700; color: var(--navy); overflow-wrap: break-word; hyphens: auto; }
+.blsum-carrier { font-size: 15px; font-weight: 800; color: var(--navy); overflow-wrap: break-word; hyphens: auto; letter-spacing: -0.01em; }
 .blsum-service { font-size: 11.5px; color: var(--gray500); overflow-wrap: break-word; }
-.blsum-label, .blsum-price-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gray400); }
-.blsum-val { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; }
+.blsum-label, .blsum-price-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.blsum-val { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; }
 .blsum-sub { font-size: 11.5px; color: var(--gray500); }
 .blsum-price { align-items: flex-end; text-align: right; }
 .blsum-price-box { display: flex; flex-direction: column; align-items: flex-end; }
 .blsum-price-net { font-size: 12px; color: var(--gray500); font-family: 'DM Mono', monospace; }
-.blsum-price-gross { font-size: 17px; font-weight: 800; color: var(--navy); font-family: 'DM Mono', monospace; letter-spacing: -0.01em; }
+.blsum-price-gross { font-size: 19px; font-weight: 800; color: var(--navy); font-family: 'DM Mono', monospace; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.blsum-price-unit { font-size: 11px; font-weight: 600; color: var(--gray500); font-family: var(--font, inherit); letter-spacing: 0; }
+.blsum-ins-note { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11.5px; font-weight: 600; color: var(--blue2); text-align: right; }
+.blsum-ins-note--error { color: var(--danger); }
+/* Legacy (gescoped, nicht mehr aktiv genutzt). */
 .blsum-price-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--blue2); }
 .blsum-price-note--error { color: var(--danger); }
 
+/* ≤860px → drei Zeilen: Versandprodukt · [Übergabe|Zustellung] · Preis. */
 @media (max-width: 860px) {
-  .booking-livesum { grid-template-columns: 1fr 1fr; gap: 12px 16px; }
-  .blsum-product { grid-column: 1 / -1; }
-  .blsum-price { grid-column: 1 / -1; align-items: stretch; text-align: left; border-top: 1px solid var(--border); padding-top: 10px; }
+  .booking-livesum { grid-template-columns: 1fr 1fr; }
+  .blsum-zone { padding: 12px 16px; }
+  .blsum-zone + .blsum-zone { border-left: none; }
+  .blsum-product { grid-column: 1 / -1; border-bottom: 1px solid var(--border); }
+  .blsum-handover { border-right: 1px solid var(--border); }
+  .blsum-price { grid-column: 1 / -1; align-items: flex-start; text-align: left; border-top: 1px solid var(--border); }
   .blsum-price-box { flex-direction: row; align-items: baseline; gap: 10px; }
+  .blsum-ins-note { text-align: left; }
 }
+/* ≤380px → gestapelt, kein Überlauf, keine Schrift < 11px. */
 @media (max-width: 380px) {
-  .booking-livesum { padding: 12px 14px; }
-  .blsum-price-gross { font-size: 16px; }
+  .booking-livesum { grid-template-columns: 1fr; }
+  .blsum-zone { padding: 11px 14px; }
+  .blsum-handover { border-right: none; }
+  .blsum-zone + .blsum-zone { border-top: 1px solid var(--border); }
+  .blsum-price-gross { font-size: 18px; }
 }
 
 .ins-after { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }

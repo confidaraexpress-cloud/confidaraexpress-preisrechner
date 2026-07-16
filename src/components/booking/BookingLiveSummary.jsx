@@ -16,7 +16,9 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
 
   // ── Übergabe ──
   const handoverLabel = isPickup ? "Abholung" : isDropoff ? "Shopabgabe" : "Übergabe";
-  const shopLabel = isDropoff ? (publicDropoffLabel(tariff) || "Paketshop frei wählbar") : null;
+  // Providerneutraler Paketshop-TYP (kein gebundener konkreter Shop — der
+  // Dropoff-Guard bindet keine Access-Point-ID); daher zusätzlich „frei wählbar".
+  const shopLabel = isDropoff ? (publicDropoffLabel(tariff) || "Paketshop") : null;
   const handoverDate = tariff.pickupDate ? isoDayDE(tariff.pickupDate) : null;
   // Gewähltes Abholzeitfenster (nur Pickup) hat Vorrang; sonst das Carrier-Fenster.
   const win = (isPickup && pickupWindow && pickupWindow.from && pickupWindow.until)
@@ -56,9 +58,10 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
       <div className="blsum-zone blsum-handover">
         <span className="blsum-label">{handoverLabel}</span>
         {shopLabel && <span className="blsum-val">{shopLabel}</span>}
+        {isDropoff && <span className="blsum-sub">frei wählbar</span>}
         {handoverDate && <span className="blsum-val">{handoverDate}</span>}
         {win && <span className="blsum-sub">{win}</span>}
-        {!shopLabel && !handoverDate && !win && <span className="blsum-sub">nach Auswahl</span>}
+        {!shopLabel && !handoverDate && !win && !isDropoff && <span className="blsum-sub">nach Auswahl</span>}
       </div>
 
       {/* Zone 3 — Zustellung */}

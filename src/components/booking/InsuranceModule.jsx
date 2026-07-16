@@ -106,8 +106,8 @@ export function InsuranceModule({
                 <span className="ins-card-head-l">
                   <span className="ins-card-radio" aria-hidden="true" />
                   <span className="ins-card-name" lang="de">{c.name}</span>
-                  {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
                 </span>
+                {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
                 <CardPrice price={c.price} />
               </span>
 

@@ -5,6 +5,7 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
+import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
 import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
@@ -12,8 +13,17 @@ import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
-const ZIP_RE   = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Paket 1: länderspezifische PLZ-Fehlermeldung über den zentralen Helfer
+// (src/utils/postalCode.mjs → generierte Regeln). Kein eigenes Regex hier.
+function postalErr(country, value) {
+  const pc = validatePostalCode(country, value);
+  if (pc.valid) return null;
+  if (pc.code === "POSTAL_CODE_REQUIRED") return "PLZ ist ein Pflichtfeld.";
+  const ex = postalCodeExample(country);
+  return ex ? `PLZ passt nicht zum Landesformat (Beispiel: ${ex}).` : "PLZ ist ungültig.";
+}
 
 // Buchungsrelevante Felder lösen bei Änderung ein Verwerfen alter Ergebnisse
 // aus. Nur die rein clientseitigen Anzeige-Filter (max_price, latestDeliveryDate)
@@ -30,8 +40,7 @@ function getErrors(form) {
   if (!form.s_street?.trim())               e.s_street   = "Straße ist ein Pflichtfeld.";
   else if (form.s_street.length > 200)      e.s_street   = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.s_addition?.length > 100)        e.s_addition = "Adresszusatz darf maximal 100 Zeichen enthalten.";
-  if (!form.s_zip?.trim())                  e.s_zip      = "PLZ ist ein Pflichtfeld.";
-  else if (!ZIP_RE.test(form.s_zip.trim())) e.s_zip      = "PLZ ist ungültig.";
+  { const m = postalErr(form.s_country, form.s_zip); if (m) e.s_zip = m; }
   if (!form.s_city?.trim())                 e.s_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.s_city.length > 100)        e.s_city     = "Stadt darf maximal 100 Zeichen enthalten.";
   if (form.s_email) {
@@ -45,8 +54,7 @@ function getErrors(form) {
   if (!form.r_street?.trim())               e.r_street   = "Straße ist ein Pflichtfeld.";
   else if (form.r_street.length > 200)      e.r_street   = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.r_addition?.length > 100)        e.r_addition = "Adresszusatz darf maximal 100 Zeichen enthalten.";
-  if (!form.r_zip?.trim())                  e.r_zip      = "PLZ ist ein Pflichtfeld.";
-  else if (!ZIP_RE.test(form.r_zip.trim())) e.r_zip      = "PLZ ist ungültig.";
+  { const m = postalErr(form.r_country, form.r_zip); if (m) e.r_zip = m; }
   if (!form.r_city?.trim())                 e.r_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.r_city.length > 100)        e.r_city     = "Stadt darf maximal 100 Zeichen enthalten.";
   if (form.r_email) {
@@ -149,6 +157,8 @@ export default function NewShipmentPage() {
   const [error, setError]           = useState("");
   const [hasResults, setHasResults] = useState(false);
   const [errors, setErrors]         = useState({});
+  // Paket 1: anstehender Länderwechsel mit vorhandenen Adressdaten → Bestätigungsdialog.
+  const [pendingCountry, setPendingCountry] = useState(null); // { party:"s"|"r", from, to } | null
 
   // ── Race-Schutz für /calculate-price (Audit F1) ──
   // Verhindert, dass eine spät eintreffende Antwort neuere Eingaben überschreibt.
@@ -224,6 +234,34 @@ export default function NewShipmentPage() {
   const invalidateResults = () => {
     if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
   };
+
+  // ── Paket 1: sicherer Länderwechsel ──────────────────────────────────────────
+  // Beim MANUELLEN Wechsel des Landes dürfen landabhängige Felder (Straße, Zusatz,
+  // PLZ, Ort) nicht unbemerkt stehen bleiben (bewiesene stale-data-Ursache: DE-PLZ
+  // mit FR-Land). Sind solche Felder befüllt, erst per Dialog bestätigen. Firmen-/
+  // Kontaktfelder (Unternehmen, Ansprechpartner, Telefon, E-Mail) bleiben erhalten.
+  // Ein Bundesland-/Regionfeld existiert im Formular nicht → nichts zu leeren.
+  const countryName = (code) => countries.find(c => c.code === code)?.name || code;
+  const partyHasAddressData = (p) =>
+    ["street", "addition", "zip", "city"].some(k => (form[`${p}_${k}`] || "").trim() !== "");
+  const requestCountryChange = (p, next) => {
+    if (!next || next === form[`${p}_country`]) return;
+    if (partyHasAddressData(p)) setPendingCountry({ party: p, from: form[`${p}_country`], to: next });
+    else upd(`${p}_country`, next); // keine Adressdaten → direkt wechseln, kein Dialog
+  };
+  const confirmCountryChange = () => {
+    if (!pendingCountry) return;
+    const p = pendingCountry.party, to = pendingCountry.to;
+    setForm(prev => ({ ...prev, [`${p}_country`]: to, [`${p}_street`]: "", [`${p}_addition`]: "", [`${p}_zip`]: "", [`${p}_city`]: "" }));
+    setErrors(prev => {
+      const n = { ...prev };
+      for (const k of ["country", "street", "addition", "zip", "city"]) delete n[`${p}_${k}`];
+      return n;
+    });
+    invalidateResults(); // buchungsrelevante Änderung → alte Tarife/shipmentId verwerfen
+    setPendingCountry(null);
+  };
+  const cancelCountryChange = () => setPendingCountry(null); // Abbruch: nichts ändern
 
   const handleTogglePublicCarrier = (id) => {
     setSelectedPublicCarrierIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -359,7 +397,9 @@ export default function NewShipmentPage() {
       const d = await r.json();
       if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
       if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen
-      if (!r.ok) throw new Error(d.error || "Fehler bei Preisberechnung");
+      // Paket 1: der providerneutrale PLZ-422 trägt `message` statt `error` — mit abfangen,
+      // damit die konkrete Meldung erscheint (die Inline-Validierung greift zwar vorher).
+      if (!r.ok) throw new Error(d.error || d.message || "Fehler bei Preisberechnung");
       // Öffentliche Carrier-Liste (deduplziert vom Backend) übernehmen; die
       // bestehende Auswahl bleibt erhalten, auf noch verfügbare IDs gefiltert.
       const newPublicCarriers = Array.isArray(d.publicCarriers) ? d.publicCarriers : [];
@@ -437,7 +477,7 @@ export default function NewShipmentPage() {
       <select
         className="field-input field-select"
         value={form[`${p}_country`]}
-        onChange={e => upd(`${p}_country`, e.target.value)}
+        onChange={e => requestCountryChange(p, e.target.value)}
       >
         {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
       </select>
@@ -447,6 +487,30 @@ export default function NewShipmentPage() {
   return (
     <div className="page-with-navbar">
       <PremiumBackground variant="neutral" />
+
+      {/* Paket 1: Bestätigungsdialog für den Länderwechsel mit vorhandenen Adressdaten.
+          Abbrechen → nichts ändert sich. Bestätigen → Land setzen + Straße/Zusatz/PLZ/Ort
+          leeren (Firmen-/Kontaktfelder bleiben). Reuse der price-drift-Overlay-Optik. */}
+      {pendingCountry && (
+        <div className="price-drift-overlay" role="presentation">
+          <div className="price-drift-card" role="dialog" aria-modal="true" aria-labelledby="cc-title" aria-describedby="cc-desc">
+            <div className="price-drift-badge" aria-hidden="true"><Icon n="mapPin" s={24} c="#1D4ED8" /></div>
+            <h2 id="cc-title" className="price-drift-title">Land wechseln?</h2>
+            <p id="cc-desc" className="price-drift-desc">
+              Sie ändern das Land der {pendingCountry.party === "s" ? "Absender" : "Empfänger"}adresse von{" "}
+              <strong>{countryName(pendingCountry.from)}</strong> zu <strong>{countryName(pendingCountry.to)}</strong>.
+              Straße, Adresszusatz, PLZ und Ort werden geleert, damit keine unpassende Land-/PLZ-Kombination
+              entsteht. Unternehmen, Ansprechpartner, Telefon und E-Mail bleiben erhalten.
+            </p>
+            <div className="price-drift-actions">
+              <button type="button" className="btn btn-outline price-drift-btn" onClick={cancelCountryChange}>Abbrechen</button>
+              <button type="button" className="btn btn-primary price-drift-btn" onClick={confirmCountryChange}>
+                Land wechseln &amp; Felder leeren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="container calc-page-wrap">
         <div className="mb-24">
           <h1 className="heading calc-page-title">Versandpreis berechnen</h1>
@@ -685,8 +749,13 @@ export default function NewShipmentPage() {
                   <div className="field-row field-row-2">
                     <div className="field">
                       <label className="field-label">PLZ *</label>
-                      <input className={`field-input${errors.s_zip  ? " field-input-error" : ""}`} value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)} placeholder="70173" />
-                      {errors.s_zip  && <span className="field-error">{errors.s_zip}</span>}
+                      <input className={`field-input${errors.s_zip  ? " field-input-error" : ""}`} value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)}
+                        placeholder={postalCodeExample(form.s_country) || "PLZ"} inputMode={postalCodeInputMode(form.s_country)} maxLength={postalCodeMaxLength()} />
+                      {errors.s_zip
+                        ? <span className="field-error">{errors.s_zip}</span>
+                        : (postalCodeExample(form.s_country)
+                            ? <span className="field-hint">Beispiel: {postalCodeExample(form.s_country)}</span>
+                            : (!isPostalCodeRequired(form.s_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
                     </div>
                     <div className="field">
                       <label className="field-label">Stadt *</label>
@@ -707,8 +776,13 @@ export default function NewShipmentPage() {
                   <div className="field-row field-row-2">
                     <div className="field">
                       <label className="field-label">PLZ *</label>
-                      <input className={`field-input${errors.r_zip  ? " field-input-error" : ""}`} value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)} placeholder="8001" />
-                      {errors.r_zip  && <span className="field-error">{errors.r_zip}</span>}
+                      <input className={`field-input${errors.r_zip  ? " field-input-error" : ""}`} value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)}
+                        placeholder={postalCodeExample(form.r_country) || "PLZ"} inputMode={postalCodeInputMode(form.r_country)} maxLength={postalCodeMaxLength()} />
+                      {errors.r_zip
+                        ? <span className="field-error">{errors.r_zip}</span>
+                        : (postalCodeExample(form.r_country)
+                            ? <span className="field-hint">Beispiel: {postalCodeExample(form.r_country)}</span>
+                            : (!isPostalCodeRequired(form.r_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
                     </div>
                     <div className="field">
                       <label className="field-label">Stadt *</label>

@@ -4,6 +4,7 @@ import { Icon } from "../components/ui/Icon";
 import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
+import { STATUS_STEPS, buildTrackingView } from "./trackingView";
 
 const ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -11,61 +12,6 @@ const ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
   500: "Tracking aktuell nicht verfügbar.",
 };
-
-// Bekannte Backend-/Carrier-Status → verständliches Deutsch für die große
-// Status-Box. Unbekannte ECHTE Statuswerte werden weiterhin roh angezeigt;
-// Titel-/Metatexte wie "UPS shipment tracking" (erkennbar am Wort "tracking")
-// erscheinen nie als Hauptstatus — dann entfällt die Box, der Stufenbalken
-// kommuniziert den Zustand weiter.
-const STATUS_LABELS = {
-  success:     "Zugestellt",
-  delivered:   "Zugestellt",
-  transit:     "Unterwegs",
-  pickup:      "Sendung übernommen",
-  exception:   "Ausnahme",
-  undelivered: "Nicht zustellbar",
-  new:         "Sendung erstellt",
-};
-
-function statusLabelFor(raw) {
-  if (typeof raw !== "string" || !raw.trim()) return null;
-  const s = raw.trim();
-  const known = STATUS_LABELS[s.toLowerCase()];
-  if (known) return known;
-  if (/tracking/i.test(s)) return null; // Titel/Metatext, kein Sendungsstatus
-  return s;
-}
-
-const STATUS_STEPS = [
-  "Daten übermittelt",
-  "Unterwegs",
-  "In Zustellung",
-  "Zugestellt",
-];
-
-// Kurze, kundenfreundliche Beschreibung je bekanntem Anzeige-Status (reine
-// Darstellung im Header — das Statusmapping selbst bleibt unverändert).
-// Unbekannte Statuswerte erhalten bewusst keine Beschreibung (kein Raten).
-const STATUS_DESCRIPTIONS = {
-  "Zugestellt":         "Ihre Sendung wurde erfolgreich zugestellt.",
-  "In Zustellung":      "Ihre Sendung befindet sich in der Zustellung.",
-  "Unterwegs":          "Ihre Sendung befindet sich aktuell im Transport.",
-  "Sendung übernommen": "Der Versanddienstleister hat Ihre Sendung übernommen.",
-  "Sendung erstellt":   "Ihre Sendungsdaten wurden übermittelt.",
-  "Daten übermittelt":  "Ihre Sendungsdaten wurden übermittelt.",
-  "Nicht zustellbar":   "Ihre Sendung konnte leider nicht zugestellt werden.",
-  "Ausnahme":           "Bei der Zustellung Ihrer Sendung ist eine Ausnahme aufgetreten.",
-};
-
-// Best-effort: ordnet den (von Carrier zu Carrier unterschiedlichen) Statustext
-// auf eine der vier Stufen ab. Bei unbekanntem Text bleibt Stufe 0 aktiv.
-function resolveStepIndex(text) {
-  const t = (text || "").toLowerCase();
-  if (/zugestellt|delivered/.test(t)) return 3;
-  if (/zustellung|out for delivery|in delivery/.test(t)) return 2;
-  if (/unterwegs|transit|abgeholt|picked up|shipped|versendet/.test(t)) return 1;
-  return 0;
-}
 
 const timeDE = (d) => (d ? new Date(d).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "");
 
@@ -153,25 +99,16 @@ export default function TrackingPage() {
   const carrierName = typeof carrierRaw === "string" ? carrierRaw
     : (carrierRaw && typeof carrierRaw === "object" ? (carrierRaw.name || null) : null);
 
-  // Status defensiv nur als String übernehmen (kein Objekt rendern) und für
-  // die Anzeige übersetzen. Der Stufenbalken nutzt bevorzugt das übersetzte
-  // Label (z. B. "success" → "Zugestellt" → Stufe 4), sonst den Rohwert.
-  const statusRaw = result?.tracking?.status || result?.tracking?.data?.status
-    || result?.data?.status || result?.status;
-  const currentStatus = typeof statusRaw === "string" ? statusRaw : null;
-  const statusLabel = statusLabelFor(currentStatus);
-
-  // Neuestes Ereignis = LETZTES Element der aufsteigenden Timeline. Es treibt
-  // weiterhin Hero-Status/-Zeitpunkt und den Fortschrittsbalken (unverändert).
+  // Neuestes Ereignis = LETZTES Element der aufsteigenden Timeline — treibt den Hero-Zeitpunkt.
   const newest = events[events.length - 1];
-  const stepIndex = resolveStepIndex(`${statusLabel || currentStatus || ""} ${newest?.description || ""}`);
 
-  // ── Header-Anzeigewerte (reine Darstellung, keine Logikänderung) ────────────
-  // Großer Status: übersetzter/roher Status (Mapping unverändert); fehlt er
-  // (z. B. unterdrückter Titeltext), dient die bereits berechnete Fortschritts-
-  // stufe als neutraler Fallback — so ist der Hero-Status immer vorhanden.
-  const heroStatus = statusLabel || STATUS_STEPS[stepIndex];
-  const heroDesc = STATUS_DESCRIPTIONS[heroStatus] || null;
+  // ── Anzeige-Sicht aus REINER, unit-getesteter Logik (./trackingView) ─────────────────────────
+  // Statusquelle ist AUSSCHLIESSLICH der Transportstatus (result.trackingStatus / tracking.data.status).
+  // Der JUMiNGO-Envelope result.tracking.status ("success") steuert die Anzeige NIEMALS. Ohne Events
+  // UND ohne explizites Carrier-„delivered" bleibt die Timeline auf Stufe 0 — so entsteht nie
+  // „Zugestellt" + „Keine Ereignisse" zugleich; ein echtes delivered bleibt auch bei leerer Liste sichtbar.
+  const { heroStatus, heroDesc, stepIndex } = buildTrackingView(result, { hasEvents: events.length > 0 });
+
   // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr".
   const heroWhen = !newest ? null
     : newest.timestamp ? dtDE(newest.timestamp)

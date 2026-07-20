@@ -29,14 +29,15 @@ function CubeMark() {
 }
 
 // Navigation (Items/Routen unverändert — §21). Icons je Handoff §13/§349:
-// Übersicht=grid(dashboard) · Neue Sendung=plus · Adressbuch=idcard ·
-// Sendungen=package · Sendungsverfolgung=pin(mapPin) · Rechnungen=invoice ·
-// Mein Profil=user · Preisrechner=zap · Abmelden=logout.
+// Übersicht=grid(dashboard) · Neue Sendung=plus · Entwürfe=form ·
+// Adressbuch=idcard · Sendungen=package · Sendungsverfolgung=pin(mapPin) ·
+// Rechnungen=invoice · Mein Profil=user · Preisrechner=zap · Abmelden=logout.
 const NAV_GROUPS = [
   {
     label: "Versand",
     items: [
       { id: "new",         label: "Neue Sendung",       icon: "plus"    },
+      { id: "drafts",      label: "Entwürfe",           icon: "form"    },
       { id: "addressbook", label: "Adressbuch",         icon: "idcard"  },
       { id: "shipments",   label: "Sendungen",          icon: "package" },
       { id: "tracking",    label: "Sendungsverfolgung", icon: "mapPin"  },

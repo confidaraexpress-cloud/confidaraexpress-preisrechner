@@ -17,3 +17,6 @@
 /* Adressbuch — isoliert (abk- Prefix), reine Zusatzklassen; keine Kollision
    mit bestehenden Scopes. */
 @import './addressbook.css';
+/* Entwürfe — isoliert (dft- Prefix), reine Zusatzklassen; keine Kollision
+   mit bestehenden Scopes. */
+@import './drafts.css';

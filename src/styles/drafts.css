@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Entwürfe (drafts) — vollständig unter .dft-* isoliert. Reuse bestehender
+   Basis-Atome (.btn, .field-*, .badge, .empty, .alert, .spinner, .table-card,
+   .table-scroll) statt Duplikate. Executive-Luxury, ruhig: keine Aurora-/Blur-/
+   Dauerbewegungseffekte.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dft-wrap { padding-top: 28px; padding-bottom: 48px; }
+.dft-empty-desc { font-size: 13.5px; color: var(--gray500); max-width: 360px; margin: 0 auto 16px; line-height: 1.5; }
+
+/* ─── Seitenkopf ──────────────────────────────────────────────────────────── */
+.dft-header-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
+}
+.dft-header-text { min-width: 0; }
+.dft-header-title { font-size: 26px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; margin-bottom: 4px; }
+.dft-header-sub { font-size: 14px; color: var(--gray500); line-height: 1.5; max-width: 560px; }
+.dft-header-cta { flex-shrink: 0; }
+
+/* ─── Desktop-Tabelle (reuse .table-card/.table-scroll, nur Zellinhalte neu) ── */
+.dft-table th { text-align: left; }
+.dft-cell-recipient { font-size: 13.5px; font-weight: 700; color: var(--navy); }
+.dft-cell-route { font-size: 13px; color: var(--gray700); font-family: 'DM Mono', monospace; }
+.dft-cell-package { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--gray600); }
+.dft-cell-package-count { color: var(--gray700); font-weight: 600; }
+.dft-cell-date { font-size: 12.5px; color: var(--gray600); white-space: nowrap; }
+.dft-cell-updated { font-size: 12px; color: var(--gray400); white-space: nowrap; }
+.dft-cell-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* ─── Mobil-Karten ────────────────────────────────────────────────────────── */
+.dft-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dft-card {
+  background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.dft-card-route { font-size: 13px; font-weight: 700; color: var(--blue2); font-family: 'DM Mono', monospace; }
+.dft-card-recipient { font-size: 15px; font-weight: 700; color: var(--navy); margin-top: 2px; overflow-wrap: break-word; }
+.dft-card-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--gray600); }
+.dft-card-info-row { display: flex; align-items: flex-start; gap: 8px; }
+.dft-card-info-row svg { flex-shrink: 0; margin-top: 2px; color: var(--gray400); }
+.dft-card-meta { font-size: 12px; color: var(--gray400); }
+.dft-card-actions { display: flex; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+.dft-card-actions .btn { flex: 1; }
+
+/* Löschen bewusst NICHT als leicht auslösbare Icon-only-Aktion — immer mit
+   sichtbarem Textlabel, auf Mobil als vollwertiger Button in der Aktionsreihe. */
+.dft-delete-btn { color: var(--danger); border-color: rgba(239,68,68,0.28); }
+.dft-delete-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
+.dft-delete-btn:focus-visible { outline: 2px solid rgba(220,38,38,0.5); outline-offset: 2px; }
+
+/* Solide Danger-Bestätigung im Löschdialog — bewusst eigenständig (nicht
+   .btn-primary), damit Farbe die Irreversibilität zusätzlich zum Text „Löschen"
+   unterstreicht (Text bleibt der primäre, nicht-farbliche Signalträger). */
+.dft-delete-confirm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px; padding: 0 20px; border-radius: var(--radius);
+  border: 1.5px solid var(--danger); background: var(--danger); color: #fff;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dft-delete-confirm-btn:hover:not(:disabled) { background: #dc2626; border-color: #dc2626; }
+.dft-delete-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.dft-delete-confirm-btn:focus-visible { outline: 2px solid rgba(220,38,38,0.5); outline-offset: 2px; }
+
+/* ─── Bestätigungsdialog (gleiches Muster wie price-drift-overlay/-card) ───── */
+.dft-dialog-overlay {
+  position: fixed; inset: 0; background: rgba(11,31,77,0.4); z-index: 410;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.dft-dialog-card {
+  width: 100%; max-width: 420px; background: white; border-radius: var(--radius-lg);
+  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
+}
+.dft-dialog-icon {
+  width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; margin-bottom: 14px; background: var(--danger-bg); color: var(--danger);
+}
+.dft-dialog-title { font-size: 17px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.dft-dialog-desc { font-size: 13.5px; color: var(--gray600); line-height: 1.55; margin-bottom: 20px; }
+.dft-dialog-target { font-weight: 700; color: var(--navy); }
+.dft-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ─── Load-more ───────────────────────────────────────────────────────────── */
+.dft-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+
+/* ─── Skeleton ────────────────────────────────────────────────────────────── */
+.dft-skeleton-row {
+  height: 64px; border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--gray50) 25%, var(--gray100) 37%, var(--gray50) 63%);
+  background-size: 400% 100%; animation: dft-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes dft-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .dft-skeleton-row { animation: none; background: var(--gray50); } }
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (min-width: 768px) { .dft-cards { display: none; } }
+@media (max-width: 767px) {
+  .dft-table-card { display: none; }
+  .dft-header-top { flex-direction: column; }
+  .dft-header-cta .btn { width: 100%; }
+}

@@ -1,3 +1,5 @@
+import { buildDraftListParams, toQueryString } from "../utils/draftsView.mjs";
+
 export const API = import.meta.env.VITE_API_URL;
 
 export const token = () => localStorage.getItem("ce_token");
@@ -159,4 +161,30 @@ export function uploadCommercialInvoice(shipmentId, file) {
 // DELETE → entfernt ausschließlich die commercial-invoice (idempotent). Kein Body.
 export function deleteCommercialInvoice(shipmentId) {
   return apiFetch(ciPath(shipmentId), { method: "DELETE", auth: true });
+}
+
+// ── Benutzer-Entwürfe (Backend PR #162) ──────────────────────────────────────
+// Ausschließlich bewusst gespeicherte Entwürfe (shipments.is_saved_draft=true).
+// GET liefert Keyset-Pagination { items, nextCursor }; der Cursor wird NUR
+// opak weitergereicht (buildDraftListParams/toQueryString in draftsView.mjs —
+// kein Dekodieren, keine Annahmen über den Aufbau). :id ist überall die interne
+// numerische Shipment-ID (NICHT jumingoShipmentId).
+export function getDrafts({ limit, cursor } = {}, { signal } = {}) {
+  const params = buildDraftListParams({ limit, cursor });
+  return apiFetch(`/api/kunde/drafts${toQueryString(params)}`, { auth: true, signal });
+}
+
+// Speichert einen bestehenden technischen Draft bewusst als Benutzer-Entwurf
+// (idempotent). `id` MUSS die interne numerische Shipment-ID sein.
+export function saveDraft(id) {
+  return apiFetch(`/api/kunde/drafts/${encodeURIComponent(String(id))}/save`, {
+    method: "POST", auth: true,
+  });
+}
+
+// Löscht einen eigenen gespeicherten Entwurf endgültig. Erfolg → 204 (kein Body).
+export function deleteDraft(id) {
+  return apiFetch(`/api/kunde/drafts/${encodeURIComponent(String(id))}`, {
+    method: "DELETE", auth: true,
+  });
 }

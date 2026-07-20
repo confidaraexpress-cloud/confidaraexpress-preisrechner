@@ -15,6 +15,7 @@ import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { PickupWindowModule } from "../components/booking/PickupWindowModule";
+import { SaveDraftAction } from "../components/booking/SaveDraftAction";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
@@ -846,6 +847,11 @@ export default function BookingPage() {
                 }}
               />
             )}
+
+            <SaveDraftAction
+              shipmentId={bookingData?.shipmentId}
+              onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
+            />
 
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=new")}>← Zurück</button>

@@ -51,3 +51,11 @@ h1, h2, h3, h4 { font-family: 'Libre Franklin', sans-serif; font-weight: 700; }
 .text-muted { color: var(--gray400); }
 .font-bold { font-weight: 700; }
 .ml-auto { margin-left: auto; }
+
+/* Nur für Screenreader — visuell verborgen, aber vorlesbar (z. B. Live-Region-
+   Statustexte, die keine sichtbare Dopplung erzeugen sollen). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+  white-space: nowrap;
+}

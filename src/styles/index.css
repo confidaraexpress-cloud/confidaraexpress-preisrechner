@@ -14,3 +14,6 @@
 /* Adminbereich — isoliert (adm- Prefix), nur neue Klassen, überschreibt nichts
    Bestehendes; daher zuletzt, damit adm-Styles nicht überschrieben werden. */
 @import './admin.css';
+/* Adressbuch — isoliert (abk- Prefix), reine Zusatzklassen; keine Kollision
+   mit bestehenden Scopes. */
+@import './addressbook.css';

@@ -12,8 +12,9 @@ import { LegalLinks } from "../components/layout/LegalLinks";
 import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 
-const NewShipmentPage = React.lazy(() => import("./NewShipmentPage"));
-const TrackingPage    = React.lazy(() => import("./TrackingPage"));
+const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
+const TrackingPage     = React.lazy(() => import("./TrackingPage"));
+const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -44,6 +45,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [bookingToast, setBookingToast] = useState(false);
+  // Adressbuch → „Neue Sendung": reiner Werte-Patch (s_*/r_*-Formfelder), KEINE
+  // dauerhafte addressId-Referenz. Wird einmalig beim Mount von NewShipmentPage
+  // angewendet und danach über onPrefillApplied hier zurückgesetzt.
+  const [addressPrefill, setAddressPrefill] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -79,7 +84,7 @@ export default function DashboardPage() {
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
     const p = new URLSearchParams(location.search).get("page");
-    if (p && ["overview", "new", "shipments", "invoices", "profile", "tracking"].includes(p)) {
+    if (p && ["overview", "new", "addressbook", "shipments", "invoices", "profile", "tracking"].includes(p)) {
       setPage(p);
       navigate("/dashboard", { replace: true });
     }
@@ -92,7 +97,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${page === "new" ? " dashboard-neutral-premium" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook") ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}
@@ -141,7 +146,20 @@ export default function DashboardPage() {
         {page === "new" && (
           <div className="page-body">
             <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-              <NewShipmentPage />
+              <NewShipmentPage
+                prefillAddress={addressPrefill}
+                onPrefillApplied={() => setAddressPrefill(null)}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {page === "addressbook" && (
+          <div className="page-body">
+            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+              <AddressBookPage
+                onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
+              />
             </Suspense>
           </div>
         )}

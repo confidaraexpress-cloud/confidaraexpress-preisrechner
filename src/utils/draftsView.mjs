@@ -136,10 +136,18 @@ export function mapDraftDeleteErrorToMessage(code) {
 // exakt dieselbe ID, die client.js bereits für Commercial-Invoice/Pickup-
 // Window als "interne Confidara-Shipment-ID" verwendet (siehe ciPath-Kommentar
 // in api/client.js) — kein Raten, kein neuer Vertrag.
+//
+// Strikt auf positive Ganzzahl geprüft (Number ODER reiner Ziffern-String ohne
+// führende Null): verhindert Requests mit NaN, negativen/dezimalen Werten oder
+// einer versehentlich durchgereichten jumingoShipmentId ("s_..."-Form).
 export function hasSavableShipmentId(shipmentId) {
-  if (shipmentId == null) return false;
-  const s = String(shipmentId).trim();
-  return s.length > 0;
+  if (typeof shipmentId === "number") {
+    return Number.isInteger(shipmentId) && shipmentId > 0;
+  }
+  if (typeof shipmentId === "string") {
+    return /^[1-9][0-9]*$/.test(shipmentId.trim());
+  }
+  return false;
 }
 
 // ── Empty-State-Text (nur "noch keine Entwürfe" — kein Suchtreffer-Fall im MVP) ──

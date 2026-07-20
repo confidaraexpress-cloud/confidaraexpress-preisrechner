@@ -139,13 +139,42 @@ test("41c — unbekannter Code → generischer Fallback, kein interner Rohtext",
   assert.doesNotMatch(msg, /SQL|SOME_SQL_CONSTRAINT/i);
 });
 
-test("hasSavableShipmentId: erkennt vorhandene/fehlende numerische ID robust", () => {
+test("hasSavableShipmentId: akzeptiert nur positive Ganzzahlen (Number oder reiner Ziffern-String)", () => {
   assert.equal(hasSavableShipmentId(123), true);
   assert.equal(hasSavableShipmentId("123"), true);
+  assert.equal(hasSavableShipmentId(" 123 "), true);
+});
+test("hasSavableShipmentId: lehnt undefined/null/leer/Whitespace ab", () => {
   assert.equal(hasSavableShipmentId(null), false);
   assert.equal(hasSavableShipmentId(undefined), false);
   assert.equal(hasSavableShipmentId(""), false);
   assert.equal(hasSavableShipmentId("   "), false);
+});
+test("hasSavableShipmentId: lehnt NaN ab (Number- und String-Form)", () => {
+  assert.equal(hasSavableShipmentId(NaN), false);
+  assert.equal(hasSavableShipmentId("NaN"), false);
+});
+test("hasSavableShipmentId: lehnt negative IDs ab (Number- und String-Form)", () => {
+  assert.equal(hasSavableShipmentId(-5), false);
+  assert.equal(hasSavableShipmentId("-5"), false);
+});
+test("hasSavableShipmentId: lehnt Dezimalwerte ab (Number- und String-Form)", () => {
+  assert.equal(hasSavableShipmentId(3.14), false);
+  assert.equal(hasSavableShipmentId("3.14"), false);
+});
+test("hasSavableShipmentId: lehnt 0 ab (keine positive Ganzzahl)", () => {
+  assert.equal(hasSavableShipmentId(0), false);
+  assert.equal(hasSavableShipmentId("0"), false);
+});
+test("hasSavableShipmentId: lehnt jumingoShipmentId-förmige Strings ab (nie die JUMiNGO-ID verwenden)", () => {
+  assert.equal(hasSavableShipmentId("s_abc123"), false);
+});
+test("hasSavableShipmentId: lehnt beliebige nicht-numerische Strings ab", () => {
+  assert.equal(hasSavableShipmentId("hello"), false);
+  assert.equal(hasSavableShipmentId("12a"), false);
+  assert.equal(hasSavableShipmentId("1e5"), false);
+  assert.equal(hasSavableShipmentId([]), false);
+  assert.equal(hasSavableShipmentId({}), false);
 });
 
 test("draftsEmptyCopy liefert die geforderten Texte (kein 72h-/Technik-Hinweis)", () => {

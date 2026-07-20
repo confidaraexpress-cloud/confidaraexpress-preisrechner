@@ -96,7 +96,7 @@ const SHIPPING_MODE_OPTIONS = [
   { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
-export default function NewShipmentPage() {
+export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {}) {
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
@@ -234,6 +234,22 @@ export default function NewShipmentPage() {
   const invalidateResults = () => {
     if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
   };
+
+  // ── Adressbuch → „Neue Sendung": optionaler Werte-Patch ─────────────────────
+  // Reiner Wertekopie in das bestehende Formular (s_*/r_*-Felder) — KEINE
+  // dauerhafte addressId-Referenz, KEINE automatische Preisberechnung/Buchung.
+  // Wird genau einmal beim Mount angewendet (Effekt feuert nur, wenn
+  // prefillAddress tatsächlich gesetzt ist) und danach über onPrefillApplied
+  // im Elternteil zurückgesetzt — ein erneuter Mount ohne neues Prefill
+  // wendet also nichts an. Ohne die Props (Default undefined) ist dieser
+  // Effekt ein No-Op → bestehendes Verhalten bleibt vollständig unverändert.
+  useEffect(() => {
+    if (!prefillAddress) return;
+    setForm((prev) => ({ ...prev, ...prefillAddress }));
+    invalidateResults();
+    onPrefillApplied?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillAddress]);
 
   // ── Paket 1: sicherer Länderwechsel ──────────────────────────────────────────
   // Beim MANUELLEN Wechsel des Landes dürfen landabhängige Felder (Straße, Zusatz,

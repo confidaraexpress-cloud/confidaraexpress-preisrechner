@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
 const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
+const DraftsPage       = React.lazy(() => import("./DraftsPage"));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -84,7 +85,7 @@ export default function DashboardPage() {
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
     const p = new URLSearchParams(location.search).get("page");
-    if (p && ["overview", "new", "addressbook", "shipments", "invoices", "profile", "tracking"].includes(p)) {
+    if (p && ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking"].includes(p)) {
       setPage(p);
       navigate("/dashboard", { replace: true });
     }
@@ -97,7 +98,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook") ? " dashboard-neutral-premium" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook" || page === "drafts") ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}
@@ -160,6 +161,14 @@ export default function DashboardPage() {
               <AddressBookPage
                 onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
               />
+            </Suspense>
+          </div>
+        )}
+
+        {page === "drafts" && (
+          <div className="page-body">
+            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+              <DraftsPage onNewShipment={() => navigateTo("new")} />
             </Suspense>
           </div>
         )}

@@ -916,3 +916,19 @@
   .pw-range::-webkit-slider-thumb { transition: none; }
   .pw-range::-moz-range-thumb { transition: none; }
 }
+
+/* ─── „Als Entwurf speichern" (Step 1, sekundäre Aktion) ─────────────────── */
+.bk-savedraft {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; margin-bottom: 16px;
+  background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.bk-savedraft-done { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--success); }
+.bk-savedraft-link {
+  background: none; border: none; padding: 0; margin-left: 4px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--blue2);
+  cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35);
+}
+.bk-savedraft-link:hover { border-bottom-color: var(--blue2); }
+.bk-savedraft-link:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 2px; }
+.bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--danger); }

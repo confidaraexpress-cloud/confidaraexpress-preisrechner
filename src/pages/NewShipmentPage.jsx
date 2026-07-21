@@ -194,8 +194,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const [error, setError]           = useState("");
   const [hasResults, setHasResults] = useState(false);
   const [errors, setErrors]         = useState({});
-  // Paket 1: anstehender Länderwechsel mit vorhandenen Adressdaten → Bestätigungsdialog.
-  const [pendingCountry, setPendingCountry] = useState(null); // { party:"s"|"r", from, to } | null
 
   // ── Fortsetzen-Status (nur aktiv, wenn ein Formularentwurf fortgesetzt wird) ──
   // resumeSource trägt die Übergangs-Metadaten (interne Formularentwurf-ID +
@@ -301,33 +299,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillAddress]);
 
-  // ── Paket 1: sicherer Länderwechsel ──────────────────────────────────────────
-  // Beim MANUELLEN Wechsel des Landes dürfen landabhängige Felder (Straße, Zusatz,
-  // PLZ, Ort) nicht unbemerkt stehen bleiben (bewiesene stale-data-Ursache: DE-PLZ
-  // mit FR-Land). Sind solche Felder befüllt, erst per Dialog bestätigen. Firmen-/
-  // Kontaktfelder (Unternehmen, Ansprechpartner, Telefon, E-Mail) bleiben erhalten.
-  // Ein Bundesland-/Regionfeld existiert im Formular nicht → nichts zu leeren.
-  const countryName = (code) => countries.find(c => c.code === code)?.name || code;
-  const partyHasAddressData = (p) =>
-    ["street", "addition", "zip", "city"].some(k => (form[`${p}_${k}`] || "").trim() !== "");
-  const requestCountryChange = (p, next) => {
-    if (!next || next === form[`${p}_country`]) return;
-    if (partyHasAddressData(p)) setPendingCountry({ party: p, from: form[`${p}_country`], to: next });
-    else upd(`${p}_country`, next); // keine Adressdaten → direkt wechseln, kein Dialog
-  };
-  const confirmCountryChange = () => {
-    if (!pendingCountry) return;
-    const p = pendingCountry.party, to = pendingCountry.to;
-    setForm(prev => ({ ...prev, [`${p}_country`]: to, [`${p}_street`]: "", [`${p}_addition`]: "", [`${p}_zip`]: "", [`${p}_city`]: "" }));
-    setErrors(prev => {
-      const n = { ...prev };
-      for (const k of ["country", "street", "addition", "zip", "city"]) delete n[`${p}_${k}`];
-      return n;
-    });
-    invalidateResults(); // buchungsrelevante Änderung → alte Tarife/shipmentId verwerfen
-    setPendingCountry(null);
-  };
-  const cancelCountryChange = () => setPendingCountry(null); // Abbruch: nichts ändern
+  // ── Länderwechsel ────────────────────────────────────────────────────────────
+  // Das Land wird unmittelbar geändert (kein Bestätigungsdialog, keine
+  // automatische Feldleerung). Adress-/Firmen-/Kontaktfelder bleiben vollständig
+  // erhalten — nur der Country-State wird aktualisiert. Wie bei jedem anderen
+  // buchungsrelevanten Feld verwirft upd() über invalidateResults() lediglich
+  // vorhandene Preis-/Tarif-/shipmentId-Ergebnisse (Buchungssicherheit); es
+  // werden KEINE Formularfelder verändert. Gebunden direkt am <select> onChange.
 
   const handleTogglePublicCarrier = (id) => {
     setSelectedPublicCarrierIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -770,7 +748,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       <select
         className="field-input field-select"
         value={form[`${p}_country`]}
-        onChange={e => requestCountryChange(p, e.target.value)}
+        onChange={e => upd(`${p}_country`, e.target.value)}
       >
         {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
       </select>
@@ -795,29 +773,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         />
       )}
 
-      {/* Paket 1: Bestätigungsdialog für den Länderwechsel mit vorhandenen Adressdaten.
-          Abbrechen → nichts ändert sich. Bestätigen → Land setzen + Straße/Zusatz/PLZ/Ort
-          leeren (Firmen-/Kontaktfelder bleiben). Reuse der price-drift-Overlay-Optik. */}
-      {pendingCountry && (
-        <div className="price-drift-overlay" role="presentation">
-          <div className="price-drift-card" role="dialog" aria-modal="true" aria-labelledby="cc-title" aria-describedby="cc-desc">
-            <div className="price-drift-badge" aria-hidden="true"><Icon n="mapPin" s={24} c="#1D4ED8" /></div>
-            <h2 id="cc-title" className="price-drift-title">Land wechseln?</h2>
-            <p id="cc-desc" className="price-drift-desc">
-              Sie ändern das Land der {pendingCountry.party === "s" ? "Absender" : "Empfänger"}adresse von{" "}
-              <strong>{countryName(pendingCountry.from)}</strong> zu <strong>{countryName(pendingCountry.to)}</strong>.
-              Straße, Adresszusatz, PLZ und Ort werden geleert, damit keine unpassende Land-/PLZ-Kombination
-              entsteht. Unternehmen, Ansprechpartner, Telefon und E-Mail bleiben erhalten.
-            </p>
-            <div className="price-drift-actions">
-              <button type="button" className="btn btn-outline price-drift-btn" onClick={cancelCountryChange}>Abbrechen</button>
-              <button type="button" className="btn btn-primary price-drift-btn" onClick={confirmCountryChange}>
-                Land wechseln &amp; Felder leeren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <div className="container calc-page-wrap">
         <div className="mb-24">
           <h1 className="heading calc-page-title">Versandpreis berechnen</h1>

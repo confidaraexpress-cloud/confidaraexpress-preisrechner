@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
 
 // ── Admin-API (dünner Wrapper um das zentrale apiFetch) ──────────────────────
 // Alle Aufrufe laufen über apiFetch(..., { auth: true }): Bearer-Header und das
@@ -277,36 +278,17 @@ export function getAdminCancellationRequest(id) {
   return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}`, { auth: true });
 }
 
-// Nur explizit erlaubte Felder werden je gesendet — keine erfundenen Felder.
-// Über die Statusroute setzbare Werte: die vier belegten Status. Der Aufrufer
-// (UI) verhindert bereits terminale/ungültige Übergänge; hier zusätzlich ein
-// defensiver Allowlist-Guard, damit nie ein technischer Wert durchrutscht.
-const SETTABLE_CANCELLATION_STATUS = ["pending", "in_review", "accepted", "rejected"];
-
-// PATCH /admin/cancellation-requests/:id — Status setzen und/oder internen
-// Vermerk speichern. Optimistic Locking: die aktuelle `revision` MUSS mitgesendet
-// werden; bei zwischenzeitlicher Änderung antwortet das Backend mit 409 (der
-// Aufrufer lädt dann neu, kein Auto-Retry). Der Body enthält ausschließlich
-// allowlistete Felder: `revision` (immer), `status` (nur gültiger Wert) und/oder
-// `internal_note`. Content-Type + Bearer kommen aus apiFetch(auth:true). Kein
-// Cache, kein Logging; 401/403 behandelt apiFetch zentral.
+// PATCH /admin/cancellation-requests/:id — Status setzen und/oder interne Notiz
+// speichern. Kanonischer Backend-Vertrag: der Body enthält `revision` (immer,
+// Optimistic Locking) plus mindestens eines von `status` / `adminNote`. Die
+// interne Notiz heißt im Vertrag ausschließlich `adminNote` (NICHT internal_note/
+// admin_note/note) — der Body wird zentral über buildCancellationPatchBody
+// zusammengesetzt (einzige Quelle der Wahrheit, keine zweite PATCH-Abstraktion).
+// Bei zwischenzeitlicher Änderung antwortet das Backend mit 409 (Aufrufer lädt
+// neu, kein Auto-Retry). Content-Type + Bearer kommen aus apiFetch(auth:true).
+// Kein Cache, kein Logging; 401/403 behandelt apiFetch zentral.
 export function updateAdminCancellationRequest(id, payload = {}) {
-  const body = {};
-  // revision ist für das Optimistic Locking obligatorisch (auch 0 ist gültig).
-  if (payload.revision !== undefined && payload.revision !== null) {
-    body.revision = payload.revision;
-  }
-  if (payload.status !== undefined && payload.status !== null) {
-    if (!SETTABLE_CANCELLATION_STATUS.includes(payload.status)) {
-      return Promise.reject(new Error("invalid_status"));
-    }
-    body.status = payload.status;
-  }
-  // Interner Vermerk: nur senden, wenn explizit übergeben (auch "" ist erlaubt →
-  // löscht den Vermerk). undefined → Feld unangetastet lassen.
-  if (payload.internal_note !== undefined) {
-    body.internal_note = payload.internal_note;
-  }
+  const body = buildCancellationPatchBody(payload);
   return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}`, {
     method: "PATCH",
     auth: true,

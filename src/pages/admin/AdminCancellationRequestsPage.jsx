@@ -5,6 +5,7 @@ import { listAdminCancellationRequests } from "../../api/adminApi";
 import {
   cancellationStatusMeta,
   CANCELLATION_STATUS_FILTER_OPTIONS,
+  normalizeCancellationRequest,
 } from "../../utils/adminCancellations.mjs";
 
 const PAGE_SIZE = 25;
@@ -19,7 +20,8 @@ const GENERIC_ERROR = "Stornierungsanfragen konnten nicht geladen werden. Bitte 
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
-// ── Response defensiv lesen — keine Annahme über die exakte Backend-Struktur ──
+// ── Response-Container defensiv lesen (Liste). Die Feld-Normalisierung der
+// einzelnen Zeilen übernimmt zentral normalizeCancellationRequest. ───────────
 function selectRows(d) {
   if (Array.isArray(d)) return d;
   if (d && typeof d === "object") {
@@ -47,17 +49,6 @@ function selectHasMore(d, rowCount, page, size, total) {
   }
   return rowCount >= size; // volle Seite ⇒ evtl. mehr
 }
-
-// ── Feld-Extraktion (nur erlaubte, PII-arme Felder; nie ganze Objekte) ───────
-const idOf = (r) => firstDefined(r.id, r.cancellation_request_id, r.request_id, r.requestId);
-const shipmentIdOf = (r) => firstDefined(r.shipment_id, r.shipmentId);
-const userIdOf = (r) => firstDefined(r.user_id, r.userId, r.customer_id, r.customerId);
-const statusOf = (r) => firstDefined(r.status, r.state);
-const requestedAtOf = (r) =>
-  firstDefined(r.cancellation_requested_at, r.requested_at, r.requestedAt, r.created_at, r.createdAt, r.created);
-const reasonOf = (r) =>
-  firstDefined(r.reason, r.customer_reason, r.customerReason, r.cancellation_reason, r.message);
-const rowKeyOf = (r, i) => firstDefined(idOf(r), r.uuid) ?? `row-${i}`;
 
 function fmtDate(v) {
   if (!v) return "—";
@@ -108,7 +99,10 @@ export default function AdminCancellationRequestsPage() {
       }
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
-      const list = selectRows(d);
+      const raw = selectRows(d);
+      // Zentrale kanonische Normalisierung — Komponenten arbeiten nur mit den
+      // kanonischen Feldern (id/status/reason/createdAt/shipment/customer).
+      const list = raw.map(normalizeCancellationRequest).filter(Boolean);
       const t = selectTotal(d);
       setRows(list);
       setTotal(t);
@@ -196,12 +190,13 @@ export default function AdminCancellationRequestsPage() {
               </thead>
               <tbody>
                 {rows.map((row, i) => {
-                  const cid = idOf(row);
-                  const sid = shipmentIdOf(row);
-                  const reason = reasonPreview(reasonOf(row));
+                  const cid = row.id;
+                  const sid = row.shipment?.id;
+                  const uid = row.customer?.id;
+                  const reason = reasonPreview(row.reason);
                   return (
-                    <tr key={rowKeyOf(row, i)}>
-                      <td className="adm-td-time">{fmtDate(requestedAtOf(row))}</td>
+                    <tr key={cid != null ? `req-${cid}` : `row-${i}`}>
+                      <td className="adm-td-time">{fmtDate(row.createdAt)}</td>
                       <td className="adm-mono">
                         {cid != null
                           ? <Link className="adm-idlink" to={`/admin/cancellation-requests/${encodeURIComponent(cid)}`}>{cid}</Link>
@@ -212,8 +207,8 @@ export default function AdminCancellationRequestsPage() {
                           ? <Link className="adm-idlink" to={`/admin/shipments/${encodeURIComponent(sid)}`}>{sid}</Link>
                           : "—"}
                       </td>
-                      <td className="adm-mono">{firstDefined(userIdOf(row)) ?? "—"}</td>
-                      <td><StatusBadge status={statusOf(row)} /></td>
+                      <td className="adm-mono">{uid != null && String(uid).trim() !== "" ? uid : "—"}</td>
+                      <td><StatusBadge status={row.status} /></td>
                       <td>{reason ? <span className="adm-reason-cell">{reason}</span> : <span className="adm-muted">—</span>}</td>
                       <td>
                         {cid != null && (

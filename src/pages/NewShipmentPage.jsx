@@ -11,12 +11,14 @@ import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
-import { getFormDraft } from "../api/formDraftsApi";
+import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { hasSavableShipmentId } from "../utils/draftsView.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
 } from "../utils/formDraftsView.mjs";
+import { getShipmentFormSnapshot, isShipmentFormDirty } from "../utils/shipmentFormSnapshot.mjs";
+import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,7 +104,7 @@ const SHIPPING_MODE_OPTIONS = [
   { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
-export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resumeDraft, onResumeApplied } = {}) {
+export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
@@ -166,6 +168,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "",
   }));
+
+  // ── Dirty-State / interner Verlassen-Guard ─────────────────────────────────
+  // Baseline = fachlicher Snapshot NACH allen automatischen Startwerten
+  // (Profil-Prefill/Resume synchron beim Mount; Adressbuch-Prefill wird im Effekt
+  // weiter unten nachgezogen). Reine Auto-Defaults erzeugen dadurch NIE Dirty.
+  const [baseline, setBaseline] = useState(() =>
+    getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds })
+  );
+  const [pendingTarget, setPendingTarget] = useState(null); // { type, ... } | null — pausierte Zielnavigation
+  const [leaveSaving, setLeaveSaving]     = useState(false);
+  const [leaveMode, setLeaveMode]         = useState("idle"); // idle | error | conflict | notFound | rateLimited
 
   // ── Results ──
   const [tariffs, setTariffs]       = useState([]);
@@ -274,7 +287,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Effekt ein No-Op → bestehendes Verhalten bleibt vollständig unverändert.
   useEffect(() => {
     if (!prefillAddress) return;
-    setForm((prev) => ({ ...prev, ...prefillAddress }));
+    const merged = { ...form, ...prefillAddress };
+    setForm(merged);
+    // Adressbuch-Prefill ist der bewusste Ausgangszustand → Baseline nachziehen,
+    // damit die Vorbelegung nicht als Nutzeränderung (Dirty) zählt. `form` ist
+    // hier der Initial-Seed (Effekt läuft vor jeder Nutzerinteraktion beim Mount).
+    setBaseline(getShipmentFormSnapshot({ form: merged, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }));
     invalidateResults();
     onPrefillApplied?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,6 +372,107 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Dirty-State + interner Verlassen-Guard ─────────────────────────────────
+  // Aktueller fachlicher Snapshot (nur payload-bestimmende Felder). Dirty = echte
+  // Änderung ggü. Baseline UND speicherbarer Zustand (shipmentFormSnapshot.mjs).
+  const currentSnapshot = useMemo(
+    () => getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }),
+    [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds]
+  );
+  const isDirty = isShipmentFormDirty(currentSnapshot, baseline);
+  // Live-Refs, damit der stabil registrierte Guard keinen veralteten Closure liest.
+  const dirtyRef = useRef(isDirty); dirtyRef.current = isDirty;
+  const pendingTargetRef = useRef(null); pendingTargetRef.current = pendingTarget;
+
+  // Guard beim Elternteil registrieren: Der Dashboard-Navigationspfad ruft ihn
+  // VOR jeder internen Zielnavigation auf. Rückgabe true = abgefangen (Dialog
+  // öffnet, Navigation pausiert); false = sofort erlauben. Policy: der ERSTE
+  // Navigationswunsch bleibt verbindlich (kein stilles Zielwechseln, kein zweiter Dialog).
+  useEffect(() => {
+    if (!registerLeaveGuard) return undefined;
+    registerLeaveGuard((target) => {
+      if (!dirtyRef.current) return false;
+      if (!pendingTargetRef.current) { setLeaveMode("idle"); setPendingTarget(target); }
+      return true;
+    });
+    return () => registerLeaveGuard(null);
+  }, [registerLeaveGuard]);
+
+  // Pausierte Zielnavigation genau EINMAL ausführen (Elternteil kennt page/route/logout).
+  const runPendingLeave = () => {
+    const target = pendingTargetRef.current;
+    setPendingTarget(null);
+    setLeaveMode("idle");
+    if (target) commitLeave?.(target);
+  };
+
+  // „Als Entwurf speichern": PATCH (fortgesetzter Draft mit gültiger Source-ID)
+  // oder POST (neuer Entwurf). Genau ein Request gleichzeitig.
+  const saveDraftAndLeave = async () => {
+    if (leaveSaving) return;
+    setLeaveSaving(true); setLeaveMode("idle");
+    const snapshot = getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds });
+    const source = resumeSource;
+    const isPatch = !!(source && hasSavableShipmentId(source.id));
+    try {
+      const r = isPatch
+        ? await updateFormDraft(source.id, { schemaVersion: source.schemaVersion ?? 1, revision: source.revision, formData: snapshot })
+        : await createFormDraft({ schemaVersion: 1, formData: snapshot });
+      if (!mountedRef.current) return;
+      if (r.status === 401 || r.status === 403) { setLeaveSaving(false); return; } // zentraler Auth-Redirect übernimmt
+      if (isPatch && r.status === 409) { setLeaveMode("conflict"); setLeaveSaving(false); return; }
+      if (isPatch && r.status === 404) { setResumeSource(null); setLeaveMode("notFound"); setLeaveSaving(false); return; } // nächster Save = POST
+      if (r.status === 429) { setLeaveMode("rateLimited"); setLeaveSaving(false); return; }
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (!mountedRef.current) return;
+      if (!r.ok || !d?.draft) throw new Error("save failed");
+      // Erfolg: Baseline auf gespeicherten Snapshot, Source aktualisieren, DANN
+      // genau einmal navigieren (nicht zuerst navigieren, dann State setzen).
+      const saved = d.draft;
+      setBaseline(snapshot);
+      setResumeSource({ id: saved.id, revision: saved.revision, schemaVersion: saved.schemaVersion ?? 1 });
+      setLeaveSaving(false);
+      runPendingLeave();
+    } catch {
+      if (mountedRef.current) { setLeaveMode("error"); setLeaveSaving(false); }
+    }
+  };
+
+  const discardAndLeave = () => { if (!leaveSaving) runPendingLeave(); };                     // ohne API, genau einmal
+  const continueEditing = () => { if (!leaveSaving) { setPendingTarget(null); setLeaveMode("idle"); } };
+
+  // „Aktuelle Version laden" (Konflikt): bewusst den Serverstand neu holen und
+  // rehydrieren; danach im Formular BLEIBEN (keine Navigation), Dialog schließen.
+  const reloadCurrentForLeave = async () => {
+    if (leaveSaving || !resumeSource?.id) return;
+    setLeaveSaving(true);
+    try {
+      const r = await getFormDraft(resumeSource.id);
+      if (!mountedRef.current) return;
+      if (r.status === 401 || r.status === 403) { setLeaveSaving(false); return; }
+      if (r.status === 404) { setResumeSource(null); setLeaveMode("notFound"); setLeaveSaving(false); return; }
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (!mountedRef.current) return;
+      const payload = buildResumePayload(d?.draft);
+      if (!r.ok || !isValidResumeDraft(payload)) throw new Error("reload failed");
+      const init = buildResumeInitialState(payload.formData, { today: todayISO() });
+      const nextDate = init.shippingDate || todayISO();
+      setForm(init.form);
+      setShippingDate(nextDate);
+      setServiceFilter(init.serviceFilter);
+      setShippingModeFilter(init.shippingModeFilter);
+      setSelectedPublicCarrierIds(init.selectedPublicCarrierIds);
+      resetResults();
+      setResumeSource(resumeSourceFromDraft(payload));
+      setBaseline(getShipmentFormSnapshot({ form: init.form, shippingDate: nextDate, serviceFilter: init.serviceFilter, shippingModeFilter: init.shippingModeFilter, selectedPublicCarrierIds: init.selectedPublicCarrierIds }));
+      setLeaveSaving(false);
+      setLeaveMode("idle");
+      setPendingTarget(null); // im Formular bleiben — keine Navigation
+    } catch {
+      if (mountedRef.current) { setLeaveMode("error"); setLeaveSaving(false); }
+    }
+  };
 
   // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
   // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
@@ -626,6 +745,20 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   return (
     <div className="page-with-navbar">
       <PremiumBackground variant="neutral" />
+
+      {/* Interner Verlassen-Guard: pausiert die Zielnavigation, wenn ungespeicherte
+          fachliche Angaben vorliegen. Nur bei interner Navigation — der reguläre
+          Buchungs-Handoff (handleBook → /booking) läuft direkt, ungeguardet. */}
+      {pendingTarget && (
+        <ShipmentDraftLeaveDialog
+          mode={leaveMode}
+          busy={leaveSaving}
+          onSave={saveDraftAndLeave}
+          onReloadCurrent={reloadCurrentForLeave}
+          onDiscard={discardAndLeave}
+          onContinue={continueEditing}
+        />
+      )}
 
       {/* Paket 1: Bestätigungsdialog für den Länderwechsel mit vorhandenen Adressdaten.
           Abbrechen → nichts ändert sich. Bestätigen → Land setzen + Straße/Zusatz/PLZ/Ort

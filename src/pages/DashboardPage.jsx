@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
@@ -36,11 +36,15 @@ const PAGE_HEADERS = {
 };
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [page, setPage] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Interner Verlassen-Guard (NewShipmentPage registriert hier eine Funktion,
+  // die den ungespeicherten Dirty-State prüft). Nur relevant, solange
+  // NewShipmentPage gemountet ist (page === "new").
+  const leaveGuardRef = useRef(null);
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,10 +101,30 @@ export default function DashboardPage() {
     }
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const navigateTo = (id) => {
-    if (id === "calculator") { navigate("/calculator"); return; }
-    setPage(id);
+  // Führt eine interne Zielnavigation tatsächlich aus (Seite/Route/Logout).
+  const performNav = (target) => {
+    if (!target) return;
     setSidebarOpen(false);
+    if (target.type === "logout") { logout(); navigate("/login"); return; }
+    if (target.type === "route") { navigate(target.path, target.state ? { state: target.state } : undefined); return; }
+    if (target.page === "calculator") { navigate("/calculator"); return; }
+    setPage(target.page);
+  };
+
+  // Interne Seitennavigation. Verlässt der Nutzer „Neue Sendung" mit
+  // ungespeicherten Angaben, fängt der registrierte Guard die Navigation ab
+  // (Dialog). Bei gleicher Zielseite (kein Verlassen) und ohne Guard: direkt.
+  const navigateTo = (id) => {
+    const target = { type: "page", page: id };
+    if (page === "new" && id !== "new" && leaveGuardRef.current && leaveGuardRef.current(target)) return;
+    performNav(target);
+  };
+
+  // Logout ebenfalls durch den Guard (ungespeicherte Angaben in „Neue Sendung").
+  const requestLogout = () => {
+    const target = { type: "logout" };
+    if (page === "new" && leaveGuardRef.current && leaveGuardRef.current(target)) return;
+    performNav(target);
   };
 
   return (
@@ -110,6 +134,7 @@ export default function DashboardPage() {
         navigateTo={navigateTo}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        onLogout={requestLogout}
       />
       <main className="main-content">
         <div className="mobile-topbar">
@@ -158,6 +183,8 @@ export default function DashboardPage() {
                 onPrefillApplied={() => setAddressPrefill(null)}
                 resumeDraft={resumeDraft}
                 onResumeApplied={() => setResumeDraft(null)}
+                registerLeaveGuard={(fn) => { leaveGuardRef.current = fn; }}
+                commitLeave={performNav}
               />
             </Suspense>
           </div>

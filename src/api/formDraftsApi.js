@@ -37,3 +37,23 @@ export function deleteFormDraft(id) {
     method: "DELETE", auth: true,
   });
 }
+
+// Legt einen NEUEN Formularentwurf an (nur bewusster „Als Entwurf speichern"-
+// Klick — nie beim bloßen Öffnen). Payload: { schemaVersion, formData } — KEINE
+// id, KEINE user_id (der Server leitet den Besitzer aus dem Bearer-Token ab).
+// Rohe Response zurück; der Aufrufer wertet Status/JSON selbst aus.
+export function createFormDraft(payload) {
+  return apiFetch(`/api/kunde/form-drafts`, {
+    method: "POST", auth: true, body: JSON.stringify(payload),
+  });
+}
+
+// Aktualisiert einen bestehenden Formularentwurf. Payload: { schemaVersion,
+// revision, formData } — die mitgesendete Revision ist die optimistische Sperre
+// (Backend antwortet 409 FORM_DRAFT_CONFLICT bei Drift). :id in der URL, KEINE
+// id/user_id im Body.
+export function updateFormDraft(id, payload) {
+  return apiFetch(`/api/kunde/form-drafts/${encodeURIComponent(String(id))}`, {
+    method: "PATCH", auth: true, body: JSON.stringify(payload),
+  });
+}

@@ -242,6 +242,78 @@ export function getAdminInvoice(id) {
   return apiFetch(`/admin/invoices/${encodeURIComponent(id)}`, { auth: true });
 }
 
+// ── Stornierungsanfragen (Admin) ─────────────────────────────────────────────
+// INTERNER Verwaltungsvorgang: Prüfen und Bearbeiten von Kunden-Storno-Wünschen.
+// KEINE echte Carrier-/JUMiNGO-Stornierung, KEINE Erstattung/Gutschrift — diese
+// Schicht transportiert nur; das Backend (requireAdmin) bleibt autoritativ.
+//
+// Pfadkonvention: konsistent mit allen übrigen Admin-Endpunkten dieser Datei
+// wird `/admin/…` (ohne führendes `/api`) verwendet — VITE_API_URL enthält kein
+// `/api`-Präfix (vgl. /admin/shipments, /admin/invoices, /admin/users). Falls der
+// Backend-Vertrag abweichende Pfade/Feldnamen nutzt, ausschließlich hier anpassen.
+
+// Erlaubte Query-Parameter für GET /admin/cancellation-requests. Bewusst
+// allowlisted; Pagination über limit/offset, Statusfilter optional.
+const CANCELLATION_PARAMS = ["status", "limit", "offset"];
+
+// GET /admin/cancellation-requests — read-only paginierte Liste. UI arbeitet mit
+// page/pageSize; hier zentral auf den Backend-Vertrag limit/offset gemappt
+// (page=1→offset=0, page=2→offset=25). Der optionale Statusfilter wird
+// allowlisted durchgereicht — keine erfundenen Felder, kein Cache, kein Logging.
+// Rohe Response zurück; der Aufrufer liest den Body defensiv.
+export function listAdminCancellationRequests(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/cancellation-requests${buildQuery(query, CANCELLATION_PARAMS)}`, { auth: true });
+}
+
+// GET /admin/cancellation-requests/:id — read-only Detail (Anfrage inkl.
+// Kundengrund, Sendungs-/Kundendaten und `revision` für Optimistic Locking).
+// Keine Query-Parameter, kein Cache, kein Logging von Response-Daten. Rohe
+// Response zurück; der Aufrufer selektiert defensiv nur erlaubte Felder.
+export function getAdminCancellationRequest(id) {
+  return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}`, { auth: true });
+}
+
+// Nur explizit erlaubte Felder werden je gesendet — keine erfundenen Felder.
+// Über die Statusroute setzbare Werte: die vier belegten Status. Der Aufrufer
+// (UI) verhindert bereits terminale/ungültige Übergänge; hier zusätzlich ein
+// defensiver Allowlist-Guard, damit nie ein technischer Wert durchrutscht.
+const SETTABLE_CANCELLATION_STATUS = ["pending", "in_review", "accepted", "rejected"];
+
+// PATCH /admin/cancellation-requests/:id — Status setzen und/oder internen
+// Vermerk speichern. Optimistic Locking: die aktuelle `revision` MUSS mitgesendet
+// werden; bei zwischenzeitlicher Änderung antwortet das Backend mit 409 (der
+// Aufrufer lädt dann neu, kein Auto-Retry). Der Body enthält ausschließlich
+// allowlistete Felder: `revision` (immer), `status` (nur gültiger Wert) und/oder
+// `internal_note`. Content-Type + Bearer kommen aus apiFetch(auth:true). Kein
+// Cache, kein Logging; 401/403 behandelt apiFetch zentral.
+export function updateAdminCancellationRequest(id, payload = {}) {
+  const body = {};
+  // revision ist für das Optimistic Locking obligatorisch (auch 0 ist gültig).
+  if (payload.revision !== undefined && payload.revision !== null) {
+    body.revision = payload.revision;
+  }
+  if (payload.status !== undefined && payload.status !== null) {
+    if (!SETTABLE_CANCELLATION_STATUS.includes(payload.status)) {
+      return Promise.reject(new Error("invalid_status"));
+    }
+    body.status = payload.status;
+  }
+  // Interner Vermerk: nur senden, wenn explizit übergeben (auch "" ist erlaubt →
+  // löscht den Vermerk). undefined → Feld unangetastet lassen.
+  if (payload.internal_note !== undefined) {
+    body.internal_note = payload.internal_note;
+  }
+  return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
 // PATCH /admin/invoices/:id/paid — markiert eine Rechnung als bezahlt. Der Endpunkt
 // ist backendseitig idempotent + transaktional (setzt status='paid'/paid_at, gibt
 // den reservierten Kundenkredit einmalig frei, auditiert invoice.mark_paid). KEIN

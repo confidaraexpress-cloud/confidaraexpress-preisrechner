@@ -10,6 +10,7 @@ const PRIMARY_NAV = [
   { to: "/admin/users", label: "Kunden", icon: "admin" },
   { to: "/admin/shipments", label: "Sendungen", icon: "package" },
   { to: "/admin/invoices", label: "Rechnungen", icon: "invoice" },
+  { to: "/admin/cancellation-requests", label: "Stornierungsanfragen", icon: "ban" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];
 

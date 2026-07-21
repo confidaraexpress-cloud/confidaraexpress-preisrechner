@@ -201,6 +201,34 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-modal-input { width: 100%; padding: 9px 11px; font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 0.04em; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; margin-bottom: 16px; }
 .adm-modal-input:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
 
+/* ── Stornierungsanfragen (Admin) ────────────────────────────────────────── */
+/* Scope-Trennung: klar informativer (blauer) Hinweis, dass dies ein interner
+   Vorgang ist und KEINE echte Carrier-/JUMiNGO-Stornierung/Erstattung auslöst. */
+.adm-scope-note { display: flex; gap: 11px; align-items: flex-start; padding: 13px 15px; border-radius: var(--radius); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.22); color: var(--navy); font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
+.adm-scope-note svg { flex-shrink: 0; margin-top: 1px; color: var(--blue2); }
+.adm-scope-note strong { font-weight: 700; }
+
+/* Optimistic-Locking-Konflikt (409): amber, mit direkter Reload-Aktion. */
+.adm-conflict { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 12px 15px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.32); color: #8a5a06; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+.adm-conflict-text { display: flex; gap: 9px; align-items: flex-start; min-width: 240px; flex: 1; }
+.adm-conflict-text svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+
+/* Voller Freitext (Kundengrund / interner Vermerk read-only): Zeilenumbrüche
+   erhalten, sicher umbrechen. Reiner Text — nie als HTML gerendert. */
+.adm-reason { font-size: 13.5px; line-height: 1.6; color: var(--navy); white-space: pre-wrap; word-break: break-word; background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.adm-reason-cell { color: var(--gray600); font-size: 13px; }
+
+/* Editor-Formular (Status + interner Vermerk). */
+.adm-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.adm-edit-field { display: flex; flex-direction: column; gap: 6px; }
+.adm-edit-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.adm-edit-select { padding: 9px 11px; font-size: 13.5px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; max-width: 320px; transition: border-color 0.15s, box-shadow 0.15s; }
+.adm-edit-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.adm-note-input { width: 100%; padding: 10px 12px; font-size: 13.5px; font-family: 'DM Sans', sans-serif; line-height: 1.5; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; resize: vertical; min-height: 88px; transition: border-color 0.15s, box-shadow 0.15s; }
+.adm-note-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.adm-note-input:disabled { background: var(--gray50); color: var(--gray500); }
+.adm-edit-hint { font-size: 11.5px; color: var(--gray400); }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .adm-side { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); box-shadow: 4px 0 24px rgba(10,22,40,0.18); }

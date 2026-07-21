@@ -69,6 +69,7 @@ const paths = {
   layers:       "M12 2 21 7 12 12 3 7ZM3 12l9 5 9-5M3 17l9 5 9-5",
   trendingUp:   "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
   trash:        "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6",
+  ban:          "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM4.93 4.93l14.14 14.14",
 };
 
 export function Icon({ n, s = 18, c = "currentColor" }) {

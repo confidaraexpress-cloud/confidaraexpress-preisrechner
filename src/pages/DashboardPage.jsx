@@ -127,6 +127,11 @@ export default function DashboardPage() {
     performNav(target);
   };
 
+  // Stabile Registrierungsfunktion → NewShipmentPage registriert den Guard genau
+  // EINMAL (nicht bei jedem Render neu). Deregistrierung erfolgt über den
+  // Effekt-Cleanup beim Unmount (fn = null).
+  const registerLeaveGuard = useCallback((fn) => { leaveGuardRef.current = fn; }, []);
+
   return (
     <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook" || page === "drafts") ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
@@ -183,7 +188,7 @@ export default function DashboardPage() {
                 onPrefillApplied={() => setAddressPrefill(null)}
                 resumeDraft={resumeDraft}
                 onResumeApplied={() => setResumeDraft(null)}
-                registerLeaveGuard={(fn) => { leaveGuardRef.current = fn; }}
+                registerLeaveGuard={registerLeaveGuard}
                 commitLeave={performNav}
               />
             </Suspense>

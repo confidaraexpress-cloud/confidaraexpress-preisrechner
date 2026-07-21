@@ -17,7 +17,7 @@ import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
 } from "../utils/formDraftsView.mjs";
-import { getShipmentFormSnapshot, isShipmentFormDirty } from "../utils/shipmentFormSnapshot.mjs";
+import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -177,8 +177,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds })
   );
   const [pendingTarget, setPendingTarget] = useState(null); // { type, ... } | null — pausierte Zielnavigation
-  const [leaveSaving, setLeaveSaving]     = useState(false);
-  const [leaveMode, setLeaveMode]         = useState("idle"); // idle | error | conflict | notFound | rateLimited
+  // EIN Save-Zustand für BEIDE Oberflächen (Verlassen-Dialog + sichtbarer Button):
+  // garantiert maximal einen laufenden Form-Draft-Save und einheitliches Fehler-Mapping.
+  const [saving, setSaving]         = useState(false);
+  const [saveMode, setSaveMode]     = useState("idle");   // idle | error | conflict | notFound | rateLimited
+  const [saveStatus, setSaveStatus] = useState("idle");   // idle | saved (Inline-Erfolg des sichtbaren Buttons)
 
   // ── Results ──
   const [tariffs, setTariffs]       = useState([]);
@@ -384,16 +387,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Live-Refs, damit der stabil registrierte Guard keinen veralteten Closure liest.
   const dirtyRef = useRef(isDirty); dirtyRef.current = isDirty;
   const pendingTargetRef = useRef(null); pendingTargetRef.current = pendingTarget;
+  const savingRef = useRef(false); savingRef.current = saving;
 
   // Guard beim Elternteil registrieren: Der Dashboard-Navigationspfad ruft ihn
   // VOR jeder internen Zielnavigation auf. Rückgabe true = abgefangen (Dialog
-  // öffnet, Navigation pausiert); false = sofort erlauben. Policy: der ERSTE
+  // öffnet ODER Navigation blockiert), false = sofort erlauben. Policy: der ERSTE
   // Navigationswunsch bleibt verbindlich (kein stilles Zielwechseln, kein zweiter Dialog).
   useEffect(() => {
     if (!registerLeaveGuard) return undefined;
     registerLeaveGuard((target) => {
+      // Während eines laufenden expliziten Saves: interne Navigation kurz
+      // blockieren (kein zweiter Dialog, kein zweiter Request). Nach Save-Ende
+      // klickt der Nutzer das Ziel erneut an.
+      if (savingRef.current) return true;
       if (!dirtyRef.current) return false;
-      if (!pendingTargetRef.current) { setLeaveMode("idle"); setPendingTarget(target); }
+      if (!pendingTargetRef.current) { setSaveMode("idle"); setPendingTarget(target); }
       return true;
     });
     return () => registerLeaveGuard(null);
@@ -403,15 +411,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const runPendingLeave = () => {
     const target = pendingTargetRef.current;
     setPendingTarget(null);
-    setLeaveMode("idle");
+    setSaveMode("idle");
     if (target) commitLeave?.(target);
   };
 
-  // „Als Entwurf speichern": PATCH (fortgesetzter Draft mit gültiger Source-ID)
-  // oder POST (neuer Entwurf). Genau ein Request gleichzeitig.
-  const saveDraftAndLeave = async () => {
-    if (leaveSaving) return;
-    setLeaveSaving(true); setLeaveMode("idle");
+  // ── EINZIGE Save-Orchestrierung (Dialog UND sichtbarer Button teilen sie) ────
+  // PATCH (fortgesetzter/bereits gespeicherter Draft mit gültiger Source-ID) oder
+  // POST (neuer Entwurf). Genau ein Request gleichzeitig (saving-Guard). Aktualisiert
+  // bei Erfolg Baseline + Source (ID/Revision). Rückgabe { ok } — die JEWEILIGE
+  // Erfolgsaktion (navigieren vs. bleiben) trifft der Aufrufer. Kein Fehler-Mapping
+  // und keine POST/PATCH-Logik außerhalb dieser Funktion.
+  const saveCurrentFormDraft = async () => {
+    if (saving) return { ok: false };
+    setSaving(true); setSaveMode("idle"); setSaveStatus("idle");
     const snapshot = getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds });
     const source = resumeSource;
     const isPatch = !!(source && hasSavableShipmentId(source.id));
@@ -419,39 +431,46 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       const r = isPatch
         ? await updateFormDraft(source.id, { schemaVersion: source.schemaVersion ?? 1, revision: source.revision, formData: snapshot })
         : await createFormDraft({ schemaVersion: 1, formData: snapshot });
-      if (!mountedRef.current) return;
-      if (r.status === 401 || r.status === 403) { setLeaveSaving(false); return; } // zentraler Auth-Redirect übernimmt
-      if (isPatch && r.status === 409) { setLeaveMode("conflict"); setLeaveSaving(false); return; }
-      if (isPatch && r.status === 404) { setResumeSource(null); setLeaveMode("notFound"); setLeaveSaving(false); return; } // nächster Save = POST
-      if (r.status === 429) { setLeaveMode("rateLimited"); setLeaveSaving(false); return; }
+      if (!mountedRef.current) return { ok: false };
+      if (r.status === 401 || r.status === 403) { setSaving(false); return { ok: false }; } // zentraler Auth-Redirect übernimmt
+      if (isPatch && r.status === 409) { setSaveMode("conflict"); setSaving(false); return { ok: false }; }
+      if (isPatch && r.status === 404) { setResumeSource(null); setSaveMode("notFound"); setSaving(false); return { ok: false }; } // nächster Save = POST
+      if (r.status === 429) { setSaveMode("rateLimited"); setSaving(false); return { ok: false }; }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) return { ok: false };
       if (!r.ok || !d?.draft) throw new Error("save failed");
-      // Erfolg: Baseline auf gespeicherten Snapshot, Source aktualisieren, DANN
-      // genau einmal navigieren (nicht zuerst navigieren, dann State setzen).
+      // Erfolg: Baseline auf den gespeicherten Snapshot, Source (ID/Revision) übernehmen.
       const saved = d.draft;
       setBaseline(snapshot);
       setResumeSource({ id: saved.id, revision: saved.revision, schemaVersion: saved.schemaVersion ?? 1 });
-      setLeaveSaving(false);
-      runPendingLeave();
+      setSaving(false);
+      return { ok: true };
     } catch {
-      if (mountedRef.current) { setLeaveMode("error"); setLeaveSaving(false); }
+      if (mountedRef.current) { setSaveMode("error"); setSaving(false); }
+      return { ok: false };
     }
   };
 
-  const discardAndLeave = () => { if (!leaveSaving) runPendingLeave(); };                     // ohne API, genau einmal
-  const continueEditing = () => { if (!leaveSaving) { setPendingTarget(null); setLeaveMode("idle"); } };
+  // Aufrufer 1 — Verlassen-Dialog: nach Erfolg die pausierte Navigation ausführen.
+  const saveDraftAndLeave = async () => { const res = await saveCurrentFormDraft(); if (res.ok) runPendingLeave(); };
+  // Aufrufer 2 — sichtbarer Button: nach Erfolg im Formular bleiben + Inline-Hinweis.
+  const saveDraftExplicit = async () => { const res = await saveCurrentFormDraft(); if (res.ok && mountedRef.current) setSaveStatus("saved"); };
 
-  // „Aktuelle Version laden" (Konflikt): bewusst den Serverstand neu holen und
-  // rehydrieren; danach im Formular BLEIBEN (keine Navigation), Dialog schließen.
-  const reloadCurrentForLeave = async () => {
-    if (leaveSaving || !resumeSource?.id) return;
-    setLeaveSaving(true);
+  const discardAndLeave = () => { if (!saving) runPendingLeave(); };                       // ohne API, genau einmal
+  const continueEditing = () => { if (!saving) { setPendingTarget(null); setSaveMode("idle"); } };
+
+  // „Aktuelle Version laden" (Konflikt) — dieselbe Logik für BEIDE Oberflächen:
+  // bewusster Detail-GET → rehydrieren, Ergebnis-State leeren, ID/Revision +
+  // Baseline aktualisieren, Dirty=false; danach im Formular BLEIBEN (Dialog schließt,
+  // falls offen; harmlos wenn geschlossen). Keine Navigation.
+  const reloadCurrentDraft = async () => {
+    if (saving || !resumeSource?.id) return;
+    setSaving(true);
     try {
       const r = await getFormDraft(resumeSource.id);
       if (!mountedRef.current) return;
-      if (r.status === 401 || r.status === 403) { setLeaveSaving(false); return; }
-      if (r.status === 404) { setResumeSource(null); setLeaveMode("notFound"); setLeaveSaving(false); return; }
+      if (r.status === 401 || r.status === 403) { setSaving(false); return; }
+      if (r.status === 404) { setResumeSource(null); setSaveMode("notFound"); setSaving(false); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!mountedRef.current) return;
       const payload = buildResumePayload(d?.draft);
@@ -466,13 +485,26 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       resetResults();
       setResumeSource(resumeSourceFromDraft(payload));
       setBaseline(getShipmentFormSnapshot({ form: init.form, shippingDate: nextDate, serviceFilter: init.serviceFilter, shippingModeFilter: init.shippingModeFilter, selectedPublicCarrierIds: init.selectedPublicCarrierIds }));
-      setLeaveSaving(false);
-      setLeaveMode("idle");
+      setSaving(false);
+      setSaveMode("idle"); setSaveStatus("idle");
       setPendingTarget(null); // im Formular bleiben — keine Navigation
     } catch {
-      if (mountedRef.current) { setLeaveMode("error"); setLeaveSaving(false); }
+      if (mountedRef.current) { setSaveMode("error"); setSaving(false); }
     }
   };
+
+  // ── Ableitungen für die sichtbare „Als Entwurf speichern"-Aktion ────────────
+  // Aktiv nur bei fachlicher, ungespeicherter Änderung (isDirty) und keinem
+  // laufenden Save/Preisrequest. Leeres Formular, reine Defaults und ein
+  // unveränderter fortgesetzter Entwurf → deaktiviert (kein unnötiger POST/PATCH).
+  const canExplicitSave = isDirty && !saving && !loading;
+  const explicitSaveHint = saving ? null
+    : !isDirty
+      ? (hasMeaningfulShipmentInput(currentSnapshot, baseline) ? "Keine ungespeicherten Änderungen." : "Gib zuerst Sendungsdaten ein.")
+      : null;
+  // Inline-Feedback nur außerhalb des Verlassen-Dialogs — der Dialog zeigt seinen
+  // eigenen Zustand, sodass jeder Save-Zustand an GENAU einer Stelle erscheint.
+  const showInlineSave = !pendingTarget;
 
   // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
   // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
@@ -545,6 +577,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setErrors({});
     setError(""); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
+    // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
+    // neutralisieren (nach consumed:true existiert der Draft ohnehin nicht mehr).
+    setSaveStatus("idle");
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
     // abbrechen und die aktuellen Eingaben als Referenz festhalten.
@@ -751,10 +786,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           Buchungs-Handoff (handleBook → /booking) läuft direkt, ungeguardet. */}
       {pendingTarget && (
         <ShipmentDraftLeaveDialog
-          mode={leaveMode}
-          busy={leaveSaving}
+          mode={saveMode}
+          busy={saving}
           onSave={saveDraftAndLeave}
-          onReloadCurrent={reloadCurrentForLeave}
+          onReloadCurrent={reloadCurrentDraft}
           onDiscard={discardAndLeave}
           onContinue={continueEditing}
         />
@@ -1141,18 +1176,55 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
             </div>
           </div>
 
-          {/* Calculate CTA */}
+          {/* Calculate CTA + sichtbare „Als Entwurf speichern"-Aktion (sekundär) */}
           <div className="offers-calc-cta">
-            <button
-              className="btn btn-primary btn-full"
-              onClick={calculate}
-              disabled={loading || !calcValid}
-            >
-              {loading
-                ? <><span className="spinner" /> Berechne…</>
-                : <><Icon n="zap" s={18} /> Angebote vergleichen</>
-              }
-            </button>
+            <div className="dft-cta-row">
+              <button
+                className="btn btn-primary dft-cta-primary"
+                onClick={calculate}
+                disabled={loading || !calcValid || saving}
+              >
+                {loading
+                  ? <><span className="spinner" /> Berechne…</>
+                  : <><Icon n="zap" s={18} /> Angebote vergleichen</>
+                }
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline dft-savedraft-cta"
+                onClick={saveDraftExplicit}
+                disabled={!canExplicitSave}
+                aria-busy={saving || undefined}
+                title={explicitSaveHint || undefined}
+              >
+                {saving
+                  ? <><span className="spinner spinner-dark" /> Wird gespeichert …</>
+                  : <><Icon n="form" s={16} /> Als Entwurf speichern</>
+                }
+              </button>
+            </div>
+
+            {showInlineSave && saveStatus === "saved" && !isDirty && !saving && (
+              <div className="dft-save-status" role="status"><Icon n="check" s={15} c="var(--success)" /><span>Entwurf gespeichert.</span></div>
+            )}
+            {showInlineSave && saveMode === "error" && (
+              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Der Entwurf konnte nicht gespeichert werden. Bitte versuche es erneut.</span></div>
+            )}
+            {showInlineSave && saveMode === "notFound" && (
+              <div className="dft-save-alert" role="status"><Icon n="info" s={14} c="currentColor" /><span>Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neuen Entwurf speichern.</span></div>
+            )}
+            {showInlineSave && saveMode === "rateLimited" && (
+              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Zu viele Speicheranfragen. Bitte versuche es in Kürze erneut.</span></div>
+            )}
+            {showInlineSave && saveMode === "conflict" && (
+              <div className="dft-save-alert dft-save-conflict" role="alert">
+                <Icon n="info" s={14} c="currentColor" />
+                <span className="dft-save-conflict-text">Dieser Entwurf wurde inzwischen an anderer Stelle geändert.</span>
+                <button type="button" className="btn btn-outline btn-sm" onClick={reloadCurrentDraft} disabled={saving}>
+                  {saving ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Wird geladen …</> : "Aktuelle Version laden"}
+                </button>
+              </div>
+            )}
             {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
           </div>
         </div>

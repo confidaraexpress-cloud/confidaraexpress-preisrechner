@@ -483,19 +483,24 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         throw new Error(d.error || d.message || "Fehler bei Preisberechnung");
       }
 
-      // Fortsetzen — Übergang nach erfolgreicher Berechnung. Die Source ist
-      // „einmalig": danach laufen Neuberechnungen als normaler Neuversand.
+      // Fortsetzen — Übergang nach dem calculate-price.
       if (sourceAtSend) {
         const t = classifyFormDraftTransition(d.formDraftTransition);
-        setResumeSource(null);
         // Sicherheits-Guard: ohne verlässliche interne Shipment-ID (z. B.
         // shipment_persistence_failed) KEINE buchbaren Angebote zeigen — die
         // Buchbarkeit darf nicht auf einer fehlenden Sendungsgrundlage beruhen.
+        // Source-Metadaten BLEIBEN hier bewusst erhalten: es wurde kein
+        // verlässlicher technischer Draft persistiert, daher soll ein bewusster
+        // erneuter Klick den Übergang neu versuchen (keine automatische Wiederholung).
         if (t.blocking || !hasSavableShipmentId(d.shipmentId)) {
           setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);
           setLoading(false);
           return;
         }
+        // Fachlich erfolgreiche Preisberechnung mit gültiger interner Shipment-ID:
+        // Source-Verknüpfung lokal deaktivieren → ein erneuter „Preise berechnen"
+        // sendet keine alte Source-ID mehr (kein Doppel-Draft, kein Re-Consume).
+        setResumeSource(null);
         if (t.notice) setResumeNotice(t.notice); // revision_changed / cleanup_failed (nicht blockierend)
       }
 

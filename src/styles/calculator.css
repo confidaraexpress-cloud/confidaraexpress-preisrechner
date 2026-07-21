@@ -237,7 +237,7 @@
   background-repeat: no-repeat; background-position: right 13px center; background-size: 16px;
 }
 
-/* ── D/F) Paketdaten-Raster: 5 Spalten (Anzahl · Gewicht · Länge · Höhe · Breite)
+/* ── D/F) Paketdaten-Raster: 5 Spalten (Anzahl · Gewicht · Länge · Breite · Höhe)
    auf Desktop/Laptop; sauberer Umbruch auf Tablet (3-spaltig) und Telefon
    (2-spaltig) — bleibt horizontal, kein Überlauf. ── */
 @media (max-width: 720px) {

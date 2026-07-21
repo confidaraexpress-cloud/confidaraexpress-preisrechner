@@ -1131,7 +1131,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           <div className="calc-panel mb-16">
             <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
-              {/* Reihenfolge: Anzahl · Gewicht · Länge · Höhe · Breite (nur Anzeige;
+              {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys/Validierung unverändert). Anzahl = Anzahl
                   identischer Pakete (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
               <div className="field-row field-row-5">
@@ -1153,14 +1153,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                   {errors.length && <span className="field-error">{errors.length}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Höhe cm</label>
-                  <input className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" />
-                  {errors.height && <span className="field-error">{errors.height}</span>}
-                </div>
-                <div className="field">
                   <label className="field-label">Breite cm</label>
                   <input className={`field-input${errors.width  ? " field-input-error" : ""}`} type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" />
                   {errors.width  && <span className="field-error">{errors.width}</span>}
+                </div>
+                <div className="field">
+                  <label className="field-label">Höhe cm</label>
+                  <input className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" />
+                  {errors.height && <span className="field-error">{errors.height}</span>}
                 </div>
               </div>
               <p className="pkg-count-note">

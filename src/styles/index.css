@@ -20,3 +20,5 @@
 /* Entwürfe — isoliert (dft- Prefix), reine Zusatzklassen; keine Kollision
    mit bestehenden Scopes. */
 @import './drafts.css';
+/* Stornierungsanfrage (Kunde) — isoliert (stn- Prefix), reine Zusatzklassen. */
+@import './cancellation.css';

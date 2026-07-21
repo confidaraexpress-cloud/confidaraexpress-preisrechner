@@ -1,0 +1,68 @@
+/* ===========================================================================
+   STORNIERUNGSANFRAGE (Kunde) — isoliert, stn- Prefix, Light-Theme
+   Reine Zusatzklassen für Dialog + sekundäres Statusbadge in der Sendungsliste.
+   Nutzt nur neutrale Light-/Legacy-Tokens; keine --auth-/--ce-Tokens, keine
+   globalen Button-/Badge-Regeln überschrieben (Badge-Basis kommt aus dashboard.css).
+   =========================================================================== */
+
+/* ── Actions-Zelle: Umbruch erlauben, Pille vertikal zentriert ─────────────── */
+.stn-actions { flex-wrap: wrap; align-items: center; row-gap: 6px; }
+.stn-status { white-space: nowrap; }
+
+/* ── Dialog ────────────────────────────────────────────────────────────────── */
+.stn-dialog-overlay {
+  position: fixed; inset: 0; z-index: 420;
+  background: rgba(11,31,77,0.4);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.stn-dialog-card {
+  width: 100%; max-width: 460px; background: #fff; border-radius: var(--radius-lg);
+  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
+  max-height: calc(100dvh - 40px); overflow-y: auto;
+}
+.stn-dialog-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--blue-light); color: var(--blue2);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+.stn-dialog-title { font-size: 17px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.stn-dialog-desc { font-size: 13.5px; color: var(--gray600); line-height: 1.55; margin-bottom: 14px; }
+
+.stn-dialog-hint {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; margin-bottom: 14px; border-radius: var(--radius);
+  background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); color: #8a5a06;
+  font-size: 12.5px; line-height: 1.5;
+}
+.stn-dialog-hint svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+
+.stn-dialog-target { font-size: 12.5px; color: var(--gray500); margin-bottom: 14px; }
+.stn-dialog-target strong { color: var(--navy); font-weight: 700; }
+
+.stn-dialog-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--gray600); margin-bottom: 6px; }
+.stn-dialog-textarea {
+  width: 100%; padding: 10px 12px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+  line-height: 1.5; color: var(--navy); background: #fff;
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  outline: none; resize: vertical; min-height: 96px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.stn-dialog-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.stn-dialog-textarea:disabled { background: var(--gray50); color: var(--gray500); }
+.stn-dialog-textarea[aria-invalid="true"] { border-color: var(--danger); }
+
+.stn-dialog-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.stn-dialog-counter { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.stn-dialog-min { font-size: 11.5px; color: var(--danger); font-weight: 600; }
+
+.stn-dialog-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; margin-top: 12px; border-radius: var(--radius);
+  background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.28); color: var(--danger);
+  font-size: 13px; line-height: 1.45;
+}
+.stn-dialog-alert svg { flex-shrink: 0; }
+
+/* Primär oben, volle Breite, gut tappbar auf Mobil (Stack). */
+.stn-dialog-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.stn-dialog-actions .btn { width: 100%; }

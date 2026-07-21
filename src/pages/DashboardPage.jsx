@@ -50,6 +50,12 @@ export default function DashboardPage() {
   // dauerhafte addressId-Referenz. Wird einmalig beim Mount von NewShipmentPage
   // angewendet und danach über onPrefillApplied hier zurückgesetzt.
   const [addressPrefill, setAddressPrefill] = useState(null);
+  // Entwürfe → „Fortsetzen": vollständiger Formularentwurf-Snapshot (kind:"form",
+  // sourceFormDraftId/-Revision, schemaVersion, formData). Wird einmalig beim
+  // Mount von NewShipmentPage angewendet und danach über onResumeApplied
+  // zurückgesetzt (gleiche Einmal-Semantik wie addressPrefill) — enthält bewusst
+  // KEINE Preise/Tarife/Carrier/Shipment-ID.
+  const [resumeDraft, setResumeDraft] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -150,6 +156,8 @@ export default function DashboardPage() {
               <NewShipmentPage
                 prefillAddress={addressPrefill}
                 onPrefillApplied={() => setAddressPrefill(null)}
+                resumeDraft={resumeDraft}
+                onResumeApplied={() => setResumeDraft(null)}
               />
             </Suspense>
           </div>
@@ -168,7 +176,10 @@ export default function DashboardPage() {
         {page === "drafts" && (
           <div className="page-body">
             <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-              <DraftsPage onNewShipment={() => navigateTo("new")} />
+              <DraftsPage
+                onNewShipment={() => navigateTo("new")}
+                onResumeFormDraft={(payload) => { setResumeDraft(payload); navigateTo("new"); }}
+              />
             </Suspense>
           </div>
         )}

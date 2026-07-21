@@ -11,6 +11,12 @@ import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
+import { getFormDraft } from "../api/formDraftsApi";
+import { hasSavableShipmentId } from "../utils/draftsView.mjs";
+import {
+  buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
+  classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
+} from "../utils/formDraftsView.mjs";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -96,18 +102,31 @@ const SHIPPING_MODE_OPTIONS = [
   { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
-export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {}) {
+export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resumeDraft, onResumeApplied } = {}) {
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
+  // ── Fortsetzen eines Formularentwurfs (mount-once) ───────────────────────────
+  // Ein gültiger Resume-Payload rehydriert das Formular aus dem Snapshot und hat
+  // Vorrang vor dem Profil-Prefill (das Profil wird dann NICHT als Sender-Seed
+  // verwendet). Einmalig beim Mount berechnet — Prop-Änderungen (das Zurücksetzen
+  // im Elternteil über onResumeApplied) lösen KEINE erneute Anwendung aus.
+  const resumeInitRef = useRef(undefined);
+  if (resumeInitRef.current === undefined) {
+    resumeInitRef.current = isValidResumeDraft(resumeDraft)
+      ? buildResumeInitialState(resumeDraft.formData, { today: todayISO() })
+      : null;
+  }
+  const resumeInit = resumeInitRef.current;
+
   // ── Filters ──
-  const [serviceFilter, setServiceFilter]         = useState("all");
+  const [serviceFilter, setServiceFilter]         = useState(resumeInit ? resumeInit.serviceFilter : "all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
-  const [shippingModeFilter, setShippingModeFilter] = useState("all");
+  const [shippingModeFilter, setShippingModeFilter] = useState(resumeInit ? resumeInit.shippingModeFilter : "all");
   const [shippingModeOpen, setShippingModeOpen]     = useState(false);
-  const [shippingDate, setShippingDate]             = useState(() => todayISO());
+  const [shippingDate, setShippingDate]             = useState(() => (resumeInit && resumeInit.shippingDate) ? resumeInit.shippingDate : todayISO());
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
-  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState([]);
+  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(resumeInit ? resumeInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
   const [publicCarriers, setPublicCarriers]         = useState([]);
   const carrierRef = useRef(null);
@@ -122,7 +141,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
   const [vatMode, setVatMode] = useState("net");
 
   // ── Form ──
-  const [form, setForm] = useState({
+  // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form).
+  // Normalfall: unverändert aus dem Profil geseedet (synchron beim Mount).
+  const [form, setForm] = useState(() => resumeInit ? resumeInit.form : ({
     s_company:  user?.company_name || "",
     s_fullName: user?.name         || "",
     s_street:   user?.street       || "",
@@ -144,7 +165,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
     packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "",
-  });
+  }));
 
   // ── Results ──
   const [tariffs, setTariffs]       = useState([]);
@@ -159,6 +180,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
   const [errors, setErrors]         = useState({});
   // Paket 1: anstehender Länderwechsel mit vorhandenen Adressdaten → Bestätigungsdialog.
   const [pendingCountry, setPendingCountry] = useState(null); // { party:"s"|"r", from, to } | null
+
+  // ── Fortsetzen-Status (nur aktiv, wenn ein Formularentwurf fortgesetzt wird) ──
+  // resumeSource trägt die Übergangs-Metadaten (interne Formularentwurf-ID +
+  // Revision), die beim nächsten „Preise berechnen" EINMALIG mitgesendet werden.
+  const [resumeSource, setResumeSource]       = useState(() => resumeSourceFromDraft(resumeDraft)); // { id, revision } | null
+  const [resumeNotice, setResumeNotice]       = useState("");     // nicht blockierender Hinweis
+  const [resumeConflict, setResumeConflict]   = useState(false);  // 409 Konflikt → „Aktuelle Version laden"
+  const [reloadingResume, setReloadingResume] = useState(false);
 
   // ── Race-Schutz für /calculate-price (Audit F1) ──
   // Verhindert, dass eine spät eintreffende Antwort neuere Eingaben überschreibt.
@@ -311,6 +340,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
   // nach Unmount, keine hängende Antwort).
   useEffect(() => () => { if (calcAbort.current) calcAbort.current.abort(); }, []);
 
+  // Mounted-Schutz für den „Aktuelle Version laden"-Pfad (kein AbortController).
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
+  // Resume-Payload genau EINMAL annehmen und im Elternteil zurücksetzen, damit
+  // ein späteres normales Öffnen von „Neue Sendung" nicht erneut rehydriert.
+  const resumeAppliedRef = useRef(false);
+  useEffect(() => {
+    if (resumeDraft && !resumeAppliedRef.current) {
+      resumeAppliedRef.current = true;
+      onResumeApplied?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
   // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
   // useEffect + setFiltered. Das spart pro Filteränderung (v. a. Preis-Slider)
@@ -381,11 +425,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
     }
     setErrors({});
     setError(""); setLoading(true); setSelected(null);
+    setResumeNotice(""); setResumeConflict(false);
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
     // abbrechen und die aktuellen Eingaben als Referenz festhalten.
     const seq    = ++calcSeq.current;
     const reqKey = calcKeyRef.current;
+    // Fortsetzen: Übergangs-Metadaten dieses Aufrufs festhalten (einmalig; werden
+    // NUR bei einem fortgesetzten Formularentwurf mitgesendet).
+    const sourceAtSend = resumeSource;
     if (calcAbort.current) calcAbort.current.abort();
     const ac = new AbortController();
     calcAbort.current = ac;
@@ -403,6 +451,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
           publicCarrierIds:   selectedPublicCarrierIds,
+          // Fortsetzen: Source-Felder AUSSCHLIESSLICH aus der geladenen Detail-
+          // response (resumeSource) — nie aus URL-Parametern oder Form-State.
+          ...(sourceAtSend ? { sourceFormDraftId: sourceAtSend.id, sourceFormDraftRevision: sourceAtSend.revision } : {}),
         })
       });
       if (seq !== calcSeq.current) return;                              // durch neueren Aufruf ersetzt
@@ -413,9 +464,41 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
       const d = await r.json();
       if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
       if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen
-      // Paket 1: der providerneutrale PLZ-422 trägt `message` statt `error` — mit abfangen,
-      // damit die konkrete Meldung erscheint (die Inline-Validierung greift zwar vorher).
-      if (!r.ok) throw new Error(d.error || d.message || "Fehler bei Preisberechnung");
+
+      // Fortsetzen — Start-Konflikte des Übergangs (nur wenn Source mitgesendet):
+      // FORM_DRAFT_CONFLICT / FORM_DRAFT_NOT_FOUND / FORM_DRAFT_CONVERSION_IN_PROGRESS.
+      // Niemals automatisch erneut senden.
+      if (!r.ok) {
+        const startErr = sourceAtSend ? mapFormDraftStartError(d?.code) : null;
+        if (startErr) {
+          if (startErr.clearsSource) setResumeSource(null);          // NOT_FOUND → nächster Versuch = normal
+          if (startErr.kind === "conflict") setResumeConflict(true); // „Aktuelle Version laden" anbieten
+          else if (startErr.kind === "notFound") setResumeNotice(startErr.message);
+          else setError(startErr.message);                           // CONVERSION_IN_PROGRESS → Hinweis am CTA
+          setLoading(false);
+          return;
+        }
+        // Paket 1: der providerneutrale PLZ-422 trägt `message` statt `error` — mit abfangen,
+        // damit die konkrete Meldung erscheint (die Inline-Validierung greift zwar vorher).
+        throw new Error(d.error || d.message || "Fehler bei Preisberechnung");
+      }
+
+      // Fortsetzen — Übergang nach erfolgreicher Berechnung. Die Source ist
+      // „einmalig": danach laufen Neuberechnungen als normaler Neuversand.
+      if (sourceAtSend) {
+        const t = classifyFormDraftTransition(d.formDraftTransition);
+        setResumeSource(null);
+        // Sicherheits-Guard: ohne verlässliche interne Shipment-ID (z. B.
+        // shipment_persistence_failed) KEINE buchbaren Angebote zeigen — die
+        // Buchbarkeit darf nicht auf einer fehlenden Sendungsgrundlage beruhen.
+        if (t.blocking || !hasSavableShipmentId(d.shipmentId)) {
+          setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);
+          setLoading(false);
+          return;
+        }
+        if (t.notice) setResumeNotice(t.notice); // revision_changed / cleanup_failed (nicht blockierend)
+      }
+
       // Öffentliche Carrier-Liste (deduplziert vom Backend) übernehmen; die
       // bestehende Auswahl bleibt erhalten, auf noch verfügbare IDs gefiltert.
       const newPublicCarriers = Array.isArray(d.publicCarriers) ? d.publicCarriers : [];
@@ -443,6 +526,41 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
         : e.message);
       setLoading(false);
     }
+  };
+
+  // „Aktuelle Version laden" (nach 409 FORM_DRAFT_CONFLICT): den Snapshot bewusst
+  // per Nutzerklick neu holen und Formular/Filter daraus ersetzen (keine stillen
+  // Überschreibungen ohne Klick). Aktualisiert die Revision und verwirft alte
+  // Ergebnisse — der Nutzer berechnet danach neu.
+  const reloadFormDraft = async () => {
+    if (!resumeSource?.id || reloadingResume) return;
+    setReloadingResume(true);
+    try {
+      const r = await getFormDraft(resumeSource.id);
+      if (!mountedRef.current) return;
+      if (r.status === 401 || r.status === 403) { setReloadingResume(false); return; }
+      if (r.status === 404) {
+        setResumeSource(null); setResumeConflict(false);
+        setResumeNotice("Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neue Sendung weiterverwenden.");
+        setReloadingResume(false); return;
+      }
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (!mountedRef.current) return;
+      const payload = buildResumePayload(d?.draft);
+      if (!r.ok || !isValidResumeDraft(payload)) throw new Error("Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
+      const init = buildResumeInitialState(payload.formData, { today: todayISO() });
+      setForm(init.form);
+      setShippingDate(init.shippingDate || todayISO());
+      setServiceFilter(init.serviceFilter);
+      setShippingModeFilter(init.shippingModeFilter);
+      setSelectedPublicCarrierIds(init.selectedPublicCarrierIds);
+      resetResults();                                  // frische Grundlage → alte Ergebnisse verwerfen
+      setResumeSource(resumeSourceFromDraft(payload)); // aktualisierte Revision
+      setResumeConflict(false); setResumeNotice("");
+    } catch (e) {
+      if (mountedRef.current) setError(e?.message || "Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
+    }
+    if (mountedRef.current) setReloadingResume(false);
   };
 
   // useCallback mit vollständigen Dependencies: Der Buchungs-Payload (tariff,
@@ -535,6 +653,28 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied } = {
 
         {/* ── Form section ── */}
         <div className="offers-form-section">
+
+          {/* Fortsetzen-Kontext (nur bei aktivem Formularentwurf-Übergang). */}
+          {resumeSource && !resumeConflict && (
+            <div className="dft-resume-note" role="note">
+              <Icon n="form" s={16} c="#1D4ED8" />
+              <span>Sie setzen einen gespeicherten Formularentwurf fort. Prüfen Sie die Angaben und berechnen Sie die Preise neu.</span>
+            </div>
+          )}
+          {resumeConflict && (
+            <div className="dft-resume-conflict" role="alert">
+              <Icon n="info" s={16} c="currentColor" />
+              <span className="dft-resume-conflict-text">Dieser Entwurf wurde inzwischen geändert. Lade die aktuelle Version neu, bevor du fortfährst.</span>
+              <button type="button" className="btn btn-outline btn-sm" onClick={reloadFormDraft} disabled={reloadingResume}>
+                {reloadingResume ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Wird geladen …</> : "Aktuelle Version laden"}
+              </button>
+            </div>
+          )}
+          {resumeNotice && (
+            <div className="dft-resume-info" role="status">
+              <Icon n="info" s={16} c="currentColor" /><span>{resumeNotice}</span>
+            </div>
+          )}
 
           {/* Obere Premium-Filterleiste: fünf Filter nebeneinander (Desktop),
               responsives Grid auf Tablet/Mobile. Reine Darstellung. */}

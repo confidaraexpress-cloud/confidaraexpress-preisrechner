@@ -132,3 +132,20 @@
 .dft-resume-conflict { background: #fff7ed; border: 1px solid #f59e0b; color: #92400e; flex-wrap: wrap; }
 .dft-resume-conflict-text { flex: 1; min-width: 200px; }
 .dft-resume-conflict .btn { flex-shrink: 0; }
+
+/* ── Verlassen-Dialog („Sendung als Entwurf speichern?") ──────────────────── */
+/* Neutral-blaues Icon (nicht die rote Danger-Variante des Löschdialogs). */
+.dft-leave-icon { background: rgba(37, 99, 235, 0.10); color: var(--blue2); }
+.dft-leave-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; margin-bottom: 16px; border-radius: var(--radius);
+  background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.28); color: var(--danger);
+  font-size: 12.75px; line-height: 1.4;
+}
+.dft-leave-alert svg { flex-shrink: 0; }
+/* Drei Aktionen: klare vertikale Hierarchie (primär oben), volle Breite,
+   gut tappbar auf Mobil. */
+.dft-leave-actions { display: flex; flex-direction: column; gap: 8px; }
+.dft-leave-actions .btn { width: 100%; }
+.dft-leave-discard { color: var(--gray600); }
+.dft-leave-discard:hover:not(:disabled) { color: var(--danger); }

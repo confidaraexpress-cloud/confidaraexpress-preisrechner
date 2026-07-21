@@ -57,7 +57,7 @@ const NAV_GROUPS = [
 // (leuchtende Navy-Glas-Hülle, §17). Aufbau: .pp-side (Positionierung, Mobile-
 // Drawer) → .pp-side-glow (blaues Backlight) → .pp-side-in (Glas) → Logo,
 // Identität, Nav, Support, Footer. Funktion/Routen unverändert.
-export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen }) {
+export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen, onLogout }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
@@ -66,7 +66,10 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
     else navigateTo(item.id);
   };
-  const handleLogout = () => { logout(); navigate("/login"); };
+  // Logout kann vom Elternteil durch den Verlassen-Guard geleitet werden
+  // (DashboardPage übergibt onLogout). Ohne onLogout (z. B. DashboardLayout /
+  // Preisrechner-Route, wo NewShipmentPage nicht gemountet ist) direkt ausloggen.
+  const handleLogout = onLogout || (() => { logout(); navigate("/login"); });
 
   return (
     <>

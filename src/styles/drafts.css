@@ -149,3 +149,31 @@
 .dft-leave-actions .btn { width: 100%; }
 .dft-leave-discard { color: var(--gray600); }
 .dft-leave-discard:hover:not(:disabled) { color: var(--danger); }
+
+/* ── Sichtbare „Als Entwurf speichern"-Aktion in „Neue Sendung" ───────────── */
+/* Primär-CTA (Preise berechnen) bleibt dominant; Save ist sekundär (Outline). */
+.dft-cta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; }
+.dft-cta-row .dft-cta-primary { flex: 2 1 240px; }
+.dft-cta-row .dft-savedraft-cta { flex: 1 1 190px; }
+.dft-savedraft-cta { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
+.dft-savedraft-cta:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
+.dft-savedraft-cta:disabled { opacity: 0.55; cursor: not-allowed; }
+.dft-savedraft-cta:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 2px; }
+
+.dft-save-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--success); }
+.dft-save-status svg { flex-shrink: 0; }
+.dft-save-alert {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  padding: 10px 12px; border-radius: var(--radius);
+  background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.28); color: var(--danger);
+  font-size: 12.75px; line-height: 1.4;
+}
+.dft-save-alert svg { flex-shrink: 0; }
+.dft-save-conflict { flex-wrap: wrap; background: #fff7ed; border-color: #f59e0b; color: #92400e; }
+.dft-save-conflict-text { flex: 1; min-width: 180px; }
+.dft-save-conflict .btn { flex-shrink: 0; }
+
+@media (max-width: 560px) {
+  .dft-cta-row { flex-direction: column; }
+  .dft-cta-row .btn { flex: 1 1 auto; }
+}

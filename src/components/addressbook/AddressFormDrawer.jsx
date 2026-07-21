@@ -19,7 +19,7 @@ function focusableElements(root) {
 // hier (REIN clientseitig, das Backend bleibt autoritativ); die eigentliche
 // Mutation (create/update) übernimmt der Orchestrator über `onSubmit`, der
 // { ok:true } oder { ok:false, fieldErrors?, message? } zurückgibt.
-export function AddressFormDrawer({ mode, initialForm, archived, onSubmit, onClose }) {
+export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -95,8 +95,8 @@ export function AddressFormDrawer({ mode, initialForm, archived, onSubmit, onClo
     onClose();
   };
 
-  const canDefaultSender = canSetDefaultSender({ role: form.role, archivedAt: archived ? "x" : null });
-  const canDefaultRecipient = canSetDefaultRecipient({ role: form.role, archivedAt: archived ? "x" : null });
+  const canDefaultSender = canSetDefaultSender({ role: form.role });
+  const canDefaultRecipient = canSetDefaultRecipient({ role: form.role });
 
   const field = (key, label, opts = {}) => (
     <div className="field">
@@ -224,7 +224,7 @@ export function AddressFormDrawer({ mode, initialForm, archived, onSubmit, onClo
               </div>
               {!canDefaultSender && (
                 <p id="abk-defSender-hint" className="abk-check-hint">
-                  {archived ? "Archivierte Adressen können nicht als Standard verwendet werden." : "Nur bei Typ Eigene Adresse oder Beides verfügbar."}
+                  Nur bei Typ Eigene Adresse oder Beides verfügbar.
                 </p>
               )}
               <div className="abk-check-row">
@@ -238,7 +238,7 @@ export function AddressFormDrawer({ mode, initialForm, archived, onSubmit, onClo
               </div>
               {!canDefaultRecipient && (
                 <p id="abk-defRecipient-hint" className="abk-check-hint">
-                  {archived ? "Archivierte Adressen können nicht als Standard verwendet werden." : "Nur bei Typ Empfänger oder Beides verfügbar."}
+                  Nur bei Typ Empfänger oder Beides verfügbar.
                 </p>
               )}
             </div>

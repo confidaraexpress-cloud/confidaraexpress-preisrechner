@@ -8,7 +8,7 @@
 // Backend-Kontrakt (kanonisches Adressobjekt, siehe Aufgabenstellung):
 //   { id, label, company, contactName, streetAndNumber, addressAdd, postalCode,
 //     city, state, country, email, phone, notes, role, isDefaultSender,
-//     isDefaultRecipient, favorite, archivedAt, createdAt, updatedAt }
+//     isDefaultRecipient, favorite, createdAt, updatedAt }
 // ─────────────────────────────────────────────────────────────────────────────
 import { validatePostalCode } from "./postalCode.mjs";
 
@@ -39,24 +39,13 @@ export function belongsToTab(address, tab) {
   return false;
 }
 
-export function isArchived(address) {
-  return address?.archivedAt != null;
-}
-
-// Archivierte Adressen: nicht für „Neue Sendung" verwendbar (Regel #3).
-export function canUseForNewShipment(address) {
-  return !isArchived(address);
-}
-
-// „Standard-Absender" nur bei sender/both UND nicht archiviert (Regel #1/#3).
+// „Standard-Absender" nur bei sender/both (Regel #1).
 export function canSetDefaultSender(address) {
-  if (isArchived(address)) return false;
   return address?.role === ROLE_SENDER || address?.role === ROLE_BOTH;
 }
 
-// „Standard-Empfänger" nur bei recipient/both UND nicht archiviert (Regel #2/#3).
+// „Standard-Empfänger" nur bei recipient/both (Regel #2).
 export function canSetDefaultRecipient(address) {
-  if (isArchived(address)) return false;
   return address?.role === ROLE_RECIPIENT || address?.role === ROLE_BOTH;
 }
 
@@ -77,7 +66,7 @@ export function validateRoleDefaultConsistency({ role, isDefaultSender, isDefaul
 
 // ── Requestparameter (Suche/Filter/Pagination) ──────────────────────────────
 // Nur explizit erlaubte Query-Parameter, leere Werte werden NICHT gesendet.
-const ADDRESS_LIST_QUERY_KEYS = ["q", "role", "favorite", "includeArchived", "cursor", "limit"];
+const ADDRESS_LIST_QUERY_KEYS = ["q", "role", "favorite", "cursor", "limit"];
 
 // WICHTIG — bewusste, dokumentierte Annahme (API-Gap, siehe Abschlussbericht):
 // Das Backend ist extern und in diesem Repo nicht einsehbar; ob `role=sender`
@@ -91,17 +80,16 @@ export function roleParamForTab(tab) {
 }
 
 // Baut die Query-String-Params für GET /api/kunde/addresses. `cursor` wird 1:1
-// aus dem vorherigen nextCursor übernommen (kein Erfinden/Verändern). Boolesche
-// Filter werden nur bei true gesendet (favorite/includeArchived), sonst weggelassen
-// — kein „false" im Query-String, das der Server evtl. anders interpretiert.
-export function buildAddressListParams({ tab, q, favoritesOnly, includeArchived, cursor, limit } = {}) {
+// aus dem vorherigen nextCursor übernommen (kein Erfinden/Verändern). Der
+// Favoritenfilter wird nur bei true gesendet — kein „false" im Query-String,
+// das der Server evtl. anders interpretiert.
+export function buildAddressListParams({ tab, q, favoritesOnly, cursor, limit } = {}) {
   const params = {};
   const role = roleParamForTab(tab);
   if (role) params.role = role;
   const trimmedQ = typeof q === "string" ? q.trim() : "";
   if (trimmedQ) params.q = trimmedQ;
   if (favoritesOnly === true) params.favorite = "true";
-  if (includeArchived === true) params.includeArchived = "true";
   if (cursor != null && cursor !== "") params.cursor = String(cursor);
   if (limit != null) params.limit = String(limit);
   return params;
@@ -125,9 +113,9 @@ export function toQueryString(params) {
 // Stabiler Cache-Schlüssel für den aktuellen Such-/Filterzustand. Ändert er
 // sich, muss der Aufrufer Cursor + geladene Items zurücksetzen (neue Suche);
 // bleibt er gleich, ist ein „Mehr laden" (nur Cursor ändert sich) korrekt.
-export function addressListStateKey({ tab, q, favoritesOnly, includeArchived }) {
+export function addressListStateKey({ tab, q, favoritesOnly }) {
   const trimmedQ = typeof q === "string" ? q.trim() : "";
-  return JSON.stringify([tab, trimmedQ, !!favoritesOnly, !!includeArchived]);
+  return JSON.stringify([tab, trimmedQ, !!favoritesOnly]);
 }
 
 // ── Pagination: Ergebnisse ohne Duplikate anfügen ───────────────────────────
@@ -138,12 +126,11 @@ export function appendPageResults(existingItems, newItems) {
 }
 
 // ── Empty-State-Unterscheidung ──────────────────────────────────────────────
-// „noch keine Adressen" vs. „keine Suchtreffer" vs. „keine Favoriten" vs.
-// „keine archivierten Adressen" — je nach aktivem Filter, NUR wenn resultCount===0.
-export function resolveEmptyStateKind({ resultCount, hasQuery, favoritesOnly, showArchived }) {
+// „noch keine Adressen" vs. „keine Suchtreffer" vs. „keine Favoriten" — je nach
+// aktivem Filter, NUR wenn resultCount===0.
+export function resolveEmptyStateKind({ resultCount, hasQuery, favoritesOnly }) {
   if (resultCount > 0) return null;
   if (hasQuery) return "no-results";
-  if (showArchived) return "no-archived";
   if (favoritesOnly) return "no-favorites";
   return "none";
 }
@@ -184,8 +171,8 @@ export function addressToFormValues(address) {
   };
 }
 
-// Formularmodell → Duplikat-Formularmodell: KEINE id/Archivstatus/Defaultflags
-// übernehmen; Label sinnvoll als „Kopie von …" kennzeichnen, ohne bestehende
+// Formularmodell → Duplikat-Formularmodell: KEINE id/Defaultflags übernehmen;
+// Label sinnvoll als „Kopie von …" kennzeichnen, ohne bestehende
 // Labels zu zerstören (nur eine NEUE, unabhängige Kopie wird erzeugt).
 export function prepareDuplicateFormValues(address) {
   const base = addressToFormValues(address);
@@ -276,7 +263,7 @@ const ERROR_MESSAGES = {
   ADDRESS_INVALID: "Die Adressangaben sind unvollständig oder ungültig. Bitte prüfen Sie Ihre Eingaben.",
   ADDRESS_ROLE_INVALID: "Die gewählte Rolle ist für diese Adresse nicht gültig.",
   ADDRESS_DEFAULT_ROLE_CONFLICT: "Diese Adresse kann mit der gewählten Rolle nicht als Standard verwendet werden.",
-  ADDRESS_ARCHIVED: "Archivierte Adressen können nicht als Standard verwendet werden.",
+  ADDRESS_DELETE_FAILED: "Die Adresse konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
   ADDRESS_LIMIT_INVALID: "Die angeforderte Seitengröße ist ungültig.",
   ADDRESS_CURSOR_INVALID: "Die Liste konnte nicht fortgesetzt werden. Bitte laden Sie die Seite neu.",
   INVALID_POSTAL_CODE_FORMAT: "Bitte prüfen Sie die Postleitzahl für das ausgewählte Land.",
@@ -289,13 +276,12 @@ export function mapAddressErrorToMessage(code) {
 }
 
 // ── „Neue Sendung" aus einer Adresse ─────────────────────────────────────────
-// Archiviert → blockiert. sender/recipient → direkt zuordenbar. both → der
-// Aufrufer muss vorher fragen (Auswahl-Dialog), da die Rolle nicht eindeutig ist.
+// sender/recipient → direkt zuordenbar. both → der Aufrufer muss vorher fragen
+// (Auswahl-Dialog), da die Rolle nicht eindeutig ist. Unbekannte Rolle → blockiert.
 export function resolveNewShipmentRole(address) {
-  if (!canUseForNewShipment(address)) return { type: "blocked" };
-  if (address.role === ROLE_BOTH) return { type: "choose" };
-  if (address.role === ROLE_SENDER) return { type: "direct", role: "sender" };
-  if (address.role === ROLE_RECIPIENT) return { type: "direct", role: "recipient" };
+  if (address?.role === ROLE_BOTH) return { type: "choose" };
+  if (address?.role === ROLE_SENDER) return { type: "direct", role: "sender" };
+  if (address?.role === ROLE_RECIPIENT) return { type: "direct", role: "recipient" };
   return { type: "blocked" };
 }
 
@@ -322,13 +308,12 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
 }
 
 // ── Listen-Mutationshelfer (sichere Mutation → Refresh-Ersatz ohne Reload) ──
-// Archivieren/Wiederherstellen entfernen die Adresse IMMER aus der aktuell
-// sichtbaren Liste (sie gehört nach der Mutation nicht mehr zur aktiven bzw.
-// nicht mehr zur Archiv-Ansicht). Andere Mutationen (Bearbeiten/Favorit/
-// Standard) ersetzen den Eintrag 1:1 durch die vom Server bestätigte Version.
+// Löschen entfernt die Adresse aus der aktuell sichtbaren Liste. Andere
+// Mutationen (Bearbeiten/Favorit/Standard) ersetzen den Eintrag 1:1 durch die
+// vom Server bestätigte Version.
 export function applyAddressMutation(items, address, type) {
   const list = items || [];
-  if (type === "archive" || type === "restore") {
+  if (type === "delete") {
     return list.filter((a) => a.id !== address.id);
   }
   if (type === "update" || type === "favorite" || type === "defaultSender" || type === "defaultRecipient") {

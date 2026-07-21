@@ -15,10 +15,10 @@ import { buildAddressListParams, toQueryString } from "../utils/addressBookView.
 //   GET    /api/kunde/addresses/:id
 //   POST   /api/kunde/addresses
 //   PUT    /api/kunde/addresses/:id
-//   DELETE /api/kunde/addresses/:id            (= archivieren, kein Hard-Delete)
-//   POST   /api/kunde/addresses/:id/restore
-// Listenresponse: { items: [], nextCursor: null }. DELETE ist das archivieren-
-// Äquivalent (Backend liefert weiterhin einen Restore-Pfad → nicht destruktiv).
+//   DELETE /api/kunde/addresses/:id            (echte, dauerhafte Löschung)
+// Listenresponse: { items: [], nextCursor: null }. DELETE ist ein echter,
+// dauerhafter Hard-Delete (kein Archivieren, keine Wiederherstellung); die
+// Response ist { deleted, addressId, newDefaultSenderId, message }.
 
 export function getAddresses(listParams, { signal } = {}) {
   const params = buildAddressListParams(listParams || {});
@@ -41,16 +41,10 @@ export function updateAddress(id, payload) {
   });
 }
 
-// Archivieren (soft-delete, wiederherstellbar über restoreAddress). KEIN
-// destruktiver Hard-Delete-Endpunkt in diesem MVP.
-export function archiveAddress(id) {
+// Echte, dauerhafte Löschung der Adressbuchzeile. Bereits gebuchte Sendungen
+// bleiben unberührt (serverseitig Snapshot, keine Referenz). Kein Body nötig.
+export function deleteAddress(id) {
   return apiFetch(`/api/kunde/addresses/${encodeURIComponent(String(id))}`, {
     method: "DELETE", auth: true,
-  });
-}
-
-export function restoreAddress(id) {
-  return apiFetch(`/api/kunde/addresses/${encodeURIComponent(String(id))}/restore`, {
-    method: "POST", auth: true,
   });
 }

@@ -5,13 +5,13 @@ import { AddressBookTabs } from "../components/addressbook/AddressBookTabs";
 import { AddressBookToolbar } from "../components/addressbook/AddressBookToolbar";
 import { AddressList } from "../components/addressbook/AddressList";
 import { AddressFormDrawer } from "../components/addressbook/AddressFormDrawer";
-import { AddressArchiveConfirmDialog } from "../components/addressbook/AddressArchiveConfirmDialog";
+import { AddressDeleteConfirmDialog } from "../components/addressbook/AddressDeleteConfirmDialog";
 import { NewShipmentRoleDialog } from "../components/addressbook/NewShipmentRoleDialog";
-import { getAddresses, createAddress, updateAddress, archiveAddress, restoreAddress } from "../api/addressBookApi";
+import { getAddresses, createAddress, updateAddress, deleteAddress } from "../api/addressBookApi";
 import {
   TAB_SENDER, ROLE_SENDER, ROLE_RECIPIENT,
   addressListStateKey, appendPageResults, resolveEmptyStateKind, mapAddressErrorToMessage,
-  emptyAddressForm, addressToFormValues, prepareDuplicateFormValues, isArchived,
+  emptyAddressForm, addressToFormValues, prepareDuplicateFormValues,
   resolveNewShipmentRole, mapAddressToShipmentFormPatch, applyAddressMutation, normalizeAddressForm,
 } from "../utils/addressBookView.mjs";
 
@@ -25,7 +25,6 @@ export default function AddressBookPage({ onUseForNewShipment }) {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
 
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -34,9 +33,10 @@ export default function AddressBookPage({ onUseForNewShipment }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState("");
 
-  const [drawer, setDrawer] = useState(null); // { mode, initialForm, archived, editingId } | null
-  const [archiveTarget, setArchiveTarget] = useState(null);
-  const [archiveBusy, setArchiveBusy] = useState(false);
+  const [drawer, setDrawer] = useState(null); // { mode, initialForm, editingId } | null
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [roleDialogAddress, setRoleDialogAddress] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState("");
@@ -67,7 +67,7 @@ export default function AddressBookPage({ onUseForNewShipment }) {
     const ac = new AbortController();
     reqAbort.current = ac;
     setLoading(true); setError("");
-    getAddresses({ tab, q: debouncedQ, favoritesOnly, includeArchived: showArchived, cursor: null, limit: PAGE_LIMIT }, { signal: ac.signal })
+    getAddresses({ tab, q: debouncedQ, favoritesOnly, cursor: null, limit: PAGE_LIMIT }, { signal: ac.signal })
       .then(async (r) => {
         if (seq !== reqSeq.current) return;
         if (r.status === 401 || r.status === 403) { setLoading(false); return; }
@@ -84,16 +84,16 @@ export default function AddressBookPage({ onUseForNewShipment }) {
         setLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, debouncedQ, favoritesOnly, showArchived]);
+  }, [tab, debouncedQ, favoritesOnly]);
 
   // Nur bei tatsächlichem Such-/Filterwechsel neu laden (Cursor-Reset); ein
   // reiner Re-Render (z. B. durch Drawer-Öffnen) löst keinen neuen Request aus.
   useEffect(() => {
-    const key = addressListStateKey({ tab, q: debouncedQ, favoritesOnly, includeArchived: showArchived });
+    const key = addressListStateKey({ tab, q: debouncedQ, favoritesOnly });
     if (key === stateKeyRef.current) return;
     stateKeyRef.current = key;
     load();
-  }, [tab, debouncedQ, favoritesOnly, showArchived, load]);
+  }, [tab, debouncedQ, favoritesOnly, load]);
 
   useEffect(() => () => { if (reqAbort.current) reqAbort.current.abort(); }, []);
 
@@ -101,7 +101,7 @@ export default function AddressBookPage({ onUseForNewShipment }) {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true); setLoadMoreError("");
     try {
-      const r = await getAddresses({ tab, q: debouncedQ, favoritesOnly, includeArchived: showArchived, cursor: nextCursor, limit: PAGE_LIMIT });
+      const r = await getAddresses({ tab, q: debouncedQ, favoritesOnly, cursor: nextCursor, limit: PAGE_LIMIT });
       if (r.status === 401 || r.status === 403) { setLoadingMore(false); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!r.ok) throw new Error(mapAddressErrorToMessage(d?.code));
@@ -114,13 +114,13 @@ export default function AddressBookPage({ onUseForNewShipment }) {
   };
 
   const emptyKind = resolveEmptyStateKind({
-    resultCount: items.length, hasQuery: debouncedQ.length > 0, favoritesOnly, showArchived,
+    resultCount: items.length, hasQuery: debouncedQ.length > 0, favoritesOnly,
   });
 
   // ── Drawer öffnen (Create/Edit/Duplicate) ─────────────────────────────────
-  const openCreate = () => setDrawer({ mode: "create", initialForm: emptyAddressForm(tab === TAB_SENDER ? ROLE_SENDER : ROLE_RECIPIENT), archived: false, editingId: null });
-  const openEdit = (address) => setDrawer({ mode: "edit", initialForm: addressToFormValues(address), archived: isArchived(address), editingId: address.id });
-  const openDuplicate = (address) => setDrawer({ mode: "duplicate", initialForm: prepareDuplicateFormValues(address), archived: false, editingId: null });
+  const openCreate = () => setDrawer({ mode: "create", initialForm: emptyAddressForm(tab === TAB_SENDER ? ROLE_SENDER : ROLE_RECIPIENT), editingId: null });
+  const openEdit = (address) => setDrawer({ mode: "edit", initialForm: addressToFormValues(address), editingId: address.id });
+  const openDuplicate = (address) => setDrawer({ mode: "duplicate", initialForm: prepareDuplicateFormValues(address), editingId: null });
   const closeDrawer = () => setDrawer(null);
 
   const onSubmitDrawer = async (payload) => {
@@ -161,44 +161,38 @@ export default function AddressBookPage({ onUseForNewShipment }) {
   const onSetDefaultSender = (address) => quickUpdate(address, { isDefaultSender: true }, "Standard-Absender gesetzt.");
   const onSetDefaultRecipient = (address) => quickUpdate(address, { isDefaultRecipient: true }, "Standard-Empfänger gesetzt.");
 
-  // ── Archivieren (Bestätigungsdialog) / Wiederherstellen ───────────────────
-  const onArchiveConfirmed = async () => {
-    const address = archiveTarget;
-    setArchiveBusy(true); setActionError("");
+  // ── Löschen (Bestätigungsdialog) ──────────────────────────────────────────
+  // Echte, dauerhafte Löschung. Bei Fehler bleibt der Dialog offen (Fehler wird
+  // dort mit role="alert" angezeigt), die Adresse bleibt sichtbar, ein erneuter
+  // Versuch ist möglich — kein optimistisches Entfernen vor Server-Erfolg. Busy
+  // schützt gegen Doppelklick (Dialog-Buttons + Backdrop/Escape sind gesperrt).
+  const openDelete = (address) => { setDeleteError(""); setDeleteTarget(address); };
+  const onDeleteConfirmed = async () => {
+    const address = deleteTarget;
+    if (!address || deleteBusy) return;
+    setDeleteBusy(true); setDeleteError("");
     try {
-      const r = await archiveAddress(address.id);
-      if (r.status === 401 || r.status === 403) { setArchiveBusy(false); return; }
+      const r = await deleteAddress(address.id);
+      if (r.status === 401 || r.status === 403) { setDeleteBusy(false); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) { setActionError(mapAddressErrorToMessage(d?.code)); setArchiveBusy(false); setArchiveTarget(null); return; }
-      const updated = applyServerOrFallback(address, d, { archivedAt: new Date().toISOString() });
-      setItems((prev) => applyAddressMutation(prev, updated, "archive"));
-      showSuccess("Adresse archiviert. Sie kann jederzeit wiederhergestellt werden.");
+      if (!r.ok) { setDeleteError(mapAddressErrorToMessage(d?.code)); setDeleteBusy(false); return; }
+      // Erfolg: Adresse lokal entfernen, Dialog schließen, Erfolgsmeldung.
+      setItems((prev) => applyAddressMutation(prev, address, "delete"));
+      setDeleteBusy(false); setDeleteTarget(null);
+      showSuccess("Adresse wurde gelöscht.");
+      // Hat das Backend einen neuen Standard-Absender bestimmt, spiegelt ein
+      // kontrollierter Refetch den geänderten Standardstatus der übrigen Zeilen.
+      if (d?.newDefaultSenderId != null) load();
     } catch {
-      setActionError("Die Adresse konnte nicht archiviert werden. Bitte versuchen Sie es erneut.");
+      setDeleteError("Die Adresse konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.");
+      setDeleteBusy(false);
     }
-    setArchiveBusy(false); setArchiveTarget(null);
-  };
-
-  const onRestore = async (address) => {
-    setBusyId(address.id); setActionError("");
-    try {
-      const r = await restoreAddress(address.id);
-      if (r.status === 401 || r.status === 403) { setBusyId(null); return; }
-      let d = null; try { d = await r.json(); } catch { d = null; }
-      if (!r.ok) { setActionError(mapAddressErrorToMessage(d?.code)); setBusyId(null); return; }
-      const updated = applyServerOrFallback(address, d, { archivedAt: null });
-      setItems((prev) => applyAddressMutation(prev, updated, "restore"));
-      showSuccess("Adresse wiederhergestellt.");
-    } catch {
-      setActionError("Die Adresse konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.");
-    }
-    setBusyId(null);
   };
 
   // ── „Neue Sendung" ─────────────────────────────────────────────────────────
   const handleNewShipment = (address) => {
     const res = resolveNewShipmentRole(address);
-    if (res.type === "blocked") return; // archiviert — Aktion wird ohnehin nicht angeboten
+    if (res.type === "blocked") return; // unbekannte Rolle — Aktion wird nicht angeboten
     if (res.type === "direct") { onUseForNewShipment(mapAddressToShipmentFormPatch(address, res.role === "sender" ? "s" : "r")); return; }
     if (res.type === "choose") setRoleDialogAddress(address);
   };
@@ -214,8 +208,7 @@ export default function AddressBookPage({ onUseForNewShipment }) {
     onSetDefaultSender,
     onSetDefaultRecipient,
     onNewShipment: handleNewShipment,
-    onArchive: setArchiveTarget,
-    onRestore,
+    onDelete: openDelete,
   };
 
   return (
@@ -231,7 +224,6 @@ export default function AddressBookPage({ onUseForNewShipment }) {
         <AddressBookToolbar
           q={q} onQChange={setQ} searching={loading && items.length > 0}
           favoritesOnly={favoritesOnly} onToggleFavorites={setFavoritesOnly}
-          showArchived={showArchived} onToggleArchived={setShowArchived}
         />
 
         <AddressList
@@ -244,13 +236,14 @@ export default function AddressBookPage({ onUseForNewShipment }) {
 
       {drawer && (
         <AddressFormDrawer
-          mode={drawer.mode} initialForm={drawer.initialForm} archived={drawer.archived}
+          mode={drawer.mode} initialForm={drawer.initialForm}
           onSubmit={onSubmitDrawer} onClose={closeDrawer}
         />
       )}
-      <AddressArchiveConfirmDialog
-        address={archiveTarget} busy={archiveBusy}
-        onCancel={() => setArchiveTarget(null)} onConfirm={onArchiveConfirmed}
+      <AddressDeleteConfirmDialog
+        address={deleteTarget} busy={deleteBusy} error={deleteError}
+        onCancel={() => { if (!deleteBusy) { setDeleteTarget(null); setDeleteError(""); } }}
+        onConfirm={onDeleteConfirmed}
       />
       <NewShipmentRoleDialog
         address={roleDialogAddress}

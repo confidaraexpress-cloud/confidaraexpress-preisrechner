@@ -1,17 +1,15 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { countries } from "../../utils/countries";
-import { isArchived } from "../../utils/addressBookView.mjs";
 import { AddressActionsMenu, AddressBadges } from "./AddressDesktopRow";
 
 const countryName = (code) => countries.find((c) => c.code === code)?.name || code;
 
 // Mobil-Karte — enthält dieselben Informationen wie die Desktop-Zeile, aber
 // gestapelt statt in Spalten (keine horizontale Pflicht-Scroll-Tabelle).
-export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient, onNewShipment, onArchive, onRestore }) {
-  const archived = isArchived(address);
+export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient, onNewShipment, onDelete }) {
   return (
-    <li className={`abk-card${archived ? " abk-card--archived" : ""}`}>
+    <li className="abk-card">
       <div className="abk-card-top">
         <div style={{ minWidth: 0 }}>
           <div className="abk-card-name">{address.label || address.company || address.contactName || "Ohne Bezeichnung"}</div>
@@ -21,7 +19,7 @@ export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavori
           address={address} busy={busy}
           onEdit={onEdit} onDuplicate={onDuplicate} onToggleFavorite={onToggleFavorite}
           onSetDefaultSender={onSetDefaultSender} onSetDefaultRecipient={onSetDefaultRecipient}
-          onNewShipment={onNewShipment} onArchive={onArchive} onRestore={onRestore}
+          onNewShipment={onNewShipment} onDelete={onDelete}
         />
       </div>
       <AddressBadges address={address} />

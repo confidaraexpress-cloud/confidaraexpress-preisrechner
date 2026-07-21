@@ -1,21 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { isArchived, canSetDefaultSender, canSetDefaultRecipient } from "../../utils/addressBookView.mjs";
+import { canSetDefaultSender, canSetDefaultRecipient } from "../../utils/addressBookView.mjs";
 
 // Zugängliches Aktionsmenü (Kebab-Dropdown) — geteilt zwischen Desktop-Zeile
-// und Mobil-Karte. Sichtbarkeit je Aktion richtet sich nach Rolle/Archivstatus
-// (siehe addressBookView.mjs) — KEIN Standard-Absender/-Empfänger und KEINE
-// „Neue Sendung" bei archivierten Adressen (Regel #3).
+// und Mobil-Karte. Sichtbarkeit von „Standard-Absender/-Empfänger" richtet sich
+// nach der Rolle der Adresse (siehe addressBookView.mjs). „Löschen" ist eine
+// echte, dauerhafte Löschung (Bestätigungsdialog im Aufrufer).
 export function AddressActionsMenu({
   address, busy,
   onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient,
-  onNewShipment, onArchive, onRestore,
+  onNewShipment, onDelete,
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const triggerRef = useRef(null);
   const firstItemRef = useRef(null);
-  const archived = isArchived(address);
 
   useEffect(() => {
     if (!open) return;
@@ -57,34 +56,24 @@ export function AddressActionsMenu({
           <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onToggleFavorite)}>
             <Icon n="star" s={15} /> {address.favorite ? "Favorit entfernen" : "Als Favorit markieren"}
           </button>
-          {!archived && canSetDefaultSender(address) && !address.isDefaultSender && (
+          {canSetDefaultSender(address) && !address.isDefaultSender && (
             <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onSetDefaultSender)}>
               <Icon n="shieldCheck" s={15} /> Als Standard-Absender setzen
             </button>
           )}
-          {!archived && canSetDefaultRecipient(address) && !address.isDefaultRecipient && (
+          {canSetDefaultRecipient(address) && !address.isDefaultRecipient && (
             <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onSetDefaultRecipient)}>
               <Icon n="shieldCheck" s={15} /> Als Standard-Empfänger setzen
             </button>
           )}
-          {!archived && (
-            <>
-              <div className="abk-actions-divider" role="separator" />
-              <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onNewShipment)}>
-                <Icon n="zap" s={15} /> Neue Sendung
-              </button>
-            </>
-          )}
           <div className="abk-actions-divider" role="separator" />
-          {archived ? (
-            <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onRestore)}>
-              <Icon n="refresh" s={15} /> Wiederherstellen
-            </button>
-          ) : (
-            <button type="button" role="menuitem" className="abk-actions-item abk-actions-item--danger" onClick={run(onArchive)}>
-              <Icon n="trash" s={15} /> Archivieren
-            </button>
-          )}
+          <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onNewShipment)}>
+            <Icon n="zap" s={15} /> Neue Sendung
+          </button>
+          <div className="abk-actions-divider" role="separator" />
+          <button type="button" role="menuitem" className="abk-actions-item abk-actions-item--danger" onClick={run(onDelete)}>
+            <Icon n="trash" s={15} /> Löschen
+          </button>
         </div>
       )}
     </div>

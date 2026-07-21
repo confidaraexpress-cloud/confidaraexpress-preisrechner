@@ -100,3 +100,35 @@
   .dft-header-top { flex-direction: column; }
   .dft-header-cta .btn { width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Formularentwürfe (kind:"form") — additive Klassen im selben dft-Scope.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Typ-Badge: kennzeichnet den Entwurfstyp zusätzlich zur Farbe (Textlabel,
+   nicht rein farblich). align-self verhindert das Strecken in der Flex-Karte. */
+.dft-badge {
+  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; line-height: 1.5;
+}
+.dft-badge-form { color: var(--blue2); background: rgba(37, 99, 235, 0.10); border: 1px solid rgba(37, 99, 235, 0.22); }
+.dft-cell-recipient-name { display: block; margin-top: 4px; }
+
+/* „Fortsetzen" — sekundäre Aktion mit blauem Akzent (klar von „Löschen" getrennt). */
+.dft-resume-btn { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
+.dft-resume-btn:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
+.dft-resume-btn:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 2px; }
+
+/* Fortsetzen-Banner auf „Neue Sendung" (ruhig, keine Dauerbewegung). */
+.dft-resume-note, .dft-resume-info, .dft-resume-conflict {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; margin-bottom: 16px; border-radius: var(--radius-lg);
+  font-size: 13.5px; line-height: 1.45;
+}
+.dft-resume-note svg, .dft-resume-info svg, .dft-resume-conflict svg { flex-shrink: 0; }
+.dft-resume-note { background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.18); color: var(--navy); }
+.dft-resume-info { background: var(--gray50); border: 1px solid var(--border); color: var(--gray700); }
+.dft-resume-conflict { background: #fff7ed; border: 1px solid #f59e0b; color: #92400e; flex-wrap: wrap; }
+.dft-resume-conflict-text { flex: 1; min-width: 200px; }
+.dft-resume-conflict .btn { flex-shrink: 0; }

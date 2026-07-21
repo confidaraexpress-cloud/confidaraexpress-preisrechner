@@ -1,6 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import { Icon } from "../ui/Icon";
 import { formatRecipientDisplay, formatRoute } from "../../utils/draftsView.mjs";
+import { FORM_DRAFT_KIND, formatFormRecipient, formatFormRoute } from "../../utils/formDraftsView.mjs";
+
+// Identifiziert den Entwurf kind-abhängig: Formularentwürfe tragen ihre Daten
+// unter `summary`, berechnete Shipment-Drafts unter recipientAddress/fromCountry.
+function draftIdentity(draft) {
+  if (draft?.kind === FORM_DRAFT_KIND) return `${formatFormRecipient(draft)} · ${formatFormRoute(draft)}`;
+  return `${formatRecipientDisplay(draft)} · ${formatRoute(draft)}`;
+}
 
 // Bestätigungsdialog vor dem endgültigen Löschen eines Entwurfs. Identifiziert
 // den Entwurf klar (Empfänger + Route), macht die Endgültigkeit unmissverständlich.
@@ -30,7 +38,7 @@ export function DraftDeleteConfirmDialog({ draft, busy, onCancel, onConfirm }) {
         <div className="dft-dialog-icon" aria-hidden="true"><Icon n="trash" s={20} /></div>
         <h2 id="dft-delete-title" className="dft-dialog-title">Entwurf wirklich löschen?</h2>
         <p id="dft-delete-desc" className="dft-dialog-desc">
-          <span className="dft-dialog-target">{formatRecipientDisplay(draft)} · {formatRoute(draft)}</span><br />
+          <span className="dft-dialog-target">{draftIdentity(draft)}</span><br />
           Diese Aktion kann nicht rückgängig gemacht werden.
         </p>
         <div className="dft-dialog-actions">

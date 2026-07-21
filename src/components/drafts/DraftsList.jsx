@@ -2,16 +2,26 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { DraftDesktopRow } from "./DraftDesktopRow";
 import { DraftCard } from "./DraftCard";
+import { FormDraftDesktopRow } from "./FormDraftDesktopRow";
+import { FormDraftCard } from "./FormDraftCard";
 import { DraftSkeleton } from "./DraftSkeleton";
 import { DraftEmptyState } from "./DraftEmptyState";
+import { combinedDraftKey, FORM_DRAFT_KIND } from "../../utils/formDraftsView.mjs";
 
-// Listen-Orchestrierung: Skeleton (initial) → Fehler (mit Retry) → Empty-State
-// → Desktop-Tabelle/Mobil-Karten (CSS-Toggle, kein JS-Breakpoint) + „Weitere
-// laden". Ladefehler beim Nachladen: bestehende Liste bleibt erhalten.
+// Listen-Orchestrierung: Skeleton (initial) → Fehler beider Quellen (mit Retry)
+// → Empty-State → Desktop-Tabelle/Mobil-Karten (CSS-Toggle, kein JS-Breakpoint)
+// + „Weitere laden". Beide Entwurfstypen (form/shipment) teilen sich dieselben
+// Spalten; je Zeile/Karte entscheidet EIN kontrollierter Zweig über die Variante
+// (FormDraft* vs. Draft*) — keine vielen ungeordneten if-Blöcke. React-Key ist
+// der Kombischlüssel (form:7 ≠ shipment:7), damit gleiche IDs nicht kollidieren.
+//
+// canShowEmpty: nur true, wenn BEIDE Quellen erfolgreich UND leer waren. Bei
+// einem Teilfehler (eine Quelle fehlgeschlagen, andere leer) wird KEIN
+// „keine Entwürfe" behauptet — der Teilfehler-Hinweis steht oberhalb der Liste.
 export function DraftsList({
-  items, loading, error, onRetry, onCreate,
+  items, loading, error, onRetry, onCreate, canShowEmpty = true,
   hasMore, loadingMore, loadMoreError, onLoadMore,
-  deletingId, onDelete,
+  deletingKey, resumingKey, onDelete, onResume,
 }) {
   if (loading) return <DraftSkeleton />;
 
@@ -25,7 +35,22 @@ export function DraftsList({
     );
   }
 
-  if (items.length === 0) return <DraftEmptyState onCreate={onCreate} />;
+  if (items.length === 0) return canShowEmpty ? <DraftEmptyState onCreate={onCreate} /> : null;
+
+  const renderRow = (d) => {
+    const key = combinedDraftKey(d);
+    if (d.kind === FORM_DRAFT_KIND) {
+      return <FormDraftDesktopRow key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
+    }
+    return <DraftDesktopRow key={key} draft={d} busy={deletingKey === key} onDelete={onDelete} />;
+  };
+  const renderCard = (d) => {
+    const key = combinedDraftKey(d);
+    if (d.kind === FORM_DRAFT_KIND) {
+      return <FormDraftCard key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
+    }
+    return <DraftCard key={key} draft={d} busy={deletingKey === key} onDelete={onDelete} />;
+  };
 
   return (
     <div>
@@ -45,18 +70,14 @@ export function DraftsList({
               </tr>
             </thead>
             <tbody>
-              {items.map((d) => (
-                <DraftDesktopRow key={d.id} draft={d} busy={deletingId === d.id} onDelete={onDelete} />
-              ))}
+              {items.map(renderRow)}
             </tbody>
           </table>
         </div>
       </div>
 
       <ul className="dft-cards">
-        {items.map((d) => (
-          <DraftCard key={d.id} draft={d} busy={deletingId === d.id} onDelete={onDelete} />
-        ))}
+        {items.map(renderCard)}
       </ul>
 
       {hasMore && (

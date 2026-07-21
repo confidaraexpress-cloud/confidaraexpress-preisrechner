@@ -68,7 +68,7 @@ export default function CalculatorPage() {
   const [form, setForm] = useState({
     from_country: user?.country || "DE",
     from_zip:     user?.zip     || "",
-    to_country:   "CH",
+    to_country:   "DE",
     to_zip:       "",
     packageCount: "1",
     weight: "", length: "", width: "", height: "",

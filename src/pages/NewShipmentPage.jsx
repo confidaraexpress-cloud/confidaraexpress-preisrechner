@@ -161,7 +161,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     r_addition: "",
     r_zip:      "",
     r_city:     "",
-    r_country:  "CH",
+    r_country:  "DE",
     r_phone:    "",
     r_email:    "",
     packageCount: "1",

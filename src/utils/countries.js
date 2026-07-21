@@ -1,9 +1,14 @@
-export const countries = [
-  // DACH — immer oben
+// Länderliste für ALLE Auswahlfelder (Absender/Empfänger, Profil, Adressbuch,
+// Zoll, Registrierung) — einzige Quelle der Wahrheit. Die Einträge werden beim
+// Export vollständig alphabetisch nach dem deutschen Anzeigenamen sortiert
+// (localeCompare "de" → korrekte Umlaut-/ß-Einordnung). ISO-Codes bleiben
+// unverändert; nur die Anzeigereihenfolge ändert sich (kein Backend-/Payload-
+// Einfluss). Alle Konsumenten greifen ausschließlich über .find(c => c.code === …)
+// bzw. .map(...) zu — keine Positions-/Index-Abhängigkeit.
+const COUNTRY_LIST = [
   { code: "DE", name: "Deutschland" },
   { code: "AT", name: "Österreich" },
   { code: "CH", name: "Schweiz" },
-  // Europa alphabetisch
   { code: "AL", name: "Albanien" },
   { code: "BE", name: "Belgien" },
   { code: "BA", name: "Bosnien und Herzegowina" },
@@ -44,7 +49,6 @@ export const countries = [
   { code: "HU", name: "Ungarn" },
   { code: "BY", name: "Weißrussland" },
   { code: "CY", name: "Zypern" },
-  // Amerika
   { code: "AR", name: "Argentinien" },
   { code: "BR", name: "Brasilien" },
   { code: "CL", name: "Chile" },
@@ -52,7 +56,6 @@ export const countries = [
   { code: "CO", name: "Kolumbien" },
   { code: "MX", name: "Mexiko" },
   { code: "US", name: "USA" },
-  // Asien / Pazifik
   { code: "AE", name: "Arabische Emirate" },
   { code: "AU", name: "Australien" },
   { code: "CN", name: "China" },
@@ -71,7 +74,6 @@ export const countries = [
   { code: "TH", name: "Thailand" },
   { code: "VN", name: "Vietnam" },
   { code: "HK", name: "Hongkong" },
-  // Afrika
   { code: "DZ", name: "Algerien" },
   { code: "EG", name: "Ägypten" },
   { code: "KE", name: "Kenia" },
@@ -79,3 +81,8 @@ export const countries = [
   { code: "NG", name: "Nigeria" },
   { code: "ZA", name: "Südafrika" },
 ];
+
+// Vollständig alphabetisch nach deutschem Anzeigenamen. localeCompare("de")
+// ordnet Umlaute/ß korrekt ein (ä~a, ö~o, ü~u, ß~ss). Kopie via Spread — die
+// Quell-Liste bleibt unmutiert.
+export const countries = [...COUNTRY_LIST].sort((a, b) => a.name.localeCompare(b.name, "de"));

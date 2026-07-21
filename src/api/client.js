@@ -188,3 +188,20 @@ export function deleteDraft(id) {
     method: "DELETE", auth: true,
   });
 }
+
+// ── Stornierungsanfrage (Kunde) ──────────────────────────────────────────────
+// POST /kunde/shipments/:shipmentId/cancellation-request — stellt eine ANFRAGE
+// auf Stornierung (KEINE echte Carrier-/JUMiNGO-Stornierung, keine Erstattung).
+// `shipmentId` ist AUSSCHLIESSLICH die jumingo_shipment_id (nicht die interne
+// numerische ID) — konsistent mit Tracking/Label. Pfadbasis wie die
+// Sendungsliste (/kunde/shipments, ohne /api). Body enthält ausschließlich
+// `reason` (keine user_id, keine interne ID). Auth + 401/403-Handling zentral
+// über apiFetch. Gibt die rohe Response zurück; der Aufrufer wertet Status/JSON
+// selbst aus (u. a. 409 bereits vorhanden, „nicht erlaubt", 404, 422, 429).
+export function requestShipmentCancellation(shipmentId, reason) {
+  return apiFetch(`/kunde/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/cancellation-request`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ reason }),
+  });
+}

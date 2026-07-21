@@ -81,6 +81,20 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Nach einer Stornierungsanfrage: betroffene Zeile optimistisch auf den
+  // gemeldeten Cancellation-Status setzen (Button verschwindet sofort) und
+  // anschließend die Liste mit dem Backend abgleichen (Serverwahrheit über
+  // cancellation_status/cancellation_requested_at; keine rein lokale Wahrheit).
+  const handleCancellationRequested = useCallback((jumingoShipmentId, patch) => {
+    if (patch && patch.status) {
+      setShipments((prev) => prev.map((s) =>
+        s.jumingo_shipment_id === jumingoShipmentId
+          ? { ...s, cancellation_status: patch.status, cancellation_requested_at: patch.requestedAt ?? s.cancellation_requested_at ?? null }
+          : s));
+    }
+    fetchData();
+  }, [fetchData]);
+
   // Show success toast when returning from a completed booking
   useEffect(() => {
     if (location.state?.justBooked) {
@@ -216,7 +230,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} />}
+        {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} onCancellationRequested={handleCancellationRequested} />}
 
         {/* Kein .page-body-Wrapper: TrackingPage bringt mit .page-with-navbar
             bereits einen eigenen Seiten-Wrapper mit. Als direktes Kind von

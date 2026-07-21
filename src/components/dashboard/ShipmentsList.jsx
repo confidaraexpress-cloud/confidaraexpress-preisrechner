@@ -3,10 +3,18 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import { getTracking } from "../../api/client";
+import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { PremiumBackground } from "./PremiumBackground";
+import { CancellationRequestDialog } from "./CancellationRequestDialog";
+import {
+  canRequestCancellation,
+  hasCancellationRequest,
+  customerCancellationStatusMeta,
+  classifyCancellationError,
+  readErrorCode,
+} from "../../utils/customerCancellation.mjs";
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -25,11 +33,31 @@ const TRACK_STATUS_LABELS = { new: "In Vorbereitung" };
 const labelForTrackStatus = (s) =>
   s == null || s === "" ? null : (TRACK_STATUS_LABELS[String(s).toLowerCase()] || String(s));
 
-export function ShipmentsList({ shipments, loading }) {
+// Sekundäres Statusbadge der Stornierungsanfrage (Actions-Zelle). Überschreibt
+// NICHT den normalen Sendungsstatus (eigene Spalte). Reiner Text (nicht nur
+// farblich). Bei „angenommen" ein dezenter Hinweis zur persönlichen Bearbeitung.
+function CancellationStatusPill({ status }) {
+  const [cls, label] = customerCancellationStatusMeta(status);
+  const title = status === "accepted"
+    ? "Die weitere Bearbeitung erfolgt persönlich durch ConfidaraExpress."
+    : undefined;
+  return <span className={`badge ${cls} stn-status`} title={title}>{label}</span>;
+}
+
+export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
   const [labelError, setLabelError] = React.useState("");
+
+  // ── Stornierungsanfrage ────────────────────────────────────────────────────
+  const [cancelShipment, setCancelShipment] = React.useState(null); // aktive Zielsendung / null
+  const [cancelBusy, setCancelBusy] = React.useState(false);
+  const [cancelError, setCancelError] = React.useState("");         // im Dialog (korrigierbar)
+  const [notice, setNotice] = React.useState(null);                 // { type, text } oberhalb der Tabelle
+  const submittingRef = React.useRef(false);                        // Doppelklick-/Race-Schutz
+  const mountedRef = React.useRef(true);
+  React.useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Holt den Trackingstand (auch für „Aktualisieren“), ohne die Zeile zu togglen.
   // Nutzt die zentrale getTracking-Funktion (defensives Feld-Lesen, Auth zentral).
@@ -62,6 +90,59 @@ export function ShipmentsList({ shipments, loading }) {
     }
   };
 
+  const openCancel = (s) => { setCancelError(""); setNotice(null); setCancelShipment(s); };
+  const closeCancel = () => { if (!cancelBusy) { setCancelShipment(null); setCancelError(""); } };
+
+  // Absenden der Stornierungsanfrage. Genau EIN POST pro Dialog (submittingRef),
+  // Buttons während des Requests deaktiviert, keine State-Updates nach Unmount,
+  // Zielsendung bleibt über die lokale `s`-Bindung stabil.
+  const submitCancel = async (reason) => {
+    if (submittingRef.current) return;
+    const s = cancelShipment;
+    if (!s) return;
+    const jid = s.jumingo_shipment_id;
+    submittingRef.current = true;
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      const resp = await requestShipmentCancellation(jid, reason);
+      if (!mountedRef.current) return;
+      if (resp.ok) {
+        let d = {};
+        try { d = await resp.json(); } catch { d = {}; }
+        const cr = d && typeof d.cancellationRequest === "object" && d.cancellationRequest ? d.cancellationRequest : {};
+        const status = cr.status || "pending";
+        const requestedAt = cr.createdAt || cr.created_at || null;
+        setCancelShipment(null);
+        setNotice({ type: "success", text: "Ihre Stornierungsanfrage wird bearbeitet. Wir melden uns persönlich bei Ihnen." });
+        onCancellationRequested?.(jid, { status, requestedAt });
+        return;
+      }
+      if (resp.status === 401 || resp.status === 403) return; // zentraler Logout/Redirect via apiFetch
+      let body = {};
+      try { body = await resp.json(); } catch { body = {}; }
+      const cls = classifyCancellationError(resp.status, readErrorCode(body));
+      if (cls.keepDialogOpen) {
+        // Korrigierbarer Fehler (Reason ungültig / Rate-Limit / generisch):
+        // Dialog offen lassen, Eingabe bleibt erhalten.
+        setCancelError(cls.message);
+      } else {
+        // Serverzustand hat sich geändert (bereits vorhanden / nicht erlaubt /
+        // nicht gefunden): Dialog schließen, Info anzeigen, Liste reconcilen.
+        setCancelShipment(null);
+        setNotice({ type: "info", text: cls.message });
+        onCancellationRequested?.(jid, cls.markPending ? { status: "pending" } : {});
+      }
+    } catch {
+      if (mountedRef.current) {
+        setCancelError("Die Stornierungsanfrage konnte nicht gesendet werden. Bitte versuche es erneut.");
+      }
+    } finally {
+      submittingRef.current = false;
+      if (mountedRef.current) setCancelBusy(false);
+    }
+  };
+
   return (
     <>
       <PremiumBackground variant="soft" />
@@ -69,6 +150,11 @@ export function ShipmentsList({ shipments, loading }) {
         {labelError && (
           <div className="alert alert-error mb-16">
             <Icon n="x" s={16} />{labelError}
+          </div>
+        )}
+        {notice && (
+          <div className={`alert ${notice.type === "success" ? "alert-success" : "alert-info"} mb-16`} role="status">
+            <Icon n={notice.type === "success" ? "check" : "info"} s={16} />{notice.text}
           </div>
         )}
         {loading ? (
@@ -100,13 +186,17 @@ export function ShipmentsList({ shipments, loading }) {
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
                         <td>
-                          <div className="flex gap-8">
+                          <div className="flex gap-8 stn-actions">
                             {s.jumingo_shipment_id && (
                               <button className="btn btn-ghost btn-sm" onClick={() => loadTracking(s.jumingo_shipment_id)}>Track</button>
                             )}
                             {(s.status === "booked" || s.status === "label_ready") && (
                               <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadLabel(s.jumingo_shipment_id)}>Label</button>
                             )}
+                            {canRequestCancellation(s) && (
+                              <button className="btn btn-ghost btn-sm" onClick={() => openCancel(s)}>Stornieren</button>
+                            )}
+                            {hasCancellationRequest(s) && <CancellationStatusPill status={s.cancellation_status} />}
                           </div>
                         </td>
                       </tr>
@@ -216,6 +306,16 @@ export function ShipmentsList({ shipments, loading }) {
           </div>
         )}
       </div>
+
+      {cancelShipment && (
+        <CancellationRequestDialog
+          shipment={cancelShipment}
+          busy={cancelBusy}
+          error={cancelError}
+          onSubmit={submitCancel}
+          onClose={closeCancel}
+        />
+      )}
     </>
   );
 }

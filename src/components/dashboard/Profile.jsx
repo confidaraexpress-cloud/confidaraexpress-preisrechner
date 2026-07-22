@@ -6,6 +6,7 @@ import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 import { PremiumBackground } from "./PremiumBackground";
+import { EmailChangeSection } from "./EmailChangeSection";
 
 // Benötigt Backend: PATCH /kunde/profil
 // Request-Body: { name, company_name, vat_id, street, zip, city, country }
@@ -234,6 +235,9 @@ export function Profile({ user }) {
               <span className={`profile-row-val${it.empty ? " profile-row-empty" : ""}`}>{it.v}</span>
             </div>
           ))}
+          {/* Login-E-Mail ändern: direkt unter der aktuellen Login-E-Mail,
+              getrennt von der Passwortänderung (eigener State/Fehler/Busy). */}
+          <EmailChangeSection user={user} />
           {section.hint && (
             <div className="profile-hint">
               <Icon n={section.hint.icon} s={15} />

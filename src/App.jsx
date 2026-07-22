@@ -10,6 +10,7 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
 
 const AuthPage        = React.lazy(() => import("./pages/AuthPage"));
+const EmailChangeConfirmPage = React.lazy(() => import("./pages/EmailChangeConfirmPage"));
 const CalculatorPage  = React.lazy(() => import("./pages/CalculatorPage"));
 const BookingPage     = React.lazy(() => import("./pages/BookingPage"));
 const DashboardPage   = React.lazy(() => import("./pages/DashboardPage"));
@@ -42,6 +43,10 @@ export default function App() {
       <Routes>
         <Route path="/login"    element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
+
+        {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
+            Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
+        <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
 
         {/* Protected: calculator inside dashboard layout (sidebar visible) */}
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>

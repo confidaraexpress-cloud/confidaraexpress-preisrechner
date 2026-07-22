@@ -40,6 +40,10 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // Neutrale Erfolgsmeldung nach bestätigter E-Mail-Änderung (kommt über den
+  // Navigations-State der öffentlichen Confirm-Seite; keine neue/alte E-Mail
+  // wird vorausgefüllt).
+  const [emailChanged, setEmailChanged] = useState(!!location.state?.emailChanged);
   const [rememberMe, setRememberMe] = useState(false);
   const [step, setStep] = useState("credentials");
   const [resetToken, setResetToken] = useState("");
@@ -53,6 +57,15 @@ export default function AuthPage() {
   });
   const [regPasswordRepeat, setRegPasswordRepeat] = useState("");
   const [regErrors, setRegErrors] = useState({});
+
+  // Navigations-State nach dem ersten Lesen entfernen, damit die Meldung nach
+  // einem Reload nicht erneut erscheint (der lokale State-Wert bleibt erhalten).
+  useEffect(() => {
+    if (location.state?.emailChanged) {
+      window.history.replaceState({}, "", location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -122,7 +135,7 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  const clearMessages = () => { setError(""); setSuccess(""); };
+  const clearMessages = () => { setError(""); setSuccess(""); setEmailChanged(false); };
 
   const handleRegChange = (k, v) => {
     setRegForm(p => ({ ...p, [k]: v }));
@@ -220,6 +233,11 @@ export default function AuthPage() {
               {sessionExpired && (
                 <div className="auth-alert auth-alert-info">
                   Ihre Sitzung ist abgelaufen oder Ihr Konto wurde deaktiviert. Bitte melden Sie sich erneut an.
+                </div>
+              )}
+              {emailChanged && (
+                <div className="auth-alert auth-alert-success">
+                  E-Mail-Adresse geändert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse an.
                 </div>
               )}
               {error   && <div className="auth-alert auth-alert-error">{error}</div>}

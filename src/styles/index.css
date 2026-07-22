@@ -24,3 +24,7 @@
 @import './cancellation.css';
 /* Verifizierte Login-E-Mail-Änderung — isoliert (email-change- Prefix). */
 @import './email-change.css';
+/* Übersicht „Vapor" — isolierter Scope (.dashboard-vapor), helle Art-Direction
+   nur für page==="overview". Zuletzt, damit die .dashboard-vapor-Overrides die
+   globalen Sidebar-/Atom-Regeln aus dashboard-premium.css sicher überschreiben. */
+@import './vapor.css';

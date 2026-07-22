@@ -824,10 +824,10 @@
 /*  weicher Violett-Blob unten links ergänzt (Layer-Anzahl 9→10, kein       */
 /*  Dust/Mask/Filter-Zuwachs). Account-Header + Karten von Glassy auf       */
 /*  opakes Off-White (#fbfcff) umgestellt, backdrop-filter entfernt —       */
-/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign: Bearbeiten-      */
-/*  Button in den Seitenkopf (.profile-page-head, neben dem Titel)          */
-/*  verschoben; Status-/B2B-/Zahlungsziel-Chips im Hero (.profile-meta-     */
-/*  row). Hero + Datenkarten (.profile-grid / .profile-edit-stack) auf      */
+/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign: Seitenkopf mit   */
+/*  Titel/Subline (.profile-page-head); Bearbeitung erfolgt bereichsweise   */
+/*  je Karte (.profile-card-edit-action). Status-/B2B-/Zahlungsziel-Chips    */
+/*  im Hero (.profile-meta-row). Hero + Datenkarten (.profile-grid) auf      */
 /*  ein dunkles Navy-/Glass-Theme umgestellt (Icon-Kacheln, Sublines,       */
 /*  Hinweis-Boxen) — passend zum Profil-Referenzmockup, vollständig unter   */
 /*  .dashboard-profile-premium gescoped (andere Sub-Seiten unberührt).      */
@@ -876,7 +876,6 @@
 .dashboard-profile-premium .profile-page-head-text { min-width: 0; text-align: left; }
 .dashboard-profile-premium .profile-page-head .dash-section-title { text-align: left; }
 .dashboard-profile-premium .profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
-.dashboard-profile-premium .profile-page-head .profile-edit-btn { flex-shrink: 0; margin-top: 12px; }
 
 .dashboard-profile-premium .profile-grid {
   max-width: 1180px;
@@ -884,11 +883,6 @@
   gap: 28px;
 }
 .dashboard-profile-premium .profile-col { gap: 20px; }
-
-.dashboard-profile-premium .profile-edit-stack {
-  max-width: 760px;
-  margin: 0 auto;
-}
 
 .dashboard-profile-premium .page-body > .alert-success {
   max-width: 1180px;
@@ -1028,28 +1022,7 @@
   border-color: rgba(95, 137, 255, 0.42);
 }
 
-.dashboard-profile-premium .profile-edit-btn {
-  padding: 12px 24px;
-  border-radius: 14px;
-  font-size: 14.5px;
-  gap: 8px;
-  background: linear-gradient(155deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.22) inset,
-    0 0 0 1px rgba(255,255,255,0.08) inset,
-    0 8px 22px -4px rgba(29,78,216,0.50),
-    0 0 38px -6px rgba(59,130,246,0.38);
-}
-.dashboard-profile-premium .profile-edit-btn:hover {
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.26) inset,
-    0 0 0 1px rgba(255,255,255,0.10) inset,
-    0 10px 26px -4px rgba(29,78,216,0.56),
-    0 0 46px -6px rgba(59,130,246,0.46);
-}
-
-.dashboard-profile-premium .profile-grid .table-card,
-.dashboard-profile-premium .profile-edit-stack .table-card {
+.dashboard-profile-premium .profile-grid .table-card {
   border-radius: 24px;
   border: 1px solid rgba(120, 160, 255, 0.16);
   background:
@@ -1075,6 +1048,18 @@
   border: 1px solid rgba(120, 160, 255, 0.28);
   box-shadow: 0 6px 16px -7px rgba(40, 90, 220, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
+
+/* „Bearbeiten"-Button im Kartenkopf auf dem dunklen Profil-Theme */
+.dashboard-profile-premium .profile-card-edit-action {
+  color: #bcd0ff;
+  background: rgba(70, 104, 200, 0.16);
+  border-color: rgba(120, 160, 255, 0.30);
+}
+.dashboard-profile-premium .profile-card-edit-action:hover {
+  background: rgba(90, 130, 235, 0.24);
+  border-color: rgba(140, 170, 255, 0.48);
+}
+.dashboard-profile-premium .profile-card-edit-action:disabled { opacity: 0.4; }
 
 .dashboard-profile-premium .profile-section-body { padding: 14px 26px 24px; }
 .dashboard-profile-premium .profile-row { padding: 15px 0; }
@@ -1232,7 +1217,6 @@
      Varianten identische Mobile-Behandlung über prefers-reduced-motion erhält. */
 
   .dashboard-profile-premium .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
-  .dashboard-profile-premium .profile-page-head .profile-edit-btn { width: 100%; justify-content: center; margin-top: 0; }
   .dashboard-profile-premium .profile-account-header { padding: 22px 22px; gap: 14px; }
   .dashboard-profile-premium .profile-account-identity { min-width: 100%; gap: 14px; }
   .dashboard-profile-premium .profile-avatar-lg { width: 62px; height: 62px; font-size: 23px; }

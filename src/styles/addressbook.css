@@ -104,7 +104,17 @@
 .abk-card-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--gray600); }
 .abk-card-info-row { display: flex; align-items: flex-start; gap: 8px; }
 .abk-card-info-row svg { flex-shrink: 0; margin-top: 2px; color: var(--gray400); }
-.abk-card-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; border-top: 1px solid var(--border); }
+.abk-card-actions { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* ─── Sichtbare Hauptaktion „Sendung erstellen" (Desktop-Zeile + Mobil-Karte) ──
+   Sekundärer Outline-Button (.btn.btn-outline.btn-sm) — bewusst ruhiger als der
+   globale Primär-Button „+ Neue Adresse". Nur lokale, additive Regeln; KEINE
+   Überschreibung globaler .btn-Styles, kein !important. Feste Höhe = exakte
+   optische Bündigkeit mit dem 34px-Zahnrad daneben. */
+.abk-create-shipment { height: 34px; }
+/* In der Mobil-Fußzeile füllt der Button die Breite (große Touchfläche); das
+   Zahnrad bleibt daneben in fester Größe. */
+.abk-card-actions .abk-create-shipment { flex: 1; }
 
 /* ─── Aktionsmenü (Kebab-Dropdown) ───────────────────────────────────────── */
 .abk-actions { position: relative; flex-shrink: 0; }

@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { canSetDefaultSender, canSetDefaultRecipient } from "../../utils/addressBookView.mjs";
+import { buildAddressMenuModel } from "../../utils/addressBookView.mjs";
 
-// Zugängliches Aktionsmenü (Kebab-Dropdown) — geteilt zwischen Desktop-Zeile
-// und Mobil-Karte. Sichtbarkeit von „Standard-Absender/-Empfänger" richtet sich
-// nach der Rolle der Adresse (siehe addressBookView.mjs). „Löschen" ist eine
-// echte, dauerhafte Löschung (Bestätigungsdialog im Aufrufer).
+// Zugängliches Verwaltungs-Aktionsmenü (Kebab-Dropdown) — geteilt zwischen
+// Desktop-Zeile und Mobil-Karte. Enthält NUR Verwaltungsaktionen; „Sendung
+// erstellen"/„Neue Sendung" ist bewusst KEIN Menüpunkt mehr, sondern ein
+// direkt sichtbarer Zeilen-/Karten-Button (AddressCreateShipmentButton).
+// Reihenfolge, Labels, Sichtbarkeit der Standard-Aktionen und der Trenner vor
+// „Löschen" kommen aus buildAddressMenuModel (rein, getestet). „Löschen" ist
+// eine echte, dauerhafte Löschung (Bestätigungsdialog im Aufrufer).
 export function AddressActionsMenu({
   address, busy,
   onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient,
-  onNewShipment, onDelete,
+  onDelete,
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -31,6 +34,17 @@ export function AddressActionsMenu({
 
   const run = (fn) => () => { setOpen(false); fn?.(address); };
 
+  // key → konkreter Handler-Prop (die reine Modell-Logik kennt keine Handler).
+  const handlers = {
+    edit: onEdit,
+    duplicate: onDuplicate,
+    toggleFavorite: onToggleFavorite,
+    setDefaultSender: onSetDefaultSender,
+    setDefaultRecipient: onSetDefaultRecipient,
+    delete: onDelete,
+  };
+  const items = buildAddressMenuModel(address);
+
   return (
     <div className="abk-actions" ref={wrapRef}>
       <button
@@ -47,33 +61,20 @@ export function AddressActionsMenu({
       </button>
       {open && (
         <div className="abk-actions-menu" role="menu">
-          <button ref={firstItemRef} type="button" role="menuitem" className="abk-actions-item" onClick={run(onEdit)}>
-            <Icon n="form" s={15} /> Bearbeiten
-          </button>
-          <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onDuplicate)}>
-            <Icon n="copy" s={15} /> Duplizieren
-          </button>
-          <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onToggleFavorite)}>
-            <Icon n="star" s={15} /> {address.favorite ? "Favorit entfernen" : "Als Favorit markieren"}
-          </button>
-          {canSetDefaultSender(address) && !address.isDefaultSender && (
-            <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onSetDefaultSender)}>
-              <Icon n="shieldCheck" s={15} /> Als Standard-Absender setzen
-            </button>
-          )}
-          {canSetDefaultRecipient(address) && !address.isDefaultRecipient && (
-            <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onSetDefaultRecipient)}>
-              <Icon n="shieldCheck" s={15} /> Als Standard-Empfänger setzen
-            </button>
-          )}
-          <div className="abk-actions-divider" role="separator" />
-          <button type="button" role="menuitem" className="abk-actions-item" onClick={run(onNewShipment)}>
-            <Icon n="zap" s={15} /> Neue Sendung
-          </button>
-          <div className="abk-actions-divider" role="separator" />
-          <button type="button" role="menuitem" className="abk-actions-item abk-actions-item--danger" onClick={run(onDelete)}>
-            <Icon n="trash" s={15} /> Löschen
-          </button>
+          {items.map((item, i) => (
+            <React.Fragment key={item.key}>
+              {item.separatorBefore && <div className="abk-actions-divider" role="separator" />}
+              <button
+                ref={i === 0 ? firstItemRef : undefined}
+                type="button"
+                role="menuitem"
+                className={`abk-actions-item${item.danger ? " abk-actions-item--danger" : ""}`}
+                onClick={run(handlers[item.key])}
+              >
+                <Icon n={item.icon} s={15} /> {item.label}
+              </button>
+            </React.Fragment>
+          ))}
         </div>
       )}
     </div>

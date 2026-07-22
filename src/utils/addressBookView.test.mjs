@@ -8,6 +8,7 @@ import {
   appendPageResults, resolveEmptyStateKind, addressToFormValues, prepareDuplicateFormValues,
   validateAddressForm, normalizeAddressForm, mapAddressErrorToMessage, resolveNewShipmentRole,
   mapAddressToShipmentFormPatch, applyAddressMutation, roleParamForTab,
+  buildAddressMenuModel, CREATE_SHIPMENT_LABEL, CREATE_SHIPMENT_ICON,
 } from "./addressBookView.mjs";
 
 const addr = (over) => ({
@@ -275,4 +276,77 @@ test("validateAddressForm: fehlendes Land/Straße/Ort werden als Pflichtfeld-Feh
 test("validateAddressForm: ungültiger Ländercode (nicht ISO-2) wird abgewiesen", () => {
   const errors = validateAddressForm({ streetAndNumber: "S1", city: "C", country: "DEU", postalCode: "10115", role: ROLE_SENDER });
   assert.ok(errors.country);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// „Sendung erstellen" — sichtbare Zeilen-/Karten-Aktion + bereinigtes Zahnrad-Menü
+// (Aktion aus dem Menü entfernt, als direkt sichtbarer Button platziert).
+// ─────────────────────────────────────────────────────────────────────────────
+const MENU_HANDLER_KEYS = ["edit", "duplicate", "toggleFavorite", "setDefaultSender", "setDefaultRecipient", "delete"];
+const menuKeys = (a) => buildAddressMenuModel(a).map((it) => it.key);
+
+// 26. Button-Text ist exakt „Sendung erstellen" (Fachvorgabe) — keine Variante.
+test("26 — CREATE_SHIPMENT_LABEL ist exakt „Sendung erstellen“ (keine abweichende Variante)", () => {
+  assert.equal(CREATE_SHIPMENT_LABEL, "Sendung erstellen");
+  for (const forbidden of ["Neue Sendung", "Versand erstellen", "Sendung anlegen", "Jetzt versenden", "Buchen"]) {
+    assert.notEqual(CREATE_SHIPMENT_LABEL, forbidden);
+  }
+  assert.equal(CREATE_SHIPMENT_ICON, "package", "sichtbares Paket-Icon aus der bestehenden Icon-Komponente");
+});
+
+// 27. Zahnrad-Menü enthält KEINE „Neue Sendung"/„Sendung erstellen"-Aktion mehr.
+test("27 — buildAddressMenuModel enthält keine Sendungs-Aktion (aus dem Menü entfernt)", () => {
+  for (const role of [ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH]) {
+    const items = buildAddressMenuModel(addr({ role }));
+    assert.equal(items.some((it) => /sendung|shipment|versand|newShipment|createShipment/i.test(it.key)), false, "kein Sendungs-Key");
+    assert.equal(items.some((it) => /Sendung|Versand|versenden|Buchen/i.test(it.label)), false, "kein Sendungs-Label");
+  }
+});
+
+// 28. Verwaltungsaktionen bleiben erhalten und sind korrekt geordnet.
+test("28 — Menü behält Bearbeiten/Duplizieren/Favorit/Löschen in korrekter Reihenfolge", () => {
+  const keys = menuKeys(addr({ role: ROLE_SENDER, isDefaultSender: false }));
+  assert.equal(keys[0], "edit", "Bearbeiten zuerst (Fokusstart)");
+  assert.deepEqual(keys.slice(0, 3), ["edit", "duplicate", "toggleFavorite"]);
+  assert.equal(keys[keys.length - 1], "delete", "Löschen zuletzt");
+  // jeder Key ist einem echten Handler-Prop zuordenbar (kein toter Menüpunkt).
+  for (const k of keys) assert.ok(MENU_HANDLER_KEYS.includes(k), `unbekannter Menü-Key: ${k}`);
+});
+
+// 29. „Löschen" ist destruktiv abgesetzt: genau EIN Trenner, danger-Markierung.
+test("29 — genau ein Trenner vor „Löschen“, Löschen ist danger", () => {
+  const items = buildAddressMenuModel(addr({ role: ROLE_BOTH }));
+  const separators = items.filter((it) => it.separatorBefore);
+  assert.equal(separators.length, 1, "nur ein Trenner (vor Löschen) — keine verwaisten Trenner");
+  const del = items.find((it) => it.key === "delete");
+  assert.equal(del.separatorBefore, true);
+  assert.equal(del.danger, true);
+  // Kein anderer Eintrag als „Löschen“ trägt eine danger-Markierung.
+  assert.equal(items.filter((it) => it.danger).length, 1);
+});
+
+// 30. Favorit-Label spiegelt den aktuellen Favoritenstatus.
+test("30 — Favorit-Menüpunkt wechselt Label je nach favorite-Status", () => {
+  const on = buildAddressMenuModel(addr({ favorite: true })).find((it) => it.key === "toggleFavorite");
+  const off = buildAddressMenuModel(addr({ favorite: false })).find((it) => it.key === "toggleFavorite");
+  assert.equal(on.label, "Favorit entfernen");
+  assert.equal(off.label, "Als Favorit markieren");
+});
+
+// 31. Standard-Absender/-Empfänger folgen exakt der bestehenden Rollenregel.
+test("31 — Standard-Aktionen erscheinen rollen- und statusabhängig (unveränderte Regel)", () => {
+  // sender (noch nicht Standard) → nur Standard-Absender anbietbar
+  const s = menuKeys(addr({ role: ROLE_SENDER, isDefaultSender: false, isDefaultRecipient: false }));
+  assert.ok(s.includes("setDefaultSender"));
+  assert.ok(!s.includes("setDefaultRecipient"));
+  // recipient → nur Standard-Empfänger
+  const r = menuKeys(addr({ role: ROLE_RECIPIENT, isDefaultSender: false, isDefaultRecipient: false }));
+  assert.ok(r.includes("setDefaultRecipient"));
+  assert.ok(!r.includes("setDefaultSender"));
+  // both → beide anbietbar
+  const b = menuKeys(addr({ role: ROLE_BOTH, isDefaultSender: false, isDefaultRecipient: false }));
+  assert.ok(b.includes("setDefaultSender") && b.includes("setDefaultRecipient"));
+  // bereits Standard → Aktion verschwindet (kein redundanter Eintrag)
+  const already = menuKeys(addr({ role: ROLE_SENDER, isDefaultSender: true }));
+  assert.ok(!already.includes("setDefaultSender"));
 });

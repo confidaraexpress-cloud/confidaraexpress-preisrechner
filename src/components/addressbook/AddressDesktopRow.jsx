@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { countries } from "../../utils/countries";
 import { ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH } from "../../utils/addressBookView.mjs";
 import { AddressActionsMenu } from "./AddressActionsMenu";
+import { AddressCreateShipmentButton } from "./AddressCreateShipmentButton";
 
 const ROLE_LABEL = { [ROLE_SENDER]: "Absender", [ROLE_RECIPIENT]: "Empfänger", [ROLE_BOTH]: "Beides" };
 const countryName = (code) => countries.find((c) => c.code === code)?.name || code;
@@ -41,12 +42,16 @@ export function AddressDesktopRow({ address, busy, onEdit, onDuplicate, onToggle
         )}
       </div>
       <AddressBadges address={address} />
+      {/* Aktionen rechts: sichtbarer „Sendung erstellen"-Button VOR dem Zahnrad
+          (Reihenfolge Badges → Button → Zahnrad). Der Button startet den
+          bestehenden onNewShipment-Flow direkt, ohne das Menü zu öffnen. */}
       <div className="abk-row-actions">
+        <AddressCreateShipmentButton address={address} onNewShipment={onNewShipment} />
         <AddressActionsMenu
           address={address} busy={busy}
           onEdit={onEdit} onDuplicate={onDuplicate} onToggleFavorite={onToggleFavorite}
           onSetDefaultSender={onSetDefaultSender} onSetDefaultRecipient={onSetDefaultRecipient}
-          onNewShipment={onNewShipment} onDelete={onDelete}
+          onDelete={onDelete}
         />
       </div>
     </li>

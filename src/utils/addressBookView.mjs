@@ -307,6 +307,45 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
   };
 }
 
+// ── Sichtbare Zeilen-/Karten-Hauptaktion „Sendung erstellen" ────────────────
+// Exakter, verbindlicher Button-Text (Fachvorgabe — NICHT „Neue Sendung",
+// „Versand erstellen", „Sendung anlegen", „Jetzt versenden" oder „Buchen").
+// Die Aktion startet über den bestehenden onNewShipment-Flow (resolveNewShipment
+// Role + mapAddressToShipmentFormPatch) das vorausgefüllte Versandformular —
+// sie bucht nichts. Als Konstante hier gehalten, damit Desktop-Zeile und
+// Mobil-Karte denselben Text/dasselbe Icon verwenden (kein Drift) und der Text
+// isoliert testbar bleibt.
+export const CREATE_SHIPMENT_LABEL = "Sendung erstellen";
+export const CREATE_SHIPMENT_ICON = "package";
+
+// ── Verwaltungs-Aktionsmenü (Zahnrad) — reines, geordnetes Anzeigemodell ─────
+// Liefert die geordneten Menüeinträge des Kebab-/Zahnrad-Menüs. Enthält
+// AUSSCHLIESSLICH Verwaltungsaktionen; „Sendung erstellen"/„Neue Sendung" ist
+// bewusst KEIN Menüpunkt mehr (jetzt sichtbarer Zeilen-/Karten-Button). Die
+// Sichtbarkeit von „Standard-Absender/-Empfänger" folgt exakt der bestehenden
+// Rollenregel (canSetDefaultSender/-Recipient) und dem bereits gesetzten
+// Standard. Reihenfolge: Verwaltung (Bearbeiten → Duplizieren → Favorit →
+// ggf. Standard) — Trenner — Destruktiv (Löschen). Jeder Eintrag: { key, label,
+// icon, danger?, separatorBefore? }. `key` mappt der Aufrufer auf den jeweiligen
+// Handler-Prop (kein Handler in der reinen Logik).
+export function buildAddressMenuModel(address) {
+  const a = address || {};
+  const items = [
+    { key: "edit", label: "Bearbeiten", icon: "form" },
+    { key: "duplicate", label: "Duplizieren", icon: "copy" },
+    { key: "toggleFavorite", label: a.favorite ? "Favorit entfernen" : "Als Favorit markieren", icon: "star" },
+  ];
+  if (canSetDefaultSender(a) && !a.isDefaultSender) {
+    items.push({ key: "setDefaultSender", label: "Als Standard-Absender setzen", icon: "shieldCheck" });
+  }
+  if (canSetDefaultRecipient(a) && !a.isDefaultRecipient) {
+    items.push({ key: "setDefaultRecipient", label: "Als Standard-Empfänger setzen", icon: "shieldCheck" });
+  }
+  // Destruktive Aktion zuletzt, durch einen Trenner abgesetzt.
+  items.push({ key: "delete", label: "Löschen", icon: "trash", danger: true, separatorBefore: true });
+  return items;
+}
+
 // ── Listen-Mutationshelfer (sichere Mutation → Refresh-Ersatz ohne Reload) ──
 // Löschen entfernt die Adresse aus der aktuell sichtbaren Liste. Andere
 // Mutationen (Bearbeiten/Favorit/Standard) ersetzen den Eintrag 1:1 durch die

@@ -1,15 +1,17 @@
 import React from "react";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   VaporBackground — Hintergrund-Atmosphäre der „Vapor"-Übersicht (Handoff §5).
+   VaporBackground — ruhige Hintergrund-Atmosphäre der „Vapor"-Übersicht.
    Fixe Ebene HINTER dem Content (bleibt beim Scrollen stehen). Reihenfolge von
-   hinten nach vorn: weicher Verlaufshimmel → drei sehr weiche Aurora-Lichtwolken
-   → Soft-Bloom → breite, transluzente Flug-Routen → feines Rauschen (gegen
-   Banding) → dezente Vignette. Erzeugt Tiefe, nie Aufmerksamkeit.
+   hinten nach vorn: weicher, entsättigter Verlaufshimmel → zwei sehr weiche
+   Aurora-Flächen + eine faint Lavendel-Nuance → dezenter Soft-Bloom → wenige,
+   sehr feine, transluzente Netzwerklinien (fast Wasserzeichen; bewusst außerhalb
+   des zentralen Lesebereichs) → feines Rauschen (gegen Banding) → dezente
+   Vignette. Erzeugt Tiefe, nie Aufmerksamkeit.
 
    Rein präsentational: aria-hidden, pointer-events:none. Farben/Blur/Bewegung in
    src/styles/vapor.css (.vp-bg …); Bewegung steht unter prefers-reduced-motion
-   vollständig still.
+   vollständig still, mobil sind Linien/Bloom komplett ausgeblendet.
    ═══════════════════════════════════════════════════════════════════════════ */
 export function VaporBackground() {
   return (
@@ -19,11 +21,13 @@ export function VaporBackground() {
       <span className="vp-aur vp-aur-b" />
       <span className="vp-aur vp-aur-c" />
       <span className="vp-bloom" />
+      {/* Drei zurückhaltende Linien: oberer Streifen, obere rechte Ecke, unterer
+          Streifen — jeweils dünn und transluzent, ohne durch KPI-Karten oder
+          Texte im Zentrum zu verlaufen. */}
       <svg className="vp-routes" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none">
-        <path d="M-60 250 C 260 140, 520 360, 860 250 S 1360 150, 1520 300" />
-        <path d="M-40 560 C 300 470, 560 640, 900 540 S 1300 430, 1520 560" />
-        <path d="M140 -40 C 300 220, 220 470, 480 640 S 770 900, 900 1000" />
-        <path d="M1180 -40 C 1050 240, 1250 470, 1080 700 S 980 920, 1120 1020" />
+        <path d="M360 120 C 660 60, 980 190, 1520 96" />
+        <path d="M1120 -40 C 1280 200, 1180 420, 1540 560" />
+        <path d="M300 860 C 720 790, 1060 900, 1540 812" />
       </svg>
       <div className="vp-noise" />
       <div className="vp-vig" />

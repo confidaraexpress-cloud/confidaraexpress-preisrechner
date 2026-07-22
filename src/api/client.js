@@ -205,3 +205,45 @@ export function requestShipmentCancellation(shipmentId, reason) {
     body: JSON.stringify({ reason }),
   });
 }
+
+// ── Verifizierte Login-E-Mail-Änderung ───────────────────────────────────────
+// Backend bereits produktiv (siehe Aufgabenstellung). Der Aufrufer wertet
+// Status/JSON selbst aus (konsistent mit den übrigen Callern). Kein Logging von
+// E-Mail/Passwort/Token.
+
+// START: POST /kunde/email-change { newEmail, currentPassword }.
+// BEWUSST KEIN `auth: true`: ein 401 bedeutet hier i. d. R. „aktuelles Passwort
+// falsch" (fachlich) und darf NICHT automatisch ausloggen. Der Auth-Header wird
+// daher manuell über authH() gesetzt; nur eine echte abgelaufene Session (vom
+// Aufrufer am Body erkannt) löst über triggerAuthError() den globalen Logout aus
+// — exakt das Muster der bestehenden Passwortänderung.
+export function startEmailChange(newEmail, currentPassword) {
+  return apiFetch(`/kunde/email-change`, {
+    method: "POST",
+    headers: authH(),
+    body: JSON.stringify({ newEmail, currentPassword }),
+  });
+}
+
+// RESEND: POST /kunde/email-change/resend. Kein fachlicher 401 → `auth: true`
+// (ein 401 ist hier eine echte ungültige Sitzung und soll global ausloggen).
+export function resendEmailChange() {
+  return apiFetch(`/kunde/email-change/resend`, { method: "POST", auth: true });
+}
+
+// CANCEL: DELETE /kunde/email-change. Wie Resend `auth: true` (kein fachlicher 401).
+export function cancelEmailChange() {
+  return apiFetch(`/kunde/email-change`, { method: "DELETE", auth: true });
+}
+
+// CONFIRM: POST /auth/confirm-email-change { token }. Öffentlicher Endpunkt
+// (E-Mail-Token, KEIN Bearer) — daher ohne `auth: true` und ohne Authorization-
+// Header, nur JSON (wie /auth/reset-password). Löst niemals den globalen Logout
+// aus (kein auth-Request). Das Token wird nur weitergereicht, nie geloggt.
+export function confirmEmailChange(token) {
+  return apiFetch(`/auth/confirm-email-change`, {
+    method: "POST",
+    headers: jsonH,
+    body: JSON.stringify({ token }),
+  });
+}

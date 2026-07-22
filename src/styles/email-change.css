@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Verifizierte Login-E-Mail-Änderung — isoliert unter .email-change-* (reine
+   Zusatzklassen, keine Kollision, keine globalen .btn-/Form-Überschreibungen,
+   kein !important). Drei Kontexte:
+     1) In-Card-Bereich in „Mein Profil → Sicherheit" (dunkles Profil-Premium-
+        Theme → Overrides unter .dashboard-profile-premium).
+     2) Modal-Dialoge (heller Karten-Look, wie die bestehenden Bestätigungsdialoge).
+     3) Öffentliche Confirm-Seite (Auth-/Reset-Ästhetik, .auth-* wiederverwendet).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 1) Profil-Sicherheitsbereich ──────────────────────────────────────────── */
+.email-change-section { margin-top: 14px; }
+.email-change-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.email-change-trigger { gap: 7px; }
+
+.email-change-notice { margin-top: 12px; }
+
+/* Pending-Statusblock (helle Basis; dunkle Overrides weiter unten). */
+.email-change-pending {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 14px 16px;
+  background: var(--gray50);
+}
+.email-change-pending-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 700; color: var(--gray600);
+}
+.email-change-pending-head svg { flex-shrink: 0; color: var(--blue2); }
+.email-change-pending-email {
+  font-size: 15px; font-weight: 700; color: var(--navy);
+  margin: 7px 0 4px; word-break: break-word;
+}
+.email-change-pending-hint { font-size: 12.5px; color: var(--gray500); line-height: 1.5; margin: 0; }
+.email-change-pending-meta { font-size: 12px; color: var(--gray400); margin: 7px 0 0; }
+.email-change-pending-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+
+/* Dunkles Profil-Premium-Theme (die Sicherheitskarte ist dunkel). */
+.dashboard-profile-premium .email-change-trigger,
+.dashboard-profile-premium .email-change-pending-actions .btn-outline {
+  color: #d6e0f5; border-color: rgba(140, 170, 255, 0.30);
+}
+.dashboard-profile-premium .email-change-trigger:hover,
+.dashboard-profile-premium .email-change-pending-actions .btn-outline:hover {
+  background: rgba(120, 150, 230, 0.10); border-color: rgba(140, 170, 255, 0.48);
+}
+.dashboard-profile-premium .email-change-cancel-link { color: rgba(200, 210, 235, 0.72); }
+.dashboard-profile-premium .email-change-cancel-link:hover { color: #eef2ff; background: rgba(120, 150, 230, 0.10); }
+.dashboard-profile-premium .email-change-pending {
+  background: rgba(70, 104, 200, 0.10); border-color: rgba(120, 160, 255, 0.18);
+}
+.dashboard-profile-premium .email-change-pending-head { color: rgba(198, 210, 234, 0.82); }
+.dashboard-profile-premium .email-change-pending-head svg { color: #9dbcff; }
+.dashboard-profile-premium .email-change-pending-email { color: #eef2ff; }
+.dashboard-profile-premium .email-change-pending-hint { color: rgba(184, 197, 226, 0.62); }
+.dashboard-profile-premium .email-change-pending-meta { color: rgba(160, 176, 210, 0.58); }
+
+/* ─── 2) Modal-Dialoge (Start + Abbrechen) ──────────────────────────────────── */
+.email-change-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(11, 31, 77, 0.42);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.email-change-modal {
+  width: 100%; max-width: 460px;
+  background: #fff; border-radius: 18px; padding: 26px;
+  box-shadow: 0 24px 60px -12px rgba(14, 30, 80, 0.35);
+  max-height: calc(100dvh - 40px); overflow-y: auto;
+}
+.email-change-modal--sm { max-width: 420px; }
+.email-change-modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.email-change-modal-icon {
+  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--blue-light); color: var(--blue2);
+}
+.email-change-modal-icon--warn { background: var(--warn-bg); color: var(--warn); }
+.email-change-modal-title { font-size: 18px; font-weight: 800; color: var(--navy); letter-spacing: -0.01em; }
+.email-change-modal-desc { font-size: 13.5px; color: var(--gray600); line-height: 1.55; margin: 0 0 18px; }
+.email-change-modal-actions {
+  display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px;
+}
+/* Read-only aktuelle E-Mail: sichtbar als „nicht editierbar". */
+.email-change-readonly { background: var(--gray50); color: var(--gray500); cursor: default; }
+
+/* ─── 3) Öffentliche Confirm-Seite ──────────────────────────────────────────── */
+.email-change-confirm { width: 100%; max-width: 460px; }
+.email-change-confirm-icon { line-height: 1; }
+.email-change-confirm-spinner {
+  width: 34px; height: 34px; border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.22); border-top-color: #fff;
+}
+.email-change-confirm-actions { display: flex; flex-direction: column; gap: 12px; }
+.email-change-confirm-secondary {
+  background: transparent; border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--auth-ink-3); padding: 8px; border-radius: 10px;
+  transition: color 0.15s, background 0.15s;
+}
+.email-change-confirm-secondary:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.email-change-confirm-secondary:focus-visible { outline: 2px solid rgba(120, 160, 255, 0.6); outline-offset: 2px; }
+
+/* ─── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .email-change-modal { padding: 22px; }
+  .email-change-modal-actions { flex-direction: column-reverse; }
+  .email-change-modal-actions .btn { width: 100%; }
+  .email-change-pending-actions { flex-direction: column; align-items: stretch; }
+  .email-change-pending-actions .btn { width: 100%; }
+}

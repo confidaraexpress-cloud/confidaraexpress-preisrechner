@@ -22,3 +22,5 @@
 @import './drafts.css';
 /* Stornierungsanfrage (Kunde) — isoliert (stn- Prefix), reine Zusatzklassen. */
 @import './cancellation.css';
+/* Verifizierte Login-E-Mail-Änderung — isoliert (email-change- Prefix). */
+@import './email-change.css';

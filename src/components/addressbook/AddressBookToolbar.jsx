@@ -8,7 +8,6 @@ import { Icon } from "../ui/Icon";
 export function AddressBookToolbar({
   q, onQChange, searching,
   favoritesOnly, onToggleFavorites,
-  showArchived, onToggleArchived,
 }) {
   return (
     <div className="abk-toolbar">
@@ -36,14 +35,6 @@ export function AddressBookToolbar({
           aria-pressed={favoritesOnly}
         >
           <Icon n="star" s={14} c="currentColor" /> Favoriten
-        </button>
-        <button
-          type="button"
-          className={`abk-filter-pill${showArchived ? " abk-filter-pill--active" : ""}`}
-          onClick={() => onToggleArchived(!showArchived)}
-          aria-pressed={showArchived}
-        >
-          <Icon n="trash" s={14} c="currentColor" /> Archivierte anzeigen
         </button>
       </div>
     </div>

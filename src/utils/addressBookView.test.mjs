@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH, TAB_SENDER, TAB_RECIPIENT,
-  belongsToTab, isArchived, canUseForNewShipment, canSetDefaultSender, canSetDefaultRecipient,
+  belongsToTab, canSetDefaultSender, canSetDefaultRecipient,
   validateRoleDefaultConsistency, buildAddressListParams, toQueryString, addressListStateKey,
   appendPageResults, resolveEmptyStateKind, addressToFormValues, prepareDuplicateFormValues,
   validateAddressForm, normalizeAddressForm, mapAddressErrorToMessage, resolveNewShipmentRole,
@@ -21,17 +21,16 @@ const addr = (over) => ({
 
 // 1. API-Queryparameter werden korrekt aufgebaut.
 test("1 — Queryparameter: Tab + Suche + Favoriten korrekt aufgebaut", () => {
-  const params = buildAddressListParams({ tab: TAB_SENDER, q: "Berlin", favoritesOnly: true, includeArchived: false, cursor: null, limit: 20 });
+  const params = buildAddressListParams({ tab: TAB_SENDER, q: "Berlin", favoritesOnly: true, cursor: null, limit: 20 });
   assert.equal(params.role, "sender");
   assert.equal(params.q, "Berlin");
   assert.equal(params.favorite, "true");
-  assert.equal(params.includeArchived, undefined);
   assert.equal(params.limit, "20");
 });
 
 // 2. leere Queryparameter werden nicht gesendet.
 test("2 — leere/undefinierte Parameter werden nicht in den Query-String übernommen", () => {
-  const qs = toQueryString({ q: "  ", role: undefined, favorite: undefined, includeArchived: undefined, cursor: null, limit: undefined });
+  const qs = toQueryString({ q: "  ", role: undefined, favorite: undefined, cursor: null, limit: undefined });
   assert.equal(qs, "");
 });
 
@@ -45,10 +44,10 @@ test("3 — Cursor wird 1:1 aus nextCursor übernommen", () => {
 
 // 4. Cursor wird bei Such-/Filterwechsel zurückgesetzt (Cache-Key ändert sich).
 test("4 — addressListStateKey ändert sich bei Such-/Filterwechsel, bleibt sonst stabil", () => {
-  const k1 = addressListStateKey({ tab: TAB_SENDER, q: "berlin", favoritesOnly: false, includeArchived: false });
-  const k2 = addressListStateKey({ tab: TAB_SENDER, q: "berlin", favoritesOnly: false, includeArchived: false });
-  const k3 = addressListStateKey({ tab: TAB_SENDER, q: "münchen", favoritesOnly: false, includeArchived: false });
-  const k4 = addressListStateKey({ tab: TAB_RECIPIENT, q: "berlin", favoritesOnly: false, includeArchived: false });
+  const k1 = addressListStateKey({ tab: TAB_SENDER, q: "berlin", favoritesOnly: false });
+  const k2 = addressListStateKey({ tab: TAB_SENDER, q: "berlin", favoritesOnly: false });
+  const k3 = addressListStateKey({ tab: TAB_SENDER, q: "münchen", favoritesOnly: false });
+  const k4 = addressListStateKey({ tab: TAB_RECIPIENT, q: "berlin", favoritesOnly: false });
   assert.equal(k1, k2, "gleicher Zustand → gleicher Key");
   assert.notEqual(k1, k3, "Suchänderung → neuer Key");
   assert.notEqual(k1, k4, "Tab-Wechsel → neuer Key");
@@ -75,33 +74,24 @@ test("7 — role=both gehört zu BEIDEN Tabs", () => {
   assert.equal(belongsToTab(a, TAB_RECIPIENT), true);
 });
 
-// 8. archivierte Adressen werden korrekt markiert.
-test("8 — archivedAt gesetzt → isArchived true; null → false", () => {
-  assert.equal(isArchived(addr({ archivedAt: "2026-02-01T00:00:00Z" })), true);
-  assert.equal(isArchived(addr({ archivedAt: null })), false);
-});
-
-// 9. archivierte Adresse kann nicht für „Neue Sendung" verwendet werden.
-test("9 — archivierte Adresse: canUseForNewShipment=false, resolveNewShipmentRole=blocked", () => {
-  const a = addr({ role: ROLE_SENDER, archivedAt: "2026-02-01T00:00:00Z" });
-  assert.equal(canUseForNewShipment(a), false);
-  assert.deepEqual(resolveNewShipmentRole(a), { type: "blocked" });
+// 8./9. „Neue Sendung": unbekannte/fehlende Rolle wird blockiert (kein Archivkonzept mehr).
+test("8/9 — resolveNewShipmentRole blockiert bei unbekannter/fehlender Rolle", () => {
+  assert.deepEqual(resolveNewShipmentRole(addr({ role: "unknown" })), { type: "blocked" });
+  assert.deepEqual(resolveNewShipmentRole({}), { type: "blocked" });
 });
 
 // 10. Default-Absender nur bei sender/both.
-test("10 — canSetDefaultSender nur bei sender/both (nicht recipient, nicht archiviert)", () => {
+test("10 — canSetDefaultSender nur bei sender/both (nicht recipient)", () => {
   assert.equal(canSetDefaultSender(addr({ role: ROLE_SENDER })), true);
   assert.equal(canSetDefaultSender(addr({ role: ROLE_BOTH })), true);
   assert.equal(canSetDefaultSender(addr({ role: ROLE_RECIPIENT })), false);
-  assert.equal(canSetDefaultSender(addr({ role: ROLE_SENDER, archivedAt: "2026-01-01" })), false);
 });
 
 // 11. Default-Empfänger nur bei recipient/both.
-test("11 — canSetDefaultRecipient nur bei recipient/both (nicht sender, nicht archiviert)", () => {
+test("11 — canSetDefaultRecipient nur bei recipient/both (nicht sender)", () => {
   assert.equal(canSetDefaultRecipient(addr({ role: ROLE_RECIPIENT })), true);
   assert.equal(canSetDefaultRecipient(addr({ role: ROLE_BOTH })), true);
   assert.equal(canSetDefaultRecipient(addr({ role: ROLE_SENDER })), false);
-  assert.equal(canSetDefaultRecipient(addr({ role: ROLE_RECIPIENT, archivedAt: "2026-01-01" })), false);
 });
 
 // 12. Rollen-/Default-Konflikt wird clientseitig erkannt.
@@ -205,7 +195,7 @@ test("20 — resolveNewShipmentRole: both → choose; sender/recipient → direc
 test("21 — Fehlercodes werden auf verständliche, deutsche Meldungen gemappt (keine Backend-Rohtexte)", () => {
   assert.match(mapAddressErrorToMessage("ADDRESS_DEFAULT_ROLE_CONFLICT"), /nicht als Standard verwendet werden/);
   assert.match(mapAddressErrorToMessage("INVALID_POSTAL_CODE_FORMAT"), /Postleitzahl/);
-  assert.match(mapAddressErrorToMessage("ADDRESS_ARCHIVED"), /Archivierte Adressen/);
+  assert.match(mapAddressErrorToMessage("ADDRESS_DELETE_FAILED"), /gelöscht/);
   assert.match(mapAddressErrorToMessage("ADDRESS_NOT_FOUND"), /nicht gefunden/);
   assert.match(mapAddressErrorToMessage("POSTAL_CODE_REQUIRED"), /Postleitzahl erforderlich/);
   assert.match(mapAddressErrorToMessage("ADDRESS_ROLE_INVALID"), /Rolle/);
@@ -225,21 +215,18 @@ test("22 — appendPageResults dedupliziert nach id", () => {
 });
 
 // 23. „Keine Ergebnisse" wird von „noch keine Adressen" unterschieden.
-test("23 — resolveEmptyStateKind unterscheidet none/no-results/no-favorites/no-archived", () => {
-  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: false, favoritesOnly: false, showArchived: false }), "none");
-  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: true, favoritesOnly: false, showArchived: false }), "no-results");
-  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: false, favoritesOnly: true, showArchived: false }), "no-favorites");
-  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: false, favoritesOnly: false, showArchived: true }), "no-archived");
-  assert.equal(resolveEmptyStateKind({ resultCount: 3, hasQuery: false, favoritesOnly: false, showArchived: false }), null);
+test("23 — resolveEmptyStateKind unterscheidet none/no-results/no-favorites", () => {
+  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: false, favoritesOnly: false }), "none");
+  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: true, favoritesOnly: false }), "no-results");
+  assert.equal(resolveEmptyStateKind({ resultCount: 0, hasQuery: false, favoritesOnly: true }), "no-favorites");
+  assert.equal(resolveEmptyStateKind({ resultCount: 3, hasQuery: false, favoritesOnly: false }), null);
 });
 
-// 24. Restore-Mutation setzt UI-Zustand korrekt zurück.
-test("24 — applyAddressMutation entfernt archivierte/wiederhergestellte Adresse aus der aktuellen Liste", () => {
+// 24. Lösch-Mutation entfernt die Adresse aus der aktuellen Liste.
+test("24 — applyAddressMutation: delete entfernt die Zeile, andere Typen ersetzen sie", () => {
   const items = [addr({ id: 1 }), addr({ id: 2 }), addr({ id: 3 })];
-  const afterArchive = applyAddressMutation(items, addr({ id: 2, archivedAt: "2026-01-01" }), "archive");
-  assert.deepEqual(afterArchive.map(a => a.id), [1, 3]);
-  const afterRestore = applyAddressMutation(items, addr({ id: 2, archivedAt: null }), "restore");
-  assert.deepEqual(afterRestore.map(a => a.id), [1, 3]);
+  const afterDelete = applyAddressMutation(items, addr({ id: 2 }), "delete");
+  assert.deepEqual(afterDelete.map(a => a.id), [1, 3]);
   // andere Mutationstypen ersetzen den Eintrag statt ihn zu entfernen
   const updated = addr({ id: 2, favorite: false });
   const afterFavorite = applyAddressMutation(items, updated, "favorite");

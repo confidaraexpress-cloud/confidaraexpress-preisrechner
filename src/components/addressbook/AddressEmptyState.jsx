@@ -2,10 +2,9 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { TAB_SENDER } from "../../utils/addressBookView.mjs";
 
-// Unterscheidet vier Leerzustände (siehe resolveEmptyStateKind): „noch keine
+// Unterscheidet drei Leerzustände (siehe resolveEmptyStateKind): „noch keine
 // Adressen" (mit CTA, tab-abhängiger Text) vs. „keine Suchtreffer" / „keine
-// Favoriten" / „keine archivierten Adressen" (ohne CTA — das sind Filterzustände,
-// keine echte Leere).
+// Favoriten" (ohne CTA — das sind Filterzustände, keine echte Leere).
 const COPY = {
   none: {
     [TAB_SENDER]: { title: "Sie haben noch keine eigenen Absenderadressen gespeichert.", cta: "Eigene Adresse anlegen" },
@@ -13,7 +12,6 @@ const COPY = {
   },
   "no-results": { title: "Keine passenden Adressen gefunden." },
   "no-favorites": { title: "Keine Favoriten in diesem Bereich." },
-  "no-archived": { title: "Keine archivierten Adressen vorhanden." },
 };
 
 export function AddressEmptyState({ kind, tab, onCreate }) {

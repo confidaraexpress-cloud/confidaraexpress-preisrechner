@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthAurora } from "../components/auth/AuthAurora";
 import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../context/AuthContext";
 import { confirmEmailChange } from "../api/client";
 import { classifyEmailChangeConfirm, isRetryableConfirmState, hasUsableToken } from "../utils/emailChangeView.mjs";
 
 // Öffentliche Bestätigungsseite /confirm-email-change?token=… (ohne Login
-// erreichbar, NICHT im Dashboard eingebettet — eigene Auth-/Reset-Ästhetik).
+// erreichbar, NICHT im Dashboard eingebettet — eigenes helles Executive-Layout:
+// warmer Off-White-Grund, eine zentrale kompakte weiße Bestätigungskarte, keine
+// Sidebar, keine dunkle Vollfläche).
 //
 // Token-Sicherheit: Das Token wird EINMALIG beim Mount aus der URL gelesen, sofort
 // aus der sichtbaren URL entfernt (history.replaceState) und nur im Komponenten-
@@ -96,47 +97,40 @@ export default function EmailChangeConfirmPage() {
   const canRetry = isRetryableConfirmState(state);
 
   return (
-    <div className="auth-page">
-      <AuthAurora />
-      <div className="auth-shell">
-        <div className="auth-card email-change-confirm">
-          <div className="auth-card-top">
-            <div className="auth-card-icon email-change-confirm-icon" aria-hidden="true">
-              {state === "loading"
-                ? <span className="spinner email-change-confirm-spinner" />
-                : <span>{view.glyph}</span>}
-            </div>
-            <h1 className="auth-card-title">{view.title}</h1>
-            <p className="auth-card-desc" role={view.role}>{view.desc}</p>
-          </div>
-
-          {state !== "loading" && (
-            <div className="email-change-confirm-actions">
-              {canRetry && (
-                <button type="button" className="auth-cta" onClick={runConfirm} disabled={busy}>
-                  <span>{busy ? "Wird bestätigt…" : "Erneut versuchen"}</span>
-                  {!busy && <span className="auth-cta-arrow"><Icon n="refresh" s={18} /></span>}
-                </button>
-              )}
-              <button
-                type="button"
-                className={canRetry ? "email-change-confirm-secondary" : "auth-cta"}
-                onClick={goToLogin}
-              >
-                <span>Zur Anmeldung</span>
-                {!canRetry && <span className="auth-cta-arrow"><Icon n="arrowRight" s={18} /></span>}
-              </button>
-            </div>
-          )}
+    <div className="ec-confirm-page">
+      <div className="ec-confirm-card">
+        <div className="ec-confirm-icon" aria-hidden="true">
+          {state === "loading"
+            ? <span className="spinner spinner-dark ec-confirm-spinner" />
+            : <span>{view.glyph}</span>}
         </div>
+        <h1 className="ec-confirm-title">{view.title}</h1>
+        <p className="ec-confirm-desc" role={view.role}>{view.desc}</p>
 
-        <nav className="auth-legal" aria-label="Rechtliche Informationen">
-          <a href="/impressum" target="_blank" rel="noopener noreferrer">Impressum</a>
-          <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</a>
-          <a href="/agb" target="_blank" rel="noopener noreferrer">AGB</a>
-          <a href="/widerruf" target="_blank" rel="noopener noreferrer">Widerruf</a>
-        </nav>
+        {state !== "loading" && (
+          <div className="ec-confirm-actions">
+            {canRetry && (
+              <button type="button" className="btn btn-primary btn-full" onClick={runConfirm} disabled={busy}>
+                {busy ? <><span className="spinner" /> Wird bestätigt…</> : <><Icon n="refresh" s={16} /> Erneut versuchen</>}
+              </button>
+            )}
+            <button
+              type="button"
+              className={canRetry ? "ec-confirm-secondary" : "btn btn-primary btn-full"}
+              onClick={goToLogin}
+            >
+              {canRetry ? "Zur Anmeldung" : <><Icon n="arrowRight" s={16} /> Zur Anmeldung</>}
+            </button>
+          </div>
+        )}
       </div>
+
+      <nav className="ec-confirm-legal" aria-label="Rechtliche Informationen">
+        <a href="/impressum" target="_blank" rel="noopener noreferrer">Impressum</a>
+        <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutz</a>
+        <a href="/agb" target="_blank" rel="noopener noreferrer">AGB</a>
+        <a href="/widerruf" target="_blank" rel="noopener noreferrer">Widerruf</a>
+      </nav>
     </div>
   );
 }

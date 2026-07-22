@@ -391,7 +391,7 @@ export function Profile({ user }) {
 
   return (
     <>
-      <PremiumBackground variant="profile" />
+      <PremiumBackground variant="profileLight" />
       <div className="page-body">
         <div className="profile-page-head">
           <div className="profile-page-head-text">

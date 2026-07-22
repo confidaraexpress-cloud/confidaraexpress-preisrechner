@@ -147,7 +147,7 @@ export default function DashboardPage() {
   const registerLeaveGuard = useCallback((fn) => { leaveGuardRef.current = fn; }, []);
 
   return (
-    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook" || page === "drafts") ? " dashboard-neutral-premium" : ""}`}>
+    <div className={`app-shell${page === "overview" ? " ce-dark" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-executive" : ""}${(page === "new" || page === "addressbook" || page === "drafts") ? " dashboard-neutral-premium" : ""}`}>
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}

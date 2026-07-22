@@ -24,3 +24,7 @@
 @import './cancellation.css';
 /* Verifizierte Login-E-Mail-Änderung — isoliert (email-change- Prefix). */
 @import './email-change.css';
+/* „Mein Profil" — Executive Ivory (helles Premium-Design), isoliert unter
+   .dashboard-profile-executive. LETZTE Datei: wertet die hellen Basisregeln
+   gezielt auf. */
+@import './profile.css';

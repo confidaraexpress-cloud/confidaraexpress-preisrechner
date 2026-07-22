@@ -50,6 +50,11 @@ const PALETTES = {
   // „Champagner"-Licht) nur für den hellsten Node-Kern/-Innenstop, analog zu
   // „dark"s hellem Kern auf dunkler Navy-Basis.
   profile: { node: ["#e7e1fb", "#6f5fc9", "#473C8B"], line: ["#436EEE", "#7c93ff", "#436EEE"], lineMid: 0.7, core: "#f3eeff", ring: "#7c93ff", parcel: "#e7e1fb" },
+  // „profileLight": Executive-Ivory — sehr dezente Blaugrau-/Slate-Töne für die
+  // hellen Logistikmotive auf dem warmen Off-White von „Mein Profil". Bewusst
+  // gedämpft (geringe lineMid) und in CSS zusätzlich stark heruntergedeckt
+  // (.pbg-profileLight), damit die Motive ruhig und nicht dominant bleiben.
+  profileLight: { node: ["#cdd6e6", "#a6b3cc", "#8194b3"], line: ["#93a3c2", "#aebbd6", "#93a3c2"], lineMid: 0.42, core: "#8194b3", ring: "#aebbd6", parcel: "#cdd6e6" },
 };
 
 // Hintergrund-Glyphen (§19-B3) — Line-Icons in dünnem Duktus (stroke 1.1).

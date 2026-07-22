@@ -3,61 +3,41 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
-import { PremiumBackground } from "./PremiumBackground";
+import { VaporBackground } from "./VaporBackground";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
 import glsLogo        from "../../assets/carriers/gls.svg";
 import fedexLogo      from "../../assets/carriers/fedex.svg";
 import tntLogo        from "../../assets/carriers/tnt.svg";
+import emonsLogo      from "../../assets/carriers/emons.svg";
 import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT · Premium „Highend Blue" (Master-Handoff, 1:1)
-   Reiner View-Layer: Markup + CSS. Daten/Logik/Routing unverändert; KPI-Werte
-   kommen aus dem bestehenden Datenfluss (computeKpis). Klassen: pp- und pbg-.
+   ÜBERSICHT · „Vapor" (Creative-Direction-Handoff, 1:1)
+   Reiner View-Layer: Markup + CSS (src/styles/vapor.css, Scope .dashboard-vapor).
+   Daten/Logik/Routing unverändert; KPI-Werte kommen aus dem bestehenden
+   Datenfluss (computeKpis). Klassen: pp-* (bestehende Struktur) + vp-*.
+   Ausnahme (Nutzervorgabe): die Begrüßung .pp-h1 bleibt in Cormorant-Serif.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Company-Mark (User-Chip, §19-B1): Squircle-Gradient mit echter Konto-Initiale.
+// Company-Mark (User-Chip, §7.2): Squircle mit Vapor-Blauverlauf (--acc→--acc2)
+// und echter Konto-Initiale (Syne).
 function CompanyMark({ initial }) {
   return (
     <svg className="ce-comark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <defs>
         <linearGradient id="ppCoMark" x1="4" y1="3" x2="34" y2="37" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#4A86FF" /><stop offset="0.52" stopColor="#2A50D6" /><stop offset="1" stopColor="#182A8C" />
+          <stop offset="0" stopColor="#7aa0ff" /><stop offset="0.52" stopColor="#2f62f0" /><stop offset="1" stopColor="#1746b3" />
         </linearGradient>
         <linearGradient id="ppCoTop" x1="20" y1="2" x2="20" y2="21" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.34" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.40" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
       <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoMark)" />
       <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoTop)" />
-      <rect x="1.6" y="1.6" width="36.8" height="36.8" rx="10.9" fill="none" stroke="#ffffff" strokeOpacity="0.28" />
-      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Libre Franklin','DM Sans',sans-serif" fontWeight="700" fontSize="17" fill="#ffffff">{initial}</text>
-    </svg>
-  );
-}
-
-// „Der Kurier" Wortzeichen (Carrier-Chip, dunkle Schrift für helle Chips, §19-B2).
-// Bewusste Ausnahme von der ConfidaraExpress-Haustypografie: dies ist die
-// nachgebaute Wortmarke des externen Carriers „Der Kurier" (kein eigenes
-// Markenelement) — die Schrift bleibt an das reale Fremd-Logo gebunden und
-// wird daher nicht mit der übrigen Site-Typografie mitgeführt.
-function DerKurierLogo() {
-  return (
-    <svg className="car-logo" viewBox="0 0 106 32" width="101" height="30" fill="none" aria-label="Der Kurier">
-      <defs>
-        <linearGradient id="ppDk" x1="13" y1="3" x2="13" y2="29" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#F04A3C" /><stop offset="1" stopColor="#C71C1C" />
-        </linearGradient>
-      </defs>
-      <rect x="0.5" y="3" width="26" height="26" rx="7.5" fill="url(#ppDk)" />
-      <rect x="0.5" y="3" width="26" height="26" rx="7.5" fill="none" stroke="#ffffff" strokeOpacity="0.25" />
-      <g stroke="#ffffff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8.4 11.2 13 16l-4.6 4.8" /><path d="M14 11.2 18.6 16 14 20.8" opacity="0.6" />
-      </g>
-      <text x="34" y="14" fontFamily="'Syne',sans-serif" fontWeight="700" fontSize="10.5" letterSpacing="0.04em" fill="#6B7A93">Der</text>
-      <text x="34" y="27.6" fontFamily="'Syne',sans-serif" fontWeight="800" fontSize="15" letterSpacing="-0.01em" fill="#14243F">Kurier</text>
+      <rect x="1.6" y="1.6" width="36.8" height="36.8" rx="10.9" fill="none" stroke="#ffffff" strokeOpacity="0.32" />
+      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Syne','Libre Franklin',sans-serif" fontWeight="700" fontSize="16.5" fill="#ffffff">{initial}</text>
     </svg>
   );
 }
@@ -100,7 +80,7 @@ const CARRIERS = [
   { key: "gls",          logo: glsLogo,        alt: "GLS",          service: "Standard", time: "1–2 Tage" },
   { key: "fedex",        logo: fedexLogo,      alt: "FedEx",        service: "Express",  time: "1–2 Tage" },
   { key: "tnt",          logo: tntLogo,        alt: "TNT",          service: "Economy",  time: "2–3 Tage" },
-  { key: "der-kurier",   logo: null,           alt: "Der Kurier",   service: "Standard", time: "2–4 Tage" },
+  { key: "emons",        logo: emonsLogo,      alt: "Emons",        service: "Standard", time: "2–4 Tage" },
   { key: "trans-o-flex", logo: transOFlexLogo, alt: "trans-o-flex", service: "Express",  time: "1–2 Tage" },
 ];
 const TRUST = [
@@ -137,7 +117,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
 
   return (
     <>
-      <PremiumBackground variant="dark" />
+      <VaporBackground />
 
       <div className="pp-main">
         {/* ── Header ── */}
@@ -242,9 +222,7 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
             {CARRIERS.map((c) => (
               <div className="pp-car" key={c.key}>
                 <div className="pp-car-chip">
-                  {c.key === "der-kurier"
-                    ? <DerKurierLogo />
-                    : <img src={c.logo} alt={c.alt} className="car-logo" />}
+                  <img src={c.logo} alt={c.alt} className="car-logo" />
                 </div>
                 <div className="pp-car-svc">{c.service}</div>
                 <div className="pp-car-time">{c.time}</div>

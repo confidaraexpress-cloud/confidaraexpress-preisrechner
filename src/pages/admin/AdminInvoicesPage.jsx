@@ -8,6 +8,7 @@ import {
   isInvoiceOverdue,
   INVOICE_STATUS_FILTER_OPTIONS,
 } from "../../utils/adminInvoices";
+import { documentStatusMeta, isTestInvoiceDocument } from "../../utils/invoiceView.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -72,7 +73,24 @@ const createdOf = (r) => firstDefined(r.created_at, r.createdAt, r.created);
 const nameOf = (r) => firstDefined(r.name, r.customer_name, r.full_name, r.contact_name);
 const emailOf = (r) => firstDefined(r.email, r.e_mail);
 const companyOf = (r) => firstDefined(r.company_name, r.company, r.firma);
+const docStatusOf = (r) => firstDefined(r.document_status, r.documentStatus);
 const rowKeyOf = (r, i) => firstDefined(r.id, r.invoice_id, r.invoice_number, r.uuid) ?? `row-${i}`;
+
+// Dokumentstatus-Zelle: Status-Badge + dauerhafte Testdokument-Kennzeichnung
+// (persistiertes is_test_document; NULL bei fertigem Dokument gilt konservativ
+// als Test — identisch zur Server-Policy). Keine Hashes/Storage-Daten.
+function DocumentBadge({ row }) {
+  const status = docStatusOf(row);
+  if (!status) return <span className="adm-muted">—</span>;
+  const [cls, label] = documentStatusMeta(status);
+  const isTest = isTestInvoiceDocument({ document_status: status, is_test_document: row.is_test_document });
+  return (
+    <span className="adm-doc-badges">
+      <span className={`badge ${cls}`}>{label}</span>
+      {isTest && <span className="badge badge-yellow">Test</span>}
+    </span>
+  );
+}
 
 const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
@@ -222,6 +240,7 @@ export default function AdminInvoicesPage() {
                   <th>Betrag</th>
                   <th>MwSt Versand</th>
                   <th>Status</th>
+                  <th>Dokument</th>
                   <th>Fällig am</th>
                   <th>Bezahlt am</th>
                   <th>Shipment-ID</th>
@@ -250,6 +269,7 @@ export default function AdminInvoicesPage() {
                       <td className="adm-num">{moneyOrDash(amountOf(row))}</td>
                       <td className="adm-num">{vat != null && vat !== "" ? moneyOrDash(vat) : <span className="adm-muted">—</span>}</td>
                       <td><StatusBadge status={statusOf(row)} due={dueOf(row)} now={now} /></td>
+                      <td><DocumentBadge row={row} /></td>
                       <td className={`adm-nowrap${overdue ? " adm-overdue" : ""}`}>
                         {fmtDate(dueOf(row))}
                         {overdue ? <span className="adm-overdue-tag"> · überfällig</span> : null}

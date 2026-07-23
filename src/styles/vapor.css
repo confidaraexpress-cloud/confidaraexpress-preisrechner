@@ -5,8 +5,8 @@
    DashboardPage.jsx NUR für page === "overview"). Ersetzt den alten dunklen
    Übersicht-Scope .ce-dark 1:1: dieselbe Markup-Struktur (.pp-*), dieselben
    Layout-Maße (Grids, Abstände, Schriftgrößen) — nur die Optik wird hell
-   („coated" Weiß, Vapor-Blau als einzige Akzentfamilie, Lavendel/Rosé nur als
-   Atmosphäre). Reine Präsentation; Daten/Logik/Routing unverändert.
+   („coated" Weiß, Vapor-Blau als einzige Akzentfamilie, geschichtete Blautöne
+   (Ice/Sky/Cobalt) nur als Atmosphäre). Reine Präsentation; Daten/Logik/Routing unverändert.
 
    Isolation: Die Sidebar-Atome (.pp-side*, .nitem, .pp-scard …) und die
    geteilten Atome (.tile, .pp-medal, .m-*) sind global definiert (dunkles Navy
@@ -26,8 +26,8 @@
         Sidebar-Tokens (--ink…, --acc…) der dunklen Sidebar unverändert bleiben. ── */
   --vp-ink1:#1b2450; --vp-ink2:#404a76; --vp-ink3:#6f79a4; --vp-ink4:#a2abcc;
   --vp-acc:#2f62f0; --vp-acc2:#7aa0ff; --vp-acc-strong:#1746b3; --vp-acc-soft:rgba(47,98,240,.10);
-  --vp-page:linear-gradient(168deg,#EEF3FF 0%,#EDEBFF 44%,#F4F1FE 72%,#FBF9FE 100%);
-  --vp-page-solid:#EFF2FD;
+  --vp-page:linear-gradient(168deg,#EEF5FF 0%,#E3EDFF 44%,#EEF5FF 72%,#F7FAFF 100%);
+  --vp-page-solid:#EEF4FF;
   --vp-card:linear-gradient(165deg,rgba(255,255,255,.96),rgba(255,255,255,.82));
   --vp-card-border:rgba(120,140,220,.16);
   --vp-hair:rgba(120,140,220,.16);
@@ -71,11 +71,11 @@
 .dashboard-vapor .vp-bg-grad { position: absolute; inset: 0; background: var(--vp-page); }
 .dashboard-vapor .vp-aur { position: absolute; border-radius: 50%; }
 .dashboard-vapor .vp-aur-a { width: 1050px; height: 1050px; left: -260px; top: -360px; filter: blur(80px);
-  background: radial-gradient(closest-side, rgba(176,199,255,.85), transparent 70%); }
+  background: radial-gradient(closest-side, rgba(190,214,255,.85), transparent 70%); }
 .dashboard-vapor .vp-aur-b { width: 1000px; height: 1000px; right: -300px; top: -140px; filter: blur(80px);
-  background: radial-gradient(closest-side, rgba(214,199,255,.78), transparent 70%); }
+  background: radial-gradient(closest-side, rgba(168,201,255,.78), transparent 70%); }
 .dashboard-vapor .vp-aur-c { width: 1200px; height: 900px; left: 24%; bottom: -460px; filter: blur(84px);
-  background: radial-gradient(closest-side, rgba(255,224,245,.55), transparent 70%); }
+  background: radial-gradient(closest-side, rgba(150,184,247,.55), transparent 70%); }
 .dashboard-vapor .vp-bloom { position: absolute; width: 720px; height: 520px; left: 20%; top: -60px; opacity: .6;
   filter: blur(50px); background: radial-gradient(closest-side, rgba(255,255,255,.96), transparent 72%); }
 .dashboard-vapor .vp-routes { position: absolute; inset: 0; width: 100%; height: 100%; }

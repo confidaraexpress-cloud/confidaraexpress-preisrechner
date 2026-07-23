@@ -91,13 +91,18 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             </button>
           </div>
 
-          {/* Benutzerinformationen (bleiben auf allen Seiten sichtbar). */}
+          {/* Benutzerinformationen (bleiben auf allen Seiten sichtbar). Der
+              Chevron erscheint NUR auf der Übersicht (Porcelain-Zielbild) — auf
+              allen anderen Seiten bleibt das Markup unverändert. */}
           <div className="pp-identity">
             <div className="pp-identity-avatar">{initials}</div>
             <div className="pp-identity-text">
               <div className="pp-identity-name">{user?.company_name || user?.name}</div>
               <div className="pp-identity-email">{user?.email || "B2B Konto"}</div>
             </div>
+            {page === "overview" && (
+              <span className="pp-identity-chev" aria-hidden="true"><Icon n="chevron" s={15} /></span>
+            )}
           </div>
 
           <nav className="pp-nav">
@@ -128,10 +133,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <div className="scard-ic"><Icon n="headset" s={17} /></div>
               <div style={{ minWidth: 0 }}>
                 <div className="scard-k">Ihr persönlicher Kontakt</div>
-                <div className="scard-t"><span className="ce-live" />Live Support</div>
+                {/* Übersicht: verdichtete Copy laut Porcelain-Zielbild; alle
+                    anderen Seiten behalten die bestehende Formulierung. */}
+                <div className="scard-t"><span className="ce-live" />{page === "overview" ? "Support verfügbar" : "Live Support"}</div>
               </div>
             </div>
-            <div className="scard-s">Ihre Anfrage wird zeitnah beantwortet.</div>
+            <div className="scard-s">{page === "overview" ? "Antwort meist zeitnah" : "Ihre Anfrage wird zeitnah beantwortet."}</div>
           </a>
 
           <div className="pp-foot">

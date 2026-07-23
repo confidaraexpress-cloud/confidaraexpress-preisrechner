@@ -1,5 +1,9 @@
 @import './fonts.css';
 @import './variables.css';
+/* Konsolidierte Design-Foundation-Tokens (--ce-*). Additiv: nur neue Namen,
+   aliast bestehende Werte; verändert keine bestehende Seite. Nach variables.css
+   (nutzt dessen Tokens), vor den Komponenten-/Featurestyles. */
+@import './tokens.css';
 @import './globals.css';
 @import './animations.css';
 @import './layout.css';

@@ -31,3 +31,33 @@
 .btn-full { width: 100%; }
 .btn-grow { flex: 1; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* ─── Design Foundation (additiv) ──────────────────────────────────────────
+   Ergänzt das bestehende .btn-System, ohne bestehende Varianten/Höhen/Farben
+   zu verändern. Sichtbarer Effekt auf Bestandsseiten: NUR der Tastaturfokus
+   (:focus-visible) — bewusst als Accessibility-Verbesserung. Die neuen
+   Modifier (.btn-danger/.btn-icon/.btn-loading) sind bis zur Nutzung wirkungslos. */
+
+/* Sichtbarer Tastaturfokus (vorher fehlend). Outline (kein box-shadow) → kein
+   Konflikt mit den Layer-Schatten von .btn-primary; wirkt auf hell & dunkel
+   durch den 2px-Offset gegen die Umgebung. Kein Effekt bei reinem Mausklick. */
+.btn:focus-visible { outline: 2px solid var(--ce-focus, #2563eb); outline-offset: 2px; }
+
+/* Danger-Variante (zurückhaltendes Rot). */
+.btn-danger { background: var(--ce-danger, #dc2626); color: #fff; }
+.btn-danger:hover { transform: translateY(-1px); background: #b91c1c; }
+.btn-danger:active { transform: translateY(0); }
+.btn-danger:focus-visible { outline-color: var(--ce-danger, #dc2626); }
+
+/* Icon-Button: quadratische, definierte Touchfläche. Accessible Name muss vom
+   Aufrufer via aria-label kommen (Icon allein ist kein Name). */
+.btn-icon { padding: 0; width: 40px; height: 40px; }
+.btn-icon.btn-sm { width: 34px; height: 34px; }
+
+/* Busy/Loading: Breite bleibt stabil (Label bleibt im Fluss, nur transparent),
+   zentrierter Spinner (bestehendes .spinner-System). pointer-events aus →
+   Doppelklick-Schutz zusätzlich zu disabled im Wrapper. Kein !important nötig:
+   .btn-loading steht nach .btn-primary/.btn-outline in der Quelle. */
+.btn-loading { position: relative; color: transparent; pointer-events: none; }
+.btn-loading > .spinner,
+.btn-loading > .spinner-dark { position: absolute; top: 50%; left: 50%; margin: -9px 0 0 -9px; }

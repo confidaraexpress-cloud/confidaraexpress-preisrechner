@@ -1,0 +1,119 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ConfidaraExpress — Core Design Tokens (Design Foundation, PR 1)
+   ───────────────────────────────────────────────────────────────────────────
+   ADDITIV & rückwärtskompatibel. Diese Datei führt EIN konsolidiertes
+   --ce-*-Tokensystem ein, dessen Werte zunächst nur die BESTEHENDEN realen
+   Farben/Schatten/Radien aliasen (per var(--legacy) bzw. identischem Wert).
+   Nichts wird hier auf reale Seiten ausgerollt — es entsteht keine sichtbare
+   Änderung. Bestehende Tokenrampen (--navy/--gray*, --ce-*(premium), --vp-*,
+   --auth-*) bleiben unangetastet; sie sollen künftig schrittweise (Seite für
+   Seite) auf diese Basis abgebildet werden, nicht global blind überschrieben.
+
+   Importposition: nach fonts+variables, vor den Komponenten-/Featurestyles —
+   Feature-Sonderwerte können weiterhin gewinnen. Da hier ausschließlich neue
+   --ce-*-Namen deklariert werden (kein bestehender Selektor wird verändert),
+   ist die Cascade-Wirkung auf bestehende Seiten null.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Flächen / Hintergrund ── */
+  --ce-bg-page: #f0f4fa;              /* reale helle App-Shell-Fläche (dashboard.css .app-shell) */
+  --ce-bg-page-soft: #f7f9fc;
+
+  --ce-surface: var(--white);         /* weiße Karten */
+  --ce-surface-raised: var(--white);
+  --ce-surface-muted: var(--gray50);
+
+  /* ── Text ── */
+  --ce-text: var(--navy);             /* primärer Text/Überschrift #0B1F4D */
+  --ce-text-muted: var(--gray600);    /* #475569 */
+  --ce-text-subtle: var(--gray400);   /* #94a3b8 */
+  --ce-text-inverse: var(--white);
+
+  /* ── Rahmen ── */
+  --ce-border: var(--border);         /* #dde6f0 */
+  --ce-border-strong: var(--border2); /* #c8d5e8 */
+
+  /* ── Primär (kontrolliertes Royal Blue) ── */
+  --ce-primary: var(--blue2);         /* #2563eb */
+  --ce-primary-hover: var(--blue);    /* #1D4ED8 */
+  --ce-primary-soft: var(--blue-light); /* #dbeafe */
+
+  /* ── Semantik (Status/Aktionen) ── */
+  --ce-success: var(--success);       /* #10b981 */
+  --ce-success-soft: var(--success-bg); /* #ecfdf5 */
+  --ce-warning: var(--warn);          /* #f59e0b */
+  --ce-warning-soft: var(--warn-bg);  /* #fffbeb */
+  --ce-danger: #dc2626;               /* zurückhaltendes Rot für Aktionen (wie .alert-error-Text);
+                                         bewusst tiefer als das Badge-Text-Token --danger (#ef4444) */
+  --ce-danger-soft: var(--danger-bg); /* #fef2f2 */
+  --ce-info: var(--blue2);            /* #2563eb */
+  --ce-info-soft: var(--blue-light);  /* #dbeafe */
+
+  /* ── Fokus ── */
+  --ce-focus: var(--ce-primary);
+
+  /* ── Schatten ── */
+  --ce-shadow-sm: var(--shadow-sm);
+  --ce-shadow-md: var(--shadow);
+  --ce-shadow-lg: var(--shadow-lg);
+
+  /* ── Radien ── */
+  --ce-radius-sm: var(--radius-sm);   /* 6px */
+  --ce-radius-md: var(--radius);      /* 10px */
+  --ce-radius-lg: var(--radius-lg);   /* 16px */
+
+  /* ── Abstände (4px-Skala) ── */
+  --ce-space-1: 4px;
+  --ce-space-2: 8px;
+  --ce-space-3: 12px;
+  --ce-space-4: 16px;
+  --ce-space-5: 20px;
+  --ce-space-6: 24px;
+  --ce-space-7: 32px;
+  --ce-space-8: 40px;
+
+  /* ── Gemeinsame Oberflächen-Tokens (Karte / Panel) ── */
+  --ce-card-bg: var(--white);
+  --ce-card-border: var(--border);
+  --ce-card-shadow: 0 1px 4px rgba(14,30,80,0.05), 0 0 0 1px rgba(14,30,80,0.03);
+  --ce-card-radius: var(--radius-lg);
+
+  --ce-panel-bg: var(--white);
+  --ce-panel-border: var(--border);
+  --ce-panel-shadow: 0 2px 10px rgba(14,30,80,0.06);
+  --ce-panel-radius: var(--radius-lg);
+}
+
+/* ── Seitentyp-Varianten (Gerüst, in diesem PR NICHT auf Seiten ausgerollt) ──
+   Setzen ausschließlich die Variable --ce-page-background. Solange keine reale
+   Seite diese Klasse trägt UND etwas --ce-page-background liest, ist die Wirkung
+   null. Sie definieren die spätere abgestufte Hintergrundstrategie
+   (Übersicht atmosphärisch … Admin sachlich) an EINER Stelle. */
+.ce-theme-overview     { --ce-page-background: #EFF2FD; }   /* repräsentativ/atmosphärisch (Vapor-nah) */
+.ce-theme-data         { --ce-page-background: var(--ce-bg-page); }
+.ce-theme-form         { --ce-page-background: var(--ce-bg-page-soft); }
+.ce-theme-decision     { --ce-page-background: #f4f7fe; }
+.ce-theme-confirmation { --ce-page-background: var(--ce-bg-page); }
+.ce-theme-admin        { --ce-page-background: #f5f7fb; }   /* wie .adm-shell */
+
+/* ── Optionale additive Surface-Utilities ──────────────────────────────────
+   Rein additiv: greifen nur, wenn ein Element sie EXPLIZIT trägt. Sie
+   überschreiben KEINE bestehende Komponente und keine globale .card. */
+.ce-surface {
+  background: var(--ce-card-bg);
+  border: 1px solid var(--ce-card-border);
+  border-radius: var(--ce-card-radius);
+  box-shadow: var(--ce-card-shadow);
+}
+.ce-surface-raised {
+  background: var(--ce-surface-raised);
+  border: 1px solid var(--ce-card-border);
+  border-radius: var(--ce-card-radius);
+  box-shadow: var(--ce-shadow-md);
+}
+.ce-surface-muted {
+  background: var(--ce-surface-muted);
+  border: 1px solid var(--ce-border);
+  border-radius: var(--ce-radius-md);
+}

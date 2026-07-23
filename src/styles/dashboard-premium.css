@@ -1362,6 +1362,12 @@
 .pp-nav { flex:1; display:flex; flex-direction:column; gap:2px; overflow-y:auto; scrollbar-width:none; }
 .pp-nav::-webkit-scrollbar { display:none; }
 .nsec { font-family:var(--fs); font-size:9.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--ink4); padding:18px 12px 7px; }
+/* Aktive Gruppe: rein ergänzende, subtile Aufhellung (die aktive Seite bleibt
+   der primäre Zustand). Wert wird aus page abgeleitet (DashboardSidebar). */
+.nsec--active { color:var(--ink3); }
+/* Utility-Divider vor „Abmelden" (dekorativ). Sehr feine Linie, neutraler
+   Grundstil für die dunkle Sidebar; Porcelain-Override in vapor.css. */
+.pp-nav-utility-divider { height:1px; margin:10px 12px 4px; background:var(--line1); }
 .nitem {
   position:relative; display:flex; align-items:center; gap:12px; width:100%; text-align:left;
   padding:10px 13px; border-radius:13px; font-family:var(--fs); font-size:13.5px; font-weight:500;

@@ -125,8 +125,12 @@
 .dashboard-vapor .pp-identity-name { color: var(--porcelain-text); font-weight: 600; }
 .dashboard-vapor .pp-identity-email { color: var(--porcelain-muted); }
 .dashboard-vapor .pp-identity-chev { flex-shrink: 0; display: grid; place-items: center; color: var(--porcelain-section); }
-/* Navigation — verdichtet, klare Hierarchie. */
-.dashboard-vapor .nsec { color: var(--porcelain-section); letter-spacing: .11em; padding: 16px 10px 6px; }
+/* Navigation — verdichtet, klare Hierarchie. Vier Gruppen: etwas straffere
+   Section-Abstände für gleichmäßigen Rhythmus. */
+.dashboard-vapor .nsec { color: var(--porcelain-section); letter-spacing: .11em; padding: 14px 10px 6px; }
+.dashboard-vapor .nsec--active { color: var(--porcelain-muted); }
+/* Utility-Divider vor „Abmelden" — kühles, helles Blaugrau (nur Übersicht). */
+.dashboard-vapor .pp-nav-utility-divider { margin: 10px 10px 4px; background: var(--porcelain-border); }
 .dashboard-vapor .nitem {
   gap: 11px; padding: 11px 11px; border-radius: 10px; font-size: 13px; font-weight: 500;
   color: var(--porcelain-text); border: 1px solid transparent;

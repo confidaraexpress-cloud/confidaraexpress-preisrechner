@@ -28,27 +28,30 @@ function CubeMark() {
   );
 }
 
-// Navigation (Items/Routen unverändert — §21). Icons je Handoff §13/§349:
-// Übersicht=grid(dashboard) · Neue Sendung=plus · Entwürfe=form ·
-// Adressbuch=idcard · Sendungen=package · Sendungsverfolgung=pin(mapPin) ·
-// Rechnungen=invoice · Mein Profil=user · Preisrechner=zap · Abmelden=logout.
+// Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
+// die visuelle Variante bleibt routeabhängig). Page-Keys/Routen unverändert —
+// nur Reihenfolge, Gruppierung und sichtbare Labels. Icons ausschließlich aus
+// der bestehenden Icon-Komponente. Übersicht (hardcodiert davor) = dashboard ·
+// Neue Sendung=plus · Preisrechner=zap · Entwürfe=form · Sendungen=package ·
+// Sendungsverfolgung=mapPin · Adressbuch=idcard · Rechnungen=invoice ·
+// Unternehmen & Konto (=profile) = building · Abmelden (hardcodiert danach) = logout.
 const NAV_GROUPS = [
   {
     label: "Versand",
     items: [
       { id: "new",         label: "Neue Sendung",       icon: "plus"    },
+      { id: "calculator",  label: "Preisrechner",       icon: "zap"     },
       { id: "drafts",      label: "Entwürfe",           icon: "form"    },
-      { id: "addressbook", label: "Adressbuch",         icon: "idcard"  },
       { id: "shipments",   label: "Sendungen",          icon: "package" },
       { id: "tracking",    label: "Sendungsverfolgung", icon: "mapPin"  },
     ],
   },
+  { label: "Verwaltung", items: [{ id: "addressbook", label: "Adressbuch", icon: "idcard" }] },
   { label: "Abrechnung", items: [{ id: "invoices", label: "Rechnungen", icon: "invoice" }] },
   {
     label: "Konto",
     items: [
-      { id: "profile",    label: "Mein Profil",  icon: "user" },
-      { id: "calculator", label: "Preisrechner", icon: "zap"  },
+      { id: "profile", label: "Unternehmen & Konto", icon: "building" },
     ],
   },
 ];
@@ -109,20 +112,29 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             <button className={`nitem ${page === "overview" ? "on" : ""}`} onClick={() => navigateTo("overview")}>
               <Icon n="dashboard" s={18} /><span>Übersicht</span>
             </button>
-            {NAV_GROUPS.map((group) => (
-              <React.Fragment key={group.label}>
-                <div className="nsec">{group.label}</div>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`nitem ${page === item.id ? "on" : ""}`}
-                    onClick={() => handleNav(item)}
-                  >
-                    <Icon n={item.icon} s={18} /><span>{item.label}</span>
-                  </button>
-                ))}
-              </React.Fragment>
-            ))}
+            {NAV_GROUPS.map((group) => {
+              // Aktive Gruppe rein aus dem bestehenden page-Wert abgeleitet
+              // (kein neuer State). Bei „overview" ist keine Gruppe aktiv; auf
+              // der /calculator-Route (page === "calculator") ist „Versand" aktiv.
+              const isActiveGroup = group.items.some((item) => item.id === page);
+              return (
+                <React.Fragment key={group.label}>
+                  <div className={`nsec${isActiveGroup ? " nsec--active" : ""}`}>{group.label}</div>
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id}
+                      className={`nitem ${page === item.id ? "on" : ""}`}
+                      onClick={() => handleNav(item)}
+                    >
+                      <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                    </button>
+                  ))}
+                </React.Fragment>
+              );
+            })}
+            {/* Sitzungsaktion optisch von der Inhaltsnavigation trennen (rein
+                dekorativ). Abmelden bleibt funktional unverändert. */}
+            <div className="pp-nav-utility-divider" aria-hidden="true" />
             <button className="nitem" onClick={handleLogout}>
               <Icon n="logout" s={18} /><span>Abmelden</span>
             </button>

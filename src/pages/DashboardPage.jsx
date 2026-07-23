@@ -81,6 +81,20 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Gezielter Rechnungs-Refetch (nur /kunde/invoices) für die Dokumentstatus-
+  // Aktualisierung der Rechnungsliste (manueller Button + zurückhaltendes
+  // Auto-Refresh in InvoicesList) — lädt bewusst NICHT die Sendungen mit.
+  // Still bei Fehlern (bestehende Daten bleiben stehen); echte Session-Fehler
+  // behandelt apiFetch zentral.
+  const reloadInvoices = useCallback(async () => {
+    try {
+      const r = await apiFetch(`/kunde/invoices`, { auth: true });
+      if (!r.ok) return;
+      const d = await r.json();
+      setInvoices(d.invoices || []);
+    } catch { /* Netzwerkfehler: Anzeige unverändert lassen */ }
+  }, []);
+
   // Nach einer Stornierungsanfrage: betroffene Zeile optimistisch auf den
   // gemeldeten Cancellation-Status setzen (Button verschwindet sofort) und
   // anschließend die Liste mit dem Backend abgleichen (Serverwahrheit über
@@ -253,7 +267,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} />}
+        {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} onReload={reloadInvoices} />}
         {page === "profile"   && <Profile user={user} />}
 
         {page !== "overview" && <LegalLinks />}

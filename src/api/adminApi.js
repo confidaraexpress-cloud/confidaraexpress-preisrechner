@@ -309,3 +309,23 @@ export function markAdminInvoicePaid(id) {
     auth: true,
   });
 }
+
+// GET /admin/invoices/:id/pdf — auditierter Admin-Download der Rechnungs-PDF
+// (Phase 3). Binärantwort (application/pdf) — der Aufrufer verarbeitet sie als
+// Blob (utils/downloadInvoicePdf.js), niemals als öffentliche URL. Testdokumente
+// sind für Admins erlaubt und serverseitig im Dateinamen gekennzeichnet.
+export function getAdminInvoicePdf(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/pdf`, { auth: true });
+}
+
+// POST /admin/invoices/:id/generate-document — stößt die serverseitige
+// PDF-Erzeugung an (bei pending_document) bzw. wiederholt sie (bei
+// document_failed). Idempotent: erzeugt keine neue Rechnung/Nummer und
+// überschreibt kein fertiges Dokument (already_ready/in_progress als no_op).
+// KEIN Body; Antwort enthält nur Status + sichere Metadaten, nie PDF-Bytes.
+export function generateAdminInvoiceDocument(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/generate-document`, {
+    method: "POST",
+    auth: true,
+  });
+}

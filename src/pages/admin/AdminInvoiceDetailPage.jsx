@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminInvoice, markAdminInvoicePaid } from "../../api/adminApi";
+import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { invoiceDisplayMeta, isInvoiceOverdue } from "../../utils/adminInvoices";
+import { documentStatusMeta, isTestInvoiceDocument, formatBytes } from "../../utils/invoiceView.mjs";
+import { downloadAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -48,6 +50,10 @@ const createdOf = (r) => firstDefined(r.created_at, r.createdAt, r.created);
 const nameOf = (r) => firstDefined(r.name, r.customer_name, r.full_name, r.contact_name);
 const emailOf = (r) => firstDefined(r.email, r.e_mail);
 const companyOf = (r) => firstDefined(r.company_name, r.company, r.firma);
+const docStatusOf = (r) => firstDefined(r.document_status, r.documentStatus);
+const pdfGeneratedAtOf = (r) => firstDefined(r.pdf_generated_at, r.pdfGeneratedAt);
+const pdfSizeOf = (r) => firstDefined(r.pdf_size_bytes, r.pdfSizeBytes);
+const docAttemptsOf = (r) => firstDefined(r.document_attempts, r.documentAttempts);
 
 const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
@@ -81,6 +87,12 @@ export default function AdminInvoiceDetailPage() {
   const [payBusy, setPayBusy] = useState(false); // PATCH läuft
   const [payMsg, setPayMsg] = useState(null);    // { type, text }
 
+  // Rechnungsdokument (Phase 3): Erzeugen/Retry (Bestätigungsmodal) + Download.
+  const [genOpen, setGenOpen] = useState(false);         // Bestätigungsmodal Erzeugen/Retry
+  const [docBusy, setDocBusy] = useState(false);         // Generate-/Retry-POST läuft
+  const [docDownloading, setDocDownloading] = useState(false);
+  const [docMsg, setDocMsg] = useState(null);            // { type, text }
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -109,7 +121,7 @@ export default function AdminInvoiceDetailPage() {
 
   // Beim Wechsel auf eine andere Rechnung Modal/Meldung zurücksetzen (nicht bei
   // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
-  useEffect(() => { setPayOpen(false); setPayMsg(null); }, [id]);
+  useEffect(() => { setPayOpen(false); setPayMsg(null); setGenOpen(false); setDocMsg(null); }, [id]);
 
   const back = (
     <Link to="/admin/invoices" className="adm-back">
@@ -174,6 +186,53 @@ export default function AdminInvoiceDetailPage() {
     } finally {
       setPayBusy(false);
       setPayOpen(false);
+    }
+  };
+
+  // ── Rechnungsdokument: Erzeugen/Retry (idempotenter Backend-Endpunkt) ──
+  const docStatus = docStatusOf(inv || {});
+  const openGen = () => { setDocMsg(null); setGenOpen(true); };
+  const closeGen = () => { if (!docBusy) setGenOpen(false); };
+  const confirmGenerate = async () => {
+    setDocBusy(true);
+    setDocMsg(null);
+    try {
+      const r = await generateAdminInvoiceDocument(id);
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect via apiFetch
+        setDocMsg({ type: "error", text: r.status === 404
+          ? "Rechnung wurde nicht gefunden oder existiert nicht mehr."
+          : r.status === 429 ? "Zu viele Admin-Aktionen. Bitte kurz warten."
+          : "Das Rechnungsdokument konnte nicht erzeugt werden." });
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const outcome = d.outcome;
+      setDocMsg(outcome === "generated" ? { type: "success", text: "Das Rechnungsdokument wurde erzeugt." }
+        : outcome === "already_ready" ? { type: "info", text: "Das Rechnungsdokument ist bereits fertig." }
+        : outcome === "in_progress" ? { type: "info", text: "Die Dokumenterzeugung läuft bereits." }
+        : { type: "error", text: "Die Dokumenterzeugung ist fehlgeschlagen. Details im Dokumentstatus." });
+      load(); // Serverwahrheit neu laden — kein optimistisches UI
+    } catch {
+      setDocMsg({ type: "error", text: "Das Rechnungsdokument konnte nicht erzeugt werden." });
+    } finally {
+      setDocBusy(false);
+      setGenOpen(false);
+    }
+  };
+
+  // ── Rechnungsdokument: auditierter Admin-Download (Testdokumente erlaubt) ──
+  const handleDocDownload = async () => {
+    if (docDownloading) return;
+    setDocMsg(null);
+    setDocDownloading(true);
+    try {
+      await downloadAdminInvoicePdf(id, invoiceNoOf(inv));
+    } catch (e) {
+      setDocMsg({ type: "error", text: e?.message || "Die Rechnung konnte nicht heruntergeladen werden." });
+    } finally {
+      setDocDownloading(false);
     }
   };
 
@@ -243,6 +302,72 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </div>
 
+        {/* 4b) Rechnungsdokument (Phase 3) — Status, Metadaten, Erzeugen/Retry/Download */}
+        <div className="adm-card">
+          <div className="adm-card-head"><Icon n="form" s={17} /> Rechnungsdokument</div>
+          <div className="adm-card-body">
+            {docMsg && (
+              <div
+                className={`alert ${docMsg.type === "success" ? "alert-success" : docMsg.type === "info" ? "alert-info" : "alert-error"}`}
+                role={docMsg.type === "error" ? "alert" : "status"}
+                style={{ marginBottom: 14 }}
+              >
+                <Icon n={docMsg.type === "success" ? "check" : docMsg.type === "info" ? "info" : "x"} s={16} />{docMsg.text}
+              </div>
+            )}
+            <KV items={[
+              ["Dokumentstatus", (() => {
+                const [cls, label] = documentStatusMeta(docStatus);
+                const isTest = isTestInvoiceDocument({ document_status: docStatus, is_test_document: inv.is_test_document });
+                return (
+                  <span className="adm-doc-badges">
+                    <span className={`badge ${cls}`}>{docStatus ? label : "—"}</span>
+                    {isTest && <span className="badge badge-yellow">Testdokument</span>}
+                  </span>
+                );
+              })()],
+              ["PDF erstellt am", fmtDate(pdfGeneratedAtOf(inv))],
+              ["Dateigröße", formatBytes(pdfSizeOf(inv))],
+              ["Erstellungsversuche", docAttemptsOf(inv) != null ? String(docAttemptsOf(inv)) : "—"],
+            ]} />
+
+            {isTestInvoiceDocument({ document_status: docStatus, is_test_document: inv.is_test_document }) && (
+              <p className="adm-support-hint">
+                Testdokument – nicht für den Zahlungsverkehr freigegeben. Für Kunden bleibt der Download gesperrt;
+                der Admin-Download dient ausschließlich der technischen Prüfung.
+              </p>
+            )}
+
+            <div className="adm-support">
+              {docStatus === "ready" && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleDocDownload} disabled={docDownloading}>
+                  {docDownloading
+                    ? <><span className="spinner spinner-dark" /> Wird geladen…</>
+                    : <><Icon n="download" s={14} /> PDF herunterladen</>}
+                </button>
+              )}
+              {docStatus === "pending_document" && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={openGen} disabled={docBusy}>
+                  <Icon n="form" s={14} /> PDF erzeugen
+                </button>
+              )}
+              {docStatus === "document_failed" && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={openGen} disabled={docBusy}>
+                  <Icon n="refresh" s={14} /> PDF erneut erzeugen
+                </button>
+              )}
+              {docStatus === "generating" && (
+                <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+                  <Icon n="refresh" s={14} /> Status aktualisieren
+                </button>
+              )}
+            </div>
+            {docStatus === "generating" && (
+              <p className="adm-support-hint">Die Dokumenterzeugung läuft. Kein erneutes Anstoßen nötig.</p>
+            )}
+          </div>
+        </div>
+
         {/* 5) Admin-Aktion — Rechnung als bezahlt markieren (mutierend, auditiert) */}
         <div className="adm-card">
           <div className="adm-card-head"><Icon n="euro" s={17} /> Admin-Aktion</div>
@@ -267,6 +392,39 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Bestätigungsmodal Dokumenterzeugung/-wiederholung — mutierend; erst nach Bestätigung. */}
+      {genOpen && (
+        <div className="adm-modal-overlay" role="presentation" onClick={closeGen}>
+          <div
+            className="adm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-gen-title"
+            aria-describedby="adm-gen-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="form" s={22} /></div>
+            <h2 id="adm-gen-title" className="adm-modal-title">
+              {docStatus === "document_failed" ? "Rechnungsdokument erneut erzeugen?" : "Rechnungsdokument erzeugen?"}
+            </h2>
+            <p id="adm-gen-desc" className="adm-modal-text">
+              Erzeugt das unveränderliche Rechnungs-PDF serverseitig neu{docStatus === "document_failed" ? " (Wiederholung nach Fehlschlag)" : ""}.
+              Es entsteht keine neue Rechnung und keine neue Rechnungsnummer; ein bereits fertiges Dokument wird nicht überschrieben.
+            </p>
+            <p className="adm-modal-sub">Rechnung {dash(invoiceNoOf(inv))} · #{dash(idOf(inv))}</p>
+            <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert. Es wird keine E-Mail versendet.</p>
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={closeGen} disabled={docBusy}>Abbrechen</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={confirmGenerate} disabled={docBusy}>
+                {docBusy
+                  ? <><span className="spinner spinner-dark" /> Wird erzeugt…</>
+                  : <><Icon n="check" s={14} /> {docStatus === "document_failed" ? "Erneut erzeugen" : "Erzeugen"}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bestätigungsmodal — mutierend; erst nach bewusster Bestätigung. */}
       {payOpen && (

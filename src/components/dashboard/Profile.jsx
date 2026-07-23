@@ -395,7 +395,7 @@ export function Profile({ user }) {
       <div className="page-body">
         <div className="profile-page-head">
           <div className="profile-page-head-text">
-            <h1 className="dash-section-title">Mein Profil</h1>
+            <h1 className="dash-section-title">Unternehmen &amp; Konto</h1>
             <p className="dash-section-sub">Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort.</p>
           </div>
         </div>

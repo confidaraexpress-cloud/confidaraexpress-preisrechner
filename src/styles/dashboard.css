@@ -210,6 +210,34 @@ tr:hover td { background: var(--gray50); }
 .invoice-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .invoice-doc-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .invoice-doc-note { font-size: 11.5px; line-height: 1.4; display: inline-block; max-width: 190px; }
+.invoice-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ─── Rechnungs-PDF-Vorschau (Phase 4) — Modal mit eingebettetem Blob-iframe ── */
+.pdfview-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10, 16, 40, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.pdfview-modal {
+  background: #fff; border-radius: 14px; overflow: hidden;
+  width: min(920px, 100%); height: min(86vh, 1100px);
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 60px rgba(4, 8, 26, 0.35);
+}
+.pdfview-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.pdfview-title { font-size: 14px; font-weight: 700; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdfview-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pdfview-body { flex: 1; min-height: 0; background: var(--gray100); display: flex; flex-direction: column; }
+.pdfview-frame { border: 0; width: 100%; height: 100%; flex: 1; }
+/* Mobil: Vollbilddarstellung (dynamische Viewport-Höhe wie Auth/Overview). */
+@media (max-width: 600px) {
+  .pdfview-overlay { padding: 0; }
+  .pdfview-modal { width: 100%; height: 100dvh; border-radius: 0; }
+}
 
 /* ─── Profile ─────────────────────────────────────────────────────────────── */
 .profile-grid { display: flex; gap: 20px; align-items: flex-start; max-width: 600px; }

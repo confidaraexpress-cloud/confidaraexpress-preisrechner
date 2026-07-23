@@ -7,11 +7,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice,
+  documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice, canPreviewInvoice,
   formatInvoiceAmount, formatBytes,
   filenameFromContentDisposition,
   downloadErrorMessage, DOWNLOAD_ERROR_GENERIC, TEST_DOCUMENT_HINT,
   hasPendingInvoiceDocuments, nextRefreshDelay, INVOICE_REFRESH_DELAYS_MS,
+  emailStatusMeta, emailDisplayMeta, formatEmailSentAt,
 } from "./invoiceView.mjs";
 
 // ── Dokumentstatus-Badges ────────────────────────────────────────────────────
@@ -135,4 +136,79 @@ test("15 — downloadInvoicePdf: apiFetch(auth) + Blob + createObjectURL + revok
   assert.ok(dlSrc.includes("URL.createObjectURL"), "temporäre Object-URL");
   assert.match(dlSrc, /finally\s*\{\s*URL\.revokeObjectURL\(url\);?\s*\}/, "Object-URL wird im finally freigegeben");
   assert.ok(dlSrc.includes("filenameFromContentDisposition"), "serverseitiger Dateiname wird sicher übernommen");
+});
+
+// ── Phase 4: E-Mail-Status-Logik ─────────────────────────────────────────────
+test("16 — emailStatusMeta: alle vier Status verständlich; unbekannt → grau", () => {
+  assert.deepEqual(emailStatusMeta("pending"), ["badge-gray", "Versand ausstehend"]);
+  assert.deepEqual(emailStatusMeta("sending"), ["badge-blue", "Wird versendet"]);
+  assert.deepEqual(emailStatusMeta("sent"), ["badge-green", "Versendet"]);
+  assert.deepEqual(emailStatusMeta("failed"), ["badge-red", "Versand fehlgeschlagen"]);
+  assert.deepEqual(emailStatusMeta(null), ["badge-gray", "—"]);
+});
+
+test("17 — emailDisplayMeta: Testdokument überschreibt jeden Status mit 'kein Versand'", () => {
+  assert.deepEqual(
+    emailDisplayMeta({ document_status: "ready", is_test_document: true, email_status: "pending" }),
+    ["badge-yellow", "Testdokument – kein Versand"]
+  );
+  assert.deepEqual(
+    emailDisplayMeta({ document_status: "ready", is_test_document: null, email_status: "sent" }),
+    ["badge-yellow", "Testdokument – kein Versand"]
+  );
+  assert.deepEqual(
+    emailDisplayMeta({ document_status: "ready", is_test_document: false, email_status: "sent" }),
+    ["badge-green", "Versendet"]
+  );
+});
+
+test("18 — formatEmailSentAt: 'Versendet am …' nur bei gültigem Datum", () => {
+  assert.match(formatEmailSentAt("2026-07-23T10:00:00Z"), /^Versendet am \d{1,2}\.\d{1,2}\.\d{4}$/);
+  assert.equal(formatEmailSentAt(null), "");
+  assert.equal(formatEmailSentAt("kein-datum"), "");
+});
+
+test("19 — canPreviewInvoice folgt exakt der Download-Freigabe (Server-Wahrheit)", () => {
+  assert.equal(canPreviewInvoice({ download_available: true }), true);
+  assert.equal(canPreviewInvoice({ download_available: false }), false);
+  assert.equal(canPreviewInvoice({ document_status: "ready" }), false);
+});
+
+// ── Phase 4: Quelltext-Verträge (Vorschau, Fetcher, Kunden-/Admin-Aktionen) ──
+const modalSrc = readFileSync(join(HERE, "../components/dashboard/InvoicePdfPreviewModal.jsx"), "utf8");
+const adminDetailSrc = readFileSync(join(HERE, "../pages/admin/AdminInvoiceDetailPage.jsx"), "utf8");
+
+test("20 — Vorschau-Modal: Blob-Fetcher, iframe NUR mit lokaler Object-URL, Revoke bei Close/Unmount", () => {
+  assert.ok(modalSrc.includes("URL.createObjectURL"), "Object-URL für die Vorschau");
+  assert.ok(modalSrc.includes("URL.revokeObjectURL(urlRef.current)"), "Revoke im Cleanup (Unmount/Close)");
+  assert.match(modalSrc, /<iframe[^>]*src=\{pdfUrl\}/, "iframe src ist ausschließlich die lokale Blob-URL");
+  assert.ok(!/src=\{`|src="http|src=\{API/.test(modalSrc), "keine Server-/Fremd-URL im iframe");
+  assert.match(modalSrc, /<iframe[^>]*title=\{/, "iframe hat einen title (A11y)");
+  assert.ok(modalSrc.includes("loading") && modalSrc.includes("error"), "Lade- und Fehlerzustand vorhanden");
+});
+
+test("21 — Fetcher akzeptiert NUR application/pdf; Fehlerantworten werden nie als PDF dargestellt", () => {
+  assert.ok(dlSrc.includes('startsWith("application/pdf")'), "Content-Type-Pflichtprüfung");
+  assert.ok(dlSrc.includes("r.json()"), "Fehlerantworten werden als JSON gelesen, nicht eingebettet");
+});
+
+test("22 — Kundenliste: E-Mail-Status sichtbar, KEINE Versandaktion beim Kunden", () => {
+  assert.ok(listSrc.includes("emailDisplayMeta"), "E-Mail-Status-Badge in der Kundenliste");
+  assert.ok(listSrc.includes("formatEmailSentAt"), "'Versendet am' bei sent");
+  for (const forbidden of ["sendAdminInvoiceEmail", "resendAdminInvoiceEmail", "send-email", "resend-email"]) {
+    assert.ok(!listSrc.includes(forbidden), `Kundenkomponente darf keine Versandaktion enthalten (${forbidden})`);
+  }
+  assert.ok(!listSrc.includes("email_last_error") && !listSrc.includes("email_message_id"), "keine Providerdetails im Kundenbereich");
+  assert.ok(listSrc.includes("InvoicePdfPreviewModal") && listSrc.includes("fetchCustomerInvoicePdf"), "PDF-Vorschau angebunden");
+  assert.ok(listSrc.includes("canPreviewInvoice"), "Vorschau nur bei Verfügbarkeit");
+});
+
+test("23 — Admin-Detail: Send/Retry/Resend mit Bestätigung, Doppelklick-Schutz, Refetch, Testdokument-Sperre", () => {
+  assert.ok(adminDetailSrc.includes("sendAdminInvoiceEmail") && adminDetailSrc.includes("resendAdminInvoiceEmail"), "beide Admin-Endpunkte angebunden");
+  assert.ok(adminDetailSrc.includes("Rechnung per E-Mail senden") && adminDetailSrc.includes("Versand erneut versuchen") && adminDetailSrc.includes("Rechnung erneut senden"), "statusabhängige Aktionslabels");
+  assert.ok(adminDetailSrc.includes("Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte"), "Resend-Bestätigungstext");
+  assert.ok(adminDetailSrc.includes("disabled={mailBusy}"), "Doppelklick-Schutz");
+  assert.match(adminDetailSrc, /setMailMsg\([\s\S]{0,700}load\(\);/, "Refetch nach Versandaktion");
+  assert.ok(adminDetailSrc.includes("Testdokumente dürfen nicht per E-Mail versendet werden."), "Testdokument-Hinweis statt Aktion");
+  assert.ok(adminDetailSrc.includes("fetchAdminInvoicePdf") && adminDetailSrc.includes("InvoicePdfPreviewModal"), "Admin-PDF-Vorschau vorhanden");
 });

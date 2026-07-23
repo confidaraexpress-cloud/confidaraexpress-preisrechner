@@ -39,7 +39,12 @@
   --vp-cta:linear-gradient(135deg,#2f62f0,#7aa0ff);
   --vp-cta-shadow:0 16px 34px -12px rgba(47,98,240,.55), inset 0 1px 0 rgba(255,255,255,.40);
   --vp-cta-shadow-h:0 22px 46px -14px rgba(47,98,240,.68), inset 0 1px 0 rgba(255,255,255,.45);
-  --vp-route:120,145,240;
+  /* Subtle Logistics Network (ersetzt die früheren Bézier-Flugrouten). */
+  --vp-network-line:rgba(94,137,224,.10);
+  --vp-network-line-strong:rgba(73,118,215,.16);
+  --vp-network-node:rgba(91,137,230,.18);
+  --vp-network-node-soft:rgba(255,255,255,.72);
+  --vp-network-glow:rgba(173,205,255,.38);
   --vp-step-line:rgba(120,140,220,.30);
   --fy:'Syne','Libre Franklin',sans-serif;   /* Vapor-Display: H2, KPI-Zahlen, Logo, Avatar */
 
@@ -78,8 +83,23 @@
   background: radial-gradient(closest-side, rgba(150,184,247,.55), transparent 70%); }
 .dashboard-vapor .vp-bloom { position: absolute; width: 720px; height: 520px; left: 20%; top: -60px; opacity: .6;
   filter: blur(50px); background: radial-gradient(closest-side, rgba(255,255,255,.96), transparent 72%); }
-.dashboard-vapor .vp-routes { position: absolute; inset: 0; width: 100%; height: 100%; }
-.dashboard-vapor .vp-routes path { fill: none; stroke: rgb(var(--vp-route)); opacity: .14; stroke-width: 2.4; stroke-linecap: round; }
+/* Subtle Logistics Network — ein statisches SVG mit geraden Segmenten + wenigen
+   Knoten. Sehr dezent, rein dekorativ, keine Animation, keine Filter. */
+.dashboard-vapor .vp-net { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dashboard-vapor .vpn-line { stroke: var(--vp-network-line); stroke-width: .9; vector-effect: non-scaling-stroke; }
+.dashboard-vapor .vpn-line--strong { stroke: var(--vp-network-line-strong); stroke-width: 1.15; }
+.dashboard-vapor .vpn-node { fill: var(--vp-network-node); }
+.dashboard-vapor .vpn-node--main { fill: var(--vp-network-node-soft); }
+.dashboard-vapor .vpn-halo { fill: var(--vp-network-glow); opacity: .45; }
+.dashboard-vapor .vpn-glow { fill: var(--vp-network-glow); }
+/* Responsive: Tablet blendet die dichteste Ebene (lg) aus; Mobile ersetzt die
+   Desktop-Ebenen durch eine minimale zentrale Konstellation. */
+.dashboard-vapor .vpn-mobile { display: none; }
+@media (max-width: 1024px) { .dashboard-vapor .vpn-lg { display: none; } }
+@media (max-width: 560px) {
+  .dashboard-vapor .vpn-md, .dashboard-vapor .vpn-base { display: none; }
+  .dashboard-vapor .vpn-mobile { display: block; }
+}
 .dashboard-vapor .vp-noise {
   position: absolute; inset: 0; opacity: .045; mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");

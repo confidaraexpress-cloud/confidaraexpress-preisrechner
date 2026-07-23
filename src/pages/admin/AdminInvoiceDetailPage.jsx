@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument } from "../../api/adminApi";
+import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { invoiceDisplayMeta, isInvoiceOverdue } from "../../utils/adminInvoices";
-import { documentStatusMeta, isTestInvoiceDocument, formatBytes } from "../../utils/invoiceView.mjs";
-import { downloadAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
+import { documentStatusMeta, isTestInvoiceDocument, formatBytes, emailDisplayMeta, formatEmailSentAt } from "../../utils/invoiceView.mjs";
+import { downloadAdminInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
+import { InvoicePdfPreviewModal } from "../../components/dashboard/InvoicePdfPreviewModal";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -54,6 +55,10 @@ const docStatusOf = (r) => firstDefined(r.document_status, r.documentStatus);
 const pdfGeneratedAtOf = (r) => firstDefined(r.pdf_generated_at, r.pdfGeneratedAt);
 const pdfSizeOf = (r) => firstDefined(r.pdf_size_bytes, r.pdfSizeBytes);
 const docAttemptsOf = (r) => firstDefined(r.document_attempts, r.documentAttempts);
+const emailStatusOf = (r) => firstDefined(r.email_status, r.emailStatus);
+const emailSentAtOf = (r) => firstDefined(r.email_sent_at, r.emailSentAt);
+const emailAttemptsOf = (r) => firstDefined(r.email_attempts, r.emailAttempts);
+const emailLastErrorOf = (r) => firstDefined(r.email_last_error, r.emailLastError);
 
 const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
@@ -92,6 +97,12 @@ export default function AdminInvoiceDetailPage() {
   const [docBusy, setDocBusy] = useState(false);         // Generate-/Retry-POST läuft
   const [docDownloading, setDocDownloading] = useState(false);
   const [docMsg, setDocMsg] = useState(null);            // { type, text }
+  const [previewOpen, setPreviewOpen] = useState(false); // PDF-Vorschau (Phase 4)
+
+  // Rechnungs-E-Mail (Phase 4): Send/Retry/Resend mit Bestätigungsdialog.
+  const [mailOpen, setMailOpen] = useState(false);       // Bestätigungsmodal Versand
+  const [mailBusy, setMailBusy] = useState(false);       // POST läuft (Doppelklick-Schutz)
+  const [mailMsg, setMailMsg] = useState(null);          // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,7 +132,7 @@ export default function AdminInvoiceDetailPage() {
 
   // Beim Wechsel auf eine andere Rechnung Modal/Meldung zurücksetzen (nicht bei
   // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
-  useEffect(() => { setPayOpen(false); setPayMsg(null); setGenOpen(false); setDocMsg(null); }, [id]);
+  useEffect(() => { setPayOpen(false); setPayMsg(null); setGenOpen(false); setDocMsg(null); setMailOpen(false); setMailMsg(null); setPreviewOpen(false); }, [id]);
 
   const back = (
     <Link to="/admin/invoices" className="adm-back">
@@ -236,6 +247,47 @@ export default function AdminInvoiceDetailPage() {
     }
   };
 
+  // ── Rechnungs-E-Mail (Phase 4) ──
+  // Aktion aus dem ECHTEN Status abgeleitet: pending → send, failed → send (Backend
+  // klassifiziert als retry), sent → resend. Testdokumente besitzen KEINE Aktion.
+  const emailStatus = emailStatusOf(inv) || "pending";
+  const isTestDoc = isTestInvoiceDocument({ document_status: docStatus, is_test_document: inv.is_test_document });
+  const mailAction = emailStatus === "sent" ? "resend" : "send";
+  const mailActionLabel = emailStatus === "pending" ? "Rechnung per E-Mail senden"
+    : emailStatus === "failed" ? "Versand erneut versuchen"
+    : "Rechnung erneut senden";
+  const openMail = () => { setMailMsg(null); setMailOpen(true); };
+  const closeMail = () => { if (!mailBusy) setMailOpen(false); };
+  const confirmMail = async () => {
+    setMailBusy(true);
+    setMailMsg(null);
+    try {
+      const r = mailAction === "resend" ? await resendAdminInvoiceEmail(id) : await sendAdminInvoiceEmail(id);
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect via apiFetch
+        setMailMsg({ type: "error", text:
+          d && typeof d.message === "string" && d.message ? d.message
+          : r.status === 404 ? "Rechnung wurde nicht gefunden oder existiert nicht mehr."
+          : r.status === 429 ? "Zu viele Admin-Aktionen. Bitte kurz warten."
+          : "Die Rechnungs-E-Mail konnte nicht versendet werden." });
+        return;
+      }
+      const outcome = d.outcome;
+      setMailMsg(outcome === "sent" ? { type: "success", text: "Die Rechnungs-E-Mail wurde versendet." }
+        : outcome === "already_sent" ? { type: "info", text: "Diese Rechnung wurde bereits versendet. Für einen erneuten Versand bitte „Rechnung erneut senden“ verwenden." }
+        : outcome === "in_progress" ? { type: "info", text: "Ein Versand läuft bereits." }
+        : { type: "error", text: "Der Versand ist fehlgeschlagen. Details siehe letzter Fehler." });
+      load(); // Serverwahrheit neu laden — kein optimistisches UI
+    } catch {
+      setMailMsg({ type: "error", text: "Die Rechnungs-E-Mail konnte nicht versendet werden." });
+    } finally {
+      setMailBusy(false);
+      setMailOpen(false);
+    }
+  };
+
   return (
     <div className="adm-page">
       {back}
@@ -340,11 +392,16 @@ export default function AdminInvoiceDetailPage() {
 
             <div className="adm-support">
               {docStatus === "ready" && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={handleDocDownload} disabled={docDownloading}>
-                  {docDownloading
-                    ? <><span className="spinner spinner-dark" /> Wird geladen…</>
-                    : <><Icon n="download" s={14} /> PDF herunterladen</>}
-                </button>
+                <>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreviewOpen(true)} disabled={docDownloading}>
+                    <Icon n="eye" s={14} /> PDF ansehen
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={handleDocDownload} disabled={docDownloading}>
+                    {docDownloading
+                      ? <><span className="spinner spinner-dark" /> Wird geladen…</>
+                      : <><Icon n="download" s={14} /> PDF herunterladen</>}
+                  </button>
+                </>
               )}
               {docStatus === "pending_document" && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={openGen} disabled={docBusy}>
@@ -364,6 +421,55 @@ export default function AdminInvoiceDetailPage() {
             </div>
             {docStatus === "generating" && (
               <p className="adm-support-hint">Die Dokumenterzeugung läuft. Kein erneutes Anstoßen nötig.</p>
+            )}
+          </div>
+        </div>
+
+        {/* 4c) Rechnungs-E-Mail (Phase 4) — Status, Historie-Eckdaten, Versandaktion */}
+        <div className="adm-card">
+          <div className="adm-card-head"><Icon n="mail" s={17} /> E-Mail-Versand</div>
+          <div className="adm-card-body">
+            {mailMsg && (
+              <div
+                className={`alert ${mailMsg.type === "success" ? "alert-success" : mailMsg.type === "info" ? "alert-info" : "alert-error"}`}
+                role={mailMsg.type === "error" ? "alert" : "status"}
+                style={{ marginBottom: 14 }}
+              >
+                <Icon n={mailMsg.type === "success" ? "check" : mailMsg.type === "info" ? "info" : "x"} s={16} />{mailMsg.text}
+              </div>
+            )}
+            <KV items={[
+              ["Versandstatus", (() => {
+                const [cls, label] = emailDisplayMeta({ document_status: docStatus, is_test_document: inv.is_test_document, email_status: emailStatus });
+                return <span className={`badge ${cls}`}>{label}</span>;
+              })()],
+              ["Versendet am", emailStatus === "sent" ? fmtDate(emailSentAtOf(inv)) : "—"],
+              ["Versuche", emailAttemptsOf(inv) != null ? String(emailAttemptsOf(inv)) : "0"],
+              ["Letzter Fehler", emailStatus === "failed" && emailLastErrorOf(inv) ? String(emailLastErrorOf(inv)) : "—"],
+            ]} />
+
+            {isTestDoc ? (
+              <p className="adm-support-hint">Testdokumente dürfen nicht per E-Mail versendet werden.</p>
+            ) : emailStatus === "sending" ? (
+              <>
+                <div className="adm-support">
+                  <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+                    <Icon n="refresh" s={14} /> Status aktualisieren
+                  </button>
+                </div>
+                <p className="adm-support-hint">Ein Versand läuft. Kein erneutes Anstoßen nötig.</p>
+              </>
+            ) : (
+              <>
+                <div className="adm-support">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={openMail} disabled={mailBusy || docStatus !== "ready"}>
+                    <Icon n="mail" s={14} /> {mailActionLabel}
+                  </button>
+                </div>
+                {docStatus !== "ready" && (
+                  <p className="adm-support-hint">Der Versand ist erst nach erfolgreicher Dokumenterstellung möglich.</p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -392,6 +498,52 @@ export default function AdminInvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Bestätigungsmodal Rechnungs-E-Mail — jede Versandaktion erst nach bewusster Bestätigung. */}
+      {mailOpen && (
+        <div className="adm-modal-overlay" role="presentation" onClick={closeMail}>
+          <div
+            className="adm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="adm-mail-title"
+            aria-describedby="adm-mail-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="mail" s={22} /></div>
+            <h2 id="adm-mail-title" className="adm-modal-title">
+              {mailAction === "resend" ? "Rechnung erneut per E-Mail senden?" : "Rechnung per E-Mail senden?"}
+            </h2>
+            <p id="adm-mail-desc" className="adm-modal-text">
+              {mailAction === "resend"
+                ? "Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte Rechnungsdokument erneut senden?"
+                : "Sendet die Rechnung mit dem unveränderten, gespeicherten PDF-Dokument an die hinterlegte Kunden-E-Mail."}
+            </p>
+            <p className="adm-modal-sub">Rechnung {dash(invoiceNoOf(inv))} · #{dash(idOf(inv))}</p>
+            <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>
+              Die Aktion wird im Admin-Audit protokolliert. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer.
+            </p>
+            <div className="adm-modal-actions">
+              <button type="button" className="btn btn-outline btn-sm" onClick={closeMail} disabled={mailBusy}>Abbrechen</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={confirmMail} disabled={mailBusy}>
+                {mailBusy
+                  ? <><span className="spinner spinner-dark" /> Wird gesendet…</>
+                  : <><Icon n="check" s={14} /> {mailAction === "resend" ? "Erneut senden" : "Senden"}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF-Vorschau (Phase 4) — kurzlebige Blob-Object-URL, Cleanup im Modal. */}
+      {previewOpen && (
+        <InvoicePdfPreviewModal
+          title={`Rechnung ${dash(invoiceNoOf(inv))}`}
+          fetchPdf={() => fetchAdminInvoicePdf(id, invoiceNoOf(inv))}
+          onDownload={() => downloadAdminInvoicePdf(id, invoiceNoOf(inv))}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
 
       {/* Bestätigungsmodal Dokumenterzeugung/-wiederholung — mutierend; erst nach Bestätigung. */}
       {genOpen && (

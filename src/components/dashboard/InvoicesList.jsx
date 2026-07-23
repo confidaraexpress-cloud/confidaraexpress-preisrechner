@@ -1,23 +1,27 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 import { PremiumBackground } from "./PremiumBackground";
-import { downloadCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
+import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
+import { downloadCustomerInvoicePdf, fetchCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
 import {
-  documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice,
+  documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice, canPreviewInvoice,
   formatInvoiceAmount, hasPendingInvoiceDocuments, nextRefreshDelay,
+  emailDisplayMeta, formatEmailSentAt,
   TEST_DOCUMENT_HINT, DOWNLOAD_ERROR_GENERIC,
 } from "../../utils/invoiceView.mjs";
 
-// Rechnungsliste (Kunde) — Phase 3: echter, authentifizierter PDF-Blob-Download
-// (GET /kunde/invoices/:id/pdf) statt des früheren toten URL-Feld-Buttons.
-// Der Download-Button erscheint AKTIV nur bei serverseitigem download_available
-// === true; Testdokumente zeigen stattdessen einen dauerhaften Hinweis. Solange
-// sichtbare Rechnungen noch auf ihr Dokument warten (pending/generating), wird
-// die Liste ZURÜCKHALTEND automatisch aktualisiert (3 Versuche mit wachsendem
-// Abstand, Cleanup bei Unmount) — zusätzlich gibt es einen manuellen
-// Aktualisieren-Button. Keine öffentliche URL im DOM, keine Bank-/Systemdaten.
+// Rechnungsliste (Kunde) — Phase 3/4: authentifizierter Blob-Download + direkte
+// PDF-Vorschau (Modal mit kurzlebiger Blob-Object-URL) + Rechnungs-E-Mail-Status.
+// „Ansehen"/„Herunterladen" erscheinen AKTIV nur bei serverseitigem
+// download_available === true; Testdokumente zeigen stattdessen dauerhaft den
+// Hinweis „Testdokument – nicht für den Zahlungsverkehr freigegeben" und beim
+// E-Mail-Status „Testdokument – kein Versand". Der Kunde besitzt KEINE
+// Versandaktion (Senden/Retry/Resend sind reine Admin-Funktionen) und sieht
+// keine Providerdetails oder internen Fehlertexte. Solange sichtbare Rechnungen
+// auf ihr Dokument warten, wird zurückhaltend automatisch aktualisiert (max. 3
+// Versuche mit wachsendem Abstand); zusätzlich manueller Aktualisieren-Button.
 
 export function InvoicesList({ invoices, loading, onReload }) {
   const unpaid = invoices.filter((i) => i.status === "unpaid");
@@ -25,10 +29,10 @@ export function InvoicesList({ invoices, loading, onReload }) {
 
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
+  const [previewInvoice, setPreviewInvoice] = useState(null); // { id, invoice_number } | null
 
-  // Zurückhaltende Auto-Aktualisierung: nur bei wartenden Dokumenten, max. 3
-  // Versuche (5s/10s/20s); Zähler-Reset bei manueller Aktualisierung. Timer
-  // wird bei Datenwechsel/Unmount immer aufgeräumt.
+  // Zurückhaltende Auto-Aktualisierung (Phase 3): nur bei wartenden Dokumenten,
+  // max. 3 Versuche (5s/10s/20s); Reset bei manueller Aktualisierung; Cleanup immer.
   const refreshAttemptRef = useRef(0);
   const timerRef = useRef(null);
   useEffect(() => {
@@ -62,6 +66,12 @@ export function InvoicesList({ invoices, loading, onReload }) {
     }
   };
 
+  // Stabiler Fetcher für das geöffnete Modal (Object-URL-Lebenszyklus liegt im Modal).
+  const previewFetcher = useCallback(() => {
+    if (!previewInvoice) return Promise.reject(new Error(DOWNLOAD_ERROR_GENERIC));
+    return fetchCustomerInvoicePdf(previewInvoice.id, previewInvoice.invoice_number);
+  }, [previewInvoice]);
+
   const renderDocumentCell = (inv) => {
     const [cls, label] = documentStatusMeta(inv.document_status);
     const isTest = isTestInvoiceDocument(inv);
@@ -73,26 +83,57 @@ export function InvoicesList({ invoices, loading, onReload }) {
     );
   };
 
+  const renderEmailCell = (inv) => {
+    const [cls, label] = emailDisplayMeta(inv);
+    const sentAt = !isTestInvoiceDocument(inv) && inv.email_status === "sent" ? formatEmailSentAt(inv.email_sent_at) : "";
+    return (
+      <div className="invoice-doc-cell">
+        <span className={`badge ${cls}`}>{label}</span>
+        {sentAt && <span className="text-muted invoice-doc-note">{sentAt}</span>}
+      </div>
+    );
+  };
+
   const renderActionCell = (inv) => {
     if (canDownloadInvoice(inv)) {
       const busy = downloadingId === inv.id;
       return (
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => handleDownload(inv)}
-          disabled={downloadingId != null}
-          aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`}
-          title="Rechnung als PDF herunterladen"
-        >
-          {busy
-            ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</>
-            : <><Icon n="download" s={14} /> PDF</>}
-        </button>
+        <div className="invoice-row-actions">
+          {canPreviewInvoice(inv) && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setPreviewInvoice({ id: inv.id, invoice_number: inv.invoice_number })}
+              disabled={downloadingId != null}
+              aria-label={`Rechnung ${inv.invoice_number} ansehen`}
+              title="Rechnung ansehen"
+            >
+              <Icon n="eye" s={14} /> Ansehen
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => handleDownload(inv)}
+            disabled={downloadingId != null}
+            aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`}
+            title="Rechnung als PDF herunterladen"
+          >
+            {busy
+              ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</>
+              : <><Icon n="download" s={14} /> PDF</>}
+          </button>
+        </div>
       );
     }
     if (isTestInvoiceDocument(inv)) {
       return <span className="text-muted invoice-doc-note">{TEST_DOCUMENT_HINT}</span>;
+    }
+    if (inv.document_status === "pending_document" || inv.document_status === "generating") {
+      return <span className="text-muted invoice-doc-note">Rechnung wird erstellt</span>;
+    }
+    if (inv.document_status === "document_failed") {
+      return <span className="text-muted invoice-doc-note">Rechnung konnte noch nicht erstellt werden</span>;
     }
     return <span className="text-muted">—</span>;
   };
@@ -145,7 +186,8 @@ export function InvoicesList({ invoices, loading, onReload }) {
                     <th>Betrag</th>
                     <th>Zahlung</th>
                     <th>Dokument</th>
-                    <th>PDF</th>
+                    <th>E-Mail</th>
+                    <th>Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,6 +199,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
                       <td className="font-bold">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</td>
                       <td><StatusBadge status={inv.status} /></td>
                       <td>{renderDocumentCell(inv)}</td>
+                      <td>{renderEmailCell(inv)}</td>
                       <td>{renderActionCell(inv)}</td>
                     </tr>
                   ))}
@@ -166,6 +209,15 @@ export function InvoicesList({ invoices, loading, onReload }) {
           </div>
         )}
       </div>
+
+      {previewInvoice && (
+        <InvoicePdfPreviewModal
+          title={`Rechnung ${previewInvoice.invoice_number}`}
+          fetchPdf={previewFetcher}
+          onDownload={() => downloadCustomerInvoicePdf(previewInvoice.id, previewInvoice.invoice_number)}
+          onClose={() => setPreviewInvoice(null)}
+        />
+      )}
     </>
   );
 }

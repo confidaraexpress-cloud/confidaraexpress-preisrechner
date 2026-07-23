@@ -8,7 +8,7 @@ import {
   isInvoiceOverdue,
   INVOICE_STATUS_FILTER_OPTIONS,
 } from "../../utils/adminInvoices";
-import { documentStatusMeta, isTestInvoiceDocument } from "../../utils/invoiceView.mjs";
+import { documentStatusMeta, isTestInvoiceDocument, emailDisplayMeta } from "../../utils/invoiceView.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -75,6 +75,15 @@ const emailOf = (r) => firstDefined(r.email, r.e_mail);
 const companyOf = (r) => firstDefined(r.company_name, r.company, r.firma);
 const docStatusOf = (r) => firstDefined(r.document_status, r.documentStatus);
 const rowKeyOf = (r, i) => firstDefined(r.id, r.invoice_id, r.invoice_number, r.uuid) ?? `row-${i}`;
+
+// E-Mail-Status-Zelle (Phase 4): Versandstatus; Testdokumente zeigen dauerhaft
+// "Testdokument – kein Versand" (es wird nie versendet).
+function EmailBadge({ row }) {
+  const docStatus = docStatusOf(row);
+  if (!docStatus) return <span className="adm-muted">—</span>;
+  const [cls, label] = emailDisplayMeta({ document_status: docStatus, is_test_document: row.is_test_document, email_status: row.email_status });
+  return <span className={`badge ${cls}`}>{label}</span>;
+}
 
 // Dokumentstatus-Zelle: Status-Badge + dauerhafte Testdokument-Kennzeichnung
 // (persistiertes is_test_document; NULL bei fertigem Dokument gilt konservativ
@@ -241,6 +250,7 @@ export default function AdminInvoicesPage() {
                   <th>MwSt Versand</th>
                   <th>Status</th>
                   <th>Dokument</th>
+                  <th>E-Mail</th>
                   <th>Fällig am</th>
                   <th>Bezahlt am</th>
                   <th>Shipment-ID</th>
@@ -270,6 +280,7 @@ export default function AdminInvoicesPage() {
                       <td className="adm-num">{vat != null && vat !== "" ? moneyOrDash(vat) : <span className="adm-muted">—</span>}</td>
                       <td><StatusBadge status={statusOf(row)} due={dueOf(row)} now={now} /></td>
                       <td><DocumentBadge row={row} /></td>
+                      <td><EmailBadge row={row} /></td>
                       <td className={`adm-nowrap${overdue ? " adm-overdue" : ""}`}>
                         {fmtDate(dueOf(row))}
                         {overdue ? <span className="adm-overdue-tag"> · überfällig</span> : null}

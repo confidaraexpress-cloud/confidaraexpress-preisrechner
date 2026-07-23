@@ -329,3 +329,26 @@ export function generateAdminInvoiceDocument(id) {
     auth: true,
   });
 }
+
+// POST /admin/invoices/:id/send-email — kontrollierter Rechnungs-E-Mail-Versand
+// (pending) bzw. erneuter Versuch (failed; das Backend klassifiziert als retry).
+// Idempotent: bereits versendete Rechnungen antworten mit outcome already_sent
+// OHNE zweiten Provider-Aufruf; die harte Testmodus-Sperre antwortet 409
+// invoice_email_test_mode. KEIN Body — Empfänger/Inhalt stammen ausschließlich
+// aus den serverseitig gespeicherten Snapshots, nie aus dem Client.
+export function sendAdminInvoiceEmail(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/send-email`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+// POST /admin/invoices/:id/resend-email — BEWUSSTER erneuter Versand eines
+// bereits versendeten, unveränderten Rechnungsdokuments (nur Status sent;
+// sonst 409 invoice_email_not_sent_yet). Auditiert als invoice.email_resend.
+export function resendAdminInvoiceEmail(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/resend-email`, {
+    method: "POST",
+    auth: true,
+  });
+}

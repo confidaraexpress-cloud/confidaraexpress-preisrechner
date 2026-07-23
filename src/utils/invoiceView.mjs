@@ -86,6 +86,39 @@ export function downloadErrorMessage(status, code) {
   return DOWNLOAD_ERROR_GENERIC;
 }
 
+// ── Rechnungs-E-Mail-Status (Phase 4) ───────────────────────────────────────
+// [badge-Klasse, Label] für invoices.email_status. Kunde und Admin nutzen dieselbe
+// Quelle; der Kunde sieht NIE Providerdetails oder Fehlertexte — nur den Status.
+const EMAIL_STATUS_META = {
+  pending: ["badge-gray", "Versand ausstehend"],
+  sending: ["badge-blue", "Wird versendet"],
+  sent: ["badge-green", "Versendet"],
+  failed: ["badge-red", "Versand fehlgeschlagen"],
+};
+export const emailStatusMeta = (status) => EMAIL_STATUS_META[status] || ["badge-gray", status ?? "—"];
+
+// Anzeige-Meta inkl. Testdokument-Sonderfall: Ein Testdokument wird NIE versendet —
+// statt eines irreführenden "Versand ausstehend" zeigt die Oberfläche dauerhaft
+// "Testdokument – kein Versand" (gelb). Bei 'sent' liefert formatEmailSentAt optional
+// den "Versendet am …"-Zusatz.
+export function emailDisplayMeta(inv) {
+  if (isTestInvoiceDocument(inv)) return ["badge-yellow", "Testdokument – kein Versand"];
+  return emailStatusMeta(inv ? inv.email_status : null);
+}
+
+export function formatEmailSentAt(emailSentAt) {
+  if (!emailSentAt) return "";
+  const d = new Date(emailSentAt);
+  if (Number.isNaN(d.getTime())) return "";
+  return `Versendet am ${d.toLocaleDateString("de-DE")}`;
+}
+
+// PDF-Vorschau-Freigabe: identische Server-Wahrheit wie der Download — was der Kunde
+// nicht herunterladen darf, darf er auch nicht in der Vorschau sehen.
+export function canPreviewInvoice(inv) {
+  return canDownloadInvoice(inv);
+}
+
 // ── Zurückhaltende Auto-Aktualisierung ──────────────────────────────────────
 // Nur solange sichtbare Rechnungen noch auf ihr Dokument warten, wenige Versuche
 // mit zunehmendem Abstand; endet bei ready/document_failed, Seitenwechsel oder

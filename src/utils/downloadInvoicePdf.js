@@ -14,7 +14,18 @@ import { downloadErrorMessage, filenameFromContentDisposition } from "./invoiceV
 // Ein 401/403 auf auth:true behandelt apiFetch zentral (Session-Redirect);
 // die fachlichen Sperren des Endpunkts (Testdokument/nicht bereit/fehlgeschlagen)
 // kommen bewusst als 409 und bleiben hier behandelbar.
-async function downloadPdfFromResponse(r, fallbackFilename) {
+// ── Blob-Fetcher (Phase 4, gemeinsame Basis für Download UND Vorschau) ───────
+// Liefert { blob, filename } NUR wenn die Antwort ok ist UND der Content-Type
+// application/pdf ist — Fehlerantworten (JSON/HTML) werden NIEMALS als PDF
+// weitergereicht oder eingebettet. Der Blob wird explizit mit dem PDF-MIME-Typ
+// erzeugt (deterministische iframe-Darstellung, kein Sniffing).
+async function fetchInvoicePdf(path, fallbackFilename) {
+  let r;
+  try {
+    r = await apiFetch(path, { auth: true });
+  } catch {
+    throw new Error(downloadErrorMessage(0, null)); // Netzwerkfehler
+  }
   if (!r.ok) {
     let code = null;
     let serverMessage = null;
@@ -28,13 +39,31 @@ async function downloadPdfFromResponse(r, fallbackFilename) {
     err.code = code;
     throw err;
   }
-
-  const blob = await r.blob();
-  if (!blob || blob.size === 0) {
-    throw new Error(downloadErrorMessage(0, null));
+  const contentType = String(r.headers.get("content-type") || "");
+  if (!contentType.toLowerCase().startsWith("application/pdf")) {
+    throw new Error(downloadErrorMessage(0, null)); // nur application/pdf akzeptieren
   }
-
+  const raw = await r.blob();
+  if (!raw || raw.size === 0) throw new Error(downloadErrorMessage(0, null));
+  const blob = raw.type === "application/pdf" ? raw : new Blob([raw], { type: "application/pdf" });
   const filename = filenameFromContentDisposition(r.headers.get("content-disposition"), fallbackFilename);
+  return { blob, filename };
+}
+
+const safeFallbackName = (invoiceNumber) =>
+  `rechnung-${String(invoiceNumber == null ? "" : invoiceNumber).replace(/[^A-Za-z0-9._-]/g, "") || "dokument"}.pdf`;
+
+export function fetchCustomerInvoicePdf(invoiceId, invoiceNumber) {
+  return fetchInvoicePdf(`/kunde/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
+}
+
+export function fetchAdminInvoicePdf(invoiceId, invoiceNumber) {
+  return fetchInvoicePdf(`/admin/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, safeFallbackName(invoiceNumber));
+}
+
+// Gemeinsamer Download-Abschluss: temporäre Object-URL, programmatischer Klick,
+// Freigabe im finally (kein permanenter Object-URL-Zustand).
+function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   try {
     const a = document.createElement("a");
@@ -48,25 +77,13 @@ async function downloadPdfFromResponse(r, fallbackFilename) {
 
 // Kunde: GET /kunde/invoices/:id/pdf (eigene Rechnung; Ownership serverseitig).
 export async function downloadCustomerInvoicePdf(invoiceId, invoiceNumber) {
-  let r;
-  try {
-    r = await apiFetch(`/kunde/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, { auth: true });
-  } catch {
-    throw new Error(downloadErrorMessage(0, null)); // Netzwerkfehler
-  }
-  const safeNumber = String(invoiceNumber == null ? "" : invoiceNumber).replace(/[^A-Za-z0-9._-]/g, "") || "dokument";
-  await downloadPdfFromResponse(r, `rechnung-${safeNumber}.pdf`);
+  const { blob, filename } = await fetchCustomerInvoicePdf(invoiceId, invoiceNumber);
+  saveBlob(blob, filename);
 }
 
 // Admin: GET /admin/invoices/:id/pdf (auditiert; Testdokumente erlaubt — der
 // serverseitige Dateiname kennzeichnet sie als test-rechnung-…).
 export async function downloadAdminInvoicePdf(invoiceId, invoiceNumber) {
-  let r;
-  try {
-    r = await apiFetch(`/admin/invoices/${encodeURIComponent(String(invoiceId))}/pdf`, { auth: true });
-  } catch {
-    throw new Error(downloadErrorMessage(0, null));
-  }
-  const safeNumber = String(invoiceNumber == null ? "" : invoiceNumber).replace(/[^A-Za-z0-9._-]/g, "") || "dokument";
-  await downloadPdfFromResponse(r, `rechnung-${safeNumber}.pdf`);
+  const { blob, filename } = await fetchAdminInvoicePdf(invoiceId, invoiceNumber);
+  saveBlob(blob, filename);
 }

@@ -28,6 +28,11 @@ import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
   autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
 } from "../utils/bookingPriceView.mjs";
+import {
+  INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_TARGET, resolveInvoiceDeliveryMode, isTerminalDeliveryMode,
+  findInvoiceByNumber, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
+} from "../utils/bookingSuccessView.mjs";
+import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
 // (keine Backend-Rohtexte/Stacks). Verhalten je Code steuert doBook (zurück zum
@@ -66,6 +71,48 @@ export default function BookingPage() {
   const [addressError, setAddressError] = useState("");
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
+  // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
+  // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
+  // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
+  const [invoiceDeliveryMode, setInvoiceDeliveryMode] = useState(INVOICE_DELIVERY_MODE.PENDING);
+  const invoiceModeTimerRef = useRef(null);
+
+  // Auf dem Erfolgsscreen den Rechnungs-Zustellungsmodus auflösen: kurzes, gedeckeltes Nachladen der
+  // BESTEHENDEN Kundenrechnungsliste (GET /kunde/invoices — keine neue/serverseitige Änderung),
+  // Rechnung per Nummer finden und den Modus aus is_test_document/document_status ableiten. Stoppt,
+  // sobald ein Endzustand (produktiv/Vorschau/fehlgeschlagen) erreicht ist oder die Backoff-Obergrenze
+  // (≈ 2 Min) greift. Kein Einfluss auf Buchung/Rechnung/PDF/E-Mail. Timer wird bei Unmount/
+  // Schrittwechsel vollständig bereinigt.
+  useEffect(() => {
+    if (step !== 3 || !booking || !booking.invoiceNumber) return undefined;
+    let cancelled = false;
+    let attempt = 0;
+    const poll = async () => {
+      try {
+        const r = await apiFetch(`/kunde/invoices`, { auth: true });
+        if (r.ok) {
+          const d = await r.json().catch(() => ({}));
+          const mode = resolveInvoiceDeliveryMode(findInvoiceByNumber(d.invoices, booking.invoiceNumber));
+          if (cancelled) return;
+          setInvoiceDeliveryMode(mode);
+          if (isTerminalDeliveryMode(mode)) return; // fertig aufgelöst → nicht weiter nachladen
+        }
+      } catch { /* still bleiben — neutraler PENDING-Hinweis ist nie irreführend */ }
+      if (cancelled) return;
+      const delay = nextRefreshDelay(attempt);
+      if (delay == null) return; // Obergrenze erreicht
+      attempt += 1;
+      invoiceModeTimerRef.current = setTimeout(poll, delay);
+    };
+    // Erster Versuch nach dem ersten Backoff-Intervall (das PDF wird nach dem Commit asynchron erzeugt).
+    const first = nextRefreshDelay(attempt);
+    attempt += 1;
+    invoiceModeTimerRef.current = setTimeout(poll, first);
+    return () => {
+      cancelled = true;
+      if (invoiceModeTimerRef.current) { clearTimeout(invoiceModeTimerRef.current); invoiceModeTimerRef.current = null; }
+    };
+  }, [step, booking]);
 
   // ── F3: Preisdrift OHNE Versicherung — /book 409 PRICE_CHANGED ──────────────
   // Der Backend-Gate im none-Pfad vergleicht price_final. Hat sich der Preis seit
@@ -972,7 +1019,21 @@ export default function BookingPage() {
             <div className="booking-success-icon">✓</div>
             <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
             <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
-            <p className="text-muted mb-24">Bestätigung wurde an {user?.email} gesendet.</p>
+            {/* Klare Trennung: Buchungsbestätigung (bereits versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
+            <div className="booking-success-delivery mb-16">
+              <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
+              <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>
+              {(() => {
+                const hint = invoiceDeliveryHint(invoiceDeliveryMode);
+                const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
+                const icon = hint.tone === "success" ? "check" : "info";
+                return (
+                  <div className={`alert ${cls}`} role="status" aria-live="polite">
+                    <Icon n={icon} s={16} />{hint.text}
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
                 Formular-State abgeleitet, keine neue Server-Anfrage. */}
@@ -1022,7 +1083,10 @@ export default function BookingPage() {
                 </span>
               </p>
             )}
-            <div className="flex-center gap-12">
+            <div className="flex-center gap-12" style={{ flexWrap: "wrap" }}>
+              <button className="btn btn-primary" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
+                <Icon n="invoice" s={16} /> Zu meinen Rechnungen
+              </button>
               <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
               <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
             </div>

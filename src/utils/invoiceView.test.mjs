@@ -11,7 +11,7 @@ import {
   formatInvoiceAmount, formatBytes,
   filenameFromContentDisposition,
   downloadErrorMessage, DOWNLOAD_ERROR_GENERIC, TEST_DOCUMENT_HINT,
-  hasPendingInvoiceDocuments, nextRefreshDelay, INVOICE_REFRESH_DELAYS_MS,
+  hasPendingInvoiceDocuments, nextRefreshDelay, INVOICE_REFRESH_DELAYS_MS, shouldContinuePolling,
   emailStatusMeta, emailDisplayMeta, formatEmailSentAt,
 } from "./invoiceView.mjs";
 
@@ -103,13 +103,30 @@ test("12 — hasPendingInvoiceDocuments erkennt pending/generating, sonst false"
   assert.equal(hasPendingInvoiceDocuments(null), false);
 });
 
-test("13 — nextRefreshDelay: wenige Versuche mit wachsendem Abstand, dann Schluss", () => {
-  assert.equal(nextRefreshDelay(0), INVOICE_REFRESH_DELAYS_MS[0]);
-  assert.equal(nextRefreshDelay(1), INVOICE_REFRESH_DELAYS_MS[1]);
-  assert.equal(nextRefreshDelay(2), INVOICE_REFRESH_DELAYS_MS[2]);
-  assert.equal(nextRefreshDelay(3), null, "nach dem letzten Versuch kein weiteres Polling");
+test("13 — nextRefreshDelay: Backoff 5/10/20/30/45 s, danach Schluss (Obergrenze ≈ 2 Min)", () => {
+  assert.deepEqual(INVOICE_REFRESH_DELAYS_MS, [5000, 10000, 20000, 30000, 45000], "Backoff-Intervalle");
+  for (let i = 0; i < INVOICE_REFRESH_DELAYS_MS.length; i++) assert.equal(nextRefreshDelay(i), INVOICE_REFRESH_DELAYS_MS[i]);
+  assert.equal(nextRefreshDelay(INVOICE_REFRESH_DELAYS_MS.length), null, "nach dem letzten Versuch kein weiteres Polling");
   assert.equal(nextRefreshDelay(-1), null);
-  assert.ok(INVOICE_REFRESH_DELAYS_MS[0] < INVOICE_REFRESH_DELAYS_MS[1] && INVOICE_REFRESH_DELAYS_MS[1] < INVOICE_REFRESH_DELAYS_MS[2]);
+  // strikt monoton wachsend (Backoff)
+  for (let i = 1; i < INVOICE_REFRESH_DELAYS_MS.length; i++) assert.ok(INVOICE_REFRESH_DELAYS_MS[i] > INVOICE_REFRESH_DELAYS_MS[i - 1]);
+  // Gesamtbudget der aktiven Aktualisierung ≤ ~2 Minuten
+  const total = INVOICE_REFRESH_DELAYS_MS.reduce((a, b) => a + b, 0);
+  assert.ok(total <= 120000, `aktives Polling-Budget ${total}ms ≤ 120000ms`);
+});
+
+test("13b — shouldContinuePolling: pending/generating startet, ready/failed/leer stoppt, Obergrenze stoppt", () => {
+  // pending_document und generating starten das Polling
+  assert.equal(shouldContinuePolling([{ document_status: "pending_document" }], 0), true);
+  assert.equal(shouldContinuePolling([{ document_status: "generating" }], 0), true);
+  // ready und document_failed stoppen (kein wartendes Dokument)
+  assert.equal(shouldContinuePolling([{ document_status: "ready" }], 0), false);
+  assert.equal(shouldContinuePolling([{ document_status: "document_failed" }], 0), false);
+  assert.equal(shouldContinuePolling([], 0), false);
+  // gemischt: mindestens eines wartend → weiter
+  assert.equal(shouldContinuePolling([{ document_status: "ready" }, { document_status: "generating" }], 0), true);
+  // Obergrenze: selbst bei wartendem Dokument stoppt es nach dem letzten Intervall
+  assert.equal(shouldContinuePolling([{ document_status: "pending_document" }], INVOICE_REFRESH_DELAYS_MS.length), false);
 });
 
 // ── Quelltext-Verträge (Muster: insuranceCardTypography.test.mjs) ────────────

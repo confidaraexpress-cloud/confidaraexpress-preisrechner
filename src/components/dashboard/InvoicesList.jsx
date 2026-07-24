@@ -31,21 +31,34 @@ export function InvoicesList({ invoices, loading, onReload }) {
   const [downloadError, setDownloadError] = useState("");
   const [previewInvoice, setPreviewInvoice] = useState(null); // { id, invoice_number } | null
 
-  // Zurückhaltende Auto-Aktualisierung (Phase 3): nur bei wartenden Dokumenten,
-  // max. 3 Versuche (5s/10s/20s); Reset bei manueller Aktualisierung; Cleanup immer.
+  // Zurückhaltende Auto-Aktualisierung (Phase 3, Backoff): NUR solange mindestens eine sichtbare
+  // Rechnung auf ihr Dokument wartet (pending_document|generating). Backoff 5/10/20/30/45 s (Summe
+  // ≈ 110 s → „maximal etwa zwei Minuten"), danach Stopp (kein Endlos-Poll); ready/document_failed
+  // stoppen sofort (kein wartendes Dokument mehr). Reset bei manueller Aktualisierung. Im
+  // HINTERGRUND-TAB wird NICHT gepollt (document.hidden); beim Zurückwechseln wird — falls noch
+  // etwas wartet — sofort einmal aktualisiert und der Backoff fortgesetzt. Timer + Listener werden
+  // beim Unmount vollständig bereinigt.
   const refreshAttemptRef = useRef(0);
   const timerRef = useRef(null);
+  const [tabVisible, setTabVisible] = useState(() => typeof document === "undefined" || !document.hidden);
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const onVisibility = () => setTabVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
   useEffect(() => {
     if (loading || typeof onReload !== "function") return undefined;
     if (!hasPendingInvoiceDocuments(invoices)) { refreshAttemptRef.current = 0; return undefined; }
+    if (!tabVisible) return undefined; // im Hintergrund keine Serverlast erzeugen
     const delay = nextRefreshDelay(refreshAttemptRef.current);
-    if (delay == null) return undefined;
+    if (delay == null) return undefined; // Obergrenze erreicht → nur noch manuell
     timerRef.current = setTimeout(() => {
       refreshAttemptRef.current += 1;
       onReload();
     }, delay);
     return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
-  }, [invoices, loading, onReload]);
+  }, [invoices, loading, onReload, tabVisible]);
 
   const manualReload = () => {
     refreshAttemptRef.current = 0;

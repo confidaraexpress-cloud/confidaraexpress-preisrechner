@@ -59,10 +59,10 @@ export function canBackfillCandidate(candidate) {
 // type ∈ success|info|error für die Alert-Darstellung.
 export function backfillOutcomeMessage(outcome) {
   switch (outcome) {
-    case "generated": return { type: "success", text: "Das Rechnungs-PDF wurde erzeugt." };
+    case "generated": return { type: "success", text: "Die interne Vorschau wurde erzeugt (Testdokument mit Wasserzeichen)." };
     case "already_ready": return { type: "info", text: "Diese Rechnung hat bereits ein fertiges PDF — keine Änderung." };
     case "in_progress": return { type: "info", text: "Die Erzeugung läuft bereits." };
-    case "not_booked": return { type: "error", text: "Die zugehörige Sendung ist nicht (mehr) gebucht — kein PDF-Backfill möglich." };
-    default: return { type: "error", text: "Die PDF-Erzeugung ist fehlgeschlagen." };
+    case "not_booked": return { type: "error", text: "Die zugehörige Sendung ist nicht (mehr) gebucht — keine Vorschau möglich." };
+    default: return { type: "error", text: "Die Vorschau-Erzeugung ist fehlgeschlagen." };
   }
 }

@@ -21,6 +21,14 @@ export const documentStatusMeta = (status) => DOCUMENT_STATUS_META[status] || ["
 // Sichtbarer Kundenhinweis für Testdokumente (kein aktiver Download).
 export const TEST_DOCUMENT_HINT = "Testdokument – nicht für den Zahlungsverkehr freigegeben";
 
+// Deutlicher Hinweis für eine interne Vorschau (Phase 5) — bewusst ausführlicher als
+// TEST_DOCUMENT_HINT, weil die Vorschau ansehbar/herunterladbar IST und daher klarstellen muss,
+// dass sie NICHT zahlungswirksam ist. Wird sowohl bei aktivem Download als auch als Sperrgrund gezeigt.
+export const PREVIEW_DOCUMENT_HINT = "Diese Rechnung dient derzeit ausschließlich der internen Prüfung und ist nicht für den Zahlungsverkehr freigegeben.";
+
+// Kurzes Badge-Label für ein Testdokument in der Kundensicht.
+export const PREVIEW_DOCUMENT_BADGE = "Interne Vorschau";
+
 // Testdokument-Kennzeichnung — exakt die Server-Policy gespiegelt: ein FERTIGES
 // Dokument ist nur dann produktiv, wenn is_test_document EXPLIZIT false ist;
 // true wie NULL (Altbestand, Modus unbekannt) gelten konservativ als Test.

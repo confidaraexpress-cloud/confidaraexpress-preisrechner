@@ -238,12 +238,13 @@ export default function AdminBackfillPage() {
     <div className="adm-page">
       {back}
       <header className="adm-page-head">
-        <h1 className="adm-title">Fehlende Rechnungs-PDFs erzeugen</h1>
+        <h1 className="adm-title">Interne Vorschau-PDFs erzeugen</h1>
         <p className="adm-sub">
-          Erzeugt für bestehende, tatsächlich gebuchte Sendungen das fehlende Rechnungs-PDF — mit der
-          gleichen Erzeugungslogik wie bei einer neuen Buchung. Es entsteht keine neue Rechnung, keine
-          neue Rechnungsnummer und kein automatischer E-Mail-Versand; Aktionen werden serverseitig
-          geprüft und im Admin-Audit protokolliert.
+          Erzeugt für bestehende, tatsächlich gebuchte Sendungen ein fehlendes Rechnungs-PDF als
+          INTERNE VORSCHAU (mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt
+          dauerhaft ein Testdokument — es wird NICHT produktiv, verbraucht keine neue Rechnungsnummer,
+          ändert keine Beträge/Datumsangaben und löst keinen E-Mail-Versand aus. Aktionen werden
+          serverseitig geprüft und im Admin-Audit protokolliert.
         </p>
       </header>
 
@@ -323,7 +324,7 @@ export default function AdminBackfillPage() {
                       <td>
                         <div className="adm-row-actions">
                           <button type="button" className="btn btn-primary btn-xs" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
-                            <Icon n="form" s={13} /> PDF erzeugen
+                            <Icon n="form" s={13} /> Vorschau-PDF erzeugen
                           </button>
                         </div>
                       </td>
@@ -353,11 +354,12 @@ export default function AdminBackfillPage() {
         <div className="adm-modal-overlay" role="presentation" onClick={closeModal}>
           <div className="adm-modal" role="dialog" aria-modal="true" aria-labelledby="adm-bf-title" aria-describedby="adm-bf-desc" onClick={(e) => e.stopPropagation()}>
             <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="form" s={22} /></div>
-            <h2 id="adm-bf-title" className="adm-modal-title">Rechnungs-PDF erzeugen?</h2>
+            <h2 id="adm-bf-title" className="adm-modal-title">Interne Vorschau erzeugen?</h2>
             <p id="adm-bf-desc" className="adm-modal-text">
-              Erzeugt aus den gespeicherten historischen Daten dieser Rechnung das fehlende PDF — mit der
-              gleichen Erzeugungslogik wie bei einer neuen Buchung. Es entsteht KEINE neue Rechnungsnummer;
-              Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.
+              Erzeugt aus den gespeicherten historischen Daten dieser Rechnung eine INTERNE VORSCHAU
+              (PDF mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt ein
+              Testdokument und wird NICHT produktiv. Es entsteht KEINE neue Rechnungsnummer; Beträge und
+              Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.
             </p>
             <p className="adm-modal-sub">Rechnung {dash(numberOf(modalCandidate))} · #{dash(idOf(modalCandidate))}</p>
             <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft.</p>
@@ -366,7 +368,7 @@ export default function AdminBackfillPage() {
               <button type="button" className="btn btn-primary btn-sm" onClick={confirmBackfill} disabled={modalBusy}>
                 {modalBusy
                   ? <><span className="spinner spinner-dark" /> Wird erzeugt…</>
-                  : <><Icon n="check" s={14} /> PDF erzeugen</>}
+                  : <><Icon n="check" s={14} /> Vorschau erzeugen</>}
               </button>
             </div>
           </div>

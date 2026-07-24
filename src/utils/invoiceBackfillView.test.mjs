@@ -37,11 +37,19 @@ test("fieldLabel: unbekannter Schlüssel → Rohwert (kein Absturz)", () => {
 test("candidateStatusMeta: bereits fertig → grün 'PDF vorhanden'", () => {
   assert.deepEqual(candidateStatusMeta({ alreadyReady: true, generatable: false }), ["badge-green", "PDF vorhanden"]);
 });
-test("candidateStatusMeta: fehlend + erzeugbar → blau 'PDF fehlt'", () => {
+test("candidateStatusMeta: fehlend + erzeugbar (Snapshots vorhanden) → blau 'PDF fehlt'", () => {
   assert.deepEqual(candidateStatusMeta({ alreadyReady: false, generatable: true }), ["badge-blue", "PDF fehlt"]);
+});
+test("candidateStatusMeta: Legacy erzeugbar (reconstructionNeeded) → blau 'Snapshot wird … rekonstruiert'", () => {
+  assert.deepEqual(
+    candidateStatusMeta({ alreadyReady: false, generatable: true, reconstructionNeeded: true }),
+    ["badge-blue", "Snapshot wird für interne Vorschau rekonstruiert"]
+  );
 });
 test("candidateStatusMeta: fehlend + NICHT erzeugbar → gelb 'Daten unvollständig'", () => {
   assert.deepEqual(candidateStatusMeta({ alreadyReady: false, generatable: false }), ["badge-yellow", "Daten unvollständig"]);
+  // reconstructionNeeded ohne generatable ändert nichts (Backend bleibt autoritativ)
+  assert.deepEqual(candidateStatusMeta({ alreadyReady: false, generatable: false, reconstructionNeeded: true }), ["badge-yellow", "Daten unvollständig"]);
 });
 test("candidateStatusMeta: fehlend/leer → kein Absturz, Standardfall", () => {
   assert.deepEqual(candidateStatusMeta(null), ["badge-yellow", "Daten unvollständig"]);
@@ -63,6 +71,10 @@ test("backfillOutcomeMessage: outcome → type", () => {
   assert.equal(backfillOutcomeMessage("already_ready").type, "info");
   assert.equal(backfillOutcomeMessage("in_progress").type, "info");
   assert.equal(backfillOutcomeMessage("not_booked").type, "error");
+  assert.equal(backfillOutcomeMessage("incomplete").type, "error");
   assert.equal(backfillOutcomeMessage("failed").type, "error");
   assert.equal(backfillOutcomeMessage("weird").type, "error");
+});
+test("backfillOutcomeMessage: incomplete erklärt fehlende historische Daten (keine erfundenen Zahlen)", () => {
+  assert.match(backfillOutcomeMessage("incomplete").text, /historische Daten|rekonstruieren/);
 });

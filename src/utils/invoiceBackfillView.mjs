@@ -39,11 +39,14 @@ const FIELD_LABELS = {
 };
 export const fieldLabel = (key) => FIELD_LABELS[key] || String(key ?? "—");
 
-// Anzeige-Status je Kandidat: „Bereit" (schon ein PDF) · „Fehlt" (erzeugbar) · „Unvollständig"
-// (historische Daten fehlen — nicht ohne Weiteres erzeugbar).
+// Anzeige-Status je Kandidat: „Bereit" (schon ein PDF) · „Vorschau erzeugbar (Snapshot wird
+// rekonstruiert)" (Alt-Rechnung ohne Snapshots — im Testbetrieb aus gespeicherten Daten
+// rekonstruierbar) · „Fehlt" (erzeugbar, Snapshots vorhanden) · „Unvollständig" (historische Daten
+// fehlen und lassen sich nicht zuverlässig rekonstruieren — nicht erzeugbar).
 export function candidateStatusMeta(candidate) {
   const c = candidate || {};
   if (c.alreadyReady) return ["badge-green", "PDF vorhanden"];
+  if (c.generatable && c.reconstructionNeeded) return ["badge-blue", "Snapshot wird für interne Vorschau rekonstruiert"];
   if (c.generatable) return ["badge-blue", "PDF fehlt"];
   return ["badge-yellow", "Daten unvollständig"];
 }
@@ -63,6 +66,9 @@ export function backfillOutcomeMessage(outcome) {
     case "already_ready": return { type: "info", text: "Diese Rechnung hat bereits ein fertiges PDF — keine Änderung." };
     case "in_progress": return { type: "info", text: "Die Erzeugung läuft bereits." };
     case "not_booked": return { type: "error", text: "Die zugehörige Sendung ist nicht (mehr) gebucht — keine Vorschau möglich." };
+    // Alt-Rechnung, deren historische Daten sich nicht zuverlässig rekonstruieren lassen (z. B. Netto/
+    // USt fehlen) — es werden bewusst KEINE Zahlen erfunden.
+    case "incomplete": return { type: "error", text: "Für diese Rechnung fehlen historische Daten, die sich nicht zuverlässig rekonstruieren lassen — keine Vorschau möglich." };
     default: return { type: "error", text: "Die Vorschau-Erzeugung ist fehlgeschlagen." };
   }
 }

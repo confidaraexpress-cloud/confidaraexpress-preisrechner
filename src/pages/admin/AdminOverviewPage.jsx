@@ -44,6 +44,15 @@ export default function AdminOverviewPage() {
           <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
         </Link>
 
+        <Link to="/admin/invoices/backfill" className="adm-tile">
+          <span className="adm-tile-ic"><Icon n="shieldCheck" s={22} /></span>
+          <span className="adm-tile-body">
+            <span className="adm-tile-title">Produktion &amp; Backfill</span>
+            <span className="adm-tile-desc">Produktionsbereitschaft prüfen und Alt-Rechnungen rückwirkend produktiv erzeugen.</span>
+          </span>
+          <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
+        </Link>
+
         <Link to="/admin/cancellation-requests" className="adm-tile">
           <span className="adm-tile-ic"><Icon n="ban" s={22} /></span>
           <span className="adm-tile-body">

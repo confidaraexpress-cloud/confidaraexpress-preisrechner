@@ -9,7 +9,8 @@ const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
   { to: "/admin/users", label: "Kunden", icon: "admin" },
   { to: "/admin/shipments", label: "Sendungen", icon: "package" },
-  { to: "/admin/invoices", label: "Rechnungen", icon: "invoice" },
+  { to: "/admin/invoices", label: "Rechnungen", icon: "invoice", end: true },
+  { to: "/admin/invoices/backfill", label: "Produktion & Backfill", icon: "shieldCheck" },
   { to: "/admin/cancellation-requests", label: "Stornierungsanfragen", icon: "ban" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];

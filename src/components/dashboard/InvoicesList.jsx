@@ -9,7 +9,7 @@ import {
   documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice, canPreviewInvoice,
   formatInvoiceAmount, hasPendingInvoiceDocuments, nextRefreshDelay,
   emailDisplayMeta, formatEmailSentAt,
-  TEST_DOCUMENT_HINT, DOWNLOAD_ERROR_GENERIC,
+  PREVIEW_DOCUMENT_HINT, PREVIEW_DOCUMENT_BADGE, DOWNLOAD_ERROR_GENERIC,
 } from "../../utils/invoiceView.mjs";
 
 // Rechnungsliste (Kunde) — Phase 3/4: authentifizierter Blob-Download + direkte
@@ -78,7 +78,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
     return (
       <div className="invoice-doc-cell">
         <span className={`badge ${cls}`}>{label}</span>
-        {isTest && <span className="badge badge-yellow">Testdokument</span>}
+        {isTest && <span className="badge badge-yellow">{PREVIEW_DOCUMENT_BADGE}</span>}
       </div>
     );
   };
@@ -95,6 +95,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
   };
 
   const renderActionCell = (inv) => {
+    const isPreview = isTestInvoiceDocument(inv);
     if (canDownloadInvoice(inv)) {
       const busy = downloadingId === inv.id;
       return (
@@ -123,11 +124,13 @@ export function InvoicesList({ invoices, loading, onReload }) {
               ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</>
               : <><Icon n="download" s={14} /> PDF</>}
           </button>
+          {/* Vorschau ist ansehbar/herunterladbar, aber NICHT zahlungswirksam — Hinweis bleibt sichtbar. */}
+          {isPreview && <span className="text-muted invoice-doc-note">{PREVIEW_DOCUMENT_HINT}</span>}
         </div>
       );
     }
-    if (isTestInvoiceDocument(inv)) {
-      return <span className="text-muted invoice-doc-note">{TEST_DOCUMENT_HINT}</span>;
+    if (isPreview) {
+      return <span className="text-muted invoice-doc-note">{PREVIEW_DOCUMENT_HINT}</span>;
     }
     if (inv.document_status === "pending_document" || inv.document_status === "generating") {
       return <span className="text-muted invoice-doc-note">Rechnung wird erstellt</span>;
@@ -182,6 +185,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
                   <tr>
                     <th>Nummer</th>
                     <th>Datum</th>
+                    <th>Leistung</th>
                     <th>Fällig</th>
                     <th>Betrag</th>
                     <th>Zahlung</th>
@@ -195,6 +199,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
                     <tr key={inv.id}>
                       <td className="mono" style={{ fontSize: 12 }}>{inv.invoice_number}</td>
                       <td className="text-muted">{dateDE(inv.issued_at || inv.created_at)}</td>
+                      <td className="text-muted">{inv.service_date ? dateDE(inv.service_date) : "—"}</td>
                       <td className="text-muted">{dateDE(inv.due_date)}</td>
                       <td className="font-bold">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</td>
                       <td><StatusBadge status={inv.status} /></td>

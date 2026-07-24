@@ -4,17 +4,11 @@ import { Icon } from "../../components/ui/Icon";
 import {
   getInvoiceProductionReadiness,
   listInvoiceBackfillPreview,
-  backfillInvoiceProductionDocument,
-  sendBackfilledInvoiceEmail,
+  backfillInvoiceDocument,
 } from "../../api/adminApi";
 import {
-  classificationMeta, readinessMeta, fieldLabel, warningLabel,
-  isProductionCandidate, isBackfilled, backfillRowActions,
-  backfillOutcomeMessage, backfillEmailOutcomeMessage,
+  readinessMeta, fieldLabel, candidateStatusMeta, canBackfillCandidate, backfillOutcomeMessage,
 } from "../../utils/invoiceBackfillView.mjs";
-import { documentStatusMeta } from "../../utils/invoiceView.mjs";
-import { fetchAdminInvoicePdf, downloadAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
-import { InvoicePdfPreviewModal } from "../../components/dashboard/InvoicePdfPreviewModal";
 
 const PAGE_SIZE = 25;
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
@@ -46,51 +40,21 @@ function selectTotal(d) {
   return Number.isFinite(n) ? n : null;
 }
 
-function fmtDate(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("de-DE");
-}
-
-// Status-Zelle: Produktiv (ggf. rückwirkend) · Testdokument · sonst Dokumentstatus.
-function DocStatusCell({ c }) {
-  if (isProductionCandidate(c)) {
-    return (
-      <span className="adm-doc-badges">
-        <span className="badge badge-green">Produktiv</span>
-        {isBackfilled(c) && <span className="badge badge-blue">rückwirkend</span>}
-      </span>
-    );
-  }
-  const status = c.documentStatus;
-  if (status === "ready") {
-    // ready + is_test_document !== false → Testdokument (konservativ, Server-Policy).
-    return <span className="badge badge-yellow">Testdokument</span>;
-  }
-  const [cls, label] = documentStatusMeta(status);
-  return <span className={`badge ${cls}`}>{status ? label : "—"}</span>;
-}
-
-function ClassBadge({ c }) {
-  const [cls, label, desc] = classificationMeta(c.classification);
-  return (
-    <span className="adm-doc-badges" title={desc}>
-      <span className={`badge ${cls}`}>{label}</span>
-    </span>
-  );
-}
-
-function ChipList({ items, kind }) {
+function ChipList({ items }) {
   if (!Array.isArray(items) || items.length === 0) return <span className="adm-muted">—</span>;
-  const label = kind === "warning" ? warningLabel : fieldLabel;
   return (
     <span className="adm-chip-wrap">
-      {items.map((it) => <span className="adm-chip" key={it}>{label(it)}</span>)}
+      {items.map((it) => <span className="adm-chip" key={it}>{fieldLabel(it)}</span>)}
     </span>
   );
 }
 
-// ── Produktionsbereitschaft-Karte (§10) — nur Feldnamen/Booleans/Zähler, keine Werte ──
+function StatusCell({ c }) {
+  const [cls, label] = candidateStatusMeta(c);
+  return <span className={`badge ${cls}`}>{label}</span>;
+}
+
+// ── Produktionsbereitschaft-Karte — rein informativ, blockiert NICHTS mehr ──
 function ReadinessCard({ readiness, loading, error, onReload }) {
   const [cls, label] = readinessMeta(readiness);
   const yesNo = (b) => (b === true ? "ja" : b === false ? "nein" : "—");
@@ -119,13 +83,13 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
               )}
             </div>
             <dl className="adm-kv">
-              <div className="adm-kv-item"><dt>Testmodus</dt><dd>{readiness.testMode ? "aktiv – keine echten Rechnungen" : "aus"}</dd></div>
+              <div className="adm-kv-item"><dt>Testmodus</dt><dd>{readiness.testMode ? "aktiv – keine automatischen echten Rechnungen" : "aus"}</dd></div>
               <div className="adm-kv-item"><dt>E-Mail-Versand bereit</dt><dd>{yesNo(readiness.emailProviderReady)}</dd></div>
               <div className="adm-kv-item"><dt>RESEND konfiguriert</dt><dd>{yesNo(readiness.resendConfigured)}</dd></div>
               <div className="adm-kv-item"><dt>Datenbank/Schema bereit</dt><dd>{yesNo(readiness.databaseReady)}</dd></div>
-              <div className="adm-kv-item"><dt>Backfill-Kandidaten</dt><dd>{num(readiness.backfillCandidateCount)}</dd></div>
-              <div className="adm-kv-item"><dt>Offene Testdokumente</dt><dd>{num(readiness.openTestDocuments)}</dd></div>
-              <div className="adm-kv-item"><dt>Nicht-produktive Rechnungen</dt><dd>{num(readiness.legacyInvoiceCount)}</dd></div>
+              <div className="adm-kv-item"><dt>PDF-Backfill: erzeugbar</dt><dd>{num(readiness.backfillCandidateCount)}</dd></div>
+              <div className="adm-kv-item"><dt>PDF-Backfill: unvollständig</dt><dd>{num(readiness.blockedCount)}</dd></div>
+              <div className="adm-kv-item"><dt>Rechnungen ohne PDF gesamt</dt><dd>{num(readiness.legacyInvoiceCount)}</dd></div>
             </dl>
             {Array.isArray(readiness.missingFields) && readiness.missingFields.length > 0 && (
               <div className="adm-readiness-block">
@@ -135,14 +99,15 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
             )}
             {Array.isArray(readiness.placeholderFields) && readiness.placeholderFields.length > 0 && (
               <div className="adm-readiness-block">
-                <span className="adm-readiness-label adm-readiness-label-warn">Platzhalter-/Testwerte (blockieren den Produktivbetrieb)</span>
+                <span className="adm-readiness-label adm-readiness-label-warn">Platzhalter-/Testwerte (vor dem ersten echten Kunden ersetzen)</span>
                 <ChipList items={readiness.placeholderFields} />
               </div>
             )}
             <p className="adm-support-hint">
-              Aus Sicherheitsgründen werden hier ausschließlich Feldnamen, Status und Zähler angezeigt —
-              niemals Aussteller-, Bank- oder Steuerwerte. Die Freigabe für den Produktivbetrieb erfolgt
-              serverseitig; das Frontend spiegelt sie nur.
+              Diese Anzeige ist rein informativ — sie zeigt, welche Stammdaten vor dem ersten echten
+              Kunden noch ersetzt werden müssen, blockiert aber weder den PDF-Backfill unten noch
+              künftige Buchungen. Aus Sicherheitsgründen werden ausschließlich Feldnamen, Status und
+              Zähler angezeigt — niemals Aussteller-, Bank- oder Steuerwerte.
             </p>
           </>
         )}
@@ -156,8 +121,8 @@ export default function AdminBackfillPage() {
   const [readinessLoading, setReadinessLoading] = useState(true);
   const [readinessError, setReadinessError] = useState("");
 
-  const [draft, setDraft] = useState({ classification: "", eligible: "all" });
-  const [applied, setApplied] = useState({ classification: "", eligible: "all" });
+  const [draft, setDraft] = useState({ status: "", generatable: "all" });
+  const [applied, setApplied] = useState({ status: "", generatable: "all" });
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
@@ -165,10 +130,9 @@ export default function AdminBackfillPage() {
   const [error, setError] = useState("");
   const [pageMsg, setPageMsg] = useState(null); // { type, text }
 
-  // Aktions-/Vorschau-Modals.
-  const [modal, setModal] = useState(null);      // { kind: 'backfill'|'email', candidate }
+  // Bestätigungsmodal für die einzige mutierende Aktion: PDF erzeugen.
+  const [modalCandidate, setModalCandidate] = useState(null);
   const [modalBusy, setModalBusy] = useState(false);
-  const [preview, setPreview] = useState(null);  // { id, invoiceNumber }
 
   const loadReadiness = useCallback(async () => {
     setReadinessLoading(true);
@@ -193,9 +157,9 @@ export default function AdminBackfillPage() {
 
   const toApiFilters = (f) => {
     const p = {};
-    if (f.classification) p.classification = f.classification;
-    if (f.eligible === "yes") p.eligible = "true";
-    if (f.eligible === "no") p.eligible = "false";
+    if (f.status === "missing" || f.status === "ready") p.status = f.status;
+    if (f.generatable === "yes") p.generatable = "true";
+    if (f.generatable === "no") p.generatable = "false";
     return p;
   };
 
@@ -226,24 +190,21 @@ export default function AdminBackfillPage() {
 
   const setField = (k, v) => setDraft((p) => ({ ...p, [k]: v }));
   const applyFilters = () => { setPage(1); setApplied(draft); };
-  const resetFilters = () => { setPage(1); setDraft({ classification: "", eligible: "all" }); setApplied({ classification: "", eligible: "all" }); };
+  const resetFilters = () => { setPage(1); setDraft({ status: "", generatable: "all" }); setApplied({ status: "", generatable: "all" }); };
 
   const hasMore = Number.isFinite(total) ? page * PAGE_SIZE < total : rows.length >= PAGE_SIZE;
   const showPagination = !error && (rows.length > 0 || page > 1);
 
-  const openBackfill = (candidate) => { setPageMsg(null); setModal({ kind: "backfill", candidate }); };
-  const openEmail = (candidate) => { setPageMsg(null); setModal({ kind: "email", candidate }); };
-  const closeModal = () => { if (!modalBusy) setModal(null); };
+  const openModal = (candidate) => { setPageMsg(null); setModalCandidate(candidate); };
+  const closeModal = () => { if (!modalBusy) setModalCandidate(null); };
 
-  const confirmModal = async () => {
-    if (!modal) return;
-    const id = idOf(modal.candidate);
+  const confirmBackfill = async () => {
+    if (!modalCandidate) return;
+    const id = idOf(modalCandidate);
     setModalBusy(true);
     setPageMsg(null);
     try {
-      const r = modal.kind === "backfill"
-        ? await backfillInvoiceProductionDocument(id)
-        : await sendBackfilledInvoiceEmail(id);
+      const r = await backfillInvoiceDocument(id);
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       if (!r.ok) {
@@ -252,20 +213,18 @@ export default function AdminBackfillPage() {
         setPageMsg({ type: "error", text: serverMsg
           || (r.status === 404 ? "Rechnung wurde nicht gefunden."
           : r.status === 429 ? "Zu viele Admin-Aktionen. Bitte kurz warten."
-          : modal.kind === "backfill" ? "Die rückwirkende Erzeugung ist fehlgeschlagen."
-          : "Der Versand ist fehlgeschlagen.") });
+          : "Die PDF-Erzeugung ist fehlgeschlagen.") });
         return;
       }
-      const msg = modal.kind === "backfill" ? backfillOutcomeMessage(d.outcome) : backfillEmailOutcomeMessage(d.outcome);
-      setPageMsg(msg);
+      setPageMsg(backfillOutcomeMessage(d.outcome));
       // Serverwahrheit neu laden — kein optimistisches UI.
       loadList();
       loadReadiness();
     } catch {
-      setPageMsg({ type: "error", text: modal.kind === "backfill" ? "Die rückwirkende Erzeugung ist fehlgeschlagen." : "Der Versand ist fehlgeschlagen." });
+      setPageMsg({ type: "error", text: "Die PDF-Erzeugung ist fehlgeschlagen." });
     } finally {
       setModalBusy(false);
-      setModal(null);
+      setModalCandidate(null);
     }
   };
 
@@ -279,10 +238,12 @@ export default function AdminBackfillPage() {
     <div className="adm-page">
       {back}
       <header className="adm-page-head">
-        <h1 className="adm-title">Produktion &amp; Backfill</h1>
+        <h1 className="adm-title">Fehlende Rechnungs-PDFs erzeugen</h1>
         <p className="adm-sub">
-          Produktionsbereitschaft prüfen und Alt-Rechnungen rückwirkend produktiv erzeugen. Aktionen werden
-          serverseitig geprüft und im Admin-Audit protokolliert; es entsteht keine neue Rechnungsnummer.
+          Erzeugt für bestehende, tatsächlich gebuchte Sendungen das fehlende Rechnungs-PDF — mit der
+          gleichen Erzeugungslogik wie bei einer neuen Buchung. Es entsteht keine neue Rechnung, keine
+          neue Rechnungsnummer und kein automatischer E-Mail-Versand; Aktionen werden serverseitig
+          geprüft und im Admin-Audit protokolliert.
         </p>
       </header>
 
@@ -297,7 +258,7 @@ export default function AdminBackfillPage() {
       <header className="adm-page-head adm-page-head-row">
         <div>
           <h2 className="adm-subtitle">Backfill-Vorschau</h2>
-          <p className="adm-sub">Objektive Klassifikation A–F je Rechnung. Aktionen sind nur aktiv, wenn sie objektiv zulässig sind.</p>
+          <p className="adm-sub">Alle Rechnungen zu tatsächlich gebuchten Sendungen. Die Aktion ist nur aktiv, wenn das PDF objektiv erzeugbar ist.</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={loadList} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
@@ -306,18 +267,19 @@ export default function AdminBackfillPage() {
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
-          <label htmlFor="f-class">Klassifikation</label>
-          <select id="f-class" value={draft.classification} onChange={(e) => setField("classification", e.target.value)}>
+          <label htmlFor="f-status">Status</label>
+          <select id="f-status" value={draft.status} onChange={(e) => setField("status", e.target.value)}>
             <option value="">Alle</option>
-            {["A", "B", "C", "D", "E", "F"].map((c) => <option key={c} value={c}>{classificationMeta(c)[1]}</option>)}
+            <option value="missing">Ohne PDF</option>
+            <option value="ready">PDF vorhanden</option>
           </select>
         </div>
         <div className="adm-filter-field">
-          <label htmlFor="f-eligible">Backfill-fähig</label>
-          <select id="f-eligible" value={draft.eligible} onChange={(e) => setField("eligible", e.target.value)}>
+          <label htmlFor="f-generatable">Erzeugbar</label>
+          <select id="f-generatable" value={draft.generatable} onChange={(e) => setField("generatable", e.target.value)}>
             <option value="all">Alle</option>
-            <option value="yes">Nur backfill-fähige</option>
-            <option value="no">Nur nicht-fähige</option>
+            <option value="yes">Nur erzeugbare</option>
+            <option value="no">Nur unvollständige</option>
           </select>
         </div>
         <div className="adm-filter-actions">
@@ -339,18 +301,15 @@ export default function AdminBackfillPage() {
               <thead>
                 <tr>
                   <th>Rechnung-Nr.</th>
-                  <th>Klassifikation</th>
-                  <th>Dokument</th>
+                  <th>Status</th>
                   <th>Fehlende Felder</th>
-                  <th>Warnungen</th>
                   <th>Shipment-ID</th>
-                  <th className="adm-actions-col">Aktionen</th>
+                  <th className="adm-actions-col">Aktion</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((c, i) => {
                   const id = idOf(c);
-                  const act = backfillRowActions(c);
                   return (
                     <tr key={id != null ? `inv-${id}` : `row-${i}`}>
                       <td className="adm-mono">
@@ -358,21 +317,13 @@ export default function AdminBackfillPage() {
                           ? <Link className="adm-idlink" to={`/admin/invoices/${encodeURIComponent(id)}`}>{dash(numberOf(c))}</Link>
                           : dash(numberOf(c))}
                       </td>
-                      <td><ClassBadge c={c} /></td>
-                      <td><DocStatusCell c={c} /></td>
-                      <td><ChipList items={c.missingFields} kind="field" /></td>
-                      <td><ChipList items={c.warnings} kind="warning" /></td>
+                      <td><StatusCell c={c} /></td>
+                      <td><ChipList items={c.missingFields} /></td>
                       <td className="adm-mono">{dash(shipmentOf(c))}</td>
                       <td>
                         <div className="adm-row-actions">
-                          <button type="button" className="btn btn-primary btn-xs" disabled={!act.canBackfill} onClick={() => openBackfill(c)}>
-                            <Icon n="form" s={13} /> Produktives PDF erzeugen
-                          </button>
-                          <button type="button" className="btn btn-outline btn-xs" disabled={!act.canViewProduction} onClick={() => setPreview({ id, invoiceNumber: numberOf(c) })}>
-                            <Icon n="eye" s={13} /> Produktives PDF ansehen
-                          </button>
-                          <button type="button" className="btn btn-outline btn-xs" disabled={!act.canSendBackfilledEmail} onClick={() => openEmail(c)}>
-                            <Icon n="mail" s={13} /> Rückwirkende Rechnung senden
+                          <button type="button" className="btn btn-primary btn-xs" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
+                            <Icon n="form" s={13} /> PDF erzeugen
                           </button>
                         </div>
                       </td>
@@ -397,39 +348,25 @@ export default function AdminBackfillPage() {
         </div>
       )}
 
-      {/* Vorschau des PRODUKTIVEN PDF (kurzlebige Blob-URL, Cleanup im Modal). */}
-      {preview && preview.id != null && (
-        <InvoicePdfPreviewModal
-          title={`Rechnung ${dash(preview.invoiceNumber)}`}
-          fetchPdf={() => fetchAdminInvoicePdf(preview.id, preview.invoiceNumber)}
-          onDownload={() => downloadAdminInvoicePdf(preview.id, preview.invoiceNumber)}
-          onClose={() => setPreview(null)}
-        />
-      )}
-
-      {/* Bestätigungsmodal — mutierende Aktionen erst nach bewusster Bestätigung. */}
-      {modal && (
+      {/* Bestätigungsmodal — die einzige mutierende Aktion erst nach bewusster Bestätigung. */}
+      {modalCandidate && (
         <div className="adm-modal-overlay" role="presentation" onClick={closeModal}>
           <div className="adm-modal" role="dialog" aria-modal="true" aria-labelledby="adm-bf-title" aria-describedby="adm-bf-desc" onClick={(e) => e.stopPropagation()}>
-            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true">
-              <Icon n={modal.kind === "backfill" ? "form" : "mail"} s={22} />
-            </div>
-            <h2 id="adm-bf-title" className="adm-modal-title">
-              {modal.kind === "backfill" ? "Produktives PDF rückwirkend erzeugen?" : "Rückwirkende Rechnung senden?"}
-            </h2>
+            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="form" s={22} /></div>
+            <h2 id="adm-bf-title" className="adm-modal-title">Rechnungs-PDF erzeugen?</h2>
             <p id="adm-bf-desc" className="adm-modal-text">
-              {modal.kind === "backfill"
-                ? "Erzeugt aus den gespeicherten historischen Daten ein PRODUKTIVES Rechnungs-PDF (ohne Testwasserzeichen). Ein bestehendes Test-PDF wird archiviert, nicht überschrieben. Es entsteht KEINE neue Rechnungsnummer; Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet."
-                : "Versendet die rückwirkend erzeugte, produktive Rechnung an die im historischen Kunden-Snapshot hinterlegte E-Mail-Adresse. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer."}
+              Erzeugt aus den gespeicherten historischen Daten dieser Rechnung das fehlende PDF — mit der
+              gleichen Erzeugungslogik wie bei einer neuen Buchung. Es entsteht KEINE neue Rechnungsnummer;
+              Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.
             </p>
-            <p className="adm-modal-sub">Rechnung {dash(numberOf(modal.candidate))} · #{dash(idOf(modal.candidate))}</p>
+            <p className="adm-modal-sub">Rechnung {dash(numberOf(modalCandidate))} · #{dash(idOf(modalCandidate))}</p>
             <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft.</p>
             <div className="adm-modal-actions">
               <button type="button" className="btn btn-outline btn-sm" onClick={closeModal} disabled={modalBusy}>Abbrechen</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={confirmModal} disabled={modalBusy}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={confirmBackfill} disabled={modalBusy}>
                 {modalBusy
-                  ? <><span className="spinner spinner-dark" /> {modal.kind === "backfill" ? "Wird erzeugt…" : "Wird gesendet…"}</>
-                  : <><Icon n="check" s={14} /> {modal.kind === "backfill" ? "Produktiv erzeugen" : "Rückwirkende Rechnung senden"}</>}
+                  ? <><span className="spinner spinner-dark" /> Wird erzeugt…</>
+                  : <><Icon n="check" s={14} /> PDF erzeugen</>}
               </button>
             </div>
           </div>

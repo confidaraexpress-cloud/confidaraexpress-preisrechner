@@ -353,29 +353,36 @@ export function resendAdminInvoiceEmail(id) {
   });
 }
 
-// ── Produktions-Cutover & Backfill (Phase 5) ─────────────────────────────────
-// Alle vier Endpunkte sind serverseitig admin-geschützt (requireAdmin bleibt
+// ── Produktionsbereitschaft & PDF-Backfill (Phase 5, korrigierter Standardprozess) ──
+// Alle drei Endpunkte sind serverseitig admin-geschützt (requireAdmin bleibt
 // autoritativ). Die read-only GETs liefern ausschließlich secret-/PII-arme Felder
-// (Feldnamen/Klassen/Zähler, nie Ausstellerwerte/Bankdaten). Die mutierenden POSTs
-// senden AUSSCHLIESSLICH { confirm: true } — KEIN Empfänger, KEINE Rechnungsdaten
-// aus dem Client (Empfänger/Snapshots stammen serverseitig aus customer_snapshot).
+// (Feldnamen/Status/Zähler, nie Ausstellerwerte/Bankdaten/Snapshots). Der mutierende
+// POST sendet AUSSCHLIESSLICH { confirm: true } — KEIN Empfänger, KEINE Preis-/
+// Datumsangaben aus dem Client. Es gibt bewusst KEINE Produktiv-Konvertierungs- oder
+// rückwirkende E-Mail-Sonderaktion mehr (auf ausdrücklichen Betreiberwunsch entfernt) —
+// ein Admin nutzt für den E-Mail-Versand einer PDF-gebackfillten Rechnung den ganz
+// normalen sendAdminInvoiceEmail-Wrapper oben.
 
-// GET /admin/invoices/production-readiness — aggregiertes Produktiv-Cutover-Gate
-// (read-only). Rohe Response zurück; der Aufrufer liest defensiv { ready, testMode,
-// missingFields, placeholderFields, emailProviderReady, databaseReady, … Zähler }.
+// GET /admin/invoices/production-readiness — informative Anzeige, welche Aussteller-/
+// Bank-/E-Mail-Stammdaten vor dem ersten echten Kunden noch ersetzt werden müssen.
+// Blockiert NICHTS (weder den PDF-Backfill unten noch künftige Buchungen). Rohe
+// Response zurück; der Aufrufer liest defensiv { ready, testMode, missingFields,
+// placeholderFields, emailProviderReady, databaseReady, … Zähler }.
 export function getInvoiceProductionReadiness() {
   return apiFetch(`/admin/invoices/production-readiness`, { auth: true });
 }
 
-// Erlaubte Query-Parameter für GET /admin/invoices/backfill-preview (Backend-
-// Vertrag). Bewusst allowlisted; Pagination über limit/offset, classification=A..F,
-// eligible nur als "true"/"false".
-const BACKFILL_PARAMS = ["classification", "eligible", "limit", "offset"];
+// Erlaubte Query-Parameter für GET /admin/invoices/backfill-preview (Backend-Vertrag).
+// Bewusst allowlisted; Pagination über limit/offset, status=missing|ready,
+// generatable nur als "true"/"false".
+const BACKFILL_PARAMS = ["status", "generatable", "limit", "offset"];
 
-// GET /admin/invoices/backfill-preview — read-only Klassifikationsvorschau (A–F).
-// UI arbeitet mit page/pageSize; hier zentral auf limit/offset gemappt. Filter
-// werden allowlisted durchgereicht — keine erfundenen Felder, kein Cache, kein
-// Logging. Rohe Response zurück; der Aufrufer liest defensiv { candidates, summary }.
+// GET /admin/invoices/backfill-preview — read-only Vorschau: für ALLE Rechnungen zu
+// tatsächlich gebuchten Sendungen zeigt sie, ob bereits ein PDF vorliegt bzw. ob es
+// aus den gespeicherten historischen Daten erzeugbar ist. UI arbeitet mit
+// page/pageSize; hier zentral auf limit/offset gemappt. Filter werden allowlisted
+// durchgereicht — keine erfundenen Felder, kein Cache, kein Logging. Rohe Response
+// zurück; der Aufrufer liest defensiv { candidates, summary }.
 export function listInvoiceBackfillPreview(params = {}) {
   const { page = 1, pageSize = 25, ...filters } = params || {};
   const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
@@ -384,27 +391,14 @@ export function listInvoiceBackfillPreview(params = {}) {
   return apiFetch(`/admin/invoices/backfill-preview${buildQuery(query, BACKFILL_PARAMS)}`, { auth: true });
 }
 
-// POST /admin/invoices/:id/backfill-production-document — erzeugt RÜCKWIRKEND ein
-// produktives PDF für eine echte, vollständige Alt-Rechnung (Klasse A/B). Der Body
-// ist exakt { confirm: true } (bewusste Bestätigung; das Backend lehnt sonst mit
-// 400 ab). Serverseitig: FOR UPDATE, KEINE neue Rechnungsnummer, KEINE Änderung von
-// Preis/Datum, bestehendes Test-PDF wird archiviert (nicht überschrieben), KEIN
-// Auto-E-Mail-Versand. Antwort trägt nur Status/Metadaten, nie PDF-Bytes.
-export function backfillInvoiceProductionDocument(id) {
-  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/backfill-production-document`, {
-    method: "POST",
-    auth: true,
-    body: JSON.stringify({ confirm: true }),
-  });
-}
-
-// POST /admin/invoices/:id/send-backfilled-email — versendet die E-Mail einer
-// rückwirkend produktiv erzeugten Rechnung. Body exakt { confirm: true } („Rück-
-// wirkende Rechnung senden"). KEIN Empfänger im Body — der Empfänger stammt
-// serverseitig ausschließlich aus dem historischen customer_snapshot. Idempotent:
-// bereits versendete Rechnungen antworten already_sent (kein zweiter Versand).
-export function sendBackfilledInvoiceEmail(id) {
-  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/send-backfilled-email`, {
+// POST /admin/invoices/:id/backfill-document — erzeugt NUR das FEHLENDE PDF einer
+// bestehenden, tatsächlich gebuchten Rechnung (nutzt dieselbe Erzeugungslogik wie
+// der normale Buchungsfluss). Der Body ist exakt { confirm: true } (bewusste
+// Bestätigung; das Backend lehnt sonst mit 400 ab). Serverseitig: KEINE neue
+// Rechnungsnummer, KEINE Änderung von Preis/Datum, KEIN JUMiNGO-Aufruf, KEIN
+// automatischer E-Mail-Versand. Antwort trägt nur Status/Metadaten, nie PDF-Bytes.
+export function backfillInvoiceDocument(id) {
+  return apiFetch(`/admin/invoices/${encodeURIComponent(id)}/backfill-document`, {
     method: "POST",
     auth: true,
     body: JSON.stringify({ confirm: true }),

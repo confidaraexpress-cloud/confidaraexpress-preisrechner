@@ -128,20 +128,32 @@ export function canPreviewInvoice(inv) {
 }
 
 // ── Zurückhaltende Auto-Aktualisierung ──────────────────────────────────────
-// Nur solange sichtbare Rechnungen noch auf ihr Dokument warten, wenige Versuche
-// mit zunehmendem Abstand; endet bei ready/document_failed, Seitenwechsel oder
-// Unmount (Timer-Cleanup im Aufrufer).
-export const INVOICE_REFRESH_DELAYS_MS = [5000, 10000, 20000];
+// Nur solange sichtbare Rechnungen noch auf ihr Dokument warten (pending_document|generating),
+// wenige Versuche mit zunehmendem Abstand (Backoff). Endet automatisch bei ready/document_failed
+// (kein „wartendes" Dokument mehr), nach dem letzten Intervall (harte Obergrenze), beim
+// Seitenwechsel oder Unmount (Timer-Cleanup im Aufrufer). Im Hintergrund-Tab wird nicht gepollt
+// (der Aufrufer gated auf document.hidden). Summe der Intervalle ≈ 110 s → „maximal etwa zwei
+// Minuten" aktive Aktualisierung; danach nur noch manuell über den „Aktualisieren"-Button.
+export const INVOICE_REFRESH_DELAYS_MS = [5000, 10000, 20000, 30000, 45000];
+
+// Dokument-Status, bei denen noch auf das PDF gewartet wird (Polling sinnvoll). document_failed
+// und ready sind bewusst NICHT enthalten → dort stoppt das Polling sofort (kein Endlos-Poll).
+const PENDING_DOCUMENT_STATES = new Set(["pending_document", "generating"]);
 
 export function hasPendingInvoiceDocuments(invoices) {
-  return Array.isArray(invoices) && invoices.some(
-    (i) => i && (i.document_status === "pending_document" || i.document_status === "generating")
-  );
+  return Array.isArray(invoices) && invoices.some((i) => i && PENDING_DOCUMENT_STATES.has(i.document_status));
 }
 
-// Nächste Verzögerung für Versuch n (0-basiert); null = keine weiteren Versuche.
+// Nächste Verzögerung für Versuch n (0-basiert); null = keine weiteren Versuche (Obergrenze erreicht).
 export function nextRefreshDelay(attempt) {
   return Number.isInteger(attempt) && attempt >= 0 && attempt < INVOICE_REFRESH_DELAYS_MS.length
     ? INVOICE_REFRESH_DELAYS_MS[attempt]
     : null;
+}
+
+// Soll (JETZT) automatisch weiter aktualisiert werden? Reine Entscheidungsfunktion für den
+// Aufrufer (Component gated zusätzlich auf Sichtbarkeit/loading). true nur, wenn noch ein Dokument
+// wartet UND die Versuchsobergrenze nicht erreicht ist.
+export function shouldContinuePolling(invoices, attempt) {
+  return hasPendingInvoiceDocuments(invoices) && nextRefreshDelay(attempt) != null;
 }

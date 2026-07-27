@@ -13,6 +13,7 @@ import {
   validateCompanyForm, validateContactForm, isFormValid,
   canSaveCompany, canSaveContact, isEditActionDisabled,
   companyAddressLine, paymentTermValue, PROFILE_TEXT,
+  mapApiProfileError,
 } from "../../utils/profileView.mjs";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
@@ -39,6 +40,9 @@ export function Profile({ user }) {
   const [contactForm, setContactForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [cardError, setCardError] = useState("");
+  // Feldbezogene Fehler (Client-Validierung und Backend-`field`) — werden direkt am
+  // betroffenen Eingabefeld angezeigt statt nur als Kartenmeldung.
+  const [fieldErrors, setFieldErrors] = useState({});
   const [savedCard, setSavedCard] = useState("");    // dezente gemeinsame Erfolgsmeldung
 
   const [pwForm, setPwForm] = useState(EMPTY_PW_FORM);
@@ -68,29 +72,35 @@ export function Profile({ user }) {
 
   const startCompanyEdit = () => {
     setCompanyForm(companyBaseline(user));
-    setCardError(""); setSavedCard(""); setEditCard("company");
+    setCardError(""); setFieldErrors({}); setSavedCard(""); setEditCard("company");
   };
   const startContactEdit = () => {
     setContactForm(contactBaseline(user));
-    setCardError(""); setSavedCard(""); setEditCard("contact");
+    setCardError(""); setFieldErrors({}); setSavedCard(""); setEditCard("contact");
   };
   const cancelEdit = () => {
     refocusRef.current = editCard;
-    setCardError("");
+    setCardError(""); setFieldErrors({});
     setCompanyForm(null); setContactForm(null);
     setEditCard(null);
   };
 
-  const updCompany = (k, v) => setCompanyForm(p => ({ ...p, [k]: v }));
-  const updContact = (k, v) => setContactForm(p => ({ ...p, [k]: v }));
+  const clearFieldError = (k) => setFieldErrors(p => {
+    if (!p[k]) return p;
+    const n = { ...p }; delete n[k]; return n;
+  });
+  const updCompany = (k, v) => { clearFieldError(k); setCompanyForm(p => ({ ...p, [k]: v })); };
+  const updContact = (k, v) => { clearFieldError(k); setContactForm(p => ({ ...p, [k]: v })); };
 
   const saveCard = async (which) => {
     const form = which === "company" ? companyForm : contactForm;
     const errors = which === "company" ? validateCompanyForm(form) : validateContactForm(form);
-    if (!isFormValid(errors)) { setCardError(Object.values(errors)[0]); return; }
+    // Ungültige Pflichtfelder werden gar nicht erst abgesendet.
+    if (!isFormValid(errors)) { setFieldErrors(errors); setCardError(Object.values(errors)[0]); return; }
     const patch = which === "company" ? buildCompanyPatch(form) : buildContactPatch(form);
 
-    setSaving(true); setCardError("");
+    if (saving) return; // Doppelklick-/Mehrfachversand-Schutz
+    setSaving(true); setCardError(""); setFieldErrors({});
     try {
       // auth: true → ein echter Session-401 löst korrekt den globalen Logout aus.
       // Fachliche Validierungsfehler kommen als 400 zurück und loggen NICHT aus.
@@ -100,7 +110,15 @@ export function Profile({ user }) {
         body: JSON.stringify(patch),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.");
+      if (!r.ok) {
+        // Feldbezogene Backendfehler (z. B. geleerter Firmenname) am richtigen Feld
+        // zeigen; alles andere bleibt die allgemeine Kartenmeldung.
+        const { fieldErrors: fe, generalError } = mapApiProfileError(d);
+        setFieldErrors(fe);
+        setCardError(generalError || Object.values(fe)[0] || "");
+        setSaving(false);
+        return;
+      }
       // Serverwahrheit aus der PATCH-Antwort (RETURNING-Zeile) übernehmen. updateUser
       // merged über den bestehenden State → pendingEmailChange bleibt erhalten.
       if (d.user) updateUser(d.user);
@@ -210,6 +228,19 @@ export function Profile({ user }) {
     </div>
   ));
 
+  // Pflichtfeld-Sternchen (rein visuell; das Eingabefeld trägt required/aria-required).
+  const req = <span className="profile-req" aria-hidden="true">*</span>;
+  const fieldErr = (k) => fieldErrors[k]
+    ? <span className="profile-field-error" role="alert">{fieldErrors[k]}</span>
+    : null;
+  // Gemeinsame Props für die beiden B2B-Pflichtfelder.
+  const requiredProps = (k) => ({
+    required: true,
+    "aria-required": "true",
+    "aria-invalid": fieldErrors[k] ? "true" : undefined,
+    className: `field-input${fieldErrors[k] ? " field-input-error" : ""}`,
+  });
+
   const renderCardActions = (which, canSave) => (
     <div className="profile-form-actions">
       <button type="button" className="btn btn-outline" onClick={cancelEdit} disabled={saving}>Abbrechen</button>
@@ -230,10 +261,15 @@ export function Profile({ user }) {
             {cardError && (
               <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={16} />{cardError}</div>
             )}
+            <p className="profile-required-hint">
+              Firmenname ist eine Pflichtangabe — ConfidaraExpress ist eine reine Geschäftskundenplattform.
+            </p>
             <div className="field">
-              <label className="field-label" htmlFor="pf-company-name">Firmenname</label>
-              <input id="pf-company-name" className="field-input" value={companyForm.company_name}
-                onChange={e => updCompany("company_name", e.target.value)} />
+              <label className="field-label" htmlFor="pf-company-name">Firmenname {req}</label>
+              <input id="pf-company-name" {...requiredProps("company_name")} value={companyForm.company_name}
+                onChange={e => updCompany("company_name", e.target.value)}
+                autoComplete="organization" />
+              {fieldErr("company_name")}
             </div>
             <div className="field">
               <label className="field-label" htmlFor="pf-vat">USt-ID</label>
@@ -291,10 +327,15 @@ export function Profile({ user }) {
             {cardError && (
               <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={16} />{cardError}</div>
             )}
+            <p className="profile-required-hint">
+              Der Ansprechpartner ist eine Pflichtangabe und kann nicht entfernt werden.
+            </p>
             <div className="field">
-              <label className="field-label" htmlFor="pf-name">Name</label>
-              <input id="pf-name" className="field-input" value={contactForm.name}
-                onChange={e => updContact("name", e.target.value)} />
+              <label className="field-label" htmlFor="pf-name">Name {req}</label>
+              <input id="pf-name" {...requiredProps("name")} value={contactForm.name}
+                onChange={e => updContact("name", e.target.value)}
+                autoComplete="name" />
+              {fieldErr("name")}
             </div>
             {renderCardActions("contact", canSaveContact(contactForm, contactBase, saving))}
           </div>

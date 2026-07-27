@@ -251,6 +251,13 @@ tr:hover td { background: var(--gray50); }
 .profile-form-body { padding: 16px 20px; }
 .profile-form-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
 
+/* B2B-Pflichtfelder im Profil (Firmenname, Ansprechpartner). ConfidaraExpress ist
+   eine reine Geschaeftskundenplattform: beide Felder duerfen geaendert, aber nicht
+   geleert werden. Reine Zusatzklassen — bestehendes Profildesign bleibt unberuehrt. */
+.profile-req { color: var(--blue); font-weight: 600; }
+.profile-required-hint { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray500); }
+.profile-field-error { display: block; margin-top: 6px; font-size: 12px; line-height: 1.4; color: #dc2626; }
+
 /* Passwort-ändern-Bereich innerhalb der Sicherheitskarte */
 .profile-password-section { border-top: 1px solid var(--border); padding-top: 18px; }
 .profile-password-title { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }

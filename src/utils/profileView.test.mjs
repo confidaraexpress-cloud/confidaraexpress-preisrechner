@@ -118,9 +118,17 @@ test("14 — Unternehmensfelder: PLZ-Überlänge (>10) wird abgewiesen", () => {
   assert.ok(e.zip);
 });
 
-test("15 — leere Unternehmensfelder sind gültig (Leeren erlaubt)", () => {
-  const e = validateCompanyForm({ company_name: "", vat_id: "", street: "", zip: "", city: "", country: "" });
-  assert.deepEqual(e, {});
+// Seit der B2B-Profilintegrität ist der Firmenname ein Pflichtfeld und nicht mehr
+// leerbar (Backend: PATCH /kunde/profil, code B2B_PROFILE_FIELD_REQUIRED). Die
+// übrigen Unternehmensfelder bleiben ausdrücklich optional und leerbar.
+// Vollständige Abdeckung: src/utils/profileB2bIntegrity.test.mjs
+test("15 — optionale Unternehmensfelder bleiben leerbar, der Firmenname nicht", () => {
+  const e = validateCompanyForm({ company_name: "Vance Logistik GmbH", vat_id: "", street: "", zip: "", city: "", country: "" });
+  assert.deepEqual(e, {}, "USt-ID, Straße, PLZ, Stadt und Land dürfen leer sein");
+
+  const cleared = validateCompanyForm({ company_name: "", vat_id: "", street: "", zip: "", city: "", country: "" });
+  assert.equal(cleared.company_name, "Firmenname ist ein Pflichtfeld.");
+  assert.equal(isFormValid(cleared), false);
 });
 
 test("16 — ungültiger Ländercode wird abgewiesen, gültiger akzeptiert", () => {

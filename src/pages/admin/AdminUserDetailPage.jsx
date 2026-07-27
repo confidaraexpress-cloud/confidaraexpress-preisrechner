@@ -4,6 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { getAdminUser, anonymizeAdminUser, deleteAdminUser } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
+import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -67,6 +68,14 @@ const anonymizedByOf = (u) => firstDefined(u.anonymized_by, u.anonymizedBy);
 const pwChangedAtOf = (u) => firstDefined(u.password_changed_at, u.passwordChangedAt);
 
 const num = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? String(Number(v)) : "—");
+
+// Fehlendes B2B-Pflichtfeld sichtbar benennen statt nur „—" anzuzeigen.
+// Rückgabe: JSX-Hinweis, oder null wenn das Feld gepflegt ist.
+function missingField(user, field) {
+  const hit = missingB2BAccountFields(user).find((f) => f.field === field);
+  if (!hit || isAnonymizedAccount(user)) return null;
+  return <span className="adm-b2b-missing">{hit.missingText}</span>;
+}
 const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
 const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 
@@ -191,6 +200,9 @@ export default function AdminUserDetailPage() {
   const anonAt = anonymizedAtOf(u);
 
   const isAnonymized = statusOf(u) === "anonymized" || !!anonAt;
+  // Bewertet ausschließlich die ohnehin gelieferten Felder company_name/name.
+  // Anonymisierte Konten sind ausgenommen (Tombstone ist kein Datenpflegefall).
+  const b2bHint = b2bCompletenessHint(u);
   // Minimale Ziel-Identität im Modal — maximal ID/Firma/Name, KEINE Adresse.
   const targetLabel = `#${dash(idOf(u))} · ${companyOf(u) || nameOf(u) || "Kunde"}`;
   const confirmed = anonInput.trim() === "ANONYMIZE_USER";
@@ -264,6 +276,19 @@ export default function AdminUserDetailPage() {
     <div className="adm-page">
       {back}
 
+      {/* Fehlende B2B-Stammdaten: bei Alt-Konten aus der Zeit, in der Firmenname und
+          Ansprechpartner optional waren. Die Freischaltung wird serverseitig blockiert,
+          solange die Angaben fehlen — der Hinweis macht das vor dem Klick sichtbar. */}
+      {b2bHint.show && (
+        <div className="adm-b2b-warn" role="status">
+          <Icon n="shield" s={16} />
+          <span>
+            <strong>{b2bHint.headline}</strong>
+            <span className="adm-b2b-warn-text">{b2bHint.text}</span>
+          </span>
+        </div>
+      )}
+
       {anonMsg && (
         <div className={`alert ${anonMsg.type === "success" ? "alert-success" : "alert-error"}`}>
           <Icon n={anonMsg.type === "success" ? "check" : "x"} s={16} />{anonMsg.text}
@@ -298,8 +323,8 @@ export default function AdminUserDetailPage() {
           <div className="adm-card-head"><Icon n="idcard" s={17} /> Stammdaten</div>
           <div className="adm-card-body">
             <KV items={[
-              ["Name", dash(nameOf(u))],
-              ["Firma", dash(companyOf(u))],
+              ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
+              ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
               ["E-Mail", dash(emailOf(u))],
               ["USt-ID", dash(vatOf(u))],
               ["Straße", dash(streetOf(u))],

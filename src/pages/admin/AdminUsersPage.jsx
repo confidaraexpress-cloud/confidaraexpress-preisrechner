@@ -4,6 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 import { missingB2BAccountFields, isApprovalBlocked } from "../../utils/b2bAccount.mjs";
+import { customerNumberOf } from "../../utils/businessNumbers.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -285,6 +286,7 @@ export default function AdminUsersPage() {
               <thead>
                 <tr>
                   <th>Registriert am</th>
+                  <th>Kundennummer</th>
                   <th>ID</th>
                   <th>Firma</th>
                   <th>Name</th>
@@ -300,6 +302,9 @@ export default function AdminUsersPage() {
                 {filtered.map((u, i) => (
                   <tr key={rowKeyOf(u, i)}>
                     <td className="adm-td-time">{fmtDate(createdOf(u))}</td>
+                    {/* Kundennummer = organisatorische Kundenkennung (CE-K-…). Die interne ID
+                        daneben bleibt der rein technische Schlüssel (Detail-Link). */}
+                    <td className="adm-mono">{customerNumberOf(u) || <span className="text-muted">—</span>}</td>
                     <td className="adm-mono">
                       {idOf(u) != null
                         ? <Link className="adm-idlink" to={`/admin/users/${encodeURIComponent(idOf(u))}`}>{idOf(u)}</Link>

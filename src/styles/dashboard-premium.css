@@ -1603,3 +1603,9 @@
 
 /* Reduced-Motion-Block entfällt: die .ce-dark-Atmosphäre und der Live-Indikator
    sind jetzt vollständig statisch (keine Ambient-Animation, keine Pakete). */
+
+/* Profil-Pflichtfelder im Premium-Scope: nur Farbanpassung an das dunklere
+   Kartenlayout, keine Layoutaenderung. */
+.dashboard-profile-premium .profile-required-hint { color: rgba(202, 214, 238, 0.7); }
+.dashboard-profile-premium .profile-req { color: #7ea8ff; }
+.dashboard-profile-premium .profile-field-error { color: #ff9d9d; }

@@ -16,6 +16,8 @@
 // bewusst nur „Name" und täuscht keinen nicht speicherbaren Telefonwert vor.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { B2B_REQUIRED_FIELDS, b2bFieldError } from "./registrationValidation.mjs";
+
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "street", "zip", "city", "country"];
 export const CONTACT_FIELDS = ["name"];
@@ -89,9 +91,34 @@ export function isContactDirty(form, baseline) {
   return buildContactPatch(form).name !== buildContactPatch(baseline).name;
 }
 
+// ── B2B-Pflichtfelder ───────────────────────────────────────────────────────
+// ConfidaraExpress ist ausschließlich B2B: ein aktives Kundenkonto muss dauerhaft
+// Firmenname und Ansprechpartner besitzen. Beide dürfen im Profil geändert, aber
+// nicht geleert werden (Backend: PATCH /kunde/profil, code B2B_PROFILE_FIELD_REQUIRED).
+// Die Regeln kommen aus registrationValidation.mjs — dieselbe Quelle wie im
+// Registrierungsformular, damit Profil und Registrierung nicht auseinanderlaufen.
+export const B2B_REQUIRED_PROFILE_FIELDS = B2B_REQUIRED_FIELDS.map((r) => r.apiField);
+
+export function isB2BRequiredField(field) {
+  return B2B_REQUIRED_PROFILE_FIELDS.includes(field);
+}
+
+// Pflichtfeldfehler für die Felder EINER Kartengruppe (leer = ok).
+function validateB2BRequired(fields, form) {
+  const errors = {};
+  for (const rule of B2B_REQUIRED_FIELDS) {
+    if (!fields.includes(rule.apiField)) continue;
+    const err = b2bFieldError(rule, form?.[rule.apiField]);
+    if (err) errors[rule.apiField] = err;
+  }
+  return errors;
+}
+
 // ── Client-Validierung (nur technische Mindestprüfung, kein Fach-Overreach) ──
-// Alle Felder optional (Backend erlaubt Leeren → NULL); geprüft wird nur Länge
-// und — fürs Land — das 2-stellige ISO-Format. Rückgabe: Fehlerobjekt (leer = ok).
+// Optionale Felder dürfen weiterhin geleert werden (Backend → NULL); geprüft wird
+// dort nur Länge und — fürs Land — das 2-stellige ISO-Format. Für die beiden
+// B2B-Pflichtfelder gilt zusätzlich die trim-basierte Pflichtprüfung oben.
+// Rückgabe: Fehlerobjekt (leer = ok).
 function validateMaxLen(fields, form) {
   const errors = {};
   for (const key of fields) {
@@ -105,7 +132,7 @@ function validateMaxLen(fields, form) {
 }
 
 export function validateCompanyForm(form) {
-  const errors = validateMaxLen(COMPANY_FIELDS, form);
+  const errors = { ...validateMaxLen(COMPANY_FIELDS, form), ...validateB2BRequired(COMPANY_FIELDS, form) };
   const country = trimmed(form?.country);
   if (country !== "" && !/^[A-Z]{2}$/i.test(country)) {
     errors.country = "Bitte ein gültiges Land wählen.";
@@ -114,7 +141,24 @@ export function validateCompanyForm(form) {
 }
 
 export function validateContactForm(form) {
-  return validateMaxLen(CONTACT_FIELDS, form);
+  return { ...validateMaxLen(CONTACT_FIELDS, form), ...validateB2BRequired(CONTACT_FIELDS, form) };
+}
+
+// ── Backend-Feldfehler zuordnen ─────────────────────────────────────────────
+// Das Backend liefert bei Feldfehlern { error, code, field } (gleiche Form wie bei
+// der Registrierung). Kennt das Formular das Feld, wird der Text am Eingabefeld
+// angezeigt; sonst bleibt es bei der allgemeinen Kartenmeldung.
+// → { fieldErrors, generalError }
+const KNOWN_PROFILE_FIELDS = new Set([...COMPANY_FIELDS, ...CONTACT_FIELDS]);
+
+export function mapApiProfileError(payload, fallback = "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.") {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const message = typeof data.error === "string" && data.error.trim() ? data.error.trim() : fallback;
+  const field = typeof data.field === "string" ? data.field : "";
+  if (field && KNOWN_PROFILE_FIELDS.has(field)) {
+    return { fieldErrors: { [field]: message }, generalError: "" };
+  }
+  return { fieldErrors: {}, generalError: message };
 }
 
 export function isFormValid(errors) {

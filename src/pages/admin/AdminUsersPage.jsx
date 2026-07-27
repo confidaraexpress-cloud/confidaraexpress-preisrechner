@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
-import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 import { missingB2BAccountFields, isApprovalBlocked } from "../../utils/b2bAccount.mjs";
 
@@ -88,8 +87,6 @@ const statusOf = (u) => firstDefined(u.status, u.state);
 const roleOf = (u) => firstDefined(u.role);
 const vatOf = (u) => firstDefined(u.vat_id, u.vatId, u.ust_id);
 const paymentTermOf = (u) => firstDefined(u.payment_term, u.paymentTerm);
-const creditUsedOf = (u) => firstDefined(u.credit_used, u.creditUsed);
-const creditLimitOf = (u) => firstDefined(u.credit_limit, u.creditLimit);
 const createdOf = (u) => firstDefined(u.created_at, u.createdAt, u.created);
 const rowKeyOf = (u, i) => firstDefined(u.id, u.user_id, u.uuid) ?? `row-${i}`;
 
@@ -99,7 +96,6 @@ function fmtDate(v) {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("de-DE");
 }
-const moneyOrDash = (v) => (v != null && v !== "" && Number.isFinite(Number(v)) ? money(v) : "—");
 
 function StatusBadge({ status }) {
   const [c, l] = userStatusMeta(status);
@@ -297,8 +293,6 @@ export default function AdminUsersPage() {
                   <th>Rolle</th>
                   <th>USt-ID</th>
                   <th>Zahlungsziel</th>
-                  <th>Kredit genutzt</th>
-                  <th>Kreditlimit</th>
                   <th>Aktion</th>
                 </tr>
               </thead>
@@ -318,8 +312,6 @@ export default function AdminUsersPage() {
                     <td><RoleBadge role={roleOf(u)} /></td>
                     <td className="adm-mono">{dash(vatOf(u))}</td>
                     <td className="adm-nowrap">{paymentTermLabel(paymentTermOf(u))}</td>
-                    <td className="adm-num">{moneyOrDash(creditUsedOf(u))}</td>
-                    <td className="adm-num">{moneyOrDash(creditLimitOf(u))}</td>
                     <td>
                       {(() => {
                         const st = statusOf(u);

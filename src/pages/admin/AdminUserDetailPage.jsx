@@ -59,8 +59,6 @@ const streetOf = (u) => firstDefined(u.street, u.strasse);
 const zipOf = (u) => firstDefined(u.zip, u.postal_code, u.plz);
 const cityOf = (u) => firstDefined(u.city, u.stadt, u.ort);
 const countryOf = (u) => firstDefined(u.country, u.country_code, u.land);
-const creditUsedOf = (u) => firstDefined(u.credit_used, u.creditUsed);
-const creditLimitOf = (u) => firstDefined(u.credit_limit, u.creditLimit);
 const paymentTermOf = (u) => firstDefined(u.payment_term, u.paymentTerm);
 const createdOf = (u) => firstDefined(u.created_at, u.createdAt, u.created);
 const anonymizedAtOf = (u) => firstDefined(u.anonymized_at, u.anonymizedAt);
@@ -349,14 +347,14 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* 4) Zahlungs-/Kreditdaten */}
+        {/* 4) Zahlungsdaten — ConfidaraExpress kennt kein Kreditlimit. Die offenen
+             Beträge sind reine Debitoreninformation und lösen nichts automatisch aus;
+             bei Zahlungsproblemen sperrt der Admin das Konto manuell. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="card" s={17} /> Zahlung &amp; Kredit</div>
+          <div className="adm-card-head"><Icon n="card" s={17} /> Zahlung</div>
           <div className="adm-card-body">
             <KV items={[
               ["Zahlungsziel", paymentTermLabel(paymentTermOf(u))],
-              ["Kredit genutzt", moneyOrDash(creditUsedOf(u))],
-              ["Kreditlimit", moneyOrDash(creditLimitOf(u))],
               ["Offener Betrag", moneyOrDash(firstDefined(summary.open_amount, summary.openAmount))],
               ["Unbezahlte Rechnungen", num(firstDefined(summary.invoices_unpaid, summary.invoicesUnpaid))],
               ["Überfällige Rechnungen", num(firstDefined(summary.invoices_overdue, summary.invoicesOverdue))],

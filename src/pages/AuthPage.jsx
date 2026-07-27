@@ -10,25 +10,13 @@ import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../context/AuthContext";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function getRegErrors(form, passwordRepeat) {
-  const e = {};
-  if (!form.email?.trim())                      e.email        = "E-Mail ist ein Pflichtfeld.";
-  else if (!EMAIL_RE.test(form.email.trim()))   e.email        = "Bitte eine gültige E-Mail-Adresse eingeben.";
-  if (!form.password)                            e.password     = "Passwort ist ein Pflichtfeld.";
-  else if (form.password.length < 8)             e.password     = "Passwort muss mindestens 8 Zeichen enthalten.";
-  else if (form.password.length > 128)           e.password     = "Passwort darf maximal 128 Zeichen enthalten.";
-  if (form.password && passwordRepeat !== form.password) e.passwordRepeat = "Die Passwörter stimmen nicht überein.";
-  if (!form.name?.trim())                        e.name         = "Name ist ein Pflichtfeld.";
-  else if (form.name.length > 100)               e.name         = "Name darf maximal 100 Zeichen enthalten.";
-  if (form.company_name?.length > 200)           e.company_name = "Firma darf maximal 200 Zeichen enthalten.";
-  if (form.vat_id?.length > 30)                 e.vat_id       = "USt-ID darf maximal 30 Zeichen enthalten.";
-  if (form.street?.length > 200)                e.street       = "Straße darf maximal 200 Zeichen enthalten.";
-  if (form.zip?.length > 10)                    e.zip          = "PLZ darf maximal 10 Zeichen enthalten.";
-  if (form.city?.length > 100)                  e.city         = "Stadt darf maximal 100 Zeichen enthalten.";
-  return e;
-}
+// Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
+// damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
+import {
+  getRegErrors,
+  mapApiRegistrationError,
+  buildRegistrationPayload,
+} from "../utils/registrationValidation.mjs";
 
 export default function AuthPage() {
   const { login, sessionExpired } = useAuth();
@@ -94,17 +82,34 @@ export default function AuthPage() {
   };
 
   const handleRegister = async () => {
+    // Doppelklick-/Mehrfachversand-Schutz: der Button ist bereits über `loading`
+    // deaktiviert, hier zusätzlich als Guard, falls das Formular per Enter kommt.
+    if (loading) return;
     const errs = getRegErrors(regForm, regPasswordRepeat);
     if (Object.keys(errs).length > 0) { setRegErrors(errs); return; }
     setRegErrors({});
     setError(""); setLoading(true);
     try {
-      const r = await fetch(`${API}/register`, { method: "POST", headers: jsonH, body: JSON.stringify(regForm) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Registrierung fehlgeschlagen");
-      setSuccess("Konto beantragt! Nach Freischaltung erhalten Sie eine E-Mail.");
+      // Pflichtfelder getrimmt senden — dieselben Feldnamen wie bisher (snake_case).
+      const r = await fetch(`${API}/register`, {
+        method: "POST",
+        headers: jsonH,
+        body: JSON.stringify(buildRegistrationPayload(regForm)),
+      });
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      if (!r.ok) {
+        // Feldbezogene Backend-Fehler (z. B. fehlender Firmenname) werden am
+        // betroffenen Eingabefeld angezeigt statt nur als Banner oben.
+        const { fieldErrors, generalError } = mapApiRegistrationError(d);
+        setRegErrors(fieldErrors);
+        setError(generalError);
+        setLoading(false);
+        return;
+      }
+      setSuccess("Firmenkonto beantragt! Wir prüfen Ihre Angaben und melden uns nach der Freischaltung per E-Mail.");
       setTab("login");
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e.message || "Registrierung fehlgeschlagen"); }
     setLoading(false);
   };
 

@@ -4,6 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
+import { missingB2BAccountFields, isApprovalBlocked } from "../../utils/b2bAccount.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -39,6 +40,9 @@ const CONFIRM_COPY = {
 const STATUS_CHANGE_ERRORS = {
   400: "Der gewünschte Status ist ungültig.",
   404: "Kunde wurde nicht gefunden.",
+  // 409 = B2B-Vollständigkeits-Guard des Backends. Die konkrete Meldung kommt
+  // aus der Antwort (sie benennt die fehlenden Felder); das hier ist der Fallback.
+  409: "Freischaltung nicht möglich: Firmendaten des Kontos sind unvollständig.",
   429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
   500: "Status konnte nicht geändert werden.",
   default: "Status konnte nicht geändert werden.",
@@ -175,7 +179,15 @@ export default function AdminUsersPage() {
 
   const openConfirm = (u, action) => {
     setActionMsg(null);
-    setConfirm({ id: idOf(u), target: action.target, kind: action.kind, name: companyOf(u) || nameOf(u) || `#${dash(idOf(u))}` });
+    setConfirm({
+      id: idOf(u),
+      target: action.target,
+      kind: action.kind,
+      name: companyOf(u) || nameOf(u) || `#${dash(idOf(u))}`,
+      // Nur für die Freischaltung relevant: fehlende B2B-Stammdaten eines Alt-Kontos.
+      // Verbindlich bleibt der serverseitige Guard — dies ist reine Vorab-Information.
+      missingB2B: action.target === "approved" ? missingB2BAccountFields(u) : [],
+    });
   };
   const closeConfirm = () => { if (!actionBusy) setConfirm(null); };
 
@@ -189,7 +201,16 @@ export default function AdminUsersPage() {
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) {
-          setActionMsg({ type: "error", text: STATUS_CHANGE_ERRORS[r.status] || STATUS_CHANGE_ERRORS.default });
+          // Beim B2B-Guard (409) benennt das Backend die konkret fehlenden Felder —
+          // diese Meldung ist aussagekräftiger als der generische Katalogtext.
+          let text = STATUS_CHANGE_ERRORS[r.status] || STATUS_CHANGE_ERRORS.default;
+          if (r.status === 409) {
+            try {
+              const d = await r.json();
+              if (d && typeof d.error === "string" && d.error.trim()) text = d.error.trim();
+            } catch { /* Fallback-Text beibehalten */ }
+          }
+          setActionMsg({ type: "error", text });
         }
         return;
       }
@@ -290,8 +311,8 @@ export default function AdminUsersPage() {
                         ? <Link className="adm-idlink" to={`/admin/users/${encodeURIComponent(idOf(u))}`}>{idOf(u)}</Link>
                         : "—"}
                     </td>
-                    <td>{dash(companyOf(u))}</td>
-                    <td>{dash(nameOf(u))}</td>
+                    <td>{companyOf(u) ? companyOf(u) : <span className="adm-b2b-missing">Firmenname fehlt</span>}</td>
+                    <td>{nameOf(u) ? nameOf(u) : <span className="adm-b2b-missing">Ansprechpartner fehlt</span>}</td>
                     <td className="adm-nowrap">{dash(emailOf(u))}</td>
                     <td><StatusBadge status={statusOf(u)} /></td>
                     <td><RoleBadge role={roleOf(u)} /></td>
@@ -304,12 +325,17 @@ export default function AdminUsersPage() {
                         const st = statusOf(u);
                         const action = statusAction(st);
                         if (action) {
+                          // Freischalten bei unvollständigen B2B-Stammdaten: der Server
+                          // lehnt es ohnehin ab (409) — hier wird es vorab kenntlich
+                          // gemacht. Sperren bleibt immer möglich.
+                          const blocked = action.target === "approved" && isApprovalBlocked(u);
                           return (
                             <button
                               type="button"
                               className={`btn btn-sm ${action.kind === "block" ? "adm-btn-danger" : "btn-outline"}`}
                               onClick={() => openConfirm(u, action)}
-                              disabled={actionBusy}
+                              disabled={actionBusy || blocked}
+                              title={blocked ? "Firmendaten unvollständig — bitte im Kundendetail ergänzen." : undefined}
                             >
                               <Icon n={action.kind === "block" ? "lock" : "check"} s={13} /> {action.label}
                             </button>
@@ -360,6 +386,18 @@ export default function AdminUsersPage() {
               <h2 id="adm-status-title" className="adm-modal-title">{copy.title}</h2>
               <p className="adm-modal-sub">{confirm.name}</p>
               <p id="adm-status-desc" className="adm-modal-text">{copy.text}</p>
+              {confirm.missingB2B?.length > 0 && (
+                <div className="adm-b2b-warn" role="status">
+                  <Icon n="shield" s={16} />
+                  <span>
+                    <strong>{confirm.missingB2B.map((f) => f.missingText).join(" · ")}</strong>
+                    <span className="adm-b2b-warn-text">
+                      ConfidaraExpress ist eine reine Geschäftskundenplattform. Die Freischaltung wird
+                      serverseitig abgelehnt, solange diese Angaben fehlen.
+                    </span>
+                  </span>
+                </div>
+              )}
               <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
               <div className="adm-modal-actions">
                 <button type="button" className="btn btn-outline btn-sm" onClick={closeConfirm} disabled={actionBusy}>Abbrechen</button>

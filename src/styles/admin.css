@@ -260,3 +260,12 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-chip-wrap { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .adm-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-actions-col { min-width: 260px; }
+
+/* ── Fehlende B2B-Stammdaten (Kundendetail / Freischaltung) ────────────────
+   ConfidaraExpress ist eine reine Geschäftskundenplattform. Fehlen Firmenname
+   oder Ansprechpartner (Alt-Konten), blockiert das Backend die Freischaltung —
+   diese Klassen machen das im Adminpanel vor dem Klick sichtbar. */
+.adm-b2b-warn { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; color: #92400e; background: #fffbeb; border: 1px solid rgba(217,119,6,0.28); box-shadow: 0 1px 4px rgba(217,119,6,0.06); }
+.adm-b2b-warn strong { display: block; margin-bottom: 3px; }
+.adm-b2b-warn-text { display: block; color: #a16207; }
+.adm-b2b-missing { color: #b45309; font-weight: 600; }

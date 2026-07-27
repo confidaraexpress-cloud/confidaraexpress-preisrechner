@@ -176,18 +176,26 @@ export default function DatenschutzPage() {
               <h2 style={H2_STYLE}>4. Registrierung und Benutzerkonto</h2>
 
               <h3 style={H3_STYLE}>4.1 Erfasste Daten</h3>
-              <p style={P_STYLE}>Zur Nutzung der Plattform ist eine Registrierung erforderlich. Dabei erheben wir:</p>
-              <p style={P_STYLE}><strong>Pflichtfelder:</strong> Vor- und Nachname, E-Mail-Adresse, Passwort</p>
               <p style={P_STYLE}>
-                <strong>Optionale Felder:</strong> Firmenname, Umsatzsteuer-Identifikationsnummer,
-                Straße und Hausnummer, Postleitzahl, Stadt, Land
+                ConfidaraExpress richtet sich ausschließlich an Unternehmen und Geschäftskunden; eine
+                Registrierung als Privatperson ist nicht vorgesehen. Zur Nutzung der Plattform ist eine
+                Registrierung als Firmenkonto erforderlich. Dabei erheben wir:
+              </p>
+              <p style={P_STYLE}>
+                <strong>Pflichtfelder:</strong> Firmenname, Vor- und Nachname der ansprechbaren Person
+                im Unternehmen, geschäftliche E-Mail-Adresse sowie ein Passwort als Zugangsdaten
+              </p>
+              <p style={P_STYLE}>
+                <strong>Optionale Felder:</strong> Umsatzsteuer-Identifikationsnummer, Straße und
+                Hausnummer, Postleitzahl, Stadt, Land
               </p>
 
               <h3 style={H3_STYLE}>4.2 Zweck und Verfahren</h3>
               <p style={P_STYLE}>
-                Nach Einreichung der Registrierung wird Ihr Konto manuell durch uns geprüft und
-                freigeschaltet. Sie erhalten nach erfolgreicher Freischaltung eine Benachrichtigung per
-                E-Mail. Bis zur Freischaltung sind keine Plattformfunktionen nutzbar.
+                Nach Einreichung der Registrierung wird Ihr Firmenkonto manuell durch uns geprüft und
+                freigeschaltet. Die Prüfung dient auch der Feststellung, dass die Registrierung für ein
+                Unternehmen erfolgt. Sie erhalten nach erfolgreicher Freischaltung eine Benachrichtigung
+                per E-Mail. Bis zur Freischaltung sind keine Plattformfunktionen nutzbar.
               </p>
               <p style={P_STYLE}>
                 <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertragsanbahnung und

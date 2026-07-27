@@ -11,6 +11,7 @@ import {
   emailDisplayMeta, formatEmailSentAt,
   PREVIEW_DOCUMENT_HINT, PREVIEW_DOCUMENT_BADGE, DOWNLOAD_ERROR_GENERIC,
 } from "../../utils/invoiceView.mjs";
+import { businessOrderNumberOf } from "../../utils/businessNumbers.mjs";
 
 // Rechnungsliste (Kunde) — Phase 3/4: authentifizierter Blob-Download + direkte
 // PDF-Vorschau (Modal mit kurzlebiger Blob-Object-URL) + Rechnungs-E-Mail-Status.
@@ -196,7 +197,8 @@ export function InvoicesList({ invoices, loading, onReload }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Nummer</th>
+                    <th>Rechnungsnummer</th>
+                    <th>Bestellung</th>
                     <th>Datum</th>
                     <th>Leistung</th>
                     <th>Fällig</th>
@@ -210,7 +212,13 @@ export function InvoicesList({ invoices, loading, onReload }) {
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv.id}>
-                      <td className="mono" style={{ fontSize: 12 }}>{inv.invoice_number}</td>
+                      {/* Rechnungsnummer bleibt die primäre Dokumentnummer; die Bestellnummer
+                          steht getrennt daneben. Legacy-Rechnungen ohne Bestellnummer zeigen
+                          „—" — NIE die JUMiNGO-Ordernummer und NIE eine interne ID. */}
+                      <td className="mono" style={{ fontSize: 12, wordBreak: "break-all" }}>{inv.invoice_number}</td>
+                      <td className="mono text-muted" style={{ fontSize: 12, wordBreak: "break-all" }}>
+                        {businessOrderNumberOf(inv) || "—"}
+                      </td>
                       <td className="text-muted">{dateDE(inv.issued_at || inv.created_at)}</td>
                       <td className="text-muted">{inv.service_date ? dateDE(inv.service_date) : "—"}</td>
                       <td className="text-muted">{dateDE(inv.due_date)}</td>

@@ -32,6 +32,8 @@ import {
   INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_TARGET, resolveInvoiceDeliveryMode, isTerminalDeliveryMode,
   findInvoiceByNumber, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
+import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
+import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
@@ -1018,7 +1020,22 @@ export default function BookingPage() {
           <div className="booking-success-wrap">
             <div className="booking-success-icon">✓</div>
             <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
-            <p className="text-muted mb-8">Rechnungsnummer: <strong className="booking-invoice-num">{booking.invoiceNumber}</strong></p>
+            {/* Die Confidara-Bestellnummer ist die primäre Vorgangsnummer und steht zuerst;
+                die Rechnungsnummer wird getrennt daneben ausgewiesen und dient NICHT mehr als
+                allgemeine Vorgangsnummer. Fehlt die Bestellnummer (Legacy-/Bestandsfall), wird
+                die Zeile ausgelassen — es wird keine Ersatznummer erzeugt. */}
+            <div className="booking-success-numbers mb-16" style={{ display: "flex", flexWrap: "wrap", gap: "10px 32px", justifyContent: "center" }}>
+              {booking.businessOrderNumber && (
+                <div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.businessOrder}</div>
+                  <CopyableNumber value={booking.businessOrderNumber} label={NUMBER_LABELS.businessOrder} size="lg" />
+                </div>
+              )}
+              <div>
+                <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
+                <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
+              </div>
+            </div>
             {/* Klare Trennung: Buchungsbestätigung (bereits versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
             <div className="booking-success-delivery mb-16">
               <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>

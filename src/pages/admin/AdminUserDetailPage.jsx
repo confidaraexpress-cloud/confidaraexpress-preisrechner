@@ -5,6 +5,7 @@ import { getAdminUser, anonymizeAdminUser, deleteAdminUser } from "../../api/adm
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
+import { customerNumberOf } from "../../utils/businessNumbers.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -321,6 +322,9 @@ export default function AdminUserDetailPage() {
           <div className="adm-card-head"><Icon n="idcard" s={17} /> Stammdaten</div>
           <div className="adm-card-body">
             <KV items={[
+              // Kundennummer = organisatorische Kundenkennung (CE-K-…). Die interne User-ID
+              // bleibt ausschließlich technischer Schlüssel (Kopf-Chip „#id" und URL).
+              ["Kundennummer", dash(customerNumberOf(u))],
               ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
               ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
               ["E-Mail", dash(emailOf(u))],

@@ -5,6 +5,7 @@ import { money } from "../../utils/formatters";
 import { Link } from "react-router-dom";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta, serviceLabel, SHIPMENT_STATUS_OPTIONS } from "../../utils/adminShipments";
+import { businessOrderNumberOf } from "../../utils/businessNumbers.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -246,6 +247,7 @@ export default function AdminShipmentsPage() {
               <thead>
                 <tr>
                   <th>Datum</th>
+                  <th>Bestellnummer</th>
                   <th>Sendung-ID</th>
                   <th>User-ID</th>
                   <th>Carrier</th>
@@ -272,6 +274,9 @@ export default function AdminShipmentsPage() {
                   return (
                     <tr key={rowKeyOf(row, i)}>
                       <td className="adm-td-time">{fmtDate(dateOf(row))}</td>
+                      {/* Confidara-Bestellnummer: die Liste soll primär hierüber lesbar sein.
+                          Die interne Sendung-ID daneben bleibt rein technischer Schlüssel. */}
+                      <td className="adm-mono">{businessOrderNumberOf(row) || <span className="adm-muted">—</span>}</td>
                       <td className="adm-mono">
                         {sid != null
                           ? <Link className="adm-idlink" to={`/admin/shipments/${encodeURIComponent(sid)}`}>{sid}</Link>

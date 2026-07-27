@@ -15,6 +15,8 @@ import {
   companyAddressLine, paymentTermValue, PROFILE_TEXT,
   mapApiProfileError,
 } from "../../utils/profileView.mjs";
+import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { CopyableNumber } from "../ui/CopyableNumber";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, street, zip, city, country }
@@ -68,6 +70,8 @@ export function Profile({ user }) {
   const contactBase = contactBaseline(user);
   const countryName = countries.find(c => c.code === user?.country)?.name;
   const paymentTerm = paymentTermValue(user);
+  // Kundennummer ausschließlich aus dem API-Feld customer_number — nie aus user.id abgeleitet.
+  const customerNumber = customerNumberOf(user);
   const addressLine = companyAddressLine(user);
 
   const startCompanyEdit = () => {
@@ -448,6 +452,15 @@ export function Profile({ user }) {
               <div className="profile-account-name">{user?.company_name || user?.name || "Nicht angegeben"}</div>
               <div className="profile-account-email">
                 <Icon n="mail" s={14} /> {user?.email || "Nicht angegeben"}
+              </div>
+              {/* Kundennummer (CE-K-…) — rein lesend, nicht editierbar und bewusst NICHT an
+                  users.id gekoppelt. Bestandskonten ohne Nummer zeigen einen neutralen
+                  Hinweis statt eines technischen Leerwerts. */}
+              <div className="profile-account-customer-number" style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.customer}:</span>
+                {customerNumber
+                  ? <CopyableNumber value={customerNumber} label={NUMBER_LABELS.customer} />
+                  : <span className="text-muted" style={{ fontSize: 13 }}>{NOT_ASSIGNED_TEXT}</span>}
               </div>
               <div className="profile-meta-row">
                 <StatusBadge status={user?.status} />

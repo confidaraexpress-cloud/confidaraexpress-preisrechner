@@ -7,6 +7,7 @@ import { invoiceDisplayMeta, isInvoiceOverdue } from "../../utils/adminInvoices"
 import { documentStatusMeta, isTestInvoiceDocument, formatBytes, emailDisplayMeta, formatEmailSentAt } from "../../utils/invoiceView.mjs";
 import { downloadAdminInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
 import { InvoicePdfPreviewModal } from "../../components/dashboard/InvoicePdfPreviewModal";
+import { businessOrderNumberOf, customerNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -318,7 +319,12 @@ export default function AdminInvoiceDetailPage() {
           <div className="adm-card-head"><Icon n="invoice" s={17} /> Rechnungsdaten</div>
           <div className="adm-card-body">
             <KV items={[
+              // Drei getrennte Nummernkreise, klar benannt: Rechnungs-, Bestell- und
+              // Kundennummer. Bestell-/Kundennummer stammen aus den eingefrorenen Snapshots
+              // (Legacy-Rechnungen: „—"). Die interne Invoice-ID bleibt technischer Schlüssel.
               ["Rechnungsnummer", dash(invoiceNoOf(inv))],
+              [NUMBER_LABELS.businessOrder, dash(businessOrderNumberOf(inv))],
+              [NUMBER_LABELS.customer, dash(customerNumberOf(inv))],
               ["Betrag", moneyOrDash(amountOf(inv))],
               ["MwSt Versand", vat != null && vat !== "" ? moneyOrDash(vat) : "—"],
               ["Status", <span className={`badge ${statusCls}`}>{statusLabel}</span>],
@@ -485,7 +491,7 @@ export default function AdminInvoiceDetailPage() {
             ) : (
               <>
                 <p className="adm-support-hint" style={{ marginTop: 0 }}>
-                  Setzt den Rechnungsstatus auf bezahlt und gibt den reservierten Kundenkredit frei.
+                  Setzt den Rechnungsstatus auf bezahlt.
                   Die Aktion wird im Admin-Audit protokolliert.
                 </p>
                 <div className="adm-support">
@@ -592,7 +598,7 @@ export default function AdminInvoiceDetailPage() {
             <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="check" s={22} /></div>
             <h2 id="adm-pay-title" className="adm-modal-title">Diese Rechnung wirklich als bezahlt markieren?</h2>
             <p id="adm-pay-desc" className="adm-modal-text">
-              Diese Aktion setzt den Rechnungsstatus auf bezahlt und gibt den reservierten Kundenkredit frei.
+              Diese Aktion setzt den Rechnungsstatus auf bezahlt.
             </p>
             <p className="adm-modal-sub">Rechnung {dash(invoiceNoOf(inv))} · #{dash(idOf(inv))}</p>
             <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert.</p>

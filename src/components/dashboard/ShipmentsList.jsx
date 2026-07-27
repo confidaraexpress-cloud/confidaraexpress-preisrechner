@@ -8,6 +8,7 @@ import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { PremiumBackground } from "./PremiumBackground";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
+import { customerShipmentNumbers, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import {
   canRequestCancellation,
   hasCancellationRequest,
@@ -169,16 +170,32 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
             <div className="table-scroll">
               <table>
                 <thead>
-                  <tr><th>Carrier</th><th>Gewicht</th><th>Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr>
+                  <tr><th>Bestellnummer</th><th>Carrier</th><th>Gewicht</th><th>Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr>
                 </thead>
                 <tbody>
-                  {shipments.map((s) => (
+                  {shipments.map((s) => {
+                    const nums = customerShipmentNumbers(s);
+                    return (
                     <React.Fragment key={s.id}>
                       <tr>
+                        {/* Die Confidara-Bestellnummer ist die primäre Vorgangsnummer und steht
+                            daher zuerst und optisch hervorgehoben. Legacy-Sendungen ohne Nummer
+                            zeigen einen neutralen Hinweis — NIE die interne Shipment-ID und NIE
+                            die JUMiNGO-Shipment-/Ordernummer als Ersatz. */}
+                        <td>
+                          {nums.businessOrderNumber
+                            ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.businessOrderNumber}</span>
+                            : <span className="text-muted" style={{ fontSize: 12 }}>{NOT_ASSIGNED_TEXT}</span>}
+                          {nums.trackingNumber && (
+                            <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
+                              {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                            </div>
+                          )}
+                        </td>
                         <td>
                           {s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}
-                          {s.reference_number && (
-                            <div className="text-muted mono" style={{ fontSize: 12, marginTop: 2 }}>Ref: {s.reference_number}</div>
+                          {nums.customerReference && (
+                            <div className="text-muted mono" style={{ fontSize: 12, marginTop: 2 }}>Ref: {nums.customerReference}</div>
                           )}
                         </td>
                         <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
@@ -202,7 +219,45 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                       </tr>
                       {trackingId === s.jumingo_shipment_id && (
                         <tr>
-                          <td colSpan={6} style={{ background: "var(--gray50)", padding: "20px 24px" }}>
+                          <td colSpan={7} style={{ background: "var(--gray50)", padding: "20px 24px" }}>
+                            {/* Sendungsdetail: die drei kundensichtbaren Werte GETRENNT benannt.
+                                JUMiNGO-Shipment-ID/-Ordernummer und die interne shipments.id
+                                werden hier bewusst NICHT angezeigt — die IDs bleiben lediglich
+                                im State/API-Aufruf (Track/Label) erhalten. */}
+                            <dl className="shipment-detail-numbers" style={{ display: "flex", flexWrap: "wrap", gap: "8px 28px", margin: "0 0 16px" }}>
+                              <div>
+                                <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.businessOrder}</dt>
+                                <dd className="mono" style={{ margin: 0, fontSize: 13, fontWeight: 600, wordBreak: "break-all" }}>
+                                  {nums.businessOrderNumber || NOT_ASSIGNED_TEXT}
+                                </dd>
+                              </div>
+                              {nums.trackingNumber && (
+                                <div>
+                                  <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.tracking}</dt>
+                                  <dd className="mono" style={{ margin: 0, fontSize: 13, wordBreak: "break-all" }}>{nums.trackingNumber}</dd>
+                                </div>
+                              )}
+                              {nums.customerReference && (
+                                <div>
+                                  <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.customerReference}</dt>
+                                  <dd className="mono" style={{ margin: 0, fontSize: 13, wordBreak: "break-all" }}>{nums.customerReference}</dd>
+                                </div>
+                              )}
+                              <div>
+                                <dt className="text-muted" style={{ fontSize: 11 }}>Carrier</dt>
+                                <dd style={{ margin: 0, fontSize: 13 }}>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</dd>
+                              </div>
+                              <div>
+                                <dt className="text-muted" style={{ fontSize: 11 }}>Buchungsdatum</dt>
+                                <dd style={{ margin: 0, fontSize: 13 }}>{dateDE(s.created_at)}</dd>
+                              </div>
+                              {s.requested_shipping_date && (
+                                <div>
+                                  <dt className="text-muted" style={{ fontSize: 11 }}>Geplantes Versanddatum</dt>
+                                  <dd style={{ margin: 0, fontSize: 13 }}>{isoDayDE(s.requested_shipping_date)}</dd>
+                                </div>
+                              )}
+                            </dl>
                             {trackLoading ? (
                               <div className="loading-center"><span className="spinner spinner-dark" /></div>
                             ) : tracking?.error ? (
@@ -299,7 +354,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                         </tr>
                       )}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

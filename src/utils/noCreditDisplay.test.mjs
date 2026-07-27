@@ -109,7 +109,9 @@ test("9 — fehlende Kreditfelder in der API verursachen keinen Fehler", () => {
 
 test("10 — Tabellenstruktur bleibt konsistent: Spaltenköpfe == Zellen pro Zeile", () => {
   const headers = (usersListSrc.match(/<th>/g) || []).length;
-  assert.equal(headers, 10, `erwartet 10 Spalten nach Entfernen der zwei Kreditspalten, gefunden ${headers}`);
+  // 10 Spalten nach dem Entfernen der zwei Kreditspalten + 1 Spalte „Kundennummer"
+  // (fachliche Kundenkennung CE-K-…, ergänzt mit der Nummern-Integration).
+  assert.equal(headers, 11, `erwartet 11 Spalten (10 ohne Kreditspalten + Kundennummer), gefunden ${headers}`);
 
   // Zellen der Datenzeile zählen (der Block zwischen <tbody> und </tbody>).
   const body = usersListSrc.slice(usersListSrc.indexOf("<tbody>"), usersListSrc.indexOf("</tbody>"));

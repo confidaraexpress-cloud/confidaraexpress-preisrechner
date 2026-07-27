@@ -6,6 +6,7 @@ import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta, serviceLabel } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
+import { businessOrderNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -378,10 +379,16 @@ export default function AdminShipmentDetailPage() {
               ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
               ["Maße (L × B × H)", dimensions(s)],
               ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
-              ["Referenz", refDisplay(refOf(s))],
-              ["Tracking-Nr.", <span className="adm-mask">{maskTail(trackingOf(s)) || "—"}</span>],
-              ["JUMiNGO-ID", <span className="adm-mask">{maskTail(jumingoOf(s)) || "—"}</span>],
-              ["Bestell-Nr.", <span className="adm-mask">{maskTail(orderOf(s)) || "—"}</span>],
+              // Nummern strikt getrennt benannt: „Bestellnummer" ist AUSSCHLIESSLICH die interne
+              // Confidara-Nummer (CE-BS…). Die externe JUMiNGO-Ordernummer trägt eine eigene,
+              // unmissverständliche Beschriftung — sie hieß hier zuvor „Bestell-Nr." und war
+              // damit von der Confidara-Bestellnummer nicht unterscheidbar.
+              [NUMBER_LABELS.businessOrder, businessOrderNumberOf(s)
+                ? <span className="adm-mono">{businessOrderNumberOf(s)}</span> : "—"],
+              [NUMBER_LABELS.adminCustomerReference, refDisplay(refOf(s))],
+              [NUMBER_LABELS.tracking, <span className="adm-mask">{maskTail(trackingOf(s)) || "—"}</span>],
+              [NUMBER_LABELS.jumingoOrder, <span className="adm-mask">{maskTail(orderOf(s)) || "—"}</span>],
+              ["JUMiNGO-Shipment-ID", <span className="adm-mask">{maskTail(jumingoOf(s)) || "—"}</span>],
             ]} />
           </div>
         </div>

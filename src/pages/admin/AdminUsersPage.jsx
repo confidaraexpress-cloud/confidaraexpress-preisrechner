@@ -1,10 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { listAdminUsers, setAdminUserStatus } from "../../api/adminApi";
+import { listAdminUsers, setAdminUserStatus, getAdminCustomerPriceMarkup } from "../../api/adminApi";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 import { missingB2BAccountFields, isApprovalBlocked } from "../../utils/b2bAccount.mjs";
 import { customerNumberOf } from "../../utils/businessNumbers.mjs";
+import {
+  CODE_CONFIRMATION_REQUIRED,
+  approvalError,
+  approvalGate,
+  approvalGateExplanation,
+  confirmedMarkupLine,
+  selectPriceMarkup,
+} from "../../utils/customerMarkup.mjs";
 
 const PAGE_SIZE = 25;
 
@@ -126,6 +134,10 @@ export default function AdminUsersPage() {
   const [confirm, setConfirm] = useState(null);       // { id, target, kind, name }
   const [actionBusy, setActionBusy] = useState(false); // Statusänderung läuft
   const [actionMsg, setActionMsg] = useState(null);    // { type, text }
+  // Bestätigungsstatus des Kundenaufschlags — NUR für den geöffneten
+  // Freischaltungsdialog, gezielt für genau diesen Kunden geladen. Die
+  // Kundenliste selbst löst dafür keine Abfragen aus.
+  const [confirmPricing, setConfirmPricing] = useState({ loading: false, error: false, data: null });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,38 +186,87 @@ export default function AdminUsersPage() {
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };
 
+  // Aufschlag für genau einen Kunden laden (Freischaltungsdialog). Solange das
+  // läuft bzw. fehlschlägt, gilt der Bestätigungsstatus als unbekannt und die
+  // Freischaltung wird NICHT als möglich dargestellt (fail-closed).
+  const loadConfirmPricing = useCallback(async (userId) => {
+    setConfirmPricing({ loading: true, error: false, data: null });
+    try {
+      const r = await getAdminCustomerPriceMarkup(userId);
+      if (!r.ok) {
+        // 401/403 → zentraler Logout/Redirect via apiFetch.
+        setConfirmPricing({ loading: false, error: true, data: null });
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const data = selectPriceMarkup(d);
+      setConfirmPricing({ loading: false, error: !data, data });
+    } catch {
+      setConfirmPricing({ loading: false, error: true, data: null });
+    }
+  }, []);
+
   const openConfirm = (u, action) => {
     setActionMsg(null);
+    const userId = idOf(u);
     setConfirm({
-      id: idOf(u),
+      id: userId,
       target: action.target,
       kind: action.kind,
-      name: companyOf(u) || nameOf(u) || `#${dash(idOf(u))}`,
+      status: statusOf(u),
+      name: companyOf(u) || nameOf(u) || `#${dash(userId)}`,
       // Nur für die Freischaltung relevant: fehlende B2B-Stammdaten eines Alt-Kontos.
       // Verbindlich bleibt der serverseitige Guard — dies ist reine Vorab-Information.
       missingB2B: action.target === "approved" ? missingB2BAccountFields(u) : [],
     });
+    // Nur vor einer Freischaltung: Der Aufschlag muss bestätigt sein. Beim
+    // Blockieren spielt er keine Rolle — dort wird nichts nachgeladen.
+    if (action.target === "approved") loadConfirmPricing(userId);
+    else setConfirmPricing({ loading: false, error: false, data: null });
   };
   const closeConfirm = () => { if (!actionBusy) setConfirm(null); };
 
+  // Freischaltungs-Gate für den gerade geöffneten Dialog. Beim Blockieren liefert
+  // es „not_approval" und lässt den bestehenden Ablauf unverändert.
+  const confirmGate = approvalGate({
+    currentStatus: confirm?.status,
+    targetStatus: confirm?.target,
+    pricing: confirmPricing.data,
+    loading: confirmPricing.loading,
+    error: confirmPricing.error,
+  });
+
   const confirmStatusChange = async () => {
     if (!confirm) return;
+    if (actionBusy) return;              // Doppelübermittlung ausgeschlossen
+    if (!confirmGate.allowed) return;    // ohne bestätigten Aufschlag kein Request
     const { id, target } = confirm;
     setActionBusy(true);
     setActionMsg(null);
+    // Beim Aufschlags-Gate (409) bleibt der Dialog offen und lädt den
+    // Bestätigungsstatus neu — der Admin sieht sofort, was fehlt.
+    let keepOpen = false;
     try {
       const r = await setAdminUserStatus(id, target);
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) {
-          // Beim B2B-Guard (409) benennt das Backend die konkret fehlenden Felder —
-          // diese Meldung ist aussagekräftiger als der generische Katalogtext.
+          let body = null;
+          try { body = await r.json(); } catch { body = null; }
           let text = STATUS_CHANGE_ERRORS[r.status] || STATUS_CHANGE_ERRORS.default;
           if (r.status === 409) {
-            try {
-              const d = await r.json();
-              if (d && typeof d.error === "string" && d.error.trim()) text = d.error.trim();
-            } catch { /* Fallback-Text beibehalten */ }
+            const err = approvalError(409, body);
+            if (err && err.code === CODE_CONFIRMATION_REQUIRED) {
+              // Parallele Änderung: der Aufschlag ist (nicht mehr) bestätigt.
+              text = err.text;
+              keepOpen = true;
+              loadConfirmPricing(id);
+            } else if (body && typeof body.error === "string" && body.error.trim()) {
+              // Bestehender B2B-Guard: das Backend benennt die fehlenden Felder —
+              // diese Meldung ist aussagekräftiger als der generische Katalogtext.
+              text = body.error.trim();
+            }
           }
           setActionMsg({ type: "error", text });
         }
@@ -223,7 +284,7 @@ export default function AdminUsersPage() {
       setActionMsg({ type: "error", text: STATUS_CHANGE_ERRORS.default });
     } finally {
       setActionBusy(false);
-      setConfirm(null);
+      if (!keepOpen) setConfirm(null);
     }
   };
 
@@ -367,6 +428,16 @@ export default function AdminUsersPage() {
       {confirm && (() => {
         const copy = CONFIRM_COPY[confirm.kind];
         const danger = confirm.kind === "block";
+        // Freischaltung: ohne bestätigten Kundenaufschlag wird kein Request
+        // abgesetzt. Der Grund steht im Dialog, der CTA springt in die
+        // Aufschlagssektion der Kundendetailansicht (Router-State, kein
+        // Query-Parameter — es landen keine Pricing-Daten in der URL).
+        const gateInfo = approvalGateExplanation(confirmGate);
+        const markupLine = confirm.target === "approved" ? confirmedMarkupLine(confirmPricing.data) : null;
+        const jumpToMarkup = () => {
+          setConfirm(null);
+          navigate(`/admin/users/${encodeURIComponent(confirm.id)}`, { state: { focusPricing: true } });
+        };
         return (
           <div className="adm-modal-overlay" role="presentation" onClick={closeConfirm}>
             <div
@@ -395,6 +466,31 @@ export default function AdminUsersPage() {
                   </span>
                 </div>
               )}
+              {/* Kundenaufschlag prüfen (nur vor einer Freischaltung). Solange
+                  geladen wird, ist die Bestätigung unbekannt — der Dialog stellt
+                  die Freischaltung dann bewusst nicht als möglich dar. */}
+              {confirm.target === "approved" && confirmPricing.loading && (
+                <p className="adm-markup-check" role="status" aria-live="polite">
+                  <span className="spinner spinner-dark" /> Kundenaufschlag wird geprüft…
+                </p>
+              )}
+              {markupLine && (
+                <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
+              )}
+              {!confirmGate.allowed && gateInfo.title && (
+                <div className="adm-b2b-warn" role="status">
+                  <Icon n="shield" s={16} />
+                  <span>
+                    <strong>{gateInfo.title}</strong>
+                    <span className="adm-b2b-warn-text">{gateInfo.text}</span>
+                    {gateInfo.cta && (
+                      <button type="button" className="btn btn-outline btn-sm adm-approve-jump" onClick={jumpToMarkup}>
+                        <Icon n="arrowRight" s={13} /> {gateInfo.cta}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
               <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
               <div className="adm-modal-actions">
                 <button type="button" className="btn btn-outline btn-sm" onClick={closeConfirm} disabled={actionBusy}>Abbrechen</button>
@@ -402,7 +498,8 @@ export default function AdminUsersPage() {
                   type="button"
                   className={`btn btn-sm ${danger ? "adm-btn-danger" : "btn-primary"}`}
                   onClick={confirmStatusChange}
-                  disabled={actionBusy}
+                  disabled={actionBusy || !confirmGate.allowed}
+                  aria-busy={actionBusy ? "true" : undefined}
                 >
                   {actionBusy
                     ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>

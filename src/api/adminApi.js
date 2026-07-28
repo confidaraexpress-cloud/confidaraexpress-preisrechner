@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
+import { buildPriceMarkupBody } from "../utils/customerMarkup.mjs";
 
 // ── Admin-API (dünner Wrapper um das zentrale apiFetch) ──────────────────────
 // Alle Aufrufe laufen über apiFetch(..., { auth: true }): Bearer-Header und das
@@ -212,6 +213,48 @@ export function deleteAdminUser(id) {
   return apiFetch(`/admin/users/${encodeURIComponent(id)}`, {
     method: "DELETE",
     auth: true,
+  });
+}
+
+// ── Individueller Kundenaufschlag (Admin) ────────────────────────────────────
+// Pfadkonvention wie bei allen übrigen Admin-Endpunkten dieser Datei: `/admin/…`
+// OHNE führendes `/api`. VITE_API_URL enthält nur Schema+Domain
+// (https://api.confidaraexpress.de) — der resultierende öffentliche Pfad ist
+// exakt `/admin/users/:id/price-markup`, NIE `/api/admin/users/:id/price-markup`.
+// Die :id stammt ausschließlich aus der aktuellen Adminroute; es wird nie ein
+// Prozentwert oder ein anderer Pricing-Wert in Query-Parametern übertragen.
+
+// GET /admin/users/:id/price-markup — read-only. Liefert
+// { userId, priceMarkupPercent, confirmed, confirmedAt, confirmedBy, updatedAt }.
+// Kein Cache, kein Logging von Antwortdaten. Optionales AbortSignal, damit ein
+// Seitenwechsel eine noch laufende Abfrage abbrechen kann (kein veralteter
+// Bestätigungsstatus in einer bereits gewechselten Ansicht). Rohe Response
+// zurück; der Aufrufer selektiert defensiv über selectPriceMarkup().
+export function getAdminCustomerPriceMarkup(userId, { signal } = {}) {
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/price-markup`, { auth: true, signal });
+}
+
+// PUT /admin/users/:id/price-markup — ausdrückliche Bestätigung bzw.
+// Aktualisierung des individuellen Kundenaufschlags durch den Admin.
+//
+// Der Body enthält AUSSCHLIESSLICH { priceMarkupPercent } (zentral über
+// buildPriceMarkupBody zusammengesetzt — einzige Quelle der Wahrheit):
+//   • KEINE Auditfelder (confirmed/confirmedAt/confirmedBy/updatedAt) — die setzt
+//     ausschließlich das Backend aus der Adminsitzung.
+//   • KEIN vollständiges Benutzerobjekt, KEINE userId im Body, KEINE dynamischen
+//     Feldnamen und keine alternativen Schreibweisen.
+// Der Wert ist ein PROZENTWERT (20 = 20 %, 0.20 = 0,20 %) — nie ein Faktor.
+// Defensiver Guard: ein ungültiger Wert wird gar nicht erst gesendet (das
+// Backend prüft ihn zusätzlich autoritativ und antwortet dann mit 400
+// INVALID_PRICE_MARKUP_PERCENT). Bearer + Content-Type aus apiFetch(auth:true);
+// 401/403 behandelt apiFetch zentral.
+export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent) {
+  const body = buildPriceMarkupBody(priceMarkupPercent);
+  if (!body) return Promise.reject(new Error("invalid_price_markup_percent"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/price-markup`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify(body),
   });
 }
 

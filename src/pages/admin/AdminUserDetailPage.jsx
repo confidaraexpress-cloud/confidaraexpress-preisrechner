@@ -1,11 +1,32 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminUser, anonymizeAdminUser, deleteAdminUser } from "../../api/adminApi";
+import {
+  getAdminUser,
+  anonymizeAdminUser,
+  deleteAdminUser,
+  getAdminCustomerPriceMarkup,
+  updateAdminCustomerPriceMarkup,
+  setAdminUserStatus,
+} from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
 import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
 import { customerNumberOf } from "../../utils/businessNumbers.mjs";
+import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
+import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
+import {
+  APPROVAL_ERRORS,
+  MARKUP_SAVE_ERRORS,
+  MARKUP_TEXTS,
+  approvalError,
+  approvalGate,
+  isMarkupConfirmed,
+  legacyApprovedNotice,
+  markupSaveError,
+  markupSuccessMessage,
+  selectPriceMarkup,
+} from "../../utils/customerMarkup.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -14,6 +35,15 @@ const ERROR_MESSAGES = {
   500: "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
 const GENERIC_ERROR = "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Ladefehler der Aufschlagssektion (GET). 404 wird eigens benannt, weil dort der
+// Kunde selbst gemeint ist; alles andere bleibt bewusst unspezifisch (keine
+// technischen Details).
+const MARKUP_LOAD_ERRORS = {
+  404: "Der Kunde wurde nicht gefunden oder ist nicht mehr verfügbar.",
+  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
+  default: "Der Kundenaufschlag konnte nicht geladen werden.",
+};
 
 // Fehlertexte für die Anonymisierung (verständlich, kein roher Backend-Body).
 const ANON_ERRORS = {
@@ -114,6 +144,7 @@ function Stat({ label, value }) {
 export default function AdminUserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -127,6 +158,25 @@ export default function AdminUserDetailPage() {
   const [delInput, setDelInput] = useState("");      // getippter Bestätigungstext
   const [delBusy, setDelBusy] = useState(false);     // Löschung läuft
   const [delMsg, setDelMsg] = useState(null);        // { type, text }
+
+  // ── Individueller Kundenaufschlag ─────────────────────────────────────────
+  const [pricing, setPricing] = useState(null);          // normalisierte GET-Daten
+  const [pricingLoading, setPricingLoading] = useState(true);
+  const [pricingError, setPricingError] = useState("");  // Ladefehler (GET)
+  const [saveBusy, setSaveBusy] = useState(false);       // PUT läuft
+  const [saveError, setSaveError] = useState(null);      // { field, text }
+  const [saveSuccess, setSaveSuccess] = useState("");
+  // ── Freischaltung (bestehender Statusendpunkt) ────────────────────────────
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approveBusy, setApproveBusy] = useState(false);
+  const [approveMsg, setApproveMsg] = useState(null);    // { type, text }
+
+  const markupInputRef = useRef(null);
+  const markupSectionRef = useRef(null);
+  // Verhindert eine zweite Übermittlung, bevor React den Busy-State gerendert hat
+  // (Doppelklick, Enter+Klick): der Guard greift synchron.
+  const saveInFlight = useRef(false);
+  const approveInFlight = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,12 +205,68 @@ export default function AdminUserDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Aufschlag laden. Eigener Request-Pfad, eigener Ladezustand: solange er läuft,
+  // gilt der Bestätigungsstatus als unbekannt — die Freischaltung erscheint in
+  // dieser Zeit bewusst NICHT als möglich (siehe approvalGate).
+  const loadPricing = useCallback(async (signal) => {
+    setPricingLoading(true);
+    setPricingError("");
+    try {
+      const r = await getAdminCustomerPriceMarkup(id, { signal });
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect
+        setPricing(null);
+        setPricingError(MARKUP_LOAD_ERRORS[r.status] || MARKUP_LOAD_ERRORS.default);
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const next = selectPriceMarkup(d);
+      if (!next) {
+        setPricing(null);
+        setPricingError(MARKUP_LOAD_ERRORS.default);
+        return;
+      }
+      setPricing(next);
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // Seitenwechsel — kein Fehlerzustand
+      setPricing(null);
+      setPricingError(MARKUP_LOAD_ERRORS.default);
+    } finally {
+      if (!signal || !signal.aborted) setPricingLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    loadPricing(ctrl?.signal);
+    return () => ctrl?.abort();
+  }, [loadPricing]);
+
   // Beim Wechsel auf einen anderen Kunden Modal/Meldung zurücksetzen (nicht bei
   // manuellem Reload nach Erfolg — dort bleibt der Erfolgshinweis sichtbar).
   useEffect(() => {
     setAnonOpen(false); setAnonInput(""); setAnonMsg(null);
     setDelOpen(false); setDelInput(""); setDelMsg(null);
+    setPricing(null); setSaveError(null); setSaveSuccess("");
+    setApproveOpen(false); setApproveMsg(null);
   }, [id]);
+
+  // Sprung in die Aufschlagssektion — genutzt vom CTA „Aufschlag festlegen" und
+  // vom Freischaltungsdialog der Kundenliste (Router-State, KEIN Query-Parameter:
+  // es landen keine Pricing-Daten in der URL).
+  const focusMarkup = useCallback(() => {
+    markupSectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    markupInputRef.current?.focus?.();
+  }, []);
+
+  useEffect(() => {
+    if (!location.state || !location.state.focusPricing) return;
+    if (loading || pricingLoading) return; // erst fokussieren, wenn das Feld auch da ist
+    focusMarkup();
+    navigate(location.pathname, { replace: true, state: {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, loading, pricingLoading]);
 
   const back = (
     <Link to="/admin/users" className="adm-back">
@@ -271,6 +377,107 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  // Fachliches Freischaltungs-Gate: verbindet den Kundenstatus mit dem
+  // Bestätigungsstatus des Aufschlags. Reine Bedienbarkeit — das serverseitige
+  // Gate bleibt die verbindliche Instanz.
+  const gate = approvalGate({
+    currentStatus: statusOf(u),
+    targetStatus: "approved",
+    pricing,
+    loading: pricingLoading,
+    error: !!pricingError,
+  });
+  const legacyNotice = legacyApprovedNotice({
+    currentStatus: statusOf(u),
+    pricing,
+    loading: pricingLoading,
+    error: !!pricingError,
+  });
+  const markupNotice = legacyNotice.show
+    ? { headline: legacyNotice.headline, text: legacyNotice.text }
+    : { headline: "", text: MARKUP_TEXTS.confirmRequired };
+
+  // ── Aufschlag bestätigen / aktualisieren ──────────────────────────────────
+  // Ein PUT mit ausschließlich { priceMarkupPercent }; die Kunden-ID stammt allein
+  // aus der Adminroute (useParams), nie aus einer Eingabe. Die Bestätigung des
+  // Aufschlags und die Freischaltung bleiben zwei getrennte Requests.
+  const saveMarkup = async (percent) => {
+    if (saveInFlight.current) return; // Doppelübermittlung ausgeschlossen
+    saveInFlight.current = true;
+    const wasConfirmed = isMarkupConfirmed(pricing);
+    setSaveBusy(true);
+    setSaveError(null);
+    setSaveSuccess("");
+    setApproveMsg(null);
+    try {
+      const r = await updateAdminCustomerPriceMarkup(id, percent);
+      if (!r.ok) {
+        let body = null;
+        try { body = await r.json(); } catch { body = null; }
+        const err = markupSaveError(r.status, body); // null bei 401/403 (zentral)
+        if (err) setSaveError(err);
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      // Bestätigte Antwort übernehmen, wenn sie verwertbar ist — sonst die
+      // Backend-Realität frisch nachladen. Kein Raten, kein Zwischenzustand mit
+      // falscher Bestätigungsanzeige.
+      const next = selectPriceMarkup(d);
+      if (next && next.confirmed === true && next.priceMarkupPercent !== null) setPricing(next);
+      else await loadPricing();
+      setSaveSuccess(markupSuccessMessage(wasConfirmed));
+    } catch {
+      setSaveError({ field: false, text: MARKUP_SAVE_ERRORS.default });
+    } finally {
+      saveInFlight.current = false;
+      setSaveBusy(false);
+    }
+  };
+
+  // ── Freischaltung / Reaktivierung ─────────────────────────────────────────
+  // Nutzt weiterhin den bestehenden Statusendpunkt (PATCH /admin/users/:id/status)
+  // mit ausschließlich { status: "approved" }. Der Request wird nur abgesetzt,
+  // wenn das Frontend nicht sicher weiß, dass die Bestätigung fehlt — das
+  // serverseitige Gate bleibt trotzdem verbindlich (409 wird behandelt).
+  const confirmApprove = async () => {
+    if (approveInFlight.current) return;
+    if (!gate.allowed) return;
+    approveInFlight.current = true;
+    setApproveBusy(true);
+    setApproveMsg(null);
+    try {
+      const r = await setAdminUserStatus(id, "approved");
+      if (!r.ok) {
+        let body = null;
+        try { body = await r.json(); } catch { body = null; }
+        const err = approvalError(r.status, body); // null bei 401/403 (zentral)
+        if (err) {
+          setApproveMsg({ type: "error", text: err.text });
+          // Parallele Änderung: Pricing-Daten frisch holen, damit die Ansicht
+          // nicht veraltet weiter „freischaltbar" zeigt.
+          if (err.reloadPricing) await loadPricing();
+        }
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      const noOp = !!(d && (d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
+      setApproveMsg({
+        type: "success",
+        text: noOp ? "Status war bereits gesetzt." : "Der Kunde wurde freigeschaltet.",
+      });
+      setSaveSuccess("");
+      load(); // Backend-Realität neu laden (kein optimistisches Raten)
+    } catch {
+      setApproveMsg({ type: "error", text: APPROVAL_ERRORS.default });
+    } finally {
+      approveInFlight.current = false;
+      setApproveBusy(false);
+      setApproveOpen(false);
+    }
+  };
+
   return (
     <div className="adm-page">
       {back}
@@ -351,7 +558,40 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* 4) Zahlungsdaten — ConfidaraExpress kennt kein Kreditlimit. Die offenen
+        {/* 4) Individueller Kundenaufschlag — gilt für zukünftige Preisberechnungen.
+             Zeigt ausschließlich den Kundenaufschlag; keine internen Rechenraten,
+             keine Lieferantenpreise, keine Margenquellen. */}
+        <CustomerMarkupSection
+          pricing={pricing}
+          loading={pricingLoading}
+          loadError={pricingError}
+          busy={saveBusy}
+          saveError={saveError}
+          notice={markupNotice}
+          successText={saveSuccess}
+          onSave={saveMarkup}
+          onReload={() => loadPricing()}
+          onApproveNow={gate.allowed ? () => { setApproveMsg(null); setApproveOpen(true); } : undefined}
+          inputRef={markupInputRef}
+          sectionRef={markupSectionRef}
+        />
+
+        {/* 5) Freischaltung / Reaktivierung — eigener Request auf dem bestehenden
+             Statusendpunkt, erst nach bestätigtem Aufschlag. */}
+        <CustomerApprovalCard
+          gate={gate}
+          pricing={pricing}
+          targetLabel={targetLabel}
+          busy={approveBusy}
+          message={approveMsg}
+          dialogOpen={approveOpen}
+          onOpenDialog={() => { setApproveMsg(null); setApproveOpen(true); }}
+          onCloseDialog={() => { if (!approveBusy) setApproveOpen(false); }}
+          onConfirm={confirmApprove}
+          onJumpToMarkup={focusMarkup}
+        />
+
+        {/* 6) Zahlungsdaten — ConfidaraExpress kennt kein Kreditlimit. Die offenen
              Beträge sind reine Debitoreninformation und lösen nichts automatisch aus;
              bei Zahlungsproblemen sperrt der Admin das Konto manuell. */}
         <div className="adm-card">
@@ -366,7 +606,7 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* 5) Summary-Kacheln (nur Aggregate) */}
+        {/* 7) Summary-Kacheln (nur Aggregate) */}
         <div className="adm-card">
           <div className="adm-card-head"><Icon n="dashboard" s={17} /> Aggregierte Kennzahlen</div>
           <div className="adm-card-body">
@@ -380,7 +620,7 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) */}
+        {/* 8) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) */}
         <div className="adm-card adm-danger-zone">
           <div className="adm-card-head adm-danger-head"><Icon n="shield" s={17} /> Gefahrenzone</div>
           <div className="adm-card-body">

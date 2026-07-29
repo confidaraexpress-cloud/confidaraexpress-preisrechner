@@ -30,6 +30,7 @@ import {
   approvalGate,
   approvalGateExplanation,
   buildPriceMarkupBody,
+  canSaveMarkup,
   canSubmitMarkup,
   confirmedMarkupLine,
   formatConfirmedBy,
@@ -300,9 +301,13 @@ test("18 — der Button ist bei ungültigem Wert deaktiviert", () => {
   for (const v of ["", "-1", "101", "20,123", "abc"]) assert.equal(canSubmitMarkup(v), false, v);
   // Der Disabled-State hängt genau an dieser Prüfung (und am laufenden Request).
   assert.match(sectionSrc, /const parsed = useMemo\(\(\) => parseMarkupInput\(draft\), \[draft\]\)/);
-  assert.match(sectionSrc, /type="submit"[\s\S]{0,220}disabled=\{busy \|\| !parsed\.ok\}/);
+  assert.match(sectionSrc, /type="submit"[\s\S]{0,260}disabled=\{busy \|\| !parsed\.ok \|\| !hasChange\}/);
   // Und auch das Absenden selbst prüft noch einmal.
-  assert.match(sectionSrc, /if \(busy \|\| !parsed\.ok \|\| typeof onSave !== "function"\) return;/);
+  assert.match(sectionSrc, /if \(busy \|\| !parsed\.ok \|\| !hasChange \|\| typeof onSave !== "function"\) return;/);
+  // Zusätzlich: ein bereits bestätigter, unveränderter Wert löst keinen Request aus.
+  assert.equal(canSaveMarkup({ confirmed: true, priceMarkupPercent: 20 }, "20,00"), false, "keine Änderung → kein Request");
+  assert.equal(canSaveMarkup({ confirmed: true, priceMarkupPercent: 20 }, "21"), true, "echte Änderung → absendbar");
+  assert.equal(canSaveMarkup({ confirmed: false, priceMarkupPercent: 20 }, "20,00"), true, "unbestätigt → Bestätigung ist die Aktion");
 });
 
 // ═══ C) PUT / Bestätigung (19–29) ════════════════════════════════════════════
@@ -349,7 +354,7 @@ test("21 — ein vollständiges Benutzerobjekt kann nicht gesendet werden", () =
 });
 
 test("22 — der Button wird während des Requests deaktiviert und zeigt den Ladezustand", () => {
-  assert.match(sectionSrc, /disabled=\{busy \|\| !parsed\.ok\}/);
+  assert.match(sectionSrc, /disabled=\{busy \|\| !parsed\.ok \|\| !hasChange\}/);
   assert.match(sectionSrc, /aria-busy=\{busy \? "true" : undefined\}/);
   assert.match(sectionSrc, /busy\s*\n?\s*\?\s*<><span className="spinner spinner-dark" \/> \{markupActionBusyLabel\(pricing\)\}/);
   // Auch das Eingabefeld ist währenddessen gesperrt.
@@ -477,7 +482,8 @@ test("30 — ein unbestätigter Kunde kann im Frontend nicht freigeschaltet werd
   assert.match(detailSrc, /if \(!gate\.allowed\) return;/);
   assert.match(approveSrc, /disabled=\{busy \|\| !g\.allowed\}/);
   assert.match(listSrc, /if \(!confirmGate\.allowed\) return;/);
-  assert.match(listSrc, /disabled=\{actionBusy \|\| !confirmGate\.allowed\}/);
+  assert.match(listSrc, /disabled=\{busy \|\| disabled\}/, "der Dialog-CTA hängt am Gate");
+  assert.match(listSrc, /disabled=\{!confirmGate\.allowed\}/, "das Gate wird an den Dialog übergeben");
 });
 
 test("31 — die Erklärung verweist auf den fehlenden Aufschlag", () => {
@@ -505,7 +511,8 @@ test("32 — der CTA fokussiert die Aufschlagssektion", () => {
   assert.match(sectionSrc, /ref=\{sectionRef\}/);
   // Kundenliste: springt in die Detailansicht und fokussiert dort — über
   // Router-State, NICHT über einen Query-Parameter.
-  assert.match(listSrc, /navigate\(`\/admin\/users\/\$\{encodeURIComponent\(confirm\.id\)\}`, \{ state: \{ focusPricing: true \} \}\)/);
+  assert.match(listSrc, /navigate\(detailPath\(confirm\.id\), \{ state: \{ focusPricing: true \} \}\)/);
+  assert.match(listSrc, /const detailPath = \(id\) => `\/admin\/users\/\$\{encodeURIComponent\(id\)\}`;/);
   assert.match(detailSrc, /if \(!location\.state \|\| !location\.state\.focusPricing\) return;/);
   // Erst fokussieren, wenn Kundendaten UND Aufschlag geladen sind — sonst gäbe
   // es das Eingabefeld noch gar nicht und der Router-State wäre verbraucht.
@@ -577,7 +584,8 @@ test("37 — „blocked → approved“ verlangt ebenfalls eine Bestätigung", (
   assert.equal(ok.allowed, true);
   assert.equal(ok.reactivation, true);
   // Die Oberfläche benennt die Reaktivierung ausdrücklich.
-  assert.match(approveSrc, /MARKUP_TEXTS\.reactivationRequired/);
+  // Überschrift und Anforderungstext kommen aus dem tatsächlichen Status.
+  assert.match(approveSrc, /markupRequirementText\(g\.currentStatus\)/);
   assert.match(approveSrc, /reactivation \? "Kunde reaktivieren"/);
 });
 
@@ -602,9 +610,9 @@ test("39 — ein bestehender approved-Kunde ohne Bestätigung bleibt unveränder
   const n = legacyApprovedNotice({ currentStatus: "approved", pricing: selectPriceMarkup(UNCONFIRMED) });
   assert.equal(n.show, true);
   assert.equal(n.tone, "info", "sachlich, kein Warnzustand");
-  assert.equal(n.headline, "Bestehender Kunde – globaler Standardaufschlag aktiv");
-  assert.ok(n.text.includes("Das ist kein Fehler"), n.text);
-  assert.ok(n.text.includes("uneingeschränkt nutzbar") || n.text.includes("bleibt uneingeschränkt"), n.text);
+  assert.equal(n.headline, "Globaler Standardaufschlag aktiv");
+  assert.ok(n.text.includes("globale Standardaufschlag"), n.text);
+  assert.ok(n.text.includes("Der Zugang bleibt bestehen"), n.text);
   // Keine Störungs-/Sperrsprache, keine automatische Bestätigung.
   for (const word of ["Sperre", "gesperrt", "Fehler!", "dringend", "sofort", "Backfill"]) {
     assert.equal(n.text.includes(word), false, `„${word}“ suggeriert eine akute Störung`);
@@ -698,36 +706,36 @@ test("44 — der öffentliche Pfad hat kein /api-Präfix", () => {
 });
 
 test("45 — die bestehende Kundenliste funktioniert unverändert", () => {
-  // Spaltenzahl und Zellenzahl bleiben identisch (vgl. noCreditDisplay-Test).
-  const headers = (listSrc.match(/<th>/g) || []).length;
-  assert.equal(headers, 11, `erwartet 11 Spalten, gefunden ${headers}`);
+  // Spaltenzahl und Zellenzahl bleiben konsistent (reduziert auf fünf Spalten).
+  const headers = (listSrc.match(/<th scope="col"/g) || []).length;
+  assert.equal(headers, 5, `erwartet 5 Spalten, gefunden ${headers}`);
   const body = listSrc.slice(listSrc.indexOf("<tbody>"), listSrc.indexOf("</tbody>"));
   assert.equal((body.match(/<td[\s>]/g) || []).length, headers);
   // Laden, Suche, Pagination und der Blockieren-Ablauf sind unangetastet.
   assert.match(listSrc, /const r = await listAdminUsers\(\{ page, pageSize: PAGE_SIZE \}\)/);
-  assert.match(listSrc, /function matchUser\(u, q\)/);
+  assert.match(listSrc, /filterCustomerRows\(rows, filters\)/);
   assert.match(listSrc, /className="adm-pagination"/);
-  assert.match(listSrc, /if \(status === "approved"\) return \{ target: "blocked", label: "Blockieren", kind: "block" \};/);
+  assert.match(listSrc, /const target = key === "approve" \? "approved" : "blocked";/);
   // Beim Blockieren wird kein Aufschlag geladen.
-  assert.match(listSrc, /if \(action\.target === "approved"\) loadConfirmPricing\(userId\);\s*else setConfirmPricing/);
+  assert.match(listSrc, /if \(target === "approved"\) loadConfirmPricing\(f\.id\);\s*else setConfirmPricing/);
   // Der bestehende B2B-Hinweis bleibt erhalten.
-  assert.match(listSrc, /confirm\.missingB2B\?\.length > 0/);
-  assert.match(listSrc, /isApprovalBlocked\(u\)/);
+  assert.match(listSrc, /missingB2B\?\.length > 0/);
+  assert.match(listSrc, /missingB2BAccountFields\(u\)/);
 });
 
+
 test("46 — die bestehende Kundendetailansicht bleibt vollständig erhalten", () => {
-  // Karten und Werte, die die bestehenden Tests absichern.
+  // Karten und Werte, die die bestehenden Tests absichern (neue Sektionsnamen).
   for (const marker of [
-    /<Icon n="idcard" s=\{17\} \/> Stammdaten<\/div>/,
-    /<Icon n="shieldCheck" s=\{17\} \/> Konto &amp; Sicherheit<\/div>/,
-    /<Icon n="card" s=\{17\} \/> Zahlung<\/div>/,
-    /\["Zahlungsziel", paymentTermLabel\(paymentTermOf\(u\)\)\]/,
-    /\["Offener Betrag", moneyOrDash\(firstDefined\(summary\.open_amount/,
+    /<Icon n="building" s=\{17\} \/> Unternehmen und Kontakt<\/div>/,
+    /<Icon n="card" s=\{17\} \/> Aktivität und Zahlung<\/div>/,
+    /<Icon n="settings" s=\{17\} \/> Technische Informationen/,
     /Account anonymisieren/,
     /Kunde löschen/,
     /ANONYMIZE_USER/,
     /DELETE_USER/,
     /className="adm-cards"/,
+    /Passwort zuletzt geändert/,
   ]) assert.match(detailSrc, marker, `fehlender Bestandteil: ${marker}`);
   // Keine Kreditwerte eingeschleppt (Regression zur bestehenden Prüfung).
   assert.equal(/Kreditlimit|Kredit genutzt|credit_limit|credit_used/.test(detailSrc), false);
@@ -746,6 +754,7 @@ test("46 — die bestehende Kundendetailansicht bleibt vollständig erhalten", (
   assert.equal(MARKUP_TEXTS.sectionTitle, "Individueller Kundenaufschlag");
   assert.equal(MARKUP_TEXTS.fieldLabel, "Kundenaufschlag");
 });
+
 
 test("47 — Rechnungs-, Versand- und übrige Kundenbereiche bleiben unberührt", () => {
   const untouched = [

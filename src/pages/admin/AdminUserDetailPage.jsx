@@ -10,9 +10,21 @@ import {
   setAdminUserStatus,
 } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
-import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
+import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
 import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
-import { customerNumberOf } from "../../utils/businessNumbers.mjs";
+import {
+  OVERDUE_NOTE,
+  PAYMENT_TERM_TEXT,
+  accountStatusCopy,
+  activityMetrics,
+  customerNumberFromDetail,
+  deleteEligibility,
+  isSelfAccount,
+  BLOCK_DIALOG,
+  SELF_ACTION_REASON,
+  statusSuccessMessage,
+} from "../../utils/adminCustomerView.mjs";
+import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import {
@@ -132,11 +144,13 @@ function KV({ items }) {
   );
 }
 
-function Stat({ label, value }) {
+// `text` kennzeichnet Textwerte (z. B. „7 Kalendertage") — sie werden etwas
+// kleiner gesetzt und brechen an Wortgrenzen statt mitten im Wort.
+function Stat({ label, value, text = false }) {
   return (
     <div className="adm-stat">
       <div className="adm-stat-label">{label}</div>
-      <div className="adm-stat-value">{value}</div>
+      <div className={`adm-stat-value${text ? " adm-stat-value-text" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -145,8 +159,14 @@ export default function AdminUserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user: authUser } = useAuth();
+  const currentAdminId = authUser?.id ?? null;
   const [user, setUser] = useState(null);
   const [summary, setSummary] = useState({});
+  // Rohe Detailantwort — ausschließlich, um die Kundennummer auch dann zu finden,
+  // wenn der Endpunkt sie neben `user` in der Hülle führt (siehe
+  // customerNumberFromDetail). Es wird nichts anderes daraus gerendert.
+  const [detailPayload, setDetailPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
@@ -170,6 +190,8 @@ export default function AdminUserDetailPage() {
   const [approveOpen, setApproveOpen] = useState(false);
   const [approveBusy, setApproveBusy] = useState(false);
   const [approveMsg, setApproveMsg] = useState(null);    // { type, text }
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
 
   const markupInputRef = useRef(null);
   const markupSectionRef = useRef(null);
@@ -177,6 +199,7 @@ export default function AdminUserDetailPage() {
   // (Doppelklick, Enter+Klick): der Guard greift synchron.
   const saveInFlight = useRef(false);
   const approveInFlight = useRef(false);
+  const blockInFlight = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -193,6 +216,7 @@ export default function AdminUserDetailPage() {
       }
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
+      setDetailPayload(d);
       setUser(selectUser(d));
       setSummary(selectSummary(d));
     } catch {
@@ -250,6 +274,7 @@ export default function AdminUserDetailPage() {
     setDelOpen(false); setDelInput(""); setDelMsg(null);
     setPricing(null); setSaveError(null); setSaveSuccess("");
     setApproveOpen(false); setApproveMsg(null);
+    setBlockOpen(false);
   }, [id]);
 
   // Sprung in die Aufschlagssektion — genutzt vom CTA „Aufschlag festlegen" und
@@ -377,6 +402,14 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  // Kundennummer: identische Feldlesung wie in der Liste, zusätzlich tolerant
+  // gegenüber der Hülle des Detailendpunkts. Nie aus der internen ID abgeleitet.
+  const customerNumber = customerNumberFromDetail(detailPayload, u);
+  const statusCopy = accountStatusCopy(statusOf(u));
+  const metrics = activityMetrics(summary);
+  const deleteGate = deleteEligibility(summary);
+  const selfAccount = isSelfAccount(u, currentAdminId);
+
   // Fachliches Freischaltungs-Gate: verbindet den Kundenstatus mit dem
   // Bestätigungsstatus des Aufschlags. Reine Bedienbarkeit — das serverseitige
   // Gate bleibt die verbindliche Instanz.
@@ -478,6 +511,39 @@ export default function AdminUserDetailPage() {
     }
   };
 
+  // ── Blockieren ────────────────────────────────────────────────────────────
+  // Erreichbar, aber bewusst nicht die visuelle Hauptaktion der Seite. Immer mit
+  // Bestätigungsdialog, immer nur ein Request, Erfolgsmeldung erst nach Erfolg.
+  const confirmBlock = async () => {
+    if (blockInFlight.current) return;
+    if (selfAccount) return; // eigenes Adminkonto nicht blockieren
+    blockInFlight.current = true;
+    setBlockBusy(true);
+    setApproveMsg(null);
+    try {
+      const r = await setAdminUserStatus(id, "blocked");
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect
+        let body = null;
+        try { body = await r.json(); } catch { body = null; }
+        const serverText = body && typeof body.error === "string" && body.error.trim() ? body.error.trim() : "";
+        setApproveMsg({
+          type: "error",
+          text: serverText || "Der Kunde wurde nicht blockiert. Es wurden keine Änderungen gespeichert.",
+        });
+        return;
+      }
+      setApproveMsg({ type: "success", text: statusSuccessMessage("blocked") });
+      load(); // Backend-Realität neu laden
+    } catch {
+      setApproveMsg({ type: "error", text: "Der Kunde wurde nicht blockiert. Es wurden keine Änderungen gespeichert." });
+    } finally {
+      blockInFlight.current = false;
+      setBlockBusy(false);
+      setBlockOpen(false);
+    }
+  };
+
   return (
     <div className="adm-page">
       {back}
@@ -507,60 +573,72 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
-      {/* 1) Kopfbereich */}
-      <div className="adm-card">
+      {/* 1) Kopfbereich — kompakt: Identität, Status und die statusabhängige
+             Hauptaktion. Gefährliche Aktionen sind hier bewusst NICHT die
+             Hauptaktion der Seite. */}
+      <div className="adm-card adm-detail-header">
         <div className="adm-card-body">
           <div className="adm-detail-head">
-            <span className="adm-detail-id">{companyOf(u) || nameOf(u) || `Kunde #${dash(idOf(u))}`}</span>
-            <span className="adm-detail-badges">
-              <span className="adm-chip">#{dash(idOf(u))}</span>
-              <span className={`badge ${statusCls}`}>{statusLabel}</span>
-              <span className={`badge ${roleCls}`}>{roleLabel}</span>
-              <span className="adm-chip"><Icon n="calendar" s={13} /> Erstellt {fmtDate(createdOf(u))}</span>
-              {anonAt && <span className="adm-chip"><Icon n="lock" s={13} /> Anonymisiert {fmtDate(anonAt)}</span>}
-            </span>
+            <div className="adm-detail-ident">
+              <h1 className="adm-detail-id">{companyOf(u) || nameOf(u) || `Kunde #${dash(idOf(u))}`}</h1>
+              <p className="adm-detail-sub">
+                {nameOf(u) && <span>{nameOf(u)}</span>}
+                {emailOf(u) && <span className="adm-detail-mail">{emailOf(u)}</span>}
+              </p>
+              <span className="adm-detail-badges">
+                <span className={`badge ${statusCls}`}>{statusLabel}</span>
+                {customerNumber
+                  ? <span className="adm-chip adm-mono">{customerNumber}</span>
+                  : <span className="adm-chip adm-chip-muted">Kundennummer nicht hinterlegt</span>}
+                {/* Rolle nur bei Sonderkonten — normale Kunden tragen keine Rollenangabe. */}
+                {roleOf(u) === "admin" && <span className={`badge ${roleCls}`}>{roleLabel}</span>}
+                <span className="adm-chip"><Icon n="calendar" s={13} /> Registriert {fmtDate(createdOf(u))}</span>
+                {anonAt && <span className="adm-chip"><Icon n="lock" s={13} /> Anonymisiert {fmtDate(anonAt)}</span>}
+              </span>
+            </div>
+            {/* Statusabhängige Hauptaktion: freischalten bzw. reaktivieren.
+                Für freigeschaltete Konten steht hier bewusst keine rote Aktion —
+                Blockieren liegt zurückhaltend im Kontostatus-Bereich. */}
+            {statusCopy.actionKind === "approve" && (
+              <div className="adm-detail-action">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => { setApproveMsg(null); setApproveOpen(true); }}
+                  disabled={approveBusy || !gate.allowed}
+                  aria-describedby={!gate.allowed ? "adm-approve-gate" : undefined}
+                >
+                  <Icon n="check" s={14} /> {statusCopy.actionLabel}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="adm-cards">
-        {/* 2) Stammdaten */}
+        {/* 2) Unternehmen und Kontakt */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="idcard" s={17} /> Stammdaten</div>
+          <div className="adm-card-head"><Icon n="building" s={17} /> Unternehmen und Kontakt</div>
           <div className="adm-card-body">
             <KV items={[
-              // Kundennummer = organisatorische Kundenkennung (CE-K-…). Die interne User-ID
-              // bleibt ausschließlich technischer Schlüssel (Kopf-Chip „#id" und URL).
-              ["Kundennummer", dash(customerNumberOf(u))],
-              ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
               ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
+              ["Ansprechpartner", missingField(u, "name") || dash(nameOf(u))],
               ["E-Mail", dash(emailOf(u))],
-              ["USt-ID", dash(vatOf(u))],
               ["Straße", dash(streetOf(u))],
               ["PLZ", dash(zipOf(u))],
               ["Stadt", dash(cityOf(u))],
               ["Land", dash(countryOf(u))],
+              ["USt-ID", dash(vatOf(u))],
+              // Kundennummer = fachliche Kundenkennung (CE-K-…). Die interne
+              // User-ID bleibt technischer Schlüssel und steht weiter unten.
+              ["Kundennummer", customerNumber || "—"],
             ]} />
           </div>
         </div>
 
-        {/* 3) Konto / Sicherheit */}
-        <div className="adm-card">
-          <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Konto &amp; Sicherheit</div>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Rolle", <span className={`badge ${roleCls}`}>{roleLabel}</span>],
-              ["Status", <span className={`badge ${statusCls}`}>{statusLabel}</span>],
-              ["Passwort zuletzt geändert", fmtDateTime(pwChangedAtOf(u))],
-              ["Anonymisiert am", fmtDateTime(anonymizedAtOf(u))],
-              ["Anonymisiert von", dash(anonymizedByOf(u))],
-            ]} />
-          </div>
-        </div>
-
-        {/* 4) Individueller Kundenaufschlag — gilt für zukünftige Preisberechnungen.
-             Zeigt ausschließlich den Kundenaufschlag; keine internen Rechenraten,
-             keine Lieferantenpreise, keine Margenquellen. */}
+        {/* 3) Kontostatus und Konditionen — Status, Rolle, individueller
+             Aufschlag und die zugehörige Statusaktion an einer Stelle. */}
         <CustomerMarkupSection
           pricing={pricing}
           loading={pricingLoading}
@@ -576,8 +654,6 @@ export default function AdminUserDetailPage() {
           sectionRef={markupSectionRef}
         />
 
-        {/* 5) Freischaltung / Reaktivierung — eigener Request auf dem bestehenden
-             Statusendpunkt, erst nach bestätigtem Aufschlag. */}
         <CustomerApprovalCard
           gate={gate}
           pricing={pricing}
@@ -589,38 +665,56 @@ export default function AdminUserDetailPage() {
           onCloseDialog={() => { if (!approveBusy) setApproveOpen(false); }}
           onConfirm={confirmApprove}
           onJumpToMarkup={focusMarkup}
+          blockable={statusCopy.actionKind === "block"}
+          blockDisabled={selfAccount}
+          blockDisabledReason={selfAccount ? SELF_ACTION_REASON : ""}
+          onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
         />
 
-        {/* 6) Zahlungsdaten — ConfidaraExpress kennt kein Kreditlimit. Die offenen
-             Beträge sind reine Debitoreninformation und lösen nichts automatisch aus;
-             bei Zahlungsproblemen sperrt der Admin das Konto manuell. */}
+        {/* 4) Aktivität und Zahlung — EINE Quelle für die Debitorenwerte (früher
+             doppelt in „Zahlung" und „Aggregierte Kennzahlen"). ConfidaraExpress
+             kennt kein Kreditlimit; überfällige Rechnungen lösen NICHTS aus. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="card" s={17} /> Zahlung</div>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Zahlungsziel", paymentTermLabel(paymentTermOf(u))],
-              ["Offener Betrag", moneyOrDash(firstDefined(summary.open_amount, summary.openAmount))],
-              ["Unbezahlte Rechnungen", num(firstDefined(summary.invoices_unpaid, summary.invoicesUnpaid))],
-              ["Überfällige Rechnungen", num(firstDefined(summary.invoices_overdue, summary.invoicesOverdue))],
-            ]} />
-          </div>
-        </div>
-
-        {/* 7) Summary-Kacheln (nur Aggregate) */}
-        <div className="adm-card">
-          <div className="adm-card-head"><Icon n="dashboard" s={17} /> Aggregierte Kennzahlen</div>
+          <div className="adm-card-head"><Icon n="card" s={17} /> Aktivität und Zahlung</div>
           <div className="adm-card-body">
             <div className="adm-summary">
-              <Stat label="Sendungen gesamt" value={num(firstDefined(summary.shipments_total, summary.shipmentsTotal))} />
-              <Stat label="Rechnungen gesamt" value={num(firstDefined(summary.invoices_total, summary.invoicesTotal))} />
-              <Stat label="Unbezahlte Rechnungen" value={num(firstDefined(summary.invoices_unpaid, summary.invoicesUnpaid))} />
-              <Stat label="Überfällige Rechnungen" value={num(firstDefined(summary.invoices_overdue, summary.invoicesOverdue))} />
-              <Stat label="Offener Betrag" value={moneyOrDash(firstDefined(summary.open_amount, summary.openAmount))} />
+              <Stat label="Sendungen gesamt" value={num(metrics.shipmentsTotal)} />
+              <Stat label="Rechnungen gesamt" value={num(metrics.invoicesTotal)} />
+              <Stat label="Offene Rechnungen" value={num(metrics.invoicesUnpaid)} />
+              <Stat label="Überfällige Rechnungen" value={num(metrics.invoicesOverdue)} />
+              <Stat label="Offener Betrag" value={moneyOrDash(metrics.openAmount)} />
+              <Stat label="Zahlungsziel" value={PAYMENT_TERM_TEXT} text />
             </div>
+            {metrics.hasOverdue && (
+              <p className="adm-overdue-note" role="status">
+                <Icon n="info" s={15} /> {OVERDUE_NOTE}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* 8) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) */}
+        {/* 5) Technische Informationen — bewusst eingeklappt: für den Alltag
+             nicht nötig, für Support und Nachweis aber verfügbar. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            <Icon n="settings" s={17} /> Technische Informationen
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Interne ID", dash(idOf(u))],
+              ["Rolle", <span className={`badge ${roleCls}`}>{roleLabel}</span>],
+              ["Erstellt am", fmtDateTime(createdOf(u))],
+              ["Passwort zuletzt geändert", fmtDateTime(pwChangedAtOf(u))],
+              ["Aufschlag zuletzt bestätigt", fmtDateTime(pricing?.confirmedAt)],
+              ["Aufschlag bestätigt von", dash(pricing?.confirmedBy)],
+              ["Aufschlag zuletzt geändert", fmtDateTime(pricing?.updatedAt)],
+              ["Anonymisiert am", fmtDateTime(anonymizedAtOf(u))],
+              ["Anonymisiert von", dash(anonymizedByOf(u))],
+            ]} />
+          </div>
+        </details>
+
+        {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) und harte Löschung */}
         <div className="adm-card adm-danger-zone">
           <div className="adm-card-head adm-danger-head"><Icon n="shield" s={17} /> Gefahrenzone</div>
           <div className="adm-card-body">
@@ -638,15 +732,19 @@ export default function AdminUserDetailPage() {
                   type="button"
                   className="btn btn-sm adm-danger-button"
                   onClick={openAnon}
-                  disabled={isAnonymized}
+                  disabled={isAnonymized || selfAccount}
+                  aria-describedby={selfAccount ? "adm-self-note" : undefined}
                 >
                   <Icon n="user" s={13} /> Account anonymisieren
                 </button>
               </div>
             </div>
             {isAnonymized && <p className="adm-danger-note">Dieser Account ist bereits anonymisiert.</p>}
+            {selfAccount && <p className="adm-danger-note" id="adm-self-note">{SELF_ACTION_REASON}</p>}
 
-            {/* Harte Löschung — nur ohne abhängige Daten; sonst greift der Backend-Guard (409). */}
+            {/* Harte Löschung — NUR ohne abhängige Sendungs-/Rechnungsdaten. Sind
+                solche Daten bereits bekannt, wird die Aktion nicht als zulässig
+                dargestellt. Der serverseitige Guard (409) bleibt maßgeblich. */}
             <div className="adm-danger-item adm-danger-item-split">
               <div className="adm-danger-item-text">
                 <div className="adm-danger-item-title">Kunde löschen</div>
@@ -654,6 +752,9 @@ export default function AdminUserDetailPage() {
                   Diese Aktion ist nur für Kunden ohne Sendungs- oder Rechnungsdaten möglich.
                   Bei bestehenden Daten muss anonymisiert werden.
                 </p>
+                {!deleteGate.allowed && (
+                  <p className="adm-danger-note" id="adm-delete-note">{deleteGate.reason}</p>
+                )}
                 <p className="adm-support-hint" style={{ marginTop: 6 }}>Die Aktion wird protokolliert.</p>
               </div>
               <div className="adm-danger-item-action">
@@ -661,6 +762,8 @@ export default function AdminUserDetailPage() {
                   type="button"
                   className="btn btn-sm adm-danger-button"
                   onClick={openDel}
+                  disabled={!deleteGate.allowed || selfAccount}
+                  aria-describedby={!deleteGate.allowed ? "adm-delete-note" : (selfAccount ? "adm-self-note" : undefined)}
                 >
                   <Icon n="trash" s={13} /> Kunde löschen
                 </button>
@@ -669,6 +772,16 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Blockieren — Bestätigungsdialog, kein Statuswechsel durch einen Klick. */}
+      {blockOpen && (
+        <BlockConfirmDialog
+          name={targetLabel}
+          busy={blockBusy}
+          onCancel={() => { if (!blockBusy) setBlockOpen(false); }}
+          onConfirm={confirmBlock}
+        />
+      )}
 
       {/* Type-to-confirm-Modal — irreversibel, exakt „ANONYMIZE_USER" nötig. */}
       {anonOpen && (
@@ -768,6 +881,62 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Bestätigungsdialog für das Blockieren. Fokus beim Öffnen auf „Abbrechen",
+// Escape schließt (außer während des Requests), der Fokus kehrt danach zum
+// auslösenden Element zurück. Der Request läuft genau einmal.
+function BlockConfirmDialog({ name, busy, onCancel, onConfirm }) {
+  const cancelRef = useRef(null);
+  const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      openerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div
+      className="adm-modal-overlay"
+      role="presentation"
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}
+    >
+      <div
+        className="adm-modal adm-modal-danger"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="adm-block-title"
+        aria-describedby="adm-block-desc"
+      >
+        <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="lock" s={22} /></div>
+        <h2 id="adm-block-title" className="adm-modal-title">{BLOCK_DIALOG.title}</h2>
+        <p className="adm-modal-sub">{name}</p>
+        <p id="adm-block-desc" className="adm-modal-text">{BLOCK_DIALOG.text}</p>
+        <div className="adm-modal-actions">
+          <button type="button" ref={cancelRef} className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
+            {BLOCK_DIALOG.cancel}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm adm-btn-danger"
+            onClick={onConfirm}
+            disabled={busy}
+            aria-busy={busy ? "true" : undefined}
+          >
+            {busy
+              ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
+              : <><Icon n="lock" s={14} /> {BLOCK_DIALOG.confirm}</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -106,12 +106,18 @@ test("10 — Kundendetail zeigt fehlende B2B-Felder statt nur eines Gedankenstri
 });
 
 test("11 — Kundenliste warnt vor dem Freischalten und wertet den 409-Guard aus", () => {
-  assert.match(usersListSrc, /isApprovalBlocked\(u\)/, "Freischalten-Button muss gesperrt werden können");
-  assert.match(usersListSrc, /action\.target === "approved" && isApprovalBlocked/,
-    "Sperre gilt nur für die Freischaltung, nie für das Blockieren");
+  // Die Sperre liegt seit der UX-Bereinigung im Aktionsmodell der Zeile
+  // (buildCustomerMenuModel) — inklusive sichtbarem Grund statt stummem Button.
+  const viewSrc = readSrc("../utils/adminCustomerView.mjs").replace(/^\s*\/\/[^\n]*$/gm, "");
+  assert.match(viewSrc, /isApprovalBlocked\(user\)/, "Freischalt-Aktion muss gesperrt werden können");
+  assert.match(viewSrc, /const approveDisabled = self \|\| b2bReason !== "";/,
+    "Sperre gilt nur für die Freischaltung …");
+  assert.equal(/key: "block"[^}]*disabled: approveDisabled/.test(viewSrc), false,
+    "… nie für das Blockieren");
   assert.match(usersListSrc, /409:/, "409 muss im Fehlerkatalog stehen");
   assert.match(usersListSrc, /r\.status === 409/, "konkrete Backend-Meldung muss gelesen werden");
-  assert.match(usersListSrc, /confirm\.missingB2B\?\.length > 0/, "Bestätigungsdialog weist auf fehlende Daten hin");
+  assert.match(usersListSrc, /missingB2B\?\.length > 0/, "Bestätigungsdialog weist auf fehlende Daten hin");
+  assert.match(usersListSrc, /missingB2BAccountFields\(u\)/, "fehlende Felder werden für den Dialog gelesen");
   assert.match(usersListSrc, /Firmenname fehlt/);
   assert.match(usersListSrc, /Ansprechpartner fehlt/);
 });
@@ -121,9 +127,9 @@ test("12 — kein automatischer Entzug einer bestehenden Freischaltung im Fronte
   // entstehen ausschließlich aus statusAction() nach einem Adminklick.
   const autoCalls = usersListSrc.match(/setAdminUserStatus\(/g) || [];
   assert.equal(autoCalls.length, 1, "genau ein Aufruf, im bestätigten Handler");
-  assert.equal(/setAdminUserStatus\([^)]*"blocked"\)/.test(usersListSrc), false,
-    "kein hartcodiertes Blockieren");
-  assert.match(usersListSrc, /const \{ id, target \} = confirm;/, "Ziel kommt aus der Bestätigung");
+  assert.match(usersListSrc, /const target = key === "approve" \? "approved" : "blocked";/,
+    "das Ziel entsteht ausschließlich aus der Menüauswahl des Admins");
+  assert.match(usersListSrc, /const \{ id, target, status \} = confirm;/, "Ziel kommt aus der Bestätigung");
 });
 
 // ─── Quelltext-Contract: Texte ────────────────────────────────────────────────

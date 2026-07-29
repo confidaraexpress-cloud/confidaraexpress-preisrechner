@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { Icon } from "../ui/Icon";
 import {
-  MARKUP_TEXTS,
   approvalGateExplanation,
   confirmedMarkupLine,
 } from "../../utils/customerMarkup.mjs";
+import { accountStatusCopy, markupRequirementText } from "../../utils/adminCustomerView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Freischaltung / Reaktivierung in der Admin-Kundendetailansicht.
@@ -90,11 +90,18 @@ export function CustomerApprovalCard({
   onCloseDialog,
   onConfirm,
   onJumpToMarkup,
+  blockable = false,          // freigeschaltetes Konto: Blockieren anbieten
+  blockDisabled = false,
+  blockDisabledReason = "",
+  onBlock,
 }) {
   const g = gate || {};
   const explanation = approvalGateExplanation(g);
   const reactivation = !!g.reactivation;
-  const title = reactivation ? "Kunde reaktivieren" : "Kunde freischalten";
+  // Überschrift und Beschreibung kommen ausschließlich aus dem tatsächlichen
+  // Kontostatus — ein freigeschalteter Kunde trägt nie „Kunde freischalten".
+  const copy = accountStatusCopy(g.currentStatus);
+  const title = copy.title;
   const cta = reactivation ? "Kunde reaktivieren" : "Kunde freischalten";
   const markupLine = confirmedMarkupLine(pricing);
   // Anonymisierte Konten haben im UI keine Statusaktion (wie in der Kundenliste).
@@ -104,7 +111,7 @@ export function CustomerApprovalCard({
 
   return (
     <div className="adm-card adm-approve-card">
-      <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Freischaltung</div>
+      <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Kontostatus</div>
       <div className="adm-card-body">
         {message && (
           <div
@@ -118,16 +125,10 @@ export function CustomerApprovalCard({
         <div className="adm-danger-item">
           <div className="adm-danger-item-text">
             <div className="adm-danger-item-title">{title}</div>
-            <p className="adm-danger-item-desc">
-              {alreadyApproved
-                ? "Dieser Kunde ist freigeschaltet und kann ConfidaraExpress uneingeschränkt nutzen."
-                : reactivation
-                  ? "Der Kunde ist derzeit gesperrt. Mit der Reaktivierung erhält er wieder Zugriff auf ConfidaraExpress."
-                  : "Mit der Freischaltung erhält der Kunde Zugriff auf ConfidaraExpress."}
-            </p>
-            {reactivation && (
+            <p className="adm-danger-item-desc">{copy.description}</p>
+            {!alreadyApproved && copy.hint && (
               <p className="adm-danger-item-desc adm-approve-reactivation">
-                <Icon n="info" s={14} /> {MARKUP_TEXTS.reactivationRequired}
+                <Icon n="info" s={14} /> {markupRequirementText(g.currentStatus)}
               </p>
             )}
             <p className="adm-support-hint" style={{ marginTop: 6 }}>Statusänderungen werden protokolliert.</p>
@@ -142,6 +143,19 @@ export function CustomerApprovalCard({
                 aria-describedby={!g.allowed ? "adm-approve-gate" : undefined}
               >
                 <Icon n="check" s={13} /> {cta}
+              </button>
+            )}
+            {/* Blockieren ist erreichbar, aber bewusst zurückhaltend gestaltet —
+                keine große rote Hauptaktion der Seite. */}
+            {blockable && typeof onBlock === "function" && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm adm-block-action"
+                onClick={onBlock}
+                disabled={busy || blockDisabled}
+                aria-describedby={blockDisabled && blockDisabledReason ? "adm-block-reason" : undefined}
+              >
+                <Icon n="lock" s={13} /> Kunde blockieren
               </button>
             )}
           </div>
@@ -162,6 +176,10 @@ export function CustomerApprovalCard({
               )}
             </span>
           </div>
+        )}
+
+        {blockable && blockDisabled && blockDisabledReason && (
+          <p className="adm-danger-note" id="adm-block-reason">{blockDisabledReason}</p>
         )}
 
         {/* Bestätigter Aufschlag auch außerhalb des Dialogs sichtbar. */}

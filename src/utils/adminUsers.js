@@ -2,8 +2,11 @@
 // Kein JSX, kein State, kein Fetch — die Badge-Darstellung bleibt in den Komponenten.
 
 // [badge-Klasse, Label] für Kundenstatus. Fallback → neutral „Unbekannt".
+// EINZIGE Quelle der Statusbezeichnungen — Liste, Detail, Filter und Dialoge
+// nutzen dieselben deutschen Begriffe (keine wechselnden Bezeichnungen für
+// denselben Status).
 const USER_STATUS_META = {
-  pending: ["badge-yellow", "Wartet"],
+  pending: ["badge-yellow", "Ausstehend"],
   approved: ["badge-green", "Freigegeben"],
   blocked: ["badge-red", "Blockiert"],
   anonymized: ["badge-gray", "Anonymisiert"],

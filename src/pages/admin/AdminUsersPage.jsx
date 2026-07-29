@@ -2,9 +2,24 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus, getAdminCustomerPriceMarkup } from "../../api/adminApi";
-import { userStatusMeta, userRoleMeta, paymentTermLabel } from "../../utils/adminUsers";
-import { missingB2BAccountFields, isApprovalBlocked } from "../../utils/b2bAccount.mjs";
-import { customerNumberOf } from "../../utils/businessNumbers.mjs";
+import { useAuth } from "../../context/AuthContext";
+import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
+import { missingB2BAccountFields } from "../../utils/b2bAccount.mjs";
+import { CustomerRowActions } from "../../components/admin/CustomerRowActions";
+import {
+  BLOCK_DIALOG,
+  DEFAULT_FILTERS,
+  STATUS_FILTER_OPTIONS,
+  activeFilterChips,
+  customerDisplayName,
+  customerFields,
+  filterCustomerRows,
+  hasActiveFilters,
+  isAdminAccount,
+  listEmptyState,
+  statusActionNote,
+  statusSuccessMessage,
+} from "../../utils/adminCustomerView.mjs";
 import {
   CODE_CONFIRMATION_REQUIRED,
   approvalError,
@@ -20,40 +35,21 @@ const ERROR_MESSAGES = {
   400: "Ungültige Anfrage.",
   404: "Kundenliste ist derzeit nicht verfügbar.",
   429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
-  500: "Kunden konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+  500: "Die Kundenliste konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
 };
-const GENERIC_ERROR = "Kunden konnten nicht geladen werden. Bitte versuchen Sie es erneut.";
+const GENERIC_ERROR = "Die Kundenliste konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
 
-// Statusaktion je aktuellem Status. „anonymized"/unbekannt → keine Aktion.
-// Es wird NIE „anonymized" als Ziel erzeugt (nur approved/blocked).
-function statusAction(status) {
-  if (status === "pending" || status === "blocked") return { target: "approved", label: "Freischalten", kind: "approve" };
-  if (status === "approved") return { target: "blocked", label: "Blockieren", kind: "block" };
-  return null;
-}
-
-const CONFIRM_COPY = {
-  approve: {
-    title: "Kunde freischalten",
-    text: "Dieser Kunde erhält Zugriff auf ConfidaraExpress. Die Aktion wird protokolliert.",
-    cta: "Freischalten bestätigen",
-  },
-  block: {
-    title: "Kunde blockieren",
-    text: "Dieser Kunde kann sich danach nicht mehr normal anmelden. Die Aktion wird protokolliert.",
-    cta: "Blockieren bestätigen",
-  },
-};
-
+// Fehlertexte der Statusänderung. Sie beantworten immer: Was ist fehlgeschlagen
+// und wurden Daten verändert? Keine Stacktraces, keine rohen Backendobjekte.
 const STATUS_CHANGE_ERRORS = {
-  400: "Der gewünschte Status ist ungültig.",
-  404: "Kunde wurde nicht gefunden.",
+  400: "Der gewünschte Status ist ungültig. Es wurden keine Änderungen gespeichert.",
+  404: "Der Kunde wurde nicht gefunden. Es wurden keine Änderungen gespeichert.",
   // 409 = B2B-Vollständigkeits-Guard des Backends. Die konkrete Meldung kommt
   // aus der Antwort (sie benennt die fehlenden Felder); das hier ist der Fallback.
-  409: "Freischaltung nicht möglich: Firmendaten des Kontos sind unvollständig.",
-  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
-  500: "Status konnte nicht geändert werden.",
-  default: "Status konnte nicht geändert werden.",
+  409: "Freischaltung nicht möglich: Die Firmendaten des Kontos sind unvollständig.",
+  429: "Zu viele Adminaktionen. Bitte versuchen Sie es in Kürze erneut.",
+  500: "Der Status wurde nicht geändert. Es wurden keine Änderungen gespeichert.",
+  default: "Der Status wurde nicht geändert. Es wurden keine Änderungen gespeichert.",
 };
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
@@ -85,53 +81,61 @@ function selectHasMore(d, rowCount, page, size, total) {
   return rowCount >= size;
 }
 
-// ── Feld-Getter: NUR erlaubte Felder. password/password_hash/token/secret werden
-// bewusst NIE gelesen — selbst wenn das Backend sie versehentlich liefert, landen
-// sie nicht im DOM. Kein Object.keys, kein Spread des ganzen Objekts.
-const idOf = (u) => firstDefined(u.id, u.user_id, u.uuid);
-const nameOf = (u) => firstDefined(u.name, u.full_name, u.contact_name);
-const emailOf = (u) => firstDefined(u.email, u.e_mail);
-const companyOf = (u) => firstDefined(u.company_name, u.company, u.firma);
-const statusOf = (u) => firstDefined(u.status, u.state);
-const roleOf = (u) => firstDefined(u.role);
-const vatOf = (u) => firstDefined(u.vat_id, u.vatId, u.ust_id);
-const paymentTermOf = (u) => firstDefined(u.payment_term, u.paymentTerm);
-const createdOf = (u) => firstDefined(u.created_at, u.createdAt, u.created);
-const rowKeyOf = (u, i) => firstDefined(u.id, u.user_id, u.uuid) ?? `row-${i}`;
+const rowKeyOf = (u, i) => customerFields(u).id ?? `row-${i}`;
 
-const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 function fmtDate(v) {
-  if (!v) return "—";
+  if (!v) return "";
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("de-DE");
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("de-DE");
 }
 
 function StatusBadge({ status }) {
   const [c, l] = userStatusMeta(status);
   return <span className={`badge ${c}`}>{l}</span>;
 }
-function RoleBadge({ role }) {
-  const [c, l] = userRoleMeta(role);
-  return <span className={`badge ${c}`}>{l}</span>;
-}
 
-// Clientseitige Suche NUR auf der aktuell geladenen Seite (Backend hat keine Filter).
-function matchUser(u, q) {
-  const hay = [nameOf(u), companyOf(u), emailOf(u), vatOf(u)].filter(Boolean).join(" ").toLowerCase();
-  return hay.includes(q);
+const detailPath = (id) => `/admin/users/${encodeURIComponent(id)}`;
+
+// ── Zellinhalte (geteilt zwischen Tabelle und Mobilkarte) ────────────────────
+
+// Spalte „Kunde": Firma primär, Ansprechpartner sekundär. Der Firmenname ist
+// zugleich der Link ins Kundendetail — nie mehr die kleine technische ID.
+function CustomerCell({ user }) {
+  const f = customerFields(user);
+  const admin = isAdminAccount(user);
+  return (
+    <div className="adm-cust">
+      {f.id != null ? (
+        <Link className="adm-cust-name" to={detailPath(f.id)}>
+          {f.company || <span className="adm-b2b-missing">Firmenname fehlt</span>}
+        </Link>
+      ) : (
+        <span className="adm-cust-name">{f.company || <span className="adm-b2b-missing">Firmenname fehlt</span>}</span>
+      )}
+      <span className="adm-cust-meta">
+        {f.name || <span className="adm-b2b-missing">Ansprechpartner fehlt</span>}
+        {/* Rolle nur bei Sonderkonten — normale Kunden tragen keine Rollenangabe. */}
+        {admin && <span className={`badge ${userRoleMeta(f.role)[0]} adm-cust-role`}>{userRoleMeta(f.role)[1]}</span>}
+      </span>
+      {f.createdAt && <span className="adm-cust-since">Registriert {fmtDate(f.createdAt)}</span>}
+    </div>
+  );
 }
 
 export default function AdminUsersPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
+  const currentAdminId = authUser?.id ?? null;
+
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
-  const [query, setQuery] = useState("");
-  const [confirm, setConfirm] = useState(null);       // { id, target, kind, name }
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [confirm, setConfirm] = useState(null);        // { id, target, kind, name, status }
   const [actionBusy, setActionBusy] = useState(false); // Statusänderung läuft
   const [actionMsg, setActionMsg] = useState(null);    // { type, text }
   // Bestätigungsstatus des Kundenaufschlags — NUR für den geöffneten
@@ -171,9 +175,8 @@ export default function AdminUsersPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Flash nach Redirect (z. B. „Kunde wurde gelöscht." aus dem Detail). Genau
-  // einmal anzeigen, dann den Router-State löschen, damit ein Reload/Zurück den
-  // Hinweis nicht wiederholt. Kein Storage — reiner In-Memory-Router-State.
+  // Flash nach Redirect (z. B. „Kunde gelöscht" aus dem Detail). Genau einmal
+  // anzeigen, dann den Router-State löschen. Kein Storage — reiner In-Memory-State.
   useEffect(() => {
     const flash = location.state && location.state.flash;
     if (flash) {
@@ -207,22 +210,25 @@ export default function AdminUsersPage() {
     }
   }, []);
 
-  const openConfirm = (u, action) => {
+  // Menüauswahl → Bestätigungsdialog. Es wird NIE direkt ein Status gesetzt.
+  const openConfirm = (key, u) => {
+    if (key !== "approve" && key !== "block") return;
     setActionMsg(null);
-    const userId = idOf(u);
+    const f = customerFields(u);
+    const target = key === "approve" ? "approved" : "blocked";
     setConfirm({
-      id: userId,
-      target: action.target,
-      kind: action.kind,
-      status: statusOf(u),
-      name: companyOf(u) || nameOf(u) || `#${dash(userId)}`,
+      id: f.id,
+      target,
+      kind: key,
+      status: f.status,
+      name: customerDisplayName(u),
       // Nur für die Freischaltung relevant: fehlende B2B-Stammdaten eines Alt-Kontos.
       // Verbindlich bleibt der serverseitige Guard — dies ist reine Vorab-Information.
-      missingB2B: action.target === "approved" ? missingB2BAccountFields(u) : [],
+      missingB2B: target === "approved" ? missingB2BAccountFields(u) : [],
     });
     // Nur vor einer Freischaltung: Der Aufschlag muss bestätigt sein. Beim
     // Blockieren spielt er keine Rolle — dort wird nichts nachgeladen.
-    if (action.target === "approved") loadConfirmPricing(userId);
+    if (target === "approved") loadConfirmPricing(f.id);
     else setConfirmPricing({ loading: false, error: false, data: null });
   };
   const closeConfirm = () => { if (!actionBusy) setConfirm(null); };
@@ -241,7 +247,7 @@ export default function AdminUsersPage() {
     if (!confirm) return;
     if (actionBusy) return;              // Doppelübermittlung ausgeschlossen
     if (!confirmGate.allowed) return;    // ohne bestätigten Aufschlag kein Request
-    const { id, target } = confirm;
+    const { id, target, status } = confirm;
     setActionBusy(true);
     setActionMsg(null);
     // Beim Aufschlags-Gate (409) bleibt der Dialog offen und lädt den
@@ -272,12 +278,13 @@ export default function AdminUsersPage() {
         }
         return;
       }
+      // Erfolgsmeldung erst nach erfolgreicher Antwort.
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       const noOp = !!(d && (d.no_op === true || d.noop === true || d.changed === false || d.unchanged === true));
       setActionMsg({
         type: "success",
-        text: noOp ? "Status war bereits gesetzt." : (target === "approved" ? "Kunde wurde freigeschaltet." : "Kunde wurde blockiert."),
+        text: noOp ? "Status war bereits gesetzt." : statusSuccessMessage(target, status),
       });
       load(); // Backend-Realität neu laden (kein optimistisches Raten)
     } catch {
@@ -288,127 +295,187 @@ export default function AdminUsersPage() {
     }
   };
 
-  const q = query.trim().toLowerCase();
-  const filtered = useMemo(() => (q ? rows.filter((u) => matchUser(u, q)) : rows), [rows, q]);
-  const showPagination = !error && (rows.length > 0 || page > 1);
+  // Lokale Suche und Filter — ausschließlich auf der aktuell geladenen Seite.
+  const filtered = useMemo(() => filterCustomerRows(rows, filters), [rows, filters]);
+  const chips = activeFilterChips(filters);
+  const emptyState = listEmptyState({ loadedCount: rows.length, filteredCount: filtered.length, filters });
+  const showPagination = !error && !loading && (rows.length > 0 || page > 1);
+  const resetFilters = () => setFilters(DEFAULT_FILTERS);
 
   return (
     <div className="adm-page">
       <header className="adm-page-head adm-page-head-row">
         <div>
           <h1 className="adm-title">Kunden</h1>
-          <p className="adm-sub">Kundenübersicht mit Freischalten/Blockieren. Statusänderungen werden protokolliert.</p>
+          <p className="adm-sub">
+            Übersicht aller Geschäftskunden. Statusänderungen werden protokolliert.
+          </p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
         </button>
       </header>
 
-      <form className="adm-filters" onSubmit={(e) => e.preventDefault()}>
-        <div className="adm-filter-field" style={{ flex: 1, minWidth: 240 }}>
-          <label htmlFor="u-search">Suche (aktuelle Seite)</label>
+      {/* Suche und Filter — mit echten Labels und ehrlichem Geltungsbereich. */}
+      <form className="adm-filters" onSubmit={(e) => e.preventDefault()} role="search">
+        <div className="adm-filter-field adm-filter-search">
+          <label htmlFor="u-search">Diese Seite durchsuchen</label>
           <input
             id="u-search"
             type="search"
-            placeholder="Name, Firma, E-Mail oder USt-ID…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Firma, Name, E-Mail oder USt-ID"
+            value={filters.query}
+            onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
+            aria-describedby="u-search-hint"
           />
         </div>
-        <p className="adm-support-hint" style={{ marginTop: 0, alignSelf: "flex-end" }}>
-          Die Suche wirkt nur auf die aktuell geladene Seite ({rows.length} Einträge). Das Backend bietet noch keine serverseitige Suche.
+        <div className="adm-filter-field">
+          <label htmlFor="u-status">Status</label>
+          <select
+            id="u-status"
+            value={filters.status}
+            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+          >
+            {STATUS_FILTER_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <p id="u-search-hint" className="adm-support-hint adm-filter-hint">
+          Durchsucht nur die aktuell angezeigte Seite ({rows.length} {rows.length === 1 ? "Eintrag" : "Einträge"}).
         </p>
       </form>
 
+      {chips.length > 0 && (
+        <div className="adm-filter-chips">
+          <span className="adm-filter-chips-label">Aktive Filter:</span>
+          {chips.map((c) => (
+            <span key={c.key} className="adm-chip">{c.label}</span>
+          ))}
+          <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
+            <Icon n="x" s={13} /> Filter zurücksetzen
+          </button>
+        </div>
+      )}
+
       {actionMsg && (
-        <div className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}>
+        <div
+          className={`alert ${actionMsg.type === "success" ? "alert-success" : "alert-error"}`}
+          role={actionMsg.type === "success" ? "status" : "alert"}
+          aria-live="polite"
+        >
           <Icon n={actionMsg.type === "success" ? "check" : "x"} s={16} />{actionMsg.text}
         </div>
       )}
 
       {loading ? (
         <div className="table-card">
-          <div className="loading-center"><span className="spinner spinner-dark" /> Wird geladen…</div>
+          <div className="loading-center" role="status" aria-live="polite">
+            <span className="spinner spinner-dark" /> Kunden werden geladen…
+          </div>
         </div>
       ) : error ? (
-        <div className="alert alert-error"><Icon n="x" s={16} />{error}</div>
-      ) : rows.length === 0 ? (
-        <div className="table-card">
-          <div className="empty"><div className="empty-icon">👥</div><div className="empty-title">Keine Kunden gefunden</div></div>
+        <div className="adm-loaderr">
+          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
+          <button type="button" className="btn btn-outline btn-sm" onClick={load}>
+            <Icon n="refresh" s={14} /> Erneut laden
+          </button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : emptyState.show ? (
         <div className="table-card">
-          <div className="empty"><div className="empty-icon">🔎</div><div className="empty-title">Keine Treffer auf dieser Seite</div></div>
+          <div className="empty">
+            <div className="empty-icon">{hasActiveFilters(filters) ? "🔎" : "👥"}</div>
+            <div className="empty-title">{emptyState.title}</div>
+            <p className="empty-text">{emptyState.text}</p>
+            {hasActiveFilters(filters) && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
+                <Icon n="x" s={13} /> Filter zurücksetzen
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="table-card">
-          <div className="table-scroll">
+        <>
+          {/* Desktop: kompakte Tabelle mit fünf Spalten — kein horizontales Scrollen. */}
+          <div className="table-card adm-users-table">
             <table>
+              <caption className="sr-only">
+                Kundenliste, Seite {page}. Spalten: Kunde, Kontakt, Kundennummer, Status, Aktion.
+              </caption>
               <thead>
                 <tr>
-                  <th>Registriert am</th>
-                  <th>Kundennummer</th>
-                  <th>ID</th>
-                  <th>Firma</th>
-                  <th>Name</th>
-                  <th>E-Mail</th>
-                  <th>Status</th>
-                  <th>Rolle</th>
-                  <th>USt-ID</th>
-                  <th>Zahlungsziel</th>
-                  <th>Aktion</th>
+                  <th scope="col">Kunde</th>
+                  <th scope="col">Kontakt</th>
+                  <th scope="col">Kundennummer</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="adm-col-action">Aktion</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u, i) => (
-                  <tr key={rowKeyOf(u, i)}>
-                    <td className="adm-td-time">{fmtDate(createdOf(u))}</td>
-                    {/* Kundennummer = organisatorische Kundenkennung (CE-K-…). Die interne ID
-                        daneben bleibt der rein technische Schlüssel (Detail-Link). */}
-                    <td className="adm-mono">{customerNumberOf(u) || <span className="text-muted">—</span>}</td>
-                    <td className="adm-mono">
-                      {idOf(u) != null
-                        ? <Link className="adm-idlink" to={`/admin/users/${encodeURIComponent(idOf(u))}`}>{idOf(u)}</Link>
-                        : "—"}
-                    </td>
-                    <td>{companyOf(u) ? companyOf(u) : <span className="adm-b2b-missing">Firmenname fehlt</span>}</td>
-                    <td>{nameOf(u) ? nameOf(u) : <span className="adm-b2b-missing">Ansprechpartner fehlt</span>}</td>
-                    <td className="adm-nowrap">{dash(emailOf(u))}</td>
-                    <td><StatusBadge status={statusOf(u)} /></td>
-                    <td><RoleBadge role={roleOf(u)} /></td>
-                    <td className="adm-mono">{dash(vatOf(u))}</td>
-                    <td className="adm-nowrap">{paymentTermLabel(paymentTermOf(u))}</td>
-                    <td>
-                      {(() => {
-                        const st = statusOf(u);
-                        const action = statusAction(st);
-                        if (action) {
-                          // Freischalten bei unvollständigen B2B-Stammdaten: der Server
-                          // lehnt es ohnehin ab (409) — hier wird es vorab kenntlich
-                          // gemacht. Sperren bleibt immer möglich.
-                          const blocked = action.target === "approved" && isApprovalBlocked(u);
-                          return (
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${action.kind === "block" ? "adm-btn-danger" : "btn-outline"}`}
-                              onClick={() => openConfirm(u, action)}
-                              disabled={actionBusy || blocked}
-                              title={blocked ? "Firmendaten unvollständig — bitte im Kundendetail ergänzen." : undefined}
-                            >
-                              <Icon n={action.kind === "block" ? "lock" : "check"} s={13} /> {action.label}
-                            </button>
-                          );
-                        }
-                        if (st === "anonymized") return <span className="adm-muted">Keine Statusänderung möglich</span>;
-                        return <span className="adm-muted">—</span>;
-                      })()}
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((u, i) => {
+                  const f = customerFields(u);
+                  const note = statusActionNote(u);
+                  return (
+                    <tr key={rowKeyOf(u, i)}>
+                      <td><CustomerCell user={u} /></td>
+                      <td className="adm-col-contact">
+                        <span className="adm-email" title={f.email}>{f.email || "—"}</span>
+                      </td>
+                      <td className="adm-mono adm-nowrap">{f.customerNumber || <span className="text-muted">—</span>}</td>
+                      <td><StatusBadge status={f.status} /></td>
+                      <td className="adm-col-action">
+                        <div className="adm-row-actions-cell">
+                          {f.id != null && (
+                            <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>
+                              Details
+                            </Link>
+                          )}
+                          <CustomerRowActions
+                            user={u}
+                            currentAdminId={currentAdminId}
+                            busy={actionBusy}
+                            onSelect={openConfirm}
+                          />
+                          {note && <span className="sr-only">{note}</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        </div>
+
+          {/* Mobil: Karten statt Tabelle — kein horizontaler Seitenüberlauf. */}
+          <ul className="adm-users-cards">
+            {filtered.map((u, i) => {
+              const f = customerFields(u);
+              return (
+                <li className="adm-ucard" key={`c-${rowKeyOf(u, i)}`}>
+                  <div className="adm-ucard-head">
+                    <CustomerCell user={u} />
+                    <StatusBadge status={f.status} />
+                  </div>
+                  <dl className="adm-ucard-kv">
+                    <div><dt>E-Mail</dt><dd className="adm-email">{f.email || "—"}</dd></div>
+                    <div><dt>Kundennummer</dt><dd className="adm-mono">{f.customerNumber || "—"}</dd></div>
+                  </dl>
+                  <div className="adm-ucard-actions">
+                    {f.id != null && (
+                      <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
+                    )}
+                    <CustomerRowActions
+                      user={u}
+                      currentAdminId={currentAdminId}
+                      busy={actionBusy}
+                      onSelect={openConfirm}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       {showPagination && (
@@ -426,8 +493,16 @@ export default function AdminUsersPage() {
       )}
 
       {confirm && (() => {
-        const copy = CONFIRM_COPY[confirm.kind];
         const danger = confirm.kind === "block";
+        const reactivation = confirm.status === "blocked";
+        // Blockieren: eigene, unmissverständliche Dialogtexte.
+        const title = danger
+          ? BLOCK_DIALOG.title
+          : (reactivation ? "Kunde reaktivieren" : "Kunde freischalten");
+        const text = danger
+          ? BLOCK_DIALOG.text
+          : "Der Kunde erhält Zugriff auf ConfidaraExpress. Die Aktion wird protokolliert.";
+        const cta = danger ? BLOCK_DIALOG.confirm : (reactivation ? "Kunde reaktivieren" : "Kunde freischalten");
         // Freischaltung: ohne bestätigten Kundenaufschlag wird kein Request
         // abgesetzt. Der Grund steht im Dialog, der CTA springt in die
         // Aufschlagssektion der Kundendetailansicht (Router-State, kein
@@ -436,80 +511,129 @@ export default function AdminUsersPage() {
         const markupLine = confirm.target === "approved" ? confirmedMarkupLine(confirmPricing.data) : null;
         const jumpToMarkup = () => {
           setConfirm(null);
-          navigate(`/admin/users/${encodeURIComponent(confirm.id)}`, { state: { focusPricing: true } });
+          navigate(detailPath(confirm.id), { state: { focusPricing: true } });
         };
         return (
-          <div className="adm-modal-overlay" role="presentation" onClick={closeConfirm}>
-            <div
-              className="adm-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="adm-status-title"
-              aria-describedby="adm-status-desc"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
-                <Icon n={danger ? "lock" : "check"} s={22} />
-              </div>
-              <h2 id="adm-status-title" className="adm-modal-title">{copy.title}</h2>
-              <p className="adm-modal-sub">{confirm.name}</p>
-              <p id="adm-status-desc" className="adm-modal-text">{copy.text}</p>
-              {confirm.missingB2B?.length > 0 && (
-                <div className="adm-b2b-warn" role="status">
-                  <Icon n="shield" s={16} />
-                  <span>
-                    <strong>{confirm.missingB2B.map((f) => f.missingText).join(" · ")}</strong>
-                    <span className="adm-b2b-warn-text">
-                      ConfidaraExpress ist eine reine Geschäftskundenplattform. Die Freischaltung wird
-                      serverseitig abgelehnt, solange diese Angaben fehlen.
-                    </span>
-                  </span>
-                </div>
-              )}
-              {/* Kundenaufschlag prüfen (nur vor einer Freischaltung). Solange
-                  geladen wird, ist die Bestätigung unbekannt — der Dialog stellt
-                  die Freischaltung dann bewusst nicht als möglich dar. */}
-              {confirm.target === "approved" && confirmPricing.loading && (
-                <p className="adm-markup-check" role="status" aria-live="polite">
-                  <span className="spinner spinner-dark" /> Kundenaufschlag wird geprüft…
-                </p>
-              )}
-              {markupLine && (
-                <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
-              )}
-              {!confirmGate.allowed && gateInfo.title && (
-                <div className="adm-b2b-warn" role="status">
-                  <Icon n="shield" s={16} />
-                  <span>
-                    <strong>{gateInfo.title}</strong>
-                    <span className="adm-b2b-warn-text">{gateInfo.text}</span>
-                    {gateInfo.cta && (
-                      <button type="button" className="btn btn-outline btn-sm adm-approve-jump" onClick={jumpToMarkup}>
-                        <Icon n="arrowRight" s={13} /> {gateInfo.cta}
-                      </button>
-                    )}
-                  </span>
-                </div>
-              )}
-              <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
-              <div className="adm-modal-actions">
-                <button type="button" className="btn btn-outline btn-sm" onClick={closeConfirm} disabled={actionBusy}>Abbrechen</button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${danger ? "adm-btn-danger" : "btn-primary"}`}
-                  onClick={confirmStatusChange}
-                  disabled={actionBusy || !confirmGate.allowed}
-                  aria-busy={actionBusy ? "true" : undefined}
-                >
-                  {actionBusy
-                    ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
-                    : <><Icon n={danger ? "lock" : "check"} s={14} /> {copy.cta}</>}
-                </button>
-              </div>
-            </div>
-          </div>
+          <StatusConfirmDialog
+            title={title}
+            text={text}
+            cta={cta}
+            danger={danger}
+            name={confirm.name}
+            busy={actionBusy}
+            disabled={!confirmGate.allowed}
+            missingB2B={confirm.missingB2B}
+            checking={confirm.target === "approved" && confirmPricing.loading}
+            markupLine={markupLine}
+            gateInfo={!confirmGate.allowed ? gateInfo : null}
+            onJumpToMarkup={jumpToMarkup}
+            onCancel={closeConfirm}
+            onConfirm={confirmStatusChange}
+          />
         );
       })()}
+    </div>
+  );
+}
+
+// Bestätigungsdialog für Statusänderungen. Fokus beim Öffnen auf „Abbrechen",
+// Escape schließt (außer während des Requests), der Fokus kehrt danach zum
+// auslösenden Element zurück. Kein Statuswechsel durch einen einzigen Klick.
+function StatusConfirmDialog({
+  title, text, cta, danger, name, busy, disabled,
+  missingB2B, checking, markupLine, gateInfo, onJumpToMarkup, onCancel, onConfirm,
+}) {
+  const cancelRef = React.useRef(null);
+  const openerRef = React.useRef(typeof document !== "undefined" ? document.activeElement : null);
+
+  React.useEffect(() => {
+    cancelRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      openerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div
+      className="adm-modal-overlay"
+      role="presentation"
+      onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}
+    >
+      <div
+        className="adm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="adm-status-title"
+        aria-describedby="adm-status-desc"
+      >
+        <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
+          <Icon n={danger ? "lock" : "check"} s={22} />
+        </div>
+        <h2 id="adm-status-title" className="adm-modal-title">{title}</h2>
+        <p className="adm-modal-sub">{name}</p>
+        <p id="adm-status-desc" className="adm-modal-text">{text}</p>
+
+        {missingB2B?.length > 0 && (
+          <div className="adm-b2b-warn" role="status">
+            <Icon n="shield" s={16} />
+            <span>
+              <strong>{missingB2B.map((f) => f.missingText).join(" · ")}</strong>
+              <span className="adm-b2b-warn-text">
+                ConfidaraExpress ist eine reine Geschäftskundenplattform. Die Freischaltung wird
+                serverseitig abgelehnt, solange diese Angaben fehlen.
+              </span>
+            </span>
+          </div>
+        )}
+
+        {/* Kundenaufschlag prüfen (nur vor einer Freischaltung). Solange geladen
+            wird, ist die Bestätigung unbekannt — der Dialog stellt die
+            Freischaltung dann bewusst nicht als möglich dar. */}
+        {checking && (
+          <p className="adm-markup-check" role="status" aria-live="polite">
+            <span className="spinner spinner-dark" /> Kundenaufschlag wird geprüft…
+          </p>
+        )}
+        {markupLine && (
+          <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
+        )}
+        {gateInfo && gateInfo.title && (
+          <div className="adm-b2b-warn" role="status">
+            <Icon n="shield" s={16} />
+            <span>
+              <strong>{gateInfo.title}</strong>
+              <span className="adm-b2b-warn-text">{gateInfo.text}</span>
+              {gateInfo.cta && (
+                <button type="button" className="btn btn-outline btn-sm adm-approve-jump" onClick={onJumpToMarkup}>
+                  <Icon n="arrowRight" s={13} /> {gateInfo.cta}
+                </button>
+              )}
+            </span>
+          </div>
+        )}
+
+        <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
+        <div className="adm-modal-actions">
+          <button type="button" ref={cancelRef} className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
+            {BLOCK_DIALOG.cancel}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${danger ? "adm-btn-danger" : "btn-primary"}`}
+            onClick={onConfirm}
+            disabled={busy || disabled}
+            aria-busy={busy ? "true" : undefined}
+          >
+            {busy
+              ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
+              : <><Icon n={danger ? "lock" : "check"} s={14} /> {cta}</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

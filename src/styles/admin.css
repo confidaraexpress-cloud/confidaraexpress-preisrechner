@@ -334,3 +334,140 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
   .adm-kv-item dd.adm-markup-value { font-size: 20px; }
   .adm-approve-markup { width: 100%; justify-content: center; }
 }
+
+/* ── Kundenverwaltung: kompakte Liste, Mobilkarten, Aktionsmenü ─────────────
+   Nur Light-/Legacy-Tokens (--navy/--gray../--blue../--border../--radius..) und
+   die bestehenden Atome (.table-card/.badge/.btn/.empty). Keine neuen
+   Animationen, keine Hintergrundeffekte. */
+
+/* Als Button gestaltete Links (z. B. „Details") tragen keine Linkunterstreichung.
+   Bewusst auf den Adminbereich begrenzt — das globale .btn bleibt unangetastet. */
+.adm-page a.btn, .adm-page a.btn:hover { text-decoration: none; }
+
+/* Screenreader-Text (Tabellen-Caption, stille Hinweise). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Fünf Spalten passen auf übliche Desktopbreiten — kein horizontales Scrollen.
+   Die Tabelle darf deshalb bewusst KEINE min-width erzwingen. */
+.adm-users-table table { min-width: 0; table-layout: fixed; }
+.adm-users-table th, .adm-users-table td { vertical-align: top; }
+.adm-users-table th:nth-child(1), .adm-users-table td:nth-child(1) { width: 32%; }
+.adm-users-table th:nth-child(2), .adm-users-table td:nth-child(2) { width: 26%; }
+.adm-users-table th:nth-child(3), .adm-users-table td:nth-child(3) { width: 15%; }
+.adm-users-table th:nth-child(4), .adm-users-table td:nth-child(4) { width: 12%; }
+.adm-users-table th:nth-child(5), .adm-users-table td:nth-child(5) { width: 15%; }
+
+/* Spalte „Kunde": Firma primär (Link), Ansprechpartner sekundär. */
+.adm-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-cust-name { font-size: 14px; font-weight: 700; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-cust-name:hover { color: var(--blue2); text-decoration: underline; }
+a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+.adm-cust-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12.5px; color: var(--gray500); }
+.adm-cust-role { font-size: 10px; }
+.adm-cust-since { font-size: 11.5px; color: var(--gray400); }
+
+/* Lange E-Mail-Adressen brechen kontrolliert statt die Tabelle zu sprengen. */
+.adm-email { display: block; font-size: 13px; color: var(--gray600); overflow-wrap: anywhere; }
+.adm-col-contact { min-width: 0; }
+.adm-col-action { white-space: nowrap; }
+.adm-row-actions-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+
+/* Aktionsmenü der Zeile — Trigger + Dropdown, zugänglich bedienbar. */
+.adm-rowactions { position: relative; flex-shrink: 0; }
+.adm-rowactions-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+  background: #fff; border: 1px solid var(--border); color: var(--gray600);
+}
+.adm-rowactions-trigger:hover { background: var(--gray50); border-color: var(--border2); color: var(--navy); }
+.adm-rowactions-trigger:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.adm-rowactions-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.adm-rowactions-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 232px;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(14,30,80,0.16); padding: 5px; text-align: left;
+}
+.adm-rowactions-item {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px;
+  font-size: 13.5px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+  color: var(--navy); background: none; border: none; border-radius: 8px;
+  cursor: pointer; text-align: left; white-space: nowrap;
+}
+.adm-rowactions-item:hover, .adm-rowactions-item:focus-visible { background: var(--gray50); outline: none; }
+.adm-rowactions-item svg { flex-shrink: 0; color: var(--gray500); }
+.adm-rowactions-item--danger { color: var(--danger); }
+.adm-rowactions-item--danger svg { color: var(--danger); }
+.adm-rowactions-item:disabled { opacity: 0.5; cursor: not-allowed; }
+.adm-rowactions-divider { height: 1px; background: var(--border); margin: 5px 2px; }
+.adm-rowactions-reason { padding: 0 10px 8px; font-size: 11.5px; line-height: 1.45; color: var(--gray500); white-space: normal; }
+
+/* Filterzeile: Suche breit, Status kompakt, Hinweis in eigener Zeile. */
+.adm-filter-search { flex: 1; min-width: 240px; }
+.adm-filter-hint { margin-top: 0; flex-basis: 100%; }
+.adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.adm-filter-chips-label { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+
+/* Ladefehler mit direkter Wiederholung. */
+.adm-loaderr { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.empty-text { margin-top: 6px; font-size: 13px; line-height: 1.55; color: var(--gray500); max-width: 460px; }
+.empty .btn { margin-top: 14px; }
+
+/* Mobilkarten: erst unterhalb der Tabellenbreite sichtbar. */
+.adm-users-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
+.adm-ucard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
+.adm-ucard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.adm-ucard-kv { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.adm-ucard-kv dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.adm-ucard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
+.adm-ucard-actions { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
+/* Touch-Ziele: mindestens 40 px hoch. */
+.adm-ucard-actions .btn { min-height: 40px; flex: 1; justify-content: center; }
+.adm-ucard-actions .adm-rowactions-trigger { width: 40px; height: 40px; }
+
+@media (max-width: 820px) {
+  .adm-users-table { display: none; }
+  .adm-users-cards { display: flex; }
+  /* Das Menü öffnet auf schmalen Screens nach links, damit es im Bild bleibt. */
+  .adm-rowactions-menu { right: 0; left: auto; min-width: 220px; max-width: calc(100vw - 60px); }
+}
+
+/* ── Kundendetail: Kopfbereich, technische Infos, Zahlungshinweis ───────────*/
+.adm-detail-header { margin-bottom: 0; }
+.adm-detail-head { align-items: flex-start; }
+.adm-detail-ident { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+.adm-detail-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; color: var(--gray500); }
+.adm-detail-mail { overflow-wrap: anywhere; }
+.adm-detail-action { flex-shrink: 0; }
+.adm-chip-muted { color: var(--gray400); font-weight: 500; }
+
+/* Blockieren auf der Detailseite: sichtbar, aber nicht dominant. */
+.adm-block-action { color: var(--danger); border-color: rgba(239,68,68,0.35); }
+.adm-block-action:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+
+/* Überfällige Rechnungen: sichtbar, aber ausdrücklich ohne Automatik. */
+.adm-overdue-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12.5px; line-height: 1.55; color: #8a5a06; background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
+.adm-overdue-note svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+
+/* Technische Informationen — natives <details>, ohne zusätzliches ARIA. */
+.adm-tech > .adm-tech-summary { cursor: pointer; list-style: none; user-select: none; }
+.adm-tech > .adm-tech-summary::-webkit-details-marker { display: none; }
+.adm-tech > .adm-tech-summary::after { content: "▾"; margin-left: auto; color: var(--gray400); font-size: 12px; transition: transform 0.15s; }
+.adm-tech[open] > .adm-tech-summary::after { transform: rotate(180deg); }
+.adm-tech > .adm-tech-summary:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: -2px; }
+.adm-tech:not([open]) > .adm-tech-summary { border-bottom: none; }
+
+/* Textwerte in den Kennzahlen (z. B. „7 Kalendertage") brechen an Wortgrenzen. */
+.adm-stat-value-text { font-size: 16px; font-weight: 700; letter-spacing: 0; word-break: normal; overflow-wrap: break-word; }
+
+/* Hinweis „keine Änderung nötig" am Aufschlagsfeld. */
+.adm-markup-nochange { font-size: 12px; line-height: 1.45; color: var(--gray500); }
+
+@media (max-width: 640px) {
+  .adm-detail-action { width: 100%; }
+  .adm-detail-action .btn { width: 100%; justify-content: center; min-height: 42px; }
+  .adm-danger-item-action { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .adm-danger-item-action .btn { flex: 1; justify-content: center; min-height: 42px; }
+}

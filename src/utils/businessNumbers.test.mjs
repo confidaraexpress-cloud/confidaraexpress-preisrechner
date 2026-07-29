@@ -211,9 +211,24 @@ test("(11) Admin-Sendungsansichten trennen Confidara- und JUMiNGO-Nummer", () =>
 
 test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", () => {
   const src = read("pages/admin/AdminInvoiceDetailPage.jsx");
-  assert.ok(src.includes('["Rechnungsnummer", dash(invoiceNoOf(inv))]'), "Rechnungsnummer fehlt");
-  assert.ok(src.includes("NUMBER_LABELS.businessOrder") && src.includes("businessOrderNumberOf(inv)"), "Bestellnummer fehlt");
-  assert.ok(src.includes("NUMBER_LABELS.customer") && src.includes("customerNumberOf(inv)"), "Kundennummer fehlt");
+  const view = read("utils/adminInvoiceView.mjs");
+  // Die Rechnungsnummer ist seit der UX-Bereinigung der Seitentitel (<h1>) statt einer
+  // Feldzeile — sie bleibt die primäre Dokumentnummer und wird unverändert angezeigt.
+  assert.ok(/<h1 className="adm-detail-id">Rechnung \{number\}<\/h1>/.test(src), "Rechnungsnummer ist nicht der Seitentitel");
+  assert.ok(src.includes("const number = dash(invoiceNoOf(inv));"), "Rechnungsnummer wird nicht aus dem fachlichen Feld gelesen");
+  // Bestellnummer: aus der Sendungsverknüpfung, eigen beschriftet, mit ehrlichem Legacy-Zustand.
+  assert.ok(src.includes("NUMBER_LABELS.businessOrder") && src.includes("shipment.orderNumber"), "Bestellnummer fehlt");
+  assert.ok(src.includes("SHIPMENT_NO_ORDER_NUMBER"), "fehlende Bestellnummer wird nicht ehrlich benannt");
+  // Kundennummer: HISTORISCH aus dem Rechnungssnapshot, getrennt von den aktuellen Stammdaten.
+  assert.ok(src.includes("NUMBER_LABELS.customer") && src.includes("recipient.customerNumber"), "Kundennummer fehlt");
+  assert.ok(src.includes("account.customerNumber"), "aktuelle Kundennummer fehlt als getrennter Wert");
+  // Keine Nummer wird aus einer technischen ID abgeleitet.
+  assert.ok(/const customerNumber = str\(firstDefined\(r\.customer_number, r\.customerNumber\)\);/.test(view),
+    "die historische Kundennummer stammt nicht ausschließlich aus dem fachlichen Snapshotfeld");
+  assert.ok(/customerNumber: str\(firstDefined\(r\.current_customer_number, r\.currentCustomerNumber\)\)/.test(view),
+    "die aktuelle Kundennummer stammt nicht aus dem eigenen Live-Feld");
+  assert.ok(!/orderNumber[^\n]{0,60}\b(r\.id|r\.shipment_id|idOf\()/.test(view), "Bestellnummer aus einer ID abgeleitet");
+  assert.ok(!/customerNumber[^\n]{0,60}\b(r\.id|r\.user_id|idOf\()/.test(view), "Kundennummer aus einer ID abgeleitet");
 });
 
 test("(13) kein sichtbarer Text bezeichnet die JUMiNGO-Ordernummer als Confidara-Bestellnummer", () => {

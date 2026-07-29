@@ -221,11 +221,20 @@ test("22 — Kundenliste: E-Mail-Status sichtbar, KEINE Versandaktion beim Kunde
 });
 
 test("23 — Admin-Detail: Send/Retry/Resend mit Bestätigung, Doppelklick-Schutz, Refetch, Testdokument-Sperre", () => {
+  // Die statusabhängigen Aktionslabels und die Test-/Vorschau-Sperre leben seit der
+  // UX-Bereinigung im gemeinsamen View-Model (utils/adminInvoiceView.mjs) statt in der
+  // Komponente — die Aussage bleibt identisch, die Quelle ist nur zentralisiert.
+  const invView = readFileSync(join(HERE, "./adminInvoiceView.mjs"), "utf8");
   assert.ok(adminDetailSrc.includes("sendAdminInvoiceEmail") && adminDetailSrc.includes("resendAdminInvoiceEmail"), "beide Admin-Endpunkte angebunden");
-  assert.ok(adminDetailSrc.includes("Rechnung per E-Mail senden") && adminDetailSrc.includes("Versand erneut versuchen") && adminDetailSrc.includes("Rechnung erneut senden"), "statusabhängige Aktionslabels");
+  assert.ok(invView.includes("Rechnung per E-Mail senden") && invView.includes("Versand erneut versuchen") && invView.includes("Rechnung erneut senden"), "statusabhängige Aktionslabels");
+  assert.match(invView, /status === "sent" \? \{ kind: "resend"/, "Resend nur bei bereits versendeter Rechnung");
+  assert.match(invView, /status === "failed" \? \{ kind: "send", label: "Versand erneut versuchen" \}/, "Retry-Label bei failed");
   assert.ok(adminDetailSrc.includes("Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte"), "Resend-Bestätigungstext");
   assert.ok(adminDetailSrc.includes("disabled={mailBusy}"), "Doppelklick-Schutz");
   assert.match(adminDetailSrc, /setMailMsg\([\s\S]{0,700}load\(\);/, "Refetch nach Versandaktion");
-  assert.ok(adminDetailSrc.includes("Testdokumente dürfen nicht per E-Mail versendet werden."), "Testdokument-Hinweis statt Aktion");
+  // Test-/Vorschau-Rechnungen: KEINE Versandaktion, sondern ein erklärender Hinweis.
+  assert.ok(invView.includes("Test- und Vorschau-Rechnungen werden nicht an Kunden versendet."), "Test-/Vorschau-Hinweis fehlt");
+  assert.match(invView, /if \(!isProductiveInvoice\(r\)\) \{[\s\S]{0,300}sendable: false[\s\S]{0,80}action: null/,
+    "nicht produktive Rechnungen dürfen keine Versandaktion anbieten");
   assert.ok(adminDetailSrc.includes("fetchAdminInvoicePdf") && adminDetailSrc.includes("InvoicePdfPreviewModal"), "Admin-PDF-Vorschau vorhanden");
 });

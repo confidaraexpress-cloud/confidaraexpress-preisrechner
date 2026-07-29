@@ -163,6 +163,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--gray50); }
 .adm-track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .adm-track-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+/* Einordnung, wenn der Carrier (noch) keine Live-Daten liefert — bewusst als
+   eigener Hinweis und nicht als Aussage über die gespeicherte Trackingnummer. */
+.adm-track-note { font-size: 12.5px; line-height: 1.5; color: var(--gray600); margin: 0 0 12px; overflow-wrap: anywhere; }
 .adm-track-link { margin-top: 12px; }
 
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */

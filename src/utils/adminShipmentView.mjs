@@ -240,6 +240,148 @@ export function shipmentEmptyState({ count = 0, filters = EMPTY_SHIPMENT_FILTERS
   return { show: true, title: "Noch keine Sendungen vorhanden.", text: "Sobald Kunden buchen, erscheinen die Sendungen hier." };
 }
 
+// ── Tracking — drei fachlich getrennte Zustände ─────────────────────────────
+//
+// Auf der Detailseite trugen bisher ZWEI verschiedene Sachverhalte dieselbe
+// Beschriftung „Tracking" und widersprachen sich dadurch optisch:
+//
+//   A) shipments.tracking_number — die bei ConfidaraExpress GESPEICHERTE
+//      Carrier-Trackingnummer. Sie kommt mit dem Sendungsdatensatz und ist auch
+//      ohne jede Live-Abfrage vorhanden.
+//   B) GET /admin/shipments/:id/tracking → trackingAvailable — das Ergebnis der
+//      LIVE-Abfrage. Das Backend setzt dieses Flag auf Boolean(tracking_number
+//      AUS DER LIVE-ANTWORT) und sagt damit nichts über A aus.
+//
+// Beide Aussagen sind für sich korrekt. Getrennt benannt werden sie eindeutig:
+//
+//   1. TRACKINGNUMMER (gespeichert)  — aus dem Sendungsdatensatz          (A)
+//   2. LIVE-TRACKINGDATEN            — Status/Nummer aus der Abfrage      (B)
+//   3. CARRIER-LINK                  — ausschließlich carrierTrackingPage
+//      aus der Backendantwort. Es wird NIE eine Tracking-URL selbst
+//      zusammengesetzt und keine Nummer geraten.
+//
+// Vorbedingung für 2 und 3: eine JUMiNGO-Sendungs-ID muss hinterlegt sein —
+// ohne sie antwortet das Backend auf die Live-Abfrage mit 409.
+
+export const TRACKING_LABELS = Object.freeze({
+  storedBadge: "Trackingnummer vorhanden",
+  storedNumber: "Trackingnummer (gespeichert)",
+  liveTitle: "Live-Trackingdaten",
+  liveNumber: "Trackingnummer (Carrier)",
+  liveStatus: "Trackingstatus",
+  carrierLink: "Carrier-Link",
+  lookupAction: "Live-Tracking abfragen",
+});
+
+export const TRACKING_HINTS = Object.freeze({
+  lookupBlocked:
+    "Für diese Sendung ist keine JUMiNGO-Sendungs-ID hinterlegt. Ohne sie kann beim Versanddienstleister nichts abgefragt werden.",
+  noLiveData:
+    "Der Versanddienstleister liefert zu dieser Sendung noch keine Live-Trackingdaten. Eine gespeicherte Trackingnummer bleibt davon unberührt.",
+  noLink:
+    "Das Backend hat keinen Carrier-Link geliefert. Es wird bewusst keine Tracking-URL selbst zusammengesetzt.",
+  // Kurzwert, kein Satz: er steht in einer schmalen .adm-kv-Zelle (min. 210 px),
+  // in der ein langer Text mit `word-break: break-word` mitten im Wort bräche.
+  noStoredNumber: "Nicht gespeichert",
+});
+
+// Tri-State-Deutung eines Backend-Booleans: true | false | null (unbekannt).
+const boolish = (v) => {
+  if (v === true || v === "true" || v === 1 || v === "1") return true;
+  if (v === false || v === "false" || v === 0 || v === "0") return false;
+  return null;
+};
+
+// Nur valide http(s)-Links zulassen — verhindert javascript:-URLs im DOM.
+// Wird an ZWEI Stellen gebraucht (beim Übernehmen in den State und beim
+// Rendern), existiert aber bewusst nur einmal.
+export const trackingLinkOrNull = (v) =>
+  typeof v === "string" && /^https?:\/\/\S/i.test(v.trim()) ? v.trim() : null;
+
+// (1) Gespeicherte Trackingnummer — AUSSCHLIESSLICH aus dem Sendungsdatensatz.
+// `number` ist der Rohwert; maskiert wird in der Komponente (maskTail), damit
+// die Anzeigelogik nicht doppelt existiert.
+// → { present, number }
+export function storedTracking(row) {
+  const r = row && typeof row === "object" ? row : {};
+  const number = str(firstDefined(
+    r.tracking_number, r.trackingNumber,
+    r.tracking_number_masked, r.masked_tracking_number, r.maskedTrackingNumber));
+  // has_tracking allein genügt als Beleg: die Nummer selbst kann in einer
+  // reduzierten Antwort fehlen. Der Status zählt hier bewusst NICHT — er ist
+  // eine andere Aussage und hat die alte Vermischung mitverursacht.
+  return { present: !!number || firstDefined(r.has_tracking, r.hasTracking) === true, number };
+}
+
+// (Vorbedingung) Ist eine Live-Abfrage überhaupt möglich?
+// Ohne jumingo_shipment_id antwortet GET /admin/shipments/:id/tracking mit 409 —
+// der Button wird dann gar nicht erst aktiv angeboten.
+//
+// Bewusst FAIL-OPEN, wenn das Feld in der Antwort gar nicht vorkommt: gesperrt
+// wird nur, wenn es vorhanden UND leer ist (der belegte Alt-Sendungsfall).
+// Fehlt es ganz, ist der Zustand unbekannt — dann entscheidet weiterhin das
+// Backend, statt einer berechtigten Supportaktion vorsorglich den Weg zu
+// verbauen. Das Frontend ersetzt die serverseitige Prüfung nicht.
+// → { possible, hint }
+const JUMINGO_ID_KEYS = Object.freeze([
+  "jumingo_shipment_id", "jumingoShipmentId",
+  "masked_jumingo_shipment_id", "maskedJumingoShipmentId",
+]);
+
+export function trackingLookup(row) {
+  if (!row || typeof row !== "object") return { possible: false, hint: TRACKING_HINTS.lookupBlocked };
+  if (!JUMINGO_ID_KEYS.some((k) => k in row)) return { possible: true, hint: "" };
+  const id = str(firstDefined(...JUMINGO_ID_KEYS.map((k) => row[k])));
+  return { possible: !!id, hint: id ? "" : TRACKING_HINTS.lookupBlocked };
+}
+
+// (2)+(3) Live-Trackingdaten und Carrier-Link aus der Antwort der Live-Abfrage.
+// `live` ist das bereits minimierte Objekt der Seite
+// ({ available, status, number, link, carrier, source }) — hier wird nichts
+// nachgeladen und nichts ergänzt.
+// → { loaded, hasData, status, number, carrier, source, link, hint }
+export function liveTracking(live) {
+  const l = live && typeof live === "object" ? live : null;
+  if (!l) {
+    return { loaded: false, hasData: false, status: "", number: "", carrier: "", source: "", link: null, hint: "" };
+  }
+  const number = str(l.number);
+  const status = str(l.status);
+  const flag = boolish(l.available);
+  // Das Backend setzt trackingAvailable = Boolean(Live-Trackingnummer). Ein
+  // gelieferter Status ist ebenfalls ein Live-Datum; fehlt das Flag, entscheidet
+  // allein der tatsächliche Inhalt — nie eine Annahme.
+  const hasData = flag === true || !!number || !!status;
+  return {
+    loaded: true,
+    hasData,
+    status,
+    number,
+    carrier: str(l.carrier),
+    source: str(l.source),
+    link: trackingLinkOrNull(l.link),
+    hint: hasData ? "" : TRACKING_HINTS.noLiveData,
+  };
+}
+
+// Gemeinsames Tracking-View-Model für Kopfbereich, Versanddaten und Live-Block.
+// EINE Quelle — in der Komponente existiert keine zweite Bedingungslogik mehr.
+// → { stored, lookup, live, link }
+export function trackingView(row, live) {
+  const liveState = liveTracking(live);
+  return {
+    stored: storedTracking(row),
+    lookup: trackingLookup(row),
+    live: liveState,
+    link: {
+      available: !!liveState.link,
+      url: liveState.link,
+      // Der Hinweis gilt erst, wenn tatsächlich abgefragt wurde.
+      hint: liveState.loaded && !liveState.link ? TRACKING_HINTS.noLink : "",
+    },
+  };
+}
+
 // ── Detailseite: Abschnitts-Sichtbarkeit ────────────────────────────────────
 // Zollabschnitt NUR bei tatsächlicher Zollrelevanz — nicht als leere Karte bei
 // Inlandssendungen. Zollrelevant ist eine Sendung, wenn Ursprungs- und Zielland
@@ -263,13 +405,19 @@ export function isCustomsRelevant(row) {
 }
 
 // Welche Detailabschnitte werden gerendert? Verhindert leere Karten.
-// → { customs, tracking, label, invoice, customer }
+//
+// `trackingNumber` hieß vorher `tracking` und vermischte drei Aussagen
+// (gespeicherte Nummer ODER gespeicherter Status ODER Rohfeld). Der Schlüssel
+// heißt jetzt so, wie das Kopf-Badge beschriftet ist, und stammt aus derselben
+// Quelle wie der Wert in den Versanddaten — beide können nicht mehr auseinander
+// laufen.
+// → { customs, trackingNumber, label, invoice, customer }
 export function detailSections(row) {
   const f = shipmentFields(row);
   const inv = row && typeof row.invoice === "object" && row.invoice ? row.invoice : null;
   return {
     customer: !!(f.customerCompany || f.customerNumber || f.customerName || f.userId !== null),
-    tracking: f.hasTracking || !!f.trackingStatus || !!str(row?.tracking_number),
+    trackingNumber: storedTracking(row).present,
     label: f.labelAvailable,
     invoice: !!inv,
     customs: isCustomsRelevant(row),

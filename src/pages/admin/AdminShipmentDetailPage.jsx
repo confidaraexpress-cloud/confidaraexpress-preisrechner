@@ -8,15 +8,15 @@ import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
 import { businessOrderNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import {
+  TRACKING_HINTS,
+  TRACKING_LABELS,
   customerIdentity,
   detailSections,
-  isCustomsRelevant,
-  priceDisplay,
   routeLabel,
-  shipmentDetailError,
-  shipmentFields,
   shipmentIdentity,
   shippingModeLabel,
+  trackingLinkOrNull,
+  trackingView,
 } from "../../utils/adminShipmentView.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
@@ -36,25 +36,21 @@ const LABEL_ERRORS = {
   default: "Label konnte nicht heruntergeladen werden.",
 };
 
-// Fehlertexte für den Tracking-Abruf.
+// Fehlertexte für die LIVE-Abfrage. Sie sagen ausdrücklich nichts über die
+// gespeicherte Trackingnummer aus — 409 heißt „keine Live-Abfrage möglich",
+// nicht „keine Trackingnummer vorhanden".
 const TRACK_ERRORS = {
   404: "Sendung wurde nicht gefunden.",
-  409: "Für diese Sendung sind noch keine Trackinginformationen verfügbar.",
-  502: "Trackingdienst momentan nicht erreichbar.",
-  default: "Tracking konnte nicht geladen werden.",
+  409: "Für diese Sendung ist keine Live-Abfrage beim Versanddienstleister möglich.",
+  502: "Der Trackingdienst ist momentan nicht erreichbar.",
+  default: "Die Live-Trackingdaten konnten nicht geladen werden.",
 };
-
-// Nur valide http(s)-Links als Carrier-Link zulassen (verhindert javascript:-URLs).
-const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v.trim());
-const yesNoText = (v) =>
-  v === true || v === "true" || v === 1 || v === "1" ? "Ja"
-  : v === false || v === "false" || v === 0 || v === "0" ? "Nein"
-  : "—";
 
 // [badge-Klasse, Anzeigetext]. Farbe heuristisch nach Status-Schlüsselwort,
 // unbekannt → neutral. Angezeigt wird der minimierte Backend-Status als Text.
+// Ohne Status wird KEIN Status behauptet — der Badge benennt das Fehlen.
 function trackStatusMeta(status) {
-  if (status === undefined || status === null || status === "") return ["badge-gray", "Unbekannt"];
+  if (status === undefined || status === null || status === "") return ["badge-gray", "Kein Trackingstatus"];
   const s = String(status).toLowerCase();
   if (/deliver|zugestellt/.test(s)) return ["badge-green", String(status)];
   if (/transit|unterwegs|zustellung|out.?for/.test(s)) return ["badge-blue", String(status)];
@@ -76,12 +72,16 @@ function selectTracking(d) {
     }
     return undefined;
   };
+  // Carrier-Link: NUR was das Backend liefert. Es wird keine Tracking-URL aus
+  // Carrier + Nummer zusammengesetzt. Die Prüfung auf http(s) greift schon hier,
+  // damit gar kein javascript:-Wert in den State gelangt — dieselbe Funktion
+  // prüft beim Rendern erneut.
   const link = pick("carrierTrackingPage", "carrier_tracking_url", "carrier_tracking_page", "carrierTrackingUrl", "tracking_url");
   return {
     available: pick("trackingAvailable", "tracking_available", "available"),
     status: pick("trackingStatus", "tracking_status", "status"),
     number: pick("trackingNumber", "tracking_number"),
-    link: isHttpUrl(link) ? String(link).trim() : null,
+    link: trackingLinkOrNull(typeof link === "string" ? link : null),
     carrier: pick("carrier", "carrier_name", "carrierName"),
     source: pick("source", "quelle"),
   };
@@ -115,7 +115,6 @@ const widthOf = (s) => firstDefined(s.width, s.width_cm, s.b, s.w);
 const heightOf = (s) => firstDefined(s.height, s.height_cm, s.h);
 const pkgOf = (s) => firstDefined(s.package_count, s.packageCount, s.packages, s.parcel_count);
 const refOf = (s) => firstDefined(s.reference_number, s.reference, s.customer_reference);
-const trackingOf = (s) => firstDefined(s.tracking_number, s.trackingNumber, s.tracking_number_masked, s.masked_tracking_number);
 const jumingoOf = (s) => firstDefined(s.jumingo_shipment_id, s.jumingoShipmentId, s.jumingo_id, s.jumingo_shipment_id_masked);
 const orderOf = (s) => firstDefined(s.order_number, s.orderNumber, s.order_id);
 const invoiceOf = (s) => (s.invoice && typeof s.invoice === "object" ? s.invoice : null);
@@ -130,13 +129,6 @@ function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("de-DE");
-}
-
-function hasTrackingOf(s) {
-  const v = firstDefined(s.has_tracking, s.hasTracking);
-  if (v === true || v === "true" || v === 1 || v === "1") return true;
-  if (v === false || v === "false" || v === 0 || v === "0") return false;
-  return trackingOf(s) ? true : null; // aus Daten ableiten, sonst unbekannt
 }
 
 const asStr = (v) => (v != null && v !== "" ? String(v) : null);
@@ -326,7 +318,10 @@ export default function AdminShipmentDetailPage() {
   const cust = customerIdentity(s);
   const sections = detailSections(s);
   const [statusCls, statusLabel] = shipmentStatusMeta(statusOf(s));
-  const hasTracking = hasTrackingOf(s);
+  // EIN Tracking-View-Model für Kopfbereich, Versanddaten und Live-Block. Die
+  // drei Zustände (gespeicherte Nummer / Live-Daten / Carrier-Link) kommen ab
+  // hier ausschließlich von hier — es gibt keine zweite Bedingungslogik mehr.
+  const track = trackingView(s, trackData);
   const invoice = invoiceOf(s);
   const labelAvailable = labelAvailOf(s) === true || labelAvailOf(s) === "true";
 
@@ -399,7 +394,12 @@ export default function AdminShipmentDetailPage() {
                 <span className="adm-chip">{shippingModeLabel(s)}</span>
                 <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
                 {sections.label && <span className="badge badge-green">Label verfügbar</span>}
-                {sections.tracking && <span className="badge badge-green">Tracking vorhanden</span>}
+                {/* Aussage ausschließlich über die GESPEICHERTE Nummer — nicht
+                    über Live-Daten oder einen Carrier-Link. Gleiche Quelle wie
+                    die Zeile „Trackingnummer (gespeichert)" weiter unten. */}
+                {sections.trackingNumber && (
+                  <span className="badge badge-green">{TRACKING_LABELS.storedBadge}</span>
+                )}
               </span>
             </div>
             {/* Primäre sinnvolle Aktion: zum Kundenkonto wechseln. */}
@@ -454,7 +454,13 @@ export default function AdminShipmentDetailPage() {
               [NUMBER_LABELS.businessOrder, businessOrderNumberOf(s)
                 ? <span className="adm-mono">{businessOrderNumberOf(s)}</span> : "—"],
               [NUMBER_LABELS.adminCustomerReference, refDisplay(refOf(s))],
-              [NUMBER_LABELS.tracking, <span className="adm-mask">{maskTail(trackingOf(s)) || "—"}</span>],
+              // Beschriftung sagt ausdrücklich „gespeichert": das ist die bei
+              // ConfidaraExpress hinterlegte Nummer, NICHT das Ergebnis einer
+              // Live-Abfrage beim Carrier. Beide standen vorher unter demselben
+              // Wort „Trackingnummer" und schienen sich zu widersprechen.
+              [TRACKING_LABELS.storedNumber, track.stored.present
+                ? <span className="adm-mask">{maskTail(track.stored.number) || "Vorhanden"}</span>
+                : <span className="adm-muted">{TRACKING_HINTS.noStoredNumber}</span>],
               [NUMBER_LABELS.jumingoOrder, <span className="adm-mask">{maskTail(orderOf(s)) || "—"}</span>],
               ["JUMiNGO-Shipment-ID", <span className="adm-mask">{maskTail(jumingoOf(s)) || "—"}</span>],
             ]} />
@@ -585,13 +591,27 @@ export default function AdminShipmentDetailPage() {
                   <Icon n="download" s={14} /> Label herunterladen
                 </button>
               )}
-              <button type="button" className="btn btn-outline btn-sm" onClick={loadTracking} disabled={trackBusy}>
+              {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist: ohne
+                  JUMiNGO-Sendungs-ID antwortet das Backend mit 409. Der Button
+                  betrifft ausschließlich Live-Daten und Carrier-Link — nicht die
+                  gespeicherte Trackingnummer. */}
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={loadTracking}
+                disabled={trackBusy || !track.lookup.possible}
+                title={track.lookup.possible ? undefined : track.lookup.hint}
+                aria-describedby={track.lookup.possible ? undefined : "adm-track-lookup-hint"}
+              >
                 {trackBusy
-                  ? <><span className="spinner spinner-dark" /> Lade Tracking…</>
-                  : <><Icon n="mapPin" s={14} /> Tracking prüfen</>}
+                  ? <><span className="spinner spinner-dark" /> Lade Live-Tracking…</>
+                  : <><Icon n="mapPin" s={14} /> {TRACKING_LABELS.lookupAction}</>}
               </button>
             </div>
             {!labelAvailable && <p className="adm-support-hint">Label für diese Sendung noch nicht verfügbar.</p>}
+            {!track.lookup.possible && (
+              <p className="adm-support-hint" id="adm-track-lookup-hint">{track.lookup.hint}</p>
+            )}
             <p className="adm-support-hint">Label- und Trackingabrufe werden protokolliert.</p>
 
             {trackError && (
@@ -599,25 +619,46 @@ export default function AdminShipmentDetailPage() {
                 <Icon n="x" s={16} />{trackError}
               </div>
             )}
-            {trackData && (
+            {/* Live-Block — ausschließlich Zustand 2 und 3. Er trifft KEINE
+                Aussage über die gespeicherte Trackingnummer; die steht zum
+                Vergleich mit eigener Beschriftung mit drin. */}
+            {track.live.loaded && (
               <div className="adm-track">
                 <div className="adm-track-head">
-                  <span className="adm-track-title">Trackinginformationen</span>
-                  {(() => { const [c, l] = trackStatusMeta(trackData.status); return <span className={`badge ${c}`}>{l}</span>; })()}
+                  <span className="adm-track-title">{TRACKING_LABELS.liveTitle}</span>
+                  {(() => { const [c, l] = trackStatusMeta(track.live.status); return <span className={`badge ${c}`}>{l}</span>; })()}
                 </div>
+                {!track.live.hasData && <p className="adm-track-note">{track.live.hint}</p>}
                 <dl className="adm-kv">
-                  <div className="adm-kv-item"><dt>Tracking verfügbar</dt><dd>{yesNoText(trackData.available)}</dd></div>
-                  <div className="adm-kv-item"><dt>Trackingnummer</dt><dd className="adm-mono">{dash(trackData.number)}</dd></div>
-                  <div className="adm-kv-item"><dt>Carrier</dt><dd>{trackData.carrier ? resolveCarrierName(trackData.carrier) : "—"}</dd></div>
-                  <div className="adm-kv-item"><dt>Quelle</dt><dd>{dash(trackData.source)}</dd></div>
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.liveStatus}</dt>
+                    <dd>{track.live.status || "Noch kein Status geliefert"}</dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.liveNumber}</dt>
+                    <dd className="adm-mask">{maskTail(track.live.number) || "Nicht geliefert"}</dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>{TRACKING_LABELS.storedNumber}</dt>
+                    <dd className="adm-mask">
+                      {track.stored.present
+                        ? (maskTail(track.stored.number) || "Vorhanden")
+                        : TRACKING_HINTS.noStoredNumber}
+                    </dd>
+                  </div>
+                  <div className="adm-kv-item">
+                    <dt>Carrier</dt>
+                    <dd>{track.live.carrier ? resolveCarrierName(track.live.carrier) : "—"}</dd>
+                  </div>
+                  <div className="adm-kv-item"><dt>Quelle</dt><dd>{dash(track.live.source)}</dd></div>
                 </dl>
                 <div className="adm-track-link">
-                  {trackData.link ? (
-                    <a className="btn btn-outline btn-sm" href={trackData.link} target="_blank" rel="noopener noreferrer">
-                      <Icon n="external" s={14} /> Beim Versanddienstleister öffnen
+                  {track.link.available ? (
+                    <a className="btn btn-outline btn-sm" href={track.link.url} target="_blank" rel="noopener noreferrer">
+                      <Icon n="external" s={14} /> {TRACKING_LABELS.carrierLink} öffnen
                     </a>
                   ) : (
-                    <span className="adm-support-hint">Kein Carrier-Link vorhanden</span>
+                    <span className="adm-support-hint">{track.link.hint}</span>
                   )}
                 </div>
               </div>

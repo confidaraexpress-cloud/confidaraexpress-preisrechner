@@ -21,12 +21,14 @@ import {
   EMPTY_SHIPMENT_FILTERS,
   HAS_TRACKING_OPTIONS,
   SHIPMENT_STATUS_FILTER_OPTIONS,
+  TRACKING_LABELS,
   activeShipmentFilterChips,
   customerIdentity,
   detailSections,
   hasActiveShipmentFilters,
   hasShippingMode,
   isCustomsRelevant,
+  liveTracking,
   packageLabel,
   priceDisplay,
   routeLabel,
@@ -37,7 +39,11 @@ import {
   shipmentMarkers,
   shipmentRouteLine,
   shippingModeLabel,
+  storedTracking,
   toShipmentApiFilters,
+  trackingLinkOrNull,
+  trackingLookup,
+  trackingView,
   validateShipmentFilters,
 } from "./adminShipmentView.mjs";
 import { shipmentStatusMeta, SHIPMENT_STATUS_OPTIONS } from "./adminShipments.js";
@@ -72,6 +78,9 @@ const INLAND = { id: 685, user_id: 42, status: "booked", service_type: "dropoff"
   created_at: "2026-07-22T09:00:00.000Z", has_tracking: false, label_available: false,
   customer_company: "Borner Spedition GmbH", customer_number: "CE-K-10031" };
 const CUSTOMS = { ...BOOKED, id: 687, to_country: "CH", goods_value: "250.00", label_available: false };
+// Alt-Sendung mit gespeicherter Nummer, aber ohne JUMiNGO-Sendungs-ID: die
+// Live-Abfrage würde 409 liefern.
+const BOOKED_NO_JUMINGO = { ...BOOKED, id: 688, masked_jumingo_shipment_id: "" };
 
 // ═══ A) Feldlesung, Nummern, Kunde ═══════════════════════════════════════════
 
@@ -335,13 +344,13 @@ test("19 — der Zollabschnitt erscheint nur bei echter Zollrelevanz", () => {
 test("20 — Abschnitts-Sichtbarkeit verhindert leere Karten", () => {
   const full = detailSections(BOOKED);
   assert.equal(full.customer, true);
-  assert.equal(full.tracking, true);
+  assert.equal(full.trackingNumber, true);
   assert.equal(full.label, true);
   assert.equal(full.customs, true);
   assert.equal(full.invoice, false, "ohne invoice-Objekt keine Rechnungskarte");
   const inland = detailSections(INLAND);
   assert.equal(inland.customs, false);
-  assert.equal(inland.tracking, false);
+  assert.equal(inland.trackingNumber, false);
   assert.equal(inland.label, false);
   assert.equal(detailSections({ ...BOOKED, invoice: { id: 5 } }).invoice, true);
   assert.match(detailSrc, /\{sections\.customer && \(/);
@@ -372,7 +381,156 @@ test("22 — Kennungen bleiben maskiert, Adressdaten unverändert geschützt", (
   assert.match(detailSrc, /Support-Aktionen/);
 });
 
-// ═══ G) Regression und Selbsttest ════════════════════════════════════════════
+// ═══ G) Tracking: drei getrennte Zustände ════════════════════════════════════
+//
+// Ausgangsfehler (Sendung 683): Kopf und Versanddaten meldeten „Tracking
+// vorhanden" / „Trackingnummer ••••4666", der Trackingblock gleichzeitig
+// „Tracking verfügbar: Nein" / „Trackingnummer: —". Beide Angaben waren für sich
+// korrekt, standen aber unter derselben Beschriftung.
+
+// Live-Antwort für 683: Sendung ist gebucht und hat eine gespeicherte Nummer,
+// JUMiNGO liefert aber (noch) keine Live-Trackingdaten.
+const LIVE_EMPTY = { available: false, status: undefined, number: undefined, link: null, carrier: undefined, source: "jumingo" };
+const LIVE_FULL  = { available: true, status: "in_transit", number: "1Z999AA10123454666",
+  link: "https://www.ups.com/track?tracknum=1Z999AA10123454666", carrier: "ups", source: "jumingo" };
+const S683 = { ...BOOKED, tracking_number: "1Z999AA10123454666", jumingo_shipment_id: "JU-88771234" };
+
+test("26 — die gespeicherte Trackingnummer ist ein eigener Zustand", () => {
+  // Vorhanden über die Nummer selbst …
+  assert.deepEqual(storedTracking({ tracking_number: "1Z9994666" }), { present: true, number: "1Z9994666" });
+  // … oder über das Flag allein (reduzierte/maskierte Antwort).
+  assert.equal(storedTracking({ has_tracking: true }).present, true);
+  assert.equal(storedTracking({ masked_tracking_number: "••••4666" }).number, "••••4666");
+  // Nicht vorhanden → ehrlich false, keine Ersatznummer.
+  assert.deepEqual(storedTracking({ has_tracking: false }), { present: false, number: "" });
+  assert.deepEqual(storedTracking(undefined), { present: false, number: "" });
+  // ENTSCHEIDEND: ein gespeicherter STATUS belegt keine Nummer. Genau diese
+  // Vermischung erzeugte vorher das widersprüchliche Kopf-Badge.
+  assert.equal(storedTracking({ tracking_status: "in_transit" }).present, false);
+  assert.equal(detailSections({ tracking_status: "in_transit" }).trackingNumber, false);
+  // Und der Kopf nutzt exakt diese Quelle.
+  assert.equal(detailSections(S683).trackingNumber, true);
+});
+
+test("27 — Live-Trackingdaten sind ein zweiter, davon unabhängiger Zustand", () => {
+  // Ohne Abfrage: nichts geladen, nichts behauptet.
+  const none = liveTracking(null);
+  assert.equal(none.loaded, false);
+  assert.equal(none.hasData, false);
+  assert.equal(none.hint, "", "ohne Abfrage kein Hinweis");
+  // Abgefragt, aber der Carrier liefert nichts → geladen, aber ohne Daten.
+  const empty = liveTracking(LIVE_EMPTY);
+  assert.equal(empty.loaded, true);
+  assert.equal(empty.hasData, false);
+  assert.equal(empty.number, "");
+  assert.equal(empty.status, "");
+  assert.match(empty.hint, /noch keine Live-Trackingdaten/);
+  // Der Hinweis stellt ausdrücklich klar, dass die gespeicherte Nummer davon
+  // unberührt bleibt — das ist die Auflösung des Widerspruchs.
+  assert.match(empty.hint, /gespeicherte Trackingnummer bleibt davon unberührt/);
+  // Mit Daten → Status und Nummer werden durchgereicht, nichts erfunden.
+  const full = liveTracking(LIVE_FULL);
+  assert.equal(full.hasData, true);
+  assert.equal(full.status, "in_transit");
+  assert.equal(full.number, "1Z999AA10123454666");
+  assert.equal(full.carrier, "ups");
+  // Ein Status ohne Nummer ist ebenfalls ein Live-Datum.
+  assert.equal(liveTracking({ available: false, status: "in_transit" }).hasData, true);
+  assert.equal(liveTracking({ available: false, status: "in_transit" }).number, "");
+});
+
+test("28 — der Carrier-Link kommt ausschließlich vom Backend und wird nie gebaut", () => {
+  assert.equal(liveTracking(LIVE_FULL).link, "https://www.ups.com/track?tracknum=1Z999AA10123454666");
+  assert.equal(liveTracking(LIVE_EMPTY).link, null);
+  // Nur http(s) — javascript:/data: werden verworfen, nicht „repariert".
+  for (const bad of ["javascript:alert(1)", "data:text/html,x", "  ", "//ups.com/track", 42, null, {}]) {
+    assert.equal(trackingLinkOrNull(bad), null, `unzulässiger Link akzeptiert: ${String(bad)}`);
+  }
+  assert.equal(trackingLinkOrNull("  https://ups.com/t?x=1  "), "https://ups.com/t?x=1");
+  // Im Modul wird keine Tracking-URL zusammengesetzt (kein Template, keine
+  // Carrier-URL-Tabelle) — weder aus Carrier noch aus Nummer.
+  assert.equal(/https?:\/\/[^\s"'`]*\$\{/.test(viewSrc), false, "im Modul wird eine URL konstruiert");
+  assert.equal(/ups\.com|dhl\.de|dpd\.|gls-|fedex\.com/i.test(viewSrc), false, "Carrier-URL im Modul hinterlegt");
+  assert.equal(/https?:\/\/[^\s"'`]*\$\{/.test(detailSrc), false, "auf der Seite wird eine URL konstruiert");
+  assert.equal(/ups\.com|dhl\.de|dpd\.|gls-|fedex\.com/i.test(detailSrc), false, "Carrier-URL auf der Seite hinterlegt");
+  // Fehlt der Link, wird das benannt statt ersetzt — aber erst nach der Abfrage.
+  assert.equal(trackingView(S683, null).link.hint, "", "ohne Abfrage keine Aussage über den Link");
+  assert.match(trackingView(S683, LIVE_EMPTY).link.hint, /keine Tracking-URL selbst zusammengesetzt/);
+  assert.equal(trackingView(S683, LIVE_FULL).link.available, true);
+});
+
+test("29 — die Live-Abfrage wird nur angeboten, wenn sie fachlich möglich ist", () => {
+  // Ohne JUMiNGO-Sendungs-ID antwortet das Backend mit 409 → gar nicht anbieten.
+  const blocked = trackingLookup(BOOKED_NO_JUMINGO);
+  assert.equal(blocked.possible, false);
+  assert.match(blocked.hint, /keine JUMiNGO-Sendungs-ID/);
+  assert.equal(trackingLookup(S683).possible, true);
+  assert.equal(trackingLookup(S683).hint, "", "möglich ⇒ kein Hinweis");
+  // Auch die maskierte Kennung belegt die Existenz der ID.
+  assert.equal(trackingLookup({ masked_jumingo_shipment_id: "••••8877" }).possible, true);
+  assert.equal(trackingLookup(undefined).possible, false);
+  // FAIL-OPEN: fehlt das Feld ganz, wird NICHT gesperrt — sonst würde eine
+  // Formatänderung der Antwort eine berechtigte Supportaktion still abschalten.
+  // Gesperrt wird nur bei vorhandenem, leerem Feld.
+  assert.equal(trackingLookup({ id: 683 }).possible, true, "unbekannt darf nicht sperren");
+  assert.equal(trackingLookup({ jumingo_shipment_id: null }).possible, false);
+  assert.equal(trackingLookup({ masked_jumingo_shipment_id: "" }).possible, false);
+  // Die Seite schaltet den Button genau daran — und begründet die Sperre.
+  assert.match(detailSrc, /disabled=\{trackBusy \|\| !track\.lookup\.possible\}/);
+  assert.match(detailSrc, /title=\{track\.lookup\.possible \? undefined : track\.lookup\.hint\}/);
+  // Die Begründung steht sichtbar auf der Seite und ist mit dem Button verknüpft.
+  assert.match(detailSrc, /aria-describedby=\{track\.lookup\.possible \? undefined : "adm-track-lookup-hint"\}/);
+  assert.match(detailSrc, /<p className="adm-support-hint" id="adm-track-lookup-hint">\{track\.lookup\.hint\}<\/p>/);
+});
+
+test("30 — der Widerspruch von Sendung 683 ist aufgelöst", () => {
+  // Genau die reale Konstellation: gespeicherte Nummer JA, Live-Daten NEIN.
+  const v = trackingView(S683, LIVE_EMPTY);
+  assert.equal(v.stored.present, true, "die gespeicherte Nummer bleibt sichtbar");
+  assert.equal(v.live.hasData, false, "der Carrier liefert nichts — das bleibt wahr");
+  assert.equal(v.link.available, false);
+  // Die drei Zustände sind getrennt benannt und nicht mehr verwechselbar.
+  assert.equal(TRACKING_LABELS.storedBadge, "Trackingnummer vorhanden");
+  assert.equal(TRACKING_LABELS.storedNumber, "Trackingnummer (gespeichert)");
+  assert.equal(TRACKING_LABELS.liveNumber, "Trackingnummer (Carrier)");
+  assert.equal(TRACKING_LABELS.liveTitle, "Live-Trackingdaten");
+  assert.equal(TRACKING_LABELS.carrierLink, "Carrier-Link");
+  const labels = Object.values(TRACKING_LABELS);
+  assert.equal(new Set(labels).size, labels.length, "keine zwei Zustände tragen denselben Text");
+  // Die alten, mehrdeutigen Texte existieren nicht mehr.
+  for (const gone of ["Tracking vorhanden<", "Tracking verfügbar", "Trackinginformationen", "Kein Carrier-Link vorhanden"]) {
+    assert.equal(detailSrc.includes(gone), false, `alter mehrdeutiger Text „${gone}" ist noch da`);
+  }
+  // Und beide Darstellungen stammen aus derselben Quelle.
+  assert.match(detailSrc, /const track = trackingView\(s, trackData\);/);
+  assert.match(detailSrc, /\{sections\.trackingNumber && \(/);
+  assert.match(detailSrc, /\{TRACKING_LABELS\.storedBadge\}/);
+  assert.match(detailSrc, /\[TRACKING_LABELS\.storedNumber, track\.stored\.present/);
+  // Der Live-Block zeigt die gespeicherte Nummer zum Vergleich mit.
+  assert.match(detailSrc, /<dt>\{TRACKING_LABELS\.storedNumber\}<\/dt>/);
+});
+
+test("31 — es gibt keine zweite Tracking-Bedingungslogik mehr auf der Seite", () => {
+  // Die frühere Doppelung (hasTrackingOf + selectTracking + sections.tracking)
+  // ist ersetzt; die Seite liest ausschließlich das View-Model.
+  assert.equal(/function hasTrackingOf/.test(detailSrc), false, "hasTrackingOf lebt noch");
+  assert.equal(/const yesNoText/.test(detailSrc), false, "yesNoText lebt noch");
+  assert.equal(/const isHttpUrl/.test(detailSrc), false, "die URL-Prüfung ist noch dupliziert");
+  assert.equal((detailSrc.match(/trackingView\(/g) || []).length, 1, "das View-Model wird genau einmal gebildet");
+  // trackData wird nur noch ins View-Model gegeben, nie direkt gerendert.
+  const rendered = detailSrc.slice(detailSrc.indexOf("return ("));
+  assert.equal(/trackData\.\w/.test(rendered), false, "die Rohdaten werden noch direkt gerendert");
+  // Der Live-Block erscheint erst nach einer Abfrage.
+  assert.match(detailSrc, /\{track\.live\.loaded && \(/);
+  // Kein Status wird erfunden, wenn keiner geliefert wurde.
+  assert.match(detailSrc, /"Kein Trackingstatus"/);
+  assert.match(detailSrc, /\{track\.live\.status \|\| "Noch kein Status geliefert"\}/);
+  // Live- und gespeicherte Nummer bleiben maskiert.
+  assert.match(detailSrc, /<dd className="adm-mask">\{maskTail\(track\.live\.number\) \|\| "Nicht geliefert"\}<\/dd>/);
+  assert.match(cssSrc, /\.adm-track-note \{/);
+});
+
+// ═══ H) Regression und Selbsttest ════════════════════════════════════════════
 
 test("23 — andere Adminmodule und Verträge bleiben unberührt", () => {
   for (const rel of [
@@ -422,4 +580,13 @@ test("25 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   assert.notEqual(shippingModeLabel(DRAFT), shippingModeLabel(LEGACY));
   assert.notEqual(isCustomsRelevant(CUSTOMS), isCustomsRelevant(INLAND));
   assert.equal(('<th scope="col">A</th><th scope="col">B</th>'.match(/<th scope="col"/g) || []).length, 2);
+  // Die drei Trackingzustände sind tatsächlich unabhängig — sonst prüften die
+  // Tests 26–30 nur eine einzige, umbenannte Bedingung.
+  const v683 = trackingView(S683, LIVE_EMPTY);
+  assert.notEqual(v683.stored.present, v683.live.hasData, "Zustand 1 und 2 fallen zusammen");
+  assert.notEqual(v683.stored.present, v683.link.available, "Zustand 1 und 3 fallen zusammen");
+  const vFull = trackingView(BOOKED_NO_JUMINGO, LIVE_FULL);
+  assert.notEqual(vFull.lookup.possible, vFull.live.hasData, "Vorbedingung und Live-Daten fallen zusammen");
+  assert.equal(trackingLinkOrNull("https://x.example/1") === null, false, "die Linkprüfung verwirft alles");
+  assert.notEqual(liveTracking(LIVE_FULL).hasData, liveTracking(LIVE_EMPTY).hasData);
 });

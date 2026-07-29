@@ -8,11 +8,13 @@
 
 // [badge-Klasse, Label] für den Anfragestatus. Unbekannt → grau + Rohwert
 // (harmlos). Nur die vier belegten Status des Backend-Vertrags werden übersetzt.
+// Einheitliche Begriffe in der gesamten Adminoberfläche (Liste, Filter, Detail,
+// Dialoge) — zuvor wichen Badge-, Filter- und Dialogtexte voneinander ab.
 const STATUS_META = {
   pending: ["badge-yellow", "Offen"],
-  in_review: ["badge-blue", "In Bearbeitung"],
-  accepted: ["badge-green", "Anfrage angenommen"],
-  rejected: ["badge-red", "Anfrage abgelehnt"],
+  in_review: ["badge-blue", "In Prüfung"],
+  accepted: ["badge-green", "Angenommen"],
+  rejected: ["badge-red", "Abgelehnt"],
 };
 export const cancellationStatusMeta = (status) => STATUS_META[status] || ["badge-gray", status ?? "—"];
 
@@ -89,6 +91,11 @@ function normalizeShipment(raw, root) {
     carrier: firstOf(s, "carrier", "selected_carrier", "carrier_name") ?? firstOf(root, "carrier"),
     serviceType: firstOf(s, "service_type", "serviceType", "service") ?? firstOf(root, "service_type", "serviceType"),
     status: firstOf(s, "status", "state"),
+    // Geschäftliche Sendungskennung. `orderNumber` ist die vom Listen-/Detailvertrag
+    // gelieferte JUMiNGO-Ordernummer; `businessOrderNumber` die interne Bestellnummer,
+    // falls sie ein Endpunkt mitliefert. Es wird NIE eine Nummer aus der ID gebildet.
+    orderNumber: firstOf(s, "orderNumber", "order_number"),
+    businessOrderNumber: firstOf(s, "businessOrderNumber", "business_order_number"),
     price: firstOf(s, "price_final", "price_gross", "priceGross", "price"),
     fromCountry: firstOf(s, "from_country", "fromCountry", "origin_country"),
     toCountry: firstOf(s, "to_country", "toCountry", "destination_country"),
@@ -101,8 +108,12 @@ function normalizeCustomer(raw, root) {
     id: firstOf(c, "id", "user_id", "userId", "customer_id", "customerId")
       ?? firstOf(root, "user_id", "userId", "customer_id", "customerId"),
     company: firstOf(c, "company_name", "company", "firma") ?? firstOf(root, "company_name"),
-    name: firstOf(c, "name", "full_name", "contact_name") ?? firstOf(root, "name"),
+    // Der Backendvertrag liefert den Ansprechpartner als `contactName`; die übrigen
+    // Varianten bleiben als defensive Abbildung erhalten.
+    name: firstOf(c, "contactName", "contact_name", "name", "full_name") ?? firstOf(root, "contactName", "name"),
     email: firstOf(c, "email", "e_mail") ?? firstOf(root, "email"),
+    // Kundennummer NUR, wenn der Server sie liefert — sie wird nie aus einer ID gebildet.
+    customerNumber: firstOf(c, "customerNumber", "customer_number") ?? firstOf(root, "customer_number"),
   };
 }
 
@@ -119,7 +130,16 @@ export function normalizeCancellationRequest(raw) {
   return {
     id: firstOf(raw, "id", "cancellation_request_id", "request_id", "requestId"),
     status: firstOf(raw, "status", "state") ?? null,
-    reason: firstOf(raw, "reason", "customer_reason", "customerReason", "cancellation_reason", "message") ?? null,
+    // Der LISTEN-Endpunkt liefert ausschließlich `reasonPreview` (serverseitig auf 120
+    // Zeichen gekürzt), der DETAIL-Endpunkt den vollen `reason`. Beide werden hier auf
+    // dasselbe kanonische Feld abgebildet — ohne die Liste sonst leer bliebe. Es wird
+    // KEIN Ersatz aus anderen Feldern abgeleitet.
+    reason: firstOf(raw, "reason", "reasonPreview", "reason_preview",
+      "customer_reason", "customerReason", "cancellation_reason", "message") ?? null,
+    // Kennzeichnet, ob der Wert nur die serverseitige Vorschau ist (Liste) — die
+    // Detailseite zeigt den vollen Text, die Liste nie mehr als die Vorschau.
+    reasonIsPreview: firstOf(raw, "reason") === undefined
+      && firstOf(raw, "reasonPreview", "reason_preview") !== undefined,
     // Kanonische Notiz: `adminNote` zuerst, dann dokumentiertes snake_case
     // `admin_note`. `??` erhält einen bewusst leeren String ("") als „geleerte"
     // Notiz; erst null/undefined fallen durch auf null.
@@ -184,4 +204,112 @@ export function buildCancellationPatchBody(payload = {}) {
   }
   if (adminNote !== undefined) body.adminNote = adminNote;
   return body;
+}
+
+// ── Optimistic-Locking-Konflikt ──────────────────────────────────────────────
+// Das Backend antwortet auf eine veraltete Revision mit 409
+// CANCELLATION_REQUEST_CONFLICT und liefert additiv den AKTUELLEN Bearbeitungs-
+// stand mit (status, revision, adminNote, reviewedAt, reviewedBy, updatedAt) —
+// bewusst OHNE den Grundtext. Damit kann die Oberfläche den Konflikt auflösen,
+// ohne die Seite blind neu zu laden.
+export const CANCELLATION_CONFLICT_CODE = "CANCELLATION_REQUEST_CONFLICT";
+export const CANCELLATION_CONFLICT_TEXT =
+  "Diese Stornierungsanfrage wurde zwischenzeitlich von einem anderen Administrator geändert.";
+export const CANCELLATION_CONFLICT_RELOAD = "Aktuellen Stand laden";
+
+// Erkennt einen Konflikt und liest den mitgelieferten Stand — defensiv, damit ein
+// älteres Backend ohne `current` weiterhin sauber behandelt wird (dann null).
+// → { conflict: boolean, current: object|null }
+export function readCancellationConflict(status, body) {
+  const b = body && typeof body === "object" ? body : {};
+  const code = typeof b.code === "string" ? b.code : (typeof b.error === "string" ? b.error : "");
+  if (status !== 409 || code !== CANCELLATION_CONFLICT_CODE) return { conflict: false, current: null };
+  const raw = b.current && typeof b.current === "object" ? b.current : null;
+  return { conflict: true, current: raw ? normalizeCancellationRequest(raw) : null };
+}
+
+// Der Konflikt wird NIE automatisch überschrieben: die lokale Revision bleibt
+// unverändert, bis der Admin den aktuellen Stand bewusst übernimmt.
+// → { status, adminNote, revision } aus dem Serverstand.
+export function applyConflictState(current) {
+  if (!current || typeof current !== "object") return null;
+  return {
+    status: current.status ?? null,
+    adminNote: current.adminNote ?? "",
+    revision: current.revision,
+  };
+}
+
+// ── Bestätigungstexte für terminale Entscheidungen ───────────────────────────
+// Beide benennen ausdrücklich, dass KEINE Carrier-/JUMiNGO-Stornierung ausgelöst
+// wird — die Anfrage ist ein reiner Verwaltungsvorgang.
+export const CANCELLATION_DECISION_DIALOG = Object.freeze({
+  accepted: Object.freeze({
+    title: "Stornierungsanfrage annehmen?",
+    text: "Der Verwaltungsstatus wird auf „Angenommen“ gesetzt. Dadurch wird keine automatische Carrier- oder JUMiNGO-Stornierung ausgelöst.",
+    confirm: "Anfrage annehmen",
+  }),
+  rejected: Object.freeze({
+    title: "Stornierungsanfrage ablehnen?",
+    text: "Der Verwaltungsstatus wird auf „Abgelehnt“ gesetzt. Die Entscheidung wird protokolliert.",
+    confirm: "Anfrage ablehnen",
+  }),
+});
+
+// ── Liste: Anzeige-Helfer ────────────────────────────────────────────────────
+export const CANCELLATION_NO_ORDER_NUMBER = "Ohne Bestellnummer";
+export const CANCELLATION_UNKNOWN_CUSTOMER = "Kunde nicht auflösbar";
+
+// Fachliche Kennung einer Anfrage — „Anfrage #123", die technische ID bleibt sekundär.
+export function cancellationLabel(row) {
+  const id = row && row.id != null ? row.id : null;
+  return id != null ? `Anfrage #${id}` : "Anfrage";
+}
+
+// Kundendarstellung: Firma primär, Ansprechpartner/Kundennummer sekundär.
+// Die technische user_id ist NIE die Hauptdarstellung.
+// → { primary, secondary, known }
+export function cancellationCustomerCell(row) {
+  const c = (row && row.customer) || {};
+  const secondary = [c.customerNumber, c.name].filter(Boolean).join(" · ");
+  if (c.company) return { primary: c.company, secondary, known: true };
+  if (c.name) return { primary: c.name, secondary: c.customerNumber || "", known: true };
+  return { primary: CANCELLATION_UNKNOWN_CUSTOMER, secondary: "", known: false };
+}
+
+// Sendungsdarstellung: geschäftliche Nummer primär, Route/Carrier sekundär.
+// Fehlt die Nummer, wird das ehrlich benannt — nie aus der ID konstruiert.
+// → { primary, secondary, known, id }
+export function cancellationShipmentCell(row) {
+  const s = (row && row.shipment) || {};
+  const number = s.businessOrderNumber || s.orderNumber || "";
+  const from = s.fromCountry ? String(s.fromCountry).toUpperCase() : "";
+  const to = s.toCountry ? String(s.toCountry).toUpperCase() : "";
+  const route = from || to ? `${from || "?"} → ${to || "?"}` : "";
+  return {
+    primary: number || CANCELLATION_NO_ORDER_NUMBER,
+    secondary: [s.carrier, route].filter(Boolean).join(" · "),
+    known: !!number,
+    id: s.id ?? null,
+  };
+}
+
+// ── Leer- und Fehlerzustände ─────────────────────────────────────────────────
+export const CANCELLATION_LIST_ERROR = "Die Stornierungsanfragen konnten nicht geladen werden.";
+
+export function cancellationEmptyState({ count = 0, status = "" } = {}) {
+  if (count > 0) return { show: false, title: "", text: "" };
+  if (status) {
+    return { show: true, title: "Für diesen Status wurden keine Stornierungsanfragen gefunden.",
+      text: "Wählen Sie einen anderen Status — oder setzen Sie den Filter zurück." };
+  }
+  return { show: true, title: "Noch keine Stornierungsanfragen vorhanden.",
+    text: "Sobald Kunden eine Stornierung anfragen, erscheinen sie hier." };
+}
+
+// Nur belegte Query-Parameter (Backendvertrag: status, limit, offset). „Alle" sendet
+// keinen Status — ein ungültiger Wert würde serverseitig 400 auslösen.
+export function toCancellationApiFilters(status) {
+  const s = typeof status === "string" ? status.trim() : "";
+  return s && CANCELLATION_STATUS_ORDER.includes(s) ? { status: s } : {};
 }

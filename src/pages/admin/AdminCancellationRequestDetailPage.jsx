@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminCancellationRequest, updateAdminCancellationRequest } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
@@ -14,6 +15,14 @@ import {
   isNoteDirty,
   isNoOpResponse,
   normalizeCancellationRequest,
+  readCancellationConflict,
+  applyConflictState,
+  cancellationCustomerCell,
+  cancellationShipmentCell,
+  cancellationLabel,
+  CANCELLATION_CONFLICT_TEXT,
+  CANCELLATION_CONFLICT_RELOAD,
+  CANCELLATION_DECISION_DIALOG,
 } from "../../utils/adminCancellations.mjs";
 
 const ERROR_MESSAGES = {
@@ -88,7 +97,11 @@ export default function AdminCancellationRequestDetailPage() {
   const [baseline, setBaseline] = useState({ status: "", adminNote: null, revision: undefined });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null); // { type, text }
-  const [conflict, setConflict] = useState(false);
+  // Konflikt: der Server liefert bei 409 additiv den aktuellen Bearbeitungsstand
+  // mit. Er wird NIE automatisch übernommen — der Admin entscheidet bewusst.
+  const [conflict, setConflict] = useState(null); // null | { current: object|null }
+  // Bestätigungsdialog für terminale Entscheidungen (accepted/rejected).
+  const [decision, setDecision] = useState(null); // null | "accepted" | "rejected"
 
   // Übernimmt eine kanonische Anfrage in State + Formular-Baseline.
   const adopt = useCallback((canonical) => {
@@ -129,13 +142,13 @@ export default function AdminCancellationRequestDetailPage() {
   useEffect(() => { load(); }, [load]);
 
   // Beim Wechsel auf eine andere Anfrage Meldung/Konflikt lösen.
-  useEffect(() => { setSaveMsg(null); setConflict(false); }, [id]);
+  useEffect(() => { setSaveMsg(null); setConflict(null); setDecision(null); }, [id]);
 
   // „Aktuelle Version laden" nach Konflikt: Backend-Realität neu holen, Formular
   // bewusst auf den Serverstand zurücksetzen (kein Merge, kein stilles
   // Overwrite; der Admin entscheidet neu). Ersetzt bewusst die lokale Eingabe.
   const reloadCurrent = useCallback(async () => {
-    setConflict(false);
+    setConflict(null);
     setSaveMsg(null);
     await load();
   }, [load]);
@@ -166,7 +179,15 @@ export default function AdminCancellationRequestDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="alert alert-error"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+        <div className="adm-loaderr">
+          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+          <div className="adm-loaderr-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={load}>
+              <Icon n="refresh" s={14} /> Erneut versuchen
+            </button>
+            <Link className="btn btn-outline btn-sm" to="/admin/cancellation-requests">Zurück zur Übersicht</Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -179,6 +200,12 @@ export default function AdminCancellationRequestDetailPage() {
   const sid = req.shipment?.id;
   const route = routeOf(req.shipment?.fromCountry, req.shipment?.toCountry);
   const revision = baseline.revision;
+  const cust = cancellationCustomerCell(req);
+  const ship = cancellationShipmentCell(req);
+  // reviewedBy ist { id, name } — nie direkt rendern.
+  const reviewerName = req.reviewedBy && typeof req.reviewedBy === "object"
+    ? (req.reviewedBy.name || (req.reviewedBy.id != null ? `Admin #${req.reviewedBy.id}` : "—"))
+    : dash(req.reviewedBy);
 
   // Getrennter Dirty-State: Status (nur nicht-terminal) und Notiz (immer).
   const statusDirty = isStatusDirty(baseline.status, editStatus);
@@ -188,9 +215,19 @@ export default function AdminCancellationRequestDetailPage() {
   // Speichern nur bei echter Änderung, ohne offenen Konflikt, mit bekannter
   // Revision und wenn gerade nichts läuft.
   const canSave = dirty && !conflict && !saving && !missingRevision;
+  // Eine terminale Entscheidung (Angenommen/Abgelehnt) wird erst nach bewusster
+  // Bestätigung ausgeführt; ein reiner Notiz- oder Zwischenstatuswechsel nicht.
+  const pendingDecision = statusDirty && (editStatus === "accepted" || editStatus === "rejected")
+    ? editStatus : null;
+  const requestSave = () => {
+    if (!canSave) return;
+    if (pendingDecision) { setDecision(pendingDecision); return; }
+    save();
+  };
 
   const save = async () => {
     if (!canSave) return;
+    setDecision(null);
     setSaving(true);
     setSaveMsg(null);
     setConflict(false);
@@ -221,8 +258,13 @@ export default function AdminCancellationRequestDetailPage() {
       }
       if (resp.status === 401 || resp.status === 403) return; // zentraler Redirect
       if (resp.status === 409) {
-        // Optimistic-Locking-Konflikt: lokale Eingabe behalten, NICHT überschreiben.
-        setConflict(true);
+        // Optimistic-Locking-Konflikt: lokale Eingabe BEHALTEN, nichts automatisch
+        // überschreiben, lokale Revision NICHT erhöhen. Der vom Server mitgelieferte
+        // aktuelle Stand wird nur angezeigt — übernommen wird er erst auf Klick.
+        let body = {};
+        try { body = await resp.json(); } catch { body = {}; }
+        const c = readCancellationConflict(409, body);
+        setConflict({ current: c.current });
         return;
       }
       setSaveMsg({ type: "error", text: SAVE_ERRORS[resp.status] || SAVE_ERRORS.default });
@@ -261,18 +303,26 @@ export default function AdminCancellationRequestDetailPage() {
       )}
 
       {conflict && (
-        <div className="adm-conflict" role="alert">
+        <div className="adm-conflict" role="alert" aria-live="assertive">
           <div className="adm-conflict-text">
             <Icon n="refresh" s={16} />
             <span>
-              Diese Anfrage wurde inzwischen an anderer Stelle geändert. Ihre Änderung wurde nicht
-              gespeichert. Bitte laden Sie die aktuelle Version — Ihre lokale Eingabe wird dabei durch
-              den aktuellen Serverstand ersetzt.
+              {CANCELLATION_CONFLICT_TEXT} Ihre Änderung wurde <strong>nicht</strong> gespeichert.
+              {conflict.current && (
+                <> Aktueller Stand: <strong>{cancellationStatusMeta(conflict.current.status)[1]}</strong>
+                  {" "}(Revision {String(conflict.current.revision)})
+                  {conflict.current.adminNote ? ", interner Vermerk vorhanden" : ""}.</>
+              )}
             </span>
           </div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={reloadCurrent} disabled={saving}>
-            <Icon n="refresh" s={14} /> Aktuelle Version laden
-          </button>
+          <div className="adm-conflict-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={reloadCurrent} disabled={saving}>
+              <Icon n="refresh" s={14} /> {CANCELLATION_CONFLICT_RELOAD}
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setConflict(null)} disabled={saving}>
+              Abbrechen
+            </button>
+          </div>
         </div>
       )}
 
@@ -280,14 +330,18 @@ export default function AdminCancellationRequestDetailPage() {
       <div className="adm-card">
         <div className="adm-card-body">
           <div className="adm-detail-head">
-            <span className="adm-detail-id">Stornierungsanfrage #{dash(req.id)}</span>
-            <span className="adm-detail-badges">
-              <span className={`badge ${statusCls}`}>{statusLabel}</span>
-              <span className="adm-chip"><Icon n="calendar" s={13} /> Eingegangen {fmtDateTime(req.createdAt)}</span>
-              {sid != null && String(sid).trim() !== "" && (
-                <span className="adm-chip"><Icon n="package" s={13} /> Sendung #{String(sid)}</span>
-              )}
-            </span>
+            <div className="adm-detail-ident">
+              <h1 className="adm-detail-id">Stornierungsanfrage {cancellationLabel(req).replace("Anfrage ", "")}</h1>
+              <p className="adm-detail-sub">
+                <span>{cust.primary}</span>
+                {ship.known && <span>{ship.primary}</span>}
+              </p>
+              <span className="adm-detail-badges">
+                <span className={`badge ${statusCls}`}>{statusLabel}</span>
+                <span className="adm-chip"><Icon n="calendar" s={13} /> Eingegangen {fmtDateTime(req.createdAt)}</span>
+                <span className="adm-chip"><Icon n="clock" s={13} /> Zuletzt geändert {fmtDateTime(req.updatedAt)}</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -308,9 +362,9 @@ export default function AdminCancellationRequestDetailPage() {
           <div className="adm-card-head"><Icon n="package" s={17} /> Sendung</div>
           <div className="adm-card-body">
             <KV items={[
-              ["Sendung-ID", sid != null && String(sid).trim() !== ""
-                ? <Link className="adm-idlink" to={`/admin/shipments/${encodeURIComponent(sid)}`}>{String(sid)}</Link>
-                : "—"],
+              ["Bestellnummer", ship.known
+                ? <span className="adm-mono">{ship.primary}</span>
+                : <span className="adm-muted">{ship.primary}</span>],
               ["Carrier", req.shipment?.carrier ? resolveCarrierName(req.shipment.carrier) : "—"],
               ["Serviceart", serviceLabel(req.shipment?.serviceType)],
               ["Sendungsstatus", (() => {
@@ -322,6 +376,13 @@ export default function AdminCancellationRequestDetailPage() {
               ["Route", route || "—"],
               ["Preis", moneyOrDash(req.shipment?.price)],
             ]} />
+            {sid != null && String(sid).trim() !== "" && (
+              <div className="adm-track-link">
+                <Link className="btn btn-outline btn-sm" to={`/admin/shipments/${encodeURIComponent(sid)}`}>
+                  <Icon n="arrowRight" s={14} /> Sendung öffnen
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -330,11 +391,18 @@ export default function AdminCancellationRequestDetailPage() {
           <div className="adm-card-head"><Icon n="idcard" s={17} /> Kunde</div>
           <div className="adm-card-body">
             <KV items={[
-              ["User-ID", <span className="adm-mono">{dash(req.customer?.id)}</span>],
-              ["Firma", dash(req.customer?.company)],
-              ["Name", dash(req.customer?.name)],
+              ["Firma", cust.known ? cust.primary : <span className="adm-muted">{cust.primary}</span>],
+              ["Ansprechpartner", dash(req.customer?.name)],
+              ["Kundennummer", dash(req.customer?.customerNumber)],
               ["E-Mail", dash(req.customer?.email)],
             ]} />
+            {req.customer?.id != null && (
+              <div className="adm-track-link">
+                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(req.customer.id)}`}>
+                  <Icon n="arrowRight" s={14} /> Kundenkonto öffnen
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -387,7 +455,7 @@ export default function AdminCancellationRequestDetailPage() {
             </div>
 
             <div className="adm-support" style={{ marginTop: 14 }}>
-              <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={!canSave}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={requestSave} disabled={!canSave}>
                 {saving
                   ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
                   : <><Icon n="check" s={14} /> Änderung speichern</>}
@@ -415,11 +483,50 @@ export default function AdminCancellationRequestDetailPage() {
               ["Eingegangen am", fmtDateTime(req.createdAt)],
               ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
               ["Entschieden am", fmtDateTime(req.reviewedAt)],
-              ["Entschieden von", dash(req.reviewedBy)],
+              // reviewedBy ist im Backendvertrag ein OBJEKT { id, name } — vorher wurde
+              // es direkt gerendert und erschien als "[object Object]".
+              ["Entschieden von", reviewerName],
             ]} />
           </div>
         </div>
+
+        {/* 7) Technische Informationen — eingeklappt, natives <details>. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            <Icon n="settings" s={17} /> Technische Informationen
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Anfrage-ID (intern)", <span className="adm-mono">{dash(req.id)}</span>],
+              ["Kunden-ID (intern)", <span className="adm-mono">{dash(req.customer?.id)}</span>],
+              ["Sendungs-ID (intern)", <span className="adm-mono">{dash(sid)}</span>],
+              ["Revision", <span className="adm-mono">{dash(revision)}</span>],
+              ["Support-Benachrichtigung", req.notification
+                ? (req.notification.failed ? "Fehlgeschlagen" : (req.notification.sentAt ? `Versendet ${fmtDateTime(req.notification.sentAt)}` : "Ausstehend"))
+                : "—"],
+            ]} />
+          </div>
+        </details>
       </div>
+
+      {/* Bestätigungsdialog für terminale Entscheidungen — benennt ausdrücklich,
+          dass KEINE Carrier-/JUMiNGO-Stornierung ausgelöst wird. */}
+      {decision && (
+        <ConfirmDialog
+          icon={decision === "accepted" ? "check" : "x"}
+          danger={decision === "rejected"}
+          title={CANCELLATION_DECISION_DIALOG[decision].title}
+          text={CANCELLATION_DECISION_DIALOG[decision].text}
+          subline={`${cancellationLabel(req)} · ${cust.primary}`}
+          note="Die Entscheidung wird im Admin-Audit protokolliert."
+          confirmLabel={CANCELLATION_DECISION_DIALOG[decision].confirm}
+          confirmIcon={decision === "accepted" ? "check" : "x"}
+          busy={saving}
+          busyLabel="Wird gespeichert…"
+          onCancel={() => { if (!saving) setDecision(null); }}
+          onConfirm={save}
+        />
+      )}
     </div>
   );
 }

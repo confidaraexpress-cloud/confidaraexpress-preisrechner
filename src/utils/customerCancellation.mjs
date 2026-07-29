@@ -79,11 +79,25 @@ export function classifyCancellationError(status, code) {
       keepDialogOpen: false, refetch: true, markPending: false,
     };
   }
-  if (c === "SHIPMENT_NOT_FOUND" || status === 404) {
+  // FACHLICHER 404: nur wenn das Backend ausdrücklich SHIPMENT_NOT_FOUND meldet.
+  if (c === "SHIPMENT_NOT_FOUND") {
     return {
       kind: "not_found",
       message: "Die Sendung wurde nicht gefunden oder ist nicht mehr verfügbar.",
       keepDialogOpen: false, refetch: true, markPending: false,
+    };
+  }
+  // GENERISCHER 404 (z. B. der globale Not-Found-Handler bei falschem Pfad, ein
+  // Proxy- oder Deploymentfehler): das ist KEIN Sendungsproblem. Genau diese
+  // Verwechslung hat den kaputten Routenpfad monatelang verdeckt — der Kunde las
+  // „Sendung nicht gefunden", obwohl seine Sendung existierte und der Endpunkt
+  // schlicht nicht erreichbar war. Der Dialog bleibt offen, damit ein erneuter
+  // Versuch möglich ist, und die Zeile wird NICHT als angefragt markiert.
+  if (status === 404) {
+    return {
+      kind: "unavailable",
+      message: "Die Stornierungsanfrage konnte nicht übermittelt werden. Bitte versuchen Sie es erneut.",
+      keepDialogOpen: true, refetch: false, markPending: false,
     };
   }
   if (c === "CANCELLATION_REASON_INVALID" || status === 422) {

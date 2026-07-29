@@ -536,3 +536,75 @@ a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); out
   .adm-ships-table { display: none; }
   .adm-ships-cards { display: flex; }
 }
+
+/* ── Rechnungsverwaltung (Forderungstrennung + kompakte Liste) ───────────────
+   Nutzt ausschliesslich die bestehenden Light-/Legacy-Tokens (--navy/--gray../
+   --blue../--border..) und die vorhandenen Atome (.adm-card/.adm-kv/.badge/.btn).
+   Keine --auth-/--ce-Tokens, keine neuen Animationen. Muster identisch zur
+   bereits bereinigten Sendungsliste (.adm-ships-table). */
+
+/* Sechs Spalten passen auf uebliche Desktopbreiten — kein horizontales Scrollen.
+   Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben. */
+.adm-inv-table table { min-width: 0; table-layout: fixed; }
+.adm-inv-table th, .adm-inv-table td { vertical-align: top; }
+.adm-inv-table th { white-space: normal; }
+.adm-inv-table th:nth-child(1), .adm-inv-table td:nth-child(1) { width: 21%; }
+.adm-inv-table th:nth-child(2), .adm-inv-table td:nth-child(2) { width: 19%; }
+.adm-inv-table th:nth-child(3), .adm-inv-table td:nth-child(3) { width: 17%; }
+.adm-inv-table th:nth-child(4), .adm-inv-table td:nth-child(4) { width: 14%; }
+.adm-inv-table th:nth-child(5), .adm-inv-table td:nth-child(5) { width: 19%; }
+.adm-inv-table th:nth-child(6), .adm-inv-table td:nth-child(6) { width: 10%; }
+
+/* Spalte „Rechnung": Nummer primaer, Datum + Modus sekundaer. Die Nummer wird
+   NIE gekuerzt (das zerstoerte ihre Eindeutigkeit) — sie bricht kontrolliert. */
+.adm-inv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.adm-inv-no { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
+a.adm-inv-no:hover { text-decoration: underline; }
+a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+.adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+
+/* Spalte „Kunde": Firma primaer, Kundennummer sekundaer — nie die user_id. */
+.adm-inv-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-inv-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-inv-cust-no { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--gray500); }
+
+/* Spalte „Betrag & Faelligkeit". */
+.adm-inv-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-inv-sum { font-size: 13.5px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.adm-inv-due { font-size: 11.5px; color: var(--gray500); line-height: 1.4; overflow-wrap: break-word; }
+
+/* Spalte „Zahlungsstatus" + kompakte Dokument-/Versandmarker. */
+.adm-inv-status { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.adm-inv-paid { font-size: 11px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.adm-inv-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+.adm-inv-markers .badge { white-space: normal; text-align: left; line-height: 1.3; }
+
+/* Filter: Checkbox-Zeile und eingeklappter technischer Bereich. */
+.adm-filter-check { display: flex; align-items: center; gap: 8px; padding-top: 21px; }
+.adm-filter-check input { width: 17px; height: 17px; accent-color: var(--blue2); cursor: pointer; }
+.adm-filter-check label { font-size: 13px; color: var(--navy); cursor: pointer; }
+.adm-filter-adv { flex-basis: 100%; margin-top: 4px; }
+.adm-filter-adv > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--gray500); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+.adm-filter-adv > summary::-webkit-details-marker { display: none; }
+.adm-filter-adv > summary::before { content: "▸"; font-size: 10px; }
+.adm-filter-adv[open] > summary::before { content: "▾"; }
+.adm-filter-adv > summary:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 3px; border-radius: 4px; }
+.adm-filter-adv-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 10px; }
+.adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+/* Hinweis „keine zahlungswirksame Forderung" im Kopfbereich des Details. */
+.adm-nonproductive-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12.5px; line-height: 1.55; color: #8a5a06; background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
+.adm-nonproductive-note svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+.adm-modal-note { margin-top: 0; margin-bottom: 16px; }
+
+/* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar. */
+.adm-inv-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
+
+@media (max-width: 900px) {
+  .adm-inv-table { display: none; }
+  .adm-inv-cards { display: flex; }
+}
+@media (max-width: 560px) {
+  .adm-filter-check { padding-top: 0; }
+  .adm-filter-adv-body .adm-filter-field { min-width: 100%; }
+}

@@ -195,8 +195,18 @@ test("(11) Admin-Sendungsansichten trennen Confidara- und JUMiNGO-Nummer", () =>
   // Die alte, verwechselbare Beschriftung darf nicht mehr existieren.
   assert.ok(!/"Bestell-Nr\."/.test(detail), "alte Beschriftung 'Bestell-Nr.' für die JUMiNGO-Nummer");
   const list = read("pages/admin/AdminShipmentsPage.jsx");
-  assert.ok(/<th>Bestellnummer<\/th>/.test(list) && list.includes("businessOrderNumberOf(row)"),
-    "Admin-Sendungsliste ohne Confidara-Bestellnummer");
+  // Die Liste führt die Confidara-Bestellnummer seit der UX-Bereinigung als
+  // primären Wert der Spalte „Sendung" (shipmentIdentity → businessOrderNumber),
+  // statt als eigene Spalte. Die Trennung bleibt damit unverändert erhalten.
+  assert.ok(/<th scope="col">Sendung<\/th>/.test(list), "Spalte 'Sendung' fehlt");
+  assert.ok(list.includes("shipmentIdentity(row)"), "Bestellnummer wird nicht als Kennung gelesen");
+  const view = read("utils/adminShipmentView.mjs");
+  assert.ok(/businessOrderNumber: str\(firstDefined\(r\.business_order_number, r\.businessOrderNumber\)\)/.test(view),
+    "die Bestellnummer wird nicht aus dem fachlichen Feld gelesen");
+  assert.ok(/if \(f\.businessOrderNumber\) return \{ primary: f\.businessOrderNumber, kind: "order_number" \}/.test(view),
+    "die Bestellnummer ist nicht die primäre Sendungskennung");
+  // Die JUMiNGO-Nummer erscheint in der Liste gar nicht mehr — noch klarere Trennung.
+  assert.ok(!/jumingo/i.test(list), "die JUMiNGO-Kennung gehört nicht in die Sendungsliste");
 });
 
 test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", () => {

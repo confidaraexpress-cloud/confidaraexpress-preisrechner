@@ -4,9 +4,20 @@ import { Icon } from "../../components/ui/Icon";
 import { getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import { maskTail, shipmentStatusMeta, serviceLabel } from "../../utils/adminShipments";
+import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
 import { businessOrderNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import {
+  customerIdentity,
+  detailSections,
+  isCustomsRelevant,
+  priceDisplay,
+  routeLabel,
+  shipmentDetailError,
+  shipmentFields,
+  shipmentIdentity,
+  shippingModeLabel,
+} from "../../utils/adminShipmentView.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -88,6 +99,7 @@ function selectShipment(d) {
 
 // ── Feld-Getter (nur erlaubte Felder; nie ganze Objekte rendern) ─────────────
 const idOf = (s) => firstDefined(s.id, s.shipment_id, s.shipmentId);
+const userIdOf = (s) => firstDefined(s.user_id, s.userId);
 const statusOf = (s) => firstDefined(s.status, s.state);
 const carrierOf = (s) => firstDefined(s.carrier, s.selected_carrier, s.carrier_name, s.carrierName);
 const serviceOf = (s) => firstDefined(s.service_type, s.serviceType, s.service, s.shipment_type);
@@ -107,6 +119,12 @@ const trackingOf = (s) => firstDefined(s.tracking_number, s.trackingNumber, s.tr
 const jumingoOf = (s) => firstDefined(s.jumingo_shipment_id, s.jumingoShipmentId, s.jumingo_id, s.jumingo_shipment_id_masked);
 const orderOf = (s) => firstDefined(s.order_number, s.orderNumber, s.order_id);
 const invoiceOf = (s) => (s.invoice && typeof s.invoice === "object" ? s.invoice : null);
+
+function fmtDateTime(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString("de-DE");
+}
 
 function fmtDate(v) {
   if (!v) return "—";
@@ -261,7 +279,7 @@ export default function AdminShipmentDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="loading-center"><span className="spinner spinner-dark" /> Wird geladen…</div></div>
+        <div className="table-card"><div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> Sendung wird geladen…</div></div>
       </div>
     );
   }
@@ -273,23 +291,40 @@ export default function AdminShipmentDetailPage() {
         <div className="table-card">
           <div className="empty">
             <div className="empty-icon">🔎</div>
-            <div className="empty-title">Sendung nicht gefunden</div>
+            <div className="empty-title">Die Sendung wurde nicht gefunden.</div>
+            <p className="empty-text">
+              Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig.
+            </p>
+            <Link className="btn btn-outline btn-sm" to="/admin/shipments">Zurück zur Sendungsliste</Link>
           </div>
         </div>
       </div>
     );
   }
 
+  // Ladefehler: verständliche Meldung MIT direkter Wiederholung — kein
+  // Stacktrace, kein roher Backendtext, keine Sackgasse.
   if (error || !data) {
     return (
       <div className="adm-page">
         {back}
-        <div className="alert alert-error"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+        <div className="adm-loaderr">
+          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+          <div className="adm-loaderr-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={load} disabled={loading}>
+              <Icon n="refresh" s={14} /> Erneut versuchen
+            </button>
+            <Link className="btn btn-outline btn-sm" to="/admin/shipments">Zurück zur Sendungsliste</Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   const s = data;
+  const ident = shipmentIdentity(s);
+  const cust = customerIdentity(s);
+  const sections = detailSections(s);
   const [statusCls, statusLabel] = shipmentStatusMeta(statusOf(s));
   const hasTracking = hasTrackingOf(s);
   const invoice = invoiceOf(s);
@@ -349,27 +384,60 @@ export default function AdminShipmentDetailPage() {
       <div className="adm-card">
         <div className="adm-card-body">
           <div className="adm-detail-head">
-            <span className="adm-detail-id">Sendung #{dash(idOf(s))}</span>
-            <span className="adm-detail-badges">
-              <span className={`badge ${statusCls}`}>{statusLabel}</span>
-              <span className="adm-chip"><Icon n="package" s={13} />{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "—"}</span>
-              <span className="adm-chip">{serviceLabel(serviceOf(s))}</span>
-              <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
-              <span className={`badge ${labelAvailOf(s) === true || labelAvailOf(s) === "true" ? "badge-green" : "badge-gray"}`}>
-                Label {labelAvailOf(s) === true || labelAvailOf(s) === "true" ? "verfügbar" : "nicht verfügbar"}
+            <div className="adm-detail-ident">
+              {/* Fachliche Sendungskennung als Titel — die interne ID ist ein
+                  technischer Schlüssel und steht unten bei den technischen Infos. */}
+              <h1 className="adm-detail-id">{ident.primary}</h1>
+              <p className="adm-detail-sub">
+                <span>{cust.primary}</span>
+                {cust.secondary && <span>{cust.secondary}</span>}
+                {routeLabel(s) && <span>{routeLabel(s)}</span>}
+              </p>
+              <span className="adm-detail-badges">
+                <span className={`badge ${statusCls}`}>{statusLabel}</span>
+                <span className="adm-chip"><Icon n="package" s={13} />{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
+                <span className="adm-chip">{shippingModeLabel(s)}</span>
+                <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
+                {sections.label && <span className="badge badge-green">Label verfügbar</span>}
+                {sections.tracking && <span className="badge badge-green">Tracking vorhanden</span>}
               </span>
-              {hasTracking !== null && (
-                <span className={`badge ${hasTracking ? "badge-green" : "badge-gray"}`}>
-                  Tracking {hasTracking ? "vorhanden" : "keins"}
-                </span>
-              )}
-            </span>
+            </div>
+            {/* Primäre sinnvolle Aktion: zum Kundenkonto wechseln. */}
+            {userIdOf(s) != null && (
+              <div className="adm-detail-action">
+                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(userIdOf(s))}`}>
+                  <Icon n="user" s={14} /> Kunde öffnen
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="adm-cards">
-        {/* 2) Versanddaten */}
+        {/* 2) Kunde — fachliche Identität plus Sprung ins Kundenkonto. Bewusst
+             ohne E-Mail/Kontoadresse: dafür ist die Kundendetailseite zuständig. */}
+        {sections.customer && (
+          <div className="adm-card">
+            <div className="adm-card-head"><Icon n="building" s={17} /> Kunde</div>
+            <div className="adm-card-body">
+              <KV items={[
+                ["Firmenname", cust.known ? cust.primary : <span className="adm-muted">{cust.primary}</span>],
+                ["Kundennummer", cust.secondary || "—"],
+                ["Ansprechpartner", dash(firstDefined(s.customer_name, s.customerName))],
+              ]} />
+              {userIdOf(s) != null && (
+                <div className="adm-track-link">
+                  <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(userIdOf(s))}`}>
+                    <Icon n="arrowRight" s={14} /> Kundendetail öffnen
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3) Versanddaten */}
         <div className="adm-card">
           <div className="adm-card-head"><Icon n="package" s={17} /> Versanddaten</div>
           <div className="adm-card-body">
@@ -456,6 +524,47 @@ export default function AdminShipmentDetailPage() {
         </div>
 
         {/* Support-Aktionen — „Label herunterladen" aktiv; Tracking folgt später */}
+        {/* Zoll — NUR bei tatsächlicher Zollrelevanz, nie als leere Karte bei
+             Inlandssendungen. Es werden ausschließlich gespeicherte Werte gezeigt;
+             die fachliche Zollprüfung bleibt vollständig im Backend. */}
+        {sections.customs && (
+          <div className="adm-card">
+            <div className="adm-card-head"><Icon n="globe" s={17} /> Zoll</div>
+            <div className="adm-card-body">
+              <KV items={[
+                ["Zollrelevant", "Ja — Sendung verlässt den EU-Zollraum"],
+                ["Warenwert", firstDefined(s.goods_value, s.goodsValue) != null
+                  ? money(firstDefined(s.goods_value, s.goodsValue)) : "—"],
+                ["Ursprungsland", dash(fromCountryOf(s))],
+                ["Zielland", dash(toCountryOf(s))],
+              ]} />
+              <p className="adm-support-hint">
+                Warenpositionen und Handelsrechnung werden im Buchungsvorgang erfasst und sind
+                hier bewusst nicht dupliziert.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Technische Informationen — eingeklappt, natives <details>. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            <Icon n="settings" s={17} /> Technische Informationen
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Interne Sendungs-ID", dash(idOf(s))],
+              ["Interne Kunden-ID", dash(userIdOf(s))],
+              ["Interner Status", dash(statusOf(s))],
+              ["Versandart (roh)", dash(serviceOf(s))],
+              ["JUMiNGO-Sendungs-ID", jumingoOf(s) ? <span className="adm-mask">{maskTail(jumingoOf(s))}</span> : "—"],
+              ["JUMiNGO-Ordernummer", orderOf(s) ? <span className="adm-mask">{maskTail(orderOf(s))}</span> : "—"],
+              ["Erstellt am", fmtDateTime(dateOf(s))],
+              ["Zuletzt getrackt", fmtDateTime(firstDefined(s.last_tracked_at, s.lastTrackedAt))],
+            ]} />
+          </div>
+        </details>
+
         <div className="adm-card">
           <div className="adm-card-head"><Icon n="headset" s={17} /> Support-Aktionen</div>
           <div className="adm-card-body">

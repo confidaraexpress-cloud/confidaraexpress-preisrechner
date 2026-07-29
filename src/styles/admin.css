@@ -471,3 +471,65 @@ a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-
   .adm-danger-item-action { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
   .adm-danger-item-action .btn { flex: 1; justify-content: center; min-height: 42px; }
 }
+
+/* ── Sendungsverwaltung: kompakte Liste, Mobilkarten, Detailabschnitte ──────
+   Nur Light-/Legacy-Tokens und die bestehenden Atome (.table-card/.badge/.btn).
+   Keine neuen Animationen, keine Hintergrundeffekte. */
+
+/* Sechs Spalten passen auf übliche Desktopbreiten — kein horizontales Scrollen.
+   Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben. */
+.adm-ships-table table { min-width: 0; table-layout: fixed; }
+.adm-ships-table th, .adm-ships-table td { vertical-align: top; }
+.adm-ships-table th:nth-child(1), .adm-ships-table td:nth-child(1) { width: 17%; }
+.adm-ships-table th:nth-child(2), .adm-ships-table td:nth-child(2) { width: 21%; }
+.adm-ships-table th:nth-child(3), .adm-ships-table td:nth-child(3) { width: 23%; }
+.adm-ships-table th:nth-child(4), .adm-ships-table td:nth-child(4) { width: 17%; }
+.adm-ships-table th:nth-child(5), .adm-ships-table td:nth-child(5) { width: 12%; }
+.adm-ships-table th:nth-child(6), .adm-ships-table td:nth-child(6) { width: 10%; }
+
+/* Spalte „Sendung": Bestellnummer primär, Datum sekundär. */
+.adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-ship-no { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-ship-no:hover { text-decoration: underline; }
+a.adm-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+/* Entwurf / fehlende Nummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
+.adm-ship-no-muted { font-family: 'DM Sans', sans-serif; color: var(--gray500); font-weight: 600; }
+.adm-ship-date { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+
+/* Spalte „Kunde": Firma primär, Kundennummer sekundär — nie die user_id. */
+.adm-ship-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-ship-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-ship-cust-name:hover { color: var(--blue2); text-decoration: underline; }
+a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+.adm-ship-cust-no { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--gray500); }
+
+/* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
+.adm-ship-way { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-ship-carrier { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-ship-mode { font-weight: 500; color: var(--gray500); }
+.adm-ship-route { font-size: 12px; color: var(--gray500); white-space: nowrap; }
+
+/* Status + kompakte Tracking-/Label-Marker statt zweier Ja/Nein-Spalten. */
+.adm-ship-status { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+.adm-ship-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+.adm-ship-marker { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--gray600); background: var(--gray100); border: 1px solid var(--border); white-space: nowrap; }
+.adm-ship-marker svg { flex-shrink: 0; color: var(--gray500); }
+.adm-ship-noprice { font-size: 11.5px; line-height: 1.35; display: block; white-space: normal; overflow-wrap: break-word; }
+
+.adm-filter-error { flex-basis: 100%; margin-top: 0; }
+.adm-loaderr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+/* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar. */
+.adm-ships-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
+.adm-scard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
+.adm-scard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.adm-scard-kv { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.adm-scard-kv dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); margin-bottom: 2px; }
+.adm-scard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
+.adm-scard-actions { display: flex; gap: 8px; margin-top: 13px; }
+.adm-scard-actions .btn { min-height: 40px; flex: 1; justify-content: center; }
+
+@media (max-width: 900px) {
+  .adm-ships-table { display: none; }
+  .adm-ships-cards { display: flex; }
+}

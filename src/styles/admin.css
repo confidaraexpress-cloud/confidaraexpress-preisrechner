@@ -608,3 +608,77 @@ a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-off
   .adm-filter-check { padding-top: 0; }
   .adm-filter-adv-body .adm-filter-field { min-width: 100%; }
 }
+
+/* ── Stornierungsanfragen (Liste + Konfliktbanner) ───────────────────────────
+   Nutzt ausschliesslich die bestehenden Light-/Legacy-Tokens und die vorhandenen
+   Atome (.adm-card/.badge/.btn/.adm-scard). Muster identisch zu den bereits
+   bereinigten Admin-Listen (.adm-ships-table/.adm-inv-table). */
+
+/* Sieben Spalten ohne horizontales Scrollen. Die globale Regel
+   `table { min-width: 480px }` wird hier gezielt aufgehoben.
+
+   WARUM px statt Prozent fuer die letzten drei Spalten:
+   `.table-card` hat `overflow: hidden` (abgerundete Ecken). Inhalte, die nicht
+   umbrechen koennen, werden deshalb nicht gescrollt, sondern ABGESCHNITTEN.
+   Genau drei Zellinhalte sind starr und schrumpfen nie:
+     • Status      — `.badge` ist `white-space: nowrap`      → gemessen 75px
+     • Eingegangen — Spaltenkopf „EINGEGANGEN", ein Wort     → gemessen 115px
+     • Aktion      — `.btn` ist inline-flex, bricht nicht    → gemessen 74px
+   Mit reinen Prozentbreiten unterschreitet die berechnete Spaltenbreite diese
+   Werte, sobald die Tabelle schmaler wird — der „Details"-Button wurde bei
+   1024px um 38px angeschnitten. Absolute Breiten fuer diese drei Spalten
+   entkoppeln sie von der Tabellenbreite.
+   Spalte 1 („Anfrage") bekommt ebenfalls eine feste Breite, weil ihr Inhalt mit
+   `Anfrage #<id>` fachlich begrenzt ist. Die drei inhaltsstarken Textspalten
+   (Kunde, Sendung, Grund) bleiben `auto` und teilen sich den Rest gleichmaessig
+   — dort landet damit die gesamte verbleibende Breite. */
+.adm-canc-table table { min-width: 0; table-layout: fixed; }
+.adm-canc-table th, .adm-canc-table td { vertical-align: top; }
+.adm-canc-table th { white-space: normal; }
+.adm-canc-table th:nth-child(1), .adm-canc-table td:nth-child(1) { width: 118px; }
+.adm-canc-table th:nth-child(5), .adm-canc-table td:nth-child(5) { width: 112px; }
+.adm-canc-table th:nth-child(6), .adm-canc-table td:nth-child(6) { width: 126px; }
+.adm-canc-table th:nth-child(7), .adm-canc-table td:nth-child(7) { width: 110px; }
+
+/* Spalte „Anfrage": fachliche Kennung, technische ID darin eingebettet. */
+.adm-canc-req { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-canc-no { font-size: 13.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-canc-no:hover { text-decoration: underline; }
+a.adm-canc-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+
+/* Spalten „Kunde" und „Sendung": fachlicher Wert primaer, Kontext sekundaer. */
+.adm-canc-cust, .adm-canc-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-canc-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-canc-cust-name:hover { color: var(--blue2); text-decoration: underline; }
+a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+.adm-canc-ship-no { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-canc-ship-no:hover { text-decoration: underline; }
+/* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
+.adm-canc-ship-no-muted { font-family: 'DM Sans', sans-serif; color: var(--gray500); font-weight: 500; }
+.adm-canc-sub { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
+.adm-canc-time { font-size: 12.5px; color: var(--gray600); font-variant-numeric: tabular-nums; }
+
+/* Grund: nutzergenerierter Freitext, in der Liste auf drei Zeilen begrenzt.
+   Der volle Text steht ausschliesslich in der Detailseite. */
+.adm-canc-reason {
+  font-size: 12.5px; line-height: 1.45; color: var(--gray700); margin: 0;
+  overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Konfliktbanner: zwei klar getrennte Aktionen (Uebernehmen / Abbrechen). */
+.adm-conflict-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar.
+   Der Umschaltpunkt liegt bewusst bei 1080px statt bei den 900px der uebrigen
+   Admin-Listen: diese Liste hat SIEBEN Spalten, und die Adminshell belegt links
+   rund 330px. Unterhalb von ~1020px Viewport bleiben den vier Textspalten
+   weniger als ihre Spaltenkoepfe breit sind — die Tabelle wuerde wieder
+   abgeschnitten. Die Kartenansicht ist dort die ehrlichere Darstellung. */
+.adm-canc-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
+
+@media (max-width: 1080px) {
+  .adm-canc-table { display: none; }
+  .adm-canc-cards { display: flex; }
+  .adm-canc-reason { -webkit-line-clamp: 4; }
+}

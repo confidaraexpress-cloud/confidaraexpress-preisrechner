@@ -118,12 +118,29 @@ test("not_allowed: Dialog schließen, refetch, klare Meldung ohne Carrierdetails
   assert.match(e.message, /keine Stornierungsanfrage mehr/);
 });
 
-test("not_found (Code oder 404): Dialog schließen, refetch", () => {
-  for (const args of [[404, ""], [400, "SHIPMENT_NOT_FOUND"]]) {
+test("not_found NUR beim fachlichen Code SHIPMENT_NOT_FOUND", () => {
+  for (const args of [[404, "SHIPMENT_NOT_FOUND"], [400, "SHIPMENT_NOT_FOUND"]]) {
     const e = classifyCancellationError(args[0], args[1]);
     assert.equal(e.kind, "not_found");
     assert.equal(e.refetch, true);
+    assert.equal(e.keepDialogOpen, false);
     assert.match(e.message, /nicht gefunden/);
+  }
+});
+
+test("generischer 404 ist ein Übermittlungsfehler, KEIN Sendungsproblem", () => {
+  // Ein 404 ohne fachlichen Code stammt vom globalen Not-Found-Handler (falscher
+  // Pfad, Proxy-/Deploymentfehler). Genau diese Verwechslung hat den kaputten
+  // Routenpfad verdeckt: der Kunde las „Sendung nicht gefunden", obwohl seine
+  // Sendung existierte und nur der Endpunkt unerreichbar war.
+  for (const code of ["", "Not Found", "irgendwas"]) {
+    const e = classifyCancellationError(404, code);
+    assert.equal(e.kind, "unavailable", `Code "${code}"`);
+    assert.match(e.message, /konnte nicht übermittelt werden/);
+    assert.equal(e.keepDialogOpen, true, "erneuter Versuch muss möglich bleiben");
+    assert.equal(e.markPending, false, "die Zeile darf NICHT als angefragt gelten");
+    assert.equal(e.refetch, false);
+    assert.ok(!/Sendung wurde nicht gefunden/.test(e.message), "kein Sendungsproblem behaupten");
   }
 });
 

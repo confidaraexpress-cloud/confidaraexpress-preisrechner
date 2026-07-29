@@ -58,36 +58,51 @@ test("2 — Admin-Kundendetail zeigt keine Kreditwerte", () => {
   assert.equal(/credit_used|credit_limit|creditUsedOf|creditLimitOf/.test(userDetailSrc), false);
 });
 
-test("3 — die Karte heißt „Zahlung“ (nicht mehr „Zahlung & Kredit“)", () => {
-  assert.match(userDetailSrc, /<Icon n="card" s=\{17\} \/> Zahlung<\/div>/,
-    "Kartentitel muss genau 'Zahlung' sein");
+test("3 — die Karte heißt „Aktivität und Zahlung“ (nicht mehr „Zahlung & Kredit“)", () => {
+  // Zahlung und Kennzahlen sind zu EINER Karte zusammengeführt — die
+  // Debitorenwerte standen vorher doppelt auf der Seite.
+  assert.match(userDetailSrc, /<Icon n="card" s=\{17\} \/> Aktivität und Zahlung<\/div>/,
+    "Kartentitel muss 'Aktivität und Zahlung' sein");
   assert.equal(/Zahlung &amp; Kredit/.test(userDetailSrc), false, "alter Titel muss weg sein");
+  assert.equal(/Aggregierte Kennzahlen/.test(userDetailSrc), false, "die doppelte Kennzahlenkarte ist entfallen");
 });
 
 // ─── 4.–7. Debitoreninformationen bleiben sichtbar ────────────────────────────
 
 test("4 — Zahlungsziel bleibt sichtbar", () => {
-  assert.match(userDetailSrc, /\["Zahlungsziel", paymentTermLabel\(paymentTermOf\(u\)\)\]/);
-  assert.match(usersListSrc, /<th>Zahlungsziel<\/th>/, "Spalte Zahlungsziel bleibt in der Liste");
-  assert.match(usersListSrc, /paymentTermLabel\(paymentTermOf\(u\)\)/);
+  // Es beträgt für ALLE Kunden sieben Kalendertage — deshalb steht es einmal im
+  // Kundendetail und nicht mehr in jeder Zeile der Liste.
+  assert.match(userDetailSrc, /<Stat label="Zahlungsziel" value=\{PAYMENT_TERM_TEXT\} text \/>/);
+  const viewSrc = read("utils/adminCustomerView.mjs");
+  assert.match(viewSrc, /export const PAYMENT_TERM_TEXT = "7 Kalendertage";/);
+  assert.equal(/<th[^>]*>Zahlungsziel<\/th>/.test(usersListSrc), false,
+    "in der Liste ist die Spalte bewusst entfallen (für alle Kunden identisch)");
 });
 
 test("5 — offene Gesamtsumme bleibt sichtbar", () => {
-  assert.match(userDetailSrc, /\["Offener Betrag", moneyOrDash\(firstDefined\(summary\.open_amount/);
+  assert.match(userDetailSrc, /<Stat label="Offener Betrag" value=\{moneyOrDash\(metrics\.openAmount\)\} \/>/);
 });
 
-test("6 — unbezahlte Rechnungen bleiben sichtbar", () => {
-  assert.match(userDetailSrc, /\["Unbezahlte Rechnungen", num\(firstDefined\(summary\.invoices_unpaid/);
+test("6 — offene Rechnungen bleiben sichtbar", () => {
+  assert.match(userDetailSrc, /<Stat label="Offene Rechnungen" value=\{num\(metrics\.invoicesUnpaid\)\} \/>/);
 });
 
 test("7 — überfällige Rechnungen bleiben sichtbar", () => {
-  assert.match(userDetailSrc, /\["Überfällige Rechnungen", num\(firstDefined\(summary\.invoices_overdue/);
+  assert.match(userDetailSrc, /<Stat label="Überfällige Rechnungen" value=\{num\(metrics\.invoicesOverdue\)\} \/>/);
+  // Sichtbar, aber ausdrücklich ohne Automatik.
+  assert.match(userDetailSrc, /metrics\.hasOverdue/);
+  assert.match(read("utils/adminCustomerView.mjs"), /Überfällige Rechnungen blockieren Buchungen nicht automatisch/);
 });
 
 test("8 — die Debitorenwerte stammen aus dem Rechnungs-Summary, nicht aus dem User-Objekt", () => {
   // summary.* kommt aus dem Backend-Aggregat über invoices; u.* wäre der Kontodatensatz.
+  // Die Lesung liegt jetzt zentral in activityMetrics(summary) — EINE Quelle.
+  assert.match(userDetailSrc, /const metrics = activityMetrics\(summary\);/);
+  const viewSrc = stripComments(read("utils/adminCustomerView.mjs"));
+  for (const field of ["open_amount", "invoices_unpaid", "invoices_overdue", "shipments_total", "invoices_total"]) {
+    assert.match(viewSrc, new RegExp(`s\\.${field}`), `${field} muss aus dem summary-Objekt kommen`);
+  }
   for (const field of ["open_amount", "invoices_unpaid", "invoices_overdue"]) {
-    assert.match(userDetailSrc, new RegExp(`summary\\.${field}`), `${field} muss aus summary kommen`);
     assert.equal(new RegExp(`u\\.${field}`).test(userDetailSrc), false, `${field} darf nicht aus u kommen`);
   }
 });
@@ -108,10 +123,10 @@ test("9 — fehlende Kreditfelder in der API verursachen keinen Fehler", () => {
 });
 
 test("10 — Tabellenstruktur bleibt konsistent: Spaltenköpfe == Zellen pro Zeile", () => {
-  const headers = (usersListSrc.match(/<th>/g) || []).length;
-  // 10 Spalten nach dem Entfernen der zwei Kreditspalten + 1 Spalte „Kundennummer"
-  // (fachliche Kundenkennung CE-K-…, ergänzt mit der Nummern-Integration).
-  assert.equal(headers, 11, `erwartet 11 Spalten (10 ohne Kreditspalten + Kundennummer), gefunden ${headers}`);
+  const headers = (usersListSrc.match(/<th scope="col"/g) || []).length;
+  // Reduziert auf die fünf Spalten der täglichen Übersicht:
+  // Kunde · Kontakt · Kundennummer · Status · Aktion.
+  assert.equal(headers, 5, `erwartet 5 Spalten, gefunden ${headers}`);
 
   // Zellen der Datenzeile zählen (der Block zwischen <tbody> und </tbody>).
   const body = usersListSrc.slice(usersListSrc.indexOf("<tbody>"), usersListSrc.indexOf("</tbody>"));
@@ -184,6 +199,6 @@ test("16 — Selbsttest der Prüflogik (die Wortprüfung greift tatsächlich)", 
   assert.match(stripComments('const a = 1; // Kreditlimit\nconst b = "Kreditlimit";'), /const b = "Kreditlimit"/);
   assert.equal(/\/\/ Kreditlimit/.test(stripComments("// Kreditlimit\nconst x = 1;")), false);
   // Und die Adminseiten enthalten nach dem Strippen weiterhin echten Code.
-  assert.ok(usersListSrc.includes("<th>Zahlungsziel</th>"), "Liste darf nicht leergestrippt sein");
+  assert.ok(usersListSrc.includes('<th scope="col">Kundennummer</th>'), "Liste darf nicht leergestrippt sein");
   assert.ok(userDetailSrc.includes("Offener Betrag"), "Detail darf nicht leergestrippt sein");
 });

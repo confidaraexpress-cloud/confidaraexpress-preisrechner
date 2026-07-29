@@ -175,10 +175,16 @@ test("(8) Rechnungsliste zeigt Rechnungs- und Bestellnummer getrennt", () => {
 
 test("(9–10) Admin-Kundenliste und -detail zeigen die Kundennummer", () => {
   const list = read("pages/admin/AdminUsersPage.jsx");
-  assert.ok(/<th>Kundennummer<\/th>/.test(list), "Spalte 'Kundennummer' fehlt");
-  assert.ok(list.includes("customerNumberOf(u)"), "Kundennummer wird nicht gelesen");
+  assert.ok(/<th scope="col">Kundennummer<\/th>/.test(list), "Spalte 'Kundennummer' fehlt");
+  assert.ok(list.includes("f.customerNumber"), "Kundennummer wird nicht gelesen");
   const detail = read("pages/admin/AdminUserDetailPage.jsx");
-  assert.ok(/\["Kundennummer", dash\(customerNumberOf\(u\)\)\]/.test(detail), "Kundennummer fehlt im Kundendetail");
+  // Detail: identische Feldlesung wie die Liste, zusätzlich tolerant gegenüber
+  // der Hülle des Detailendpunkts — nie aus der internen ID abgeleitet.
+  assert.ok(/\["Kundennummer", customerNumber \|\| "—"\]/.test(detail), "Kundennummer fehlt im Kundendetail");
+  assert.ok(detail.includes("customerNumberFromDetail(detailPayload, u)"), "Kundennummer wird nicht defensiv gelesen");
+  const view = read("utils/adminCustomerView.mjs");
+  assert.ok(/u\.customer_number, u\.customerNumber/.test(view), "nur das fachliche Feld wird gelesen");
+  assert.ok(!/customerNumber[^\n]{0,40}\b(u\.id|user\.id|idOf\()/.test(view), "keine interne ID als Kundennummer");
 });
 
 test("(11) Admin-Sendungsansichten trennen Confidara- und JUMiNGO-Nummer", () => {

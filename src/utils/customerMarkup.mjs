@@ -47,11 +47,11 @@ export const MARKUP_TEXTS = Object.freeze({
   approvalBlockedText: "Vor der Freischaltung muss der individuelle Kundenaufschlag festgelegt und bestätigt werden.",
   approvalBlockedCta: "Aufschlag festlegen",
   reactivationRequired: "Zur Reaktivierung ist ein bestätigter Kundenaufschlag erforderlich.",
-  legacyApproved: "Bestehender Kunde – globaler Standardaufschlag aktiv",
+  legacyApproved: "Globaler Standardaufschlag aktiv",
   legacyApprovedText:
-    "Für diesen bereits freigeschalteten Kunden wurde noch kein individueller Aufschlag bestätigt. "
-    + "Das ist kein Fehler: Der Zugang bleibt uneingeschränkt nutzbar. Eine Bestätigung wird erst "
-    + "erforderlich, wenn der Kunde erneut freigeschaltet werden muss.",
+    "Für diesen bereits freigeschalteten Kunden gilt aktuell der globale Standardaufschlag. "
+    + "Der Zugang bleibt bestehen. Eine individuelle Bestätigung ist vor einer späteren erneuten "
+    + "Freischaltung erforderlich.",
   loadingPricing: "Kundenaufschlag wird geladen…",
   confirmedPrefix: "Bestätigter Kundenaufschlag",
 });
@@ -195,6 +195,25 @@ export function parseMarkupInput(raw) {
 
 // Ist der aktuelle Eingabewert absendbar? Steuert direkt den Button-Disabled-State.
 export const canSubmitMarkup = (raw) => parseMarkupInput(raw).ok;
+
+// Unterscheidet sich die Eingabe vom gespeicherten, bereits bestätigten Wert?
+// Ohne Bestätigung ist jede gültige Eingabe eine echte Aktion (die Bestätigung
+// selbst). Mit Bestätigung ist der unveränderte Wert KEINE Änderung — dafür wird
+// bewusst kein Request abgesetzt.
+export function markupHasChange(pricing, raw) {
+  const parsed = parseMarkupInput(raw);
+  if (!parsed.ok) return false;
+  if (!isMarkupConfirmed(pricing)) return true;
+  const stored = Number(pricing.priceMarkupPercent);
+  if (!Number.isFinite(stored)) return true;
+  // Auf zwei Nachkommastellen vergleichen — genau die zulässige Genauigkeit.
+  return Math.round(parsed.value * 100) !== Math.round(stored * 100);
+}
+
+// Absendbar = gültig UND (noch nicht bestätigt ODER tatsächlich geändert).
+export const canSaveMarkup = (pricing, raw) => parseMarkupInput(raw).ok && markupHasChange(pricing, raw);
+
+export const NO_CHANGE_HINT = "Der Wert entspricht dem bereits bestätigten Aufschlag — es ist keine Änderung nötig.";
 
 // ── Request-Body ────────────────────────────────────────────────────────────
 // PUT /admin/users/:id/price-markup — der Body enthält AUSSCHLIESSLICH

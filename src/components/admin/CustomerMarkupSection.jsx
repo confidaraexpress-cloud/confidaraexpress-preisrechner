@@ -10,7 +10,9 @@ import {
   markupBadge,
   markupInputValue,
   isMarkupConfirmed,
+  markupHasChange,
   parseMarkupInput,
+  NO_CHANGE_HINT,
 } from "../../utils/customerMarkup.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,6 +65,9 @@ export function CustomerMarkupSection({
 
   const parsed = useMemo(() => parseMarkupInput(draft), [draft]);
   const confirmed = isMarkupConfirmed(pricing);
+  // Ein bereits bestätigter, unveränderter Wert löst bewusst keinen Request aus.
+  const hasChange = useMemo(() => markupHasChange(pricing, draft), [pricing, draft]);
+  const noChange = parsed.ok && !hasChange;
   const [badgeCls, badgeLabel] = markupBadge(pricing);
 
   // Fehler am Feld: eigene Validierung (erst nach Berührung) oder die 400-Antwort
@@ -72,12 +77,13 @@ export function CustomerMarkupSection({
   const describedBy = ["adm-markup-help", fieldError ? "adm-markup-error" : null]
     .filter(Boolean).join(" ");
 
+
   const submit = (e) => {
     e.preventDefault();
     setTouched(true);
     // Doppelübermittlung ausgeschlossen: während eines laufenden Requests wird
     // weder abgesendet noch der Button bedienbar gehalten.
-    if (busy || !parsed.ok || typeof onSave !== "function") return;
+    if (busy || !parsed.ok || !hasChange || typeof onSave !== "function") return;
     submittedRef.current = draft;
     onSave(parsed.value);
   };
@@ -192,14 +198,18 @@ export function CustomerMarkupSection({
                 {fieldError && (
                   <p id="adm-markup-error" className="field-error" role="alert">{fieldError}</p>
                 )}
+                {!fieldError && noChange && (
+                  <p id="adm-markup-nochange" className="adm-markup-nochange">{NO_CHANGE_HINT}</p>
+                )}
               </div>
 
               <div className="adm-markup-actions">
                 <button
                   type="submit"
                   className="btn btn-primary btn-sm"
-                  disabled={busy || !parsed.ok}
+                  disabled={busy || !parsed.ok || !hasChange}
                   aria-busy={busy ? "true" : undefined}
+                  aria-describedby={noChange ? "adm-markup-nochange" : undefined}
                 >
                   {busy
                     ? <><span className="spinner spinner-dark" /> {markupActionBusyLabel(pricing)}</>

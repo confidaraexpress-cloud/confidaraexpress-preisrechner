@@ -267,7 +267,7 @@ tr:hover td { background: var(--gray50); }
 .inv-summary-meta strong { color: var(--navy); font-weight: 700; }
 .inv-summary-title { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0; }
 .inv-summary-sub { font-size: 13px; color: var(--gray500); margin: 4px 0 0; }
-.inv-summary-preview-note { font-size: 12.5px; color: var(--inv-neutral-fg); margin-top: 8px; }
+.inv-summary-note { font-size: 12.5px; color: var(--inv-neutral-fg); margin-top: 8px; }
 
 /* ─── Rechnungen: Filter ──────────────────────────────────────────────────── */
 .inv-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -292,15 +292,14 @@ tr:hover td { background: var(--gray50); }
 .inv-table table { min-width: 0; table-layout: fixed; }
 .inv-table th, .inv-table td { vertical-align: top; }
 .inv-table th { white-space: normal; }
-.inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 138px; }
-.inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 170px; }
-.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 170px; }
+.inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 124px; }
+.inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 124px; }
+.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 156px; }
 .inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 138px; }
 
 .inv-cell-number { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .inv-cell-number-value { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
 .inv-cell-order { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
-.inv-cell-mode { margin-top: 2px; }
 
 .inv-period { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--gray600); min-width: 0; }
 /* BEWUSST kein display:flex hier (anders als eine frühere Fassung): Label und
@@ -313,7 +312,6 @@ tr:hover td { background: var(--gray50); }
 .inv-period-row { min-width: 0; }
 .inv-period-label { color: var(--gray400); }
 .inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 700; }
-.inv-period-note { font-size: 11.5px; color: var(--inv-neutral-fg); margin-top: 2px; overflow-wrap: anywhere; }
 
 .inv-amount-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); display: block; margin-bottom: 2px; overflow-wrap: anywhere; }
 .inv-amount-value { font-size: 14px; font-weight: 700; color: var(--navy); white-space: nowrap; }
@@ -329,6 +327,11 @@ tr:hover td { background: var(--gray50); }
 .inv-cards { display: none; list-style: none; flex-direction: column; gap: 12px; margin: 0; padding: 0; }
 .inv-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 16px 18px; }
 .inv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+/* Das Statuspill darf NICHT schrumpfen: eine sehr lange Rechnungsnummer (Altbestand
+   aus einer Migration) presst es sonst so schmal, dass „Offen" Buchstabe für
+   Buchstabe untereinander umbricht. Die Nummer selbst hat min-width:0 und bricht
+   kontrolliert um — sie ist der nachgebende Teil, nicht der Status. */
+.inv-card-head > .inv-status { flex: none; }
 .inv-card-kv { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; font-size: 13px; }
 .inv-card-kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .inv-card-kv-row dt { color: var(--gray500); flex: none; }
@@ -339,16 +342,18 @@ tr:hover td { background: var(--gray50); }
 .inv-card-kv-row dd.inv-period-due--overdue { color: var(--inv-critical-fg); }
 .inv-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* Umschaltpunkt bei 1150px statt der bei sechsspaltigen Admin-Listen üblichen
+/* Umschaltpunkt bei 1100px statt der bei sechsspaltigen Admin-Listen üblichen
    900px: die vier starren Spalten (Betrag/Zahlungsstatus/Dokument/Aktion)
-   benötigen zusammen ca. 660px, weil Zahlungsstatus/Dokument breit genug sein
-   müssen, damit lange Statuslabels ("Nicht zahlungswirksam", "Kein Kunden-
-   versand") sauber zwischen Wörtern umbrechen statt mitten im Wort. Darunter
-   bleiben Rechnung/Zeitraum zu schmal für ihre eigenen Spaltenköpfe UND für
-   "Label + Datum" in der Zeitraum-Zelle (gemessen gegen die echte gebaute App:
-   1150px sauber, 1130px bereits +7–8px Überlauf). Gleiches Muster wie
-   .adm-canc-table. */
-@media (max-width: 1150px) {
+   belegen zusammen ca. 530px; darunter bleiben Rechnung/Zeitraum zu schmal für
+   ihre eigenen Spaltenköpfe (gemessen gegen die echte gebaute App: 1100px
+   sauber, 1050px bricht bereits „Rechnung" im Spaltenkopf um).
+
+   Go-live: der Umschaltpunkt konnte von 1150px auf 1100px sinken, weil mit den
+   internen Zuständen auch die längsten Statuslabels entfallen sind („Nicht
+   zahlungswirksam", „Kein Kundenversand"). Zahlungsstatus/Dokument brauchen
+   jetzt nur noch Platz für „Überfällig" bzw. „PDF-Erstellung fehlgeschlagen".
+   Gleiches Muster wie .adm-canc-table. */
+@media (max-width: 1100px) {
   .inv-table { display: none; }
   .inv-cards { display: flex; }
 }

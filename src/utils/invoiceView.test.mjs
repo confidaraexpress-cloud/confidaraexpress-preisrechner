@@ -210,7 +210,11 @@ test("21 — Fetcher akzeptiert NUR application/pdf; Fehlerantworten werden nie 
 });
 
 test("22 — Kundenliste: E-Mail-Status sichtbar, KEINE Versandaktion beim Kunden", () => {
-  assert.ok(listSrc.includes("emailDisplayMeta"), "E-Mail-Status-Badge in der Kundenliste");
+  // Phase 5: die Statusableitung lebt jetzt zentral in customerInvoiceView.mjs
+  // (emailStatusMeta, produktivitätsbasiert statt nur is_test_document-basiert)
+  // statt der älteren invoiceView.mjs-Funktion emailDisplayMeta — die Aussage
+  // bleibt identisch (Testdokumente zeigen nie einen echten Versandstatus).
+  assert.ok(listSrc.includes("emailStatusMeta"), "E-Mail-Status-Badge in der Kundenliste");
   assert.ok(listSrc.includes("formatEmailSentAt"), "'Versendet am' bei sent");
   for (const forbidden of ["sendAdminInvoiceEmail", "resendAdminInvoiceEmail", "send-email", "resend-email"]) {
     assert.ok(!listSrc.includes(forbidden), `Kundenkomponente darf keine Versandaktion enthalten (${forbidden})`);

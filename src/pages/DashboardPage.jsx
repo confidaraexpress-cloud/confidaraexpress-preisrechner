@@ -47,8 +47,13 @@ export default function DashboardPage() {
   const leaveGuardRef = useRef(null);
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [invoiceSummary, setInvoiceSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  // Getrennt vom allgemeinen loadError (Sendungen): ein fehlgeschlagener Rechnungsabruf
+  // betrifft nur den Rechnungsbereich und soll dort eigenständig mit Retry angezeigt
+  // werden, ohne die übrigen Dashboarddaten als fehlerhaft zu markieren.
+  const [invoicesError, setInvoicesError] = useState("");
   const [bookingToast, setBookingToast] = useState(false);
   // Adressbuch → „Neue Sendung": reiner Werte-Patch (s_*/r_*-Formfelder), KEINE
   // dauerhafte addressId-Referenz. Wird einmalig beim Mount von NewShipmentPage
@@ -64,18 +69,27 @@ export default function DashboardPage() {
   const fetchData = useCallback(() => {
     setLoading(true);
     setLoadError("");
+    setInvoicesError("");
     const toErr = (r) => { const e = new Error(); e.status = r.status; return e; };
-    Promise.all([
+    // allSettled statt all: ein fehlgeschlagener Rechnungsabruf darf die bereits
+    // erfolgreich geladenen Sendungen nicht mit als „fehlgeschlagen" markieren (und
+    // umgekehrt) — jede Quelle bekommt ihren eigenen Fehlerzustand.
+    Promise.allSettled([
       apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
       apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
-    ]).then(([s, inv]) => {
-      setShipments(s.shipments || []);
-      setInvoices(inv.invoices || []);
+    ]).then(([shipRes, invRes]) => {
+      if (shipRes.status === "fulfilled") {
+        setShipments(shipRes.value.shipments || []);
+      } else if (!(shipRes.reason?.status === 401 || shipRes.reason?.status === 403)) {
+        setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
+      }
+      if (invRes.status === "fulfilled") {
+        setInvoices(invRes.value.invoices || []);
+        setInvoiceSummary(invRes.value.summary || null);
+      } else if (!(invRes.reason?.status === 401 || invRes.reason?.status === 403)) {
+        setInvoicesError("Die Rechnungen konnten nicht geladen werden.");
+      }
       setLoading(false);
-    }).catch((e) => {
-      setLoading(false);
-      if (e?.status === 401 || e?.status === 403) return; // globaler Auth-Redirect übernimmt
-      setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
     });
   }, []);
 
@@ -85,13 +99,17 @@ export default function DashboardPage() {
   // Aktualisierung der Rechnungsliste (manueller Button + zurückhaltendes
   // Auto-Refresh in InvoicesList) — lädt bewusst NICHT die Sendungen mit.
   // Still bei Fehlern (bestehende Daten bleiben stehen); echte Session-Fehler
-  // behandelt apiFetch zentral.
+  // behandelt apiFetch zentral. Der initiale Ladefehler (invoicesError) wird
+  // hierüber NICHT gesetzt — der explizite Retry-Button im Fehlerzustand ruft
+  // stattdessen fetchData() auf (siehe unten), damit ein fehlgeschlagener
+  // erster Ladeversuch sichtbar bleibt, bis er wirklich behoben ist.
   const reloadInvoices = useCallback(async () => {
     try {
       const r = await apiFetch(`/kunde/invoices`, { auth: true });
       if (!r.ok) return;
       const d = await r.json();
       setInvoices(d.invoices || []);
+      setInvoiceSummary(d.summary || null);
     } catch { /* Netzwerkfehler: Anzeige unverändert lassen */ }
   }, []);
 
@@ -267,7 +285,16 @@ export default function DashboardPage() {
           </>
         )}
 
-        {page === "invoices"  && <InvoicesList  invoices={invoices}   loading={loading} onReload={reloadInvoices} />}
+        {page === "invoices"  && (
+          <InvoicesList
+            invoices={invoices}
+            summary={invoiceSummary}
+            loading={loading}
+            error={invoicesError}
+            onReload={reloadInvoices}
+            onRetry={fetchData}
+          />
+        )}
         {page === "profile"   && <Profile user={user} />}
 
         {page !== "overview" && <LegalLinks />}

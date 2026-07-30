@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 
-// Rechnungs-PDF-Vorschau (Phase 4) — wiederverwendbar für Kunde UND Admin.
+// Rechnungs-PDF-Vorschau (Phase 4, Fokusverhalten Phase 5) — wiederverwendbar
+// für Kunde UND Admin.
 //
 // Sicherheitsprinzip: Die PDF kommt AUSSCHLIESSLICH über den übergebenen,
 // authentifizierten Blob-Fetcher (fetchPdf → { blob, filename }); der Fetcher
@@ -13,6 +14,13 @@ import { Icon } from "../ui/Icon";
 // aber ohnehin ausschließlich unser eigener, typgeprüfter Blob. Die Object-URL
 // wird beim Schließen UND beim Unmount zuverlässig freigegeben; es gibt keinen
 // permanenten Object-URL-Zustand und keine Storage-/internen IDs im DOM.
+//
+// Fokusverhalten (dasselbe Muster wie components/admin/ConfirmDialog.jsx):
+// Fokus beim Öffnen auf „Schließen", Escape schließt, der Fokus kehrt beim
+// Schließen zum auslösenden Element zurück — zusätzlich, weil dieser Dialog
+// (anders als ConfirmDialog mit nur zwei Buttons) einen iframe und variable
+// Aktionen enthält: eine echte Tab-Fokusfalle, damit Tab/Shift+Tab den Dialog
+// nicht verlassen kann, solange er offen ist.
 export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,6 +28,8 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
   const [downloading, setDownloading] = useState(false);
   const urlRef = useRef(null);
   const closeBtnRef = useRef(null);
+  const modalRef = useRef(null);
+  const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
 
   // Blob laden → Object-URL erzeugen; Cleanup (revoke) bei Unmount/Neuladung.
   useEffect(() => {
@@ -42,13 +52,29 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
     };
   }, [fetchPdf]);
 
-  // Escape schließt; Fokus initial auf den Schließen-Button.
+  // Fokus initial auf „Schließen"; Escape schließt; Tab-Fokusfalle innerhalb des
+  // Dialogs; beim Schließen kehrt der Fokus zum auslösenden Element zurück.
   useEffect(() => {
     closeBtnRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const focusable = () =>
+      [...(modalRef.current?.querySelectorAll('button, [href], iframe, [tabindex]:not([tabindex="-1"])') || [])]
+        .filter((el) => !el.disabled);
+    const onKey = (e) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      openerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDownload = async () => {
     if (downloading || typeof onDownload !== "function") return;
@@ -61,6 +87,7 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
   return (
     <div className="pdfview-overlay" role="presentation" onClick={onClose}>
       <div
+        ref={modalRef}
         className="pdfview-modal"
         role="dialog"
         aria-modal="true"
@@ -84,7 +111,7 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
         </div>
         <div className="pdfview-body">
           {loading ? (
-            <div className="loading-center"><span className="spinner spinner-dark" /> PDF wird geladen…</div>
+            <div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> PDF wird geladen…</div>
           ) : error ? (
             <div className="alert alert-error" role="alert" style={{ margin: 16 }}>
               <Icon n="x" s={16} />{error}

@@ -1,44 +1,208 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { money, dateDE } from "../../utils/formatters";
 import { PremiumBackground } from "./PremiumBackground";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
 import { downloadCustomerInvoicePdf, fetchCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
 import {
-  documentStatusMeta, isTestInvoiceDocument, canDownloadInvoice, canPreviewInvoice,
-  formatInvoiceAmount, hasPendingInvoiceDocuments, nextRefreshDelay,
-  emailDisplayMeta, formatEmailSentAt,
-  PREVIEW_DOCUMENT_HINT, PREVIEW_DOCUMENT_BADGE, DOWNLOAD_ERROR_GENERIC,
+  canDownloadInvoice, canPreviewInvoice, formatInvoiceAmount,
+  hasPendingInvoiceDocuments, nextRefreshDelay, formatEmailSentAt,
+  DOWNLOAD_ERROR_GENERIC,
 } from "../../utils/invoiceView.mjs";
+import {
+  TONE, paymentStatus, documentModeMeta, documentModeHint,
+  documentStatusMeta, emailStatusMeta, invoicePeriod, amountLabel, unavailableActionReason,
+  INVOICE_FILTERS, matchesInvoiceFilter,
+  FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
+  customerInvoiceSummary,
+} from "../../utils/customerInvoiceView.mjs";
 import { businessOrderNumberOf } from "../../utils/businessNumbers.mjs";
 
-// Rechnungsliste (Kunde) — Phase 3/4: authentifizierter Blob-Download + direkte
-// PDF-Vorschau (Modal mit kurzlebiger Blob-Object-URL) + Rechnungs-E-Mail-Status.
+// Rechnungsliste (Kunde) — Phase 5: Forderungsklassifizierung, sechs fachliche
+// Bereiche, Premium-Statussystem, mobile Kartenansicht, lokale Filter.
+//
+// Zahlungsstatus/Dokumentmodus/Zeitraum/Betrag kommen AUSSCHLIESSLICH aus dem
+// zentralen View-Model (customerInvoiceView.mjs) — keine eigene Fachlogik hier.
 // „Ansehen"/„Herunterladen" erscheinen AKTIV nur bei serverseitigem
-// download_available === true; Testdokumente zeigen stattdessen dauerhaft den
-// Hinweis „Testdokument – nicht für den Zahlungsverkehr freigegeben" und beim
-// E-Mail-Status „Testdokument – kein Versand". Der Kunde besitzt KEINE
-// Versandaktion (Senden/Retry/Resend sind reine Admin-Funktionen) und sieht
-// keine Providerdetails oder internen Fehlertexte. Solange sichtbare Rechnungen
-// auf ihr Dokument warten, wird zurückhaltend automatisch aktualisiert (max. 3
-// Versuche mit wachsendem Abstand); zusätzlich manueller Aktualisieren-Button.
+// download_available === true; die Policy wird NICHT im Frontend rekonstruiert.
 
-export function InvoicesList({ invoices, loading, onReload }) {
-  const unpaid = invoices.filter((i) => i.status === "unpaid");
-  const unpaidAmt = unpaid.reduce((s, i) => s + Number(i.amount), 0);
+function StatusPill({ tone, label, title }) {
+  return (
+    <span className={`inv-status inv-status--${tone}`} title={title}>
+      <span className="inv-status-text">{label}</span>
+    </span>
+  );
+}
 
+// ── Zusammenfassung oberhalb der Liste ──────────────────────────────────────
+function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
+  const view = customerInvoiceSummary(invoices, summary);
+  return (
+    <div className="inv-summary">
+      <div className="inv-summary-row">
+        <div>
+          {view.state === "open" && (
+            <>
+              <p className="inv-summary-label">Offener Betrag</p>
+              <div className="inv-summary-amount">{money(view.openAmount)}</div>
+              <div className="inv-summary-meta">
+                <span>{view.openCount} {view.openCount === 1 ? "offene Rechnung" : "offene Rechnungen"}</span>
+                {view.overdueCount > 0 && <span><strong>{view.overdueCount}</strong> {view.overdueCount === 1 ? "davon überfällig" : "davon überfällig"}</span>}
+                {view.nextDueDate && <span>Nächste Fälligkeit: <strong>{dateDE(view.nextDueDate)}</strong></span>}
+              </div>
+              {view.mixedCurrency && (
+                <p className="inv-summary-preview-note">Es liegen zusätzlich Rechnungen in einer anderen Währung vor, die hier nicht mitgerechnet sind.</p>
+              )}
+            </>
+          )}
+          {view.state === "noOpen" && (
+            <>
+              <p className="inv-summary-title">Keine offenen Forderungen</p>
+              {view.previewCount > 0 && (
+                <p className="inv-summary-preview-note">
+                  {view.previewCount} {view.previewCount === 1 ? "internes Test- oder Vorschaudokument" : "interne Test- oder Vorschaudokumente"} vorhanden
+                </p>
+              )}
+            </>
+          )}
+          {view.state === "empty" && <p className="inv-summary-title">{LIST_EMPTY_TITLE}</p>}
+        </div>
+        {typeof onReload === "function" && (
+          <button type="button" className="btn btn-outline btn-sm" onClick={onReload} disabled={loading} aria-label="Rechnungsliste aktualisieren">
+            <Icon n="refresh" s={14} /> Aktualisieren
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Zellen (gemeinsam für Desktop-Tabelle und Mobilkarte genutzt) ──────────
+function InvoiceNumberBlock({ inv }) {
+  const mode = documentModeMeta(inv);
+  const hint = documentModeHint(inv);
+  const order = businessOrderNumberOf(inv);
+  return (
+    <div className="inv-cell-number">
+      <span className="inv-cell-number-value">{inv.invoice_number}</span>
+      <span className="inv-cell-order">{order || "Bestellung nicht hinterlegt"}</span>
+      {mode && <span className="inv-cell-mode"><StatusPill tone={mode[0]} label={mode[1]} title={hint || undefined} /></span>}
+    </div>
+  );
+}
+
+function PeriodBlock({ inv }) {
+  const p = invoicePeriod(inv);
+  return (
+    <div className="inv-period">
+      {/* Ein echtes Leerzeichen ({" "}) zwischen Label und Wert ist hier kein Stilmittel,
+          sondern die einzige Umbruchstelle: zwei direkt aneinandergrenzende Inline-Elemente
+          ohne Leerraum dazwischen sind für den Zeilenumbruch EIN unteilbares Token — bei
+          schmalen Spaltenbreiten würde die Zeile sonst überlaufen statt umzubrechen. */}
+      <div className="inv-period-row"><span className="inv-period-label">Rechnung</span> <span>{dateDE(p.issuedAt)}</span></div>
+      {p.serviceAt && <div className="inv-period-row"><span className="inv-period-label">Leistung</span> <span>{dateDE(p.serviceAt)}</span></div>}
+      {p.dueAt && (
+        <div className="inv-period-row">
+          <span className="inv-period-label">Fällig</span> <span className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</span>
+        </div>
+      )}
+      {p.nonPayableNote && <div className="inv-period-note">Nicht zahlungswirksam</div>}
+    </div>
+  );
+}
+
+function AmountBlock({ inv }) {
+  return (
+    <div>
+      <span className="inv-amount-label">{amountLabel(inv)}</span>
+      <span className="inv-amount-value">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</span>
+    </div>
+  );
+}
+
+function PaymentStatusCell({ inv }) {
+  const [tone, label] = paymentStatus(inv);
+  return <StatusPill tone={tone} label={label} />;
+}
+
+function DocumentCell({ inv }) {
+  const [docTone, docLabel] = documentStatusMeta(inv);
+  const [mailTone, mailLabel] = emailStatusMeta(inv);
+  const sentAt = mailLabel === "Versendet" ? formatEmailSentAt(inv.email_sent_at) : "";
+  return (
+    <div className="inv-doc-cell">
+      <StatusPill tone={docTone} label={docLabel} />
+      <StatusPill tone={mailTone} label={mailLabel} />
+      {sentAt && <span className="inv-doc-note">{sentAt}</span>}
+    </div>
+  );
+}
+
+function ActionButtons({ inv, downloadingId, onView, onDownload }) {
+  const busy = downloadingId === inv.id;
+  if (canDownloadInvoice(inv)) {
+    return (
+      <div className="inv-actions">
+        <div className="inv-actions-row">
+          {canPreviewInvoice(inv) && (
+            <button
+              type="button" className="btn btn-ghost btn-sm" onClick={() => onView(inv)}
+              disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} ansehen`} title="Rechnung ansehen"
+            >
+              <Icon n="eye" s={14} /> Ansehen
+            </button>
+          )}
+          <button
+            type="button" className="btn btn-ghost btn-sm" onClick={() => onDownload(inv)}
+            disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`} title="Rechnung als PDF herunterladen"
+          >
+            {busy ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</> : <><Icon n="download" s={14} /> PDF</>}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const reason = unavailableActionReason(inv);
+  return <div className="inv-actions">{reason && <span className="inv-action-reason">{reason}</span>}</div>;
+}
+
+// ── Mobilkarte ───────────────────────────────────────────────────────────────
+function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
+  const [payTone, payLabel] = paymentStatus(inv);
+  const p = invoicePeriod(inv);
+  const [docTone, docLabel] = documentStatusMeta(inv);
+  const [mailTone, mailLabel] = emailStatusMeta(inv);
+  return (
+    <li className="inv-card">
+      <div className="inv-card-head">
+        <InvoiceNumberBlock inv={inv} />
+        <StatusPill tone={payTone} label={payLabel} />
+      </div>
+      <dl className="inv-card-kv">
+        <div className="inv-card-kv-row"><dt>{amountLabel(inv)}</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
+        <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{dateDE(p.issuedAt)}</dd></div>
+        {p.serviceAt && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{dateDE(p.serviceAt)}</dd></div>}
+        {p.dueAt && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</dd></div>}
+        <div className="inv-card-kv-row"><dt>Dokument</dt><dd><StatusPill tone={docTone} label={docLabel} /></dd></div>
+        <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><StatusPill tone={mailTone} label={mailLabel} /></dd></div>
+      </dl>
+      <div className="inv-card-actions">
+        <ActionButtons inv={inv} downloadingId={downloadingId} onView={onView} onDownload={onDownload} />
+      </div>
+    </li>
+  );
+}
+
+export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry }) {
+  const [filter, setFilter] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
   const [previewInvoice, setPreviewInvoice] = useState(null); // { id, invoice_number } | null
 
-  // Zurückhaltende Auto-Aktualisierung (Phase 3, Backoff): NUR solange mindestens eine sichtbare
-  // Rechnung auf ihr Dokument wartet (pending_document|generating). Backoff 5/10/20/30/45 s (Summe
-  // ≈ 110 s → „maximal etwa zwei Minuten"), danach Stopp (kein Endlos-Poll); ready/document_failed
-  // stoppen sofort (kein wartendes Dokument mehr). Reset bei manueller Aktualisierung. Im
-  // HINTERGRUND-TAB wird NICHT gepollt (document.hidden); beim Zurückwechseln wird — falls noch
-  // etwas wartet — sofort einmal aktualisiert und der Backoff fortgesetzt. Timer + Listener werden
-  // beim Unmount vollständig bereinigt.
+  // Zurückhaltende Auto-Aktualisierung (unverändert aus Phase 3/4): NUR solange mindestens eine
+  // sichtbare Rechnung auf ihr Dokument wartet (pending_document|generating). Backoff 5/10/20/30/45 s,
+  // danach Stopp. Im Hintergrund-Tab wird nicht gepollt; beim Zurückwechseln wird — falls noch etwas
+  // wartet — sofort einmal aktualisiert und der Backoff fortgesetzt.
   const refreshAttemptRef = useRef(0);
   const timerRef = useRef(null);
   const [tabVisible, setTabVisible] = useState(() => typeof document === "undefined" || !document.hidden);
@@ -51,9 +215,9 @@ export function InvoicesList({ invoices, loading, onReload }) {
   useEffect(() => {
     if (loading || typeof onReload !== "function") return undefined;
     if (!hasPendingInvoiceDocuments(invoices)) { refreshAttemptRef.current = 0; return undefined; }
-    if (!tabVisible) return undefined; // im Hintergrund keine Serverlast erzeugen
+    if (!tabVisible) return undefined;
     const delay = nextRefreshDelay(refreshAttemptRef.current);
-    if (delay == null) return undefined; // Obergrenze erreicht → nur noch manuell
+    if (delay == null) return undefined;
     timerRef.current = setTimeout(() => {
       refreshAttemptRef.current += 1;
       onReload();
@@ -68,7 +232,7 @@ export function InvoicesList({ invoices, loading, onReload }) {
   };
 
   const handleDownload = async (inv) => {
-    if (downloadingId != null) return; // Doppelklick/Parallel-Download verhindern
+    if (downloadingId != null) return;
     setDownloadError("");
     setDownloadingId(inv.id);
     try {
@@ -80,103 +244,35 @@ export function InvoicesList({ invoices, loading, onReload }) {
     }
   };
 
-  // Stabiler Fetcher für das geöffnete Modal (Object-URL-Lebenszyklus liegt im Modal).
   const previewFetcher = useCallback(() => {
     if (!previewInvoice) return Promise.reject(new Error(DOWNLOAD_ERROR_GENERIC));
     return fetchCustomerInvoicePdf(previewInvoice.id, previewInvoice.invoice_number);
   }, [previewInvoice]);
 
-  const renderDocumentCell = (inv) => {
-    const [cls, label] = documentStatusMeta(inv.document_status);
-    const isTest = isTestInvoiceDocument(inv);
-    return (
-      <div className="invoice-doc-cell">
-        <span className={`badge ${cls}`}>{label}</span>
-        {isTest && <span className="badge badge-yellow">{PREVIEW_DOCUMENT_BADGE}</span>}
-      </div>
-    );
-  };
-
-  const renderEmailCell = (inv) => {
-    const [cls, label] = emailDisplayMeta(inv);
-    const sentAt = !isTestInvoiceDocument(inv) && inv.email_status === "sent" ? formatEmailSentAt(inv.email_sent_at) : "";
-    return (
-      <div className="invoice-doc-cell">
-        <span className={`badge ${cls}`}>{label}</span>
-        {sentAt && <span className="text-muted invoice-doc-note">{sentAt}</span>}
-      </div>
-    );
-  };
-
-  const renderActionCell = (inv) => {
-    const isPreview = isTestInvoiceDocument(inv);
-    if (canDownloadInvoice(inv)) {
-      const busy = downloadingId === inv.id;
-      return (
-        <div className="invoice-row-actions">
-          {canPreviewInvoice(inv) && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setPreviewInvoice({ id: inv.id, invoice_number: inv.invoice_number })}
-              disabled={downloadingId != null}
-              aria-label={`Rechnung ${inv.invoice_number} ansehen`}
-              title="Rechnung ansehen"
-            >
-              <Icon n="eye" s={14} /> Ansehen
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => handleDownload(inv)}
-            disabled={downloadingId != null}
-            aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`}
-            title="Rechnung als PDF herunterladen"
-          >
-            {busy
-              ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</>
-              : <><Icon n="download" s={14} /> PDF</>}
-          </button>
-          {/* Vorschau ist ansehbar/herunterladbar, aber NICHT zahlungswirksam — Hinweis bleibt sichtbar. */}
-          {isPreview && <span className="text-muted invoice-doc-note">{PREVIEW_DOCUMENT_HINT}</span>}
-        </div>
-      );
-    }
-    if (isPreview) {
-      return <span className="text-muted invoice-doc-note">{PREVIEW_DOCUMENT_HINT}</span>;
-    }
-    if (inv.document_status === "pending_document" || inv.document_status === "generating") {
-      return <span className="text-muted invoice-doc-note">Rechnung wird erstellt</span>;
-    }
-    if (inv.document_status === "document_failed") {
-      return <span className="text-muted invoice-doc-note">Rechnung konnte noch nicht erstellt werden</span>;
-    }
-    return <span className="text-muted">—</span>;
-  };
+  const list = Array.isArray(invoices) ? invoices : [];
+  const filtered = list.filter((inv) => matchesInvoiceFilter(inv, filter));
 
   return (
     <>
       <PremiumBackground variant="soft" />
       <div className="page-body">
-        <div className="invoice-list-toolbar">
-          {unpaid.length > 0 ? (
-            <div className="alert alert-info" style={{ marginBottom: 0, flex: 1 }}>
-              <Icon n="invoice" s={16} />Offen: <strong>{money(unpaidAmt)}</strong>
-            </div>
-          ) : <span />}
-          {typeof onReload === "function" && (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={manualReload}
-              disabled={loading}
-              aria-label="Rechnungsliste aktualisieren"
-            >
-              <Icon n="refresh" s={14} /> Aktualisieren
-            </button>
-          )}
-        </div>
+        <InvoiceSummaryCard invoices={list} summary={summary} onReload={manualReload} loading={loading} />
+
+        {list.length > 0 && (
+          <div className="inv-filters" role="group" aria-label="Rechnungen filtern">
+            {INVOICE_FILTERS.map((f) => (
+              <button
+                key={f.value || "all"}
+                type="button"
+                className={`inv-filter-chip${filter === f.value ? " inv-filter-chip--active" : ""}`}
+                aria-pressed={filter === f.value}
+                onClick={() => setFilter(f.value)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {downloadError && (
           <div className="alert alert-error mb-16" role="alert">
@@ -185,54 +281,71 @@ export function InvoicesList({ invoices, loading, onReload }) {
         )}
 
         {loading ? (
-          <div className="loading-center"><span className="spinner spinner-dark" /></div>
-        ) : invoices.length === 0 ? (
+          <div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> {LOADING_TEXT}</div>
+        ) : error ? (
+          <div className="inv-loaderr">
+            <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || LOAD_ERROR_TEXT}</div>
+            <div className="inv-loaderr-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={onRetry}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            </div>
+          </div>
+        ) : list.length === 0 ? (
           <div className="empty">
             <div className="empty-icon">🧾</div>
-            <div className="empty-title">Keine Rechnungen</div>
+            <div className="empty-title">{LIST_EMPTY_TITLE}</div>
+            <p className="empty-text">{LIST_EMPTY_TEXT}</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty">
+            <div className="empty-title">{FILTER_EMPTY_TEXT}</div>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setFilter("")}>Filter zurücksetzen</button>
           </div>
         ) : (
-          <div className="table-card">
-            <div className="table-scroll">
+          <>
+            {/* Desktop: sechs Bereiche mit relativen/festen Breiten — kein horizontales Scrollen. */}
+            <div className="table-card inv-table">
               <table>
+                <caption className="sr-only">
+                  Rechnungen — Rechnung, Zeitraum, Betrag, Zahlungsstatus, Dokument und Aktion.
+                </caption>
                 <thead>
                   <tr>
-                    <th>Rechnungsnummer</th>
-                    <th>Bestellung</th>
-                    <th>Datum</th>
-                    <th>Leistung</th>
-                    <th>Fällig</th>
-                    <th>Betrag</th>
-                    <th>Zahlung</th>
-                    <th>Dokument</th>
-                    <th>E-Mail</th>
-                    <th>Aktion</th>
+                    <th scope="col">Rechnung</th>
+                    <th scope="col">Zeitraum</th>
+                    <th scope="col">Betrag</th>
+                    <th scope="col">Zahlungsstatus</th>
+                    <th scope="col">Dokument</th>
+                    <th scope="col">Aktion</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices.map((inv) => (
+                  {filtered.map((inv) => (
                     <tr key={inv.id}>
-                      {/* Rechnungsnummer bleibt die primäre Dokumentnummer; die Bestellnummer
-                          steht getrennt daneben. Legacy-Rechnungen ohne Bestellnummer zeigen
-                          „—" — NIE die JUMiNGO-Ordernummer und NIE eine interne ID. */}
-                      <td className="mono" style={{ fontSize: 12, wordBreak: "break-all" }}>{inv.invoice_number}</td>
-                      <td className="mono text-muted" style={{ fontSize: 12, wordBreak: "break-all" }}>
-                        {businessOrderNumberOf(inv) || "—"}
-                      </td>
-                      <td className="text-muted">{dateDE(inv.issued_at || inv.created_at)}</td>
-                      <td className="text-muted">{inv.service_date ? dateDE(inv.service_date) : "—"}</td>
-                      <td className="text-muted">{dateDE(inv.due_date)}</td>
-                      <td className="font-bold">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</td>
-                      <td><StatusBadge status={inv.status} /></td>
-                      <td>{renderDocumentCell(inv)}</td>
-                      <td>{renderEmailCell(inv)}</td>
-                      <td>{renderActionCell(inv)}</td>
+                      <td><InvoiceNumberBlock inv={inv} /></td>
+                      <td><PeriodBlock inv={inv} /></td>
+                      <td><AmountBlock inv={inv} /></td>
+                      <td><PaymentStatusCell inv={inv} /></td>
+                      <td><DocumentCell inv={inv} /></td>
+                      <td><ActionButtons inv={inv} downloadingId={downloadingId} onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })} onDownload={handleDownload} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+
+            {/* Mobil: Kartenansicht statt Tabelle. */}
+            <ul className="inv-cards">
+              {filtered.map((inv) => (
+                <InvoiceCard
+                  key={inv.id} inv={inv} downloadingId={downloadingId}
+                  onView={(i) => setPreviewInvoice({ id: i.id, invoice_number: i.invoice_number })}
+                  onDownload={handleDownload}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </div>
 

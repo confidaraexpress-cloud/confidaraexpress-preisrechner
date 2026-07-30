@@ -207,10 +207,151 @@ tr:hover td { background: var(--gray50); }
 .shipment-weight { font-size: 11px; color: var(--gray400); }
 
 /* ─── Rechnungen: Dokumentstatus + Download (Phase 3) ─────────────────────── */
-.invoice-list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .invoice-doc-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .invoice-doc-note { font-size: 11.5px; line-height: 1.4; display: inline-block; max-width: 190px; }
 .invoice-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ─── Rechnungen: Premium-Statussystem (Phase 5) ─────────────────────────────
+   Vier Statusfamilien, AUSSCHLIESSLICH für Rechnungen (inv-status--*) — bewusst
+   KEINE globale .badge-*-Migration, um andere Kundenbereiche (Sendungen,
+   Konto) nicht zu verändern. Ruhiger als .badge: reduzierte Rundung (8px statt
+   Pill), etwas mehr horizontales Padding, kein weißer/grelle Vollton-Hintergrund
+   — nur die bereits vorhandenen Light-Tokens in gedämpfter, entsättigter Form.
+   Kein Umbruchzwang (anders als .badge/nowrap): die Labels sind länger
+   ("PDF-Erstellung fehlgeschlagen") und brechen bei Bedarf kontrolliert um,
+   statt eine Spalte zu sprengen. Keine Schatten, keine Animation. */
+:root {
+  --inv-neutral-bg: var(--gray100);
+  --inv-neutral-fg: var(--gray600);
+  --inv-positive-bg: #eef4f1;
+  --inv-positive-fg: #2f6b52;
+  --inv-attention-bg: #f6f0e4;
+  --inv-attention-fg: #8a6a3f;
+  --inv-critical-bg: #f7ecec;
+  --inv-critical-fg: #8c3f3f;
+}
+.inv-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 600; line-height: 1.35;
+}
+.inv-status::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.65; }
+/* Der Label-Text ist ein eigenes Flex-Item mit min-width:0 — ohne das würde der
+   implizite min-width:auto von Flex-Items den Text NIE umbrechen lassen, auch
+   nicht bei mehrwortigen Labels wie „Nicht zahlungswirksam" (bekannter
+   Flexbox-Effekt bei Textknoten als direktem Flex-Kind). */
+/* hyphens:auto (mit lang="de" auf <html>) bricht lange, unteilbare deutsche
+   Komposita ("zahlungswirksam", "Kundenversand") an echten Silbengrenzen mit
+   Trennstrich statt an einer beliebigen Stelle — overflow-wrap bleibt als
+   Rückfallebene für den seltenen Fall, dass die Silbentrennung selbst nicht
+   ausreicht. */
+.inv-status-text { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.inv-status--neutral   { background: var(--inv-neutral-bg);   color: var(--inv-neutral-fg);   border: 1px solid rgba(71,85,105,0.14); }
+.inv-status--positive  { background: var(--inv-positive-bg);  color: var(--inv-positive-fg);  border: 1px solid rgba(47,107,82,0.16); }
+.inv-status--attention { background: var(--inv-attention-bg); color: var(--inv-attention-fg); border: 1px solid rgba(138,106,63,0.18); }
+.inv-status--critical  { background: var(--inv-critical-bg);  color: var(--inv-critical-fg);  border: 1px solid rgba(140,63,63,0.18); }
+
+/* ─── Rechnungen: eigener Ladefehler-Zustand (getrennt von Sendungen) ────────── */
+.inv-loaderr { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+.inv-loaderr-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ─── Rechnungen: Zusammenfassung oberhalb der Liste ─────────────────────────
+   Ersetzt den früheren einzeiligen Balken. Drei Zustände (offen/keine offene
+   Forderung/keine Rechnungen) — siehe customerInvoiceSummary() in
+   customerInvoiceView.mjs. Ruhige Kartenoptik statt Alert-Farbe. */
+.inv-summary { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.inv-summary-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.inv-summary-label { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--gray500); text-transform: uppercase; margin: 0 0 4px; }
+.inv-summary-amount { font-size: 26px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+.inv-summary-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 13px; color: var(--gray600); }
+.inv-summary-meta strong { color: var(--navy); font-weight: 700; }
+.inv-summary-title { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0; }
+.inv-summary-sub { font-size: 13px; color: var(--gray500); margin: 4px 0 0; }
+.inv-summary-preview-note { font-size: 12.5px; color: var(--inv-neutral-fg); margin-top: 8px; }
+
+/* ─── Rechnungen: Filter ──────────────────────────────────────────────────── */
+.inv-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.inv-filter-chip {
+  border: 1px solid var(--border); background: #fff; color: var(--gray600);
+  font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
+  cursor: pointer;
+}
+.inv-filter-chip:hover { border-color: var(--border2); color: var(--navy); }
+.inv-filter-chip:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.inv-filter-chip--active { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+/* ─── Rechnungen: Tabelle ohne horizontales Scrollen (sechs Bereiche) ────────
+   Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben.
+   Betrag/Zahlungsstatus/Dokument/Aktion sind starr (Zahl, Statuslabel, Buttons)
+   und bekommen feste Breiten; Rechnung und Zeitraum teilen sich den Rest
+   (fixed-Layout, kein weiteres width nötig). Breiten empirisch gegen die echte
+   gebaute App gemessen (Playwright, 1440–320 px). Lange Statuslabels ("Nicht
+   zahlungswirksam", "Kein Kundenversand") brechen dank hyphens:auto an echten
+   Silbengrenzen (.inv-status-text) — die Spalten müssen sie deshalb NICHT
+   unwrapped aufnehmen, nur eng genug für einen sauberen Silbenumbruch sein. */
+.inv-table table { min-width: 0; table-layout: fixed; }
+.inv-table th, .inv-table td { vertical-align: top; }
+.inv-table th { white-space: normal; }
+.inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 138px; }
+.inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 170px; }
+.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 170px; }
+.inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 138px; }
+
+.inv-cell-number { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.inv-cell-number-value { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
+.inv-cell-order { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
+.inv-cell-mode { margin-top: 2px; }
+
+.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--gray600); min-width: 0; }
+/* BEWUSST kein display:flex hier (anders als eine frühere Fassung): Label und
+   Datum sind beide je ein unteilbares Wort ("Rechnung"/"Fällig", "30.7.2026")
+   — als Flex-Items könnten sie mangels Leerzeichen nie umbrechen und dann auch
+   nicht schrumpfen (derselbe Effekt wie bei .inv-status ohne inneren Textknoten,
+   hier aber ohne einfachen Ausweg über min-width:0, weil das Datum selbst nicht
+   sinnvoll umbrechen kann). Im normalen Textfluss darf die Zeile bei Bedarf
+   zwischen Label und Datum umbrechen, statt zu überlaufen. */
+.inv-period-row { min-width: 0; }
+.inv-period-label { color: var(--gray400); }
+.inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 700; }
+.inv-period-note { font-size: 11.5px; color: var(--inv-neutral-fg); margin-top: 2px; overflow-wrap: anywhere; }
+
+.inv-amount-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); display: block; margin-bottom: 2px; overflow-wrap: anywhere; }
+.inv-amount-value { font-size: 14px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+
+.inv-doc-cell { display: flex; flex-direction: column; gap: 5px; }
+.inv-doc-note { font-size: 11px; color: var(--gray500); }
+
+.inv-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.inv-actions-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-action-reason { font-size: 11.5px; color: var(--gray500); line-height: 1.35; }
+
+/* ─── Rechnungen: Mobilkarten — unterhalb ~900 px statt der Tabelle ────────── */
+.inv-cards { display: none; list-style: none; flex-direction: column; gap: 12px; margin: 0; padding: 0; }
+.inv-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 16px 18px; }
+.inv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.inv-card-kv { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; font-size: 13px; }
+.inv-card-kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.inv-card-kv-row dt { color: var(--gray500); flex: none; }
+.inv-card-kv-row dd { margin: 0; text-align: right; color: var(--gray700); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+/* Höhere Spezifität nötig: ".inv-card-kv-row dd" (Klasse+Typ) schlägt sonst
+   ".inv-period-due--overdue" (nur Klasse) und die überfällige Fälligkeit bliebe
+   in der Mobilkarte fälschlich grau statt rot. */
+.inv-card-kv-row dd.inv-period-due--overdue { color: var(--inv-critical-fg); }
+.inv-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Umschaltpunkt bei 1150px statt der bei sechsspaltigen Admin-Listen üblichen
+   900px: die vier starren Spalten (Betrag/Zahlungsstatus/Dokument/Aktion)
+   benötigen zusammen ca. 660px, weil Zahlungsstatus/Dokument breit genug sein
+   müssen, damit lange Statuslabels ("Nicht zahlungswirksam", "Kein Kunden-
+   versand") sauber zwischen Wörtern umbrechen statt mitten im Wort. Darunter
+   bleiben Rechnung/Zeitraum zu schmal für ihre eigenen Spaltenköpfe UND für
+   "Label + Datum" in der Zeitraum-Zelle (gemessen gegen die echte gebaute App:
+   1150px sauber, 1130px bereits +7–8px Überlauf). Gleiches Muster wie
+   .adm-canc-table. */
+@media (max-width: 1150px) {
+  .inv-table { display: none; }
+  .inv-cards { display: flex; }
+}
 
 /* ─── Rechnungs-PDF-Vorschau (Phase 4) — Modal mit eingebettetem Blob-iframe ── */
 .pdfview-overlay {

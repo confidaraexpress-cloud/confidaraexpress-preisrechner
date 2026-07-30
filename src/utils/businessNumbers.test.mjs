@@ -165,12 +165,19 @@ test("(7) Buchungserfolg zeigt Bestell- und Rechnungsnummer getrennt", () => {
 });
 
 test("(8) Rechnungsliste zeigt Rechnungs- und Bestellnummer getrennt", () => {
+  // Phase 5: die sechs fachlichen Bereiche fassen Rechnungs- und Bestellnummer in EINER
+  // gemeinsamen "Rechnung"-Spalte zusammen (InvoiceNumberBlock) statt in zwei eigenen
+  // <th>-Spalten — beide Werte bleiben aber weiterhin getrennt gelesen und dargestellt,
+  // nie ineinander verschmolzen oder aus einer ID ersetzt.
   const src = read("components/dashboard/InvoicesList.jsx");
-  assert.ok(/<th>Rechnungsnummer<\/th>/.test(src) && /<th>Bestellung<\/th>/.test(src), "Spalten fehlen");
+  assert.ok(/<th scope="col">Rechnung<\/th>/.test(src), "Spalte 'Rechnung' fehlt");
   assert.ok(src.includes("businessOrderNumberOf(inv)"), "Bestellnummer wird nicht gelesen");
   assert.ok(src.includes("inv.invoice_number"), "Rechnungsnummer fehlt");
-  const cell = src.slice(src.indexOf("businessOrderNumberOf(inv)"), src.indexOf("</td>", src.indexOf("businessOrderNumberOf(inv)")));
-  assert.ok(!/order_number|jumingo|inv\.id/.test(cell), "Ersatzwert in der Bestellnummern-Zelle");
+  const fnStart = src.indexOf("function InvoiceNumberBlock");
+  const cell = src.slice(fnStart, src.indexOf("\n}", fnStart));
+  assert.ok(cell.includes("businessOrderNumberOf(inv)") && cell.includes("inv.invoice_number"),
+    "Rechnungs- und Bestellnummer müssen beide in der Rechnungs-Zelle gelesen werden");
+  assert.ok(!/order_number|jumingo|inv\.id\b/.test(cell), "Ersatzwert in der Bestellnummern-Zelle");
 });
 
 test("(9–10) Admin-Kundenliste und -detail zeigen die Kundennummer", () => {
@@ -268,9 +275,15 @@ test("(16) Responsive/Barrierefreiheit: Nummern umbrechbar, Kopieraktion bedienb
   assert.ok(/role="status"/.test(copy) && /aria-live/.test(copy), "Rückmeldung nicht für Screenreader ausgezeichnet");
   assert.ok(/wordBreak/.test(copy), "lange Nummern müssen umbrechen können");
   // Auch in den Tabellen dürfen Nummern nicht abgeschnitten werden.
-  for (const rel of ["components/dashboard/ShipmentsList.jsx", "components/dashboard/InvoicesList.jsx"]) {
-    assert.ok(/wordBreak: "break-all"/.test(read(rel)), `kein Umbruch für lange Nummern in ${rel}`);
-  }
+  assert.ok(/wordBreak: "break-all"/.test(read("components/dashboard/ShipmentsList.jsx")), "kein Umbruch für lange Nummern in ShipmentsList.jsx");
+  // InvoicesList.jsx (Phase 5) setzt den Umbruch über eine CSS-Klasse statt eines Inline-Styles
+  // (overflow-wrap statt word-break — funktional gleichwertig: lange Token brechen kontrolliert
+  // um, statt die Spalte zu sprengen oder abgeschnitten zu werden).
+  assert.ok(read("components/dashboard/InvoicesList.jsx").includes('className="inv-cell-number-value"'),
+    "Rechnungsnummer nutzt nicht die umbruchfähige Zellklasse");
+  const css = read("styles/dashboard.css");
+  assert.ok(/\.inv-cell-number-value\s*\{[^}]*overflow-wrap:\s*anywhere/.test(css),
+    "kein Umbruch für lange Rechnungsnummern in dashboard.css (.inv-cell-number-value)");
 });
 
 test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {

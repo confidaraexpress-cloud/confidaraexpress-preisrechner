@@ -75,38 +75,85 @@ export function documentStatusMeta(inv) {
   return DOCUMENT_STATUS_META[s] || [TONE.NEUTRAL, s || "—"];
 }
 
-// ── E-Mail-Status — nur echte Kundenversandzustände ─────────────────────────
-const EMAIL_STATUS_META = {
-  pending: [TONE.ATTENTION, "Versand ausstehend"],
-  sending: [TONE.NEUTRAL, "Wird versendet"],
-  sent: [TONE.POSITIVE, "Versendet"],
-  failed: [TONE.CRITICAL, "Versand fehlgeschlagen"],
-};
-export function emailStatusMeta(inv) {
-  const s = inv && inv.email_status;
-  return EMAIL_STATUS_META[s] || [TONE.NEUTRAL, s || "—"];
+// ── E-Mail-Zustand — nur die abgeschlossene Tatsache, kein Betriebszustand ──
+// Zuvor wurde der ROHE Versandzustand angezeigt: „Versand ausstehend",
+// „Wird versendet", „Versand fehlgeschlagen". Neben einer gültigen, vollständig
+// herunterladbaren Rechnung liest sich ein rotes „Versand fehlgeschlagen" wie
+// ein Rechnungs- oder Zahlungsfehler — obwohl mit der Forderung alles in
+// Ordnung ist und der Kunde ohnehin nichts tun kann. Ob der Mailprovider die
+// Nachricht angenommen hat, ist ein interner Zustellvorgang.
+//
+// Der Server liefert dafür jetzt `sent_by_email` (Boolean, routes/kunde.js);
+// Providerfehler, Zustellcodes und Versuchszähler bleiben im Adminbereich.
+// Angezeigt wird nur der positive, abgeschlossene Fall — sonst gar nichts.
+// Rückwärtskompatibel: fehlt das Feld (älteres Backend), wird ersatzweise
+// email_status === "sent" ausgewertet; jeder andere Wert ergibt „kein Hinweis".
+export function emailDeliveryMeta(inv) {
+  if (!inv) return null;
+  // Liefert der Server das Feld, ist es maßgeblich — auch wenn es false ist.
+  const sent = typeof inv.sent_by_email === "boolean"
+    ? inv.sent_by_email
+    : inv.email_status === "sent";           // Fallback für ein älteres Backend
+  return sent ? [TONE.POSITIVE, "Per E-Mail versendet"] : null;
 }
 
 // ── Zeitraum-Zelle ───────────────────────────────────────────────────────────
 // Rechnungsdatum immer; Leistungsdatum NUR wenn vorhanden UND vom Rechnungs-
 // datum abweichend (Kalendertag); Fälligkeit nur solange die Forderung offen
 // ist — bei bezahlten Rechnungen ist sie fachlich erledigt.
+//
+// Kalendertag-Vergleich: service_date ist ein FACHLICHES Kalenderdatum und
+// kommt seit dem DE-Härtungspaket als "YYYY-MM-DD" (routes/kunde.js nutzt
+// to_char). issued_at ist dagegen ein echter Zeitpunkt. Beide werden auf einen
+// kanonischen Kalendertag gebracht, bevor sie verglichen werden — der frühere
+// Vergleich über toISOString() rechnete BEIDE nach UTC und ließ dadurch den
+// 31.07. (als 2026-07-30T22:00:00Z geliefert) mit dem 30.07. zusammenfallen:
+// das Leistungsdatum verschwand im Portal vollständig.
+// Geschäftszeitzone des Ausstellers — identisch zu lib/calendarDate.js im Backend.
+// Der Kalendertag eines Zeitpunkts wird NICHT in der Zeitzone des Betrachters bestimmt,
+// sondern dort, wo die Rechnung ausgestellt wurde. Sonst sähe derselbe Beleg für einen
+// Kunden auf Reisen ein anderes Rechnungsdatum als auf seinem PDF.
+export const BUSINESS_TIME_ZONE = "Europe/Berlin";
+
+export function calendarDay(value) {
+  if (value == null || value === "") return null;
+  // Reines Kalenderdatum → unverändert übernehmen. KEIN new Date(): "2026-07-31"
+  // würde als UTC-Mitternacht geparst und in westlichen Zeitzonen zum Vortag.
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  // Echter Zeitpunkt → Kalendertag in der Geschäftszeitzone (wie im PDF).
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: BUSINESS_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(d);
+    const get = (t) => (parts.find((p) => p.type === t) || {}).value;
+    const y = get("year"), mo = get("month"), da = get("day");
+    if (y && mo && da) return `${y}-${mo}-${da}`;
+  } catch { /* ohne volles ICU: lokaler Kalendertag als Rückfallebene */ }
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 function sameCalendarDay(a, b) {
-  if (!a || !b) return false;
-  const da = new Date(a), db = new Date(b);
-  if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return false;
-  return da.toISOString().slice(0, 10) === db.toISOString().slice(0, 10);
+  const ca = calendarDay(a), cb = calendarDay(b);
+  return ca !== null && cb !== null && ca === cb;
 }
 export function invoicePeriod(inv) {
   const issuedAt = (inv && (inv.issued_at || inv.created_at)) || null;
   const serviceRaw = inv && inv.service_date ? inv.service_date : null;
   const serviceAt = serviceRaw && !sameCalendarDay(serviceRaw, issuedAt) ? serviceRaw : null;
   const showDue = !!inv && inv.status !== "paid";
+  const dueAt = showDue ? (inv.due_date || null) : null;
   return {
     issuedAt,
     serviceAt,
-    dueAt: showDue ? (inv.due_date || null) : null,
+    dueAt,
     overdue: showDue && isOverdueInvoice(inv),
+    // Kanonische Kalendertage für die Anzeige: alle drei Daten erscheinen im Portal exakt so
+    // wie auf dem PDF — unabhängig davon, in welcher Zeitzone der Kunde gerade sitzt.
+    issuedDay: calendarDay(issuedAt),
+    serviceDay: calendarDay(serviceAt),
+    dueDay: calendarDay(dueAt),
   };
 }
 

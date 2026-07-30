@@ -13,7 +13,7 @@ import {
   TONE,
   isOverdueInvoice,
   paymentStatus,
-  documentStatusMeta, emailStatusMeta,
+  documentStatusMeta, emailDeliveryMeta,
   invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
@@ -81,13 +81,41 @@ test("7 — documentStatusMeta: kompakte Labels ohne Fließtext", () => {
   assert.deepEqual(documentStatusMeta(inv({ document_status: "pending_document" })), [TONE.NEUTRAL, "PDF wird erstellt"]);
   assert.deepEqual(documentStatusMeta(inv({ document_status: "document_failed" })), [TONE.CRITICAL, "PDF-Erstellung fehlgeschlagen"]);
 });
-test("8 — emailStatusMeta: nur echte Versandzustaende, kein Kein-Kundenversand-Label", () => {
-  assert.deepEqual(emailStatusMeta(inv({ email_status: "sent" })), [TONE.POSITIVE, "Versendet"]);
-  assert.deepEqual(emailStatusMeta(inv({ email_status: "pending" })), [TONE.ATTENTION, "Versand ausstehend"]);
-  assert.deepEqual(emailStatusMeta(inv({ email_status: "sending" })), [TONE.NEUTRAL, "Wird versendet"]);
-  assert.deepEqual(emailStatusMeta(inv({ email_status: "failed" })), [TONE.CRITICAL, "Versand fehlgeschlagen"]);
-  const labels = ["sent", "pending", "sending", "failed"].map((s) => emailStatusMeta(inv({ email_status: s }))[1]);
-  assert.equal(labels.includes("Kein Kundenversand"), false);
+// R3: Der Kunde sieht NUR die abgeschlossene Tatsache — nie einen internen Betriebszustand.
+// „Versand fehlgeschlagen" neben einer gültigen, herunterladbaren Rechnung liest sich wie ein
+// Rechnungs- oder Zahlungsfehler; der Kunde kann daran ohnehin nichts ändern.
+test("8 — emailDeliveryMeta: nur der erfolgte Versand wird angezeigt", () => {
+  assert.deepEqual(emailDeliveryMeta(inv({ sent_by_email: true })), [TONE.POSITIVE, "Per E-Mail versendet"]);
+  // Liefert der Server das Feld, ist es maßgeblich — auch gegen ein abweichendes email_status.
+  assert.equal(emailDeliveryMeta(inv({ sent_by_email: false, email_status: "sent" })), null,
+    "sent_by_email hat Vorrang vor dem Übergangsfeld");
+  for (const state of [{ sent_by_email: false, email_status: "pending" },
+                       { email_status: "pending" },
+                       { sent_by_email: null, email_status: "failed" }]) {
+    assert.equal(emailDeliveryMeta(inv(state)), null, `kein Hinweis erwartet für ${JSON.stringify(state)}`);
+  }
+  assert.equal(emailDeliveryMeta(null), null);
+});
+test("8b — emailDeliveryMeta: kein technischer Zustand erreicht die Oberfläche", () => {
+  // Selbst wenn ein älteres Backend die Rohzustände noch mitliefert, entsteht daraus KEIN Label
+  // außer dem positiven Fall. Insbesondere nie „Versand fehlgeschlagen"/„Wird versendet".
+  for (const s of ["pending", "sending", "failed", "bounced", "unknown", "", null, undefined]) {
+    assert.equal(emailDeliveryMeta(inv({ email_status: s })), null, `Rohzustand darf nichts anzeigen: ${s}`);
+  }
+  // Rückwärtskompatibel: ein Backend ohne sent_by_email, aber mit email_status='sent'.
+  assert.deepEqual(emailDeliveryMeta(inv({ email_status: "sent" })), [TONE.POSITIVE, "Per E-Mail versendet"]);
+  // Und der Text enthält keinen Fehler-/Alarmbegriff.
+  const [, label] = emailDeliveryMeta(inv({ sent_by_email: true }));
+  for (const bad of ["fehlgeschlagen", "ausstehend", "Fehler", "Provider", "Retry"]) {
+    assert.equal(label.includes(bad), false, `Kundenlabel darf ${bad} nicht enthalten`);
+  }
+});
+test("8c — ein fehlgeschlagener Versand entwertet die Rechnung nicht", () => {
+  // Zahlungsstatus, Dokumentstatus und Downloadberechtigung bleiben davon unberührt.
+  const failed = inv({ sent_by_email: false, email_status: "failed", status: "unpaid", document_status: "ready", download_available: true });
+  assert.deepEqual(paymentStatus(failed), [TONE.ATTENTION, "Offen"]);
+  assert.deepEqual(documentStatusMeta(failed), [TONE.POSITIVE, "PDF bereit"]);
+  assert.equal(unavailableActionReason(failed), "", "der Download muss weiterhin angeboten werden");
 });
 
 // ── Zeitraum-Zelle ────────────────────────────────────────────────────────────
@@ -95,6 +123,70 @@ test("9 — invoicePeriod: Leistungsdatum nur, wenn vorhanden UND abweichend", (
   assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: "2026-07-19" })).serviceAt, null);
   assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: "2026-07-20" })).serviceAt, "2026-07-20");
   assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: null })).serviceAt, null);
+});
+// R2: service_date ist ein fachliches KALENDERDATUM und kommt als "YYYY-MM-DD".
+// Der frühere Vergleich rechnete beide Werte über toISOString() nach UTC — dadurch fiel der
+// als "2026-07-30T22:00:00.000Z" gelieferte 31.07. mit dem Rechnungsdatum 30.07. zusammen und
+// das Leistungsdatum verschwand im Portal vollständig.
+test("9b — invoicePeriod: Kalenderdatum wird als solches erkannt, nicht nach UTC gerechnet", () => {
+  // Rechnung am 30.07. abends (deutscher Geschäftstag), Leistung am 31.07.
+  const p = invoicePeriod(inv({ issued_at: "2026-07-30T15:27:13.621Z", service_date: "2026-07-31" }));
+  assert.equal(p.serviceAt, "2026-07-31", "das Leistungsdatum muss sichtbar bleiben");
+});
+test("9c — invoicePeriod: Leistungsdatum bleibt über Zeitzonen hinweg stabil", () => {
+  const original = process.env.TZ;
+  try {
+    for (const tz of ["UTC", "Europe/Berlin", "America/New_York", "Pacific/Auckland"]) {
+      process.env.TZ = tz;
+      // abweichender Tag → sichtbar
+      assert.equal(
+        invoicePeriod(inv({ issued_at: "2026-07-30T15:27:13.621Z", service_date: "2026-07-31" })).serviceAt,
+        "2026-07-31", `${tz}: abweichendes Leistungsdatum muss sichtbar sein`);
+      // gleicher Tag → weiterhin ausgeblendet (keine redundante Zeile)
+      assert.equal(
+        invoicePeriod(inv({ issued_at: "2026-07-31T09:00:00.000Z", service_date: "2026-07-31" })).serviceAt,
+        null, `${tz}: identischer Tag bleibt ausgeblendet`);
+      // Monats-, Jahres- und Schaltjahresgrenze
+      for (const [issued, service] of [["2026-01-31T12:00:00.000Z", "2026-02-01"],
+                                       ["2026-12-31T12:00:00.000Z", "2027-01-01"],
+                                       ["2028-02-28T12:00:00.000Z", "2028-02-29"]]) {
+        assert.equal(invoicePeriod(inv({ issued_at: issued, service_date: service })).serviceAt, service,
+          `${tz}: Grenzfall ${service}`);
+      }
+    }
+  } finally {
+    if (original === undefined) delete process.env.TZ; else process.env.TZ = original;
+  }
+});
+test("9d — invoicePeriod bleibt auch gegen die ALTE API-Form richtig (Defense in Depth)", () => {
+  // Käme service_date durch ein Backend-Rollback wieder als verschobener UTC-Zeitstempel
+  // ("2026-07-30T22:00:00.000Z" für den Kalendertag 31.07.), bestimmt calendarDay den Tag in
+  // der Geschäftszeitzone — das Leistungsdatum bliebe sichtbar und richtig. Genau das konnte
+  // die frühere UTC-Gleichheitsprüfung nicht: sie ließ beide Werte auf den 30.07. fallen.
+  const original = process.env.TZ;
+  try {
+    for (const tz of ["UTC", "Europe/Berlin", "America/New_York"]) {
+      process.env.TZ = tz;
+      const p = invoicePeriod(inv({ issued_at: "2026-07-30T15:27:13.621Z", service_date: "2026-07-30T22:00:00.000Z" }));
+      assert.equal(p.serviceDay, "2026-07-31", `${tz}: alte API-Form muss trotzdem den 31.07. ergeben`);
+      assert.equal(p.issuedDay, "2026-07-30", `${tz}: Rechnungsdatum bleibt der deutsche Geschäftstag`);
+    }
+  } finally {
+    if (original === undefined) delete process.env.TZ; else process.env.TZ = original;
+  }
+  // Und der UTC-basierte Kalendertagvergleich ist aus dem ausführbaren Code verschwunden.
+  assert.equal(/toISOString\(\)\s*\.\s*slice\(\s*0\s*,\s*10\s*\)/.test(viewCode), false,
+    "kein UTC-basierter Kalendertagvergleich mehr");
+});
+test("9e — invoicePeriod liefert kanonische Kalendertage für die Anzeige", () => {
+  const p = invoicePeriod(inv({ issued_at: "2026-07-30T15:27:13.621Z", service_date: "2026-07-31",
+                                due_date: "2026-08-06T15:27:13.621Z", status: "unpaid" }));
+  for (const [k, v] of [["issuedDay", "2026-07-30"], ["serviceDay", "2026-07-31"], ["dueDay", "2026-08-06"]]) {
+    assert.equal(p[k], v, `${k} muss ein kanonischer Kalendertag sein`);
+    assert.match(p[k], /^\d{4}-\d{2}-\d{2}$/);
+  }
+  // Bezahlte Rechnung: keine Fälligkeit, also auch kein dueDay.
+  assert.equal(invoicePeriod(inv({ status: "paid" })).dueDay, null);
 });
 test("10 — invoicePeriod: Fälligkeit nur solange die Forderung offen ist", () => {
   assert.equal(invoicePeriod(inv({ status: "unpaid", due_date: "2099-01-01" })).dueAt, "2099-01-01");

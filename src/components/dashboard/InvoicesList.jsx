@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { money, dateDE } from "../../utils/formatters";
+import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { PremiumBackground } from "./PremiumBackground";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
 import { downloadCustomerInvoicePdf, fetchCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
@@ -11,7 +11,7 @@ import {
 } from "../../utils/invoiceView.mjs";
 import {
   paymentStatus,
-  documentStatusMeta, emailStatusMeta, invoicePeriod, unavailableActionReason,
+  documentStatusMeta, emailDeliveryMeta, invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
@@ -87,11 +87,15 @@ function PeriodBlock({ inv }) {
           sondern die einzige Umbruchstelle: zwei direkt aneinandergrenzende Inline-Elemente
           ohne Leerraum dazwischen sind für den Zeilenumbruch EIN unteilbares Token — bei
           schmalen Spaltenbreiten würde die Zeile sonst überlaufen statt umzubrechen. */}
-      <div className="inv-period-row"><span className="inv-period-label">Rechnung</span> <span>{dateDE(p.issuedAt)}</span></div>
-      {p.serviceAt && <div className="inv-period-row"><span className="inv-period-label">Leistung</span> <span>{dateDE(p.serviceAt)}</span></div>}
-      {p.dueAt && (
+      <div className="inv-period-row"><span className="inv-period-label">Rechnung</span> <span>{isoDayDE(p.issuedDay)}</span></div>
+      {/* Alle drei Daten kommen als kanonische Kalendertage ("YYYY-MM-DD") aus invoicePeriod
+          und werden mit isoDayDE rein textuell formatiert. dateDE würde daraus wieder ein Date
+          bauen und in der Zeitzone des Betrachters rendern — das Portal zeigte dann ein anderes
+          Datum als das PDF. */}
+      {p.serviceDay && <div className="inv-period-row"><span className="inv-period-label">Leistung</span> <span>{isoDayDE(p.serviceDay)}</span></div>}
+      {p.dueDay && (
         <div className="inv-period-row">
-          <span className="inv-period-label">Fällig</span> <span className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</span>
+          <span className="inv-period-label">Fällig</span> <span className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</span>
         </div>
       )}
     </div>
@@ -114,12 +118,15 @@ function PaymentStatusCell({ inv }) {
 
 function DocumentCell({ inv }) {
   const [docTone, docLabel] = documentStatusMeta(inv);
-  const [mailTone, mailLabel] = emailStatusMeta(inv);
-  const sentAt = mailLabel === "Versendet" ? formatEmailSentAt(inv.email_sent_at) : "";
+  // Nur der abgeschlossene Versand wird gezeigt. Ein fehlgeschlagener oder noch laufender
+  // Mailversand ist ein interner Betriebszustand und erscheint hier bewusst gar nicht —
+  // die Rechnung selbst bleibt gültig, sichtbar und herunterladbar.
+  const mail = emailDeliveryMeta(inv);
+  const sentAt = mail ? formatEmailSentAt(inv.email_sent_at) : "";
   return (
     <div className="inv-doc-cell">
       <StatusPill tone={docTone} label={docLabel} />
-      <StatusPill tone={mailTone} label={mailLabel} />
+      {mail && <StatusPill tone={mail[0]} label={mail[1]} />}
       {sentAt && <span className="inv-doc-note">{sentAt}</span>}
     </div>
   );
@@ -158,7 +165,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
   const [payTone, payLabel] = paymentStatus(inv);
   const p = invoicePeriod(inv);
   const [docTone, docLabel] = documentStatusMeta(inv);
-  const [mailTone, mailLabel] = emailStatusMeta(inv);
+  const mail = emailDeliveryMeta(inv);
   return (
     <li className="inv-card">
       <div className="inv-card-head">
@@ -167,11 +174,12 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
       </div>
       <dl className="inv-card-kv">
         <div className="inv-card-kv-row"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
-        <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{dateDE(p.issuedAt)}</dd></div>
-        {p.serviceAt && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{dateDE(p.serviceAt)}</dd></div>}
-        {p.dueAt && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</dd></div>}
+        <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
+        {p.serviceDay && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{isoDayDE(p.serviceDay)}</dd></div>}
+        {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
         <div className="inv-card-kv-row"><dt>Dokument</dt><dd><StatusPill tone={docTone} label={docLabel} /></dd></div>
-        <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><StatusPill tone={mailTone} label={mailLabel} /></dd></div>
+        {/* Zeile nur bei tatsächlich erfolgtem Versand — kein interner Betriebszustand. */}
+        {mail && <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><StatusPill tone={mail[0]} label={mail[1]} /></dd></div>}
       </dl>
       <div className="inv-card-actions">
         <ActionButtons inv={inv} downloadingId={downloadingId} onView={onView} onDownload={onDownload} />

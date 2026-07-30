@@ -209,13 +209,14 @@ test("21 — Fetcher akzeptiert NUR application/pdf; Fehlerantworten werden nie 
   assert.ok(dlSrc.includes("r.json()"), "Fehlerantworten werden als JSON gelesen, nicht eingebettet");
 });
 
-test("22 — Kundenliste: E-Mail-Status sichtbar, KEINE Versandaktion beim Kunden", () => {
-  // Phase 5: die Statusableitung lebt jetzt zentral in customerInvoiceView.mjs
-  // (emailStatusMeta, produktivitätsbasiert statt nur is_test_document-basiert)
-  // statt der älteren invoiceView.mjs-Funktion emailDisplayMeta — die Aussage
-  // bleibt identisch (Testdokumente zeigen nie einen echten Versandstatus).
-  assert.ok(listSrc.includes("emailStatusMeta"), "E-Mail-Status-Badge in der Kundenliste");
-  assert.ok(listSrc.includes("formatEmailSentAt"), "'Versendet am' bei sent");
+test("22 — Kundenliste: erfolgter Versand sichtbar, KEINE Versandaktion beim Kunden", () => {
+  // Die Statusableitung lebt zentral in customerInvoiceView.mjs. Seit dem DE-Härtungspaket
+  // zeigt die Kundenliste NUR den abgeschlossenen Versand (emailDeliveryMeta) — ein
+  // fehlgeschlagener oder laufender Versand ist ein interner Betriebszustand und erscheint
+  // dort gar nicht mehr, weil er neben einer gültigen Rechnung wie ein Rechnungsfehler wirkte.
+  assert.ok(listSrc.includes("emailDeliveryMeta"), "Versandhinweis in der Kundenliste");
+  assert.ok(!listSrc.includes("emailStatusMeta"), "der rohe Versandzustand darf nicht mehr angezeigt werden");
+  assert.ok(listSrc.includes("formatEmailSentAt"), "'Versendet am' bei erfolgtem Versand");
   for (const forbidden of ["sendAdminInvoiceEmail", "resendAdminInvoiceEmail", "send-email", "resend-email"]) {
     assert.ok(!listSrc.includes(forbidden), `Kundenkomponente darf keine Versandaktion enthalten (${forbidden})`);
   }

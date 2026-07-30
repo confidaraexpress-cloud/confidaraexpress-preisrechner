@@ -10,8 +10,8 @@ import {
   DOWNLOAD_ERROR_GENERIC,
 } from "../../utils/invoiceView.mjs";
 import {
-  TONE, paymentStatus, documentModeMeta, documentModeHint,
-  documentStatusMeta, emailStatusMeta, invoicePeriod, amountLabel, unavailableActionReason,
+  paymentStatus,
+  documentStatusMeta, emailStatusMeta, invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
@@ -51,20 +51,11 @@ function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
                 {view.nextDueDate && <span>Nächste Fälligkeit: <strong>{dateDE(view.nextDueDate)}</strong></span>}
               </div>
               {view.mixedCurrency && (
-                <p className="inv-summary-preview-note">Es liegen zusätzlich Rechnungen in einer anderen Währung vor, die hier nicht mitgerechnet sind.</p>
+                <p className="inv-summary-note">Es liegen zusätzlich Rechnungen in einer anderen Währung vor, die hier nicht mitgerechnet sind.</p>
               )}
             </>
           )}
-          {view.state === "noOpen" && (
-            <>
-              <p className="inv-summary-title">Keine offenen Forderungen</p>
-              {view.previewCount > 0 && (
-                <p className="inv-summary-preview-note">
-                  {view.previewCount} {view.previewCount === 1 ? "internes Test- oder Vorschaudokument" : "interne Test- oder Vorschaudokumente"} vorhanden
-                </p>
-              )}
-            </>
-          )}
+          {view.state === "noOpen" && <p className="inv-summary-title">Keine offenen Forderungen</p>}
           {view.state === "empty" && <p className="inv-summary-title">{LIST_EMPTY_TITLE}</p>}
         </div>
         {typeof onReload === "function" && (
@@ -79,14 +70,11 @@ function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
 
 // ── Zellen (gemeinsam für Desktop-Tabelle und Mobilkarte genutzt) ──────────
 function InvoiceNumberBlock({ inv }) {
-  const mode = documentModeMeta(inv);
-  const hint = documentModeHint(inv);
   const order = businessOrderNumberOf(inv);
   return (
     <div className="inv-cell-number">
       <span className="inv-cell-number-value">{inv.invoice_number}</span>
       <span className="inv-cell-order">{order || "Bestellung nicht hinterlegt"}</span>
-      {mode && <span className="inv-cell-mode"><StatusPill tone={mode[0]} label={mode[1]} title={hint || undefined} /></span>}
     </div>
   );
 }
@@ -106,7 +94,6 @@ function PeriodBlock({ inv }) {
           <span className="inv-period-label">Fällig</span> <span className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</span>
         </div>
       )}
-      {p.nonPayableNote && <div className="inv-period-note">Nicht zahlungswirksam</div>}
     </div>
   );
 }
@@ -114,7 +101,7 @@ function PeriodBlock({ inv }) {
 function AmountBlock({ inv }) {
   return (
     <div>
-      <span className="inv-amount-label">{amountLabel(inv)}</span>
+      <span className="inv-amount-label">Betrag</span>
       <span className="inv-amount-value">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</span>
     </div>
   );
@@ -179,7 +166,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
         <StatusPill tone={payTone} label={payLabel} />
       </div>
       <dl className="inv-card-kv">
-        <div className="inv-card-kv-row"><dt>{amountLabel(inv)}</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
+        <div className="inv-card-kv-row"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
         <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{dateDE(p.issuedAt)}</dd></div>
         {p.serviceAt && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{dateDE(p.serviceAt)}</dd></div>}
         {p.dueAt && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{dateDE(p.dueAt)}</dd></div>}

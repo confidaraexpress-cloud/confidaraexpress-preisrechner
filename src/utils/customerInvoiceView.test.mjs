@@ -1,216 +1,201 @@
-// Tests für das zentrale Kunden-Rechnungs-View-Model (Phase 5). Läuft über
-// `node --test`. Deckt ab: Zahlungsstatus-Priorität (inkl. fail-closed bei
-// fehlenden Serverfeldern — NIE allein aus status === "unpaid" schließen),
-// Dokumentmodus-Unterscheidung test/preview/unknown, Dokument-/E-Mail-Status,
-// Zeitraum-Zelle (Leistungsdatum nur bei Abweichung, Fälligkeit nur bei
-// produktiver offener/überfälliger Forderung), Filter, Zusammenfassungs-
-// Zustände (serverseitige summary hat Vorrang) und einen Selbsttest.
+// Tests für das zentrale Kunden-Rechnungs-View-Model (Go-live). Läuft über
+// `node --test`. Deckt ab: die drei echten Zahlungszustände, Dokument-/E-Mail-
+// Status, Zeitraum-Zelle (Leistungsdatum nur bei Abweichung, Fälligkeit nur
+// solange offen), Filter, Zusammenfassungs-Zustände (serverseitige summary hat
+// Vorrang) und — als Go-live-Kern — dass das Modul KEINE internen Test-,
+// Vorschau- oder Modus-Zustände mehr kennt.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   TONE,
-  isProductiveInvoice, isPayableInvoice, isOverdueInvoice,
-  paymentStatus, documentModeMeta, documentModeHint,
+  isOverdueInvoice,
+  paymentStatus,
   documentStatusMeta, emailStatusMeta,
-  invoicePeriod, amountLabel, unavailableActionReason,
+  invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
 } from "./customerInvoiceView.mjs";
 
+import * as viewModule from "./customerInvoiceView.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const viewSrc = fs.readFileSync(path.join(HERE, "customerInvoiceView.mjs"), "utf8");
+// Nur der ausführbare Code — Kommentare erklären die entfernten Begriffe bewusst
+// beim Namen und dürfen die Begriffsprüfung nicht fälschlich auslösen.
+const viewCode = viewSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+// Eine produktive Kundenrechnung — der einzige Rechnungstyp, den der Kundenbereich
+// seit dem Go-live überhaupt noch erhält.
 const inv = (over = {}) => ({
   id: 1, invoice_number: "CE-RE26-00001", amount: "49.25", gross_amount: "49.25", currency: "EUR",
   status: "unpaid", due_date: "2099-01-01", issued_at: "2026-07-19", created_at: "2026-07-19",
   service_date: null, document_status: "ready", email_status: "sent",
-  is_test_document: false, document_mode_label: "production",
-  is_productive: true, is_overdue: false, is_payable: true,
-  download_available: true,
+  is_overdue: false, download_available: true,
   ...over,
 });
 
-// ── Produktivität — fail-closed ─────────────────────────────────────────────
-test("1 — isProductiveInvoice/isPayableInvoice/isOverdueInvoice: strikt true, sonst false", () => {
-  assert.equal(isProductiveInvoice(inv({ is_productive: true })), true);
-  assert.equal(isProductiveInvoice(inv({ is_productive: false })), false);
-  assert.equal(isProductiveInvoice(inv({ is_productive: undefined })), false, "fehlendes Feld ⇒ NICHT produktiv");
-  assert.equal(isProductiveInvoice(inv({ is_productive: null })), false);
-  assert.equal(isProductiveInvoice(inv({ is_productive: "true" })), false, "kein String-Coercion");
-  assert.equal(isProductiveInvoice(null), false);
-  assert.equal(isPayableInvoice(inv({ is_payable: undefined })), false);
+// ── Überfälligkeit ───────────────────────────────────────────────────────────
+test("1 — isOverdueInvoice: strikt das Serverfeld, kein eigener Datumsvergleich", () => {
+  assert.equal(isOverdueInvoice(inv({ is_overdue: true })), true);
+  assert.equal(isOverdueInvoice(inv({ is_overdue: false })), false);
   assert.equal(isOverdueInvoice(inv({ is_overdue: undefined })), false);
+  assert.equal(isOverdueInvoice(null), false);
+  // Ein längst vergangenes Fälligkeitsdatum macht die Rechnung NICHT überfällig,
+  // solange der Server es nicht sagt — sonst liefen Anzeige und Kennzahlen an
+  // Tagesrändern auseinander.
+  assert.equal(isOverdueInvoice(inv({ due_date: "2000-01-01", is_overdue: false })), false);
 });
 
-// ── Zahlungsstatus-Priorität ─────────────────────────────────────────────────
-test("2 — paymentStatus: nicht produktiv schlägt ALLES (auch status='paid')", () => {
-  assert.deepEqual(paymentStatus(inv({ is_productive: false, status: "paid" })), [TONE.NEUTRAL, "Nicht zahlungswirksam"]);
-  assert.deepEqual(paymentStatus(inv({ is_productive: false, status: "unpaid", is_overdue: true })), [TONE.NEUTRAL, "Nicht zahlungswirksam"]);
+// ── Zahlungsstatus: genau drei echte Kundenzustände ──────────────────────────
+test("2 — paymentStatus: bezahlt → Bezahlt", () => {
+  assert.deepEqual(paymentStatus(inv({ status: "paid" })), [TONE.POSITIVE, "Bezahlt"]);
 });
-test("3 — paymentStatus: produktiv + paid → Bezahlt", () => {
-  assert.deepEqual(paymentStatus(inv({ is_productive: true, status: "paid" })), [TONE.POSITIVE, "Bezahlt"]);
+test("3 — paymentStatus: offen + überfällig → Überfällig", () => {
+  assert.deepEqual(paymentStatus(inv({ status: "unpaid", is_overdue: true })), [TONE.CRITICAL, "Überfällig"]);
 });
-test("4 — paymentStatus: produktiv + unpaid + overdue → Überfällig", () => {
-  assert.deepEqual(paymentStatus(inv({ is_productive: true, status: "unpaid", is_overdue: true })), [TONE.CRITICAL, "Überfällig"]);
+test("4 — paymentStatus: offen, nicht überfällig → Offen", () => {
+  assert.deepEqual(paymentStatus(inv({ status: "unpaid", is_overdue: false })), [TONE.ATTENTION, "Offen"]);
 });
-test("5 — paymentStatus: produktiv + unpaid, nicht überfällig → Offen", () => {
-  assert.deepEqual(paymentStatus(inv({ is_productive: true, status: "unpaid", is_overdue: false })), [TONE.ATTENTION, "Offen"]);
+test("5 — paymentStatus: bezahlt schlägt überfällig (eine eindeutige Aussage)", () => {
+  assert.deepEqual(paymentStatus(inv({ status: "paid", is_overdue: true })), [TONE.POSITIVE, "Bezahlt"]);
 });
-test("6 — paymentStatus: fehlendes is_productive ⇒ fail-closed, NIE 'Offen' aus status allein", () => {
-  const withoutField = inv({ status: "unpaid" });
-  delete withoutField.is_productive;
-  assert.deepEqual(paymentStatus(withoutField), [TONE.NEUTRAL, "Nicht zahlungswirksam"],
-    "ein fehlendes Serverfeld darf NIEMALS zu 'Offen' führen — genau das war der ursprüngliche Fehler");
-});
-
-// ── Dokumentmodus ────────────────────────────────────────────────────────────
-test("7 — documentModeMeta: production zeigt KEIN Badge (null)", () => {
-  assert.equal(documentModeMeta(inv({ document_mode_label: "production" })), null);
-});
-test("8 — documentModeMeta: test und preview sind UNTERSCHEIDBAR (verschiedene Labels)", () => {
-  const t = documentModeMeta(inv({ document_mode_label: "test" }));
-  const p = documentModeMeta(inv({ document_mode_label: "preview" }));
-  assert.deepEqual(t, [TONE.NEUTRAL, "Testdokument"]);
-  assert.deepEqual(p, [TONE.NEUTRAL, "Interne Vorschau"]);
-  assert.notDeepEqual(t, p, "test und preview dürfen nicht mehr dasselbe Badge zeigen");
-});
-test("9 — documentModeMeta: unknown/fehlendes Label ⇒ konservativ nicht zahlungswirksam", () => {
-  assert.deepEqual(documentModeMeta(inv({ document_mode_label: "unknown" })), [TONE.NEUTRAL, "Nicht zahlungswirksam"]);
-  assert.deepEqual(documentModeMeta(inv({ document_mode_label: undefined })), [TONE.NEUTRAL, "Nicht zahlungswirksam"]);
-});
-test("10 — documentModeHint: nur außerhalb production, kein Fließtext-Zwang", () => {
-  assert.equal(documentModeHint(inv({ document_mode_label: "production" })), null);
-  assert.equal(typeof documentModeHint(inv({ document_mode_label: "preview" })), "string");
-  assert.ok(documentModeHint(inv({ document_mode_label: "preview" })).length < 200, "Hinweis bleibt kompakt");
+test("6 — GO-LIVE: es gibt NUR diese drei Zahlungszustände", () => {
+  const labels = new Set();
+  for (const status of ["paid", "unpaid", undefined, "irgendwas"]) {
+    for (const overdue of [true, false, undefined]) {
+      labels.add(paymentStatus(inv({ status, is_overdue: overdue }))[1]);
+    }
+  }
+  assert.deepEqual([...labels].sort(), ["Bezahlt", "Offen", "Überfällig"],
+    "kein weiterer Zahlungszustand - insbesondere kein Nicht-zahlungswirksam-Zustand");
 });
 
 // ── Dokument-/E-Mail-Status ──────────────────────────────────────────────────
-test("11 — documentStatusMeta: kompakte Labels ohne Fließtext", () => {
+test("7 — documentStatusMeta: kompakte Labels ohne Fließtext", () => {
   assert.deepEqual(documentStatusMeta(inv({ document_status: "ready" })), [TONE.POSITIVE, "PDF bereit"]);
   assert.deepEqual(documentStatusMeta(inv({ document_status: "generating" })), [TONE.NEUTRAL, "PDF wird erstellt"]);
   assert.deepEqual(documentStatusMeta(inv({ document_status: "pending_document" })), [TONE.NEUTRAL, "PDF wird erstellt"]);
   assert.deepEqual(documentStatusMeta(inv({ document_status: "document_failed" })), [TONE.CRITICAL, "PDF-Erstellung fehlgeschlagen"]);
 });
-test("12 — emailStatusMeta: nicht produktiv ⇒ 'Kein Kundenversand', unabhängig vom Rohstatus", () => {
-  assert.deepEqual(emailStatusMeta(inv({ is_productive: false, email_status: "pending" })), [TONE.NEUTRAL, "Kein Kundenversand"]);
-  assert.deepEqual(emailStatusMeta(inv({ is_productive: false, email_status: "sent" })), [TONE.NEUTRAL, "Kein Kundenversand"],
-    "Testdokumente werden NIE versendet — auch ein (fehlerhafter) 'sent'-Rohstatus darf das nicht zeigen");
-});
-test("13 — emailStatusMeta: produktiv ⇒ echter Rohstatus", () => {
-  assert.deepEqual(emailStatusMeta(inv({ is_productive: true, email_status: "sent" })), [TONE.POSITIVE, "Versendet"]);
-  assert.deepEqual(emailStatusMeta(inv({ is_productive: true, email_status: "failed" })), [TONE.CRITICAL, "Versand fehlgeschlagen"]);
-  assert.deepEqual(emailStatusMeta(inv({ is_productive: true, email_status: "pending" })), [TONE.ATTENTION, "Versand ausstehend"]);
+test("8 — emailStatusMeta: nur echte Versandzustaende, kein Kein-Kundenversand-Label", () => {
+  assert.deepEqual(emailStatusMeta(inv({ email_status: "sent" })), [TONE.POSITIVE, "Versendet"]);
+  assert.deepEqual(emailStatusMeta(inv({ email_status: "pending" })), [TONE.ATTENTION, "Versand ausstehend"]);
+  assert.deepEqual(emailStatusMeta(inv({ email_status: "sending" })), [TONE.NEUTRAL, "Wird versendet"]);
+  assert.deepEqual(emailStatusMeta(inv({ email_status: "failed" })), [TONE.CRITICAL, "Versand fehlgeschlagen"]);
+  const labels = ["sent", "pending", "sending", "failed"].map((s) => emailStatusMeta(inv({ email_status: s }))[1]);
+  assert.equal(labels.includes("Kein Kundenversand"), false);
 });
 
 // ── Zeitraum-Zelle ────────────────────────────────────────────────────────────
-test("14 — invoicePeriod: Leistungsdatum nur, wenn vorhanden UND abweichend", () => {
-  assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: "2026-07-19" })).serviceAt, null, "gleicher Tag ⇒ weggelassen");
+test("9 — invoicePeriod: Leistungsdatum nur, wenn vorhanden UND abweichend", () => {
+  assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: "2026-07-19" })).serviceAt, null);
   assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: "2026-07-20" })).serviceAt, "2026-07-20");
   assert.equal(invoicePeriod(inv({ issued_at: "2026-07-19", service_date: null })).serviceAt, null);
 });
-test("15 — invoicePeriod: Fälligkeit NUR bei produktiver, unbezahlter Forderung", () => {
-  assert.equal(invoicePeriod(inv({ is_productive: true, status: "unpaid", due_date: "2099-01-01" })).dueAt, "2099-01-01");
-  assert.equal(invoicePeriod(inv({ is_productive: true, status: "paid", due_date: "2099-01-01" })).dueAt, null, "bezahlt ⇒ keine Fälligkeit mehr relevant");
-  assert.equal(invoicePeriod(inv({ is_productive: false, status: "unpaid", due_date: "2099-01-01" })).dueAt, null, "nicht produktiv ⇒ keine Fälligkeit");
+test("10 — invoicePeriod: Fälligkeit nur solange die Forderung offen ist", () => {
+  assert.equal(invoicePeriod(inv({ status: "unpaid", due_date: "2099-01-01" })).dueAt, "2099-01-01");
+  assert.equal(invoicePeriod(inv({ status: "paid", due_date: "2099-01-01" })).dueAt, null, "bezahlt ⇒ Fälligkeit erledigt");
 });
-test("16 — invoicePeriod: overdue-Flag nur zusammen mit sichtbarer Fälligkeit", () => {
-  assert.equal(invoicePeriod(inv({ is_productive: true, status: "unpaid", is_overdue: true })).overdue, true);
-  assert.equal(invoicePeriod(inv({ is_productive: true, status: "paid", is_overdue: true })).overdue, false, "bezahlt kann fachlich nicht überfällig sein");
+test("11 — invoicePeriod: overdue-Flag nur zusammen mit sichtbarer Fälligkeit", () => {
+  assert.equal(invoicePeriod(inv({ status: "unpaid", is_overdue: true })).overdue, true);
+  assert.equal(invoicePeriod(inv({ status: "paid", is_overdue: true })).overdue, false);
 });
-test("17 — invoicePeriod: nonPayableNote spiegelt Produktivität", () => {
-  assert.equal(invoicePeriod(inv({ is_productive: false })).nonPayableNote, true);
-  assert.equal(invoicePeriod(inv({ is_productive: true })).nonPayableNote, false);
+test("12 — GO-LIVE: invoicePeriod liefert keinen nonPayableNote mehr", () => {
+  assert.equal("nonPayableNote" in invoicePeriod(inv()), false);
 });
 
-// ── Betrag-Label ──────────────────────────────────────────────────────────────
-test("18 — amountLabel: 'Betrag' produktiv, 'Dokumentbetrag' sonst — keine Zahlungsaufforderung suggerieren", () => {
-  assert.equal(amountLabel(inv({ is_productive: true })), "Betrag");
-  assert.equal(amountLabel(inv({ is_productive: false })), "Dokumentbetrag");
-});
-
-// ── Nicht verfügbare Aktion ───────────────────────────────────────────────────
-test("19 — unavailableActionReason: verfügbar ⇒ leer; sonst verständliche, EHRLICHE Begründung", () => {
+// ── Aktionen ──────────────────────────────────────────────────────────────────
+test("13 — unavailableActionReason: verfügbar ⇒ leer; sonst ehrliche Begründung ohne interne Begriffe", () => {
   assert.equal(unavailableActionReason(inv({ download_available: true })), "");
-  assert.equal(unavailableActionReason(inv({ download_available: false, is_productive: false })), "Nicht für den Kundenversand vorgesehen");
-  assert.equal(unavailableActionReason(inv({ download_available: false, is_productive: true, document_status: "generating" })), "Rechnung wird erstellt");
-  assert.equal(unavailableActionReason(inv({ download_available: false, is_productive: true, document_status: "document_failed" })), "Rechnung konnte noch nicht erstellt werden");
-  // Produktiv + bereit, aber dennoch gesperrt (z. B. globale Testbetriebssperre) ⇒ ehrlich generisch,
-  // KEINE erratene Ursache.
-  assert.equal(unavailableActionReason(inv({ download_available: false, is_productive: true, document_status: "ready" })), "Derzeit nicht verfügbar");
+  assert.equal(unavailableActionReason(inv({ download_available: false, document_status: "generating" })), "Rechnung wird erstellt");
+  assert.equal(unavailableActionReason(inv({ download_available: false, document_status: "document_failed" })), "Rechnung konnte noch nicht erstellt werden");
+  assert.equal(unavailableActionReason(inv({ download_available: false, document_status: "ready" })), "Derzeit nicht verfügbar");
+  for (const s of ["ready", "generating", "pending_document", "document_failed"]) {
+    const reason = unavailableActionReason(inv({ download_available: false, document_status: s }));
+    assert.doesNotMatch(reason, /Test|Vorschau|Kundenversand|zahlungswirksam/i, `interner Begriff in „${reason}"`);
+  }
 });
 
 // ── Filter ────────────────────────────────────────────────────────────────────
-test("20 — INVOICE_FILTERS: fünf Filter in definierter Reihenfolge", () => {
-  assert.deepEqual(INVOICE_FILTERS.map((f) => f.value), ["", "open", "overdue", "paid", "preview"]);
+test("14 — GO-LIVE: genau vier Filter, kein Test-und-Vorschau-Filter", () => {
+  assert.deepEqual(INVOICE_FILTERS.map((f) => f.value), ["", "open", "overdue", "paid"]);
+  assert.deepEqual(INVOICE_FILTERS.map((f) => f.label), ["Alle", "Offen", "Überfällig", "Bezahlt"]);
 });
-test("21 — matchesInvoiceFilter: 'Alle' zeigt alles, auch nicht produktive", () => {
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: false }), ""), true);
-});
-test("22 — matchesInvoiceFilter: 'preview' zeigt AUSSCHLIESSLICH nicht produktive", () => {
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: false }), "preview"), true);
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true }), "preview"), false);
-});
-test("23 — matchesInvoiceFilter: 'open'/'overdue'/'paid' schließen nicht produktive IMMER aus", () => {
-  for (const f of ["open", "overdue", "paid"]) {
-    assert.equal(matchesInvoiceFilter(inv({ is_productive: false, status: "unpaid", is_overdue: true }), f), false, `Filter ${f} darf keine Test-/Preview-Rechnung zeigen`);
-  }
-});
-test("24 — matchesInvoiceFilter: 'open' schließt überfällige produktive Rechnungen ein (Teilmenge)", () => {
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true, status: "unpaid", is_overdue: true }), "open"), true);
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true, status: "unpaid", is_overdue: true }), "overdue"), true);
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true, status: "unpaid", is_overdue: false }), "overdue"), false);
-});
-test("25 — matchesInvoiceFilter: 'paid' zeigt nur produktiv bezahlte", () => {
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true, status: "paid" }), "paid"), true);
-  assert.equal(matchesInvoiceFilter(inv({ is_productive: true, status: "unpaid" }), "paid"), false);
+test("15 — matchesInvoiceFilter: Alle/Offen/Überfällig/Bezahlt", () => {
+  const offen = inv({ status: "unpaid", is_overdue: false });
+  const faellig = inv({ status: "unpaid", is_overdue: true });
+  const bezahlt = inv({ status: "paid" });
+  for (const i of [offen, faellig, bezahlt]) assert.equal(matchesInvoiceFilter(i, ""), true);
+  assert.equal(matchesInvoiceFilter(offen, "open"), true);
+  assert.equal(matchesInvoiceFilter(faellig, "open"), true, "überfällig ist Teilmenge von offen");
+  assert.equal(matchesInvoiceFilter(bezahlt, "open"), false);
+  assert.equal(matchesInvoiceFilter(faellig, "overdue"), true);
+  assert.equal(matchesInvoiceFilter(offen, "overdue"), false);
+  assert.equal(matchesInvoiceFilter(bezahlt, "paid"), true);
+  assert.equal(matchesInvoiceFilter(offen, "paid"), false);
 });
 
 // ── Zusammenfassung ───────────────────────────────────────────────────────────
-test("26 — customerInvoiceSummary: keine Rechnungen ⇒ 'empty'", () => {
+test("16 — customerInvoiceSummary: keine Rechnungen ⇒ 'empty'", () => {
   assert.deepEqual(customerInvoiceSummary([], null), { state: "empty" });
-  assert.deepEqual(customerInvoiceSummary([], { open_count: 5 }), { state: "empty" }, "eine leere Liste bleibt 'empty', unabhängig von der Summary");
+  assert.deepEqual(customerInvoiceSummary([], { open_count: 5 }), { state: "empty" });
 });
-test("27 — customerInvoiceSummary: offene produktive Forderung ⇒ 'open' aus der Server-Summary", () => {
-  const s = customerInvoiceSummary(
-    [inv({ is_productive: true })],
-    { open_amount: 49.25, open_count: 1, overdue_count: 0, next_due_date: "2026-08-06", currency: "EUR", mixed_currency: false }
-  );
+test("17 — customerInvoiceSummary: offene Forderung ⇒ 'open' aus der Server-Summary", () => {
+  const s = customerInvoiceSummary([inv()], { open_amount: 49.25, open_count: 1, overdue_count: 0, next_due_date: "2026-08-06", currency: "EUR", mixed_currency: false });
   assert.equal(s.state, "open");
   assert.equal(s.openAmount, 49.25);
   assert.equal(s.openCount, 1);
-  assert.equal(s.overdueCount, 0);
   assert.equal(s.nextDueDate, "2026-08-06");
-  assert.equal(s.currency, "EUR");
 });
-test("28 — customerInvoiceSummary: keine offene Forderung, aber Preview vorhanden ⇒ 'noOpen' mit previewCount", () => {
-  const s = customerInvoiceSummary(
-    [inv({ is_productive: false }), inv({ is_productive: true, status: "paid" })],
-    { open_amount: 0, open_count: 0, overdue_count: 0, next_due_date: null, currency: "EUR", mixed_currency: false }
-  );
+test("18 — customerInvoiceSummary: alles bezahlt ⇒ 'noOpen', ohne Preview-Zusatz", () => {
+  const s = customerInvoiceSummary([inv({ status: "paid" })], { open_amount: 0, open_count: 0, overdue_count: 0, next_due_date: null, currency: "EUR", mixed_currency: false });
   assert.equal(s.state, "noOpen");
-  assert.equal(s.previewCount, 1);
+  assert.equal("previewCount" in s, false, "GO-LIVE: kein Zähler für interne Dokumente mehr");
 });
-test("29 — customerInvoiceSummary: fehlende/kaputte Server-Summary ⇒ fail-closed 'noOpen', NIE 'open' erraten", () => {
+test("19 — customerInvoiceSummary: fehlende Server-Summary ⇒ fail-closed 'noOpen'", () => {
   assert.equal(customerInvoiceSummary([inv()], null).state, "noOpen");
-  assert.equal(customerInvoiceSummary([inv()], undefined).state, "noOpen");
   assert.equal(customerInvoiceSummary([inv()], { open_count: "nicht-numerisch" }).state, "noOpen");
 });
-test("30 — customerInvoiceSummary: mixedCurrency wird durchgereicht", () => {
+test("20 — customerInvoiceSummary: mixedCurrency wird durchgereicht", () => {
   const s = customerInvoiceSummary([inv()], { open_amount: 10, open_count: 1, overdue_count: 0, next_due_date: null, currency: "EUR", mixed_currency: true });
   assert.equal(s.mixedCurrency, true);
 });
 
 // ── Texte ─────────────────────────────────────────────────────────────────────
-test("31 — Texte für Lade-/Fehler-/Leerzustände sind vorhanden und unterscheidbar", () => {
+test("21 — Leerzustand nennt weder Test noch Vorschau und erklärt die Entstehung", () => {
+  assert.equal(LIST_EMPTY_TITLE, "Noch keine Rechnungen vorhanden");
+  assert.equal(LIST_EMPTY_TEXT, "Sobald eine Rechnung für eine gebuchte Sendung erstellt wurde, erscheint sie hier automatisch.");
   for (const t of [FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT]) {
-    assert.equal(typeof t, "string");
-    assert.ok(t.length > 5);
+    assert.doesNotMatch(t, /Test|Vorschau|zahlungswirksam/i, `interner Begriff in „${t}"`);
   }
-  assert.notEqual(FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, "Filter-Leerzustand und globaler Leerzustand müssen sich unterscheiden");
 });
 
-// ── Selbsttest ────────────────────────────────────────────────────────────────
-test("32 — Selbsttest: die Prüflogik greift tatsächlich", () => {
-  // Eine bewusst falsche Erwartung MUSS scheitern — sonst prüfen die Tests nichts.
-  assert.notDeepEqual(paymentStatus(inv({ is_productive: false })), [TONE.ATTENTION, "Offen"]);
-  assert.notEqual(matchesInvoiceFilter(inv({ is_productive: false }), "open"), true);
-  assert.ok(Object.values(TONE).length === 4 && new Set(Object.values(TONE)).size === 4, "vier unterscheidbare Statusfamilien");
+// ── GO-LIVE: das Modul kennt interne Zustände nicht mehr ─────────────────────
+test("22 — GO-LIVE: die modus-/testbezogenen Exporte existieren nicht mehr", () => {
+  for (const gone of ["documentModeMeta", "documentModeHint", "amountLabel", "isProductiveInvoice", "isPayableInvoice"]) {
+    assert.equal(gone in viewModule, false, `${gone} darf im Kunden-View-Model nicht mehr existieren`);
+  }
+});
+
+test("23 — GO-LIVE: kein interner Begriff und keine Produktivitätsheuristik im ausführbaren Code", () => {
+  for (const term of ["Interne Vorschau", "Testdokument", "Dokumentbetrag", "zahlungswirksam", "Kein Kundenversand", "Test & Vorschau"]) {
+    assert.equal(viewCode.includes(term), false, `interner Begriff „${term}" steht noch im Code`);
+  }
+  // Keine Frontend-Heuristik: die Produktivität wird serverseitig entschieden, hier
+  // nicht rekonstruiert — weder über is_productive noch über document_mode_label.
+  assert.equal(/is_productive|document_mode_label|is_test_document/.test(viewCode), false,
+    "das View-Model darf die serverseitige Klassifizierung nicht erneut auswerten");
+});
+
+test("24 — Selbsttest: die Prüflogik greift tatsächlich", () => {
+  // Die Begriffsprüfung ist nicht leerlaufend: derselbe Test findet einen Begriff,
+  // der wirklich im Code steht.
+  assert.equal(viewCode.includes("Überfällig"), true, "Selbsttest: Begriffssuche funktioniert");
+  // Und die Exportprüfung erkennt einen vorhandenen Export.
+  assert.equal("paymentStatus" in viewModule, true);
+  assert.ok(Object.values(TONE).length === 4 && new Set(Object.values(TONE)).size === 4);
 });

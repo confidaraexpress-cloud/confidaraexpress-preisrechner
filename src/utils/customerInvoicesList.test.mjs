@@ -14,6 +14,7 @@ const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const listSrc = read("components/dashboard/InvoicesList.jsx");
 const cssSrc = read("styles/dashboard.css");
 const modalSrc = read("components/dashboard/InvoicePdfPreviewModal.jsx");
+const viewSrc = read("utils/customerInvoiceView.mjs");
 
 test("1 — sechs fachliche Spalten mit scope, echte <caption>", () => {
   for (const col of ["Rechnung", "Zeitraum", "Betrag", "Zahlungsstatus", "Dokument", "Aktion"]) {
@@ -41,11 +42,13 @@ test("3b — überfällige Fälligkeit bleibt auch in der Mobilkarte rot (CSS-Sp
   assert.match(cssSrc, /\.inv-card-kv-row dd\.inv-period-due--overdue \{ color: var\(--inv-critical-fg\); \}/);
 });
 
-test("4 — Mobilkarten unterhalb 1150px statt der Tabelle", () => {
-  // 1150px statt 900px: gemessen gegen die echte gebaute App — darunter blieben
-  // Rechnung/Zeitraum zu schmal für ihre eigenen Spaltenköpfe (siehe dashboard.css).
+test("4 — Mobilkarten unterhalb 1100px statt der Tabelle", () => {
+  // 1100px: gemessen gegen die echte gebaute App — darunter bricht bereits der
+  // Spaltenkopf „Rechnung" um (siehe dashboard.css). Der Punkt konnte gegenüber
+  // dem Vorpaket (1150px) sinken, weil mit den internen Zuständen auch die
+  // längsten Statuslabels entfallen sind.
   assert.match(listSrc, /<ul className="inv-cards">/);
-  assert.match(cssSrc, /@media \(max-width: 1150px\) \{[\s\S]*?\.inv-table \{ display: none; \}[\s\S]*?\.inv-cards \{ display: flex; \}/);
+  assert.match(cssSrc, /@media \(max-width: 1100px\) \{[\s\S]*?\.inv-table \{ display: none; \}[\s\S]*?\.inv-cards \{ display: flex; \}/);
 });
 
 test("5 — Premium-Statussystem: vier Farbfamilien, KEINE generische StatusBadge für Zahlungsstatus", () => {
@@ -102,6 +105,35 @@ test("13 — PDF-Vorschau-Modal: Fokusfalle, Fokusrückgabe, Live-Region beim La
   assert.match(modalSrc, /e\.key !== "Tab"/, "Tab-Fokusfalle fehlt");
   assert.match(modalSrc, /role="status" aria-live="polite"/);
   assert.match(modalSrc, /role="alert"/);
+});
+
+// ── GO-LIVE: die Oberfläche enthält keine internen Begriffe mehr ────────────
+test("13b — GO-LIVE: kein interner Begriff im Kunden-Rechnungsbereich", () => {
+  // Der Kunde darf nicht erkennen, dass intern Test-/Vorschaudokumente existieren.
+  // Geprüft wird der ausführbare Code (Kommentare erklären die Entfernung bewusst
+  // beim Namen und sind kein sichtbarer Text).
+  const code = listSrc.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  for (const term of ["Interne Vorschau", "Testdokument", "Dokumentbetrag", "zahlungswirksam",
+                      "Kein Kundenversand", "Test & Vorschau", "Vorschaudokument"]) {
+    assert.equal(code.includes(term), false, `interner Begriff „${term}" steht noch in der Oberfläche`);
+  }
+  // Keine Frontend-Heuristik über die serverseitige Klassifizierung.
+  assert.equal(/is_productive|document_mode_label|is_test_document/.test(code), false,
+    "die Komponente darf die serverseitige Klassifizierung nicht erneut auswerten");
+  // Und keine clientseitige Bereinigung der Liste.
+  assert.equal(/\.filter\([^)]*is_productive/.test(code), false, "keine Frontend-Ausblendung interner Rechnungen");
+});
+
+test("13d — Statuspill in der Mobilkarte schrumpft nicht (lange Rechnungsnummern)", () => {
+  // Regressionsschutz: ohne flex:none presst eine sehr lange Rechnungsnummer das
+  // Pill so schmal, dass „Offen" buchstabenweise untereinander umbricht.
+  assert.match(cssSrc, /\.inv-card-head > \.inv-status \{ flex: none; \}/);
+});
+
+test("13c — GO-LIVE: genau vier Filterchips, Leerzustand ohne Test-/Vorschau-Erwähnung", () => {
+  assert.match(viewSrc, /INVOICE_FILTERS = Object\.freeze\(\[\s*\{ value: "", label: "Alle" \},\s*\{ value: "open", label: "Offen" \},\s*\{ value: "overdue", label: "Überfällig" \},\s*\{ value: "paid", label: "Bezahlt" \},\s*\]\)/);
+  assert.match(viewSrc, /LIST_EMPTY_TITLE = "Noch keine Rechnungen vorhanden"/);
+  assert.match(viewSrc, /LIST_EMPTY_TEXT = "Sobald eine Rechnung für eine gebuchte Sendung erstellt wurde, erscheint sie hier automatisch\."/);
 });
 
 test("14 — Selbsttest: die Prüflogik greift tatsächlich", () => {

@@ -49,8 +49,13 @@ export function OfferSummaryModule({ tariff }) {
         <div className="offsum-top">
           <div className="offsum-identity">
             <div className="booking-carrier-wrap">
-              {carrierLogo && (
+              {/* Wie in der Angebotskarte: Logo oder neutrales Paket-Icon. */}
+              {carrierLogo ? (
                 <img src={carrierLogo} alt="" aria-hidden="true" className="booking-carrier-logo" />
+              ) : (
+                <span className="booking-carrier-logo booking-carrier-logo--generic" aria-hidden="true">
+                  <Icon n="package" s={20} c="currentColor" />
+                </span>
               )}
               <span className="booking-carrier-name">{carrierName}</span>
             </div>

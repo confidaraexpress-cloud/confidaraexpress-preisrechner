@@ -399,10 +399,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
       <div className="offer-card-inner">
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-1">
-          <div className="offer-logo-tile">
+          {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten
+              Carrier (publicCarrierId "other") — ein neutrales Paket-Icon. NIEMALS
+              Text in der Kachel: der Name ist zu lang für 50 px und bräche mehrzeilig
+              um. Der lesbare Name steht ohnehin direkt daneben in .offer-carrier-name. */}
+          <div className={`offer-logo-tile${carrierLogo ? "" : " offer-logo-tile--generic"}`}>
             {carrierLogo
               ? <img src={carrierLogo} alt={carrierName} width="44" height="44" />
-              : <span className="offer-logo-tile-text">{carrierName}</span>
+              : <Icon n="package" s={24} c="currentColor" />
             }
           </div>
           <div className="offer-zone-1-main">

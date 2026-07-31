@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 
@@ -58,7 +59,11 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
     <div className="booking-livesum" aria-label="Zusammenfassung Ihrer Sendung">
       {/* Zone 1 — Versandprodukt */}
       <div className="blsum-zone blsum-product">
-        {carrierLogo && <img src={carrierLogo} alt="" aria-hidden="true" className="blsum-logo" />}
+        {/* Wie in der Angebotskarte: Logo oder neutrales Paket-Icon — nie ein leeres
+            Element, damit die Zeile bei unbekanntem Carrier nicht springt. */}
+        {carrierLogo
+          ? <img src={carrierLogo} alt="" aria-hidden="true" className="blsum-logo" />
+          : <span className="blsum-logo blsum-logo--generic" aria-hidden="true"><Icon n="package" s={20} c="currentColor" /></span>}
         <span className="blsum-product-txt">
           <span className="blsum-carrier">{carrierName}</span>
           <span className="blsum-service">{publicServiceName(tariff)}</span>

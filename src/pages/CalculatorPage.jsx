@@ -5,7 +5,6 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
-import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
@@ -354,7 +353,6 @@ export default function CalculatorPage() {
 
   return (
     <div className="page-with-navbar">
-      <PremiumBackground variant="neutral" />
       <div className="container calc-page-wrap">
         <div className="offers-form-section">
 

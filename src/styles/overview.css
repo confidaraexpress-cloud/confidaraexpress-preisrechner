@@ -1,0 +1,230 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÜBERSICHT — Inhaltsschicht („Clean Executive Logistics")
+   ───────────────────────────────────────────────────────────────────────────
+   Nachfolger von vapor.css. Der frühere Seiten-Scope .dashboard-vapor ist
+   entfallen: Der Hintergrund kommt jetzt für alle eingeloggten Seiten aus
+   .app-shell (dashboard-premium.css), diese Datei beschreibt nur noch die
+   Inhalte der Übersicht. Alle Selektoren hier sind übersichtsspezifisch
+   (.pp-main, .pp-kpis, .tile, .pp-medal …) und kollidieren nicht mit den
+   Sidebar-Atomen (.pp-side*, .nitem, .nsec, .pp-scard, .pp-foot).
+
+   Entfallen gegenüber vapor.css: die Hintergrund-Atmosphäre (.vp-bg, driftende
+   Aurora-Wolken mit blur(80px), Bloom-Puls, Logistik-Netz-SVG mit Knoten und
+   Halos, Noise, Vignette) samt Keyframes vpDriftA/B/C, vpBloom und den
+   gestaffelten Einblend-Animationen vpRise — die Komponente VaporBackground ist
+   gelöscht. Struktur, Maße und Copy der Übersicht bleiben unverändert.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════ Geteilte Atome der Übersicht ══════════ */
+
+/* Inhaltsfläche: weiß, feine Border, sehr flacher Schatten — kein Glas,
+   kein backdrop-filter, kein Verlauf. */
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+/* Icon-Medaillon: ruhige, leicht getönte Fläche statt Radial-Glanz + Glow. */
+.pp-medal {
+  display: grid; place-items: center; border-radius: 50%; flex-shrink: 0;
+  color: var(--mc);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+.m-blue, .m-hero   { --mc: var(--accent-blue); }
+.m-mint, .m-green  { --mc: #0f9469; }
+.m-amber           { --mc: #b9740f; }
+.m-lav, .m-violet  { --mc: #6d5bd0; }
+
+/* ══════════ Main + Header ══════════ */
+.pp-main {
+  position: relative;
+  max-width: 1420px; margin: 0 auto;
+  padding: 40px 46px 60px;
+  font-family: var(--fs);
+  color: var(--text-primary);
+}
+.pp-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.pp-hero { min-width: 0; }
+
+.pp-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pp-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px; border-radius: 99px;
+  font-family: var(--fs); font-size: 11.5px; font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+}
+.pp-pill svg { color: var(--accent-blue); }
+
+/* Begrüßung: Cormorant-Serif bleibt (bestehende Vorgabe). Der Name wird nicht
+   mehr als Farbverlauf gefüllt, sondern trägt die Akzentfarbe. */
+.pp-h1 {
+  font-family: var(--fd); font-weight: 500; font-size: 52px;
+  line-height: 1.04; letter-spacing: -0.005em;
+  color: var(--text-primary); margin-top: 18px;
+}
+.pp-hname { font-style: italic; color: var(--accent-blue); }
+.pp-hsub { font-family: var(--fs); font-size: 15.5px; font-weight: 400; color: var(--text-secondary); margin-top: 14px; }
+
+.pp-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; flex-shrink: 0; }
+.pp-bell {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; flex-shrink: 0;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+}
+.pp-uchip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px 6px 6px; border-radius: 99px;
+  cursor: pointer; text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pp-uchip:hover { border-color: var(--border-strong, #cbd5e1); background: var(--surface-subtle); }
+.ce-comark { width: 36px; height: 36px; flex-shrink: 0; display: block; }
+.pp-uchip-text { min-width: 0; display: flex; flex-direction: column; }
+.pp-uname { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--text-primary); }
+.pp-ucomp { font-family: var(--fs); font-size: 11px; color: var(--text-secondary); }
+.pp-uchip > svg { color: var(--text-tertiary); flex-shrink: 0; }
+
+.pp-cta {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 13px 22px; border-radius: 99px;
+  cursor: pointer; white-space: nowrap;
+  font-family: var(--fs); font-size: 14px; font-weight: 600; color: #fff;
+  background: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+  transition: background 0.15s ease;
+}
+.pp-cta:hover { background: var(--accent-blue-strong); }
+
+.pp-bell:focus-visible, .pp-uchip:focus-visible, .pp-cta:focus-visible, .pp-compare:focus-visible {
+  outline: 2px solid var(--accent-blue); outline-offset: 2px;
+}
+
+/* ══════════ KPI-Karten ══════════ */
+.pp-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-top: 40px; }
+.pp-kpi {
+  position: relative; border-radius: var(--radius-lg);
+  padding: 20px 20px 18px;
+  transition: box-shadow 0.15s ease;
+}
+.pp-kpi:hover { box-shadow: var(--shadow-card-hover); }
+/* Die erste Karte bleibt hervorgehoben — durch eine dezent getönte Fläche und
+   eine Akzent-Border, nicht mehr durch Verlauf + Glow-Ellipse. */
+.pp-kpi-hero {
+  background: var(--surface);
+  border: 1px solid var(--accent-blue-border);
+  box-shadow: var(--shadow-card);
+}
+.pp-kpi-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.pp-kpi .pp-medal { width: 38px; height: 38px; }
+.pp-kpi-label {
+  font-family: var(--fs); font-size: 10px; font-weight: 700; line-height: 1.4;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary);
+}
+.pp-kpi-hero .pp-kpi-label { color: var(--accent-blue-strong); }
+.eur { font-family: var(--fm); font-size: 16px; font-weight: 500; line-height: 1; color: var(--mc); }
+.knum {
+  font-family: var(--fh); font-weight: 700; font-size: 40px; line-height: 1;
+  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text-primary);
+}
+.pp-kpi-hero .knum { color: var(--accent-blue-strong); }
+.kcur { font-family: var(--fm); font-size: 19px; font-weight: 500; color: var(--text-secondary); margin-left: 5px; }
+.pp-kpi-sub { display: flex; align-items: center; gap: 7px; margin-top: 13px; font-family: var(--fs); font-size: 12px; color: var(--text-secondary); }
+.kchip { display: inline-flex; align-items: center; gap: 4px; font-family: var(--fm); font-size: 10.5px; padding: 3px 9px; border-radius: 99px; }
+.kchip.d-green { color: #0f9469; background: rgba(15, 148, 105, 0.08); border: 1px solid rgba(15, 148, 105, 0.22); }
+.kchip.d-amber { color: #b9740f; background: rgba(185, 116, 15, 0.08);  border: 1px solid rgba(185, 116, 15, 0.22); }
+.kchip.d-blue  { color: var(--accent-blue); background: var(--accent-blue-soft); border: 1px solid var(--accent-blue-border); }
+
+/* ══════════ Sektionen ══════════ */
+.pp-sec { margin-top: 60px; }
+.pp-eyebrow { font-family: var(--fs); font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-blue); }
+.pp-h2 { font-family: var(--fh); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; color: var(--text-primary); margin-top: 12px; }
+.pp-sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.pp-sec-sub { font-family: var(--fs); font-size: 13.5px; color: var(--text-secondary); margin-top: 12px; }
+
+/* Schritte */
+.pp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 38px; }
+.pp-step { position: relative; }
+.pp-step-ic { width: 56px; height: 56px; position: relative; }
+.pp-step-con { position: absolute; top: 28px; left: 72px; right: -16px; height: 1px; background: var(--border-subtle); }
+.pp-step-no { font-family: var(--fm); font-size: 10.5px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-blue); margin-top: 16px; }
+.pp-step-t { font-family: var(--fs); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary); margin-top: 6px; }
+.pp-step-d { font-family: var(--fs); font-size: 12.5px; line-height: 1.65; color: var(--text-secondary); margin-top: 8px; max-width: 230px; }
+
+/* Vorteile */
+.pp-vals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 38px; }
+.pp-vcard { border-radius: var(--radius-lg); padding: 22px 20px; transition: box-shadow 0.15s ease; }
+.pp-vcard:hover { box-shadow: var(--shadow-card-hover); }
+.pp-vcard .pp-medal { width: 44px; height: 44px; margin-bottom: 16px; }
+.pp-v-t { font-family: var(--fs); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary); }
+.pp-v-d { font-family: var(--fs); font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); margin-top: 8px; }
+
+/* Carrier-Netzwerk */
+.pp-compare {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 99px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  font-family: var(--fs); font-size: 13.5px; font-weight: 600; color: var(--accent-blue);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pp-compare:hover { border-color: var(--accent-blue-border); background: var(--surface-subtle); }
+.pp-cars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-top: 22px; }
+.pp-car { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.pp-car-chip {
+  width: 100%; max-width: 104px; height: 60px; padding: 0 10px;
+  border-radius: var(--radius); display: grid; place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.15s ease;
+}
+.pp-car-chip:hover { border-color: var(--border-strong, #cbd5e1); }
+.car-logo { max-height: 26px; max-width: 100%; width: auto; object-fit: contain; display: block; }
+.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.pp-car-time { font-family: var(--fm); font-size: 11px; color: var(--text-secondary); }
+
+/* Trust */
+.pp-trust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 24px 12px; border-radius: var(--radius-lg); margin-top: 38px; }
+.pp-trust-item { display: flex; align-items: center; gap: 16px; padding: 0 24px; position: relative; }
+.pp-trust-item + .pp-trust-item::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 46px; background: var(--border-subtle); }
+.pp-trust-item .pp-medal { width: 46px; height: 46px; }
+.pp-trust-t { font-family: var(--fs); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.pp-trust-d { font-family: var(--fs); font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-top: 4px; }
+
+/* Seitenfuß */
+.pp-pagefoot {
+  margin-top: 52px; padding-top: 22px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center; font-family: var(--fs); font-size: 12px; color: var(--text-tertiary);
+}
+
+/* ══════════ Responsive ══════════ */
+@media (max-width: 1440px) { .pp-cars { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 1340px) { .pp-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1120px) {
+  .pp-vals, .pp-steps { grid-template-columns: repeat(2, 1fr); }
+  .pp-step-con { display: none; }
+  .pp-h1 { font-size: 44px; }
+  .pp-trust { grid-template-columns: 1fr; gap: 18px; }
+  .pp-trust-item + .pp-trust-item::before { display: none; }
+}
+@media (max-width: 980px) {
+  .pp-main { max-width: none; padding: 30px 22px 60px; }
+  .pp-top { flex-direction: column-reverse; }
+  .pp-actions { padding-top: 0; flex-wrap: wrap; }
+  .pp-kpis { grid-template-columns: repeat(2, 1fr); }
+  .pp-cars { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .pp-kpis, .pp-steps, .pp-vals { grid-template-columns: 1fr; }
+  .pp-h1 { font-size: 38px; }
+}

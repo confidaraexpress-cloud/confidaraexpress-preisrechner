@@ -7,7 +7,6 @@ import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
-import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
@@ -757,7 +756,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
 
   return (
     <div className="page-with-navbar">
-      <PremiumBackground variant="neutral" />
 
       {/* Interner Verlassen-Guard: pausiert die Zielnavigation, wenn ungespeicherte
           fachliche Angaben vorliegen. Nur bei interner Navigation — der reguläre

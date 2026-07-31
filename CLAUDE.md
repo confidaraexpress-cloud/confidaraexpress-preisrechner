@@ -41,47 +41,55 @@ Drei voneinander isolierte Theme-Schichten:
 
 | Schicht | Präfix | Datei | Gilt für |
 |---------|--------|-------|----------|
-| Light-Theme | `--navy`, `--gray*`, `--blue*` | `variables.css` | Calculator, Tracking, Booking, Legal |
+| App-Layout „Clean Executive Logistics" | `--app-bg`, `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--sidebar-*` | `variables.css` → `dashboard-premium.css` | Gesamter eingeloggter Kundenbereich |
+| Legacy-Light | `--navy`, `--gray*`, `--blue*` | `variables.css` | Booking, Legal, Offer-/Preisrechnerkarten |
 | Auth-Theme | `--auth-*` | `auth.css` | AuthPage, Login, Register |
-| Dashboard-Premium | `--ce-*` | `dashboard-premium.css` | Dashboard-Overview |
+| Admin | `--adm-*` / `.adm-*` | `admin.css` | Adminbereich (eigene Shell) |
 
-**Token-Systeme niemals vermischen.** `.auth-*`-Klassen gehören ausschließlich in Auth-Komponenten. `.ce-*`-Klassen gehören ausschließlich in das Dashboard-Premium-Layout.
+**Token-Systeme niemals vermischen.** `.auth-*`-Klassen gehören ausschließlich in Auth-Komponenten, `.adm-*` ausschließlich in den Adminbereich.
+
+Neue Flächen im eingeloggten Bereich immer über die App-Layout-Tokens bauen
+(`--surface`, `--border-subtle`, `--shadow-card`) — keine eigenen Hex-Werte,
+keine neuen Verläufe, kein Blau als Fläche.
 
 ### CSS-Import-Reihenfolge — kritisch
 
-`src/styles/index.css` importiert alle Stylesheets in fester Reihenfolge. `dashboard-premium.css` **muss die letzte Datei bleiben**, da es gezielt Regeln aus `dashboard.css` überschreibt:
+`src/styles/index.css` importiert alle Stylesheets in fester Reihenfolge.
+Entscheidend ist nur: `dashboard-premium.css` steht **nach** `dashboard.css`
+(es überschreibt dessen Basisregeln gezielt), und die isolierten Bereichs-
+Stylesheets (`admin.css`, `addressbook.css`, `drafts.css`, `cancellation.css`,
+`email-change.css`, `overview.css`) stehen danach — sie sind reine
+Zusatz-Scopes ohne Kollision.
 
-```css
-/* index.css — Reihenfolge nicht ändern */
-@import './variables.css';    /* 1. Tokens */
-@import './globals.css';      /* 2. Reset */
-@import './animations.css';   /* 3. Keyframes */
-@import './layout.css';       /* 4. Shell/Navbar */
-@import './buttons.css';
-@import './forms.css';
-@import './auth.css';
-@import './calculator.css';
-@import './dashboard.css';    /* 9. Basis-Dashboard */
-@import './responsive.css';
-@import './dashboard-premium.css'; /* LAST — überschreibt dashboard.css */
-```
+Neue Bereichs-Stylesheets ans Ende anhängen; Änderungen an gemeinsamen
+Oberflächen gehören nach `variables.css` / `dashboard-premium.css`.
 
-Neue CSS-Dateien immer **vor** `dashboard-premium.css` einfügen.
+## App-Layout „Clean Executive Logistics" — wichtigste Regel
 
-## Dark-Theme-Isolation — wichtigste Regel
-
-Das Dark-Theme (`ce-dark`) wird **ausschließlich** auf `page === "overview"` aktiviert:
+Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
+(Sidebar + `.main-content`), gerendert von `DashboardPage.jsx` und
+`DashboardLayout.jsx`. Es gibt **keine seitenabhängigen Theme-Klassen** mehr:
 
 ```jsx
-// DashboardPage.jsx — NUR diese Seite bekommt ce-dark
-<div className={`app-shell${page === "overview" ? " ce-dark" : ""}`}>
+// DashboardPage.jsx / DashboardLayout.jsx — überall identisch
+<div className="app-shell">
 ```
 
 **Konsequenzen:**
-- Dashboard-Sub-Seiten (Sendungen, Rechnungen, Profil, Neue Sendung) sind **bewusst Light-Theme**
-- `.ce-dark`-Regeln in `dashboard-premium.css` treffen Sidebar, Topbar, Navigation im Dark-Mode
-- `.ce-overview` stellt den dunklen Hintergrund **nur für die Overview-Seite** bereit
-- Legal Pages (Impressum, Datenschutz, AGB, Widerruf) bleiben **immer hell**
+- Keine neue Hintergrund-Ebene und keine Seiten-Scope-Klasse auf `.app-shell`
+  einführen. Wer eine Seite anders einfärben will, hat eine falsche Abzweigung
+  genommen — die Grundfläche ist bewusst überall `--app-bg`.
+- **Keine Dekoration im Hintergrund**: keine Glow-Nodes, Routenlinien,
+  schwebenden Icons, Punktraster, Aurora-/Blur-Flächen, Vignetten, kein
+  `backdrop-filter` und keine dauerhaft laufenden Hintergrundanimationen.
+  Genau diese Elemente wurden bewusst entfernt (Komponenten `VaporBackground`
+  und `PremiumBackground` sind gelöscht).
+- Bewegung nur als kurze Zustandsreaktion (Hover/Fokus, ≤ 200 ms) oder als
+  funktionaler Ladeindikator — nie als Ambiente.
+- Blau (`--accent-blue`) ist Akzent: aktive Navigation, Links, Fokus, primäre
+  Aktion. Keine blauen Flächen.
+- Legal Pages (Impressum, Datenschutz, AGB, Widerruf) und der Auth-Bereich
+  liegen außerhalb dieses Rahmens und bleiben unverändert.
 
 ## Dashboard-Navigationsmodell
 
@@ -160,27 +168,30 @@ Alle Icons über `<Icon n="name" s={size} c="color" />` in `src/components/ui/Ic
 
 | Breakpoint | Wichtige Änderungen |
 |------------|---------------------|
-| ≤ 768 px | Sidebar wird zum Overlay; ce-dark mobile-topbar sichtbar |
+| ≤ 860 px | Sidebar wird zum Drawer-Overlay; mobile-topbar sichtbar |
 | ≤ 600 px | KPI-Grid 2-spaltig; Carrier-Grid 2-spaltig |
 | ≤ 420 px | KPI-Grid 1-spaltig; Footer-Grid 1-spaltig |
 
-### ce-page Container
+### Gemeinsamer Inhaltsrahmen
 
-Alle Dashboard-Inhalte laufen durch `.ce-page`:
+Alle Unterseiten laufen durch `.page-body`, der Seitenkopf durch
+`.dash-section-header` — beide teilen sich dieselbe Rahmenbreite:
 
 ```css
-.ce-page {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 30px 38px 0;
-}
+.page-body,
+.dash-section-header,
+.alert-wrapper { max-width: 1240px; margin: 0 auto; }
 ```
 
-Neue Layout-Elemente auf der Overview **immer innerhalb** von `.ce-page` platzieren. Kein Element sollte diesen Container ohne Begründung verlassen — sonst bricht das Zentrierung auf breiten Screens (1440px+).
+Neue Layout-Elemente **immer innerhalb** dieses Rahmens platzieren und keine
+zweite `max-width` darunter einziehen — sonst laufen Seitenkopf und Inhalt auf
+breiten Screens (1440 px+) um wenige Pixel auseinander. Die Übersicht nutzt
+denselben Gedanken über `.pp-main` (`max-width: 1420px`), weil ihr KPI-Raster
+fünf Spalten breit ist.
 
 ### 100dvh statt 100vh
 
-Auth- und Overview-Komponenten verwenden `min-height: 100dvh` (dynamic viewport height). Das ist absichtlich: Mobile-Browser verändern die Adressleistenhöhe beim Scrollen, `100vh` würde dort zu unerwünschten Überlappungen führen. Bei neuen Vollbild-Layouts ebenfalls `100dvh` verwenden.
+Auth-Komponenten und `.app-shell` verwenden `min-height: 100dvh` (dynamic viewport height). Das ist absichtlich: Mobile-Browser verändern die Adressleistenhöhe beim Scrollen, `100vh` würde dort zu unerwünschten Überlappungen führen. Bei neuen Vollbild-Layouts ebenfalls `100dvh` verwenden.
 
 ## Performance-Regeln
 
@@ -204,7 +215,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/charming-fermat-cpJ3f`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/clean-executive-logistics-bi9cyo`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
@@ -240,4 +251,4 @@ console.log("User:", user);
 - **API-Routen** — Backend ist extern, Endpunkte nicht umbenennen
 - **CSS-Token-Systeme trennen** — kein Cross-Pollination zwischen `--auth-*`, `--ce-*` und Legacy-Variablen
 - **Legal-Seiten-Design** — bleibt dauerhaft Light-Theme (Lesbarkeit, rechtliche Konvention)
-- **`ce-dark` Scope** — bleibt auf Overview beschränkt; Dashboard-Sub-Seiten bleiben Light
+- **`.app-shell` als einziger Layout-Wrapper** — keine seitenabhängigen Theme-/Hintergrund-Scopes und keine zweite Hintergrund-Ebene wieder einführen

@@ -1,1611 +1,385 @@
 /* ════════════════════════════════════════════════════════════════════════
-   ConfidaraExpress — Hauptlayout (Dashboard · Premium Dark)
-   Alle neuen Klassen sind mit .ce- geprefixt (keine Kollision).
-   Theme-Modifier .app-shell.ce-dark wird NUR auf der Übersicht gesetzt,
-   sodass Sendungen, Rechnungen, Profil und Neue Sendung inhaltlich (Light-
-   Theme) unberührt bleiben. Ausnahme: die Sidebar — die ist bewusst KEIN
-   Teil des Übersicht-Themes mehr, sondern globales Chrome (siehe Sektion
-   „§17 SIDEBAR (Premium Navy-Glas · alle Seiten)" weiter unten) und rendert
-   überall identisch, mit eigenen --fh/--fs-Tokens (siehe dort). --font-
-   display/--font-mono bleiben .ce-dark-gescoped (nur für Übersicht-Inhalte:
-   Hero-Serife, Schritt-Zähler).
+   ConfidaraExpress — Gemeinsames App-Layout des eingeloggten Bereichs
+   „Clean Executive Logistics"
+   ────────────────────────────────────────────────────────────────────────
+   EIN Layout, EIN Hintergrund, EINE Sidebar — für alle Kundenseiten
+   (Übersicht, Neue Sendung, Preisrechner, Entwürfe, Sendungen,
+   Sendungsverfolgung, Adressbuch, Rechnungen, Unternehmen & Konto).
+
+   Gestaltungsprinzip: ruhige, neutrale Grundfläche (--app-bg), weiße
+   Inhaltsflächen (--surface), feine Borders (--border-subtle), sehr dezente
+   Schatten, klare Typografie, kontrollierte Abstände. Blau ausschließlich als
+   gezielter Akzent (aktive Navigation, Links, Fokus) — nie als Fläche.
+   Keine Dekoration, keine Glows, keine dauerhaften Hintergrundanimationen.
+
+   Entfallen (vormals hier definiert):
+     • .pbg-* / .ce-dark .pbg-* — Punkte-Raster, gestrichelte Routen-SVGs,
+       Glow-Knoten, schwebende Logistik-Glyphen, Vignetten (Komponente
+       PremiumBackground ist gelöscht).
+     • die vier seitenabhängigen Hintergrund-Scopes .dashboard-soft-premium /
+       -neutral-premium / -profile-premium (+ .dashboard-vapor in overview.css).
+     • der komplette tote .ce-dark-Themeblock samt .ce-overview/.ce-page/
+       .ce-card/.ce-table/.ce-hero/.ce-aurora/.ce-steps/.ce-carriers/.ce-footer
+       (wurde von keinem Markup mehr referenziert).
+
+   Der Adminbereich (.adm-*) und der Auth-Bereich (--auth-*) sind eigene,
+   unberührte Scopes. Tokens: src/styles/variables.css.
    ──────────────────────────────────────────────────────────────────────── */
 
-/* === Premium-Tokens ======================================================= */
-:root {
-  --ce-bg-0: #01030a;
-  --ce-bg-1: #060c1d;
-  --ce-bg-2: #0a1226;
-  --ce-surface: rgba(10, 16, 36, 0.55);
-  --ce-surface-2: rgba(8, 14, 32, 0.78);
-  --ce-line-1: rgba(255, 255, 255, 0.06);
-  --ce-line-2: rgba(120, 160, 255, 0.16);
-  --ce-line-3: rgba(150, 180, 255, 0.30);
+/* ════════════════════════════════════════════════════════════════════════ */
+/*  SHELL                                                                    */
+/* ════════════════════════════════════════════════════════════════════════ */
 
-  --ce-ink-1: #ffffff;
-  --ce-ink-2: #c6d0e6;
-  --ce-ink-3: #8a93ad;
-  --ce-ink-4: #5b6480;
-
-  --ce-blue: #2e5cff;
-  --ce-blue-2: #3b6cff;
-  --ce-blue-3: #6189ff;
-  --ce-blue-soft: #a8bdff;
-  --ce-blue-glow: rgba(46, 92, 255, 0.55);
-
-  --ce-green: #34d399;
-  --ce-green-bg: rgba(46, 200, 130, 0.10);
-  --ce-amber: #fbbf24;
-  --ce-amber-bg: rgba(251, 191, 36, 0.10);
-
-  --ce-r-sm: 8px;
-  --ce-r: 14px;
-  --ce-r-lg: 20px;
-  --ce-r-xl: 26px;
-
-  --ce-sidebar-w: 256px;
-
-  /* Sidebar-Typografie — global, damit Marke/Nav/Support auf jeder Seite
-     dieselbe Schrift verwenden (vorher nur unter .ce-dark definiert). */
+.app-shell {
   --font-heading: 'Libre Franklin', 'DM Sans', system-ui, sans-serif;
   --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
+  --fh: 'Libre Franklin', sans-serif;
+  --fs: 'DM Sans', system-ui, sans-serif;
+  --fm: 'DM Mono', ui-monospace, monospace;
+  --fd: 'Cormorant Garamond', Georgia, serif;
 
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  SHELL + DARK THEME                                                       */
-/* ════════════════════════════════════════════════════════════════════════ */
+  --sidebar-width: 268px;
 
-.app-shell.ce-dark {
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--ce-bg-0);
-  color: var(--ce-ink-1);
+  background: var(--app-bg);
+  color: var(--text-primary);
 }
 
-/* ───────── Sidebar ─────────
-   Alle Sidebar-Regeln (Struktur + Theme) sind konsolidiert in der Sektion
-   „§17 SIDEBAR (Premium Navy-Glas · alle Seiten)" weiter unten im File —
-   das ist die einzige Quelle der Wahrheit. Hier bewusst keine Sidebar-
-   Regeln mehr. */
-
-/* ───────── Main content area (layout only — background lives in .ce-overview) ───────── */
-.ce-dark .main-content {
-  margin-left: var(--ce-sidebar-w);
-  flex: 1;
+/* Die Grundfläche liegt auf .app-shell und scrollt mit — kein fixer
+   Hintergrund-Layer, keine Atmosphäre dahinter. .main-content bleibt damit
+   frei von eigenen Flächenfarben (Ausnahmen nur dort, wo eine Unterseite
+   einen eigenen opaken Grund mitbringt, siehe .page-with-navbar unten). */
+.main-content {
+  position: relative;
   min-width: 0;
-  position: relative;
 }
 
-/* Overview wrapper — provides dark bg only for the overview page */
-.ce-overview {
-  background:
-    radial-gradient(ellipse 55% 45% at 0% 58%, rgba(28, 48, 115, 0.09), transparent 65%),
-    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(40, 70, 150, 0.16), transparent 60%),
-    linear-gradient(180deg, var(--ce-bg-1) 0%, var(--ce-bg-0) 100%);
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
+/* Der geteilte .page-with-navbar-Wrapper (Preisrechner, Neue Sendung, Tracking)
+   bringt für den öffentlichen Bereich eine eigene Flächenfarbe mit. Innerhalb
+   der App-Shell soll stattdessen die gemeinsame Grundfläche gelten. */
+.app-shell .page-with-navbar { background: transparent; }
 
-.ce-dark .mobile-topbar {
-  background: rgba(6, 12, 28, 0.96);
-  border-bottom: 1px solid var(--ce-line-1);
+/* ── Mobile-Topbar ── */
+.mobile-topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-.ce-dark .mobile-topbar .ce-brand-name { color: var(--ce-ink-1); }
-.ce-dark .hamburger-btn { color: var(--ce-ink-2); background: none; border: none; display: flex; cursor: pointer; }
-
-/* Logo mark (CE) — dark variant */
-.ce-dark .logo-mark {
-  background: linear-gradient(160deg, var(--ce-blue-3), var(--ce-blue));
-  color: #fff;
-  border-radius: 9px;
-  display: grid; place-items: center;
-  font-family: 'Libre Franklin', sans-serif; font-weight: 800;
-  letter-spacing: -0.02em;
-  box-shadow: 0 6px 18px -6px var(--ce-blue-glow);
-}
+.mobile-topbar .topbar-brand { color: var(--text-primary); }
+.hamburger-btn { color: var(--text-secondary); background: none; border: none; cursor: pointer; }
+.hamburger-btn:hover { background: var(--surface-muted); }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  CONTENT WRAPPER + AURORA                                                 */
+/*  SIDEBAR — matter Graphit-Ton, flach, ohne Glow                           */
+/*  Eine einzige Definition für ALLE eingeloggten Seiten. Vorher: dunkle     */
+/*  Navy-Glas-Kapsel mit blauem Backlight (.pp-side-glow) + separater        */
+/*  „Porcelain"-Variante nur auf der Übersicht.                              */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-page { position: relative; z-index: 1; padding: 30px 38px 0; max-width: 1280px; margin: 0 auto; }
-
-.ce-aurora {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
+.sidebar.pp-side {
+  padding: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: none;
+  overflow: visible;
 }
-.ce-aurora-ray {
-  position: absolute;
-  top: -60px; right: -120px;
-  width: 900px; height: 480px;
-  transform: rotate(-20deg);
-  transform-origin: top right;
-  background: linear-gradient(180deg,
-    transparent 0%,
-    rgba(170, 200, 255, 0.06) 32%,
-    rgba(150, 190, 255, 0.20) 49%,
-    rgba(200, 225, 255, 0.36) 50%,
-    rgba(150, 190, 255, 0.20) 51%,
-    transparent 72%);
-  filter: blur(1.5px);
-  mask-image: radial-gradient(ellipse 70% 100% at 95% 0%, black, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 100% at 95% 0%, black, transparent 72%);
-}
-.ce-aurora-glow {
-  position: absolute;
-  top: -180px; right: -120px;
-  width: 700px; height: 700px;
-  background: radial-gradient(circle at 40% 55%,
-    rgba(180, 210, 255, 0.28) 0%,
-    rgba(100, 145, 230, 0.12) 30%,
-    transparent 62%);
-  filter: blur(24px);
-}
+.sidebar.pp-side::before, .sidebar.pp-side::after { display: none; }
 
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  TOPBAR (greeting + bell)                                                 */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-topbar {
-  position: relative; z-index: 2;
+/* Scrollcontainer ist die GESAMTE Spalte, nicht nur die Navigation. Vorher lag
+   overflow-y auf .pp-nav — reichte die Höhe nicht, wurde dort ein Eintrag hart
+   mittendrin abgeschnitten, während Support-Karte und Fußzeile darunter stehen
+   blieben. Jetzt scrollt die Spalte als Ganzes. */
+.pp-side-in {
+  position: relative;
+  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 4px;
-}
-.ce-greeting {
-  font-family: 'Libre Franklin', sans-serif;
-  font-weight: 700;
-  font-size: clamp(18px, 2vw, 22px);
-  color: var(--ce-ink-1);
-  letter-spacing: -0.01em;
-}
-.ce-icon-btn {
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  background: var(--ce-surface);
-  border: 1px solid var(--ce-line-2);
-  color: var(--ce-ink-2);
-  display: grid; place-items: center;
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-  transition: border-color 160ms, color 160ms, background 160ms;
-}
-.ce-icon-btn:hover { color: var(--ce-ink-1); border-color: var(--ce-line-3); background: var(--ce-surface-2); }
-.ce-icon-btn .ce-dot {
-  position: absolute; top: 10px; right: 11px;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--ce-blue-3);
-  box-shadow: 0 0 0 2px var(--ce-bg-1), 0 0 10px var(--ce-blue-glow);
-}
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  HERO                                                                     */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-hero {
-  position: relative; z-index: 2;
-  padding: 18px 0 30px;
-  max-width: 620px;
-  margin: 0 auto;
-  text-align: center;
-}
-.ce-hero-title {
-  margin: 0;
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
-  font-weight: 500;
-  font-size: clamp(34px, 5vw, 64px);
-  line-height: 1.05;
-  letter-spacing: -0.015em;
-  color: var(--ce-ink-1);
-}
-.ce-hero-sub {
-  margin: 20px auto 0;
-  font-size: 15.5px;
-  line-height: 1.65;
-  color: var(--ce-ink-3);
-  max-width: 540px;
-}
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  SHARED CARD                                                              */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-card {
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.004) 60%),
-    var(--ce-surface);
-  border: 1px solid var(--ce-line-2);
-  border-radius: var(--ce-r-xl);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.03) inset,
-    0 1px 0 rgba(255,255,255,0.06) inset,
-    0 30px 70px -28px rgba(0,0,0,0.7);
-}
-
-.ce-section { position: relative; z-index: 2; margin-bottom: 26px; }
-.ce-section-title {
-  font-family: 'Libre Franklin', sans-serif;
-  font-weight: 700;
-  font-size: 19px;
-  color: var(--ce-ink-1);
-  letter-spacing: -0.01em;
-}
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  TABLE — Letzte Sendungen                                                 */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-table-card { padding: 26px 28px 14px; }
-.ce-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.ce-table { width: 100%; border-collapse: collapse; min-width: 540px; }
-.ce-table thead th {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ce-ink-4);
-  padding: 18px 16px 12px;
-  border-bottom: 1px solid var(--ce-line-1);
-  letter-spacing: 0.01em;
-}
-.ce-table tbody td {
-  padding: 16px;
-  font-size: 14px;
-  color: var(--ce-ink-2);
-  border-bottom: 1px solid var(--ce-line-1);
-  vertical-align: middle;
-}
-.ce-table tbody tr:last-child td { border-bottom: 0; }
-.ce-table tbody tr { transition: background 140ms; cursor: pointer; }
-.ce-table tbody tr:hover td { background: rgba(120, 160, 255, 0.04); }
-.ce-table .ce-track-id { font-weight: 600; color: var(--ce-ink-1); font-variant-numeric: tabular-nums; }
-.ce-table .ce-carrier { color: var(--ce-ink-2); }
-.ce-table .ce-date { color: var(--ce-ink-3); font-variant-numeric: tabular-nums; }
-.ce-table .ce-chev { color: var(--ce-ink-4); text-align: right; width: 40px; }
-
-.ce-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.ce-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.ce-badge.green { background: var(--ce-green-bg); color: var(--ce-green); border: 1px solid rgba(46,200,130,0.22); }
-.ce-badge.amber { background: var(--ce-amber-bg); color: var(--ce-amber); border: 1px solid rgba(251,191,36,0.22); }
-.ce-badge.blue  { background: rgba(46,92,255,0.10); color: var(--ce-blue-3); border: 1px solid rgba(120,160,255,0.22); }
-
-.ce-table-foot { text-align: center; padding: 18px 0 8px; }
-.ce-link-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--ce-blue-3); font-size: 14px; font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
-  display: inline-flex; align-items: center; gap: 8px;
-  transition: color 150ms, gap 150ms;
-}
-.ce-link-btn:hover { color: var(--ce-blue-soft); gap: 11px; }
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  3-STEP STRIP                                                             */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-steps-card { padding: 28px 30px 30px; }
-.ce-steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-  margin-top: 24px;
-}
-.ce-step { position: relative; }
-.ce-step-num {
-  position: absolute;
-  top: -2px; left: 0;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--ce-blue-2), var(--ce-blue));
-  color: #fff;
-  font-size: 13px; font-weight: 700;
-  display: grid; place-items: center;
-  box-shadow: 0 6px 14px -4px var(--ce-blue-glow);
-}
-.ce-step-body { padding-left: 0; }
-.ce-step-ico {
-  width: 56px; height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(80,120,220,0.14), rgba(40,70,180,0.08));
-  border: 1px solid rgba(120,160,255,0.18);
-  display: grid; place-items: center;
-  color: var(--ce-blue-3);
-  margin: 34px 0 16px;
-}
-.ce-step-title { font-size: 15.5px; font-weight: 600; color: var(--ce-ink-1); margin-bottom: 8px; }
-.ce-step-desc { font-size: 13.5px; line-height: 1.6; color: var(--ce-ink-3); }
-.ce-step-connector {
-  position: absolute;
-  top: 60px; right: -22px;
-  width: 24px;
-  border-top: 1.5px dashed rgba(120,160,255,0.28);
-}
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  CARRIER NETWORK                                                          */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-carriers-card {
-  padding: 18px 22px 16px;
-  background: transparent;
+  flex-direction: column;
+  padding: 22px 14px 16px;
+  background: none;
   border: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.pp-side-in::-webkit-scrollbar { display: none; }
+
+/* ── Marke ── */
+.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 8px 22px; }
+.ce-brandmark {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.06);
   box-shadow: none;
 }
-.ce-carriers-card .ce-section-title {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: var(--ce-ink-2);
-}
-.ce-carriers-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 14px 0 12px;
-}
-.ce-carrier-tile {
-  height: 64px;
-  background: transparent;
-  border: none;
-  display: grid;
-  place-items: center;
-  padding: 10px 16px;
-  transition: opacity 150ms ease, transform 150ms ease;
-}
-.ce-carrier-tile:hover {
-  opacity: 0.72;
-  transform: scale(1.05);
-}
-.ce-carrier-logo-img {
-  max-height: 40px;
-  max-width: 80%;
-  width: auto;
-  object-fit: contain;
-  display: block;
-}
-.ce-carrier-fallback {
-  font-family: 'Libre Franklin', sans-serif;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  text-align: center;
-  text-transform: uppercase;
-  user-select: none;
-}
-.ce-carriers-note {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--ce-ink-4);
-}
+.pp-brandmark-svg { width: 26px; height: 26px; display: block; }
+.pp-brand { font-family: var(--fh); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--sidebar-ink-strong); white-space: nowrap; }
+.pp-brand b { color: var(--sidebar-accent); font-weight: 700; }
+.pp-brand-sub { font-family: var(--fs); font-size: 10.5px; font-weight: 500; color: var(--sidebar-ink-muted); margin-top: 2px; white-space: nowrap; }
+.pp-close { margin-left: auto; color: var(--sidebar-ink-muted); }
 
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  FOOTER                                                                   */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-.ce-footer {
-  position: relative; z-index: 2;
-  margin-top: 40px;
-  border-top: 1px solid var(--ce-line-1);
-  padding: 40px 0 28px;
+/* ── Kontoidentität ── */
+.pp-identity {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0 2px 14px; padding: 9px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--sidebar-line);
 }
-.ce-footer-grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr 1.2fr;
-  gap: 32px;
-  margin-bottom: 32px;
-}
-.ce-footer-brand { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
-.ce-footer-tag { font-size: 13.5px; line-height: 1.6; color: var(--ce-ink-3); max-width: 280px; }
-.ce-footer-social { display: flex; gap: 10px; margin-top: 18px; }
-.ce-footer-social a {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: var(--ce-surface);
-  border: 1px solid var(--ce-line-2);
+.pp-identity-avatar {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
   display: grid; place-items: center;
-  color: var(--ce-ink-3);
-  transition: color 150ms, border-color 150ms;
-  text-decoration: none;
+  font-family: var(--fh); font-weight: 700; font-size: 12.5px; color: #fff;
+  background: var(--accent-blue);
+  box-shadow: none;
 }
-.ce-footer-social a:hover { color: var(--ce-blue-3); border-color: var(--ce-line-3); }
-.ce-footer-col h4 {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px; font-weight: 700;
-  color: var(--ce-ink-1);
-  letter-spacing: 0.02em;
-  margin-bottom: 16px;
+.pp-identity-text { min-width: 0; }
+.pp-identity-name { font-family: var(--fs); font-size: 13px; font-weight: 600; color: var(--sidebar-ink-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-identity-email { font-family: var(--fs); font-size: 11px; color: var(--sidebar-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Navigation ── */
+/* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
+   unten), schrumpft aber nie unter die eigene Inhaltshöhe. */
+.pp-nav { flex: 1 0 auto; display: flex; flex-direction: column; gap: 2px; }
+.nsec {
+  font-family: var(--fs); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--sidebar-section); padding: 16px 12px 6px;
 }
-.ce-footer-col a, .ce-footer-col p {
-  display: block;
-  font-size: 13.5px;
-  color: var(--ce-ink-3);
-  margin-bottom: 10px;
-  text-decoration: none;
-  transition: color 150ms;
+.nsec--active { color: var(--sidebar-ink-muted); }
+.pp-nav-utility-divider { height: 1px; margin: 10px 12px 4px; background: var(--sidebar-line); }
+
+.nitem {
+  position: relative; display: flex; align-items: center; gap: 11px;
+  width: 100%; text-align: left;
+  padding: 9px 12px; border-radius: 8px;
+  font-family: var(--fs); font-size: 13.5px; font-weight: 500;
+  color: var(--sidebar-ink); background: none; border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.ce-footer-col a:hover { color: var(--ce-ink-1); }
-.ce-footer-contact-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: var(--ce-ink-3);
-  margin-bottom: 10px;
+.nitem svg { flex-shrink: 0; opacity: 0.7; color: currentColor; }
+.nitem:hover { background: var(--sidebar-hover); color: var(--sidebar-ink-strong); }
+.nitem.on { color: var(--sidebar-ink-strong); font-weight: 600; background: var(--sidebar-active); }
+.nitem.on svg { opacity: 1; color: var(--sidebar-accent); }
+/* Aktivmarker: feine Leiste in der Akzentfarbe — kein Glow, kein Verlauf. */
+.nitem.on::before {
+  content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+  width: 2px; border-radius: 0 2px 2px 0;
+  background: var(--sidebar-accent);
 }
-.ce-footer-contact-row a {
-  color: inherit;
-  text-decoration: none;
-  transition: color 150ms;
+
+/* ── Support-Karte ── */
+.pp-scard {
+  display: block; text-decoration: none; margin-top: 14px;
+  padding: 13px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--sidebar-line);
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
-.ce-footer-contact-row a:hover { color: var(--ce-ink-1); }
-.ce-footer-mail-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: 1px solid transparent; border-radius: 8px;
-  color: var(--ce-ink-4); cursor: pointer; padding: 5px 7px;
-  transition: color 150ms, border-color 150ms, background 150ms;
-  line-height: 0;
+.pp-scard:hover { background: rgba(255, 255, 255, 0.065); border-color: rgba(255, 255, 255, 0.14); }
+.pp-scard-top { display: flex; align-items: center; gap: 11px; }
+.scard-ic {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+  display: grid; place-items: center; color: var(--sidebar-accent);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--sidebar-line);
+  box-shadow: none;
 }
-.ce-footer-mail-btn:hover { color: var(--ce-ink-2); border-color: var(--ce-line-2); background: rgba(120,160,255,0.07); }
-.ce-footer-mail-btn:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
-.ce-footer-mail-link {
-  background: none; border: none; padding: 0;
-  color: var(--ce-ink-3); font-size: inherit; cursor: pointer;
-  text-decoration: underline; text-decoration-color: transparent;
-  transition: color 150ms, text-decoration-color 150ms;
-  font-family: inherit;
-}
-.ce-footer-mail-link:hover { color: var(--ce-ink-1); text-decoration-color: var(--ce-ink-3); }
-.ce-footer-mail-link:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; border-radius: 3px; }
-.ce-footer-bottom {
-  border-top: 1px solid var(--ce-line-1);
-  padding-top: 22px;
-  text-align: center;
-  font-size: 12.5px;
-  color: var(--ce-ink-4);
+.scard-k { font-family: var(--fs); font-size: 10.5px; color: var(--sidebar-ink-muted); }
+.scard-t { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--fs); font-size: 12.5px; font-weight: 600; color: var(--sidebar-ink-strong); }
+.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.55; color: var(--sidebar-ink-muted); margin-top: 9px; }
+
+.pp-foot { padding: 14px 12px 0; font-family: var(--fs); font-size: 10px; line-height: 1.6; color: var(--sidebar-section); }
+.pp-side :focus-visible { outline: 2px solid var(--sidebar-accent); outline-offset: 2px; box-shadow: none; }
+
+/* Statuspunkt „Support verfügbar" — flacher Punkt statt leuchtender Kern. */
+.ce-live {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--success);
+  box-shadow: none;
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  CONTACT MAIL DIALOG                                                        */
+/*  KONTAKT-DIALOG (ContactMailMenu) — auf Light umgestellt                  */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .ce-mail-dialog {
-  position: fixed;
-  inset: 0;
-  margin: auto;
+  position: fixed; inset: 0; margin: auto;
   width: min(360px, calc(100vw - 32px));
   padding: 0;
-  border: 1px solid var(--ce-line-2);
-  border-radius: var(--ce-r-lg);
-  background: var(--ce-bg-1);
-  color: var(--ce-ink-1);
-  box-shadow: 0 24px 64px rgba(0, 0, 8, 0.72), 0 0 0 1px rgba(120, 160, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-overlay);
   outline: none;
 }
-.ce-mail-dialog::backdrop {
-  background: rgba(0, 0, 12, 0.68);
-  backdrop-filter: blur(4px);
-}
-.ce-mail-dialog-inner {
-  padding: 22px 22px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.ce-mail-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-.ce-mail-dialog-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ce-ink-1);
-  letter-spacing: -0.01em;
-}
+.ce-mail-dialog::backdrop { background: rgba(23, 32, 51, 0.32); }
+.ce-mail-dialog-inner { padding: 22px 22px 18px; display: flex; flex-direction: column; }
+.ce-mail-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.ce-mail-dialog-title { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 .ce-mail-dialog-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--ce-ink-4);
-  cursor: pointer;
-  padding: 4px 6px;
-  line-height: 0;
-  transition: color 150ms, border-color 150ms, background 150ms;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid transparent; border-radius: 8px;
+  color: var(--text-tertiary); cursor: pointer; padding: 4px 6px; line-height: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.ce-mail-dialog-close:hover { color: var(--ce-ink-2); border-color: var(--ce-line-2); background: rgba(120,160,255,0.07); }
-.ce-mail-dialog-close:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+.ce-mail-dialog-close:hover { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-muted); }
+.ce-mail-dialog-close:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 
-.ce-mail-dialog-addr {
-  font-size: 12.5px;
-  color: var(--ce-ink-3);
-  margin: 0 0 16px;
-  font-family: monospace;
-  letter-spacing: 0.01em;
-}
+.ce-mail-dialog-addr { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--fm); letter-spacing: 0.01em; }
 
-.ce-mail-dialog-providers {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.ce-mail-dialog-providers { display: flex; flex-direction: column; gap: 4px; }
 .ce-mail-dialog-provider {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 14px;
-  border-radius: var(--ce-r-sm);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--ce-line-1);
-  color: var(--ce-ink-2);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 150ms, border-color 150ms, color 150ms;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.ce-mail-dialog-provider:hover {
-  background: rgba(120, 160, 255, 0.10);
-  border-color: var(--ce-line-2);
-  color: var(--ce-ink-1);
-}
-.ce-mail-dialog-provider:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+.ce-mail-dialog-provider:hover { background: var(--surface-muted); border-color: var(--border-strong, #cbd5e1); }
+.ce-mail-dialog-provider:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 
-.ce-mail-dialog-divider {
-  height: 1px;
-  background: var(--ce-line-1);
-  margin: 14px 0;
-}
+.ce-mail-dialog-divider { height: 1px; background: var(--border-subtle); margin: 14px 0; }
 
 .ce-mail-dialog-copy {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: var(--ce-r-sm);
-  background: none;
-  border: 1px solid var(--ce-line-2);
-  color: var(--ce-ink-3);
-  font-size: 13.5px;
-  cursor: pointer;
-  transition: color 150ms, border-color 150ms, background 150ms;
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: none; border: 1px solid var(--border-subtle);
+  color: var(--text-secondary); font-size: 13.5px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.ce-mail-dialog-copy:hover { color: var(--ce-ink-1); border-color: var(--ce-line-3); background: rgba(120,160,255,0.07); }
-.ce-mail-dialog-copy:focus-visible { outline: 2px solid var(--ce-blue-3); outline-offset: 2px; }
+.ce-mail-dialog-copy:hover { color: var(--text-primary); background: var(--surface-muted); }
+.ce-mail-dialog-copy:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  OVERVIEW LOADING SPINNER                                                  */
+/*  UNTERNEHMEN & KONTO                                                      */
+/*  Layout/Maße unverändert aus dem bisherigen Profil-Scope übernommen —      */
+/*  nur die Farbwelt wechselt von dunklem Navy-Glas auf die gemeinsame        */
+/*  Light-Oberfläche. Die Regeln sind jetzt ungescoped, weil es keinen        */
+/*  seitenabhängigen Theme-Wrapper mehr gibt; alle Selektoren sind            */
+/*  profilspezifisch (.profile-*) und kollidieren mit nichts.                 */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.ce-spinner {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.12);
-  border-top-color: var(--ce-blue-3);
-  animation: spin 0.75s linear infinite;
+.profile-page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 18px; padding: 8px 0 26px;
 }
-.ce-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 80px 0;
-}
+.profile-page-head-text { min-width: 0; text-align: left; }
+.profile-page-head .dash-section-title { text-align: left; }
+.profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
 
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  SOFT PREMIUM (Sendungen / Rechnungen)                                    */
-/*  Heller, dezenter Premium-Hintergrund — bewusst KEIN .ce-dark, KEINE      */
-/*  Wiederverwendung von .ce-overview/.ce-aurora (dort zu dunkel/zu stark).  */
-/*  Gesetzt von DashboardPage.jsx als .dashboard-soft-premium auf .app-shell,*/
-/*  ausschließlich für page === "shipments" | "invoices".                   */
-/* ════════════════════════════════════════════════════════════════════════ */
+/* max-width:none hebt die 600px-Basis aus dashboard.css auf — die Rahmenbreite
+   setzt jetzt .page-body. */
+.profile-grid { max-width: none; gap: 28px; }
+.profile-col { gap: 20px; }
 
-.dashboard-soft-premium .main-content {
+/* Konto-Kopf: ruhige, leicht getönte Fläche statt dunklem Verlauf + Lichtstrahl. */
+.profile-account-header {
   position: relative;
-  overflow-x: hidden;
-  background:
-    radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255, 255, 255, 0.30) 0%, rgba(219, 234, 254, 0.16) 45%, transparent 78%),
-    radial-gradient(ellipse 56% 46% at 94% 6%, rgba(255, 255, 255, 0.46) 0%, rgba(186, 230, 253, 0.24) 38%, transparent 74%),
-    radial-gradient(ellipse 56% 46% at 6% 44%, rgba(56, 189, 248, 0.30) 0%, rgba(125, 211, 252, 0.14) 45%, transparent 74%),
-    radial-gradient(ellipse 50% 42% at 22% 92%, rgba(96, 165, 250, 0.22) 0%, transparent 72%),
-    radial-gradient(ellipse 42% 34% at 92% 94%, rgba(11, 31, 77, 0.24) 0%, rgba(11, 31, 77, 0.08) 42%, transparent 72%),
-    radial-gradient(ellipse 44% 36% at 18% 6%, rgba(29, 78, 216, 0.18) 0%, transparent 70%),
-    linear-gradient(165deg, #eef8ff 0%, #d8e9fb 38%, #b9d8f4 72%, #a9cdf0 100%);
+  display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap;
+  gap: 16px;
+  padding: 30px 36px; margin: 0 0 26px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
 }
-
-.dashboard-soft-premium .empty {
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 40px 24px;
-  background: transparent;
-  border: none;
+.profile-account-identity { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.profile-avatar-lg {
+  width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Libre Franklin', sans-serif; font-size: 25px; font-weight: 700;
+  letter-spacing: -0.02em; color: #fff;
+  background: var(--accent-blue);
   box-shadow: none;
 }
-.dashboard-soft-premium .empty-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 76px; height: 76px;
-  margin: 0 auto 16px;
-  font-size: 32px;
-  opacity: 1;
-  border-radius: 50%;
-  background: linear-gradient(160deg, rgba(37,99,235,0.20), rgba(37,99,235,0.06));
-  border: 1px solid rgba(37,99,235,0.22);
-  box-shadow: 0 4px 16px rgba(37,99,235,0.16);
-}
-.dashboard-soft-premium .empty-title { color: var(--navy); }
-
-.dashboard-soft-premium .table-card {
-  border-color: rgba(11, 31, 77, 0.10);
-  box-shadow: 0 6px 22px rgba(15, 35, 90, 0.08), 0 1px 3px rgba(15, 35, 90, 0.05);
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   PREMIUM-ATMOSPHÄRE · Soft-Variante (Sendungen / Rechnungen)
-   ──────────────────────────────────────────────────────────────────────────
-   Gerendert von <PremiumBackground variant="soft"> als .pbg.pbg-soft. Dieselbe
-   Layer-Struktur, SVG-Geometrie, Bewegungsradien und Animationstimings wie die
-   Übersicht-Atmosphäre (.ce-dark .pbg*) — nur farblich an die helle Soft-
-   Premium-Farbwelt angepasst (dunklere, gesättigte Blautöne statt heller Navy-
-   on-Dark-Werte). KEINE dunkle Navy-Basis: der bestehende
-   .dashboard-soft-premium .main-content-Verlauf bleibt die Grundfarbe und
-   scheint durch die halbtransparenten Layer. Diese Atmosphäre ist jetzt
-   vollständig statisch (keine Animation, kein SMIL, keine Glow-Blobs).
-   ════════════════════════════════════════════════════════════════════════ */
-.pbg-soft { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-/* Statische Farbtiefe: die früheren drei animierten Glow-Blobs (blur60 +
-   will-change) sind als ruhige radiale Verläufe in den Grund gelegt — gleiche
-   Farbidentität/Regionen, weich auslaufend, ohne Blur-DOM/Compositor-Layer. */
-.pbg-soft .pbg-grad {
-  position:absolute; inset:0;
-  background:
-    radial-gradient(820px 820px at -4% -8%, rgba(56,189,248,.14), transparent 60%),
-    radial-gradient(760px 760px at 104% 8%, rgba(96,165,250,.11), transparent 60%),
-    radial-gradient(940px 680px at 34% 118%, rgba(37,99,235,.09), transparent 62%),
-    radial-gradient(900px 600px at 50% 120%, rgba(56,189,248,.10), transparent 70%);
-}
-.pbg-soft .pbg-dots {
-  position:absolute; inset:0; opacity:.6;
-  background-image:radial-gradient(rgba(37,99,235,.10) 1px, transparent 1.6px); background-size:46px 46px;
-  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-          mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-}
-.pbg-soft .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.85; }
-.pbg-soft .pbg-halo { opacity:.4; }
-.pbg-soft .pbg-glyphs { position:absolute; inset:0; }
-.pbg-soft .pbg-glyph { position:absolute; color:rgba(37,99,235,.07); filter:blur(.4px); }
-.pbg-soft .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-soft .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(37,99,235,.09); }
-.pbg-soft .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(37,99,235,.06); }
-.pbg-soft .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(37,99,235,.09); }
-.pbg-soft .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(37,99,235,.07); }
-.pbg-soft .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(37,99,235,.09); }
-.pbg-soft .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(37,99,235,.06); }
-.pbg-soft .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 62%, rgba(11,31,77,.07) 100%); }
-
-/* Inhalt der Soft-Premium-Seiten über die fixe Atmosphäre (.pbg-soft, z-index:0)
-   heben. .mobile-topbar bleibt bewusst unberührt (sticky, z-index:100 > 0).
-   .page-with-navbar deckt „Sendung verfolgen" ab (TrackingPage-Wrapper);
-   Sendungen/Rechnungen nutzen .page-body, das öffentliche /tracking hat diesen
-   Scope nicht — daher greift die Regel ausschließlich im Dashboard-Tracking. */
-.dashboard-soft-premium .dash-section-header,
-.dashboard-soft-premium .page-body,
-.dashboard-soft-premium .page-with-navbar,
-.dashboard-soft-premium .alert-wrapper,
-.dashboard-soft-premium .legal-links { position:relative; z-index:1; }
-/* Opaken .page-with-navbar-Grund (#f0f4fa) nur in diesem Scope transparent
-   schalten, damit die Soft-Premium-Grundfarbe + Atmosphäre durchscheinen. */
-.dashboard-soft-premium .page-with-navbar { background: transparent; }
-
-/* Reduced-Motion-Block entfällt: die .pbg-soft-Atmosphäre ist jetzt vollständig
-   statisch (keine Animation, kein SMIL, keine driftenden Pakete mehr). */
-
-/* ════════════════════════════════════════════════════════════════════════
-   PREMIUM-ATMOSPHÄRE · Neutral-Variante (+ Neue Sendung / Preisrechner)
-   ──────────────────────────────────────────────────────────────────────────
-   Gerendert von <PremiumBackground variant="neutral"> als .pbg.pbg-neutral.
-   Dieselbe Layer-Struktur, SVG-Geometrie, Bewegungsradien und Animationstimings
-   wie die Übersicht — nur farblich in eine neutrale #DCDCDC-Welt übersetzt:
-   Slate-/Anthrazit-Töne (Grau mit dezentem Navy-Unterton, bleibt in der
-   Markenfamilie) plus weiche weiße Glanzpunkte für Tiefe. Keine Navy-Basis der
-   Übersicht, kein Soft-Blau der Sendungen/Rechnungen. Die #DCDCDC-Grundfarbe
-   liegt auf .dashboard-neutral-premium .main-content und scheint durch die
-   halbtransparenten Layer. Diese Atmosphäre ist jetzt vollständig statisch
-   (keine Animation, kein SMIL, keine Glow-Blobs).
-
-   Gesetzt von DashboardPage.jsx (page === "new") bzw. DashboardLayout.jsx
-   (Preisrechner) als .dashboard-neutral-premium auf .app-shell.
-   ════════════════════════════════════════════════════════════════════════ */
-
-/* #DCDCDC-Grundfarbe (leitend) + weiche Lichtakzente — behält die Sub-Seiten-
-   Struktur, ersetzt nur den bisherigen hellblauen .page-with-navbar-Grund. */
-.dashboard-neutral-premium .main-content {
-  position: relative;
-  overflow-x: hidden;
-  background:
-    radial-gradient(ellipse 60% 32% at 50% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 46%, transparent 78%),
-    radial-gradient(ellipse 48% 42% at 92% 6%, rgba(255,255,255,0.42) 0%, transparent 70%),
-    radial-gradient(ellipse 46% 40% at 6% 92%, rgba(100,116,139,0.14) 0%, transparent 72%),
-    radial-gradient(ellipse 40% 34% at 90% 96%, rgba(51,65,85,0.10) 0%, transparent 72%),
-    linear-gradient(165deg, #e7e7e9 0%, #dcdcdc 46%, #d2d3d7 100%);
-}
-/* Der bisherige opake .page-with-navbar-Hintergrund (#f0f4fa) wird transparent,
-   damit die neutrale Grundfarbe + Atmosphäre durchscheinen. Nur unter diesem
-   Scope — die geteilte .page-with-navbar-Klasse bleibt sonst unberührt. */
-.dashboard-neutral-premium .page-with-navbar { background: transparent; }
-
-/* Inhalt über die fixe Atmosphäre (.pbg-neutral, z-index:0) heben. Der gesamte
-   Seiteninhalt liegt in .calc-page-wrap; Kopf/Legal/Alerts stehen daneben.
-   .mobile-topbar bleibt unberührt (sticky, z-index:100 > 0). */
-.dashboard-neutral-premium .calc-page-wrap,
-.dashboard-neutral-premium .dash-section-header,
-.dashboard-neutral-premium .alert-wrapper,
-.dashboard-neutral-premium .legal-links { position:relative; z-index:1; }
-
-.pbg-neutral { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-/* Statische Farbtiefe (siehe .pbg-soft): Glow-Blobs → ruhige radiale Verläufe.
-   Auf #DCDCDC bewusst subtil (weiches oberes Weiß + dezente Slate-Ecken). */
-.pbg-neutral .pbg-grad {
-  position:absolute; inset:0;
-  background:
-    radial-gradient(820px 820px at -4% -8%, rgba(255,255,255,.24), transparent 62%),
-    radial-gradient(760px 760px at 104% 8%, rgba(148,163,184,.10), transparent 62%),
-    radial-gradient(940px 680px at 34% 118%, rgba(100,116,139,.09), transparent 62%),
-    radial-gradient(900px 600px at 50% 120%, rgba(100,116,139,.07), transparent 70%);
-}
-.pbg-neutral .pbg-dots {
-  position:absolute; inset:0; opacity:.55;
-  background-image:radial-gradient(rgba(71,85,105,.10) 1px, transparent 1.6px); background-size:46px 46px;
-  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-          mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-}
-.pbg-neutral .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.8; }
-.pbg-neutral .pbg-halo { opacity:.4; }
-.pbg-neutral .pbg-glyphs { position:absolute; inset:0; }
-.pbg-neutral .pbg-glyph { position:absolute; color:rgba(71,85,105,.07); filter:blur(.4px); }
-.pbg-neutral .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-neutral .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(71,85,105,.09); }
-.pbg-neutral .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(71,85,105,.06); }
-.pbg-neutral .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(71,85,105,.09); }
-.pbg-neutral .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(71,85,105,.07); }
-.pbg-neutral .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(71,85,105,.09); }
-.pbg-neutral .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(71,85,105,.06); }
-.pbg-neutral .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 62%, rgba(51,65,85,.09) 100%); }
-
-/* Reduced-Motion-Block entfällt: die .pbg-neutral-Atmosphäre ist jetzt
-   vollständig statisch. */
-
-/* ════════════════════════════════════════════════════════════════════════ */
-/*  PROFILE (Mein Profil) — eigener Premium-Scope, losgelöst von Sendungen/ */
-/*  Rechnungen. Direkter Port der AuthPage-Hintergrundmechanik (siehe       */
-/*  auth.css: .auth-page, .auth-aurora-sun/-ray-top/-ray-right/-dust/       */
-/*  -vignette) — Navy/Blue-Black-Basis, Sonnen-Glow, Staub, Vignette und    */
-/*  zwei Lichtstrahlen, in Helligkeit leicht über dem AuthPage-Original.    */
-/*  Bewusst kein --auth- bzw. --ce--Token, kein Dark Mode. Gesetzt von       */
-/*  DashboardPage.jsx als .dashboard-profile-premium auf .app-shell,        */
-/*  ausschließlich für page === "profile". Verändert .dashboard-soft-premium*/
-/*  (Sendungen/Rechnungen) nicht — eigene .main-content-Regel, kein         */
-/*  gemeinsamer Selektor. Die geschwungene Aurora-Welle der AuthPage         */
-/*  (.auth-aurora-wave, ein inline-SVG) wurde bewusst NIE übernommen — sie   */
-/*  hätte neues JSX/DOM in Profile.jsx erfordert.                           */
-/*  Performance-Pass (nach 4f4cf18): Dust-Punkte 11→5 (größerer Radius,     */
-/*  weicherer Falloff statt scharfer 1px-Kreise), Layer-Anzahl gesamt       */
-/*  14→9, ::before-Ray 1400×700→900×480 (an .ce-aurora-ray-Referenz aus     */
-/*  der Übersicht angelehnt) — reduziert Paint-/Mask-Fläche beim Scrollen,  */
-/*  Navy-Basis/Ambient-Glow/Sonnen-Glow/Vignette/Strahl-Charakter bleiben.  */
-/*  Hierarchie-/Glow-Pass (nach 42ae2ae): Vignette/Sonnen-Falloff/Ambient-  */
-/*  Glow/Basis auf #473C8B (violett, Tiefe, unten/seitlich) und #436EEE     */
-/*  (blau, oben/seitlich) umgetönt statt neu hinzugefügt; genau ein neuer   */
-/*  weicher Violett-Blob unten links ergänzt (Layer-Anzahl 9→10, kein       */
-/*  Dust/Mask/Filter-Zuwachs). Account-Header + Karten von Glassy auf       */
-/*  opakes Off-White (#fbfcff) umgestellt, backdrop-filter entfernt —       */
-/*  Lesbarkeits- UND Performance-Gewinn. Premium-Redesign: Seitenkopf mit   */
-/*  Titel/Subline (.profile-page-head); Bearbeitung erfolgt bereichsweise   */
-/*  je Karte (.profile-card-edit-action). Status-/B2B-/Zahlungsziel-Chips    */
-/*  im Hero (.profile-meta-row). Hero + Datenkarten (.profile-grid) auf      */
-/*  ein dunkles Navy-/Glass-Theme umgestellt (Icon-Kacheln, Sublines,       */
-/*  Hinweis-Boxen) — passend zum Profil-Referenzmockup, vollständig unter   */
-/*  .dashboard-profile-premium gescoped (andere Sub-Seiten unberührt).      */
-/*  Netzwerk-Pass (aktuell): Die o. g. Dust-Punkte/Sonnen-Glow/Lichtstrahlen */
-/*  (::before/::after) sind entfallen — .main-content trägt nur noch die    */
-/*  reine Navy-Basis. Die eigentliche Premium-Atmosphäre (Punkte, animierte  */
-/*  Routen/Linien, leuchtende Knoten, Ambient-Glow, Noise, Vignette) kommt   */
-/*  jetzt von <PremiumBackground variant="profile"> (Profile.jsx, Self-Mount */
-/*  wie ShipmentsList/InvoicesList) über den Farbscope „.pbg-profile" weiter */
-/*  unten — dieselbe Struktur/Geometrie/Timings wie „.pbg-soft"/„.pbg-       */
-/*  neutral", nur farblich aus Profils eigenen Tönen (Navy #0f1438/#0b1030/  */
-/*  #06081c, Violett ~#473C8B, Blau ~#436EEE) abgeleitet — bewusst NICHT die */
-/*  Übersicht-Palette. Da .pbg-profile als position:fixed/z-index:0-Layer    */
-/*  läuft, wird der Content-Wrapper .page-body (sowie .alert-wrapper/        */
-/*  .legal-links) analog zu .dashboard-soft-premium auf position:relative;   */
-/*  z-index:1 gehoben, damit er über der Atmosphäre bleibt.                  */
-/* ════════════════════════════════════════════════════════════════════════ */
-
-/* Grundfläche NUR noch die ruhige Navy-Basis (unverändert aus der bisherigen
-   Mechanik übernommen) — die früheren statischen Lichtpunkte, der Sonnen-Glow
-   und die zwei Lichtstrahlen-Pseudo-Elemente (::before/::after) entfallen
-   bewusst: sie würden mit dem neuen animierten Punkte-/Linien-/Glow-Netzwerk
-   aus <PremiumBackground variant="profile"> (.pbg-profile, weiter unten)
-   kollidieren/Doppel-Hintergrund erzeugen. Die eigentliche „Premium-Atmosphäre"
-   (Punkte, Routen, Knoten, Glow-Blobs, Noise, Vignette) trägt jetzt .pbg-profile;
-   .main-content liefert nur noch den dunklen Navy-Grund, auf dem sie leuchtet. */
-.dashboard-profile-premium .main-content {
-  position: relative;
-  overflow-x: hidden;
-  background: linear-gradient(180deg, #0f1438 0%, #0b1030 55%, #06081c 100%);
-}
-
-.dashboard-profile-premium .dash-section-title { color: #f5f8ff; }
-.dashboard-profile-premium .dash-section-sub { color: rgba(205, 215, 235, 0.82); }
-
-/* Seitenkopf: Titel/Subline links, „Profil bearbeiten“ rechts (wie Mockup) */
-.dashboard-profile-premium .profile-page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 32px 0 28px;
-}
-.dashboard-profile-premium .profile-page-head-text { min-width: 0; text-align: left; }
-.dashboard-profile-premium .profile-page-head .dash-section-title { text-align: left; }
-.dashboard-profile-premium .profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
-
-.dashboard-profile-premium .profile-grid {
-  max-width: 1180px;
-  margin: 0 auto;
-  gap: 28px;
-}
-.dashboard-profile-premium .profile-col { gap: 20px; }
-
-.dashboard-profile-premium .page-body > .alert-success {
-  max-width: 1180px;
-  margin: 0 auto 16px;
-}
-
-.dashboard-profile-premium .profile-account-header {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 16px;
-  max-width: 1180px;
-  padding: 34px 40px;
-  margin: 0 auto 26px;
-  border-radius: 26px;
-  background:
-    radial-gradient(135% 150% at 0% 0%, rgba(58, 100, 210, 0.22) 0%, transparent 55%),
-    linear-gradient(158deg, rgba(26, 35, 78, 0.94) 0%, rgba(13, 18, 46, 0.94) 100%);
-  border: 1px solid rgba(120, 160, 255, 0.20);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.05) inset,
-    0 22px 50px rgba(4, 8, 26, 0.50);
-}
-.dashboard-profile-premium .profile-account-header::after {
-  content: '';
-  position: absolute;
-  top: -20%; right: -10%;
-  width: 480px; height: 140%;
-  transform: rotate(-18deg);
-  background: linear-gradient(180deg,
-    transparent 0%,
-    rgba(150, 185, 255, 0.08) 38%,
-    rgba(180, 210, 255, 0.20) 49%,
-    rgba(150, 185, 255, 0.08) 60%,
-    transparent 100%);
-  filter: blur(1px);
-  mask-image: radial-gradient(ellipse 60% 90% at 85% 50%, black, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 60% 90% at 85% 50%, black, transparent 75%);
-  pointer-events: none;
-}
-
-.dashboard-profile-premium .profile-account-identity {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-width: 0;
-}
-
-.dashboard-profile-premium .profile-avatar-lg {
-  width: 74px; height: 74px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Libre Franklin', sans-serif;
-  font-size: 27px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: white;
-  background: linear-gradient(135deg, var(--blue), var(--accent));
-  box-shadow:
-    0 10px 28px rgba(29, 78, 216, 0.50),
-    0 0 0 1px rgba(140, 175, 255, 0.38),
-    0 0 0 7px rgba(96, 165, 250, 0.16),
-    0 0 38px -4px rgba(59, 130, 246, 0.45);
-}
-
-.dashboard-profile-premium .profile-account-info { min-width: 0; }
-
-.dashboard-profile-premium .profile-account-name {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 26px;
-  font-weight: 700;
-  color: #f4f7ff;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  white-space: normal;
+.profile-account-info { min-width: 0; }
+.profile-account-name {
+  font-family: 'DM Sans', sans-serif; font-size: 24px; font-weight: 700;
+  color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.3;
   overflow-wrap: break-word;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+.profile-account-email {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 14px; color: var(--text-secondary); margin-top: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
+
+.profile-meta-row { margin-top: 16px; gap: 10px; }
+.profile-meta-row .badge,
+.profile-meta-chip { padding: 5px 12px; font-size: 12px; }
+.profile-meta-row .badge { gap: 6px; }
+.profile-meta-row .badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; box-shadow: none;
 }
 
-.dashboard-profile-premium .profile-account-email {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 14px;
-  color: rgba(198, 210, 234, 0.82);
-  margin-top: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dashboard-profile-premium .profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
-
-/* Chips/Badges auf dem dunklen Hero: translucentes Pill, heller Text.       */
-/* Nur unter .dashboard-profile-premium — Tabellen-Badges anderer Seiten     */
-/* (Sendungen/Rechnungen) bleiben im Light-Theme unberührt.                  */
-.dashboard-profile-premium .badge {
-  background: rgba(120, 150, 230, 0.12);
-  border-color: rgba(140, 170, 255, 0.22);
-}
-.dashboard-profile-premium .badge-green  { color: #5fe0b0; }
-.dashboard-profile-premium .badge-yellow { color: #fbbf24; }
-.dashboard-profile-premium .badge-red    { color: #fb7185; }
-.dashboard-profile-premium .badge-blue   { color: #9dbcff; }
-.dashboard-profile-premium .badge-gray   { color: #c2cce0; }
-.dashboard-profile-premium .profile-meta-row .badge { gap: 6px; }
-.dashboard-profile-premium .profile-meta-row { margin-top: 16px; gap: 10px; }
-.dashboard-profile-premium .profile-meta-row .badge,
-.dashboard-profile-premium .profile-meta-chip {
-  padding: 6px 14px;
-  font-size: 12.5px;
-}
-.dashboard-profile-premium .profile-meta-row .badge::before {
-  content: '';
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 8px currentColor;
-}
-.dashboard-profile-premium .profile-meta-chip {
-  background: rgba(120, 150, 230, 0.12);
-  color: #ccd8f5;
-  border-color: rgba(140, 170, 255, 0.22);
-}
-.dashboard-profile-premium .profile-meta-chip svg { opacity: 0.8; }
-.dashboard-profile-premium .profile-meta-chip-accent {
-  background: rgba(45, 108, 255, 0.20);
-  color: #bcd0ff;
-  border-color: rgba(95, 137, 255, 0.42);
-}
-
-.dashboard-profile-premium .profile-grid .table-card {
-  border-radius: 24px;
-  border: 1px solid rgba(120, 160, 255, 0.16);
-  background:
-    radial-gradient(130% 130% at 0% 0%, rgba(60, 100, 210, 0.10) 0%, transparent 58%),
-    linear-gradient(165deg, rgba(22, 30, 68, 0.92) 0%, rgba(12, 17, 42, 0.93) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 18px 44px rgba(4, 8, 26, 0.42);
-}
-
-/* Karten-Kopf: Icon-Kachel + Titel/Subline auf dunklem Grund */
-.dashboard-profile-premium .profile-card-head {
-  padding: 20px 26px;
-  border-bottom: 1px solid rgba(130, 160, 230, 0.12);
-}
-.dashboard-profile-premium .table-card-title { color: #f1f5ff; font-size: 16px; }
-.dashboard-profile-premium .profile-card-sub { color: rgba(184, 197, 226, 0.62); }
-.dashboard-profile-premium .profile-card-icon {
-  width: 46px; height: 46px;
-  border-radius: 14px;
-  color: #9dbcff;
-  background: linear-gradient(150deg, rgba(56, 108, 235, 0.32) 0%, rgba(40, 70, 170, 0.18) 100%);
-  border: 1px solid rgba(120, 160, 255, 0.28);
-  box-shadow: 0 6px 16px -7px rgba(40, 90, 220, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-
-/* „Bearbeiten"-Button im Kartenkopf auf dem dunklen Profil-Theme */
-.dashboard-profile-premium .profile-card-edit-action {
-  color: #bcd0ff;
-  background: rgba(70, 104, 200, 0.16);
-  border-color: rgba(120, 160, 255, 0.30);
-}
-.dashboard-profile-premium .profile-card-edit-action:hover {
-  background: rgba(90, 130, 235, 0.24);
-  border-color: rgba(140, 170, 255, 0.48);
-}
-.dashboard-profile-premium .profile-card-edit-action:disabled { opacity: 0.4; }
-
-.dashboard-profile-premium .profile-section-body { padding: 14px 26px 24px; }
-.dashboard-profile-premium .profile-row { padding: 15px 0; }
-.dashboard-profile-premium .profile-row-border { border-bottom-color: rgba(130, 160, 230, 0.10); }
-.dashboard-profile-premium .profile-row-key { color: rgba(178, 191, 222, 0.72); font-size: 13.5px; }
-.dashboard-profile-premium .profile-row-val { color: #e9eefc; font-size: 13.5px; }
-.dashboard-profile-premium .profile-row-empty { color: rgba(150, 166, 205, 0.5); }
-
-.dashboard-profile-premium .profile-hint {
-  padding: 13px 15px;
-  border-radius: 13px;
-  background: rgba(70, 104, 200, 0.10);
-  border-color: rgba(120, 160, 255, 0.16);
-}
-.dashboard-profile-premium .profile-hint svg { color: #9dbcff; opacity: 0.95; }
-.dashboard-profile-premium .profile-hint p { color: rgba(198, 210, 234, 0.82); }
-
-/* Edit-Modus: Inputs/Labels/Buttons auf das dunkle Profil-Theme angepasst.  */
-/* Rein lokal gescoped, die Basisregeln in forms.css/buttons.css bleiben     */
-/* unverändert (andere Formulare im Light-Theme unberührt).                  */
-.dashboard-profile-premium .profile-form-body { padding: 20px 26px; }
-.dashboard-profile-premium .profile-form-body .field-label { color: rgba(202, 214, 238, 0.85); }
-.dashboard-profile-premium .profile-form-body .field-input {
-  background: rgba(9, 14, 36, 0.55);
-  border-color: rgba(120, 160, 255, 0.20);
-  color: #eef2ff;
-}
-.dashboard-profile-premium .profile-form-body .field-input::placeholder { color: rgba(150, 165, 200, 0.5); }
-.dashboard-profile-premium .profile-form-body .field-input:focus {
-  background: rgba(12, 18, 46, 0.78);
-  border-color: var(--blue3);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16), 0 0 22px -6px rgba(37, 99, 235, 0.34);
-}
-.dashboard-profile-premium .profile-form-body .field-select option { color: #0B1F4D; }
-
-.dashboard-profile-premium .profile-password-section { border-top-color: rgba(130, 160, 230, 0.12); }
-.dashboard-profile-premium .profile-password-title { color: #f1f5ff; }
-.dashboard-profile-premium .profile-password-desc { color: rgba(184, 197, 226, 0.62); }
-
-.dashboard-profile-premium .profile-form-actions .btn-outline {
-  color: #d6e0f5;
-  border-color: rgba(140, 170, 255, 0.30);
-}
-.dashboard-profile-premium .profile-form-actions .btn-outline:hover {
-  background: rgba(120, 150, 230, 0.10);
-  border-color: rgba(140, 170, 255, 0.48);
-}
-
-/* Footer-Links auf dem dunklen Profil-Hintergrund lesbar halten */
-.dashboard-profile-premium .legal-links a { color: rgba(176, 190, 222, 0.55); }
-.dashboard-profile-premium .legal-links a:hover { color: #cdd9f5; }
-
-/* Inhalt über die fixe Atmosphäre (.pbg-profile, z-index:0) heben — exakt das
-   Muster von .dashboard-soft-premium/.dashboard-neutral-premium. .page-body ist
-   Profiles alleiniger Root-Wrapper (deckt Seitenkopf/Account-Header/Grid/
-   Edit-Stack vollständig ab); .alert-wrapper (Booking-Toast/Ladefehler) und
-   .legal-links rendern in DashboardPage.jsx als zusätzliche Geschwister und
-   werden ebenso gehoben, damit sie nie hinter der Atmosphäre verschwinden. */
-.dashboard-profile-premium .page-body,
-.dashboard-profile-premium .alert-wrapper,
-.dashboard-profile-premium .legal-links { position: relative; z-index: 1; }
-
-/* ════════════════════════════════════════════════════════════════════════
-   PREMIUM-ATMOSPHÄRE · Profile-Variante (Mein Profil)
-   ──────────────────────────────────────────────────────────────────────────
-   Gerendert von <PremiumBackground variant="profile"> als .pbg.pbg-profile.
-   Dieselbe Layer-Struktur, SVG-Geometrie, Bewegungsradien und Animations-
-   timings wie Übersicht/Sendungen/Rechnungen/Neue Sendung (.ce-dark .pbg* /
-   .pbg-soft / .pbg-neutral) — nur farblich aus Profils eigenen, bereits
-   vorhandenen Tönen abgeleitet (Navy #0f1438/#0b1030/#06081c als Grundfläche
-   über .dashboard-profile-premium .main-content, Violett ~#473C8B und Blau
-   ~#436EEE als Node-/Linien-/Glow-Akzente, dazu ein helles Off-White-/
-   Lavendel-Licht nur an den hellsten Punkten — Node-Kern, Parcels). Bewusst
-   KEIN Bezug zur Übersicht-Palette. Diese Atmosphäre ist jetzt vollständig
-   statisch (keine Animation, kein SMIL, keine Glow-Blobs).
-   ════════════════════════════════════════════════════════════════════════ */
-.pbg-profile { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-/* Statische Farbtiefe (siehe .pbg-soft): Glow-Blobs → ruhige radiale Verläufe. */
-.pbg-profile .pbg-grad {
-  position:absolute; inset:0;
-  background:
-    radial-gradient(820px 820px at -4% -8%, rgba(67,110,238,.20), transparent 60%),
-    radial-gradient(760px 760px at 104% 8%, rgba(71,60,139,.18), transparent 60%),
-    radial-gradient(940px 680px at 34% 118%, rgba(67,110,238,.15), transparent 62%),
-    radial-gradient(900px 600px at 50% 120%, rgba(67,110,238,.12), transparent 70%);
-}
-.pbg-profile .pbg-dots {
-  position:absolute; inset:0; opacity:.55;
-  background-image:radial-gradient(rgba(230,225,250,.16) 1px, transparent 1.6px); background-size:46px 46px;
-  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-          mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-}
-.pbg-profile .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.85; }
-.pbg-profile .pbg-halo { opacity:.5; }
-.pbg-profile .pbg-glyphs { position:absolute; inset:0; }
-.pbg-profile .pbg-glyph { position:absolute; color:rgba(67,110,238,.14); filter:blur(.4px); }
-.pbg-profile .pbg-glyph svg { width:100%; height:100%; display:block; }
-.pbg-profile .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(67,110,238,.16); }
-.pbg-profile .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(67,110,238,.12); }
-.pbg-profile .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(67,110,238,.16); }
-.pbg-profile .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(67,110,238,.13); }
-.pbg-profile .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(67,110,238,.16); }
-.pbg-profile .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(67,110,238,.12); }
-.pbg-profile .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 58%, rgba(6,8,28,.55) 100%); }
-
-/* Reduced-Motion-Block entfällt: die .pbg-profile-Atmosphäre ist jetzt
-   vollständig statisch. */
+.profile-grid .table-card { border-radius: var(--radius-lg); }
+.profile-card-head { padding: 18px 24px; }
+.table-card-title { font-size: 15px; }
+.profile-card-icon { width: 42px; height: 42px; border-radius: 12px; }
+.profile-section-body { padding: 12px 24px 22px; }
+.profile-row { padding: 14px 0; }
+.profile-row-key, .profile-row-val { font-size: 13.5px; }
+.profile-hint { padding: 13px 15px; border-radius: 12px; }
+.profile-form-body { padding: 18px 24px; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 1100px) {
-  .ce-footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+/* Kurze Viewports (Laptops, Mobile-Drawer): die Navigation ist zwar scrollbar,
+   ein halb abgeschnittener „Abmelden"-Eintrag liest sich aber wie ein Fehler.
+   Der vertikale Rhythmus wird daher gestrafft, bis die komplette Navigation
+   samt Support-Karte ohne Scrollen hineinpasst. Reine Abstände, keine
+   Struktur- oder Reihenfolgeänderung. */
+@media (max-height: 880px) {
+  .pp-side-in { padding: 18px 14px 14px; }
+  .pp-logo { padding: 2px 8px 16px; }
+  .pp-identity { margin-bottom: 12px; padding: 8px 10px; }
+  .nsec { padding: 12px 12px 5px; }
+  .nitem { padding: 8px 12px; }
+  .pp-nav-utility-divider { margin: 8px 12px 4px; }
+  .pp-scard { margin-top: 12px; padding: 11px; }
+  .scard-s { margin-top: 7px; }
+  .pp-foot { padding: 11px 12px 0; }
 }
 
 @media (max-width: 860px) {
-  /* Sidebar-Drawer-Schwelle — bewusst NICHT mehr .ce-dark-gescoped: die
-     Sidebar ist auf jeder Dashboard-Seite gleich, also kollabiert sie auch
-     überall bei derselben Breite (vorher: 860px nur auf der Übersicht,
-     768px auf allen anderen Seiten — eine zweite, unsichtbare Sidebar-
-     Inkonsistenz neben Farbe/Material). */
+  /* Einheitliche Drawer-Schwelle für die eine Sidebar auf allen Seiten. */
   .sidebar { transform: translateX(-100%); }
   .sidebar.sidebar-open { transform: translateX(0); }
   .sidebar-close-btn { display: flex; }
-  /* .app-shell (nicht nur .main-content) hält die Spezifität auf Augenhöhe
-     mit der älteren, unconditional .ce-dark .main-content-Regel (Zeile ~75,
-     margin-left:var(--ce-sidebar-w)) — sonst gewinnt die alte Regel auf der
-     Übersicht weiter, der Content bliebe dort um die Sidebar-Breite
-     eingerückt, obwohl die Sidebar längst als Drawer ausgeblendet ist. */
   .app-shell .main-content { margin-left: 0; }
   .mobile-topbar { display: flex; }
-  /* .hamburger-btn selbst ist generisch (auch von NavbarLayout mit eigener
-     768px-Schwelle genutzt) — hier gezielt nur die Dashboard-Instanz
-     (innerhalb .mobile-topbar) an die 860px-Schwelle angleichen, ohne die
-     öffentliche Navbar anzufassen. */
+  /* .hamburger-btn ist generisch (auch NavbarLayout, 768px) — hier gezielt nur
+     die Dashboard-Instanz an die 860px-Schwelle angleichen. */
   .mobile-topbar .hamburger-btn { display: flex; }
-  .ce-page { padding: 20px 18px 0; }
-  .ce-steps-grid { grid-template-columns: 1fr; gap: 22px; }
-  .ce-step-connector { display: none; }
 
-  .dashboard-soft-premium .main-content {
-    background:
-      radial-gradient(ellipse 90% 24% at 50% 0%, rgba(255, 255, 255, 0.34) 0%, rgba(219, 234, 254, 0.16) 46%, transparent 78%),
-      radial-gradient(ellipse 80% 30% at 100% 4%, rgba(255, 255, 255, 0.40) 0%, rgba(186, 230, 253, 0.20) 40%, transparent 74%),
-      radial-gradient(ellipse 70% 34% at 0% 48%, rgba(56, 189, 248, 0.24) 0%, rgba(125, 211, 252, 0.12) 46%, transparent 76%),
-      radial-gradient(ellipse 56% 28% at 90% 98%, rgba(11, 31, 77, 0.18) 0%, transparent 72%),
-      linear-gradient(165deg, #eef8ff 0%, #d8e9fb 38%, #b9d8f4 72%, #a9cdf0 100%);
-  }
-
-  /* .main-content-Hintergrund bleibt auf Mobile die reine Navy-Basis (keine
-     eigene Mobile-Override mehr nötig) — die frühere Punkte-/Strahl-Feinjustage
-     für kleine Screens ist mit ::before/::after (s. o.) entfallen; die
-     Atmosphäre kommt jetzt aus .pbg-profile, das seine eigene, für alle Premium-
-     Varianten identische Mobile-Behandlung über prefers-reduced-motion erhält. */
-
-  .dashboard-profile-premium .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
-  .dashboard-profile-premium .profile-account-header { padding: 22px 22px; gap: 14px; }
-  .dashboard-profile-premium .profile-account-identity { min-width: 100%; gap: 14px; }
-  .dashboard-profile-premium .profile-avatar-lg { width: 62px; height: 62px; font-size: 23px; }
-  .dashboard-profile-premium .profile-account-name { font-size: 22px; }
-  .dashboard-profile-premium .profile-grid { flex-direction: column; }
-  .dashboard-profile-premium .profile-card-head { padding: 17px 20px; }
-  .dashboard-profile-premium .profile-section-body { padding: 12px 20px 18px; }
-  .dashboard-profile-premium .profile-form-body { padding: 16px 20px; }
+  .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
+  .profile-account-header { padding: 22px; gap: 14px; }
+  .profile-account-identity { min-width: 100%; gap: 14px; }
+  .profile-avatar-lg { width: 58px; height: 58px; font-size: 22px; }
+  .profile-account-name { font-size: 21px; }
+  .profile-grid { flex-direction: column; }
+  .profile-card-head { padding: 16px 18px; }
+  .profile-section-body { padding: 10px 18px 16px; }
+  .profile-form-body { padding: 16px 18px; }
 }
 
 @media (max-width: 600px) {
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .ce-carrier-tile { height: 56px; padding: 8px 12px; }
-  .ce-hero-title { font-size: 28px; }
-  .ce-hero-sub { font-size: 14px; }
   .dash-section-title { font-size: 28px; }
-  .ce-table-card, .ce-steps-card { padding: 20px 18px; }
-  .ce-carriers-card { padding: 14px 14px 12px; }
-
-  .dashboard-profile-premium .profile-row { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .dashboard-profile-premium .profile-row-val { text-align: left; width: 100%; word-break: break-word; }
+  /* Auf schmalen Screens darf „Bearbeiten" unter Titel/Subline rutschen. */
+  .profile-card-head { flex-wrap: wrap; row-gap: 10px; }
+  .profile-card-edit-action { margin-left: 0; }
+  .profile-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .profile-row-val { text-align: left; width: 100%; word-break: break-word; }
 }
-
-@media (max-width: 420px) {
-  .ce-carriers-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .ce-carrier-tile { height: 52px; padding: 6px 10px; }
-  .ce-footer-grid { grid-template-columns: 1fr; }
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT · PREMIUM „HIGHEND BLUE" (Master-Handoff, 1:1)
-   ──────────────────────────────────────────────────────────────────────────
-   Kompletter View-Layer der Übersicht als tiefes Navy-Glas-Design. Klassen
-   .pp-* (Layout/Sektionen), .pbg-* (fixe Atmosphäre), geteilte Atome ohne
-   Präfix (.tile .pp-medal .knum .kcur .kchip .eur .ce-live .ce-brandmark
-   .ce-comark .car-logo). Tokens global auf .app-shell (die Premium-Sidebar
-   rendert auf ALLEN Dashboard-Seiten); Seiten-Hintergrund + fixe .pbg + der
-   Übersicht-Content nur unter .ce-dark (andere Seiten behalten ihr Theme).
-   Autoritative Schlusssektion. Werte exakt aus dem Handoff.
-   ──────────────────────────────────────────────────────────────────────── */
-
-/* ── §23 Design-Tokens (global) ── */
-.app-shell {
-  --fd: 'Cormorant Garamond', Georgia, serif; --fh: 'Libre Franklin', sans-serif;
-  --fs: 'DM Sans', system-ui, sans-serif;     --fm: 'DM Mono', ui-monospace, monospace;
-  --bg0:#04091a; --bg1:#071022; --bg2:#0b1830;
-  --ink1:#eaf1ff; --ink2:#b9c6e6; --ink3:#8493b8; --ink4:#59668c;
-  --acc:#2e6bff; --acc2:#4d8bff; --acc3:#6ea8ff; --glow:rgba(64,120,255,.5);
-  --surface:rgba(14,26,56,.55); --surface2:rgba(10,20,44,.72);
-  /* Statische matte Premiumoberfläche — ersetzt das Live-Blur-Glas auf großen/
-     wiederholten dunklen Flächen (Tiles, Pills, Sidebar-Karte). Kein backdrop-filter. */
-  --surface-solid:linear-gradient(150deg, rgba(22,37,74,.92), rgba(14,25,54,.94));
-  --line1:rgba(255,255,255,.06); --line2:rgba(120,160,255,.18); --line3:rgba(150,180,255,.30);
-  --green:#34d399; --amber:#fbbf24; --violet:#8a7cff;
-  --sidebar-width: 300px;         /* Handoff-Sidebar 300px — wirkt über bestehende margin-left-Plumbing */
-}
-.app-shell.ce-dark { --ce-sidebar-w: 300px; }
-
-/* Medaillon-Töne (lokal je Kachel) */
-.m-blue, .m-hero  { --mc:#8fb6ff; --mg:rgba(64,120,255,.55); }
-.m-mint, .m-green { --mc:#4bdca6; --mg:rgba(52,211,153,.5); }
-.m-amber          { --mc:#fcc447; --mg:rgba(251,191,36,.5); }
-.m-lav, .m-violet { --mc:#a99bff; --mg:rgba(138,124,255,.55); }
-
-/* ── Geteilte Atome ── */
-.ce-live {
-  width:8px; height:8px; border-radius:50%; flex-shrink:0; position:relative;
-  background:radial-gradient(circle at 40% 35%, #6ff0c0, var(--green) 70%);
-  box-shadow:0 0 8px 1px rgba(52,211,153,.8);
-}
-/* Live-Indikator ist jetzt statisch: der grüne Kernpunkt (.ce-live, oben, inkl.
-   box-shadow-Glow) trägt den Status weiterhin eindeutig — der frühere pulsierende
-   ::after-Ring (ppLive) entfällt. Gleiche Farbe, gleiche semantische Bedeutung. */
-.pp-medal {
-  display:grid; place-items:center; border-radius:50%; flex-shrink:0; color:var(--mc);
-  background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.14), rgba(120,160,255,.05) 72%);
-  border:1px solid var(--line2);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05), 0 0 18px -6px var(--mg), 0 8px 16px -10px rgba(0,0,0,.6);
-}
-.tile {
-  background:var(--surface-solid);
-  border:1px solid var(--line2); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 30px 60px -36px rgba(0,0,0,.8);
-}
-
-/* ══════════ §17 SIDEBAR (Premium Navy-Glas · alle Seiten) ══════════ */
-/* .pp-side-in ist ein Glas-Objekt: teiltransparenter Verlauf + backdrop-
-   filter. backdrop-filter blendet dabei zwangsläufig das ein, was dahinter
-   liegt — vorher war das direkt der Seiten-Hintergrund von .app-shell, und
-   der ist pro Seite verschieden (Übersicht dunkles Navy, alle anderen
-   Dashboard-Seiten helles #f0f4fa). Dadurch wirkte dieselbe Glas-Regel auf
-   der Übersicht satt und woanders ausgewaschen/hell, obwohl .pp-side-in
-   selbst überall identisch war. Fix: .sidebar.pp-side bekommt eine eigene,
-   VOLLSTÄNDIG DECKENDE Navy-Basis (keine Alpha-Kanäle in der untersten
-   Ebene) — das ist jetzt der einzige Hintergrund, den backdrop-filter noch
-   sieht, unabhängig vom jeweiligen .app-shell-Theme der Seite. */
-.sidebar.pp-side {
-  padding:20px 0 20px 20px;
-  background:
-    radial-gradient(130% 70% at 12% 0%, rgba(46,92,255,.18), transparent 62%),
-    linear-gradient(180deg, #071022 0%, #04091a 55%, #030713 100%);
-  border-right:none;
-  -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none; overflow:visible;
-}
-.sidebar.pp-side::before, .sidebar.pp-side::after { display:none; }
-.pp-side-glow {
-  position:absolute; left:-30px; top:12%; width:300px; height:62%; z-index:0; pointer-events:none;
-  /* Statischer, direkt gezeichneter Radial-Gradient statt filter:blur(60px) —
-     gleiche Farbregion, geringere Sättigung, kein Filter/will-change. */
-  background:radial-gradient(closest-side, rgba(46,92,255,.24), transparent 80%); opacity:.85;
-}
-.pp-side-in {
-  position:relative; z-index:1; height:100%; display:flex; flex-direction:column;
-  padding:24px 16px 18px; border-radius:26px;
-  /* Matte Oberfläche statt Live-Blur (der Hintergrund ist ohnehin die deckende
-     Navy-Basis von .sidebar.pp-side) — Alpha leicht erhöht, kein backdrop-filter. */
-  background:linear-gradient(168deg, rgba(24,42,84,.85), rgba(11,22,50,.8));
-  border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(120,160,255,.05), 0 0 60px -18px rgba(46,92,255,.55), 0 40px 80px -40px rgba(0,0,0,.8);
-}
-.pp-logo { display:flex; align-items:center; gap:12px; padding:4px 8px 20px; }
-.ce-brandmark {
-  width:40px; height:40px; border-radius:11px; flex-shrink:0; display:grid; place-items:center;
-  background:rgba(255,255,255,.04); box-shadow:0 0 22px -6px var(--glow), inset 0 0 0 1px rgba(255,255,255,.05);
-}
-.pp-brandmark-svg { width:30px; height:30px; display:block; }
-.pp-brand { font-family:var(--fh); font-weight:700; font-size:17px; line-height:1.1; letter-spacing:-.02em; color:#fff; white-space:nowrap; }
-.pp-brand b { color:var(--acc3); font-weight:700; }
-.pp-brand-sub { font-family:var(--fs); font-size:10.5px; font-weight:500; color:var(--ink3); margin-top:2px; white-space:nowrap; }
-.pp-close { margin-left:auto; }
-.pp-identity {
-  display:flex; align-items:center; gap:11px; margin:0 8px 12px; padding:10px; border-radius:14px;
-  background:linear-gradient(160deg, rgba(46,92,255,.10), rgba(30,40,90,.10)); border:1px solid var(--line2);
-}
-.pp-identity-avatar {
-  width:34px; height:34px; flex-shrink:0; border-radius:10px; display:grid; place-items:center;
-  font-family:var(--fh); font-weight:700; font-size:13px; color:#fff;
-  background:linear-gradient(135deg, #4a86ff, #2a50d6 55%, #182a8c);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 4px 10px -4px rgba(46,92,255,.6);
-}
-.pp-identity-text { min-width:0; }
-.pp-identity-name { font-family:var(--fs); font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pp-identity-email { font-family:var(--fs); font-size:11px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pp-nav { flex:1; display:flex; flex-direction:column; gap:2px; overflow-y:auto; scrollbar-width:none; }
-.pp-nav::-webkit-scrollbar { display:none; }
-.nsec { font-family:var(--fs); font-size:9.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--ink4); padding:18px 12px 7px; }
-/* Aktive Gruppe: rein ergänzende, subtile Aufhellung (die aktive Seite bleibt
-   der primäre Zustand). Wert wird aus page abgeleitet (DashboardSidebar). */
-.nsec--active { color:var(--ink3); }
-/* Utility-Divider vor „Abmelden" (dekorativ). Sehr feine Linie, neutraler
-   Grundstil für die dunkle Sidebar; Porcelain-Override in vapor.css. */
-.pp-nav-utility-divider { height:1px; margin:10px 12px 4px; background:var(--line1); }
-.nitem {
-  position:relative; display:flex; align-items:center; gap:12px; width:100%; text-align:left;
-  padding:10px 13px; border-radius:13px; font-family:var(--fs); font-size:13.5px; font-weight:500;
-  color:var(--ink2); background:none; border:1px solid transparent; cursor:pointer;
-  transition:background .25s ease, color .25s ease, border-color .25s ease;
-}
-.nitem svg { flex-shrink:0; opacity:.7; color:currentColor; }
-.nitem:hover { background:rgba(120,160,255,.08); color:#fff; }
-.nitem.on { color:#fff; background:linear-gradient(100deg, rgba(46,92,255,.32), rgba(60,90,220,.14)); border-color:rgba(120,160,255,.34); box-shadow:0 0 22px -8px rgba(46,92,255,.8), inset 0 0 0 1px rgba(150,180,255,.06); }
-.nitem.on svg { opacity:1; color:var(--acc3); }
-.nitem.on::before { content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:0 3px 3px 0; background:linear-gradient(180deg, var(--acc3), var(--acc)); box-shadow:0 0 12px 1px rgba(95,140,255,.95); }
-.pp-scard {
-  display:block; text-decoration:none; margin-top:14px; padding:15px; border-radius:18px;
-  background:linear-gradient(160deg, rgba(46,92,255,.12), rgba(30,40,90,.14)); border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05); transition:border-color .2s ease;
-}
-.pp-scard:hover { border-color:var(--line3); }
-.pp-scard-top { display:flex; align-items:center; gap:12px; }
-.scard-ic {
-  width:36px; height:36px; flex-shrink:0; border-radius:50%; display:grid; place-items:center; color:#cfe0ff;
-  background:radial-gradient(circle at 34% 28%, rgba(120,160,255,.4), rgba(40,70,160,.28) 80%); border:1px solid var(--line2); box-shadow:0 0 16px -6px var(--glow);
-}
-.scard-k { font-family:var(--fs); font-size:10.5px; color:var(--ink3); }
-.scard-t { display:flex; align-items:center; gap:7px; margin-top:3px; font-family:var(--fs); font-size:13px; font-weight:700; color:#fff; }
-.scard-s { font-family:var(--fs); font-size:11px; line-height:1.55; color:var(--ink3); margin-top:10px; }
-.pp-foot { padding:14px 12px 0; font-family:var(--fs); font-size:10px; line-height:1.6; color:var(--ink4); }
-.pp-side :focus-visible { outline:none; box-shadow:0 0 0 4px rgba(90,140,255,.4); }
-
-/* ══════════ Übersicht: Seiten-Hintergrund + fixe Atmosphäre (.pbg) ══════════ */
-.app-shell.ce-dark {
-  /* Solide Navy-Grundfarbe (scrollt mit dem Element → deckt die volle
-     Inhaltshöhe) UNTER dem viewport-fixierten Atmosphären-Verlauf. */
-  background-color:#04091a;
-  background-image:
-    radial-gradient(1200px 700px at 82% -8%, rgba(30,60,150,.35), transparent 60%),
-    radial-gradient(1000px 800px at -6% 40%, rgba(20,42,110,.28), transparent 62%),
-    linear-gradient(180deg, #071022 0%, #04091a 60%, #030713 100%);
-  color:var(--ink1);
-}
-.ce-dark .pbg { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
-/* Statische Farbtiefe (siehe .pbg-soft): die früheren drei animierten Glow-Blobs
-   (blur60 + will-change) als ruhige radiale Verläufe im Grund — gleiche Navy-/
-   Blau-/Violett-Identität, ohne Blur-DOM/Compositor-Layer. */
-.ce-dark .pbg-grad {
-  position:absolute; inset:0;
-  background:
-    radial-gradient(820px 820px at -4% -8%, rgba(46,92,255,.24), transparent 60%),
-    radial-gradient(760px 760px at 104% 8%, rgba(90,80,220,.18), transparent 60%),
-    radial-gradient(940px 680px at 34% 118%, rgba(30,80,200,.17), transparent 62%),
-    radial-gradient(900px 600px at 50% 120%, rgba(40,70,150,.16), transparent 70%);
-}
-.ce-dark .pbg-dots {
-  position:absolute; inset:0; opacity:.5;
-  background-image:radial-gradient(rgba(140,170,255,.16) 1px, transparent 1.6px); background-size:46px 46px;
-  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-          mask-image:radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 78%);
-}
-.ce-dark .pbg-routes { position:absolute; inset:0; width:100%; height:100%; opacity:.9; }
-.ce-dark .pbg-halo { opacity:.5; }
-.ce-dark .pbg-glyphs { position:absolute; inset:0; }
-.ce-dark .pbg-glyph { position:absolute; color:rgba(120,160,255,.14); filter:blur(.4px); }
-.ce-dark .pbg-glyph svg { width:100%; height:100%; display:block; }
-.ce-dark .pbg-glyph.g-a { width:150px; height:150px; left:6%;  top:30%;    color:rgba(120,160,255,.16); }
-.ce-dark .pbg-glyph.g-b { width:116px; height:116px; left:40%; top:10%;    color:rgba(120,160,255,.12); }
-.ce-dark .pbg-glyph.g-c { width:96px;  height:96px;  right:20%; top:24%;   color:rgba(120,160,255,.16); }
-.ce-dark .pbg-glyph.g-d { width:128px; height:128px; right:6%; bottom:26%; color:rgba(120,160,255,.13); }
-.ce-dark .pbg-glyph.g-e { width:132px; height:132px; left:14%; bottom:12%; color:rgba(120,160,255,.16); }
-.ce-dark .pbg-glyph.g-f { width:88px;  height:88px;  left:62%; bottom:16%; color:rgba(120,160,255,.12); }
-.ce-dark .pbg-vig { position:absolute; inset:0; background:radial-gradient(130% 120% at 50% 30%, transparent 58%, rgba(2,6,16,.55) 100%); }
-
-/* ══════════ §16 Main + Header (Hero) ══════════ */
-.ce-dark .pp-main { position:relative; z-index:1; max-width:1420px; margin:0 auto; padding:40px 46px 60px; font-family:var(--fs); color:var(--ink1); }
-.ce-dark .pp-top { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; }
-.ce-dark .pp-hero { min-width:0; }
-.ce-dark .pp-pills { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
-.ce-dark .pp-pill {
-  display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:99px;
-  font-family:var(--fs); font-size:11.5px; font-weight:500; color:var(--ink2);
-  background:var(--surface-solid); border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
-}
-.ce-dark .pp-pill svg { color:var(--acc3); }
-.ce-dark .pp-h1 { font-family:var(--fd); font-weight:500; font-size:54px; line-height:1.04; letter-spacing:-.005em; color:#fff; margin-top:18px; }
-.ce-dark .pp-hname {
-  font-style:italic;
-  background:linear-gradient(100deg, #6ea8ff 5%, #9a8cff 60%, #c3b6ff 96%);
-  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
-}
-.ce-dark .pp-hsub { font-family:var(--fs); font-size:16px; font-weight:300; color:var(--ink3); margin-top:15px; }
-.ce-dark .pp-actions { display:flex; align-items:center; gap:12px; padding-top:6px; flex-shrink:0; }
-.ce-dark .pp-bell {
-  width:46px; height:46px; border-radius:50%; display:grid; place-items:center; flex-shrink:0; color:var(--ink2);
-  background:var(--surface-solid); border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
-}
-.ce-dark .pp-uchip {
-  display:flex; align-items:center; gap:10px; padding:6px 14px 6px 6px; border-radius:99px; cursor:pointer; text-align:left;
-  background:var(--surface-solid); border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05); transition:transform .3s ease, border-color .3s ease;
-}
-.ce-dark .pp-uchip:hover { transform:translateY(-2px); border-color:var(--line3); }
-.ce-dark .ce-comark { width:38px; height:38px; flex-shrink:0; display:block; filter:drop-shadow(0 6px 16px rgba(46,92,255,.55)); }
-.ce-dark .pp-uchip-text { min-width:0; display:flex; flex-direction:column; }
-.ce-dark .pp-uname { font-family:var(--fs); font-size:13px; font-weight:600; line-height:1.25; color:#fff; }
-.ce-dark .pp-ucomp { font-family:var(--fs); font-size:11px; color:var(--ink3); }
-.ce-dark .pp-uchip > svg { color:var(--ink4); flex-shrink:0; }
-.ce-dark .pp-cta {
-  display:inline-flex; align-items:center; gap:9px; padding:14px 24px; border-radius:99px; cursor:pointer; white-space:nowrap;
-  font-family:var(--fs); font-size:14px; font-weight:600; color:#fff;
-  background:linear-gradient(135deg, #2e6bff, #4d7bff 60%, #6a5fe0); border:1px solid rgba(150,180,255,.28);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 12px 34px -10px rgba(46,92,255,.8), 0 0 40px -12px rgba(120,90,230,.6);
-  transition:transform .3s ease, box-shadow .3s ease;
-}
-.ce-dark .pp-cta:hover { transform:translateY(-2px); box-shadow:inset 0 1px 0 rgba(255,255,255,.32), 0 18px 44px -12px rgba(46,92,255,.9); }
-.ce-dark .pp-bell:focus-visible, .ce-dark .pp-uchip:focus-visible, .ce-dark .pp-cta:focus-visible, .ce-dark .pp-compare:focus-visible { outline:none; box-shadow:0 0 0 4px rgba(90,140,255,.4); }
-
-/* ══════════ §15 KPI-Karten ══════════ */
-.ce-dark .pp-kpis { display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; margin-top:42px; }
-.ce-dark .pp-kpi { position:relative; overflow:hidden; border-radius:22px; padding:20px 20px 18px; transition:transform .4s cubic-bezier(.2,.7,.3,1), box-shadow .4s cubic-bezier(.2,.7,.3,1); }
-.ce-dark .pp-kpi:hover { transform:translateY(-5px); box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 40px 74px -34px rgba(0,0,0,.85); }
-.ce-dark .pp-kpi-hero {
-  background:linear-gradient(150deg, rgba(46,92,255,.34), rgba(30,44,120,.5) 55%, rgba(14,24,60,.6));
-  border:1px solid rgba(130,165,255,.4);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 0 0 1px rgba(120,150,255,.14), 0 36px 70px -30px rgba(20,40,140,.75);
-}
-.ce-dark .pp-kglow { position:absolute; width:300px; height:300px; right:-120px; top:-140px; border-radius:50%; background:radial-gradient(closest-side, rgba(90,130,255,.4), transparent 75%); pointer-events:none; }
-.ce-dark .pp-kpi-head, .ce-dark .pp-kpi-num, .ce-dark .pp-kpi-sub { position:relative; z-index:1; }
-.ce-dark .pp-kpi-head { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
-.ce-dark .pp-kpi .pp-medal { width:38px; height:38px; }
-.ce-dark .pp-kpi-label { font-family:var(--fs); font-size:10px; font-weight:700; line-height:1.4; letter-spacing:.13em; text-transform:uppercase; color:var(--ink3); }
-.ce-dark .pp-kpi-hero .pp-kpi-label { color:rgba(200,214,255,.85); }
-.ce-dark .eur { font-family:var(--fm); font-size:16px; font-weight:500; line-height:1; color:var(--mc); }
-.ce-dark .knum { font-family:var(--fh); font-weight:700; font-size:42px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:#fff; }
-.ce-dark .kcur { font-family:var(--fm); font-size:20px; font-weight:500; color:var(--ink3); margin-left:5px; }
-.ce-dark .pp-kpi-sub { display:flex; align-items:center; gap:7px; margin-top:13px; font-family:var(--fs); font-size:12px; color:var(--ink3); }
-.ce-dark .kchip { display:inline-flex; align-items:center; gap:4px; font-family:var(--fm); font-size:10.5px; padding:3px 9px; border-radius:99px; }
-.ce-dark .kchip.d-green { color:#66e6ad; background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.28); }
-.ce-dark .kchip.d-amber { color:#fcc447; background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.28); }
-.ce-dark .kchip.d-blue  { color:#8fb6ff; background:rgba(46,92,255,.14); border:1px solid rgba(120,160,255,.3); }
-
-/* ══════════ §4 Sektionen (Eyebrow + H2) ══════════ */
-.ce-dark .pp-sec { margin-top:64px; }
-.ce-dark .pp-eyebrow { font-family:var(--fs); font-size:10px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:var(--acc3); }
-.ce-dark .pp-h2 { font-family:var(--fh); font-weight:700; font-size:28px; letter-spacing:-.02em; color:#fff; margin-top:13px; }
-.ce-dark .pp-sec-head { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; }
-.ce-dark .pp-sec-sub { font-family:var(--fs); font-size:13.5px; color:var(--ink3); margin-top:12px; }
-
-/* Steps */
-.ce-dark .pp-steps { display:grid; grid-template-columns:repeat(4, 1fr); gap:32px; margin-top:40px; }
-.ce-dark .pp-step { position:relative; }
-.ce-dark .pp-step-ic { width:56px; height:56px; position:relative; z-index:1; }
-.ce-dark .pp-step-con { position:absolute; top:28px; left:72px; right:-16px; height:1px; background:linear-gradient(90deg, var(--line2), transparent); }
-.ce-dark .pp-step-no { font-family:var(--fm); font-size:10.5px; font-weight:500; letter-spacing:.2em; color:var(--acc3); margin-top:16px; }
-.ce-dark .pp-step-t { font-family:var(--fs); font-size:16px; font-weight:700; letter-spacing:-.01em; color:#fff; margin-top:6px; }
-.ce-dark .pp-step-d { font-family:var(--fs); font-size:12.5px; line-height:1.65; color:var(--ink3); margin-top:8px; max-width:230px; }
-
-/* Vorteile */
-.ce-dark .pp-vals { display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-top:40px; }
-.ce-dark .pp-vcard { border-radius:20px; padding:22px 20px; transition:transform .4s cubic-bezier(.2,.7,.3,1), box-shadow .4s cubic-bezier(.2,.7,.3,1); }
-.ce-dark .pp-vcard:hover { transform:translateY(-5px); box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 40px 74px -34px rgba(0,0,0,.85); }
-.ce-dark .pp-vcard .pp-medal { width:44px; height:44px; margin-bottom:16px; }
-.ce-dark .pp-v-t { font-family:var(--fs); font-size:15px; font-weight:700; letter-spacing:-.01em; color:#fff; }
-.ce-dark .pp-v-d { font-family:var(--fs); font-size:12.5px; line-height:1.7; color:var(--ink3); margin-top:8px; }
-
-/* Netzwerk / Carrier */
-.ce-dark .pp-compare {
-  display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:99px; cursor:pointer; white-space:nowrap; flex-shrink:0;
-  font-family:var(--fs); font-size:13.5px; font-weight:600; color:#dbe7ff;
-  background:var(--surface-solid); border:1px solid var(--line2);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05); transition:transform .3s ease, border-color .3s ease;
-}
-.ce-dark .pp-compare:hover { transform:translateY(-2px); border-color:var(--line3); }
-.ce-dark .pp-cars { display:grid; grid-template-columns:repeat(8, 1fr); gap:12px; margin-top:22px; }
-.ce-dark .pp-car { display:flex; flex-direction:column; align-items:center; gap:9px; }
-.ce-dark .pp-car-chip {
-  width:100%; max-width:104px; height:60px; padding:0 10px; border-radius:16px; display:grid; place-items:center;
-  background:linear-gradient(168deg, rgba(255,255,255,.96), rgba(232,240,252,.9)); border:1px solid rgba(255,255,255,.5);
-  box-shadow:0 0 0 1px rgba(120,160,255,.12), 0 16px 30px -18px rgba(0,0,0,.7); transition:transform .35s ease, box-shadow .35s ease;
-}
-.ce-dark .pp-car-chip:hover { transform:translateY(-3px); box-shadow:0 0 0 1px rgba(120,160,255,.3), 0 22px 40px -20px rgba(0,0,0,.8), 0 0 26px -8px var(--glow); }
-.ce-dark .car-logo { max-height:26px; max-width:100%; width:auto; object-fit:contain; display:block; }
-.ce-dark .pp-car-svc { font-family:var(--fs); font-size:12px; font-weight:700; color:var(--ink1); }
-.ce-dark .pp-car-time { font-family:var(--fs); font-size:11px; color:var(--ink3); }
-
-/* Trust */
-.ce-dark .pp-trust { display:grid; grid-template-columns:repeat(3, 1fr); padding:24px 12px; border-radius:22px; margin-top:40px; }
-.ce-dark .pp-trust-item { display:flex; align-items:center; gap:16px; padding:0 24px; position:relative; }
-.ce-dark .pp-trust-item + .pp-trust-item::before { content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); width:1px; height:46px; background:var(--line2); }
-.ce-dark .pp-trust-item .pp-medal { width:46px; height:46px; }
-.ce-dark .pp-trust-t { font-family:var(--fs); font-size:15px; font-weight:700; color:#fff; }
-.ce-dark .pp-trust-d { font-family:var(--fs); font-size:12px; line-height:1.5; color:var(--ink3); margin-top:4px; }
-
-/* Page-Footer */
-.ce-dark .pp-pagefoot { margin-top:54px; padding-top:22px; border-top:1px solid var(--line1); text-align:center; font-family:var(--fs); font-size:12px; color:var(--ink4); }
-
-/* Mobile-Topbar (Übersicht, dunkel) */
-.ce-dark .mobile-topbar { background:rgba(6,12,28,.96); border-bottom:1px solid var(--line2); -webkit-backdrop-filter:none; backdrop-filter:none; }
-.ce-dark .mobile-topbar .topbar-brand { color:var(--ink1); }
-.ce-dark .hamburger-btn { color:var(--ink2); }
-
-/* ══════════ §12 Keyframes ══════════ */
-/* Die früheren PremiumBackground-/Live-Keyframes ppGlow1/2/3, ppDash, ppHalo,
-   ppRing, ppFloat und ppLive wurden entfernt — die Atmosphäre ist jetzt
-   vollständig statisch (Slice: PremiumBackground statisch). Keine .pbg-Regel und
-   kein .ce-live::after referenziert sie mehr. */
-
-/* ══════════ §18 Responsive ══════════ */
-@media (max-width:1279px) {
-  .ce-dark .pp-kpis { grid-template-columns:repeat(3, 1fr); }
-  .ce-dark .pp-cars { grid-template-columns:repeat(4, 1fr); }
-}
-@media (max-width:1120px) {
-  .ce-dark .pp-vals, .ce-dark .pp-steps { grid-template-columns:repeat(2, 1fr); }
-  .ce-dark .pp-step-con { display:none; }
-  .ce-dark .pp-h1 { font-size:46px; }
-}
-@media (max-width:860px) {
-  .ce-dark .pp-main { max-width:none; padding:28px 22px 48px; }
-  .ce-dark .pp-top { flex-direction:column-reverse; }
-  .ce-dark .pp-actions { padding-top:0; }
-  .ce-dark .pp-kpis { grid-template-columns:repeat(2, 1fr); }
-  .ce-dark .pp-cars { grid-template-columns:repeat(3, 1fr); }
-  .ce-dark .pp-trust { grid-template-columns:1fr; gap:20px; padding:20px 8px; }
-  .ce-dark .pp-trust-item { padding:0 16px; }
-  .ce-dark .pp-trust-item + .pp-trust-item::before { display:none; }
-}
-@media (max-width:600px) {
-  .ce-dark .pp-kpis { grid-template-columns:1fr; }
-  .ce-dark .pp-cars { grid-template-columns:repeat(2, 1fr); }
-  .ce-dark .pp-h1 { font-size:40px; }
-  .ce-dark .pp-actions { flex-wrap:wrap; }
-}
-
-/* Reduced-Motion-Block entfällt: die .ce-dark-Atmosphäre und der Live-Indikator
-   sind jetzt vollständig statisch (keine Ambient-Animation, keine Pakete). */
-
-/* Profil-Pflichtfelder im Premium-Scope: nur Farbanpassung an das dunklere
-   Kartenlayout, keine Layoutaenderung. */
-.dashboard-profile-premium .profile-required-hint { color: rgba(202, 214, 238, 0.7); }
-.dashboard-profile-premium .profile-req { color: #7ea8ff; }
-.dashboard-profile-premium .profile-field-error { color: #ff9d9d; }

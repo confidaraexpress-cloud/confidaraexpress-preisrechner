@@ -9,7 +9,6 @@ import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
 import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
 import { LegalLinks } from "../components/layout/LegalLinks";
-import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
@@ -178,8 +177,12 @@ export default function DashboardPage() {
   // Effekt-Cleanup beim Unmount (fn = null).
   const registerLeaveGuard = useCallback((fn) => { leaveGuardRef.current = fn; }, []);
 
+  // „Clean Executive Logistics": EINE gemeinsame Shell für alle eingeloggten
+  // Kundenseiten. Die früheren seitenabhängigen Hintergrund-Scopes
+  // (dashboard-vapor / -soft-premium / -neutral-premium / -profile-premium)
+  // sind entfallen — .app-shell trägt die ruhige Grundfläche überall gleich.
   return (
-    <div className={`app-shell${page === "overview" ? " dashboard-vapor" : ""}${(page === "shipments" || page === "invoices" || page === "tracking") ? " dashboard-soft-premium" : ""}${page === "profile" ? " dashboard-profile-premium" : ""}${(page === "new" || page === "addressbook" || page === "drafts") ? " dashboard-neutral-premium" : ""}`}>
+    <div className="app-shell">
       <DashboardSidebar
         page={page}
         navigateTo={navigateTo}
@@ -274,15 +277,9 @@ export default function DashboardPage() {
             Tracking-Logik unverändert — TrackingPage ruft weiterhin den
             öffentlichen, nicht authentifizierten Endpunkt auf. */}
         {page === "tracking" && (
-          <>
-            {/* Soft-Premium-Atmosphäre NUR im Dashboard-Kontext (nicht im
-                öffentlichen /tracking über NavbarLayout, das TrackingPage
-                ebenfalls rendert): hier gemountet, nicht in TrackingPage. */}
-            <PremiumBackground variant="soft" />
-            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-              <TrackingPage />
-            </Suspense>
-          </>
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <TrackingPage />
+          </Suspense>
         )}
 
         {page === "invoices"  && (

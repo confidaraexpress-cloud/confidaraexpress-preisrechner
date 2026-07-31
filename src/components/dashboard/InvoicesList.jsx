@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
-import { PremiumBackground } from "./PremiumBackground";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
 import { downloadCustomerInvoicePdf, fetchCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
 import {
@@ -249,7 +248,6 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
 
   return (
     <>
-      <PremiumBackground variant="soft" />
       <div className="page-body">
         <InvoiceSummaryCard invoices={list} summary={summary} onReload={manualReload} loading={loading} />
 

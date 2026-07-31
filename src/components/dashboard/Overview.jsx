@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
-import { VaporBackground } from "./VaporBackground";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
@@ -14,30 +13,22 @@ import emonsLogo      from "../../assets/carriers/emons.svg";
 import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT · „Vapor" (Creative-Direction-Handoff, 1:1)
-   Reiner View-Layer: Markup + CSS (src/styles/vapor.css, Scope .dashboard-vapor).
+   ÜBERSICHT — reiner View-Layer: Markup + CSS (src/styles/overview.css).
    Daten/Logik/Routing unverändert; KPI-Werte kommen aus dem bestehenden
-   Datenfluss (computeKpis). Klassen: pp-* (bestehende Struktur) + vp-*.
-   Ausnahme (Nutzervorgabe): die Begrüßung .pp-h1 bleibt in Cormorant-Serif.
+   Datenfluss (computeKpis). Klassen: pp-* (bestehende Struktur).
+   Der Seitenhintergrund kommt aus der gemeinsamen .app-shell — diese Seite
+   bringt keine eigene Hintergrund-Ebene mehr mit.
+   Die Begrüßung .pp-h1 bleibt in Cormorant-Serif (bestehende Vorgabe).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Company-Mark (User-Chip, §7.2): Squircle mit Vapor-Blauverlauf (--acc→--acc2)
-// und echter Konto-Initiale (Syne).
+// Company-Mark (User-Chip): flacher Squircle in der Akzentfarbe mit echter
+// Konto-Initiale. Die früheren zwei Verlaufsebenen und die weiße Innenkontur
+// sind entfallen — eine Fläche, ein Buchstabe.
 function CompanyMark({ initial }) {
   return (
     <svg className="ce-comark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="ppCoMark" x1="4" y1="3" x2="34" y2="37" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#7aa0ff" /><stop offset="0.52" stopColor="#2f62f0" /><stop offset="1" stopColor="#1746b3" />
-        </linearGradient>
-        <linearGradient id="ppCoTop" x1="20" y1="2" x2="20" y2="21" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.40" /><stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoMark)" />
-      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="url(#ppCoTop)" />
-      <rect x="1.6" y="1.6" width="36.8" height="36.8" rx="10.9" fill="none" stroke="#ffffff" strokeOpacity="0.32" />
-      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Syne','Libre Franklin',sans-serif" fontWeight="700" fontSize="16.5" fill="#ffffff">{initial}</text>
+      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="#2563eb" />
+      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Libre Franklin',sans-serif" fontWeight="700" fontSize="16.5" fill="#ffffff">{initial}</text>
     </svg>
   );
 }
@@ -116,137 +107,132 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
   ];
 
   return (
-    <>
-      <VaporBackground />
-
-      <div className="pp-main">
-        {/* ── Header ── */}
-        <header className="pp-top">
-          <div className="pp-hero">
-            <div className="pp-pills">
-              {todayLabel && <span className="pp-pill"><Icon n="dashboard" s={13} />{todayLabel}</span>}
-              <span className="pp-pill"><span className="ce-live" />Live-Übersicht</span>
-              <span className="pp-pill"><Icon n="shieldCheck" s={13} />DSGVO-konform</span>
-            </div>
-            <h1 className="pp-h1">{getGreeting()}, <em className="pp-hname">{name}</em></h1>
-            <p className="pp-hsub">Hier ist Ihre Übersicht für heute.</p>
+    <div className="pp-main">
+      {/* ── Header ── */}
+      <header className="pp-top">
+        <div className="pp-hero">
+          <div className="pp-pills">
+            {todayLabel && <span className="pp-pill"><Icon n="dashboard" s={13} />{todayLabel}</span>}
+            <span className="pp-pill"><span className="ce-live" />Live-Übersicht</span>
+            <span className="pp-pill"><Icon n="shieldCheck" s={13} />DSGVO-konform</span>
           </div>
-          <div className="pp-actions">
-            <span className="pp-bell" aria-hidden="true"><Icon n="bell" s={18} /></span>
-            <button type="button" className="pp-uchip" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
-              <CompanyMark initial={initial} />
-              <span className="pp-uchip-text">
-                <span className="pp-uname">{name}</span>
-                {org && <span className="pp-ucomp">{org}</span>}
+          <h1 className="pp-h1">{getGreeting()}, <em className="pp-hname">{name}</em></h1>
+          <p className="pp-hsub">Hier ist Ihre Übersicht für heute.</p>
+        </div>
+        <div className="pp-actions">
+          <span className="pp-bell" aria-hidden="true"><Icon n="bell" s={18} /></span>
+          <button type="button" className="pp-uchip" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
+            <CompanyMark initial={initial} />
+            <span className="pp-uchip-text">
+              <span className="pp-uname">{name}</span>
+              {org && <span className="pp-ucomp">{org}</span>}
+            </span>
+            <Icon n="chevron" s={15} />
+          </button>
+          <button type="button" className="pp-cta" onClick={onNewShipment}>
+            <Icon n="plus" s={16} c="#fff" />Neue Sendung
+          </button>
+        </div>
+      </header>
+
+      {/* ── KPI-Reihe (echte Daten; 1. Karte = Featured) ── */}
+      <div className="pp-kpis">
+        {KPIS.map((kpi) => (
+          <div className={`pp-kpi tile${kpi.key === "active" ? " pp-kpi-hero" : ""}`} key={kpi.key}>
+            <div className="pp-kpi-head">
+              <span className={`pp-medal m-${kpi.tone}`}>
+                {kpi.icon ? <Icon n={kpi.icon} s={21} /> : <span className="eur">{kpi.glyph}</span>}
               </span>
-              <Icon n="chevron" s={15} />
-            </button>
-            <button type="button" className="pp-cta" onClick={onNewShipment}>
-              <Icon n="plus" s={16} c="#fff" />Neue Sendung
-            </button>
-          </div>
-        </header>
-
-        {/* ── KPI-Reihe (echte Daten; 1. Karte = Featured) ── */}
-        <div className="pp-kpis">
-          {KPIS.map((kpi) => (
-            <div className={`pp-kpi tile${kpi.key === "active" ? " pp-kpi-hero" : ""}`} key={kpi.key}>
-              {kpi.key === "active" && <span className="pp-kglow" aria-hidden="true" />}
-              <div className="pp-kpi-head">
-                <span className={`pp-medal m-${kpi.tone}`}>
-                  {kpi.icon ? <Icon n={kpi.icon} s={21} /> : <span className="eur">{kpi.glyph}</span>}
-                </span>
-                <span className="pp-kpi-label">{kpi.label}</span>
-              </div>
-              <div className="pp-kpi-num"><KpiNum v={loading ? "—" : kpi.value} /></div>
-              <div className="pp-kpi-sub">
-                {loading ? "Wird geladen…" : (
-                  <>
-                    {kpi.foot.dot && <span className="ce-live" />}
-                    {kpi.foot.delta && (
-                      <span className={`kchip ${kpi.foot.deltaClass}`}><Icon n="trendingUp" s={12} />{kpi.foot.delta}</span>
-                    )}
-                    <span>{kpi.foot.label}</span>
-                  </>
-                )}
-              </div>
+              <span className="pp-kpi-label">{kpi.label}</span>
             </div>
-          ))}
-        </div>
-
-        {/* ── Ablauf ── */}
-        <section className="pp-sec">
-          <div className="pp-eyebrow">Ablauf</div>
-          <h2 className="pp-h2">So einfach funktioniert es</h2>
-          <div className="pp-steps">
-            {STEPS.map((s, i) => (
-              <div className="pp-step" key={i}>
-                <div className="pp-step-ic pp-medal m-blue"><Icon n={s.icon} s={22} /></div>
-                {i < STEPS.length - 1 && <span className="pp-step-con" aria-hidden="true" />}
-                <div className="pp-step-no">{String(i + 1).padStart(2, "0")}</div>
-                <div className="pp-step-t">{s.title}</div>
-                <div className="pp-step-d">{s.desc}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Vorteile ── */}
-        <section className="pp-sec">
-          <div className="pp-eyebrow">Vorteile</div>
-          <h2 className="pp-h2">Warum ConfidaraExpress?</h2>
-          <div className="pp-vals">
-            {WHY.map((w, i) => (
-              <div className="pp-vcard tile" key={i}>
-                <div className="pp-medal m-blue"><Icon n={w.icon} s={20} /></div>
-                <div className="pp-v-t">{w.title}</div>
-                <div className="pp-v-d">{w.desc}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Netzwerk ── */}
-        <section className="pp-sec">
-          <div className="pp-sec-head">
-            <div>
-              <div className="pp-eyebrow">Netzwerk</div>
-              <h2 className="pp-h2">Carrier Netzwerk</h2>
+            <div className="pp-kpi-num"><KpiNum v={loading ? "—" : kpi.value} /></div>
+            <div className="pp-kpi-sub">
+              {loading ? "Wird geladen…" : (
+                <>
+                  {kpi.foot.dot && <span className="ce-live" />}
+                  {kpi.foot.delta && (
+                    <span className={`kchip ${kpi.foot.deltaClass}`}><Icon n="trendingUp" s={12} />{kpi.foot.delta}</span>
+                  )}
+                  <span>{kpi.foot.label}</span>
+                </>
+              )}
             </div>
-            <button type="button" className="pp-compare" onClick={() => navigate("/calculator")}>
-              Preise vergleichen<Icon n="arrowRight" s={17} />
-            </button>
           </div>
-          <div className="pp-sec-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
-          <div className="pp-cars">
-            {CARRIERS.map((c) => (
-              <div className="pp-car" key={c.key}>
-                <div className="pp-car-chip">
-                  <img src={c.logo} alt={c.alt} className="car-logo" />
-                </div>
-                <div className="pp-car-svc">{c.service}</div>
-                <div className="pp-car-time">{c.time}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Trust ── */}
-        <div className="pp-trust tile">
-          {TRUST.map((t, i) => (
-            <div className="pp-trust-item" key={i}>
-              <div className="pp-medal m-blue"><Icon n={t.icon} s={20} /></div>
-              <div>
-                <div className="pp-trust-t">{t.title}</div>
-                <div className="pp-trust-d">{t.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="pp-pagefoot">ConfidaraExpress · Premium-Übersicht — freundlich, professionell, luxuriös.</div>
+        ))}
       </div>
-    </>
+
+      {/* ── Ablauf ── */}
+      <section className="pp-sec">
+        <div className="pp-eyebrow">Ablauf</div>
+        <h2 className="pp-h2">So einfach funktioniert es</h2>
+        <div className="pp-steps">
+          {STEPS.map((s, i) => (
+            <div className="pp-step" key={i}>
+              <div className="pp-step-ic pp-medal m-blue"><Icon n={s.icon} s={22} /></div>
+              {i < STEPS.length - 1 && <span className="pp-step-con" aria-hidden="true" />}
+              <div className="pp-step-no">{String(i + 1).padStart(2, "0")}</div>
+              <div className="pp-step-t">{s.title}</div>
+              <div className="pp-step-d">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Vorteile ── */}
+      <section className="pp-sec">
+        <div className="pp-eyebrow">Vorteile</div>
+        <h2 className="pp-h2">Warum ConfidaraExpress?</h2>
+        <div className="pp-vals">
+          {WHY.map((w, i) => (
+            <div className="pp-vcard tile" key={i}>
+              <div className="pp-medal m-blue"><Icon n={w.icon} s={20} /></div>
+              <div className="pp-v-t">{w.title}</div>
+              <div className="pp-v-d">{w.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Netzwerk ── */}
+      <section className="pp-sec">
+        <div className="pp-sec-head">
+          <div>
+            <div className="pp-eyebrow">Netzwerk</div>
+            <h2 className="pp-h2">Carrier Netzwerk</h2>
+          </div>
+          <button type="button" className="pp-compare" onClick={() => navigate("/calculator")}>
+            Preise vergleichen<Icon n="arrowRight" s={17} />
+          </button>
+        </div>
+        <div className="pp-sec-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
+        <div className="pp-cars">
+          {CARRIERS.map((c) => (
+            <div className="pp-car" key={c.key}>
+              <div className="pp-car-chip">
+                <img src={c.logo} alt={c.alt} className="car-logo" />
+              </div>
+              <div className="pp-car-svc">{c.service}</div>
+              <div className="pp-car-time">{c.time}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Trust ── */}
+      <div className="pp-trust tile">
+        {TRUST.map((t, i) => (
+          <div className="pp-trust-item" key={i}>
+            <div className="pp-medal m-blue"><Icon n={t.icon} s={20} /></div>
+            <div>
+              <div className="pp-trust-t">{t.title}</div>
+              <div className="pp-trust-d">{t.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="pp-pagefoot">ConfidaraExpress · Premium-Übersicht — freundlich, professionell, luxuriös.</div>
+    </div>
   );
 }

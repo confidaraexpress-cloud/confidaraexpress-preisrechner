@@ -6,6 +6,7 @@ import dpdLogo       from "../assets/carriers/dpd.svg";
 import glsLogo       from "../assets/carriers/gls.svg";
 import emonsLogo     from "../assets/carriers/emons.svg";
 import derKurierLogo from "../assets/carriers/der-kurier.svg";
+import transOFlexLogo from "../assets/carriers/trans-o-flex.svg";
 
 const RULES = [
   { test: /DHL Express/i, name: "DHL Express", logo: dhlLogo       },
@@ -30,22 +31,36 @@ export const resolveCarrierName = (raw) => resolveCarrier(raw).name;
 // ─── Öffentlicher Carrier-Vertrag (publicCarrierId) ─────────────────────────
 // EINZIGE Quelle für Carrier-Anzeige/-Logo/-Metadaten der calculate-price-Tarife
 // im Kundenbereich. Ausschließlich die kontrollierte publicCarrierId
-// (ups|dhl|fedex|tnt|der-kurier|other) — KEINE Rohstring-/Regex-/includes-
-// Erkennung, KEIN Fallback auf tariff.carrier / tariff.tariffName. Bestehende
-// Logos werden weiterverwendet.
-const PUBLIC_CARRIERS = {
-  ups:          { name: "UPS",                  logo: upsLogo       },
-  dhl:          { name: "DHL Express",          logo: dhlLogo       },
-  fedex:        { name: "FedEx",                logo: fedexLogo     },
-  tnt:          { name: "TNT",                  logo: tntLogo       },
-  dpd:          { name: "DPD",                  logo: dpdLogo       },
-  gls:          { name: "GLS",                  logo: glsLogo       },
-  "der-kurier": { name: "DER KURIER",           logo: derKurierLogo },
-  other:        { name: "Versanddienstleister", logo: null          },
-};
+// (ups|dhl|fedex|tnt|dpd|gls|der-kurier|trans-o-flex|other) — KEINE Rohstring-/
+// Regex-/includes-Erkennung, KEIN Fallback auf tariff.carrier / tariff.tariffName,
+// KEINE Auswertung von Preis, shipper_tariff_id oder Laufzeit. Bestehende Logos
+// werden weiterverwendet.
+//
+// Die IDs sind 1:1 die des Backend-Vertrags (lib/publicCarrier.js →
+// PUBLIC_CARRIER_IDS). Kommt eine ID hinzu, muss sie hier ergänzt werden — sonst
+// fällt der Tarif still auf den generischen Eintrag zurück.
+//
+// Object.create(null) statt {} — analog zum Backend: eine ID wie "constructor"
+// oder "__proto__" würde sonst über die Prototype-Chain einen Treffer liefern
+// (PUBLIC_CARRIERS["constructor"].name ist "Object") und diesen Wert als
+// Carriernamen rendern, statt auf den generischen Eintrag zurückzufallen.
+const PUBLIC_CARRIERS = Object.assign(Object.create(null), {
+  ups:            { name: "UPS",            logo: upsLogo        },
+  dhl:            { name: "DHL Express",    logo: dhlLogo        },
+  fedex:          { name: "FedEx",          logo: fedexLogo      },
+  tnt:            { name: "TNT",            logo: tntLogo        },
+  dpd:            { name: "DPD",            logo: dpdLogo        },
+  gls:            { name: "GLS",            logo: glsLogo        },
+  "der-kurier":   { name: "DER KURIER",     logo: derKurierLogo  },
+  "trans-o-flex": { name: "trans-o-flex",   logo: transOFlexLogo },
+  // Generischer Eintrag für echte unbekannte Carrier: bewusst OHNE Logo. Die
+  // Darstellung dieses Falls übernimmt das neutrale Paket-Icon in der Logokachel
+  // (OfferCard/BookingLiveSummary/OfferSummaryModule) — nie Text in der Kachel.
+  other:          { name: "Versandpartner", logo: null           },
+});
 
 // Logo + kanonischer Name allein aus der ID (Teil C). Unbekannte/fehlende ID →
-// generisches „Versanddienstleister" (kein Logo, kein Layoutbruch).
+// generischer „Versandpartner" (kein Logo, kein Layoutbruch).
 export function resolvePublicCarrier(publicCarrierId) {
   return PUBLIC_CARRIERS[publicCarrierId] || PUBLIC_CARRIERS.other;
 }
@@ -75,10 +90,11 @@ export function publicServiceName(tariff) {
 }
 
 // Filter-Chip-Label eines publicCarriers-Eintrags (Teil A): „other" stets neutral
-// als „Versanddienstleister", sonst der Backend-Name (Fallback: kanonischer
-// ID-Name). Kein Rohwert, keine Rückübersetzung.
+// als „Versandpartner", sonst der Backend-Name (Fallback: kanonischer ID-Name).
+// Kein Rohwert, keine Rückübersetzung. Liefert das Backend trans-o-flex in
+// publicCarriers, erscheint der Carrier dadurch automatisch im Versanddienst-Filter.
 export function publicCarrierChipLabel(pc) {
-  if (!pc || pc.id === "other") return "Versanddienstleister";
+  if (!pc || pc.id === "other") return "Versandpartner";
   return (typeof pc.name === "string" && pc.name.trim()) ? pc.name.trim() : resolvePublicCarrier(pc.id).name;
 }
 

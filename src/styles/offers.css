@@ -189,11 +189,14 @@
   box-shadow: 0 1px 4px rgba(14,30,80,0.07);
   flex-shrink: 0;
 }
+/* object-fit: contain + feste Box → jedes Logo bleibt unverzerrt und zentriert,
+   unabhängig vom Seitenverhältnis der SVG-Datei. Der Innenabstand entsteht aus der
+   Differenz zur 50-px-Kachel (6 px ringsum). */
 .offer-logo-tile img { width: 38px; height: 38px; object-fit: contain; display: block; }
-.offer-logo-tile-text {
-  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700;
-  color: var(--navy); text-align: center; line-height: 1.25; padding: 4px; word-break: break-word;
-}
+/* Generischer Carrier (publicCarrierId "other"): neutrales Paket-Icon statt Text.
+   Bewusst KEIN Text in der Kachel — er würde mehrzeilig umbrechen. */
+.offer-logo-tile--generic { color: var(--gray500); background: var(--gray50); }
+.offer-logo-tile--generic svg { display: block; }
 .offer-carrier-name {
   font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
   color: var(--navy); line-height: 1.25; margin-bottom: 3px;

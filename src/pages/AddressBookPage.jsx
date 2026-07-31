@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { AddressBookHeader } from "../components/addressbook/AddressBookHeader";
 import { AddressBookTabs } from "../components/addressbook/AddressBookTabs";
 import { AddressBookToolbar } from "../components/addressbook/AddressBookToolbar";
@@ -213,7 +212,6 @@ export default function AddressBookPage({ onUseForNewShipment }) {
 
   return (
     <>
-      <PremiumBackground variant="neutral" />
       <div className="container abk-wrap">
         <AddressBookHeader onCreate={openCreate} />
 

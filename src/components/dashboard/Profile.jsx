@@ -5,7 +5,6 @@ import { PasswordField } from "../ui/PasswordField";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
-import { PremiumBackground } from "./PremiumBackground";
 import { EmailChangeSection } from "./EmailChangeSection";
 import {
   companyBaseline, contactBaseline,
@@ -435,9 +434,7 @@ export function Profile({ user }) {
   );
 
   return (
-    <>
-      <PremiumBackground variant="profile" />
-      <div className="page-body">
+    <div className="page-body">
         <div className="profile-page-head">
           <div className="profile-page-head-text">
             <h1 className="dash-section-title">Unternehmen &amp; Konto</h1>
@@ -487,7 +484,6 @@ export function Profile({ user }) {
             {renderSecurityCard()}
           </div>
         </div>
-      </div>
-    </>
+    </div>
   );
 }

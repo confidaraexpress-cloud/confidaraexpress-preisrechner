@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { PremiumBackground } from "../components/dashboard/PremiumBackground";
 import { DraftsHeader } from "../components/drafts/DraftsHeader";
 import { DraftsList } from "../components/drafts/DraftsList";
 import { DraftDeleteConfirmDialog } from "../components/drafts/DraftDeleteConfirmDialog";
@@ -184,7 +183,6 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft }) {
 
   return (
     <>
-      <PremiumBackground variant="neutral" />
       <div className="container dft-wrap">
         <DraftsHeader onNewShipment={onNewShipment} />
 

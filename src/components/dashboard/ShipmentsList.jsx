@@ -6,7 +6,6 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
-import { PremiumBackground } from "./PremiumBackground";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
 import { customerShipmentNumbers, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import {
@@ -146,7 +145,6 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
 
   return (
     <>
-      <PremiumBackground variant="soft" />
       <div className="page-body">
         {labelError && (
           <div className="alert alert-error mb-16">

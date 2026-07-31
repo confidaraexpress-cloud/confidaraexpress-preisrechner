@@ -3,27 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 
-// CE-Würfel-Marke (Brandmark, §17/§19). Verbatim Inline-SVG (Navy-Cube + Glow).
+// CE-Würfel-Marke (Brandmark). Gleiche Geometrie wie bisher, aber ohne den
+// früheren feGaussianBlur-Glow und in gedämpftem Akzentblau — passend zur
+// matten Sidebar („Premiumwirkung durch Präzision statt Effekte").
 function CubeMark() {
   return (
     <svg className="pp-brandmark-svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <defs>
         <linearGradient id="ppCubeSb" x1="6" y1="34" x2="34" y2="6" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2F8CFF" />
-          <stop offset="0.55" stopColor="#64B4FF" />
-          <stop offset="1" stopColor="#bfe0ff" />
+          <stop offset="0" stopColor="#5b8def" />
+          <stop offset="1" stopColor="#93b4f5" />
         </linearGradient>
-        <filter id="ppCubeSbGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="1.6" result="b" />
-          <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.18  0 0 0 0 0.55  0 0 0 0 1  0 0 0 0.5 0" result="g" />
-          <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
       </defs>
-      <g filter="url(#ppCubeSbGlow)" stroke="url(#ppCubeSb)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round">
+      <g stroke="url(#ppCubeSb)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
         <path d="M34 27V13a2.2 2.2 0 0 0-1.1-1.9l-11-6.2a2.2 2.2 0 0 0-2.1 0l-11 6.2A2.2 2.2 0 0 0 6 13v14a2.2 2.2 0 0 0 1.1 1.9l11 6.2a2.2 2.2 0 0 0 2.1 0l11-6.2A2.2 2.2 0 0 0 34 27Z" />
         <path d="M6.6 12.2 20 19.8l13.4-7.6M20 35.2V19.8" />
       </g>
-      <path d="M6.6 12.2 20 19.8V35l-12.9-7.3A2.2 2.2 0 0 1 6 25.8V13Z" fill="url(#ppCubeSb)" opacity="0.14" />
+      <path d="M6.6 12.2 20 19.8V35l-12.9-7.3A2.2 2.2 0 0 1 6 25.8V13Z" fill="url(#ppCubeSb)" opacity="0.12" />
     </svg>
   );
 }
@@ -56,10 +52,10 @@ const NAV_GROUPS = [
   },
 ];
 
-// Eine einzige Premium-Sidebar für den gesamten eingeloggten Bereich
-// (leuchtende Navy-Glas-Hülle, §17). Aufbau: .pp-side (Positionierung, Mobile-
-// Drawer) → .pp-side-glow (blaues Backlight) → .pp-side-in (Glas) → Logo,
-// Identität, Nav, Support, Footer. Funktion/Routen unverändert.
+// Eine einzige Sidebar für den gesamten eingeloggten Bereich — matte
+// Graphit-Fläche, flach, ohne Glow („Clean Executive Logistics"). Aufbau:
+// .pp-side (Positionierung, Mobile-Drawer) → .pp-side-in (Inhaltsspalte) →
+// Logo, Identität, Nav, Support, Footer. Funktion/Routen unverändert.
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen, onLogout }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -80,7 +76,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
         <div className="sidebar-overlay open" onClick={() => setSidebarOpen(false)} style={{ zIndex: 198 }} />
       )}
       <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
-        <span className="pp-side-glow" aria-hidden="true" />
         <div className="pp-side-in">
 
           <div className="pp-logo">
@@ -94,18 +89,16 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             </button>
           </div>
 
-          {/* Benutzerinformationen (bleiben auf allen Seiten sichtbar). Der
-              Chevron erscheint NUR auf der Übersicht (Porcelain-Zielbild) — auf
-              allen anderen Seiten bleibt das Markup unverändert. */}
+          {/* Benutzerinformationen — auf allen Seiten identisch. Der frühere,
+              nur auf der Übersicht eingeblendete Chevron ist entfallen: er
+              suggerierte eine Aufklappfunktion, die es nicht gibt, und ließ
+              dieselbe Sidebar je nach Seite unterschiedlich aussehen. */}
           <div className="pp-identity">
             <div className="pp-identity-avatar">{initials}</div>
             <div className="pp-identity-text">
               <div className="pp-identity-name">{user?.company_name || user?.name}</div>
               <div className="pp-identity-email">{user?.email || "B2B Konto"}</div>
             </div>
-            {page === "overview" && (
-              <span className="pp-identity-chev" aria-hidden="true"><Icon n="chevron" s={15} /></span>
-            )}
           </div>
 
           <nav className="pp-nav">
@@ -145,12 +138,12 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <div className="scard-ic"><Icon n="headset" s={17} /></div>
               <div style={{ minWidth: 0 }}>
                 <div className="scard-k">Ihr persönlicher Kontakt</div>
-                {/* Übersicht: verdichtete Copy laut Porcelain-Zielbild; alle
-                    anderen Seiten behalten die bestehende Formulierung. */}
-                <div className="scard-t"><span className="ce-live" />{page === "overview" ? "Support verfügbar" : "Live Support"}</div>
+                {/* Auf allen Seiten dieselbe Formulierung — vorher wich die
+                    Übersicht als einzige Seite ab. */}
+                <div className="scard-t"><span className="ce-live" />Live Support</div>
               </div>
             </div>
-            <div className="scard-s">{page === "overview" ? "Antwort meist zeitnah" : "Ihre Anfrage wird zeitnah beantwortet."}</div>
+            <div className="scard-s">Ihre Anfrage wird zeitnah beantwortet.</div>
           </a>
 
           <div className="pp-foot">

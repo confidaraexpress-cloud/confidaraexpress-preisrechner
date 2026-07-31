@@ -13,6 +13,12 @@ import {
   markupHasChange,
   parseMarkupInput,
   NO_CHANGE_HINT,
+  // Expressaufschlag (zweiter, OPTIONALER Kundenaufschlag)
+  parseExpressMarkupInput,
+  expressMarkupInputValue,
+  expressMarkupDisplay,
+  effectiveExpressLine,
+  markupFormHasChange,
 } from "../../utils/customerMarkup.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,6 +35,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const MARKUP_INPUT_ID = "adm-markup-input";
+export const EXPRESS_MARKUP_INPUT_ID = "adm-express-markup-input";
 export const MARKUP_SECTION_ID = "adm-markup-section";
 
 export function CustomerMarkupSection({
@@ -46,7 +53,12 @@ export function CustomerMarkupSection({
   sectionRef,
 }) {
   const [draft, setDraft] = useState("");
+  // Expressentwurf als STRING: leer = „kein eigener Expressaufschlag" (das Backend
+  // bekommt dafür ausdrücklich null). „0" bleibt ein echter Wert und wird NIE als
+  // leer behandelt.
+  const [expressDraft, setExpressDraft] = useState("");
   const [touched, setTouched] = useState(false);
+  const [expressTouched, setExpressTouched] = useState(false);
   // Wert, mit dem zuletzt abgesendet wurde. Ein Feldfehler des Backends (400)
   // gehört genau zu diesem Wert — sobald der Admin etwas anderes eintippt,
   // verschwindet er wieder (statt als veraltete Fehlermeldung stehen zu bleiben).
@@ -56,36 +68,66 @@ export function CustomerMarkupSection({
   // die Backend-Daten tatsächlich ändern (Laden, erfolgreiche Bestätigung) — eine
   // laufende Eingabe wird dadurch nie mitten im Tippen überschrieben.
   const syncKey = pricing
-    ? `${pricing.priceMarkupPercent}|${pricing.confirmed}|${pricing.updatedAt}|${pricing.confirmedAt}`
+    ? `${pricing.priceMarkupPercent}|${pricing.expressPriceMarkupPercent}|${pricing.confirmed}|${pricing.updatedAt}|${pricing.confirmedAt}`
     : "none";
   useEffect(() => {
     setDraft(markupInputValue(pricing?.priceMarkupPercent));
+    setExpressDraft(expressMarkupInputValue(pricing));
     setTouched(false);
+    setExpressTouched(false);
   }, [syncKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const parsed = useMemo(() => parseMarkupInput(draft), [draft]);
+  const expressParsed = useMemo(() => parseExpressMarkupInput(expressDraft), [expressDraft]);
   const confirmed = isMarkupConfirmed(pricing);
-  // Ein bereits bestätigter, unveränderter Wert löst bewusst keinen Request aus.
-  const hasChange = useMemo(() => markupHasChange(pricing, draft), [pricing, draft]);
-  const noChange = parsed.ok && !hasChange;
+  // Ein bereits bestätigter, unveränderter Zustand löst bewusst keinen Request aus —
+  // geprüft über BEIDE Felder.
+  const hasChange = useMemo(
+    () => markupFormHasChange(pricing, draft, expressDraft), [pricing, draft, expressDraft]);
+  const noChange = parsed.ok && expressParsed.ok && !hasChange;
+  // Der Expresswert gilt erst nach dem Speichern. Solange der Entwurf abweicht, wird
+  // die Wirksam-Zeile ausdrücklich als „noch nicht gespeichert" gekennzeichnet — sie
+  // darf nie suggerieren, ein eingetippter Wert sei bereits aktiv.
+  const expressDirty = useMemo(
+    () => expressParsed.ok && expressDraft !== expressMarkupInputValue(pricing), [expressParsed, expressDraft, pricing]);
   const [badgeCls, badgeLabel] = markupBadge(pricing);
 
   // Fehler am Feld: eigene Validierung (erst nach Berührung) oder die 400-Antwort
   // des Backends. Beides ist programmatisch mit dem Feld verbunden.
-  const serverFieldError = saveError && saveError.field && draft === submittedRef.current ? saveError.text : "";
-  const fieldError = (touched && !parsed.ok ? parsed.error : "") || serverFieldError;
+  const submissionMatches = saveError && saveError.field && submittedRef.current
+    && draft === submittedRef.current.standard && expressDraft === submittedRef.current.express;
+  // `target` benennt das betroffene Feld; ohne Angabe bleibt es beim Standardfeld
+  // (Verhalten älterer Backendantworten).
+  const serverStandardError = submissionMatches && saveError.target !== "express" ? saveError.text : "";
+  const serverExpressError = submissionMatches && saveError.target === "express" ? saveError.text : "";
+  const fieldError = (touched && !parsed.ok ? parsed.error : "") || serverStandardError;
+  const expressFieldError = (expressTouched && !expressParsed.ok ? expressParsed.error : "") || serverExpressError;
   const describedBy = ["adm-markup-help", fieldError ? "adm-markup-error" : null]
+    .filter(Boolean).join(" ");
+  const expressDescribedBy = ["adm-express-markup-help", expressFieldError ? "adm-express-markup-error" : null]
     .filter(Boolean).join(" ");
 
 
   const submit = (e) => {
     e.preventDefault();
     setTouched(true);
+    setExpressTouched(true);
     // Doppelübermittlung ausgeschlossen: während eines laufenden Requests wird
     // weder abgesendet noch der Button bedienbar gehalten.
-    if (busy || !parsed.ok || !hasChange || typeof onSave !== "function") return;
-    submittedRef.current = draft;
-    onSave(parsed.value);
+    if (busy || !parsed.ok || !expressParsed.ok || !hasChange || typeof onSave !== "function") return;
+    submittedRef.current = { standard: draft, express: expressDraft };
+    // Der ROHE Expressstring wird weitergereicht — die Umwandlung „leer → null"
+    // passiert zentral in buildPriceMarkupBody, nicht hier.
+    onSave(parsed.value, expressDraft);
+  };
+
+  // „Standardaufschlag verwenden": leert das Expressfeld. Beim Speichern geht daraus
+  // ausdrücklich null an das Backend (Fallback aktivieren). Kein technischer Begriff
+  // wie „null" erscheint in der Oberfläche.
+  const useStandardForExpress = () => {
+    if (busy) return;
+    setExpressDraft("");
+    setExpressTouched(true);
   };
 
   return (
@@ -174,6 +216,10 @@ export function CustomerMarkupSection({
                 am Feld (die Verwechslung Rate/Prozent wird damit praktisch
                 ausgeschlossen). */}
             <form className="adm-markup-form" onSubmit={submit} noValidate>
+              <div className="adm-markup-group">
+                <h4 className="adm-markup-group-title">{MARKUP_TEXTS.standardGroupTitle}</h4>
+                <p className="adm-markup-group-scope">{MARKUP_TEXTS.standardGroupScope}</p>
+              </div>
               <div className="adm-markup-field">
                 <label className="adm-edit-label" htmlFor={MARKUP_INPUT_ID}>{MARKUP_TEXTS.fieldLabel}</label>
                 <div className={`adm-markup-input-wrap${fieldError ? " adm-markup-input-invalid" : ""}`}>
@@ -198,16 +244,76 @@ export function CustomerMarkupSection({
                 {fieldError && (
                   <p id="adm-markup-error" className="field-error" role="alert">{fieldError}</p>
                 )}
-                {!fieldError && noChange && (
-                  <p id="adm-markup-nochange" className="adm-markup-nochange">{NO_CHANGE_HINT}</p>
+              </div>
+
+              {/* ── Expressaufschlag: eigener Block mit eigener Überschrift und
+                  eigenem Geltungsbereich. Die Trennung ist Absicht — zwei nackte
+                  Prozentfelder nebeneinander wären verwechselbar. ── */}
+              <div className="adm-markup-group adm-markup-group-express">
+                <h4 className="adm-markup-group-title">{MARKUP_TEXTS.expressGroupTitle}</h4>
+                <p className="adm-markup-group-scope">{MARKUP_TEXTS.expressGroupScope}</p>
+              </div>
+              <div className="adm-markup-field">
+                <label className="adm-edit-label" htmlFor={EXPRESS_MARKUP_INPUT_ID}>
+                  {MARKUP_TEXTS.expressFieldLabel}{" "}
+                  <span className="adm-markup-optional">({MARKUP_TEXTS.expressOptional})</span>
+                </label>
+                <div className={`adm-markup-input-wrap${expressFieldError ? " adm-markup-input-invalid" : ""}`}>
+                  <input
+                    id={EXPRESS_MARKUP_INPUT_ID}
+                    className="adm-markup-input"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={MARKUP_TEXTS.expressNotSet}
+                    value={expressDraft}
+                    onChange={(e) => setExpressDraft(e.target.value)}
+                    onBlur={() => setExpressTouched(true)}
+                    disabled={busy}
+                    aria-invalid={expressFieldError ? "true" : undefined}
+                    aria-describedby={expressDescribedBy}
+                  />
+                  <span className="adm-markup-suffix" aria-hidden="true">%</span>
+                </div>
+                <div className="adm-markup-express-row">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={useStandardForExpress}
+                    disabled={busy || expressDraft === ""}
+                  >
+                    <Icon n="refresh" s={13} /> {MARKUP_TEXTS.expressFallbackAction}
+                  </button>
+                </div>
+                <p id="adm-express-markup-help" className="adm-markup-help">{MARKUP_TEXTS.expressInputHelp}</p>
+                {expressFieldError && (
+                  <p id="adm-express-markup-error" className="field-error" role="alert">{expressFieldError}</p>
                 )}
               </div>
+
+              {/* Wirksamer Expressaufschlag — Quelle ist ausschließlich das
+                  SERVERFELD. Weicht der Entwurf davon ab, wird das ausdrücklich
+                  gesagt, statt einen noch nicht gespeicherten Wert als aktiv zu
+                  zeigen. */}
+              <p className="adm-markup-effective" role="status">
+                <Icon n="info" s={15} />{" "}
+                <span>
+                  {effectiveExpressLine(pricing)}
+                  {expressDirty && <em className="adm-markup-effective-dirty"> — noch nicht gespeichert</em>}
+                </span>
+              </p>
+              <p className="adm-markup-help">{MARKUP_TEXTS.expressFallbackHint}</p>
+
+              {!fieldError && !expressFieldError && noChange && (
+                <p id="adm-markup-nochange" className="adm-markup-nochange">{NO_CHANGE_HINT}</p>
+              )}
 
               <div className="adm-markup-actions">
                 <button
                   type="submit"
                   className="btn btn-primary btn-sm"
-                  disabled={busy || !parsed.ok || !hasChange}
+                  disabled={busy || !parsed.ok || !expressParsed.ok || !hasChange}
                   aria-busy={busy ? "true" : undefined}
                   aria-describedby={noChange ? "adm-markup-nochange" : undefined}
                 >

@@ -308,6 +308,32 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 700; color: var(--gray500); background: var(--gray50); border-left: 1px solid var(--border); }
 .adm-markup-help { font-size: 12px; line-height: 1.5; color: var(--gray500); max-width: 560px; }
 
+/* ── Zwei Aufschläge: Standard und Express ──────────────────────────────────
+   Beide Blöcke bekommen eine eigene Überschrift und einen eigenen
+   Geltungsbereich. Die Trennung ist der wichtigste Designpunkt: zwei nackte
+   Prozentfelder nebeneinander wären für einen Admin verwechselbar.
+   flex-basis: 100% erzwingt einen eigenen Umbruch im .adm-markup-form-Flexlayout,
+   sodass die Reihenfolge Überschrift → Feld → Überschrift → Feld erhalten bleibt. */
+.adm-markup-group { flex: 0 0 100%; padding-top: 14px; }
+.adm-markup-group-express { border-top: 1px solid var(--border); margin-top: 6px; }
+.adm-markup-group-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray500); }
+.adm-markup-group-scope { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--gray500); max-width: 560px; }
+/* „(optional)" bleibt Teil des Labels, aber optisch zurückgenommen. */
+.adm-markup-optional { font-weight: 500; color: var(--gray500); }
+.adm-markup-express-row { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Wirksamer Expressaufschlag — die Antwort auf „was gilt jetzt tatsächlich?".
+   Wird über Text UND Symbol vermittelt, nie allein über Farbe. */
+.adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--radius); font-size: 13.5px; font-weight: 600; color: var(--navy); background: var(--gray50); border: 1px solid var(--border); }
+.adm-markup-effective svg { flex-shrink: 0; margin-top: 2px; color: var(--blue2); }
+.adm-markup-effective-dirty { font-style: normal; font-weight: 700; color: var(--blue2); }
+
+@media (max-width: 640px) {
+  /* Auf schmalen Screens stehen Feld und Fallbackaktion untereinander; die
+     Eingabe darf die volle Breite nutzen. */
+  .adm-markup-input-wrap { max-width: 100%; }
+  .adm-markup-express-row > .btn { width: 100%; justify-content: center; }
+}
+
 /* ── Freischaltung / Reaktivierung (Kundendetail) ───────────────────────── */
 .adm-approve-reactivation { display: flex; align-items: flex-start; gap: 7px; margin-top: 8px; color: var(--blue2); font-weight: 600; }
 .adm-approve-reactivation svg { flex-shrink: 0; margin-top: 2px; }

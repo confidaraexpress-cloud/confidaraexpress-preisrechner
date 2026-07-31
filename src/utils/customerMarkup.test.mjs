@@ -20,6 +20,16 @@ import { dirname, join, relative } from "node:path";
 
 import {
   APPROVAL_ERRORS,
+  CODE_INVALID_EXPRESS_PERCENT,
+  parseExpressMarkupInput,
+  expressMarkupInputValue,
+  expressMarkupDisplay,
+  expressUsesFallback,
+  effectiveExpressLine,
+  expressMarkupHasChange,
+  markupFormHasChange,
+  canSaveMarkupForm,
+  selectPriceMarkup as selectPM,
   BADGE_CONFIRMED,
   BADGE_UNCONFIRMED,
   CODE_CONFIRMATION_REQUIRED,
@@ -177,7 +187,7 @@ test("6 — Zeitstempel werden nach de-DE formatiert", () => {
   assert.equal(formatConfirmedBy(null), "—");
 });
 
-test("7 — es werden ausschließlich die sechs Vertragsfelder übernommen", () => {
+test("7 — es werden ausschließlich die Vertragsfelder übernommen", () => {
   const leaky = {
     ...CONFIRMED,
     supplierNet: 12.34, marginRate: 0.2, internalPricing: { base: 9 },
@@ -186,13 +196,15 @@ test("7 — es werden ausschließlich die sechs Vertragsfelder übernommen", () 
   const p = selectPriceMarkup(leaky);
   assert.deepEqual(Object.keys(p).sort(), priceMarkupFields().sort());
   assert.deepEqual(priceMarkupFields().sort(),
-    ["confirmed", "confirmedAt", "confirmedBy", "priceMarkupPercent", "updatedAt", "userId"]);
+    ["confirmed", "confirmedAt", "confirmedBy", "effectiveExpressPriceMarkupPercent",
+     "expressMarkupUsesFallback", "expressPriceMarkupPercent", "priceMarkupPercent",
+     "updatedAt", "userId"].sort());
   const asJson = JSON.stringify(p);
   for (const forbidden of ["supplierNet", "marginRate", "internalPricing", "token", "password_hash", "pricingCore", "costPrice"]) {
     assert.equal(asJson.includes(forbidden), false, `${forbidden} darf nicht durchgereicht werden`);
   }
   // Und die Oberfläche liest niemals direkt aus einer rohen Antwort.
-  assert.equal(/pricing\.(?!userId|priceMarkupPercent|confirmed|confirmedAt|confirmedBy|updatedAt)/.test(sectionSrc), false,
+  assert.equal(/pricing\.(?!userId|priceMarkupPercent|expressPriceMarkupPercent|effectiveExpressPriceMarkupPercent|expressMarkupUsesFallback|confirmed|confirmedAt|confirmedBy|updatedAt)/.test(sectionSrc), false,
     "die Sektion liest nur Vertragsfelder");
   assert.equal(selectPriceMarkup(null), null);
   assert.equal(selectPriceMarkup([1, 2]), null);
@@ -301,9 +313,9 @@ test("18 — der Button ist bei ungültigem Wert deaktiviert", () => {
   for (const v of ["", "-1", "101", "20,123", "abc"]) assert.equal(canSubmitMarkup(v), false, v);
   // Der Disabled-State hängt genau an dieser Prüfung (und am laufenden Request).
   assert.match(sectionSrc, /const parsed = useMemo\(\(\) => parseMarkupInput\(draft\), \[draft\]\)/);
-  assert.match(sectionSrc, /type="submit"[\s\S]{0,260}disabled=\{busy \|\| !parsed\.ok \|\| !hasChange\}/);
+  assert.match(sectionSrc, /type="submit"[\s\S]{0,300}disabled=\{busy \|\| !parsed\.ok \|\| !expressParsed\.ok \|\| !hasChange\}/);
   // Und auch das Absenden selbst prüft noch einmal.
-  assert.match(sectionSrc, /if \(busy \|\| !parsed\.ok \|\| !hasChange \|\| typeof onSave !== "function"\) return;/);
+  assert.match(sectionSrc, /if \(busy \|\| !parsed\.ok \|\| !expressParsed\.ok \|\| !hasChange \|\| typeof onSave !== "function"\) return;/);
   // Zusätzlich: ein bereits bestätigter, unveränderter Wert löst keinen Request aus.
   assert.equal(canSaveMarkup({ confirmed: true, priceMarkupPercent: 20 }, "20,00"), false, "keine Änderung → kein Request");
   assert.equal(canSaveMarkup({ confirmed: true, priceMarkupPercent: 20 }, "21"), true, "echte Änderung → absendbar");
@@ -312,13 +324,22 @@ test("18 — der Button ist bei ungültigem Wert deaktiviert", () => {
 
 // ═══ C) PUT / Bestätigung (19–29) ════════════════════════════════════════════
 
-test("19 — der Request enthält ausschließlich priceMarkupPercent", () => {
+test("19 — der Request enthält ausschließlich die beiden Aufschlagsfelder", () => {
+  // Ohne zweites Argument bleibt der Body byte-identisch zum bisherigen Vertrag —
+  // ein Aufrufer ohne Expressunterstützung löscht den Expresswert dadurch NICHT.
   const body = buildPriceMarkupBody("20");
   assert.deepEqual(Object.keys(body), ["priceMarkupPercent"]);
+  // Mit Expressfeld: genau zwei Schlüssel, nie mehr.
+  assert.deepEqual(Object.keys(buildPriceMarkupBody("20", "40")),
+    ["priceMarkupPercent", "expressPriceMarkupPercent"]);
+  assert.deepEqual(buildPriceMarkupBody("20", "40"), { priceMarkupPercent: 20, expressPriceMarkupPercent: 40 });
+  // Leeres Expressfeld → ausdrücklich null (Fallback), NIE ein leerer String.
+  assert.deepEqual(buildPriceMarkupBody("20", ""), { priceMarkupPercent: 20, expressPriceMarkupPercent: null });
+  assert.equal(JSON.stringify(buildPriceMarkupBody("20", "")), '{"priceMarkupPercent":20,"expressPriceMarkupPercent":null}');
   assert.deepEqual(body, { priceMarkupPercent: 20 });
   assert.equal(JSON.stringify(body), '{"priceMarkupPercent":20}');
   // Der Wrapper baut den Body ausschließlich hierüber — keine zweite Stelle.
-  assert.match(apiSrc, /const body = buildPriceMarkupBody\(priceMarkupPercent\);/);
+  assert.match(apiSrc, /const body = buildPriceMarkupBody\(priceMarkupPercent, expressRaw\);/);
   assert.match(apiSrc, /body: JSON\.stringify\(body\),/);
   assert.equal(/JSON\.stringify\(\{[^}]*priceMarkupPercent/.test(apiSrc), false,
     "kein zweiter, handgebauter Body");
@@ -349,12 +370,16 @@ test("21 — ein vollständiges Benutzerobjekt kann nicht gesendet werden", () =
   // Der Wrapper sendet gar nicht erst, wenn kein gültiger Body entsteht.
   assert.match(apiSrc, /if \(!body\) return Promise\.reject\(new Error\("invalid_price_markup_percent"\)\);/);
   // Die Seite übergibt ausschließlich den geparsten Zahlenwert.
-  assert.match(sectionSrc, /onSave\(parsed\.value\);/);
-  assert.match(detailSrc, /await updateAdminCustomerPriceMarkup\(id, percent\)/);
+  assert.match(sectionSrc, /onSave\(parsed\.value, expressDraft\);/);
+  assert.match(detailSrc, /await updateAdminCustomerPriceMarkup\(id, percent, expressRaw\)/);
+  // Auch der Expresswert kann nie als Objekt/Array in den Body geraten.
+  assert.equal(buildPriceMarkupBody("20", { a: 1 }), null);
+  assert.equal(buildPriceMarkupBody("20", [40]), null);
+  assert.equal(buildPriceMarkupBody("20", true), null);
 });
 
 test("22 — der Button wird während des Requests deaktiviert und zeigt den Ladezustand", () => {
-  assert.match(sectionSrc, /disabled=\{busy \|\| !parsed\.ok \|\| !hasChange\}/);
+  assert.match(sectionSrc, /disabled=\{busy \|\| !parsed\.ok \|\| !expressParsed\.ok \|\| !hasChange\}/);
   assert.match(sectionSrc, /aria-busy=\{busy \? "true" : undefined\}/);
   assert.match(sectionSrc, /busy\s*\n?\s*\?\s*<><span className="spinner spinner-dark" \/> \{markupActionBusyLabel\(pricing\)\}/);
   // Auch das Eingabefeld ist währenddessen gesperrt.
@@ -367,7 +392,7 @@ test("22 — der Button wird während des Requests deaktiviert und zeigt den Lad
 test("23 — ein Doppelklick erzeugt nur einen Request", () => {
   // Der Ref-Guard greift synchron — auch bevor React den Busy-State gerendert hat.
   assert.match(detailSrc, /const saveInFlight = useRef\(false\);/);
-  assert.match(detailSrc, /const saveMarkup = async \(percent\) => \{\s*if \(saveInFlight\.current\) return;/);
+  assert.match(detailSrc, /const saveMarkup = async \(percent, expressRaw\) => \{\s*if \(saveInFlight\.current\) return;/);
   assert.match(detailSrc, /saveInFlight\.current = true;/);
   assert.match(detailSrc, /const approveInFlight = useRef\(false\);/);
   assert.match(detailSrc, /const confirmApprove = async \(\) => \{\s*if \(approveInFlight\.current\) return;/);
@@ -831,4 +856,182 @@ test("49 — Selbsttest: die Contract-Prüfungen greifen tatsächlich", () => {
   // Und die Kernaussagen des Prozentvertrags sind keine Tautologien.
   assert.notEqual(parseMarkupInput("0,20").value, parseMarkupInput("20").value);
   assert.equal(parseMarkupInput("0,20").value * 100, 20, "0,20 % ist ein Hundertstel von 20 %");
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// D) Expressaufschlag (zweiter, OPTIONALER Kundenaufschlag) — X1–X12
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Serverantworten, wie das Backend sie liefert.
+const PRICING_FALLBACK = selectPM({
+  userId: 3, priceMarkupPercent: 20,
+  expressPriceMarkupPercent: null, effectiveExpressPriceMarkupPercent: 20, expressMarkupUsesFallback: true,
+  confirmed: true, confirmedAt: "2026-07-30T10:00:00.000Z", confirmedBy: 1, updatedAt: "2026-07-30T10:00:00.000Z",
+});
+const PRICING_OWN = selectPM({
+  userId: 3, priceMarkupPercent: 20,
+  expressPriceMarkupPercent: 35, effectiveExpressPriceMarkupPercent: 35, expressMarkupUsesFallback: false,
+  confirmed: true, confirmedAt: "2026-07-30T10:00:00.000Z", confirmedBy: 1, updatedAt: "2026-07-30T10:00:00.000Z",
+});
+
+test("X1 — beide Werte werden aus der Antwort übernommen", () => {
+  assert.equal(PRICING_OWN.priceMarkupPercent, 20);
+  assert.equal(PRICING_OWN.expressPriceMarkupPercent, 35);
+  assert.equal(PRICING_OWN.effectiveExpressPriceMarkupPercent, 35);
+  assert.equal(PRICING_OWN.expressMarkupUsesFallback, false);
+});
+
+test("X2 — kein eigener Expresswert wird als Fallback dargestellt, nie als „null“ oder 0", () => {
+  assert.equal(PRICING_FALLBACK.expressPriceMarkupPercent, null);
+  assert.equal(expressUsesFallback(PRICING_FALLBACK), true);
+  assert.equal(expressMarkupDisplay(PRICING_FALLBACK), "Standardaufschlag verwenden");
+  const line = effectiveExpressLine(PRICING_FALLBACK);
+  assert.match(line, /20,00 %/);
+  assert.match(line, /über den Standardaufschlag/);
+  // Kein technischer Begriff in der Oberfläche.
+  for (const t of ["null", "undefined", "NaN", "fallback"]) {
+    assert.equal(expressMarkupDisplay(PRICING_FALLBACK).toLowerCase().includes(t), false, t);
+    assert.equal(line.toLowerCase().includes(t), false, t);
+  }
+  // Das Eingabefeld ist leer, nicht "0".
+  assert.equal(expressMarkupInputValue(PRICING_FALLBACK), "");
+});
+
+test("X3 — ein eigener Expresswert wird mit seinem wirksamen Wert angezeigt", () => {
+  assert.equal(expressUsesFallback(PRICING_OWN), false);
+  assert.equal(expressMarkupDisplay(PRICING_OWN), "35,00 %");
+  assert.match(effectiveExpressLine(PRICING_OWN), /35,00 % — eigener Expressaufschlag/);
+  assert.equal(expressMarkupInputValue(PRICING_OWN), "35,00");
+});
+
+test("X4 — der wirksame Wert stammt aus dem SERVERFELD, nicht aus einer eigenen Rechnung", () => {
+  // Bewusst widersprüchliche Antwort: der Server sagt 99, der Rohwert wäre 35.
+  const odd = selectPM({ userId: 1, priceMarkupPercent: 20, expressPriceMarkupPercent: 35,
+    effectiveExpressPriceMarkupPercent: 99, expressMarkupUsesFallback: false, confirmed: true });
+  assert.match(effectiveExpressLine(odd), /99,00 %/, "der Serverwert ist maßgeblich");
+  // Und die Komponente rechnet den Wert nirgends selbst aus.
+  assert.equal(/effectiveExpress[A-Za-z]*\s*=\s*[^;]*\?\?/.test(sectionSrc), false,
+    "die Sektion darf den wirksamen Wert nicht selbst herleiten");
+});
+
+test("X5 — Expresswert speichern: Zahl, deutsches Komma, 0 und 100", () => {
+  for (const [raw, expected] of [["40", 40], ["35,50", 35.5], ["0", 0], ["100", 100], ["17.5", 17.5]]) {
+    const body = buildPriceMarkupBody("20", raw);
+    assert.deepEqual(body, { priceMarkupPercent: 20, expressPriceMarkupPercent: expected }, raw);
+  }
+});
+
+test("X6 — Expresswert entfernen: leeres Feld sendet null, der Standardwert bleibt", () => {
+  const body = buildPriceMarkupBody("20", "");
+  assert.deepEqual(body, { priceMarkupPercent: 20, expressPriceMarkupPercent: null });
+  assert.equal(body.priceMarkupPercent, 20, "der Standardwert darf beim Entfernen nicht verloren gehen");
+  // Auch reiner Whitespace ist „leer".
+  assert.deepEqual(buildPriceMarkupBody("20", "   "), { priceMarkupPercent: 20, expressPriceMarkupPercent: null });
+  // Es geht NIE ein leerer String an das Backend.
+  assert.equal(JSON.stringify(body).includes('""'), false);
+});
+
+test("X7 — 0 ist ein echter Expressaufschlag und NICHT „leer“", () => {
+  const zero = parseExpressMarkupInput("0");
+  assert.equal(zero.ok, true);
+  assert.equal(zero.value, 0);
+  assert.equal(zero.cleared, false, "0 darf nie als Löschbefehl gelten");
+  const empty = parseExpressMarkupInput("");
+  assert.equal(empty.value, null);
+  assert.equal(empty.cleared, true);
+  // Und in der Anzeige ist 0 % ein gesetzter Wert.
+  const p0 = selectPM({ userId: 1, priceMarkupPercent: 20, expressPriceMarkupPercent: 0,
+    effectiveExpressPriceMarkupPercent: 0, expressMarkupUsesFallback: false, confirmed: true });
+  assert.equal(expressUsesFallback(p0), false);
+  assert.equal(expressMarkupDisplay(p0), "0,00 %");
+  assert.equal(expressMarkupInputValue(p0), "0,00");
+});
+
+test("X8 — ungültige Expresseingaben werden abgelehnt, kein Request entsteht", () => {
+  for (const bad of ["-1", "101", "20,123", "abc", "4e1", "0x28", "20 %"]) {
+    assert.equal(parseExpressMarkupInput(bad).ok, false, bad);
+    assert.equal(buildPriceMarkupBody("20", bad), null, bad);
+    assert.equal(canSaveMarkupForm(PRICING_FALLBACK, "20", bad), false, bad);
+  }
+});
+
+test("X9 — der Backendfehler des Expressfelds wird dem RICHTIGEN Feld zugeordnet", () => {
+  const err = markupSaveError(400, { code: CODE_INVALID_EXPRESS_PERCENT });
+  assert.equal(err.field, true);
+  assert.equal(err.target, "express");
+  assert.match(err.text, /Expressaufschlag/);
+  // Der Standardfehler bleibt unterscheidbar.
+  const std = markupSaveError(400, { code: CODE_INVALID_PERCENT });
+  assert.equal(std.target, "standard");
+  assert.equal(/Expressaufschlag/.test(std.text), false);
+  // Und die Sektion trennt beide Anzeigen.
+  assert.match(sectionSrc, /saveError\.target === "express"/);
+  assert.match(sectionSrc, /saveError\.target !== "express"/);
+});
+
+test("X10 — Änderungserkennung über beide Felder; unveränderter Zustand sendet nichts", () => {
+  // Nichts geändert → kein Request.
+  assert.equal(markupFormHasChange(PRICING_OWN, "20,00", "35,00"), false);
+  assert.equal(canSaveMarkupForm(PRICING_OWN, "20,00", "35,00"), false);
+  // Nur Standard geändert.
+  assert.equal(markupFormHasChange(PRICING_OWN, "22", "35,00"), true);
+  // Nur Express geändert.
+  assert.equal(markupFormHasChange(PRICING_OWN, "20,00", "40"), true);
+  // Express entfernt (Feld geleert).
+  assert.equal(expressMarkupHasChange(PRICING_OWN, ""), true);
+  assert.equal(markupFormHasChange(PRICING_OWN, "20,00", ""), true);
+  // Leer bleibt leer → keine Änderung.
+  assert.equal(expressMarkupHasChange(PRICING_FALLBACK, ""), false);
+  assert.equal(markupFormHasChange(PRICING_FALLBACK, "20,00", ""), false);
+  // Unbestätigt: die Bestätigung selbst IST die Aktion.
+  const unconfirmed = selectPM({ userId: 1, priceMarkupPercent: 20, expressPriceMarkupPercent: null, confirmed: false });
+  assert.equal(markupFormHasChange(unconfirmed, "20,00", ""), true);
+});
+
+test("X11 — die Oberfläche behauptet nie, ein ungespeicherter Expresswert sei aktiv", () => {
+  // Der Entwurf wird gegen den gespeicherten Zustand geprüft und ausdrücklich
+  // als „noch nicht gespeichert" gekennzeichnet.
+  assert.match(sectionSrc, /expressDraft !== expressMarkupInputValue\(pricing\)/);
+  assert.match(sectionSrc, /noch nicht gespeichert/);
+  // Die Fallbackaktion leert nur das Feld — sie speichert nicht selbst.
+  assert.match(sectionSrc, /const useStandardForExpress = \(\) => \{[\s\S]{0,180}setExpressDraft\(""\);/);
+  assert.equal(/useStandardForExpress[\s\S]{0,200}onSave\(/.test(sectionSrc), false,
+    "die Fallbackaktion darf nicht selbst speichern");
+  // Und der Admin sieht nie einen technischen Begriff: geprüft werden die
+  // tatsächlich angezeigten TEXTE, nicht der umgebende Code (dort ist "null" als
+  // Sprachkonstrukt selbstverständlich erlaubt).
+  const visible = [
+    MARKUP_TEXTS.expressGroupTitle, MARKUP_TEXTS.expressGroupScope,
+    MARKUP_TEXTS.expressFieldLabel, MARKUP_TEXTS.expressOptional,
+    MARKUP_TEXTS.expressInputHelp, MARKUP_TEXTS.expressFallbackAction,
+    MARKUP_TEXTS.expressFallbackHint, MARKUP_TEXTS.expressNotSet,
+    MARKUP_TEXTS.effectiveExpressPrefix, MARKUP_TEXTS.effectiveExpressViaFallback,
+    MARKUP_TEXTS.effectiveExpressOwn, MARKUP_TEXTS.standardGroupTitle,
+    MARKUP_TEXTS.standardGroupScope, MARKUP_SAVE_ERRORS.expressInvalid,
+    expressMarkupDisplay(PRICING_FALLBACK), expressMarkupDisplay(PRICING_OWN),
+    effectiveExpressLine(PRICING_FALLBACK), effectiveExpressLine(PRICING_OWN),
+  ];
+  for (const text of visible) {
+    assert.equal(typeof text, "string", "jeder Anzeigetext muss definiert sein");
+    for (const t of ["null", "undefined", "NaN", "fallback", "boolean", "percent"]) {
+      assert.equal(text.toLowerCase().includes(t.toLowerCase()), false,
+        `technischer Begriff „${t}" im Anzeigetext: ${text}`);
+    }
+  }
+});
+
+test("X12 — kein Kundenbereich zeigt jemals einen Aufschlagswert", () => {
+  // Alle Nicht-Admin-Quellen dürfen die Aufschlagsfelder überhaupt nicht kennen.
+  const forbidden = ["priceMarkupPercent", "expressPriceMarkupPercent",
+    "effectiveExpressPriceMarkupPercent", "expressMarkupUsesFallback",
+    "applied_markup_percent", "applied_service_class", "markupRate", "marginRate"];
+  const offenders = [];
+  for (const file of PRODUCTION_FILES) {
+    const rel = relative(SRC, file);
+    if (rel.includes("admin") || rel.includes("customerMarkup")) continue;
+    const src = readFileSync(file, "utf8");
+    for (const f of forbidden) if (src.includes(f)) offenders.push(`${rel}: ${f}`);
+  }
+  assert.deepEqual(offenders, [], `Aufschlagsfelder außerhalb des Adminbereichs: ${offenders.join(", ")}`);
 });

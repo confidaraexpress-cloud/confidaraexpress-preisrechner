@@ -434,7 +434,11 @@ export default function AdminUserDetailPage() {
   // Ein PUT mit ausschließlich { priceMarkupPercent }; die Kunden-ID stammt allein
   // aus der Adminroute (useParams), nie aus einer Eingabe. Die Bestätigung des
   // Aufschlags und die Freischaltung bleiben zwei getrennte Requests.
-  const saveMarkup = async (percent) => {
+  // expressRaw ist der ROHE String des optionalen Expressfelds: "" bedeutet
+  // ausdrücklich „Standardaufschlag verwenden" (Backend erhält null), ein
+  // Zahlenstring einen eigenen Expresssatz. Die Umwandlung liegt zentral in
+  // buildPriceMarkupBody — hier wird nichts umgedeutet.
+  const saveMarkup = async (percent, expressRaw) => {
     if (saveInFlight.current) return; // Doppelübermittlung ausgeschlossen
     saveInFlight.current = true;
     const wasConfirmed = isMarkupConfirmed(pricing);
@@ -443,7 +447,7 @@ export default function AdminUserDetailPage() {
     setSaveSuccess("");
     setApproveMsg(null);
     try {
-      const r = await updateAdminCustomerPriceMarkup(id, percent);
+      const r = await updateAdminCustomerPriceMarkup(id, percent, expressRaw);
       if (!r.ok) {
         let body = null;
         try { body = await r.json(); } catch { body = null; }

@@ -28,6 +28,9 @@ export const MARKUP_MAX_DECIMALS = 2;
 // Backend-Fehlercodes, die dieses Modul kennt. Keine erfundenen Codes.
 export const CODE_INVALID_PERCENT = "INVALID_PRICE_MARKUP_PERCENT";
 export const CODE_CONFIRMATION_REQUIRED = "PRICE_MARKUP_CONFIRMATION_REQUIRED";
+// Eigener Code des Expressfelds — damit der Fehler am RICHTIGEN der beiden
+// Prozentfelder erscheint und nicht pauschal am Standardfeld.
+export const CODE_INVALID_EXPRESS_PERCENT = "INVALID_EXPRESS_MARKUP_PERCENT";
 
 // ── Texte ───────────────────────────────────────────────────────────────────
 // Deutsch, ohne interne Preisbegriffe (kein „Margin Rate"/„Multiplier"/
@@ -54,6 +57,24 @@ export const MARKUP_TEXTS = Object.freeze({
     + "Freischaltung erforderlich.",
   loadingPricing: "Kundenaufschlag wird geladen…",
   confirmedPrefix: "Bestätigter Kundenaufschlag",
+  // ── Expressaufschlag ──────────────────────────────────────────────────────
+  standardGroupTitle: "Standardaufschlag",
+  standardGroupScope: "Gilt für Standard-, Economy- und alle übrigen Tarife.",
+  expressGroupTitle: "Expressaufschlag",
+  expressGroupScope: "Gilt nur für Tarife, die serverseitig eindeutig als Express eingestuft sind.",
+  expressFieldLabel: "Expressaufschlag",
+  expressOptional: "optional",
+  expressInputHelp:
+    "Leer lassen, wenn für Expresstarife derselbe Aufschlag gelten soll wie sonst. "
+    + "Ein Wert von 0 bedeutet ausdrücklich 0 % — nicht \u201Enicht festgelegt\u201C.",
+  expressFallbackAction: "Standardaufschlag verwenden",
+  expressFallbackHint:
+    "Ist kein eigener Expressaufschlag gesetzt, wird automatisch der Standardaufschlag verwendet. "
+    + "Eine Änderung des Standardaufschlags verändert dann auch den Expresspreis.",
+  expressNotSet: "Standardaufschlag verwenden",
+  effectiveExpressPrefix: "Wirksamer Expressaufschlag",
+  effectiveExpressViaFallback: "über den Standardaufschlag",
+  effectiveExpressOwn: "eigener Expressaufschlag",
 });
 
 // Badge-Beschriftung: „Bestätigt" ausschließlich bei confirmed === true.
@@ -69,7 +90,12 @@ export const BADGE_UNCONFIRMED = "Noch nicht bestätigt";
 // Backend es je mitschickte) kann damit gar nicht erst im DOM landen — keine
 // internen Preisquellen, keine Lieferantenwerte, keine Tokens.
 const PRICE_MARKUP_FIELDS = Object.freeze([
-  "userId", "priceMarkupPercent", "confirmed", "confirmedAt", "confirmedBy", "updatedAt",
+  "userId", "priceMarkupPercent",
+  // Expressaufschlag: Rohwert (null = nicht festgelegt), der vom SERVER berechnete
+  // wirksame Wert und der Fallbackstatus. Der wirksame Wert wird bewusst NICHT im
+  // Frontend hergeleitet — sonst gäbe es zwei Wahrheiten über denselben Preis.
+  "expressPriceMarkupPercent", "effectiveExpressPriceMarkupPercent", "expressMarkupUsesFallback",
+  "confirmed", "confirmedAt", "confirmedBy", "updatedAt",
 ]);
 
 const numOrNull = (v) => {
@@ -92,6 +118,18 @@ export function selectPriceMarkup(payload) {
   return {
     userId: numOrNull(raw.userId) ?? strOrNull(raw.userId),
     priceMarkupPercent: numOrNull(raw.priceMarkupPercent),
+    // null bedeutet ausdrücklich \u201Enicht festgelegt\u201C — niemals 0 %.
+    expressPriceMarkupPercent: numOrNull(raw.expressPriceMarkupPercent),
+    // Fällt der Server (Altstand) diese Felder nicht mit, wird der Fallback aus dem
+    // Rohwert abgeleitet — das ist dieselbe Regel, die der Server anwendet.
+    effectiveExpressPriceMarkupPercent:
+      numOrNull(raw.effectiveExpressPriceMarkupPercent)
+      ?? numOrNull(raw.expressPriceMarkupPercent)
+      ?? numOrNull(raw.priceMarkupPercent),
+    expressMarkupUsesFallback:
+      typeof raw.expressMarkupUsesFallback === "boolean"
+        ? raw.expressMarkupUsesFallback
+        : numOrNull(raw.expressPriceMarkupPercent) === null,
     confirmed: raw.confirmed === true,
     confirmedAt: strOrNull(raw.confirmedAt),
     confirmedBy: numOrNull(raw.confirmedBy) ?? strOrNull(raw.confirmedBy),
@@ -215,15 +253,97 @@ export const canSaveMarkup = (pricing, raw) => parseMarkupInput(raw).ok && marku
 
 export const NO_CHANGE_HINT = "Der Wert entspricht dem bereits bestätigten Aufschlag — es ist keine Änderung nötig.";
 
+// ── Expressaufschlag: Eingabe, Anzeige, Änderungserkennung ──────────────────
+// Der Expresswert ist OPTIONAL. Die Eingabe kennt deshalb genau zwei gültige
+// Zustände, und sie sind nie mehrdeutig:
+//   leer        → kein eigener Expressaufschlag → an das Backend geht null
+//   Zahl 0…100  → dieser Wert (0 ist ein echter Aufschlag, kein „leer")
+// Ein leerer String wird NIEMALS an das Backend gesendet — das Backend lehnt ihn
+// ausdrücklich ab, damit „nicht ausgefüllt" und „löschen" unterscheidbar bleiben.
+// → { ok:true, value:<Number|null>, cleared:<Boolean>, code:null, error:null }
+//   { ok:false, value:null, cleared:false, code, error }
+export function parseExpressMarkupInput(raw) {
+  const s = typeof raw === "number" ? (Number.isFinite(raw) ? String(raw) : "")
+          : typeof raw === "string" ? raw.trim()
+          : raw === null || raw === undefined ? ""
+          : "\u0000";  // nicht darstellbarer Typ → Formatfehler unten
+  if (s === "") return { ok: true, value: null, cleared: true, code: null, error: null };
+  const parsed = parseMarkupInput(s);
+  if (!parsed.ok) return { ...parsed, cleared: false };
+  return { ok: true, value: parsed.value, cleared: false, code: null, error: null };
+}
+
+// Eingabewert des Expressfelds aus dem gespeicherten Zustand: null → leeres Feld.
+export const expressMarkupInputValue = (pricing) =>
+  markupInputValue(pricing ? pricing.expressPriceMarkupPercent : null);
+
+// Nutzt dieser Kunde den Fallback (kein eigener Expresssatz)?
+export const expressUsesFallback = (pricing) =>
+  !pricing || pricing.expressPriceMarkupPercent === null || pricing.expressPriceMarkupPercent === undefined;
+
+// Anzeigezeile des hinterlegten Expresswerts — ohne technische Begriffe wie „null".
+export const expressMarkupDisplay = (pricing) =>
+  (expressUsesFallback(pricing)
+    ? MARKUP_TEXTS.expressNotSet
+    : formatMarkupPercent(pricing.expressPriceMarkupPercent));
+
+// „Wirksamer Expressaufschlag: 20,00 % — über den Standardaufschlag"
+// Der Prozentwert stammt aus dem SERVERFELD, nicht aus einer eigenen Rechnung.
+export function effectiveExpressLine(pricing) {
+  if (!pricing) return null;
+  const eff = pricing.effectiveExpressPriceMarkupPercent;
+  if (eff === null || eff === undefined) return null;
+  const via = expressUsesFallback(pricing)
+    ? MARKUP_TEXTS.effectiveExpressViaFallback
+    : MARKUP_TEXTS.effectiveExpressOwn;
+  return `${MARKUP_TEXTS.effectiveExpressPrefix}: ${formatMarkupPercent(eff)} — ${via}`;
+}
+
+// Hat sich der EXPRESSwert gegenüber dem gespeicherten Zustand geändert?
+// Vergleicht auf zwei Nachkommastellen; „leer ↔ nicht gesetzt" ist keine Änderung.
+export function expressMarkupHasChange(pricing, raw) {
+  const parsed = parseExpressMarkupInput(raw);
+  if (!parsed.ok) return false;
+  // WICHTIG: null/undefined zuerst ausdrücklich prüfen. Number(null) ist 0 und wäre
+  // eine endliche Zahl — „nicht festgelegt" würde dadurch zu „0 %" und jede
+  // Formularanzeige als Änderung gelten.
+  const stored = numOrNull(pricing ? pricing.expressPriceMarkupPercent : null);
+  if (parsed.value === null) return stored !== null;
+  if (stored === null) return true;
+  return Math.round(parsed.value * 100) !== Math.round(stored * 100);
+}
+
+// Änderungserkennung über BEIDE Felder — steuert den Speichern-Button.
+// Ohne Bestätigung ist jede gültige Eingabe eine echte Aktion (die Bestätigung selbst).
+export function markupFormHasChange(pricing, standardRaw, expressRaw) {
+  if (!parseMarkupInput(standardRaw).ok) return false;
+  if (!parseExpressMarkupInput(expressRaw).ok) return false;
+  if (!isMarkupConfirmed(pricing)) return true;
+  return markupHasChange(pricing, standardRaw) || expressMarkupHasChange(pricing, expressRaw);
+}
+
+// Absendbar = beide Felder gültig UND (noch nicht bestätigt ODER tatsächlich geändert).
+export const canSaveMarkupForm = (pricing, standardRaw, expressRaw) =>
+  parseMarkupInput(standardRaw).ok
+  && parseExpressMarkupInput(expressRaw).ok
+  && markupFormHasChange(pricing, standardRaw, expressRaw);
+
 // ── Request-Body ────────────────────────────────────────────────────────────
 // PUT /admin/users/:id/price-markup — der Body enthält AUSSCHLIESSLICH
 // { priceMarkupPercent }. Keine Auditfelder (confirmedAt/confirmedBy/updatedAt),
 // kein Benutzerobjekt, keine userId (die steht im Pfad und stammt allein aus der
 // aktuellen Adminroute), keine dynamischen Feldnamen.
-export function buildPriceMarkupBody(percent) {
+export function buildPriceMarkupBody(percent, expressRaw) {
   const parsed = parseMarkupInput(percent);
   if (!parsed.ok) return null;
-  return { priceMarkupPercent: parsed.value };
+  // Ohne zweites Argument bleibt der Body exakt wie bisher — ein Aufrufer, der den
+  // Expressaufschlag nicht kennt, LÖSCHT ihn dadurch nicht (das Backend lässt ein
+  // fehlendes Feld unverändert).
+  if (expressRaw === undefined) return { priceMarkupPercent: parsed.value };
+  const express = parseExpressMarkupInput(expressRaw);
+  if (!express.ok) return null;
+  // express.value ist entweder eine Zahl oder null — niemals "" und niemals undefined.
+  return { priceMarkupPercent: parsed.value, expressPriceMarkupPercent: express.value };
 }
 
 // ── Aktionsbeschriftung & Erfolgsmeldungen ──────────────────────────────────
@@ -248,6 +368,9 @@ export const MARKUP_SAVE_ERRORS = Object.freeze({
   429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
   500: "Der Vorgang konnte nicht abgeschlossen werden. Es wurden keine Änderungen übernommen.",
   default: "Der Vorgang konnte nicht abgeschlossen werden. Es wurden keine Änderungen übernommen.",
+  expressInvalid:
+    "Der Expressaufschlag muss zwischen 0 und 100 Prozent liegen und darf höchstens zwei "
+    + "Nachkommastellen besitzen. Zum Entfernen das Feld leer lassen.",
 });
 
 // → null bei 401/403 (zentrales Auth-Verhalten übernimmt: Logout/Redirect —
@@ -256,8 +379,13 @@ export const MARKUP_SAVE_ERRORS = Object.freeze({
 export function markupSaveError(status, body) {
   if (status === 401 || status === 403) return null;
   const code = body && typeof body === "object" && typeof body.code === "string" ? body.code : null;
+  // Eigener Code des Expressfelds → der Fehler erscheint am EXPRESSfeld, nicht am
+  // Standardfeld. `target` benennt das betroffene Eingabefeld eindeutig.
+  if (code === CODE_INVALID_EXPRESS_PERCENT) {
+    return { field: true, target: "express", code, text: MARKUP_SAVE_ERRORS.expressInvalid };
+  }
   if (status === 400 || code === CODE_INVALID_PERCENT) {
-    return { field: true, code: code || CODE_INVALID_PERCENT, text: MARKUP_SAVE_ERRORS[400] };
+    return { field: true, target: "standard", code: code || CODE_INVALID_PERCENT, text: MARKUP_SAVE_ERRORS[400] };
   }
   return { field: false, code, text: MARKUP_SAVE_ERRORS[status] || MARKUP_SAVE_ERRORS.default };
 }

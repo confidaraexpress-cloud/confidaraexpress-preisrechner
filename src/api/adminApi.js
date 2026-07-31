@@ -237,19 +237,27 @@ export function getAdminCustomerPriceMarkup(userId, { signal } = {}) {
 // PUT /admin/users/:id/price-markup — ausdrückliche Bestätigung bzw.
 // Aktualisierung des individuellen Kundenaufschlags durch den Admin.
 //
-// Der Body enthält AUSSCHLIESSLICH { priceMarkupPercent } (zentral über
+// Der Body enthält AUSSCHLIESSLICH { priceMarkupPercent } und — sofern der
+// Aufrufer ihn übergibt — { expressPriceMarkupPercent } (zentral über
 // buildPriceMarkupBody zusammengesetzt — einzige Quelle der Wahrheit):
 //   • KEINE Auditfelder (confirmed/confirmedAt/confirmedBy/updatedAt) — die setzt
 //     ausschließlich das Backend aus der Adminsitzung.
 //   • KEIN vollständiges Benutzerobjekt, KEINE userId im Body, KEINE dynamischen
 //     Feldnamen und keine alternativen Schreibweisen.
-// Der Wert ist ein PROZENTWERT (20 = 20 %, 0.20 = 0,20 %) — nie ein Faktor.
+// Beide Werte sind PROZENTWERTE (20 = 20 %, 0.20 = 0,20 %) — nie ein Faktor.
+//
+// expressRaw (optional, String aus dem Eingabefeld):
+//   • nicht übergeben → das Feld fehlt im Body; das Backend lässt einen
+//     gespeicherten Expressaufschlag dann UNVERÄNDERT (kein versehentliches Löschen).
+//   • leerer String   → expressPriceMarkupPercent: null → Fallback auf den
+//     Standardaufschlag wird ausdrücklich aktiviert.
+//   • Zahlenstring    → dieser Wert (0 ist ein gültiger Aufschlag, kein „leer").
 // Defensiver Guard: ein ungültiger Wert wird gar nicht erst gesendet (das
 // Backend prüft ihn zusätzlich autoritativ und antwortet dann mit 400
-// INVALID_PRICE_MARKUP_PERCENT). Bearer + Content-Type aus apiFetch(auth:true);
-// 401/403 behandelt apiFetch zentral.
-export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent) {
-  const body = buildPriceMarkupBody(priceMarkupPercent);
+// INVALID_PRICE_MARKUP_PERCENT bzw. INVALID_EXPRESS_MARKUP_PERCENT). Bearer +
+// Content-Type aus apiFetch(auth:true); 401/403 behandelt apiFetch zentral.
+export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent, expressRaw) {
+  const body = buildPriceMarkupBody(priceMarkupPercent, expressRaw);
   if (!body) return Promise.reject(new Error("invalid_price_markup_percent"));
   return apiFetch(`/admin/users/${encodeURIComponent(userId)}/price-markup`, {
     method: "PUT",

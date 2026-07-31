@@ -451,7 +451,8 @@ test("26 — der Aufschlagsbereich bleibt fachlich unverändert und vermeidet le
   assert.equal(canSaveMarkup(confirmed, "18"), true);
   // Prozentsemantik unverändert: 0,20 bleibt 0,20 %.
   assert.equal(canSaveMarkup(confirmed, "0,20"), true);
-  assert.match(sectionSrc, /const hasChange = useMemo\(\(\) => markupHasChange\(pricing, draft\), \[pricing, draft\]\);/);
+  // Die Änderungserkennung deckt seit dem Expressaufschlag BEIDE Felder ab.
+  assert.match(sectionSrc, /markupFormHasChange\(pricing, draft, expressDraft\)/);
   assert.match(sectionSrc, /\{NO_CHANGE_HINT\}/);
 });
 
@@ -485,7 +486,7 @@ test("29 — Pricing-Endpunkte und Prozentvertrag bleiben unverändert", () => {
   const apiSrc = stripComments(read("api/adminApi.js"));
   assert.match(apiSrc, /`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}\/price-markup`/);
   assert.equal(/["'`]\/api\/admin\//.test(apiSrc), false, "kein /api-Präfix");
-  assert.match(apiSrc, /const body = buildPriceMarkupBody\(priceMarkupPercent\);/);
+  assert.match(apiSrc, /const body = buildPriceMarkupBody\(priceMarkupPercent, expressRaw\);/);
   assert.match(apiSrc, /apiFetch\(`\/admin\/users\/\$\{encodeURIComponent\(userId\)\}\/status`, \{\s*method: "PATCH",/);
   assert.match(apiSrc, /body: JSON\.stringify\(\{ status \}\),/);
 });

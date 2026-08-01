@@ -202,6 +202,14 @@ Alle Unterseiten laufen durch `.page-body`, der Seitenkopf durch
 .alert-wrapper { max-width: 1240px; margin: 0 auto; }
 ```
 
+Denselben Rahmen nutzt der Footer der App-Shell (`.app-footer`, gerendert von
+`LegalLinks.jsx`): links das Copyright, rechts die vier Rechtlinks. Es gibt
+genau **einen** Footer im eingeloggten Bereich — `Footer.jsx` gehört zum
+öffentlichen `NavbarLayout` und ist etwas anderes. `.main-content` ist eine
+Flex-Spalte, damit `.app-footer { margin-top: auto }` auf kurzen Seiten am
+unteren Rand sitzt; die Flex-Kinder brauchen deshalb `min-width: 0; width: 100%`
+(sonst sprengt die Mindestbreite der Tabellen schmale Viewports).
+
 Neue Layout-Elemente **immer innerhalb** dieses Rahmens platzieren und keine
 zweite `max-width` darunter einziehen — sonst laufen Seitenkopf und Inhalt auf
 breiten Screens (1440 px+) um wenige Pixel auseinander. Die Übersicht nutzt
@@ -234,7 +242,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/visible-premium-sidebar-background`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/polish-premium-shell-footer`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

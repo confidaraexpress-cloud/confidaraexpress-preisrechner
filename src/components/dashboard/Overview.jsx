@@ -230,9 +230,6 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
           </div>
         ))}
       </div>
-
-      {/* ── Footer ── */}
-      <div className="pp-pagefoot">ConfidaraExpress · Premium-Übersicht — freundlich, professionell, luxuriös.</div>
     </div>
   );
 }

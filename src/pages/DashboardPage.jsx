@@ -294,7 +294,10 @@ export default function DashboardPage() {
         )}
         {page === "profile"   && <Profile user={user} />}
 
-        {page !== "overview" && <LegalLinks />}
+        {/* Ein Footer für ALLE Kundenseiten. Die Übersicht trug bis hierher
+            stattdessen eine werbliche Selbstbeschreibung statt eines Footers;
+            die ist ersatzlos entfallen. */}
+        <LegalLinks />
       </main>
     </div>
   );

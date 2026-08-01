@@ -193,8 +193,41 @@
 .pp-car-time { font-family: var(--fm); font-size: 11px; color: var(--text-secondary); }
 
 /* Trust */
-.pp-trust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 24px 12px; border-radius: var(--radius-lg); margin-top: 38px; }
-.pp-trust-item { display: flex; align-items: center; gap: 16px; padding: 0 24px; position: relative; }
+/* position:relative + overflow:hidden tragen das lokale Wasserzeichen und
+   schneiden es an der Kartenrundung an. Höhe, Raster und Inhalt des Tiles
+   bleiben unverändert — das <img> ist absolut positioniert und damit aus dem
+   Grid-Fluss. */
+.pp-trust {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding: 24px 12px; border-radius: var(--radius-lg); margin-top: 38px;
+  position: relative;
+  overflow: hidden;
+}
+/* Lokales Markendetail des Trust-Tiles. Unten rechts angeschnitten, hinter dem
+   Inhalt, ohne Animation, Filter, Glow oder Verlauf. Nicht fixed/sticky — es
+   scrollt normal mit der Karte.
+
+   Maßgeblich für die Größe ist der real bedruckte Textbereich, nicht die
+   Elementbox: das Tile ist nur 110 px hoch und in drei Spalten gefüllt.
+   Gemessen bleiben rechts der Glyphen 94 px (1920), 102 px (1440) und
+   49 px (1280) frei. Die sichtbare Breite ist daher auf 44 px begrenzt —
+   damit bleibt auch im engsten Desktop-Fall ein Abstand zum Text. Die
+   ursprünglich angedachten 140 px hätten die Textzeilen zwangsläufig
+   unterlaufen. Zum Ausgleich der kleineren Fläche liegt die Opazität am
+   oberen Ende des zulässigen Bandes (Grenze 0.08). */
+.pp-trust-watermark {
+  position: absolute;
+  right: -64px;
+  bottom: -52px;
+  width: 104px;          /* sichtbar: 40 × 52 px (angeschnitten) */
+  height: auto;
+  opacity: 0.075;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pp-trust-item { display: flex; align-items: center; gap: 16px; padding: 0 24px; position: relative; z-index: 1; }
 .pp-trust-item + .pp-trust-item::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 46px; background: var(--border-subtle); }
 .pp-trust-item .pp-medal { width: 46px; height: 46px; }
 .pp-trust-t { font-family: var(--fs); font-size: 15px; font-weight: 700; color: var(--text-primary); }
@@ -203,6 +236,16 @@
 /* ══════════ Responsive ══════════ */
 @media (max-width: 1440px) { .pp-cars { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 1340px) { .pp-kpis { grid-template-columns: repeat(3, 1fr); } }
+/* Wasserzeichen ── Tablet: etwas kleiner. Mobil ausgeblendet: bei gestapeltem
+   Tile und ~38 px sichtbarer Fläche wäre es weder erkennbar noch konfliktfrei
+   zu platzieren — lieber ganz weg als ein unlesbarer Rest. */
+@media (max-width: 1120px) {
+  .pp-trust-watermark { width: 88px; right: -50px; bottom: -44px; opacity: 0.07; }
+}
+@media (max-width: 560px) {
+  .pp-trust-watermark { display: none; }
+}
+
 @media (max-width: 1120px) {
   .pp-vals, .pp-steps { grid-template-columns: repeat(2, 1fr); }
   .pp-step-con { display: none; }

@@ -2,27 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
-
-// CE-Würfel-Marke (Brandmark). Gleiche Geometrie wie bisher, aber ohne den
-// früheren feGaussianBlur-Glow und in gedämpftem Akzentblau — passend zur
-// matten Sidebar („Premiumwirkung durch Präzision statt Effekte").
-function CubeMark() {
-  return (
-    <svg className="pp-brandmark-svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="ppCubeSb" x1="6" y1="34" x2="34" y2="6" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#5b8def" />
-          <stop offset="1" stopColor="#93b4f5" />
-        </linearGradient>
-      </defs>
-      <g stroke="url(#ppCubeSb)" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
-        <path d="M34 27V13a2.2 2.2 0 0 0-1.1-1.9l-11-6.2a2.2 2.2 0 0 0-2.1 0l-11 6.2A2.2 2.2 0 0 0 6 13v14a2.2 2.2 0 0 0 1.1 1.9l11 6.2a2.2 2.2 0 0 0 2.1 0l11-6.2A2.2 2.2 0 0 0 34 27Z" />
-        <path d="M6.6 12.2 20 19.8l13.4-7.6M20 35.2V19.8" />
-      </g>
-      <path d="M6.6 12.2 20 19.8V35l-12.9-7.3A2.2 2.2 0 0 1 6 25.8V13Z" fill="url(#ppCubeSb)" opacity="0.12" />
-    </svg>
-  );
-}
+import markReverse from "../../assets/brand/mark-reverse.svg";
 
 // Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
 // die visuelle Variante bleibt routeabhängig). Page-Keys/Routen unverändert —
@@ -78,8 +58,20 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
       <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="pp-side-in">
 
+          {/* Bildmarke rein dekorativ: die ausgeschriebene Wortmarke steht
+              direkt daneben als echter Text und wird bereits vorgelesen. Die
+              Reverse-Variante ist bereits in Zielfarbe ausgeliefert — deshalb
+              kein CSS-Filter und keine Einfärbung. */}
           <div className="pp-logo">
-            <span className="ce-brandmark"><CubeMark /></span>
+            <span className="ce-brandmark">
+              <img
+                className="pp-brandmark-img"
+                src={markReverse}
+                alt=""
+                aria-hidden="true"
+                draggable="false"
+              />
+            </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pp-brand">Confidara<b>Express</b></div>
               <div className="pp-brand-sub">B2B Versandplattform.</div>

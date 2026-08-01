@@ -1,0 +1,400 @@
+// Source-Structure-Tests für das Chrome des eingeloggten Bereichs:
+// gemeinsame Shell (.app-shell / Porcelain-Hintergrund) und gemeinsame Sidebar
+// (.sidebar.pp-side / Executive Graphite).
+//
+// Rein statische Prüfungen der Quell-Invarianten — kein Rendering, keine neue
+// Dependency, bewusst KEINE Assertions auf exakte Pixelwerte oder Farbwerte
+// einzelner Deklarationen. Geprüft wird, was leicht versehentlich kaputtgeht:
+// dass es genau eine Shell und eine Sidebar gibt, dass keine seitenabhängige
+// Sondervariante zurückkehrt, dass Chrome-Farben ausschließlich über Tokens
+// laufen, dass keine Dauereffekte entstehen, dass Admin- und Auth-Bereich
+// getrennt bleiben — und dass die Sidebar-Kontraste WCAG AA erfüllen.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
+
+const variables = read("../../styles/variables.css");
+const premium   = read("../../styles/dashboard-premium.css");
+const dashboard = read("../../styles/dashboard.css");
+const adminCss  = read("../../styles/admin.css");
+const authCss   = read("../../styles/auth.css");
+
+const sidebarJsx   = read("./DashboardSidebar.jsx");
+const layoutJsx    = read("./DashboardLayout.jsx");
+const adminJsx     = read("./AdminLayout.jsx");
+const navbarJsx    = read("./NavbarLayout.jsx");
+const dashboardJsx = read("../../pages/DashboardPage.jsx");
+
+// Deklarationsblock eines Selektors extrahieren (erste Übereinstimmung).
+function block(css, selector) {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = css.match(new RegExp(esc + "\\s*\\{([^}]*)\\}"));
+  return m ? m[1] : null;
+}
+
+// Kommentare entfernen — Kommentartexte dürfen historische Klassennamen nennen,
+// ohne dass die Regel-Prüfungen darüber stolpern.
+const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
+const stripJsxComments = (jsx) =>
+  jsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+
+const premiumRules   = stripComments(premium);
+const dashboardRules = stripComments(dashboard);
+
+/* ── Shell ──────────────────────────────────────────────────────────────── */
+
+test("1 — beide Shell-Renderer nutzen unverändert .app-shell ohne Seiten-Scope", () => {
+  for (const [name, jsx] of [["DashboardPage", dashboardJsx], ["DashboardLayout", layoutJsx]]) {
+    const src = stripJsxComments(jsx);
+    assert.match(src, /className="app-shell"/, `${name}: statisches className="app-shell" erwartet`);
+    // Kein Template-Literal auf der Shell → keine seitenabhängige Theme-Klasse.
+    assert.doesNotMatch(
+      src,
+      /className=\{`app-shell/,
+      `${name}: seitenabhängiger Shell-Scope (Template-Literal) ist nicht zulässig`,
+    );
+  }
+});
+
+test("2 — keine seitenabhängige Hintergrund-/Sidebar-Sondervariante kehrt zurück", () => {
+  const forbidden = [
+    "dashboard-vapor",
+    "dashboard-soft-premium",
+    "dashboard-neutral-premium",
+    "dashboard-profile-premium",
+    "ce-dark",
+    "pp-side-glow",
+    "pbg-",
+  ];
+  const sources = [
+    ["dashboard-premium.css", premiumRules],
+    ["dashboard.css", dashboardRules],
+    ["DashboardPage.jsx", stripJsxComments(dashboardJsx)],
+    ["DashboardLayout.jsx", stripJsxComments(layoutJsx)],
+    ["DashboardSidebar.jsx", stripJsxComments(sidebarJsx)],
+  ];
+  for (const [file, src] of sources) {
+    for (const token of forbidden) {
+      assert.ok(!src.includes(token), `${file}: alte Sondervariante "${token}" darf nicht zurückkehren`);
+    }
+  }
+});
+
+test("3 — der Seitenhintergrund liegt genau einmal auf der Shell", () => {
+  const shell = block(premium, ".app-shell");
+  assert.ok(shell, ".app-shell fehlt in dashboard-premium.css");
+  assert.match(shell, /background-image:/, "Porcelain-Hintergrund fehlt auf .app-shell");
+  assert.match(shell, /min-height:\s*100dvh/, "Shell muss mindestens die Viewporthöhe füllen");
+  // background-color = Endton der Rampe → lange Seiten laufen ohne Kante weiter.
+  assert.match(shell, /background-color:\s*var\(--ce-app-bg-bottom\)/,
+    "Grundfarbe muss der Endton der Rampe sein, sonst entsteht unter dem Verlauf eine Kante");
+
+  // .main-content darf keine eigene Flächenfarbe tragen (zweite Hintergrundebene).
+  const main = block(premium, ".main-content");
+  assert.ok(main, ".main-content fehlt");
+  assert.doesNotMatch(main, /background(-color|-image)?:/,
+    ".main-content darf keine zweite Hintergrundebene einführen");
+});
+
+test("4 — Sidebar und Hintergrund sind zentral über Tokens geführt", () => {
+  // Alle --ce-app-* / --ce-sidebar-* Tokens stammen aus variables.css …
+  for (const t of [
+    "ce-app-bg-top", "ce-app-bg-mid", "ce-app-bg-bottom", "ce-app-divider", "ce-app-overlay",
+    "ce-sidebar-bg-top", "ce-sidebar-bg-mid", "ce-sidebar-bg-bottom",
+    "ce-sidebar-surface", "ce-sidebar-surface-hover", "ce-sidebar-surface-active",
+    "ce-sidebar-border", "ce-sidebar-divider",
+    "ce-sidebar-text", "ce-sidebar-text-strong", "ce-sidebar-text-muted",
+    "ce-sidebar-section", "ce-sidebar-icon",
+    "ce-sidebar-active-accent", "ce-sidebar-active-icon",
+  ]) {
+    assert.match(variables, new RegExp(`--${t}:`), `Token --${t} fehlt in variables.css`);
+    assert.ok(!premiumRules.includes(`--${t}:`),
+      `Token --${t} darf nicht zusätzlich in dashboard-premium.css definiert werden`);
+  }
+
+  // … und im Sidebar-Block stehen keine Farbliterale mehr.
+  const start = premiumRules.indexOf(".sidebar.pp-side");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  assert.ok(start > -1 && end > start, "Sidebar-Block nicht auffindbar");
+  const sidebarBlock = premiumRules.slice(start, end);
+  const literals = sidebarBlock.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b/g) || [];
+  assert.deepEqual(literals, [],
+    `Sidebar-Regeln müssen Farben über Tokens beziehen, gefunden: ${literals.join(", ")}`);
+});
+
+test("5 — keine toten Tokens der Chrome-Familie", () => {
+  const allSources = [variables, premium, dashboard, read("../../styles/overview.css")].join("\n");
+  const defined = [...variables.matchAll(/--(ce-(?:app|sidebar)-[a-z-]+):/g)].map((m) => m[1]);
+  assert.ok(defined.length > 0, "keine Chrome-Tokens gefunden");
+  for (const t of defined) {
+    assert.ok(allSources.includes(`var(--${t})`), `Token --${t} ist definiert, wird aber nirgends genutzt`);
+  }
+});
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+
+test("6 — es gibt genau eine Sidebar-Komponente auf allen Kundenrouten", () => {
+  for (const [name, jsx] of [["DashboardPage", dashboardJsx], ["DashboardLayout", layoutJsx]]) {
+    assert.match(jsx, /<DashboardSidebar\b/, `${name}: DashboardSidebar muss gerendert werden`);
+  }
+  // Beide übergeben page + navigateTo, damit die Aktivmarkierung überall greift.
+  for (const [name, jsx] of [["DashboardPage", dashboardJsx], ["DashboardLayout", layoutJsx]]) {
+    assert.match(jsx, /page=\{/, `${name}: page-Prop fehlt`);
+    assert.match(jsx, /navigateTo=\{/, `${name}: navigateTo-Prop fehlt`);
+  }
+  assert.match(sidebarJsx, /className=\{`sidebar pp-side/, "Sidebar-Wurzelklassen geändert");
+});
+
+test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () => {
+  // Aktivzustand kommt weiterhin aus dem page-Vergleich, nicht aus der URL.
+  assert.match(sidebarJsx, /page === "overview" \? "on" : ""/, "Aktivmarkierung der Übersicht fehlt");
+  assert.match(sidebarJsx, /page === item\.id \? "on" : ""/, "Aktivmarkierung der Nav-Einträge fehlt");
+
+  const on = block(premium, ".nitem.on");
+  assert.ok(on, ".nitem.on fehlt");
+  // Nicht allein farbcodiert: Fläche + Border + Akzentkante + Schriftschnitt.
+  assert.match(on, /background:/, "aktive Fläche fehlt");
+  assert.match(on, /border-color:/, "aktive Border fehlt");
+  assert.match(on, /font-weight:\s*600/, "aktiver Schriftschnitt fehlt");
+  assert.match(on, /box-shadow:\s*inset\s+3px\s+0\s+0/, "linke Akzentkante (inset) fehlt");
+  // Die Kante ist ein Inset-Schatten, KEIN absolut positioniertes ::before —
+  // sonst zerstört sie die Rundung bzw. verschiebt Layout.
+  assert.ok(!premiumRules.includes(".nitem.on::before"),
+    "Aktivkante darf nicht als absolut positioniertes ::before umgesetzt werden");
+});
+
+test("8 — Navigationsstruktur und Aktionen sind unverändert", () => {
+  for (const id of ["new", "calculator", "drafts", "shipments", "tracking", "addressbook", "invoices", "profile"]) {
+    assert.ok(sidebarJsx.includes(`id: "${id}"`), `Navigationseintrag "${id}" fehlt`);
+  }
+  for (const label of ["Versand", "Verwaltung", "Abrechnung", "Konto"]) {
+    assert.ok(sidebarJsx.includes(`label: "${label}"`), `Navigationsgruppe "${label}" fehlt`);
+  }
+  assert.match(sidebarJsx, /onClick=\{handleLogout\}/, "Abmelden-Aktion fehlt");
+  assert.match(sidebarJsx, /Abmelden/, "Abmelden-Eintrag fehlt");
+  assert.match(sidebarJsx, /onClick=\{\(\) => navigateTo\("overview"\)\}/, "Übersicht-Navigation fehlt");
+});
+
+test("9 — Firmenkarte bleibt vorhanden und bewusst nicht interaktiv", () => {
+  assert.match(sidebarJsx, /className="pp-identity"/, "Firmenkarte fehlt");
+  assert.match(sidebarJsx, /pp-identity-name/, "Firmenname fehlt");
+  assert.match(sidebarJsx, /pp-identity-email/, "Kontokennung fehlt");
+  assert.match(sidebarJsx, /user\?\.company_name \|\| user\?\.name/, "Datenquelle der Firmenkarte geändert");
+
+  // Es gibt keinen Firmenwechsel/kein Dropdown → kein Chevron, keine
+  // Hover-/Fokusaffordanz, die eine nicht vorhandene Funktion suggeriert.
+  assert.ok(!stripJsxComments(sidebarJsx).includes("pp-identity-chev"),
+    "Chevron suggeriert ein Dropdown, das es nicht gibt");
+  assert.ok(!premiumRules.includes(".pp-identity:hover"),
+    "nicht-interaktive Firmenkarte darf keinen Hover-Zustand haben");
+});
+
+test("10 — Firmenkarte und Supportkarte teilen sich eine Materialsprache", () => {
+  const identity = block(premium, ".pp-identity");
+  const scard = block(premium, ".pp-scard");
+  assert.ok(identity && scard, "Firmen- oder Supportkarte fehlt");
+  for (const [name, b] of [["Firmenkarte", identity], ["Supportkarte", scard]]) {
+    assert.match(b, /background:\s*var\(--ce-sidebar-surface\)/, `${name}: gemeinsame Fläche erwartet`);
+    assert.match(b, /border:\s*1px solid var\(--ce-sidebar-border\)/, `${name}: gemeinsame Border erwartet`);
+    assert.match(b, /border-radius:\s*10px/, `${name}: gemeinsame Rundung erwartet`);
+    assert.match(b, /box-shadow:\s*none/, `${name}: darf keinen Schatten tragen`);
+  }
+});
+
+test("11 — Supportkarte behält Inhalt und statischen Statuspunkt", () => {
+  assert.match(sidebarJsx, /Ihr persönlicher Kontakt/, "Support-Kicker fehlt");
+  assert.match(sidebarJsx, /Live Support/, "Support-Titel fehlt");
+  assert.match(sidebarJsx, /className="ce-live"/, "Statuspunkt fehlt");
+  assert.match(sidebarJsx, /scard-ic/, "Headset-Iconfläche fehlt");
+  assert.match(sidebarJsx, /mailto:support@confidaraexpress\.de/, "Support-Kontakt geändert");
+
+  const live = block(premium, ".ce-live");
+  assert.ok(live, ".ce-live fehlt");
+  assert.doesNotMatch(live, /animation/, "Statuspunkt darf nicht pulsieren");
+  assert.match(live, /box-shadow:\s*none/, "Statuspunkt darf keinen Glow tragen");
+});
+
+test("12 — Sidebar-Fußzeile bleibt vorhanden", () => {
+  assert.match(sidebarJsx, /className="pp-foot"/, "Sidebar-Fußzeile fehlt");
+  const foot = block(premium, ".pp-foot");
+  assert.ok(foot, ".pp-foot fehlt");
+  assert.match(foot, /color:\s*var\(--ce-sidebar-section\)/, "Fußzeile muss den Token-Farbwert nutzen");
+});
+
+/* ── Mobile / kurze Viewports ───────────────────────────────────────────── */
+
+test("13 — mobile Sidebar öffnet und schließt weiterhin", () => {
+  assert.match(dashboardJsx, /setSidebarOpen\(true\)/, "Öffnen über die Topbar fehlt");
+  assert.match(layoutJsx, /setSidebarOpen\(true\)/, "Öffnen über die Topbar fehlt (Preisrechner)");
+  assert.match(sidebarJsx, /sidebarOpen \? "sidebar-open" : ""/, "Drawer-Zustandsklasse fehlt");
+  assert.match(sidebarJsx, /onClick=\{\(\) => setSidebarOpen\(false\)\}/, "Schließen fehlt");
+  assert.match(sidebarJsx, /className="sidebar-overlay open"/, "Drawer-Overlay fehlt");
+
+  // Overlay-Farbe ist auf den eingeloggten Bereich gescoped — der öffentliche
+  // NavbarLayout-Drawer nutzt dieselbe Klasse und darf sich nicht mitändern.
+  assert.match(premiumRules, /\.app-shell \.sidebar-overlay\s*\{/,
+    "Overlay-Farbe muss auf .app-shell gescoped sein");
+  assert.match(navbarJsx, /className="sidebar-overlay open"/,
+    "öffentlicher Drawer nutzt weiterhin .sidebar-overlay — Scope ist zwingend");
+});
+
+test("14 — die gesamte Sidebarspalte scrollt, nicht nur die Navigation", () => {
+  const inner = block(premium, ".pp-side-in");
+  const nav = block(premium, ".pp-nav");
+  assert.ok(inner && nav, ".pp-side-in oder .pp-nav fehlt");
+  assert.match(inner, /overflow-y:\s*auto/, "Scrollcontainer muss die gesamte Spalte sein");
+  // Kein zweiter Scrollbereich: sonst wird Abmelden/Support/Footer abgeschnitten.
+  assert.doesNotMatch(nav, /overflow-y:\s*auto/, "kein doppelter Scrollbereich in der Navigation");
+  assert.match(nav, /flex:\s*1 0 auto/, "Navigation darf nie unter ihre Inhaltshöhe schrumpfen");
+});
+
+/* ── Effekte / Performance ──────────────────────────────────────────────── */
+
+test("15 — keine Dauereffekte im Chrome des eingeloggten Bereichs", () => {
+  const start = premiumRules.indexOf(".app-shell");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  const chrome = premiumRules.slice(start, end);
+  for (const [pattern, why] of [
+    [/animation/, "keine Sidebar-/Hintergrundanimation"],
+    [/@keyframes/, "keine Keyframes"],
+    [/backdrop-filter/, "kein backdrop-filter"],
+    [/\bfilter:\s*blur/, "kein Blur"],
+    [/will-change/, "kein dauerhaftes will-change"],
+  ]) {
+    assert.doesNotMatch(chrome, pattern, why);
+  }
+  // Übergänge nur auf Farben — kein transform/filter/Schattenaufbau.
+  const nitem = block(premium, ".nitem");
+  assert.ok(nitem, ".nitem fehlt");
+  const transition = nitem.match(/transition:([^;]*);/s)?.[1] ?? "";
+  for (const prop of ["transform", "filter", "box-shadow", "blur"]) {
+    assert.ok(!transition.includes(prop), `.nitem darf ${prop} nicht animieren`);
+  }
+});
+
+test("16 — alle interaktiven Sidebarbereiche haben einen sichtbaren Fokuszustand", () => {
+  assert.match(premiumRules, /\.pp-side :focus-visible\s*\{[^}]*outline:/,
+    "Sammelregel für Fokusringe in der Sidebar fehlt");
+  assert.match(premiumRules, /\.mobile-topbar \.hamburger-btn:focus-visible\s*\{[^}]*outline:/,
+    "Fokuszustand der mobilen Menüschaltfläche fehlt");
+  // outline darf nirgends im Chrome ersatzlos entfernt werden.
+  const start = premiumRules.indexOf(".app-shell");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  const chrome = premiumRules.slice(start, end);
+  for (const m of chrome.matchAll(/outline:\s*none/g)) {
+    const tail = chrome.slice(m.index, m.index + 200);
+    assert.match(tail, /box-shadow:|outline:/, "outline: none ohne gleichwertigen Ersatz");
+  }
+});
+
+/* ── Abgrenzung zu Admin- und Auth-Bereich ──────────────────────────────── */
+
+test("17 — Admin- und Auth-Bereich bleiben vom Chrome unberührt", () => {
+  assert.match(adminJsx, /className="adm-shell"/, "Adminbereich muss seine eigene Shell behalten");
+  assert.ok(!adminJsx.includes("app-shell") || adminJsx.includes("adm-shell"),
+    "Adminbereich darf die Kunden-Shell nicht verwenden");
+  for (const [name, css] of [["admin.css", adminCss], ["auth.css", authCss]]) {
+    for (const t of ["ce-sidebar-", "ce-app-"]) {
+      assert.ok(!css.includes(`var(--${t}`), `${name} darf keine ${t}*-Tokens verwenden`);
+    }
+  }
+  // Auth-Tokens bleiben ihrerseits aus dem Chrome heraus.
+  const start = premiumRules.indexOf(".app-shell");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  assert.ok(!premiumRules.slice(start, end).includes("var(--auth-"),
+    "Chrome darf keine --auth-*-Tokens verwenden");
+});
+
+/* ── Accessibility: gemessene Kontraste ─────────────────────────────────── */
+
+test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
+  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
+  const hex = (h) => {
+    const v = h.replace("#", "");
+    const full = v.length === 3 ? [...v].map((c) => c + c).join("") : v;
+    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  };
+  const rgba = (s) => {
+    const p = s.match(/rgba?\(([^)]+)\)/)[1].split(",").map((x) => parseFloat(x.trim()));
+    return { c: [p[0], p[1], p[2]], a: p[3] ?? 1 };
+  };
+  // Halbtransparente Sidebar-Flächen liegen auf dem Verlauf → vorher mischen.
+  const over = (fg, bg) => fg.c.map((v, i) => v * fg.a + bg[i] * (1 - fg.a));
+  const lum = (c) => {
+    const f = c.map((v) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const ratio = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  const bgTop = hex(tok("ce-sidebar-bg-top"));
+  const bgMid = hex(tok("ce-sidebar-bg-mid"));
+  const bgBot = hex(tok("ce-sidebar-bg-bottom"));
+  const surface = over(rgba(tok("ce-sidebar-surface")), bgMid);
+  const active = over(rgba(tok("ce-sidebar-surface-active")), bgTop);
+
+  // Text: AA = 4.5:1. Nicht-Text (Icons, Kanten, Fokusring): AA = 3:1.
+  const cases = [
+    ["Navigationstext", hex(tok("ce-sidebar-text")), bgTop, 4.5],
+    ["aktiver Eintrag", hex(tok("ce-sidebar-text-strong")), active, 4.5],
+    ["Gruppenüberschrift", hex(tok("ce-sidebar-section")), bgTop, 4.5],
+    ["Fußzeile", hex(tok("ce-sidebar-section")), bgBot, 4.5],
+    ["Sekundärtext auf Karte", hex(tok("ce-sidebar-text-muted")), surface, 4.5],
+    ["Firmenname auf Karte", hex(tok("ce-sidebar-text")), surface, 4.5],
+    ["Icon inaktiv", hex(tok("ce-sidebar-icon")), bgMid, 3],
+    ["Icon aktiv", hex(tok("ce-sidebar-active-icon")), active, 3],
+    ["Aktivkante", hex(tok("ce-sidebar-active-accent")), active, 3],
+    ["Fokusring", hex(tok("ce-sidebar-active-icon")), bgMid, 3],
+  ];
+  for (const [label, fg, bg, min] of cases) {
+    const r = ratio(fg, bg);
+    assert.ok(r >= min, `${label}: Kontrast ${r.toFixed(2)}:1 unterschreitet ${min}:1`);
+  }
+});
+
+test("19 — Inhaltstexte bleiben auf der Porcelain-Fläche lesbar", () => {
+  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
+  const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
+  const lum = (c) => {
+    const f = c.map((v) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const ratio = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  // Gegen den HELLSTEN Punkt der Rampe prüfen (ungünstigster Fall für Text).
+  const top = hex(tok("ce-app-bg-top"));
+  assert.ok(ratio(hex(tok("text-primary")), top) >= 4.5, "Primärtext unter AA");
+  assert.ok(ratio(hex(tok("text-secondary")), top) >= 4.5, "Sekundärtext unter AA");
+
+  // Weiße Karten müssen sich vom Grund abheben — die Rampe darf nicht bis Weiß
+  // hochlaufen, sonst verschmelzen Karte und Hintergrund am oberen Seitenrand.
+  assert.notEqual(tok("ce-app-bg-top").toLowerCase(), "#ffffff",
+    "Porcelain-Oberkante darf nicht reines Weiß sein");
+});
+
+/* ── Fachliche Komponenten ──────────────────────────────────────────────── */
+
+test("20 — das Chrome greift nicht in fachliche Komponenten ein", () => {
+  const start = premiumRules.indexOf(".app-shell");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  const chrome = premiumRules.slice(start, end);
+  // Selektoren fachlicher Module haben im Shell-/Sidebar-Block nichts verloren.
+  for (const sel of [
+    ".table-card", ".field-", ".btn", ".offer-", ".calc-", ".ins-",
+    ".kpi-", ".inv-", ".abk-", ".dft-", ".profile-", ".pp-kpi", ".pp-main",
+  ]) {
+    assert.ok(!chrome.includes(sel), `Chrome darf ${sel} nicht anfassen`);
+  }
+});

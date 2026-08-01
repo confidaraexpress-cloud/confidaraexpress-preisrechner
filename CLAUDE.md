@@ -41,7 +41,8 @@ Drei voneinander isolierte Theme-Schichten:
 
 | Schicht | Präfix | Datei | Gilt für |
 |---------|--------|-------|----------|
-| App-Layout „Clean Executive Logistics" | `--app-bg`, `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--sidebar-*` | `variables.css` → `dashboard-premium.css` | Gesamter eingeloggter Kundenbereich |
+| App-Chrome „Executive Graphite + Porcelain" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
+| App-Inhaltsflächen | `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--shadow-card*` | `variables.css` | Karten, Tabellen, Seitenköpfe im eingeloggten Bereich |
 | Legacy-Light | `--navy`, `--gray*`, `--blue*` | `variables.css` | Booking, Legal, Offer-/Preisrechnerkarten |
 | Auth-Theme | `--auth-*` | `auth.css` | AuthPage, Login, Register |
 | Admin | `--adm-*` / `.adm-*` | `admin.css` | Adminbereich (eigene Shell) |
@@ -51,6 +52,10 @@ Drei voneinander isolierte Theme-Schichten:
 Neue Flächen im eingeloggten Bereich immer über die App-Layout-Tokens bauen
 (`--surface`, `--border-subtle`, `--shadow-card`) — keine eigenen Hex-Werte,
 keine neuen Verläufe, kein Blau als Fläche.
+
+**Chrome-Farben stehen ausschließlich in `variables.css`.** In den Shell- und
+Sidebar-Regeln von `dashboard-premium.css` dürfen keine Farbliterale auftauchen
+— `appShellChrome.test.mjs` prüft das (samt WCAG-AA-Kontrasten) automatisch.
 
 ### CSS-Import-Reihenfolge — kritisch
 
@@ -64,7 +69,7 @@ Zusatz-Scopes ohne Kollision.
 Neue Bereichs-Stylesheets ans Ende anhängen; Änderungen an gemeinsamen
 Oberflächen gehören nach `variables.css` / `dashboard-premium.css`.
 
-## App-Layout „Clean Executive Logistics" — wichtigste Regel
+## App-Layout „Executive Graphite + Porcelain" — wichtigste Regel
 
 Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 (Sidebar + `.main-content`), gerendert von `DashboardPage.jsx` und
@@ -78,7 +83,9 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 **Konsequenzen:**
 - Keine neue Hintergrund-Ebene und keine Seiten-Scope-Klasse auf `.app-shell`
   einführen. Wer eine Seite anders einfärben will, hat eine falsche Abzweigung
-  genommen — die Grundfläche ist bewusst überall `--app-bg`.
+  genommen — die Grundfläche ist bewusst überall dieselbe Porcelain-Rampe
+  (`--ce-app-bg-top/-mid/-bottom`), gesetzt als EINE Hintergrundebene auf
+  `.app-shell`. `.main-content` trägt bewusst keine eigene Flächenfarbe.
 - **Keine Dekoration im Hintergrund**: keine Glow-Nodes, Routenlinien,
   schwebenden Icons, Punktraster, Aurora-/Blur-Flächen, Vignetten, kein
   `backdrop-filter` und keine dauerhaft laufenden Hintergrundanimationen.
@@ -86,8 +93,15 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   und `PremiumBackground` sind gelöscht).
 - Bewegung nur als kurze Zustandsreaktion (Hover/Fokus, ≤ 200 ms) oder als
   funktionaler Ladeindikator — nie als Ambiente.
-- Blau (`--accent-blue`) ist Akzent: aktive Navigation, Links, Fokus, primäre
-  Aktion. Keine blauen Flächen.
+- Blau (`--accent-blue`, in der Sidebar `--ce-sidebar-active-accent`) ist
+  Akzent: aktive Navigation, Links, Fokus, primäre Aktion. Keine blauen Flächen.
+- Die Sidebar ist matter Graphit (`--ce-sidebar-bg-*`), niemals schwarz und
+  niemals glasig. Firmenkarte, Supportkarte und Navigation teilen sich EINE
+  Materialsprache (`--ce-sidebar-surface`, `--ce-sidebar-border`, kein Schatten).
+- Der aktive Navigationseintrag ist mehrfach codiert (Fläche + Border +
+  Akzentkante als `inset`-Schatten + Schriftschnitt), nicht allein farbig.
+- Die gesamte Sidebarspalte (`.pp-side-in`) scrollt — nicht `.pp-nav` separat,
+  sonst wird auf kurzen Viewports „Abmelden" abgeschnitten.
 - Legal Pages (Impressum, Datenschutz, AGB, Widerruf) und der Auth-Bereich
   liegen außerhalb dieses Rahmens und bleiben unverändert.
 
@@ -215,7 +229,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/clean-executive-logistics-bi9cyo`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/refine-executive-sidebar-background`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

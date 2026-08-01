@@ -33,14 +33,58 @@
   --radius-full: 9999px;
   --sidebar-width: 248px;
 
-  /* ── „Clean Executive Logistics" — Tokens des eingeloggten App-Layouts ─────
-     Ruhige, neutrale Grundfläche + weiße Inhaltsflächen, feine Borders und
-     sehr dezente Schatten. Blau ist ausschließlich Akzent, nie Fläche. Diese
-     Tokens gelten für App-Hintergrund, Sidebar und die gemeinsamen Karten-/
-     Tabellen-/Header-Oberflächen — NICHT für den Auth-Bereich (--auth-*) und
-     nicht für den Adminbereich (eigener .adm-Scope). ─────────────────────── */
-  --app-bg: #f4f6f8;
-  --app-bg-elevated: #f8fafc;
+  /* ── „Executive Graphite + Porcelain" — Chrome des eingeloggten App-Layouts ─
+     Genau eine Quelle für App-Hintergrund und Sidebar. Alle Regeln in
+     dashboard-premium.css / dashboard.css lesen ausschließlich von hier; in den
+     Sidebar-Regeln stehen keine Farbliterale mehr. Gilt NICHT für den
+     Auth-Bereich (--auth-*) und nicht für den Adminbereich (eigener
+     .adm-Scope) — beide referenzieren keines dieser Tokens.
+
+     Porcelain: vertikale Rampe von fast-weiß nach kühlem Hellgrau. Bewusst
+     etwas tiefer angesetzt als ein reines #fafbfc, damit die weißen
+     Inhaltsflächen (--surface) auch am oberen Seitenrand als eigene Fläche
+     lesbar bleiben und nicht mit dem Grund verschmelzen. */
+  --ce-app-bg-top: #f8fafc;
+  --ce-app-bg-mid: #f4f7fa;
+  --ce-app-bg-bottom: #eff3f7;
+  --ce-app-divider: rgba(15, 23, 42, 0.1);
+  /* Kaum wahrnehmbare statische Lichtfläche oben rechts (Alpha 0.03). */
+  --ce-app-sheen: rgba(59, 130, 246, 0.03);
+  /* Ein Hauch Tiefe an der Sidebar-Kante — bewusst fast unsichtbar. */
+  --ce-sidebar-shadow: 1px 0 8px rgba(15, 23, 42, 0.025);
+
+  /* Graphite: matter, leicht bläulicher Verlauf — dunkler als die Hauptfläche,
+     aber bewusst nicht schwarz. */
+  --ce-sidebar-bg-top: #202938;
+  --ce-sidebar-bg-mid: #1b2432;
+  --ce-sidebar-bg-bottom: #171f2b;
+
+  /* Eine Materialsprache für alle Sidebar-Flächen (Firmenkarte, Supportkarte,
+     Navigation) — gleiche Aufhellung, gleiche Border, kein Schatten. */
+  --ce-sidebar-surface: rgba(255, 255, 255, 0.04);
+  --ce-sidebar-surface-hover: rgba(255, 255, 255, 0.065);
+  --ce-sidebar-surface-active: rgba(255, 255, 255, 0.085);
+  --ce-sidebar-border: rgba(255, 255, 255, 0.075);
+  --ce-sidebar-divider: rgba(255, 255, 255, 0.07);
+
+  /* Texte/Icons. --ce-sidebar-section ist gegenüber dem Entwurf (#6d7686)
+     aufgehellt: auf --ce-sidebar-bg-top maß der dunklere Ton nur 3,2:1 und
+     hätte die Gruppenüberschriften unter WCAG AA gedrückt. */
+  --ce-sidebar-text: #e7edf5;
+  --ce-sidebar-text-strong: #ffffff;
+  --ce-sidebar-text-muted: #94a3b8;
+  --ce-sidebar-section: #8b95a6;
+  --ce-sidebar-icon: #9aa9bc;
+
+  --ce-sidebar-active-accent: #3b82f6;
+  --ce-sidebar-active-icon: #60a5fa;
+
+  /* Mobiles Drawer-Overlay — ruhig und dunkel, ohne backdrop-filter. */
+  --ce-app-overlay: rgba(15, 23, 42, 0.45);
+
+  /* ── Inhaltsflächen des eingeloggten Bereichs (Karten, Tabellen, Header) ──
+     Eigene Ebene, bewusst getrennt vom Chrome oben: dieselben Werte werden
+     nirgends doppelt geführt. */
   --surface: #ffffff;
   --surface-subtle: #f8fafc;
   --surface-muted: #f1f5f9;
@@ -60,18 +104,6 @@
   --shadow-card: 0 1px 2px rgba(23, 32, 51, 0.04), 0 1px 3px rgba(23, 32, 51, 0.03);
   --shadow-card-hover: 0 2px 8px rgba(23, 32, 51, 0.07), 0 1px 2px rgba(23, 32, 51, 0.04);
   --shadow-overlay: 0 12px 32px rgba(23, 32, 51, 0.12), 0 2px 8px rgba(23, 32, 51, 0.06);
-
-  /* Sidebar — matter, hellerer Graphit-Ton (vorher #04091a mit blauem Glow). */
-  --sidebar-bg: #1e2532;
-  --sidebar-bg-soft: #232b3a;
-  --sidebar-line: rgba(255, 255, 255, 0.08);
-  --sidebar-ink: #cbd3df;
-  --sidebar-ink-strong: #ffffff;
-  --sidebar-ink-muted: #8a94a4;
-  --sidebar-section: #6d7686;
-  --sidebar-hover: rgba(255, 255, 255, 0.055);
-  --sidebar-active: rgba(255, 255, 255, 0.09);
-  --sidebar-accent: #6b9bf2;
 
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ───────────────────── */
   --auth-bg-0: #01030a;

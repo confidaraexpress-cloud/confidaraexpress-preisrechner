@@ -1,13 +1,13 @@
 /* ════════════════════════════════════════════════════════════════════════
    ConfidaraExpress — Gemeinsames App-Layout des eingeloggten Bereichs
-   „Executive Graphite + Porcelain"
+   „Executive Ivory + Midnight Slate"
    ────────────────────────────────────────────────────────────────────────
    EIN Layout, EIN Hintergrund, EINE Sidebar — für alle Kundenseiten
    (Übersicht, Neue Sendung, Preisrechner, Entwürfe, Sendungen,
    Sendungsverfolgung, Adressbuch, Rechnungen, Unternehmen & Konto).
 
-   Gestaltungsprinzip: Porcelain-Grundfläche (ruhige vertikale Rampe), weiße
-   Inhaltsflächen (--surface), feine Borders, sehr dezente Tiefenwirkung,
+   Gestaltungsprinzip: warme Ivory-Grundfläche (Rampe mit Warm-kalt-Wechsel),
+   weiße Inhaltsflächen (--surface), feine Borders, ruhige Materialtiefe,
    klare Typografie, kontrollierte Abstände. Blau ausschließlich als gezielter
    Akzent (aktive Navigation, Links, Fokus) — nie als Fläche. Keine Dekoration,
    keine Glows, keine dauerhaften Hintergrundanimationen.
@@ -41,31 +41,28 @@
   --fm: 'DM Mono', ui-monospace, monospace;
   --fd: 'Cormorant Garamond', Georgia, serif;
 
-  --sidebar-width: 268px;
-
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--text-primary);
 
-  /* Porcelain — EINE Hintergrundebene auf der gemeinsamen Shell, statisch.
+  /* Ivory — EINE Hintergrundebene auf der gemeinsamen Shell, statisch.
      Aufbau von unten nach oben:
        1. background-color = Endton der Rampe. Er füllt alles unterhalb der
           Verlaufshöhe, wodurch lange Seiten ohne sichtbare Kante weiterlaufen
           (der Verlauf endet exakt in derselben Farbe).
-       2. Lineare Rampe über feste 1100 px statt 100 %: bei 100 % würde sich der
-          Verlauf über die gesamte Dokumenthöhe strecken und auf langen Seiten
-          völlig flach wirken; so liest die Materialität immer im oberen
-          Seitenbereich und beruhigt sich danach.
-       3. Eine extrem dezente, statische Lichtfläche oben rechts (Alpha 0.03) —
-          in Pixeln dimensioniert, damit sie unabhängig von der Seitenlänge an
-          derselben Stelle sitzt. Kein Blur, keine Animation, keine sichtbare
-          blaue Wolke.
+       2. Lineare Rampe über feste 1400 px statt 100 %: bei 100 % würde sie sich
+          über die gesamte Dokumenthöhe strecken und auf langen Seiten völlig
+          flach wirken. 1400 px halten den warmen Teil über die ersten ein bis
+          zwei Bildschirme — dort, wo der Grund tatsächlich wahrgenommen wird.
+       3. Statische Lichtfläche oben rechts, in Pixeln dimensioniert, damit sie
+          unabhängig von der Seitenlänge an derselben Stelle sitzt. Kein Blur,
+          keine Animation.
      .main-content trägt bewusst KEINE eigene Flächenfarbe, damit es genau eine
      Hintergrundebene pro Seite gibt. */
   background-color: var(--ce-app-bg-bottom);
   background-image:
-    radial-gradient(circle at 86% 8%, var(--ce-app-sheen), transparent 32%),
+    radial-gradient(circle at 88% 4%, var(--ce-app-sheen), transparent 34%),
     linear-gradient(
       180deg,
       var(--ce-app-bg-top) 0%,
@@ -73,8 +70,8 @@
       var(--ce-app-bg-bottom) 100%
     );
   background-repeat: no-repeat, no-repeat;
-  background-size: 1600px 720px, 100% 1100px;
-  background-position: right top, left top;
+  background-size: 100% 820px, 100% 1400px;
+  background-position: left top, left top;
   background-attachment: scroll, scroll;
 }
 
@@ -106,24 +103,22 @@
 .app-shell .sidebar-overlay { background: var(--ce-app-overlay); }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  SIDEBAR — matter Graphit-Ton, flach, ohne Glow                           */
-/*  Eine einzige Definition für ALLE eingeloggten Seiten. Vorher: dunkle     */
-/*  Navy-Glas-Kapsel mit blauem Backlight (.pp-side-glow) + separater        */
-/*  „Porcelain"-Variante nur auf der Übersicht.                              */
+/*  SIDEBAR — „Midnight Slate", matt, ohne Glow                              */
+/*  Eine einzige Definition für ALLE eingeloggten Seiten.                    */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .sidebar.pp-side {
   padding: 0;
-  /* Matter vertikaler Graphitverlauf — dunkler als die Hauptfläche, leicht
-     bläulich, bewusst nicht schwarz und nicht glasig. */
+  /* Midnight-Slate-Verlauf — deutlich dunkler als der warme Hauptbereich,
+     weiterhin Navy/Slate-Material, bewusst nicht schwarz und nicht glasig. */
   background: linear-gradient(
     180deg,
     var(--ce-sidebar-bg-top) 0%,
-    var(--ce-sidebar-bg-mid) 55%,
+    var(--ce-sidebar-bg-mid) 54%,
     var(--ce-sidebar-bg-bottom) 100%
   );
-  /* Feine Kante zur Hauptfläche + ein Hauch Tiefe. Kein starker Schatten:
-     der Helligkeitssprung Graphit→Porcelain trennt bereits eindeutig. */
+  /* Übergang zur Hauptfläche: feine Kante + weicher, statischer Schatten —
+     keine harte schwarze Kante, keine Leuchtaura. */
   border-right: 1px solid var(--ce-app-divider);
   box-shadow: var(--ce-sidebar-shadow);
   overflow: visible;
@@ -138,6 +133,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* Mehr horizontaler Innenabstand: die Navigation soll nicht wie eine Liste
+     direkt an der Außenkante kleben. */
   padding: 22px 14px 16px;
   background: none;
   border: none;
@@ -148,10 +145,12 @@
 }
 .pp-side-in::-webkit-scrollbar { display: none; }
 
-/* ── Marke ── */
-.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 8px 22px; }
+/* ── Marke ──
+   Ruhige, leicht hellere Iconfläche + klarere Hierarchie zwischen Wortmarke
+   und Untertitel. Kein neues Logo, keine Animation. */
+.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 6px 20px; }
 .ce-brandmark {
-  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
   display: grid; place-items: center;
   background: var(--ce-sidebar-surface);
   border: 1px solid var(--ce-sidebar-border);
@@ -160,7 +159,7 @@
 .pp-brandmark-svg { width: 26px; height: 26px; display: block; }
 .pp-brand { font-family: var(--fh); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
 .pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 700; }
-.pp-brand-sub { font-family: var(--fs); font-size: 10.5px; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 2px; white-space: nowrap; }
+.pp-brand-sub { font-family: var(--fs); font-size: 10.5px; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
 .pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
 
 /* ── Firmenkarte ──
@@ -170,14 +169,16 @@
    Dropdown, deshalb auch kein Chevron und keine Hover-/Fokusaffordanz, die
    eine nicht vorhandene Funktion suggerieren würde. */
 .pp-identity {
-  display: flex; align-items: center; gap: 11px;
-  margin: 0 2px 14px; padding: 10px 11px; border-radius: 10px;
-  background: var(--ce-sidebar-surface);
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 16px; padding: 11px; border-radius: 11px;
+  /* Erhöhte Fläche: heller Verlauf + weicher Schatten. Kein Glassmorphism,
+     kein backdrop-filter — nur Farbe und Tiefe. */
+  background: var(--ce-sidebar-card);
   border: 1px solid var(--ce-sidebar-border);
-  box-shadow: none;
+  box-shadow: var(--ce-sidebar-card-shadow);
 }
 .pp-identity-avatar {
-  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: grid; place-items: center;
   font-family: var(--fh); font-weight: 700; font-size: 12.5px;
   color: var(--ce-sidebar-text-strong);
@@ -186,26 +187,34 @@
 }
 .pp-identity-text { min-width: 0; }
 .pp-identity-name { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ce-sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Navigation ── */
 /* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
    unten), schrumpft aber nie unter die eigene Inhaltshöhe. */
 .pp-nav { flex: 1 0 auto; display: flex; flex-direction: column; gap: 2px; }
-/* Gruppenüberschriften — zurückhaltend, aber lesbar (WCAG AA gegen den
-   hellsten Punkt des Sidebar-Verlaufs geprüft), kleiner als die Einträge. */
+/* Gruppenüberschriften — klarer strukturiert: mehr Luft davor, deutlichere
+   Zeichenweite, höherer Kontrast (WCAG AA gegen den hellsten Punkt des
+   Verlaufs geprüft), weiterhin kleiner als die Einträge. */
 .nsec {
   font-family: var(--fs); font-size: 9.5px; font-weight: 700;
-  letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--ce-sidebar-section); padding: 18px 12px 7px;
+  letter-spacing: 0.17em; text-transform: uppercase;
+  color: var(--ce-sidebar-section); padding: 16px 12px 7px;
 }
 .nsec--active { color: var(--ce-sidebar-text-muted); }
-.pp-nav-utility-divider { height: 1px; margin: 12px 12px 5px; background: var(--ce-sidebar-divider); }
+/* Sehr feine Trennlinie oberhalb der Folgegruppen (nicht vor der ersten) —
+   gliedert die Navigation, ohne eine zweite Farbe einzuführen. */
+.nsec + .nitem { margin-top: 0; }
+.nitem + .nsec {
+  margin-top: 6px;
+  border-top: 1px solid var(--ce-sidebar-divider);
+}
+.pp-nav-utility-divider { height: 1px; margin: 14px 12px 6px; background: var(--ce-sidebar-divider); }
 
 .nitem {
-  position: relative; display: flex; align-items: center; gap: 11px;
-  width: 100%; text-align: left;
-  padding: 9px 12px; border-radius: 8px;
+  position: relative; display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 40px; text-align: left;
+  padding-block: 8px; padding-inline: 12px; border-radius: 9px;
   font-family: var(--fs); font-size: 13.5px; font-weight: 500; line-height: 1.45;
   color: var(--ce-sidebar-text); background: none; border: 1px solid transparent;
   cursor: pointer;
@@ -215,56 +224,59 @@
     color 140ms ease,
     border-color 140ms ease;
 }
-.nitem svg { flex-shrink: 0; color: var(--ce-sidebar-icon); }
+/* Definierte Iconspalte → Beschriftungen fluchten exakt untereinander,
+   unabhängig von der optischen Breite des jeweiligen Glyphen. */
+.nitem svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
 .nitem:hover { background: var(--ce-sidebar-surface-hover); color: var(--ce-sidebar-text-strong); }
 .nitem:hover svg { color: var(--ce-sidebar-text-muted); }
 
-/* Aktiver Eintrag: ruhige Fläche + feine Border + präzise Akzentkante links.
-   Die Kante ist ein INSET-Schatten statt eines ::before-Elements — sie folgt
-   damit der Rundung, verschiebt kein Layout und springt bei Hover nicht.
-   Der Zustand ist zusätzlich zur Farbe an Fläche, Border, Kante und
+/* Aktiver Eintrag: blau getönter Verlauf + Akzentborder + linke Akzentkante +
+   ruhige Tiefe. Die Kante ist ein INSET-Schatten statt eines ::before-Elements
+   — sie folgt damit der Rundung, verschiebt kein Layout und springt bei Hover
+   nicht. Der Zustand ist zusätzlich zur Farbe an Fläche, Border, Kante und
    Schriftschnitt erkennbar (nicht allein farbcodiert). */
 .nitem.on {
   color: var(--ce-sidebar-text-strong);
   font-weight: 600;
-  background: var(--ce-sidebar-surface-active);
-  border-color: var(--ce-sidebar-border);
-  box-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent);
+  background: var(--ce-sidebar-active-bg);
+  border-color: var(--ce-sidebar-active-border);
+  box-shadow: var(--ce-sidebar-active-shadow);
 }
 .nitem.on svg { color: var(--ce-sidebar-active-icon); }
-.nitem.on:hover { background: var(--ce-sidebar-surface-active); }
+.nitem.on:hover { background: var(--ce-sidebar-active-bg); }
 
 /* ── Supportkarte ──
-   Identische Materialsprache wie die Firmenkarte: gleiche Fläche, gleiche
-   Border, gleiche Rundung, kein Schatten, kein Glow. Anders als die
-   Firmenkarte IST sie interaktiv (mailto-Link) und trägt daher Hover- und
-   Fokuszustand. */
+   Gleiche Materialsprache wie die Firmenkarte (gleiche Rundung, gleiche
+   Bordersprache), aber die andere Höhenlage: die Firmenkarte liegt erhöht
+   (heller Verlauf + Schatten), die Supportkarte vertieft (dunklere
+   Eigenfläche). Kein Glassmorphism, kein backdrop-filter. Anders als die
+   Firmenkarte IST sie interaktiv (mailto-Link) und trägt Hover + Fokus. */
 .pp-scard {
   display: block; text-decoration: none; margin-top: 14px;
-  padding: 12px 11px; border-radius: 10px;
-  background: var(--ce-sidebar-surface);
+  padding: 12px 12px; border-radius: 11px;
+  background: var(--ce-sidebar-well);
   border: 1px solid var(--ce-sidebar-border);
   box-shadow: none;
   transition:
     background-color 140ms ease,
     border-color 140ms ease;
 }
-.pp-scard:hover { background: var(--ce-sidebar-surface-hover); }
+.pp-scard:hover { border-color: var(--ce-sidebar-active-border); }
 .pp-scard-top { display: flex; align-items: center; gap: 11px; }
-/* Iconfläche exakt wie der Firmen-Avatar dimensioniert (32 px / Radius 8). */
+/* Iconfläche exakt wie der Firmen-Avatar dimensioniert (34 px / Radius 9). */
 .scard-ic {
-  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: grid; place-items: center; color: var(--ce-sidebar-active-icon);
-  background: var(--ce-sidebar-surface-hover);
+  background: var(--ce-sidebar-surface);
   border: 1px solid var(--ce-sidebar-border);
   box-shadow: none;
 }
 .scard-k { font-family: var(--fs); font-size: 10.5px; line-height: 1.4; color: var(--ce-sidebar-text-muted); }
-.scard-t { display: flex; align-items: center; gap: 7px; margin-top: 2px; font-family: var(--fs); font-size: 12.5px; font-weight: 600; color: var(--ce-sidebar-text); }
-.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.55; color: var(--ce-sidebar-text-muted); margin-top: 9px; }
+.scard-t { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--fs); font-size: 13px; font-weight: 600; color: var(--ce-sidebar-text-strong); }
+.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 8px; }
 
 /* Fußzeile — gedämpft, aber bewusst nicht blasser als die Gruppenüberschriften. */
-.pp-foot { padding: 14px 12px 0; font-family: var(--fs); font-size: 10px; line-height: 1.6; color: var(--ce-sidebar-section); }
+.pp-foot { padding: 12px 12px 0; font-family: var(--fs); font-size: 10px; line-height: 1.6; color: var(--ce-sidebar-section); }
 
 /* Ein sichtbarer Fokuszustand für ALLE interaktiven Sidebarbereiche
    (Navigation, Abmelden, Schließen-Button, Supportlink). Ersetzt kein
@@ -417,16 +429,16 @@
    Der vertikale Rhythmus wird daher gestrafft, bis die komplette Navigation
    samt Support-Karte ohne Scrollen hineinpasst. Reine Abstände, keine
    Struktur- oder Reihenfolgeänderung. */
-@media (max-height: 880px) {
-  .pp-side-in { padding: 18px 14px 14px; }
-  .pp-logo { padding: 2px 8px 16px; }
-  .pp-identity { margin-bottom: 12px; padding: 8px 10px; }
-  .nsec { padding: 12px 12px 5px; }
-  .nitem { padding: 8px 12px; }
-  .pp-nav-utility-divider { margin: 8px 12px 4px; }
-  .pp-scard { margin-top: 12px; padding: 11px; }
+@media (max-height: 940px) {
+  .pp-side-in { padding: 16px 14px 12px; }
+  .pp-logo { padding: 0 6px 16px; }
+  .pp-identity { margin-bottom: 12px; padding: 9px 10px; }
+  .nsec { padding: 13px 12px 6px; }
+  .nitem { min-height: 37px; padding-block: 7px; }
+  .pp-nav-utility-divider { margin: 9px 12px 4px; }
+  .pp-scard { margin-top: 11px; padding: 10px; }
   .scard-s { margin-top: 7px; }
-  .pp-foot { padding: 11px 12px 0; }
+  .pp-foot { padding: 10px 12px 0; }
 }
 
 @media (max-width: 860px) {

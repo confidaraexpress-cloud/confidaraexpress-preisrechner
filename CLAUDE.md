@@ -41,7 +41,7 @@ Drei voneinander isolierte Theme-Schichten:
 
 | Schicht | Präfix | Datei | Gilt für |
 |---------|--------|-------|----------|
-| App-Chrome „Executive Graphite + Porcelain" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
+| App-Chrome „Executive Ivory + Midnight Slate" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
 | App-Inhaltsflächen | `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--shadow-card*` | `variables.css` | Karten, Tabellen, Seitenköpfe im eingeloggten Bereich |
 | Legacy-Light | `--navy`, `--gray*`, `--blue*` | `variables.css` | Booking, Legal, Offer-/Preisrechnerkarten |
 | Auth-Theme | `--auth-*` | `auth.css` | AuthPage, Login, Register |
@@ -69,7 +69,7 @@ Zusatz-Scopes ohne Kollision.
 Neue Bereichs-Stylesheets ans Ende anhängen; Änderungen an gemeinsamen
 Oberflächen gehören nach `variables.css` / `dashboard-premium.css`.
 
-## App-Layout „Executive Graphite + Porcelain" — wichtigste Regel
+## App-Layout „Executive Ivory + Midnight Slate" — wichtigste Regel
 
 Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 (Sidebar + `.main-content`), gerendert von `DashboardPage.jsx` und
@@ -83,7 +83,7 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 **Konsequenzen:**
 - Keine neue Hintergrund-Ebene und keine Seiten-Scope-Klasse auf `.app-shell`
   einführen. Wer eine Seite anders einfärben will, hat eine falsche Abzweigung
-  genommen — die Grundfläche ist bewusst überall dieselbe Porcelain-Rampe
+  genommen — die Grundfläche ist bewusst überall dieselbe Ivory-Rampe
   (`--ce-app-bg-top/-mid/-bottom`), gesetzt als EINE Hintergrundebene auf
   `.app-shell`. `.main-content` trägt bewusst keine eigene Flächenfarbe.
 - **Keine Dekoration im Hintergrund**: keine Glow-Nodes, Routenlinien,
@@ -95,9 +95,14 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   funktionaler Ladeindikator — nie als Ambiente.
 - Blau (`--accent-blue`, in der Sidebar `--ce-sidebar-active-accent`) ist
   Akzent: aktive Navigation, Links, Fokus, primäre Aktion. Keine blauen Flächen.
-- Die Sidebar ist matter Graphit (`--ce-sidebar-bg-*`), niemals schwarz und
-  niemals glasig. Firmenkarte, Supportkarte und Navigation teilen sich EINE
-  Materialsprache (`--ce-sidebar-surface`, `--ce-sidebar-border`, kein Schatten).
+- Die Sidebar ist mattes Midnight Slate (`--ce-sidebar-bg-*`), niemals schwarz
+  und niemals glasig — der Blaukanal muss klar über dem Rotkanal liegen.
+- Firmenkarte und Supportkarte teilen EINE Materialsprache (gleiche Rundung,
+  gleiche Bordersprache) in ZWEI Höhenlagen: die Firmenkarte erhöht
+  (`--ce-sidebar-card` + Schatten), die Supportkarte vertieft
+  (`--ce-sidebar-well`, ohne Schatten).
+- Der Kontrast Sidebar↔Hauptfläche ist die tragende Idee des Layouts und darf
+  nicht unter ~12:1 fallen — `appShellChrome.test.mjs` misst das.
 - Der aktive Navigationseintrag ist mehrfach codiert (Fläche + Border +
   Akzentkante als `inset`-Schatten + Schriftschnitt), nicht allein farbig.
 - Die gesamte Sidebarspalte (`.pp-side-in`) scrollt — nicht `.pp-nav` separat,
@@ -229,7 +234,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/refine-executive-sidebar-background`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/visible-premium-sidebar-background`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

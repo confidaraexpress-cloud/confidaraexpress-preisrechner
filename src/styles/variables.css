@@ -31,56 +31,76 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
-  --sidebar-width: 248px;
+  /* Einzige Quelle der Sidebarbreite — .app-shell überschreibt sie nicht mehr.
+     252 px ist der Wert innerhalb der Zielspanne 244–252, bei dem die
+     Konto-E-Mail in der Firmenkarte noch vollständig steht. */
+  --sidebar-width: 252px;
 
-  /* ── „Executive Graphite + Porcelain" — Chrome des eingeloggten App-Layouts ─
+  /* ── „Executive Ivory + Midnight Slate" — Chrome des eingeloggten Layouts ──
      Genau eine Quelle für App-Hintergrund und Sidebar. Alle Regeln in
      dashboard-premium.css / dashboard.css lesen ausschließlich von hier; in den
      Sidebar-Regeln stehen keine Farbliterale mehr. Gilt NICHT für den
      Auth-Bereich (--auth-*) und nicht für den Adminbereich (eigener
      .adm-Scope) — beide referenzieren keines dieser Tokens.
 
-     Porcelain: vertikale Rampe von fast-weiß nach kühlem Hellgrau. Bewusst
-     etwas tiefer angesetzt als ein reines #fafbfc, damit die weißen
-     Inhaltsflächen (--surface) auch am oberen Seitenrand als eigene Fläche
-     lesbar bleiben und nicht mit dem Grund verschmelzen. */
-  --ce-app-bg-top: #f8fafc;
-  --ce-app-bg-mid: #f4f7fa;
-  --ce-app-bg-bottom: #eff3f7;
-  --ce-app-divider: rgba(15, 23, 42, 0.1);
-  /* Kaum wahrnehmbare statische Lichtfläche oben rechts (Alpha 0.03). */
-  --ce-app-sheen: rgba(59, 130, 246, 0.03);
-  /* Ein Hauch Tiefe an der Sidebar-Kante — bewusst fast unsichtbar. */
-  --ce-sidebar-shadow: 1px 0 8px rgba(15, 23, 42, 0.025);
+     Ivory: warme Off-White-Rampe, die nach unten ins Kühle kippt. Der
+     Warm-kalt-Wechsel (statt einer reinen Helligkeitsstufe) macht den Grund
+     als Material lesbar.
 
-  /* Graphite: matter, leicht bläulicher Verlauf — dunkler als die Hauptfläche,
-     aber bewusst nicht schwarz. */
-  --ce-sidebar-bg-top: #202938;
-  --ce-sidebar-bg-mid: #1b2432;
-  --ce-sidebar-bg-bottom: #171f2b;
+     Die Werte sind bewusst kräftiger als der erste Entwurf (#fbfaf8/#f6f5f2/
+     #f0f3f7): dieser lag mit ΔE 2,1–2,8 gegenüber der bisherigen kühlen Rampe
+     im Bereich „nur im direkten Vergleich erkennbar", und die Abhebung der
+     weißen Karten vom Grund blieb bei ΔE 3,4 unverändert. Gemessen nachgezogen
+     auf ΔE ≈ 7 zur alten Rampe und ΔE ≈ 6,5 Karte↔Grund. */
+  --ce-app-bg-top: #faf8f2;
+  --ce-app-bg-mid: #f3f0e9;
+  --ce-app-bg-bottom: #eaedf2;
+  --ce-app-divider: rgba(15, 23, 42, 0.12);
+  /* Statische Lichtfläche oben rechts. Alpha 0.075 statt vormals 0.03: bei
+     0.03 war sie auf normalen Bildschirmen schlicht nicht wahrnehmbar. */
+  --ce-app-sheen: rgba(58, 111, 220, 0.075);
+  /* Tiefe an der Sidebar-Kante — sichtbar, aber ohne harte Kante. */
+  --ce-sidebar-shadow: 2px 0 16px rgba(9, 15, 25, 0.09);
 
-  /* Eine Materialsprache für alle Sidebar-Flächen (Firmenkarte, Supportkarte,
-     Navigation) — gleiche Aufhellung, gleiche Border, kein Schatten. */
-  --ce-sidebar-surface: rgba(255, 255, 255, 0.04);
-  --ce-sidebar-surface-hover: rgba(255, 255, 255, 0.065);
-  --ce-sidebar-surface-active: rgba(255, 255, 255, 0.085);
-  --ce-sidebar-border: rgba(255, 255, 255, 0.075);
-  --ce-sidebar-divider: rgba(255, 255, 255, 0.07);
+  /* Midnight Slate: deutlich dunkler als der bisherige Graphit, damit der
+     Sprung zur warmen Hauptfläche als Premiumkontrast liest — weiterhin
+     Navy/Slate-Material (Blaukanal klar über dem Rotkanal), bewusst nicht
+     schwarz. Auch hier gegenüber dem ersten Entwurf (#182334/#131e2d/#0f1825)
+     nachgezogen: der lag nur bei ΔE 3,2–3,7 zum Vorzustand. */
+  --ce-sidebar-bg-top: #17212f;
+  --ce-sidebar-bg-mid: #111a27;
+  --ce-sidebar-bg-bottom: #0c1420;
 
-  /* Texte/Icons. --ce-sidebar-section ist gegenüber dem Entwurf (#6d7686)
-     aufgehellt: auf --ce-sidebar-bg-top maß der dunklere Ton nur 3,2:1 und
-     hätte die Gruppenüberschriften unter WCAG AA gedrückt. */
-  --ce-sidebar-text: #e7edf5;
+  /* Flächen der Sidebar. Zwei Höhenlagen in EINER Materialsprache (gleiche
+     Rundung, gleiche Bordersprache): die Firmenkarte liegt erhöht (heller
+     Verlauf + Schatten), die Supportkarte vertieft (dunklere Eigenfläche). */
+  --ce-sidebar-surface: rgba(255, 255, 255, 0.055);
+  --ce-sidebar-surface-hover: rgba(255, 255, 255, 0.075);
+  --ce-sidebar-border: rgba(255, 255, 255, 0.11);
+  --ce-sidebar-divider: rgba(255, 255, 255, 0.09);
+
+  --ce-sidebar-card: linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+  --ce-sidebar-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --ce-sidebar-well: rgba(0, 0, 0, 0.16);
+
+  /* Aktiver Eintrag: blau getönter Verlauf statt einer reinen Weiß-Aufhellung
+     — der frühere Zustand war vom Hover kaum zu unterscheiden. */
+  --ce-sidebar-active-bg: linear-gradient(90deg, rgba(52, 101, 210, 0.28), rgba(255, 255, 255, 0.075));
+  --ce-sidebar-active-border: rgba(110, 151, 239, 0.24);
+  --ce-sidebar-active-accent: #4f8cff;
+  --ce-sidebar-active-icon: #7fb0ff;
+  --ce-sidebar-active-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent), 0 5px 14px rgba(0, 0, 0, 0.1);
+
+  /* Texte/Icons — gegen den dunkleren Grund nachgezogen und gemessen
+     (siehe appShellChrome.test.mjs, alle Paarungen ≥ WCAG AA). */
+  --ce-sidebar-text: #e9eef6;
   --ce-sidebar-text-strong: #ffffff;
-  --ce-sidebar-text-muted: #94a3b8;
-  --ce-sidebar-section: #8b95a6;
-  --ce-sidebar-icon: #9aa9bc;
-
-  --ce-sidebar-active-accent: #3b82f6;
-  --ce-sidebar-active-icon: #60a5fa;
+  --ce-sidebar-text-muted: #9aa7ba;
+  --ce-sidebar-section: #8593a8;
+  --ce-sidebar-icon: #a2b0c4;
 
   /* Mobiles Drawer-Overlay — ruhig und dunkel, ohne backdrop-filter. */
-  --ce-app-overlay: rgba(15, 23, 42, 0.45);
+  --ce-app-overlay: rgba(9, 15, 25, 0.58);
 
   /* ── Inhaltsflächen des eingeloggten Bereichs (Karten, Tabellen, Header) ──
      Eigene Ebene, bewusst getrennt vom Chrome oben: dieselben Werte werden
@@ -91,7 +111,10 @@
   --border-subtle: #e2e8f0;
   --border-hairline: #edf1f5;
   --text-primary: #172033;
-  --text-secondary: #64748b;
+  /* Von #64748b nachgedunkelt: gegen den wärmeren Rampenkopf (--ce-app-bg-top)
+     maß der alte Wert 4,48:1 und lag damit knapp unter WCAG AA. Jetzt 4,96:1.
+     Reine Kontrastkorrektur — keine Größen-, Gewichts- oder Layoutänderung. */
+  --text-secondary: #5f6d80;
   --text-tertiary: #94a3b8;
 
   /* Akzent — gezielt eingesetzt (aktive Navigation, Links, Fokus), nie flächig. */

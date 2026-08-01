@@ -103,8 +103,10 @@ test("4 — Sidebar und Hintergrund sind zentral über Tokens geführt", () => {
   for (const t of [
     "ce-app-bg-top", "ce-app-bg-mid", "ce-app-bg-bottom", "ce-app-divider", "ce-app-overlay",
     "ce-sidebar-bg-top", "ce-sidebar-bg-mid", "ce-sidebar-bg-bottom",
-    "ce-sidebar-surface", "ce-sidebar-surface-hover", "ce-sidebar-surface-active",
+    "ce-sidebar-surface", "ce-sidebar-surface-hover",
     "ce-sidebar-border", "ce-sidebar-divider",
+    "ce-sidebar-card", "ce-sidebar-card-shadow", "ce-sidebar-well",
+    "ce-sidebar-active-bg", "ce-sidebar-active-border", "ce-sidebar-active-shadow",
     "ce-sidebar-text", "ce-sidebar-text-strong", "ce-sidebar-text-muted",
     "ce-sidebar-section", "ce-sidebar-icon",
     "ce-sidebar-active-accent", "ce-sidebar-active-icon",
@@ -148,6 +150,7 @@ test("6 — es gibt genau eine Sidebar-Komponente auf allen Kundenrouten", () =>
 });
 
 test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () => {
+  const tok0 = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   // Aktivzustand kommt weiterhin aus dem page-Vergleich, nicht aus der URL.
   assert.match(sidebarJsx, /page === "overview" \? "on" : ""/, "Aktivmarkierung der Übersicht fehlt");
   assert.match(sidebarJsx, /page === item\.id \? "on" : ""/, "Aktivmarkierung der Nav-Einträge fehlt");
@@ -155,10 +158,22 @@ test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () 
   const on = block(premium, ".nitem.on");
   assert.ok(on, ".nitem.on fehlt");
   // Nicht allein farbcodiert: Fläche + Border + Akzentkante + Schriftschnitt.
-  assert.match(on, /background:/, "aktive Fläche fehlt");
-  assert.match(on, /border-color:/, "aktive Border fehlt");
+  assert.match(on, /background:\s*var\(--ce-sidebar-active-bg\)/, "aktive Fläche fehlt");
+  assert.match(on, /border-color:\s*var\(--ce-sidebar-active-border\)/, "aktive Border fehlt");
   assert.match(on, /font-weight:\s*600/, "aktiver Schriftschnitt fehlt");
-  assert.match(on, /box-shadow:\s*inset\s+3px\s+0\s+0/, "linke Akzentkante (inset) fehlt");
+  assert.match(on, /box-shadow:\s*var\(--ce-sidebar-active-shadow\)/, "Akzentkante fehlt");
+  // Die Kante selbst steckt im Token und bleibt ein linker Inset-Streifen.
+  assert.match(variables, /--ce-sidebar-active-shadow:\s*inset\s+3px\s+0\s+0/,
+    "linke Akzentkante (inset) fehlt im Token");
+  // Der aktive Zustand muss sich klar vom Hover unterscheiden — sonst ist er
+  // faktisch unsichtbar (genau das war vor diesem Paket der Fall).
+  const activeStops = tok0("ce-sidebar-active-bg").match(/rgba?\([^)]+\)/g) ?? [];
+  const coloured = activeStops.some((st) => {
+    const [r, g, b] = st.match(/[\d.]+/g).map(Number);
+    return Math.max(r, g, b) - Math.min(r, g, b) > 20; // echter Farbstich, nicht nur Weiß/Grau
+  });
+  assert.ok(coloured,
+    "aktive Fläche braucht einen farbigen Stop — eine reine Weiß-Aufhellung ist vom Hover nicht zu unterscheiden");
   // Die Kante ist ein Inset-Schatten, KEIN absolut positioniertes ::before —
   // sonst zerstört sie die Rundung bzw. verschiebt Layout.
   assert.ok(!premiumRules.includes(".nitem.on::before"),
@@ -191,15 +206,27 @@ test("9 — Firmenkarte bleibt vorhanden und bewusst nicht interaktiv", () => {
     "nicht-interaktive Firmenkarte darf keinen Hover-Zustand haben");
 });
 
-test("10 — Firmenkarte und Supportkarte teilen sich eine Materialsprache", () => {
+test("10 — Firmen- und Supportkarte: eine Materialsprache, zwei Höhenlagen", () => {
   const identity = block(premium, ".pp-identity");
   const scard = block(premium, ".pp-scard");
   assert.ok(identity && scard, "Firmen- oder Supportkarte fehlt");
+  // Gemeinsame Sprache: gleiche Rundung, gleiche Bordersprache.
   for (const [name, b] of [["Firmenkarte", identity], ["Supportkarte", scard]]) {
-    assert.match(b, /background:\s*var\(--ce-sidebar-surface\)/, `${name}: gemeinsame Fläche erwartet`);
     assert.match(b, /border:\s*1px solid var\(--ce-sidebar-border\)/, `${name}: gemeinsame Border erwartet`);
-    assert.match(b, /border-radius:\s*10px/, `${name}: gemeinsame Rundung erwartet`);
-    assert.match(b, /box-shadow:\s*none/, `${name}: darf keinen Schatten tragen`);
+    assert.match(b, /border-radius:\s*11px/, `${name}: gemeinsame Rundung erwartet`);
+  }
+  // Firmenkarte erhöht (heller Verlauf + Schatten) …
+  assert.match(identity, /background:\s*var\(--ce-sidebar-card\)/, "Firmenkarte: erhöhte Fläche erwartet");
+  assert.match(identity, /box-shadow:\s*var\(--ce-sidebar-card-shadow\)/, "Firmenkarte: Tiefe fehlt");
+  assert.match(variables, /--ce-sidebar-card:\s*linear-gradient/, "Firmenkarte braucht einen Verlauf");
+  // … Supportkarte vertieft (dunklere Eigenfläche, kein Schatten).
+  assert.match(scard, /background:\s*var\(--ce-sidebar-well\)/, "Supportkarte: vertiefte Fläche erwartet");
+  assert.match(scard, /box-shadow:\s*none/, "Supportkarte darf keinen Schatten tragen");
+  // Kein Glassmorphism auf beiden.
+  for (const [name, b] of [["Firmenkarte", identity], ["Supportkarte", scard]]) {
+    // Kommentare entfernen: sie benennen die Regel („kein backdrop-filter"),
+    // ohne sie zu setzen.
+    assert.doesNotMatch(stripComments(b), /backdrop-filter/, `${name}: backdrop-filter verboten`);
   }
 });
 
@@ -337,20 +364,30 @@ test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
   const bgTop = hex(tok("ce-sidebar-bg-top"));
   const bgMid = hex(tok("ce-sidebar-bg-mid"));
   const bgBot = hex(tok("ce-sidebar-bg-bottom"));
-  const surface = over(rgba(tok("ce-sidebar-surface")), bgMid);
-  const active = over(rgba(tok("ce-sidebar-surface-active")), bgTop);
+
+  // Firmenkarte: Verlauf mit zwei Stops → beide Enden prüfen (ungünstigster Fall).
+  const cardStops = tok("ce-sidebar-card").match(/rgba?\([^)]+\)/g).map((x) => over(rgba(x), bgTop));
+  // Supportkarte: dunklere Eigenfläche über dem unteren Verlaufsende.
+  const well = over(rgba(tok("ce-sidebar-well")), bgBot);
+  // Aktiver Eintrag: blau getönter Verlauf. Der DUNKELSTE Punkt ist maßgeblich —
+  // dort ist der Kontrast zum weißen Text am knappsten.
+  const activeStops = tok("ce-sidebar-active-bg").match(/rgba?\([^)]+\)/g).map((x) => over(rgba(x), bgTop));
+  const activeDark = activeStops.reduce((a, b) => (lum(a) < lum(b) ? a : b));
 
   // Text: AA = 4.5:1. Nicht-Text (Icons, Kanten, Fokusring): AA = 3:1.
   const cases = [
-    ["Navigationstext", hex(tok("ce-sidebar-text")), bgTop, 4.5],
-    ["aktiver Eintrag", hex(tok("ce-sidebar-text-strong")), active, 4.5],
+    ["Navigationstext auf hellstem Verlaufspunkt", hex(tok("ce-sidebar-text")), bgTop, 4.5],
+    ["Navigationstext auf Verlaufsmitte", hex(tok("ce-sidebar-text")), bgMid, 4.5],
+    ["aktiver Eintrag (dunkelster Verlaufspunkt)", hex(tok("ce-sidebar-text-strong")), activeDark, 4.5],
     ["Gruppenüberschrift", hex(tok("ce-sidebar-section")), bgTop, 4.5],
     ["Fußzeile", hex(tok("ce-sidebar-section")), bgBot, 4.5],
-    ["Sekundärtext auf Karte", hex(tok("ce-sidebar-text-muted")), surface, 4.5],
-    ["Firmenname auf Karte", hex(tok("ce-sidebar-text")), surface, 4.5],
+    ["Firmenname auf Karte (hellster Stop)", hex(tok("ce-sidebar-text")), cardStops[0], 4.5],
+    ["Konto-E-Mail auf Karte (hellster Stop)", hex(tok("ce-sidebar-text-muted")), cardStops[0], 4.5],
+    ["Supporttitel auf vertiefter Fläche", hex(tok("ce-sidebar-text-strong")), well, 4.5],
+    ["Support-Hinweistext", hex(tok("ce-sidebar-text-muted")), well, 4.5],
     ["Icon inaktiv", hex(tok("ce-sidebar-icon")), bgMid, 3],
-    ["Icon aktiv", hex(tok("ce-sidebar-active-icon")), active, 3],
-    ["Aktivkante", hex(tok("ce-sidebar-active-accent")), active, 3],
+    ["Icon aktiv", hex(tok("ce-sidebar-active-icon")), activeDark, 3],
+    ["Aktivkante", hex(tok("ce-sidebar-active-accent")), activeDark, 3],
     ["Fokusring", hex(tok("ce-sidebar-active-icon")), bgMid, 3],
   ];
   for (const [label, fg, bg, min] of cases) {
@@ -359,7 +396,7 @@ test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
   }
 });
 
-test("19 — Inhaltstexte bleiben auf der Porcelain-Fläche lesbar", () => {
+test("19 — Inhaltstexte bleiben auf der Ivory-Fläche lesbar", () => {
   const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
   const lum = (c) => {
@@ -378,15 +415,47 @@ test("19 — Inhaltstexte bleiben auf der Porcelain-Fläche lesbar", () => {
   assert.ok(ratio(hex(tok("text-primary")), top) >= 4.5, "Primärtext unter AA");
   assert.ok(ratio(hex(tok("text-secondary")), top) >= 4.5, "Sekundärtext unter AA");
 
-  // Weiße Karten müssen sich vom Grund abheben — die Rampe darf nicht bis Weiß
-  // hochlaufen, sonst verschmelzen Karte und Hintergrund am oberen Seitenrand.
-  assert.notEqual(tok("ce-app-bg-top").toLowerCase(), "#ffffff",
-    "Porcelain-Oberkante darf nicht reines Weiß sein");
+  // Weiße Karten müssen sich vom Grund abheben. Der Grund darf deshalb nicht
+  // bis an Weiß heranlaufen — genau daran krankte die vorige Fassung, in der
+  // Karte und Untergrund praktisch gleich hell waren.
+  const white = [255, 255, 255];
+  for (const stop of ["ce-app-bg-top", "ce-app-bg-mid", "ce-app-bg-bottom"]) {
+    const c = hex(tok(stop));
+    const delta = Math.max(...white.map((w, i) => w - c[i]));
+    assert.ok(delta >= 4, `--${stop} liegt zu nah an Kartenweiß (max. Kanaldifferenz ${delta})`);
+  }
+});
+
+test("20 — Sidebar und Hauptfläche bilden einen deutlichen Helligkeitskontrast", () => {
+  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
+  const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
+  const lum = (c) => {
+    const f = c.map((v) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
+  };
+  const ratio = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  // Der Premiumkontrast Sidebar↔Hauptfläche ist die tragende Idee dieses
+  // Layouts. Fällt er unter ~12:1, verwässert die Trennung.
+  const r = ratio(hex(tok("ce-sidebar-bg-mid")), hex(tok("ce-app-bg-mid")));
+  assert.ok(r >= 12, `Sidebar↔Hauptfläche nur ${r.toFixed(1)}:1 — zu schwach für die Trennung`);
+
+  // Die Sidebar darf dunkel sein, aber nicht schwarz: der Blaukanal muss
+  // deutlich über dem Rotkanal liegen (Navy/Slate statt Neutralschwarz).
+  for (const stop of ["ce-sidebar-bg-top", "ce-sidebar-bg-mid", "ce-sidebar-bg-bottom"]) {
+    const [r0, , b0] = hex(tok(stop));
+    assert.ok(b0 - r0 >= 8, `--${stop} wirkt neutralschwarz statt Navy/Slate (B−R = ${b0 - r0})`);
+  }
 });
 
 /* ── Fachliche Komponenten ──────────────────────────────────────────────── */
 
-test("20 — das Chrome greift nicht in fachliche Komponenten ein", () => {
+test("21 — das Chrome greift nicht in fachliche Komponenten ein", () => {
   const start = premiumRules.indexOf(".app-shell");
   const end = premiumRules.indexOf(".ce-mail-dialog");
   const chrome = premiumRules.slice(start, end);

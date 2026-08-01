@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
+import markPrimary from "../../assets/brand/mark-primary.svg";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
@@ -220,6 +221,16 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
 
       {/* ── Trust ── */}
       <div className="pp-trust tile">
+        {/* Lokales Hintergrunddetail dieses Tiles — KEINE seitenweite Ebene und
+            keine Rückkehr der entfernten Vapor-/Netzwerk-/Glow-Hintergründe.
+            Rein dekorativ, unten rechts angeschnitten, hinter dem Inhalt. */}
+        <img
+          className="pp-trust-watermark"
+          src={markPrimary}
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
         {TRUST.map((t, i) => (
           <div className="pp-trust-item" key={i}>
             <div className="pp-medal m-blue"><Icon n={t.icon} s={20} /></div>

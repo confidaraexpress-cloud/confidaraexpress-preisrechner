@@ -629,3 +629,114 @@ test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
   assert.match(nsec, /letter-spacing:\s*0\.1[5-9]em/, ".nsec braucht weite Laufweite");
   assert.match(nsec, /text-transform:\s*uppercase/, ".nsec ist ein Versalien-Strukturlabel");
 });
+
+/* ── Markenassets (Sidebar-Bildmarke + lokales Trust-Wasserzeichen) ─────── */
+
+test("31 — die generische CubeMark samt Inline-Verlauf ist restlos entfernt", () => {
+  for (const [file, src] of [["DashboardSidebar.jsx", sidebarJsx], ["dashboard-premium.css", premium]]) {
+    for (const token of ["CubeMark", "ppCubeSb", "pp-brandmark-svg"]) {
+      assert.ok(!src.includes(token), `${file}: "${token}" darf nicht zurückkehren`);
+    }
+  }
+  // Kein Inline-<svg> mehr im Sidebar-Markenbereich — die Geometrie liegt
+  // ausschließlich in der Assetdatei, nicht dupliziert im JSX.
+  assert.ok(!/<linearGradient/.test(sidebarJsx), "Inline-Verlauf in der Sidebar gefunden");
+  assert.ok(!/<svg[^>]*pp-brandmark/.test(sidebarJsx), "Inline-SVG der Bildmarke gefunden");
+});
+
+test("32 — die Sidebar nutzt die Reverse-Bildmarke als statisches Asset", () => {
+  assert.match(sidebarJsx, /import\s+markReverse\s+from\s+"\.\.\/\.\.\/assets\/brand\/mark-reverse\.svg"/,
+    "statischer Import von mark-reverse.svg fehlt");
+  assert.match(sidebarJsx, /<img[\s\S]*?src=\{markReverse\}/, "Bildmarke wird nicht als <img> gerendert");
+  // Sie sitzt weiterhin in der bestehenden 36×36-Fläche.
+  assert.match(sidebarJsx, /className="ce-brandmark">[\s\S]*?<img/, "Bildmarke liegt nicht in .ce-brandmark");
+
+  const reverse = read("../../assets/brand/mark-reverse.svg");
+  const white   = read("../../assets/brand/mark-primary.svg");
+  assert.ok(reverse.includes('viewBox="0 0 256 256"'), "viewBox der Reverse-Variante geändert");
+  // C hell, drei E-Striche in der zugelassenen Kontrast-Akzentfarbe.
+  assert.ok(reverse.includes('fill="#F7F8FC"'), "C muss #F7F8FC bleiben");
+  assert.equal((reverse.match(/fill="#8EA2F0"/g) ?? []).length, 3,
+    "genau die drei E-Striche tragen #8EA2F0");
+  // #8EA2F0 ist ausschließlich der Reverse-Variante vorbehalten.
+  assert.ok(!/fill="#8EA2F0"/.test(white),
+    "#8EA2F0 darf nicht in der Primärvariante für helle Flächen auftauchen");
+  assert.ok(white.includes("#0A1633") && white.includes("#2C438C"),
+    "Primärvariante muss Navy und Sapphire führen");
+});
+
+test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", () => {
+  // Kein doppeltes Vorlesen: die Wortmarke steht als echter Text daneben.
+  const markImg = sidebarJsx.match(/<img[\s\S]*?src=\{markReverse\}[\s\S]*?\/>/)?.[0] ?? "";
+  assert.match(markImg, /alt=""/, "Bildmarke braucht alt=\"\"");
+  assert.match(markImg, /aria-hidden="true"/, "Bildmarke braucht aria-hidden");
+  assert.match(sidebarJsx, /Confidara<b>Express<\/b>/, "HTML-Wortmarke wurde verändert");
+  assert.match(sidebarJsx, /B2B Versandplattform\./, "Unterzeile wurde verändert");
+
+  const wmImg = overviewJsx.match(/<img[\s\S]*?className="pp-trust-watermark"[\s\S]*?\/>/)?.[0]
+    ?? overviewJsx.match(/<img[\s\S]*?pp-trust-watermark[\s\S]*?\/>/)?.[0] ?? "";
+  assert.ok(wmImg, "Trust-Wasserzeichen nicht als <img> gefunden");
+  assert.match(wmImg, /alt=""/, "Wasserzeichen braucht alt=\"\"");
+  assert.match(wmImg, /aria-hidden="true"/, "Wasserzeichen braucht aria-hidden");
+
+  // Keine Einfärbung per CSS — beide Assets liegen bereits in Zielfarbe vor.
+  for (const [sel, css] of [[".pp-brandmark-img", premium], [".pp-trust-watermark", overviewCss]]) {
+    const b = block(css, sel);
+    assert.ok(b, `${sel} fehlt`);
+    const filters = [...stripComments(b).matchAll(/(?:^|[;{\s])filter:\s*([^;}]+)/g)].map((m) => m[1].trim());
+    for (const f of filters) assert.equal(f, "none", `${sel}: CSS-Filter "${f}" verboten`);
+  }
+});
+
+test("34 — das Wasserzeichen ist ein lokales Detail des Trust-Tiles", () => {
+  // Existiert ausschließlich in der Übersicht …
+  assert.ok(overviewJsx.includes("pp-trust-watermark"), "Wasserzeichen fehlt in Overview.jsx");
+  for (const [file, src] of [
+    ["DashboardPage.jsx", dashboardJsx], ["DashboardLayout.jsx", layoutJsx],
+    ["DashboardSidebar.jsx", sidebarJsx], ["LegalLinks.jsx", footerJsx],
+    ["dashboard-premium.css", premium], ["dashboard.css", dashboard],
+  ]) {
+    assert.ok(!src.includes("pp-trust-watermark"), `${file}: Wasserzeichen gehört nur in die Übersicht`);
+  }
+
+  const wm = block(overviewCss, ".pp-trust-watermark");
+  assert.ok(wm, ".pp-trust-watermark fehlt");
+  assert.match(wm, /position:\s*absolute/, "muss absolut im Tile liegen");
+  assert.doesNotMatch(wm, /position:\s*(fixed|sticky)/, "weder fixed noch sticky");
+  assert.match(wm, /pointer-events:\s*none/, "darf keine Pointer-Ereignisse blockieren");
+  assert.match(wm, /user-select:\s*none/, "user-select: none fehlt");
+  assert.match(wm, /z-index:\s*0/, "muss hinter dem Inhalt liegen");
+  assert.doesNotMatch(wm, /animation|transition|box-shadow/, "keine Animation, kein Glow");
+
+  // Opazität an jedem Breakpoint innerhalb der Grenze.
+  const ops = [...overviewCss.matchAll(/\.pp-trust-watermark\s*\{[^}]*opacity:\s*([\d.]+)/g)]
+    .map((m) => parseFloat(m[1]));
+  assert.ok(ops.length > 0, "keine Opazität gefunden");
+  for (const o of ops) assert.ok(o <= 0.08, `Opazität ${o} überschreitet 0.08`);
+
+  // Der Container trägt das Wasserzeichen und schneidet es an; der fachliche
+  // Inhalt bleibt darüber.
+  const trust = block(overviewCss, ".pp-trust");
+  assert.match(trust, /position:\s*relative/, ".pp-trust braucht position: relative");
+  assert.match(trust, /overflow:\s*hidden/, ".pp-trust braucht overflow: hidden");
+  assert.match(block(overviewCss, ".pp-trust-item"), /z-index:\s*1/, "Trust-Inhalt muss über der Marke liegen");
+});
+
+test("35 — die Markenintegration führt keine neue Hintergrundebene ein", () => {
+  // .app-shell behält genau eine Hintergrundebene, .main-content und .pp-main
+  // bekommen keine.
+  const shell = stripComments(block(premium, ".app-shell"));
+  assert.equal((shell.match(/background-image:/g) ?? []).length, 1,
+    ".app-shell darf nur eine background-image-Deklaration führen");
+  assert.ok(!/mark-|brand\//.test(shell), ".app-shell darf kein Markenasset als Hintergrund führen");
+
+  for (const [sel, css] of [[".main-content", premium], [".pp-main", overviewCss]]) {
+    const b = stripComments(block(css, sel));
+    assert.ok(b, `${sel} fehlt`);
+    assert.doesNotMatch(b, /background(-color|-image)?:/, `${sel}: keine Hintergrundebene zulässig`);
+  }
+  // Kein SVG als CSS-Data-URI-Kopie — die Assets werden importiert.
+  for (const [file, css] of [["overview.css", overviewCss], ["dashboard-premium.css", premium]]) {
+    assert.ok(!/data:image\/svg/.test(css), `${file}: Data-URI-Kopie eines SVG gefunden`);
+  }
+});

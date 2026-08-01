@@ -212,7 +212,13 @@
   border: 1px solid var(--ce-sidebar-border);
   box-shadow: none;
 }
-.pp-brandmark-svg { width: 26px; height: 26px; display: block; }
+/* Die CE-Bildmarke wird als <img> eingebunden (statischer Vite-Import), nicht
+   inline dupliziert. Feste Maße sind zwingend: die Datei trägt selbst
+   width/height="256" und würde ohne CSS-Größe in Originalgröße rendern.
+   Die Reverse-Variante ist bereits in Zielfarbe ausgeliefert — kein filter,
+   keine Einfärbung. Die 36×36-Fläche und die Zeilenabstände bleiben
+   unverändert, damit Wortmarke, Unterzeile und Close-Button nicht wandern. */
+.pp-brandmark-img { width: 24px; height: 24px; display: block; filter: none; }
 .pp-brand { font-family: var(--fh); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
 .pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 700; }
 .pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }

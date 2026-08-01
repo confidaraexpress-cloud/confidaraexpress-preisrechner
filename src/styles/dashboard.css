@@ -468,12 +468,6 @@ tr:hover td { background: var(--surface-subtle); }
 }
 .profile-meta-chip-accent { background: var(--blue-light); color: var(--blue2); border-color: rgba(29,78,216,0.18); }
 
-/* ─── Legal links (dashboard sub-pages + logged-in calculator) ───────────── */
-.legal-links {
-  display: flex; flex-wrap: wrap; justify-content: center;
-  gap: 8px 20px;
-  padding: 24px 16px 28px;
-  font-size: 12.5px; line-height: 1.5;
-}
-.legal-links a { color: var(--text-muted, #6b7280); text-decoration: none; transition: color 0.15s; }
-.legal-links a:hover { color: var(--blue, #1D4ED8); text-decoration: underline; }
+/* Der Footer des eingeloggten Bereichs (.app-footer) steht in
+   dashboard-premium.css. Die frühere zentrierte .legal-links-Zeile ist
+   entfallen — sie ist im neuen Footer aufgegangen. */

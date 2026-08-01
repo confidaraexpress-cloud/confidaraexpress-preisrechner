@@ -75,10 +75,30 @@
   background-attachment: scroll, scroll;
 }
 
+/* Flex-Spalte, damit der Footer (.app-footer, margin-top:auto) auf kurzen
+   Seiten am unteren Rand der Hauptfläche sitzt und nicht mitten in einer
+   leeren Fläche schwebt. Auf langen Seiten folgt er normal dem Inhalt.
+   min-height ist an die Shell gekoppelt (die Sidebar ist position:fixed,
+   trägt also nicht zur Höhe bei). */
 .main-content {
   position: relative;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
+/* Zwei Flexbox-Eigenheiten, die hier zusammenwirken:
+   1. Flex-Items haben min-width:auto und schrumpfen nicht unter ihre
+      Min-Content-Breite — die Mindestbreite der Sendungstabelle (480 px) würde
+      die Hauptfläche auf schmalen Viewports auseinanderdrücken, statt dass
+      .table-scroll wie vorgesehen horizontal scrollt.
+   2. Kinder mit `margin: 0 auto` (u. a. .page-body, .dash-section-header)
+      schalten `align-items: stretch` ab und fallen auf Fit-Content-Breite
+      zurück — also erneut auf die Tabellenbreite.
+   width:100% stellt die Vollbreite wieder her; die vorhandenen max-width-Werte
+   und auto-Margins zentrieren weiterhin wie zuvor. */
+.main-content > * { min-width: 0; width: 100%; }
 
 /* Der geteilte .page-with-navbar-Wrapper (Preisrechner, Neue Sendung, Tracking)
    bringt für den öffentlichen Bereich eine eigene Flächenfarbe mit. Innerhalb
@@ -101,6 +121,42 @@
    öffentlichen NavbarLayout-Drawer verwendet; ohne diesen Scope würde die
    Änderung dorthin durchschlagen. Ruhig und dunkel, kein backdrop-filter. */
 .app-shell .sidebar-overlay { background: var(--ce-app-overlay); }
+
+/* ── Footer der App-Shell ──
+   Links Copyright, rechts die Rechtlinks. Gerendert von LegalLinks.jsx —
+   dem einen Footer des eingeloggten Bereichs. Der öffentliche Footer
+   (Footer.jsx im NavbarLayout) ist davon unberührt. */
+.app-footer {
+  margin-top: auto;               /* drückt den Footer auf kurzen Seiten nach unten */
+  display: flex;
+  align-items: baseline;          /* Copyright und Links auf einer Grundlinie */
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  max-width: 1240px;              /* gleicher Inhaltsrahmen wie .page-body */
+  width: 100%;
+  margin-inline: auto;
+  padding: 22px 28px 26px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.app-footer-copy { margin: 0; color: var(--text-secondary); }
+.app-footer-legal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+.app-footer-legal a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+/* Hover/Fokus sind nicht rein farblich codiert — die Unterstreichung trägt
+   den Zustand zusätzlich. */
+.app-footer-legal a:hover { color: var(--accent-blue-strong); text-decoration: underline; }
+.app-footer-legal a:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 3px;
+  text-decoration: underline;
+}
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  SIDEBAR — „Midnight Slate", matt, ohne Glow                              */
@@ -159,7 +215,7 @@
 .pp-brandmark-svg { width: 26px; height: 26px; display: block; }
 .pp-brand { font-family: var(--fh); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
 .pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 700; }
-.pp-brand-sub { font-family: var(--fs); font-size: 10.5px; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
+.pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
 .pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
 
 /* ── Firmenkarte ──
@@ -187,7 +243,7 @@
 }
 .pp-identity-text { min-width: 0; }
 .pp-identity-name { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ce-sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.45; color: var(--ce-sidebar-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Navigation ── */
 /* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
@@ -271,12 +327,15 @@
   border: 1px solid var(--ce-sidebar-border);
   box-shadow: none;
 }
-.scard-k { font-family: var(--fs); font-size: 10.5px; line-height: 1.4; color: var(--ce-sidebar-text-muted); }
+.scard-k { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); }
 .scard-t { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--fs); font-size: 13px; font-weight: 600; color: var(--ce-sidebar-text-strong); }
-.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 8px; }
+.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 9px; }
 
 /* Fußzeile — gedämpft, aber bewusst nicht blasser als die Gruppenüberschriften. */
-.pp-foot { padding: 12px 12px 0; font-family: var(--fs); font-size: 10px; line-height: 1.6; color: var(--ce-sidebar-section); }
+/* Sidebar-Fußzeile: von 10 px auf 11 px — der kleinste Text der Anwendung war
+   ohne angestrengtes Lesen kaum erfassbar. Farbe bleibt sekundär, misst aber
+   WCAG AA gegen das Verlaufsende (siehe appShellChrome.test.mjs). */
+.pp-foot { padding: 13px 12px 0; font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-section); }
 
 /* Ein sichtbarer Fokuszustand für ALLE interaktiven Sidebarbereiche
    (Navigation, Abmelden, Schließen-Button, Supportlink). Ersetzt kein
@@ -439,6 +498,18 @@
   .pp-scard { margin-top: 11px; padding: 10px; }
   .scard-s { margin-top: 7px; }
   .pp-foot { padding: 10px 12px 0; }
+}
+
+/* Mobil: Copyright und Links untereinander, Links mit größerer Trefferfläche. */
+@media (max-width: 620px) {
+  .app-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 20px 16px 24px;
+  }
+  .app-footer-legal { gap: 2px 16px; }
+  .app-footer-legal a { padding: 6px 0; }
 }
 
 @media (max-width: 860px) {

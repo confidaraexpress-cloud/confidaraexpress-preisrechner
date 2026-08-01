@@ -22,6 +22,9 @@ const adminCss  = read("../../styles/admin.css");
 const authCss   = read("../../styles/auth.css");
 
 const sidebarJsx   = read("./DashboardSidebar.jsx");
+const footerJsx    = read("./LegalLinks.jsx");
+const overviewJsx  = read("../dashboard/Overview.jsx");
+const overviewCss  = read("../../styles/overview.css");
 const layoutJsx    = read("./DashboardLayout.jsx");
 const adminJsx     = read("./AdminLayout.jsx");
 const navbarJsx    = read("./NavbarLayout.jsx");
@@ -466,4 +469,163 @@ test("21 — das Chrome greift nicht in fachliche Komponenten ein", () => {
   ]) {
     assert.ok(!chrome.includes(sel), `Chrome darf ${sel} nicht anfassen`);
   }
+});
+
+/* ── Footer der App-Shell ───────────────────────────────────────────────── */
+
+test("22 — die werbliche Selbstbeschreibung im Footer ist restlos entfernt", () => {
+  // Der frühere Übersicht-Footer beschrieb das Design, statt Rechtliches zu
+  // verlinken. Weder Markup noch Stil dürfen zurückkehren.
+  const sources = [
+    ["Overview.jsx", overviewJsx], ["DashboardPage.jsx", dashboardJsx],
+    ["LegalLinks.jsx", footerJsx], ["overview.css", overviewCss],
+  ];
+  for (const [file, src] of sources) {
+    assert.ok(!src.includes("pp-pagefoot"), `${file}: .pp-pagefoot ist entfallen`);
+    for (const word of ["luxuriös", "Premium-Übersicht"]) {
+      assert.ok(!src.includes(word), `${file}: werbliche Formulierung "${word}" gehört nicht in den Footer`);
+    }
+  }
+});
+
+test("23 — der Footer trägt Copyright und alle vier Rechtlinks", () => {
+  assert.match(footerJsx, /<footer className="app-footer">/, "Footer-Element fehlt");
+  assert.match(footerJsx, /app-footer-copy/, "Copyright-Bereich fehlt");
+  assert.match(footerJsx, /©\s*2026 ConfidaraExpress/, "Copyright-Text fehlt");
+
+  // Genau die bereits bestehenden Routen aus App.jsx — keine neuen Ziele.
+  const routes = [["Impressum", "/impressum"], ["Datenschutz", "/datenschutz"],
+                  ["AGB", "/agb"], ["Widerruf", "/widerruf"]];
+  const app = read("../../App.jsx");
+  for (const [label, to] of routes) {
+    assert.ok(footerJsx.includes(`to="${to}"`), `Footer-Link ${to} fehlt`);
+    assert.ok(footerJsx.includes(`>${label}<`), `Footer-Label ${label} fehlt`);
+    assert.ok(app.includes(`path="${to}"`), `Route ${to} existiert nicht in App.jsx — kein erfundenes Ziel erlaubt`);
+  }
+  // Neuer Tab: der Seitenzustand (z. B. Preisrechner-Formular) bleibt erhalten.
+  assert.ok(!/target="_blank"(?![\s\S]{0,80}rel="noopener noreferrer")/.test(footerJsx),
+    "target=_blank braucht rel=noopener noreferrer");
+});
+
+test("24 — es gibt genau einen Footer im eingeloggten Bereich", () => {
+  // Beide Shell-Renderer nutzen dieselbe Komponente …
+  for (const [name, jsx] of [["DashboardPage", dashboardJsx], ["DashboardLayout", layoutJsx]]) {
+    assert.match(jsx, /<LegalLinks \/>/, `${name}: zentraler Footer fehlt`);
+  }
+  // … und die Übersicht ist nicht mehr ausgenommen.
+  assert.ok(!/page !== "overview" && <LegalLinks/.test(stripJsxComments(dashboardJsx)),
+    "die Übersicht darf nicht vom gemeinsamen Footer ausgenommen sein");
+  // Der öffentliche Footer bleibt eine getrennte Komponente.
+  assert.match(navbarJsx, /<Footer \/>/, "öffentlicher Footer (NavbarLayout) wurde angetastet");
+  assert.ok(!footerJsx.includes("app-shell"), "der Shell-Footer darf die Shell nicht selbst scopen");
+});
+
+test("25 — Footer: Desktop nebeneinander, mobil untereinander, sichtbarer Fokus", () => {
+  const f = block(premium, ".app-footer");
+  assert.ok(f, ".app-footer fehlt");
+  assert.match(f, /justify-content:\s*space-between/, "Copyright links / Links rechts erwartet");
+  assert.match(f, /align-items:\s*baseline/, "gemeinsame Grundlinie erwartet");
+  assert.match(f, /margin-top:\s*auto/, "Footer muss auf kurzen Seiten nach unten rutschen");
+  assert.match(f, /max-width:\s*1240px/, "gleicher Inhaltsrahmen wie .page-body erwartet");
+
+  // Mobiler Umbruch
+  const mobile = premiumRules.match(/@media \(max-width: 620px\) \{([\s\S]*?)\n\}/);
+  assert.ok(mobile, "mobiler Footer-Breakpoint fehlt");
+  assert.match(mobile[1], /\.app-footer\s*\{[^}]*flex-direction:\s*column/,
+    "mobil müssen Copyright und Links untereinander stehen");
+  assert.match(mobile[1], /\.app-footer-legal a\s*\{[^}]*padding/,
+    "mobil brauchen die Links eine größere Trefferfläche");
+
+  // Zustände nicht rein farblich codiert + Fokus sichtbar
+  assert.match(premiumRules, /\.app-footer-legal a:hover\s*\{[^}]*text-decoration:\s*underline/,
+    "Hover darf nicht allein farblich codiert sein");
+  assert.match(premiumRules, /\.app-footer-legal a:focus-visible\s*\{[^}]*outline:/,
+    "Fokuszustand der Footer-Links fehlt");
+});
+
+test("26 — die Hauptfläche trägt den Footer, ohne schmale Viewports zu sprengen", () => {
+  const main = block(premium, ".main-content");
+  assert.match(main, /flex-direction:\s*column/, "Flex-Spalte nötig, damit margin-top:auto greift");
+  assert.match(main, /min-height:\s*100dvh/, "Hauptfläche muss mindestens den Viewport füllen");
+  // Ohne dieses Reset drückt die Min-Content-Breite der Tabelle die Seite auf
+  // schmalen Viewports auseinander (Flex: min-width:auto + auto-Margins).
+  assert.match(premiumRules, /\.main-content > \*\s*\{[^}]*min-width:\s*0/,
+    "min-width-Reset für Flex-Kinder fehlt");
+  assert.match(premiumRules, /\.main-content > \*\s*\{[^}]*width:\s*100%/,
+    "width:100% fehlt — Kinder mit auto-Margins verlieren sonst die Vollbreite");
+});
+
+/* ── Feinschliff-Werte ──────────────────────────────────────────────────── */
+
+test("27 — Hintergrundrampe läuft harmonisch durch", () => {
+  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
+  const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
+  const [top, mid, bot] = ["ce-app-bg-top", "ce-app-bg-mid", "ce-app-bg-bottom"].map((t) => hex(tok(t)));
+
+  // Monoton fallende Helligkeit — kein Auf und Ab im Verlauf.
+  const bright = (c) => (c[0] + c[1] + c[2]) / 3;
+  assert.ok(bright(top) > bright(mid) && bright(mid) > bright(bot),
+    "die Rampe muss von oben nach unten gleichmäßig dunkler werden");
+
+  // Warm→kühl ist gewollt, darf aber keinen Themenwechsel erzeugen. Maßgeblich
+  // ist nicht der Einzelschritt, sondern wie weit die Rampe insgesamt über die
+  // Warm-kalt-Achse (Rot minus Blau) schwingt — und wie kühl sie unten endet.
+  const warmth = (c) => c[0] - c[2];
+  assert.ok(warmth(top) > 0, "die Rampe muss oben warm beginnen");
+  assert.ok(warmth(bot) <= 0 && warmth(bot) >= -4,
+    `Endton zu kühl (Rot−Blau = ${warmth(bot)}) — „nur leicht kühler" erwartet, sonst liest sich der untere Seitenbereich als zweite Zone`);
+  const swing = warmth(top) - warmth(bot);
+  assert.ok(swing <= 10, `Gesamtschwung über die Warm-kalt-Achse zu groß (${swing})`);
+});
+
+test("28 — Lichtfläche ist wahrnehmbar, aber zurückgenommen", () => {
+  const sheen = variables.match(/--ce-app-sheen:\s*rgba\(([^)]+)\)/);
+  assert.ok(sheen, "--ce-app-sheen fehlt");
+  const alpha = parseFloat(sheen[1].split(",")[3]);
+  // Unter ~0.04 war sie unsichtbar, über ~0.06 zu präsent.
+  assert.ok(alpha >= 0.04 && alpha <= 0.06,
+    `Lichtflächen-Alpha ${alpha} liegt außerhalb des Zielbands 0.04–0.06`);
+  assert.match(premiumRules, /radial-gradient\([^)]*var\(--ce-app-sheen\)/,
+    "Lichtfläche muss über das Token laufen");
+});
+
+test("29 — aktiver Menüpunkt: neutrale Außenborder, blaue Identität links", () => {
+  const border = variables.match(/--ce-sidebar-active-border:\s*(rgba?\([^)]+\))/)?.[1];
+  assert.ok(border, "--ce-sidebar-active-border fehlt");
+  const [r, g, b] = border.match(/[\d.]+/g).map(Number);
+  // Neutral heißt: kein Farbstich in der Border — sonst wirkt der Eintrag
+  // zusammen mit blauer Fläche und blauer Kante vollständig blau gerahmt.
+  assert.ok(Math.max(r, g, b) - Math.min(r, g, b) <= 6,
+    `Außenborder ist farbig (${border}) — neutral erwartet`);
+  // Die blaue Identität bleibt der linke Inset-Streifen.
+  assert.match(variables, /--ce-sidebar-active-shadow:\s*inset\s+3px\s+0\s+0/,
+    "linke Akzentkante fehlt");
+});
+
+test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
+  // Jeder gelesene Sekundärtext mindestens 11 px (vorher 10 / 10,5 px) und mit
+  // gesetzter Zeilenhöhe. Ausgenommen sind bewusst NUR die Gruppenlabels
+  // (.nsec): Versalien mit weiter Laufweite, die als Struktur gelesen werden —
+  // auf 11 px gebracht würden sie mit den Navigationseinträgen konkurrieren.
+  for (const sel of [".pp-brand-sub", ".pp-identity-email", ".scard-k", ".scard-s", ".pp-foot"]) {
+    const b = block(premium, sel);
+    assert.ok(b, `${sel} fehlt`);
+    const size = parseFloat(b.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
+    assert.ok(size >= 11, `${sel}: ${size}px ist zu klein (mindestens 11px erwartet)`);
+    assert.match(b, /line-height:/, `${sel}: Zeilenhöhe fehlt`);
+  }
+
+  // Sonst gibt es im Sidebar-Block keinen weiteren Text unter 11 px.
+  const start = premiumRules.indexOf(".sidebar.pp-side");
+  const end = premiumRules.indexOf(".ce-mail-dialog");
+  const sidebar = premiumRules.slice(start, end);
+  const small = [...sidebar.matchAll(/([.\w-]+)\s*\{[^}]*?font-size:\s*([\d.]+)px/g)]
+    .filter((m) => parseFloat(m[2]) < 11)
+    .map((m) => `${m[1]} (${m[2]}px)`);
+  assert.deepEqual(small, [".nsec (9.5px)"],
+    `unerwartete Kleinschrift in der Sidebar: ${small.join(", ")}`);
+  // Das Gruppenlabel bleibt nur wegen seiner Laufweite lesbar — die muss bleiben.
+  const nsec = block(premium, ".nsec");
+  assert.match(nsec, /letter-spacing:\s*0\.1[5-9]em/, ".nsec braucht weite Laufweite");
+  assert.match(nsec, /text-transform:\s*uppercase/, ".nsec ist ein Versalien-Strukturlabel");
 });

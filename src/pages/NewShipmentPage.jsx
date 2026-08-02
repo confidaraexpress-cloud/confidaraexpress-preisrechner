@@ -4,8 +4,8 @@ import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
-import { publicCarrierChipLabel, resolvePublicCarrier } from "../utils/carrierMap";
-import { resumePublicCarrierOptions, missingFieldsHint } from "../utils/newShipmentResume.mjs";
+import { publicCarrierChipLabel } from "../utils/carrierMap";
+import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
@@ -113,10 +113,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Vorrang vor dem Profil-Prefill (das Profil wird dann NICHT als Sender-Seed
   // verwendet). Einmalig beim Mount berechnet — Prop-Änderungen (das Zurücksetzen
   // im Elternteil über onResumeApplied) lösen KEINE erneute Anwendung aus.
+  // resumeInitialState übernimmt alle echten Sendungs-/Berechnungsdaten des
+  // Snapshots unverändert und neutralisiert ausschließlich den ergebnis-
+  // abhängigen Versanddienst-Filter (siehe newShipmentResume.mjs): dessen
+  // Auswahlliste entsteht erst aus einer Preisberechnungsantwort, die nach dem
+  // Fortsetzen nicht mehr existiert. Ungeprüft übernommen würde er die ERSTE
+  // Berechnung einschränken und könnte fälschlich null Angebote liefern.
   const resumeInitRef = useRef(undefined);
   if (resumeInitRef.current === undefined) {
     resumeInitRef.current = isValidResumeDraft(resumeDraft)
-      ? buildResumeInitialState(resumeDraft.formData, { today: todayISO() })
+      ? resumeInitialState(buildResumeInitialState(resumeDraft.formData, { today: todayISO() }))
       : null;
   }
   const resumeInit = resumeInitRef.current;
@@ -130,16 +136,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
   const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(resumeInit ? resumeInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
-  // Die Auswahlliste stammt normalerweise ausschließlich aus der publicCarriers-
-  // Antwort einer Preisberechnung und ist vorher leer. Bei einem fortgesetzten
-  // Entwurf ist der gespeicherte Filter aber bereits aktiv — er wird deshalb ab
-  // dem ERSTEN Render aus den wiederhergestellten IDs dargestellt. Ohne das wäre
-  // er unsichtbar wirksam: die erste Berechnung würde eingeschränkt, ohne dass
-  // der Nutzer den Grund sieht oder den Filter gezielt abwählen kann. Die erste
-  // echte Antwort ersetzt die Liste unverändert (gleiches { id, name }-Format).
-  const [publicCarriers, setPublicCarriers]         = useState(
-    () => (resumeInit ? resumePublicCarrierOptions(resumeInit.selectedPublicCarrierIds, (id) => resolvePublicCarrier(id).name) : [])
-  );
+  // Die Auswahlliste stammt ausschließlich aus der publicCarriers-Antwort einer
+  // Preisberechnung — vor der ersten Berechnung gibt es nichts auszuwählen. Das
+  // gilt auch für einen fortgesetzten Entwurf: dessen gespeicherter Filter wird
+  // in resumeInitialState neutralisiert, sodass Auswahlliste und aktive Auswahl
+  // hier immer denselben (leeren) Ausgangszustand haben.
+  const [publicCarriers, setPublicCarriers]         = useState([]);
   const carrierRef = useRef(null);
 
   // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
@@ -214,9 +216,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Revision), die beim nächsten „Preise berechnen" EINMALIG mitgesendet werden.
   const [resumeSource, setResumeSource]       = useState(() => resumeSourceFromDraft(resumeDraft)); // { id, revision } | null
   const [resumeNotice, setResumeNotice]       = useState("");     // nicht blockierender Hinweis
-  // Erklärt, dass ein aus dem Entwurf wiederhergestellter Versanddienst-Filter für
-  // diese Route nicht verfügbar war und entfernt wurde (statt stiller Korrektur).
-  const [carrierFilterNotice, setCarrierFilterNotice] = useState("");
   const [resumeConflict, setResumeConflict]   = useState(false);  // 409 Konflikt → „Aktuelle Version laden"
   const [reloadingResume, setReloadingResume] = useState(false);
 
@@ -585,7 +584,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
     setError(""); setLoading(true); setSelected(null);
-    setResumeNotice(""); setResumeConflict(false); setCarrierFilterNotice("");
+    setResumeNotice(""); setResumeConflict(false);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
     // neutralisieren (nach consumed:true existiert der Draft ohnehin nicht mehr).
     setSaveStatus("idle");
@@ -597,9 +596,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     // Fortsetzen: Übergangs-Metadaten dieses Aufrufs festhalten (einmalig; werden
     // NUR bei einem fortgesetzten Formularentwurf mitgesendet).
     const sourceAtSend = resumeSource;
-    // Gesendete Carrier-Auswahl festhalten: nur so lässt sich nach der Antwort
-    // benennen, welcher gespeicherte Dienstleister nicht verfügbar war.
-    const carrierIdsAtSend = selectedPublicCarrierIds;
     if (calcAbort.current) calcAbort.current.abort();
     const ac = new AbortController();
     calcAbort.current = ac;
@@ -676,20 +672,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       setPublicCarriers(newPublicCarriers);
       if (newPublicCarriers.length > 0) {
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
-        // Ein aus dem Entwurf wiederhergestellter Filter kann Dienstleister nennen,
-        // die für diese Route/dieses Datum gar nicht anbieten. Das Entfernen ist
-        // richtig (sonst bliebe eine unerfüllbare Auswahl dauerhaft aktiv), darf
-        // aber NICHT stillschweigend passieren: sonst liefert derselbe Klick beim
-        // zweiten Mal plötzlich Angebote, ohne dass der Nutzer etwas geändert hat.
-        const removed = carrierIdsAtSend.filter(id => !validIds.has(id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
-        if (removed.length > 0) {
-          const namen = removed.map(id => resolvePublicCarrier(id).name).join(", ");
-          setCarrierFilterNotice(
-            `${namen} bietet für diese Route und dieses Versanddatum keine Tarife an. ` +
-            `Der gespeicherte Versanddienst-Filter wurde deshalb entfernt — vergleichen Sie erneut, um alle Angebote zu sehen.`
-          );
-        }
       }
       setTariffs(d.tariffs || []);
       setShipmentId(d.shipmentId);
@@ -852,12 +835,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           {resumeNotice && (
             <div className="dft-resume-info" role="status">
               <Icon n="info" s={16} c="currentColor" /><span>{resumeNotice}</span>
-            </div>
-          )}
-
-          {carrierFilterNotice && (
-            <div className="dft-resume-info" role="status">
-              <Icon n="info" s={16} c="currentColor" /><span>{carrierFilterNotice}</span>
             </div>
           )}
 

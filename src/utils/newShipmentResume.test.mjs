@@ -4,10 +4,12 @@
 // zweiten oder dritten Klick. Zwei resume-spezifische Ursachen, beide unsichtbar:
 //   (1) Ein unvollständiger Entwurf deaktivierte den CTA, ohne dass irgendetwas
 //       erklärte, welche Angabe fehlt — Klicks blieben wirkungslos.
-//   (2) Der aus dem Entwurf wiederhergestellte Versanddienst-Filter war aktiv,
-//       aber vor der ersten Berechnung nicht darstellbar. Die erste Anfrage wurde
-//       dadurch unsichtbar eingeschränkt; die Antwort entfernte den unerfüllbaren
-//       Filter stillschweigend, weshalb erst der ZWEITE Klick Angebote lieferte.
+//   (2) Der aus dem Entwurf wiederhergestellte Versanddienst-Filter ist ein
+//       ERGEBNISABHÄNGIGER Filter: seine Auswahlliste entsteht erst aus einer
+//       Preisberechnungsantwort. Nach dem Fortsetzen existiert diese Antwort nicht
+//       mehr, die gespeicherten IDs sind nicht überprüfbar und koennen fuer die
+//       aktuelle Route entfallen sein. Ungeprueft uebernommen schraenkte er die
+//       ERSTE Anfrage ein und lieferte faelschlich null Angebote.
 //
 // Geprüft werden die reinen Helfer sowie — nach dem Muster der übrigen Tests in
 // diesem Repo — die Verdrahtung in NewShipmentPage.jsx per Quelltext-Assertion.
@@ -18,7 +20,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { resumePublicCarrierOptions, missingFieldsHint } from "./newShipmentResume.mjs";
+import { resumeInitialState, missingFieldsHint, RESULT_DERIVED_RESUME_FIELDS } from "./newShipmentResume.mjs";
 import { getShipmentFormSnapshot } from "./shipmentFormSnapshot.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
 
@@ -73,34 +75,58 @@ test("Datenübernahme: Länder, PLZ, Orte, Maße und Paketanzahl kommen korrekt 
   assert.equal(zurueck.form.height, "20");
 });
 
-// ── (2) Wiederhergestellter Versanddienst-Filter ist ab dem ersten Render sichtbar ──
+// ── (2) Echte Daten vs. ergebnisabhängiger Filter ───────────────────────────
 
-test("resumePublicCarrierOptions: gespeicherte IDs werden zu darstellbaren Optionen", () => {
-  const nameOf = (id) => ({ ups: "UPS", dhl: "DHL Express" }[id] || "Versandpartner");
-  assert.deepEqual(resumePublicCarrierOptions(["ups", "dhl"], nameOf),
-    [{ id: "ups", name: "UPS" }, { id: "dhl", name: "DHL Express" }]);
+const RESUME_INIT = Object.freeze({
+  form: Object.freeze({ ...VOLLSTAENDIGER_FORM }),
+  shippingDate: "2030-06-01",
+  serviceFilter: "pickup",
+  shippingModeFilter: "express",
+  selectedPublicCarrierIds: ["ups", "dhl"],
 });
 
-test("resumePublicCarrierOptions: Format entspricht der publicCarriers-Antwort", () => {
-  const opts = resumePublicCarrierOptions(["ups"], () => "UPS");
-  assert.equal(Object.keys(opts[0]).sort().join(","), "id,name");
+test("resumeInitialState: alle echten Sendungs- und Berechnungsdaten bleiben unveraendert", () => {
+  const init = resumeInitialState(RESUME_INIT);
+  // Adressen, Laender, PLZ, Orte, Kontaktdaten, Paketanzahl, Masse, Gewicht
+  assert.deepEqual(init.form, RESUME_INIT.form);
+  // Versanddatum sowie Abhol-/Abgabe- und Express-/Standardauswahl
+  assert.equal(init.shippingDate, "2030-06-01");
+  assert.equal(init.serviceFilter, "pickup");
+  assert.equal(init.shippingModeFilter, "express");
 });
 
-test("resumePublicCarrierOptions: Duplikate, Leerwerte und Nicht-Strings fallen weg", () => {
-  assert.deepEqual(resumePublicCarrierOptions(["ups", "ups", "", "  ", null, 42, undefined], () => "UPS"),
-    [{ id: "ups", name: "UPS" }]);
-  assert.deepEqual(resumePublicCarrierOptions(["  ups  "], () => "UPS"), [{ id: "ups", name: "UPS" }]);
+test("resumeInitialState: nur der ergebnisabhaengige Carrier-Filter wird neutralisiert", () => {
+  const init = resumeInitialState(RESUME_INIT);
+  assert.deepEqual(init.selectedPublicCarrierIds, [],
+    "ein nicht ueberpruefbarer Ergebnisfilter darf die erste Preisberechnung nicht einschraenken");
+  assert.deepEqual(RESULT_DERIVED_RESUME_FIELDS, ["selectedPublicCarrierIds"]);
 });
 
-test("resumePublicCarrierOptions: ohne auflösbaren Namen bleibt die ID stehen (nie leer)", () => {
-  assert.deepEqual(resumePublicCarrierOptions(["neuer-carrier"], () => ""), [{ id: "neuer-carrier", name: "neuer-carrier" }]);
-  assert.deepEqual(resumePublicCarrierOptions(["neuer-carrier"], undefined), [{ id: "neuer-carrier", name: "neuer-carrier" }]);
+test("resumeInitialState: der uebergebene Snapshot wird nicht mutiert", () => {
+  const eingabe = { ...RESUME_INIT, selectedPublicCarrierIds: ["ups"] };
+  resumeInitialState(eingabe);
+  assert.deepEqual(eingabe.selectedPublicCarrierIds, ["ups"],
+    "der gespeicherte Entwurf bleibt unberuehrt (Abwaertskompatibilitaet)");
 });
 
-test("resumePublicCarrierOptions: neue Sendung ohne Filter → leere Liste", () => {
-  for (const eingabe of [[], null, undefined, "ups", {}]) {
-    assert.deepEqual(resumePublicCarrierOptions(eingabe, () => "UPS"), []);
+test("resumeInitialState: neutralisiert auch ohne gespeicherten Filter zuverlaessig", () => {
+  for (const wert of [[], undefined, null, "ups"]) {
+    const init = resumeInitialState({ ...RESUME_INIT, selectedPublicCarrierIds: wert });
+    assert.deepEqual(init.selectedPublicCarrierIds, []);
   }
+});
+
+test("resumeInitialState: ohne Entwurf null (neue Sendung nutzt den bisherigen Seed)", () => {
+  for (const wert of [null, undefined, 42, "x"]) assert.equal(resumeInitialState(wert), null);
+});
+
+test("Abgrenzung: der Snapshot fuehrt genau einen ergebnisabhaengigen Wert", () => {
+  // Alle uebrigen Snapshot-Felder sind eigenstaendige Eingaben und jederzeit
+  // darstellbar; nur publicCarrierIds haengt an einer frueheren Angebotsantwort.
+  const snapshot = getShipmentFormSnapshot(VOLLSTAENDIGE_OPTIONEN);
+  assert.deepEqual(Object.keys(snapshot).sort(), ["packages", "recipient", "sender", "shippingOptions"]);
+  assert.deepEqual(Object.keys(snapshot.shippingOptions).sort(),
+    ["publicCarrierIds", "serviceFilter", "shippingDate", "shippingModeFilter"]);
 });
 
 // ── (1) Unvollständiger Entwurf erklärt sich sofort ─────────────────────────
@@ -147,11 +173,14 @@ test("missingFieldsHint: falsy Fehlerwerte zählen nicht als Fehler", () => {
 
 // ── Verdrahtung in NewShipmentPage.jsx ──────────────────────────────────────
 
-test("Verdrahtung: Filterliste wird beim Fortsetzen aus den gespeicherten IDs vorbelegt", () => {
-  assert.ok(PAGE_CODE.includes("resumePublicCarrierOptions(resumeInit.selectedPublicCarrierIds"),
-    "publicCarriers wird beim Fortsetzen nicht aus dem Entwurf vorbelegt");
-  assert.ok(/const \[publicCarriers, setPublicCarriers\][^;]*resumeInit \?/.test(PAGE_CODE),
-    "Vorbelegung muss an resumeInit gebunden sein (neue Sendung bleibt leer)");
+test("Verdrahtung: der Resume-Initialzustand laeuft durch resumeInitialState", () => {
+  assert.ok(PAGE_CODE.includes("resumeInitialState(buildResumeInitialState(resumeDraft.formData"),
+    "der Entwurf wird nicht ueber resumeInitialState neutralisiert");
+  // Auswahlliste und aktive Auswahl starten beide leer — kein Sonderzustand mehr.
+  assert.ok(PAGE_CODE.includes("const [publicCarriers, setPublicCarriers]         = useState([]);"),
+    "publicCarriers darf nicht mehr aus dem Entwurf vorbelegt werden");
+  assert.ok(!PAGE_CODE.includes("resumePublicCarrierOptions"), "verwaiste Sichtbarkeits-Vorbelegung");
+  assert.ok(!PAGE_CODE.includes("carrierFilterNotice"), "verwaister Hinweis auf entfernte Filter");
 });
 
 test("Verdrahtung: Validierungsfehler eines fortgesetzten Entwurfs stehen ab dem Mount fest", () => {
@@ -164,6 +193,7 @@ test("Verdrahtung: neue Sendung startet unverändert ohne Filter und ohne Fehler
   // exakt der bisherige Startzustand ([] bzw. {}).
   assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.selectedPublicCarrierIds : []"));
   assert.ok(PAGE_CODE.includes("resumeInit ? getErrors(resumeInit.form) : {}"));
+  // Ohne Entwurf ist resumeInit null → beide Ternaere liefern exakt den bisherigen Startwert.
   assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : ({"),
     "Formular-Seed der neuen Sendung verändert");
 });
@@ -215,15 +245,13 @@ test("Verdrahtung: Payload-Felder der Preisberechnung sind unverändert", () => 
   }
 });
 
-test("Verdrahtung: entfernter Entwurfsfilter wird erklärt statt still korrigiert", () => {
-  assert.ok(PAGE_CODE.includes("const carrierIdsAtSend = selectedPublicCarrierIds;"),
-    "gesendete Auswahl wird nicht festgehalten");
-  assert.ok(PAGE_CODE.includes("const removed = carrierIdsAtSend.filter(id => !validIds.has(id));"),
-    "entfernte IDs werden nicht ermittelt");
-  assert.ok(PAGE_CODE.includes("setCarrierFilterNotice("), "kein Hinweis bei entferntem Filter");
-  assert.ok(PAGE_CODE.includes("setCarrierFilterNotice(\"\")"), "Hinweis wird bei neuer Berechnung nicht zurückgesetzt");
-  // Die Bereinigung selbst bleibt erhalten (eine unerfüllbare Auswahl darf nicht bestehen bleiben).
+test("Verdrahtung: die Auswahl bleibt nach der Antwort normal filterbar", () => {
+  // Die Antwort speist die Auswahlliste; eine danach bewusst getroffene Auswahl
+  // wird nur noch gegen die real verfuegbaren IDs abgeglichen.
+  assert.ok(PAGE_CODE.includes("setPublicCarriers(newPublicCarriers);"));
   assert.ok(PAGE_CODE.includes("setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));"));
+  assert.ok(PAGE_CODE.includes("const handleTogglePublicCarrier = (id) => {"),
+    "bewusste Carrier-Auswahl des Nutzers muss weiterhin moeglich sein");
 });
 
 test("Verdrahtung: Entwurfshydrierung bleibt synchron und einmalig", () => {

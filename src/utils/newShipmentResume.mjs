@@ -1,49 +1,55 @@
 // Reine Hilfslogik für das Fortsetzen eines Formularentwurfs in „Neue Sendung".
 //
-// Hintergrund: Ein fortgesetzter Entwurf bringt zwei Zustände mit, die das Formular
-// beim ersten Render sonst NICHT darstellen kann — und die dadurch unsichtbar
-// wirksam werden:
+// ── Zwei Arten von Werten im Entwurfs-Snapshot ──────────────────────────────
+// Der Snapshot (shipmentFormSnapshot.mjs) trägt zwei fachlich verschiedene Dinge:
 //
-//  1. Der gespeicherte Versanddienst-Filter (publicCarrierIds). Die Auswahlliste
-//     wird sonst ausschließlich aus der publicCarriers-Antwort einer vorherigen
-//     Preisberechnung gespeist und ist vor der ersten Berechnung leer. Der
-//     wiederhergestellte Filter wäre also aktiv, aber weder sichtbar noch gezielt
-//     abwählbar — und würde die erste Berechnung stillschweigend einschränken.
-//  2. Fehlende Pflichtangaben eines abgebrochenen Entwurfs. Der CTA ist dann
-//     deaktiviert, ohne dass irgendetwas erklärt, WELCHE Angabe fehlt.
+//  A) ECHTE SENDUNGS- UND BERECHNUNGSDATEN — Eingaben des Nutzers, jederzeit
+//     eigenständig gültig und darstellbar:
+//       sender.*, recipient.* (inkl. Land, PLZ, Ort, Kontaktdaten),
+//       packages.* (Anzahl, Gewicht, Länge, Breite, Höhe),
+//       shippingOptions.shippingDate,
+//       shippingOptions.serviceFilter      (Abholung/Abgabe — feste Auswahlliste),
+//       shippingOptions.shippingModeFilter (Standard/Express/Economy — feste Liste).
+//     Diese werden beim Fortsetzen VOLLSTÄNDIG und unverändert wiederhergestellt.
 //
-// Beides ist hier als reine Funktion abgebildet (keine React-Abhängigkeit,
-// kein DOM, kein Netz) und dadurch direkt testbar.
+//  B) ERGEBNISABHÄNGIGER UI-FILTER — nur relativ zu einer konkreten
+//     Angebotsantwort sinnvoll:
+//       shippingOptions.publicCarrierIds.
+//     Die Auswahlliste dafür (publicCarriers) entsteht AUSSCHLIESSLICH aus der
+//     publicCarriers-Antwort einer Preisberechnung; vor der ersten Berechnung
+//     gibt es nichts auszuwählen. Nach dem Fortsetzen existiert die frühere
+//     Antwort nicht mehr: die gespeicherten IDs sind nicht überprüfbar und
+//     können für die aktuelle Route/das aktuelle Datum längst entfallen sein.
+//     Ein solcher Filter darf die ERSTE Preisberechnung nicht einschränken —
+//     sonst liefert sie fälschlich null Angebote.
+//
+// Die reinen Client-Anzeigefilter (max_price, latestDeliveryDate) sind aus
+// demselben Grund von jeher NICHT Teil des Snapshots. publicCarrierIds war die
+// verbliebene Ausnahme; hier wird sie beim Fortsetzen konsistent behandelt.
 
-// ── 1. Sichtbare Versanddienst-Optionen für einen fortgesetzten Entwurf ──────
-// Erzeugt aus den gespeicherten IDs die Chip-Liste, die die Auswahlliste vor der
-// ersten Preisberechnung anzeigt. Format identisch zur publicCarriers-Antwort
-// des Backends ({ id, name }), damit die erste echte Antwort sie nahtlos ersetzt.
-// `resolveName(id)` liefert den kanonischen Anzeigenamen (im Aufrufer aus
-// carrierMap); fehlt er, bleibt die ID als Notbehelf stehen — nie leer.
-// Duplikate und Nicht-Strings werden verworfen; Reihenfolge bleibt erhalten.
-export function resumePublicCarrierOptions(selectedIds, resolveName) {
-  if (!Array.isArray(selectedIds)) return [];
-  const seen = new Set();
-  const out = [];
-  for (const raw of selectedIds) {
-    if (typeof raw !== "string") continue;
-    const id = raw.trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    let name = "";
-    if (typeof resolveName === "function") {
-      const n = resolveName(id);
-      if (typeof n === "string") name = n.trim();
-    }
-    out.push({ id, name: name || id });
-  }
-  return out;
+// Snapshot-/Resume-Felder, die ergebnisabhängig sind und deshalb beim
+// Fortsetzen neutralisiert werden. Bewusst als Liste geführt, damit ein
+// künftiges weiteres Feld hier sichtbar ergänzt wird statt still mitzulaufen.
+export const RESULT_DERIVED_RESUME_FIELDS = Object.freeze(["selectedPublicCarrierIds"]);
+
+// Initialzustand eines fortgesetzten Entwurfs.
+//
+// Übernimmt jede echte Sendungs-/Berechnungsangabe unverändert (Gruppe A) und
+// neutralisiert ausschließlich den ergebnisabhängigen Carrier-Filter (Gruppe B).
+// Der gespeicherte Snapshot bleibt davon unberührt — hier wird nur entschieden,
+// womit das Formular startet und was folglich in die erste Preisberechnung geht.
+//
+// `null`/ungültige Eingabe → `null` (Aufrufer behandelt das als „kein Entwurf").
+export function resumeInitialState(resumeInit) {
+  if (!resumeInit || typeof resumeInit !== "object") return null;
+  return { ...resumeInit, selectedPublicCarrierIds: [] };
 }
 
-// ── 2. Verständlicher Hinweis auf fehlende/ungültige Pflichtangaben ─────────
-// Feldschlüssel → menschenlesbare Bezeichnung. Bewusst dieselbe Sprache wie die
-// Formularbeschriftungen, damit der Hinweis direkt zum markierten Feld führt.
+// ── Verständlicher Hinweis auf fehlende/ungültige Pflichtangaben ────────────
+// Ein abgebrochener Entwurf sieht ausgefüllt aus, deaktiviert den CTA aber über
+// die Formularvalidierung. Ohne benannten Grund wirkt der Button schlicht tot.
+// Feldschlüssel → menschenlesbare Bezeichnung, in der Sprache der Formular-
+// beschriftungen, damit der Hinweis direkt zum markierten Feld führt.
 const FIELD_LABELS = Object.assign(Object.create(null), {
   s_company:  "Absender – Unternehmen",
   s_fullName: "Absender – Vor- und Nachname",

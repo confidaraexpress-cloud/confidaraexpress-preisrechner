@@ -312,9 +312,17 @@
    Bordersprache), aber die andere Höhenlage: die Firmenkarte liegt erhöht
    (heller Verlauf + Schatten), die Supportkarte vertieft (dunklere
    Eigenfläche). Kein Glassmorphism, kein backdrop-filter. Anders als die
-   Firmenkarte IST sie interaktiv (mailto-Link) und trägt Hover + Fokus. */
+   Firmenkarte IST sie interaktiv und trägt Hover + Fokus.
+
+   Auszeichnung: <button>, nicht <a>. Die Karte öffnet den Supportdialog und
+   navigiert nirgendwohin — ein Link wäre hier fachlich falsch. Die
+   Button-Defaults des Browsers (Eigenfläche, Rahmen, zentrierter Text,
+   Systemschrift) werden deshalb explizit zurückgesetzt; Geometrie, Abstände
+   und Materialsprache bleiben exakt wie zuvor. */
 .pp-scard {
-  display: block; text-decoration: none; margin-top: 14px;
+  display: block; width: 100%; text-align: left; text-decoration: none;
+  font: inherit; color: inherit; cursor: pointer;
+  margin-top: 14px;
   padding: 12px 12px; border-radius: 11px;
   background: var(--ce-sidebar-well);
   border: 1px solid var(--ce-sidebar-border);
@@ -335,6 +343,16 @@
 }
 .scard-k { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); }
 .scard-t { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--fs); font-size: 13px; font-weight: 600; color: var(--ce-sidebar-text-strong); }
+/* Aufforderung zur Handlung — Blau bleibt Akzent (Text + Pfeil), NIE Fläche.
+   Der Pfeil rückt beim Hover der gesamten Karte leicht nach: kurze
+   Zustandsreaktion (140 ms), kein Ambiente. */
+.scard-a {
+  display: flex; align-items: center; gap: 5px; margin-top: 9px;
+  font-family: var(--fs); font-size: 12px; font-weight: 600;
+  color: var(--ce-sidebar-active-icon);
+}
+.scard-a svg { transition: transform 140ms ease; }
+.pp-scard:hover .scard-a svg { transform: translateX(2px); }
 .scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 9px; }
 
 /* Fußzeile — gedämpft, aber bewusst nicht blasser als die Gruppenüberschriften. */
@@ -344,12 +362,14 @@
 .pp-foot { padding: 13px 12px 0; font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-section); }
 
 /* Ein sichtbarer Fokuszustand für ALLE interaktiven Sidebarbereiche
-   (Navigation, Abmelden, Schließen-Button, Supportlink). Ersetzt kein
+   (Navigation, Abmelden, Schließen-Button, Supportkarte). Ersetzt kein
    outline ersatzlos — der Ring ist der Ersatz. */
 .pp-side :focus-visible { outline: 2px solid var(--ce-sidebar-active-icon); outline-offset: 2px; box-shadow: none; }
 .pp-side .nitem.on:focus-visible { box-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent); }
 
-/* Statuspunkt „Live Support" — flacher Punkt, keine Pulsanimation, kein Glow. */
+/* Statuspunkt (Übersicht: „Live-Übersicht") — flacher Punkt, keine Pulsanimation,
+   kein Glow. Die Sidebar-Supportkarte nutzt ihn seit dem Umbau auf das
+   Anfrageformular NICHT mehr; die Klasse bleibt für die Übersichtsseite. */
 .ce-live {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
   background: var(--success);

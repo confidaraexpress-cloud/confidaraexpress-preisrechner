@@ -28,3 +28,6 @@
    eigener Theme-Scope mehr: Hintergrund und Sidebar kommen für alle
    eingeloggten Seiten aus dashboard-premium.css. */
 @import './overview.css';
+/* Supportanfrage — isoliert (sup- Prefix für den Kundendialog, adm-sup- für den
+   Adminbereich); reine Zusatzklassen, keine Kollision mit bestehenden Scopes. */
+@import './support.css';

@@ -1,0 +1,138 @@
+/* ===========================================================================
+   SUPPORTANFRAGE — isoliert, sup- Prefix
+   Zwei Bereiche in EINER Datei, weil beide denselben Vorgang zeigen:
+     1. Kundendialog (Light-Theme, Legacy-Tokens) — Aufbau 1:1 wie der
+        Stornierungsdialog (cancellation.css, stn- Prefix), damit der eingeloggte
+        Bereich EINE Dialogsprache behält.
+     2. Adminbereich (adm-Theme, --adm-Tokens) — reine Zusatzklassen für die
+        Detailansicht und die Supportspalte im Kundenprofil.
+   Keine --auth-/--ce-Tokens, keine globalen Button-/Badge-Regeln überschrieben.
+   Die Supportkarte der Sidebar selbst liegt weiterhin in dashboard-premium.css
+   (sie gehört zum App-Chrome und nutzt ausschließlich --ce-sidebar-*-Tokens).
+   =========================================================================== */
+
+/* ── Kundendialog ─────────────────────────────────────────────────────────── */
+.sup-dialog-overlay {
+  position: fixed; inset: 0; z-index: 420;
+  background: rgba(11,31,77,0.4);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.sup-dialog-card {
+  width: 100%; max-width: 520px; background: #fff; border-radius: var(--radius-lg);
+  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
+  max-height: calc(100dvh - 40px); overflow-y: auto;
+}
+.sup-dialog-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--blue-light); color: var(--blue2);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+/* Erfolgsansicht: dieselbe Geometrie, nur die Farbrolle wechselt. */
+.sup-dialog-icon-ok { background: var(--success-bg); color: var(--success); }
+
+.sup-dialog-title { font-size: 17px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.sup-dialog-desc { font-size: 13.5px; color: var(--gray600); line-height: 1.55; margin-bottom: 16px; }
+
+.sup-dialog-success {
+  padding: 12px 14px; margin-bottom: 14px; border-radius: var(--radius);
+  background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28);
+  color: #065f46; font-size: 13.5px; line-height: 1.55; font-weight: 600;
+}
+
+.sup-dialog-label {
+  display: block; font-size: 12.5px; font-weight: 700; color: var(--gray600);
+  margin-bottom: 6px; margin-top: 14px;
+}
+.sup-dialog-label:first-of-type { margin-top: 0; }
+
+/* Select, Input und Textarea teilen bewusst dieselbe Feldsprache. */
+.sup-dialog-select,
+.sup-dialog-input,
+.sup-dialog-textarea {
+  width: 100%; padding: 10px 12px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+  line-height: 1.5; color: var(--navy); background: #fff;
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sup-dialog-textarea { resize: vertical; min-height: 120px; }
+.sup-dialog-select:focus,
+.sup-dialog-input:focus,
+.sup-dialog-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.sup-dialog-select:disabled,
+.sup-dialog-input:disabled,
+.sup-dialog-textarea:disabled { background: var(--gray50); color: var(--gray500); }
+.sup-dialog-textarea[aria-invalid="true"] { border-color: var(--danger); }
+
+.sup-dialog-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.sup-dialog-counter { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.sup-dialog-min { font-size: 11.5px; color: var(--danger); font-weight: 600; }
+
+.sup-dialog-alert {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; margin-top: 12px; border-radius: var(--radius);
+  background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.28); color: var(--danger);
+  font-size: 13px; line-height: 1.45;
+}
+.sup-dialog-alert svg { flex-shrink: 0; }
+
+/* Primär oben, volle Breite, gut tappbar auf Mobil (Stack) — wie stn-. */
+.sup-dialog-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+.sup-dialog-actions .btn { width: 100%; }
+
+/* ── Adminbereich: Liste ──────────────────────────────────────────────────── */
+/* Betreffvorschau: nutzergenerierter Freitext, in der Liste auf zwei Zeilen begrenzt.
+   Den vollen Text zeigt ausschließlich die Detailseite. */
+.adm-sup-subject {
+  margin: 0; font-size: 13px; line-height: 1.45; color: var(--adm-text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.adm-sup-ticket { font-weight: 700; font-variant-numeric: tabular-nums; }
+.adm-sup-sub { display: block; font-size: 12px; color: var(--adm-text-muted); margin-top: 2px; }
+.adm-sup-cust { display: flex; flex-direction: column; }
+.adm-sup-cust-name { font-weight: 600; }
+.adm-sup-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Mobil: Kartenansicht statt Tabelle (identische Umschaltung wie die übrigen Adminlisten). */
+.adm-sup-cards { display: none; list-style: none; margin: 0; padding: 0; }
+@media (max-width: 900px) {
+  .adm-sup-table { display: none; }
+  .adm-sup-cards { display: grid; gap: 12px; }
+}
+
+/* ── Adminbereich: Detail ─────────────────────────────────────────────────── */
+/* Der Nachrichtentext ist Kundeneingabe: als REINER Text gerendert (React escaped ihn,
+   kein dangerouslySetInnerHTML). white-space: pre-wrap erhält die Absätze des Kunden,
+   ohne sie zu interpretieren; overflow-wrap bricht überlange Zeichenketten, statt das
+   Layout zu sprengen. */
+.adm-sup-message {
+  margin: 0; padding: 14px 16px; border-radius: var(--adm-radius, 10px);
+  background: var(--adm-surface-soft, #f7f9fc);
+  border: 1px solid var(--adm-border);
+  font-size: 13.5px; line-height: 1.6; color: var(--adm-text);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.adm-sup-note {
+  width: 100%; padding: 10px 12px; font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+  line-height: 1.5; color: var(--adm-text); background: #fff;
+  border: 1px solid var(--adm-border); border-radius: var(--adm-radius-sm, 8px);
+  outline: none; resize: vertical; min-height: 96px;
+}
+.adm-sup-note:focus { border-color: var(--adm-accent); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.adm-sup-note:disabled { background: var(--adm-surface-soft, #f7f9fc); color: var(--adm-text-muted); }
+
+.adm-sup-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.adm-sup-hint { font-size: 12.5px; color: var(--adm-text-muted); line-height: 1.5; }
+
+/* Supportspalte im Kundenprofil — kompakte Liste, kein zweiter Tabellenrahmen. */
+.adm-sup-mini { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adm-sup-mini-item {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 12px; border: 1px solid var(--adm-border); border-radius: var(--adm-radius-sm, 8px);
+}
+.adm-sup-mini-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.adm-sup-mini-subject {
+  font-size: 13px; color: var(--adm-text); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}

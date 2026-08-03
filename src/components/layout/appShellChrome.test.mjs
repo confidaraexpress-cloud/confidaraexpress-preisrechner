@@ -29,6 +29,8 @@ const layoutJsx    = read("./DashboardLayout.jsx");
 const adminJsx     = read("./AdminLayout.jsx");
 const navbarJsx    = read("./NavbarLayout.jsx");
 const dashboardJsx = read("../../pages/DashboardPage.jsx");
+// Wortlaut der Supportkarte — er steht zentral im Logikmodul, nicht in der Sidebar.
+const supportRequestMjs = read("../../utils/supportRequest.mjs");
 
 // Deklarationsblock eines Selektors extrahieren (erste Übereinstimmung).
 function block(css, selector) {
@@ -233,17 +235,61 @@ test("10 — Firmen- und Supportkarte: eine Materialsprache, zwei Höhenlagen", 
   }
 });
 
-test("11 — Supportkarte behält Inhalt und statischen Statuspunkt", () => {
-  assert.match(sidebarJsx, /Ihr persönlicher Kontakt/, "Support-Kicker fehlt");
-  assert.match(sidebarJsx, /Live Support/, "Support-Titel fehlt");
-  assert.match(sidebarJsx, /className="ce-live"/, "Statuspunkt fehlt");
-  assert.match(sidebarJsx, /scard-ic/, "Headset-Iconfläche fehlt");
-  assert.match(sidebarJsx, /mailto:support@confidaraexpress\.de/, "Support-Kontakt geändert");
+test("11 — Supportkarte führt in den Anfragedialog, nicht ins Postfach", () => {
+  // Wortlaut zentral in utils/supportRequest.mjs — die Karte darf ihn nicht
+  // dupliziert als Literal tragen (sonst laufen Karte und Mailtexte auseinander).
+  assert.match(supportRequestMjs, /kicker:\s*"Ihr persönlicher Kontakt"/, "Support-Kicker fehlt");
+  assert.match(supportRequestMjs, /title:\s*"Wir helfen Ihnen weiter"/, "Support-Titel fehlt");
+  assert.match(supportRequestMjs, /action:\s*"Support kontaktieren"/, "Support-Aktion fehlt");
+  assert.match(supportRequestMjs, /hint:\s*"Ihre Anfrage wird zeitnah beantwortet\."/, "Support-Hinweis fehlt");
+  assert.match(sidebarJsx, /SUPPORT_CARD\.kicker/, "Karte nutzt den zentralen Kicker nicht");
+  assert.match(sidebarJsx, /SUPPORT_CARD\.title/, "Karte nutzt den zentralen Titel nicht");
+  assert.match(sidebarJsx, /SUPPORT_CARD\.action/, "Karte nutzt die zentrale Aktion nicht");
+  assert.match(sidebarJsx, /SUPPORT_CARD\.hint/, "Karte nutzt den zentralen Hinweis nicht");
+  assert.match(sidebarJsx, /scard-ic/, "Iconfläche fehlt");
 
+  // Die GESAMTE Karte ist die Aktion: ein <button>, kein Link und kein mailto.
+  assert.match(sidebarJsx, /<button type="button" className="pp-scard" onClick=\{\(\) => setSupportOpen\(true\)\}>/,
+    "Supportkarte ist keine Schaltfläche mehr");
+  assert.doesNotMatch(sidebarJsx, /mailto:/, "Supportkarte darf nicht mehr ins Postfach führen");
+  assert.match(sidebarJsx, /SupportRequestDialog/, "Supportdialog wird nicht gerendert");
+
+  // Bewusst entfernt: „Live Support", grüner Statuspunkt, Headset-Icon. Gegen den
+  // kommentarfreien Quelltext geprüft — der Kommentar der Karte benennt genau diese
+  // entfernten Elemente und darf den Test nicht auslösen.
+  const sidebarCode = stripJsxComments(sidebarJsx);
+  assert.doesNotMatch(sidebarCode, /Live Support/, "„Live Support“ wurde nicht entfernt");
+  assert.doesNotMatch(sidebarCode, /ce-live/, "Statuspunkt wurde nicht entfernt");
+  assert.doesNotMatch(sidebarCode, /n="headset"/, "Headset-Icon wurde nicht entfernt");
+  // Nur das bestehende Icon-System — kein lucide-react.
+  assert.doesNotMatch(sidebarCode, /lucide-react/, "lucide-react ist im Projekt nicht zulässig");
+  assert.match(sidebarCode, /n="mail"/, "das vorhandene mail-Icon fehlt");
+
+  // Der Statuspunkt selbst bleibt als Klasse erhalten (Übersichtsseite) und
+  // darf weiterhin nicht pulsieren oder glühen.
   const live = block(premium, ".ce-live");
   assert.ok(live, ".ce-live fehlt");
   assert.doesNotMatch(live, /animation/, "Statuspunkt darf nicht pulsieren");
   assert.match(live, /box-shadow:\s*none/, "Statuspunkt darf keinen Glow tragen");
+});
+
+test("11b — Supportkarte behält Geometrie und Materialsprache trotz Button-Auszeichnung", () => {
+  const scard = block(premium, ".pp-scard");
+  assert.ok(scard, ".pp-scard fehlt");
+  // Unveränderte Geometrie/Abstände (Test 10 prüft Border und Rundung).
+  assert.match(scard, /padding:\s*12px 12px/, "Innenabstand der Supportkarte geändert");
+  assert.match(scard, /margin-top:\s*14px/, "Außenabstand der Supportkarte geändert");
+  // Button-Defaults müssen zurückgesetzt sein, sonst bricht die Karte optisch.
+  assert.match(scard, /width:\s*100%/, "Button füllt die Spalte nicht");
+  assert.match(scard, /text-align:\s*left/, "Button zentriert den Text");
+  assert.match(scard, /font:\s*inherit/, "Button erbt die Schrift nicht");
+  assert.match(scard, /cursor:\s*pointer/, "Zeigerform fehlt");
+
+  // Die Aktionszeile nutzt Blau als AKZENT (Text/Icon), nie als Fläche.
+  const action = block(premium, ".scard-a");
+  assert.ok(action, ".scard-a fehlt");
+  assert.match(action, /color:\s*var\(--ce-sidebar-active-icon\)/, "Aktionszeile nutzt den Akzenttoken nicht");
+  assert.doesNotMatch(action, /background/, "die Aktionszeile darf keine Fläche tragen");
 });
 
 test("12 — Sidebar-Fußzeile bleibt vorhanden", () => {

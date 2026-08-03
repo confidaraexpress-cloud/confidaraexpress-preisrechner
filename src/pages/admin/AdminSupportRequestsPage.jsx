@@ -3,12 +3,17 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminSupportRequests } from "../../api/adminApi";
 import {
+  SUPPORT_CATEGORY_FILTER_OPTIONS,
   SUPPORT_LIST_ERROR,
+  SUPPORT_SEARCH_MAX,
+  SUPPORT_SORT_DEFAULT,
   SUPPORT_STATUS_FILTER_OPTIONS,
+  normalizeSupportQuery,
   normalizeSupportRequest,
   supportCustomerCell,
   supportEmptyState,
   supportLabel,
+  supportMailProblems,
   supportStatusMeta,
   toSupportApiFilters,
 } from "../../utils/adminSupportView.mjs";
@@ -104,6 +109,19 @@ function StatusBadge({ row }) {
   return <span className={`badge ${cls}`}>{row.statusLabel || fallback}</span>;
 }
 
+// Zustellprobleme kompakt und getrennt benennen — NIE der technische Fehlertext.
+// Den vollen Hinweis zeigt ausschließlich die Detailseite.
+function MailProblemCell({ row }) {
+  const problems = supportMailProblems(row);
+  if (problems.length === 0) return null;
+  return (
+    <span className="adm-sup-mailwarn" title={`Zustellproblem: ${problems.join(", ")}`}>
+      <Icon n="info" s={13} c="currentColor" />
+      {problems.length === 2 ? "Beide E-Mails" : problems[0]}
+    </span>
+  );
+}
+
 // Kundenfilter aus der URL (?userId=…) — so verlinkt das Kundenprofil auf „alle
 // Anfragen dieses Kunden", ohne einen zweiten Endpunkt oder eine zweite Seite. Nur
 // eine positive Ganzzahl wird übernommen; alles andere wird ignoriert (der Server
@@ -119,8 +137,15 @@ export default function AdminSupportRequestsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = parseUserIdParam(searchParams.get("userId"));
 
+  // Entwurfszustand (im Formular) vs. angewendeter Zustand (an die API gesendet).
+  // Die Suche wird bewusst NICHT bei jedem Tastendruck gesendet, sondern erst beim
+  // Absenden des Filterformulars — dasselbe Muster wie die übrigen Adminlisten.
   const [draftStatus, setDraftStatus] = useState("");
   const [appliedStatus, setAppliedStatus] = useState("");
+  const [draftCategory, setDraftCategory] = useState("");
+  const [appliedCategory, setAppliedCategory] = useState("");
+  const [draftQuery, setDraftQuery] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(null);
@@ -134,7 +159,11 @@ export default function AdminSupportRequestsPage() {
     try {
       const r = await listAdminSupportRequests({
         page, pageSize: PAGE_SIZE,
-        ...toSupportApiFilters(appliedStatus),
+        // sort ist bei der zentralen Liste immer 'queue' (Arbeitsreihenfolge des Supports).
+        // 'recent' nutzt ausschließlich der Abschnitt im Kundenprofil.
+        ...toSupportApiFilters({
+          status: appliedStatus, category: appliedCategory, q: appliedQuery, sort: SUPPORT_SORT_DEFAULT,
+        }),
         ...(userId != null ? { userId } : {}),
       });
       if (!r.ok) {
@@ -156,7 +185,7 @@ export default function AdminSupportRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [appliedStatus, page, userId]);
+  }, [appliedStatus, appliedCategory, appliedQuery, page, userId]);
 
   useEffect(() => { load(); }, [load]);
   // Wechselt der Kundenfilter (Navigation aus einem anderen Kundenprofil), beginnt
@@ -169,16 +198,34 @@ export default function AdminSupportRequestsPage() {
     setSearchParams(next, { replace: true });
   };
 
-  const applyFilter = () => { setPage(1); setAppliedStatus(draftStatus); };
-  const resetFilter = () => { setPage(1); setDraftStatus(""); setAppliedStatus(""); };
+  // Alle drei Filter werden GEMEINSAM angewendet — sonst zeigt die Liste einen Zustand,
+  // der nicht dem entspricht, was im Formular steht.
+  const applyFilter = () => {
+    setPage(1);
+    setAppliedStatus(draftStatus);
+    setAppliedCategory(draftCategory);
+    setAppliedQuery(normalizeSupportQuery(draftQuery));
+  };
+  const resetFilter = () => {
+    setPage(1);
+    setDraftStatus(""); setAppliedStatus("");
+    setDraftCategory(""); setAppliedCategory("");
+    setDraftQuery(""); setAppliedQuery("");
+  };
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };
 
   const showPagination = !error && (rows.length > 0 || page > 1);
-  const emptyState = supportEmptyState({ count: rows.length, status: appliedStatus });
+  // Der Leerzustand unterscheidet „nichts vorhanden" von „Filter liefert nichts" —
+  // maßgeblich ist, ob IRGENDEIN Filter aktiv ist, nicht nur der Status.
   const activeLabel = appliedStatus
     ? (SUPPORT_STATUS_FILTER_OPTIONS.find((o) => o.value === appliedStatus) || {}).label
     : "";
+  const activeCategoryLabel = appliedCategory
+    ? (SUPPORT_CATEGORY_FILTER_OPTIONS.find((o) => o.value === appliedCategory) || {}).label
+    : "";
+  const hasAnyFilter = !!(appliedStatus || appliedCategory || appliedQuery);
+  const emptyState = supportEmptyState({ count: rows.length, status: hasAnyFilter ? "aktiv" : "" });
 
   return (
     <div className="adm-page">
@@ -208,6 +255,28 @@ export default function AdminSupportRequestsPage() {
             ))}
           </select>
         </div>
+        <div className="adm-filter-field">
+          <label htmlFor="f-sup-category">Kategorie</label>
+          <select
+            id="f-sup-category" value={draftCategory} disabled={loading}
+            onChange={(e) => setDraftCategory(e.target.value)}
+          >
+            {SUPPORT_CATEGORY_FILTER_OPTIONS.map((o) => (
+              <option key={o.value || "all"} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        {/* Die Suche wird erst beim Absenden gesendet (type="search" im Formular löst
+            Enter ohnehin aus) — kein Request je Tastendruck. */}
+        <div className="adm-filter-field">
+          <label htmlFor="f-sup-q">Ticketnummer oder Betreff</label>
+          <input
+            id="f-sup-q" type="search" value={draftQuery} disabled={loading}
+            maxLength={SUPPORT_SEARCH_MAX}
+            placeholder="z. B. CE-SUP26-00001"
+            onChange={(e) => setDraftQuery(e.target.value)}
+          />
+        </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
             <Icon n="filter" s={14} /> Anwenden
@@ -218,9 +287,11 @@ export default function AdminSupportRequestsPage() {
         </div>
       </form>
 
-      {(activeLabel || userId != null) && (
+      {(hasAnyFilter || userId != null) && (
         <div className="adm-filter-chips">
           {activeLabel && <span className="adm-chip">Status: {activeLabel}</span>}
+          {activeCategoryLabel && <span className="adm-chip">Kategorie: {activeCategoryLabel}</span>}
+          {appliedQuery && <span className="adm-chip">Suche: {appliedQuery}</span>}
           {userId != null && (
             <>
               <span className="adm-chip">Kunde: #{userId}</span>
@@ -229,9 +300,9 @@ export default function AdminSupportRequestsPage() {
               </button>
             </>
           )}
-          {activeLabel && (
+          {hasAnyFilter && (
             <button type="button" className="btn btn-outline btn-sm" onClick={resetFilter} disabled={loading}>
-              Statusfilter zurücksetzen
+              Filter zurücksetzen
             </button>
           )}
         </div>
@@ -259,7 +330,7 @@ export default function AdminSupportRequestsPage() {
             <div className="empty-icon">📭</div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
-            {appliedStatus && (
+            {hasAnyFilter && (
               <button type="button" className="btn btn-outline btn-sm" onClick={resetFilter}>Filter zurücksetzen</button>
             )}
           </div>
@@ -288,7 +359,7 @@ export default function AdminSupportRequestsPage() {
                     <td><TicketCell row={row} /></td>
                     <td><CustomerCell row={row} /></td>
                     <td><SubjectCell row={row} /></td>
-                    <td><StatusBadge row={row} /></td>
+                    <td><StatusBadge row={row} /><MailProblemCell row={row} /></td>
                     <td className="adm-sup-time">{fmtDateTime(row.createdAt)}</td>
                     <td>
                       {row.id != null
@@ -307,7 +378,7 @@ export default function AdminSupportRequestsPage() {
               <li className="adm-scard" key={row.id != null ? `c-${row.id}` : `c-row-${i}`}>
                 <div className="adm-scard-head">
                   <TicketCell row={row} />
-                  <StatusBadge row={row} />
+                  <div><StatusBadge row={row} /><MailProblemCell row={row} /></div>
                 </div>
                 <dl className="adm-scard-kv">
                   <div><dt>Kunde</dt><dd><CustomerCell row={row} /></dd></div>

@@ -351,7 +351,7 @@ export function updateAdminCancellationRequest(id, payload = {}) {
 // ── Supportanfragen (Admin) ─────────────────────────────────────────────────
 // Erlaubte Query-Parameter laut Backendvertrag. `userId` filtert auf einen Kunden
 // (Supportspalte im Kundenprofil) — dieselbe Liste, kein zweiter Endpunkt.
-const SUPPORT_PARAMS = ["status", "userId", "limit", "offset"];
+const SUPPORT_PARAMS = ["status", "category", "userId", "q", "sort", "limit", "offset"];
 
 // GET /admin/support-requests — read-only paginierte Liste. UI arbeitet mit
 // page/pageSize; hier zentral auf den Backendvertrag limit/offset gemappt.

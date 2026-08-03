@@ -9,6 +9,9 @@ import {
   supportStatusMeta,
 } from "../../utils/adminSupportView.mjs";
 
+// Der Abschnitt zeigt die JÜNGSTEN Anfragen dieses Kunden.
+const SUPPORT_SORT_RECENT = "recent";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sektion „Supportanfragen" in der Admin-Kundendetailansicht.
 //
@@ -67,7 +70,11 @@ export function CustomerSupportSection({ userId }) {
     setLoading(true);
     setError("");
     try {
-      const r = await listAdminSupportRequests({ userId, page: 1, pageSize: MAX_ROWS });
+      // sort=recent: neueste zuerst. Der Abschnitt zeigt die letzte Aktivität dieses Kunden,
+      // nicht die Arbeitsreihenfolge des Supports (das ist 'queue' in der zentralen Liste).
+      const r = await listAdminSupportRequests({
+        userId, page: 1, pageSize: MAX_ROWS, sort: SUPPORT_SORT_RECENT,
+      });
       if (!mountedRef.current) return;
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.

@@ -4,6 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { getAdminSupportRequest, updateAdminSupportRequest } from "../../api/adminApi";
 import {
   SUPPORT_CONFLICT_RELOAD,
+  SUPPORT_MAIL_LABELS,
   SUPPORT_CONFLICT_TEXT,
   SUPPORT_DETAIL_ERROR,
   isSupportNoOpResponse,
@@ -42,11 +43,14 @@ function selectRequest(d) {
   if (!d || typeof d !== "object" || Array.isArray(d)) return null;
   for (const k of ["supportRequest", "support_request", "request", "data"]) {
     if (d[k] && typeof d[k] === "object" && !Array.isArray(d[k])) {
-      return { ...d[k], customer: d.customer ?? d[k].customer, notification: d.notification ?? d[k].notification };
+      return { ...d[k], customer: d.customer ?? d[k].customer, notifications: d.notifications ?? d[k].notifications };
     }
   }
   return d;
 }
+
+const shipmentPath = (id) => `/admin/shipments/${encodeURIComponent(id)}`;
+const invoicePath  = (id) => `/admin/invoices/${encodeURIComponent(id)}`;
 
 const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 
@@ -54,6 +58,24 @@ function fmtDateTime(v) {
   if (!v) return "—";
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString("de-DE");
+}
+
+// Eine Zeile je Mailvorgang. Der technische Providerhinweis wird nur angezeigt, wenn er
+// vorhanden ist — als reiner Text (React escaped ihn), nie als Markup.
+function MailRow({ label, state }) {
+  const s = state || { sentAt: null, failed: false, error: null };
+  const text = s.failed
+    ? "Zustellung fehlgeschlagen"
+    : s.sentAt
+      ? `Versendet am ${fmtDateTime(s.sentAt)}`
+      : "Noch nicht bestätigt";
+  return (
+    <div className={`adm-sup-mailrow${s.failed ? " adm-sup-mailrow-fail" : ""}`}>
+      <span className="adm-sup-mailrow-name">{label}</span>
+      <span className="adm-sup-mailrow-state">{text}</span>
+      {s.failed && s.error && <span className="adm-sup-mailrow-err">{s.error}</span>}
+    </div>
+  );
 }
 
 function KV({ items }) {
@@ -308,7 +330,17 @@ export default function AdminSupportRequestDetailPage() {
           ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
           ["Zuletzt bearbeitet von", handlerName],
           ["Bearbeitet am", fmtDateTime(req.handledAt)],
+          // Nur bei tatsächlich geschlossenen Anfragen — sonst keine leere Zeile erzwingen.
+          ...(req.closedAt ? [["Geschlossen am", fmtDateTime(req.closedAt)]] : []),
           ["Revision", missingRevision ? "—" : String(revision)],
+          // Optionale, vorbereitete Zuordnungen: erscheinen ausschließlich, wenn gesetzt.
+          // Es wird keine Platzhalterkarte und keine leere Zeile erzeugt.
+          ...(req.shipmentId != null
+            ? [["Sendung", <Link to={shipmentPath(req.shipmentId)}>Sendung #{req.shipmentId}</Link>]]
+            : []),
+          ...(req.invoiceId != null
+            ? [["Rechnung", <Link to={invoicePath(req.invoiceId)}>Rechnung #{req.invoiceId}</Link>]]
+            : []),
         ]} />
       </div>
 
@@ -333,15 +365,20 @@ export default function AdminSupportRequestDetailPage() {
         <h2 className="adm-card-title">Anfrage</h2>
         <KV items={[["Betreff", dash(req.subject)]]} />
         <p className="adm-sup-message">{req.message || "—"}</p>
-        {req.notification && (
-          <p className="adm-sup-hint">
-            {req.notification.failed
-              ? "Hinweis: Die interne Benachrichtigungs-E-Mail zu dieser Anfrage konnte nicht zugestellt werden."
-              : req.notification.sentAt
-                ? `Interne Benachrichtigung versendet am ${fmtDateTime(req.notification.sentAt)}.`
-                : "Die interne Benachrichtigung wurde noch nicht bestätigt."}
-          </p>
-        )}
+      </div>
+
+      {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
+          Ein Fehler der einen Mail sagt nichts über die andere aus. */}
+      <div className="adm-card">
+        <h2 className="adm-card-title">E-Mail-Zustellung</h2>
+        <div className="adm-sup-mailrows">
+          <MailRow label={SUPPORT_MAIL_LABELS.internal} state={req.notifications?.internal} />
+          <MailRow label={SUPPORT_MAIL_LABELS.customerConfirmation} state={req.notifications?.customerConfirmation} />
+        </div>
+        <p className="adm-sup-hint">
+          Beide E-Mails werden unabhängig voneinander versendet. Ein Fehler bei einer der beiden
+          hat die Anfrage nicht verhindert — das Ticket besteht in jedem Fall.
+        </p>
       </div>
 
       {/* 4) Bearbeitung */}

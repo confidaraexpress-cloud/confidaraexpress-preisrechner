@@ -29,6 +29,12 @@ export const SUPPORT_CATEGORY_ORDER = Object.freeze(Object.keys(CATEGORY_LABELS)
 export const supportCategoryLabel = (value) =>
   Object.prototype.hasOwnProperty.call(CATEGORY_LABELS, value) ? CATEGORY_LABELS[value] : (value ?? "—");
 
+// Auswahl für den Kategoriefilter der Liste. „Alle" sendet keinen Filter.
+export const SUPPORT_CATEGORY_FILTER_OPTIONS = Object.freeze([
+  { value: "", label: "Alle" },
+  ...SUPPORT_CATEGORY_ORDER.map((c) => ({ value: c, label: supportCategoryLabel(c) })),
+]);
+
 // ── Status ───────────────────────────────────────────────────────────────────
 // [badge-Klasse, Label]. Unbekannt → grau + Rohwert (harmlos). Einheitliche Begriffe in
 // der gesamten Adminoberfläche (Liste, Filter, Detail).
@@ -144,10 +150,63 @@ export function normalizeSupportRequest(raw) {
     createdAt: firstOf(raw, "createdAt", "created_at"),
     updatedAt: firstOf(raw, "updatedAt", "updated_at"),
     handledAt: firstOf(raw, "handledAt", "handled_at"),
+    closedAt: firstOf(raw, "closedAt", "closed_at") ?? null,
+    // Optionale, vorbereitete Referenzen — nur vorhanden, wenn der Server sie liefert.
+    // Sie werden NIE aus anderen Feldern abgeleitet und im Kundenformular nie gesetzt.
+    shipmentId: raw.shipmentId ?? raw.shipment_id ?? null,
+    invoiceId: raw.invoiceId ?? raw.invoice_id ?? null,
     handledBy: raw.handledBy ?? raw.handled_by ?? null,
     customer: normalizeCustomer(raw.customer ?? raw.user, raw),
-    notification: raw.notification ?? null,
+    // Die Liste liefert zwei Booleans, das Detail zwei vollständige Objekte. Beide werden auf
+    // dieselbe kanonische Form gebracht, damit die Komponenten nur EINE Struktur kennen.
+    // Getrennt zu halten ist der Kern: ein Fehler der einen Mail sagt nichts über die andere.
+    notifications: normalizeNotifications(raw),
   };
+}
+
+// Kanonisch: { internal: {sentAt, failed, error}, customerConfirmation: {...} }.
+// Aus der Liste kommen nur die beiden hasXError-Booleans (kein Zeitstempel, kein Fehlertext) —
+// daraus wird `failed` gesetzt und der Rest bleibt null. Das ist Absicht: die Liste soll
+// bewusst keine Fehlertexte transportieren.
+function normalizeMailState(obj, failedFlag) {
+  const o = obj && typeof obj === "object" ? obj : null;
+  if (o) {
+    const error = o.error ?? null;
+    return {
+      sentAt: o.sentAt ?? o.sent_at ?? null,
+      failed: typeof o.failed === "boolean" ? o.failed : error != null,
+      error,
+    };
+  }
+  return { sentAt: null, failed: failedFlag === true, error: null };
+}
+
+function normalizeNotifications(raw) {
+  const n = raw.notifications && typeof raw.notifications === "object" ? raw.notifications : {};
+  return {
+    internal: normalizeMailState(
+      n.internal ?? n.internalNotification,
+      raw.hasInternalNotificationError ?? raw.has_internal_notification_error
+    ),
+    customerConfirmation: normalizeMailState(
+      n.customerConfirmation ?? n.customer_confirmation,
+      raw.hasCustomerConfirmationError ?? raw.has_customer_confirmation_error
+    ),
+  };
+}
+
+// Kompakte Kurzfassung für die Liste: welche der beiden Mails hat ein Problem?
+// Gibt eine leere Liste zurück, wenn alles in Ordnung ist (dann zeigt die Tabelle nichts).
+export const SUPPORT_MAIL_LABELS = Object.freeze({
+  internal: "Interne Benachrichtigung",
+  customerConfirmation: "Kundenbestätigung",
+});
+export function supportMailProblems(row) {
+  const n = (row && row.notifications) || {};
+  const out = [];
+  if (n.internal && n.internal.failed) out.push(SUPPORT_MAIL_LABELS.internal);
+  if (n.customerConfirmation && n.customerConfirmation.failed) out.push(SUPPORT_MAIL_LABELS.customerConfirmation);
+  return out;
 }
 
 // Erkennt eine No-op-Antwort des Backends (keine tatsächliche Änderung).
@@ -189,9 +248,9 @@ export function buildSupportPatchBody(payload = {}) {
 }
 
 // ── Optimistic-Locking-Konflikt ──────────────────────────────────────────────
-export const SUPPORT_CONFLICT_CODE = "SUPPORT_REQUEST_CONFLICT";
+export const SUPPORT_CONFLICT_CODE = "SUPPORT_REVISION_CONFLICT";
 export const SUPPORT_CONFLICT_TEXT =
-  "Diese Supportanfrage wurde zwischenzeitlich von einem anderen Administrator geändert.";
+  "Die Supportanfrage wurde zwischenzeitlich geändert. Bitte laden Sie die aktuellen Daten neu.";
 export const SUPPORT_CONFLICT_RELOAD = "Aktuellen Stand laden";
 
 // Liest den mitgelieferten aktuellen Stand defensiv — ein älteres Backend ohne `current`
@@ -256,9 +315,32 @@ export function supportEmptyState({ count = 0, status = "" } = {}) {
   };
 }
 
-// Nur belegte Query-Parameter (Backendvertrag: status, userId, limit, offset). „Alle"
-// sendet keinen Status — ein ungültiger Wert würde serverseitig 400 auslösen.
-export function toSupportApiFilters(status) {
+// ── Filter → Query-Parameter ─────────────────────────────────────────────────
+// Nur BELEGTE Werte werden gesendet (Backendvertrag: status, category, userId, q, sort).
+// „Alle" sendet den jeweiligen Filter gar nicht — ein ungültiger Wert würde serverseitig
+// 400 auslösen, deshalb wird hier fail-closed gegen die Allowlists geprüft.
+export const SUPPORT_SORT_DEFAULT = "queue";
+export const SUPPORT_SORT_VALUES = Object.freeze(["queue", "recent"]);
+export const SUPPORT_SEARCH_MAX = 100;
+
+// Suchbegriff: getrimmt, Whitespace verdichtet, auf die Serverlänge begrenzt. Die
+// abschließende Prüfung bleibt serverseitig; das hier verhindert nur unnötige Requests
+// und einen Begriff, den das Backend ohnehin abschneiden würde.
+export function normalizeSupportQuery(value) {
+  if (typeof value !== "string") return "";
+  return value.replace(/\s+/g, " ").trim().slice(0, SUPPORT_SEARCH_MAX);
+}
+
+export function toSupportApiFilters({ status, category, q, sort } = {}) {
+  const out = {};
   const s = typeof status === "string" ? status.trim() : "";
-  return s && SUPPORT_STATUS_ORDER.includes(s) ? { status: s } : {};
+  if (s && SUPPORT_STATUS_ORDER.includes(s)) out.status = s;
+  const c = typeof category === "string" ? category.trim() : "";
+  if (c && SUPPORT_CATEGORY_ORDER.includes(c)) out.category = c;
+  const term = normalizeSupportQuery(q);
+  if (term) out.q = term;
+  // sort wird IMMER mitgesendet, damit die Liste nicht stillschweigend von einem
+  // geänderten Serverdefault abhängt.
+  out.sort = SUPPORT_SORT_VALUES.includes(sort) ? sort : SUPPORT_SORT_DEFAULT;
+  return out;
 }

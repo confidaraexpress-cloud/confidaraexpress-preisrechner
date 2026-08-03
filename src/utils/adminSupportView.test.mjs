@@ -10,7 +10,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   SETTABLE_SUPPORT_STATUS,
+  SUPPORT_CATEGORY_FILTER_OPTIONS,
+  SUPPORT_CATEGORY_ORDER,
   SUPPORT_CONFLICT_CODE,
+  SUPPORT_CONFLICT_TEXT,
+  SUPPORT_MAIL_LABELS,
+  SUPPORT_SEARCH_MAX,
+  SUPPORT_SORT_DEFAULT,
+  SUPPORT_SORT_VALUES,
   SUPPORT_STATUS_FILTER_OPTIONS,
   SUPPORT_STATUS_ORDER,
   SUPPORT_UNKNOWN_CUSTOMER,
@@ -23,12 +30,14 @@ import {
   isSupportStatusDirty,
   isSupportStatusEditable,
   normalizeSupportNote,
+  normalizeSupportQuery,
   normalizeSupportRequest,
   readSupportConflict,
   supportCategoryLabel,
   supportCustomerCell,
   supportEmptyState,
   supportLabel,
+  supportMailProblems,
   supportStatusMeta,
   supportStatusOptions,
   toSupportApiFilters,
@@ -195,11 +204,41 @@ test("16 — Leerzustand unterscheidet „nichts vorhanden“ von „Filter leer
   assert.match(supportEmptyState({ count: 0, status: "closed" }).title, /Für diesen Status/);
 });
 
-test("17 — nur belegte Filterparameter werden gesendet", () => {
-  assert.deepEqual(toSupportApiFilters("open"), { status: "open" });
-  assert.deepEqual(toSupportApiFilters(""), {});
-  assert.deepEqual(toSupportApiFilters("erfunden"), {}, "ein ungültiger Status löste serverseitig 400 aus");
-  assert.deepEqual(toSupportApiFilters(undefined), {});
+test("17 — nur belegte Filterparameter werden gesendet; sort immer explizit", () => {
+  // sort wird IMMER mitgeschickt, damit die Liste nicht von einem Serverdefault abhängt.
+  assert.deepEqual(toSupportApiFilters({ status: "open" }), { status: "open", sort: "queue" });
+  assert.deepEqual(toSupportApiFilters({}), { sort: "queue" });
+  assert.deepEqual(toSupportApiFilters(undefined), { sort: "queue" });
+  // Ungültige Werte werden fail-closed weggelassen — sie lösten serverseitig 400 aus.
+  assert.deepEqual(toSupportApiFilters({ status: "erfunden" }), { sort: "queue" });
+  assert.deepEqual(toSupportApiFilters({ category: "erfunden" }), { sort: "queue" });
+  assert.deepEqual(toSupportApiFilters({ sort: "erfunden" }), { sort: "queue" }, "unbekannter sort-Wert fällt auf den Default");
+});
+
+test("17b — Kategorie und Suche werden korrekt übergeben", () => {
+  assert.deepEqual(toSupportApiFilters({ category: "invoice" }), { category: "invoice", sort: "queue" });
+  for (const c of SUPPORT_CATEGORY_ORDER) {
+    assert.equal(toSupportApiFilters({ category: c }).category, c, `Kategorie ${c} wurde verworfen`);
+  }
+  assert.deepEqual(toSupportApiFilters({ q: "  CE-SUP26   00001 " }), { q: "CE-SUP26 00001", sort: "queue" });
+  // Leere/reine Whitespace-Suche wird gar nicht gesendet.
+  assert.deepEqual(toSupportApiFilters({ q: "   " }), { sort: "queue" });
+  assert.deepEqual(toSupportApiFilters({ q: 42 }), { sort: "queue" });
+});
+
+test("17c — der Suchbegriff wird auf die Serverlänge begrenzt", () => {
+  assert.equal(normalizeSupportQuery("x".repeat(500)).length, SUPPORT_SEARCH_MAX);
+  assert.equal(toSupportApiFilters({ q: "x".repeat(500) }).q.length, SUPPORT_SEARCH_MAX);
+});
+
+test("17d — sort=recent ist erlaubt (Kundenprofil), alle Filter kombinierbar", () => {
+  assert.deepEqual(toSupportApiFilters({ sort: "recent" }), { sort: "recent" });
+  assert.deepEqual(
+    toSupportApiFilters({ status: "open", category: "invoice", q: "CE", sort: "recent" }),
+    { status: "open", category: "invoice", q: "CE", sort: "recent" }
+  );
+  assert.deepEqual([...SUPPORT_SORT_VALUES], ["queue", "recent"]);
+  assert.equal(SUPPORT_SORT_DEFAULT, "queue");
 });
 
 /* ── Dirty-Erkennung ─────────────────────────────────────────────────────── */
@@ -250,6 +289,24 @@ test("23 — Mass Assignment im PATCH ausgeschlossen", () => {
 });
 
 /* ── Konflikt ────────────────────────────────────────────────────────────── */
+
+test("23b — der Konfliktcode entspricht exakt dem Backendvertrag", () => {
+  assert.equal(SUPPORT_CONFLICT_CODE, "SUPPORT_REVISION_CONFLICT");
+  // Der alte Code darf nirgends mehr auftauchen.
+  for (const [name, src] of [["view", read("./adminSupportView.mjs")], ["Detailseite", detailPage]]) {
+    assert.ok(!src.includes("SUPPORT_REQUEST_CONFLICT"), `${name} nutzt noch den alten Konfliktcode`);
+  }
+  // Ein 409 mit dem ALTEN Code wird nicht mehr als Konflikt erkannt.
+  assert.equal(readSupportConflict(409, { code: "SUPPORT_REQUEST_CONFLICT" }).conflict, false);
+});
+
+test("23c — der Konflikt wird verständlich dargestellt, kein rohes Backendobjekt", () => {
+  assert.match(SUPPORT_CONFLICT_TEXT, /zwischenzeitlich geändert/);
+  assert.match(SUPPORT_CONFLICT_TEXT, /neu/);
+  // Die Detailseite rendert den Text, nicht die Antwort.
+  assert.match(detailPage, /\{SUPPORT_CONFLICT_TEXT\}/, "Konflikttext wird nicht angezeigt");
+  assert.ok(!/JSON\.stringify\(body\)|JSON\.stringify\(d\)/.test(detailPage), "rohes Backendobjekt wird angezeigt");
+});
 
 test("24 — der 409-Konflikt wird erkannt und der Serverstand normalisiert", () => {
   const r = readSupportConflict(409, {
@@ -302,7 +359,8 @@ test("29 — die drei Adminendpunkte laufen über das zentrale apiFetch", () => 
   }
   assert.match(adminApi, /`\/admin\/support-requests\$\{buildQuery\(query, SUPPORT_PARAMS\)\}`/, "Listenpfad weicht ab");
   assert.match(adminApi, /`\/admin\/support-requests\/\$\{encodeURIComponent\(id\)\}`/, "Detailpfad weicht ab");
-  assert.match(adminApi, /const SUPPORT_PARAMS = \["status", "userId", "limit", "offset"\];/, "Parameter-Allowlist weicht ab");
+  assert.match(adminApi, /const SUPPORT_PARAMS = \["status", "category", "userId", "q", "sort", "limit", "offset"\];/,
+    "Parameter-Allowlist weicht ab");
   assert.match(adminApi, /buildSupportPatchBody/, "zentraler PATCH-Body wird nicht genutzt");
 });
 
@@ -319,9 +377,133 @@ test("30 — Navigation und Routen sind vollständig verdrahtet", () => {
 test("31 — das Kundenprofil zeigt die Supportanfragen dieses Kunden", () => {
   assert.match(userDetail, /<CustomerSupportSection userId=\{idOf\(u\)\} \/>/, "Sektion fehlt im Kundenprofil");
   // Kein zweiter Endpunkt: dieselbe Liste mit userId-Filter.
-  assert.match(sectionJsx, /listAdminSupportRequests\(\{ userId, page: 1, pageSize: MAX_ROWS \}\)/, "eigener Endpunkt statt Filter");
+  assert.match(sectionJsx, /listAdminSupportRequests\(\{\s*userId, page: 1, pageSize: MAX_ROWS, sort: SUPPORT_SORT_RECENT,\s*\}\)/,
+    "eigener Endpunkt statt Filter, oder sort=recent fehlt");
+  assert.match(sectionJsx, /const MAX_ROWS = 5;/, "der Abschnitt lädt nicht genau 5 Einträge");
+  assert.match(sectionJsx, /const SUPPORT_SORT_RECENT = "recent";/, "sort=recent nicht gesetzt");
   // Read-only: die Sektion darf nicht schreiben.
   assert.ok(!/updateAdminSupportRequest/.test(sectionJsx), "die Profilsektion schreibt");
+});
+
+/* ── Mailzustände ────────────────────────────────────────────────────────── */
+
+test("31b — Listenzeile: die beiden Booleans werden getrennt normalisiert", () => {
+  const row = normalizeSupportRequest({
+    id: 1, ticketNumber: "CE-SUP26-00001", status: "open",
+    hasInternalNotificationError: true, hasCustomerConfirmationError: false,
+  });
+  assert.equal(row.notifications.internal.failed, true);
+  assert.equal(row.notifications.customerConfirmation.failed, false,
+    "der interne Fehler wurde auf die Kundenbestätigung übertragen");
+  // Die Liste liefert bewusst weder Zeitstempel noch Fehlertext.
+  assert.equal(row.notifications.internal.error, null);
+  assert.equal(row.notifications.internal.sentAt, null);
+});
+
+test("31c — Detailzeile: beide Mailobjekte vollständig und unvermischt", () => {
+  const row = normalizeSupportRequest({
+    id: 1, ticketNumber: "CE-SUP26-00001", status: "open",
+    notifications: {
+      internal: { sentAt: "t3", failed: false, error: null },
+      customerConfirmation: { sentAt: null, failed: true, error: "Error: mailbox full" },
+    },
+  });
+  assert.deepEqual(row.notifications.internal, { sentAt: "t3", failed: false, error: null });
+  assert.deepEqual(row.notifications.customerConfirmation, { sentAt: null, failed: true, error: "Error: mailbox full" });
+});
+
+test("31d — fehlende Mailangaben ergeben einen neutralen, nicht fehlerhaften Zustand", () => {
+  const row = normalizeSupportRequest({ id: 1, status: "open" });
+  assert.deepEqual(row.notifications.internal, { sentAt: null, failed: false, error: null });
+  assert.deepEqual(row.notifications.customerConfirmation, { sentAt: null, failed: false, error: null });
+});
+
+test("31e — supportMailProblems benennt genau die betroffenen Mails", () => {
+  const mk = (i, c) => normalizeSupportRequest({
+    id: 1, status: "open", hasInternalNotificationError: i, hasCustomerConfirmationError: c,
+  });
+  assert.deepEqual(supportMailProblems(mk(false, false)), []);
+  assert.deepEqual(supportMailProblems(mk(true, false)), [SUPPORT_MAIL_LABELS.internal]);
+  assert.deepEqual(supportMailProblems(mk(false, true)), [SUPPORT_MAIL_LABELS.customerConfirmation]);
+  assert.deepEqual(supportMailProblems(mk(true, true)),
+    [SUPPORT_MAIL_LABELS.internal, SUPPORT_MAIL_LABELS.customerConfirmation]);
+  assert.deepEqual(supportMailProblems(null), []);
+  assert.equal(SUPPORT_MAIL_LABELS.internal, "Interne Benachrichtigung");
+  assert.equal(SUPPORT_MAIL_LABELS.customerConfirmation, "Kundenbestätigung");
+});
+
+test("31f — die Liste zeigt Mailprobleme kompakt, das Detail beide Zustände getrennt", () => {
+  // Liste: nur das Label der betroffenen Mail, KEIN technischer Fehlertext.
+  assert.match(listPage, /function MailProblemCell/, "kompakte Mailanzeige in der Liste fehlt");
+  assert.match(listPage, /supportMailProblems\(row\)/, "die Liste wertet die Mailzustände nicht aus");
+  assert.ok(!/\.error/.test(listPage), "die Liste rendert einen Mailfehlertext");
+  // Detail: zwei getrennte Zeilen mit eigenen Labels.
+  assert.match(detailPage, /SUPPORT_MAIL_LABELS\.internal/, "interne Mailzeile fehlt");
+  assert.match(detailPage, /SUPPORT_MAIL_LABELS\.customerConfirmation/, "Kundenbestätigungszeile fehlt");
+  assert.match(detailPage, /function MailRow/, "getrennte Mailzeilen fehlen");
+});
+
+/* ── closed_at und optionale Referenzen ──────────────────────────────────── */
+
+test("31g — closedAt wird normalisiert und nur bei geschlossenen Anfragen angezeigt", () => {
+  assert.equal(normalizeSupportRequest({ id: 1, closedAt: "t9" }).closedAt, "t9");
+  assert.equal(normalizeSupportRequest({ id: 1, closed_at: "t9" }).closedAt, "t9");
+  assert.equal(normalizeSupportRequest({ id: 1 }).closedAt, null);
+  // Die Detailseite erzeugt für eine offene Anfrage KEINE leere Zeile.
+  assert.match(detailPage, /\.\.\.\(req\.closedAt \? \[\["Geschlossen am"/, "closedAt wird bedingungslos gerendert");
+});
+
+test("31h — optionale Referenzen erscheinen nur, wenn gesetzt (keine Platzhalter)", () => {
+  const withRefs = normalizeSupportRequest({ id: 1, shipmentId: 7, invoiceId: 9 });
+  assert.equal(withRefs.shipmentId, 7);
+  assert.equal(withRefs.invoiceId, 9);
+  const withSnake = normalizeSupportRequest({ id: 1, shipment_id: 7, invoice_id: 9 });
+  assert.equal(withSnake.shipmentId, 7);
+  assert.equal(withSnake.invoiceId, 9);
+  const without = normalizeSupportRequest({ id: 1 });
+  assert.equal(without.shipmentId, null);
+  assert.equal(without.invoiceId, null);
+  assert.match(detailPage, /\.\.\.\(req\.shipmentId != null/, "Sendungsreferenz wird bedingungslos gerendert");
+  assert.match(detailPage, /\.\.\.\(req\.invoiceId != null/, "Rechnungsreferenz wird bedingungslos gerendert");
+  // Im Kundenformular gibt es dafür keine Felder.
+  const dialog = read("../components/support/SupportRequestDialog.jsx");
+  assert.ok(!/shipmentId|invoiceId/.test(dialog), "der Kundendialog kennt die Referenzen");
+});
+
+/* ── Filter in der Oberfläche ────────────────────────────────────────────── */
+
+test("31i — die Liste bietet Status-, Kategorie- und Suchfilter mit Default queue", () => {
+  assert.match(listPage, /id="f-sup-status"/, "Statusfilter fehlt");
+  assert.match(listPage, /id="f-sup-category"/, "Kategoriefilter fehlt");
+  assert.match(listPage, /id="f-sup-q"/, "Suchfeld fehlt");
+  assert.match(listPage, /Ticketnummer oder Betreff/, "Beschriftung des Suchfelds weicht ab");
+  assert.match(listPage, /sort: SUPPORT_SORT_DEFAULT/, "Default-Sortierung wird nicht gesendet");
+  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS[0].label, "Alle");
+  assert.equal(SUPPORT_CATEGORY_FILTER_OPTIONS.length, 8);
+});
+
+test("31j — die Suche wird NICHT bei jedem Tastendruck gesendet", () => {
+  // Getrennter Entwurfs-/Anwendungszustand: onChange schreibt nur den Entwurf, gesendet
+  // wird erst beim Absenden des Filterformulars.
+  assert.match(listPage, /const \[draftQuery, setDraftQuery\] = useState\(""\)/, "kein Entwurfszustand");
+  assert.match(listPage, /const \[appliedQuery, setAppliedQuery\] = useState\(""\)/, "kein Anwendungszustand");
+  assert.match(listPage, /onChange=\{\(e\) => setDraftQuery\(e\.target\.value\)\}/, "onChange schreibt nicht den Entwurf");
+  assert.ok(!/onChange=\{\(e\) => setAppliedQuery/.test(listPage), "onChange sendet direkt");
+  // Der Ladeeffekt hängt nur am ANGEWENDETEN Zustand.
+  assert.match(listPage, /\}, \[appliedStatus, appliedCategory, appliedQuery, page, userId\]\);/,
+    "der Ladeeffekt hängt am Entwurfszustand");
+});
+
+test("31k — Filter bleiben bei Pagination erhalten und werden beim Reset entfernt", () => {
+  // Blättern ändert NUR die Seite (page ist eine eigene Abhängigkeit) …
+  assert.match(listPage, /const goNext = \(\) => \{ if \(hasMore\) setPage\(\(p\) => p \+ 1\); \};/,
+    "Blättern setzt Filter zurück");
+  assert.match(listPage, /const goPrev = \(\) => \{ if \(page > 1\) setPage\(\(p\) => p - 1\); \};/,
+    "Blättern setzt Filter zurück");
+  // … und der Reset leert Entwurf UND Anwendung für alle drei Filter.
+  for (const setter of ["setDraftStatus", "setAppliedStatus", "setDraftCategory", "setAppliedCategory", "setDraftQuery", "setAppliedQuery"]) {
+    assert.match(listPage, new RegExp(`resetFilter[\\s\\S]{0,400}${setter}\\(""\\)`), `Reset leert ${setter} nicht`);
+  }
 });
 
 test("32 — die Liste übernimmt den Kundenfilter aus der URL, aber nur valide IDs", () => {

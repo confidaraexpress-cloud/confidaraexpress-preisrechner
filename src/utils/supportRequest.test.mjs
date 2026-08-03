@@ -256,3 +256,49 @@ test("27 — die Karte öffnet den Dialog und führt nicht mehr ins Postfach", (
   assert.ok(!sidebarJsx.includes("mailto:"), "mailto-Einstieg wurde nicht entfernt");
   assert.match(sidebarJsx, /\{supportOpen && <SupportRequestDialog onClose=/, "Dialog wird nicht gerendert");
 });
+
+/* ── Regression: die Nachbesserung am Adminbereich darf den Kundenpfad nicht berühren ── */
+
+test("28 — der Kundendialog sendet weiterhin GENAU einen POST je Absenden", () => {
+  // Ein einziger Aufrufpunkt im Dialog, geschützt durch den In-Flight-Ref.
+  const calls = (dialogJsx.match(/createSupportRequest\(/g) || []).length;
+  assert.equal(calls, 1, `erwartet genau einen Absendeaufruf, gefunden: ${calls}`);
+  assert.match(dialogJsx, /if \(!canSubmit \|\| inFlight\.current\) return;/, "Doppelklickschutz fehlt");
+  // Kein automatischer Retry, kein Timer, kein zweiter Versuch.
+  assert.ok(!/setTimeout|setInterval/.test(dialogJsx), "der Dialog enthält einen Timer");
+  assert.ok(!/retry|erneut senden/i.test(dialogJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "")), "automatischer Retry im Dialog");
+});
+
+test("29 — der Kundenpfad kennt weiterhin nur category/subject/message", () => {
+  // Die Nachbesserung hat shipment_id/invoice_id im Schema ergänzt — im Kundenformular
+  // dürfen sie NICHT auftauchen und nicht sendbar sein.
+  for (const forbidden of ["shipmentId", "invoiceId", "shipment_id", "invoice_id", "adminNote", "status"]) {
+    assert.ok(!new RegExp(`\\b${forbidden}\\b`).test(apiJs), `die API-Schicht kennt ${forbidden}`);
+  }
+  const body = buildSupportRequestBody({
+    ...ok(), shipmentId: 7, invoiceId: 9, shipment_id: 7, invoice_id: 9,
+  });
+  assert.deepEqual(Object.keys(body).sort(), ["category", "message", "subject"]);
+});
+
+test("30 — die Sidebar-Supportkarte ist unverändert", () => {
+  assert.match(sidebarJsx, /<button type="button" className="pp-scard"/, "Karte ist keine Schaltfläche mehr");
+  const code = sidebarJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/Live Support/.test(code), "„Live Support“ ist zurück");
+  assert.ok(!/ce-live/.test(code), "der Statuspunkt ist zurück");
+  assert.ok(!/mailto:/.test(code), "der mailto-Einstieg ist zurück");
+  assert.match(code, /n="mail"/, "das mail-Icon fehlt");
+});
+
+test("31 — die bestehende Stornierungsfunktion ist unberührt", () => {
+  const cancellation = read("./customerCancellation.mjs");
+  const cancellationDialog = read("../components/dashboard/CancellationRequestDialog.jsx");
+  // Der Supportvorgang hat keinen eigenen Weg in die Stornierung gebaut.
+  assert.ok(!/support/i.test(cancellation), "customerCancellation.mjs wurde mit Support vermischt");
+  assert.ok(!/support/i.test(cancellationDialog), "der Stornierungsdialog wurde mit Support vermischt");
+  // Und der Supportdialog greift nicht in die Stornierung. Gegen den kommentarfreien
+  // Quelltext geprüft: der Kommentar nennt bewusst CancellationRequestDialog als Vorbild
+  // der Dialogsprache — das ist Dokumentation, keine Kopplung.
+  const dialogCode = dialogJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/cancellation/i.test(dialogCode), "der Supportdialog referenziert die Stornierung im Code");
+});

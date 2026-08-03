@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
+import { SupportRequestDialog } from "../support/SupportRequestDialog";
+import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import markReverse from "../../assets/brand/mark-reverse.svg";
 
 // Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
@@ -40,6 +42,10 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
+  // Supportdialog: lokaler Zustand DIESER Komponente. Bewusst kein globaler State und
+  // keine eigene Route — die Karte ist auf jeder eingeloggten Seite dieselbe, und der
+  // Dialog darf die bestehende Navigation (page-State) nicht berühren.
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
@@ -125,18 +131,27 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             </button>
           </nav>
 
-          <a className="pp-scard" href="mailto:support@confidaraexpress.de">
+          {/* Supportkarte: die GESAMTE Karte ist die Aktion — ein <button>, kein
+              mailto-Link mehr. Der Kunde schreibt seine Anfrage im Formular; das
+              Postfach ist nicht mehr der Einstieg. Geometrie, Abstände und
+              Materialsprache bleiben unverändert (siehe dashboard-premium.css),
+              nur Auszeichnung und Inhalt ändern sich: kein „Live Support", kein
+              grüner Statuspunkt, kein Headset-Icon — stattdessen das vorhandene
+              mail-Icon. Wortlaut zentral in utils/supportRequest.mjs. */}
+          <button type="button" className="pp-scard" onClick={() => setSupportOpen(true)}>
             <div className="pp-scard-top">
-              <div className="scard-ic"><Icon n="headset" s={17} /></div>
+              <div className="scard-ic"><Icon n="mail" s={17} /></div>
               <div style={{ minWidth: 0 }}>
-                <div className="scard-k">Ihr persönlicher Kontakt</div>
-                {/* Auf allen Seiten dieselbe Formulierung — vorher wich die
-                    Übersicht als einzige Seite ab. */}
-                <div className="scard-t"><span className="ce-live" />Live Support</div>
+                <div className="scard-k">{SUPPORT_CARD.kicker}</div>
+                <div className="scard-t">{SUPPORT_CARD.title}</div>
               </div>
             </div>
-            <div className="scard-s">Ihre Anfrage wird zeitnah beantwortet.</div>
-          </a>
+            <div className="scard-a">
+              <span>{SUPPORT_CARD.action}</span>
+              <Icon n="chevronRight" s={14} />
+            </div>
+            <div className="scard-s">{SUPPORT_CARD.hint}</div>
+          </button>
 
           <div className="pp-foot">
             <div>© 2026 ConfidaraExpress</div>
@@ -144,6 +159,10 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
           </div>
         </div>
       </aside>
+
+      {/* Außerhalb der <aside>: der Dialog ist ein Overlay über der gesamten Seite,
+          kein Sidebarinhalt — sonst würde er auf Mobil im Drawer eingesperrt. */}
+      {supportOpen && <SupportRequestDialog onClose={() => setSupportOpen(false)} />}
     </>
   );
 }

@@ -12,6 +12,7 @@ const PRIMARY_NAV = [
   { to: "/admin/invoices", label: "Rechnungen", icon: "invoice", end: true },
   { to: "/admin/invoices/backfill", label: "Produktion & Backfill", icon: "shieldCheck" },
   { to: "/admin/cancellation-requests", label: "Stornierungsanfragen", icon: "ban" },
+  { to: "/admin/support-requests", label: "Supportanfragen", icon: "mail" },
   { to: "/admin/audit-logs", label: "Audit-Logs", icon: "shieldCheck" },
 ];
 

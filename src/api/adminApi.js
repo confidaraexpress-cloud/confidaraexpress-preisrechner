@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
+import { buildSupportPatchBody } from "../utils/adminSupportView.mjs";
 import { buildPriceMarkupBody } from "../utils/customerMarkup.mjs";
 
 // ── Admin-API (dünner Wrapper um das zentrale apiFetch) ──────────────────────
@@ -341,6 +342,48 @@ export function getAdminCancellationRequest(id) {
 export function updateAdminCancellationRequest(id, payload = {}) {
   const body = buildCancellationPatchBody(payload);
   return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Supportanfragen (Admin) ─────────────────────────────────────────────────
+// Erlaubte Query-Parameter laut Backendvertrag. `userId` filtert auf einen Kunden
+// (Supportspalte im Kundenprofil) — dieselbe Liste, kein zweiter Endpunkt.
+const SUPPORT_PARAMS = ["status", "userId", "limit", "offset"];
+
+// GET /admin/support-requests — read-only paginierte Liste. UI arbeitet mit
+// page/pageSize; hier zentral auf den Backendvertrag limit/offset gemappt.
+// Die Liste liefert bewusst NICHT den vollen Nachrichtentext (nur eine
+// serverseitig gekürzte Betreffvorschau). Kein Cache, kein Logging.
+export function listAdminSupportRequests(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/support-requests${buildQuery(query, SUPPORT_PARAMS)}`, { auth: true });
+}
+
+// GET /admin/support-requests/:id — read-only Detail (inkl. vollem Nachrichtentext,
+// Kundendaten und `revision` für Optimistic Locking). Der Abruf wird serverseitig
+// auditiert. Kein Cache, kein Logging von Response-Daten.
+export function getAdminSupportRequest(id) {
+  return apiFetch(`/admin/support-requests/${encodeURIComponent(id)}`, { auth: true });
+}
+
+// PATCH /admin/support-requests/:id — Status setzen und/oder internen Vermerk
+// speichern. Der Body enthält `revision` (immer, Optimistic Locking) plus mindestens
+// eines von `status` / `adminNote`; er wird zentral über buildSupportPatchBody
+// zusammengesetzt (einzige Quelle der Wahrheit). Bei zwischenzeitlicher Änderung
+// antwortet das Backend mit 409 und liefert den aktuellen Stand mit — der Aufrufer
+// löst den Konflikt bewusst auf, es gibt KEINEN Auto-Retry.
+//
+// Fachlich: verschickt KEINE Kundenmail und verändert weder Sendung noch Rechnung
+// oder Zahlung — die Bearbeitung ist rein organisatorisch.
+export function updateAdminSupportRequest(id, payload = {}) {
+  const body = buildSupportPatchBody(payload);
+  return apiFetch(`/admin/support-requests/${encodeURIComponent(id)}`, {
     method: "PATCH",
     auth: true,
     body: JSON.stringify(body),

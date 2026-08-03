@@ -27,6 +27,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
+import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import {
   APPROVAL_ERRORS,
   MARKUP_SAVE_ERRORS,
@@ -696,6 +697,12 @@ export default function AdminUserDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 4b) Supportanfragen dieses Kunden — read-only Übersicht der letzten
+             Anfragen. Bearbeitet wird ausschließlich auf der Detailseite der
+             Anfrage, damit es genau EINEN Schreibpfad gibt. Die Sektion lädt
+             eigenständig und kann diese Seite bei einem Fehler nicht blockieren. */}
+        <CustomerSupportSection userId={idOf(u)} />
 
         {/* 5) Technische Informationen — bewusst eingeklappt: für den Alltag
              nicht nötig, für Support und Nachweis aber verfügbar. */}

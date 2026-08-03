@@ -33,6 +33,8 @@ const AdminBackfillPage = React.lazy(() => import("./pages/admin/AdminBackfillPa
 const AdminInvoiceDetailPage = React.lazy(() => import("./pages/admin/AdminInvoiceDetailPage"));
 const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestsPage"));
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
+const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
+const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
 
 export default function App() {
   const { authed, loadingUser } = useAuth();
@@ -80,6 +82,8 @@ export default function App() {
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />
+          <Route path="/admin/support-requests"     element={<AdminSupportRequestsPage />} />
+          <Route path="/admin/support-requests/:id" element={<AdminSupportRequestDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 

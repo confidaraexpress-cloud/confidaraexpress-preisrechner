@@ -5,6 +5,7 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
+import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
@@ -112,10 +113,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Vorrang vor dem Profil-Prefill (das Profil wird dann NICHT als Sender-Seed
   // verwendet). Einmalig beim Mount berechnet — Prop-Änderungen (das Zurücksetzen
   // im Elternteil über onResumeApplied) lösen KEINE erneute Anwendung aus.
+  // resumeInitialState übernimmt alle echten Sendungs-/Berechnungsdaten des
+  // Snapshots unverändert und neutralisiert ausschließlich den ergebnis-
+  // abhängigen Versanddienst-Filter (siehe newShipmentResume.mjs): dessen
+  // Auswahlliste entsteht erst aus einer Preisberechnungsantwort, die nach dem
+  // Fortsetzen nicht mehr existiert. Ungeprüft übernommen würde er die ERSTE
+  // Berechnung einschränken und könnte fälschlich null Angebote liefern.
   const resumeInitRef = useRef(undefined);
   if (resumeInitRef.current === undefined) {
     resumeInitRef.current = isValidResumeDraft(resumeDraft)
-      ? buildResumeInitialState(resumeDraft.formData, { today: todayISO() })
+      ? resumeInitialState(buildResumeInitialState(resumeDraft.formData, { today: todayISO() }))
       : null;
   }
   const resumeInit = resumeInitRef.current;
@@ -129,6 +136,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
   const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(resumeInit ? resumeInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
+  // Die Auswahlliste stammt ausschließlich aus der publicCarriers-Antwort einer
+  // Preisberechnung — vor der ersten Berechnung gibt es nichts auszuwählen. Das
+  // gilt auch für einen fortgesetzten Entwurf: dessen gespeicherter Filter wird
+  // in resumeInitialState neutralisiert, sodass Auswahlliste und aktive Auswahl
+  // hier immer denselben (leeren) Ausgangszustand haben.
   const [publicCarriers, setPublicCarriers]         = useState([]);
   const carrierRef = useRef(null);
 
@@ -192,7 +204,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
   const [hasResults, setHasResults] = useState(false);
-  const [errors, setErrors]         = useState({});
+  // Fortgesetzter Entwurf: unvollständige Pflichtangaben werden SOFORT markiert.
+  // Ein abgebrochener Entwurf sieht ausgefüllt aus, deaktiviert den CTA aber
+  // stillschweigend — ohne Vorbelegung erklärt nichts, welche Angabe fehlt, und
+  // der Nutzer klickt wirkungslos. Bei einer neuen Sendung bleibt es unverändert
+  // beim leeren Fehlerobjekt (der Nutzer füllt das Formular gerade erst aus).
+  const [errors, setErrors]         = useState(() => (resumeInit ? getErrors(resumeInit.form) : {}));
 
   // ── Fortsetzen-Status (nur aktiv, wenn ein Formularentwurf fortgesetzt wird) ──
   // resumeSource trägt die Übergangs-Metadaten (interne Formularentwurf-ID +
@@ -214,6 +231,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const calcSeq    = useRef(0);
   const calcAbort  = useRef(null);
   const calcKeyRef = useRef("");
+  // In-Flight-Guard als Ref, NICHT über den `loading`-State: mehrere Klicks
+  // innerhalb desselben Ticks lesen alle denselben (noch alten) State-Wert und
+  // kämen an einer State-Prüfung vorbei. Der Ref wirkt sofort.
+  const calcInFlight = useRef(false);
 
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)             || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter)  || SHIPPING_MODE_OPTIONS[0];
@@ -248,6 +269,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
   const calcValid = Object.keys(getErrors(form)).length === 0;
+  // Hinweis am CTA — NUR aus bereits sichtbar markierten Feldern (`errors`), nie
+  // aus einer stillen Vorabvalidierung des laufenden Tippens. Bei einer neuen
+  // Sendung ist `errors` bis zum ersten Klick leer → kein Hinweis, Verhalten
+  // unverändert. Bei einem fortgesetzten Entwurf ist es beim Mount vorbelegt.
+  const calcHint = calcValid ? null : missingFieldsHint(errors);
 
   const buildParty = (p) => ({
     ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
@@ -544,6 +570,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   });
 
   const calculate = async () => {
+    // Genau EIN Preisrequest je Nutzeraktion: schnelle Mehrfachklicks laufen sonst
+    // alle vor dem nächsten Render los (der `loading`-State ist dann in jedem
+    // Closure noch false) und erzeugen parallele Anfragen.
+    if (calcInFlight.current) return;
     setHasResults(false); setTariffs([]);
     const errs = getErrors(form);
     if (Object.keys(errs).length > 0) {
@@ -552,6 +582,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       return;
     }
     setErrors({});
+    calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
     setError(""); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
@@ -661,6 +692,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
         : e.message);
       setLoading(false);
+    } finally {
+      // Genau hier — und nur hier — wird der nächste Klick wieder freigegeben.
+      // `finally` deckt auch die frühen Returns im try-Block ab (veralteter
+      // Request, 401/403, Übergangsfehler), sodass der CTA nie dauerhaft blockiert.
+      calcInFlight.current = false;
     }
   };
 
@@ -1136,6 +1172,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 className="btn btn-primary dft-cta-primary"
                 onClick={calculate}
                 disabled={loading || !calcValid || saving}
+                title={calcHint || undefined}
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>
@@ -1156,6 +1193,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 }
               </button>
             </div>
+
+            {/* Erklärt den deaktivierten CTA. Ohne diesen Hinweis wirkt ein
+                fortgesetzter, unvollständiger Entwurf wie ein toter Button:
+                die Felder sind zwar markiert, liegen aber weiter oben außerhalb
+                des Sichtbereichs. Die Felder selbst bleiben die Detailanzeige. */}
+            {calcHint && !loading && (
+              <div className="dft-save-status" role="status">
+                <Icon n="info" s={15} c="currentColor" /><span>{calcHint}</span>
+              </div>
+            )}
 
             {showInlineSave && saveStatus === "saved" && !isDirty && !saving && (
               <div className="dft-save-status" role="status"><Icon n="check" s={15} c="var(--success)" /><span>Entwurf gespeichert.</span></div>

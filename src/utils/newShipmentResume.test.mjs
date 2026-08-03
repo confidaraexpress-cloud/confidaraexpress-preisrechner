@@ -268,3 +268,30 @@ test("Verdrahtung: keine künstlichen Workarounds im Klickpfad", () => {
   assert.ok(ctaBlock.includes("onClick={calculate}"), "CTA ruft nicht mehr calculate auf");
   assert.ok(!/setTimeout|requestAnimationFrame/.test(ctaBlock), "Timer/Frame-Trick im CTA-Pfad");
 });
+
+// ── Regression Drei-Klick-Ablauf: Sendungsgrundlage-Guard ───────────────────
+
+test("Verdrahtung: der Guard prueft den Sendungsbezug, nicht die interne ID", () => {
+  assert.ok(PAGE_CODE.includes("!hasUsableShipmentReference(d.shipmentId)"),
+    "der Guard muss den Sendungsbezug der Antwort pruefen");
+  assert.ok(!PAGE_CODE.includes("!hasSavableShipmentId(d.shipmentId)"),
+    "hasSavableShipmentId gilt der INTERNEN numerischen ID und lehnt JUMiNGO-IDs ab");
+  // Der Validator der internen Draft-ID bleibt dort, wo er hingehoert (PATCH-Pfad).
+  assert.ok(PAGE_CODE.includes("hasSavableShipmentId(source.id)"),
+    "die interne Draft-ID wird weiterhin streng geprueft");
+});
+
+test("Verdrahtung: der Guard bleibt scharf (serverseitiges Persistenz-Signal)", () => {
+  assert.ok(PAGE_CODE.includes("if (t.blocking || !hasUsableShipmentReference(d.shipmentId)) {"),
+    "shipment_persistence_failed muss weiterhin blockieren");
+  assert.ok(PAGE_CODE.includes("setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);"),
+    "die Meldung darf nicht pauschal unterdrueckt werden");
+});
+
+test("Verdrahtung: eine verbrauchte Entwurfs-ID wird nie erneut gesendet", () => {
+  const block = PAGE_CODE.slice(PAGE_CODE.indexOf("if (sourceAtSend) {"), PAGE_CODE.indexOf("const newPublicCarriers"));
+  const geloest = block.indexOf("if (t.consumed) setResumeSource(null);");
+  const guard = block.indexOf("if (t.blocking ||");
+  assert.ok(geloest !== -1, "verbrauchter Entwurf wird nicht geloest");
+  assert.ok(geloest < guard, "das Loesen muss VOR dem Guard passieren, sonst geht ein Klick verloren");
+});

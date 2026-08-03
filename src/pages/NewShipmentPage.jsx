@@ -16,6 +16,7 @@ import { hasSavableShipmentId } from "../utils/draftsView.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
+  hasUsableShipmentReference,
 } from "../utils/formDraftsView.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
@@ -648,13 +649,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       // Fortsetzen — Übergang nach dem calculate-price.
       if (sourceAtSend) {
         const t = classifyFormDraftTransition(d.formDraftTransition);
-        // Sicherheits-Guard: ohne verlässliche interne Shipment-ID (z. B.
-        // shipment_persistence_failed) KEINE buchbaren Angebote zeigen — die
-        // Buchbarkeit darf nicht auf einer fehlenden Sendungsgrundlage beruhen.
-        // Source-Metadaten BLEIBEN hier bewusst erhalten: es wurde kein
-        // verlässlicher technischer Draft persistiert, daher soll ein bewusster
-        // erneuter Klick den Übergang neu versuchen (keine automatische Wiederholung).
-        if (t.blocking || !hasSavableShipmentId(d.shipmentId)) {
+        // Hat der Server den Entwurf verbraucht, ist die Source-ID aufgebraucht:
+        // ein erneutes Senden träfe zwangsläufig FORM_DRAFT_NOT_FOUND und würde
+        // einen weiteren Klick verschlucken. Das gilt auch dann, wenn der Guard
+        // unten anschließend blockiert — deshalb VOR dem Guard lösen.
+        if (t.consumed) setResumeSource(null);
+        // Sicherheits-Guard: ohne verlässliche Sendungsgrundlage KEINE buchbaren
+        // Angebote zeigen. Maßgeblich ist das serverseitige Signal
+        // (shipment_persistence_failed); ergänzend muss ein Sendungsbezug
+        // vorliegen, mit dem /book, Label und Abholfenster arbeiten können.
+        // Source-Metadaten bleiben bei blockiertem, NICHT verbrauchtem Entwurf
+        // erhalten, damit ein bewusster erneuter Klick den Übergang neu versucht
+        // (keine automatische Wiederholung).
+        if (t.blocking || !hasUsableShipmentReference(d.shipmentId)) {
           setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);
           setLoading(false);
           return;

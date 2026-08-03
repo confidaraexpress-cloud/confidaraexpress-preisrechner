@@ -300,6 +300,29 @@ const TRANSITION_NOTICE = {
 export const SHIPMENT_PERSISTENCE_FAILED_MESSAGE =
   "Die Preise konnten berechnet werden, aber es wurde keine verlässliche Sendungsgrundlage erstellt. Bitte berechnen Sie die Preise erneut.";
 
+// Trägt die calculate-price-Antwort einen brauchbaren Sendungsbezug?
+//
+// `shipmentId` dieser Antwort ist die JUMiNGO-shipment_id — laut autoritativer
+// Referenz (docs/jumingo/openapi/jumingo-openapi.yaml, CreateShipmentResult)
+// ein STRING der Form "s_fb1bc92aba1c4d70a3eaa44d687ae179". Genau dieser Wert
+// ist der Bezug, mit dem anschließend /book, der Label-Abruf, das Abholzeitfenster
+// und die Handelsrechnung arbeiten.
+//
+// AUSDRÜCKLICH NICHT hasSavableShipmentId (draftsView.mjs) verwenden: das ist der
+// Validator für die INTERNE numerische Shipment-ID und lehnt JUMiNGO-förmige IDs
+// bewusst ab (dort eigens getestet). Auf diese Antwort angewandt ergibt er immer
+// `false` und blockiert damit jede fortgesetzte Berechnung.
+//
+// Ob überhaupt eine verlässliche Sendungsgrundlage entstanden ist, entscheidet
+// serverseitig `formDraftTransition.reason = shipment_persistence_failed`
+// (classifyFormDraftTransition → blocking). Diese Prüfung hier ergänzt das nur um
+// den Fall einer fehlenden/leeren ID.
+export function hasUsableShipmentReference(shipmentId) {
+  if (typeof shipmentId === "number") return Number.isFinite(shipmentId) && shipmentId > 0;
+  if (typeof shipmentId === "string") return shipmentId.trim() !== "";
+  return false;
+}
+
 // Klassifiziert die Transition in { consumed, reason, blocking, notice }.
 //  • consumed:true                         → { consumed:true }  (Entwurf verbraucht)
 //  • consumed:false + shipment_persistence → blocking:true      (Weiterleitung sperren)

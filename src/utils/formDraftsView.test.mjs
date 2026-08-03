@@ -1,6 +1,7 @@
 // Tests für die reine Formularentwürfe-Logik. Läuft über node --test (npm test).
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { hasSavableShipmentId } from "./draftsView.mjs";
 import {
   FORM_DRAFT_KIND, SHIPMENT_DRAFT_KIND,
   normalizeFormDraft, normalizeShipmentDraft, combinedDraftKey, displayUpdatedAt,
@@ -9,6 +10,7 @@ import {
   blankNewShipmentForm, buildResumeInitialState,
   isValidResumeDraft, buildResumePayload, resumeSourceFromDraft,
   classifyFormDraftTransition, mapFormDraftStartError, mapFormDraftDeleteErrorToMessage,
+  hasUsableShipmentReference,
   resolveCombinedEmpty,
 } from "./formDraftsView.mjs";
 
@@ -286,4 +288,53 @@ test("resolveCombinedEmpty: nur leer, wenn beide Quellen ok UND leer", () => {
   assert.equal(resolveCombinedEmpty({ formOk: true, shipmentOk: true, formCount: 0, shipmentCount: 0 }), true);
   assert.equal(resolveCombinedEmpty({ formOk: true, shipmentOk: false, formCount: 0, shipmentCount: 0 }), false);
   assert.equal(resolveCombinedEmpty({ formOk: true, shipmentOk: true, formCount: 1, shipmentCount: 0 }), false);
+});
+
+// ── Sendungsbezug der calculate-price-Antwort ───────────────────────────────
+// Regression: der Drei-Klick-Ablauf entstand, weil die JUMiNGO-shipment_id mit
+// hasSavableShipmentId (Validator der INTERNEN numerischen ID) geprueft wurde.
+// Der lehnt JUMiNGO-foermige IDs ausdruecklich ab → jede fortgesetzte Berechnung
+// wurde verworfen, obwohl der Uebergang serverseitig erfolgreich war.
+
+test("hasUsableShipmentReference: akzeptiert die reale JUMiNGO-shipment_id (String)", () => {
+  // Beispiel aus docs/jumingo/openapi/jumingo-openapi.yaml → CreateShipmentResult.
+  assert.equal(hasUsableShipmentReference("s_fb1bc92aba1c4d70a3eaa44d687ae179"), true);
+  assert.equal(hasUsableShipmentReference("s_abc123"), true);
+  assert.equal(hasUsableShipmentReference("  s_abc123  "), true);
+});
+
+test("hasUsableShipmentReference: akzeptiert auch numerische Bezuege", () => {
+  assert.equal(hasUsableShipmentReference(12345), true);
+  assert.equal(hasUsableShipmentReference("12345"), true);
+});
+
+test("hasUsableShipmentReference: lehnt fehlende und leere Bezuege ab", () => {
+  for (const v of [null, undefined, "", "   ", 0, -1, NaN, Infinity, [], {}, true]) {
+    assert.equal(hasUsableShipmentReference(v), false, `Wert: ${JSON.stringify(v)}`);
+  }
+});
+
+test("hasUsableShipmentReference: ist bewusst NICHT hasSavableShipmentId", () => {
+  // Die beiden Validatoren pruefen verschiedene IDs und duerfen nie vertauscht
+  // werden: hasSavableShipmentId gilt der internen numerischen Shipment-/Draft-ID.
+  const jumingoId = "s_fb1bc92aba1c4d70a3eaa44d687ae179";
+  assert.equal(hasUsableShipmentReference(jumingoId), true);
+  assert.equal(hasSavableShipmentId(jumingoId), false);
+});
+
+test("classifyFormDraftTransition: consumed:true wird als verbraucht erkannt", () => {
+  // Der verbrauchte Entwurf muss erkennbar sein, damit seine Source-ID nicht
+  // erneut gesendet wird (das traefe zwangslaeufig FORM_DRAFT_NOT_FOUND).
+  const t = classifyFormDraftTransition({ sourceFormDraftId: 77, consumed: true });
+  assert.equal(t.consumed, true);
+  assert.equal(t.blocking, false);
+  // Falsche Formen duerfen NICHT als verbraucht gelten.
+  assert.equal(classifyFormDraftTransition({ status: "consumed" }).consumed, false);
+  assert.equal(classifyFormDraftTransition(null).consumed, false);
+});
+
+test("classifyFormDraftTransition: shipment_persistence_failed blockiert weiterhin", () => {
+  const t = classifyFormDraftTransition({ sourceFormDraftId: 77, consumed: false, reason: "shipment_persistence_failed" });
+  assert.equal(t.blocking, true);
+  assert.equal(t.consumed, false);
 });

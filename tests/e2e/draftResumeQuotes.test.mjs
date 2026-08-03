@@ -69,6 +69,12 @@ const TARIFFS = [
     trackingAvailable: true, printerRequired: false },
 ];
 
+// JUMiNGO liefert die shipment_id als STRING (docs/jumingo/openapi/jumingo-openapi.yaml,
+// CreateShipmentResult: type string, Beispiel "s_fb1bc92aba1c4d70a3eaa44d687ae179").
+// Eine numerische Fixture wuerde den realen Vertrag verfehlen — genau daran ist der
+// Drei-Klick-Fehler zuvor unentdeckt geblieben.
+const jumingoShipmentId = (n) => `s_fb1bc92aba1c4d70a3eaa44d687ae${String(n).padStart(3, "0")}`;
+
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
   role: "customer", status: "approved", street: "Hauptstrasse 1", zip: "10115",
@@ -103,8 +109,13 @@ after(async () => {
 
 // Öffnet eine Seite mit vollständig gemockter API. `calls` sammelt jede
 // Preisberechnungs-Payload; `latency` erlaubt das Testen paralleler Klicks.
-async function openApp({ latency = 0, carrierAware = true } = {}) {
+async function openApp({ latency = 0, carrierAware = true, formData = DRAFT_FORM_DATA } = {}) {
   const calls = [];
+  // Serverseitiger Zustand: der Formularentwurf existiert, bis eine Preisberechnung
+  // ihn verbraucht. Eine spaetere Anfrage mit derselben Source-ID trifft dann 404 —
+  // exakt wie das Backend (routes/jumingo.js: FORM_DRAFT_NOT_FOUND).
+  const formDrafts = new Map([[77, { id: 77, revision: 3, schemaVersion: 1, formData }]]);
+  let shipCounter = 0;
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
 
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -114,22 +125,37 @@ async function openApp({ latency = 0, carrierAware = true } = {}) {
 
     if (url.includes("/kundenbereich")) return json({ user: USER });
     if (url.includes("/api/kunde/form-drafts/")) {
-      return json({ draft: { id: 77, revision: 3, schemaVersion: 1, formData: DRAFT_FORM_DATA, updatedAt: "2030-01-01T10:00:00Z" } });
+      const d = formDrafts.get(77);
+      return d
+        ? json({ draft: { ...d, updatedAt: "2030-01-01T10:00:00Z" } })
+        : route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "nicht gefunden", code: "FORM_DRAFT_NOT_FOUND" }) });
     }
     if (url.includes("/api/kunde/form-drafts")) {
-      return json({ drafts: [{ id: 77, revision: 3, schemaVersion: 1, updatedAt: "2030-01-01T10:00:00Z", formData: DRAFT_FORM_DATA }], nextCursor: null });
+      return json({ drafts: [...formDrafts.values()].map((d) => ({ ...d, updatedAt: "2030-01-01T10:00:00Z" })), nextCursor: null });
     }
     if (url.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (url.includes("/api/jumingo/calculate-price")) {
       const body = JSON.parse(req.postData() || "{}");
       calls.push(body);
       if (latency) await new Promise((r) => setTimeout(r, latency));
+      const src = body.sourceFormDraftId ?? null;
+      // Verbrauchter Entwurf → 404, wie im Backend.
+      if (src != null && !formDrafts.has(src)) {
+        return route.fulfill({ status: 404, contentType: "application/json",
+          body: JSON.stringify({ error: "Formularentwurf nicht gefunden", code: "FORM_DRAFT_NOT_FOUND" }) });
+      }
       // Backend-treu: publicCarriers stammt aus der Menge VOR dem Carrier-Filter;
       // tariffs werden anschließend auf publicCarrierIds eingeschränkt.
       const ids = carrierAware && Array.isArray(body.publicCarrierIds) ? body.publicCarrierIds : [];
       const tariffs = ids.length > 0 ? TARIFFS.filter((t) => ids.includes(t.publicCarrierId)) : TARIFFS;
       const publicCarriers = TARIFFS.map((t) => ({ id: t.publicCarrierId, name: t.publicCarrierName }));
-      return json({ shipmentId: 999, tariffs, availableShippingModes: ["express"], publicCarriers, formDraftTransition: { status: "consumed" } });
+      let transition;
+      if (src != null) { formDrafts.delete(src); transition = { sourceFormDraftId: src, consumed: true }; }
+      return json({
+        shipmentId: jumingoShipmentId(++shipCounter), tariffs, availableShippingModes: ["express"], publicCarriers,
+        customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
+        ...(transition ? { formDraftTransition: transition } : {}),
+      });
     }
     if (url.includes("/kunde/shipments")) return json({ shipments: [] });
     if (url.includes("/kunde/invoices")) return json({ invoices: [], summary: null });
@@ -288,15 +314,7 @@ test("Neue Sendung: Ablauf unverändert, bewusste Carrier-Auswahl bleibt erhalte
 test("Unvollständiger Entwurf: keine Anfrage, Feld markiert, Hinweis sichtbar", async () => {
   const luecke = JSON.parse(JSON.stringify(DRAFT_FORM_DATA));
   luecke.recipient.city = "";
-  const { page, calls } = await openApp();
-  await page.route("**/api/kunde/form-drafts**", async (route) => {
-    const url = route.request().url();
-    const body = url.includes("/form-drafts/")
-      ? { draft: { id: 77, revision: 3, schemaVersion: 1, formData: luecke, updatedAt: "2030-01-01T10:00:00Z" } }
-      : { drafts: [{ id: 77, revision: 3, schemaVersion: 1, updatedAt: "2030-01-01T10:00:00Z", formData: luecke }], nextCursor: null };
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
-  });
-
+  const { page, calls } = await openApp({ formData: luecke });
   await resumeDraft(page);
 
   assert.equal(await ctaOf(page).isDisabled(), true, "unvollständiger Entwurf darf nicht absendbar sein");
@@ -312,4 +330,65 @@ test("Unvollständiger Entwurf: keine Anfrage, Feld markiert, Hinweis sichtbar",
   await page.waitForSelector(".offer-card", { timeout: 20_000 });
   assert.equal(calls.length, 1);
   assert.equal(await page.locator(".offer-card").count(), 2);
+});
+
+test("Regression Drei-Klick-Ablauf: erster Klick liefert Angebote, keine Sendungsgrundlage-Meldung", async () => {
+  // Der gemeldete Fehler lief so ab:
+  //   Klick 1: Entwurf wird serverseitig verbraucht (consumed:true), das Frontend
+  //            verwarf die Antwort aber wegen der JUMiNGO-shipment_id ("s_…") und
+  //            zeigte „keine verlaessliche Sendungsgrundlage" — 0 Angebote.
+  //   Klick 2: die verbrauchte Source-ID ging erneut raus → 404 FORM_DRAFT_NOT_FOUND
+  //            → Fehler wurde zum Hinweis, weiterhin 0 Angebote, KEIN Preisergebnis.
+  //   Klick 3: Source war nun geloescht → normale Berechnung → Angebote.
+  const { page, calls } = await openApp();
+  await resumeDraft(page);
+
+  await ctaOf(page).click();
+  await page.waitForSelector(".offer-card", { timeout: 20_000 });
+
+  // Kein Fehlerbanner — insbesondere nicht die Sendungsgrundlage-Meldung.
+  assert.equal(await page.locator(".alert-error").count(), 0, "es darf keine Fehlermeldung erscheinen");
+  assert.equal(await page.getByText(/keine verlässliche Sendungsgrundlage/).count(), 0,
+    "die Sendungsgrundlage-Meldung darf nicht mehr auftreten");
+  assert.equal(await page.locator(".offer-card").count(), 2, "Angebote muessen nach dem ERSTEN Klick sichtbar sein");
+  assert.equal(calls.length, 1, "genau eine Preisberechnung");
+  assert.equal(calls[0].sourceFormDraftId, 77, "der erste Request traegt die Entwurfsherkunft");
+
+  // Die verbrauchte Source darf nicht erneut gesendet werden: ein zweiter,
+  // bewusster Klick ist eine normale Neuberechnung — kein 404-Leerlauf.
+  await ctaOf(page).click();
+  await page.waitForTimeout(1200);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].sourceFormDraftId, undefined,
+    "eine bereits verbrauchte Entwurfs-ID darf nie erneut gesendet werden");
+  assert.equal(await page.locator(".offer-card").count(), 2);
+  assert.equal(await page.locator(".alert-error").count(), 0);
+});
+
+test("Sendungsgrundlage: Angebote nur bei belegter Persistenz (Guard bleibt scharf)", async () => {
+  // Meldet der Server ausdruecklich shipment_persistence_failed, MUSS blockiert
+  // werden — der Guard wird durch die Korrektur nicht abgeschwaecht. Der Entwurf
+  // wurde dabei NICHT verbraucht, ein bewusster erneuter Klick versucht es neu.
+  const { page, calls } = await openApp();
+  await page.route("**/api/jumingo/calculate-price", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    calls.push(body);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      shipmentId: jumingoShipmentId(9), tariffs: TARIFFS, availableShippingModes: ["express"],
+      publicCarriers: TARIFFS.map((t) => ({ id: t.publicCarrierId, name: t.publicCarrierName })),
+      formDraftTransition: { sourceFormDraftId: 77, consumed: false, reason: "shipment_persistence_failed" },
+    }) });
+  });
+  await resumeDraft(page);
+
+  await ctaOf(page).click();
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator(".offer-card").count(), 0, "ohne Sendungsgrundlage duerfen keine Angebote erscheinen");
+  const fehler = await page.locator(".alert-error").first().textContent();
+  assert.match(fehler, /keine verlässliche Sendungsgrundlage/);
+  // Nicht verbrauchter Entwurf → Source bleibt fuer einen bewussten Neuversuch erhalten.
+  await ctaOf(page).click();
+  await page.waitForTimeout(1200);
+  assert.equal(calls.at(-1).sourceFormDraftId, 77,
+    "ein NICHT verbrauchter Entwurf muss beim bewussten Neuversuch erneut gesendet werden");
 });

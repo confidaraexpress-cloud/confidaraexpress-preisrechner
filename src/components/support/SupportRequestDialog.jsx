@@ -23,7 +23,7 @@ import {
 // API-Logik tragen). Nach Erfolg wechselt der Dialog in eine Bestätigungsansicht mit der
 // Ticketnummer; er schließt sich NICHT automatisch, damit der Kunde die Nummer notieren
 // kann. Bei korrigierbaren Fehlern bleibt die Eingabe vollständig erhalten.
-export function SupportRequestDialog({ onClose }) {
+export function SupportRequestDialog({ onClose, onCreated }) {
   const [category, setCategory] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -90,7 +90,11 @@ export function SupportRequestDialog({ onClose }) {
         return;
       }
       // Die Ticketnummer kommt ausschließlich aus der Serverantwort.
-      setSuccess({ text: supportSuccessMessage(readTicketNumber(d)) });
+      // Die Ticketnummer UND die Vorgangs-ID kommen ausschließlich aus der Serverantwort.
+      const created = d && d.supportRequest ? d.supportRequest : null;
+      const createdId = created && Number.isInteger(Number(created.id)) && Number(created.id) > 0
+        ? Number(created.id) : null;
+      setSuccess({ text: supportSuccessMessage(readTicketNumber(d)), id: createdId });
     } catch {
       setError(SUPPORT_NETWORK_ERROR);
     } finally {
@@ -118,11 +122,21 @@ export function SupportRequestDialog({ onClose }) {
           {/* role="status" statt "alert": eine Erfolgsmeldung ist keine Warnung. */}
           <p className="sup-dialog-success" role="status">{success.text}</p>
           <p className="sup-dialog-desc">
-            Sie erhalten zusätzlich eine Bestätigung per E-Mail. Unsere Antwort erreicht Sie
-            ebenfalls per E-Mail — im Kundenbereich gibt es keinen Nachrichtenverlauf.
+            Sie erhalten zusätzlich eine Bestätigung per E-Mail. Unsere Antwort finden Sie im
+            Nachrichtenverlauf des Vorgangs unter „Supportanfragen" — wir benachrichtigen Sie
+            über die Glocke, sobald sie vorliegt.
           </p>
           <div className="sup-dialog-actions">
-            <button type="button" className="btn btn-primary" onClick={onClose}>Schließen</button>
+            {onCreated && success.id ? (
+              <>
+                <button type="button" className="btn btn-outline" onClick={onClose}>Schließen</button>
+                <button type="button" className="btn btn-primary" onClick={() => onCreated(success.id)}>
+                  Vorgang öffnen
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={onClose}>Schließen</button>
+            )}
           </div>
         </div>
       ) : (

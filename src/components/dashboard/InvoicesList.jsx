@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
+import { useNotifications } from "../../context/NotificationsContext";
 import { downloadCustomerInvoicePdf, fetchCustomerInvoicePdf } from "../../utils/downloadInvoicePdf";
 import {
   canDownloadInvoice, canPreviewInvoice, formatInvoiceAmount,
@@ -188,6 +189,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
 }
 
 export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry }) {
+  const { refresh: refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
@@ -225,12 +227,18 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
     onReload?.();
   };
 
+  // Ein erfolgreicher PDF-Abruf erledigt serverseitig die Meldung „Neue Rechnung
+  // verfügbar" (Response-'finish' auf der Kundenroute). Das Frontend entscheidet das
+  // NICHT — es holt anschließend nur den neuen Stand, damit die Glocke nicht bis zum
+  // nächsten Poll veraltet ist. Nach einem FEHLGESCHLAGENEN Abruf wird bewusst nicht
+  // aktualisiert: dort hat sich serverseitig auch nichts geändert.
   const handleDownload = async (inv) => {
     if (downloadingId != null) return;
     setDownloadError("");
     setDownloadingId(inv.id);
     try {
       await downloadCustomerInvoicePdf(inv.id, inv.invoice_number);
+      refreshNotifications();
     } catch (e) {
       setDownloadError(e?.message || DOWNLOAD_ERROR_GENERIC);
     } finally {
@@ -238,10 +246,13 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
     }
   };
 
+  // Die Vorschau lädt dasselbe vollständige PDF über denselben Kundenendpunkt und
+  // erledigt die Meldung deshalb ebenso — auch hier wird nur nachgeladen.
   const previewFetcher = useCallback(() => {
     if (!previewInvoice) return Promise.reject(new Error(DOWNLOAD_ERROR_GENERIC));
-    return fetchCustomerInvoicePdf(previewInvoice.id, previewInvoice.invoice_number);
-  }, [previewInvoice]);
+    return fetchCustomerInvoicePdf(previewInvoice.id, previewInvoice.invoice_number)
+      .then((blob) => { refreshNotifications(); return blob; });
+  }, [previewInvoice, refreshNotifications]);
 
   const list = Array.isArray(invoices) ? invoices : [];
   const filtered = list.filter((inv) => matchesInvoiceFilter(inv, filter));

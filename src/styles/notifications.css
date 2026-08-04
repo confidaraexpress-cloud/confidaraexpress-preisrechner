@@ -1,0 +1,237 @@
+/* ── Benachrichtigungscenter (Glocke + Panel) ───────────────────────────────────
+   Eigener Scope `ntf-`, additiv wie die übrigen Bereichs-Stylesheets. Nutzt
+   ausschließlich die App-Layout-Tokens (--surface, --border-*, --text-*,
+   --accent-blue, --shadow-card) — keine eigenen Hex-Werte, keine neuen Verläufe,
+   kein Blau als Fläche.
+
+   Die Glocke in der Übersicht behält ihre bisherige Geometrie (44 px, rund),
+   damit die Kopfzeile der Übersicht optisch unverändert bleibt; `.pp-bell` in
+   overview.css bleibt deshalb bestehen und wird hier nur um den Knopfzustand
+   ergänzt.
+
+   Bewusst KEINE Animation und kein pulsierender Badge: im App-Chrome ist Bewegung
+   nur als kurze Zustandsreaktion vorgesehen (Hover/Fokus ≤ 200 ms), nie als
+   Ambiente. Der Schutztest appShellChrome.test.mjs prüft das für Sidebar/Topbar. */
+
+.ntf-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+
+/* ── Knopf ── */
+.ntf-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.ntf-bell:hover { background: var(--surface-muted); color: var(--text-primary); }
+.ntf-bell:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+
+/* Übersicht: exakt die bisherige Fläche der dekorativen Glocke. */
+.ntf-bell-overview { width: 44px; height: 44px; }
+/* Mobile Topbar und Unterseiten-Mount: etwas kompakter. */
+.ntf-bell-topbar { width: 36px; height: 36px; }
+.ntf-bell-page   { width: 38px; height: 38px; }
+
+/* ── Badge ── */
+/* font-size 11px ist die Untergrenze des Projekts für Sekundärtexte im Chrome
+   (Test 30 in appShellChrome.test.mjs erlaubt darunter nur .nsec). */
+.ntf-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger, #c0392b);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid var(--surface);
+}
+
+/* ── Overlay ──
+   Fängt Klicks außerhalb ab. Als Button umgesetzt (nicht als div), damit es kein
+   klickbares Element ohne Rolle gibt; aus der Tabreihenfolge genommen, weil das
+   Panel selbst die Fokusfalle stellt. */
+.ntf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
+/* ── Panel ── */
+.ntf-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 61;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(520px, calc(100dvh - 120px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card-lg, var(--shadow-card));
+  overflow: hidden;
+}
+.ntf-panel:focus { outline: none; }
+
+.ntf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.ntf-title { font-size: 15px; font-weight: 650; color: var(--text-primary); }
+.ntf-head-actions { display: flex; align-items: center; gap: 6px; }
+
+.ntf-markall {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--accent-blue);
+  cursor: pointer;
+}
+.ntf-markall:hover { background: var(--surface-muted); }
+.ntf-markall:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+
+.ntf-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.ntf-close:hover { background: var(--surface-muted); color: var(--text-primary); }
+.ntf-close:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+
+.ntf-body { overflow-y: auto; }
+
+/* ── Zustände ── */
+.ntf-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 20px;
+  text-align: center;
+}
+.ntf-empty-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
+.ntf-state-text { font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+
+/* ── Liste ── */
+.ntf-list { list-style: none; margin: 0; padding: 0; }
+.ntf-list > li + li { border-top: 1px solid var(--border-subtle); }
+
+.ntf-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+.ntf-item:hover { background: var(--surface-muted); }
+.ntf-item:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: -2px; }
+/* Ungelesen ist mehrfach codiert (Punkt + Schriftschnitt), nicht allein farbig. */
+.ntf-item-unread .ntf-item-title { font-weight: 650; color: var(--text-primary); }
+
+.ntf-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ntf-item-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--text-primary);
+}
+.ntf-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  flex-shrink: 0;
+}
+.ntf-item-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ntf-item-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ntf-item-time { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+.ntf-item-action { font-size: 12px; color: var(--accent-blue); white-space: nowrap; }
+
+/* ── Mountpunkte ──
+   Der Seiten-Mount ist bewusst KEINE neue Kopfleiste: nur ein schmaler Ankerpunkt
+   oben rechts, der denselben Inhaltsrahmen nutzt wie .page-body und
+   .dash-section-header (max-width: 1240px) — sonst liefe die Glocke auf breiten
+   Screens gegenüber dem Seiteninhalt aus der Flucht. */
+.page-bell-mount {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 0 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Ab der Drawer-Schwelle (860 px, dieselbe wie .mobile-topbar in
+   dashboard-premium.css) ist die Topbar der mobile Mount — der Seiten-Mount
+   entfällt, sonst stünden auf jeder Unterseite ZWEI Glocken untereinander.
+   Gegenstück in DashboardPage.jsx: auf der Übersicht entfällt umgekehrt die
+   Topbarglocke, weil die Kopfzeile der Übersicht ihre eigene trägt. So ist
+   in jeder Kombination aus Seite und Viewport genau EINE Glocke sichtbar. */
+@media (max-width: 860px) {
+  .page-bell-mount { display: none; }
+}
+
+/* Rechte Gruppe der mobilen Topbar (Glocke + Avatar). */
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+/* ── Mobil: das Panel wird zur Vollbreiten-Schublade unter der Topbar ── */
+@media (max-width: 560px) {
+  .ntf-panel {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 96px);
+  }
+  .ntf-item-meta { align-items: flex-end; }
+  .ntf-item-action { display: none; }
+}

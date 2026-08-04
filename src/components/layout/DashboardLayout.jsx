@@ -5,6 +5,8 @@ import { Icon } from "../ui/Icon";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
 import { LegalLinks } from "./LegalLinks";
+import { NotificationsProvider } from "../../context/NotificationsContext";
+import { NotificationBell } from "../notifications/NotificationBell";
 
 export function DashboardLayout() {
   const { user } = useAuth();
@@ -27,6 +29,10 @@ export function DashboardLayout() {
   };
 
   return (
+    // Der Provider umschließt die gesamte Shell: Zustand und Polling des
+    // Benachrichtigungscenters laufen dadurch genau EINMAL, unabhängig davon,
+    // wie viele Glockenknöpfe darin gerendert werden.
+    <NotificationsProvider>
     <div className="app-shell">
       <DashboardSidebar
         page={activePage}
@@ -40,7 +46,10 @@ export function DashboardLayout() {
             <Icon n="menu" s={22} />
           </button>
           <div className="topbar-brand">ConfidaraExpress</div>
-          <div className="user-avatar">{initials}</div>
+          <div className="topbar-right">
+            <NotificationBell variant="topbar" navigateTo={navigateTo} />
+            <div className="user-avatar">{initials}</div>
+          </div>
         </div>
         {activePage === "calculator" && (
           <DashboardSectionHeader
@@ -51,6 +60,7 @@ export function DashboardLayout() {
         <Outlet />
         <LegalLinks />
       </main>
-    </div>
+      </div>
+    </NotificationsProvider>
   );
 }

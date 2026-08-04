@@ -159,3 +159,47 @@ export const SUPPORT_CARD = Object.freeze({
   action: "Support kontaktieren",
   hint: "Ihre Anfrage wird zeitnah beantwortet.",
 });
+
+// ── Nachrichtenverlauf (Kunde) ───────────────────────────────────────────────
+// Eigene, bewusst NIEDRIGERE Mindestlänge als beim Anlegen einer Anfrage: eine
+// Erstanfrage soll das Anliegen beschreiben, eine Antwort im laufenden Verlauf
+// darf kurz sein. „Danke" oder „Ja, bitte" sind vollständige Antworten — die
+// Anfrage-Mindestlänge hier zu übernehmen, hätte genau diese Fälle abgelehnt.
+// Spiegelt den Serververtrag (lib/support.js: REPLY_MIN_LEN/REPLY_MAX_LEN).
+export const SUPPORT_REPLY_MIN = 2;
+export const SUPPORT_REPLY_MAX = 5000;
+
+// Zustand des Antwortfeldes: { value, length, valid, tooLong }.
+// Die Prüfung ist eine reine Komfortfunktion für das Formular — maßgeblich ist
+// immer die serverseitige Validierung.
+export function supportReplyState(raw) {
+  const value = typeof raw === "string" ? raw : "";
+  const trimmed = value.trim();
+  return {
+    value,
+    length: trimmed.length,
+    valid: trimmed.length >= SUPPORT_REPLY_MIN && trimmed.length <= SUPPORT_REPLY_MAX,
+    tooLong: trimmed.length > SUPPORT_REPLY_MAX,
+  };
+}
+
+// Rollenbezeichnung im Verlauf. Der Kunde sieht „Sie" bzw. den Absender
+// ConfidaraExpress Support — nie den Namen eines einzelnen Mitarbeiters.
+export function supportAuthorLabel(role) {
+  return role === "admin" ? "ConfidaraExpress Support" : "Sie";
+}
+
+export const SUPPORT_THREAD_EMPTY = "Für diesen Vorgang gibt es noch keine Antwort.";
+export const SUPPORT_LIST_EMPTY_TITLE = "Noch keine Supportanfragen";
+export const SUPPORT_LIST_EMPTY_TEXT =
+  "Sobald Sie eine Anfrage stellen, finden Sie hier den vollständigen Nachrichtenverlauf.";
+export const SUPPORT_REPLY_PLACEHOLDER = "Ihre Antwort an den Support …";
+export const SUPPORT_REPLY_SUBMIT = "Antwort senden";
+export const SUPPORT_REPLY_ERROR =
+  "Ihre Antwort konnte nicht gesendet werden. Bitte versuchen Sie es erneut.";
+export const SUPPORT_DETAIL_ERROR = "Der Vorgang konnte nicht geladen werden.";
+export const SUPPORT_CUSTOMER_LIST_ERROR = "Ihre Supportanfragen konnten nicht geladen werden.";
+// Hinweis auf einen wieder geöffneten Vorgang — der Kunde soll verstehen, warum
+// sich der Status durch seine Antwort geändert hat.
+export const SUPPORT_REOPEN_HINT =
+  "Ihre Antwort hat den Vorgang wieder geöffnet. Wir melden uns zeitnah bei Ihnen.";

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminSupportRequests } from "../../api/adminApi";
 import {
+  supportReplyStateMeta,
   SUPPORT_CATEGORY_FILTER_OPTIONS,
   SUPPORT_LIST_ERROR,
   SUPPORT_SEARCH_MAX,
@@ -107,6 +108,14 @@ function SubjectCell({ row }) {
 function StatusBadge({ row }) {
   const [cls, fallback] = supportStatusMeta(row.status);
   return <span className={`badge ${cls}`}>{row.statusLabel || fallback}</span>;
+}
+
+// Antwortbedarf — serverseitig abgeleitet, zusätzlich zum Status. Ohne eigene
+// Adminglocke ist das der Weg, auf dem neue Kundenantworten sichtbar werden.
+function ReplyStateBadge({ row }) {
+  const meta = supportReplyStateMeta(row);
+  if (!meta) return null;
+  return <span className={`badge ${meta[0]} adm-sup-replybadge`}>{meta[1]}</span>;
 }
 
 // Zustellprobleme kompakt und getrennt benennen — NIE der technische Fehlertext.
@@ -359,7 +368,7 @@ export default function AdminSupportRequestsPage() {
                     <td><TicketCell row={row} /></td>
                     <td><CustomerCell row={row} /></td>
                     <td><SubjectCell row={row} /></td>
-                    <td><StatusBadge row={row} /><MailProblemCell row={row} /></td>
+                    <td><StatusBadge row={row} /><ReplyStateBadge row={row} /><MailProblemCell row={row} /></td>
                     <td className="adm-sup-time">{fmtDateTime(row.createdAt)}</td>
                     <td>
                       {row.id != null
@@ -378,7 +387,7 @@ export default function AdminSupportRequestsPage() {
               <li className="adm-scard" key={row.id != null ? `c-${row.id}` : `c-row-${i}`}>
                 <div className="adm-scard-head">
                   <TicketCell row={row} />
-                  <div><StatusBadge row={row} /><MailProblemCell row={row} /></div>
+                  <div><StatusBadge row={row} /><ReplyStateBadge row={row} /><MailProblemCell row={row} /></div>
                 </div>
                 <dl className="adm-scard-kv">
                   <div><dt>Kunde</dt><dd><CustomerCell row={row} /></dd></div>

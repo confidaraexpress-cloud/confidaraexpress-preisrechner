@@ -9,12 +9,17 @@ import { Profile } from "../components/dashboard/Profile";
 import { DashboardSidebar } from "../components/layout/DashboardSidebar";
 import { DashboardSectionHeader } from "../components/layout/DashboardSectionHeader";
 import { LegalLinks } from "../components/layout/LegalLinks";
+import { NotificationsProvider } from "../context/NotificationsContext";
+import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useAuth } from "../context/AuthContext";
 
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
 const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
 const DraftsPage       = React.lazy(() => import("./DraftsPage"));
+// Benannter Export → auf `default` abbilden, wie React.lazy es verlangt.
+const SupportRequestsView = React.lazy(() =>
+  import("../components/support/SupportRequestsView").then(m => ({ default: m.SupportRequestsView })));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -32,13 +37,20 @@ const PAGE_HEADERS = {
     title: "Rechnungen",
     subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
   },
+  support: {
+    title: "Supportanfragen",
+    subtitle: "Ihre Anfragen an unser Supportteam mit vollständigem Nachrichtenverlauf.",
+  },
 };
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [page, setPage] = useState("overview");
+  // Vorgang, der aus einer Glockenmeldung heraus direkt geöffnet werden soll.
+  const [supportTicketId, setSupportTicketId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Interner Verlassen-Guard (NewShipmentPage registriert hier eine Funktion,
   // die den ungespeicherten Dirty-State prüft). Nur relevant, solange
@@ -139,9 +151,14 @@ export default function DashboardPage() {
   const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
-    const p = new URLSearchParams(location.search).get("page");
-    if (p && ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking"].includes(p)) {
+    const params = new URLSearchParams(location.search);
+    const p = params.get("page");
+    if (p && ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"].includes(p)) {
       setPage(p);
+      // Deep-Link aus einer Glockenmeldung: die Ticket-ID wird als geprüfte
+      // Ganzzahl übernommen und der Query-Param anschließend wie bisher entfernt.
+      const ticket = parseInt(params.get("ticket"), 10);
+      setSupportTicketId(Number.isInteger(ticket) && ticket > 0 ? ticket : null);
       navigate("/dashboard", { replace: true });
     }
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -154,6 +171,14 @@ export default function DashboardPage() {
     if (target.type === "route") { navigate(target.path, target.state ? { state: target.state } : undefined); return; }
     if (target.page === "calculator") { navigate("/calculator"); return; }
     setPage(target.page);
+  };
+
+  // Navigation aus einer Glockenmeldung: Zielseite plus optionaler Deep-Link.
+  // Das Ziel wird von der Glocke ausschließlich aus Typ und Entitäts-ID
+  // abgeleitet — es wird nie eine URL aus einem Serverpayload geöffnet.
+  const navigateFromNotification = (target, extra = {}) => {
+    if (target === "support") setSupportTicketId(extra.ticket || null);
+    navigateTo(target);
   };
 
   // Interne Seitennavigation. Verlässt der Nutzer „Neue Sendung" mit
@@ -182,6 +207,10 @@ export default function DashboardPage() {
   // (dashboard-vapor / -soft-premium / -neutral-premium / -profile-premium)
   // sind entfallen — .app-shell trägt die ruhige Grundfläche überall gleich.
   return (
+    // Der Provider umschließt die gesamte Shell: Zustand und Polling des
+    // Benachrichtigungscenters laufen genau EINMAL, unabhängig davon, wie viele
+    // Glockenknöpfe darin gerendert werden.
+    <NotificationsProvider>
     <div className="app-shell">
       <DashboardSidebar
         page={page}
@@ -194,8 +223,30 @@ export default function DashboardPage() {
         <div className="mobile-topbar">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
           <div className="topbar-brand">ConfidaraExpress</div>
-          <div className="user-avatar">{initials}</div>
+          {/* Dieselbe Regel wie beim Seiten-Mount unten: die Übersicht trägt ihre
+              Glocke bereits in der eigenen Kopfzeile. Unterhalb von 860 px ist die
+              Topbar sichtbar — ohne diese Bedingung stünden auf der Übersicht dort
+              ZWEI Glocken (Topbar + Kopfzeile). Auf allen anderen Unterseiten ist
+              die Topbar der mobile Mount, weil der Seiten-Mount dort per CSS in der
+              Kopfzeile liegt. */}
+          <div className="topbar-right">
+            {page !== "overview" && (
+              <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
+            )}
+            <div className="user-avatar">{initials}</div>
+          </div>
         </div>
+
+        {/* Desktop-Mount der Glocke für alle Unterseiten AUSSER der Übersicht:
+            dort sitzt sie bereits an ihrer angestammten Stelle in der Kopfzeile,
+            ein zweiter Knopf würde doppelt erscheinen. Bewusst KEINE neue
+            vollständige Kopfleiste — nur ein kleiner Mount oben rechts im
+            bestehenden Inhaltsrahmen. */}
+        {page !== "overview" && (
+          <div className="page-bell-mount">
+            <NotificationBell variant="page" navigateTo={navigateFromNotification} />
+          </div>
+        )}
 
         {bookingToast && (
           <div className="alert-wrapper">
@@ -226,6 +277,7 @@ export default function DashboardPage() {
             onNewShipment={() => setPage("new")}
             onAllShipments={() => setPage("shipments")}
             onProfile={() => setPage("profile")}
+            onNotificationNav={navigateFromNotification}
           />
         )}
 
@@ -292,6 +344,15 @@ export default function DashboardPage() {
             onRetry={fetchData}
           />
         )}
+        {page === "support" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <SupportRequestsView
+              initialTicketId={supportTicketId}
+              onTicketConsumed={() => setSupportTicketId(null)}
+            />
+          </Suspense>
+        )}
+
         {page === "profile"   && <Profile user={user} />}
 
         {/* Ein Footer für ALLE Kundenseiten. Die Übersicht trug bis hierher
@@ -300,5 +361,6 @@ export default function DashboardPage() {
         <LegalLinks />
       </main>
     </div>
+  </NotificationsProvider>
   );
 }

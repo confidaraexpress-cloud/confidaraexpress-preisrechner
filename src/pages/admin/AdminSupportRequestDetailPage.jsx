@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
-import { getAdminSupportRequest, updateAdminSupportRequest } from "../../api/adminApi";
+import { getAdminSupportRequest, updateAdminSupportRequest, replyAdminSupportRequest } from "../../api/adminApi";
+import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import {
   SUPPORT_CONFLICT_RELOAD,
+  ADMIN_REPLY_ERROR,
+  ADMIN_REPLY_PUBLIC_HINT,
+  ADMIN_NOTE_INTERNAL_HINT,
+  ADMIN_THREAD_EMPTY,
+  ADMIN_REPLY_MAX,
+  adminReplyState,
+  supportReplyStateMeta,
   SUPPORT_MAIL_LABELS,
   SUPPORT_CONFLICT_TEXT,
   SUPPORT_DETAIL_ERROR,
@@ -43,7 +51,7 @@ function selectRequest(d) {
   if (!d || typeof d !== "object" || Array.isArray(d)) return null;
   for (const k of ["supportRequest", "support_request", "request", "data"]) {
     if (d[k] && typeof d[k] === "object" && !Array.isArray(d[k])) {
-      return { ...d[k], customer: d.customer ?? d[k].customer, notifications: d.notifications ?? d[k].notifications };
+      return { ...d[k], customer: d.customer ?? d[k].customer, notifications: d.notifications ?? d[k].notifications, messages: d.messages ?? d[k].messages };
     }
   }
   return d;
@@ -108,7 +116,16 @@ export default function AdminSupportRequestDetailPage() {
   const [saveMsg, setSaveMsg] = useState(null); // { type, text }
   // Konflikt: der Server liefert bei 409 additiv den aktuellen Stand mit. Er wird NIE
   // automatisch übernommen — der Admin entscheidet bewusst.
-  const [conflict, setConflict] = useState(null); // null | { current: object|null }
+  const [conflict, setConflict] = useState(null);
+  // Öffentliche Antwort — bewusst getrennt vom Status-/Vermerk-Formular, damit
+  // eine interne Notiz nie versehentlich als Kundenantwort gespeichert wird.
+  const [reply, setReply] = useState("");
+  const [replying, setReplying] = useState(false);
+  const [replyError, setReplyError] = useState("");
+  const replyInFlight = useRef(false);
+  // Schlüssel der laufenden Absendeaktion — überlebt Fehlversuche, damit eine
+  // Wiederholung nach verlorenem Response keine zweite Kundenantwort erzeugt.
+  const replyIdemKey = useRef(null);
 
   const adopt = useCallback((canonical) => {
     setReq(canonical);
@@ -162,6 +179,37 @@ export default function AdminSupportRequestDetailPage() {
       <Icon n="chevronLeft" s={16} /> Zurück zur Übersicht
     </Link>
   );
+
+  // Öffentliche Antwort senden. Doppelklickschutz über eine Ref (kein State —
+  // sonst könnte ein zweiter Klick vor dem Re-Render durchrutschen). Nach Erfolg
+  // wird der Vorgang neu geladen, damit Verlauf und Antwortbedarf stimmen.
+  const submitReply = async (e) => {
+    e.preventDefault();
+    const state = adminReplyState(reply);
+    if (!state.valid || replyInFlight.current) return;
+    replyInFlight.current = true;
+    setReplying(true);
+    setReplyError("");
+    // Einmal je bewusster Absendeaktion erzeugt; bei einem Netzwerkfehler bleibt
+    // derselbe Schlüssel bestehen, weil dann unklar ist, ob die Antwort bereits
+    // gespeichert (und die Kundenbenachrichtigung ausgelöst) wurde.
+    if (!replyIdemKey.current) replyIdemKey.current = newIdempotencyKey();
+    try {
+      const r = await replyAdminSupportRequest(id, reply.trim(), replyIdemKey.current);
+      if (!r.ok) {
+        if (r.status !== 401 && r.status !== 403) setReplyError(ADMIN_REPLY_ERROR);
+        return;
+      }
+      replyIdemKey.current = null;
+      setReply("");
+      await reloadCurrent();
+    } catch {
+      setReplyError(ADMIN_REPLY_ERROR);
+    } finally {
+      replyInFlight.current = false;
+      setReplying(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -325,6 +373,15 @@ export default function AdminSupportRequestDetailPage() {
           </div>
           <span className={`badge ${statusCls}`}>{req.statusLabel || statusFallback}</span>
         </div>
+        {/* Antwortbedarf, serverseitig aus dem öffentlichen Verlauf abgeleitet —
+            nicht aus updated_at (das auch ein interner Vermerk verändert). */}
+        {supportReplyStateMeta(req) && (
+          <p className="adm-sup-replystate">
+            <span className={`badge ${supportReplyStateMeta(req)[0]}`}>
+              {supportReplyStateMeta(req)[1]}
+            </span>
+          </p>
+        )}
         <KV items={[
           ["Eingegangen", fmtDateTime(req.createdAt)],
           ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
@@ -365,6 +422,69 @@ export default function AdminSupportRequestDetailPage() {
         <h2 className="adm-card-title">Anfrage</h2>
         <KV items={[["Betreff", dash(req.subject)]]} />
         <p className="adm-sup-message">{req.message || "—"}</p>
+      </div>
+
+      {/* 3a) Öffentlicher Nachrichtenverlauf — GENAU das, was der Kunde sieht.
+          Interne Vermerke erscheinen hier nie: der Server liefert ausschließlich
+          Nachrichten mit visibility='public' aus. Alle Texte sind Freitext und
+          werden als reiner Text gerendert (kein dangerouslySetInnerHTML). */}
+      <div className="adm-card">
+        <h2 className="adm-card-title">Nachrichtenverlauf</h2>
+        {Array.isArray(req.messages) && req.messages.length > 0 ? (
+          <ol className="adm-sup-thread">
+            {req.messages.map((m, i) => (
+              <li
+                key={m.id != null ? `m${m.id}` : `original-${i}`}
+                className={`adm-sup-msg adm-sup-msg-${m.authorRole === "admin" ? "admin" : "customer"}`}
+              >
+                <div className="adm-sup-msg-head">
+                  <span className="adm-sup-msg-author">
+                    {m.authorRole === "admin" ? "ConfidaraExpress Support" : "Kunde"}
+                  </span>
+                  <span className="adm-sup-msg-time">{fmtDateTime(m.createdAt)}</span>
+                </div>
+                <p className="adm-sup-msg-body">{m.message}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="adm-sup-hint">{ADMIN_THREAD_EMPTY}</p>
+        )}
+
+        {/* Öffentliche Antwort — eigener Endpunkt, klar als kundensichtbar
+            gekennzeichnet. Bewusst getrennt vom internen Vermerk weiter unten. */}
+        <form className="adm-sup-replyform" onSubmit={submitReply}>
+          <label className="adm-label" htmlFor="sup-reply">Öffentlich antworten</label>
+          <textarea
+            id="sup-reply"
+            className="adm-sup-note"
+            rows={4}
+            value={reply}
+            maxLength={ADMIN_REPLY_MAX}
+            disabled={replying}
+            placeholder="Ihre Antwort an den Kunden …"
+            onChange={(e) => {
+              // Geänderter Text = andere Absendeaktion → neuer Schlüssel.
+              if (replyIdemKey.current) replyIdemKey.current = null;
+              setReply(e.target.value);
+            }}
+          />
+          <p className="adm-sup-hint adm-sup-public">
+            <Icon n="mail" s={13} /> {ADMIN_REPLY_PUBLIC_HINT}
+          </p>
+          {replyError && (
+            <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{replyError}</div>
+          )}
+          <div className="adm-sup-actions">
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={!adminReplyState(reply).valid || replying}
+            >
+              {replying ? <><span className="spinner" /> Wird gesendet …</> : <>Antwort an Kunden senden</>}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
@@ -411,8 +531,9 @@ export default function AdminSupportRequestDetailPage() {
           placeholder="Nur intern sichtbar — der Kunde sieht diesen Text nicht."
           onChange={(e) => setEditNote(e.target.value)}
         />
-        <p className="adm-sup-hint">
-          Der Vermerk ist ausschließlich intern. Ein leeres Feld löscht einen vorhandenen Vermerk.
+        <p className="adm-sup-hint adm-sup-internal">
+          <Icon n="lock" s={13} /> {ADMIN_NOTE_INTERNAL_HINT} Ein leeres Feld löscht einen
+          vorhandenen Vermerk.
         </p>
 
         {missingRevision && (

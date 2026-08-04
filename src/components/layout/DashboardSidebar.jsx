@@ -30,6 +30,10 @@ const NAV_GROUPS = [
     label: "Konto",
     items: [
       { id: "profile", label: "Unternehmen & Konto", icon: "building" },
+      // Der Nachrichtenverlauf der eigenen Anfragen. Die Supportkarte weiter unten
+      // bleibt unverändert der schnelle Weg, eine NEUE Anfrage zu stellen — dieser
+      // Eintrag führt zu den bestehenden Vorgängen.
+      { id: "support", label: "Supportanfragen", icon: "mail" },
     ],
   },
 ];

@@ -2,6 +2,7 @@ import { apiFetch } from "./client";
 import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
 import { buildSupportPatchBody } from "../utils/adminSupportView.mjs";
 import { buildPriceMarkupBody } from "../utils/customerMarkup.mjs";
+import { idempotencyHeader } from "../utils/idempotencyKey.mjs";
 
 // ── Admin-API (dünner Wrapper um das zentrale apiFetch) ──────────────────────
 // Alle Aufrufe laufen über apiFetch(..., { auth: true }): Bearer-Header und das
@@ -496,5 +497,27 @@ export function backfillInvoiceDocument(id) {
     method: "POST",
     auth: true,
     body: JSON.stringify({ confirm: true }),
+  });
+}
+
+// ── Öffentliche Adminantwort im Supportverlauf ───────────────────────────────
+// POST /admin/support-requests/:id/messages — speichert eine für den Kunden
+// SICHTBARE Antwort und erzeugt (serverseitig, in derselben Transaktion) dessen
+// Glockenbenachrichtigung.
+//
+// Bewusst ein EIGENER Endpunkt neben dem PATCH (Status + interner Vermerk): die
+// Trennung zwischen öffentlicher Antwort und interner Notiz soll nicht davon
+// abhängen, welches Feld gerade befüllt wird. Der Body trägt ausschließlich den
+// Nachrichtentext — die Sichtbarkeit setzt der Server fest auf „öffentlich".
+// `idempotencyKey` identifiziert die Absendeaktion: eine Wiederholung nach einem
+// verlorenen Response erzeugt serverseitig KEINE zweite Nachricht, keine zweite
+// Kundenbenachrichtigung und keinen zweiten Auditeintrag. Der Body bleibt
+// ausschliesslich `{ message }` — der Schluessel reist im Header.
+export function replyAdminSupportRequest(id, message, idempotencyKey) {
+  return apiFetch(`/admin/support-requests/${encodeURIComponent(String(id))}/messages`, {
+    method: "POST",
+    auth: true,
+    headers: idempotencyHeader(idempotencyKey),
+    body: JSON.stringify({ message }),
   });
 }

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
+import { NotificationBell } from "../notifications/NotificationBell";
 import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
 import markPrimary from "../../assets/brand/mark-primary.svg";
@@ -81,7 +82,7 @@ const TRUST = [
   { icon: "star",    title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
 ];
 
-export function Overview({ user, shipments, loading, onNewShipment, onProfile }) {
+export function Overview({ user, shipments, loading, onNewShipment, onProfile, onNotificationNav }) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
   const org  = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
@@ -121,7 +122,10 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile })
           <p className="pp-hsub">Hier ist Ihre Übersicht für heute.</p>
         </div>
         <div className="pp-actions">
-          <span className="pp-bell" aria-hidden="true"><Icon n="bell" s={18} /></span>
+          {/* Dieselbe Position wie zuvor — aus der dekorativen Glocke ist eine echte
+              Schaltfläche geworden. Zustand und Polling kommen aus dem Shell-Provider;
+              hier entsteht keine zweite Abfrageschleife. */}
+          <NotificationBell variant="overview" navigateTo={onNotificationNav} />
           <button type="button" className="pp-uchip" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
             <CompanyMark initial={initial} />
             <span className="pp-uchip-text">

@@ -31,3 +31,6 @@
 /* Supportanfrage — isoliert (sup- Prefix für den Kundendialog, adm-sup- für den
    Adminbereich); reine Zusatzklassen, keine Kollision mit bestehenden Scopes. */
 @import './support.css';
+/* Benachrichtigungscenter — isolierter ntf-Scope (Glocke, Badge, Panel). Reine
+   Zusatzklassen auf App-Layout-Tokens; keine Kollision mit bestehenden Scopes. */
+@import './notifications.css';

@@ -161,7 +161,42 @@ export function normalizeSupportRequest(raw) {
     // dieselbe kanonische Form gebracht, damit die Komponenten nur EINE Struktur kennen.
     // Getrennt zu halten ist der Kern: ein Fehler der einen Mail sagt nichts über die andere.
     notifications: normalizeNotifications(raw),
+    // Öffentlicher Nachrichtenverlauf — NUR im Detail. Enthält ausschließlich
+    // kundensichtbare Nachrichten; interne Vermerke liefert der Server hier nie.
+    messages: normalizeThread(raw.messages),
+    // Antwortbedarf, serverseitig aus der letzten ÖFFENTLICHEN Nachricht abgeleitet.
+    // Wird NIE clientseitig aus updated_at nachgerechnet — das würde auch bei einem
+    // internen Vermerk oder einer Statusänderung anschlagen.
+    needsAdminReply: raw.needsAdminReply === true,
+    replyState: typeof raw.replyState === "string" ? raw.replyState : null,
+    replyStateLabel: firstOf(raw, "replyStateLabel", "reply_state_label") ?? null,
+    lastPublicMessageAt: firstOf(raw, "lastPublicMessageAt", "last_public_message_at") ?? null,
+    lastPublicMessageAuthorRole:
+      firstOf(raw, "lastPublicMessageAuthorRole", "last_public_message_author_role") ?? null,
   };
+}
+
+// Verlauf defensiv normalisieren: unbrauchbare Einträge fallen heraus, statt eine
+// Zeile ohne Text oder Absender zu rendern. Die Erstanfrage trägt bewusst id=null
+// (sie ist keine support_messages-Zeile) und bleibt dennoch erhalten.
+function normalizeThread(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((m) => {
+      if (!m || typeof m !== "object") return null;
+      const message = typeof m.message === "string" ? m.message : null;
+      const authorRole = m.authorRole === "admin" || m.authorRole === "customer" ? m.authorRole : null;
+      if (message === null || authorRole === null) return null;
+      const id = Number(m.id);
+      return {
+        id: Number.isInteger(id) && id > 0 ? id : null,
+        authorRole,
+        message,
+        createdAt: m.createdAt ?? null,
+        original: m.original === true,
+      };
+    })
+    .filter(Boolean);
 }
 
 // Kanonisch: { internal: {sentAt, failed, error}, customerConfirmation: {...} }.
@@ -344,3 +379,46 @@ export function toSupportApiFilters({ status, category, q, sort } = {}) {
   out.sort = SUPPORT_SORT_VALUES.includes(sort) ? sort : SUPPORT_SORT_DEFAULT;
   return out;
 }
+
+// ── Antwortbedarf (serverseitig abgeleitet) ──────────────────────────────────
+// Der Server leitet den Zustand aus der letzten ÖFFENTLICHEN Nachricht ab —
+// interne Vermerke und Statusänderungen verändern ihn nicht. Das Frontend
+// interpretiert hier nichts nach, es zeigt nur an.
+export const SUPPORT_REPLY_STATE_LABELS = Object.freeze({
+  new_request: "Antwort offen",
+  customer_reply: "Neue Kundenantwort",
+});
+
+export function supportReplyStateMeta(row) {
+  const state = row && typeof row.replyState === "string" ? row.replyState : null;
+  if (state === "customer_reply") return ["badge-yellow", SUPPORT_REPLY_STATE_LABELS.customer_reply];
+  if (state === "new_request") return ["badge-blue", SUPPORT_REPLY_STATE_LABELS.new_request];
+  return null;
+}
+
+export function needsAdminReply(row) {
+  return !!(row && row.needsAdminReply === true);
+}
+
+// ── Öffentliche Antwort (Adminformular) ──────────────────────────────────────
+// Eigene, niedrigere Mindestlänge als bei einer neuen Anfrage — eine kurze
+// Rückmeldung im laufenden Vorgang ist legitim. Spiegelt lib/support.js.
+export const ADMIN_REPLY_MIN = 2;
+export const ADMIN_REPLY_MAX = 5000;
+
+export function adminReplyState(raw) {
+  const value = typeof raw === "string" ? raw : "";
+  const trimmed = value.trim();
+  return {
+    value,
+    length: trimmed.length,
+    valid: trimmed.length >= ADMIN_REPLY_MIN && trimmed.length <= ADMIN_REPLY_MAX,
+  };
+}
+
+export const ADMIN_REPLY_ERROR = "Die Antwort konnte nicht gespeichert werden. Bitte erneut versuchen.";
+export const ADMIN_REPLY_PUBLIC_HINT =
+  "Diese Antwort ist für den Kunden im Nachrichtenverlauf sichtbar und löst eine Benachrichtigung aus.";
+export const ADMIN_NOTE_INTERNAL_HINT =
+  "Nur intern sichtbar — erscheint nie im Kundenverlauf und erzeugt keine Benachrichtigung.";
+export const ADMIN_THREAD_EMPTY = "Noch keine öffentliche Antwort in diesem Vorgang.";

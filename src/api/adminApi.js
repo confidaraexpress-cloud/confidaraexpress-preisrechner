@@ -498,3 +498,20 @@ export function backfillInvoiceDocument(id) {
     body: JSON.stringify({ confirm: true }),
   });
 }
+
+// ── Öffentliche Adminantwort im Supportverlauf ───────────────────────────────
+// POST /admin/support-requests/:id/messages — speichert eine für den Kunden
+// SICHTBARE Antwort und erzeugt (serverseitig, in derselben Transaktion) dessen
+// Glockenbenachrichtigung.
+//
+// Bewusst ein EIGENER Endpunkt neben dem PATCH (Status + interner Vermerk): die
+// Trennung zwischen öffentlicher Antwort und interner Notiz soll nicht davon
+// abhängen, welches Feld gerade befüllt wird. Der Body trägt ausschließlich den
+// Nachrichtentext — die Sichtbarkeit setzt der Server fest auf „öffentlich".
+export function replyAdminSupportRequest(id, message) {
+  return apiFetch(`/admin/support-requests/${encodeURIComponent(String(id))}/messages`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ message }),
+  });
+}

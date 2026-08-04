@@ -154,24 +154,40 @@
 
   /* Fläche: heller, leicht transparenter Kopf — der warme Ivory-Grund scheint
      mit wenigen Prozent durch und nimmt der Karte das kalte Reinweiß. Der Fuß
-     läuft ins Marken-Off-White (sehr helles Blau-Grau). Die weiße Innenkante
-     oben ist die einzige „Politur" — kein Glanz, kein Glow, kein
-     backdrop-filter, kein Glassmorphism. */
+     läuft ins Marken-Off-White (sehr helles Blau-Grau), jetzt einen Schritt
+     tiefer als zuvor (245/247/251 → 238/241/248) — auf kontrastärmeren
+     Bildschirmen war der Verlauf kaum von einer reinen weißen Fläche zu
+     unterscheiden. Blau bleibt klar vor Rot (Blau-Grau, kein Neutralgrau),
+     die Differenz bleibt einstellig pro Kanal — sichtbar als Material, nicht
+     als eigene zweite Zone. Die weiße Innenkante oben ist die einzige
+     „Politur" — kein Glanz, kein Glow, kein backdrop-filter, kein
+     Glassmorphism. */
   --ce-kpi-surface: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(251, 252, 254, 0.96) 46%,
-    rgba(245, 247, 251, 0.97) 100%);
-  --ce-kpi-border: rgba(17, 26, 51, 0.09);
-  --ce-kpi-border-hover: rgba(17, 26, 51, 0.15);
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(249, 250, 253, 0.965) 45%,
+    rgba(238, 241, 248, 0.98) 100%);
+  /* Neutraler Rahmen: von 9 % auf 11,5 % angehoben, damit die Karte auf
+     kontrastärmeren Bildschirmen klarer vom Ivory-Grund der Seite abgesetzt
+     ist. Der Hover-Rahmen hält denselben Abstand zur Grundlinie wie zuvor
+     (+0.06). Beide bleiben deutlich unter Volltonrahmen. */
+  --ce-kpi-border: rgba(17, 26, 51, 0.115);
+  --ce-kpi-border-hover: rgba(17, 26, 51, 0.175);
+  /* Zweistufiger Schatten: ein sehr kleiner, knapper Kontaktschatten
+     unmittelbar unter der Karte (1 px Streuung, praktisch keine Unschärfe)
+     und ein größerer, weicher Umgebungsschatten mit niedriger Deckkraft
+     (negative Streuung zieht ihn auf die Unterkante zusammen, damit er nicht
+     seitlich/oben sichtbar wird). Die innere Lichtkante bleibt bewusst fein
+     (1 px, reduzierte Deckkraft), damit sie nicht wie eine zweite Kontur
+     wirkt. */
   --ce-kpi-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 1px 2px rgba(17, 26, 51, 0.04),
-    0 12px 28px -16px rgba(17, 26, 51, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 1px rgba(17, 26, 51, 0.06),
+    0 20px 38px -20px rgba(17, 26, 51, 0.24);
   --ce-kpi-shadow-hover:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 1px 2px rgba(17, 26, 51, 0.05),
-    0 16px 34px -16px rgba(17, 26, 51, 0.26);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 1px rgba(17, 26, 51, 0.07),
+    0 24px 44px -20px rgba(17, 26, 51, 0.28);
 
   /* Schrift — durchgehend Navy-Familie, keine Kartenfarbe im Text. Beide
      Grautöne sind gegen den DUNKELSTEN Punkt der Kartenfläche gemessen:
@@ -185,26 +201,33 @@
      Kante des Squircles sowie der sehr schwache Farbschimmer rechts oben.
      Fläche/Kante/Schimmer sind dieselbe Farbe in niedriger Deckkraft — keine
      Vollfarbe, kein Neon. Alle vier Strichfarben liegen über 3:1 gegen die
-     eigene Squircle-Fläche (gemessen im Test). */
+     eigene Squircle-Fläche (gemessen im Test).
+
+     Strichfarbe, Fläche und Kante des Squircles sind Teil der gesperrten
+     Icon-Gestaltung und bleiben unverändert. Einzig der Eckschimmer (-tint,
+     wirkt ausschließlich auf .pp-kpi selbst, nicht auf das Icon) ist beim
+     Oberflächen-Feinschliff minimal angehoben (0.07 → 0.08) — weiterhin klar
+     unter der Obergrenze 0.09 aus overviewKpiCards.test.mjs und nur bei
+     genauem Hinsehen wahrnehmbar. */
   --ce-kpi-active:       #5367e8;   /* Confidara-Indigo (Marke) */
   --ce-kpi-active-face:  rgba(83, 103, 232, 0.08);
   --ce-kpi-active-edge:  rgba(83, 103, 232, 0.18);
-  --ce-kpi-active-tint:  rgba(83, 103, 232, 0.07);
+  --ce-kpi-active-tint:  rgba(83, 103, 232, 0.08);
 
   --ce-kpi-transit:      #3f6fa6;   /* gedämpftes kühles Blau */
   --ce-kpi-transit-face: rgba(63, 111, 166, 0.08);
   --ce-kpi-transit-edge: rgba(63, 111, 166, 0.2);
-  --ce-kpi-transit-tint: rgba(63, 111, 166, 0.07);
+  --ce-kpi-transit-tint: rgba(63, 111, 166, 0.08);
 
   --ce-kpi-delivered:      #128069; /* gedämpftes Smaragd/Teal */
   --ce-kpi-delivered-face: rgba(18, 128, 105, 0.08);
   --ce-kpi-delivered-edge: rgba(18, 128, 105, 0.2);
-  --ce-kpi-delivered-tint: rgba(18, 128, 105, 0.07);
+  --ce-kpi-delivered-tint: rgba(18, 128, 105, 0.08);
 
   --ce-kpi-delayed:      #b07a18;   /* hochwertiges Amber, kein Signalorange */
   --ce-kpi-delayed-face: rgba(176, 122, 24, 0.09);
   --ce-kpi-delayed-edge: rgba(176, 122, 24, 0.22);
-  --ce-kpi-delayed-tint: rgba(176, 122, 24, 0.07);
+  --ce-kpi-delayed-tint: rgba(176, 122, 24, 0.08);
 
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ───────────────────── */
   --auth-bg-0: #01030a;

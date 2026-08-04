@@ -147,7 +147,7 @@ test("3 — das KPI-Grid ist 4 → 2 → 1 ohne Zwischenstufe und ohne Restplatz
   assert.ok(!/\.pp-kpi\s*\{[^}]*(?<!min-)height:\s*\d/.test(css), "keine feste Kartenhöhe setzen");
 });
 
-test("4 — die Breakpoints sind die bestehenden (980 px und 560 px)", () => {
+test("4 — die KPI-Breakpoints sind 1080 px und 560 px, unabhängig vom globalen 980-px-Wechsel", () => {
   // Jeden Media-Block einzeln betrachten und nur die .pp-kpis-Regel darin auswerten —
   // andere Raster (.pp-vals/.pp-steps/.pp-cars) nutzen dieselben Spaltenangaben und
   // dürfen die Zuordnung nicht verfälschen.
@@ -161,9 +161,50 @@ test("4 — die Breakpoints sind die bestehenden (980 px und 560 px)", () => {
     .map((b) => ({ breite: b.breite, spalten: kpiRegel(b.inhalt) }))
     .filter((b) => b.spalten !== null);
   assert.deepEqual(stufen, [
-    { breite: 980, spalten: "repeat(2, 1fr)" },
+    { breite: 1080, spalten: "repeat(2, 1fr)" },
     { breite: 560, spalten: "1fr" },
-  ], `erwartet genau zwei Stufen in den bestehenden Breakpoints, gefunden: ${JSON.stringify(stufen)}`);
+  ], `erwartet genau zwei Stufen bei 1080/560, gefunden: ${JSON.stringify(stufen)}`);
+
+  // Der globale 980-px-Wechsel bleibt bestehen (er betrifft .pp-main/.pp-top/
+  // .pp-actions/.pp-cars) — er darf .pp-kpis nur nicht mehr anfassen.
+  const global980 = bloecke.find((b) => b.breite === 980);
+  assert.ok(global980, "der globale 980-px-Breakpoint fehlt — er wurde versehentlich entfernt statt nur .pp-kpis daraus zu lösen");
+  assert.ok(!/\.pp-kpis\s*\{/.test(global980.inhalt),
+    "der globale 980-px-Block darf .pp-kpis nicht mehr enthalten — das KPI-Raster hat jetzt seinen eigenen 1080-px-Breakpoint");
+  for (const sel of [".pp-main", ".pp-top", ".pp-actions", ".pp-cars"]) {
+    assert.ok(global980.inhalt.includes(sel), `der globale 980-px-Breakpoint darf ${sel} nicht verlieren`);
+  }
+});
+
+test("31 — der 1080-px-Breakpoint ist ausschließlich für das KPI-Raster, keine Drittwirkung", () => {
+  const block = cssBare.match(/@media \(max-width: 1080px\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(block, "der KPI-eigene 1080-px-Breakpoint fehlt");
+  const inhalt = block[1].trim();
+  // Der Block darf NUR die Spaltenregel für .pp-kpis enthalten — keine
+  // Padding-/Schrift-/Icongrößen-Änderung mehr. Die alten Feinstufen
+  // verkleinerten Schrift und Abstand als Notbehelf gegen den Labelumbruch;
+  // diese Sonderbehandlung ist entfallen. Ein Umbruch von „Aktive Sendungen"
+  // bei 1081–1200 px (feste 252-px-Sidebar + gesperrte Icongröße lassen dort
+  // nur rund 77–107 px für die Beschriftung) bleibt möglich — er ist aber
+  // NICHT problematisch: `.pp-kpi-head` reserviert 36 px Mindesthöhe, wodurch
+  // Kopfzeilenhöhe und Zahlengrundlinie über die Rasterzeile hinweg gleich
+  // bleiben, unabhängig davon, ob eine Beschriftung ein- oder zweizeilig ist
+  // (siehe Test 33 und die Kommentare in overview.css).
+  const regeln = [...inhalt.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, sel, body]) => ({
+    sel: sel.trim(), body: body.trim(),
+  }));
+  assert.deepEqual(regeln.map((r) => r.sel), [".pp-kpis"],
+    `der 1080-px-Block soll ausschließlich .pp-kpis regeln, gefunden: ${JSON.stringify(regeln.map((r) => r.sel))}`);
+  assert.match(regeln[0].body, /grid-template-columns:\s*repeat\(2,\s*1fr\)/);
+
+  // Keine verwaisten Bereichsabfragen (min-width…max-width) mehr, die früher
+  // Innenabstand/Icon-/Schriftgröße der KPI-Karten zwischen 981 und 1240 px
+  // verkleinert haben — sie sind mit dem neuen Breakpoint hinfällig.
+  const bereiche = [...cssBare.matchAll(/@media \(min-width: \d+px\) and \(max-width: \d+px\)\s*\{([\s\S]*?)\n\}/g)];
+  for (const [, inhalt] of bereiche) {
+    assert.ok(!/\.pp-kpi\b|\.pp-kpis\b|\.knum\b|\.pp-kpi-icon\b|\.pp-kpi-label\b/.test(inhalt),
+      "eine verwaiste Bereichsabfrage regelt noch KPI-Selektoren — mit dem 1080-px-Breakpoint nicht mehr nötig");
+  }
 });
 
 // ── Lade-, Fehler- und Nullverhalten ────────────────────────────────────────
@@ -520,13 +561,18 @@ test("28 — die vier Kontextzeilen sind gesetzt und wiederholen sich nicht", ()
   const arr = block.slice(0, block.indexOf("];") + 2);
   const texte = [...arr.matchAll(/context:\s*"([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(texte, [
-    "Aktuell laufend",
+    "Noch nicht abgeschlossen",
     "Auf dem Weg zum Empfänger",
     "Im aktuellen Monat",
     "Über dem geplanten Liefertermin",
   ], `erwartete Kontextzeilen, gefunden: ${JSON.stringify(texte)}`);
   assert.equal(new Set(texte).size, 4, "keine wiederholte generische Angabe");
   assert.ok(!overview.includes("Aktueller Stand"), "„Aktueller Stand“ stand dreimal identisch da");
+
+  // Die vorige Fassung „Aktuell laufend" ist bewusst ersetzt — Regressionsschutz,
+  // damit sie nicht versehentlich zurückkehrt.
+  assert.ok(!overview.includes("Aktuell laufend"),
+    "die vorige Kontextzeile „Aktuell laufend“ soll nicht mehr vorkommen");
 
   // „Aktuell im Versandprozess" wäre für isActive() zu viel behauptet: dort
   // zählen auch pending/approved, also noch nicht übergebene Sendungen. Der
@@ -553,21 +599,131 @@ test("29 — keine erfundenen Trends, Chips, Diagramme oder Statuspunkte", () =>
   assert.match(overviewCode, /\{kpi\.note && <span className="pp-kpi-note"> · \{kpi\.note\}<\/span>\}/);
 });
 
-test("30 — die Feinstufen ändern nur Typografie, nie das Raster", () => {
-  // Zwei Bereichsabfragen federn die schmalen Vierspaltenbreiten ab. Sie dürfen
-  // weder Spalten noch Breakpoints anfassen — sonst wäre 4 → 2 → 1 gebrochen.
-  const bereiche = [...cssBare.matchAll(
-    /@media \(min-width: (\d+)px\) and \(max-width: (\d+)px\)\s*\{([\s\S]*?)\n\}/g)];
-  assert.ok(bereiche.length >= 1, "die Feinabstimmung für schmale Spalten fehlt");
-  for (const [, von, bis, inhalt] of bereiche) {
-    assert.ok(Number(von) > 980, `Feinstufe ab ${von}px würde in den Zweispaltenbereich reichen`);
-    assert.ok(!/grid-template-columns/.test(inhalt), "eine Feinstufe darf das Raster nicht verändern");
-    assert.ok(!/\.pp-kpis\s*\{/.test(inhalt), "eine Feinstufe fasst das Raster nicht an");
-  }
+test("30 — die gesamte Vierspaltenreihe teilt sich EINE Typografie- und Abstandsstufe", () => {
+  // Die früheren Feinabstimmungs-Bereiche (981–1240 px) verkleinerten Schrift
+  // und Abstand als Notbehelf gegen den Labelumbruch. Diese Sonderbehandlung
+  // ist entfallen — nicht weil der Umbruch jetzt unmöglich wäre (er bleibt bei
+  // 1081–1200 px bestehen, siehe Test 31), sondern weil die Vorgabe „keine
+  // künstlich verkleinerte Schrift" verbietet, ihn auf diesem Weg zu
+  // kaschieren. Innenabstand, Icon- und Wertgröße kommen deshalb in der
+  // GESAMTEN Vierspaltenreihe (> 1080 px) nur noch aus der Grundstufe.
+  assert.equal(decl(".pp-kpi", "padding"), "22px 22px 20px");
+  assert.equal(decl(".pp-kpi-icon", "width"), "36px");
+  assert.equal(decl(".knum", "font-size"), "50px");
+
+  // Nur noch eine einzige Bereichsabfrage-Art ist zulässig: keine — die
+  // gesamte KPI-Feinabstimmung läuft jetzt über zwei einfache max-width-Stufen
+  // (1080/560, siehe Test 4 und 31).
+  const bereiche = [...cssBare.matchAll(/@media \(min-width: \d+px\) and \(max-width: \d+px\)\s*\{/g)];
+  assert.equal(bereiche.length, 0,
+    "es sollte keine min-width/max-width-Bereichsabfrage mehr geben — mit dem 1080-px-Breakpoint hinfällig");
+
   // Und die tote Tonpalette der alten Medaillons ist weg.
   for (const tot of [".m-mint", ".m-green", ".m-amber", ".m-hero", ".m-lav", ".m-violet"]) {
     assert.ok(!css.includes(tot), `${tot} wird von keinem Markup mehr referenziert`);
   }
+});
+
+test("32 — Icon.jsx ist durch den Oberflächen-Feinschliff unverändert (Icon-Sperre)", () => {
+  // Strikte Sperre: die vier KPI-Icons sind freigegeben und dürfen sich in
+  // diesem Auftrag nicht ändern — weder Pfad noch viewBox noch Linienstil.
+  // Exakte Locked-Reference statt eines Hashs, damit ein Fehlschlag sofort
+  // zeigt, WAS sich geändert hat.
+  const GESPERRT = {
+    packageMove: "M14.5 4.2 21.2 8.1v7.8l-6.7 3.9-6.7-3.9V8.1zM7.8 8.1 14.5 12l6.7-3.9M14.5 12v7.8M1.6 8.4h4M1 12h3.4M1.6 15.6h4",
+    routeArrow: "M4.8 16.5a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2zM17.1 3.3a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2zM6.9 18.6h5.6a4.6 4.6 0 0 0 4.6-4.6v-3.1M14.9 13.1 17.1 10.9l2.2 2.2",
+    seal: "M12 2.5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM9 9.6l2.1 2.1 3.9-3.9M8.6 15.7 7 21.5l5-2.4 5 2.4-1.6-5.8",
+    clockDelay: "M12 5a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8.6V13l3 1.8M12 2.5a10.5 10.5 0 0 1 7 2.7",
+  };
+  for (const [name, pfad] of Object.entries(GESPERRT)) {
+    const m = iconSrc.match(new RegExp(`\\b${name}:\\s*"([^"]+)"`));
+    assert.ok(m, `${name} fehlt in Icon.jsx`);
+    assert.equal(m[1], pfad, `${name}: der SVG-Pfad hat sich geändert — die Icons sind gesperrt`);
+  }
+  // Größe/Position/Strichstärke der Icons kommen aus overview.css (KPI-Squircle)
+  // bzw. aus dem Icon-Aufruf in Overview.jsx — beide bleiben unverändert.
+  assert.equal(decl(".pp-kpi-icon", "width"), "36px");
+  assert.equal(decl(".pp-kpi-icon", "height"), "36px");
+  assert.equal(parseFloat(decl(".pp-kpi-icon", "border-radius")).toFixed(1), "11.5");
+  assert.equal(decl(".pp-kpi-icon svg", "stroke-width"), "1.6");
+  assert.match(overviewCode, /<Icon n=\{kpi\.icon\} s=\{19\} \/>/, "sichtbare Icongröße 19 px");
+  assert.match(iconSrc, /viewBox="0 0 24 24"/);
+  assert.match(iconSrc, /strokeLinecap="round"/);
+  assert.match(iconSrc, /strokeLinejoin="round"/);
+  // Die Icon-Farben (Strich/Fläche/Kante des Squircles) sind Teil der Sperre —
+  // nur der kartenspezifische Eckschimmer (-tint) durfte sich ändern.
+  for (const k of KARTEN) {
+    assert.match(tok(`ce-kpi-${k}-face`), /^rgba\(/);
+    assert.match(tok(`ce-kpi-${k}-edge`), /^rgba\(/);
+  }
+  assert.equal(tok("ce-kpi-active-face"), "rgba(83, 103, 232, 0.08)");
+  assert.equal(tok("ce-kpi-active-edge"), "rgba(83, 103, 232, 0.18)");
+  assert.equal(tok("ce-kpi-transit-face"), "rgba(63, 111, 166, 0.08)");
+  assert.equal(tok("ce-kpi-transit-edge"), "rgba(63, 111, 166, 0.2)");
+  assert.equal(tok("ce-kpi-delivered-face"), "rgba(18, 128, 105, 0.08)");
+  assert.equal(tok("ce-kpi-delivered-edge"), "rgba(18, 128, 105, 0.2)");
+  assert.equal(tok("ce-kpi-delayed-face"), "rgba(176, 122, 24, 0.09)");
+  assert.equal(tok("ce-kpi-delayed-edge"), "rgba(176, 122, 24, 0.22)");
+  // Und die Statusfarben (Icon-Strich) selbst — unverändert.
+  assert.equal(tok("ce-kpi-active"), "#5367e8");
+  assert.equal(tok("ce-kpi-transit"), "#3f6fa6");
+  assert.equal(tok("ce-kpi-delivered"), "#128069");
+  assert.equal(tok("ce-kpi-delayed"), "#b07a18");
+});
+
+test("33 — Oberflächen-Feinschliff: Rahmen, Verlauf und Schatten in den vorgegebenen Zielkorridoren", () => {
+  // Rahmen: von ~9 % auf 11–12 % angehoben.
+  const rahmenAlpha = parseColor(tok("ce-kpi-border"))[3];
+  assert.ok(rahmenAlpha >= 0.11 && rahmenAlpha <= 0.12,
+    `Rahmen soll 11–12 % Deckkraft haben, ist ${(rahmenAlpha * 100).toFixed(1)}%`);
+  const hoverAlpha = parseColor(tok("ce-kpi-border-hover"))[3];
+  assert.ok(hoverAlpha > rahmenAlpha, "der Hover-Rahmen muss sichtbar über der Grundstufe liegen");
+
+  // Verlauf: Kopf/Fuß-Differenz erkennbar, aber nicht schwer — geprüft an der
+  // literalen RGB-Differenz zwischen erstem und letztem Stopp (mehr als vorher,
+  // aber einstellig bis niedrig-zweistellig pro Kanal, kein harter Sprung).
+  const kopf = parseColor(VERLAUF[0]), fuss = parseColor(VERLAUF[VERLAUF.length - 1]);
+  const delta = Math.abs(kopf[0] - fuss[0]) + Math.abs(kopf[1] - fuss[1]) + Math.abs(kopf[2] - fuss[2]);
+  assert.ok(delta >= 15, `Kopf/Fuß-Differenz zu schwach für „besser erkennbar“ (Summe ${delta})`);
+  assert.ok(delta <= 60, `Kopf/Fuß-Differenz zu stark — Vorgabe verlangt „nicht schwer“ (Summe ${delta})`);
+  assert.ok(fuss[2] > fuss[0], "der Fuß bleibt im Blau-Grau, nicht im Warm- oder Neutralton");
+
+  // Schatten: zweistufig — ein knapper Kontaktschatten (Blur ≤ 3px) UND ein
+  // größerer, weicher Umgebungsschatten (Blur ≥ 20px), beide niedrig deckend.
+  const schatten = tok("ce-kpi-shadow");
+  const ebenen = [...schatten.matchAll(/0 (\d+)px (\d+)px(?: (-?\d+)px)? (rgba\([^)]*\))/g)]
+    .map(([, , blur, , farbe]) => ({ blur: Number(blur), alpha: parseColor(farbe)[3] }));
+  assert.ok(ebenen.some((e) => e.blur <= 3), "der Kontaktschatten fehlt (Blur ≤ 3px erwartet)");
+  assert.ok(ebenen.some((e) => e.blur >= 20), "der weiche Umgebungsschatten fehlt (Blur ≥ 20px erwartet)");
+  for (const e of ebenen) assert.ok(e.alpha <= 0.3, `Schattenebene zu deckend (${e.alpha})`);
+
+  // Eckschimmer: höchstens minimal angehoben, bleibt klar unter der 0.09-Grenze.
+  for (const k of KARTEN) {
+    const alpha = parseColor(tok(`ce-kpi-${k}-tint`))[3];
+    assert.ok(alpha > 0.07 && alpha <= 0.085,
+      `${k}: Eckschimmer soll nur minimal über der vorigen 0.07 liegen, ist ${alpha}`);
+  }
+});
+
+test("34 — .pp-kpi hat min-width:0 gegen ungleiche Spaltenbreiten im Grid", () => {
+  // Ohne min-width:0 bleibt der Browser-Default min-width:auto in Kraft: eine
+  // `1fr`-Spalte darf dann nicht unter den Inhalts-Mindestbedarf ihrer Karte
+  // schrumpfen. Card „active" trägt gelegentlich den 24-h-Nachsatz und wird
+  // dadurch im Inhalt minimal breiter als die anderen drei — im echten Browser
+  // gemessen: 205.7 px vs. 159.1 px bei 1081 px Fensterbreite, ohne dieses
+  // Gegenmittel. Dasselbe Muster wie bei `.main-content > *` in
+  // dashboard-premium.css (dort für Flex, hier für Grid).
+  assert.equal(decl(".pp-kpi", "min-width"), "0");
+});
+
+test("35 — .pp-kpi-note bricht bei Bedarf um, statt die Karte zu überlaufen", () => {
+  // Der Nachsatz ist ein dynamischer, unbegrenzt langer Text — „128 neu in
+  // 24 h" ist länger als „1 neu in 24 h". white-space:nowrap hielt ihn zwar
+  // als eine visuelle Einheit zusammen, lief aber im schmalen Vierspalten-
+  // raster (1085–1240 px) über die Kartenbreite hinaus (im echten Browser
+  // gemessen: scrollWidth 160 px bei 130 px verfügbarer Breite) — ein
+  // abgeschnittener Inhalt, den die Vorgabe ausdrücklich verbietet.
+  assert.equal(decl(".pp-kpi-note", "white-space"), "normal");
 });
 
 test("15 — reloadShipments ist VOR den Effekten deklariert, die es referenzieren", () => {

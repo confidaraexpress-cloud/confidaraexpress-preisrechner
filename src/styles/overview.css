@@ -131,6 +131,14 @@
   --kt: var(--ce-kpi-active-tint);
 
   position: relative;
+  /* Ohne min-width:0 bleibt der Browser-Default min-width:auto in Kraft:
+     eine Grid-Spalte mit `1fr` darf nicht unter den Inhalts-Mindestbedarf
+     ihrer Karte schrumpfen. Die erste Karte trägt gelegentlich den 24-h-
+     Nachsatz (nowrap) und wird dadurch minimal breiter im Inhalt als die
+     anderen drei — ohne diese Zeile blieben die Spalten dadurch sichtbar
+     ungleich breit (gemessen: 205.7 px vs. 159.1 px bei 1081 px Breite).
+     Dasselbe Muster wie bei `.main-content > *` in dashboard-premium.css. */
+  min-width: 0;
   border-radius: 20px;
   padding: 22px 22px 20px;
   /* Fünf Ebenen, von oben nach unten: kleiner radialer Akzent rechts oben,
@@ -197,7 +205,15 @@
   font-family: var(--fs); font-size: 12px; line-height: 1.45;
   color: var(--ce-kpi-context);
 }
-.pp-kpi-note { white-space: nowrap; }
+/* Bewusst KEIN white-space:nowrap mehr: der Nachsatz ist ein dynamischer,
+   unbegrenzt langer Text ("128 neu in 24 h" ist länger als "1 neu in 24 h").
+   nowrap hielt ihn zwar als EINE visuelle Einheit zusammen, lief aber im
+   schmalen Vierspaltenraster (1085–1240 px) messbar über die Kartenbreite
+   hinaus (scrollWidth 160 px bei nur 130 px verfügbarer Breite) — ein
+   abgeschnittener Inhalt, den die Vorgabe ausdrücklich verbietet. Normales
+   Wrapping verhindert das zuverlässig, auf Kosten eines gelegentlichen
+   Umbruchs mitten im Nachsatz an sehr schmalen Breiten. */
+.pp-kpi-note { white-space: normal; }
 
 /* ══════════ Sektionen ══════════ */
 .pp-sec { margin-top: 60px; }
@@ -312,47 +328,44 @@
   .pp-main { max-width: none; padding: 30px 22px 60px; }
   .pp-top { flex-direction: column-reverse; }
   .pp-actions { padding-top: 0; flex-wrap: wrap; }
-  .pp-kpis { grid-template-columns: repeat(2, 1fr); }
   .pp-cars { grid-template-columns: repeat(2, 1fr); }
+}
+/* KPI-Raster: EIGENER Breakpoint bei 1080 px, bewusst getrennt vom globalen
+   980-px-Wechsel oben (der weiterhin ausschließlich .pp-main/.pp-top/
+   .pp-actions/.pp-cars betrifft und unverändert bleibt).
+
+   Grund: im alten, gemeinsamen 980-px-Wechsel begann die Vierspaltenreihe
+   direkt bei 981 px — dort blieben pro Karte nur rund 160 px, zu wenig für
+   „Aktive Sendungen" neben dem Icon, und zwei weitere Breiten-Stufen mussten
+   Schrift und Abstand eigens verkleinern, um den Umbruch abzufedern.
+
+   Bei 1080 px beginnt die Vierspaltenreihe stattdessen erst bei 1081 px.
+   Gemessen (nicht geschätzt, inklusive der 252 px breiten Sidebar, die den
+   verfügbaren Raum bereits VOR dem KPI-Raster abzieht): 171 px pro Karte bei
+   1081 px, 201 px bei 1200 px, 202 px ab 1205 px. „Aktive Sendungen" braucht
+   rund 107 px ungebrochen — das steht erst ab 1205 px zur Verfügung. Zwischen
+   1081 und 1200 px bricht die Beschriftung deshalb weiterhin auf zwei Zeilen
+   um; das ist eine reine Platzfrage der festen Sidebarbreite und der (bewusst
+   gesperrten) Icon-/Schriftgröße, kein CSS-Fehler. Verhindert wird dabei
+   ausschließlich, dass dieser Umbruch „problematisch" wird: `.pp-kpi-head`
+   reserviert 36 px Mindesthöhe (reicht für zwei Zeilen bei 12,5 px), sodass
+   Kopfzeilenhöhe, Zahlengrundlinie und Kartenbreite über die ganze Rasterzeile
+   hinweg gleich bleiben, egal ob eine, zwei, drei oder alle vier Beschriftungen
+   umbrechen. Innenabstand und Schriftgröße sind dadurch in der gesamten
+   Vierspaltenreihe (≥ 1081 px) einheitlich — keine Zwischenstufe verkleinert
+   sie künstlich mehr. `min-width: 0` auf `.pp-kpi` verhindert zusätzlich, dass
+   eine einzelne breitere Karte (z. B. mit dem 24-h-Nachsatz) ihre Spalte auf
+   Kosten der anderen drei verbreitert (dasselbe Muster wie bei
+   `.main-content > *` in dashboard-premium.css). Geprüft über einen
+   Breitendurchlauf von 360 bis 1920 px in 5-px-Schritten. */
+@media (max-width: 1080px) {
+  .pp-kpis { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
   .pp-kpis, .pp-steps, .pp-vals { grid-template-columns: 1fr; }
   .pp-h1 { font-size: 38px; }
 }
 
-/* ── KPI-Karten: Feinabstimmung über die Breiten ──
-   Das Raster bleibt 4 → 2 → 1 in den bestehenden Breakpoints (980/560). Die
-   beiden folgenden Blöcke ändern nur Typografie und Innenabstand.
-
-   Beide sind bewusst Bereiche statt max-width: zwischen 981 und 1240 px stehen
-   zwar noch vier Spalten, netto bleiben pro Karte aber nur rund 146–210 px.
-   Ohne diese Stufe bricht „Aktive Sendungen" neben dem Icon um. Unterhalb von
-   981 px greifen wieder zwei Spalten mit reichlich Platz — ein einfaches
-   max-width würde die Verkleinerung dorthin mitschleppen.
-
-   Die Obergrenze 1240 px ist gemessen, nicht geschätzt: in der Grundstufe
-   braucht „Aktive Sendungen" bei 12,5 px rund 108 px, und erst ab 1241 px
-   stehen dafür 119 px zur Verfügung. */
-@media (min-width: 981px) and (max-width: 1240px) {
-  .pp-kpi { padding: 20px 18px 18px; }
-  .pp-kpi-label { font-size: 11px; letter-spacing: 0; }
-  .pp-kpi-icon { width: 32px; height: 32px; border-radius: 10px; }
-  .pp-kpi-head { min-height: 32px; gap: 10px; margin-bottom: 14px; }
-  .knum { font-size: 40px; }
-}
-/* Engster Streifen. Unterhalb von rund 1050 px ist „Aktive Sendungen" neben
-   dem Icon geometrisch nicht mehr einzeilig unterzubringen: bei 985 px bleiben
-   der Beschriftung rund 79 px, das Wort braucht rund 96 px. Weiteres
-   Verkleinern der Schrift löst das nicht, es kostet nur die Wertigkeit. Statt
-   den Umbruch zu verhindern, wird er folgenlos gemacht — die min-height
-   entspricht exakt zwei Zeilen (2 × 11 px × 1.35), damit alle vier Kopfzeilen
-   gleich hoch bleiben und die vier Zahlen auf EINER Grundlinie stehen. */
-@media (min-width: 981px) and (max-width: 1120px) {
-  .pp-kpi { padding: 18px 15px 16px; }
-  .pp-kpi-icon { width: 29px; height: 29px; border-radius: 9px; }
-  .pp-kpi-head { min-height: 30px; gap: 8px; }
-  .knum { font-size: 37px; }
-}
 @media (max-width: 560px) {
   .pp-kpi { padding: 20px 20px 18px; }
   .knum { font-size: 44px; }

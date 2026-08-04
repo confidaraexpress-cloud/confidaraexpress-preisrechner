@@ -107,13 +107,15 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
   // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
   // Europe/Berlin). Die übrigen drei zeigen den aktuellen Stand ohne Zeitraum.
   //
-  // Kontextzeile der ersten Karte: bewusst „Aktuell laufend" statt „Aktuell im
-  // Versandprozess". isActive() zählt jeden offenen Business-Status — auch
+  // Kontextzeile der ersten Karte: „Noch nicht abgeschlossen" statt einer
+  // Formulierung, die einen bereits laufenden physischen Versandschritt
+  // unterstellt. isActive() zählt jeden offenen Business-Status — auch
   // `pending` und `approved`, also Sendungen, die noch gar nicht übergeben
-  // sind. „Im Versandprozess" würde für diese Fälle mehr behaupten als die
-  // Zahl deckt und die Karte zudem gegen „In Zustellung" verwischen.
+  // sind. Eine Versand-Formulierung würde für diese Fälle mehr behaupten als
+  // die Zahl deckt und die Karte zudem gegen „In Zustellung" verwischen;
+  // „Noch nicht abgeschlossen" beschreibt exakt diese Menge neutral.
   const KPIS = [
-    { key: "active",    icon: "packageMove", label: "Aktive Sendungen", value: String(k.active),    context: "Aktuell laufend",                 note: activeNote },
+    { key: "active",    icon: "packageMove", label: "Aktive Sendungen", value: String(k.active),    context: "Noch nicht abgeschlossen",        note: activeNote },
     { key: "transit",   icon: "routeArrow",  label: "In Zustellung",    value: String(k.inTransit), context: "Auf dem Weg zum Empfänger",       note: null },
     { key: "delivered", icon: "seal",        label: "Zugestellt",       value: String(k.delivered), context: "Im aktuellen Monat",              note: null },
     { key: "delayed",   icon: "clockDelay",  label: "Verzögert",        value: String(k.delayed),   context: "Über dem geplanten Liefertermin", note: null },

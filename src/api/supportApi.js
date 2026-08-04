@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { buildSupportRequestBody } from "../utils/supportRequest.mjs";
+import { idempotencyHeader } from "../utils/idempotencyKey.mjs";
 
 // ── Supportanfrage (Kunde) ───────────────────────────────────────────────────
 // POST /kunde/support-requests — legt eine allgemeine Supportanfrage an. KEINE
@@ -45,10 +46,15 @@ export function getSupportRequest(id) {
 
 // Antwort im laufenden Vorgang. Ein geschlossener Vorgang wird dadurch
 // serverseitig wieder geöffnet.
-export function replySupportRequest(id, message) {
+//
+// `idempotencyKey` identifiziert die Absendeaktion und schützt gegen die
+// Wiederholung nach einem verlorenen Response (siehe utils/idempotencyKey.mjs).
+// Der Body bleibt unverändert `{ message }` — der Schlüssel reist im Header.
+export function replySupportRequest(id, message, idempotencyKey) {
   return apiFetch(`/kunde/support-requests/${encodeURIComponent(String(id))}/messages`, {
     method: "POST",
     auth: true,
+    headers: idempotencyHeader(idempotencyKey),
     body: JSON.stringify({ message }),
   });
 }

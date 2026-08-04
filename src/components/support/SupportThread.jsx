@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { getSupportRequest, replySupportRequest, confirmSupportViewed } from "../../api/supportApi";
+import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import { useNotifications } from "../../context/NotificationsContext";
 import {
   supportReplyState, supportAuthorLabel, SUPPORT_REPLY_MAX,
@@ -51,6 +52,9 @@ export function SupportThread({ requestId, onBack }) {
   const [reopened, setReopened] = useState(false);
   // Doppelklickschutz ohne State-Abhängigkeit (Muster des Supportdialogs).
   const inFlight = useRef(false);
+  // Schlüssel der laufenden Absendeaktion (siehe submit unten). Bewusst ein Ref
+  // und kein State: er darf kein Rendern auslösen.
+  const idemKey = useRef(null);
   const endRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -98,14 +102,23 @@ export function SupportThread({ requestId, onBack }) {
     inFlight.current = true;
     setSending(true);
     setSendError("");
+    // Schlüssel der ANGEFANGENEN Absendeaktion. Er entsteht einmal und bleibt
+    // über Fehlversuche hinweg erhalten: schlägt der Aufruf mit einem
+    // Netzwerkfehler fehl, ist nicht erkennbar, ob der Server die Antwort
+    // bereits gespeichert hat. Ein zweiter Versuch mit DEMSELBEN Schlüssel kann
+    // deshalb nie eine zweite Nachricht erzeugen. Erst nach Erfolg (oder nach
+    // einer Textänderung, siehe onChange) wird er verworfen — die nächste
+    // bewusste Antwort bekommt einen neuen.
+    if (!idemKey.current) idemKey.current = newIdempotencyKey();
     try {
-      const r = await replySupportRequest(requestId, reply.trim());
+      const r = await replySupportRequest(requestId, reply.trim(), idemKey.current);
       if (!mountedRef.current) return;
       if (!r.ok) {
         if (r.status !== 401 && r.status !== 403) setSendError(SUPPORT_REPLY_ERROR);
         return;
       }
       const d = await r.json().catch(() => null);
+      idemKey.current = null;
       setReply("");
       if (d && d.reopened) setReopened(true);
       await load();
@@ -115,6 +128,14 @@ export function SupportThread({ requestId, onBack }) {
       inFlight.current = false;
       if (mountedRef.current) setSending(false);
     }
+  };
+
+  // Eine geänderte Antwort ist eine ANDERE Absendeaktion — sie darf nicht unter
+  // dem Schlüssel des vorigen Versuchs als Wiederholung gelten und dadurch
+  // stillschweigend verworfen werden.
+  const onReplyChange = (value) => {
+    if (idemKey.current) idemKey.current = null;
+    setReply(value);
   };
 
   if (loading && !data) {
@@ -196,7 +217,7 @@ export function SupportThread({ requestId, onBack }) {
           value={reply}
           maxLength={SUPPORT_REPLY_MAX}
           placeholder={SUPPORT_REPLY_PLACEHOLDER}
-          onChange={(e) => setReply(e.target.value)}
+          onChange={(e) => onReplyChange(e.target.value)}
           disabled={sending}
         />
         {sendError && (

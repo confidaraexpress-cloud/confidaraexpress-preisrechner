@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { getAdminSupportRequest, updateAdminSupportRequest, replyAdminSupportRequest } from "../../api/adminApi";
+import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import {
   SUPPORT_CONFLICT_RELOAD,
   ADMIN_REPLY_ERROR,
@@ -122,6 +123,9 @@ export default function AdminSupportRequestDetailPage() {
   const [replying, setReplying] = useState(false);
   const [replyError, setReplyError] = useState("");
   const replyInFlight = useRef(false);
+  // Schlüssel der laufenden Absendeaktion — überlebt Fehlversuche, damit eine
+  // Wiederholung nach verlorenem Response keine zweite Kundenantwort erzeugt.
+  const replyIdemKey = useRef(null);
 
   const adopt = useCallback((canonical) => {
     setReq(canonical);
@@ -186,12 +190,17 @@ export default function AdminSupportRequestDetailPage() {
     replyInFlight.current = true;
     setReplying(true);
     setReplyError("");
+    // Einmal je bewusster Absendeaktion erzeugt; bei einem Netzwerkfehler bleibt
+    // derselbe Schlüssel bestehen, weil dann unklar ist, ob die Antwort bereits
+    // gespeichert (und die Kundenbenachrichtigung ausgelöst) wurde.
+    if (!replyIdemKey.current) replyIdemKey.current = newIdempotencyKey();
     try {
-      const r = await replyAdminSupportRequest(id, reply.trim());
+      const r = await replyAdminSupportRequest(id, reply.trim(), replyIdemKey.current);
       if (!r.ok) {
         if (r.status !== 401 && r.status !== 403) setReplyError(ADMIN_REPLY_ERROR);
         return;
       }
+      replyIdemKey.current = null;
       setReply("");
       await reloadCurrent();
     } catch {
@@ -454,7 +463,11 @@ export default function AdminSupportRequestDetailPage() {
             maxLength={ADMIN_REPLY_MAX}
             disabled={replying}
             placeholder="Ihre Antwort an den Kunden …"
-            onChange={(e) => setReply(e.target.value)}
+            onChange={(e) => {
+              // Geänderter Text = andere Absendeaktion → neuer Schlüssel.
+              if (replyIdemKey.current) replyIdemKey.current = null;
+              setReply(e.target.value);
+            }}
           />
           <p className="adm-sup-hint adm-sup-public">
             <Icon n="mail" s={13} /> {ADMIN_REPLY_PUBLIC_HINT}

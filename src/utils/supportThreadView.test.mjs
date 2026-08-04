@@ -187,12 +187,21 @@ test("17 — Deep-Link und Seite sind verdrahtet", () => {
 // ═══ D) Adminsicht ══════════════════════════════════════════════════════════
 
 test("18 — öffentliche Antwort und interner Vermerk sind getrennte Wege", () => {
-  assert.match(adminApi, /export function replyAdminSupportRequest\(id, message\)/);
+  // Der Idempotenzschlüssel ist ein DRITTER Parameter und reist im Header — der
+  // Body bleibt unverändert exakt `{ message }`. Genau das wird hier geprüft:
+  // die Signatur darf wachsen, der Body nicht.
+  assert.match(adminApi, /export function replyAdminSupportRequest\(id, message, idempotencyKey\)/);
   assert.match(adminApi, /\/messages`/);
   assert.match(adminApi, /body: JSON\.stringify\(\{ message \}\)/);
-  // Kein visibility-Feld aus dem Client: das setzt der Server.
-  const fn = adminApi.slice(adminApi.indexOf("replyAdminSupportRequest"));
-  assert.ok(!/visibility/.test(fn.slice(0, 400)), "der Client sendet eine Sichtbarkeit");
+  assert.match(adminApi, /headers: idempotencyHeader\(idempotencyKey\)/);
+  // Kein visibility-Feld aus dem Client: das setzt der Server. Ebenso wenig
+  // Rolle, Status oder Revision — der Body trägt ausschließlich den Text.
+  const fn = adminApi.slice(adminApi.indexOf("export function replyAdminSupportRequest"));
+  const koerper = fn.slice(0, 400);
+  for (const verboten of ["visibility", "authorRole", "author_role", "status", "revision"]) {
+    assert.ok(!new RegExp(`\\b${verboten}\\b`).test(koerper),
+      `der Client sendet unzulässigerweise ${verboten}`);
+  }
   // Der PATCH bleibt für Status/Vermerk zuständig.
   assert.match(adminApi, /export function updateAdminSupportRequest/);
 });

@@ -33,9 +33,10 @@
   border: 1px solid var(--border-subtle);
   box-shadow: none;
 }
-.m-blue, .m-hero   { --mc: var(--accent-blue); }
-.m-mint, .m-green  { --mc: #0f9469; }
-.m-amber           { --mc: #b9740f; }
+/* Nur noch ein Ton: die KPI-Karten tragen kein .pp-medal mehr, sondern ihren
+   eigenen Squircle (.pp-kpi-icon). Die Töne m-hero/m-mint/m-green/m-amber
+   waren damit von keinem Markup mehr referenziert. */
+.m-blue { --mc: var(--accent-blue); }
 
 /* ══════════ Main + Header ══════════ */
 .pp-main {
@@ -107,42 +108,96 @@
   outline: 2px solid var(--accent-blue); outline-offset: 2px;
 }
 
-/* ══════════ KPI-Karten ══════════ */
-/* Vier gleichwertige Karten. Gleiche Höhe entsteht durch das Grid selbst
-   (Zeilen sind standardmäßig gleich hoch, `align-items: stretch`) — es braucht
-   keine feste Höhe und keine Sonderregel für eine letzte Position. */
-.pp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
+/* ══════════ KPI-Karten — „Executive Metric Cards" ══════════ */
+/* Vier GLEICHWERTIGE Karten. Die frühere Hervorhebung der ersten Karte
+   (Akzent-Border + blaue Beschriftung + blaue Zahl) ist entfallen: die Karten
+   sind nicht bedienbar, eine „ausgewählte" Karte behauptete einen Zustand, den
+   es nicht gibt. Unterschieden werden sie jetzt allein über Icon und Eckton.
+
+   Gleiche Höhe entsteht durch das Grid selbst (Zeilen sind standardmäßig
+   gleich hoch, `align-items: stretch`) — es braucht keine feste Höhe und keine
+   Sonderregel für eine letzte Position.
+
+   Sämtliche Farbwerte stehen als --ce-kpi-* in variables.css; hier steht
+   bewusst kein Farbliteral (Ausnahme: der transparente Endstopp des
+   Eckschimmers, der keine Farbe ist). */
+.pp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
+
 .pp-kpi {
-  position: relative; border-radius: var(--radius-lg);
-  padding: 20px 20px 18px;
-  transition: box-shadow 0.15s ease;
+  /* Kartenidentität — je Karte über .kt-* gesetzt, hier nur die Vorbelegung. */
+  --kc: var(--ce-kpi-active);
+  --kf: var(--ce-kpi-active-face);
+  --ke: var(--ce-kpi-active-edge);
+  --kt: var(--ce-kpi-active-tint);
+
+  position: relative;
+  border-radius: 20px;
+  padding: 22px 22px 20px;
+  /* Fünf Ebenen, von oben nach unten: kleiner radialer Akzent rechts oben,
+     darunter der zurückhaltende lineare Verlauf. Rahmen, Innenkante und der
+     weiche Navy-Schatten kommen aus border/box-shadow. */
+  background:
+    radial-gradient(128% 104% at 100% 0%, var(--kt) 0%, rgba(255, 255, 255, 0) 62%),
+    var(--ce-kpi-surface);
+  border: 1px solid var(--ce-kpi-border);
+  box-shadow: var(--ce-kpi-shadow);
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
 }
-.pp-kpi:hover { box-shadow: var(--shadow-card-hover); }
-/* Die erste Karte bleibt hervorgehoben — durch eine dezent getönte Fläche und
-   eine Akzent-Border, nicht mehr durch Verlauf + Glow-Ellipse. */
-.pp-kpi-hero {
-  background: var(--surface);
-  border: 1px solid var(--accent-blue-border);
-  box-shadow: var(--shadow-card);
+.kt-active    { --kc: var(--ce-kpi-active);    --kf: var(--ce-kpi-active-face);    --ke: var(--ce-kpi-active-edge);    --kt: var(--ce-kpi-active-tint); }
+.kt-transit   { --kc: var(--ce-kpi-transit);   --kf: var(--ce-kpi-transit-face);   --ke: var(--ce-kpi-transit-edge);   --kt: var(--ce-kpi-transit-tint); }
+.kt-delivered { --kc: var(--ce-kpi-delivered); --kf: var(--ce-kpi-delivered-face); --ke: var(--ce-kpi-delivered-edge); --kt: var(--ce-kpi-delivered-tint); }
+.kt-delayed   { --kc: var(--ce-kpi-delayed);   --kf: var(--ce-kpi-delayed-face);   --ke: var(--ce-kpi-delayed-edge);   --kt: var(--ce-kpi-delayed-tint); }
+
+/* Die Karten sind reine Informationsflächen: kein Cursorwechsel, kein Anheben,
+   keine Skalierung. Es bleibt die schwächstmögliche Rückmeldung — Rahmen und
+   Schatten ziehen eine Spur nach. */
+.pp-kpi:hover { border-color: var(--ce-kpi-border-hover); box-shadow: var(--ce-kpi-shadow-hover); }
+
+/* Kopfzeile: Beschriftung links, Icon rechts. Die min-height hält die vier
+   Zahlen auf EINER Grundlinie, auch wenn eine Beschriftung in einer engen
+   Spalte doch einmal zweizeilig wird. */
+.pp-kpi-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; min-height: 36px; margin-bottom: 16px;
 }
-.pp-kpi-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.pp-kpi .pp-medal { width: 38px; height: 38px; }
 .pp-kpi-label {
-  font-family: var(--fs); font-size: 10px; font-weight: 700; line-height: 1.4;
-  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary);
+  font-family: var(--fs); font-size: 12.5px; font-weight: 500;
+  line-height: 1.35; letter-spacing: 0.005em; text-transform: none;
+  color: var(--ce-kpi-label); min-width: 0;
 }
-.pp-kpi-hero .pp-kpi-label { color: var(--accent-blue-strong); }
+/* Weiche Squircle-Fläche statt Kreis — bewusst KEINE kreisförmige Umrandung.
+   Fläche und Kante tragen die Kartenfarbe in niedriger Deckkraft, gefüllt wird
+   nichts. Die Strichstärke kommt aus dem Stylesheet: CSS schlägt das
+   Präsentationsattribut stroke-width der Icon-Komponente, ohne deren globale
+   Voreinstellung (1.8) für die übrige App anzufassen. */
+.pp-kpi-icon {
+  width: 36px; height: 36px; border-radius: 11.5px;
+  display: grid; place-items: center; flex-shrink: 0;
+  color: var(--kc);
+  background: var(--kf);
+  border: 1px solid var(--ke);
+}
+.pp-kpi-icon svg { stroke-width: 1.6; }
+
+/* Wert. Sans-Serif aus dem vorhandenen System: --fs (DM Sans) ist die einzige
+   der drei geladenen Familien, die 580–650 wirklich rendert — Libre Franklin
+   (--fh) liegt nur als 700 und 800 vor und fällt bei 600 auf 700 zurück. Der
+   frühere Serifensatz der Übersicht (--fd) kommt in dieser Sektion nicht vor. */
+.pp-kpi-num { display: flex; align-items: baseline; line-height: 1; }
 .knum {
-  font-family: var(--fh); font-weight: 700; font-size: 40px; line-height: 1;
-  letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text-primary);
+  font-family: var(--fs); font-weight: 600; font-size: 50px; line-height: 1;
+  letter-spacing: -0.035em; font-variant-numeric: tabular-nums;
+  color: var(--ce-kpi-value);
 }
-.pp-kpi-hero .knum { color: var(--accent-blue-strong); }
-.kcur { font-family: var(--fm); font-size: 19px; font-weight: 500; color: var(--text-secondary); margin-left: 5px; }
-.pp-kpi-sub { display: flex; align-items: center; gap: 7px; margin-top: 13px; font-family: var(--fs); font-size: 12px; color: var(--text-secondary); }
-.kchip { display: inline-flex; align-items: center; gap: 4px; font-family: var(--fm); font-size: 10.5px; padding: 3px 9px; border-radius: 99px; }
-.kchip.d-green { color: #0f9469; background: rgba(15, 148, 105, 0.08); border: 1px solid rgba(15, 148, 105, 0.22); }
-.kchip.d-amber { color: #b9740f; background: rgba(185, 116, 15, 0.08);  border: 1px solid rgba(185, 116, 15, 0.22); }
-.kchip.d-blue  { color: var(--accent-blue); background: var(--accent-blue-soft); border: 1px solid var(--accent-blue-border); }
+.kcur { font-family: var(--fs); font-size: 22px; font-weight: 500; color: var(--ce-kpi-context); margin-left: 6px; }
+
+/* Kontextzeile — knapp unter dem Wert, ohne Trennlinie und ohne Statuspunkt. */
+.pp-kpi-sub {
+  margin-top: 10px;
+  font-family: var(--fs); font-size: 12px; line-height: 1.45;
+  color: var(--ce-kpi-context);
+}
+.pp-kpi-note { white-space: nowrap; }
 
 /* ══════════ Sektionen ══════════ */
 .pp-sec { margin-top: 60px; }
@@ -263,4 +318,48 @@
 @media (max-width: 560px) {
   .pp-kpis, .pp-steps, .pp-vals { grid-template-columns: 1fr; }
   .pp-h1 { font-size: 38px; }
+}
+
+/* ── KPI-Karten: Feinabstimmung über die Breiten ──
+   Das Raster bleibt 4 → 2 → 1 in den bestehenden Breakpoints (980/560). Die
+   beiden folgenden Blöcke ändern nur Typografie und Innenabstand.
+
+   Beide sind bewusst Bereiche statt max-width: zwischen 981 und 1240 px stehen
+   zwar noch vier Spalten, netto bleiben pro Karte aber nur rund 146–210 px.
+   Ohne diese Stufe bricht „Aktive Sendungen" neben dem Icon um. Unterhalb von
+   981 px greifen wieder zwei Spalten mit reichlich Platz — ein einfaches
+   max-width würde die Verkleinerung dorthin mitschleppen.
+
+   Die Obergrenze 1240 px ist gemessen, nicht geschätzt: in der Grundstufe
+   braucht „Aktive Sendungen" bei 12,5 px rund 108 px, und erst ab 1241 px
+   stehen dafür 119 px zur Verfügung. */
+@media (min-width: 981px) and (max-width: 1240px) {
+  .pp-kpi { padding: 20px 18px 18px; }
+  .pp-kpi-label { font-size: 11px; letter-spacing: 0; }
+  .pp-kpi-icon { width: 32px; height: 32px; border-radius: 10px; }
+  .pp-kpi-head { min-height: 32px; gap: 10px; margin-bottom: 14px; }
+  .knum { font-size: 40px; }
+}
+/* Engster Streifen. Unterhalb von rund 1050 px ist „Aktive Sendungen" neben
+   dem Icon geometrisch nicht mehr einzeilig unterzubringen: bei 985 px bleiben
+   der Beschriftung rund 79 px, das Wort braucht rund 96 px. Weiteres
+   Verkleinern der Schrift löst das nicht, es kostet nur die Wertigkeit. Statt
+   den Umbruch zu verhindern, wird er folgenlos gemacht — die min-height
+   entspricht exakt zwei Zeilen (2 × 11 px × 1.35), damit alle vier Kopfzeilen
+   gleich hoch bleiben und die vier Zahlen auf EINER Grundlinie stehen. */
+@media (min-width: 981px) and (max-width: 1120px) {
+  .pp-kpi { padding: 18px 15px 16px; }
+  .pp-kpi-icon { width: 29px; height: 29px; border-radius: 9px; }
+  .pp-kpi-head { min-height: 30px; gap: 8px; }
+  .knum { font-size: 37px; }
+}
+@media (max-width: 560px) {
+  .pp-kpi { padding: 20px 20px 18px; }
+  .knum { font-size: 44px; }
+}
+
+/* Die einzige Bewegung der Karten ist der Übergang von Rahmen und Schatten
+   beim Hover. Wer Bewegung abbestellt hat, bekommt den Zielzustand sofort. */
+@media (prefers-reduced-motion: reduce) {
+  .pp-kpi { transition: none; }
 }

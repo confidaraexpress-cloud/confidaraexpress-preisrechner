@@ -21,6 +21,85 @@ const dashboard = src("../../pages/DashboardPage.jsx");
 const dashboardCode = stripComments(dashboard);
 const css = src("../../styles/overview.css");
 
+// ── Hilfen für die Prüfung des Kartenbildes ─────────────────────────────────
+const cssBare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+const variables = src("../../styles/variables.css").replace(/\/\*[\s\S]*?\*\//g, "");
+const iconSrc = src("../ui/Icon.jsx");
+const fontsCss = src("../../styles/fonts.css");
+
+// Rumpf der ERSTEN Regel mit exakt diesem Selektor (Grundstufe steht im
+// Stylesheet vor den Media-Queries).
+function rule(selector) {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = cssBare.match(new RegExp(`(?:^|[};{])\\s*${esc}\\s*\\{([^}]*)\\}`, "m"));
+  return m ? m[1] : null;
+}
+function decl(selector, prop) {
+  const body = rule(selector);
+  if (body == null) return null;
+  const m = body.match(new RegExp(`(?:^|;)\\s*${prop}:\\s*([^;]+)`));
+  return m ? m[1].trim() : null;
+}
+// Tokenwert aus variables.css, ein var()-Verweis wird aufgelöst.
+function tok(name, tiefe = 0) {
+  const m = variables.match(new RegExp(`--${name}:\\s*([\\s\\S]*?);`));
+  if (!m) return null;
+  const v = m[1].trim();
+  const ref = v.match(/^var\(--([\w-]+)\)$/);
+  return ref && tiefe < 4 ? tok(ref[1], tiefe + 1) : v;
+}
+
+// ── Farbe: parsen, überlagern, Kontrast ─────────────────────────────────────
+function parseColor(v) {
+  if (Array.isArray(v)) return v;
+  const s = String(v).trim();
+  const hex = s.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1];
+  }
+  const rgba = s.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)$/i);
+  if (rgba) return [+rgba[1], +rgba[2], +rgba[3], rgba[4] === undefined ? 1 : +rgba[4]];
+  throw new Error(`nicht parsbare Farbe: ${v}`);
+}
+// Vordergrund mit Alpha über einen deckenden Hintergrund legen.
+function over(fg, bg) {
+  const [r, g, b, a] = parseColor(fg);
+  const [R, G, B] = parseColor(bg);
+  return [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a), 1];
+}
+function luminance(c) {
+  const [r, g, b] = (Array.isArray(c) ? c : parseColor(c)).slice(0, 3).map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a, b) {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+// Der reale Untergrund einer KPI-Karte: Ivory-Grund, darüber die (leicht
+// transparente) Kartenfläche. `stopp` ist der Farbstopp des Kartenverlaufs.
+function kartenGrund(stopp) {
+  return over(stopp, tok("ce-app-bg-top"));
+}
+// Der zusammenhängende KPI-Abschnitt des Stylesheets (Grundstufe, ohne die
+// Feinstufen am Dateiende) — von .pp-kpis bis zur nächsten Sektion.
+function kpiSektion() {
+  const start = cssBare.indexOf(".pp-kpis");
+  const ende = cssBare.indexOf(".pp-sec {", start);
+  assert.ok(start > -1 && ende > start, "der KPI-Abschnitt ist nicht auffindbar");
+  return cssBare.slice(start, ende);
+}
+
+const KARTEN = ["active", "transit", "delivered", "delayed"];
+// Die Karten ziehen ihre Farbe aus dem Verlaufsstopp am Kopf (dort sitzen Label
+// und Icon); der dunkelste Stopp am Fuß trägt die Kontextzeile.
+const VERLAUF = (tok("ce-kpi-surface").match(/rgba?\([^)]*\)/g) || []);
+const GRUND_KOPF = kartenGrund(VERLAUF[0]);
+const GRUND_FUSS = kartenGrund(VERLAUF[VERLAUF.length - 1]);
+
 // ── Genau vier Karten ────────────────────────────────────────────────────────
 test("1 — die Übersicht rendert genau VIER KPI-Karten", () => {
   const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
@@ -195,6 +274,300 @@ test("14 — überholte Sendungsantworten werden verworfen", () => {
   // … und beide prüfen sie vor dem Schreiben.
   assert.equal((dashboardCode.match(/seq [=!]== shipmentsReq\.current/g) || []).length, 2,
     "beide Wege müssen vor setState auf Aktualität prüfen");
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Visuelles System der KPI-Karten („Executive Metric Cards")
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+test("16 — Kopfzeile: Beschriftung links, Icon rechts", () => {
+  const kopf = overviewCode.slice(overviewCode.indexOf('className="pp-kpi-head"'));
+  const block = kopf.slice(0, kopf.indexOf("</div>"));
+  const iLabel = block.indexOf("pp-kpi-label");
+  const iIcon = block.indexOf("pp-kpi-icon");
+  assert.ok(iLabel > -1 && iIcon > -1, "Beschriftung und Icon müssen in der Kopfzeile stehen");
+  assert.ok(iLabel < iIcon, "die Beschriftung steht links, das Icon rechts — nicht umgekehrt");
+  assert.equal(decl(".pp-kpi-head", "justify-content"), "space-between",
+    "ohne space-between rückt das Icon nicht an den rechten Rand");
+  // Ohne min-height wandert die Zahl nach unten, sobald eine Beschriftung
+  // zweizeilig wird — die vier Zahlen stünden dann nicht mehr auf einer Grundlinie.
+  assert.match(decl(".pp-kpi-head", "min-height") || "", /^\d/, "die Kopfzeile braucht eine min-height");
+});
+
+test("17 — der Wert ist Sans-Serif, 48–52 px, Gewicht 580–650, eng und tabellarisch", () => {
+  const fam = decl(".knum", "font-family");
+  assert.equal(fam, "var(--fs)", "der Wert muss die vorhandene Sans-Serif --fs nutzen");
+  assert.ok(!/var\(--fd\)|Cormorant|serif/i.test(fam || ""), "kein Serifensatz im KPI-Wert");
+
+  const size = parseFloat(decl(".knum", "font-size"));
+  assert.ok(size >= 48 && size <= 52, `KPI-Wert Desktop soll 48–52 px sein, ist ${size}px`);
+
+  const weight = Number(decl(".knum", "font-weight"));
+  assert.ok(weight >= 580 && weight <= 650, `Gewicht soll 580–650 sein, ist ${weight}`);
+
+  const ls = parseFloat(decl(".knum", "letter-spacing"));
+  assert.ok(Math.abs(ls - -0.035) <= 0.006, `Letter-Spacing soll etwa -0.035em sein, ist ${ls}em`);
+
+  assert.equal(decl(".knum", "font-variant-numeric"), "tabular-nums");
+  assert.equal(decl(".knum", "color"), "var(--ce-kpi-value)");
+  assert.equal(tok("ce-kpi-value"), tok("ce-kpi-navy"), "der Wert trägt das Marken-Navy");
+  assert.equal(tok("ce-kpi-navy"), "#111a33", "Navy ist die vorgegebene Markenfarbe");
+});
+
+test("18 — das Gewicht 600 wird von der Schrift wirklich gerendert", () => {
+  // Gemessen: Libre Franklin liegt nur als 700/800 vor und rendert bei 600
+  // unverändert die 700er-Schnittstelle. DM Sans ist eine Variable Font, deren
+  // wght-Achse über die @font-face-Deklarationen instanziiert wird. Fehlt die
+  // 600er-Deklaration, fällt der Wert still auf 500 zurück — sichtbar dünner,
+  // ohne dass irgendein anderer Test das bemerkt.
+  const dm = fontsCss.match(/@font-face\s*\{[^}]*font-family:\s*'DM Sans'[^}]*\}/g) || [];
+  const gewichte = dm.map((f) => Number((f.match(/font-weight:\s*(\d+)/) || [])[1]))
+    .filter((w) => !Number.isNaN(w));
+  assert.ok(gewichte.includes(600),
+    `DM Sans braucht eine @font-face-Deklaration mit font-weight: 600, vorhanden: ${gewichte.join(", ")}`);
+});
+
+test("19 — die Beschriftung ist keine Versalzeile mehr", () => {
+  assert.equal(decl(".pp-kpi-label", "text-transform"), "none", "Versalien sind ausdrücklich abgeschafft");
+  const size = parseFloat(decl(".pp-kpi-label", "font-size"));
+  assert.ok(size >= 12 && size <= 13, `Beschriftung soll 12–13 px sein, ist ${size}px`);
+  const weight = Number(decl(".pp-kpi-label", "font-weight"));
+  assert.ok(weight >= 500 && weight <= 600, `mittleres bis semibold Gewicht erwartet, ist ${weight}`);
+  const ls = parseFloat(decl(".pp-kpi-label", "letter-spacing"));
+  assert.ok(Math.abs(ls) <= 0.02, `nur sehr geringes Letter-Spacing erlaubt, ist ${ls}em`);
+});
+
+test("20 — in der KPI-Sektion kommt kein Serifensatz vor", () => {
+  const sektion = kpiSektion();
+  assert.ok(!/var\(--fd\)/.test(sektion), "--fd ist die Serifenschrift und gehört nicht in die KPI-Karten");
+  assert.ok(!/Cormorant|Georgia/i.test(sektion), "keine dekorative Serifenschrift in der KPI-Sektion");
+  // Die frühere Serifen-/Monolage der Zahlen ist weg.
+  assert.notEqual(decl(".knum", "font-family"), "var(--fh)");
+  assert.ok(!/var\(--fm\)/.test(sektion), "die Monoschrift der alten Chips ist nicht mehr nötig");
+});
+
+test("21 — vier optisch abgestimmte Line-Icons", () => {
+  const erwartet = ["packageMove", "routeArrow", "seal", "clockDelay"];
+  const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
+  const arr = block.slice(0, block.indexOf("];") + 2);
+  const benutzt = [...arr.matchAll(/icon:\s*"([A-Za-z]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(benutzt, erwartet, `erwartete Iconfolge, gefunden: ${JSON.stringify(benutzt)}`);
+
+  for (const n of erwartet) {
+    const m = iconSrc.match(new RegExp(`\\b${n}:\\s*"([^"]+)"`));
+    assert.ok(m, `das Icon ${n} fehlt im paths-Objekt`);
+    assert.ok(m[1].length > 20, `${n} sieht nicht wie ein echter Pfad aus`);
+    // Alle vier müssen im selben Koordinatenraum gezeichnet sein, sonst wirken
+    // sie trotz gleicher viewBox unterschiedlich groß. Geprüft wird der
+    // Zahlenraum des Pfades — ein versehentlich in 32er- oder 48er-Einheiten
+    // gezeichnetes Icon fällt damit sofort auf. Die feinere optische Abstimmung
+    // ist eine Sichtprüfung und lässt sich hier ohne Pfad-Parser nicht messen:
+    // die maximale LITERALE Zahl sagt wenig über die reale Ausdehnung (relative
+    // Kurvenbefehle verschieben den Endpunkt, ohne als Zahl aufzutauchen).
+    const zahlen = (m[1].match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+    assert.ok(Math.max(...zahlen) <= 24, `${n} verlässt den 24er-Koordinatenraum`);
+    assert.ok(Math.min(...zahlen) >= -24, `${n} enthält eine unplausible Koordinate`);
+  }
+  // Der alte Sonderfall truck (Rechtecke + Kreise statt Pfad) wird nicht mehr
+  // in den Karten verwendet — er war der Bruch im Icon-Satz.
+  assert.ok(!arr.includes('"truck"'), "der Lieferwagen ist ersetzt");
+  assert.ok(!arr.includes('"check"'), "der nackte Haken ist durch das Prüfsiegel ersetzt");
+
+  // Gemeinsame Linienführung kommt aus der Komponente …
+  assert.match(iconSrc, /strokeLinecap="round"/, "runde Linienenden");
+  assert.match(iconSrc, /strokeLinejoin="round"/, "runde Linienverbindungen");
+  assert.match(iconSrc, /viewBox="0 0 24 24"/, "gemeinsame viewBox");
+  // … die Strichstärke 1.6 setzt das Stylesheet nur für die KPI-Karten.
+  assert.equal(decl(".pp-kpi-icon svg", "stroke-width"), "1.6",
+    "die einheitliche Strichstärke 1.6 fehlt");
+  assert.match(overviewCode, /<Icon n=\{kpi\.icon\} s=\{19\} \/>/, "sichtbare Icongröße 19 px");
+});
+
+test("22 — der Icon-Squircle ist 36 × 36 mit Radius 11–12 px und kein Kreis", () => {
+  assert.equal(decl(".pp-kpi-icon", "width"), "36px");
+  assert.equal(decl(".pp-kpi-icon", "height"), "36px");
+  const r = parseFloat(decl(".pp-kpi-icon", "border-radius"));
+  assert.ok(r >= 11 && r <= 12, `Radius soll 11–12 px sein, ist ${r}px`);
+  assert.notEqual(decl(".pp-kpi-icon", "border-radius"), "50%", "ausdrücklich keine kreisförmige Umrandung");
+  // Fläche und Kante tragen die Kartenfarbe, gefüllt wird nichts.
+  assert.equal(decl(".pp-kpi-icon", "background"), "var(--kf)");
+  assert.equal(decl(".pp-kpi-icon", "color"), "var(--kc)");
+  for (const k of KARTEN) {
+    const face = tok(`ce-kpi-${k}-face`);
+    const alpha = parseColor(face)[3];
+    assert.ok(alpha <= 0.12, `${k}: die Squircle-Fläche darf keine Vollfarbe sein (Alpha ${alpha})`);
+  }
+  // Die KPI-Karten benutzen das runde .pp-medal nicht mehr.
+  assert.ok(!overviewCode.includes("pp-medal m-hero") && !/pp-kpi[^"]*pp-medal/.test(overviewCode),
+    "die Karten tragen kein Medaillon mehr");
+});
+
+test("23 — Kartenoberfläche: Radius, Rahmen, Verlauf, Innenkante, Schatten, Eckschimmer", () => {
+  assert.equal(decl(".pp-kpi", "border-radius"), "20px");
+  assert.equal(decl(".pp-kpi", "border"), "1px solid var(--ce-kpi-border)");
+
+  // Feiner Rahmen mit geringer Navy-Deckkraft.
+  const [br, bg, bb, ba] = parseColor(tok("ce-kpi-border"));
+  assert.ok(ba <= 0.14, `der Rahmen ist zu deckend (Alpha ${ba})`);
+  assert.ok(bb > br, "der Rahmen muss Navy sein, nicht neutralgrau");
+
+  // Verlauf von (fast) Weiß zu sehr hellem Blau-Grau, leicht transparent.
+  const verlauf = tok("ce-kpi-surface");
+  assert.match(verlauf, /^linear-gradient/, "die Fläche braucht den zurückhaltenden linearen Verlauf");
+  const stopps = verlauf.match(/rgba?\([^)]*\)/g) || [];
+  assert.ok(stopps.length >= 2, "der Verlauf braucht mindestens zwei Stopps");
+  assert.ok(parseColor(stopps[0])[3] < 1, "die Fläche ist bewusst leicht transparent");
+  const kopf = parseColor(stopps[0]), fuss = parseColor(stopps[stopps.length - 1]);
+  assert.ok(luminance(kopf) > luminance(fuss), "der Verlauf läuft von hell nach etwas dunkler");
+  assert.ok(fuss[2] > fuss[0], "der Fuß liegt im Blau-Grau, nicht im Warmton");
+
+  // Innerer Lichtreflex oben + weicher, großflächiger Schatten.
+  const schatten = tok("ce-kpi-shadow");
+  assert.match(schatten, /inset 0 1px 0 rgba\(255, 255, 255/, "die innere Lichtkante oben fehlt");
+  const weit = [...schatten.matchAll(/0 (\d+)px (\d+)px/g)].map((m) => Number(m[2]));
+  assert.ok(Math.max(...weit) >= 20, "der Schatten soll weich und großflächig sein");
+  for (const a of schatten.match(/rgba\([^)]*\)/g) || []) {
+    const al = parseColor(a)[3];
+    if (parseColor(a)[0] < 100) assert.ok(al <= 0.3, `Schattenanteil zu deckend (${al}) — kein harter Standardschatten`);
+  }
+
+  // Sehr schwacher, kartenspezifischer Farbschimmer rechts oben.
+  const bgDecl = rule(".pp-kpi").match(/background:([\s\S]*?);/)[1];
+  assert.match(bgDecl, /radial-gradient\([^)]*at 100% 0%/, "der Eckschimmer sitzt rechts oben");
+  assert.ok(bgDecl.includes("var(--kt)"), "der Eckschimmer muss kartenspezifisch sein");
+  const toene = new Set();
+  for (const k of KARTEN) {
+    const t = tok(`ce-kpi-${k}-tint`);
+    assert.ok(parseColor(t)[3] <= 0.09, `${k}: der Schimmer ist zu kräftig — kein Glow, kein Neon`);
+    toene.add(t);
+  }
+  assert.equal(toene.size, 4, "jede Karte braucht ihren eigenen Schimmer");
+});
+
+test("24 — keine hervorgehobene erste Karte mehr", () => {
+  assert.ok(!css.includes(".pp-kpi-hero"), "die Sonderregel der ersten Karte ist entfallen");
+  assert.ok(!overview.includes("pp-kpi-hero"), "die Sonderklasse wird nicht mehr gerendert");
+  assert.ok(!overviewCode.includes('kpi.key === "active" ?'),
+    "es darf keine Verzweigung mehr auf die erste Karte geben");
+  // Auch nicht über die generische Kachel: .tile brächte wieder eine zweite,
+  // abweichende Oberfläche auf dieselben Karten.
+  assert.ok(!/pp-kpi tile|tile pp-kpi/.test(overviewCode), "die KPI-Karte trägt ihre Fläche selbst");
+  // Alle vier Karten laufen durch dieselben Regeln, nur --kc/--kf/--ke/--kt
+  // unterscheiden sich.
+  for (const k of KARTEN) {
+    const body = rule(`.kt-${k}`);
+    assert.ok(body, `die Kartenklasse .kt-${k} fehlt`);
+    for (const v of ["--kc", "--kf", "--ke", "--kt"]) {
+      assert.ok(body.includes(v), `.kt-${k} setzt ${v} nicht`);
+    }
+    assert.ok(!/border|box-shadow|background|font/.test(body),
+      `.kt-${k} darf nur Farben setzen, keine eigene Oberfläche`);
+  }
+});
+
+test("25 — im KPI-Block stehen keine Farbliterale", () => {
+  const sektion = kpiSektion();
+  assert.ok(!/#[0-9a-f]{3,8}\b/i.test(sektion),
+    "Farben gehören als --ce-kpi-* nach variables.css, nicht als Hex in overview.css");
+  // Einzige zulässige rgba-Angabe ist der transparente Endstopp des Schimmers.
+  const rgbas = (sektion.match(/rgba?\([^)]*\)/g) || []).filter((v) => parseColor(v)[3] !== 0);
+  assert.deepEqual(rgbas, [], `unerwartete Farbliterale: ${rgbas.join(", ")}`);
+});
+
+test("26 — die Karten geben sich nicht als bedienbar aus", () => {
+  const body = rule(".pp-kpi");
+  assert.ok(!/cursor:\s*pointer/.test(body), "kein pointer-Cursor auf einer reinen Informationsfläche");
+  assert.ok(!/onClick|role="button"|tabIndex/.test(
+    overviewCode.slice(overviewCode.indexOf('className={`pp-kpi'), overviewCode.indexOf("pp-kpi-head"))),
+    "die Karte darf nicht klickbar werden");
+  // Höchstens Rahmen und Schatten dürfen sich bewegen — kein Anheben, kein Zoom.
+  const hover = rule(".pp-kpi:hover");
+  assert.ok(hover, "die zurückhaltende Hover-Rückmeldung fehlt");
+  assert.ok(!/transform|translate|scale|margin|top:/.test(hover),
+    "kein Hochspringen und keine Skalierung beim Hover");
+  for (const prop of hover.split(";").map((s) => s.split(":")[0].trim()).filter(Boolean)) {
+    assert.ok(["border-color", "box-shadow"].includes(prop), `Hover darf ${prop} nicht verändern`);
+  }
+  // Keine Dauer-Animation.
+  const sektion = kpiSektion();
+  assert.ok(!/animation:/.test(sektion), "keine dauerhaft laufende Animation");
+  // prefers-reduced-motion schaltet den Übergang ab.
+  const rm = cssBare.match(/@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(rm, "prefers-reduced-motion wird nicht respektiert");
+  assert.match(rm[1], /\.pp-kpi\s*\{[^}]*transition:\s*none/, "der Übergang muss dort abgeschaltet werden");
+});
+
+test("27 — Textfarben erfüllen WCAG AA, Icon-Striche erreichen 3:1", () => {
+  const label = contrast(tok("ce-kpi-label"), GRUND_FUSS);
+  const kontext = contrast(tok("ce-kpi-context"), GRUND_FUSS);
+  const wert = contrast(tok("ce-kpi-value"), GRUND_FUSS);
+  assert.ok(label >= 4.5, `Beschriftung nur ${label.toFixed(2)}:1`);
+  assert.ok(kontext >= 4.5, `Kontextzeile nur ${kontext.toFixed(2)}:1`);
+  assert.ok(wert >= 7, `Wert nur ${wert.toFixed(2)}:1 — die dominante Zahl soll klar über AA liegen`);
+
+  // Icon: Strich gegen die eigene Squircle-Fläche, die ihrerseits auf dem
+  // Kartenkopf INKLUSIVE Eckschimmer liegt (das Icon sitzt rechts oben).
+  for (const k of KARTEN) {
+    const mitSchimmer = over(tok(`ce-kpi-${k}-tint`), GRUND_KOPF);
+    const flaeche = over(tok(`ce-kpi-${k}-face`), mitSchimmer);
+    const c = contrast(tok(`ce-kpi-${k}`), flaeche);
+    assert.ok(c >= 3, `${k}: Icon-Strich nur ${c.toFixed(2)}:1 gegen die eigene Fläche`);
+  }
+});
+
+test("28 — die vier Kontextzeilen sind gesetzt und wiederholen sich nicht", () => {
+  const block = overviewCode.slice(overviewCode.indexOf("const KPIS = ["));
+  const arr = block.slice(0, block.indexOf("];") + 2);
+  const texte = [...arr.matchAll(/context:\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(texte, [
+    "Aktuell laufend",
+    "Auf dem Weg zum Empfänger",
+    "Im aktuellen Monat",
+    "Über dem geplanten Liefertermin",
+  ], `erwartete Kontextzeilen, gefunden: ${JSON.stringify(texte)}`);
+  assert.equal(new Set(texte).size, 4, "keine wiederholte generische Angabe");
+  assert.ok(!overview.includes("Aktueller Stand"), "„Aktueller Stand“ stand dreimal identisch da");
+
+  // „Aktuell im Versandprozess" wäre für isActive() zu viel behauptet: dort
+  // zählen auch pending/approved, also noch nicht übergebene Sendungen. Der
+  // Auftrag sieht für genau diesen Fall den neutralen Text vor.
+  assert.ok(!overview.includes("Aktuell im Versandprozess"),
+    "der Text passt nicht zur Definition aktiver Sendungen");
+  const kpis = src("../../utils/kpis.mjs");
+  assert.match(kpis, /ACTIVE_BUSINESS_STATUSES = \[[\s\S]*?"pending"/,
+    "Grundlage der Entscheidung: pending zählt als aktiv");
+});
+
+test("29 — keine erfundenen Trends, Chips, Diagramme oder Statuspunkte", () => {
+  const start = overviewCode.indexOf('<div className="pp-kpis">');
+  const ende = overviewCode.indexOf("{/* ── Ablauf ── */}");
+  const block = overviewCode.slice(start, ende);
+  for (const verboten of ["kchip", "trendingUp", "ce-live", "d-blue", "d-green", "d-amber", "%"]) {
+    assert.ok(!block.includes(verboten), `${verboten} gehört nicht mehr in die KPI-Karten`);
+  }
+  assert.ok(!css.includes(".kchip"), "die Chip-Regeln sind entfallen");
+  // Die 24-Stunden-Angabe bleibt, sie ist eine echte Zahl aus computeKpis —
+  // aber als schlichter Nachsatz, nicht als Trendabzeichen.
+  assert.match(overviewCode, /const activeNote = k\.hasCreatedAt && k\.new24 > 0/,
+    "die echte 24-Stunden-Angabe darf nicht stillschweigend verschwinden");
+  assert.match(overviewCode, /\{kpi\.note && <span className="pp-kpi-note"> · \{kpi\.note\}<\/span>\}/);
+});
+
+test("30 — die Feinstufen ändern nur Typografie, nie das Raster", () => {
+  // Zwei Bereichsabfragen federn die schmalen Vierspaltenbreiten ab. Sie dürfen
+  // weder Spalten noch Breakpoints anfassen — sonst wäre 4 → 2 → 1 gebrochen.
+  const bereiche = [...cssBare.matchAll(
+    /@media \(min-width: (\d+)px\) and \(max-width: (\d+)px\)\s*\{([\s\S]*?)\n\}/g)];
+  assert.ok(bereiche.length >= 1, "die Feinabstimmung für schmale Spalten fehlt");
+  for (const [, von, bis, inhalt] of bereiche) {
+    assert.ok(Number(von) > 980, `Feinstufe ab ${von}px würde in den Zweispaltenbereich reichen`);
+    assert.ok(!/grid-template-columns/.test(inhalt), "eine Feinstufe darf das Raster nicht verändern");
+    assert.ok(!/\.pp-kpis\s*\{/.test(inhalt), "eine Feinstufe fasst das Raster nicht an");
+  }
+  // Und die tote Tonpalette der alten Medaillons ist weg.
+  for (const tot of [".m-mint", ".m-green", ".m-amber", ".m-hero", ".m-lav", ".m-violet"]) {
+    assert.ok(!css.includes(tot), `${tot} wird von keinem Markup mehr referenziert`);
+  }
 });
 
 test("15 — reloadShipments ist VOR den Effekten deklariert, die es referenzieren", () => {

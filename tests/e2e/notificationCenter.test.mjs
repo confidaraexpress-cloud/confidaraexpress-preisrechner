@@ -74,7 +74,8 @@ after(async () => {
 // Zustand dieses Tests — er verhält sich wie das Backend: der PDF-Abruf erledigt
 // die ready-Meldung, ein Viewed-Aufruf erledigt die Supportmeldung nur bis zur
 // bestätigten Nachricht.
-async function openApp({ notifications = [], invoices = [INVOICE], supportRequests = [], thread = null } = {}) {
+async function openApp({ notifications = [], invoices = [INVOICE], supportRequests = [], thread = null,
+                         viewport = { width: 1440, height: 1100 } } = {}) {
   const state = {
     notifications: notifications.map((n) => ({ ...n })),
     invoices: invoices.map((i) => ({ ...i })),
@@ -86,7 +87,7 @@ async function openApp({ notifications = [], invoices = [INVOICE], supportReques
   const unread = () => active().filter((n) => n.readAt == null).length;
   const snapshot = () => new Date().toISOString();
 
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  const page = await browser.newPage({ viewport });
   page.on("console", () => {});
 
   await page.route("**/*", async (route) => {
@@ -419,3 +420,34 @@ test("7 — eine interne Adminnotiz erreicht den Kundenbereich nie", async () =>
   assert.deepEqual(bodies.map((b) => b.trim()), ["Erstanfrage", "Öffentliche Antwort"]);
   await page.close();
 });
+
+// Genau EINE sichtbare Glocke — in JEDER Kombination aus Seite und Viewport.
+//
+// Regression: die Glocke wird an drei Stellen montiert (Kopfzeile der Übersicht,
+// mobile Topbar, Seiten-Mount der Unterseiten). Welche davon sichtbar ist,
+// entscheidet teils JSX (`page !== "overview"`), teils CSS (860-px-Schwelle) —
+// beides zusammen wurde vorher nirgends geprüft. Ergebnis: unterhalb von 860 px
+// standen auf der Übersicht ZWEI Glocken (Topbar + Kopfzeile) und auf jeder
+// Unterseite ebenfalls ZWEI (Topbar + Seiten-Mount). Ein reiner Strukturtest
+// findet das nicht, weil beide Elemente im DOM stehen und nur die Media Query
+// über die Sichtbarkeit entscheidet.
+for (const viewport of [{ width: 1440, height: 1100 }, { width: 390, height: 780 }]) {
+  for (const [seite, erwartet] of [
+    ["overview", "ntf-bell-overview"],
+    ["invoices", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],
+    ["shipments", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],
+    ["profile", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],
+  ]) {
+    test(`8 — ${seite} bei ${viewport.width} px zeigt genau eine Glocke (${erwartet})`, async () => {
+      const { page } = await openApp({ notifications: [notification({})], viewport });
+      await page.goto(`${BASE}/dashboard?page=${seite}`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".app-shell", { timeout: 20_000 });
+      await visibleBell(page).waitFor({ timeout: 20_000 });
+      const klassen = await page.locator(".ntf-bell").locator("visible=true").evaluateAll(
+        (els) => els.map((e) => e.className.replace("ntf-bell ", "").trim()));
+      assert.deepEqual(klassen, [erwartet],
+        `auf „${seite}" bei ${viewport.width} px muss genau EINE Glocke sichtbar sein, sichtbar war: ${JSON.stringify(klassen)}`);
+      await page.close();
+    });
+  }
+}

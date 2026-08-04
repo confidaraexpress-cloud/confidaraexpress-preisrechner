@@ -223,8 +223,16 @@ export default function DashboardPage() {
         <div className="mobile-topbar">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
           <div className="topbar-brand">ConfidaraExpress</div>
+          {/* Dieselbe Regel wie beim Seiten-Mount unten: die Übersicht trägt ihre
+              Glocke bereits in der eigenen Kopfzeile. Unterhalb von 860 px ist die
+              Topbar sichtbar — ohne diese Bedingung stünden auf der Übersicht dort
+              ZWEI Glocken (Topbar + Kopfzeile). Auf allen anderen Unterseiten ist
+              die Topbar der mobile Mount, weil der Seiten-Mount dort per CSS in der
+              Kopfzeile liegt. */}
           <div className="topbar-right">
-            <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
+            {page !== "overview" && (
+              <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
+            )}
             <div className="user-avatar">{initials}</div>
           </div>
         </div>

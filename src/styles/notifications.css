@@ -209,6 +209,16 @@
   justify-content: flex-end;
 }
 
+/* Ab der Drawer-Schwelle (860 px, dieselbe wie .mobile-topbar in
+   dashboard-premium.css) ist die Topbar der mobile Mount — der Seiten-Mount
+   entfällt, sonst stünden auf jeder Unterseite ZWEI Glocken untereinander.
+   Gegenstück in DashboardPage.jsx: auf der Übersicht entfällt umgekehrt die
+   Topbarglocke, weil die Kopfzeile der Übersicht ihre eigene trägt. So ist
+   in jeder Kombination aus Seite und Viewport genau EINE Glocke sichtbar. */
+@media (max-width: 860px) {
+  .page-bell-mount { display: none; }
+}
+
 /* Rechte Gruppe der mobilen Topbar (Glocke + Avatar). */
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 

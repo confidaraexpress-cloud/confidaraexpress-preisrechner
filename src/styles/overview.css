@@ -36,7 +36,6 @@
 .m-blue, .m-hero   { --mc: var(--accent-blue); }
 .m-mint, .m-green  { --mc: #0f9469; }
 .m-amber           { --mc: #b9740f; }
-.m-lav, .m-violet  { --mc: #6d5bd0; }
 
 /* ══════════ Main + Header ══════════ */
 .pp-main {
@@ -109,7 +108,10 @@
 }
 
 /* ══════════ KPI-Karten ══════════ */
-.pp-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-top: 40px; }
+/* Vier gleichwertige Karten. Gleiche Höhe entsteht durch das Grid selbst
+   (Zeilen sind standardmäßig gleich hoch, `align-items: stretch`) — es braucht
+   keine feste Höhe und keine Sonderregel für eine letzte Position. */
+.pp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
 .pp-kpi {
   position: relative; border-radius: var(--radius-lg);
   padding: 20px 20px 18px;
@@ -130,7 +132,6 @@
   letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary);
 }
 .pp-kpi-hero .pp-kpi-label { color: var(--accent-blue-strong); }
-.eur { font-family: var(--fm); font-size: 16px; font-weight: 500; line-height: 1; color: var(--mc); }
 .knum {
   font-family: var(--fh); font-weight: 700; font-size: 40px; line-height: 1;
   letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text-primary);
@@ -235,7 +236,6 @@
 
 /* ══════════ Responsive ══════════ */
 @media (max-width: 1440px) { .pp-cars { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 1340px) { .pp-kpis { grid-template-columns: repeat(3, 1fr); } }
 /* Wasserzeichen ── Tablet: etwas kleiner. Mobil ausgeblendet: bei gestapeltem
    Tile und ~38 px sichtbarer Fläche wäre es weder erkennbar noch konfliktfrei
    zu platzieren — lieber ganz weg als ein unlesbarer Rest. */

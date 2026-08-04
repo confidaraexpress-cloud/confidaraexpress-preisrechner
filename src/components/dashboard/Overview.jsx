@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { NotificationBell } from "../notifications/NotificationBell";
-import { moneyCompact } from "../../utils/formatters";
 import { computeKpis } from "../../utils/kpis";
 import markPrimary from "../../assets/brand/mark-primary.svg";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
@@ -82,7 +81,12 @@ const TRUST = [
   { icon: "star",    title: "Tiefpreisgarantie",      desc: "Wir garantieren Ihnen die besten Versandpreise." },
 ];
 
-export function Overview({ user, shipments, loading, onNewShipment, onProfile, onNotificationNav }) {
+// `kpisReady` sagt: „die Sendungen wurden mindestens EINMAL erfolgreich geladen".
+// Nur dann darf eine Zahl (auch die 0) stehen — eine 0 ist sonst nicht von einem
+// Ladefehler zu unterscheiden und behauptet fälschlich „Sie haben keine Sendungen".
+// Bleibt der Wert aus (älterer Aufrufer), fällt das Verhalten auf das bisherige
+// `!loading` zurück, statt die Karten dauerhaft leer zu lassen.
+export function Overview({ user, shipments, loading, kpisReady, onNewShipment, onProfile, onNotificationNav }) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
   const org  = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
@@ -90,22 +94,20 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile, o
 
   const k = useMemo(() => computeKpis(shipments), [shipments]);
   const todayLabel = getTodayLabel();
+  const ready = kpisReady === undefined ? !loading : kpisReady;
 
   const activeFoot = k.hasCreatedAt && k.new24 > 0
     ? { delta: `+${k.new24}`, deltaClass: "d-blue", label: "neu · 24 h", dot: true }
     : { label: "Live aus Ihren Sendungen", dot: true };
-  const spendFoot = !k.hasSpend
-    ? { label: "Keine Ausgaben im aktuellen Monat" }
-    : k.deltaPct !== null
-      ? { delta: `${k.deltaPct >= 0 ? "+" : ""}${k.deltaPct} %`, deltaClass: k.deltaPct >= 0 ? "d-green" : "d-amber", label: "vs. letzter Monat" }
-      : { label: "Aktueller Monat" };
 
+  // Vier Karten. Nur „Zugestellt" ist monatsbezogen — und diese Grenze zieht
+  // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
+  // Europe/Berlin). Die übrigen drei zeigen den aktuellen Stand ohne Zeitraum.
   const KPIS = [
-    { key: "active",    tone: "hero",  icon: "package", label: "Aktive Sendungen", value: String(k.active),          foot: activeFoot },
-    { key: "transit",   tone: "blue",  icon: "truck",   label: "In Zustellung",    value: String(k.inTransit),       foot: { label: "Aktueller Stand" } },
-    { key: "delivered", tone: "mint",  icon: "check",   label: "Zugestellt",       value: String(k.delivered),       foot: { label: "Aktueller Stand" } },
-    { key: "delayed",   tone: "amber", icon: "clock",   label: "Verzögert",        value: String(k.delayed),         foot: { label: "Aktueller Stand" } },
-    { key: "spend",     tone: "lav",   glyph: "€",      label: "Ausgaben (Monat)", value: moneyCompact(k.spendThis), foot: spendFoot },
+    { key: "active",    tone: "hero",  icon: "package", label: "Aktive Sendungen", value: String(k.active),    foot: activeFoot },
+    { key: "transit",   tone: "blue",  icon: "truck",   label: "In Zustellung",    value: String(k.inTransit), foot: { label: "Aktueller Stand" } },
+    { key: "delivered", tone: "mint",  icon: "check",   label: "Zugestellt",       value: String(k.delivered), foot: { label: "Aktueller Monat" } },
+    { key: "delayed",   tone: "amber", icon: "clock",   label: "Verzögert",        value: String(k.delayed),   foot: { label: "Aktueller Stand" } },
   ];
 
   return (
@@ -145,14 +147,22 @@ export function Overview({ user, shipments, loading, onNewShipment, onProfile, o
         {KPIS.map((kpi) => (
           <div className={`pp-kpi tile${kpi.key === "active" ? " pp-kpi-hero" : ""}`} key={kpi.key}>
             <div className="pp-kpi-head">
+              {/* Alle vier Karten tragen ein Icon. Der frühere Glyph-Zweig gehörte
+                  ausschließlich zum Euro-Zeichen der entfernten Ausgabenkarte. */}
               <span className={`pp-medal m-${kpi.tone}`}>
-                {kpi.icon ? <Icon n={kpi.icon} s={21} /> : <span className="eur">{kpi.glyph}</span>}
+                <Icon n={kpi.icon} s={21} />
               </span>
               <span className="pp-kpi-label">{kpi.label}</span>
             </div>
-            <div className="pp-kpi-num"><KpiNum v={loading ? "—" : kpi.value} /></div>
+            {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer Zahl:
+                weder beim ersten Laden noch nach einem Ladefehler darf eine 0
+                erscheinen, die wie ein echtes Ergebnis aussieht. Nach dem ersten
+                Erfolg bleiben die Werte stehen — auch wenn ein späterer Refetch
+                scheitert. Den Fehler selbst meldet das bestehende Banner der
+                Dashboardseite; hier wird nichts neu gestaltet. */}
+            <div className="pp-kpi-num"><KpiNum v={ready ? kpi.value : "—"} /></div>
             <div className="pp-kpi-sub">
-              {loading ? "Wird geladen…" : (
+              {!ready ? (loading ? "Wird geladen…" : "Noch nicht verfügbar") : (
                 <>
                   {kpi.foot.dot && <span className="ce-live" />}
                   {kpi.foot.delta && (

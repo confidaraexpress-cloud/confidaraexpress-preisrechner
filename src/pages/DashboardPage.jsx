@@ -12,6 +12,13 @@ import { LegalLinks } from "../components/layout/LegalLinks";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useAuth } from "../context/AuthContext";
+import { businessMonthKey } from "../utils/kpis";
+
+// Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
+// Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
+// spätestens eine Minute nach Mitternacht wirksam werden. Es entsteht dadurch
+// KEIN periodischer API-Aufruf.
+const MONTH_WATCH_INTERVAL_MS = 60_000;
 
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
@@ -56,10 +63,18 @@ export default function DashboardPage() {
   // die den ungespeicherten Dirty-State prüft). Nur relevant, solange
   // NewShipmentPage gemountet ist (page === "new").
   const leaveGuardRef = useRef(null);
+  // Laufende Nummer der Sendungsabfragen — verwirft veraltete Antworten (siehe
+  // reloadShipments). Wird von JEDEM Sendungsabruf hochgezählt, auch von fetchData.
+  const shipmentsReq = useRef(0);
   const [shipments, setShipments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [invoiceSummary, setInvoiceSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  // „Die Sendungen wurden mindestens EINMAL erfolgreich geladen." Erst danach
+  // dürfen die KPI-Karten Zahlen zeigen — eine 0 wäre sonst nicht von einem
+  // Ladefehler zu unterscheiden. Wird nie wieder auf false gesetzt: schlägt ein
+  // späterer Refetch fehl, bleiben die zuletzt gültigen Werte stehen.
+  const [shipmentsLoaded, setShipmentsLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
   // Getrennt vom allgemeinen loadError (Sendungen): ein fehlgeschlagener Rechnungsabruf
   // betrifft nur den Rechnungsbereich und soll dort eigenständig mit Retry angezeigt
@@ -81,6 +96,9 @@ export default function DashboardPage() {
     setLoading(true);
     setLoadError("");
     setInvoicesError("");
+    // Auch der vollständige Ladevorgang nimmt an der Sequenz teil, damit sich ein
+    // gezielter Sendungs-Refetch und dieser Aufruf nicht gegenseitig überholen.
+    const seq = ++shipmentsReq.current;
     const toErr = (r) => { const e = new Error(); e.status = r.status; return e; };
     // allSettled statt all: ein fehlgeschlagener Rechnungsabruf darf die bereits
     // erfolgreich geladenen Sendungen nicht mit als „fehlgeschlagen" markieren (und
@@ -90,7 +108,10 @@ export default function DashboardPage() {
       apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
     ]).then(([shipRes, invRes]) => {
       if (shipRes.status === "fulfilled") {
-        setShipments(shipRes.value.shipments || []);
+        if (seq === shipmentsReq.current) {
+          setShipments(shipRes.value.shipments || []);
+          setShipmentsLoaded(true);
+        }
       } else if (!(shipRes.reason?.status === 401 || shipRes.reason?.status === 403)) {
         setLoadError("Daten konnten nicht geladen werden. Bitte laden Sie die Seite neu.");
       }
@@ -105,6 +126,60 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ── Gezielter Sendungs-Refetch (nur /kunde/shipments) ──────────────────────
+  // Quelle der vier KPI-Karten. Bewusst OHNE die Rechnungen: ein KPI-Refresh hat
+  // mit dem Rechnungsbereich nichts zu tun und soll ihn nicht mitladen.
+  //
+  // `shipmentsReq` verhindert, dass eine langsamere ÄLTERE Antwort eine bereits
+  // eingetroffene neuere überschreibt (Refetch beim Seitenwechsel kann sich mit
+  // dem Monatswechsel-Refetch überlappen). Still bei Fehlern: die zuletzt
+  // erfolgreich geladenen Werte bleiben stehen.
+  const reloadShipments = useCallback(async () => {
+    const seq = ++shipmentsReq.current;
+    try {
+      const r = await apiFetch(`/kunde/shipments`, { auth: true });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (seq !== shipmentsReq.current) return;   // veraltete Antwort verwerfen
+      setShipments(d.shipments || []);
+      setShipmentsLoaded(true);
+    } catch { /* Netzwerkfehler: Anzeige unverändert lassen */ }
+  }, []);
+
+  // ── Rückkehr auf die Übersicht ─────────────────────────────────────────────
+  // DashboardPage bleibt beim internen Seitenwechsel gemountet (page-State, keine
+  // Route). Ohne diesen Effekt zeigte die Übersicht nach einem Ausflug in
+  // „Sendungen"/„Rechnungen" beliebig alte KPI. Der Vergleich mit der vorherigen
+  // Seite verhindert eine doppelte Anfrage beim ersten Mount: dort ist
+  // prevPage === page === "overview", und fetchData lädt ohnehin gerade.
+  const prevPageRef = useRef(page);
+  useEffect(() => {
+    const prev = prevPageRef.current;
+    prevPageRef.current = page;
+    if (page === "overview" && prev !== "overview") reloadShipments();
+  }, [page, reloadShipments]);
+
+  // ── Monatswechsel in der Geschäftszeitzone ─────────────────────────────────
+  // Bleibt das Dashboard über Mitternacht des Monatsersten geöffnet, ist die Karte
+  // „Zugestellt" veraltet: das serverseitige Monatskennzeichen wurde für den ALTEN
+  // Monat berechnet. Deshalb wird der fachliche Berliner Monat lokal beobachtet.
+  //
+  // Der Takt erzeugt KEINE Requests: er vergleicht zwei Zeichenketten. Erst wenn
+  // sich der Monat tatsächlich ändert, wird EINMAL gezielt nachgeladen — und zwar
+  // nur die Sendungen. Das ist ausdrücklich kein Polling: im Regelfall passiert
+  // das genau einmal pro Monat.
+  useEffect(() => {
+    let last = businessMonthKey();
+    const timer = setInterval(() => {
+      const current = businessMonthKey();
+      if (current && current !== last) {
+        last = current;
+        reloadShipments();
+      }
+    }, MONTH_WATCH_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [reloadShipments]);
 
   // Gezielter Rechnungs-Refetch (nur /kunde/invoices) für die Dokumentstatus-
   // Aktualisierung der Rechnungsliste (manueller Button + zurückhaltendes
@@ -274,6 +349,7 @@ export default function DashboardPage() {
             shipments={shipments}
             invoices={invoices}
             loading={loading}
+            kpisReady={shipmentsLoaded}
             onNewShipment={() => setPage("new")}
             onAllShipments={() => setPage("shipments")}
             onProfile={() => setPage("profile")}

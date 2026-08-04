@@ -70,6 +70,27 @@ const paths = {
   trendingUp:   "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
   trash:        "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6",
   ban:          "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM4.93 4.93l14.14 14.14",
+  /* ── KPI-Karten der Übersicht ────────────────────────────────────────
+     Ein Satz aus vier eigens gezeichneten Icons. Sie ersetzen dort die
+     zusammengewürfelten Bestandsicons (isometrischer Würfel, Lieferwagen aus
+     Rechtecken und Kreisen, nackter Haken, Standarduhr), die weder in der
+     Konstruktion noch im optischen Gewicht zusammenpassten.
+
+     Gemeinsame Regeln für alle vier: dieselbe viewBox (0 0 24 24), reine
+     Linienführung ohne Flächen, vergleichbare optische Größe, runde Enden und
+     Verbindungen. Die Strichstärke setzt overview.css für den KPI-Bereich auf
+     1.6; die globale Voreinstellung der Komponente (1.8) bleibt für die
+     übrige App unberührt.
+
+     packageMove — Paket mit Klebeband und drei Bewegungsstrichen
+     routeArrow  — zwei Wegpunkte, Bogen dazwischen, Richtungspfeil
+     seal        — Prüfsiegel: Rund, Haken, Band
+     clockDelay  — Zifferblatt mit Zeigern, dazu ein Überlaufbogen außerhalb
+                   des Blattes als zurückhaltende Verzögerungsmarke */
+  packageMove:  "M14.5 4.2 21.2 8.1v7.8l-6.7 3.9-6.7-3.9V8.1zM7.8 8.1 14.5 12l6.7-3.9M14.5 12v7.8M1.6 8.4h4M1 12h3.4M1.6 15.6h4",
+  routeArrow:   "M4.8 16.5a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2zM17.1 3.3a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2zM6.9 18.6h5.6a4.6 4.6 0 0 0 4.6-4.6v-3.1M14.9 13.1 17.1 10.9l2.2 2.2",
+  seal:         "M12 2.5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM9 9.6l2.1 2.1 3.9-3.9M8.6 15.7 7 21.5l5-2.4 5 2.4-1.6-5.8",
+  clockDelay:   "M12 5a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8.6V13l3 1.8M12 2.5a10.5 10.5 0 0 1 7 2.7",
 };
 
 export function Icon({ n, s = 18, c = "currentColor" }) {

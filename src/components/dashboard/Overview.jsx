@@ -96,18 +96,27 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
   const todayLabel = getTodayLabel();
   const ready = kpisReady === undefined ? !loading : kpisReady;
 
-  const activeFoot = k.hasCreatedAt && k.new24 > 0
-    ? { delta: `+${k.new24}`, deltaClass: "d-blue", label: "neu · 24 h", dot: true }
-    : { label: "Live aus Ihren Sendungen", dot: true };
+  // Zusatzangabe der ersten Karte. `new24` ist eine echte Zahl aus computeKpis
+  // (Sendungen mit created_at innerhalb der letzten 24 Stunden) — kein Trend,
+  // keine Prozentangabe, kein Vergleichswert. Sie hängt als Nachsatz an der
+  // Kontextzeile, statt wie bisher als Chip mit Trendpfeil aufzutreten: der
+  // Pfeil suggerierte eine Entwicklung, die die Zahl nicht behauptet.
+  const activeNote = k.hasCreatedAt && k.new24 > 0 ? `${k.new24} neu in 24 h` : null;
 
   // Vier Karten. Nur „Zugestellt" ist monatsbezogen — und diese Grenze zieht
   // ausschließlich der Server (delivered_this_month, Geschäftszeitzone
   // Europe/Berlin). Die übrigen drei zeigen den aktuellen Stand ohne Zeitraum.
+  //
+  // Kontextzeile der ersten Karte: bewusst „Aktuell laufend" statt „Aktuell im
+  // Versandprozess". isActive() zählt jeden offenen Business-Status — auch
+  // `pending` und `approved`, also Sendungen, die noch gar nicht übergeben
+  // sind. „Im Versandprozess" würde für diese Fälle mehr behaupten als die
+  // Zahl deckt und die Karte zudem gegen „In Zustellung" verwischen.
   const KPIS = [
-    { key: "active",    tone: "hero",  icon: "package", label: "Aktive Sendungen", value: String(k.active),    foot: activeFoot },
-    { key: "transit",   tone: "blue",  icon: "truck",   label: "In Zustellung",    value: String(k.inTransit), foot: { label: "Aktueller Stand" } },
-    { key: "delivered", tone: "mint",  icon: "check",   label: "Zugestellt",       value: String(k.delivered), foot: { label: "Aktueller Monat" } },
-    { key: "delayed",   tone: "amber", icon: "clock",   label: "Verzögert",        value: String(k.delayed),   foot: { label: "Aktueller Stand" } },
+    { key: "active",    icon: "packageMove", label: "Aktive Sendungen", value: String(k.active),    context: "Aktuell laufend",                 note: activeNote },
+    { key: "transit",   icon: "routeArrow",  label: "In Zustellung",    value: String(k.inTransit), context: "Auf dem Weg zum Empfänger",       note: null },
+    { key: "delivered", icon: "seal",        label: "Zugestellt",       value: String(k.delivered), context: "Im aktuellen Monat",              note: null },
+    { key: "delayed",   icon: "clockDelay",  label: "Verzögert",        value: String(k.delayed),   context: "Über dem geplanten Liefertermin", note: null },
   ];
 
   return (
@@ -142,17 +151,20 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
         </div>
       </header>
 
-      {/* ── KPI-Reihe (echte Daten; 1. Karte = Featured) ── */}
+      {/* ── KPI-Reihe (echte Daten; vier gleichwertige Karten) ──
+          Keine hervorgehobene erste Karte mehr: die frühere Akzent-Border ließ
+          Karte 1 wie ausgewählt aussehen, obwohl die Karten nicht bedienbar
+          sind. Unterschieden werden sie jetzt allein über Icon und Eckton. */}
       <div className="pp-kpis">
         {KPIS.map((kpi) => (
-          <div className={`pp-kpi tile${kpi.key === "active" ? " pp-kpi-hero" : ""}`} key={kpi.key}>
+          <div className={`pp-kpi kt-${kpi.key}`} key={kpi.key}>
+            {/* Beschriftung links, Icon rechts — die Karte liest sich von der
+                Beschriftung zur Zahl, nicht vom Icon zur Beschriftung. */}
             <div className="pp-kpi-head">
-              {/* Alle vier Karten tragen ein Icon. Der frühere Glyph-Zweig gehörte
-                  ausschließlich zum Euro-Zeichen der entfernten Ausgabenkarte. */}
-              <span className={`pp-medal m-${kpi.tone}`}>
-                <Icon n={kpi.icon} s={21} />
-              </span>
               <span className="pp-kpi-label">{kpi.label}</span>
+              <span className="pp-kpi-icon" aria-hidden="true">
+                <Icon n={kpi.icon} s={19} />
+              </span>
             </div>
             {/* Solange nichts erfolgreich geladen wurde, steht „—" statt einer Zahl:
                 weder beim ersten Laden noch nach einem Ladefehler darf eine 0
@@ -164,11 +176,8 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
             <div className="pp-kpi-sub">
               {!ready ? (loading ? "Wird geladen…" : "Noch nicht verfügbar") : (
                 <>
-                  {kpi.foot.dot && <span className="ce-live" />}
-                  {kpi.foot.delta && (
-                    <span className={`kchip ${kpi.foot.deltaClass}`}><Icon n="trendingUp" s={12} />{kpi.foot.delta}</span>
-                  )}
-                  <span>{kpi.foot.label}</span>
+                  {kpi.context}
+                  {kpi.note && <span className="pp-kpi-note"> · {kpi.note}</span>}
                 </>
               )}
             </div>

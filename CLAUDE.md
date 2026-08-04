@@ -43,6 +43,7 @@ Drei voneinander isolierte Theme-Schichten:
 |---------|--------|-------|----------|
 | App-Chrome „Executive Ivory + Midnight Slate" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
 | App-Inhaltsflächen | `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--shadow-card*` | `variables.css` | Karten, Tabellen, Seitenköpfe im eingeloggten Bereich |
+| KPI-Karten „Executive Metric Cards" | `--ce-kpi-*` | `variables.css` → `overview.css` | **Nur** die vier Kennzahlkarten der Kundenübersicht |
 | Legacy-Light | `--navy`, `--gray*`, `--blue*` | `variables.css` | Booking, Legal, Offer-/Preisrechnerkarten |
 | Auth-Theme | `--auth-*` | `auth.css` | AuthPage, Login, Register |
 | Admin | `--adm-*` / `.adm-*` | `admin.css` | Adminbereich (eigene Shell) |
@@ -52,6 +53,22 @@ Drei voneinander isolierte Theme-Schichten:
 Neue Flächen im eingeloggten Bereich immer über die App-Layout-Tokens bauen
 (`--surface`, `--border-subtle`, `--shadow-card`) — keine eigenen Hex-Werte,
 keine neuen Verläufe, kein Blau als Fläche.
+
+**Einzige Ausnahme: die vier KPI-Karten der Übersicht.** Sie tragen ein eigenes,
+abgeschlossenes Material (`--ce-kpi-*`) auf Basis der Markenfarben Navy `#111A33`,
+Indigo `#5367E8`, Violett `#7A5CE6` und Off-White `#F5F7FB`. Diese Familie gilt
+ausschließlich für `.pp-kpi*` und darf nicht auf andere Flächen ausgeweitet
+werden; umgekehrt bringen die Karten `.tile` nicht mehr mit. Alle Farbwerte
+stehen in `variables.css` — im KPI-Block von `overview.css` steht bewusst kein
+Farbliteral. `overviewKpiCards.test.mjs` prüft das zusammen mit Typografie,
+Icon-Satz, Kartenoberfläche und den WCAG-Kontrasten.
+
+Die KPI-Zahlen nutzen `--fs` (DM Sans), **nicht** `--fh`: DM Sans liegt als
+Variable Font vor und rendert das geforderte Gewicht 600 tatsächlich. Libre
+Franklin (`--fh`) ist nur als 700 und 800 geladen und fällt bei 600 still auf
+700 zurück — gemessen, nicht vermutet. Wer die `@font-face`-Deklaration für
+DM Sans 600 entfernt, lässt die Zahlen unbemerkt auf 500 zurückfallen; ein Test
+hält das fest.
 
 **Chrome-Farben stehen ausschließlich in `variables.css`.** In den Shell- und
 Sidebar-Regeln von `dashboard-premium.css` dürfen keine Farbliterale auftauchen
@@ -242,7 +259,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/polish-premium-shell-footer`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/redesign-dashboard-kpi-cards`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

@@ -16,6 +16,19 @@ import { readFileSync } from "node:fs";
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 const variables = read("../../styles/variables.css");
+
+// Tokenwert aus variables.css. Seit Paket A / Phase 1 zeigen die Legacy-Tokens
+// per var() auf die semantischen Foundation-Tokens (--ce-color-*); ein solcher
+// Verweis wird hier aufgelöst, damit die Kontrast- und Rampenprüfungen weiterhin
+// mit echten Farbwerten rechnen. Gleiche Auflösung wie in
+// overviewKpiCards.test.mjs — die Zusicherungen selbst bleiben unverändert.
+function tok(name, tiefe = 0) {
+  const m = variables.match(new RegExp(`--${name}:\\s*([^;]+);`));
+  if (!m) return undefined;
+  const wert = m[1].trim();
+  const verweis = wert.match(/^var\(--([\w-]+)\)$/);
+  return verweis && tiefe < 4 ? tok(verweis[1], tiefe + 1) : wert;
+}
 const premium   = read("../../styles/dashboard-premium.css");
 const dashboard = read("../../styles/dashboard.css");
 const adminCss  = read("../../styles/admin.css");
@@ -155,7 +168,7 @@ test("6 — es gibt genau eine Sidebar-Komponente auf allen Kundenrouten", () =>
 });
 
 test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () => {
-  const tok0 = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
+  const tok0 = tok;
   // Aktivzustand kommt weiterhin aus dem page-Vergleich, nicht aus der URL.
   assert.match(sidebarJsx, /page === "overview" \? "on" : ""/, "Aktivmarkierung der Übersicht fehlt");
   assert.match(sidebarJsx, /page === item\.id \? "on" : ""/, "Aktivmarkierung der Nav-Einträge fehlt");
@@ -386,7 +399,6 @@ test("17 — Admin- und Auth-Bereich bleiben vom Chrome unberührt", () => {
 /* ── Accessibility: gemessene Kontraste ─────────────────────────────────── */
 
 test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
-  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   const hex = (h) => {
     const v = h.replace("#", "");
     const full = v.length === 3 ? [...v].map((c) => c + c).join("") : v;
@@ -446,7 +458,6 @@ test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
 });
 
 test("19 — Inhaltstexte bleiben auf der Ivory-Fläche lesbar", () => {
-  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
   const lum = (c) => {
     const f = c.map((v) => {
@@ -476,7 +487,6 @@ test("19 — Inhaltstexte bleiben auf der Ivory-Fläche lesbar", () => {
 });
 
 test("20 — Sidebar und Hauptfläche bilden einen deutlichen Helligkeitskontrast", () => {
-  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
   const lum = (c) => {
     const f = c.map((v) => {
@@ -604,7 +614,6 @@ test("26 — die Hauptfläche trägt den Footer, ohne schmale Viewports zu spren
 /* ── Feinschliff-Werte ──────────────────────────────────────────────────── */
 
 test("27 — Hintergrundrampe läuft harmonisch durch", () => {
-  const tok = (n) => variables.match(new RegExp(`--${n}:\\s*([^;]+);`))?.[1].trim();
   const hex = (h) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
   const [top, mid, bot] = ["ce-app-bg-top", "ce-app-bg-mid", "ce-app-bg-bottom"].map((t) => hex(tok(t)));
 
@@ -625,8 +634,12 @@ test("27 — Hintergrundrampe läuft harmonisch durch", () => {
 });
 
 test("28 — Lichtfläche ist wahrnehmbar, aber zurückgenommen", () => {
-  const sheen = variables.match(/--ce-app-sheen:\s*rgba\(([^)]+)\)/);
-  assert.ok(sheen, "--ce-app-sheen fehlt");
+  // Der Token zeigt seit Paket A / Phase 1 per var() auf --ce-color-bg-sheen —
+  // der aufgelöste Wert muss weiterhin eine rgba-Farbe im Zielband sein.
+  const sheenWert = tok("ce-app-sheen");
+  assert.ok(sheenWert, "--ce-app-sheen fehlt");
+  const sheen = sheenWert.match(/^rgba\(([^)]+)\)$/);
+  assert.ok(sheen, `--ce-app-sheen muss zu einer rgba-Farbe auflösen, ist: ${sheenWert}`);
   const alpha = parseFloat(sheen[1].split(",")[3]);
   // Unter ~0.04 war sie unsichtbar, über ~0.06 zu präsent.
   assert.ok(alpha >= 0.04 && alpha <= 0.06,

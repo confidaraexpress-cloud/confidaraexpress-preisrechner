@@ -1,11 +1,25 @@
 :root {
-  --navy: #0B1F4D;
-  --blue: #1D4ED8;
-  --blue2: #2563eb;
-  --blue3: #3b82f6;
-  --blue-light: #dbeafe;
-  --accent: #60a5fa;
-  --white: #ffffff;
+  /* ── LEGACY-ALIASE (Paket A, Phase 1) ────────────────────────────────────
+     Die historischen Tokennamen bleiben vollständig funktionsfähig und werden
+     auf die semantischen Foundation-Tokens weiter unten abgebildet. So wandert
+     der Wert an EINER Stelle, ohne dass Phase 1 alle Komponentendateien
+     anfassen muss. Entfernt werden diese Namen erst in Phase 8.
+
+     Bewusst NICHT umgehängt (Wertänderung wäre in Phase 1 nicht freigegeben):
+       • --radius-sm (6px) und --radius (10px) — die Zielskala sagt 8/12 px;
+         das ist eine Formänderung an Buttons/Eingaben und gehört zu Phase 2.
+       • --gray50 … --gray700 — neutrales Gerüst; die Textrollen von --gray400
+         wandern in Phase 2 zusammen mit den Primitives auf --ce-color-text-*.
+       • --shadow-sm / --shadow / --shadow-lg — Legacy-Tiefen, die Phase 2 auf
+         die Elevationsskala zieht.
+       • --shadow-blue — toter Glow-Token, 0 Referenzen, entfällt in Phase 8. */
+  --navy: var(--ce-color-text-primary);
+  --blue: var(--ce-color-brand-active);
+  --blue2: var(--ce-color-brand);
+  --blue3: var(--ce-color-brand);
+  --blue-light: var(--ce-color-brand-soft);
+  --accent: var(--ce-color-brand);
+  --white: var(--ce-color-surface);
   --gray50: #F5F7FA;
   --gray100: #EEF2F7;
   --gray200: #e2e8f0;
@@ -14,27 +28,37 @@
   --gray500: #64748b;
   --gray600: #475569;
   --gray700: #334155;
-  --success: #10b981;
-  --success-bg: #ecfdf5;
-  --warn: #f59e0b;
-  --warn-bg: #fffbeb;
-  --danger: #ef4444;
-  --danger-bg: #fef2f2;
-  --border: #dde6f0;
-  --border2: #c8d5e8;
+  --success: var(--ce-color-success-solid);
+  --success-bg: var(--ce-color-status-success-surface);
+  --warn: var(--ce-color-status-warning-fg);
+  --warn-bg: var(--ce-color-status-warning-surface);
+  --danger: var(--ce-color-danger-solid);
+  --danger-bg: var(--ce-color-status-error-surface);
+  --border: var(--ce-color-border-default);
+  /* Übergangsalias: die Zielabbildung ist --ce-color-border-interactive
+     (#8891a3, 3,17:1). --border2 trägt heute aber BEIDE Rollen — Hoverkanten
+     von Karten UND die Rahmen der Admin-Filterfelder. Ein Sprung nur an diesen
+     23 Stellen ergäbe dunkle Admin-Eingaben neben unverändert hellen
+     .field-input-Feldern. Die Eingabekante steigt deshalb in Phase 2
+     EINHEITLICH für alle Eingabetypen; bis dahin bleibt der Tonwert ruhig. */
+  --border2: var(--ce-color-border-strong);
+  /* Bisher undefiniert und nur über Inline-Fallbacks benutzt (overview.css,
+     dashboard-premium.css bzw. notifications.css) — jetzt echte Tokens. */
+  --border-strong: var(--ce-color-border-strong);
+  --shadow-card-lg: var(--ce-elevation-3);
   --shadow-sm: 0 1px 3px rgba(14,30,80,0.06);
   --shadow: 0 4px 16px rgba(14,30,80,0.09), 0 2px 6px rgba(14,30,80,0.04);
   --shadow-lg: 0 12px 40px rgba(14,30,80,0.12);
   --shadow-blue: 0 8px 28px rgba(29,78,216,0.30);
   --radius-sm: 6px;
   --radius: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
+  --radius-lg: var(--ce-radius-lg);
+  --radius-xl: var(--ce-radius-xl);
+  --radius-full: var(--ce-radius-full);
   /* Einzige Quelle der Sidebarbreite — .app-shell überschreibt sie nicht mehr.
      252 px ist der Wert innerhalb der Zielspanne 244–252, bei dem die
      Konto-E-Mail in der Firmenkarte noch vollständig steht. */
-  --sidebar-width: 252px;
+  --sidebar-width: var(--ce-size-sidebar);
 
   /* ── Zentraler Zahlen-/Geschäftsnummern-Font ──────────────────────────────
      Einzige zulässige Schriftfamilie für Ziffern und Geschäftsnummern —
@@ -49,6 +73,260 @@
      identischer Sans-Serif-Fallbackkette — keine neue Schrift, kein
      Faux-Weight. */
   --ce-font-numeric: 'DM Sans', system-ui, sans-serif;
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     FOUNDATION-TOKENS — Paket A, Phase 1
+     ──────────────────────────────────────────────────────────────────────────
+     Semantische Grundlage aus der freigegebenen Spezifikation „Paket A —
+     Globale Designsystem-Grundlage". Ab hier ist diese Familie die einzige
+     Quelle für Farbe, Typografie, Abstand, Radius, Tiefe, Ebene, Bewegung und
+     Layoutmaß — für Kundenportal UND Adminbereich, in zwei Dichtestufen.
+
+     Phase 1 definiert die Tokens und hängt die Legacy-Namen darauf um. Sie
+     ersetzt bewusst noch KEINE Komponentenregel: Buttons, Eingaben, Karten,
+     Seitenköpfe, Tabellen und Dialoge folgen in Phase 2 (Primitives). Dass
+     hier Tokens stehen, die noch nirgends referenziert werden, ist deshalb
+     kein toter Code, sondern der Vertrag, gegen den Phase 2 gebaut wird.
+
+     Alle Kontrastangaben sind gerechnet (WCAG 2.1, relative Luminanz) gegen
+     die jeweils genannte Fläche — nicht geschätzt.
+     ══════════════════════════════════════════════════════════════════════════ */
+
+  /* ── Marke und Interaktion ────────────────────────────────────────────────
+     #5367e8 ist der einzige allgemeine Aktionsakzent des eingeloggten
+     Bereichs. Er trägt Flächen, Kanten und Fokus — aber KEINEN Text auf
+     hellem Grund: gegen den Rampenkopf misst er 4,46:1 und bliebe knapp unter
+     AA. Für Text, Links und Icons in Textgröße gibt es -ink. Violett bleibt
+     zweiter Markenton und wird nie Aktions- oder Statusfarbe. */
+  --ce-color-brand: #5367e8;                          /* weiß darauf 4,69:1 */
+  --ce-color-brand-hover: #4658d9;                    /* weiß darauf 5,74:1 */
+  --ce-color-brand-active: #3b4cc4;                   /* weiß darauf 6,96:1 */
+  --ce-color-brand-ink: #3d4fcf;                      /* auf weiß 6,53:1, auf Ivory 6,20:1 */
+  --ce-color-brand-soft: #eef0fd;                     /* -ink darauf 5,75:1 */
+  --ce-color-brand-border: rgba(83, 103, 232, 0.28);
+  --ce-color-brand-violet: #7a5ce6;
+
+  /* ── Text ──
+     --ce-color-text-disabled unterschreitet AA bewusst: er ist ausschließlich
+     für inaktive Bedienelemente zulässig, deren Zustand zusätzlich über
+     disabled/aria-disabled getragen wird, und nie für Information. */
+  --ce-color-text-primary: #111a33;                   /* weiß 17,22:1 · Ivory 16,36:1 */
+  --ce-color-text-secondary: #5f6d80;                 /* weiß 5,27:1 · Ivory 5,00:1 */
+  --ce-color-text-muted: #667284;                     /* weiß 5,11:1 · Ivory 4,63:1 */
+  --ce-color-text-placeholder: #6b7688;               /* weiß 4,59:1 */
+  --ce-color-text-disabled: #97a1b0;                  /* 2,61:1 — nur inaktive Elemente */
+  --ce-color-text-inverse: #ffffff;
+  --ce-color-text-inverse-soft: rgba(226, 232, 246, 0.78);
+
+  /* ── Hintergrund und Oberflächen ──
+     Die Ivory-Rampe ist unverändert aus dem Bestand übernommen; sie bleibt
+     EINE statische Hintergrundebene mit deckendem Endton. */
+  --ce-color-bg-canvas-top: #faf9f6;
+  --ce-color-bg-canvas-mid: #f5f3ef;
+  --ce-color-bg-canvas-bottom: #eff0f2;
+  --ce-color-bg-sheen: rgba(58, 111, 220, 0.05);
+  --ce-color-surface: #ffffff;
+  --ce-color-surface-subtle: #f8f9fc;
+  --ce-color-surface-muted: #f2f4f8;
+  --ce-color-surface-raised: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(249, 250, 253, 0.965) 45%,
+    rgba(238, 241, 248, 0.98) 100%);
+  --ce-color-surface-inverse: linear-gradient(150deg, #1b2547 0%, #141d3a 46%, #111a33 100%);
+  --ce-color-surface-inverse-edge: rgba(122, 92, 230, 0.26);
+
+  /* ── Rahmen ──
+     -interactive ist die Kante bedienbarer Elemente und erfüllt als einziger
+     Rahmenton WCAG 1.4.11 (3,17:1 gegen Weiß). Phase 2 zieht Eingaben,
+     Selects, Textareas, Checkboxen, Radios und Secondary-Buttons darauf. */
+  --ce-color-border-subtle: #e6e9ef;
+  --ce-color-border-default: #d8dde6;
+  --ce-color-border-strong: #c3cad6;
+  --ce-color-border-interactive: #8891a3;             /* weiß 3,17:1 */
+  --ce-color-border-interactive-hover: #6b7688;       /* weiß 4,59:1 */
+  --ce-color-border-focus: #5367e8;
+
+  /* ── Status ──
+     Ein entsättigtes System für alle Domänen (Sendungen, Rechnungen, Support,
+     Stornierungen, Kunden, Dokumente, Adminaktionen). Jede Vordergrundfarbe
+     misst mindestens 4,5:1 auf ihrer eigenen Fläche. Der Punkt im Badge ist
+     Pflicht: Status wird nie allein über Farbe vermittelt. */
+  --ce-color-status-neutral-surface: #f1f3f7;
+  --ce-color-status-neutral-fg: #4b5565;              /* 6,78:1 */
+  --ce-color-status-neutral-border: rgba(75, 85, 101, 0.16);
+  --ce-color-status-info-surface: #eef1fd;
+  --ce-color-status-info-fg: #3a4ba8;                 /* 6,77:1 */
+  --ce-color-status-info-border: rgba(58, 75, 168, 0.18);
+  --ce-color-status-progress-surface: #edf2fa;
+  --ce-color-status-progress-fg: #3c5a80;             /* 6,30:1 */
+  --ce-color-status-progress-border: rgba(60, 90, 128, 0.18);
+  --ce-color-status-success-surface: #eef4f1;
+  --ce-color-status-success-fg: #2f6b52;              /* 5,63:1 */
+  --ce-color-status-success-border: rgba(47, 107, 82, 0.16);
+  --ce-color-status-warning-surface: #f6f0e4;
+  --ce-color-status-warning-fg: #7f6038;              /* 5,09:1 */
+  --ce-color-status-warning-border: rgba(127, 96, 56, 0.20);
+  --ce-color-status-overdue-surface: #f7ecec;
+  --ce-color-status-overdue-fg: #8c3f3f;              /* 6,27:1 */
+  --ce-color-status-overdue-border: rgba(140, 63, 63, 0.18);
+  --ce-color-status-error-surface: #faebeb;
+  --ce-color-status-error-fg: #9b3535;                /* 6,14:1 */
+  --ce-color-status-error-border: rgba(155, 53, 53, 0.20);
+  --ce-color-status-blocked-surface: #edeef2;
+  --ce-color-status-blocked-fg: #414b5c;              /* 7,59:1 */
+  --ce-color-status-blocked-border: rgba(65, 75, 92, 0.20);
+  --ce-color-status-cancelled-surface: #f1f3f7;
+  --ce-color-status-cancelled-fg: #5b6375;            /* 5,42:1 */
+  --ce-color-status-cancelled-border: rgba(91, 99, 117, 0.18);
+  --ce-color-status-archived-surface: #f4f5f7;
+  --ce-color-status-archived-fg: #666f7e;             /* 4,65:1 */
+  --ce-color-status-archived-border: rgba(102, 111, 126, 0.18);
+  /* Gefüllte Aktionsflächen — nur für Buttons, nie für Badges. */
+  --ce-color-danger-solid: #9b3535;                   /* weiß darauf 7,11:1 */
+  --ce-color-success-solid: #2f6b52;                  /* weiß darauf 6,28:1 */
+
+  /* ── Overlay und Fokus ──
+     Ein Overlayton für alle Dialoge; der Navigations-Drawer ist als einzige
+     vollflächige Abdeckung etwas dichter. Kein backdrop-filter. */
+  --ce-color-overlay: rgba(17, 26, 51, 0.45);
+  --ce-color-overlay-drawer: rgba(17, 26, 51, 0.55);
+  --ce-color-focus-ring: rgba(83, 103, 232, 0.32);
+
+  /* ── Schriftfamilien ──
+     Zwei Familien: Cormorant ausschließlich für Display-Momente (Seitentitel
+     Kundenportal, Begrüßung, Auth-Hero), DM Sans für alles Funktionale.
+     --ce-font-numeric bleibt bewusst ein eigener Literalwert und kein Alias:
+     numericFontAudit.test.mjs prüft dort auf die reale Familienangabe.
+     Libre Franklin läuft aus; --fh bleibt bis Phase 2 unverändert bestehen. */
+  --ce-font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --ce-font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+
+  /* ── Typografiestufen ──
+     Elf Stufen, keine Halbpixelwerte, Untergrenze 11 px. Gewicht 600 ist das
+     höchste verbindliche UI-Gewicht. Die DM-Sans-Datei trägt nachweislich
+     auch 700 und 800 (fvar/gvar, gemessen in tests/e2e/fontWeightAxis.test.mjs);
+     nutzbar wird 700 erst, wenn fonts.css eine entsprechende Instanz
+     deklariert — das entscheidet Phase 2, ohne neue Schriftdatei. */
+  --ce-text-display-xl-size: 52px;      --ce-text-display-xl-size-mobile: 38px;
+  --ce-text-display-xl-weight: 500;     --ce-text-display-xl-line: 1.05;      --ce-text-display-xl-tracking: -0.005em;
+  --ce-text-display-l-size: 36px;       --ce-text-display-l-size-mobile: 28px;
+  --ce-text-display-l-weight: 500;      --ce-text-display-l-line: 1.15;       --ce-text-display-l-tracking: -0.015em;
+  --ce-text-title-page-size: 24px;      --ce-text-title-page-size-mobile: 20px;
+  --ce-text-title-page-weight: 600;     --ce-text-title-page-line: 1.25;      --ce-text-title-page-tracking: -0.02em;
+  --ce-text-title-section-size: 20px;   --ce-text-title-section-size-mobile: 18px;
+  --ce-text-title-section-weight: 600;  --ce-text-title-section-line: 1.3;    --ce-text-title-section-tracking: -0.015em;
+  --ce-text-title-card-size: 16px;      --ce-text-title-card-size-mobile: 16px;
+  --ce-text-title-card-weight: 600;     --ce-text-title-card-line: 1.35;      --ce-text-title-card-tracking: -0.01em;
+  --ce-text-body-l-size: 15px;          --ce-text-body-l-size-mobile: 15px;
+  --ce-text-body-l-weight: 400;         --ce-text-body-l-line: 1.6;           --ce-text-body-l-tracking: 0;
+  --ce-text-body-size: 14px;            --ce-text-body-size-mobile: 14px;
+  --ce-text-body-weight: 400;           --ce-text-body-line: 1.55;            --ce-text-body-tracking: 0;
+  --ce-text-body-s-size: 13px;          --ce-text-body-s-size-mobile: 13px;
+  --ce-text-body-s-weight: 400;         --ce-text-body-s-line: 1.5;           --ce-text-body-s-tracking: 0;
+  --ce-text-label-size: 12px;           --ce-text-label-size-mobile: 12px;
+  --ce-text-label-weight: 600;          --ce-text-label-line: 1.4;            --ce-text-label-tracking: 0;
+  --ce-text-micro-size: 11px;           --ce-text-micro-size-mobile: 11px;
+  --ce-text-micro-weight: 600;          --ce-text-micro-line: 1.35;           --ce-text-micro-tracking: 0.06em;
+  --ce-text-numeric-display-size: 48px; --ce-text-numeric-display-size-mobile: 40px;
+  --ce-text-numeric-display-weight: 600; --ce-text-numeric-display-line: 1;   --ce-text-numeric-display-tracking: -0.035em;
+
+  /* ── Abstände ──
+     4-px-Basis. Rollenbindung: 12 nur in dichten Kontexten (Admin, Toolbars,
+     Chipreihen), 20 nur als Admin-Kartenpadding und Formularrhythmus, 40 nur
+     zwischen Blöcken einer Seite — nie innerhalb einer Karte. 96 ist für
+     öffentliche Flächen reserviert und im eingeloggten Bereich unzulässig. */
+  --ce-space-0: 0;
+  --ce-space-1: 4px;
+  --ce-space-2: 8px;
+  --ce-space-3: 12px;
+  --ce-space-4: 16px;
+  --ce-space-5: 20px;
+  --ce-space-6: 24px;
+  --ce-space-7: 32px;
+  --ce-space-8: 40px;
+  --ce-space-9: 48px;
+  --ce-space-10: 64px;
+  --ce-space-11: 80px;
+  --ce-space-12: 96px;
+
+  /* ── Radien ──
+     sm: Badges, Checkbox, Chips, kleine Iconkacheln · md: Buttons, alle
+     Eingaben, Dropdowns · lg: Karten, Tabellencontainer, Toolbars, Drawer ·
+     xl: KPI-/Summary-Karten, Signature-Flächen, Dialoge · full: Avatare,
+     Statuspunkte, Zähler. */
+  --ce-radius-0: 0;
+  --ce-radius-sm: 8px;
+  --ce-radius-md: 12px;
+  --ce-radius-lg: 16px;
+  --ce-radius-xl: 20px;
+  --ce-radius-full: 9999px;
+
+  /* ── Tiefe ──
+     Eine Elevationssprache. Kein Glow, keine farbigen Streulichter, keine
+     Schattenlisten mit mehr als drei Ebenen. Die beiden Materialtokens sind
+     unverändert aus der geprüften KPI- und Signature-Fläche übernommen. */
+  --ce-elevation-0: none;
+  --ce-elevation-1: 0 1px 2px rgba(17, 26, 51, 0.04), 0 1px 3px rgba(17, 26, 51, 0.03);
+  --ce-elevation-2: 0 2px 8px rgba(17, 26, 51, 0.07), 0 1px 2px rgba(17, 26, 51, 0.04);
+  --ce-elevation-3: 0 12px 32px rgba(17, 26, 51, 0.12), 0 2px 8px rgba(17, 26, 51, 0.06);
+  --ce-elevation-material-raised:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 1px 1px rgba(17, 26, 51, 0.06),
+    0 20px 38px -20px rgba(17, 26, 51, 0.24);
+  --ce-elevation-material-signature:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 28px 54px -28px rgba(17, 26, 51, 0.55);
+  --ce-elevation-focus-ring: 0 0 0 3px var(--ce-color-focus-ring);
+
+  /* ── Ebenen ──
+     Benannte Leiter statt frei gewählter Werte. Ein Dropdown INNERHALB eines
+     Dialogs erbt --ce-z-dialog + 1, nicht --ce-z-dropdown. */
+  --ce-z-base: 0;
+  --ce-z-raised: 10;
+  --ce-z-sticky: 100;
+  --ce-z-dropdown: 200;
+  --ce-z-topbar: 300;
+  --ce-z-drawer: 400;
+  --ce-z-overlay: 500;
+  --ce-z-dialog: 600;
+  --ce-z-toast: 700;
+  --ce-z-emergency: 900;
+
+  /* ── Bewegung ──
+     Nur Zustandsreaktionen, nie Ambiente. Kein scale, kein Bounce, kein
+     transform beim Buttondruck. prefers-reduced-motion setzt alles auf 0 ms. */
+  --ce-motion-instant: 0ms;
+  --ce-motion-fast: 120ms;
+  --ce-motion-standard: 180ms;
+  --ce-motion-slow: 260ms;
+  --ce-motion-ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ce-motion-ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Breakpoints ──
+     Dokumentierte Schwellen. CSS-Variablen sind in @media-Bedingungen nicht
+     auswertbar; die Media Queries führen die Werte weiterhin literal. Diese
+     Tokens sind die verbindliche Referenz dafür, WELCHE Werte dort stehen
+     dürfen, und die Quelle für JS-seitige Abfragen. */
+  --ce-bp-sm: 480px;
+  --ce-bp-md: 768px;
+  --ce-bp-shell: 860px;
+  --ce-bp-lg: 1024px;
+  --ce-bp-xl: 1280px;
+  --ce-bp-2xl: 1600px;
+
+  /* ── Layoutmaße ── */
+  --ce-size-content: 1240px;
+  --ce-size-content-wide: 1420px;
+  --ce-size-content-admin: 1440px;
+  --ce-size-form: 720px;
+  --ce-size-prose: 640px;
+  --ce-size-sidebar: 252px;
+  --ce-size-sidebar-admin: 264px;
+  --ce-size-dialog-sm: 420px;
+  --ce-size-dialog-md: 560px;
+  --ce-size-dialog-lg: 720px;
+  --ce-size-dialog-xl: 920px;
 
   /* ── „Executive Ivory + Midnight Slate" — Chrome des eingeloggten Layouts ──
      Genau eine Quelle für App-Hintergrund und Sidebar. Alle Regeln in
@@ -68,13 +346,13 @@
      als EIN Material durchläuft. Der Warm-kalt-Bogen bleibt erhalten, die
      Spanne wird kleiner: gemessen als Rot-minus-Blau schwingt die Rampe nur
      noch von +4 (warm) auf −3 (leicht kühl) statt zuvor von +8 auf −8. */
-  --ce-app-bg-top: #faf9f6;
-  --ce-app-bg-mid: #f5f3ef;
-  --ce-app-bg-bottom: #eff0f2;
+  --ce-app-bg-top: var(--ce-color-bg-canvas-top);
+  --ce-app-bg-mid: var(--ce-color-bg-canvas-mid);
+  --ce-app-bg-bottom: var(--ce-color-bg-canvas-bottom);
   --ce-app-divider: rgba(15, 23, 42, 0.12);
   /* Statische Lichtfläche oben rechts. 0.03 war unsichtbar, 0.075 zu präsent —
      0.05 gibt Tiefe, ohne als blaue Wolke zu lesen. */
-  --ce-app-sheen: rgba(58, 111, 220, 0.05);
+  --ce-app-sheen: var(--ce-color-bg-sheen);
   /* Tiefe an der Sidebar-Kante — sichtbar, aber ohne harte Kante. */
   --ce-sidebar-shadow: 2px 0 16px rgba(9, 15, 25, 0.09);
 
@@ -119,33 +397,33 @@
   --ce-sidebar-icon: #a2b0c4;
 
   /* Mobiles Drawer-Overlay — ruhig und dunkel, ohne backdrop-filter. */
-  --ce-app-overlay: rgba(9, 15, 25, 0.58);
+  --ce-app-overlay: var(--ce-color-overlay-drawer);
 
   /* ── Inhaltsflächen des eingeloggten Bereichs (Karten, Tabellen, Header) ──
      Eigene Ebene, bewusst getrennt vom Chrome oben: dieselben Werte werden
      nirgends doppelt geführt. */
-  --surface: #ffffff;
-  --surface-subtle: #f8fafc;
-  --surface-muted: #f1f5f9;
-  --border-subtle: #e2e8f0;
+  --surface: var(--ce-color-surface);
+  --surface-subtle: var(--ce-color-surface-subtle);
+  --surface-muted: var(--ce-color-surface-muted);
+  --border-subtle: var(--ce-color-border-subtle);
   --border-hairline: #edf1f5;
-  --text-primary: #172033;
+  --text-primary: var(--ce-color-text-primary);
   /* Von #64748b nachgedunkelt: gegen den wärmeren Rampenkopf (--ce-app-bg-top)
      maß der alte Wert 4,48:1 und lag damit knapp unter WCAG AA. Jetzt 4,96:1.
      Reine Kontrastkorrektur — keine Größen-, Gewichts- oder Layoutänderung. */
-  --text-secondary: #5f6d80;
-  --text-tertiary: #94a3b8;
+  --text-secondary: var(--ce-color-text-secondary);
+  --text-tertiary: var(--ce-color-text-muted);
 
   /* Akzent — gezielt eingesetzt (aktive Navigation, Links, Fokus), nie flächig. */
-  --accent-blue: #2563eb;
-  --accent-blue-strong: #1d4ed8;
-  --accent-blue-soft: rgba(37, 99, 235, 0.07);
-  --accent-blue-border: rgba(37, 99, 235, 0.22);
+  --accent-blue: var(--ce-color-brand);
+  --accent-blue-strong: var(--ce-color-brand-hover);
+  --accent-blue-soft: var(--ce-color-brand-soft);
+  --accent-blue-border: var(--ce-color-brand-border);
 
   /* Präzision statt Effekt: zwei sehr flache Schattenstufen, kein Glow. */
-  --shadow-card: 0 1px 2px rgba(23, 32, 51, 0.04), 0 1px 3px rgba(23, 32, 51, 0.03);
-  --shadow-card-hover: 0 2px 8px rgba(23, 32, 51, 0.07), 0 1px 2px rgba(23, 32, 51, 0.04);
-  --shadow-overlay: 0 12px 32px rgba(23, 32, 51, 0.12), 0 2px 8px rgba(23, 32, 51, 0.06);
+  --shadow-card: var(--ce-elevation-1);
+  --shadow-card-hover: var(--ce-elevation-2);
+  --shadow-overlay: var(--ce-elevation-3);
 
   /* ── KPI-Karten der Übersicht („Executive Luxury") ───────────────────────
      Eigene, klar benannte Familie für GENAU die vier Kennzahlkarten der
@@ -163,7 +441,7 @@
      ein zweiter Violettton neben Indigo wäre auf 36 px nicht auseinander-
      zuhalten. Die drei Zusatztöne sind bewusst gedämpft gehalten, damit sie
      neben dem Marken-Indigo nicht als Signalfarben auftreten. */
-  --ce-kpi-navy: #111a33;
+  --ce-kpi-navy: var(--ce-color-text-primary);
   --ce-kpi-offwhite: #f5f7fb;
 
   /* Fläche: heller, leicht transparenter Kopf — der warme Ivory-Grund scheint
@@ -223,7 +501,7 @@
      Oberflächen-Feinschliff minimal angehoben (0.07 → 0.08) — weiterhin klar
      unter der Obergrenze 0.09 aus overviewKpiCards.test.mjs und nur bei
      genauem Hinsehen wahrnehmbar. */
-  --ce-kpi-active:       #5367e8;   /* Confidara-Indigo (Marke) */
+  --ce-kpi-active:       var(--ce-color-brand);   /* Confidara-Indigo (Marke) */
   --ce-kpi-active-face:  rgba(83, 103, 232, 0.08);
   --ce-kpi-active-edge:  rgba(83, 103, 232, 0.18);
   --ce-kpi-active-tint:  rgba(83, 103, 232, 0.08);

@@ -28,29 +28,29 @@
   box-shadow: 0 1px 2px rgba(14,30,80,0.04);
 }
 .adm-brand { display: flex; align-items: center; gap: 11px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border); }
-.adm-brand-mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(160deg, #2563eb, #1d4ed8); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adm-brand-mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(160deg, #2563eb, #1d4ed8); color: #fff; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .adm-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.adm-brand-name { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-size: 14px; color: var(--navy); }
+.adm-brand-name { font-family: var(--ce-font-sans); font-weight: 600; font-size: 14px; color: var(--navy); }
 .adm-brand-tag { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue2); }
-.adm-side-close { display: none; margin-left: auto; background: none; border: none; color: var(--gray400); cursor: pointer; padding: 4px; }
+.adm-side-close { display: none; margin-left: auto; background: none; border: none; color: var(--ce-color-text-muted); cursor: pointer; padding: 4px; }
 
 .adm-identity { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-.adm-identity-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue-light); color: var(--blue2); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adm-identity-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue-light); color: var(--blue2); font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .adm-identity-text { display: flex; flex-direction: column; min-width: 0; }
-.adm-identity-name { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adm-identity-role { font-size: 11px; color: var(--gray400); }
+.adm-identity-name { font-size: 13px; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adm-identity-role { font-size: 11px; color: var(--ce-color-text-muted); }
 
 .adm-nav { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
-.adm-nitem { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--gray600); background: none; border: none; cursor: pointer; text-decoration: none; font-family: 'DM Sans', sans-serif; width: 100%; text-align: left; transition: background 0.15s, color 0.15s; }
+.adm-nitem { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); background: none; border: none; cursor: pointer; text-decoration: none; font-family: var(--ce-font-sans); width: 100%; text-align: left; transition: background 0.15s, color 0.15s; }
 .adm-nitem:hover { background: var(--gray50); color: var(--navy); }
 .adm-nitem-on, .adm-nitem-on:hover { background: var(--blue-light); color: var(--blue2); }
-.adm-nsec { padding: 14px 12px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--gray400); }
-.adm-nitem-soon { color: var(--gray400); cursor: not-allowed; }
-.adm-nitem-soon:hover { background: none; color: var(--gray400); }
-.adm-soon-badge { margin-left: auto; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--gray100); color: var(--gray500); border: 1px solid var(--border); letter-spacing: 0.02em; }
+.adm-nsec { padding: 14px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-nitem-soon { color: var(--ce-color-text-muted); cursor: not-allowed; }
+.adm-nitem-soon:hover { background: none; color: var(--ce-color-text-muted); }
+.adm-soon-badge { margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--gray100); color: var(--ce-color-text-muted); border: 1px solid var(--border); letter-spacing: 0.02em; }
 
 .adm-side-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; }
-.adm-foot-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--gray600); background: none; border: none; cursor: pointer; text-align: left; font-family: 'DM Sans', sans-serif; transition: background 0.15s, color 0.15s; }
+.adm-foot-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); background: none; border: none; cursor: pointer; text-align: left; font-family: var(--ce-font-sans); transition: background 0.15s, color 0.15s; }
 .adm-foot-btn:hover { background: var(--gray50); color: var(--navy); }
 
 .adm-side-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.45); z-index: 55; }
@@ -59,15 +59,15 @@
 .adm-main { flex: 1; min-width: 0; margin-left: 264px; }
 .adm-topbar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
 .adm-topbar-burger { background: none; border: none; color: var(--navy); cursor: pointer; padding: 4px; display: flex; }
-.adm-topbar-title { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-size: 15px; color: var(--navy); }
+.adm-topbar-title { font-family: var(--ce-font-sans); font-weight: 600; font-size: 15px; color: var(--navy); }
 .adm-topbar-spacer { width: 30px; flex-shrink: 0; }
 
 /* ── Page container ──────────────────────────────────────────────────────── */
 .adm-page { max-width: 1180px; margin: 0 auto; padding: 30px 32px 48px; }
 .adm-page-head { margin-bottom: 22px; }
 .adm-page-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.adm-title { font-family: 'Libre Franklin', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
-.adm-sub { margin-top: 6px; font-size: 14px; line-height: 1.55; color: var(--gray500); max-width: 640px; }
+.adm-title { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); }
+.adm-sub { margin-top: 6px; font-size: 14px; line-height: 1.55; color: var(--ce-color-text-muted); max-width: 640px; }
 
 /* ── Overview tiles ──────────────────────────────────────────────────────── */
 .adm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 20px; }
@@ -75,111 +75,111 @@
 a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,78,216,0.10); border-color: rgba(29,78,216,0.20); }
 .adm-tile-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--blue-light); color: var(--blue2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .adm-tile-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.adm-tile-title { font-size: 15px; font-weight: 700; color: var(--navy); display: flex; align-items: center; gap: 8px; }
-.adm-tile-desc { font-size: 12.5px; line-height: 1.45; color: var(--gray500); }
-.adm-tile-arrow { color: var(--gray400); flex-shrink: 0; }
+.adm-tile-title { font-size: 15px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+.adm-tile-desc { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+.adm-tile-arrow { color: var(--ce-color-text-muted); flex-shrink: 0; }
 .adm-tile-soon { opacity: 0.7; }
-.adm-foot-note { font-size: 12.5px; color: var(--gray400); }
+.adm-foot-note { font-size: 12px; color: var(--ce-color-text-muted); }
 
 /* ── Filter bar ──────────────────────────────────────────────────────────── */
 /* Material (Fläche/Kante/Radius/Tiefe) kommt aus dem Base-Card-Primitive,
    Eingabematerial und Fokus aus dem Formularsystem (Paket A, Phase 2). */
 .adm-filters { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-end; padding: 16px 18px; margin-bottom: 16px; }
 .adm-filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 132px; }
-.adm-filter-field label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.adm-filter-field label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .adm-filter-actions { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
 
 /* ── Table specifics (Basis kommt aus dashboard.css: .table-card/.table-scroll/table) ── */
-.adm-td-time { white-space: nowrap; color: var(--gray600); font-variant-numeric: tabular-nums; }
+.adm-td-time { white-space: nowrap; color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-action { font-weight: 600; color: var(--navy); display: block; }
-.adm-action-raw { display: block; margin-top: 2px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--gray400); }
+.adm-action-raw { display: block; margin-top: 2px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 .adm-party { display: inline-flex; flex-direction: column; gap: 1px; }
 .adm-party-name { font-weight: 600; color: var(--navy); }
-.adm-party-id { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
-.adm-party-type { font-size: 11px; color: var(--gray400); text-transform: uppercase; letter-spacing: 0.04em; }
-.adm-muted { color: var(--gray400); }
-.adm-mono { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--gray700); }
-.adm-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.adm-party-id { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
+.adm-party-type { font-size: 11px; color: var(--ce-color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.adm-muted { color: var(--ce-color-text-muted); }
+.adm-mono { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; color: var(--ce-color-text-primary); }
+.adm-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; text-align: right; }
 .adm-nowrap { white-space: nowrap; }
-.adm-mask { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12px; letter-spacing: 0.02em; color: var(--gray600); white-space: nowrap; }
+.adm-mask { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; letter-spacing: 0.02em; color: var(--ce-color-text-secondary); white-space: nowrap; }
 /* Überfällige Fälligkeit deutlich markieren (nur Anzeige, keine Zahlungslogik). */
 .adm-overdue { color: var(--danger); font-weight: 600; }
-.adm-overdue-tag { font-size: 11.5px; font-weight: 600; }
+.adm-overdue-tag { font-size: 11px; font-weight: 600; }
 /* Zweite, dezente Zeile in einer Tabellenzelle (z. B. Kontaktname unter Firma). */
 .adm-cell-sub { font-size: 12px; margin-top: 2px; }
-.adm-meta-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.16); border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.adm-meta-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.16); border-radius: 8px; cursor: pointer; font-family: var(--ce-font-sans); white-space: nowrap; }
 .adm-meta-toggle:hover { background: #cfe0ff; }
 .adm-meta-row td { background: var(--gray50); }
 .adm-meta-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 18px; padding: 6px 2px; }
 .adm-meta-item { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.adm-meta-item dt { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.adm-meta-item dt { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .adm-meta-item dd { font-size: 13px; color: var(--navy); word-break: break-word; }
 
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 .adm-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
-.adm-page-ind { font-size: 13px; font-weight: 600; color: var(--gray500); }
-.adm-idlink { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; color: var(--blue2); text-decoration: none; font-weight: 600; }
+.adm-page-ind { font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); }
+.adm-idlink { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--blue2); text-decoration: none; font-weight: 600; }
 .adm-idlink:hover { text-decoration: underline; }
 
 /* ── Sendungsdetail ──────────────────────────────────────────────────────── */
-.adm-back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--gray500); text-decoration: none; margin-bottom: 14px; }
+.adm-back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); text-decoration: none; margin-bottom: 14px; }
 .adm-back:hover { color: var(--blue2); }
 .adm-detail-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
-.adm-detail-id { font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
+.adm-detail-id { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); }
 .adm-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 /* Rechnungsdokument (Phase 3): Status- + Test-Badge nebeneinander in Liste/Detail */
 .adm-doc-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--gray100); color: var(--gray600); border: 1px solid var(--border); white-space: nowrap; }
+.adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--gray100); color: var(--ce-color-text-secondary); border: 1px solid var(--border); white-space: nowrap; }
 
 .adm-cards { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 /* Material aus dem Base-Card-Primitive (primitives.css); hier bleibt nur der
    Beschnitt, damit Kopfzeile und Fuß innerhalb des Radius liegen. */
 .adm-card { overflow: hidden; }
-.adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--navy); }
+.adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--navy); }
 .adm-card-head svg { color: var(--blue2); }
 .adm-card-body { padding: 16px 18px; }
 
 .adm-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px 22px; }
 .adm-kv-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-kv-item dt { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
-.adm-kv-item dd { font-size: 13.5px; color: var(--navy); word-break: break-word; }
+.adm-kv-item dt { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-kv-item dd { font-size: 13px; color: var(--navy); word-break: break-word; }
 
-.adm-pii-warn { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); color: #8a5a06; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
-.adm-pii-warn svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+.adm-pii-warn { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); color: var(--ce-color-status-warning-fg); font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+.adm-pii-warn svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
 
 .adm-addr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.adm-addr-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray500); margin-bottom: 10px; }
-.adm-addr-note { font-size: 13px; color: var(--gray400); font-style: italic; }
-.adm-addr-str { font-size: 13.5px; color: var(--navy); white-space: pre-line; }
+.adm-addr-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ce-color-text-muted); margin-bottom: 10px; }
+.adm-addr-note { font-size: 13px; color: var(--ce-color-text-muted); font-style: italic; }
+.adm-addr-str { font-size: 13px; color: var(--navy); white-space: pre-line; }
 
 .adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
-.adm-support-hint { font-size: 12px; color: var(--gray400); margin-top: 10px; }
+.adm-support-hint { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 10px; }
 
 /* ── Summary-Kacheln (Kundendetail — nur Aggregate) ──────────────────────── */
 .adm-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
 .adm-stat { background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-.adm-stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
-.adm-stat-value { font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); margin-top: 5px; word-break: break-word; }
+.adm-stat-label { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-stat-value { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); margin-top: 5px; word-break: break-word; }
 
 /* ── Inline-Tracking-Karte (direkt unter den Support-Aktionen) ───────────── */
 .adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--gray50); }
 .adm-track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.adm-track-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+.adm-track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
 /* Einordnung, wenn der Carrier (noch) keine Live-Daten liefert — bewusst als
    eigener Hinweis und nicht als Aussage über die gespeicherte Trackingnummer. */
-.adm-track-note { font-size: 12.5px; line-height: 1.5; color: var(--gray600); margin: 0 0 12px; overflow-wrap: anywhere; }
+.adm-track-note { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 12px; overflow-wrap: anywhere; }
 .adm-track-link { margin-top: 12px; }
 
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
 .adm-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(10,22,40,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .adm-modal { background: #fff; border-radius: var(--radius-lg); max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(10,22,40,0.35); text-align: center; }
-.adm-modal-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--warn-bg); color: #b45309; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-.adm-modal-title { font-family: 'Libre Franklin', sans-serif; font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
-.adm-modal-text { font-size: 13.5px; line-height: 1.55; color: var(--gray600); margin-bottom: 18px; }
+.adm-modal-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--warn-bg); color: var(--ce-color-status-warning-fg); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+.adm-modal-title { font-family: var(--ce-font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
+.adm-modal-text { font-size: 13px; line-height: 1.55; color: var(--ce-color-text-secondary); margin-bottom: 18px; }
 .adm-modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.adm-modal-sub { font-size: 12.5px; font-weight: 600; color: var(--gray500); margin-bottom: 8px; }
+.adm-modal-sub { font-size: 12px; font-weight: 600; color: var(--ce-color-text-muted); margin-bottom: 8px; }
 .adm-modal-icon-approve { background: var(--blue-light); color: var(--blue2); }
-.adm-modal-icon-danger { background: var(--danger-bg); color: #dc2626; }
+.adm-modal-icon-danger { background: var(--danger-bg); color: var(--ce-color-status-error-fg); }
 
 /* Danger-Aktion (Blockieren) — rot, klar von neutralen Aktionen getrennt.
    Fläche und Zustände liegen seit Paket A, Phase 2 in der Danger-Variante des
@@ -194,46 +194,46 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-danger-item { display: flex; gap: 16px 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
 .adm-danger-item + .adm-danger-item { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .adm-danger-item-text { flex: 1; min-width: 240px; }
-.adm-danger-item-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-.adm-danger-item-desc { font-size: 13px; line-height: 1.55; color: var(--gray500); }
+.adm-danger-item-title { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.adm-danger-item-desc { font-size: 13px; line-height: 1.55; color: var(--ce-color-text-muted); }
 .adm-danger-item-action { flex-shrink: 0; }
 .adm-danger-item-soon { opacity: 0.75; }
 /* Löschaktion immer sichtbar von der Anonymisierung getrennt (auch wenn der
    „bereits anonymisiert"-Hinweis dazwischen die Geschwister-Adjazenz bricht). */
 .adm-danger-item-split { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-.adm-danger-note { margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--danger); }
+.adm-danger-note { margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--danger); }
 /* .adm-danger-button trägt die Danger-Variante des Buttonsystems (buttons.css). */
 
 /* Type-to-confirm-Eingabe im Danger-Modal — Material/Fokus aus dem
    Formularsystem; hier bleibt nur das Zahlen-Setting und der Abstand. */
-.adm-modal-label { display: block; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--gray600); margin-bottom: 6px; }
-.adm-modal-input { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-bottom: 16px; }
+.adm-modal-label { display: block; text-align: left; font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary); margin-bottom: 6px; }
+.adm-modal-input { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; letter-spacing: 0.04em; margin-bottom: 16px; }
 
 /* ── Stornierungsanfragen (Admin) ────────────────────────────────────────── */
 /* Scope-Trennung: klar informativer (blauer) Hinweis, dass dies ein interner
    Vorgang ist und KEINE echte Carrier-/JUMiNGO-Stornierung/Erstattung auslöst. */
 .adm-scope-note { display: flex; gap: 11px; align-items: flex-start; padding: 13px 15px; border-radius: var(--radius); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.22); color: var(--navy); font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
 .adm-scope-note svg { flex-shrink: 0; margin-top: 1px; color: var(--blue2); }
-.adm-scope-note strong { font-weight: 700; }
+.adm-scope-note strong { font-weight: 600; }
 
 /* Optimistic-Locking-Konflikt (409): amber, mit direkter Reload-Aktion. */
-.adm-conflict { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 12px 15px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.32); color: #8a5a06; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+.adm-conflict { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 12px 15px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.32); color: var(--ce-color-status-warning-fg); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
 .adm-conflict-text { display: flex; gap: 9px; align-items: flex-start; min-width: 240px; flex: 1; }
-.adm-conflict-text svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+.adm-conflict-text svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
 
 /* Voller Freitext (Kundengrund / interner Vermerk read-only): Zeilenumbrüche
    erhalten, sicher umbrechen. Reiner Text — nie als HTML gerendert. */
-.adm-reason { font-size: 13.5px; line-height: 1.6; color: var(--navy); white-space: pre-wrap; word-break: break-word; background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-.adm-reason-cell { color: var(--gray600); font-size: 13px; }
+.adm-reason { font-size: 13px; line-height: 1.6; color: var(--navy); white-space: pre-wrap; word-break: break-word; background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.adm-reason-cell { color: var(--ce-color-text-secondary); font-size: 13px; }
 
 /* Editor-Formular (Status + interner Vermerk). */
 .adm-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .adm-edit-field { display: flex; flex-direction: column; gap: 6px; }
-.adm-edit-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.adm-edit-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 /* Material, Höhe, Hover, Fokus und Disabled kommen aus dem Formularsystem
    (forms.css, Admin-Dichtestufe 36px). */
 .adm-edit-select { max-width: 320px; }
-.adm-edit-hint { font-size: 11.5px; color: var(--gray400); }
+.adm-edit-hint { font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
@@ -248,19 +248,19 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 @media (max-width: 560px) {
   .adm-filter-field { min-width: 100%; }
   .adm-filter-actions { margin-left: 0; width: 100%; }
-  .adm-title { font-size: 22px; }
+  .adm-title { font-size: 20px; }
 }
 
 /* ── Produktion & Backfill (Phase 5) ─────────────────────────────────────────
    Bewusst nur Light-/Legacy-Tokens (--navy/--gray../--blue../--border..); keine
    Vermischung mit --auth-/--ce-. Ergänzt bestehende .adm-card/.adm-chip/.badge. */
-.adm-subtitle { font-family: 'Libre Franklin', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--navy); }
+.adm-subtitle { font-family: var(--ce-font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: var(--navy); }
 .adm-card-head-action { margin-left: auto; }
 .adm-card-head-action svg { color: inherit; }
 .adm-readiness-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .adm-readiness-block { margin-top: 14px; }
-.adm-readiness-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); margin-bottom: 7px; }
-.adm-readiness-label-warn { color: #b91c1c; }
+.adm-readiness-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); margin-bottom: 7px; }
+.adm-readiness-label-warn { color: var(--ce-color-status-error-fg); }
 .adm-chip-wrap { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .adm-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-actions-col { min-width: 260px; }
@@ -269,10 +269,10 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
    ConfidaraExpress ist eine reine Geschäftskundenplattform. Fehlen Firmenname
    oder Ansprechpartner (Alt-Konten), blockiert das Backend die Freischaltung —
    diese Klassen machen das im Adminpanel vor dem Klick sichtbar. */
-.adm-b2b-warn { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; color: #92400e; background: #fffbeb; border: 1px solid rgba(217,119,6,0.28); box-shadow: 0 1px 4px rgba(217,119,6,0.06); }
+.adm-b2b-warn { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; color: var(--ce-color-status-warning-fg); background: #fffbeb; border: 1px solid rgba(217,119,6,0.28); box-shadow: 0 1px 4px rgba(217,119,6,0.06); }
 .adm-b2b-warn strong { display: block; margin-bottom: 3px; }
-.adm-b2b-warn-text { display: block; color: #a16207; }
-.adm-b2b-missing { color: #b45309; font-weight: 600; }
+.adm-b2b-warn-text { display: block; color: var(--ce-color-status-warning-fg); }
+.adm-b2b-missing { color: var(--ce-color-status-warning-fg); font-weight: 600; }
 
 /* ── Individueller Kundenaufschlag (Kundendetail) ──────────────────────────
    Bewusst nur Light-/Legacy-Tokens (--navy/--gray../--blue../--border../--radius..)
@@ -282,11 +282,11 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* Der Prozentwert ist die Kernaussage der Sektion — ruhig, aber klar dominant.
    Selektor bewusst mit dd, damit er die generische Regel `.adm-kv-item dd`
    (gleiche Klassenzahl, aber zusätzliches Element) sicher überschreibt. */
-.adm-kv-item dd.adm-markup-value { font-family: 'Libre Franklin', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.25; }
+.adm-kv-item dd.adm-markup-value { font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; line-height: 1.25; }
 
 .adm-markup-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.55; color: var(--navy); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.20); }
 .adm-markup-note svg { flex-shrink: 0; margin-top: 2px; color: var(--blue2); }
-.adm-markup-note-head { display: block; font-weight: 700; margin-bottom: 2px; }
+.adm-markup-note-head { display: block; font-weight: 600; margin-bottom: 2px; }
 
 .adm-markup-success { align-items: center; }
 .adm-markup-success-body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
@@ -307,11 +307,11 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-input-wrap:focus-within { border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
 .adm-markup-input-invalid, .adm-markup-input-invalid:hover { border-color: var(--ce-color-status-error-fg); }
 .adm-markup-input-invalid:focus-within { border-color: var(--ce-color-status-error-fg); box-shadow: 0 0 0 3px var(--ce-color-status-error-border); }
-.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--navy); background: transparent; border: none; outline: none; }
-.adm-markup-input:disabled { background: var(--gray50); color: var(--gray500); }
+.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--navy); background: transparent; border: none; outline: none; }
+.adm-markup-input:disabled { background: var(--gray50); color: var(--ce-color-text-muted); }
 /* Sichtbares %-Suffix — die Einheit steht am Feld, nicht nur im Hilfetext. */
-.adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 700; color: var(--gray500); background: var(--gray50); border-left: 1px solid var(--border); }
-.adm-markup-help { font-size: 12px; line-height: 1.5; color: var(--gray500); max-width: 560px; }
+.adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); background: var(--gray50); border-left: 1px solid var(--border); }
+.adm-markup-help { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); max-width: 560px; }
 
 /* ── Zwei Aufschläge: Standard und Express ──────────────────────────────────
    Beide Blöcke bekommen eine eigene Überschrift und einen eigenen
@@ -321,16 +321,16 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
    sodass die Reihenfolge Überschrift → Feld → Überschrift → Feld erhalten bleibt. */
 .adm-markup-group { flex: 0 0 100%; padding-top: 14px; }
 .adm-markup-group-express { border-top: 1px solid var(--border); margin-top: 6px; }
-.adm-markup-group-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray500); }
-.adm-markup-group-scope { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--gray500); max-width: 560px; }
+.adm-markup-group-title { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-markup-group-scope { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); max-width: 560px; }
 /* „(optional)" bleibt Teil des Labels, aber optisch zurückgenommen. */
-.adm-markup-optional { font-weight: 500; color: var(--gray500); }
+.adm-markup-optional { font-weight: 500; color: var(--ce-color-text-muted); }
 .adm-markup-express-row { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Wirksamer Expressaufschlag — die Antwort auf „was gilt jetzt tatsächlich?".
    Wird über Text UND Symbol vermittelt, nie allein über Farbe. */
-.adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--radius); font-size: 13.5px; font-weight: 600; color: var(--navy); background: var(--gray50); border: 1px solid var(--border); }
+.adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--navy); background: var(--gray50); border: 1px solid var(--border); }
 .adm-markup-effective svg { flex-shrink: 0; margin-top: 2px; color: var(--blue2); }
-.adm-markup-effective-dirty { font-style: normal; font-weight: 700; color: var(--blue2); }
+.adm-markup-effective-dirty { font-style: normal; font-weight: 600; color: var(--blue2); }
 
 @media (max-width: 640px) {
   /* Auf schmalen Screens stehen Feld und Fallbackaktion untereinander; die
@@ -344,15 +344,15 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-approve-reactivation svg { flex-shrink: 0; margin-top: 2px; }
 .adm-approve-gate { margin-top: 16px; margin-bottom: 0; }
 .adm-approve-jump { margin-top: 10px; }
-.adm-approve-markup { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--radius); font-size: 13.5px; font-weight: 700; color: #047857; background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); }
-.adm-approve-markup svg { flex-shrink: 0; color: #059669; }
+.adm-approve-markup { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--ce-color-status-success-fg); background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); }
+.adm-approve-markup svg { flex-shrink: 0; color: var(--ce-color-status-success-fg); }
 .adm-approve-markup-inline { margin-top: 16px; }
 
 /* Der bestätigte Aufschlag im Freischaltungsdialog: mittig, ohne die zentrierte
    Dialogtypografie zu brechen. */
 .adm-modal .adm-approve-markup { display: inline-flex; margin: 0 auto 16px; }
 /* Laufende Prüfung des Bestätigungsstatus im Freischaltungsdialog. */
-.adm-markup-check { display: flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: var(--gray500); }
+.adm-markup-check { display: flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 14px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); }
 /* Dialoge bleiben auf kleinen Screens vollständig erreichbar (scrollbar statt
    abgeschnitten), sobald Gate-Erklärung und Aufschlagszeile dazukommen. */
 .adm-modal { max-height: calc(100dvh - 40px); overflow-y: auto; }
@@ -396,15 +396,15 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 
 /* Spalte „Kunde": Firma primär (Link), Ansprechpartner sekundär. */
 .adm-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-cust-name { font-size: 14px; font-weight: 700; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+.adm-cust-name { font-size: 14px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-cust-name:hover { color: var(--blue2); text-decoration: underline; }
 a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
-.adm-cust-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12.5px; color: var(--gray500); }
-.adm-cust-role { font-size: 10px; }
-.adm-cust-since { font-size: 11.5px; color: var(--gray400); }
+.adm-cust-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12px; color: var(--ce-color-text-muted); }
+.adm-cust-role { font-size: 11px; }
+.adm-cust-since { font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* Lange E-Mail-Adressen brechen kontrolliert statt die Tabelle zu sprengen. */
-.adm-email { display: block; font-size: 13px; color: var(--gray600); overflow-wrap: anywhere; }
+.adm-email { display: block; font-size: 13px; color: var(--ce-color-text-secondary); overflow-wrap: anywhere; }
 .adm-col-contact { min-width: 0; }
 .adm-col-action { white-space: nowrap; }
 .adm-row-actions-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
@@ -414,7 +414,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-rowactions-trigger {
   display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
-  background: #fff; border: 1px solid var(--border); color: var(--gray600);
+  background: #fff; border: 1px solid var(--border); color: var(--ce-color-text-secondary);
 }
 .adm-rowactions-trigger:hover { background: var(--gray50); border-color: var(--border2); color: var(--navy); }
 .adm-rowactions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
@@ -426,27 +426,27 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 }
 .adm-rowactions-item {
   display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px;
-  font-size: 13.5px; font-weight: 600; font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600; font-family: var(--ce-font-sans);
   color: var(--navy); background: none; border: none; border-radius: 8px;
   cursor: pointer; text-align: left; white-space: nowrap;
 }
 .adm-rowactions-item:hover, .adm-rowactions-item:focus-visible { background: var(--gray50); outline: none; }
-.adm-rowactions-item svg { flex-shrink: 0; color: var(--gray500); }
+.adm-rowactions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
 .adm-rowactions-item--danger { color: var(--danger); }
 .adm-rowactions-item--danger svg { color: var(--danger); }
 .adm-rowactions-item:disabled { opacity: 0.5; cursor: not-allowed; }
 .adm-rowactions-divider { height: 1px; background: var(--border); margin: 5px 2px; }
-.adm-rowactions-reason { padding: 0 10px 8px; font-size: 11.5px; line-height: 1.45; color: var(--gray500); white-space: normal; }
+.adm-rowactions-reason { padding: 0 10px 8px; font-size: 11px; line-height: 1.5; color: var(--ce-color-text-muted); white-space: normal; }
 
 /* Filterzeile: Suche breit, Status kompakt, Hinweis in eigener Zeile. */
 .adm-filter-search { flex: 1; min-width: 240px; }
 .adm-filter-hint { margin-top: 0; flex-basis: 100%; }
 .adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
-.adm-filter-chips-label { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); }
+.adm-filter-chips-label { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 
 /* Ladefehler mit direkter Wiederholung. */
 .adm-loaderr { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.empty-text { margin-top: 6px; font-size: 13px; line-height: 1.55; color: var(--gray500); max-width: 460px; }
+.empty-text { margin-top: 6px; font-size: 13px; line-height: 1.55; color: var(--ce-color-text-muted); max-width: 460px; }
 .empty .btn { margin-top: 14px; }
 
 /* Mobilkarten: erst unterhalb der Tabellenbreite sichtbar. */
@@ -454,7 +454,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-ucard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
 .adm-ucard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .adm-ucard-kv { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-.adm-ucard-kv dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
+.adm-ucard-kv dt { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .adm-ucard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
 .adm-ucard-actions { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
 /* Touch-Ziele: mindestens 40 px hoch. */
@@ -472,32 +472,32 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-detail-header { margin-bottom: 0; }
 .adm-detail-head { align-items: flex-start; }
 .adm-detail-ident { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
-.adm-detail-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; color: var(--gray500); }
+.adm-detail-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ce-color-text-muted); }
 .adm-detail-mail { overflow-wrap: anywhere; }
 .adm-detail-action { flex-shrink: 0; }
-.adm-chip-muted { color: var(--gray400); font-weight: 500; }
+.adm-chip-muted { color: var(--ce-color-text-muted); font-weight: 500; }
 
 /* Blockieren auf der Detailseite: sichtbar, aber nicht dominant. */
 .adm-block-action { color: var(--danger); border-color: rgba(239,68,68,0.35); }
 .adm-block-action:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
 
 /* Überfällige Rechnungen: sichtbar, aber ausdrücklich ohne Automatik. */
-.adm-overdue-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12.5px; line-height: 1.55; color: #8a5a06; background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
-.adm-overdue-note svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+.adm-overdue-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12px; line-height: 1.55; color: var(--ce-color-status-warning-fg); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
+.adm-overdue-note svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
 
 /* Technische Informationen — natives <details>, ohne zusätzliches ARIA. */
 .adm-tech > .adm-tech-summary { cursor: pointer; list-style: none; user-select: none; }
 .adm-tech > .adm-tech-summary::-webkit-details-marker { display: none; }
-.adm-tech > .adm-tech-summary::after { content: "▾"; margin-left: auto; color: var(--gray400); font-size: 12px; transition: transform 0.15s; }
+.adm-tech > .adm-tech-summary::after { content: "▾"; margin-left: auto; color: var(--ce-color-text-muted); font-size: 12px; transition: transform 0.15s; }
 .adm-tech[open] > .adm-tech-summary::after { transform: rotate(180deg); }
 .adm-tech > .adm-tech-summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 .adm-tech:not([open]) > .adm-tech-summary { border-bottom: none; }
 
 /* Textwerte in den Kennzahlen (z. B. „7 Kalendertage") brechen an Wortgrenzen. */
-.adm-stat-value-text { font-size: 16px; font-weight: 700; letter-spacing: 0; word-break: normal; overflow-wrap: break-word; }
+.adm-stat-value-text { font-size: 16px; font-weight: 600; letter-spacing: 0; word-break: normal; overflow-wrap: break-word; }
 
 /* Hinweis „keine Änderung nötig" am Aufschlagsfeld. */
-.adm-markup-nochange { font-size: 12px; line-height: 1.45; color: var(--gray500); }
+.adm-markup-nochange { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
 
 @media (max-width: 640px) {
   .adm-detail-action { width: 100%; }
@@ -523,32 +523,32 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 
 /* Spalte „Sendung": Bestellnummer primär, Datum sekundär. */
 .adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-no:hover { text-decoration: underline; }
 a.adm-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 /* Entwurf / fehlende Nummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
-.adm-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--gray500); font-weight: 600; }
-.adm-ship-date { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.adm-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: 600; }
+.adm-ship-date { font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Spalte „Kunde": Firma primär, Kundennummer sekundär — nie die user_id. */
 .adm-ship-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+.adm-ship-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-cust-name:hover { color: var(--blue2); text-decoration: underline; }
 a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
-.adm-ship-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
+.adm-ship-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
 .adm-ship-way { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-carrier { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
-.adm-ship-mode { font-weight: 500; color: var(--gray500); }
-.adm-ship-route { font-size: 12px; color: var(--gray500); white-space: nowrap; }
+.adm-ship-carrier { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-ship-mode { font-weight: 500; color: var(--ce-color-text-muted); }
+.adm-ship-route { font-size: 12px; color: var(--ce-color-text-muted); white-space: nowrap; }
 
 /* Status + kompakte Tracking-/Label-Marker statt zweier Ja/Nein-Spalten. */
 .adm-ship-status { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
 .adm-ship-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
-.adm-ship-marker { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--gray600); background: var(--gray100); border: 1px solid var(--border); white-space: nowrap; }
-.adm-ship-marker svg { flex-shrink: 0; color: var(--gray500); }
-.adm-ship-noprice { font-size: 11.5px; line-height: 1.35; display: block; white-space: normal; overflow-wrap: break-word; }
+.adm-ship-marker { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--ce-color-text-secondary); background: var(--gray100); border: 1px solid var(--border); white-space: nowrap; }
+.adm-ship-marker svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
+.adm-ship-noprice { font-size: 11px; line-height: 1.35; display: block; white-space: normal; overflow-wrap: break-word; }
 
 .adm-filter-error { flex-basis: 100%; margin-top: 0; }
 .adm-loaderr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
@@ -558,7 +558,7 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 .adm-scard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
 .adm-scard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .adm-scard-kv { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-.adm-scard-kv dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); margin-bottom: 2px; }
+.adm-scard-kv dt { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); margin-bottom: 2px; }
 .adm-scard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
 .adm-scard-actions { display: flex; gap: 8px; margin-top: 13px; }
 .adm-scard-actions .btn { min-height: 40px; flex: 1; justify-content: center; }
@@ -589,24 +589,26 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 /* Spalte „Rechnung": Nummer primaer, Datum + Modus sekundaer. Die Nummer wird
    NIE gekuerzt (das zerstoerte ihre Eindeutigkeit) — sie bricht kontrolliert. */
 .adm-inv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
+.adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
 a.adm-inv-no:hover { text-decoration: underline; }
 a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
-.adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Spalte „Kunde": Firma primaer, Kundennummer sekundaer — nie die user_id. */
 .adm-inv-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-inv-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
-.adm-inv-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
+.adm-inv-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-inv-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* Spalte „Betrag & Faelligkeit". */
-.adm-inv-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-inv-sum { font-size: 13.5px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.adm-inv-due { font-size: 11.5px; color: var(--gray500); line-height: 1.4; overflow-wrap: break-word; }
+/* Die Spalte ist über .adm-num rechtsbündig und nowrap; der erklärende
+   Zusatz darunter muss trotzdem umbrechen dürfen. */
+.adm-inv-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; white-space: normal; }
+.adm-inv-sum { font-size: 13px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+.adm-inv-due { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.4; overflow-wrap: break-word; }
 
 /* Spalte „Zahlungsstatus" + kompakte Dokument-/Versandmarker. */
 .adm-inv-status { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-.adm-inv-paid { font-size: 11px; color: var(--gray400); font-variant-numeric: tabular-nums; }
+.adm-inv-paid { font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-inv-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
 .adm-inv-markers .badge { white-space: normal; text-align: left; line-height: 1.3; }
 
@@ -615,17 +617,17 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
 .adm-filter-check input { width: 17px; height: 17px; accent-color: var(--blue2); cursor: pointer; }
 .adm-filter-check label { font-size: 13px; color: var(--navy); cursor: pointer; }
 .adm-filter-adv { flex-basis: 100%; margin-top: 4px; }
-.adm-filter-adv > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--gray500); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+.adm-filter-adv > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ce-color-text-muted); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
 .adm-filter-adv > summary::-webkit-details-marker { display: none; }
-.adm-filter-adv > summary::before { content: "▸"; font-size: 10px; }
+.adm-filter-adv > summary::before { content: "▸"; font-size: 11px; }
 .adm-filter-adv[open] > summary::before { content: "▾"; }
 .adm-filter-adv > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 4px; }
 .adm-filter-adv-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 
 /* Hinweis „keine zahlungswirksame Forderung" im Kopfbereich des Details. */
-.adm-nonproductive-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12.5px; line-height: 1.55; color: #8a5a06; background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
-.adm-nonproductive-note svg { flex-shrink: 0; margin-top: 1px; color: #b45309; }
+.adm-nonproductive-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12px; line-height: 1.55; color: var(--ce-color-status-warning-fg); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
+.adm-nonproductive-note svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
 .adm-modal-note { margin-top: 0; margin-bottom: 16px; }
 
 /* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar. */
@@ -673,26 +675,26 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
 
 /* Spalte „Anfrage": fachliche Kennung, technische ID darin eingebettet. */
 .adm-canc-req { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-canc-no { font-size: 13.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-no { font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-no:hover { text-decoration: underline; }
 a.adm-canc-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 
 /* Spalten „Kunde" und „Sendung": fachlicher Wert primaer, Kontext sekundaer. */
 .adm-canc-cust, .adm-canc-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-canc-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-cust-name:hover { color: var(--blue2); text-decoration: underline; }
 a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
-.adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-ship-no:hover { text-decoration: underline; }
 /* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
-.adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--gray500); font-weight: 500; }
-.adm-canc-sub { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
-.adm-canc-time { font-size: 12.5px; color: var(--gray600); font-variant-numeric: tabular-nums; }
+.adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: 500; }
+.adm-canc-sub { font-size: 11px; color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
+.adm-canc-time { font-size: 12px; color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Grund: nutzergenerierter Freitext, in der Liste auf drei Zeilen begrenzt.
    Der volle Text steht ausschliesslich in der Detailseite. */
 .adm-canc-reason {
-  font-size: 12.5px; line-height: 1.45; color: var(--gray700); margin: 0;
+  font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); margin: 0;
   overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }

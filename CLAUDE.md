@@ -102,6 +102,51 @@ Bewusst noch nicht migriert (folgt im jeweiligen Seitenpaket): `.auth-cta`,
 `.pp-net-cta`, der Glow-CTA `.offers-calc-cta .btn-primary`, `.pp-kpi`,
 `.calc-panel`, Angebots- und Buchungsmodule, Profilhero, `.inv-summary`.
 
+## Typografie — vor jedem Text lesen
+
+Die gesamte Oberfläche kommt aus EINER Skala (Paket A, Phase 2.5). Alle Werte
+stehen als `--ce-text-*`-Tokens in `variables.css`:
+
+| Stufe | Desktop / Mobil | Familie | Gewicht | Zeilenhöhe | Verwendung |
+|-------|-----------------|---------|---------|------------|------------|
+| Display XL | 52 / 38 | Cormorant | 500 | 1.05 | Begrüßung der Übersicht |
+| Display L | 36 / 28 | Cormorant | 500 | 1.15 | Kundenseitentitel |
+| Page Title | 24 / 20 | DM Sans | 600 | 1.25 | Adminseitentitel, funktionale Detailtitel |
+| Section Title | 20 / 18 | DM Sans | 600 | 1.3 | Abschnitts- und Dialogtitel |
+| Card Title | 16 | DM Sans | 600 | 1.35 | Kartenüberschriften |
+| Body Large | 15 | DM Sans | 400 | 1.6 | Seitenuntertitel, erklärende Texte |
+| Body | 14 | DM Sans | 400 | 1.55 | Standardtext, Eingaben, Buttons |
+| Body Small | 13 | DM Sans | 400 | 1.5 | Tabellen, Hilfstexte, Metadaten |
+| Label | 12 | DM Sans | 600 | 1.4 | Formularlabels, Chips, Badges |
+| Micro | 11 | DM Sans | 600 | 1.35 | Tabellenköpfe, Eyebrows, Gruppenlabels |
+| Numeric Display | 48 / 40 | DM Sans | 600 | 1 | KPI-Werte, große Summen |
+
+Verbindlich: **keine Halbpixel, nichts unter 11 px, keine freien
+Zwischengrößen, höchstes Gewicht 600.** `typography.test.mjs` prüft das über
+alle Stylesheets und Inline-Styles.
+
+**Schriftrollen.** Cormorant (`--ce-font-display`) nur für Kundenseitentitel und
+die Begrüßung — nie in Karten, Tabellen, Formularen, Dialogen oder im
+Adminportal. DM Sans (`--ce-font-sans`) trägt alles Funktionale und alle Zahlen.
+Libre Franklin ist ausgelaufen: keine Verwendung mehr, die Fontdateien bleiben
+bis zu einer späteren Phase liegen. Im eingeloggten Bereich stehen genau zwei
+Kurzaliase zur Verfügung — `--fs` (Sans) und `--fd` (Display); das frühere
+`--fh` ist entfallen.
+
+**Textfarben** kommen ausschließlich aus den Foundation-Rollen:
+`--ce-color-text-primary` (Titel, Werte, Eingaben) ·
+`--ce-color-text-secondary` (Untertitel, Beschreibungen) ·
+`--ce-color-text-muted` (Hilfstexte, Metadaten, Datumsangaben, Einheiten) ·
+`--ce-color-text-placeholder` · `--ce-color-text-disabled` ·
+`--ce-color-brand-ink` (Links und Textaktionen). Die Legacy-Graustufen
+`--gray400/500/600/700` tragen **keine** Textrolle mehr — `--gray400` maß
+2,4:1 auf Weiß und war die Hauptquelle unlesbarer Metatexte.
+
+**Zahlen** laufen in DM Sans mit `font-variant-numeric: tabular-nums` UND
+`font-feature-settings: "tnum"`. Zahlenspalten in Tabellen sind rechtsbündig —
+über die Marker `.ce-num` / `.adm-num` auf `<th>` UND `<td>`, in der
+Rechnungstabelle über `nth-child`. Textspalten bleiben linksbündig.
+
 ### CSS-Import-Reihenfolge — kritisch
 
 `src/styles/index.css` importiert alle Stylesheets in fester Reihenfolge.
@@ -290,7 +335,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/design-primitives-phase-2`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/design-typography-phase-2-5`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

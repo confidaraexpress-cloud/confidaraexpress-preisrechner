@@ -662,10 +662,11 @@ test("29 — aktiver Menüpunkt: neutrale Außenborder, blaue Identität links",
 });
 
 test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
-  // Jeder gelesene Sekundärtext mindestens 11 px (vorher 10 / 10,5 px) und mit
-  // gesetzter Zeilenhöhe. Ausgenommen sind bewusst NUR die Gruppenlabels
-  // (.nsec): Versalien mit weiter Laufweite, die als Struktur gelesen werden —
-  // auf 11 px gebracht würden sie mit den Navigationseinträgen konkurrieren.
+  // Jeder gelesene Sekundärtext mindestens 11 px und mit gesetzter Zeilenhöhe.
+  // Seit Paket A, Phase 2.5 gilt die 11-px-Untergrenze AUSNAHMSLOS: auch das
+  // Gruppenlabel (.nsec) steht jetzt auf der Micro-Stufe (11 px) statt auf
+  // 9,5 px. Seine weite Laufweite und die Versalien halten es weiterhin klar
+  // von den Navigationseinträgen getrennt.
   for (const sel of [".pp-brand-sub", ".pp-identity-email", ".scard-k", ".scard-s", ".pp-foot"]) {
     const b = block(premium, sel);
     assert.ok(b, `${sel} fehlt`);
@@ -681,9 +682,9 @@ test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
   const small = [...sidebar.matchAll(/([.\w-]+)\s*\{[^}]*?font-size:\s*([\d.]+)px/g)]
     .filter((m) => parseFloat(m[2]) < 11)
     .map((m) => `${m[1]} (${m[2]}px)`);
-  assert.deepEqual(small, [".nsec (9.5px)"],
+  assert.deepEqual(small, [],
     `unerwartete Kleinschrift in der Sidebar: ${small.join(", ")}`);
-  // Das Gruppenlabel bleibt nur wegen seiner Laufweite lesbar — die muss bleiben.
+  // Das Gruppenlabel trägt seine Struktur über Laufweite und Versalien.
   const nsec = block(premium, ".nsec");
   assert.match(nsec, /letter-spacing:\s*0\.1[5-9]em/, ".nsec braucht weite Laufweite");
   assert.match(nsec, /text-transform:\s*uppercase/, ".nsec ist ein Versalien-Strukturlabel");

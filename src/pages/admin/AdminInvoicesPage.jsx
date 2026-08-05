@@ -325,7 +325,7 @@ export default function AdminInvoicesPage() {
                 <tr>
                   <th scope="col">Rechnung</th>
                   <th scope="col">Kunde</th>
-                  <th scope="col">Betrag &amp; Fälligkeit</th>
+                  <th scope="col" className="adm-num">Betrag &amp; Fälligkeit</th>
                   <th scope="col">Zahlungsstatus</th>
                   <th scope="col">Dokument &amp; Versand</th>
                   <th scope="col">Aktion</th>
@@ -336,7 +336,7 @@ export default function AdminInvoicesPage() {
                   <tr key={rowKeyOf(row, i)}>
                     <td><InvoiceCell row={row} /></td>
                     <td><CustomerCell row={row} /></td>
-                    <td><AmountCell row={row} now={now} /></td>
+                    <td className="adm-num"><AmountCell row={row} now={now} /></td>
                     <td><StatusCell row={row} now={now} /></td>
                     <td><MarkerCell row={row} /></td>
                     <td>

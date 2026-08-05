@@ -103,7 +103,7 @@
   padding: 9px 20px 9px 14px; border-radius: 999px;
   background: rgba(16, 28, 60, 0.55);
   border: 1px solid var(--auth-line-2);
-  font-size: 11.5px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--auth-ink-1);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   box-shadow:
@@ -114,10 +114,10 @@
 .auth-badge-ico { width: 16px; height: 16px; color: var(--auth-blue-3); flex-shrink: 0; }
 
 .auth-title {
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+  font-family: var(--ce-font-display);
   font-weight: 500;
   font-size: clamp(40px, 6vw, 86px);
-  line-height: 1.04; letter-spacing: -0.015em;
+  line-height: 1.05; letter-spacing: -0.015em;
   color: var(--auth-ink-1);
   margin: 28px 0 18px;
 }
@@ -173,10 +173,10 @@
 .auth-card-top { text-align: center; margin-bottom: 28px; }
 .auth-card-icon { font-size: 38px; margin-bottom: 16px; }
 .auth-card-title {
-  font-size: 22px; font-weight: 700; margin-bottom: 8px;
+  font-size: 24px; font-weight: 600; margin-bottom: 8px;
   color: var(--auth-ink-1);
 }
-.auth-card-desc { font-size: 14px; color: var(--auth-ink-3); line-height: 1.65; }
+.auth-card-desc { font-size: 14px; color: var(--auth-ink-3); line-height: 1.6; }
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */
 
@@ -193,7 +193,7 @@
   padding: 12px 16px;
   border: 1px solid transparent; border-radius: 10px;
   background: transparent; color: var(--auth-ink-3);
-  font-size: 14.5px; font-weight: 500; letter-spacing: 0.01em; font-family: inherit;
+  font-size: 14px; font-weight: 500; letter-spacing: 0.01em; font-family: inherit;
   transition: color 180ms, background 240ms, border-color 240ms, box-shadow 240ms;
 }
 .auth-tab:hover { color: var(--auth-ink-2); }
@@ -215,7 +215,7 @@
 }
 .auth-field-label { font-size: 13px; font-weight: 500; color: var(--auth-ink-2); letter-spacing: 0.005em; }
 .auth-field-link {
-  font-size: 12.5px; color: var(--auth-blue-3); font-weight: 500;
+  font-size: 12px; color: var(--auth-blue-3); font-weight: 500;
   background: 0; border: 0; padding: 0; cursor: pointer; transition: color 160ms;
 }
 .auth-field-link:hover { color: var(--auth-blue-soft); }
@@ -227,7 +227,7 @@
   border: 1px solid rgba(120, 160, 255, 0.16);
   border-radius: var(--auth-radius);
   padding: 14px 16px 14px 46px;
-  color: var(--auth-ink-1); font-size: 14.5px;
+  color: var(--auth-ink-1); font-size: 14px;
   outline: 0; transition: border-color 180ms, background 180ms, box-shadow 180ms;
 }
 .auth-input::placeholder { color: var(--auth-ink-placeholder); }
@@ -284,7 +284,7 @@
   margin-bottom: 20px;
 }
 .auth-b2b-notice-sub {
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--auth-ink-3);
 }
@@ -293,7 +293,7 @@
 
 .auth-section-label {
   display: block;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
   color: rgba(255, 255, 255, 0.22);
   margin-top: 22px; margin-bottom: 12px;
   padding-bottom: 9px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -304,7 +304,7 @@
 .auth-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 22px; }
 .auth-check {
   display: inline-flex; align-items: center; gap: 10px;
-  cursor: pointer; font-size: 13.5px; color: var(--auth-ink-2); user-select: none;
+  cursor: pointer; font-size: 13px; color: var(--auth-ink-2); user-select: none;
 }
 .auth-checkbox {
   width: 18px; height: 18px; border-radius: 5px;
@@ -425,7 +425,7 @@
   display: grid; place-items: center; color: var(--auth-blue-3); flex-shrink: 0;
 }
 .auth-trust-title { font-size: 13px; font-weight: 600; color: var(--auth-ink-1); line-height: 1.2; }
-.auth-trust-sub { font-size: 11.5px; color: var(--auth-ink-3); margin-top: 2px; line-height: 1.2; }
+.auth-trust-sub { font-size: 11px; color: var(--auth-ink-3); margin-top: 2px; line-height: 1.2; }
 
 .auth-foot {
   margin-top: 16px; text-align: center;

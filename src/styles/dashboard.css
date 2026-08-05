@@ -37,7 +37,7 @@
    noch eine Sidebar (.dpx-*, Theme in dashboard-premium.css). .user-avatar
    bleibt: wird unabhängig davon in .mobile-topbar verwendet. */
 .sidebar-close-btn { display: none; background: none; border: none; cursor: pointer; color: var(--ce-sidebar-text-muted); padding: 4px; border-radius: 4px; margin-left: auto; }
-.user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-blue); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+.user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-blue); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: white; flex-shrink: 0; }
 
 .main-content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; }
 
@@ -46,13 +46,13 @@
   padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border-subtle);
   position: sticky; top: 0; z-index: 100;
 }
-.topbar-brand { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-size: 15px; color: var(--text-primary); }
+.topbar-brand { font-family: var(--ce-font-sans); font-weight: 600; font-size: 15px; color: var(--text-primary); }
 /* Gleiche Rahmenbreite wie .page-body/.dash-section-header. */
 .alert-wrapper { padding: 16px 28px 0; max-width: 1240px; margin: 0 auto; }
 
 .page-header { background: white; border-bottom: 1px solid var(--border); padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 8px rgba(14,30,80,0.06); }
-.page-header-title { font-size: 19px; font-weight: 700; color: var(--navy); font-family: 'Libre Franklin', sans-serif; }
-.page-header-sub { font-size: 13px; color: var(--gray400); margin-top: 2px; }
+.page-header-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); font-family: var(--ce-font-sans); }
+.page-header-sub { font-size: 13px; color: var(--ce-color-text-muted); margin-top: 2px; }
 /* Gemeinsamer Inhaltsrahmen aller Unterseiten — begrenzte Zeilenlänge, damit
    Tabellen und Karten auf breiten Screens (1440 px+) nicht auseinanderlaufen. */
 .page-body { padding: 24px 28px; max-width: 1240px; margin: 0 auto; }
@@ -71,8 +71,8 @@
 }
 .dash-section-title {
   margin: 0;
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
-  font-size: clamp(28px, 3.2vw, 38px);
+  font-family: var(--ce-font-display);
+  font-size: 36px;
   font-weight: 500;
   letter-spacing: -0.015em;
   line-height: 1.15;
@@ -81,7 +81,7 @@
 .dash-section-sub {
   margin: 8px 0 0;
   max-width: 620px;
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -106,9 +106,9 @@
   box-shadow: var(--shadow-card);
 }
 .kpi-card:hover { box-shadow: var(--shadow-card-hover); }
-.kpi-label { font-size: 11px; font-weight: 700; color: var(--gray400); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-.kpi-value { font-family: 'Libre Franklin', sans-serif; font-weight: 800; font-size: 26px; color: var(--navy); letter-spacing: -0.02em; }
-.kpi-sub { font-size: 12px; color: var(--gray400); margin-top: 4px; }
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+.kpi-value { font-family: var(--ce-font-sans); font-weight: 600; font-size: 24px; color: var(--navy); letter-spacing: -0.02em; }
+.kpi-sub { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 4px; }
 
 /* ─── KPI Card enhancements ──────────────────────────────────────────────── */
 .kpi-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
@@ -117,7 +117,7 @@
 .kpi-icon-blue { background: var(--blue-light); color: var(--blue2); }
 .kpi-icon-green { background: var(--success-bg); color: var(--success); }
 .kpi-icon-yellow { background: var(--warn-bg); color: var(--warn); }
-.kpi-icon-gray { background: var(--gray100); color: var(--gray600); }
+.kpi-icon-gray { background: var(--gray100); color: var(--ce-color-text-secondary); }
 .kpi-status-wrap { margin: 6px 0 6px; }
 .kpi-value-sm { font-size: 16px; letter-spacing: -0.01em; }
 
@@ -126,10 +126,10 @@
    seit Paket A, Phase 2 zentral im Table-Container-Primitive (primitives.css).
    Hier bleibt nur, was diese Tabelle strukturell ausmacht. */
 .table-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; }
-.table-card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.table-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; min-width: 480px; }
-th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
 td { padding: 13px 14px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border-hairline); }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--surface-subtle); }
@@ -142,8 +142,8 @@ tr:hover td { background: var(--surface-subtle); }
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────── */
 .alert { padding: 11px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
-.alert-error   { background: var(--danger-bg);  border: 1px solid rgba(239,68,68,0.25);  color: #dc2626; box-shadow: 0 1px 4px rgba(239,68,68,0.06); }
-.alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); color: #059669; box-shadow: 0 1px 4px rgba(16,185,129,0.06); }
+.alert-error   { background: var(--danger-bg);  border: 1px solid rgba(239,68,68,0.25);  color: var(--ce-color-status-error-fg); box-shadow: 0 1px 4px rgba(239,68,68,0.06); }
+.alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); color: var(--ce-color-status-success-fg); box-shadow: 0 1px 4px rgba(16,185,129,0.06); }
 .alert-info    { background: var(--blue-light);  border: 1px solid rgba(29,78,216,0.22);  color: var(--blue2); box-shadow: 0 1px 4px rgba(29,78,216,0.06); }
 
 /* Zweizeilige Fehlermeldung (FormAlert): Überschrift benennt das Problem, der
@@ -151,7 +151,7 @@ tr:hover td { background: var(--surface-subtle); }
    Kasten exakt wie der bisherige einzeilige .alert — bestehende Aufrufe bleiben
    dadurch unverändert. */
 .form-alert-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.form-alert-title { font-weight: 700; line-height: 1.35; }
+.form-alert-title { font-weight: 600; line-height: 1.35; }
 .form-alert-text { line-height: 1.5; }
 
 /* ─── Tracking ───────────────────────────────────────────────────────────── */
@@ -159,19 +159,19 @@ tr:hover td { background: var(--surface-subtle); }
 .track-event { display: flex; gap: 14px; padding-bottom: 22px; position: relative; }
 .track-event::before { content: ''; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--border); }
 .track-event:last-child::before { display: none; }
-.track-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; color: var(--gray400); }
+.track-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; color: var(--ce-color-text-muted); }
 .track-dot.active { border-color: var(--blue); background: linear-gradient(160deg, var(--blue2), var(--blue)); color: white; box-shadow: 0 2px 8px rgba(29,78,216,0.32); }
 .track-dot.done   { border-color: var(--success); background: var(--success); color: white; box-shadow: 0 2px 6px rgba(16,185,129,0.25); }
 .track-info { flex: 1; padding-top: 4px; }
 .track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
-.track-time { font-size: 12px; color: var(--gray400); margin-top: 2px; }
+.track-time { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
 
 /* Post-Order Tracking-Detail in der Sendungsliste (Light-Theme Sub-Seite) */
 .shipment-track-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
-.shipment-track-number { font-size: 13px; color: var(--gray600); }
-.shipment-track-number strong { color: var(--navy); font-weight: 700; }
+.shipment-track-number { font-size: 13px; color: var(--ce-color-text-secondary); }
+.shipment-track-number strong { color: var(--navy); font-weight: 600; }
 .shipment-track-chip { display: inline-flex; align-items: center; padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--blue); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; }
-.shipment-track-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; }
+.shipment-track-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; }
 .shipment-track-link:hover { color: var(--blue); text-decoration: underline; }
 .shipment-track-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
 .shipment-track-noevents { margin-top: 4px; }
@@ -180,10 +180,10 @@ tr:hover td { background: var(--surface-subtle); }
 .steps-bar { display: flex; align-items: center; overflow-x: auto; }
 .step-item { display: flex; align-items: center; flex: 1; min-width: 0; }
 .step-wrap { display: flex; flex-direction: column; align-items: center; }
-.step-circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--gray400); flex-shrink: 0; transition: all 0.3s cubic-bezier(.2,.7,.3,1); }
+.step-circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); flex-shrink: 0; transition: all 0.3s cubic-bezier(.2,.7,.3,1); }
 .step-circle.active { border-color: var(--blue); background: linear-gradient(160deg, var(--blue2), var(--blue)); color: white; box-shadow: 0 2px 8px rgba(29,78,216,0.35); }
 .step-circle.done   { border-color: var(--success); background: var(--success); color: white; box-shadow: 0 2px 6px rgba(16,185,129,0.28); }
-.step-label { font-size: 11px; font-weight: 600; color: var(--gray400); margin-top: 5px; white-space: nowrap; }
+.step-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); margin-top: 5px; white-space: nowrap; }
 .step-label.active { color: var(--blue2); }
 .step-label.done { color: var(--success); }
 .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; }
@@ -203,33 +203,33 @@ tr:hover td { background: var(--surface-subtle); }
 .mobile-drawer-header .logo-text { color: white; }
 .drawer-close-btn { background: rgba(255,255,255,0.08); border: none; cursor: pointer; color: white; padding: 7px; border-radius: var(--radius-sm); display: flex; align-items: center; }
 .mobile-drawer-nav { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 3px; }
-.drawer-nav-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: var(--radius); color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+.drawer-nav-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: var(--radius); color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: var(--ce-font-sans); }
 .drawer-nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
 .drawer-cta { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
 
 /* ─── Loading ────────────────────────────────────────────────────────────── */
 .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; flex-shrink: 0; }
 .spinner-dark { border-color: var(--border); border-top-color: var(--blue); }
-.loading-center { display: flex; align-items: center; justify-content: center; padding: 56px; gap: 10px; color: var(--gray400); }
+.loading-center { display: flex; align-items: center; justify-content: center; padding: 56px; gap: 10px; color: var(--ce-color-text-muted); }
 
 /* ─── Empty ──────────────────────────────────────────────────────────────── */
 .empty { text-align: center; padding: 56px 24px; }
-.empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.35; }
-.empty-title { font-size: 15px; font-weight: 700; color: var(--gray700); margin-bottom: 6px; }
+.empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.35; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: 6px; }
 
 /* ─── Overview empty state ───────────────────────────────────────────────── */
 .overview-empty { text-align: center; padding: 48px 24px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .overview-empty-icon { width: 64px; height: 64px; border-radius: var(--radius-lg); background: var(--blue-light); display: flex; align-items: center; justify-content: center; }
-.overview-empty-title { font-size: 16px; font-weight: 700; color: var(--navy); }
-.overview-empty-sub { font-size: 13px; color: var(--gray500); max-width: 340px; line-height: 1.65; margin: 0; }
+.overview-empty-title { font-size: 16px; font-weight: 600; color: var(--navy); }
+.overview-empty-sub { font-size: 13px; color: var(--ce-color-text-muted); max-width: 340px; line-height: 1.6; margin: 0; }
 
 /* ─── Shipment row ───────────────────────────────────────────────────────── */
 .shipment-carrier { font-weight: 600; color: var(--navy); display: block; line-height: 1.3; }
-.shipment-weight { font-size: 11px; color: var(--gray400); }
+.shipment-weight { font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* ─── Rechnungen: Dokumentstatus + Download (Phase 3) ─────────────────────── */
 .invoice-doc-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.invoice-doc-note { font-size: 11.5px; line-height: 1.4; display: inline-block; max-width: 190px; }
+.invoice-doc-note { font-size: 11px; line-height: 1.4; display: inline-block; max-width: 190px; }
 .invoice-row-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* ─── Rechnungen: Premium-Statussystem (Phase 5) ─────────────────────────────
@@ -282,19 +282,19 @@ tr:hover td { background: var(--surface-subtle); }
    customerInvoiceView.mjs. Ruhige Kartenoptik statt Alert-Farbe. */
 .inv-summary { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 16px; box-shadow: var(--shadow-card); }
 .inv-summary-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.inv-summary-label { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--gray500); text-transform: uppercase; margin: 0 0 4px; }
-.inv-summary-amount { font-size: 26px; font-weight: 700; color: var(--navy); line-height: 1.2; }
-.inv-summary-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 13px; color: var(--gray600); }
-.inv-summary-meta strong { color: var(--navy); font-weight: 700; }
-.inv-summary-title { font-size: 15px; font-weight: 700; color: var(--navy); margin: 0; }
-.inv-summary-sub { font-size: 13px; color: var(--gray500); margin: 4px 0 0; }
-.inv-summary-note { font-size: 12.5px; color: var(--inv-neutral-fg); margin-top: 8px; }
+.inv-summary-label { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--ce-color-text-muted); text-transform: uppercase; margin: 0 0 4px; }
+.inv-summary-amount { font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.2; }
+.inv-summary-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 13px; color: var(--ce-color-text-secondary); }
+.inv-summary-meta strong { color: var(--navy); font-weight: 600; }
+.inv-summary-title { font-size: 15px; font-weight: 600; color: var(--navy); margin: 0; }
+.inv-summary-sub { font-size: 13px; color: var(--ce-color-text-muted); margin: 4px 0 0; }
+.inv-summary-note { font-size: 12px; color: var(--inv-neutral-fg); margin-top: 8px; }
 
 /* ─── Rechnungen: Filter ──────────────────────────────────────────────────── */
 .inv-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .inv-filter-chip {
-  border: 1px solid var(--border); background: #fff; color: var(--gray600);
-  font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: #fff; color: var(--ce-color-text-secondary);
+  font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px;
   cursor: pointer;
 }
 .inv-filter-chip:hover { border-color: var(--border2); color: var(--navy); }
@@ -317,12 +317,16 @@ tr:hover td { background: var(--surface-subtle); }
 .inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 124px; }
 .inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 156px; }
 .inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 138px; }
+/* Betragsspalte rechtsbündig wie jede Zahlenspalte. Die Ausrichtung läuft über
+   dieselbe nth-child-Mechanik wie die Spaltenbreiten — diese Tabelle trägt
+   bewusst keine Marker-Klassen im Markup (Paket A, Phase 2.5). */
+.inv-table th:nth-child(3), .inv-table td:nth-child(3) { text-align: right; }
 
 .inv-cell-number { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.inv-cell-number-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 700; color: var(--navy); overflow-wrap: anywhere; }
-.inv-cell-order { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
+.inv-cell-number-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.inv-cell-order { font-size: 11px; color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
 
-.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--gray600); min-width: 0; }
+.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ce-color-text-secondary); min-width: 0; }
 /* BEWUSST kein display:flex hier (anders als eine frühere Fassung): Label und
    Datum sind beide je ein unteilbares Wort ("Rechnung"/"Fällig", "30.7.2026")
    — als Flex-Items könnten sie mangels Leerzeichen nie umbrechen und dann auch
@@ -331,18 +335,18 @@ tr:hover td { background: var(--surface-subtle); }
    sinnvoll umbrechen kann). Im normalen Textfluss darf die Zeile bei Bedarf
    zwischen Label und Datum umbrechen, statt zu überlaufen. */
 .inv-period-row { min-width: 0; }
-.inv-period-label { color: var(--gray400); }
-.inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 700; }
+.inv-period-label { color: var(--ce-color-text-muted); }
+.inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 600; }
 
-.inv-amount-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray400); display: block; margin-bottom: 2px; overflow-wrap: anywhere; }
-.inv-amount-value { font-size: 14px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.inv-amount-label { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); display: block; margin-bottom: 2px; overflow-wrap: anywhere; }
+.inv-amount-value { font-size: 14px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 .inv-doc-cell { display: flex; flex-direction: column; gap: 5px; }
-.inv-doc-note { font-size: 11px; color: var(--gray500); }
+.inv-doc-note { font-size: 11px; color: var(--ce-color-text-muted); }
 
 .inv-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .inv-actions-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.inv-action-reason { font-size: 11.5px; color: var(--gray500); line-height: 1.35; }
+.inv-action-reason { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.35; }
 
 /* ─── Rechnungen: Mobilkarten — unterhalb ~900 px statt der Tabelle ────────── */
 .inv-cards { display: none; list-style: none; flex-direction: column; gap: 12px; margin: 0; padding: 0; }
@@ -355,8 +359,8 @@ tr:hover td { background: var(--surface-subtle); }
 .inv-card-head > .inv-status { flex: none; }
 .inv-card-kv { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; font-size: 13px; }
 .inv-card-kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.inv-card-kv-row dt { color: var(--gray500); flex: none; }
-.inv-card-kv-row dd { margin: 0; text-align: right; color: var(--gray700); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.inv-card-kv-row dt { color: var(--ce-color-text-muted); flex: none; }
+.inv-card-kv-row dd { margin: 0; text-align: right; color: var(--ce-color-text-primary); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 /* Höhere Spezifität nötig: ".inv-card-kv-row dd" (Klasse+Typ) schlägt sonst
    ".inv-period-due--overdue" (nur Klasse) und die überfällige Fälligkeit bliebe
    in der Mobilkarte fälschlich grau statt rot. */
@@ -396,7 +400,7 @@ tr:hover td { background: var(--surface-subtle); }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 16px; border-bottom: 1px solid var(--border);
 }
-.pdfview-title { font-size: 14px; font-weight: 700; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdfview-title { font-size: 14px; font-weight: 600; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pdfview-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .pdfview-body { flex: 1; min-height: 0; background: var(--gray100); display: flex; flex-direction: column; }
 .pdfview-frame { border: 0; width: 100%; height: 100%; flex: 1; }
@@ -412,9 +416,9 @@ tr:hover td { background: var(--surface-subtle); }
 .profile-section-body { padding: 8px 20px 16px; }
 .profile-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; }
 .profile-row-border { border-bottom: 1px solid var(--border); }
-.profile-row-key { font-size: 13px; color: var(--gray500); }
-.profile-row-val { font-size: 13px; font-weight: 700; color: var(--navy); text-align: right; min-width: 0; }
-.profile-row-empty { font-weight: 500; color: var(--gray400); }
+.profile-row-key { font-size: 13px; color: var(--ce-color-text-muted); }
+.profile-row-val { font-size: 13px; font-weight: 600; color: var(--navy); text-align: right; min-width: 0; }
+.profile-row-empty { font-weight: 500; color: var(--ce-color-text-muted); }
 .profile-form-body { padding: 16px 20px; }
 .profile-form-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
 
@@ -422,13 +426,13 @@ tr:hover td { background: var(--surface-subtle); }
    eine reine Geschaeftskundenplattform: beide Felder duerfen geaendert, aber nicht
    geleert werden. Reine Zusatzklassen — bestehendes Profildesign bleibt unberuehrt. */
 .profile-req { color: var(--blue); font-weight: 600; }
-.profile-required-hint { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray500); }
-.profile-field-error { display: block; margin-top: 6px; font-size: 12px; line-height: 1.4; color: #dc2626; }
+.profile-required-hint { margin: 0 0 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+.profile-field-error { display: block; margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--ce-color-status-error-fg); }
 
 /* Passwort-ändern-Bereich innerhalb der Sicherheitskarte */
 .profile-password-section { border-top: 1px solid var(--border); padding-top: 18px; }
-.profile-password-title { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-.profile-password-desc { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--gray500); }
+.profile-password-title { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.profile-password-desc { margin: 0 0 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
 
 /* Karten-Kopf mit Icon-Kachel + Titel/Subline */
 .profile-card-head { justify-content: flex-start; gap: 13px; }
@@ -438,7 +442,7 @@ tr:hover td { background: var(--surface-subtle); }
   border-radius: 12px; background: var(--blue-light); color: var(--blue2);
 }
 .profile-card-heading { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.profile-card-sub { font-size: 12px; line-height: 1.3; color: var(--gray400); }
+.profile-card-sub { font-size: 12px; line-height: 1.3; color: var(--ce-color-text-muted); }
 
 /* Kompakter „Bearbeiten"-Button rechts im Kartenkopf (bereichsweise Bearbeitung).
    margin-left:auto schiebt ihn ans rechte Ende des flex-Kartenkopfs. */
@@ -446,7 +450,7 @@ tr:hover td { background: var(--surface-subtle); }
   margin-left: auto; flex-shrink: 0;
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px; border-radius: 10px;
-  font-size: 12.5px; font-weight: 600; line-height: 1;
+  font-size: 12px; font-weight: 600; line-height: 1;
   color: var(--blue2); background: var(--blue-light);
   border: 1px solid rgba(29, 78, 216, 0.18);
   cursor: pointer; transition: background 0.15s, border-color 0.15s, opacity 0.15s;
@@ -461,8 +465,8 @@ tr:hover td { background: var(--surface-subtle); }
   margin-top: 14px; padding: 11px 13px;
   border-radius: 12px; background: var(--gray50); border: 1px solid var(--border);
 }
-.profile-hint svg { flex-shrink: 0; margin-top: 1px; color: var(--gray400); }
-.profile-hint p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--gray500); }
+.profile-hint svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-text-muted); }
+.profile-hint p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
 .profile-hint p + p { margin-top: 3px; }
 
 /* Account-Hero: Status/Konto-Chips */
@@ -471,7 +475,7 @@ tr:hover td { background: var(--surface-subtle); }
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: var(--radius-full);
   font-size: 11px; font-weight: 600; white-space: nowrap;
-  background: var(--gray100); color: var(--gray600);
+  background: var(--gray100); color: var(--ce-color-text-secondary);
   border: 1px solid rgba(14,30,80,0.08);
 }
 .profile-meta-chip-accent { background: var(--blue-light); color: var(--blue2); border-color: rgba(29,78,216,0.18); }

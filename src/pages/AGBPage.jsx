@@ -1,7 +1,7 @@
 import React from "react";
 
 const SECTION_STYLE = { marginBottom: 32 };
-const H2_STYLE  = { fontSize: 16, fontWeight: 700, marginBottom: 10, marginTop: 0, color: "var(--text, #111827)", fontFamily: "'Libre Franklin', sans-serif" };
+const H2_STYLE  = { fontSize: 16, fontWeight: 600, marginBottom: 10, marginTop: 0, color: "var(--text, #111827)", fontFamily: "var(--ce-font-sans)" };
 const P_STYLE   = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14 };
 const P_LAST    = { lineHeight: 1.75, margin: 0, color: "var(--text-muted, #374151)", fontSize: 14 };
 const HR_STYLE  = { border: "none", borderTop: "1px solid var(--border, #e5e7eb)", margin: "28px 0" };
@@ -45,7 +45,7 @@ export default function AGBPage() {
 
             {/* ── Inhaltsverzeichnis ── */}
             <div style={{ background: "var(--gray50, #f5f7fa)", borderRadius: 8, padding: "16px 20px", marginBottom: 32 }}>
-              <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--navy, #0B1F4D)" }}>
+              <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: "var(--navy, #0B1F4D)" }}>
                 Inhaltsverzeichnis
               </p>
               <ol style={{ margin: 0, paddingLeft: 20 }}>

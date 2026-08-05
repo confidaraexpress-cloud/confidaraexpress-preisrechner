@@ -29,7 +29,10 @@ function CompanyMark({ initial }) {
   return (
     <svg className="ce-comark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
       <rect x="1" y="1" width="38" height="38" rx="11.5" fill="#2563eb" />
-      <text x="20" y="26.5" textAnchor="middle" fontFamily="'Libre Franklin',sans-serif" fontWeight="700" fontSize="16.5" fill="#ffffff">{initial}</text>
+      {/* SVG-Präsentationsattribute lösen keine CSS-Variablen auf — die
+          Familie steht hier deshalb als einziges Literal im Projekt; sie ist
+          identisch mit --ce-font-sans. */}
+      <text x="20" y="26" textAnchor="middle" fontFamily="'DM Sans',system-ui,sans-serif" fontWeight="600" fontSize="16" fill="#ffffff">{initial}</text>
     </svg>
   );
 }

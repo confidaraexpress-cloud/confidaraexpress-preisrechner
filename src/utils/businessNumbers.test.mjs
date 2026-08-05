@@ -289,7 +289,9 @@ test("(16) Responsive/Barrierefreiheit: Nummern umbrechbar, Kopieraktion bedienb
 test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
   const head = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
-  const cols = (head.match(/<th>/g) || []).length;
+  // <th[ >] statt <th>: die Zahlenspalten tragen seit Paket A, Phase 2.5 eine
+  // Ausrichtungsklasse. Geprüft wird weiterhin die Spaltenzahl, nicht das Attribut.
+  const cols = (head.match(/<th[ >]/g) || []).length;
   assert.equal(cols, 7, "Sendungsliste hat nicht die erwartete Spaltenzahl");
   const spans = [...src.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
   for (const sp of spans) assert.equal(sp, cols, `colSpan ${sp} passt nicht zu ${cols} Spalten`);

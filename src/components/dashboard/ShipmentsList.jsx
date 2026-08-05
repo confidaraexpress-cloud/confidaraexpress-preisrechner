@@ -168,7 +168,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
             <div className="table-scroll">
               <table>
                 <thead>
-                  <tr><th>Bestellnummer</th><th>Carrier</th><th>Gewicht</th><th>Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr>
+                  <tr><th>Bestellnummer</th><th>Carrier</th><th className="ce-num">Gewicht</th><th className="ce-num">Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr>
                 </thead>
                 <tbody>
                   {shipments.map((s) => {
@@ -196,8 +196,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                             <div className="text-muted mono" style={{ fontSize: 12, marginTop: 2 }}>Ref: {nums.customerReference}</div>
                           )}
                         </td>
-                        <td className="text-muted">{s.weight ? `${s.weight} kg` : "—"}</td>
-                        <td className="font-bold">{money(s.price_final)}</td>
+                        <td className="text-muted ce-num">{s.weight ? `${s.weight} kg` : "—"}</td>
+                        <td className="font-bold ce-num">{money(s.price_final)}</td>
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
                         <td>

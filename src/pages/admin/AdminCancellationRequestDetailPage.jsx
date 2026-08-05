@@ -171,7 +171,7 @@ export default function AdminCancellationRequestDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon">🔎</div><div className="empty-title">Stornierungsanfrage nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Stornierungsanfrage nicht gefunden</div></div></div>
       </div>
     );
   }

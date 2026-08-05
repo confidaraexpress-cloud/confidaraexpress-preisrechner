@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import {
@@ -176,9 +177,16 @@ export default function AdminUserDetailPage() {
   const [anonBusy, setAnonBusy] = useState(false);   // Anonymisierung läuft
   const [anonMsg, setAnonMsg] = useState(null);      // { type, text }
   const [delOpen, setDelOpen] = useState(false);     // Type-to-confirm-Modal (Löschen)
+
   const [delInput, setDelInput] = useState("");      // getippter Bestätigungstext
   const [delBusy, setDelBusy] = useState(false);     // Löschung läuft
   const [delMsg, setDelMsg] = useState(null);        // { type, text }
+  // Fokusfalle, Fokusrückgabe und Escape der beiden Type-to-confirm-Modale
+  // kommen seit Paket A, Phase 3 aus dem gemeinsamen Hook. Die Aufrufe stehen
+  // bewusst HIER, vor den frühen Returns für Lade- und Nichtgefunden-Zustand:
+  // Hooks müssen bei jedem Render in derselben Reihenfolge laufen.
+  const anonDialogRef = useDialog({ open: anonOpen, onClose: () => { if (!anonBusy) { setAnonOpen(false); setAnonInput(""); } }, closeOnEscape: !anonBusy });
+  const delDialogRef = useDialog({ open: delOpen, onClose: () => { if (!delBusy) { setDelOpen(false); setDelInput(""); } }, closeOnEscape: !delBusy });
 
   // ── Individueller Kundenaufschlag ─────────────────────────────────────────
   const [pricing, setPricing] = useState(null);          // normalisierte GET-Daten
@@ -312,7 +320,7 @@ export default function AdminUserDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon">🔎</div><div className="empty-title">Kunde nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Kunde nicht gefunden</div></div></div>
       </div>
     );
   }
@@ -372,6 +380,7 @@ export default function AdminUserDetailPage() {
 
   const openDel = () => { setDelMsg(null); setDelInput(""); setDelOpen(true); };
   const closeDel = () => { if (!delBusy) { setDelOpen(false); setDelInput(""); } };
+
   const confirmDelete = async () => {
     if (delInput.trim() !== "DELETE_USER") return; // ohne exakte Eingabe kein Request
     setDelBusy(true);
@@ -798,6 +807,7 @@ export default function AdminUserDetailPage() {
       {anonOpen && (
         <div className="adm-modal-overlay" role="presentation" onClick={closeAnon}>
           <div
+            ref={anonDialogRef}
             className="adm-modal adm-modal-danger"
             role="dialog"
             aria-modal="true"
@@ -847,6 +857,7 @@ export default function AdminUserDetailPage() {
       {delOpen && (
         <div className="adm-modal-overlay" role="presentation" onClick={closeDel}>
           <div
+            ref={delDialogRef}
             className="adm-modal adm-modal-danger"
             role="dialog"
             aria-modal="true"

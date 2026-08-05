@@ -1,3 +1,4 @@
+import { statusFallback } from "./statusFallback.mjs";
 // Gemeinsame, reine Logik für die Admin-Supportanfragen (Liste + Detail + Kundenprofil):
 // kanonische Response-Normalisierung, Anzeige-Meta, erlaubte Statusübergänge, getrennte
 // Dirty-Erkennung und der PATCH-Body. Kein JSX, kein State, kein Fetch — testbar unter
@@ -45,7 +46,7 @@ const STATUS_META = Object.assign(Object.create(null), {
   resolved: ["badge-green", "Erledigt"],
   closed: ["badge-gray", "Geschlossen"],
 });
-export const supportStatusMeta = (status) => STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const supportStatusMeta = (status) => STATUS_META[status] || statusFallback(status);
 
 // Stabile Anzeige-Reihenfolge (Liste/Filter/Select).
 export const SUPPORT_STATUS_ORDER = Object.freeze(["open", "in_progress", "resolved", "closed"]);

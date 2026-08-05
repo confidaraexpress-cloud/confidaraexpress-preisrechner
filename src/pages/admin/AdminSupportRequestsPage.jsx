@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useSearchParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminSupportRequests } from "../../api/adminApi";
@@ -238,19 +239,18 @@ export default function AdminSupportRequestsPage() {
 
   return (
     <div className="adm-page">
-      <header className="adm-page-head adm-page-head-row">
-        <div>
-          <h1 className="adm-title">Supportanfragen</h1>
-          <p className="adm-sub">
-            Allgemeine Kundenanfragen aus dem Kundenbereich. Die Beantwortung erfolgt per
+      <PageHeader
+        variant="admin"
+        title={<>Supportanfragen</>}
+        subtitle={<>Allgemeine Kundenanfragen aus dem Kundenbereich. Die Beantwortung erfolgt per
             E-Mail — das Bearbeiten hier verschickt keine Nachricht an den Kunden und ändert
-            weder Sendungen noch Rechnungen.
-          </p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+            weder Sendungen noch Rechnungen.</>}
+        actions={(
+          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
-        </button>
-      </header>
+        </button></>
+        )}
+      />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilter(); }}>
         <div className="adm-filter-field">
@@ -336,7 +336,7 @@ export default function AdminSupportRequestsPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">📭</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="mail" s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasAnyFilter && (

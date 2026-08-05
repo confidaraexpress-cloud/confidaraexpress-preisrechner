@@ -171,8 +171,8 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-track-link { margin-top: 12px; }
 
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
-.adm-modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(10,22,40,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.adm-modal { background: #fff; border-radius: var(--radius-lg); max-width: 440px; width: 100%; padding: 24px; box-shadow: 0 20px 60px rgba(10,22,40,0.35); text-align: center; }
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
+.adm-modal { text-align: center; }
 .adm-modal-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--warn-bg); color: var(--ce-color-status-warning-fg); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
 .adm-modal-title { font-family: var(--ce-font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .adm-modal-text { font-size: 13px; line-height: 1.55; color: var(--ce-color-text-secondary); margin-bottom: 18px; }
@@ -446,8 +446,7 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 
 /* Ladefehler mit direkter Wiederholung. */
 .adm-loaderr { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.empty-text { margin-top: 6px; font-size: 13px; line-height: 1.55; color: var(--ce-color-text-muted); max-width: 460px; }
-.empty .btn { margin-top: 14px; }
+/* .empty-text steht seit Paket A, Phase 3 zentral im Zustandsmuster. */
 
 /* Mobilkarten: erst unterhalb der Tabellenbreite sichtbar. */
 .adm-users-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }

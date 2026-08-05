@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useRef } from "react";
+import React, { useId } from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { Icon } from "../ui/Icon";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,22 +36,14 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
 }) {
-  const cancelRef = useRef(null);
-  const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
   const uid = useId();
   const titleId = `adm-confirm-title-${uid}`;
   const descId = `adm-confirm-desc-${uid}`;
 
-  useEffect(() => {
-    cancelRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      openerRef.current?.focus?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Fokusfalle, Fokusrückgabe und Escape kommen seit Paket A, Phase 3 aus dem
+  // gemeinsamen Hook. `closeOnEscape: !busy` bewahrt die bestehende Regel:
+  // während eines laufenden Requests schließt Escape nicht.
+  const dialogRef = useDialog({ onClose: onCancel, closeOnEscape: !busy });
 
   return (
     <div
@@ -64,6 +57,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        ref={dialogRef}
       >
         <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
           <Icon n={icon} s={22} />
@@ -73,7 +67,7 @@ export function ConfirmDialog({
         <p id={descId} className="adm-modal-text">{text}</p>
         {note && <p className="adm-support-hint adm-modal-note">{note}</p>}
         <div className="adm-modal-actions">
-          <button type="button" ref={cancelRef} className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </button>
           <button

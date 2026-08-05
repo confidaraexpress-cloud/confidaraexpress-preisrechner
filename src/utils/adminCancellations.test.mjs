@@ -63,9 +63,9 @@ test("die Statusbegriffe sind in Badge, Filter und Auswahl identisch", () => {
   }
 });
 
-test("Status-Meta Fallback: unbekannt → grau + Rohwert; null → grau + Strich", () => {
-  assert.deepEqual(cancellationStatusMeta("weird"), ["badge-gray", "weird"]);
-  assert.deepEqual(cancellationStatusMeta(null), ["badge-gray", "—"]);
+test("Status-Meta Fallback: unbekannt → „Unbekannter Status“; null → grau + Strich", () => {
+  assert.deepEqual(cancellationStatusMeta("weird"), ["badge-gray", "Unbekannter Status", "weird"]);
+  assert.deepEqual(cancellationStatusMeta(null), ["badge-gray", "—", null]);
 });
 
 test("Filteroptionen: Alle + vier Status in stabiler Reihenfolge", () => {
@@ -452,10 +452,16 @@ test("Detail: terminale Entscheidungen laufen über den zentralen Bestätigungsd
   assert.match(detailSrc, /if \(pendingDecision\) \{ setDecision\(pendingDecision\); return; \}/);
   assert.match(detailSrc, /onClick=\{requestSave\} disabled=\{!canSave\}/, "Doppelklickschutz über canSave");
   // Der zentrale Dialog bringt Fokus, Escape und Fokusrückgabe mit.
+  // Seit Paket A, Phase 3 liefert der gemeinsame Hook Fokusfalle,
+  // Fokusrückgabe und Escape — die Zusicherung ist dieselbe, nur an einer Stelle.
   const dlg = _strip(_read("components/admin/ConfirmDialog.jsx"));
-  assert.match(dlg, /cancelRef\.current\?\.focus\(\)/);
-  assert.match(dlg, /e\.key === "Escape" && !busy/);
-  assert.match(dlg, /openerRef\.current\?\.focus\?\.\(\)/);
+  assert.match(dlg, /useDialog\(\{ onClose: onCancel, closeOnEscape: !busy \}\)/,
+    "der Dialog nutzt den gemeinsamen Hook und sperrt Escape während des Requests");
+  const hook = _strip(_read("hooks/useDialog.js"));
+  assert.match(hook, /erste\.focus\(\)/, "Fokus beim Öffnen");
+  assert.match(hook, /e\.key === "Escape"/, "Escape schließt");
+  assert.match(hook, /ziel\.focus\(\)/, "Fokus kehrt zum Auslöser zurück");
+  assert.match(hook, /e\.key !== "Tab"/, "Fokusfalle");
 });
 
 test("Selbsttest: die Prüflogik greift tatsächlich", () => {

@@ -19,7 +19,7 @@ const PAGE_LIMIT = 20;
 // Adressbuch — Hauptseite. Hält den gesamten Seiten-State (Tab/Filter/Suche,
 // geladene Adressen + Cursor, Drawer-/Dialogzustand). Alle API-Aufrufe laufen
 // über addressBookApi.js (zentrales apiFetch, Auth/401-Handling unverändert).
-export default function AddressBookPage({ onUseForNewShipment }) {
+export default function AddressBookPage({ onUseForNewShipment, utility }) {
   const [tab, setTab] = useState(TAB_SENDER);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -213,7 +213,7 @@ export default function AddressBookPage({ onUseForNewShipment }) {
   return (
     <>
       <div className="container abk-wrap">
-        <AddressBookHeader onCreate={openCreate} />
+        <AddressBookHeader onCreate={openCreate} utility={utility} />
 
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}
         {actionError && <div className="alert alert-error mb-16" role="alert"><span>{actionError}</span></div>}

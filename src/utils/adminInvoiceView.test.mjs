@@ -226,8 +226,10 @@ test("8 — der Dokumentzustand ist verständlich benannt", () => {
   const failed = documentState({ document_status: "document_failed" });
   assert.equal(failed.label, "PDF-Erstellung fehlgeschlagen");
   assert.equal(failed.failed, true);
-  // Unbekannt → grau + Rohwert (kein Raten), fehlend → Strich.
+  // Unbekannt → grau, sichtbar „Unbekannter Status", Rohwert nur in `raw`.
   assert.equal(documentState({ document_status: "cancelled" }).cls, "badge-gray");
+  assert.equal(documentState({ document_status: "cancelled" }).label, "Unbekannter Status");
+  assert.equal(documentState({ document_status: "cancelled" }).raw, "cancelled");
   assert.equal(documentState({}).label, "—");
 });
 
@@ -510,9 +512,11 @@ test("25 — Lade-, Fehler-, Leer- und 404-Zustände sind eindeutig und wiederho
 // ═══ G) Dialog, Sicherheit, Regression, Selbsttest ═══════════════════════════
 
 test("26 — der zentrale ConfirmDialog erfüllt Fokus, Escape und Doppelklickschutz", () => {
-  assert.match(dialogSrc, /cancelRef\.current\?\.focus\(\)/, "Fokus beim Öffnen auf Abbrechen");
-  assert.match(dialogSrc, /e\.key === "Escape" && !busy/, "Escape schließt, außer während des Requests");
-  assert.match(dialogSrc, /openerRef\.current\?\.focus\?\.\(\)/, "Fokus kehrt zum Auslöser zurück");
+  // Seit Paket A, Phase 3 kommen Fokusfalle, Fokusrückgabe und Escape aus dem
+  // gemeinsamen Hook — geprüft wird die Zusicherung, nicht mehr ihr Ort.
+  assert.match(dialogSrc, /useDialog\(\{ onClose: onCancel, closeOnEscape: !busy \}\)/,
+    "der Dialog nutzt den gemeinsamen Hook und sperrt Escape während des Requests");
+  assert.match(dialogSrc, /ref=\{dialogRef\}/, "der Hook ist an den Dialogknoten gebunden");
   assert.match(dialogSrc, /role="dialog"/);
   assert.match(dialogSrc, /aria-modal="true"/);
   assert.match(dialogSrc, /aria-labelledby=\{titleId\}/);

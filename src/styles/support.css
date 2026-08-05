@@ -12,16 +12,7 @@
    =========================================================================== */
 
 /* ── Kundendialog ─────────────────────────────────────────────────────────── */
-.sup-dialog-overlay {
-  position: fixed; inset: 0; z-index: 420;
-  background: rgba(11,31,77,0.4);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.sup-dialog-card {
-  width: 100%; max-width: 520px; background: #fff; border-radius: var(--radius-lg);
-  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
-  max-height: calc(100dvh - 40px); overflow-y: auto;
-}
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .sup-dialog-icon {
   width: 44px; height: 44px; border-radius: 12px;
   background: var(--blue-light); color: var(--blue2);

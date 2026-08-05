@@ -67,10 +67,10 @@ test("2 — deutsche Statuslabels exakt wie festgelegt", () => {
   assert.equal(supportStatusMeta("closed")[1], "Geschlossen");
 });
 
-test("3 — unbekannter Status wird grau mit Rohwert angezeigt (kein Absturz)", () => {
-  assert.deepEqual(supportStatusMeta("erfunden"), ["badge-gray", "erfunden"]);
-  assert.deepEqual(supportStatusMeta(undefined), ["badge-gray", "—"]);
-  assert.deepEqual(supportStatusMeta("constructor"), ["badge-gray", "constructor"]);
+test("3 — unbekannter Status wird grau als „Unbekannter Status“ angezeigt (kein Rohwert)", () => {
+  assert.deepEqual(supportStatusMeta("erfunden"), ["badge-gray", "Unbekannter Status", "erfunden"]);
+  assert.deepEqual(supportStatusMeta(undefined), ["badge-gray", "—", null]);
+  assert.deepEqual(supportStatusMeta("constructor"), ["badge-gray", "Unbekannter Status", "constructor"]);
 });
 
 test("4 — Kategorielabels als Fallback, wenn der Server keines liefert", () => {

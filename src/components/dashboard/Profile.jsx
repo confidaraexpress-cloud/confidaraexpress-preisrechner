@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { PageHeader } from "../ui/PageHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
@@ -33,7 +34,7 @@ import { CopyableNumber } from "../ui/CopyableNumber";
 
 const EMPTY_PW_FORM = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
 
-export function Profile({ user }) {
+export function Profile({ user, utility }) {
   const { updateUser } = useAuth();
 
   // Bereichsweise Bearbeitung: höchstens EINE Karte gleichzeitig im Edit-Modus.
@@ -438,12 +439,12 @@ export function Profile({ user }) {
 
   return (
     <div className="page-body">
-        <div className="profile-page-head">
-          <div className="profile-page-head-text">
-            <h1 className="dash-section-title">Unternehmen &amp; Konto</h1>
-            <p className="dash-section-sub">Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort.</p>
-          </div>
-        </div>
+        <PageHeader
+          title={<>Unternehmen &amp; Konto</>}
+          subtitle="Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort."
+          utility={utility}
+          className="profile-page-head"
+        />
 
         <div className="profile-account-header">
           <div className="profile-account-identity">

@@ -6,6 +6,7 @@
 // bereits maskiert oder (versehentlich) eine volle ID liefert. So kann nie eine
 // vollständige tracking_number / jumingo_shipment_id / order_number ins DOM
 // gelangen. Gibt null zurück, wenn kein Wert vorhanden ist (Aufrufer zeigt „—").
+import { statusFallback } from "./statusFallback.mjs";
 export function maskTail(value) {
   if (value === undefined || value === null) return null;
   const s = String(value).trim();
@@ -20,7 +21,7 @@ const STATUS_META = {
   booked: ["badge-blue", "Gebucht"],
   label_ready: ["badge-blue", "Label bereit"],
 };
-export const shipmentStatusMeta = (status) => STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const shipmentStatusMeta = (status) => STATUS_META[status] || statusFallback(status);
 export const SHIPMENT_STATUS_OPTIONS = Object.keys(STATUS_META);
 
 // Serviceart: nur die belegten Werte pickup/dropoff werden übersetzt, alles

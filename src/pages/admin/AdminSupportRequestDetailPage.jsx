@@ -223,7 +223,7 @@ export default function AdminSupportRequestDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon">🔎</div><div className="empty-title">Supportanfrage nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Supportanfrage nicht gefunden</div></div></div>
       </div>
     );
   }

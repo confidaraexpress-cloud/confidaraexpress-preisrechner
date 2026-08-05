@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminShipments } from "../../api/adminApi";
@@ -222,17 +223,16 @@ export default function AdminShipmentsPage() {
 
   return (
     <div className="adm-page">
-      <header className="adm-page-head adm-page-head-row">
-        <div>
-          <h1 className="adm-title">Sendungen</h1>
-          <p className="adm-sub">
-            Sendungsübersicht — nur Einsicht. Keine Adressen, keine Labeldaten, Kennungen maskiert.
-          </p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+      <PageHeader
+        variant="admin"
+        title={<>Sendungen</>}
+        subtitle={<>Sendungsübersicht — nur Einsicht. Keine Adressen, keine Labeldaten, Kennungen maskiert.</>}
+        actions={(
+          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
-        </button>
-      </header>
+        </button></>
+        )}
+      />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
@@ -314,7 +314,7 @@ export default function AdminShipmentsPage() {
       ) : emptyState.show ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">{hasActiveShipmentFilters(applied) ? "🔎" : "📦"}</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n={hasActiveShipmentFilters(applied) ? "search" : "package"} s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasActiveShipmentFilters(applied) && (

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useDialog } from "../../hooks/useDialog";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminUsers, setAdminUserStatus, getAdminCustomerPriceMarkup } from "../../api/adminApi";
@@ -304,17 +306,16 @@ export default function AdminUsersPage() {
 
   return (
     <div className="adm-page">
-      <header className="adm-page-head adm-page-head-row">
-        <div>
-          <h1 className="adm-title">Kunden</h1>
-          <p className="adm-sub">
-            Übersicht aller Geschäftskunden. Statusänderungen werden protokolliert.
-          </p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+      <PageHeader
+        variant="admin"
+        title={<>Kunden</>}
+        subtitle={<>Übersicht aller Geschäftskunden. Statusänderungen werden protokolliert.</>}
+        actions={(
+          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
-        </button>
-      </header>
+        </button></>
+        )}
+      />
 
       {/* Suche und Filter — mit echten Labels und ehrlichem Geltungsbereich. */}
       <form className="adm-filters" onSubmit={(e) => e.preventDefault()} role="search">
@@ -384,7 +385,7 @@ export default function AdminUsersPage() {
       ) : emptyState.show ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">{hasActiveFilters(filters) ? "🔎" : "👥"}</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n={hasActiveFilters(filters) ? "search" : "admin"} s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasActiveFilters(filters) && (
@@ -543,19 +544,9 @@ function StatusConfirmDialog({
   title, text, cta, danger, name, busy, disabled,
   missingB2B, checking, markupLine, gateInfo, onJumpToMarkup, onCancel, onConfirm,
 }) {
-  const cancelRef = React.useRef(null);
-  const openerRef = React.useRef(typeof document !== "undefined" ? document.activeElement : null);
-
-  React.useEffect(() => {
-    cancelRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      openerRef.current?.focus?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Fokusfalle, Fokusrückgabe und Escape kommen seit Paket A, Phase 3 aus dem
+  // gemeinsamen Hook; während eines laufenden Requests schließt Escape nicht.
+  const dialogRef = useDialog({ onClose: onCancel, closeOnEscape: !busy });
 
   return (
     <div
@@ -564,6 +555,7 @@ function StatusConfirmDialog({
       onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}
     >
       <div
+        ref={dialogRef}
         className="adm-modal"
         role="dialog"
         aria-modal="true"
@@ -618,7 +610,7 @@ function StatusConfirmDialog({
 
         <p className="adm-support-hint" style={{ marginTop: 0 }}>Statusänderungen werden protokolliert.</p>
         <div className="adm-modal-actions">
-          <button type="button" ref={cancelRef} className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
             {BLOCK_DIALOG.cancel}
           </button>
           <button

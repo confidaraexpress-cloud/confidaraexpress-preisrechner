@@ -1,3 +1,4 @@
+import { statusFallback } from "./statusFallback.mjs";
 // Reine Logik für die Kunden-Stornierungsanfrage (Sichtbarkeit, Reason-
 // Validierung, Statusanzeige, Fehlerklassifikation). Kein JSX, kein State, kein
 // Fetch — testbar unter Node (`.mjs`). Enthält bewusst KEINE Buchungs-, Carrier-
@@ -20,7 +21,7 @@ const STATUS_META = {
   rejected: ["badge-gray", "Stornierungsanfrage abgelehnt"],
 };
 export const customerCancellationStatusMeta = (status) =>
-  STATUS_META[status] || ["badge-gray", status ?? "—"];
+  STATUS_META[status] || statusFallback(status);
 
 // Hat die Sendung bereits eine Stornierungsanfrage (irgendein Status)?
 export function hasCancellationRequest(shipment) {

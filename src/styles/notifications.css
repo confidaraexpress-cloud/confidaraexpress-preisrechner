@@ -200,14 +200,6 @@
    oben rechts, der denselben Inhaltsrahmen nutzt wie .page-body und
    .dash-section-header (max-width: 1240px) — sonst liefe die Glocke auf breiten
    Screens gegenüber dem Seiteninhalt aus der Flucht. */
-.page-bell-mount {
-  max-width: 1240px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 14px 0 0;
-  display: flex;
-  justify-content: flex-end;
-}
 
 /* Ab der Drawer-Schwelle (860 px, dieselbe wie .mobile-topbar in
    dashboard-premium.css) ist die Topbar der mobile Mount — der Seiten-Mount
@@ -216,7 +208,6 @@
    Topbarglocke, weil die Kopfzeile der Übersicht ihre eigene trägt. So ist
    in jeder Kombination aus Seite und Viewport genau EINE Glocke sichtbar. */
 @media (max-width: 860px) {
-  .page-bell-mount { display: none; }
 }
 
 /* Rechte Gruppe der mobilen Topbar (Glocke + Avatar). */

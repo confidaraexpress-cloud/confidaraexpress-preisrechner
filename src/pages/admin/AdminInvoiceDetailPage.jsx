@@ -187,7 +187,7 @@ export default function AdminInvoiceDetailPage() {
         {back}
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">🔎</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div>
             <div className="empty-title">{loadError.text}</div>
             <p className="empty-text">Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig.</p>
             <Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>

@@ -1,28 +1,26 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
+import { PageHeader } from "../ui/PageHeader";
 
-// Seitenkopf „Adressbuch": Titel + Untertitel + primäre Aktion. BEWUSST OHNE
-// Kennzahlen-Kacheln (Meine Adressen/Empfänger/Favoriten): die Listenresponse
-// liefert nur { items, nextCursor } — KEIN total. Eine Zahl aus einer
-// paginierten Teilmenge anzuzeigen würde als (falsche) Gesamtzahl missverstanden
-// werden können ("Keine falschen Gesamtkapazitäten aus einer paginierten
-// Teilmenge anzeigen" — bewusst nicht implementiert, siehe Abschlussbericht).
-export function AddressBookHeader({ onCreate }) {
+// Seitenkopf „Adressbuch" — seit Paket A, Phase 3 über das eine gemeinsame
+// PageHeader-Muster. Der frühere eigene Aufbau (.abk-header/-top/-text/-cta)
+// war strukturgleich, aber mit eigenen Klassennamen und eigener Titelstufe.
+//
+// BEWUSST OHNE Kennzahlen-Kacheln (Meine Adressen/Empfänger/Favoriten): die
+// Listenresponse liefert nur { items, nextCursor } — KEIN total. Eine Zahl aus
+// einer paginierten Teilmenge anzuzeigen würde als (falsche) Gesamtzahl
+// missverstanden werden können.
+export function AddressBookHeader({ onCreate, utility }) {
   return (
-    <div className="abk-header">
-      <div className="abk-header-top">
-        <div className="abk-header-text">
-          <h1 className="abk-header-title">Adressbuch</h1>
-          <p className="abk-header-sub">
-            Verwalten Sie wiederkehrende Absender- und Empfängeradressen zentral.
-          </p>
-        </div>
-        <div className="abk-header-cta">
-          <button type="button" className="btn btn-primary" onClick={onCreate}>
-            <Icon n="plus" s={16} /> Neue Adresse
-          </button>
-        </div>
-      </div>
-    </div>
+    <PageHeader
+      title="Adressbuch"
+      subtitle="Verwalten Sie wiederkehrende Absender- und Empfängeradressen zentral."
+      utility={utility}
+      actions={(
+        <button type="button" className="btn btn-primary" onClick={onCreate}>
+          <Icon n="plus" s={16} /> Neue Adresse
+        </button>
+      )}
+    />
   );
 }

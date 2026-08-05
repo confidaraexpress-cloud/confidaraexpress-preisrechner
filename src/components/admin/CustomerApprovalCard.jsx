@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
+import { useDialog } from "../../hooks/useDialog";
 import { Icon } from "../ui/Icon";
 import {
   approvalGateExplanation,
@@ -21,19 +22,9 @@ import { accountStatusCopy, markupRequirementText } from "../../utils/adminCusto
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConfirm }) {
-  const cancelRef = useRef(null);
-  const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
-
-  useEffect(() => {
-    cancelRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape" && !busy) onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      openerRef.current?.focus?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Fokusfalle, Fokusrückgabe und Escape kommen seit Paket A, Phase 3 aus dem
+  // gemeinsamen Hook; während eines laufenden Requests schließt Escape nicht.
+  const dialogRef = useDialog({ onClose: onCancel, closeOnEscape: !busy });
 
   return (
     <div
@@ -43,6 +34,7 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
     >
       <div
         className="adm-modal"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="adm-approve-title"
@@ -59,7 +51,7 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
           <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
         )}
         <div className="adm-modal-actions">
-          <button type="button" ref={cancelRef} className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
             Abbrechen
           </button>
           <button

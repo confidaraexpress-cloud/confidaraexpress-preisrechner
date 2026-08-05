@@ -192,9 +192,10 @@ test("5 — keine neue Verwendung von Libre Franklin", () => {
 /* ══════════ 6/7 — Cormorant nur im Kundendisplay ═════════════════════════ */
 
 const CORMORANT_ERLAUBT = new Set([
-  ".dash-section-title",   // Seitentitel aller Kundenunterseiten
-  ".abk-header-title",     // Seitentitel Adressbuch
-  ".dft-header-title",     // Seitentitel Entwürfe
+  // Seit Paket A, Phase 3 gibt es genau EINEN Kundenseitentitel — die früheren
+  // Eigenköpfe von Adressbuch, Entwürfen und Dashboard-Unterseiten sind auf das
+  // gemeinsame PageHeader-Muster zusammengeführt.
+  ".ce-page-header-title",
   ".pp-h1",                // Begrüßung der Übersicht
   ".auth-hero-title",      // Auth-Hero (eigene Welt)
   ".auth-title",

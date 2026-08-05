@@ -25,6 +25,17 @@ export function NotificationPanel({ onClose, onSelect }) {
   const boxRef = useRef(null);
 
   // Fokus, Escape und Tab-Falle.
+  // Fokusrückgabe (Paket A, Phase 3): beim Schließen kehrt der Fokus auf das
+  // Element zurück, das das Panel geöffnet hat — bisher blieb er im Nichts.
+  // Bewusst ein EIGENER Effekt ohne Abhängigkeiten: im Effekt der Fokusfalle
+  // (der an [onClose] hängt) würde er bei jedem neuen Callback feuern und den
+  // Fokus mitten in der Bedienung zurückreißen.
+  const openerRef = useRef(typeof document !== "undefined" ? document.activeElement : null);
+  useEffect(() => () => {
+    const ziel = openerRef.current;
+    if (ziel && typeof ziel.focus === "function" && document.contains(ziel)) ziel.focus();
+  }, []);
+
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return undefined;

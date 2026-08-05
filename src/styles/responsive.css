@@ -26,10 +26,6 @@
   .page-body { padding: 14px; }
 
   /* DashboardSectionHeader — below sticky topbar */
-  .dash-section-header { padding: 22px 14px 14px; }
-  /* Body Large behält seine Größe auch mobil (Skala: 15px/15px) — nur die
-     Zeilenlänge löst sich auf. */
-  .dash-section-sub { max-width: 100%; }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi-value { font-size: 20px; }
 

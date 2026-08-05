@@ -19,7 +19,7 @@ const PAGE_LIMIT = 20;
 // Getrennte Cursor je Quelle, parallele Ladung, deterministische Zusammenführung
 // (mergeDraftSources). Kein Fortsetzen/Rehydration hier — das übernimmt
 // NewShipmentPage; diese Seite navigiert nur mit dem Resume-Payload dorthin.
-export default function DraftsPage({ onNewShipment, onResumeFormDraft }) {
+export default function DraftsPage({ onNewShipment, onResumeFormDraft, utility }) {
   const [formItems, setFormItems] = useState([]);
   const [shipmentItems, setShipmentItems] = useState([]);
   const [formCursor, setFormCursor] = useState(null);
@@ -184,7 +184,7 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft }) {
   return (
     <>
       <div className="container dft-wrap">
-        <DraftsHeader onNewShipment={onNewShipment} />
+        <DraftsHeader onNewShipment={onNewShipment} utility={utility} />
 
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}
         {partialError && (

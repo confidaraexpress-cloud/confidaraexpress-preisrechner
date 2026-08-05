@@ -63,9 +63,9 @@ test("Kunden-Statuslabels exakt wie vorgegeben", () => {
   assert.deepEqual(customerCancellationStatusMeta("rejected"), ["badge-gray", "Stornierungsanfrage abgelehnt"]);
 });
 
-test("Status-Fallback: unbekannt → grau + Rohwert", () => {
-  assert.deepEqual(customerCancellationStatusMeta("weird"), ["badge-gray", "weird"]);
-  assert.deepEqual(customerCancellationStatusMeta(null), ["badge-gray", "—"]);
+test("Status-Fallback: unbekannt → „Unbekannter Status“", () => {
+  assert.deepEqual(customerCancellationStatusMeta("weird"), ["badge-gray", "Unbekannter Status", "weird"]);
+  assert.deepEqual(customerCancellationStatusMeta(null), ["badge-gray", "—", null]);
 });
 
 // ── Reason-Validierung ───────────────────────────────────────────────────────

@@ -338,7 +338,7 @@ export default function AdminShipmentsPage() {
                   <th scope="col">Kunde</th>
                   <th scope="col">Versand</th>
                   <th scope="col">Status</th>
-                  <th scope="col">Preis</th>
+                  <th scope="col" className="adm-num">Preis</th>
                   <th scope="col" className="adm-col-action">Aktion</th>
                 </tr>
               </thead>

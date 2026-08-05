@@ -34,11 +34,11 @@
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .app-shell {
-  --font-heading: 'Libre Franklin', 'DM Sans', system-ui, sans-serif;
-  --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --fh: 'Libre Franklin', sans-serif;
-  --fs: 'DM Sans', system-ui, sans-serif;
-  --fd: 'Cormorant Garamond', Georgia, serif;
+  /* Zwei Rollen, beide aus der Foundation: --fs trägt alles Funktionale,
+     --fd die wenigen Display-Momente. Die frühere dritte Rolle --fh
+     (Libre Franklin) ist mit Paket A, Phase 2.5 entfallen. */
+  --fs: var(--ce-font-sans);
+  --fd: var(--ce-font-display);
 
   display: flex;
   min-height: 100vh;
@@ -137,7 +137,7 @@
   margin-inline: auto;
   padding: 22px 28px 26px;
   border-top: 1px solid var(--border-subtle);
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .app-footer-copy { margin: 0; color: var(--text-secondary); }
@@ -150,7 +150,7 @@
 }
 /* Hover/Fokus sind nicht rein farblich codiert — die Unterstreichung trägt
    den Zustand zusätzlich. */
-.app-footer-legal a:hover { color: var(--accent-blue-strong); text-decoration: underline; }
+.app-footer-legal a:hover { color: var(--ce-color-brand-ink); text-decoration: underline; }
 .app-footer-legal a:focus-visible {
   outline: var(--ce-focus-ring);
   outline-offset: 3px;
@@ -218,8 +218,8 @@
    keine Einfärbung. Die 36×36-Fläche und die Zeilenabstände bleiben
    unverändert, damit Wortmarke, Unterzeile und Close-Button nicht wandern. */
 .pp-brandmark-img { width: 24px; height: 24px; display: block; filter: none; }
-.pp-brand { font-family: var(--fh); font-weight: 700; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
-.pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 700; }
+.pp-brand { font-family: var(--fs); font-weight: 600; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
+.pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 600; }
 .pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
 .pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
 
@@ -241,14 +241,14 @@
 .pp-identity-avatar {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: grid; place-items: center;
-  font-family: var(--fh); font-weight: 700; font-size: 12.5px;
+  font-family: var(--fs); font-weight: 600; font-size: 12px;
   color: var(--ce-sidebar-text-strong);
   background: var(--accent-blue);
   box-shadow: none;
 }
 .pp-identity-text { min-width: 0; }
 .pp-identity-name { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ce-sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.45; color: var(--ce-sidebar-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Navigation ── */
 /* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
@@ -258,7 +258,7 @@
    Zeichenweite, höherer Kontrast (WCAG AA gegen den hellsten Punkt des
    Verlaufs geprüft), weiterhin kleiner als die Einträge. */
 .nsec {
-  font-family: var(--fs); font-size: 9.5px; font-weight: 700;
+  font-family: var(--fs); font-size: 11px; font-weight: 600;
   letter-spacing: 0.17em; text-transform: uppercase;
   color: var(--ce-sidebar-section); padding: 16px 12px 7px;
 }
@@ -276,7 +276,7 @@
   position: relative; display: flex; align-items: center; gap: 12px;
   width: 100%; min-height: 40px; text-align: left;
   padding-block: 8px; padding-inline: 12px; border-radius: 9px;
-  font-family: var(--fs); font-size: 13.5px; font-weight: 500; line-height: 1.45;
+  font-family: var(--fs); font-size: 13px; font-weight: 500; line-height: 1.5;
   color: var(--ce-sidebar-text); background: none; border: 1px solid transparent;
   cursor: pointer;
   /* Nur Farbwechsel — kein transform, kein filter, kein Schattenaufbau. */
@@ -393,7 +393,7 @@
 .ce-mail-dialog::backdrop { background: rgba(23, 32, 51, 0.32); }
 .ce-mail-dialog-inner { padding: 22px 22px 18px; display: flex; flex-direction: column; }
 .ce-mail-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.ce-mail-dialog-title { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+.ce-mail-dialog-title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
 .ce-mail-dialog-close {
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: 1px solid transparent; border-radius: 8px;
@@ -403,7 +403,7 @@
 .ce-mail-dialog-close:hover { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-muted); }
 .ce-mail-dialog-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
-.ce-mail-dialog-addr { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--ce-font-numeric); letter-spacing: 0.01em; }
+.ce-mail-dialog-addr { font-size: 12px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--ce-font-numeric); letter-spacing: 0.01em; }
 
 .ce-mail-dialog-providers { display: flex; flex-direction: column; gap: 4px; }
 .ce-mail-dialog-provider {
@@ -424,7 +424,7 @@
   display: flex; align-items: center; gap: 8px; width: 100%;
   padding: 10px 14px; border-radius: var(--radius-sm);
   background: none; border: 1px solid var(--border-subtle);
-  color: var(--text-secondary); font-size: 13.5px; cursor: pointer;
+  color: var(--text-secondary); font-size: 13px; cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .ce-mail-dialog-copy:hover { color: var(--text-primary); background: var(--surface-muted); }
@@ -467,14 +467,14 @@
 .profile-avatar-lg {
   width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Libre Franklin', sans-serif; font-size: 25px; font-weight: 700;
+  font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
   letter-spacing: -0.02em; color: #fff;
   background: var(--accent-blue);
   box-shadow: none;
 }
 .profile-account-info { min-width: 0; }
 .profile-account-name {
-  font-family: 'DM Sans', sans-serif; font-size: 24px; font-weight: 700;
+  font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
   color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.3;
   overflow-wrap: break-word;
 }
@@ -500,7 +500,7 @@
 .profile-card-icon { width: 42px; height: 42px; border-radius: 12px; }
 .profile-section-body { padding: 12px 24px 22px; }
 .profile-row { padding: 14px 0; }
-.profile-row-key, .profile-row-val { font-size: 13.5px; }
+.profile-row-key, .profile-row-val { font-size: 13px; }
 .profile-hint { padding: 13px 15px; border-radius: 12px; }
 .profile-form-body { padding: 18px 24px; }
 
@@ -551,8 +551,8 @@
   .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
   .profile-account-header { padding: 22px; gap: 14px; }
   .profile-account-identity { min-width: 100%; gap: 14px; }
-  .profile-avatar-lg { width: 58px; height: 58px; font-size: 22px; }
-  .profile-account-name { font-size: 21px; }
+  .profile-avatar-lg { width: 58px; height: 58px; font-size: 20px; }
+  .profile-account-name { font-size: 20px; }
   .profile-grid { flex-direction: column; }
   .profile-card-head { padding: 16px 18px; }
   .profile-section-body { padding: 10px 18px 16px; }

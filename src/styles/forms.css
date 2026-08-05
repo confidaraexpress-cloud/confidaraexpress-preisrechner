@@ -158,7 +158,7 @@ textarea.field-input {
 }
 
 /* ── Number: keine Spinner-Pfeile, tabellarische Ziffern ─────────────────── */
-.field-input[type="number"] { font-variant-numeric: tabular-nums; }
+.field-input[type="number"] { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* ── Date: natives Feld, aber gleiche Höhe und gleicher Zeigerhinweis ────── */
 .field-input[type="date"],

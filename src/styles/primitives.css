@@ -213,7 +213,24 @@
   .ce-card-interactive { transition: none; }
 }
 
-/* ═══════════ 4 — ICON-GRUNDLAGE ════════════════════════════════════════════
+/* ═══════════ 4 — ZAHLEN UND BETRÄGE ════════════════════════════════════════
+   Paket A, Phase 2.5. Zahlen sind DM Sans (--ce-font-numeric zeigt auf
+   dieselbe Datei), tabellarisch und rechtsbündig, sobald sie in einer Spalte
+   stehen. `font-variant-numeric` und `font-feature-settings` stehen bewusst
+   zusammen: die erste Deklaration ist die semantische, die zweite greift auch
+   in Umgebungen, die nur Feature-Tags auswerten.
+
+   .ce-num markiert eine numerische Tabellenspalte — auf <th> UND <td>, sonst
+   stehen Kopf und Werte nicht übereinander. Textwerte bleiben linksbündig;
+   .ce-num gehört ausschließlich an Beträge, Mengen und Maße. */
+.ce-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+/* ═══════════ 5 — ICON-GRUNDLAGE ════════════════════════════════════════════
    Das interne Iconsystem (components/ui/Icon.jsx) ist die einzige Quelle:
    24er-viewBox, reine Linienführung, stroke-width 1.75, runde Enden und
    Verbindungen, Farbe immer currentColor. Keine zweite Iconbibliothek.

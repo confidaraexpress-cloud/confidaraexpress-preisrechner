@@ -50,7 +50,7 @@
 .pp-pill {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 6px 12px; border-radius: 99px;
-  font-family: var(--fs); font-size: 11.5px; font-weight: 500;
+  font-family: var(--fs); font-size: 11px; font-weight: 500;
   color: var(--text-secondary);
   background: var(--surface);
   border: 1px solid var(--border-subtle);
@@ -61,11 +61,11 @@
    mehr als Farbverlauf gefüllt, sondern trägt die Akzentfarbe. */
 .pp-h1 {
   font-family: var(--fd); font-weight: 500; font-size: 52px;
-  line-height: 1.04; letter-spacing: -0.005em;
+  line-height: 1.05; letter-spacing: -0.005em;
   color: var(--text-primary); margin-top: 18px;
 }
 .pp-hname { font-style: italic; color: var(--accent-blue); }
-.pp-hsub { font-family: var(--fs); font-size: 15.5px; font-weight: 400; color: var(--text-secondary); margin-top: 14px; }
+.pp-hsub { font-family: var(--fs); font-size: 15px; font-weight: 400; color: var(--text-secondary); margin-top: 14px; }
 
 .pp-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; flex-shrink: 0; }
 .pp-bell {
@@ -166,7 +166,7 @@
   gap: 12px; min-height: 36px; margin-bottom: 16px;
 }
 .pp-kpi-label {
-  font-family: var(--fs); font-size: 12.5px; font-weight: 500;
+  font-family: var(--fs); font-size: 12px; font-weight: 500;
   line-height: 1.35; letter-spacing: 0.005em; text-transform: none;
   color: var(--ce-kpi-label); min-width: 0;
 }
@@ -190,16 +190,16 @@
    frühere Serifensatz der Übersicht (--fd) kommt in dieser Sektion nicht vor. */
 .pp-kpi-num { display: flex; align-items: baseline; line-height: 1; }
 .knum {
-  font-family: var(--fs); font-weight: 600; font-size: 50px; line-height: 1;
-  letter-spacing: -0.035em; font-variant-numeric: tabular-nums;
+  font-family: var(--fs); font-weight: 600; font-size: 48px; line-height: 1;
+  letter-spacing: -0.035em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   color: var(--ce-kpi-value);
 }
-.kcur { font-family: var(--fs); font-size: 22px; font-weight: 500; color: var(--ce-kpi-context); margin-left: 6px; }
+.kcur { font-family: var(--fs); font-size: 20px; font-weight: 500; color: var(--ce-kpi-context); margin-left: 6px; }
 
 /* Kontextzeile — knapp unter dem Wert, ohne Trennlinie und ohne Statuspunkt. */
 .pp-kpi-sub {
   margin-top: 10px;
-  font-family: var(--fs); font-size: 12px; line-height: 1.45;
+  font-family: var(--fs); font-size: 12px; line-height: 1.5;
   color: var(--ce-kpi-context);
 }
 /* Bewusst KEIN white-space:nowrap mehr: der Nachsatz ist ein dynamischer,
@@ -228,7 +228,7 @@
   display: inline-grid; place-items: center;
   min-width: 27px; height: 21px; padding: 0 7px;
   border-radius: 6px;
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
   color: var(--ce-sec-accent);
   background: var(--ce-sec-index-face);
@@ -236,12 +236,12 @@
 }
 .pp-shead-rule { width: 22px; height: 1px; background: var(--ce-sec-rule); flex-shrink: 0; }
 .pp-shead-label {
-  font-family: var(--fs); font-size: 10.5px; font-weight: 700;
+  font-family: var(--fs); font-size: 11px; font-weight: 600;
   letter-spacing: 0.2em; text-transform: uppercase; color: var(--ce-sec-label);
 }
 .pp-shead-title {
-  font-family: var(--fh); font-weight: 700; font-size: 29px; line-height: 1.16;
-  letter-spacing: -0.025em; color: var(--text-primary); margin-top: 14px;
+  font-family: var(--fs); font-weight: 600; font-size: 20px; line-height: 1.3;
+  letter-spacing: -0.015em; color: var(--text-primary); margin-top: 14px;
 }
 .pp-shead-desc {
   font-family: var(--fs); font-size: 14px; line-height: 1.6;
@@ -303,16 +303,16 @@
 /* Schrittzahl und Text rücken dicht an das Icon — die frühere Fassung ließ
    dazwischen deutlich mehr Leerraum als zwischen den Stationen selbst. */
 .pp-flow-step .pp-step-no {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.18em;
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
   color: var(--ce-sec-accent); margin-top: 18px;
 }
 .pp-flow-t {
-  font-family: var(--fs); font-size: 15.5px; font-weight: 700;
+  font-family: var(--fs); font-size: 15px; font-weight: 600;
   letter-spacing: -0.012em; color: var(--text-primary); margin-top: 7px;
 }
 .pp-flow-d {
-  font-family: var(--fs); font-size: 12.5px; line-height: 1.65;
+  font-family: var(--fs); font-size: 12px; line-height: 1.6;
   color: var(--text-secondary); margin-top: 8px;
 }
 
@@ -370,14 +370,14 @@
   border-color: var(--ce-bento-hero-ic-edge);
 }
 .pp-bento-t {
-  font-family: var(--fs); font-size: 15px; font-weight: 700;
+  font-family: var(--fs); font-size: 15px; font-weight: 600;
   letter-spacing: -0.012em; color: var(--text-primary);
 }
 .pp-bento-d {
-  font-family: var(--fs); font-size: 12.5px; line-height: 1.7;
+  font-family: var(--fs); font-size: 13px; line-height: 1.5;
   color: var(--text-secondary); margin-top: 8px;
 }
-.pp-bento-item--hero .pp-bento-t { font-size: 18px; color: var(--ce-bento-hero-ink); }
+.pp-bento-item--hero .pp-bento-t { font-size: 16px; color: var(--ce-bento-hero-ink); }
 .pp-bento-item--hero .pp-bento-d { font-size: 13px; color: var(--ce-bento-hero-ink-soft); }
 /* Eine einzige, echte Kennzahl: die tatsächliche Länge der Carrier-Liste. */
 .pp-bento-fact {
@@ -386,12 +386,12 @@
   border-top: 1px solid var(--ce-bento-hero-rule);
 }
 .pp-bento-fact-n {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
-  font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
   color: var(--ce-bento-hero-ink); line-height: 1;
 }
 .pp-bento-fact-l {
-  font-family: var(--fs); font-size: 11.5px; line-height: 1.45;
+  font-family: var(--fs); font-size: 11px; line-height: 1.5;
   color: var(--ce-bento-hero-ink-soft);
 }
 
@@ -426,7 +426,7 @@
   display: inline-flex; align-items: center; gap: 8px;
   padding: 11px 19px; border-radius: 99px;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  font-family: var(--fs); font-size: 13.5px; font-weight: 600;
+  font-family: var(--fs); font-size: 13px; font-weight: 600;
   color: var(--ce-net-ink);
   background: var(--ce-net-cta-face);
   border: 1px solid var(--ce-net-cta-edge);
@@ -451,8 +451,8 @@
 }
 .pp-car:hover .pp-car-chip { background: var(--ce-net-chip-hover); }
 .car-logo { max-height: 26px; max-width: 100%; width: auto; object-fit: contain; display: block; }
-.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 700; color: var(--ce-net-ink); }
-.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--ce-net-ink-soft); }
+.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 600; color: var(--ce-net-ink); }
+.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-net-ink-soft); }
 
 /* Trust */
 /* position:relative + overflow:hidden tragen das lokale Wasserzeichen und
@@ -492,7 +492,7 @@
 .pp-trust-item { display: flex; align-items: center; gap: 16px; padding: 0 24px; position: relative; z-index: 1; }
 .pp-trust-item + .pp-trust-item::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 46px; background: var(--border-subtle); }
 .pp-trust-item .pp-medal { width: 46px; height: 46px; }
-.pp-trust-t { font-family: var(--fs); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.pp-trust-t { font-family: var(--fs); font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .pp-trust-d { font-family: var(--fs); font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-top: 4px; }
 
 /* ══════════ Responsive ══════════ */
@@ -534,8 +534,7 @@
     left: calc(var(--flow-ic) / 2); right: auto;
     width: 1px; height: auto;
   }
-  .pp-shead-title { font-size: 26px; }
-  .pp-h1 { font-size: 44px; }
+  .pp-h1 { font-size: 38px; }
   .pp-trust { grid-template-columns: 1fr; gap: 18px; }
   .pp-trust-item + .pp-trust-item::before { display: none; }
 }
@@ -585,7 +584,7 @@
      gemeinsame Form aller Karten (Icon oben). */
   .pp-bento-item--wide { display: flex; }
   .pp-bento-item--wide .pp-bento-ic { margin-bottom: 16px; }
-  .pp-shead-title { font-size: 23px; }
+  .pp-shead-title { font-size: 18px; }
   .pp-flow { padding: 24px 18px 22px; }
   .pp-flow-track { --flow-ic: 46px; --flow-gap: 22px; }
   .pp-flow-step { column-gap: 14px; }
@@ -593,12 +592,11 @@
 }
 @media (max-width: 560px) {
   .pp-kpis { grid-template-columns: 1fr; }
-  .pp-h1 { font-size: 38px; }
 }
 
 @media (max-width: 560px) {
   .pp-kpi { padding: 20px 20px 18px; }
-  .knum { font-size: 44px; }
+  .knum { font-size: 40px; }
 }
 
 /* Die einzige Bewegung der Karten ist der Übergang von Rahmen, Fläche und

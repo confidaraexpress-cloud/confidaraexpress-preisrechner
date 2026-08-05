@@ -609,7 +609,10 @@ test("30 — die gesamte Vierspaltenreihe teilt sich EINE Typografie- und Abstan
   // GESAMTEN Vierspaltenreihe (> 1080 px) nur noch aus der Grundstufe.
   assert.equal(decl(".pp-kpi", "padding"), "22px 22px 20px");
   assert.equal(decl(".pp-kpi-icon", "width"), "36px");
-  assert.equal(decl(".knum", "font-size"), "50px");
+  // Paket A, Phase 2.5: der KPI-Wert liegt jetzt exakt auf der Numeric-Display-
+  // Stufe (48px) statt auf dem freien Zwischenwert 50px. Test 17 (48–52 px)
+  // bleibt die inhaltliche Zusicherung, diese Zeile pinnt nur den Istwert.
+  assert.equal(decl(".knum", "font-size"), "48px");
 
   // Nur noch eine einzige Bereichsabfrage-Art ist zulässig: keine — die
   // gesamte KPI-Feinabstimmung läuft jetzt über zwei einfache max-width-Stufen

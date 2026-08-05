@@ -3,6 +3,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
+import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 import { EmailChangeSection } from "./EmailChangeSection";
@@ -131,7 +132,9 @@ export function Profile({ user }) {
       setEditCard(null);
     } catch (e) {
       // Editmodus offen lassen, Eingaben erhalten, verständliche Meldung zeigen.
-      setCardError(e.message);
+      // Zentrale Transportklassifizierung statt rohem e.message: ein
+      // Verbindungsabbruch hieß hier vorher wortwörtlich „Failed to fetch".
+      setCardError(normalizeThrownError(e).message);
     }
     setSaving(false);
   };

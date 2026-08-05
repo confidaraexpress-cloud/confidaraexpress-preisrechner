@@ -25,6 +25,11 @@ const NotificationsContext = createContext(null);
 export function NotificationsProvider({ children, enabled = true }) {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  // Sichtbare Rückmeldung, wenn das Als-gelesen-Markieren scheitert: das
+  // optimistische Update wird (wie bisher) per refresh() zurückgerollt — aber
+  // nicht mehr WORTLOS (Auditbefund #12). Ein erneuter Klick startet den
+  // nächsten Versuch und räumt die Meldung vorher ab.
+  const [markError, setMarkError] = useState("");
   const [snapshotAt, setSnapshotAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -89,12 +94,21 @@ export function NotificationsProvider({ children, enabled = true }) {
       const found = items.find((n) => n.id === id);
       return found && !found.read;
     }).length));
+    setMarkError("");
     try {
       const r = await markNotificationsRead({ ids: valid, snapshotAt });
-      if (!mountedRef.current || !r.ok) return;
+      if (!mountedRef.current) return;
+      if (!r.ok) {
+        setMarkError("Die Benachrichtigung konnte nicht als gelesen markiert werden. Bitte versuchen Sie es erneut.");
+        refresh();
+        return;
+      }
       const d = await r.json().catch(() => null);
       if (mountedRef.current && d) setUnread(readUnreadCount(d));
-    } catch { /* der folgende refresh() stellt den echten Stand wieder her */ }
+    } catch {
+      if (mountedRef.current) setMarkError("Die Benachrichtigung konnte nicht als gelesen markiert werden. Bitte versuchen Sie es erneut.");
+      /* der folgende refresh() stellt den echten Stand wieder her */
+    }
     refresh();
   }, [enabled, items, snapshotAt, refresh]);
 
@@ -102,12 +116,21 @@ export function NotificationsProvider({ children, enabled = true }) {
     if (!enabled) return;
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnread(0);
+    setMarkError("");
     try {
       const r = await markNotificationsRead({ all: true, snapshotAt });
-      if (!mountedRef.current || !r.ok) return;
+      if (!mountedRef.current) return;
+      if (!r.ok) {
+        setMarkError("Die Benachrichtigungen konnten nicht als gelesen markiert werden. Bitte versuchen Sie es erneut.");
+        refresh();
+        return;
+      }
       const d = await r.json().catch(() => null);
       if (mountedRef.current && d) setUnread(readUnreadCount(d));
-    } catch { /* siehe oben */ }
+    } catch {
+      if (mountedRef.current) setMarkError("Die Benachrichtigungen konnten nicht als gelesen markiert werden. Bitte versuchen Sie es erneut.");
+      /* siehe oben */
+    }
     refresh();
   }, [enabled, snapshotAt, refresh]);
 
@@ -145,8 +168,9 @@ export function NotificationsProvider({ children, enabled = true }) {
 
   const value = useMemo(() => ({
     items, unread, loading, error, loaded, snapshotAt,
+    markError,
     refresh, refreshCount, markRead, markAllRead,
-  }), [items, unread, loading, error, loaded, snapshotAt, refresh, refreshCount, markRead, markAllRead]);
+  }), [items, unread, loading, error, loaded, snapshotAt, markError, refresh, refreshCount, markRead, markAllRead]);
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }

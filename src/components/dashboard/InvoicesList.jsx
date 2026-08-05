@@ -188,7 +188,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
   );
 }
 
-export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry }) {
+export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry, refreshError }) {
   const { refresh: refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
@@ -221,10 +221,18 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
     return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
   }, [invoices, loading, onReload, tabVisible]);
 
-  const manualReload = () => {
+  // Manuell = non-silent: Der Klick meldet einen Fehlschlag sichtbar (siehe
+  // reloadInvoices in DashboardPage); das Auto-Refresh oben ruft onReload()
+  // ohne Optionen und bleibt bewusst still. Eigener Busy-Zustand, damit der
+  // Button während des Abrufs erkennbar gesperrt ist.
+  const [reloadBusy, setReloadBusy] = useState(false);
+  const manualReload = async () => {
+    if (reloadBusy) return;
     refreshAttemptRef.current = 0;
     setDownloadError("");
-    onReload?.();
+    setReloadBusy(true);
+    try { await onReload?.({ silent: false }); }
+    finally { setReloadBusy(false); }
   };
 
   // Ein erfolgreicher PDF-Abruf erledigt serverseitig die Meldung „Neue Rechnung
@@ -260,7 +268,13 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
   return (
     <>
       <div className="page-body">
-        <InvoiceSummaryCard invoices={list} summary={summary} onReload={manualReload} loading={loading} />
+        <InvoiceSummaryCard invoices={list} summary={summary} onReload={manualReload} loading={loading || reloadBusy} />
+        {refreshError && (
+          <div className="alert alert-error mb-16" role="alert">
+            <Icon n="x" s={16} />
+            Die Rechnungsliste konnte nicht aktualisiert werden. Die Anzeige zeigt den letzten geladenen Stand — bitte versuchen Sie es erneut.
+          </div>
+        )}
 
         {list.length > 0 && (
           <div className="inv-filters" role="group" aria-label="Rechnungen filtern">

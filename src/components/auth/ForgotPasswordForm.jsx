@@ -11,7 +11,7 @@ export function ForgotPasswordForm({ email, onChange, onSubmit, onBack, loading,
           Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Reset-Link.
         </p>
       </div>
-      {error   && <div className="auth-alert auth-alert-error">{error}</div>}
+      {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
       {success && <div className="auth-alert auth-alert-success">{success}</div>}
       {!success && (
         <>

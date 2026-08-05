@@ -12,7 +12,7 @@ export function ResetPasswordForm({ password, confirmPassword, onPasswordChange,
           Wählen Sie ein sicheres Passwort mit mindestens 8 Zeichen.
         </p>
       </div>
-      {error   && <div className="auth-alert auth-alert-error">{error}</div>}
+      {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
       {success && <div className="auth-alert auth-alert-success">{success}</div>}
       {!success && (
         <>

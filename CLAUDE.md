@@ -10,7 +10,7 @@ Oberste Priorität: **zuverlässige, korrekte Buchungen über ConfidaraExpress**
 
 - **Framework:** React 18, Vite
 - **Routing:** React Router v7 (alle Pages lazy-loaded via `React.lazy`)
-- **Styling:** Reines CSS, modular (`src/styles/index.css` importiert alle 11 Dateien)
+- **Styling:** Reines CSS, modular (`src/styles/index.css` importiert alle Stylesheets in fester Reihenfolge)
 - **Auth:** JWT in `localStorage` unter dem Key `ce_token`
 - **API:** Extern unter `VITE_API_URL` (`.env` → `https://api.confidaraexpress.de`)
 - **Deploy:** Docker Multi-Stage → nginx static hosting (`Dockerfile`, `nginx.conf`)
@@ -30,7 +30,7 @@ src/
 │   ├── dashboard/            # Overview, ShipmentsList, InvoicesList, Profile
 │   ├── layout/               # NavbarLayout, DashboardLayout, DashboardSidebar, Footer
 │   └── ui/                   # Icon, PasswordField, StatusBadge
-├── styles/                   # 11 CSS-Dateien (variables → globals → ... → dashboard-premium)
+├── styles/                   # Stylesheets (variables → globals → primitives → ... → notifications)
 ├── utils/                    # formatters.js, countries.js
 └── assets/carriers/          # SVG-Carrier-Logos (statisch importiert)
 ```
@@ -74,10 +74,41 @@ hält das fest.
 Sidebar-Regeln von `dashboard-premium.css` dürfen keine Farbliterale auftauchen
 — `appShellChrome.test.mjs` prüft das (samt WCAG-AA-Kontrasten) automatisch.
 
+## Globale Interface-Primitives — vor jedem neuen Bauteil lesen
+
+Es gibt **genau ein** globales Button-, Formular-, Badge- und Karten-Grundsystem
+(Paket A, Phase 2). Wer ein neues Bauteil baut, nutzt diese Primitives und legt
+kein zweites allgemeines Muster daneben:
+
+| Primitive | Datei | Klassen |
+|-----------|-------|---------|
+| Buttons | `buttons.css` | `.btn` + `.btn-primary` / `-outline` / `-ghost` / `-danger` / `-icon` / `-link`; Höhen `.btn-sm` (32) · Standard (40) · `.btn-lg` (48) |
+| Eingaben | `forms.css` | `.field-input` / `.field-select` / `.field-textarea`, Checkbox/Radio; Kunde 40 px, Admin 36 px |
+| Fokus | `primitives.css` | `outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset)` |
+| Badges | `primitives.css` | `.badge` + `.badge--neutral/-info/-progress/-success/-warning/-overdue/-error/-blocked/-cancelled/-archived` |
+| Karten | `primitives.css` | `.ce-card`, `.ce-card-raised`, `.ce-card-interactive`, `.ce-card-muted`, `.ce-card-inverse`, `.ce-table-container` |
+| Icons | `components/ui/Icon.jsx` | `<Icon n="…" s={16\|18\|24\|40} />`, stroke 1.75, `currentColor` |
+
+Verbindlich: Radius nur aus `--ce-radius-*`, Tiefe nur aus `--ce-elevation-*`,
+kein Glow, kein farbiger Schatten, keine Bewegung beim Buttondruck, kein
+`outline: none` ohne gleichwertigen Ersatz, Statusbadges immer mit Punkt UND
+Text. Höchstes UI-Gewicht bleibt 600. `interfacePrimitives.test.mjs` prüft das.
+
+Die historischen Klassennamen (`.btn-outline`, `.badge-green`, `.tile`,
+`.table-card`, `.adm-card`, `.adm-btn-danger` …) bleiben gültig und zeigen auf
+dieselben Primitives — Markup musste nicht angefasst werden.
+
+Bewusst noch nicht migriert (folgt im jeweiligen Seitenpaket): `.auth-cta`,
+`.pp-net-cta`, der Glow-CTA `.offers-calc-cta .btn-primary`, `.pp-kpi`,
+`.calc-panel`, Angebots- und Buchungsmodule, Profilhero, `.inv-summary`.
+
 ### CSS-Import-Reihenfolge — kritisch
 
 `src/styles/index.css` importiert alle Stylesheets in fester Reihenfolge.
-Entscheidend ist nur: `dashboard-premium.css` steht **nach** `dashboard.css`
+Entscheidend ist: `primitives.css` steht **nach** `buttons.css`/`forms.css`
+(der Fokusstandard soll dort greifen) und **vor** allen Bereichs-Stylesheets —
+deren höher spezifische Sonderfälle bleiben damit wirksam.
+`dashboard-premium.css` steht **nach** `dashboard.css`
 (es überschreibt dessen Basisregeln gezielt), und die isolierten Bereichs-
 Stylesheets (`admin.css`, `addressbook.css`, `drafts.css`, `cancellation.css`,
 `email-change.css`, `overview.css`) stehen danach — sie sind reine
@@ -259,7 +290,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/redesign-dashboard-kpi-cards`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/design-primitives-phase-2`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

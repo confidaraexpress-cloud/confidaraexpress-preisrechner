@@ -12,7 +12,7 @@ function Navbar() {
     <>
       <nav className="navbar">
         <div className="container navbar-inner">
-          <button className="hamburger-btn" onClick={() => setDrawerOpen(true)}><Icon n="menu" s={22} /></button>
+          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setDrawerOpen(true)}><Icon n="menu" s={22} /></button>
           <div className="navbar-logo" onClick={() => navigate("/login")}>
             <div className="logo-mark">CE</div>
             <span className="logo-text">ConfidaraExpress</span>
@@ -35,7 +35,7 @@ function Navbar() {
           <div className="mobile-drawer open" style={{ zIndex: 999 }}>
             <div className="mobile-drawer-header">
               <div className="navbar-logo"><div className="logo-mark">CE</div><span className="logo-text">ConfidaraExpress</span></div>
-              <button className="drawer-close-btn" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
+              <button className="drawer-close-btn" aria-label="Navigation schließen" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
             </div>
             <nav className="mobile-drawer-nav">
               {authed ? (

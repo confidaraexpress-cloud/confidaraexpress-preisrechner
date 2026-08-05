@@ -185,6 +185,11 @@
   /* Gefüllte Aktionsflächen — nur für Buttons, nie für Badges. */
   --ce-color-danger-solid: #9b3535;                   /* weiß darauf 7,11:1 */
   --ce-color-success-solid: #2f6b52;                  /* weiß darauf 6,28:1 */
+  /* Zustände der gefüllten Danger-Aktion (Paket A, Phase 2). Phase 1 trug nur
+     den Ruhezustand; das Buttonprimitive braucht Hover und Active in derselben
+     Familie, damit die Danger-Variante nicht mit Fremdrot (#dc2626) arbeitet. */
+  --ce-color-danger-hover: #862d2d;                   /* weiß darauf 8,65:1 */
+  --ce-color-danger-active: #712525;                  /* weiß darauf 10,54:1 */
 
   /* ── Overlay und Fokus ──
      Ein Overlayton für alle Dialoge; der Navigations-Drawer ist als einzige
@@ -192,6 +197,14 @@
   --ce-color-overlay: rgba(17, 26, 51, 0.45);
   --ce-color-overlay-drawer: rgba(17, 26, 51, 0.55);
   --ce-color-focus-ring: rgba(83, 103, 232, 0.32);
+  /* Der EINE Fokusring des Systems (Paket A, Phase 2) — als outline-Kurzform,
+     nicht als Schatten: outline liegt außerhalb des Boxmodells und erzeugt
+     deshalb weder Layoutsprung noch „wachsenden Schatten" an Eingaben.
+     Verwendung immer als Paar: `outline: var(--ce-focus-ring);
+     outline-offset: var(--ce-focus-ring-offset);`. Der weiche Halo
+     --ce-elevation-focus-ring bleibt für Flächen ohne eigene Kante reserviert. */
+  --ce-focus-ring: 2px solid var(--ce-color-border-focus);
+  --ce-focus-ring-offset: 2px;
 
   /* ── Schriftfamilien ──
      Zwei Familien: Cormorant ausschließlich für Display-Momente (Seitentitel
@@ -314,6 +327,26 @@
   --ce-bp-lg: 1024px;
   --ce-bp-xl: 1280px;
   --ce-bp-2xl: 1600px;
+
+  /* ── Bedienelementhöhen (Paket A, Phase 2) ──
+     Die einzigen zulässigen Höhen für Buttons und Eingaben. Drei Stufen im
+     Kundenportal, eine dichtere Stufe im Adminportal. --ce-size-touch-target
+     ist die Untergrenze auf grobem Zeiger (Finger); die Primitives heben dort
+     die kleineren Stufen darauf an, statt eine vierte Höhe einzuführen. */
+  --ce-size-control-sm: 32px;
+  --ce-size-control-md: 40px;
+  --ce-size-control-lg: 48px;
+  --ce-size-control-admin: 36px;
+  --ce-size-touch-target: 44px;
+
+  /* ── Icongrößen (Paket A, Phase 2) ──
+     Die vier zulässigen Stufen des internen Iconsystems. 16 in dichten
+     Kontexten (Tabellenzeilen, kleine Buttons), 18 als Standard, 24 in
+     Kartenköpfen und 40 in Leerzuständen. */
+  --ce-icon-sm: 16px;
+  --ce-icon-md: 18px;
+  --ce-icon-lg: 24px;
+  --ce-icon-xl: 40px;
 
   /* ── Layoutmaße ── */
   --ce-size-content: 1240px;

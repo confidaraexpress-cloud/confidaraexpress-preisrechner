@@ -18,12 +18,9 @@
 /* ══════════ Geteilte Atome der Übersicht ══════════ */
 
 /* Inhaltsfläche: weiß, feine Border, sehr flacher Schatten — kein Glas,
-   kein backdrop-filter, kein Verlauf. */
-.tile {
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-card);
-}
+   kein backdrop-filter, kein Verlauf. Das Material steht seit Paket A,
+   Phase 2 zentral im Base-Card-Primitive (primitives.css); .tile ist dort
+   als kompatibler Klassenname mitgeführt. */
 
 /* Icon-Medaillon: ruhige, leicht getönte Fläche statt Radial-Glanz + Glow. */
 .pp-medal {
@@ -105,7 +102,7 @@
 .pp-cta:hover { background: var(--accent-blue-strong); }
 
 .pp-bell:focus-visible, .pp-uchip:focus-visible, .pp-cta:focus-visible {
-  outline: 2px solid var(--accent-blue); outline-offset: 2px;
+  outline: var(--ce-focus-ring); outline-offset: 2px;
 }
 
 /* ══════════ KPI-Karten — „Executive Metric Cards" ══════════ */

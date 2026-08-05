@@ -1,0 +1,230 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRIMITIVES — Paket A, Phase 2
+   ───────────────────────────────────────────────────────────────────────────
+   Fokusstandard, Statusbadges, Karten-Grundtypen und die Grundregeln des
+   Iconsystems. Buttons und Eingaben stehen in buttons.css bzw. forms.css;
+   zusammen bilden die drei Dateien die EINE globale Primitive-Ebene.
+
+   Diese Datei definiert ausschließlich Material. Sie kennt keine Statuslogik,
+   keine Backend-Abbildung und kein Seitenlayout. PageHeader, Topbar, Tabellen-
+   struktur, Dialogsystem und die Empty-/Loading-/Error-Zustände sind bewusst
+   NICHT Teil dieser Phase.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════ 1 — FOKUSSTANDARD ═════════════════════════════════════════════
+   Grundlinie mit Spezifität 0 (:where): sie greift überall dort, wo ein
+   Element keine eigene Fokusdarstellung hat, und wird von JEDER bestehenden
+   Regel überschrieben. Damit gibt es keinen fokussierbaren Zustand ohne
+   sichtbare Markierung — und die bewusst hochwertigen Sonderfälle bleiben:
+   die Sidebar (--ce-sidebar-active-icon auf dunklem Grund) und die Aktion auf
+   der dunklen Signature-Fläche (--ce-net-focus).
+
+   Kontrast des Rings (#5367e8): 4,69:1 gegen Weiß, 4,44:1 gegen den Ivory-
+   Rampenkopf — beides deutlich über den 3:1, die WCAG 1.4.11 für
+   Bedienelemente verlangt. Auf dunklem Grund übernehmen die beiden genannten
+   Sonderfälle. */
+:where(a[href], button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+/* Interaktive Karten und Links im Inhalt tragen denselben Ring. */
+.ce-card-interactive:focus-visible,
+.tile-interactive:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+/* ═══════════ 2 — STATUSBADGES ══════════════════════════════════════════════
+   Ein Grundsystem, zehn Statusgruppen, alle Farben aus der Foundation.
+
+   Verbindlich:
+     • Radius 8px (--ce-radius-sm) — kein Pill. Die frühere Kapselform
+       (--radius-full) las sich wie ein Tag, nicht wie ein Zustand.
+     • Der Statuspunkt ist Pflicht: Status wird nie allein über Farbe
+       vermittelt. Zusätzlich trägt jedes Badge sichtbaren Text.
+     • Schrift 12px / Gewicht 600, Mindesthöhe 24px (Kunde) bzw. 22px (Admin).
+     • Lange deutsche Begriffe dürfen umbrechen statt eine Spalte zu sprengen.
+
+   Die Statuslogik selbst (welcher Backendwert auf welche Gruppe zeigt) bleibt
+   unverändert in den bestehenden Mappern — hier steht nur die Darstellung.
+   Die historischen Farbklassen .badge-green/-blue/-yellow/-red/-gray bleiben
+   gültig und zeigen auf die entsprechende Statusgruppe. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.badge::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ce-radius-full);
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.badge--neutral,  .badge-gray {
+  background: var(--ce-color-status-neutral-surface);
+  color: var(--ce-color-status-neutral-fg);
+  border-color: var(--ce-color-status-neutral-border);
+}
+.badge--info,     .badge-blue {
+  background: var(--ce-color-status-info-surface);
+  color: var(--ce-color-status-info-fg);
+  border-color: var(--ce-color-status-info-border);
+}
+.badge--progress {
+  background: var(--ce-color-status-progress-surface);
+  color: var(--ce-color-status-progress-fg);
+  border-color: var(--ce-color-status-progress-border);
+}
+.badge--success,  .badge-green {
+  background: var(--ce-color-status-success-surface);
+  color: var(--ce-color-status-success-fg);
+  border-color: var(--ce-color-status-success-border);
+}
+.badge--warning,  .badge-yellow {
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+  border-color: var(--ce-color-status-warning-border);
+}
+.badge--overdue {
+  background: var(--ce-color-status-overdue-surface);
+  color: var(--ce-color-status-overdue-fg);
+  border-color: var(--ce-color-status-overdue-border);
+}
+.badge--error,    .badge-red {
+  background: var(--ce-color-status-error-surface);
+  color: var(--ce-color-status-error-fg);
+  border-color: var(--ce-color-status-error-border);
+}
+.badge--blocked {
+  background: var(--ce-color-status-blocked-surface);
+  color: var(--ce-color-status-blocked-fg);
+  border-color: var(--ce-color-status-blocked-border);
+}
+.badge--cancelled {
+  background: var(--ce-color-status-cancelled-surface);
+  color: var(--ce-color-status-cancelled-fg);
+  border-color: var(--ce-color-status-cancelled-border);
+}
+.badge--archived {
+  background: var(--ce-color-status-archived-surface);
+  color: var(--ce-color-status-archived-fg);
+  border-color: var(--ce-color-status-archived-border);
+}
+
+/* Adminportal: dichtere Stufe, gleiche Materialsprache. */
+.adm-shell .badge { min-height: 22px; padding: 2px 9px; }
+
+/* ═══════════ 3 — KARTEN-PRIMITIVES ═════════════════════════════════════════
+   Sechs Grundtypen, ausschließlich aus Foundation-Surfaces, -Radien, -Borders
+   und -Elevations. Kein Glow, kein backdrop-filter, keine zusätzliche
+   Farbwelt, keine Radien und keine Schatten außerhalb der Skala.
+
+   Hover gibt es NUR bei tatsächlich interaktiven Karten; informative Karten
+   bekommen weder Cursor- noch Lift-Effekt.
+
+   Kompatible Abbildung der bestehenden Klassennamen:
+     .tile        → Base Card   (Übersicht)
+     .table-card  → Table Container
+     .adm-card    → Base Card   (Adminbereich)
+     .adm-filters → Base Card   (Admin-Filterleiste)
+
+   Bewusst NICHT hier migriert: .pp-kpi, Carrier-/Signature-Karte,
+   .calc-panel, Angebotskarten, Buchungsmodule, Profilhero und
+   .inv-summary — sie tragen eigene, geprüfte Materialien und folgen
+   seitenbezogen. */
+.ce-card,
+.tile,
+.adm-card,
+.adm-filters {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+
+.ce-card-raised {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-2);
+}
+
+.ce-card-interactive {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  cursor: pointer;
+  transition:
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ce-card-interactive:hover {
+  border-color: var(--ce-color-border-strong);
+  box-shadow: var(--ce-elevation-2);
+}
+
+.ce-card-muted {
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-0);
+}
+
+/* Inverse/Signature — dunkle Fläche der Foundation, ohne Filter und ohne
+   farbiges Streulicht. Das Material ist unverändert aus der geprüften
+   Signature-Fläche übernommen. */
+.ce-card-inverse {
+  background: var(--ce-color-surface-inverse);
+  border: 1px solid var(--ce-color-surface-inverse-edge);
+  border-radius: var(--ce-radius-xl);
+  box-shadow: var(--ce-elevation-material-signature);
+  color: var(--ce-color-text-inverse);
+}
+
+/* Table Container — Base Card mit beschnittenen Ecken, damit Kopfzeile und
+   letzte Zeile sauber innerhalb des Radius liegen. */
+.ce-table-container,
+.table-card {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ce-card-interactive { transition: none; }
+}
+
+/* ═══════════ 4 — ICON-GRUNDLAGE ════════════════════════════════════════════
+   Das interne Iconsystem (components/ui/Icon.jsx) ist die einzige Quelle:
+   24er-viewBox, reine Linienführung, stroke-width 1.75, runde Enden und
+   Verbindungen, Farbe immer currentColor. Keine zweite Iconbibliothek.
+
+   Die vier zulässigen Größen stehen als Tokens in variables.css
+   (--ce-icon-sm/-md/-lg/-xl), damit Aufrufer sie referenzieren können, statt
+   Zahlen zu streuen. Bestehende Aufrufe mit abweichenden Pixelwerten bleiben
+   gültig und wandern in ihren Seitenpaketen auf die Leiter. */
+
+/* Icons folgen der Textfarbe und skalieren nie den Zeilenfluss. */
+.ce-icon {
+  flex: none;
+  color: currentColor;
+}

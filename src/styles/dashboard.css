@@ -122,7 +122,9 @@
 .kpi-value-sm { font-size: 16px; letter-spacing: -0.01em; }
 
 /* ─── Tables ─────────────────────────────────────────────────────────────── */
-.table-card { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-card); }
+/* Das Material von .table-card (Fläche, Kante, Radius, Tiefe, overflow) steht
+   seit Paket A, Phase 2 zentral im Table-Container-Primitive (primitives.css).
+   Hier bleibt nur, was diese Tabelle strukturell ausmacht. */
 .table-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; }
 .table-card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -132,13 +134,11 @@ td { padding: 13px 14px; font-size: 13px; color: var(--text-primary); border-bot
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--surface-subtle); }
 
-/* ─── Badges ─────────────────────────────────────────────────────────────── */
-.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; white-space: nowrap; }
-.badge-green  { background: var(--success-bg); color: var(--success);  border: 1px solid rgba(16,185,129,0.22); }
-.badge-blue   { background: var(--blue-light);  color: var(--blue2);   border: 1px solid rgba(29,78,216,0.18); }
-.badge-yellow { background: var(--warn-bg);     color: var(--warn);    border: 1px solid rgba(245,158,11,0.22); }
-.badge-red    { background: var(--danger-bg);   color: var(--danger);  border: 1px solid rgba(239,68,68,0.22); }
-.badge-gray   { background: var(--gray100);     color: var(--gray600); border: 1px solid rgba(14,30,80,0.08); }
+/* ─── Badges ─────────────────────────────────────────────────────────────────
+   Das Badge-Grundsystem (.badge samt Statuspunkt und allen zehn Statusgruppen)
+   steht seit Paket A, Phase 2 zentral in primitives.css. Die historischen
+   Farbklassen .badge-green/-blue/-yellow/-red/-gray bleiben dort als
+   Statusgruppen erhalten — kein Markup musste angefasst werden. */
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────── */
 .alert { padding: 11px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
@@ -298,7 +298,7 @@ tr:hover td { background: var(--surface-subtle); }
   cursor: pointer;
 }
 .inv-filter-chip:hover { border-color: var(--border2); color: var(--navy); }
-.inv-filter-chip:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.inv-filter-chip:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 .inv-filter-chip--active { background: var(--navy); border-color: var(--navy); color: #fff; }
 
 /* ─── Rechnungen: Tabelle ohne horizontales Scrollen (sechs Bereiche) ────────

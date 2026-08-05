@@ -287,6 +287,14 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 .offers-calc-cta .btn-primary svg { flex-shrink: 0; }
+/* ÜBERGANGSSCOPE (Paket A, Phase 2 → Seitenpaket Preisrechner):
+   Das Buttonsystem vermittelt „deaktiviert" seit Phase 2 über eigene Flächen-
+   und Textrollen statt über pauschale opacity. Dieser CTA setzt seine Fläche
+   selbst (Verlauf, höher spezifisch) und überschreibt damit die Disabled-Fläche
+   des Primitives — ohne diese Regel wäre der gesperrte Zustand des CTA nicht
+   mehr zu erkennen. Die Deckkraft bleibt deshalb hier — und NUR hier —
+   bestehen, bis der Preisrechner seinen eigenen CTA vollständig ablöst. */
+.offers-calc-cta .btn-primary:disabled { opacity: 0.5; }
 
 /* ─── Booking address grid (2-col desktop, 1-col mobile) ────────────────── */
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -448,7 +456,7 @@
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
 .ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12.5px; font-weight: 600; color: var(--blue2); cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
-.ins-adjust-btn:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 3px; border-radius: 3px; }
+.ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 3px; }
 /* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
 .ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.45; color: var(--gray700); background: #fff8ec; border: 1px solid rgba(217, 119, 6, 0.22); border-radius: 10px; }
 .ins-overmax svg { color: #b45309; flex-shrink: 0; margin-top: 1px; }
@@ -585,7 +593,7 @@
 
 /* Tastatur-Fokus sichtbar auf dem visuellen Radio (Inputs sind visuell versteckt). */
 .ins-card input:focus-visible ~ .ins-card-head .ins-card-radio,
-.labelfmt-card input:focus-visible ~ .labelfmt-radio { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.labelfmt-card input:focus-visible ~ .labelfmt-radio { box-shadow: var(--ce-elevation-focus-ring); }
 
 /* Warenwert / Versicherungswert: getrennte Felder, nebeneinander (mobil gestapelt). */
 .ins-value-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -798,7 +806,7 @@
 }
 .dc-nav:hover:not(:disabled) { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
 .dc-nav:disabled { opacity: 0.4; cursor: not-allowed; }
-.dc-nav:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.dc-nav:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
 .dc-title { font-size: 13.5px; font-weight: 700; color: var(--navy); font-family: 'DM Sans', sans-serif; }
 .dc-weekdays, .dc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .dc-weekdays { margin-bottom: 4px; }
@@ -812,7 +820,7 @@
 }
 .dc-day:hover:not(:disabled):not(.dc-day--selected) { background: var(--gray50); border-color: var(--border); }
 .dc-day:disabled { color: var(--gray300, #cbd5e1); cursor: not-allowed; }
-.dc-day:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.dc-day:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
 .dc-day--today:not(.dc-day--selected) { border-color: var(--blue3); color: var(--blue2); }
 .dc-day--selected { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 3px 10px -2px rgba(29, 78, 216, 0.4); }
 .dc-day-num { line-height: 1; }
@@ -935,5 +943,5 @@
   cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35);
 }
 .bk-savedraft-link:hover { border-bottom-color: var(--blue2); }
-.bk-savedraft-link:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 2px; }
+.bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 2px; }
 .bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--danger); }

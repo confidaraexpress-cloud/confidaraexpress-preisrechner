@@ -82,11 +82,11 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-foot-note { font-size: 12.5px; color: var(--gray400); }
 
 /* ── Filter bar ──────────────────────────────────────────────────────────── */
-.adm-filters { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-end; padding: 16px 18px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; box-shadow: 0 1px 4px rgba(14,30,80,0.04); }
+/* Material (Fläche/Kante/Radius/Tiefe) kommt aus dem Base-Card-Primitive,
+   Eingabematerial und Fokus aus dem Formularsystem (Paket A, Phase 2). */
+.adm-filters { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-end; padding: 16px 18px; margin-bottom: 16px; }
 .adm-filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 132px; }
 .adm-filter-field label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
-.adm-filter-field input, .adm-filter-field select { padding: 8px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
-.adm-filter-field input:focus, .adm-filter-field select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
 .adm-filter-actions { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
 
 /* ── Table specifics (Basis kommt aus dashboard.css: .table-card/.table-scroll/table) ── */
@@ -132,7 +132,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--gray100); color: var(--gray600); border: 1px solid var(--border); white-space: nowrap; }
 
 .adm-cards { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
-.adm-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.04); overflow: hidden; }
+/* Material aus dem Base-Card-Primitive (primitives.css); hier bleibt nur der
+   Beschnitt, damit Kopfzeile und Fuß innerhalb des Radius liegen. */
+.adm-card { overflow: hidden; }
 .adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--navy); }
 .adm-card-head svg { color: var(--blue2); }
 .adm-card-body { padding: 16px 18px; }
@@ -179,12 +181,14 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-modal-icon-approve { background: var(--blue-light); color: var(--blue2); }
 .adm-modal-icon-danger { background: var(--danger-bg); color: #dc2626; }
 
-/* Danger-Aktion (Blockieren) — rot, klar von neutralen Aktionen getrennt. */
-.adm-btn-danger { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
-.adm-btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+/* Danger-Aktion (Blockieren) — rot, klar von neutralen Aktionen getrennt.
+   Fläche und Zustände liegen seit Paket A, Phase 2 in der Danger-Variante des
+   Buttonsystems (buttons.css); .adm-btn-danger bleibt der gültige Klassenname. */
 
 /* ── Gefahrenzone (Kundendetail — DSGVO-Anonymisierung) ──────────────────── */
-.adm-danger-zone { border-color: rgba(239,68,68,0.35); box-shadow: 0 1px 4px rgba(239,68,68,0.07); }
+/* Karte bleibt Karte: nur die Kante signalisiert die Gefahrenzone, die Tiefe
+   bleibt auf der Elevationsskala (kein farbiger Schatten). */
+.adm-danger-zone { border-color: var(--ce-color-status-error-border); box-shadow: var(--ce-elevation-1); }
 .adm-danger-head { color: var(--danger); }
 .adm-danger-head svg { color: var(--danger); }
 .adm-danger-item { display: flex; gap: 16px 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
@@ -198,13 +202,12 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
    „bereits anonymisiert"-Hinweis dazwischen die Geschwister-Adjazenz bricht). */
 .adm-danger-item-split { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .adm-danger-note { margin-top: 12px; font-size: 12.5px; font-weight: 600; color: var(--danger); }
-.adm-danger-button { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
-.adm-danger-button:hover { background: #dc2626; border-color: #dc2626; }
+/* .adm-danger-button trägt die Danger-Variante des Buttonsystems (buttons.css). */
 
-/* Type-to-confirm-Eingabe im Danger-Modal */
+/* Type-to-confirm-Eingabe im Danger-Modal — Material/Fokus aus dem
+   Formularsystem; hier bleibt nur das Zahlen-Setting und der Abstand. */
 .adm-modal-label { display: block; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--gray600); margin-bottom: 6px; }
-.adm-modal-input { width: 100%; padding: 9px 11px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 14px; letter-spacing: 0.04em; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; margin-bottom: 16px; }
-.adm-modal-input:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
+.adm-modal-input { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-bottom: 16px; }
 
 /* ── Stornierungsanfragen (Admin) ────────────────────────────────────────── */
 /* Scope-Trennung: klar informativer (blauer) Hinweis, dass dies ein interner
@@ -227,11 +230,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .adm-edit-field { display: flex; flex-direction: column; gap: 6px; }
 .adm-edit-label { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gray400); }
-.adm-edit-select { padding: 9px 11px; font-size: 13.5px; font-family: 'DM Sans', sans-serif; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; max-width: 320px; transition: border-color 0.15s, box-shadow 0.15s; }
-.adm-edit-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
-.adm-note-input { width: 100%; padding: 10px 12px; font-size: 13.5px; font-family: 'DM Sans', sans-serif; line-height: 1.5; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; resize: vertical; min-height: 88px; transition: border-color 0.15s, box-shadow 0.15s; }
-.adm-note-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
-.adm-note-input:disabled { background: var(--gray50); color: var(--gray500); }
+/* Material, Höhe, Hover, Fokus und Disabled kommen aus dem Formularsystem
+   (forms.css, Admin-Dichtestufe 36px). */
+.adm-edit-select { max-width: 320px; }
 .adm-edit-hint { font-size: 11.5px; color: var(--gray400); }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
@@ -298,10 +299,14 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-field { display: flex; flex-direction: column; gap: 6px; min-width: 260px; flex: 1; padding-top: 12px; }
 .adm-markup-actions { display: flex; align-items: center; padding-top: 12px; margin-top: 21px; }
 
-.adm-markup-input-wrap { display: flex; align-items: stretch; max-width: 220px; background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
-.adm-markup-input-wrap:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
-.adm-markup-input-invalid { border-color: var(--danger); }
-.adm-markup-input-invalid:focus-within { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
+/* Zusammengesetztes Eingabefeld (Zahl + %-Suffix): der Rahmen liegt auf dem
+   Wrapper, deshalb trägt er — statt der inneren <input> — die Eingabekante und
+   den Fokus des Formularsystems. */
+.adm-markup-input-wrap { display: flex; align-items: stretch; max-width: 220px; min-height: var(--ce-size-control-admin); background: #fff; border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.adm-markup-input-wrap:hover { border-color: var(--ce-color-border-interactive-hover); }
+.adm-markup-input-wrap:focus-within { border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
+.adm-markup-input-invalid, .adm-markup-input-invalid:hover { border-color: var(--ce-color-status-error-fg); }
+.adm-markup-input-invalid:focus-within { border-color: var(--ce-color-status-error-fg); box-shadow: 0 0 0 3px var(--ce-color-status-error-border); }
 .adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--navy); background: transparent; border: none; outline: none; }
 .adm-markup-input:disabled { background: var(--gray50); color: var(--gray500); }
 /* Sichtbares %-Suffix — die Einheit steht am Feld, nicht nur im Hilfetext. */
@@ -393,7 +398,7 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-cust-name { font-size: 14px; font-weight: 700; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 .adm-cust-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12.5px; color: var(--gray500); }
 .adm-cust-role { font-size: 10px; }
 .adm-cust-since { font-size: 11.5px; color: var(--gray400); }
@@ -412,7 +417,7 @@ a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-
   background: #fff; border: 1px solid var(--border); color: var(--gray600);
 }
 .adm-rowactions-trigger:hover { background: var(--gray50); border-color: var(--border2); color: var(--navy); }
-.adm-rowactions-trigger:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.adm-rowactions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 .adm-rowactions-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .adm-rowactions-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 232px;
@@ -485,7 +490,7 @@ a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-
 .adm-tech > .adm-tech-summary::-webkit-details-marker { display: none; }
 .adm-tech > .adm-tech-summary::after { content: "▾"; margin-left: auto; color: var(--gray400); font-size: 12px; transition: transform 0.15s; }
 .adm-tech[open] > .adm-tech-summary::after { transform: rotate(180deg); }
-.adm-tech > .adm-tech-summary:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: -2px; }
+.adm-tech > .adm-tech-summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 .adm-tech:not([open]) > .adm-tech-summary { border-bottom: none; }
 
 /* Textwerte in den Kennzahlen (z. B. „7 Kalendertage") brechen an Wortgrenzen. */
@@ -520,7 +525,7 @@ a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-
 .adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-no:hover { text-decoration: underline; }
-a.adm-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 /* Entwurf / fehlende Nummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
 .adm-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--gray500); font-weight: 600; }
 .adm-ship-date { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
@@ -529,7 +534,7 @@ a.adm-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-of
 .adm-ship-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-ship-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 .adm-ship-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
 
 /* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
@@ -586,7 +591,7 @@ a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); out
 .adm-inv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
 a.adm-inv-no:hover { text-decoration: underline; }
-a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 .adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
 
 /* Spalte „Kunde": Firma primaer, Kundennummer sekundaer — nie die user_id. */
@@ -614,7 +619,7 @@ a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-off
 .adm-filter-adv > summary::-webkit-details-marker { display: none; }
 .adm-filter-adv > summary::before { content: "▸"; font-size: 10px; }
 .adm-filter-adv[open] > summary::before { content: "▾"; }
-.adm-filter-adv > summary:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 3px; border-radius: 4px; }
+.adm-filter-adv > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 4px; }
 .adm-filter-adv-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 
@@ -670,13 +675,13 @@ a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-off
 .adm-canc-req { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-canc-no { font-size: 13.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-no:hover { text-decoration: underline; }
-a.adm-canc-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-canc-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 
 /* Spalten „Kunde" und „Sendung": fachlicher Wert primaer, Kontext sekundaer. */
 .adm-canc-cust, .adm-canc-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-canc-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
+a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
 .adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-ship-no:hover { text-decoration: underline; }
 /* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */

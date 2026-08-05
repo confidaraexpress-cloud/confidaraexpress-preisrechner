@@ -659,7 +659,7 @@
   border-color: var(--border); cursor: not-allowed;
 }
 .ap-finder-search-btn:focus-visible {
-  outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+  outline: none; box-shadow: var(--ce-elevation-focus-ring);
 }
 
 /* Zustände: Fehler-/Empty (die sichtbare Ladeanzeige liefert allein der Button). */
@@ -714,7 +714,7 @@
   cursor: pointer; transition: background 0.15s, border-color 0.15s;
 }
 .ap-more-btn:hover { background: var(--gray50); border-color: var(--blue2); }
-.ap-more-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28); }
+.ap-more-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
 
 @media (max-width: 767px) {
   .ap-finder-fields, .ap-finder-fields--gls { grid-template-columns: 1fr; }

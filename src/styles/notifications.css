@@ -28,7 +28,7 @@
   transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 .ntf-bell:hover { background: var(--surface-muted); color: var(--text-primary); }
-.ntf-bell:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+.ntf-bell:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* Übersicht: exakt die bisherige Fläche der dekorativen Glocke. */
 .ntf-bell-overview { width: 44px; height: 44px; }
@@ -109,7 +109,7 @@
   cursor: pointer;
 }
 .ntf-markall:hover { background: var(--surface-muted); }
-.ntf-markall:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+.ntf-markall:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
 
 .ntf-close {
   display: grid;
@@ -123,7 +123,7 @@
   cursor: pointer;
 }
 .ntf-close:hover { background: var(--surface-muted); color: var(--text-primary); }
-.ntf-close:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 1px; }
+.ntf-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
 
 .ntf-body { overflow-y: auto; }
 
@@ -157,7 +157,7 @@
   transition: background-color 140ms ease;
 }
 .ntf-item:hover { background: var(--surface-muted); }
-.ntf-item:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: -2px; }
+.ntf-item:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 /* Ungelesen ist mehrfach codiert (Punkt + Schriftschnitt), nicht allein farbig. */
 .ntf-item-unread .ntf-item-title { font-weight: 650; color: var(--text-primary); }
 

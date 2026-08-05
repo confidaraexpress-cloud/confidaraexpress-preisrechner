@@ -47,7 +47,7 @@
   outline: none; resize: vertical; min-height: 96px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.stn-dialog-textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
+.stn-dialog-textarea:focus { border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
 .stn-dialog-textarea:disabled { background: var(--gray50); color: var(--gray500); }
 .stn-dialog-textarea[aria-invalid="true"] { border-color: var(--danger); }
 

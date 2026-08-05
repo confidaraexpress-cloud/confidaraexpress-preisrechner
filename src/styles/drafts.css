@@ -47,7 +47,7 @@
    sichtbarem Textlabel, auf Mobil als vollwertiger Button in der Aktionsreihe. */
 .dft-delete-btn { color: var(--danger); border-color: rgba(239,68,68,0.28); }
 .dft-delete-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
-.dft-delete-btn:focus-visible { outline: 2px solid rgba(220,38,38,0.5); outline-offset: 2px; }
+.dft-delete-btn:focus-visible { outline: 2px solid var(--ce-color-status-error-fg); outline-offset: 2px; }
 
 /* Solide Danger-Bestätigung im Löschdialog — bewusst eigenständig (nicht
    .btn-primary), damit Farbe die Irreversibilität zusätzlich zum Text „Löschen"
@@ -61,7 +61,7 @@
 }
 .dft-delete-confirm-btn:hover:not(:disabled) { background: #dc2626; border-color: #dc2626; }
 .dft-delete-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.dft-delete-confirm-btn:focus-visible { outline: 2px solid rgba(220,38,38,0.5); outline-offset: 2px; }
+.dft-delete-confirm-btn:focus-visible { outline: 2px solid var(--ce-color-status-error-fg); outline-offset: 2px; }
 
 /* ─── Bestätigungsdialog (gleiches Muster wie price-drift-overlay/-card) ───── */
 .dft-dialog-overlay {
@@ -118,7 +118,7 @@
 /* „Fortsetzen" — sekundäre Aktion mit blauem Akzent (klar von „Löschen" getrennt). */
 .dft-resume-btn { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
 .dft-resume-btn:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
-.dft-resume-btn:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 2px; }
+.dft-resume-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* Fortsetzen-Banner auf „Neue Sendung" (ruhig, keine Dauerbewegung). */
 .dft-resume-note, .dft-resume-info, .dft-resume-conflict {
@@ -158,7 +158,7 @@
 .dft-savedraft-cta { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
 .dft-savedraft-cta:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
 .dft-savedraft-cta:disabled { opacity: 0.55; cursor: not-allowed; }
-.dft-savedraft-cta:focus-visible { outline: 2px solid rgba(37, 99, 235, 0.5); outline-offset: 2px; }
+.dft-savedraft-cta:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .dft-save-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--success); }
 .dft-save-status svg { flex-shrink: 0; }

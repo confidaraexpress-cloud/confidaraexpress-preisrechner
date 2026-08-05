@@ -105,3 +105,26 @@ export function postalCodeHint(country) {
   const ex = postalCodeExample(country);
   return ex ? `Beispiel: ${ex}` : "";
 }
+
+// Zahlwörter NUR für die Längen, die als reine Ziffernregel tatsächlich
+// vorkommen (DE=5, AT/CH=4, …). Bewusst keine offene Zahlwortbildung: was hier
+// nicht steht, fällt auf die Beispielformulierung zurück.
+const DIGIT_WORDS = {
+  3: "dreistellige", 4: "vierstellige", 5: "fünfstellige",
+  6: "sechsstellige", 7: "siebenstellige", 8: "achtstellige",
+};
+
+// Beschreibt das erwartete Format in Worten — AUSSCHLIESSLICH dort, wo es sich
+// exakt aus der generierten Regel ableiten lässt (Muster genau `\d{N}`, also
+// „N Ziffern und sonst nichts", z. B. DE `\d{5}` → „fünfstellige"). Für jedes
+// andere Muster (NL `1234 AB`, GB, US-ZIP+4, PL `00-950`, …) gibt es KEINE
+// erfundene Beschreibung, sondern null — der Aufrufer nutzt dann das Beispiel
+// aus den Regeln. Damit wird eine internationale PLZ nie pauschal auf fünf
+// Ziffern festgenagelt.
+export function describePostalFormat(country) {
+  const rule = getPostalCodeRule(country);
+  if (!rule || !rule.pattern) return null;
+  const m = /^\\d\{(\d+)\}$/.exec(rule.pattern);
+  if (!m) return null;
+  return DIGIT_WORDS[Number(m[1])] || null;
+}

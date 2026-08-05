@@ -12,6 +12,31 @@ import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
+import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
+import { focusFirstError, fieldErrorProps } from "../utils/focusField";
+
+// Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
+// serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
+const SHIPMENT_FIELD_MAP = {
+  "sender.postalCode": "s_zip",
+  "recipient.postalCode": "r_zip",
+  "sender.country": "s_country",
+  "recipient.country": "r_country",
+  from_zip: "s_zip", to_zip: "r_zip",
+  from_country: "s_country", to_country: "r_country",
+  weight: "weight", length: "length", width: "width", height: "height",
+  packageCount: "packageCount", shippingDate: "shippingDate",
+};
+
+// Reihenfolge im Formular — bestimmt, welches Feld bei mehreren Fehlern
+// angesprungen wird (immer das oberste).
+const SHIPMENT_FIELD_ORDER = [
+  "s_fullName", "s_company", "s_street", "s_addition", "s_zip", "s_city", "s_email",
+  "r_fullName", "r_company", "r_street", "r_addition", "r_zip", "r_city", "r_email",
+  "packageCount", "weight", "length", "width", "height", "shippingDate",
+];
+const firstShipmentErrorField = (errs) =>
+  SHIPMENT_FIELD_ORDER.find((k) => errs[k]) || Object.keys(errs)[0] || null;
 import { hasSavableShipmentId } from "../utils/draftsView.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
@@ -579,7 +604,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     const errs = getErrors(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      setError("Bitte korrigieren Sie die markierten Felder.");
+      // Zahl der betroffenen Angaben nennen und zum ersten fehlerhaften Feld
+      // springen — bisher blieb der Kunde am Button stehen und musste das Feld
+      // in einem langen Formular selbst suchen.
+      setError(summaryMessage(Object.keys(errs).length));
+      focusFirstError(firstShipmentErrorField(errs));
       return;
     }
     setErrors({});
@@ -641,9 +670,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           setLoading(false);
           return;
         }
-        // Paket 1: der providerneutrale PLZ-422 trägt `message` statt `error` — mit abfangen,
-        // damit die konkrete Meldung erscheint (die Inline-Validierung greift zwar vorher).
-        throw new Error(d.error || d.message || "Fehler bei Preisberechnung");
+        // Alle übrigen Ablehnungen laufen über den zentralen Normalizer: er liest
+        // `error` UND `message`, wertet `code` und `field` aus und trennt
+        // Eingabefehler von Geschäftsfällen und technischen Störungen. Trägt die
+        // Antwort ein Feld, wird es markiert und angesprungen — statt nur einen
+        // Sammeltext am Button zu zeigen.
+        const norm = normalizeApiError({ status: r.status, body: d, fieldMap: SHIPMENT_FIELD_MAP });
+        if (norm.field) {
+          setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
+          focusFirstError(norm.field);
+        }
+        setError(norm.message);
+        setLoading(false);
+        return;
       }
 
       // Fortsetzen — Übergang nach dem calculate-price.
@@ -695,9 +734,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     } catch (e) {
       if (e?.name === "AbortError") return;      // abgebrochen (neuer Request/Unmount) → kein Fehler, Loading gehört dem neuen Request
       if (seq !== calcSeq.current) return;       // veralteter Request → ignorieren
-      setError(e.message === "Keine Preise gefunden"
-        ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
-        : e.message);
+      // Nur noch echte Ausnahmen (Verbindungsabbruch, unlesbare Antwort) — die
+      // fachlichen Ablehnungen sind oben behandelt. Kein roher Technikertext
+      // („Failed to fetch") mehr im Kundenbanner.
+      setError(normalizeThrownError(e).message);
       setLoading(false);
     } finally {
       // Genau hier — und nur hier — wird der nächste Klick wieder freigegeben.
@@ -1075,9 +1115,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                     <div className="field">
                       <label className="field-label">PLZ *</label>
                       <input className={`field-input${errors.s_zip  ? " field-input-error" : ""}`} value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)}
-                        placeholder={postalCodeExample(form.s_country) || "PLZ"} inputMode={postalCodeInputMode(form.s_country)} maxLength={postalCodeMaxLength()} />
+                        placeholder={postalCodeExample(form.s_country) || "PLZ"} inputMode={postalCodeInputMode(form.s_country)} maxLength={postalCodeMaxLength()}
+                        {...fieldErrorProps("s_zip", errors.s_zip).input} />
                       {errors.s_zip
-                        ? <span className="field-error">{errors.s_zip}</span>
+                        ? <span className="field-error" id={fieldErrorProps("s_zip", errors.s_zip).errorId}>{errors.s_zip}</span>
                         : (postalCodeExample(form.s_country)
                             ? <span className="field-hint">Beispiel: {postalCodeExample(form.s_country)}</span>
                             : (!isPostalCodeRequired(form.s_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
@@ -1102,9 +1143,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                     <div className="field">
                       <label className="field-label">PLZ *</label>
                       <input className={`field-input${errors.r_zip  ? " field-input-error" : ""}`} value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)}
-                        placeholder={postalCodeExample(form.r_country) || "PLZ"} inputMode={postalCodeInputMode(form.r_country)} maxLength={postalCodeMaxLength()} />
+                        placeholder={postalCodeExample(form.r_country) || "PLZ"} inputMode={postalCodeInputMode(form.r_country)} maxLength={postalCodeMaxLength()}
+                        {...fieldErrorProps("r_zip", errors.r_zip).input} />
                       {errors.r_zip
-                        ? <span className="field-error">{errors.r_zip}</span>
+                        ? <span className="field-error" id={fieldErrorProps("r_zip", errors.r_zip).errorId}>{errors.r_zip}</span>
                         : (postalCodeExample(form.r_country)
                             ? <span className="field-hint">Beispiel: {postalCodeExample(form.r_country)}</span>
                             : (!isPostalCodeRequired(form.r_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}

@@ -146,6 +146,14 @@ tr:hover td { background: var(--surface-subtle); }
 .alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); color: #059669; box-shadow: 0 1px 4px rgba(16,185,129,0.06); }
 .alert-info    { background: var(--blue-light);  border: 1px solid rgba(29,78,216,0.22);  color: var(--blue2); box-shadow: 0 1px 4px rgba(29,78,216,0.06); }
 
+/* Zweizeilige Fehlermeldung (FormAlert): Überschrift benennt das Problem, der
+   Text darunter erklärt Ursache und Korrektur. Ohne Titel verhält sich der
+   Kasten exakt wie der bisherige einzeilige .alert — bestehende Aufrufe bleiben
+   dadurch unverändert. */
+.form-alert-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.form-alert-title { font-weight: 700; line-height: 1.35; }
+.form-alert-text { line-height: 1.5; }
+
 /* ─── Tracking ───────────────────────────────────────────────────────────── */
 .tracking-timeline { padding: 8px 0; }
 .track-event { display: flex; gap: 14px; padding-bottom: 22px; position: relative; }

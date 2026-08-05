@@ -8,9 +8,11 @@ import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
-
-// ─── Validation ──────────────────────────────────────────────────────────────
-const ZIP_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/i;
+import { FormAlert } from "../components/ui/FormAlert";
+import { errorFromResponse, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
+import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP } from "../utils/calculatorValidation.mjs";
+import { focusFirstError, fieldErrorProps } from "../utils/focusField";
+import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
 
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
@@ -78,7 +80,13 @@ export default function CalculatorPage() {
   const [tariffs, setTariffs]       = useState([]);
   const [selected, setSelected]     = useState(null);
   const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState("");
+  // `error` trägt jetzt { title, message } statt eines einzelnen Strings, damit
+  // die Meldung das Problem benennt UND die Korrektur erklärt.
+  const [error, setError]           = useState(null);
+  // Feldbezogene Fehler: Schlüssel = Formularfeld, Wert = kurzer Text unter dem
+  // Feld. Quelle sind sowohl die Client-Vorprüfung als auch das `field` einer
+  // Serverantwort — dadurch landet auch ein Backend-Fehler am richtigen Feld.
+  const [fieldErrors, setFieldErrors] = useState({});
   const [hasResults, setHasResults] = useState(false);
 
   // ── Race-Schutz für /calculate-price (Audit F1) ──
@@ -119,31 +127,13 @@ export default function CalculatorPage() {
     if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
   };
 
-  const getValidationError = () => {
-    const pc = Number(form.packageCount);
-    if (!form.packageCount || !Number.isInteger(pc) || pc < 1 || pc > 99)
-                                               return "Anzahl muss zwischen 1 und 99 liegen.";
-    const w = Number(form.weight);
-    if (!form.weight)                          return "Gewicht ist ein Pflichtfeld.";
-    if (isNaN(w) || w < 0.1 || w > 1000)      return "Gewicht muss zwischen 0,1 und 1.000 kg liegen.";
-    if (form.length) {
-      const v = Number(form.length);
-      if (isNaN(v) || v < 0.1 || v > 300)     return "Länge muss zwischen 0,1 und 300 cm liegen.";
-    }
-    if (form.width) {
-      const v = Number(form.width);
-      if (isNaN(v) || v < 0.1 || v > 300)     return "Breite muss zwischen 0,1 und 300 cm liegen.";
-    }
-    if (form.height) {
-      const v = Number(form.height);
-      if (isNaN(v) || v < 0.1 || v > 300)     return "Höhe muss zwischen 0,1 und 300 cm liegen.";
-    }
-    if (!form.from_zip)                        return "Herkunfts-PLZ ist ein Pflichtfeld.";
-    if (!ZIP_RE.test(form.from_zip.trim()))    return "Herkunfts-PLZ hat ein ungültiges Format (z. B. 70173 oder 8001).";
-    if (!form.to_zip)                          return "Ziel-PLZ ist ein Pflichtfeld.";
-    if (!ZIP_RE.test(form.to_zip.trim()))      return "Ziel-PLZ hat ein ungültiges Format (z. B. 70173 oder 8001).";
-    return null;
-  };
+  // Die frühere Prüfung lief über EIN landesunabhängiges Regex und lieferte EINEN
+  // Sammeltext. Dadurch bestand „4444" als deutsche PLZ, wurde ans Backend
+  // geschickt, dort korrekt mit 422 abgelehnt — und die Ablehnung ging im Client
+  // verloren. Jetzt greift dieselbe zentrale Landesregel wie in „Neue Sendung"
+  // (src/utils/calculatorValidation.mjs → postalCode.mjs), und das Ergebnis ist
+  // feldbezogen. Siehe dort auch die internationale Behandlung: keine pauschale
+  // Fünfstelligkeit.
 
   const volWeight = form.length && form.width && form.height
     ? ((Number(form.length) * Number(form.width) * Number(form.height)) / 5000).toFixed(2) : null;
@@ -156,7 +146,10 @@ export default function CalculatorPage() {
     setHasResults(false);
     setTariffs([]);
     setSelected(null);
-    setError("");
+    setError(null);
+    // Feldmarkierungen verschwinden, sobald der Kunde die Eingabe ändert — die
+    // eingegebenen WERTE bleiben dabei unangetastet erhalten.
+    setFieldErrors({});
   };
 
   // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert —
@@ -276,9 +269,22 @@ export default function CalculatorPage() {
 
   const calculate = async () => {
     setHasResults(false); setTariffs([]);
-    const validErr = getValidationError();
-    if (validErr) { setError(validErr); return; }
-    setError(""); setLoading(true); setSelected(null);
+    // Ungültige Eingaben werden gar nicht erst gesendet: Der Kunde bekommt die
+    // Korrekturanweisung sofort am Feld, statt nach einem Netzwerkumlauf einen
+    // Sammeltext zu sehen.
+    const { fieldErrors: preErrors, banner } = getCalculatorErrors(form);
+    if (Object.keys(preErrors).length > 0) {
+      setFieldErrors(preErrors);
+      const anzahl = Object.keys(preErrors).length;
+      setError({
+        title: banner?.title || "Angaben prüfen",
+        message: anzahl > 1 ? `${banner?.message || ""} ${summaryMessage(anzahl)}`.trim() : banner?.message,
+      });
+      focusFirstError(firstErrorField(preErrors));
+      return;
+    }
+    setFieldErrors({});
+    setError(null); setLoading(true); setSelected(null);
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
     // abbrechen und die aktuellen Eingaben als Referenz festhalten.
@@ -312,10 +318,25 @@ export default function CalculatorPage() {
       // Token entfernt und den zentralen Auth-Redirect (AuthContext) bereits ausgelöst
       // → hier nur sauber aussteigen (kein irreführender Preisfehler, kein hängendes Loading).
       if (r.status === 401 || r.status === 403) { setLoading(false); return; }
+      if (!r.ok) {
+        // HIER ging die konkrete Meldung bisher verloren: gelesen wurde nur
+        // `d.error`, doch der providerneutrale PLZ-422 trägt `message`, `code`,
+        // `field` und `example` — und gar kein `error`. Der Normalizer liest alle
+        // Formen und ordnet Ergebnis, Feld und Fehlerart zu.
+        const norm = await errorFromResponse(r, { fieldMap: CALCULATOR_FIELD_MAP });
+        if (seq !== calcSeq.current) return;
+        if (reqKey !== calcKeyRef.current) { setLoading(false); return; }
+        if (norm.field) {
+          setFieldErrors({ [norm.field]: norm.fieldMessage || norm.message });
+          focusFirstError(norm.field);
+        }
+        setError({ title: norm.title, message: norm.message });
+        setLoading(false);
+        return;
+      }
       const d = await r.json();
       if (seq !== calcSeq.current) return;                              // während des Parsens ersetzt
       if (reqKey !== calcKeyRef.current) { setLoading(false); return; } // Eingaben geändert → verwerfen
-      if (!r.ok) throw new Error(d.error || "Fehler bei Preisberechnung");
       // Öffentliche Carrier-Liste (deduplziert vom Backend) übernehmen; die
       // bestehende Auswahl bleibt erhalten, auf noch verfügbare IDs gefiltert.
       const newPublicCarriers = Array.isArray(d.publicCarriers) ? d.publicCarriers : [];
@@ -329,9 +350,11 @@ export default function CalculatorPage() {
     } catch (e) {
       if (e?.name === "AbortError") return;      // abgebrochen (neuer Request/Unmount) → kein Fehler, Loading gehört dem neuen Request
       if (seq !== calcSeq.current) return;       // veralteter Request → ignorieren
-      setError(e.message === "Keine Preise gefunden"
-        ? "Für die angegebenen Maße oder das Gewicht ist aktuell kein passender Tarif verfügbar."
-        : e.message);
+      // Nur noch echte Ausnahmen (Verbindungsabbruch, nicht lesbare Antwort)
+      // landen hier — fachliche Ablehnungen sind oben bereits behandelt. Der
+      // rohe Text („Failed to fetch") erreicht den Kunden nicht mehr.
+      const norm = normalizeThrownError(e);
+      setError({ title: norm.title, message: norm.message });
       setLoading(false);
     }
   };
@@ -592,13 +615,20 @@ export default function CalculatorPage() {
                     </select>
                   </div>
                   <div className="field">
-                    <label className="field-label">PLZ *</label>
+                    <label className="field-label" htmlFor="calc-from-zip">PLZ *</label>
                     <input
-                      className="field-input"
+                      id="calc-from-zip"
+                      className={`field-input${fieldErrors.from_zip ? " field-input-error" : ""}`}
                       value={form.from_zip}
                       onChange={e => { upd("from_zip", e.target.value); resetResults(); }}
-                      placeholder="70173"
+                      placeholder={postalCodeExample(form.from_country) || "PLZ"}
+                      inputMode={postalCodeInputMode(form.from_country)}
+                      maxLength={postalCodeMaxLength()}
+                      {...fieldErrorProps("from_zip", fieldErrors.from_zip).input}
                     />
+                    {fieldErrors.from_zip
+                      ? <span className="field-error" id={fieldErrorProps("from_zip", fieldErrors.from_zip).errorId}>{fieldErrors.from_zip}</span>
+                      : (postalCodeExample(form.from_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.from_country)}</span>)}
                   </div>
                 </div>
 
@@ -616,13 +646,20 @@ export default function CalculatorPage() {
                     </select>
                   </div>
                   <div className="field">
-                    <label className="field-label">PLZ *</label>
+                    <label className="field-label" htmlFor="calc-to-zip">PLZ *</label>
                     <input
-                      className="field-input"
+                      id="calc-to-zip"
+                      className={`field-input${fieldErrors.to_zip ? " field-input-error" : ""}`}
                       value={form.to_zip}
                       onChange={e => { upd("to_zip", e.target.value); resetResults(); }}
-                      placeholder="8001"
+                      placeholder={postalCodeExample(form.to_country) || "PLZ"}
+                      inputMode={postalCodeInputMode(form.to_country)}
+                      maxLength={postalCodeMaxLength()}
+                      {...fieldErrorProps("to_zip", fieldErrors.to_zip).input}
                     />
+                    {fieldErrors.to_zip
+                      ? <span className="field-error" id={fieldErrorProps("to_zip", fieldErrors.to_zip).errorId}>{fieldErrors.to_zip}</span>
+                      : (postalCodeExample(form.to_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.to_country)}</span>)}
                   </div>
                 </div>
 
@@ -637,16 +674,37 @@ export default function CalculatorPage() {
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys unverändert). Anzahl = Anzahl identischer Pakete
                   (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
+              {/* Jedes Paketfeld kann seinen eigenen Fehler tragen (markiert,
+                  beschrieben, per aria-describedby verbunden und anspringbar). */}
               <div className="field-row field-row-5">
-                <div className="field">
-                  <label className="field-label">Anzahl</label>
-                  <input className="field-input" type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder="1" />
-                  <span className="field-hint">Identische Pakete</span>
-                </div>
-                <div className="field"><label className="field-label">Gewicht kg *</label><input className="field-input" type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" /></div>
-                <div className="field"><label className="field-label">Länge cm</label><input className="field-input" type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" /></div>
-                <div className="field"><label className="field-label">Breite cm</label><input className="field-input" type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" /></div>
-                <div className="field"><label className="field-label">Höhe cm</label><input className="field-input" type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" /></div>
+                {[
+                  { key: "packageCount", label: "Anzahl",       ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
+                  { key: "weight",       label: "Gewicht kg *", ph: "5"  },
+                  { key: "length",       label: "Länge cm",     ph: "30" },
+                  { key: "width",        label: "Breite cm",    ph: "20" },
+                  { key: "height",       label: "Höhe cm",      ph: "15" },
+                ].map(({ key, label, ph, hint, extra }) => {
+                  const err = fieldErrors[key];
+                  const a11y = fieldErrorProps(key, err);
+                  return (
+                    <div className="field" key={key}>
+                      <label className="field-label" htmlFor={`calc-${key}`}>{label}</label>
+                      <input
+                        id={`calc-${key}`}
+                        className={`field-input${err ? " field-input-error" : ""}`}
+                        type="number"
+                        value={form[key]}
+                        onChange={e => upd(key, e.target.value)}
+                        placeholder={ph}
+                        {...(extra || {})}
+                        {...a11y.input}
+                      />
+                      {err
+                        ? <span className="field-error" id={a11y.errorId}>{err}</span>
+                        : (hint && <span className="field-hint">{hint}</span>)}
+                    </div>
+                  );
+                })}
               </div>
               <p className="pkg-count-note">
                 <Icon n="info" s={13} c="currentColor" />
@@ -666,7 +724,10 @@ export default function CalculatorPage() {
             <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
               {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={18} /> Angebote vergleichen</>}
             </button>
-            {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
+            {/* Direkt am Aktionsbutton: benennt das Problem und erklärt die
+                Korrektur. Bei mehreren Feldfehlern steht zusätzlich die
+                Zusammenfassung („Bitte korrigieren Sie die N markierten Angaben."). */}
+            {error && <FormAlert tone="error" title={error.title} message={error.message} className="mt-16" />}
           </div>
         </div>
 

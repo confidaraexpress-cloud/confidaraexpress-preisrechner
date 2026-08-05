@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "./Icon";
 
-// Zeigt eine Geschäftsnummer (Kunden-, Bestell- oder Rechnungsnummer) monospaced an und
+// Zeigt eine Geschäftsnummer (Kunden-, Bestell- oder Rechnungsnummer) über die zentrale
+// `.mono`-Klasse an (proportionale Zahlenschrift mit tabular-nums, siehe layout.css) und
 // bietet eine tastaturbedienbare Kopieraktion. Bewusst schlank gehalten — keine Badges,
 // keine zusätzliche Karte: die Nummer fügt sich in das bestehende Layout ein.
 //

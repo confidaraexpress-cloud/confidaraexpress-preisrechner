@@ -92,16 +92,16 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* ── Table specifics (Basis kommt aus dashboard.css: .table-card/.table-scroll/table) ── */
 .adm-td-time { white-space: nowrap; color: var(--gray600); font-variant-numeric: tabular-nums; }
 .adm-action { font-weight: 600; color: var(--navy); display: block; }
-.adm-action-raw { display: block; margin-top: 2px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gray400); }
+.adm-action-raw { display: block; margin-top: 2px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--gray400); }
 .adm-party { display: inline-flex; flex-direction: column; gap: 1px; }
 .adm-party-name { font-weight: 600; color: var(--navy); }
-.adm-party-id { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--gray500); }
+.adm-party-id { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
 .adm-party-type { font-size: 11px; color: var(--gray400); text-transform: uppercase; letter-spacing: 0.04em; }
 .adm-muted { color: var(--gray400); }
-.adm-mono { font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--gray700); }
+.adm-mono { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--gray700); }
 .adm-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .adm-nowrap { white-space: nowrap; }
-.adm-mask { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.02em; color: var(--gray600); white-space: nowrap; }
+.adm-mask { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12px; letter-spacing: 0.02em; color: var(--gray600); white-space: nowrap; }
 /* Überfällige Fälligkeit deutlich markieren (nur Anzeige, keine Zahlungslogik). */
 .adm-overdue { color: var(--danger); font-weight: 600; }
 .adm-overdue-tag { font-size: 11.5px; font-weight: 600; }
@@ -118,7 +118,7 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 .adm-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
 .adm-page-ind { font-size: 13px; font-weight: 600; color: var(--gray500); }
-.adm-idlink { font-family: 'DM Mono', monospace; color: var(--blue2); text-decoration: none; font-weight: 600; }
+.adm-idlink { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; color: var(--blue2); text-decoration: none; font-weight: 600; }
 .adm-idlink:hover { text-decoration: underline; }
 
 /* ── Sendungsdetail ──────────────────────────────────────────────────────── */
@@ -203,7 +203,7 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 
 /* Type-to-confirm-Eingabe im Danger-Modal */
 .adm-modal-label { display: block; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--gray600); margin-bottom: 6px; }
-.adm-modal-input { width: 100%; padding: 9px 11px; font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 0.04em; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; margin-bottom: 16px; }
+.adm-modal-input { width: 100%; padding: 9px 11px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 14px; letter-spacing: 0.04em; color: var(--navy); background: #fff; border: 1px solid var(--border2); border-radius: var(--radius-sm); outline: none; margin-bottom: 16px; }
 .adm-modal-input:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
 
 /* ── Stornierungsanfragen (Admin) ────────────────────────────────────────── */
@@ -302,7 +302,7 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-input-wrap:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12); }
 .adm-markup-input-invalid { border-color: var(--danger); }
 .adm-markup-input-invalid:focus-within { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.14); }
-.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--navy); background: transparent; border: none; outline: none; }
+.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--navy); background: transparent; border: none; outline: none; }
 .adm-markup-input:disabled { background: var(--gray50); color: var(--gray500); }
 /* Sichtbares %-Suffix — die Einheit steht am Feld, nicht nur im Hilfetext. */
 .adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 700; color: var(--gray500); background: var(--gray50); border-left: 1px solid var(--border); }
@@ -518,11 +518,11 @@ a.adm-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-
 
 /* Spalte „Sendung": Bestellnummer primär, Datum sekundär. */
 .adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-no { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-no:hover { text-decoration: underline; }
 a.adm-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
 /* Entwurf / fehlende Nummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
-.adm-ship-no-muted { font-family: 'DM Sans', sans-serif; color: var(--gray500); font-weight: 600; }
+.adm-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--gray500); font-weight: 600; }
 .adm-ship-date { font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
 
 /* Spalte „Kunde": Firma primär, Kundennummer sekundär — nie die user_id. */
@@ -530,7 +530,7 @@ a.adm-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-of
 .adm-ship-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-cust-name:hover { color: var(--blue2); text-decoration: underline; }
 a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
-.adm-ship-cust-no { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--gray500); }
+.adm-ship-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
 
 /* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
 .adm-ship-way { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -584,7 +584,7 @@ a.adm-ship-cust-name:focus-visible { outline: 2px solid rgba(37,99,235,0.5); out
 /* Spalte „Rechnung": Nummer primaer, Datum + Modus sekundaer. Die Nummer wird
    NIE gekuerzt (das zerstoerte ihre Eindeutigkeit) — sie bricht kontrolliert. */
 .adm-inv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.adm-inv-no { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
+.adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
 a.adm-inv-no:hover { text-decoration: underline; }
 a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
 .adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--gray400); font-variant-numeric: tabular-nums; }
@@ -592,7 +592,7 @@ a.adm-inv-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-off
 /* Spalte „Kunde": Firma primaer, Kundennummer sekundaer — nie die user_id. */
 .adm-inv-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-inv-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
-.adm-inv-cust-no { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--gray500); }
+.adm-inv-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--gray500); }
 
 /* Spalte „Betrag & Faelligkeit". */
 .adm-inv-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -677,10 +677,10 @@ a.adm-canc-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-of
 .adm-canc-cust-name { font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-cust-name:hover { color: var(--blue2); text-decoration: underline; }
 a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; border-radius: 4px; }
-.adm-canc-ship-no { font-family: 'DM Mono', monospace; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-ship-no:hover { text-decoration: underline; }
 /* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
-.adm-canc-ship-no-muted { font-family: 'DM Sans', sans-serif; color: var(--gray500); font-weight: 500; }
+.adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--gray500); font-weight: 500; }
 .adm-canc-sub { font-size: 11.5px; color: var(--gray500); overflow-wrap: anywhere; }
 .adm-canc-time { font-size: 12.5px; color: var(--gray600); font-variant-numeric: tabular-nums; }
 

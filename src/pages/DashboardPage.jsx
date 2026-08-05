@@ -307,7 +307,7 @@ export default function DashboardPage() {
       />
       <main className="main-content">
         <div className="mobile-topbar">
-          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
+          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
           <div className="topbar-brand">ConfidaraExpress</div>
           {/* Dieselbe Regel wie beim Seiten-Mount unten: die Übersicht trägt ihre
               Glocke bereits in der eigenen Kopfzeile. Unterhalb von 860 px ist die

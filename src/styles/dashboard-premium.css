@@ -114,7 +114,7 @@
 .hamburger-btn:hover { background: var(--surface-muted); }
 /* Die Menüschaltfläche liegt außerhalb von .pp-side und braucht daher einen
    eigenen sichtbaren Fokuszustand (heller Grund → dunkler Akzent). */
-.mobile-topbar .hamburger-btn:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+.mobile-topbar .hamburger-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* Drawer-Overlay — NUR im eingeloggten Bereich. .sidebar-overlay wird auch vom
    öffentlichen NavbarLayout-Drawer verwendet; ohne diesen Scope würde die
@@ -152,7 +152,7 @@
    den Zustand zusätzlich. */
 .app-footer-legal a:hover { color: var(--accent-blue-strong); text-decoration: underline; }
 .app-footer-legal a:focus-visible {
-  outline: 2px solid var(--accent-blue);
+  outline: var(--ce-focus-ring);
   outline-offset: 3px;
   text-decoration: underline;
 }
@@ -401,7 +401,7 @@
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .ce-mail-dialog-close:hover { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-muted); }
-.ce-mail-dialog-close:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+.ce-mail-dialog-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .ce-mail-dialog-addr { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--ce-font-numeric); letter-spacing: 0.01em; }
 
@@ -416,7 +416,7 @@
   transition: background 0.15s, border-color 0.15s;
 }
 .ce-mail-dialog-provider:hover { background: var(--surface-muted); border-color: var(--border-strong, #cbd5e1); }
-.ce-mail-dialog-provider:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+.ce-mail-dialog-provider:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .ce-mail-dialog-divider { height: 1px; background: var(--border-subtle); margin: 14px 0; }
 
@@ -428,7 +428,7 @@
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .ce-mail-dialog-copy:hover { color: var(--text-primary); background: var(--surface-muted); }
-.ce-mail-dialog-copy:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+.ce-mail-dialog-copy:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  UNTERNEHMEN & KONTO                                                      */

@@ -93,7 +93,36 @@ const paths = {
   clockDelay:   "M12 5a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8.6V13l3 1.8M12 2.5a10.5 10.5 0 0 1 7 2.7",
 };
 
-export function Icon({ n, s = 18, c = "currentColor" }) {
+/* ── Icon-Grundsystem (Paket A, Phase 2) ─────────────────────────────────────
+   Das interne System ist die einzige Iconquelle des Projekts — keine zweite
+   Bibliothek, kein lucide-react.
+
+   Verbindliche Grundregeln, alle hier zentral gesetzt:
+     • viewBox 0 0 24 24, reine Linienführung ohne Flächen.
+     • stroke-width 1.75, strokeLinecap/-Linejoin round.
+     • Farbe immer currentColor — ein Icon folgt der Textfarbe seines Kontexts.
+     • Größenleiter 16 / 18 / 24 / 40 (ICON_SIZE, Tokens --ce-icon-* in
+       variables.css). 18 ist die Voreinstellung.
+     • Icons sind standardmäßig DEKORATIV: aria-hidden + focusable="false",
+       damit Screenreader sie nicht als Inhalt vorlesen. Trägt ein Icon
+       ausnahmsweise selbst die Information, liefert `title` einen
+       Textnamen (role="img" + <title>).
+     • Ein funktionaler Iconbutton bekommt sein aria-label am <button>, nicht
+       am Icon — das Icon bleibt dort dekorativ.
+
+   `s` bleibt eine freie Pixelzahl: bestehende Aufrufe außerhalb der Leiter sind
+   kompatibel und wandern in ihren jeweiligen Seitenpaketen. */
+export const ICON_SIZE = { sm: 16, md: 18, lg: 24, xl: 40 };
+
+export function Icon({ n, s = ICON_SIZE.md, c = "currentColor", title }) {
+  // Ein Icon MIT Textnamen ist Inhalt (role="img" + <title>), eines ohne ist
+  // dekorativ und für Screenreader unsichtbar. focusable="false" hält es
+  // zusätzlich aus der Tabreihenfolge (IE/Edge-Altlast, schadet sonst nie).
+  const beschriftet = typeof title === "string" && title.length > 0;
+  const a11y = beschriftet
+    ? { role: "img", focusable: "false" }
+    : { "aria-hidden": "true", focusable: "false" };
+
   if (n === "truck") {
     return (
       <svg
@@ -101,11 +130,13 @@ export function Icon({ n, s = 18, c = "currentColor" }) {
         height={s}
         fill="none"
         stroke={c}
-        strokeWidth="1.8"
+        strokeWidth="1.75"
         viewBox="0 0 24 24"
         strokeLinecap="round"
         strokeLinejoin="round"
+        {...a11y}
       >
+        {beschriftet && <title>{title}</title>}
         <rect x="1" y="3" width="15" height="13" rx="1" />
         <path d="M16 8h4l3 3v5h-7V8z" />
         <circle cx="5.5" cy="18.5" r="2.5" />
@@ -119,11 +150,13 @@ export function Icon({ n, s = 18, c = "currentColor" }) {
       height={s}
       fill="none"
       stroke={c}
-      strokeWidth="1.8"
+      strokeWidth="1.75"
       viewBox="0 0 24 24"
       strokeLinecap="round"
       strokeLinejoin="round"
+      {...a11y}
     >
+      {beschriftet && <title>{title}</title>}
       <path d={paths[n] || ""} />
     </svg>
   );

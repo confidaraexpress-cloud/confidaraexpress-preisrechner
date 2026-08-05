@@ -36,7 +36,7 @@
 .abk-tab--active { background: white; color: var(--navy); box-shadow: 0 1px 4px rgba(14,30,80,0.10); }
 .abk-tab-count { font-size: 11px; font-weight: 700; color: var(--gray400); }
 .abk-tab--active .abk-tab-count { color: var(--blue2); }
-.abk-tab:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.abk-tab:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* ─── Werkzeugleiste ──────────────────────────────────────────────────────── */
 .abk-toolbar {
@@ -53,7 +53,7 @@
   font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--navy);
   background: var(--gray50); outline: none; transition: border-color 0.15s, background 0.15s;
 }
-.abk-search-input:focus { background: white; border-color: var(--blue3); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.abk-search-input:focus { background: white; border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
 .abk-search-status { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; }
 
 .abk-toolbar-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -66,7 +66,7 @@
 .abk-filter-pill:hover { border-color: var(--border2); }
 .abk-filter-pill--active { background: var(--blue-light); border-color: rgba(29,78,216,0.3); color: var(--blue2); }
 .abk-filter-pill svg { flex-shrink: 0; }
-.abk-filter-pill:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.abk-filter-pill:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* ─── Listen-Wrapper ──────────────────────────────────────────────────────── */
 .abk-list-wrap { min-height: 120px; }
@@ -124,7 +124,7 @@
   background: white; color: var(--gray600); cursor: pointer; transition: background 0.15s, border-color 0.15s;
 }
 .abk-actions-trigger:hover { background: var(--gray50); border-color: var(--border2); }
-.abk-actions-trigger:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.abk-actions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 .abk-actions-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px;
   background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
@@ -172,7 +172,7 @@
   border-radius: var(--radius); border: 1.5px solid var(--border); background: white; color: var(--gray600); cursor: pointer;
 }
 .abk-drawer-close:hover { background: var(--gray50); }
-.abk-drawer-close:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.abk-drawer-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 .abk-drawer-body { flex: 1; overflow-y: auto; padding: 22px 24px; }
 .abk-drawer-footer {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
@@ -195,7 +195,7 @@
 .abk-role-option input { position: absolute; opacity: 0; width: 0; height: 0; }
 .abk-role-option-label { font-size: 12.5px; font-weight: 600; color: var(--navy); }
 .abk-role-option--selected { border-color: var(--blue); background: var(--blue-light); }
-.abk-role-option:focus-within { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
+.abk-role-option:focus-within { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .abk-check-row { display: flex; align-items: center; gap: 9px; padding: 9px 0; }
 .abk-check-row input[type="checkbox"] { accent-color: var(--blue); width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; }

@@ -42,7 +42,7 @@ export function DashboardLayout() {
       />
       <main className="main-content">
         <div className="mobile-topbar">
-          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>
+          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}>
             <Icon n="menu" s={22} />
           </button>
           <div className="topbar-brand">ConfidaraExpress</div>

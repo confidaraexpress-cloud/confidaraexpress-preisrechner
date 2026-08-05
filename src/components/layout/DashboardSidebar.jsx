@@ -86,7 +86,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <div className="pp-brand">Confidara<b>Express</b></div>
               <div className="pp-brand-sub">B2B Versandplattform.</div>
             </div>
-            <button className="sidebar-close-btn pp-close" onClick={() => setSidebarOpen(false)}>
+            <button className="sidebar-close-btn pp-close" aria-label="Navigation schließen" onClick={() => setSidebarOpen(false)}>
               <Icon n="close" s={18} />
             </button>
           </div>

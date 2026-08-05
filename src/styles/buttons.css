@@ -1,34 +1,243 @@
-/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONSYSTEM — Paket A, Phase 2 (Primitives)
+   ───────────────────────────────────────────────────────────────────────────
+   Das EINE globale Buttonsystem. Sechs Varianten, drei Höhen, alle Werte aus
+   der Foundation (variables.css). Es gibt bewusst kein zweites allgemeines
+   Buttonprimitive daneben.
+
+   Varianten   Primary (.btn-primary) · Secondary (.btn-outline) ·
+               Tertiary/Ghost (.btn-ghost) · Danger (.btn-danger) ·
+               Icon (.btn-icon) · Link Action (.btn-link)
+   Höhen       Small 32px (.btn-sm) · Medium 40px (Standard) · Large 48px (.btn-lg)
+
+   Verbindlich und hier durchgesetzt:
+     • Radius ausschließlich --ce-radius-md.
+     • Primary trägt --ce-color-brand, Hover --ce-color-brand-hover,
+       Active --ce-color-brand-active; Danger trägt --ce-color-danger-solid.
+     • Kein Glow, kein farbiger Schatten, überhaupt kein box-shadow außer dem
+       Fokusring. Die frühere Primärfläche war ein Verlauf mit vier Schatten,
+       davon zwei farbige Streulichter — beides ist entfallen.
+     • Kein translateY und kein scale beim Drücken. Der Druckzustand wird
+       ausschließlich über die dunklere Fläche (--ce-color-brand-active)
+       vermittelt, nicht über Bewegung.
+     • Einheitliche Icongröße und ein einziger Iconabstand je Höhe.
+     • Sichtbarer Fokus über den Foundation-Fokusring (--ce-focus-ring).
+     • Disabled ohne pauschale opacity: eigene, ruhige Flächen- und Textrollen
+       je Variante. Eine globale Deckkraft hätte auch die Kante mit ausgeblendet
+       und den Kontrast unkontrolliert gesenkt.
+
+   Bewusst NICHT hier migriert (folgt im jeweiligen Seitenpaket):
+     • .auth-cta / .auth-btn-ghost — eigenes Auth-Theme (--auth-*).
+     • .pp-net-cta — Aktion auf der dunklen Signature-Fläche der Übersicht.
+     • .offers-calc-cta .btn-primary — Glow-Mega-CTA des Preisrechners; die
+       Regel liegt in calculator.css, ist höher spezifisch und gewinnt weiter.
+     • .dft-delete-confirm-btn, .abk-create-shipment u. a. seitenbezogene
+       Sonderbuttons des Versandprozesses.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Basis (Medium, 40px) ────────────────────────────────────────────────── */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 10px 20px; border-radius: var(--radius);
-  font-size: 14px; font-weight: 600; cursor: pointer; border: none;
-  font-family: 'DM Sans', sans-serif; transition: all 0.2s; white-space: nowrap;
+  --ce-btn-height: var(--ce-size-control-md);
+  --ce-btn-padding-x: var(--ce-space-5);
+  --ce-btn-font-size: 14px;
+  --ce-btn-icon-size: 18px;
+  --ce-btn-gap: var(--ce-space-2);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ce-btn-gap);
+  /* min-height statt height: mehrzeilige deutsche Labels dürfen wachsen, die
+     Grundhöhe bleibt exakt auf der Skala. Das vertikale Padding trägt nur den
+     Umbruchfall — einzeilig regiert min-height. */
+  min-height: var(--ce-btn-height);
+  min-width: var(--ce-btn-height);
+  padding: var(--ce-space-1) var(--ce-btn-padding-x);
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-md);
+  background: transparent;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-btn-font-size);
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
+
+/* Ein Iconslot in fester Größe: der Tausch von Icon zu Spinner (Ladezustand) ändert
+   die Buttonbreite dadurch nicht. Zusammen mit min-width kann ein Button im
+   Ladezustand auch nicht unter seine Grundhöhe zusammenfallen. */
+.btn > svg,
+.btn > .spinner {
+  width: var(--ce-btn-icon-size);
+  height: var(--ce-btn-icon-size);
+  flex: none;
+}
+
+/* ── Höhen ──────────────────────────────────────────────────────────────── */
+.btn-sm {
+  --ce-btn-height: var(--ce-size-control-sm);
+  --ce-btn-padding-x: var(--ce-space-3);
+  --ce-btn-font-size: 13px;
+  --ce-btn-icon-size: 16px;
+  --ce-btn-gap: 6px;
+}
+/* Kompatibilitätsalias: .btn-xs war eine vierte, undokumentierte Höhe (~26px).
+   Es fällt auf Small zusammen — vier Höhen sind nicht Teil des Systems. */
+.btn-xs {
+  --ce-btn-height: var(--ce-size-control-sm);
+  --ce-btn-padding-x: var(--ce-space-3);
+  --ce-btn-font-size: 13px;
+  --ce-btn-icon-size: 16px;
+  --ce-btn-gap: 6px;
+}
+.btn-lg {
+  --ce-btn-height: var(--ce-size-control-lg);
+  --ce-btn-padding-x: var(--ce-space-6);
+  --ce-btn-font-size: 15px;
+  --ce-btn-icon-size: 20px;
+  --ce-btn-gap: var(--ce-space-2);
+}
+
+/* ── Primary ────────────────────────────────────────────────────────────── */
 .btn-primary {
-  background: linear-gradient(160deg, #2563eb, #1d4ed8);
-  color: white;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.18) inset,
-    0 0 0 1px rgba(255,255,255,0.05) inset,
-    0 4px 14px -2px rgba(29,78,216,0.38),
-    0 0 28px -6px rgba(29,78,216,0.20);
+  background: var(--ce-color-brand);
+  border-color: var(--ce-color-brand);
+  color: var(--ce-color-text-inverse);
 }
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.22) inset,
-    0 0 0 1px rgba(255,255,255,0.07) inset,
-    0 8px 22px -4px rgba(29,78,216,0.44),
-    0 0 40px -6px rgba(29,78,216,0.26);
+.btn-primary:hover:not(:disabled) {
+  background: var(--ce-color-brand-hover);
+  border-color: var(--ce-color-brand-hover);
 }
-.btn-primary:active { transform: translateY(0); }
-.btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--border2); }
-.btn-outline:hover { background: var(--gray50); }
-.btn-ghost { background: transparent; color: var(--gray600); }
-.btn-ghost:hover { background: var(--gray50); color: var(--navy); }
-.btn-sm { padding: 7px 14px; font-size: 13px; border-radius: var(--radius-sm); }
-.btn-xs { padding: 5px 10px; font-size: 12px; border-radius: var(--radius-sm); gap: 5px; }
+.btn-primary:active:not(:disabled) {
+  background: var(--ce-color-brand-active);
+  border-color: var(--ce-color-brand-active);
+}
+.btn-primary:disabled {
+  background: var(--ce-color-surface-muted);
+  border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-disabled);
+}
+
+/* ── Secondary (Outline) ────────────────────────────────────────────────── */
+.btn-outline {
+  background: var(--ce-color-surface);
+  border-color: var(--ce-color-border-interactive);
+  color: var(--ce-color-text-primary);
+}
+.btn-outline:hover:not(:disabled) {
+  background: var(--ce-color-surface-subtle);
+  border-color: var(--ce-color-border-interactive-hover);
+}
+.btn-outline:active:not(:disabled) {
+  background: var(--ce-color-surface-muted);
+  border-color: var(--ce-color-border-interactive-hover);
+}
+.btn-outline:disabled {
+  background: var(--ce-color-surface-subtle);
+  border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-disabled);
+}
+
+/* ── Tertiary / Ghost ───────────────────────────────────────────────────── */
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ce-color-text-secondary);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-primary);
+}
+.btn-ghost:active:not(:disabled) {
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-primary);
+}
+.btn-ghost:disabled {
+  background: transparent;
+  color: var(--ce-color-text-disabled);
+}
+
+/* ── Danger ─────────────────────────────────────────────────────────────── */
+/* .adm-btn-danger und .adm-danger-button sind die bestehenden Klassennamen des
+   Adminbereichs und laufen auf dasselbe Primitive — sie bleiben gültig. */
+.btn-danger,
+.adm-btn-danger,
+.adm-danger-button {
+  background: var(--ce-color-danger-solid);
+  border-color: var(--ce-color-danger-solid);
+  color: var(--ce-color-text-inverse);
+}
+.btn-danger:hover:not(:disabled),
+.adm-btn-danger:hover:not(:disabled),
+.adm-danger-button:hover:not(:disabled) {
+  background: var(--ce-color-danger-hover);
+  border-color: var(--ce-color-danger-hover);
+}
+.btn-danger:active:not(:disabled),
+.adm-btn-danger:active:not(:disabled),
+.adm-danger-button:active:not(:disabled) {
+  background: var(--ce-color-danger-active);
+  border-color: var(--ce-color-danger-active);
+}
+.btn-danger:disabled,
+.adm-btn-danger:disabled,
+.adm-danger-button:disabled {
+  background: var(--ce-color-surface-muted);
+  border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-disabled);
+}
+
+/* ── Icon Button ────────────────────────────────────────────────────────── */
+/* Quadratisch auf der Höhenskala; die Breite ist im Ladezustand konstant, weil
+   Höhe und Breite dieselbe Variable lesen. Ein Iconbutton MUSS im Markup ein
+   aria-label tragen — er hat keinen sichtbaren Namen. */
+.btn-icon {
+  width: var(--ce-btn-height);
+  min-width: var(--ce-btn-height);
+  padding: 0;
+  gap: 0;
+}
+
+/* ── Link Action ────────────────────────────────────────────────────────── */
+.btn-link {
+  min-width: 0;
+  padding: 0 var(--ce-space-1);
+  border-color: transparent;
+  background: transparent;
+  color: var(--ce-color-brand-ink);
+  text-decoration: none;
+}
+.btn-link:hover:not(:disabled) { text-decoration: underline; }
+.btn-link:active:not(:disabled) { color: var(--ce-color-brand-active); }
+.btn-link:disabled { color: var(--ce-color-text-disabled); }
+
+/* ── Breitenmodifikatoren (unverändert im Verhalten) ────────────────────── */
 .btn-full { width: 100%; }
 .btn-grow { flex: 1; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* ── Zustände ───────────────────────────────────────────────────────────── */
+.btn:disabled { cursor: not-allowed; }
+
+.btn:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+/* Grober Zeiger (Finger): ein Iconbutton hat kein Textlabel, das die Trefffläche
+   mitträgt — er wird deshalb auf das 44px-Touchziel angehoben. Textbuttons
+   bleiben auf ihrer Stufe: dort tragen Label und Padding die Fläche, und eine
+   vierte Höhe wäre nicht Teil des Systems. */
+@media (pointer: coarse) {
+  .btn-icon { --ce-btn-height: var(--ce-size-touch-target); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+}

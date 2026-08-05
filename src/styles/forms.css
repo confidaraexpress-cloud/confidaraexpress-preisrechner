@@ -1,15 +1,230 @@
-/* ─── Form Fields (light — used in calculator/booking) ───────────────────── */
-.field { margin-bottom: 14px; }
-.field-label { display: block; font-size: 13px; font-weight: 600; color: var(--gray700); margin-bottom: 5px; }
-.field-input {
-  width: 100%; padding: 10px 13px;
-  background: var(--gray50); border: 1.5px solid var(--border);
-  border-radius: var(--radius); font-size: 14px; color: var(--navy);
-  font-family: 'DM Sans', sans-serif; outline: none; transition: all 0.15s;
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORMULARSYSTEM — Paket A, Phase 2 (Primitives)
+   ───────────────────────────────────────────────────────────────────────────
+   Das EINE globale Eingabesystem für Text, Number, E-Mail, Passwort, Select,
+   Date, Textarea, Checkbox und Radio — in zwei Dichtestufen:
+
+     Kundenportal  40px  (--ce-size-control-md)
+     Adminportal   36px  (--ce-size-control-admin)
+
+   Verbindlich und hier durchgesetzt:
+     • Radius --ce-radius-md.
+     • Kante --ce-color-border-interactive (#8891a3, 3,17:1 gegen Weiß) — der
+       einzige Rahmenton, der WCAG 1.4.11 für Bedienelemente erfüllt. Genau das
+       war die in Phase 1 angekündigte, EINHEITLICHE Anhebung der Eingabekante:
+       vorher lief der Kundenbereich auf --border (#d8dde6, 1,35:1) und der
+       Adminbereich auf --border2 (#c3cad6, 1,64:1).
+     • Hover --ce-color-border-interactive-hover, Fokus --ce-color-border-focus
+       plus Foundation-Fokusring.
+     • Text --ce-color-text-primary, Platzhalter --ce-color-text-placeholder.
+     • Fokus ohne Schattenvergrößerung und ohne Layoutsprung: der Ring ist eine
+       outline (außerhalb des Boxmodells), kein wachsender box-shadow. Die
+       Rahmenbreite bleibt in allen Zuständen 1px.
+     • Touchziel: auf grobem Zeiger steigen alle Eingaben auf 44px.
+
+   Reine Darstellung. Feldreihenfolgen, Pflichtfelder, Formularlogik und
+   Validierung sind unverändert — diese Datei kennt keine davon.
+
+   Selects und Date-Felder bleiben nativ. Der Select bekommt lediglich einen
+   einheitlichen Chevron (appearance:none entfernt den nativen Pfeil; bisher
+   wurde er global entfernt und nur im Preisrechner ersetzt).
+
+   Bewusst NICHT hier migriert: .field-input-dark / .field-label-dark und die
+   Auth-Eingaben (eigenes --auth-*-Theme) sowie .offers-form-section
+   .field-input (Preisrechner-Uplift, höher spezifisch, folgt im Seitenpaket).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Feldrahmen und Beschriftung ─────────────────────────────────────────── */
+.field { margin-bottom: var(--ce-space-3); }
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-primary);
 }
-.field-input:focus { background: white; border-color: var(--blue3); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-.field-input::placeholder { color: var(--gray400); }
-.field-select { appearance: none; cursor: pointer; }
+
+/* ── Gemeinsame Grundfläche aller Eingaben ───────────────────────────────── */
+/* Die Adminklassen stehen bewusst in derselben Gruppe: es gibt EIN Eingabe-
+   material, der Adminbereich unterscheidet sich nur in der Dichte (unten). */
+.field-input,
+.field-select,
+.field-textarea,
+.adm-filter-field input,
+.adm-filter-field select,
+.adm-edit-select,
+.adm-note-input,
+.adm-modal-input {
+  width: 100%;
+  min-height: var(--ce-size-control-md);
+  padding: 8px 12px;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-interactive);
+  border-radius: var(--ce-radius-md);
+  font-family: var(--ce-font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ce-color-text-primary);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+
+.field-input::placeholder,
+.field-textarea::placeholder,
+.adm-note-input::placeholder,
+.adm-filter-field input::placeholder,
+.adm-modal-input::placeholder {
+  color: var(--ce-color-text-placeholder);
+  opacity: 1; /* Firefox dämpft Platzhalter sonst zusätzlich ab. */
+}
+
+.field-input:hover:not(:disabled):not([readonly]),
+.field-select:hover:not(:disabled),
+.field-textarea:hover:not(:disabled):not([readonly]),
+.adm-filter-field input:hover:not(:disabled),
+.adm-filter-field select:hover:not(:disabled),
+.adm-edit-select:hover:not(:disabled),
+.adm-note-input:hover:not(:disabled):not([readonly]),
+.adm-modal-input:hover:not(:disabled):not([readonly]) {
+  border-color: var(--ce-color-border-interactive-hover);
+}
+
+/* Fokus: dunklere Kante (auch bei Mausklick) plus der Foundation-Fokusring.
+   Der Ring liegt als outline außerhalb des Boxmodells — kein Layoutsprung. */
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus,
+.adm-filter-field input:focus,
+.adm-filter-field select:focus,
+.adm-edit-select:focus,
+.adm-note-input:focus,
+.adm-modal-input:focus {
+  border-color: var(--ce-color-border-focus);
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+  box-shadow: none;
+}
+
+.field-input:disabled,
+.field-select:disabled,
+.field-textarea:disabled,
+.adm-filter-field input:disabled,
+.adm-filter-field select:disabled,
+.adm-edit-select:disabled,
+.adm-note-input:disabled,
+.adm-modal-input:disabled {
+  /* background-color statt der Kurzform: die Kurzform würde den Chevron des
+     Selects (background-image) mit zurücksetzen. */
+  background-color: var(--ce-color-surface-muted);
+  border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Readonly ist KEIN Disabled: der Wert bleibt lesbar und markierbar, nur die
+   Bearbeitungsaffordanz fällt weg. */
+.field-input[readonly],
+.field-textarea[readonly],
+.adm-note-input[readonly],
+.adm-modal-input[readonly] {
+  background-color: var(--ce-color-surface-subtle);
+  border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-secondary);
+  cursor: default;
+}
+
+/* ── Select: nativ, aber einheitlich ─────────────────────────────────────── */
+.field-select,
+.adm-filter-field select,
+.adm-edit-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7688' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+.field-textarea,
+.adm-note-input,
+textarea.field-input {
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* ── Number: keine Spinner-Pfeile, tabellarische Ziffern ─────────────────── */
+.field-input[type="number"] { font-variant-numeric: tabular-nums; }
+
+/* ── Date: natives Feld, aber gleiche Höhe und gleicher Zeigerhinweis ────── */
+.field-input[type="date"],
+.adm-filter-field input[type="date"] { cursor: pointer; }
+.field-input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+.field-input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 1; }
+
+/* ── Checkbox und Radio ──────────────────────────────────────────────────── */
+/* Bewusst als Elementselektoren (Spezifität 0,0,1): jede bestehende
+   Bereichsregel — auch die visuell versteckten Eingaben in .ins-card,
+   .labelfmt-card und .abk-role-option — gewinnt weiterhin. Das hier ist die
+   Grundlinie für alles, was keine eigene Regel hat. */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ce-color-brand);
+  cursor: pointer;
+  flex: none;
+}
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled { cursor: not-allowed; }
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: var(--ce-focus-ring);
+  outline-offset: var(--ce-focus-ring-offset);
+}
+
+/* ── Adminportal: dichtere Stufe ─────────────────────────────────────────── */
+.adm-filter-field input,
+.adm-filter-field select,
+.adm-edit-select,
+.adm-note-input,
+.adm-modal-input {
+  min-height: var(--ce-size-control-admin);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.adm-filter-field select,
+.adm-edit-select { padding-right: 32px; background-position: right 10px center; }
+.adm-note-input { min-height: 88px; padding: 8px 10px; }
+
+/* ── Fehlerzustand ───────────────────────────────────────────────────────── */
+/* !important bleibt erhalten: die Markierung muss auch gegen die höher
+   spezifischen Seiten-Scopes (Preisrechner) durchgreifen. */
+.field-input-error,
+.field-input.field-input-error,
+.field-select.field-input-error,
+.field-textarea.field-input-error {
+  border-color: var(--ce-color-status-error-fg) !important;
+}
+.field-input-error:focus {
+  border-color: var(--ce-color-status-error-fg) !important;
+  outline: 2px solid var(--ce-color-status-error-fg) !important;
+  outline-offset: var(--ce-focus-ring-offset);
+  box-shadow: none !important;
+}
+.field-error {
+  display: block;
+  margin-top: var(--ce-space-1);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-status-error-fg);
+}
+
+/* ── Raster (unverändert im Verhalten) ───────────────────────────────────── */
 .field-row { display: grid; gap: 10px; }
 .field-row-2 { grid-template-columns: 1fr 1fr; }
 .field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -18,6 +233,27 @@
 .field-input-wrap { position: relative; }
 .field-input-wrap .field-input { padding-right: 42px; }
 .field-input-wrap .field-input-dark { padding-right: 42px; }
-.field-input-error { border-color: #dc2626 !important; }
-.field-input-error:focus { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.1) !important; }
-.field-error { display: block; font-size: 12px; color: #dc2626; margin-top: 4px; }
+
+/* ── Touchziel ───────────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  .field-input,
+  .field-select,
+  .field-textarea,
+  .adm-filter-field input,
+  .adm-filter-field select,
+  .adm-edit-select,
+  .adm-modal-input { min-height: var(--ce-size-touch-target); }
+  input[type="checkbox"],
+  input[type="radio"] { width: 20px; height: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-input,
+  .field-select,
+  .field-textarea,
+  .adm-filter-field input,
+  .adm-filter-field select,
+  .adm-edit-select,
+  .adm-note-input,
+  .adm-modal-input { transition: none; }
+}

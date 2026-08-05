@@ -5,6 +5,12 @@
 @import './layout.css';
 @import './buttons.css';
 @import './forms.css';
+/* Primitives (Paket A, Phase 2): Fokusstandard, Statusbadges, Karten-Grundtypen
+   und Icon-Grundregeln. Steht NACH buttons/forms (der Fokusstandard soll dort
+   greifen) und VOR den Bereichs-Stylesheets — deren höher spezifische
+   Sonderfälle (Sidebar-Fokus, Preisrechner-CTA, Danger-Zone) bleiben damit
+   unverändert wirksam. */
+@import './primitives.css';
 @import './auth.css';
 @import './calculator.css';
 @import './dashboard.css';

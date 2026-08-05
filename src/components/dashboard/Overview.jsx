@@ -41,6 +41,50 @@ function KpiNum({ v }) {
   return <span className="knum">{v}</span>;
 }
 
+/* ── Gemeinsamer Abschnittskopf der drei Inhaltssektionen ──
+   Indexmarke · Hairline · Label, darunter Titel und genau eine erklärende
+   Zeile. Die Hairline ersetzt den Schrägstrich der Schreibweise „01 / ABLAUF"
+   grafisch und ist rein dekorativ (aria-hidden). `invert` schaltet auf die
+   Tonwerte der dunklen Carrier-Fläche um — gleiche Struktur, gleiche Maße.
+   Die Überschrift bleibt ein <h2> unter der <h1> der Begrüßung; `id` verbindet
+   sie über aria-labelledby mit ihrer <section>. */
+function SectionHead({ no, label, title, desc, id, invert = false }) {
+  return (
+    <header className={`pp-shead${invert ? " pp-shead--invert" : ""}`}>
+      <div className="pp-shead-top">
+        <span className="pp-shead-no">{no}</span>
+        <span className="pp-shead-rule" aria-hidden="true" />
+        <span className="pp-shead-label">{label}</span>
+      </div>
+      <h2 className="pp-shead-title" id={id}>{title}</h2>
+      <p className="pp-shead-desc">{desc}</p>
+    </header>
+  );
+}
+
+/* Rein dekorative Netzstruktur der Carrier-Fläche: drei ruhige Routen mit
+   Knoten an ihren tatsächlichen Kurvenpunkten. Statisch, ohne Filter und ohne
+   Animation; Farben kommen aus --ce-net-line/--ce-net-node (siehe overview.css
+   für die Abgrenzung zur Hintergrundregel aus CLAUDE.md). */
+function NetworkPattern() {
+  return (
+    <svg className="pp-net-bg" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g className="pp-net-route">
+        <path d="M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118" />
+        <path d="M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212" />
+        <path d="M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38" />
+      </g>
+      <g className="pp-net-node">
+        <circle cx="620" cy="150" r="3" />
+        <circle cx="700" cy="300" r="3" />
+        <circle cx="780" cy="250" r="3" />
+        <circle cx="1260" cy="118" r="2" />
+        <circle cx="1240" cy="38" r="2" />
+      </g>
+    </svg>
+  );
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return "Guten Morgen";
@@ -59,11 +103,20 @@ const STEPS = [
   { icon: "cart",   title: "Versand buchen",       desc: "Wählen Sie das beste Angebot und buchen Sie Ihren Versand." },
   { icon: "mapPin", title: "Tracking verfolgen",   desc: "Behalten Sie Ihre Sendung jederzeit im Blick – in Echtzeit." },
 ];
+/* Vier Vorteile, EINE Liste — das Bento-Layout entsteht allein aus den Flags
+   `hero`/`wide`, nicht aus doppelt gepflegten Datensätzen.
+   `hero` trägt die B2B-Positionierung (dunkle Leitkarte), `wide` die breite
+   Nebenkarte. Reihenfolge = Lesereihenfolge, auch einspaltig auf dem Handy.
+   „Beste Preise" ist zu „Konditionen direkt vergleichen" geworden: der
+   Superlativ war eine unbelegte Werbeaussage, der Vergleich selbst ist die
+   tatsächlich vorhandene Funktion. Aus demselben Grund endet die Beschreibung
+   jetzt nach dem belegbaren Teil („… Versanddienstleistern.") — der Zusatz
+   „für das beste Angebot" behauptete ein Ergebnis, das nicht zugesichert ist. */
 const WHY = [
-  { icon: "shield",    title: "Beste Preise",             desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern – für das beste Angebot." },
-  { icon: "zap",       title: "Express & Standard",       desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
-  { icon: "briefcase", title: "Geschäftskunden Fokus",    desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
-  { icon: "eye",       title: "Vollständige Transparenz", desc: "Verfolgen Sie jede Sendung in Echtzeit und behalten Sie alle wichtigen Informationen im Blick." },
+  { key: "b2b",     icon: "briefcase", hero: true, title: "Für Geschäftskunden entwickelt", desc: "Speziell für Unternehmen entwickelt – mit Transparenz, einfacher Abwicklung und persönlichem Support." },
+  { key: "compare", icon: "shield",    wide: true, title: "Konditionen direkt vergleichen", desc: "Wir vergleichen für Sie automatisch die Preise von führenden Versanddienstleistern." },
+  { key: "modes",   icon: "zap",                   title: "Express & Standard",             desc: "Egal ob Express oder Standard – finden Sie die passende Versandart für Ihre Anforderungen." },
+  { key: "trans",   icon: "eye",                   title: "Vollständige Transparenz",       desc: "Verfolgen Sie jede Sendung in Echtzeit und behalten Sie alle wichtigen Informationen im Blick." },
 ];
 const CARRIERS = [
   { key: "dhl",          logo: dhlLogo,        alt: "DHL",          service: "Express",  time: "1–2 Tage" },
@@ -187,60 +240,93 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
         ))}
       </div>
 
-      {/* ── Ablauf ── */}
-      <section className="pp-sec">
-        <div className="pp-eyebrow">Ablauf</div>
-        <h2 className="pp-h2">So einfach funktioniert es</h2>
-        <div className="pp-steps">
-          {STEPS.map((s, i) => (
-            <div className="pp-step" key={i}>
-              <div className="pp-step-ic pp-medal m-blue"><Icon n={s.icon} s={22} /></div>
-              {i < STEPS.length - 1 && <span className="pp-step-con" aria-hidden="true" />}
-              <div className="pp-step-no">{String(i + 1).padStart(2, "0")}</div>
-              <div className="pp-step-t">{s.title}</div>
-              <div className="pp-step-d">{s.desc}</div>
-            </div>
+      {/* ── 01 Ablauf — ein zusammenhängendes Prozesspanel ──
+          <ol>, weil die vier Stationen eine echte Reihenfolge haben. Die
+          Verbindungslinie zeichnet jede Station selbst als ::after (siehe
+          overview.css) — kein zusätzliches DOM-Element, kein Eintrag im
+          Accessibility-Baum. */}
+      <section className="pp-sec" aria-labelledby="pp-sec-flow">
+        <SectionHead
+          id="pp-sec-flow" no="01" label="Ablauf"
+          title="In vier Schritten versandbereit"
+          desc="Von den Paketdaten bis zur Zustellung – klar geführt in einer Oberfläche."
+        />
+        <div className="pp-flow">
+          <ol className="pp-flow-track">
+            {STEPS.map((s, i) => (
+              <li className="pp-flow-step" key={s.title}>
+                <span className="pp-flow-ic" aria-hidden="true"><Icon n={s.icon} s={21} /></span>
+                <div className="pp-step-no">{String(i + 1).padStart(2, "0")}</div>
+                <h3 className="pp-flow-t">{s.title}</h3>
+                <p className="pp-flow-d">{s.desc}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── 02 Vorteile — editoriales Bento ──
+          Ein einziger map() über WHY; Fläche und Tonwert je Karte kommen aus
+          den Flags hero/wide, nicht aus einer zweiten Datenstruktur. */}
+      <section className="pp-sec" aria-labelledby="pp-sec-why">
+        <SectionHead
+          id="pp-sec-why" no="02" label="Vorteile"
+          title="Weniger Aufwand. Mehr Kontrolle."
+          desc="Alles, was Geschäftskunden für einen zuverlässigen Versand benötigen."
+        />
+        <div className="pp-bento">
+          {WHY.map((w) => (
+            <article
+              key={w.key}
+              className={`pp-bento-item${w.hero ? " pp-bento-item--hero" : ""}${w.wide ? " pp-bento-item--wide" : ""}`}
+            >
+              <span className="pp-bento-ic" aria-hidden="true"><Icon n={w.icon} s={w.hero ? 22 : 19} /></span>
+              <h3 className="pp-bento-t">{w.title}</h3>
+              <p className="pp-bento-d">{w.desc}</p>
+              {/* Einzige Kennzahl der Sektion — direkt aus der Carrier-Liste
+                  abgeleitet, nicht separat gepflegt. */}
+              {w.hero && (
+                <p className="pp-bento-fact">
+                  <span className="pp-bento-fact-n">{CARRIERS.length}</span>
+                  <span className="pp-bento-fact-l">Carrier in einer Oberfläche vergleichbar</span>
+                </p>
+              )}
+            </article>
           ))}
         </div>
       </section>
 
-      {/* ── Vorteile ── */}
-      <section className="pp-sec">
-        <div className="pp-eyebrow">Vorteile</div>
-        <h2 className="pp-h2">Warum ConfidaraExpress?</h2>
-        <div className="pp-vals">
-          {WHY.map((w, i) => (
-            <div className="pp-vcard tile" key={i}>
-              <div className="pp-medal m-blue"><Icon n={w.icon} s={20} /></div>
-              <div className="pp-v-t">{w.title}</div>
-              <div className="pp-v-d">{w.desc}</div>
+      {/* ── 03 Carrier-Netzwerk — dunkle Signature-Fläche ──
+          Der Titel nennt die Carrier-Zahl als Wort. Dass „Acht" und
+          CARRIERS.length übereinstimmen, hält overviewSections.test.mjs fest:
+          Ändert sich die Liste, schlägt der Test fehl, statt den Text still
+          falsch werden zu lassen. */}
+      <section className="pp-sec" aria-labelledby="pp-sec-net">
+        <div className="pp-net">
+          <NetworkPattern />
+          <div className="pp-net-in">
+            <div className="pp-net-head">
+              <SectionHead
+                id="pp-sec-net" no="03" label="Carrier-Netzwerk" invert
+                title="Acht Carrier. Eine zentrale Plattform."
+                desc="Preise und Laufzeiten führender Versanddienstleister direkt vergleichen."
+              />
+              <button type="button" className="pp-net-cta" onClick={() => navigate("/calculator")}>
+                Carrier-Angebote vergleichen<Icon n="arrowRight" s={16} />
+              </button>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Netzwerk ── */}
-      <section className="pp-sec">
-        <div className="pp-sec-head">
-          <div>
-            <div className="pp-eyebrow">Netzwerk</div>
-            <h2 className="pp-h2">Carrier Netzwerk</h2>
+            <ul className="pp-cars">
+              {CARRIERS.map((c) => (
+                <li className="pp-car" key={c.key}>
+                  <span className="pp-car-chip">
+                    <img src={c.logo} alt={c.alt} className="car-logo" />
+                  </span>
+                  <span className="pp-car-svc">{c.service}</span>
+                  <span className="pp-car-time">{c.time}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <button type="button" className="pp-compare" onClick={() => navigate("/calculator")}>
-            Preise vergleichen<Icon n="arrowRight" s={17} />
-          </button>
-        </div>
-        <div className="pp-sec-sub">Vergleichen Sie automatisch Preise und Laufzeiten von {CARRIERS.length} führenden Carriern.</div>
-        <div className="pp-cars">
-          {CARRIERS.map((c) => (
-            <div className="pp-car" key={c.key}>
-              <div className="pp-car-chip">
-                <img src={c.logo} alt={c.alt} className="car-logo" />
-              </div>
-              <div className="pp-car-svc">{c.service}</div>
-              <div className="pp-car-time">{c.time}</div>
-            </div>
-          ))}
         </div>
       </section>
 

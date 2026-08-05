@@ -36,6 +36,20 @@
      Konto-E-Mail in der Firmenkarte noch vollständig steht. */
   --sidebar-width: 252px;
 
+  /* ── Zentraler Zahlen-/Geschäftsnummern-Font ──────────────────────────────
+     Einzige zulässige Schriftfamilie für Ziffern und Geschäftsnummern —
+     verbindlich anstelle jedes eigenen Font-Literals oder generischen
+     `monospace`-Fallbacks. `numericFontAudit.test.mjs` hält das fest.
+     Bewusst hier in `:root` statt in `.app-shell` (wie `--fh`/`--fs`/`--fm`),
+     weil admin.css, calculator.css, drafts.css, offers.css und support.css
+     außerhalb der `.app-shell` liegen und einen global erreichbaren Token
+     brauchen — die zugrunde liegende `@font-face`-Regel (fonts.css) ist
+     ohnehin dokumentweit gültig, nur der Tokenname war bisher shell-lokal.
+     Zeigt auf dieselbe bereits geladene DM-Sans-Datei wie `--fs`, mit
+     identischer Sans-Serif-Fallbackkette — keine neue Schrift, kein
+     Faux-Weight. */
+  --ce-font-numeric: 'DM Sans', system-ui, sans-serif;
+
   /* ── „Executive Ivory + Midnight Slate" — Chrome des eingeloggten Layouts ──
      Genau eine Quelle für App-Hintergrund und Sidebar. Alle Regeln in
      dashboard-premium.css / dashboard.css lesen ausschließlich von hier; in den

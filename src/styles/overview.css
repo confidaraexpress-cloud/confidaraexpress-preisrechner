@@ -227,7 +227,7 @@
 .pp-step { position: relative; }
 .pp-step-ic { width: 56px; height: 56px; position: relative; }
 .pp-step-con { position: absolute; top: 28px; left: 72px; right: -16px; height: 1px; background: var(--border-subtle); }
-.pp-step-no { font-family: var(--fm); font-size: 10.5px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-blue); margin-top: 16px; }
+.pp-step-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-blue); margin-top: 16px; }
 .pp-step-t { font-family: var(--fs); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary); margin-top: 6px; }
 .pp-step-d { font-family: var(--fs); font-size: 12.5px; line-height: 1.65; color: var(--text-secondary); margin-top: 8px; max-width: 230px; }
 
@@ -262,7 +262,7 @@
 .pp-car-chip:hover { border-color: var(--border-strong, #cbd5e1); }
 .car-logo { max-height: 26px; max-width: 100%; width: auto; object-fit: contain; display: block; }
 .pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 700; color: var(--text-primary); }
-.pp-car-time { font-family: var(--fm); font-size: 11px; color: var(--text-secondary); }
+.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--text-secondary); }
 
 /* Trust */
 /* position:relative + overflow:hidden tragen das lokale Wasserzeichen und

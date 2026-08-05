@@ -38,7 +38,6 @@
   --font-sans:    'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --fh: 'Libre Franklin', sans-serif;
   --fs: 'DM Sans', system-ui, sans-serif;
-  --fm: 'DM Mono', ui-monospace, monospace;
   --fd: 'Cormorant Garamond', Georgia, serif;
 
   display: flex;
@@ -404,7 +403,7 @@
 .ce-mail-dialog-close:hover { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-muted); }
 .ce-mail-dialog-close:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 
-.ce-mail-dialog-addr { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--fm); letter-spacing: 0.01em; }
+.ce-mail-dialog-addr { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--ce-font-numeric); letter-spacing: 0.01em; }
 
 .ce-mail-dialog-providers { display: flex; flex-direction: column; gap: 4px; }
 .ce-mail-dialog-provider {

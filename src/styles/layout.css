@@ -1,7 +1,7 @@
 /* ─── Typography ─────────────────────────────────────────────────────────── */
 .heading { font-family: 'Libre Franklin', sans-serif; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
 h1, h2, h3, h4 { font-family: 'Libre Franklin', sans-serif; font-weight: 700; }
-.mono { font-family: 'DM Mono', monospace; }
+.mono { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; }
 
 /* ─── Layout ─────────────────────────────────────────────────────────────── */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }

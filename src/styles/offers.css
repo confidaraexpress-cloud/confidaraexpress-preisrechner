@@ -388,9 +388,9 @@
 .offer-detail-row--strong .offer-detail-value { font-weight: 700; color: var(--navy); }
 .offer-detail-label { color: var(--gray500); font-weight: 500; flex-shrink: 0; }
 .offer-detail-value { color: var(--navy); font-weight: 600; text-align: right; }
-/* Tarif-ID & sekundäre technische Werte: dezent, monospace, nicht dominant. */
+/* Tarif-ID & sekundäre technische Werte: dezent, nicht dominant. */
 .offer-detail-row--subtle .offer-detail-value {
-  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--gray400);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; color: var(--gray400);
 }
 
 /* Hauptmerkmale — ruhiges 2-Spalten-Feature-Grid: Label dezent, Wert stark,
@@ -406,7 +406,7 @@
   font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.35; overflow-wrap: break-word;
 }
 .offer-feature-value--subtle {
-  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--gray400);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; color: var(--gray400);
 }
 
 /* Einschränkungen — natürliche Sätze als ruhige Liste mit dezentem Punkt-Marker

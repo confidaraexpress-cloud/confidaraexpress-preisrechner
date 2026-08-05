@@ -7,6 +7,13 @@ const P_STYLE  = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--text-mu
 const P_LAST   = { lineHeight: 1.75, margin: 0, color: "var(--text-muted, #374151)", fontSize: 14 };
 const HR_STYLE = { border: "none", borderTop: "1px solid var(--border, #e5e7eb)", margin: "28px 0" };
 const TOC_LINK = { color: "var(--blue, #1D4ED8)", textDecoration: "none", fontSize: 14, lineHeight: 1.9, display: "block" };
+// Literal statt App-Token (--ce-font-numeric): Legal-Seiten bleiben bewusst
+// von den App-Token-Systemen isoliert (siehe CLAUDE.md). Generisches
+// "monospace" ist browser-/betriebssystemabhängig und kann je nach
+// aufgelöster Schrift eine abweichende Nullform zeigen; hier stehen ohnehin
+// nur Bezeichner (sessionStorage, localStorage, ce_token), keine Ziffern —
+// die bereits lokal geladene DM Sans ersetzt es trotzdem konsequent.
+const CODE_STYLE = { fontFamily: "'DM Sans', sans-serif", fontSize: 13 };
 
 const DL_STYLE = { margin: 0 };
 const DT_STYLE = { fontWeight: 700, fontSize: 13, color: "var(--text, #111827)", paddingTop: 10, paddingBottom: 2 };
@@ -426,20 +433,20 @@ export default function DatenschutzPage() {
               <p style={P_STYLE}>
                 ConfidaraExpress setzt derzeit keine Cookies ein — weder technisch notwendige noch
                 Analyse-, Marketing- oder Tracking-Cookies. Ebenso wird kein{" "}
-                <code style={{ fontFamily: "monospace", fontSize: 13 }}>sessionStorage</code> verwendet.
+                <code style={CODE_STYLE}>sessionStorage</code> verwendet.
                 Da keine Cookies gesetzt werden, wird kein Cookie-Banner angezeigt.
               </p>
 
               <h3 style={H3_STYLE}>12.2 Technisch notwendige Speicherung im localStorage (Login)</h3>
               <p style={P_STYLE}>
                 Für den Login wird eine technisch notwendige Speicherung im{" "}
-                <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code> Ihres
+                <code style={CODE_STYLE}>localStorage</code> Ihres
                 Browsers verwendet. Nach erfolgreicher Anmeldung wird dort ein Authentifizierungstoken
                 (JSON Web Token, kurz JWT) abgelegt.
               </p>
               <p style={P_STYLE}>
                 <strong>Schlüssel:</strong>{" "}
-                <code style={{ fontFamily: "monospace", fontSize: 13 }}>ce_token</code><br />
+                <code style={CODE_STYLE}>ce_token</code><br />
                 <strong>Inhalt:</strong> JWT mit einer Konto-Kennung (ID), Ihrer E-Mail-Adresse und
                 Ihrer Rolle<br />
                 <strong>Zweck:</strong> Authentifizierung und Aufrechterhaltung der Login-Sitzung
@@ -450,7 +457,7 @@ export default function DatenschutzPage() {
                 Backend-Systemen verwendet; bei der Abmeldung wird er aus dem Browser entfernt.
               </p>
               <p style={P_LAST}>
-                <code style={{ fontFamily: "monospace", fontSize: 13 }}>localStorage</code> ist kein
+                <code style={CODE_STYLE}>localStorage</code> ist kein
                 Cookie im technischen Sinne und unterliegt nicht den Cookie-Regelungen der
                 ePrivacy-Richtlinie. Eine Einwilligung ist für diese technisch notwendige Speicherung
                 nicht erforderlich. Es werden keine Analyse-, Marketing- oder Tracking-Technologien in

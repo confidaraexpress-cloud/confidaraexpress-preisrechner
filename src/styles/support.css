@@ -209,7 +209,8 @@
 .sup-list-meta { font-size: 12.5px; color: var(--text-secondary); }
 
 .sup-ticket {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 12.5px;
   color: var(--text-secondary);
   letter-spacing: 0.02em;

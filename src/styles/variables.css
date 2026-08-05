@@ -243,6 +243,110 @@
   --ce-kpi-delayed-edge: rgba(176, 122, 24, 0.22);
   --ce-kpi-delayed-tint: rgba(176, 122, 24, 0.08);
 
+  /* ── Übersichts-Sektionen: Ablauf · Vorteile · Carrier-Netzwerk ───────────
+     Eigene, klar benannte Familie für GENAU die drei Inhaltsabschnitte unter
+     den KPI-Karten. Dieselbe Disziplin wie beim Chrome und bei den KPI-Karten:
+     in overview.css steht für diese Abschnitte kein Farbliteral.
+
+     Markenrahmen unverändert: Navy #111A33 · Indigo #5367E8 · Violett #7A5CE6 ·
+     Off-White #F5F7FB. Die drei Abschnitte bilden EIN System in drei
+     Materialien — helles Prozesspanel, editoriales Bento mit dunkler
+     Akzentkarte, dunkle Signature-Fläche. Violett tritt hier ausschließlich als
+     zweiter Verlaufsstopp der beiden dunklen Flächen auf (nie als Vollfläche),
+     damit Indigo die führende Markenfarbe bleibt. */
+
+  /* Gemeinsames Section-Header-System (Index · Hairline · Label · Titel). */
+  --ce-sec-accent: #4a5ed6;
+  --ce-sec-index-face: rgba(83, 103, 232, 0.09);
+  --ce-sec-index-edge: rgba(83, 103, 232, 0.22);
+  --ce-sec-rule: rgba(17, 26, 51, 0.18);
+  --ce-sec-label: #5a6780;
+  /* Invertiert (auf der dunklen Carrier-Fläche). */
+  --ce-sec-accent-inv: #9fb4ff;
+  --ce-sec-index-face-inv: rgba(159, 180, 255, 0.14);
+  --ce-sec-index-edge-inv: rgba(159, 180, 255, 0.3);
+  --ce-sec-rule-inv: rgba(255, 255, 255, 0.26);
+  --ce-sec-label-inv: #b9c6e4;
+
+  /* Ablauf — helles, zusammenhängendes Prozesspanel. Der Verlauf kippt sehr
+     leicht ins Blau-Violette, bleibt aber innerhalb eines Materials (Differenz
+     einstellig pro Kanal), damit er nicht als zweite Hintergrundzone liest. */
+  --ce-flow-surface: linear-gradient(
+    152deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(249, 250, 254, 0.97) 54%,
+    rgba(242, 244, 252, 0.98) 100%);
+  --ce-flow-border: rgba(17, 26, 51, 0.1);
+  --ce-flow-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 1px rgba(17, 26, 51, 0.05),
+    0 22px 40px -26px rgba(17, 26, 51, 0.22);
+  --ce-flow-rail: rgba(17, 26, 51, 0.14);
+  --ce-flow-ic-face: rgba(83, 103, 232, 0.08);
+  --ce-flow-ic-edge: rgba(83, 103, 232, 0.2);
+  --ce-flow-ic-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 2px 6px rgba(17, 26, 51, 0.07);
+
+  /* Vorteile — Bento. Eine dunkle Leitkarte, drei helle Nebenkarten in zwei
+     leicht verschiedenen Tonwerten (die breite Karte einen Hauch kühler). */
+  --ce-bento-hero-surface: linear-gradient(
+    150deg,
+    #1b2547 0%,
+    #141d3a 46%,
+    #111a33 100%);
+  --ce-bento-hero-border: rgba(122, 92, 230, 0.28);
+  --ce-bento-hero-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 24px 46px -24px rgba(17, 26, 51, 0.5);
+  --ce-bento-hero-ink: #ffffff;
+  --ce-bento-hero-ink-soft: rgba(226, 232, 246, 0.78);
+  --ce-bento-hero-ic-face: rgba(159, 180, 255, 0.14);
+  --ce-bento-hero-ic-edge: rgba(159, 180, 255, 0.28);
+  --ce-bento-hero-rule: rgba(255, 255, 255, 0.14);
+
+  --ce-bento-surface: #ffffff;
+  --ce-bento-surface-alt: #fafbfe;
+  --ce-bento-border: rgba(17, 26, 51, 0.105);
+  --ce-bento-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 1px rgba(17, 26, 51, 0.05),
+    0 18px 34px -24px rgba(17, 26, 51, 0.2);
+  --ce-bento-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 1px rgba(17, 26, 51, 0.06),
+    0 22px 40px -24px rgba(17, 26, 51, 0.26);
+  --ce-bento-border-hover: rgba(17, 26, 51, 0.17);
+  --ce-bento-ic-face: rgba(83, 103, 232, 0.08);
+  --ce-bento-ic-edge: rgba(83, 103, 232, 0.2);
+
+  /* Carrier-Netzwerk — dunkle Signature-Fläche. Navy als Verbindung zur
+     Sidebar; Indigo/Violett nur als sehr zurückhaltender Verlaufsanteil. */
+  --ce-net-surface: linear-gradient(
+    148deg,
+    #1c2650 0%,
+    #17203f 40%,
+    #121a33 100%);
+  --ce-net-border: rgba(122, 92, 230, 0.24);
+  --ce-net-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 28px 54px -28px rgba(17, 26, 51, 0.55);
+  --ce-net-ink: #ffffff;
+  --ce-net-ink-soft: rgba(226, 232, 246, 0.76);
+  /* Logofläche: nahezu weiß, damit die Carrier-Marken exakt in ihren eigenen
+     Farben stehen (keine Verfremdung durch Tönung oder Mischung). */
+  --ce-net-chip: rgba(255, 255, 255, 0.95);
+  --ce-net-chip-hover: #ffffff;
+  --ce-net-chip-shadow: 0 4px 14px -6px rgba(6, 10, 24, 0.5);
+  /* Dekorative Netzstruktur — bewusst sehr schwach, statisch, ohne Filter. */
+  --ce-net-line: rgba(159, 180, 255, 0.16);
+  --ce-net-node: rgba(159, 180, 255, 0.3);
+  /* CTA auf dunklem Grund. */
+  --ce-net-cta-face: rgba(255, 255, 255, 0.1);
+  --ce-net-cta-face-hover: rgba(255, 255, 255, 0.16);
+  --ce-net-cta-edge: rgba(255, 255, 255, 0.24);
+  --ce-net-focus: #9fb4ff;
+
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ───────────────────── */
   --auth-bg-0: #01030a;
   --auth-bg-1: #060c1d;

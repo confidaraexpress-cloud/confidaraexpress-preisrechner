@@ -104,7 +104,7 @@
 }
 .pp-cta:hover { background: var(--accent-blue-strong); }
 
-.pp-bell:focus-visible, .pp-uchip:focus-visible, .pp-cta:focus-visible, .pp-compare:focus-visible {
+.pp-bell:focus-visible, .pp-uchip:focus-visible, .pp-cta:focus-visible {
   outline: 2px solid var(--accent-blue); outline-offset: 2px;
 }
 
@@ -216,53 +216,246 @@
 .pp-kpi-note { white-space: normal; }
 
 /* ══════════ Sektionen ══════════ */
-.pp-sec { margin-top: 60px; }
-.pp-eyebrow { font-family: var(--fs); font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent-blue); }
-.pp-h2 { font-family: var(--fh); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; color: var(--text-primary); margin-top: 12px; }
-.pp-sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
-.pp-sec-sub { font-family: var(--fs); font-size: 13.5px; color: var(--text-secondary); margin-top: 12px; }
+.pp-sec { margin-top: 64px; }
 
-/* Schritte */
-.pp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 38px; }
-.pp-step { position: relative; }
-.pp-step-ic { width: 56px; height: 56px; position: relative; }
-.pp-step-con { position: absolute; top: 28px; left: 72px; right: -16px; height: 1px; background: var(--border-subtle); }
-.pp-step-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 10.5px; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-blue); margin-top: 16px; }
-.pp-step-t { font-family: var(--fs); font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary); margin-top: 6px; }
-.pp-step-d { font-family: var(--fs); font-size: 12.5px; line-height: 1.65; color: var(--text-secondary); margin-top: 8px; max-width: 230px; }
+/* ── Gemeinsames Section-Header-System ──────────────────────────────────────
+   Drei Abschnitte, EIN Kopf: Indexmarke · Hairline · Label, darunter Titel und
+   genau eine erklärende Zeile. Die Indexmarke ist bewusst klein und ruhig
+   gehalten (kein Formularlabel, keine große Pill-Navigation); die Hairline
+   ersetzt den Schrägstrich der Schreibweise „01 / ABLAUF" grafisch.
+   Die sichtbare Abschnittsnummer läuft über --ce-font-numeric — dieselbe
+   normale Nullform wie alle übrigen Ziffern der App (siehe variables.css). */
+.pp-shead { max-width: 660px; }
+.pp-shead-top { display: flex; align-items: center; gap: 10px; }
+.pp-shead-no {
+  display: inline-grid; place-items: center;
+  min-width: 27px; height: 21px; padding: 0 7px;
+  border-radius: 6px;
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--ce-sec-accent);
+  background: var(--ce-sec-index-face);
+  border: 1px solid var(--ce-sec-index-edge);
+}
+.pp-shead-rule { width: 22px; height: 1px; background: var(--ce-sec-rule); flex-shrink: 0; }
+.pp-shead-label {
+  font-family: var(--fs); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ce-sec-label);
+}
+.pp-shead-title {
+  font-family: var(--fh); font-weight: 700; font-size: 29px; line-height: 1.16;
+  letter-spacing: -0.025em; color: var(--text-primary); margin-top: 14px;
+}
+.pp-shead-desc {
+  font-family: var(--fs); font-size: 14px; line-height: 1.6;
+  color: var(--text-secondary); margin-top: 10px;
+}
+/* Invertiert — identische Struktur und Maße, nur andere Tonwerte. */
+.pp-shead--invert .pp-shead-no { color: var(--ce-sec-accent-inv); background: var(--ce-sec-index-face-inv); border-color: var(--ce-sec-index-edge-inv); }
+.pp-shead--invert .pp-shead-rule { background: var(--ce-sec-rule-inv); }
+.pp-shead--invert .pp-shead-label { color: var(--ce-sec-label-inv); }
+.pp-shead--invert .pp-shead-title { color: var(--ce-net-ink); }
+.pp-shead--invert .pp-shead-desc { color: var(--ce-net-ink-soft); }
 
-/* Vorteile */
-.pp-vals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 38px; }
-.pp-vcard { border-radius: var(--radius-lg); padding: 22px 20px; transition: box-shadow 0.15s ease; }
-.pp-vcard:hover { box-shadow: var(--shadow-card-hover); }
-.pp-vcard .pp-medal { width: 44px; height: 44px; margin-bottom: 16px; }
-.pp-v-t { font-family: var(--fs); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text-primary); }
-.pp-v-d { font-family: var(--fs); font-size: 12.5px; line-height: 1.7; color: var(--text-secondary); margin-top: 8px; }
+/* ── 01 Ablauf — zusammenhängendes Prozesspanel ────────────────────────────
+   Ein gemeinsames helles Panel statt vier loser Elemente auf der Seitenfläche.
+   Die Prozessführung entsteht aus EINER Regel: jede Station außer der letzten
+   zeichnet ihre Verbindung selbst (::after). Waagerecht läuft sie von der
+   rechten Icon-Kante über die Rasterlücke bis zur linken Icon-Kante der
+   nächsten Station, senkrecht von der Icon-Unterkante bis zur nächsten
+   Station. Beides ist über --flow-ic/--flow-gap exakt an die Icon-Zentren
+   gebunden und bleibt korrekt, wenn sich Icongröße oder Abstand ändern — die
+   frühere Fassung positionierte die Linie mit festen Pixelwerten (left:72px,
+   right:-16px) und lag dadurch sichtbar neben den Zentren.
+   Als Pseudo-Element erzeugt die Linie keinen DOM-Knoten und damit auch
+   keinen Eintrag im Accessibility-Baum. */
+.pp-flow {
+  margin-top: 30px;
+  padding: 34px 34px 32px;
+  border-radius: var(--radius-lg);
+  background: var(--ce-flow-surface);
+  border: 1px solid var(--ce-flow-border);
+  box-shadow: var(--ce-flow-shadow);
+}
+.pp-flow-track {
+  --flow-ic: 54px;
+  --flow-gap: 30px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--flow-gap);
+  list-style: none; margin: 0; padding: 0;
+}
+.pp-flow-step { position: relative; min-width: 0; }
+.pp-flow-step::after {
+  content: ''; position: absolute; pointer-events: none;
+  background: var(--ce-flow-rail);
+  top: calc(var(--flow-ic) / 2);
+  left: var(--flow-ic);
+  right: calc(-1 * var(--flow-gap));
+  height: 1px;
+}
+.pp-flow-step:last-child::after { content: none; }
+.pp-flow-ic {
+  position: relative; z-index: 1;
+  width: var(--flow-ic); height: var(--flow-ic);
+  display: grid; place-items: center;
+  border-radius: 17px;
+  color: var(--ce-sec-accent);
+  background: var(--ce-flow-ic-face);
+  border: 1px solid var(--ce-flow-ic-edge);
+  box-shadow: var(--ce-flow-ic-shadow);
+}
+/* Schrittzahl und Text rücken dicht an das Icon — die frühere Fassung ließ
+   dazwischen deutlich mehr Leerraum als zwischen den Stationen selbst. */
+.pp-flow-step .pp-step-no {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.18em;
+  color: var(--ce-sec-accent); margin-top: 18px;
+}
+.pp-flow-t {
+  font-family: var(--fs); font-size: 15.5px; font-weight: 700;
+  letter-spacing: -0.012em; color: var(--text-primary); margin-top: 7px;
+}
+.pp-flow-d {
+  font-family: var(--fs); font-size: 12.5px; line-height: 1.65;
+  color: var(--text-secondary); margin-top: 8px;
+}
 
-/* Carrier-Netzwerk */
-.pp-compare {
+/* ── 02 Vorteile — editoriales Bento ───────────────────────────────────────
+   Asymmetrisch, aber geschlossen: eine hohe dunkle Leitkarte links (zwei
+   Rasterzeilen), eine breite und zwei kompakte helle Karten rechts. Alle vier
+   Inhalte bleiben gleichwertig lesbar — die Hierarchie entsteht aus Fläche und
+   Tonwert, nicht aus unterschiedlicher Textmenge. */
+.pp-bento {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; margin-top: 30px;
+}
+.pp-bento-item {
+  display: flex; flex-direction: column; min-width: 0;
+  border-radius: var(--radius-lg); padding: 22px 22px 24px;
+  background: var(--ce-bento-surface);
+  border: 1px solid var(--ce-bento-border);
+  box-shadow: var(--ce-bento-shadow);
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.pp-bento-item:hover { box-shadow: var(--ce-bento-shadow-hover); border-color: var(--ce-bento-border-hover); }
+/* Die breite Nebenkarte einen Hauch kühler — zwei Tonwerte, kein zweiter Stil.
+   Sie legt das Icon NEBEN den Text statt darüber: über zwei Rasterspalten
+   hinweg stünde die Zeile sonst nur auf halber Kartenbreite und ließe die
+   rechte Hälfte leer. Reine Layoutumschaltung über Grid — dieselben drei
+   Kindelemente wie in jeder anderen Karte, kein Sonder-Markup. */
+.pp-bento-item--wide {
+  grid-column: 2 / span 2; grid-row: 1;
+  background: var(--ce-bento-surface-alt);
+  display: grid; grid-template-columns: auto 1fr;
+  column-gap: 18px; align-content: start;
+}
+.pp-bento-item--wide .pp-bento-ic { grid-row: 1 / span 2; margin-bottom: 0; }
+.pp-bento-item--wide .pp-bento-t,
+.pp-bento-item--wide .pp-bento-d { grid-column: 2; }
+.pp-bento-item--hero {
+  grid-column: 1; grid-row: 1 / span 2;
+  padding: 28px 26px 26px;
+  background: var(--ce-bento-hero-surface);
+  border-color: var(--ce-bento-hero-border);
+  box-shadow: var(--ce-bento-hero-shadow);
+}
+.pp-bento-item--hero:hover { box-shadow: var(--ce-bento-hero-shadow); border-color: var(--ce-bento-hero-border); }
+.pp-bento-ic {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: 13px; margin-bottom: 16px;
+  color: var(--ce-sec-accent);
+  background: var(--ce-bento-ic-face);
+  border: 1px solid var(--ce-bento-ic-edge);
+}
+.pp-bento-item--hero .pp-bento-ic {
+  width: 46px; height: 46px; border-radius: 14px;
+  color: var(--ce-sec-accent-inv);
+  background: var(--ce-bento-hero-ic-face);
+  border-color: var(--ce-bento-hero-ic-edge);
+}
+.pp-bento-t {
+  font-family: var(--fs); font-size: 15px; font-weight: 700;
+  letter-spacing: -0.012em; color: var(--text-primary);
+}
+.pp-bento-d {
+  font-family: var(--fs); font-size: 12.5px; line-height: 1.7;
+  color: var(--text-secondary); margin-top: 8px;
+}
+.pp-bento-item--hero .pp-bento-t { font-size: 18px; color: var(--ce-bento-hero-ink); }
+.pp-bento-item--hero .pp-bento-d { font-size: 13px; color: var(--ce-bento-hero-ink-soft); }
+/* Eine einzige, echte Kennzahl: die tatsächliche Länge der Carrier-Liste. */
+.pp-bento-fact {
+  display: flex; align-items: baseline; gap: 9px;
+  margin-top: auto; padding-top: 20px;
+  border-top: 1px solid var(--ce-bento-hero-rule);
+}
+.pp-bento-fact-n {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums;
+  font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
+  color: var(--ce-bento-hero-ink); line-height: 1;
+}
+.pp-bento-fact-l {
+  font-family: var(--fs); font-size: 11.5px; line-height: 1.45;
+  color: var(--ce-bento-hero-ink-soft);
+}
+
+/* ── 03 Carrier-Netzwerk — dunkle Signature-Fläche ─────────────────────────
+   Abschluss und Höhepunkt der Seite: Navy als Verbindung zur Sidebar, darauf
+   eine sehr schwache Netzstruktur.
+
+   Zur Hintergrundregel aus CLAUDE.md: das dortige Dekorationsverbot gilt der
+   SEITENWEITEN Ebene (.app-shell) — die gelöschten VaporBackground/
+   PremiumBackground. Diese Struktur liegt ausschließlich INNERHALB dieser
+   einen Karte, exakt wie das bestehende .pp-trust-watermark: statisch, ohne
+   Filter, ohne backdrop-filter, ohne Animation, hinter dem Inhalt und an der
+   Kartenrundung beschnitten. Keine zweite Hintergrundebene der Seite. */
+.pp-net {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-lg);
+  margin-top: 30px;
+  padding: 34px 34px 32px;
+  background: var(--ce-net-surface);
+  border: 1px solid var(--ce-net-border);
+  box-shadow: var(--ce-net-shadow);
+}
+.pp-net-bg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; user-select: none;
+}
+.pp-net-route { fill: none; stroke: var(--ce-net-line); stroke-width: 1.25; }
+.pp-net-node { fill: var(--ce-net-node); stroke: none; }
+.pp-net-in { position: relative; z-index: 1; }
+.pp-net-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.pp-net-cta {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 18px; border-radius: 99px;
+  padding: 11px 19px; border-radius: 99px;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  font-family: var(--fs); font-size: 13.5px; font-weight: 600; color: var(--accent-blue);
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  font-family: var(--fs); font-size: 13.5px; font-weight: 600;
+  color: var(--ce-net-ink);
+  background: var(--ce-net-cta-face);
+  border: 1px solid var(--ce-net-cta-edge);
+  transition: background 0.16s ease, border-color 0.16s ease;
 }
-.pp-compare:hover { border-color: var(--accent-blue-border); background: var(--surface-subtle); }
-.pp-cars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px; margin-top: 22px; }
-.pp-car { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+.pp-net-cta:hover { background: var(--ce-net-cta-face-hover); }
+.pp-net-cta:focus-visible { outline: 2px solid var(--ce-net-focus); outline-offset: 2px; }
+
+.pp-cars {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px;
+  list-style: none; margin: 32px 0 0; padding: 0;
+}
+.pp-car { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
+/* Einheitliche Logofläche: gleiche Maße für alle acht Marken, das Logo selbst
+   bleibt in Originalproportion (object-fit: contain, keine feste Breite). */
 .pp-car-chip {
-  width: 100%; max-width: 104px; height: 60px; padding: 0 10px;
+  width: 100%; max-width: 108px; height: 60px; padding: 0 12px;
   border-radius: var(--radius); display: grid; place-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  transition: border-color 0.15s ease;
+  background: var(--ce-net-chip);
+  box-shadow: var(--ce-net-chip-shadow);
+  transition: background 0.16s ease;
 }
-.pp-car-chip:hover { border-color: var(--border-strong, #cbd5e1); }
+.pp-car:hover .pp-car-chip { background: var(--ce-net-chip-hover); }
 .car-logo { max-height: 26px; max-width: 100%; width: auto; object-fit: contain; display: block; }
-.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 700; color: var(--text-primary); }
-.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--text-secondary); }
+.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 700; color: var(--ce-net-ink); }
+.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-size: 11px; color: var(--ce-net-ink-soft); }
 
 /* Trust */
 /* position:relative + overflow:hidden tragen das lokale Wasserzeichen und
@@ -317,9 +510,34 @@
   .pp-trust-watermark { display: none; }
 }
 
+/* Ablauf ── unterhalb von 1120 px wird aus der Reihe eine SENKRECHTE Kette,
+   nicht ein 2×2-Feld: bei zwei Spalten müsste die Prozesslinie entweder in der
+   Zeilenmitte abbrechen oder von rechts unten nach links oben zurückspringen —
+   beides liest sich falsch. Senkrecht bleibt die Leserichtung eindeutig und
+   die Verbindung durchgehend. Icon links, Text rechts; die Linie läuft von der
+   Icon-Unterkante über die Rasterlücke bis zum nächsten Icon. */
 @media (max-width: 1120px) {
-  .pp-vals, .pp-steps { grid-template-columns: repeat(2, 1fr); }
-  .pp-step-con { display: none; }
+  .pp-bento { grid-template-columns: repeat(2, 1fr); }
+  .pp-bento-item--hero { grid-column: 1 / span 2; grid-row: auto; }
+  .pp-bento-item--wide { grid-column: 1 / span 2; grid-row: auto; }
+  .pp-flow { padding: 28px 26px 26px; }
+  .pp-flow-track { --flow-gap: 26px; grid-template-columns: 1fr; }
+  .pp-flow-step {
+    display: grid; grid-template-columns: var(--flow-ic) 1fr;
+    column-gap: 18px; align-items: start;
+  }
+  .pp-flow-step .pp-flow-ic { grid-column: 1; grid-row: 1 / span 3; }
+  .pp-flow-step .pp-step-no,
+  .pp-flow-step .pp-flow-t,
+  .pp-flow-step .pp-flow-d { grid-column: 2; }
+  .pp-flow-step .pp-step-no { margin-top: 2px; }
+  .pp-flow-step .pp-flow-t { margin-top: 5px; }
+  .pp-flow-step::after {
+    top: var(--flow-ic); bottom: calc(-1 * var(--flow-gap));
+    left: calc(var(--flow-ic) / 2); right: auto;
+    width: 1px; height: auto;
+  }
+  .pp-shead-title { font-size: 26px; }
   .pp-h1 { font-size: 44px; }
   .pp-trust { grid-template-columns: 1fr; gap: 18px; }
   .pp-trust-item + .pp-trust-item::before { display: none; }
@@ -329,6 +547,8 @@
   .pp-top { flex-direction: column-reverse; }
   .pp-actions { padding-top: 0; flex-wrap: wrap; }
   .pp-cars { grid-template-columns: repeat(2, 1fr); }
+  .pp-net { padding: 28px 22px 26px; }
+  .pp-net-cta { width: 100%; justify-content: center; }
 }
 /* KPI-Raster: EIGENER Breakpoint bei 1080 px, bewusst getrennt vom globalen
    980-px-Wechsel oben (der weiterhin ausschließlich .pp-main/.pp-top/
@@ -361,8 +581,21 @@
 @media (max-width: 1080px) {
   .pp-kpis { grid-template-columns: repeat(2, 1fr); }
 }
+@media (max-width: 640px) {
+  .pp-bento { grid-template-columns: 1fr; }
+  .pp-bento-item--hero, .pp-bento-item--wide { grid-column: 1; }
+  /* Einspaltig ist die Karte zu schmal für Icon neben Text — zurück auf die
+     gemeinsame Form aller Karten (Icon oben). */
+  .pp-bento-item--wide { display: flex; }
+  .pp-bento-item--wide .pp-bento-ic { margin-bottom: 16px; }
+  .pp-shead-title { font-size: 23px; }
+  .pp-flow { padding: 24px 18px 22px; }
+  .pp-flow-track { --flow-ic: 46px; --flow-gap: 22px; }
+  .pp-flow-step { column-gap: 14px; }
+  .pp-flow-ic { border-radius: 14px; }
+}
 @media (max-width: 560px) {
-  .pp-kpis, .pp-steps, .pp-vals { grid-template-columns: 1fr; }
+  .pp-kpis { grid-template-columns: 1fr; }
   .pp-h1 { font-size: 38px; }
 }
 
@@ -371,8 +604,13 @@
   .knum { font-size: 44px; }
 }
 
-/* Die einzige Bewegung der Karten ist der Übergang von Rahmen und Schatten
-   beim Hover. Wer Bewegung abbestellt hat, bekommt den Zielzustand sofort. */
+/* Die einzige Bewegung der Karten ist der Übergang von Rahmen, Fläche und
+   Schatten beim Hover — keine Verschiebung, keine Skalierung, keine dauerhaft
+   laufende Animation. Wer Bewegung abbestellt hat, bekommt den Zielzustand
+   sofort. */
 @media (prefers-reduced-motion: reduce) {
   .pp-kpi { transition: none; }
+  .pp-bento-item { transition: none; }
+  .pp-car-chip { transition: none; }
+  .pp-net-cta { transition: none; }
 }

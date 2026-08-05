@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow } from "../api/client";
+import { FormAlert } from "../components/ui/FormAlert";
+import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -588,7 +590,10 @@ export default function BookingPage() {
           ...customsPayload,
         }),
       });
-      const d = await r.json();
+      // Body defensiv lesen: leerer Body oder eine HTML-Fehlerseite (Proxy/502)
+      // warf hier früher einen rohen JSON-Parserfehler bis ins Kundenbanner.
+      let d = null;
+      try { d = await r.json(); } catch { d = null; }
       // Serverseitiger Zollrechnungs-Guard (stabile Codes, statusunabhängig). Zurück
       // zum Customs-/Übersichtsschritt, Felder markieren, KEIN Auto-Retry/-Upload/
       // -Delete/-Book. Bei DOCUMENT_REQUIRED/MODE_CONFLICT genau EIN kontrollierter GET.
@@ -667,9 +672,26 @@ export default function BookingPage() {
         setLoading(false);
         return;
       }
-      if (!r.ok) throw new Error(d.error || "Buchung fehlgeschlagen");
+      if (!r.ok) {
+        // Restpfad (404/429/5xx/unlesbarer Body): früher ein Sammelwurf mit
+        // rohem d.error — jetzt klare, unterscheidbare Meldungen. Der Kunde
+        // bleibt auf Schritt 2, alle Angaben bleiben erhalten, der Button wird
+        // über setLoading(false) unten wieder frei.
+        setError(mapBookRestError(r.status, d));
+        setLoading(false);
+        return;
+      }
+      if (!d || typeof d !== "object") {
+        // 2xx ohne lesbares Buchungsobjekt: KEIN Erfolg, keine Navigation.
+        setError(mapBookUnreadableSuccess());
+        setLoading(false);
+        return;
+      }
       setBooking(d); setStep(3);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      // Netzabbruch/Timeout: kein „Failed to fetch" mehr im Banner.
+      setError(mapBookThrownError(e));
+    }
     setLoading(false);
   };
 
@@ -819,7 +841,9 @@ export default function BookingPage() {
           <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
         )}
 
-        {error && <div className="alert alert-error mb-16">{error}</div>}
+        {error && (typeof error === "object"
+          ? <FormAlert tone="error" title={error.title} message={error.message} className="mb-16" />
+          : <div className="alert alert-error mb-16" role="alert">{error}</div>)}
 
         {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
@@ -1075,7 +1099,7 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {labelError && <div className="alert alert-error mb-16">{labelError}</div>}
+            {labelError && <div className="alert alert-error mb-16" role="alert">{labelError}</div>}
             {booking?.shipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}

@@ -189,14 +189,25 @@ export default function DashboardPage() {
   // hierüber NICHT gesetzt — der explizite Retry-Button im Fehlerzustand ruft
   // stattdessen fetchData() auf (siehe unten), damit ein fehlgeschlagener
   // erster Ladeversuch sichtbar bleibt, bis er wirklich behoben ist.
-  const reloadInvoices = useCallback(async () => {
+  // Manuell (Button) vs. automatisch (zurückhaltendes Auto-Refresh) verhalten
+  // sich bei Fehlern UNTERSCHIEDLICH: Der bewusste Klick bekam bisher keinerlei
+  // Rückmeldung — er konnte vollständig wortlos scheitern (Auditbefund #11).
+  // Jetzt meldet der manuelle Weg den Fehlschlag sichtbar (die vorhandenen
+  // Daten bleiben stehen), während der Hintergrundweg still bleibt, damit kein
+  // Meldungs-Takt entsteht. Ein späterer Erfolg räumt die Meldung wieder ab.
+  const [invoicesRefreshError, setInvoicesRefreshError] = useState(false);
+  const reloadInvoices = useCallback(async (opts) => {
+    const silent = !(opts && opts.silent === false);
     try {
       const r = await apiFetch(`/kunde/invoices`, { auth: true });
-      if (!r.ok) return;
-      const d = await r.json();
+      if (!r.ok) { if (!silent) setInvoicesRefreshError(true); return; }
+      let d = null;
+      try { d = await r.json(); } catch { d = null; }
+      if (!d) { if (!silent) setInvoicesRefreshError(true); return; }
       setInvoices(d.invoices || []);
       setInvoiceSummary(d.summary || null);
-    } catch { /* Netzwerkfehler: Anzeige unverändert lassen */ }
+      setInvoicesRefreshError(false);
+    } catch { if (!silent) setInvoicesRefreshError(true); }
   }, []);
 
   // Nach einer Stornierungsanfrage: betroffene Zeile optimistisch auf den
@@ -417,6 +428,7 @@ export default function DashboardPage() {
             loading={loading}
             error={invoicesError}
             onReload={reloadInvoices}
+            refreshError={invoicesRefreshError}
             onRetry={fetchData}
           />
         )}

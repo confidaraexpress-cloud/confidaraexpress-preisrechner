@@ -32,6 +32,9 @@ const LABEL_ERRORS = {
   404: "Label oder Sendung wurde nicht gefunden.",
   409: "Für diese Sendung ist noch kein Label verfügbar.",
   429: "Zu viele Labelabrufe. Bitte später erneut versuchen.",
+  // 500 konsistent zur Kundenmeldung (labelErrors.mjs) — gleiche Ursache,
+  // gleicher Wortlaut für Support-Rückfragen.
+  500: "Das Versandlabel konnte momentan nicht geladen werden. Bitte versuchen Sie es später erneut.",
   502: "Der Labeldienst ist momentan nicht erreichbar.",
   default: "Label konnte nicht heruntergeladen werden.",
 };
@@ -575,7 +578,7 @@ export default function AdminShipmentDetailPage() {
           <div className="adm-card-head"><Icon n="headset" s={17} /> Support-Aktionen</div>
           <div className="adm-card-body">
             {labelMsg && (
-              <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} style={{ marginBottom: 12 }}>
+              <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} role={labelMsg.type === "success" ? "status" : "alert"} style={{ marginBottom: 12 }}>
                 <Icon n={labelMsg.type === "success" ? "check" : "x"} s={16} />{labelMsg.text}
               </div>
             )}

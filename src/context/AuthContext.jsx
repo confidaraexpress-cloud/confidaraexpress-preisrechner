@@ -47,15 +47,38 @@ export function AuthProvider({ children }) {
     return () => setAuthErrorHandler(null);
   }, [navigate]);
 
-  useEffect(() => {
+  // Sitzungsprüfung beim App-Start. Vorher löschte JEDER Fehlschlag das Token
+  // (`catch(() => localStorage.removeItem("ce_token"))`) — ein Netz-Blip oder
+  // ein 500 loggte den Kunden damit KOMMENTARLOS aus. Jetzt wird das Token nur
+  // noch bei einem echten Auth-Fehler verworfen (401/403 — das erledigt bereits
+  // der zentrale apiFetch-Handler samt sessionExpired-Hinweis). Netzwerk-/
+  // Serverfehler und unlesbare Antworten setzen stattdessen sessionCheckFailed:
+  // ProtectedRoute zeigt dann einen erklärten Zustand mit manuellem „Erneut
+  // versuchen" — bewusst KEIN automatischer Retry (keine Endlosschleife).
+  const [sessionCheckFailed, setSessionCheckFailed] = useState(false);
+
+  const checkSession = useCallback(async () => {
     const t = getToken();
     if (!t) { setLoadingUser(false); return; }
-    apiFetch(`/kundenbereich`, { auth: true })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => { setUser(userFromKundenbereich(d)); setAuthed(true); })
-      .catch(() => localStorage.removeItem("ce_token"))
-      .finally(() => setLoadingUser(false));
+    setLoadingUser(true);
+    setSessionCheckFailed(false);
+    try {
+      const r = await apiFetch(`/kundenbereich`, { auth: true });
+      if (r.status === 401 || r.status === 403) { setLoadingUser(false); return; } // zentraler Handler: Token weg + Hinweis
+      if (!r.ok) { setSessionCheckFailed(true); setLoadingUser(false); return; }   // 5xx: Token BEHALTEN
+      let d = null;
+      try { d = await r.json(); } catch { d = null; }
+      if (!d) { setSessionCheckFailed(true); setLoadingUser(false); return; }      // unlesbare Antwort ≠ ungültige Sitzung
+      setUser(userFromKundenbereich(d));
+      setAuthed(true);
+      setLoadingUser(false);
+    } catch {
+      setSessionCheckFailed(true);                                                 // Netzfehler: Token BEHALTEN
+      setLoadingUser(false);
+    }
   }, []);
+
+  useEffect(() => { checkSession(); }, [checkSession]);
 
   const login = useCallback(async (t) => {
     try {
@@ -79,6 +102,7 @@ export function AuthProvider({ children }) {
     setAuthed(false);
     setUser(null);
     setSessionExpired(false);
+    setSessionCheckFailed(false);
   }, []);
 
   const updateUser = useCallback((partial) => {
@@ -103,7 +127,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, authed, loadingUser, sessionExpired, login, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider value={{ user, authed, loadingUser, sessionExpired, sessionCheckFailed, retrySessionCheck: checkSession, login, logout, updateUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

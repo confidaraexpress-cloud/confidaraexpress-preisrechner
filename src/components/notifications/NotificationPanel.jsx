@@ -21,7 +21,7 @@ import {
 // Escape schließt, Tab-Falle innerhalb des Fensters, Fokus danach zurück auf die
 // auslösende Glocke (das erledigt der aufrufende Bell-Button).
 export function NotificationPanel({ onClose, onSelect }) {
-  const { items, loading, error, refresh, markRead, markAllRead } = useNotifications();
+  const { items, loading, error, markError, refresh, markRead, markAllRead } = useNotifications();
   const boxRef = useRef(null);
 
   // Fokus, Escape und Tab-Falle.
@@ -93,6 +93,13 @@ export function NotificationPanel({ onClose, onSelect }) {
       </div>
 
       <div className="ntf-body">
+        {/* Als-gelesen-Fehlschlag: sichtbar statt wortlosem Zurückspringen des
+            Punkts; der nächste Klick versucht es erneut (Context räumt vorher ab). */}
+        {markError && (
+          <div className="ntf-state" role="alert">
+            <p className="ntf-state-text">{markError}</p>
+          </div>
+        )}
         {loading && items.length === 0 ? (
           <div className="ntf-state" role="status" aria-live="polite">
             <span className="spinner spinner-dark" /> {LOADING_TEXT}

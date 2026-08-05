@@ -147,7 +147,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
     <>
       <div className="page-body">
         {labelError && (
-          <div className="alert alert-error mb-16">
+          <div className="alert alert-error mb-16" role="alert">
             <Icon n="x" s={16} />{labelError}
           </div>
         )}

@@ -17,6 +17,20 @@ import {
   mapApiRegistrationError,
   buildRegistrationPayload,
 } from "../utils/registrationValidation.mjs";
+// Auth-Fehlerzuordnung: Codes → Kundentexte, Transportfehler über die zentrale
+// Klassifizierung (apiError.mjs). Ersetzt die früheren rohen e.message-Anzeigen
+// und die leeren Banner aus `new Error(d.error)` ohne Fallback.
+import {
+  mapLoginError, mapForgotError, mapResetError, mapAuthThrownError,
+  classifyResetTokenCheck, FORGOT_NEUTRAL_ERFOLG, LOGIN_SERVERFEHLER,
+  KUNDENBEREICH_NACH_LOGIN_FEHLER, RESET_PRUEFUNG_NETZFEHLER,
+} from "../utils/authErrors.mjs";
+
+// Antwort-Body defensiv lesen: leerer Body, HTML-Fehlerseite oder abgebrochene
+// Übertragung dürfen nie als Parserfehler beim Kunden landen.
+async function readJson(r) {
+  try { return await r.json(); } catch { return null; }
+}
 
 export default function AuthPage() {
   const { login, sessionExpired } = useAuth();
@@ -55,29 +69,56 @@ export default function AuthPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reset-Token-Prüfung: "failed" heißt Netzwerk-/Serverproblem — der Nutzer
+  // bleibt auf dem Reset-Schritt und kann die Prüfung erneut anstoßen (vorher:
+  // stiller Rückfall auf den Login ohne jede Meldung). Ein sicher unbrauchbarer
+  // Link (ungültig/abgelaufen) führt mit ERKLÄRUNG zurück zum Login.
+  const [resetCheckFailed, setResetCheckFailed] = useState(false);
+
+  const checkResetToken = async (t) => {
+    setResetCheckFailed(false); setError("");
+    let r;
+    try {
+      r = await fetch(`${API}/auth/validate-reset-token/${t}`);
+    } catch {
+      setResetCheckFailed(true); setError(RESET_PRUEFUNG_NETZFEHLER);
+      return;
+    }
+    const d = await readJson(r);
+    if (!r.ok || d === null) {
+      // 5xx / unlesbare Antwort: nicht als „Link ungültig" fehldeuten.
+      setResetCheckFailed(true); setError(RESET_PRUEFUNG_NETZFEHLER);
+      return;
+    }
+    const klass = classifyResetTokenCheck(d);
+    if (klass.state === "unusable") { setStep("credentials"); setError(klass.message); }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("reset");
     if (t) {
       setResetToken(t); setStep("reset");
-      fetch(`${API}/auth/validate-reset-token/${t}`).then(r => r.json())
-        .then(d => { if (!d.valid) { setStep("credentials"); setError("Reset-Link ungültig oder abgelaufen."); } })
-        .catch(() => setStep("credentials"));
+      checkResetToken(t);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogin = async () => {
     setError(""); setLoading(true);
     try {
       const r = await fetch(`${API}/login`, { method: "POST", headers: jsonH, body: JSON.stringify({ ...loginForm, rememberMe }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Login fehlgeschlagen");
-      if (d.token) {
-        localStorage.setItem("ce_token", d.token);
-        await login(d.token);
-        navigate("/dashboard");
-      } else throw new Error("Kein Token erhalten");
-    } catch (e) { setError(e.message); }
+      const d = await readJson(r);
+      if (!r.ok) { setError(mapLoginError(r.status, d)); setLoading(false); return; }
+      if (!d?.token) { setError(LOGIN_SERVERFEHLER); setLoading(false); return; }
+      localStorage.setItem("ce_token", d.token);
+      // login() lädt /kundenbereich. Scheitert DAS, ist der Login nicht
+      // „scheinbar erfolgreich": vorher wurde die Rückgabe ignoriert und die
+      // Navigation endete kommentarlos wieder auf /login.
+      const ok = await login(d.token);
+      if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
+      navigate("/dashboard");
+    } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
 
@@ -109,7 +150,7 @@ export default function AuthPage() {
       }
       setSuccess("Firmenkonto beantragt! Wir prüfen Ihre Angaben und melden uns nach der Freischaltung per E-Mail.");
       setTab("login");
-    } catch (e) { setError(e.message || "Registrierung fehlgeschlagen"); }
+    } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
 
@@ -117,10 +158,11 @@ export default function AuthPage() {
     setError(""); setLoading(true);
     try {
       const r = await fetch(`${API}/auth/forgot-password`, { method: "POST", headers: jsonH, body: JSON.stringify({ email: forgotEmail }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      setSuccess(d.message);
-    } catch (e) { setError(e.message); }
+      const d = await readJson(r);
+      // Nie wieder ein leerer Banner: jede Antwortform hat einen Text-Fallback.
+      if (!r.ok) { setError(mapForgotError(r.status, d)); setLoading(false); return; }
+      setSuccess(typeof d?.message === "string" && d.message ? d.message : FORGOT_NEUTRAL_ERFOLG);
+    } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
 
@@ -131,12 +173,15 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const r = await fetch(`${API}/auth/reset-password`, { method: "POST", headers: jsonH, body: JSON.stringify({ token: resetToken, password: newPassword }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
+      const d = await readJson(r);
+      // Passwortfelder bleiben bei jedem Fehler erhalten (State wird nicht
+      // geleert) — bei „abgelaufen"/„ungültig" erklärt der Text den Weg über
+      // „Passwort vergessen".
+      if (!r.ok) { setError(mapResetError(r.status, d)); setLoading(false); return; }
       setSuccess("Passwort zurückgesetzt!");
       window.history.replaceState({}, "", "/login");
       setTimeout(() => { setStep("credentials"); setSuccess(""); }, 2000);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };
 
@@ -186,16 +231,26 @@ export default function AuthPage() {
         )}
 
         {step === "reset" && (
-          <ResetPasswordForm
-            password={newPassword}
-            confirmPassword={newPasswordConfirm}
-            onPasswordChange={setNewPassword}
-            onConfirmChange={setNewPasswordConfirm}
-            onSubmit={handleReset}
-            loading={loading}
-            error={error}
-            success={success}
-          />
+          <>
+            <ResetPasswordForm
+              password={newPassword}
+              confirmPassword={newPasswordConfirm}
+              onPasswordChange={setNewPassword}
+              onConfirmChange={setNewPasswordConfirm}
+              onSubmit={handleReset}
+              loading={loading}
+              error={error}
+              success={success}
+            />
+            {/* Netz-/Serverfehler bei der Link-Prüfung: Nutzer bleibt auf dem
+                Reset-Schritt (kein stiller Rückfall zum Login) und kann die
+                Prüfung bewusst wiederholen. */}
+            {resetCheckFailed && (
+              <button type="button" className="auth-btn-ghost" onClick={() => checkResetToken(resetToken)}>
+                Link erneut prüfen
+              </button>
+            )}
+          </>
         )}
 
         {step === "credentials" && (
@@ -236,17 +291,17 @@ export default function AuthPage() {
               </div>
 
               {sessionExpired && (
-                <div className="auth-alert auth-alert-info">
+                <div className="auth-alert auth-alert-info" role="status">
                   Ihre Sitzung ist abgelaufen oder Ihr Konto wurde deaktiviert. Bitte melden Sie sich erneut an.
                 </div>
               )}
               {emailChanged && (
-                <div className="auth-alert auth-alert-success">
+                <div className="auth-alert auth-alert-success" role="status">
                   E-Mail-Adresse geändert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse an.
                 </div>
               )}
-              {error   && <div className="auth-alert auth-alert-error">{error}</div>}
-              {success && <div className="auth-alert auth-alert-success">{success}</div>}
+              {error   && <div className="auth-alert auth-alert-error" role="alert">{error}</div>}
+              {success && <div className="auth-alert auth-alert-success" role="status">{success}</div>}
 
               {tab === "login" ? (
                 <LoginForm

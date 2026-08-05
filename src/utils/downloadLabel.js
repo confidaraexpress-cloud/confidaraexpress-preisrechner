@@ -1,37 +1,60 @@
 import { apiFetch } from "../api/client";
+import { mapLabelError, LABEL_TEXT_500, LABEL_TEXT_NETZ } from "./labelErrors.mjs";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kundenlabel-Download.
+//
+// Der frühere Ablauf übernahm `d.error` BLIND als Anzeigetext — beim
+// Backend-Sammel-Catch (500 {error:"Fehler"}) stand dadurch wortwörtlich
+// „Fehler" im Kundenbanner (Auditbefund #3). Jetzt gilt:
+//   · Codes steuern die Auswahl kuratierter Texte (LABEL_NOT_READY, …),
+//   · ein Server-Freitext wird NUR noch bei 4xx als Fallback angezeigt und nur,
+//     wenn er wie eine echte Meldung aussieht (mehr als ein Wort),
+//   · JEDER 5xx läuft über den technischen Text — nie über den Rohtext,
+//   · leerer/unlesbarer Body und HTML-Antworten sind abgedeckt,
+//   · eine JSON-„Erfolgs"-Antwort wird nie als PDF-Datei gespeichert.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function downloadLabel(id) {
   let r;
   try {
     r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
   } catch {
-    throw new Error("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+    throw new Error(LABEL_TEXT_NETZ);
   }
 
   if (!r.ok) {
-    let message =
-      r.status === 409 ? "Das Versandlabel ist noch nicht verfügbar. Bitte versuchen Sie es in Kürze erneut."
-      : r.status === 404 ? "Label für diese Sendung ist noch nicht verfügbar."
-      : r.status === 429 ? "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut."
-      : "Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.";
-    try {
-      const d = await r.json();
-      if (d?.error) message = d.error;
-    } catch { /* Response hat keinen JSON-Body */ }
-    const err = new Error(message);
+    let body = null;
+    try { body = await r.json(); } catch { body = null; }
+    const err = new Error(mapLabelError(r.status, body));
+    err.status = r.status;
+    err.code = body && typeof body.code === "string" ? body.code : null;
+    throw err;
+  }
+
+  // Erfolgsstatus, aber KEIN PDF (z. B. eine JSON-/HTML-Antwort eines Proxys):
+  // niemals als Datei speichern — der Kunde bekäme sonst eine kaputte PDF.
+  const contentType = String(r.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.startsWith("application/pdf")) {
+    let body = null;
+    try { body = await r.json(); } catch { body = null; }
+    const err = new Error(mapLabelError(500, body));
     err.status = r.status;
     throw err;
   }
 
   const blob = await r.blob();
   if (!blob || blob.size === 0) {
-    throw new Error("Label konnte nicht heruntergeladen werden. Bitte versuchen Sie es erneut.");
+    throw new Error(LABEL_TEXT_500);
   }
 
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `label-${id}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `label-${id}.pdf`;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

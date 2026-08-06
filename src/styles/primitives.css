@@ -28,9 +28,9 @@
   outline-offset: var(--ce-focus-ring-offset);
 }
 
-/* Interaktive Karten und Links im Inhalt tragen denselben Ring. */
-.ce-card-interactive:focus-visible,
-.tile-interactive:focus-visible {
+/* Interaktive Karten tragen denselben Ring. (.tile-interactive war der
+   Klassenname einer Kachelvariante, die es im Markup nie gab.) */
+.ce-card-interactive:focus-visible {
   outline: var(--ce-focus-ring);
   outline-offset: var(--ce-focus-ring-offset);
 }
@@ -241,7 +241,3 @@
    gültig und wandern in ihren Seitenpaketen auf die Leiter. */
 
 /* Icons folgen der Textfarbe und skalieren nie den Zeilenfluss. */
-.ce-icon {
-  flex: none;
-  color: currentColor;
-}

@@ -36,7 +36,7 @@
 .app-shell {
   /* Zwei Rollen, beide aus der Foundation: --fs trägt alles Funktionale,
      --fd die wenigen Display-Momente. Die frühere dritte Rolle --fh
-     (Libre Franklin) ist mit Paket A, Phase 2.5 entfallen. */
+     (Libre Franklin) ist entfallen — im Abschlusspaket auch ihre Fontdateien. */
   --fs: var(--ce-font-sans);
   --fd: var(--ce-font-display);
 

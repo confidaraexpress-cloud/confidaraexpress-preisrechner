@@ -59,6 +59,7 @@ export function DraftsList({
       <div className="table-card dft-table-card">
         <div className="table-scroll">
           <table className="dft-table">
+            <caption className="sr-only">Gespeicherte Entwürfe</caption>
             <thead>
               <tr>
                 <th scope="col">Empfänger</th>

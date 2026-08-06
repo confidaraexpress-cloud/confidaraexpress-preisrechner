@@ -62,31 +62,31 @@ export default function EmailChangeConfirmPage() {
 
   const VIEW = {
     loading: {
-      glyph: null,
+      icon: null,
       title: "E-Mail-Adresse wird bestätigt",
       desc: "Bitte warten Sie einen Moment.",
       role: "status",
     },
     success: {
-      glyph: "✅",
+      icon: "check",
       title: "E-Mail-Adresse erfolgreich geändert",
       desc: "Ihre E-Mail-Adresse wurde erfolgreich geändert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse erneut an.",
       role: "status",
     },
     invalid: {
-      glyph: "⚠️",
+      icon: "info",
       title: "Bestätigungslink nicht mehr gültig",
       desc: "Der Bestätigungslink ist ungültig oder abgelaufen. Bitte starten Sie die E-Mail-Änderung in Ihrem Profil erneut.",
       role: "alert",
     },
     unavailable: {
-      glyph: "⚠️",
+      icon: "info",
       title: "E-Mail-Adresse nicht mehr verfügbar",
       desc: "Diese E-Mail-Adresse kann nicht mehr verwendet werden. Bitte melden Sie sich mit Ihrer bisherigen E-Mail-Adresse an und starten Sie die Änderung erneut.",
       role: "alert",
     },
     error: {
-      glyph: "⚠️",
+      icon: "info",
       title: "Bestätigung fehlgeschlagen",
       desc: "Die E-Mail-Adresse konnte nicht bestätigt werden. Bitte versuchen Sie es erneut.",
       role: "alert",
@@ -104,7 +104,7 @@ export default function EmailChangeConfirmPage() {
             <div className="auth-card-icon email-change-confirm-icon" aria-hidden="true">
               {state === "loading"
                 ? <span className="spinner email-change-confirm-spinner" />
-                : <span>{view.glyph}</span>}
+                : <Icon n={view.icon} s={40} />}
             </div>
             <h1 className="auth-card-title">{view.title}</h1>
             <p className="auth-card-desc" role={view.role}>{view.desc}</p>

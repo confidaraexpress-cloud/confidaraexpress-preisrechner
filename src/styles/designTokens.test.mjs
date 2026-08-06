@@ -18,9 +18,31 @@
 // der Normalfall, kein Fehler.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 
 const roh = readFileSync(new URL("./variables.css", import.meta.url), "utf8");
+
+// Alle Bereichs-Stylesheets (ohne variables.css) und alle produktiven Quellen —
+// Grundlage für die Prüfung „kein Alias ohne Aufrufer". Tests zählen bewusst
+// NICHT als Aufrufer: eine Variable, die nur ihr eigener Test am Leben hält,
+// ist tot.
+const BEREICHS_CSS = readdirSync(new URL("./", import.meta.url))
+  .filter((f) => f.endsWith(".css") && f !== "variables.css")
+  .map((f) => readFileSync(new URL(`./${f}`, import.meta.url), "utf8"))
+  .join("\n");
+function quellen(verzeichnis, gesammelt = []) {
+  for (const eintrag of readdirSync(verzeichnis)) {
+    const pfad = new URL(`${eintrag}`, verzeichnis);
+    if (statSync(pfad).isDirectory()) { quellen(new URL(`${eintrag}/`, verzeichnis), gesammelt); continue; }
+    if (!/\.(jsx|js|mjs)$/.test(eintrag) || eintrag.includes(".test.")) continue;
+    gesammelt.push(readFileSync(pfad, "utf8"));
+  }
+  return gesammelt;
+}
+const QUELL_JS = [
+  ...quellen(new URL("../", import.meta.url)),
+  readFileSync(new URL("../../index.html", import.meta.url), "utf8"),
+].join("\n");
 // Kommentare enthalten Tokennamen zu Dokumentationszwecken — vor dem Parsen weg.
 const css = roh.replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -174,23 +196,33 @@ test("7 — Skalenwerte entsprechen der Spezifikation", () => {
 });
 
 test("8 — die bisher undefinierten Tokens sind definiert", () => {
-  // Beide wurden bislang nur über Inline-Fallbacks benutzt und liefen faktisch
-  // ins Leere: --border-strong in overview.css/dashboard-premium.css,
-  // --shadow-card-lg in notifications.css.
+  // --border-strong wurde bis Phase 1 nur über Inline-Fallbacks benutzt und
+  // lief faktisch ins Leere; es ist weiterhin produktiv im Einsatz.
   assert.equal(roheZuweisung("border-strong"), "var(--ce-color-border-strong)");
   assert.equal(wert("border-strong"), "#c3cad6");
-  assert.equal(roheZuweisung("shadow-card-lg"), "var(--ce-elevation-3)");
-  assert.ok(wert("shadow-card-lg").includes("rgba"), "--shadow-card-lg muss zu einem Schattenwert auflösen");
+  // --shadow-card-lg war der zweite dieser Fälle (notifications.css). Mit der
+  // Migration von notifications.css auf --ce-elevation-* im Abschlusspaket hat
+  // es seinen letzten Aufrufer verloren und ist entfernt — die Zusicherung
+  // wandert damit von „ist definiert" auf „ist nachweislich abgelöst".
+  assert.equal(werte.has("shadow-card-lg"), false,
+    "--shadow-card-lg ist ohne Aufrufer und darf nicht wieder definiert werden");
+  assert.equal(/--shadow-card-lg/.test(BEREICHS_CSS), false,
+    "ein Stylesheet liest --shadow-card-lg wieder");
 });
 
 test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => {
+  // Die Tabelle listet die Aliase, die es noch GIBT. Sechs Einträge sind im
+  // Abschlusspaket entfallen, weil ihr letzter produktiver Aufrufer verschwand:
+  // --accent, --radius-xl, --accent-blue-strong, --accent-blue-soft,
+  // --accent-blue-border und --shadow-card-hover (dessen einziger Nutzer die
+  // abgelöste Regel .kpi-card:hover war). Die Prüfung am Ende dieses Tests hält
+  // fest, dass sich kein neuer toter Alias ansammelt.
   const abbildung = {
     navy: "ce-color-text-primary",
     blue: "ce-color-brand-active",
     blue2: "ce-color-brand",
     blue3: "ce-color-brand",
     "blue-light": "ce-color-brand-soft",
-    accent: "ce-color-brand",
     white: "ce-color-surface",
     success: "ce-color-success-solid",
     "success-bg": "ce-color-status-success-surface",
@@ -201,7 +233,6 @@ test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => 
     border: "ce-color-border-default",
     border2: "ce-color-border-strong",
     "radius-lg": "ce-radius-lg",
-    "radius-xl": "ce-radius-xl",
     "radius-full": "ce-radius-full",
     "sidebar-width": "ce-size-sidebar",
     surface: "ce-color-surface",
@@ -212,11 +243,7 @@ test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => 
     "text-secondary": "ce-color-text-secondary",
     "text-tertiary": "ce-color-text-muted",
     "accent-blue": "ce-color-brand",
-    "accent-blue-strong": "ce-color-brand-hover",
-    "accent-blue-soft": "ce-color-brand-soft",
-    "accent-blue-border": "ce-color-brand-border",
     "shadow-card": "ce-elevation-1",
-    "shadow-card-hover": "ce-elevation-2",
     "shadow-overlay": "ce-elevation-3",
     "ce-kpi-navy": "ce-color-text-primary",
     "ce-kpi-active": "ce-color-brand",
@@ -227,16 +254,76 @@ test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => 
     if (ist !== `var(--${neu})`) abweichungen.push(`--${alt}: ${ist} (erwartet var(--${neu}))`);
   }
   assert.deepEqual(abweichungen, [], `falsch abgebildete Legacy-Tokens:\n  ${abweichungen.join("\n  ")}`);
+
+  // Stärker als zuvor: KEIN Legacy-Alias darf ohne produktiven Aufrufer
+  // weiterleben. Die fünf Aliase --accent, --radius-xl, --accent-blue-strong,
+  // --accent-blue-soft und --accent-blue-border standen nur noch in dieser
+  // Tabelle; sie sind im Abschlusspaket entfernt worden. Diese Prüfung
+  // verhindert, dass sich erneut toter Bestand ansammelt.
+  const ohneAufrufer = [];
+  for (const [name] of werte) {
+    if (name.startsWith("ce-")) continue;              // Foundation: Vertrag, darf ungenutzt sein
+    const muster = new RegExp("--" + name.replace(/[-]/g, "\\-") + "(?![\\w-])");
+    if (!muster.test(BEREICHS_CSS) && !muster.test(QUELL_JS)) ohneAufrufer.push(`--${name}`);
+  }
+  assert.deepEqual(ohneAufrufer, [],
+    `Legacy-Aliase ohne produktiven Aufrufer:\n  ${ohneAufrufer.join("\n  ")}`);
 });
 
-test("10 — bewusst noch nicht umgehängte Legacy-Tokens behalten ihren Wert", () => {
-  // Diese vier würden in Phase 1 sichtbare Änderungen erzeugen, die nicht
-  // freigegeben sind (Formänderung an Buttons/Eingaben bzw. Tiefenwechsel).
-  // Sie wandern zusammen mit den Primitives in Phase 2.
-  assert.equal(wert("radius-sm"), "6px", "Zielwert 8px gehört zu Phase 2");
-  assert.equal(wert("radius"), "10px", "Zielwert 12px gehört zu Phase 2");
-  assert.match(wert("shadow-sm"), /^0 1px 3px/);
-  assert.match(wert("shadow-lg"), /^0 12px 40px/);
+test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
+  // Diese Zusicherung war in Phase 1 die Gegenrichtung: --radius-sm (6px) und
+  // --radius (10px) DURFTEN damals ausdrücklich neben der Skala stehen, weil
+  // ihre Umhängung eine sichtbare Formänderung bedeutet hätte. Mit dem
+  // Abschlusspaket ist die Umhängung vollzogen — die Zusicherung dreht sich
+  // deshalb um und ist damit strenger als vorher: sie verbietet, was sie
+  // vorher erlaubte.
+  assert.equal(roheZuweisung("radius-sm"), "var(--ce-radius-sm)");
+  assert.equal(wert("radius-sm"), "8px");
+  assert.equal(roheZuweisung("radius"), "var(--ce-radius-md)");
+  assert.equal(wert("radius"), "12px");
+
+  // Und projektweit liegt jeder Radius auf der Skala. Ausgenommen bleibt der
+  // Auth-Bereich mit seiner eigenen, dokumentierten Glaswelt.
+  const SKALA = new Set(["0", "50%", "inherit", "999px", "9999px",
+    ...["0", "sm", "md", "lg", "xl", "full"].map((n) => `var(--ce-radius-${n})`),
+    ...["", "-sm", "-lg", "-full"].map((n) => `var(--radius${n})`)]);
+  // Drei dokumentierte Ausnahmen, jede mit eigenem, gemessenem Material und
+  // eigener Governance:
+  //   auth.css              — die Glaswelt des Auth-Bereichs (eigenes Paket)
+  //   overview.css          — die vier KPI-Karten (overviewKpiCards.test.mjs)
+  //   dashboard-premium.css — Sidebar-Chrome und ihre Karten (appShellChrome.test.mjs)
+  // Ihre Radien sind dort gemessen und festgeschrieben; sie hier zu
+  // vereinheitlichen hieße, an einem geprüften Material vorbeizuarbeiten.
+  const EIGENMATERIAL = ["auth.css", "overview.css", "dashboard-premium.css"];
+  const fremd = [];
+  for (const f of readdirSync(new URL("./", import.meta.url))) {
+    if (!f.endsWith(".css") || f === "variables.css" || EIGENMATERIAL.includes(f)) continue;
+    const css = readFileSync(new URL(`./${f}`, import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of css.matchAll(/border-radius:\s*([^;}]+)/g)) {
+      const v = m[1].trim();
+      if (SKALA.has(v) || v.startsWith("var(--auth")) continue;
+      // Der Griff einer Bildlaufleiste ist Browser-Chrome, keine Fläche des
+      // Designsystems: er ist 4 px breit, ein 8-px-Radius wäre größer als das
+      // Element. Das ist die EINZIGE zugelassene Ausnahme.
+      const regel = css.slice(css.lastIndexOf("}", m.index) + 1, m.index);
+      if (/::-webkit-scrollbar-thumb/.test(regel)) continue;
+      // Auth-Regeln liegen auch außerhalb von auth.css (responsive.css) —
+      // die Ausnahme gilt dem Scope, nicht der Datei.
+      if (/\.auth-/.test(regel)) continue;
+      fremd.push(`${f}: ${v}`);
+    }
+  }
+  assert.deepEqual(fremd, [], `Radien außerhalb der Skala:\n  ${fremd.join("\n  ")}`);
+
+  // Dieselbe Regel gilt für die Tiefe: --shadow-sm, --shadow und --shadow-lg
+  // trugen eigene, nicht auf der Skala liegende Werte. Alle drei haben im
+  // Abschlusspaket ihren letzten Aufrufer verloren (--shadow-lg zuletzt: das
+  // Filter-Dropdown des Angebotsvergleichs liegt jetzt auf --shadow-overlay).
+  // Damit ist die Zusicherung strenger als vorher — sie fordert nicht mehr
+  // einen bestimmten Altwert, sondern die Abwesenheit des Tokens.
+  for (const tot of ["shadow-sm", "shadow", "shadow-lg", "shadow-blue"]) {
+    assert.equal(werte.has(tot), false, `--${tot} ist ohne Aufrufer und muss entfallen`);
+  }
 });
 
 test("11 — die Foundation ist die einzige Quelle: keine zweite Definition außerhalb variables.css", () => {

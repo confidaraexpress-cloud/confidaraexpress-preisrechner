@@ -186,8 +186,9 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
           <div className="table-card ce-list-table">
             <div className="table-scroll">
               <table>
+                <caption className="sr-only">Ihre Sendungen</caption>
                 <thead>
-                  <tr><th>Bestellnummer</th><th>Carrier</th><th className="ce-num">Gewicht</th><th className="ce-num">Preis</th><th>Status</th><th>Datum</th><th>Aktionen</th></tr>
+                  <tr><th scope="col">Bestellnummer</th><th scope="col">Carrier</th><th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th><th scope="col">Status</th><th scope="col">Datum</th><th scope="col">Aktionen</th></tr>
                 </thead>
                 <tbody>
                   {shipments.map((s) => {

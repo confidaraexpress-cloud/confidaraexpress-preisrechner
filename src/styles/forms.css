@@ -228,7 +228,6 @@ input[type="radio"]:focus-visible {
 .field-row { display: grid; gap: 10px; }
 .field-row-2 { grid-template-columns: 1fr 1fr; }
 .field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
-.field-row-4 { grid-template-columns: repeat(4, 1fr); }
 .field-row-5 { grid-template-columns: repeat(5, 1fr); }
 .field-input-wrap { position: relative; }
 .field-input-wrap .field-input { padding-right: 42px; }

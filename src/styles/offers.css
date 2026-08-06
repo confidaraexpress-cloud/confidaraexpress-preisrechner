@@ -90,7 +90,7 @@
   position: absolute; top: calc(100% + 6px); right: 20px; z-index: 40;
   width: 320px; max-width: calc(100% - 40px);
   background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg); padding: 18px 18px 16px;
+  box-shadow: var(--shadow-overlay); padding: 18px 18px 16px;
   animation: offers-dd-in 0.16s ease;
 }
 @keyframes offers-dd-in {
@@ -191,11 +191,11 @@
 .offer-zone-1 { grid-area: zone-1; }
 .offer-logo-tile {
   width: 50px; height: 50px;
-  border-radius: 12px; background: white;
+  border-radius: var(--ce-radius-md); background: white;
   border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 10px; overflow: hidden;
-  box-shadow: 0 1px 4px rgba(14,30,80,0.07);
+  box-shadow: var(--ce-elevation-1);
   flex-shrink: 0;
 }
 /* object-fit: contain + feste Box → jedes Logo bleibt unverzerrt und zentriert,
@@ -211,7 +211,7 @@
   color: var(--navy); line-height: 1.25; margin-bottom: 3px;
 }
 /* Laufzeit — ruhig & hochwertig in DM Sans (Hausschrift, konsistent mit dem
-   Preis). Bewusst keine Display-Font (Libre Franklin): die Laufzeit soll
+   Preis). Bewusst keine Display-Font (--fd): die Laufzeit soll
    sachlich und schnell scanbar wirken, nicht charakterstark. Kein
    font-variation-settings: die Fonts sind statisch, der Wert bliebe wirkungslos. */
 .offer-eta {
@@ -235,7 +235,7 @@
 }
 /* Start = Blau (Shopabgabe/Versand), Ziel = dezentes Premium-Grün (Lieferung) —
    die Linie führt den Verlauf weiter; Ziel-Punkt pulsiert leicht zeitversetzt. */
-.offer-tl-dot--start { background: var(--blue); --tl-ring: rgba(29,78,216,0.3); }
+.offer-tl-dot--start { background: var(--blue); --tl-ring: var(--ce-color-brand-border); }
 .offer-tl-dot--end   { background: var(--success); --tl-ring: rgba(16,185,129,0.3); animation-delay: 0.4s; }
 /* Transport = Zwischenstation auf der Linie, dezentes Amber (--warn) — bewusst
    kleiner und langsamer/schwächer pulsierend als Start/Ziel, damit sie visuell
@@ -248,10 +248,10 @@
 }
 .offer-tl-track {
   position: relative;
-  flex: 1; height: 2px; margin: 0 8px; border-radius: 2px;
+  flex: 1; height: 2px; margin: 0 8px; border-radius: var(--ce-radius-sm);
   background: linear-gradient(90deg,
-    rgba(29,78,216,0.45) 0%,
-    rgba(59,130,246,0.40) 20%,
+    rgba(83,103,232,0.45) 0%,
+    rgba(83,103,232,0.40) 20%,
     rgba(245,158,11,0.38) 50%,
     rgba(16,185,129,0.35) 80%,
     rgba(16,185,129,0.40) 100%);
@@ -434,7 +434,7 @@
 .offer-links-list { display: flex; flex-direction: column; gap: 2px; }
 .offer-link-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px; margin: 0 -12px; border-radius: 8px;
+  padding: 12px; margin: 0 -12px; border-radius: var(--ce-radius-sm);
   font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
   color: var(--blue2); text-decoration: none; transition: color 0.15s, background 0.15s;
 }
@@ -455,7 +455,7 @@
 }
 .offers-trust-item:last-child { border-right: none; }
 .offers-trust-icon {
-  width: 34px; height: 34px; border-radius: 9px;
+  width: 34px; height: 34px; border-radius: var(--ce-radius-sm);
   background: white; border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
@@ -470,7 +470,7 @@
   border-top: 1px solid var(--ce-color-border-subtle);
 }
 .offers-tipp-icon {
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 30px; height: 30px; border-radius: var(--ce-radius-sm);
   background: var(--ce-color-surface);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
 }
@@ -517,7 +517,6 @@
 @media (max-width: 767px) {
   .offers-result-header { padding: 16px 16px; gap: 10px; }
   .offers-result-count { font-size: 18px; }
-  .offers-trust-badges { display: none; }
   .offers-sort-bar { padding: 10px 14px; gap: 5px; overflow-x: auto; flex-wrap: nowrap; }
   .offers-sort-label { display: none; }
   .offers-sort-btn { font-size: 11px; padding: 5px 10px; }
@@ -525,7 +524,7 @@
   .offers-body { padding: 14px; }
 
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
-  .offer-card { padding: 18px 16px; border-radius: 14px; margin-bottom: 12px; }
+  .offer-card { padding: 18px 16px; border-radius: var(--ce-radius-lg); margin-bottom: 12px; }
   .offer-card-inner {
     grid-template-columns: 1fr;
     grid-template-areas: "zone-1" "zone-2" "zone-3" "zone-4";

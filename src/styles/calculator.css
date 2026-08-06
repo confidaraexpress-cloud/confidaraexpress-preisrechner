@@ -43,7 +43,6 @@
 .service-filter-option-label { font-size: 13px; font-weight: 600; color: var(--navy); }
 .service-filter-option.selected .service-filter-option-label { color: var(--ce-color-brand-ink); }
 .service-filter-option-desc { font-size: 11px; color: var(--ce-color-text-muted); margin-top: 2px; line-height: 1.4; }
-.service-filter-option-check { font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); flex-shrink: 0; }
 
 /* Service-Filter „Abholung / Shopabgabe" — Radio-/Punkt-Auswahl (JUMiNGO-nah,
    reine Darstellung — Werte/Bindings unverändert). Nur die Service-Optionen
@@ -236,7 +235,6 @@
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .field-optional { font-size: 11px; color: var(--ce-color-text-muted); font-weight: 400; }
 .field-hint { display: block; margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--ce-color-text-muted); }
-.booking-invoice-num { color: var(--navy); }
 
 /* ─── Booking page ────────────────────────────────────────────────────────── */
 /* max-width geringfügig von 760 → 800 erhöht (nur BookingPage), damit das
@@ -254,7 +252,6 @@
 .booking-carrier-logo--generic { display: flex; align-items: center; justify-content: center; width: 22px; color: var(--ce-color-text-muted); }
 .booking-price-display { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 28px; font-weight: 600; color: var(--navy); }
 .booking-no-tariff { display: flex; align-items: center; justify-content: center; }
-.booking-service-info { font-size: 13px; color: var(--ce-color-text-muted); margin-top: 4px; }
 
 /* ── Karte „Ausgewähltes Angebot" — kompakte Auswahl-Zusammenfassung (Karte 1) ──
    Nur für diese Komponente (OfferSummaryModule). Drei Zonen: Identität · Meta ·
@@ -310,7 +307,7 @@
 .booking-prohibited-error { margin: -14px 0 20px; }
 .booking-book-btn { font-size: 15px; padding: 13px; }
 .booking-email-note { text-align: center; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 12px; }
-.booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); text-align: left; background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.12); border-radius: var(--radius); }
+.booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); text-align: left; background: var(--blue-light); border: 1px solid var(--ce-color-brand-border-soft); border-radius: var(--radius); }
 .booking-tracking-note svg { color: var(--blue2); flex-shrink: 0; margin-top: 1px; }
 
 /* ─── Zusatzversicherung: Auswahl-Cards + Live-Preis ─────────────────────────── */
@@ -335,7 +332,7 @@
 .ins-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .ins-card {
   position: relative; display: flex; flex-direction: column; gap: 11px;
-  padding: 16px; border: 1.5px solid var(--ce-color-border-default); border-radius: 14px;
+  padding: 16px; border: 1.5px solid var(--ce-color-border-default); border-radius: var(--ce-radius-lg);
   background: var(--ce-color-surface); cursor: pointer;
   box-shadow: var(--ce-elevation-1);
   transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
@@ -396,19 +393,17 @@
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
 .ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
-.ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 3px; }
+.ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: var(--ce-radius-sm); }
 /* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
-.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border); border-radius: 10px; }
+.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm); }
 .ins-overmax svg { color: var(--ce-color-status-warning-fg); flex-shrink: 0; margin-top: 1px; }
 /* Preiszusammenfassung: noch nicht bestätigter Preis (Repricing/stale/Fehler). */
-.booking-price-pending { display: flex; align-items: center; gap: 8px; padding: 12px 0 14px; font-size: 13px; font-weight: 600; color: var(--blue2); }
-.booking-price-pending--error { color: var(--danger); }
 
 /* Versicherungszustand im UNBESTÄTIGTEN Preisblock — reine Anzeige, NIE ein Gesamtpreis.
    Der Versandpreis bleibt darüber sichtbar; hier steht nur der „ab"-Hinweis bzw. der
    Repricing-/Fehler-/„nach Warenwert"-Zustand. */
-.booking-ins-state { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 9px 11px; border-radius: 10px; font-size: 12px; font-weight: 600; line-height: 1.4; background: var(--gray50); border: 1px solid var(--border); color: var(--navy); }
-.booking-ins-state--preselect { color: var(--blue2); background: var(--blue-light, #eff4ff); border-color: rgba(29, 78, 216, 0.16); }
+.booking-ins-state { display: flex; align-items: center; gap: 8px; margin: 10px 0 2px; padding: 9px 11px; border-radius: var(--ce-radius-sm); font-size: 12px; font-weight: 600; line-height: 1.4; background: var(--gray50); border: 1px solid var(--border); color: var(--navy); }
+.booking-ins-state--preselect { color: var(--blue2); background: var(--blue-light); border-color: var(--ce-color-brand-border-soft); }
 .booking-ins-state--loading { color: var(--blue2); }
 .booking-ins-state--unknown { color: var(--ce-color-text-secondary); }
 .booking-ins-state--error { color: var(--danger); background: var(--ce-color-status-error-surface); border-color: var(--ce-color-status-error-border); }
@@ -456,8 +451,6 @@
 .blsum-ins-note { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--blue2); text-align: right; }
 .blsum-ins-note--error { color: var(--danger); }
 /* Legacy (gescoped, nicht mehr aktiv genutzt). */
-.blsum-price-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--blue2); }
-.blsum-price-note--error { color: var(--danger); }
 
 /* ≤860px → drei Zeilen: Versandprodukt · [Übergabe|Zustellung] · Preis. */
 @media (max-width: 860px) {
@@ -509,7 +502,6 @@
   .ins-card { padding: 14px; }
 }
 
-.ins-fields { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .ins-status { min-height: 18px; display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; }
 .ins-status-loading { display: inline-flex; align-items: center; gap: 7px; color: var(--blue2); }
 .ins-status-ok { color: var(--success); }
@@ -518,8 +510,6 @@
 .booking-ins-unavailable { font-size: 12px; color: var(--ce-color-text-muted); margin-bottom: 16px; }
 
 /* Reprice-Preisbox: dezente Netto/MwSt-Zeile + steuerfrei-Chip */
-.booking-confirm-subrow { margin-top: -3px; padding-bottom: 8px; }
-.booking-confirm-subnote { font-size: 11px; color: var(--ce-color-text-muted); }
 .booking-tax-chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -537,7 +527,6 @@
 .labelfmt-card input:focus-visible ~ .labelfmt-radio { box-shadow: var(--ce-elevation-focus-ring); }
 
 /* Warenwert / Versicherungswert: getrennte Felder, nebeneinander (mobil gestapelt). */
-.ins-value-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 560px) { .ins-value-grid { grid-template-columns: 1fr; } }
 
 .ins-status-ok { display: inline-flex; align-items: center; gap: 6px; }
@@ -549,7 +538,7 @@
 .labelfmt-group { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .labelfmt-card {
   position: relative; display: flex; align-items: flex-start; gap: 11px;
-  padding: 13px 15px; border: 1.5px solid var(--ce-color-border-default); border-radius: 12px;
+  padding: 13px 15px; border: 1.5px solid var(--ce-color-border-default); border-radius: var(--ce-radius-md);
   background: var(--ce-color-surface); cursor: pointer;
   transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
@@ -619,7 +608,7 @@
 
 @media (max-width: 600px) { .customs-grid { grid-template-columns: 1fr; } }
 
-.booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius, 10px); padding: 16px; }
+.booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--ce-radius-md); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
 
 /* ── F3: Preisdrift-Dialog („Preisänderung erkannt") — Premium-Overlay ──────────
@@ -645,12 +634,12 @@
 .price-drift-compare {
   display: flex; align-items: stretch; gap: 12px;
   background: var(--gray50); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px; margin-bottom: 22px;
+  border-radius: var(--ce-radius-lg); padding: 16px; margin-bottom: 22px;
 }
 .price-drift-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .price-drift-col-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .price-drift-old { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 16px; font-weight: 600; color: var(--ce-color-text-muted); }
-.price-drift-col--new { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: 10px; padding: 8px 6px; }
+.price-drift-col--new { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--ce-radius-sm); padding: 8px 6px; }
 .price-drift-new { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--ce-color-brand-ink); }
 .price-drift-arrow { display: flex; align-items: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
 .price-drift-actions { display: flex; gap: 12px; }
@@ -702,17 +691,10 @@
 .calc-page-sub { color: var(--ce-color-text-muted); font-size: 15px; }
 
 /* ─── Booking step 1 price column ────────────────────────────────────────── */
-.booking-price-col { text-align: right; flex-shrink: 0; }
-.booking-price-detail { font-size: 11px; color: var(--ce-color-text-muted); margin-top: 4px; line-height: 1.6; }
-.booking-price-detail-total { font-weight: 600; color: var(--navy); padding-top: 3px; border-top: 1px solid var(--border); margin-top: 3px; }
 
 /* ─── Tracking page ──────────────────────────────────────────────────────── */
 .tracking-page-wrap { padding-top: 48px; padding-bottom: 48px; max-width: 600px; }
 .tracking-page-sub { color: var(--ce-color-text-muted); font-size: 14px; margin-top: -6px; }
-.tracking-status-box { margin-bottom: 16px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); border: 1px solid rgba(29,78,216,0.12); box-shadow: 0 2px 8px rgba(29,78,216,0.06); }
-.tracking-status-text { font-size: 13px; color: var(--blue2); font-weight: 600; }
-.tracking-status-box-lg { padding: 14px 16px; }
-.tracking-status-box-lg .tracking-status-text { font-size: 15px; }
 /* Tracking-Header: Status als Hero (wichtigste Info), Meta-Block darunter */
 .tracking-hero { text-align: center; padding: 6px 0 18px; }
 .tracking-hero-status { font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.2; overflow-wrap: anywhere; }
@@ -724,9 +706,6 @@
 .tracking-hero-meta-value { font-size: 14px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
 .tracking-id-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; user-select: all; }
 
-.tracking-meta-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; color: var(--ce-color-text-muted); }
-.tracking-meta-id strong { color: var(--navy); font-weight: 600; }
-.tracking-meta-updated { color: var(--ce-color-text-muted); white-space: nowrap; }
 .tracking-day-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted); margin: 18px 0 8px; }
 .tracking-day-label:first-child { margin-top: 0; }
 
@@ -747,7 +726,7 @@
 .dc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .dc-nav {
   width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 9px; border: 1.5px solid var(--border); background: #fff; color: var(--ce-color-text-secondary);
+  border-radius: var(--ce-radius-sm); border: 1.5px solid var(--border); background: #fff; color: var(--ce-color-text-secondary);
   cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .dc-nav:hover:not(:disabled) { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
@@ -760,7 +739,7 @@
 .dc-blank { aspect-ratio: 1 / 1; }
 .dc-day {
   position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
-  border: 1.5px solid transparent; border-radius: 10px; background: none;
+  border: 1.5px solid transparent; border-radius: var(--ce-radius-sm); background: none;
   font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; color: var(--navy);
   cursor: pointer; transition: background 0.13s, border-color 0.13s, color 0.13s;
 }
@@ -816,7 +795,7 @@
 .pw-slider-rail {
   position: absolute; left: 0; right: 0; top: 50%; height: 6px;
   transform: translateY(-50%); background: var(--gray100);
-  border-radius: var(--radius-full); box-shadow: inset 0 1px 2px rgba(14,30,80,0.08);
+  border-radius: var(--radius-full); box-shadow: var(--ce-elevation-inset);
 }
 /* Flache Markenfläche statt Verlauf (Paket B) — reine Fortschrittsanzeige. */
 .pw-slider-fill {
@@ -888,8 +867,8 @@
 .bk-savedraft-link {
   background: none; border: none; padding: 0; margin-left: 4px;
   font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; color: var(--blue2);
-  cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35);
+  cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border);
 }
 .bk-savedraft-link:hover { border-bottom-color: var(--blue2); }
-.bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 2px; }
+.bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); }

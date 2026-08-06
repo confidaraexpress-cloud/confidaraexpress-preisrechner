@@ -9,7 +9,7 @@
 // die gehören zu Phase 1/2 und haben dort ihre eigene Governance.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const STYLES = new URL("./", import.meta.url);
 const SRC = new URL("../", import.meta.url);
@@ -180,9 +180,15 @@ test("5 — keine neue Verwendung von Libre Franklin", () => {
     if (/Libre Franklin/.test(inhalt)) treffer.push(kurz(pfad));
   }
   assert.deepEqual(treffer, [], `Libre Franklin wird noch verwendet: ${treffer.join(" | ")}`);
-  // Die Fontdateien bleiben in dieser Phase bewusst erhalten.
-  assert.match(read("./fonts.css"), /librefranklin-700\.woff2/,
-    "die Fontdateien werden erst in einer späteren Phase entfernt");
+  // Die Fontdateien sind im Abschlusspaket entfernt — die Zusicherung dreht
+  // sich damit um und ist strenger als vorher: sie verbietet, was sie vorher
+  // verlangte.
+  assert.doesNotMatch(read("./fonts.css"), /librefranklin/i,
+    "fonts.css lädt Libre Franklin wieder");
+  for (const d of ["librefranklin-700.woff2", "librefranklin-800.woff2"]) {
+    assert.equal(existsSync(new URL(`../assets/fonts/${d}`, import.meta.url)), false,
+      `${d} ist wieder im Repository`);
+  }
   // Die dritte Schriftrolle --fh ist aufgelöst.
   for (const [datei, text] of Object.entries(css)) {
     assert.doesNotMatch(text, /var\(--fh\)/, `${datei}: --fh ist entfallen`);
@@ -197,9 +203,13 @@ const CORMORANT_ERLAUBT = new Set([
   // gemeinsame PageHeader-Muster zusammengeführt.
   ".ce-page-header-title",
   ".pp-h1",                // Begrüßung der Übersicht
-  ".auth-hero-title",      // Auth-Hero (eigene Welt)
-  ".auth-title",
+  ".auth-title",           // Auth-Bereich (eigene Welt)
 ]);
+// Abschlusspaket: `.auth-hero-title` stand hier als Erlaubnis, obwohl die Klasse
+// weder in einem Stylesheet noch in einem Markup existiert. Eine Erlaubnis für
+// etwas Nichtvorhandenes erlaubt still auch ihre Wiedereinführung — deshalb ist
+// sie entfallen. Die Liste ist damit um einen Eintrag KÜRZER und um genau
+// diesen Fall STRENGER.
 
 function cormorantSelektoren(text) {
   const out = [];
@@ -320,7 +330,7 @@ test("10 — Zahlenspalten in Tabellen sind rechtsbündig", () => {
 
   // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle.
   const sendungen = read("../components/dashboard/ShipmentsList.jsx");
-  assert.match(sendungen, /<th className="ce-num">Gewicht<\/th><th className="ce-num">Preis<\/th>/,
+  assert.match(sendungen, /<th[^>]*className="ce-num"[^>]*>Gewicht<\/th><th[^>]*className="ce-num"[^>]*>Preis<\/th>/,
     "Gewicht/Preis müssen als Zahlenspalten markiert sein");
   assert.equal((sendungen.match(/<td className="[^"]*ce-num"/g) || []).length, 2,
     "genau die beiden Zahlenzellen tragen den Marker");
@@ -370,7 +380,7 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Keine neue Abhängigkeit, kein verändertes Lockfile-Profil.
   const pkg = JSON.parse(read("../../package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "lucide-react", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
   // Keine Routendefinition angefasst.
   const app = read("../App.jsx");

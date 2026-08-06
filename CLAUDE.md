@@ -380,7 +380,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/premium-admin-portal-package-e`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/final-design-system-audit-cleanup`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 
@@ -569,9 +569,57 @@ Storno-, Support-, Audit- und Backfill-Logik sind unangetastet.
 Bewusst zurückgestellt: die Kennzahl „offene Freischaltungen". `GET /admin/users`
 kennt laut Backendvertrag keinen Statusfilter (`USER_PARAMS = limit/offset`) —
 die Zahl ließe sich nur aus der geladenen Seite hochrechnen. Sie braucht einen
-serverseitigen Filter. Ebenso zurückgestellt: dieselbe Fokusrückgabe-Lücke in
-`AddressActionsMenu`/`DraftActionsMenu` des Kundenportals (identisches Muster,
-aber außerhalb der Adminpaket-Grenze).
+serverseitigen Filter. Die damals zurückgestellte Fokusrückgabe-Lücke in
+`AddressActionsMenu`/`DraftActionsMenu` ist mit dem Abschlusspaket geschlossen.
+
+## Abschluss: Designsystem-Audit und Legacy-Bereinigung
+
+Die Pakete A–E haben das System aufgebaut; dieses Paket räumt auf, was dabei
+liegen geblieben ist, und schließt die letzten belegten Lücken. **Kein
+Business-, API-, Routing-, Berechtigungs- oder Datenverhalten wurde berührt.**
+
+- **Ein Blau.** `#1d4ed8`/`#3b82f6` (Legacy) sind aus allen Stylesheets
+  verschwunden; die fünf frei gewählten Kantendeckkräfte laufen jetzt über
+  `--ce-color-brand-border` (0,28) und `--ce-color-brand-border-soft` (0,16).
+- **Tiefe steht nur noch in `variables.css`.** Keine Regel schreibt einen
+  Schattenwert selbst — außer `auth.css` (Glaswelt). Der letzte freie Schatten
+  (`.pw-slider-rail`) ist `--ce-elevation-inset` geworden. Der einzige farbige
+  Glow des Systems bleibt `--auth-blue-glow`.
+- **21 tote Tokens und 72 tote Regeln sind entfernt**, jede mit Nachweis: der
+  Referenzzähler ignoriert Tests, damit eine Testerwartung keine produktiv tote
+  Variable am Leben hält. Libre Franklin ist als Familie vollständig weg —
+  keine `@font-face`-Regel, keine Datei. Geladen werden genau zwei Familien.
+- **`lucide-react` ist entfernt** (Dependency + Lockfile). Es war seit
+  `Icon.jsx` ungenutzt und durch drei Tests bereits verboten.
+- **Keine Emojis mehr als Zustandsfläche.** 🔑/🔒/✅/⚠️ in
+  `ForgotPasswordForm`, `ResetPasswordForm` und `EmailChangeConfirmPage` sind
+  Icons aus `Icon.jsx` geworden (`.auth-card-icon` trägt sie jetzt als Flex-
+  Fläche statt als 38-px-Schriftgröße).
+- **Trefferflächen unter 860 px.** Was Paket E für das Adminportal getan hat,
+  gilt jetzt auch für Kundenportal, öffentliche Navigation und Auth-Bereich:
+  jedes Bedienelement erreicht 44 px. Zwei Fallen dabei, beide gemessen:
+  `.pp-side .nitem` muss höher spezifisch sein als die Stauchung kurzer
+  Viewports (`dashboard-premium.css`, `max-height: 940px`), und der Anker der
+  Inhaltsflächen ist `.main-content`, **nicht** `.page-body` (Entwürfe und
+  Adressbuch laufen nicht durch `.page-body`). Ausgenommen bleibt
+  `.auth-field-link` — Inline-Ausnahme von WCAG 2.5.5/2.5.8.
+- **Fokusrückgabe vollständig.** Alle drei Kebab-Menüs geben den Fokus ZUERST
+  an ihren Auslöser zurück und lösen DANN die Aktion aus.
+- Governance: `src/styles/designSystemClosure.test.mjs` (Quelltext, 12 Tests —
+  eine Markenfarbe · kein toter Alias · keine undefinierte Variable · kein
+  freier Schatten · ein Overlayton · zwei Schriftfamilien · keine ungenutzte
+  Abhängigkeit · keine Emojis · beschriftete Tabellen · Fokusrückgabe ·
+  unveränderter Routen- und `page`-State-Bestand) und
+  `tests/e2e/designSystemClosure.test.mjs` (echter Dev-Server, 5 Tests).
+
+**Kein Lint-Skript.** Das Repo hat `dev`, `build`, `preview`, `test`,
+`test:e2e` — mehr nicht. Das ist der Bestand, kein Versehen; es wurde bewusst
+keines erfunden.
+
+Bewusst nicht angefasst: die Glasflächen des Auth-Bereichs (eigene Welt, eigene
+Tokenfamilie), das Eigenmaterial der Übersicht (`--ce-kpi-*`, `--ce-flow-*`,
+`--ce-bento-*`, `--ce-net-*`) und das Sidebar-Chrome — alle drei sind gemessen,
+dokumentiert und durch eigene Tests gedeckt.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

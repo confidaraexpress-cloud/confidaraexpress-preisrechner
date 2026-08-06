@@ -3,8 +3,8 @@ import React from "react";
 const SECTION_STYLE = { marginBottom: 32 };
 const H2_STYLE = { fontSize: 16, fontWeight: 600, marginBottom: 10, marginTop: 0, color: "var(--text, #111827)", fontFamily: "var(--ce-font-sans)" };
 const H3_STYLE = { fontSize: 14, fontWeight: 600, marginBottom: 6, marginTop: 16, color: "var(--text, #1f2937)" };
-const P_STYLE  = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14 };
-const P_LAST   = { lineHeight: 1.75, margin: 0, color: "var(--text-muted, #374151)", fontSize: 14 };
+const P_STYLE  = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14 };
+const P_LAST   = { lineHeight: 1.75, margin: 0, color: "var(--legal-text)", fontSize: 14 };
 const HR_STYLE = { border: "none", borderTop: "1px solid var(--border, #e5e7eb)", margin: "28px 0" };
 const TOC_LINK = { color: "var(--blue, #1D4ED8)", textDecoration: "none", fontSize: 14, lineHeight: 1.9, display: "block" };
 // Literal statt App-Token (--ce-font-numeric): Legal-Seiten bleiben bewusst
@@ -17,8 +17,8 @@ const CODE_STYLE = { fontFamily: "'DM Sans', sans-serif", fontSize: 13 };
 
 const DL_STYLE = { margin: 0 };
 const DT_STYLE = { fontWeight: 600, fontSize: 13, color: "var(--text, #111827)", paddingTop: 10, paddingBottom: 2 };
-const DD_STYLE = { margin: "0 0 4px 0", fontSize: 13, color: "var(--text-muted, #374151)", lineHeight: 1.65, paddingBottom: 10, borderBottom: "1px solid var(--border, #e5e7eb)" };
-const DD_LAST  = { margin: 0, fontSize: 13, color: "var(--text-muted, #374151)", lineHeight: 1.65, paddingBottom: 0 };
+const DD_STYLE = { margin: "0 0 4px 0", fontSize: 13, color: "var(--legal-text)", lineHeight: 1.65, paddingBottom: 10, borderBottom: "1px solid var(--border, #e5e7eb)" };
+const DD_LAST  = { margin: 0, fontSize: 13, color: "var(--legal-text)", lineHeight: 1.65, paddingBottom: 0 };
 
 const TOC = [
   [1,  "Verantwortlicher"],
@@ -157,7 +157,7 @@ export default function DatenschutzPage() {
                 Bei jedem Zugriff auf unsere Plattform werden technisch bedingt folgende Daten
                 automatisch in Server-Logfiles gespeichert:
               </p>
-              <ul style={{ paddingLeft: 20, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14, lineHeight: 1.9 }}>
+              <ul style={{ paddingLeft: 20, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14, lineHeight: 1.9 }}>
                 <li>IP-Adresse des zugreifenden Geräts</li>
                 <li>Datum und Uhrzeit des Zugriffs</li>
                 <li>Aufgerufene URL</li>
@@ -402,7 +402,7 @@ export default function DatenschutzPage() {
                 Wir versenden ausschließlich transaktionale E-Mails, d.h. Nachrichten, die in direktem
                 Zusammenhang mit Ihrer Nutzung der Plattform stehen:
               </p>
-              <ul style={{ paddingLeft: 20, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14, lineHeight: 1.9 }}>
+              <ul style={{ paddingLeft: 20, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14, lineHeight: 1.9 }}>
                 <li>Buchungsbestätigungen</li>
                 <li>Passwort-Reset-Links</li>
                 <li>Systembenachrichtigungen (z.B. Kontofreischaltung)</li>
@@ -474,8 +474,8 @@ export default function DatenschutzPage() {
             <div id="abschnitt-13" style={SECTION_STYLE}>
               <h2 style={H2_STYLE}>13. Schriftarten</h2>
               <p style={P_STYLE}>
-                Die auf unserer Plattform verwendeten Schriftarten (u. a. <em>Cormorant Garamond</em>,{" "}
-                <em>Libre Franklin</em> und <em>DM Sans</em>) werden lokal von unserem eigenen Server
+                Die auf unserer Plattform verwendeten Schriftarten (<em>Cormorant Garamond</em>{" "}
+                und <em>DM Sans</em>) werden lokal von unserem eigenen Server
                 ausgeliefert. Die Schriftdateien sind Bestandteil unserer Anwendung und werden von
                 derselben Domain geladen wie die übrige Plattform.
               </p>

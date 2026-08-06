@@ -175,10 +175,11 @@
 }
 .pp-kpi-icon svg { stroke-width: 1.6; }
 
-/* Wert. Sans-Serif aus dem vorhandenen System: --fs (DM Sans) ist die einzige
-   der drei geladenen Familien, die 580–650 wirklich rendert — Libre Franklin
-   (--fh) liegt nur als 700 und 800 vor und fällt bei 600 auf 700 zurück. Der
-   frühere Serifensatz der Übersicht (--fd) kommt in dieser Sektion nicht vor. */
+/* Wert. Sans-Serif aus dem vorhandenen System: --fs (DM Sans) liegt als
+   Variable Font vor und rendert Gewicht 600 tatsächlich. Die frühere dritte
+   Familie (Libre Franklin, --fh) lag nur als 700 und 800 vor und fiel bei 600
+   still auf 700 zurück — sie ist mit dem Abschlusspaket ganz entfernt. Der
+   Serifensatz der Übersicht (--fd) kommt in dieser Sektion nicht vor. */
 .pp-kpi-num { display: flex; align-items: baseline; line-height: 1; }
 .knum {
   font-family: var(--fs); font-weight: 600; font-size: 48px; line-height: 1;

@@ -324,13 +324,14 @@ export default function AdminBackfillPage() {
         <div className="table-card adm-bf-table">
           <div className="table-scroll">
             <table>
+              <caption className="sr-only">Rechnungen ohne Dokument</caption>
               <thead>
                 <tr>
-                  <th>Rechnung-Nr.</th>
-                  <th>Status</th>
-                  <th>Fehlende Felder</th>
-                  <th>Shipment-ID</th>
-                  <th className="adm-actions-col">Aktion</th>
+                  <th scope="col">Rechnung-Nr.</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Fehlende Felder</th>
+                  <th scope="col">Shipment-ID</th>
+                  <th scope="col" className="adm-actions-col">Aktion</th>
                 </tr>
               </thead>
               <tbody>

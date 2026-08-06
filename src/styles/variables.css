@@ -12,28 +12,36 @@
          wandern in Phase 2 zusammen mit den Primitives auf --ce-color-text-*.
        • --shadow-sm / --shadow / --shadow-lg — Legacy-Tiefen, die Phase 2 auf
          die Elevationsskala zieht.
-       • --shadow-blue — toter Glow-Token, 0 Referenzen, entfällt in Phase 8. */
+       • --shadow-blue — toter Glow-Token, 0 Referenzen, entfällt in Phase 8.
+     Stand nach dem Abschlusspaket: alle fünf Punkte sind erledigt. --radius-sm
+     und --radius liegen auf der Skala, die Textrollen von --gray400 sind auf
+     --ce-color-text-* gewandert, und die vier Schattentokens sind entfallen. */
   --navy: var(--ce-color-text-primary);
   --blue: var(--ce-color-brand-active);
   --blue2: var(--ce-color-brand);
   --blue3: var(--ce-color-brand);
   --blue-light: var(--ce-color-brand-soft);
-  --accent: var(--ce-color-brand);
   --white: var(--ce-color-surface);
   --gray50: #F5F7FA;
   --gray100: #EEF2F7;
-  --gray200: #e2e8f0;
   --gray300: #cbd5e1;
   --gray400: #94a3b8;
-  --gray500: #64748b;
   --gray600: #475569;
-  --gray700: #334155;
   --success: var(--ce-color-success-solid);
   --success-bg: var(--ce-color-status-success-surface);
   --warn: var(--ce-color-status-warning-fg);
   --warn-bg: var(--ce-color-status-warning-surface);
   --danger: var(--ce-color-danger-solid);
   --danger-bg: var(--ce-color-status-error-surface);
+  /* Fließtextfarbe der Rechtsseiten (Impressum, Datenschutz, AGB, Widerruf).
+     Sie tragen bewusst ein eigenes, dauerhaftes Light-Theme (Lesbarkeit,
+     rechtliche Konvention) und sind von der Migration ausgenommen. Bis zum
+     Abschlusspaket lasen sie `--text-muted` — eine Variable, die es nie gab,
+     sodass faktisch ihr Fallback #374151 rendert. Genau dieser Wert steht
+     jetzt hier: gleiche Darstellung, aber keine tote Referenz mehr.
+     10,3:1 auf Weiß. */
+  --legal-text: #374151;
+
   --border: var(--ce-color-border-default);
   /* Übergangsalias: die Zielabbildung ist --ce-color-border-interactive
      (#8891a3, 3,17:1). --border2 trägt heute aber BEIDE Rollen — Hoverkanten
@@ -45,15 +53,19 @@
   /* Bisher undefiniert und nur über Inline-Fallbacks benutzt (overview.css,
      dashboard-premium.css bzw. notifications.css) — jetzt echte Tokens. */
   --border-strong: var(--ce-color-border-strong);
-  --shadow-card-lg: var(--ce-elevation-3);
-  --shadow-sm: 0 1px 3px rgba(14,30,80,0.06);
-  --shadow: 0 4px 16px rgba(14,30,80,0.09), 0 2px 6px rgba(14,30,80,0.04);
-  --shadow-lg: 0 12px 40px rgba(14,30,80,0.12);
-  --shadow-blue: 0 8px 28px rgba(29,78,216,0.30);
-  --radius-sm: 6px;
-  --radius: 10px;
+  /* --shadow-lg ist entfallen. Er trug als einziger Token noch einen eigenen,
+     nicht auf der Skala liegenden Schattenwert — für GENAU eine Fläche, das
+     Filter-Dropdown des Angebotsvergleichs. Dessen Rolle ist „Overlay", und
+     dafür gibt es --shadow-overlay (= --ce-elevation-3). */
+  /* Die letzten beiden Radien außerhalb der Skala. Sie standen seit Phase 1
+     bewusst auf ihren Altwerten (6/10 px), weil ihre Umhängung eine sichtbare
+     Formänderung an Eingaben, Karten und Hinweisflächen bedeutet hätte. Mit dem
+     Abschlusspaket führen sie auf die Skala: es gibt jetzt genau eine
+     Radienfamilie im Produkt. Buttons und Eingaben liegen ohnehin schon auf
+     --ce-radius-md. */
+  --radius-sm: var(--ce-radius-sm);
+  --radius: var(--ce-radius-md);
   --radius-lg: var(--ce-radius-lg);
-  --radius-xl: var(--ce-radius-xl);
   --radius-full: var(--ce-radius-full);
   /* Einzige Quelle der Sidebarbreite — .app-shell überschreibt sie nicht mehr.
      252 px ist der Wert innerhalb der Zielspanne 244–252, bei dem die
@@ -64,7 +76,7 @@
      Einzige zulässige Schriftfamilie für Ziffern und Geschäftsnummern —
      verbindlich anstelle jedes eigenen Font-Literals oder generischen
      `monospace`-Fallbacks. `numericFontAudit.test.mjs` hält das fest.
-     Bewusst hier in `:root` statt in `.app-shell` (wie `--fh`/`--fs`/`--fm`),
+     Bewusst hier in `:root` statt in `.app-shell` (wie `--fs`/`--fm`),
      weil admin.css, calculator.css, drafts.css, offers.css und support.css
      außerhalb der `.app-shell` liegen und einen global erreichbaren Token
      brauchen — die zugrunde liegende `@font-face`-Regel (fonts.css) ist
@@ -103,7 +115,12 @@
   --ce-color-brand-active: #3b4cc4;                   /* weiß darauf 6,96:1 */
   --ce-color-brand-ink: #3d4fcf;                      /* auf weiß 6,53:1, auf Ivory 6,20:1 */
   --ce-color-brand-soft: #eef0fd;                     /* -ink darauf 5,75:1 */
+  --ce-color-brand-soft-hover: #e3e7fb;               /* -ink darauf 5,32:1 */
   --ce-color-brand-border: rgba(83, 103, 232, 0.28);
+  /* Feine Markenkante auf ohnehin getönter Fläche (Chips, Hinweisstreifen).
+     Abschlusspaket: ersetzt fünf frei gewählte Deckkräfte (0,12 / 0,16 / 0,18)
+     des ausgelaufenen Legacy-Blaus #1d4ed8 durch EINEN Ton auf der Marke. */
+  --ce-color-brand-border-soft: rgba(83, 103, 232, 0.16);
   --ce-color-brand-violet: #7a5ce6;
   /* -ink-Variante für Text auf hellem Grund (Paket B, Angebots-Badge):
      --ce-color-brand-violet misst dort nur 4,25:1 und fiele unter AA;
@@ -215,7 +232,8 @@
      Kundenportal, Begrüßung, Auth-Hero), DM Sans für alles Funktionale.
      --ce-font-numeric bleibt bewusst ein eigener Literalwert und kein Alias:
      numericFontAudit.test.mjs prüft dort auf die reale Familienangabe.
-     Libre Franklin läuft aus; --fh bleibt bis Phase 2 unverändert bestehen. */
+     Libre Franklin ist ausgelaufen: mit dem Abschlusspaket sind Rolle,
+     @font-face-Regeln und Fontdateien entfernt. */
   --ce-font-display: 'Cormorant Garamond', 'Times New Roman', serif;
   --ce-font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
 
@@ -294,6 +312,10 @@
   --ce-elevation-material-signature:
     inset 0 1px 0 rgba(255, 255, 255, 0.09),
     0 28px 54px -28px rgba(17, 26, 51, 0.55);
+  /* Einzige nach innen gerichtete Stufe: die vertiefte Rille (Slider-Schiene).
+     Abschlusspaket — ersetzt den letzten frei geschriebenen Schatten außerhalb
+     des Auth-Bereichs und bringt ihn auf die Navy-Familie der Skala. */
+  --ce-elevation-inset: inset 0 1px 2px rgba(17, 26, 51, 0.08);
   --ce-elevation-focus-ring: 0 0 0 3px var(--ce-color-focus-ring);
 
   /* ── Ebenen ──
@@ -453,13 +475,9 @@
 
   /* Akzent — gezielt eingesetzt (aktive Navigation, Links, Fokus), nie flächig. */
   --accent-blue: var(--ce-color-brand);
-  --accent-blue-strong: var(--ce-color-brand-hover);
-  --accent-blue-soft: var(--ce-color-brand-soft);
-  --accent-blue-border: var(--ce-color-brand-border);
 
   /* Präzision statt Effekt: zwei sehr flache Schattenstufen, kein Glow. */
   --shadow-card: var(--ce-elevation-1);
-  --shadow-card-hover: var(--ce-elevation-2);
   --shadow-overlay: var(--ce-elevation-3);
 
   /* ── KPI-Karten der Übersicht („Executive Luxury") ───────────────────────
@@ -663,14 +681,8 @@
   --ce-net-focus: #9fb4ff;
 
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ───────────────────── */
-  --auth-bg-0: #01030a;
-  --auth-bg-1: #060c1d;
-  --auth-bg-2: #0a1226;
   --auth-card-fill: rgba(8, 14, 32, 0.55);
-  --auth-card-fill-strong: rgba(6, 12, 28, 0.78);
-  --auth-line-1: rgba(255, 255, 255, 0.06);
   --auth-line-2: rgba(120, 160, 255, 0.18);
-  --auth-line-3: rgba(150, 180, 255, 0.32);
   --auth-ink-1: #ffffff;
   --auth-ink-2: #c6d0e6;
   --auth-ink-3: #8a93ad;
@@ -681,9 +693,7 @@
   --auth-blue-3: #6189ff;
   --auth-blue-soft: #a8bdff;
   --auth-blue-glow: rgba(46, 92, 255, 0.55);
-  --auth-blue-glow-soft: rgba(95, 137, 255, 0.22);
   --auth-radius-sm: 8px;
   --auth-radius: 14px;
-  --auth-radius-lg: 22px;
   --auth-radius-xl: 28px;
 }

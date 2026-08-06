@@ -34,7 +34,7 @@ export function FormDraftCard({ draft, busy, resuming, onDelete, onResume }) {
       </div>
       <div className="dft-card-actions">
         <button type="button" className="btn btn-outline dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
-          {resuming ? <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} /> : <Icon n="arrowRight" s={15} />} Fortsetzen
+          {resuming ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="arrowRight" s={15} />} Fortsetzen
         </button>
         <DraftActionsMenu draft={draft} busy={busy} disabled={resuming} onDelete={onDelete} />
       </div>

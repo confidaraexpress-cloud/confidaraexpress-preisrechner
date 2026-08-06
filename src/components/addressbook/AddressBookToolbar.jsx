@@ -23,7 +23,7 @@ export function AddressBookToolbar({
         />
         {searching && (
           <span className="abk-search-status" aria-hidden="true">
-            <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} />
+            <span className="spinner spinner-dark spinner-sm" />
           </span>
         )}
       </div>

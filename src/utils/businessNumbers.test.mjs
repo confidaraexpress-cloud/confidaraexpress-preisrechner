@@ -135,7 +135,7 @@ test("(1–3) Kundenprofil zeigt customer_number, nicht editierbar, Legacy siche
 test("(4–5) Sendungsliste zeigt die Bestellnummer und nutzt keine JUMiNGO-ID als Ersatz", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
   assert.ok(src.includes("customerShipmentNumbers(s)"), "Sendungsliste nutzt die zentrale Nummernsicht nicht");
-  assert.ok(/<th>Bestellnummer<\/th>/.test(src), "Spalte 'Bestellnummer' fehlt");
+  assert.ok(/<th[^>]*>Bestellnummer<\/th>/.test(src), "Spalte 'Bestellnummer' fehlt");
   assert.ok(src.includes("nums.businessOrderNumber"), "Bestellnummer wird nicht gerendert");
   // Kein Fallback auf JUMiNGO-/interne Werte in der Nummern-Zelle.
   const cell = src.slice(src.indexOf("nums.businessOrderNumber"), src.indexOf("</td>", src.indexOf("nums.businessOrderNumber")));

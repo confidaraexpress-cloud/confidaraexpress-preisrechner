@@ -118,6 +118,11 @@ export function OffersList({
                 className={`offers-sort-btn${sortMode === o.id ? " active" : ""}`}
                 onClick={() => onSortChange(o.id)}
                 type="button"
+                /* Die aktive Sortierung war bislang nur an der Fläche erkennbar.
+                   aria-pressed macht sie für Screenreader hörbar — die Gruppe
+                   ist ein Umschalter, keine sortierbare Tabellenspalte
+                   (aria-sort gehört an <th> und wäre hier falsch). */
+                aria-pressed={sortMode === o.id}
               >
                 {o.label}
               </button>

@@ -274,7 +274,6 @@
 }
 .sup-reply-hint { font-size: 12px; color: var(--text-secondary); }
 
-
 @media (max-width: 700px) {
   .sup-msg { max-width: 92%; }
   .sup-list-head { align-items: stretch; }
@@ -338,7 +337,6 @@
 
 /* Antwortbedarf in der Liste — zusätzlich zum Status, nie an seiner Stelle. */
 .adm-sup-replybadge { margin-left: 6px; }
-.adm-sup-replystate { margin: 0 0 10px; }
 
 @media (max-width: 700px) {
   .adm-sup-msg { max-width: 94%; }

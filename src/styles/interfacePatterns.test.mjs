@@ -250,7 +250,7 @@ test("7 — Zahlen- und Betragsspalten sind rechtsbündig", () => {
 
   // Die Geldspalten der Haupttabellen tragen den Marker auf Kopf UND Zelle.
   const sendungen = read("../components/dashboard/ShipmentsList.jsx");
-  assert.match(sendungen, /<th className="ce-num">Gewicht<\/th><th className="ce-num">Preis<\/th>/);
+  assert.match(sendungen, /<th[^>]*className="ce-num"[^>]*>Gewicht<\/th><th[^>]*className="ce-num"[^>]*>Preis<\/th>/);
   const admShip = read("../pages/admin/AdminShipmentsPage.jsx");
   assert.match(admShip, /<th scope="col" className="adm-num">Preis<\/th>/);
   const admInv = read("../pages/admin/AdminInvoicesPage.jsx");
@@ -385,7 +385,7 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
 
   const pkg = JSON.parse(read("../../package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "lucide-react", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
 
   // Die neuen Bausteine sind reine Darstellung: kein Netzwerk, kein Token.

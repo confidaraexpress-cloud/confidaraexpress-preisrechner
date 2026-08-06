@@ -248,6 +248,60 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 - Legal Pages (Impressum, Datenschutz, AGB, Widerruf) und der Auth-Bereich
   liegen außerhalb dieses Rahmens und bleiben unverändert.
 
+## Laufender Versandvorgang — vor jeder Änderung an Preisrechner, Neue Sendung oder Buchung lesen
+
+Der Kunde kann während eines Versandvorgangs zwischen „Neue Sendung",
+Angebotsvergleich und Buchung hin und her navigieren, ohne Daten zu verlieren —
+über den sichtbaren Button „Zurück", Browser-Zurück, Browser-Vorwärts, die
+Sidebar und ein versehentliches Neuladen.
+
+**Warum es einen eigenen Provider braucht.** „Neue Sendung"/Angebotsvergleich
+laufen als `page`-State in `DashboardPage` (`/dashboard`), die Buchung als
+eigene Route in `DashboardLayout` (`/booking`) — **zwei getrennte
+Routen-Teilbäume**. Jeder Wechsel hängt den anderen vollständig ab, inklusive
+`NotificationsProvider`. Deshalb steht `ShippingFlowProvider` in `App.jsx`
+**außerhalb `<Routes>`** und **innerhalb** des `AuthProvider` (main.jsx).
+Nicht in ein Layout oder eine Seite verschieben — dort überlebt er den
+Routenwechsel nicht. `shippingFlowState.test.mjs` prüft die Montage.
+
+| Baustein | Datei | Aufgabe |
+|----------|-------|---------|
+| Zustandsmodell | `utils/shippingFlowState.mjs` | rein, versioniert, Ablaufregel, Normalisierung |
+| Speicherzugriff | `utils/shippingFlowStorage.js` | gekapselter `sessionStorage` (eigenes Modul: sonst Importzyklus AuthContext ↔ ShippingFlowContext) |
+| Provider + Hook | `context/ShippingFlowContext.jsx` | `useShippingFlow()`, Spiegel, Abmelde-Wächter |
+
+**Verbindliche Regeln:**
+
+- **Wiederherstellen nur über den Mount-once-Initialisierer** (Muster
+  `resumeInitRef`). NIEMALS feldweise über `upd()`: das ruft
+  `invalidateResults()` und löscht die soeben zurückgeholten Angebote sofort
+  wieder. Das ist die gefährlichste Falle im ganzen Bereich.
+- **Vorrang beim Start:** Entwurf fortsetzen > Adressbuch-Prefill >
+  Sitzungsvorgang > Profil-Seed > leer. Ein geöffneter Entwurf **überschreibt**
+  den Sitzungsvorgang vollständig — es wird nichts gemischt.
+- **Nur `sessionStorage`**, Schlüssel `ce_shipping_flow_v1`, tab-lokal, keine
+  tabübergreifende Synchronisierung. Eine fremde Schemaversion wird
+  **verworfen, nicht migriert**.
+- **Nichts duplizieren, was serverseitig autoritativ ist:** Abholzeitfenster,
+  Zoll-/Handelsrechnungsdokumente, Preisbestätigung, Access-Point-Suche. Keine
+  Tokens, Passwörter, Dateien. AGB- und Gefahrgutbestätigung werden bewusst
+  **nicht** wiederhergestellt — eine Einwilligung wird nicht unterstellt.
+- **Gelöscht wird bei:** erfolgreicher Buchung · Abmeldung (auch über den
+  zentralen 401/403-Handler) · „Neue Sendung" vom Erfolgsbildschirm ·
+  „Eingaben zurücksetzen". **Nicht** gelöscht bei Sidebar-Wechsel, Zurück,
+  Vorwärts, Reload oder beim Öffnen des Benachrichtigungspanels.
+- **60 Minuten Inaktivität** (oder ein Versanddatum in der Vergangenheit):
+  Formular, Filter und Sortierung bleiben, Angebote/`shipmentId`/Auswahl werden
+  verworfen, der Kunde bekommt einen Satz im bestehenden Hinweisstil. Die
+  Tarife tragen selbst kein `validUntil` — diese Frist ist reine
+  Darstellungssicherheit, **keine** Buchungsregel. `PRICE_CHANGED` und
+  `PICKUP_WINDOW_CHANGED` bleiben das autoritative serverseitige Netz.
+- **Schritt 3 der Buchung (Erfolg) wird nie wiederhergestellt** — er gehört zu
+  einer abgeschlossenen Buchung.
+
+Governance: `utils/shippingFlowState.test.mjs` (30 Tests) und
+`tests/e2e/shippingFlowRestore.test.mjs` (20 Tests, echter Dev-Server).
+
 ## Dashboard-Navigationsmodell
 
 Die Navigation zwischen Dashboard-Unterseiten läuft **nicht über React Router URLs**, sondern über einen lokalen `page`-State in `DashboardPage.jsx`:
@@ -279,11 +333,20 @@ Der Calculator läuft auf `/calculator`. Nach einer Buchung navigiert `BookingPa
 const p = new URLSearchParams(location.search).get("page");
 if (p && ["overview","new","shipments","invoices","profile"].includes(p)) {
   setPage(p);
-  navigate("/dashboard", { replace: true }); // Query-Param danach entfernen
+  // Query-Param entfernen — der Bereich wandert dabei in den History-State
+  // des ERSETZTEN Eintrags. Vorhandene State-Werte bleiben erhalten.
+  navigate("/dashboard", { replace: true, state: { ...(location.state || {}), page: p } });
 }
 ```
 
 Dieser Mechanismus ermöglicht Direktlinks in Dashboard-Unterseiten aus externen Kontexten.
+
+**Der `page`-Marker im History-State ist Pflicht.** Ohne ihn lautete der
+zurückbleibende Eintrag schlicht `/dashboard`, und ein Browser-Zurück von
+`/booking` landete auf der Übersicht statt auf „Neue Sendung" — während der
+sichtbare Zurück-Button korrekt dorthin führte. `DashboardPage` liest den
+Startwert deshalb aus Query **oder** History-State; die URL bleibt sauber. Die
+gültigen Werte stehen an genau einer Stelle (`DASHBOARD_PAGES`).
 
 ## Carrier-SVG-Integration
 
@@ -380,7 +443,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/final-design-system-audit-cleanup`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/persist-shipping-flow-navigation`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 

@@ -13,6 +13,8 @@ import { errorFromResponse, normalizeThrownError, summaryMessage } from "../util
 import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP } from "../utils/calculatorValidation.mjs";
 import { focusFirstError, fieldErrorProps } from "../utils/focusField";
 import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
+import { useShippingFlow } from "../context/ShippingFlowContext";
+import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
 
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
@@ -38,35 +40,58 @@ export default function CalculatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // ── Laufender Vorgang (mount-once) ──────────────────────────────────────────
+  // Derselbe Provider wie in „Neue Sendung", eigener Bereich („calculator"):
+  // die beiden Seiten führen fachlich verschiedene Formulare (Adressen vs.
+  // Land/PLZ) und werden deshalb bewusst NICHT zusammengelegt — sie teilen sich
+  // nur das Zustandsmodell und den Speicher.
+  //
+  // Wie dort läuft die Wiederherstellung ausschließlich über die
+  // useState-Initialisierer. Ein feldweiser Restore über upd() würde
+  // invalidateResults() auslösen und die Angebote sofort wieder verwerfen.
+  const { calculator: flowCalculator, setScope: setFlowScope, droppedReason, consumeDroppedReason } = useShippingFlow();
+  const flowInitRef = useRef(undefined);
+  if (flowInitRef.current === undefined) {
+    flowInitRef.current = (flowCalculator
+      && (formHasInput(flowCalculator.form, "calculator") || flowCalculator.tariffs.length > 0))
+      ? flowCalculator : null;
+  }
+  const flowInit = flowInitRef.current;
+  const flowNoticeRef = useRef(undefined);
+  if (flowNoticeRef.current === undefined) {
+    flowNoticeRef.current = flowInit ? droppedNotice(droppedReason) : null;
+  }
+  const [flowNotice, setFlowNotice] = useState(flowNoticeRef.current);
+
   // ── Service filter ──
-  const [serviceFilter, setServiceFilter]         = useState("all");
+  const [serviceFilter, setServiceFilter]         = useState(flowInit ? flowInit.serviceFilter : "all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
 
   // ── Shipping mode filter ──
-  const [shippingModeFilter, setShippingModeFilter] = useState("all");
+  const [shippingModeFilter, setShippingModeFilter] = useState(flowInit ? flowInit.shippingModeFilter : "all");
   const [shippingModeOpen, setShippingModeOpen]     = useState(false);
 
   // ── Shipping date ──
-  const [shippingDate, setShippingDate]     = useState(() => todayISO());
+  const [shippingDate, setShippingDate]     = useState(() => (flowInit && flowInit.shippingDate) ? flowInit.shippingDate : todayISO());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // ── Sort ──
-  const [sortMode, setSortMode] = useState("recommended");
+  const [sortMode, setSortMode] = useState(flowInit ? flowInit.sortMode : "recommended");
 
   // ── VAT display mode ──
-  const [vatMode, setVatMode] = useState("net");
+  const [vatMode, setVatMode] = useState(flowInit ? flowInit.vatMode : "net");
 
   // ── Carrier filter ──
-  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState([]);
+  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(flowInit ? flowInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
-  const [publicCarriers, setPublicCarriers]           = useState([]);
+  const [publicCarriers, setPublicCarriers]           = useState(flowInit ? flowInit.publicCarriers : []);
   const carrierRef = useRef(null);
 
   // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
   const [latestOpen, setLatestOpen] = useState(false);
 
   // ── Form — route (country + zip) + package data only ──
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => flowInit ? flowInit.form : ({
     from_country: user?.country || "DE",
     from_zip:     user?.zip     || "",
     to_country:   "DE",
@@ -74,11 +99,11 @@ export default function CalculatorPage() {
     packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "",
-  });
+  }));
 
   // ── Results ──
-  const [tariffs, setTariffs]       = useState([]);
-  const [selected, setSelected]     = useState(null);
+  const [tariffs, setTariffs]       = useState(flowInit ? flowInit.tariffs : []);
+  const [selected, setSelected]     = useState(flowInit ? flowInit.selected : null);
   const [loading, setLoading]       = useState(false);
   // `error` trägt jetzt { title, message } statt eines einzelnen Strings, damit
   // die Meldung das Problem benennt UND die Korrektur erklärt.
@@ -87,7 +112,9 @@ export default function CalculatorPage() {
   // Feld. Quelle sind sowohl die Client-Vorprüfung als auch das `field` einer
   // Serverantwort — dadurch landet auch ein Backend-Fehler am richtigen Feld.
   const [fieldErrors, setFieldErrors] = useState({});
-  const [hasResults, setHasResults] = useState(false);
+  const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
+  // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
+  const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
 
   // ── Race-Schutz für /calculate-price (Audit F1) ──
   // Verhindert, dass eine spät eintreffende Antwort neuere Eingaben überschreibt.
@@ -101,6 +128,41 @@ export default function CalculatorPage() {
   const calcSeq    = useRef(0);
   const calcAbort  = useRef(null);
   const calcKeyRef = useRef("");
+
+  /* ── Spiegelung in den laufenden Vorgang ─────────────────────────────────
+     Abhängigkeiten sind die tatsächlichen Zustandswerte; der Effekt läuft
+     genau dann, wenn sich fachlich etwas geändert hat. setFlowScope ändert
+     keine dieser Abhängigkeiten → keine Schleife. */
+  useEffect(() => {
+    setFlowScope("calculator", {
+      form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+      sortMode, vatMode, tariffs, publicCarriers, selected,
+      calculatedAt: calculatedAtRef.current,
+    });
+  }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+      sortMode, vatMode, tariffs, publicCarriers, selected, setFlowScope]);
+
+  // Der Ablaufhinweis wird genau einmal gezeigt.
+  useEffect(() => {
+    consumeDroppedReason();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Scrollposition wiederherstellen ─────────────────────────────────────
+     Erst wenn die Angebote gerendert sind. Genau einmal je Mount; ohne
+     wiederhergestellten Vorgang passiert nichts. */
+  const scrollWiederhergestelltRef = useRef(false);
+  useEffect(() => {
+    if (scrollWiederhergestelltRef.current) return;
+    const ziel = flowInit?.scrollY;
+    if (!ziel) { scrollWiederhergestelltRef.current = true; return; }
+    if (flowInit.tariffs.length > 0 && !hasResults) return;
+    scrollWiederhergestelltRef.current = true;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo(0, ziel));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [flowInit, hasResults]);
 
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)            || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter) || SHIPPING_MODE_OPTIONS[0];
@@ -150,6 +212,8 @@ export default function CalculatorPage() {
     // Feldmarkierungen verschwinden, sobald der Kunde die Eingabe ändert — die
     // eingegebenen WERTE bleiben dabei unangetastet erhalten.
     setFieldErrors({});
+    calculatedAtRef.current = null;
+    setFlowNotice(null);
   };
 
   // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert —
@@ -345,7 +409,9 @@ export default function CalculatorPage() {
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
-      setTariffs(d.tariffs || []); setHasResults(true);
+      setTariffs(d.tariffs || []);
+      calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
+      setHasResults(true);
       setLoading(false);
     } catch (e) {
       if (e?.name === "AbortError") return;      // abgebrochen (neuer Request/Unmount) → kein Fehler, Loading gehört dem neuen Request
@@ -734,6 +800,11 @@ export default function CalculatorPage() {
                 Korrektur. Bei mehreren Feldfehlern steht zusätzlich die
                 Zusammenfassung („Bitte korrigieren Sie die N markierten Angaben."). */}
             {error && <FormAlert tone="error" title={error.title} message={error.message} className="mt-16" />}
+            {/* Wiederhergestellter Vorgang, dessen Angebote nicht mehr gezeigt
+                werden dürfen. Bestehender Hinweisstil, keine Rohmeldung. */}
+            {flowNotice && !error && (
+              <FormAlert tone="info" title="Bitte neu berechnen" message={flowNotice} className="mt-16" />
+            )}
           </div>
         </div>
 

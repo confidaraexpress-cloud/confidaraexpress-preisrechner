@@ -14,6 +14,8 @@ import { DateCalendar } from "../components/common/DateCalendar";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
 import { focusFirstError, fieldErrorProps } from "../utils/focusField";
+import { useShippingFlow } from "../context/ShippingFlowContext";
+import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
 // serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
@@ -45,6 +47,7 @@ import {
 } from "../utils/formDraftsView.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
+import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -153,36 +156,85 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   }
   const resumeInit = resumeInitRef.current;
 
+  // ── Laufender Versandvorgang (mount-once) ──────────────────────────────────
+  // Der Kunde kommt von der Buchungsseite zurück, hat über die Sidebar
+  // gewechselt oder versehentlich neu geladen. Der Vorgang liegt dann im
+  // ShippingFlowProvider (App.jsx, außerhalb <Routes>) und ggf. gespiegelt im
+  // sessionStorage.
+  //
+  // WICHTIG — die Wiederherstellung läuft ausschließlich über diesen
+  // Mount-once-Initialisierer, NIE feldweise über upd(). upd() ruft für jedes
+  // buchungsrelevante Feld invalidateResults() auf; ein feldweiser Restore
+  // würde die soeben zurückgeholten Angebote im selben Atemzug wieder löschen.
+  //
+  // Vorrang (shippingFlowState.mjs, RESTORE_PRIORITY):
+  //   Entwurf fortsetzen > Adressbuch-Prefill > Sitzungsvorgang > Profil-Seed
+  // Ein bewusst geöffneter Entwurf überschreibt den Sitzungsvorgang VOLLSTÄNDIG
+  // — es wird nichts gemischt.
+  const { shipment: flowShipment, setScope: setFlowScope, clearScope: clearFlowScope,
+          setStep: setFlowStep, droppedReason, consumeDroppedReason } = useShippingFlow();
+  const flowInitRef = useRef(undefined);
+  if (flowInitRef.current === undefined) {
+    const hatVorgang = !!flowShipment
+      && (formHasInput(flowShipment.form, "shipment") || flowShipment.tariffs.length > 0);
+    flowInitRef.current =
+      pickRestoreSource({ hasDraft: !!resumeInit, hasPrefill: !!prefillAddress, hasFlow: hatVorgang }) === "flow"
+        ? flowShipment
+        : null;
+  }
+  const flowInit = flowInitRef.current;
+
+  // Hinweis, falls beim Wiederherstellen Angebote verworfen wurden (Frist
+  // überschritten oder Versanddatum inzwischen in der Vergangenheit). Einmalig
+  // beim Mount abgeholt, danach im Provider gelöscht.
+  const flowNoticeRef = useRef(undefined);
+  if (flowNoticeRef.current === undefined) {
+    flowNoticeRef.current = flowInit ? droppedNotice(droppedReason) : null;
+  }
+  const [flowNotice, setFlowNotice] = useState(flowNoticeRef.current);
+
   // ── Filters ──
-  const [serviceFilter, setServiceFilter]         = useState(resumeInit ? resumeInit.serviceFilter : "all");
+  const [serviceFilter, setServiceFilter]         = useState(resumeInit ? resumeInit.serviceFilter : flowInit ? flowInit.serviceFilter : "all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
-  const [shippingModeFilter, setShippingModeFilter] = useState(resumeInit ? resumeInit.shippingModeFilter : "all");
+  const [shippingModeFilter, setShippingModeFilter] = useState(resumeInit ? resumeInit.shippingModeFilter : flowInit ? flowInit.shippingModeFilter : "all");
   const [shippingModeOpen, setShippingModeOpen]     = useState(false);
-  const [shippingDate, setShippingDate]             = useState(() => (resumeInit && resumeInit.shippingDate) ? resumeInit.shippingDate : todayISO());
+  const [shippingDate, setShippingDate]             = useState(() =>
+    (resumeInit && resumeInit.shippingDate) ? resumeInit.shippingDate
+      : (flowInit && flowInit.shippingDate) ? flowInit.shippingDate
+      : todayISO());
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
-  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(resumeInit ? resumeInit.selectedPublicCarrierIds : []);
+  // Der Carrier-Filter wird beim Fortsetzen eines Entwurfs bewusst neutralisiert
+  // (newShipmentResume.mjs). Beim Sitzungs-Restore gilt das NICHT: dort kommt die
+  // Auswahlliste (publicCarriers) mit demselben Vorgang zurück, die IDs sind also
+  // weiterhin überprüfbar.
+  const [selectedPublicCarrierIds, setSelectedPublicCarrierIds] = useState(
+    resumeInit ? resumeInit.selectedPublicCarrierIds : flowInit ? flowInit.selectedPublicCarrierIds : []);
   const [carrierDropdownOpen, setCarrierDropdownOpen] = useState(false);
   // Die Auswahlliste stammt ausschließlich aus der publicCarriers-Antwort einer
   // Preisberechnung — vor der ersten Berechnung gibt es nichts auszuwählen. Das
   // gilt auch für einen fortgesetzten Entwurf: dessen gespeicherter Filter wird
   // in resumeInitialState neutralisiert, sodass Auswahlliste und aktive Auswahl
   // hier immer denselben (leeren) Ausgangszustand haben.
-  const [publicCarriers, setPublicCarriers]         = useState([]);
+  // Sitzungs-Restore bringt die Auswahlliste mit zurück — sonst stünden die
+  // wiederhergestellten Chips ohne ihre Beschriftung da.
+  const [publicCarriers, setPublicCarriers]         = useState(flowInit ? flowInit.publicCarriers : []);
   const carrierRef = useRef(null);
 
   // ── Späteste Lieferzeit — Popover-Status (Wert latestDeliveryDate liegt im form) ──
   const [latestOpen, setLatestOpen] = useState(false);
 
   // ── Sort ──
-  const [sortMode, setSortMode] = useState("recommended");
+  const [sortMode, setSortMode] = useState(flowInit ? flowInit.sortMode : "recommended");
 
   // ── VAT display mode ──
-  const [vatMode, setVatMode] = useState("net");
+  const [vatMode, setVatMode] = useState(flowInit ? flowInit.vatMode : "net");
 
   // ── Form ──
-  // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form).
-  // Normalfall: unverändert aus dem Profil geseedet (synchron beim Mount).
-  const [form, setForm] = useState(() => resumeInit ? resumeInit.form : ({
+  // Profil-Seed als benannte Funktion, weil er an drei Stellen gebraucht wird:
+  // als Startwert ohne Vorgang, als Dirty-Baseline eines wiederhergestellten
+  // Vorgangs (der Vorgang ist ja weiterhin ungespeichert) und beim bewussten
+  // Zurücksetzen.
+  const profilSeed = useCallback(() => ({
     s_company:  user?.company_name || "",
     s_fullName: user?.name         || "",
     s_street:   user?.street       || "",
@@ -204,14 +256,26 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "",
-  }));
+  }), [user]);
+
+  // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form).
+  // Sitzungs-Restore: vollständig aus dem laufenden Vorgang.
+  // Normalfall: unverändert aus dem Profil geseedet (synchron beim Mount).
+  const [form, setForm] = useState(() =>
+    resumeInit ? resumeInit.form : flowInit ? flowInit.form : profilSeed());
 
   // ── Dirty-State / interner Verlassen-Guard ─────────────────────────────────
   // Baseline = fachlicher Snapshot NACH allen automatischen Startwerten
   // (Profil-Prefill/Resume synchron beim Mount; Adressbuch-Prefill wird im Effekt
   // weiter unten nachgezogen). Reine Auto-Defaults erzeugen dadurch NIE Dirty.
+  // Beim Sitzungs-Restore ist die Baseline bewusst der PROFIL-Seed, nicht der
+  // wiederhergestellte Stand: der Vorgang ist weiterhin ungespeichert, also muss
+  // der Verlassen-Guard weiter warnen. Ohne diese Unterscheidung fiele die
+  // Warnung nach einem „Zurück" still weg.
   const [baseline, setBaseline] = useState(() =>
-    getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds })
+    getShipmentFormSnapshot(flowInit
+      ? { form: profilSeed(), shippingDate: todayISO(), serviceFilter: "all", shippingModeFilter: "all", selectedPublicCarrierIds: [] }
+      : { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds })
   );
   const [pendingTarget, setPendingTarget] = useState(null); // { type, ... } | null — pausierte Zielnavigation
   // EIN Save-Zustand für BEIDE Oberflächen (Verlassen-Dialog + sichtbarer Button):
@@ -221,15 +285,20 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const [saveStatus, setSaveStatus] = useState("idle");   // idle | saved (Inline-Erfolg des sichtbaren Buttons)
 
   // ── Results ──
-  const [tariffs, setTariffs]       = useState([]);
-  const [shipmentId, setShipmentId] = useState(null);
+  // Sitzungs-Restore setzt Tarife, shipmentId, Zollentscheidung und Auswahl
+  // ATOMAR beim Mount — genau die Gruppe, die resetResults() zusammen verwirft.
+  // Es wird KEIN calculate-price ausgelöst: die Daten kommen aus dem Vorgang.
+  const [tariffs, setTariffs]       = useState(flowInit ? flowInit.tariffs : []);
+  const [shipmentId, setShipmentId] = useState(flowInit ? flowInit.shipmentId : null);
   // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
   // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
-  const [customs, setCustoms]       = useState(null);
-  const [selected, setSelected]     = useState(null);
+  const [customs, setCustoms]       = useState(flowInit ? flowInit.customs : null);
+  const [selected, setSelected]     = useState(flowInit ? flowInit.selected : null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
-  const [hasResults, setHasResults] = useState(false);
+  const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
+  // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
+  const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
   // Fortgesetzter Entwurf: unvollständige Pflichtangaben werden SOFORT markiert.
   // Ein abgebrochener Entwurf sieht ausgefüllt aus, deaktiviert den CTA aber
   // stillschweigend — ohne Vorbelegung erklärt nichts, welche Angabe fehlt, und
@@ -261,6 +330,60 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // innerhalb desselben Ticks lesen alle denselben (noch alten) State-Wert und
   // kämen an einer State-Prüfung vorbei. Der Ref wirkt sofort.
   const calcInFlight = useRef(false);
+
+  /* ── Entwurf schlägt Sitzungsvorgang ─────────────────────────────────────
+     Ein bewusst geöffneter Formularentwurf ersetzt den temporären Vorgang
+     VOLLSTÄNDIG. Dieser Effekt steht vor dem Spiegel-Effekt und läuft deshalb
+     zuerst: er leert den Bereich, danach schreibt der Spiegel den Entwurfsstand
+     hinein. Es wird nichts gemischt. */
+  useEffect(() => {
+    if (!resumeInit) return;
+    clearFlowScope("shipment");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Der Ablaufhinweis wird genau einmal gezeigt: die Seite hat ihn beim Mount
+  // übernommen, der Provider vergisst ihn danach.
+  useEffect(() => {
+    consumeDroppedReason();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── Spiegelung in den laufenden Vorgang ─────────────────────────────────
+     Ein Effekt, dessen Abhängigkeiten die tatsächlichen Zustandswerte sind.
+     React vergleicht referenziell: `form` ist bei jeder Eingabe ein neues
+     Objekt, `tariffs` bei jeder Berechnung ein neues Array — der Effekt läuft
+     also genau dann, wenn sich fachlich etwas geändert hat.
+
+     Keine Schleife: setScope ändert den Context, nicht diese Abhängigkeiten.
+     Der Provider schreibt zudem nur dann in den sessionStorage, wenn sich der
+     Fingerabdruck (ohne Zeitstempel) unterscheidet. */
+  useEffect(() => {
+    setFlowScope("shipment", {
+      form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs,
+      calculatedAt: calculatedAtRef.current,
+    });
+  }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs, setFlowScope]);
+
+  /* ── Scrollposition wiederherstellen ─────────────────────────────────────
+     Erst NACHDEM Formular und Angebotsbereich gerendert sind — vorher ist das
+     Dokument zu kurz und der Sprung liefe ins Leere. Genau einmal je Mount.
+     Ohne wiederhergestellten Vorgang passiert nichts; das normale
+     ScrollToTop-Verhalten bleibt für alle anderen Wege unberührt. */
+  const scrollWiederhergestelltRef = useRef(false);
+  useEffect(() => {
+    if (scrollWiederhergestelltRef.current) return;
+    const ziel = flowInit?.scrollY;
+    if (!ziel) { scrollWiederhergestelltRef.current = true; return; }
+    if (flowInit.tariffs.length > 0 && !hasResults) return;   // Angebote noch nicht im DOM
+    scrollWiederhergestelltRef.current = true;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo(0, ziel));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [flowInit, hasResults]);
 
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)             || SERVICE_OPTIONS[0];
   const selectedShippingMode = SHIPPING_MODE_OPTIONS.find(o => o.id === shippingModeFilter)  || SHIPPING_MODE_OPTIONS[0];
@@ -320,6 +443,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
     setCustoms(null);    // alte Zollentscheidung mit verwerfen
     setError("");
+    calculatedAtRef.current = null;
+    setFlowNotice(null); // ein neuer Anlauf beginnt ohne alten Ablaufhinweis
   };
 
   // Verwirft ein vorhandenes Ergebnis nur, wenn überhaupt eines existiert.
@@ -535,6 +660,48 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // eigenen Zustand, sodass jeder Save-Zustand an GENAU einer Stelle erscheint.
   const showInlineSave = !pendingTarget;
 
+  /* ── Eingaben bewusst zurücksetzen ───────────────────────────────────────
+     Der temporäre Vorgang bleibt bei Sidebar-Wechsel, Zurück, Vorwärts und
+     Reload absichtlich stehen. Es braucht deshalb GENAU EINEN sichtbaren Weg,
+     ihn bewusst zu beenden — sekundär, nie als Hauptaktion, und mit Rückfrage,
+     sobald tatsächlich etwas verloren ginge. */
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const hatVerwerfbaresEingegeben = hasResults || tariffs.length > 0
+    || hasMeaningfulShipmentInput(currentSnapshot, baseline);
+
+  const applyReset = () => {
+    setResetConfirmOpen(false);
+    const seed = profilSeed();
+    setForm(seed);
+    setShippingDate(todayISO());
+    setServiceFilter("all");
+    setShippingModeFilter("all");
+    setSelectedPublicCarrierIds([]);
+    setPublicCarriers([]);
+    setSortMode("recommended");
+    setVatMode("net");
+    setErrors({});
+    setResumeSource(null);
+    setResumeNotice("");
+    setResumeConflict(false);
+    setSaveMode("idle");
+    setSaveStatus("idle");
+    resetResults();
+    // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
+    // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
+    setBaseline(getShipmentFormSnapshot({
+      form: seed, shippingDate: todayISO(), serviceFilter: "all",
+      shippingModeFilter: "all", selectedPublicCarrierIds: [],
+    }));
+    clearFlowScope("shipment");
+    window.scrollTo(0, 0);
+  };
+
+  const requestReset = () => {
+    if (hatVerwerfbaresEingegeben) { setResetConfirmOpen(true); return; }
+    applyReset();   // nichts zu verlieren → keine Rückfrage
+  };
+
   // `filtered` ist vollständig aus tariffs + den reinen Client-Filtern
   // (max_price, späteste Lieferzeit) ableitbar → als useMemo statt State +
   // useEffect + setFiltered. Das spart pro Filteränderung (v. a. Preis-Slider)
@@ -729,6 +896,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         toCountryCode:     d.toCountryCode ?? null,
         exportDeclaration: d.exportDeclaration ?? null,
       });
+      calculatedAtRef.current = Date.now();      // Ablauffrist des Vorgangs beginnt jetzt
       setHasResults(true);
       setLoading(false);
     } catch (e) {
@@ -790,11 +958,23 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   const handleBook = useCallback((tariff) => {
     setSelected(tariff);
     if (authed) {
-      navigate("/booking", { state: { tariff, shipmentId, form, customs } });
+      // Vorgang festhalten, BEVOR der Teilbaum abgehängt wird: Auswahl,
+      // Schritt und Scrollposition. Ohne diesen Schritt käme der Kunde zwar
+      // mit Formular und Angeboten zurück, aber ganz oben und ohne Markierung.
+      setFlowScope("shipment", { selected: tariff, scrollY: Math.round(window.scrollY || 0) });
+      setFlowStep("booking");
+      // `state` bleibt unverändert erhalten (Kompatibilität + Browser-Vorwärts).
+      // Es werden KEINE zusätzlichen personenbezogenen Daten in weitere
+      // History-Einträge kopiert — der Vorgang selbst trägt der Context.
+      // `fromFlow` ist ein reiner Navigationsmarker (bool, keine Daten): er sagt
+      // der Buchungsseite, dass der VORHERIGE History-Eintrag zu diesem Vorgang
+      // gehört und ihr sichtbarer „Zurück"-Button deshalb echt zurückgehen darf
+      // (statt einen neuen Eintrag zu pushen).
+      navigate("/booking", { state: { tariff, shipmentId, form, customs, fromFlow: true } });
     } else {
       navigate("/login");
     }
-  }, [authed, shipmentId, form, customs, navigate]);
+  }, [authed, shipmentId, form, customs, navigate, setFlowScope, setFlowStep]);
 
   // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es) →
   // sonst bräche ein neues Objekt bei jedem Render den React.memo-Vergleich der
@@ -853,6 +1033,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           onContinue={continueEditing}
         />
       )}
+
+      {/* Bewusstes Zurücksetzen des laufenden Vorgangs — nur mit Rückfrage,
+          wenn tatsächlich Angaben oder Angebote verloren gingen. */}
+      <ShipmentResetConfirmDialog
+        open={resetConfirmOpen}
+        hasOffers={hasResults || tariffs.length > 0}
+        onCancel={() => setResetConfirmOpen(false)}
+        onConfirm={applyReset}
+      />
 
       {/* Kein .page-body hier: der Elternknoten (DashboardPage.jsx, page==="new")
           bringt .page-body bereits mit — .calc-page-wrap liefert nur noch das
@@ -1248,7 +1437,27 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                   : <><Icon n="form" s={16} /> Als Entwurf speichern</>
                 }
               </button>
+              {/* Sekundärste Stufe: der laufende Vorgang bleibt bei Zurück,
+                  Sidebar und Reload absichtlich erhalten — dies ist der eine
+                  bewusste Weg, ihn zu beenden. */}
+              <button
+                type="button"
+                className="btn btn-link dft-reset-cta"
+                onClick={requestReset}
+                disabled={loading || saving}
+              >
+                Eingaben zurücksetzen
+              </button>
             </div>
+
+            {/* Wiederhergestellter Vorgang, dessen Angebote nicht mehr gezeigt
+                werden dürfen (älter als eine Stunde oder Versanddatum
+                inzwischen vergangen). Normaler Hinweisstil, keine Rohmeldung. */}
+            {flowNotice && (
+              <div className="dft-save-status" role="status">
+                <Icon n="info" s={15} c="currentColor" /><span>{flowNotice}</span>
+              </div>
+            )}
 
             {/* Erklärt den deaktivierten CTA. Ohne diesen Hinweis wirkt ein
                 fortgesetzter, unvollständiger Entwurf wie ein toter Button:

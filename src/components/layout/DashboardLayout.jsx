@@ -10,6 +10,23 @@ import { NotificationBell } from "../notifications/NotificationBell";
 import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
 
+// Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
+// Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
+// über echte Routen statt page-State laufen. Eyebrow "Versand" einheitlich
+// über den ganzen Versandprozess (Preisrechner, Buchung).
+const ROUTE_HEADERS = {
+  calculator: {
+    eyebrow: "Versand",
+    title: "Preisrechner",
+    subtitle: "Berechnen Sie Versandkosten transparent auf Basis aktueller Carrier-Tarife.",
+  },
+  booking: {
+    eyebrow: "Versand",
+    title: "Sendung buchen",
+    subtitle: "Schließen Sie Ihre Versandbuchung sicher und nachvollziehbar ab.",
+  },
+};
+
 export function DashboardLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -18,7 +35,8 @@ export function DashboardLayout() {
 
 
   const activePage =
-    location.pathname === "/calculator" ? "calculator" : "";
+    location.pathname === "/calculator" ? "calculator" :
+    location.pathname === "/booking"    ? "booking"    : "";
 
   const navigateTo = (id) => {
     setSidebarOpen(false);
@@ -53,10 +71,11 @@ export function DashboardLayout() {
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>
         </div>
-        {activePage === "calculator" && (
+        {ROUTE_HEADERS[activePage] && (
           <DashboardSectionHeader
-            title="Preisrechner"
-            subtitle="Berechnen Sie Versandkosten transparent auf Basis aktueller Carrier-Tarife."
+            eyebrow={ROUTE_HEADERS[activePage].eyebrow}
+            title={ROUTE_HEADERS[activePage].title}
+            subtitle={ROUTE_HEADERS[activePage].subtitle}
             utility={(
               <UtilityCluster>
                 <NotificationBell variant="page" navigateTo={navigateTo} />

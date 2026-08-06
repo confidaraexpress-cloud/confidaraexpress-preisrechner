@@ -17,14 +17,14 @@ export function BookingActionModule({
       {error && <div className="alert alert-error">{error}</div>}
       {conflict ? (
         <div className="booking-conflict-box">
-          <p className="booking-conflict-text"><Icon n="shield" s={16} c="#1D4ED8" /> {conflict}</p>
+          <p className="booking-conflict-text"><Icon n="shield" s={16} c="var(--ce-color-brand-ink)" /> {conflict}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateShipments}>
             Zu meinen Sendungen
           </button>
         </div>
       ) : addressError ? (
         <div className="booking-conflict-box">
-          <p className="booking-conflict-text"><Icon n="info" s={16} c="#1D4ED8" /> {addressError}</p>
+          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {addressError}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateNew}>
             Adressen vervollständigen &amp; neu berechnen
           </button>

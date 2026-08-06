@@ -15,7 +15,7 @@ const LABEL_FORMATS = [
 export function AdditionalOptionsModule({ reference, onReferenceChange, labelFormat, onLabelFormatChange }) {
   return (
     <div className="calc-panel addopt-panel mb-16">
-      <div className="calc-panel-header"><Icon n="settings" s={18} c="#1D4ED8" /><h3>Zusätzliche Optionen</h3></div>
+      <div className="calc-panel-header"><Icon n="settings" s={18} c="var(--ce-color-brand-ink)" /><h3>Zusätzliche Optionen</h3></div>
       <div className="calc-panel-body">
         {/* 1) Optionale Referenznummer — Funktion unverändert (max. 35, < > entfernt). */}
         <div className="field addopt-field">

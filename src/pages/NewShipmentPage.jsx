@@ -854,9 +854,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         />
       )}
 
-      <div className="container calc-page-wrap">
+      {/* Kein .page-body hier: der Elternknoten (DashboardPage.jsx, page==="new")
+          bringt .page-body bereits mit — .calc-page-wrap liefert nur noch das
+          vertikale Innenabstandsmaß (Paket B, keine zweite max-width). */}
+      <div className="calc-page-wrap">
         <div className="mb-24">
-          <h1 className="heading calc-page-title">Versandpreis berechnen</h1>
+          {/* "Neue Sendung" ist bereits der Seitentitel im PageHeader
+              (DashboardPage.jsx, PAGE_HEADERS.new). Dieser Titel war bisher ein
+              zweiter, konkurrierender <h1> — er wird zum Abschnittskopf der
+              Formularsektion herabgestuft (Paket B), Inhalt bleibt erhalten. */}
+          <h2 className="calc-page-title">Versandpreis berechnen</h2>
           <p className="calc-page-sub">Vergleichen Sie Preise von 8+ Carriern in Echtzeit</p>
         </div>
 
@@ -866,7 +873,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           {/* Fortsetzen-Kontext (nur bei aktivem Formularentwurf-Übergang). */}
           {resumeSource && !resumeConflict && (
             <div className="dft-resume-note" role="note">
-              <Icon n="form" s={16} c="#1D4ED8" />
+              <Icon n="form" s={16} c="var(--ce-color-brand-ink)" />
               <span>Sie setzen einen gespeicherten Formularentwurf fort. Prüfen Sie die Angaben und berechnen Sie die Preise neu.</span>
             </div>
           )}
@@ -896,7 +903,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 aria-expanded={serviceFilterOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n={selectedOption.icon} s={15} c="#1D4ED8" />
+                  <Icon n={selectedOption.icon} s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Abholung / Shopabgabe</div>
                     <div className="service-filter-trigger-val">{selectedOption.label}</div>
@@ -935,7 +942,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 aria-expanded={datePickerOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="clock" s={15} c="#1D4ED8" />
+                  <Icon n="clock" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versanddatum</div>
                     <div className="service-filter-trigger-val">{labelForDate(shippingDate)}</div>
@@ -970,7 +977,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 aria-expanded={carrierDropdownOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="truck" s={15} c="#1D4ED8" />
+                  <Icon n="truck" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versanddienst</div>
                     <div className="service-filter-trigger-val">{carrierLabel}</div>
@@ -1035,7 +1042,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 aria-expanded={shippingModeOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
+                  <Icon n={selectedShippingMode.icon} s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versandart</div>
                     <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
@@ -1074,7 +1081,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
                 aria-expanded={latestOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="calendar" s={15} c="#1D4ED8" />
+                  <Icon n="calendar" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Späteste Lieferzeit</div>
                     <div className="service-filter-trigger-val">{form.latestDeliveryDate ? fmtShortDE(form.latestDeliveryDate) : "Beliebig"}</div>
@@ -1102,7 +1109,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
 
           {/* Versandroute */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Versandroute</h3></div>
+            <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Versandroute</h3></div>
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
                 <div>
@@ -1167,7 +1174,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
 
           {/* Paketdaten */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
+            <div className="calc-panel-header"><Icon n="package" s={18} c="var(--ce-color-brand-ink)" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys/Validierung unverändert). Anzahl = Anzahl
@@ -1218,7 +1225,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           <div className="offers-calc-cta">
             <div className="dft-cta-row">
               <button
-                className="btn btn-primary dft-cta-primary"
+                className="btn btn-primary btn-lg dft-cta-primary"
                 onClick={calculate}
                 disabled={loading || !calcValid || saving}
                 title={calcHint || undefined}

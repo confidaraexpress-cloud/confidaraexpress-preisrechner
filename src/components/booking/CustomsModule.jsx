@@ -48,7 +48,7 @@ export function CustomsModule({
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Angaben zum Wareninhalt</h3></div>
+      <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Angaben zum Wareninhalt</h3></div>
       <div className="calc-panel-body">
         <p className="customs-hint">
           Für Sendungen außerhalb der EU benötigen wir Angaben zum Wareninhalt.

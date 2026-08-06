@@ -6,8 +6,12 @@ export function assignBadges(sorted) {
   const map = new Map();
   if (!sorted || sorted.length === 0) return map;
 
-  const withPrice   = sorted.filter(t => t.netPrice != null);
-  const withTransit = sorted.filter(t => t.transitDaysMax != null);
+  // Nicht verfügbare/nicht buchbare Angebote sind für beide Auszeichnungen
+  // von vornherein raus (Paket B) — "Günstigste"/"Schnellste" darf nie auf
+  // einer Karte stehen, die der Kunde ohnehin nicht buchen kann.
+  const bookable    = sorted.filter(t => t.availableForDate !== false);
+  const withPrice   = bookable.filter(t => t.netPrice != null);
+  const withTransit = bookable.filter(t => t.transitDaysMax != null);
 
   // Günstigste — nur sinnvoll ab 2 vergleichbaren Preisen
   let cheapest = null;

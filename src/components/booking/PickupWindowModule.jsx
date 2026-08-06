@@ -123,7 +123,7 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="clock" s={18} c="#1D4ED8" /><h3>Gewünschter Abholtermin</h3></div>
+      <div className="calc-panel-header"><Icon n="clock" s={18} c="var(--ce-color-brand-ink)" /><h3>Gewünschter Abholtermin</h3></div>
       <div className="calc-panel-body">
         {tariff?.pickupDate && (
           <div className="summary-detail-row summary-detail-row-border">

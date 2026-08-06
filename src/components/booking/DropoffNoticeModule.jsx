@@ -22,7 +22,7 @@ export function DropoffNoticeModule({ tariff, senderPrefill }) {
   return (
     <div className="calc-panel mb-16">
       <div className="calc-panel-header">
-        <Icon n="map" s={18} c="#1D4ED8" />
+        <Icon n="map" s={18} c="var(--ce-color-brand-ink)" />
         <h3>Paketshop für die Abgabe finden</h3>
       </div>
       <div className="calc-panel-body">

@@ -376,7 +376,13 @@ export default function CalculatorPage() {
 
   return (
     <div className="page-with-navbar">
-      <div className="container calc-page-wrap">
+      {/* .page-body: derselbe Inhaltsrahmen wie jede andere App-Shell-Seite
+          (1240px, Paket B) — .calc-page-wrap bleibt für das vertikale
+          Innenabstandsmaß dieser Seite zuständig, jetzt auf einem eigenen
+          verschachtelten Element statt gemeinsam mit .page-body auf einem
+          Knoten (vermeidet einen Kaskade-Konflikt bei padding-top/-bottom). */}
+      <div className="page-body">
+        <div className="calc-page-wrap">
         <div className="offers-form-section">
 
           {/* ── Obere Premium-Filterleiste: vier Filter nebeneinander (Desktop),
@@ -390,7 +396,7 @@ export default function CalculatorPage() {
               aria-expanded={serviceFilterOpen}
             >
               <div className="service-filter-trigger-left">
-                <Icon n={selectedOption.icon} s={15} c="#1D4ED8" />
+                <Icon n={selectedOption.icon} s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Abholung / Shopabgabe</div>
                   <div className="service-filter-trigger-val">{selectedOption.label}</div>
@@ -429,7 +435,7 @@ export default function CalculatorPage() {
               aria-expanded={datePickerOpen}
             >
               <div className="service-filter-trigger-left">
-                <Icon n="clock" s={15} c="#1D4ED8" />
+                <Icon n="clock" s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Versanddatum</div>
                   <div className="service-filter-trigger-val">{labelForDate(shippingDate)}</div>
@@ -464,7 +470,7 @@ export default function CalculatorPage() {
               aria-expanded={carrierDropdownOpen}
             >
               <div className="service-filter-trigger-left">
-                <Icon n="truck" s={15} c="#1D4ED8" />
+                <Icon n="truck" s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Versanddienst</div>
                   <div className="service-filter-trigger-val">{carrierLabel}</div>
@@ -529,7 +535,7 @@ export default function CalculatorPage() {
               aria-expanded={shippingModeOpen}
             >
               <div className="service-filter-trigger-left">
-                <Icon n={selectedShippingMode.icon} s={15} c="#1D4ED8" />
+                <Icon n={selectedShippingMode.icon} s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Versandart</div>
                   <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
@@ -568,7 +574,7 @@ export default function CalculatorPage() {
               aria-expanded={latestOpen}
             >
               <div className="service-filter-trigger-left">
-                <Icon n="calendar" s={15} c="#1D4ED8" />
+                <Icon n="calendar" s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Späteste Lieferzeit</div>
                   <div className="service-filter-trigger-val">{form.latestDeliveryDate ? fmtShortDE(form.latestDeliveryDate) : "Beliebig"}</div>
@@ -597,7 +603,7 @@ export default function CalculatorPage() {
 
           {/* ── Versandroute — Land + PLZ ── */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="globe" s={18} c="#1D4ED8" /><h3>Versandroute</h3></div>
+            <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Versandroute</h3></div>
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
 
@@ -669,7 +675,7 @@ export default function CalculatorPage() {
 
           {/* ── Paketdaten ── */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="package" s={18} c="#1D4ED8" /><h3>Paketdaten</h3></div>
+            <div className="calc-panel-header"><Icon n="package" s={18} c="var(--ce-color-brand-ink)" /><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys unverändert). Anzahl = Anzahl identischer Pakete
@@ -721,7 +727,7 @@ export default function CalculatorPage() {
 
           {/* ── Calculate CTA ── */}
           <div className="offers-calc-cta">
-            <button className="btn btn-primary btn-full" onClick={calculate} disabled={loading || !calcValid}>
+            <button className="btn btn-primary btn-lg btn-full" onClick={calculate} disabled={loading || !calcValid}>
               {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={18} /> Angebote vergleichen</>}
             </button>
             {/* Direkt am Aktionsbutton: benennt das Problem und erklärt die
@@ -753,6 +759,7 @@ export default function CalculatorPage() {
             senderPrefill={senderPrefill}
           />
         )}
+        </div>
       </div>
     </div>
   );

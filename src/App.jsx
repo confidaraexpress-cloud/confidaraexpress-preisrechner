@@ -51,15 +51,18 @@ export default function App() {
             Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
         <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
 
-        {/* Protected: calculator inside dashboard layout (sidebar visible) */}
+        {/* Protected: calculator + booking inside dashboard layout (sidebar visible).
+            Buchung lief bis Paket B unter dem öffentlichen NavbarLayout — Route und
+            Buchungslogik sind unverändert, nur der umgebende Rahmen wechselt auf die
+            App-Shell (siehe DashboardLayout.jsx). */}
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/calculator" element={<CalculatorPage />} />
+          <Route path="/booking"    element={<BookingPage />} />
         </Route>
 
-        {/* Public: tracking + legal pages. Booking still requires auth. */}
+        {/* Public: tracking + legal pages. */}
         <Route element={<NavbarLayout />}>
           <Route path="/tracking"    element={<TrackingPage />} />
-          <Route path="/booking"     element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
           <Route path="/impressum"   element={<ImpressumPage />} />
           <Route path="/datenschutz" element={<DatenschutzPage />} />
           <Route path="/agb"         element={<AGBPage />} />

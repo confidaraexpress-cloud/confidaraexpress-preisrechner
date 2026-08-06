@@ -545,7 +545,7 @@ test("13 — die Phase-1-Governance bleibt registriert und die Primitives sind e
   // dokumentiert — nicht stillschweigend liegengeblieben.
   assert.match(buttonsRaw, /auth-cta/, "der Auth-CTA muss als zurückgestellt dokumentiert sein");
   assert.match(buttonsRaw, /pp-net-cta/, "pp-net-cta muss als zurückgestellt dokumentiert sein");
-  assert.match(buttonsRaw, /offers-calc-cta/, "der Preisrechner-CTA muss als zurückgestellt dokumentiert sein");
-  assert.match(stripComments(read("./calculator.css")), /\.offers-calc-cta \.btn-primary:disabled \{ opacity/,
-    "der Übergangsscope für den gesperrten Mega-CTA muss bestehen");
+  // Der frühere Glow-Mega-CTA des Preisrechners (.offers-calc-cta .btn-primary)
+  // ist seit Paket B (Premium-Versandprozess) KEIN Übergangsscope mehr — siehe
+  // shippingProcess.test.mjs, das die Migration auf die Primary Large prüft.
 });

@@ -29,10 +29,13 @@
    Bewusst NICHT hier migriert (folgt im jeweiligen Seitenpaket):
      • .auth-cta / .auth-btn-ghost — eigenes Auth-Theme (--auth-*).
      • .pp-net-cta — Aktion auf der dunklen Signature-Fläche der Übersicht.
-     • .offers-calc-cta .btn-primary — Glow-Mega-CTA des Preisrechners; die
-       Regel liegt in calculator.css, ist höher spezifisch und gewinnt weiter.
      • .dft-delete-confirm-btn, .abk-create-shipment u. a. seitenbezogene
-       Sonderbuttons des Versandprozesses.
+       Sonderbuttons von Entwürfen/Adressbuch (eigenes Seitenpaket).
+
+   .offers-calc-cta .btn-primary — der frühere Glow-Mega-CTA des Preisrechners
+   — ist mit Paket B (Premium-Versandprozess) migriert: die Hauptaktion ist
+   jetzt die normale Primary Large (.btn-primary.btn-lg) ohne jede eigene
+   Fläche; .offers-calc-cta trägt kein Material mehr (siehe calculator.css).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Basis (Medium, 40px) ────────────────────────────────────────────────── */

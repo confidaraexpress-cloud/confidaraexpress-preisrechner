@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useSearchParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminSupportRequests } from "../../api/adminApi";
+import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 import {
   supportReplyStateMeta,
   SUPPORT_CATEGORY_FILTER_OPTIONS,
@@ -27,10 +29,11 @@ const ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
 };
 
-const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
-
 // ── Response-Container defensiv lesen. Die Feld-Normalisierung der einzelnen
 // Zeilen übernimmt zentral normalizeSupportRequest. ─────────────────────────
+// selectTotal/selectHasMore lagen bis Paket E in jeder Adminliste als eigene,
+// fast wortgleiche Kopie. Sie stehen jetzt einmal in utils/adminOverview.mjs —
+// gleiches Verhalten, eine Quelle.
 function selectRows(d) {
   if (Array.isArray(d)) return d;
   if (d && typeof d === "object") {
@@ -41,23 +44,7 @@ function selectRows(d) {
   return [];
 }
 
-function selectTotal(d) {
-  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-  const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-  const t = firstDefined(pag.total, pag.count, pag.total_count, d.total, d.total_count, d.totalCount, d.count);
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-}
 
-function selectHasMore(d, rowCount, page, size, total) {
-  if (Number.isFinite(total)) return page * size < total;
-  if (d && typeof d === "object" && !Array.isArray(d)) {
-    const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-    if (typeof pag.has_more === "boolean") return pag.has_more;
-    if (typeof d.has_more === "boolean") return d.has_more;
-  }
-  return rowCount >= size; // volle Seite ⇒ evtl. mehr
-}
 
 function fmtDateTime(v) {
   if (!v) return "—";
@@ -185,10 +172,10 @@ export default function AdminSupportRequestsPage() {
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       const list = selectRows(d).map(normalizeSupportRequest).filter(Boolean);
-      const t = selectTotal(d);
+      const t = selectListTotal(d);
       setRows(list);
       setTotal(t);
-      setHasMore(selectHasMore(d, list.length, page, PAGE_SIZE, t));
+      setHasMore(selectListHasMore(d, list.length, page, PAGE_SIZE, t));
     } catch {
       setError(SUPPORT_LIST_ERROR);
       setRows([]); setTotal(null); setHasMore(false);
@@ -319,19 +306,19 @@ export default function AdminSupportRequestsPage() {
 
       {loading ? (
         <div className="table-card">
-          <div className="loading-center" role="status" aria-live="polite">
-            <span className="spinner spinner-dark" /> Supportanfragen werden geladen…
-          </div>
+          <ListSkeleton rows={6} label="Supportanfragen werden geladen …" />
         </div>
       ) : error ? (
         // Ein Fehler ist KEIN Leerzustand: eigene Meldung plus echte Wiederholung.
-        <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
-          <div className="adm-loaderr-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
-            </button>
-          </div>
+        <div className="ce-card">
+          <ErrorState
+            title={error}
+            action={(
+              <button type="button" className="btn btn-primary btn-sm" onClick={load}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            )}
+          />
         </div>
       ) : rows.length === 0 ? (
         <div className="table-card">

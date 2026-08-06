@@ -1,85 +1,221 @@
 /* ===========================================================================
-   ADMIN AREA — isoliert, Light-Theme, adm- Prefix
-   Eigenstaendiges Layout fuer den Adminbereich. Nutzt bewusst nur neutrale
-   Light-/Legacy-Tokens (--navy, --gray.., --blue.., --border.., --radius..) und
-   die wiederverwendbaren Basis-Atome (.table-card, .badge, .alert, .empty,
-   .btn). KEINE --auth- oder --ce- Tokens, KEINE Vermischung mit ce-dark oder
-   der State-Navigation des Kunden-Dashboards.
+   ADMIN AREA — adm- Prefix, Paket E
+   ───────────────────────────────────────────────────────────────────────────
+   Das Adminportal ist KEINE eigene Designwelt mehr. Fläche, Kante, Radius,
+   Tiefe, Schrift, Farbe, Status und Fokus kommen ausschließlich aus der
+   Foundation (variables.css) und den gemeinsamen Primitives/Mustern
+   (buttons.css, forms.css, primitives.css, patterns.css).
+
+   Was hier bleibt, ist die Admin-DICHTE: kompaktere Abstände, kleinere
+   Bedienhöhen (--ce-size-control-admin), mehr Information je Fläche. Was hier
+   NICHT mehr steht: eigene Blau-, Schatten-, Radius- und Buttonwelten.
+   Farbliterale sind in diesem Blatt unzulässig — admin.css hat keine eigenen
+   Farben, es liest die der Marke.
    =========================================================================== */
 
 .adm-shell {
+  --fs: var(--ce-font-sans);
   display: flex;
   min-height: 100dvh;
-  background: #f5f7fb;
-  color: var(--navy);
+  color: var(--ce-color-text-primary);
+
+  /* Dieselbe Ivory-Grundfläche wie die Kunden-Shell (.app-shell) — EINE
+     Hintergrundebene, statisch, ohne Dekoration. Der Adminbereich steht damit
+     sichtbar auf demselben Grund wie das Kundenportal; unterschiedlich sind
+     nur Dichte und Titelstufe, nicht das Material. */
+  background-color: var(--ce-app-bg-bottom);
+  background-image: linear-gradient(
+    180deg,
+    var(--ce-app-bg-top) 0%,
+    var(--ce-app-bg-mid) 46%,
+    var(--ce-app-bg-bottom) 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 1400px;
+  background-position: left top;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+/* Bewusst hell (nicht Midnight Slate wie im Kundenportal): der Adminbereich
+   soll sich beim Wechsel eindeutig unterscheiden lassen. Das Material ist
+   trotzdem das gemeinsame — Flächenfarbe, Kante und Tiefe aus der Foundation. */
 .adm-side {
   width: 264px;
   flex-shrink: 0;
   position: fixed;
   top: 0; left: 0; bottom: 0;
-  z-index: 60;
+  /* Der Drawer liegt genau EINE Stufe über seinem Overlay — dieselbe
+     Staffelung wie in der Kunden-Shell. */
+  z-index: calc(var(--ce-z-drawer) + 1);
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border-right: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(14,30,80,0.04);
+  background: var(--ce-color-surface);
+  border-right: 1px solid var(--ce-color-border-subtle);
+  box-shadow: var(--ce-elevation-1);
 }
-.adm-brand { display: flex; align-items: center; gap: 11px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border); }
-.adm-brand-mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(160deg, #2563eb, #1d4ed8); color: #fff; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adm-brand { display: flex; align-items: center; gap: 11px; padding: 18px 18px 16px; border-bottom: 1px solid var(--ce-color-border-subtle); }
+/* Dieselbe Bildmarke wie in der Kunden-Sidebar (.ce-brandmark), nur in der
+   Primärvariante für helle Flächen. Der frühere Textblock „CE" auf einem
+   blauen Verlauf war die einzige Stelle im Produkt, an der die Marke
+   nachgebaut statt verwendet wurde. */
+.adm-brand-mark {
+  width: 34px; height: 34px; border-radius: var(--ce-radius-sm); flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+}
+.adm-brand-mark-img { width: 22px; height: 22px; display: block; }
 .adm-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.adm-brand-name { font-family: var(--ce-font-sans); font-weight: 600; font-size: 14px; color: var(--navy); }
-.adm-brand-tag { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue2); }
+.adm-brand-name { font-family: var(--ce-font-sans); font-weight: 600; font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary); }
+.adm-brand-tag { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-brand-ink); }
 .adm-side-close { display: none; margin-left: auto; background: none; border: none; color: var(--ce-color-text-muted); cursor: pointer; padding: 4px; }
 
-.adm-identity { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-.adm-identity-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue-light); color: var(--blue2); font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adm-identity { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--ce-color-border-subtle); }
+.adm-identity-avatar { width: 34px; height: 34px; border-radius: var(--ce-radius-full); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); font-weight: 600; font-size: var(--ce-text-body-s-size); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .adm-identity-text { display: flex; flex-direction: column; min-width: 0; }
-.adm-identity-name { font-size: 13px; font-weight: 600; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.adm-identity-role { font-size: 11px; color: var(--ce-color-text-muted); }
+.adm-identity-name { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adm-identity-role { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); }
 
 .adm-nav { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
-.adm-nitem { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); background: none; border: none; cursor: pointer; text-decoration: none; font-family: var(--ce-font-sans); width: 100%; text-align: left; transition: background 0.15s, color 0.15s; }
-.adm-nitem:hover { background: var(--gray50); color: var(--navy); }
-.adm-nitem-on, .adm-nitem-on:hover { background: var(--blue-light); color: var(--blue2); }
-.adm-nsec { padding: 14px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ce-color-text-muted); }
-.adm-nitem-soon { color: var(--ce-color-text-muted); cursor: not-allowed; }
-.adm-nitem-soon:hover { background: none; color: var(--ce-color-text-muted); }
-.adm-soon-badge { margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--gray100); color: var(--ce-color-text-muted); border: 1px solid var(--border); letter-spacing: 0.02em; }
+.adm-nitem {
+  display: flex; align-items: center; gap: 11px;
+  min-height: var(--ce-size-control-md);
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 500;
+  color: var(--ce-color-text-secondary);
+  background: none; cursor: pointer; text-decoration: none;
+  width: 100%; text-align: left;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.adm-nitem:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.adm-nitem:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+/* Der aktive Eintrag ist mehrfach codiert — Fläche, Kante, Akzentkante links
+   und Schriftschnitt. Nie allein über Farbe, genau wie in der Kunden-Sidebar. */
+.adm-nitem-on, .adm-nitem-on:hover {
+  background: var(--ce-color-brand-soft);
+  border-color: var(--ce-color-brand-border);
+  box-shadow: inset 2px 0 0 0 var(--ce-color-brand);
+  color: var(--ce-color-brand-ink);
+  font-weight: 600;
+}
+.adm-nsec { padding: 14px 12px 6px; font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-nitem-soon { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+.adm-nitem-soon:hover { background: none; color: var(--ce-color-text-disabled); }
+.adm-soon-badge { margin-left: auto; font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); padding: 2px 7px; border-radius: var(--ce-radius-full); background: var(--ce-color-surface-muted); color: var(--ce-color-text-muted); border: 1px solid var(--ce-color-border-subtle); }
 
-.adm-side-foot { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; }
-.adm-foot-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); background: none; border: none; cursor: pointer; text-align: left; font-family: var(--ce-font-sans); transition: background 0.15s, color 0.15s; }
-.adm-foot-btn:hover { background: var(--gray50); color: var(--navy); }
+.adm-side-foot { padding: 12px; border-top: 1px solid var(--ce-color-border-subtle); display: flex; flex-direction: column; gap: 3px; }
+.adm-foot-btn {
+  display: flex; align-items: center; gap: 10px;
+  min-height: var(--ce-size-control-md);
+  padding: 9px 12px;
+  border: 1px solid transparent; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 500;
+  color: var(--ce-color-text-secondary);
+  background: none; cursor: pointer; text-align: left;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.adm-foot-btn:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.adm-foot-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+/* Der Wechsel zurück in den Kundenbereich ist die wichtigere der beiden
+   Fußaktionen — er bekommt die Markenfarbe, „Abmelden" bleibt neutral. */
+.adm-foot-btn-switch { color: var(--ce-color-brand-ink); }
+.adm-foot-btn-switch:hover { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
 
-.adm-side-overlay { display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.45); z-index: 55; }
+/* Der Navigations-Drawer trägt denselben Ton wie der der Kunden-Shell. */
+.adm-side-overlay { display: none; position: fixed; inset: 0; background: var(--ce-color-overlay-drawer); z-index: var(--ce-z-drawer); }
 
 /* ── Main / mobile topbar ────────────────────────────────────────────────── */
 .adm-main { flex: 1; min-width: 0; margin-left: 264px; }
-.adm-topbar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
-.adm-topbar-burger { background: none; border: none; color: var(--navy); cursor: pointer; padding: 4px; display: flex; }
-.adm-topbar-title { font-family: var(--ce-font-sans); font-weight: 600; font-size: 15px; color: var(--navy); }
+.adm-topbar { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: var(--ce-color-surface); border-bottom: 1px solid var(--ce-color-border-subtle); position: sticky; top: 0; z-index: var(--ce-z-topbar); }
+.adm-topbar-burger { background: none; border: none; color: var(--ce-color-text-secondary); cursor: pointer; padding: 4px; display: flex; }
+.adm-topbar-burger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.adm-topbar-title { font-family: var(--ce-font-sans); font-weight: 600; font-size: var(--ce-text-body-l-size); color: var(--ce-color-text-primary); }
 .adm-topbar-spacer { width: 30px; flex-shrink: 0; }
 
 /* ── Page container ──────────────────────────────────────────────────────── */
 .adm-page { max-width: 1180px; margin: 0 auto; padding: 30px 32px 48px; }
-.adm-page-head { margin-bottom: 22px; }
-.adm-page-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.adm-title { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); }
-.adm-sub { margin-top: 6px; font-size: 14px; line-height: 1.55; color: var(--ce-color-text-muted); max-width: 640px; }
 
-/* ── Overview tiles ──────────────────────────────────────────────────────── */
-.adm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 20px; }
-.adm-tile { display: flex; align-items: center; gap: 14px; padding: 18px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); text-decoration: none; color: inherit; box-shadow: 0 1px 4px rgba(14,30,80,0.05); transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; }
-a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,78,216,0.10); border-color: rgba(29,78,216,0.20); }
-.adm-tile-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--blue-light); color: var(--blue2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* ── Abschnitte einer Adminseite ─────────────────────────────────────────── */
+.adm-section + .adm-section { margin-top: var(--ce-space-6); }
+.adm-section-title {
+  margin: 0 0 var(--ce-space-3);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  color: var(--ce-color-text-primary);
+}
+/* Abschnittskopf mit Aktion rechts (z. B. „Backfill-Vorschau" + Aktualisieren). */
+.adm-section-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px 16px; flex-wrap: wrap;
+  margin: var(--ce-space-6) 0 var(--ce-space-3);
+}
+.adm-section-head .adm-section-title { margin-bottom: 4px; }
+.adm-section-sub {
+  margin: 0; max-width: 640px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* ── Kennzahlen der Adminübersicht ───────────────────────────────────────── */
+/* Bewusst kompakter als die KPI-Karten des Kundenportals: kleinere Zahl,
+   kleinere Fläche, mehr Karten je Reihe. Die Admin-Dichte bleibt erhalten. */
+.adm-metrics {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;
+}
+.adm-metric {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px;
+  text-decoration: none; color: inherit;
+}
+.adm-metric-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.adm-metric-ic {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-muted);
+}
+.adm-metric-label {
+  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-text-secondary); min-width: 0;
+}
+.adm-metric-value {
+  font-family: var(--ce-font-sans);
+  font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.adm-metric-hint { font-size: var(--ce-text-micro-size); font-weight: 400; line-height: 1.4; color: var(--ce-color-text-muted); }
+/* Handlungsbedarf wird über Fläche UND Kante des Icons vermittelt, nie über
+   die Zahl allein — Farbe ist nie der einzige Träger. */
+.adm-metric--actionable .adm-metric-ic {
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+}
+
+/* Schmale Fehlerzeile über bereits geladenen Inhalten. */
+.adm-inline-error { align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.adm-inline-error > span { flex: 1; min-width: 180px; }
+
+/* ── Schnellzugriffskacheln (Adminübersicht) ─────────────────────────────── */
+/* Die Kacheln tragen im Markup .ce-card-interactive — Fläche, Kante, Tiefe und
+   Hoverzustand kommen also unverändert aus dem Karten-Primitive. Hier stehen
+   nur Anordnung und Innenabstand. Der frühere eigene Lift (translateY + blauer
+   Streuschatten) ist entfallen. */
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.adm-tile { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; }
+.adm-tile-ic { width: 40px; height: 40px; border-radius: var(--ce-radius-sm); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .adm-tile-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.adm-tile-title { font-size: 15px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 8px; }
-.adm-tile-desc { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+.adm-tile-title { font-size: var(--ce-text-title-card-size); font-weight: var(--ce-text-title-card-weight); line-height: var(--ce-text-title-card-line); color: var(--ce-color-text-primary); display: flex; align-items: center; gap: 8px; }
+.adm-tile-desc { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
 .adm-tile-arrow { color: var(--ce-color-text-muted); flex-shrink: 0; }
-.adm-tile-soon { opacity: 0.7; }
-.adm-foot-note { font-size: 12px; color: var(--ce-color-text-muted); }
 
 /* ── Filter bar ──────────────────────────────────────────────────────────── */
 /* Material (Fläche/Kante/Radius/Tiefe) kommt aus dem Base-Card-Primitive,
@@ -88,13 +224,34 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-filter-field { display: flex; flex-direction: column; gap: 5px; min-width: 132px; }
 .adm-filter-field label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .adm-filter-actions { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
+/* ── Datumsfeld: deutscher Platzhalter statt des nativen Formathinweises ─────
+   Ein leeres <input type="date"> zeigt seinen Formathinweis in der Sprache des
+   BROWSERS an — auf einem englischsprachigen Browser also „mm/dd/yyyy". Solange
+   das Feld leer und nicht fokussiert ist, wird dieser Hinweis unsichtbar
+   geschaltet und „TT.MM.JJJJ" darübergelegt. Beim Fokussieren übernimmt sofort
+   wieder die native Bedienung. Siehe components/admin/DateField.jsx. */
+.adm-datefield { position: relative; display: block; }
+.adm-datefield > input { width: 100%; }
+/* Ausgeblendet wird über die Deckkraft, nicht über eine Textfarbe: „transparent"
+   wäre eine Farbe außerhalb der Foundation-Rollen. Der Kalender-Button des
+   Browsers bleibt sichtbar und bedienbar. */
+.adm-datefield--empty > input:not(:focus)::-webkit-datetime-edit { opacity: 0; }
+.adm-datefield-ph {
+  position: absolute;
+  top: 50%; left: 13px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-placeholder);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
 
 /* ── Table specifics (Basis kommt aus dashboard.css: .table-card/.table-scroll/table) ── */
 .adm-td-time { white-space: nowrap; color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.adm-action { font-weight: 600; color: var(--navy); display: block; }
+.adm-action { font-weight: 600; color: var(--ce-color-text-primary); display: block; }
 .adm-action-raw { display: block; margin-top: 2px; font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 .adm-party { display: inline-flex; flex-direction: column; gap: 1px; }
-.adm-party-name { font-weight: 600; color: var(--navy); }
+.adm-party-name { font-weight: 600; color: var(--ce-color-text-primary); }
 .adm-party-id { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 .adm-party-type { font-size: 11px; color: var(--ce-color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .adm-muted { color: var(--ce-color-text-muted); }
@@ -103,68 +260,159 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-nowrap { white-space: nowrap; }
 .adm-mask { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; letter-spacing: 0.02em; color: var(--ce-color-text-secondary); white-space: nowrap; }
 /* Überfällige Fälligkeit deutlich markieren (nur Anzeige, keine Zahlungslogik). */
-.adm-overdue { color: var(--danger); font-weight: 600; }
-.adm-overdue-tag { font-size: 11px; font-weight: 600; }
+.adm-overdue { color: var(--ce-color-status-error-fg); font-weight: 600; }
 /* Zweite, dezente Zeile in einer Tabellenzelle (z. B. Kontaktname unter Firma). */
-.adm-cell-sub { font-size: 12px; margin-top: 2px; }
-.adm-meta-toggle { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.16); border-radius: 8px; cursor: pointer; font-family: var(--ce-font-sans); white-space: nowrap; }
-.adm-meta-toggle:hover { background: #cfe0ff; }
-.adm-meta-row td { background: var(--gray50); }
+/* Der frühere .adm-meta-toggle war ein eigener kleiner Button mit eigener
+   Fläche, eigener Kante und eigenem Radius. Er ist entfallen — die Aktion
+   trägt jetzt .btn .btn-ghost .btn-sm aus dem Buttonsystem. */
+.adm-meta-row td { background: var(--ce-color-surface-muted); }
 .adm-meta-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 18px; padding: 6px 2px; }
 .adm-meta-item { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.adm-meta-item dt { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
-.adm-meta-item dd { font-size: 13px; color: var(--navy); word-break: break-word; }
+.adm-meta-item dt { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-meta-item dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); word-break: break-word; }
+
+/* Audit-Logs: sechs Spalten sind auf schmalen Screens keine lesbare Tabelle
+   mehr — dort tragen dieselben Angaben eine Karte. */
+.adm-audit-cards { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 12px; }
+.adm-meta-list-card { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ce-color-border-subtle); grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .adm-audit-table { display: none; }
+  .adm-audit-cards { display: flex; }
+}
 
 /* ── Pagination ──────────────────────────────────────────────────────────── */
 .adm-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
 .adm-page-ind { font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); }
-.adm-idlink { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--blue2); text-decoration: none; font-weight: 600; }
+.adm-idlink { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-brand-ink); text-decoration: none; font-weight: 600; }
 .adm-idlink:hover { text-decoration: underline; }
 
-/* ── Sendungsdetail ──────────────────────────────────────────────────────── */
-.adm-back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); text-decoration: none; margin-bottom: 14px; }
-.adm-back:hover { color: var(--blue2); }
-.adm-detail-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
-.adm-detail-id { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); }
-.adm-detail-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* ── Detailseiten ────────────────────────────────────────────────────────── */
+/* Der Zurück-Link liegt seit Paket E in derselben Regel wie
+   .ce-page-header-back (patterns.css) — eine Rückwärtsnavigation im Produkt. */
 /* Rechnungsdokument (Phase 3): Status- + Test-Badge nebeneinander in Liste/Detail */
-.adm-doc-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--gray100); color: var(--ce-color-text-secondary); border: 1px solid var(--border); white-space: nowrap; }
+.adm-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: var(--ce-radius-full); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); background: var(--ce-color-surface-muted); color: var(--ce-color-text-secondary); border: 1px solid var(--ce-color-border-subtle); white-space: nowrap; }
 
 .adm-cards { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 /* Material aus dem Base-Card-Primitive (primitives.css); hier bleibt nur der
    Beschnitt, damit Kopfzeile und Fuß innerhalb des Radius liegen. */
 .adm-card { overflow: hidden; }
-.adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--navy); }
-.adm-card-head svg { color: var(--blue2); }
+.adm-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 18px; border-bottom: 1px solid var(--ce-color-border-subtle); font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-card-head svg { color: var(--ce-color-brand-ink); }
 .adm-card-body { padding: 16px 18px; }
+
+/* Überschrift einer Adminkarte als eigenes Element (<h2>). Die Klasse war bis
+   Paket E in fünf Karten der Supportdetailseite gesetzt, aber in KEINEM
+   Stylesheet definiert — die Überschriften fielen dort auf die Browservorgabe
+   für <h2> zurück und sprengten die Karte. */
+.adm-card-title {
+  margin: 0;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+}
+
+/* Formularlabel im Adminbereich — dieselbe Stufe wie .field-label. */
+.adm-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
+}
+.adm-label + .adm-label { margin-top: 16px; }
+
+/* Adressblock im Sendungsdetail. */
+.adm-addr { min-width: 0; }
+
+/* Hinweiszeile direkt unter dem Seitenkopf. */
+.adm-head-note { margin-bottom: 16px; }
 
 .adm-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px 22px; }
 .adm-kv-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .adm-kv-item dt { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
-.adm-kv-item dd { font-size: 13px; color: var(--navy); word-break: break-word; }
+.adm-kv-item dd { font-size: 13px; color: var(--ce-color-text-primary); word-break: break-word; }
 
-.adm-pii-warn { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); color: var(--ce-color-status-warning-fg); font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
-.adm-pii-warn svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
+/* ── EIN Hinweisstreifen für den gesamten Adminbereich ───────────────────────
+   Vorher gab es sieben strukturgleiche Flächen mit sieben eigenen Farb-,
+   Radius- und Schattenwerten: .adm-pii-warn, .adm-scope-note, .adm-conflict,
+   .adm-b2b-warn, .adm-overdue-note, .adm-nonproductive-note, .adm-markup-note.
+   Sie tragen jetzt dieselbe Geometrie; unterschiedlich ist nur die Farbrolle,
+   und die kommt aus den Statustokens der Foundation.
+
+   Die historischen Klassennamen bleiben gültig — kein Markup musste dafür
+   angefasst werden. */
+.adm-note,
+.adm-pii-warn,
+.adm-scope-note,
+.adm-conflict,
+.adm-b2b-warn,
+.adm-overdue-note,
+.adm-nonproductive-note,
+.adm-markup-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--ce-radius-sm);
+  border: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+}
+.adm-note > svg,
+.adm-pii-warn > svg,
+.adm-scope-note > svg,
+.adm-b2b-warn > svg,
+.adm-overdue-note > svg,
+.adm-nonproductive-note > svg,
+.adm-markup-note > svg { flex-shrink: 0; margin-top: 1px; color: currentColor; }
+
+/* Farbrollen — Fläche, Kante und Text immer aus demselben Statustripel. */
+.adm-note--info,
+.adm-scope-note,
+.adm-markup-note {
+  background: var(--ce-color-status-info-surface);
+  border-color: var(--ce-color-status-info-border);
+  color: var(--ce-color-status-info-fg);
+}
+.adm-note--warning,
+.adm-pii-warn,
+.adm-conflict,
+.adm-b2b-warn,
+.adm-overdue-note,
+.adm-nonproductive-note {
+  background: var(--ce-color-status-warning-surface);
+  border-color: var(--ce-color-status-warning-border);
+  color: var(--ce-color-status-warning-fg);
+}
+
+.adm-pii-warn { margin-bottom: 14px; }
 
 .adm-addr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .adm-addr-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ce-color-text-muted); margin-bottom: 10px; }
 .adm-addr-note { font-size: 13px; color: var(--ce-color-text-muted); font-style: italic; }
-.adm-addr-str { font-size: 13px; color: var(--navy); white-space: pre-line; }
+.adm-addr-str { font-size: 13px; color: var(--ce-color-text-primary); white-space: pre-line; }
 
 .adm-support { display: flex; flex-wrap: wrap; gap: 10px; }
 .adm-support-hint { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 10px; }
 
 /* ── Summary-Kacheln (Kundendetail — nur Aggregate) ──────────────────────── */
 .adm-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
-.adm-stat { background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-.adm-stat-label { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--ce-color-text-muted); }
-.adm-stat-value { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); margin-top: 5px; word-break: break-word; }
+.adm-stat { background: var(--ce-color-surface-muted); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); padding: 14px 16px; }
+.adm-stat-label { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-stat-value { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: var(--ce-color-text-primary); margin-top: 5px; word-break: break-word; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* ── Inline-Tracking-Karte (direkt unter den Support-Aktionen) ───────────── */
-.adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--gray50); }
+.adm-track { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); background: var(--ce-color-surface-muted); }
 .adm-track-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.adm-track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
+.adm-track-title { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
 /* Einordnung, wenn der Carrier (noch) keine Live-Daten liefert — bewusst als
    eigener Hinweis und nicht als Aussage über die gespeicherte Trackingnummer. */
 .adm-track-note { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 12px; overflow-wrap: anywhere; }
@@ -173,13 +421,26 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
 /* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .adm-modal { text-align: center; }
-.adm-modal-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--warn-bg); color: var(--ce-color-status-warning-fg); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-.adm-modal-title { font-family: var(--ce-font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-.adm-modal-text { font-size: 13px; line-height: 1.55; color: var(--ce-color-text-secondary); margin-bottom: 18px; }
-.adm-modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.adm-modal-sub { font-size: 12px; font-weight: 600; color: var(--ce-color-text-muted); margin-bottom: 8px; }
-.adm-modal-icon-approve { background: var(--blue-light); color: var(--blue2); }
-.adm-modal-icon-danger { background: var(--danger-bg); color: var(--ce-color-status-error-fg); }
+/* Geometrie des Medaillons kommt aus dem Dialogmuster (patterns.css); hier
+   bleiben nur Zentrierung und Farbrolle. */
+.adm-modal-icon { background: var(--ce-color-status-warning-surface); color: var(--ce-color-status-warning-fg); margin: 0 auto 14px; }
+.adm-modal-title { font-family: var(--ce-font-sans); font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line); font-weight: var(--ce-text-title-section-weight); color: var(--ce-color-text-primary); margin-bottom: 8px; }
+.adm-modal-text { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); margin-bottom: 18px; }
+.adm-modal-sub { font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-muted); margin-bottom: 8px; }
+.adm-modal-icon-approve { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+.adm-modal-icon-warning { background: var(--ce-color-status-warning-surface); color: var(--ce-color-status-warning-fg); }
+.adm-modal-icon-danger { background: var(--ce-color-status-error-surface); color: var(--ce-color-status-error-fg); }
+
+/* Unumkehrbare, aber nicht zerstörende Aktion (z. B. „Als bezahlt markieren").
+   Sie darf nicht wie eine normale Primäraktion aussehen — und sie ist kein
+   Danger-Button, der für zerstörende Aktionen reserviert bleibt. Deshalb die
+   Warnrolle auf der zurückgenommenen Outline-Variante. */
+.adm-irreversible-action { color: var(--ce-color-status-warning-fg); border-color: var(--ce-color-status-warning-border); }
+.adm-irreversible-action:hover:not(:disabled) {
+  background: var(--ce-color-status-warning-surface);
+  border-color: var(--ce-color-status-warning-fg);
+  color: var(--ce-color-status-warning-fg);
+}
 
 /* Danger-Aktion (Blockieren) — rot, klar von neutralen Aktionen getrennt.
    Fläche und Zustände liegen seit Paket A, Phase 2 in der Danger-Variante des
@@ -189,19 +450,18 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* Karte bleibt Karte: nur die Kante signalisiert die Gefahrenzone, die Tiefe
    bleibt auf der Elevationsskala (kein farbiger Schatten). */
 .adm-danger-zone { border-color: var(--ce-color-status-error-border); box-shadow: var(--ce-elevation-1); }
-.adm-danger-head { color: var(--danger); }
-.adm-danger-head svg { color: var(--danger); }
+.adm-danger-head { color: var(--ce-color-status-error-fg); }
+.adm-danger-head svg { color: var(--ce-color-status-error-fg); }
 .adm-danger-item { display: flex; gap: 16px 20px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
-.adm-danger-item + .adm-danger-item { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.adm-danger-item + .adm-danger-item { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ce-color-border-subtle); }
 .adm-danger-item-text { flex: 1; min-width: 240px; }
-.adm-danger-item-title { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.adm-danger-item-title { font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: 4px; }
 .adm-danger-item-desc { font-size: 13px; line-height: 1.55; color: var(--ce-color-text-muted); }
 .adm-danger-item-action { flex-shrink: 0; }
-.adm-danger-item-soon { opacity: 0.75; }
 /* Löschaktion immer sichtbar von der Anonymisierung getrennt (auch wenn der
    „bereits anonymisiert"-Hinweis dazwischen die Geschwister-Adjazenz bricht). */
-.adm-danger-item-split { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-.adm-danger-note { margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--danger); }
+.adm-danger-item-split { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-danger-note { margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--ce-color-status-error-fg); }
 /* .adm-danger-button trägt die Danger-Variante des Buttonsystems (buttons.css). */
 
 /* Type-to-confirm-Eingabe im Danger-Modal — Material/Fokus aus dem
@@ -210,24 +470,22 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-modal-input { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; letter-spacing: 0.04em; margin-bottom: 16px; }
 
 /* ── Stornierungsanfragen (Admin) ────────────────────────────────────────── */
-/* Scope-Trennung: klar informativer (blauer) Hinweis, dass dies ein interner
-   Vorgang ist und KEINE echte Carrier-/JUMiNGO-Stornierung/Erstattung auslöst. */
-.adm-scope-note { display: flex; gap: 11px; align-items: flex-start; padding: 13px 15px; border-radius: var(--radius); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.22); color: var(--navy); font-size: 13px; line-height: 1.55; margin-bottom: 16px; }
-.adm-scope-note svg { flex-shrink: 0; margin-top: 1px; color: var(--blue2); }
+/* Scope-Trennung: klar informativer Hinweis, dass dies ein interner Vorgang
+   ist und KEINE echte Carrier-/JUMiNGO-Stornierung/Erstattung auslöst.
+   Material und Farbrolle kommen aus dem Hinweisstreifen oben. */
+.adm-scope-note { margin-bottom: 16px; }
 .adm-scope-note strong { font-weight: 600; }
 
-/* Optimistic-Locking-Konflikt (409): amber, mit direkter Reload-Aktion. */
-.adm-conflict { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 12px 15px; border-radius: var(--radius); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.32); color: var(--ce-color-status-warning-fg); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+/* Optimistic-Locking-Konflikt (409): Warnrolle, mit direkter Reload-Aktion. */
+.adm-conflict { flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; margin-bottom: 16px; }
 .adm-conflict-text { display: flex; gap: 9px; align-items: flex-start; min-width: 240px; flex: 1; }
-.adm-conflict-text svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
+.adm-conflict-text svg { flex-shrink: 0; margin-top: 1px; color: currentColor; }
 
 /* Voller Freitext (Kundengrund / interner Vermerk read-only): Zeilenumbrüche
    erhalten, sicher umbrechen. Reiner Text — nie als HTML gerendert. */
-.adm-reason { font-size: 13px; line-height: 1.6; color: var(--navy); white-space: pre-wrap; word-break: break-word; background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-.adm-reason-cell { color: var(--ce-color-text-secondary); font-size: 13px; }
+.adm-reason { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-primary); white-space: pre-wrap; word-break: break-word; background: var(--ce-color-surface-muted); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); padding: 12px 14px; }
 
 /* Editor-Formular (Status + interner Vermerk). */
-.adm-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .adm-edit-field { display: flex; flex-direction: column; gap: 6px; }
 .adm-edit-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 /* Material, Höhe, Hover, Fokus und Disabled kommen aus dem Formularsystem
@@ -237,24 +495,54 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .adm-side { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); box-shadow: 4px 0 24px rgba(10,22,40,0.18); }
+  .adm-side { transform: translateX(-100%); transition: transform var(--ce-motion-slow) var(--ce-motion-ease-entrance); box-shadow: var(--ce-elevation-3); }
   .adm-side-open { transform: translateX(0); }
   .adm-side-close { display: inline-flex; }
   .adm-side-overlay { display: block; }
   .adm-main { margin-left: 0; }
   .adm-topbar { display: flex; }
   .adm-page { padding: 22px 18px 40px; }
+
+  /* Touch-Ziele: auf Zeigergeräten bleibt die kompakte Admin-Dichte (40 px),
+     unterhalb der Drawer-Schwelle wird jedes Bedienelement auf 44 px gebracht
+     (WCAG 2.5.5). Gemessen, nicht geschätzt: vorher maßen Navigationseinträge
+     40 px, der Menü-Schließer 26 px, der Burger 30 px und der Zurück-Link 17 px. */
+  .adm-nitem,
+  .adm-foot-btn { min-height: 44px; }
+  .adm-side-close,
+  .adm-topbar-burger {
+    min-width: 44px; min-height: 44px;
+    align-items: center; justify-content: center;
+    margin-right: -10px;
+  }
+  .adm-back,
+  .ce-page-header-back { min-height: 44px; align-items: center; }
+
+  /* Dieselbe Regel für die Bedienelemente der Seiten: Die kompakten
+     Admin-Höhen (Buttons 32 px, Eingaben 36 px) sind eine bewusste
+     Dichteentscheidung für Zeigergeräte — auf Touchbreiten reichen sie nicht.
+     Beides gilt, jedes in seinem Kontext.
+
+     Ausgenommen sind Textlinks in Fließtext und Tabellenzellen: für sie gilt
+     die Inline-Ausnahme von WCAG 2.5.5/2.5.8, und eine künstliche Vergrößerung
+     würde den Zeilenfluss zerreißen. */
+  .adm-page .btn,
+  .adm-filter-field input,
+  .adm-filter-field select,
+  .adm-edit-select,
+  .adm-sup-note,
+  .adm-markup-input-wrap { min-height: 44px; }
+  /* Die Checkbox behält ihre Größe, ihre Trefferfläche wächst über die Zeile. */
+  .adm-filter-check { min-height: 44px; }
 }
 @media (max-width: 560px) {
   .adm-filter-field { min-width: 100%; }
   .adm-filter-actions { margin-left: 0; width: 100%; }
-  .adm-title { font-size: 20px; }
 }
 
 /* ── Produktion & Backfill (Phase 5) ─────────────────────────────────────────
    Bewusst nur Light-/Legacy-Tokens (--navy/--gray../--blue../--border..); keine
    Vermischung mit --auth-/--ce-. Ergänzt bestehende .adm-card/.adm-chip/.badge. */
-.adm-subtitle { font-family: var(--ce-font-sans); font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: var(--navy); }
 .adm-card-head-action { margin-left: auto; }
 .adm-card-head-action svg { color: inherit; }
 .adm-readiness-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
@@ -269,9 +557,12 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
    ConfidaraExpress ist eine reine Geschäftskundenplattform. Fehlen Firmenname
    oder Ansprechpartner (Alt-Konten), blockiert das Backend die Freischaltung —
    diese Klassen machen das im Adminpanel vor dem Klick sichtbar. */
-.adm-b2b-warn { display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; color: var(--ce-color-status-warning-fg); background: #fffbeb; border: 1px solid rgba(217,119,6,0.28); box-shadow: 0 1px 4px rgba(217,119,6,0.06); }
+/* Material und Farbrolle kommen aus dem Hinweisstreifen; der frühere farbige
+   Schatten (rgba(217,119,6,0.06)) ist ersatzlos entfallen — Tiefe kommt im
+   ganzen Produkt nur aus der Elevationsskala und nie farbig. */
+.adm-b2b-warn { margin-bottom: 16px; }
 .adm-b2b-warn strong { display: block; margin-bottom: 3px; }
-.adm-b2b-warn-text { display: block; color: var(--ce-color-status-warning-fg); }
+.adm-b2b-warn-text { display: block; color: currentColor; }
 .adm-b2b-missing { color: var(--ce-color-status-warning-fg); font-weight: 600; }
 
 /* ── Individueller Kundenaufschlag (Kundendetail) ──────────────────────────
@@ -282,10 +573,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 /* Der Prozentwert ist die Kernaussage der Sektion — ruhig, aber klar dominant.
    Selektor bewusst mit dd, damit er die generische Regel `.adm-kv-item dd`
    (gleiche Klassenzahl, aber zusätzliches Element) sicher überschreibt. */
-.adm-kv-item dd.adm-markup-value { font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; line-height: 1.25; }
+.adm-kv-item dd.adm-markup-value { font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; line-height: 1.25; }
 
-.adm-markup-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 14px; margin-bottom: 16px; border-radius: var(--radius); font-size: 13px; line-height: 1.55; color: var(--navy); background: var(--blue-light); border: 1px solid rgba(29,78,216,0.20); }
-.adm-markup-note svg { flex-shrink: 0; margin-top: 2px; color: var(--blue2); }
+.adm-markup-note { margin-bottom: 16px; }
 .adm-markup-note-head { display: block; font-weight: 600; margin-bottom: 2px; }
 
 .adm-markup-success { align-items: center; }
@@ -295,22 +585,25 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-loaderr { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
 /* Eingabe + Aktion: nebeneinander auf großen Screens, untereinander auf kleinen. */
-.adm-markup-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 18px; padding-top: 4px; border-top: 1px solid var(--border); }
+.adm-markup-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 18px; padding-top: 4px; border-top: 1px solid var(--ce-color-border-subtle); }
 .adm-markup-field { display: flex; flex-direction: column; gap: 6px; min-width: 260px; flex: 1; padding-top: 12px; }
 .adm-markup-actions { display: flex; align-items: center; padding-top: 12px; margin-top: 21px; }
 
 /* Zusammengesetztes Eingabefeld (Zahl + %-Suffix): der Rahmen liegt auf dem
    Wrapper, deshalb trägt er — statt der inneren <input> — die Eingabekante und
    den Fokus des Formularsystems. */
-.adm-markup-input-wrap { display: flex; align-items: stretch; max-width: 220px; min-height: var(--ce-size-control-admin); background: #fff; border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.adm-markup-input-wrap { display: flex; align-items: stretch; max-width: 220px; min-height: var(--ce-size-control-admin); background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md); overflow: hidden; transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard); }
 .adm-markup-input-wrap:hover { border-color: var(--ce-color-border-interactive-hover); }
 .adm-markup-input-wrap:focus-within { border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
 .adm-markup-input-invalid, .adm-markup-input-invalid:hover { border-color: var(--ce-color-status-error-fg); }
-.adm-markup-input-invalid:focus-within { border-color: var(--ce-color-status-error-fg); box-shadow: 0 0 0 3px var(--ce-color-status-error-border); }
-.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--navy); background: transparent; border: none; outline: none; }
-.adm-markup-input:disabled { background: var(--gray50); color: var(--ce-color-text-muted); }
+/* Auch im Fehlerzustand gilt EIN Fokusmaterial: der Fokusring der
+   Foundation. Rot bleibt die Kante — der frühere rote Halo war ein
+   zweites, konkurrierendes Fokussignal. */
+.adm-markup-input-invalid:focus-within { border-color: var(--ce-color-status-error-fg); box-shadow: var(--ce-elevation-focus-ring); }
+.adm-markup-input { flex: 1; min-width: 0; padding: 10px 12px; font-family: var(--ce-font-numeric); font-size: 15px; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: var(--ce-color-text-primary); background: transparent; border: none; outline: none; }
+.adm-markup-input:disabled { background: var(--ce-color-surface-muted); color: var(--ce-color-text-muted); }
 /* Sichtbares %-Suffix — die Einheit steht am Feld, nicht nur im Hilfetext. */
-.adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); background: var(--gray50); border-left: 1px solid var(--border); }
+.adm-markup-suffix { display: flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); background: var(--ce-color-surface-muted); border-left: 1px solid var(--ce-color-border-subtle); }
 .adm-markup-help { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); max-width: 560px; }
 
 /* ── Zwei Aufschläge: Standard und Express ──────────────────────────────────
@@ -320,7 +613,7 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
    flex-basis: 100% erzwingt einen eigenen Umbruch im .adm-markup-form-Flexlayout,
    sodass die Reihenfolge Überschrift → Feld → Überschrift → Feld erhalten bleibt. */
 .adm-markup-group { flex: 0 0 100%; padding-top: 14px; }
-.adm-markup-group-express { border-top: 1px solid var(--border); margin-top: 6px; }
+.adm-markup-group-express { border-top: 1px solid var(--ce-color-border-subtle); margin-top: 6px; }
 .adm-markup-group-title { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .adm-markup-group-scope { margin: 4px 0 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); max-width: 560px; }
 /* „(optional)" bleibt Teil des Labels, aber optisch zurückgenommen. */
@@ -328,9 +621,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 .adm-markup-express-row { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Wirksamer Expressaufschlag — die Antwort auf „was gilt jetzt tatsächlich?".
    Wird über Text UND Symbol vermittelt, nie allein über Farbe. */
-.adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--navy); background: var(--gray50); border: 1px solid var(--border); }
-.adm-markup-effective svg { flex-shrink: 0; margin-top: 2px; color: var(--blue2); }
-.adm-markup-effective-dirty { font-style: normal; font-weight: 600; color: var(--blue2); }
+.adm-markup-effective { flex: 0 0 100%; display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 10px 13px; border-radius: var(--ce-radius-sm); font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); background: var(--ce-color-surface-muted); border: 1px solid var(--ce-color-border-subtle); }
+.adm-markup-effective svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-brand-ink); }
+.adm-markup-effective-dirty { font-style: normal; font-weight: 600; color: var(--ce-color-brand-ink); }
 
 @media (max-width: 640px) {
   /* Auf schmalen Screens stehen Feld und Fallbackaktion untereinander; die
@@ -340,11 +633,11 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 }
 
 /* ── Freischaltung / Reaktivierung (Kundendetail) ───────────────────────── */
-.adm-approve-reactivation { display: flex; align-items: flex-start; gap: 7px; margin-top: 8px; color: var(--blue2); font-weight: 600; }
+.adm-approve-reactivation { display: flex; align-items: flex-start; gap: 7px; margin-top: 8px; color: var(--ce-color-brand-ink); font-weight: 600; }
 .adm-approve-reactivation svg { flex-shrink: 0; margin-top: 2px; }
 .adm-approve-gate { margin-top: 16px; margin-bottom: 0; }
 .adm-approve-jump { margin-top: 10px; }
-.adm-approve-markup { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--ce-color-status-success-fg); background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); }
+.adm-approve-markup { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-status-success-fg); background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border); }
 .adm-approve-markup svg { flex-shrink: 0; color: var(--ce-color-status-success-fg); }
 .adm-approve-markup-inline { margin-top: 16px; }
 
@@ -396,9 +689,9 @@ a.adm-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(29,7
 
 /* Spalte „Kunde": Firma primär (Link), Ansprechpartner sekundär. */
 .adm-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-cust-name { font-size: 14px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
-a.adm-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
+.adm-cust-name { font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-cust-name:hover { color: var(--ce-color-brand-ink); text-decoration: underline; }
+a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-cust-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 12px; color: var(--ce-color-text-muted); }
 .adm-cust-role { font-size: 11px; }
 .adm-cust-since { font-size: 11px; color: var(--ce-color-text-muted); }
@@ -409,34 +702,34 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-col-action { white-space: nowrap; }
 .adm-row-actions-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 
-/* Aktionsmenü der Zeile — Trigger + Dropdown, zugänglich bedienbar. */
+/* Aktionsmenü der Zeile — Trigger + Dropdown, zugänglich bedienbar.
+   Der Trigger ist ein .btn .btn-icon .btn-sm aus dem Buttonsystem; hier bleibt
+   nur die Positionierung des Menüs. Dieselbe Bauart wie AddressActionsMenu und
+   DraftActionsMenu im Kundenportal (Paket C). */
 .adm-rowactions { position: relative; flex-shrink: 0; }
-.adm-rowactions-trigger {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
-  background: #fff; border: 1px solid var(--border); color: var(--ce-color-text-secondary);
-}
-.adm-rowactions-trigger:hover { background: var(--gray50); border-color: var(--border2); color: var(--navy); }
-.adm-rowactions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
-.adm-rowactions-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .adm-rowactions-menu {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 232px;
-  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(14,30,80,0.16); padding: 5px; text-align: left;
+  position: absolute; right: 0; top: calc(100% + 6px);
+  z-index: var(--ce-z-dropdown); min-width: 232px;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-3);
+  padding: 5px; text-align: left;
 }
 .adm-rowactions-item {
   display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px;
-  font-size: 13px; font-weight: 600; font-family: var(--ce-font-sans);
-  color: var(--navy); background: none; border: none; border-radius: 8px;
+  font-size: var(--ce-text-body-s-size); font-weight: 500; font-family: var(--ce-font-sans);
+  color: var(--ce-color-text-primary); background: none; border: none;
+  border-radius: var(--ce-radius-sm);
   cursor: pointer; text-align: left; white-space: nowrap;
 }
-.adm-rowactions-item:hover, .adm-rowactions-item:focus-visible { background: var(--gray50); outline: none; }
+.adm-rowactions-item:hover, .adm-rowactions-item:focus-visible { background: var(--ce-color-surface-muted); outline: none; }
 .adm-rowactions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
-.adm-rowactions-item--danger { color: var(--danger); }
-.adm-rowactions-item--danger svg { color: var(--danger); }
+.adm-rowactions-item--danger { color: var(--ce-color-status-error-fg); }
+.adm-rowactions-item--danger svg { color: var(--ce-color-status-error-fg); }
 .adm-rowactions-item:disabled { opacity: 0.5; cursor: not-allowed; }
-.adm-rowactions-divider { height: 1px; background: var(--border); margin: 5px 2px; }
-.adm-rowactions-reason { padding: 0 10px 8px; font-size: 11px; line-height: 1.5; color: var(--ce-color-text-muted); white-space: normal; }
+.adm-rowactions-divider { height: 1px; background: var(--ce-color-border-subtle); margin: 5px 2px; }
+.adm-rowactions-reason { padding: 0 10px 8px; font-size: var(--ce-text-micro-size); font-weight: 400; line-height: 1.5; color: var(--ce-color-text-muted); white-space: normal; }
 
 /* Filterzeile: Suche breit, Status kompakt, Hinweis in eigener Zeile. */
 .adm-filter-search { flex: 1; min-width: 240px; }
@@ -449,16 +742,19 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 /* .empty-text steht seit Paket A, Phase 3 zentral im Zustandsmuster. */
 
 /* Mobilkarten: erst unterhalb der Tabellenbreite sichtbar. */
+/* Mobilkarten aller Adminlisten teilen EIN Material: das Listenkarten-Muster
+   (.ce-list-card, patterns.css). Vorher pflegten .adm-ucard und .adm-scard
+   dieselbe Fläche zweimal mit eigenem Radius und eigenem Schatten. */
 .adm-users-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
-.adm-ucard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
 .adm-ucard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.adm-ucard-kv { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-.adm-ucard-kv dt { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
-.adm-ucard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
+.adm-ucard-kv { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-ucard-kv dt { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-text-muted); }
+.adm-ucard-kv dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-ucard-actions { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
-/* Touch-Ziele: mindestens 40 px hoch. */
-.adm-ucard-actions .btn { min-height: 40px; flex: 1; justify-content: center; }
-.adm-ucard-actions .adm-rowactions-trigger { width: 40px; height: 40px; }
+/* Touch-Ziele: mindestens 44 px hoch (WCAG 2.5.8). */
+.adm-ucard-actions .btn { min-height: 44px; }
+.adm-ucard-actions > .btn { flex: 1; justify-content: center; }
+.adm-ucard-actions .adm-rowactions .btn { width: 44px; flex: 0 0 auto; }
 
 @media (max-width: 820px) {
   .adm-users-table { display: none; }
@@ -468,27 +764,30 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 }
 
 /* ── Kundendetail: Kopfbereich, technische Infos, Zahlungshinweis ───────────*/
-.adm-detail-header { margin-bottom: 0; }
-.adm-detail-head { align-items: flex-start; }
-.adm-detail-ident { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
 .adm-detail-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ce-color-text-muted); }
 .adm-detail-mail { overflow-wrap: anywhere; }
-.adm-detail-action { flex-shrink: 0; }
 .adm-chip-muted { color: var(--ce-color-text-muted); font-weight: 500; }
 
-/* Blockieren auf der Detailseite: sichtbar, aber nicht dominant. */
-.adm-block-action { color: var(--danger); border-color: rgba(239,68,68,0.35); }
-.adm-block-action:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+/* Blockieren auf der Detailseite: sichtbar, aber nicht dominant — die
+   zurückgenommene Gefahrvariante des Buttonsystems (Kante statt Fläche). */
+.adm-block-action { color: var(--ce-color-status-error-fg); border-color: var(--ce-color-status-error-border); }
+.adm-block-action:hover:not(:disabled) { background: var(--ce-color-status-error-surface); border-color: var(--ce-color-status-error-fg); color: var(--ce-color-status-error-fg); }
 
 /* Überfällige Rechnungen: sichtbar, aber ausdrücklich ohne Automatik. */
-.adm-overdue-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12px; line-height: 1.55; color: var(--ce-color-status-warning-fg); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
-.adm-overdue-note svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
+.adm-overdue-note { margin-top: 14px; }
 
-/* Technische Informationen — natives <details>, ohne zusätzliches ARIA. */
+/* Technische Informationen — natives <details>, ohne zusätzliches ARIA.
+   Der Auf-/Zuklapp-Pfeil ist seit Paket E ein echtes Icon aus Icon.jsx; das
+   frühere Textzeichen „▾" im ::after war das letzte Rohzeichen als
+   Zustandsanzeige im Adminbereich. */
 .adm-tech > .adm-tech-summary { cursor: pointer; list-style: none; user-select: none; }
 .adm-tech > .adm-tech-summary::-webkit-details-marker { display: none; }
-.adm-tech > .adm-tech-summary::after { content: "▾"; margin-left: auto; color: var(--ce-color-text-muted); font-size: 12px; transition: transform 0.15s; }
-.adm-tech[open] > .adm-tech-summary::after { transform: rotate(180deg); }
+.adm-tech-caret {
+  display: inline-flex; margin-left: auto; color: var(--ce-color-text-muted);
+  transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.adm-tech[open] > .adm-tech-summary .adm-tech-caret,
+.adm-filter-adv[open] > summary .adm-tech-caret { transform: rotate(180deg); }
 .adm-tech > .adm-tech-summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 .adm-tech:not([open]) > .adm-tech-summary { border-bottom: none; }
 
@@ -499,10 +798,8 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-markup-nochange { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
 
 @media (max-width: 640px) {
-  .adm-detail-action { width: 100%; }
-  .adm-detail-action .btn { width: 100%; justify-content: center; min-height: 42px; }
   .adm-danger-item-action { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
-  .adm-danger-item-action .btn { flex: 1; justify-content: center; min-height: 42px; }
+  .adm-danger-item-action .btn { flex: 1; justify-content: center; min-height: 44px; }
 }
 
 /* ── Sendungsverwaltung: kompakte Liste, Mobilkarten, Detailabschnitte ──────
@@ -522,30 +819,30 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 
 /* Spalte „Sendung": Bestellnummer primär, Datum sekundär. */
 .adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-ship-no:hover { text-decoration: underline; }
-a.adm-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
+a.adm-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 /* Entwurf / fehlende Nummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
 .adm-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: 600; }
 .adm-ship-date { font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Spalte „Kunde": Firma primär, Kundennummer sekundär — nie die user_id. */
 .adm-ship-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
-a.adm-ship-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
+.adm-ship-cust-name { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-ship-cust-name:hover { color: var(--ce-color-brand-ink); text-decoration: underline; }
+a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-ship-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* Spalte „Versand": Carrier + Versandart, darunter Route + Pakete. */
 .adm-ship-way { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-ship-carrier { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-ship-carrier { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-ship-mode { font-weight: 500; color: var(--ce-color-text-muted); }
 .adm-ship-route { font-size: 12px; color: var(--ce-color-text-muted); white-space: nowrap; }
 
 /* Status + kompakte Tracking-/Label-Marker statt zweier Ja/Nein-Spalten. */
 .adm-ship-status { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
 .adm-ship-markers { display: inline-flex; flex-wrap: wrap; gap: 5px; }
-.adm-ship-marker { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--ce-color-text-secondary); background: var(--gray100); border: 1px solid var(--border); white-space: nowrap; }
+.adm-ship-marker { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: var(--ce-radius-full); font-size: 11px; font-weight: 600; color: var(--ce-color-text-secondary); background: var(--ce-color-surface-muted); border: 1px solid var(--ce-color-border-subtle); white-space: nowrap; }
 .adm-ship-marker svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
 .adm-ship-noprice { font-size: 11px; line-height: 1.35; display: block; white-space: normal; overflow-wrap: break-word; }
 
@@ -554,13 +851,12 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 
 /* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar. */
 .adm-ships-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
-.adm-scard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 1px 4px rgba(14,30,80,0.05); padding: 14px 15px; }
 .adm-scard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.adm-scard-kv { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-.adm-scard-kv dt { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); margin-bottom: 2px; }
-.adm-scard-kv dd { font-size: 13px; color: var(--navy); overflow-wrap: anywhere; }
+.adm-scard-kv { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-scard-kv dt { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-text-muted); margin-bottom: 2px; }
+.adm-scard-kv dd { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-scard-actions { display: flex; gap: 8px; margin-top: 13px; }
-.adm-scard-actions .btn { min-height: 40px; flex: 1; justify-content: center; }
+.adm-scard-actions .btn { min-height: 44px; flex: 1; justify-content: center; }
 
 @media (max-width: 900px) {
   .adm-ships-table { display: none; }
@@ -588,21 +884,21 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 /* Spalte „Rechnung": Nummer primaer, Datum + Modus sekundaer. Die Nummer wird
    NIE gekuerzt (das zerstoerte ihre Eindeutigkeit) — sie bricht kontrolliert. */
 .adm-inv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
+.adm-inv-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; overflow-wrap: anywhere; line-height: 1.35; }
 a.adm-inv-no:hover { text-decoration: underline; }
-a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
+a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .adm-inv-meta { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Spalte „Kunde": Firma primaer, Kundennummer sekundaer — nie die user_id. */
 .adm-inv-cust { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-inv-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.adm-inv-cust-name { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 .adm-inv-cust-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-color-text-muted); }
 
 /* Spalte „Betrag & Faelligkeit". */
 /* Die Spalte ist über .adm-num rechtsbündig und nowrap; der erklärende
    Zusatz darunter muss trotzdem umbrechen dürfen. */
 .adm-inv-amount { display: flex; flex-direction: column; gap: 2px; min-width: 0; white-space: normal; }
-.adm-inv-sum { font-size: 13px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+.adm-inv-sum { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
 .adm-inv-due { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.4; overflow-wrap: break-word; }
 
 /* Spalte „Zahlungsstatus" + kompakte Dokument-/Versandmarker. */
@@ -613,20 +909,22 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
 
 /* Filter: Checkbox-Zeile und eingeklappter technischer Bereich. */
 .adm-filter-check { display: flex; align-items: center; gap: 8px; padding-top: 21px; }
-.adm-filter-check input { width: 17px; height: 17px; accent-color: var(--blue2); cursor: pointer; }
-.adm-filter-check label { font-size: 13px; color: var(--navy); cursor: pointer; }
+/* 20 px statt 17: das kleinste zuverlässig treffbare Kästchen; die eigentliche
+   Trefferfläche ist die 44 px hohe Zeile (siehe Responsive-Block oben). */
+.adm-filter-check input { width: 20px; height: 20px; accent-color: var(--ce-color-brand-ink); cursor: pointer; }
+.adm-filter-check label { font-size: 13px; color: var(--ce-color-text-primary); cursor: pointer; }
 .adm-filter-adv { flex-basis: 100%; margin-top: 4px; }
-.adm-filter-adv > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ce-color-text-muted); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+.adm-filter-adv > summary { cursor: pointer; font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-muted); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
 .adm-filter-adv > summary::-webkit-details-marker { display: none; }
-.adm-filter-adv > summary::before { content: "▸"; font-size: 11px; }
-.adm-filter-adv[open] > summary::before { content: "▾"; }
-.adm-filter-adv > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 4px; }
+/* Der Pfeil ist ein Icon, kein Textzeichen — margin-left:auto gilt hier nicht,
+   er steht vor dem Text. */
+.adm-filter-adv > summary .adm-tech-caret { margin-left: 0; }
+.adm-filter-adv > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: var(--ce-radius-sm); }
 .adm-filter-adv-body { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 10px; }
 .adm-filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 
 /* Hinweis „keine zahlungswirksame Forderung" im Kopfbereich des Details. */
-.adm-nonproductive-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; padding: 11px 14px; border-radius: var(--radius); font-size: 12px; line-height: 1.55; color: var(--ce-color-status-warning-fg); background: var(--warn-bg); border: 1px solid rgba(245,158,11,0.30); }
-.adm-nonproductive-note svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-status-warning-fg); }
+.adm-nonproductive-note { margin-top: 14px; }
 .adm-modal-note { margin-top: 0; margin-bottom: 16px; }
 
 /* Mobilkarten — erst unterhalb der Tabellenbreite sichtbar. */
@@ -674,16 +972,16 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
 
 /* Spalte „Anfrage": fachliche Kennung, technische ID darin eingebettet. */
 .adm-canc-req { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-canc-no { font-size: 13px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-no { font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-no:hover { text-decoration: underline; }
-a.adm-canc-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
+a.adm-canc-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 
 /* Spalten „Kunde" und „Sendung": fachlicher Wert primaer, Kontext sekundaer. */
 .adm-canc-cust, .adm-canc-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.adm-canc-cust-name { font-size: 13px; font-weight: 600; color: var(--navy); text-decoration: none; overflow-wrap: anywhere; }
-a.adm-canc-cust-name:hover { color: var(--blue2); text-decoration: underline; }
-a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: 4px; }
-.adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; overflow-wrap: anywhere; }
+.adm-canc-cust-name { font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary); text-decoration: none; overflow-wrap: anywhere; }
+a.adm-canc-cust-name:hover { color: var(--ce-color-brand-ink); text-decoration: underline; }
+a.adm-canc-cust-name:focus-visible, a.adm-canc-ship-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-canc-ship-no { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; overflow-wrap: anywhere; }
 a.adm-canc-ship-no:hover { text-decoration: underline; }
 /* Fehlende Bestellnummer: ehrlich, aber nicht wie eine echte Nummer wirkend. */
 .adm-canc-ship-no-muted { font-family: var(--ce-font-numeric); color: var(--ce-color-text-muted); font-weight: 500; }
@@ -713,4 +1011,11 @@ a.adm-canc-ship-no:hover { text-decoration: underline; }
   .adm-canc-table { display: none; }
   .adm-canc-cards { display: flex; }
   .adm-canc-reason { -webkit-line-clamp: 4; }
+}
+
+/* Backfill-Vorschau: Mobilkarten statt einer fünfspaltigen Tabelle. */
+.adm-bf-cards { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 12px; }
+@media (max-width: 900px) {
+  .adm-bf-table { display: none; }
+  .adm-bf-cards { display: flex; }
 }

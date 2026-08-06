@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { PageHeader } from "../../components/ui/PageHeader";
 import {
   getAdminUser,
   anonymizeAdminUser,
@@ -560,7 +561,46 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="adm-page">
-      {back}
+      {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten: Identität,
+             Status und die statusabhängige Hauptaktion. Gefährliche Aktionen
+             sind hier bewusst NICHT die Hauptaktion der Seite; Blockieren liegt
+             zurückhaltend im Kontostatus-Bereich, Anonymisieren und Löschen in
+             der Gefahrenzone am Seitenende. */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Konto"
+        backLink={back}
+        title={companyOf(u) || nameOf(u) || `Kunde #${dash(idOf(u))}`}
+        subtitle={(
+          <span className="adm-detail-sub">
+            {nameOf(u) && <span>{nameOf(u)}</span>}
+            {emailOf(u) && <span className="adm-detail-mail">{emailOf(u)}</span>}
+          </span>
+        )}
+        meta={(
+          <>
+            <span className={`badge ${statusCls}`}>{statusLabel}</span>
+            {customerNumber
+              ? <span className="adm-chip adm-mono">{customerNumber}</span>
+              : <span className="adm-chip adm-chip-muted">Kundennummer nicht hinterlegt</span>}
+            {/* Rolle nur bei Sonderkonten — normale Kunden tragen keine Rollenangabe. */}
+            {roleOf(u) === "admin" && <span className={`badge ${roleCls}`}>{roleLabel}</span>}
+            <span className="adm-chip"><Icon n="calendar" s={13} /> Registriert {fmtDate(createdOf(u))}</span>
+            {anonAt && <span className="adm-chip"><Icon n="lock" s={13} /> Anonymisiert {fmtDate(anonAt)}</span>}
+          </>
+        )}
+        actions={statusCopy.actionKind === "approve" ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => { setApproveMsg(null); setApproveOpen(true); }}
+            disabled={approveBusy || !gate.allowed}
+            aria-describedby={!gate.allowed ? "adm-approve-gate" : undefined}
+          >
+            <Icon n="check" s={14} /> {statusCopy.actionLabel}
+          </button>
+        ) : null}
+      />
 
       {/* Fehlende B2B-Stammdaten: bei Alt-Konten aus der Zeit, in der Firmenname und
           Ansprechpartner optional waren. Die Freischaltung wird serverseitig blockiert,
@@ -587,48 +627,6 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
-      {/* 1) Kopfbereich — kompakt: Identität, Status und die statusabhängige
-             Hauptaktion. Gefährliche Aktionen sind hier bewusst NICHT die
-             Hauptaktion der Seite. */}
-      <div className="adm-card adm-detail-header">
-        <div className="adm-card-body">
-          <div className="adm-detail-head">
-            <div className="adm-detail-ident">
-              <h1 className="adm-detail-id">{companyOf(u) || nameOf(u) || `Kunde #${dash(idOf(u))}`}</h1>
-              <p className="adm-detail-sub">
-                {nameOf(u) && <span>{nameOf(u)}</span>}
-                {emailOf(u) && <span className="adm-detail-mail">{emailOf(u)}</span>}
-              </p>
-              <span className="adm-detail-badges">
-                <span className={`badge ${statusCls}`}>{statusLabel}</span>
-                {customerNumber
-                  ? <span className="adm-chip adm-mono">{customerNumber}</span>
-                  : <span className="adm-chip adm-chip-muted">Kundennummer nicht hinterlegt</span>}
-                {/* Rolle nur bei Sonderkonten — normale Kunden tragen keine Rollenangabe. */}
-                {roleOf(u) === "admin" && <span className={`badge ${roleCls}`}>{roleLabel}</span>}
-                <span className="adm-chip"><Icon n="calendar" s={13} /> Registriert {fmtDate(createdOf(u))}</span>
-                {anonAt && <span className="adm-chip"><Icon n="lock" s={13} /> Anonymisiert {fmtDate(anonAt)}</span>}
-              </span>
-            </div>
-            {/* Statusabhängige Hauptaktion: freischalten bzw. reaktivieren.
-                Für freigeschaltete Konten steht hier bewusst keine rote Aktion —
-                Blockieren liegt zurückhaltend im Kontostatus-Bereich. */}
-            {statusCopy.actionKind === "approve" && (
-              <div className="adm-detail-action">
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => { setApproveMsg(null); setApproveOpen(true); }}
-                  disabled={approveBusy || !gate.allowed}
-                  aria-describedby={!gate.allowed ? "adm-approve-gate" : undefined}
-                >
-                  <Icon n="check" s={14} /> {statusCopy.actionLabel}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       <div className="adm-cards">
         {/* 2) Unternehmen und Kontakt */}
@@ -718,6 +716,7 @@ export default function AdminUserDetailPage() {
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
             <Icon n="settings" s={17} /> Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
           </summary>
           <div className="adm-card-body">
             <KV items={[

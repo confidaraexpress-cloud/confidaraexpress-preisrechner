@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
@@ -376,46 +378,41 @@ export default function AdminShipmentDetailPage() {
 
   return (
     <div className="adm-page">
-      {back}
+      {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Die
+          fachliche Sendungskennung ist der Titel; die interne ID ist ein
+          technischer Schlüssel und steht unten bei den technischen Infos.
 
-      {/* 1) Kopfbereich */}
-      <div className="adm-card">
-        <div className="adm-card-body">
-          <div className="adm-detail-head">
-            <div className="adm-detail-ident">
-              {/* Fachliche Sendungskennung als Titel — die interne ID ist ein
-                  technischer Schlüssel und steht unten bei den technischen Infos. */}
-              <h1 className="adm-detail-id">{ident.primary}</h1>
-              <p className="adm-detail-sub">
-                <span>{cust.primary}</span>
-                {cust.secondary && <span>{cust.secondary}</span>}
-                {routeLabel(s) && <span>{routeLabel(s)}</span>}
-              </p>
-              <span className="adm-detail-badges">
-                <span className={`badge ${statusCls}`}>{statusLabel}</span>
-                <span className="adm-chip"><Icon n="package" s={13} />{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
-                <span className="adm-chip">{shippingModeLabel(s)}</span>
-                <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
-                {sections.label && <span className="badge badge-green">Label verfügbar</span>}
-                {/* Aussage ausschließlich über die GESPEICHERTE Nummer — nicht
-                    über Live-Daten oder einen Carrier-Link. Gleiche Quelle wie
-                    die Zeile „Trackingnummer (gespeichert)" weiter unten. */}
-                {sections.trackingNumber && (
-                  <span className="badge badge-green">{TRACKING_LABELS.storedBadge}</span>
-                )}
-              </span>
-            </div>
-            {/* Primäre sinnvolle Aktion: zum Kundenkonto wechseln. */}
-            {userIdOf(s) != null && (
-              <div className="adm-detail-action">
-                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(userIdOf(s))}`}>
-                  <Icon n="user" s={14} /> Kunde öffnen
-                </Link>
-              </div>
+          Die Aktion „Kunde öffnen" stand hier bis Paket E ein ZWEITES Mal —
+          identisch zu „Kundendetail öffnen" in der Karte „Kunde". Sie lebt
+          jetzt nur noch dort, direkt neben den Kundendaten. */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Verwaltung"
+        backLink={back}
+        title={ident.primary}
+        subtitle={(
+          <span className="adm-detail-sub">
+            <span>{cust.primary}</span>
+            {cust.secondary && <span>{cust.secondary}</span>}
+            {routeLabel(s) && <span>{routeLabel(s)}</span>}
+          </span>
+        )}
+        meta={(
+          <>
+            <span className={`badge ${statusCls}`}>{statusLabel}</span>
+            <span className="adm-chip"><Icon n="package" s={13} />{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
+            <span className="adm-chip">{shippingModeLabel(s)}</span>
+            <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
+            {sections.label && <span className="badge badge-green">Label verfügbar</span>}
+            {/* Aussage ausschließlich über die GESPEICHERTE Nummer — nicht
+                über Live-Daten oder einen Carrier-Link. Gleiche Quelle wie
+                die Zeile „Trackingnummer (gespeichert)" weiter unten. */}
+            {sections.trackingNumber && (
+              <span className="badge badge-green">{TRACKING_LABELS.storedBadge}</span>
             )}
-          </div>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       <div className="adm-cards">
         {/* 2) Kunde — fachliche Identität plus Sprung ins Kundenkonto. Bewusst
@@ -559,6 +556,7 @@ export default function AdminShipmentDetailPage() {
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
             <Icon n="settings" s={17} /> Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
           </summary>
           <div className="adm-card-body">
             <KV items={[
@@ -670,30 +668,20 @@ export default function AdminShipmentDetailPage() {
         </div>
       </div>
 
-      {/* Bestätigungsdialog — Download erst nach bewusster Bestätigung. */}
+      {/* Bestätigungsdialog — Download erst nach bewusster Bestätigung. Bis
+          Paket E war er handgebaut und hatte weder Fokusfalle noch
+          Fokusrückgabe noch Escape; er läuft jetzt über die gemeinsame
+          ConfirmDialog-Komponente. Der Wortlaut ist unverändert. */}
       {confirmLabel && (
-        <div className="adm-modal-overlay" role="presentation" onClick={() => setConfirmLabel(false)}>
-          <div
-            className="adm-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="adm-label-title"
-            aria-describedby="adm-label-desc"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="adm-modal-icon" aria-hidden="true"><Icon n="download" s={22} /></div>
-            <h2 id="adm-label-title" className="adm-modal-title">Label herunterladen</h2>
-            <p id="adm-label-desc" className="adm-modal-text">
-              Dieses Label enthält Absender- und Empfängeradressen. Der Download wird protokolliert.
-            </p>
-            <div className="adm-modal-actions">
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => setConfirmLabel(false)}>Abbrechen</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={confirmDownload}>
-                <Icon n="download" s={14} /> Download bestätigen
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Label herunterladen"
+          text="Dieses Label enthält Absender- und Empfängeradressen. Der Download wird protokolliert."
+          icon="download"
+          confirmIcon="download"
+          confirmLabel="Download bestätigen"
+          onCancel={() => setConfirmLabel(false)}
+          onConfirm={confirmDownload}
+        />
       )}
     </div>
   );

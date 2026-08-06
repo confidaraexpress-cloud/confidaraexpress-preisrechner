@@ -42,6 +42,14 @@ export function CustomerRowActions({ user, currentAdminId, busy = false, onSelec
   const run = (item) => () => {
     if (item.disabled) return;
     setOpen(false);
+    // Fokus ZUERST zurück auf den Trigger, DANN die Aktion auslösen.
+    //
+    // Der Bestätigungsdialog merkt sich beim Öffnen das gerade fokussierte
+    // Element, um den Fokus beim Schließen dorthin zurückzugeben. Ohne diese
+    // Zeile wäre das der eben angeklickte Menüeintrag — der mit dem Menü
+    // verschwindet. Der Fokus landete nach „Abbrechen" auf <body>, und die
+    // Tastaturposition in der Liste war verloren.
+    triggerRef.current?.focus();
     onSelect?.(item.key, user);
   };
 
@@ -50,10 +58,11 @@ export function CustomerRowActions({ user, currentAdminId, busy = false, onSelec
       <button
         type="button"
         ref={triggerRef}
-        className="adm-rowactions-trigger"
+        className="btn btn-outline btn-icon btn-sm"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Statusaktionen für ${customerDisplayName(user)}`}
+        title={`Statusaktionen für ${customerDisplayName(user)}`}
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >

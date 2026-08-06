@@ -113,9 +113,15 @@
 }
 .ce-page-header--admin .ce-page-header-sub { margin-top: 6px; font-size: var(--ce-text-body-size); }
 
-/* Zurück-Link (nur Adminportal, über dem Kopf). */
-.ce-page-header-back {
-  display: inline-flex;
+/* Zurück-Link (nur Adminportal, über dem Kopf). `.adm-back` ist der
+   historische Klassenname derselben Sache — seit Paket E dieselbe Regel. */
+.ce-page-header-back,
+.adm-back {
+  /* Blocklevel-Flex statt inline-flex: der Eyebrow darunter ist ebenfalls
+     inline-flex und stellte sich sonst in dieselbe Zeile. `fit-content` hält
+     die Trefferfläche trotzdem auf der Textbreite. */
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: var(--ce-space-1);
   margin-bottom: var(--ce-space-3);
@@ -227,15 +233,22 @@ td.ce-col-actions,
   .ce-list-cards { display: flex; }
 }
 
-.ce-list-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ce-space-2);
+/* Die Mobilkarten des Adminportals (.adm-ucard/.adm-scard) tragen dasselbe
+   Material — ihre eigenen Flächen-, Radius- und Schattenwerte sind entfallen.
+   Sie bringen ihren Innenaufbau selbst mit, deshalb kein flex-Layout für sie. */
+.ce-list-card,
+.adm-ucard,
+.adm-scard {
   padding: var(--ce-space-4);
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-lg);
   box-shadow: var(--ce-elevation-1);
+}
+.ce-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
 }
 .ce-list-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-3); }
 .ce-list-card-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
@@ -332,6 +345,7 @@ td.ce-col-actions,
 .stn-dialog-actions,
 .sup-dialog-actions,
 .abk-dialog-actions,
+.adm-modal-actions,
 .email-change-modal-actions {
   display: flex;
   align-items: center;
@@ -387,6 +401,7 @@ td.ce-col-actions,
   .stn-dialog-actions,
   .sup-dialog-actions,
   .abk-dialog-actions,
+  .adm-modal-actions,
   .email-change-modal-actions { flex-direction: column-reverse; align-items: stretch; }
 }
 

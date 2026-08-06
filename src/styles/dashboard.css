@@ -117,10 +117,15 @@ tr:hover td { background: var(--surface-subtle); }
    Statusgruppen erhalten — kein Markup musste angefasst werden. */
 
 /* ─── Alerts ─────────────────────────────────────────────────────────────── */
-.alert { padding: 11px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
-.alert-error   { background: var(--danger-bg);  border: 1px solid rgba(239,68,68,0.25);  color: var(--ce-color-status-error-fg); box-shadow: 0 1px 4px rgba(239,68,68,0.06); }
-.alert-success { background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28); color: var(--ce-color-status-success-fg); box-shadow: 0 1px 4px rgba(16,185,129,0.06); }
-.alert-info    { background: var(--blue-light);  border: 1px solid rgba(29,78,216,0.22);  color: var(--blue2); box-shadow: 0 1px 4px rgba(29,78,216,0.06); }
+/* Die drei Meldungstöne tragen seit Paket E ausschließlich Foundation-Rollen.
+   Der frühere farbige Schatten (rgba(239,68,68,0.06) …) ist ersatzlos
+   entfallen: Tiefe kommt im ganzen Produkt aus der Elevationsskala und nie
+   farbig. Fläche, Kante und Text stammen jetzt aus demselben Statustripel —
+   vorher waren Kante und Text aus verschiedenen Quellen gemischt. */
+.alert { padding: 11px 14px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-body-s-size); margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
+.alert-error   { background: var(--ce-color-status-error-surface);   border: 1px solid var(--ce-color-status-error-border);   color: var(--ce-color-status-error-fg); }
+.alert-success { background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border); color: var(--ce-color-status-success-fg); }
+.alert-info    { background: var(--ce-color-status-info-surface);    border: 1px solid var(--ce-color-status-info-border);    color: var(--ce-color-status-info-fg); }
 
 /* Zweizeilige Fehlermeldung (FormAlert): Überschrift benennt das Problem, der
    Text darunter erklärt Ursache und Korrektur. Ohne Titel verhält sich der

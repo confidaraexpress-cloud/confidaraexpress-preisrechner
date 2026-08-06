@@ -380,7 +380,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/premium-dashboard-account-communication-package-d`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/premium-admin-portal-package-e`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 
@@ -497,6 +497,81 @@ Bewusst zurückgestellt: eine Empfänger-/Zielspalte in „Letzte Sendungen" —
 `GET /kunde/shipments` führt keine Empfängerdaten (die Sendungsliste selbst
 zeigt dort ebenfalls keine). Ebenso der „Antwortstatus" der Supportliste: die
 Kundenantwort kennt kein solches Feld. Beides würde neue Backenddaten brauchen.
+
+## Premium-Adminportal (Paket E)
+
+Das Adminportal ist **keine eigene Designwelt mehr**. Shell, Navigation,
+Übersicht, alle Listen, alle Detailseiten, Dialoge und Zustände laufen auf
+denselben Foundations wie das Kundenportal. Erhalten bleibt die **Admin-Dichte**:
+kompaktere Abstände, kleinere Bedienhöhen, mehr Information je Fläche.
+API-Verträge, Berechtigungen, Freischaltungs-, Sperr-, Aufschlags-, Rechnungs-,
+Storno-, Support-, Audit- und Backfill-Logik sind unangetastet.
+
+- **Ein Grund, zwei Sidebars.** `.adm-shell` trägt dieselbe Ivory-Rampe wie
+  `.app-shell` (`--ce-app-bg-*`). Die Adminnavigation bleibt bewusst **hell**,
+  damit der Bereichswechsel sichtbar ist — Midnight Slate (`--ce-sidebar-*`)
+  gehört weiter allein dem Kundenportal. Der aktive Eintrag ist mehrfach
+  codiert: Brand-Soft-Fläche + Brand-Kante + Indigo-`inset`-Akzentkante +
+  Schriftschnitt. Die Marke wird nicht mehr nachgebaut: die Sidebar zeigt
+  `mark-primary.svg`, dieselbe Bildmarke wie das Kundenportal.
+- **admin.css hat keine eigenen Farben.** Null Hex-/rgba-Literale, keine
+  Legacy-Aliase (`--blue2`, `--navy`, `--gray50`, `--radius` …), jeder Radius
+  aus `--ce-radius-*`, jede Tiefe aus `--ce-elevation-*`. Die sieben früheren
+  Hinweisflächen (`.adm-pii-warn`, `.adm-scope-note`, `.adm-conflict`,
+  `.adm-b2b-warn`, `.adm-overdue-note`, `.adm-nonproductive-note`,
+  `.adm-markup-note`) sind **ein** Streifen `.adm-note` mit Farbrollen; die
+  historischen Klassennamen bleiben gültig.
+- **Ein Seitenkopf je Seite.** Alle 13 Adminseiten nutzen
+  `<PageHeader variant="admin">` — auch die Detailseiten, deren eigener
+  Kartenkopf entfallen ist. Der Zurück-Link steht im Kopf (`backLink`),
+  `.adm-back` teilt die Regel mit `.ce-page-header-back`.
+- **Genau eine Stelle je Aktion.** „Aktuelles Kundenkonto öffnen"
+  (Rechnungsdetail) und „Kunde öffnen" (Sendungsdetail) standen doppelt — im
+  Seitenkopf UND in der zugehörigen Karte. Sie leben jetzt nur noch in der
+  Karte, direkt neben den Daten, die sie öffnen.
+- **Drei Gefahrstufen statt zwei.** Alltäglich (Primary) · **unumkehrbar**
+  (`irreversible` → Warnrolle, `.adm-irreversible-action`) · **gefährlich**
+  (`danger` → `.adm-btn-danger`). „Als bezahlt markieren" ist unumkehrbar, nicht
+  zerstörend — deshalb bewusst **kein** roter Button, aber auch keine normale
+  Primäraktion mehr. Jede der drei Stufen läuft über `ConfirmDialog`.
+- **Alle Admin-Dialoge auf dem globalen System.** Die beiden letzten
+  handgebauten Dialoge (Label-Download im Sendungsdetail, Backfill-Bestätigung)
+  hatten **weder Fokusfalle noch Fokusrückgabe noch Escape**; sie nutzen jetzt
+  `ConfirmDialog`. Der Wortlaut ist unverändert.
+- **Deutsche Datumseingabe.** `components/admin/DateField.jsx`: ein leeres,
+  unfokussiertes `<input type="date">` blendet seinen nativen Formathinweis aus
+  (der folgt der **Browsersprache**, nicht dem `lang` des Dokuments — auf einem
+  englischen Browser stand dort „mm/dd/yyyy") und zeigt „TT.MM.JJJJ". Beim
+  Fokussieren übernimmt sofort wieder die native Bedienung. Der Feldwert bleibt
+  ISO, der Backendvertrag unberührt.
+- **Die Kundensuche bleibt ehrlich.** Sie durchsucht weiterhin **nur die
+  geladene Seite** (`GET /admin/users` kennt keine Serverfilter) und sagt das:
+  Label „Diese Seite durchsuchen", Hinweis mit der Zahl der geladenen Einträge.
+- **Kennzahlen ohne Erfindung.** Die Adminübersicht liest ausschließlich den
+  `pagination.total` bereits vorhandener Listen-Endpunkte (mit `pageSize: 1`).
+  Fehlt der Zähler, steht dort „—" und „Anzahl nicht verfügbar" — nie eine aus
+  der Seitengröße hochgerechnete Zahl. `utils/adminOverview.mjs` hält auch die
+  bis dahin sechsfach duplizierten `selectTotal`/`selectHasMore`.
+- **Touch und Dichte gleichzeitig.** Auf Zeigergeräten bleiben Buttons bei
+  32/40 px und Eingaben bei 36 px (Admin-Dichte). Unter 900 px wächst **jedes**
+  Bedienelement auf 44 px (WCAG 2.5.5). Textlinks in Fließtext und Tabellen
+  bleiben ausgenommen (Inline-Ausnahme).
+- **Behobene Altlasten.** Fünf `<h2 className="adm-card-title">` der
+  Supportdetailseite zeigten auf eine **nirgends definierte** Klasse — die
+  Überschriften fielen auf die Browservorgabe zurück und sprengten ihre Karten,
+  die ohne `.adm-card-body` randlos waren. Ebenso las `support.css` eine
+  `--adm-*`-Tokenfamilie, die **nie definiert** war. Und ein Menüeintrag im
+  Kunden-Kebab gab den Fokus nicht zurück, weil er beim Öffnen des Dialogs
+  selbst verschwand.
+- Governance: `src/styles/premiumAdmin.test.mjs` (Quelltext, 21 Tests) und
+  `tests/e2e/premiumAdminPaketE.test.mjs` (echter Dev-Server, 8 Tests).
+
+Bewusst zurückgestellt: die Kennzahl „offene Freischaltungen". `GET /admin/users`
+kennt laut Backendvertrag keinen Statusfilter (`USER_PARAMS = limit/offset`) —
+die Zahl ließe sich nur aus der geladenen Seite hochrechnen. Sie braucht einen
+serverseitigen Filter. Ebenso zurückgestellt: dieselbe Fokusrückgabe-Lücke in
+`AddressActionsMenu`/`DraftActionsMenu` des Kundenportals (identisches Muster,
+aber außerhalb der Adminpaket-Grenze).
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

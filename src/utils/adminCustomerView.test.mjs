@@ -115,7 +115,9 @@ test("4 — Blockieren ist nicht mehr die dominante Zeilenaktion", () => {
   assert.equal(block.danger, true);
   assert.equal(block.separatorBefore, true, "gefährliche Aktion ist visuell getrennt");
   assert.match(actionsSrc, /adm-rowactions-item--danger/);
-  assert.match(cssSrc, /\.adm-rowactions-item--danger \{ color: var\(--danger\); \}/);
+  // Die Gefahrfarbe kommt seit Paket E aus der Statusrolle der Foundation
+  // (--ce-color-status-error-fg) statt aus dem Legacy-Alias --danger.
+  assert.match(cssSrc, /\.adm-rowactions-item--danger \{ color: var\(--ce-color-status-error-fg\); \}/);
 });
 
 test("5 — das Aktionsmodell folgt dem Status", () => {
@@ -193,8 +195,11 @@ test("9 — Leerzustände unterscheiden „keine Kunden“ von „keine Treffer�
 });
 
 test("10 — Lade- und Fehlerzustand sind eindeutig und wiederholbar", () => {
-  assert.match(listSrc, /Kunden werden geladen…/);
-  assert.match(listSrc, /<div className="loading-center" role="status" aria-live="polite">/);
+  // Der Ladezustand läuft seit Paket E über das gemeinsame Listen-Skeleton
+  // (StateView.ListSkeleton) statt über einen eigenen Spinner-Block; die
+  // Beschriftung wandert in dessen label-Attribut und bleibt vorlesbar.
+  assert.match(listSrc, /<ListSkeleton rows=\{6\} label="Kunden werden geladen …" \/>/);
+  assert.match(read("components/ui/StateView.jsx"), /role="status"/, "das Skeleton meldet sich nicht als Status");
   // Der Fehlertext sagt, was fehlgeschlagen ist, und bietet eine Wiederholung.
   assert.match(listSrc, /Die Kundenliste konnte nicht geladen werden\. Bitte versuchen Sie es erneut\./);
   assert.match(listSrc, /<button type="button" className="btn btn-outline btn-sm" onClick=\{load\}>/);
@@ -213,7 +218,8 @@ test("11 — die mobile Kartenansicht ersetzt die Tabelle ohne Seitenüberlauf",
   // CSS: Umschaltung und Touch-Ziele.
   assert.match(cssSrc, /@media \(max-width: 820px\) \{[\s\S]*?\.adm-users-table \{ display: none; \}/);
   assert.match(cssSrc, /\.adm-users-cards \{ display: none;/);
-  assert.match(cssSrc, /\.adm-ucard-actions \.btn \{ min-height: 40px;/);
+  // Touch-Ziel seit Paket E auf 44 px (WCAG 2.5.8) statt 40 px.
+  assert.match(cssSrc, /\.adm-ucard-actions \.btn \{ min-height: 44px;/);
   // Lange Werte brechen kontrolliert statt zu überlaufen.
   assert.match(cssSrc, /\.adm-email \{[^}]*overflow-wrap: anywhere;/);
   assert.match(cssSrc, /\.adm-cust-name \{[^}]*overflow-wrap: anywhere;/);
@@ -461,11 +467,14 @@ test("27 — das Freischaltungs-Gate erklärt sich und führt zum Aufschlag", ()
   assert.match(detailSrc, /onJumpToMarkup=\{focusMarkup\}/);
   assert.match(detailSrc, /markupInputRef\.current\?\.focus\?\.\(\);/);
   // Der Kopfbereich bietet die statusabhängige Hauptaktion und nennt das Gate.
-  assert.match(detailSrc, /\{statusCopy\.actionKind === "approve" && \(/);
+  // Seit Paket E ist er der gemeinsame Seitenkopf (PageHeader, variant="admin");
+  // die Aktion liegt in dessen actions-Slot statt in einem eigenen Kartenkopf.
+  assert.match(detailSrc, /<PageHeader\b/);
+  assert.match(detailSrc, /actions=\{statusCopy\.actionKind === "approve" \? \(/);
   assert.match(detailSrc, /disabled=\{approveBusy \|\| !gate\.allowed\}/);
   assert.match(detailSrc, /aria-describedby=\{!gate\.allowed \? "adm-approve-gate" : undefined\}/);
   // Für freigeschaltete Konten steht oben KEINE rote Hauptaktion.
-  const header = detailSrc.slice(detailSrc.indexOf("adm-detail-header"), detailSrc.indexOf("adm-cards"));
+  const header = detailSrc.slice(detailSrc.indexOf("<PageHeader"), detailSrc.indexOf("adm-cards"));
   assert.equal(/adm-btn-danger|adm-danger-button/.test(header), false, "keine gefährliche Hauptaktion im Kopfbereich");
 });
 

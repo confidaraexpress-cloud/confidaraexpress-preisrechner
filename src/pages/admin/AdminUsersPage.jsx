@@ -3,11 +3,13 @@ import { useDialog } from "../../hooks/useDialog";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminUsers, setAdminUserStatus, getAdminCustomerPriceMarkup } from "../../api/adminApi";
 import { useAuth } from "../../context/AuthContext";
 import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
 import { missingB2BAccountFields } from "../../utils/b2bAccount.mjs";
 import { CustomerRowActions } from "../../components/admin/CustomerRowActions";
+import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 import {
   BLOCK_DIALOG,
   DEFAULT_FILTERS,
@@ -54,8 +56,9 @@ const STATUS_CHANGE_ERRORS = {
   default: "Der Status wurde nicht geändert. Es wurden keine Änderungen gespeichert.",
 };
 
-const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
-
+// selectTotal/selectHasMore lagen bis Paket E in jeder Adminliste als eigene,
+// fast wortgleiche Kopie. Sie stehen jetzt einmal in utils/adminOverview.mjs —
+// gleiches Verhalten, eine Quelle.
 // ── Response defensiv lesen ──────────────────────────────────────────────────
 function selectRows(d) {
   if (Array.isArray(d)) return d;
@@ -65,22 +68,6 @@ function selectRows(d) {
     }
   }
   return [];
-}
-function selectTotal(d) {
-  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-  const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-  const t = firstDefined(pag.total, pag.count, pag.total_count, d.total, d.total_count, d.count);
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-}
-function selectHasMore(d, rowCount, page, size, total) {
-  if (Number.isFinite(total)) return page * size < total;
-  if (d && typeof d === "object" && !Array.isArray(d)) {
-    const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-    if (typeof pag.has_more === "boolean") return pag.has_more;
-    if (typeof d.has_more === "boolean") return d.has_more;
-  }
-  return rowCount >= size;
 }
 
 const rowKeyOf = (u, i) => customerFields(u).id ?? `row-${i}`;
@@ -161,10 +148,10 @@ export default function AdminUsersPage() {
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       const list = selectRows(d);
-      const t = selectTotal(d);
+      const t = selectListTotal(d);
       setRows(list);
       setTotal(t);
-      setHasMore(selectHasMore(d, list.length, page, PAGE_SIZE, t));
+      setHasMore(selectListHasMore(d, list.length, page, PAGE_SIZE, t));
     } catch {
       setError(GENERIC_ERROR);
       setRows([]);
@@ -371,16 +358,18 @@ export default function AdminUsersPage() {
 
       {loading ? (
         <div className="table-card">
-          <div className="loading-center" role="status" aria-live="polite">
-            <span className="spinner spinner-dark" /> Kunden werden geladen…
-          </div>
+          <ListSkeleton rows={6} label="Kunden werden geladen …" />
         </div>
       ) : error ? (
-        <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-            <Icon n="refresh" s={14} /> Erneut laden
-          </button>
+        <div className="ce-card">
+          <ErrorState
+            title={error}
+            action={(
+              <button type="button" className="btn btn-outline btn-sm" onClick={load}>
+                <Icon n="refresh" s={14} /> Erneut laden
+              </button>
+            )}
+          />
         </div>
       ) : emptyState.show ? (
         <div className="table-card">

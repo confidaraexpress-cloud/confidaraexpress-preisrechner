@@ -221,7 +221,9 @@ test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", (
   const view = read("utils/adminInvoiceView.mjs");
   // Die Rechnungsnummer ist seit der UX-Bereinigung der Seitentitel (<h1>) statt einer
   // Feldzeile — sie bleibt die primäre Dokumentnummer und wird unverändert angezeigt.
-  assert.ok(/<h1 className="adm-detail-id">Rechnung \{number\}<\/h1>/.test(src), "Rechnungsnummer ist nicht der Seitentitel");
+  // Seit Paket E rendert den Titel der gemeinsame Seitenkopf (PageHeader), nicht
+  // mehr ein eigener Kartenkopf; das <h1> selbst liegt in PageHeader.jsx.
+  assert.ok(/title=\{`Rechnung \$\{number\}`\}/.test(src), "Rechnungsnummer ist nicht der Seitentitel");
   assert.ok(src.includes("const number = dash(invoiceNoOf(inv));"), "Rechnungsnummer wird nicht aus dem fachlichen Feld gelesen");
   // Bestellnummer: aus der Sendungsverknüpfung, eigen beschriftet, mit ehrlichem Legacy-Zustand.
   assert.ok(src.includes("NUMBER_LABELS.businessOrder") && src.includes("shipment.orderNumber"), "Bestellnummer fehlt");

@@ -31,6 +31,12 @@ export function ConfirmDialog({
   confirmIcon = "check",
   icon = "check",
   danger = false,
+  // Dritte Stufe zwischen „alltäglich" und „gefährlich": eine Aktion, die
+  // nichts zerstört, aber nicht zurückgenommen werden kann (z. B. „Als bezahlt
+  // markieren"). Sie bekommt die Warnrolle statt der Markenfarbe — und
+  // ausdrücklich NICHT den roten Danger-Button, der für zerstörende Aktionen
+  // reserviert bleibt.
+  irreversible = false,
   busy = false,
   busyLabel = "Wird gespeichert…",
   onCancel,
@@ -59,7 +65,10 @@ export function ConfirmDialog({
         aria-describedby={descId}
         ref={dialogRef}
       >
-        <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
+        <div
+          className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : irreversible ? "adm-modal-icon-warning" : "adm-modal-icon-approve"}`}
+          aria-hidden="true"
+        >
           <Icon n={icon} s={22} />
         </div>
         <h2 id={titleId} className="adm-modal-title">{title}</h2>
@@ -72,7 +81,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            className={`btn btn-sm ${danger ? "adm-btn-danger" : "btn-primary"}`}
+            className={`btn btn-sm ${danger ? "adm-btn-danger" : irreversible ? "btn-outline adm-irreversible-action" : "btn-primary"}`}
             onClick={onConfirm}
             disabled={busy}
             aria-busy={busy ? "true" : undefined}

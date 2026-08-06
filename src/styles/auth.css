@@ -171,7 +171,15 @@
 
 /* Card top (für ForgotPassword / ResetPassword) */
 .auth-card-top { text-align: center; margin-bottom: 28px; }
-.auth-card-icon { font-size: 38px; margin-bottom: 16px; }
+/* Abschlusspaket: hier standen bis zuletzt Emojis (🔑 / 🔒 / ✅ / ⚠️). Ein
+   Screenreader las sie als „Schlüssel", „Schloss", „weißes schweres
+   Häkchen"; ihre Form wechselte zudem je Betriebssystem. Jetzt trägt die
+   Fläche ein Icon aus Icon.jsx — dieselbe Regel wie in allen anderen
+   Zustandsflächen des Systems. */
+.auth-card-icon {
+  display: flex; justify-content: center; margin-bottom: 16px;
+  color: var(--auth-ink-2);
+}
 .auth-card-title {
   font-size: 24px; font-weight: 600; margin-bottom: 8px;
   color: var(--auth-ink-1);
@@ -357,6 +365,7 @@
 /* Ghost-Fallback (ForgotPassword / Reset "Zurück"-Button) */
 .auth-btn-ghost {
   width: 100%; padding: 10px; margin-top: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
   background: none; border: none; cursor: pointer;
   color: var(--auth-ink-4); font-size: 13px; font-family: inherit;
   transition: color 0.15s; text-align: center;
@@ -364,25 +373,6 @@
 .auth-btn-ghost:hover { color: var(--auth-ink-2); }
 
 /* ── Public tracking entry (secondary action under the card) ────────────── */
-.auth-track {
-  margin-top: 18px;
-  width: 100%; max-width: 560px; padding: 13px 20px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-  background: rgba(8, 14, 32, 0.5);
-  border: 1px solid rgba(120, 160, 255, 0.20);
-  border-radius: var(--auth-radius);
-  color: var(--auth-ink-2); font-size: 14px; font-weight: 600; font-family: inherit;
-  text-decoration: none; cursor: pointer;
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  transition: color 0.15s, border-color 0.15s, background 0.2s, transform 120ms;
-}
-.auth-track:hover {
-  color: var(--auth-ink-1);
-  border-color: rgba(120, 160, 255, 0.40);
-  background: rgba(20, 30, 60, 0.55);
-  transform: translateY(-1px);
-}
-.auth-track-ico { display: inline-flex; color: var(--auth-blue-3); flex-shrink: 0; }
 
 /* ── Alerts ─────────────────────────────────────────────────────────────── */
 

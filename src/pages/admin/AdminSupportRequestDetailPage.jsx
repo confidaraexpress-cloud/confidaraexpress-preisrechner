@@ -66,7 +66,12 @@ const dash = (v) => (v != null && String(v).trim() !== "" ? String(v) : "—");
 function fmtDateTime(v) {
   if (!v) return "—";
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString("de-DE");
+  // Ohne Sekunden — dieselbe Regel wie dtDE() im Kundenportal (Paket C). Der
+  // Zeitpunkt bleibt identisch, nur die Darstellung ist ruhiger. Der
+  // Rohwert-Fallback für unparsbare Werte bleibt unverändert.
+  return Number.isNaN(d.getTime())
+    ? String(v)
+    : d.toLocaleString("de-DE", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 // Eine Zeile je Mailvorgang. Der technische Providerhinweis wird nur angezeigt, wenn er

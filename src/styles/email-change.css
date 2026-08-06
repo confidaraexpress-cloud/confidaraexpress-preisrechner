@@ -19,7 +19,7 @@
 .email-change-pending {
   margin-top: 12px;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--ce-radius-md);
   padding: 14px 16px;
   background: var(--surface-subtle);
 }
@@ -41,7 +41,7 @@
    --sm bleibt dort die schmale Variante. */
 .email-change-modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .email-change-modal-icon {
-  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: var(--ce-radius-md); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--blue-light); color: var(--blue2);
 }
@@ -65,7 +65,7 @@
 .email-change-confirm-secondary {
   background: transparent; border: none; cursor: pointer;
   font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600;
-  color: var(--auth-ink-3); padding: 8px; border-radius: 10px;
+  color: var(--auth-ink-3); padding: 8px; border-radius: var(--ce-radius-sm);
   transition: color 0.15s, background 0.15s;
 }
 .email-change-confirm-secondary:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }

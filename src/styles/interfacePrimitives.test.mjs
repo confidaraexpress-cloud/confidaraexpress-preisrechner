@@ -14,7 +14,7 @@
 // Zielsystem entsprechen.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -434,9 +434,11 @@ test("10 — es kommen keine neuen Emojis dazu", () => {
 
 test("11 — das Iconsystem bleibt intern, ohne neue Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
-  const erlaubt = ["@vitejs/plugin-react", "lucide-react", "react", "react-dom", "react-router-dom", "vite"];
+  const erlaubt = ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"];
   assert.deepEqual(Object.keys(pkg.dependencies).sort(), erlaubt.sort(),
-    "Phase 2 fügt keine Abhängigkeit hinzu und entfernt keine (lucide-react bleibt unbenutzt bestehen)");
+    "es wird keine Abhängigkeit hinzugefügt"
+    + " (lucide-react war nie importiert, wurde von vier Tests ausdrücklich verboten"
+    + " und ist im Abschlusspaket samt Lockfile-Eintrag entfernt)");
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
 
   // Kein Quellcode importiert eine Iconbibliothek.
@@ -491,8 +493,9 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
     }
   }
   // DM Sans 700 bleibt technisch in der Schriftdatei vorhanden, aber ungenutzt:
-  // fonts.css deklariert dafür KEINE Instanz. Die vorhandenen 700/800-Blöcke
-  // gehören zur auslaufenden Displayschrift Libre Franklin und sind unberührt.
+  // fonts.css deklariert dafür KEINE Instanz. Die früheren 700/800-Blöcke
+  // gehörten zur auslaufenden Displayschrift Libre Franklin und sind mit dem
+  // Abschlusspaket samt Fontdateien entfernt.
   const fonts = stripComments(read("./fonts.css"));
   const flaechen = [...fonts.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
   const dmSansGewichte = flaechen
@@ -505,8 +508,12 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
   assert.deepEqual([...new Set(dateien)].sort(), [
     "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
     "dmsans-300-italic.woff2", "dmsans-300.woff2",
-    "librefranklin-700.woff2", "librefranklin-800.woff2",
-  ], "Phase 2 fügt keine Schriftdatei hinzu und ersetzt keine");
+  ], "es wird keine Schriftdatei hinzugefügt und keine ersetzt");
+  // Und keine @font-face-Regel verweist auf eine Datei, die es nicht gibt.
+  for (const d of new Set(dateien)) {
+    assert.ok(existsSync(new URL(`../assets/fonts/${d}`, import.meta.url)),
+      `fonts.css lädt ${d}, die Datei fehlt`);
+  }
 });
 
 /* ══════════ 13 — Phase-1-Governance und Einbindung ═══════════════════════ */

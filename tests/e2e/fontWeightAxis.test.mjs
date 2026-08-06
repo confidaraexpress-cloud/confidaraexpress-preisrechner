@@ -32,7 +32,7 @@
 // Run: npm run test:e2e
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 
@@ -170,13 +170,19 @@ test("3 — keine externe Schriftquelle, keine zusätzliche Schriftdatei", () =>
   const fonts = readFileSync(path.join(REPO_ROOT, "src/styles/fonts.css"), "utf8");
   assert.ok(!/https?:\/\//.test(fonts),
     "fonts.css darf keine externe Schriftquelle laden (DSGVO: keine Google-Fonts-Anfrage)");
-  // Genau die bekannten, lokal ausgelieferten Dateien — Phase 1 fügt keine hinzu.
+  // GENAU diese Dateien liegen im Verzeichnis — keine mehr und keine weniger.
+  // Libre Franklin ist mit dem Abschlusspaket entfallen (Familie ausgelaufen,
+  // keine Referenz, keine @font-face-Regel). Der Vergleich läuft deshalb in
+  // beide Richtungen statt nur auf Existenz: er fällt jetzt auch dann, wenn
+  // jemand eine dritte Familie hinzulegt.
   const erwartet = [
     "cormorantgaramond-400-italic.woff2", "cormorantgaramond-400.woff2",
     "dmsans-300-italic.woff2", "dmsans-300.woff2",
-    "librefranklin-700.woff2", "librefranklin-800.woff2",
   ];
-  for (const datei of erwartet) {
-    assert.ok(existsSync(path.join(REPO_ROOT, "src/assets/fonts", datei)), `Schriftdatei ${datei} fehlt`);
-  }
+  const vorhanden = readdirSync(path.join(REPO_ROOT, "src/assets/fonts"))
+    .filter((f) => f.endsWith(".woff2")).sort();
+  assert.deepEqual(vorhanden, [...erwartet].sort(), "der Bestand an Schriftdateien hat sich verändert");
+  // Und fonts.css lädt genau die beiden Familien, die das Produkt benutzt.
+  const familien = [...new Set([...fonts.matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]))].sort();
+  assert.deepEqual(familien, ["Cormorant Garamond", "DM Sans"]);
 });

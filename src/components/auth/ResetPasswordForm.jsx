@@ -6,7 +6,7 @@ export function ResetPasswordForm({ password, confirmPassword, onPasswordChange,
   return (
     <div className="auth-card animate-fadeUp" style={{ width: "100%", maxWidth: "480px" }}>
       <div className="auth-card-top">
-        <div className="auth-card-icon">🔒</div>
+        <div className="auth-card-icon" aria-hidden="true"><Icon n="shieldCheck" s={40} /></div>
         <h2 className="auth-card-title">Neues Passwort</h2>
         <p className="auth-card-desc">
           Wählen Sie ein sicheres Passwort mit mindestens 8 Zeichen.

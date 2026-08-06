@@ -2,12 +2,12 @@ import React from "react";
 
 const SECTION_STYLE = { marginBottom: 32 };
 const H2_STYLE  = { fontSize: 16, fontWeight: 600, marginBottom: 10, marginTop: 0, color: "var(--text, #111827)", fontFamily: "var(--ce-font-sans)" };
-const P_STYLE   = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14 };
-const P_LAST    = { lineHeight: 1.75, margin: 0, color: "var(--text-muted, #374151)", fontSize: 14 };
+const P_STYLE   = { lineHeight: 1.75, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14 };
+const P_LAST    = { lineHeight: 1.75, margin: 0, color: "var(--legal-text)", fontSize: 14 };
 const HR_STYLE  = { border: "none", borderTop: "1px solid var(--border, #e5e7eb)", margin: "28px 0" };
 const TOC_LINK  = { color: "var(--blue, #1D4ED8)", textDecoration: "none", fontSize: 14, lineHeight: 1.9, display: "block" };
-const UL_STYLE  = { paddingLeft: 20, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14, lineHeight: 1.9 };
-const UL_ALPHA  = { listStyleType: "lower-alpha", paddingLeft: 20, margin: "0 0 10px 0", color: "var(--text-muted, #374151)", fontSize: 14, lineHeight: 1.9 };
+const UL_STYLE  = { paddingLeft: 20, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14, lineHeight: 1.9 };
+const UL_ALPHA  = { listStyleType: "lower-alpha", paddingLeft: 20, margin: "0 0 10px 0", color: "var(--legal-text)", fontSize: 14, lineHeight: 1.9 };
 const UL_NESTED = { paddingLeft: 18, margin: "4px 0 6px 0", fontSize: 14, lineHeight: 1.9 };
 
 const TOC = [

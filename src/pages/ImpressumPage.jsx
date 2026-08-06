@@ -2,7 +2,7 @@ import React from "react";
 
 const SECTION_STYLE = { marginBottom: 28 };
 const H2_STYLE      = { fontSize: 16, fontWeight: 600, marginBottom: 8, color: "var(--text, #111)" };
-const P_STYLE       = { lineHeight: 1.75, margin: 0, color: "var(--text-muted, #374151)" };
+const P_STYLE       = { lineHeight: 1.75, margin: 0, color: "var(--legal-text)" };
 
 export default function ImpressumPage() {
   return (

@@ -251,7 +251,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                 <textarea
                   id="abk-notes"
                   className="field-input"
-                  style={{ minHeight: 80, resize: "vertical", fontFamily: "'DM Sans', sans-serif" }}
+                  style={{ minHeight: 80, resize: "vertical", fontFamily: "var(--ce-font-sans)" }}
                   value={form.notes}
                   onChange={(e) => upd("notes", e.target.value)}
                   maxLength={500}

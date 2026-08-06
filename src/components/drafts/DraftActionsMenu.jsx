@@ -25,7 +25,19 @@ export function DraftActionsMenu({ draft, busy, disabled, onDelete }) {
     };
   }, [open]);
 
-  const runDelete = () => { setOpen(false); onDelete?.(draft); };
+  const runDelete = () => {
+    setOpen(false);
+    // Fokus ZUERST zurück auf den Trigger, DANN die Aktion auslösen.
+    //
+    // Ein Dialog, den die Aktion öffnet, merkt sich beim Öffnen das gerade
+    // fokussierte Element, um den Fokus beim Schließen dorthin zurückzugeben.
+    // Ohne diese Zeile wäre das der eben angeklickte Menüeintrag — der mit dem
+    // Menü verschwindet. Der Fokus landete nach „Abbrechen" auf <body>, und die
+    // Tastaturposition in der Liste war verloren. (In Paket E im Adminportal
+    // behoben und dort als identische Lücke im Kundenportal dokumentiert.)
+    triggerRef.current?.focus();
+    onDelete?.(draft);
+  };
 
   return (
     <div className="dft-actions" ref={wrapRef}>
@@ -40,7 +52,7 @@ export function DraftActionsMenu({ draft, busy, disabled, onDelete }) {
         onClick={() => setOpen((v) => !v)}
         disabled={busy || disabled}
       >
-        {busy ? <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} /> : <Icon n="settings" s={16} />}
+        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="settings" s={16} />}
       </button>
       {open && (
         <div className="dft-actions-menu" role="menu">

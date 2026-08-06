@@ -12,7 +12,7 @@
 /* ── Dialog ────────────────────────────────────────────────────────────────── */
 /* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .stn-dialog-icon {
-  width: 44px; height: 44px; border-radius: 12px;
+  width: 44px; height: 44px; border-radius: var(--ce-radius-md);
   background: var(--blue-light); color: var(--blue2);
   display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
 }

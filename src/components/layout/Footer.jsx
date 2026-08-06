@@ -1,20 +1,21 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
+/* Der Footer des ÖFFENTLICHEN Bereichs (NavbarLayout). Er trug seine Gestaltung
+   inline und las dabei `--text-muted` — eine Variable, die es nie gab; gerendert
+   wurde also der Fallback #6b7280. Fläche, Kante und Textfarbe kommen jetzt aus
+   den Foundation-Rollen.
+
+   Der Footer des eingeloggten Bereichs ist etwas anderes: LegalLinks.jsx
+   rendert `.app-footer` innerhalb der App-Shell. */
 export function Footer() {
   return (
-    <footer style={{
-      borderTop: "1px solid var(--border, #e5e7eb)",
-      padding: "20px 16px",
-      textAlign: "center",
-      fontSize: 13,
-      color: "var(--text-muted, #6b7280)",
-    }}>
-      <nav style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px 20px" }}>
-        <Link to="/impressum"   style={{ color: "inherit", textDecoration: "none" }}>Impressum</Link>
-        <Link to="/datenschutz" style={{ color: "inherit", textDecoration: "none" }}>Datenschutz</Link>
-        <Link to="/agb"         style={{ color: "inherit", textDecoration: "none" }}>AGB</Link>
-        <Link to="/widerruf"    style={{ color: "inherit", textDecoration: "none" }}>Widerruf</Link>
+    <footer className="public-footer">
+      <nav className="public-footer-nav" aria-label="Rechtliche Hinweise">
+        <Link to="/impressum">Impressum</Link>
+        <Link to="/datenschutz">Datenschutz</Link>
+        <Link to="/agb">AGB</Link>
+        <Link to="/widerruf">Widerruf</Link>
       </nav>
     </footer>
   );

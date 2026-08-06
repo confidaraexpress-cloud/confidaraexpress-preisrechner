@@ -1,11 +1,7 @@
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-}
 
 @media (max-width: 768px) {
   .hamburger-btn { display: flex; }
-  .navbar-nav { display: none; }
   .navbar-login-btn { display: none; }
 
   /* Auth — 768px */
@@ -22,17 +18,13 @@
   /* Dashboard — Sidebar-Drawer-Schwelle liegt bei 860px (siehe
      dashboard-premium.css), damit die (jetzt einheitliche) Sidebar auf
      jeder Seite bei derselben Breite kollabiert, nicht erst hier. */
-  .page-header { display: none; }
   .page-body { padding: 14px; }
 
   /* DashboardSectionHeader — below sticky topbar */
-  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .kpi-value { font-size: 20px; }
 
   /* Forms */
   .field-row-2 { grid-template-columns: 1fr; }
   .field-row-3 { grid-template-columns: 1fr 1fr; }
-  .field-row-4 { grid-template-columns: 1fr 1fr; }
   .container { padding: 0 14px; }
 }
 
@@ -41,9 +33,7 @@
 }
 
 @media (max-width: 480px) {
-  .kpi-grid { grid-template-columns: 1fr; }
   .field-row-2, .field-row-3, .field-row-4 { grid-template-columns: 1fr; }
-  .overview-empty { padding: 36px 16px 28px; }
 
   /* Booking step bar — hide labels, shrink circles */
   .step-label { display: none; }
@@ -58,6 +48,68 @@
   .auth-cta { padding: 14px 20px; font-size: 14px; }
   .auth-trust-title { font-size: 12px; }
   .auth-trust-sub { font-size: 11px; }
-  .auth-card { padding: 22px 14px; border-radius: 20px; }
+  .auth-card { padding: 22px 14px; border-radius: var(--ce-radius-xl); }
   .page-body { padding: 10px; }
+}
+
+/* ═══════════ TOUCH-ZIELE UNTER 860 px ══════════════════════════════════════
+   Abschlusspaket. Das Adminportal hat diese Regel seit Paket E; das
+   Kundenportal, die öffentliche Navigationsleiste und der Auth-Bereich
+   hatten sie nicht. Gemessen wurden dort 14–42 px, wo WCAG 2.5.5 mindestens
+   44 × 44 px verlangt.
+
+   Die Dichte auf Zeigergeräten bleibt unangetastet — die Regel greift
+   ausschließlich unterhalb der Drawer-Schwelle. Ausgenommen bleiben
+   Textlinks in Fließtext und Formularzeilen (Inline-Ausnahme von WCAG
+   2.5.5/2.5.8): eine künstliche Vergrößerung würde dort den Zeilenfluss
+   zerreißen. */
+@media (max-width: 860px) {
+  /* Navigations- und Chrome-Elemente der App-Shell.
+
+     `.pp-side .nitem` steht bewusst höher spezifisch als `.nitem`: auf einem
+     Telefon greifen ZWEI Regeln gleichzeitig — die Stauchung kurzer Viewports
+     (dashboard-premium.css, `max-height: 940px`, min-height 37 px) und diese
+     hier. dashboard-premium.css wird nach responsive.css importiert und würde
+     bei gleicher Spezifität gewinnen. Die Trefferfläche muss gewinnen. */
+  .pp-side .nitem,
+  .pp-foot-btn,
+  .sidebar-close-btn,
+  .hamburger-btn,
+  .ntf-bell { min-height: 44px; min-width: 44px; }
+  .sidebar-close-btn,
+  .hamburger-btn { display: flex; align-items: center; justify-content: center; }
+
+  /* Bedienelemente der Inhaltsflächen. Der Anker ist die App-Shell, nicht
+     `.page-body`: Entwürfe und Adressbuch bringen ihren Seitenkopf selbst mit
+     und laufen deshalb NICHT durch `.page-body` (siehe CLAUDE.md). */
+  .main-content .btn,
+  .profile-card-edit-action,
+  .pp-net-cta,
+  .field-input,
+  .field-select,
+  .field-textarea { min-height: 44px; }
+  /* Die beiden Kebab-Auslöser sind quadratisch — sie brauchen beide Maße. */
+  .abk-actions-trigger,
+  .dft-actions-trigger { min-height: 44px; min-width: 44px; }
+
+  /* Werkzeugleiste des Adressbuchs: Rollenreiter, Suche und Filterchips
+     tragen dort eigene, kompaktere Höhen (33 / 40 px). */
+  .abk-tab,
+  .abk-search-input,
+  .abk-filter-pill { min-height: 44px; }
+
+  /* Öffentliche Navigationsleiste. */
+  .navbar-actions .btn,
+  .mobile-drawer .btn { min-height: 44px; }
+
+  /* Auth-Bereich: eigene Gestaltung, aber dieselbe Trefferfläche.
+     Ausgenommen bleibt `.auth-field-link` („Passwort vergessen?") — er steht
+     inline in der Beschriftungszeile des Feldes und fällt unter die
+     Inline-Ausnahme von WCAG 2.5.5/2.5.8. */
+  .auth-tab,
+  .auth-input,
+  .auth-submit,
+  .auth-btn-ghost,
+  .auth-eye-btn { min-height: 44px; }
+  .auth-eye-btn { min-width: 44px; display: flex; align-items: center; justify-content: center; }
 }

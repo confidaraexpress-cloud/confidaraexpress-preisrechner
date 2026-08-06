@@ -5,7 +5,7 @@ export function ForgotPasswordForm({ email, onChange, onSubmit, onBack, loading,
   return (
     <div className="auth-card animate-fadeUp" style={{ width: "100%", maxWidth: "480px" }}>
       <div className="auth-card-top">
-        <div className="auth-card-icon">🔑</div>
+        <div className="auth-card-icon" aria-hidden="true"><Icon n="lock" s={40} /></div>
         <h2 className="auth-card-title">Passwort vergessen</h2>
         <p className="auth-card-desc">
           Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Reset-Link.
@@ -41,7 +41,8 @@ export function ForgotPasswordForm({ email, onChange, onSubmit, onBack, loading,
         </>
       )}
       <button className="auth-btn-ghost" onClick={onBack}>
-        ← Zurück zum Login
+        <Icon n="chevronLeft" s={16} />
+        Zurück zum Login
       </button>
     </div>
   );

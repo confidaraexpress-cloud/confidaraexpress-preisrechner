@@ -105,6 +105,15 @@ test("4 — --ce-font-numeric ist global definiert und zeigt auf DM Sans mit San
   assert.ok(!rootBlock.includes("}"), "--ce-font-numeric muss innerhalb von :root stehen, nicht in einem Shell-Scope");
 });
 
+/* Alle Regelrümpfe eines Selektors — nicht nur den ersten. Ein Selektor kann
+   mehrfach vorkommen (Grundregel + Responsive-Block); `String.match` liefert
+   die textlich erste Fundstelle, und die muss nicht die Grundregel sein.
+   Geprüft wird deshalb, ob die Zusicherung IRGENDWO für diesen Selektor steht. */
+function regelRuempfe(css, selektor) {
+  const esc = selektor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return [...css.matchAll(new RegExp(`${esc}\\s*\\{([^}]*)\\}`, "g"))].map((m) => m[1]);
+}
+
 test("5 — bekannte Ziffern-/Geschäftsnummernselektoren verwenden var(--ce-font-numeric)", () => {
   const SELEKTOREN = [
     ["overview.css", ".pp-step-no"],
@@ -145,11 +154,10 @@ test("5 — bekannte Ziffern-/Geschäftsnummernselektoren verwenden var(--ce-fon
   const cache = {};
   for (const [datei, selektor] of SELEKTOREN) {
     cache[datei] ??= read(path.join(SRC, "styles", datei));
-    const esc = selektor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const m = cache[datei].match(new RegExp(`${esc}\\s*\\{([^}]*)\\}`));
-    assert.ok(m, `${selektor} nicht gefunden in ${datei}`);
-    assert.match(m[1], /font-family:\s*var\(--ce-font-numeric\)/,
-      `${selektor} in ${datei} verwendet nicht var(--ce-font-numeric): ${m[1].trim()}`);
+    const ruempfe = regelRuempfe(cache[datei], selektor);
+    assert.ok(ruempfe.length, `${selektor} nicht gefunden in ${datei}`);
+    assert.ok(ruempfe.some((r) => /font-family:\s*var\(--ce-font-numeric\)/.test(r)),
+      `${selektor} in ${datei} verwendet nicht var(--ce-font-numeric): ${ruempfe.join(" | ").trim()}`);
   }
 });
 
@@ -163,10 +171,10 @@ test("6 — Ausrichtung (tabular-nums) bleibt an spaltenkritischen Stellen erhal
     [calc, ".ins-card-price-val"], [calc, ".blsum-price-gross"],
     [dashboard, ".inv-cell-number-value"],
   ]) {
-    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const m = c.match(new RegExp(`${esc}\\s*\\{([^}]*)\\}`));
-    assert.ok(m, `${sel} nicht gefunden`);
-    assert.match(m[1], /font-variant-numeric:\s*tabular-nums/, `${sel}: tabular-nums fehlt`);
+    const ruempfe = regelRuempfe(c, sel);
+    assert.ok(ruempfe.length, `${sel} nicht gefunden`);
+    assert.ok(ruempfe.some((r) => /font-variant-numeric:\s*tabular-nums/.test(r)),
+      `${sel}: tabular-nums fehlt`);
   }
 });
 

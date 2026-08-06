@@ -531,9 +531,15 @@
   .adm-filter-field select,
   .adm-edit-select,
   .adm-sup-note,
-  .adm-markup-input-wrap { min-height: 44px; }
-  /* Die Checkbox behält ihre Größe, ihre Trefferfläche wächst über die Zeile. */
+  /* Rahmen UND Feld: der Rahmen allein ergäbe einen 4-px-Streifen, der nicht
+     auf das Eingabefeld zeigt. */
+  .adm-markup-input-wrap,
+  .adm-markup-input { min-height: 44px; }
+  /* Die Zeile wird 44 px hoch; das Kästchen selbst wächst auf 24 px, weil
+     `.adm-filter-check` ein <div> ist und seine Höhe nicht auf die Checkbox
+     durchschlägt (WCAG 2.5.8 verlangt 24 × 24 px für das Bedienelement). */
   .adm-filter-check { min-height: 44px; }
+  .adm-filter-check input[type="checkbox"] { width: 24px; height: 24px; }
 }
 @media (max-width: 560px) {
   .adm-filter-field { min-width: 100%; }

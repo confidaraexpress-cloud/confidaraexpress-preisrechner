@@ -420,7 +420,17 @@ tr:hover td { background: var(--surface-subtle); }
 /* Passwort-ändern-Bereich innerhalb der Sicherheitskarte */
 .profile-password-section { border-top: 1px solid var(--border); padding-top: 18px; }
 .profile-password-title { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
-.profile-password-desc { margin: 0 0 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+.profile-password-desc { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+/* Geschlossener Zustand (Paket D): kurze Erklärung links, Aktion rechts. Das
+   Formular erscheint erst nach einer ausdrücklichen Nutzeraktion darunter. */
+.profile-password-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--ce-space-4); flex-wrap: wrap;
+}
+.profile-password-copy { min-width: 0; flex: 1 1 220px; }
+.profile-password-row .btn { flex: none; }
+.profile-password-form { margin-top: var(--ce-space-4); }
+.profile-password-section .form-alert { margin-top: var(--ce-space-4); }
 
 /* Karten-Kopf mit Icon-Kachel + Titel/Subline */
 .profile-card-head { justify-content: flex-start; gap: 13px; }

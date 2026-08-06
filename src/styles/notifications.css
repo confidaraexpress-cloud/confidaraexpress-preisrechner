@@ -5,9 +5,10 @@
    kein Blau als Fläche.
 
    Die Glocke in der Übersicht behält ihre bisherige Geometrie (44 px, rund),
-   damit die Kopfzeile der Übersicht optisch unverändert bleibt; `.pp-bell` in
-   overview.css bleibt deshalb bestehen und wird hier nur um den Knopfzustand
-   ergänzt.
+   damit die Kopfzeile der Übersicht optisch unverändert bleibt. Sie trägt
+   dafür `.ntf-bell.ntf-bell-overview` (siehe unten) — die frühere, nie
+   gemeinsam gesetzte Regel `.pp-bell` in overview.css ist mit Paket D
+   entfallen.
 
    Bewusst KEINE Animation und kein pulsierender Badge: im App-Chrome ist Bewegung
    nur als kurze Zustandsreaktion vorgesehen (Hover/Fokus ≤ 200 ms), nie als
@@ -46,11 +47,11 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
-  background: var(--danger, #c0392b);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: var(--ce-radius-full);
+  background: var(--danger);
+  color: var(--ce-color-text-inverse);
+  font-size: var(--ce-text-micro-size);
+  font-weight: var(--ce-text-micro-weight);
   line-height: 18px;
   text-align: center;
   border: 2px solid var(--surface);
@@ -63,7 +64,9 @@
 .ntf-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  /* Aus der gemeinsamen Ebenenskala (variables.css) statt freier Zahlen:
+     das Panel ist ein Dropdown, der Fangbereich liegt genau darunter. */
+  z-index: var(--ce-z-dropdown);
   border: none;
   padding: 0;
   background: transparent;
@@ -71,19 +74,22 @@
 }
 
 /* ── Panel ── */
+/* Fläche, Kante, Radius und Tiefe kommen seit Paket D aus der Foundation:
+   --ce-color-surface / --ce-color-border-subtle / --ce-radius-lg /
+   --ce-elevation-3. Der frühere Radius 14px lag außerhalb der Skala. */
 .ntf-panel {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  z-index: 61;
+  z-index: calc(var(--ce-z-dropdown) + 1);
   width: min(380px, calc(100vw - 32px));
   max-height: min(520px, calc(100dvh - 120px));
   display: flex;
   flex-direction: column;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card-lg, var(--shadow-card));
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-3);
   overflow: hidden;
 }
 .ntf-panel:focus { outline: none; }
@@ -96,16 +102,24 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-subtle);
 }
-.ntf-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.ntf-title {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+}
 .ntf-head-actions { display: flex; align-items: center; gap: 6px; }
 
 .ntf-markall {
   border: none;
   background: none;
   padding: 4px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--accent-blue);
+  border-radius: var(--ce-radius-sm);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  /* -ink statt --accent-blue: Text in Textgröße auf heller Fläche braucht die
+     dunklere Markenrolle (AA), siehe variables.css. */
+  color: var(--ce-color-brand-ink);
   cursor: pointer;
 }
 .ntf-markall:hover { background: var(--surface-muted); }
@@ -118,8 +132,8 @@
   height: 28px;
   border: none;
   background: none;
-  border-radius: 6px;
-  color: var(--text-tertiary);
+  border-radius: var(--ce-radius-sm);
+  color: var(--ce-color-text-muted);
   cursor: pointer;
 }
 .ntf-close:hover { background: var(--surface-muted); color: var(--text-primary); }
@@ -127,17 +141,39 @@
 
 .ntf-body { overflow-y: auto; }
 
-/* ── Zustände ── */
+/* ── Zustände ──
+   Der Leerzustand kommt seit Paket D aus dem gemeinsamen Zustandsmuster
+   (EmptyState / .ce-state*); .ntf-state trägt nur noch die schmalen Zeilen,
+   die IM Panel neben einer bereits geladenen Liste stehen (Mark-read-Fehler,
+   Ladefehler beim Aktualisieren). Die Zustandsfläche im Panel darf kompakter
+   sein als auf einer Seite — deshalb ein eigener Innenabstand. */
 .ntf-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 28px 20px;
+  padding: 20px;
   text-align: center;
 }
-.ntf-empty-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
-.ntf-state-text { font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+.ntf-state-text {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+  margin: 0;
+}
+/* Ladefehler NEBEN einer bereits geladenen Liste: schmale Zeile am oberen
+   Rand statt Austausch des Inhalts — die vorhandenen Meldungen bleiben
+   sichtbar (Paket D, Teil 8). */
+.ntf-inline-error {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--ce-space-3);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-color-status-error-surface);
+  color: var(--ce-color-status-error-fg);
+  font-size: var(--ce-text-body-s-size);
+}
+.ntf-skeleton { padding: var(--ce-space-4) 16px; }
 
 /* ── Liste ── */
 .ntf-list { list-style: none; margin: 0; padding: 0; }
@@ -162,24 +198,27 @@
 .ntf-item-unread .ntf-item-title { font-weight: 600; color: var(--text-primary); }
 
 .ntf-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* Gewicht 500 statt des freien Zwischenwerts 550 — die Skala kennt 400/500/600.
+   Ungelesene Meldungen heben sich weiterhin über .ntf-item-unread auf 600 ab. */
 .ntf-item-title {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 14px;
-  font-weight: 550;
-  color: var(--text-primary);
+  font-size: var(--ce-text-body-size);
+  font-weight: 500;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
 }
 .ntf-dot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
-  background: var(--accent-blue);
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand);
   flex-shrink: 0;
 }
 .ntf-item-sub {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: var(--ce-text-label-size);
+  color: var(--ce-color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -192,8 +231,8 @@
   gap: 4px;
   flex-shrink: 0;
 }
-.ntf-item-time { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
-.ntf-item-action { font-size: 12px; color: var(--accent-blue); white-space: nowrap; }
+.ntf-item-time { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); white-space: nowrap; }
+.ntf-item-action { font-size: var(--ce-text-label-size); color: var(--ce-color-brand-ink); white-space: nowrap; }
 
 /* ── Mountpunkte ──
    Der Seiten-Mount ist bewusst KEINE neue Kopfleiste: nur ein schmaler Ankerpunkt
@@ -203,14 +242,15 @@
 
 /* Ab der Drawer-Schwelle (860 px, dieselbe wie .mobile-topbar in
    dashboard-premium.css) ist die Topbar der mobile Mount — der Seiten-Mount
-   entfällt, sonst stünden auf jeder Unterseite ZWEI Glocken untereinander.
+   entfällt (das erledigt der Utility-Cluster in patterns.css, der sich dort
+   ausblendet), sonst stünden auf jeder Unterseite ZWEI Glocken untereinander.
    Gegenstück in DashboardPage.jsx: auf der Übersicht entfällt umgekehrt die
    Topbarglocke, weil die Kopfzeile der Übersicht ihre eigene trägt. So ist
-   in jeder Kombination aus Seite und Viewport genau EINE Glocke sichtbar. */
-@media (max-width: 860px) {
-}
+   in jeder Kombination aus Seite und Viewport genau EINE Glocke sichtbar.
+   (Der früher hier stehende, leere @media-Block hatte keine Deklaration.) */
 
-/* Rechte Gruppe der mobilen Topbar (Glocke + Avatar). */
+/* Rechte Gruppe der mobilen Topbar — seit Paket A, Phase 3 trägt sie
+   ausschließlich die Glocke; ein zweiter Avatar existiert dort nicht mehr. */
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
 /* ── Mobil: das Panel wird zur Vollbreiten-Schublade unter der Topbar ── */

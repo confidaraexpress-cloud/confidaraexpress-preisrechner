@@ -14,7 +14,7 @@
 /* ── Kundendialog ─────────────────────────────────────────────────────────── */
 /* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .sup-dialog-icon {
-  width: 44px; height: 44px; border-radius: 12px;
+  width: 44px; height: 44px; border-radius: var(--ce-radius-md);
   background: var(--blue-light); color: var(--blue2);
   display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
 }
@@ -26,50 +26,29 @@
 
 .sup-dialog-success {
   padding: 12px 14px; margin-bottom: 14px; border-radius: var(--radius);
-  background: var(--success-bg); border: 1px solid rgba(16,185,129,0.28);
+  background: var(--success-bg); border: 1px solid var(--ce-color-status-success-border);
   color: var(--ce-color-status-success-fg); font-size: 13px; line-height: 1.55; font-weight: 600;
 }
 
-.sup-dialog-label {
-  display: block; font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
-  margin-bottom: 6px; margin-top: 14px;
-}
+/* Die Feldsprache des Dialogs kommt seit Paket D vollständig aus forms.css
+   (.field-label/.field-input/.field-select/.field-textarea) — die frühere,
+   parallel gepflegte Fassung mit eigener Höhe, eigener Kante und rohem #fff
+   ist entfallen. Hier bleibt nur der Abstand zwischen den Feldgruppen. */
+.sup-dialog-label { margin-top: 14px; }
 .sup-dialog-label:first-of-type { margin-top: 0; }
-
-/* Select, Input und Textarea teilen bewusst dieselbe Feldsprache. */
-.sup-dialog-select,
-.sup-dialog-input,
-.sup-dialog-textarea {
-  width: 100%; padding: 10px 12px; font-size: 13px; font-family: var(--ce-font-sans);
-  line-height: 1.5; color: var(--navy); background: #fff;
-  border: 1px solid var(--border2); border-radius: var(--radius-sm);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.sup-dialog-textarea { resize: vertical; min-height: 120px; }
-.sup-dialog-select:focus,
-.sup-dialog-input:focus,
-.sup-dialog-textarea:focus { border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
-.sup-dialog-select:disabled,
-.sup-dialog-input:disabled,
-.sup-dialog-textarea:disabled { background: var(--gray50); color: var(--ce-color-text-muted); }
-.sup-dialog-textarea[aria-invalid="true"] { border-color: var(--danger); }
+.sup-dialog-textarea { min-height: 120px; }
 
 .sup-dialog-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
 .sup-dialog-counter { font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .sup-dialog-min { font-size: 11px; color: var(--danger); font-weight: 600; }
 
-.sup-dialog-alert {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; margin-top: 12px; border-radius: var(--radius);
-  background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.28); color: var(--danger);
-  font-size: 13px; line-height: 1.5;
-}
-.sup-dialog-alert svg { flex-shrink: 0; }
+/* Die Fehlermeldung ist eine FormAlert — hier steht nur ihr Abstand. */
+.sup-dialog-error { margin-top: 12px; }
 
-/* Primär oben, volle Breite, gut tappbar auf Mobil (Stack) — wie stn-. */
-.sup-dialog-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
-.sup-dialog-actions .btn { width: 100%; }
+/* Der Footer folgt dem gemeinsamen Dialogmuster (patterns.css): Aktionen
+   rechts, bestätigende Aktion rechts außen; unter 480 px stapelt das Muster
+   sie global. Die frühere eigene Stapelung mit vollbreiten Knöpfen auf ALLEN
+   Breiten ist entfallen. */
 
 /* ── Adminbereich: Liste ──────────────────────────────────────────────────── */
 /* Betreffvorschau: nutzergenerierter Freitext, in der Liste auf zwei Zeilen begrenzt.
@@ -157,18 +136,22 @@
    Scope `sup-` (Kunde), getrennt vom Adminscope `adm-sup-`. Ausschließlich
    App-Layout-Tokens — keine eigenen Hex-Werte, kein Blau als Fläche. */
 
+/* Die Werkzeugleiste trägt nur noch die Aktion (der Einleitungssatz stand
+   wortgleich im Seitenkopf) — deshalb rechtsbündig statt space-between. */
 .sup-list-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.sup-list-intro { margin: 0; font-size: 14px; color: var(--text-secondary); }
 
 .sup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 
+/* Zeilenkarte: Fläche, Kante, Radius und Tiefe kommen seit Paket D aus dem
+   Interactive-Card-Primitive (.ce-card-interactive, primitives.css) — inklusive
+   Hover und Fokusring. Hier bleibt nur die Zeilenaufteilung. */
 .sup-list-item {
   display: flex;
   align-items: center;
@@ -176,17 +159,11 @@
   gap: 14px;
   width: 100%;
   padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
   text-align: left;
-  cursor: pointer;
   color: var(--text-tertiary);
-  transition: border-color 140ms ease, background-color 140ms ease;
+  /* Touchziel: die ganze Zeile ist die Aktion. */
+  min-height: 44px;
 }
-.sup-list-item:hover { border-color: var(--border-strong, var(--border-subtle)); background: var(--surface-muted); }
-.sup-list-item:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .sup-list-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .sup-list-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -207,29 +184,24 @@
   letter-spacing: 0.02em;
 }
 
-.sup-empty {
-  padding: 40px 20px;
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-}
-.sup-empty-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.sup-empty-text { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+/* Leer- und Fehlerzustand kommen seit Paket D aus dem gemeinsamen
+   Zustandsmuster (StateView / .ce-state*) — die bereichseigene Fläche
+   .sup-empty samt Titel und Text ist entfallen. */
 
 /* ── Nachrichtenverlauf ── */
 .sup-thread { display: flex; flex-direction: column; gap: 16px; }
 .sup-back { align-self: flex-start; }
 
-.sup-thread-head {
-  padding: 16px 18px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-}
+/* Ticketkopf: Fläche/Kante/Radius/Tiefe aus .ce-card (Markup trägt die Klasse). */
+.sup-thread-head { padding: 16px 18px; }
 .sup-thread-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sup-subject { margin: 8px 0 4px; font-size: 20px; font-weight: 600; color: var(--text-primary); }
+.sup-subject {
+  margin: 8px 0 4px;
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  color: var(--text-primary);
+}
 .sup-thread-meta { margin: 0; font-size: 12px; color: var(--text-secondary); }
 
 /* Dialogartige Anordnung — bewusst ohne Live-Chat-Anmutung: keine Onlinepunkte,
@@ -243,15 +215,25 @@
   flex-direction: column;
   gap: 12px;
 }
+/* Ruhige Sprechkarten statt Chat-Blasen: gemeinsamer Foundation-Radius, keine
+   übergroßen Rundungen, kein Schwanz, keine Animation. Die Herkunft wird
+   dreifach getragen — Ausrichtung, Fläche UND Autorenname im Text. */
 .sup-msg {
   max-width: 78%;
   padding: 12px 14px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: var(--surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
 }
-.sup-msg-support { align-self: flex-start; border-top-left-radius: 4px; }
-.sup-msg-customer { align-self: flex-end; background: var(--surface-muted); border-top-right-radius: 4px; }
+/* Support links auf neutraler Fläche … */
+.sup-msg-support { align-self: flex-start; }
+/* … Kunde rechts in Brand-Soft (Paket D): die eigene Stimme hebt sich damit
+   ruhig ab, ohne eine zweite Statusfarbe einzuführen. */
+.sup-msg-customer {
+  align-self: flex-end;
+  background: var(--ce-color-brand-soft);
+  border-color: var(--ce-color-brand-border);
+}
 
 .sup-msg-head {
   display: flex;
@@ -271,31 +253,17 @@
   overflow-wrap: anywhere;
 }
 
-/* ── Antwortformular ── */
+/* ── Antwortformular ──
+   Fläche aus .ce-card (Markup), Eingabefeld aus forms.css
+   (.field-input/.field-textarea) — die frühere eigene Feldfassung ist
+   entfallen. */
 .sup-reply {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 16px 18px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
 }
-.sup-reply-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.sup-reply-field {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-primary);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.55;
-  resize: vertical;
-}
-.sup-reply-field:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
+.sup-reply-field { min-height: 96px; }
 .sup-reply-actions {
   display: flex;
   align-items: center;

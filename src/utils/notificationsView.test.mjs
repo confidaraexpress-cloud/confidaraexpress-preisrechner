@@ -32,6 +32,7 @@ const dashLayout = read("components/layout/DashboardLayout.jsx");
 const overview = read("components/dashboard/Overview.jsx");
 const invoices = read("components/dashboard/InvoicesList.jsx");
 const css = read("styles/notifications.css");
+const stateView = read("components/ui/StateView.jsx");
 
 // ═══ A) Badge ═══════════════════════════════════════════════════════════════
 
@@ -277,8 +278,16 @@ test("23 — die vorhandene Glocke der Übersicht ist jetzt eine echte Schaltfl�
   assert.ok(!/<span className="pp-bell" aria-hidden="true">/.test(overview),
     "die dekorative Glocke steht noch dort");
   // … und an derselben Stelle (innerhalb von .pp-actions) steht die echte Glocke.
-  const actions = overview.slice(overview.indexOf('className="pp-actions"'), overview.indexOf('className="pp-cta"'));
+  // Endanker war bis Paket D der „Neue Sendung"-Knopf .pp-cta; der ist entfallen
+  // (dasselbe Ziel steht jetzt als primäre Schnellaktion darunter), deshalb
+  // begrenzt das schließende </header> den Ausschnitt.
+  const start = overview.indexOf('className="pp-actions"');
+  const actions = overview.slice(start, overview.indexOf("</header>", start));
+  assert.ok(start > -1 && actions.length > 0, "der Kopfbereich der Übersicht ist nicht auffindbar");
   assert.match(actions, /<NotificationBell variant="overview"/, "die Glocke sitzt nicht mehr an ihrer Position");
+  // Genau EINE Identitätsanzeige neben der Glocke, kein zweiter Knopf daneben.
+  assert.match(actions, /<UserChip user=\{user\}/, "der Benutzerchip fehlt im Kopfbereich");
+  assert.ok(!/pp-cta/.test(overview), "der doppelte „Neue Sendung\"-Einstieg ist zurück");
   // Sie wurde NICHT in die Sidebar verschoben.
   const sidebar = read("components/layout/DashboardSidebar.jsx");
   assert.ok(!/NotificationBell/.test(sidebar), "die Glocke wurde in die Sidebar verschoben");
@@ -373,7 +382,15 @@ test("30 — Lade-, Leer- und Fehlerzustand mit erneutem Versuch", () => {
   assert.match(panel, /RETRY_LABEL/);
   assert.match(panel, /onClick=\{refresh\}/, "der Fehlerzustand bietet keinen erneuten Versuch");
   assert.match(panel, /role="alert"/);
-  assert.match(panel, /role="status"/);
+  // Paket D: Der Ladezustand ist ein Skeleton (ListSkeleton) statt eines
+  // Spinners, der Leerzustand eine EmptyState-Fläche. role="status" trägt
+  // jetzt die gemeinsame Komponente — die Zusicherung wandert mit.
+  assert.match(panel, /<ListSkeleton rows=\{3\}/, "beim ersten Laden fehlt das Skeleton");
+  assert.match(panel, /<EmptyState icon="bell"/, "der Leerzustand nutzt das gemeinsame Muster nicht");
+  assert.match(stateView, /className="ce-skeleton-list" role="status"/, "ListSkeleton meldet sich nicht als Status");
+  // Ein Ladefehler darf bereits geladene Meldungen NICHT ersetzen.
+  assert.match(panel, /error && items\.length > 0/, "der Fehler ersetzt weiterhin die geladene Liste");
+  assert.match(panel, /error && items\.length === 0/, "ohne Inhalt fehlt die volle Fehlerfläche");
 });
 
 test("31 — kein unsanitiertes HTML, keine Live-Chat-Anmutung", () => {
@@ -391,20 +408,33 @@ test("31 — kein unsanitiertes HTML, keine Live-Chat-Anmutung", () => {
 });
 
 test("32 — der Badge bleibt lesbar dimensioniert (>= 11px)", () => {
+  // Seit Paket D stehen im Panel keine freien Pixelgrößen mehr: jede
+  // Schriftgröße kommt aus der Typoskala (--ce-text-*). Die Untergrenze
+  // 11 px sichert damit die Skala selbst (typography.test.mjs) — hier wird
+  // geprüft, dass die Datei sie tatsächlich verwendet und keine freie Größe
+  // daneben einführt.
   const sizes = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
-  assert.ok(sizes.length > 0, "keine Schriftgrößen gefunden");
   const small = sizes.filter((n) => n < 11);
   assert.deepEqual(small, [], `zu kleine Schriftgrößen: ${small.join(", ")}`);
+  assert.match(css, /font-size:\s*var\(--ce-text-micro-size\)/, "der Badge nutzt die Micro-Stufe nicht");
+  const tokenSizes = [...css.matchAll(/font-size:\s*var\(--ce-text-[a-z-]+-size\)/g)];
+  assert.ok(tokenSizes.length >= 5, `zu wenige Größen aus der Skala: ${tokenSizes.length}`);
 });
 
 test("33 — das Stylesheet nutzt Layout-Tokens statt eigener Farbwerte", () => {
   // Erlaubt sind neutrale Ausnahmen (Weiß auf dem Badge, Fallback des Warntons);
   // alle Flächen und Texte kommen aus den App-Tokens.
   const literals = [...css.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]);
-  assert.ok(literals.length <= 2, `zu viele Farbliterale: ${literals.join(", ")}`);
+  // Paket D: das Panel führt gar kein Farbliteral mehr (vorher zwei — das Weiß
+  // des Badges und der Fallback des Warntons).
+  assert.deepEqual(literals, [], `zu viele Farbliterale: ${literals.join(", ")}`);
   assert.match(css, /var\(--surface\)/);
-  assert.match(css, /var\(--border-subtle\)/);
-  assert.match(css, /var\(--accent-blue\)/);
+  assert.match(css, /var\(--ce-color-surface\)/);
+  assert.match(css, /var\(--ce-color-border-subtle\)/);
+  // Der Akzent läuft über die Foundation-Markenrollen: Fläche über --ce-color-brand,
+  // Text in Textgröße über die dunklere -ink-Rolle (AA auf heller Fläche).
+  assert.match(css, /var\(--ce-color-brand\)/);
+  assert.match(css, /var\(--ce-color-brand-ink\)/);
 });
 
 test("34 — das Stylesheet ist in die Importkette aufgenommen", () => {

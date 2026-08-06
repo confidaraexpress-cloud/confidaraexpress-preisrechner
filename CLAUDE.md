@@ -380,7 +380,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/premium-management-billing-package-c`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/premium-dashboard-account-communication-package-d`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 
@@ -450,6 +450,53 @@ und Mustern. Business-, API-, Status- und Routinglogik blieben unangetastet.
   `iframe` einschließen muss, den `useDialog`s Selektor nicht kennt.
 - Governance: `src/styles/managementBilling.test.mjs` (Quelltext, 23 Tests) und
   `tests/e2e/managementBillingPaketC.test.mjs` (echter Dev-Server, 5 Tests).
+
+## Übersicht, Konto und Kommunikation (Paket D)
+
+Die Übersicht ist eine **operative Arbeitsfläche**, kein Produktprospekt mehr.
+Profil, Support und Benachrichtigungen laufen auf denselben Primitives und
+Mustern. Business-, API-, Status- und Routinglogik blieben unangetastet.
+
+- **Zwei Zustände, eine Seite.** `hasOperationalData()` (`utils/overviewModules.mjs`)
+  entscheidet: Hat das Konto Sendungen oder Rechnungen, zeigt die Übersicht
+  Schnellaktionen, letzte Sendungen, offene Rechnungen und Benachrichtigungen —
+  „01 Ablauf", „02 Vorteile" und der Trust-Block erscheinen dann NICHT. Ein
+  leeres Konto bekommt genau umgekehrt das Onboarding. Das **Carrier-Netzwerk
+  bleibt in beiden Zuständen** (Markenfläche). Solange nichts geladen ist, gilt
+  das Konto als operativ — sonst blitzt beim ersten Rendern das Onboarding auf.
+- **Nur vorhandene Daten und Ziele.** Die Module rufen KEINE API und
+  navigieren nicht selbst: `shipments`/`invoices`/`invoiceSummary` reicht
+  `DashboardPage` bereits herein, Benachrichtigungen kommen aus dem
+  bestehenden `NotificationsProvider` (ein Takt, ein Zustand), Ziele laufen
+  über `navigateTo`/`navigate`. Der frühere Kopfzeilen-CTA „Neue Sendung"
+  (`.pp-cta`) ist entfallen — dasselbe Ziel ist jetzt die eine primäre
+  Schnellaktion; zwei Einstiege waren doppelte Navigation.
+- **Eine Initialenquelle.** `utils/accountIdentity.mjs` (`accountInitials` /
+  `accountDisplayName`) speist Sidebar, Benutzerchip UND Profilhero. Die fest
+  verdrahtete Marke „CE" im Profil ist weg: ein Konto „Muster GmbH" trug dort
+  ein „CE" und in der Sidebar ein „M". Bewusst EIN Buchstabe — zwei Initialen
+  aus „Muster GmbH" ergäben „MG", also die Rechtsform als zweite Stelle.
+- **Der Passwortbereich ist geschlossen**, bis der Nutzer ihn öffnet; Abbrechen
+  stellt den Zustand wieder her, die Erfolgsmeldung bleibt als Quittung stehen.
+  Felder, Regeln und der bewusste Verzicht auf `auth: true` (401 = falsches
+  Passwort, nicht Session-Ende) sind unverändert.
+- **Supportkategorien erscheinen nie roh.** `supportCategoryDisplay()` gibt
+  `[Text, Rohwert]` zurück — dieselbe Regel wie `statusFallback()` für Status;
+  vorher stand ein unbekannter Backendwert („shipping") mitten im Satz.
+- **Das Panel verliert bei einem Ladefehler nichts.** Bereits geladene
+  Meldungen bleiben stehen, der Fehler steht als schmale Zeile darüber; nur
+  ohne Inhalt füllt er die Fläche. Erstes Laden zeigt ein Skeleton.
+  Gelesen-/Ungelesen-Logik, Badge-Zählung und Kontextaktionen sind unverändert.
+  **Kein „Alle anzeigen"** — es gibt keine Benachrichtigungsseite, also wird
+  auch kein Ziel behauptet.
+- Governance: `src/styles/dashboardAccountCommunication.test.mjs` (Quelltext,
+  26 Tests), `src/utils/overviewModules.test.mjs`, `src/utils/accountIdentity.test.mjs`
+  und `tests/e2e/dashboardAccountPaketD.test.mjs` (echter Dev-Server, 7 Tests).
+
+Bewusst zurückgestellt: eine Empfänger-/Zielspalte in „Letzte Sendungen" —
+`GET /kunde/shipments` führt keine Empfängerdaten (die Sendungsliste selbst
+zeigt dort ebenfalls keine). Ebenso der „Antwortstatus" der Supportliste: die
+Kundenantwort kennt kein solches Feld. Beides würde neue Backenddaten brauchen.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

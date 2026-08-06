@@ -3,6 +3,7 @@ import { PageHeader } from "../ui/PageHeader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
+import { FormAlert } from "../ui/FormAlert";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { countries } from "../../utils/countries";
@@ -17,6 +18,7 @@ import {
   mapApiProfileError,
 } from "../../utils/profileView.mjs";
 import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import { CopyableNumber } from "../ui/CopyableNumber";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
@@ -52,10 +54,25 @@ export function Profile({ user, utility }) {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
+  // Der Passwortbereich ist geschlossen, bis der Nutzer ihn ausdrücklich
+  // öffnet (Paket D, Teil 4). Vorher stand das dreifeldrige Formular dauerhaft
+  // offen und dominierte die Sicherheitskarte, obwohl ein Passwortwechsel eine
+  // seltene, bewusste Handlung ist. Regeln, Felder und API sind unverändert.
+  const [pwOpen, setPwOpen] = useState(false);
 
   const companyBtnRef = useRef(null);
   const contactBtnRef = useRef(null);
   const refocusRef = useRef(null);
+  const pwToggleRef = useRef(null);
+  const pwFirstFieldRef = useRef(null);
+  // Fokus folgt der Nutzeraktion: beim Öffnen ins erste Feld, beim Schließen
+  // zurück auf den auslösenden Knopf. `pwReturnFocus` verhindert, dass der
+  // Fokus beim Erst-Mount gestohlen wird.
+  const pwReturnFocus = useRef(false);
+  useEffect(() => {
+    if (pwOpen) { pwFirstFieldRef.current?.focus(); return; }
+    if (pwReturnFocus.current) { pwToggleRef.current?.focus(); pwReturnFocus.current = false; }
+  }, [pwOpen]);
 
   // Fokus nach Schließen (Speichern/Abbrechen) zurück auf den jeweiligen
   // „Bearbeiten"-Button (Accessibility §20). Kein Fokus-Diebstahl beim Erst-Mount.
@@ -142,10 +159,22 @@ export function Profile({ user, utility }) {
 
   const updPw = (k, v) => setPwForm(p => ({ ...p, [k]: v }));
 
-  const resetPwForm = () => {
+  // Öffnen startet immer mit leeren Feldern und ohne Altmeldungen.
+  const openPwForm = () => {
     setPwForm(EMPTY_PW_FORM);
     setPwError("");
     setPwSuccess(false);
+    setPwOpen(true);
+  };
+
+  // Abbrechen stellt den geschlossenen Zustand wieder her und verwirft die
+  // Eingaben — ein halb ausgefülltes Passwortformular soll nicht stehen bleiben.
+  const closePwForm = () => {
+    if (pwSaving) return;
+    setPwForm(EMPTY_PW_FORM);
+    setPwError("");
+    pwReturnFocus.current = true;
+    setPwOpen(false);
   };
 
   const validatePwForm = () => {
@@ -180,6 +209,10 @@ export function Profile({ user, utility }) {
       if (r.ok) {
         setPwSuccess(true);
         setPwForm(EMPTY_PW_FORM);
+        // Erfolgreich geändert → der Bereich schließt sich wieder; die
+        // Erfolgsmeldung bleibt als Quittung sichtbar.
+        pwReturnFocus.current = true;
+        setPwOpen(false);
       } else if (r.status === 401) {
         const d = await r.json().catch(() => ({}));
         // P3: Token wurde serverseitig bereits invalidiert (z.B. Passwort in
@@ -391,48 +424,68 @@ export function Profile({ user, utility }) {
       </div>
 
       <div className="profile-form-body profile-password-section">
-        <span className="profile-password-title">Passwort ändern</span>
-        <p className="profile-password-desc">Ändern Sie Ihr Passwort regelmäßig, um Ihr Konto zu schützen.</p>
-
-        {pwSuccess && (
-          <div className="alert alert-success mb-16" role="status">
-            <Icon n="shield" s={16} /> Passwort erfolgreich geändert.
+        <div className="profile-password-row">
+          <div className="profile-password-copy">
+            <span className="profile-password-title">Passwort</span>
+            <p className="profile-password-desc">Ändern Sie Ihr Passwort regelmäßig, um Ihr Konto zu schützen.</p>
           </div>
-        )}
-        {pwError && (
-          <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} />{pwError}
-          </div>
-        )}
-
-        <PasswordField
-          dark={false}
-          label="Aktuelles Passwort"
-          value={pwForm.currentPassword}
-          onChange={(e) => updPw("currentPassword", e.target.value)}
-          autoComplete="current-password"
-        />
-        <PasswordField
-          dark={false}
-          label="Neues Passwort"
-          value={pwForm.newPassword}
-          onChange={(e) => updPw("newPassword", e.target.value)}
-          autoComplete="new-password"
-        />
-        <PasswordField
-          dark={false}
-          label="Neues Passwort wiederholen"
-          value={pwForm.newPasswordConfirm}
-          onChange={(e) => updPw("newPasswordConfirm", e.target.value)}
-          autoComplete="new-password"
-        />
-
-        <div className="profile-form-actions">
-          <button type="button" className="btn btn-outline" onClick={resetPwForm} disabled={pwSaving}>Zurücksetzen</button>
-          <button type="button" className="btn btn-primary" onClick={handlePasswordChange} disabled={pwSaving}>
-            {pwSaving ? <><span className="spinner" /> Wird geändert…</> : <><Icon n="lock" s={14} /> Passwort ändern</>}
-          </button>
+          {!pwOpen && (
+            <button
+              type="button"
+              ref={pwToggleRef}
+              className="btn btn-outline btn-sm"
+              onClick={openPwForm}
+              aria-expanded={false}
+            >
+              <Icon n="lock" s={14} /> Passwort ändern
+            </button>
+          )}
         </div>
+
+        {/* Die Erfolgsmeldung bleibt auch nach dem Schließen stehen — sie ist
+            die Quittung der abgeschlossenen Handlung. */}
+        {pwSuccess && (
+          <FormAlert tone="success" message="Passwort erfolgreich geändert." />
+        )}
+
+        {pwOpen && (
+          <div className="profile-password-form">
+            {pwError && <FormAlert tone="error" message={pwError} />}
+
+            <PasswordField
+              dark={false}
+              id="pf-pw-current"
+              inputRef={pwFirstFieldRef}
+              label="Aktuelles Passwort"
+              value={pwForm.currentPassword}
+              onChange={(e) => updPw("currentPassword", e.target.value)}
+              autoComplete="current-password"
+            />
+            <PasswordField
+              dark={false}
+              id="pf-pw-new"
+              label="Neues Passwort"
+              value={pwForm.newPassword}
+              onChange={(e) => updPw("newPassword", e.target.value)}
+              autoComplete="new-password"
+            />
+            <PasswordField
+              dark={false}
+              id="pf-pw-confirm"
+              label="Neues Passwort wiederholen"
+              value={pwForm.newPasswordConfirm}
+              onChange={(e) => updPw("newPasswordConfirm", e.target.value)}
+              autoComplete="new-password"
+            />
+
+            <div className="profile-form-actions">
+              <button type="button" className="btn btn-outline" onClick={closePwForm} disabled={pwSaving}>Abbrechen</button>
+              <button type="button" className="btn btn-primary" onClick={handlePasswordChange} disabled={pwSaving}>
+                {pwSaving ? <><span className="spinner" /> Wird geändert…</> : <><Icon n="lock" s={14} /> Passwort ändern</>}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -440,17 +493,24 @@ export function Profile({ user, utility }) {
   return (
     <div className="page-body">
         <PageHeader
+          eyebrow="Konto"
           title={<>Unternehmen &amp; Konto</>}
           subtitle="Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort."
           utility={utility}
           className="profile-page-head"
         />
 
-        <div className="profile-account-header">
+        {/* Profilhero als Base Card (Paket D): dasselbe Material wie jede
+            andere Fläche des eingeloggten Bereichs — kein eigener Verlauf,
+            keine eigene Kante, keine eigene Tiefe mehr.
+            Die Initiale kommt aus derselben Quelle wie Sidebar und
+            Benutzerchip; die frühere fest verdrahtete Marke „CE" zeigte für
+            ein Konto „Muster GmbH" das falsche Zeichen. */}
+        <div className="ce-card profile-account-header">
           <div className="profile-account-identity">
-            <div className="profile-avatar-lg">CE</div>
+            <div className="profile-avatar-lg" aria-hidden="true">{accountInitials(user)}</div>
             <div className="profile-account-info">
-              <div className="profile-account-name">{user?.company_name || user?.name || "Nicht angegeben"}</div>
+              <div className="profile-account-name">{accountDisplayName(user, "Nicht angegeben")}</div>
               <div className="profile-account-email">
                 <Icon n="mail" s={14} /> {user?.email || "Nicht angegeben"}
               </div>

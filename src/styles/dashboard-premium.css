@@ -452,23 +452,22 @@
 .profile-grid { max-width: none; gap: 28px; }
 .profile-col { gap: 20px; }
 
-/* Konto-Kopf: ruhige, leicht getönte Fläche statt dunklem Verlauf + Lichtstrahl. */
+/* Konto-Kopf (Profilhero). Seit Paket D trägt das Markup .ce-card — Fläche,
+   Kante, Radius und Tiefe kommen damit aus dem Base-Card-Primitive
+   (primitives.css). Hier bleibt nur noch das Layout stehen; die frühere,
+   parallel gepflegte Materialdeklaration ist entfallen. */
 .profile-account-header {
   position: relative;
   display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap;
   gap: 16px;
   padding: 30px 36px; margin: 0 0 26px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-card);
 }
 .profile-account-identity { display: flex; align-items: center; gap: 18px; min-width: 0; }
 .profile-avatar-lg {
   width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  letter-spacing: -0.02em; color: #fff;
+  letter-spacing: -0.02em; color: var(--ce-color-text-inverse);
   background: var(--accent-blue);
   box-shadow: none;
 }

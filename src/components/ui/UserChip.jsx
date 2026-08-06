@@ -1,5 +1,6 @@
 import React from "react";
 import { Icon } from "./Icon";
+import { accountInitials } from "../../utils/accountIdentity.mjs";
 
 /* ── Benutzerchip (Paket A, Phase 3) ─────────────────────────────────────────
    Bis Phase 3 gab es drei Identitätsanzeigen im eingeloggten Bereich: den
@@ -32,7 +33,8 @@ export function CompanyMark({ initial }) {
 export function UserChip({ user, onClick, label = "Zu meinem Profil" }) {
   const name = user?.name || user?.company_name || "Kunde";
   const org = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
-  const initial = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
+  // EINE Initialenquelle für Sidebar, Benutzerchip und Profilhero.
+  const initial = accountInitials(user);
 
   return (
     <button type="button" className="pp-uchip" onClick={onClick} aria-label={label} title={label}>

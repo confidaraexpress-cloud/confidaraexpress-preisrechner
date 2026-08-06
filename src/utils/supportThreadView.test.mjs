@@ -118,7 +118,13 @@ test("10 — Doppelsenden ist blockiert", () => {
 
 test("11 — Lade-, Fehler- und Sendezustände sind vorhanden", () => {
   assert.match(thread, /Vorgang wird geladen …/);
-  assert.match(thread, /role="alert"/);
+  // Paket D: Der Ladefehler läuft über ErrorState, der Sendefehler über
+  // FormAlert. Beide Komponenten tragen role="alert" selbst — die Zusicherung
+  // wandert also mit, statt zu verschwinden.
+  assert.match(thread, /<ErrorState/);
+  assert.match(thread, /<FormAlert tone="error"/);
+  assert.match(read("components/ui/StateView.jsx"), /tone="error" role="alert"/);
+  assert.match(read("components/ui/FormAlert.jsx"), /role="alert"/);
   assert.match(thread, /Erneut versuchen/);
   assert.match(thread, /Wird gesendet …/);
   assert.match(listView, /Ihre Anfragen werden geladen …/);

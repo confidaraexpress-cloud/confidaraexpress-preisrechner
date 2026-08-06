@@ -401,3 +401,79 @@ test("30 — die Prüflogik greift tatsächlich", () => {
   const flow = normalizeFlow(vorgangMitAngeboten());
   assert.deepEqual(normalizeFlow(flow), flow, "Normalisierung ist nicht idempotent");
 });
+
+/* ══════════ 8 — Determinismus der Rücknavigation ═════════════════════════ */
+
+test("31 — der sichtbare Zurück-Button hängt nicht an der Browser-History", () => {
+  const booking = read("src/pages/BookingPage.jsx");
+  const zurueck = booking.match(/const goBackToOffers = \(\) => \{[\s\S]*?\n  \};/);
+  assert.ok(zurueck, "goBackToOffers nicht gefunden");
+  const rumpf = zurueck[0];
+
+  // Die eigentliche Zusicherung: KEINE History-Rückwärtsnavigation. Welcher
+  // Dashboard-Bereich hinter dem vorherigen Eintrag steckt, ist nicht
+  // garantiert — die Sidebar-Navigation setzt nur den lokalen page-State und
+  // fasst die History gar nicht an.
+  assert.ok(!/navigate\(\s*-\d/.test(rumpf), "der Zurück-Button navigiert über die Browser-History");
+  assert.ok(!/history\.(back|go)\s*\(/.test(rumpf), "der Zurück-Button ruft history.back/go");
+
+  // Stattdessen: gezielt auf den Angebotsvergleich, ersetzend.
+  assert.ok(/navigate\(\s*["']\/dashboard["']/.test(rumpf), "kein gezieltes Ziel /dashboard");
+  assert.ok(/page:\s*["']new["']/.test(rumpf), "der Zielbereich „new\" fehlt");
+  assert.ok(/returnTarget:\s*["']offers["']/.test(rumpf), "das Rückkehrziel „offers\" fehlt");
+  assert.ok(/replace:\s*true/.test(rumpf), "der Buchungseintrag wird nicht ersetzt");
+
+  // Und es werden keine personenbezogenen Daten erneut in die History kopiert.
+  for (const feld of ["form", "tariff", "recipient", "sender", "customs"]) {
+    assert.ok(!new RegExp(`\\b${feld}\\b`).test(rumpf), `${feld} landet im History-State`);
+  }
+});
+
+test("32 — der Dashboard-Eintrag trägt seinen Bereich, egal über welchen Weg", () => {
+  const dash = read("src/pages/DashboardPage.jsx");
+  // Der Synchronisierungs-Effekt hängt am page-State, nicht an location —
+  // sonst liefe er im Kreis.
+  const sync = dash.match(/useEffect\(\(\) => \{\s*\n\s*const aktuell = [\s\S]*?\}, \[page\]\);/);
+  assert.ok(sync, "der History-Synchronisierungs-Effekt fehlt");
+  assert.ok(/window\.history\.state\?\.usr/.test(sync[0]),
+    "der Effekt liest einen veralteten location-Wert statt des Live-Zustands");
+  assert.ok(/replace:\s*true/.test(sync[0]), "der Effekt legt einen neuen History-Eintrag an");
+  assert.ok(/if \(aktuell\?\.page === page\) return;/.test(sync[0]), "kein Schreibvergleich → Kreislaufgefahr");
+
+  // Startwert: Query vor History-State vor Übersicht.
+  const wahl = dash.match(/function waehleStartbereich\(location\) \{[\s\S]*?\n\}/);
+  assert.ok(wahl, "waehleStartbereich fehlt");
+  assert.ok(wahl[0].indexOf("location.search") < wahl[0].indexOf("location.state"),
+    "die Query muss Vorrang vor dem History-State haben");
+  assert.ok(/return "overview";/.test(wahl[0]), "kein Fallback auf die Übersicht");
+
+  // Der justBooked-Effekt darf den Bereich nicht mitlöschen. Kommentare zuvor
+  // entfernen — einer erklärt genau diesen früheren Fehler und nennt ihn dabei.
+  const dashOhneKommentare = dash.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/state:\s*\{\s*\}/.test(dashOhneKommentare), "ein Effekt leert den kompletten History-State");
+  assert.ok(/const \{ justBooked, \.\.\.rest \} = location\.state;/.test(dash),
+    "justBooked wird nicht gezielt entfernt");
+});
+
+test("33 — der Wechsel Angebote ↔ Buchung erzeugt keinen History-Kreislauf", () => {
+  const ns = read("src/pages/NewShipmentPage.jsx");
+  const handleBook = ns.match(/const handleBook = useCallback\(\(tariff\) => \{[\s\S]*?\}, \[[^\]]*\]\);/);
+  assert.ok(handleBook, "handleBook nicht gefunden");
+  // Erstweg pusht, Rückkehr ersetzt — sonst wächst die History je Zyklus.
+  assert.ok(/returnTarget === "offers"/.test(handleBook[0]),
+    "die Rückkehr aus der Buchung wird nicht erkannt");
+  assert.ok(/replace: ausRueckkehr/.test(handleBook[0]),
+    "der Wiedereinstieg in die Buchung ersetzt den Eintrag nicht");
+  // Der ausgelaufene Marker ist vollständig weg.
+  assert.ok(!/fromFlow:\s*true/.test(ns), "der Marker fromFlow lebt noch");
+});
+
+test("34 — das Scrollziel ist ein Element, kein Pixelwert", () => {
+  const ns = read("src/pages/NewShipmentPage.jsx");
+  assert.ok(/const offersRef = useRef\(null\);/.test(ns), "kein Ref auf den Angebotsbereich");
+  assert.ok(/ref=\{offersRef\}/.test(ns), "der Ref hängt an keinem Element");
+  assert.ok(/id="angebotsbereich"/.test(ns), "kein stabiler Anker am Angebotsbereich");
+  assert.ok(/prefers-reduced-motion: reduce/.test(ns), "reduzierte Bewegung wird nicht beachtet");
+  assert.ok(/scrollIntoView/.test(ns), "ohne gemerkte Position wird nicht gezielt gescrollt");
+  assert.ok(/requestAnimationFrame/.test(ns), "es wird nicht auf das Rendern gewartet");
+});

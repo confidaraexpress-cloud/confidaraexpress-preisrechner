@@ -832,22 +832,28 @@ export default function BookingPage() {
   };
 
   /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
-     Es muss fachlich dasselbe tun wie Browser-Zurück: zurück zum
-     Angebotsvergleich, mit allen Eingaben, Angeboten, Filtern, der Auswahl und
-     der Scrollposition.
+     Es führt IMMER zum Angebotsvergleich — unabhängig davon, was im
+     Browserverlauf davor liegt.
 
-     Sind wir über den regulären Weg hier (fromFlow), ist der vorherige
-     History-Eintrag genau dieser Angebotsvergleich — dann geht ein echtes
-     history.back() zurück. Das ist zuverlässiger als ein neuer Push: es
-     verlängert die History nicht, und beide Wege landen garantiert auf
-     demselben Eintrag (getestet in tests/e2e/shippingFlowRestore.test.mjs).
+     Die frühere Fassung nutzte `navigate(-1)`, sobald ein Flow-Marker im
+     location.state lag. Das war fachlich falsch: welcher Dashboard-Bereich
+     hinter dem vorherigen History-Eintrag steckt, ist nicht garantiert. Die
+     Sidebar-Navigation setzt nur den lokalen page-State und fasst die History
+     überhaupt nicht an — wer über „Übersicht", „Rechnungen", „Entwürfe" oder
+     „Profil" zu „Neue Sendung" gewechselt war, landete deshalb mit einem
+     Klick auf „Zurück" wieder dort statt bei seinen Angeboten.
 
-     Ohne Marker — Direkteinstieg, neuer Tab, Lesezeichen — gibt es keinen
-     eigenen Eintrag hinter uns; dann wird wie bisher gezielt navigiert. */
+     Jetzt wird gezielt navigiert. `replace: true`, damit kein Kreislauf
+     Angebote → Buchung → Zurück → Buchung entsteht und die History bei
+     wiederholtem Zurückgehen nicht wächst. Es werden KEINE personenbezogenen
+     Daten in den History-Eintrag kopiert — nur der Zielbereich und der
+     Rückkehrwunsch; die Sendungsdaten kommen aus dem ShippingFlowContext. */
   const goBackToOffers = () => {
     setFlowStep("offers");
-    if (navState?.fromFlow) { navigate(-1); return; }
-    navigate("/dashboard?page=new");
+    navigate("/dashboard", {
+      replace: true,
+      state: { page: "new", returnTarget: "offers" },
+    });
   };
 
   const addrReady =

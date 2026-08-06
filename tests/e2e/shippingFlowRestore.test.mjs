@@ -262,20 +262,37 @@ test("5 — Browser-Vorwärts rekonstruiert die Buchungsseite", async () => {
   await ctx.close();
 });
 
-test("6 — mehrfaches Zurück und Vorwärts verlängert die History nicht", async () => {
+/* Frühere Fassung dieses Tests hieß „…verlängert die History nicht" und
+   sicherte damit indirekt ein `navigate(-1)` ab. Das war die falsche
+   Zusicherung: der vorherige History-Eintrag sagt nichts darüber aus, welcher
+   Dashboard-Bereich dahinter steckt. Die Zusicherung lautet jetzt schärfer und
+   fachlich richtig — der Button ersetzt den Buchungseintrag und führt
+   deterministisch zur Angebotsauswahl, unabhängig von der Browser-History. */
+test("6 — der sichtbare Zurück-Button ersetzt den Buchungseintrag (kein Kreislauf)", async () => {
   const { ctx, page } = await neueSeite();
   await bisZurBuchung(page);
   const laengeVorher = await page.evaluate(() => history.length);
 
+  // Zweimal Angebote → Buchung → Zurück. Die History darf dabei nicht wachsen.
   for (let i = 0; i < 2; i++) {
     await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
-    await page.waitForTimeout(1200);
-    await page.goForward({ waitUntil: "networkidle" });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1300);
+    assert.equal((await zustand(page)).titel, "Neue Sendung", `Durchgang ${i + 1}: falsche Seite`);
+    const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
+    await wahl.click();
+    await page.waitForTimeout(1300);
   }
-  const laengeNachher = await page.evaluate(() => history.length);
-  assert.equal(laengeNachher, laengeVorher,
-    "der sichtbare Zurück-Button pusht statt zurückzugehen");
+  assert.equal(await page.evaluate(() => history.length), laengeVorher,
+    "die History wächst bei jedem Zurück-Klick");
+
+  // Und nach dem sichtbaren Zurück darf ein Browser-Zurück NICHT wieder
+  // unmittelbar in der Buchung landen — der Eintrag wurde ersetzt, nicht gestapelt.
+  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.waitForTimeout(1300);
+  await page.goBack({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  assert.notEqual((await zustand(page)).url, "/booking",
+    "Browser-Zurück nach dem sichtbaren Zurück führt wieder in die Buchung");
   await ctx.close();
 });
 
@@ -600,5 +617,136 @@ test("20 — der /book-Payload bleibt feldgleich", async () => {
   assert.ok(!("fromFlow" in payload), "der Navigationsmarker ist in den Buchungspayload geraten");
   assert.equal(payload.sender.fullName, "Max Mustermann");
   assert.equal(payload.recipient.fullName, "Dora Beispiel");
+  await ctx.close();
+});
+
+/* ══════════ 9 — Determinismus des sichtbaren Zurück-Buttons ══════════════
+   Der eigentliche Fehler war NICHT der Zustandsverlust, sondern das Ziel: der
+   Button entschied per navigate(-1) anhand des vorherigen History-Eintrags.
+   Die Sidebar-Navigation setzt aber nur den lokalen page-State und fasst die
+   History gar nicht an — wer über „Übersicht", „Rechnungen", „Entwürfe" oder
+   „Profil" nach „Neue Sendung" gewechselt war, landete deshalb wieder dort.
+
+   Diese Tests fahren jeden dieser Wege über die echte Sidebar ab. */
+
+/* Wechselt über die Sidebar durch die genannten Bereiche. Genau der Weg eines
+   echten Nutzers — und der, der die History unberührt lässt. */
+async function ueberSidebar(page, ziele) {
+  for (const ziel of ziele) {
+    const eintrag = page.locator(".nitem", { hasText: ziel }).first();
+    if (await eintrag.count()) { await eintrag.click(); await page.waitForTimeout(700); }
+    const dialog = page.locator("[role=dialog]");
+    if (await dialog.count()) {
+      const weiter = dialog.locator("button").filter({ hasText: /Verwerfen|Ohne Speichern|Trotzdem/i }).first();
+      if (await weiter.count()) { await weiter.click(); await page.waitForTimeout(600); }
+    }
+  }
+}
+
+const STARTWEGE = [
+  ["Übersicht", ["Übersicht", "Neue Sendung"]],
+  ["Rechnungen", ["Rechnungen", "Neue Sendung"]],
+  ["Profil", ["Unternehmen & Konto", "Neue Sendung"]],
+  ["mehrere Reiter", ["Übersicht", "Sendungen", "Rechnungen", "Unternehmen & Konto", "Neue Sendung"]],
+];
+
+for (const [name, weg] of STARTWEGE) {
+  test(`21 — sichtbares Zurück landet bei den Angeboten (Start über ${name})`, async () => {
+    const { ctx, page } = await neueSeite();
+    const vorher = calcCount;
+    // Einstieg wie nach dem Login: /dashboard OHNE ?page=.
+    await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await ueberSidebar(page, weg);
+    await page.waitForTimeout(400);
+    assert.equal((await zustand(page)).titel, "Neue Sendung", "Sidebar-Weg nicht angekommen");
+
+    await formularFuellen(page);
+    await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+    await page.waitForTimeout(1400);
+    await page.evaluate(() => window.scrollTo(0, 600));
+    await page.waitForTimeout(200);
+    const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
+    await wahl.click();
+    await page.waitForTimeout(1300);
+    assert.equal((await zustand(page)).url, "/booking");
+
+    await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+    await page.waitForTimeout(1500);
+
+    const z = await zustand(page);
+    assert.equal(z.titel, "Neue Sendung", `Start über ${name}: gelandet auf „${z.titel}"`);
+    assert.equal(z.angebote, 2, "Angebote fehlen");
+    assert.equal(z.ausgewaehlt, 1, "das gewählte Angebot ist nicht markiert");
+    assert.equal(z.empfaenger, "Dora Beispiel");
+    assert.equal(z.pakete, "2");
+    assert.equal(z.gewicht, "5.5");
+    assert.equal(z.laenge, "40");
+    assert.ok(z.scrollY > 200, `Scrollposition nicht wiederhergestellt (${z.scrollY})`);
+    assert.equal(calcCount - vorher, 1, "der Restore hat neu berechnet");
+    await ctx.close();
+  });
+}
+
+test("22 — auch Browser-Zurück landet nach einem Sidebar-Weg bei „Neue Sendung\"", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  await ueberSidebar(page, ["Übersicht", "Rechnungen", "Neue Sendung"]);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
+  await wahl.click();
+  await page.waitForTimeout(1300);
+
+  await page.goBack({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1400);
+  const z = await zustand(page);
+  assert.equal(z.titel, "Neue Sendung", `Browser-Zurück landete auf „${z.titel}"`);
+  assert.equal(z.angebote, 2);
+  assert.equal(z.empfaenger, "Dora Beispiel");
+  await ctx.close();
+});
+
+test("23 — ohne gemerkte Scrollposition wird der Angebotsbereich angesteuert", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  // Ganz nach oben — die gemerkte Position ist damit 0.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(300);
+  const wahl = page.locator(".offer-card button").filter({ hasText: /Auswählen|Weiter|Buchen|wählen/i }).first();
+  await wahl.click();
+  await page.waitForTimeout(1300);
+  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.waitForTimeout(1800);
+
+  // Der Angebotsbereich muss im sichtbaren Fenster liegen — geprüft am echten
+  // Element, nicht an einem Pixelwert.
+  const sichtbar = await page.evaluate(() => {
+    const el = document.getElementById("angebotsbereich");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return r.top < window.innerHeight && r.bottom > 0;
+  });
+  assert.equal(sichtbar, true, "der Angebotsbereich wurde nicht angesteuert");
+  await ctx.close();
+});
+
+test("24 — direkter Einstieg auf /booking: der Zurück-Button bleibt gefahrlos", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/booking`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  // Ohne Vorgang steht dort „Kein Angebot ausgewählt" — es gibt keinen
+  // Zurück-Button, sondern den Weg zum Preisrechner. Kein Absturz, keine
+  // Navigation ins Leere.
+  const z = await zustand(page);
+  assert.equal(z.keinAngebot, true);
+  const zurueck = page.locator("button").filter({ hasText: /^← Zurück$/ });
+  assert.equal(await zurueck.count(), 0, "der Zurück-Button erscheint ohne Vorgang");
   await ctx.close();
 });

@@ -438,7 +438,11 @@ test("20 — kein horizontales Scrollen: relative Spaltenbreiten, kein min-width
   assert.equal(/adm-inv-table[\s\S]{0,120}table-scroll/.test(listSrc), false);
   // Lange Rechnungsnummern brechen kontrolliert und werden NIE gekürzt.
   assert.match(cssSrc, /\.adm-inv-no \{[^}]*overflow-wrap: anywhere;/);
-  assert.equal(/slice\(0,\s*\d+\)|substring\(|…["`]/.test(listSrc), false, "die Rechnungsnummer darf nicht gekürzt werden");
+  // Gekürzt würde sie über slice/substring oder über ein Auslassungszeichen
+  // direkt hinter einer Interpolation (`${no}…`). Ein Auslassungszeichen in
+  // einem normalen Text (etwa „wird geladen …") ist keine Kürzung.
+  assert.equal(/slice\(0,\s*\d+\)|substring\(|\$\{[^}]*\}\s*…/.test(listSrc), false,
+    "die Rechnungsnummer darf nicht gekürzt werden");
 });
 
 test("21 — mobile Kartenansicht ersetzt die Tabelle", () => {
@@ -454,7 +458,14 @@ test("21 — mobile Kartenansicht ersetzt die Tabelle", () => {
 // ═══ F) Detailseite ══════════════════════════════════════════════════════════
 
 test("22 — der Kopfbereich hat ein echtes <h1> und genau eine Statusanzeige", () => {
-  assert.match(detailSrc, /<h1 className="adm-detail-id">Rechnung \{number\}<\/h1>/);
+  // Seit Paket E trägt der gemeinsame Seitenkopf (PageHeader, variant="admin")
+  // die Überschrift — er rendert das <h1> selbst. Der frühere eigene
+  // Kartenkopf mit .adm-detail-id ist entfallen.
+  assert.match(detailSrc, /<PageHeader\b/, "der gemeinsame Seitenkopf fehlt");
+  assert.match(detailSrc, /variant="admin"/);
+  assert.match(detailSrc, /title=\{`Rechnung \$\{number\}`\}/, "die Rechnungsnummer ist nicht der Seitentitel");
+  assert.match(read("components/ui/PageHeader.jsx"), /<h1 className="ce-page-header-title"/,
+    "der Seitenkopf rendert keine echte Überschrift");
   // Genau EIN Zahlungsstatus-Badge auf der Seite (kein doppeltes wie zuvor).
   assert.equal((detailSrc.match(/\{status\.label\}/g) || []).length, 1, "der Zahlungsstatus darf nur einmal erscheinen");
   assert.match(detailSrc, /\{mode\.label\}/);
@@ -488,9 +499,11 @@ test("24 — technische Informationen liegen eingeklappt in einem nativen <detai
 
 test("25 — Lade-, Fehler-, Leer- und 404-Zustände sind eindeutig und wiederholbar", () => {
   // Liste
-  assert.match(listSrc, /Rechnungen werden geladen…/);
-  assert.match(listSrc, /<div className="loading-center" role="status" aria-live="polite">/);
-  assert.match(listSrc, /<div className="alert alert-error" role="alert">/);
+  // Ladezustand über das gemeinsame Listen-Skeleton, Fehlerzustand über die
+  // gemeinsame Fehlerfläche (beide StateView) — beide melden sich selbst
+  // korrekt an (role="status" bzw. role="alert").
+  assert.match(listSrc, /<ListSkeleton rows=\{6\} label="Rechnungen werden geladen …" \/>/);
+  assert.match(listSrc, /<ErrorState\n\s*title=\{error\}/);
   assert.match(listSrc, /Erneut versuchen/);
   const none = invoiceEmptyState({ count: 0, filters: EMPTY_INVOICE_FILTERS });
   assert.equal(none.title, "Noch keine Rechnungen vorhanden.");

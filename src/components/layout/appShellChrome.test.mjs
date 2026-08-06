@@ -393,11 +393,21 @@ test("17 — Admin- und Auth-Bereich bleiben vom Chrome unberührt", () => {
   assert.match(adminJsx, /className="adm-shell"/, "Adminbereich muss seine eigene Shell behalten");
   assert.ok(!adminJsx.includes("app-shell") || adminJsx.includes("adm-shell"),
     "Adminbereich darf die Kunden-Shell nicht verwenden");
+  // Das SIDEBAR-Chrome (Midnight Slate) bleibt dem Kundenportal vorbehalten —
+  // die Adminnavigation ist bewusst hell, damit der Bereichswechsel sichtbar
+  // bleibt. Der GRUND dagegen ist seit Paket E derselbe (siehe unten): eine
+  // gemeinsame Ivory-Rampe statt einer zweiten, eigenen Flächenfarbe.
   for (const [name, css] of [["admin.css", adminCss], ["auth.css", authCss]]) {
-    for (const t of ["ce-sidebar-", "ce-app-"]) {
-      assert.ok(!css.includes(`var(--${t}`), `${name} darf keine ${t}*-Tokens verwenden`);
-    }
+    assert.ok(!css.includes("var(--ce-sidebar-"), `${name} darf keine ce-sidebar-*-Tokens verwenden`);
   }
+  assert.ok(!authCss.includes("var(--ce-app-"), "auth.css darf keine ce-app-*-Tokens verwenden");
+  // Der Adminbereich liest exakt dieselbe Rampe wie .app-shell — kein zweites
+  // Grau, kein eigener Hintergrundverlauf.
+  const admShell = adminCss.slice(adminCss.indexOf(".adm-shell {"), adminCss.indexOf(".adm-side {"));
+  for (const t of ["--ce-app-bg-top", "--ce-app-bg-mid", "--ce-app-bg-bottom"]) {
+    assert.ok(admShell.includes(`var(${t})`), `.adm-shell nutzt ${t} nicht`);
+  }
+  assert.doesNotMatch(admShell, /background(-color)?:\s*(#|rgb)/, ".adm-shell trägt eine eigene Flächenfarbe");
   // Auth-Tokens bleiben ihrerseits aus dem Chrome heraus.
   const start = premiumRules.indexOf(".app-shell");
   const end = premiumRules.indexOf(".ce-mail-dialog");

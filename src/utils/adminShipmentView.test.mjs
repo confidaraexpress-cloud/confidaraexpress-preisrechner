@@ -220,7 +220,8 @@ test("11 — mobile Kartenansicht ersetzt die Tabelle", () => {
   assert.match(listSrc, /<div className="adm-scard-head">\s*<ShipmentCell row=\{row\} \/>\s*<StatusCell row=\{row\} \/>/);
   assert.match(cssSrc, /@media \(max-width: 900px\) \{[\s\S]*?\.adm-ships-table \{ display: none; \}/);
   assert.match(cssSrc, /\.adm-ships-cards \{ display: none;/);
-  assert.match(cssSrc, /\.adm-scard-actions \.btn \{ min-height: 40px;/);
+  // Touch-Ziel seit Paket E auf 44 px (WCAG 2.5.8) statt 40 px.
+  assert.match(cssSrc, /\.adm-scard-actions \.btn \{ min-height: 44px;/);
 });
 
 // ═══ D) Filter ═══════════════════════════════════════════════════════════════
@@ -298,8 +299,9 @@ test("16 — Leerzustände unterscheiden „keine Sendungen“ von „keine Tref
 });
 
 test("17 — Lade- und Fehlerzustand der Liste sind eindeutig und wiederholbar", () => {
-  assert.match(listSrc, /Sendungen werden geladen…/);
-  assert.match(listSrc, /<div className="loading-center" role="status" aria-live="polite">/);
+  // Ladezustand über das gemeinsame Listen-Skeleton (Paket E); die Beschriftung
+  // wandert in dessen label-Attribut und bleibt vorlesbar.
+  assert.match(listSrc, /<ListSkeleton rows=\{6\} label="Sendungen werden geladen …" \/>/);
   assert.match(listSrc, /Die Sendungen konnten nicht geladen werden\. Bitte versuchen Sie es erneut\./);
   assert.match(listSrc, /Erneut versuchen/);
   // Während des Ladens werden weder Daten noch ein falscher Leerzustand gezeigt.
@@ -357,13 +359,19 @@ test("20 — Abschnitts-Sichtbarkeit verhindert leere Karten", () => {
 });
 
 test("21 — der Kopfbereich trägt die fachliche Kennung, nicht die technische ID", () => {
-  assert.match(detailSrc, /<h1 className="adm-detail-id">\{ident\.primary\}<\/h1>/);
-  assert.equal(/adm-detail-id">Sendung #\{dash\(idOf\(s\)\)\}/.test(detailSrc), false,
+  // Seit Paket E rendert der gemeinsame Seitenkopf (PageHeader, variant="admin")
+  // das <h1>; der frühere eigene Kartenkopf ist entfallen.
+  assert.match(detailSrc, /<PageHeader\b/);
+  assert.match(detailSrc, /title=\{ident\.primary\}/);
+  assert.equal(/title=\{`Sendung #\$\{dash\(idOf\(s\)\)\}`\}/.test(detailSrc), false,
     "die technische ID ist nicht mehr der Seitentitel");
-  // Kunde und Route stehen im Kopf; die primäre Aktion führt zum Kundenkonto.
+  // Kunde und Route stehen im Kopf; der Sprung ins Kundenkonto liegt genau
+  // EINMAL auf der Seite — in der Karte „Kunde", direkt neben den Kundendaten.
   assert.match(detailSrc, /const ident = shipmentIdentity\(s\);/);
   assert.match(detailSrc, /const cust = customerIdentity\(s\);/);
-  assert.match(detailSrc, /Kunde öffnen/);
+  assert.match(detailSrc, /Kundendetail öffnen/);
+  assert.equal((detailSrc.match(/\/admin\/users\/\$\{encodeURIComponent\(userIdOf\(s\)\)\}/g) || []).length, 1,
+    "der Sprung ins Kundenkonto steht mehr als einmal auf der Seite");
   // Die interne ID lebt in den technischen Informationen.
   assert.match(detailSrc, /<details className="adm-card adm-tech">/);
   assert.match(detailSrc, /\["Interne Sendungs-ID", dash\(idOf\(s\)\)\]/);

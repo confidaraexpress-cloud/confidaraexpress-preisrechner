@@ -4,8 +4,12 @@
      1. Kundendialog (Light-Theme, Legacy-Tokens) — Aufbau 1:1 wie der
         Stornierungsdialog (cancellation.css, stn- Prefix), damit der eingeloggte
         Bereich EINE Dialogsprache behält.
-     2. Adminbereich (adm-Theme, --adm-Tokens) — reine Zusatzklassen für die
-        Detailansicht und die Supportspalte im Kundenprofil.
+     2. Adminbereich (Scope adm-sup-) — reine Zusatzklassen für die
+        Detailansicht und die Supportspalte im Kundenprofil. Diese Regeln lasen
+        bis Paket E eine --adm-*-Tokenfamilie, die nirgends definiert war: wo
+        ein Fallback stand, griff der Fallback, wo keiner stand, war die
+        Deklaration ungültig und der Wert wurde geerbt. Alles kommt jetzt aus
+        der Foundation.
    Keine --auth-/--ce-Tokens, keine globalen Button-/Badge-Regeln überschrieben.
    Die Supportkarte der Sidebar selbst liegt weiterhin in dashboard-premium.css
    (sie gehört zum App-Chrome und nutzt ausschließlich --ce-sidebar-*-Tokens).
@@ -54,11 +58,11 @@
 /* Betreffvorschau: nutzergenerierter Freitext, in der Liste auf zwei Zeilen begrenzt.
    Den vollen Text zeigt ausschließlich die Detailseite. */
 .adm-sup-subject {
-  margin: 0; font-size: 13px; line-height: 1.5; color: var(--adm-text);
+  margin: 0; font-size: 13px; line-height: 1.5; color: var(--ce-color-text-primary);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .adm-sup-ticket { font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.adm-sup-sub { display: block; font-size: 12px; color: var(--adm-text-muted); margin-top: 2px; }
+.adm-sup-sub { display: block; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
 .adm-sup-cust { display: flex; flex-direction: column; }
 .adm-sup-cust-name { font-weight: 600; }
 .adm-sup-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -76,15 +80,15 @@
 .adm-sup-mailrows { display: grid; gap: 8px; margin-top: 4px; }
 .adm-sup-mailrow {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
-  padding: 10px 12px; border: 1px solid var(--adm-border); border-radius: var(--adm-radius-sm, 8px);
+  padding: 10px 12px; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm);
   font-size: 13px; line-height: 1.5;
 }
-.adm-sup-mailrow-name { font-weight: 600; color: var(--adm-text); }
-.adm-sup-mailrow-state { color: var(--adm-text-muted); }
-.adm-sup-mailrow-fail .adm-sup-mailrow-state { color: var(--danger, #b91c1c); font-weight: 600; }
+.adm-sup-mailrow-name { font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-sup-mailrow-state { color: var(--ce-color-text-muted); }
+.adm-sup-mailrow-fail .adm-sup-mailrow-state { color: var(--ce-color-status-error-fg); font-weight: 600; }
 /* Der technische Providerhinweis: kleiner, umbruchfest, volle Breite. */
 .adm-sup-mailrow-err {
-  flex-basis: 100%; font-size: 12px; color: var(--adm-text-muted);
+  flex-basis: 100%; font-size: 12px; color: var(--ce-color-text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -101,34 +105,31 @@
    ohne sie zu interpretieren; overflow-wrap bricht überlange Zeichenketten, statt das
    Layout zu sprengen. */
 .adm-sup-message {
-  margin: 0; padding: 14px 16px; border-radius: var(--adm-radius, 10px);
-  background: var(--adm-surface-soft, #f7f9fc);
-  border: 1px solid var(--adm-border);
-  font-size: 13px; line-height: 1.6; color: var(--adm-text);
+  margin: 0; padding: 14px 16px; border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+  font-size: 13px; line-height: 1.6; color: var(--ce-color-text-primary);
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
 
-.adm-sup-note {
-  width: 100%; padding: 10px 12px; font-size: 13px; font-family: var(--ce-font-sans);
-  line-height: 1.5; color: var(--adm-text); background: #fff;
-  border: 1px solid var(--adm-border); border-radius: var(--adm-radius-sm, 8px);
-  outline: none; resize: vertical; min-height: 96px;
-}
-.adm-sup-note:focus { border-color: var(--adm-accent); box-shadow: var(--ce-elevation-focus-ring); }
-.adm-sup-note:disabled { background: var(--adm-surface-soft, #f7f9fc); color: var(--adm-text-muted); }
+/* Material, Höhe, Kante, Fokus und Disabled kommen seit Paket E aus dem
+   Formularsystem (.field-input .field-textarea, forms.css) — die frühere,
+   parallel gepflegte Fassung mit eigenem #fff, eigenem Fokus und
+   `outline: none` ist entfallen. Hier bleibt nur die Mindesthöhe. */
+.adm-sup-note { min-height: 96px; }
 
 .adm-sup-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
-.adm-sup-hint { font-size: 12px; color: var(--adm-text-muted); line-height: 1.5; }
+.adm-sup-hint { font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
 /* Supportspalte im Kundenprofil — kompakte Liste, kein zweiter Tabellenrahmen. */
 .adm-sup-mini { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .adm-sup-mini-item {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-  padding: 10px 12px; border: 1px solid var(--adm-border); border-radius: var(--adm-radius-sm, 8px);
+  padding: 10px 12px; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm);
 }
 .adm-sup-mini-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .adm-sup-mini-subject {
-  font-size: 13px; color: var(--adm-text); overflow: hidden;
+  font-size: 13px; color: var(--ce-color-text-primary); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -296,15 +297,15 @@
 .adm-sup-msg {
   max-width: 82%;
   padding: 11px 13px;
-  border: 1px solid var(--adm-border, #dfe3e8);
-  border-radius: 10px;
-  background: var(--adm-surface, #fff);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
 }
-.adm-sup-msg-customer { align-self: flex-start; border-top-left-radius: 3px; }
+.adm-sup-msg-customer { align-self: flex-start; }
 .adm-sup-msg-admin {
   align-self: flex-end;
-  border-top-right-radius: 3px;
-  background: var(--adm-surface-muted, #f4f6f8);
+  background: var(--ce-color-brand-soft);
+  border-color: var(--ce-color-brand-border);
 }
 .adm-sup-msg-head {
   display: flex;
@@ -313,8 +314,8 @@
   gap: 12px;
   margin-bottom: 4px;
 }
-.adm-sup-msg-author { font-size: 12px; font-weight: 600; }
-.adm-sup-msg-time { font-size: 11px; opacity: 0.7; white-space: nowrap; }
+.adm-sup-msg-author { font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-primary); }
+.adm-sup-msg-time { font-size: var(--ce-text-micro-size); font-weight: 400; color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .adm-sup-msg-body {
   margin: 0;
   font-size: 13px;
@@ -332,8 +333,8 @@
   align-items: center;
   gap: 6px;
 }
-.adm-sup-public { color: var(--adm-accent, #2d6cdf); }
-.adm-sup-internal { opacity: 0.85; }
+.adm-sup-public { color: var(--ce-color-brand-ink); }
+.adm-sup-internal { color: var(--ce-color-text-muted); }
 
 /* Antwortbedarf in der Liste — zusätzlich zum Status, nie an seiner Stelle. */
 .adm-sup-replybadge { margin-left: 6px; }

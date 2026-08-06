@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { EmptyState, ErrorState, ListSkeleton, LoadingState } from "../../components/ui/StateView";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import { selectListTotal } from "../../utils/adminOverview.mjs";
 import {
   getInvoiceProductionReadiness,
   listInvoiceBackfillPreview,
@@ -33,12 +37,6 @@ function selectCandidates(d) {
   }
   return [];
 }
-function selectTotal(d) {
-  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-  const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-  const n = Number(firstDefined(pag.total, pag.count, d.total));
-  return Number.isFinite(n) ? n : null;
-}
 
 function ChipList({ items }) {
   if (!Array.isArray(items) || items.length === 0) return <span className="adm-muted">—</span>;
@@ -69,7 +67,7 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
       </div>
       <div className="adm-card-body">
         {loading ? (
-          <div className="loading-center"><span className="spinner spinner-dark" /> Wird geprüft…</div>
+          <LoadingState text="Produktionsbereitschaft wird geprüft …" />
         ) : error ? (
           <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
         ) : !readiness ? (
@@ -176,7 +174,7 @@ export default function AdminBackfillPage() {
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       setRows(selectCandidates(d));
-      setTotal(selectTotal(d));
+      setTotal(selectListTotal(d));
     } catch {
       setError(GENERIC_ERROR);
       setRows([]); setTotal(null);
@@ -236,17 +234,28 @@ export default function AdminBackfillPage() {
 
   return (
     <div className="adm-page">
-      {back}
-      <header className="adm-page-head">
-        <h1 className="adm-title">Interne Vorschau-PDFs erzeugen</h1>
-        <p className="adm-sub">
-          Erzeugt für bestehende, tatsächlich gebuchte Sendungen ein fehlendes Rechnungs-PDF als
-          INTERNE VORSCHAU (mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt
-          dauerhaft ein Testdokument — es wird NICHT produktiv, verbraucht keine neue Rechnungsnummer,
-          ändert keine Beträge/Datumsangaben und löst keinen E-Mail-Versand aus. Aktionen werden
-          serverseitig geprüft und im Admin-Audit protokolliert.
-        </p>
-      </header>
+      {/* Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Der frühere
+          fünfzeilige Untertitel trug die gesamte Erklärung; er sagt jetzt in
+          einem Satz, was die Seite tut, und die Zusicherungen stehen als
+          eigener Hinweis darunter — lesbar statt überfliegbar. Fachlich ist
+          kein Wort entfallen. */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Abrechnung"
+        backLink={back}
+        title="Interne Vorschau-PDFs erzeugen"
+        subtitle={'Erzeugt für bestehende, tatsächlich gebuchte Sendungen ein fehlendes Rechnungs-PDF als interne Vorschau — mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN".'}
+      />
+
+      <p className="adm-note adm-head-note" role="note">
+        <Icon n="shieldCheck" s={16} />
+        <span>
+          Das Dokument bleibt dauerhaft ein Testdokument: Es wird <strong>nicht</strong> produktiv,
+          verbraucht <strong>keine</strong> neue Rechnungsnummer, ändert <strong>keine</strong>
+          {" "}Beträge oder Datumsangaben und löst <strong>keinen</strong> E-Mail-Versand aus.
+          Jede Aktion wird serverseitig geprüft und im Admin-Audit protokolliert.
+        </span>
+      </p>
 
       <ReadinessCard readiness={readiness} loading={readinessLoading} error={readinessError} onReload={loadReadiness} />
 
@@ -256,15 +265,15 @@ export default function AdminBackfillPage() {
         </div>
       )}
 
-      <header className="adm-page-head adm-page-head-row">
+      <div className="adm-section-head">
         <div>
-          <h2 className="adm-subtitle">Backfill-Vorschau</h2>
-          <p className="adm-sub">Alle Rechnungen zu tatsächlich gebuchten Sendungen. Die Aktion ist nur aktiv, wenn das PDF objektiv erzeugbar ist.</p>
+          <h2 className="adm-section-title">Backfill-Vorschau</h2>
+          <p className="adm-section-sub">Alle Rechnungen zu tatsächlich gebuchten Sendungen. Die Aktion ist nur aktiv, wenn das PDF objektiv erzeugbar ist.</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={loadList} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
         </button>
-      </header>
+      </div>
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
@@ -290,13 +299,29 @@ export default function AdminBackfillPage() {
       </form>
 
       {loading ? (
-        <div className="table-card"><div className="loading-center"><span className="spinner spinner-dark" /> Wird geladen…</div></div>
+        <div className="table-card"><ListSkeleton rows={5} label="Backfill-Vorschau wird geladen …" /></div>
       ) : error ? (
-        <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
+        <div className="ce-card">
+          <ErrorState
+            title={error}
+            action={(
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadList}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            )}
+          />
+        </div>
       ) : rows.length === 0 ? (
-        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="invoice" s={24} /></div><div className="empty-title">Keine Rechnungen gefunden</div></div></div>
+        <div className="ce-card">
+          <EmptyState
+            icon="invoice"
+            title="Keine Rechnungen gefunden"
+            text="Für die gewählten Filter gibt es keine Kandidaten für einen PDF-Backfill."
+          />
+        </div>
       ) : (
-        <div className="table-card">
+        <>
+        <div className="table-card adm-bf-table">
           <div className="table-scroll">
             <table>
               <thead>
@@ -335,6 +360,36 @@ export default function AdminBackfillPage() {
             </table>
           </div>
         </div>
+
+        {/* Mobil: dieselben Angaben als Karten. Fünf Spalten waren unterhalb
+            von ~430 px nur noch horizontal scrollend lesbar. */}
+        <ul className="adm-bf-cards">
+          {rows.map((c, i) => {
+            const id = idOf(c);
+            return (
+              <li className="adm-scard" key={id != null ? `card-inv-${id}` : `card-row-${i}`}>
+                <div className="adm-scard-head">
+                  <span className="adm-mono">
+                    {id != null
+                      ? <Link className="adm-idlink" to={`/admin/invoices/${encodeURIComponent(id)}`}>{dash(numberOf(c))}</Link>
+                      : dash(numberOf(c))}
+                  </span>
+                  <StatusCell c={c} />
+                </div>
+                <dl className="adm-scard-kv">
+                  <div><dt>Fehlende Felder</dt><dd><ChipList items={c.missingFields} /></dd></div>
+                  <div><dt>Shipment-ID</dt><dd className="adm-mono">{dash(shipmentOf(c))}</dd></div>
+                </dl>
+                <div className="adm-scard-actions">
+                  <button type="button" className="btn btn-primary btn-sm" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
+                    <Icon n="form" s={13} /> Vorschau-PDF erzeugen
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        </>
       )}
 
       {showPagination && (
@@ -349,30 +404,24 @@ export default function AdminBackfillPage() {
         </div>
       )}
 
-      {/* Bestätigungsmodal — die einzige mutierende Aktion erst nach bewusster Bestätigung. */}
+      {/* Bestätigungsdialog — die einzige mutierende Aktion erst nach bewusster
+          Bestätigung. Bis Paket E war dieser Dialog handgebaut und hatte als
+          einziger im Adminbereich WEDER Fokusfalle NOCH Fokusrückgabe NOCH
+          Escape; er läuft jetzt über die gemeinsame ConfirmDialog-Komponente.
+          Der Wortlaut ist unverändert. */}
       {modalCandidate && (
-        <div className="adm-modal-overlay" role="presentation" onClick={closeModal}>
-          <div className="adm-modal" role="dialog" aria-modal="true" aria-labelledby="adm-bf-title" aria-describedby="adm-bf-desc" onClick={(e) => e.stopPropagation()}>
-            <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="form" s={22} /></div>
-            <h2 id="adm-bf-title" className="adm-modal-title">Interne Vorschau erzeugen?</h2>
-            <p id="adm-bf-desc" className="adm-modal-text">
-              Erzeugt aus den gespeicherten historischen Daten dieser Rechnung eine INTERNE VORSCHAU
-              (PDF mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt ein
-              Testdokument und wird NICHT produktiv. Es entsteht KEINE neue Rechnungsnummer; Beträge und
-              Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.
-            </p>
-            <p className="adm-modal-sub">Rechnung {dash(numberOf(modalCandidate))} · #{dash(idOf(modalCandidate))}</p>
-            <p className="adm-support-hint" style={{ marginTop: 0, marginBottom: 16 }}>Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft.</p>
-            <div className="adm-modal-actions">
-              <button type="button" className="btn btn-outline btn-sm" onClick={closeModal} disabled={modalBusy}>Abbrechen</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={confirmBackfill} disabled={modalBusy}>
-                {modalBusy
-                  ? <><span className="spinner spinner-dark" /> Wird erzeugt…</>
-                  : <><Icon n="check" s={14} /> Vorschau erzeugen</>}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Interne Vorschau erzeugen?"
+          text={'Erzeugt aus den gespeicherten historischen Daten dieser Rechnung eine INTERNE VORSCHAU (PDF mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt ein Testdokument und wird NICHT produktiv. Es entsteht KEINE neue Rechnungsnummer; Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.'}
+          subline={`Rechnung ${dash(numberOf(modalCandidate))} · #${dash(idOf(modalCandidate))}`}
+          note="Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."
+          icon="form"
+          confirmLabel="Vorschau erzeugen"
+          busy={modalBusy}
+          busyLabel="Wird erzeugt …"
+          onCancel={closeModal}
+          onConfirm={confirmBackfill}
+        />
       )}
     </div>
   );

@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminInvoices } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
+import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
 import {
   EMPTY_INVOICE_FILTERS,
   INVOICE_LIST_ERROR,
@@ -30,6 +32,9 @@ const ERROR_MESSAGES = {
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
+// selectTotal/selectHasMore lagen bis Paket E in jeder Adminliste als eigene,
+// fast wortgleiche Kopie. Sie stehen jetzt einmal in utils/adminOverview.mjs —
+// gleiches Verhalten, eine Quelle.
 // ── Response defensiv lesen — keine Annahme über die exakte Backend-Struktur ──
 function selectRows(d) {
   if (Array.isArray(d)) return d;
@@ -41,23 +46,7 @@ function selectRows(d) {
   return [];
 }
 
-function selectTotal(d) {
-  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
-  const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-  const t = firstDefined(pag.total, pag.count, pag.total_count, d.total, d.total_count, d.totalCount, d.count);
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-}
 
-function selectHasMore(d, rowCount, page, size, total) {
-  if (Number.isFinite(total)) return page * size < total;
-  if (d && typeof d === "object" && !Array.isArray(d)) {
-    const pag = d.pagination && typeof d.pagination === "object" ? d.pagination : {};
-    if (typeof pag.has_more === "boolean") return pag.has_more;
-    if (typeof d.has_more === "boolean") return d.has_more;
-  }
-  return rowCount >= size;
-}
 
 // ── Feld-Getter: NUR erlaubte Felder. Kein Object.keys, kein Spread der ganzen
 // Zeile. Die Kunden-E-Mail wird in der Liste bewusst NICHT mehr gelesen — für
@@ -183,10 +172,10 @@ export default function AdminInvoicesPage() {
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
       const list = selectRows(d);
-      const t = selectTotal(d);
+      const t = selectListTotal(d);
       setRows(list);
       setTotal(t);
-      setHasMore(selectHasMore(d, list.length, page, PAGE_SIZE, t));
+      setHasMore(selectListHasMore(d, list.length, page, PAGE_SIZE, t));
     } catch {
       setError(INVOICE_LIST_ERROR);
       setRows([]);
@@ -257,7 +246,7 @@ export default function AdminInvoicesPage() {
             Freitextsuche über Firma/Kundennummer bietet das Backend nicht an;
             sie wird deshalb auch nicht vorgetäuscht. */}
         <details className="adm-filter-adv">
-          <summary>Technischer Filter</summary>
+          <summary><span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={14} /></span> Technischer Filter</summary>
           <div className="adm-filter-adv-body">
             <div className="adm-filter-field">
               <label htmlFor="f-user">Kunden-ID (intern)</label>
@@ -288,18 +277,18 @@ export default function AdminInvoicesPage() {
 
       {loading ? (
         <div className="table-card">
-          <div className="loading-center" role="status" aria-live="polite">
-            <span className="spinner spinner-dark" /> Rechnungen werden geladen…
-          </div>
+          <ListSkeleton rows={6} label="Rechnungen werden geladen …" />
         </div>
       ) : error ? (
-        <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
-          <div className="adm-loaderr-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
-            </button>
-          </div>
+        <div className="ce-card">
+          <ErrorState
+            title={error}
+            action={(
+              <button type="button" className="btn btn-primary btn-sm" onClick={load}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            )}
+          />
         </div>
       ) : rows.length === 0 ? (
         <div className="table-card">

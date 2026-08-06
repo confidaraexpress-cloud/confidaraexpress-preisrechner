@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { getAdminSupportRequest, updateAdminSupportRequest, replyAdminSupportRequest } from "../../api/adminApi";
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import {
@@ -320,7 +321,27 @@ export default function AdminSupportRequestDetailPage() {
 
   return (
     <div className="adm-page">
-      {back}
+      {/* Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Der
+          Antwortbedarf wird serverseitig aus dem öffentlichen Verlauf
+          abgeleitet, nicht aus updated_at (das auch ein interner Vermerk
+          verändert). */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Konto & Support"
+        backLink={back}
+        title={supportLabel(req)}
+        subtitle={req.categoryLabel || "—"}
+        meta={(
+          <>
+            <span className={`badge ${statusCls}`}>{req.statusLabel || statusFallback}</span>
+            {supportReplyStateMeta(req) && (
+              <span className={`badge ${supportReplyStateMeta(req)[0]}`}>
+                {supportReplyStateMeta(req)[1]}
+              </span>
+            )}
+          </>
+        )}
+      />
 
       {/* Scope-Trennung: unmissverständlich, dass das Bearbeiten hier NICHTS an die
           Kundschaft sendet und nichts an Sendung, Rechnung oder Zahlung ändert. */}
@@ -364,198 +385,199 @@ export default function AdminSupportRequestDetailPage() {
         </div>
       )}
 
-      {/* 1) Kopfbereich */}
-      <div className="adm-card">
-        <div className="adm-card-head adm-page-head-row">
-          <div>
-            <h1 className="adm-title">{supportLabel(req)}</h1>
-            <p className="adm-sub">{req.categoryLabel || "—"}</p>
+      <div className="adm-cards">
+        {/* 1) Metadaten des Vorgangs. Titel, Kategorie, Status und Antwortbedarf
+            stehen seit Paket E im gemeinsamen Seitenkopf (oben) — hier stand
+            zuvor ein zweiter Seitentitel mitten auf der Seite. */}
+        <div className="adm-card">
+          <div className="adm-card-body">
+            <KV items={[
+              ["Eingegangen", fmtDateTime(req.createdAt)],
+              ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
+              ["Zuletzt bearbeitet von", handlerName],
+              ["Bearbeitet am", fmtDateTime(req.handledAt)],
+              // Nur bei tatsächlich geschlossenen Anfragen — sonst keine leere Zeile erzwingen.
+              ...(req.closedAt ? [["Geschlossen am", fmtDateTime(req.closedAt)]] : []),
+              ["Revision", missingRevision ? "—" : String(revision)],
+              // Optionale, vorbereitete Zuordnungen: erscheinen ausschließlich, wenn gesetzt.
+              // Es wird keine Platzhalterkarte und keine leere Zeile erzeugt.
+              ...(req.shipmentId != null
+                ? [["Sendung", <Link to={shipmentPath(req.shipmentId)}>Sendung #{req.shipmentId}</Link>]]
+                : []),
+              ...(req.invoiceId != null
+                ? [["Rechnung", <Link to={invoicePath(req.invoiceId)}>Rechnung #{req.invoiceId}</Link>]]
+                : []),
+            ]} />
           </div>
-          <span className={`badge ${statusCls}`}>{req.statusLabel || statusFallback}</span>
         </div>
-        {/* Antwortbedarf, serverseitig aus dem öffentlichen Verlauf abgeleitet —
-            nicht aus updated_at (das auch ein interner Vermerk verändert). */}
-        {supportReplyStateMeta(req) && (
-          <p className="adm-sup-replystate">
-            <span className={`badge ${supportReplyStateMeta(req)[0]}`}>
-              {supportReplyStateMeta(req)[1]}
-            </span>
-          </p>
-        )}
-        <KV items={[
-          ["Eingegangen", fmtDateTime(req.createdAt)],
-          ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
-          ["Zuletzt bearbeitet von", handlerName],
-          ["Bearbeitet am", fmtDateTime(req.handledAt)],
-          // Nur bei tatsächlich geschlossenen Anfragen — sonst keine leere Zeile erzwingen.
-          ...(req.closedAt ? [["Geschlossen am", fmtDateTime(req.closedAt)]] : []),
-          ["Revision", missingRevision ? "—" : String(revision)],
-          // Optionale, vorbereitete Zuordnungen: erscheinen ausschließlich, wenn gesetzt.
-          // Es wird keine Platzhalterkarte und keine leere Zeile erzeugt.
-          ...(req.shipmentId != null
-            ? [["Sendung", <Link to={shipmentPath(req.shipmentId)}>Sendung #{req.shipmentId}</Link>]]
-            : []),
-          ...(req.invoiceId != null
-            ? [["Rechnung", <Link to={invoicePath(req.invoiceId)}>Rechnung #{req.invoiceId}</Link>]]
-            : []),
-        ]} />
-      </div>
 
-      {/* 2) Kunde */}
-      <div className="adm-card">
-        <h2 className="adm-card-title">Kunde</h2>
-        <KV items={[
-          ["Unternehmen", uid != null && cust.known
-            ? <Link to={`/admin/users/${encodeURIComponent(uid)}`}>{cust.primary}</Link>
-            : cust.primary],
-          ["Ansprechpartner", dash(req.customer?.name)],
-          ["Kundennummer", dash(req.customer?.customerNumber)],
-          ["E-Mail", req.customer?.email
-            ? <a href={`mailto:${req.customer.email}`}>{req.customer.email}</a>
-            : "—"],
-        ]} />
-      </div>
+        {/* 2) Kunde */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Kunde</h2>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Unternehmen", uid != null && cust.known
+                ? <Link to={`/admin/users/${encodeURIComponent(uid)}`}>{cust.primary}</Link>
+                : cust.primary],
+              ["Ansprechpartner", dash(req.customer?.name)],
+              ["Kundennummer", dash(req.customer?.customerNumber)],
+              ["E-Mail", req.customer?.email
+                ? <a href={`mailto:${req.customer.email}`}>{req.customer.email}</a>
+                : "—"],
+            ]} />
+          </div>
+        </div>
 
-      {/* 3) Anfrage — Betreff und Nachricht sind Kundeneingabe und werden als
-          REINER Text gerendert (React escaped sie; kein dangerouslySetInnerHTML). */}
-      <div className="adm-card">
-        <h2 className="adm-card-title">Anfrage</h2>
-        <KV items={[["Betreff", dash(req.subject)]]} />
-        <p className="adm-sup-message">{req.message || "—"}</p>
-      </div>
+        {/* 3) Anfrage — Betreff und Nachricht sind Kundeneingabe und werden als
+            REINER Text gerendert (React escaped sie; kein dangerouslySetInnerHTML). */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Anfrage</h2>
+          <div className="adm-card-body">
+            <KV items={[["Betreff", dash(req.subject)]]} />
+            <p className="adm-sup-message">{req.message || "—"}</p>
+          </div>
+        </div>
 
-      {/* 3a) Öffentlicher Nachrichtenverlauf — GENAU das, was der Kunde sieht.
-          Interne Vermerke erscheinen hier nie: der Server liefert ausschließlich
-          Nachrichten mit visibility='public' aus. Alle Texte sind Freitext und
-          werden als reiner Text gerendert (kein dangerouslySetInnerHTML). */}
-      <div className="adm-card">
-        <h2 className="adm-card-title">Nachrichtenverlauf</h2>
-        {Array.isArray(req.messages) && req.messages.length > 0 ? (
-          <ol className="adm-sup-thread">
-            {req.messages.map((m, i) => (
-              <li
-                key={m.id != null ? `m${m.id}` : `original-${i}`}
-                className={`adm-sup-msg adm-sup-msg-${m.authorRole === "admin" ? "admin" : "customer"}`}
+        {/* 3a) Öffentlicher Nachrichtenverlauf — GENAU das, was der Kunde sieht.
+            Interne Vermerke erscheinen hier nie: der Server liefert ausschließlich
+            Nachrichten mit visibility='public' aus. Alle Texte sind Freitext und
+            werden als reiner Text gerendert (kein dangerouslySetInnerHTML). */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Nachrichtenverlauf</h2>
+          <div className="adm-card-body">
+            {Array.isArray(req.messages) && req.messages.length > 0 ? (
+              <ol className="adm-sup-thread">
+                {req.messages.map((m, i) => (
+                  <li
+                    key={m.id != null ? `m${m.id}` : `original-${i}`}
+                    className={`adm-sup-msg adm-sup-msg-${m.authorRole === "admin" ? "admin" : "customer"}`}
+                  >
+                    <div className="adm-sup-msg-head">
+                      <span className="adm-sup-msg-author">
+                        {m.authorRole === "admin" ? "ConfidaraExpress Support" : "Kunde"}
+                      </span>
+                      <span className="adm-sup-msg-time">{fmtDateTime(m.createdAt)}</span>
+                    </div>
+                    <p className="adm-sup-msg-body">{m.message}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="adm-sup-hint">{ADMIN_THREAD_EMPTY}</p>
+            )}
+
+            {/* Öffentliche Antwort — eigener Endpunkt, klar als kundensichtbar
+                gekennzeichnet. Bewusst getrennt vom internen Vermerk weiter unten. */}
+            <form className="adm-sup-replyform" onSubmit={submitReply}>
+              <label className="adm-label" htmlFor="sup-reply">Öffentlich antworten</label>
+              <textarea
+                id="sup-reply"
+                className="field-input field-textarea adm-sup-note"
+                rows={4}
+                value={reply}
+                maxLength={ADMIN_REPLY_MAX}
+                disabled={replying}
+                placeholder="Ihre Antwort an den Kunden …"
+                onChange={(e) => {
+                  // Geänderter Text = andere Absendeaktion → neuer Schlüssel.
+                  if (replyIdemKey.current) replyIdemKey.current = null;
+                  setReply(e.target.value);
+                }}
+              />
+              <p className="adm-sup-hint adm-sup-public">
+                <Icon n="mail" s={13} /> {ADMIN_REPLY_PUBLIC_HINT}
+              </p>
+              {replyError && (
+                <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{replyError}</div>
+              )}
+              <div className="adm-sup-actions">
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  disabled={!adminReplyState(reply).valid || replying}
+                >
+                  {replying ? <><span className="spinner" /> Wird gesendet …</> : <>Antwort an Kunden senden</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
+            Ein Fehler der einen Mail sagt nichts über die andere aus. */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">E-Mail-Zustellung</h2>
+          <div className="adm-card-body">
+            <div className="adm-sup-mailrows">
+              <MailRow label={SUPPORT_MAIL_LABELS.internal} state={req.notifications?.internal} />
+              <MailRow label={SUPPORT_MAIL_LABELS.customerConfirmation} state={req.notifications?.customerConfirmation} />
+            </div>
+            <p className="adm-sup-hint">
+              Beide E-Mails werden unabhängig voneinander versendet. Ein Fehler bei einer der beiden
+              hat die Anfrage nicht verhindert — das Ticket besteht in jedem Fall.
+            </p>
+          </div>
+        </div>
+
+        {/* 4) Bearbeitung */}
+        <div className="adm-card">
+          <h2 className="adm-card-title">Bearbeitung</h2>
+          <div className="adm-card-body">
+
+            <label className="adm-label" htmlFor="sup-status">Status</label>
+            {statusEditable && statusOptions.length > 0 ? (
+              <select
+                id="sup-status"
+                className="field-select adm-edit-select"
+                value={editStatus}
+                disabled={saving}
+                onChange={(e) => setEditStatus(e.target.value)}
               >
-                <div className="adm-sup-msg-head">
-                  <span className="adm-sup-msg-author">
-                    {m.authorRole === "admin" ? "ConfidaraExpress Support" : "Kunde"}
-                  </span>
-                  <span className="adm-sup-msg-time">{fmtDateTime(m.createdAt)}</span>
-                </div>
-                <p className="adm-sup-msg-body">{m.message}</p>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="adm-sup-hint">{ADMIN_THREAD_EMPTY}</p>
-        )}
+                {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            ) : (
+              <p className="adm-sup-hint">
+                Für diesen Status ist kein Wechsel hinterlegt. Der interne Vermerk bleibt bearbeitbar.
+              </p>
+            )}
 
-        {/* Öffentliche Antwort — eigener Endpunkt, klar als kundensichtbar
-            gekennzeichnet. Bewusst getrennt vom internen Vermerk weiter unten. */}
-        <form className="adm-sup-replyform" onSubmit={submitReply}>
-          <label className="adm-label" htmlFor="sup-reply">Öffentlich antworten</label>
-          <textarea
-            id="sup-reply"
-            className="adm-sup-note"
-            rows={4}
-            value={reply}
-            maxLength={ADMIN_REPLY_MAX}
-            disabled={replying}
-            placeholder="Ihre Antwort an den Kunden …"
-            onChange={(e) => {
-              // Geänderter Text = andere Absendeaktion → neuer Schlüssel.
-              if (replyIdemKey.current) replyIdemKey.current = null;
-              setReply(e.target.value);
-            }}
-          />
-          <p className="adm-sup-hint adm-sup-public">
-            <Icon n="mail" s={13} /> {ADMIN_REPLY_PUBLIC_HINT}
-          </p>
-          {replyError && (
-            <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{replyError}</div>
-          )}
-          <div className="adm-sup-actions">
-            <button
-              type="submit"
-              className="btn btn-primary btn-sm"
-              disabled={!adminReplyState(reply).valid || replying}
-            >
-              {replying ? <><span className="spinner" /> Wird gesendet …</> : <>Antwort an Kunden senden</>}
-            </button>
+            <label className="adm-label" htmlFor="sup-note">Interner Vermerk</label>
+            <textarea
+              id="sup-note"
+              className="field-input field-textarea adm-sup-note"
+              rows={4}
+              value={editNote}
+              disabled={saving}
+              placeholder="Nur intern sichtbar — der Kunde sieht diesen Text nicht."
+              onChange={(e) => setEditNote(e.target.value)}
+            />
+            <p className="adm-sup-hint adm-sup-internal">
+              <Icon n="lock" s={13} /> {ADMIN_NOTE_INTERNAL_HINT} Ein leeres Feld löscht einen
+              vorhandenen Vermerk.
+            </p>
+
+            {missingRevision && (
+              <div className="alert alert-error" role="alert">
+                <Icon n="x" s={16} />
+                Der Bearbeitungsstand ist unvollständig geladen. Bitte laden Sie die Anfrage neu,
+                bevor Sie speichern.
+              </div>
+            )}
+
+            <div className="adm-sup-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={!canSave} aria-busy={saving || undefined}>
+                {saving ? <><span className="spinner" /> Wird gespeichert …</> : "Änderung speichern"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                disabled={!dirty || saving}
+                onClick={() => { setEditStatus(baseline.status); setEditNote(baseline.adminNote ?? ""); setSaveMsg(null); }}
+              >
+                Verwerfen
+              </button>
+            </div>
           </div>
-        </form>
-      </div>
-
-      {/* 3b) E-Mail-Zustellung — zwei UNABHÄNGIGE Vorgänge, strikt getrennt dargestellt.
-          Ein Fehler der einen Mail sagt nichts über die andere aus. */}
-      <div className="adm-card">
-        <h2 className="adm-card-title">E-Mail-Zustellung</h2>
-        <div className="adm-sup-mailrows">
-          <MailRow label={SUPPORT_MAIL_LABELS.internal} state={req.notifications?.internal} />
-          <MailRow label={SUPPORT_MAIL_LABELS.customerConfirmation} state={req.notifications?.customerConfirmation} />
-        </div>
-        <p className="adm-sup-hint">
-          Beide E-Mails werden unabhängig voneinander versendet. Ein Fehler bei einer der beiden
-          hat die Anfrage nicht verhindert — das Ticket besteht in jedem Fall.
-        </p>
-      </div>
-
-      {/* 4) Bearbeitung */}
-      <div className="adm-card">
-        <h2 className="adm-card-title">Bearbeitung</h2>
-
-        <label className="adm-label" htmlFor="sup-status">Status</label>
-        {statusEditable && statusOptions.length > 0 ? (
-          <select
-            id="sup-status"
-            value={editStatus}
-            disabled={saving}
-            onChange={(e) => setEditStatus(e.target.value)}
-          >
-            {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        ) : (
-          <p className="adm-sup-hint">
-            Für diesen Status ist kein Wechsel hinterlegt. Der interne Vermerk bleibt bearbeitbar.
-          </p>
-        )}
-
-        <label className="adm-label" htmlFor="sup-note">Interner Vermerk</label>
-        <textarea
-          id="sup-note"
-          className="adm-sup-note"
-          rows={4}
-          value={editNote}
-          disabled={saving}
-          placeholder="Nur intern sichtbar — der Kunde sieht diesen Text nicht."
-          onChange={(e) => setEditNote(e.target.value)}
-        />
-        <p className="adm-sup-hint adm-sup-internal">
-          <Icon n="lock" s={13} /> {ADMIN_NOTE_INTERNAL_HINT} Ein leeres Feld löscht einen
-          vorhandenen Vermerk.
-        </p>
-
-        {missingRevision && (
-          <div className="alert alert-error" role="alert">
-            <Icon n="x" s={16} />
-            Der Bearbeitungsstand ist unvollständig geladen. Bitte laden Sie die Anfrage neu,
-            bevor Sie speichern.
-          </div>
-        )}
-
-        <div className="adm-sup-actions">
-          <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={!canSave} aria-busy={saving || undefined}>
-            {saving ? <><span className="spinner" /> Wird gespeichert …</> : "Änderung speichern"}
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={!dirty || saving}
-            onClick={() => { setEditStatus(baseline.status); setEditNote(baseline.adminNote ?? ""); setSaveMsg(null); }}
-          >
-            Verwerfen
-          </button>
         </div>
       </div>
     </div>

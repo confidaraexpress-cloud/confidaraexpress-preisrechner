@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminCancellationRequest, updateAdminCancellationRequest } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -282,7 +283,28 @@ export default function AdminCancellationRequestDetailPage() {
 
   return (
     <div className="adm-page">
-      {back}
+      {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten. Er steht
+          jetzt VOR dem Scope-Hinweis und dem Konfliktbanner: erst weiß man,
+          welchen Vorgang man ansieht, dann was für ihn gilt. */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Verwaltung"
+        backLink={back}
+        title={`Stornierungsanfrage ${cancellationLabel(req).replace("Anfrage ", "")}`}
+        subtitle={(
+          <span className="adm-detail-sub">
+            <span>{cust.primary}</span>
+            {ship.known && <span>{ship.primary}</span>}
+          </span>
+        )}
+        meta={(
+          <>
+            <span className={`badge ${statusCls}`}>{statusLabel}</span>
+            <span className="adm-chip"><Icon n="calendar" s={13} /> Eingegangen {fmtDateTime(req.createdAt)}</span>
+            <span className="adm-chip"><Icon n="clock" s={13} /> Zuletzt geändert {fmtDateTime(req.updatedAt)}</span>
+          </>
+        )}
+      />
 
       {/* Scope-Trennung: unmissverständlich, dass dies KEINE echte Stornierung
           beim Carrier/JUMiNGO ist und keine Erstattung/Gutschrift auslöst. */}
@@ -326,25 +348,6 @@ export default function AdminCancellationRequestDetailPage() {
         </div>
       )}
 
-      {/* 1) Kopfbereich */}
-      <div className="adm-card">
-        <div className="adm-card-body">
-          <div className="adm-detail-head">
-            <div className="adm-detail-ident">
-              <h1 className="adm-detail-id">Stornierungsanfrage {cancellationLabel(req).replace("Anfrage ", "")}</h1>
-              <p className="adm-detail-sub">
-                <span>{cust.primary}</span>
-                {ship.known && <span>{ship.primary}</span>}
-              </p>
-              <span className="adm-detail-badges">
-                <span className={`badge ${statusCls}`}>{statusLabel}</span>
-                <span className="adm-chip"><Icon n="calendar" s={13} /> Eingegangen {fmtDateTime(req.createdAt)}</span>
-                <span className="adm-chip"><Icon n="clock" s={13} /> Zuletzt geändert {fmtDateTime(req.updatedAt)}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="adm-cards">
         {/* 2) Kundenwunsch / Grund (voller Text, read-only) */}
@@ -494,6 +497,7 @@ export default function AdminCancellationRequestDetailPage() {
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
             <Icon n="settings" s={17} /> Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
           </summary>
           <div className="adm-card-body">
             <KV items={[

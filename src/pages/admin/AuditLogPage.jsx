@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { statusFallback } from "../../utils/statusFallback.mjs";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Icon } from "../../components/ui/Icon";
+import { EmptyState, ErrorState, ListSkeleton } from "../../components/ui/StateView";
+import { DateField, DATE_FORMAT_HINT } from "../../components/admin/DateField";
+import { selectListTotal, selectListHasMore, selectListRows } from "../../utils/adminOverview.mjs";
 import { listAuditLogs } from "../../api/adminApi";
 
 const PAGE_SIZE = 25;
@@ -49,27 +52,9 @@ const GENERIC_ERROR = "Audit-Logs konnten nicht geladen werden. Bitte versuchen 
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
-// ── Response defensiv lesen — keine Annahme über die exakte Backend-Struktur ──
-function selectRows(d) {
-  if (Array.isArray(d)) return d;
-  if (d && typeof d === "object") {
-    for (const k of ["logs", "data", "items", "audit_logs", "results", "rows"]) {
-      if (Array.isArray(d[k])) return d[k];
-    }
-  }
-  return [];
-}
-
-function selectHasMore(d, rowCount, page, size) {
-  if (d && typeof d === "object" && !Array.isArray(d)) {
-    if (typeof d.has_more === "boolean") return d.has_more;
-    if (typeof d.hasMore === "boolean") return d.hasMore;
-    const total = Number(firstDefined(d.total, d.total_count, d.totalCount, d.count));
-    if (Number.isFinite(total)) return page * size < total;
-  }
-  // Heuristik ohne explizite Felder: volle Seite ⇒ evtl. weitere Einträge.
-  return rowCount >= size;
-}
+// Response defensiv lesen — die Selektoren liegen seit Paket E einmal zentral
+// in utils/adminOverview.mjs (vorher in jeder Adminliste als eigene Kopie).
+const selectRows = (d) => selectListRows(d, ["logs", "audit_logs"]);
 
 // ── Feld-Extraktion (PII-sicher) ─────────────────────────────────────────────
 // Es werden AUSSCHLIESSLICH id/name/type gelesen — niemals wird ein ganzes
@@ -200,7 +185,7 @@ export default function AuditLogPage() {
       try { d = await r.json(); } catch { d = {}; }
       const list = selectRows(d);
       setRows(list);
-      setHasMore(selectHasMore(d, list.length, page, PAGE_SIZE));
+      setHasMore(selectListHasMore(d, list.length, page, PAGE_SIZE, selectListTotal(d)));
     } catch {
       setError(GENERIC_ERROR);
       setRows([]);
@@ -264,14 +249,8 @@ export default function AuditLogPage() {
             value={draft.target_user_id} onChange={(e) => setField("target_user_id", e.target.value)}
           />
         </div>
-        <div className="adm-filter-field">
-          <label htmlFor="f-from">Von</label>
-          <input id="f-from" type="date" value={draft.from} onChange={(e) => setField("from", e.target.value)} />
-        </div>
-        <div className="adm-filter-field">
-          <label htmlFor="f-to">Bis</label>
-          <input id="f-to" type="date" value={draft.to} onChange={(e) => setField("to", e.target.value)} />
-        </div>
+        <DateField id="f-from" label="Von" value={draft.from} onChange={(v) => setField("from", v)} />
+        <DateField id="f-to" label="Bis" value={draft.to} onChange={(v) => setField("to", v)} />
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm">
             <Icon n="filter" s={14} /> Anwenden
@@ -284,88 +263,161 @@ export default function AuditLogPage() {
 
       {loading ? (
         <div className="table-card">
-          <div className="loading-center"><span className="spinner spinner-dark" /> Wird geladen…</div>
+          <ListSkeleton rows={6} label="Audit-Logs werden geladen …" />
         </div>
       ) : error ? (
-        <div className="alert alert-error"><Icon n="x" s={16} />{error}</div>
+        <div className="ce-card">
+          <ErrorState
+            title={error}
+            action={(
+              <button type="button" className="btn btn-outline btn-sm" onClick={load}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            )}
+          />
+        </div>
       ) : rows.length === 0 ? (
-        <div className="table-card">
-          <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="layers" s={24} /></div>
-            <div className="empty-title">Keine Audit-Logs gefunden</div>
-          </div>
+        <div className="ce-card">
+          <EmptyState
+            icon="layers"
+            title={activeCount > 0 ? "Keine Treffer für diese Filter" : "Noch keine Audit-Logs"}
+            text={activeCount > 0
+              ? "Passen Sie die Filter an oder setzen Sie sie zurück."
+              : "Sobald Administrationsvorgänge stattfinden, erscheinen sie hier."}
+            action={activeCount > 0 ? (
+              <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
+                Filter zurücksetzen
+              </button>
+            ) : null}
+          />
         </div>
       ) : (
-        <div className="table-card">
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Zeit</th>
-                  <th>Actor</th>
-                  <th>Aktion</th>
-                  <th>Target</th>
-                  <th>Ergebnis</th>
-                  <th>Metadata</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => {
-                  const key = rowKey(row, i);
-                  const action = actionOf(row);
-                  const result = resultOf(row);
-                  const meta = sanitizeMetadata(metadataOf(row));
-                  const knownAction = ACTION_LABELS[action];
-                  const [resCls, resLabel] = RESULT_META[result] || statusFallback(result);
-                  const isOpen = expanded === key;
-                  return (
-                    <React.Fragment key={key}>
-                      <tr>
-                        <td className="adm-td-time">{fmtTime(timeOf(row))}</td>
-                        <td><Party party={partyOf(row, "actor")} /></td>
-                        <td>
-                          <span className="adm-action">{knownAction || action || "—"}</span>
-                          {knownAction && <span className="adm-action-raw">{action}</span>}
-                        </td>
-                        <td><Party party={partyOf(row, "target")} /></td>
-                        <td><span className={`badge ${resCls}`}>{resLabel}</span></td>
-                        <td>
-                          {meta.length > 0 ? (
-                            <button
-                              type="button"
-                              className="adm-meta-toggle"
-                              onClick={() => toggleExpand(key)}
-                              aria-expanded={isOpen}
-                            >
-                              <Icon n={isOpen ? "chevron" : "chevronRight"} s={14} />
-                              {isOpen ? "Verbergen" : "Details"}
-                            </button>
-                          ) : (
-                            <span className="adm-muted">—</span>
-                          )}
-                        </td>
-                      </tr>
-                      {isOpen && meta.length > 0 && (
-                        <tr className="adm-meta-row">
-                          <td colSpan={6}>
-                            <dl className="adm-meta-list">
-                              {meta.map(([k, v]) => (
-                                <div className="adm-meta-item" key={k}>
-                                  <dt>{k}</dt>
-                                  <dd>{v}</dd>
-                                </div>
-                              ))}
-                            </dl>
+        <>
+          <div className="table-card adm-audit-table">
+            <div className="table-scroll">
+              <table>
+                <caption className="sr-only">Protokollierte Administrationsvorgänge</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Zeit</th>
+                    <th scope="col">Actor</th>
+                    <th scope="col">Aktion</th>
+                    <th scope="col">Target</th>
+                    <th scope="col">Ergebnis</th>
+                    <th scope="col" className="adm-col-action">Metadata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => {
+                    const key = rowKey(row, i);
+                    const action = actionOf(row);
+                    const result = resultOf(row);
+                    const meta = sanitizeMetadata(metadataOf(row));
+                    const knownAction = ACTION_LABELS[action];
+                    const [resCls, resLabel] = RESULT_META[result] || statusFallback(result);
+                    const isOpen = expanded === key;
+                    return (
+                      <React.Fragment key={key}>
+                        <tr>
+                          <td className="adm-td-time">{fmtTime(timeOf(row))}</td>
+                          <td><Party party={partyOf(row, "actor")} /></td>
+                          <td>
+                            <span className="adm-action">{knownAction || action || "—"}</span>
+                            {knownAction && <span className="adm-action-raw">{action}</span>}
+                          </td>
+                          <td><Party party={partyOf(row, "target")} /></td>
+                          <td><span className={`badge ${resCls}`}>{resLabel}</span></td>
+                          <td className="adm-col-action">
+                            {meta.length > 0 ? (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => toggleExpand(key)}
+                                aria-expanded={isOpen}
+                              >
+                                <Icon n={isOpen ? "chevron" : "chevronRight"} s={14} />
+                                {isOpen ? "Verbergen" : "Details"}
+                              </button>
+                            ) : (
+                              <span className="adm-muted">—</span>
+                            )}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {isOpen && meta.length > 0 && (
+                          <tr className="adm-meta-row">
+                            <td colSpan={6}>
+                              <dl className="adm-meta-list">
+                                {meta.map(([k, v]) => (
+                                  <div className="adm-meta-item" key={k}>
+                                    <dt>{k}</dt>
+                                    <dd>{v}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Mobil: dieselben Angaben als Karten statt als gequetschte
+              Sechs-Spalten-Tabelle. Metadaten öffnen dort direkt in der Karte. */}
+          <ul className="adm-audit-cards">
+            {rows.map((row, i) => {
+              const key = rowKey(row, i);
+              const action = actionOf(row);
+              const result = resultOf(row);
+              const meta = sanitizeMetadata(metadataOf(row));
+              const knownAction = ACTION_LABELS[action];
+              const [resCls, resLabel] = RESULT_META[result] || statusFallback(result);
+              const isOpen = expanded === key;
+              return (
+                <li className="adm-scard" key={`card-${key}`}>
+                  <div className="adm-scard-head">
+                    <span className="adm-action">{knownAction || action || "—"}</span>
+                    <span className={`badge ${resCls}`}>{resLabel}</span>
+                  </div>
+                  {knownAction && <span className="adm-action-raw">{action}</span>}
+                  <dl className="adm-scard-kv">
+                    <div><dt>Zeit</dt><dd className="adm-td-time">{fmtTime(timeOf(row))}</dd></div>
+                    <div><dt>Actor</dt><dd><Party party={partyOf(row, "actor")} /></dd></div>
+                    <div><dt>Target</dt><dd><Party party={partyOf(row, "target")} /></dd></div>
+                  </dl>
+                  {meta.length > 0 && (
+                    <>
+                      <div className="adm-scard-actions">
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={() => toggleExpand(key)}
+                          aria-expanded={isOpen}
+                        >
+                          <Icon n={isOpen ? "chevron" : "chevronRight"} s={14} />
+                          {isOpen ? "Metadata verbergen" : "Metadata anzeigen"}
+                        </button>
+                      </div>
+                      {isOpen && (
+                        <dl className="adm-meta-list adm-meta-list-card">
+                          {meta.map(([k, v]) => (
+                            <div className="adm-meta-item" key={k}>
+                              <dt>{k}</dt>
+                              <dd>{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       {showPagination && (

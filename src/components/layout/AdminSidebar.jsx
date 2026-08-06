@@ -2,6 +2,8 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
+import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
+import markPrimary from "../../assets/brand/mark-primary.svg";
 
 // Aktive Adminnavigation (URL-basiert). NavLink liefert den Active-Zustand über
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
@@ -24,7 +26,6 @@ const SOON_NAV = [];
 export function AdminSidebar({ open, onClose }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const initial = (user?.name || user?.company_name || "A").charAt(0).toUpperCase();
 
   const handleLogout = () => { logout(); navigate("/login"); };
   const goDashboard = () => { onClose?.(); navigate("/dashboard"); };
@@ -34,20 +35,30 @@ export function AdminSidebar({ open, onClose }) {
       {open && <div className="adm-side-overlay" onClick={onClose} aria-hidden="true" />}
       <aside className={`adm-side${open ? " adm-side-open" : ""}`} aria-label="Adminbereich Seitenleiste">
         <div className="adm-brand">
-          <span className="adm-brand-mark" aria-hidden="true">CE</span>
+          {/* Dieselbe Bildmarke wie im Kundenportal (Primärvariante für helle
+              Flächen). Rein dekorativ — die Wortmarke steht direkt daneben als
+              echter Text und wird bereits vorgelesen. */}
+          <span className="adm-brand-mark">
+            <img className="adm-brand-mark-img" src={markPrimary} alt="" aria-hidden="true" draggable="false" />
+          </span>
           <div className="adm-brand-text">
             <span className="adm-brand-name">ConfidaraExpress</span>
             <span className="adm-brand-tag">Adminbereich</span>
           </div>
-          <button className="adm-side-close" onClick={onClose} aria-label="Menü schließen">
+          <button type="button" className="adm-side-close" onClick={onClose} aria-label="Menü schließen" title="Menü schließen">
             <Icon n="close" s={18} />
           </button>
         </div>
 
+        {/* Eine Initialenquelle für das ganze Produkt (Paket D): Sidebar,
+            Benutzerchip, Profilhero — und jetzt auch der Adminbereich. Vorher
+            leitete diese Datei den Buchstaben selbst ab, mit umgekehrter
+            Reihenfolge (name vor company_name) und damit einem anderen
+            Ergebnis als die Kunden-Sidebar für dasselbe Konto. */}
         <div className="adm-identity">
-          <span className="adm-identity-avatar" aria-hidden="true">{initial}</span>
+          <span className="adm-identity-avatar" aria-hidden="true">{accountInitials(user)}</span>
           <div className="adm-identity-text">
-            <span className="adm-identity-name">{user?.name || user?.company_name || "Administrator"}</span>
+            <span className="adm-identity-name">{accountDisplayName(user, "Administrator")}</span>
             <span className="adm-identity-role">Administrator</span>
           </div>
         </div>
@@ -85,8 +96,10 @@ export function AdminSidebar({ open, onClose }) {
           )}
         </nav>
 
+        {/* Der Bereichswechsel ist die häufigere Fußaktion und trägt deshalb
+            die Markenfarbe; „Abmelden" bleibt bewusst neutral. */}
         <div className="adm-side-foot">
-          <button type="button" className="adm-foot-btn" onClick={goDashboard}>
+          <button type="button" className="adm-foot-btn adm-foot-btn-switch" onClick={goDashboard}>
             <Icon n="chevronLeft" s={17} /><span>Zum Kundenbereich</span>
           </button>
           <button type="button" className="adm-foot-btn" onClick={handleLogout}>

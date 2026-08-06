@@ -229,12 +229,20 @@ test("7 — das Adminportal ist vollständig Sans", () => {
   const admin = css["admin.css"];
   assert.doesNotMatch(admin, /Cormorant|--ce-font-display|var\(--fd\)/,
     "im Adminbereich gibt es keine Serifen-Titel");
-  // Der Adminseitentitel liegt auf der Page-Title-Stufe (24/20), nicht auf Display.
-  const titel = admin.match(/\.adm-title \{([^}]*)\}/)[1];
+  // Der Adminseitentitel liegt auf der Page-Title-Stufe (24/20), nicht auf
+  // Display. Seit Paket E kommt er aus dem gemeinsamen Seitenkopf
+  // (.ce-page-header--admin, patterns.css) — die frühere Eigenregel .adm-title
+  // ist mit ihrem letzten Aufrufer entfallen.
+  const muster = css["patterns.css"];
+  const titel = muster.match(/\.ce-page-header--admin \.ce-page-header-title \{([^}]*)\}/)[1];
   assert.match(titel, /font-family:\s*var\(--ce-font-sans\)/);
-  assert.match(titel, /font-size:\s*24px/);
-  assert.match(titel, /font-weight:\s*600/);
-  assert.match(admin, /\.adm-title \{ font-size: 20px; \}/, "mobil 20px");
+  assert.match(titel, /font-size:\s*var\(--ce-text-title-page-size\)/);
+  assert.equal(tok("ce-text-title-page-size"), "24px");
+  assert.equal(tok("ce-text-title-page-size-mobile"), "20px");
+  assert.equal(tok("ce-text-title-page-weight"), "600");
+  assert.match(muster, /\.ce-page-header--admin \.ce-page-header-title \{ font-size: var\(--ce-text-title-page-size-mobile\); \}/,
+    "mobil 20px");
+  assert.doesNotMatch(admin, /\.adm-title[\s{]/, "die abgelöste Eigenregel .adm-title ist noch da");
   // Admin-Tabellen und -Filter bleiben auf der dichten Stufe.
   assert.match(admin, /\.adm-filter-field label \{[^}]*font-size:\s*11px/);
 });

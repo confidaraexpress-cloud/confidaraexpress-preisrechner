@@ -351,8 +351,9 @@ test("Liste: Filter, Reset, Lade-, Fehler- und Leerzustand", () => {
   assert.match(listSrc, /const applyFilter = \(\) => \{ setPage\(1\); setAppliedStatus\(draftStatus\); \};/);
   assert.match(listSrc, /className="btn btn-primary btn-sm" disabled=\{loading\}/);
   // Ladezustand als Live-Region, Fehler als alert MIT Retry — kein Leerzustand.
-  assert.match(listSrc, /<div className="loading-center" role="status" aria-live="polite">/);
-  assert.match(listSrc, /<div className="alert alert-error" role="alert">/);
+  // Ladezustand über das gemeinsame Listen-Skeleton (Paket E).
+  assert.match(listSrc, /<ListSkeleton rows=\{6\} label="[^"]*" \/>/);
+  assert.match(listSrc, /<ErrorState\n\s*title=\{error\}/);
   assert.match(listSrc, /Erneut versuchen/);
   assert.match(listSrc, /\{CANCELLATION_LIST_ERROR\}|CANCELLATION_LIST_ERROR/);
   assert.equal(/rows\.length === 0[\s\S]{0,200}error/.test(listSrc), false, "Fehler darf nicht als Leerzustand gelten");
@@ -399,7 +400,10 @@ test("Liste: kein horizontales Scrollen, mobile Kartenansicht", () => {
 });
 
 test("Detail: echtes <h1>, fachliche Karten, technische Infos eingeklappt", () => {
-  assert.match(detailSrc, /<h1 className="adm-detail-id">Stornierungsanfrage \{cancellationLabel\(req\)/);
+  // Seit Paket E rendert der gemeinsame Seitenkopf (PageHeader, variant="admin")
+  // das <h1>; der frühere eigene Kartenkopf ist entfallen.
+  assert.match(detailSrc, /<PageHeader\b/);
+  assert.match(detailSrc, /title=\{`Stornierungsanfrage \$\{cancellationLabel\(req\)/);
   assert.match(detailSrc, /<details className="adm-card adm-tech">/);
   for (const k of ["Anfrage-ID (intern)", "Kunden-ID (intern)", "Sendungs-ID (intern)", "Revision"]) {
     assert.ok(detailSrc.includes(k), `technisches Feld ${k} fehlt`);

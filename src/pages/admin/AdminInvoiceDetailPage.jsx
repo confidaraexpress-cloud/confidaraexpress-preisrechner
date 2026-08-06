@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminInvoice, markAdminInvoicePaid, generateAdminInvoiceDocument, sendAdminInvoiceEmail, resendAdminInvoiceEmail } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -172,11 +174,7 @@ export default function AdminInvoiceDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card">
-          <div className="loading-center" role="status" aria-live="polite">
-            <span className="spinner spinner-dark" /> Rechnung wird geladen…
-          </div>
-        </div>
+        <div className="ce-card"><LoadingState text="Rechnung wird geladen …" /></div>
       </div>
     );
   }
@@ -185,13 +183,13 @@ export default function AdminInvoiceDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card">
-          <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div>
-            <div className="empty-title">{loadError.text}</div>
-            <p className="empty-text">Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig.</p>
-            <Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>
-          </div>
+        <div className="ce-card">
+          <EmptyState
+            icon="search"
+            title={loadError.text}
+            text="Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig."
+            action={<Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>}
+          />
         </div>
       </div>
     );
@@ -201,16 +199,16 @@ export default function AdminInvoiceDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert">
-            <Icon n="x" s={16} />{loadError?.text || INVOICE_DETAIL_ERROR}
-          </div>
-          <div className="adm-loaderr-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
-            </button>
-            <Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>
-          </div>
+        <div className="ce-card">
+          <ErrorState
+            title={loadError?.text || INVOICE_DETAIL_ERROR}
+            action={(
+              <button type="button" className="btn btn-primary btn-sm" onClick={load}>
+                <Icon n="refresh" s={14} /> Erneut versuchen
+              </button>
+            )}
+            secondaryAction={<Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>}
+          />
         </div>
       </div>
     );
@@ -327,40 +325,37 @@ export default function AdminInvoiceDetailPage() {
 
   return (
     <div className="adm-page">
-      {back}
+      {/* 1) Kopfbereich — derselbe Seitenkopf wie in den Adminlisten: Identität
+          und Status getrennt, Zurück-Link darüber. Die Aktion „Aktuelles
+          Kundenkonto öffnen" stand hier bis Paket E ein ZWEITES Mal (identisch
+          zur Aktion in der Karte „Aktuelles Kundenkonto") — sie lebt jetzt nur
+          noch dort, direkt neben den Daten, die sie öffnet. */}
+      <PageHeader
+        variant="admin"
+        eyebrow="Abrechnung"
+        backLink={back}
+        title={`Rechnung ${number}`}
+        subtitle={(
+          <span className="adm-detail-sub">
+            <span>{recipient.company || account.company || "Rechnungsempfänger unbekannt"}</span>
+            <span>{moneyOrDash(amounts.gross)}</span>
+            <span>Erstellt {fmtDate(createdOf(inv))}</span>
+          </span>
+        )}
+        meta={(
+          <>
+            <span className={`badge ${status.cls}`}>{status.label}</span>
+            <span className={`badge ${mode.badge || "badge-blue"}`}>{mode.label}</span>
+            {!productive && <span className="adm-chip">Nicht zahlungswirksam</span>}
+          </>
+        )}
+      />
 
-      {/* 1) Kopfbereich — eine Statusanzeige, kein doppeltes Badge. */}
-      <div className="adm-card">
-        <div className="adm-card-body">
-          <div className="adm-detail-head">
-            <div className="adm-detail-ident">
-              <h1 className="adm-detail-id">Rechnung {number}</h1>
-              <p className="adm-detail-sub">
-                <span>{recipient.company || account.company || "Rechnungsempfänger unbekannt"}</span>
-                <span>{moneyOrDash(amounts.gross)}</span>
-                <span>Erstellt {fmtDate(createdOf(inv))}</span>
-              </p>
-              <span className="adm-detail-badges">
-                <span className={`badge ${status.cls}`}>{status.label}</span>
-                <span className={`badge ${mode.badge || "badge-blue"}`}>{mode.label}</span>
-                {!productive && <span className="adm-chip">Nicht zahlungswirksam</span>}
-              </span>
-            </div>
-            {account.linkable && (
-              <div className="adm-detail-action">
-                <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(account.userId)}`}>
-                  <Icon n="user" s={14} /> Aktuelles Kundenkonto öffnen
-                </Link>
-              </div>
-            )}
-          </div>
-          {!productive && (
-            <p className="adm-nonproductive-note" role="note">
-              <Icon n="info" s={16} /> {NON_PRODUCTIVE_NOTE}
-            </p>
-          )}
-        </div>
-      </div>
+      {!productive && (
+        <p className="adm-nonproductive-note adm-head-note" role="note">
+          <Icon n="info" s={16} /> {NON_PRODUCTIVE_NOTE}
+        </p>
+      )}
 
       <Alert msg={payMsg} />
 
@@ -550,6 +545,7 @@ export default function AdminInvoiceDetailPage() {
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
             <Icon n="settings" s={17} /> Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
           </summary>
           <div className="adm-card-body">
             <KV items={[
@@ -580,9 +576,18 @@ export default function AdminInvoiceDetailPage() {
                   Setzt den Rechnungsstatus auf bezahlt und speichert das Zahlungsdatum.
                   Die Aktion wird im Admin-Audit protokolliert und kann nicht rückgängig gemacht werden.
                 </p>
+                {/* Bewusst KEINE normale Primäraktion: das Markieren einer
+                    Rechnung als bezahlt ist unumkehrbar und zahlungswirksam.
+                    Kein roter Danger-Button — der bleibt zerstörenden Aktionen
+                    vorbehalten. */}
                 <div className="adm-support">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => { setPayMsg(null); setPayOpen(true); }} disabled={payBusy}>
-                    <Icon n="check" s={14} /> {PAY_DIALOG.confirm}
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm adm-irreversible-action"
+                    onClick={() => { setPayMsg(null); setPayOpen(true); }}
+                    disabled={payBusy}
+                  >
+                    <Icon n="euro" s={14} /> {PAY_DIALOG.confirm}
                   </button>
                 </div>
               </>
@@ -591,7 +596,7 @@ export default function AdminInvoiceDetailPage() {
                 <div className="adm-support">
                   <button
                     type="button"
-                    className="btn btn-primary btn-sm"
+                    className="btn btn-outline btn-sm adm-irreversible-action"
                     disabled
                     aria-describedby="adm-pay-blocked"
                   >
@@ -614,6 +619,8 @@ export default function AdminInvoiceDetailPage() {
           note="Die Aktion wird im Admin-Audit protokolliert."
           confirmLabel={PAY_DIALOG.confirm}
           cancelLabel={PAY_DIALOG.cancel}
+          icon="euro"
+          irreversible
           busy={payBusy}
           busyLabel="Wird gespeichert…"
           onCancel={() => { if (!payBusy) setPayOpen(false); }}

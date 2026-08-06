@@ -110,9 +110,9 @@
   font-size: 13px; line-height: 1.5;
 }
 .dft-resume-note svg, .dft-resume-info svg, .dft-resume-conflict svg { flex-shrink: 0; }
-.dft-resume-note { background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.18); color: var(--navy); }
+.dft-resume-note { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); color: var(--navy); }
 .dft-resume-info { background: var(--gray50); border: 1px solid var(--border); color: var(--ce-color-text-primary); }
-.dft-resume-conflict { background: #fff7ed; border: 1px solid #f59e0b; color: var(--ce-color-status-warning-fg); flex-wrap: wrap; }
+.dft-resume-conflict { background: var(--warn-bg); border: 1px solid var(--warn); color: var(--ce-color-status-warning-fg); flex-wrap: wrap; }
 .dft-resume-conflict-text { flex: 1; min-width: 200px; }
 .dft-resume-conflict .btn { flex-shrink: 0; }
 
@@ -138,8 +138,8 @@
 .dft-cta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; }
 .dft-cta-row .dft-cta-primary { flex: 2 1 240px; }
 .dft-cta-row .dft-savedraft-cta { flex: 1 1 190px; }
-.dft-savedraft-cta { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
-.dft-savedraft-cta:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
+.dft-savedraft-cta { color: var(--ce-color-brand-ink); border-color: var(--ce-color-brand-border); }
+.dft-savedraft-cta:hover:not(:disabled) { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-ink); }
 .dft-savedraft-cta:disabled { opacity: 0.55; cursor: not-allowed; }
 .dft-savedraft-cta:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 

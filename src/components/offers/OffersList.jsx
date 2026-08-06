@@ -102,16 +102,6 @@ export function OffersList({
             <div className="offers-result-sub">Wählen Sie Ihr bevorzugtes Angebot</div>
           )}
         </div>
-        <div className="offers-trust-badges">
-          <div className="offers-trust-badge">
-            <Icon n="shield" s={13} c="rgba(255,255,255,0.9)" />
-            <span>Sicher &amp; verschlüsselt</span>
-          </div>
-          <div className="offers-trust-badge">
-            <Icon n="headset" s={13} c="rgba(255,255,255,0.9)" />
-            <span>Persönlicher Support</span>
-          </div>
-        </div>
       </div>
 
       {/* ── Sortier- + Filterzone (JUMiNGO-artige Filter-Chips mit rechts
@@ -273,7 +263,7 @@ export function OffersList({
           {TRUST_ITEMS.map(item => (
             <div key={item.title} className="offers-trust-item">
               <div className="offers-trust-icon">
-                <Icon n={item.icon} s={17} c="#1D4ED8" />
+                <Icon n={item.icon} s={17} c="var(--ce-color-brand)" />
               </div>
               <div>
                 <div className="offers-trust-title">{item.title}</div>
@@ -288,7 +278,7 @@ export function OffersList({
       {showTrust && (
         <div className="offers-tipp">
           <div className="offers-tipp-icon">
-            <Icon n="lightbulb" s={15} c="#d97706" />
+            <Icon n="lightbulb" s={15} c="var(--warn)" />
           </div>
           <p className="offers-tipp-text">
             <strong>Tipp:</strong> Vergleichen Sie Preis, Laufzeit und Abholart, bevor Sie ein Angebot auswählen.

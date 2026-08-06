@@ -17,7 +17,7 @@ export function ShipmentSummaryModule({ senderAddr, recipientAddr, packageInfo }
   ];
   return (
     <div className="calc-panel shipment-summary-card mb-16">
-      <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Sendungsdetails</h3></div>
+      <div className="calc-panel-header"><Icon n="invoice" s={18} c="var(--ce-color-brand-ink)" /><h3>Sendungsdetails</h3></div>
       <div className="calc-panel-body">
         {/* Trennlinien nur ZWISCHEN den Zeilen — die letzte Zeile bleibt randlos,
             damit nach dem Entfernen des Eingabefelds keine Rest-Trennlinie „ins

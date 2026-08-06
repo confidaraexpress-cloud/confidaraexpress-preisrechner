@@ -99,8 +99,10 @@ Die historischen Klassennamen (`.btn-outline`, `.badge-green`, `.tile`,
 dieselben Primitives — Markup musste nicht angefasst werden.
 
 Bewusst noch nicht migriert (folgt im jeweiligen Seitenpaket): `.auth-cta`,
-`.pp-net-cta`, der Glow-CTA `.offers-calc-cta .btn-primary`, `.pp-kpi`,
-`.calc-panel`, Angebots- und Buchungsmodule, Profilhero, `.inv-summary`.
+`.pp-net-cta`, `.pp-kpi`, Profilhero, `.inv-summary`. Der frühere Glow-CTA
+`.offers-calc-cta .btn-primary`, `.calc-panel` sowie die Angebots- und
+Buchungsmodule sind mit Paket B (Premium-Versandprozess) auf die Foundation-
+Primitives umgestellt.
 
 ## Gemeinsame Interface-Muster — vor jeder neuen Seite lesen
 
@@ -141,9 +143,9 @@ Verbindlich:
 
 `interfacePatterns.test.mjs` prüft das.
 
-Bewusst noch nicht migriert (folgt in Paket B): die Buchung in der App-Shell,
-der Versandprozess, `.calc-page-title` als Abschnittskopf der Preisrechner-
-Formularsektion, die Glasflächen des Auth-Bereichs.
+Bewusst noch nicht migriert: die Glasflächen des Auth-Bereichs. Die Buchung in
+der App-Shell, der Versandprozess und `.calc-page-title` als Abschnittskopf
+der Preisrechner-Formularsektion sind mit Paket B umgesetzt (siehe unten).
 
 ## Typografie — vor jedem Text lesen
 
@@ -378,7 +380,37 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/design-patterns-phase-3`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/premium-shipping-process-package-b`. Nicht auf `main` pushen ohne explizite Freigabe.
+
+## Premium-Versandprozess (Paket B)
+
+Preisrechner, Angebotsvergleich, Neue Sendung und Buchung sind eine
+Designwelt auf den Paket-A-Primitives/-Mustern:
+
+- **Buchung läuft in der App-Shell.** `/booking` liegt in derselben
+  `DashboardLayout`-Routengruppe wie `/calculator` (nicht mehr unter dem
+  öffentlichen `NavbarLayout`) — Route, Buchungslogik und JUMiNGO-Payloads
+  sind dabei unverändert geblieben. Seitenkopf kommt aus `ROUTE_HEADERS` in
+  `DashboardLayout.jsx` (Eyebrow „Versand").
+- **Schrittleiste** (`.steps-bar`/`.step-circle`) ist flach: aktiv = Marken-
+  Indigo, erledigt = Success, zukünftig = neutral — kein Verlauf, kein Glow.
+- **Live-Zusammenfassung** (`BookingLiveSummary`/`.booking-livesum`) ist ab
+  861 px sticky (`top: 16px`) mit eigener Elevation-Stufe. Bekannte, bewusst
+  akzeptierte Eigenschaft von `position: sticky`: sie überlappt beim
+  Scrollen kurzzeitig die obere Kante der darunterliegenden Karte — wie jede
+  sticky Zusammenfassungsleiste. Kein Dialog wird dadurch verdeckt
+  (Dialoge laufen auf `--ce-z-dialog`, weit über der Leiste).
+- **`.calc-panel`** (Preisrechner, Neue Sendung, alle Buchungsmodule) ist
+  jetzt Base Card aus der Foundation — kein Gradient-Kartenkopf mehr.
+- **Auswahlkarten** (`.ins-card`, `.labelfmt-card`, Angebotskarten
+  `.offer-card`) tragen im ausgewählten Zustand Brand Border + Brand Soft,
+  keinen Schatten-Ring mehr.
+- **`offerBadges.js`** vergibt „Günstigste"/„Schnellste" nur noch unter
+  bereits verfügbaren (`availableForDate !== false`) Angeboten.
+- Governance: `src/styles/shippingProcess.test.mjs` (Quelltext) und
+  `tests/e2e/shippingProcessPaketB.test.mjs` (echter Dev-Server) sichern App-
+  Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge und
+  Tastaturbedienung gegen Regression ab.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

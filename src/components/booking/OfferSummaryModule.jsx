@@ -43,7 +43,7 @@ export function OfferSummaryModule({ tariff }) {
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="truck" s={18} c="#1D4ED8" /><h3>Ausgewähltes Angebot</h3></div>
+      <div className="calc-panel-header"><Icon n="truck" s={18} c="var(--ce-color-brand-ink)" /><h3>Ausgewähltes Angebot</h3></div>
       <div className="calc-panel-body">
         {/* Zone 1 (Identität) links · Zone 3 (Preis) rechts */}
         <div className="offsum-top">

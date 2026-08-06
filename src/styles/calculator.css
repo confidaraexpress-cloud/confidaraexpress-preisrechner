@@ -1,13 +1,16 @@
 /* ─── Calculator ─────────────────────────────────────────────────────────── */
-.calc-panel { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 2px 10px rgba(14,30,80,0.07), 0 0 0 1px rgba(14,30,80,0.03); }
-.calc-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: linear-gradient(to right, #eef3fc, #f8faff); }
+/* Base Card aus der Foundation (Paket B) — kein Gradient-Kartenkopf, kein
+   eigener Radius/Schatten mehr. .calc-panel bleibt der Klassenname (viele
+   Aufrufer), das Material kommt jetzt 1:1 aus .ce-card. */
+.calc-panel { background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); overflow: hidden; box-shadow: var(--ce-elevation-1); }
+.calc-panel-header { padding: 18px 22px; border-bottom: 1px solid var(--ce-color-border-subtle); display: flex; align-items: center; gap: 10px; background: var(--ce-color-surface); }
 .calc-panel-header h3 { font-size: 15px; font-weight: 600; color: var(--navy); font-family: var(--ce-font-sans); }
 .calc-panel-body { padding: 22px; }
 .calc-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ce-color-text-muted); margin: 18px 0 10px; }
 .calc-section-title:first-child { margin-top: 0; }
 
-.vol-weight-box { background: linear-gradient(135deg, var(--blue-light), #eff6ff); border: 1px solid rgba(29,78,216,0.12); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; box-shadow: 0 2px 8px rgba(29,78,216,0.07); }
-.vol-weight-label { font-size: 13px; color: var(--blue2); font-weight: 500; }
+.vol-weight-box { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+.vol-weight-label { font-size: 13px; color: var(--ce-color-brand-ink); font-weight: 500; }
 .vol-weight-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 15px; font-weight: 600; color: var(--navy); }
 
 /* ─── Service filter — collapsible trigger ───────────────────────────────── */
@@ -33,24 +36,27 @@
   text-align: left; font-family: var(--ce-font-sans); transition: all 0.15s;
 }
 .service-filter-option:hover { background: var(--gray50); border-color: var(--border); }
-.service-filter-option.selected { background: #eff6ff; border-color: var(--blue); }
+/* Ausgewählt: Brand Soft + Brand Ink (Paket B) — dieselben Tokens wie jeder
+   andere aktive Filterchip im Versandprozess, keine eigene Blaufläche. */
+.service-filter-option.selected { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand); }
 .service-filter-option-text { flex: 1; min-width: 0; }
 .service-filter-option-label { font-size: 13px; font-weight: 600; color: var(--navy); }
-.service-filter-option.selected .service-filter-option-label { color: var(--blue2); }
+.service-filter-option.selected .service-filter-option-label { color: var(--ce-color-brand-ink); }
 .service-filter-option-desc { font-size: 11px; color: var(--ce-color-text-muted); margin-top: 2px; line-height: 1.4; }
-.service-filter-option-check { font-size: 13px; font-weight: 600; color: var(--blue2); flex-shrink: 0; }
+.service-filter-option-check { font-size: 13px; font-weight: 600; color: var(--ce-color-brand-ink); flex-shrink: 0; }
 
-/* Service-Filter „Abholung / Shopabgabe" — Radio-/Punkt-Auswahl (JUMiNGO-nah).
-   Nur die Service-Optionen (--radio); das Versandart-Dropdown bleibt icon-basiert. */
+/* Service-Filter „Abholung / Shopabgabe" — Radio-/Punkt-Auswahl (JUMiNGO-nah,
+   reine Darstellung — Werte/Bindings unverändert). Nur die Service-Optionen
+   (--radio); das Versandart-Dropdown bleibt icon-basiert. */
 .service-filter-option--radio { align-items: flex-start; }
 .service-filter-radio {
   flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px;
   border-radius: 50%; border: 2px solid var(--border2, #c8d5e8);
   background: #fff; position: relative; transition: border-color 0.15s;
 }
-.service-filter-option--radio.selected .service-filter-radio { border-color: var(--blue); }
+.service-filter-option--radio.selected .service-filter-radio { border-color: var(--ce-color-brand); }
 .service-filter-option--radio.selected .service-filter-radio::after {
-  content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue);
+  content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand);
 }
 
 /* ─── Obere Premium-Filterleiste ─────────────────────────────────────────────
@@ -87,30 +93,24 @@
   overflow: visible;
 }
 
-/* Premium-Pill: dezentes Soft-Glass, feine Border + weicher Schatten. */
+/* Filter-Trigger: Surface + Border, kein Glass, kein backdrop-filter, kein
+   Lift (Paket B). Offen = Brand-Ton, exakt wie ein aktiver Formularfokus. */
 .calc-filter-bar .service-filter-trigger {
   flex: 1;
   gap: 11px;
   padding: 13px 15px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(14, 30, 80, 0.10);
-  box-shadow: 0 2px 10px rgba(14, 30, 80, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  /* Kein backdrop-filter (Paket A, Phase 3) — die Fläche ist mit 82 %
-     Deckkraft ohnehin nahezu opak; der Filter kostete nur Bildrate. */
-  transition: transform 0.2s cubic-bezier(.2,.7,.3,1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-default);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .calc-filter-bar .service-filter-trigger:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.95);
-  border-color: var(--blue3);
-  box-shadow: 0 10px 24px rgba(29, 78, 216, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-color: var(--ce-color-border-strong);
 }
 /* Open-State (aria-expanded="true" wird bereits am Button gesetzt). */
 .calc-filter-bar .service-filter-trigger[aria-expanded="true"] {
-  background: #ffffff;
-  border-color: var(--blue);
-  box-shadow: 0 10px 26px rgba(29, 78, 216, 0.14), 0 0 0 3px rgba(29, 78, 216, 0.08);
+  background: var(--ce-color-brand-soft);
+  border-color: var(--ce-color-brand);
 }
 
 /* Text: Titel max. 2 Zeilen, aktiver Wert einzeilig mit Ellipse (schmale Karte). */
@@ -129,10 +129,10 @@
 .calc-filter-bar .date-picker-body,
 .calc-filter-bar .carrier-dropdown {
   position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 50;
-  background: #ffffff;
-  border: 1px solid rgba(14, 30, 80, 0.10);
-  border-radius: 16px;
-  box-shadow: 0 20px 46px rgba(14, 30, 80, 0.16), 0 2px 8px rgba(14, 30, 80, 0.06);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-3);
   animation: calc-filter-dd-in 0.16s ease;
 }
 @keyframes calc-filter-dd-in {
@@ -174,20 +174,17 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PREMIUM-UPLIFT · Formular (Preisrechner + „+ Neue Sendung")
+   FORMULAR · Preisrechner + „+ Neue Sendung" (Paket B)
    ─────────────────────────────────────────────────────────────────────────────
-   Reiner Optik-Uplift, Enterprise-SaaS-Anmutung (Linear/Stripe/Vercel). ALLES
-   über .offers-form-section / .offers-calc-cta gescoped — diese Wrapper gibt es
-   NUR auf diesen beiden Seiten (BookingPage/Auth/Dashboard nutzen dieselben
-   Basisklassen .field-input/.btn/.calc-panel, liegen aber NICHT in diesem
-   Scope → keine globalen Schäden). Keine Namen/Values/Bindings/Validierung/
-   Logik geändert. ─────────────────────────────────────────────────────────── */
+   Vormals „Premium-Uplift" mit Glass-Karten, Farbverläufen und einem eigenen
+   Fokus-Glow — jetzt auf die Foundation-Primitives umgestellt (Base Card,
+   Standardfokus). Weiterhin über .offers-form-section / .offers-calc-cta
+   gescoped — diese Wrapper gibt es nur auf diesen beiden Seiten (BookingPage/
+   Auth/Dashboard nutzen dieselben Basisklassen .field-input/.btn/.calc-panel,
+   liegen aber nicht in diesem Scope → keine globalen Schäden). Keine Namen/
+   Values/Bindings/Validierung/Logik geändert. ─────────────────────────────── */
 
-/* ── A) Top-Filter-Pills: bessere Label/Wert-Hierarchie + etwas mehr Tiefe.
-   (Layout/Verhalten der Leiste bleibt wie in .calc-filter-bar definiert.) ── */
-.calc-filter-bar .service-filter-trigger {
-  box-shadow: 0 4px 14px -6px rgba(20, 40, 100, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
+/* ── A) Top-Filter-Pills: Label/Wert-Hierarchie. ── */
 .calc-filter-bar .service-filter-trigger-title {
   font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); letter-spacing: 0.01em;
 }
@@ -196,46 +193,22 @@
 }
 .calc-filter-bar .service-filter-chevron { color: var(--ce-color-text-muted); }
 
-/* ── B) Formular-Karten (Versandroute, Paketdaten) — Premium-Glass.
+/* ── B) Formular-Karten (Versandroute, Paketdaten) — Base Card.
    Nur DIREKTE .calc-panel-Kinder der Formularsektion; die Filter-Pills
    (.calc-filter-bar .calc-panel) sind nicht direkte Kinder → unberührt. ── */
-.offers-form-section > .calc-panel {
-  border: 1px solid rgba(120, 150, 210, 0.20);
-  border-radius: 20px;
-  /* Matte helle Premiumoberfläche statt Live-Blur (große, wiederholte Formularkarten). */
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(247, 250, 255, 0.93));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 10px 30px -14px rgba(20, 40, 100, 0.18),
-    0 2px 8px -4px rgba(20, 40, 100, 0.10);
-}
-.offers-form-section > .calc-panel > .calc-panel-header {
-  padding: 16px 22px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(244, 248, 254, 0.30));
-  border-bottom: 1px solid rgba(120, 150, 210, 0.14);
-}
 .offers-form-section > .calc-panel > .calc-panel-header h3 { font-size: 14px; letter-spacing: -0.01em; }
 .offers-form-section > .calc-panel > .calc-panel-body { padding: 22px 22px 24px; }
 
-/* ── C) Inputs — höher, weicher, eleganter Fokus/Hover ── */
+/* ── C) Inputs — Standardfokus statt eigenem Glow. ── */
 .offers-form-section .field-label {
   font-size: 12px; font-weight: 600; letter-spacing: 0.01em; color: var(--ce-color-text-secondary); margin-bottom: 6px;
 }
 .offers-form-section .field-input {
   padding: 11px 14px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(20, 40, 100, 0.10);
-  background: rgba(255, 255, 255, 0.72);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
-.offers-form-section .field-input:hover { border-color: rgba(59, 130, 246, 0.40); background: rgba(255, 255, 255, 0.92); }
-.offers-form-section .field-input:focus { background: #ffffff; border-color: var(--blue); box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.12); }
-/* Select: dezenter Custom-Chevron (appearance:none entfernt den nativen Pfeil). */
-.offers-form-section .field-select {
-  padding-right: 38px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 13px center; background-size: 16px;
-}
+/* Der eigene Select-Chevron ist entfallen (Paket B) — .field-select liefert
+   seit Paket A, Phase 2 denselben Pfeil global (forms.css), hier war er nur
+   eine fast identische Dopplung (anderer Grauton, 2px Padding-Differenz). */
 
 /* ── D/F) Paketdaten-Raster: 5 Spalten (Anzahl · Gewicht · Länge · Breite · Höhe)
    auf Desktop/Laptop; sauberer Umbruch auf Tablet (3-spaltig) und Telefon
@@ -251,50 +224,13 @@
 .pkg-count-note { display: flex; align-items: flex-start; gap: 6px; margin: 14px 0 0; font-size: 11px; line-height: 1.5; color: var(--ce-color-text-muted); }
 .pkg-count-note svg { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-text-muted); }
 
-/* ── E) CTA „Angebote vergleichen" — Premium-Button (Enterprise-SaaS-Anmutung,
-   nicht wie ein Standard-Formularbutton). Höhe/Gewicht/Letterspacing bewusst
-   über der .btn-Basis (600/normal) angehoben; Verhalten (onClick/disabled/
-   Loading-Spinner) unverändert — reine Optik. ── */
-.offers-calc-cta .btn-primary {
-  height: 58px; padding: 0 28px; border-radius: 16px;
-  font-size: 16px; font-weight: 600; letter-spacing: 0.2px;
-  gap: 9px;
-  background: linear-gradient(155deg, #5b82ff 0%, #3b6cff 24%, #2563eb 56%, #1d4ed8 82%, #163eb0 100%);
-  box-shadow:
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.30), inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 -10px 18px -12px rgba(8, 26, 80, 0.35),
-    0 4px 12px -4px rgba(29, 78, 216, 0.32), 0 14px 30px -8px rgba(29, 78, 216, 0.46),
-    0 0 46px -8px rgba(59, 108, 255, 0.40);
-  transition: transform 0.2s cubic-bezier(.2,.7,.3,1), box-shadow 0.2s ease, background 0.2s ease;
-}
-.offers-calc-cta .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-    inset 0 -10px 18px -12px rgba(8, 26, 80, 0.30),
-    0 6px 16px -4px rgba(29, 78, 216, 0.38), 0 20px 40px -10px rgba(29, 78, 216, 0.54),
-    0 0 58px -8px rgba(59, 108, 255, 0.48);
-}
-/* Sauberer Press-State: Lift zurückgesetzt + Schatten/Glow spürbar eingezogen
-   (nicht nur der eingefrorene Hover-Zustand minus Lift) — schnellerer Übergang
-   simuliert echtes „Eindrücken". */
-.offers-calc-cta .btn-primary:active {
-  transform: translateY(0);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.20), inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 -4px 10px -8px rgba(8, 26, 80, 0.32),
-    0 3px 10px -4px rgba(29, 78, 216, 0.36), 0 0 26px -8px rgba(59, 108, 255, 0.30);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
-}
-.offers-calc-cta .btn-primary svg { flex-shrink: 0; }
-/* ÜBERGANGSSCOPE (Paket A, Phase 2 → Seitenpaket Preisrechner):
-   Das Buttonsystem vermittelt „deaktiviert" seit Phase 2 über eigene Flächen-
-   und Textrollen statt über pauschale opacity. Dieser CTA setzt seine Fläche
-   selbst (Verlauf, höher spezifisch) und überschreibt damit die Disabled-Fläche
-   des Primitives — ohne diese Regel wäre der gesperrte Zustand des CTA nicht
-   mehr zu erkennen. Die Deckkraft bleibt deshalb hier — und NUR hier —
-   bestehen, bis der Preisrechner seinen eigenen CTA vollständig ablöst. */
-.offers-calc-cta .btn-primary:disabled { opacity: 0.5; }
+/* ── E) CTA „Angebote vergleichen" (Paket B) ──────────────────────────────
+   Der frühere Glow-Verlauf-Button ist abgelöst: die Hauptaktion ist jetzt die
+   globale Primary Large (.btn-primary.btn-lg, siehe CalculatorPage.jsx /
+   NewShipmentPage.jsx) ohne jede eigene Fläche — kein Verlauf, kein Glow,
+   kein Lift, Lade-/Sperrzustand kommt unverändert aus dem Buttonprimitive.
+   Diese Regel bleibt bewusst leer als Ankerpunkt für den Selector-Kommentar;
+   .offers-calc-cta selbst trägt kein Material mehr. */
 
 /* ─── Booking address grid (2-col desktop, 1-col mobile) ────────────────── */
 .booking-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -306,9 +242,10 @@
 /* max-width geringfügig von 760 → 800 erhöht (nur BookingPage), damit das
    Versicherungsmodul zwei seriös lesbare Karten nebeneinander trägt, ohne dass
    deutsche Namen brechen. Live-Leiste und Buchungskarte bleiben bündig (beide im
-   selben Container). Keine globale Dashboard-Breite betroffen. */
-.booking-wrap { padding-top: 32px; padding-bottom: 48px; max-width: 800px; }
-.booking-title { font-size: 24px; font-weight: 600; color: var(--navy); font-family: var(--ce-font-sans); }
+   selben Container). Keine globale Dashboard-Breite betroffen.
+   Eigene Zentrierung + seitliches Innenabstandsmaß (Paket B): Booking läuft
+   direkt unter .main-content, ohne die öffentliche .container-Klasse. */
+.booking-wrap { padding: 32px 28px 48px; max-width: 800px; margin: 0 auto; }
 .booking-carrier-name { font-size: 20px; font-weight: 600; color: var(--navy); }
 .booking-carrier-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .booking-carrier-logo { height: 22px; width: auto; object-fit: contain; display: block; flex-shrink: 0; }
@@ -348,10 +285,8 @@
   .offsum-price-net, .offsum-price-gross { white-space: normal; }
 }
 
-/* Step confirm panel */
-.booking-confirm-panel.calc-panel { border: 2px solid var(--blue); }
-.calc-panel-header.booking-confirm-header { background: linear-gradient(135deg, var(--navy), var(--blue2)); }
-.calc-panel-header.booking-confirm-header h3 { color: white; }
+/* Step-Bestätigungspanel (Paket B): dasselbe Base-Card-Material wie jedes
+   andere Modul — kein blauer Rahmen, kein Navy-zu-Blau-Verlaufskopf mehr. */
 .booking-confirm-box { background: var(--gray50); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; border: 1px solid var(--border); }
 .booking-confirm-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .booking-confirm-val { color: var(--navy); text-align: right; }
@@ -382,7 +317,10 @@
 /* container-type: inline-size → die Kartenanordnung reagiert auf die tatsächliche
    MODULBREITE (nicht den Viewport). Auf breitem Desktop mit schmalem Booking-
    Container greift so die richtige Spaltenzahl. */
-.booking-insurance-box { container-type: inline-size; container-name: insurance; border: 1px solid var(--border); border-radius: var(--radius-lg, 14px); padding: 18px; margin-bottom: 16px; background: linear-gradient(180deg, #fbfcff, #f6f9fe); box-shadow: 0 1px 3px rgba(14, 30, 80, 0.04); }
+/* Muted Card (Paket B) — Hinweis-/Modulcharakter, kein Gradient/Glow. Die
+   container-type/-name bleiben funktional: sie treiben den Kopf-Umbruch von
+   .ins-card-head auf schmalen Modulbreiten. */
+.booking-insurance-box { container-type: inline-size; container-name: insurance; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); padding: 20px; margin-bottom: 16px; background: var(--ce-color-surface-muted); box-shadow: var(--ce-elevation-0); }
 .ins-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ins-head-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--navy); }
 .ins-head-title svg { color: var(--blue2); }
@@ -397,11 +335,12 @@
 .ins-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .ins-card {
   position: relative; display: flex; flex-direction: column; gap: 11px;
-  padding: 16px; border: 1.5px solid var(--border); border-radius: 14px;
-  background: #fff; cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  padding: 16px; border: 1.5px solid var(--ce-color-border-default); border-radius: 14px;
+  background: var(--ce-color-surface); cursor: pointer;
+  box-shadow: var(--ce-elevation-1);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ins-card:hover { box-shadow: 0 8px 20px -12px rgba(20, 40, 100, 0.22); }
+.ins-card:hover { border-color: var(--ce-color-border-strong); box-shadow: var(--ce-elevation-2); }
 .ins-card input { position: absolute; opacity: 0; width: 0; height: 0; }
 
 /* Stabiler Kartenkopf als Grid: Name links (schrumpfbar), Preis rechts (fix),
@@ -431,34 +370,35 @@
 .ins-nowrap { white-space: nowrap; }
 
 .ins-card-cond { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
-.ins-card-cond-link { font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; border-bottom: 1px solid rgba(29, 78, 216, 0.35); line-height: 1.3; }
+.ins-card-cond-link { font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; border-bottom: 1px solid var(--ce-color-brand-border); line-height: 1.3; }
 .ins-card-cond-link:hover { border-bottom-color: var(--blue2); }
 .ins-card-cond-link--static { color: var(--ce-color-text-muted); border-bottom-style: dotted; border-bottom-color: var(--gray300, #cbd5e1); cursor: default; }
 .ins-card-provider { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
 
 /* Zustände: ALLE Karten neutral im Grundzustand (gleiche Wertigkeit); nur die
-   AUSGEWÄHLTE Karte wird blau hervorgehoben (kein großflächiges Dauergrün). */
+   AUSGEWÄHLTE Karte trägt Brand Border + Brand Soft — dasselbe Muster wie
+   jede andere Auswahlkarte im Versandprozess (Paket B), kein Glow. */
 .ins-card--selected {
-  border-color: var(--blue);
-  background: #f5f9ff;
-  box-shadow: 0 8px 22px -12px rgba(37, 99, 235, 0.28);
+  border-color: var(--ce-color-brand);
+  background: var(--ce-color-brand-soft);
+  box-shadow: var(--ce-elevation-1);
 }
-.ins-card--selected .ins-card-radio { border-color: var(--blue); }
-.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
+.ins-card--selected .ins-card-radio { border-color: var(--ce-color-brand); }
+.ins-card--selected .ins-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand); }
 
 /* Premium-Badge (dezent, sachlich — keine manipulative Upsell-Optik). */
-.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--blue2); background: var(--blue-light); border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.ins-card-badge { align-self: flex-start; margin-left: 27px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 /* „Preis wird berechnet" auf der ausgewählten, gerade gerepricten Karte. */
 .ins-card-calc { display: inline-flex; align-items: center; gap: 6px; padding-left: 27px; font-size: 11px; font-weight: 600; color: var(--blue2); }
 /* „Preis nach Warenwert" (kein Preselect): lesbar, NICHT deaktiviert wirkend; darf
    im schmalen Preis-Slot auf zwei Zeilen umbrechen. */
 .ins-card-price-val--muted { max-width: 84px; color: var(--ce-color-text-primary); font-weight: 600; font-size: 12px; line-height: 1.25; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: none; text-align: right; }
 /* „Versicherungswert anpassen" — dezente Sekundäraktion. */
-.ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12px; font-weight: 600; color: var(--blue2); cursor: pointer; border-bottom: 1px solid rgba(29, 78, 216, 0.35); }
+.ins-adjust-btn { align-self: flex-start; background: none; border: none; padding: 3px 0; font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); cursor: pointer; border-bottom: 1px solid var(--ce-color-brand-border); }
 .ins-adjust-btn:hover { border-bottom-color: var(--blue2); }
 .ins-adjust-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 3px; border-radius: 3px; }
 /* Warenwert über dem Versicherungsmaximum — ruhiger Warnhinweis. */
-.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); background: #fff8ec; border: 1px solid rgba(217, 119, 6, 0.22); border-radius: 10px; }
+.ins-overmax { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border); border-radius: 10px; }
 .ins-overmax svg { color: var(--ce-color-status-warning-fg); flex-shrink: 0; margin-top: 1px; }
 /* Preiszusammenfassung: noch nicht bestätigter Preis (Repricing/stale/Fehler). */
 .booking-price-pending { display: flex; align-items: center; gap: 8px; padding: 12px 0 14px; font-size: 13px; font-weight: 600; color: var(--blue2); }
@@ -471,19 +411,30 @@
 .booking-ins-state--preselect { color: var(--blue2); background: var(--blue-light, #eff4ff); border-color: rgba(29, 78, 216, 0.16); }
 .booking-ins-state--loading { color: var(--blue2); }
 .booking-ins-state--unknown { color: var(--ce-color-text-secondary); }
-.booking-ins-state--error { color: var(--danger); background: #fff5f5; border-color: rgba(220, 38, 38, 0.2); }
+.booking-ins-state--error { color: var(--danger); background: var(--ce-color-status-error-surface); border-color: var(--ce-color-status-error-border); }
 .booking-ins-state-txt { min-width: 0; }
 .booking-total-pending { margin: 8px 0 0; font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
 /* ─── Permanente Live-Zusammenfassungsleiste (BookingPage, Schritt 1 + 2) ─────
    Providerneutral, ruhig, kompakt — KEINE JUMiNGO-Kopfzeilen-Kopie. Vier Zonen;
-   der Preis rechts stammt aus demselben zentralen Price-View-Model. */
+   der Preis rechts stammt aus demselben zentralen Price-View-Model. Base-Card-
+   Material (Paket B); ab Desktop sticky (>860px, dieselbe Schwelle wie die
+   Sidebar), damit Preis/Service während des Scrollens sichtbar bleiben, ohne
+   Felder oder Dialoge zu verdecken (niedriger z-index, unter jedem Overlay). */
 .booking-livesum {
   display: grid; grid-template-columns: 1.6fr 1fr 1fr auto; align-items: stretch;
   margin-bottom: 20px; overflow: hidden;
-  background: #fff;
-  border: 1px solid var(--border); border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(20, 40, 100, 0.05);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+@media (min-width: 861px) {
+  /* Sticky ab Desktop: die Leiste bleibt beim Scrollen oben sichtbar (Preis/
+     Service immer erreichbar). Eigene Elevation-Stufe, damit sie beim
+     „Kleben" klar ALS schwebende Leiste über dem Inhalt lesbar ist, statt
+     wie ein Kartenüberlapp zu wirken. Dialoge (--ce-z-dialog) liegen immer
+     darüber — kein Konflikt mit dem globalen Dialogsystem. */
+  .booking-livesum { position: sticky; top: 16px; z-index: 1; box-shadow: var(--ce-elevation-2); }
 }
 .blsum-zone { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 13px 18px; }
 .blsum-zone + .blsum-zone { border-left: 1px solid var(--border); }
@@ -579,17 +530,7 @@
    trifft KEINE globalen Klassen und keine anderen Seiten. Kein JUMiNGO-Branding,
    keine fremden Logos. Bulletpoints sind bewusst übernommene statische Inhalte. */
 
-/* Versicherungs-Container: weichere Rundung, subtilere Tiefe. */
-.booking-insurance-box {
-  border-radius: 16px;
-  padding: 20px;
-  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-  border: 1px solid rgba(120, 150, 210, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 10px 28px -16px rgba(20, 40, 100, 0.18),
-    0 2px 6px -3px rgba(20, 40, 100, 0.08);
-}
+/* .booking-insurance-box: Material lebt jetzt an EINER Stelle (oben, Muted Card). */
 
 /* Tastatur-Fokus sichtbar auf dem visuellen Radio (Inputs sind visuell versteckt). */
 .ins-card input:focus-visible ~ .ins-card-head .ins-card-radio,
@@ -608,9 +549,9 @@
 .labelfmt-group { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .labelfmt-card {
   position: relative; display: flex; align-items: flex-start; gap: 11px;
-  padding: 13px 15px; border: 1.5px solid var(--border); border-radius: 12px;
-  background: white; cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  padding: 13px 15px; border: 1.5px solid var(--ce-color-border-default); border-radius: 12px;
+  background: var(--ce-color-surface); cursor: pointer;
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .labelfmt-card:hover { border-color: var(--blue3); }
 .labelfmt-card input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -618,12 +559,13 @@
   flex-shrink: 0; margin-top: 1px; width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid var(--border2, #c8d5e8); background: white; position: relative; transition: border-color 0.15s;
 }
-.labelfmt-card--selected .labelfmt-radio { border-color: var(--blue); }
-.labelfmt-card--selected .labelfmt-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--blue); }
+.labelfmt-card--selected .labelfmt-radio { border-color: var(--ce-color-brand); }
+.labelfmt-card--selected .labelfmt-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand); }
 .labelfmt-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .labelfmt-name { font-size: 14px; font-weight: 600; color: var(--navy); }
 .labelfmt-desc { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.4; }
-.labelfmt-card--selected { border-color: var(--blue); background: #f5f9ff; box-shadow: 0 2px 10px rgba(29, 78, 216, 0.10); }
+/* Ausgewählt: Brand Border + Brand Soft — dasselbe Muster wie .ins-card--selected. */
+.labelfmt-card--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); box-shadow: var(--ce-elevation-1); }
 @media (max-width: 480px) { .labelfmt-group { grid-template-columns: 1fr; } }
 
 /* ─── Zollangaben (Angaben zum Wareninhalt) ──────────────────────────────────── */
@@ -665,8 +607,8 @@
 .ci-upload-msg { display: block; margin-top: 6px; }
 .ci-notice { font-size: 12px; color: var(--blue2); font-weight: 600; }
 .ci-remove-btn { margin-top: 10px; }
-.ci-remove-danger { background: var(--danger, #dc2626); color: #fff; border: 1px solid var(--danger, #dc2626); }
-.ci-remove-danger:hover { background: #b91c1c; border-color: var(--ce-color-status-error-fg); }
+.ci-remove-danger { background: var(--danger); color: #fff; border: 1px solid var(--danger); }
+.ci-remove-danger:hover { background: var(--ce-color-danger-hover); border-color: var(--ce-color-danger-hover); }
 .ci-remove-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border2, #c8d5e8); border-radius: var(--radius); background: var(--gray50, #f8fafc); }
 .ci-remove-confirm-text { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .ci-remove-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -708,8 +650,8 @@
 .price-drift-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .price-drift-col-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
 .price-drift-old { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 16px; font-weight: 600; color: var(--ce-color-text-muted); }
-.price-drift-col--new { background: #eff6ff; border: 1px solid rgba(29, 78, 216, 0.16); border-radius: 10px; padding: 8px 6px; }
-.price-drift-new { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--blue2); }
+.price-drift-col--new { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: 10px; padding: 8px 6px; }
+.price-drift-new { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--ce-color-brand-ink); }
 .price-drift-arrow { display: flex; align-items: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
 .price-drift-actions { display: flex; gap: 12px; }
 .price-drift-btn { flex: 1; }
@@ -722,7 +664,7 @@
 
 /* Step success */
 .booking-success-wrap { text-align: center; padding: 40px 0; }
-.booking-success-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--success-bg); border: 3px solid var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 36px; box-shadow: 0 0 0 6px rgba(16,185,129,0.10), 0 8px 24px rgba(16,185,129,0.22); }
+.booking-success-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border); color: var(--ce-color-status-success-fg); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
 .booking-success-title { font-size: 24px; line-height: 1.25; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .booking-success-recap { text-align: left; max-width: 480px; margin: 0 auto 16px; }
 
@@ -742,7 +684,21 @@
 
 /* ─── Calculator page header ─────────────────────────────────────────────── */
 .calc-page-wrap { padding-top: 32px; padding-bottom: 48px; }
-.calc-page-title { font-size: 20px; line-height: 1.3; letter-spacing: -0.015em; color: var(--navy); margin-bottom: 6px; }
+/* Abschnittskopf der Formularsektion (Section Title), NICHT der Seitentitel —
+   der kommt seit Paket B vom PageHeader der App-Shell. Auf Calculator/Neue
+   Sendung als <h2> unter dem PageHeader-<h1>. */
+.calc-page-title {
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
+  color: var(--navy);
+  margin: 0 0 6px;
+}
+@media (max-width: 600px) {
+  .calc-page-title { font-size: var(--ce-text-title-section-size-mobile); }
+}
 .calc-page-sub { color: var(--ce-color-text-muted); font-size: 15px; }
 
 /* ─── Booking step 1 price column ────────────────────────────────────────── */
@@ -784,8 +740,8 @@
   font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
   cursor: pointer; transition: all 0.15s; font-family: var(--ce-font-sans);
 }
-.date-quick-btn:hover { border-color: var(--blue3); color: var(--navy); background: var(--gray50); }
-.date-quick-btn.active { border-color: var(--blue); background: #eff6ff; color: var(--blue2); }
+.date-quick-btn:hover { border-color: var(--ce-color-border-strong); color: var(--navy); background: var(--gray50); }
+.date-quick-btn.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
 
 /* ─── Versanddatum-Kalender (DateCalendar) — Premium, im Popover/Accordion ──── */
 .dc { margin-top: 4px; user-select: none; }
@@ -813,7 +769,7 @@
 .dc-day:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
 .dc-day:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
 .dc-day--today:not(.dc-day--selected) { border-color: var(--blue3); color: var(--blue2); }
-.dc-day--selected { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 3px 10px -2px rgba(29, 78, 216, 0.4); }
+.dc-day--selected { background: var(--ce-color-brand); border-color: var(--ce-color-brand); color: #fff; }
 .dc-day-num { line-height: 1; }
 /* VORBEREITUNG für echte Marker (Feiertage / kein Service): rendert nur, wenn
    Daten via markedDays übergeben werden. Aktuell keine Datenquelle → kein Punkt. */
@@ -863,10 +819,11 @@
   transform: translateY(-50%); background: var(--gray100);
   border-radius: var(--radius-full); box-shadow: inset 0 1px 2px rgba(14,30,80,0.08);
 }
+/* Flache Markenfläche statt Verlauf (Paket B) — reine Fortschrittsanzeige. */
 .pw-slider-fill {
   position: absolute; top: 0; height: 100%;
-  background: linear-gradient(90deg, var(--blue3), var(--blue));
-  border-radius: var(--radius-full); box-shadow: 0 1px 5px rgba(29,78,216,0.35);
+  background: var(--ce-color-brand);
+  border-radius: var(--radius-full);
 }
 
 /* Beide Regler liegen deckungsgleich über der Schiene; die Spuren sind
@@ -880,30 +837,31 @@
 .pw-range--from { z-index: 4; }
 .pw-range--until { z-index: 3; }
 
-/* WebKit/Blink */
+/* Griffe: Rückmeldung über Kante + Schatten, bewusst ohne scale() (Paket B —
+   kein Scale-/Lift-Effekt im Versandprozess). */
 .pw-range::-webkit-slider-runnable-track { height: 100%; background: transparent; border: none; }
 .pw-range::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; pointer-events: auto;
   width: 22px; height: 22px; margin-top: 11px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--blue);
-  box-shadow: 0 2px 6px rgba(14,30,80,0.20);
-  cursor: grab; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  background: #fff; border: 2px solid var(--ce-color-brand);
+  box-shadow: var(--ce-elevation-1);
+  cursor: grab; transition: box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.pw-range:hover::-webkit-slider-thumb { transform: scale(1.08); border-color: var(--blue2); }
-.pw-range:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.14); box-shadow: 0 4px 12px rgba(29,78,216,0.28); }
-.pw-range:focus-visible::-webkit-slider-thumb { border-color: var(--blue); box-shadow: 0 2px 6px rgba(14,30,80,0.20), 0 0 0 4px rgba(37,99,235,0.20); }
+.pw-range:hover::-webkit-slider-thumb { border-color: var(--ce-color-brand-ink); box-shadow: var(--ce-elevation-2); }
+.pw-range:active::-webkit-slider-thumb { cursor: grabbing; border-color: var(--ce-color-brand-ink); box-shadow: var(--ce-elevation-2); }
+.pw-range:focus-visible::-webkit-slider-thumb { border-color: var(--ce-color-brand); box-shadow: var(--ce-elevation-focus-ring); }
 
 /* Firefox */
 .pw-range::-moz-range-track { height: 100%; background: transparent; border: none; }
 .pw-range::-moz-range-thumb {
   pointer-events: auto; width: 22px; height: 22px; border-radius: 50%;
-  background: #fff; border: 2px solid var(--blue);
-  box-shadow: 0 2px 6px rgba(14,30,80,0.20);
-  cursor: grab; transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  background: #fff; border: 2px solid var(--ce-color-brand);
+  box-shadow: var(--ce-elevation-1);
+  cursor: grab; transition: box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.pw-range:hover::-moz-range-thumb { transform: scale(1.08); border-color: var(--blue2); }
-.pw-range:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.14); box-shadow: 0 4px 12px rgba(29,78,216,0.28); }
-.pw-range:focus-visible::-moz-range-thumb { border-color: var(--blue); box-shadow: 0 2px 6px rgba(14,30,80,0.20), 0 0 0 4px rgba(37,99,235,0.20); }
+.pw-range:hover::-moz-range-thumb { border-color: var(--ce-color-brand-ink); box-shadow: var(--ce-elevation-2); }
+.pw-range:active::-moz-range-thumb { cursor: grabbing; border-color: var(--ce-color-brand-ink); box-shadow: var(--ce-elevation-2); }
+.pw-range:focus-visible::-moz-range-thumb { border-color: var(--ce-color-brand); box-shadow: var(--ce-elevation-focus-ring); }
 
 .pw-caption { font-size: 12px; }
 .pw-saved { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }

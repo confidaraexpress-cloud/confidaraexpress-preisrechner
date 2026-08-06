@@ -35,6 +35,7 @@ const SupportRequestsView = React.lazy(() =>
 // (Profile.jsx). So entsteht auf keiner Seite ein doppelter Seitenkopf.
 const PAGE_HEADERS = {
   new: {
+    eyebrow: "Versand",
     title: "Neue Sendung",
     subtitle: "Führen Sie neue Versandaufträge sicher und nachvollziehbar durch den Buchungsprozess.",
   },
@@ -362,6 +363,7 @@ export default function DashboardPage() {
             die Glocke, und ein zweiter Chip wäre eine doppelte Identität. */}
         {PAGE_HEADERS[page] && (
           <DashboardSectionHeader
+            eyebrow={PAGE_HEADERS[page].eyebrow}
             title={PAGE_HEADERS[page].title}
             subtitle={PAGE_HEADERS[page].subtitle}
             utility={utilityCluster}

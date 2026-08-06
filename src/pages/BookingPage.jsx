@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useDialog } from "../hooks/useDialog";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
@@ -127,6 +128,20 @@ export default function BookingPage() {
   // wird (ausschließlich none-Pfad — der Versicherungspfad bleibt unberührt).
   const [priceChange, setPriceChange] = useState(null); // { oldPrice, newPrice } | null
   const confirmedFinalPriceRef = useRef(null);
+
+  // Fokusfalle/-rückgabe/Escape der beiden Konfliktdialoge (Paket B, globales
+  // Dialogsystem). Escape/Backdrop schließen NEUTRAL (nur die Anzeige) — sie
+  // lösen weder eine Neuberechnung noch eine Buchung aus; die fachliche
+  // Entscheidung bleibt ausschließlich den zwei Aktionen im Dialog vorbehalten.
+  // Muss vor jedem frühen Return stehen (Hook-Reihenfolge).
+  const priceDriftRef = useDialog({ open: !!priceChange, onClose: () => setPriceChange(null) });
+  // closeOnEscape: !pickupResetting — dieselbe Regel wie überall im Projekt:
+  // Escape schließt nicht während ein Request läuft (Draft-Reset läuft hier).
+  const pickupDriftRef = useDialog({
+    open: !!pickupWindowChanged,
+    onClose: () => setPickupWindowChanged(null),
+    closeOnEscape: !pickupResetting,
+  });
 
   // ── Versicherung (F1/F2): Auswahl + Live-Repricing + Übergabe an /book ──────
   const [insuranceType, setInsuranceType]   = useState("none"); // "none" | "standard" | "premium"
@@ -817,8 +832,9 @@ export default function BookingPage() {
 
   return (
     <div className="page-with-navbar">
-      <div className="container booking-wrap">
-        <h1 className="heading booking-title mb-24">Sendung buchen</h1>
+      <div className="booking-wrap">
+        {/* Seitentitel kommt aus dem PageHeader der App-Shell (DashboardLayout,
+            ROUTE_HEADERS.booking) — kein zweiter Titel hier (Paket B). */}
 
         {/* Step-Indicator */}
         <div className="steps-bar mb-24">
@@ -826,7 +842,7 @@ export default function BookingPage() {
             <div key={i} className="step-item">
               <div className="step-wrap">
                 <div className={`step-circle ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
-                  {i + 1 < step ? "✓" : i + 1}
+                  {i + 1 < step ? <Icon n="check" s={14} /> : i + 1}
                 </div>
                 <span className={`step-label ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>{s}</span>
               </div>
@@ -940,7 +956,7 @@ export default function BookingPage() {
           <div>
             <div className="calc-panel booking-confirm-panel mb-16">
               <div className="calc-panel-header booking-confirm-header">
-                <Icon n="shield" s={18} c="white" />
+                <Icon n="shield" s={18} c="var(--ce-color-brand-ink)" />
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
@@ -1042,7 +1058,7 @@ export default function BookingPage() {
         {/* ── Step 3: Buchung erfolgreich ── */}
         {step === 3 && booking && (
           <div className="booking-success-wrap">
-            <div className="booking-success-icon">✓</div>
+            <div className="booking-success-icon"><Icon n="check" s={40} /></div>
             <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
             {/* Die Confidara-Bestellnummer ist die primäre Vorgangsnummer und steht zuerst;
                 die Rechnungsnummer wird getrennt daneben ausgewiesen und dient NICHT mehr als
@@ -1079,7 +1095,7 @@ export default function BookingPage() {
             {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
                 Formular-State abgeleitet, keine neue Server-Anfrage. */}
             <div className="calc-panel booking-success-recap mb-16">
-              <div className="calc-panel-header"><Icon n="invoice" s={18} c="#1D4ED8" /><h3>Ihre Buchung</h3></div>
+              <div className="calc-panel-header"><Icon n="invoice" s={18} c="var(--ce-color-brand-ink)" /><h3>Ihre Buchung</h3></div>
               <div className="calc-panel-body">
                 <div className="summary-detail-row summary-detail-row-border">
                   <span className="text-sm text-muted summary-detail-key">Carrier</span>
@@ -1124,12 +1140,17 @@ export default function BookingPage() {
                 </span>
               </p>
             )}
+            {/* Aktionspriorität (Paket B): Label steht bereits oben, sofern verfügbar.
+                Danach Sendung ansehen → weitere Sendung erstellen → Rechnungen als
+                sekundärer Weg. Ziele/Links unverändert, nur Reihenfolge/Gewichtung. */}
             <div className="flex-center gap-12" style={{ flexWrap: "wrap" }}>
-              <button className="btn btn-primary" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
+              <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>
+                <Icon n="package" s={16} /> Zu meinen Sendungen
+              </button>
+              <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
+              <button className="btn btn-outline" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
                 <Icon n="invoice" s={16} /> Zu meinen Rechnungen
               </button>
-              <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>Zu meinen Sendungen</button>
-              <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
             </div>
           </div>
         )}
@@ -1141,15 +1162,20 @@ export default function BookingPage() {
           nicht-aggressive Optik; der Nutzer entscheidet bewusst zwischen
           Neuberechnung und Fortfahren zum neuen Preis. */}
       {priceChange && (
-        <div className="price-drift-overlay" role="presentation">
+        <div
+          className="price-drift-overlay"
+          role="presentation"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setPriceChange(null); }}
+        >
           <div
             className="price-drift-card"
             role="dialog"
             aria-modal="true"
             aria-labelledby="price-drift-title"
             aria-describedby="price-drift-desc"
+            ref={priceDriftRef}
           >
-            <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="#1D4ED8" /></div>
+            <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="var(--ce-color-brand-ink)" /></div>
             <h2 id="price-drift-title" className="price-drift-title">Preisänderung erkannt</h2>
             <p id="price-drift-desc" className="price-drift-desc">
               Der Preis hat sich seit Ihrer Angebotsberechnung geändert.
@@ -1160,7 +1186,7 @@ export default function BookingPage() {
                 <span className="price-drift-col-label">Bisheriger Preis</span>
                 <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
               </div>
-              <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="#94a3b8" /></span>
+              <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="var(--ce-color-text-muted)" /></span>
               <div className="price-drift-col price-drift-col--new">
                 <span className="price-drift-col-label">Neuer Preis</span>
                 <span className="price-drift-new">{money(priceChange.newPrice)}</span>
@@ -1196,15 +1222,20 @@ export default function BookingPage() {
           berechnen ODER das neue vollständige Fenster übernehmen (Draft NULL/NULL,
           erst danach erneut buchbar). Bewusst KEINE generische Duplikatmeldung. */}
       {pickupWindowChanged && (
-        <div className="price-drift-overlay" role="presentation">
+        <div
+          className="price-drift-overlay"
+          role="presentation"
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !pickupResetting) setPickupWindowChanged(null); }}
+        >
           <div
             className="price-drift-card"
             role="dialog"
             aria-modal="true"
             aria-labelledby="pickup-drift-title"
             aria-describedby="pickup-drift-desc"
+            ref={pickupDriftRef}
           >
-            <div className="price-drift-badge" aria-hidden="true"><Icon n="clock" s={24} c="#1D4ED8" /></div>
+            <div className="price-drift-badge" aria-hidden="true"><Icon n="clock" s={24} c="var(--ce-color-brand-ink)" /></div>
             <h2 id="pickup-drift-title" className="price-drift-title">Abholzeitfenster geändert</h2>
             <p id="pickup-drift-desc" className="price-drift-desc">
               Das verfügbare Abholzeitfenster hat sich seit Ihrer Auswahl geändert. Ihr zuvor

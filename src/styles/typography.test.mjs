@@ -289,10 +289,10 @@ test("9 — Textfarben kommen aus den Foundation-Rollen, nicht aus Literalen", (
       if (/^(currentColor|inherit|#fff|#ffffff|white)$/i.test(wert)) continue;
       // Weiß mit Deckkraft auf dunklen Flächen (Drawer, Angebots-Hero).
       if (/^rgba\(255,\s*255,\s*255,/.test(wert)) continue;
-      // Dokumentierte Ausnahme: das violette Angebots-Badge behält seinen
-      // gemessenen Wert, weil der Marken-Violettton dort unter AA fiele.
-      // Es wird mit dem Seitenpaket Angebote migriert.
-      if (datei === "offers.css" && wert === "#7c3aed") continue;
+      // Das violette Angebots-Badge trug hier zuvor seinen gemessenen Wert
+      // als Literal (Marken-Violettton fiele unter AA) — mit Paket B als
+      // --ce-color-brand-violet-ink in die Foundation gehoben, keine
+      // Ausnahme mehr nötig.
       treffer.push(`${datei}:${zeile} ${wert}`);
     }
   }

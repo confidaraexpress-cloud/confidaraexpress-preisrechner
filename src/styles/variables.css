@@ -105,6 +105,10 @@
   --ce-color-brand-soft: #eef0fd;                     /* -ink darauf 5,75:1 */
   --ce-color-brand-border: rgba(83, 103, 232, 0.28);
   --ce-color-brand-violet: #7a5ce6;
+  /* -ink-Variante für Text auf hellem Grund (Paket B, Angebots-Badge):
+     --ce-color-brand-violet misst dort nur 4,25:1 und fiele unter AA;
+     dieser Ton misst 5,19:1. */
+  --ce-color-brand-violet-ink: #7c3aed;
 
   /* ── Text ──
      --ce-color-text-disabled unterschreitet AA bewusst: er ist ausschließlich

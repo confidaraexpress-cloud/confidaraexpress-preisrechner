@@ -15,7 +15,11 @@ export function AddressList({
   hasMore, loadingMore, loadMoreError, onLoadMore,
   busyId, rowActions,
 }) {
-  if (loading) return <AddressSkeleton />;
+  // Nur die ECHTE Erstladung zeigt das Skeleton. Eine Such-/Filteränderung
+  // setzt `loading` ebenfalls kurz auf true (siehe AddressBookPage.load) —
+  // solange bereits Treffer sichtbar sind, bleiben sie stehen; die Werkzeug-
+  // leiste zeigt den dezenten "searching"-Indikator (dieselbe Bedingung).
+  if (loading && items.length === 0) return <AddressSkeleton />;
 
   if (error) {
     return (
@@ -49,7 +53,7 @@ export function AddressList({
       </ul>
 
       {hasMore && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 16 }}>
+        <div className="abk-loadmore-wrap">
           {loadMoreError && (
             <div className="alert alert-error" style={{ width: "100%" }}>
               <Icon n="x" s={16} />{loadMoreError}

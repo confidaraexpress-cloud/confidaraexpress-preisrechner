@@ -1,5 +1,5 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
+import { EmptyState, NoResultsState } from "../ui/StateView";
 import { TAB_SENDER } from "../../utils/addressBookView.mjs";
 
 // Unterscheidet drei Leerzustände (siehe resolveEmptyStateKind): „noch keine
@@ -16,18 +16,19 @@ const COPY = {
 
 export function AddressEmptyState({ kind, tab, onCreate }) {
   if (!kind) return null;
-  const entry = kind === "none" ? COPY.none[tab] : COPY[kind];
+  if (kind === "none") {
+    const entry = COPY.none[tab];
+    if (!entry) return null;
+    return (
+      <EmptyState
+        icon="idcard"
+        title={entry.title}
+        text="Legen Sie eine Adresse an, um sie künftig schnell wiederzuverwenden."
+        action={<button type="button" className="btn btn-primary btn-sm" onClick={onCreate}>{entry.cta}</button>}
+      />
+    );
+  }
+  const entry = COPY[kind];
   if (!entry) return null;
-  return (
-    <div className="empty">
-      <div className="empty-icon" aria-hidden="true"><Icon n="idcard" s={40} c="var(--gray300, #cbd5e1)" /></div>
-      <div className="empty-title">{entry.title}</div>
-      {entry.cta && (
-        <>
-          <p className="abk-empty-desc">Legen Sie eine Adresse an, um sie künftig schnell wiederzuverwenden.</p>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onCreate}>{entry.cta}</button>
-        </>
-      )}
-    </div>
-  );
+  return <NoResultsState title={entry.title} />;
 }

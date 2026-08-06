@@ -183,9 +183,9 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft, utility }
 
   return (
     <>
-      <div className="container dft-wrap">
-        <DraftsHeader onNewShipment={onNewShipment} utility={utility} />
+      <DraftsHeader onNewShipment={onNewShipment} utility={utility} />
 
+      <div className="page-body">
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}
         {partialError && (
           <div className="alert alert-error mb-16" role="alert">

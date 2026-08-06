@@ -1,6 +1,7 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
+import { EmptyState } from "../ui/StateView";
 import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
@@ -51,7 +52,7 @@ function ShipmentRowActions({ s, onTrack, onLabel, onCancel }) {
   return (
     <div className="flex gap-8 stn-actions">
       {s.jumingo_shipment_id && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.jumingo_shipment_id)}>Track</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.jumingo_shipment_id)}>Sendung verfolgen</button>
       )}
       {(s.status === "booked" || s.status === "label_ready") && (
         <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s.jumingo_shipment_id)}>Label</button>
@@ -179,10 +180,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
         {loading ? (
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
         ) : shipments.length === 0 ? (
-          <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="package" s={24} /></div>
-            <div className="empty-title">Noch keine Sendungen</div>
-          </div>
+          <EmptyState icon="package" title="Noch keine Sendungen" />
         ) : (
           <>
           <div className="table-card ce-list-table">
@@ -227,42 +225,43 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                       </tr>
                       {trackingId === s.jumingo_shipment_id && (
                         <tr>
-                          <td colSpan={7} style={{ background: "var(--gray50)", padding: "20px 24px" }}>
+                          <td colSpan={7} className="shipment-detail-cell">
+                          <div className="ce-card-muted shipment-detail-card">
                             {/* Sendungsdetail: die drei kundensichtbaren Werte GETRENNT benannt.
                                 JUMiNGO-Shipment-ID/-Ordernummer und die interne shipments.id
                                 werden hier bewusst NICHT angezeigt — die IDs bleiben lediglich
                                 im State/API-Aufruf (Track/Label) erhalten. */}
-                            <dl className="shipment-detail-numbers" style={{ display: "flex", flexWrap: "wrap", gap: "8px 28px", margin: "0 0 16px" }}>
-                              <div>
-                                <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.businessOrder}</dt>
-                                <dd className="mono" style={{ margin: 0, fontSize: 13, fontWeight: 600, wordBreak: "break-all" }}>
+                            <dl className="shipment-detail-numbers">
+                              <div className="shipment-detail-item">
+                                <dt className="shipment-detail-label">{NUMBER_LABELS.businessOrder}</dt>
+                                <dd className="shipment-detail-value mono font-bold">
                                   {nums.businessOrderNumber || NOT_ASSIGNED_TEXT}
                                 </dd>
                               </div>
                               {nums.trackingNumber && (
-                                <div>
-                                  <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.tracking}</dt>
-                                  <dd className="mono" style={{ margin: 0, fontSize: 13, wordBreak: "break-all" }}>{nums.trackingNumber}</dd>
+                                <div className="shipment-detail-item">
+                                  <dt className="shipment-detail-label">{NUMBER_LABELS.tracking}</dt>
+                                  <dd className="shipment-detail-value mono">{nums.trackingNumber}</dd>
                                 </div>
                               )}
                               {nums.customerReference && (
-                                <div>
-                                  <dt className="text-muted" style={{ fontSize: 11 }}>{NUMBER_LABELS.customerReference}</dt>
-                                  <dd className="mono" style={{ margin: 0, fontSize: 13, wordBreak: "break-all" }}>{nums.customerReference}</dd>
+                                <div className="shipment-detail-item">
+                                  <dt className="shipment-detail-label">{NUMBER_LABELS.customerReference}</dt>
+                                  <dd className="shipment-detail-value mono">{nums.customerReference}</dd>
                                 </div>
                               )}
-                              <div>
-                                <dt className="text-muted" style={{ fontSize: 11 }}>Carrier</dt>
-                                <dd style={{ margin: 0, fontSize: 13 }}>{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</dd>
+                              <div className="shipment-detail-item">
+                                <dt className="shipment-detail-label">Carrier</dt>
+                                <dd className="shipment-detail-value">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</dd>
                               </div>
-                              <div>
-                                <dt className="text-muted" style={{ fontSize: 11 }}>Buchungsdatum</dt>
-                                <dd style={{ margin: 0, fontSize: 13 }}>{dateDE(s.created_at)}</dd>
+                              <div className="shipment-detail-item">
+                                <dt className="shipment-detail-label">Buchungsdatum</dt>
+                                <dd className="shipment-detail-value">{dateDE(s.created_at)}</dd>
                               </div>
                               {s.requested_shipping_date && (
-                                <div>
-                                  <dt className="text-muted" style={{ fontSize: 11 }}>Geplantes Versanddatum</dt>
-                                  <dd style={{ margin: 0, fontSize: 13 }}>{isoDayDE(s.requested_shipping_date)}</dd>
+                                <div className="shipment-detail-item">
+                                  <dt className="shipment-detail-label">Geplantes Versanddatum</dt>
+                                  <dd className="shipment-detail-value">{isoDayDE(s.requested_shipping_date)}</dd>
                                 </div>
                               )}
                             </dl>
@@ -330,7 +329,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                                           Trackingnummer: <strong>{number}</strong>
                                         </span>
                                       )}
-                                      {statusLabel && <span className="shipment-track-chip">{statusLabel}</span>}
+                                      {statusLabel && <span className="badge badge--info">{statusLabel}</span>}
                                       {carrierUrl && (
                                         <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
                                           Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
@@ -343,7 +342,9 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                                       {events.map((ev, i) => (
                                         <div key={i} className="track-event">
                                           {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
-                                          <div className={`track-dot ${i === events.length - 1 ? "active" : "done"}`}>{i === events.length - 1 ? "●" : "✓"}</div>
+                                          <div className={`track-dot ${i === events.length - 1 ? "active" : "done"}`}>
+                                            {i === events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
+                                          </div>
                                           <div className="track-info">
                                             <div className="track-title">{ev.title}</div>
                                             {ev.when && <div className="track-time">{ev.when}</div>}
@@ -358,6 +359,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                                 </div>
                               );
                             })()}
+                          </div>
                           </td>
                         </tr>
                       )}

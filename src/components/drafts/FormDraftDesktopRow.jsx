@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { dtDE } from "../../utils/formatters";
 import { fmtDE } from "../../utils/date";
 import { formatFormRecipient, formatFormRoute, formatFormPackage, formFormShippingDate } from "../../utils/formDraftsView.mjs";
+import { DraftActionsMenu } from "./DraftActionsMenu";
 
 // Desktop-Zeile für einen FRÜHEN Formularentwurf (kind:"form"): noch nicht
 // berechnet — daher KEIN Carrier/Tarif/Preis/Laufzeit/Tracking/Label/JUMiNGO-ID.
@@ -32,9 +33,7 @@ export function FormDraftDesktopRow({ draft, busy, resuming, onDelete, onResume 
           <button type="button" className="btn btn-outline btn-sm dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
             {resuming ? <span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> : <Icon n="arrowRight" s={14} />} Fortsetzen
           </button>
-          <button type="button" className="btn btn-outline btn-sm dft-delete-btn" onClick={() => onDelete(draft)} disabled={anyBusy}>
-            {busy ? <span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> : <Icon n="trash" s={14} />} Löschen
-          </button>
+          <DraftActionsMenu draft={draft} busy={busy} disabled={resuming} onDelete={onDelete} />
         </div>
       </td>
     </tr>

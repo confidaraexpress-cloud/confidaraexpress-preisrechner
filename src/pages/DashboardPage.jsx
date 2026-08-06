@@ -40,10 +40,12 @@ const PAGE_HEADERS = {
     subtitle: "Führen Sie neue Versandaufträge sicher und nachvollziehbar durch den Buchungsprozess.",
   },
   shipments: {
+    eyebrow: "Verwaltung",
     title: "Sendungen",
     subtitle: "Alle Versandaufträge übersichtlich dokumentiert und jederzeit nachverfolgbar.",
   },
   invoices: {
+    eyebrow: "Verwaltung",
     title: "Rechnungen",
     subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
   },
@@ -400,26 +402,22 @@ export default function DashboardPage() {
         )}
 
         {page === "addressbook" && (
-          <div className="page-body">
-            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-              <AddressBookPage
-                utility={utilityCluster}
-                onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
-              />
-            </Suspense>
-          </div>
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <AddressBookPage
+              utility={utilityCluster}
+              onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
+            />
+          </Suspense>
         )}
 
         {page === "drafts" && (
-          <div className="page-body">
-            <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-              <DraftsPage
-                utility={utilityCluster}
-                onNewShipment={() => navigateTo("new")}
-                onResumeFormDraft={(payload) => { setResumeDraft(payload); navigateTo("new"); }}
-              />
-            </Suspense>
-          </div>
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <DraftsPage
+              utility={utilityCluster}
+              onNewShipment={() => navigateTo("new")}
+              onResumeFormDraft={(payload) => { setResumeDraft(payload); navigateTo("new"); }}
+            />
+          </Suspense>
         )}
 
         {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} onCancellationRequested={handleCancellationRequested} />}

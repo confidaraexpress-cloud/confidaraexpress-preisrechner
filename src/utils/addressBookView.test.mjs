@@ -8,7 +8,7 @@ import {
   appendPageResults, resolveEmptyStateKind, addressToFormValues, prepareDuplicateFormValues,
   validateAddressForm, normalizeAddressForm, mapAddressErrorToMessage, resolveNewShipmentRole,
   mapAddressToShipmentFormPatch, applyAddressMutation, roleParamForTab,
-  buildAddressMenuModel, CREATE_SHIPMENT_LABEL, CREATE_SHIPMENT_ICON,
+  buildAddressMenuModel, CREATE_SHIPMENT_LABEL, CREATE_SHIPMENT_ICON, addressBadgeList,
 } from "./addressBookView.mjs";
 
 const addr = (over) => ({
@@ -349,4 +349,29 @@ test("31 — Standard-Aktionen erscheinen rollen- und statusabhängig (unveränd
   // bereits Standard → Aktion verschwindet (kein redundanter Eintrag)
   const already = menuKeys(addr({ role: ROLE_SENDER, isDefaultSender: true }));
   assert.ok(!already.includes("setDefaultSender"));
+});
+
+// 32. Höchstens drei Badges gleichzeitig — Standard-Absender UND -Empfänger
+// werden zu einem einzigen Badge zusammengefasst, die Flags selbst bleiben
+// dabei unangetastet (nur die Darstellung fasst zusammen).
+test("32 — addressBadgeList liefert höchstens drei Badges, auch im Maximalfall", () => {
+  const max = addr({ role: ROLE_BOTH, isDefaultSender: true, isDefaultRecipient: true, favorite: true });
+  const badges = addressBadgeList(max);
+  assert.ok(badges.length <= 3, `mehr als drei Badges: ${badges.length}`);
+  assert.deepEqual(badges.map((b) => b.text), ["Standard-Absender & -Empfänger", "Favorit", "Beides"]);
+  // Die zugrunde liegenden Flags bleiben von der Zusammenfassung unberührt.
+  assert.equal(max.isDefaultSender, true);
+  assert.equal(max.isDefaultRecipient, true);
+});
+
+test("33 — addressBadgeList zeigt einzelne Standard-Badges unverändert, wenn nur eines gesetzt ist", () => {
+  const onlySender = addressBadgeList(addr({ role: ROLE_SENDER, isDefaultSender: true, isDefaultRecipient: false, favorite: false }));
+  assert.deepEqual(onlySender.map((b) => b.text), ["Standard-Absender", "Absender"]);
+  const onlyRecipient = addressBadgeList(addr({ role: ROLE_RECIPIENT, isDefaultSender: false, isDefaultRecipient: true, favorite: false }));
+  assert.deepEqual(onlyRecipient.map((b) => b.text), ["Standard-Empfänger", "Empfänger"]);
+});
+
+test("34 — addressBadgeList zeigt immer genau ein Rollen-Badge, auch ohne weitere Flags", () => {
+  const plain = addressBadgeList(addr({ role: ROLE_RECIPIENT, isDefaultSender: false, isDefaultRecipient: false, favorite: false }));
+  assert.deepEqual(plain.map((b) => b.text), ["Empfänger"]);
 });

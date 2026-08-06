@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { EmptyState, NoResultsState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
 import { useNotifications } from "../../context/NotificationsContext";
@@ -105,7 +106,6 @@ function PeriodBlock({ inv }) {
 function AmountBlock({ inv }) {
   return (
     <div>
-      <span className="inv-amount-label">Betrag</span>
       <span className="inv-amount-value">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</span>
     </div>
   );
@@ -301,25 +301,17 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
         {loading ? (
           <div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> {LOADING_TEXT}</div>
         ) : error ? (
-          <div className="inv-loaderr">
-            <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || LOAD_ERROR_TEXT}</div>
-            <div className="inv-loaderr-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={onRetry}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
-              </button>
-            </div>
-          </div>
+          <ErrorState
+            title={error || LOAD_ERROR_TEXT}
+            action={<button type="button" className="btn btn-primary btn-sm" onClick={onRetry}><Icon n="refresh" s={14} /> Erneut versuchen</button>}
+          />
         ) : list.length === 0 ? (
-          <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="invoice" s={24} /></div>
-            <div className="empty-title">{LIST_EMPTY_TITLE}</div>
-            <p className="empty-text">{LIST_EMPTY_TEXT}</p>
-          </div>
+          <EmptyState icon="invoice" title={LIST_EMPTY_TITLE} text={LIST_EMPTY_TEXT} />
         ) : filtered.length === 0 ? (
-          <div className="empty">
-            <div className="empty-title">{FILTER_EMPTY_TEXT}</div>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setFilter("")}>Filter zurücksetzen</button>
-          </div>
+          <NoResultsState
+            title={FILTER_EMPTY_TEXT}
+            action={<button type="button" className="btn btn-outline btn-sm" onClick={() => setFilter("")}>Filter zurücksetzen</button>}
+          />
         ) : (
           <>
             {/* Desktop: sechs Bereiche mit relativen/festen Breiten — kein horizontales Scrollen. */}

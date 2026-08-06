@@ -346,6 +346,29 @@ export function buildAddressMenuModel(address) {
   return items;
 }
 
+// ── Zeilen-/Karten-Badges: höchstens drei gleichzeitig ──────────────────────
+// Priorität: Standard (blau, wichtigste Information) → Favorit (gelb) → Rolle
+// (grau, ruhigster Marker, immer vorhanden). Sind BEIDE Standard-Flags gesetzt
+// (nur bei role "both" möglich), werden sie zu EINEM Badge zusammengefasst
+// statt zwei separaten — sonst wären bei einem zusätzlich favorisierten
+// Eintrag vier Badges gleichzeitig sichtbar. Die zugrunde liegenden Flags
+// bleiben dabei unangetastet; nur die Darstellung fasst sie zusammen.
+const ROLE_BADGE_LABEL = { [ROLE_SENDER]: "Absender", [ROLE_RECIPIENT]: "Empfänger", [ROLE_BOTH]: "Beides" };
+export function addressBadgeList(address) {
+  const a = address || {};
+  const badges = [];
+  if (a.isDefaultSender && a.isDefaultRecipient) {
+    badges.push({ key: "default", text: "Standard-Absender & -Empfänger", tone: "blue" });
+  } else if (a.isDefaultSender) {
+    badges.push({ key: "default", text: "Standard-Absender", tone: "blue" });
+  } else if (a.isDefaultRecipient) {
+    badges.push({ key: "default", text: "Standard-Empfänger", tone: "blue" });
+  }
+  if (a.favorite) badges.push({ key: "favorite", text: "Favorit", tone: "yellow" });
+  badges.push({ key: "role", text: ROLE_BADGE_LABEL[a.role] || a.role, tone: "gray" });
+  return badges;
+}
+
 // ── Listen-Mutationshelfer (sichere Mutation → Refresh-Ersatz ohne Reload) ──
 // Löschen entfernt die Adresse aus der aktuell sichtbaren Liste. Andere
 // Mutationen (Bearbeiten/Favorit/Standard) ersetzen den Eintrag 1:1 durch die

@@ -75,8 +75,12 @@ test("8 — Ladezustand als Live-Region mit sichtbarem Text", () => {
   assert.match(listSrc, /role="status" aria-live="polite"[^>]*>[\s\S]{0,60}\{LOADING_TEXT\}/);
 });
 
+// Paket C: der Fehlerzustand lief vorher als eigenes .inv-loaderr-Markup mit
+// role="alert" direkt in dieser Datei — jetzt trägt die gemeinsame ErrorState-
+// Komponente (StateView.jsx) role="alert" und das Icon; die Zusicherung wandert
+// mit, statt zu verschwinden (ErrorState selbst rendert role="alert" + Icon).
 test("9 — eigener Fehlerzustand mit Retry, getrennt von Sendungen", () => {
-  assert.match(listSrc, /role="alert"[^>]*>[\s\S]{0,20}<Icon n="x" s=\{16\} \/>\{error \|\| LOAD_ERROR_TEXT\}/);
+  assert.match(listSrc, /<ErrorState[\s\S]{0,20}title=\{error \|\| LOAD_ERROR_TEXT\}/);
   assert.match(listSrc, /onClick=\{onRetry\}/);
   assert.match(listSrc, /Erneut versuchen/);
 });

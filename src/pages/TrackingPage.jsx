@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
+import { EmptyState } from "../components/ui/StateView";
 import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
@@ -161,7 +162,7 @@ export default function TrackingPage() {
         {result && (
           <div className="calc-panel mt-16">
             <div className="calc-panel-header">
-              <Icon n="map" s={18} c="#1D4ED8" />
+              <Icon n="map" s={18} c="var(--ce-color-brand-ink)" />
               <h3>Sendungsverfolgung</h3>
             </div>
             <div className="calc-panel-body">
@@ -192,7 +193,7 @@ export default function TrackingPage() {
                   <div key={label} className="step-item">
                     <div className="step-wrap">
                       <div className={`step-circle ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`}>
-                        {i < stepIndex ? "✓" : i + 1}
+                        {i < stepIndex ? <Icon n="check" s={14} /> : i + 1}
                       </div>
                       <span className={`step-label ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`}>{label}</span>
                     </div>
@@ -213,7 +214,7 @@ export default function TrackingPage() {
                         return (
                         <div key={i} className="track-event">
                           <div className={`track-dot ${isLatest ? "active" : "done"}`}>
-                            {isLatest ? "●" : "✓"}
+                            {isLatest ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
                           </div>
                           <div className="track-info">
                             <div className="track-title">{ev.description}</div>
@@ -231,13 +232,11 @@ export default function TrackingPage() {
                   ))}
                 </div>
               ) : (
-                <div className="empty tracking-events-empty">
-                  <div className="empty-icon" aria-hidden="true"><Icon n="package" s={24} /></div>
-                  <div className="empty-title">Keine Ereignisse verfügbar</div>
-                  <p className="text-sm text-muted mt-8">
-                    Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden.
-                  </p>
-                </div>
+                <EmptyState
+                  icon="package"
+                  title="Keine Ereignisse verfügbar"
+                  text="Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden."
+                />
               )}
             </div>
           </div>

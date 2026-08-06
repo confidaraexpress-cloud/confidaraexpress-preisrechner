@@ -54,6 +54,7 @@ export function AddressActionsMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Aktionen für ${address.label || address.company || address.contactName || "Adresse"}`}
+        title="Aktionen"
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >

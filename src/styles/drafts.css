@@ -9,17 +9,6 @@
 .dft-empty-desc { font-size: 13px; color: var(--ce-color-text-muted); max-width: 360px; margin: 0 auto 16px; line-height: 1.5; }
 
 /* ─── Seitenkopf ──────────────────────────────────────────────────────────── */
-.dft-header-top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 22px;
-}
-.dft-header-text { min-width: 0; }
-.dft-header-title {
-  font-family: var(--ce-font-display); font-size: 36px; font-weight: 500;
-  line-height: 1.15; letter-spacing: -0.015em; color: var(--navy); margin-bottom: 4px;
-}
-.dft-header-sub { font-size: 14px; color: var(--ce-color-text-muted); line-height: 1.5; max-width: 560px; }
-.dft-header-cta { flex-shrink: 0; }
 
 /* ─── Desktop-Tabelle (reuse .table-card/.table-scroll, nur Zellinhalte neu) ── */
 .dft-table th { text-align: left; }
@@ -67,14 +56,7 @@
 .dft-delete-confirm-btn:focus-visible { outline: 2px solid var(--ce-color-status-error-fg); outline-offset: 2px; }
 
 /* ─── Bestätigungsdialog (gleiches Muster wie price-drift-overlay/-card) ───── */
-.dft-dialog-overlay {
-  position: fixed; inset: 0; background: rgba(11,31,77,0.4); z-index: 410;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.dft-dialog-card {
-  width: 100%; max-width: 420px; background: white; border-radius: var(--radius-lg);
-  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
-}
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .dft-dialog-icon {
   width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
   justify-content: center; margin-bottom: 14px; background: var(--danger-bg); color: var(--danger);
@@ -100,8 +82,6 @@
 @media (min-width: 768px) { .dft-cards { display: none; } }
 @media (max-width: 767px) {
   .dft-table-card { display: none; }
-  .dft-header-top { flex-direction: column; }
-  .dft-header-cta .btn { width: 100%; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -176,10 +156,6 @@
 .dft-save-conflict-text { flex: 1; min-width: 180px; }
 .dft-save-conflict .btn { flex-shrink: 0; }
 
-/* Mobile Display-L-Stufe — gleicher Breakpoint wie .dash-section-title. */
-@media (max-width: 600px) {
-  .dft-header-title { font-size: 28px; }
-}
 @media (max-width: 560px) {
   .dft-cta-row { flex-direction: column; }
   .dft-cta-row .btn { flex: 1 1 auto; }

@@ -5,6 +5,7 @@
 // EINZIGE Quelle der Statusbezeichnungen — Liste, Detail, Filter und Dialoge
 // nutzen dieselben deutschen Begriffe (keine wechselnden Bezeichnungen für
 // denselben Status).
+import { statusFallback } from "./statusFallback.mjs";
 const USER_STATUS_META = {
   pending: ["badge-yellow", "Ausstehend"],
   approved: ["badge-green", "Freigegeben"],
@@ -18,7 +19,9 @@ const USER_ROLE_META = {
   admin: ["badge-blue", "Admin"],
   customer: ["badge-gray", "Kunde"],
 };
-export const userRoleMeta = (r) => USER_ROLE_META[r] || ["badge-gray", r ? String(r) : "—"];
+// Eine unbekannte Rolle ist fachlich derselbe Fall wie ein unbekannter Status:
+// nie der Rohwert im sichtbaren Text.
+export const userRoleMeta = (r) => USER_ROLE_META[r] || statusFallback(r);
 
 // Zahlungsziel anzeigen; leer → Default „7 Tage" (nur Anzeige, KEINE Logik/Änderung).
 export function paymentTermLabel(v) {

@@ -60,13 +60,13 @@ test("Anzeige: unpaid + nicht faellig → gelb 'Offen'", () => {
   assert.deepEqual(invoiceDisplayMeta("unpaid", TOMORROW, NOW), ["badge-yellow", "Offen"]);
 });
 
-test("Anzeige-Fallback: unbekannter Status → grau + Rohwert", () => {
-  assert.deepEqual(invoiceDisplayMeta("weird", TOMORROW, NOW), ["badge-gray", "weird"]);
+test("Anzeige-Fallback: unbekannter Status → grau + „Unbekannter Status“", () => {
+  assert.deepEqual(invoiceDisplayMeta("weird", TOMORROW, NOW), ["badge-gray", "Unbekannter Status", "weird"]);
 });
 
 // ── invoiceStatusMeta / Filteroptionen ───────────────────────────────────────
 test("invoiceStatusMeta Fallback fuer null → grau + Strich", () => {
-  assert.deepEqual(invoiceStatusMeta(null), ["badge-gray", "—"]);
+  assert.deepEqual(invoiceStatusMeta(null), ["badge-gray", "—", null]);
 });
 
 test("Status-Filteroptionen: Alle/Offen/Bezahlt (kein Überfällig als Status)", () => {

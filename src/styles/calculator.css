@@ -96,8 +96,8 @@
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(14, 30, 80, 0.10);
   box-shadow: 0 2px 10px rgba(14, 30, 80, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-          backdrop-filter: blur(8px) saturate(120%);
+  /* Kein backdrop-filter (Paket A, Phase 3) — die Fläche ist mit 82 %
+     Deckkraft ohnehin nahezu opak; der Filter kostete nur Bildrate. */
   transition: transform 0.2s cubic-bezier(.2,.7,.3,1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .calc-filter-bar .service-filter-trigger:hover {
@@ -685,22 +685,13 @@
    (bewusst kein Rot/kein Fehler-Look), alter vs. neuer Preis gegenübergestellt,
    neuer Preis dezent hervorgehoben. z-index über Sidebar (999)/Navbar. Mobil
    stapeln Vergleich und Aktionen; die fixe Ebene scrollt bei Bedarf. */
-.price-drift-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px; overflow-y: auto;
-  background: rgba(11, 31, 77, 0.55);
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  animation: price-drift-fade 0.18s ease;
-}
+/* Overlay aus dem gemeinsamen Dialogmuster (patterns.css) — der frühere
+   backdrop-filter: blur(4px) ist mit Paket A, Phase 3 entfallen. */
+.price-drift-overlay { animation: price-drift-fade 0.18s ease; }
 @keyframes price-drift-fade { from { opacity: 0; } to { opacity: 1; } }
-.price-drift-card {
-  width: 100%; max-width: 440px; box-sizing: border-box;
-  background: #fff; border-radius: 20px; padding: 28px 26px 24px;
-  border: 1px solid var(--border2, #c8d5e8); text-align: center;
-  box-shadow: 0 24px 60px -12px rgba(11, 31, 77, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  animation: price-drift-rise 0.22s cubic-bezier(.2,.7,.3,1);
-}
+/* Fläche aus dem gemeinsamen Dialogmuster; hier bleibt nur die Textausrichtung
+   und die bestehende Einblendung. */
+.price-drift-card { text-align: center; animation: price-drift-rise 0.22s cubic-bezier(.2,.7,.3,1); }
 @keyframes price-drift-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .price-drift-badge {
   width: 52px; height: 52px; margin: 0 auto 14px;

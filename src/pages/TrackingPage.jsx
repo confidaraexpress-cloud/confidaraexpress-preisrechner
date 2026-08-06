@@ -232,7 +232,7 @@ export default function TrackingPage() {
                 </div>
               ) : (
                 <div className="empty tracking-events-empty">
-                  <div className="empty-icon">📦</div>
+                  <div className="empty-icon" aria-hidden="true"><Icon n="package" s={24} /></div>
                   <div className="empty-title">Keine Ereignisse verfügbar</div>
                   <p className="text-sm text-muted mt-8">
                     Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden.

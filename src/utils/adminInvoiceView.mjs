@@ -23,6 +23,7 @@
 // sind Bedienkomfort — die eigentliche Sperre steht serverseitig.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { statusFallback } from "./statusFallback.mjs";
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 const str = (v) => (v === null || v === undefined ? "" : String(v).trim());
 const numOrNull = (v) => {
@@ -117,7 +118,9 @@ export function paymentStatus(row, now = new Date()) {
   if (status === "paid") return { cls: "badge-green", label: "Bezahlt", kind: "paid" };
   if (isInvoiceOverdue(r, now)) return { cls: "badge-red", label: "Überfällig", kind: "overdue" };
   if (status === "unpaid") return { cls: "badge-yellow", label: "Offen", kind: "open" };
-  return { cls: "badge-gray", label: status || "—", kind: "unknown" };
+  // Rohwert nie sichtbar — der Support sieht ihn über `raw` im title-Attribut.
+  const [cls, label, raw] = statusFallback(status);
+  return { cls, label, raw, kind: "unknown" };
 }
 
 // Auswahl für den Zahlungsstatus-Filter (Backendvertrag kennt nur unpaid|paid).
@@ -139,11 +142,14 @@ export function documentState(row) {
   const r = row && typeof row === "object" ? row : {};
   const status = str(firstDefined(r.document_status, r.documentStatus));
   const meta = DOCUMENT_STATUS_META[status];
+  // Rohwert nie im sichtbaren Text — er steht als `raw` fürs title-Attribut bereit.
+  const [unbekanntCls, unbekanntLabel, unbekanntRaw] = statusFallback(status);
   return {
     status,
     known: !!meta,
-    cls: meta ? meta.cls : "badge-gray",
-    label: meta ? meta.label : (status || "—"),
+    raw: meta ? null : unbekanntRaw,
+    cls: meta ? meta.cls : unbekanntCls,
+    label: meta ? meta.label : unbekanntLabel,
     ready: status === "ready",
     failed: status === "document_failed",
     running: status === "generating" || status === "pending_document",
@@ -172,7 +178,8 @@ export function emailState(row) {
       sendable: false, blockedReason: NON_PRODUCTIVE_MAIL_NOTE, action: null, running: false, failed: false };
   }
   const doc = documentState(r);
-  const meta = EMAIL_STATUS_META[status] || { cls: "badge-gray", label: status || "—" };
+  const [unbekanntCls, unbekanntLabel, unbekanntRaw] = statusFallback(status);
+  const meta = EMAIL_STATUS_META[status] || { cls: unbekanntCls, label: unbekanntLabel, raw: unbekanntRaw };
   const running = status === "sending";
   // Aktion aus dem ECHTEN Status: pending → senden, failed → erneut versuchen,
   // sent → bewusstes Resend. Das Backend klassifiziert manual_send auf failed

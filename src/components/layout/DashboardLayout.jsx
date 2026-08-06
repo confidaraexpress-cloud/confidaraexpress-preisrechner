@@ -7,6 +7,8 @@ import { DashboardSectionHeader } from "./DashboardSectionHeader";
 import { LegalLinks } from "./LegalLinks";
 import { NotificationsProvider } from "../../context/NotificationsContext";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { UtilityCluster } from "../ui/PageHeader";
+import { UserChip } from "../ui/UserChip";
 
 export function DashboardLayout() {
   const { user } = useAuth();
@@ -14,7 +16,6 @@ export function DashboardLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
   const activePage =
     location.pathname === "/calculator" ? "calculator" : "";
@@ -46,15 +47,22 @@ export function DashboardLayout() {
             <Icon n="menu" s={22} />
           </button>
           <div className="topbar-brand">ConfidaraExpress</div>
+          {/* Menü, Wortmarke, Glocke — keine zweite Identität neben der
+              Firmenkarte der Sidebar (Paket A, Phase 3). */}
           <div className="topbar-right">
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
-            <div className="user-avatar">{initials}</div>
           </div>
         </div>
         {activePage === "calculator" && (
           <DashboardSectionHeader
             title="Preisrechner"
             subtitle="Berechnen Sie Versandkosten transparent auf Basis aktueller Carrier-Tarife."
+            utility={(
+              <UtilityCluster>
+                <NotificationBell variant="page" navigateTo={navigateTo} />
+                <UserChip user={user} onClick={() => navigateTo("profile")} />
+              </UtilityCluster>
+            )}
           />
         )}
         <Outlet />

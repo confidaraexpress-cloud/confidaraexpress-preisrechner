@@ -294,7 +294,7 @@ export default function AdminBackfillPage() {
       ) : error ? (
         <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
       ) : rows.length === 0 ? (
-        <div className="table-card"><div className="empty"><div className="empty-icon">🧾</div><div className="empty-title">Keine Rechnungen gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="invoice" s={24} /></div><div className="empty-title">Keine Rechnungen gefunden</div></div></div>
       ) : (
         <div className="table-card">
           <div className="table-scroll">

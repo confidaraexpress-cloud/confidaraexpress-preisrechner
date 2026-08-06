@@ -1,0 +1,537 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   GEMEINSAME INTERFACE-MUSTER — Paket A, Phase 3
+   ───────────────────────────────────────────────────────────────────────────
+   Die Ebene über den Primitives: Seitenkopf, Utility-Cluster, Toolbar,
+   Tabellen- und Listenrahmen, Dialoge, Drawer und die Zustandsflächen
+   (leer / lädt / Fehler / Erfolg).
+
+   Diese Datei steht als EINZIGE ganz am Ende der Importkette. Das ist Absicht
+   und der Unterschied zu primitives.css: Phase 2 sollte die Sonderfälle der
+   Bereichsdateien bewusst stehen lassen, Phase 3 soll sie zusammenführen. Die
+   historischen Klassennamen (.stn-dialog-card, .adm-modal, .abk-drawer …)
+   stehen deshalb hier in denselben Regelgruppen wie die neuen .ce-*-Muster;
+   ihre Materialdeklarationen sind in den Bereichsdateien entfernt worden,
+   damit es weiterhin nur EINE Quelle gibt.
+
+   Alle Werte kommen aus der Foundation (variables.css). Kein Glow, kein
+   backdrop-filter, keine neuen Radien, Tiefen oder Farben.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════ 1 — PAGEHEADER ════════════════════════════════════════════════
+   Ein Aufbau für beide Portale:
+
+     [Eyebrow]                                   [Utility-Cluster] [Aktionen]
+     Titel
+     [Untertitel]
+     [Meta-/Statuszeile]
+
+   Kundenportal: Titel in Display L (Cormorant), Utility-Cluster mit Glocke
+   und Benutzerchip. Adminportal: derselbe Aufbau, Titel in Page Title
+   (DM Sans), dichtere Abstände, optionaler Zurück-Link, kein Cormorant.
+
+   Der Rahmen entspricht exakt dem gemeinsamen Inhaltsrahmen (.page-body /
+   .dash-section-header) — der Kopf darf nicht um Pixel danebenstehen. */
+.ce-page-header {
+  --ce-ph-gap: var(--ce-space-6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ce-ph-gap);
+  flex-wrap: wrap;
+  max-width: var(--ce-size-content);
+  margin: 0 auto;
+  padding: 32px 28px 22px;
+}
+.ce-page-header-text { min-width: 0; flex: 1 1 420px; }
+
+.ce-page-header-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  margin-bottom: var(--ce-space-2);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-micro-size);
+  font-weight: var(--ce-text-micro-weight);
+  line-height: var(--ce-text-micro-line);
+  letter-spacing: var(--ce-text-micro-tracking);
+  text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+}
+
+.ce-page-header-title {
+  margin: 0;
+  font-family: var(--ce-font-display);
+  font-size: var(--ce-text-display-l-size);
+  font-weight: var(--ce-text-display-l-weight);
+  line-height: var(--ce-text-display-l-line);
+  letter-spacing: var(--ce-text-display-l-tracking);
+  color: var(--ce-color-text-primary);
+}
+
+.ce-page-header-sub {
+  margin: var(--ce-space-2) 0 0;
+  max-width: 620px;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-body-l-size);
+  font-weight: var(--ce-text-body-l-weight);
+  line-height: var(--ce-text-body-l-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* Optionale Status-/Metazeile unter dem Untertitel (Badges, Chips, Zahlen). */
+.ce-page-header-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ce-space-2);
+  margin-top: var(--ce-space-3);
+}
+
+/* Rechte Spalte: Utility-Cluster und höchstens EINE primäre Seitenaktion. */
+.ce-page-header-aside {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.ce-page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  flex-wrap: wrap;
+}
+
+/* Adminvariante — gleiche Struktur, funktionaler Titel, dichter gesetzt. */
+.ce-page-header--admin { --ce-ph-gap: var(--ce-space-4); padding: 0 0 var(--ce-space-5); max-width: none; }
+.ce-page-header--admin .ce-page-header-title {
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-page-size);
+  font-weight: var(--ce-text-title-page-weight);
+  line-height: var(--ce-text-title-page-line);
+  letter-spacing: var(--ce-text-title-page-tracking);
+}
+.ce-page-header--admin .ce-page-header-sub { margin-top: 6px; font-size: var(--ce-text-body-size); }
+
+/* Zurück-Link (nur Adminportal, über dem Kopf). */
+.ce-page-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-1);
+  margin-bottom: var(--ce-space-3);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  color: var(--ce-color-text-secondary);
+  text-decoration: none;
+}
+.ce-page-header-back:hover { color: var(--ce-color-brand-ink); }
+
+@media (max-width: 860px) {
+  .ce-page-header { flex-direction: column; align-items: stretch; gap: var(--ce-space-4); }
+  /* In der Spaltenrichtung liegt die flex-basis auf der HÖHE — ohne dieses
+     Zurücksetzen bekäme der Textblock 420 px Mindesthöhe und risse eine große
+     Lücke zwischen Kopf und Inhalt auf. */
+  .ce-page-header-text { flex: 1 1 auto; }
+  .ce-page-header-aside { justify-content: flex-start; }
+  /* Ein leerer Aside (Utility-Cluster ausgeblendet, keine Aktion) darf keine
+     Lücke erzeugen. */
+  .ce-page-header-aside:empty { display: none; }
+}
+@media (max-width: 600px) {
+  .ce-page-header { padding: 24px 20px 18px; }
+  .ce-page-header-title { font-size: var(--ce-text-display-l-size-mobile); }
+  .ce-page-header--admin .ce-page-header-title { font-size: var(--ce-text-title-page-size-mobile); }
+  .ce-page-header--admin { padding: 0 0 var(--ce-space-4); }
+}
+
+/* ═══════════ 2 — UTILITY-CLUSTER ═══════════════════════════════════════════
+   Glocke und Benutzerchip stehen ab jetzt AUSSCHLIESSLICH im Seitenkopf
+   (Desktop) beziehungsweise in der mobilen Topbar. Der frühere frei
+   schwebende Mount (.page-bell-mount) ist entfallen — er saß außerhalb jeder
+   Struktur oben rechts im Inhaltsrahmen.
+
+   Maße: Glocke 40 × 40, Benutzerchip 40 hoch. Beide auf der Höhenskala der
+   Bedienelemente (--ce-size-control-md). */
+.ce-utility {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  flex-shrink: 0;
+}
+
+/* Auf schmalen Breiten trägt die Topbar die Glocke — im Kopf wäre sie doppelt. */
+@media (max-width: 860px) {
+  .ce-utility--hide-mobile { display: none; }
+}
+
+/* ═══════════ 3 — TOOLBAR UND FILTER ════════════════════════════════════════
+   Suche links, Filter daneben, Aktualisieren rechts. Kundenportal 56 px hoch,
+   Adminportal 48 px. Die Filterlogik selbst ist unberührt — hier steht nur
+   die Anordnung. */
+.ce-toolbar {
+  --ce-toolbar-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  flex-wrap: wrap;
+  min-height: var(--ce-toolbar-height);
+  margin-bottom: var(--ce-space-4);
+}
+.ce-toolbar-search { flex: 1 1 260px; min-width: 0; }
+.ce-toolbar-filters { display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap; }
+.ce-toolbar-actions { display: flex; align-items: center; gap: var(--ce-space-2); margin-left: auto; }
+.ce-toolbar--admin { --ce-toolbar-height: 48px; }
+
+/* Die bestehenden Toolbars laufen auf dieselben Höhen — Kundenportal 56 px,
+   Adminportal 48 px. Ihre Filterlogik und ihr Aufbau bleiben unverändert;
+   hier steht ausschließlich die gemeinsame Höhe und die Ausrichtung der
+   Aktionsspalte am rechten Rand. */
+.abk-toolbar, .inv-filters { min-height: 56px; }
+.adm-filters { min-height: 48px; }
+.abk-toolbar-actions, .adm-filter-actions { margin-left: auto; }
+
+@media (max-width: 600px) {
+  .ce-toolbar { align-items: stretch; }
+  .ce-toolbar-actions { margin-left: 0; }
+  .ce-toolbar-actions > .btn { flex: 1; justify-content: center; }
+}
+
+/* ═══════════ 4 — TABELLEN UND LISTEN ═══════════════════════════════════════
+   Der Container kommt aus dem Table-Primitive (Phase 2). Hier steht nur, was
+   allen Listen gemeinsam ist: Ausrichtung, Aktionsspalte, Pagination und der
+   Umschaltpunkt zur mobilen Kartenansicht.
+
+   Texte linksbündig, Zahlen rechtsbündig (.ce-num / .adm-num aus Phase 2.5),
+   Aktionen rechts. */
+.ce-col-actions,
+th.ce-col-actions,
+td.ce-col-actions,
+.adm-col-action { text-align: right; white-space: nowrap; }
+.ce-col-actions > * { justify-content: flex-end; }
+
+.ce-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ce-space-4);
+  margin-top: var(--ce-space-5);
+}
+
+/* Mobile Kartenansicht: unter 768 px zeigt jede Liste Karten statt einer
+   gequetschten Tabelle. Beide Seiten des Umschalters stehen hier zusammen,
+   damit kein Bereich die Hälfte vergisst. */
+.ce-list-cards { display: none; flex-direction: column; gap: var(--ce-space-3); }
+@media (max-width: 767px) {
+  .ce-list-table { display: none; }
+  .ce-list-cards { display: flex; }
+}
+
+.ce-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-4);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+.ce-list-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-3); }
+.ce-list-card-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.ce-list-card-key { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); }
+.ce-list-card-val { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); text-align: right; min-width: 0; }
+.ce-list-card-actions {
+  display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap;
+  padding-top: var(--ce-space-3); border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+/* ═══════════ 5 — DIALOGE UND OVERLAYS ══════════════════════════════════════
+   EIN Overlayton (--ce-color-overlay), kein backdrop-filter, vier Breiten aus
+   der Foundation. Kopf, Body und Footer sind überall gleich aufgebaut, die
+   bestätigende Aktion steht rechts außen.
+
+   Die historischen Klassennamen laufen in denselben Regelgruppen — ihr
+   Material ist aus den Bereichsdateien entfernt. Verhalten (Fokusfalle,
+   Fokusrückgabe, Escape) liefert der gemeinsame Hook useDialog. */
+.ce-dialog-overlay,
+.stn-dialog-overlay,
+.sup-dialog-overlay,
+.dft-dialog-overlay,
+.abk-dialog-overlay,
+.email-change-overlay,
+.adm-modal-overlay,
+.price-drift-overlay,
+.pdfview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ce-z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ce-space-5);
+  background: var(--ce-color-overlay);
+  overflow-y: auto;
+  /* Ausdrücklich kein backdrop-filter — er kostet auf schwächeren Geräten
+     Bildrate und war nur an einer Stelle gesetzt. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.ce-dialog,
+.stn-dialog-card,
+.sup-dialog-card,
+.dft-dialog-card,
+.abk-dialog-card,
+.email-change-modal,
+.adm-modal,
+.price-drift-card {
+  --ce-dialog-width: var(--ce-size-dialog-sm);
+  width: 100%;
+  max-width: var(--ce-dialog-width);
+  max-height: calc(100dvh - 2 * var(--ce-space-5));
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: var(--ce-space-6);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-xl);
+  box-shadow: var(--ce-elevation-3);
+}
+
+/* Die vier zulässigen Breiten. */
+.ce-dialog--sm { --ce-dialog-width: var(--ce-size-dialog-sm); }
+.ce-dialog--md,
+.stn-dialog-card,
+.sup-dialog-card,
+.email-change-modal { --ce-dialog-width: var(--ce-size-dialog-md); }
+.ce-dialog--lg { --ce-dialog-width: var(--ce-size-dialog-lg); }
+.ce-dialog--xl { --ce-dialog-width: var(--ce-size-dialog-xl); }
+/* Die schmale Variante des E-Mail-Dialogs bleibt schmal. */
+.email-change-modal--sm { --ce-dialog-width: var(--ce-size-dialog-sm); }
+
+/* Kopf, Body, Footer. */
+.ce-dialog-head { display: flex; align-items: flex-start; gap: var(--ce-space-3); margin-bottom: var(--ce-space-3); }
+.ce-dialog-title {
+  margin: 0;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  color: var(--ce-color-text-primary);
+}
+.ce-dialog-desc {
+  margin: 0 0 var(--ce-space-4);
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.ce-dialog-body { min-width: 0; }
+/* Aktionen rechts, die bestätigende Aktion rechts außen. */
+.ce-dialog-actions,
+.stn-dialog-actions,
+.sup-dialog-actions,
+.abk-dialog-actions,
+.email-change-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ce-space-2);
+  flex-wrap: wrap;
+  margin-top: var(--ce-space-5);
+}
+
+/* Das Iconmedaillon der Dialoge — eine Geometrie, Farbrolle je Fall. */
+.ce-dialog-icon,
+.stn-dialog-icon,
+.sup-dialog-icon,
+.dft-dialog-icon,
+.abk-dialog-icon,
+.email-change-modal-icon,
+.adm-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ce-radius-md);
+}
+
+/* Unter 480 px läuft jeder Dialog als Vollbild. */
+@media (max-width: 480px) {
+  .ce-dialog-overlay,
+  .stn-dialog-overlay,
+  .sup-dialog-overlay,
+  .dft-dialog-overlay,
+  .abk-dialog-overlay,
+  .email-change-overlay,
+  .adm-modal-overlay,
+  .price-drift-overlay,
+  .pdfview-overlay { padding: 0; align-items: stretch; }
+  .ce-dialog,
+  .stn-dialog-card,
+  .sup-dialog-card,
+  .dft-dialog-card,
+  .abk-dialog-card,
+  .email-change-modal,
+  .adm-modal,
+  .price-drift-card {
+    max-width: none;
+    min-height: 100dvh;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+  }
+  .ce-dialog-actions,
+  .stn-dialog-actions,
+  .sup-dialog-actions,
+  .abk-dialog-actions,
+  .email-change-modal-actions { flex-direction: column-reverse; align-items: stretch; }
+}
+
+/* ═══════════ 6 — DRAWER ════════════════════════════════════════════════════
+   Gleicher Overlayton, gleiche Tiefe, gleicher Kopfaufbau wie die Dialoge —
+   nur die Bewegungsrichtung unterscheidet sich. Kein verschachtelter Dialog
+   in einem Drawer. */
+.ce-drawer-overlay,
+.abk-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ce-z-drawer);
+  display: flex;
+  justify-content: flex-end;
+  background: var(--ce-color-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.ce-drawer,
+.abk-drawer {
+  display: flex;
+  flex-direction: column;
+  width: var(--ce-size-dialog-md);
+  max-width: 100%;
+  height: 100%;
+  background: var(--ce-color-surface);
+  box-shadow: var(--ce-elevation-3);
+}
+.ce-drawer-head,
+.abk-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ce-space-3);
+  flex-shrink: 0;
+  padding: var(--ce-space-5) var(--ce-space-6);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.ce-drawer-body { flex: 1; min-height: 0; overflow-y: auto; }
+.ce-drawer-foot,
+.abk-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ce-space-2);
+  flex-shrink: 0;
+  padding: var(--ce-space-4) var(--ce-space-6);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+/* ═══════════ 7 — ZUSTÄNDE ══════════════════════════════════════════════════
+   Leer, keine Filtertreffer, Laden, Fehler, kein Zugriff, Erfolg — ein
+   Aufbau: Icon aus dem internen System, Titel, Erklärung, GENAU eine
+   Hauptaktion, optional eine sekundäre Textaktion.
+
+   Keine Emojis. Keine technischen Rohwerte. */
+.ce-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--ce-space-2);
+  padding: var(--ce-space-9) var(--ce-space-6);
+}
+.ce-state-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--ce-space-2);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+  color: var(--ce-color-text-muted);
+}
+.ce-state--error .ce-state-icon {
+  background: var(--ce-color-status-error-surface);
+  border-color: var(--ce-color-status-error-border);
+  color: var(--ce-color-status-error-fg);
+}
+.ce-state--success .ce-state-icon {
+  background: var(--ce-color-status-success-surface);
+  border-color: var(--ce-color-status-success-border);
+  color: var(--ce-color-status-success-fg);
+}
+.ce-state-title {
+  margin: 0;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+}
+.ce-state-text {
+  margin: 0;
+  max-width: 460px;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.ce-state-actions { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; justify-content: center; margin-top: var(--ce-space-3); }
+
+/* Ladezustand: Spinner nur für unbestimmte oder kurze Vorgänge. */
+.ce-state--loading .ce-state-icon { background: transparent; border-color: transparent; }
+
+/* Skeleton für bekannte Listen- und Kartenstrukturen. Ruhige Pulsation, per
+   prefers-reduced-motion abgeschaltet. */
+.ce-skeleton {
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-muted);
+  animation: ce-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.ce-skeleton-row { height: 44px; margin-bottom: var(--ce-space-2); }
+.ce-skeleton-line { height: 12px; }
+@keyframes ce-skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .ce-skeleton { animation: none; } }
+
+/* Die historische Zustandsfläche trägt dasselbe Material — kein Markup
+   musste angefasst werden, wo der Aufbau schon stimmte. */
+.empty { text-align: center; padding: var(--ce-space-9) var(--ce-space-6); }
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--ce-space-3);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-title-card-size);
+  opacity: 1;
+}
+.empty-title {
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+  margin-bottom: var(--ce-space-1);
+}
+.empty-text {
+  margin: 0 auto;
+  max-width: 460px;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.empty .btn { margin-top: var(--ce-space-4); }

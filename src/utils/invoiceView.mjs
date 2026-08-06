@@ -1,3 +1,4 @@
+import { statusFallback } from "./statusFallback.mjs";
 // ─────────────────────────────────────────────────────────────────────────────
 // Rechnungs-Dokumentansicht (Phase 3) — reine, framework-freie Hilfslogik (.mjs,
 // wie adminInvoices/addressBookView). Bündelt die testbare Logik rund um den
@@ -16,7 +17,7 @@ const DOCUMENT_STATUS_META = {
   generating: ["badge-blue", "Wird erstellt"],
   document_failed: ["badge-red", "Erstellung fehlgeschlagen"],
 };
-export const documentStatusMeta = (status) => DOCUMENT_STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const documentStatusMeta = (status) => DOCUMENT_STATUS_META[status] || statusFallback(status);
 
 // Sichtbarer Kundenhinweis für Testdokumente (kein aktiver Download).
 export const TEST_DOCUMENT_HINT = "Testdokument – nicht für den Zahlungsverkehr freigegeben";
@@ -103,7 +104,7 @@ const EMAIL_STATUS_META = {
   sent: ["badge-green", "Versendet"],
   failed: ["badge-red", "Versand fehlgeschlagen"],
 };
-export const emailStatusMeta = (status) => EMAIL_STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const emailStatusMeta = (status) => EMAIL_STATUS_META[status] || statusFallback(status);
 
 // Anzeige-Meta inkl. Testdokument-Sonderfall: Ein Testdokument wird NIE versendet —
 // statt eines irreführenden "Versand ausstehend" zeigt die Oberfläche dauerhaft

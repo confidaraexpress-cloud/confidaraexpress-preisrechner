@@ -23,9 +23,11 @@ test("1 — documentStatusMeta: bekannte Status → verständliche Labels", () =
   assert.deepEqual(documentStatusMeta("document_failed"), ["badge-red", "Erstellung fehlgeschlagen"]);
 });
 
-test("2 — documentStatusMeta: unbekannt → grau + Rohwert, fehlend → Strich", () => {
-  assert.deepEqual(documentStatusMeta("cancelled"), ["badge-gray", "cancelled"]);
-  assert.deepEqual(documentStatusMeta(null), ["badge-gray", "—"]);
+test("2 — documentStatusMeta: unbekannt → grau + „Unbekannter Status“, fehlend → Strich", () => {
+  // Paket A, Phase 3: der Rohwert steht nicht mehr im sichtbaren Text, sondern
+  // als drittes Feld für das title-Attribut bereit.
+  assert.deepEqual(documentStatusMeta("cancelled"), ["badge-gray", "Unbekannter Status", "cancelled"]);
+  assert.deepEqual(documentStatusMeta(null), ["badge-gray", "—", null]);
 });
 
 // ── Testdokument-Kennzeichnung (Server-Policy gespiegelt) ────────────────────
@@ -161,7 +163,7 @@ test("16 — emailStatusMeta: alle vier Status verständlich; unbekannt → grau
   assert.deepEqual(emailStatusMeta("sending"), ["badge-blue", "Wird versendet"]);
   assert.deepEqual(emailStatusMeta("sent"), ["badge-green", "Versendet"]);
   assert.deepEqual(emailStatusMeta("failed"), ["badge-red", "Versand fehlgeschlagen"]);
-  assert.deepEqual(emailStatusMeta(null), ["badge-gray", "—"]);
+  assert.deepEqual(emailStatusMeta(null), ["badge-gray", "—", null]);
 });
 
 test("17 — emailDisplayMeta: Testdokument überschreibt jeden Status mit 'kein Versand'", () => {

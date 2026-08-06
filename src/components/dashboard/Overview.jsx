@@ -12,6 +12,7 @@ import fedexLogo      from "../../assets/carriers/fedex.svg";
 import tntLogo        from "../../assets/carriers/tnt.svg";
 import emonsLogo      from "../../assets/carriers/emons.svg";
 import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
+import { UserChip } from "../ui/UserChip";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ÜBERSICHT — reiner View-Layer: Markup + CSS (src/styles/overview.css).
@@ -22,20 +23,6 @@ import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
    Die Begrüßung .pp-h1 bleibt in Cormorant-Serif (bestehende Vorgabe).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Company-Mark (User-Chip): flacher Squircle in der Akzentfarbe mit echter
-// Konto-Initiale. Die früheren zwei Verlaufsebenen und die weiße Innenkontur
-// sind entfallen — eine Fläche, ein Buchstabe.
-function CompanyMark({ initial }) {
-  return (
-    <svg className="ce-comark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="#2563eb" />
-      {/* SVG-Präsentationsattribute lösen keine CSS-Variablen auf — die
-          Familie steht hier deshalb als einziges Literal im Projekt; sie ist
-          identisch mit --ce-font-sans. */}
-      <text x="20" y="26" textAnchor="middle" fontFamily="'DM Sans',system-ui,sans-serif" fontWeight="600" fontSize="16" fill="#ffffff">{initial}</text>
-    </svg>
-  );
-}
 
 /* ── KPI-Zahl: Ganzzahl (.knum) + optionale Einheit (.kcur, z. B. „ €"). ── */
 function KpiNum({ v }) {
@@ -195,14 +182,7 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
               Schaltfläche geworden. Zustand und Polling kommen aus dem Shell-Provider;
               hier entsteht keine zweite Abfrageschleife. */}
           <NotificationBell variant="overview" navigateTo={onNotificationNav} />
-          <button type="button" className="pp-uchip" onClick={onProfile} aria-label="Zu meinem Profil" title="Zu meinem Profil">
-            <CompanyMark initial={initial} />
-            <span className="pp-uchip-text">
-              <span className="pp-uname">{name}</span>
-              {org && <span className="pp-ucomp">{org}</span>}
-            </span>
-            <Icon n="chevron" s={15} />
-          </button>
+          <UserChip user={user} onClick={onProfile} />
           <button type="button" className="pp-cta" onClick={onNewShipment}>
             <Icon n="plus" s={16} c="#fff" />Neue Sendung
           </button>

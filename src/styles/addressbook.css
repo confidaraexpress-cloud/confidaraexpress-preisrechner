@@ -8,18 +8,6 @@
 .abk-wrap { padding-top: 28px; padding-bottom: 48px; }
 
 /* ─── Seitenkopf ──────────────────────────────────────────────────────────── */
-.abk-header { margin-bottom: 22px; }
-.abk-header-top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
-}
-.abk-header-text { min-width: 0; }
-.abk-header-title {
-  font-family: var(--ce-font-display); font-size: 36px; font-weight: 500;
-  line-height: 1.15; letter-spacing: -0.015em; color: var(--navy); margin-bottom: 4px;
-}
-.abk-header-sub { font-size: 14px; color: var(--ce-color-text-muted); line-height: 1.5; max-width: 560px; }
-.abk-header-cta { flex-shrink: 0; }
 
 .abk-kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 4px; }
 
@@ -157,18 +145,7 @@
 @media (prefers-reduced-motion: reduce) { .abk-skeleton-row { animation: none; background: var(--gray50); } }
 
 /* ─── Drawer (Create/Edit/Duplicate) ─────────────────────────────────────── */
-.abk-drawer-overlay {
-  position: fixed; inset: 0; background: rgba(11,31,77,0.32); z-index: 400;
-  display: flex; justify-content: flex-end;
-}
-.abk-drawer {
-  width: 520px; max-width: 100%; height: 100%; background: white;
-  display: flex; flex-direction: column; box-shadow: -12px 0 40px -8px rgba(14,30,80,0.3);
-}
-.abk-drawer-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
+/* Overlay, Fläche und Kopf kommen aus dem gemeinsamen Drawermuster (patterns.css). */
 .abk-drawer-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); }
 .abk-drawer-close {
   display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
@@ -209,14 +186,7 @@
 /* ─── Zentrierte Bestätigungsdialoge (Löschen / both-Rollenwahl) ───────────
    Gleiches Muster wie price-drift-overlay/-card (Booking): fixed Overlay +
    zentrierte Karte, role=dialog/aria-modal. */
-.abk-dialog-overlay {
-  position: fixed; inset: 0; background: rgba(11,31,77,0.4); z-index: 410;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.abk-dialog-card {
-  width: 100%; max-width: 420px; background: white; border-radius: var(--radius-lg);
-  padding: 26px; box-shadow: 0 24px 60px -12px rgba(14,30,80,0.35);
-}
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .abk-dialog-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
 .abk-dialog-icon--warn { background: var(--warn-bg); color: var(--warn); }
 .abk-dialog-icon--info { background: var(--blue-light); color: var(--blue2); }
@@ -232,18 +202,10 @@
 @media (min-width: 768px) { .abk-cards { display: none; } }
 @media (max-width: 767px) {
   .abk-desktop-list { display: none; }
-  .abk-header-top { flex-direction: column; }
-  .abk-header-cta { width: 100%; }
-  .abk-header-cta .btn { width: 100%; }
   .abk-toolbar { flex-direction: column; align-items: stretch; }
   .abk-toolbar-filters { justify-content: space-between; }
   .abk-drawer { width: 100%; }
   .abk-kpi-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-}
-/* Mobile Display-L-Stufe — gleicher Breakpoint wie .dash-section-title
-   (dashboard-premium.css) und .dft-header-title. */
-@media (max-width: 600px) {
-  .abk-header-title { font-size: 28px; }
 }
 @media (max-width: 480px) {
   .abk-kpi-grid { grid-template-columns: 1fr 1fr; }

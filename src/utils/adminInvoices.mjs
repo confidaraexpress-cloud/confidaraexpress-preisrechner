@@ -1,3 +1,4 @@
+import { statusFallback } from "./statusFallback.mjs";
 // Gemeinsame, reine Anzeige-Helfer für die Admin-Rechnungsansicht. Kein JSX,
 // kein State, kein Fetch — testbar unter Node (`.mjs`, wie kpis.mjs). Enthält
 // bewusst KEINE Zahlungs-/Zahlungsziel-Logik: „overdue" wird ausschließlich für
@@ -10,7 +11,7 @@ const INVOICE_STATUS_META = {
   overdue: ["badge-red", "Überfällig"],
   cancelled: ["badge-gray", "Storniert"],
 };
-export const invoiceStatusMeta = (status) => INVOICE_STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const invoiceStatusMeta = (status) => INVOICE_STATUS_META[status] || statusFallback(status);
 
 // Auswahl für den Status-Filter (Backend-Vertrag kennt nur unpaid|paid). „Alle"
 // sendet keinen Filter. „Überfällig" ist KEIN Status, sondern ein eigener Filter

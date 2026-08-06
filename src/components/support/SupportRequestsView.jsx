@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { listSupportRequests } from "../../api/supportApi";
 import { SupportThread } from "./SupportThread";
 import { SupportRequestDialog } from "./SupportRequestDialog";
+import { statusFallback } from "../../utils/statusFallback.mjs";
 import {
   supportCategoryLabel, SUPPORT_LIST_EMPTY_TITLE, SUPPORT_LIST_EMPTY_TEXT,
   SUPPORT_CUSTOMER_LIST_ERROR,
@@ -122,7 +123,7 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
       ) : (
         <ul className="sup-list">
           {rows.map((row) => {
-            const [cls, fallback] = STATUS_META[row.status] || ["badge-gray", row.status || "—"];
+            const [cls, fallback] = STATUS_META[row.status] || statusFallback(row.status);
             return (
               <li key={row.id}>
                 <button type="button" className="sup-list-item" onClick={() => setOpenId(row.id)}>

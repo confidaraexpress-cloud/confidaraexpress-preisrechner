@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { statusFallback } from "../../utils/statusFallback.mjs";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { Icon } from "../../components/ui/Icon";
 import { listAuditLogs } from "../../api/adminApi";
 
@@ -222,15 +224,16 @@ export default function AuditLogPage() {
 
   return (
     <div className="adm-page">
-      <header className="adm-page-head adm-page-head-row">
-        <div>
-          <h1 className="adm-title">Audit-Logs</h1>
-          <p className="adm-sub">Protokollierte Administrationsvorgänge. Nur Einsicht — keine Änderungen.</p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+      <PageHeader
+        variant="admin"
+        title={<>Audit-Logs</>}
+        subtitle={<>Protokollierte Administrationsvorgänge. Nur Einsicht — keine Änderungen.</>}
+        actions={(
+          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
-        </button>
-      </header>
+        </button></>
+        )}
+      />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
@@ -288,7 +291,7 @@ export default function AuditLogPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">🗂️</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="layers" s={24} /></div>
             <div className="empty-title">Keine Audit-Logs gefunden</div>
           </div>
         </div>
@@ -313,7 +316,7 @@ export default function AuditLogPage() {
                   const result = resultOf(row);
                   const meta = sanitizeMetadata(metadataOf(row));
                   const knownAction = ACTION_LABELS[action];
-                  const [resCls, resLabel] = RESULT_META[result] || ["badge-gray", result ?? "—"];
+                  const [resCls, resLabel] = RESULT_META[result] || statusFallback(result);
                   const isOpen = expanded === key;
                   return (
                     <React.Fragment key={key}>

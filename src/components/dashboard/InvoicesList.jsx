@@ -311,7 +311,7 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
           </div>
         ) : list.length === 0 ? (
           <div className="empty">
-            <div className="empty-icon">🧾</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="invoice" s={24} /></div>
             <div className="empty-title">{LIST_EMPTY_TITLE}</div>
             <p className="empty-text">{LIST_EMPTY_TEXT}</p>
           </div>

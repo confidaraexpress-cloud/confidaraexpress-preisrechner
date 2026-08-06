@@ -294,24 +294,38 @@ test("24 — beide mobilen Topbars tragen die Glocke", () => {
 });
 
 test("25 — auf der Übersicht erscheint KEINE zweite Glocke", () => {
-  // Der Seiten-Mount ist ausdrücklich an „nicht Übersicht" gebunden.
-  assert.match(dashPage, /\{page !== "overview" && \(\s*<div className="page-bell-mount">/,
-    "der Seiten-Mount ist nicht von der Übersicht ausgenommen");
-  // Und es gibt genau zwei Glocken-Instanzen in DashboardPage (Topbar + Seiten-Mount);
+  // Seit Paket A, Phase 3 sitzt die Seiten-Glocke im Utility-Cluster des
+  // gemeinsamen Seitenkopfs statt in einem freischwebenden Mount darüber.
+  // Der Kopf rendert nur für die vier Unterseiten in PAGE_HEADERS — die
+  // Übersicht ist keine davon und bringt ihre Glocke selbst mit.
+  assert.match(dashPage, /const utilityCluster = \(\s*<UtilityCluster>\s*<NotificationBell variant="page"/,
+    "die Seiten-Glocke steht nicht im Utility-Cluster");
+  assert.match(dashPage, /utility=\{utilityCluster\}/,
+    "der Cluster wird nicht in den Seitenkopf gereicht");
+  assert.ok(!/page-bell-mount/.test(dashPage), "der freischwebende Mount ist entfallen");
+  assert.ok(!/PAGE_HEADERS = \{[^}]*\boverview\s*:/s.test(dashPage),
+    "die Übersicht darf keinen zweiten Seitenkopf bekommen");
+  // Genau zwei Glocken-Instanzen in DashboardPage (Topbar + Seitenkopf);
   // die dritte (Übersicht) rendert die Overview-Komponente selbst.
+  // Zwei Instanzen: die Topbar und der eine, durchgereichte Utility-Cluster.
   assert.equal((dashPage.match(/<NotificationBell/g) || []).length, 2,
     "unerwartete Anzahl Glocken in DashboardPage");
   assert.equal((overview.match(/<NotificationBell/g) || []).length, 1);
 });
 
 test("26 — es wurde KEINE neue vollständige Desktop-Kopfleiste gebaut", () => {
-  // Der Mount ist ein schmaler Anker im bestehenden Inhaltsrahmen — keine neue
-  // Leiste mit Marke, Suche oder Nutzermenü.
-  const mount = dashPage.slice(dashPage.indexOf('className="page-bell-mount"'));
-  assert.ok(!/topbar-brand|user-avatar|hamburger/.test(mount.slice(0, 400)),
-    "der Seiten-Mount ist zu einer vollen Kopfleiste geworden");
-  assert.match(css, /\.page-bell-mount \{[^}]*max-width: 1240px/s,
-    "der Mount nutzt nicht den gemeinsamen Inhaltsrahmen");
+  // Der Cluster trägt Glocke und Benutzerchip — keine Marke, keine Suche,
+  // kein Hamburger. Und er nutzt den gemeinsamen Inhaltsrahmen des Kopfs.
+  const cluster = dashPage.slice(dashPage.indexOf("<UtilityCluster>"));
+  assert.ok(!/topbar-brand|hamburger/.test(cluster.slice(0, 400)),
+    "der Utility-Cluster ist zu einer vollen Kopfleiste geworden");
+  const patterns = read("styles/patterns.css");
+  assert.match(patterns, /\.ce-page-header \{[^}]*max-width: var\(--ce-size-content\)/s,
+    "der Seitenkopf nutzt nicht den gemeinsamen Inhaltsrahmen");
+  // Unterhalb von 860 px blendet der Cluster aus — sonst stünde die Glocke
+  // gleichzeitig in Topbar und Kopf.
+  assert.match(patterns, /@media \(max-width: 860px\) \{\s*\.ce-utility--hide-mobile \{ display: none; \}/s,
+    "der Cluster blendet auf Mobil nicht aus");
 });
 
 // ═══ I) Panel: Verhalten und Bedienbarkeit ══════════════════════════════════

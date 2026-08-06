@@ -40,3 +40,8 @@
 /* Benachrichtigungscenter — isolierter ntf-Scope (Glocke, Badge, Panel). Reine
    Zusatzklassen auf App-Layout-Tokens; keine Kollision mit bestehenden Scopes. */
 @import './notifications.css';
+/* Gemeinsame Interface-Muster (Paket A, Phase 3): Seitenkopf, Utility-Cluster,
+   Toolbar, Listenrahmen, Dialoge, Drawer und Zustandsflächen. Steht als
+   EINZIGE Ebene NACH den Bereichs-Stylesheets — anders als primitives.css,
+   das deren Sonderfälle bewusst stehen ließ, führt diese Ebene sie zusammen. */
+@import './patterns.css';

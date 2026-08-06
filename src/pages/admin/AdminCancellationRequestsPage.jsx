@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { listAdminCancellationRequests } from "../../api/adminApi";
@@ -188,18 +189,17 @@ export default function AdminCancellationRequestsPage() {
 
   return (
     <div className="adm-page">
-      <header className="adm-page-head adm-page-head-row">
-        <div>
-          <h1 className="adm-title">Stornierungsanfragen</h1>
-          <p className="adm-sub">
-            Interne Prüfung von Kunden-Stornowünschen. Dies ist ein Verwaltungsvorgang —
-            das Bearbeiten löst KEINE Carrier-/JUMiNGO-Stornierung und keine Erstattung aus.
-          </p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
+      <PageHeader
+        variant="admin"
+        title={<>Stornierungsanfragen</>}
+        subtitle={<>Interne Prüfung von Kunden-Stornowünschen. Dies ist ein Verwaltungsvorgang —
+            das Bearbeiten löst KEINE Carrier-/JUMiNGO-Stornierung und keine Erstattung aus.</>}
+        actions={(
+          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
           <Icon n="refresh" s={14} /> Aktualisieren
-        </button>
-      </header>
+        </button></>
+        )}
+      />
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilter(); }}>
         <div className="adm-filter-field">
@@ -251,7 +251,7 @@ export default function AdminCancellationRequestsPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon">📭</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="mail" s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {appliedStatus && (

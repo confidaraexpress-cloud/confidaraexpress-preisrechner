@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { getSupportRequest, replySupportRequest, confirmSupportViewed } from "../../api/supportApi";
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import { useNotifications } from "../../context/NotificationsContext";
+import { statusFallback } from "../../utils/statusFallback.mjs";
 import {
   supportReplyState, supportAuthorLabel, SUPPORT_REPLY_MAX,
   SUPPORT_REPLY_PLACEHOLDER, SUPPORT_REPLY_SUBMIT, SUPPORT_REPLY_ERROR,
@@ -163,7 +164,7 @@ export function SupportThread({ requestId, onBack }) {
   }
 
   const req = data.supportRequest || {};
-  const [badgeClass, statusLabel] = STATUS_META[req.status] || ["badge-gray", req.status || "—"];
+  const [badgeClass, statusLabel] = STATUS_META[req.status] || statusFallback(req.status);
   const messages = Array.isArray(data.messages) ? data.messages : [];
 
   return (

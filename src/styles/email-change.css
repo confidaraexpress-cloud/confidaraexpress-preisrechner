@@ -37,18 +37,8 @@
 .email-change-pending-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
 
 /* ─── 2) Modal-Dialoge (Start + Abbrechen) ──────────────────────────────────── */
-.email-change-overlay {
-  position: fixed; inset: 0; z-index: 500;
-  background: rgba(11, 31, 77, 0.42);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.email-change-modal {
-  width: 100%; max-width: 460px;
-  background: #fff; border-radius: 18px; padding: 26px;
-  box-shadow: 0 24px 60px -12px rgba(14, 30, 80, 0.35);
-  max-height: calc(100dvh - 40px); overflow-y: auto;
-}
-.email-change-modal--sm { max-width: 420px; }
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css);
+   --sm bleibt dort die schmale Variante. */
 .email-change-modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .email-change-modal-icon {
   width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;

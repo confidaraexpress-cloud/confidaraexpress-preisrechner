@@ -9,7 +9,9 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 /* ─── Navbar ─────────────────────────────────────────────────────────────── */
 .navbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-  background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+  /* Kein backdrop-filter (Paket A, Phase 3) — bei 95 % Deckkraft war der
+     Weichzeichner ohnehin nicht sichtbar. */
+  background: rgba(255,255,255,0.95);
   border-bottom: 1px solid rgba(226,232,240,0.8);
 }
 .navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }

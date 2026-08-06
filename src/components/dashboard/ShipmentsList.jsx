@@ -44,6 +44,26 @@ function CancellationStatusPill({ status }) {
   return <span className={`badge ${cls} stn-status`} title={title}>{label}</span>;
 }
 
+/* Aktionen einer Sendungszeile — identisch in Tabelle und Mobilkarte.
+   Reine Darstellungs-Extraktion (Paket A, Phase 3): dieselben Bedingungen,
+   dieselben Handler, keine geänderte Logik. */
+function ShipmentRowActions({ s, onTrack, onLabel, onCancel }) {
+  return (
+    <div className="flex gap-8 stn-actions">
+      {s.jumingo_shipment_id && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.jumingo_shipment_id)}>Track</button>
+      )}
+      {(s.status === "booked" || s.status === "label_ready") && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s.jumingo_shipment_id)}>Label</button>
+      )}
+      {canRequestCancellation(s) && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onCancel(s)}>Stornieren</button>
+      )}
+      {hasCancellationRequest(s) && <CancellationStatusPill status={s.cancellation_status} />}
+    </div>
+  );
+}
+
 export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
@@ -160,11 +180,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
         ) : shipments.length === 0 ? (
           <div className="empty">
-            <div className="empty-icon">📦</div>
+            <div className="empty-icon" aria-hidden="true"><Icon n="package" s={24} /></div>
             <div className="empty-title">Noch keine Sendungen</div>
           </div>
         ) : (
-          <div className="table-card">
+          <>
+          <div className="table-card ce-list-table">
             <div className="table-scroll">
               <table>
                 <thead>
@@ -200,19 +221,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                         <td className="font-bold ce-num">{money(s.price_final)}</td>
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
-                        <td>
-                          <div className="flex gap-8 stn-actions">
-                            {s.jumingo_shipment_id && (
-                              <button className="btn btn-ghost btn-sm" onClick={() => loadTracking(s.jumingo_shipment_id)}>Track</button>
-                            )}
-                            {(s.status === "booked" || s.status === "label_ready") && (
-                              <button className="btn btn-ghost btn-sm" onClick={() => handleDownloadLabel(s.jumingo_shipment_id)}>Label</button>
-                            )}
-                            {canRequestCancellation(s) && (
-                              <button className="btn btn-ghost btn-sm" onClick={() => openCancel(s)}>Stornieren</button>
-                            )}
-                            {hasCancellationRequest(s) && <CancellationStatusPill status={s.cancellation_status} />}
-                          </div>
+                        <td className="ce-col-actions">
+                          <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.jumingo_shipment_id && (
@@ -358,6 +368,55 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
               </table>
             </div>
           </div>
+
+          {/* Mobile Kartenansicht (Paket A, Phase 3): unter 768 px zeigt die
+              Liste Karten statt einer quer gescrollten Tabelle — dasselbe
+              Muster, das Rechnungen, Entwürfe, Adressbuch und die Adminlisten
+              bereits nutzen. Gleiche Daten, gleiche Aktionen, gleiche
+              Bedingungen; die Tracking-Detailansicht bleibt der Tabelle
+              vorbehalten und ist über „Track" weiterhin erreichbar. */}
+          <ul className="ce-list-cards" aria-label="Sendungen">
+            {shipments.map((s) => {
+              const nums = customerShipmentNumbers(s);
+              return (
+                <li className="ce-list-card" key={`card-${s.id}`}>
+                  <div className="ce-list-card-head">
+                    <div style={{ minWidth: 0 }}>
+                      {nums.businessOrderNumber
+                        ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.businessOrderNumber}</span>
+                        : <span className="text-muted" style={{ fontSize: 12 }}>{NOT_ASSIGNED_TEXT}</span>}
+                      {nums.trackingNumber && (
+                        <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
+                          {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                        </div>
+                      )}
+                    </div>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Carrier</span>
+                    <span className="ce-list-card-val">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>
+                  </div>
+                  <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Gewicht</span>
+                    <span className="ce-list-card-val ce-num">{s.weight ? `${s.weight} kg` : "—"}</span>
+                  </div>
+                  <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Preis</span>
+                    <span className="ce-list-card-val ce-num font-bold">{money(s.price_final)}</span>
+                  </div>
+                  <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Datum</span>
+                    <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
+                  </div>
+                  <div className="ce-list-card-actions">
+                    <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onCancel={openCancel} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          </>
         )}
       </div>
 

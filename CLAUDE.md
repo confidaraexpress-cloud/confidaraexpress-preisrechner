@@ -102,6 +102,49 @@ Bewusst noch nicht migriert (folgt im jeweiligen Seitenpaket): `.auth-cta`,
 `.pp-net-cta`, der Glow-CTA `.offers-calc-cta .btn-primary`, `.pp-kpi`,
 `.calc-panel`, Angebots- und Buchungsmodule, Profilhero, `.inv-summary`.
 
+## Gemeinsame Interface-Muster — vor jeder neuen Seite lesen
+
+Über den Primitives liegt eine Musterebene (Paket A, Phase 3) in
+`src/styles/patterns.css` — die **einzige** Datei, die NACH den
+Bereichs-Stylesheets importiert wird. Anders als `primitives.css`, das deren
+Sonderfälle bewusst stehen ließ, führt diese Ebene sie zusammen.
+
+| Muster | Datei | Verwendung |
+|--------|-------|------------|
+| Seitenkopf | `components/ui/PageHeader.jsx` | `<PageHeader title subtitle eyebrow meta actions utility variant="customer\|admin" />` |
+| Utility-Cluster | `components/ui/PageHeader.jsx` | `<UtilityCluster>` — Glocke (40×40) + `<UserChip>` (40 hoch) |
+| Benutzerchip | `components/ui/UserChip.jsx` | genau EINE Identitätsanzeige im eingeloggten Bereich |
+| Zustände | `components/ui/StateView.jsx` | `EmptyState` · `NoResultsState` · `LoadingState` · `ErrorState` · `NoAccessState` · `SuccessState` · `ListSkeleton` |
+| Dialogverhalten | `hooks/useDialog.js` | Fokusfalle, Fokusrückgabe, Escape — `useDialog({ open, onClose, closeOnEscape })` |
+| Statusfallback | `utils/statusFallback.mjs` | `statusFallback(wert)` → `[klasse, "Unbekannter Status", rohwert]` |
+| Toolbar / Liste / Dialog / Drawer | `styles/patterns.css` | `.ce-toolbar`, `.ce-list-table`/`.ce-list-cards`, `.ce-dialog*`, `.ce-drawer*`, `.ce-state*` |
+
+Verbindlich:
+- **Ein Seitenkopf.** Kein zweiter Titel auf derselben Seite, keine eigene
+  Kopfstruktur je Bereich. Kundenportal Display L (Cormorant), Adminportal
+  Page Title (DM Sans) — im Admin nie Cormorant.
+- **Glocke und Benutzerchip nur im Seitenkopf** (Desktop) bzw. in der mobilen
+  Topbar. Kein freischwebender Mount, kein zweiter Avatar auf Mobil: der
+  Cluster blendet unter 860 px aus, dort trägt die Topbar die Glocke. Die
+  Übersicht bringt ihre Glocke in der eigenen Kopfzeile mit — deshalb ist die
+  Topbar-Glocke dort ausgeblendet.
+- **Ein Overlayton** (`--ce-color-overlay`), **kein `backdrop-filter`**, vier
+  Dialogbreiten (`--ce-size-dialog-sm/-md/-lg/-xl` = 420/560/720/920), unter
+  480 px Vollbild. Jeder Dialog hat Fokusfalle, Fokusrückgabe und Escape.
+- **Keine Emojis als UI-Zustand** — Zustandsflächen tragen ein Icon aus
+  `Icon.jsx`, genau eine Hauptaktion und keine technischen Rohwerte.
+- **Kein roher Backendwert im sichtbaren Text.** Unbekannte Status zeigen
+  „Unbekannter Status"; der Rohwert steht höchstens im `title`-Attribut.
+- **Zahlen rechtsbündig** (`.ce-num` / `.adm-num` auf `<th>` UND `<td>`),
+  Texte links, Aktionen rechts (`.ce-col-actions`), unter 768 px Kartenansicht
+  statt gequetschter Tabelle.
+
+`interfacePatterns.test.mjs` prüft das.
+
+Bewusst noch nicht migriert (folgt in Paket B): die Buchung in der App-Shell,
+der Versandprozess, `.calc-page-title` als Abschnittskopf der Preisrechner-
+Formularsektion, die Glasflächen des Auth-Bereichs.
+
 ## Typografie — vor jedem Text lesen
 
 Die gesamte Oberfläche kommt aus EINER Skala (Paket A, Phase 2.5). Alle Werte
@@ -335,7 +378,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/design-typography-phase-2-5`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/design-patterns-phase-3`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

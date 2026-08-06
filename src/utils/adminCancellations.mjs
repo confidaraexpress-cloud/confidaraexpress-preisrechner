@@ -1,3 +1,4 @@
+import { statusFallback } from "./statusFallback.mjs";
 // Gemeinsame, reine Logik für die Admin-Stornierungsanfragen (Liste + Detail):
 // kanonische Response-Normalisierung, Anzeige-Meta, erlaubte Statusübergänge und
 // getrennte Dirty-Erkennung. Kein JSX, kein State, kein Fetch — testbar unter
@@ -16,7 +17,7 @@ const STATUS_META = {
   accepted: ["badge-green", "Angenommen"],
   rejected: ["badge-red", "Abgelehnt"],
 };
-export const cancellationStatusMeta = (status) => STATUS_META[status] || ["badge-gray", status ?? "—"];
+export const cancellationStatusMeta = (status) => STATUS_META[status] || statusFallback(status);
 
 // Stabile Anzeige-Reihenfolge der Status (Liste/Filter/Select).
 export const CANCELLATION_STATUS_ORDER = ["pending", "in_review", "accepted", "rejected"];

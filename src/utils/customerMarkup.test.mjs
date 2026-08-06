@@ -821,9 +821,10 @@ test("48 — Barrierefreiheit: echtes Label, Dialogfokus, Escape, kein Autofokus
   assert.match(sectionSrc, /role="status" aria-live="polite"/);
   assert.match(listSrc, /className="adm-markup-check" role="status" aria-live="polite"/);
   // Dialogfokus, Escape, Abbrechen, Fokusrückgabe.
-  assert.match(approveSrc, /cancelRef\.current\?\.focus\(\);/);
-  assert.match(approveSrc, /if \(e\.key === "Escape" && !busy\) onCancel\(\);/);
-  assert.match(approveSrc, /openerRef\.current\?\.focus\?\.\(\);/);
+  // Seit Paket A, Phase 3 kommen Fokusfalle, Fokusrückgabe und Escape aus dem
+  // gemeinsamen Hook — die Zusicherung bleibt, nur ihr Ort hat sich geändert.
+  assert.match(approveSrc, /useDialog\(\{ onClose: onCancel, closeOnEscape: !busy \}\)/);
+  assert.match(approveSrc, /ref=\{dialogRef\}/);
   assert.match(approveSrc, /role="dialog"\s*\n?\s*aria-modal="true"/);
   assert.match(approveSrc, /aria-labelledby="adm-approve-title"/);
   assert.match(approveSrc, /aria-describedby="adm-approve-desc"/);

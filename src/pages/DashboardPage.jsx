@@ -13,6 +13,8 @@ import { NotificationsProvider } from "../context/NotificationsContext";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 import { useAuth } from "../context/AuthContext";
 import { businessMonthKey } from "../utils/kpis";
+import { UtilityCluster } from "../components/ui/PageHeader";
+import { UserChip } from "../components/ui/UserChip";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -234,7 +236,6 @@ export default function DashboardPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -292,6 +293,16 @@ export default function DashboardPage() {
   // Kundenseiten. Die früheren seitenabhängigen Hintergrund-Scopes
   // (dashboard-vapor / -soft-premium / -neutral-premium / -profile-premium)
   // sind entfallen — .app-shell trägt die ruhige Grundfläche überall gleich.
+
+  // EIN Utility-Cluster für alle Seitenköpfe des Kundenbereichs — Glocke und
+  // Benutzerchip stehen dadurch auf jeder Unterseite an derselben Stelle.
+  const utilityCluster = (
+    <UtilityCluster>
+      <NotificationBell variant="page" navigateTo={navigateFromNotification} />
+      <UserChip user={user} onClick={() => navigateTo("profile")} />
+    </UtilityCluster>
+  );
+
   return (
     // Der Provider umschließt die gesamte Shell: Zustand und Polling des
     // Benachrichtigungscenters laufen genau EINMAL, unabhängig davon, wie viele
@@ -315,24 +326,19 @@ export default function DashboardPage() {
               ZWEI Glocken (Topbar + Kopfzeile). Auf allen anderen Unterseiten ist
               die Topbar der mobile Mount, weil der Seiten-Mount dort per CSS in der
               Kopfzeile liegt. */}
+          {/* Menü, Wortmarke, Glocke — mehr nicht. Der frühere Initialen-Kreis
+              zeigte dieselbe Identität, die zwei Zentimeter weiter links schon
+              in der Sidebar-Firmenkarte steht. */}
+          {/* Auf der Übersicht bleibt die Topbar-Glocke aus: dort steht sie in der
+              eigenen Kopfzeile und ist auch mobil sichtbar. Auf allen anderen
+              Unterseiten ist die Topbar der mobile Mount, weil der Utility-
+              Cluster des Seitenkopfs unter 860 px ausblendet. */}
           <div className="topbar-right">
             {page !== "overview" && (
               <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
             )}
-            <div className="user-avatar">{initials}</div>
           </div>
         </div>
-
-        {/* Desktop-Mount der Glocke für alle Unterseiten AUSSER der Übersicht:
-            dort sitzt sie bereits an ihrer angestammten Stelle in der Kopfzeile,
-            ein zweiter Knopf würde doppelt erscheinen. Bewusst KEINE neue
-            vollständige Kopfleiste — nur ein kleiner Mount oben rechts im
-            bestehenden Inhaltsrahmen. */}
-        {page !== "overview" && (
-          <div className="page-bell-mount">
-            <NotificationBell variant="page" navigateTo={navigateFromNotification} />
-          </div>
-        )}
 
         {bookingToast && (
           <div className="alert-wrapper">
@@ -350,8 +356,16 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Der Utility-Cluster (Glocke + Benutzerchip) sitzt seit Paket A,
+            Phase 3 IM Seitenkopf statt als freischwebender Mount darüber.
+            Unterhalb von 860 px blendet er sich aus — dort trägt die Topbar
+            die Glocke, und ein zweiter Chip wäre eine doppelte Identität. */}
         {PAGE_HEADERS[page] && (
-          <DashboardSectionHeader title={PAGE_HEADERS[page].title} subtitle={PAGE_HEADERS[page].subtitle} />
+          <DashboardSectionHeader
+            title={PAGE_HEADERS[page].title}
+            subtitle={PAGE_HEADERS[page].subtitle}
+            utility={utilityCluster}
+          />
         )}
 
         {page === "overview" && (
@@ -387,6 +401,7 @@ export default function DashboardPage() {
           <div className="page-body">
             <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
               <AddressBookPage
+                utility={utilityCluster}
                 onUseForNewShipment={(patch) => { setAddressPrefill(patch); navigateTo("new"); }}
               />
             </Suspense>
@@ -397,6 +412,7 @@ export default function DashboardPage() {
           <div className="page-body">
             <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
               <DraftsPage
+                utility={utilityCluster}
                 onNewShipment={() => navigateTo("new")}
                 onResumeFormDraft={(payload) => { setResumeDraft(payload); navigateTo("new"); }}
               />
@@ -441,7 +457,7 @@ export default function DashboardPage() {
           </Suspense>
         )}
 
-        {page === "profile"   && <Profile user={user} />}
+        {page === "profile"   && <Profile user={user} utility={utilityCluster} />}
 
         {/* Ein Footer für ALLE Kundenseiten. Die Übersicht trug bis hierher
             stattdessen eine werbliche Selbstbeschreibung statt eines Footers;

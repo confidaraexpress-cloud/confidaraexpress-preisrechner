@@ -443,9 +443,9 @@
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 18px; padding: 8px 0 26px;
 }
-.profile-page-head-text { min-width: 0; text-align: left; }
-.profile-page-head .dash-section-title { text-align: left; }
-.profile-page-head .dash-section-sub { margin: 8px 0 0; max-width: 560px; text-align: left; }
+/* Der Profilkopf läuft seit Paket A, Phase 3 über das gemeinsame
+   PageHeader-Muster; hier bleibt nur die engere Zeilenlänge des Untertitels. */
+.profile-page-head .ce-page-header-sub { max-width: 560px; }
 
 /* max-width:none hebt die 600px-Basis aus dashboard.css auf — die Rahmenbreite
    setzt jetzt .page-body. */
@@ -560,7 +560,6 @@
 }
 
 @media (max-width: 600px) {
-  .dash-section-title { font-size: 28px; }
   /* Auf schmalen Screens darf „Bearbeiten" unter Titel/Subline rutschen. */
   .profile-card-head { flex-wrap: wrap; row-gap: 10px; }
   .profile-card-edit-action { margin-left: 0; }

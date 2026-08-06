@@ -5,11 +5,6 @@
    Dauerbewegungseffekte.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.dft-wrap { padding-top: 28px; padding-bottom: 48px; }
-.dft-empty-desc { font-size: 13px; color: var(--ce-color-text-muted); max-width: 360px; margin: 0 auto 16px; line-height: 1.5; }
-
-/* ─── Seitenkopf ──────────────────────────────────────────────────────────── */
-
 /* ─── Desktop-Tabelle (reuse .table-card/.table-scroll, nur Zellinhalte neu) ── */
 .dft-table th { text-align: left; }
 .dft-cell-recipient { font-size: 13px; font-weight: 600; color: var(--navy); }
@@ -23,7 +18,7 @@
 /* ─── Mobil-Karten ────────────────────────────────────────────────────────── */
 .dft-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .dft-card {
-  background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 16px; display: flex; flex-direction: column; gap: 10px;
 }
 .dft-card-route { font-size: 13px; font-weight: 600; color: var(--blue2); font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
@@ -32,14 +27,36 @@
 .dft-card-info-row { display: flex; align-items: flex-start; gap: 8px; }
 .dft-card-info-row svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-text-muted); }
 .dft-card-meta { font-size: 12px; color: var(--ce-color-text-muted); }
-.dft-card-actions { display: flex; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+.dft-card-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
 .dft-card-actions .btn { flex: 1; }
 
-/* Löschen bewusst NICHT als leicht auslösbare Icon-only-Aktion — immer mit
-   sichtbarem Textlabel, auf Mobil als vollwertiger Button in der Aktionsreihe. */
-.dft-delete-btn { color: var(--danger); border-color: rgba(239,68,68,0.28); }
-.dft-delete-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
-.dft-delete-btn:focus-visible { outline: 2px solid var(--ce-color-status-error-fg); outline-offset: 2px; }
+/* Verwaltungsaktionsmenü (Kebab-Dropdown) — „Löschen" ist damit kein
+   dauerhaft sichtbarer, roter Button mehr, sondern ein bewusst aufgerufener,
+   sekundärer Pfad (dasselbe Muster wie .abk-actions* im Adressbuch). */
+.dft-actions { position: relative; flex-shrink: 0; }
+.dft-actions-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: var(--ce-radius-md);
+  border: 1.5px solid var(--ce-color-border-default);
+  background: var(--ce-color-surface); color: var(--ce-color-text-secondary); cursor: pointer;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.dft-actions-trigger:hover { background: var(--ce-color-surface-muted); border-color: var(--ce-color-border-strong); }
+.dft-actions-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.dft-actions-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--ce-z-dropdown); min-width: 180px;
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-3); padding: 6px; display: flex; flex-direction: column;
+}
+.dft-actions-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 10px; border: none; background: transparent; border-radius: var(--ce-radius-sm);
+  font-size: 13px; font-weight: 500; color: var(--navy); cursor: pointer;
+}
+.dft-actions-item:hover, .dft-actions-item:focus-visible { background: var(--ce-color-surface-muted); }
+.dft-actions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
+.dft-actions-item--danger { color: var(--danger); }
+.dft-actions-item--danger svg { color: var(--danger); }
 
 /* Solide Danger-Bestätigung im Löschdialog — bewusst eigenständig (nicht
    .btn-primary), damit Farbe die Irreversibilität zusätzlich zum Text „Löschen"
@@ -70,13 +87,14 @@
 .dft-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
 
 /* ─── Skeleton ────────────────────────────────────────────────────────────── */
+/* Dieselbe ruhige Puls-Technik wie .ce-skeleton (patterns.css) — nur die Höhe
+   ist entwurfsspezifisch (Tabellenzeile statt Listenkarte). */
 .dft-skeleton-row {
   height: 64px; border-radius: var(--radius-lg);
-  background: linear-gradient(90deg, var(--gray50) 25%, var(--gray100) 37%, var(--gray50) 63%);
-  background-size: 400% 100%; animation: dft-shimmer 1.6s ease-in-out infinite;
+  background: var(--ce-color-surface-muted);
+  animation: ce-skeleton-pulse 1.4s ease-in-out infinite;
 }
-@keyframes dft-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
-@media (prefers-reduced-motion: reduce) { .dft-skeleton-row { animation: none; background: var(--gray50); } }
+@media (prefers-reduced-motion: reduce) { .dft-skeleton-row { animation: none; } }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media (min-width: 768px) { .dft-cards { display: none; } }

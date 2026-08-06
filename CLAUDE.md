@@ -380,7 +380,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/premium-shipping-process-package-b`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/premium-management-billing-package-c`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 
@@ -411,6 +411,45 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   `tests/e2e/shippingProcessPaketB.test.mjs` (echter Dev-Server) sichern App-
   Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge und
   Tastaturbedienung gegen Regression ab.
+
+## Verwaltung und Abrechnung (Paket C)
+
+Sendungen, Sendungsdetails, Entwürfe, Tracking (intern + öffentlich),
+Adressbuch, Rechnungen und die PDF-Vorschau laufen auf denselben Primitives
+und Mustern. Business-, API-, Status- und Routinglogik blieben unangetastet.
+
+- **Ein Seitenrahmen für alle.** Entwürfe und Adressbuch laufen jetzt durch
+  `.page-body` statt durch einen eigenen `.container`-Wrapper; Seitenkopf und
+  Inhalt sind dadurch pixelgleich breit. Die beiden Seiten bringen ihren
+  `<PageHeader>` selbst mit — `DashboardPage` wickelt sie deshalb NICHT
+  zusätzlich in `.page-body` (sonst doppelter Rahmen). Eyebrow überall
+  „Verwaltung"; `TrackingPage` bleibt bewusst ohne PageHeader (sie rendert
+  ihre Überschrift selbst, sonst doppelter Kopf).
+- **Destruktive Aktionen sind sekundär.** Löschen ist in Entwürfen kein
+  dauerhaft sichtbarer roter Button mehr, sondern läuft über ein Kebab-Menü
+  (`DraftActionsMenu`, gleiches Muster wie `AddressActionsMenu`). „Fortsetzen"
+  bleibt als häufigere, wertschöpfende Aktion direkt sichtbar.
+- **Tracking-Timeline ist flach.** `.track-dot` trägt keinen Verlauf und
+  keinen farbigen Schatten mehr; die Punkte zeigen echte Icons statt der
+  Rohzeichen „●"/„✓".
+- **Adressbuch-Badges sind auf drei gedeckelt.** `addressBadgeList()`
+  (`addressBookView.mjs`, rein und getestet) fasst „Standard-Absender" und
+  „Standard-Empfänger" bei Rolle „Beides" zu EINEM Badge zusammen — die
+  zugrunde liegenden Flags bleiben unverändert, nur die Darstellung.
+- **`dtDE()` zeigt keine Sekunden mehr.** Der Zeitpunkt bleibt identisch, nur
+  die Formatierung ist ruhiger (betrifft alle vier Entwurfs-Zeitstempel).
+- **Skeletons pulsieren einheitlich.** Die bereichseigenen Shimmer-Keyframes
+  von Entwürfen und Adressbuch sind entfallen; beide nutzen jetzt
+  `ce-skeleton-pulse` aus `patterns.css`. Die Adressbuchsuche ersetzt eine
+  bereits sichtbare Liste NICHT mehr durch ein Skeleton.
+- **`.inv-status` bleibt bewusst außerhalb von `.badge`** (dokumentierte
+  Entscheidung aus Phase 5, siehe `customerInvoiceView.mjs`). Nur die
+  doppelt gepflegten Hex-Werte verweisen jetzt auf die Foundation-Tokens.
+- **PDF-Vorschau nutzt die gemeinsame XL-Dialogbreite** (`--ce-size-dialog-xl`)
+  und Foundation-Material; ihre Fokusfalle bleibt hand-gerollt, weil sie den
+  `iframe` einschließen muss, den `useDialog`s Selektor nicht kennt.
+- Governance: `src/styles/managementBilling.test.mjs` (Quelltext, 23 Tests) und
+  `tests/e2e/managementBillingPaketC.test.mjs` (echter Dev-Server, 5 Tests).
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

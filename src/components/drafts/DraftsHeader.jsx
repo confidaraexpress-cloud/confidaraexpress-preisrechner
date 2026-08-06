@@ -10,6 +10,7 @@ import { PageHeader } from "../ui/PageHeader";
 export function DraftsHeader({ onNewShipment, utility }) {
   return (
     <PageHeader
+      eyebrow="Verwaltung"
       title="Entwürfe"
       subtitle="Gespeicherte Sendungen später weiterbearbeiten oder löschen."
       utility={utility}

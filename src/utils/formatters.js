@@ -16,7 +16,11 @@ export const isoDayDE = (v) => {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : v;
 };
 
-export const dtDE = (d) => (d ? new Date(d).toLocaleString("de-DE") : "—");
+// Ohne Sekunden: die Sekundenanzeige war reines Anzeigerauschen (kein Wert las
+// je auf die Sekunde genau). Der zugrunde liegende Zeitpunkt bleibt unverändert.
+export const dtDE = (d) => (d
+  ? new Date(d).toLocaleString("de-DE", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })
+  : "—");
 
 export const fmtDelivery = (t) => {
   const { transitDaysMin, transitDaysMax, deliveryTime } = t;

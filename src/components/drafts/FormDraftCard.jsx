@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { dtDE } from "../../utils/formatters";
 import { fmtDE } from "../../utils/date";
 import { formatFormRecipient, formatFormRoute, formatFormPackage, formFormShippingDate } from "../../utils/formDraftsView.mjs";
+import { DraftActionsMenu } from "./DraftActionsMenu";
 
 // Mobil-Karte für einen frühen Formularentwurf — Route + Empfänger prominent,
 // Typ-Badge (nicht rein farblich), „Fortsetzen" + „Löschen" als vollwertige,
@@ -35,9 +36,7 @@ export function FormDraftCard({ draft, busy, resuming, onDelete, onResume }) {
         <button type="button" className="btn btn-outline dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
           {resuming ? <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} /> : <Icon n="arrowRight" s={15} />} Fortsetzen
         </button>
-        <button type="button" className="btn btn-outline dft-delete-btn" onClick={() => onDelete(draft)} disabled={anyBusy}>
-          {busy ? <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} /> : <Icon n="trash" s={15} />} Löschen
-        </button>
+        <DraftActionsMenu draft={draft} busy={busy} disabled={resuming} onDelete={onDelete} />
       </div>
     </li>
   );

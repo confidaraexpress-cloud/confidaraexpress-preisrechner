@@ -13,6 +13,7 @@ import { PageHeader } from "../ui/PageHeader";
 export function AddressBookHeader({ onCreate, utility }) {
   return (
     <PageHeader
+      eyebrow="Verwaltung"
       title="Adressbuch"
       subtitle="Verwalten Sie wiederkehrende Absender- und Empfängeradressen zentral."
       utility={utility}

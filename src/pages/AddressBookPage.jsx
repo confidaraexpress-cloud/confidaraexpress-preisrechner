@@ -212,9 +212,9 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
 
   return (
     <>
-      <div className="container abk-wrap">
-        <AddressBookHeader onCreate={openCreate} utility={utility} />
+      <AddressBookHeader onCreate={openCreate} utility={utility} />
 
+      <div className="page-body">
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}
         {actionError && <div className="alert alert-error mb-16" role="alert"><span>{actionError}</span></div>}
 

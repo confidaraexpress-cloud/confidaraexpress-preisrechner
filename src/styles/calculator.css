@@ -729,7 +729,6 @@
 .tracking-meta-updated { color: var(--ce-color-text-muted); white-space: nowrap; }
 .tracking-day-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted); margin: 18px 0 8px; }
 .tracking-day-label:first-child { margin-top: 0; }
-.tracking-events-empty { padding: 24px 0; }
 
 /* ─── Date picker — collapsible ──────────────────────────────────────────── */
 .date-picker-body { border-top: 1px solid var(--border); padding: 12px 14px 14px; }

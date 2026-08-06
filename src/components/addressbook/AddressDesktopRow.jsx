@@ -1,22 +1,20 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { countries } from "../../utils/countries";
-import { ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH } from "../../utils/addressBookView.mjs";
+import { addressBadgeList } from "../../utils/addressBookView.mjs";
 import { AddressActionsMenu } from "./AddressActionsMenu";
 import { AddressCreateShipmentButton } from "./AddressCreateShipmentButton";
 
-const ROLE_LABEL = { [ROLE_SENDER]: "Absender", [ROLE_RECIPIENT]: "Empfänger", [ROLE_BOTH]: "Beides" };
 const countryName = (code) => countries.find((c) => c.code === code)?.name || code;
 
-// Badge-Priorisierung: Standard-Flags (blau, am wichtigsten) → Favorit (gelb) →
-// Rolle (grau, ruhigster Marker). Nicht alle Badges gleichzeitig dominant.
+// Höchstens drei Badges gleichzeitig — die Zusammenfassung (Standard-Flags,
+// Priorisierung) liefert addressBadgeList (rein, getestet).
 function AddressBadges({ address }) {
   return (
     <div className="abk-row-badges">
-      {address.isDefaultSender && <span className="badge badge-blue">Standard-Absender</span>}
-      {address.isDefaultRecipient && <span className="badge badge-blue">Standard-Empfänger</span>}
-      {address.favorite && <span className="badge badge-yellow">Favorit</span>}
-      <span className="badge badge-gray">{ROLE_LABEL[address.role] || address.role}</span>
+      {addressBadgeList(address).map((b) => (
+        <span key={b.key} className={`badge badge-${b.tone}`}>{b.text}</span>
+      ))}
     </div>
   );
 }

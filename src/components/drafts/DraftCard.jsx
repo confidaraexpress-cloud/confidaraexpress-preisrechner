@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { dtDE } from "../../utils/formatters";
 import { fmtDE } from "../../utils/date";
 import { formatRecipientDisplay, formatRoute, formatPackageSummary, shippingDateValue } from "../../utils/draftsView.mjs";
+import { DraftActionsMenu } from "./DraftActionsMenu";
 
 // Mobil-Karte — Route + Empfänger prominent, Paketdaten sekundär, Löschen als
 // vollwertiger, gut tappbarer Button mit Textlabel (kein Icon-only-Versehen).
@@ -29,9 +30,7 @@ export function DraftCard({ draft, busy, onDelete }) {
         {draft.updatedAt ? `Zuletzt gespeichert: ${dtDE(draft.updatedAt)}` : ""}
       </div>
       <div className="dft-card-actions">
-        <button type="button" className="btn btn-outline dft-delete-btn" onClick={() => onDelete(draft)} disabled={busy}>
-          {busy ? <span className="spinner spinner-dark" style={{ width: 14, height: 14 }} /> : <Icon n="trash" s={15} />} Löschen
-        </button>
+        <DraftActionsMenu draft={draft} busy={busy} onDelete={onDelete} />
       </div>
     </li>
   );

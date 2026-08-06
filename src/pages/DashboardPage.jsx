@@ -27,6 +27,18 @@ const MONTH_WATCH_INTERVAL_MS = 60_000;
 // und ?page=-Effekt).
 const DASHBOARD_PAGES = ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"];
 
+// Startbereich eines Mounts: Query schlägt History-State schlägt Übersicht.
+// Bewusst als reine Funktion außerhalb der Komponente — sie wird an zwei
+// Stellen gebraucht (Startwert und der ?page=-Effekt) und darf nirgends
+// abweichen.
+function waehleStartbereich(location) {
+  const ausQuery = new URLSearchParams(location.search).get("page");
+  if (DASHBOARD_PAGES.includes(ausQuery)) return ausQuery;
+  const ausHistory = location.state?.page;
+  if (DASHBOARD_PAGES.includes(ausHistory)) return ausHistory;
+  return "overview";
+}
+
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
 const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
@@ -66,22 +78,19 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Aktiver Bereich. Startwert kommt aus dem Query-Parameter ODER aus dem
-  // History-State des Eintrags — beides wird beim Mount berücksichtigt.
+  // Aktiver Bereich. Verbindliche Reihenfolge:
+  //   1. gültiger Query-Parameter  (?page=new — Deep-Link von außen)
+  //   2. gültiger location.state.page (History-Eintrag, Browser-Zurück)
+  //   3. „overview"                (Fallback)
+  // Der laufende page-State selbst ist Stufe 3 der Kette — er existiert beim
+  // Mount noch nicht, wird aber vom Synchronisierungs-Effekt weiter unten
+  // gegen den History-Eintrag gehalten, damit er nicht wieder verloren geht.
   //
   // Warum der History-State: der Effekt weiter unten entfernt `?page=` per
   // `replace` aus der URL (saubere Adresse). Der zurückbleibende Eintrag lautete
   // dadurch schlicht `/dashboard`, und ein Browser-Zurück von `/booking` landete
-  // auf der Übersicht statt auf „Neue Sendung" — obwohl der sichtbare
-  // Zurück-Button korrekt dorthin führte. Seit dem Fix trägt der ersetzte
-  // Eintrag den Bereich in `location.state.page`; die URL bleibt sauber.
-  const [page, setPage] = useState(() => {
-    const ausQuery = new URLSearchParams(location.search).get("page");
-    if (DASHBOARD_PAGES.includes(ausQuery)) return ausQuery;
-    const ausHistory = location.state?.page;
-    if (DASHBOARD_PAGES.includes(ausHistory)) return ausHistory;
-    return "overview";
-  });
+  // auf der Übersicht statt auf „Neue Sendung".
+  const [page, setPage] = useState(() => waehleStartbereich(location));
   // Vorgang, der aus einer Glockenmeldung heraus direkt geöffnet werden soll.
   const [supportTicketId, setSupportTicketId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -254,11 +263,51 @@ export default function DashboardPage() {
   useEffect(() => {
     if (location.state?.justBooked) {
       setBookingToast(true);
-      navigate(location.pathname, { replace: true, state: {} });
+      // Nur das verbrauchte `justBooked` entfernen — der Bereich und alle
+      // übrigen State-Werte bleiben stehen. Ein `state: {}` löschte hier früher
+      // auch den page-Marker und schickte ein späteres Browser-Zurück wieder
+      // auf die Übersicht.
+      const { justBooked, ...rest } = location.state;   // eslint-disable-line no-unused-vars
+      navigate(location.pathname, { replace: true, state: rest });
       const t = setTimeout(() => setBookingToast(false), 5000);
       return () => clearTimeout(t);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Der aktuelle History-Eintrag trägt den Bereich ───────────────────────
+     Die interne Navigation (`navigateTo`) setzt ausschließlich den lokalen
+     page-State — sie fasst die History bewusst nicht an, denn `/dashboard`
+     kennt keine Unterseiten-URLs (siehe CLAUDE.md, Navigationsmodell).
+     Konsequenz vor diesem Fix: wer über die Sidebar von der Übersicht auf
+     „Neue Sendung" wechselte, hinterließ einen History-Eintrag OHNE
+     Bereichsangabe. Ein Browser-Zurück von `/booking` fiel damit auf die
+     Übersicht zurück, obwohl der Kunde von seinen Angeboten kam.
+
+     Dieser Effekt hält den aktuellen Eintrag nach — per `replace`, also ohne
+     neuen Eintrag, ohne Adressänderung und ohne Remount. Er greift für JEDEN
+     Weg in den Bereich: Sidebar, Glockenmeldung, Adressbuch, Entwürfe.
+
+     Kein Kreislauf: geschrieben wird nur, wenn sich `state.page` tatsächlich
+     unterscheidet, und die Abhängigkeit ist der page-State — nicht `location`.
+
+     Gelesen wird der LIVE-Zustand aus `window.history.state.usr`, nicht aus dem
+     `location`-Objekt des Renders: die beiden Effekte darüber (justBooked-Toast
+     und ?page=-Bereinigung) ersetzen den Eintrag im selben Commit. Ein
+     Closure-Wert wäre dann veraltet und würde ein soeben entferntes
+     `justBooked` wieder hineinschreiben. */
+  useEffect(() => {
+    const aktuell = (typeof window !== "undefined" && window.history.state?.usr) || null;
+    if (aktuell?.page === page) return;
+    // Solange noch ein ?page=-Parameter in der Adresse steht, gehört der
+    // Eintrag dem Effekt darunter — der schreibt den Bereich ohnehin mit.
+    if (new URLSearchParams(window.location.search).get("page")) return;
+    // `returnTarget` gehört ausschließlich zur Rückkehr in den Angebotsvergleich.
+    // Verlässt der Kunde den Bereich, ist der Marker gegenstandslos und würde
+    // sonst später fälschlich ein Replace statt eines Push auslösen.
+    const { returnTarget, ...rest } = aktuell || {};   // eslint-disable-line no-unused-vars
+    const naechster = page === "new" && returnTarget ? { ...rest, returnTarget, page } : { ...rest, page };
+    navigate(window.location.pathname, { replace: true, state: naechster });
+  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Navigate from calculator route back into dashboard pages
   useEffect(() => {

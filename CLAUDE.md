@@ -276,6 +276,23 @@ Routenwechsel nicht. `shippingFlowState.test.mjs` prüft die Montage.
   `resumeInitRef`). NIEMALS feldweise über `upd()`: das ruft
   `invalidateResults()` und löscht die soeben zurückgeholten Angebote sofort
   wieder. Das ist die gefährlichste Falle im ganzen Bereich.
+- **Der sichtbare „Zurück"-Button navigiert gezielt, nie über die History.**
+  `navigate("/dashboard", { replace: true, state: { page: "new", returnTarget: "offers" } })`
+  — kein `navigate(-1)`, kein `history.back()`. Grund: die Sidebar-Navigation
+  setzt nur den lokalen `page`-State und fasst die History gar nicht an. Wer
+  über „Übersicht", „Rechnungen" oder „Profil" zu „Neue Sendung" gewechselt
+  war, landete mit einem History-Rücksprung wieder dort statt bei seinen
+  Angeboten. Der Button darf niemals aus dem vorherigen Eintrag ableiten,
+  welcher Bereich sich öffnet.
+- **Der aktuelle Dashboard-Eintrag trägt seinen Bereich.** Ein Effekt in
+  `DashboardPage` hält `history.state.usr.page` per `replace` am `page`-State
+  nach — damit landet auch Browser-Zurück von `/booking` verlässlich auf „Neue
+  Sendung". Gelesen wird `window.history.state.usr` (Live-Wert), nicht das
+  `location`-Objekt des Renders: die beiden Effekte darüber ersetzen den
+  Eintrag im selben Commit.
+- **Kein History-Kreislauf.** Der erste Weg in die Buchung pusht; kommt der
+  Kunde von dort zurück (`returnTarget: "offers"` im Eintrag), ersetzt der
+  nächste Weg. Sonst wüchse die History bei jedem Wechsel Angebote ↔ Buchung.
 - **Vorrang beim Start:** Entwurf fortsetzen > Adressbuch-Prefill >
   Sitzungsvorgang > Profil-Seed > leer. Ein geöffneter Entwurf **überschreibt**
   den Sitzungsvorgang vollständig — es wird nichts gemischt.
@@ -299,8 +316,10 @@ Routenwechsel nicht. `shippingFlowState.test.mjs` prüft die Montage.
 - **Schritt 3 der Buchung (Erfolg) wird nie wiederhergestellt** — er gehört zu
   einer abgeschlossenen Buchung.
 
-Governance: `utils/shippingFlowState.test.mjs` (30 Tests) und
-`tests/e2e/shippingFlowRestore.test.mjs` (20 Tests, echter Dev-Server).
+Governance: `utils/shippingFlowState.test.mjs` (34 Tests) und
+`tests/e2e/shippingFlowRestore.test.mjs` (27 Tests, echter Dev-Server) —
+darunter vier Läufe, die den Zurück-Button über je einen anderen Startreiter
+der Sidebar prüfen.
 
 ## Dashboard-Navigationsmodell
 
@@ -443,7 +462,7 @@ Docker: `docker build -t confidaraexpress .` → port 80.
 
 ## Aktiver Feature-Branch
 
-Entwicklung läuft auf `claude/persist-shipping-flow-navigation`. Nicht auf `main` pushen ohne explizite Freigabe.
+Entwicklung läuft auf `claude/fix-booking-back-to-offers`. Nicht auf `main` pushen ohne explizite Freigabe.
 
 ## Premium-Versandprozess (Paket B)
 

@@ -373,14 +373,31 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
      Ohne wiederhergestellten Vorgang passiert nichts; das normale
      ScrollToTop-Verhalten bleibt für alle anderen Wege unberührt. */
   const scrollWiederhergestelltRef = useRef(false);
+  const offersRef = useRef(null);
   useEffect(() => {
     if (scrollWiederhergestelltRef.current) return;
-    const ziel = flowInit?.scrollY;
-    if (!ziel) { scrollWiederhergestelltRef.current = true; return; }
-    if (flowInit.tariffs.length > 0 && !hasResults) return;   // Angebote noch nicht im DOM
+    if (!flowInit) { scrollWiederhergestelltRef.current = true; return; }
+    // Auf die Angebote warten, solange welche zum Vorgang gehören — vorher ist
+    // das Dokument zu kurz und jeder Sprung liefe ins Leere.
+    if (flowInit.tariffs.length > 0 && !hasResults) return;
     scrollWiederhergestelltRef.current = true;
+
+    // Drei Stufen, in dieser Reihenfolge:
+    //   1. gemerkte Scrollposition — sie trifft genau das, was der Kunde sah,
+    //   2. sonst der Angebotsbereich selbst (kein Pixelwert, sondern das echte
+    //      Element — es verschiebt sich mit jedem Layout mit),
+    //   3. sonst der Formularanfang (Standardverhalten).
+    const ziel = flowInit.scrollY;
+    const sanft = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.scrollTo(0, ziel));
+      requestAnimationFrame(() => {
+        if (ziel > 0) { window.scrollTo(0, ziel); return; }
+        if (offersRef.current) {
+          offersRef.current.scrollIntoView({ behavior: sanft ? "smooth" : "auto", block: "start" });
+          return;
+        }
+        window.scrollTo(0, 0);
+      });
     });
     return () => cancelAnimationFrame(id);
   }, [flowInit, hasResults]);
@@ -966,11 +983,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       // `state` bleibt unverändert erhalten (Kompatibilität + Browser-Vorwärts).
       // Es werden KEINE zusätzlichen personenbezogenen Daten in weitere
       // History-Einträge kopiert — der Vorgang selbst trägt der Context.
-      // `fromFlow` ist ein reiner Navigationsmarker (bool, keine Daten): er sagt
-      // der Buchungsseite, dass der VORHERIGE History-Eintrag zu diesem Vorgang
-      // gehört und ihr sichtbarer „Zurück"-Button deshalb echt zurückgehen darf
-      // (statt einen neuen Eintrag zu pushen).
-      navigate("/booking", { state: { tariff, shipmentId, form, customs, fromFlow: true } });
+      //
+      // Der frühere Marker `fromFlow` ist entfallen: er steuerte ein
+      // `navigate(-1)` im sichtbaren Zurück-Button der Buchungsseite. Dieser
+      // Button navigiert jetzt gezielt und braucht keine Aussage mehr über den
+      // vorherigen History-Eintrag.
+      //
+      // Push oder Replace? Beim ERSTEN Weg in die Buchung wird gepusht — sonst
+      // übersprünge ein Browser-Zurück den Angebotsvergleich. Kommt der Kunde
+      // dagegen gerade von dort zurück (der sichtbare Zurück-Button hinterlässt
+      // `returnTarget: "offers"` im aktuellen Eintrag), wird ERSETZT. Sonst
+      // wüchse die History bei jedem Wechsel Angebote ↔ Buchung um einen
+      // Eintrag — genau der Kreislauf, der vermieden werden soll.
+      const ausRueckkehr = typeof window !== "undefined"
+        && window.history.state?.usr?.returnTarget === "offers";
+      navigate("/booking", { state: { tariff, shipmentId, form, customs }, replace: ausRueckkehr });
     } else {
       navigate("/login");
     }
@@ -1495,7 +1522,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
         </div>
 
         {/* ── Offers section ── */}
+        {/* Stabiler Anker für die Rückkehr aus der Buchung: Ohne gemerkte
+            Scrollposition wird gezielt hierher gescrollt — kein Pixelwert. */}
         {(hasResults || loading) && (
+          <div ref={offersRef} id="angebotsbereich">
           <OffersList
             sorted={sorted}
             filtered={filtered}
@@ -1515,6 +1545,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
             onVatToggle={setVatMode}
             senderPrefill={senderPrefill}
           />
+          </div>
         )}
       </div>
     </div>

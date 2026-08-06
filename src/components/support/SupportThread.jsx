@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { ErrorState } from "../ui/StateView";
+import { FormAlert } from "../ui/FormAlert";
 import { getSupportRequest, replySupportRequest, confirmSupportViewed } from "../../api/supportApi";
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
 import { useNotifications } from "../../context/NotificationsContext";
@@ -7,7 +9,7 @@ import { statusFallback } from "../../utils/statusFallback.mjs";
 import {
   supportReplyState, supportAuthorLabel, SUPPORT_REPLY_MAX,
   SUPPORT_REPLY_PLACEHOLDER, SUPPORT_REPLY_SUBMIT, SUPPORT_REPLY_ERROR,
-  SUPPORT_DETAIL_ERROR, SUPPORT_REOPEN_HINT, supportCategoryLabel,
+  SUPPORT_DETAIL_ERROR, SUPPORT_REOPEN_HINT, supportCategoryDisplay,
 } from "../../utils/supportRequest.mjs";
 
 // ── Nachrichtenverlauf eines Supportvorgangs (Kundensicht) ───────────────────
@@ -153,18 +155,21 @@ export function SupportThread({ requestId, onBack }) {
         <button type="button" className="btn btn-outline btn-sm sup-back" onClick={onBack}>
           <Icon n="chevron" s={14} /> Zurück zur Übersicht
         </button>
-        <div className="alert alert-error" role="alert">
-          <Icon n="x" s={16} />{error || SUPPORT_DETAIL_ERROR}
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-          <Icon n="refresh" s={14} /> Erneut versuchen
-        </button>
+        <ErrorState
+          title={error || SUPPORT_DETAIL_ERROR}
+          action={(
+            <button type="button" className="btn btn-outline btn-sm" onClick={load}>
+              <Icon n="refresh" s={14} /> Erneut versuchen
+            </button>
+          )}
+        />
       </div>
     );
   }
 
   const req = data.supportRequest || {};
   const [badgeClass, statusLabel] = STATUS_META[req.status] || statusFallback(req.status);
+  const [kategorie, kategorieRoh] = supportCategoryDisplay(req.category);
   const messages = Array.isArray(data.messages) ? data.messages : [];
 
   return (
@@ -173,14 +178,15 @@ export function SupportThread({ requestId, onBack }) {
         <Icon n="chevron" s={14} /> Zurück zur Übersicht
       </button>
 
-      <div className="sup-thread-head">
+      <div className="ce-card sup-thread-head">
         <div className="sup-thread-title">
           <span className="sup-ticket">{req.ticketNumber}</span>
           <span className={`badge ${badgeClass}`}>{req.statusLabel || statusLabel}</span>
         </div>
         <h2 className="sup-subject">{req.subject}</h2>
         <p className="sup-thread-meta">
-          {supportCategoryLabel(req.category) || req.category} · Eingegangen am {fmt(req.createdAt)}
+          <span title={kategorieRoh ? `Serverwert: ${kategorieRoh}` : undefined}>{kategorie}</span>
+          {" · "}Eingegangen am {fmt(req.createdAt)}
         </p>
       </div>
 
@@ -209,11 +215,11 @@ export function SupportThread({ requestId, onBack }) {
         <li ref={endRef} aria-hidden="true" />
       </ol>
 
-      <form className="sup-reply" onSubmit={submit}>
-        <label className="sup-reply-label" htmlFor="sup-reply-field">Antworten</label>
+      <form className="ce-card sup-reply" onSubmit={submit}>
+        <label className="field-label sup-reply-label" htmlFor="sup-reply-field">Antworten</label>
         <textarea
           id="sup-reply-field"
-          className="sup-reply-field"
+          className="field-input field-textarea sup-reply-field"
           rows={4}
           value={reply}
           maxLength={SUPPORT_REPLY_MAX}
@@ -221,14 +227,18 @@ export function SupportThread({ requestId, onBack }) {
           onChange={(e) => onReplyChange(e.target.value)}
           disabled={sending}
         />
-        {sendError && (
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{sendError}</div>
-        )}
+        {sendError && <FormAlert tone="error" message={sendError} />}
         <div className="sup-reply-actions">
+          {/* Ein deaktivierter Knopf erklärt sich hier selbst: solange die
+              Antwort zu kurz ist, sagt der Hinweis WARUM — vorher stand dort
+              nur der allgemeine Satz und der Knopf blieb wortlos inaktiv. Die
+              Prüfung selbst (supportReplyState) ist unverändert. */}
           <span className="sup-reply-hint">
-            {req.status === "closed"
-              ? "Ihre Antwort öffnet diesen Vorgang wieder."
-              : "Ihre Antwort erreicht unser Supportteam direkt."}
+            {!state.valid && state.length > 0
+              ? "Bitte schreiben Sie noch etwas mehr, damit die Antwort gesendet werden kann."
+              : req.status === "closed"
+                ? "Ihre Antwort öffnet diesen Vorgang wieder."
+                : "Ihre Antwort erreicht unser Supportteam direkt."}
           </span>
           <button type="submit" className="btn btn-primary btn-sm" disabled={!state.valid || sending}>
             {sending ? <><span className="spinner" /> Wird gesendet …</> : <><Icon n="mail" s={14} /> {SUPPORT_REPLY_SUBMIT}</>}

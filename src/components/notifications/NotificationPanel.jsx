@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { Icon } from "../ui/Icon";
+import { EmptyState, ErrorState, ListSkeleton } from "../ui/StateView";
 import { useNotifications } from "../../context/NotificationsContext";
 import {
   PANEL_TITLE, MARK_ALL_LABEL, EMPTY_TITLE, EMPTY_TEXT, LOADING_TEXT,
@@ -97,7 +98,13 @@ export function NotificationPanel({ onClose, onSelect }) {
               {MARK_ALL_LABEL}
             </button>
           )}
-          <button type="button" className="ntf-close" onClick={onClose} aria-label="Benachrichtigungen schließen">
+          <button
+            type="button"
+            className="ntf-close"
+            onClick={onClose}
+            aria-label="Benachrichtigungen schließen"
+            title="Benachrichtigungen schließen"
+          >
             <Icon n="x" s={16} />
           </button>
         </div>
@@ -111,22 +118,35 @@ export function NotificationPanel({ onClose, onSelect }) {
             <p className="ntf-state-text">{markError}</p>
           </div>
         )}
-        {loading && items.length === 0 ? (
-          <div className="ntf-state" role="status" aria-live="polite">
-            <span className="spinner spinner-dark" /> {LOADING_TEXT}
-          </div>
-        ) : error ? (
-          <div className="ntf-state" role="alert">
-            <p className="ntf-state-text">{LOAD_ERROR_TEXT}</p>
-            <button type="button" className="btn btn-outline btn-sm" onClick={refresh}>
+        {/* Ein Ladefehler NEBEN bereits geladenen Meldungen ersetzt die Liste
+            nicht mehr (Paket D, Teil 8): der letzte gültige Stand bleibt
+            sichtbar, die Meldung steht als schmale Zeile darüber. Nur wenn es
+            noch gar nichts zu zeigen gibt, füllt der Fehler das Panel. */}
+        {error && items.length > 0 && (
+          <div className="ntf-inline-error" role="alert">
+            <span>{LOAD_ERROR_TEXT}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={refresh}>
               <Icon n="refresh" s={14} /> {RETRY_LABEL}
             </button>
           </div>
-        ) : items.length === 0 ? (
-          <div className="ntf-state">
-            <p className="ntf-empty-title">{EMPTY_TITLE}</p>
-            <p className="ntf-state-text">{EMPTY_TEXT}</p>
+        )}
+        {loading && items.length === 0 ? (
+          // Skeleton beim ERSTEN Laden: die kommende Zeilenstruktur statt einer
+          // leeren Fläche mit Spinner.
+          <div className="ntf-skeleton">
+            <ListSkeleton rows={3} label={LOADING_TEXT} />
           </div>
+        ) : error && items.length === 0 ? (
+          <ErrorState
+            title={LOAD_ERROR_TEXT}
+            action={(
+              <button type="button" className="btn btn-outline btn-sm" onClick={refresh}>
+                <Icon n="refresh" s={14} /> {RETRY_LABEL}
+              </button>
+            )}
+          />
+        ) : items.length === 0 ? (
+          <EmptyState icon="bell" title={EMPTY_TITLE} text={EMPTY_TEXT} />
         ) : (
           <ul className="ntf-list">
             {items.map((n) => (

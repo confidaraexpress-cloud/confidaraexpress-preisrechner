@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { FormAlert } from "../ui/FormAlert";
 import { createSupportRequest } from "../../api/supportApi";
 import {
   SUPPORT_CATEGORIES,
@@ -155,11 +156,11 @@ export function SupportRequestDialog({ onClose, onCreated }) {
             Beschreiben Sie uns kurz Ihr Anliegen. Wir melden uns zeitnah per E-Mail bei Ihnen.
           </p>
 
-          <label className="sup-dialog-label" htmlFor={catId}>Kategorie</label>
+          <label className="field-label sup-dialog-label" htmlFor={catId}>Kategorie</label>
           <select
             id={catId}
             ref={firstFieldRef}
-            className="sup-dialog-select"
+            className="field-input field-select"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             disabled={busy}
@@ -171,11 +172,11 @@ export function SupportRequestDialog({ onClose, onCreated }) {
             ))}
           </select>
 
-          <label className="sup-dialog-label" htmlFor={subjId}>Betreff</label>
+          <label className="field-label sup-dialog-label" htmlFor={subjId}>Betreff</label>
           <input
             id={subjId}
             type="text"
-            className="sup-dialog-input"
+            className="field-input"
             maxLength={SUPPORT_SUBJECT_MAX}
             placeholder="Worum geht es?"
             value={subject}
@@ -192,10 +193,10 @@ export function SupportRequestDialog({ onClose, onCreated }) {
             )}
           </div>
 
-          <label className="sup-dialog-label" htmlFor={msgId}>Ihre Nachricht</label>
+          <label className="field-label sup-dialog-label" htmlFor={msgId}>Ihre Nachricht</label>
           <textarea
             id={msgId}
-            className="sup-dialog-textarea"
+            className="field-input field-textarea sup-dialog-textarea"
             rows={5}
             maxLength={SUPPORT_MESSAGE_MAX}
             placeholder="Bitte beschreiben Sie Ihr Anliegen."
@@ -214,18 +215,25 @@ export function SupportRequestDialog({ onClose, onCreated }) {
             )}
           </div>
 
+          {/* Der Fehler bleibt IM Dialog stehen (die Eingaben bleiben erhalten)
+              und läuft über die gemeinsame FormAlert-Komponente statt über eine
+              dialogeigene Meldungsfläche. */}
           {error && (
-            <div id={errorId} className="sup-dialog-alert" role="alert">
-              <Icon n="x" s={14} c="currentColor" /><span>{error}</span>
+            <div id={errorId} className="sup-dialog-error">
+              <FormAlert tone="error" message={error} />
             </div>
           )}
 
+          {/* Footer nach dem gemeinsamen Dialogmuster: Aktionen rechts, die
+              bestätigende Aktion rechts außen (patterns.css). Unter 480 px
+              stapeln sie global als column-reverse — „Anfrage senden" steht
+              dort oben. */}
           <div className="sup-dialog-actions">
-            <button type="submit" className="btn btn-primary" disabled={!canSubmit} aria-busy={busy || undefined}>
-              {busy ? <><span className="spinner" /> Wird gesendet …</> : "Anfrage senden"}
-            </button>
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={busy}>
               Abbrechen
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={!canSubmit} aria-busy={busy || undefined}>
+              {busy ? <><span className="spinner" /> Wird gesendet …</> : "Anfrage senden"}
             </button>
           </div>
         </form>

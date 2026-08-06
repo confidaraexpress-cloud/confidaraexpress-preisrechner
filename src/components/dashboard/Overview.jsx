@@ -1,8 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { useNotifications } from "../../context/NotificationsContext";
 import { computeKpis } from "../../utils/kpis";
+import { hasOperationalData } from "../../utils/overviewModules.mjs";
+import { notificationTarget } from "../../utils/notificationsView.mjs";
+import { QuickActions, RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
 import markPrimary from "../../assets/brand/mark-primary.svg";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
@@ -129,15 +133,40 @@ const TRUST = [
 // Ladefehler zu unterscheiden und behauptet fälschlich „Sie haben keine Sendungen".
 // Bleibt der Wert aus (älterer Aufrufer), fällt das Verhalten auf das bisherige
 // `!loading` zurück, statt die Karten dauerhaft leer zu lassen.
-export function Overview({ user, shipments, loading, kpisReady, onNewShipment, onProfile, onNotificationNav }) {
+export function Overview({
+  user, shipments, invoices, invoiceSummary, loading, kpisReady,
+  onNewShipment, onAllShipments, onAllInvoices, onQuickAction, onProfile, onNotificationNav,
+}) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
-  const org  = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
-  const initial = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
 
   const k = useMemo(() => computeKpis(shipments), [shipments]);
   const todayLabel = getTodayLabel();
   const ready = kpisReady === undefined ? !loading : kpisReady;
+
+  // Operative Arbeitsfläche oder Onboarding? Solange nichts geladen ist, gilt
+  // das Konto als operativ — sonst blitzt beim ersten Rendern kurz das
+  // Onboarding auf und springt danach um (siehe hasOperationalData).
+  const operational = hasOperationalData({ shipments, invoices, ready });
+
+  // Benachrichtigungen kommen aus dem BESTEHENDEN Shell-Provider: derselbe
+  // Zustand, dasselbe Polling, dieselbe Gelesen-Logik wie im Panel. Die volle
+  // Liste holt der Provider sonst erst beim Öffnen des Panels — hier wird sie
+  // EINMAL angefordert, wenn sie noch nie geladen wurde. Kein zweiter Takt,
+  // kein zweiter Zustand, keine neue Route.
+  const { items: notifications, loaded: notificationsLoaded, refresh: refreshNotifications } = useNotifications();
+  useEffect(() => {
+    if (!notificationsLoaded) refreshNotifications();
+  }, [notificationsLoaded, refreshNotifications]);
+
+  // Ein Klick auf eine Meldung führt exakt dorthin, wohin auch das Panel führt
+  // (notificationTarget → bestehende Seitennavigation). Kein zweites Zielsystem.
+  const openNotification = (n) => {
+    const target = notificationTarget(n);
+    if (!target || !onNotificationNav) return;
+    if (target.page === "support") onNotificationNav("support", { ticket: target.ticket });
+    else onNotificationNav("invoices", { invoice: target.invoice });
+  };
 
   // Zusatzangabe der ersten Karte. `new24` ist eine echte Zahl aus computeKpis
   // (Sendungen mit created_at innerhalb der letzten 24 Stunden) — kein Trend,
@@ -177,15 +206,16 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
           <h1 className="pp-h1">{getGreeting()}, <em className="pp-hname">{name}</em></h1>
           <p className="pp-hsub">Hier ist Ihre Übersicht für heute.</p>
         </div>
+        {/* Utility-Cluster der Übersicht: Glocke und Benutzerchip — mehr nicht.
+            Der frühere „Neue Sendung"-Knopf ist hier entfallen: dasselbe Ziel
+            steht seit Paket D als primäre Schnellaktion direkt darunter, und
+            zwei Einstiege nebeneinander sind doppelte Navigation. */}
         <div className="pp-actions">
           {/* Dieselbe Position wie zuvor — aus der dekorativen Glocke ist eine echte
               Schaltfläche geworden. Zustand und Polling kommen aus dem Shell-Provider;
               hier entsteht keine zweite Abfrageschleife. */}
           <NotificationBell variant="overview" navigateTo={onNotificationNav} />
           <UserChip user={user} onClick={onProfile} />
-          <button type="button" className="pp-cta" onClick={onNewShipment}>
-            <Icon n="plus" s={16} c="#fff" />Neue Sendung
-          </button>
         </div>
       </header>
 
@@ -223,11 +253,40 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
         ))}
       </div>
 
+      {/* ── Operative Module (Paket D) ──────────────────────────────────────
+          Schnellaktionen, letzte Sendungen, offene Rechnungen und die
+          wichtigsten Benachrichtigungen — alle aus bereits vorhandenen Daten
+          und bestehenden Zielen. Sie stehen VOR den erklärenden Abschnitten:
+          wer täglich arbeitet, soll zuerst seine Vorgänge sehen. */}
+      <QuickActions onAction={onQuickAction} />
+
+      {operational && (
+        <div className="ov-mod-grid">
+          <RecentShipments
+            shipments={shipments}
+            loading={loading}
+            onAll={onAllShipments}
+            onOpen={onAllShipments}
+          />
+          <OpenInvoices invoices={invoices} summary={invoiceSummary} onAll={onAllInvoices} />
+        </div>
+      )}
+
+      {operational && (
+        <OverviewNotifications items={notifications} onSelect={openNotification} />
+      )}
+
       {/* ── 01 Ablauf — ein zusammenhängendes Prozesspanel ──
           <ol>, weil die vier Stationen eine echte Reihenfolge haben. Die
           Verbindungslinie zeichnet jede Station selbst als ::after (siehe
           overview.css) — kein zusätzliches DOM-Element, kein Eintrag im
-          Accessibility-Baum. */}
+          Accessibility-Baum.
+
+          Seit Paket D nur noch für Konten OHNE operative Daten: für einen
+          Neukunden ist die Ablauferklärung die richtige Führung, für ein
+          arbeitendes Konto wäre sie täglicher Ballast. Die Inhalte selbst sind
+          unverändert. */}
+      {!operational && (
       <section className="pp-sec" aria-labelledby="pp-sec-flow">
         <SectionHead
           id="pp-sec-flow" no="01" label="Ablauf"
@@ -247,10 +306,14 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
           </ol>
         </div>
       </section>
+      )}
 
       {/* ── 02 Vorteile — editoriales Bento ──
           Ein einziger map() über WHY; Fläche und Tonwert je Karte kommen aus
-          den Flags hero/wide, nicht aus einer zweiten Datenstruktur. */}
+          den Flags hero/wide, nicht aus einer zweiten Datenstruktur.
+          Wie „01 Ablauf" seit Paket D Onboarding-Inhalt: nur ohne operative
+          Daten sichtbar. */}
+      {!operational && (
       <section className="pp-sec" aria-labelledby="pp-sec-why">
         <SectionHead
           id="pp-sec-why" no="02" label="Vorteile"
@@ -278,6 +341,7 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
           ))}
         </div>
       </section>
+      )}
 
       {/* ── 03 Carrier-Netzwerk — dunkle Signature-Fläche ──
           Der Titel nennt die Carrier-Zahl als Wort. Dass „Acht" und
@@ -313,7 +377,11 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
         </div>
       </section>
 
-      {/* ── Trust ── */}
+      {/* ── Trust ──
+          Ebenfalls Onboarding-Inhalt (Paket D): drei Zusicherungen, die ein
+          Neukunde einmal liest. Auf einer täglich genutzten Arbeitsfläche
+          stünden sie unter den eigenen Vorgängen und trügen dort nichts bei. */}
+      {!operational && (
       <div className="pp-trust tile">
         {/* Lokales Hintergrunddetail dieses Tiles — KEINE seitenweite Ebene und
             keine Rückkehr der entfernten Vapor-/Netzwerk-/Glow-Hintergründe.
@@ -335,6 +403,7 @@ export function Overview({ user, shipments, loading, kpisReady, onNewShipment, o
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

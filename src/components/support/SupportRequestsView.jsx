@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
+import { EmptyState, ErrorState } from "../ui/StateView";
 import { listSupportRequests } from "../../api/supportApi";
 import { SupportThread } from "./SupportThread";
 import { SupportRequestDialog } from "./SupportRequestDialog";
 import { statusFallback } from "../../utils/statusFallback.mjs";
 import {
-  supportCategoryLabel, SUPPORT_LIST_EMPTY_TITLE, SUPPORT_LIST_EMPTY_TEXT,
+  supportCategoryDisplay, SUPPORT_LIST_EMPTY_TITLE, SUPPORT_LIST_EMPTY_TEXT,
   SUPPORT_CUSTOMER_LIST_ERROR,
 } from "../../utils/supportRequest.mjs";
 
@@ -95,10 +96,11 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
 
   return (
     <div className="page-body">
+      {/* Der frühere Einleitungssatz stand wortgleich schon im Seitenkopf
+          (PAGE_HEADERS.support.subtitle) — die Dopplung ist entfallen. Es
+          bleibt die bestehende Supportaktion, rechtsbündig wie in jeder
+          anderen Werkzeugleiste. */}
       <div className="sup-list-head">
-        <p className="sup-list-intro">
-          Ihre Anfragen an unser Supportteam — mit dem vollständigen Nachrichtenverlauf.
-        </p>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
           <Icon n="plus" s={14} /> Neue Anfrage
         </button>
@@ -109,24 +111,33 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
           <span className="spinner spinner-dark" /> Ihre Anfragen werden geladen …
         </div>
       ) : error ? (
-        <>
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-            <Icon n="refresh" s={14} /> Erneut versuchen
-          </button>
-        </>
+        <ErrorState
+          title={error}
+          action={(
+            <button type="button" className="btn btn-outline btn-sm" onClick={load}>
+              <Icon n="refresh" s={14} /> Erneut versuchen
+            </button>
+          )}
+        />
       ) : rows.length === 0 ? (
-        <div className="sup-empty">
-          <p className="sup-empty-title">{SUPPORT_LIST_EMPTY_TITLE}</p>
-          <p className="sup-empty-text">{SUPPORT_LIST_EMPTY_TEXT}</p>
-        </div>
+        <EmptyState
+          icon="mail"
+          title={SUPPORT_LIST_EMPTY_TITLE}
+          text={SUPPORT_LIST_EMPTY_TEXT}
+          action={(
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
+              <Icon n="plus" s={14} /> Neue Anfrage
+            </button>
+          )}
+        />
       ) : (
         <ul className="sup-list">
           {rows.map((row) => {
             const [cls, fallback] = STATUS_META[row.status] || statusFallback(row.status);
+            const [kat, katRoh] = supportCategoryDisplay(row.category);
             return (
               <li key={row.id}>
-                <button type="button" className="sup-list-item" onClick={() => setOpenId(row.id)}>
+                <button type="button" className="ce-card-interactive sup-list-item" onClick={() => setOpenId(row.id)}>
                   <span className="sup-list-main">
                     <span className="sup-list-top">
                       <span className="sup-ticket">{row.ticketNumber}</span>
@@ -135,7 +146,8 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
                     {/* Betreff ist Kundeneingabe und wird als reiner Text gerendert. */}
                     <span className="sup-list-subject">{row.subject}</span>
                     <span className="sup-list-meta">
-                      {supportCategoryLabel(row.category) || row.category} · Zuletzt aktualisiert {fmt(row.updatedAt || row.createdAt)}
+                      <span title={katRoh ? `Serverwert: ${katRoh}` : undefined}>{kat}</span>
+                      {" · "}Zuletzt aktualisiert {fmt(row.updatedAt || row.createdAt)}
                     </span>
                   </span>
                   <Icon n="chevron" s={16} />

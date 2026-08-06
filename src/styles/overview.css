@@ -68,13 +68,10 @@
 .pp-hsub { font-family: var(--fs); font-size: 15px; font-weight: 400; color: var(--text-secondary); margin-top: 14px; }
 
 .pp-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; flex-shrink: 0; }
-.pp-bell {
-  width: 44px; height: 44px; border-radius: 50%;
-  display: grid; place-items: center; flex-shrink: 0;
-  color: var(--text-secondary);
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-}
+/* .pp-bell ist entfallen: die Glocke der Übersicht ist seit dem
+   Benachrichtigungscenter ein echter Knopf mit .ntf-bell.ntf-bell-overview
+   (notifications.css) und trug diese Klasse nie zusätzlich — die Regel war
+   ohne Markup. */
 .pp-uchip {
   display: flex; align-items: center; gap: 10px;
   padding: 6px 14px 6px 6px; border-radius: 99px;
@@ -90,18 +87,12 @@
 .pp-ucomp { font-family: var(--fs); font-size: 11px; color: var(--text-secondary); }
 .pp-uchip > svg { color: var(--text-tertiary); flex-shrink: 0; }
 
-.pp-cta {
-  display: inline-flex; align-items: center; gap: 9px;
-  padding: 13px 22px; border-radius: 99px;
-  cursor: pointer; white-space: nowrap;
-  font-family: var(--fs); font-size: 14px; font-weight: 600; color: #fff;
-  background: var(--accent-blue);
-  border: 1px solid var(--accent-blue);
-  transition: background 0.15s ease;
-}
-.pp-cta:hover { background: var(--accent-blue-strong); }
+/* .pp-cta ist mit Paket D entfallen: der „Neue Sendung"-Knopf der Kopfzeile
+   stand für dasselbe Ziel wie die (jetzt vorhandene) primäre Schnellaktion
+   darunter — doppelte Navigation. Der Knopf war zudem die letzte eigene
+   Buttonfamilie der Übersicht; es bleiben die globalen .btn-Primitives. */
 
-.pp-bell:focus-visible, .pp-uchip:focus-visible, .pp-cta:focus-visible {
+.pp-uchip:focus-visible {
   outline: var(--ce-focus-ring); outline-offset: 2px;
 }
 
@@ -211,6 +202,161 @@
    Wrapping verhindert das zuverlässig, auf Kosten eines gelegentlichen
    Umbruchs mitten im Nachsatz an sehr schmalen Breiten. */
 .pp-kpi-note { white-space: normal; }
+
+/* ══════════ Operative Module (Paket D) ══════════
+   Schnellaktionen, letzte Sendungen, offene Rechnungen und Benachrichtigungen.
+   Material ausschließlich aus der Foundation: Flächen/Kanten/Tiefen kommen aus
+   .ce-card bzw. .ce-card-interactive (primitives.css), Farben aus den
+   --ce-color-*-Rollen, Radien aus --ce-radius-*. Hier steht nur Layout. */
+.ov-mod { margin-top: 34px; }
+.ov-mod-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--ce-space-4); margin-bottom: var(--ce-space-3);
+}
+.ov-mod-title {
+  margin: 0;
+  font-family: var(--fs);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  color: var(--ce-color-text-primary);
+}
+/* Zwei gleichwertige Module nebeneinander; darunter bricht alles einspaltig. */
+.ov-mod-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--ce-space-5); align-items: start; }
+.ov-mod-grid > .ov-mod { margin-top: 34px; min-width: 0; }
+
+.ov-card { overflow: hidden; }
+.ov-card--pad { padding: var(--ce-space-5); }
+.ov-quiet {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* ── Schnellaktionen ────────────────────────────────────────────────────── */
+.ov-quick-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--ce-space-3);
+}
+.ov-quick-card {
+  display: flex; align-items: flex-start; gap: var(--ce-space-3);
+  min-width: 0; padding: var(--ce-space-4); text-align: left;
+  /* Touchziel: die Karte ist die Aktion, mindestens 44 px hoch. */
+  min-height: 44px;
+}
+.ov-quick-ic {
+  display: grid; place-items: center; flex: none;
+  width: 34px; height: 34px; border-radius: var(--ce-radius-md);
+  color: var(--ce-color-brand-ink);
+  background: var(--ce-color-brand-soft);
+  border: 1px solid var(--ce-color-brand-border);
+}
+.ov-quick-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ov-quick-label {
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
+}
+.ov-quick-desc {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Genau EINE primäre Schnellaktion — markiert über Kante und Fläche, nicht
+   über eine zweite Buttonfamilie oder eine eigene Farbe. */
+.ov-quick-card--primary {
+  border-color: var(--ce-color-brand-border);
+  background: var(--ce-color-brand-soft);
+}
+.ov-quick-card--primary .ov-quick-ic {
+  color: var(--ce-color-text-inverse);
+  background: var(--ce-color-brand);
+  border-color: var(--ce-color-brand);
+}
+
+/* ── Listenmodule (letzte Sendungen, Benachrichtigungen) ────────────────── */
+.ov-list { list-style: none; margin: 0; padding: 0; }
+.ov-list-row {
+  display: flex; align-items: center; gap: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-5);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.ov-list-row:last-child { border-bottom: 0; }
+.ov-list-row--button { padding: 0; }
+.ov-list-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.ov-list-primary {
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-text-primary); overflow-wrap: anywhere;
+}
+.ov-list-secondary {
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-muted); overflow-wrap: anywhere;
+}
+.ov-list-num {
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+.ov-list-action { flex: none; }
+
+/* ── Offene Rechnungen ──────────────────────────────────────────────────── */
+.ov-inv-amount {
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 28px; font-weight: 600; line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ce-color-text-primary);
+}
+.ov-inv-meta {
+  display: flex; flex-wrap: wrap; gap: 6px var(--ce-space-4);
+  margin-top: var(--ce-space-2);
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-secondary);
+}
+.ov-inv-overdue { margin: var(--ce-space-3) 0 0; }
+.ov-inv-note { margin-top: var(--ce-space-3); }
+
+/* ── Benachrichtigungsmodul ─────────────────────────────────────────────── */
+.ov-ntf-btn {
+  display: flex; align-items: center; gap: var(--ce-space-3); width: 100%;
+  padding: var(--ce-space-3) var(--ce-space-5);
+  min-height: 44px;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  color: inherit; font-family: var(--fs);
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ov-ntf-btn:hover { background: var(--ce-color-surface-muted); }
+.ov-ntf-btn > svg { flex: none; color: var(--ce-color-text-muted); }
+.ov-ntf-dot {
+  width: 7px; height: 7px; border-radius: var(--ce-radius-full);
+  background: var(--ce-color-brand); flex: none;
+}
+.ov-ntf-time {
+  flex: none;
+  font-size: var(--ce-text-label-size);
+  color: var(--ce-color-text-muted); white-space: nowrap;
+}
+
+@media (max-width: 1120px) {
+  .ov-quick-grid { grid-template-columns: repeat(3, 1fr); }
+  .ov-mod-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .ov-quick-grid { grid-template-columns: repeat(2, 1fr); }
+  /* Auf schmalen Breiten stapeln die Zeilen: Status und Betrag rutschen unter
+     den Haupttext, statt ihn auf wenige Zeichen zusammenzudrücken. */
+  .ov-list-row { flex-wrap: wrap; }
+  .ov-list-main { flex: 1 1 100%; }
+  .ov-list-num { margin-left: auto; }
+}
+@media (max-width: 460px) {
+  .ov-quick-grid { grid-template-columns: 1fr; }
+}
+/* Der prefers-reduced-motion-Block der Übersicht steht gesammelt am Dateiende —
+   .ov-ntf-btn ist dort mit aufgenommen. Ein zweiter Block hier oben würde die
+   bestehende Regelgruppe aufspalten. */
 
 /* ══════════ Sektionen ══════════ */
 .pp-sec { margin-top: 64px; }
@@ -608,4 +754,5 @@
   .pp-bento-item { transition: none; }
   .pp-car-chip { transition: none; }
   .pp-net-cta { transition: none; }
+  .ov-ntf-btn { transition: none; }
 }

@@ -140,7 +140,11 @@ test("mark-read scheitert: sichtbare Meldung im Panel, Zustand wird zurückgerol
     "/kunde/notifications": (route, json) => json({ notifications: [ntf], unreadCount: 1, snapshotAt: "s", pagination: {} }),
   });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".pp-step-no", { timeout: 15000 });
+  // Anker: die KPI-Reihe steht seit Paket D in BEIDEN Zuständen der Übersicht
+  // (Arbeitsfläche und Onboarding). Die früher benutzte Schrittnummer
+  // .pp-step-no gehört zum Onboarding und fehlt, sobald das Konto — wie hier —
+  // eine Sendung hat.
+  await page.waitForSelector(".pp-kpis", { timeout: 15000 });
   await page.locator('button[aria-label*="Benachrichtigungen"]').first().click();
   await page.waitForSelector(".ntf-item, .ntf-body", { timeout: 10000 });
   await page.getByRole("button", { name: /Alle als gelesen|gelesen markieren/i }).first().click().catch(async () => {

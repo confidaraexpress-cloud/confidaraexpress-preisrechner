@@ -12,6 +12,8 @@ import { readFileSync } from "node:fs";
 import {
   SUPPORT_CATEGORIES,
   SUPPORT_CATEGORY_VALUES,
+  supportCategoryDisplay,
+  SUPPORT_CATEGORY_UNKNOWN,
   SUPPORT_CARD,
   SUPPORT_GENERIC_ERROR,
   SUPPORT_MESSAGE_MAX,
@@ -301,4 +303,29 @@ test("31 — die bestehende Stornierungsfunktion ist unberührt", () => {
   // der Dialogsprache — das ist Dokumentation, keine Kopplung.
   const dialogCode = dialogJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(!/cancellation/i.test(dialogCode), "der Supportdialog referenziert die Stornierung im Code");
+});
+
+// ── Paket D: unbekannte Kategorie erscheint nie roh im sichtbaren Text ───────
+test("Kategorie-Anzeige: unbekannter Wert wird neutral benannt, der Rohwert bleibt im title", () => {
+  const [bekannt, rohBekannt] = supportCategoryDisplay("invoice");
+  assert.equal(bekannt, "Rechnung");
+  assert.equal(rohBekannt, null, "ein bekannter Wert braucht keinen Rohwert");
+
+  for (const wert of ["shipping", "billing_v2", "", null, undefined, 42]) {
+    const [text, roh] = supportCategoryDisplay(wert);
+    assert.equal(text, SUPPORT_CATEGORY_UNKNOWN, `roher Wert im sichtbaren Text: ${wert}`);
+    assert.ok(roh === null || roh === String(wert).trim(),
+      "der Rohwert wird für das title-Attribut unverändert durchgereicht");
+  }
+  // Die sichtbare Fassung ist deutsch und enthält keinen technischen Wert.
+  assert.ok(!/[_a-z]{3,}\d|shipping/.test(SUPPORT_CATEGORY_UNKNOWN));
+});
+
+test("Kategorie-Anzeige: beide Kundenansichten nutzen sie (kein Rückfall auf row.category)", () => {
+  const liste = readFileSync(new URL("../components/support/SupportRequestsView.jsx", import.meta.url), "utf8");
+  const verlauf = readFileSync(new URL("../components/support/SupportThread.jsx", import.meta.url), "utf8");
+  for (const [name, code] of [["Liste", liste], ["Verlauf", verlauf]]) {
+    assert.match(code, /supportCategoryDisplay\(/, `${name}: nutzt die gemeinsame Anzeigefassung nicht`);
+    assert.ok(!/\|\| (row|req)\.category/.test(code), `${name}: fällt weiterhin auf den Rohwert zurück`);
+  }
 });

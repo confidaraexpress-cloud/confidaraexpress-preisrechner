@@ -50,6 +50,7 @@ const PAGE_HEADERS = {
     subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
   },
   support: {
+    eyebrow: "Konto & Support",
     title: "Supportanfragen",
     subtitle: "Ihre Anfragen an unser Supportteam mit vollständigem Nachrichtenverlauf.",
   },
@@ -377,11 +378,20 @@ export default function DashboardPage() {
             user={user}
             shipments={shipments}
             invoices={invoices}
+            invoiceSummary={invoiceSummary}
             loading={loading}
             kpisReady={shipmentsLoaded}
-            onNewShipment={() => setPage("new")}
-            onAllShipments={() => setPage("shipments")}
-            onProfile={() => setPage("profile")}
+            onNewShipment={() => navigateTo("new")}
+            onAllShipments={() => navigateTo("shipments")}
+            onAllInvoices={() => navigateTo("invoices")}
+            /* Schnellaktionen nutzen ausschließlich die BESTEHENDE Navigation:
+               `page` läuft über navigateTo (page-State), `route` über den
+               vorhandenen Router. Keine neue Routing- oder page-State-Logik. */
+            onQuickAction={(action) => {
+              if (action.route) { navigate(action.route); return; }
+              navigateTo(action.page);
+            }}
+            onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}
           />
         )}

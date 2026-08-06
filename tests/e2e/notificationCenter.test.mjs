@@ -242,7 +242,7 @@ test("1 — Rechnung bereit → Glocke zeigt Badge → PDF-Abruf → Meldung ver
   // Die Glocke zeigt die Meldung nicht mehr.
   await visibleBell(page).click();
   await page.waitForSelector(".ntf-panel", { timeout: 10_000 });
-  await page.waitForSelector(".ntf-empty-title", { timeout: 10_000 });
+  await page.waitForSelector(".ntf-panel .ce-state-title", { timeout: 10_000 });
   assert.equal(await page.locator(".ntf-item").count(), 0, "die erledigte Meldung steht noch in der Glocke");
   await page.close();
 });
@@ -297,7 +297,7 @@ test("4 — Zahlungsverbuchung entfernt die Warnung still (keine neue Meldung)",
   assert.equal(await visibleBadge(page).count(), 0, "trotz erledigter Meldung wird ein Badge angezeigt");
 
   await visibleBell(page).click();
-  await page.waitForSelector(".ntf-empty-title", { timeout: 10_000 });
+  await page.waitForSelector(".ntf-panel .ce-state-title", { timeout: 10_000 });
   const items = await page.locator(".ntf-item-title").allTextContents();
   assert.deepEqual(items, [], `es erschien eine Meldung: ${items.join(", ")}`);
   await page.close();

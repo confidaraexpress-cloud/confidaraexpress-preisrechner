@@ -214,7 +214,16 @@ test("9 — Firmenkarte bleibt vorhanden und bewusst nicht interaktiv", () => {
   assert.match(sidebarJsx, /className="pp-identity"/, "Firmenkarte fehlt");
   assert.match(sidebarJsx, /pp-identity-name/, "Firmenname fehlt");
   assert.match(sidebarJsx, /pp-identity-email/, "Kontokennung fehlt");
-  assert.match(sidebarJsx, /user\?\.company_name \|\| user\?\.name/, "Datenquelle der Firmenkarte geändert");
+  // Paket D: Firmenname und Initiale kommen nicht mehr aus einem hier
+  // eingebauten Ausdruck, sondern aus der EINEN gemeinsamen Quelle
+  // (utils/accountIdentity.mjs) — dieselbe, die Benutzerchip und Profilhero
+  // nutzen. Die Vorrangregel (company_name vor name) ist dort festgeschrieben
+  // und in accountIdentity.test.mjs geprüft; hier wird nur noch verlangt, dass
+  // die Sidebar genau diese Quelle verwendet und keine eigene daneben.
+  assert.match(sidebarJsx, /accountDisplayName\(user\)/, "Datenquelle der Firmenkarte geändert");
+  assert.match(sidebarJsx, /accountInitials\(user\)/, "Initialenquelle der Firmenkarte geändert");
+  assert.ok(!/user\?\.company_name \|\| user\?\.name/.test(sidebarJsx),
+    "keine zweite, lokal nachgebaute Namensableitung neben der gemeinsamen Quelle");
 
   // Es gibt keinen Firmenwechsel/kein Dropdown → kein Chevron, keine
   // Hover-/Fokusaffordanz, die eine nicht vorhandene Funktion suggeriert.

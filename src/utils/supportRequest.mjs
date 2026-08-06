@@ -28,6 +28,20 @@ export function supportCategoryLabel(value) {
   return hit ? hit.label : null;
 }
 
+// Anzeigefassung der Kategorie — dieselbe Regel wie statusFallback für Status:
+// ein unbekannter Wert erscheint NIE roh im sichtbaren Text. Bis Paket D fiel
+// die Anzeige auf `req.category` zurück und zeigte damit den Backendwert
+// („shipping", „billing_v2") mitten im deutschen Satz.
+// Rückgabe: [sichtbarerText, rohwertOderNull] — der Rohwert gehört höchstens
+// in ein title-Attribut, damit der Support ihn nachschlagen kann.
+export const SUPPORT_CATEGORY_UNKNOWN = "Ohne Kategorie";
+export function supportCategoryDisplay(value) {
+  const label = supportCategoryLabel(value);
+  if (label) return [label, null];
+  const roh = typeof value === "string" && value.trim() ? value.trim() : null;
+  return [SUPPORT_CATEGORY_UNKNOWN, roh];
+}
+
 // Kein vorausgewählter Wert: der Kunde soll bewusst wählen, statt eine Voreinstellung
 // versehentlich mitzusenden.
 export const SUPPORT_CATEGORY_PLACEHOLDER = "Bitte wählen";

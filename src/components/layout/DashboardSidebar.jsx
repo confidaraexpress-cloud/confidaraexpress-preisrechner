@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
+import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import markReverse from "../../assets/brand/mark-reverse.svg";
 
 // Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
@@ -45,7 +46,8 @@ const NAV_GROUPS = [
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen, onLogout }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const initials = (user?.company_name || user?.name || "?").charAt(0).toUpperCase();
+  // EINE Initialenquelle für Sidebar, Benutzerchip und Profilhero.
+  const initials = accountInitials(user);
   // Supportdialog: lokaler Zustand DIESER Komponente. Bewusst kein globaler State und
   // keine eigene Route — die Karte ist auf jeder eingeloggten Seite dieselbe, und der
   // Dialog darf die bestehende Navigation (page-State) nicht berühren.
@@ -98,7 +100,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
           <div className="pp-identity">
             <div className="pp-identity-avatar">{initials}</div>
             <div className="pp-identity-text">
-              <div className="pp-identity-name">{user?.company_name || user?.name}</div>
+              <div className="pp-identity-name">{accountDisplayName(user)}</div>
               <div className="pp-identity-email">{user?.email || "B2B Konto"}</div>
             </div>
           </div>

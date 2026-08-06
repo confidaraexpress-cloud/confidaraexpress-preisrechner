@@ -432,12 +432,42 @@ export default function DatenschutzPage() {
               <h3 style={H3_STYLE}>12.1 Keine Cookies</h3>
               <p style={P_STYLE}>
                 ConfidaraExpress setzt derzeit keine Cookies ein — weder technisch notwendige noch
-                Analyse-, Marketing- oder Tracking-Cookies. Ebenso wird kein{" "}
-                <code style={CODE_STYLE}>sessionStorage</code> verwendet.
+                Analyse-, Marketing- oder Tracking-Cookies.
                 Da keine Cookies gesetzt werden, wird kein Cookie-Banner angezeigt.
               </p>
 
-              <h3 style={H3_STYLE}>12.2 Technisch notwendige Speicherung im localStorage (Login)</h3>
+              {/* Diese Angabe lautete bis zur Einführung der Vorgangserhaltung
+                  „Ebenso wird kein sessionStorage verwendet." Seitdem trifft das
+                  nicht mehr zu; die Aussage wurde deshalb durch die tatsächliche
+                  Verarbeitung ersetzt. */}
+              <h3 style={H3_STYLE}>12.2 Technisch notwendige Speicherung im sessionStorage (laufender Versandvorgang)</h3>
+              <p style={P_STYLE}>
+                Damit Ihnen beim Wechsel zwischen Angebotsvergleich und Buchung, beim Zurückgehen im
+                Browser oder nach einem versehentlichen Neuladen keine Eingaben verloren gehen, wird
+                der aktuell bearbeitete Versandvorgang vorübergehend im{" "}
+                <code style={CODE_STYLE}>sessionStorage</code> Ihres Browsers gespeichert. Enthalten
+                sind ausschließlich die von Ihnen eingegebenen Sendungsdaten (Absender- und
+                Empfängeranschrift, Kontaktangaben, Paketangaben, Versanddatum), die gewählten Filter
+                und die angezeigten Versandangebote. Nicht gespeichert werden Zugangsdaten,
+                Authentifizierungstoken, Zahlungsdaten oder hochgeladene Dokumente.
+              </p>
+              <p style={P_STYLE}>
+                Der <code style={CODE_STYLE}>sessionStorage</code> ist auf den einzelnen Browser-Tab
+                begrenzt und wird vom Browser automatisch geleert, sobald Sie den Tab schließen.
+                Zusätzlich löschen wir den Vorgang, sobald Sie sich abmelden, die Buchung
+                abgeschlossen ist, Sie einen neuen Vorgang beginnen oder Sie die Eingaben bewusst
+                zurücksetzen. Nach 60 Minuten ohne Aktivität werden die berechneten Angebote
+                verworfen. Eine Übermittlung dieser Daten an Dritte findet nicht statt; die
+                Speicherung erfolgt ausschließlich lokal in Ihrem Browser.
+              </p>
+              <p style={P_STYLE}>
+                <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Durchführung
+                vorvertraglicher Maßnahmen und Vertragserfüllung) sowie § 25 Abs. 2 Nr. 2 TDDDG
+                (unbedingt erforderlich, um den von Ihnen ausdrücklich gewünschten Dienst
+                bereitzustellen).
+              </p>
+
+              <h3 style={H3_STYLE}>12.3 Technisch notwendige Speicherung im localStorage (Login)</h3>
               <p style={P_STYLE}>
                 Für den Login wird eine technisch notwendige Speicherung im{" "}
                 <code style={CODE_STYLE}>localStorage</code> Ihres

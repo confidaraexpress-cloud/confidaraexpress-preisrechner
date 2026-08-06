@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { ShippingFlowProvider } from "./context/ShippingFlowContext";
 import { LoadingScreen } from "./components/common/LoadingScreen";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
@@ -41,6 +42,13 @@ export default function App() {
   if (loadingUser) return <LoadingScreen />;
 
   return (
+    // ShippingFlowProvider steht bewusst AUSSERHALB von <Routes> und INNERHALB
+    // des AuthProviders (main.jsx). Grund: „Neue Sendung"/Angebotsvergleich
+    // laufen als page-State in DashboardPage (/dashboard), die Buchung als
+    // eigene Route in DashboardLayout (/booking) — zwei getrennte Teilbäume.
+    // Alles unterhalb von <Routes> wird beim Wechsel abgehängt; nur hier
+    // überlebt der laufende Versandvorgang den Sprung in beide Richtungen.
+    <ShippingFlowProvider>
     <Suspense fallback={<LoadingScreen />}>
       <ScrollToTop />
       <Routes>
@@ -94,5 +102,6 @@ export default function App() {
         <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Suspense>
+    </ShippingFlowProvider>
   );
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/client";
+import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 
 const AuthContext = createContext(null);
 
@@ -36,6 +37,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setAuthErrorHandler(() => {
       localStorage.removeItem("ce_token");
+      clearShippingFlowStorage();   // dieselbe Bereinigung wie beim Abmelden
       setAuthed(false);
       setUser(null);
       setSessionExpired(true);
@@ -99,6 +101,12 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem("ce_token");
+    // Temporären Versandvorgang mit abräumen: er enthält Adress- und
+    // Sendungsdaten. Der Speicherschlüssel wird hier SYNCHRON entfernt; den
+    // Zustand im Arbeitsspeicher leert der ShippingFlowProvider über seinen
+    // authed-Wächter. Bewusst eine reine Funktion ohne React — keine Kopplung
+    // von client.js oder AuthContext an einen weiteren Kontext.
+    clearShippingFlowStorage();
     setAuthed(false);
     setUser(null);
     setSessionExpired(false);

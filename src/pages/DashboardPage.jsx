@@ -22,6 +22,11 @@ import { UserChip } from "../components/ui/UserChip";
 // KEIN periodischer API-Aufruf.
 const MONTH_WATCH_INTERVAL_MS = 60_000;
 
+// Gültige Werte des lokalen page-States. Unveränderter Bestand — nur an EINER
+// Stelle geführt, weil ihn seit dem History-Fix zwei Stellen lesen (Startwert
+// und ?page=-Effekt).
+const DASHBOARD_PAGES = ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"];
+
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
 const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
@@ -61,7 +66,22 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [page, setPage] = useState("overview");
+  // Aktiver Bereich. Startwert kommt aus dem Query-Parameter ODER aus dem
+  // History-State des Eintrags — beides wird beim Mount berücksichtigt.
+  //
+  // Warum der History-State: der Effekt weiter unten entfernt `?page=` per
+  // `replace` aus der URL (saubere Adresse). Der zurückbleibende Eintrag lautete
+  // dadurch schlicht `/dashboard`, und ein Browser-Zurück von `/booking` landete
+  // auf der Übersicht statt auf „Neue Sendung" — obwohl der sichtbare
+  // Zurück-Button korrekt dorthin führte. Seit dem Fix trägt der ersetzte
+  // Eintrag den Bereich in `location.state.page`; die URL bleibt sauber.
+  const [page, setPage] = useState(() => {
+    const ausQuery = new URLSearchParams(location.search).get("page");
+    if (DASHBOARD_PAGES.includes(ausQuery)) return ausQuery;
+    const ausHistory = location.state?.page;
+    if (DASHBOARD_PAGES.includes(ausHistory)) return ausHistory;
+    return "overview";
+  });
   // Vorgang, der aus einer Glockenmeldung heraus direkt geöffnet werden soll.
   const [supportTicketId, setSupportTicketId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -244,13 +264,19 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const p = params.get("page");
-    if (p && ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"].includes(p)) {
+    if (p && DASHBOARD_PAGES.includes(p)) {
       setPage(p);
       // Deep-Link aus einer Glockenmeldung: die Ticket-ID wird als geprüfte
       // Ganzzahl übernommen und der Query-Param anschließend wie bisher entfernt.
       const ticket = parseInt(params.get("ticket"), 10);
       setSupportTicketId(Number.isInteger(ticket) && ticket > 0 ? ticket : null);
-      navigate("/dashboard", { replace: true });
+      // Die URL wird wie bisher bereinigt — der Bereich wandert dabei in den
+      // History-State des ERSETZTEN Eintrags. Vorhandene State-Werte bleiben
+      // erhalten (Spread), damit z. B. `justBooked` nicht verloren geht.
+      // `replace` löst keine zusätzliche Navigation aus: derselbe Pfad, kein
+      // neuer Eintrag, kein erneutes Feuern dieses Effekts (location.search
+      // wird von "?page=…" zu "" — genau einmal).
+      navigate("/dashboard", { replace: true, state: { ...(location.state || {}), page: p } });
     }
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 

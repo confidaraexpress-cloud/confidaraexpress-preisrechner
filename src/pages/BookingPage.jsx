@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
+import { useShippingFlow } from "../context/ShippingFlowContext";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
@@ -52,8 +53,35 @@ const COMMERCIAL_INVOICE_BOOK_ERRORS = {
 export default function BookingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { state: bookingData } = useLocation();
-  const [step, setStep] = useState(1);
+  const { state: navState } = useLocation();
+
+  // ── Quelle des Vorgangs, in dieser Reihenfolge ─────────────────────────────
+  //   1. location.state       — der reguläre Handoff aus „Neue Sendung".
+  //                             Bleibt unverändert bestehen: React Router legt
+  //                             ihn in history.state.usr ab, wodurch Reload und
+  //                             Browser-Vorwärts schon bisher funktionierten.
+  //   2. ShippingFlowContext  — der laufende Vorgang. Greift, wenn diese Seite
+  //                             ohne state erreicht wird (z. B. Browser-Vorwärts
+  //                             nach einem Provider-Neuaufbau).
+  //   3. sicherer leerer Zustand — „Kein Angebot ausgewählt", unverändert.
+  const { shipment: flowShipment, booking: flowBooking, setBooking: setFlowBooking,
+          setStep: setFlowStep, clearFlow } = useShippingFlow();
+  const bookingData = useMemo(() => {
+    if (navState?.tariff) return navState;
+    if (flowShipment?.selected && flowShipment.shipmentId != null) {
+      return {
+        tariff: flowShipment.selected,
+        shipmentId: flowShipment.shipmentId,
+        form: flowShipment.form,
+        customs: flowShipment.customs,
+      };
+    }
+    return navState || null;
+  }, [navState, flowShipment]);
+
+  // Schritt 1 oder 2 aus dem laufenden Vorgang; Schritt 3 (Erfolgsbildschirm)
+  // wird NIE wiederhergestellt — er gehört zu einer abgeschlossenen Buchung.
+  const [step, setStep] = useState(() => (flowBooking?.step === 2 ? 2 : 1));
   // Kundengewähltes Abholzeitfenster (nur Pickup) — im Seiten-State, damit die Auswahl den
   // Schrittwechsel übersteht; die Draft-Persistenz übernimmt PickupWindowModule. {from,until}|null.
   const [pickupWindow, setPickupWindow] = useState(null);
@@ -144,16 +172,20 @@ export default function BookingPage() {
   });
 
   // ── Versicherung (F1/F2): Auswahl + Live-Repricing + Übergabe an /book ──────
-  const [insuranceType, setInsuranceType]   = useState("none"); // "none" | "standard" | "premium"
+  // Startwerte aus dem laufenden Vorgang (reine Frontendzustände). Bewusst NICHT
+  // wiederhergestellt: AGB- und Gefahrgutbestätigung (Einwilligungen werden neu
+  // gegeben), Zoll-/Handelsrechnungsfelder (hängen am serverseitigen
+  // Dokumentstatus) und das Abholzeitfenster (liegt autoritativ am Backend-Draft).
+  const [insuranceType, setInsuranceType]   = useState(flowBooking?.insuranceType || "none"); // "none" | "standard" | "premium"
   // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
   // Validierung, eigene Payload-Felder: goodsValue → details.value_amount,
   // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
-  const [goodsValue, setGoodsValue]         = useState("");     // Warenwert (EUR)
-  const [insuranceValue, setInsuranceValue] = useState("");     // Versicherungswert (EUR)
+  const [goodsValue, setGoodsValue]         = useState(flowBooking?.goodsValue || "");     // Warenwert (EUR)
+  const [insuranceValue, setInsuranceValue] = useState(flowBooking?.insuranceValue || ""); // Versicherungswert (EUR)
   // Progressive Disclosure: der Versicherungswert spiegelt den Warenwert, bis der
   // Nutzer ihn bewusst anpasst (insValueManual); das Feld ist bei Bedarf einblendbar
   // (insValueRevealed) und wird bei Warenwert über dem Maximum automatisch gezeigt.
-  const [insValueManual, setInsValueManual]     = useState(false);
+  const [insValueManual, setInsValueManual]     = useState(!!flowBooking?.insValueManual);
   const [insValueRevealed, setInsValueRevealed] = useState(false);
   const [repriceResult, setRepriceResult]   = useState(null);
   const [repriceLoading, setRepriceLoading] = useState(false);
@@ -162,7 +194,10 @@ export default function BookingPage() {
   const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
   const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
 
-  const [form, setForm] = useState({ content: "", reference: "" });
+  const [form, setForm] = useState({
+    content: flowBooking?.content || "",
+    reference: flowBooking?.reference || "",
+  });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
   // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >
   // entfernen, hart auf 35 Zeichen kappen (optional → kein Fehlerzustand).
@@ -171,7 +206,7 @@ export default function BookingPage() {
   // ── Zusatzoption: Labeldruckformat (A4/A6) ──────────────────────────────────
   // Reiner /book-Payload-Wert (Default A4), NUR A4|A6. Kein Einfluss auf Preis
   // oder Reprice — bewusst NICHT in den Reprice-Deps und ohne Stale-Gate.
-  const [labelFormat, setLabelFormat] = useState("A4");
+  const [labelFormat, setLabelFormat] = useState(flowBooking?.labelFormat || "A4");
 
   // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
   const makeCustomsItem = () => ({
@@ -193,6 +228,19 @@ export default function BookingPage() {
   // gewerbliche Exportgründe (Default proforma); der effektive Modus wird abgeleitet.
   const [customsInvoiceMode, setCustomsInvoiceMode]     = useState(PROFORMA);
   const [proformaBlockedHint, setProformaBlockedHint]   = useState("");
+
+  /* ── Spiegelung der Buchungsoptionen in den laufenden Vorgang ────────────
+     Nur reine Frontendzustände, keine Serverdaten. Schritt 3 (Erfolg) wird
+     bewusst nicht gespiegelt — nach der Buchung wird der Vorgang ohnehin
+     gelöscht. Abhängigkeiten sind die Werte selbst → keine Schleife. */
+  useEffect(() => {
+    if (step === 3) return;
+    setFlowBooking({
+      step, labelFormat, reference: form.reference, content: form.content,
+      insuranceType, goodsValue, insuranceValue, insValueManual,
+    });
+  }, [step, labelFormat, form.reference, form.content, insuranceType,
+      goodsValue, insuranceValue, insValueManual, setFlowBooking]);
 
   const tariff = bookingData?.tariff;
 
@@ -703,6 +751,11 @@ export default function BookingPage() {
         return;
       }
       setBooking(d); setStep(3);
+      // Der Vorgang ist abgeschlossen: temporären Zustand (Context UND
+      // sessionStorage) löschen. Der Erfolgsbildschirm lebt ab hier
+      // ausschließlich aus `booking` — Sendungs-/Geschäftsnummer, Label und
+      // Rechnungshinweis bleiben davon unberührt sichtbar.
+      clearFlow();
     } catch (e) {
       // Netzabbruch/Timeout: kein „Failed to fetch" mehr im Banner.
       setError(mapBookThrownError(e));
@@ -776,6 +829,25 @@ export default function BookingPage() {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
     setLabelLoading(false);
+  };
+
+  /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
+     Es muss fachlich dasselbe tun wie Browser-Zurück: zurück zum
+     Angebotsvergleich, mit allen Eingaben, Angeboten, Filtern, der Auswahl und
+     der Scrollposition.
+
+     Sind wir über den regulären Weg hier (fromFlow), ist der vorherige
+     History-Eintrag genau dieser Angebotsvergleich — dann geht ein echtes
+     history.back() zurück. Das ist zuverlässiger als ein neuer Push: es
+     verlängert die History nicht, und beide Wege landen garantiert auf
+     demselben Eintrag (getestet in tests/e2e/shippingFlowRestore.test.mjs).
+
+     Ohne Marker — Direkteinstieg, neuer Tab, Lesezeichen — gibt es keinen
+     eigenen Eintrag hinter uns; dann wird wie bisher gezielt navigiert. */
+  const goBackToOffers = () => {
+    setFlowStep("offers");
+    if (navState?.fromFlow) { navigate(-1); return; }
+    navigate("/dashboard?page=new");
   };
 
   const addrReady =
@@ -943,7 +1015,7 @@ export default function BookingPage() {
             />
 
             <div className="flex gap-12">
-              <button className="btn btn-outline" onClick={() => navigate("/dashboard?page=new")}>← Zurück</button>
+              <button className="btn btn-outline" onClick={goBackToOffers}>← Zurück</button>
               <button className="btn btn-primary btn-grow" onClick={goToStep2}>
                 Weiter: Buchung <Icon n="arrow" s={16} />
               </button>
@@ -1147,7 +1219,11 @@ export default function BookingPage() {
               <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>
                 <Icon n="package" s={16} /> Zu meinen Sendungen
               </button>
-              <button className="btn btn-outline" onClick={() => navigate("/calculator")}>Neue Sendung</button>
+              {/* Bewusster Neustart: der alte Vorgang ist beim Buchungserfolg
+                  bereits gelöscht — der erneute Aufruf schützt den Fall, dass
+                  der Kunde diesen Bildschirm über Browser-Zurück wieder
+                  erreicht und dann neu beginnt. */}
+              <button className="btn btn-outline" onClick={() => { clearFlow(); navigate("/calculator"); }}>Neue Sendung</button>
               <button className="btn btn-outline" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
                 <Icon n="invoice" s={16} /> Zu meinen Rechnungen
               </button>

@@ -176,9 +176,18 @@ test("missingFieldsHint: falsy Fehlerwerte zählen nicht als Fehler", () => {
 test("Verdrahtung: der Resume-Initialzustand laeuft durch resumeInitialState", () => {
   assert.ok(PAGE_CODE.includes("resumeInitialState(buildResumeInitialState(resumeDraft.formData"),
     "der Entwurf wird nicht ueber resumeInitialState neutralisiert");
-  // Auswahlliste und aktive Auswahl starten beide leer — kein Sonderzustand mehr.
-  assert.ok(PAGE_CODE.includes("const [publicCarriers, setPublicCarriers]         = useState([]);"),
-    "publicCarriers darf nicht mehr aus dem Entwurf vorbelegt werden");
+  // Die Auswahlliste darf NIE aus dem Entwurf kommen: dessen Angebotsantwort
+  // existiert nach dem Fortsetzen nicht mehr, die IDs sind unüberprüfbar.
+  //
+  // Geprüft wird jetzt die Zusicherung statt eines Zeilenliterals: der
+  // publicCarriers-Initialisierer nennt `resumeInit` nicht. Das ist strenger als
+  // vorher — es fällt auch dann, wenn die Vorbelegung in anderer Schreibweise
+  // wieder eingeführt wird. (Der Sitzungs-Restore darf die Liste sehr wohl
+  // mitbringen: dort kommt sie mit derselben Berechnung zurück.)
+  const publicCarriersInit = PAGE_CODE.match(/const \[publicCarriers, setPublicCarriers\][^\n]*/)?.[0] || "";
+  assert.ok(publicCarriersInit, "publicCarriers-Initialisierer nicht gefunden");
+  assert.ok(!publicCarriersInit.includes("resumeInit"),
+    "publicCarriers darf nicht aus dem Entwurf vorbelegt werden");
   assert.ok(!PAGE_CODE.includes("resumePublicCarrierOptions"), "verwaiste Sichtbarkeits-Vorbelegung");
   assert.ok(!PAGE_CODE.includes("carrierFilterNotice"), "verwaister Hinweis auf entfernte Filter");
 });
@@ -189,12 +198,19 @@ test("Verdrahtung: Validierungsfehler eines fortgesetzten Entwurfs stehen ab dem
 });
 
 test("Verdrahtung: neue Sendung startet unverändert ohne Filter und ohne Fehler", () => {
-  // Beide Vorbelegungen hängen am ternären resumeInit-Zweig → ohne Entwurf greift
-  // exakt der bisherige Startzustand ([] bzw. {}).
-  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.selectedPublicCarrierIds : []"));
+  // Der Entwurfszweig steht unverändert an erster Stelle; ohne Entwurf UND ohne
+  // laufenden Vorgang greift exakt der bisherige Startzustand ([] bzw. {}).
+  // Die Vorrangkette ist damit ausdrücklich Teil der Zusicherung:
+  //   Entwurf > laufender Vorgang > Standard.
+  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.selectedPublicCarrierIds : flowInit ? flowInit.selectedPublicCarrierIds : []"),
+    "Vorrangkette des Carrier-Filters verändert");
   assert.ok(PAGE_CODE.includes("resumeInit ? getErrors(resumeInit.form) : {}"));
-  // Ohne Entwurf ist resumeInit null → beide Ternaere liefern exakt den bisherigen Startwert.
-  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : ({"),
+  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : flowInit ? flowInit.form : profilSeed()"),
+    "Vorrangkette des Formular-Seeds verändert");
+  // Der Profil-Seed selbst ist unverändert — er ist nur in eine benannte
+  // Funktion gewandert, weil ihn drei Stellen brauchen (Startwert,
+  // Dirty-Baseline eines wiederhergestellten Vorgangs, bewusstes Zurücksetzen).
+  assert.ok(/const profilSeed = useCallback\(\(\) => \(\{\s*\n\s*s_company:/.test(PAGE_CODE),
     "Formular-Seed der neuen Sendung verändert");
 });
 

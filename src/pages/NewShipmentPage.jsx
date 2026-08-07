@@ -586,12 +586,56 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     if (target) commitLeave?.(target);
   };
 
+  // ── Nach erfolgreichem Entwurfsspeichern: der aktive Vorgang ist beendet ────
+  // Der Entwurf liegt jetzt sicher auf dem Server — der bisherige AKTIVE
+  // temporäre ShippingFlow gehört fachlich nicht mehr zur nächsten „Neue
+  // Sendung". Formular, Ergebnisse, Filter und der geteilte Flow werden
+  // deshalb ATOMAR auf den echten Ausgangszustand zurückgesetzt.
+  //
+  // NICHT nur clearFlowScope() aufrufen: der Spiegel-Effekt weiter unten hängt
+  // an den LOKALEN Zustandswerten (form, tariffs, selected, …), nicht am
+  // Context. Blieben die unverändert, schriebe der Effekt beim nächsten
+  // Tastenanschlag den gerade gelöschten, lokal aber noch immer vorhandenen
+  // alten Stand sofort wieder in den Flow zurück. Der Reset muss deshalb
+  // GENAU DIESELBEN Werte umfassen, die der Spiegel-Effekt beobachtet.
+  //
+  // Geteilte Grundlage für zwei Auslöser: den bewussten „Eingaben
+  // zurücksetzen"-Button (applyReset) und den Erfolgspfad des
+  // Entwurfsspeicherns (saveCurrentFormDraft) — beide stellen denselben
+  // frischen Zustand her.
+  const resetToFreshShipment = () => {
+    const seed = profilSeed();
+    setForm(seed);
+    setShippingDate(todayISO());
+    setServiceFilter("all");
+    setShippingModeFilter("all");
+    setSelectedPublicCarrierIds([]);
+    setPublicCarriers([]);
+    setSortMode("recommended");
+    setVatMode("net");
+    setErrors({});
+    setResumeSource(null);
+    setResumeNotice("");
+    setResumeConflict(false);
+    setSaveMode("idle");
+    resetResults();
+    // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
+    // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
+    setBaseline(getShipmentFormSnapshot({
+      form: seed, shippingDate: todayISO(), serviceFilter: "all",
+      shippingModeFilter: "all", selectedPublicCarrierIds: [],
+    }));
+    clearFlowScope("shipment");
+  };
+
   // ── EINZIGE Save-Orchestrierung (Dialog UND sichtbarer Button teilen sie) ────
   // PATCH (fortgesetzter/bereits gespeicherter Draft mit gültiger Source-ID) oder
-  // POST (neuer Entwurf). Genau ein Request gleichzeitig (saving-Guard). Aktualisiert
-  // bei Erfolg Baseline + Source (ID/Revision). Rückgabe { ok } — die JEWEILIGE
-  // Erfolgsaktion (navigieren vs. bleiben) trifft der Aufrufer. Kein Fehler-Mapping
-  // und keine POST/PATCH-Logik außerhalb dieser Funktion.
+  // POST (neuer Entwurf). Genau ein Request gleichzeitig (saving-Guard). Setzt
+  // bei Erfolg den Vorgang vollständig zurück (resetToFreshShipment) — der
+  // gespeicherte Entwurf bleibt serverseitig bestehen, der AKTIVE Vorgang endet
+  // hier. Rückgabe { ok } — die JEWEILIGE Erfolgsaktion (navigieren vs.
+  // bleiben) trifft der Aufrufer. Kein Fehler-Mapping und keine POST/PATCH-
+  // Logik außerhalb dieser Funktion.
   const saveCurrentFormDraft = async () => {
     if (saving) return { ok: false };
     setSaving(true); setSaveMode("idle"); setSaveStatus("idle");
@@ -610,10 +654,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!mountedRef.current) return { ok: false };
       if (!r.ok || !d?.draft) throw new Error("save failed");
-      // Erfolg: Baseline auf den gespeicherten Snapshot, Source (ID/Revision) übernehmen.
-      const saved = d.draft;
-      setBaseline(snapshot);
-      setResumeSource({ id: saved.id, revision: saved.revision, schemaVersion: saved.schemaVersion ?? 1 });
+      // Erfolg: der Entwurf ist gesichert — der aktive Vorgang ist damit
+      // fachlich beendet, nicht nur „Baseline aktualisieren". Ein erneutes
+      // „Speichern" aus dem jetzt frischen Formular heraus legt bewusst einen
+      // NEUEN Entwurf an (POST), nicht ein PATCH auf den soeben gespeicherten
+      // — resetToFreshShipment() setzt resumeSource deshalb auf null.
+      resetToFreshShipment();
       setSaving(false);
       return { ok: true };
     } catch {
@@ -688,29 +734,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
 
   const applyReset = () => {
     setResetConfirmOpen(false);
-    const seed = profilSeed();
-    setForm(seed);
-    setShippingDate(todayISO());
-    setServiceFilter("all");
-    setShippingModeFilter("all");
-    setSelectedPublicCarrierIds([]);
-    setPublicCarriers([]);
-    setSortMode("recommended");
-    setVatMode("net");
-    setErrors({});
-    setResumeSource(null);
-    setResumeNotice("");
-    setResumeConflict(false);
-    setSaveMode("idle");
+    resetToFreshShipment();
     setSaveStatus("idle");
-    resetResults();
-    // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
-    // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
-    setBaseline(getShipmentFormSnapshot({
-      form: seed, shippingDate: todayISO(), serviceFilter: "all",
-      shippingModeFilter: "all", selectedPublicCarrierIds: [],
-    }));
-    clearFlowScope("shipment");
     window.scrollTo(0, 0);
   };
 

@@ -45,15 +45,26 @@ const TARIFFS = [
 let server, browser;
 let calcCount = 0;
 
+// ── Zusätzlicher Zustand für die Entwurfsspeicherung (Teil 9) ───────────────
+// Formularentwurf: POST/PATCH /api/kunde/form-drafts. Sendungsentwurf (zweiter,
+// unabhängiger Pfad auf der Buchungsseite): POST /api/kunde/drafts/:id/save.
+let scriptedFormDraftStatus = 0;     // 0 = Erfolg; sonst erzwungener HTTP-Fehlerstatus
+let scriptedFormDraftAbort = false;  // true = Anfrage schlägt bereits auf Netzwerkebene fehl
+let scriptedShipmentDraftStatus = 0; // dito für den Sendungsentwurf der Buchungsseite
+let formDraftListOverride = null;    // { drafts:[...] } | null — von einzelnen Tests gesetzt
+let resumeDetailOverride = null;     // { id, revision, schemaVersion, formData } | null
+
 async function setupRoutes(ziel) {
   await ziel.route("**/api.confidaraexpress.de/**", async (route) => {
-    const p = new URL(route.request().url()).pathname;
-    const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const method = req.method();
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
     if (p.endsWith("/calculate-price")) {
       calcCount++;
       return json({
-        tariffs: TARIFFS, shipmentId: `ship-${calcCount}`,
+        tariffs: TARIFFS, shipmentId: 4240 + calcCount, // echte positive Ganzzahl — hasSavableShipmentId
         publicCarriers: [{ id: "dhl", name: "DHL" }, { id: "ups", name: "UPS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE",
       });
@@ -64,11 +75,44 @@ async function setupRoutes(ziel) {
         orderNumber: "CE-1001", trackingNumber: "TRK-1", status: "booked",
       });
     }
+
+    // Formularentwurf speichern — POST (neu) oder PATCH (fortgesetzter Entwurf).
+    if (p.endsWith("/api/kunde/form-drafts") && method === "POST") {
+      if (scriptedFormDraftAbort) return route.abort();
+      if (scriptedFormDraftStatus) return json({ error: "server_error" }, scriptedFormDraftStatus);
+      return json({ draft: { id: 900, revision: 0, schemaVersion: 1 } });
+    }
+    if (/\/api\/kunde\/form-drafts\/\d+$/.test(p) && method === "PATCH") {
+      if (scriptedFormDraftAbort) return route.abort();
+      if (scriptedFormDraftStatus) return json({ error: "server_error" }, scriptedFormDraftStatus);
+      return json({ draft: { id: Number(p.split("/").pop()), revision: 1, schemaVersion: 1 } });
+    }
+    // Formularentwurf laden — Liste (Entwürfe-Seite) und Detail (Fortsetzen).
+    if (/\/api\/kunde\/form-drafts\/(\d+)$/.test(p) && method === "GET") {
+      const id = Number(p.match(/\/api\/kunde\/form-drafts\/(\d+)$/)[1]);
+      if (resumeDetailOverride && resumeDetailOverride.id === id) return json({ draft: resumeDetailOverride });
+      return json({}, 404);
+    }
+    if (p.endsWith("/api/kunde/form-drafts") && method === "GET") {
+      return json(formDraftListOverride || { drafts: [], nextCursor: null });
+    }
+    // Sendungsentwurf speichern (Buchungsseite, SaveDraftAction) — unabhängiger Pfad.
+    if (/\/api\/kunde\/drafts\/[\w-]+\/save$/.test(p)) {
+      if (scriptedShipmentDraftStatus) return json({ error: "server_error" }, scriptedShipmentDraftStatus);
+      return json({ ok: true });
+    }
+
     if (p.includes("/pickup-window")) return json({ pickupTimeFrom: null, pickupTimeUntil: null });
     if (p.includes("/notifications/unread-count")) return json({ unreadCount: 0, snapshotAt: "" });
     if (p.includes("/notifications")) return json({ notifications: [], unreadCount: 0, pagination: {} });
     return json({ items: [], drafts: [], addresses: [], shipments: [], invoices: [], summary: null, pagination: { total: 0 } });
   });
+}
+
+function fehlerSammler(page) {
+  const fehler = [];
+  page.on("pageerror", (e) => fehler.push(String(e)));
+  return fehler;
 }
 
 /* Die Felder tragen keine id/name-Attribute — Auswahl über den Platzhalter. */
@@ -748,5 +792,288 @@ test("24 — direkter Einstieg auf /booking: der Zurück-Button bleibt gefahrlos
   assert.equal(z.keinAngebot, true);
   const zurueck = page.locator("button").filter({ hasText: /^← Zurück$/ });
   assert.equal(await zurueck.count(), 0, "der Zurück-Button erscheint ohne Vorgang");
+  await ctx.close();
+});
+
+/* ══════════ 10 — Entwurf speichern beendet den aktiven Vorgang ═══════════
+   Fehlerbild: nach erfolgreichem „Als Entwurf speichern" blieb der bisherige
+   ShippingFlow bestehen — die nächste „Neue Sendung" zeigte die gerade
+   gespeicherte Sendung erneut (Formular, Angebote, Filter, Auswahl). Zwei
+   unabhängige Speicherpfade sind betroffen: der Formularentwurf auf „Neue
+   Sendung" und der Sendungsentwurf auf der Buchungsseite. Beide müssen den
+   Vorgang NUR nach bestätigtem Erfolg beenden — bei jedem Fehler bleibt alles
+   unangetastet, der Kunde kann erneut speichern. */
+
+test("25 — erfolgreiches Speichern eines Formularentwurfs setzt Formular, Angebote und Speicher sofort zurück", async () => {
+  const { ctx, page } = await neueSeite();
+  const fehler = fehlerSammler(page);
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  // Nur auswählen (nicht buchen) — der Speicherpfad läuft auf „Neue Sendung".
+  await page.locator(".offer-card").first().click();
+  await page.waitForTimeout(400);
+
+  const vor = await zustand(page);
+  assert.equal(vor.speicher, true, "der Vorgang wurde vor dem Speichern nicht gespiegelt");
+  assert.equal(vor.angebote, 2);
+
+  await page.locator("button.dft-savedraft-cta").click();
+  await page.waitForTimeout(1000);
+
+  const meldung = await page.locator(".dft-save-status").innerText().catch(() => "");
+  assert.ok(/Entwurf gespeichert/.test(meldung), `keine Erfolgsmeldung („${meldung}")`);
+
+  const nach = await zustand(page);
+  assert.equal(nach.speicher, false, "der Vorgang liegt nach dem Speichern noch im sessionStorage");
+  assert.equal(nach.empfaenger, null, "der Empfänger wurde nicht zurückgesetzt");
+  assert.equal(nach.pakete, "1", "die Paketanzahl steht nicht wieder auf dem Standard");
+  assert.equal(nach.gewicht, null, "das Gewicht wurde nicht geleert");
+  assert.equal(nach.angebote, 0, "die Angebote wurden nicht entfernt");
+  assert.equal(nach.ausgewaehlt, 0, "die Auswahl wurde nicht entfernt");
+  assert.deepEqual(fehler, [], "unerwartete Seitenfehler: " + fehler.join(" | "));
+  await ctx.close();
+});
+
+test("26 — nach dem Speichern öffnet ein Reiterwechsel zu „Neue Sendung\" ein vollständig leeres Formular", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  await page.locator(".offer-card").first().click();
+  await page.waitForTimeout(400);
+  await page.locator("button.dft-savedraft-cta").click();
+  await page.waitForTimeout(1000);
+  // Kein gemerktes Scrollziel darf den Reset überleben — sonst würde ein
+  // künftiger Restore (fälschlich) wieder zu einer alten Position springen.
+  assert.equal((await zustand(page)).speicher, false, "nach dem Speichern liegt noch ein Vorgang (inkl. Scrollziel) im Speicher");
+
+  await page.locator(".nitem", { hasText: "Übersicht" }).first().click();
+  await page.waitForTimeout(600);
+  await page.locator(".nitem", { hasText: "Neue Sendung" }).first().click();
+  await page.waitForTimeout(900);
+
+  const z = await zustand(page);
+  assert.equal(z.titel, "Neue Sendung");
+  assert.equal(z.empfaenger, null, "der Empfänger erscheint nach dem Reiterwechsel erneut");
+  assert.equal(z.ort, null, "der Zielort erscheint nach dem Reiterwechsel erneut");
+  assert.equal(z.pakete, "1");
+  assert.equal(z.gewicht, null);
+  assert.equal(z.laenge, null);
+  assert.equal(z.angebote, 0, "alte Angebote erscheinen nach dem Reiterwechsel erneut");
+  assert.equal(z.ausgewaehlt, 0);
+  assert.equal(z.speicher, false);
+  await ctx.close();
+});
+
+test("27 — ein Tastenanschlag direkt nach dem Speichern schreibt die alten Angebote nicht in den Speicher zurück", async () => {
+  const { ctx, page } = await neueSeite();
+  const fehler = fehlerSammler(page);
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  await page.locator(".offer-card").first().click();
+  await page.waitForTimeout(400);
+  await page.locator("button.dft-savedraft-cta").click();
+  await page.waitForTimeout(1000);
+
+  // Genau der Moment aus der Persistenz-Falle: die Seite bleibt gemountet,
+  // der an lokale Werte gebundene Spiegel-Effekt würde bei veraltetem
+  // Zustand sofort wieder feuern und die alten Tarife zurückschreiben.
+  await page.locator('input[placeholder="Erika Muster"]').fill("X");
+  await page.waitForTimeout(400);
+
+  const roh = await page.evaluate((k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, SPEICHER);
+  const geparst = roh ? JSON.parse(roh) : null;
+  assert.equal(geparst?.shipment?.tariffs?.length ?? 0, 0, "alte Tarife wurden nach dem Tastenanschlag zurückgeschrieben");
+  assert.equal(geparst?.shipment?.form?.r_fullName, "X", "der neue Zustand wird nicht mehr gespiegelt");
+  assert.deepEqual(fehler, [], "unerwartete Seitenfehler: " + fehler.join(" | "));
+  await ctx.close();
+});
+
+test("28 — ein Serverfehler beim Speichern lässt Formular, Angebote und Vorgang unangetastet", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  await page.locator(".offer-card").first().click();
+  await page.waitForTimeout(400);
+
+  scriptedFormDraftStatus = 500;
+  await page.locator("button.dft-savedraft-cta").click();
+  await page.waitForTimeout(1000);
+  scriptedFormDraftStatus = 0;
+
+  const meldung = await page.locator(".dft-save-alert").innerText().catch(() => "");
+  assert.ok(/nicht gespeichert werden/.test(meldung), `keine Fehlermeldung („${meldung}")`);
+
+  const z = await zustand(page);
+  assert.equal(z.empfaenger, "Dora Beispiel", "der Empfänger ging trotz Fehler verloren");
+  assert.equal(z.angebote, 2, "die Angebote gingen trotz Fehler verloren");
+  assert.equal(z.ausgewaehlt, 1, "die Auswahl ging trotz Fehler verloren");
+  assert.equal(z.speicher, true, "der Vorgang wurde trotz Fehler aus dem Speicher entfernt");
+  await ctx.close();
+});
+
+test("29 — ein Netzwerkfehler beim Speichern (catch-Zweig) lässt Formular, Angebote und Vorgang unangetastet", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
+  await page.waitForTimeout(1400);
+  await page.locator(".offer-card").first().click();
+  await page.waitForTimeout(400);
+
+  scriptedFormDraftAbort = true;
+  await page.locator("button.dft-savedraft-cta").click();
+  await page.waitForTimeout(1000);
+  scriptedFormDraftAbort = false;
+
+  const meldung = await page.locator(".dft-save-alert").innerText().catch(() => "");
+  assert.ok(/nicht gespeichert werden/.test(meldung), `keine Fehlermeldung („${meldung}")`);
+
+  const z = await zustand(page);
+  assert.equal(z.empfaenger, "Dora Beispiel", "der Empfänger ging trotz Netzwerkfehler verloren");
+  assert.equal(z.angebote, 2, "die Angebote gingen trotz Netzwerkfehler verloren");
+  assert.equal(z.speicher, true, "der Vorgang wurde trotz Netzwerkfehler aus dem Speicher entfernt");
+  await ctx.close();
+});
+
+test("30 — der gespeicherte Formularentwurf erscheint in der Entwürfe-Liste", async () => {
+  const { ctx, page } = await neueSeite();
+  formDraftListOverride = {
+    drafts: [{
+      id: 950, kind: "form", schemaVersion: 1, revision: 0,
+      summary: {
+        sender: { company: "ACME Logistik GmbH", city: "Zürich", country: "CH" },
+        recipient: { company: null, city: "Hamburg", country: "DE" },
+        packages: { packageCount: 2, weight: 5.5 },
+        shippingDate: null,
+      },
+      createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-01T10:00:00.000Z",
+    }],
+    nextCursor: null,
+  };
+  await page.goto(`${BASE}/dashboard?page=drafts`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  const text = await page.locator("body").innerText();
+  assert.ok(text.includes("Hamburg"), "der gespeicherte Entwurf erscheint nicht in der Entwürfe-Liste");
+  const fortsetzen = page.locator(".dft-resume-btn");
+  assert.ok(await fortsetzen.count() > 0, "der Entwurf bietet keine „Fortsetzen\"-Aktion an");
+  formDraftListOverride = null;
+  await ctx.close();
+});
+
+test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvorgang vollständig, statt zu mischen", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page); // hinterlässt einen UNGESICHERTEN Sitzungsvorgang mit „Dora Beispiel"
+  await page.waitForTimeout(600);
+  assert.equal((await zustand(page)).speicher, true, "der Sitzungsvorgang wurde nicht gespiegelt");
+
+  formDraftListOverride = {
+    drafts: [{
+      id: 951, kind: "form", schemaVersion: 1, revision: 2,
+      summary: {
+        sender: { company: "Andere Firma GmbH", city: "München", country: "DE" },
+        recipient: { company: "Fortsetzen Empfänger AG", city: "Köln", country: "DE" },
+        packages: { packageCount: 3, weight: 9.5 }, shippingDate: null,
+      },
+      createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-01T10:00:00.000Z",
+    }],
+    nextCursor: null,
+  };
+  resumeDetailOverride = {
+    id: 951, revision: 2, schemaVersion: 1,
+    formData: {
+      sender: { company: "Andere Firma GmbH", fullName: "Otto Absender", streetAndNumber: "Kurfürstendamm 1", postalCode: "10707", city: "Berlin", country: "DE" },
+      recipient: { company: "Fortsetzen Empfänger AG", fullName: "Frieda Fortsetzen", streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
+      packages: { packageCount: 3, weight: 9.5, length: 50, width: 40, height: 30 },
+      shippingOptions: { shippingDate: null, serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
+    },
+  };
+
+  await page.locator(".nitem", { hasText: "Entwürfe" }).first().click();
+  await page.waitForTimeout(700);
+  // Der Verlassen-Dialog bleibt erhalten (ungesicherte Angaben) — „Verwerfen"
+  // heißt: ohne Formularentwurf weitergehen. Der Sitzungsvorgang selbst bleibt
+  // davon unberührt (siehe Test 10) — genau DAS soll hier geprüft werden.
+  const dialog = page.locator("[role=dialog]");
+  if (await dialog.count()) {
+    const weiter = dialog.locator("button").filter({ hasText: /Verwerfen|Ohne Speichern|Trotzdem/i }).first();
+    if (await weiter.count()) { await weiter.click(); await page.waitForTimeout(700); }
+  }
+
+  await page.locator(".dft-resume-btn").first().click();
+  await page.waitForTimeout(1200);
+
+  const z = await zustand(page);
+  assert.equal(z.titel, "Neue Sendung");
+  assert.equal(z.empfaenger, "Frieda Fortsetzen", "der Entwurf wurde nicht korrekt geladen");
+  assert.notEqual(z.empfaenger, "Dora Beispiel", "der alte Sitzungsvorgang wurde mit dem Entwurf vermischt");
+
+  formDraftListOverride = null;
+  resumeDetailOverride = null;
+  await ctx.close();
+});
+
+/* ══════════ 11 — der zweite Entwurfspfad (Buchungsseite) ══════════════════ */
+
+test("32 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang nach erfolgreichem Speichern ebenfalls", async () => {
+  const { ctx, page } = await neueSeite();
+  await bisZurBuchung(page);
+  const vorSpeichern = await zustand(page);
+  assert.equal(vorSpeichern.url, "/booking");
+  assert.equal(vorSpeichern.speicher, true, "der Vorgang wurde auf dem Weg zur Buchung nicht gespiegelt");
+
+  const saveBtn = page.locator(".bk-savedraft button").first();
+  assert.ok(await saveBtn.count() > 0, "die Sendungsentwurf-Aktion fehlt auf der Buchungsseite");
+  await saveBtn.click();
+  await page.waitForTimeout(1000);
+  const done = await page.locator(".bk-savedraft-done").innerText().catch(() => "");
+  assert.ok(/Entwurf gespeichert/.test(done), `keine Erfolgsanzeige („${done}")`);
+
+  const nach = await zustand(page);
+  assert.equal(nach.speicher, false, "der Vorgang liegt nach dem Sendungsentwurf noch im Speicher");
+  // Die Buchungsseite selbst bleibt unverändert funktionsfähig — ihre Daten
+  // kommen primär aus location.state, unabhängig vom gelöschten Context.
+  assert.equal(nach.url, "/booking");
+  assert.equal(nach.keinAngebot, false, "die Buchungsseite verlor ihre Daten nach dem Löschen des Context");
+
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(900);
+  const frisch = await zustand(page);
+  assert.equal(frisch.empfaenger, null, "„Neue Sendung\" zeigt nach dem Sendungsentwurf noch die alte Sendung");
+  assert.equal(frisch.angebote, 0);
+  await ctx.close();
+});
+
+test("33 — ein Speicherfehler auf der Buchungsseite lässt den Vorgang unangetastet", async () => {
+  const { ctx, page } = await neueSeite();
+  await bisZurBuchung(page);
+
+  scriptedShipmentDraftStatus = 500;
+  const saveBtn = page.locator(".bk-savedraft button").first();
+  await saveBtn.click();
+  await page.waitForTimeout(1000);
+  scriptedShipmentDraftStatus = 0;
+
+  const fehlerText = await page.locator(".bk-savedraft-error").innerText().catch(() => "");
+  assert.ok(fehlerText.length > 0, "keine Fehlermeldung nach fehlgeschlagenem Sendungsentwurf");
+
+  const z = await zustand(page);
+  assert.equal(z.speicher, true, "der Vorgang wurde trotz Fehler aus dem Speicher entfernt");
+  assert.equal(z.url, "/booking");
+  assert.equal(z.keinAngebot, false, "die Buchungsseite verlor ihre Daten trotz Speicherfehler");
   await ctx.close();
 });

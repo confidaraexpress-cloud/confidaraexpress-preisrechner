@@ -172,7 +172,7 @@ test("6 — es werden nur die beiden benutzten Schriftfamilien geladen", () => {
 test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
   const deps = Object.keys(pkg.dependencies || {}).sort();
-  assert.deepEqual(deps, ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"]);
+  assert.deepEqual(deps, ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
   // Keine fremde Iconbibliothek — das Produkt hat sein eigenes System.
   for (const [name, inhalt] of QUELLEN) {
     assert.doesNotMatch(inhalt, /from\s+["'](lucide-react|react-icons|@heroicons|@tabler\/icons|feather-icons)/,
@@ -182,6 +182,22 @@ test("7 — es gibt keine ungenutzte UI-Abhängigkeit", () => {
   // Und das Lockfile kennt sie ebenfalls nicht mehr.
   assert.doesNotMatch(read("../../package-lock.json"), /"node_modules\/lucide-react"/,
     "lucide-react steht noch im Lockfile");
+
+  // maplibre-gl (BSD-3-Clause) trägt die Karte des Paketshop-Finders und ist die
+  // EINZIGE Kartenbibliothek des Projekts. Die Zusicherung dieses Tests heißt
+  // „keine UNGENUTZTE Abhängigkeit" — genau daran war lucide-react gescheitert.
+  // Deshalb wird hier belegt, dass sie tatsächlich importiert wird, und zwar
+  // dynamisch (eigener Chunk, damit die Buchungsseite sie nicht mitlädt).
+  const engine = read("../utils/mapEngine.js");
+  assert.match(engine, /\bimport\("maplibre-gl"\)/, "maplibre-gl wird nicht dynamisch geladen");
+  const statisch = QUELLEN.filter(([, t]) => /^import\s[^\n]*from\s+["']maplibre-gl["']/m.test(t));
+  assert.deepEqual(statisch.map(([n]) => n), [],
+    "maplibre-gl darf nur dynamisch importiert werden — sonst landet sie im Hauptbündel");
+  // Und es gibt keine zweite Kartenbibliothek daneben.
+  for (const [name, inhalt] of QUELLEN) {
+    assert.doesNotMatch(inhalt, /from\s+["'](mapbox-gl|leaflet|react-leaflet|react-map-gl|ol)["']/,
+      `${name}: zweite Kartenbibliothek`);
+  }
 });
 
 /* ══════════ 8 — Zustände und Beschriftungen ═════════════════════════════ */
@@ -234,9 +250,17 @@ test("10 — jedes Aktionsmenü gibt den Fokus an seinen Trigger zurück", () =>
   // Der gemeinsame Dialoghook liefert Falle, Escape und Rückgabe.
   const hook = read("../hooks/useDialog.js");
   for (const zusicherung of [/e\.key !== "Tab"/, /e\.key === "Escape"/,
-                             /rueckgabeRef\.current = document\.activeElement/, /ziel\.focus\(\)/]) {
+                             /rueckgabeRef\.current = .*document\.activeElement/, /ziel\.focus\(\)/]) {
     assert.match(hook, zusicherung, "useDialog ist unvollständig");
   }
+  // Zusätzlich seit dem Kartenfenster: ein EXPLIZITES Rückgabeziel. Der Normalfall
+  // (activeElement beim Öffnen) versagt, wenn der Auslöser im selben Render
+  // deaktiviert wird — der Browser blurrt ihn dann, und der Fokus landet auf
+  // <body>. Genau das passierte am Suchknopf des Paketshop-Finders, der Fenster
+  // UND Ladevorgang zugleich startet.
+  assert.match(hook, /returnFocusTo/, "useDialog kennt kein explizites Rückgabeziel");
+  assert.match(hook, /zielRef\.current\?\.current \|\| document\.activeElement/,
+    "das explizite Ziel muss Vorrang vor activeElement haben");
 });
 
 /* ══════════ 11 — Grenzen ════════════════════════════════════════════════ */

@@ -30,7 +30,6 @@ import {
   formatDistance,
   sortAccessPointsByDistance,
   accessPointCountLabel,
-  moreAccessPointsLabel,
   OPENING_FILTER_ALL,
   OPENING_FILTER_SUNDAY,
   OPENING_FILTER_BEFORE_0730,
@@ -45,6 +44,13 @@ import {
   openingFilterCountLabel,
   openingFilterExcludedLabel,
   openingFilterEmptyText,
+  weekOpeningHours,
+  HOURS_UNAVAILABLE,
+  toCoordinateNumber,
+  accessPointCoordinate,
+  accessPointMarkers,
+  accessPointBounds,
+  mapCoverageLabel,
 } from "./accessPointView.mjs";
 import {
   DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED, DPD_WORKSTATE_CLOSED,
@@ -73,11 +79,15 @@ test("2 — „schließt bald“ aus dem echten Mitschnitt wird zu Schließt bal
   assert.equal(s.known, true);
 });
 
-test("3 — „Geschlossen“ wird zu Geschlossen/Neutral (kein Fehlerrot)", () => {
+test("3 — „Geschlossen“ wird zu Geschlossen/Rot — sichtbar, nicht ausgeblendet", () => {
   const s = normalizeAccessPointWorkState("Geschlossen");
   assert.equal(s.key, "closed");
   assert.equal(s.label, "Geschlossen");
-  assert.equal(s.badgeClass, "badge badge--neutral");
+  // Rot seit dem Kartenfenster: dort stehen alle Treffer gleichzeitig
+  // nebeneinander, und Grau gegen Grau war nicht mehr scanbar. Die Farbe sagt
+  // „jetzt nicht offen“, nicht „defekt“ — der Shop bleibt ein regulaerer,
+  // sichtbarer Treffer (siehe Test 41).
+  assert.equal(s.badgeClass, "badge badge--error");
 });
 
 test("4 — die Zuordnung ist unabhängig von Groß-/Kleinschreibung", () => {
@@ -136,7 +146,8 @@ test("10 — Nicht-Strings (Zahl, Objekt, Array, Boolean) ergeben den Unbekannt-
 
 test("11 — jeder Zustand trägt eine Designsystem-Badgeklasse (Punkt UND Text)", () => {
   const erlaubt = new Set([
-    "badge badge--success", "badge badge--warning", "badge badge--neutral",
+    "badge badge--success", "badge badge--warning", "badge badge--error",
+    "badge badge--neutral",
   ]);
   for (const v of ["Geöffnet", "schließt bald", "Geschlossen", "unbekannt", null]) {
     const s = normalizeAccessPointWorkState(v);
@@ -356,10 +367,13 @@ test("37 — die Zahlen beschreiben die tatsächlich gelieferte Menge, keine Nut
   }
 });
 
-test("38 — die Zahl der weiteren Treffer steht im Buttontext", () => {
-  assert.equal(moreAccessPointsLabel(15), "Weitere 15 Paketshops anzeigen");
-  assert.equal(moreAccessPointsLabel(1), "Weitere 1 Paketshop anzeigen");
-  assert.equal(moreAccessPointsLabel(0), "Weitere 0 Paketshops anzeigen");
+test("38 — der Kartenhinweis schweigt, solange jeder Shop eine Position hat", () => {
+  // Nichts zu erklaeren -> kein Satz. Der Hinweis erscheint nur, wenn die Karte
+  // tatsaechlich weniger zeigt als die Liste.
+  assert.equal(mapCoverageLabel(20, 20), null);
+  assert.equal(mapCoverageLabel(0, 0), null);
+  assert.equal(mapCoverageLabel(18, 20), "18 von 20 Paketshops haben eine Kartenposition.");
+  assert.equal(mapCoverageLabel(0, 20), "Für diese Paketshops liegen keine Kartenpositionen vor.");
 });
 
 // ═══════════ 5 — WORKSTATE IST REINE DARSTELLUNG (kein Sichtbarkeits-Gate) ══
@@ -407,7 +421,8 @@ test("41 — workState „Geschlossen“ bleibt ein regulärer, sichtbarer Treff
   for (const v of ["Geschlossen", "geschlossen", "GESCHLOSSEN", "closed", "CLOSED"]) {
     const s = normalizeAccessPointWorkState(v);
     assert.equal(s.label, "Geschlossen", v);
-    assert.equal(s.badgeClass, "badge badge--neutral", v);
+    // Rot ist eine DARSTELLUNGS-Entscheidung, keine Sichtbarkeits-Entscheidung.
+    assert.equal(s.badgeClass, "badge badge--error", v);
     assert.equal(s.known, true, v);
     // Es gibt keine Funktion mehr, die aus diesem Wert „nicht sichtbar“ macht —
     // der Beleg ist, dass keine solche Funktion im Modul existiert (siehe
@@ -833,4 +848,133 @@ test("81 (F) — die Referenzzahlen der vier Optionen stimmen auf der VOLLEN Lis
   assert.equal(openingFilterExcludedLabel(20 - zahl(OPENING_FILTER_SUNDAY)),
     "17 weitere Paketshops haben andere Öffnungszeiten");
   assert.equal(accessPointCountLabel(5, zahl(OPENING_FILTER_ALL)), "5 von 20 Paketshops");
+});
+
+// ═══════════ 7 — WOCHENÖFFNUNGSZEITEN (Detailausklappung) ══════════════════
+//
+// Die Listenzeile zeigt HEUTE, die Ausklappung die ganze Woche. Beide lesen
+// dieselben Rohdaten. Geprüft wird vor allem, dass NICHTS erfunden wird: ein
+// fehlender Tag bleibt eine fehlende Zeile, kein stilles „Geschlossen“.
+
+test("82 — die Woche steht in deutscher Reihenfolge, Montag zuerst", () => {
+  const intermarkt = DPD_ACCESS_POINTS.find((s) => s.name === "Intermarkt");
+  const woche = weekOpeningHours(intermarkt.hoursOfOperation);
+  assert.deepEqual(woche.map((t) => t.label),
+    ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]);
+});
+
+test("83 — offene Tage tragen ihre Zeiten, Pausen stehen dabei", () => {
+  const intermarkt = DPD_ACCESS_POINTS.find((s) => s.name === "Intermarkt");
+  const woche = weekOpeningHours(intermarkt.hoursOfOperation);
+  const montag = woche.find((t) => t.label === "Montag");
+  assert.equal(montag.hours, "09:00–18:00");
+  assert.equal(montag.lunchBreak, "13:00–15:00");
+  assert.equal(montag.closed, false);
+  // Dienstag hat im Mitschnitt KEINE Pause — es darf auch keine erscheinen.
+  const dienstag = woche.find((t) => t.label === "Dienstag");
+  assert.equal(dienstag.hours, "09:00–13:00");
+  assert.equal(dienstag.lunchBreak, null);
+});
+
+test("84 — geschlossene Tage sind als geschlossen markiert, ohne Zeitangabe", () => {
+  const intermarkt = DPD_ACCESS_POINTS.find((s) => s.name === "Intermarkt");
+  const sonntag = weekOpeningHours(intermarkt.hoursOfOperation).find((t) => t.label === "Sonntag");
+  assert.equal(sonntag.closed, true);
+  assert.equal(sonntag.hours, null);
+  assert.equal(sonntag.lunchBreak, null);
+});
+
+test("85 — eine Rund-um-die-Uhr-Station führt alle sieben Tage offen", () => {
+  const station = DPD_ACCESS_POINTS.find((s) => s.name === "DPD-Paketstation");
+  const woche = weekOpeningHours(station.hoursOfOperation);
+  assert.equal(woche.length, 7);
+  assert.ok(woche.every((t) => !t.closed && t.hours === "00:01–23:59"), JSON.stringify(woche));
+});
+
+test("86 — ohne Wochenstruktur wird nichts behauptet", () => {
+  assert.deepEqual(weekOpeningHours(null), []);
+  assert.deepEqual(weekOpeningHours([]), []);
+  assert.deepEqual(weekOpeningHours("Mo-Fr 9-18"), []); // Alt-Format → Aufrufer zeigt den Text
+  assert.equal(HOURS_UNAVAILABLE, "Öffnungszeiten nicht verfügbar");
+});
+
+test("87 — ein unbekannter Wochentag erzeugt keine Zeile", () => {
+  const woche = weekOpeningHours([
+    { dayName: "Montag", workingHours: "09:00-17:00", workingDay: true },
+    { dayName: "Blursday", workingHours: "09:00-17:00", workingDay: true },
+  ]);
+  assert.deepEqual(woche.map((t) => t.label), ["Montag"]);
+});
+
+// ═══════════ 8 — KOORDINATEN UND MARKER ════════════════════════════════════
+//
+// Die Karte ist Ergänzung, die Liste ist autoritativ. Diese Tests halten genau
+// das fest: fehlende Koordinaten kosten einen Marker, nie einen Listeneintrag.
+
+test("88 — Koordinaten werden gelesen, nicht gerechnet", () => {
+  assert.equal(toCoordinateNumber(48.71), 48.71);
+  assert.equal(toCoordinateNumber("48.71"), 48.71);
+  assert.equal(toCoordinateNumber("48,71"), 48.71); // deutsches Dezimalkomma
+  assert.equal(toCoordinateNumber(""), null);
+  assert.equal(toCoordinateNumber(null), null);
+  assert.equal(toCoordinateNumber("Nord"), null);
+  assert.equal(toCoordinateNumber(NaN), null);
+});
+
+test("89 — unbrauchbare Positionen ergeben keinen Marker", () => {
+  assert.deepEqual(accessPointCoordinate({ latitude: 48.7, longitude: 9.4 }), { lat: 48.7, lng: 9.4 });
+  assert.equal(accessPointCoordinate({ latitude: 48.7 }), null, "ohne longitude kein Punkt");
+  assert.equal(accessPointCoordinate({ longitude: 9.4 }), null);
+  assert.equal(accessPointCoordinate({ latitude: 0, longitude: 0 }), null, "0/0 ist in der Praxis ein Leerwert");
+  assert.equal(accessPointCoordinate({ latitude: 91, longitude: 9 }), null, "außerhalb des Gradbereichs");
+  assert.equal(accessPointCoordinate({ latitude: 48, longitude: 181 }), null);
+  assert.equal(accessPointCoordinate(null), null);
+});
+
+test("90 — alle 20 echten Access Points haben eine Position", () => {
+  const alle = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const marker = accessPointMarkers(alle);
+  assert.equal(marker.length, 20);
+  assert.equal(marker[0].accessPoint.name, "Kopier und Werbestudio");
+  assert.equal(marker[0].lat, 48.710737);
+  assert.equal(marker[0].lng, 9.41599);
+});
+
+test("91 — Markernummern folgen der Liste, nicht der Markermenge", () => {
+  // Der zweite Shop verliert seine Position. Er bleibt in der LISTE (die hier
+  // übergeben wird), bekommt aber keinen Marker — und der dritte behält
+  // trotzdem Index 2, damit Marker „3“ auf Listeneintrag 3 zeigt.
+  const alle = sortAccessPointsByDistance(DPD_ACCESS_POINTS).map((s, i) =>
+    i === 1 ? { ...s, latitude: null, longitude: null } : s);
+  const marker = accessPointMarkers(alle);
+  assert.equal(marker.length, 19, "ein Shop ohne Position → ein Marker weniger");
+  assert.deepEqual(marker.slice(0, 3).map((m) => m.index), [0, 2, 3]);
+  assert.equal(alle.length, 20, "die Liste selbst verliert nichts");
+});
+
+test("92 — der Kartenausschnitt umschließt alle Marker", () => {
+  const marker = accessPointMarkers(sortAccessPointsByDistance(DPD_ACCESS_POINTS));
+  const b = accessPointBounds(marker);
+  assert.ok(b, "Ausschnitt vorhanden");
+  for (const m of marker) {
+    assert.ok(m.lat >= b.south && m.lat <= b.north, `${m.accessPoint.name} liegt außerhalb (Breite)`);
+    assert.ok(m.lng >= b.west && m.lng <= b.east, `${m.accessPoint.name} liegt außerhalb (Länge)`);
+  }
+  assert.equal(b.south, 48.6488191);
+  assert.equal(b.north, 48.7590531);
+});
+
+test("93 — ohne Marker gibt es keinen Ausschnitt", () => {
+  assert.equal(accessPointBounds([]), null);
+  assert.equal(accessPointBounds(null), null);
+  assert.equal(accessPointBounds([{ lat: null, lng: null }]), null);
+});
+
+test("94 — der Öffnungszeitenfilter reduziert die Marker mit", () => {
+  const alle = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const sonntag = filterAccessPointsByOpening(alle, OPENING_FILTER_SUNDAY).matching;
+  assert.equal(accessPointMarkers(sonntag).length, 3);
+  // Zurück auf „Alle Öffnungszeiten“ → wieder alle 20.
+  const zurueck = filterAccessPointsByOpening(alle, OPENING_FILTER_ALL).matching;
+  assert.equal(accessPointMarkers(zurueck).length, 20);
 });

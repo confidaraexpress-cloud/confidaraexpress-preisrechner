@@ -1,27 +1,22 @@
-import React, { useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { searchAccessPoints } from "../../api/client";
 import { toAccessPointSearchCode, publicCarrierIdToAccessPointSearchCode } from "../../utils/carrierMap";
+import { AccessPointFinderModal } from "./AccessPointFinderModal";
 import {
   normalizeAccessPointWorkState,
   todayOpeningHoursText,
   sortAccessPointsByDistance,
-  filterAccessPointsByOpening,
+  accessPointCountLabel,
+  toDistanceNumber,
   OPENING_FILTER_ALL,
   OPENING_FILTER_OPTIONS,
-  toDistanceNumber,
-  formatDistance,
-  accessPointCountLabel,
-  moreAccessPointsLabel,
-  openingFilterCountLabel,
-  openingFilterExcludedLabel,
-  openingFilterEmptyText,
 } from "../../utils/accessPointView";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
 // Zeigt — ähnlich wie Jumingo — eine reine Orientierungssuche für Dropoff-/
-// Shopabgabe-Tarife: PLZ/Ort/Radius → Liste verfügbarer Paketshops (Name,
-// Adresse, Entfernung, Öffnungszeiten/Status, falls vorhanden).
+// Shopabgabe-Tarife: PLZ/Ort/Straße/Radius → großes Finder-Fenster mit Liste
+// und Karte.
 //
 // WICHTIG — bewusste Grenzen (Backend-Realität respektieren):
 //  • KEINE Buchung: die Auswahl wird nirgends gespeichert und fließt NICHT in
@@ -38,7 +33,8 @@ import {
 //  • Der Öffnungsstatus kommt AUSSCHLIESSLICH aus workState — hier wird nichts
 //    aus der Uhrzeit hergeleitet.
 //  • hoursOfOperation ist ein Objekt-Array; ausgewertet wird nur der heutige
-//    Wochentag (Europe/Berlin) und nur zur Anzeige neben dem Status.
+//    Wochentag (Europe/Berlin) für die Listenzeile und die ganze Woche für die
+//    Detailausklappung — beides nur zur Anzeige.
 //  • Die Entfernung stammt von JUMiNGO; sortiert wird danach, gerechnet nicht.
 //  • workState ist AUSSCHLIESSLICH Darstellung (Text + Badge) und entscheidet
 //    NIRGENDS, ob ein Access Point angezeigt wird — auch „Geschlossen“ bleibt
@@ -47,7 +43,11 @@ import {
 //    Oberfläche widerlegt: bei „Alle Öffnungszeiten“ zeigt JUMiNGO dieselbe
 //    Menge wie die Rohantwort, nicht die um „Geschlossen“ gekürzte. Die
 //    Auswahlstufe ist deshalb nur noch der optionale Öffnungszeitenfilter:
-//    normalisieren → sortieren → Öffnungszeitenfilter → 5er-Schnitt.
+//    normalisieren → sortieren → Öffnungszeitenfilter.
+//
+// DARSTELLUNG: Die Trefferliste steht NICHT mehr unter dem Formular, sondern im
+// großen Finder-Fenster (AccessPointFinderModal) — Liste und Karte nebeneinander.
+// Hier bleibt nur das Formular plus eine knappe Zeile mit dem letzten Ergebnis.
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
 
@@ -63,11 +63,11 @@ const pick = (obj, keys) => {
 // ── Defensive Normalisierung eines Ergebnis-Items ────────────────────────────
 // Der Backend-Vertrag (access-points-search, commit 63baf58) normalisiert Access
 // Points u. a. mit: name, type, street, postCode, city, countryCode, distance,
-// distanceCode, workState, hoursOfOperation. Wir lesen diese Felder defensiv aus
-// und rendern NUR sicher renderbare, vorhandene Werte — niemals erfundene Daten,
-// niemals Objekte, keine fachliche Interpretation von Statuswerten. Zusätzliche
-// konventionelle Aliasse bleiben als Fallback erhalten. Fehlt alles Brauchbare,
-// wird das Item übersprungen (→ sauberer Empty-State).
+// distanceCode, latitude, longitude, workState, hoursOfOperation. Wir lesen diese
+// Felder defensiv aus und rendern NUR sicher renderbare, vorhandene Werte —
+// niemals erfundene Daten, niemals Objekte, keine fachliche Interpretation von
+// Statuswerten. Zusätzliche konventionelle Aliasse bleiben als Fallback erhalten.
+// Fehlt alles Brauchbare, wird das Item übersprungen (→ sauberer Empty-State).
 function normalizeItem(raw) {
   if (!raw || typeof raw !== "object") return null;
 
@@ -111,12 +111,19 @@ function normalizeItem(raw) {
   const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  // hoursOfOperation wandert als Rohwert mit, weil der Öffnungszeitenfilter
-  // GENAU dieses Feld liest, nicht die Anzeigeform (`hours`) daneben. Fehlte
-  // es, liefe der Filter still ins Leere — die Liste sähe richtig aus und
-  // wäre es nicht (genau das ist hier schon einmal passiert, erst vom
-  // E2E-Test aufgedeckt).
-  return { name, address, distance, distanceCode, hours, status, hoursOfOperation, countryCode };
+  // hoursOfOperation UND latitude/longitude wandern als Rohwerte mit, weil
+  // spätere Stufen GENAU diese Felder lesen: der Öffnungszeitenfilter und die
+  // Wochenansicht das eine, die Kartenmarker das andere — nicht die
+  // Anzeigeform (`hours`) daneben. Fehlte eines, liefe die betroffene Stufe
+  // still ins Leere: die Liste sähe richtig aus und wäre es nicht (genau das
+  // ist mit hoursOfOperation schon einmal passiert und wurde erst vom
+  // E2E-Test aufgedeckt). Koordinaten werden NICHT erfunden — fehlen sie,
+  // bleibt der Shop in der Liste und bekommt nur keinen Marker.
+  return {
+    name, address, distance, distanceCode, hours, status, hoursOfOperation, countryCode,
+    latitude: pick(raw, ["latitude", "lat"]),
+    longitude: pick(raw, ["longitude", "lng", "lon"]),
+  };
 }
 
 // Normalisieren und Sortieren entfernen NICHTS: die vollständige Liste bleibt
@@ -160,9 +167,19 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [results, setResults]   = useState(null); // null = noch nicht gesucht
-  // Reine Anzeige-Ausklappung der Ergebnisliste (max. 5 → alle). Lokal, NICHT
-  // persistiert; jede neue Suche setzt wieder auf die kompakte Ansicht zurück.
-  const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const titleId = useId();
+  // Laufende Suchen durchnummerieren: im Fenster kann der Kunde Radius ändern
+  // und sofort neu suchen, während die vorige Antwort noch unterwegs ist. Nur
+  // die jüngste Anfrage darf schreiben — sonst überschriebe eine langsame alte
+  // Antwort das frische Ergebnis. (Vor dem Fenster gab es genau einen
+  // Suchknopf und damit diesen Fall nicht.)
+  const laufRef = useRef(0);
+  // Ziel der Fokusrückgabe beim Schließen des Fensters. Muss explizit sein:
+  // der Knopf ist im Moment des Öffnens bereits deaktiviert (Suche läuft an)
+  // und damit nicht mehr document.activeElement.
+  const suchButtonRef = useRef(null);
 
   // Klicks im Finder nicht zur Karte durchreichen (Karte hat onClick=select).
   const stop = (e) => e.stopPropagation();
@@ -202,9 +219,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const streetMissing  = streetRequired && street.trim().length < 1;
   const canSearch      = postCode.trim().length >= 3 && !cityMissing && !streetMissing && !loading;
 
-  const doSearch = async (e) => {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
+  const doSearch = async () => {
     if (loading || postCode.trim().length < 3) return;
     // Defensive Zweitsicherung gegen den Submit-per-Enter-Pfad: ohne Stadt kein
     // Request an /access-points-search — stattdessen eine klare, fachliche
@@ -221,9 +236,10 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       setError("Für die GLS-Paketshop-Suche wird zusätzlich zur PLZ eine Straße benötigt.");
       return;
     }
+    const lauf = ++laufRef.current;
+    const aktuell = () => lauf === laufRef.current;
     setLoading(true);
     setError("");
-    setExpanded(false); // neue Suche → wieder kompakte Liste (max. 5)
     try {
       const r = await searchAccessPoints({
         carrierCodes: [carrierCode],
@@ -238,10 +254,12 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         // ist entfallen — sein `true` wird deshalb NICHT weitergeschleppt.
         onlyOpen: false,
       });
+      if (!aktuell()) return; // eine neuere Suche läuft — diese Antwort verfällt
       // 401/403 hat der zentrale Auth-Handler (apiFetch) bereits übernommen.
       if (r.status === 401 || r.status === 403) { setLoading(false); return; }
       let d = null;
       try { d = await r.json(); } catch { d = null; }
+      if (!aktuell()) return;
       if (!r.ok) {
         setResults(null);
         setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
@@ -250,10 +268,22 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       }
       setResults(normalizeList(d));
     } catch {
+      if (!aktuell()) return;
       setResults(null);
       setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
     }
-    setLoading(false);
+    if (aktuell()) setLoading(false);
+  };
+
+  // Der sichtbare Knopf öffnet das Fenster UND startet die Suche in einem Zug —
+  // ohne Zwischenzustand auf der Hauptseite. Frisch gesucht wird bei jedem
+  // Klick: der Kunde erwartet aktuelle Öffnungsstatus, keine Konserve.
+  const oeffneUndSuche = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!canSearch) return;
+    setModalOpen(true);
+    doSearch();
   };
 
   // Das Straßenfeld ist jetzt für jeden unterstützten Carrier sichtbar — nicht
@@ -279,30 +309,12 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     </div>
   );
 
-  // ── Öffnungszeitenfilter (einzige Auswahlstufe nach Sortierung) ────────────
-  // `results` bleibt unangetastet die vollständige, sortierte Antwort. Bei
-  // „Alle Öffnungszeiten“ (Standard) passiert HIER NICHTS — jeder von JUMiNGO
-  // gelieferte Access Point bleibt sichtbar, unabhängig von workState. Erst
-  // wenn der Kunde selbst „Sonntags geöffnet“, „Offen vor 7:30 Uhr“ oder
-  // „Offen nach 21:00 Uhr“ wählt, kürzt diese Stufe auf die passende Menge.
-  const { matching: visibleResults, excluded: filteredOutResults, filtered: openingFilterActive } =
-    filterAccessPointsByOpening(results || [], openingFilter);
-
-  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer, der Rest auf Wunsch
-  // per Button. Reiner Anzeigezustand (expanded), nicht persistiert. Alle
-  // Zahlen beziehen sich auf die tatsächlich angebotene Menge — „5 von 20“
-  // hätte eine Auswahl versprochen, die es gar nicht gibt.
-  const MAX_COMPACT = 5;
-  const hasResults  = !loading && !error && results !== null && visibleResults.length > 0;
-  const shownResults = hasResults ? (expanded ? visibleResults : visibleResults.slice(0, MAX_COMPACT)) : [];
-  const extraResults = hasResults ? visibleResults.length - MAX_COMPACT : 0;
-  // Ruhige Randnotiz, kein Fehler: ein Shop mit anderen Öffnungszeiten ist
-  // kein Defekt. Nur sichtbar, wenn tatsächlich gefiltert wird — bei „Alle
-  // Öffnungszeiten“ gibt es keine Ursache, die eine Randnotiz rechtfertigt.
-  const hatAntwort = !loading && !error && results !== null;
-  const resultNote = !hatAntwort || !openingFilterActive
-    ? null
-    : openingFilterExcludedLabel(filteredOutResults.length);
+  // Knappe Quittung der letzten Suche auf der Hauptseite — KEINE zweite Liste.
+  // Sie erscheint erst, wenn das Fenster zu ist: solange es offen steht, steht
+  // die Zahl dort und bräuchte hier keinen Platz.
+  const quittung = !modalOpen && !loading && !error && results !== null
+    ? accessPointCountLabel(results.length, results.length)
+    : null;
 
   return (
     <div className="ap-finder" onClick={stop} aria-busy={loading}>
@@ -318,7 +330,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         </span>
       </p>
 
-      <form className="ap-finder-form" onSubmit={doSearch}>
+      <form className="ap-finder-form" onSubmit={oeffneUndSuche}>
         <div className="ap-finder-fields">
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-zip-${tariff?.id}`}>PLZ</label>
@@ -370,15 +382,15 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         <div className="ap-finder-controls">
           {/* Öffnungszeitenmerkmal — dieselben vier Optionen wie bei JUMiNGO.
               Steht bewusst NICHT im Feldraster oben: es ist kein Suchparameter,
-              sondern wirkt sofort auf die bereits geladene Liste. Deshalb auch
-              kein erneuter Request und kein Klick auf „Paketshops suchen“. */}
+              sondern wirkt sofort auf die bereits geladene Liste. Im Fenster
+              steht dasselbe Feld noch einmal und teilt denselben Zustand. */}
           <div className="ap-finder-field ap-finder-field--opening">
             <label className="ap-finder-label" htmlFor={`ap-opening-${tariff?.id}`}>Öffnungszeiten</label>
             <select
               id={`ap-opening-${tariff?.id}`}
               className="ap-finder-select"
               value={openingFilter}
-              onChange={(e) => { setOpeningFilter(e.target.value); setExpanded(false); }}
+              onChange={(e) => setOpeningFilter(e.target.value)}
             >
               {OPENING_FILTER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -388,6 +400,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
           <button
             type="submit"
             className="ap-finder-search-btn"
+            ref={suchButtonRef}
             disabled={!canSearch}
           >
             {loading
@@ -397,114 +410,46 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         </div>
       </form>
 
-      {/* ── Zustände ── */}
-      {error && (
+      {/* Fehler, die das Fenster gar nicht erst erreichen (fehlende Stadt/Straße)
+          bleiben hier stehen — dort wäre kein Fenster zum Anzeigen offen. */}
+      {error && !modalOpen && (
         <div className="ap-finder-error" role="alert">
           <Icon n="info" s={15} c="currentColor" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Lade-/Ergebnis-Ankündigung NUR für Screenreader: die sichtbare Lade-
-          Rückmeldung liefert bereits der Button-Text „Paketshops werden gesucht …"
-          (genau EINE sichtbare Ladeanzeige). role="status" (polite) macht Ladephase
-          und Trefferzahl dennoch zugänglich, ohne visuelle Dopplung. */}
-      <p className="ap-finder-sr" role="status">
-        {loading
-          ? "Paketshops werden gesucht …"
-          : results !== null
-            ? [
-                visibleResults.length === 0
-                  ? (openingFilterActive
-                      ? "Kein Paketshop entspricht dem gewählten Öffnungszeitenfilter."
-                      : "Keine Paketshops gefunden.")
-                  : (openingFilterActive
-                      ? openingFilterCountLabel(visibleResults.length, visibleResults.length)
-                      : accessPointCountLabel(visibleResults.length, visibleResults.length)),
-                resultNote,
-              ].filter(Boolean).join(" · ")
-            : ""}
-      </p>
-
-      {/* Zwei verschiedene Leerzustände: gar kein Treffer im Umkreis — oder
-          Treffer vorhanden, aber keiner passt zum gewählten
-          Öffnungszeitenmerkmal. „Keine Paketshops gefunden“ wäre im zweiten
-          Fall falsch, denn JUMiNGO hat durchaus geliefert. */}
-      {!loading && !error && results !== null && results.length === 0 && (
-        <div className="ap-finder-empty">
-          Keine Paketshops gefunden. Passen Sie PLZ oder Umkreis an.
-        </div>
-      )}
-      {!loading && !error && results !== null && results.length > 0 && visibleResults.length === 0 && (
-        <div className="ap-finder-empty">
-          {openingFilterEmptyText(openingFilter)} Wählen Sie „Alle Öffnungszeiten“,
-          um wieder alle {results.length} Paketshops zu sehen.
-        </div>
-      )}
-
-      {hasResults && (
-        <p className="ap-result-count">
-          {openingFilterActive
-            ? openingFilterCountLabel(shownResults.length, visibleResults.length)
-            : accessPointCountLabel(shownResults.length, visibleResults.length)}
-          {resultNote && <span className="ap-result-note"> · {resultNote}</span>}
+      {quittung && (
+        <p className="ap-finder-receipt" role="status">
+          {quittung}
+          <button type="button" className="ap-finder-reopen" onClick={() => setModalOpen(true)}>
+            Ergebnisse anzeigen
+          </button>
         </p>
       )}
 
-      {hasResults && (
-        <ul className="ap-result-list">
-          {shownResults.map((s, i) => {
-            // Ländercode nur zeigen, wenn er vom gesuchten Land abweicht
-            // (vermeidet redundantes "DE" bei inländischer Suche).
-            const showCc = s.countryCode && s.countryCode !== countryCode;
-            return (
-              <li className="ap-result" key={i}>
-                {/* Hierarchie: 1 Name · 2 Adresse · 3 Entfernung+Status (rechts) ·
-                    4 Öffnungszeiten (sekundär, volle Breite darunter). Rein
-                    informativ — KEINE Auswahl/kein Radio/keine gebundene Auswahl. */}
-                <div className="ap-result-top">
-                  <div className="ap-result-main">
-                    <div className="ap-result-name">{s.name || s.address}</div>
-                    {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
-                  </div>
-                  <div className="ap-result-meta">
-                    {s.distance != null && (
-                      <span className="ap-result-dist">{formatDistance(s.distance, s.distanceCode)}</span>
-                    )}
-                    {/* Öffnungsstatus von JUMiNGO. Punkt UND Text (Designsystem-
-                        Badge) — der Zustand steht nie allein in der Farbe. Ein
-                        unbekannter Serverwert bleibt unsichtbar und steht
-                        höchstens im title für den Support. */}
-                    <span
-                      className={`ap-result-status ${s.status.badgeClass}`}
-                      title={!s.status.known && s.status.raw ? `Serverwert: ${s.status.raw}` : undefined}
-                    >
-                      {s.status.label}
-                    </span>
-                    {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
-                  </div>
-                </div>
-                {s.hours && (
-                  <div className="ap-result-hours">
-                    <Icon n="clock" s={13} c="currentColor" />
-                    <span>{s.hours}</span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {extraResults > 0 && (
-        <button
-          type="button"
-          className="ap-more-btn"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? "Weniger anzeigen" : moreAccessPointsLabel(extraResults)}
-        </button>
-      )}
+      <AccessPointFinderModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        titleId={titleId}
+        returnFocusTo={suchButtonRef}
+        postCode={postCode} city={city} street={street}
+        radius={radius} openingFilter={openingFilter}
+        onPostCodeChange={setPostCode}
+        onCityChange={setCity}
+        onStreetChange={setStreet}
+        onRadiusChange={setRadius}
+        onOpeningFilterChange={setOpeningFilter}
+        radiusOptions={RADIUS_OPTIONS}
+        streetRequired={streetRequired}
+        cityRequired={cityRequired}
+        onSearch={doSearch}
+        canSearch={canSearch}
+        loading={loading}
+        error={error}
+        results={results}
+        countryCode={countryCode}
+      />
     </div>
   );
 }

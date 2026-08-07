@@ -395,7 +395,7 @@
 .offer-detail-value { color: var(--navy); font-weight: 600; text-align: right; }
 /* Tarif-ID & sekundäre technische Werte: dezent, nicht dominant. */
 .offer-detail-row--subtle .offer-detail-value {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
 }
 
 /* Hauptmerkmale — ruhiges 2-Spalten-Feature-Grid: Label dezent, Wert stark,
@@ -411,7 +411,7 @@
   font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.35; overflow-wrap: break-word;
 }
 .offer-feature-value--subtle {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
 }
 
 /* Einschränkungen — natürliche Sätze als ruhige Liste mit dezentem Punkt-Marker
@@ -613,13 +613,6 @@
 }
 .ap-finder-hint svg { color: var(--ce-color-text-muted); flex-shrink: 0; margin-top: 2px; }
 
-/* Nur für Screenreader (Ladephase/Trefferzahl) — visuell verborgen. */
-.ap-finder-sr {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-  border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 /* Suchformular */
 .ap-finder-form { display: flex; flex-direction: column; gap: 12px; }
 .ap-finder-fields {
@@ -678,51 +671,289 @@
 .ap-finder-error svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
 .ap-finder-empty { padding: 14px 4px; font-size: 13px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
-/* Ergebnisliste */
-/* Wie viel von wie viel gerade zu sehen ist — die Liste kürzt sichtbar.
-   Der Zusatz zum aktiven Öffnungszeitenfilter läuft bewusst in derselben
-   ruhigen Zeile und Farbe: das ist eine Randnotiz, kein Fehler. */
-.ap-result-count { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
-.ap-result-note { color: var(--ce-color-text-muted); }
-.ap-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.ap-result {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: white;
+/* ── Großes Paketshop-Finder-Fenster ──────────────────────────────────────
+   Ein Arbeitsfenster, kein Bestätigungsdialog: links die scrollende
+   Trefferliste, rechts die Karte. Overlay, Rundung, Tiefe und Fokus kommen aus
+   dem bestehenden System — es gibt keine zweite Dialogwelt.
+
+   Die frühere Inline-Ergebnisliste (.ap-result*, .ap-more-btn, .ap-finder-sr)
+   ist entfallen: die Treffer stehen jetzt ausschließlich im Fenster. Ihre
+   Regeln wurden mit entfernt, statt ungenutzt liegen zu bleiben. */
+
+/* Zwei Klassen mit Absicht: .ce-dialog-overlay aus patterns.css setzt 20 px
+   Polster und wird NACH dieser Datei importiert (dokumentierte Reihenfolge).
+   Eine einklassige Regel verlöre dagegen — das Fenster wäre auf Mobil 40 px
+   zu schmal statt vollflächig. */
+.ce-dialog-overlay.ap-modal-overlay {
+  position: fixed; inset: 0; z-index: var(--ce-z-dialog);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--ce-color-overlay);
 }
-.ap-result-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.ap-result-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.ap-result-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; overflow-wrap: anywhere; }
-.ap-result-addr { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; overflow-wrap: anywhere; }
-.ap-result-hours {
-  display: inline-flex; align-items: center; gap: 6px;
+
+.ap-modal {
+  display: flex; flex-direction: column; min-height: 0;
+  width: min(1280px, calc(100vw - 48px));
+  height: min(820px, calc(100vh - 48px));
+  background: white; border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-3); overflow: hidden;
+}
+.ap-modal:focus { outline: none; }
+
+/* Kopf */
+.ap-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+}
+.ap-modal-head-text { min-width: 0; }
+.ap-modal-eyebrow {
+  margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ce-color-text-muted);
+}
+.ap-modal-title {
+  margin: 0; font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
+  line-height: 1.25; color: var(--navy);
+}
+.ap-modal-sub {
+  margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: var(--ce-color-text-secondary);
+}
+.ap-modal-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--radius);
+  border: 1.5px solid var(--border); background: white; color: var(--ce-color-text-secondary);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ap-modal-close:hover { background: var(--gray50); color: var(--navy); }
+.ap-modal-close:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+
+/* Such- und Filterbereich — im Fenster änderbar, ohne es zu schließen. */
+.ap-modal-search {
+  display: grid; gap: 10px 12px; align-items: end;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  padding: 16px 24px 12px;
+}
+.ap-modal-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ap-modal-search-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 18px; border-radius: var(--radius);
+  border: 1.5px solid var(--blue); background: var(--blue); color: white;
+  font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+}
+.ap-modal-search-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); }
+.ap-modal-search-btn:disabled {
+  background: var(--gray100); color: var(--ce-color-text-muted);
+  border-color: var(--border); cursor: not-allowed;
+}
+.ap-modal-search-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+
+/* Fachliche Grenze — dieselbe Aussage wie auf der Hauptseite. */
+.ap-modal-note {
+  display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 0 24px 12px;
+  font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted);
+}
+.ap-modal-note svg { flex-shrink: 0; margin-top: 2px; }
+
+/* Ergebniszeile + mobiler Umschalter */
+.ap-modal-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 24px 12px; border-bottom: 1px solid var(--border);
+}
+.ap-modal-count { margin: 0; font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.4; }
+.ap-modal-note-inline { font-weight: 400; color: var(--ce-color-text-muted); }
+
+.ap-modal-toggle {
+  display: inline-flex; flex-shrink: 0; padding: 3px; gap: 3px;
+  background: var(--gray100); border-radius: var(--radius);
+}
+.ap-modal-toggle-btn {
+  min-height: 34px; padding: 0 16px; border: none; border-radius: var(--ce-radius-sm);
+  background: transparent; color: var(--ce-color-text-secondary);
+  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.ap-modal-toggle-btn--on { background: white; color: var(--navy); box-shadow: var(--ce-elevation-1); }
+.ap-modal-toggle-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+
+/* Inhalt */
+.ap-modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ap-modal-state { margin: 20px 24px; }
+.ap-modal-skeleton { display: flex; flex-direction: column; gap: 10px; }
+.ap-skeleton-row { height: 76px; border-radius: var(--radius); background: var(--gray100); animation: ce-skeleton-pulse 1.4s ease-in-out infinite; }
+
+/* Desktop-Aufteilung: Liste ca. 40 %, Karte ca. 60 %. Die Liste scrollt
+   eigenständig, die Karte bleibt stehen und füllt die volle Höhe. */
+.ap-modal-split {
+  flex: 1; min-height: 0; display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+.ap-modal-listcol { min-height: 0; overflow-y: auto; border-right: 1px solid var(--border); }
+.ap-modal-mapcol { min-height: 0; position: relative; background: var(--gray50); }
+
+/* Liste */
+.ap-list { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ap-list-item {
+  border: 1px solid var(--border); border-radius: var(--radius); background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ap-list-item--focused { border-color: var(--blue); box-shadow: var(--ce-elevation-focus-ring); }
+.ap-list-hit {
+  display: flex; gap: 12px; width: 100%; padding: 12px 14px; text-align: left;
+  background: none; border: none; cursor: pointer; font-family: var(--ce-font-sans);
+  border-radius: var(--radius);
+}
+.ap-list-hit:hover { background: var(--gray50); }
+.ap-list-hit:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-list-num {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--blue); color: white; font-size: 12px; font-weight: 600;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.ap-list-item--focused .ap-list-num { background: var(--navy); }
+.ap-list-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.ap-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ap-list-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; overflow-wrap: anywhere; }
+.ap-list-dist { font-size: 13px; font-weight: 600; color: var(--blue2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.ap-list-addr { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; overflow-wrap: anywhere; }
+.ap-list-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.ap-list-status { max-width: 100%; text-align: left; }
+.ap-list-hours {
+  display: inline-flex; align-items: center; gap: 5px;
   font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4;
 }
-.ap-result-hours svg { color: var(--ce-color-text-muted); flex-shrink: 0; }
-.ap-result-meta {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 5px;
-  flex-shrink: 0; text-align: right;
-}
-.ap-result-dist { font-size: 13px; font-weight: 600; color: var(--blue2); white-space: nowrap; }
-/* Der Öffnungsstatus ist ein Designsystem-Badge (.badge + Statusrolle, siehe
-   accessPointView.mjs) — Punkt UND Text, Farben und Maße kommen von dort.
-   Hier steht nur, was die rechtsbündige Metaspalte zusätzlich braucht: ein
-   umgebrochenes „Öffnungsstatus nicht verfügbar“ soll links ausgerichtet
-   bleiben und die Spalte nicht sprengen. */
-.ap-result-status { max-width: 100%; text-align: left; }
-/* Ländercode-Chip (nur bei abweichendem Land sichtbar) */
-.ap-result-cc { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--ce-color-text-muted); white-space: nowrap; }
+.ap-list-hours svg { flex-shrink: 0; }
+.ap-list-cc { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--ce-color-text-muted); }
 
-/* „Weitere Paketshops anzeigen" — sekundärer, ruhiger Button (kein CTA-Blau). */
-.ap-more-btn {
-  align-self: flex-start;
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 38px; padding: 0 16px; border-radius: var(--radius);
-  border: 1.5px solid var(--border2); background: white; color: var(--blue2);
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+/* Wochenöffnungszeiten — hinter einem Umschalter, damit die Liste scanbar bleibt. */
+.ap-list-toggle {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 14px 10px;
+  padding: 6px 10px; border: none; background: none; border-radius: var(--radius);
+  color: var(--blue2); font-family: var(--ce-font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.ap-more-btn:hover { background: var(--gray50); border-color: var(--blue2); }
-.ap-more-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-list-toggle:hover { background: var(--gray50); }
+.ap-list-toggle:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-list-toggle svg { transition: transform 0.15s; }
+.ap-list-toggle--open svg { transform: rotate(180deg); }
+.ap-list-details { padding: 0 14px 12px; }
+.ap-week { margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.ap-week-row { display: flex; justify-content: space-between; gap: 12px; }
+.ap-week-day { font-size: 12px; color: var(--ce-color-text-secondary); }
+.ap-week-time { margin: 0; font-size: 12px; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; text-align: right; }
+.ap-week-time--closed { color: var(--ce-color-text-muted); }
+.ap-week-break { color: var(--ce-color-text-muted); }
+.ap-week-plain { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.5; }
+
+/* Karte — ergänzend, nie autoritativ. */
+.ap-map { position: absolute; inset: 0; }
+/* Zwei Klassen UND eine explizite Größe — beides mit Anlass:
+   maplibre hängt seinem Container die Klasse .maplibregl-map an, und sein
+   Stylesheet wird zur Laufzeit nachgeladen, steht also NACH dieser Datei im
+   Kaskadenrang. Seine Regel `position: relative` schlug damit mein
+   `position: absolute` bei gleicher Spezifität — worauf `inset: 0` nichts mehr
+   ausrichtete und die Höhe auf den Inhalt zusammenfiel (gemessen: 0 px, die
+   Karte zeichnete daraufhin in ihrer 300-px-Vorgabe statt in den 542 px der
+   Spalte). Die höhere Spezifität gewinnt die Positionierung zurück; height/width
+   100 % halten die Größe auch dann, wenn eine künftige Fassung der Bibliothek
+   erneut an der Positionierung dreht. */
+.ap-map .ap-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ap-map-loading, .ap-map-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13px; color: var(--ce-color-text-muted);
+}
+.ap-map-context {
+  position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px);
+  padding: 6px 10px; border-radius: var(--radius); background: rgba(255,255,255,0.94);
+  border: 1px solid var(--border); font-size: 12px; color: var(--ce-color-text-secondary);
+}
+.ap-map--error { display: flex; align-items: center; justify-content: center; padding: 24px; }
+.ap-map-fallback { text-align: center; max-width: 320px; color: var(--ce-color-text-muted); }
+.ap-map-fallback-title { margin: 10px 0 4px; font-size: 14px; font-weight: 600; color: var(--navy); }
+.ap-map-fallback-text { margin: 0; font-size: 13px; line-height: 1.55; }
+
+/* Marker: die Nummer des Listeneintrags — dieselbe Zahl, dieselbe Reihenfolge. */
+.ap-map-marker {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 2px solid white; background: var(--blue); color: white;
+  font-family: var(--ce-font-sans); font-size: 12px; font-weight: 600;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; box-shadow: var(--ce-elevation-2);
+  transition: transform 0.15s, background 0.15s;
+}
+.ap-map-marker--active { background: var(--navy); transform: scale(1.22); }
+
+/* Die Popup-Hülle stellt die Kartenbibliothek; hier bekommt sie das Material
+   des Designsystems (Rundung, Rand, Tiefe) statt ihrer Vorgabe. */
+.ap-map-popup .maplibregl-popup-content {
+  padding: 12px 14px; border-radius: var(--radius);
+  border: 1px solid var(--border); box-shadow: var(--ce-elevation-2);
+  font-family: var(--ce-font-sans);
+}
+.ap-map-popup .maplibregl-popup-tip { border-top-color: white; border-bottom-color: white; }
+
+.ap-map-popup-card { min-width: 0; }
+.ap-map-popup-name {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 2px;
+  font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3;
+}
+.ap-map-popup-num {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: white;
+  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.ap-map-popup-addr { margin: 0 0 6px; font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; }
+.ap-map-popup-meta { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; flex-wrap: wrap; }
+.ap-map-popup-dist { font-size: 13px; font-weight: 600; color: var(--blue2); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.ap-map-popup-hours { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
+
+/* Quittung der letzten Suche auf der Hauptseite — KEINE zweite Trefferliste. */
+.ap-finder-receipt {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0;
+  font-size: 13px; font-weight: 600; color: var(--navy);
+}
+.ap-finder-reopen {
+  padding: 0; border: none; background: none; color: var(--blue2);
+  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
+  text-decoration: underline; cursor: pointer;
+}
+.ap-finder-reopen:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+
+/* Bewegung nur als kurze Zustandsreaktion — wer sie abbestellt hat, bekommt keine. */
+@media (prefers-reduced-motion: reduce) {
+  .ap-map-marker, .ap-list-toggle svg, .ap-list-item { transition: none; }
+  .ap-skeleton-row { animation: none; }
+}
+
+@media (max-width: 1023px) {
+  /* Tablet: die Suchzeile bricht in zwei Reihen, statt die Felder zu quetschen. */
+  .ap-modal-search { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1fr); }
+  .ap-modal-field--street { grid-column: 1 / -1; }
+  .ap-modal-search-btn { grid-column: 1 / -1; }
+}
+
+/* Mobil: Vollbild, kein Nebeneinander — Liste ODER Karte. */
+@media (max-width: 860px) {
+  .ce-dialog-overlay.ap-modal-overlay { padding: 0; align-items: stretch; }
+  /* width:100% statt 100vw: 100vw schließt die Bildlaufleiste ein und wäre auf
+     Systemen mit sichtbarem Scrollbalken um deren Breite zu groß. */
+  .ap-modal { width: 100%; height: 100dvh; border-radius: 0; max-width: none; flex-shrink: 0; }
+  .ap-modal-head { padding: 16px 16px 12px; }
+  .ap-modal-title { font-size: 20px; }
+  .ap-modal-search { grid-template-columns: 1fr 1fr; padding: 12px 16px; }
+  .ap-modal-note, .ap-modal-bar { padding-left: 16px; padding-right: 16px; }
+  .ap-modal-state { margin: 16px; }
+  .ap-modal-split { grid-template-columns: 1fr; }
+  /* Nur die aktive Ansicht ist im DOM sichtbar — display:none nimmt sie auch
+     aus der Tabreihenfolge, damit der Fokus nicht in eine unsichtbare Spalte
+     wandert. */
+  .ap-modal-split--list .ap-modal-mapcol { display: none; }
+  .ap-modal-split--map  .ap-modal-listcol { display: none; }
+  .ap-modal-listcol { border-right: none; }
+  .ap-modal-mapcol { position: relative; }
+  /* WCAG 2.5.5: jedes Bedienelement erreicht 44 px. */
+  .ap-modal-close { width: 44px; height: 44px; }
+  .ap-modal-toggle-btn { min-height: 44px; }
+  .ap-modal-search-btn, .ap-finder-input, .ap-finder-select { min-height: 44px; }
+  .ap-list-toggle { min-height: 44px; }
+}
 
 @media (max-width: 767px) {
   .ap-finder-fields { grid-template-columns: 1fr; }
@@ -730,11 +961,19 @@
   /* Untereinander darf das Select die volle Kartenbreite nutzen — sonst bliebe
      „Alle Öffnungszeiten“ neben viel leerem Raum abgeschnitten. */
   .ap-finder-field--opening { flex: 1 1 auto; min-width: 0; }
-  .ap-finder-search-btn { width: 100%; }
-  .ap-result-top { flex-direction: column; }
-  .ap-result-meta {
-    flex-direction: row; align-items: center; align-self: flex-start;
-    text-align: left; gap: 8px; flex-wrap: wrap;
-  }
-  .ap-more-btn { align-self: stretch; }
+  .ap-finder-search-btn { width: 100%; min-height: 44px; }
+  /* Der Suchbereich bleibt auch auf schmalen Geräten ZWEISPALTIG. Einspaltig
+     verbrauchten fünf Felder plus Knopf fast den ganzen Bildschirm, und unter
+     der Zählerzeile blieb genau ein Treffer sichtbar — der Kunde hätte an
+     seinem eigenen Suchformular vorbeiscrollen müssen, um Ergebnisse zu sehen.
+     „73207" und „Plochingen" passen bei 360 px bequem nebeneinander. */
+  .ap-modal-search { grid-template-columns: 1fr 1fr; }
+  .ap-modal-field--street, .ap-modal-search-btn { grid-column: 1 / -1; }
+}
+
+/* Suchkontext neben der Ergebniszahl: worauf sich die gezeigte Menge bezieht.
+   Der Radius steht hier — nicht als Eigenschaft jedes einzelnen Shops. */
+.ap-modal-bar-text { min-width: 0; }
+.ap-modal-context-line {
+  margin: 0 0 2px; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4;
 }

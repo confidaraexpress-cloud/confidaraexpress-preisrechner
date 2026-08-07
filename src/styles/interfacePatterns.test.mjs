@@ -279,7 +279,7 @@ test("9 — jeder Dialog hat Fokusfalle, Fokusrückgabe und Escape", () => {
   const hook = read("../hooks/useDialog.js");
   assert.match(hook, /e\.key !== "Tab"/, "die Fokusfalle fehlt im gemeinsamen Hook");
   assert.match(hook, /e\.key === "Escape"/, "Escape fehlt im gemeinsamen Hook");
-  assert.match(hook, /rueckgabeRef\.current = document\.activeElement/, "die Fokusrückgabe merkt sich nichts");
+  assert.match(hook, /rueckgabeRef\.current = .*document\.activeElement/, "die Fokusrückgabe merkt sich nichts");
   assert.match(hook, /ziel\.focus\(\)/, "die Fokusrückgabe fehlt");
 
   // Jede Komponente mit role="dialog" erfüllt die drei Zusicherungen — über den
@@ -385,7 +385,7 @@ test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => 
 
   const pkg = JSON.parse(read("../../package.json"));
   assert.deepEqual(Object.keys(pkg.dependencies).sort(),
-    ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"]);
+    ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"]);
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
 
   // Die neuen Bausteine sind reine Darstellung: kein Netzwerk, kein Token.

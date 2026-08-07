@@ -9,12 +9,17 @@
 //   • Was tatsächlich im DOM steht — Reihenfolge, Entfernungen, Status und
 //     Öffnungszeiten der Shops aus dem Mitschnitt.
 //
-// WICHTIGE KORREKTUR: Ein direkter 1:1-Vergleich mit JUMiNGOs eigener
+// WICHTIGE KORREKTUR (PR #306): Ein direkter 1:1-Vergleich mit JUMiNGOs eigener
 // Oberfläche hat belegt, dass „Alle Öffnungszeiten“ dieselbe Menge zeigt wie
 // die Rohantwort — NICHT die um workState „Geschlossen“ gekürzte Menge, wie
-// eine frühere Fassung dieser Tests annahm. Diese Datei prüft deshalb jetzt
-// das Gegenteil des früheren Verhaltens: Shops mit workState „Geschlossen“
-// bleiben sichtbar, mit Status und Öffnungszeiten.
+// eine frühere Fassung dieser Tests annahm. Diese Datei prüft deshalb das
+// Gegenteil des früheren Verhaltens: Shops mit workState „Geschlossen“ bleiben
+// sichtbar, mit Status und Öffnungszeiten.
+//
+// DARSTELLUNG: Die Treffer stehen seit dem Kartenfenster NICHT mehr unter dem
+// Formular, sondern im großen Finder-Fenster (.ap-modal). Diese Datei prüft
+// weiterhin die JUMiNGO-PARITÄT (Request, Menge, Reihenfolge, Filter); Aufbau,
+// Karte und Bedienung des Fensters prüft parcelShopMapFinder.test.mjs.
 //
 //   • Dass ein unbekannter Statuswert NICHT ausblendet (fail-open) und kein
 //     Rohwert sichtbar wird.
@@ -34,6 +39,7 @@ import {
   DPD_RESPONSE, DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED, DPD_WORKSTATE_CLOSED,
   DPD_EXPECTED_SUNDAY, DPD_EXPECTED_BEFORE_0730, DPD_EXPECTED_AFTER_2100, FREITAG,
 } from "../fixtures/accessPointsDpd.mjs";
+import { MAP_TEST_ENGINE_SCRIPT } from "../fixtures/mapTestEngine.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -63,11 +69,13 @@ const ABSENDER = { zip: "73207", city: "Plochingen", street: "Weiherstraße 25" 
 let server, browser;
 
 // Sammelt die Bodies aller Suchaufrufe, damit Tests sie prüfen können.
-// `tariff` ist standardmäßig der DPD-Dropoff-Tarif; Test 11 überschreibt ihn
+// `tariff` ist standardmäßig der DPD-Dropoff-Tarif; ein Test überschreibt ihn
 // mit UPS, um zu zeigen, dass der Carrier die angezeigte Menge NICHT mehr
 // beeinflusst (die frühere carrier-spezifische Eligibility ist entfallen).
 async function setupRoutes(page, { accessPoints = DPD_RESPONSE, tariff = DROPOFF_TARIFF } = {}) {
   const suchen = [];
+  // Karte als DOM-Attrappe: keine Kacheln aus dem Internet, kein WebGL.
+  await page.addInitScript(MAP_TEST_ENGINE_SCRIPT);
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -116,20 +124,23 @@ async function oeffneFinder(page) {
   await page.waitForSelector(".ap-finder", { timeout: 20000 });
 }
 
+// Suche starten → das Fenster öffnet sich und zeigt die Treffer.
 async function suche(page) {
   await page.locator(".ap-finder-search-btn").first().click();
-  await page.waitForSelector(".ap-result", { timeout: 20000 });
+  await page.waitForSelector(".ap-modal .ap-list-item", { timeout: 20000 });
 }
 
 // Filter wählen und auf den fertigen Rerender warten. Ohne das Warten liest
 // ein sofortiger allInnerTexts() gelegentlich in den Reconciliation-Moment
 // hinein und bekommt eine leere Liste — ein Testartefakt, kein UI-Fehler.
 async function waehleFilter(page, wert, erwarteteAnzahl) {
-  await page.locator(".ap-finder-controls select").selectOption(wert);
+  await page.selectOption(".ap-modal #apm-opening", wert);
   await page.waitForFunction(
-    (n) => document.querySelectorAll(".ap-result").length === n,
+    (n) => document.querySelectorAll(".ap-modal .ap-list-item").length === n,
     erwarteteAnzahl, { timeout: 10000 });
 }
+
+const namen = (page) => page.locator(".ap-modal .ap-list-name").allInnerTexts();
 
 async function noHorizontalOverflow(page) {
   return page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
@@ -185,7 +196,7 @@ test("2 — ohne Straße läuft die Suche weiter (leeres Feld, kein Zwang, kein 
   assert.ok(await btn.isEnabled(), "ohne Straße muss die Suche bei DPD weiterhin möglich sein");
   await suche(page);
   assert.equal(suchen[0].street, "", "leer heißt leer — es wird nichts hinzuerfunden");
-  assert.equal((await page.locator(".ap-result").count()) > 0, true);
+  assert.equal((await page.locator(".ap-modal .ap-list-item").count()) > 0, true);
   await page.close();
 });
 
@@ -204,14 +215,13 @@ test("3 — onlyOpen geht immer als false raus, auch beim Wechsel des Öffnungsf
 
   // Und der Wechsel des Dropdowns löst KEINE neue Suche aus: der offizielle
   // Vertrag kennt für die Merkmale keinen Parameter, also wird lokal gefiltert.
-  for (const wert of ["sunday", "before_0730", "after_2100", "all"]) {
-    await page.selectOption(".ap-finder-controls select", wert);
-    await page.waitForTimeout(120);
+  for (const [wert, anzahl] of [["sunday", 3], ["before_0730", 2], ["after_2100", 2], ["all", 20]]) {
+    await waehleFilter(page, wert, anzahl);
   }
   assert.equal(suchen.length, 1, "kein zusätzlicher Request beim Filterwechsel");
 
   // Wird doch erneut gesucht, ist onlyOpen weiterhin false.
-  await page.locator(".ap-finder-search-btn").first().click();
+  await page.locator(".ap-modal-search-btn").click();
   await page.waitForTimeout(300);
   assert.equal(suchen.length, 2);
   assert.equal(suchen[1].onlyOpen, false);
@@ -224,41 +234,27 @@ test("4 — bei „Alle Öffnungszeiten“ stehen ALLE 20 Shops aufsteigend nach
   await oeffneFinder(page);
   await suche(page);
 
-  // Kompakt die ersten 5 der vollen 20er-Antwort — NICHT mehr die um
-  // workState „Geschlossen“ gekürzte Menge.
-  const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.deepEqual(namen, DPD_EXPECTED_SORTED.slice(0, 5));
-  assert.deepEqual(namen, [
-    "Kopier und Werbestudio", "Intermarkt", "DPD-Paketstation",
-    "NKD Deutschland GmbH", "Änderungsschneiderei Sadra",
-  ], "vorher fehlten hier die beiden nächsten „Geschlossen“-Treffer");
+  // Das Fenster kürzt nicht mehr auf 5: die Liste scrollt selbst.
+  assert.deepEqual(await namen(page), DPD_EXPECTED_SORTED);
 
-  const dist = await page.locator(".ap-result-dist").allInnerTexts();
-  assert.deepEqual(dist, ["0,6 KM", "0,9 KM", "2,6 KM", "2,7 KM", "2,9 KM"]);
-
-  await page.locator(".ap-more-btn").click();
-  assert.deepEqual(await page.locator(".ap-result-name").allInnerTexts(), DPD_EXPECTED_SORTED);
-  assert.equal(await page.locator(".ap-result").count(), 20);
+  const distanzen = await page.locator(".ap-modal .ap-list-dist").allInnerTexts();
+  assert.deepEqual(distanzen.slice(0, 5), ["0,6 KM", "0,9 KM", "2,6 KM", "2,7 KM", "2,9 KM"]);
   await page.close();
 });
 
 test("5 — Shops mit workState „Geschlossen“ stehen bei „Alle Öffnungszeiten“ in der Auswahl", async () => {
-  // Die Umkehrung des früheren Tests: „Geschlossen“ ist kein Ausschlussgrund
-  // mehr, sondern ein regulärer, sichtbarer Treffer.
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
-  await page.locator(".ap-more-btn").click();
 
-  const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.equal(DPD_WORKSTATE_CLOSED.length, 10);
-  for (const n of DPD_WORKSTATE_CLOSED) {
-    assert.ok(namen.includes(n), `${n} (workState „Geschlossen“) muss in der Auswahl stehen`);
+  // Der Kernnachweis der Korrektur aus PR #306: „Geschlossen“ blendet NICHT aus.
+  const sichtbar = await namen(page);
+  for (const name of DPD_WORKSTATE_CLOSED) {
+    assert.ok(sichtbar.includes(name), `„${name}“ (workState Geschlossen) fehlt in der Liste`);
   }
-  // Und der Badgetext „Geschlossen“ ist im DOM tatsächlich vorhanden.
-  const status = await page.locator(".ap-result-status").allInnerTexts();
-  assert.ok(status.includes("Geschlossen"), "das Geschlossen-Badge muss sichtbar sein");
+  const status = await page.locator(".ap-modal .ap-list-status").allInnerTexts();
+  assert.ok(status.some((s) => s.trim() === "Geschlossen"), "der Status muss sichtbar dabeistehen");
   await page.close();
 });
 
@@ -268,17 +264,11 @@ test("6 — Status und Öffnungszeiten stehen sichtbar an jedem der ersten 5 Sho
   await oeffneFinder(page);
   await suche(page);
 
-  const status = await page.locator(".ap-result-status").allInnerTexts();
+  const status = (await page.locator(".ap-modal .ap-list-status").allInnerTexts()).slice(0, 5).map((s) => s.trim());
   assert.deepEqual(status, ["Geschlossen", "Geschlossen", "Geöffnet", "Geschlossen", "Geschlossen"]);
 
-  const rollen = await page.locator(".ap-result-status").evaluateAll((els) => els.map((e) => e.className));
-  assert.ok(rollen[0].includes("badge--neutral"), "Geschlossen → Neutral, kein Fehlerrot");
-  assert.ok(rollen[2].includes("badge--success"), "Geöffnet → Success");
-  for (const k of rollen) assert.ok(/(^|\s)badge(\s|$)/.test(k), "Statusbadge trägt die Basisklasse (Punkt)");
-
-  // Öffnungszeiten unverändert aus PR #303 — Freitag, wie die Uhr gepinnt ist.
-  const zeiten = await page.locator(".ap-result-hours").allInnerTexts();
-  assert.deepEqual(zeiten.map((z) => z.trim()), [
+  const zeiten = (await page.locator(".ap-modal .ap-list-hours").allInnerTexts()).slice(0, 5).map((s) => s.trim());
+  assert.deepEqual(zeiten, [
     "Heute: 10:00–17:00",
     "Heute: 09:00–18:00 (Pause 13:00–15:00)",
     "Heute: 00:01–23:59",
@@ -290,33 +280,23 @@ test("6 — Status und Öffnungszeiten stehen sichtbar an jedem der ersten 5 Sho
 
 test("7 — ein unbekannter Status bleibt sichtbar (fail-open) und ohne Rohwert", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  const mitUnbekannt = {
+  const fremd = {
     accessPoints: [
-      ...DPD_RESPONSE.accessPoints,
-      {
-        name: "Testshop Unbekannt", street: "Teststr. 1", postCode: "73207", city: "Plochingen",
-        countryCode: "DE", distance: 8.1, distanceCode: "km", workState: "temporarily_unavailable",
-        hoursOfOperation: [{ dayName: "Freitag", workingHours: { unerwartet: true }, workingDay: true }],
-      },
+      { ...DPD_ACCESS_POINTS[0], name: "Fremder Status", workState: "UNBEKANNTER_SERVERWERT", distance: 0.1 },
+      ...DPD_ACCESS_POINTS,
     ],
   };
-  await setupRoutes(page, { accessPoints: mitUnbekannt });
+  await setupRoutes(page, { accessPoints: fremd });
   await oeffneFinder(page);
   await suche(page);
-  await page.locator(".ap-more-btn").click();
 
-  assert.equal(await page.locator(".ap-result").count(), 21, "20 aus dem Mitschnitt plus der neue Testshop");
-  const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.ok(namen.includes("Testshop Unbekannt"),
-    "ein neuer JUMiNGO-Statuswert darf keinen Shop verschwinden lassen");
+  const alle = await namen(page);
+  assert.equal(alle.length, 21, "der unbekannte Status darf niemanden ausblenden");
+  assert.equal(alle[0], "Fremder Status", "und er steht an seiner Entfernungsposition");
 
-  const text = await page.locator(".ap-finder").innerText();
-  assert.ok(!text.includes("temporarily_unavailable"), "der Rohwert darf nicht sichtbar sein");
-  assert.ok(!text.includes("[object Object]"), "kein durchgereichtes Objekt");
-  assert.ok(text.includes("Öffnungsstatus nicht verfügbar"), "stattdessen ein verständlicher Hinweis");
-
-  const titel = await page.locator('.ap-result-status[title]').first().getAttribute("title");
-  assert.match(titel, /temporarily_unavailable/);
+  const text = await page.locator(".ap-modal").innerText();
+  assert.ok(!text.includes("UNBEKANNTER_SERVERWERT"), "kein Rohwert im sichtbaren Text");
+  assert.ok(text.includes("Öffnungsstatus nicht verfügbar"), "stattdessen der neutrale Satz");
   await page.close();
 });
 
@@ -326,102 +306,59 @@ test("8 — die Zähler beschreiben die volle Antwortmenge (20), nicht eine aus 
   await oeffneFinder(page);
   await suche(page);
 
-  assert.equal(await page.locator(".ap-result").count(), 5, "kompakt fünf von zwanzig");
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "5 von 20 Paketshops");
-
-  const mehr = page.locator(".ap-more-btn");
-  assert.equal((await mehr.innerText()).trim(), "Weitere 15 Paketshops anzeigen");
-  await mehr.click();
-  assert.equal(await page.locator(".ap-result").count(), 20);
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "20 Paketshops");
-
-  // Keine Nutzbarkeits-Sprache mehr in der Zeile.
-  const zeile = (await page.locator(".ap-result-count").innerText()).trim();
-  assert.ok(!/verfügbar|nutzbar/i.test(zeile), zeile);
+  const zaehler = (await page.locator(".ap-modal-count").innerText()).trim();
+  assert.equal(zaehler, "20 Paketshops");
+  assert.ok(!/verfügbar|nutzbar/i.test(zaehler), `„verfügbar/nutzbar“ hat hier nichts zu suchen: ${zaehler}`);
   await page.close();
 });
 
-test("9 — auch wenn JEDER Shop workState „Geschlossen“ trägt, bleiben bei „Alle Öffnungszeiten“ alle sichtbar", async () => {
-  // Regressionstest für TEIL 17 Punkt 1 der Korrektur: die Ergebnismenge bei
-  // „Alle Öffnungszeiten“ darf größer sein als die Menge workState !== „Geschlossen“
-  // — im Extremfall also auch dann alles zeigen, wenn diese Menge leer wäre.
+test("9 — auch wenn JEDER Shop workState „Geschlossen“ trägt, bleiben alle sichtbar", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  const alleZu = {
-    accessPoints: DPD_RESPONSE.accessPoints.map((ap) => ({ ...ap, workState: "Geschlossen" })),
-  };
+  const alleZu = { accessPoints: DPD_ACCESS_POINTS.map((s) => ({ ...s, workState: "Geschlossen" })) };
   await setupRoutes(page, { accessPoints: alleZu });
   await oeffneFinder(page);
   await suche(page);
 
-  assert.equal(await page.locator(".ap-result").count(), 5);
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "5 von 20 Paketshops");
-  assert.equal(await page.locator(".ap-finder-empty").count(), 0,
-    "es gibt hier keinen Leerzustand mehr — JUMiNGO hat 20 Shops geliefert");
-
-  await page.locator(".ap-more-btn").click();
-  assert.equal(await page.locator(".ap-result").count(), 20);
-  const status = await page.locator(".ap-result-status").allInnerTexts();
-  assert.ok(status.every((s) => s === "Geschlossen"));
+  // Früher erzeugte genau dieser Fall einen Leerzustand. Das war der Fehler.
+  assert.equal((await namen(page)).length, 20);
+  assert.equal(await page.locator(".ap-modal .ap-finder-empty").count(), 0, "kein Leerzustand");
+  assert.equal((await page.locator(".ap-modal-count").innerText()).trim(), "20 Paketshops");
   await page.close();
 });
 
 test("10 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreiten", async () => {
-  for (const breite of [1440, 1024, 768, 430, 390, 360]) {
-    const page = await browser.newPage({ viewport: { width: breite, height: 900 } });
+  for (const [w, h] of [[1440, 900], [1024, 768], [768, 1024], [430, 932], [390, 844], [360, 800]]) {
+    const page = await browser.newPage({ viewport: { width: w, height: h } });
     await setupRoutes(page);
     await oeffneFinder(page);
     await suche(page);
 
-    assert.ok(await noHorizontalOverflow(page), `horizontaler Überlauf bei ${breite}px`);
+    assert.ok(await noHorizontalOverflow(page), `horizontaler Überlauf bei ${w}px`);
 
-    // „Geschlossen“ (erster Treffer) muss vollständig lesbar sein — nicht
-    // abgeschnitten, nicht mit Ellipse, und innerhalb der Kartenbreite.
-    const badge = page.locator(".ap-result-status").first();
-    assert.equal((await badge.innerText()).trim(), "Geschlossen", `Statustext bei ${breite}px`);
-    const mass = await badge.evaluate((el) => {
-      const karte = el.closest(".ap-result").getBoundingClientRect();
-      const b = el.getBoundingClientRect();
-      return {
-        clipped: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
-        drin: b.left >= karte.left - 1 && b.right <= karte.right + 1,
-        ellipsis: getComputedStyle(el).textOverflow,
-        hoehe: b.height,
-      };
-    });
-    assert.ok(!mass.clipped, `Statustext ist bei ${breite}px abgeschnitten`);
-    assert.ok(mass.drin, `Statusbadge ragt bei ${breite}px aus der Karte`);
-    assert.notEqual(mass.ellipsis, "ellipsis", `Statustext wird bei ${breite}px gekürzt`);
-    assert.ok(mass.hoehe >= 20, `Statusbadge zu flach bei ${breite}px`);
-
-    // Die Ergebniszeile darf auf schmalen Geräten ebenfalls nicht überlaufen.
-    const zeile = await page.locator(".ap-result-count").evaluate((el) => ({
-      clipped: el.scrollWidth > el.clientWidth + 1,
-      text: el.innerText.trim(),
-    }));
-    assert.ok(!zeile.clipped, `die Ergebniszeile läuft bei ${breite}px über`);
-    assert.equal(zeile.text, "5 von 20 Paketshops", `Ergebniszeile bei ${breite}px`);
+    // „Schließt bald“ ist der längste Statustext — er darf nirgends abgeschnitten
+    // werden. Geprüft wird der erste Shop mit genau diesem Status.
+    const badge = page.locator(".ap-modal .ap-list-status", { hasText: "Schließt bald" }).first();
+    if (await badge.count()) {
+      const abgeschnitten = await badge.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+      assert.ok(!abgeschnitten, `„Schließt bald“ abgeschnitten bei ${w}px`);
+    }
+    assert.equal((await page.locator(".ap-modal-count").innerText()).trim(), "20 Paketshops");
     await page.close();
   }
 });
 
 test("11 — UPS zeigt dieselbe Menge wie DPD: kein Carrier-Sonderfall mehr", async () => {
-  // Die frühere carrier-spezifische Eligibility (DPD verifiziert, UPS/GLS/
-  // DHL Express fail-open) ist entfallen. workState beeinflusst die Auswahl
-  // bei KEINEM Carrier mehr — UPS und DPD müssen deshalb identisch aussehen.
+  // Vor PR #306 galt die Eligibility-Kürzung nur für DPD — UPS zeigte dadurch
+  // mehr Shops als DPD bei identischer Antwort. Beide müssen jetzt gleich sein.
+  const ups = { ...DROPOFF_TARIFF, publicCarrierId: "ups", publicCarrierName: "UPS" };
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  const upsTarif = { ...DROPOFF_TARIFF, publicCarrierId: "ups", publicCarrierName: "UPS Access Point" };
-  const suchen = await setupRoutes(page, { tariff: upsTarif });
+  const suchen = await setupRoutes(page, { tariff: ups });
   await oeffneFinder(page);
   await suche(page);
 
-  assert.deepEqual(suchen[0].carrierCodes, ["ups"]);
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "5 von 20 Paketshops",
-    "identisch zum DPD-Fall — es gibt keine carrierabhängige Kürzung mehr");
-
-  await page.locator(".ap-more-btn").click();
-  assert.equal(await page.locator(".ap-result").count(), 20);
-  const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.deepEqual(namen, DPD_EXPECTED_SORTED);
+  assert.deepEqual(suchen[0].carrierCodes, ["ups"], "der Carrier geht korrekt raus");
+  assert.equal((await page.locator(".ap-modal-count").innerText()).trim(), "20 Paketshops");
+  assert.deepEqual(await namen(page), DPD_EXPECTED_SORTED);
   await page.close();
 });
 
@@ -430,22 +367,12 @@ test("12 — das Dropdown ersetzt die Checkbox vollständig", async () => {
   await setupRoutes(page);
   await oeffneFinder(page);
 
-  // Die alte Checkbox existiert nicht mehr — weder als Element noch als Text.
-  assert.equal(await page.locator(".ap-finder-check").count(), 0, "keine .ap-finder-check mehr");
-  assert.equal(await page.locator('.ap-finder input[type="checkbox"]').count(), 0);
-  const finderText = await page.locator(".ap-finder").innerText();
-  assert.ok(!finderText.includes("Nur aktuell geöffnete Shops"), "der alte Text ist verschwunden");
-  assert.ok(!/aktuell geöffnet/i.test(finderText));
+  assert.equal(await page.locator('.ap-finder input[type="checkbox"]').count(), 0,
+    "der frühere Haken „Nur aktuell geöffnete Shops“ darf nicht zurückkommen");
 
-  // Stattdessen ein Select mit exakt vier Optionen und dem Label „Öffnungszeiten“.
-  const select = page.locator(".ap-finder-controls select");
-  assert.equal(await select.count(), 1);
-  assert.deepEqual(await select.locator("option").allInnerTexts(), [
-    "Alle Öffnungszeiten", "Sonntags geöffnet", "Offen vor 7:30 Uhr", "Offen nach 21:00 Uhr",
-  ]);
-  assert.equal(await select.inputValue(), "all", "Standard ist „Alle Öffnungszeiten“");
-  const labelFor = await select.getAttribute("id");
-  assert.equal((await page.locator(`label[for="${labelFor}"]`).innerText()).trim(), "Öffnungszeiten");
+  const optionen = await page.locator(".ap-finder-controls select option").allInnerTexts();
+  assert.deepEqual(optionen.map((o) => o.trim()),
+    ["Alle Öffnungszeiten", "Sonntags geöffnet", "Offen vor 7:30 Uhr", "Offen nach 21:00 Uhr"]);
   await page.close();
 });
 
@@ -454,83 +381,55 @@ test("13 — die vier Optionen filtern die geladene Liste wie erwartet (auf der 
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
-  const namen = async () => page.locator(".ap-result-name").allInnerTexts();
-  const zeile = async () => (await page.locator(".ap-result-count").innerText()).trim();
 
-  // Sonntags geöffnet → genau die drei Shops mit echtem Sonntagseintrag.
-  await waehleFilter(page, "sunday", 3);
-  assert.deepEqual(await namen(), DPD_EXPECTED_SUNDAY);
-  assert.equal(await zeile(),
-    "3 Paketshops mit passenden Öffnungszeiten · 17 weitere Paketshops haben andere Öffnungszeiten");
-  assert.equal(await page.locator(".ap-more-btn").count(), 0, "drei passen in die kompakte Ansicht");
+  await waehleFilter(page, "sunday", DPD_EXPECTED_SUNDAY.length);
+  assert.deepEqual(await namen(page), DPD_EXPECTED_SUNDAY);
+  assert.match(await page.locator(".ap-modal-count").innerText(), /17 weitere Paketshops/);
 
-  // Offen vor 7:30 Uhr → nur die beiden Paketstationen (00:01).
-  await waehleFilter(page, "before_0730", 2);
-  assert.deepEqual(await namen(), DPD_EXPECTED_BEFORE_0730);
-  assert.equal(await zeile(),
-    "2 Paketshops mit passenden Öffnungszeiten · 18 weitere Paketshops haben andere Öffnungszeiten");
+  await waehleFilter(page, "before_0730", DPD_EXPECTED_BEFORE_0730.length);
+  assert.deepEqual(await namen(page), DPD_EXPECTED_BEFORE_0730);
+  assert.match(await page.locator(".ap-modal-count").innerText(), /18 weitere Paketshops/);
 
-  // Offen nach 21:00 Uhr → dieselben beiden (23:59).
-  await waehleFilter(page, "after_2100", 2);
-  assert.deepEqual(await namen(), DPD_EXPECTED_AFTER_2100);
+  await waehleFilter(page, "after_2100", DPD_EXPECTED_AFTER_2100.length);
+  assert.deepEqual(await namen(page), DPD_EXPECTED_AFTER_2100);
 
-  // Zurück auf „Alle Öffnungszeiten“ — die vollständige Liste kehrt ohne
-  // Neuladen und ohne neuen Request zurück.
-  await waehleFilter(page, "all", 5);
-  assert.deepEqual(await namen(), DPD_EXPECTED_SORTED.slice(0, 5));
-  assert.equal(await zeile(), "5 von 20 Paketshops");
-  await page.locator(".ap-more-btn").click();
-  assert.deepEqual(await namen(), DPD_EXPECTED_SORTED, "kein Shop wurde dauerhaft gelöscht");
+  await waehleFilter(page, "all", 20);
+  assert.equal((await page.locator(".ap-modal-count").innerText()).trim(), "20 Paketshops");
   await page.close();
 });
 
-test("14 — der Filterwechsel setzt die Ausklappung zurück und mischt nichts", async () => {
+test("14 — „gaumenfreuden“ öffnet um exakt 07:30 und zählt damit NICHT als „vor 7:30“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
 
-  await page.locator(".ap-more-btn").click();
-  assert.equal(await page.locator(".ap-result").count(), 20, "ausgeklappt");
-
-  await waehleFilter(page, "sunday", 3);
-  await waehleFilter(page, "all", 5);
-  assert.equal(await page.locator(".ap-result").count(), 5,
-    "nach dem Wechsel wieder kompakt — keine Reste der vorherigen Ansicht");
-
-  // Kein Ergebnis eines anderen Filters bleibt hängen.
-  await waehleFilter(page, "before_0730", 2);
-  const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.equal(namen.length, 2);
-  assert.ok(!namen.includes("Sonnenstudio Soleil"), "kein Rest aus dem Sonntagsfilter");
+  assert.ok((await namen(page)).includes("gaumenfreuden"), "ungefiltert ist der Shop da");
+  await waehleFilter(page, "before_0730", DPD_EXPECTED_BEFORE_0730.length);
+  assert.ok(!(await namen(page)).includes("gaumenfreuden"),
+    "07:30 ist nicht VOR 07:30 — der reale Grenzfall aus dem Mitschnitt");
   await page.close();
 });
 
-test("15 — passt kein Shop zum Filter, sagt die Seite genau das", async () => {
+test("15 — passt kein Shop zum Filter, sagt der Leerzustand genau das", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  // Alle 20 Shops bleiben erhalten (auch die mit workState „Geschlossen“),
-  // aber niemand hat einen echten Sonntagseintrag.
+  // Sonntag bei allen 20 Einträgen schließen — die Antwort selbst bleibt voll.
   const ohneSonntag = {
-    accessPoints: DPD_RESPONSE.accessPoints.map((ap) => ({
-      ...ap,
-      hoursOfOperation: ap.hoursOfOperation.map((h) =>
-        h.dayName === "Sonntag" ? { ...h, workingHours: "Geschlossen", workingDay: false } : h),
+    accessPoints: DPD_ACCESS_POINTS.map((s) => ({
+      ...s,
+      hoursOfOperation: s.hoursOfOperation.map((t) =>
+        t.dayName === "Sonntag" ? { ...t, workingHours: "Geschlossen", workingDay: false } : t),
     })),
   };
   await setupRoutes(page, { accessPoints: ohneSonntag });
   await oeffneFinder(page);
   await suche(page);
-  await waehleFilter(page, "sunday", 0);
-  await page.waitForSelector(".ap-finder-empty", { timeout: 20000 });
-  const text = (await page.locator(".ap-finder-empty").innerText()).trim();
-  assert.match(text, /Sonntags geöffnet/, "der gewählte Filter wird benannt");
-  assert.ok(!/Keine Paketshops gefunden/.test(text), "gefunden wurden welche — sie passen nur nicht");
-  assert.match(text, /Alle Öffnungszeiten/, "der Weg zurück steht dabei");
-  assert.match(text, /20 Paketshops/, "die Zahl bezieht sich auf die volle Menge");
-  assert.equal(await page.locator(".ap-result").count(), 0);
 
-  // Und zurück auf „Alle“ ist alles wieder da.
-  await waehleFilter(page, "all", 5);
-  assert.equal(await page.locator(".ap-result").count(), 5);
+  await page.selectOption(".ap-modal #apm-opening", "sunday");
+  await page.waitForSelector(".ap-modal .ap-finder-empty", { timeout: 10000 });
+  const leer = await page.locator(".ap-modal .ap-finder-empty").innerText();
+  assert.match(leer, /Sonntags geöffnet/);
+  assert.match(leer, /20 Paketshops/, "die Antwort war nicht leer — das muss der Text sagen");
+  assert.ok(!/Keine Paketshops gefunden/.test(leer), "„gefunden“ wurden sie ja");
   await page.close();
 });

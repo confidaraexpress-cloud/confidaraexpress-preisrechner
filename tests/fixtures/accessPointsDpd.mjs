@@ -10,10 +10,14 @@
    5 × „schließt bald“. Jeder Eintrag führt alle sieben Wochentage.
 
    BEWUSST NICHT übernommen: die HAR-Datei selbst, Cookies, Session- und
-   Header-Werte, Tokens, JUMiNGO-Zugangsdaten, Koordinaten (latitude/longitude),
-   das Bundesland und die carrier-internen Access-Point-IDs. Nichts davon wird
-   für eine einzige Zusicherung gebraucht — und nichts davon gehört in ein
-   Repository.
+   Header-Werte, Tokens, JUMiNGO-Zugangsdaten, das Bundesland und die
+   carrier-internen Access-Point-IDs. Nichts davon wird für eine einzige
+   Zusicherung gebraucht — und nichts davon gehört in ein Repository.
+
+   latitude/longitude sind seit der Kartenansicht DOCH übernommen (siehe
+   KOORDINATEN unten): sie sind die Datengrundlage der Marker, ohne die sich
+   weder fitBounds noch die Synchronisierung Liste ↔ Karte prüfen ließen.
+   Es sind Standortdaten öffentlich auffindbarer Paketshops.
 
    Belegte Eigenschaften der Rohdaten, auf die sich Tests stützen:
      • distanceCode ist „KM“ (Großschreibung) — so kommt es wirklich an.
@@ -59,8 +63,42 @@ const shop = (name, street, postCode, city, distance, workState, stunden, pausen
   })),
 });
 
+/* Echte latitude/longitude derselben Antwort, in DERSELBEN Reihenfolge wie die
+   Shopliste darunter. Sie stehen bewusst getrennt, damit die Shopzeilen lesbar
+   bleiben; die Zuordnung ist rein positionell und wird unten mit einer harten
+   Längenprüfung abgesichert (eine verrutschte Zeile fällt sofort auf, statt
+   still falsche Marker zu setzen).
+
+   Warum sie jetzt hier stehen, obwohl der Kopfkommentar sie früher ausdrücklich
+   ausschloss: bis zur Kartenansicht brauchte sie keine einzige Zusicherung.
+   Mit der Karte sind sie die Datengrundlage der Marker. Es sind Standortdaten
+   öffentlich auffindbarer Paketshops — keine Zugangsdaten, keine IDs, keine
+   personenbezogenen Daten. */
+const KOORDINATEN = [
+  [48.710737,     9.41599],      // Kopier und Werbestudio
+  [48.7080891,    9.4332851],    // Intermarkt
+  [48.68964,      9.42069],      // DPD-Paketstation
+  [48.6888353978, 9.4204963019], // NKD Deutschland GmbH (2,66 km)
+  [48.7090731,    9.4630051],    // Änderungsschneiderei Sadra
+  [48.7082491,    9.4630131],    // AYDESIGNZ
+  [48.7237751,    9.3792791],    // K naro Supermarket
+  [48.7236292907, 9.3778584491], // Aral Tankstelle LD DPD-Paketstation
+  [48.7150928,    9.3685339],    // Sonnenstudio Soleil
+  [48.72584002,   9.36011002],   // ÄNDERUNGSSCHNEIDEREI AKARSU
+  [48.72212002,   9.35599002],   // Uwe Teuke Metallblasinstrumentenbau
+  [48.674293,     9.381716],     // NKD Deutschland GmbH (5,25 km)
+  [48.6744475,    9.3813727],    // EMLUCK SchreibArt
+  [48.6672661,    9.3925141],    // gaumenfreuden
+  [48.7590531,    9.3770191],    // Ben's Schreibwaren & mehr
+  [48.6740801,    9.3620151],    // AWG Travel-Shop
+  [48.7327741,    9.332348],     // Kahraman´s Feinkost
+  [48.6489421,    9.4463541],    // Media Markt im Nanz-Center
+  [48.662515,     9.35832],      // Sandhu Indian Store
+  [48.6488191,    9.4488231],    // Phone Touch
+];
+
 /** Alle 20 Access Points in der echten Antwortreihenfolge. */
-export const DPD_ACCESS_POINTS = [
+const SHOPS_OHNE_KOORDINATEN = [
   shop("Kopier und Werbestudio", "Marktstr. 4-6", "73207", "Plochingen",
     0.5790258585077593, "Geschlossen",
     ["10:00-17:00", "10:00-17:00", "10:00-17:00", "10:00-17:00", "10:00-17:00", "10:00-14:00", "Geschlossen"]),
@@ -128,6 +166,22 @@ export const DPD_ACCESS_POINTS = [
     7.3509583063762065, "Geöffnet",
     ["09:30-20:00", "09:30-20:00", "09:30-20:00", "09:30-20:00", "09:30-20:00", "09:30-20:00", "Geschlossen"]),
 ];
+
+// Positionelle Zuordnung Shop ↔ Koordinate. Die Längenprüfung ist Absicht:
+// verrutscht eine Zeile, bricht der Import sofort — statt still die Marker
+// einer Karte an die falschen Adressen zu setzen.
+if (SHOPS_OHNE_KOORDINATEN.length !== KOORDINATEN.length) {
+  throw new Error(
+    `Fixture inkonsistent: ${SHOPS_OHNE_KOORDINATEN.length} Shops, ${KOORDINATEN.length} Koordinaten`,
+  );
+}
+
+/** Alle 20 Access Points inklusive echter Koordinaten, echte Antwortreihenfolge. */
+export const DPD_ACCESS_POINTS = SHOPS_OHNE_KOORDINATEN.map((s, i) => ({
+  ...s,
+  latitude: KOORDINATEN[i][0],
+  longitude: KOORDINATEN[i][1],
+}));
 
 /** Die von JUMiNGO gelieferte Hülle — so kommt die Antwort an. */
 export const DPD_RESPONSE = { accessPoints: DPD_ACCESS_POINTS };

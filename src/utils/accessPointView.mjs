@@ -21,10 +21,12 @@
      • Entfernungen werden nie gerechnet. distance/distanceCode kommen von
        JUMiNGO und werden nur formatiert.
      • Normalisierung und Sortierung entfernen NIE einen Shop. Wer aus der
-       Auswahl fällt, fällt ausschließlich über die eigene, explizite
-       Eligibility-Stufe (Abschnitt 3) — und nur dort.
-     • Die Auswahl „nur geöffnete Shops“ trifft JUMiNGO über onlyOpen; ein
-       eigener Uhrzeitfilter existiert nicht.
+       Auswahl fällt, fällt über eine der beiden eigenen, expliziten Stufen —
+       Nutzbarkeit (1b) oder Öffnungszeitenmerkmal (2b) — und nur dort.
+     • Es gibt KEINEN eigenen Uhrzeitfilter. Das frühere „Nur aktuell geöffnete
+       Shops“ ist entfallen; JUMiNGO kennt es nicht. Die vier Merkmale in 2b
+       beschreiben eine Eigenschaft des Shops, nicht seinen Zustand gerade
+       jetzt, und onlyOpen geht unverändert als false an JUMiNGO.
      • Ein Objekt landet nie roh in der Oberfläche, ein unbekannter Rohwert
        ebenso wenig. */
 
@@ -397,6 +399,183 @@ export function todayOpeningHoursText(value, now = new Date()) {
   return text;
 }
 
+// ═══════════ 2b — ÖFFNUNGSZEITENFILTER (Nutzerauswahl) ═════════════════════
+//
+// JUMiNGOs Paketshopfinder bietet ein Dropdown mit genau vier Optionen:
+// „Alle Öffnungszeiten“, „Sonntags geöffnet“, „Offen vor 7:30 Uhr“ und
+// „Offen nach 21:00 Uhr“. ConfidaraExpress übernimmt genau diese vier.
+//
+// WARUM CLIENTSEITIG — belegt, nicht vermutet:
+//   • Der offizielle JUMiNGO-Vertrag für POST /v1/carrier/access-points-search
+//     (Swagger 1.0.4) kennt im Requestbody AUSSCHLIESSLICH: carrierCodes,
+//     countryCode, city, postCode, street, state, radius, onlyOpen. Es gibt
+//     dort KEINEN Parameter für Sonntag, für eine Uhrzeitgrenze oder für ein
+//     Öffnungszeitenmerkmal.
+//   • Der Mitschnitt von JUMiNGOs eigener Weboberfläche zeigt zusätzlich ein
+//     Feld `filters`, das in allen aufgezeichneten Anfragen `null` ist. Es
+//     gehört zum internen Web-Endpunkt (www.jumingo.com/app/…), nicht zum
+//     Partnervertrag, den ConfidaraExpress benutzt — und seine Belegung für
+//     die drei Sonderoptionen ist NICHT aufgezeichnet. Ein Feld zu erfinden,
+//     dessen Form niemand kennt, kommt nicht in Frage.
+//   • Die Antwort liefert alles Nötige bereits mit: hoursOfOperation führt für
+//     JEDEN der 20 Access Points alle sieben Wochentage.
+//
+// Deshalb: Request unverändert (onlyOpen bleibt false), Filterung rein lokal
+// über hoursOfOperation. Fällt später ein belegter Serverparameter an, ersetzt
+// er diese Stufe — bis dahin wird nichts geraten.
+//
+// KEINE UHRZEITLOGIK: Gefiltert wird nach einer EIGENSCHAFT des Shops („öffnet
+// irgendwann vor 7:30“), nicht nach dem aktuellen Zeitpunkt. Der heutige
+// Wochentag spielt hier keine Rolle, und workState wird nicht angefasst.
+
+export const OPENING_FILTER_ALL = "all";
+export const OPENING_FILTER_SUNDAY = "sunday";
+export const OPENING_FILTER_BEFORE_0730 = "before_0730";
+export const OPENING_FILTER_AFTER_2100 = "after_2100";
+
+/** Die vier Optionen des Dropdowns — Reihenfolge wie bei JUMiNGO. */
+export const OPENING_FILTER_OPTIONS = [
+  { value: OPENING_FILTER_ALL, label: "Alle Öffnungszeiten" },
+  { value: OPENING_FILTER_SUNDAY, label: "Sonntags geöffnet" },
+  { value: OPENING_FILTER_BEFORE_0730, label: "Offen vor 7:30 Uhr" },
+  { value: OPENING_FILTER_AFTER_2100, label: "Offen nach 21:00 Uhr" },
+];
+
+const OPENING_FILTER_VALUES = new Set(OPENING_FILTER_OPTIONS.map((o) => o.value));
+
+/** Ist der Wert eine der vier Optionen? Alles andere gilt als „Alle“. */
+export function isOpeningFilter(value) {
+  return OPENING_FILTER_VALUES.has(value);
+}
+
+const SUNDAY_INDEX = 0;
+const MIN_0730 = 7 * 60 + 30;
+const MIN_2100 = 21 * 60;
+
+// „HH:MM“ → Minuten seit Mitternacht, sonst null. Bewusst streng: nur echte
+// Uhrzeiten, keine Zahlenraterei.
+function timeToMinutes(text) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(text).trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 24 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/**
+ * Eine Öffnungszeit-Zeichenkette in Intervalle zerlegen.
+ *
+ * Real geliefert wird von JUMiNGO genau ein Bereich je Tag („09:00-18:00“) —
+ * mehrere Bereiche („09:00-12:00, 14:00-18:00“) werden trotzdem unterstützt,
+ * damit ein geteilter Öffnungstag nicht stillschweigend halb verloren geht.
+ * Der Trenner darf Komma, Semikolon, Schrägstrich oder „·“ sein; der
+ * Bindestrich zwischen zwei Zeiten auch ein Halbgeviertstrich.
+ *
+ * Rückgabe: [{ start, end, overnight }] in Minuten; unlesbares → [].
+ */
+export function parseWorkingHourRanges(value) {
+  if (typeof value !== "string") return [];
+  const text = value.trim();
+  if (!text || CLOSED_WORDS.test(text) || EMPTY_HOURS.test(text)) return [];
+  const ranges = [];
+  for (const part of text.split(/[,;/·]|\s+und\s+/i)) {
+    const m = /^\s*(\d{1,2}:\d{2})\s*[-–—]\s*(\d{1,2}:\d{2})\s*$/.exec(part);
+    if (!m) continue;
+    const start = timeToMinutes(m[1]);
+    const end = timeToMinutes(m[2]);
+    if (start == null || end == null) continue;
+    // Endzeit ≤ Startzeit heißt: der Bereich läuft über Mitternacht.
+    ranges.push({ start, end, overnight: end <= start });
+  }
+  return ranges;
+}
+
+// Alle auswertbaren Tageseinträge eines Access Points (offene Tage mit Zeiten).
+// lunchBreak wird bewusst NICHT betrachtet: eine Mittagspause verändert weder
+// den Öffnungsbeginn noch das Öffnungsende und darf die Eigenschaft eines
+// Shops nicht verfälschen.
+function openDayEntries(accessPoint) {
+  const value = accessPoint && typeof accessPoint === "object"
+    ? (accessPoint.hoursOfOperation ?? accessPoint.openingHours ?? accessPoint.hours ?? null)
+    : null;
+  const { entries } = normalizeOpeningHours(value);
+  return entries.filter((e) => !e.closed && e.hours);
+}
+
+/** Öffnet der Shop an mindestens einem Tag zu einer Zeit VOR `grenze`? */
+function opensBefore(accessPoint, grenze) {
+  for (const entry of openDayEntries(accessPoint)) {
+    for (const r of parseWorkingHourRanges(entry.hours)) {
+      // Über Mitternacht laufende Bereiche decken den frühen Morgen ab und
+      // liegen damit immer vor einer Vormittagsgrenze.
+      if (r.overnight || r.start < grenze) return true;
+    }
+  }
+  return false;
+}
+
+/** Hat der Shop an mindestens einem Tag noch NACH `grenze` geöffnet? */
+function openAfter(accessPoint, grenze) {
+  for (const entry of openDayEntries(accessPoint)) {
+    for (const r of parseWorkingHourRanges(entry.hours)) {
+      // Ein Bereich über Mitternacht reicht immer bis Mitternacht und damit
+      // über jede Abendgrenze hinaus.
+      if (r.overnight || r.end > grenze) return true;
+    }
+  }
+  return false;
+}
+
+/** Ist für Sonntag ein echter Öffnungstag hinterlegt? */
+export function accessPointOpensOnSunday(accessPoint) {
+  return openDayEntries(accessPoint).some((e) => e.dayIndex === SUNDAY_INDEX);
+}
+
+/** Öffnet der Shop irgendwann vor 7:30 Uhr? (7:30 selbst zählt nicht.) */
+export function accessPointOpensBefore0730(accessPoint) {
+  return opensBefore(accessPoint, MIN_0730);
+}
+
+/** Hat der Shop irgendwann nach 21:00 Uhr offen? (21:00 selbst zählt nicht.) */
+export function accessPointOpensAfter2100(accessPoint) {
+  return openAfter(accessPoint, MIN_2100);
+}
+
+/**
+ * Entspricht ein Access Point dem gewählten Öffnungszeitenmerkmal?
+ * Unbekannte Filterwerte verhalten sich wie „Alle Öffnungszeiten“ — ein
+ * kaputter Zustand darf keine Shops verschlucken.
+ */
+export function matchesOpeningFilter(accessPoint, filter) {
+  switch (filter) {
+    case OPENING_FILTER_SUNDAY:      return accessPointOpensOnSunday(accessPoint);
+    case OPENING_FILTER_BEFORE_0730: return accessPointOpensBefore0730(accessPoint);
+    case OPENING_FILTER_AFTER_2100:  return accessPointOpensAfter2100(accessPoint);
+    default:                         return true;
+  }
+}
+
+/**
+ * Die Filterstufe: teilt eine bereits normalisierte, sortierte und auf
+ * Nutzbarkeit geprüfte Liste in passende und nicht passende Access Points.
+ *
+ * Bei „Alle Öffnungszeiten“ passiert nachweislich nichts (`filtered: false`) —
+ * die Liste ist dann Zeichen für Zeichen dieselbe wie vorher.
+ * Reihenfolge bleibt erhalten, nichts geht verloren:
+ * `matching.length + excluded.length === total`.
+ */
+export function filterAccessPointsByOpening(items, filter) {
+  if (!Array.isArray(items)) return { matching: [], excluded: [], total: 0, filtered: false };
+  if (!isOpeningFilter(filter) || filter === OPENING_FILTER_ALL) {
+    return { matching: items, excluded: [], total: items.length, filtered: false };
+  }
+  const matching = [];
+  const excluded = [];
+  for (const item of items) (matchesOpeningFilter(item, filter) ? matching : excluded).push(item);
+  return { matching, excluded, total: items.length, filtered: true };
+}
+
 // ═══════════ 3 — ENTFERNUNG ═════════════════════════════════════════════════
 
 /**
@@ -461,6 +640,40 @@ export function accessPointCountLabel(shown, total) {
   if (g === 0) return "Keine verfügbaren Paketshops";
   if (z < g) return `${z} von ${g} verfügbaren Paketshops`;
   return g === 1 ? "1 verfügbarer Paketshop" : `${g} verfügbare Paketshops`;
+}
+
+/**
+ * „3 von 7 Paketshops mit passenden Öffnungszeiten“ — der Zähler bei aktivem
+ * Öffnungszeitenfilter. Bewusst ein anderer Satz als der ungefilterte: dort
+ * heißt die Zahl „verfügbar“ (Nutzbarkeit), hier „passend“ (Öffnungszeiten).
+ * Beides zu vermischen wäre falsch, denn es sind zwei verschiedene Ursachen.
+ */
+export function openingFilterCountLabel(shown, total) {
+  const g = Number.isFinite(total) ? total : 0;
+  const z = Number.isFinite(shown) ? Math.min(shown, g) : 0;
+  if (g === 0) return "Keine Paketshops mit passenden Öffnungszeiten";
+  const rumpf = g === 1 ? "Paketshop mit passenden Öffnungszeiten" : "Paketshops mit passenden Öffnungszeiten";
+  return z < g ? `${z} von ${g} ${rumpf}` : `${g} ${rumpf}`;
+}
+
+/**
+ * „7 weitere Paketshops haben andere Öffnungszeiten“ — die Randnotiz zum
+ * Öffnungszeitenfilter. Getrennt von der Nutzbarkeitsnotiz gehalten, damit die
+ * beiden Ursachen nicht in einem Satz verschwimmen.
+ */
+export function openingFilterExcludedLabel(count) {
+  const n = Number.isFinite(count) && count > 0 ? count : 0;
+  if (n === 0) return null;
+  return n === 1
+    ? "1 weiterer Paketshop hat andere Öffnungszeiten"
+    : `${n} weitere Paketshops haben andere Öffnungszeiten`;
+}
+
+/** Leerzustand, wenn nutzbare Shops da sind, aber keiner zum Filter passt. */
+export function openingFilterEmptyText(filter) {
+  const option = OPENING_FILTER_OPTIONS.find((o) => o.value === filter);
+  const name = option && option.value !== OPENING_FILTER_ALL ? `„${option.label}“` : "diesem Öffnungszeitenfilter";
+  return `Im gewählten Umkreis entspricht kein Paketshop dem Öffnungszeitenfilter ${name}.`;
 }
 
 /**

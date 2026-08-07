@@ -7,11 +7,17 @@ import {
   todayOpeningHoursText,
   sortAccessPointsByDistance,
   splitAccessPointsByEligibility,
+  filterAccessPointsByOpening,
+  OPENING_FILTER_ALL,
+  OPENING_FILTER_OPTIONS,
   toDistanceNumber,
   formatDistance,
   accessPointCountLabel,
   moreAccessPointsLabel,
   unavailableAccessPointsLabel,
+  openingFilterCountLabel,
+  openingFilterExcludedLabel,
+  openingFilterEmptyText,
 } from "../../utils/accessPointView";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
@@ -91,9 +97,8 @@ function normalizeItem(raw) {
   // ({ dayName, workingHours, lunchBreak, workingDay }). Die Normalisierung
   // liegt in accessPointView.mjs und liefert genau eine Zeile für HEUTE —
   // Alt-Formate (String / String-Array) bleiben unverändert lesbar.
-  const hours = todayOpeningHoursText(
-    pick(raw, ["hoursOfOperation", "openingHours", "hours", "openingTimes"]),
-  );
+  const hoursOfOperation = pick(raw, ["hoursOfOperation", "openingHours", "hours", "openingTimes"]);
+  const hours = todayOpeningHoursText(hoursOfOperation);
 
   // Öffnungsstatus: allein aus workState. JUMiNGO bestimmt ihn selbst — hier
   // wird er nur in einen deutschen Text und eine Statusfarbe übersetzt. Kein
@@ -106,11 +111,17 @@ function normalizeItem(raw) {
   const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  // `workState` wandert als Rohwert mit: die spätere Eligibility-Stufe liest
-  // GENAU dieses Feld und ist damit unabhängig von `status` (der reinen
-  // Anzeigeform). Ohne diese Zeile fiele jede Auswahl still ins Fail-open —
-  // die Liste sähe richtig aus und wäre es nicht.
-  return { name, address, distance, distanceCode, hours, status, workState: status.raw, countryCode };
+  // Zwei Rohwerte wandern bewusst mit, weil die nachgelagerten Stufen GENAU
+  // sie lesen und nicht die Anzeigeform daneben:
+  //   workState        → Eligibility (nutzbar ja/nein)
+  //   hoursOfOperation → Öffnungszeitenfilter (Sonntag / vor 7:30 / nach 21:00)
+  // Fehlt einer davon, fällt die betreffende Stufe still ins Leere: die Liste
+  // sähe richtig aus und wäre es nicht. Genau das ist hier schon zweimal
+  // passiert — beide Male hat erst der E2E-Test es aufgedeckt.
+  return {
+    name, address, distance, distanceCode, hours, status,
+    workState: status.raw, hoursOfOperation, countryCode,
+  };
 }
 
 // Normalisieren und Sortieren entfernen NICHTS: die vollständige Liste bleibt
@@ -148,7 +159,10 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const [city, setCity]         = useState(senderPrefill?.city || "");
   const [street, setStreet]     = useState(senderPrefill?.street || "");
   const [radius, setRadius]     = useState(10);
-  const [onlyOpen, setOnlyOpen] = useState(false);
+  // Öffnungszeitenmerkmal wie in JUMiNGOs Finder. Reiner Anzeigefilter über
+  // die bereits geladenen Ergebnisse — er löst KEINE neue Suche aus (der
+  // Requestvertrag kennt dafür keinen Parameter, siehe accessPointView.mjs).
+  const [openingFilter, setOpeningFilter] = useState(OPENING_FILTER_ALL);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [results, setResults]   = useState(null); // null = noch nicht gesucht
@@ -224,7 +238,11 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         city: city.trim(),
         street: street.trim(),
         radius,
-        onlyOpen,
+        // Bewusst fest `false`: JUMiNGOs eigene Oberfläche sendet in JEDER
+        // aufgezeichneten Anfrage onlyOpen: false und filtert Öffnungszeiten
+        // rein clientseitig. Der frühere CE-Haken „Nur aktuell geöffnete Shops“
+        // ist entfallen — sein `true` wird deshalb NICHT weitergeschleppt.
+        onlyOpen: false,
       });
       // 401/403 hat der zentrale Auth-Handler (apiFetch) bereits übernommen.
       if (r.status === 401 || r.status === 403) { setLoading(false); return; }
@@ -280,19 +298,37 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const { usable: usableResults, unavailable: unavailableResults } =
     splitAccessPointsByEligibility(results || [], carrierCode);
 
-  // Kompakte Ergebnisanzeige: zunächst höchstens 5 nutzbare Treffer, der Rest
-  // auf Wunsch per Button. Reiner Anzeigezustand (expanded), nicht persistiert.
-  // Alle Zahlen beziehen sich auf die NUTZBARE Menge — „5 von 20“ hätte eine
-  // Auswahl versprochen, die es gar nicht gibt.
+  // ── Öffnungszeitenfilter (dritte, wieder eigene Stufe) ─────────────────────
+  // Zwei getrennte Fragen, bewusst nacheinander und nicht vermischt:
+  //   Eligibility  → „Ist dieser Access Point laut JUMiNGO überhaupt nutzbar?“
+  //   Öffnungszeit → „Passt er zu dem, was der Kunde ausgewählt hat?“
+  // Gefiltert wird über die bereits geladene Antwort; `results` und
+  // `usableResults` bleiben vollständig erhalten, damit „Alle Öffnungszeiten“
+  // die volle Liste ohne neue Suche zurückbringt.
+  const { matching: visibleResults, excluded: filteredOutResults, filtered: openingFilterActive } =
+    filterAccessPointsByOpening(usableResults, openingFilter);
+
+  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer, der Rest auf Wunsch
+  // per Button. Reiner Anzeigezustand (expanded), nicht persistiert. Alle
+  // Zahlen beziehen sich auf die tatsächlich angebotene Menge — „5 von 20“
+  // hätte eine Auswahl versprochen, die es gar nicht gibt.
   const MAX_COMPACT = 5;
-  const hasResults  = !loading && !error && results !== null && usableResults.length > 0;
-  const shownResults = hasResults ? (expanded ? usableResults : usableResults.slice(0, MAX_COMPACT)) : [];
-  const extraResults = hasResults ? usableResults.length - MAX_COMPACT : 0;
+  const hasResults  = !loading && !error && results !== null && visibleResults.length > 0;
+  const shownResults = hasResults ? (expanded ? visibleResults : visibleResults.slice(0, MAX_COMPACT)) : [];
+  const extraResults = hasResults ? visibleResults.length - MAX_COMPACT : 0;
   // Ruhige Randnotiz, kein Fehler: ein nicht nutzbarer Paketshop ist ein
   // Betriebszustand. Nur sichtbar, wenn es tatsächlich welche gibt.
-  const unavailableNote = !loading && !error && results !== null
-    ? unavailableAccessPointsLabel(unavailableResults.length)
-    : null;
+  //
+  // Es steht immer HÖCHSTENS EINE Randnotiz da, und sie benennt genau eine
+  // Ursache — bei aktivem Filter die Öffnungszeiten, sonst die Nutzbarkeit.
+  // Beides gleichzeitig wäre auf schmalen Geräten eine dreiteilige Zeile und
+  // würde die zwei Ursachen optisch doch wieder vermengen. Die Nutzbarkeits-
+  // zahl bleibt über „Alle Öffnungszeiten“ jederzeit erreichbar.
+  const hatAntwort = !loading && !error && results !== null;
+  const resultNote = !hatAntwort ? null
+    : openingFilterActive
+      ? openingFilterExcludedLabel(filteredOutResults.length)
+      : unavailableAccessPointsLabel(unavailableResults.length);
 
   return (
     <div className="ap-finder" onClick={stop} aria-busy={loading}>
@@ -358,14 +394,23 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         </div>
 
         <div className="ap-finder-controls">
-          <label className="ap-finder-check">
-            <input
-              type="checkbox"
-              checked={onlyOpen}
-              onChange={(e) => setOnlyOpen(e.target.checked)}
-            />
-            Nur aktuell geöffnete Shops
-          </label>
+          {/* Öffnungszeitenmerkmal — dieselben vier Optionen wie bei JUMiNGO.
+              Steht bewusst NICHT im Feldraster oben: es ist kein Suchparameter,
+              sondern wirkt sofort auf die bereits geladene Liste. Deshalb auch
+              kein erneuter Request und kein Klick auf „Paketshops suchen“. */}
+          <div className="ap-finder-field ap-finder-field--opening">
+            <label className="ap-finder-label" htmlFor={`ap-opening-${tariff?.id}`}>Öffnungszeiten</label>
+            <select
+              id={`ap-opening-${tariff?.id}`}
+              className="ap-finder-select"
+              value={openingFilter}
+              onChange={(e) => { setOpeningFilter(e.target.value); setExpanded(false); }}
+            >
+              {OPENING_FILTER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
           <button
             type="submit"
             className="ap-finder-search-btn"
@@ -395,18 +440,23 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
           ? "Paketshops werden gesucht …"
           : results !== null
             ? [
-                usableResults.length === 0
-                  ? "Keine verfügbaren Paketshops gefunden."
-                  : `${usableResults.length} verfügbare${usableResults.length === 1 ? "r" : ""} Paketshop${usableResults.length === 1 ? "" : "s"} gefunden.`,
-                unavailableNote,
-              ].filter(Boolean).join(" ")
+                visibleResults.length === 0
+                  ? (openingFilterActive
+                      ? "Kein Paketshop entspricht dem gewählten Öffnungszeitenfilter."
+                      : "Keine verfügbaren Paketshops gefunden.")
+                  : (openingFilterActive
+                      ? openingFilterCountLabel(visibleResults.length, visibleResults.length)
+                      : accessPointCountLabel(visibleResults.length, visibleResults.length)),
+                resultNote,
+              ].filter(Boolean).join(" · ")
             : ""}
       </p>
 
-      {/* Zwei verschiedene Leerzustände, weil sie zwei verschiedene Dinge
-          bedeuten: gar kein Treffer im Umkreis — oder Treffer, die JUMiNGO
-          derzeit nicht als nutzbar führt. „Keine Paketshops gefunden“ wäre im
-          zweiten Fall schlicht falsch. */}
+      {/* Drei verschiedene Leerzustände, weil sie drei verschiedene Dinge
+          bedeuten: gar kein Treffer im Umkreis — Treffer, die JUMiNGO derzeit
+          nicht als nutzbar führt — oder nutzbare Treffer, von denen keiner zum
+          gewählten Öffnungszeitenmerkmal passt. „Keine Paketshops gefunden“
+          wäre in den letzten beiden Fällen schlicht falsch. */}
       {!loading && !error && results !== null && results.length === 0 && (
         <div className="ap-finder-empty">
           Keine Paketshops gefunden. Passen Sie PLZ oder Umkreis an.
@@ -415,15 +465,24 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       {!loading && !error && results !== null && results.length > 0 && usableResults.length === 0 && (
         <div className="ap-finder-empty">
           Im gewählten Umkreis ist derzeit kein Paketshop verfügbar.
-          {unavailableNote ? ` ${unavailableNote}.` : ""} Versuchen Sie es später
-          erneut oder vergrößern Sie den Umkreis.
+          {unavailableAccessPointsLabel(unavailableResults.length)
+            ? ` ${unavailableAccessPointsLabel(unavailableResults.length)}.` : ""} Versuchen Sie es
+          später erneut oder vergrößern Sie den Umkreis.
+        </div>
+      )}
+      {!loading && !error && results !== null && usableResults.length > 0 && visibleResults.length === 0 && (
+        <div className="ap-finder-empty">
+          {openingFilterEmptyText(openingFilter)} Wählen Sie „Alle Öffnungszeiten“,
+          um wieder alle {usableResults.length} verfügbaren Paketshops zu sehen.
         </div>
       )}
 
       {hasResults && (
         <p className="ap-result-count">
-          {accessPointCountLabel(shownResults.length, usableResults.length)}
-          {unavailableNote && <span className="ap-result-unavailable"> · {unavailableNote}</span>}
+          {openingFilterActive
+            ? openingFilterCountLabel(shownResults.length, visibleResults.length)
+            : accessPointCountLabel(shownResults.length, visibleResults.length)}
+          {resultNote && <span className="ap-result-unavailable"> · {resultNote}</span>}
         </p>
       )}
 

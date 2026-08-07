@@ -1077,3 +1077,49 @@ test("33 — ein Speicherfehler auf der Buchungsseite lässt den Vorgang unanget
   assert.equal(z.keinAngebot, false, "die Buchungsseite verlor ihre Daten trotz Speicherfehler");
   await ctx.close();
 });
+
+/* ══════════ 12 — „Speichern und verlassen" aus dem Verlassen-Dialog ═══════
+   Ein dritter Aufrufer teilt sich denselben Erfolgspfad: der Verlassen-Dialog
+   (ShipmentDraftLeaveDialog), der erscheint, wenn eine interne Navigation bei
+   ungespeicherten Angaben pausiert wird. Sein Primärbutton „Als Entwurf
+   speichern" ruft saveDraftAndLeave → saveCurrentFormDraft → bei Erfolg
+   resetToFreshShipment() UND die pausierte Navigation. Anders als der
+   sichtbare dft-savedraft-cta-Button (Tests 25–29) verlässt dieser Pfad die
+   Seite sofort im Erfolgsfall — zu prüfen: die Navigation kommt an UND der
+   Vorgang ist beendet, nicht nur eines von beidem. */
+
+test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den Vorgang und navigiert ans Ziel", async () => {
+  const { ctx, page } = await neueSeite();
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  await formularFuellen(page);
+  await page.waitForTimeout(500);
+  assert.equal((await zustand(page)).speicher, true, "der Vorgang wurde vor dem Verlassen nicht gespiegelt");
+
+  // Interne Navigation bei ungespeicherten Angaben → der Verlassen-Dialog
+  // pausiert sie und bietet „Als Entwurf speichern" als Primäraktion an.
+  await page.locator(".nitem", { hasText: "Übersicht" }).first().click();
+  await page.waitForTimeout(500);
+  const dialog = page.locator("[role=dialog]");
+  assert.ok(await dialog.count() > 0, "der Verlassen-Dialog erscheint nicht bei ungespeicherten Angaben");
+  await dialog.locator("button.btn-primary").filter({ hasText: "Als Entwurf speichern" }).first().click();
+  await page.waitForTimeout(1200);
+
+  // Die pausierte Navigation muss ankommen — nicht nur der Reset. Die
+  // Übersicht trägt keinen Titel „Übersicht", sondern die personalisierte
+  // Begrüßung (Paket D) — deshalb über das Muster prüfen, nicht den Text.
+  const z1 = await zustand(page);
+  assert.ok(/^Guten (Morgen|Tag|Abend)/.test(z1.titel || ""),
+    `die pausierte Navigation kam nicht auf der Übersicht an (Titel: „${z1.titel}")`);
+
+  // Und der Vorgang muss beendet sein — nicht nur die Navigation.
+  const speicherRoh = await page.evaluate((k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, SPEICHER);
+  assert.equal(speicherRoh, null, "der Vorgang liegt nach „Speichern und verlassen\" noch im sessionStorage");
+
+  await page.locator(".nitem", { hasText: "Neue Sendung" }).first().click();
+  await page.waitForTimeout(900);
+  const z2 = await zustand(page);
+  assert.equal(z2.empfaenger, null, "„Neue Sendung\" zeigt nach „Speichern und verlassen\" noch die alte Sendung");
+  assert.equal(z2.pakete, "1");
+  await ctx.close();
+});

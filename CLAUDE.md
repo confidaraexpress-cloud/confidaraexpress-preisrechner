@@ -349,11 +349,13 @@ Dieselbe Funktion trägt auch den bewussten „Eingaben zurücksetzen"-Button
 (`applyReset`); nur der zusätzliche `saveStatus` unterscheidet beide Aufrufer.
 
 Governance: `utils/shippingFlowState.test.mjs` (38 Tests) und
-`tests/e2e/shippingFlowRestore.test.mjs` (36 Tests, echter Dev-Server) —
+`tests/e2e/shippingFlowRestore.test.mjs` (37 Tests, echter Dev-Server) —
 darunter vier Läufe, die den Zurück-Button über je einen anderen Startreiter
-der Sidebar prüfen, sowie neun Läufe, die beide Entwurfspfade (Erfolg, Fehler,
-Persistenz-Falle, Entwurfsliste, Fortsetzen ohne Vermischung) end-to-end
-gegen einen echten Dev-Server absichern.
+der Sidebar prüfen, sowie zehn Läufe, die alle drei Auslöser des Erfolgspfads
+(sichtbarer Button, Buchungsseite, „Speichern und verlassen" aus dem
+Verlassen-Dialog) sowie Fehlerfall, Persistenz-Falle, Entwurfsliste und
+Fortsetzen ohne Vermischung end-to-end gegen einen echten Dev-Server
+absichern.
 
 ## Dashboard-Navigationsmodell
 

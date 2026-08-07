@@ -271,8 +271,14 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   // `results` bleibt unangetastet die vollständige Antwort. Angeboten wird
   // daraus nur, was JUMiNGO als nutzbar führt; der Rest wird gezählt und
   // benannt, aber nicht zur Auswahl gestellt.
+  //
+  // `carrierCode` ist DERSELBE Wert, der bereits oben den JUMiNGO-Request
+  // bestimmt (`carrierCodes: [carrierCode]`) — keine zweite Carrier-Ermittlung.
+  // Die Regel ist bisher nur für DPD durch einen echten Mitschnitt belegt;
+  // für jeden anderen Carrier bleibt splitAccessPointsByEligibility fail-open
+  // (siehe accessPointView.mjs).
   const { usable: usableResults, unavailable: unavailableResults } =
-    splitAccessPointsByEligibility(results || []);
+    splitAccessPointsByEligibility(results || [], carrierCode);
 
   // Kompakte Ergebnisanzeige: zunächst höchstens 5 nutzbare Treffer, der Rest
   // auf Wunsch per Button. Reiner Anzeigezustand (expanded), nicht persistiert.

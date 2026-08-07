@@ -13,6 +13,9 @@
 //     zwei davon die NÄCHSTEN Treffer sind (0,579 km und 0,893 km).
 //   • Dass ein unbekannter Statuswert NICHT ausblendet (fail-open) und kein
 //     Rohwert sichtbar wird.
+//   • Dass die Filterung NUR für den durch Messung verifizierten Carrier
+//     (DPD) greift — bei jedem anderen Carrier (Test 11: UPS) bleibt dieselbe
+//     Antwort vollständig sichtbar, weil dafür kein eigener Mitschnitt vorliegt.
 //   • Dass die Zähler die verfügbare Menge meinen, nicht die Rohantwort.
 //   • Dass „Schließt bald“ auch auf 360 px vollständig lesbar bleibt.
 //
@@ -25,7 +28,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import {
-  DPD_RESPONSE, DPD_EXPECTED_USABLE, DPD_EXPECTED_UNAVAILABLE, FREITAG,
+  DPD_RESPONSE, DPD_ACCESS_POINTS, DPD_EXPECTED_USABLE, DPD_EXPECTED_UNAVAILABLE, FREITAG,
 } from "../fixtures/accessPointsDpd.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
@@ -56,7 +59,10 @@ const ABSENDER = { zip: "73207", city: "Plochingen", street: "Weiherstraße 25" 
 let server, browser;
 
 // Sammelt die Bodies aller Suchaufrufe, damit Tests sie prüfen können.
-async function setupRoutes(page, { accessPoints = DPD_RESPONSE } = {}) {
+// `tariff` ist standardmäßig der DPD-Dropoff-Tarif; Test 11 (UPS) überschreibt
+// ihn, um zu zeigen, dass die Carrier-Beschränkung tatsächlich am ausgelösten
+// carrierCode hängt und nicht am Test-Setup.
+async function setupRoutes(page, { accessPoints = DPD_RESPONSE, tariff = DROPOFF_TARIFF } = {}) {
   const suchen = [];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
@@ -74,8 +80,8 @@ async function setupRoutes(page, { accessPoints = DPD_RESPONSE } = {}) {
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [DROPOFF_TARIFF], availableShippingModes: ["standard"],
-      publicCarriers: [{ id: "dpd", name: "DPD" }],
+      shipmentId: "s1", tariffs: [tariff], availableShippingModes: ["standard"],
+      publicCarriers: [{ id: tariff.publicCarrierId, name: tariff.publicCarrierName }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
     return json({});
@@ -374,4 +380,40 @@ test("10 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreite
     assert.match(zeile.text, /verfügbare/, `Ergebniszeile bei ${breite}px`);
     await page.close();
   }
+});
+
+test("11 — UPS: „Geschlossen“ ist nicht verifiziert und bleibt sichtbar (Carrier-Scope)", async () => {
+  // Dieselben neun Access Points wie im DPD-Referenzfall, aber die Suche läuft
+  // über einen UPS-Tarif — der carrierCode, den AccessPointFinder selbst aus
+  // publicCarrierId ableitet, ist damit "ups", nicht "dpd". Für UPS liegt kein
+  // eigener Mitschnitt vor: die Eligibility-Stufe darf hier NICHTS entfernen,
+  // die vier „Geschlossen“-Shops müssen alle da sein.
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const upsTarif = {
+    ...DROPOFF_TARIFF, publicCarrierId: "ups", publicCarrierName: "UPS Access Point",
+  };
+  const suchen = await setupRoutes(page, { tariff: upsTarif });
+  await oeffneFinder(page);
+  await suche(page);
+
+  assert.deepEqual(suchen[0].carrierCodes, ["ups"],
+    "die Eligibility muss denselben carrierCode sehen wie der tatsächliche Request");
+
+  // Kompakt zunächst 5 von 9 — „von 9“, nicht „von 5“: bei UPS ist niemand
+  // als nicht verfügbar aussortiert, die volle Menge ist die Auswahlmenge.
+  assert.equal((await page.locator(".ap-result-count").innerText()).trim(),
+    `5 von ${DPD_ACCESS_POINTS.length} verfügbaren Paketshops`);
+  await page.locator(".ap-more-btn").click();
+  assert.equal(await page.locator(".ap-result").count(), DPD_ACCESS_POINTS.length,
+    "bei UPS bleibt die volle Menge sichtbar — keine lokale workState-Filterung");
+
+  const namen = await page.locator(".ap-result-name").allInnerTexts();
+  for (const n of DPD_EXPECTED_UNAVAILABLE) {
+    assert.ok(namen.includes(n), `${n} muss bei UPS sichtbar bleiben (bei DPD wäre er es nicht)`);
+  }
+
+  // Auch die Ergebniszeile behauptet dann korrekt keine Einschränkung.
+  const zeile = (await page.locator(".ap-result-count").innerText()).trim();
+  assert.ok(!zeile.includes("nicht verfügbar"), "bei UPS gibt es keine als nicht verfügbar markierte Restmenge");
+  await page.close();
 });

@@ -125,34 +125,67 @@ export function normalizeAccessPointWorkState(value) {
 // Diese Stufe führt bewusst eine EIGENE, abgeschlossene Werteliste und ruft
 // normalizeAccessPointWorkState() NICHT auf: Ein neuer Anzeige-Alias soll
 // niemals als Nebenwirkung Paketshops verstecken können.
+//
+// CARRIER-SCOPE (bewusste, vorläufige Einschränkung): Der Mitschnitt belegt
+// diese Regel ausschließlich für DPD. Für UPS, GLS und DHL Express liegt
+// KEIN eigener Nachweis vor, dass „Geschlossen“/„closed“ dort dasselbe
+// bedeutet — ein Access Point könnte dort echte Ladenöffnungszeiten führen,
+// bei denen „Geschlossen“ zu bestimmten Tageszeiten normal und erwartbar
+// ist. Die Filterung greift deshalb NUR für carrierCode === "dpd"; jeder
+// andere (auch ein unbekannter) Carrier bleibt vollständig fail-open. Diese
+// Grenze fällt, sobald ein eigener Mitschnitt für den jeweiligen Carrier
+// vorliegt — nicht vorher.
 
 /** Genau die belegten Werte, die einen Access Point aus der Auswahl nehmen. */
 const NOT_USABLE_WORK_STATES = new Set(["geschlossen", "closed"]);
 
+/** Carrier, für die die Regel durch einen echten Mitschnitt belegt ist. */
+const ELIGIBILITY_VERIFIED_CARRIERS = new Set(["dpd"]);
+
 export const ELIGIBILITY_USABLE = "usable";
 export const ELIGIBILITY_UNKNOWN_STATE = "unknown_state";
 export const ELIGIBILITY_WORK_STATE_CLOSED = "work_state_closed";
+export const ELIGIBILITY_CARRIER_UNVERIFIED = "carrier_unverified";
 
 /**
  * Ist dieser Access Point fachlich nutzbar — also überhaupt anzubieten?
  *
+ * `carrierCode` MUSS derselbe Wert sein, der bereits den JUMiNGO-Request
+ * bestimmt (`carrierCodes: [carrierCode]` in AccessPointFinder.jsx) — keine
+ * zweite Carrier-Ermittlung, keine Namensheuristik.
+ *
  * Rückgabe: { usable, reason, raw }
- *   usable — false NUR bei einem belegten „nicht nutzbar“-Wert
+ *   usable — false NUR bei einem belegten „nicht nutzbar“-Wert UND einem
+ *            durch Messung verifizierten Carrier (aktuell: nur DPD)
  *   reason — "usable" | "unknown_state" | "work_state_closed"
+ *            | "carrier_unverified"
  *   raw    — der getrimmte Serverwert (für title/Diagnose), "" wenn keiner kam
  *
  * FAIL-OPEN ist Absicht: unbekannt, fehlend, leer oder kein String → nutzbar.
  * Ein neuer JUMiNGO-workState darf nicht dazu führen, dass ConfidaraExpress
- * still Paketshops verschwinden lässt. Verborgen wird nur, was nachweislich
- * verborgen gehört.
+ * still Paketshops verschwinden lässt. Dasselbe gilt jetzt für den Carrier:
+ * ein noch nicht durch Daten verifizierter Carrier verliert NIE einen Shop
+ * über diese Regel — „carrier_unverified“ ist ebenso ein Fail-open-Grund wie
+ * „unknown_state“, nur mit anderer Ursache.
  *
  * Hier wird NICHT gelesen: hoursOfOperation, die aktuelle Uhrzeit, onlyOpen,
- * der Shopname, der Carrier oder die Entfernung.
+ * der Shopname oder die Entfernung.
+ *
+ * `carrierCode` wird STRIKT verglichen (exakte Zeichenkette, kein Trim, kein
+ * Fallcasing): die einzige Quelle dieses Werts ist ein festverdrahtetes
+ * switch/case in carrierMap.js, das ausschließlich die Literale "ups"/"dpd"/
+ * "dhlexpress"/"gls" oder null liefert — nie mit abweichender Schreibweise.
+ * Eine Normalisierung hier würde eine Toleranz vortäuschen, die die Quelle gar
+ * nicht kennt, und liefe der Absicht zuwider, den Carrier nicht eigenständig
+ * (also laxer als der Request selbst) zu interpretieren.
  */
-export function accessPointEligibility(accessPoint) {
+export function accessPointEligibility(accessPoint, carrierCode) {
   const value = accessPoint && typeof accessPoint === "object" ? accessPoint.workState : accessPoint;
   const raw = typeof value === "string" ? value.trim() : "";
   if (!raw) return { usable: true, reason: ELIGIBILITY_UNKNOWN_STATE, raw: "" };
+  if (!ELIGIBILITY_VERIFIED_CARRIERS.has(carrierCode)) {
+    return { usable: true, reason: ELIGIBILITY_CARRIER_UNVERIFIED, raw };
+  }
   const key = raw.toLowerCase().replace(/\s+/g, " ");
   if (NOT_USABLE_WORK_STATES.has(key)) {
     return { usable: false, reason: ELIGIBILITY_WORK_STATE_CLOSED, raw };
@@ -161,23 +194,25 @@ export function accessPointEligibility(accessPoint) {
 }
 
 /** Kurzform für Stellen, die nur das Ja/Nein brauchen. */
-export function isUsableAccessPoint(accessPoint) {
-  return accessPointEligibility(accessPoint).usable;
+export function isUsableAccessPoint(accessPoint, carrierCode) {
+  return accessPointEligibility(accessPoint, carrierCode).usable;
 }
 
 /**
  * Die explizite Auswahlstufe: teilt eine BEREITS normalisierte und sortierte
  * Liste in anzubietende und derzeit nicht verfügbare Access Points.
  *
+ * `carrierCode` — dieselbe autoritative Quelle wie beim Request (siehe oben).
+ *
  * Die Reihenfolge beider Teillisten bleibt exakt erhalten — hier wird weder
  * sortiert noch umgestellt. Nichts geht verloren: `usable.length +
  * unavailable.length === total`.
  */
-export function splitAccessPointsByEligibility(items) {
+export function splitAccessPointsByEligibility(items, carrierCode) {
   if (!Array.isArray(items)) return { usable: [], unavailable: [], total: 0 };
   const usable = [];
   const unavailable = [];
-  for (const item of items) (isUsableAccessPoint(item) ? usable : unavailable).push(item);
+  for (const item of items) (isUsableAccessPoint(item, carrierCode) ? usable : unavailable).push(item);
   return { usable, unavailable, total: items.length };
 }
 

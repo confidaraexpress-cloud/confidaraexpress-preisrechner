@@ -20,9 +20,18 @@
        Wochentags aus hoursOfOperation (Europe/Berlin, Intl.DateTimeFormat).
      • Entfernungen werden nie gerechnet. distance/distanceCode kommen von
        JUMiNGO und werden nur formatiert.
-     • Normalisierung und Sortierung entfernen NIE einen Shop. Wer aus der
-       Auswahl fällt, fällt über eine der beiden eigenen, expliziten Stufen —
-       Nutzbarkeit (1b) oder Öffnungszeitenmerkmal (2b) — und nur dort.
+     • Normalisierung und Sortierung entfernen NIE einen Shop. Die einzige
+       Stufe, die eine Liste auf eine Teilmenge kürzt, ist der explizite
+       Öffnungszeitenfilter (2b) — und der wirkt nur, wenn der Kunde ihn
+       selbst wählt.
+     • workState ist AUSSCHLIESSLICH Darstellung (Abschnitt 1) — Text und
+       Badge. Er entscheidet an KEINER Stelle, ob ein Access Point angezeigt
+       wird. Ein per Messung widerlegter früherer Versuch, „Geschlossen“ als
+       generelles Sichtbarkeits-Gate zu behandeln, ist bewusst nicht mehr
+       Teil dieser Datei (siehe Git-Historie „accessPointEligibility“) — der
+       direkte 1:1-Vergleich mit JUMiNGOs eigener Oberfläche zeigte bei „Alle
+       Öffnungszeiten“ dieselbe Menge wie die Rohantwort, nicht die um
+       „Geschlossen“ gekürzte.
      • Es gibt KEINEN eigenen Uhrzeitfilter. Das frühere „Nur aktuell geöffnete
        Shops“ ist entfallen; JUMiNGO kennt es nicht. Die vier Merkmale in 2b
        beschreiben eine Eigenschaft des Shops, nicht seinen Zustand gerade
@@ -98,124 +107,6 @@ export function normalizeAccessPointWorkState(value) {
     known: Boolean(key),
     raw,
   };
-}
-
-// ═══════════ 1b — NUTZBARKEIT (Eligibility) ════════════════════════════════
-//
-// Das ist NICHT der Öffnungsstatus, auch wenn beides aus demselben Feld liest.
-//
-//   Öffnungsstatus  → wie ein Shop BESCHRIFTET wird (Abschnitt 1)
-//   Nutzbarkeit     → ob ein Shop überhaupt zur Auswahl ANGEBOTEN wird
-//
-// Belegt durch einen Mitschnitt der JUMiNGO-Oberfläche (DPD, Weiherstraße 25,
-// 73207 Plochingen, 10 km, „Alle Öffnungszeiten“): Die API liefert 20 Access
-// Points — 10 × „Geschlossen“, 5 × „Geöffnet“, 5 × „schließt bald“. JUMiNGOs
-// eigene Liste beginnt mit DPD-Paketstation (2,571) → AYDESIGNZ (2,958) →
-// K naro Supermarket (3,462) und lässt die NÄHEREN Treffer Kopier und
-// Werbestudio (0,579) und Intermarkt (0,893) aus. Genau die zehn
-// „Geschlossen“-Einträge fehlen; die Restliste stimmt danach exakt überein.
-//
-// Warum das KEINE Uhrzeitfrage ist — gemessen um ca. 16:06 Uhr:
-//   Kopier und Werbestudio  10:00–17:00  → „Geschlossen“
-//   Intermarkt              09:00–18:00  → „Geschlossen“
-//   NKD Deutschland GmbH    09:00–18:30  → „Geschlossen“
-// Alle drei lagen INNERHALB ihrer eigenen Öffnungszeiten. Eine Uhrzeitregel
-// hätte sie als offen ausgewiesen. „Geschlossen“ beschreibt hier also die
-// betriebliche Nutzbarkeit des Access Points, nicht den Ladenzustand — und
-// deshalb darf keine eigene Zeitlogik diesen Wert überschreiben.
-//
-// Diese Stufe führt bewusst eine EIGENE, abgeschlossene Werteliste und ruft
-// normalizeAccessPointWorkState() NICHT auf: Ein neuer Anzeige-Alias soll
-// niemals als Nebenwirkung Paketshops verstecken können.
-//
-// CARRIER-SCOPE (bewusste, vorläufige Einschränkung): Der Mitschnitt belegt
-// diese Regel ausschließlich für DPD. Für UPS, GLS und DHL Express liegt
-// KEIN eigener Nachweis vor, dass „Geschlossen“/„closed“ dort dasselbe
-// bedeutet — ein Access Point könnte dort echte Ladenöffnungszeiten führen,
-// bei denen „Geschlossen“ zu bestimmten Tageszeiten normal und erwartbar
-// ist. Die Filterung greift deshalb NUR für carrierCode === "dpd"; jeder
-// andere (auch ein unbekannter) Carrier bleibt vollständig fail-open. Diese
-// Grenze fällt, sobald ein eigener Mitschnitt für den jeweiligen Carrier
-// vorliegt — nicht vorher.
-
-/** Genau die belegten Werte, die einen Access Point aus der Auswahl nehmen. */
-const NOT_USABLE_WORK_STATES = new Set(["geschlossen", "closed"]);
-
-/** Carrier, für die die Regel durch einen echten Mitschnitt belegt ist. */
-const ELIGIBILITY_VERIFIED_CARRIERS = new Set(["dpd"]);
-
-export const ELIGIBILITY_USABLE = "usable";
-export const ELIGIBILITY_UNKNOWN_STATE = "unknown_state";
-export const ELIGIBILITY_WORK_STATE_CLOSED = "work_state_closed";
-export const ELIGIBILITY_CARRIER_UNVERIFIED = "carrier_unverified";
-
-/**
- * Ist dieser Access Point fachlich nutzbar — also überhaupt anzubieten?
- *
- * `carrierCode` MUSS derselbe Wert sein, der bereits den JUMiNGO-Request
- * bestimmt (`carrierCodes: [carrierCode]` in AccessPointFinder.jsx) — keine
- * zweite Carrier-Ermittlung, keine Namensheuristik.
- *
- * Rückgabe: { usable, reason, raw }
- *   usable — false NUR bei einem belegten „nicht nutzbar“-Wert UND einem
- *            durch Messung verifizierten Carrier (aktuell: nur DPD)
- *   reason — "usable" | "unknown_state" | "work_state_closed"
- *            | "carrier_unverified"
- *   raw    — der getrimmte Serverwert (für title/Diagnose), "" wenn keiner kam
- *
- * FAIL-OPEN ist Absicht: unbekannt, fehlend, leer oder kein String → nutzbar.
- * Ein neuer JUMiNGO-workState darf nicht dazu führen, dass ConfidaraExpress
- * still Paketshops verschwinden lässt. Dasselbe gilt jetzt für den Carrier:
- * ein noch nicht durch Daten verifizierter Carrier verliert NIE einen Shop
- * über diese Regel — „carrier_unverified“ ist ebenso ein Fail-open-Grund wie
- * „unknown_state“, nur mit anderer Ursache.
- *
- * Hier wird NICHT gelesen: hoursOfOperation, die aktuelle Uhrzeit, onlyOpen,
- * der Shopname oder die Entfernung.
- *
- * `carrierCode` wird STRIKT verglichen (exakte Zeichenkette, kein Trim, kein
- * Fallcasing): die einzige Quelle dieses Werts ist ein festverdrahtetes
- * switch/case in carrierMap.js, das ausschließlich die Literale "ups"/"dpd"/
- * "dhlexpress"/"gls" oder null liefert — nie mit abweichender Schreibweise.
- * Eine Normalisierung hier würde eine Toleranz vortäuschen, die die Quelle gar
- * nicht kennt, und liefe der Absicht zuwider, den Carrier nicht eigenständig
- * (also laxer als der Request selbst) zu interpretieren.
- */
-export function accessPointEligibility(accessPoint, carrierCode) {
-  const value = accessPoint && typeof accessPoint === "object" ? accessPoint.workState : accessPoint;
-  const raw = typeof value === "string" ? value.trim() : "";
-  if (!raw) return { usable: true, reason: ELIGIBILITY_UNKNOWN_STATE, raw: "" };
-  if (!ELIGIBILITY_VERIFIED_CARRIERS.has(carrierCode)) {
-    return { usable: true, reason: ELIGIBILITY_CARRIER_UNVERIFIED, raw };
-  }
-  const key = raw.toLowerCase().replace(/\s+/g, " ");
-  if (NOT_USABLE_WORK_STATES.has(key)) {
-    return { usable: false, reason: ELIGIBILITY_WORK_STATE_CLOSED, raw };
-  }
-  return { usable: true, reason: ELIGIBILITY_USABLE, raw };
-}
-
-/** Kurzform für Stellen, die nur das Ja/Nein brauchen. */
-export function isUsableAccessPoint(accessPoint, carrierCode) {
-  return accessPointEligibility(accessPoint, carrierCode).usable;
-}
-
-/**
- * Die explizite Auswahlstufe: teilt eine BEREITS normalisierte und sortierte
- * Liste in anzubietende und derzeit nicht verfügbare Access Points.
- *
- * `carrierCode` — dieselbe autoritative Quelle wie beim Request (siehe oben).
- *
- * Die Reihenfolge beider Teillisten bleibt exakt erhalten — hier wird weder
- * sortiert noch umgestellt. Nichts geht verloren: `usable.length +
- * unavailable.length === total`.
- */
-export function splitAccessPointsByEligibility(items, carrierCode) {
-  if (!Array.isArray(items)) return { usable: [], unavailable: [], total: 0 };
-  const usable = [];
-  const unavailable = [];
-  for (const item of items) (isUsableAccessPoint(item, carrierCode) ? usable : unavailable).push(item);
-  return { usable, unavailable, total: items.length };
 }
 
 // ═══════════ 2 — ÖFFNUNGSZEITEN (hoursOfOperation) ══════════════════════════
@@ -557,11 +448,12 @@ export function matchesOpeningFilter(accessPoint, filter) {
 }
 
 /**
- * Die Filterstufe: teilt eine bereits normalisierte, sortierte und auf
- * Nutzbarkeit geprüfte Liste in passende und nicht passende Access Points.
+ * Die Filterstufe: teilt eine bereits normalisierte und sortierte Liste in
+ * passende und nicht passende Access Points.
  *
  * Bei „Alle Öffnungszeiten“ passiert nachweislich nichts (`filtered: false`) —
- * die Liste ist dann Zeichen für Zeichen dieselbe wie vorher.
+ * die Liste ist dann Zeichen für Zeichen dieselbe wie vorher, inklusive jedes
+ * Shops mit workState „Geschlossen“.
  * Reihenfolge bleibt erhalten, nichts geht verloren:
  * `matching.length + excluded.length === total`.
  */
@@ -628,18 +520,22 @@ export function sortAccessPointsByDistance(items) {
 // ═══════════ 4 — ERGEBNISZAHLEN ═════════════════════════════════════════════
 
 /**
- * „5 von 10 verfügbaren Paketshops“ — die Liste sagt, wie viel sie zeigt.
+ * „5 von 20 Paketshops“ — die Liste sagt, wie viel sie von der tatsächlich
+ * gelieferten Ergebnismenge zeigt.
  *
- * Die Zahl bezieht sich auf die NUTZBARE Menge, nicht auf die Rohantwort.
- * Vorher stand hier „5 von 20 Paketshops“, obwohl zehn davon gar nicht
- * angeboten werden — das hätte eine Auswahl versprochen, die es nicht gibt.
+ * Die Zahl beschreibt AUSSCHLIESSLICH die Kürzung durch den 5er-Anzeigeschnitt
+ * (bzw. den aktiven Öffnungszeitenfilter, siehe openingFilterCountLabel) —
+ * nie eine aus workState abgeleitete „Nutzbarkeit“. Ein direkter 1:1-Vergleich
+ * mit JUMiNGOs eigener Oberfläche hat gezeigt, dass „Alle Öffnungszeiten“
+ * dort dieselbe Menge zeigt wie die Rohantwort, nicht die um „Geschlossen“
+ * gekürzte — ein Shop mit workState „Geschlossen“ ist ein regulärer Treffer.
  */
 export function accessPointCountLabel(shown, total) {
   const g = Number.isFinite(total) ? total : 0;
   const z = Number.isFinite(shown) ? Math.min(shown, g) : 0;
-  if (g === 0) return "Keine verfügbaren Paketshops";
-  if (z < g) return `${z} von ${g} verfügbaren Paketshops`;
-  return g === 1 ? "1 verfügbarer Paketshop" : `${g} verfügbare Paketshops`;
+  if (g === 0) return "Keine Paketshops gefunden";
+  if (z < g) return `${z} von ${g} Paketshops`;
+  return g === 1 ? "1 Paketshop" : `${g} Paketshops`;
 }
 
 /**
@@ -674,20 +570,6 @@ export function openingFilterEmptyText(filter) {
   const option = OPENING_FILTER_OPTIONS.find((o) => o.value === filter);
   const name = option && option.value !== OPENING_FILTER_ALL ? `„${option.label}“` : "diesem Öffnungszeitenfilter";
   return `Im gewählten Umkreis entspricht kein Paketshop dem Öffnungszeitenfilter ${name}.`;
-}
-
-/**
- * „10 weitere Paketshops derzeit nicht verfügbar“ — ruhige Randnotiz, kein
- * Fehler. Ein nicht nutzbarer Paketshop ist ein Betriebszustand, kein Defekt;
- * deshalb keine Warnfarbe, keine Aktion, keine Auswahl. Bei 0 gibt es nichts
- * zu sagen → null, und die Zeile entfällt.
- */
-export function unavailableAccessPointsLabel(count) {
-  const n = Number.isFinite(count) && count > 0 ? count : 0;
-  if (n === 0) return null;
-  return n === 1
-    ? "1 weiterer Paketshop derzeit nicht verfügbar"
-    : `${n} weitere Paketshops derzeit nicht verfügbar`;
 }
 
 /** „Weitere 15 Paketshops anzeigen“ — die Zahl steht am Ziel, nicht in Klammern. */

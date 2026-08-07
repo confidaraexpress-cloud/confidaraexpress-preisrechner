@@ -6,7 +6,6 @@ import {
   normalizeAccessPointWorkState,
   todayOpeningHoursText,
   sortAccessPointsByDistance,
-  splitAccessPointsByEligibility,
   filterAccessPointsByOpening,
   OPENING_FILTER_ALL,
   OPENING_FILTER_OPTIONS,
@@ -14,7 +13,6 @@ import {
   formatDistance,
   accessPointCountLabel,
   moreAccessPointsLabel,
-  unavailableAccessPointsLabel,
   openingFilterCountLabel,
   openingFilterExcludedLabel,
   openingFilterEmptyText,
@@ -42,12 +40,14 @@ import {
 //  • hoursOfOperation ist ein Objekt-Array; ausgewertet wird nur der heutige
 //    Wochentag (Europe/Berlin) und nur zur Anzeige neben dem Status.
 //  • Die Entfernung stammt von JUMiNGO; sortiert wird danach, gerechnet nicht.
-//  • Angeboten werden nur NUTZBARE Access Points — dieselbe Menge, die auch
-//    JUMiNGOs eigene Oberfläche zeigt (belegt: 20 Treffer, davon 10 mit
-//    workState „Geschlossen“; JUMiNGO listet genau die übrigen 10). Die
-//    Auswahlstufe ist explizit und getrennt: normalisieren → sortieren →
-//    Eligibility → 5er-Schnitt. Nicht verfügbare Shops werden gezählt und
-//    genannt, aber nicht als wählbar dargestellt.
+//  • workState ist AUSSCHLIESSLICH Darstellung (Text + Badge) und entscheidet
+//    NIRGENDS, ob ein Access Point angezeigt wird — auch „Geschlossen“ bleibt
+//    ein regulärer Treffer. Ein früherer Versuch, „Geschlossen“ generell
+//    auszublenden, ist durch einen direkten 1:1-Vergleich mit JUMiNGOs eigener
+//    Oberfläche widerlegt: bei „Alle Öffnungszeiten“ zeigt JUMiNGO dieselbe
+//    Menge wie die Rohantwort, nicht die um „Geschlossen“ gekürzte. Die
+//    Auswahlstufe ist deshalb nur noch der optionale Öffnungszeitenfilter:
+//    normalisieren → sortieren → Öffnungszeitenfilter → 5er-Schnitt.
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
 
@@ -111,24 +111,18 @@ function normalizeItem(raw) {
   const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  // Zwei Rohwerte wandern bewusst mit, weil die nachgelagerten Stufen GENAU
-  // sie lesen und nicht die Anzeigeform daneben:
-  //   workState        → Eligibility (nutzbar ja/nein)
-  //   hoursOfOperation → Öffnungszeitenfilter (Sonntag / vor 7:30 / nach 21:00)
-  // Fehlt einer davon, fällt die betreffende Stufe still ins Leere: die Liste
-  // sähe richtig aus und wäre es nicht. Genau das ist hier schon zweimal
-  // passiert — beide Male hat erst der E2E-Test es aufgedeckt.
-  return {
-    name, address, distance, distanceCode, hours, status,
-    workState: status.raw, hoursOfOperation, countryCode,
-  };
+  // hoursOfOperation wandert als Rohwert mit, weil der Öffnungszeitenfilter
+  // GENAU dieses Feld liest, nicht die Anzeigeform (`hours`) daneben. Fehlte
+  // es, liefe der Filter still ins Leere — die Liste sähe richtig aus und
+  // wäre es nicht (genau das ist hier schon einmal passiert, erst vom
+  // E2E-Test aufgedeckt).
+  return { name, address, distance, distanceCode, hours, status, hoursOfOperation, countryCode };
 }
 
 // Normalisieren und Sortieren entfernen NICHTS: die vollständige Liste bleibt
-// erhalten und ist die Grundlage aller Zahlen. Sortiert wird stabil nach der
-// von JUMiNGO gelieferten Entfernung; Einträge ohne Entfernung bleiben erhalten
-// und hängen in unveränderter Reihenfolge hinten an. Welche Shops angeboten
-// werden, entscheidet erst die spätere, eigene Eligibility-Stufe.
+// erhalten. Sortiert wird stabil nach der von JUMiNGO gelieferten Entfernung;
+// Einträge ohne Entfernung bleiben erhalten und hängen in unveränderter
+// Reihenfolge hinten an. Kein Eintrag wird wegen workState entfernt.
 function normalizeList(data) {
   const arr =
     Array.isArray(data)               ? data :
@@ -285,28 +279,14 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     </div>
   );
 
-  // ── Auswahlstufe (explizit, nach Normalisierung und Sortierung) ────────────
-  // `results` bleibt unangetastet die vollständige Antwort. Angeboten wird
-  // daraus nur, was JUMiNGO als nutzbar führt; der Rest wird gezählt und
-  // benannt, aber nicht zur Auswahl gestellt.
-  //
-  // `carrierCode` ist DERSELBE Wert, der bereits oben den JUMiNGO-Request
-  // bestimmt (`carrierCodes: [carrierCode]`) — keine zweite Carrier-Ermittlung.
-  // Die Regel ist bisher nur für DPD durch einen echten Mitschnitt belegt;
-  // für jeden anderen Carrier bleibt splitAccessPointsByEligibility fail-open
-  // (siehe accessPointView.mjs).
-  const { usable: usableResults, unavailable: unavailableResults } =
-    splitAccessPointsByEligibility(results || [], carrierCode);
-
-  // ── Öffnungszeitenfilter (dritte, wieder eigene Stufe) ─────────────────────
-  // Zwei getrennte Fragen, bewusst nacheinander und nicht vermischt:
-  //   Eligibility  → „Ist dieser Access Point laut JUMiNGO überhaupt nutzbar?“
-  //   Öffnungszeit → „Passt er zu dem, was der Kunde ausgewählt hat?“
-  // Gefiltert wird über die bereits geladene Antwort; `results` und
-  // `usableResults` bleiben vollständig erhalten, damit „Alle Öffnungszeiten“
-  // die volle Liste ohne neue Suche zurückbringt.
+  // ── Öffnungszeitenfilter (einzige Auswahlstufe nach Sortierung) ────────────
+  // `results` bleibt unangetastet die vollständige, sortierte Antwort. Bei
+  // „Alle Öffnungszeiten“ (Standard) passiert HIER NICHTS — jeder von JUMiNGO
+  // gelieferte Access Point bleibt sichtbar, unabhängig von workState. Erst
+  // wenn der Kunde selbst „Sonntags geöffnet“, „Offen vor 7:30 Uhr“ oder
+  // „Offen nach 21:00 Uhr“ wählt, kürzt diese Stufe auf die passende Menge.
   const { matching: visibleResults, excluded: filteredOutResults, filtered: openingFilterActive } =
-    filterAccessPointsByOpening(usableResults, openingFilter);
+    filterAccessPointsByOpening(results || [], openingFilter);
 
   // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer, der Rest auf Wunsch
   // per Button. Reiner Anzeigezustand (expanded), nicht persistiert. Alle
@@ -316,19 +296,13 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const hasResults  = !loading && !error && results !== null && visibleResults.length > 0;
   const shownResults = hasResults ? (expanded ? visibleResults : visibleResults.slice(0, MAX_COMPACT)) : [];
   const extraResults = hasResults ? visibleResults.length - MAX_COMPACT : 0;
-  // Ruhige Randnotiz, kein Fehler: ein nicht nutzbarer Paketshop ist ein
-  // Betriebszustand. Nur sichtbar, wenn es tatsächlich welche gibt.
-  //
-  // Es steht immer HÖCHSTENS EINE Randnotiz da, und sie benennt genau eine
-  // Ursache — bei aktivem Filter die Öffnungszeiten, sonst die Nutzbarkeit.
-  // Beides gleichzeitig wäre auf schmalen Geräten eine dreiteilige Zeile und
-  // würde die zwei Ursachen optisch doch wieder vermengen. Die Nutzbarkeits-
-  // zahl bleibt über „Alle Öffnungszeiten“ jederzeit erreichbar.
+  // Ruhige Randnotiz, kein Fehler: ein Shop mit anderen Öffnungszeiten ist
+  // kein Defekt. Nur sichtbar, wenn tatsächlich gefiltert wird — bei „Alle
+  // Öffnungszeiten“ gibt es keine Ursache, die eine Randnotiz rechtfertigt.
   const hatAntwort = !loading && !error && results !== null;
-  const resultNote = !hatAntwort ? null
-    : openingFilterActive
-      ? openingFilterExcludedLabel(filteredOutResults.length)
-      : unavailableAccessPointsLabel(unavailableResults.length);
+  const resultNote = !hatAntwort || !openingFilterActive
+    ? null
+    : openingFilterExcludedLabel(filteredOutResults.length);
 
   return (
     <div className="ap-finder" onClick={stop} aria-busy={loading}>
@@ -443,7 +417,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
                 visibleResults.length === 0
                   ? (openingFilterActive
                       ? "Kein Paketshop entspricht dem gewählten Öffnungszeitenfilter."
-                      : "Keine verfügbaren Paketshops gefunden.")
+                      : "Keine Paketshops gefunden.")
                   : (openingFilterActive
                       ? openingFilterCountLabel(visibleResults.length, visibleResults.length)
                       : accessPointCountLabel(visibleResults.length, visibleResults.length)),
@@ -452,28 +426,19 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
             : ""}
       </p>
 
-      {/* Drei verschiedene Leerzustände, weil sie drei verschiedene Dinge
-          bedeuten: gar kein Treffer im Umkreis — Treffer, die JUMiNGO derzeit
-          nicht als nutzbar führt — oder nutzbare Treffer, von denen keiner zum
-          gewählten Öffnungszeitenmerkmal passt. „Keine Paketshops gefunden“
-          wäre in den letzten beiden Fällen schlicht falsch. */}
+      {/* Zwei verschiedene Leerzustände: gar kein Treffer im Umkreis — oder
+          Treffer vorhanden, aber keiner passt zum gewählten
+          Öffnungszeitenmerkmal. „Keine Paketshops gefunden“ wäre im zweiten
+          Fall falsch, denn JUMiNGO hat durchaus geliefert. */}
       {!loading && !error && results !== null && results.length === 0 && (
         <div className="ap-finder-empty">
           Keine Paketshops gefunden. Passen Sie PLZ oder Umkreis an.
         </div>
       )}
-      {!loading && !error && results !== null && results.length > 0 && usableResults.length === 0 && (
-        <div className="ap-finder-empty">
-          Im gewählten Umkreis ist derzeit kein Paketshop verfügbar.
-          {unavailableAccessPointsLabel(unavailableResults.length)
-            ? ` ${unavailableAccessPointsLabel(unavailableResults.length)}.` : ""} Versuchen Sie es
-          später erneut oder vergrößern Sie den Umkreis.
-        </div>
-      )}
-      {!loading && !error && results !== null && usableResults.length > 0 && visibleResults.length === 0 && (
+      {!loading && !error && results !== null && results.length > 0 && visibleResults.length === 0 && (
         <div className="ap-finder-empty">
           {openingFilterEmptyText(openingFilter)} Wählen Sie „Alle Öffnungszeiten“,
-          um wieder alle {usableResults.length} verfügbaren Paketshops zu sehen.
+          um wieder alle {results.length} Paketshops zu sehen.
         </div>
       )}
 
@@ -482,7 +447,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
           {openingFilterActive
             ? openingFilterCountLabel(shownResults.length, visibleResults.length)
             : accessPointCountLabel(shownResults.length, visibleResults.length)}
-          {resultNote && <span className="ap-result-unavailable"> · {resultNote}</span>}
+          {resultNote && <span className="ap-result-note"> · {resultNote}</span>}
         </p>
       )}
 

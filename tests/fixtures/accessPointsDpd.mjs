@@ -33,7 +33,15 @@
        Aufzeichnung derselben Suche tat das NICHT. Auf die Reihenfolge der
        Antwort ist also kein Verlass; die eigene Sortierung bleibt nötig.
 
-   Die Reihenfolge unten ist die echte Antwortreihenfolge. */
+   Die Reihenfolge unten ist die echte Antwortreihenfolge.
+
+   WICHTIG — workState ist reine Darstellung: Ein direkter 1:1-Vergleich mit
+   JUMiNGOs eigener Oberfläche hat belegt, dass „Alle Öffnungszeiten“ dort
+   dieselbe Menge zeigt wie diese Rohantwort — also ALLE 20, nicht nur die
+   10 mit workState ungleich „Geschlossen“. Ein früherer Versuch, danach zu
+   filtern, ist widerlegt und aus der Anwendung entfernt. Die zehn Einträge
+   mit workState „Geschlossen“ (DPD_WORKSTATE_CLOSED unten) dienen deshalb
+   jetzt umgekehrt dazu zu belegen, dass sie SICHTBAR bleiben. */
 
 const WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -148,22 +156,13 @@ export const DPD_EXPECTED_SORTED = [
     "Phone Touch",
 ];
 
-/** Nach der Eligibility-Stufe (DPD): die 10 nutzbaren, in Entfernungsreihenfolge. */
-export const DPD_EXPECTED_USABLE = [
-    "DPD-Paketstation",
-    "AYDESIGNZ",
-    "K naro Supermarket",
-    "Aral Tankstelle LD DPD-Paketstation",
-    "Sonnenstudio Soleil",
-    "NKD Deutschland GmbH",
-    "AWG Travel-Shop",
-    "Kahraman´s Feinkost",
-    "Media Markt im Nanz-Center",
-    "Phone Touch",
-];
-
-/** Die 10 Einträge mit workState „Geschlossen“ — von JUMiNGO nicht angeboten. */
-export const DPD_EXPECTED_UNAVAILABLE = [
+/**
+ * Die 10 Einträge mit workState „Geschlossen“ — durch den direkten JUMiNGO-
+ * Vergleich belegt: sie bleiben bei „Alle Öffnungszeiten“ SICHTBAR (siehe
+ * Kopfkommentar). Diese Liste dient Tests, die genau das nachweisen — nicht
+ * dem Gegenteil.
+ */
+export const DPD_WORKSTATE_CLOSED = [
     "Kopier und Werbestudio",
     "Intermarkt",
     "NKD Deutschland GmbH",
@@ -176,7 +175,7 @@ export const DPD_EXPECTED_UNAVAILABLE = [
     "Sandhu Indian Store",
 ];
 
-/** Öffnungszeitenfilter „Sonntags geöffnet“, angewendet NACH der Eligibility. */
+/** Öffnungszeitenfilter „Sonntags geöffnet“, angewendet auf die volle sortierte Liste. */
 export const DPD_EXPECTED_SUNDAY = [
     "DPD-Paketstation",
     "Aral Tankstelle LD DPD-Paketstation",
@@ -184,7 +183,7 @@ export const DPD_EXPECTED_SUNDAY = [
 ];
 
 /** „Offen vor 7:30 Uhr“ — nur die beiden Paketstationen (00:01). gaumenfreuden
- *  öffnet um exakt 07:30 und zählt deshalb nicht (und ist ohnehin nicht nutzbar). */
+ *  öffnet um exakt 07:30 und zählt deshalb nicht — unabhängig von workState. */
 export const DPD_EXPECTED_BEFORE_0730 = [
     "DPD-Paketstation",
     "Aral Tankstelle LD DPD-Paketstation",

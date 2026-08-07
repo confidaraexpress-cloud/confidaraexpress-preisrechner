@@ -435,8 +435,17 @@ export default function CalculatorPage() {
   // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es).
   // useMemo verhindert ein neues Objekt bei jedem Render → sonst würde es den
   // React.memo-Vergleich der OfferCards bei jeder Parent-Änderung brechen.
+  //
+  // DOKUMENTIERTE SUCHGRENZE: Der Preisrechner erhebt bewusst nur Land und PLZ
+  // — es gibt hier weder ein Orts- noch ein Straßenfeld, und es wird auch keins
+  // eingeführt (der Preis hängt nicht davon ab). Es wird deshalb KEINE Straße
+  // vorbelegt; erfunden wird schon gar nichts. Folge: Der Suchmittelpunkt der
+  // Paketshop-Suche ist hier der PLZ-/Ortsmittelpunkt und damit ungenauer als
+  // in der Sendungserfassung, wo die vollständige Absenderadresse vorliegt.
+  // Wer es genauer braucht, trägt Ort und Straße direkt im Finder nach — beide
+  // Felder sind dort sichtbar, die Straße ist optional.
   const senderPrefill = useMemo(
-    () => ({ postCode: form.from_zip, city: "", country: form.from_country }),
+    () => ({ postCode: form.from_zip, city: "", street: "", country: form.from_country }),
     [form.from_zip, form.from_country]
   );
 

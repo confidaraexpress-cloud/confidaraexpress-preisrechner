@@ -626,9 +626,10 @@
   display: grid; gap: 10px 12px; align-items: end;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.7fr) minmax(0, 0.85fr);
 }
-/* GLS: vier Felder ohne Gedränge — PLZ · Ort · Umkreis in Zeile 1, die
-   Pflicht-Straße volle Breite in Zeile 2 (Raum für lange Adressen). */
-.ap-finder-fields--gls .ap-finder-field--street { grid-column: 1 / -1; }
+/* Vier Felder ohne Gedränge — PLZ · Ort · Umkreis in Zeile 1, die Straße volle
+   Breite in Zeile 2 (Raum für lange Adressen). Die Straße ist nur bei GLS
+   Pflicht, wird aber überall gesendet: sie bestimmt den Suchmittelpunkt. */
+.ap-finder-field--street { grid-column: 1 / -1; }
 .ap-finder-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ap-finder-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
 .ap-finder-optional { font-weight: 500; color: var(--ce-color-text-muted); }
@@ -677,6 +678,8 @@
 .ap-finder-empty { padding: 14px 4px; font-size: 13px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
 /* Ergebnisliste */
+/* Wie viel von wie viel gerade zu sehen ist — die Liste kürzt sichtbar. */
+.ap-result-count { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
 .ap-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ap-result {
   display: flex; flex-direction: column; gap: 8px;
@@ -696,15 +699,12 @@
   flex-shrink: 0; text-align: right;
 }
 .ap-result-dist { font-size: 13px; font-weight: 600; color: var(--blue2); white-space: nowrap; }
-.ap-result-status {
-  font-size: 11px; font-weight: 600; padding: 2px 8px;
-  border-radius: var(--radius-full); white-space: nowrap;
-}
-.ap-result-status.is-open   { background: var(--success-bg); color: var(--success); }
-.ap-result-status.is-closed { background: var(--gray100); color: var(--ce-color-text-muted); }
-/* Neutraler Status (workState-Rohtext, keine Offen/Zu-Interpretation) — darf
-   bei längeren Werten umbrechen statt das Layout zu sprengen. */
-.ap-result-status.is-neutral { background: var(--gray100); color: var(--ce-color-text-secondary); white-space: normal; }
+/* Der Öffnungsstatus ist ein Designsystem-Badge (.badge + Statusrolle, siehe
+   accessPointView.mjs) — Punkt UND Text, Farben und Maße kommen von dort.
+   Hier steht nur, was die rechtsbündige Metaspalte zusätzlich braucht: ein
+   umgebrochenes „Öffnungsstatus nicht verfügbar“ soll links ausgerichtet
+   bleiben und die Spalte nicht sprengen. */
+.ap-result-status { max-width: 100%; text-align: left; }
 /* Ländercode-Chip (nur bei abweichendem Land sichtbar) */
 .ap-result-cc { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--ce-color-text-muted); white-space: nowrap; }
 
@@ -721,7 +721,7 @@
 .ap-more-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
 
 @media (max-width: 767px) {
-  .ap-finder-fields, .ap-finder-fields--gls { grid-template-columns: 1fr; }
+  .ap-finder-fields { grid-template-columns: 1fr; }
   .ap-finder-controls { flex-direction: column; align-items: stretch; }
   .ap-finder-search-btn { width: 100%; }
   .ap-result-top { flex-direction: column; }

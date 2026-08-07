@@ -305,7 +305,8 @@ Routenwechsel nicht. `shippingFlowState.test.mjs` prüft die Montage.
   **nicht** wiederhergestellt — eine Einwilligung wird nicht unterstellt.
 - **Gelöscht wird bei:** erfolgreicher Buchung · Abmeldung (auch über den
   zentralen 401/403-Handler) · „Neue Sendung" vom Erfolgsbildschirm ·
-  „Eingaben zurücksetzen". **Nicht** gelöscht bei Sidebar-Wechsel, Zurück,
+  „Eingaben zurücksetzen" · erfolgreichem „Als Entwurf speichern" (beide
+  Entwurfspfade, siehe unten). **Nicht** gelöscht bei Sidebar-Wechsel, Zurück,
   Vorwärts, Reload oder beim Öffnen des Benachrichtigungspanels.
 - **60 Minuten Inaktivität** (oder ein Versanddatum in der Vergangenheit):
   Formular, Filter und Sortierung bleiben, Angebote/`shipmentId`/Auswahl werden
@@ -316,10 +317,45 @@ Routenwechsel nicht. `shippingFlowState.test.mjs` prüft die Montage.
 - **Schritt 3 der Buchung (Erfolg) wird nie wiederhergestellt** — er gehört zu
   einer abgeschlossenen Buchung.
 
-Governance: `utils/shippingFlowState.test.mjs` (34 Tests) und
-`tests/e2e/shippingFlowRestore.test.mjs` (27 Tests, echter Dev-Server) —
+### Entwurf speichern beendet den aktiven Vorgang
+
+Zwei unabhängige Speicherpfade legen einen Entwurf serverseitig an — der
+**aktive temporäre Vorgang** (Context + `sessionStorage`) ist danach fachlich
+etwas anderes als der gespeicherte Entwurf und muss enden, sonst zeigt die
+nächste „Neue Sendung" die gerade gespeicherte Sendung erneut:
+
+| Pfad | Auslöser | Beendet den Vorgang über |
+|------|----------|---------------------------|
+| Formularentwurf | `.dft-savedraft-cta` in `NewShipmentPage.jsx` | `resetToFreshShipment()` |
+| Sendungsentwurf | `SaveDraftAction` auf `BookingPage.jsx` | `onSaved={clearFlow}` |
+
+**Nur nach bestätigtem Erfolg, nie beim Requeststart.** Bei 409/404/429/
+401/403 oder einem Netzwerkfehler (catch-Zweig) bleiben Formular, Angebote,
+Filter, Sortierung und Auswahl vollständig erhalten — der Kunde kann erneut
+speichern. Für den Sendungsentwurf gibt es keine „Fortsetzen"-Aktion
+(`DraftsPage.jsx`/`DraftsList.jsx` reichen `onResume` nur an Formularentwürfe
+durch), das Löschen des Flows hat dort also keine Rückwirkung.
+
+**Die Persistenz-Falle:** `NewShipmentPage` bleibt nach dem Speichern
+gemountet, und der Spiegel-Effekt aus „Laufender Versandvorgang" ist an
+lokale Werte gebunden, nicht an den Context. Ein bloßes `clearFlowScope()`
+im Erfolgspfad hätte deshalb NICHT gereicht — der nächste Tastenanschlag
+hätte den noch alten lokalen State sofort wieder in den `sessionStorage`
+geschrieben. `resetToFreshShipment()` setzt deshalb Formular, Filter,
+Sortierung, Ergebnisse UND Baseline in einem einzigen Render zurück (React-
+Batching) und ruft `clearFlowScope("shipment")` im selben Zug auf — der
+Spiegel-Effekt beobachtet beim nächsten Feuern bereits den frischen Zustand.
+Dieselbe Funktion trägt auch den bewussten „Eingaben zurücksetzen"-Button
+(`applyReset`); nur der zusätzliche `saveStatus` unterscheidet beide Aufrufer.
+
+Governance: `utils/shippingFlowState.test.mjs` (38 Tests) und
+`tests/e2e/shippingFlowRestore.test.mjs` (37 Tests, echter Dev-Server) —
 darunter vier Läufe, die den Zurück-Button über je einen anderen Startreiter
-der Sidebar prüfen.
+der Sidebar prüfen, sowie zehn Läufe, die alle drei Auslöser des Erfolgspfads
+(sichtbarer Button, Buchungsseite, „Speichern und verlassen" aus dem
+Verlassen-Dialog) sowie Fehlerfall, Persistenz-Falle, Entwurfsliste und
+Fortsetzen ohne Vermischung end-to-end gegen einen echten Dev-Server
+absichern.
 
 ## Dashboard-Navigationsmodell
 

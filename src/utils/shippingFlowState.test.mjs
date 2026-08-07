@@ -477,3 +477,97 @@ test("34 — das Scrollziel ist ein Element, kein Pixelwert", () => {
   assert.ok(/scrollIntoView/.test(ns), "ohne gemerkte Position wird nicht gezielt gescrollt");
   assert.ok(/requestAnimationFrame/.test(ns), "es wird nicht auf das Rendern gewartet");
 });
+
+/* ══════════ 9 — Entwurf speichern beendet den aktiven Vorgang ════════════
+   Fehlerbild: nach erfolgreichem „Als Entwurf speichern" blieb der bisherige
+   ShippingFlow (Context + sessionStorage) unangetastet bestehen — die nächste
+   „Neue Sendung" zeigte die gerade gespeicherte Sendung erneut. Ursache: der
+   Erfolgspfad aktualisierte nur Baseline und resumeSource, rührte weder den
+   lokalen Formularstate noch den Flow an; der Spiegel-Effekt (an lokale Werte
+   gebunden) hätte den alten Stand beim nächsten Tastenanschlag ohnehin sofort
+   zurückgeschrieben — ein bloßes clearFlowScope() allein hätte NICHT gereicht. */
+
+test("35 — der Erfolgspfad des Formularentwurfs setzt den Vorgang atomar zurück", () => {
+  const ns = read("src/pages/NewShipmentPage.jsx");
+  const saveFn = ns.match(/const saveCurrentFormDraft = async \(\) => \{[\s\S]*?\n  \};/);
+  assert.ok(saveFn, "saveCurrentFormDraft nicht gefunden");
+  const rumpf = saveFn[0];
+
+  // Der Erfolgszweig (nach dem throw-Guard) ruft den gemeinsamen Reset auf —
+  // nicht mehr nur Baseline/Source für den GESPEICHERTEN Snapshot setzen.
+  const erfolg = rumpf.slice(rumpf.indexOf('throw new Error("save failed")'));
+  assert.ok(/resetToFreshShipment\(\);/.test(erfolg), "der Erfolgspfad ruft resetToFreshShipment() nicht auf");
+  assert.ok(!/setBaseline\(snapshot\)/.test(erfolg), "die Baseline wird noch auf den gespeicherten Snapshot gesetzt statt auf den frischen Zustand");
+  assert.ok(!/setResumeSource\(\{\s*id:\s*saved\.id/.test(erfolg),
+    "resumeSource zeigt nach dem Reset noch auf den soeben gespeicherten Entwurf");
+
+  // Die Fehlerzweige (409/404/429/401/403/catch) rufen den Reset NICHT auf —
+  // bei einem Fehlschlag bleibt alles erhalten.
+  for (const [label, muster] of [
+    ["409 Konflikt", /if \(isPatch && r\.status === 409\) \{[^}]*\}/],
+    ["404 notFound", /if \(isPatch && r\.status === 404\) \{[^}]*\}/],
+    ["429 rateLimited", /if \(r\.status === 429\) \{[^}]*\}/],
+    ["401\\/403", /if \(r\.status === 401 \|\| r\.status === 403\) \{[^}]*\}/],
+  ]) {
+    const treffer = rumpf.match(muster);
+    assert.ok(treffer, `${label}: Zweig nicht gefunden`);
+    assert.ok(!/resetToFreshShipment/.test(treffer[0]), `${label}: darf den Vorgang nicht zurücksetzen`);
+  }
+  const catchZweig = rumpf.slice(rumpf.lastIndexOf("} catch {"));
+  assert.ok(!/resetToFreshShipment/.test(catchZweig), "der catch-Zweig (Netzwerkfehler) darf den Vorgang nicht zurücksetzen");
+
+  // Reset erst NACH bestätigtem Erfolg, nie beim Requeststart: vor dem ersten
+  // await darf resetToFreshShipment nicht vorkommen.
+  const vorRequest = rumpf.slice(0, rumpf.indexOf("await updateFormDraft"));
+  assert.ok(!/resetToFreshShipment/.test(vorRequest), "der Vorgang wird bereits beim Klick auf „Speichern\" zurückgesetzt");
+});
+
+test("36 — resetToFreshShipment setzt genau die Felder zurück, die der Spiegel-Effekt beobachtet", () => {
+  const ns = read("src/pages/NewShipmentPage.jsx");
+  const fn = ns.match(/const resetToFreshShipment = \(\) => \{[\s\S]*?\n  \};/);
+  assert.ok(fn, "resetToFreshShipment nicht gefunden");
+  const rumpf = fn[0];
+  for (const setter of [
+    "setForm(seed)", "setShippingDate(todayISO())", 'setServiceFilter("all")',
+    'setShippingModeFilter("all")', "setSelectedPublicCarrierIds([])", "setPublicCarriers([])",
+    'setSortMode("recommended")', 'setVatMode("net")', "setErrors({})",
+    "setResumeSource(null)", "setResumeNotice(\"\")", "setResumeConflict(false)",
+    'setSaveMode("idle")', "resetResults()", "setBaseline(", 'clearFlowScope("shipment")',
+  ]) {
+    assert.ok(rumpf.includes(setter), `resetToFreshShipment: „${setter}" fehlt`);
+  }
+  // resetResults() selbst deckt tariffs/selected/shipmentId/customs/calculatedAt ab.
+  const reset = ns.match(/const resetResults = \(\) => \{[\s\S]*?\n  \};/)[0];
+  for (const setter of ["setTariffs([])", "setSelected(null)", "setShipmentId(null)",
+                        "setCustoms(null)", "calculatedAtRef.current = null"]) {
+    assert.ok(reset.includes(setter), `resetResults: „${setter}" fehlt`);
+  }
+});
+
+test("37 — „Eingaben zurücksetzen\" und der Entwurfs-Erfolgspfad teilen sich denselben Reset", () => {
+  const ns = read("src/pages/NewShipmentPage.jsx");
+  const applyReset = ns.match(/const applyReset = \(\) => \{[\s\S]*?\n  \};/)[0];
+  assert.ok(/resetToFreshShipment\(\);/.test(applyReset), "applyReset ruft resetToFreshShipment() nicht auf");
+  // Beide Aufrufer bleiben funktional unterscheidbar: der Reset-Button zeigt
+  // KEINE „Entwurf gespeichert"-Meldung (saveStatus explizit auf idle), der
+  // Speicher-Erfolgspfad lässt saveStatus dem Aufrufer (saveDraftExplicit).
+  assert.ok(/setSaveStatus\("idle"\);/.test(applyReset), "applyReset muss saveStatus zurücksetzen");
+  const saveFn = ns.match(/const saveCurrentFormDraft = async \(\) => \{[\s\S]*?\n  \};/)[0];
+  const erfolg = saveFn.slice(saveFn.indexOf('throw new Error("save failed")'));
+  assert.ok(!/setSaveStatus/.test(erfolg), "saveCurrentFormDraft darf saveStatus nicht selbst setzen — das entscheidet der Aufrufer");
+});
+
+test("38 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang ebenfalls", () => {
+  const sda = read("src/components/booking/SaveDraftAction.jsx");
+  assert.ok(/onSaved/.test(sda), "SaveDraftAction kennt onSaved nicht");
+  const onClick = sda.match(/const onClick = async \(\) => \{[\s\S]*?\n  \};/)[0];
+  assert.ok(/if \(r\.ok\) \{ setStatus\("saved"\); onSaved\?\.\(\); return; \}/.test(onClick),
+    "onSaved wird nicht ausschließlich im Erfolgsfall aufgerufen");
+  // Fehlerzweige rufen onSaved nicht auf.
+  const fehlerTeil = onClick.slice(onClick.indexOf("setStatus(\"error\")"));
+  assert.ok(!/onSaved/.test(fehlerTeil), "onSaved wird auch bei einem Fehler aufgerufen");
+
+  const booking = read("src/pages/BookingPage.jsx");
+  assert.ok(/<SaveDraftAction[\s\S]*?onSaved=\{clearFlow\}/.test(booking),
+    "BookingPage verdrahtet onSaved nicht mit clearFlow");
+});

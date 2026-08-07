@@ -10,7 +10,14 @@ import { hasSavableShipmentId, mapDraftErrorToMessage } from "../../utils/drafts
 // verwendet). REIN additiv: berührt KEINEN Buchungs-/Preis-/Tarif-/Carrier-
 // State, löst kein Reprice/Recalculate aus, verändert /book nicht. Kein
 // AutoSave — nur auf expliziten Klick.
-export function SaveDraftAction({ shipmentId, onNavigateDrafts }) {
+//
+// `onSaved` wird ERST nach bestätigtem Serverfolg aufgerufen (nie beim
+// Requeststart, nie bei 401/403/Fehler) — der Aufrufer (BookingPage) beendet
+// darüber den aktiven temporären ShippingFlow: derselbe Entwurf ist jetzt
+// sicher serverseitig gespeichert, ein späteres „Neue Sendung" darf ihn nicht
+// erneut zeigen. Für einen Sendungsentwurf gibt es keine „Fortsetzen"-Aktion
+// (DraftsPage) — das Löschen des Flows hat deshalb keine Rückwirkung darauf.
+export function SaveDraftAction({ shipmentId, onNavigateDrafts, onSaved }) {
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -22,7 +29,7 @@ export function SaveDraftAction({ shipmentId, onNavigateDrafts }) {
     try {
       const r = await saveDraft(shipmentId);
       if (r.status === 401 || r.status === 403) { setStatus("idle"); return; } // zentraler Auth-Redirect übernimmt
-      if (r.ok) { setStatus("saved"); return; }
+      if (r.ok) { setStatus("saved"); onSaved?.(); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }
       setStatus("error");
       setErrorMsg(mapDraftErrorToMessage(d?.code));

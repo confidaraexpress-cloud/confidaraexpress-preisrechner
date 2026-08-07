@@ -1018,6 +1018,14 @@ export default function BookingPage() {
             <SaveDraftAction
               shipmentId={bookingData?.shipmentId}
               onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
+              // Auch der zweite Entwurfspfad beendet nach bestätigtem Erfolg
+              // den aktiven temporären ShippingFlow (Context + sessionStorage)
+              // — derselbe Grund wie beim Formularentwurf: der Vorgang ist
+              // jetzt sicher unter „Entwürfe" gespeichert, „Neue Sendung" darf
+              // ihn nicht mehr resurrektieren. `location.state` (bookingData)
+              // bleibt unangetastet — diese Seite bleibt bis zur nächsten
+              // Navigation vollständig funktionsfähig.
+              onSaved={clearFlow}
             />
 
             <div className="flex gap-12">

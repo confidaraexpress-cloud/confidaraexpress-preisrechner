@@ -642,15 +642,16 @@
 }
 .ap-finder-input:focus, .ap-finder-select:focus { border-color: var(--blue); }
 
+/* Links das Öffnungszeitenmerkmal (wirkt sofort auf die geladene Liste),
+   rechts der Suchbutton. flex-end, damit Select und Button auf derselben
+   Grundlinie sitzen — das Select trägt darüber sein Label. */
 .ap-finder-controls {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: flex-end; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
 }
-.ap-finder-check {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 13px; color: var(--ce-color-text-secondary); cursor: pointer;
-}
-.ap-finder-check input { accent-color: var(--blue); cursor: pointer; }
+/* Genug Breite für die längste Option („Alle Öffnungszeiten“), aber nie so
+   viel, dass der Suchbutton auf schmalen Karten umbrechen muss. */
+.ap-finder-field--opening { flex: 0 1 240px; min-width: 200px; }
 .ap-finder-search-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   height: 40px; padding: 0 18px; border-radius: var(--radius);
@@ -726,6 +727,9 @@
 @media (max-width: 767px) {
   .ap-finder-fields { grid-template-columns: 1fr; }
   .ap-finder-controls { flex-direction: column; align-items: stretch; }
+  /* Untereinander darf das Select die volle Kartenbreite nutzen — sonst bliebe
+     „Alle Öffnungszeiten“ neben viel leerem Raum abgeschnitten. */
+  .ap-finder-field--opening { flex: 1 1 auto; min-width: 0; }
   .ap-finder-search-btn { width: 100%; }
   .ap-result-top { flex-direction: column; }
   .ap-result-meta {

@@ -25,10 +25,25 @@ import {
   accessPointCountLabel,
   moreAccessPointsLabel,
   unavailableAccessPointsLabel,
+  OPENING_FILTER_ALL,
+  OPENING_FILTER_SUNDAY,
+  OPENING_FILTER_BEFORE_0730,
+  OPENING_FILTER_AFTER_2100,
+  OPENING_FILTER_OPTIONS,
+  parseWorkingHourRanges,
+  accessPointOpensOnSunday,
+  accessPointOpensBefore0730,
+  accessPointOpensAfter2100,
+  matchesOpeningFilter,
+  filterAccessPointsByOpening,
+  openingFilterCountLabel,
+  openingFilterExcludedLabel,
+  openingFilterEmptyText,
 } from "./accessPointView.mjs";
 import {
   DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED, DPD_EXPECTED_USABLE,
-  DPD_EXPECTED_UNAVAILABLE, FREITAG,
+  DPD_EXPECTED_UNAVAILABLE, DPD_EXPECTED_SUNDAY, DPD_EXPECTED_BEFORE_0730,
+  DPD_EXPECTED_AFTER_2100, FREITAG,
 } from "../../tests/fixtures/accessPointsDpd.mjs";
 
 // Ein Freitag und ein Sonntag, jeweils mittags in Europe/Berlin.
@@ -474,10 +489,11 @@ test("49 — die Auswahlstufe ist eine eigene Stufe: nichts geht verloren (DPD)"
   const { usable, unavailable, total } = splitAccessPointsByEligibility(DPD_ACCESS_POINTS, "dpd");
   assert.equal(total, DPD_ACCESS_POINTS.length);
   assert.equal(usable.length + unavailable.length, total, "die Summe bleibt vollständig");
-  // Die Reihenfolge der Eingabe bleibt in beiden Teillisten erhalten.
-  const eingabe = DPD_ACCESS_POINTS.map((s) => s.name);
+  // Die Reihenfolge der Eingabe bleibt in beiden Teillisten erhalten. Verglichen
+  // wird über die Objektidentität, NICHT über den Namen: „NKD Deutschland GmbH“
+  // kommt in der echten Antwort zweimal vor.
   const reihenfolgeErhalten = (teil) =>
-    teil.map((s) => eingabe.indexOf(s.name)).every((v, i, a) => i === 0 || a[i - 1] < v);
+    teil.map((s) => DPD_ACCESS_POINTS.indexOf(s)).every((v, i, a) => i === 0 || a[i - 1] < v);
   assert.ok(reihenfolgeErhalten(usable), "die Auswahlstufe sortiert nicht um");
   assert.ok(reihenfolgeErhalten(unavailable), "auch die Restliste behält ihre Reihenfolge");
   for (const v of [null, undefined, "abc", 5]) {
@@ -491,14 +507,16 @@ test("50 — Referenzfall: die echte DPD-Antwort ergibt JUMiNGOs sichtbare Liste
   const { usable, unavailable } = splitAccessPointsByEligibility(sortiert, "dpd");
 
   assert.deepEqual(usable.map((s) => s.name), DPD_EXPECTED_USABLE);
-  assert.deepEqual(unavailable.map((s) => s.name).sort(), [...DPD_EXPECTED_UNAVAILABLE].sort());
+  assert.deepEqual(unavailable.map((s) => s.name), DPD_EXPECTED_UNAVAILABLE);
+  assert.equal(usable.length, 10, "10 von 20 sind nutzbar");
+  assert.equal(unavailable.length, 10, "10 × workState „Geschlossen“");
 
-  // Und ausdrücklich: die vier gemessenen Einträge stehen NICHT zur Auswahl …
+  // Die beiden NÄCHSTEN Treffer der Antwort werden nicht angeboten …
   const angeboten = usable.map((s) => s.name);
-  for (const n of ["Kopier und Werbestudio", "Intermarkt", "NKD Deutschland GmbH", "Änderungsschneiderei Sadra"]) {
+  for (const n of ["Kopier und Werbestudio", "Intermarkt", "Änderungsschneiderei Sadra"]) {
     assert.ok(!angeboten.includes(n), `${n} darf nicht angeboten werden`);
   }
-  // … die näheren „Geschlossen“-Treffer stehen also auch nicht vorne.
+  // … deshalb steht vorne der drittnächste Treffer.
   assert.equal(angeboten[0], "DPD-Paketstation", "vorher standen hier 0,579 km und 0,893 km");
   assert.equal(angeboten[1], "AYDESIGNZ");
   assert.equal(angeboten[2], "K naro Supermarket");
@@ -507,13 +525,14 @@ test("50 — Referenzfall: die echte DPD-Antwort ergibt JUMiNGOs sichtbare Liste
 test("51 — die Zähler der Referenzantwort stimmen mit der Auswahl überein (DPD)", () => {
   const { usable, unavailable } = splitAccessPointsByEligibility(
     sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd");
-  assert.equal(usable.length, 5);
-  assert.equal(unavailable.length, 4);
-  assert.equal(accessPointCountLabel(5, usable.length), "5 verfügbare Paketshops");
-  assert.equal(accessPointCountLabel(3, usable.length), "3 von 5 verfügbaren Paketshops");
-  assert.equal(moreAccessPointsLabel(usable.length - 3), "Weitere 2 Paketshops anzeigen");
+  assert.equal(usable.length, 10);
+  assert.equal(unavailable.length, 10);
+  // Genau der Fall aus der Aufgabenstellung: 20 roh, 10 nutzbar, 10 nicht.
+  assert.equal(accessPointCountLabel(5, usable.length), "5 von 10 verfügbaren Paketshops");
+  assert.equal(accessPointCountLabel(10, usable.length), "10 verfügbare Paketshops");
+  assert.equal(moreAccessPointsLabel(usable.length - 5), "Weitere 5 Paketshops anzeigen");
   assert.equal(unavailableAccessPointsLabel(unavailable.length),
-    "4 weitere Paketshops derzeit nicht verfügbar");
+    "10 weitere Paketshops derzeit nicht verfügbar");
 });
 
 test("52 — die Anzeigebeschriftung bleibt von der Nutzbarkeit unberührt", () => {
@@ -602,7 +621,339 @@ test("61 — derselbe Datensatz liefert bei DPD eine kleinere Auswahl als bei je
   const sortiert = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
   const beiDpd = splitAccessPointsByEligibility(sortiert, "dpd");
   const beiUps = splitAccessPointsByEligibility(sortiert, "ups");
-  assert.equal(beiDpd.usable.length, 5);
-  assert.equal(beiUps.usable.length, 9, "ohne Verifikation bleibt die volle Menge nutzbar");
+  assert.equal(beiDpd.usable.length, 10);
+  assert.equal(beiUps.usable.length, 20, "ohne Verifikation bleibt die volle Menge nutzbar");
   assert.ok(beiDpd.usable.length < beiUps.usable.length);
+});
+
+// ═══════════ 7 — ÖFFNUNGSZEITENFILTER (JUMiNGOs vier Optionen) ══════════════
+//
+// Der frühere Haken „Nur aktuell geöffnete Shops“ ist ersatzlos entfallen —
+// JUMiNGO kennt ihn nicht. An seiner Stelle stehen vier Merkmale, die eine
+// EIGENSCHAFT des Shops beschreiben, nicht seinen Zustand gerade jetzt.
+// Deshalb kommt in diesem ganzen Abschnitt keine aktuelle Uhrzeit vor.
+
+const shopMit = (...tage) => ({
+  hoursOfOperation: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+    .map((dayName, i) => ({
+      dayName,
+      workingHours: tage[i] ?? "Geschlossen",
+      lunchBreak: null,
+      workingDay: (tage[i] ?? "Geschlossen") !== "Geschlossen",
+    })),
+});
+const anAllenTagen = (h) => shopMit(h, h, h, h, h, h, h);
+
+test("62 — das Dropdown hat exakt vier Optionen in JUMiNGOs Reihenfolge", () => {
+  assert.equal(OPENING_FILTER_OPTIONS.length, 4);
+  assert.deepEqual(OPENING_FILTER_OPTIONS.map((o) => o.label), [
+    "Alle Öffnungszeiten", "Sonntags geöffnet", "Offen vor 7:30 Uhr", "Offen nach 21:00 Uhr",
+  ]);
+  assert.deepEqual(OPENING_FILTER_OPTIONS.map((o) => o.value), [
+    "all", "sunday", "before_0730", "after_2100",
+  ]);
+  // Kein sichtbarer Text verrät den internen Wert.
+  for (const o of OPENING_FILTER_OPTIONS) assert.ok(!/[a-z]+_[a-z0-9]+/.test(o.label), o.label);
+  // Und es gibt bewusst KEINE Option „Nur aktuell geöffnet“.
+  assert.ok(!OPENING_FILTER_OPTIONS.some((o) => /aktuell/i.test(o.label)));
+  assert.equal(OPENING_FILTER_ALL, "all", "der Standard ist die erste Option");
+  assert.equal(OPENING_FILTER_OPTIONS[0].value, OPENING_FILTER_ALL);
+});
+
+// ── A — ALLE ÖFFNUNGSZEITEN ────────────────────────────────────────────────
+
+test("63 (A) — „Alle Öffnungszeiten“ filtert nachweislich nichts", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const r = filterAccessPointsByOpening(usable, OPENING_FILTER_ALL);
+  assert.equal(r.filtered, false, "die Stufe meldet sich ausdrücklich als inaktiv");
+  assert.equal(r.matching, usable, "es wird nicht einmal eine neue Liste gebaut");
+  assert.equal(r.excluded.length, 0);
+  // Unbekannte/kaputte Filterwerte verhalten sich genauso — nie fail-closed.
+  for (const v of [undefined, null, "", "kaputt", 5, {}]) {
+    assert.equal(filterAccessPointsByOpening(usable, v).matching.length, usable.length, String(v));
+  }
+});
+
+test("64 (A) — die bekannte DPD-Reihenfolge bleibt unverändert erhalten", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const r = filterAccessPointsByOpening(usable, OPENING_FILTER_ALL);
+  assert.deepEqual(r.matching.map((s) => s.name), DPD_EXPECTED_USABLE);
+  assert.deepEqual(r.matching.slice(0, 5).map((s) => s.name), [
+    "DPD-Paketstation", "AYDESIGNZ", "K naro Supermarket",
+    "Aral Tankstelle LD DPD-Paketstation", "Sonnenstudio Soleil",
+  ]);
+});
+
+// ── B — SONNTAGS GEÖFFNET ──────────────────────────────────────────────────
+
+test("65 (B) — Sonntag mit echter Öffnungszeit → sichtbar", () => {
+  assert.equal(accessPointOpensOnSunday(shopMit(null, null, null, null, null, null, "10:00-16:00")), true);
+  assert.equal(accessPointOpensOnSunday(anAllenTagen("00:01-23:59")), true);
+});
+
+test("66 (B) — Sonntag mit workingDay: false → nicht sichtbar", () => {
+  const shop = { hoursOfOperation: [{ dayName: "Sonntag", workingHours: "10:00-16:00", workingDay: false }] };
+  assert.equal(accessPointOpensOnSunday(shop), false, "das Flag schlägt die Zeitangabe");
+});
+
+test("67 (B) — Sonntag „Geschlossen“ → nicht sichtbar", () => {
+  assert.equal(accessPointOpensOnSunday(shopMit("09:00-18:00", null, null, null, null, null, "Geschlossen")), false);
+  const nurWort = { hoursOfOperation: [{ dayName: "Sonntag", workingHours: "Geschlossen", workingDay: true }] };
+  assert.equal(accessPointOpensOnSunday(nurWort), false, "auch ohne das Flag zählt das Wort");
+});
+
+test("68 (B) — leere Sonntagszeit und fehlender Sonntagseintrag → nicht sichtbar", () => {
+  for (const wert of ["", "   ", "-", null]) {
+    const shop = { hoursOfOperation: [{ dayName: "Sonntag", workingHours: wert, workingDay: true }] };
+    assert.equal(accessPointOpensOnSunday(shop), false, JSON.stringify(wert));
+  }
+  const ohneSonntag = { hoursOfOperation: [{ dayName: "Montag", workingHours: "09:00-18:00", workingDay: true }] };
+  assert.equal(accessPointOpensOnSunday(ohneSonntag), false);
+});
+
+test("69 (B) — Referenzfall: genau drei echte Shops sind sonntags geöffnet", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const r = filterAccessPointsByOpening(usable, OPENING_FILTER_SUNDAY);
+  assert.equal(r.filtered, true);
+  assert.deepEqual(r.matching.map((s) => s.name), DPD_EXPECTED_SUNDAY);
+  assert.deepEqual(r.matching.map((s) => s.name), [
+    "DPD-Paketstation", "Aral Tankstelle LD DPD-Paketstation", "Sonnenstudio Soleil",
+  ]);
+  assert.equal(r.excluded.length, 7, "die übrigen sieben nutzbaren sind sonntags zu");
+  assert.equal(r.matching.length + r.excluded.length, usable.length, "nichts geht verloren");
+});
+
+// ── C — OFFEN VOR 7:30 UHR ─────────────────────────────────────────────────
+
+test("70 (C) — 06:00 und 07:00 zählen als „offen vor 7:30“", () => {
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("06:00-18:00")), true);
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("07:00-17:00")), true);
+});
+
+test("71 (C) — 07:29 zählt noch, 07:30 nicht mehr", () => {
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("07:29-20:00")), true);
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("07:30-20:00")), false,
+    "exakt 07:30 ist nicht VOR 07:30");
+});
+
+test("72 (C) — 08:00 zählt nicht, 00:01 zählt", () => {
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("08:00-20:00")), false);
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("00:01-23:59")), true);
+});
+
+test("73 (C) — ein einziger früher Tag in der Woche genügt", () => {
+  // Nur der Samstag öffnet früh — die Eigenschaft gilt trotzdem.
+  const shop = shopMit("09:00-18:00", "09:00-18:00", "09:00-18:00", "09:00-18:00", "09:00-18:00", "06:30-12:00", "Geschlossen");
+  assert.equal(accessPointOpensBefore0730(shop), true);
+});
+
+test("74 (C) — Referenzfall: nur die beiden Paketstationen öffnen vor 7:30", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const r = filterAccessPointsByOpening(usable, OPENING_FILTER_BEFORE_0730);
+  assert.deepEqual(r.matching.map((s) => s.name), DPD_EXPECTED_BEFORE_0730);
+  assert.deepEqual(r.matching.map((s) => s.name), ["DPD-Paketstation", "Aral Tankstelle LD DPD-Paketstation"]);
+  // Der echte Grenzfall: gaumenfreuden öffnet um exakt 07:30 und zählt nicht.
+  const gauf = DPD_ACCESS_POINTS.find((s) => s.name === "gaumenfreuden");
+  assert.equal(gauf.hoursOfOperation[0].workingHours, "07:30-16:30", "Rohwert aus dem Mitschnitt");
+  assert.equal(accessPointOpensBefore0730(gauf), false);
+});
+
+// ── D — OFFEN NACH 21:00 UHR ───────────────────────────────────────────────
+
+test("75 (D) — Ende 22:00, 23:59 und 21:01 zählen als „offen nach 21:00“", () => {
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("09:00-22:00")), true);
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("00:01-23:59")), true);
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("09:00-21:01")), true);
+});
+
+test("76 (D) — Ende 21:00 und 20:59 zählen nicht", () => {
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("09:00-21:00")), false,
+    "exakt 21:00 ist nicht NACH 21:00");
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("09:00-20:59")), false);
+});
+
+test("77 (D) — ein Bereich über Mitternacht (18:00–01:00) zählt", () => {
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("18:00-01:00")), true);
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("22:00-06:00")), true);
+  // Derselbe Bereich deckt auch den frühen Morgen ab und zählt deshalb
+  // konsequenterweise ebenso als „offen vor 7:30“.
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("18:00-01:00")), true);
+});
+
+test("78 (D) — Referenzfall: nur die beiden Paketstationen haben nach 21:00 offen", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const r = filterAccessPointsByOpening(usable, OPENING_FILTER_AFTER_2100);
+  assert.deepEqual(r.matching.map((s) => s.name), DPD_EXPECTED_AFTER_2100);
+  // Sonnenstudio Soleil und AWG schließen um 20:00 — knapp daneben.
+  const soleil = DPD_ACCESS_POINTS.find((s) => s.name === "Sonnenstudio Soleil");
+  assert.equal(accessPointOpensAfter2100(soleil), false);
+});
+
+// ── E — ALLGEMEIN ──────────────────────────────────────────────────────────
+
+test("79 (E) — mehrere Intervalle an einem Tag werden beide berücksichtigt", () => {
+  const geteilt = anAllenTagen("07:00-12:00, 14:00-22:00");
+  assert.equal(accessPointOpensBefore0730(geteilt), true, "das erste Intervall zählt");
+  assert.equal(accessPointOpensAfter2100(geteilt), true, "das zweite Intervall zählt");
+  // Auch andere Trenner und der Halbgeviertstrich.
+  assert.equal(accessPointOpensAfter2100(anAllenTagen("09:00–12:00; 15:00–22:00")), true);
+  assert.equal(accessPointOpensBefore0730(anAllenTagen("09:00-12:00 / 15:00-22:00")), false);
+});
+
+test("80 (E) — eine Mittagspause verändert die Eigenschaft nicht", () => {
+  // Reale Form: Intermarkt hat 09:00-18:00 mit Pause 13:00-15:00.
+  const inter = DPD_ACCESS_POINTS.find((s) => s.street === "Käthe-Kollwitz-Weg 4");
+  assert.equal(inter.hoursOfOperation[0].lunchBreak, "13:00-15:00", "Rohwert aus dem Mitschnitt");
+  assert.equal(accessPointOpensBefore0730(inter), false, "09:00 bleibt 09:00");
+  assert.equal(accessPointOpensAfter2100(inter), false, "18:00 bleibt 18:00");
+  // Eine Pause bis nach 21:00 darf keine späte Öffnung vortäuschen.
+  const fies = {
+    hoursOfOperation: [{ dayName: "Montag", workingHours: "09:00-18:00", lunchBreak: "21:30-22:30", workingDay: true }],
+  };
+  assert.equal(accessPointOpensAfter2100(fies), false, "die Pause wird nicht als Öffnungszeit gelesen");
+});
+
+test("81 (E) — fehlende oder kaputte hoursOfOperation stürzen nicht ab", () => {
+  const faelle = [
+    {}, { hoursOfOperation: null }, { hoursOfOperation: [] }, { hoursOfOperation: "kaputt" },
+    { hoursOfOperation: [{ dayName: "Montag", workingHours: { unerwartet: true }, workingDay: true }] },
+    { hoursOfOperation: [{ dayName: "Montag", workingHours: "25:99-99:99", workingDay: true }] },
+    { hoursOfOperation: [{ dayName: "Montag", workingHours: "abc-def", workingDay: true }] },
+    { hoursOfOperation: [null, 5, "text"] },
+    null, undefined, "abc", 42,
+  ];
+  for (const f of faelle) {
+    assert.equal(accessPointOpensOnSunday(f), false, JSON.stringify(f));
+    assert.equal(accessPointOpensBefore0730(f), false, JSON.stringify(f));
+    assert.equal(accessPointOpensAfter2100(f), false, JSON.stringify(f));
+  }
+  assert.deepEqual(parseWorkingHourRanges("Geschlossen"), []);
+  assert.deepEqual(parseWorkingHourRanges(null), []);
+  assert.deepEqual(parseWorkingHourRanges("24:00-25:00"), [], "unmögliche Uhrzeit wird verworfen");
+});
+
+test("82 (E) — die Filterstufe verliert nie einen Eintrag und sortiert nie um", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  for (const f of [OPENING_FILTER_SUNDAY, OPENING_FILTER_BEFORE_0730, OPENING_FILTER_AFTER_2100]) {
+    const r = filterAccessPointsByOpening(usable, f);
+    assert.equal(r.matching.length + r.excluded.length, r.total, f);
+    assert.equal(r.total, usable.length, f);
+    const idx = (teil) => teil.map((s) => usable.indexOf(s));
+    for (const teil of [r.matching, r.excluded]) {
+      assert.ok(idx(teil).every((v, i, a) => i === 0 || a[i - 1] < v), `${f}: Reihenfolge erhalten`);
+    }
+  }
+  for (const v of [null, undefined, "abc", 7]) {
+    assert.deepEqual(filterAccessPointsByOpening(v, OPENING_FILTER_SUNDAY),
+      { matching: [], excluded: [], total: 0, filtered: false });
+  }
+});
+
+test("83 (E) — die Eligibility greift VOR dem Öffnungszeitenfilter", () => {
+  // „Kopier und Werbestudio“ ist „Geschlossen“ (nicht nutzbar). Ein
+  // Öffnungszeitenfilter darf ihn deshalb nie zurückholen — auch dann nicht,
+  // wenn er zum Merkmal passen würde.
+  const alle = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const usable = splitAccessPointsByEligibility(alle, "dpd").usable;
+  for (const f of [OPENING_FILTER_ALL, OPENING_FILTER_SUNDAY, OPENING_FILTER_BEFORE_0730, OPENING_FILTER_AFTER_2100]) {
+    const namen = filterAccessPointsByOpening(usable, f).matching.map((s) => s.name);
+    for (const n of DPD_EXPECTED_UNAVAILABLE) {
+      assert.ok(!namen.includes(n) || DPD_EXPECTED_USABLE.includes(n),
+        `${n} darf über den Filter „${f}“ nicht zurückkommen`);
+    }
+  }
+  // Und umgekehrt: „gaumenfreuden“ ist nicht nutzbar UND passt nicht — beides
+  // wird an unterschiedlichen Stufen entschieden.
+  const gauf = DPD_ACCESS_POINTS.find((s) => s.name === "gaumenfreuden");
+  assert.equal(isUsableAccessPoint(gauf, "dpd"), false, "Stufe 1: nicht nutzbar");
+  assert.equal(matchesOpeningFilter(gauf, OPENING_FILTER_BEFORE_0730), false, "Stufe 2: passt nicht");
+  // „schließt bald“ bleibt in Stufe 1 grundsätzlich nutzbar.
+  const knaro = DPD_ACCESS_POINTS.find((s) => s.name === "K naro Supermarket");
+  assert.equal(isUsableAccessPoint(knaro, "dpd"), true);
+});
+
+test("84 (E) — der Filter ist carrier-unabhängig, die Eligibility nicht", () => {
+  // Derselbe Öffnungszeitenfilter, aber ein nicht verifizierter Carrier: die
+  // Eligibility lässt alle 20 durch, der Öffnungsfilter wirkt trotzdem.
+  const alle = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const beiUps = splitAccessPointsByEligibility(alle, "ups").usable;
+  assert.equal(beiUps.length, 20);
+  const sonntagUps = filterAccessPointsByOpening(beiUps, OPENING_FILTER_SUNDAY).matching;
+  // Bei UPS bleiben dieselben drei Sonntagsshops — plus keiner mehr, weil in
+  // den echten Daten kein „Geschlossen“-Eintrag sonntags offen hat.
+  assert.deepEqual(sonntagUps.map((s) => s.name), DPD_EXPECTED_SUNDAY);
+});
+
+test("85 (E) — der Filter kennt keine Uhrzeit und keinen heutigen Wochentag", () => {
+  // Die Funktionen nehmen gar keinen Zeitparameter entgegen …
+  assert.equal(accessPointOpensOnSunday.length, 1);
+  assert.equal(accessPointOpensBefore0730.length, 1);
+  assert.equal(accessPointOpensAfter2100.length, 1);
+  assert.equal(matchesOpeningFilter.length, 2, "Access Point und Filterwert — keine Zeit");
+  // … und liefern für denselben Shop immer dasselbe, egal wann.
+  const shop = anAllenTagen("06:00-22:00");
+  const vorher = [accessPointOpensOnSunday(shop), accessPointOpensBefore0730(shop), accessPointOpensAfter2100(shop)];
+  assert.deepEqual(vorher, [true, true, true]);
+  assert.deepEqual(
+    [accessPointOpensOnSunday(shop), accessPointOpensBefore0730(shop), accessPointOpensAfter2100(shop)],
+    vorher);
+});
+
+test("86 (E) — der Filter fasst workState nicht an", () => {
+  const knaro = DPD_ACCESS_POINTS.find((s) => s.name === "K naro Supermarket");
+  const vorher = normalizeAccessPointWorkState(knaro.workState);
+  filterAccessPointsByOpening([knaro], OPENING_FILTER_SUNDAY);
+  assert.deepEqual(normalizeAccessPointWorkState(knaro.workState), vorher);
+  assert.equal(vorher.label, "Schließt bald");
+  assert.equal(knaro.workState, "schließt bald", "der Rohwert bleibt unberührt");
+});
+
+// ── F — ZÄHLER UND LEERZUSTAND ─────────────────────────────────────────────
+
+test("87 (F) — der Zähler bei aktivem Filter nennt die passende Menge", () => {
+  assert.equal(openingFilterCountLabel(3, 3), "3 Paketshops mit passenden Öffnungszeiten");
+  assert.equal(openingFilterCountLabel(5, 7), "5 von 7 Paketshops mit passenden Öffnungszeiten");
+  assert.equal(openingFilterCountLabel(1, 1), "1 Paketshop mit passenden Öffnungszeiten");
+  assert.equal(openingFilterCountLabel(0, 0), "Keine Paketshops mit passenden Öffnungszeiten");
+});
+
+test("88 (F) — die beiden Ursachen bekommen verschiedene Sätze", () => {
+  // Nutzbarkeit …
+  assert.equal(unavailableAccessPointsLabel(10), "10 weitere Paketshops derzeit nicht verfügbar");
+  // … und Öffnungszeiten. Kein Satz nennt die Ursache des anderen.
+  assert.equal(openingFilterExcludedLabel(7), "7 weitere Paketshops haben andere Öffnungszeiten");
+  assert.equal(openingFilterExcludedLabel(1), "1 weiterer Paketshop hat andere Öffnungszeiten");
+  assert.equal(openingFilterExcludedLabel(0), null);
+  assert.ok(!openingFilterExcludedLabel(7).includes("verfügbar"));
+  assert.ok(!unavailableAccessPointsLabel(10).includes("Öffnungszeit"));
+});
+
+test("89 (F) — der Leerzustand benennt den gewählten Filter", () => {
+  assert.match(openingFilterEmptyText(OPENING_FILTER_SUNDAY), /Sonntags geöffnet/);
+  assert.match(openingFilterEmptyText(OPENING_FILTER_BEFORE_0730), /Offen vor 7:30 Uhr/);
+  assert.match(openingFilterEmptyText(OPENING_FILTER_AFTER_2100), /Offen nach 21:00 Uhr/);
+  for (const f of [OPENING_FILTER_SUNDAY, OPENING_FILTER_BEFORE_0730, OPENING_FILTER_AFTER_2100]) {
+    const t = openingFilterEmptyText(f);
+    assert.ok(!/Keine Paketshops gefunden/.test(t), "gefunden wurden welche — sie passen nur nicht");
+    assert.match(t, /Öffnungszeitenfilter/);
+  }
+});
+
+test("90 (F) — die Referenzzahlen der vier Optionen stimmen", () => {
+  const usable = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd").usable;
+  const zahl = (f) => filterAccessPointsByOpening(usable, f).matching.length;
+  assert.equal(zahl(OPENING_FILTER_ALL), 10);
+  assert.equal(zahl(OPENING_FILTER_SUNDAY), 3);
+  assert.equal(zahl(OPENING_FILTER_BEFORE_0730), 2);
+  assert.equal(zahl(OPENING_FILTER_AFTER_2100), 2);
+  assert.equal(openingFilterCountLabel(3, zahl(OPENING_FILTER_SUNDAY)), "3 Paketshops mit passenden Öffnungszeiten");
+  assert.equal(openingFilterExcludedLabel(10 - zahl(OPENING_FILTER_SUNDAY)),
+    "7 weitere Paketshops haben andere Öffnungszeiten");
 });

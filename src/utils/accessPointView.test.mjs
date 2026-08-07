@@ -19,14 +19,22 @@ import {
   toDistanceNumber,
   formatDistance,
   sortAccessPointsByDistance,
+  accessPointEligibility,
+  isUsableAccessPoint,
+  splitAccessPointsByEligibility,
   accessPointCountLabel,
   moreAccessPointsLabel,
+  unavailableAccessPointsLabel,
 } from "./accessPointView.mjs";
-import { DPD_ACCESS_POINTS, DPD_EXPECTED_ORDER, FREITAG } from "../../tests/fixtures/accessPointsDpd.mjs";
+import {
+  DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED, DPD_EXPECTED_USABLE,
+  DPD_EXPECTED_UNAVAILABLE, FREITAG,
+} from "../../tests/fixtures/accessPointsDpd.mjs";
 
 // Ein Freitag und ein Sonntag, jeweils mittags in Europe/Berlin.
 const FR = new Date(FREITAG);
 const SO = new Date("2026-08-09T12:00:00+02:00");
+const freitag = (workingHours) => [{ dayName: "Freitag", workingHours, lunchBreak: null, workingDay: true }];
 
 // ═══════════ 1 — ÖFFNUNGSSTATUS (workState) ═════════════════════════════════
 
@@ -243,10 +251,12 @@ test("27 — ein ungültiges Datum führt zu keiner Aussage statt zu einer falsc
 
 // ═══════════ 3 — ENTFERNUNG UND SORTIERUNG ══════════════════════════════════
 
-test("28 — die drei echten Shops werden aufsteigend nach Entfernung sortiert", () => {
+test("28 — alle echten Shops werden aufsteigend nach Entfernung sortiert", () => {
   const sortiert = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
-  assert.deepEqual(sortiert.map((s) => s.name), DPD_EXPECTED_ORDER);
-  assert.deepEqual(sortiert.map((s) => s.distance), [2.570787, 2.957714, 3.462022]);
+  assert.deepEqual(sortiert.map((s) => s.name), DPD_EXPECTED_SORTED);
+  assert.equal(sortiert.length, DPD_ACCESS_POINTS.length, "Sortieren entfernt nichts");
+  const werte = sortiert.map((s) => s.distance);
+  for (let i = 1; i < werte.length; i++) assert.ok(werte[i - 1] <= werte[i], "aufsteigend");
 });
 
 test("29 — gleiche Entfernungen behalten ihre ursprüngliche Reihenfolge", () => {
@@ -312,12 +322,15 @@ test("36 — 2,957714 und 3,462022 dürfen nicht beide als dieselbe Zahl erschei
 
 // ═══════════ 4 — ERGEBNISZAHLEN ═════════════════════════════════════════════
 
-test("37 — die Liste sagt, wie viel von wie viel sie zeigt", () => {
-  assert.equal(accessPointCountLabel(5, 20), "5 von 20 Paketshops");
-  assert.equal(accessPointCountLabel(20, 20), "20 Paketshops");
-  assert.equal(accessPointCountLabel(3, 3), "3 Paketshops");
-  assert.equal(accessPointCountLabel(1, 1), "1 Paketshop");
-  assert.equal(accessPointCountLabel(1, 4), "1 von 4 Paketshops");
+test("37 — die Zahlen beziehen sich auf die VERFÜGBARE Menge, nicht auf die Rohantwort", () => {
+  // Bei 20 Rohtreffern mit 10 nutzbaren wäre „5 von 20“ ein Versprechen, das
+  // die Auswahl nicht hält.
+  assert.equal(accessPointCountLabel(5, 10), "5 von 10 verfügbaren Paketshops");
+  assert.equal(accessPointCountLabel(10, 10), "10 verfügbare Paketshops");
+  assert.equal(accessPointCountLabel(3, 3), "3 verfügbare Paketshops");
+  assert.equal(accessPointCountLabel(1, 1), "1 verfügbarer Paketshop");
+  assert.equal(accessPointCountLabel(1, 4), "1 von 4 verfügbaren Paketshops");
+  assert.equal(accessPointCountLabel(0, 0), "Keine verfügbaren Paketshops");
 });
 
 test("38 — die Zahl der weiteren Treffer steht im Buttontext", () => {
@@ -326,18 +339,270 @@ test("38 — die Zahl der weiteren Treffer steht im Buttontext", () => {
   assert.equal(moreAccessPointsLabel(0), "Weitere 0 Paketshops anzeigen");
 });
 
-// ═══════════ 5 — ES WIRD NICHT GEFILTERT ════════════════════════════════════
+test("39 — nicht verfügbare Shops werden benannt, nicht verschwiegen", () => {
+  assert.equal(unavailableAccessPointsLabel(10), "10 weitere Paketshops derzeit nicht verfügbar");
+  assert.equal(unavailableAccessPointsLabel(1), "1 weiterer Paketshop derzeit nicht verfügbar");
+  assert.equal(unavailableAccessPointsLabel(0), null, "ohne Anlass keine Zeile");
+  assert.equal(unavailableAccessPointsLabel(null), null);
+  assert.equal(unavailableAccessPointsLabel(-3), null);
+});
 
-test("39 — kein Shop wird lokal entfernt, auch nicht „schließt bald“ oder „Geschlossen“", () => {
+// ═══════════ 5 — NUTZBARKEIT (Eligibility) ══════════════════════════════════
+//
+// Der frühere Test „kein Shop wird lokal entfernt, auch nicht Geschlossen“ ist
+// fachlich überholt: der HAR-Vergleich hat belegt, dass JUMiNGO genau diese
+// Einträge nicht zur Auswahl stellt. An seine Stelle treten zwei STRENGERE
+// Regeln, die zusammen mehr zusichern als die alte eine:
+//
+//   A — Normalisierung und Sortierung entfernen keine Shops.
+//   B — Die explizite Eligibility-Stufe entfernt AUSSCHLIESSLICH bekannte
+//       nicht nutzbare workState-Werte aus der Auswahl — UND NUR für einen
+//       durch Messung verifizierten Carrier. Der Mitschnitt belegt die Regel
+//       bislang ausschließlich für DPD; UPS, GLS und DHL Express sind NICHT
+//       verifiziert und bleiben deshalb unabhängig von workState fail-open.
+//
+// `carrierCode` ist überall unten derselbe String, der auch den JUMiNGO-Request
+// bestimmt ("dpd" | "ups" | "gls" | "dhlexpress", siehe carrierMap.js) — keine
+// zweite, eigene Carrier-Ermittlung.
+
+test("40 (A) — Sortieren entfernt nichts, auch keinen „Geschlossen“-Eintrag", () => {
   const items = [
     ...DPD_ACCESS_POINTS,
     { name: "Zu", distance: 4, workState: "Geschlossen" },
     { name: "Ohne Status", distance: 5 },
   ];
   const sortiert = sortAccessPointsByDistance(items);
-  assert.equal(sortiert.length, items.length);
+  assert.equal(sortiert.length, items.length, "die Sortierstufe ist kein Filter");
   const namen = sortiert.map((s) => s.name);
-  for (const n of ["AYDESIGNZ", "K naro Supermarket", "Zu", "Ohne Status"]) {
-    assert.ok(namen.includes(n), `${n} darf nicht herausgefiltert werden`);
+  for (const n of [...DPD_EXPECTED_SORTED, "Zu", "Ohne Status"]) {
+    assert.ok(namen.includes(n), `${n} darf beim Sortieren nicht verschwinden`);
   }
+});
+
+test("41 (B) — DPD + „Geschlossen“/„closed“ ist nicht nutzbar (deutsch, klein, englisch)", () => {
+  for (const v of ["Geschlossen", "geschlossen", "GESCHLOSSEN", "  Geschlossen  ", "closed", "CLOSED"]) {
+    const e = accessPointEligibility({ workState: v }, "dpd");
+    assert.equal(e.usable, false, v);
+    assert.equal(e.reason, "work_state_closed", v);
+    assert.equal(isUsableAccessPoint({ workState: v }, "dpd"), false, v);
+  }
+});
+
+test("42 (B) — DPD + „Geöffnet“/„open“/„opened“ ist nutzbar", () => {
+  for (const v of ["Geöffnet", "geöffnet", "GEÖFFNET", "open", "opened", "offen"]) {
+    assert.equal(isUsableAccessPoint({ workState: v }, "dpd"), true, v);
+  }
+});
+
+test("43 (B) — DPD + „schließt bald“ bleibt nutzbar und sichtbar", () => {
+  for (const v of ["schließt bald", "Schließt bald", "SCHLIESST BALD", "schliesst bald", "closing soon"]) {
+    assert.equal(isUsableAccessPoint({ workState: v }, "dpd"), true, v);
+  }
+});
+
+test("44 (B) — DPD + unbekannt/fehlend/leer/Nicht-String → FAIL-OPEN nutzbar", () => {
+  const faelle = [
+    { workState: "temporarily_unavailable" }, { workState: "irgendwas_neues" },
+    { workState: null }, { workState: undefined }, { workState: "" }, { workState: "   " },
+    { workState: 0 }, { workState: 1 }, { workState: true }, { workState: false },
+    { workState: {} }, { workState: [] }, { workState: ["Geschlossen"] },
+    {}, { name: "ohne Status" },
+  ];
+  for (const f of faelle) {
+    assert.equal(isUsableAccessPoint(f, "dpd"), true, JSON.stringify(f));
+  }
+  // Auch das Objekt selbst darf fehlen, ohne dass etwas verschwindet.
+  for (const v of [null, undefined, {}, "", 0]) assert.equal(isUsableAccessPoint(v, "dpd"), true, String(v));
+});
+
+test("45 (B) — ein verschachteltes „Geschlossen“ blendet nichts aus (DPD)", () => {
+  // Nur das eigene Feld workState zählt. Ein gleichlautender Wert an anderer
+  // Stelle darf keinen Shop entfernen.
+  assert.equal(isUsableAccessPoint({ name: "Geschlossen", workState: "Geöffnet" }, "dpd"), true);
+  assert.equal(isUsableAccessPoint({ type: "Geschlossen", workState: "schließt bald" }, "dpd"), true);
+  assert.equal(isUsableAccessPoint({ hoursOfOperation: [{ workingHours: "Geschlossen" }] }, "dpd"), true);
+});
+
+test("46 — Eligibility ist unabhängig von der Uhrzeit (DPD)", () => {
+  const shop = { workState: "Geschlossen", hoursOfOperation: freitag("10:00-17:00") };
+  // Derselbe Shop, vier verschiedene Zeitpunkte — identisches Ergebnis. Die
+  // Funktion nimmt gar keine Zeit entgegen; hier wird belegt, dass sie auch
+  // keine heimlich liest.
+  const zeiten = [
+    new Date("2026-08-07T09:00:00+02:00"), new Date("2026-08-07T16:06:00+02:00"),
+    new Date("2026-08-07T18:00:00+02:00"), new Date("2026-08-09T03:00:00+02:00"),
+  ];
+  for (const t of zeiten) {
+    void t;
+    assert.equal(isUsableAccessPoint(shop, "dpd"), false, String(t));
+  }
+  assert.equal(accessPointEligibility.length, 2,
+    "die Funktion nimmt Access Point und carrierCode entgegen — keinen Zeitparameter");
+});
+
+test("47 — Eligibility ist unabhängig von hoursOfOperation (DPD)", () => {
+  // Innerhalb der Öffnungszeiten und trotzdem nicht nutzbar — genau der real
+  // gemessene Fall (Kopier und Werbestudio, 10:00–17:00, um 16:06).
+  const zu = { workState: "Geschlossen", hoursOfOperation: freitag("10:00-17:00") };
+  assert.equal(isUsableAccessPoint(zu, "dpd"), false);
+  assert.equal(todayOpeningHoursText(zu.hoursOfOperation, FR), "Heute: 10:00–17:00",
+    "die Öffnungszeit bleibt daneben als Information korrekt");
+
+  // Und umgekehrt: geschlossener Wochentag, aber nutzbar laut JUMiNGO.
+  const offen = {
+    workState: "Geöffnet",
+    hoursOfOperation: [{ dayName: "Freitag", workingHours: null, workingDay: false }],
+  };
+  assert.equal(isUsableAccessPoint(offen, "dpd"), true);
+  assert.equal(todayOpeningHoursText(offen.hoursOfOperation, FR), HOURS_CLOSED_TODAY);
+
+  // Ganz ohne Öffnungszeiten ändert sich nichts.
+  assert.equal(isUsableAccessPoint({ workState: "Geschlossen" }, "dpd"), false);
+  assert.equal(isUsableAccessPoint({ workState: "Geöffnet" }, "dpd"), true);
+});
+
+test("48 — Eligibility kennt keine Namensheuristik (DPD)", () => {
+  // Ein Laden ohne „DPD“ im Namen ist ein vollwertiger Access Point …
+  assert.equal(isUsableAccessPoint({ name: "AYDESIGNZ", workState: "schließt bald" }, "dpd"), true);
+  assert.equal(isUsableAccessPoint({ name: "K naro Supermarket", workState: "schließt bald" }, "dpd"), true);
+  assert.equal(isUsableAccessPoint({ name: "Sonnenstudio Soleil", workState: "Geöffnet" }, "dpd"), true);
+  // … und „DPD“ im Namen rettet einen nicht nutzbaren Punkt nicht.
+  assert.equal(isUsableAccessPoint({ name: "DPD-Paketstation", workState: "Geschlossen" }, "dpd"), false);
+});
+
+test("49 — die Auswahlstufe ist eine eigene Stufe: nichts geht verloren (DPD)", () => {
+  const { usable, unavailable, total } = splitAccessPointsByEligibility(DPD_ACCESS_POINTS, "dpd");
+  assert.equal(total, DPD_ACCESS_POINTS.length);
+  assert.equal(usable.length + unavailable.length, total, "die Summe bleibt vollständig");
+  // Die Reihenfolge der Eingabe bleibt in beiden Teillisten erhalten.
+  const eingabe = DPD_ACCESS_POINTS.map((s) => s.name);
+  const reihenfolgeErhalten = (teil) =>
+    teil.map((s) => eingabe.indexOf(s.name)).every((v, i, a) => i === 0 || a[i - 1] < v);
+  assert.ok(reihenfolgeErhalten(usable), "die Auswahlstufe sortiert nicht um");
+  assert.ok(reihenfolgeErhalten(unavailable), "auch die Restliste behält ihre Reihenfolge");
+  for (const v of [null, undefined, "abc", 5]) {
+    assert.deepEqual(splitAccessPointsByEligibility(v, "dpd"), { usable: [], unavailable: [], total: 0 });
+  }
+});
+
+test("50 — Referenzfall: die echte DPD-Antwort ergibt JUMiNGOs sichtbare Liste", () => {
+  // Die verbindliche Kette: normalisieren → sortieren → Eligibility (DPD).
+  const sortiert = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const { usable, unavailable } = splitAccessPointsByEligibility(sortiert, "dpd");
+
+  assert.deepEqual(usable.map((s) => s.name), DPD_EXPECTED_USABLE);
+  assert.deepEqual(unavailable.map((s) => s.name).sort(), [...DPD_EXPECTED_UNAVAILABLE].sort());
+
+  // Und ausdrücklich: die vier gemessenen Einträge stehen NICHT zur Auswahl …
+  const angeboten = usable.map((s) => s.name);
+  for (const n of ["Kopier und Werbestudio", "Intermarkt", "NKD Deutschland GmbH", "Änderungsschneiderei Sadra"]) {
+    assert.ok(!angeboten.includes(n), `${n} darf nicht angeboten werden`);
+  }
+  // … die näheren „Geschlossen“-Treffer stehen also auch nicht vorne.
+  assert.equal(angeboten[0], "DPD-Paketstation", "vorher standen hier 0,579 km und 0,893 km");
+  assert.equal(angeboten[1], "AYDESIGNZ");
+  assert.equal(angeboten[2], "K naro Supermarket");
+});
+
+test("51 — die Zähler der Referenzantwort stimmen mit der Auswahl überein (DPD)", () => {
+  const { usable, unavailable } = splitAccessPointsByEligibility(
+    sortAccessPointsByDistance(DPD_ACCESS_POINTS), "dpd");
+  assert.equal(usable.length, 5);
+  assert.equal(unavailable.length, 4);
+  assert.equal(accessPointCountLabel(5, usable.length), "5 verfügbare Paketshops");
+  assert.equal(accessPointCountLabel(3, usable.length), "3 von 5 verfügbaren Paketshops");
+  assert.equal(moreAccessPointsLabel(usable.length - 3), "Weitere 2 Paketshops anzeigen");
+  assert.equal(unavailableAccessPointsLabel(unavailable.length),
+    "4 weitere Paketshops derzeit nicht verfügbar");
+});
+
+test("52 — die Anzeigebeschriftung bleibt von der Nutzbarkeit unberührt", () => {
+  // „Geschlossen“ verschwindet aus der AUSWAHL, nicht aus dem Statusmodell:
+  // der Wert bleibt normalisierbar (PR #303) und behält Text und Badge.
+  const s = normalizeAccessPointWorkState("Geschlossen");
+  assert.equal(s.label, "Geschlossen");
+  assert.equal(s.badgeClass, "badge badge--neutral");
+  assert.equal(s.known, true);
+  // Die beiden Stufen sind getrennt: derselbe Wert, zwei verschiedene Fragen.
+  assert.equal(isUsableAccessPoint({ workState: "Geschlossen" }, "dpd"), false);
+  assert.equal(normalizeAccessPointWorkState("Geschlossen").key, "closed");
+});
+
+// ═══════════ 6 — CARRIER-SCOPE: NUR DPD IST VERIFIZIERT ═════════════════════
+//
+// Die Eligibility-Regel wurde ausschließlich mit echten DPD-Daten verifiziert.
+// Für UPS, GLS und DHL Express liegt KEIN eigener Mitschnitt vor — ein Access
+// Point dieser Carrier könnte unter „Geschlossen“ etwas anderes verstehen
+// (z. B. eine echte, tageszeitabhängige Ladenöffnungszeit). Bis ein eigener
+// Nachweis vorliegt, entfernt die Eligibility-Stufe dort NICHTS.
+
+test("53 — DPD: „Geschlossen“ und „closed“ bleiben nicht nutzbar", () => {
+  assert.equal(isUsableAccessPoint({ workState: "Geschlossen" }, "dpd"), false);
+  assert.equal(isUsableAccessPoint({ workState: "closed" }, "dpd"), false);
+});
+
+test("54 — DPD: „Geöffnet“ und „schließt bald“ bleiben nutzbar", () => {
+  assert.equal(isUsableAccessPoint({ workState: "Geöffnet" }, "dpd"), true);
+  assert.equal(isUsableAccessPoint({ workState: "schließt bald" }, "dpd"), true);
+});
+
+test("55 — DPD: ein unbekannter Wert bleibt nutzbar (fail-open gilt auch hier)", () => {
+  assert.equal(isUsableAccessPoint({ workState: "irgendwas_neues" }, "dpd"), true);
+});
+
+test("56 — UPS: „Geschlossen“ ist NICHT verifiziert und bleibt nutzbar", () => {
+  const e = accessPointEligibility({ workState: "Geschlossen" }, "ups");
+  assert.equal(e.usable, true);
+  assert.equal(e.reason, "carrier_unverified");
+  assert.equal(isUsableAccessPoint({ workState: "closed" }, "ups"), true);
+});
+
+test("57 — GLS: „Geschlossen“ ist NICHT verifiziert und bleibt nutzbar", () => {
+  const e = accessPointEligibility({ workState: "Geschlossen" }, "gls");
+  assert.equal(e.usable, true);
+  assert.equal(e.reason, "carrier_unverified");
+  assert.equal(isUsableAccessPoint({ workState: "closed" }, "gls"), true);
+});
+
+test("58 — DHL Express: „Geschlossen“ ist NICHT verifiziert und bleibt nutzbar", () => {
+  // "dhlexpress" ist der exakte Code aus carrierMap.js (toAccessPointSearchCode
+  // "dhl-express" → "dhlexpress"); kein Namens-Shortcut wie "dhl".
+  const e = accessPointEligibility({ workState: "Geschlossen" }, "dhlexpress");
+  assert.equal(e.usable, true);
+  assert.equal(e.reason, "carrier_unverified");
+  assert.equal(isUsableAccessPoint({ workState: "closed" }, "dhlexpress"), true);
+});
+
+test("59 — ein unbekannter/fehlender Carrier bleibt fail-open", () => {
+  for (const carrier of ["hermes", "fedex", "DPD", "Dpd", " dpd ", "", null, undefined, 123, {}]) {
+    // Groß-/Kleinschreibung und Whitespace NICHT normalisieren: „DPD“ (groß)
+    // ist nicht derselbe Wert, den toAccessPointSearchCode liefert — die
+    // Eligibility darf sich hier nicht großzügiger zeigen als der Request
+    // selbst. " dpd " mit Leerraum ist ebenfalls nicht der exakte Code.
+    if (carrier === "dpd") continue;
+    assert.equal(isUsableAccessPoint({ workState: "Geschlossen" }, carrier), true, String(carrier));
+  }
+  // Ohne zweites Argument (Aufrufer vergisst carrierCode) — ebenfalls fail-open,
+  // nie fail-closed. Ein fehlender Parameter darf nie zu weniger Shops führen.
+  assert.equal(isUsableAccessPoint({ workState: "Geschlossen" }), true);
+});
+
+test("60 — splitAccessPointsByEligibility ist für nicht verifizierte Carrier eine reine Identität", () => {
+  const items = DPD_ACCESS_POINTS; // enthält bekanntlich 4 „Geschlossen“-Einträge
+  for (const carrier of ["ups", "gls", "dhlexpress", "hermes", undefined]) {
+    const { usable, unavailable, total } = splitAccessPointsByEligibility(items, carrier);
+    assert.equal(usable.length, total, `bei carrier=${carrier} darf nichts aussortiert werden`);
+    assert.equal(unavailable.length, 0, `bei carrier=${carrier} darf keine Restliste entstehen`);
+    assert.deepEqual(usable.map((s) => s.name), items.map((s) => s.name),
+      `bei carrier=${carrier} bleibt die Reihenfolge der vollständigen Liste erhalten`);
+  }
+});
+
+test("61 — derselbe Datensatz liefert bei DPD eine kleinere Auswahl als bei jedem anderen Carrier", () => {
+  const sortiert = sortAccessPointsByDistance(DPD_ACCESS_POINTS);
+  const beiDpd = splitAccessPointsByEligibility(sortiert, "dpd");
+  const beiUps = splitAccessPointsByEligibility(sortiert, "ups");
+  assert.equal(beiDpd.usable.length, 5);
+  assert.equal(beiUps.usable.length, 9, "ohne Verifikation bleibt die volle Menge nutzbar");
+  assert.ok(beiDpd.usable.length < beiUps.usable.length);
 });

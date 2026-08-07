@@ -678,8 +678,11 @@
 .ap-finder-empty { padding: 14px 4px; font-size: 13px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
 /* Ergebnisliste */
-/* Wie viel von wie viel gerade zu sehen ist — die Liste kürzt sichtbar. */
+/* Wie viel von wie viel gerade zu sehen ist — die Liste kürzt sichtbar.
+   Der Zusatz zu nicht verfügbaren Shops läuft bewusst in derselben ruhigen
+   Zeile und Farbe: das ist eine Randnotiz, kein Fehler. */
 .ap-result-count { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
+.ap-result-unavailable { color: var(--ce-color-text-muted); }
 .ap-result-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ap-result {
   display: flex; flex-direction: column; gap: 8px;

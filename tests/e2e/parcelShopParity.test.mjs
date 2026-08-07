@@ -7,9 +7,13 @@
 //   • Was tatsächlich an die Suche geht — insbesondere `street` (der
 //     Suchmittelpunkt) und `onlyOpen` als echter Boolean.
 //   • Was tatsächlich im DOM steht — Reihenfolge, Entfernungen, Status und
-//     Öffnungszeiten der drei Shops aus dem Mitschnitt.
-//   • Dass kein Rohwert („schließt bald“, „Status: …“) sichtbar wird und kein
-//     Shop lokal verschwindet.
+//     Öffnungszeiten der Shops aus dem Mitschnitt.
+//   • Dass die Auswahl derselben Menge entspricht wie JUMiNGOs eigene Liste:
+//     die vier belegten „Geschlossen“-Einträge werden nicht angeboten, obwohl
+//     zwei davon die NÄCHSTEN Treffer sind (0,579 km und 0,893 km).
+//   • Dass ein unbekannter Statuswert NICHT ausblendet (fail-open) und kein
+//     Rohwert sichtbar wird.
+//   • Dass die Zähler die verfügbare Menge meinen, nicht die Rohantwort.
 //   • Dass „Schließt bald“ auch auf 360 px vollständig lesbar bleibt.
 //
 // Die Uhr wird auf einen Freitag gestellt: nur für diesen Wochentag belegt der
@@ -20,7 +24,9 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { DPD_RESPONSE, DPD_EXPECTED_ORDER, FREITAG } from "../fixtures/accessPointsDpd.mjs";
+import {
+  DPD_RESPONSE, DPD_EXPECTED_USABLE, DPD_EXPECTED_UNAVAILABLE, FREITAG,
+} from "../fixtures/accessPointsDpd.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -178,34 +184,56 @@ test("3 — onlyOpen wird exakt so gesendet, wie die Checkbox steht", async () =
   assert.equal(suchen[1].onlyOpen, true);
   assert.strictEqual(typeof suchen[1].onlyOpen, "boolean");
 
-  // Die Filterung selbst bleibt bei JUMiNGO: das Frontend entfernt nichts, auch
-  // nicht „schließt bald“. Die Antwort ist unverändert → alle drei bleiben da.
-  assert.equal(await page.locator(".ap-result").count(), 3, "kein lokaler Filter");
+  // Der Uhrzeitfilter bleibt vollständig bei JUMiNGO — das Frontend rechnet
+  // keine Öffnungszeit nach. Auf BEIDE Antworten wirkt danach dieselbe
+  // Eligibility-Regel, deshalb ist die Liste in beiden Fällen gleich lang.
+  assert.equal(await page.locator(".ap-result").count(), DPD_EXPECTED_USABLE.length);
   await page.close();
 });
 
-test("4 — die drei echten Shops stehen aufsteigend nach Entfernung im DOM", async () => {
+test("4 — die nutzbaren Shops stehen aufsteigend nach Entfernung im DOM", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
 
   const namen = await page.locator(".ap-result-name").allInnerTexts();
-  assert.deepEqual(namen, DPD_EXPECTED_ORDER, "JUMiNGO liefert unsortiert — die Liste muss sortieren");
+  assert.deepEqual(namen, DPD_EXPECTED_USABLE,
+    "JUMiNGO liefert unsortiert — die Liste muss sortieren und dann auswählen");
+  assert.equal(namen[0], "DPD-Paketstation",
+    "vorher standen hier die näheren, aber nicht nutzbaren 0,579 km und 0,893 km");
 
   const dist = await page.locator(".ap-result-dist").allInnerTexts();
-  assert.deepEqual(dist, ["2,6 km", "3,0 km", "3,5 km"]);
+  assert.deepEqual(dist, ["2,6 km", "3,0 km", "3,5 km", "3,6 km", "4,0 km"]);
   await page.close();
 });
 
-test("5 — Status und Öffnungszeiten stehen sichtbar an jedem Shop", async () => {
+test("5 — die nicht nutzbaren Shops stehen nicht zur Auswahl", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await setupRoutes(page);
+  await oeffneFinder(page);
+  await suche(page);
+
+  // Auch nach dem Ausklappen bleiben sie draußen — es gibt keinen Pfad, über
+  // den ein „Geschlossen“-Shop doch noch in der Auswahl landet.
+  const mehr = page.locator(".ap-more-btn");
+  if (await mehr.count()) await mehr.click();
+  const text = await page.locator(".ap-result-list").innerText();
+  for (const n of DPD_EXPECTED_UNAVAILABLE) {
+    assert.ok(!text.includes(n), `${n} darf nicht in der Auswahl stehen`);
+  }
+  assert.ok(!text.includes("Geschlossen"), "kein Geschlossen-Badge in der Auswahl");
+  await page.close();
+});
+
+test("6 — Status und Öffnungszeiten stehen sichtbar an jedem angebotenen Shop", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
 
   const status = await page.locator(".ap-result-status").allInnerTexts();
-  assert.deepEqual(status, ["Geöffnet", "Schließt bald", "Schließt bald"]);
+  assert.deepEqual(status, ["Geöffnet", "Schließt bald", "Schließt bald", "Geöffnet", "Geöffnet"]);
 
   const rollen = await page.locator(".ap-result-status").evaluateAll((els) => els.map((e) => e.className));
   assert.ok(rollen[0].includes("badge--success"), "Geöffnet → Success");
@@ -213,6 +241,8 @@ test("5 — Status und Öffnungszeiten stehen sichtbar an jedem Shop", async () 
   assert.ok(rollen[2].includes("badge--warning"));
   for (const k of rollen) assert.ok(/(^|\s)badge(\s|$)/.test(k), "Statusbadge trägt die Basisklasse (Punkt)");
 
+  // Öffnungszeiten unverändert aus PR #303 — nur dort, wo der Mitschnitt
+  // welche belegt (Aral und Sonnenstudio tragen keine).
   const zeiten = await page.locator(".ap-result-hours").allInnerTexts();
   assert.deepEqual(zeiten.map((z) => z.trim()), [
     "Heute: 00:01–23:59", "Heute: 08:30–19:30", "Heute: 10:00–19:30",
@@ -220,10 +250,8 @@ test("5 — Status und Öffnungszeiten stehen sichtbar an jedem Shop", async () 
   await page.close();
 });
 
-test("6 — kein Rohwert und kein Objekt erreichen die Oberfläche", async () => {
+test("7 — ein unbekannter Status bleibt sichtbar (fail-open) und ohne Rohwert", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  // Ein unbekannter Serverwert und eine unlesbare Zeitangabe zusätzlich zu den
-  // echten Daten — beides darf sichtbar nichts kaputt machen.
   const mitUnbekannt = {
     accessPoints: [
       ...DPD_RESPONSE.accessPoints,
@@ -237,52 +265,79 @@ test("6 — kein Rohwert und kein Objekt erreichen die Oberfläche", async () =>
   await setupRoutes(page, { accessPoints: mitUnbekannt });
   await oeffneFinder(page);
   await suche(page);
+  await page.locator(".ap-more-btn").click();
+
+  const namen = await page.locator(".ap-result-name").allInnerTexts();
+  assert.ok(namen.includes("Testshop Unbekannt"),
+    "ein neuer JUMiNGO-Statuswert darf keinen Shop verschwinden lassen");
 
   const text = await page.locator(".ap-finder").innerText();
   assert.ok(!text.includes("temporarily_unavailable"), "der Rohwert darf nicht sichtbar sein");
   assert.ok(!text.includes("[object Object]"), "kein durchgereichtes Objekt");
-  assert.ok(!text.includes("Status:"), "kein Status-Präfix mit Rohtext mehr");
   assert.ok(text.includes("Öffnungsstatus nicht verfügbar"), "stattdessen ein verständlicher Hinweis");
 
-  // Der Rohwert bleibt für den Support im title — sichtbar wird er nicht.
   const titel = await page.locator('.ap-result-status[title]').first().getAttribute("title");
   assert.match(titel, /temporarily_unavailable/);
-
-  // Und der vierte Shop ist trotzdem da (nichts wird weggefiltert).
-  assert.equal(await page.locator(".ap-result").count(), 4);
   await page.close();
 });
 
-test("7 — die Liste sagt, wie viel von wie viel sie zeigt", async () => {
+test("8 — die Zähler beziehen sich auf die verfügbare Menge (20 roh / 10 nutzbar)", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  // Acht Shops → die kompakte Ansicht zeigt fünf davon.
-  const viele = {
+  // Genau die Verteilung des echten Mitschnitts: 20 Access Points,
+  // 10 × nutzbar, 10 × „Geschlossen“.
+  const zwanzig = {
     accessPoints: [
-      ...DPD_RESPONSE.accessPoints,
+      ...DPD_RESPONSE.accessPoints, // 9 belegte: 5 nutzbar, 4 nicht nutzbar
       ...Array.from({ length: 5 }, (_, i) => ({
-        name: `Weiterer Shop ${i + 1}`, street: `Teststr. ${i + 1}`, postCode: "73207", city: "Plochingen",
-        countryCode: "DE", distance: 5 + i, distanceCode: "km", workState: "Geöffnet",
+        name: `Weiterer Shop ${i + 1}`, distance: 5 + i, distanceCode: "km", workState: "Geöffnet",
         hoursOfOperation: [{ dayName: "Freitag", workingHours: "09:00-18:00", workingDay: true }],
+      })),
+      ...Array.from({ length: 6 }, (_, i) => ({
+        name: `Nicht verfügbar ${i + 1}`, distance: 1 + i * 0.1, distanceCode: "km", workState: "Geschlossen",
       })),
     ],
   };
-  await setupRoutes(page, { accessPoints: viele });
+  await setupRoutes(page, { accessPoints: zwanzig });
   await oeffneFinder(page);
   await suche(page);
 
-  assert.equal(await page.locator(".ap-result").count(), 5);
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "5 von 8 Paketshops");
-  const mehr = page.locator(".ap-more-btn");
-  assert.equal((await mehr.innerText()).trim(), "Weitere 3 Paketshops anzeigen");
+  assert.equal(await page.locator(".ap-result").count(), 5, "kompakt fünf von zehn");
+  assert.equal((await page.locator(".ap-result-count").innerText()).trim(),
+    "5 von 10 verfügbaren Paketshops · 10 weitere Paketshops derzeit nicht verfügbar");
 
+  const mehr = page.locator(".ap-more-btn");
+  assert.equal((await mehr.innerText()).trim(), "Weitere 5 Paketshops anzeigen");
   await mehr.click();
-  assert.equal(await page.locator(".ap-result").count(), 8);
-  assert.equal((await page.locator(".ap-result-count").innerText()).trim(), "8 Paketshops");
-  assert.equal((await mehr.innerText()).trim(), "Weniger anzeigen");
+  assert.equal(await page.locator(".ap-result").count(), 10, "nie mehr als die nutzbaren");
+  assert.equal((await page.locator(".ap-result-count").innerText()).trim(),
+    "10 verfügbare Paketshops · 10 weitere Paketshops derzeit nicht verfügbar");
+
+  // Kein nicht nutzbarer Shop erscheint, auch nicht ausgeklappt.
+  const liste = await page.locator(".ap-result-list").innerText();
+  assert.ok(!liste.includes("Nicht verfügbar "), "die Restmenge bleibt außerhalb der Auswahl");
   await page.close();
 });
 
-test("8 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreiten", async () => {
+test("9 — sind alle Treffer nicht verfügbar, sagt die Seite genau das", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const alleZu = {
+    accessPoints: DPD_RESPONSE.accessPoints.map((ap) => ({ ...ap, workState: "Geschlossen" })),
+  };
+  await setupRoutes(page, { accessPoints: alleZu });
+  await oeffneFinder(page);
+  await page.locator(".ap-finder-search-btn").first().click();
+  await page.waitForSelector(".ap-finder-empty", { timeout: 20000 });
+
+  const text = (await page.locator(".ap-finder-empty").innerText()).trim();
+  assert.match(text, /kein Paketshop verfügbar/);
+  assert.match(text, /9 weitere Paketshops derzeit nicht verfügbar/);
+  assert.ok(!/Keine Paketshops gefunden/.test(text),
+    "gefunden wurden welche — nur keiner davon ist nutzbar");
+  assert.equal(await page.locator(".ap-result").count(), 0);
+  await page.close();
+});
+
+test("10 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreiten", async () => {
   for (const breite of [1440, 1024, 768, 430, 390, 360]) {
     const page = await browser.newPage({ viewport: { width: breite, height: 900 } });
     await setupRoutes(page);
@@ -309,6 +364,14 @@ test("8 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreiten
     assert.ok(mass.drin, `Statusbadge ragt bei ${breite}px aus der Karte`);
     assert.notEqual(mass.ellipsis, "ellipsis", `Statustext wird bei ${breite}px gekürzt`);
     assert.ok(mass.hoehe >= 20, `Statusbadge zu flach bei ${breite}px`);
+
+    // Die Ergebniszeile darf auf schmalen Geräten ebenfalls nicht überlaufen.
+    const zeile = await page.locator(".ap-result-count").evaluate((el) => ({
+      clipped: el.scrollWidth > el.clientWidth + 1,
+      text: el.innerText.trim(),
+    }));
+    assert.ok(!zeile.clipped, `die Ergebniszeile läuft bei ${breite}px über`);
+    assert.match(zeile.text, /verfügbare/, `Ergebniszeile bei ${breite}px`);
     await page.close();
   }
 });

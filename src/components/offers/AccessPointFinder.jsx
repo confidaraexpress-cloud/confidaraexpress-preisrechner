@@ -6,10 +6,12 @@ import {
   normalizeAccessPointWorkState,
   todayOpeningHoursText,
   sortAccessPointsByDistance,
+  splitAccessPointsByEligibility,
   toDistanceNumber,
   formatDistance,
   accessPointCountLabel,
   moreAccessPointsLabel,
+  unavailableAccessPointsLabel,
 } from "../../utils/accessPointView";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
@@ -30,10 +32,16 @@ import {
 //
 // JUMiNGO-Parität (siehe utils/accessPointView.mjs):
 //  • Der Öffnungsstatus kommt AUSSCHLIESSLICH aus workState — hier wird nichts
-//    aus der Uhrzeit hergeleitet und nichts lokal gefiltert.
+//    aus der Uhrzeit hergeleitet.
 //  • hoursOfOperation ist ein Objekt-Array; ausgewertet wird nur der heutige
 //    Wochentag (Europe/Berlin) und nur zur Anzeige neben dem Status.
 //  • Die Entfernung stammt von JUMiNGO; sortiert wird danach, gerechnet nicht.
+//  • Angeboten werden nur NUTZBARE Access Points — dieselbe Menge, die auch
+//    JUMiNGOs eigene Oberfläche zeigt (belegt: 20 Treffer, davon 10 mit
+//    workState „Geschlossen“; JUMiNGO listet genau die übrigen 10). Die
+//    Auswahlstufe ist explizit und getrennt: normalisieren → sortieren →
+//    Eligibility → 5er-Schnitt. Nicht verfügbare Shops werden gezählt und
+//    genannt, aber nicht als wählbar dargestellt.
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
 
@@ -98,13 +106,18 @@ function normalizeItem(raw) {
   const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  return { name, address, distance, distanceCode, hours, status, countryCode };
+  // `workState` wandert als Rohwert mit: die spätere Eligibility-Stufe liest
+  // GENAU dieses Feld und ist damit unabhängig von `status` (der reinen
+  // Anzeigeform). Ohne diese Zeile fiele jede Auswahl still ins Fail-open —
+  // die Liste sähe richtig aus und wäre es nicht.
+  return { name, address, distance, distanceCode, hours, status, workState: status.raw, countryCode };
 }
 
-// Ergebnisse werden NICHT gefiltert — die Auswahl „nur geöffnete Shops“ trifft
-// allein JUMiNGO über onlyOpen. Sortiert wird stabil nach der von JUMiNGO
-// gelieferten Entfernung; Einträge ohne Entfernung bleiben erhalten und hängen
-// in unveränderter Reihenfolge hinten an.
+// Normalisieren und Sortieren entfernen NICHTS: die vollständige Liste bleibt
+// erhalten und ist die Grundlage aller Zahlen. Sortiert wird stabil nach der
+// von JUMiNGO gelieferten Entfernung; Einträge ohne Entfernung bleiben erhalten
+// und hängen in unveränderter Reihenfolge hinten an. Welche Shops angeboten
+// werden, entscheidet erst die spätere, eigene Eligibility-Stufe.
 function normalizeList(data) {
   const arr =
     Array.isArray(data)               ? data :
@@ -254,14 +267,26 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     </div>
   );
 
-  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer, der Rest auf Wunsch
-  // per Button. Reiner Anzeigezustand (expanded), nicht persistiert. Die Liste
-  // sagt dabei offen, wie viel sie von wie viel zeigt — vorher war „Weitere
-  // Paketshops anzeigen (15)" die einzige Spur, dass überhaupt gekürzt wurde.
+  // ── Auswahlstufe (explizit, nach Normalisierung und Sortierung) ────────────
+  // `results` bleibt unangetastet die vollständige Antwort. Angeboten wird
+  // daraus nur, was JUMiNGO als nutzbar führt; der Rest wird gezählt und
+  // benannt, aber nicht zur Auswahl gestellt.
+  const { usable: usableResults, unavailable: unavailableResults } =
+    splitAccessPointsByEligibility(results || []);
+
+  // Kompakte Ergebnisanzeige: zunächst höchstens 5 nutzbare Treffer, der Rest
+  // auf Wunsch per Button. Reiner Anzeigezustand (expanded), nicht persistiert.
+  // Alle Zahlen beziehen sich auf die NUTZBARE Menge — „5 von 20“ hätte eine
+  // Auswahl versprochen, die es gar nicht gibt.
   const MAX_COMPACT = 5;
-  const hasResults  = !loading && !error && results !== null && results.length > 0;
-  const shownResults = hasResults ? (expanded ? results : results.slice(0, MAX_COMPACT)) : [];
-  const extraResults = hasResults ? results.length - MAX_COMPACT : 0;
+  const hasResults  = !loading && !error && results !== null && usableResults.length > 0;
+  const shownResults = hasResults ? (expanded ? usableResults : usableResults.slice(0, MAX_COMPACT)) : [];
+  const extraResults = hasResults ? usableResults.length - MAX_COMPACT : 0;
+  // Ruhige Randnotiz, kein Fehler: ein nicht nutzbarer Paketshop ist ein
+  // Betriebszustand. Nur sichtbar, wenn es tatsächlich welche gibt.
+  const unavailableNote = !loading && !error && results !== null
+    ? unavailableAccessPointsLabel(unavailableResults.length)
+    : null;
 
   return (
     <div className="ap-finder" onClick={stop} aria-busy={loading}>
@@ -363,20 +388,37 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         {loading
           ? "Paketshops werden gesucht …"
           : results !== null
-            ? (results.length === 0
-                ? "Keine Paketshops gefunden."
-                : `${results.length} Paketshop${results.length === 1 ? "" : "s"} gefunden.`)
+            ? [
+                usableResults.length === 0
+                  ? "Keine verfügbaren Paketshops gefunden."
+                  : `${usableResults.length} verfügbare${usableResults.length === 1 ? "r" : ""} Paketshop${usableResults.length === 1 ? "" : "s"} gefunden.`,
+                unavailableNote,
+              ].filter(Boolean).join(" ")
             : ""}
       </p>
 
+      {/* Zwei verschiedene Leerzustände, weil sie zwei verschiedene Dinge
+          bedeuten: gar kein Treffer im Umkreis — oder Treffer, die JUMiNGO
+          derzeit nicht als nutzbar führt. „Keine Paketshops gefunden“ wäre im
+          zweiten Fall schlicht falsch. */}
       {!loading && !error && results !== null && results.length === 0 && (
         <div className="ap-finder-empty">
           Keine Paketshops gefunden. Passen Sie PLZ oder Umkreis an.
         </div>
       )}
+      {!loading && !error && results !== null && results.length > 0 && usableResults.length === 0 && (
+        <div className="ap-finder-empty">
+          Im gewählten Umkreis ist derzeit kein Paketshop verfügbar.
+          {unavailableNote ? ` ${unavailableNote}.` : ""} Versuchen Sie es später
+          erneut oder vergrößern Sie den Umkreis.
+        </div>
+      )}
 
       {hasResults && (
-        <p className="ap-result-count">{accessPointCountLabel(shownResults.length, results.length)}</p>
+        <p className="ap-result-count">
+          {accessPointCountLabel(shownResults.length, usableResults.length)}
+          {unavailableNote && <span className="ap-result-unavailable"> · {unavailableNote}</span>}
+        </p>
       )}
 
       {hasResults && (

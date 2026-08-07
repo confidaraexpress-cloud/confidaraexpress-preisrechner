@@ -37,9 +37,19 @@ const FOKUSSIERBAR = [
 
 const sichtbar = (el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
 
-export function useDialog({ open = true, onClose, closeOnEscape = true } = {}) {
+export function useDialog({ open = true, onClose, closeOnEscape = true, returnFocusTo = null } = {}) {
   const ref = useRef(null);
   const rueckgabeRef = useRef(null);
+  // Optionales, EXPLIZITES Rückgabeziel.
+  //
+  // Der Normalfall (document.activeElement beim Öffnen) trägt eine stille
+  // Annahme: dass der Auslöser beim Öffnen noch fokussiert ist. Das stimmt
+  // nicht, wenn er im selben Render deaktiviert wird — etwa ein Suchknopf, der
+  // Dialog UND Ladevorgang zugleich startet und dabei `disabled` wird. Der
+  // Browser blurrt ihn dann sofort, activeElement ist <body>, und die
+  // Fokusrückgabe landet im Nichts. Wer das weiß, gibt sein Ziel hier direkt an.
+  const zielRef = useRef(returnFocusTo);
+  zielRef.current = returnFocusTo;
   // onClose als Ref: der Effekt soll nicht bei jeder neuen Closure neu laufen
   // (sonst springt der Fokus bei jedem Render des Aufrufers zurück an den Anfang).
   const onCloseRef = useRef(onClose);
@@ -50,7 +60,7 @@ export function useDialog({ open = true, onClose, closeOnEscape = true } = {}) {
     const knoten = ref.current;
     if (!knoten) return undefined;
 
-    rueckgabeRef.current = document.activeElement;
+    rueckgabeRef.current = zielRef.current?.current || document.activeElement;
 
     const felder = () => [...knoten.querySelectorAll(FOKUSSIERBAR)].filter(sichtbar);
     const erste = felder()[0];

@@ -76,12 +76,22 @@ const WORK_STATE_LABELS = {
   [WORK_STATE_UNKNOWN]: WORK_STATE_UNKNOWN_LABEL,
 };
 
-// Statusfarben aus dem bestehenden Designsystem (primitives.css). „Geschlossen“
-// ist kein Fehler, sondern eine sachliche Information → neutral, nicht rot.
+// Statusfarben aus dem bestehenden Designsystem (primitives.css) — KEINE
+// paketshop-eigene Farbwelt. Die drei belegten Zustände sind auf den ersten
+// Blick unterscheidbar: grün offen, amber schließt bald, rot geschlossen.
+//
+// „Geschlossen“ trug bis hierher bewusst Neutral-Grau, weil ein geschlossener
+// Shop kein Fehler ist. Im großen Kartenfenster stehen jetzt aber alle Treffer
+// gleichzeitig nebeneinander — dort war Grau gegen Grau nicht mehr scanbar.
+// Rot steht deshalb für „jetzt nicht offen“, nicht für „defekt“; der Shop
+// bleibt ein regulärer, wählbarer Treffer (siehe Abschnitt 2b). Ein unbekannter
+// Status bleibt neutral: über ihn ist gerade nichts bekannt, also wird auch
+// nichts eingefärbt. Der Zustand steht NIE allein in der Farbe — jedes Badge
+// trägt Punkt UND Text.
 const WORK_STATE_BADGES = {
   [WORK_STATE_OPEN]: "badge badge--success",
   [WORK_STATE_CLOSING]: "badge badge--warning",
-  [WORK_STATE_CLOSED]: "badge badge--neutral",
+  [WORK_STATE_CLOSED]: "badge badge--error",
   [WORK_STATE_UNKNOWN]: "badge badge--neutral",
 };
 
@@ -572,8 +582,155 @@ export function openingFilterEmptyText(filter) {
   return `Im gewählten Umkreis entspricht kein Paketshop dem Öffnungszeitenfilter ${name}.`;
 }
 
-/** „Weitere 15 Paketshops anzeigen“ — die Zahl steht am Ziel, nicht in Klammern. */
-export function moreAccessPointsLabel(remaining) {
-  const n = Number.isFinite(remaining) && remaining > 0 ? remaining : 0;
-  return `Weitere ${n} Paketshop${n === 1 ? "" : "s"} anzeigen`;
+// Hier stand bis zum Kartenfenster moreAccessPointsLabel() („Weitere 15
+// Paketshops anzeigen“). Es gehörte zum 5er-Anzeigeschnitt der früheren
+// Inline-Liste. Das Fenster zeigt alle Treffer in einer eigenständig
+// scrollenden Liste — der Schnitt und damit die Beschriftung sind entfallen.
+
+// ═══════════ 5 — WOCHENÖFFNUNGSZEITEN (Detailausklappung) ═══════════════════
+//
+// Die Listenzeile zeigt nur HEUTE (todayOpeningHoursText). Wer mehr wissen
+// will, klappt den Shop auf — dann steht hier die ganze Woche. Beides liest
+// dieselben Rohdaten; erfunden wird nichts, und ein fehlender Tag bleibt ein
+// fehlender Tag statt einer stillschweigenden „Geschlossen“-Behauptung.
+
+/** Wochentagsnamen in Anzeigereihenfolge — Montag zuerst, wie in Deutschland. */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const WEEKDAY_LABELS = {
+  0: "Sonntag", 1: "Montag", 2: "Dienstag", 3: "Mittwoch",
+  4: "Donnerstag", 5: "Freitag", 6: "Samstag",
+};
+
+/**
+ * Die vollständige Woche eines Access Points als darstellbare Zeilen.
+ *
+ * Rückgabe: Array aus { dayIndex, label, hours, lunchBreak, closed }
+ *   hours   — „09:00–18:00“ oder null
+ *   closed  — true NUR wenn JUMiNGO den Tag als geschlossen führt
+ *
+ * Leeres Array, wenn die Antwort keine Wochenstruktur enthält (Alt-Formate
+ * oder gar nichts) — der Aufrufer zeigt dann „Öffnungszeiten nicht verfügbar“
+ * beziehungsweise den Alt-Text aus normalizeOpeningHours().text.
+ *
+ * Mehrere Einträge für denselben Wochentag werden zusammengefasst, statt einen
+ * davon zu verwerfen: JUMiNGO liefert das zwar nicht, aber ein stiller
+ * Datenverlust wäre der schlechtere Umgang damit.
+ */
+export function weekOpeningHours(value) {
+  const { entries } = normalizeOpeningHours(value);
+  if (!entries.length) return [];
+
+  const proTag = new Map();
+  for (const e of entries) {
+    if (e.dayIndex == null) continue;
+    if (!proTag.has(e.dayIndex)) proTag.set(e.dayIndex, []);
+    proTag.get(e.dayIndex).push(e);
+  }
+  if (!proTag.size) return [];
+
+  const zeilen = [];
+  for (const dayIndex of WEEK_ORDER) {
+    const tag = proTag.get(dayIndex);
+    if (!tag) continue; // kein Eintrag → keine Zeile, keine Behauptung
+    const offen = tag.filter((e) => !e.closed && e.hours);
+    if (offen.length) {
+      zeilen.push({
+        dayIndex,
+        label: WEEKDAY_LABELS[dayIndex],
+        hours: offen.map((e) => e.hours).join(" · "),
+        lunchBreak: offen.map((e) => e.lunchBreak).find(Boolean) || null,
+        closed: false,
+      });
+    } else if (tag.some((e) => e.closed)) {
+      zeilen.push({ dayIndex, label: WEEKDAY_LABELS[dayIndex], hours: null, lunchBreak: null, closed: true });
+    }
+  }
+  return zeilen;
+}
+
+export const HOURS_UNAVAILABLE = "Öffnungszeiten nicht verfügbar";
+
+// ═══════════ 6 — KOORDINATEN (Kartenmarker) ═════════════════════════════════
+//
+// JUMiNGO liefert latitude/longitude je Access Point, und das CE-Backend reicht
+// beide bereits unverändert durch (normalizeAccessPoints in routes/jumingo.js).
+// Hier wird NICHTS geokodiert und NICHTS geschätzt: fehlt eine Koordinate,
+// bekommt der Shop keinen Marker — er bleibt aber vollständig in der Liste.
+// Die Liste ist die autoritative Darstellung, die Karte die Ergänzung.
+
+/** Gültige geografische Zahl (number oder numerischer String), sonst null. */
+export function toCoordinateNumber(value) {
+  const n =
+    typeof value === "number" ? value :
+    typeof value === "string" && value.trim() ? Number(value.trim().replace(",", ".")) :
+    null;
+  return n != null && Number.isFinite(n) ? n : null;
+}
+
+/**
+ * { lat, lng } eines Access Points — oder null, wenn keine brauchbaren
+ * Koordinaten vorliegen. 0/0 („Null Island“) wird bewusst verworfen: das ist
+ * in der Praxis ein fehlender Wert, kein Paketshop im Atlantik.
+ */
+export function accessPointCoordinate(accessPoint) {
+  if (!accessPoint || typeof accessPoint !== "object") return null;
+  const lat = toCoordinateNumber(accessPoint.latitude ?? accessPoint.lat ?? null);
+  const lng = toCoordinateNumber(accessPoint.longitude ?? accessPoint.lng ?? accessPoint.lon ?? null);
+  if (lat == null || lng == null) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  if (lat === 0 && lng === 0) return null;
+  return { lat, lng };
+}
+
+/**
+ * Die Marker zu einer bereits sortierten und gefilterten Liste.
+ *
+ * Rückgabe: Array aus { index, lat, lng, accessPoint }
+ *   index — die Position in der ÜBERGEBENEN Liste (0-basiert). Die sichtbare
+ *           Markernummer ist index + 1, also dieselbe Zahl wie in der Liste.
+ *           Shops ohne Koordinaten überspringen ihre Nummer — die Nummerierung
+ *           folgt der Liste, nicht den Markern. Andernfalls zeigte Marker „7“
+ *           auf Listeneintrag 8, sobald ein Shop davor keine Koordinate hat.
+ */
+export function accessPointMarkers(items) {
+  if (!Array.isArray(items)) return [];
+  const marker = [];
+  items.forEach((accessPoint, index) => {
+    const coord = accessPointCoordinate(accessPoint);
+    if (coord) marker.push({ index, lat: coord.lat, lng: coord.lng, accessPoint });
+  });
+  return marker;
+}
+
+/**
+ * Umschließendes Rechteck aller übergebenen Marker → { south, west, north, east }
+ * oder null, wenn es keine gibt. Reine Extremwertbildung, keine Projektion.
+ *
+ * Ein einzelner Marker liefert ein Rechteck ohne Ausdehnung; der Kartenadapter
+ * setzt dafür einen festen Zoom statt eines fitBounds auf einen Punkt (das
+ * zoomte sonst bis in die maximale Stufe).
+ */
+export function accessPointBounds(markers) {
+  if (!Array.isArray(markers) || !markers.length) return null;
+  let south = Infinity, west = Infinity, north = -Infinity, east = -Infinity;
+  for (const m of markers) {
+    const lat = toCoordinateNumber(m?.lat);
+    const lng = toCoordinateNumber(m?.lng);
+    if (lat == null || lng == null) continue;
+    if (lat < south) south = lat;
+    if (lat > north) north = lat;
+    if (lng < west) west = lng;
+    if (lng > east) east = lng;
+  }
+  if (!Number.isFinite(south) || !Number.isFinite(west)) return null;
+  return { south, west, north, east };
+}
+
+/** „18 von 20 Paketshops auf der Karte“ — ehrlich über fehlende Koordinaten. */
+export function mapCoverageLabel(withCoords, total) {
+  const g = Number.isFinite(total) ? total : 0;
+  const m = Number.isFinite(withCoords) ? Math.min(withCoords, g) : 0;
+  if (g === 0 || m === g) return null; // nichts zu erklären
+  if (m === 0) return "Für diese Paketshops liegen keine Kartenpositionen vor.";
+  return `${m} von ${g} Paketshops haben eine Kartenposition.`;
 }

@@ -434,7 +434,7 @@ test("10 — es kommen keine neuen Emojis dazu", () => {
 
 test("11 — das Iconsystem bleibt intern, ohne neue Abhängigkeit", () => {
   const pkg = JSON.parse(read("../../package.json"));
-  const erlaubt = ["@vitejs/plugin-react", "react", "react-dom", "react-router-dom", "vite"];
+  const erlaubt = ["@vitejs/plugin-react", "maplibre-gl", "react", "react-dom", "react-router-dom", "vite"];
   assert.deepEqual(Object.keys(pkg.dependencies).sort(), erlaubt.sort(),
     "es wird keine Abhängigkeit hinzugefügt"
     + " (lucide-react war nie importiert, wurde von vier Tests ausdrücklich verboten"

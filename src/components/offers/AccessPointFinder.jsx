@@ -2,6 +2,15 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { searchAccessPoints } from "../../api/client";
 import { toAccessPointSearchCode, publicCarrierIdToAccessPointSearchCode } from "../../utils/carrierMap";
+import {
+  normalizeAccessPointWorkState,
+  todayOpeningHoursText,
+  sortAccessPointsByDistance,
+  toDistanceNumber,
+  formatDistance,
+  accessPointCountLabel,
+  moreAccessPointsLabel,
+} from "../../utils/accessPointView";
 
 // ─── Read-only Paketshop-/Access-Point-Finder ────────────────────────────────
 // Zeigt — ähnlich wie Jumingo — eine reine Orientierungssuche für Dropoff-/
@@ -14,42 +23,19 @@ import { toAccessPointSearchCode, publicCarrierIdToAccessPointSearchCode } from 
 //  • Dropoff bleibt backendseitig blockiert — diese Anzeige umgeht das nicht.
 //  • Nur Carrier mit serverseitig allowlistetem Code (UPS, DPD, DHL Express, GLS)
 //    lösen eine echte Suche aus; sonst klarer "wird vorbereitet"-Hinweis.
-//  • GLS verlangt zusätzlich eine Straße (Backend-400 ohne street) — daher ein
-//    GLS-spezifisches Pflicht-Straßenfeld; andere Carrier bleiben unverändert.
+//  • GLS verlangt zusätzlich eine Straße (Backend-400 ohne street) — daher ist
+//    das Straßenfeld dort Pflicht; bei allen anderen Carriern ist es optional,
+//    wird aber mitgesendet, sobald es ausgefüllt ist (siehe unten).
 //  • Keine Roh-Fehler/Secrets im UI — nur generische, sichere Meldungen.
+//
+// JUMiNGO-Parität (siehe utils/accessPointView.mjs):
+//  • Der Öffnungsstatus kommt AUSSCHLIESSLICH aus workState — hier wird nichts
+//    aus der Uhrzeit hergeleitet und nichts lokal gefiltert.
+//  • hoursOfOperation ist ein Objekt-Array; ausgewertet wird nur der heutige
+//    Wochentag (Europe/Berlin) und nur zur Anzeige neben dem Status.
+//  • Die Entfernung stammt von JUMiNGO; sortiert wird danach, gerechnet nicht.
 
 const RADIUS_OPTIONS = [5, 10, 15, 25];
-
-// Entfernung robust als Zahl lesen: number direkt; numerische Strings ("1.2"
-// oder "1,2") werden geparst; alles andere → null (keine falschen Werte).
-const toDistanceNumber = (v) => {
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v === "string") {
-    const n = Number(v.trim().replace(",", "."));
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-};
-
-// Entfernung formatiert (de-DE, max. 1 Nachkommastelle). Einheit aus dem
-// Backend-Feld distanceCode, falls vorhanden (verbatim, KEINE Umrechnung),
-// sonst sinnvoller Default "km".
-const fmtDistance = (value, code) => {
-  const unit = typeof code === "string" && code.trim() ? code.trim() : "km";
-  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 1 })} ${unit}`;
-};
-
-// Öffnungszeiten nur sicher renderbar machen: String direkt; Array reiner
-// Strings sauber joinen; Objekte/komplexe Strukturen werden verworfen (keine
-// Interpretation, kein blindes Rendern von Objekten).
-const normalizeHours = (v) => {
-  if (typeof v === "string") return v.trim() || null;
-  if (Array.isArray(v)) {
-    const parts = v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim());
-    return parts.length ? parts.join(" · ") : null;
-  }
-  return null;
-};
 
 // Ersten vorhandenen, nicht-leeren Wert aus einer Liste möglicher Feldnamen.
 const pick = (obj, keys) => {
@@ -93,18 +79,18 @@ function normalizeItem(raw) {
   const distCodeRaw = pick(raw, ["distanceCode"]);
   const distanceCode = typeof distCodeRaw === "string" && distCodeRaw.trim() ? distCodeRaw.trim() : null;
 
-  // Öffnungszeiten: hoursOfOperation (Backend) + bisherige Aliasse; nur sicher
-  // renderbare Werte (String oder Array aus Strings), nie Objekte.
-  const hours = normalizeHours(pick(raw, ["hoursOfOperation", "openingHours", "hours", "openingTimes"]));
+  // Öffnungszeiten: hoursOfOperation ist bei JUMiNGO ein Array aus Objekten
+  // ({ dayName, workingHours, lunchBreak, workingDay }). Die Normalisierung
+  // liegt in accessPointView.mjs und liefert genau eine Zeile für HEUTE —
+  // Alt-Formate (String / String-Array) bleiben unverändert lesbar.
+  const hours = todayOpeningHoursText(
+    pick(raw, ["hoursOfOperation", "openingHours", "hours", "openingTimes"]),
+  );
 
-  // Offen-Status: bestehendes Boolean-Verhalten erhalten (isOpen/open/openNow).
-  const openRaw = pick(raw, ["isOpen", "open", "openNow"]);
-  const isOpen = typeof openRaw === "boolean" ? openRaw : null;
-  // workState ist laut Backend-Vertrag ein String mit (noch) unbewiesener
-  // Semantik: NICHT als Geöffnet/Geschlossen interpretieren — nur neutral als
-  // Rohtext anzeigen, ausschließlich wenn nicht-leerer String.
-  const wsRaw = pick(raw, ["workState"]);
-  const statusText = typeof wsRaw === "string" && wsRaw.trim() ? wsRaw.trim() : null;
+  // Öffnungsstatus: allein aus workState. JUMiNGO bestimmt ihn selbst — hier
+  // wird er nur in einen deutschen Text und eine Statusfarbe übersetzt. Kein
+  // Rohwert wird sichtbar, und es gibt keine eigene Uhrzeitregel.
+  const status = normalizeAccessPointWorkState(pick(raw, ["workState"]));
 
   // Ländercode roh übernehmen; ob angezeigt wird, entscheidet der Renderer
   // kontextabhängig (nur wenn vom gesuchten Land abweichend → kein Clutter).
@@ -112,9 +98,13 @@ function normalizeItem(raw) {
   const countryCode = typeof ccRaw === "string" && ccRaw.trim() ? ccRaw.trim().toUpperCase() : null;
 
   if (!name && !address) return null; // nichts Brauchbares → überspringen
-  return { name, address, distance, distanceCode, hours, isOpen, statusText, countryCode };
+  return { name, address, distance, distanceCode, hours, status, countryCode };
 }
 
+// Ergebnisse werden NICHT gefiltert — die Auswahl „nur geöffnete Shops“ trifft
+// allein JUMiNGO über onlyOpen. Sortiert wird stabil nach der von JUMiNGO
+// gelieferten Entfernung; Einträge ohne Entfernung bleiben erhalten und hängen
+// in unveränderter Reihenfolge hinten an.
 function normalizeList(data) {
   const arr =
     Array.isArray(data)               ? data :
@@ -122,7 +112,7 @@ function normalizeList(data) {
     Array.isArray(data?.results)      ? data.results :
     Array.isArray(data?.data)         ? data.data :
     Array.isArray(data?.items)        ? data.items : [];
-  return arr.map(normalizeItem).filter(Boolean);
+  return sortAccessPointsByDistance(arr.map(normalizeItem).filter(Boolean));
 }
 
 export function AccessPointFinder({ tariff, senderPrefill }) {
@@ -178,8 +168,15 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
   const cityRequired = Boolean(carrierCode);
   const cityMissing  = cityRequired && city.trim().length < 2;
   // GLS verlangt backendseitig (commit 8d41251) ZUSÄTZLICH eine Straße; ohne
-  // street → 400. Die Pflicht gilt gezielt nur für GLS — UPS/DPD/DHL Express
-  // bleiben unverändert (kein street-Zwang, kein zusätzliches Feld).
+  // street → 400. Die PFLICHT gilt weiterhin gezielt nur für GLS.
+  //
+  // Gesendet wird die Straße aber für JEDEN unterstützten Carrier, sobald sie
+  // vorliegt: JUMiNGO geokodiert den Suchmittelpunkt aus der übergebenen
+  // Adresse. Ohne Straße ist das der PLZ-/Ortsmittelpunkt — dieselbe Suche
+  // liefert dann andere Entfernungen und eine andere Reihenfolge als JUMiNGOs
+  // eigene Oberfläche, die die Straße mitschickt. Erfunden wird nie etwas: ist
+  // das Feld leer, geht ein leerer String raus (das Backend verwirft ihn) und
+  // die Suche läuft wie bisher über PLZ + Ort.
   const streetRequired = carrierCode === "gls";
   const streetMissing  = streetRequired && street.trim().length < 1;
   const canSearch      = postCode.trim().length >= 3 && !cityMissing && !streetMissing && !loading;
@@ -212,7 +209,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
         countryCode,
         postCode: postCode.trim(),
         city: city.trim(),
-        street: streetRequired ? street.trim() : "",
+        street: street.trim(),
         radius,
         onlyOpen,
       });
@@ -234,10 +231,16 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     setLoading(false);
   };
 
-  const streetField = streetRequired && (
+  // Das Straßenfeld ist jetzt für jeden unterstützten Carrier sichtbar — nicht
+  // um eine Pflicht einzuführen (die bleibt bei GLS), sondern damit der
+  // Suchmittelpunkt sichtbar und korrigierbar ist. Eine vorbefüllte, aber
+  // unsichtbare Straße würde die Ergebnisse still verschieben.
+  const streetField = (
     <div className="ap-finder-field ap-finder-field--street">
       <label className="ap-finder-label" htmlFor={`ap-street-${tariff?.id}`}>
-        Straße <span className="ap-finder-required">(erforderlich)</span>
+        Straße {streetRequired
+          ? <span className="ap-finder-required">(erforderlich)</span>
+          : <span className="ap-finder-optional">(optional, genauerer Umkreis)</span>}
       </label>
       <input
         id={`ap-street-${tariff?.id}`}
@@ -251,9 +254,10 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
     </div>
   );
 
-  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer (bereits vom Backend
-  // sortiert — KEINE eigene Sortierung/Umordnung), der Rest auf Wunsch per
-  // Button. Reiner Anzeigezustand (expanded), nicht persistiert.
+  // Kompakte Ergebnisanzeige: zunächst höchstens 5 Treffer, der Rest auf Wunsch
+  // per Button. Reiner Anzeigezustand (expanded), nicht persistiert. Die Liste
+  // sagt dabei offen, wie viel sie von wie viel zeigt — vorher war „Weitere
+  // Paketshops anzeigen (15)" die einzige Spur, dass überhaupt gekürzt wurde.
   const MAX_COMPACT = 5;
   const hasResults  = !loading && !error && results !== null && results.length > 0;
   const shownResults = hasResults ? (expanded ? results : results.slice(0, MAX_COMPACT)) : [];
@@ -274,7 +278,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       </p>
 
       <form className="ap-finder-form" onSubmit={doSearch}>
-        <div className={`ap-finder-fields${streetRequired ? " ap-finder-fields--gls" : ""}`}>
+        <div className="ap-finder-fields">
           <div className="ap-finder-field">
             <label className="ap-finder-label" htmlFor={`ap-zip-${tariff?.id}`}>PLZ</label>
             <input
@@ -317,9 +321,8 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
               ))}
             </select>
           </div>
-          {/* GLS verlangt zusätzlich eine Straße → volle Breite in Zeile 2
-              (siehe .ap-finder-fields--gls), damit vier Felder nicht gedrängt in
-              einer Zeile stehen. Andere Carrier zeigen dieses Feld nicht. */}
+          {/* Die Straße steht in voller Breite in Zeile 2, damit vier Felder
+              nicht gedrängt in einer Zeile stehen (Raum für lange Adressen). */}
           {streetField}
         </div>
 
@@ -373,12 +376,15 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
       )}
 
       {hasResults && (
+        <p className="ap-result-count">{accessPointCountLabel(shownResults.length, results.length)}</p>
+      )}
+
+      {hasResults && (
         <ul className="ap-result-list">
           {shownResults.map((s, i) => {
             // Ländercode nur zeigen, wenn er vom gesuchten Land abweicht
             // (vermeidet redundantes "DE" bei inländischer Suche).
             const showCc = s.countryCode && s.countryCode !== countryCode;
-            const hasMeta = s.distance != null || s.isOpen != null || s.statusText || showCc;
             return (
               <li className="ap-result" key={i}>
                 {/* Hierarchie: 1 Name · 2 Adresse · 3 Entfernung+Status (rechts) ·
@@ -389,21 +395,22 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
                     <div className="ap-result-name">{s.name || s.address}</div>
                     {s.name && s.address && <div className="ap-result-addr">{s.address}</div>}
                   </div>
-                  {hasMeta && (
-                    <div className="ap-result-meta">
-                      {s.distance != null && (
-                        <span className="ap-result-dist">{fmtDistance(s.distance, s.distanceCode)}</span>
-                      )}
-                      {s.isOpen != null ? (
-                        <span className={`ap-result-status ${s.isOpen ? "is-open" : "is-closed"}`}>
-                          {s.isOpen ? "Geöffnet" : "Geschlossen"}
-                        </span>
-                      ) : s.statusText ? (
-                        <span className="ap-result-status is-neutral">Status: {s.statusText}</span>
-                      ) : null}
-                      {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
-                    </div>
-                  )}
+                  <div className="ap-result-meta">
+                    {s.distance != null && (
+                      <span className="ap-result-dist">{formatDistance(s.distance, s.distanceCode)}</span>
+                    )}
+                    {/* Öffnungsstatus von JUMiNGO. Punkt UND Text (Designsystem-
+                        Badge) — der Zustand steht nie allein in der Farbe. Ein
+                        unbekannter Serverwert bleibt unsichtbar und steht
+                        höchstens im title für den Support. */}
+                    <span
+                      className={`ap-result-status ${s.status.badgeClass}`}
+                      title={!s.status.known && s.status.raw ? `Serverwert: ${s.status.raw}` : undefined}
+                    >
+                      {s.status.label}
+                    </span>
+                    {showCc && <span className="ap-result-cc">{s.countryCode}</span>}
+                  </div>
                 </div>
                 {s.hours && (
                   <div className="ap-result-hours">
@@ -423,7 +430,7 @@ export function AccessPointFinder({ tariff, senderPrefill }) {
           className="ap-more-btn"
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? "Weniger anzeigen" : `Weitere Paketshops anzeigen (${extraResults})`}
+          {expanded ? "Weniger anzeigen" : moreAccessPointsLabel(extraResults)}
         </button>
       )}
     </div>

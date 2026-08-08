@@ -265,31 +265,36 @@ test("9 — die Zeile ist visuell sekundär und kostet kaum Höhe", async () => 
 
   const mass = await karteVon(page, "UPS").evaluate((karte) => {
     const h = karte.querySelector(".offer-handover");
+    const rail = karte.querySelector(".offer-tl-rail");
     const preis = karte.querySelector(".offer-price");
     const carrier = karte.querySelector(".offer-carrier-name");
     const cs = getComputedStyle(h);
     const px = (v) => parseFloat(v);
+    const hBox = h.getBoundingClientRect();
     return {
-      hoehe: h.getBoundingClientRect().height,
+      hoehe: hBox.height,
       groesse: px(cs.fontSize), gewicht: cs.fontWeight,
       transform: cs.textTransform, spacing: cs.letterSpacing, align: cs.textAlign,
       preisGroesse: px(getComputedStyle(preis).fontSize),
       carrierGroesse: px(getComputedStyle(carrier).fontSize),
+      abstandZurLinie: rail.getBoundingClientRect().top - hBox.bottom,
     };
   });
 
-  // Typografie: Micro-Stufe, Versalien aus dem Stylesheet.
-  assert.equal(mass.groesse, 11);
+  // Typografie: Label-Stufe (12 px / 600), Satzschrift ohne künstliche Laufweite.
+  assert.equal(mass.groesse, 12);
   assert.equal(mass.gewicht, "600");
-  assert.equal(mass.transform, "uppercase");
-  assert.ok(parseFloat(mass.spacing) >= 0.03 * 11 && parseFloat(mass.spacing) <= 0.05 * 11,
-    `Laufweite außerhalb 0.03–0.05em: ${mass.spacing}`);
+  assert.equal(mass.transform, "none", "die Zeile darf nicht mehr versalisiert werden");
+  assert.equal(mass.spacing, "normal", "die Laufweite muss auf normal zurückgesetzt sein");
   assert.equal(mass.align, "center");
-  // Hierarchie: deutlich kleiner als Preis und Carriername.
+  // Hierarchie: deutlich kleiner als Preis und Carriername — die dunklere
+  // Navy-Farbe macht sie kräftiger, ohne sie größer zu machen.
   assert.ok(mass.groesse < mass.preisGroesse, "die Zeile konkurriert mit dem Preis");
   assert.ok(mass.groesse < mass.carrierGroesse, "die Zeile konkurriert mit dem Carriernamen");
-  // Höhenbedarf klein halten.
+  // Höhenbedarf klein halten, aber sichtbarer Abstand zur Prozesslinie.
   assert.ok(mass.hoehe <= 20, `die Zeile ist ${mass.hoehe}px hoch`);
+  assert.ok(mass.abstandZurLinie >= 6 && mass.abstandZurLinie <= 8,
+    `Abstand zur Prozesslinie außerhalb 6–8px: ${mass.abstandZurLinie}px`);
   await page.close();
 });
 

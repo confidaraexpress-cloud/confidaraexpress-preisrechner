@@ -229,32 +229,31 @@
    farbigen Punkte und die Texte dominieren, nicht die Linie. */
 .offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
 
-/* Übergabeart als Kopfzeile der Prozessdarstellung: „ABHOLUNG AN IHRER ADRESSE"
-   bzw. „ABGABE IM PAKETSHOP". Sie beantwortet in einer Zeile, ob der Kunde die
+/* Übergabeart als Kopfzeile der Prozessdarstellung: „Abholung an Ihrer Adresse"
+   bzw. „Abgabe im Paketshop". Sie beantwortet in einer Zeile, ob der Kunde die
    Sendung wegbringen muss oder ob sie geholt wird.
 
-   Micro-Stufe der Typografieskala (11 px / 600) mit Versalien und leichter
-   Laufweite — dasselbe Muster, das im Produkt schon jede Eyebrow trägt. Damit
-   ist sie schneller zu erfassen als die Metazeilen darunter, bleibt aber
-   deutlich unter Preis, Carriername und Hauptaktion.
+   Label-Stufe der Typografieskala (12 px / 600 / normale Laufweite, dieselben
+   Tokens wie Formularlabels) statt Versalien mit künstlicher Laufweite: die
+   Schrift selbst trägt jetzt das Gewicht, nicht die Groß-/Kleinschreibung. Text
+   Primary statt Secondary hebt sie sichtbar über die Metazeilen darunter,
+   bleibt aber unter Preis und Carriername (beide größer/schwerer).
 
-   Die Versalien macht AUSSCHLIESSLICH text-transform. Im DOM steht Satzschrift,
-   damit Screenreader die Zeile als Wörter sprechen und die Browsersuche sie
-   findet.
+   Satzschrift auch im DOM (kein text-transform mehr): dasselbe, was vorher nur
+   für Screenreader/Suche galt, gilt jetzt für jeden.
 
-   Farbe bewusst neutral (Text Secondary): Rot und Grün sind im Paketshop-Finder
-   bereits als Öffnungsstatus belegt: eine zweite Farbbedeutung für Pickup gegen
-   Dropoff würde damit konkurrieren. */
+   Farbe bewusst neutral (Navy = Text Primary, keine neue Rolle): Rot und Grün
+   sind im Paketshop-Finder bereits als Öffnungsstatus belegt — eine zweite
+   Farbbedeutung für Pickup gegen Dropoff würde damit konkurrieren. */
 .offer-handover {
-  margin: 0 0 2px;
+  margin: 0 0 4px;
   text-align: center;
   font-family: var(--ce-font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  letter-spacing: var(--ce-text-label-tracking);
+  color: var(--navy);
 }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
 .offer-tl-dot {

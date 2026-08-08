@@ -12,9 +12,14 @@ import { Switch } from "../ui/Switch";
 // Progressive Disclosure: Jede Option zeigt im Grundzustand nur eine Schalterzeile;
 // die Detailfelder erscheinen erst nach dem Einschalten. Auch die Schalterzustände
 // und die Validierung liegen im Orchestrator — dieses Modul bleibt zustandslos.
+// Die Zusatzzeile nennt jetzt nur noch das ENTSCHEIDUNGSKRITERIUM — welchen
+// Drucker man hat. „auf normalem Papier" und „Kompaktes Etikettenformat" waren
+// Umschreibungen derselben Tatsache und sprengten die kompakte Auswahl auf drei
+// Zeilen. Es geht keine Information verloren, die zur Wahl nötig ist: DIN A4 =
+// normaler Drucker, DIN A6 = Labeldrucker. Die Werte selbst sind unverändert.
 const LABEL_FORMATS = [
-  { id: "A4", name: "DIN A4", desc: "Standarddruck auf normalem Papier." },
-  { id: "A6", name: "DIN A6", desc: "Kompaktes Etikettenformat (z. B. Labeldrucker)." },
+  { id: "A4", name: "DIN A4", desc: "Standarddruck" },
+  { id: "A6", name: "DIN A6", desc: "Labeldrucker" },
 ];
 
 const formatName = (id) => (LABEL_FORMATS.find(f => f.id === id) || LABEL_FORMATS[0]).name;

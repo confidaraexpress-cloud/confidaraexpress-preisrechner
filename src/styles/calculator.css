@@ -540,35 +540,47 @@
   padding-top: var(--ce-space-4);
   border-top: 1px solid var(--ce-color-border-subtle);
 }
-/* Eingerückt auf Höhe des Schaltertextes (40px Spur + 12px Abstand): der
+/* Eingerückt auf Höhe des Schaltertextes (32px Spur + 12px Abstand): der
    aufgeklappte Bereich gehört sichtbar zu seiner Zeile. */
-.addopt-reveal { margin-top: var(--ce-space-3); padding-left: 52px; }
+.addopt-reveal { margin-top: var(--ce-space-2); padding-left: 44px; }
 /* Auf schmalen Viewports kostet die Einrückung zu viel Feldbreite. */
 @media (max-width: 600px) { .addopt-reveal { padding-left: 0; } }
 /* .addopt-field/.addopt-block/.addopt-group-label sind mit der Umstellung auf
    Progressive Disclosure entfallen — die frühere Gruppenüberschrift
    „Labelformat" ist jetzt die Schalterzeile selbst. */
-.labelfmt-group { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+/* Das Labelformat ist eine technische Nebeneinstellung, keine Hauptentscheidung.
+   Die beiden Felder waren zuvor 64 px hohe Karten mit Schatten und wirkten wie
+   Angebotskarten; jetzt sind es kompakte Auswahlfelder (~46 px). Direkt
+   vergleichbar nebeneinander — bewusst KEIN Select, die Wahl bleibt sichtbar. */
+.labelfmt-group { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ce-space-2); }
 .labelfmt-card {
-  position: relative; display: flex; align-items: flex-start; gap: 11px;
-  padding: 13px 15px; border: 1.5px solid var(--ce-color-border-default); border-radius: var(--ce-radius-md);
+  position: relative; display: flex; align-items: center; gap: var(--ce-space-2);
+  padding: 6px 10px; border: 1px solid var(--ce-color-border-default); border-radius: var(--ce-radius-sm);
   background: var(--ce-color-surface); cursor: pointer;
   transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.labelfmt-card:hover { border-color: var(--blue3); }
+/* Hover bleibt neutral: eine bloße Zeigerbewegung darf nicht wie eine Auswahl
+   aussehen (vorher sprang die Kante auf Markenblau). */
+.labelfmt-card:hover { border-color: var(--ce-color-border-strong); }
 .labelfmt-card input { position: absolute; opacity: 0; width: 0; height: 0; }
 .labelfmt-radio {
-  flex-shrink: 0; margin-top: 1px; width: 18px; height: 18px; border-radius: 50%;
-  border: 2px solid var(--border2, #c8d5e8); background: white; position: relative; transition: border-color 0.15s;
+  flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%;
+  border: 1.5px solid var(--ce-color-border-strong); background: var(--ce-color-surface);
+  position: relative; transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .labelfmt-card--selected .labelfmt-radio { border-color: var(--ce-color-brand); }
-.labelfmt-card--selected .labelfmt-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand); }
-.labelfmt-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.labelfmt-name { font-size: 14px; font-weight: 600; color: var(--navy); }
-.labelfmt-desc { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.4; }
-/* Ausgewählt: Brand Border + Brand Soft — dasselbe Muster wie .ins-card--selected. */
-.labelfmt-card--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); box-shadow: var(--ce-elevation-1); }
-@media (max-width: 480px) { .labelfmt-group { grid-template-columns: 1fr; } }
+.labelfmt-card--selected .labelfmt-radio::after { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--ce-color-brand); }
+.labelfmt-main { display: flex; flex-direction: column; min-width: 0; }
+.labelfmt-name {
+  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  line-height: 1.35; color: var(--ce-color-text-primary);
+}
+.labelfmt-desc { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); line-height: 1.35; }
+/* Ausgewählt: dünne Brand-Kante + sehr helle Brand-Fläche. Kein Schatten mehr —
+   eine Nebeneinstellung braucht keine Erhöhung, um erkennbar zu sein. */
+.labelfmt-card--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
+/* Nebeneinander bleibt bis 360 px lesbar (gemessen) — deshalb wird nicht
+   gestapelt; zwei volle Zeilen wären hier mehr Fläche, nicht mehr Ruhe. */
 
 /* ─── Zollangaben (Angaben zum Wareninhalt) ──────────────────────────────────── */
 .customs-hint { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 16px; }

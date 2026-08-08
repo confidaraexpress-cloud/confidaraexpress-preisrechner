@@ -208,6 +208,31 @@ export default function BookingPage() {
   // oder Reprice — bewusst NICHT in den Reprice-Deps und ohne Stale-Gate.
   const [labelFormat, setLabelFormat] = useState(flowBooking?.labelFormat || "A4");
 
+  /* ── Progressive Disclosure der Zusatzoptionen ────────────────────────────
+     Beide Schalter sind reiner UI-Zustand. Sie werden EINMAL beim Mount aus den
+     ohnehin vorhandenen Werten abgeleitet (Entwurf, laufender Vorgang,
+     Zurücknavigation) — es entsteht keine zweite Businesswahrheit neben
+     `form.reference` und `labelFormat`, und ein gespeicherter Wert kann nicht
+     unsichtbar mitgebucht werden. Danach laufen sie eigenständig, damit ein
+     eingeschalteter, aber noch leerer Bereich offen bleibt. */
+  const [referenceEnabled, setReferenceEnabled] = useState(
+    () => !!(flowBooking?.reference || "").trim());
+  const [labelFormatEnabled, setLabelFormatEnabled] = useState(
+    () => (flowBooking?.labelFormat || "A4") !== "A4");
+
+  // Ausschalten behält die Eingabe im Formular — versehentliches Ausschalten
+  // vernichtet nichts, und beim Wiedereinschalten steht sie wieder da. Gebucht
+  // wird sie trotzdem nur bei aktiver Option (siehe /book-Payload unten).
+  const toggleReference = (on) => setReferenceEnabled(on);
+
+  // Anders als bei der Referenznummer: A4 ist ein aktiv gesendeter Wert, kein
+  // Weglassen. „Format ändern" aus heißt deshalb, dass wirklich wieder der
+  // Standard gilt — sonst bliebe A6 unsichtbar gebucht.
+  const toggleLabelFormat = (on) => {
+    setLabelFormatEnabled(on);
+    if (!on) setLabelFormat("A4");
+  };
+
   // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
   const makeCustomsItem = () => ({
     description: "", value: "", quantity: "1", unitOfMeasurement: "PCS",
@@ -232,14 +257,19 @@ export default function BookingPage() {
   /* ── Spiegelung der Buchungsoptionen in den laufenden Vorgang ────────────
      Nur reine Frontendzustände, keine Serverdaten. Schritt 3 (Erfolg) wird
      bewusst nicht gespiegelt — nach der Buchung wird der Vorgang ohnehin
-     gelöscht. Abhängigkeiten sind die Werte selbst → keine Schleife. */
+     gelöscht. Abhängigkeiten sind die Werte selbst → keine Schleife.
+
+     Die Referenznummer wird nur gespiegelt, solange ihre Option aktiv ist: der
+     Vorgang hält damit genau das, was auch gebucht würde, und die Ableitung des
+     Schalters beim nächsten Mount bleibt richtig. Der bei ausgeschalteter Option
+     lokal gehaltene Wert ist bewusst nur für die laufende Ansicht gedacht. */
   useEffect(() => {
     if (step === 3) return;
     setFlowBooking({
-      step, labelFormat, reference: form.reference, content: form.content,
+      step, labelFormat, reference: referenceEnabled ? form.reference : "", content: form.content,
       insuranceType, goodsValue, insuranceValue, insValueManual,
     });
-  }, [step, labelFormat, form.reference, form.content, insuranceType,
+  }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, setFlowBooking]);
 
   const tariff = bookingData?.tariff;
@@ -643,9 +673,11 @@ export default function BookingPage() {
           // weiterhin als Fallback der Versicherungs-Inhaltsbeschreibung
           // (contentDescription). Kein neu erzeugter content-Wert in diesem Slice.
           content:         form.content,
-          // Optionale Referenznummer nur senden, wenn nach trim ein Wert
-          // vorliegt → leerer Fall lässt den bestehenden Payload unverändert.
-          ...(form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
+          // Optionale Referenznummer nur senden, wenn die Option aktiv ist UND
+          // nach trim ein Wert vorliegt → leerer Fall lässt den bestehenden
+          // Payload unverändert. Der Schalter ist damit die einzige Stelle, an
+          // der ein noch im Formular liegender Wert wirksam wird.
+          ...(referenceEnabled && form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
           // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
           // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
           labelFormat,
@@ -975,6 +1007,10 @@ export default function BookingPage() {
             <AdditionalOptionsModule
               reference={form.reference}
               onReferenceChange={updReference}
+              referenceEnabled={referenceEnabled}
+              onReferenceEnabledChange={toggleReference}
+              labelFormatEnabled={labelFormatEnabled}
+              onLabelFormatEnabledChange={toggleLabelFormat}
               labelFormat={labelFormat}
               onLabelFormatChange={setLabelFormat}
             />

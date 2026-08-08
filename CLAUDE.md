@@ -84,6 +84,7 @@ kein zweites allgemeines Muster daneben:
 |-----------|-------|---------|
 | Buttons | `buttons.css` | `.btn` + `.btn-primary` / `-outline` / `-ghost` / `-danger` / `-icon` / `-link`; Höhen `.btn-sm` (32) · Standard (40) · `.btn-lg` (48) |
 | Eingaben | `forms.css` | `.field-input` / `.field-select` / `.field-textarea`, Checkbox/Radio; Kunde 40 px, Admin 36 px |
+| Schalter | `components/ui/Switch.jsx` + `forms.css` | `<Switch checked onChange label hint id />` — echtes `input[type=checkbox]` mit `role="switch"`, `.ce-switch*` |
 | Fokus | `primitives.css` | `outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset)` |
 | Badges | `primitives.css` | `.badge` + `.badge--neutral/-info/-progress/-success/-warning/-overdue/-error/-blocked/-cancelled/-archived` |
 | Karten | `primitives.css` | `.ce-card`, `.ce-card-raised`, `.ce-card-interactive`, `.ce-card-muted`, `.ce-card-inverse`, `.ce-table-container` |
@@ -525,10 +526,24 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   keinen Schatten-Ring mehr.
 - **`offerBadges.js`** vergibt „Günstigste"/„Schnellste" nur noch unter
   bereits verfügbaren (`availableForDate !== false`) Angeboten.
+- **„Zusätzliche Optionen" sind Progressive Disclosure.** Referenznummer und
+  Labelformat zeigen im Grundzustand nur eine Schalterzeile (`<Switch>`); die
+  Detailfelder erscheinen erst nach dem Einschalten. Beide Schalter sind reiner
+  UI-Zustand in `BookingPage` und werden beim Mount aus den vorhandenen Werten
+  **abgeleitet** (Referenz vorhanden → an; Format ≠ A4 → an) — das
+  Vorgangsschema (`BOOKING_KEYS`) bleibt unverändert. Die beiden Optionen
+  verhalten sich beim Ausschalten **bewusst unterschiedlich**: die
+  Referenznummer bleibt im Formular stehen (versehentliches Ausschalten
+  vernichtet nichts) und wird nur nicht gebucht — das Labelformat fällt
+  wirklich auf `A4` zurück, weil A4 ein aktiv gesendeter Wert ist und sonst
+  unsichtbar A6 mitgebucht würde. Gespiegelt wird die Referenz nur bei aktiver
+  Option, sonst liefe die Ableitung beim nächsten Mount falsch.
 - Governance: `src/styles/shippingProcess.test.mjs` (Quelltext) und
   `tests/e2e/shippingProcessPaketB.test.mjs` (echter Dev-Server) sichern App-
   Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge und
-  Tastaturbedienung gegen Regression ab.
+  Tastaturbedienung gegen Regression ab; `progressiveBookingOptions.test.mjs`
+  (16 Quelltext- + 15 E2E-Tests) deckt die Zusatzoptionen ab, inklusive der im
+  echten `/book`-Request geprüften Payload-Fälle.
 
 ## Verwaltung und Abrechnung (Paket C)
 

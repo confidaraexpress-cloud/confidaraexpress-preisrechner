@@ -532,9 +532,22 @@
 .ins-status-ok { display: inline-flex; align-items: center; gap: 6px; }
 
 /* ─── Zusätzliche Optionen: Referenznummer + Labelformat (A4/A6) ─────────────── */
-.addopt-field { margin-bottom: 2px; }
-.addopt-block { margin-top: 20px; }
-.addopt-group-label { display: block; margin-bottom: 9px; }
+/* Progressive Disclosure: je Option eine Schalterzeile, Details erst nach dem
+   Einschalten. Die Trennlinie steht zwischen den Optionen statt um sie herum —
+   der Grundzustand bleibt so eine kurze, ruhige Liste. */
+.addopt-option + .addopt-option {
+  margin-top: var(--ce-space-4);
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+/* Eingerückt auf Höhe des Schaltertextes (40px Spur + 12px Abstand): der
+   aufgeklappte Bereich gehört sichtbar zu seiner Zeile. */
+.addopt-reveal { margin-top: var(--ce-space-3); padding-left: 52px; }
+/* Auf schmalen Viewports kostet die Einrückung zu viel Feldbreite. */
+@media (max-width: 600px) { .addopt-reveal { padding-left: 0; } }
+/* .addopt-field/.addopt-block/.addopt-group-label sind mit der Umstellung auf
+   Progressive Disclosure entfallen — die frühere Gruppenüberschrift
+   „Labelformat" ist jetzt die Schalterzeile selbst. */
 .labelfmt-group { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .labelfmt-card {
   position: relative; display: flex; align-items: flex-start; gap: 11px;

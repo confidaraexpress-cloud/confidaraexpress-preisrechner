@@ -129,6 +129,12 @@ test("Auswahlkarten (Labelformat) sind vollständig per Tastatur bedienbar", asy
   await setupRoutes(page);
   await fillNewShipmentAndReachOffers(page);
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
+  // Die Auswahlkarten liegen seit der Progressive-Disclosure-Umstellung hinter
+  // dem Schalter „Versandlabel-Format ändern" — erst einschalten, dann prüfen.
+  // Bedient über das Label — die Schaltereingabe ist wie .labelfmt-card visuell
+  // versteckt und für einen direkten Klick bewusst nicht erreichbar.
+  await page.waitForSelector("#booking-labelformat-toggle", { timeout: 20000 });
+  await page.locator("#booking-labelformat-toggle").locator("xpath=ancestor::label[1]").click();
   await page.waitForSelector(".labelfmt-card", { timeout: 20000 });
 
   const a6 = page.locator('input[type="radio"][value="A6"], .labelfmt-card:has-text("DIN A6") input[type="radio"]').first();

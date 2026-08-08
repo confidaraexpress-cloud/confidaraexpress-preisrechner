@@ -1,16 +1,19 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { publicCarrierDisplay } from "../../utils/carrierMap";
-import { AccessPointFinder } from "../offers/AccessPointFinder";
+import { ParcelShopFinderTrigger } from "../offers/ParcelShopFinderTrigger";
 
 // Step 1 — Paketshop-Karte bei Shopabgabe (serviceType === "dropoff").
 // EINE kompakte, konsolidierte Einleitung ersetzt die frühere dreistufige
 // Erklärung (Titel + Absatz + Warn-Banner): der Titel steht in der Panel-
 // Kopfzeile, darunter genau eine Beschreibung, plus — nur wenn tatsächlich
 // vorbelegt — ein dezenter Absender-Hinweis. Den knappen Orientierungshinweis
-// („reine Orientierung, keine verbindliche Auswahl") trägt der eingebettete,
-// unveränderte AccessPointFinder selbst; er speichert KEINE Shop-Auswahl und
-// reicht nichts an /book weiter — die Buchung bleibt generische Shopabgabe.
+// („reine Orientierung, keine verbindliche Auswahl") trägt jetzt das
+// Paketshop-Fenster selbst. Aus dieser Karte führt nur noch derselbe kleine
+// Einstieg wie von der Angebotskarte dorthin — ein zweites, andersartiges
+// Suchformular an dieser Stelle wäre eine zweite Wahrheit gewesen. Es wird
+// KEINE Shop-Auswahl gespeichert und nichts an /book weitergereicht — die
+// Buchung bleibt generische Shopabgabe.
 export function DropoffNoticeModule({ tariff, senderPrefill }) {
   const carrierName = publicCarrierDisplay(tariff).name;
   // Absender-Hinweis ausschließlich, wenn wirklich Vorbelegungsdaten vorliegen
@@ -37,7 +40,7 @@ export function DropoffNoticeModule({ tariff, senderPrefill }) {
             </p>
           )}
         </div>
-        <AccessPointFinder tariff={tariff} senderPrefill={senderPrefill} />
+        <ParcelShopFinderTrigger tariff={tariff} senderPrefill={senderPrefill} />
       </div>
     </div>
   );

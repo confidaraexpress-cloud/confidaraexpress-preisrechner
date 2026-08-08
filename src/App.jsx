@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { ShippingFlowProvider } from "./context/ShippingFlowContext";
+import { ParcelShopFinderProvider } from "./context/ParcelShopFinderContext";
 import { LoadingScreen } from "./components/common/LoadingScreen";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
@@ -49,6 +50,14 @@ export default function App() {
     // Alles unterhalb von <Routes> wird beim Wechsel abgehängt; nur hier
     // überlebt der laufende Versandvorgang den Sprung in beide Richtungen.
     <ShippingFlowProvider>
+    {/* Der Paketshop-Finder hat GENAU EIN Fenster für die ganze Anwendung.
+        Er steht hier, weil sein Einstieg an zwei getrennten Routen-Teilbäumen
+        sitzt: an der Angebotskarte (/dashboard) und an der Buchungsseite
+        (/booking). Innerhalb von <Routes> montiert, wäre er beim Wechsel
+        abgehängt — und Radius sowie Öffnungszeitenmerkmal, die als persönliche
+        Suchpräferenz erhalten bleiben sollen, wären jedes Mal weg.
+        Er hält KEINE Buchungsdaten und schreibt nichts in den Versandvorgang. */}
+    <ParcelShopFinderProvider>
     <Suspense fallback={<LoadingScreen />}>
       <ScrollToTop />
       <Routes>
@@ -102,6 +111,7 @@ export default function App() {
         <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </Suspense>
+    </ParcelShopFinderProvider>
     </ShippingFlowProvider>
   );
 }

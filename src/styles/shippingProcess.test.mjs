@@ -146,7 +146,10 @@ test("9 — die Dropoff-Guardrail-Formulierung ist unverändert erhalten", () =>
   // darf nicht auftauchen; die bestehende, bewusst zurückhaltende Formulierung
   // ("Orientierung", "nicht erforderlich") muss bestehen bleiben.
   assert.match(dropoffModule, /Diese Sendung wird nicht abgeholt/);
-  assert.match(dropoffModule, /AccessPointFinder/, "die Paketshop-Suche bleibt eingebunden");
+  // Die Paketshop-Suche bleibt eingebunden — seit der Integration in die
+  // Angebote über denselben kleinen Einstieg wie dort, statt über ein zweites,
+  // andersartiges Suchformular an dieser Stelle.
+  assert.match(dropoffModule, /ParcelShopFinderTrigger/, "die Paketshop-Suche bleibt eingebunden");
   assert.ok(!/verbindlich(e|er)? Buchung.*Paketshop/i.test(dropoffModule),
     "kein Text darf eine verbindliche Buchung am Paketshop behaupten");
 });

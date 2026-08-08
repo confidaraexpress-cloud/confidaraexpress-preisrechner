@@ -100,12 +100,15 @@ async function oeffneFinder(page) {
   for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
-  await page.locator(".offer-details-link").first().click();
-  await page.waitForSelector(".ap-finder", { timeout: 20000 });
+  // Der Einstieg sitzt seit der Integration in die Angebote direkt an der
+  // Angebotskarte — es gibt kein Inline-Suchformular mehr aufzuklappen.
+  await page.waitForSelector(".ps-trigger", { timeout: 20000 });
 }
 
+// Ein Klick auf den Einstieg öffnet das Fenster UND sucht bereits — der Kunde
+// muss dort nicht noch einmal auf „Suchen" drücken.
 async function suche(page) {
-  await page.locator(".ap-finder-search-btn").first().click();
+  await page.locator(".ps-trigger").first().click();
   await page.waitForSelector(".ap-modal .ap-list-item", { timeout: 20000 });
 }
 
@@ -155,7 +158,7 @@ test("2 — während des Requests steht ein Ladezustand im Fenster, kein leeres 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page, { verzoegerung: () => 700 });
   await oeffneFinder(page);
-  await page.locator(".ap-finder-search-btn").first().click();
+  await page.locator(".ps-trigger").first().click();
 
   // Das Fenster ist SOFORT da — nicht erst nach der Antwort.
   await page.waitForSelector(".ap-modal", { timeout: 3000 });
@@ -179,11 +182,13 @@ test("3 — auf der Hauptseite steht KEINE zweite Trefferliste mehr", async () =
   assert.equal(draussen, 0, "die Inline-Liste ist ersatzlos entfallen");
   assert.equal(await page.locator(".ap-result").count(), 0, "auch die alten .ap-result-Karten sind weg");
 
-  // Nach dem Schließen bleibt nur eine knappe Quittung — keine Liste.
+  // Nach dem Schließen bleibt nur der kleine Einstieg — keine Liste, keine
+  // Ergebniszahl und kein Suchformular auf der Angebotsseite.
   await page.locator(".ap-modal-close").click();
   await page.waitForSelector(".ap-modal", { state: "detached", timeout: 5000 });
   assert.equal(await page.locator(".ap-list-item").count(), 0);
-  assert.match(await page.locator(".ap-finder-receipt").innerText(), /20 Paketshops/);
+  assert.equal(await page.locator(".ap-modal").count(), 0);
+  assert.equal(await page.locator(".ps-trigger").first().isVisible(), true);
   await page.close();
 });
 
@@ -193,13 +198,13 @@ test("4 — Close-Button und Escape schließen, der Fokus kehrt zum Suchbutton z
   await oeffneFinder(page);
 
   const fokusIstSuchbutton = () => page.evaluate(
-    () => document.activeElement?.classList.contains("ap-finder-search-btn") === true);
+    () => document.activeElement?.classList.contains("ps-trigger") === true);
 
   // 1) Close-Button
   await suche(page);
   await page.locator(".ap-modal-close").click();
   await page.waitForSelector(".ap-modal", { state: "detached", timeout: 5000 });
-  assert.ok(await fokusIstSuchbutton(), "nach dem Close-Button muss der Fokus zurückkommen");
+  assert.ok(await fokusIstSuchbutton(), "nach dem Close-Button muss der Fokus auf den Einstieg zurück");
 
   // 2) Escape
   await suche(page);
@@ -288,7 +293,7 @@ test("9 — eine überholte Antwort überschreibt die neuere Suche nicht", async
   });
   await oeffneFinder(page);
 
-  await page.locator(".ap-finder-search-btn").first().click();
+  await page.locator(".ps-trigger").first().click();
   await page.waitForSelector(".ap-modal", { timeout: 5000 });
   await page.selectOption(".ap-modal #apm-radius", "25");
   await page.locator(".ap-modal-search-btn").click();
@@ -655,8 +660,11 @@ test("26 — das Schließen ändert weder Formular noch Angebot", async () => {
   await page.waitForSelector(".ap-modal", { state: "detached", timeout: 5000 });
 
   assert.equal(await page.locator(".offer-card").count(), vorher, "die Angebote sind unverändert");
-  // Die Suchparameter bleiben stehen — der Kunde soll nicht neu tippen.
-  assert.equal(await page.locator('.ap-finder input[id^="ap-zip"]').inputValue(), ABSENDER.zip);
-  assert.equal(await page.locator('.ap-finder input[id^="ap-street"]').inputValue(), ABSENDER.street);
+  // Die Suchparameter überleben das Schließen — beim erneuten Öffnen stehen sie
+  // wieder da, ohne dass der Kunde etwas neu tippt.
+  await page.locator(".ps-trigger").first().click();
+  await page.waitForSelector(".ap-modal .ap-list-item", { timeout: 20000 });
+  assert.equal(await page.locator(".ap-modal #apm-zip").inputValue(), ABSENDER.zip);
+  assert.equal(await page.locator(".ap-modal #apm-street").inputValue(), ABSENDER.street);
   await page.close();
 });

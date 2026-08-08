@@ -120,13 +120,16 @@ async function oeffneFinder(page) {
   for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
-  await page.locator(".offer-details-link").first().click();
-  await page.waitForSelector(".ap-finder", { timeout: 20000 });
+  // Der Einstieg sitzt seit der Integration in die Angebote direkt an der
+  // Angebotskarte — es gibt kein Inline-Suchformular mehr aufzuklappen.
+  await page.waitForSelector(".ps-trigger", { timeout: 20000 });
 }
 
 // Suche starten → das Fenster öffnet sich und zeigt die Treffer.
+// Ein Klick auf den Einstieg öffnet das Fenster UND sucht bereits — der Kunde
+// muss dort nicht noch einmal auf „Suchen" drücken.
 async function suche(page) {
-  await page.locator(".ap-finder-search-btn").first().click();
+  await page.locator(".ps-trigger").first().click();
   await page.waitForSelector(".ap-modal .ap-list-item", { timeout: 20000 });
 }
 
@@ -167,13 +170,13 @@ test("1 — die Suche sendet die Straße mit, auch wenn der Carrier sie nicht ve
   const suchen = await setupRoutes(page);
   await oeffneFinder(page);
 
-  // Die Straße kommt aus der bereits erfassten Absenderadresse — keine zweite
-  // Adressquelle, kein neues Pflichtfeld.
-  const strasse = page.locator('.ap-finder input[id^="ap-street"]');
-  assert.equal(await strasse.count(), 1, "das Straßenfeld muss sichtbar sein");
-  assert.equal(await strasse.inputValue(), ABSENDER.street, "die Straße muss vorbelegt sein");
-
   await suche(page);
+
+  // Die Straße kommt aus der bereits erfassten Absenderadresse — keine zweite
+  // Adressquelle, kein neues Pflichtfeld, und der Kunde tippt sie NICHT erneut.
+  // Sie steht im Fenster, wo sie auch korrigierbar ist.
+  assert.equal(await page.locator(".ap-modal #apm-street").inputValue(), ABSENDER.street,
+    "die Straße muss aus der Absenderadresse übernommen sein");
   assert.equal(suchen.length, 1);
   const body = suchen[0];
   assert.deepEqual(body.carrierCodes, ["dpd"]);
@@ -191,11 +194,15 @@ test("2 — ohne Straße läuft die Suche weiter (leeres Feld, kein Zwang, kein 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const suchen = await setupRoutes(page);
   await oeffneFinder(page);
-  await page.locator('.ap-finder input[id^="ap-street"]').fill("");
-  const btn = page.locator(".ap-finder-search-btn").first();
-  assert.ok(await btn.isEnabled(), "ohne Straße muss die Suche bei DPD weiterhin möglich sein");
   await suche(page);
-  assert.equal(suchen[0].street, "", "leer heißt leer — es wird nichts hinzuerfunden");
+  // Im Fenster die Straße leeren und erneut suchen.
+  await page.locator(".ap-modal #apm-street").fill("");
+  const btn = page.locator(".ap-modal-search-btn");
+  assert.ok(await btn.isEnabled(), "ohne Straße muss die Suche bei DPD weiterhin möglich sein");
+  await btn.click();
+  await page.waitForFunction(() => true);
+  await page.waitForTimeout(400);
+  assert.equal(suchen.at(-1).street, "", "leer heißt leer — es wird nichts hinzuerfunden");
   assert.equal((await page.locator(".ap-modal .ap-list-item").count()) > 0, true);
   await page.close();
 });
@@ -367,10 +374,11 @@ test("12 — das Dropdown ersetzt die Checkbox vollständig", async () => {
   await setupRoutes(page);
   await oeffneFinder(page);
 
-  assert.equal(await page.locator('.ap-finder input[type="checkbox"]').count(), 0,
+  await suche(page);
+  assert.equal(await page.locator('.ap-modal input[type="checkbox"]').count(), 0,
     "der frühere Haken „Nur aktuell geöffnete Shops“ darf nicht zurückkommen");
 
-  const optionen = await page.locator(".ap-finder-controls select option").allInnerTexts();
+  const optionen = await page.locator(".ap-modal #apm-opening option").allInnerTexts();
   assert.deepEqual(optionen.map((o) => o.trim()),
     ["Alle Öffnungszeiten", "Sonntags geöffnet", "Offen vor 7:30 Uhr", "Offen nach 21:00 Uhr"]);
   await page.close();

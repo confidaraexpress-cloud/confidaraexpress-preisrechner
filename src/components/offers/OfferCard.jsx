@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
-import { AccessPointFinder } from "./AccessPointFinder";
+import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -331,15 +331,13 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
         </div>
       )}
 
-      {/* Read-only Paketshop-Suche — NUR bei Shopabgabe/Dropoff. Reine
-          Orientierung, keine Buchung: die Auswahl wird nirgends gespeichert
-          und fließt nicht in den /book-Payload (siehe AccessPointFinder). */}
-      {t.serviceType === "dropoff" && (
-        <div className="offer-details-section">
-          <div className="offer-detail-section-title">Paketshop finden</div>
-          <AccessPointFinder tariff={t} senderPrefill={senderPrefill} />
-        </div>
-      )}
+      {/* Hier stand bis zu diesem Paket die vollständige Paketshop-Suche:
+          Abschnittstitel „Paketshop finden“ plus PLZ, Ort, Straße, Umkreis,
+          Öffnungszeiten, Ergebniszähler und Suchknopf — eingeklappt in den
+          Details, wo sie kaum jemand fand, und mit einer Adresse, die der
+          Kunde längst erfasst hatte. Der Einstieg sitzt jetzt sichtbar oben
+          bei den Serviceinformationen (ParcelShopFinderTrigger in Zone 1); die
+          Suchfelder leben im Fenster, direkt neben den Ergebnissen. */}
     </>
   );
 }
@@ -413,6 +411,10 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             <div className="offer-carrier-name">{carrierName}</div>
             <div className="offer-eta">{etaLabel}</div>
             <div className="offer-service-type">{publicServiceName(t)}</div>
+            {/* Sekundärer Einstieg in den Paketshop-Finder — nur bei Angeboten,
+                die ihn tatsächlich anbieten können. Er steht bewusst hier bei
+                den Serviceinformationen und NICHT neben Preis oder Haupt-CTA. */}
+            <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />
           </div>
         </div>
 

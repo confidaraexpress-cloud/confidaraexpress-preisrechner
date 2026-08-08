@@ -157,6 +157,42 @@ export function publicCarrierIdToAccessPointSearchCode(publicCarrierId) {
   }
 }
 
+/**
+ * Der Access-Point-Suchcode zu einem Tarif — oder null, wenn die Suche für
+ * diesen Versanddienstleister (noch) nicht unterstützt wird.
+ *
+ * Fasst die beiden Wege oben in der belegten Priorität zusammen:
+ *   1) Capability-Provider (accessPoint.provider)
+ *   2) kontrollierte, öffentliche publicCarrierId
+ * KEIN Rohfeld, KEIN Regex, KEINE Ableitung aus Namen oder Servicebezeichnung.
+ *
+ * Dies ist unverändert dieselbe Auflösung, die bisher IM Paketshop-Finder stand
+ * und darüber entschied, ob überhaupt gesucht werden darf.
+ */
+export function resolveAccessPointCarrierCode(tariff) {
+  return (
+    toAccessPointSearchCode(tariff?.accessPoint?.provider) ||
+    publicCarrierIdToAccessPointSearchCode(tariff?.publicCarrierId) ||
+    null
+  );
+}
+
+/**
+ * Bietet dieses Angebot eine Paketshop-Suche an?
+ *
+ * ZWEI Bedingungen, beide aus bereits vorhandenen, strukturierten Feldern —
+ * keine Namensheuristik:
+ *   • serviceType === "dropoff" — dieselbe Regel, die bisher darüber
+ *     entschied, ob der Finder auf der Angebotskarte überhaupt erschien.
+ *   • ein auflösbarer Carrier-Suchcode — sonst gäbe es nichts zu suchen.
+ *
+ * Fällt eine der beiden weg, erscheint KEIN Einstieg: kein deaktivierter Knopf
+ * und kein „nicht verfügbar“-Text, der nichts anbietet.
+ */
+export function offerSupportsAccessPointSearch(tariff) {
+  return tariff?.serviceType === "dropoff" && Boolean(resolveAccessPointCarrierCode(tariff));
+}
+
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────
 // Referenz-Reihenfolge für die Anzeige im Carrier-Filter. Unbekannte Carrier
 // (kein Treffer in dieser Liste) werden danach alphabetisch nach Anzeigename

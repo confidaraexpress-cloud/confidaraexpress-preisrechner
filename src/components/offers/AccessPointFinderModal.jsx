@@ -45,6 +45,8 @@ export function AccessPointFinderModal({
   onSearch, canSearch,
   // Ergebniszustand
   loading, error, results, countryCode,
+  // Aus welchem Angebot heraus geöffnet wurde — nur zur Beschriftung.
+  carrierName,
 }) {
   // returnFocusTo zeigt auf den Suchknopf. Er wird beim Öffnen deaktiviert
   // (der Ladevorgang startet im selben Render), verliert dadurch den Fokus —
@@ -148,7 +150,15 @@ export function AccessPointFinderModal({
           <div className="ap-modal-head-text">
             <p className="ap-modal-eyebrow">Paketshop Finder</p>
             <h2 className="ap-modal-title" id={titleId}>Paketshops in Ihrer Nähe</h2>
-            <p className="ap-modal-sub">Finden Sie passende Abgabestellen für Ihren Versand.</p>
+            {/* Der Carrier gehört sichtbar hierher: Der Einstieg sitzt jetzt an
+                der einzelnen Angebotskarte, und die Ergebnisse gelten nur für
+                deren Versanddienstleister. Ohne diese Zeile wäre nach dem
+                Wechsel von UPS zu DPD nicht erkennbar, wessen Shops man sieht. */}
+            <p className="ap-modal-sub">
+              {carrierName
+                ? `Abgabestellen von ${carrierName} in der Nähe Ihrer Absenderadresse.`
+                : "Finden Sie passende Abgabestellen für Ihren Versand."}
+            </p>
           </div>
           <button
             type="button"

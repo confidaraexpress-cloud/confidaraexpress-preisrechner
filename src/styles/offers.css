@@ -592,38 +592,32 @@
 
 /* ─── Access-Point / Paketshop-Finder (read-only Orientierung) ──────────────── */
 
-/* Dropoff-Karte: konsolidierte Einleitung (der Titel steht in der Panel-Kopf-
-   zeile). Eine Beschreibung + optionaler, dezenter Absender-Hinweis — ersetzt
-   den früheren Absatz samt Warn-Banner. */
-.dropoff-intro { margin-bottom: 14px; }
-.dropoff-intro-text { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ce-color-text-secondary); }
-.dropoff-intro-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+/* ── Einstieg in den Paketshop-Finder am Angebot ─────────────────────────────
+   Hier standen bis zu diesem Paket die Regeln der großen Inline-Suchsektion
+   (.ap-finder, .ap-finder-form, .ap-finder-fields, .ap-finder-controls,
+   .ap-finder-search-btn, .ap-finder-hint, .ap-finder-note, .ap-finder-receipt,
+   .ap-finder-reopen). Die Sektion ist von der Angebotsseite verschwunden —
+   ihre Regeln sind mit entfernt, statt ungenutzt liegen zu bleiben.
 
-.ap-finder { display: flex; flex-direction: column; gap: 12px; }
+   Erhalten bleiben ausschließlich die Regeln, die das FENSTER weiterbenutzt:
+   Feldbeschriftung, Eingaben, Pflicht-/Optionalmarker, Fehler und Leerzustand.
 
-/* Nicht unterstützter Carrier: ruhiger, dezenter Hinweis (keine Suche). */
-.ap-finder--unsupported { gap: 0; }
-.ap-finder-note { font-size: 13px; color: var(--ce-color-text-muted); line-height: 1.5; margin: 0; }
-
-/* Kompakter Orientierungshinweis (ersetzt die frühere Amber-Warn-Banner-Optik):
-   dezente, nicht alarmierende Zeile — reine Orientierung, keine Auswahl. */
-.ap-finder-hint {
-  display: flex; align-items: flex-start; gap: 7px; margin: 0;
-  font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted);
+   Der Einstieg selbst ist ein kleiner Textknopf — sekundär, damit er weder mit
+   dem Preis noch mit „Angebot auswählen“ konkurriert. */
+.ps-trigger {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 4px 8px; margin-left: -8px;
+  border: none; border-radius: var(--ce-radius-sm); background: none;
+  color: var(--blue2); font-family: var(--ce-font-sans);
+  font-size: 12px; font-weight: 600; line-height: 1.4;
+  cursor: pointer; text-align: left;
+  transition: background 0.15s, color 0.15s;
 }
-.ap-finder-hint svg { color: var(--ce-color-text-muted); flex-shrink: 0; margin-top: 2px; }
+.ps-trigger:hover { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+.ps-trigger:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ps-trigger svg { flex-shrink: 0; }
 
-/* Suchformular */
-.ap-finder-form { display: flex; flex-direction: column; gap: 12px; }
-.ap-finder-fields {
-  display: grid; gap: 10px 12px; align-items: end;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.7fr) minmax(0, 0.85fr);
-}
-/* Vier Felder ohne Gedränge — PLZ · Ort · Umkreis in Zeile 1, die Straße volle
-   Breite in Zeile 2 (Raum für lange Adressen). Die Straße ist nur bei GLS
-   Pflicht, wird aber überall gesendet: sie bestimmt den Suchmittelpunkt. */
-.ap-finder-field--street { grid-column: 1 / -1; }
-.ap-finder-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+/* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. */
 .ap-finder-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
 .ap-finder-optional { font-weight: 500; color: var(--ce-color-text-muted); }
 .ap-finder-required { font-weight: 600; color: var(--blue2); }
@@ -634,34 +628,6 @@
   width: 100%; box-sizing: border-box;
 }
 .ap-finder-input:focus, .ap-finder-select:focus { border-color: var(--blue); }
-
-/* Links das Öffnungszeitenmerkmal (wirkt sofort auf die geladene Liste),
-   rechts der Suchbutton. flex-end, damit Select und Button auf derselben
-   Grundlinie sitzen — das Select trägt darüber sein Label. */
-.ap-finder-controls {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
-}
-/* Genug Breite für die längste Option („Alle Öffnungszeiten“), aber nie so
-   viel, dass der Suchbutton auf schmalen Karten umbrechen muss. */
-.ap-finder-field--opening { flex: 0 1 240px; min-width: 200px; }
-.ap-finder-search-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 40px; padding: 0 18px; border-radius: var(--radius);
-  border: 1.5px solid var(--blue); background: var(--blue); color: white;
-  font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: background 0.15s, border-color 0.15s;
-}
-.ap-finder-search-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); }
-.ap-finder-search-btn:disabled {
-  background: var(--gray100); color: var(--ce-color-text-muted);
-  border-color: var(--border); cursor: not-allowed;
-}
-.ap-finder-search-btn:focus-visible {
-  outline: none; box-shadow: var(--ce-elevation-focus-ring);
-}
-
-/* Zustände: Fehler-/Empty (die sichtbare Ladeanzeige liefert allein der Button). */
 .ap-finder-error {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 10px 12px; border-radius: var(--radius);
@@ -786,7 +752,11 @@
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 }
 .ap-modal-listcol { min-height: 0; overflow-y: auto; border-right: 1px solid var(--border); }
-.ap-modal-mapcol { min-height: 0; position: relative; background: var(--gray50); }
+/* Die Kartenspalte trägt KEINE eigene Fläche mehr: der weiße Fenstergrund soll
+   um die Karte herum sichtbar bleiben. Den Innenabstand setzt .ap-map über
+   `inset` (siehe unten) — nicht `padding` hier, weil die Karte absolut in
+   dieser Spalte liegt und Padding sie deshalb gar nicht erreichen würde. */
+.ap-modal-mapcol { min-height: 0; position: relative; }
 
 /* Liste */
 .ap-list { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -842,8 +812,21 @@
 .ap-week-break { color: var(--ce-color-text-muted); }
 .ap-week-plain { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.5; }
 
-/* Karte — ergänzend, nie autoritativ. */
-.ap-map { position: absolute; inset: 0; }
+/* Karte — ergänzend, nie autoritativ.
+
+   Sie klebte bis zu diesem Paket an der rechten und unteren Fensterkante. Jetzt
+   sitzt sie als eigenes, eingebettetes Modul mit Luft ringsum: gleicher Radius
+   und dieselbe Bordersprache wie jede andere Fläche des Systems, keine
+   zusätzliche Schattenkarte. `inset` statt `padding` am Elternteil, weil die
+   Karte absolut positioniert ist — und weil damit alle vier Abstände aus EINEM
+   Wert kommen. Der Zeichenbereich folgt dieser Größe automatisch: er liegt
+   `inset: 0` in .ap-map, und der ResizeObserver in AccessPointMap zieht
+   map.resize() nach (siehe dort). */
+.ap-map {
+  position: absolute; inset: var(--ce-space-4);
+  border-radius: var(--ce-radius-md); overflow: hidden;
+  border: 1px solid var(--border); background: var(--gray50);
+}
 /* Zwei Klassen UND eine explizite Größe — beides mit Anlass:
    maplibre hängt seinem Container die Klasse .maplibregl-map an, und sein
    Stylesheet wird zur Laufzeit nachgeladen, steht also NACH dieser Datei im
@@ -904,17 +887,7 @@
 .ap-map-popup-dist { font-size: 13px; font-weight: 600; color: var(--blue2); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 .ap-map-popup-hours { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
 
-/* Quittung der letzten Suche auf der Hauptseite — KEINE zweite Trefferliste. */
-.ap-finder-receipt {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0;
-  font-size: 13px; font-weight: 600; color: var(--navy);
-}
-.ap-finder-reopen {
-  padding: 0; border: none; background: none; color: var(--blue2);
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  text-decoration: underline; cursor: pointer;
-}
-.ap-finder-reopen:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+
 
 /* Bewegung nur als kurze Zustandsreaktion — wer sie abbestellt hat, bekommt keine. */
 @media (prefers-reduced-motion: reduce) {
@@ -948,6 +921,9 @@
   .ap-modal-split--map  .ap-modal-listcol { display: none; }
   .ap-modal-listcol { border-right: none; }
   .ap-modal-mapcol { position: relative; }
+  /* Auf Vollbild zählt jeder Millimeter Kartenfläche — 16 px ringsum wären hier
+     ein spürbarer Verlust, 12 px genügen für die Absetzung vom Fensterrand. */
+  .ap-map { inset: var(--ce-space-3); }
   /* WCAG 2.5.5: jedes Bedienelement erreicht 44 px. */
   .ap-modal-close { width: 44px; height: 44px; }
   .ap-modal-toggle-btn { min-height: 44px; }

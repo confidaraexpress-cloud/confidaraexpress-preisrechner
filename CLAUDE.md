@@ -538,12 +538,32 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   wirklich auf `A4` zurück, weil A4 ein aktiv gesendeter Wert ist und sonst
   unsichtbar A6 mitgebucht würde. Gespiegelt wird die Referenz nur bei aktiver
   Option, sonst liefe die Ableitung beim nächsten Mount falsch.
+- **Zwei Zusatzempfänger für Versandinformationen.** Dieselbe Schalterzeile
+  trägt „Tracking-Link an weitere E-Mail-Adresse senden" und „Versandlabel &
+  Tracking-Link an weitere E-Mail-Adresse senden" (Reihenfolge: Referenznummer →
+  Tracking → Label+Tracking → Labelformat). Validiert wird **nur die aktive
+  Option** — ein ausgeschalteter, evtl. ungültiger Restwert darf die Buchung
+  nicht blockieren, weil er auch nicht gesendet wird; Fehler erscheinen erst
+  beim Weiterklicken (`emailShowErrors`). Der Payload trägt die **Adresse, nie
+  den Schalterzustand**: eine vorhandene Adresse IST die Aktivierung (so der
+  Backendvertrag). `BOOKING_KEYS` wurde additiv um `trackingEmail` /
+  `labelTrackingEmail` erweitert — **ohne** Versionssprung, damit laufende
+  Vorgänge nicht grundlos verworfen werden (ein alter Vorgang liefert
+  `undefined` → `""`). Das Versenden, die Deduplizierung gleicher Adressen und
+  der Label-Anhang passieren serverseitig.
+- **`/tracking` versteht `?nummer=…`.** Der Trackinglink der Versand-E-Mails
+  zeigt auf die eigene öffentliche Seite; ohne diese Auswertung liefe er auf
+  eine leere Suchmaske. Genau einmal beim Mount (`ranOnce`), damit ein späteres
+  Rendern die Suche des Nutzers nicht überschreibt; ohne Parameter ist die Seite
+  unverändert.
 - Governance: `src/styles/shippingProcess.test.mjs` (Quelltext) und
   `tests/e2e/shippingProcessPaketB.test.mjs` (echter Dev-Server) sichern App-
   Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge und
   Tastaturbedienung gegen Regression ab; `progressiveBookingOptions.test.mjs`
   (16 Quelltext- + 15 E2E-Tests) deckt die Zusatzoptionen ab, inklusive der im
-  echten `/book`-Request geprüften Payload-Fälle.
+  echten `/book`-Request geprüften Payload-Fälle;
+  `shipmentEmailOptions.test.mjs` / `sharedShipmentEmailOptions.test.mjs`
+  (10 + 14 Quelltext- + 17 E2E-Tests) decken die beiden Zusatzempfänger ab.
 
 ## Verwaltung und Abrechnung (Paket C)
 

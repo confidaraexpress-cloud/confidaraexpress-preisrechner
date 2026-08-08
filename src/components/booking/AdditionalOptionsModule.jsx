@@ -4,14 +4,14 @@ import { Switch } from "../ui/Switch";
 
 // Zusätzliche Optionen — REINE DARSTELLUNG. Bündelt die optionale Referenznummer
 // (Wert/Sanitizing bleiben im Orchestrator: BookingPage.form.reference +
-// updReference) und die Wahl des Labeldruckformats (A4/A6). Bewusst KEINE
-// E-Mail-Optionen (White-Label-/Branding-Entscheid noch offen). Keine eigene
-// Businesslogik: labelFormat ist reiner /book-Payload-Wert ohne Preis-/Reprice-
-// Einfluss; Default A4 wird im Orchestrator gesetzt und hier sichtbar vorausgewählt.
+// updReference), zwei optionale Zusatzempfänger für Versandinformationen und die
+// Wahl des Labeldruckformats (A4/A6). Keine eigene Businesslogik: labelFormat ist
+// reiner /book-Payload-Wert ohne Preis-/Reprice-Einfluss; Default A4 wird im
+// Orchestrator gesetzt und hier sichtbar vorausgewählt.
 //
-// Progressive Disclosure: Beide Optionen zeigen im Grundzustand nur eine
-// Schalterzeile; die Detailfelder erscheinen erst nach dem Einschalten. Auch die
-// beiden Schalterzustände liegen im Orchestrator — dieses Modul bleibt zustandslos.
+// Progressive Disclosure: Jede Option zeigt im Grundzustand nur eine Schalterzeile;
+// die Detailfelder erscheinen erst nach dem Einschalten. Auch die Schalterzustände
+// und die Validierung liegen im Orchestrator — dieses Modul bleibt zustandslos.
 const LABEL_FORMATS = [
   { id: "A4", name: "DIN A4", desc: "Standarddruck auf normalem Papier." },
   { id: "A6", name: "DIN A6", desc: "Kompaktes Etikettenformat (z. B. Labeldrucker)." },
@@ -19,9 +19,45 @@ const LABEL_FORMATS = [
 
 const formatName = (id) => (LABEL_FORMATS.find(f => f.id === id) || LABEL_FORMATS[0]).name;
 
+// Eine Zusatzadresse: Schalterzeile + (eingeschaltet) ein E-Mail-Feld. Beide
+// Optionen sehen identisch aus und unterscheiden sich nur im Text und im Umfang
+// dessen, was der Empfänger später bekommt.
+function EmailOption({ id, label, enabled, onEnabledChange, value, onChange, error }) {
+  const fieldId = `${id}-input`;
+  const errorId = `${id}-error`;
+  return (
+    <div className="addopt-option">
+      <Switch id={id} checked={enabled} onChange={onEnabledChange} label={label} />
+      {enabled && (
+        <div className="addopt-reveal">
+          <div className="field">
+            <label className="field-label" htmlFor={fieldId}>E-Mail-Adresse</label>
+            <input
+              id={fieldId}
+              type="email"
+              className={`field-input${error ? " field-input-error" : ""}`}
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              placeholder="name@unternehmen.de"
+              maxLength={255}
+              aria-invalid={error ? "true" : undefined}
+              aria-describedby={error ? errorId : undefined}
+            />
+            {error && <span className="field-error" id={errorId}>{error}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AdditionalOptionsModule({
   reference, onReferenceChange, referenceEnabled, onReferenceEnabledChange,
   labelFormat, onLabelFormatChange, labelFormatEnabled, onLabelFormatEnabledChange,
+  trackingEmail, onTrackingEmailChange, trackingEmailEnabled, onTrackingEmailEnabledChange,
+  trackingEmailError,
+  labelTrackingEmail, onLabelTrackingEmailChange, labelTrackingEmailEnabled,
+  onLabelTrackingEmailEnabledChange, labelTrackingEmailError,
 }) {
   return (
     <div className="calc-panel addopt-panel mb-16">
@@ -55,7 +91,29 @@ export function AdditionalOptionsModule({
           )}
         </div>
 
-        {/* 2) Labeldruckformat — nur A4/A6, Default A4. Der Schalter heißt „ändern":
+        {/* 2) Zusatzempfänger: nur Trackinginformationen, KEIN Label. */}
+        <EmailOption
+          id="booking-tracking-email-toggle"
+          label="Tracking-Link an weitere E-Mail-Adresse senden"
+          enabled={trackingEmailEnabled}
+          onEnabledChange={onTrackingEmailEnabledChange}
+          value={trackingEmail}
+          onChange={onTrackingEmailChange}
+          error={trackingEmailError}
+        />
+
+        {/* 3) Zusatzempfänger: Trackinginformationen UND Versandlabel als PDF. */}
+        <EmailOption
+          id="booking-label-email-toggle"
+          label="Versandlabel & Tracking-Link an weitere E-Mail-Adresse senden"
+          enabled={labelTrackingEmailEnabled}
+          onEnabledChange={onLabelTrackingEmailEnabledChange}
+          value={labelTrackingEmail}
+          onChange={onLabelTrackingEmailChange}
+          error={labelTrackingEmailError}
+        />
+
+        {/* 4) Labeldruckformat — nur A4/A6, Default A4. Der Schalter heißt „ändern":
             ausgeschaltet gilt weiterhin das Standardformat, es fehlt nicht. */}
         <div className="addopt-option">
           <Switch

@@ -200,28 +200,43 @@ input[type="radio"]:focus-visible {
   cursor: pointer;
 }
 .ce-switch-input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+/* Bewusst kleines Steuerelement (32×18 statt 40×24): der Schalter bedient die
+   Option, er ist nicht ihre Überschrift. Die Trefferfläche schrumpft dadurch
+   NICHT — Ziel ist die ganze Zeile (siehe .ce-switch und die 44-px-Regel unten).
+   box-sizing: border-box, damit die Kante die Außenmaße nicht verschiebt. */
 .ce-switch-track {
   flex: none;
+  box-sizing: border-box;
   position: relative;
-  width: 40px;
-  height: 24px;
-  margin-top: 1px;
+  width: 32px;
+  height: 18px;
+  margin-top: 2px;
   border-radius: var(--ce-radius-full);
-  background: var(--ce-color-border-strong);
-  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  /* AUS: sehr helle Fläche mit dünner neutraler Kante statt einer kräftigen
+     grauen Fläche — ruhig, aber durch die Kante klar als Bedienelement lesbar. */
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-default);
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .ce-switch-knob {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
   border-radius: var(--ce-radius-full);
   background: var(--ce-color-surface);
   transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ce-switch-input:checked ~ .ce-switch-track { background: var(--ce-color-brand); }
-.ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { transform: translateX(16px); }
+/* AN: das tiefere Indigo der Marke statt des hellen Grundtons. Es wirkt
+   zurückhaltender als der leuchtende Basiston und trägt den weißen Knopf mit
+   6,96:1 — kein Glow, kein Schatten, keine zweite Farbe im System. */
+.ce-switch-input:checked ~ .ce-switch-track {
+  background: var(--ce-color-brand-active);
+  border-color: var(--ce-color-brand-active);
+}
+.ce-switch-input:checked ~ .ce-switch-track .ce-switch-knob { transform: translateX(14px); }
 .ce-switch-input:focus-visible ~ .ce-switch-track {
   outline: var(--ce-focus-ring);
   outline-offset: var(--ce-focus-ring-offset);
@@ -238,9 +253,13 @@ input[type="radio"]:focus-visible {
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-muted);
 }
-/* Trefferfläche auf Touchgeräten (WCAG 2.5.5) — die Zeile selbst ist das Ziel. */
+/* Trefferfläche auf Touchgeräten (WCAG 2.5.5) — die ZEILE ist das Ziel, nicht
+   das sichtbare Steuerelement. Der Schalter darf deshalb klein bleiben; die
+   44 px kommen aus der Zeilenhöhe. Bei zentrierter Ausrichtung entfällt der
+   optische Ausgleich zur ersten Textzeile. */
 @media (max-width: 860px) {
   .ce-switch { min-height: 44px; align-items: center; }
+  .ce-switch-track { margin-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ce-switch-track, .ce-switch-knob { transition: none; }

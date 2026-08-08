@@ -187,7 +187,9 @@ test("15 — es entsteht kein neuer persistierter Schlüssel im Vorgang", () => 
 test("16 — der Grundzustand ist eine ruhige Liste ohne Kartenrahmen je Option", () => {
   assert.match(calculator, /\.addopt-option \+ \.addopt-option \{[^}]*border-top/,
     "die Trennlinie steht zwischen den Optionen");
-  assert.match(calculator, /\.addopt-reveal \{[^}]*padding-left:\s*52px/,
+  // 44px = 32px Schalterspur + 12px Abstand. Die Zahl folgt der Schalterbreite;
+  // sie wurde mit dem kompakteren Steuerelement von 52px nachgezogen.
+  assert.match(calculator, /\.addopt-reveal \{[^}]*padding-left:\s*44px/,
     "der Detailbereich wird auf Höhe des Schaltertextes eingerückt");
   assert.match(calculator, /@media \(max-width: 600px\) \{ \.addopt-reveal \{ padding-left: 0/,
     "auf schmalen Viewports entfällt die Einrückung");

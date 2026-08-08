@@ -250,3 +250,95 @@ test("18 — die Paket-A-Governance-Dateien sind weiterhin im Testlauf verdrahte
   }
   assert.ok(pkg.includes("shippingProcess.test.mjs"), "diese Datei muss sich selbst im Testlauf eintragen");
 });
+
+/* ══════════ 19 — Sticky-Verhalten der Buchungszusammenfassung ═════════════
+   Fehlerbild: `.booking-livesum` war ab 861 px SELBST `position: sticky`. Da
+   die klebende Fläche damit die KARTE war und kein deckender Träger, lief der
+   Inhalt sichtbar durch ihre abgerundeten Ecken und durch den transparenten
+   20-px-Außenabstand darunter (gemessen mit elementFromPoint: dort stand der
+   Kartenkopf von „Ausgewähltes Angebot"). Zusätzlich belegte die 87 px hohe
+   Karte diesen Platz dauerhaft im Sichtfeld.
+
+   Die klebende Rolle trägt jetzt eine eigene, schmale Leiste mit drei Ebenen:
+   Layer (klebt, ohne eigene Höhe) · Fill (deckt ab) · Summary (Kartenmaterial). */
+
+test("19 — die große Zusammenfassung klebt nicht mehr", () => {
+  const block = calculatorCss;
+  const regel = block.match(/\.booking-livesum \{[^}]*\}/);
+  assert.ok(regel, ".booking-livesum nicht gefunden");
+  assert.ok(!/position:\s*sticky/.test(regel[0]), "die große Zusammenfassung ist wieder sticky");
+  // Auch keine Sonderregel in einer Media Query darf sie erneut ankleben.
+  for (const m of block.matchAll(/\.booking-livesum\s*\{([^}]*)\}/g)) {
+    assert.ok(!/position:\s*(sticky|fixed)/.test(m[1]),
+      "eine Regel klebt .booking-livesum erneut an");
+  }
+});
+
+test("20 — die kompakte Leiste hat Layer, deckenden Träger und Karte", () => {
+  const block = calculatorCss;
+  const layer = block.match(/\.booking-sticky-layer \{([^}]*)\}/);
+  assert.ok(layer, ".booking-sticky-layer fehlt");
+  assert.match(layer[1], /position:\s*sticky/, "der Layer klebt nicht");
+  // Ohne eigene Höhe: sonst verlöre die Seite dauerhaft vertikalen Platz UND
+  // das Ein-/Ausblenden erzeugte einen Layoutsprung.
+  assert.match(layer[1], /height:\s*0/, "der Layer belegt Platz im Fluss");
+  assert.match(layer[1], /z-index:\s*var\(--ce-z-raised\)/, "der Layer nutzt keinen Ebenen-Token");
+
+  // Der deckende Träger ist der Grund, warum nichts mehr durchscheint.
+  const fill = block.match(/\.booking-sticky-fill \{([^}]*)\}/);
+  assert.ok(fill, ".booking-sticky-fill fehlt");
+  assert.match(fill[1], /background:\s*var\(--ce-app-bg-mid\)/, "der Träger ist nicht deckend eingefärbt");
+  assert.match(fill[1], /padding:/, "der Träger rahmt die Karte nicht");
+
+  const bar = block.match(/\.booking-sticky-summary \{([^}]*)\}/);
+  assert.ok(bar, ".booking-sticky-summary fehlt");
+  assert.match(bar[1], /background:\s*var\(--ce-color-surface\)/, "die Leiste nutzt kein Kartenmaterial");
+  assert.match(bar[1], /border-radius:\s*var\(--ce-radius-/, "Radius nicht aus der Skala");
+  assert.match(bar[1], /box-shadow:\s*var\(--ce-elevation-/, "Tiefe nicht aus der Skala");
+  // Informationsleiste, keine zweite große Karte.
+  assert.match(bar[1], /min-height:\s*58px/, "die Leiste hält die kompakte Höhe nicht");
+});
+
+test("21 — die Leiste fängt Klicks nur im eingeblendeten Zustand ab", () => {
+  const block = calculatorCss;
+  const layer = block.match(/\.booking-sticky-layer \{([^}]*)\}/)[1];
+  const stuck = block.match(/\.booking-sticky-layer\.is-stuck \{([^}]*)\}/);
+  assert.ok(stuck, "der eingeblendete Zustand fehlt");
+  // Verborgen: der Inhalt darunter muss bedienbar bleiben.
+  assert.match(layer, /pointer-events:\s*none/, "die verborgene Leiste fängt Klicks ab");
+  // Eingeblendet: sie verdeckt Inhalt und muss ihn deshalb auch abschirmen —
+  // sonst ließe sich ein unsichtbares Bedienelement blind anklicken.
+  assert.match(stuck[1], /pointer-events:\s*auto/, "die sichtbare Leiste lässt Klicks durch");
+  assert.match(stuck[1], /opacity:\s*1/, "der eingeblendete Zustand ist nicht sichtbar");
+});
+
+test("22 — Sichtbarkeit über IntersectionObserver, nicht über Scrollpositionen", () => {
+  const quelle = read("../components/booking/BookingStickySummary.jsx");
+  assert.match(quelle, /new IntersectionObserver/, "es wird kein IntersectionObserver verwendet");
+  assert.ok(!/addEventListener\(\s*["']scroll["']/.test(quelle), "es hängt ein Scroll-Handler daran");
+  assert.ok(!/window\.scrollY|pageYOffset/.test(quelle), "es wird eine Scrollposition ausgewertet");
+  // Der Klebeabstand wird am echten Layout gemessen (mobile Topbar), nicht als
+  // Pixelgrenze in den Code geschrieben.
+  assert.match(quelle, /\.mobile-topbar/, "der Klebeabstand wird nicht am Layout gemessen");
+  assert.match(quelle, /--booking-sticky-top/, "der gemessene Abstand wird nicht ans CSS zurückgegeben");
+  assert.match(quelle, /addEventListener\("resize"/, "der Abstand wird beim Größenwechsel nicht neu bestimmt");
+  // Reine Darstellung: kein Zustand, keine Buchungs- oder Preislogik.
+  assert.ok(!/fetch\(|apiFetch|useState\(\s*\{/.test(quelle), "die Leiste enthält Logik statt reiner Darstellung");
+});
+
+test("23 — beide Zusammenfassungen leiten aus derselben Quelle ab", () => {
+  const modul = read("../utils/bookingSummaryView.mjs");
+  for (const fn of ["handoverInfo", "deliveryInfo", "priceInfo"]) {
+    assert.match(modul, new RegExp(`export function ${fn}\\(`), `${fn} fehlt im gemeinsamen Modul`);
+  }
+  // Keine zweite Preisberechnung: das Modul wählt nur aus vorhandenen Feldern.
+  assert.ok(!/[*/+-]\s*(vat|tax|0\.19|1\.19)/i.test(modul), "im Modul wird ein Preis gerechnet");
+  assert.match(modul, /hasConfirmedPrice/, "die Preisregel stammt nicht aus dem View-Model");
+
+  const kompakt = read("../components/booking/BookingStickySummary.jsx");
+  assert.match(kompakt, /from "\.\.\/\.\.\/utils\/bookingSummaryView\.mjs"/,
+    "die kompakte Leiste nutzt das gemeinsame Modul nicht");
+  // Sie darf Preise nur formatieren, nie bilden.
+  assert.ok(!/netPrice|vatAmount|grossPrice|\*\s*1\.19/.test(kompakt),
+    "die kompakte Leiste greift auf Rohpreisfelder zu statt auf das View-Model");
+});

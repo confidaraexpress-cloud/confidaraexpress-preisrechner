@@ -513,12 +513,36 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   `DashboardLayout.jsx` (Eyebrow „Versand").
 - **Schrittleiste** (`.steps-bar`/`.step-circle`) ist flach: aktiv = Marken-
   Indigo, erledigt = Success, zukünftig = neutral — kein Verlauf, kein Glow.
-- **Live-Zusammenfassung** (`BookingLiveSummary`/`.booking-livesum`) ist ab
-  861 px sticky (`top: 16px`) mit eigener Elevation-Stufe. Bekannte, bewusst
-  akzeptierte Eigenschaft von `position: sticky`: sie überlappt beim
-  Scrollen kurzzeitig die obere Kante der darunterliegenden Karte — wie jede
-  sticky Zusammenfassungsleiste. Kein Dialog wird dadurch verdeckt
-  (Dialoge laufen auf `--ce-z-dialog`, weit über der Leiste).
+- **Zwei Zusammenfassungen, eine Quelle.** Die große Live-Zusammenfassung
+  (`BookingLiveSummary`/`.booking-livesum`) **scrollt normal mit**; sobald sie
+  oben aus dem Sichtfeld läuft, übernimmt die schmale
+  `BookingStickySummary`/`.booking-sticky-layer`. Beide leiten Übergabe,
+  Zustellung und den geltenden Preis aus **einem** Modul ab
+  (`utils/bookingSummaryView.mjs`) — dort wird nichts gerechnet, sondern nur
+  ausgewählt, welcher bereits vorhandene Betrag des Price-View-Models gilt.
+
+  Bis dahin war `.booking-livesum` ab 861 px **selbst** `position: sticky`.
+  Weil damit die KARTE klebte und kein deckender Träger, entstanden vier
+  sichtbare Fehler: durch die vier abgerundeten Ecken und durch den
+  transparenten 20-px-Außenabstand darunter lief der Inhalt offen hindurch
+  (dort stand der Kartenkopf von „Ausgewähltes Angebot"), die 87 px hohe Karte
+  belegte den Platz dauerhaft, und `z-index: 1` hob sie über den Inhalt, ohne
+  ihn abzudecken. **Diese Konstruktion nicht wiederherstellen.**
+
+  Die neue Leiste hat drei Ebenen mit je einer Aufgabe: `.booking-sticky-layer`
+  klebt und trägt die Ebene — **ohne eigene Höhe** (`height: 0`), damit kein
+  vertikaler Platz verloren geht und das Ein-/Ausblenden keinen Layoutsprung
+  erzeugen kann; `.booking-sticky-fill` deckt ab (Seitenfarbe, umschließt die
+  Karte vollständig); `.booking-sticky-summary` trägt das Kartenmaterial.
+  `pointer-events` schaltet mit: verborgen `none`, sichtbar `auto` — sonst
+  ließe sich ein verdecktes Bedienelement blind anklicken.
+
+  Die Sichtbarkeit erkennt ein `IntersectionObserver` auf der großen Leiste —
+  **keine Scrollposition, kein Scroll-Handler**. Der Klebeabstand wird am
+  echten Layout gemessen (unterhalb 860 px liegt die Leiste unter der sticky
+  Topbar der App-Shell) und als `--booking-sticky-top` ans CSS zurückgegeben;
+  es steht keine Pixelgrenze im Code. Die Schrittleiste ist bewusst **nicht**
+  sticky — es gibt genau einen Klebemechanismus auf der Seite.
 - **`.calc-panel`** (Preisrechner, Neue Sendung, alle Buchungsmodule) ist
   jetzt Base Card aus der Foundation — kein Gradient-Kartenkopf mehr.
 - **Auswahlkarten** (`.ins-card`, `.labelfmt-card`, Angebotskarten
@@ -556,10 +580,13 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   eine leere Suchmaske. Genau einmal beim Mount (`ranOnce`), damit ein späteres
   Rendern die Suche des Nutzers nicht überschreibt; ohne Parameter ist die Seite
   unverändert.
-- Governance: `src/styles/shippingProcess.test.mjs` (Quelltext) und
+- Governance: `src/styles/shippingProcess.test.mjs` (Quelltext, 23 Tests) und
   `tests/e2e/shippingProcessPaketB.test.mjs` (echter Dev-Server) sichern App-
-  Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge und
-  Tastaturbedienung gegen Regression ab; `progressiveBookingOptions.test.mjs`
+  Shell-Einbindung, Badge-Logik, JUMiNGO-Payload-Felder, Konfliktdialoge,
+  Tastaturbedienung sowie das Sticky-Verhalten beider Zusammenfassungen
+  (Tests 19–23: große Leiste klebt nicht, Layer ohne Eigenhöhe, deckender
+  Träger, umschaltende `pointer-events`, IntersectionObserver statt
+  Scrollposition, eine gemeinsame Ableitungsquelle) gegen Regression ab; `progressiveBookingOptions.test.mjs`
   (16 Quelltext- + 15 E2E-Tests) deckt die Zusatzoptionen ab, inklusive der im
   echten `/book`-Request geprüften Payload-Fälle;
   `shipmentEmailOptions.test.mjs` / `sharedShipmentEmailOptions.test.mjs`

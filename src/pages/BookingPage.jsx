@@ -26,6 +26,7 @@ import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
 import { BookingLiveSummary } from "../components/booking/BookingLiveSummary";
+import { BookingStickySummary } from "../components/booking/BookingStickySummary";
 import { TermsModule } from "../components/booking/TermsModule";
 import { BookingActionModule } from "../components/booking/BookingActionModule";
 import {
@@ -194,6 +195,11 @@ export default function BookingPage() {
   const [repriceStale, setRepriceStale]     = useState(false);
   const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
   const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
+
+  // Beobachtungsziel der kompakten Sticky-Zusammenfassung: Sie erscheint genau
+  // dann, wenn die große Live-Zusammenfassung nach oben aus dem Sichtfeld
+  // läuft. Reine Darstellungsreferenz — kein Zustand, keine Buchungslogik.
+  const liveSummaryRef = useRef(null);
 
   const [form, setForm] = useState({
     content: flowBooking?.content || "",
@@ -1021,9 +1027,18 @@ export default function BookingPage() {
         </div>
 
         {/* Permanente Live-Zusammenfassung (Schritt 1 + 2) — dieselbe Preisquelle
-            wie Karten und Preiszusammenfassung (zentrales Price-View-Model). */}
+            wie Karten und Preiszusammenfassung (zentrales Price-View-Model).
+            Sie scrollt normal mit; sobald sie oben aus dem Sichtfeld läuft,
+            übernimmt die kompakte Leiste darunter. Der Wrapper trägt nur die
+            Referenz für deren IntersectionObserver — er hat weder Rahmen noch
+            Innenabstand, der Außenabstand der Leiste bleibt unverändert. */}
         {(step === 1 || step === 2) && (
-          <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
+          <>
+            <div ref={liveSummaryRef}>
+              <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
+            </div>
+            <BookingStickySummary tariff={tariff} priceView={priceView} observeRef={liveSummaryRef} />
+          </>
         )}
 
         {error && (typeof error === "object"

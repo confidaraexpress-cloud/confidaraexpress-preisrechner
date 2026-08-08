@@ -413,23 +413,26 @@
 /* ─── Permanente Live-Zusammenfassungsleiste (BookingPage, Schritt 1 + 2) ─────
    Providerneutral, ruhig, kompakt — KEINE JUMiNGO-Kopfzeilen-Kopie. Vier Zonen;
    der Preis rechts stammt aus demselben zentralen Price-View-Model. Base-Card-
-   Material (Paket B); ab Desktop sticky (>860px, dieselbe Schwelle wie die
-   Sidebar), damit Preis/Service während des Scrollens sichtbar bleiben, ohne
-   Felder oder Dialoge zu verdecken (niedriger z-index, unter jedem Overlay). */
+   Material (Paket B).
+
+   Sie scrollt bewusst NORMAL mit dem Inhalt. Bis dahin war sie ab 861 px selbst
+   `position: sticky; top: 16px; z-index: 1` — und genau daraus entstanden vier
+   sichtbare Fehler, weil hier die KARTE klebte und nicht ein deckender Träger:
+     1. `border-radius: 16px` — in den vier abgerundeten Ecken lag keine Fläche,
+        der scrollende Inhalt war dort sichtbar.
+     2. `margin-bottom: 20px` — dieser Abstand gehört zur klebenden Karte, ist
+        aber transparent. Darunter lief der Kartenkopf von „Ausgewähltes
+        Angebot" offen durch (gemessen mit elementFromPoint).
+     3. Die Karte ist 87 px hoch und belegte diesen Platz dauerhaft im
+        Sichtfeld.
+     4. `z-index: 1` hob sie über den Inhalt, ohne ihn abzudecken.
+   Die klebende Rolle trägt jetzt `.booking-sticky-layer` (siehe unten). */
 .booking-livesum {
   display: grid; grid-template-columns: 1.6fr 1fr 1fr auto; align-items: stretch;
   margin-bottom: 20px; overflow: hidden;
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
   box-shadow: var(--ce-elevation-1);
-}
-@media (min-width: 861px) {
-  /* Sticky ab Desktop: die Leiste bleibt beim Scrollen oben sichtbar (Preis/
-     Service immer erreichbar). Eigene Elevation-Stufe, damit sie beim
-     „Kleben" klar ALS schwebende Leiste über dem Inhalt lesbar ist, statt
-     wie ein Kartenüberlapp zu wirken. Dialoge (--ce-z-dialog) liegen immer
-     darüber — kein Konflikt mit dem globalen Dialogsystem. */
-  .booking-livesum { position: sticky; top: 16px; z-index: 1; box-shadow: var(--ce-elevation-2); }
 }
 .blsum-zone { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 13px 18px; }
 .blsum-zone + .blsum-zone { border-left: 1px solid var(--border); }
@@ -470,6 +473,150 @@
   .blsum-handover { border-right: none; }
   .blsum-zone + .blsum-zone { border-top: 1px solid var(--border); }
   .blsum-price-gross { font-size: 18px; }
+}
+
+/* ─── Kompakte Sticky-Zusammenfassung (BookingStickySummary) ──────────────────
+   Übernimmt die klebende Rolle von `.booking-livesum` — aber als schmale
+   Informationsleiste statt als zweite große Karte, und mit einem deckenden
+   Träger statt einer frei schwebenden Karte.
+
+   Drei Ebenen, jede mit genau einer Aufgabe:
+     .booking-sticky-layer   klebt und trägt die Ebene — OHNE eigene Höhe
+     .booking-sticky-fill    deckt ab (Seitenfarbe, deckend, rahmt die Karte)
+     .booking-sticky-summary die eigentliche Leiste (Kartenmaterial)          */
+.booking-sticky-layer {
+  position: sticky;
+  /* Klebeabstand: 0 auf dem Desktop, Höhe der sticky Topbar der App-Shell
+     unterhalb der Drawer-Schwelle. Den Wert MISST die Komponente am echten
+     Layout und schreibt ihn als Variable zurück — keine Pixelgrenze im Code. */
+  top: var(--booking-sticky-top, 0px);
+  z-index: var(--ce-z-raised);
+  /* Kein Platz im Fluss. Die Leiste schwebt über dem Inhalt, statt ihn
+     dauerhaft um ihre Höhe nach unten zu schieben. Zwei Gewinne zugleich:
+     es geht kein vertikaler Platz verloren, UND das Ein-/Ausblenden kann
+     keinen Layoutsprung erzeugen — damit ist auch die Rückkopplung
+     ausgeschlossen, die an der Umschaltgrenze zu Flackern führen würde. */
+  height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  /* Im verborgenen Zustand darf die Leiste den darunterliegenden Inhalt nicht
+     abfangen — sie liegt unsichtbar über ihm. Im sichtbaren Zustand ist das
+     Gegenteil richtig: Sie deckt den Inhalt ab, also muss sie Klicks auch
+     annehmen. Ohne diese Umschaltung ließe sich ein verdecktes Bedienelement
+     blind anklicken. */
+  pointer-events: none;
+  transition:
+    opacity var(--ce-motion-standard) var(--ce-motion-ease-standard),
+    transform var(--ce-motion-standard) var(--ce-motion-ease-standard);
+}
+.booking-sticky-layer.is-stuck { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+/* Der deckende Träger. Er ist der eigentliche Grund, warum hier nichts mehr
+   durchscheint: Er füllt das VOLLE Rechteck um die Leiste — also auch die
+   Flächen, die die abgerundeten Ecken der Karte frei lassen, sowie den
+   Abstand nach unten. Farbe ist die Seitenfläche, damit der Träger als Teil
+   des Hintergrunds liest und nicht als zweite Karte. */
+.booking-sticky-fill {
+  background: var(--ce-app-bg-mid);
+  padding: 8px 0 10px;
+}
+
+.booking-sticky-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 58px;
+  padding: 9px 16px;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-2);
+}
+
+/* Links — Versandprodukt */
+.bsum-product { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bsum-logo { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+.bsum-logo--generic { display: flex; align-items: center; justify-content: center; color: var(--ce-color-text-muted); }
+.bsum-product-txt { display: flex; flex-direction: column; min-width: 0; }
+.bsum-carrier {
+  font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary);
+  letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bsum-service {
+  font-size: 11px; color: var(--ce-color-text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Mitte — Übergabe und Zustellung */
+.bsum-meta { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.bsum-chip {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+  font-size: 11px; font-weight: 600; color: var(--ce-color-text-secondary);
+  white-space: nowrap;
+}
+.bsum-delivery { display: flex; flex-direction: column; min-width: 0; }
+.bsum-delivery-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+}
+.bsum-delivery-val {
+  font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Rechts — geltender Preis */
+.bsum-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.bsum-price-gross {
+  font-size: 16px; font-weight: 600; color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-numeric); letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap;
+}
+.bsum-price-unit { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); letter-spacing: 0; }
+.bsum-price-net {
+  font-size: 11px; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap;
+}
+
+/* ≤860px → zwei Zeilen: [Produkt | Preis] über [Übergabe · Zustellung].
+   Reihenfolge nach Priorität: Carrier und Preis stehen oben, die Zustellung
+   rückt in die zweite, kleinere Zeile. Die Platzierung ist explizit, damit die
+   automatische Rasterfüllung den Preis nicht in eine dritte Zeile schiebt. */
+@media (max-width: 860px) {
+  .booking-sticky-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 8px 12px;
+  }
+  .bsum-product  { grid-column: 1; grid-row: 1; }
+  .bsum-price    { grid-column: 2; grid-row: 1; }
+  .bsum-meta     { grid-column: 1 / -1; grid-row: 2; gap: 10px; }
+  .bsum-delivery { flex-direction: row; align-items: baseline; gap: 6px; }
+  .bsum-price-net { font-size: 11px; }
+}
+
+/* ≤520px → die Zustellung ist die sekundärste Angabe und entfällt zuerst.
+   Carrier, Übergabeart und Preis bleiben — genau die drei Fragen, die die
+   Leiste beantworten soll. Nichts wird gestaucht, nichts überläuft. */
+@media (max-width: 520px) {
+  .bsum-delivery-label { display: none; }
+}
+@media (max-width: 400px) {
+  .bsum-delivery { display: none; }
+  .bsum-price-gross { font-size: 15px; }
+}
+
+/* Bewegung ist hier reine Zustandsreaktion und wird bei entsprechender
+   Systemeinstellung vollständig abgeschaltet — die Leiste erscheint dann
+   sofort, ohne Übergang. */
+@media (prefers-reduced-motion: reduce) {
+  .booking-sticky-layer { transition: none; transform: none; }
+  .booking-sticky-layer.is-stuck { transform: none; }
 }
 
 .ins-after { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }

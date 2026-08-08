@@ -223,36 +223,28 @@
 }
 
 /* ── Zone 2: Versandablauf / Timeline ────────────────────────────────────────── */
-.offer-zone-2 { grid-area: zone-2; align-self: center; min-width: 0; }
+/* start statt center: Zone 1/3 sind bereits oben ausgerichtet und höher als
+   Zone 2 — das nutzt den dadurch ungenutzten Raum oben, ohne die (weiter von
+   Zone 1/3 bestimmte) Zeilenhöhe zu ändern. */
+.offer-zone-2 { grid-area: zone-2; align-self: start; min-width: 0; }
 /* Kompakte, zentrierte Timeline — Start & Ziel rücken enger zusammen, die
    Linie ist kürzer und bewusst zurückhaltend (dezenter Konnektor), damit die
    farbigen Punkte und die Texte dominieren, nicht die Linie. */
 .offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
 
-/* Übergabeart als Kopfzeile der Prozessdarstellung: „Abholung an Ihrer Adresse"
-   bzw. „Abgabe im Paketshop". Sie beantwortet in einer Zeile, ob der Kunde die
-   Sendung wegbringen muss oder ob sie geholt wird.
-
-   Label-Stufe der Typografieskala (12 px / 600 / normale Laufweite, dieselben
-   Tokens wie Formularlabels) statt Versalien mit künstlicher Laufweite: die
-   Schrift selbst trägt jetzt das Gewicht, nicht die Groß-/Kleinschreibung. Text
-   Primary statt Secondary hebt sie sichtbar über die Metazeilen darunter,
-   bleibt aber unter Preis und Carriername (beide größer/schwerer).
-
-   Satzschrift auch im DOM (kein text-transform mehr): dasselbe, was vorher nur
-   für Screenreader/Suche galt, gilt jetzt für jeden.
-
-   Farbe bewusst neutral (Navy = Text Primary, keine neue Rolle): Rot und Grün
-   sind im Paketshop-Finder bereits als Öffnungsstatus belegt — eine zweite
-   Farbbedeutung für Pickup gegen Dropoff würde damit konkurrieren. */
+/* Übergabeart als kleine Überschrift des Prozessbereichs. Body-Größe (14px)
+   statt Label (12px) für mehr Präsenz; Gewicht bleibt bei 600, dem laut
+   typography.test.mjs global höchsten zulässigen UI-Gewicht. margin-bottom
+   statt größerem .offer-timeline-Gap, da der Gap gleichmäßig auf ALLE
+   Geschwister wirkt und sonst auch den engen Rail→Labels-Abstand aufweitet. */
 .offer-handover {
-  margin: 0 0 4px;
+  margin: 0 0 12px;
   text-align: center;
   font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-label-size);
+  font-size: var(--ce-text-body-size);
   font-weight: var(--ce-text-label-weight);
-  line-height: var(--ce-text-label-line);
-  letter-spacing: var(--ce-text-label-tracking);
+  line-height: 1.2;
+  letter-spacing: normal;
   color: var(--navy);
 }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }

@@ -1,3 +1,4 @@
+import { handoverMode, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import dhlLogo       from "../assets/carriers/dhl.svg";
 import upsLogo       from "../assets/carriers/ups.svg";
 import fedexLogo     from "../assets/carriers/fedex.svg";
@@ -190,7 +191,11 @@ export function resolveAccessPointCarrierCode(tariff) {
  * und kein „nicht verfügbar“-Text, der nichts anbietet.
  */
 export function offerSupportsAccessPointSearch(tariff) {
-  return tariff?.serviceType === "dropoff" && Boolean(resolveAccessPointCarrierCode(tariff));
+  // „Ist das eine Shopabgabe?" beantwortet ausschließlich handoverMode — dieselbe
+  // Auslegung, die auch die Kennzeichnung auf der Angebotskarte und den
+  // Knotentitel der Prozesslinie speist. Eine zweite Prüfung von serviceType
+  // an dieser Stelle wäre eine zweite Auslegung derselben Businessregel.
+  return handoverMode(tariff) === HANDOVER_DROPOFF && Boolean(resolveAccessPointCarrierCode(tariff));
 }
 
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────

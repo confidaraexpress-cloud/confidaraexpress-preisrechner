@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
+import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -34,10 +35,14 @@ const fmtUntil = (time) => (/^bis\b/i.test(time || "") ? `${time} Uhr` : `bis ${
 // und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
 // Gewicht; Uhrzeit/Shopname bleiben sekundär und dezent.
 function buildStart(t) {
+  // Die Übergabeart kommt aus dem gemeinsamen Helfer, damit Knotentitel und
+  // Kennzeichnung darüber nie auseinanderlaufen können — es gibt genau eine
+  // Auslegung von „Abholung" und „Shopabgabe" (utils/handoverMode.mjs).
+  const modus = handoverMode(t);
   let title;
-  if (t.serviceType === "dropoff")     title = "Shopabgabe";
-  else if (t.serviceType === "pickup") title = t.pickupToday ? "Abholung heute" : "Abholung";
-  else                                 title = "Versand";
+  if (modus === HANDOVER_DROPOFF)     title = "Shopabgabe";
+  else if (modus === HANDOVER_PICKUP) title = t.pickupToday ? "Abholung heute" : "Abholung";
+  else                                title = "Versand";
 
   const primary = t.pickupDate ? fmtDay(t.pickupDate) : null;
   const secondary = [];
@@ -151,10 +156,14 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // ausschließlich, wenn der Wert real vorhanden ist. Keine erfundenen Werte,
   // kein null/undefined, keine technischen Rohwerte.
 
-  // Versandart als lesbares Label.
+  // Versandart als lesbares Label — über denselben Helfer wie Kopfzeile und
+  // Prozessknoten, damit es im Produkt genau eine Auslegung von „Abholung" und
+  // „Shopabgabe" gibt. Der Rohwert-Fallback für unklassifizierte Typen bleibt
+  // unverändert bestehen (bewusst nicht in diesem Auftrag angefasst).
+  const serviceModus = handoverMode(t);
   const serviceLabel =
-    t.serviceType === "pickup"  ? "Abholung"   :
-    t.serviceType === "dropoff" ? "Shopabgabe" :
+    serviceModus === HANDOVER_PICKUP  ? "Abholung"   :
+    serviceModus === HANDOVER_DROPOFF ? "Shopabgabe" :
     t.serviceType || null;
 
   // Tarif-ID nur sekundär (Support/Abgleich) — Jumingo-seitige ID bevorzugt.
@@ -358,6 +367,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
   const start = buildStart(t);
   const end   = buildEnd(t, etaLabel);
+  // null, wenn das Backend die Übergabeart nicht klassifiziert hat — dann wird
+  // keine behauptet.
+  const handoverText = handoverLabel(handoverMode(t));
 
   // Zone 4: Meta-Hinweise als ruhige, monochrome Icon+Text-Items.
   // Service-Typ (Abholung/Shopabgabe) wird hier NICHT wiederholt — er ist
@@ -427,6 +439,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             </div>
           ) : (
             <div className="offer-timeline">
+              {/* Übergabeart — die Antwort auf „muss ich das wegbringen oder
+                  wird es geholt?". Sie steht bewusst HIER, als Kopfzeile der
+                  Prozessdarstellung: sie beschreibt genau deren linkes Ende.
+                  Neben dem Preis oder am Carrier wäre sie eine Behauptung ohne
+                  Zusammenhang. Reine Typografie, kein Badge — sie soll schnell
+                  lesbar sein, aber Preis und Hauptaktion nicht Konkurrenz
+                  machen. Die Versalien macht das Stylesheet, nicht der Text. */}
+              {handoverText && <p className="offer-handover">{handoverText}</p>}
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
                 <span className="offer-tl-track">

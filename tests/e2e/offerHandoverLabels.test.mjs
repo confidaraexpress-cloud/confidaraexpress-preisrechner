@@ -258,7 +258,7 @@ test("8 — Preis, Hauptaktion und Datumsangaben sind unberührt", async () => {
   await page.close();
 });
 
-test("9 — die Zeile ist visuell sekundär und kostet kaum Höhe", async () => {
+test("9 — die Zeile wirkt als kleine Überschrift des Prozessbereichs", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page);
   await zeigeAngebote(page);
@@ -268,9 +268,11 @@ test("9 — die Zeile ist visuell sekundär und kostet kaum Höhe", async () => 
     const rail = karte.querySelector(".offer-tl-rail");
     const preis = karte.querySelector(".offer-price");
     const carrier = karte.querySelector(".offer-carrier-name");
+    const zone1 = karte.querySelector(".offer-zone-1");
     const cs = getComputedStyle(h);
     const px = (v) => parseFloat(v);
     const hBox = h.getBoundingClientRect();
+    const zone1Box = zone1.getBoundingClientRect();
     return {
       hoehe: hBox.height,
       groesse: px(cs.fontSize), gewicht: cs.fontWeight,
@@ -278,23 +280,32 @@ test("9 — die Zeile ist visuell sekundär und kostet kaum Höhe", async () => 
       preisGroesse: px(getComputedStyle(preis).fontSize),
       carrierGroesse: px(getComputedStyle(carrier).fontSize),
       abstandZurLinie: rail.getBoundingClientRect().top - hBox.bottom,
+      topDiffZuZone1: hBox.top - zone1Box.top,
     };
   });
 
-  // Typografie: Label-Stufe (12 px / 600), Satzschrift ohne künstliche Laufweite.
-  assert.equal(mass.groesse, 12);
+  // Typografie: Body-Stufe (14 px) statt Label (12 px) — der nächstgrößere
+  // Skalenschritt. Gewicht bleibt bei 600, dem global höchsten zulässigen
+  // UI-Gewicht (typography.test.mjs lässt nichts darüber zu).
+  assert.equal(mass.groesse, 14);
   assert.equal(mass.gewicht, "600");
-  assert.equal(mass.transform, "none", "die Zeile darf nicht mehr versalisiert werden");
-  assert.equal(mass.spacing, "normal", "die Laufweite muss auf normal zurückgesetzt sein");
+  assert.equal(mass.transform, "none", "die Zeile darf nicht versalisiert werden");
+  assert.equal(mass.spacing, "normal", "die Laufweite muss auf normal stehen");
   assert.equal(mass.align, "center");
-  // Hierarchie: deutlich kleiner als Preis und Carriername — die dunklere
-  // Navy-Farbe macht sie kräftiger, ohne sie größer zu machen.
+  // Hierarchie: weiterhin deutlich kleiner als Preis und Carriername — die
+  // größere Stufe plus Navy machen sie kräftiger, ohne mit ihnen zu konkurrieren.
   assert.ok(mass.groesse < mass.preisGroesse, "die Zeile konkurriert mit dem Preis");
   assert.ok(mass.groesse < mass.carrierGroesse, "die Zeile konkurriert mit dem Carriernamen");
-  // Höhenbedarf klein halten, aber sichtbarer Abstand zur Prozesslinie.
+  // Höhenbedarf bleibt klein (eine Zeile), der Abstand zur Prozesslinie ist
+  // jetzt deutlich großzügiger — sichtbare Ruhe statt einer weiteren Metazeile.
   assert.ok(mass.hoehe <= 20, `die Zeile ist ${mass.hoehe}px hoch`);
-  assert.ok(mass.abstandZurLinie >= 6 && mass.abstandZurLinie <= 8,
-    `Abstand zur Prozesslinie außerhalb 6–8px: ${mass.abstandZurLinie}px`);
+  assert.ok(mass.abstandZurLinie >= 14 && mass.abstandZurLinie <= 16,
+    `Abstand zur Prozesslinie außerhalb 14–16px: ${mass.abstandZurLinie}px`);
+  // Position: die Zeile beginnt jetzt auf derselben Höhe wie Zone 1 (Carrier-
+  // Logo/-Name) statt mittig im Prozessbereich zu stehen — „fast am oberen
+  // Rand", ohne dass die Kartenzeile dafür wachsen musste.
+  assert.ok(Math.abs(mass.topDiffZuZone1) <= 2,
+    `die Zeile beginnt nicht auf Höhe von Zone 1: Differenz ${mass.topDiffZuZone1}px`);
   await page.close();
 });
 

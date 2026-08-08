@@ -228,6 +228,34 @@
    Linie ist kürzer und bewusst zurückhaltend (dezenter Konnektor), damit die
    farbigen Punkte und die Texte dominieren, nicht die Linie. */
 .offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
+
+/* Übergabeart als Kopfzeile der Prozessdarstellung: „ABHOLUNG AN IHRER ADRESSE"
+   bzw. „ABGABE IM PAKETSHOP". Sie beantwortet in einer Zeile, ob der Kunde die
+   Sendung wegbringen muss oder ob sie geholt wird.
+
+   Micro-Stufe der Typografieskala (11 px / 600) mit Versalien und leichter
+   Laufweite — dasselbe Muster, das im Produkt schon jede Eyebrow trägt. Damit
+   ist sie schneller zu erfassen als die Metazeilen darunter, bleibt aber
+   deutlich unter Preis, Carriername und Hauptaktion.
+
+   Die Versalien macht AUSSCHLIESSLICH text-transform. Im DOM steht Satzschrift,
+   damit Screenreader die Zeile als Wörter sprechen und die Browsersuche sie
+   findet.
+
+   Farbe bewusst neutral (Text Secondary): Rot und Grün sind im Paketshop-Finder
+   bereits als Öffnungsstatus belegt: eine zweite Farbbedeutung für Pickup gegen
+   Dropoff würde damit konkurrieren. */
+.offer-handover {
+  margin: 0 0 2px;
+  text-align: center;
+  font-family: var(--ce-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ce-color-text-secondary);
+}
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
 .offer-tl-dot {
   width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
@@ -541,6 +569,9 @@
      nur kompakter. Breitenlimit aufheben, damit die Rail die volle Breite
      nutzt; Rail + Grid bleiben sichtbar, keine vertikale Pseudo-Linie. */
   .offer-timeline { max-width: none; margin: 0; }
+  /* Auf schmalen Karten steht die Kennzeichnung linksbündig über dem Ablauf —
+     zentriert über einer linksbündigen Spalte wirkte sie verrutscht. */
+  .offer-handover { text-align: left; }
   .offer-tl-labels { gap: 8px; }
   /* Lange Shop-/Lieferzeitraum-Texte sauber umbrechen statt Overflow. */
   .offer-tl-node--start,

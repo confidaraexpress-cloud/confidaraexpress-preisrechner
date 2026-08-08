@@ -96,6 +96,11 @@ const FORM_KEYS_BY_SCOPE = Object.freeze({
 export const BOOKING_KEYS = Object.freeze([
   "step", "labelFormat", "reference", "content",
   "insuranceType", "goodsValue", "insuranceValue", "insValueManual",
+  // Optionale Zusatzempfänger für Versandinformationen. Reine Frontendeingaben
+  // ohne Serverquelle — genau wie reference gehören sie in den laufenden Vorgang,
+  // damit sie eine Zurücknavigation überleben. Gespiegelt wird nur, was auch
+  // gebucht würde (siehe BookingPage): ein ausgeschalteter Bereich landet leer.
+  "trackingEmail", "labelTrackingEmail",
 ]);
 
 /* ══════════ defensive Helfer ═════════════════════════════════════════════ */
@@ -239,6 +244,8 @@ export function emptyBooking() {
     goodsValue: "",
     insuranceValue: "",
     insValueManual: false,
+    trackingEmail: "",
+    labelTrackingEmail: "",
     updatedAt: null,
   };
 }
@@ -259,6 +266,10 @@ export function normalizeBooking(raw) {
     goodsValue: str(src.goodsValue).slice(0, 32),
     insuranceValue: str(src.insuranceValue).slice(0, 32),
     insValueManual: bool(src.insValueManual),
+    // Dieselbe Obergrenze wie im Backend (255) — eine fremde/überlange Angabe
+    // wird gekappt, nicht übernommen. Validiert wird beim Buchen, nicht hier.
+    trackingEmail: str(src.trackingEmail).slice(0, 255),
+    labelTrackingEmail: str(src.labelTrackingEmail).slice(0, 255),
     updatedAt: nonNegInt(src.updatedAt),
   };
 }

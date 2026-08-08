@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { EmptyState } from "../components/ui/StateView";
@@ -23,8 +24,11 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const track = async () => {
-    const trackingKey = id.trim();
+  // trackingKey wird explizit übergeben, wenn die Suche aus dem Deep-Link kommt:
+  // der State ist im selben Commit noch nicht gesetzt, ein Rückgriff auf `id`
+  // würde dort ins Leere laufen.
+  const track = async (keyArg) => {
+    const trackingKey = String(keyArg ?? id).trim();
     if (!trackingKey) return;
     setError(""); setLoading(true); setResult(null); setSearchedKey(trackingKey);
     let r;
@@ -48,6 +52,22 @@ export default function TrackingPage() {
     }
     setLoading(false);
   };
+
+  /* Deep-Link „/tracking?nummer=…" — der Trackinglink aus den Versand-E-Mails.
+     Ohne ihn müsste der Empfänger die Nummer aus der Mail von Hand abtippen.
+     Genau EINMAL beim Mount: `ranOnce` verhindert, dass ein späteres Rendern
+     (oder ein Parameterwechsel) die Suche des Nutzers überschreibt. Ohne
+     Parameter bleibt die Seite exakt wie bisher — ein leeres Suchfeld. */
+  const [searchParams] = useSearchParams();
+  const ranOnce = useRef(false);
+  useEffect(() => {
+    if (ranOnce.current) return;
+    const key = (searchParams.get("nummer") || "").trim();
+    if (!key) return;
+    ranOnce.current = true;
+    setId(key);
+    track(key);
+  }, [searchParams]);
 
   // Live-Format: Events liegen unter tracking.data.steps[] (date/time/type/
   // location). Das frühere tracking_events[] bleibt defensiver Fallback.

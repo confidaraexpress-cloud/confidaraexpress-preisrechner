@@ -37,6 +37,7 @@ import {
   findInvoiceByNumber, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
+import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
@@ -233,6 +234,33 @@ export default function BookingPage() {
     if (!on) setLabelFormat("A4");
   };
 
+  /* ── Zusatzempfänger für Versandinformationen ─────────────────────────────
+     Zwei unabhängige Optionen: nur Tracking bzw. Tracking UND Versandlabel als
+     PDF. Beide verhalten sich wie die Referenznummer — der Wert bleibt beim
+     Ausschalten im Formular stehen (versehentliches Ausschalten vernichtet
+     nichts), gebucht wird er nur bei aktiver Option. Anders als beim Labelformat
+     gibt es hier keinen Standardwert, der sonst unsichtbar mitliefe: fehlt das
+     Feld im Payload, passiert schlicht nichts.
+
+     Auch hier werden die Schalter beim Mount aus den vorhandenen Werten
+     abgeleitet — keine zweite Wahrheit neben der Adresse selbst. */
+  const [trackingEmail, setTrackingEmail] = useState(flowBooking?.trackingEmail || "");
+  const [trackingEmailEnabled, setTrackingEmailEnabled] = useState(
+    () => !!(flowBooking?.trackingEmail || "").trim());
+  const [labelTrackingEmail, setLabelTrackingEmail] = useState(flowBooking?.labelTrackingEmail || "");
+  const [labelTrackingEmailEnabled, setLabelTrackingEmailEnabled] = useState(
+    () => !!(flowBooking?.labelTrackingEmail || "").trim());
+  // Fehler erscheinen erst, wenn der Kunde weitergehen will — nicht schon beim
+  // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
+  const [emailShowErrors, setEmailShowErrors] = useState(false);
+
+  // Validiert wird NUR die jeweils aktive Option; ein ausgeschalteter, evtl.
+  // ungültiger Restwert darf die Buchung nicht blockieren, weil er auch nicht
+  // gesendet wird. Das Frontend ersetzt die serverseitige Prüfung nicht.
+  const trackingEmailProblem      = shipmentEmailError(trackingEmailEnabled, trackingEmail);
+  const labelTrackingEmailProblem = shipmentEmailError(labelTrackingEmailEnabled, labelTrackingEmail);
+  const shipmentEmailsValid = !trackingEmailProblem && !labelTrackingEmailProblem;
+
   // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
   const makeCustomsItem = () => ({
     description: "", value: "", quantity: "1", unitOfMeasurement: "PCS",
@@ -268,9 +296,15 @@ export default function BookingPage() {
     setFlowBooking({
       step, labelFormat, reference: referenceEnabled ? form.reference : "", content: form.content,
       insuranceType, goodsValue, insuranceValue, insValueManual,
+      // Dieselbe Regel wie bei der Referenznummer: gespiegelt wird nur, was auch
+      // gebucht würde — sonst stünde ein bewusst ausgeschalteter Bereich nach der
+      // Rückkehr wieder offen.
+      trackingEmail: trackingEmailEnabled ? trackingEmail : "",
+      labelTrackingEmail: labelTrackingEmailEnabled ? labelTrackingEmail : "",
     });
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
-      goodsValue, insuranceValue, insValueManual, setFlowBooking]);
+      goodsValue, insuranceValue, insValueManual, setFlowBooking,
+      trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
 
@@ -587,6 +621,15 @@ export default function BookingPage() {
         : "Das Abholzeitfenster wird noch geladen. Bitte einen Moment warten.");
       return;
     }
+    // Zweite Hälfte der Absicherung für die Zusatzempfänger (erste ist goToStep2).
+    // Das Backend lehnt eine ungültige Adresse ohnehin VOR der Buchung ab; hier
+    // wird der Kunde zurück zu Schritt 1 geführt, wo das Feld sichtbar ist.
+    if (!shipmentEmailsValid) {
+      setEmailShowErrors(true);
+      setStep(1);
+      setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie buchen.");
+      return;
+    }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
@@ -678,6 +721,13 @@ export default function BookingPage() {
           // Payload unverändert. Der Schalter ist damit die einzige Stelle, an
           // der ein noch im Formular liegender Wert wirksam wird.
           ...(referenceEnabled && form.reference.trim() ? { referenceNumber: form.reference.trim() } : {}),
+          // Optionale Zusatzempfänger — nur bei aktiver Option und befülltem Feld.
+          // Gesendet wird die Adresse selbst, NICHT der Schalterzustand: eine
+          // vorhandene Adresse IST die Aktivierung (so der Backendvertrag).
+          ...buildShipmentEmailPayload({
+            trackingEmailEnabled, trackingEmail,
+            labelTrackingEmailEnabled, labelTrackingEmail,
+          }),
           // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
           // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
           labelFormat,
@@ -923,6 +973,15 @@ export default function BookingPage() {
       setError("Das gespeicherte Abholzeitfenster konnte nicht geladen werden. Bitte laden Sie die Seite neu, bevor Sie fortfahren.");
       return;
     }
+    // Zusatzempfänger: eine aktivierte Option braucht eine gültige Adresse. Der
+    // Fehler wird erst hier sichtbar — ein gerade eingeschaltetes, noch leeres
+    // Feld soll nicht sofort rot sein. Das Backend prüft dieselbe Regel erneut
+    // und lehnt VOR der Buchung ab; dies erspart dem Kunden nur den Umweg.
+    if (!shipmentEmailsValid) {
+      setEmailShowErrors(true);
+      setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie fortfahren.");
+      return;
+    }
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
       // Blockiert wird ausschließlich wegen unvollständiger FACHLICHER Zollangaben
@@ -1011,6 +1070,16 @@ export default function BookingPage() {
               onReferenceEnabledChange={toggleReference}
               labelFormatEnabled={labelFormatEnabled}
               onLabelFormatEnabledChange={toggleLabelFormat}
+              trackingEmail={trackingEmail}
+              onTrackingEmailChange={setTrackingEmail}
+              trackingEmailEnabled={trackingEmailEnabled}
+              onTrackingEmailEnabledChange={setTrackingEmailEnabled}
+              trackingEmailError={emailShowErrors ? trackingEmailProblem : null}
+              labelTrackingEmail={labelTrackingEmail}
+              onLabelTrackingEmailChange={setLabelTrackingEmail}
+              labelTrackingEmailEnabled={labelTrackingEmailEnabled}
+              onLabelTrackingEmailEnabledChange={setLabelTrackingEmailEnabled}
+              labelTrackingEmailError={emailShowErrors ? labelTrackingEmailProblem : null}
               labelFormat={labelFormat}
               onLabelFormatChange={setLabelFormat}
             />

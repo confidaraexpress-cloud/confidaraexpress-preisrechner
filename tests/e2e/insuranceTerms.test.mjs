@@ -9,6 +9,11 @@
 // Zwei Tarife mit UNTERSCHIEDLICHEM carrierLinks.agb belegen, dass der Link aus
 // dem konkreten Tarif kommt und nicht aus einer Carriername-Tabelle.
 //
+// Außerdem White Label: der interne Upstream-/Fulfillment-Anbieter darf im
+// gerenderten DOM weder im Text noch in einem href auftauchen. Ein externer Link
+// auf den VERSANDDIENSTLEISTER ist ausdrücklich erlaubt — verboten ist nur die
+// Zwischenplattform.
+//
 // Es wird KEINE externe Seite geladen: geprüft werden ausschließlich href/target/
 // rel. Alle API-Aufrufe sind gemockt.
 import { test } from "node:test";
@@ -68,7 +73,6 @@ const SEL = {
   terms:     ".ins-card-terms-link",
   dialog:    ".insdlg",
   dlgClose:  ".insdlg-close",
-  dlgTerms:  ".insdlg-terms-link",
   goods:     "#ins-goods",
 };
 
@@ -140,6 +144,23 @@ async function waehle(page, name) {
   await page.waitForTimeout(150);
 }
 
+// White Label am gerenderten DOM: weder im sichtbaren Text noch in irgendeinem
+// href der Buchungsseite darf der interne Upstream-Anbieter auftauchen. Externe
+// Links auf den VERSANDDIENSTLEISTER sind ausdrücklich erlaubt — verboten ist
+// nur die Zwischenplattform.
+async function pruefeWhiteLabel(page, wo) {
+  const befund = await page.evaluate(() => ({
+    text: document.body.innerText,
+    hrefs: [...document.querySelectorAll("a[href]")].map(a => a.getAttribute("href")),
+  }));
+  for (const begriff of ["JUMiNGO", "JUMINGO", "Jumingo", "jumingo", "KRAVAG", "Kravag"]) {
+    assert.ok(!befund.text.includes(begriff), `${wo}: „${begriff}" ist für den Kunden sichtbar`);
+  }
+  for (const href of befund.hrefs) {
+    assert.ok(!/jumingo/i.test(href || ""), `${wo}: Link auf den Upstream-Anbieter (${href})`);
+  }
+}
+
 const karte = (page, name) => page.locator(`${SEL.card}:has-text("${name}")`).first();
 const gewaehlt = (page) => page.locator(".ins-card--selected .ins-card-name").innerText();
 
@@ -162,7 +183,7 @@ test.after(async () => {
 
 /* ── 1. Standard ─────────────────────────────────────────────────────────── */
 
-test("1 — Standard: Preis, neue Texte, keine 100-%-Aussage, Dialog mit Volltext-Link", async () => {
+test("1 — Standard: Preis, neue Texte, keine 100-%-Aussage, neutraler Dialog", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
@@ -186,17 +207,13 @@ test("1 — Standard: Preis, neue Texte, keine 100-%-Aussage, Dialog mit Volltex
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
   const dlg = await page.locator(SEL.dialog).innerText();
   assert.match(dlg, /Transportversicherung/);
-  assert.match(dlg, /Versicherungsbedingungen von JUMiNGO/);
-  assert.match(dlg, /KRAVAG LOGISTIC Versicherung AG/);
+  assert.match(dlg, /optional eine zusätzliche Transportversicherung gewählt werden/);
+  assert.match(dlg, /richtet sich nach den jeweils geltenden Versicherungsbedingungen/);
   assert.match(dlg, /50,00 €/);
   assert.match(dlg, /ausgeschlossen|Freigabe/);
   assert.ok(!/100\s*%/.test(dlg), "der Dialog behauptet eine 100-%-Deckung");
 
-  const volltext = page.locator(SEL.dlgTerms);
-  assert.equal(await volltext.getAttribute("href"), "https://www.jumingo.com/de-de/info/versicherungsbedingungen");
-  assert.equal(await volltext.getAttribute("target"), "_blank");
-  assert.equal(await volltext.getAttribute("rel"), "noopener noreferrer");
-
+  await pruefeWhiteLabel(page, "Dialog (Standard)");
   await page.close();
 });
 
@@ -225,7 +242,8 @@ test("2 — Premium: Servicevorteile, kein besserer Schutz behauptet, Dialogabsc
   const abschnitt = await page.locator(".insdlg-sec--premium").innerText();
   assert.match(abschnitt, /Premiumversicherung/);
   assert.match(abschnitt, /[Gg]leiche zugrunde liegende Versicherungsbedingungen/);
-  assert.match(abschnitt, /Selbstbeteiligung wird nach den JUMiNGO-Bedingungen übernommen/);
+  assert.match(abschnitt, /Selbstbeteiligung entfällt für Sie/);
+  await pruefeWhiteLabel(page, "Dialog (Premium)");
 
   await page.close();
 });
@@ -253,6 +271,7 @@ test("3 — dritte Option: korrekter Name, neutraler Haftungstext, kein CE-AGB-L
   assert.equal(await page.locator(SEL.goods).count(), 0, "ohne Zusatzversicherung darf kein Wertfeld erscheinen");
   assert.equal(await modul.locator(".field-error").count(), 0, "ohne Zusatzversicherung darf kein Wertfehler erscheinen");
 
+  await pruefeWhiteLabel(page, "Buchungsseite (keine Zusatzversicherung)");
   await page.close();
 });
 
@@ -269,6 +288,9 @@ test("4 — vorhandener carrierLinks.agb wird als sicherer externer Link gezeigt
   assert.equal(await link.getAttribute("href"), AGB_A, "der href stammt nicht aus dem Tarif");
   assert.equal(await link.getAttribute("target"), "_blank");
   assert.equal(await link.getAttribute("rel"), "noopener noreferrer");
+  // Ein externer Link auf den Versanddienstleister ist erwünscht — die
+  // White-Label-Regel trifft nur die Zwischenplattform.
+  await pruefeWhiteLabel(page, "Buchungsseite (Carrierlink vorhanden)");
 
   await page.close();
 });
@@ -432,6 +454,31 @@ test("10 — Dialog: Tastaturbedienung, Fokusfalle, Escape, Fokusrückgabe", asy
   const zurueck = await page.evaluate(sel => document.activeElement?.className || "", SEL.details);
   assert.ok(zurueck.includes("ins-card-details-btn"),
     `der Fokus kehrte nicht zum Auslöser zurück (aktiv: „${zurueck}“)`);
+
+  await page.close();
+});
+
+/* ── 10b. White Label im Dialog ──────────────────────────────────────────── */
+
+test("10b — der Dialog nennt den Upstream-Anbieter nicht und lässt keine Attrappe zurück", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  await setupRoutes(page, [TARIFF_MIT_LINK]);
+  await zurBuchung(page);
+  await karte(page, "Standardversicherung").locator(SEL.details).click();
+  await page.waitForSelector(SEL.dialog, { timeout: 5000 });
+
+  await pruefeWhiteLabel(page, "Dialog");
+
+  // An der Stelle des entfernten Volltext-Links steht nichts Klickbares:
+  // kein Anker, kein deaktivierter Knopf, kein Element mit Linkoptik.
+  const dlg = page.locator(SEL.dialog);
+  assert.equal(await dlg.locator("a").count(), 0, "der Dialog enthält einen Link");
+  assert.equal(await dlg.locator("button:disabled").count(), 0, "der Dialog enthält einen toten Knopf");
+  assert.equal(await dlg.locator("[role=\"note\"]").count(), 0, "der Dialog enthält ein inertes Pseudo-Element");
+  // Die beiden echten Bedienelemente bleiben: Schließkreuz und Schließen-Knopf.
+  assert.equal(await dlg.locator("button").count(), 2, "erwartet werden genau zwei Knöpfe (X und Schließen)");
+  assert.ok(!/Vollständige Versicherungsbedingungen/.test(await dlg.innerText()),
+    "der entfernte CTA steht noch als Text da");
 
   await page.close();
 });

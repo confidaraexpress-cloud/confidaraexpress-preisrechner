@@ -16,7 +16,6 @@ import {
   INSURANCE_CARD_COPY,
   INSURANCE_DIALOG,
   INSURANCE_TEXT,
-  JUMINGO_INSURANCE_TERMS_URL,
   carrierTermsHref,
 } from "../../utils/insuranceTerms.mjs";
 import { httpUrlOrNull, isHttpUrl, EXTERNAL_LINK_REL } from "../../utils/externalLink.mjs";
@@ -153,35 +152,95 @@ test("8 — es gibt keine statische Carrier-URL-Zuordnung", () => {
   assert.equal((terms.match(/carrierLinks/g) || []).length >= 1, true);
 });
 
-/* ── 9. Zentrale Produkt-URL ─────────────────────────────────────────────── */
+/* ── 9. White Label: kein Upstream-Anbieter im Kundenbereich ─────────────── */
 
-test("9 — die JUMiNGO-Versicherungsbedingungen stehen genau einmal zentral", () => {
-  assert.equal(JUMINGO_INSURANCE_TERMS_URL, "https://www.jumingo.com/de-de/info/versicherungsbedingungen");
-  assert.ok(isHttpUrl(JUMINGO_INSURANCE_TERMS_URL) && JUMINGO_INSURANCE_TERMS_URL.startsWith("https://"));
-  // Genau EIN Literal im ganzen Quellbaum: das im Textmodul. Alle Verwender
-  // importieren die Konstante.
-  assert.equal((terms.match(/jumingo\.com\/de-de\/info\/versicherungsbedingungen/g) || []).length, 1);
-  for (const [name, quelle] of [["InsuranceModule", modul], ["Dialog", dialog]]) {
-    assert.ok(!quelle.includes("jumingo.com"), `${name} hartcodiert die URL statt sie zu importieren`);
+// ConfidaraExpress tritt gegenüber dem Kunden allein auf. Der interne Upstream-/
+// Fulfillment-Anbieter, über den die Buchung technisch läuft, darf im sichtbaren
+// Versicherungsbereich weder als Marke noch als Bedingungsgeber, Kosten-,
+// Schaden- oder Supportträger noch als Link erscheinen.
+//
+// BEWUSST ENG: verboten ist das NUR in den drei kundenseitigen Dateien des
+// Versicherungsbereichs. Technische Feldnamen (`jumingo_shipment_id`), API-Pfade
+// (`/api/jumingo/book`), Mocks und Integrationskommentare an anderen Stellen
+// bleiben unangetastet — die Integration selbst ist nicht Gegenstand der Regel.
+const KUNDENSEITIG = [
+  ["InsuranceModule.jsx", modul],
+  ["InsuranceDetailsDialog.jsx", dialog],
+  ["insuranceTerms.mjs", terms],
+];
+const UPSTREAM_BEGRIFFE = [
+  "JUMiNGO", "JUMINGO", "Jumingo", "jumingo", "jumingo.com",
+  "JUMiNGO GmbH", "JUMiNGO SAS",
+];
+
+test("9 — der interne Upstream-Anbieter erscheint im Kundenbereich nirgends", () => {
+  // Hier ausdrücklich OHNE Kommentar-Abzug: in diesen drei Dateien gibt es
+  // keinen technischen Grund, den Namen überhaupt zu führen.
+  for (const [name, quelle] of KUNDENSEITIG) {
+    for (const begriff of UPSTREAM_BEGRIFFE) {
+      assert.ok(!quelle.includes(begriff),
+        `${name} nennt den internen Upstream-Anbieter („${begriff}")`);
+    }
   }
-  assert.match(dialog, /JUMINGO_INSURANCE_TERMS_URL/);
+  // Und keine der typischen Formulierungen, die ihn umschreiben.
+  for (const [name, quelle] of KUNDENSEITIG) {
+    // Nur die Umschreibungen selbst — „Versicherungsbedingungen" und
+    // „Beförderungsbedingungen" sind legitime Fachbegriffe und bleiben erlaubt.
+    for (const muster of [/JUMiNGO-\w/i, /über JUMiNGO/i, /von JUMiNGO/i, /nach den .{0,20}Bedingungen von /i]) {
+      assert.ok(!muster.test(quelle), `${name} verweist auf fremde Bedingungen (${muster})`);
+    }
+  }
+});
+
+test("9b — es gibt keinen kundenseitigen Link auf den Upstream-Anbieter", () => {
+  for (const [name, quelle] of KUNDENSEITIG) {
+    assert.ok(!/jumingo\.com/i.test(quelle), `${name} verlinkt den Upstream-Anbieter`);
+  }
+  // Die frühere Konstante ist restlos weg — keine tote Konstante, kein toter Import.
+  assert.ok(!terms.includes("JUMINGO_INSURANCE_TERMS_URL"), "die Konstante lebt noch");
+  assert.ok(!dialog.includes("JUMINGO_INSURANCE_TERMS_URL"), "der Import lebt noch");
+  assert.equal(INSURANCE_TEXT.fullTerms, undefined, "das Label des entfallenen Links lebt noch");
+});
+
+test("9c — an der Stelle des entfallenen Links steht kein Attrappen-Element", () => {
+  // Weder ein Anker ohne Ziel noch ein deaktivierter Knopf noch ein <span> mit
+  // Linkoptik — genau der Zustand, den dieser PR im Modul beseitigt hat.
+  assert.ok(!/insdlg-terms-link/.test(dialog), "das Linkelement lebt noch im Dialog");
+  assert.ok(!/insdlg-terms-link/.test(css), "die Linkoptik lebt noch im CSS");
+  assert.ok(!/<a(?![^>]*href=\{)/.test(dialog), "Anker ohne dynamisches href im Dialog");
+  assert.ok(!/disabled/.test(dialog), "deaktiviertes Bedienelement im Dialog");
+  // Der Dialog enthält überhaupt keinen Anker mehr.
+  assert.ok(!/<a\s/.test(dialog), "der Dialog enthält noch einen Link");
+});
+
+test("9d — keine Versicherungsgesellschaft wird pauschal benannt", () => {
+  // Die Bedingungen kennen unterschiedliche Konstellationen; für keine ist
+  // belegt, dass sie für JEDE Buchung gilt. Also wird keine genannt.
+  for (const [name, quelle] of KUNDENSEITIG) {
+    for (const gesellschaft of ["KRAVAG", "Kravag", "Versicherung AG", "Allianz", "AXA", "Zurich", "R+V"]) {
+      assert.ok(!quelle.includes(gesellschaft), `${name} benennt pauschal einen Versicherer („${gesellschaft}")`);
+    }
+  }
+  assert.ok(!/eingedeckt/.test(INSURANCE_DIALOG.intro), "die Einleitung behauptet noch eine Eindeckung");
 });
 
 /* ── 10./11. Sichere externe Links ───────────────────────────────────────── */
 
-test("10 — der externe Versicherungslink trägt die Sicherheitsattribute", () => {
+test("10 — der Dialog holt nichts nach und öffnet nichts von selbst", () => {
   assert.equal(EXTERNAL_LINK_REL, "noopener noreferrer");
-  const anker = dialog.slice(dialog.indexOf("insdlg-terms-link"));
-  assert.match(anker, /target=\{EXTERNAL_LINK_TARGET\}/);
-  assert.match(anker, /rel=\{EXTERNAL_LINK_REL\}/);
-  // Kein iframe, keine Anfrage beim Laden der Seite.
-  for (const quelle of [modul, dialog]) {
-    assert.ok(!/<iframe/i.test(quelle), "kein iframe im Versicherungsbereich");
-    assert.ok(!/fetch\(|apiFetch\(|XMLHttpRequest/.test(quelle), "kein Request aus dem Versicherungsbereich");
+  // Kein iframe, keine Anfrage beim Laden der Seite, kein automatischer Absprung.
+  for (const [name, quelle] of [["InsuranceModule", modul], ["Dialog", dialog]]) {
+    assert.ok(!/<iframe/i.test(quelle), `${name}: kein iframe im Versicherungsbereich`);
+    assert.ok(!/fetch\(|apiFetch\(|XMLHttpRequest/.test(quelle), `${name}: kein Request aus dem Versicherungsbereich`);
+    assert.ok(!/window\.open|location\.(href|assign|replace)/.test(quelle), `${name}: kein programmatischer Absprung`);
   }
 });
 
-test("11 — der Carrierlink trägt dieselben Sicherheitsattribute", () => {
+test("11 — der Carrierlink ist der einzige externe Link und ist sicher", () => {
+  // Ein externer Link auf den VERSANDDIENSTLEISTER ist ausdrücklich erwünscht —
+  // er zeigt auf den Carrier, nicht auf eine Zwischenplattform. Verboten ist
+  // pauschal nur der Upstream-Anbieter (Test 9), nicht „extern" an sich.
+  assert.equal((modul.match(/<a\s/g) || []).length, 1, "es gibt mehr als einen Anker im Modul");
   const anker = modul.slice(modul.indexOf("ins-card-terms-link"));
   assert.match(anker, /target=\{EXTERNAL_LINK_TARGET\}/);
   assert.match(anker, /rel=\{EXTERNAL_LINK_REL\}/);
@@ -284,22 +343,36 @@ test("18 — der Dialog nutzt das globale Dialogsystem", () => {
   assert.ok(!/backdrop-filter/.test(dialog));
 });
 
-test("19 — der Dialog zeigt Zusammenfassung statt Volltext", () => {
+test("19 — der Dialog zeigt eine neutrale Zusammenfassung", () => {
   assert.equal(INSURANCE_DIALOG.title, "Transportversicherung");
-  assert.match(INSURANCE_DIALOG.intro, /Versicherungsbedingungen von JUMiNGO/);
-  assert.match(INSURANCE_DIALOG.intro, /KRAVAG LOGISTIC Versicherung AG/);
+  assert.match(INSURANCE_DIALOG.intro, /optional eine zusätzliche Transportversicherung/);
+  assert.match(INSURANCE_DIALOG.intro, /richtet sich nach den jeweils geltenden Versicherungsbedingungen/);
   assert.deepEqual(INSURANCE_DIALOG.sections.map(s => s.id), ["standard", "premium"]);
+  const standard = INSURANCE_DIALOG.sections[0].items.join(" ");
+  assert.match(standard, /geltenden Versicherungsbedingungen/);
+  assert.match(standard, /50,00 €/);
+  assert.match(standard, /Schadenbearbeitung/);
+  const premium = INSURANCE_DIALOG.sections[1].items.join(" ");
+  assert.match(premium, /[Gg]leiche zugrunde liegende Versicherungsbedingungen/);
+  assert.match(premium, /Selbstbeteiligung entfällt für Sie/);
+  assert.ok(!/übernommen|übernimmt/.test(premium),
+    "wer die Selbstbeteiligung wirtschaftlich trägt, ist eine Innenbeziehung");
+  assert.match(premium, /[Pp]riorisierter Support/);
+  assert.match(premium, /Status-Updates/);
   assert.match(INSURANCE_DIALOG.notice, /ausgeschlossen|Freigabe/);
-  // Kompakt: die Zusammenfassung bleibt kurz, der Volltext liegt extern.
+  // Kompakt: die Zusammenfassung bleibt kurz, kein Volltext im Frontend.
   const zeichen = INSURANCE_DIALOG.sections.flatMap(s => s.items).join(" ").length;
-  assert.ok(zeichen < 600, `die Zusammenfassung ist mit ${zeichen} Zeichen zu lang — Volltext gehört zu JUMiNGO`);
-  assert.equal(INSURANCE_TEXT.fullTerms, "Vollständige Versicherungsbedingungen öffnen");
+  assert.ok(zeichen < 600, `die Zusammenfassung ist mit ${zeichen} Zeichen zu lang`);
 });
 
 test("20 — keine unbelegte Rollenaussage über ConfidaraExpress", () => {
   const verboten = [
     "vermittelt die Versicherung", "Versicherungsvermittler", "ist Versicherer",
     "Versicherungsmakler", "Versicherungsvermittlung",
+    // Und umgekehrt: ConfidaraExpress behauptet auch keine eigene Deckung.
+    "ConfidaraExpress-Versicherung", "Versicherung von ConfidaraExpress",
+    "ConfidaraExpress versichert", "Versicherungsschutz durch ConfidaraExpress",
+    "schließt die Versicherung für Sie ab", "Versicherungsnehmer",
   ];
   for (const quelle of alleTexte) {
     for (const satz of verboten) {

@@ -1,18 +1,18 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { Icon } from "../ui/Icon";
-import {
-  INSURANCE_DIALOG,
-  INSURANCE_TEXT,
-  JUMINGO_INSURANCE_TERMS_URL,
-} from "../../utils/insuranceTerms.mjs";
-import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
+import { INSURANCE_DIALOG } from "../../utils/insuranceTerms.mjs";
 
-// Versicherungsdetails — CE-eigene Zusammenfassung VOR dem externen Volltext.
+// Versicherungsdetails — die verständliche Zusammenfassung von ConfidaraExpress.
 // Vorher war „Versicherungsbedingungen" ein <span>, das wie ein Link aussah und
-// nichts tat; ein Klick führte ins Leere. Jetzt öffnet der Eintrag zuerst diese
-// Zusammenfassung, und der Weg zu den vollständigen Bedingungen ist eine
-// bewusste zweite Handlung — kein sofortiger Absprung aus der Buchung.
+// nichts tat; ein Klick führte ins Leere. Jetzt öffnet der Eintrag diese
+// Zusammenfassung — ohne Absprung aus der Buchung.
+//
+// Bewusst OHNE Link auf externe Vollbedingungen: eine kundenfähige, autorisierte
+// eigene Fassung gibt es nicht, und der einzige verfügbare Volltext gehört dem
+// internen Upstream-Anbieter, der gegenüber dem Kunden nicht erscheint. Ein
+// funktionsloser Knopf an seiner Stelle wäre der Fehler, den dieser Dialog
+// gerade behebt — deshalb steht dort nichts.
 //
 // Fokusfalle, Escape und Fokusrückgabe kommen aus dem gemeinsamen Hook. Das
 // Rückgabeziel wird EXPLIZIT übergeben: ausgelöst wird aus einer Karte heraus,
@@ -74,18 +74,6 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
             <Icon n="info" s={14} c="currentColor" />
             <span>{INSURANCE_DIALOG.notice}</span>
           </p>
-
-          {/* Der Volltext bleibt an seiner autoritativen Quelle — er wird nicht
-              ins Frontend kopiert, wo er still veralten würde. */}
-          <a
-            className="insdlg-terms-link"
-            href={JUMINGO_INSURANCE_TERMS_URL}
-            target={EXTERNAL_LINK_TARGET}
-            rel={EXTERNAL_LINK_REL}
-          >
-            <span>{INSURANCE_TEXT.fullTerms}</span>
-            <Icon n="external" s={14} c="currentColor" />
-          </a>
         </div>
 
         <div className="ce-dialog-actions">

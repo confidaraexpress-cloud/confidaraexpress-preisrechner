@@ -1,19 +1,21 @@
 // ── Transportversicherung: Texte, Bedingungslinks, Carrier-Bedingungen ───────
 // Reines Datenmodul (framework-frei, testbar). Es enthält KEINE Preis-, Reprice-
-// oder Buchungslogik — Prämien kommen unverändert aus dem Tarif (JUMiNGO), die
-// Auswahl aus dem Orchestrator.
+// oder Buchungslogik — Prämien kommen unverändert aus dem Tarif, die Auswahl aus
+// dem Orchestrator.
 //
 // Warum die Texte hier und nicht in der Komponente stehen: sie sind fachliche
 // Aussagen über ein Versicherungsprodukt. Sie werden an EINER Stelle gepflegt
 // und an EINER Stelle getestet, statt in JSX verteilt.
+//
+// WHITE LABEL — verbindlich für diese Datei: ConfidaraExpress tritt gegenüber
+// dem Kunden allein auf. Der interne Upstream-/Fulfillment-Anbieter, über den
+// die Buchung technisch läuft, wird hier NICHT benannt — weder als Marke, noch
+// als Bedingungsgeber, noch als Support-, Schaden- oder Kostenträger, noch als
+// Link. Sichtbar sein dürfen ConfidaraExpress und der konkret gewählte
+// Versanddienstleister (DPD, UPS, DHL Express, GLS …). Die technische
+// Integration bleibt davon unberührt; sie lebt in der API-Schicht.
+// `insuranceTerms.test.mjs` hält das fest.
 import { httpUrlOrNull } from "./externalLink.mjs";
-
-// Autoritative Produkt-URL der vollständigen Versicherungsbedingungen.
-// Bewusst eine Produktkonstante und keine Umgebungsvariable: der Link ist
-// öffentlich, stabil und für alle Umgebungen derselbe — eine env-Variable
-// würde ihn nur schwerer auffindbar machen und könnte je Umgebung abweichen.
-export const JUMINGO_INSURANCE_TERMS_URL =
-  "https://www.jumingo.com/de-de/info/versicherungsbedingungen";
 
 // Einheitliche Benennungen. Im gesamten Modul gilt genau EIN Wort je Sache —
 // keine Parallelbegriffe wie „Versicherungskonditionen" oder „Haftungs-AGB".
@@ -22,7 +24,6 @@ export const INSURANCE_TEXT = Object.freeze({
   sectionIntro:  "Wählen Sie optional eine zusätzliche Transportversicherung für Ihre Sendung.",
   detailsAction: "Versicherungsdetails",
   carrierTerms:  "Haftungs- & Beförderungsbedingungen öffnen",
-  fullTerms:     "Vollständige Versicherungsbedingungen öffnen",
   // Gilt bei „Keine zusätzliche Transportversicherung" — und identisch als
   // Fallback, wenn der Tarif keinen Bedingungslink mitliefert. Es wird KEINE
   // Haftungssumme genannt: eine tarifabhängige, belegte Zahl gibt es nicht.
@@ -32,7 +33,7 @@ export const INSURANCE_TEXT = Object.freeze({
 
 // Kartentexte. Bewusst OHNE absolute Zusagen: keine „100 %"-Aussage, keine
 // Deckungssumme, keine Behauptung über besseren Schutz. Was zutrifft, steht in
-// den Versicherungsbedingungen — und die sind verlinkt, nicht nacherzählt.
+// den geltenden Versicherungsbedingungen — sie werden benannt, nicht nacherzählt.
 export const INSURANCE_CARD_COPY = Object.freeze({
   standard: Object.freeze({
     description: "Zusätzliche Transportversicherung nach Maßgabe der Versicherungsbedingungen",
@@ -65,24 +66,33 @@ export const INSURANCE_CARD_COPY = Object.freeze({
   }),
 });
 
-// Inhalt des Versicherungsdetails-Dialogs. Zusammenfassung, kein Volltext:
-// die vollständigen Bedingungen bleiben an ihrer autoritativen Quelle, damit
-// im Frontend keine zweite, alternde Fassung entsteht.
+// Inhalt des Versicherungsdetails-Dialogs: eine verständliche Produkt-
+// zusammenfassung, kein Volltext.
+//
+// Es gibt bewusst KEINEN Link auf externe Vollbedingungen. Eine kundenfähige,
+// autorisierte ConfidaraExpress-Fassung der vollständigen Versicherungs-
+// bedingungen existiert im Produkt nicht; der einzige verfügbare Volltext
+// gehört dem internen Upstream-Anbieter und wäre damit customer-facing
+// sichtbar. Fremde Bedingungen zu spiegeln, eine eigene Fassung zu erfinden
+// oder einen funktionslosen Knopf stehen zu lassen, sind alle drei keine
+// Optionen — also steht hier nur die Zusammenfassung, bis eine freigegebene
+// eigene Fassung vorliegt.
 export const INSURANCE_DIALOG = Object.freeze({
   title: "Transportversicherung",
-  // Keine Aussage über die regulatorische Rolle von ConfidaraExpress — die ist
-  // nicht abschließend belegt. Genannt wird nur, was belegt ist: wessen
-  // Bedingungen gelten und wo eingedeckt wird.
+  // Keine Aussage darüber, wer Versicherer, Versicherungsnehmer, Vermittler
+  // oder Makler ist, und keine Nennung einer Versicherungsgesellschaft: die
+  // Bedingungen kennen unterschiedliche Konstellationen, und für keine davon
+  // ist belegt, dass sie für JEDE ConfidaraExpress-Buchung gilt. Genannt wird
+  // deshalb nur, was in jedem Fall zutrifft.
   intro:
-    "Für die zusätzliche Transportversicherung gelten die Versicherungsbedingungen von JUMiNGO. " +
-    "Nach den dort ausgewiesenen Bedingungen wird die Transportversicherung bei der " +
-    "KRAVAG LOGISTIC Versicherung AG eingedeckt.",
+    "Für Ihre Sendung kann optional eine zusätzliche Transportversicherung gewählt werden. " +
+    "Der Versicherungsschutz richtet sich nach den jeweils geltenden Versicherungsbedingungen.",
   sections: Object.freeze([
     Object.freeze({
       id: "standard",
       title: "Standardversicherung",
       items: Object.freeze([
-        "Versicherungsschutz nach Maßgabe der vollständigen Versicherungsbedingungen",
+        "Versicherungsschutz nach Maßgabe der geltenden Versicherungsbedingungen",
         "50,00 € Selbstbeteiligung je Schadenfall",
         "Reguläre Schadenbearbeitung",
       ]),
@@ -91,10 +101,12 @@ export const INSURANCE_DIALOG = Object.freeze({
       id: "premium",
       title: "Premiumversicherung",
       // Der erste Punkt sagt ausdrücklich, was Premium NICHT ist: eine andere
-      // Versicherung. Es ist derselbe Schutz mit zusätzlichem Service.
+      // Versicherung. Es ist derselbe Schutz mit zusätzlichem Service. Wer die
+      // Selbstbeteiligung wirtschaftlich trägt, ist eine Innenbeziehung und
+      // geht den Kunden nichts an — er erfährt nur, dass sie für ihn entfällt.
       items: Object.freeze([
         "Gleiche zugrunde liegende Versicherungsbedingungen wie bei der Standardversicherung",
-        "Die Selbstbeteiligung wird nach den JUMiNGO-Bedingungen übernommen",
+        "Die Selbstbeteiligung entfällt für Sie",
         "Priorisierter Support",
         "Wöchentliche Status-Updates",
       ]),
@@ -102,14 +114,17 @@ export const INSURANCE_DIALOG = Object.freeze({
   ]),
   notice:
     "Bestimmte Güter können vom Versicherungsschutz ausgeschlossen sein oder eine vorherige " +
-    "Freigabe erfordern. Es gelten die vollständigen Versicherungsbedingungen.",
+    "Freigabe erfordern.",
 });
 
 // Bedingungslink des KONKRETEN TARIFS. Quelle ist ausschließlich
-// `tariff.carrierLinks.agb` (JUMiNGO `shipper.agb_link`) — bewusst KEIN Mapping
-// über den Carriernamen: derselbe Carrier liefert für Pickup, Shop, Classic und
-// Express unterschiedliche Bedingungen, und eine Namenstabelle würde genau
-// diesen Unterschied einebnen.
+// `tariff.carrierLinks.agb` (Bedingungslink des Versanddienstleisters, wie ihn
+// der Tarif liefert) — bewusst KEIN Mapping über den Carriernamen: derselbe
+// Carrier liefert für Pickup, Shop, Classic und Express unterschiedliche
+// Bedingungen, und eine Namenstabelle würde genau diesen Unterschied einebnen.
+//
+// Der Link führt zum Versanddienstleister, nicht zu einer Zwischenplattform —
+// er ist damit ausdrücklich erwünscht und white-label-konform.
 //
 // Ungültige, fehlende oder unsichere Werte ergeben null → die Oberfläche zeigt
 // dann NUR den neutralen Hinweistext. Es wird nicht auf die CE-AGB

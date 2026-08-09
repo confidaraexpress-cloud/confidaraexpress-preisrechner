@@ -361,8 +361,19 @@ test("(P18) BookingLiveSummary: kontextuelles Label (Gesamt/Versand) statt fixem
 });
 test("(P19) InsuranceModule: stabiler Grid-Kopf (Name links, Preis rechts) + Badge", () => {
   const ins = read("../components/booking/InsuranceModule.jsx");
+  const copy = read("../utils/insuranceTerms.mjs");
   assert.ok(/ins-card-head-name/.test(ins), "Grid-Kopf-Namensspalte fehlt");
-  assert.ok(/Erweiterter Schutz/.test(ins), "Premium-Badge fehlt");
+  // Das Badge wird weiterhin gerendert, sein Text kommt jetzt aus dem zentralen
+  // Textmodul. Der frühere Wortlaut „Erweiterter Schutz" ist bewusst weg: er
+  // behauptete einen besseren VERSICHERUNGSSCHUTZ, den Premium nicht bietet —
+  // Premium erweitert den Service auf derselben Versicherung.
+  assert.ok(/\{copy\.badge && <span className="ins-card-badge">/.test(ins), "Premium-Badge fehlt");
+  assert.ok(/badge: "Erweiterter Service"/.test(copy), "Badge-Text fehlt im Textmodul");
+  // Kommentare abziehen: die Begründung der Umbenennung DARF den alten Wortlaut
+  // nennen — verboten ist er als ausgelieferter Text.
+  const ohneKommentare = (s) => s.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/Erweiterter Schutz/.test(ohneKommentare(ins)) && !/Erweiterter Schutz/.test(ohneKommentare(copy)),
+    `„Erweiterter Schutz" überzeichnet den Versicherungsumfang und darf nicht zurückkehren`);
 });
 test("(P20) InsuranceModule: natives Radio trägt Preis im barrierefreien Namen (aria-label)", () => {
   const ins = read("../components/booking/InsuranceModule.jsx");

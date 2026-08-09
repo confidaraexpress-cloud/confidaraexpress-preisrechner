@@ -1,14 +1,20 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
+import { InsuranceDetailsDialog } from "./InsuranceDetailsDialog";
+import {
+  INSURANCE_CARD_COPY,
+  INSURANCE_TEXT,
+  carrierTermsHref,
+} from "../../utils/insuranceTerms.mjs";
+import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 
 // Transportversicherung — REINE DARSTELLUNG. Auswahl, Reprice, Validierung,
 // Preis-View-Model und /book-Übergabe bleiben im Orchestrator (BookingPage) und
 // kommen über Props herein.
 //
-// Progressive Disclosure: bei „Kein Versicherungsschutz" werden keine Wertfelder
-// gezeigt. Bei Standard/Premium ist der Warenwert das primäre Feld; der
+// Progressive Disclosure: bei „Keine zusätzliche Transportversicherung" werden
+// keine Wertfelder gezeigt. Bei Standard/Premium ist der Warenwert das primäre Feld; der
 // Versicherungswert wird automatisch aus dem Warenwert vorbelegt und nur bei
 // Bedarf über „Versicherungswert anpassen" eingeblendet. Das frühere
 // Inhaltsbeschreibungs-Feld ist bewusst entfernt (der technische
@@ -19,35 +25,17 @@ import { money } from "../../utils/formatters";
 // Aufpreis der ausgewählten, bestätigten Stufe) — keine lokale Prämienberechnung,
 // keine zweite Reprice-Anfrage für die nicht gewählte Stufe.
 
-// Statische Karteninhalte (bewusst übernommen, unverändert). `info` → dezentes
-// neutrales Icon, sonst dezenter grüner Haken. Haftungsbedingungen → AGB § 10.
-const CARD_COPY = {
-  standard: {
-    bullets: [
-      { text: "Wert zu 100% versichert" },
-      { text: "Selbstbeteiligung 50,00 €", info: true },
-      { text: "Regulärer Support" },
-    ],
-    link: { label: "Versicherungsbedingungen", href: null },
-  },
-  premium: {
-    bullets: [
-      { text: "Wert zu 100% versichert" },
-      { text: "Keine Selbstbeteiligung" },
-      { text: "Priority Kundensupport" },
-      { text: "Wöchentliche Status-Updates" },
-    ],
-    link: { label: "Versicherungsbedingungen", href: null },
-  },
-  none: {
-    bullets: [
-      { text: "Haftung ist gewichtsabhängig", info: true },
-      { text: "Keine Selbstbeteiligung" },
-      { text: "Regulärer Support" },
-    ],
-    link: { label: "Haftungsbedingungen", href: "/agb#paragraf-10" },
-  },
-};
+// Karteninhalte kommen aus dem zentralen Datenmodul (utils/insuranceTerms.mjs) —
+// dieselbe Quelle speist den Detaildialog, damit Karte und Dialog nicht
+// auseinanderlaufen können. `info` → dezentes neutrales Icon, sonst dezenter
+// grüner Haken.
+//
+// Der frühere statische Link auf /agb#paragraf-10 ist ERSATZLOS entfallen: dort
+// steht die Vertragshaftung von ConfidaraExpress, nicht die Beförderungs-
+// bedingung des Versanddienstleisters. Diese kommt jetzt tarifgenau aus
+// tariff.carrierLinks.agb — und wenn der Tarif keine liefert, steht dort nur
+// der neutrale Hinweistext und KEIN Link.
+const CARD_COPY = INSURANCE_CARD_COPY;
 
 // Barrierefreier Name des nativen Radios: Kartenname + Preis in Worten, damit der
 // Preis NICHT nur farblich/visuell transportiert wird (Screenreader lesen ihn mit).
@@ -93,29 +81,37 @@ function CardPrice({ price }) {
 
 export function InsuranceModule({
   insCards, insuranceType, onSelectType,
-  isInsured,
-  goodsValue, onGoodsValueChange, goodsValueError,
-  insuranceValue, onInsuranceValueChange, insValueError,
+  isInsured, tariff,
+  goodsValue, onGoodsValueChange, onGoodsValueBlur, goodsValueError,
+  insuranceValue, onInsuranceValueChange, onInsuranceValueBlur, insValueError,
   insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
   repriceError, isRepricing, isStale, repriceConfirmed,
 }) {
   const pending = isRepricing || isStale;
+  // Bedingungslink des GEWÄHLTEN TARIFS — null, wenn der Tarif keinen (gültigen)
+  // liefert. Dann erscheint kein Link, nicht etwa ein Ersatzlink.
+  const carrierTerms = carrierTermsHref(tariff);
+
+  // Reiner UI-Zustand des Detaildialogs (nichts davon wird gespeichert oder
+  // gebucht). Das Rückgabeziel merkt sich den auslösenden Knopf, damit der
+  // Fokus nach dem Schließen genau dorthin zurückkehrt.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsTrigger = useRef(null);
+  const openDetails = (e) => { detailsTrigger.current = e.currentTarget; setDetailsOpen(true); };
+
   return (
     <div className="booking-insurance-box">
       <div className="ins-head">
-        <span className="ins-head-title"><Icon n="shieldCheck" s={18} c="currentColor" /> Transportversicherung</span>
+        <span className="ins-head-title"><Icon n="shieldCheck" s={18} c="currentColor" /> {INSURANCE_TEXT.sectionTitle}</span>
         <span className="ins-badge-taxfree">steuerfrei</span>
       </div>
-      <p className="ins-head-sub">
-        Mit der passenden Transportversicherung schützen Sie Ihre Sendung
-        zuverlässig vor Verlust, Diebstahl und Transportschäden.
-      </p>
+      <p className="ins-head-sub">{INSURANCE_TEXT.sectionIntro}</p>
 
       {/* Drei Optionskarten — Grundzustand neutral, nur die Auswahl blau. */}
       <div className="ins-cards" role="radiogroup" aria-label="Transportversicherung wählen">
         {insCards.map(c => {
           const selected = insuranceType === c.id;
-          const copy = CARD_COPY[c.id] || { bullets: [], link: null };
+          const copy = CARD_COPY[c.id] || { bullets: [] };
           return (
             <label key={c.id} className={`ins-card${selected ? " ins-card--selected" : ""}`}>
               <input
@@ -135,7 +131,7 @@ export function InsuranceModule({
                     <span className="ins-card-radio" aria-hidden="true" />
                     <span className="ins-card-name" lang="de">{c.name}</span>
                   </span>
-                  {c.id === "premium" && <span className="ins-card-badge">Erweiterter Schutz</span>}
+                  {copy.badge && <span className="ins-card-badge">{copy.badge}</span>}
                 </span>
                 <CardPrice price={c.price} />
               </span>
@@ -146,28 +142,59 @@ export function InsuranceModule({
                 </span>
               )}
 
-              <ul className="ins-card-bullets">
-                {copy.bullets.map((b, i) => (
-                  <li key={i} className="ins-card-bullet">
-                    <span className={`ins-bullet-ico ins-bullet-ico--${b.info ? "info" : "check"}`}>
-                      <Icon n={b.info ? "info" : "check"} s={14} c="currentColor" />
-                    </span>
-                    <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
-                  </li>
-                ))}
-              </ul>
+              {/* Ein Satz je Karte: worin sich diese Option unterscheidet. */}
+              {copy.description && <span className="ins-card-desc">{copy.description}</span>}
 
-              {copy.link && (
+              {copy.bullets.length > 0 && (
+                <ul className="ins-card-bullets">
+                  {copy.bullets.map((b, i) => (
+                    <li key={i} className="ins-card-bullet">
+                      <span className={`ins-bullet-ico ins-bullet-ico--${b.info ? "info" : "check"}`}>
+                        <Icon n={b.info ? "info" : "check"} s={14} c="currentColor" />
+                      </span>
+                      <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Fußzeile der Karte: genau EIN Weg zu den Details.
+                  Standard/Premium → CE-Zusammenfassung im Dialog.
+                  Keine Zusatzversicherung → Bedingungen DIESES Tarifs, sofern
+                  der Tarif welche liefert; sonst gar nichts (der neutrale Satz
+                  steht bereits als Beschreibung oben). Ein <button>/<a> ist
+                  interaktiver Inhalt und schaltet das Radio des umgebenden
+                  <label> nicht mit — die Auswahl bleibt unberührt. */}
+              {copy.hasDetails && (
                 <span className="ins-card-cond">
-                  {copy.link.href
-                    ? <Link to={copy.link.href} className="ins-card-cond-link">{copy.link.label}</Link>
-                    : <span className="ins-card-cond-link ins-card-cond-link--static" role="note">{copy.link.label}</span>}
+                  <button type="button" className="ins-card-details-btn" onClick={openDetails}>
+                    {INSURANCE_TEXT.detailsAction}
+                  </button>
+                </span>
+              )}
+              {copy.hasCarrierTerms && carrierTerms && (
+                <span className="ins-card-cond">
+                  <a
+                    className="ins-card-terms-link"
+                    href={carrierTerms}
+                    target={EXTERNAL_LINK_TARGET}
+                    rel={EXTERNAL_LINK_REL}
+                  >
+                    <span>{INSURANCE_TEXT.carrierTerms}</span>
+                    <Icon n="external" s={13} c="currentColor" />
+                  </a>
                 </span>
               )}
             </label>
           );
         })}
       </div>
+
+      <InsuranceDetailsDialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        returnFocusTo={detailsTrigger}
+      />
 
       {/* Wertfelder NUR bei Standard/Premium (Progressive Disclosure). */}
       {isInsured && (
@@ -180,6 +207,7 @@ export function InsuranceModule({
               type="number" inputMode="decimal" min="0" max="9999999" step="0.01"
               value={goodsValue}
               onChange={e => onGoodsValueChange(e.target.value)}
+              onBlur={onGoodsValueBlur}
               placeholder="z. B. 500"
             />
             {goodsValueError
@@ -206,6 +234,7 @@ export function InsuranceModule({
                 type="number" inputMode="decimal" min="0" max={insuranceValueMax} step="0.01"
                 value={insuranceValue}
                 onChange={e => onInsuranceValueChange(e.target.value)}
+                onBlur={onInsuranceValueBlur}
                 placeholder="z. B. 500"
               />
               {insValueError

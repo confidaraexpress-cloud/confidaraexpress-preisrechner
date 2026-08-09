@@ -9,6 +9,7 @@ import { downloadLabel } from "../../utils/downloadLabel";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
 import { customerShipmentNumbers, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { isHttpUrl } from "../../utils/externalLink.mjs";
 import {
   canRequestCancellation,
   hasCancellationRequest,
@@ -23,9 +24,6 @@ const TRACKING_ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte später erneut versuchen.",
   500: "Tracking aktuell nicht verfügbar.",
 };
-
-// Nur valide http(s)-Carrier-Links öffnen (sicher: target=_blank + noopener).
-const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v);
 
 // trackingStatus dezent darstellen: bekannter Vertragswert "new" wird
 // kundenfreundlich übersetzt, sonst der Backend-Status unverändert gezeigt

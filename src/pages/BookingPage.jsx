@@ -189,6 +189,18 @@ export default function BookingPage() {
   // (insValueRevealed) und wird bei Warenwert über dem Maximum automatisch gezeigt.
   const [insValueManual, setInsValueManual]     = useState(!!flowBooking?.insValueManual);
   const [insValueRevealed, setInsValueRevealed] = useState(false);
+  // Anzeigezeitpunkt der Wertfehler (dieselbe Regel wie bei Zollangaben und
+  // Zusatzempfängern): Die Auswahl „Standard"/„Premium" BLENDET die Felder erst
+  // ein — sofort „Bitte geben Sie den Warenwert an." darunter zu schreiben,
+  // meldet einen Fehler für etwas, das der Kunde noch gar nicht tun konnte.
+  // Sichtbar wird der Fehler nach der ersten echten Interaktion mit dem Feld
+  // (Verlassen) oder beim Versuch weiterzugehen bzw. zu buchen.
+  //
+  // WICHTIG: Das betrifft ausschließlich die ANZEIGE. `insValid` und damit
+  // Reprice-Gate und Buchungs-Gate rechnen unverändert mit den Rohfehlern —
+  // eine unvollständige Eingabe blockiert also weiterhin, sie schreit nur nicht
+  // vorher.
+  const [insShowErrors, setInsShowErrors] = useState(false);
   const [repriceResult, setRepriceResult]   = useState(null);
   const [repriceLoading, setRepriceLoading] = useState(false);
   const [repriceError, setRepriceError]     = useState("");
@@ -385,7 +397,7 @@ export default function BookingPage() {
   const insCards = [
     { id: "standard", name: "Standardversicherung",    price: insuranceCardPrice({ cardType: "standard", selectedType: insuranceType, view: priceView, preselectGross: insStdPrice }) },
     { id: "premium",  name: "Premiumversicherung",     price: insuranceCardPrice({ cardType: "premium",  selectedType: insuranceType, view: priceView, preselectGross: insPremPrice }) },
-    { id: "none",     name: "Kein Versicherungsschutz", price: insuranceCardPrice({ cardType: "none",     selectedType: insuranceType, view: priceView, preselectGross: null }) },
+    { id: "none",     name: "Keine zusätzliche Transportversicherung", price: insuranceCardPrice({ cardType: "none",     selectedType: insuranceType, view: priceView, preselectGross: null }) },
   ];
 
   // Progressive Disclosure des Versicherungswert-Felds + Warenwert-über-Maximum.
@@ -639,6 +651,10 @@ export default function BookingPage() {
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
+      // Falls die Ursache ein leerer/ungültiger Wert ist: den Feldfehler
+      // sichtbar machen, damit der Kunde auf Schritt 1 sieht, WAS fehlt.
+      // Die Gate-Bedingung selbst ist unverändert.
+      if (!insValid) setInsShowErrors(true);
       setError("Bitte aktualisieren Sie den Versicherungspreis, bevor Sie buchen.");
       return;
     }
@@ -988,6 +1004,11 @@ export default function BookingPage() {
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie fortfahren.");
       return;
     }
+    // Versicherungswerte: ab hier sind fehlende/ungültige Beträge kein „noch
+    // nicht ausgefüllt" mehr, sondern ein echter Befund — sie werden sichtbar.
+    // Das Weiter-Gate selbst bleibt unverändert (es hat Versicherungswerte nie
+    // blockiert; das tut der Buchungs-Guard).
+    if (!insValid) setInsShowErrors(true);
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
       // Blockiert wird ausschließlich wegen unvollständiger FACHLICHER Zollangaben
@@ -1173,12 +1194,15 @@ export default function BookingPage() {
                     insuranceType={insuranceType}
                     onSelectType={handleSelectInsuranceType}
                     isInsured={isInsured}
+                    tariff={tariff}
                     goodsValue={goodsValue}
                     onGoodsValueChange={handleGoodsValueChange}
-                    goodsValueError={goodsValueError}
+                    onGoodsValueBlur={() => setInsShowErrors(true)}
+                    goodsValueError={insShowErrors ? goodsValueError : ""}
                     insuranceValue={insuranceValue}
                     onInsuranceValueChange={handleInsuranceValueChange}
-                    insValueError={insValueError}
+                    onInsuranceValueBlur={() => setInsShowErrors(true)}
+                    insValueError={insShowErrors ? insValueError : ""}
                     insValueFieldVisible={insValueFieldVisible}
                     onRevealInsValue={() => setInsValueRevealed(true)}
                     goodsOverMax={goodsOverMax}

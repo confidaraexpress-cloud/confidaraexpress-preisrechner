@@ -8,7 +8,10 @@
 /* ─── Desktop-Tabelle (reuse .table-card/.table-scroll, nur Zellinhalte neu) ── */
 .dft-table th { text-align: left; }
 .dft-cell-recipient { font-size: 13px; font-weight: 600; color: var(--navy); }
-.dft-cell-route { font-size: 13px; color: var(--ce-color-text-primary); font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Die Route („DE 63743 → FR 75019") ist eine kompakte technische Angabe und
+   bleibt eine Zeile — vorher brach sie in der gequetschten Spalte dreizeilig
+   (67 px). Ab dem 1100er-Umschalter hat die Tabelle dafür sicher Platz. */
+.dft-cell-route { font-size: 13px; color: var(--ce-color-text-primary); font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
 .dft-cell-package { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ce-color-text-secondary); }
 .dft-cell-package-count { color: var(--ce-color-text-primary); font-weight: 600; }
 .dft-cell-date { font-size: 12px; color: var(--ce-color-text-secondary); white-space: nowrap; }
@@ -96,10 +99,40 @@
 }
 @media (prefers-reduced-motion: reduce) { .dft-skeleton-row { animation: none; } }
 
-/* ─── Responsive ──────────────────────────────────────────────────────────── */
-@media (min-width: 768px) { .dft-cards { display: none; } }
-@media (max-width: 767px) {
+/* ─── Responsive ──────────────────────────────────────────────────────────────
+   Karten unterhalb 1100 px — dieselbe gemessene, shell-bewusste Schwelle wie
+   Rechnungs- und Sendungsliste (Rechnungs-Vorbild in dashboard.css): Der alte
+   767er-Umschalter ignorierte die 252-px-Sidebar; im Band 861–1100 px lief
+   die sechsspaltige Tabelle mit nur 553–840 px Content, quetschte die
+   Routenspalte auf 67 px und versteckte „Fortsetzen"/Kebab hinter einem
+   unentdeckbaren Querscroll. */
+@media (min-width: 1101px) { .dft-cards { display: none; } }
+@media (max-width: 1100px) {
   .dft-table-card { display: none; }
+}
+/* Oberhalb des Umschalters läuft die Tabelle nach dem Rechnungs-Vorbild
+   (dashboard.css, .inv-table): table-layout: fixed mit gemessenen Fixspalten,
+   nur die Empfängerspalte ist flexibel. Eine fixe Tabelle wird NIE breiter
+   als ihr Container — erst das erlaubt den offenen Scroll-Rahmen darunter:
+   Auto-Layout hatte mit nowrap-Köpfen + nowrap-Route ~1024 px Mindestbreite
+   und lief im Band 1101–1276 px Viewport 76 px über die Seite (gemessen).
+   Der offene Rahmen wiederum ist nötig, weil der overflow-Scroller sonst das
+   absolut positionierte Kebab-Menü der letzten Zeile clippte (P2 des Audits).
+
+   Spaltenwerte an Worst-Case-Daten gemessen (Playwright @1440, Auto-Layout):
+   Route 157 · Pakete-Zelle ≤ 140 · Versanddatum 124 · Gespeichert 148 ·
+   Kebab 62 — jeweils + Reserve. Die Köpfe dürfen zweizeilig werden
+   („Zuletzt gespeichert"), die ZELLINHALTE bleiben einzeilig. */
+@media (min-width: 1101px) {
+  .dft-table-card { overflow: visible; }
+  .dft-table-card .table-scroll { overflow: visible; }
+  .dft-table { table-layout: fixed; width: 100%; }
+  .dft-table th { white-space: normal; }
+  .dft-table th:nth-child(2), .dft-table td:nth-child(2) { width: 164px; }
+  .dft-table th:nth-child(3), .dft-table td:nth-child(3) { width: 148px; }
+  .dft-table th:nth-child(4), .dft-table td:nth-child(4) { width: 128px; }
+  .dft-table th:nth-child(5), .dft-table td:nth-child(5) { width: 152px; }
+  .dft-table th:nth-child(6), .dft-table td:nth-child(6) { width: 68px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

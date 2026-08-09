@@ -44,7 +44,15 @@
      • Der Statuspunkt ist Pflicht: Status wird nie allein über Farbe
        vermittelt. Zusätzlich trägt jedes Badge sichtbaren Text.
      • Schrift 12px / Gewicht 600, Mindesthöhe 24px (Kunde) bzw. 22px (Admin).
-     • Lange deutsche Begriffe dürfen umbrechen statt eine Spalte zu sprengen.
+     • Mehrwortige Begriffe dürfen an WORTGRENZEN umbrechen statt eine Spalte
+       zu sprengen — aber NIE mitten im Wort und NIE per automatischer
+       Silbentrennung. Die frühere Fassung (`overflow-wrap: anywhere` +
+       `hyphens: auto`) senkte die Mindestbreite jedes Badges auf ~1 Zeichen;
+       enge Spalten falteten Statustexte dadurch buchstabenweise („G-e-b-u-c-
+       h-t", gemessen bis 13 Zeilen im Adressbuch). Ein Badge ist eine
+       EINHEIT: Wird der Platz knapp, schafft das ELTERN-Layout Raum
+       (minmax-Böden, auto-Spalte, Reflow) — nicht das Wort seine
+       Buchstabenfolge. `responsiveHardening.test.mjs` hält das fest.
 
    Die Statuslogik selbst (welcher Backendwert auf welche Gruppe zeigt) bleibt
    unverändert in den bestehenden Mappern — hier steht nur die Darstellung.
@@ -63,8 +71,8 @@
   font-weight: var(--ce-text-label-weight);
   line-height: var(--ce-text-label-line);
   white-space: normal;
-  overflow-wrap: anywhere;
-  hyphens: auto;
+  overflow-wrap: normal;
+  hyphens: manual;
 }
 .badge::before {
   content: "";

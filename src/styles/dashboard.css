@@ -263,7 +263,13 @@ tr:hover td { background: var(--surface-subtle); }
 .inv-table th { white-space: normal; }
 .inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 124px; }
 .inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 124px; }
-.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 156px; }
+/* 192 statt 156: Platz für die breiteste Dokument-Pill „Per E-Mail versendet"
+   in EINER Zeile — an der ECHTEN Pill gemessen (max-content inkl. Punkt,
+   6-px-Gap und 2 × 12 px Eigenpadding, DM Sans 12/600): 159 px + 2 × 14 px
+   Zellpadding + Reserve. In der schmaleren Spalte brach die Pill dauerhaft
+   zweizeilig — als einzige der Fixspalten war sie gegen ihren realen Inhalt
+   zu knapp bemessen. */
+.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 192px; }
 .inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 138px; }
 /* Betragsspalte rechtsbündig wie jede Zahlenspalte. Die Ausrichtung läuft über
    dieselbe nth-child-Mechanik wie die Spaltenbreiten — diese Tabelle trägt
@@ -394,8 +400,11 @@ tr:hover td { background: var(--surface-subtle); }
 .profile-password-form { margin-top: var(--ce-space-4); }
 .profile-password-section .form-alert { margin-top: var(--ce-space-4); }
 
-/* Karten-Kopf mit Icon-Kachel + Titel/Subline */
-.profile-card-head { justify-content: flex-start; gap: 13px; }
+/* Karten-Kopf mit Icon-Kachel + Titel/Subline. flex-wrap: In schmalen
+   Profilkarten (zweispaltiges Raster um 900 px) drückten Icon + „Bearbeiten"
+   die Subline auf 52 px Restbreite — der Button wechselt jetzt stattdessen in
+   eine eigene Zeile (margin-left:auto hält ihn dort rechtsbündig). */
+.profile-card-head { justify-content: flex-start; gap: 13px; flex-wrap: wrap; }
 .profile-card-icon {
   width: 40px; height: 40px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;

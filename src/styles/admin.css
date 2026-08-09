@@ -957,7 +957,8 @@ a.adm-inv-no:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px;
    `.table-card` hat `overflow: hidden` (abgerundete Ecken). Inhalte, die nicht
    umbrechen koennen, werden deshalb nicht gescrollt, sondern ABGESCHNITTEN.
    Genau drei Zellinhalte sind starr und schrumpfen nie:
-     • Status      — `.badge` ist `white-space: nowrap`      → gemessen 75px
+     • Status      — `.badge` bricht nur an Wortgrenzen (nie im Wort;
+                     einwortige Statuslabels bleiben einzeilig) → gemessen 75px
      • Eingegangen — Spaltenkopf „EINGEGANGEN", ein Wort     → gemessen 115px
      • Aktion      — `.btn` ist inline-flex, bricht nicht    → gemessen 74px
    Mit reinen Prozentbreiten unterschreitet die berechnete Spaltenbreite diese

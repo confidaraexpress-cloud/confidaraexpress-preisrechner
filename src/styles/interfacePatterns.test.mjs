@@ -306,8 +306,12 @@ test("9 — jeder Dialog hat Fokusfalle, Fokusrückgabe und Escape", () => {
 
 /* ══════════ 10 — mobile Kartenansichten ══════════════════════════════════ */
 
-test("10 — jede Liste hat unter 768 px eine Kartenansicht", () => {
-  assert.match(patterns, /@media \(max-width: 767px\) \{\s*\.ce-list-table \{ display: none; \}\s*\.ce-list-cards \{ display: flex; \}/s,
+test("10 — jede Liste hat eine Kartenansicht; der Umschalter ist shell-bewusst", () => {
+  // Seit der Responsive-Härtung schaltet das gemeinsame Muster bei 1100 px
+  // VIEWPORT (nicht 767): in der App-Shell bleiben von 1100 px nur ~848 px
+  // Contentbreite — die Rechnungsliste hatte diese Schwelle bereits gemessen
+  // (siehe responsiveHardening.test.mjs, Test 6).
+  assert.match(patterns, /@media \(max-width: 1100px\) \{\s*\.ce-list-table \{ display: none; \}\s*\.ce-list-cards \{ display: flex; \}/s,
     "der gemeinsame Umschalter fehlt");
 
   // Jede der neun Listen bringt eine Kartenansicht mit — entweder über das

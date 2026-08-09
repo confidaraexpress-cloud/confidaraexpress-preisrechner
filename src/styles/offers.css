@@ -564,9 +564,11 @@
      zentriert über einer linksbündigen Spalte wirkte sie verrutscht. */
   .offer-handover { text-align: left; }
   .offer-tl-labels { gap: 8px; }
-  /* Lange Shop-/Lieferzeitraum-Texte sauber umbrechen statt Overflow. */
+  /* Lange Shop-/Lieferzeitraum-Texte sauber an WORTGRENZEN umbrechen statt
+     Overflow — break-word statt des früheren anywhere, das Shopnamen und
+     Datumsangaben mitten im Wort trennen durfte. */
   .offer-tl-node--start,
-  .offer-tl-node--end { overflow-wrap: anywhere; }
+  .offer-tl-node--end { overflow-wrap: break-word; }
   .offer-tl-title   { font-size: 13px; }
   .offer-tl-primary { font-size: 12px; }
   .offer-tl-sub     { font-size: 12px; }
@@ -803,9 +805,12 @@
 .ap-list-item--focused .ap-list-num { background: var(--navy); }
 .ap-list-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .ap-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.ap-list-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; overflow-wrap: anywhere; }
+/* break-word statt anywhere: Shopname und Adresse sind Menschentext und
+   brechen an Wortgrenzen — die Entfernung daneben bleibt starr (Vorbildmuster
+   „Meta hält, Text weicht"). */
+.ap-list-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; overflow-wrap: break-word; }
 .ap-list-dist { font-size: 13px; font-weight: 600; color: var(--blue2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.ap-list-addr { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; overflow-wrap: anywhere; }
+.ap-list-addr { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; overflow-wrap: break-word; }
 .ap-list-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
 .ap-list-status { max-width: 100%; text-align: left; }
 .ap-list-hours {

@@ -32,10 +32,15 @@ export function AddressDesktopRow({ address, busy, onEdit, onDuplicate, onToggle
           {[address.streetAndNumber, [address.postalCode, address.city].filter(Boolean).join(" "), countryName(address.country)].filter(Boolean).join(", ")}
         </span>
         {(address.email || address.phone) && (
+          /* E-Mail und Telefon als EIGENE Glieder: nur so kann die E-Mail als
+             technischer String lokal brechen (.abk-contact-email) und das
+             Telefon als Einheit die Zeile wechseln — als nackte Textknoten
+             waren beide unteilbare anonyme Flex-Items, und die E-Mail lief
+             sichtbar unter die Badge-Spalte. */
           <span className="abk-row-meta">
-            {address.email && <><Icon n="mail" s={12} c="currentColor" />{address.email}</>}
+            {address.email && <><Icon n="mail" s={12} c="currentColor" /><span className="abk-contact-email">{address.email}</span></>}
             {address.email && address.phone && <span aria-hidden="true">·</span>}
-            {address.phone && <><Icon n="phone" s={12} c="currentColor" />{address.phone}</>}
+            {address.phone && <><Icon n="phone" s={12} c="currentColor" /><span className="abk-contact-phone">{address.phone}</span></>}
           </span>
         )}
       </div>

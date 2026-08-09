@@ -29,8 +29,10 @@ export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavori
           <Icon n="mapPin" s={13} />
           <span>{[address.streetAndNumber, [address.postalCode, address.city].filter(Boolean).join(" "), countryName(address.country)].filter(Boolean).join(", ")}</span>
         </div>
-        {address.email && <div className="abk-card-info-row"><Icon n="mail" s={13} />{address.email}</div>}
-        {address.phone && <div className="abk-card-info-row"><Icon n="phone" s={13} />{address.phone}</div>}
+        {/* Eigene Spans wie in der Desktop-Zeile: die E-Mail darf als
+            technischer String lokal brechen, statt die Karte zu sprengen. */}
+        {address.email && <div className="abk-card-info-row"><Icon n="mail" s={13} /><span className="abk-contact-email">{address.email}</span></div>}
+        {address.phone && <div className="abk-card-info-row"><Icon n="phone" s={13} /><span className="abk-contact-phone">{address.phone}</span></div>}
       </div>
       <div className="abk-card-actions">
         <AddressCreateShipmentButton address={address} onNewShipment={onNewShipment} />

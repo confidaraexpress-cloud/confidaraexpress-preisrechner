@@ -50,9 +50,14 @@
   align-items: center;
   justify-content: center;
   gap: var(--ce-btn-gap);
-  /* min-height statt height: mehrzeilige deutsche Labels dürfen wachsen, die
-     Grundhöhe bleibt exakt auf der Skala. Das vertikale Padding trägt nur den
-     Umbruchfall — einzeilig regiert min-height. */
+  /* min-height statt height: FALLS ein Label je mehrzeilig gesetzt wird,
+     wächst der Button, die Grundhöhe bleibt exakt auf der Skala. Im Regelfall
+     verhindert das `white-space: nowrap` weiter unten den Umbruch BEWUSST:
+     Buttonbeschriftungen sind Bedieneinheiten und werden nicht zerlegt.
+     Konsequenz für Layouts: Ein Button gibt nie Breite ab — Aktionsbereiche
+     in Zeilen/Karten müssen deshalb selbst umbrechen oder reflowen können,
+     statt Nachbarspalten unter Lesbarkeitsbreite zu drücken (siehe
+     Responsive-Regeln in CLAUDE.md). */
   min-height: var(--ce-btn-height);
   min-width: var(--ce-btn-height);
   padding: var(--ce-space-1) var(--ce-btn-padding-x);

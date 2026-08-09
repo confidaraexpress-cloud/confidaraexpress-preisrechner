@@ -168,12 +168,15 @@
 
 .sup-list-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .sup-list-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Der Betreff bricht mehrzeilig an Wortgrenzen — das war schon immer das
+   tatsächliche Verhalten: die frühere text-overflow/overflow-Kombination war
+   ohne nowrap wirkungslos (tote Regel, entfernt). Der Volltext gehört hier
+   hin; die Detailansicht wiederholt ihn ohnehin. */
 .sup-list-subject {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 .sup-list-meta { font-size: 12px; color: var(--text-secondary); }
 

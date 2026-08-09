@@ -118,6 +118,12 @@
 .calc-filter-bar .service-filter-trigger-left > svg { flex-shrink: 0; }
 .calc-filter-bar .service-filter-trigger-title {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  /* Einwort-Titel („Versanddienst", „Versandart") können nicht auf die zweite
+     line-clamp-Zeile ausweichen und wurden in schmalen Kacheln HART ohne
+     Ellipse abgeschnitten (gemessen bei 772–848 px Contentbreite). Deutsche
+     Silbentrennung bricht sie stattdessen sauber mit Trennstrich —
+     ausdrücklich erlaubt für beschreibende Labels, im Gegensatz zu Badges. */
+  hyphens: auto; overflow-wrap: break-word;
 }
 .calc-filter-bar .service-filter-trigger-val {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -833,7 +839,10 @@
 .summary-detail-row { display: flex; justify-content: space-between; padding: 10px 0; gap: 16px; }
 .summary-detail-row-border { border-bottom: 1px solid var(--border); }
 .summary-detail-key { flex-shrink: 0; }
-.summary-detail-val { text-align: right; }
+/* min-width: 0 + lokales anywhere: Der Wert kann unteilbare technische Strings
+   tragen (Empfänger-E-Mail im Recap) — ohne Schrumpfglied drückte er den
+   starren Schlüssel aus der Zeile. */
+.summary-detail-val { text-align: right; min-width: 0; overflow-wrap: anywhere; }
 
 /* Karte 3 „Sendungsdetails": auf schmalen Screens lange Adressen gestapelt
    (Label über Wert, linksbündig) statt gequetscht zweispaltig. Bewusst NUR auf
@@ -869,7 +878,11 @@
 .tracking-page-sub { color: var(--ce-color-text-muted); font-size: 14px; margin-top: -6px; }
 /* Tracking-Header: Status als Hero (wichtigste Info), Meta-Block darunter */
 .tracking-hero { text-align: center; padding: 6px 0 18px; }
-.tracking-hero-status { font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.2; overflow-wrap: anywhere; }
+/* break-word statt anywhere: Der Status ist Klartext („In Zustellung") — er
+   bricht an Wortgrenzen; anywhere hätte ihn mitten im Wort trennen dürfen.
+   Der Meta-WERT darunter behält sein anywhere bewusst: dort stehen
+   Trackingnummern (technische Strings, lokale Bruchregel korrekt). */
+.tracking-hero-status { font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.2; overflow-wrap: break-word; }
 .tracking-hero-desc { font-size: 14px; color: var(--ce-color-text-secondary); margin: 6px 0 0; line-height: 1.5; }
 .tracking-hero-when { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 6px; }
 .tracking-hero-meta { display: flex; gap: 12px 32px; flex-wrap: wrap; padding: 14px 0; margin-bottom: 20px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }

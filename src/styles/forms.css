@@ -302,11 +302,16 @@ input[type="radio"]:focus-visible {
   color: var(--ce-color-status-error-fg);
 }
 
-/* ── Raster (unverändert im Verhalten) ───────────────────────────────────── */
+/* ── Raster ──────────────────────────────────────────────────────────────────
+   minmax(0, 1fr) statt 1fr: reine 1fr-Spuren tragen die intrinsische
+   Mindestbreite ihrer Eingaben als Boden — im schmalen Shell-Band (861–
+   1000 px Viewport, Buchungsrahmen 800 px) konnte das Raster dadurch breiter
+   werden als sein Container. Das Schrumpfen begrenzen weiterhin die
+   Feld-Mindesthöhen und die bestehenden Umbruchstufen (responsive.css). */
 .field-row { display: grid; gap: 10px; }
-.field-row-2 { grid-template-columns: 1fr 1fr; }
-.field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
-.field-row-5 { grid-template-columns: repeat(5, 1fr); }
+.field-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.field-row-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .field-input-wrap { position: relative; }
 .field-input-wrap .field-input { padding-right: 42px; }
 .field-input-wrap .field-input-dark { padding-right: 42px; }

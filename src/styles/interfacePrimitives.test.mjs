@@ -303,7 +303,13 @@ test("8 — Badges tragen einen Statuspunkt und genau die zehn Statusgruppen", (
   assert.equal(tok("ce-text-label-size"), "12px");
   assert.equal(tok("ce-text-label-weight"), "600");
   assert.doesNotMatch(basis.body, /white-space:\s*nowrap/, "lange deutsche Begriffe müssen umbrechen dürfen");
-  assert.match(basis.body, /overflow-wrap:\s*anywhere/);
+  // Seit der Responsive-Härtung ist das Badge eine EINHEIT: Umbruch nur an
+  // Wortgrenzen. Das frühere `overflow-wrap: anywhere` senkte die
+  // min-content-Breite auf ~1 Zeichen und ließ bodenlose fr-Spalten Badges
+  // zeichenweise falten („G-e-b-u-c-h-t") — responsiveHardening.test.mjs
+  // verbietet es; hier bleibt die positive Gegenprobe.
+  assert.match(basis.body, /overflow-wrap:\s*normal/);
+  assert.doesNotMatch(basis.body, /overflow-wrap:\s*anywhere/);
 
   // Statuspunkt ist Pflicht.
   const punkt = primitivRegeln.find((r) => r.selektor === ".badge::before");

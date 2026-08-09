@@ -59,10 +59,34 @@
 
 /* Desktop-Zeile: kompakte Listen-/Tabellen-Hybridansicht als CSS-Grid (kein
    <table>, damit Badges/Aktionsmenü flexibel umbrechen — kein horizontales
-   Pflicht-Scrollen). */
+   Pflicht-Scrollen).
+
+   Spaltenlogik (Informationshierarchie der Zeile):
+     • Identität und Detail sind PRIMÄR und die einzigen nachgiebigen Spalten
+       — deshalb minmax(0, …): sie schrumpfen, ihre Texte brechen an
+       natürlichen Grenzen (E-Mail kontrolliert, s. u.).
+     • Badges sind METADATEN und eine EINHEIT: fit-content statt des früheren
+       0.6fr. Die fr-Spalte hatte keinen Boden — zusammen mit dem alten
+       Badge-`anywhere` kollabierte sie auf 54 px und faltete
+       „Standard-Absender & -Empfänger" in 13 Buchstabenzeilen. fit-content
+       gibt der Spalte ihren Inhalt bis zum Deckel: 240 px = einzeilige
+       max-content-Breite des breitesten realen Badges („Standard-Absender &
+       -Empfänger", gemessen 236 px inkl. Punkt und Padding) + Reserve. Wird
+       der Container enger, schrumpft die Spalte unter den Deckel und die
+       Badges fließen an WORTGRENZEN in mehrere Zeilen.
+     • Aktionen sind starr (auto): Buttons geben nie Breite ab — dafür wechselt
+       die Zeile unten per Container-Query die Struktur, statt Primärspalten
+       zu quetschen.
+
+   Der Listen-Wrapper (.abk-list-wrap) ist Size-Container: Die Stufen unten
+   messen die REALE Inhaltsbreite — die 252-px-Sidebar der Shell ist damit
+   automatisch eingepreist (Media Queries sahen nur den Viewport und ließen
+   die Zeile im Band 861–1100 px mit 553–840 px Content kollabieren).
+   Vorbild: Container-Queries der Versicherungskarten (calculator.css). */
+.abk-list-wrap { container-type: inline-size; }
 .abk-row {
   display: grid; align-items: center; gap: 16px;
-  grid-template-columns: 1.3fr 1.5fr 0.6fr auto;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) fit-content(240px) auto;
   padding: 14px 18px; background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
@@ -73,9 +97,59 @@
 .abk-row-contact { font-size: 12px; color: var(--ce-color-text-secondary); }
 .abk-row-detail { min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ce-color-text-secondary); }
 .abk-row-addr { overflow-wrap: break-word; line-height: 1.4; }
-.abk-row-meta { display: flex; align-items: center; gap: 6px; color: var(--ce-color-text-muted); }
-.abk-row-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; }
+/* Kontaktzeile: wrap + Schrumpfglieder. Vorher Flex OHNE wrap und ohne
+   min-width: 0 — die unteilbare E-Mail lief sichtbar unter die Badge-Spalte
+   (Textüberlagerung, gemessen bei 900 px). E-Mail und Telefon sind jetzt
+   eigene Glieder (Spans im Markup): die E-Mail als technischer String darf
+   LOKAL überall brechen, das Telefon bleibt als Einheit zusammen und wechselt
+   stattdessen die Zeile. */
+.abk-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; color: var(--ce-color-text-muted); }
+.abk-row-meta svg { flex-shrink: 0; }
+.abk-contact-email { min-width: 0; overflow-wrap: anywhere; }
+.abk-contact-phone { white-space: nowrap; }
+.abk-row-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; min-width: 0; }
 .abk-row-actions { display: flex; align-items: center; gap: 6px; justify-self: end; }
+
+/* Stufe 2 — mittlere Inhaltsbreite (Container < 880 px): Die vier Spalten
+   passen nicht mehr nebeneinander, ohne dass Primärtexte unter
+   Lesbarkeitsbreite fallen. Die Zeile wird ZWEIZEILIG: oben Identität und
+   Detail (primär), unten Badges links und Aktionen rechts. DOM-Reihenfolge
+   bleibt unverändert (Identität → Detail → Badges → Aktionen) — nur die
+   Grid-Plätze wandern; Fokusreihenfolge und Vorlesereihenfolge sind identisch. */
+@container (max-width: 879px) {
+  .abk-row {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "identity detail"
+      "badges   actions";
+    row-gap: 10px;
+    align-items: start;
+  }
+  .abk-row-identity { grid-area: identity; }
+  .abk-row-detail   { grid-area: detail; }
+  .abk-row-badges   { grid-area: badges; align-self: center; }
+  .abk-row-actions  { grid-area: actions; align-self: center; }
+}
+
+/* Stufe 3 — schmaler Container (< 640 px): Die Zeilenform trägt nicht mehr;
+   es übernimmt die bestehende Kartenansicht (identischer Informationsumfang,
+   vertikal). Der frühere Umschalter hing am 767-px-VIEWPORT und ließ die
+   Zeile in der Shell (861–948 px Viewport ⇒ < 640 px Content) gequetscht
+   stehen. Die Viewport-Query unten bleibt als Fallback für Browser ohne
+   Container-Query-Support bestehen — dort gilt weiterhin 767 px.
+
+   Die Reihenfolge ist tragend: die Basisregel (Karten aus) steht VOR der
+   Container-Stufe. @container erhöht die Spezifität nicht — bei gleicher
+   Spezifität gewinnt die spätere Regel im Quelltext. Stünde die Basisregel
+   hinter der Stufe, blendete sie im Kartenband BEIDE Listen aus (gemessen:
+   900 px Viewport ⇒ leere Seite). */
+@supports (container-type: inline-size) {
+  .abk-cards { display: none; }
+}
+@container (max-width: 639px) {
+  .abk-desktop-list { display: none; }
+  .abk-cards { display: flex; }
+}
 
 /* Mobil-Karte */
 .abk-card {
@@ -192,11 +266,26 @@
 .abk-dialog-actions--stack { flex-direction: column; }
 .abk-dialog-actions--stack .btn { width: 100%; }
 
-/* ─── Responsive ──────────────────────────────────────────────────────────── */
-@media (min-width: 768px) { .abk-cards { display: none; } }
+/* ─── Responsive ──────────────────────────────────────────────────────────────
+   Der Zeilen↔Karten-Umschalter läuft oben über Container-Stufen an der REALEN
+   Inhaltsbreite (Basisregel „Karten aus" + zwei @container-Stufen, s. o. bei
+   .abk-row). Die frühere Viewport-Fassung (767/768) bleibt ausschließlich als
+   Fallback für Browser ohne Container-Query-Support — mit Support würde sie
+   die Container-Stufe im Shell-Band (861–948 px Viewport ⇒ Karten) sonst per
+   Quelltextreihenfolge wieder überstimmen. */
+@supports not (container-type: inline-size) {
+  @media (min-width: 768px) { .abk-cards { display: none; } }
+  @media (max-width: 767px) { .abk-desktop-list { display: none; } }
+}
 @media (max-width: 767px) {
-  .abk-desktop-list { display: none; }
+  /* Gestapelte Werkzeugleiste. flex-basis wirkt in der SPALTENrichtung auf
+     die HÖHE: ohne das Zurücksetzen bekam das Suchfeld die 260 px seiner
+     Zeilen-Basis als Mindesthöhe — eine Leerfläche mit mittig schwebender
+     Lupe (die absolut auf 50 % der aufgeblähten Höhe saß), gemessen bei
+     360 px. Dieselbe Falle ist im Seitenkopf dokumentiert gelöst
+     (patterns.css, .ce-page-header-text). */
   .abk-toolbar { flex-direction: column; align-items: stretch; }
+  .abk-search { flex: 1 1 auto; min-width: 0; }
   .abk-toolbar-filters { justify-content: space-between; }
   .abk-drawer { width: 100%; }
 }

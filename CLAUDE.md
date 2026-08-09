@@ -448,6 +448,33 @@ Alle Icons über `<Icon n="name" s={size} c="color" />` in `src/components/ui/Ic
 | ≤ 600 px | KPI-Grid 2-spaltig; Carrier-Grid 2-spaltig |
 | ≤ 420 px | KPI-Grid 1-spaltig; Footer-Grid 1-spaltig |
 
+### Responsive- und Text-Wrapping-Regeln (systemweit gehärtet)
+
+- **Reflow vor Mid-Word-Break.** Wird es eng, ändert das LAYOUT die Struktur
+  (Spalten umbauen, Karten statt Tabelle, Zeile zweizeilig) — Text wird nicht
+  zeichenweise zerlegt. `.badge` bricht nur an Wortgrenzen, nie per
+  `anywhere`/`break-all`/Silbentrennung; `.btn` bleibt nowrap (Bedieneinheit).
+- **Reale Contentbreite, nicht Viewport.** In der App-Shell gilt
+  Content ≈ Viewport − 252 px Sidebar − 56 px Rahmen. Tabellen↔Karten-Umschalter
+  deshalb bei 1100 px Viewport (Rechnungs-Vorbild) oder als Container-Query an
+  der echten Breite (Adressbuch, `.abk-list-wrap`; @container erhöht die
+  Spezifität nicht — Basisregeln VOR die Container-Stufen stellen).
+- **Schrumpfglieder gezielt setzen**: `minmax(0, Xfr)` für nachgiebige
+  Grid-Textspalten, `fit-content(…)` als Boden für Badge-/Metaspalten,
+  `min-width: 0` nur am konkreten Glied der Ellipsis-/Wrap-Kette. NIEMALS
+  global (`*`), niemals globales `overflow-wrap: anywhere`/`break-all`.
+- **Technische Strings brechen LOKAL**: E-Mail/IDs/Nummern tragen ihr
+  `overflow-wrap: anywhere` auf einem eigenen Element (z. B.
+  `.abk-contact-email`, `.inv-cell-number-value`); Telefonnummern bleiben
+  nowrap in einer wrap-fähigen Zeile („Meta hält, Text weicht").
+- **flex-basis-Falle**: In `flex-direction: column` wird die Zeilen-basis zur
+  HÖHE — beim Stapeln `flex: 1 1 auto` setzen (`.abk-search`,
+  `.ce-page-header-text`).
+
+`responsiveHardening.test.mjs` (Quelltext, 10 Tests) und
+`tests/e2e/responsiveHardening.test.mjs` (echter Dev-Server, 12 Tests,
+Worst-Case-Daten über 14 Breiten) sichern das ab.
+
 ### Gemeinsamer Inhaltsrahmen
 
 Alle Unterseiten laufen durch `.page-body`, der Seitenkopf durch

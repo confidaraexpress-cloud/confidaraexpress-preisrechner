@@ -79,12 +79,20 @@
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   transition: border-color 0.15s ease, background 0.15s ease;
+  min-width: 0; max-width: 300px;
 }
 .pp-uchip:hover { border-color: var(--border-strong, #cbd5e1); background: var(--surface-subtle); }
 .ce-comark { width: 36px; height: 36px; flex-shrink: 0; display: block; }
+/* Der Chip ist die EINE Stelle der Kopfzeilen, die bei Platzmangel nachgibt:
+   Name und Firma ellipsieren (Volltext im title-Attribut des Buttons), Glocke
+   und Seitenaktion bleiben starr. Ohne diese Kette machte ein langer
+   Firmenname den Kopf breiter als den Viewport (bis 146 px, unsichtbar
+   abgeschnitten). Der Deckel begrenzt den Chip zusätzlich in max-content-
+   Kontexten: 300 px ≈ Bildmarke + rund 34 Zeichen der 13-px-Zeile — mehr
+   Identität braucht keine Kopfzeile, der Rest steht im Profil. */
 .pp-uchip-text { min-width: 0; display: flex; flex-direction: column; }
-.pp-uname { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--text-primary); }
-.pp-ucomp { font-family: var(--fs); font-size: 11px; color: var(--text-secondary); }
+.pp-uname { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-ucomp { font-family: var(--fs); font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-uchip > svg { color: var(--text-tertiary); flex-shrink: 0; }
 
 /* .pp-cta ist mit Paket D entfallen: der „Neue Sendung"-Knopf der Kopfzeile

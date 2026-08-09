@@ -35,9 +35,15 @@ export function UserChip({ user, onClick, label = "Zu meinem Profil" }) {
   const org = user?.company_name && user?.company_name !== user?.name ? user.company_name : null;
   // EINE Initialenquelle für Sidebar, Benutzerchip und Profilhero.
   const initial = accountInitials(user);
+  // Name und Firma ellipsieren im Chip bei Platzmangel (der Chip ist das
+  // einzige nachgiebige Glied der Kopfzeile) — der title trägt deshalb neben
+  // der Aktion auch die VOLLSTÄNDIGE Identität, damit nichts nur abgeschnitten
+  // erreichbar ist. Vollständig sichtbar bleibt sie ohnehin in Sidebar-Karte
+  // und Profil.
+  const fullIdentity = org ? `${name} — ${org}` : name;
 
   return (
-    <button type="button" className="pp-uchip" onClick={onClick} aria-label={label} title={label}>
+    <button type="button" className="pp-uchip" onClick={onClick} aria-label={label} title={`${label}: ${fullIdentity}`}>
       <CompanyMark initial={initial} />
       <span className="pp-uchip-text">
         <span className="pp-uname">{name}</span>

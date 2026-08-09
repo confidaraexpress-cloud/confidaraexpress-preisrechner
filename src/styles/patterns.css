@@ -87,19 +87,34 @@
   margin-top: var(--ce-space-3);
 }
 
-/* Rechte Spalte: Utility-Cluster und höchstens EINE primäre Seitenaktion. */
+/* Rechte Spalte: Utility-Cluster und höchstens EINE primäre Seitenaktion.
+
+   Bewusst SCHRUMPFBAR (min-width: 0 statt des früheren flex-shrink: 0): Der
+   Benutzerchip trägt den Firmennamen, und ein langer Name machte den Aside
+   breiter als den Viewport — der Primärbutton („+ Neue Adresse") ragte bei
+   900–1024 px bis 146 px unsichtbar aus dem Bild, kaschiert vom globalen
+   `body { overflow-x: hidden }`. Jetzt gibt allein der Chip nach (Ellipsis,
+   siehe .pp-uchip in overview.css); Glocke und Aktion sind über flex-shrink: 0
+   ihrer eigenen Regeln starr und bleiben immer vollständig sichtbar. */
 .ce-page-header-aside {
   display: flex;
   align-items: center;
   gap: var(--ce-space-3);
   flex-wrap: wrap;
-  flex-shrink: 0;
+  min-width: 0;
 }
+/* Der Utility-Cluster reicht die Schrumpfkette an den Chip weiter: sein
+   globales flex-shrink: 0 (Definition unten) wird hier gezielt aufgehoben,
+   damit die Kette aside → utility → chip → text durchgängig ist. */
+.ce-page-header-aside > .ce-utility { min-width: 0; flex-shrink: 1; }
 .ce-page-header-actions {
   display: flex;
   align-items: center;
   gap: var(--ce-space-2);
   flex-wrap: wrap;
+  /* Die Seitenaktion ist Teil der Schrumpfkette des Asides, gibt aber selbst
+     nie Breite ab — nachgeben tut allein der Chip. */
+  flex-shrink: 0;
 }
 
 /* Adminvariante — gleiche Struktur, funktionaler Titel, dichter gesetzt. */
@@ -224,11 +239,19 @@ td.ce-col-actions,
   margin-top: var(--ce-space-5);
 }
 
-/* Mobile Kartenansicht: unter 768 px zeigt jede Liste Karten statt einer
+/* Kartenansicht: unter 1100 px zeigt jede Liste Karten statt einer
    gequetschten Tabelle. Beide Seiten des Umschalters stehen hier zusammen,
-   damit kein Bereich die Hälfte vergisst. */
+   damit kein Bereich die Hälfte vergisst.
+
+   1100 statt des früheren 767 — dieselbe GEMESSENE, shell-bewusste Schwelle
+   wie die Rechnungstabelle (dashboard.css): Media Queries sehen nur den
+   Viewport, aber ab 861 px steht links die 252-px-Sidebar. Bei Viewport
+   900 px hat die Tabelle real ~648 px — WENIGER als am alten 767er-Umschalt-
+   punkt. In diesem Band (861–1100) quetschte die Sendungstabelle ihre
+   Statusspalte auf 44 px und versteckte die Aktionsspalte hinter einem
+   unentdeckbaren Querscroll. Karten zeigen dort alles ohne Scroll. */
 .ce-list-cards { display: none; flex-direction: column; gap: var(--ce-space-3); }
-@media (max-width: 767px) {
+@media (max-width: 1100px) {
   .ce-list-table { display: none; }
   .ce-list-cards { display: flex; }
 }

@@ -123,7 +123,7 @@ test("4 — Sidebar und Hintergrund sind zentral über Tokens geführt", () => {
     "ce-sidebar-bg-top", "ce-sidebar-bg-mid", "ce-sidebar-bg-bottom",
     "ce-sidebar-surface", "ce-sidebar-surface-hover",
     "ce-sidebar-border", "ce-sidebar-divider",
-    "ce-sidebar-card", "ce-sidebar-card-shadow", "ce-sidebar-well",
+    "ce-sidebar-well",
     "ce-sidebar-active-bg", "ce-sidebar-active-border", "ce-sidebar-active-shadow",
     "ce-sidebar-text", "ce-sidebar-text-strong", "ce-sidebar-text-muted",
     "ce-sidebar-section", "ce-sidebar-icon",
@@ -210,51 +210,44 @@ test("8 — Navigationsstruktur und Aktionen sind unverändert", () => {
   assert.match(sidebarJsx, /onClick=\{\(\) => navigateTo\("overview"\)\}/, "Übersicht-Navigation fehlt");
 });
 
-test("9 — Firmenkarte bleibt vorhanden und bewusst nicht interaktiv", () => {
-  assert.match(sidebarJsx, /className="pp-identity"/, "Firmenkarte fehlt");
-  assert.match(sidebarJsx, /pp-identity-name/, "Firmenname fehlt");
-  assert.match(sidebarJsx, /pp-identity-email/, "Kontokennung fehlt");
-  // Paket D: Firmenname und Initiale kommen nicht mehr aus einem hier
-  // eingebauten Ausdruck, sondern aus der EINEN gemeinsamen Quelle
-  // (utils/accountIdentity.mjs) — dieselbe, die Benutzerchip und Profilhero
-  // nutzen. Die Vorrangregel (company_name vor name) ist dort festgeschrieben
-  // und in accountIdentity.test.mjs geprüft; hier wird nur noch verlangt, dass
-  // die Sidebar genau diese Quelle verwendet und keine eigene daneben.
-  assert.match(sidebarJsx, /accountDisplayName\(user\)/, "Datenquelle der Firmenkarte geändert");
-  assert.match(sidebarJsx, /accountInitials\(user\)/, "Initialenquelle der Firmenkarte geändert");
-  assert.ok(!/user\?\.company_name \|\| user\?\.name/.test(sidebarJsx),
-    "keine zweite, lokal nachgebaute Namensableitung neben der gemeinsamen Quelle");
+test("9 — die Firmenkarte ist restlos entfernt und hinterlässt keinen Ersatzblock", () => {
+  // Weder Markup noch Klassen noch die Datenquelle, die sie füllte.
+  const jsxNoComments = stripJsxComments(sidebarJsx);
+  for (const spur of ["pp-identity", "pp-identity-avatar", "pp-identity-text", "pp-identity-name", "pp-identity-email"]) {
+    assert.ok(!jsxNoComments.includes(spur), `Spur der Firmenkarte lebt noch im Markup: ${spur}`);
+  }
+  assert.ok(!/accountInitials\(user\)/.test(sidebarJsx), "die Initialenquelle wird noch aufgerufen");
+  assert.ok(!/accountDisplayName\(user\)/.test(sidebarJsx), "die Namensquelle wird noch aufgerufen");
+  assert.ok(!/from ["']\.\.\/\.\.\/utils\/accountIdentity\.mjs["']/.test(sidebarJsx),
+    "der Import der Identitätsquelle lebt noch, obwohl nichts ihn mehr braucht");
+  // Kein Ersatzblock: Logo und Navigation stehen jetzt direkt hintereinander
+  // (getrennt nur durch das schließende </div> der Logozeile und Whitespace) —
+  // kein neues <div> dazwischen.
+  const logoEndeBisNav = sidebarJsx.slice(
+    sidebarJsx.indexOf("</button>", sidebarJsx.indexOf("pp-close")),
+    sidebarJsx.indexOf('<nav className="pp-nav">'),
+  );
+  assert.doesNotMatch(stripJsxComments(logoEndeBisNav), /<div/,
+    "zwischen Logo und Navigation steht noch ein <div> — kein Platzhalter erlaubt");
 
-  // Es gibt keinen Firmenwechsel/kein Dropdown → kein Chevron, keine
-  // Hover-/Fokusaffordanz, die eine nicht vorhandene Funktion suggeriert.
-  assert.ok(!stripJsxComments(sidebarJsx).includes("pp-identity-chev"),
-    "Chevron suggeriert ein Dropdown, das es nicht gibt");
-  assert.ok(!premiumRules.includes(".pp-identity:hover"),
-    "nicht-interaktive Firmenkarte darf keinen Hover-Zustand haben");
+  // Und die zugehörige Fläche ist ebenfalls weg, nicht nur unbenutzt.
+  assert.equal(block(premium, ".pp-identity"), null, "die CSS-Regel der Firmenkarte lebt noch");
+  for (const t of ["ce-sidebar-card", "ce-sidebar-card-shadow"]) {
+    assert.ok(!variables.includes(`--${t}:`), `totes Token --${t} lebt noch in variables.css`);
+  }
 });
 
-test("10 — Firmen- und Supportkarte: eine Materialsprache, zwei Höhenlagen", () => {
-  const identity = block(premium, ".pp-identity");
+test("10 — die Supportkarte trägt ihr Material jetzt allein", () => {
+  // Nach der Entfernung der Firmenkarte ist sie die einzige Karte der Sidebar —
+  // ihre eigene Materialsprache bleibt unverändert: vertiefte Eigenfläche,
+  // kein Schatten, kein Glassmorphism.
   const scard = block(premium, ".pp-scard");
-  assert.ok(identity && scard, "Firmen- oder Supportkarte fehlt");
-  // Gemeinsame Sprache: gleiche Rundung, gleiche Bordersprache.
-  for (const [name, b] of [["Firmenkarte", identity], ["Supportkarte", scard]]) {
-    assert.match(b, /border:\s*1px solid var\(--ce-sidebar-border\)/, `${name}: gemeinsame Border erwartet`);
-    assert.match(b, /border-radius:\s*11px/, `${name}: gemeinsame Rundung erwartet`);
-  }
-  // Firmenkarte erhöht (heller Verlauf + Schatten) …
-  assert.match(identity, /background:\s*var\(--ce-sidebar-card\)/, "Firmenkarte: erhöhte Fläche erwartet");
-  assert.match(identity, /box-shadow:\s*var\(--ce-sidebar-card-shadow\)/, "Firmenkarte: Tiefe fehlt");
-  assert.match(variables, /--ce-sidebar-card:\s*linear-gradient/, "Firmenkarte braucht einen Verlauf");
-  // … Supportkarte vertieft (dunklere Eigenfläche, kein Schatten).
+  assert.ok(scard, "Supportkarte fehlt");
+  assert.match(scard, /border:\s*1px solid var\(--ce-sidebar-border\)/, "Supportkarte: Border erwartet");
+  assert.match(scard, /border-radius:\s*11px/, "Supportkarte: Rundung erwartet");
   assert.match(scard, /background:\s*var\(--ce-sidebar-well\)/, "Supportkarte: vertiefte Fläche erwartet");
   assert.match(scard, /box-shadow:\s*none/, "Supportkarte darf keinen Schatten tragen");
-  // Kein Glassmorphism auf beiden.
-  for (const [name, b] of [["Firmenkarte", identity], ["Supportkarte", scard]]) {
-    // Kommentare entfernen: sie benennen die Regel („kein backdrop-filter"),
-    // ohne sie zu setzen.
-    assert.doesNotMatch(stripComments(b), /backdrop-filter/, `${name}: backdrop-filter verboten`);
-  }
+  assert.doesNotMatch(stripComments(scard), /backdrop-filter/, "Supportkarte: backdrop-filter verboten");
 });
 
 test("11 — Supportkarte führt in den Anfragedialog, nicht ins Postfach", () => {
@@ -445,8 +438,6 @@ test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
   const bgMid = hex(tok("ce-sidebar-bg-mid"));
   const bgBot = hex(tok("ce-sidebar-bg-bottom"));
 
-  // Firmenkarte: Verlauf mit zwei Stops → beide Enden prüfen (ungünstigster Fall).
-  const cardStops = tok("ce-sidebar-card").match(/rgba?\([^)]+\)/g).map((x) => over(rgba(x), bgTop));
   // Supportkarte: dunklere Eigenfläche über dem unteren Verlaufsende.
   const well = over(rgba(tok("ce-sidebar-well")), bgBot);
   // Aktiver Eintrag: blau getönter Verlauf. Der DUNKELSTE Punkt ist maßgeblich —
@@ -461,8 +452,6 @@ test("18 — Sidebar-Kontraste erfüllen WCAG AA", () => {
     ["aktiver Eintrag (dunkelster Verlaufspunkt)", hex(tok("ce-sidebar-text-strong")), activeDark, 4.5],
     ["Gruppenüberschrift", hex(tok("ce-sidebar-section")), bgTop, 4.5],
     ["Fußzeile", hex(tok("ce-sidebar-section")), bgBot, 4.5],
-    ["Firmenname auf Karte (hellster Stop)", hex(tok("ce-sidebar-text")), cardStops[0], 4.5],
-    ["Konto-E-Mail auf Karte (hellster Stop)", hex(tok("ce-sidebar-text-muted")), cardStops[0], 4.5],
     ["Supporttitel auf vertiefter Fläche", hex(tok("ce-sidebar-text-strong")), well, 4.5],
     ["Support-Hinweistext", hex(tok("ce-sidebar-text-muted")), well, 4.5],
     ["Icon inaktiv", hex(tok("ce-sidebar-icon")), bgMid, 3],
@@ -686,7 +675,7 @@ test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
   // Gruppenlabel (.nsec) steht jetzt auf der Micro-Stufe (11 px) statt auf
   // 9,5 px. Seine weite Laufweite und die Versalien halten es weiterhin klar
   // von den Navigationseinträgen getrennt.
-  for (const sel of [".pp-brand-sub", ".pp-identity-email", ".scard-k", ".scard-s", ".pp-foot"]) {
+  for (const sel of [".pp-brand-sub", ".scard-k", ".scard-s", ".pp-foot"]) {
     const b = block(premium, sel);
     assert.ok(b, `${sel} fehlt`);
     const size = parseFloat(b.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");

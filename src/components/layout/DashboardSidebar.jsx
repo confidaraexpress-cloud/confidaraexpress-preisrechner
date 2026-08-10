@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
-import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 import markReverse from "../../assets/brand/mark-reverse.svg";
 
 // Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
@@ -42,12 +41,15 @@ const NAV_GROUPS = [
 // Eine einzige Sidebar für den gesamten eingeloggten Bereich — matte
 // Graphit-Fläche, flach, ohne Glow („Clean Executive Logistics"). Aufbau:
 // .pp-side (Positionierung, Mobile-Drawer) → .pp-side-in (Inhaltsspalte) →
-// Logo, Identität, Nav, Support, Footer. Funktion/Routen unverändert.
+// Logo, Nav, Support, Footer. Funktion/Routen unverändert.
+//
+// Die frühere Firmenkarte (Avatar + Firmenname + E-Mail direkt unter dem Logo)
+// ist ersatzlos entfernt — kein Platzhalter, kein Ersatzblock. Die Kontoidentität
+// bleibt über UserChip (Seitenkopf) und Profilhero (Unternehmen & Konto)
+// erreichbar; beide nutzen weiterhin dieselbe Quelle (utils/accountIdentity.mjs).
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen, onLogout }) {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
-  // EINE Initialenquelle für Sidebar, Benutzerchip und Profilhero.
-  const initials = accountInitials(user);
   // Supportdialog: lokaler Zustand DIESER Komponente. Bewusst kein globaler State und
   // keine eigene Route — die Karte ist auf jeder eingeloggten Seite dieselbe, und der
   // Dialog darf die bestehende Navigation (page-State) nicht berühren.
@@ -93,18 +95,6 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             </button>
           </div>
 
-          {/* Benutzerinformationen — auf allen Seiten identisch. Der frühere,
-              nur auf der Übersicht eingeblendete Chevron ist entfallen: er
-              suggerierte eine Aufklappfunktion, die es nicht gibt, und ließ
-              dieselbe Sidebar je nach Seite unterschiedlich aussehen. */}
-          <div className="pp-identity">
-            <div className="pp-identity-avatar">{initials}</div>
-            <div className="pp-identity-text">
-              <div className="pp-identity-name">{accountDisplayName(user)}</div>
-              <div className="pp-identity-email">{user?.email || "B2B Konto"}</div>
-            </div>
-          </div>
-
           <nav className="pp-nav">
             <button className={`nitem ${page === "overview" ? "on" : ""}`} onClick={() => navigateTo("overview")}>
               <Icon n="dashboard" s={18} /><span>Übersicht</span>
@@ -139,9 +129,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
 
           {/* Supportkarte: die GESAMTE Karte ist die Aktion — ein <button>, kein
               mailto-Link mehr. Der Kunde schreibt seine Anfrage im Formular; das
-              Postfach ist nicht mehr der Einstieg. Geometrie, Abstände und
-              Materialsprache bleiben unverändert (siehe dashboard-premium.css),
-              nur Auszeichnung und Inhalt ändern sich: kein „Live Support", kein
+              Postfach ist nicht mehr der Einstieg. Kein „Live Support", kein
               grüner Statuspunkt, kein Headset-Icon — stattdessen das vorhandene
               mail-Icon. Wortlaut zentral in utils/supportRequest.mjs. */}
           <button type="button" className="pp-scard" onClick={() => setSupportOpen(true)}>

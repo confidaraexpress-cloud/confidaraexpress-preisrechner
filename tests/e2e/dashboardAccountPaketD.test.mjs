@@ -104,18 +104,20 @@ test("ein leeres Konto wird geführt statt mit leeren Tabellen begrüßt", async
   await page.close();
 });
 
-test("Sidebar, Benutzerchip und Profilhero zeigen dieselbe Initiale", async () => {
+test("Benutzerchip und Profilhero zeigen dieselbe Initiale", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard?page=profile`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".profile-avatar-lg", { timeout: 20000 });
 
   const profil = (await page.locator(".profile-avatar-lg").innerText()).trim();
-  const seite = (await page.locator(".pp-identity-avatar").innerText()).trim();
   const chip = (await page.locator(".ce-comark text").evaluate((el) => el.textContent)).trim();
   assert.equal(profil, "M", "die Initiale stammt nicht aus dem Firmennamen „Muster GmbH“");
-  assert.equal(seite, profil, "Sidebar und Profil zeigen verschiedene Initialen");
   assert.equal(chip, profil, "Benutzerchip und Profil zeigen verschiedene Initialen");
+
+  // Die frühere Firmenkarte in der Sidebar (Avatar + Firmenname + E-Mail) ist
+  // ersatzlos entfernt — kein Aufruf, kein Platzhalter.
+  assert.equal(await page.locator(".pp-identity").count(), 0, "die Firmenkarte ist in der Sidebar zurück");
   await page.close();
 });
 

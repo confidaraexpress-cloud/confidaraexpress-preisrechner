@@ -73,6 +73,7 @@ const SEL = {
   terms:     ".ins-card-terms-link",
   dialog:    ".insdlg",
   dlgClose:  ".insdlg-close",
+  dlgMore:   ".insdlg-more-link",
   goods:     "#ins-goods",
 };
 
@@ -472,13 +473,114 @@ test("10b — der Dialog nennt den Upstream-Anbieter nicht und lässt keine Attr
   // An der Stelle des entfernten Volltext-Links steht nichts Klickbares:
   // kein Anker, kein deaktivierter Knopf, kein Element mit Linkoptik.
   const dlg = page.locator(SEL.dialog);
-  assert.equal(await dlg.locator("a").count(), 0, "der Dialog enthält einen Link");
+  // Genau EIN Anker: der interne Weg auf die Informationsseite. Kein externer
+  // Link, kein toter Knopf, kein inertes Element mit Linkoptik.
+  const anker = dlg.locator("a");
+  assert.equal(await anker.count(), 1, "erwartet wird genau ein (interner) Link");
+  assert.equal(await anker.getAttribute("href"), "/versicherungsinformationen");
+  assert.equal(await dlg.locator('a[href^="http"]').count(), 0, "der Dialog enthält einen externen Link");
   assert.equal(await dlg.locator("button:disabled").count(), 0, "der Dialog enthält einen toten Knopf");
   assert.equal(await dlg.locator("[role=\"note\"]").count(), 0, "der Dialog enthält ein inertes Pseudo-Element");
-  // Die beiden echten Bedienelemente bleiben: Schließkreuz und Schließen-Knopf.
+  // Die beiden echten Knöpfe bleiben: Schließkreuz und Schließen.
   assert.equal(await dlg.locator("button").count(), 2, "erwartet werden genau zwei Knöpfe (X und Schließen)");
   assert.ok(!/Vollständige Versicherungsbedingungen/.test(await dlg.innerText()),
     "der entfernte CTA steht noch als Text da");
+
+  await page.close();
+});
+
+/* ── 10c. Dreistufiges Informationssystem ────────────────────────────────── */
+
+test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der Buchung", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  await setupRoutes(page, [TARIFF_MIT_LINK]);
+  await zurBuchung(page);
+
+  // Ebene 1 → 2: Karte öffnet den Dialog.
+  await waehle(page, "Standardversicherung");
+  await page.locator(SEL.goods).fill("500");
+  await page.waitForTimeout(700);
+  await karte(page, "Standardversicherung").locator(SEL.details).click();
+  await page.waitForSelector(SEL.dialog, { timeout: 5000 });
+
+  // Der Dialog trägt die drei wichtigen Hinweise.
+  const dlg = await page.locator(SEL.dialog).innerText();
+  assert.match(dlg, /Wichtige Hinweise/);
+  assert.match(dlg, /ausgeschlossen sein/);
+  assert.match(dlg, /vorherige Freigabe/);
+  assert.match(dlg, /weiteren Voraussetzungen und Ausschlüssen/);
+
+  // Ebene 2 → 3: interner Link, kein neues Fenster, kein externes Ziel.
+  const mehr = page.locator(SEL.dlgMore);
+  assert.equal(await mehr.getAttribute("href"), "/versicherungsinformationen");
+  assert.equal(await mehr.getAttribute("target"), null, "der Link öffnet ein neues Fenster");
+  await mehr.click();
+  await page.waitForSelector(".insinfo-sec", { timeout: 10000 });
+  assert.match(page.url(), /\/versicherungsinformationen$/);
+
+  const seite = await page.locator(".insinfo-wrap").innerText();
+  assert.match(seite, /Informationen zur Transportversicherung/);
+  for (const kapitel of [
+    "Überblick", "Umfang der Transportversicherung", "Versicherbare Güter",
+    "Güter mit besonderen Voraussetzungen", "Nicht versicherbare Güter",
+    "Ausgeschlossene Risiken und Schäden", "Versicherungssumme und Höchstgrenzen",
+    "Selbstbeteiligung", "Standardversicherung", "Premiumversicherung",
+    "Verpackungs- und Mitwirkungspflichten", "Was tun im Schadenfall?",
+    "Meldefristen", "Verlust und Verschollenheit", "Wichtige Hinweise",
+  ]) {
+    assert.ok(seite.includes(kapitel), `Kapitel fehlt: „${kapitel}"`);
+  }
+  assert.equal(await page.locator(".insinfo-sec").count(), 16, "erwartet 15 Kapitel + Supportblock");
+  assert.match(seite, /Maßgeblich sind die im jeweiligen Versicherungsfall geltenden Versicherungsbedingungen/);
+  await pruefeWhiteLabel(page, "Informationsseite");
+
+  // Zurück: die Buchung steht unverändert da (Auswahl UND Warenwert).
+  await page.goBack({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(SEL.cards, { timeout: 20000 });
+  await zuSchritt2(page);
+  assert.match(await gewaehlt(page), /Standardversicherung/, "die Versicherungsauswahl ging verloren");
+  assert.equal(await page.locator(SEL.goods).inputValue(), "500", "der Warenwert ging verloren");
+
+  await page.close();
+});
+
+test("10d — die Sprungnavigation der Informationsseite führt zu echten Zielen", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  await setupRoutes(page, [TARIFF_MIT_LINK]);
+  await page.goto(`${BASE}/versicherungsinformationen`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".insinfo-toc", { timeout: 20000 });
+
+  const befund = await page.evaluate(() => {
+    const links = [...document.querySelectorAll(".insinfo-toc-link")];
+    return {
+      anzahl: links.length,
+      tote: links.map(a => a.getAttribute("href").slice(1)).filter(id => !document.getElementById(id)),
+      h1: document.querySelectorAll("h1").length,
+      h2: document.querySelectorAll("h2").length,
+      listen: document.querySelectorAll(".insinfo-list").length,
+    };
+  });
+  assert.equal(befund.anzahl, 15, "das Inhaltsverzeichnis führt nicht 15 Kapitel");
+  assert.deepEqual(befund.tote, [], "tote Sprungziele");
+  assert.equal(befund.h1, 1, "genau ein h1 erwartet");
+  assert.equal(befund.h2, 16, "jedes Kapitel und der Supportblock brauchen ein h2");
+  assert.ok(befund.listen >= 14, "die Kapitel nutzen keine echten Listen");
+
+  // Ein Sprung landet wirklich am Kapitel. `html { scroll-behavior: smooth }`
+  // gilt global — deshalb wird auf das ENDE der Animation gewartet (stabile
+  // Scrollposition) und nicht nach einer festen Zeit gemessen.
+  await page.locator('.insinfo-toc-link[href="#meldefristen"]').click();
+  await page.waitForFunction(() => {
+    const y = document.scrollingElement.scrollTop;
+    if (window.__letztesY === y) return true;
+    window.__letztesY = y;
+    return false;
+  }, null, { timeout: 5000, polling: 120 });
+  const oben = await page.evaluate(() => Math.round(document.getElementById("meldefristen").getBoundingClientRect().top));
+  // .page-with-navbar hat 88 px Kopfabstand; scroll-margin-top hält das Kapitel
+  // darunter frei. Eine kleine Toleranz für Subpixel/Restanimation.
+  assert.ok(oben >= 0 && oben <= 120,
+    `das Sprungziel liegt bei ${oben}px — es sollte direkt unter der Navbar (~88px) stehen`);
 
   await page.close();
 });
@@ -566,5 +668,40 @@ test("12 — der Dialog bleibt auf schmalen Viewports vollständig im Bild", asy
     }
   }
 
+  await page.close();
+});
+
+/* ── 13. Responsive der Informationsseite ────────────────────────────────── */
+
+test("13 — die Informationsseite läuft auf keiner Zielbreite über", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  await setupRoutes(page, [TARIFF_MIT_LINK]);
+  await page.goto(`${BASE}/versicherungsinformationen`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".insinfo-sec", { timeout: 20000 });
+
+  for (const width of [1440, 1280, 1024, 900, 768, 430, 390, 360]) {
+    await page.setViewportSize({ width, height: 950 });
+    await page.waitForTimeout(120);
+    const mass = await page.evaluate(() => {
+      const de = document.documentElement;
+      const zeilen = (el) => {
+        const lh = parseFloat(getComputedStyle(el).lineHeight) || 16;
+        return Math.round(el.getBoundingClientRect().height / lh);
+      };
+      const titel = document.querySelector(".insinfo-title");
+      return {
+        seite: de.scrollWidth - de.clientWidth,
+        tocSpalten: getComputedStyle(document.querySelector(".insinfo-toc-list")).gridTemplateColumns,
+        titelZeilen: zeilen(titel),
+        // Trefferfläche des ersten Sprunglinks.
+        linkHoehe: Math.round(document.querySelector(".insinfo-toc-link").getBoundingClientRect().height),
+      };
+    });
+    assert.ok(mass.seite <= 0, `@${width}: Seiten-Overflow ${mass.seite}px`);
+    assert.ok(mass.titelZeilen <= 3, `@${width}: der Titel bricht auf ${mass.titelZeilen} Zeilen`);
+    if (width <= 600) {
+      assert.ok(mass.linkHoehe >= 44, `@${width}: Sprunglink nur ${mass.linkHoehe}px hoch`);
+    }
+  }
   await page.close();
 });

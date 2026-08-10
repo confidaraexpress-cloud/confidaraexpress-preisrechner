@@ -279,7 +279,11 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
   // Routenbestand vollständig — und zwar GENAU dieser. Der Vergleich läuft in
   // beide Richtungen: keine Route ist verschwunden und keine dazugekommen.
   const ROUTEN = ["/login", "/register", "/confirm-email-change", "/calculator", "/booking",
-                  "/tracking", "/impressum", "/datenschutz", "/agb", "/widerruf", "/dashboard",
+                  "/tracking", "/impressum", "/datenschutz", "/agb", "/widerruf",
+                  // Informationen zur Transportversicherung — bewusst als eigene
+                  // Leseseite neben den Rechtsseiten, verlinkt aus dem
+                  // Versicherungsdetails-Dialog. Kein Sidebar-Eintrag.
+                  "/versicherungsinformationen", "/dashboard",
                   "/admin", "/admin/users", "/admin/users/:id",
                   "/admin/shipments", "/admin/shipments/:id",
                   "/admin/invoices", "/admin/invoices/backfill", "/admin/invoices/:id",

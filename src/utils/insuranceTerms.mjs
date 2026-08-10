@@ -24,6 +24,9 @@ export const INSURANCE_TEXT = Object.freeze({
   sectionIntro:  "Wählen Sie optional eine zusätzliche Transportversicherung für Ihre Sendung.",
   detailsAction: "Versicherungsdetails",
   carrierTerms:  "Haftungs- & Beförderungsbedingungen öffnen",
+  // Führt INTERN auf die ausführliche ConfidaraExpress-Informationsseite —
+  // die dritte Ebene des Informationssystems (Karte → Dialog → Seite).
+  moreInfo:      "Ausführliche Versicherungsinformationen",
   // Gilt bei „Keine zusätzliche Transportversicherung" — und identisch als
   // Fallback, wenn der Tarif keinen Bedingungslink mitliefert. Es wird KEINE
   // Haftungssumme genannt: eine tarifabhängige, belegte Zahl gibt es nicht.
@@ -112,9 +115,15 @@ export const INSURANCE_DIALOG = Object.freeze({
       ]),
     }),
   ]),
-  notice:
-    "Bestimmte Güter können vom Versicherungsschutz ausgeschlossen sein oder eine vorherige " +
-    "Freigabe erfordern.",
+  // „Wichtige Hinweise" als eigener Block statt eines Einzelsatzes: die drei
+  // Punkte sind die häufigsten Missverständnisse und tragen die mittlere
+  // Informationsebene. Alles Weitere steht auf der Informationsseite.
+  noticeTitle: "Wichtige Hinweise",
+  notices: Object.freeze([
+    "Bestimmte Güter können vom Versicherungsschutz ausgeschlossen sein.",
+    "Bestimmte Güter können eine vorherige Freigabe benötigen.",
+    "Der Versicherungsschutz unterliegt weiteren Voraussetzungen und Ausschlüssen.",
+  ]),
 });
 
 // Bedingungslink des KONKRETEN TARIFS. Quelle ist ausschließlich

@@ -40,6 +40,10 @@
 /* Benachrichtigungscenter — isolierter ntf-Scope (Glocke, Badge, Panel). Reine
    Zusatzklassen auf App-Layout-Tokens; keine Kollision mit bestehenden Scopes. */
 @import './notifications.css';
+/* Informationen zur Transportversicherung — isolierter insinfo-Scope
+   (Leseseite außerhalb der App-Shell). Reine Zusatzklassen auf
+   Foundation-Tokens; keine Kollision mit bestehenden Scopes. */
+@import './insurance-info.css';
 /* Gemeinsame Interface-Muster (Paket A, Phase 3): Seitenkopf, Utility-Cluster,
    Toolbar, Listenrahmen, Dialoge, Drawer und Zustandsflächen. Steht als
    EINZIGE Ebene NACH den Bereichs-Stylesheets — anders als primitives.css,

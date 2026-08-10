@@ -359,7 +359,15 @@ test("19 — der Dialog zeigt eine neutrale Zusammenfassung", () => {
     "wer die Selbstbeteiligung wirtschaftlich trägt, ist eine Innenbeziehung");
   assert.match(premium, /[Pp]riorisierter Support/);
   assert.match(premium, /Status-Updates/);
-  assert.match(INSURANCE_DIALOG.notice, /ausgeschlossen|Freigabe/);
+  assert.equal(INSURANCE_DIALOG.noticeTitle, "Wichtige Hinweise");
+  assert.equal(INSURANCE_DIALOG.notices.length, 3, "drei wichtige Hinweise erwartet");
+  const hinweise = INSURANCE_DIALOG.notices.join(" ");
+  assert.match(hinweise, /ausgeschlossen/);
+  assert.match(hinweise, /Freigabe/);
+  assert.match(hinweise, /weiteren Voraussetzungen und Ausschlüssen/);
+  // Der Weg in die Tiefe ist INTERN und führt auf die CE-Informationsseite.
+  assert.equal(INSURANCE_TEXT.moreInfo, "Ausführliche Versicherungsinformationen");
+  assert.match(dialog, /to=\{INSURANCE_INFO_ROUTE\}/, "der Dialog verlinkt die Informationsseite nicht");
   // Kompakt: die Zusammenfassung bleibt kurz, kein Volltext im Frontend.
   const zeichen = INSURANCE_DIALOG.sections.flatMap(s => s.items).join(" ").length;
   assert.ok(zeichen < 600, `die Zusammenfassung ist mit ${zeichen} Zeichen zu lang`);

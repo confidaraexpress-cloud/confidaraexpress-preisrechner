@@ -386,7 +386,8 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   const app = read("../App.jsx");
   // Momentaufnahme: 29 Routen. Eine Routenänderung ist in dieser Phase
   // ausgeschlossen und müsste hier bewusst nachgezogen werden.
-  assert.equal((app.match(/<Route /g) || []).length, 29, "die Routenzahl ist unverändert");
+  assert.equal((app.match(/<Route /g) || []).length, 30,
+    "die Routenzahl ist unverändert (30 seit /versicherungsinformationen)");
 });
 
 /* ══════════ 13 — bestehende Governance ═══════════════════════════════════ */

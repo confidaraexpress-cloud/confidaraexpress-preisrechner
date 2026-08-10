@@ -738,6 +738,20 @@
   border-radius: var(--ce-radius-sm);
 }
 .insdlg-notice svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-status-warning-fg); }
+.insdlg-notice-title { margin: 0 0 4px; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--ce-color-text-primary); }
+.insdlg-notice-list { list-style: disc; margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; }
+/* Interner Weg zur ausführlichen Informationsseite — bewusst als ruhige
+   Textaktion, nicht als zweiter Primärknopf neben „Schließen". */
+.insdlg-more-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: var(--ce-space-4); padding: 3px 0;
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+  color: var(--ce-color-brand-ink); text-decoration: none;
+  border-bottom: 1px solid var(--ce-color-brand-border);
+}
+.insdlg-more-link:hover { border-bottom-color: var(--blue2); }
+.insdlg-more-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); border-radius: var(--ce-radius-sm); }
+.insdlg-more-link svg { flex-shrink: 0; }
 
 /* Reprice-Preisbox: dezente Netto/MwSt-Zeile + steuerfrei-Chip */
 .booking-tax-chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }

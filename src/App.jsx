@@ -21,6 +21,7 @@ const ImpressumPage   = React.lazy(() => import("./pages/ImpressumPage"));
 const DatenschutzPage = React.lazy(() => import("./pages/DatenschutzPage"));
 const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
 const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
+const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
 
 // Admin (separater, URL-basierter Bereich — hinter AdminRoute-UX-Gate;
 // serverseitig zusätzlich durch requireAdmin geschützt).
@@ -84,6 +85,9 @@ export default function App() {
           <Route path="/datenschutz" element={<DatenschutzPage />} />
           <Route path="/agb"         element={<AGBPage />} />
           <Route path="/widerruf"    element={<WiderrufPage />} />
+          {/* Informationen zur Transportversicherung — Leseseite neben den
+              Rechtsseiten; verlinkt aus dem Versicherungsdetails-Dialog. */}
+          <Route path="/versicherungsinformationen" element={<InsuranceInfoPage />} />
         </Route>
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

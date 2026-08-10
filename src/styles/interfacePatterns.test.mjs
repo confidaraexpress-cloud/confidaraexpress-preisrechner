@@ -375,7 +375,8 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
 
 test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => {
   const app = read("../App.jsx");
-  assert.equal((app.match(/<Route /g) || []).length, 29, "die Routenzahl ist unverändert");
+  assert.equal((app.match(/<Route /g) || []).length, 30,
+    "die Routenzahl ist unverändert (30 seit /versicherungsinformationen)");
 
   const client = read("../api/client.js");
   assert.match(client, /export const token = \(\) => localStorage\.getItem\("ce_token"\)/);

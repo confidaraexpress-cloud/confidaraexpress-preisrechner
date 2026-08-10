@@ -1,18 +1,20 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useDialog } from "../../hooks/useDialog";
 import { Icon } from "../ui/Icon";
-import { INSURANCE_DIALOG } from "../../utils/insuranceTerms.mjs";
+import { INSURANCE_DIALOG, INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
+import { INSURANCE_INFO_ROUTE } from "../../utils/insuranceInfo.mjs";
 
 // Versicherungsdetails — die verständliche Zusammenfassung von ConfidaraExpress.
 // Vorher war „Versicherungsbedingungen" ein <span>, das wie ein Link aussah und
 // nichts tat; ein Klick führte ins Leere. Jetzt öffnet der Eintrag diese
 // Zusammenfassung — ohne Absprung aus der Buchung.
 //
-// Bewusst OHNE Link auf externe Vollbedingungen: eine kundenfähige, autorisierte
-// eigene Fassung gibt es nicht, und der einzige verfügbare Volltext gehört dem
-// internen Upstream-Anbieter, der gegenüber dem Kunden nicht erscheint. Ein
-// funktionsloser Knopf an seiner Stelle wäre der Fehler, den dieser Dialog
-// gerade behebt — deshalb steht dort nichts.
+// Bewusst OHNE Link auf externe Vollbedingungen: der einzige verfügbare Volltext
+// gehört dem internen Upstream-Anbieter, der gegenüber dem Kunden nicht
+// erscheint. Wer mehr wissen will, geht stattdessen INTERN auf die
+// ConfidaraExpress-Informationsseite — die dritte Ebene des
+// Informationssystems (Karte → Dialog → Seite).
 //
 // Fokusfalle, Escape und Fokusrückgabe kommen aus dem gemeinsamen Hook. Das
 // Rückgabeziel wird EXPLIZIT übergeben: ausgelöst wird aus einer Karte heraus,
@@ -70,10 +72,21 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
             </section>
           ))}
 
-          <p className="insdlg-notice">
+          <div className="insdlg-notice">
             <Icon n="info" s={14} c="currentColor" />
-            <span>{INSURANCE_DIALOG.notice}</span>
-          </p>
+            <div>
+              <p className="insdlg-notice-title">{INSURANCE_DIALOG.noticeTitle}</p>
+              <ul className="insdlg-notice-list">
+                {INSURANCE_DIALOG.notices.map((n, i) => <li key={i}>{n}</li>)}
+              </ul>
+            </div>
+          </div>
+
+          {/* Interner Weg in die Tiefe — kein externer Absprung. */}
+          <Link className="insdlg-more-link" to={INSURANCE_INFO_ROUTE} onClick={onClose}>
+            <span>{INSURANCE_TEXT.moreInfo}</span>
+            <Icon n="arrowRight" s={14} c="currentColor" />
+          </Link>
         </div>
 
         <div className="ce-dialog-actions">

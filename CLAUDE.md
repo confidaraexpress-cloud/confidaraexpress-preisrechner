@@ -839,6 +839,13 @@ dokumentiert und durch eigene Tests gedeckt.
   `utils/insuranceTerms.mjs` (Karte/Dialog) und `utils/insuranceInfo.mjs` (Seite) — nicht in JSX.
   Jede Aussage trägt dort ihre Herkunft (`agb` / `produkt` / `bedingungen`); fremde
   Vollbedingungen werden weder kopiert noch verlinkt.
+- **Versicherungscopy nur aus prüfbarer Quelle.** Zulässig sind allein die vorliegenden
+  Versicherungsbedingungen, belegte CE-AGB-Inhalte und technisch belegte Produktdaten — ein
+  Implementierungs-Prompt ist **keine** Quelle. Die Bedingungswerke unterscheiden mehrere
+  Profile (u. a. national/international) mit abweichenden Güterklassen, Grenzen und
+  Meldefristen; solange technisch nicht feststeht, welches gilt, wird **keine profilspezifische
+  Regel als allgemeingültig** dargestellt. Reklamationsfristen der CE-AGB sind **nicht** die
+  versicherungsrechtliche Meldefrist.
 - **White Label:** Jumingo ist interner Upstream-Anbieter und darf in kundenseitiger UI, Copy und Links nicht erscheinen — auch nicht als Bedingungsgeber, Kosten-, Schaden- oder Supportträger. Technische Feldnamen, API-Pfade, Mocks und interne Kommentare bleiben davon unberührt. Der konkret gewählte Versanddienstleister (DPD, UPS, DHL Express, GLS …) **darf und soll** sichtbar sein.
 
 ### Dropoff/Paketshop-Guardrail (zwingend)

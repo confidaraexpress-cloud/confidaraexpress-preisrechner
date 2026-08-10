@@ -521,16 +521,21 @@ test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der B
   const seite = await page.locator(".insinfo-wrap").innerText();
   assert.match(seite, /Informationen zur Transportversicherung/);
   for (const kapitel of [
-    "Überblick", "Umfang der Transportversicherung", "Versicherbare Güter",
-    "Güter mit besonderen Voraussetzungen", "Nicht versicherbare Güter",
-    "Ausgeschlossene Risiken und Schäden", "Versicherungssumme und Höchstgrenzen",
-    "Selbstbeteiligung", "Standardversicherung", "Premiumversicherung",
+    "Überblick", "Umfang und Grenzen des Versicherungsschutzes",
+    "Güter mit besonderen Voraussetzungen oder Ausschluss",
+    "Vom Versand ausgeschlossene Güter", "Ausgeschlossene Ursachen und Schäden",
+    "Versicherungssumme und Höchstgrenzen", "Selbstbeteiligung",
+    "Standardversicherung", "Premiumversicherung",
     "Verpackungs- und Mitwirkungspflichten", "Was tun im Schadenfall?",
-    "Meldefristen", "Verlust und Verschollenheit", "Wichtige Hinweise",
+    "Schadenmeldung: Fristen", "Verlust und Verschollenheit", "Wichtige Hinweise",
   ]) {
-    assert.ok(seite.includes(kapitel), `Kapitel fehlt: „${kapitel}"`);
+    assert.ok(seite.includes(kapitel), `Kapitel fehlt: „${kapitel}“`);
   }
-  assert.equal(await page.locator(".insinfo-sec").count(), 16, "erwartet 15 Kapitel + Supportblock");
+  assert.equal(await page.locator(".insinfo-sec").count(), 15, "erwartet 14 Kapitel + Supportblock");
+  // Am gerenderten DOM: keine konkrete Frist und keine Hoechstsumme.
+  for (const zahl of ["24 Stunden", "48 Stunden", "7 Werktagen", "7 Kalendertagen", "21 Tagen", "50.000", "1.000 EUR"]) {
+    assert.ok(!seite.includes(zahl), `unbelegte Zahl sichtbar: „${zahl}“`);
+  }
   assert.match(seite, /Maßgeblich sind die im jeweiligen Versicherungsfall geltenden Versicherungsbedingungen/);
   await pruefeWhiteLabel(page, "Informationsseite");
 
@@ -560,23 +565,23 @@ test("10d — die Sprungnavigation der Informationsseite führt zu echten Zielen
       listen: document.querySelectorAll(".insinfo-list").length,
     };
   });
-  assert.equal(befund.anzahl, 15, "das Inhaltsverzeichnis führt nicht 15 Kapitel");
+  assert.equal(befund.anzahl, 14, "das Inhaltsverzeichnis führt nicht 14 Kapitel");
   assert.deepEqual(befund.tote, [], "tote Sprungziele");
   assert.equal(befund.h1, 1, "genau ein h1 erwartet");
-  assert.equal(befund.h2, 16, "jedes Kapitel und der Supportblock brauchen ein h2");
-  assert.ok(befund.listen >= 14, "die Kapitel nutzen keine echten Listen");
+  assert.equal(befund.h2, 15, "jedes Kapitel und der Supportblock brauchen ein h2");
+  assert.ok(befund.listen >= 13, "die Kapitel nutzen keine echten Listen");
 
   // Ein Sprung landet wirklich am Kapitel. `html { scroll-behavior: smooth }`
   // gilt global — deshalb wird auf das ENDE der Animation gewartet (stabile
   // Scrollposition) und nicht nach einer festen Zeit gemessen.
-  await page.locator('.insinfo-toc-link[href="#meldefristen"]').click();
+  await page.locator('.insinfo-toc-link[href="#meldefrist"]').click();
   await page.waitForFunction(() => {
     const y = document.scrollingElement.scrollTop;
     if (window.__letztesY === y) return true;
     window.__letztesY = y;
     return false;
   }, null, { timeout: 5000, polling: 120 });
-  const oben = await page.evaluate(() => Math.round(document.getElementById("meldefristen").getBoundingClientRect().top));
+  const oben = await page.evaluate(() => Math.round(document.getElementById("meldefrist").getBoundingClientRect().top));
   // .page-with-navbar hat 88 px Kopfabstand; scroll-margin-top hält das Kapitel
   // darunter frei. Eine kleine Toleranz für Subpixel/Restanimation.
   assert.ok(oben >= 0 && oben <= 120,

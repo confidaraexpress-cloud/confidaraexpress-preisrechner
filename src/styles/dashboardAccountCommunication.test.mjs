@@ -140,8 +140,11 @@ test("7 — die neuen Module rufen keine API und legen keine Route an", () => {
 
 /* ══════════ 8 — Initialen aus EINER Quelle ═════════════════════════════ */
 
-test("8 — Profil, Sidebar und Benutzerchip nutzen dieselbe Initialenquelle", () => {
-  for (const [name, code] of [["Profile", profile], ["Sidebar", sidebar], ["UserChip", userChip]]) {
+test("8 — Profil und Benutzerchip nutzen dieselbe Initialenquelle", () => {
+  // Seit der Entfernung der Firmenkarte zeigt die Sidebar selbst keine
+  // Initiale mehr — sie ist deshalb kein Aufrufer dieser Quelle mehr (siehe
+  // Test 8b). Profilhero und Benutzerchip bleiben die zwei verbliebenen.
+  for (const [name, code] of [["Profile", profile], ["UserChip", userChip]]) {
     assert.match(code, /accountInitials\(user\)/, `${name} nutzt die gemeinsame Quelle nicht`);
     assert.ok(!/charAt\(0\)\.toUpperCase\(\)/.test(code), `${name} leitet die Initiale selbst ab`);
   }
@@ -150,6 +153,14 @@ test("8 — Profil, Sidebar und Benutzerchip nutzen dieselbe Initialenquelle", (
   assert.match(profile, /className="profile-avatar-lg" aria-hidden="true">\{accountInitials\(user\)\}/);
   // Und die Quelle selbst liefert nie ein Markenkürzel als Rückfall.
   assert.match(identity, /ACCOUNT_INITIAL_FALLBACK = "\?"/);
+});
+
+test("8b — die Sidebar zeigt keine Kontoidentität mehr und keinen Ersatzblock", () => {
+  // Die frühere Firmenkarte (Avatar + Firmenname + E-Mail) ist ersatzlos
+  // entfernt — kein Aufruf der Identitätsquelle, kein eigener Ableitungscode.
+  assert.ok(!/accountInitials\(user\)/.test(sidebar), "die Sidebar ruft die Initialenquelle noch auf");
+  assert.ok(!/accountDisplayName\(user\)/.test(sidebar), "die Sidebar ruft die Namensquelle noch auf");
+  assert.ok(!/pp-identity/.test(sidebar), "eine Spur der Firmenkarte lebt noch in der Sidebar");
 });
 
 test("9 — der Profilhero trägt das Base-Card-Material statt einer eigenen Fassung", () => {

@@ -423,16 +423,16 @@
   --ce-sidebar-bg-mid: #111a27;
   --ce-sidebar-bg-bottom: #0c1420;
 
-  /* Flächen der Sidebar. Zwei Höhenlagen in EINER Materialsprache (gleiche
-     Rundung, gleiche Bordersprache): die Firmenkarte liegt erhöht (heller
-     Verlauf + Schatten), die Supportkarte vertieft (dunklere Eigenfläche). */
+  /* Flächen der Sidebar. Die frühere Firmenkarte (erhöhte Fläche, heller
+     Verlauf + Schatten) ist entfernt; die Supportkarte bleibt die einzige
+     Karte (vertiefte, dunklere Eigenfläche, kein Schatten). Die zugehörigen
+     Firmenkarten-Tokens --ce-sidebar-card/-card-shadow sind mit ihr entfallen
+     — sie hatten keinen anderen Aufrufer mehr. */
   --ce-sidebar-surface: rgba(255, 255, 255, 0.055);
   --ce-sidebar-surface-hover: rgba(255, 255, 255, 0.075);
   --ce-sidebar-border: rgba(255, 255, 255, 0.11);
   --ce-sidebar-divider: rgba(255, 255, 255, 0.09);
 
-  --ce-sidebar-card: linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
-  --ce-sidebar-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   --ce-sidebar-well: rgba(0, 0, 0, 0.16);
 
   /* Aktiver Eintrag: blau getönter Verlauf statt einer reinen Weiß-Aufhellung

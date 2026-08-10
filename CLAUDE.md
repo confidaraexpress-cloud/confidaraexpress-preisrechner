@@ -236,10 +236,11 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   Akzent: aktive Navigation, Links, Fokus, primäre Aktion. Keine blauen Flächen.
 - Die Sidebar ist mattes Midnight Slate (`--ce-sidebar-bg-*`), niemals schwarz
   und niemals glasig — der Blaukanal muss klar über dem Rotkanal liegen.
-- Firmenkarte und Supportkarte teilen EINE Materialsprache (gleiche Rundung,
-  gleiche Bordersprache) in ZWEI Höhenlagen: die Firmenkarte erhöht
-  (`--ce-sidebar-card` + Schatten), die Supportkarte vertieft
-  (`--ce-sidebar-well`, ohne Schatten).
+- Die frühere Firmenkarte (Avatar + Firmenname + E-Mail direkt unter dem Logo)
+  ist ersatzlos entfernt — kein Platzhalter, kein Ersatzblock, keine neue
+  Hintergrundebene. Die Supportkarte bleibt die einzige Karte der Sidebar
+  (vertiefte Fläche, `--ce-sidebar-well`, ohne Schatten). Die Kontoidentität
+  bleibt über `UserChip` (Seitenkopf) und Profilhero erreichbar.
 - Der Kontrast Sidebar↔Hauptfläche ist die tragende Idee des Layouts und darf
   nicht unter ~12:1 fallen — `appShellChrome.test.mjs` misst das.
 - Der aktive Navigationseintrag ist mehrfach codiert (Fläche + Border +
@@ -679,10 +680,13 @@ Mustern. Business-, API-, Status- und Routinglogik blieben unangetastet.
   (`.pp-cta`) ist entfallen — dasselbe Ziel ist jetzt die eine primäre
   Schnellaktion; zwei Einstiege waren doppelte Navigation.
 - **Eine Initialenquelle.** `utils/accountIdentity.mjs` (`accountInitials` /
-  `accountDisplayName`) speist Sidebar, Benutzerchip UND Profilhero. Die fest
-  verdrahtete Marke „CE" im Profil ist weg: ein Konto „Muster GmbH" trug dort
-  ein „CE" und in der Sidebar ein „M". Bewusst EIN Buchstabe — zwei Initialen
-  aus „Muster GmbH" ergäben „MG", also die Rechtsform als zweite Stelle.
+  `accountDisplayName`) speiste zu Paket-D-Zeiten Sidebar, Benutzerchip UND
+  Profilhero. Die fest verdrahtete Marke „CE" im Profil ist weg: ein Konto
+  „Muster GmbH" trug dort ein „CE" und in der Sidebar ein „M". Bewusst EIN
+  Buchstabe — zwei Initialen aus „Muster GmbH" ergäben „MG", also die
+  Rechtsform als zweite Stelle. Die Sidebar zeigt seit der Entfernung der
+  Firmenkarte keine Initiale mehr; Benutzerchip und Profilhero bleiben die
+  zwei verbliebenen Aufrufer.
 - **Der Passwortbereich ist geschlossen**, bis der Nutzer ihn öffnet; Abbrechen
   stellt den Zustand wieder her, die Erfolgsmeldung bleibt als Quittung stehen.
   Felder, Regeln und der bewusste Verzicht auf `auth: true` (401 = falsches

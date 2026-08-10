@@ -202,8 +202,12 @@
 
 /* ── Marke ──
    Ruhige, leicht hellere Iconfläche + klarere Hierarchie zwischen Wortmarke
-   und Untertitel. Kein neues Logo, keine Animation. */
-.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 6px 20px; }
+   und Untertitel. Kein neues Logo, keine Animation. Der Bodenabstand ist die
+   EINZIGE Distanz zwischen Marke und Navigation (die frühere Firmenkarte
+   darunter ist entfallen, siehe unten) — deshalb 28px statt der früheren 20px:
+   ein einzelner, bewusster Übergang statt eines leeren Rests der alten
+   Kartenlücke. */
+.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 6px 28px; }
 .ce-brandmark {
   width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
   display: grid; place-items: center;
@@ -223,32 +227,11 @@
 .pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
 .pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
 
-/* ── Firmenkarte ──
-   Teilt sich Fläche, Border und Rundung 1:1 mit der Supportkarte (siehe
-   .pp-scard) — eine Materialsprache, kein Schatten, kein Glow. Bewusst NICHT
-   interaktiv: es gibt in dieser Anwendung keinen Firmenwechsel und kein
-   Dropdown, deshalb auch kein Chevron und keine Hover-/Fokusaffordanz, die
-   eine nicht vorhandene Funktion suggerieren würde. */
-.pp-identity {
-  display: flex; align-items: center; gap: 12px;
-  margin: 0 0 16px; padding: 11px; border-radius: 11px;
-  /* Erhöhte Fläche: heller Verlauf + weicher Schatten. Kein Glassmorphism,
-     kein backdrop-filter — nur Farbe und Tiefe. */
-  background: var(--ce-sidebar-card);
-  border: 1px solid var(--ce-sidebar-border);
-  box-shadow: var(--ce-sidebar-card-shadow);
-}
-.pp-identity-avatar {
-  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
-  display: grid; place-items: center;
-  font-family: var(--fs); font-weight: 600; font-size: 12px;
-  color: var(--ce-sidebar-text-strong);
-  background: var(--accent-blue);
-  box-shadow: none;
-}
-.pp-identity-text { min-width: 0; }
-.pp-identity-name { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ce-sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-identity-email { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Die frühere Firmenkarte (Avatar + Firmenname + E-Mail, direkt unter der
+   Marke) samt ihrer Tokens (--ce-sidebar-card/-card-shadow) ist ersatzlos
+   entfernt — kein Platzhalter, kein Ersatzblock. Die Supportkarte weiter
+   unten bleibt die einzige Karte in der Sidebar und trägt ihr Material
+   deshalb jetzt vollständig eigenständig (siehe „Supportkarte" unten). */
 
 /* ── Navigation ── */
 /* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
@@ -307,17 +290,15 @@
 .nitem.on:hover { background: var(--ce-sidebar-active-bg); }
 
 /* ── Supportkarte ──
-   Gleiche Materialsprache wie die Firmenkarte (gleiche Rundung, gleiche
-   Bordersprache), aber die andere Höhenlage: die Firmenkarte liegt erhöht
-   (heller Verlauf + Schatten), die Supportkarte vertieft (dunklere
-   Eigenfläche). Kein Glassmorphism, kein backdrop-filter. Anders als die
-   Firmenkarte IST sie interaktiv und trägt Hover + Fokus.
+   Die einzige Karte in der Sidebar (die frühere Firmenkarte ist entfallen):
+   vertiefte Eigenfläche (dunkler als der Sidebargrund), kein Schatten, kein
+   Glassmorphism, kein backdrop-filter. Sie IST interaktiv und trägt Hover
+   und Fokus.
 
    Auszeichnung: <button>, nicht <a>. Die Karte öffnet den Supportdialog und
    navigiert nirgendwohin — ein Link wäre hier fachlich falsch. Die
    Button-Defaults des Browsers (Eigenfläche, Rahmen, zentrierter Text,
-   Systemschrift) werden deshalb explizit zurückgesetzt; Geometrie, Abstände
-   und Materialsprache bleiben exakt wie zuvor. */
+   Systemschrift) werden deshalb explizit zurückgesetzt. */
 .pp-scard {
   display: block; width: 100%; text-align: left; text-decoration: none;
   font: inherit; color: inherit; cursor: pointer;
@@ -332,7 +313,6 @@
 }
 .pp-scard:hover { border-color: var(--ce-sidebar-active-border); }
 .pp-scard-top { display: flex; align-items: center; gap: 11px; }
-/* Iconfläche exakt wie der Firmen-Avatar dimensioniert (34 px / Radius 9). */
 .scard-ic {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
   display: grid; place-items: center; color: var(--ce-sidebar-active-icon);
@@ -514,8 +494,7 @@
    Struktur- oder Reihenfolgeänderung. */
 @media (max-height: 940px) {
   .pp-side-in { padding: 16px 14px 12px; }
-  .pp-logo { padding: 0 6px 16px; }
-  .pp-identity { margin-bottom: 12px; padding: 9px 10px; }
+  .pp-logo { padding: 0 6px 18px; }
   .nsec { padding: 13px 12px 6px; }
   .nitem { min-height: 37px; padding-block: 7px; }
   .pp-nav-utility-divider { margin: 9px 12px 4px; }

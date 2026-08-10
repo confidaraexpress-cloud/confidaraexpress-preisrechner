@@ -4,6 +4,7 @@ import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
+import { isHttpUrl } from "../../utils/externalLink.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -133,7 +134,6 @@ const CARRIER_LINK_DEFS = [
   { key: "tracking",    label: "Sendungsverfolgung beim Carrier" },
   { key: "transitTime", label: "Laufzeitinformationen" },
 ];
-const isHttpUrl = (v) => typeof v === "string" && /^https?:\/\/\S/i.test(v);
 
 function buildCarrierLinks(carrierLinks) {
   if (!carrierLinks || typeof carrierLinks !== "object") return [];

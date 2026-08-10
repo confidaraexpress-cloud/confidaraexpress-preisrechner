@@ -324,8 +324,13 @@
    container-type/-name bleiben funktional: sie treiben den Kopf-Umbruch von
    .ins-card-head auf schmalen Modulbreiten. */
 .booking-insurance-box { container-type: inline-size; container-name: insurance; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); padding: 20px; margin-bottom: 16px; background: var(--ce-color-surface-muted); box-shadow: var(--ce-elevation-0); }
-.ins-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.ins-head-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--navy); }
+/* Kopfzeile: Titel und „steuerfrei"-Badge passen im schmalen Modul (ab ~256 px
+   Inhaltsbreite, also Viewport 360) nicht nebeneinander. Statt das Badge
+   herausschieben zu lassen (gemessen: 27 px Überhang, auch vor dieser
+   Änderung), darf die Zeile umbrechen — das Badge bleibt dabei eine Einheit
+   (flex-shrink: 0), und der Titel bekommt einen Boden zum Schrumpfen. */
+.ins-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ins-head-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 600; color: var(--navy); }
 .ins-head-title svg { color: var(--blue2); }
 .ins-badge-taxfree { flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.22); border-radius: 999px; padding: 3px 9px; }
 .ins-head-sub { font-size: 12px; color: var(--ce-color-text-muted); margin: 5px 0 14px; line-height: 1.5; }
@@ -372,10 +377,33 @@
 .ins-bullet-txt { font-size: 12px; color: var(--ce-color-text-primary); line-height: 1.4; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .ins-nowrap { white-space: nowrap; }
 
+/* Ein Satz je Karte, direkt unter Name/Badge: worin sich diese Option
+   unterscheidet. Bewusst ruhiger als die Bullets — er ordnet ein, er wirbt nicht. */
+.ins-card-desc { font-size: 12px; line-height: 1.45; color: var(--ce-color-text-secondary); overflow-wrap: break-word; word-break: normal; hyphens: none; }
+
 .ins-card-cond { margin-top: auto; padding-top: 2px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
-.ins-card-cond-link { font-size: 12px; font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; border-bottom: 1px solid var(--ce-color-brand-border); line-height: 1.3; }
-.ins-card-cond-link:hover { border-bottom-color: var(--blue2); }
-.ins-card-cond-link--static { color: var(--ce-color-text-muted); border-bottom-style: dotted; border-bottom-color: var(--gray300, #cbd5e1); cursor: default; }
+/* Die Kartenfußzeile trägt genau EINE Aktion. Beide Varianten sehen gleich aus
+   und sind beide echt bedienbar — es gibt kein Element mehr, das wie ein Link
+   aussieht und nichts tut (das war der frühere `--static`-Zustand).
+   `.ins-card-details-btn` ist ein <button> (öffnet den CE-Dialog),
+   `.ins-card-terms-link` ein <a> auf die Bedingungen DIESES Tarifs. */
+.ins-card-details-btn,
+.ins-card-terms-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 0; padding: 3px 0; background: none; border: none;
+  border-bottom: 1px solid var(--ce-color-brand-border);
+  font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.3;
+  color: var(--ce-color-brand-ink); text-decoration: none; text-align: left;
+  cursor: pointer;
+}
+.ins-card-details-btn:hover,
+.ins-card-terms-link:hover { border-bottom-color: var(--blue2); }
+.ins-card-details-btn:focus-visible,
+.ins-card-terms-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); border-radius: var(--ce-radius-sm); }
+/* Der Bedingungstext ist lang; nur er darf umbrechen, das Icon bleibt bei der
+   letzten Zeile. */
+.ins-card-terms-link > span { overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.ins-card-terms-link svg { flex-shrink: 0; }
 .ins-card-provider { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
 
 /* Zustände: ALLE Karten neutral im Grundzustand (gleiche Wertigkeit); nur die
@@ -635,10 +663,11 @@
   .ins-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ins-card:nth-child(3) { grid-column: 1 / -1; }
 }
-/* KEIN 3-Spalten-Layout: Drei deutsche Namen („Kein Versicherungsschutz" u. a.)
-   plus „Preis nach Warenwert" passen erst jenseits ~980px Modulbreite dreispaltig,
-   die real nie erreicht wird — dreispaltig würde die Namen brechen. Zwei Karten
-   (mit „Kein Schutz" über die volle Breite) sind die maximal saubere Anordnung. */
+/* KEIN 3-Spalten-Layout: Drei deutsche Namen („Keine zusätzliche
+   Transportversicherung" u. a.) plus „Preis nach Warenwert" passen erst jenseits
+   ~980px Modulbreite dreispaltig, die real nie erreicht wird — dreispaltig würde
+   die Namen brechen. Zwei Karten (mit der Option ohne Zusatzversicherung über die
+   volle Breite) sind die maximal saubere Anordnung. */
 
 /* Sehr schmales Modul: Kopf kontrolliert stapeln (Name-Zeile über Preis-Zeile) —
    besser als ein zerstückelter Name. */
@@ -661,6 +690,54 @@
 .ins-status-error { display: inline-flex; align-items: center; gap: 6px; color: var(--danger); }
 .ins-note { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.5; margin: 0; }
 .booking-ins-unavailable { font-size: 12px; color: var(--ce-color-text-muted); margin-bottom: 16px; }
+
+/* ── Versicherungsdetails-Dialog ────────────────────────────────────────────
+   Läuft vollständig auf dem globalen Dialogsystem (.ce-dialog* aus patterns.css):
+   ein Overlayton, eine der vier zulässigen Breiten (md), unter 480 px Vollbild,
+   Fokusfalle/Escape/Fokusrückgabe aus useDialog. Hier steht nur, was den INHALT
+   dieses Dialogs betrifft — keine zweite Dialogmechanik. */
+.insdlg-icon { color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
+/* Der Titel nimmt die freie Breite, das Schließkreuz sitzt rechts außen. */
+.insdlg .ce-dialog-title { flex: 1 1 auto; min-width: 0; }
+.insdlg-close {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; margin: -4px -4px 0 0;
+  background: none; border: none; border-radius: var(--ce-radius-sm);
+  color: var(--ce-color-text-muted); cursor: pointer;
+}
+.insdlg-close:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.insdlg-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+
+.insdlg-sec { margin-top: var(--ce-space-4); }
+.insdlg-sec-title {
+  margin: 0 0 var(--ce-space-2);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+}
+.insdlg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.insdlg-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; color: var(--ce-color-text-secondary); }
+.insdlg-item-ico { flex-shrink: 0; margin-top: 2px; display: inline-flex; color: var(--success); }
+/* Premium ist ein Service-Aufsatz auf DERSELBEN Versicherung — deshalb steht der
+   Abschnitt sichtbar auf der Markenfläche, statt eine zweite Versicherung zu
+   suggerieren. */
+.insdlg-sec--premium {
+  padding: var(--ce-space-3);
+  background: var(--ce-color-brand-soft);
+  border: 1px solid var(--ce-color-brand-border-soft);
+  border-radius: var(--ce-radius-md);
+}
+.insdlg-notice {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin: var(--ce-space-4) 0 0; padding: 10px 12px;
+  font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary);
+  background: var(--ce-color-status-warning-surface);
+  border: 1px solid var(--ce-color-status-warning-border);
+  border-radius: var(--ce-radius-sm);
+}
+.insdlg-notice svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-status-warning-fg); }
 
 /* Reprice-Preisbox: dezente Netto/MwSt-Zeile + steuerfrei-Chip */
 .booking-tax-chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--success); background: var(--success-bg); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }

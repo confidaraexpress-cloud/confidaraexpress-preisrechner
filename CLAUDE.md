@@ -833,6 +833,8 @@ dokumentiert und durch eigene Tests gedeckt.
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.
 - **Preise/Tarife nur anzeigen**, niemals als Quelle der Wahrheit behandeln oder clientseitig berechnen/überschreiben.
 - **Keine geratenen Jumingo-Daten:** Felder, Tarife, `serviceType`, `pickup`/`dropoff`, Access-Point-/Paketshop-Daten nicht erfinden — nur belegte Werte verwenden.
+- **Carrier-Bedingungen immer aus dem konkreten Tarif** (`tariff.carrierLinks.agb`) — nie über den Carriernamen zuordnen und nie die CE-AGB als Ersatz verlinken. Fehlt der Link, erscheint nur der neutrale Hinweistext, kein Ersatzlink.
+- **White Label:** Jumingo ist interner Upstream-Anbieter und darf in kundenseitiger UI, Copy und Links nicht erscheinen — auch nicht als Bedingungsgeber, Kosten-, Schaden- oder Supportträger. Technische Feldnamen, API-Pfade, Mocks und interne Kommentare bleiben davon unberührt. Der konkret gewählte Versanddienstleister (DPD, UPS, DHL Express, GLS …) **darf und soll** sichtbar sein.
 
 ### Dropoff/Paketshop-Guardrail (zwingend)
 

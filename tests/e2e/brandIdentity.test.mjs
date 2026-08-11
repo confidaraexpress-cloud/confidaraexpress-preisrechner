@@ -8,7 +8,10 @@
 //   2. Ob sie auf ihrer TATSÄCHLICHEN Fläche lesbar ist. Die Tonlage wird im
 //      JSX gewählt, die Hintergrundfarbe entsteht erst aus der aufgelösten
 //      Kaskade — gemessen wird gegen die echten Verlaufsstopps.
-//   3. Ob sie irgendwo abgeschnitten wird oder aus ihrer Leiste ragt.
+//   3. Ob sie irgendwo abgeschnitten wird, aus ihrer Leiste ragt oder eine
+//      schmale horizontale Fläche (öffentliche Leiste, 360–1440px) sprengt.
+//      Ein position:fixed-Element dehnt document.scrollWidth nicht
+//      zuverlässig aus — geprüft wird deshalb die Zeile selbst.
 //   4. Ob nirgends mehr eine getippte Wortmarke sichtbar ist.
 //   5. Ob das Formular der Anmeldung unverändert bedienbar geblieben ist.
 //   6. Ob das Favicon ausgeliefert wird und die Markengeometrie zeigt.
@@ -22,7 +25,7 @@ import path from "node:path";
 const PORT = 5237, BASE = `http://127.0.0.1:${PORT}`;
 
 // Seitenverhältnisse der Assets (viewBox des Masters, unverändert).
-const SEITE = { signet: 506 / 424, wordmark: 1176 / 613 };
+const SEITE = { signet: 506 / 424, wordmark: 1176 / 135, lockup: 1176 / 613 };
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -93,10 +96,11 @@ async function marke(page, wurzel) {
     const src = decodeURIComponent(bild.getAttribute("src") || "");
     const inhalt = src.startsWith("data:") ? src : "";
     return {
-      // Variante an der viewBox statt am Dateinamen: die Signets liegen unter
-      // der Inline-Grenze von Vite und kommen als Data-URI ohne Namen. Die
+      // Variante an der viewBox statt am Dateinamen: das Signet liegt unter
+      // der Inline-Grenze von Vite und kommt als Data-URI ohne Namen. Die
       // viewBox belegt zugleich, dass der Ausschnitt unverändert ist.
-      variante: /viewBox=['"]39 247 1176 613['"]/.test(inhalt) || /wordmark/.test(src) ? "wordmark"
+      variante: /viewBox=['"]39 247 1176 613['"]/.test(inhalt) || /lockup/.test(src) ? "lockup"
+              : /viewBox=['"]39 725 1176 135['"]/.test(inhalt) || /wordmark/.test(src) ? "wordmark"
               : /viewBox=['"]350 247 506 424['"]/.test(inhalt) || /signet/.test(src) ? "signet"
               : "unbekannt",
       ton: /#F7F8FC/i.test(inhalt) || /reverse/.test(src) ? "reverse"
@@ -150,7 +154,7 @@ test("1 — die Kunden-Sidebar trägt die Originalkomposition, hell auf dunkel",
 
   const m = await marke(page, ".pp-logo .ce-brand");
   assert.ok(m && m.sichtbar, "keine sichtbare Marke in der Sidebar");
-  pruefeProportion(m, "wordmark", "Sidebar");
+  pruefeProportion(m, "lockup", "Sidebar");
   assert.equal(m.ton, "reverse", "die Sidebar zeigt nicht die Reverse-Fassung");
   assert.equal(m.alt, "ConfidaraExpress", "die Marke trägt ihren Namen nicht");
   assert.ok(m.kontrastHell >= 4.5, `Sidebar: Marke nur ${m.kontrastHell.toFixed(2)}:1`);
@@ -176,7 +180,7 @@ test("2 — die Admin-Sidebar trägt dieselbe Marke, lesbar auf heller Fläche",
 
   const m = await marke(page, ".adm-brand .ce-brand");
   assert.ok(m && m.sichtbar, "keine sichtbare Marke in der Adminnavigation");
-  pruefeProportion(m, "wordmark", "Admin-Sidebar");
+  pruefeProportion(m, "lockup", "Admin-Sidebar");
   assert.equal(m.ton, "standard", "helle Fläche braucht die Standardfassung");
   // Beide Markenfarben müssen auf dieser Fläche tragen.
   assert.ok(m.kontrastNavy >= 4.5, `Admin: Navy nur ${m.kontrastNavy.toFixed(2)}:1`);
@@ -197,7 +201,7 @@ test("3 — die Anmeldung trägt genau einen Markenanker, das Formular bleibt", 
     assert.equal(await page.locator(".auth-brand").count(), 1, `${wo}: genau ein Markenanker`);
     const m = await marke(page, ".auth-brand");
     assert.ok(m && m.sichtbar, `${wo}: Marke nicht gerendert`);
-    pruefeProportion(m, "wordmark", `Anmeldung ${wo}`);
+    pruefeProportion(m, "lockup", `Anmeldung ${wo}`);
     assert.equal(m.ton, "reverse", `${wo}: dunkler Grund braucht die Reverse-Fassung`);
     assert.ok(m.kontrastHell >= 4.5, `${wo}: Marke nur ${m.kontrastHell.toFixed(2)}:1`);
 
@@ -257,41 +261,83 @@ test("4 — die flache mobile Kopfzeile trägt das Signet, unverzerrt und im Rah
 
 /* ══════════ 5 — öffentliche Navigation ═════════════════════════════════ */
 
-test("5 — Leiste und Drawer wählen Variante und Tonlage nach ihrer Fläche", async () => {
-  // Die 64px-Leiste ist hell und flach → Signet, Standardfassung.
-  const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await desktop.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
-  const leiste = await marke(desktop, ".navbar-logo .ce-brand");
-  assert.ok(leiste?.sichtbar, "keine Marke in der öffentlichen Leiste");
-  pruefeProportion(leiste, "signet", "öffentliche Leiste");
-  assert.equal(leiste.ton, "standard", "die helle Leiste braucht die Standardfassung");
-  assert.ok(leiste.kontrastNavy >= 4.5, `Leiste: Navy nur ${leiste.kontrastNavy.toFixed(2)}:1`);
-  // Die Marke ist ein echtes Bedienelement und per Tastatur erreichbar.
-  assert.equal(await desktop.locator("button.navbar-logo").count(), 1,
-    "die Marke der Leiste ist kein echter Button");
-  await desktop.close();
+// Zuverlässiger als document.documentElement.scrollWidth: die Leiste ist
+// position:fixed und trägt ihren Inhalt in .navbar-inner — EIN fixiertes
+// Element muss den Viewport nicht zuverlässig ausdehnen, selbst wenn sein
+// eigener Inhalt überläuft. Geprüft wird deshalb, ob die Zeile SELBST breiter
+// ist als ihre sichtbare Fläche, UND ob der letzte Button noch vollständig im
+// Fenster steht.
+async function keinLeistenUeberlauf(page) {
+  return page.evaluate(() => {
+    const inner = document.querySelector(".navbar-inner");
+    const btn = document.querySelector(".navbar-actions button");
+    return {
+      innerOverflow: inner.scrollWidth > inner.clientWidth + 1,
+      actionAbgeschnitten: btn ? btn.getBoundingClientRect().right > window.innerWidth + 0.5 : false,
+    };
+  });
+}
 
-  // Der Drawer ist dunkel und hat Höhe → volle Komposition, Reverse.
+test("5 — die öffentliche Leiste trägt die reine Wortmarke, ohne Überlauf auf jeder Breite", async () => {
+  // Gemessen (nicht geschätzt): bei 360 px ist bei 174 px Breite Schluss,
+  // 192 px sprengt bereits die Zeile; ab 500 px bleibt bis mindestens 279 px
+  // Luft. 174 px trägt deshalb einheitlich von 360 bis 1440 px.
+  for (const breite of [360, 390, 430, 768, 1024, 1440]) {
+    const page = await browser.newPage({ viewport: { width: breite, height: 700 } });
+    await page.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
+    const wo = `öffentliche Leiste ${breite}px`;
+
+    const leiste = await marke(page, ".navbar-logo .ce-brand");
+    assert.ok(leiste?.sichtbar, `${wo}: keine Marke sichtbar`);
+    pruefeProportion(leiste, "wordmark", wo);
+    assert.equal(leiste.ton, "standard", `${wo}: die helle Leiste braucht die Standardfassung`);
+    assert.ok(leiste.kontrastNavy >= 4.5, `${wo}: Navy nur ${leiste.kontrastNavy.toFixed(2)}:1`);
+    assert.ok(leiste.kontrastBlau >= 4.5, `${wo}: Blau nur ${leiste.kontrastBlau.toFixed(2)}:1`);
+
+    const { innerOverflow, actionAbgeschnitten } = await keinLeistenUeberlauf(page);
+    assert.ok(!innerOverflow, `${wo}: die Zeile sprengt ihre Breite`);
+    assert.ok(!actionAbgeschnitten, `${wo}: der Aktionsbutton wird abgeschnitten`);
+
+    await page.close();
+  }
+});
+
+test("6 — die Leiste bleibt ein echtes, per Tastatur erreichbares Bedienelement", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await page.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
+  assert.equal(await page.locator("button.navbar-logo").count(), 1,
+    "die Marke der Leiste ist kein echter Button");
+  await page.close();
+});
+
+test("7 — der Drawer trägt die volle Komposition, Reverse, ohne Abschneiden", async () => {
+  // Der Drawer ist dunkel und hat Höhe (anders als die flache Leiste) →
+  // volle Komposition, Reverse.
   const mobil = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await mobil.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
   await mobil.locator(".navbar .hamburger-btn").click();
   await mobil.waitForTimeout(600);
-  // Hinweis: der Drawerkopf liegt bei origin/main wie hier unter der fixierten
-  // Navigationsleiste (z-index 999 gegen 1000). Das ist ein bestehender
-  // Stapelfehler der öffentlichen Navigation und NICHT Teil dieses Pakets —
-  // geprüft werden deshalb Variante, Tonlage und Kontrast, nicht die optische
-  // Sichtbarkeit.
   const drawer = await marke(mobil, ".mobile-drawer-header .ce-brand");
   assert.ok(drawer?.sichtbar, "keine Marke im Drawer");
-  pruefeProportion(drawer, "wordmark", "Drawer");
+  pruefeProportion(drawer, "lockup", "Drawer");
   assert.equal(drawer.ton, "reverse", "der dunkle Drawer braucht die Reverse-Fassung");
   assert.ok(drawer.kontrastHell >= 4.5, `Drawer: Marke nur ${drawer.kontrastHell.toFixed(2)}:1`);
+  // Der Drawer liegt über der fixierten Leiste (z-index 1001 gegen 1000) —
+  // ohne das wäre sein Kopf mit der gestapelten Komposition sichtbar
+  // abgeschnitten. Geprüft wird, dass die Markenfläche tatsächlich die
+  // oberste Ebene an dieser Stelle ist.
+  const oben = await mobil.evaluate(() => {
+    const r = document.querySelector(".mobile-drawer-header .ce-brandmark-img").getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width / 2, r.top + 4);
+    return el ? (el.className || el.tagName) + "" : null;
+  });
+  assert.match(oben, /ce-brandmark-img/, "der Drawerkopf ist von der Leiste verdeckt");
   await mobil.close();
 });
 
 /* ══════════ 6 — Browser-Assets ═════════════════════════════════════════ */
 
-test("6 — das Favicon wird ausgeliefert und zeigt die Markengeometrie", async () => {
+test("8 — das Favicon wird ausgeliefert und zeigt die Markengeometrie", async () => {
   const page = await browser.newPage();
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
 

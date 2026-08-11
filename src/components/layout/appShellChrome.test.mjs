@@ -721,10 +721,10 @@ test("32 — die Sidebar nutzt die Reverse-Marke als statisches Asset", () => {
   // hier steht, was die SIDEBAR garantiert.
   assert.match(sidebarJsx, /<BrandLogo[\s\S]*?tone="reverse"/,
     "die Sidebar fordert nicht die Reverse-Variante an");
-  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?variant="wordmark"/,
+  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?variant="lockup"/,
     "die Sidebar zeigt nicht die volle Originalkomposition");
   // Statische Vite-Importe, gerendert als <img> — keine inline duplizierte Geometrie.
-  for (const datei of ["signet-standard", "signet-reverse", "wordmark-standard", "wordmark-reverse"]) {
+  for (const datei of ["signet-standard", "signet-reverse", "wordmark-standard", "wordmark-reverse", "lockup-standard", "lockup-reverse"]) {
     assert.ok(brandLogoJsx.includes(`assets/brand/${datei}.svg`),
       `statischer Import von ${datei}.svg fehlt`);
   }

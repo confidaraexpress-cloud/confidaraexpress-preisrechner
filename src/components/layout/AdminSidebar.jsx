@@ -41,7 +41,7 @@ export function AdminSidebar({ open, onClose }) {
               unsichtbar. „Adminbereich" ist separater UI-Text und nicht
               Bestandteil der Marke; deshalb gibt der Aufrufer ihn mit. */}
           <BrandLogo
-            variant="wordmark"
+            variant="lockup"
             tone="standard"
             sub={<span className="adm-brand-tag">Adminbereich</span>}
           />

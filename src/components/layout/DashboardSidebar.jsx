@@ -81,7 +81,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               behält ihre eigene Klasse. Kein Claim (siehe BrandLogo.jsx). */}
           <div className="pp-logo">
             <BrandLogo
-              variant="wordmark"
+              variant="lockup"
               tone="reverse"
               sub={<span className="pp-brand-sub">B2B Versandplattform.</span>}
             />

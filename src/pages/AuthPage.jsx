@@ -263,7 +263,7 @@ export default function AuthPage() {
                   Reverse-Variante, weil der Grund nahezu schwarz ist; kein
                   Claim, kein zweites Signet, kein Wasserzeichen. Das Formular
                   darunter bleibt unverändert. */}
-              <BrandLogo variant="wordmark" tone="reverse" className="auth-brand auth-anim" />
+              <BrandLogo variant="lockup" tone="reverse" className="auth-brand auth-anim" />
               <div className="auth-badge auth-anim">
                 <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
                 <span>Ihr verlässlicher Partner</span>

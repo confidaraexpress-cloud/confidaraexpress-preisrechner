@@ -847,19 +847,21 @@ geometrische Source of Truth (viewBox 1254², zwei Compound-Paths, 57 Subpaths).
 Sie wird von **keiner Komponente importiert** — sie ist reine Quelle und landet
 nicht im Bundle.
 
-Aus ihr sind vier Produktassets abgeleitet, durch **Subpath-Filterung**: die
+Aus ihr sind sechs Produktassets abgeleitet, durch **Subpath-Filterung**: die
 Pfadstrings sind wörtlich übernommen, angepasst wurden ausschließlich der
 Ausschnitt (`viewBox`) und die Produktfarben.
 
 | Band im Master | y-Bereich | Subpaths | Verwendung |
 |---|---|---|---|
 | Signet (C/E) | 247–671 | 5 | `signet-standard/-reverse.svg` |
-| Wortmarke | 725–860 | 23 | zusätzlich in `wordmark-*.svg` |
+| Wortmarke (nur Schriftzug) | 725–860 | 23 | `wordmark-standard/-reverse.svg` |
+| Signet + Wortmarke (gestapelt) | 247–860 | 5 + 23 | `lockup-standard/-reverse.svg` |
 | Claim | 881–907 | 29 | **in keinem Produktasset** |
 
 ```jsx
-<BrandLogo variant="wordmark" tone="reverse" sub={…} />
+<BrandLogo variant="lockup"  tone="reverse" sub={…} />
 <BrandLogo variant="signet"  tone="standard" chip alt="" />
+<BrandLogo variant="wordmark" tone="standard" />
 ```
 
 - **Die Wortmarke ist Vektorgeometrie, kein Text.** Der frühere Aufbau
@@ -867,16 +869,26 @@ Ausschnitt (`viewBox`) und die Produktfarben.
   Nachbildung und traf die Marke nicht: der Master ist in einer anderen Schrift
   gesetzt. `.ce-brand-word`, `.ce-brand-text`, `.logo-text` und `.logo-mark`
   sind samt Regeln verschwunden.
-- **Die Originalkomposition ist verbindlich.** `wordmark-*.svg` enthält Signet
-  UND Schriftzug in den Masterkoordinaten — also **gestapelt**, mit dem
-  dortigen Abstand und Größenverhältnis. Signet und Wortmarke werden **nicht**
-  zu einer eigenen horizontalen Zeile neu zusammengesetzt.
+- **Drei Varianten, klar getrennte Aufgaben.** `signet` (nur C/E, 1,19:1) für
+  kleine/quadratische Flächen; `wordmark` (nur Schriftzug, 8,71:1) für schmale
+  horizontale Leisten; `lockup` (Originalkomposition, Signet über Schriftzug,
+  1,92:1) für Flächen mit Höhe. `lockup` enthält Signet UND Schriftzug in den
+  Masterkoordinaten — also **gestapelt**, mit dem dortigen Abstand und
+  Größenverhältnis. Signet und Wortmarke werden **nicht** zu einer eigenen
+  horizontalen Zeile neu zusammengesetzt — dafür gibt es `wordmark` als eigenes
+  Asset, ebenfalls direkt aus dem Master gefiltert, keine Neukomposition.
 - **Die Variante folgt der Flächenhöhe, nicht dem Bereich.** Die gestapelte
-  Komposition (1176 × 613, 1,92:1) braucht Höhe. In der 64-px-Leiste der
-  öffentlichen Navigation liefe der Schriftzug auf **9,7 px** hinaus, in der
-  44-px-Topbar auf **7,0 px** — beides unter der 11-px-Untergrenze der
-  Typografieskala. Dort steht deshalb das **Signet**. Sidebars, Auth und der
-  Mobile-Drawer tragen die volle Komposition (17–20 px Schrifthöhe).
+  Komposition (1176 × 613) braucht Höhe: in der 64-px-Leiste der öffentlichen
+  Navigation liefe sie auf **9,7 px** Schrifthöhe hinaus, in der 44-px-Topbar
+  auf **7,0 px** — beides unter der 11-px-Untergrenze der Typografieskala.
+  Sidebars, Auth und der Mobile-Drawer haben Höhe und tragen deshalb `lockup`
+  (17–20 px Schrifthöhe). Die 64-px-Leiste der öffentlichen Navigation trägt
+  stattdessen `wordmark` — **gemessen, nicht geschätzt**: bei 360 px ist bei
+  174 px Breite (≙ 20 px Höhe) Schluss, 192 px sprengt bereits die Zeile; ab
+  500 px bleibt bis mindestens 279 px Luft. 174 px trägt einheitlich von 360
+  bis 1440 px — kein Breakpoint-Umschalten nötig. Die 44-px-Topbar der
+  eingeloggten App (zu flach auch für die reine Wortmarke ohne weitere
+  Verkleinerung) bleibt beim Signet.
 - **Verbindliche Produktfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
   `--ce-color-text-primary` / `--ce-color-brand`. Die Masterfarben `#011B55` /
   `#004AFC` bleiben **im Master** und dürfen in keinem Produktasset auftauchen.
@@ -901,32 +913,30 @@ Ausschnitt (`viewBox`) und die Produktfarben.
   BREITE gesetzt — Signet und Wortmarke haben verschiedene Seitenverhältnisse
   (1,19:1 gegen 1,92:1). Ein E2E-Test misst das gerenderte Kastenverhältnis
   gegen die viewBox; Verzerrung fällt damit sofort auf.
-- **Bundle:** die Wortmarken (11 KB) liegen über Vites Inline-Grenze und werden
-  als eigene, cachebare Datei ausgeliefert; die Signets (< 4 KB) landen als
-  Data-URI im JS. Deshalb stehen ausführliche Begründungen in `primitives.css`
-  (wird beim Build entfernt), nicht in den SVGs.
-- **Der Drawer der öffentlichen Navigation liegt jetzt über der Leiste**
+- **Bundle:** `lockup-*` (11 KB) und `wordmark-*` (8 KB) liegen über Vites
+  Inline-Grenze und werden als eigene, cachebare Datei ausgeliefert; die
+  Signets (< 4 KB) landen als Data-URI im JS. Deshalb stehen ausführliche
+  Begründungen in `primitives.css`/`layout.css` (wird beim Build entfernt),
+  nicht in den SVGs.
+- **Der Drawer der öffentlichen Navigation liegt über der Leiste**
   (z-index 1001 statt 999). Sein Kopf war schon auf `origin/main` verdeckt —
   mit der gestapelten Marke zerschnitt die fixierte Leiste sie sichtbar.
-  Overlay (998) und Leiste (1000) sind unverändert.
+  Overlay (998) und Leiste (1000) sind unverändert. Ein E2E-Test hält fest,
+  dass die Markenfläche dort tatsächlich die oberste Ebene ist.
 - Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 18 Tests — u. a.:
-  jeder Pfad steht wörtlich im Master · Standard und Reverse teilen exakt
-  dieselbe Geometrie · die Wortmarke enthält das Signet in Originalposition ·
-  keine Masterfarbe im Produktasset · kein HTML-Nachbau · kein Claim · Favicon
-  == Signet) und `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 6 Tests
-  — Proportionen gegen die viewBox, Kontraste gegen die echten Verlaufsstopps,
-  kein Abschneiden, keine getippte Wortmarke mehr sichtbar).
+  jeder Pfad steht wörtlich im Master · jede Variante trägt in Standard und
+  Reverse exakt dieselbe Geometrie · `lockup` enthält Signet und Wortmarke in
+  Originalposition · `wordmark` enthält weder Signet noch Claim · keine
+  Masterfarbe im Produktasset · kein HTML-Nachbau · Favicon == Signet) und
+  `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 8 Tests — Proportionen
+  gegen die viewBox, Kontraste gegen die echten Verlaufsstopps, kein
+  Abschneiden, die öffentliche Leiste ohne Überlauf auf 360–1440 px, der
+  Drawer nicht verdeckt).
 
 Bewusst nicht Teil dieses Pakets: **E-Mails** (Paket 2) und **PDF-Dokumente**
 (Paket 3) sind unverändert; Carrierlabel und Commercial Invoice bekommen
 dauerhaft kein CE-Branding. Apple-Touch-Icon, Manifest und OG-Bild gab es
 vorher nicht und wurden nicht neu eingeführt.
-
-Offener Punkt: die öffentliche Leiste zeigt nur das Signet. Ein reines
-Wortmarken-Asset (Schriftzug ohne Signet, Band 725–860) wäre dafür die
-naheliegende Ergänzung — es ließe sich mit derselben Filterung ableiten und
-bliebe Originalgeometrie. Bewusst nicht in diesem Paket erzeugt: die Vorgabe
-nannte genau vier Assets.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

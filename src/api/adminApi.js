@@ -81,6 +81,31 @@ export function listAdminShipments(params = {}) {
   return apiFetch(`/admin/shipments${buildQuery(query, SHIPMENT_PARAMS)}`, { auth: true });
 }
 
+// DELETE /admin/shipments/:id/draft — einen einzelnen Sendungsentwurf löschen.
+// Kein Body: Endpunkt und :id identifizieren das Ziel eindeutig. Das Backend ist die
+// verbindliche Sicherheitsinstanz — es prüft im Moment des Löschens erneut, ob die Zeile noch
+// ein echter Entwurf ist (Status, Ordernummer, Label, Tracking, Rechnung, Stornoanfrage) und
+// antwortet sonst mit 409, NICHT mit einem stillen Erfolg. 404 = unbekannt. Die Aktion wird
+// serverseitig auditiert (admin.shipment.draft_delete). Rohe Response zurück.
+export function deleteAdminShipmentDraft(id) {
+  return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/draft`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+// DELETE /admin/shipments/drafts — ALLE Sendungsentwürfe systemweit löschen.
+// Bewusst OHNE Parameter und ohne Body: die zu löschende Menge bestimmt ausschließlich der
+// Server in einer Transaktion. Es werden weder IDs noch die aktuellen Listenfilter übermittelt —
+// „Alle Entwürfe löschen" ist systemweit gemeint und darf nicht davon abhängen, was der Admin
+// gerade filtert. Antwort: { deletedCount }. Auditiert (admin.shipment.draft_bulk_delete).
+export function deleteAllAdminShipmentDrafts() {
+  return apiFetch(`/admin/shipments/drafts`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
 // GET /admin/shipments/:id — read-only Detail. Der Detailabruf wird backendseitig
 // auditiert (admin.shipment.view). Keine Query-Parameter, kein persistenter Cache.
 // Rohe Response zurück; der Aufrufer liest den Body defensiv und rendert nie das

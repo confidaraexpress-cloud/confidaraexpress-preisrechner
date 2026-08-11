@@ -3,7 +3,12 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
-import { listAdminShipments } from "../../api/adminApi";
+import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
+import {
+  listAdminShipments,
+  deleteAdminShipmentDraft,
+  deleteAllAdminShipmentDrafts,
+} from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { shipmentStatusMeta } from "../../utils/adminShipments";
@@ -25,6 +30,13 @@ import {
   shippingModeLabel,
   toShipmentApiFilters,
   validateShipmentFilters,
+  canDeleteShipmentDraft,
+  selectDeletableDraftTotal,
+  draftDeleteError,
+  draftBulkDeleteError,
+  draftBulkDeleteMessage,
+  draftBulkConfirmLabel,
+  draftBulkConfirmText,
 } from "../../utils/adminShipmentView.mjs";
 
 const PAGE_SIZE = 25;
@@ -155,6 +167,16 @@ export default function AdminShipmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
+  // ── Entwurfsaufräumung ────────────────────────────────────────────────────
+  // draftTotal: systemweite Anzahl löschbarer Entwürfe (additiv aus der Listenantwort,
+  // UNABHÄNGIG von den gesetzten Filtern) — speist Sichtbarkeit und Wortlaut der
+  // Sammelaktion. null = unbekannt; dann nennt der Dialog bewusst keine Zahl.
+  const [draftTotal, setDraftTotal] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null); // { id, label } oder null
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);      // sperrt beide Dialoge
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteNotice, setDeleteNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,7 +186,7 @@ export default function AdminShipmentsPage() {
       if (!r.ok) {
         // 401/403 → zentraler Logout/Redirect via apiFetch; hier nichts anzeigen.
         if (r.status !== 401 && r.status !== 403) setError(ERROR_MESSAGES[r.status] || GENERIC_ERROR);
-        setRows([]); setTotal(null); setHasMore(false);
+        setRows([]); setTotal(null); setHasMore(false); setDraftTotal(null);
         return;
       }
       let d = {};
@@ -173,10 +195,11 @@ export default function AdminShipmentsPage() {
       const t = selectListTotal(d);
       setRows(list);
       setTotal(t);
+      setDraftTotal(selectDeletableDraftTotal(d));
       setHasMore(selectListHasMore(d, list.length, page, PAGE_SIZE, t));
     } catch {
       setError(GENERIC_ERROR);
-      setRows([]); setTotal(null); setHasMore(false);
+      setRows([]); setTotal(null); setHasMore(false); setDraftTotal(null);
     } finally {
       setLoading(false);
     }
@@ -205,6 +228,67 @@ export default function AdminShipmentsPage() {
   const goPrev = () => { if (page > 1) setPage((p) => p - 1); };
   const goNext = () => { if (hasMore) setPage((p) => p + 1); };
 
+  // ── Löschaktionen ─────────────────────────────────────────────────────────
+  // Beide laufen ausschließlich über einen Bestätigungsdialog (kein natives confirm()).
+  // `deleteBusy` sperrt währenddessen Auslöser UND Dialogbutton — ein zweiter Klick kann
+  // keine zweite Anfrage auslösen. Nach Erfolg wird die Liste über load() neu geladen:
+  // damit bleiben Filter, Seite und Sortierung erhalten (kein Browser-Reload), und der
+  // Entwurfszähler kommt frisch vom Server statt lokal fortgeschrieben zu werden.
+  const closeDialogs = () => {
+    if (deleteBusy) return;          // während eines laufenden Requests nicht schließbar
+    setPendingDelete(null);
+    setBulkOpen(false);
+    setDeleteError("");
+  };
+
+  const confirmSingleDelete = async () => {
+    if (!pendingDelete || deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const r = await deleteAdminShipmentDraft(pendingDelete.id);
+      if (!r.ok) {
+        const msg = draftDeleteError(r.status);
+        if (msg) setDeleteError(msg);   // 401/403 → null, zentrales Auth-Verhalten greift
+        // 404/409 bedeuten: der Serverzustand weicht ab. Die Liste wird trotzdem neu
+        // geladen, damit der Admin sofort den tatsächlichen Stand sieht.
+        if (r.status === 404 || r.status === 409) await load();
+        return;
+      }
+      setPendingDelete(null);
+      setDeleteNotice("Entwurf wurde gelöscht.");
+      await load();
+    } catch {
+      setDeleteError(draftDeleteError(0));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const r = await deleteAllAdminShipmentDrafts();
+      if (!r.ok) {
+        const msg = draftBulkDeleteError(r.status);
+        if (msg) setDeleteError(msg);
+        return;
+      }
+      let d = {};
+      try { d = await r.json(); } catch { d = {}; }
+      // Die Zahl stammt IMMER aus der Backendantwort — nie aus der lokalen Liste.
+      setBulkOpen(false);
+      setDeleteNotice(draftBulkDeleteMessage(Number(d?.deletedCount)));
+      await load();
+    } catch {
+      setDeleteError(draftBulkDeleteError(0));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const chips = useMemo(() => activeShipmentFilterChips(applied), [applied]);
   const emptyState = shipmentEmptyState({ count: rows.length, filters: applied });
   const showPagination = !error && !loading && (rows.length > 0 || page > 1);
@@ -216,11 +300,41 @@ export default function AdminShipmentsPage() {
         title={<>Sendungen</>}
         subtitle={<>Sendungsübersicht — nur Einsicht. Keine Adressen, keine Labeldaten, Kennungen maskiert.</>}
         actions={(
-          <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
-        </button></>
+          <>
+            {/* Aufräumaktion — bewusst NICHT die primäre Aktion und nicht in den
+                Filterbereich gemischt: sie steht als sekundäre, destruktiv
+                gekennzeichnete Verwaltungsaktion neben „Aktualisieren". Sichtbar nur,
+                wenn es tatsächlich etwas aufzuräumen gibt (draftTotal > 0). */}
+            {Number.isFinite(draftTotal) && draftTotal > 0 && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm adm-btn-danger"
+                onClick={() => { setDeleteError(""); setDeleteNotice(""); setBulkOpen(true); }}
+                disabled={loading || deleteBusy}
+              >
+                <Icon n="trash" s={14} /> {draftBulkConfirmLabel(draftTotal)}
+              </button>
+            )}
+            <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading || deleteBusy}>
+              <Icon n="refresh" s={14} /> Aktualisieren
+            </button>
+          </>
         )}
       />
+
+      {/* Ergebnis der letzten Löschaktion. Erfolg und Fehler stehen an derselben
+          Stelle über der Liste — der Admin muss nicht suchen, wohin die Rückmeldung
+          gewandert ist. role="status"/"alert" macht sie auch für Screenreader hörbar. */}
+      {deleteNotice && !deleteError && (
+        <div className="adm-note adm-note--info adm-head-note" role="status">
+          <Icon n="check" s={14} /> {deleteNotice}
+        </div>
+      )}
+      {deleteError && !pendingDelete && !bulkOpen && (
+        <div className="adm-note adm-note--warning adm-head-note" role="alert">
+          <Icon n="info" s={14} /> {deleteError}
+        </div>
+      )}
 
       <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
@@ -337,9 +451,25 @@ export default function AdminShipmentsPage() {
                       <td><StatusCell row={row} /></td>
                       <td className="adm-num"><PriceCell row={row} /></td>
                       <td className="adm-col-action">
-                        {f.id != null && (
-                          <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
-                        )}
+                        <div className="adm-row-actions">
+                          {f.id != null && (
+                            <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
+                          )}
+                          {/* Ausschließlich bei Entwürfen. Bei jeder anderen Zeile
+                              existiert der Knopf gar nicht — nicht nur deaktiviert. */}
+                          {canDeleteShipmentDraft(row) && (
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-sm adm-btn-danger"
+                              onClick={() => { setDeleteError(""); setDeleteNotice(""); setPendingDelete({ id: f.id, label: shipmentIdentity(row).primary }); }}
+                              disabled={deleteBusy}
+                              aria-label={`Entwurf ${shipmentIdentity(row).primary} löschen`}
+                              title="Entwurf löschen"
+                            >
+                              <Icon n="trash" s={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -367,6 +497,18 @@ export default function AdminShipmentsPage() {
                     {f.id != null && (
                       <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
                     )}
+                    {/* Auf der Karte trägt die Aktion ihre Beschriftung sichtbar — dort
+                        ist Platz, und ein alleinstehendes Icon wäre schwerer zu treffen. */}
+                    {canDeleteShipmentDraft(row) && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm adm-btn-danger"
+                        onClick={() => { setDeleteError(""); setDeleteNotice(""); setPendingDelete({ id: f.id, label: shipmentIdentity(row).primary }); }}
+                        disabled={deleteBusy}
+                      >
+                        <Icon n="trash" s={14} /> Löschen
+                      </button>
+                    )}
                   </div>
                 </li>
               );
@@ -387,6 +529,44 @@ export default function AdminShipmentsPage() {
             Weiter <Icon n="chevronRight" s={14} />
           </button>
         </div>
+      )}
+
+      {/* Einzellöschung — destruktiv (roter Bestätigungsbutton), mit Fokusfalle,
+          Fokusrückgabe und Escape aus der gemeinsamen Dialogkomponente. */}
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Entwurf löschen?"
+          text="Dieser Entwurf wird endgültig gelöscht. Gebuchte oder abgeschlossene Sendungen sind davon nicht betroffen."
+          subline={pendingDelete.label ? `Sendung ${pendingDelete.label}` : undefined}
+          note={deleteError || "Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."}
+          icon="trash"
+          confirmIcon="trash"
+          confirmLabel="Entwurf löschen"
+          danger
+          busy={deleteBusy}
+          busyLabel="Wird gelöscht …"
+          onCancel={closeDialogs}
+          onConfirm={confirmSingleDelete}
+        />
+      )}
+
+      {/* Sammellöschung — nennt die systemweite Zahl, sofern das Backend sie geliefert
+          hat, und stellt ausdrücklich klar, was NICHT betroffen ist. Sie hängt bewusst
+          nicht an den gesetzten Listenfiltern. */}
+      {bulkOpen && (
+        <ConfirmDialog
+          title="Alle Entwürfe löschen?"
+          text={draftBulkConfirmText(draftTotal)}
+          note={deleteError || "Gilt systemweit — unabhängig von den gesetzten Filtern. Die Aktion wird im Admin-Audit protokolliert."}
+          icon="trash"
+          confirmIcon="trash"
+          confirmLabel={draftBulkConfirmLabel(draftTotal)}
+          danger
+          busy={deleteBusy}
+          busyLabel="Wird gelöscht …"
+          onCancel={closeDialogs}
+          onConfirm={confirmBulkDelete}
+        />
       )}
     </div>
   );

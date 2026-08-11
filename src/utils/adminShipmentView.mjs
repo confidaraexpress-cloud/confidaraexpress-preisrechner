@@ -443,3 +443,83 @@ export function shipmentDetailError(status) {
     retryable: true,
   };
 }
+
+// ── Entwurfsaufräumung (Admin → Sendungen) ──────────────────────────────────
+// Admin → Sendungen füllt sich mit Zeilen im Status „Entwurf": JEDER Preisrechnerlauf
+// legt serverseitig eine an. Diese Helfer entscheiden ausschließlich über die ANZEIGE
+// der Löschaktionen. Die verbindliche Prüfung liegt im Backend
+// (lib/adminDraftDeletion.js) und läuft im Moment des Löschens erneut — das Frontend
+// darf eine Löschbarkeit nie behaupten, sondern nur anbieten.
+
+// Zeigt diese Zeile eine Löschaktion? Ausschließlich beim sichtbaren Status „draft" UND
+// wenn eine ID vorliegt (ohne ID gäbe es kein Ziel). Bewusst KEINE Nachbildung der
+// serverseitigen Zusatz-Guards (Ordernummer/Label/Tracking/Rechnung): die Adminliste
+// führt diese Felder gar nicht vollständig, und eine halbe Kopie der Sicherheitsregel
+// im Client wäre schlechter als gar keine — sie würde Sicherheit vortäuschen. Weicht der
+// Serverzustand ab, antwortet das Backend mit 409 und die UI zeigt genau das an.
+export function canDeleteShipmentDraft(row) {
+  const f = shipmentFields(row);
+  return f.id != null && f.status.toLowerCase() === "draft";
+}
+
+// Anzahl der systemweit löschbaren Entwürfe aus der Listenantwort (additives Feld
+// `deletableDraftTotal`). Bewusst NICHT aus den geladenen Zeilen gezählt: die Liste ist
+// gefiltert und paginiert, die Sammelaktion wirkt systemweit. Fehlt das Feld oder ist es
+// unbrauchbar → null, und der Dialog nennt dann bewusst KEINE Zahl statt einer geratenen.
+export function selectDeletableDraftTotal(d) {
+  const raw = d && typeof d === "object" ? d.deletableDraftTotal : null;
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
+  return Math.floor(raw);
+}
+
+// Fehlermeldungen der Einzellöschung. 409 ist der fachlich wichtige Fall: die Zeile
+// existiert, ist aber inzwischen gebucht/abgerechnet — der Admin soll den Grund erfahren.
+// 401/403 → null (zentrales Auth-Verhalten übernimmt).
+export const DRAFT_DELETE_ERRORS = Object.freeze({
+  404: "Dieser Entwurf existiert nicht mehr. Die Liste wird aktualisiert.",
+  409: "Dieser Entwurf kann nicht mehr gelöscht werden, da sich sein Status inzwischen geändert hat.",
+  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
+  default: "Der Entwurf konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+});
+export function draftDeleteError(status) {
+  if (status === 401 || status === 403) return null;
+  return DRAFT_DELETE_ERRORS[status] || DRAFT_DELETE_ERRORS.default;
+}
+
+export const DRAFT_BULK_DELETE_ERRORS = Object.freeze({
+  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
+  default: "Die Entwürfe konnten nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+});
+export function draftBulkDeleteError(status) {
+  if (status === 401 || status === 403) return null;
+  return DRAFT_BULK_DELETE_ERRORS[status] || DRAFT_BULK_DELETE_ERRORS.default;
+}
+
+// Erfolgsmeldung der Sammellöschung — die Zahl stammt IMMER aus der Backendantwort
+// (deletedCount), nie aus einer Schätzung der Liste. 0 ist kein Fehler, sondern die
+// ehrliche Aussage „es war nichts mehr da".
+export function draftBulkDeleteMessage(deletedCount) {
+  const n = Number.isFinite(deletedCount) ? Math.max(0, Math.floor(deletedCount)) : 0;
+  if (n === 0) return "Es sind keine Entwürfe mehr vorhanden.";
+  if (n === 1) return "1 Entwurf wurde gelöscht.";
+  return `${n} Entwürfe wurden gelöscht.`;
+}
+
+// Beschriftung des Bestätigungsbuttons. Mit bekannter Zahl wird sie genannt, sonst
+// bleibt sie neutral — es wird nie eine Zahl geraten.
+export function draftBulkConfirmLabel(total) {
+  if (!Number.isFinite(total) || total <= 0) return "Alle Entwürfe löschen";
+  return total === 1 ? "1 Entwurf löschen" : `${total} Entwürfe löschen`;
+}
+
+// Fließtext des Bulk-Dialogs. Nennt die Zahl nur, wenn sie bekannt ist, und stellt in
+// beiden Fällen klar, was NICHT betroffen ist.
+export function draftBulkConfirmText(total) {
+  const nichtBetroffen =
+    "Gebuchte, stornierte oder abgeschlossene Sendungen sind davon nicht betroffen.";
+  if (!Number.isFinite(total) || total <= 0) {
+    return `Alle derzeit vorhandenen Sendungsentwürfe werden endgültig gelöscht. ${nichtBetroffen}`;
+  }
+  const n = total === 1 ? "1 Entwurf wird" : `${total} Entwürfe werden`;
+  return `${n} endgültig gelöscht. ${nichtBetroffen}`;
+}

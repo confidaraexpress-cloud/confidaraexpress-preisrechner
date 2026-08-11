@@ -706,6 +706,17 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
 .adm-email { display: block; font-size: 13px; color: var(--ce-color-text-secondary); overflow-wrap: anywhere; }
 .adm-col-contact { min-width: 0; }
 .adm-col-action { white-space: nowrap; }
+/* Aktionszelle mit mehr als einem Bedienelement (z. B. „Details" + Entwurf löschen).
+   inline-flex ist hier entscheidend, nicht flex: als Blockelement füllte die Gruppe nur
+   die Breite, die die Spalte für die frühere EINZELNE Aktion bekommen hatte (~83 px), und
+   der zweite Knopf klappte darunter — die Tabelle erfuhr nie, dass sie mehr Platz braucht.
+   Als Inline-Inhalt zählt die Gruppe in die Spaltenbreite hinein, und das nowrap der Zelle
+   hält beide Knöpfe nebeneinander. flex-wrap wird ausdrücklich gesetzt, weil die
+   Adminflächen es weiter oben grundsätzlich auf wrap stellen. */
+.adm-row-actions {
+  display: inline-flex; flex-wrap: nowrap;
+  align-items: center; justify-content: flex-end; gap: 8px;
+}
 .adm-row-actions-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 
 /* Aktionsmenü der Zeile — Trigger + Dropdown, zugänglich bedienbar.

@@ -72,18 +72,17 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
       <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="pp-side-in">
 
-          {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo). Die
-              Sidebar ist dunkel, also die Reverse-Variante; die Bildmarke
-              bleibt dekorativ, weil die Wortmarke direkt daneben als echter
-              Text steht und bereits vorgelesen wird. Die Unterzeile ist ein
-              Deskriptor dieser Fläche, kein Bestandteil der Marke — sie wird
-              deshalb vom Aufrufer mitgegeben und behält ihre eigene Klasse.
-              Kein Claim (siehe BrandLogo.jsx). */}
+          {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo) und trägt
+              die Originalkomposition des Masters: Signet über dem Schriftzug.
+              Die Sidebar ist dunkel, also die Reverse-Variante. Die Marke ist
+              ein Bild ohne begleitenden Text und trägt den Markennamen deshalb
+              als alt-Text. Die Unterzeile ist ein Deskriptor dieser Fläche,
+              kein Bestandteil der Marke — sie wird vom Aufrufer mitgegeben und
+              behält ihre eigene Klasse. Kein Claim (siehe BrandLogo.jsx). */}
           <div className="pp-logo">
             <BrandLogo
               variant="wordmark"
               tone="reverse"
-              chip
               sub={<span className="pp-brand-sub">B2B Versandplattform.</span>}
             />
             <button className="sidebar-close-btn pp-close" aria-label="Navigation schließen" onClick={() => setSidebarOpen(false)}>

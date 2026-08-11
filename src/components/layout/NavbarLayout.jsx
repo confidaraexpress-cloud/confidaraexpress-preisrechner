@@ -18,7 +18,10 @@ function Navbar() {
               Tastatur und Screenreader gar kein Bedienelement. Jetzt ein echter
               Button; die Beschriftung liefert die sichtbare Wortmarke. */}
           <button type="button" className="navbar-logo" onClick={() => navigate("/login")}>
-            <BrandLogo variant="wordmark" tone="standard" chip />
+            {/* 64px hohe Leiste: die Wortmarke liefe dort auf 9,7px hinaus und
+                damit unter die 11px-Untergrenze der Typografieskala. Deshalb das
+                Signet — ebenfalls Originalgeometrie. */}
+            <BrandLogo variant="signet" tone="standard" chip />
           </button>
           <div className="navbar-actions">
             {authed ? (
@@ -35,12 +38,18 @@ function Navbar() {
       {drawerOpen && (
         <>
           <div className="sidebar-overlay open" onClick={() => setDrawerOpen(false)} style={{ zIndex: 998 }} />
-          <div className="mobile-drawer open" style={{ zIndex: 999 }}>
+          {/* Der Drawer lag bisher UNTER der fixierten Navigationsleiste
+              (999 gegen 1000): sein Kopf war dadurch verdeckt — bereits auf
+              origin/main, dort nur weniger sichtbar, weil er eine flache Zeile
+              trug. Mit der Originalkomposition zerschneidet die Leiste die
+              Marke sichtbar. Eine Stufe darüber genügt; das Overlay (998) und
+              die Leiste selbst bleiben unverändert. */}
+          <div className="mobile-drawer open" style={{ zIndex: 1001 }}>
             <div className="mobile-drawer-header">
               {/* Der Drawer ist dunkel (#0a1628) — hier gilt die Reverse-
-                  Variante. Die Standardvariante misst dort 1,05:1 und wäre
-                  praktisch unsichtbar. */}
-              <BrandLogo variant="wordmark" tone="reverse" chip />
+                  Variante (Standard misst dort 1,05:1). Anders als die flache
+                  Leiste hat er Höhe für die volle Originalkomposition. */}
+              <BrandLogo variant="wordmark" tone="reverse" />
               <button className="drawer-close-btn" aria-label="Navigation schließen" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
             </div>
             <nav className="mobile-drawer-nav">

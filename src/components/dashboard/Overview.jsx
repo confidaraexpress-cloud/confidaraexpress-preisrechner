@@ -7,7 +7,7 @@ import { computeKpis } from "../../utils/kpis";
 import { hasOperationalData } from "../../utils/overviewModules.mjs";
 import { notificationTarget } from "../../utils/notificationsView.mjs";
 import { RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
-import markPrimary from "../../assets/brand/mark-primary.svg";
+import signetStandard from "../../assets/brand/signet-standard.svg";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
 import dpdLogo        from "../../assets/carriers/dpd.svg";
@@ -396,7 +396,7 @@ export function Overview({
             Rein dekorativ, unten rechts angeschnitten, hinter dem Inhalt. */}
         <img
           className="pp-trust-watermark"
-          src={markPrimary}
+          src={signetStandard}
           alt=""
           aria-hidden="true"
           draggable="false"

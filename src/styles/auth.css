@@ -106,13 +106,11 @@
    Maßhalten ist Absicht: die Wortmarke steht eine Stufe UNTER der Headline
    (24 px gegen deren clamp-Größe), damit sie die Aussage anführt und nicht
    überlagert. Auf schmalen Breiten rückt sie eine Stufe kleiner. */
-.auth-brand { justify-content: center; gap: 14px; margin-bottom: 22px; }
-.auth-brand .ce-brandmark-img { width: 40px; height: 40px; }
-.auth-brand .ce-brand-word { font-size: var(--ce-text-title-page-size); }
+.auth-brand { align-items: center; margin: 0 auto 26px; }
+.auth-brand .ce-brandmark-img { width: 300px; }
 @media (max-width: 640px) {
-  .auth-brand { gap: 11px; margin-bottom: 18px; }
-  .auth-brand .ce-brandmark-img { width: 32px; height: 32px; }
-  .auth-brand .ce-brand-word { font-size: var(--ce-text-title-page-size-mobile); }
+  .auth-brand { margin-bottom: 20px; }
+  .auth-brand .ce-brandmark-img { width: 220px; }
 }
 .auth-badge {
   display: inline-flex; align-items: center; gap: 10px;

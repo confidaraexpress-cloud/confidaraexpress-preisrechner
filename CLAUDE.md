@@ -842,69 +842,91 @@ dokumentiert und durch eigene Tests gedeckt.
 
 ## Markenintegration Web (Branding-Paket 1)
 
-Die Marke wird an **genau einer Stelle** zusammengesetzt:
-`components/ui/BrandLogo.jsx`. Wer irgendwo ein Logo braucht, nutzt dieses
-Bauteil — kein zweites Markup, kein direkter Assetimport, kein Nachbau.
+**Alles kommt aus einer Datei:** `src/assets/brand/confidara-master.svg` ist die
+geometrische Source of Truth (viewBox 1254², zwei Compound-Paths, 57 Subpaths).
+Sie wird von **keiner Komponente importiert** — sie ist reine Quelle und landet
+nicht im Bundle.
+
+Aus ihr sind vier Produktassets abgeleitet, durch **Subpath-Filterung**: die
+Pfadstrings sind wörtlich übernommen, angepasst wurden ausschließlich der
+Ausschnitt (`viewBox`) und die Produktfarben.
+
+| Band im Master | y-Bereich | Subpaths | Verwendung |
+|---|---|---|---|
+| Signet (C/E) | 247–671 | 5 | `signet-standard/-reverse.svg` |
+| Wortmarke | 725–860 | 23 | zusätzlich in `wordmark-*.svg` |
+| Claim | 881–907 | 29 | **in keinem Produktasset** |
 
 ```jsx
-<BrandLogo variant="wordmark" tone="reverse" chip sub={…} />
-<BrandLogo variant="signet"  tone="standard" alt="" />
+<BrandLogo variant="wordmark" tone="reverse" sub={…} />
+<BrandLogo variant="signet"  tone="standard" chip alt="" />
 ```
 
-- **Zwei Achsen, mehr nicht.** `variant` = `wordmark` (Bildmarke + Text) |
-  `signet`; `tone` = `standard` (helle Flächen) | `reverse` (dunkle Flächen).
-  `chip` schaltet die Trägerfläche zu, `sub` nimmt einen Deskriptor des
-  Aufrufers auf, `alt=""` erzwingt ein rein dekoratives Signet.
-- **Verbindliche Markenfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
-  `--ce-color-text-primary` / `--ce-color-brand`. Es gibt keine zweite
-  Farbquelle. Die abgelösten Paare (`#0A1633`/`#2C438C`, `#8EA2F0`,
-  `#0B1F4D`, `#2563eb`→`#60a5fa`) sind vollständig verschwunden.
-- **Die Wortmarke ist echter Text**, kein Pfad-SVG: vorlesbar, skalierend, ohne
-  eingebettete Buchstabenkonturen. Die Zweifarbigkeit trägt das `<b>`.
+- **Die Wortmarke ist Vektorgeometrie, kein Text.** Der frühere Aufbau
+  „Signet + HTML-Text in DM Sans" ist entfallen — er war eine typografische
+  Nachbildung und traf die Marke nicht: der Master ist in einer anderen Schrift
+  gesetzt. `.ce-brand-word`, `.ce-brand-text`, `.logo-text` und `.logo-mark`
+  sind samt Regeln verschwunden.
+- **Die Originalkomposition ist verbindlich.** `wordmark-*.svg` enthält Signet
+  UND Schriftzug in den Masterkoordinaten — also **gestapelt**, mit dem
+  dortigen Abstand und Größenverhältnis. Signet und Wortmarke werden **nicht**
+  zu einer eigenen horizontalen Zeile neu zusammengesetzt.
+- **Die Variante folgt der Flächenhöhe, nicht dem Bereich.** Die gestapelte
+  Komposition (1176 × 613, 1,92:1) braucht Höhe. In der 64-px-Leiste der
+  öffentlichen Navigation liefe der Schriftzug auf **9,7 px** hinaus, in der
+  44-px-Topbar auf **7,0 px** — beides unter der 11-px-Untergrenze der
+  Typografieskala. Dort steht deshalb das **Signet**. Sidebars, Auth und der
+  Mobile-Drawer tragen die volle Komposition (17–20 px Schrifthöhe).
+- **Verbindliche Produktfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
+  `--ce-color-text-primary` / `--ce-color-brand`. Die Masterfarben `#011B55` /
+  `#004AFC` bleiben **im Master** und dürfen in keinem Produktasset auftauchen.
 - **Reverse ist EINFARBIG hell — gemessen, nicht gewählt.** `#5367E8` erreicht
-  auf der Chipfläche der Sidebar (effektiv `#242D3A`) nur 2,96:1 und als
-  Wortmarkentext auf den dunklen Flächen 3,45–4,39:1. Off-White misst dort
-  13–19:1. Der blaue Akzent bleibt allen hellen Flächen vorbehalten (4,69:1).
-  Die Begründung samt Zahlen steht im Markenblock von `primitives.css`.
-- **Tonlage folgt der echten Fläche, nicht dem Bereich.** Kunden-Sidebar und
-  Auth sind dunkel → `reverse`; Adminnavigation, öffentliche Leiste, mobile
-  Kopfzeile und Ladebildschirm sind hell → `standard`. Der öffentliche
-  Mobile-Drawer (`#0a1628`) ist die zweite dunkle Stelle außerhalb der Sidebar
-  — dafür gibt es `--ce-brand-chip-reverse-bg/-border` statt eines
-  sidebar-benannten Tokens.
-- **Kein Claim produktiv.** „IHRE VERSANDVERMITTLUNG" ist bewusst nicht
-  eingebaut (Abstimmung mit den AGB steht aus — die AGB führen CE als
-  *Wiederverkäufer*, nicht als Vermittler). Ein Test hält das fest.
+  auf der Chipfläche der Sidebar (effektiv `#242D3A`) nur 2,96:1 und auf den
+  übrigen dunklen Flächen 3,45–4,39:1. Off-White misst dort 13–19:1. Der blaue
+  Akzent bleibt allen hellen Flächen vorbehalten (4,69:1). Keine dritte
+  Markenfarbe. Die Begründung samt Zahlen steht im Markenblock von
+  `primitives.css`.
+- **Kein Claim produktiv.** „IHRE VERSANDVERMITTLUNG" steht im Master und bleibt
+  dort unangetastet, wird aber in kein Produktasset übernommen (Abstimmung mit
+  den AGB steht aus — die AGB führen CE als *Wiederverkäufer*, nicht als
+  Vermittler). Ein Test vergleicht die 29 Claim-Subpaths gegen jedes Asset.
 - **Kein seitenweites Wasserzeichen.** Die Regel gegen Markenassets im
   `.app-shell`-Hintergrund bleibt bestehen; das einzige Wasserzeichen ist
   weiterhin das lokale Detail des Trust-Tiles der Übersicht.
-- **Favicon:** eigene Fläche in Primary Navy mit der hellen Marke darauf. Ein
-  Favicon steht je nach Browserthema auf hellem ODER dunklem Grund — transparent
-  wäre es in einem der beiden Fälle unsichtbar. Der Ausschnitt ist gegenüber den
-  App-Assets enger gefasst (Rand 5/64 statt des großzügigen 256er-Rands), damit
-  die Marke bei 16 px so viel Fläche wie möglich bekommt. **Die Geometrie ist
-  identisch** — kein vereinfachtes Zweitlogo.
-- **Vite bettet beide Assets als Data-URI ein** (< 4 KB). Kommentare im SVG
-  landen damit im Bundle: die ausführliche Begründung steht deshalb in
-  `primitives.css` (wird beim Build entfernt), im SVG nur ein Verweis.
-- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 14 Tests — eine
-  Quelle · vier Varianten · identische Geometrie · verbindliche Farben · keine
-  Rückkehr der alten Paare · keine handgebaute Kachel · Favicon ohne Textmarke ·
-  kein Claim · kein Wasserzeichen · Tonlage je Fläche · unverändertes
-  Auth-Formular · kein CSS-Filter · keine doppelte Vorlesung) und
-  `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 6 Tests — gemessene
-  Kontraste gegen die echten Verlaufsstopps, Wortmarke ohne Umbruch bei
-  360/390/430/768 px, Favicon-Auslieferung).
+- **Favicon:** Signet-Geometrie, nur transformiert, auf eigener Fläche in
+  Primary Navy — ein Favicon steht je nach Browserthema auf hellem ODER dunklem
+  Grund. Rand 5/64 zugunsten der Erkennbarkeit bei 16 px. Keine vereinfachte
+  Zweitform.
+- **Proportionen:** `.ce-brandmark-img` trägt `height: auto` und wird über die
+  BREITE gesetzt — Signet und Wortmarke haben verschiedene Seitenverhältnisse
+  (1,19:1 gegen 1,92:1). Ein E2E-Test misst das gerenderte Kastenverhältnis
+  gegen die viewBox; Verzerrung fällt damit sofort auf.
+- **Bundle:** die Wortmarken (11 KB) liegen über Vites Inline-Grenze und werden
+  als eigene, cachebare Datei ausgeliefert; die Signets (< 4 KB) landen als
+  Data-URI im JS. Deshalb stehen ausführliche Begründungen in `primitives.css`
+  (wird beim Build entfernt), nicht in den SVGs.
+- **Der Drawer der öffentlichen Navigation liegt jetzt über der Leiste**
+  (z-index 1001 statt 999). Sein Kopf war schon auf `origin/main` verdeckt —
+  mit der gestapelten Marke zerschnitt die fixierte Leiste sie sichtbar.
+  Overlay (998) und Leiste (1000) sind unverändert.
+- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 18 Tests — u. a.:
+  jeder Pfad steht wörtlich im Master · Standard und Reverse teilen exakt
+  dieselbe Geometrie · die Wortmarke enthält das Signet in Originalposition ·
+  keine Masterfarbe im Produktasset · kein HTML-Nachbau · kein Claim · Favicon
+  == Signet) und `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 6 Tests
+  — Proportionen gegen die viewBox, Kontraste gegen die echten Verlaufsstopps,
+  kein Abschneiden, keine getippte Wortmarke mehr sichtbar).
 
 Bewusst nicht Teil dieses Pakets: **E-Mails** (Paket 2) und **PDF-Dokumente**
 (Paket 3) sind unverändert; Carrierlabel und Commercial Invoice bekommen
 dauerhaft kein CE-Branding. Apple-Touch-Icon, Manifest und OG-Bild gab es
 vorher nicht und wurden nicht neu eingeführt.
 
-Bestehender, hier NICHT behobener Befund: der Kopf des öffentlichen
-Mobile-Drawers liegt unter der fixierten Navigationsleiste (z-index 999 gegen
-1000) und ist dadurch verdeckt — identisch zu `origin/main`, ein Stapelfehler
-der öffentlichen Navigation ohne Bezug zur Marke.
+Offener Punkt: die öffentliche Leiste zeigt nur das Signet. Ein reines
+Wortmarken-Asset (Schriftzug ohne Signet, Band 725–860) wäre dafür die
+naheliegende Ergänzung — es ließe sich mit derselben Filterung ableiten und
+bliebe Originalgeometrie. Bewusst nicht in diesem Paket erzeugt: die Vorgabe
+nannte genau vier Assets.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

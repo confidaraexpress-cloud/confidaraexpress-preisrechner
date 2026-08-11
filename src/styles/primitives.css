@@ -255,47 +255,39 @@
    genau EIN Markenbauteil im Web; jede Fläche stellt darüber nur noch Größe
    und Chipmaterial in ihrem eigenen Scope ein.
 
-   Die Bildmarke braucht IMMER eine gesetzte Größe: die Assetdateien tragen
-   selbst width/height="256" und rendern sonst in Originalgröße. Deshalb steht
-   hier eine Grundgröße statt einer Regel, die erst im Bereich greift.
+   Die vier Assets sind aus assets/brand/confidara-master.svg abgeleitet —
+   Subpaths wörtlich übernommen, angepasst nur Ausschnitt und Produktfarben.
+   Die Wortmarke ist die ORIGINALKOMPOSITION (Signet über Schriftzug) und damit
+   kein HTML-Text mehr; sie trägt ihre Zweifarbigkeit im Asset selbst.
 
-   Die Assets liegen bereits in Zielfarbe vor — kein filter, keine Einfärbung.
-   Die Zweifarbigkeit der Wortmarke trägt das <b> („Express"): auf hellen
-   Flächen Primary Blue, auf dunklen bewusst dieselbe helle Farbe wie der Rest
-   (siehe Begründung in mark-reverse.svg). */
+   Gemessen wird über die BREITE, nicht die Höhe: Signet und Wortmarke haben
+   unterschiedliche Seitenverhältnisse (1,19:1 gegen 1,92:1), und die Flächen
+   des Produkts sind in der Breite begrenzt. `height: auto` hält die
+   Originalproportionen — verzerrt wird nie.
+
+   Warum die Reverse-Fassung EINFARBIG hell ist — gemessen, nicht gewählt:
+   Primary Blue #5367E8 erreicht auf der Chipfläche der Kunden-Sidebar
+   (rgba(255,255,255,.055) über #17212f, effektiv #242D3A) nur 2,96:1 und bleibt
+   damit unter der 3:1-Schwelle für grafische Objekte (WCAG 1.4.11); auf den
+   übrigen dunklen Flächen des Produkts misst es 3,45–4,39:1. Off-White misst
+   dort 13–19:1. Der blaue Markenakzent bleibt deshalb allen hellen Flächen
+   vorbehalten, wo er 4,69:1 erreicht. Es wird keine dritte Markenfarbe
+   eingeführt — die Marke ist auf Dunkel einfarbig, auf Hell zweifarbig. */
 .ce-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ce-brand--wordmark { flex-direction: column; align-items: flex-start; gap: 6px; }
 .ce-brandmark {
   width: 34px; height: 34px; border-radius: var(--ce-radius-sm); flex-shrink: 0;
   display: grid; place-items: center;
   background: var(--ce-color-surface-muted);
   border: 1px solid var(--ce-color-border-subtle);
 }
-.ce-brandmark-img { width: 22px; height: 22px; display: block; filter: none; }
-.ce-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.ce-brand-word {
-  font-family: var(--ce-font-sans); font-weight: 600;
-  font-size: var(--ce-text-title-card-size); line-height: 1.15;
-  letter-spacing: -0.015em; white-space: nowrap;
-  color: var(--ce-color-text-primary);
-}
-.ce-brand-word b { font-weight: 600; color: var(--ce-color-brand); }
-/* Reverse: die Wortmarke steht vollständig hell. Primary Blue misst auf den
-   dunklen Flächen des Produkts 3,45–4,39:1 und bleibt damit unter den 4,5:1,
-   die Fließtext dieser Größe braucht — der Markenakzent bleibt deshalb den
-   hellen Flächen vorbehalten. */
-.ce-brand--reverse .ce-brand-word,
-.ce-brand--reverse .ce-brand-word b { color: var(--ce-color-text-inverse); }
-/* Warum die Reverse-Variante EINFARBIG hell ist — gemessen, nicht gewählt:
-   Primary Blue #5367E8 erreicht auf der Chipfläche der Kunden-Sidebar
-   (rgba(255,255,255,.055) über #17212f, effektiv #242D3A) nur 2,96:1 und bleibt
-   damit unter der 3:1-Schwelle für grafische Objekte (WCAG 1.4.11); als
-   Wortmarkentext misst es auf den dunklen Flächen des Produkts 3,45–4,39:1 und
-   damit unter den 4,5:1 für Text dieser Größe. Off-White misst auf denselben
-   Flächen 13–19:1. Der blaue Markenakzent bleibt deshalb allen hellen Flächen
-   vorbehalten, wo er 4,69:1 erreicht. Es wird keine dritte Markenfarbe
-   eingeführt — die Marke ist auf Dunkel einfarbig, auf Hell zweifarbig.
-
-   Auf dunklem Grund braucht auch die Chipfläche ihr eigenes Material: die helle
+/* Die Assetdateien tragen selbst keine width/height mehr, nur eine viewBox —
+   eine gesetzte Breite bleibt trotzdem Pflicht, damit ein <img> ohne
+   Intrinsikmaß nicht auf die Ersatzbreite des Browsers fällt. */
+.ce-brandmark-img { display: block; height: auto; filter: none; }
+.ce-brand--signet .ce-brandmark-img { width: 22px; }
+.ce-brand--wordmark .ce-brandmark-img { width: 168px; }
+/* Auf dunklem Grund braucht auch die Chipfläche ihr eigenes Material: die helle
    Grundfläche darüber würde die helle Marke verschlucken. Die Werte stehen als
    Tokens in variables.css — die Marke steht an zwei unabhängigen dunklen Stellen
    (Kunden-Sidebar und öffentlicher Mobile-Drawer). */

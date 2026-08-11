@@ -1,31 +1,42 @@
 import React from "react";
-import markStandard from "../../assets/brand/mark-primary.svg";
-import markReverse from "../../assets/brand/mark-reverse.svg";
+import signetStandard from "../../assets/brand/signet-standard.svg";
+import signetReverse from "../../assets/brand/signet-reverse.svg";
+import wordmarkStandard from "../../assets/brand/wordmark-standard.svg";
+import wordmarkReverse from "../../assets/brand/wordmark-reverse.svg";
 
 /* Zentrale Markendarstellung des Produkts — die EINZIGE Stelle, an der die
-   ConfidaraExpress-Marke im Web zusammengesetzt wird. Vorher stand die Marke an
-   sechs Orten in jeweils eigenem Markup, davon drei als nachgebaute „CE"-Kachel
-   (öffentliche Navigation zweimal, Favicon einmal).
+   ConfidaraExpress-Marke im Web ausgewählt wird.
+
+   Alle vier Assets sind aus `assets/brand/confidara-master.svg` abgeleitet:
+   die Subpaths sind daraus wörtlich übernommen, angepasst wurden ausschließlich
+   der Ausschnitt (viewBox) und die Produktfarben. Es wird nichts nachgezeichnet,
+   keine Schrift gesetzt und keine Komposition neu erfunden — insbesondere ist
+   die Wortmarke KEIN HTML-Text mehr, sondern die originale Vektorgeometrie.
 
    Zwei Achsen, mehr braucht das Produkt nicht:
 
-     variant  "wordmark" (Bildmarke + ausgeschriebene Wortmarke) | "signet"
+     variant  "wordmark" (Originalkomposition: Signet über Wortmarke) | "signet"
      tone     "standard" (helle Flächen) | "reverse" (dunkle Flächen)
 
-   Die Wortmarke ist bewusst ECHTER TEXT und kein Pfad-SVG: sie bleibt damit
-   vorlesbar, skaliert mit der Systemschrift und braucht keine eingebetteten
-   Buchstabenkonturen. Die Zweifarbigkeit („Confidara" Navy, „Express" Blau)
-   trägt das <b> — dieselbe Struktur wie bisher in der Kunden-Sidebar.
+   Die Wortmarke trägt die Originalkomposition des Masters — Signet ÜBER der
+   Wortmarke, mit dem dortigen Abstand und Größenverhältnis. Sie braucht deshalb
+   Höhe und passt nicht in jede Fläche: wo eine Leiste zu flach ist (öffentliche
+   Navigation 64px, mobile Topbar 44px), steht das Signet. Die Grenze ist
+   gemessen, nicht geschätzt — in einer 64px-Leiste liefe die Wortmarke auf
+   9,7px hinaus und damit unter die 11px-Untergrenze der Typografieskala.
 
-   KEIN Claim. „IHRE VERSANDVERMITTLUNG" wird in diesem Paket bewusst nicht
-   produktiv integriert (Abstimmung mit den AGB steht aus).
+   KEIN Claim: „IHRE VERSANDVERMITTLUNG" steht im Master und bleibt dort
+   unangetastet, wird aber in keines der produktiven Assets übernommen
+   (Abstimmung mit den AGB steht aus).
 
-   Barrierefreiheit: steht die Wortmarke sichtbar daneben, ist die Bildmarke
-   dekorativ (alt="") — sonst läse ein Screenreader den Markennamen doppelt.
-   Steht sie allein, trägt sie den Markennamen als alt-Text. Aufrufer, die ein
-   rein dekoratives Signet einsetzen, überschreiben das mit alt="". */
+   Barrierefreiheit: die Marke ist jetzt durchgehend ein Bild ohne begleitenden
+   Text und trägt deshalb den Markennamen als alt-Text. Aufrufer, die sie rein
+   dekorativ einsetzen (Ladebildschirm, Wasserzeichen), überschreiben mit alt="". */
 
-const ASSET = { standard: markStandard, reverse: markReverse };
+const ASSET = {
+  signet: { standard: signetStandard, reverse: signetReverse },
+  wordmark: { standard: wordmarkStandard, reverse: wordmarkReverse },
+};
 
 export function BrandLogo({
   variant = "wordmark",
@@ -35,15 +46,14 @@ export function BrandLogo({
   alt,
   className = "",
 }) {
-  const isWordmark = variant === "wordmark";
-  // Wortmarke sichtbar → Bild dekorativ. Signet allein → Bild trägt den Namen.
-  const altText = alt !== undefined ? alt : (isWordmark ? "" : "ConfidaraExpress");
+  const quelle = (ASSET[variant] || ASSET.wordmark)[tone] || ASSET[variant].standard;
+  const altText = alt !== undefined ? alt : "ConfidaraExpress";
   const decorative = altText === "";
 
   const image = (
     <img
       className="ce-brandmark-img"
-      src={ASSET[tone] || ASSET.standard}
+      src={quelle}
       alt={altText}
       {...(decorative ? { "aria-hidden": "true" } : {})}
       draggable="false"
@@ -51,14 +61,9 @@ export function BrandLogo({
   );
 
   return (
-    <span className={`ce-brand ce-brand--${tone}${className ? ` ${className}` : ""}`}>
+    <span className={`ce-brand ce-brand--${tone} ce-brand--${variant}${className ? ` ${className}` : ""}`}>
       {chip ? <span className="ce-brandmark">{image}</span> : image}
-      {isWordmark && (
-        <span className="ce-brand-text">
-          <span className="ce-brand-word">Confidara<b>Express</b></span>
-          {sub}
-        </span>
-      )}
+      {sub}
     </span>
   );
 }

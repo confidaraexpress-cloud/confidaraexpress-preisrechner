@@ -1,16 +1,17 @@
-// E2E: Markenintegration Web (Paket 1) — echter Dev-Server, echte Kaskade.
+// E2E: Markenintegration Web — echter Dev-Server, echte Kaskade.
 //
 // Quelltextnah nicht prüfbar und deshalb hier:
 //
-//   1. Ob die Marke auf ihrer TATSÄCHLICHEN Fläche lesbar ist. Die Tonlage
-//      (standard/reverse) wird im JSX gewählt, die Hintergrundfarbe entsteht
-//      aber erst aus der aufgelösten Kaskade. Geprüft wird der gemessene
-//      Kontrast zwischen gerenderter Schriftfarbe und gerenderter Fläche.
-//   2. Ob die Wortmarke irgendwo umbricht oder abgeschnitten wird. Das hängt an
-//      der realen Breite neben Menü- und Glockenschaltfläche, nicht am CSS.
-//   3. Ob die Anmeldung ihren Markenanker trägt — und weiterhin genau einen.
-//   4. Ob das Formular der Anmeldung unverändert bedienbar geblieben ist.
-//   5. Ob das Favicon tatsächlich ausgeliefert wird und die Marke zeigt.
+//   1. Ob die Marke ihre ORIGINALPROPORTIONEN behält. Ein <img> mit falsch
+//      gesetzter Höhe verzerrt lautlos; nur das gerenderte Kastenverhältnis
+//      gegen die viewBox des Assets zeigt das.
+//   2. Ob sie auf ihrer TATSÄCHLICHEN Fläche lesbar ist. Die Tonlage wird im
+//      JSX gewählt, die Hintergrundfarbe entsteht erst aus der aufgelösten
+//      Kaskade — gemessen wird gegen die echten Verlaufsstopps.
+//   3. Ob sie irgendwo abgeschnitten wird oder aus ihrer Leiste ragt.
+//   4. Ob nirgends mehr eine getippte Wortmarke sichtbar ist.
+//   5. Ob das Formular der Anmeldung unverändert bedienbar geblieben ist.
+//   6. Ob das Favicon ausgeliefert wird und die Markengeometrie zeigt.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -19,6 +20,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 const PORT = 5237, BASE = `http://127.0.0.1:${PORT}`;
+
+// Seitenverhältnisse der Assets (viewBox des Masters, unverändert).
+const SEITE = { signet: 506 / 424, wordmark: 1176 / 613 };
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -47,9 +51,6 @@ async function setupRoutes(page, user = KUNDE) {
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
 }
 
-/* Kontrast zweier gerenderter Farben nach WCAG. Beide kommen als rgb()-String
-   aus getComputedStyle; Alpha spielt hier keine Rolle, weil ausschließlich
-   deckende Werte gemessen werden. */
 const KONTRAST_FN = `(vorne, hinten) => {
   const zahl = (s) => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
@@ -58,62 +59,66 @@ const KONTRAST_FN = `(vorne, hinten) => {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }`;
 
-/* Die tragenden Flächen des Produkts sind VERLÄUFE (background-image), nicht
-   Flächenfarben — getComputedStyle().backgroundColor meldet dort transparent.
-   Wer nur diesen Wert liest, läuft bis zum weißen <body> durch und misst
-   Weiß auf Weiß. Deshalb werden auf dem Weg nach oben beide Quellen gelesen
-   und ALLE Farbstopps eines Verlaufs eingesammelt; gewertet wird später der
-   ungünstigste. */
+/* Die tragenden Flächen sind VERLÄUFE (background-image) — getComputedStyle()
+   .backgroundColor meldet dort transparent. Wer nur diesen Wert liest, läuft bis
+   zum weißen <body> durch und misst Weiß auf Weiß. Deshalb werden beide Quellen
+   gelesen und alle Farbstopps eingesammelt; gewertet wird der ungünstigste. */
 const GRUND_FN = `(el) => {
   for (let n = el; n; n = n.parentElement) {
     const s = getComputedStyle(n);
-    const kandidaten = [];
+    const k = [];
     const bg = s.backgroundColor;
-    if (bg && !/rgba\\([^)]*,\\s*0\\)/.test(bg) && bg !== "transparent") kandidaten.push(bg);
+    if (bg && !/rgba\\([^)]*,\\s*0\\)/.test(bg) && bg !== "transparent") k.push(bg);
     if (s.backgroundImage && s.backgroundImage !== "none") {
       for (const m of s.backgroundImage.matchAll(/rgba?\\([^)]+\\)/g)) {
-        // Vollständig transparente Stopps tragen keine Fläche.
-        if (!/rgba\\([^)]*,\\s*0\\)/.test(m[0])) kandidaten.push(m[0]);
+        if (!/rgba\\([^)]*,\\s*0\\)/.test(m[0])) k.push(m[0]);
       }
     }
-    if (kandidaten.length) return kandidaten;
+    if (k.length) return k;
   }
   return ["rgb(255, 255, 255)"];
 }`;
 
-async function markenKontrast(page, wurzel) {
-  return page.evaluate(([sel, kontrastQuelle, grundQuelle]) => {
-    const kontrast = eval(kontrastQuelle), grund = eval(grundQuelle);
+/* Liest die Marke einer Fläche aus: Variante und Tonlage werden am ausgelieferten
+   Asset erkannt — die Wortmarken kommen als eigene Datei (über der Inline-Grenze
+   von Vite), die Signets als Data-URI. Beide tragen ihre Farben im Inhalt. */
+async function marke(page, wurzel) {
+  return page.evaluate(([sel, kFn, gFn]) => {
+    const kontrast = eval(kFn), grund = eval(gFn);
     const brand = document.querySelector(sel);
     if (!brand) return null;
-    const wort = brand.querySelector(".ce-brand-word");
-    const express = brand.querySelector(".ce-brand-word b");
     const bild = brand.querySelector(".ce-brandmark-img");
-    const r = bild ? bild.getBoundingClientRect() : null;
-    // Ungünstigster Stopp der tragenden Fläche — nicht der freundlichste.
-    const schlechtester = (el) => {
-      const farbe = getComputedStyle(el).color;
-      return Math.min(...grund(el).map((g) => kontrast(farbe, g)));
-    };
+    if (!bild) return { fehlt: "kein Bild" };
+    const r = bild.getBoundingClientRect();
+    const src = decodeURIComponent(bild.getAttribute("src") || "");
+    const inhalt = src.startsWith("data:") ? src : "";
     return {
-      wortFarbe: getComputedStyle(wort).color,
-      wortKontrast: schlechtester(wort),
-      expressKontrast: schlechtester(express),
-      bildBreite: r ? Math.round(r.width) : 0,
-      bildHoehe: r ? Math.round(r.height) : 0,
-      // Vite bettet SVGs unter ~4 KB als Data-URI ein (siehe CLAUDE.md) — im
-      // src steht deshalb kein Dateiname. Die Variante wird an ihrer Farbe
-      // erkannt: Standard trägt Primary Navy, Reverse trägt Off-White.
-      variante: (() => {
-        if (!bild) return null;
-        const quelle = decodeURIComponent(bild.getAttribute("src") || "");
-        if (/#111A33/i.test(quelle)) return "standard";
-        if (/#F7F8FC/i.test(quelle)) return "reverse";
-        return "unbekannt";
-      })(),
-      sichtbar: !!(r && r.width > 0 && r.height > 0),
+      // Variante an der viewBox statt am Dateinamen: die Signets liegen unter
+      // der Inline-Grenze von Vite und kommen als Data-URI ohne Namen. Die
+      // viewBox belegt zugleich, dass der Ausschnitt unverändert ist.
+      variante: /viewBox=['"]39 247 1176 613['"]/.test(inhalt) || /wordmark/.test(src) ? "wordmark"
+              : /viewBox=['"]350 247 506 424['"]/.test(inhalt) || /signet/.test(src) ? "signet"
+              : "unbekannt",
+      ton: /#F7F8FC/i.test(inhalt) || /reverse/.test(src) ? "reverse"
+         : /#111A33/i.test(inhalt) || /standard/.test(src) ? "standard" : "unbekannt",
+      breite: r.width, hoehe: r.height,
+      verhaeltnis: r.height > 0 ? r.width / r.height : 0,
+      alt: bild.getAttribute("alt"),
+      sichtbar: r.width > 0 && r.height > 0 && getComputedStyle(bild).display !== "none",
+      // Kontrast der Markenfarbe gegen den ungünstigsten Stopp der Trägerfläche.
+      kontrastHell: Math.min(...grund(bild).map((g) => kontrast("rgb(247, 248, 252)", g))),
+      kontrastNavy: Math.min(...grund(bild).map((g) => kontrast("rgb(17, 26, 51)", g))),
+      kontrastBlau: Math.min(...grund(bild).map((g) => kontrast("rgb(83, 103, 232)", g))),
     };
   }, [wurzel, KONTRAST_FN, GRUND_FN]);
+}
+
+// Proportionen: das gerenderte Verhältnis muss der viewBox entsprechen.
+function pruefeProportion(m, variante, wo) {
+  assert.equal(m.variante, variante, `${wo}: falsche Variante (${m.variante})`);
+  const soll = SEITE[variante];
+  assert.ok(Math.abs(m.verhaeltnis - soll) < 0.02,
+    `${wo}: verzerrt — Verhältnis ${m.verhaeltnis.toFixed(3)} statt ${soll.toFixed(3)}`);
 }
 
 test.before(async () => {
@@ -138,27 +143,27 @@ test.after(async () => {
 
 /* ══════════ 1 — Kunden-Sidebar ═════════════════════════════════════════ */
 
-test("1 — die Kunden-Sidebar trägt die Wortmarke lesbar auf dunklem Grund", async () => {
+test("1 — die Kunden-Sidebar trägt die Originalkomposition, hell auf dunkel", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
 
-  const m = await markenKontrast(page, ".pp-logo .ce-brand");
-  assert.ok(m, "kein Markenbauteil in der Sidebar");
-  assert.ok(m.sichtbar, "die Bildmarke wird nicht gerendert");
-  assert.equal(m.variante, "reverse", "die Sidebar zeigt nicht die Reverse-Variante");
-  assert.deepEqual([m.bildBreite, m.bildHoehe], [24, 24], "die Bildmarke hat nicht 24×24");
-  // Reverse: die Wortmarke steht durchgehend hell, „Express" also gleich hell.
-  assert.ok(m.wortKontrast >= 4.5, `Wortmarke nur ${m.wortKontrast.toFixed(2)}:1`);
-  assert.ok(m.expressKontrast >= 4.5, `„Express" nur ${m.expressKontrast.toFixed(2)}:1`);
+  const m = await marke(page, ".pp-logo .ce-brand");
+  assert.ok(m && m.sichtbar, "keine sichtbare Marke in der Sidebar");
+  pruefeProportion(m, "wordmark", "Sidebar");
+  assert.equal(m.ton, "reverse", "die Sidebar zeigt nicht die Reverse-Fassung");
+  assert.equal(m.alt, "ConfidaraExpress", "die Marke trägt ihren Namen nicht");
+  assert.ok(m.kontrastHell >= 4.5, `Sidebar: Marke nur ${m.kontrastHell.toFixed(2)}:1`);
 
-  // Chipfläche und Wortmarke stehen nebeneinander, nicht übereinander.
-  const nebeneinander = await page.evaluate(() => {
-    const chip = document.querySelector(".pp-logo .ce-brandmark").getBoundingClientRect();
-    const wort = document.querySelector(".pp-logo .ce-brand-word").getBoundingClientRect();
-    return wort.left >= chip.right - 1;
+  // Sie passt in die Spalte und wird nicht abgeschnitten.
+  const passt = await page.evaluate(() => {
+    const b = document.querySelector(".pp-logo .ce-brandmark-img").getBoundingClientRect();
+    const s = document.querySelector(".pp-side-in").getBoundingClientRect();
+    return b.left >= s.left - 0.5 && b.right <= s.right + 0.5;
   });
-  assert.ok(nebeneinander, "Bildmarke und Wortmarke überlagern sich");
+  assert.ok(passt, "die Marke ragt aus der Sidebarspalte");
+  // Und die Unterzeile steht darunter, nicht darin.
+  assert.equal(await page.locator(".pp-brand-sub").textContent(), "B2B Versandplattform.");
   await page.close();
 });
 
@@ -169,137 +174,124 @@ test("2 — die Admin-Sidebar trägt dieselbe Marke, lesbar auf heller Fläche",
   await setupRoutes(page, ADMIN);
   await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
 
-  const m = await markenKontrast(page, ".adm-brand .ce-brand");
-  assert.ok(m, "kein Markenbauteil in der Adminnavigation");
-  assert.ok(m.sichtbar, "die Bildmarke wird nicht gerendert");
-  // Helle Fläche → Standardvariante. Eine Reverse-Marke wäre hier unsichtbar.
-  assert.equal(m.variante, "standard", "die Adminnavigation zeigt nicht die Standardvariante");
-  assert.deepEqual([m.bildBreite, m.bildHoehe], [22, 22], "die Bildmarke hat nicht 22×22");
-  assert.ok(m.wortKontrast >= 4.5, `Wortmarke nur ${m.wortKontrast.toFixed(2)}:1`);
-  // Hier trägt „Express" die Markenfarbe und muss trotzdem AA erfüllen.
-  assert.ok(m.expressKontrast >= 4.5, `„Express" nur ${m.expressKontrast.toFixed(2)}:1`);
-  // Die Bereichskennzeichnung bleibt eigener Text neben der Marke — nicht Teil
-  // des Logos. Gelesen wird textContent: die Klasse rendert versal (unverändert).
+  const m = await marke(page, ".adm-brand .ce-brand");
+  assert.ok(m && m.sichtbar, "keine sichtbare Marke in der Adminnavigation");
+  pruefeProportion(m, "wordmark", "Admin-Sidebar");
+  assert.equal(m.ton, "standard", "helle Fläche braucht die Standardfassung");
+  // Beide Markenfarben müssen auf dieser Fläche tragen.
+  assert.ok(m.kontrastNavy >= 4.5, `Admin: Navy nur ${m.kontrastNavy.toFixed(2)}:1`);
+  assert.ok(m.kontrastBlau >= 4.5, `Admin: Blau nur ${m.kontrastBlau.toFixed(2)}:1`);
+  // Die Bereichskennzeichnung bleibt eigener Text neben der Marke.
   assert.equal(await page.locator(".adm-brand-tag").textContent(), "Adminbereich");
-  assert.equal(await page.locator(".adm-brand .ce-brand-word").textContent(), "ConfidaraExpress");
   await page.close();
 });
 
 /* ══════════ 3 — Anmeldung ══════════════════════════════════════════════ */
 
-test("3 — die Anmeldung trägt genau einen Markenanker und ein intaktes Formular", async () => {
+test("3 — die Anmeldung trägt genau einen Markenanker, das Formular bleibt", async () => {
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport });
     await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+    const wo = `${viewport.width}px`;
 
-    assert.equal(await page.locator(".auth-brand").count(), 1,
-      `${viewport.width}px: es muss genau ein Markenanker sein`);
-    const m = await markenKontrast(page, ".auth-brand");
-    assert.ok(m.sichtbar, `${viewport.width}px: Bildmarke nicht gerendert`);
-    assert.equal(m.variante, "reverse", "die Anmeldung zeigt nicht die Reverse-Variante");
-    assert.ok(m.wortKontrast >= 4.5,
-      `${viewport.width}px: Wortmarke nur ${m.wortKontrast.toFixed(2)}:1`);
+    assert.equal(await page.locator(".auth-brand").count(), 1, `${wo}: genau ein Markenanker`);
+    const m = await marke(page, ".auth-brand");
+    assert.ok(m && m.sichtbar, `${wo}: Marke nicht gerendert`);
+    pruefeProportion(m, "wordmark", `Anmeldung ${wo}`);
+    assert.equal(m.ton, "reverse", `${wo}: dunkler Grund braucht die Reverse-Fassung`);
+    assert.ok(m.kontrastHell >= 4.5, `${wo}: Marke nur ${m.kontrastHell.toFixed(2)}:1`);
 
-    // Der Claim erscheint nirgends.
+    // Der Claim erscheint nirgends — weder als Text noch als Geometrie.
     const text = await page.locator(".auth-shell").innerText();
-    assert.ok(!/versandvermittlung/i.test(text), "der Claim steht produktiv auf der Seite");
+    assert.ok(!/versandvermittlung/i.test(text), `${wo}: der Claim steht auf der Seite`);
 
     // Das Formular ist unverändert bedienbar.
     await page.fill('input[type="email"]', "max@example.com");
     assert.equal(await page.inputValue('input[type="email"]'), "max@example.com");
-    assert.ok(await page.locator('input[type="password"]').count() >= 1, "Passwortfeld fehlt");
-    assert.ok(await page.locator(".auth-tab").count() === 2, "die beiden Reiter fehlen");
+    assert.ok(await page.locator('input[type="password"]').count() >= 1, `${wo}: Passwortfeld fehlt`);
+    assert.equal(await page.locator(".auth-tab").count(), 2, `${wo}: die beiden Reiter fehlen`);
 
-    // Kein waagerechter Überlauf — body{overflow-x:hidden} macht scrollWidth
-    // wertlos, deshalb wird echtes Scrollen geprüft.
     const ueberlauf = await page.evaluate(() => {
       window.scrollTo(9999, 0);
       const x = window.scrollX; window.scrollTo(0, 0); return x;
     });
-    assert.equal(ueberlauf, 0, `${viewport.width}px: die Seite lässt sich nach rechts scrollen`);
+    assert.equal(ueberlauf, 0, `${wo}: die Seite lässt sich nach rechts scrollen`);
     await page.close();
   }
 });
 
 /* ══════════ 4 — mobile Kopfzeile ═══════════════════════════════════════ */
 
-test("4 — die mobile Kopfzeile zeigt die Wortmarke ungekürzt und einzeilig", async () => {
+test("4 — die flache mobile Kopfzeile trägt das Signet, unverzerrt und im Rahmen", async () => {
   for (const breite of [360, 390, 430, 768]) {
     const page = await browser.newPage({ viewport: { width: breite, height: 844 } });
     await setupRoutes(page);
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+    const wo = `${breite}px`;
 
-    const m = await page.evaluate(() => {
-      const brand = document.querySelector(".mobile-topbar .topbar-brand");
-      if (!brand) return null;
-      const wort = brand.querySelector(".ce-brand-word");
-      const bild = brand.querySelector(".ce-brandmark-img");
-      const wr = wort.getBoundingClientRect(), br = bild.getBoundingClientRect();
-      const bar = document.querySelector(".mobile-topbar").getBoundingClientRect();
-      return {
-        sichtbar: getComputedStyle(brand).display !== "none" && wr.width > 0,
-        // Abgeschnitten? Der sichtbare Kasten wäre schmaler als der Textinhalt.
-        gekuerzt: wort.scrollWidth > Math.ceil(wr.width) + 1,
-        // Umgebrochen? Dann wäre die Zeile höher als eine Zeilenhöhe.
-        zeilen: Math.round(wr.height / parseFloat(getComputedStyle(wort).lineHeight)),
-        text: wort.textContent,
-        bildGross: Math.round(br.width),
-        passtInLeiste: wr.right <= bar.right && br.left >= bar.left,
-      };
+    const m = await marke(page, ".mobile-topbar .topbar-brand");
+    assert.ok(m && m.sichtbar, `${wo}: keine Marke in der Kopfzeile`);
+    // Die volle Komposition liefe hier auf 7px Schrifthöhe hinaus — deshalb das Signet.
+    pruefeProportion(m, "signet", `Kopfzeile ${wo}`);
+    assert.equal(m.alt, "ConfidaraExpress", `${wo}: die Marke trägt ihren Namen nicht`);
+
+    const inLeiste = await page.evaluate(() => {
+      const b = document.querySelector(".mobile-topbar .ce-brandmark-img").getBoundingClientRect();
+      const l = document.querySelector(".mobile-topbar").getBoundingClientRect();
+      return b.left >= l.left && b.right <= l.right && b.top >= l.top - 0.5 && b.bottom <= l.bottom + 0.5;
     });
-    assert.ok(m, `${breite}px: keine Marke in der Kopfzeile`);
-    assert.ok(m.sichtbar, `${breite}px: die Marke ist nicht sichtbar`);
-    assert.equal(m.text, "ConfidaraExpress", `${breite}px: Wortmarke verändert`);
-    assert.ok(!m.gekuerzt, `${breite}px: die Wortmarke wird abgeschnitten`);
-    assert.equal(m.zeilen, 1, `${breite}px: die Wortmarke bricht um`);
-    assert.equal(m.bildGross, 20, `${breite}px: das Signet hat nicht 20 px`);
-    assert.ok(m.passtInLeiste, `${breite}px: die Marke ragt aus der Kopfzeile`);
+    assert.ok(inLeiste, `${wo}: die Marke ragt aus der Kopfzeile`);
+
+    // Keine getippte Wortmarke mehr in der Leiste.
+    const text = await page.locator(".mobile-topbar").innerText();
+    assert.ok(!/ConfidaraExpress/.test(text), `${wo}: getippte Wortmarke in der Kopfzeile`);
 
     const ueberlauf = await page.evaluate(() => {
       window.scrollTo(9999, 0);
       const x = window.scrollX; window.scrollTo(0, 0); return x;
     });
-    assert.equal(ueberlauf, 0, `${breite}px: waagerechter Überlauf`);
+    assert.equal(ueberlauf, 0, `${wo}: waagerechter Überlauf`);
     await page.close();
   }
 });
 
 /* ══════════ 5 — öffentliche Navigation ═════════════════════════════════ */
 
-test("5 — öffentliche Leiste und Drawer zeigen die Marke in der richtigen Tonlage", async () => {
-  // Helle Leiste auf einer öffentlichen Seite.
+test("5 — Leiste und Drawer wählen Variante und Tonlage nach ihrer Fläche", async () => {
+  // Die 64px-Leiste ist hell und flach → Signet, Standardfassung.
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await desktop.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
-  const leiste = await markenKontrast(desktop, ".navbar-logo .ce-brand");
+  const leiste = await marke(desktop, ".navbar-logo .ce-brand");
   assert.ok(leiste?.sichtbar, "keine Marke in der öffentlichen Leiste");
-  assert.equal(leiste.variante, "standard", "die helle Leiste zeigt nicht die Standardvariante");
-  assert.ok(leiste.wortKontrast >= 4.5, `Leiste: Wortmarke nur ${leiste.wortKontrast.toFixed(2)}:1`);
-  assert.ok(leiste.expressKontrast >= 4.5, `Leiste: „Express" nur ${leiste.expressKontrast.toFixed(2)}:1`);
+  pruefeProportion(leiste, "signet", "öffentliche Leiste");
+  assert.equal(leiste.ton, "standard", "die helle Leiste braucht die Standardfassung");
+  assert.ok(leiste.kontrastNavy >= 4.5, `Leiste: Navy nur ${leiste.kontrastNavy.toFixed(2)}:1`);
   // Die Marke ist ein echtes Bedienelement und per Tastatur erreichbar.
   assert.equal(await desktop.locator("button.navbar-logo").count(), 1,
     "die Marke der Leiste ist kein echter Button");
   await desktop.close();
 
-  // Dunkler Drawer auf schmaler Breite.
+  // Der Drawer ist dunkel und hat Höhe → volle Komposition, Reverse.
   const mobil = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await mobil.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
   await mobil.locator(".navbar .hamburger-btn").click();
-  await mobil.waitForTimeout(400);
+  await mobil.waitForTimeout(600);
   // Hinweis: der Drawerkopf liegt bei origin/main wie hier unter der fixierten
-  // Navigationsleiste (z-index 999 gegen 1000) und ist dadurch verdeckt. Das ist
-  // ein bestehender Stapelfehler der öffentlichen Navigation und NICHT Teil
-  // dieses Pakets — geprüft wird deshalb die korrekte Tonlage und der Kontrast
-  // der Fläche, auf der die Marke steht, nicht ihre optische Sichtbarkeit.
-  const drawer = await markenKontrast(mobil, ".mobile-drawer-header .ce-brand");
+  // Navigationsleiste (z-index 999 gegen 1000). Das ist ein bestehender
+  // Stapelfehler der öffentlichen Navigation und NICHT Teil dieses Pakets —
+  // geprüft werden deshalb Variante, Tonlage und Kontrast, nicht die optische
+  // Sichtbarkeit.
+  const drawer = await marke(mobil, ".mobile-drawer-header .ce-brand");
   assert.ok(drawer?.sichtbar, "keine Marke im Drawer");
-  assert.equal(drawer.variante, "reverse", "der dunkle Drawer zeigt nicht die Reverse-Variante");
-  assert.ok(drawer.wortKontrast >= 4.5, `Drawer: Wortmarke nur ${drawer.wortKontrast.toFixed(2)}:1`);
+  pruefeProportion(drawer, "wordmark", "Drawer");
+  assert.equal(drawer.ton, "reverse", "der dunkle Drawer braucht die Reverse-Fassung");
+  assert.ok(drawer.kontrastHell >= 4.5, `Drawer: Marke nur ${drawer.kontrastHell.toFixed(2)}:1`);
   await mobil.close();
 });
 
 /* ══════════ 6 — Browser-Assets ═════════════════════════════════════════ */
 
-test("6 — das Favicon wird ausgeliefert und zeigt die Marke", async () => {
+test("6 — das Favicon wird ausgeliefert und zeigt die Markengeometrie", async () => {
   const page = await browser.newPage();
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
 
@@ -309,10 +301,11 @@ test("6 — das Favicon wird ausgeliefert und zeigt die Marke", async () => {
   const antwort = await page.request.get(`${BASE}${href}`);
   assert.equal(antwort.status(), 200, "das Favicon wird nicht ausgeliefert");
   const svg = await antwort.text();
-  assert.ok(!/<text/.test(svg), "das Favicon enthält noch eine Textmarke");
-  assert.ok(svg.includes("M210 48C213 50"), "das Favicon zeigt nicht die Markengeometrie");
+  assert.ok(!/<text/.test(svg), "das Favicon enthält eine Textmarke");
+  // Dieselbe Geometrie wie das Signet des Masters.
+  assert.ok(svg.includes("M 457 504 L 458 513"), "das Favicon zeigt nicht die Markengeometrie");
+  assert.ok(!/IHRE|VERSANDVERMITTLUNG/i.test(svg), "der Claim steckt im Favicon");
 
-  // Die Marke rendert tatsächlich (kein kaputtes SVG) und füllt ihre Fläche.
   const gerendert = await page.evaluate(async (url) => {
     const bild = new Image();
     bild.src = url;

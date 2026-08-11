@@ -89,4 +89,4 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 /* Signet ohne Chipfläche, mittig über dem Ladepunkt. Die Größe steht am Bild,
    nicht am Container: die Assetdatei bringt width/height="256" mit. */
 .loading-screen-mark { justify-content: center; margin: 0 auto 16px; }
-.loading-screen-mark .ce-brandmark-img { width: 48px; height: 48px; }
+.loading-screen-mark .ce-brandmark-img { width: 64px; }

@@ -43,7 +43,6 @@ export function AdminSidebar({ open, onClose }) {
           <BrandLogo
             variant="wordmark"
             tone="standard"
-            chip
             sub={<span className="adm-brand-tag">Adminbereich</span>}
           />
           <button type="button" className="adm-side-close" onClick={onClose} aria-label="Menü schließen" title="Menü schließen">

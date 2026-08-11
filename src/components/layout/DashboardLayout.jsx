@@ -65,7 +65,7 @@ export function DashboardLayout() {
           <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}>
             <Icon n="menu" s={22} />
           </button>
-          <BrandLogo variant="wordmark" tone="standard" className="topbar-brand" />
+          <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
           {/* Menü, Wortmarke, Glocke — keine zweite Identität neben der
               Firmenkarte der Sidebar (Paket A, Phase 3). */}
           <div className="topbar-right">

@@ -51,9 +51,7 @@
    Gerechnet bei 360 px: 44 (Menü) + 44 (Glocke) + 32 (Innenabstand) + 20
    (Signet) + 8 (Abstand) + ~130 (Wortmarke) = ~278 px. Die Wortmarke bricht
    also auf keiner unterstützten Breite um und wird nie abgeschnitten. */
-.topbar-brand { gap: 8px; }
-.topbar-brand .ce-brandmark-img { width: 20px; height: 20px; }
-.topbar-brand .ce-brand-word { font-size: var(--ce-text-body-l-size); }
+.topbar-brand .ce-brandmark-img { width: 30px; }
 /* Gleiche Rahmenbreite wie .page-body/.dash-section-header. */
 .alert-wrapper { padding: 16px 28px 0; max-width: 1240px; margin: 0 auto; }
 

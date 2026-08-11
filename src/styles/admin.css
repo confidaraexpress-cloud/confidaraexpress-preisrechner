@@ -64,7 +64,9 @@
    Wortmarke wäre auf dieser Fläche unsichtbar. Größe und Chipmaterial
    entsprechen bereits der Grundregel, hier bleibt nur die Wortmarkengröße:
    im Adminportal eine Stufe kleiner als im Kundenportal (Admin-Dichte). */
-.adm-brand .ce-brand-word { font-size: var(--ce-text-body-size); letter-spacing: -0.01em; }
+/* Eine Stufe schmaler als im Kundenportal — Admin-Dichte. Die Spalte bietet
+   264 − 2×18 = 228px. */
+.adm-brand .ce-brandmark-img { width: 158px; }
 .adm-brand-tag { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-brand-ink); }
 .adm-side-close { display: none; margin-left: auto; background: none; border: none; color: var(--ce-color-text-muted); cursor: pointer; padding: 4px; }
 

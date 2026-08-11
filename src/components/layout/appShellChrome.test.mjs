@@ -714,49 +714,36 @@ test("31 — die generische CubeMark samt Inline-Verlauf ist restlos entfernt", 
   assert.ok(!/<svg[^>]*pp-brandmark/.test(sidebarJsx), "Inline-SVG der Bildmarke gefunden");
 });
 
-test("32 — die Sidebar nutzt die Reverse-Bildmarke als statisches Asset", () => {
-  // Die Marke wird seit der Markenintegration an EINER Stelle zusammengesetzt
-  // (components/ui/BrandLogo.jsx). Die Sidebar wählt dort nur noch die
-  // Reverse-Variante aus; die Zusicherungen selbst sind unverändert.
+test("32 — die Sidebar nutzt die Reverse-Marke als statisches Asset", () => {
+  // Die Marke wird an EINER Stelle ausgewählt (components/ui/BrandLogo.jsx);
+  // die Sidebar fordert dort nur Variante und Tonlage an. Geometrie, Farben und
+  // Herkunft aus dem Master prüft styles/brandIdentity.test.mjs vollständig —
+  // hier steht, was die SIDEBAR garantiert.
   assert.match(sidebarJsx, /<BrandLogo[\s\S]*?tone="reverse"/,
     "die Sidebar fordert nicht die Reverse-Variante an");
-  assert.match(brandLogoJsx, /import\s+markReverse\s+from\s+"\.\.\/\.\.\/assets\/brand\/mark-reverse\.svg"/,
-    "statischer Import von mark-reverse.svg fehlt");
-  assert.match(brandLogoJsx, /<img[\s\S]*?src=\{ASSET\[tone\]/, "Bildmarke wird nicht als <img> gerendert");
-  // Sie sitzt weiterhin in der bestehenden Chipfläche.
-  assert.match(brandLogoJsx, /className="ce-brandmark">\{image\}/, "Bildmarke liegt nicht in .ce-brandmark");
-  assert.match(premium, /\.pp-logo \.ce-brandmark \{[^}]*width:\s*36px/, "36×36-Fläche der Sidebar fehlt");
-
-  // Kommentare erklären die Farbentscheidung und nennen dabei Farbwerte —
-  // geprüft wird ausschließlich, was tatsächlich gezeichnet wird.
-  const svg = (name) => read(`../../assets/brand/${name}`).replace(/<!--[\s\S]*?-->/g, "");
-  const reverse = svg("mark-reverse.svg");
-  const light   = svg("mark-primary.svg");
-  assert.ok(reverse.includes('viewBox="0 0 256 256"'), "viewBox der Reverse-Variante geändert");
-  // Reverse steht einfarbig hell: Primary Blue misst auf der Chipfläche der
-  // Sidebar nur 2,96:1 und bliebe unter der 3:1-Schwelle für grafische Objekte.
-  assert.equal((reverse.match(/fill="#F7F8FC"/g) ?? []).length, 4,
-    "Reverse-Variante muss einfarbig hell sein (C + drei E-Striche)");
-  assert.ok(!/#5367E8/i.test(reverse),
-    "Primary Blue gehört nicht in die Reverse-Variante (Kontrast auf dunkler Chipfläche)");
-  // Die Primärvariante trägt die verbindlichen digitalen Markenfarben.
-  assert.ok(light.includes('fill="#111A33"'), "C muss Primary Navy tragen");
-  assert.equal((light.match(/fill="#5367E8"/g) ?? []).length, 3,
-    "genau die drei E-Striche tragen Primary Blue");
-  // Die abgelösten Farbpaare kehren nicht zurück.
-  for (const alt of ["#0A1633", "#2C438C", "#8EA2F0"]) {
-    assert.ok(!new RegExp(alt, "i").test(light + reverse), `abgelöste Markenfarbe ${alt} ist zurück`);
+  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?variant="wordmark"/,
+    "die Sidebar zeigt nicht die volle Originalkomposition");
+  // Statische Vite-Importe, gerendert als <img> — keine inline duplizierte Geometrie.
+  for (const datei of ["signet-standard", "signet-reverse", "wordmark-standard", "wordmark-reverse"]) {
+    assert.ok(brandLogoJsx.includes(`assets/brand/${datei}.svg`),
+      `statischer Import von ${datei}.svg fehlt`);
   }
-  // Beide Varianten teilen sich exakt dieselbe Geometrie — nur die Farbe trennt sie.
-  const geometrie = (svg) => svg.match(/ d="([^"]+)"/)[1];
-  assert.equal(geometrie(reverse), geometrie(light), "Geometrie der beiden Varianten weicht ab");
+  assert.match(brandLogoJsx, /<img[\s\S]*?src=\{quelle\}/, "die Marke wird nicht als <img> gerendert");
+  assert.ok(!/<svg/.test(brandLogoJsx), "Inline-SVG im Markenbauteil gefunden");
+  // Die Sidebar setzt eine eigene Breite — ein <img> ohne Intrinsikmaß fiele
+  // sonst auf die Ersatzbreite des Browsers zurück.
+  assert.match(premium, /\.pp-logo \.ce-brandmark-img \{[^}]*width:\s*\d+px/,
+    "die Sidebar setzt keine Markenbreite");
 });
 
-test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", () => {
-  // Kein doppeltes Vorlesen: die Wortmarke steht als echter Text daneben.
-  assert.match(brandLogoJsx, /isWordmark \? "" :/, "Wortmarke macht die Bildmarke nicht dekorativ");
-  assert.match(brandLogoJsx, /"aria-hidden": "true"/, "Bildmarke braucht aria-hidden");
-  assert.match(brandLogoJsx, /Confidara<b>Express<\/b>/, "HTML-Wortmarke wurde verändert");
+test("33 — Marke und Wasserzeichen sind korrekt ausgezeichnet und nicht umgefärbt", () => {
+  // Die Marke ist ein Bild OHNE begleitenden Text und trägt deshalb den
+  // Markennamen; rein dekorative Aufrufer überschreiben mit alt="".
+  assert.match(brandLogoJsx, /alt !== undefined \? alt : "ConfidaraExpress"/,
+    "die alt-Regel des Markenbauteils wurde verändert");
+  assert.match(brandLogoJsx, /"aria-hidden": "true"/, "dekorative Marken brauchen aria-hidden");
+  // Kein typografischer Nachbau mehr — die Wortmarke ist Originalgeometrie.
+  assert.ok(!/Confidara<b>Express<\/b>/.test(brandLogoJsx), "die getippte Wortmarke ist zurück");
   assert.match(sidebarJsx, /B2B Versandplattform\./, "Unterzeile wurde verändert");
 
   const wmImg = overviewJsx.match(/<img[\s\S]*?className="pp-trust-watermark"[\s\S]*?\/>/)?.[0]

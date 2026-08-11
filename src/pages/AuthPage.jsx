@@ -8,6 +8,7 @@ import { ResetPasswordForm } from "../components/auth/ResetPasswordForm";
 import { AuthAurora } from "../components/auth/AuthAurora";
 import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
+import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
@@ -256,6 +257,13 @@ export default function AuthPage() {
         {step === "credentials" && (
           <>
             <div className="auth-hero">
+              {/* Der einzige Markenanker der Seite. Bis hierher trug die
+                  Anmeldung überhaupt kein Markenelement — die erste und vor dem
+                  Login einzige Fläche, die ein Kunde sieht, war unmarkiert.
+                  Reverse-Variante, weil der Grund nahezu schwarz ist; kein
+                  Claim, kein zweites Signet, kein Wasserzeichen. Das Formular
+                  darunter bleibt unverändert. */}
+              <BrandLogo variant="lockup" tone="reverse" className="auth-brand auth-anim" />
               <div className="auth-badge auth-anim">
                 <span className="auth-badge-ico"><Icon n="cube" s={16} /></span>
                 <span>Ihr verlässlicher Partner</span>

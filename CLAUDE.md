@@ -840,6 +840,104 @@ Tokenfamilie), das Eigenmaterial der Übersicht (`--ce-kpi-*`, `--ce-flow-*`,
 `--ce-bento-*`, `--ce-net-*`) und das Sidebar-Chrome — alle drei sind gemessen,
 dokumentiert und durch eigene Tests gedeckt.
 
+## Markenintegration Web (Branding-Paket 1)
+
+**Alles kommt aus einer Datei:** `src/assets/brand/confidara-master.svg` ist die
+geometrische Source of Truth (viewBox 1254², zwei Compound-Paths, 57 Subpaths).
+Sie wird von **keiner Komponente importiert** — sie ist reine Quelle und landet
+nicht im Bundle.
+
+Aus ihr sind sechs Produktassets abgeleitet, durch **Subpath-Filterung**: die
+Pfadstrings sind wörtlich übernommen, angepasst wurden ausschließlich der
+Ausschnitt (`viewBox`) und die Produktfarben.
+
+| Band im Master | y-Bereich | Subpaths | Verwendung |
+|---|---|---|---|
+| Signet (C/E) | 247–671 | 5 | `signet-standard/-reverse.svg` |
+| Wortmarke (nur Schriftzug) | 725–860 | 23 | `wordmark-standard/-reverse.svg` |
+| Signet + Wortmarke (gestapelt) | 247–860 | 5 + 23 | `lockup-standard/-reverse.svg` |
+| Claim | 881–907 | 29 | **in keinem Produktasset** |
+
+```jsx
+<BrandLogo variant="lockup"  tone="reverse" sub={…} />
+<BrandLogo variant="signet"  tone="standard" chip alt="" />
+<BrandLogo variant="wordmark" tone="standard" />
+```
+
+- **Die Wortmarke ist Vektorgeometrie, kein Text.** Der frühere Aufbau
+  „Signet + HTML-Text in DM Sans" ist entfallen — er war eine typografische
+  Nachbildung und traf die Marke nicht: der Master ist in einer anderen Schrift
+  gesetzt. `.ce-brand-word`, `.ce-brand-text`, `.logo-text` und `.logo-mark`
+  sind samt Regeln verschwunden.
+- **Drei Varianten, klar getrennte Aufgaben.** `signet` (nur C/E, 1,19:1) für
+  kleine/quadratische Flächen; `wordmark` (nur Schriftzug, 8,71:1) für schmale
+  horizontale Leisten; `lockup` (Originalkomposition, Signet über Schriftzug,
+  1,92:1) für Flächen mit Höhe. `lockup` enthält Signet UND Schriftzug in den
+  Masterkoordinaten — also **gestapelt**, mit dem dortigen Abstand und
+  Größenverhältnis. Signet und Wortmarke werden **nicht** zu einer eigenen
+  horizontalen Zeile neu zusammengesetzt — dafür gibt es `wordmark` als eigenes
+  Asset, ebenfalls direkt aus dem Master gefiltert, keine Neukomposition.
+- **Die Variante folgt der Flächenhöhe, nicht dem Bereich.** Die gestapelte
+  Komposition (1176 × 613) braucht Höhe: in der 64-px-Leiste der öffentlichen
+  Navigation liefe sie auf **9,7 px** Schrifthöhe hinaus, in der 44-px-Topbar
+  auf **7,0 px** — beides unter der 11-px-Untergrenze der Typografieskala.
+  Sidebars, Auth und der Mobile-Drawer haben Höhe und tragen deshalb `lockup`
+  (17–20 px Schrifthöhe). Die 64-px-Leiste der öffentlichen Navigation trägt
+  stattdessen `wordmark` — **gemessen, nicht geschätzt**: bei 360 px ist bei
+  174 px Breite (≙ 20 px Höhe) Schluss, 192 px sprengt bereits die Zeile; ab
+  500 px bleibt bis mindestens 279 px Luft. 174 px trägt einheitlich von 360
+  bis 1440 px — kein Breakpoint-Umschalten nötig. Die 44-px-Topbar der
+  eingeloggten App (zu flach auch für die reine Wortmarke ohne weitere
+  Verkleinerung) bleibt beim Signet.
+- **Verbindliche Produktfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
+  `--ce-color-text-primary` / `--ce-color-brand`. Die Masterfarben `#011B55` /
+  `#004AFC` bleiben **im Master** und dürfen in keinem Produktasset auftauchen.
+- **Reverse ist EINFARBIG hell — gemessen, nicht gewählt.** `#5367E8` erreicht
+  auf der Chipfläche der Sidebar (effektiv `#242D3A`) nur 2,96:1 und auf den
+  übrigen dunklen Flächen 3,45–4,39:1. Off-White misst dort 13–19:1. Der blaue
+  Akzent bleibt allen hellen Flächen vorbehalten (4,69:1). Keine dritte
+  Markenfarbe. Die Begründung samt Zahlen steht im Markenblock von
+  `primitives.css`.
+- **Kein Claim produktiv.** „IHRE VERSANDVERMITTLUNG" steht im Master und bleibt
+  dort unangetastet, wird aber in kein Produktasset übernommen (Abstimmung mit
+  den AGB steht aus — die AGB führen CE als *Wiederverkäufer*, nicht als
+  Vermittler). Ein Test vergleicht die 29 Claim-Subpaths gegen jedes Asset.
+- **Kein seitenweites Wasserzeichen.** Die Regel gegen Markenassets im
+  `.app-shell`-Hintergrund bleibt bestehen; das einzige Wasserzeichen ist
+  weiterhin das lokale Detail des Trust-Tiles der Übersicht.
+- **Favicon:** Signet-Geometrie, nur transformiert, auf eigener Fläche in
+  Primary Navy — ein Favicon steht je nach Browserthema auf hellem ODER dunklem
+  Grund. Rand 5/64 zugunsten der Erkennbarkeit bei 16 px. Keine vereinfachte
+  Zweitform.
+- **Proportionen:** `.ce-brandmark-img` trägt `height: auto` und wird über die
+  BREITE gesetzt — Signet und Wortmarke haben verschiedene Seitenverhältnisse
+  (1,19:1 gegen 1,92:1). Ein E2E-Test misst das gerenderte Kastenverhältnis
+  gegen die viewBox; Verzerrung fällt damit sofort auf.
+- **Bundle:** `lockup-*` (11 KB) und `wordmark-*` (8 KB) liegen über Vites
+  Inline-Grenze und werden als eigene, cachebare Datei ausgeliefert; die
+  Signets (< 4 KB) landen als Data-URI im JS. Deshalb stehen ausführliche
+  Begründungen in `primitives.css`/`layout.css` (wird beim Build entfernt),
+  nicht in den SVGs.
+- **Der Drawer der öffentlichen Navigation liegt über der Leiste**
+  (z-index 1001 statt 999). Sein Kopf war schon auf `origin/main` verdeckt —
+  mit der gestapelten Marke zerschnitt die fixierte Leiste sie sichtbar.
+  Overlay (998) und Leiste (1000) sind unverändert. Ein E2E-Test hält fest,
+  dass die Markenfläche dort tatsächlich die oberste Ebene ist.
+- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 18 Tests — u. a.:
+  jeder Pfad steht wörtlich im Master · jede Variante trägt in Standard und
+  Reverse exakt dieselbe Geometrie · `lockup` enthält Signet und Wortmarke in
+  Originalposition · `wordmark` enthält weder Signet noch Claim · keine
+  Masterfarbe im Produktasset · kein HTML-Nachbau · Favicon == Signet) und
+  `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 8 Tests — Proportionen
+  gegen die viewBox, Kontraste gegen die echten Verlaufsstopps, kein
+  Abschneiden, die öffentliche Leiste ohne Überlauf auf 360–1440 px, der
+  Drawer nicht verdeckt).
+
+Bewusst nicht Teil dieses Pakets: **E-Mails** (Paket 2) und **PDF-Dokumente**
+(Paket 3) sind unverändert; Carrierlabel und Commercial Invoice bekommen
+dauerhaft kein CE-Branding. Apple-Touch-Icon, Manifest und OG-Bild gab es
+vorher nicht und wurden nicht neu eingeführt.
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

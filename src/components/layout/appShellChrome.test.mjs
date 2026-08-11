@@ -34,7 +34,9 @@ const dashboard = read("../../styles/dashboard.css");
 const adminCss  = read("../../styles/admin.css");
 const authCss   = read("../../styles/auth.css");
 
+const primitives   = read("../../styles/primitives.css");
 const sidebarJsx   = read("./DashboardSidebar.jsx");
+const brandLogoJsx = read("../ui/BrandLogo.jsx");
 const footerJsx    = read("./LegalLinks.jsx");
 const overviewJsx  = read("../dashboard/Overview.jsx");
 const overviewCss  = read("../../styles/overview.css");
@@ -712,33 +714,36 @@ test("31 — die generische CubeMark samt Inline-Verlauf ist restlos entfernt", 
   assert.ok(!/<svg[^>]*pp-brandmark/.test(sidebarJsx), "Inline-SVG der Bildmarke gefunden");
 });
 
-test("32 — die Sidebar nutzt die Reverse-Bildmarke als statisches Asset", () => {
-  assert.match(sidebarJsx, /import\s+markReverse\s+from\s+"\.\.\/\.\.\/assets\/brand\/mark-reverse\.svg"/,
-    "statischer Import von mark-reverse.svg fehlt");
-  assert.match(sidebarJsx, /<img[\s\S]*?src=\{markReverse\}/, "Bildmarke wird nicht als <img> gerendert");
-  // Sie sitzt weiterhin in der bestehenden 36×36-Fläche.
-  assert.match(sidebarJsx, /className="ce-brandmark">[\s\S]*?<img/, "Bildmarke liegt nicht in .ce-brandmark");
-
-  const reverse = read("../../assets/brand/mark-reverse.svg");
-  const white   = read("../../assets/brand/mark-primary.svg");
-  assert.ok(reverse.includes('viewBox="0 0 256 256"'), "viewBox der Reverse-Variante geändert");
-  // C hell, drei E-Striche in der zugelassenen Kontrast-Akzentfarbe.
-  assert.ok(reverse.includes('fill="#F7F8FC"'), "C muss #F7F8FC bleiben");
-  assert.equal((reverse.match(/fill="#8EA2F0"/g) ?? []).length, 3,
-    "genau die drei E-Striche tragen #8EA2F0");
-  // #8EA2F0 ist ausschließlich der Reverse-Variante vorbehalten.
-  assert.ok(!/fill="#8EA2F0"/.test(white),
-    "#8EA2F0 darf nicht in der Primärvariante für helle Flächen auftauchen");
-  assert.ok(white.includes("#0A1633") && white.includes("#2C438C"),
-    "Primärvariante muss Navy und Sapphire führen");
+test("32 — die Sidebar nutzt die Reverse-Marke als statisches Asset", () => {
+  // Die Marke wird an EINER Stelle ausgewählt (components/ui/BrandLogo.jsx);
+  // die Sidebar fordert dort nur Variante und Tonlage an. Geometrie, Farben und
+  // Herkunft aus dem Master prüft styles/brandIdentity.test.mjs vollständig —
+  // hier steht, was die SIDEBAR garantiert.
+  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?tone="reverse"/,
+    "die Sidebar fordert nicht die Reverse-Variante an");
+  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?variant="lockup"/,
+    "die Sidebar zeigt nicht die volle Originalkomposition");
+  // Statische Vite-Importe, gerendert als <img> — keine inline duplizierte Geometrie.
+  for (const datei of ["signet-standard", "signet-reverse", "wordmark-standard", "wordmark-reverse", "lockup-standard", "lockup-reverse"]) {
+    assert.ok(brandLogoJsx.includes(`assets/brand/${datei}.svg`),
+      `statischer Import von ${datei}.svg fehlt`);
+  }
+  assert.match(brandLogoJsx, /<img[\s\S]*?src=\{quelle\}/, "die Marke wird nicht als <img> gerendert");
+  assert.ok(!/<svg/.test(brandLogoJsx), "Inline-SVG im Markenbauteil gefunden");
+  // Die Sidebar setzt eine eigene Breite — ein <img> ohne Intrinsikmaß fiele
+  // sonst auf die Ersatzbreite des Browsers zurück.
+  assert.match(premium, /\.pp-logo \.ce-brandmark-img \{[^}]*width:\s*\d+px/,
+    "die Sidebar setzt keine Markenbreite");
 });
 
-test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", () => {
-  // Kein doppeltes Vorlesen: die Wortmarke steht als echter Text daneben.
-  const markImg = sidebarJsx.match(/<img[\s\S]*?src=\{markReverse\}[\s\S]*?\/>/)?.[0] ?? "";
-  assert.match(markImg, /alt=""/, "Bildmarke braucht alt=\"\"");
-  assert.match(markImg, /aria-hidden="true"/, "Bildmarke braucht aria-hidden");
-  assert.match(sidebarJsx, /Confidara<b>Express<\/b>/, "HTML-Wortmarke wurde verändert");
+test("33 — Marke und Wasserzeichen sind korrekt ausgezeichnet und nicht umgefärbt", () => {
+  // Die Marke ist ein Bild OHNE begleitenden Text und trägt deshalb den
+  // Markennamen; rein dekorative Aufrufer überschreiben mit alt="".
+  assert.match(brandLogoJsx, /alt !== undefined \? alt : "ConfidaraExpress"/,
+    "die alt-Regel des Markenbauteils wurde verändert");
+  assert.match(brandLogoJsx, /"aria-hidden": "true"/, "dekorative Marken brauchen aria-hidden");
+  // Kein typografischer Nachbau mehr — die Wortmarke ist Originalgeometrie.
+  assert.ok(!/Confidara<b>Express<\/b>/.test(brandLogoJsx), "die getippte Wortmarke ist zurück");
   assert.match(sidebarJsx, /B2B Versandplattform\./, "Unterzeile wurde verändert");
 
   const wmImg = overviewJsx.match(/<img[\s\S]*?className="pp-trust-watermark"[\s\S]*?\/>/)?.[0]
@@ -748,7 +753,7 @@ test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", (
   assert.match(wmImg, /aria-hidden="true"/, "Wasserzeichen braucht aria-hidden");
 
   // Keine Einfärbung per CSS — beide Assets liegen bereits in Zielfarbe vor.
-  for (const [sel, css] of [[".pp-brandmark-img", premium], [".pp-trust-watermark", overviewCss]]) {
+  for (const [sel, css] of [[".ce-brandmark-img", primitives], [".pp-trust-watermark", overviewCss]]) {
     const b = block(css, sel);
     assert.ok(b, `${sel} fehlt`);
     const filters = [...stripComments(b).matchAll(/(?:^|[;{\s])filter:\s*([^;}]+)/g)].map((m) => m[1].trim());

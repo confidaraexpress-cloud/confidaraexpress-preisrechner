@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { businessMonthKey } from "../utils/kpis";
 import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
+import { BrandLogo } from "../components/ui/BrandLogo";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -398,7 +399,7 @@ export default function DashboardPage() {
       <main className="main-content">
         <div className="mobile-topbar">
           <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
-          <div className="topbar-brand">ConfidaraExpress</div>
+          <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
           {/* Dieselbe Regel wie beim Seiten-Mount unten: die Übersicht trägt ihre
               Glocke bereits in der eigenen Kopfzeile. Unterhalb von 860 px ist die
               Topbar sichtbar — ohne diese Bedingung stünden auf der Übersicht dort

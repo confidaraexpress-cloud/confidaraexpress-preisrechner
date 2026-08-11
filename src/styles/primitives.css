@@ -249,3 +249,57 @@
    gültig und wandern in ihren Seitenpaketen auf die Leiter. */
 
 /* Icons folgen der Textfarbe und skalieren nie den Zeilenfluss. */
+
+/* ═══════════ 6 — MARKE ═════════════════════════════════════════════════════
+   Grundregeln der Markendarstellung (components/ui/BrandLogo.jsx). Es gibt
+   genau EIN Markenbauteil im Web; jede Fläche stellt darüber nur noch Größe
+   und Chipmaterial in ihrem eigenen Scope ein.
+
+   Die sechs Assets sind aus assets/brand/confidara-master.svg abgeleitet —
+   Subpaths wörtlich übernommen, angepasst nur Ausschnitt und Produktfarben.
+   Drei Varianten, kein HTML-Textnachbau mehr:
+     signet   nur C/E (350 247 506 424, 1,19:1)
+     wordmark nur der Schriftzug „ConfidaraExpress" (39 725 1176 135, 8,71:1)
+              — für schmale horizontale Leisten
+     lockup   Originalkomposition, Signet über Schriftzug
+              (39 247 1176 613, 1,92:1) — braucht Höhe statt Breite
+   Jede Fassung trägt ihre Zweifarbigkeit (Standard) bzw. Einfarbigkeit
+   (Reverse) im Asset selbst.
+
+   Gemessen wird über die BREITE, nicht die Höhe: die drei Varianten haben
+   unterschiedliche Seitenverhältnisse, und die Flächen des Produkts sind in
+   der Breite begrenzt. `height: auto` hält die Originalproportionen —
+   verzerrt wird nie.
+
+   Warum die Reverse-Fassung EINFARBIG hell ist — gemessen, nicht gewählt:
+   Primary Blue #5367E8 erreicht auf der Chipfläche der Kunden-Sidebar
+   (rgba(255,255,255,.055) über #17212f, effektiv #242D3A) nur 2,96:1 und bleibt
+   damit unter der 3:1-Schwelle für grafische Objekte (WCAG 1.4.11); auf den
+   übrigen dunklen Flächen des Produkts misst es 3,45–4,39:1. Off-White misst
+   dort 13–19:1. Der blaue Markenakzent bleibt deshalb allen hellen Flächen
+   vorbehalten, wo er 4,69:1 erreicht. Es wird keine dritte Markenfarbe
+   eingeführt — die Marke ist auf Dunkel einfarbig, auf Hell zweifarbig. */
+.ce-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ce-brand--lockup { flex-direction: column; align-items: flex-start; gap: 6px; }
+.ce-brandmark {
+  width: 34px; height: 34px; border-radius: var(--ce-radius-sm); flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--ce-color-surface-muted);
+  border: 1px solid var(--ce-color-border-subtle);
+}
+/* Die Assetdateien tragen selbst keine width/height mehr, nur eine viewBox —
+   eine gesetzte Breite bleibt trotzdem Pflicht, damit ein <img> ohne
+   Intrinsikmaß nicht auf die Ersatzbreite des Browsers fällt. Jede Fläche, die
+   eine Variante einsetzt, setzt ihre eigene Breite in ihrem Scope — hier steht
+   nur die gemeinsame Chipgröße für das freistehende Signet. */
+.ce-brandmark-img { display: block; height: auto; filter: none; }
+.ce-brand--signet .ce-brandmark-img { width: 22px; }
+.ce-brand--lockup .ce-brandmark-img { width: 168px; }
+/* Auf dunklem Grund braucht auch die Chipfläche ihr eigenes Material: die helle
+   Grundfläche darüber würde die helle Marke verschlucken. Die Werte stehen als
+   Tokens in variables.css — die Marke steht an zwei unabhängigen dunklen Stellen
+   (Kunden-Sidebar und öffentlicher Mobile-Drawer). */
+.ce-brand--reverse .ce-brandmark {
+  background: var(--ce-brand-chip-reverse-bg);
+  border-color: var(--ce-brand-chip-reverse-border);
+}

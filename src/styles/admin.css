@@ -54,19 +54,19 @@
   box-shadow: var(--ce-elevation-1);
 }
 .adm-brand { display: flex; align-items: center; gap: 11px; padding: 18px 18px 16px; border-bottom: 1px solid var(--ce-color-border-subtle); }
-/* Dieselbe Bildmarke wie in der Kunden-Sidebar (.ce-brandmark), nur in der
-   Primärvariante für helle Flächen. Der frühere Textblock „CE" auf einem
-   blauen Verlauf war die einzige Stelle im Produkt, an der die Marke
-   nachgebaut statt verwendet wurde. */
-.adm-brand-mark {
-  width: 34px; height: 34px; border-radius: var(--ce-radius-sm); flex-shrink: 0;
-  display: grid; place-items: center;
-  background: var(--ce-color-surface-muted);
-  border: 1px solid var(--ce-color-border-subtle);
-}
-.adm-brand-mark-img { width: 22px; height: 22px; display: block; }
-.adm-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.adm-brand-name { font-family: var(--ce-font-sans); font-weight: 600; font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary); }
+/* Dieselbe Marke wie im Kundenportal, aus demselben Bauteil
+   (components/ui/BrandLogo.jsx). Der Adminbereich bekommt KEIN eigenes Logo:
+   die Bereichskennzeichnung „Adminbereich" ist separater UI-Text und nicht
+   Bestandteil der Marke.
+
+   Anders als das Kundenportal ist diese Sidebar HELL (--ce-color-surface),
+   deshalb steht hier die Standardvariante (tone="standard") — eine Reverse-
+   Wortmarke wäre auf dieser Fläche unsichtbar. Größe und Chipmaterial
+   entsprechen bereits der Grundregel, hier bleibt nur die Wortmarkengröße:
+   im Adminportal eine Stufe kleiner als im Kundenportal (Admin-Dichte). */
+/* Eine Stufe schmaler als im Kundenportal — Admin-Dichte. Die Spalte bietet
+   264 − 2×18 = 228px. */
+.adm-brand .ce-brandmark-img { width: 158px; }
 .adm-brand-tag { font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); letter-spacing: var(--ce-text-micro-tracking); text-transform: uppercase; color: var(--ce-color-brand-ink); }
 .adm-side-close { display: none; margin-left: auto; background: none; border: none; color: var(--ce-color-text-muted); cursor: pointer; padding: 4px; }
 

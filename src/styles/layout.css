@@ -15,20 +15,25 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
   border-bottom: 1px solid rgba(226,232,240,0.8);
 }
 .navbar-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-.navbar-logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-/* Die Bildmarke der öffentlichen Navigationsleiste. Sie trug als einzige Fläche
-   außerhalb des Auth-Bereichs noch einen farbigen Glow
-   (rgba(29,78,216,0.45)) plus eine Inset-Lichtkante — beides ist entfallen:
-   Tiefe kommt im ganzen Produkt aus der Elevationsskala und nie farbig. */
-.logo-mark {
-  width: 34px; height: 34px;
-  background: var(--ce-color-brand);
-  border-radius: var(--ce-radius-sm); display: flex; align-items: center; justify-content: center;
-  font-family: var(--ce-font-sans); font-weight: 600; font-size: 14px; color: var(--ce-color-text-inverse);
-  box-shadow: var(--ce-elevation-1);
-  flex-shrink: 0;
+/* Die öffentliche Navigationsleiste trug bis hierher die einzigen beiden
+   nachgebauten Marken des Frontends: eine gefüllte 34er-Kachel mit dem
+   Buchstabenpaar „CE" als Text, einmal in der Leiste und einmal im mobilen
+   Drawer. Beide zeigen jetzt dieselbe Marke wie das übrige Produkt
+   (components/ui/BrandLogo.jsx, Standardvariante — die Leiste ist hell).
+
+   Die Leiste trägt die reine Wortmarke (variant="wordmark", kein Chip) —
+   dieselbe Breite auf jeder unterstützten Viewportbreite. Gemessen, nicht
+   geschätzt: bei 360 px ist bei 174 px (≙ 20 px Höhe) Schluss, 192 px
+   sprengt bereits die Zeile; ab 500 px bleibt bis mindestens 279 px Luft.
+   174 px ist der Wert, der auf 360 UND auf 1440 px trägt — kein
+   Breakpoint-Umschalten nötig. Der Drawer (dunkel, eigene Höhe) trägt
+   weiterhin die volle Komposition (variant="lockup"), unverändert. */
+.navbar-logo {
+  display: flex; align-items: center; gap: 10px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
 }
-.logo-text { font-family: var(--ce-font-sans); font-weight: 600; font-size: 16px; color: var(--navy); letter-spacing: -0.02em; }
+.navbar-logo .ce-brandmark-img { width: 174px; }
 .navbar-actions { display: flex; align-items: center; gap: 8px; }
 .hamburger-btn { display: none; background: none; border: none; cursor: pointer; color: var(--navy); padding: 8px; border-radius: var(--radius-sm); flex-shrink: 0; }
 .hamburger-btn:hover { background: var(--gray100); }
@@ -89,4 +94,7 @@ h1, h2, h3, h4 { font-family: var(--ce-font-sans); font-weight: 600; }
 /* Kleiner Ladepunkt in Buttons und Menütriggern. Dieser Wert stand fünfmal als
    identisches Inline-Style im JSX. */
 .spinner-sm { width: 14px; height: 14px; }
-.loading-screen-mark { width: 48px; height: 48px; display: block; margin: 0 auto 16px; }
+/* Signet ohne Chipfläche, mittig über dem Ladepunkt. Die Größe steht am Bild,
+   nicht am Container: die Assetdatei bringt width/height="256" mit. */
+.loading-screen-mark { justify-content: center; margin: 0 auto 16px; }
+.loading-screen-mark .ce-brandmark-img { width: 64px; }

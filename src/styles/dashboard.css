@@ -45,7 +45,13 @@
   padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border-subtle);
   position: sticky; top: 0; z-index: 100;
 }
-.topbar-brand { font-family: var(--ce-font-sans); font-weight: 600; font-size: 15px; color: var(--text-primary); }
+/* Die mobile Topbar trug die Wortmarke bisher als reinen Text. Jetzt dieselbe
+   Marke wie überall (BrandLogo, Standardvariante — die Leiste ist hell), aber
+   ohne Chipfläche: neben Menü- und Glockenschaltfläche zählt hier jeder Pixel.
+   Gerechnet bei 360 px: 44 (Menü) + 44 (Glocke) + 32 (Innenabstand) + 20
+   (Signet) + 8 (Abstand) + ~130 (Wortmarke) = ~278 px. Die Wortmarke bricht
+   also auf keiner unterstützten Breite um und wird nie abgeschnitten. */
+.topbar-brand .ce-brandmark-img { width: 30px; }
 /* Gleiche Rahmenbreite wie .page-body/.dash-section-header. */
 .alert-wrapper { padding: 16px 28px 0; max-width: 1240px; margin: 0 auto; }
 
@@ -156,7 +162,8 @@ tr:hover td { background: var(--surface-subtle); }
 }
 .mobile-drawer.open { transform: translateX(0); }
 .mobile-drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.mobile-drawer-header .logo-text { color: white; }
+/* Die Wortmarke im Drawer trägt ihre helle Farbe jetzt selbst (Reverse-Variante
+   des Markenbauteils) — die frühere Sonderregel auf .logo-text ist entfallen. */
 .drawer-close-btn { background: rgba(255,255,255,0.08); border: none; cursor: pointer; color: white; padding: 7px; border-radius: var(--radius-sm); display: flex; align-items: center; }
 .mobile-drawer-nav { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 3px; }
 .drawer-nav-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: var(--radius); color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: var(--ce-font-sans); }

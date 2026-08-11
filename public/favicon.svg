@@ -1,12 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="ConfidaraExpress">
-  <defs>
-    <linearGradient id="ce" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#0B1F4D"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#ce)"/>
-  <text x="32" y="34" text-anchor="middle" dominant-baseline="central"
-        font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="28"
-        letter-spacing="-1.5" fill="#ffffff">CE</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>ConfidaraExpress</title>
+  <!-- Browser-Signet. Traegt bewusst eine eigene Flaeche in Primary Navy: ein
+       Favicon steht je nach Browserthema auf hellem ODER dunklem Grund, eine
+       transparente Marke waere in einem der beiden Faelle unsichtbar. Die Marke
+       darauf ist die unveraenderte Reverse-Zeichnung.
+
+       Die Geometrie ist identisch zu mark-primary/mark-reverse (256er-Raum,
+       hier nur transformiert). Angepasst wurde ausschliesslich der Ausschnitt:
+       der frueher grosszuegige Rand des 256er-Feldes ist auf 5/64 reduziert,
+       damit die Marke bei 16 px so viel Flaeche wie moeglich bekommt. Keine
+       Vereinfachung der Form. -->
+  <rect width="64" height="64" rx="14" fill="#111A33"/>
+  <g transform="translate(1.271 -0.914) scale(0.2571428)" fill="#F7F8FC">
+    <path d="M210 48C213 50 215 52 216 54C217 56 216 59 214 61L201 72C199 75 196 76 193 74C175 59 153 51 129 51C85 51 50 85 50 128C50 171 85 205 129 205C154 205 176 197 194 183C197 181 200 182 202 184L216 198C218 200 217 204 214 206C190 224 161 233 129 233C68 233 23 188 23 128C23 68 68 23 129 23C159 23 187 32 210 48Z"/>
+    <rect x="90" y="84" width="88" height="16" rx="6"/>
+    <rect x="90" y="120" width="77" height="16" rx="6"/>
+    <rect x="90" y="156" width="88" height="16" rx="6"/>
+  </g>
 </svg>

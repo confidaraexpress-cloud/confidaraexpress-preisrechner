@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
-import markPrimary from "../../assets/brand/mark-primary.svg";
+import { BrandLogo } from "../ui/BrandLogo";
 
 // Aktive Adminnavigation (URL-basiert). NavLink liefert den Active-Zustand über
 // die URL — bewusst KEINE Vermischung mit dem State-basierten Kunden-Dashboard.
@@ -35,16 +35,17 @@ export function AdminSidebar({ open, onClose }) {
       {open && <div className="adm-side-overlay" onClick={onClose} aria-hidden="true" />}
       <aside className={`adm-side${open ? " adm-side-open" : ""}`} aria-label="Adminbereich Seitenleiste">
         <div className="adm-brand">
-          {/* Dieselbe Bildmarke wie im Kundenportal (Primärvariante für helle
-              Flächen). Rein dekorativ — die Wortmarke steht direkt daneben als
-              echter Text und wird bereits vorgelesen. */}
-          <span className="adm-brand-mark">
-            <img className="adm-brand-mark-img" src={markPrimary} alt="" aria-hidden="true" draggable="false" />
-          </span>
-          <div className="adm-brand-text">
-            <span className="adm-brand-name">ConfidaraExpress</span>
-            <span className="adm-brand-tag">Adminbereich</span>
-          </div>
+          {/* Dieselbe Marke aus demselben Bauteil wie im Kundenportal — kein
+              eigenes Adminlogo. Bewusst die STANDARD-Variante: diese Sidebar
+              ist hell (--ce-color-surface), eine Reverse-Wortmarke wäre darauf
+              unsichtbar. „Adminbereich" ist separater UI-Text und nicht
+              Bestandteil der Marke; deshalb gibt der Aufrufer ihn mit. */}
+          <BrandLogo
+            variant="wordmark"
+            tone="standard"
+            chip
+            sub={<span className="adm-brand-tag">Adminbereich</span>}
+          />
           <button type="button" className="adm-side-close" onClick={onClose} aria-label="Menü schließen" title="Menü schließen">
             <Icon n="close" s={18} />
           </button>

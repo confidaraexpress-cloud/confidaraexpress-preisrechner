@@ -34,7 +34,9 @@ const dashboard = read("../../styles/dashboard.css");
 const adminCss  = read("../../styles/admin.css");
 const authCss   = read("../../styles/auth.css");
 
+const primitives   = read("../../styles/primitives.css");
 const sidebarJsx   = read("./DashboardSidebar.jsx");
+const brandLogoJsx = read("../ui/BrandLogo.jsx");
 const footerJsx    = read("./LegalLinks.jsx");
 const overviewJsx  = read("../dashboard/Overview.jsx");
 const overviewCss  = read("../../styles/overview.css");
@@ -713,32 +715,48 @@ test("31 — die generische CubeMark samt Inline-Verlauf ist restlos entfernt", 
 });
 
 test("32 — die Sidebar nutzt die Reverse-Bildmarke als statisches Asset", () => {
-  assert.match(sidebarJsx, /import\s+markReverse\s+from\s+"\.\.\/\.\.\/assets\/brand\/mark-reverse\.svg"/,
+  // Die Marke wird seit der Markenintegration an EINER Stelle zusammengesetzt
+  // (components/ui/BrandLogo.jsx). Die Sidebar wählt dort nur noch die
+  // Reverse-Variante aus; die Zusicherungen selbst sind unverändert.
+  assert.match(sidebarJsx, /<BrandLogo[\s\S]*?tone="reverse"/,
+    "die Sidebar fordert nicht die Reverse-Variante an");
+  assert.match(brandLogoJsx, /import\s+markReverse\s+from\s+"\.\.\/\.\.\/assets\/brand\/mark-reverse\.svg"/,
     "statischer Import von mark-reverse.svg fehlt");
-  assert.match(sidebarJsx, /<img[\s\S]*?src=\{markReverse\}/, "Bildmarke wird nicht als <img> gerendert");
-  // Sie sitzt weiterhin in der bestehenden 36×36-Fläche.
-  assert.match(sidebarJsx, /className="ce-brandmark">[\s\S]*?<img/, "Bildmarke liegt nicht in .ce-brandmark");
+  assert.match(brandLogoJsx, /<img[\s\S]*?src=\{ASSET\[tone\]/, "Bildmarke wird nicht als <img> gerendert");
+  // Sie sitzt weiterhin in der bestehenden Chipfläche.
+  assert.match(brandLogoJsx, /className="ce-brandmark">\{image\}/, "Bildmarke liegt nicht in .ce-brandmark");
+  assert.match(premium, /\.pp-logo \.ce-brandmark \{[^}]*width:\s*36px/, "36×36-Fläche der Sidebar fehlt");
 
-  const reverse = read("../../assets/brand/mark-reverse.svg");
-  const white   = read("../../assets/brand/mark-primary.svg");
+  // Kommentare erklären die Farbentscheidung und nennen dabei Farbwerte —
+  // geprüft wird ausschließlich, was tatsächlich gezeichnet wird.
+  const svg = (name) => read(`../../assets/brand/${name}`).replace(/<!--[\s\S]*?-->/g, "");
+  const reverse = svg("mark-reverse.svg");
+  const light   = svg("mark-primary.svg");
   assert.ok(reverse.includes('viewBox="0 0 256 256"'), "viewBox der Reverse-Variante geändert");
-  // C hell, drei E-Striche in der zugelassenen Kontrast-Akzentfarbe.
-  assert.ok(reverse.includes('fill="#F7F8FC"'), "C muss #F7F8FC bleiben");
-  assert.equal((reverse.match(/fill="#8EA2F0"/g) ?? []).length, 3,
-    "genau die drei E-Striche tragen #8EA2F0");
-  // #8EA2F0 ist ausschließlich der Reverse-Variante vorbehalten.
-  assert.ok(!/fill="#8EA2F0"/.test(white),
-    "#8EA2F0 darf nicht in der Primärvariante für helle Flächen auftauchen");
-  assert.ok(white.includes("#0A1633") && white.includes("#2C438C"),
-    "Primärvariante muss Navy und Sapphire führen");
+  // Reverse steht einfarbig hell: Primary Blue misst auf der Chipfläche der
+  // Sidebar nur 2,96:1 und bliebe unter der 3:1-Schwelle für grafische Objekte.
+  assert.equal((reverse.match(/fill="#F7F8FC"/g) ?? []).length, 4,
+    "Reverse-Variante muss einfarbig hell sein (C + drei E-Striche)");
+  assert.ok(!/#5367E8/i.test(reverse),
+    "Primary Blue gehört nicht in die Reverse-Variante (Kontrast auf dunkler Chipfläche)");
+  // Die Primärvariante trägt die verbindlichen digitalen Markenfarben.
+  assert.ok(light.includes('fill="#111A33"'), "C muss Primary Navy tragen");
+  assert.equal((light.match(/fill="#5367E8"/g) ?? []).length, 3,
+    "genau die drei E-Striche tragen Primary Blue");
+  // Die abgelösten Farbpaare kehren nicht zurück.
+  for (const alt of ["#0A1633", "#2C438C", "#8EA2F0"]) {
+    assert.ok(!new RegExp(alt, "i").test(light + reverse), `abgelöste Markenfarbe ${alt} ist zurück`);
+  }
+  // Beide Varianten teilen sich exakt dieselbe Geometrie — nur die Farbe trennt sie.
+  const geometrie = (svg) => svg.match(/ d="([^"]+)"/)[1];
+  assert.equal(geometrie(reverse), geometrie(light), "Geometrie der beiden Varianten weicht ab");
 });
 
 test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", () => {
   // Kein doppeltes Vorlesen: die Wortmarke steht als echter Text daneben.
-  const markImg = sidebarJsx.match(/<img[\s\S]*?src=\{markReverse\}[\s\S]*?\/>/)?.[0] ?? "";
-  assert.match(markImg, /alt=""/, "Bildmarke braucht alt=\"\"");
-  assert.match(markImg, /aria-hidden="true"/, "Bildmarke braucht aria-hidden");
-  assert.match(sidebarJsx, /Confidara<b>Express<\/b>/, "HTML-Wortmarke wurde verändert");
+  assert.match(brandLogoJsx, /isWordmark \? "" :/, "Wortmarke macht die Bildmarke nicht dekorativ");
+  assert.match(brandLogoJsx, /"aria-hidden": "true"/, "Bildmarke braucht aria-hidden");
+  assert.match(brandLogoJsx, /Confidara<b>Express<\/b>/, "HTML-Wortmarke wurde verändert");
   assert.match(sidebarJsx, /B2B Versandplattform\./, "Unterzeile wurde verändert");
 
   const wmImg = overviewJsx.match(/<img[\s\S]*?className="pp-trust-watermark"[\s\S]*?\/>/)?.[0]
@@ -748,7 +766,7 @@ test("33 — Bildmarke und Wasserzeichen sind dekorativ und nicht umgefärbt", (
   assert.match(wmImg, /aria-hidden="true"/, "Wasserzeichen braucht aria-hidden");
 
   // Keine Einfärbung per CSS — beide Assets liegen bereits in Zielfarbe vor.
-  for (const [sel, css] of [[".pp-brandmark-img", premium], [".pp-trust-watermark", overviewCss]]) {
+  for (const [sel, css] of [[".ce-brandmark-img", primitives], [".pp-trust-watermark", overviewCss]]) {
     const b = block(css, sel);
     assert.ok(b, `${sel} fehlt`);
     const filters = [...stripComments(b).matchAll(/(?:^|[;{\s])filter:\s*([^;}]+)/g)].map((m) => m[1].trim());

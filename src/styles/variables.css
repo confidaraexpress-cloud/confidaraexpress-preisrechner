@@ -120,6 +120,13 @@
      Abschlusspaket: ersetzt fünf frei gewählte Deckkräfte (0,12 / 0,16 / 0,18)
      des ausgelaufenen Legacy-Blaus #1d4ed8 durch EINEN Ton auf der Marke. */
   --ce-color-brand-border-soft: rgba(83, 103, 232, 0.16);
+  /* Chipfläche der Reverse-Markendarstellung. Dieselbe Lichtstärke wie die
+     vertiefte Sidebar-Fläche, aber eigenständig benannt: die Marke steht auch
+     AUSSERHALB der Sidebar auf dunklem Grund (öffentlicher Mobile-Drawer,
+     #0a1628). Ein sidebar-benanntes Token dort zu lesen wäre eine
+     Scope-Vermischung; ein zweiter Farbwert wäre Redundanz. */
+  --ce-brand-chip-reverse-bg: rgba(255, 255, 255, 0.055);
+  --ce-brand-chip-reverse-border: rgba(255, 255, 255, 0.11);
   --ce-color-brand-violet: #7a5ce6;
   /* -ink-Variante für Text auf hellem Grund (Paket B, Angebots-Badge):
      --ce-color-brand-violet misst dort nur 4,25:1 und fiele unter AA;

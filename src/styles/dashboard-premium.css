@@ -109,7 +109,7 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border-subtle);
 }
-.mobile-topbar .topbar-brand { color: var(--text-primary); }
+.mobile-topbar .topbar-brand .ce-brand-word { color: var(--text-primary); }
 .hamburger-btn { color: var(--text-secondary); background: none; border: none; cursor: pointer; }
 .hamburger-btn:hover { background: var(--surface-muted); }
 /* Die Menüschaltfläche liegt außerhalb von .pp-side und braucht daher einen
@@ -208,22 +208,20 @@
    ein einzelner, bewusster Übergang statt eines leeren Rests der alten
    Kartenlücke. */
 .pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 6px 28px; }
-.ce-brandmark {
-  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-  display: grid; place-items: center;
-  background: var(--ce-sidebar-surface);
-  border: 1px solid var(--ce-sidebar-border);
-  box-shadow: none;
-}
-/* Die CE-Bildmarke wird als <img> eingebunden (statischer Vite-Import), nicht
-   inline dupliziert. Feste Maße sind zwingend: die Datei trägt selbst
-   width/height="256" und würde ohne CSS-Größe in Originalgröße rendern.
-   Die Reverse-Variante ist bereits in Zielfarbe ausgeliefert — kein filter,
-   keine Einfärbung. Die 36×36-Fläche und die Zeilenabstände bleiben
-   unverändert, damit Wortmarke, Unterzeile und Close-Button nicht wandern. */
-.pp-brandmark-img { width: 24px; height: 24px; display: block; filter: none; }
-.pp-brand { font-family: var(--fs); font-weight: 600; font-size: 16px; line-height: 1.15; letter-spacing: -0.015em; color: var(--ce-sidebar-text-strong); white-space: nowrap; }
-.pp-brand b { color: var(--ce-sidebar-active-icon); font-weight: 600; }
+/* Die Marke kommt aus components/ui/BrandLogo.jsx — ein Bauteil für das ganze
+   Produkt. Hier steht nur noch, was DIESE Fläche anders macht als die
+   Grundregel in primitives.css: eine etwas größere Chipfläche (36 statt 34)
+   und die passende Bildgröße. Flächenfarbe, Kante und die durchgehend helle
+   Reverse-Wortmarke kommen aus dem Grundbauteil (tone="reverse").
+
+   Feste Maße bleiben zwingend: die Assetdatei trägt selbst width/height="256"
+   und würde ohne CSS-Größe in Originalgröße rendern. Die Reverse-Variante ist
+   bereits in Zielfarbe ausgeliefert — kein filter, keine Einfärbung. Die
+   36×36-Fläche und die Zeilenabstände bleiben unverändert, damit Wortmarke,
+   Unterzeile und Close-Button nicht wandern. */
+.pp-logo .ce-brand { flex: 1; }
+.pp-logo .ce-brandmark { width: 36px; height: 36px; border-radius: 10px; box-shadow: none; }
+.pp-logo .ce-brandmark-img { width: 24px; height: 24px; }
 .pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
 .pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
 

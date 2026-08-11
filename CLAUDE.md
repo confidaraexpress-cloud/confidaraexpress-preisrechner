@@ -840,6 +840,72 @@ Tokenfamilie), das Eigenmaterial der Übersicht (`--ce-kpi-*`, `--ce-flow-*`,
 `--ce-bento-*`, `--ce-net-*`) und das Sidebar-Chrome — alle drei sind gemessen,
 dokumentiert und durch eigene Tests gedeckt.
 
+## Markenintegration Web (Branding-Paket 1)
+
+Die Marke wird an **genau einer Stelle** zusammengesetzt:
+`components/ui/BrandLogo.jsx`. Wer irgendwo ein Logo braucht, nutzt dieses
+Bauteil — kein zweites Markup, kein direkter Assetimport, kein Nachbau.
+
+```jsx
+<BrandLogo variant="wordmark" tone="reverse" chip sub={…} />
+<BrandLogo variant="signet"  tone="standard" alt="" />
+```
+
+- **Zwei Achsen, mehr nicht.** `variant` = `wordmark` (Bildmarke + Text) |
+  `signet`; `tone` = `standard` (helle Flächen) | `reverse` (dunkle Flächen).
+  `chip` schaltet die Trägerfläche zu, `sub` nimmt einen Deskriptor des
+  Aufrufers auf, `alt=""` erzwingt ein rein dekoratives Signet.
+- **Verbindliche Markenfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
+  `--ce-color-text-primary` / `--ce-color-brand`. Es gibt keine zweite
+  Farbquelle. Die abgelösten Paare (`#0A1633`/`#2C438C`, `#8EA2F0`,
+  `#0B1F4D`, `#2563eb`→`#60a5fa`) sind vollständig verschwunden.
+- **Die Wortmarke ist echter Text**, kein Pfad-SVG: vorlesbar, skalierend, ohne
+  eingebettete Buchstabenkonturen. Die Zweifarbigkeit trägt das `<b>`.
+- **Reverse ist EINFARBIG hell — gemessen, nicht gewählt.** `#5367E8` erreicht
+  auf der Chipfläche der Sidebar (effektiv `#242D3A`) nur 2,96:1 und als
+  Wortmarkentext auf den dunklen Flächen 3,45–4,39:1. Off-White misst dort
+  13–19:1. Der blaue Akzent bleibt allen hellen Flächen vorbehalten (4,69:1).
+  Die Begründung samt Zahlen steht im Markenblock von `primitives.css`.
+- **Tonlage folgt der echten Fläche, nicht dem Bereich.** Kunden-Sidebar und
+  Auth sind dunkel → `reverse`; Adminnavigation, öffentliche Leiste, mobile
+  Kopfzeile und Ladebildschirm sind hell → `standard`. Der öffentliche
+  Mobile-Drawer (`#0a1628`) ist die zweite dunkle Stelle außerhalb der Sidebar
+  — dafür gibt es `--ce-brand-chip-reverse-bg/-border` statt eines
+  sidebar-benannten Tokens.
+- **Kein Claim produktiv.** „IHRE VERSANDVERMITTLUNG" ist bewusst nicht
+  eingebaut (Abstimmung mit den AGB steht aus — die AGB führen CE als
+  *Wiederverkäufer*, nicht als Vermittler). Ein Test hält das fest.
+- **Kein seitenweites Wasserzeichen.** Die Regel gegen Markenassets im
+  `.app-shell`-Hintergrund bleibt bestehen; das einzige Wasserzeichen ist
+  weiterhin das lokale Detail des Trust-Tiles der Übersicht.
+- **Favicon:** eigene Fläche in Primary Navy mit der hellen Marke darauf. Ein
+  Favicon steht je nach Browserthema auf hellem ODER dunklem Grund — transparent
+  wäre es in einem der beiden Fälle unsichtbar. Der Ausschnitt ist gegenüber den
+  App-Assets enger gefasst (Rand 5/64 statt des großzügigen 256er-Rands), damit
+  die Marke bei 16 px so viel Fläche wie möglich bekommt. **Die Geometrie ist
+  identisch** — kein vereinfachtes Zweitlogo.
+- **Vite bettet beide Assets als Data-URI ein** (< 4 KB). Kommentare im SVG
+  landen damit im Bundle: die ausführliche Begründung steht deshalb in
+  `primitives.css` (wird beim Build entfernt), im SVG nur ein Verweis.
+- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 14 Tests — eine
+  Quelle · vier Varianten · identische Geometrie · verbindliche Farben · keine
+  Rückkehr der alten Paare · keine handgebaute Kachel · Favicon ohne Textmarke ·
+  kein Claim · kein Wasserzeichen · Tonlage je Fläche · unverändertes
+  Auth-Formular · kein CSS-Filter · keine doppelte Vorlesung) und
+  `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 6 Tests — gemessene
+  Kontraste gegen die echten Verlaufsstopps, Wortmarke ohne Umbruch bei
+  360/390/430/768 px, Favicon-Auslieferung).
+
+Bewusst nicht Teil dieses Pakets: **E-Mails** (Paket 2) und **PDF-Dokumente**
+(Paket 3) sind unverändert; Carrierlabel und Commercial Invoice bekommen
+dauerhaft kein CE-Branding. Apple-Touch-Icon, Manifest und OG-Bild gab es
+vorher nicht und wurden nicht neu eingeführt.
+
+Bestehender, hier NICHT behobener Befund: der Kopf des öffentlichen
+Mobile-Drawers liegt unter der fixierten Navigationsleiste (z-index 999 gegen
+1000) und ist dadurch verdeckt — identisch zu `origin/main`, ein Stapelfehler
+der öffentlichen Navigation ohne Bezug zur Marke.
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

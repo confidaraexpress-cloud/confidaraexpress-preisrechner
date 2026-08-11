@@ -9,6 +9,7 @@ import { NotificationsProvider } from "../../context/NotificationsContext";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
+import { BrandLogo } from "../ui/BrandLogo";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -64,7 +65,7 @@ export function DashboardLayout() {
           <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}>
             <Icon n="menu" s={22} />
           </button>
-          <div className="topbar-brand">ConfidaraExpress</div>
+          <BrandLogo variant="wordmark" tone="standard" className="topbar-brand" />
           {/* Menü, Wortmarke, Glocke — keine zweite Identität neben der
               Firmenkarte der Sidebar (Paket A, Phase 3). */}
           <div className="topbar-right">

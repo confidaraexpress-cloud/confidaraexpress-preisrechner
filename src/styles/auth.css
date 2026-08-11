@@ -98,6 +98,22 @@
   text-align: center;
   margin-top: 28px; margin-bottom: 32px;
 }
+/* Markenanker der Anmeldung. Bewusst nur Geometrie — Farbe und Aufbau kommen
+   aus dem gemeinsamen Markenbauteil (primitives.css, tone="reverse"), damit auf
+   dieser Seite keine zweite Markenfassung entsteht. Der Glaswelt-Tokensatz
+   (--auth-*) bleibt davon unberührt.
+
+   Maßhalten ist Absicht: die Wortmarke steht eine Stufe UNTER der Headline
+   (24 px gegen deren clamp-Größe), damit sie die Aussage anführt und nicht
+   überlagert. Auf schmalen Breiten rückt sie eine Stufe kleiner. */
+.auth-brand { justify-content: center; gap: 14px; margin-bottom: 22px; }
+.auth-brand .ce-brandmark-img { width: 40px; height: 40px; }
+.auth-brand .ce-brand-word { font-size: var(--ce-text-title-page-size); }
+@media (max-width: 640px) {
+  .auth-brand { gap: 11px; margin-bottom: 18px; }
+  .auth-brand .ce-brandmark-img { width: 32px; height: 32px; }
+  .auth-brand .ce-brand-word { font-size: var(--ce-text-title-page-size-mobile); }
+}
 .auth-badge {
   display: inline-flex; align-items: center; gap: 10px;
   padding: 9px 20px 9px 14px; border-radius: 999px;

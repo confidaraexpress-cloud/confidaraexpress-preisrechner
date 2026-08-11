@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
-import markReverse from "../../assets/brand/mark-reverse.svg";
+import { BrandLogo } from "../ui/BrandLogo";
 
 // Informationsarchitektur der Kunden-Sidebar (identisch auf ALLEN Kundenseiten;
 // die visuelle Variante bleibt routeabhängig). Page-Keys/Routen unverändert —
@@ -72,24 +72,20 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
       <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="pp-side-in">
 
-          {/* Bildmarke rein dekorativ: die ausgeschriebene Wortmarke steht
-              direkt daneben als echter Text und wird bereits vorgelesen. Die
-              Reverse-Variante ist bereits in Zielfarbe ausgeliefert — deshalb
-              kein CSS-Filter und keine Einfärbung. */}
+          {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo). Die
+              Sidebar ist dunkel, also die Reverse-Variante; die Bildmarke
+              bleibt dekorativ, weil die Wortmarke direkt daneben als echter
+              Text steht und bereits vorgelesen wird. Die Unterzeile ist ein
+              Deskriptor dieser Fläche, kein Bestandteil der Marke — sie wird
+              deshalb vom Aufrufer mitgegeben und behält ihre eigene Klasse.
+              Kein Claim (siehe BrandLogo.jsx). */}
           <div className="pp-logo">
-            <span className="ce-brandmark">
-              <img
-                className="pp-brandmark-img"
-                src={markReverse}
-                alt=""
-                aria-hidden="true"
-                draggable="false"
-              />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="pp-brand">Confidara<b>Express</b></div>
-              <div className="pp-brand-sub">B2B Versandplattform.</div>
-            </div>
+            <BrandLogo
+              variant="wordmark"
+              tone="reverse"
+              chip
+              sub={<span className="pp-brand-sub">B2B Versandplattform.</span>}
+            />
             <button className="sidebar-close-btn pp-close" aria-label="Navigation schließen" onClick={() => setSidebarOpen(false)}>
               <Icon n="close" s={18} />
             </button>

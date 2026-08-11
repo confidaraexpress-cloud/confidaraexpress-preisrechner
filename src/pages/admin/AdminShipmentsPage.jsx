@@ -310,7 +310,9 @@ export default function AdminShipmentsPage() {
             {/* Aufräumaktion — bewusst NICHT die primäre Aktion und nicht in den
                 Filterbereich gemischt: sie steht als sekundäre, destruktiv
                 gekennzeichnete Verwaltungsaktion neben „Aktualisieren". Sichtbar nur,
-                wenn es tatsächlich etwas aufzuräumen gibt (draftTotal > 0). */}
+                wenn es tatsächlich etwas zu bereinigen gibt (draftTotal > 0) — draftTotal
+                zählt dabei NUR technische, nicht gespeicherte Entwürfe: gespeicherte
+                Kundenentwürfe lässt diese Aktion unangetastet (siehe ConfirmDialog unten). */}
             {Number.isFinite(draftTotal) && draftTotal > 0 && (
               <button
                 type="button"
@@ -556,12 +558,13 @@ export default function AdminShipmentsPage() {
         />
       )}
 
-      {/* Sammellöschung — nennt die systemweite Zahl, sofern das Backend sie geliefert
-          hat, und stellt ausdrücklich klar, was NICHT betroffen ist. Sie hängt bewusst
-          nicht an den gesetzten Listenfiltern. */}
+      {/* Sammellöschung („Entwürfe bereinigen") — nennt die systemweite Zahl, sofern das
+          Backend sie geliefert hat, und stellt ausdrücklich klar, was NICHT betroffen ist:
+          vom Kunden gespeicherte Entwürfe (Produktentscheidung) sowie gebuchte/stornierte/
+          abgeschlossene Sendungen. Sie hängt bewusst nicht an den gesetzten Listenfiltern. */}
       {bulkOpen && (
         <ConfirmDialog
-          title="Alle Entwürfe löschen?"
+          title="Entwürfe bereinigen?"
           text={draftBulkConfirmText(draftTotal)}
           note={deleteError || "Gilt systemweit — unabhängig von den gesetzten Filtern. Die Aktion wird im Admin-Audit protokolliert."}
           icon="trash"

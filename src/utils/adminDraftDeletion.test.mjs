@@ -62,13 +62,17 @@ test("3 — die Entwurfszahl kommt aus der Serverantwort, nie aus den geladenen 
   assert.equal(selectDeletableDraftTotal({ pagination: { total: 99 } }), null);
 });
 
-test("4 — die Erfolgsmeldung nennt exakt die vom Backend gemeldete Anzahl", () => {
-  assert.equal(draftBulkDeleteMessage(17), "17 Entwürfe wurden gelöscht.");
-  assert.equal(draftBulkDeleteMessage(1), "1 Entwurf wurde gelöscht.");
-  assert.equal(draftBulkDeleteMessage(0), "Es sind keine Entwürfe mehr vorhanden.");
+test("4 — die Erfolgsmeldung nennt exakt die vom Backend gemeldete Anzahl TECHNISCHER Entwürfe", () => {
+  assert.equal(draftBulkDeleteMessage(17), "17 automatisch erzeugte Entwürfe wurden gelöscht.");
+  assert.equal(draftBulkDeleteMessage(1), "1 automatisch erzeugter Entwurf wurde gelöscht.");
+  // 0 bedeutet NICHT „keine Entwürfe mehr vorhanden" — gespeicherte Kundenentwürfe können
+  // weiterhin existieren, die Sammelaktion rührt sie nie an.
+  assert.equal(draftBulkDeleteMessage(0), "Es waren keine automatisch erzeugten Entwürfe zum Bereinigen vorhanden.");
+  assert.ok(!draftBulkDeleteMessage(0).includes("keine Entwürfe mehr vorhanden"),
+    "die Nullmeldung behauptet fälschlich, es gäbe gar keine Entwürfe mehr");
   // Unbrauchbare Werte werden nicht zu einer erfundenen Zahl.
   for (const bad of [undefined, null, NaN, "17", -5]) {
-    assert.equal(draftBulkDeleteMessage(bad), "Es sind keine Entwürfe mehr vorhanden.", `${JSON.stringify(bad)}`);
+    assert.equal(draftBulkDeleteMessage(bad), "Es waren keine automatisch erzeugten Entwürfe zum Bereinigen vorhanden.", `${JSON.stringify(bad)}`);
   }
 });
 
@@ -86,21 +90,25 @@ test("5 — 409 erklärt den Statuswechsel, 404 die verschwundene Zeile, 401/403
   assert.match(draftBulkDeleteError(500), /konnten nicht gelöscht werden/);
 });
 
-test("6 — ohne bekannte Zahl wird keine geschätzt", () => {
+test("6 — ohne bekannte Zahl wird keine geschätzt, und es heißt nirgends mehr Alle Entwürfe löschen", () => {
   assert.equal(draftBulkConfirmLabel(23), "23 Entwürfe löschen");
   assert.equal(draftBulkConfirmLabel(1), "1 Entwurf löschen");
   for (const unbekannt of [null, undefined, NaN, 0, -3]) {
-    assert.equal(draftBulkConfirmLabel(unbekannt), "Alle Entwürfe löschen", `${JSON.stringify(unbekannt)}`);
-    assert.match(draftBulkConfirmText(unbekannt), /Alle derzeit vorhandenen Sendungsentwürfe/);
+    // "Alle" wäre seit der Produktentscheidung falsch: gespeicherte Kundenentwürfe bleiben aus.
+    assert.equal(draftBulkConfirmLabel(unbekannt), "Entwürfe bereinigen", `${JSON.stringify(unbekannt)}`);
+    assert.ok(!draftBulkConfirmLabel(unbekannt).toLowerCase().includes("alle"));
+    assert.match(draftBulkConfirmText(unbekannt), /Automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht\./);
     assert.ok(!/\d/.test(draftBulkConfirmText(unbekannt).replace(/[^\d]/g, "")), "ohne bekannte Zahl darf keine im Text stehen");
   }
-  assert.match(draftBulkConfirmText(23), /23 Entwürfe werden endgültig gelöscht/);
-  assert.match(draftBulkConfirmText(1), /1 Entwurf wird endgültig gelöscht/);
+  assert.match(draftBulkConfirmText(23), /23 automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht\./);
+  assert.match(draftBulkConfirmText(1), /1 automatisch erzeugter, nicht gespeicherter Entwurf wird endgültig gelöscht\./);
 });
 
-test("7 — beide Bulk-Texte sagen ausdrücklich, was NICHT betroffen ist", () => {
+test("7 — beide Bulk-Texte sagen ausdrücklich, dass gespeicherte Kundenentwürfe erhalten bleiben", () => {
   for (const total of [23, null]) {
-    assert.match(draftBulkConfirmText(total), /Gebuchte, stornierte oder abgeschlossene Sendungen sind davon nicht betroffen\./);
+    assert.match(draftBulkConfirmText(total),
+      /Vom Kunden gespeicherte Entwürfe sowie gebuchte, stornierte oder abgeschlossene Sendungen bleiben erhalten\./);
+    assert.match(draftBulkConfirmText(total), /gespeicherte/, "erwähnt gespeicherte Entwürfe nicht");
   }
 });
 
@@ -232,4 +240,18 @@ test("20 — keine Mehrfachauswahl eingeführt (bewusst, siehe Bericht)", () => 
   for (const marker of ['type="checkbox"', "selectedIds", "toggleSelect", "selectAll"]) {
     assert.ok(!pageCode.includes(marker), `unerwartete Mehrfachauswahl-Infrastruktur: ${marker}`);
   }
+});
+
+test("21 — der Bulk-Dialogtitel heißt „Entwürfe bereinigen?\", nicht mehr „Alle Entwürfe löschen?\"", () => {
+  assert.ok(pageCode.includes('title="Entwürfe bereinigen?"'), "der neue Dialogtitel fehlt");
+  assert.ok(!pageCode.includes("Alle Entwürfe löschen"), "der alte, jetzt falsche Titel steht noch im Quelltext");
+  // Die Einzellöschung bleibt bewusst unverändert — andere Produktentscheidung (siehe Bericht).
+  assert.ok(pageCode.includes('title="Entwurf löschen?"'), "der Einzeldelete-Dialogtitel wurde verändert");
+});
+
+test("22 — die Einzellöschung bleibt für gespeicherte Entwürfe unverändert nutzbar (kein is_saved_draft-Filter im Frontend)", () => {
+  // canDeleteShipmentDraft() ist bereits status-only (Test 1/19). Zusätzlich: nirgends im
+  // Quelltext filtert die Seite Zeilen anhand von is_saved_draft aus der Zeilenaktion heraus —
+  // die Unterscheidung Single-vs-Bulk lebt ausschließlich im Backend.
+  assert.ok(!pageCode.includes("is_saved_draft"), "die Seite kennt is_saved_draft — das gehört ausschließlich ins Backend");
 });

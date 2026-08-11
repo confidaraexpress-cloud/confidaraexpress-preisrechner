@@ -137,7 +137,7 @@ test("nur Entwurfszeilen tragen eine Löschaktion — gebuchte Sendungen nicht",
   await page.close();
 });
 
-test("„Alle Entwürfe löschen\" nennt die systemweite Zahl und fehlt ohne Entwürfe", async () => {
+test("die Sammelaktion nennt die vom Server gemeldete (bulk-eligible) Zahl und fehlt ohne Entwürfe", async () => {
   const mit = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(mit, { draftTotal: 23 });
   await openList(mit);
@@ -212,9 +212,9 @@ test("Sammellöschung: Dialog nennt Zahl und Ausnahmen, Erfolg meldet deletedCou
   await page.getByRole("button", { name: "2 Entwürfe löschen" }).click();
   await page.waitForSelector("[role=dialog]", { timeout: 5000 });
   const dialog = await page.locator("[role=dialog]").innerText();
-  assert.match(dialog, /Alle Entwürfe löschen\?/);
-  assert.match(dialog, /2 Entwürfe werden endgültig gelöscht/);
-  assert.match(dialog, /Gebuchte, stornierte oder abgeschlossene Sendungen sind davon nicht betroffen/);
+  assert.match(dialog, /Entwürfe bereinigen\?/);
+  assert.match(dialog, /2 automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht/);
+  assert.match(dialog, /Vom Kunden gespeicherte Entwürfe sowie gebuchte, stornierte oder abgeschlossene Sendungen bleiben erhalten/);
 
   await page.locator("[role=dialog]").getByRole("button", { name: /Entwürfe löschen/ }).click();
   await page.waitForTimeout(800);
@@ -222,7 +222,7 @@ test("Sammellöschung: Dialog nennt Zahl und Ausnahmen, Erfolg meldet deletedCou
   assert.equal(state.calls.filter((c) => c === "DELETE /admin/shipments/drafts").length, 1,
     "erwartet genau ein Bulk-DELETE");
   // Die Zahl stammt aus der Antwort (17), NICHT aus der Liste (2).
-  assert.match(await page.locator("[role=status]").innerText(), /17 Entwürfe wurden gelöscht/);
+  assert.match(await page.locator("[role=status]").innerText(), /17 automatisch erzeugte Entwürfe wurden gelöscht/);
   assert.equal(await zeileMitDetail(page, 701).count(), 0, "Entwurf 701 steht noch in der Liste");
   assert.equal(await zeileMitDetail(page, 702).count(), 0, "Entwurf 702 steht noch in der Liste");
   assert.equal(await zeileMitDetail(page, 703).count(), 1, "die gebuchte Sendung wurde mitentfernt");
@@ -255,6 +255,94 @@ test("die Sammellöschung hängt nicht an den gesetzten Listenfiltern", async ()
   assert.equal(bulk[0], "DELETE /admin/shipments/drafts", "der Bulk-Request trägt Parameter");
   // Der Filter bleibt nach der Aktion erhalten (kein Reset, kein Reload).
   assert.equal(await page.locator("#f-carrier").inputValue(), "dhl", "der Filterzustand ging verloren");
+  await page.close();
+});
+
+test("Sammellöschung lässt einen gespeicherten Kundenentwurf stehen — Einzellöschung erreicht ihn weiterhin", async () => {
+  // Produktentscheidung dieser Nachbesserung, end-to-end: die Sammelaktion darf einen bewusst
+  // gespeicherten Kundenentwurf NIE anfassen, die gezielte Einzellöschung aber sehr wohl. Die
+  // Adminliste führt is_saved_draft nicht im Payload (das Frontend bildet die Unterscheidung
+  // bewusst nicht nach — sie lebt ausschließlich im Backend); der Mock hier simuliert das reale
+  // Serververhalten, indem sein Bulk-Handler EINE bestimmte Draft-ID gezielt ausspart, während
+  // sein Single-Handler jede Draft-ID unterschiedslos akzeptiert — exakt die Asymmetrie von
+  // BULK_DELETE_CONDITIONS vs. SINGLE_DELETE_CONDITIONS im Backend.
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const TECH_1 = { ...DRAFT_A, id: 810 };
+  const TECH_2 = { ...DRAFT_A, id: 811 };
+  const SAVED  = { ...DRAFT_A, id: 812, customer_company: "Aufbewahrt GmbH" }; // simuliert is_saved_draft=true
+  const state = { rows: [TECH_1, TECH_2, SAVED, BOOKED], draftTotal: 2, calls: [] }; // draftTotal zählt SAVED bewusst nicht
+
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    state.calls.push(`${req.method()} ${p}`);
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+
+    if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (req.method() === "DELETE" && p.endsWith("/admin/shipments/drafts")) {
+      // Bulk: NUR die technischen Entwürfe fallen — SAVED (812) bleibt unter allen Umständen.
+      state.rows = state.rows.filter((r) => r.id === 812 || r.status !== "draft");
+      state.draftTotal = 0;
+      return json({ deletedCount: 2 });
+    }
+    if (req.method() === "DELETE" && /\/admin\/shipments\/812\/draft$/.test(p)) {
+      // Einzellöschung: dieselbe ID, die der Bulk-Handler eben verschont hat, wird hier ohne
+      // Sonderbehandlung akzeptiert (SINGLE_DELETE_CONDITIONS prüft is_saved_draft nicht).
+      state.rows = state.rows.filter((r) => r.id !== 812);
+      return route.fulfill({ status: 204, body: "" });
+    }
+    if (p.endsWith("/admin/shipments")) {
+      return json({
+        shipments: state.rows,
+        pagination: { limit: 25, offset: 0, count: state.rows.length, total: state.rows.length },
+        deletableDraftTotal: state.draftTotal,
+      });
+    }
+    return json({});
+  });
+  await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
+  await openList(page);
+
+  // Drei Zeilen zeigen den Status „Entwurf" (810, 811, 812) — der Bulk-Knopf übernimmt trotzdem
+  // die vom Server gemeldete Zahl (2), NICHT die Anzahl sichtbarer Entwurfszeilen. Das ist der
+  // Beleg, dass der Zähler aus deletableDraftTotal stammt und nicht aus der geladenen Liste
+  // nachgezählt wird.
+  for (const id of [810, 811, 812]) {
+    assert.equal(await zeileMitDetail(page, id).locator(".badge", { hasText: "Entwurf" }).count(), 1,
+      `Zeile ${id} zeigt nicht den Status „Entwurf"`);
+  }
+  await page.getByRole("button", { name: "2 Entwürfe löschen" }).click();
+  await page.waitForSelector("[role=dialog]", { timeout: 5000 });
+  const dialogText = await page.locator("[role=dialog]").innerText();
+  assert.match(dialogText, /Vom Kunden gespeicherte Entwürfe .* bleiben erhalten/,
+    "der Dialog stellt nicht klar, dass gespeicherte Entwürfe erhalten bleiben");
+  await page.locator("[role=dialog]").getByRole("button", { name: /Entwürfe löschen/ }).click();
+  await page.waitForTimeout(800);
+
+  // Die beiden technischen Entwürfe sind weg, der gespeicherte UND die gebuchte Sendung stehen
+  // weiterhin in der Liste.
+  assert.equal(await zeileMitDetail(page, 810).count(), 0, "technischer Entwurf 810 überlebte den Bulk");
+  assert.equal(await zeileMitDetail(page, 811).count(), 0, "technischer Entwurf 811 überlebte den Bulk");
+  assert.equal(await zeileMitDetail(page, 812).count(), 1, "der gespeicherte Entwurf wurde von der Sammelaktion gelöscht");
+  assert.equal(await zeileMitDetail(page, 703).count(), 1, "die gebuchte Sendung verschwand");
+  // Der Bulk-Knopf verschwindet jetzt (draftTotal 0) — kein technischer Entwurf mehr übrig.
+  assert.equal(await page.locator("button", { hasText: /Entwürfe löschen/ }).count(), 0,
+    "der Bulk-Knopf bleibt sichtbar, obwohl keine technischen Entwürfe mehr da sind");
+
+  // Der gespeicherte Entwurf trägt weiterhin SEINE EIGENE Löschaktion — der Admin kann ihn
+  // gezielt einzeln löschen, das ist keine Änderung am Einzeldelete-Produktverhalten.
+  const saveRow = zeileMitDetail(page, 812);
+  assert.equal(await saveRow.locator("button[title='Entwurf löschen']").count(), 1,
+    "der gespeicherte Entwurf verlor seine Einzel-Löschaktion");
+  await saveRow.locator("button[title='Entwurf löschen']").click();
+  await page.waitForSelector("[role=dialog]", { timeout: 5000 });
+  await page.getByRole("button", { name: "Entwurf löschen" }).last().click();
+  await page.waitForTimeout(700);
+
+  assert.equal(state.calls.filter((c) => c === "DELETE /admin/shipments/812/draft").length, 1,
+    "die gezielte Einzellöschung des gespeicherten Entwurfs löste keine Anfrage aus");
+  assert.equal(await zeileMitDetail(page, 812).count(), 0,
+    "der gespeicherte Entwurf wurde über die Einzellöschung nicht entfernt");
   await page.close();
 });
 
@@ -316,7 +404,7 @@ test("nach der Sammellöschung landet der Admin auf Seite 1, nicht auf einer lee
   // … und der Admin sieht die verbliebene Sendung statt einer leeren Seite.
   assert.equal(await page.locator(".adm-ships-table tbody tr").count(), 1,
     "die verbliebene Sendung wird nach dem Aufräumen nicht angezeigt");
-  assert.ok(await page.getByText("60 Entwürfe wurden gelöscht.").isVisible(),
+  assert.ok(await page.getByText("60 automatisch erzeugte Entwürfe wurden gelöscht.").isVisible(),
     "die Erfolgsmeldung fehlt nach dem Seitenwechsel");
   // Genau EIN Bulk-Request, und kein doppelter Listenabruf durch Reload + Seitenwechsel.
   assert.equal(state.calls.filter((c) => c.startsWith("DELETE /admin/shipments/drafts")).length, 1);

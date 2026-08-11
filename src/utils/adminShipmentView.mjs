@@ -450,22 +450,35 @@ export function shipmentDetailError(status) {
 // der Löschaktionen. Die verbindliche Prüfung liegt im Backend
 // (lib/adminDraftDeletion.js) und läuft im Moment des Löschens erneut — das Frontend
 // darf eine Löschbarkeit nie behaupten, sondern nur anbieten.
+//
+// Produktentscheidung: Einzellöschung und Sammelaktion unterscheiden sich bewusst.
+// Der Admin darf JEDEN Entwurf gezielt einzeln löschen — auch einen bewusst vom Kunden
+// gespeicherten (er entscheidet hier pro Datensatz). Die Sammelaktion „Entwürfe
+// bereinigen" fasst dagegen NUR technische, nicht gespeicherte Entwürfe an; ein
+// gespeicherter Kundenentwurf wird davon nie erfasst. Diese Unterscheidung trifft
+// ausschließlich das Backend (BULK_DELETE_CONDITIONS vs. SINGLE_DELETE_CONDITIONS in
+// lib/adminDraftDeletion.js) — das Frontend bildet sie nicht nach, es übernimmt nur die
+// vom Server gelieferte Zahl und formuliert den Dialogtext entsprechend.
 
-// Zeigt diese Zeile eine Löschaktion? Ausschließlich beim sichtbaren Status „draft" UND
-// wenn eine ID vorliegt (ohne ID gäbe es kein Ziel). Bewusst KEINE Nachbildung der
-// serverseitigen Zusatz-Guards (Ordernummer/Label/Tracking/Rechnung): die Adminliste
-// führt diese Felder gar nicht vollständig, und eine halbe Kopie der Sicherheitsregel
-// im Client wäre schlechter als gar keine — sie würde Sicherheit vortäuschen. Weicht der
-// Serverzustand ab, antwortet das Backend mit 409 und die UI zeigt genau das an.
+// Zeigt diese Zeile eine EINZEL-Löschaktion? Ausschließlich beim sichtbaren Status
+// „draft" UND wenn eine ID vorliegt (ohne ID gäbe es kein Ziel). Bewusst KEINE
+// Nachbildung der serverseitigen Zusatz-Guards (Ordernummer/Label/Tracking/Rechnung)
+// UND bewusst UNABHÄNGIG davon, ob es sich um einen gespeicherten Entwurf handelt: die
+// Adminliste führt diese Felder gar nicht vollständig, und eine halbe Kopie der
+// Sicherheitsregel im Client wäre schlechter als gar keine — sie würde Sicherheit
+// vortäuschen. Weicht der Serverzustand ab, antwortet das Backend mit 409 und die UI
+// zeigt genau das an.
 export function canDeleteShipmentDraft(row) {
   const f = shipmentFields(row);
   return f.id != null && f.status.toLowerCase() === "draft";
 }
 
-// Anzahl der systemweit löschbaren Entwürfe aus der Listenantwort (additives Feld
-// `deletableDraftTotal`). Bewusst NICHT aus den geladenen Zeilen gezählt: die Liste ist
-// gefiltert und paginiert, die Sammelaktion wirkt systemweit. Fehlt das Feld oder ist es
-// unbrauchbar → null, und der Dialog nennt dann bewusst KEINE Zahl statt einer geratenen.
+// Anzahl der systemweit durch die SAMMELAKTION löschbaren Entwürfe aus der Listenantwort
+// (additives Feld `deletableDraftTotal`) — das Backend zählt hier ausschließlich
+// technische, nicht gespeicherte Entwürfe (is_saved_draft wird ausgeschlossen). Bewusst
+// NICHT aus den geladenen Zeilen gezählt: die Liste ist gefiltert und paginiert, die
+// Sammelaktion wirkt systemweit. Fehlt das Feld oder ist es unbrauchbar → null, und der
+// Dialog nennt dann bewusst KEINE Zahl statt einer geratenen.
 export function selectDeletableDraftTotal(d) {
   const raw = d && typeof d === "object" ? d.deletableDraftTotal : null;
   if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
@@ -496,30 +509,40 @@ export function draftBulkDeleteError(status) {
 }
 
 // Erfolgsmeldung der Sammellöschung — die Zahl stammt IMMER aus der Backendantwort
-// (deletedCount), nie aus einer Schätzung der Liste. 0 ist kein Fehler, sondern die
-// ehrliche Aussage „es war nichts mehr da".
+// (deletedCount), nie aus einer Schätzung der Liste; sie umfasst ausschließlich
+// TECHNISCHE Entwürfe (die Sammelaktion lässt gespeicherte unangetastet). 0 ist kein
+// Fehler, sondern die ehrliche Aussage „es gab nichts zu bereinigen" — NICHT „keine
+// Entwürfe mehr vorhanden": gespeicherte Kundenentwürfe können weiterhin existieren.
 export function draftBulkDeleteMessage(deletedCount) {
   const n = Number.isFinite(deletedCount) ? Math.max(0, Math.floor(deletedCount)) : 0;
-  if (n === 0) return "Es sind keine Entwürfe mehr vorhanden.";
-  if (n === 1) return "1 Entwurf wurde gelöscht.";
-  return `${n} Entwürfe wurden gelöscht.`;
+  if (n === 0) return "Es waren keine automatisch erzeugten Entwürfe zum Bereinigen vorhanden.";
+  if (n === 1) return "1 automatisch erzeugter Entwurf wurde gelöscht.";
+  return `${n} automatisch erzeugte Entwürfe wurden gelöscht.`;
 }
 
-// Beschriftung des Bestätigungsbuttons. Mit bekannter Zahl wird sie genannt, sonst
-// bleibt sie neutral — es wird nie eine Zahl geraten.
+// Beschriftung von Auslöser- und Bestätigungsbutton. Mit bekannter Zahl wird sie
+// genannt (deckt praktisch jeden Fall ab, da der Auslöser nur bei total > 0 sichtbar
+// ist), sonst bleibt sie neutral — es wird nie eine Zahl geraten. Bewusst NICHT mehr
+// „Alle Entwürfe löschen": das Wort „alle" wäre nach der Produktentscheidung falsch,
+// seit gespeicherte Kundenentwürfe von der Sammelaktion ausdrücklich verschont bleiben.
 export function draftBulkConfirmLabel(total) {
-  if (!Number.isFinite(total) || total <= 0) return "Alle Entwürfe löschen";
+  if (!Number.isFinite(total) || total <= 0) return "Entwürfe bereinigen";
   return total === 1 ? "1 Entwurf löschen" : `${total} Entwürfe löschen`;
 }
 
-// Fließtext des Bulk-Dialogs. Nennt die Zahl nur, wenn sie bekannt ist, und stellt in
-// beiden Fällen klar, was NICHT betroffen ist.
+// Fließtext des Bulk-Dialogs. Nennt die Zahl nur, wenn sie bekannt ist, benennt die
+// Entwürfe ausdrücklich als „automatisch erzeugt, nicht gespeichert" (das ist die
+// tatsächliche Reichweite der Aktion) und stellt in beiden Fällen klar, dass gespeicherte
+// Kundenentwürfe zusätzlich zu gebuchten/stornierten/abgeschlossenen Sendungen erhalten
+// bleiben — die zentrale Zusicherung, die diese Nachbesserung einführt.
 export function draftBulkConfirmText(total) {
-  const nichtBetroffen =
-    "Gebuchte, stornierte oder abgeschlossene Sendungen sind davon nicht betroffen.";
+  const bleibtErhalten =
+    "Vom Kunden gespeicherte Entwürfe sowie gebuchte, stornierte oder abgeschlossene Sendungen bleiben erhalten.";
   if (!Number.isFinite(total) || total <= 0) {
-    return `Alle derzeit vorhandenen Sendungsentwürfe werden endgültig gelöscht. ${nichtBetroffen}`;
+    return `Automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht. ${bleibtErhalten}`;
   }
-  const n = total === 1 ? "1 Entwurf wird" : `${total} Entwürfe werden`;
-  return `${n} endgültig gelöscht. ${nichtBetroffen}`;
+  const satz = total === 1
+    ? "1 automatisch erzeugter, nicht gespeicherter Entwurf wird endgültig gelöscht."
+    : `${total} automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht.`;
+  return `${satz} ${bleibtErhalten}`;
 }

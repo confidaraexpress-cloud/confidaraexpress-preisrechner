@@ -37,6 +37,7 @@ import {
   draftBulkDeleteMessage,
   draftBulkConfirmLabel,
   draftBulkConfirmText,
+  shipmentPaginationView,
 } from "../../utils/adminShipmentView.mjs";
 
 const PAGE_SIZE = 25;
@@ -298,6 +299,14 @@ export default function AdminShipmentsPage() {
   const chips = useMemo(() => activeShipmentFilterChips(applied), [applied]);
   const emptyState = shipmentEmptyState({ count: rows.length, filters: applied });
   const showPagination = !error && !loading && (rows.length > 0 || page > 1);
+  // Trennt Gesamtanzahl (Sendungen) von Seitenanzahl — die frühere "Seite 1 · 5
+  // gesamt" vermischte beides und ließ bei genau einer Seite zwei sinnlos
+  // deaktivierte Buttons stehen. showNav ist nur dann false, wenn total bekannt
+  // ist UND es ohnehin nie eine zweite Seite gäbe.
+  const pagination = useMemo(
+    () => shipmentPaginationView({ page, pageSize: PAGE_SIZE, total }),
+    [page, total],
+  );
 
   return (
     <div className="adm-page">
@@ -527,15 +536,25 @@ export default function AdminShipmentsPage() {
 
       {showPagination && (
         <div className="adm-pagination">
-          <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
-          </button>
-          <span className="adm-page-ind">
-            Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}
-          </span>
-          <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
-          </button>
+          {/* Bei genau einer Seite gibt es keine sinnvolle Navigation — die
+              Buttons entfallen GANZ (nicht nur deaktiviert), es bleibt bei der
+              reinen Gesamtanzahl ("5 Sendungen"/"1 Sendung"). Ist total
+              ausnahmsweise unbekannt, bleibt die Navigation aus Vorsicht
+              nutzbar (showNav dann true) — ohne Gesamtzahl lässt sich eine
+              weitere Seite nicht ausschließen. */}
+          {pagination.showNav && (
+            <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
+              <Icon n="chevronLeft" s={14} /> Zurück
+            </button>
+          )}
+          {/* aria-live: ein Seitenwechsel wird Screenreadern angesagt, ohne den
+              Fokus zu verschieben — derselbe Mechanismus wie deleteNotice. */}
+          <span className="adm-page-ind" aria-live="polite">{pagination.label}</span>
+          {pagination.showNav && (
+            <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
+              Weiter <Icon n="chevronRight" s={14} />
+            </button>
+          )}
         </div>
       )}
 

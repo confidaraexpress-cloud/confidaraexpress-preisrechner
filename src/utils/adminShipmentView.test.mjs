@@ -39,6 +39,7 @@ import {
   shipmentMarkers,
   shipmentRouteLine,
   shippingModeLabel,
+  shipmentPaginationView,
   storedTracking,
   toShipmentApiFilters,
   trackingLinkOrNull,
@@ -201,17 +202,56 @@ test("9 — die interne Sendungs-ID ist nicht mehr die Navigation", () => {
   assert.match(listSrc, /to=\{`\/admin\/users\/\$\{encodeURIComponent\(f\.userId\)\}`\}/);
 });
 
-test("10 — kein horizontales Scrollen: relative Spaltenbreiten, kein min-width", () => {
+test("10 — kein horizontales Scrollen: Status/Preis/Aktion fest, Sendung/Kunde/Versand teilen sich den Rest", () => {
+  // Reine Prozentbreiten unterschritten den echten Inhaltsbedarf, sobald die
+  // Tabelle schmaler wurde (gemessen: die Aktionsgruppe lief schon bei 1440px
+  // aus der Tabellenkante). Status/Preis/Aktion sind deshalb feste, an echtem
+  // Inhalt gemessene Pixelbreiten (gleiches Muster wie .adm-canc-table);
+  // Sendung/Kunde/Versand bleiben absichtlich OHNE eigene width-Regel (auto)
+  // und teilen sich den Rest gleichmäßig.
   assert.match(cssSrc, /\.adm-ships-table table \{ min-width: 0; table-layout: fixed; \}/);
-  const widths = cssSrc.match(/\.adm-ships-table th:nth-child\(\d\)[^{]*\{ width: (\d+)%; \}/g) || [];
-  assert.equal(widths.length, 6, "alle sechs Spalten haben relative Breiten");
-  const sum = widths.map((w) => Number(w.match(/(\d+)%/)[1])).reduce((a, b) => a + b, 0);
-  assert.equal(sum, 100, `Spaltenbreiten müssen 100 % ergeben, sind ${sum}`);
+  const pxWidths = {};
+  for (const n of [4, 5, 6]) {
+    const m = cssSrc.match(new RegExp(`\\.adm-ships-table th:nth-child\\(${n}\\)[^{]*\\{ width: (\\d+)px; \\}`));
+    assert.ok(m, `Spalte ${n} (Status/Preis/Aktion) hat keine feste Pixelbreite`);
+    pxWidths[n] = Number(m[1]);
+  }
+  // Aktion (6) MUSS die größte der drei sein — sie trägt die einzige harte
+  // Sichtbarkeitszusicherung (Details + ggf. Löschen dürfen nie clippen).
+  assert.ok(pxWidths[6] > pxWidths[4], "Aktion ist nicht breiter als Status");
+  assert.ok(pxWidths[6] > pxWidths[5], "Aktion ist nicht breiter als Preis");
+  // Sendung/Kunde/Versand (1-3) tragen KEINE eigene Breitenregel für diese Tabelle.
+  for (const n of [1, 2, 3]) {
+    assert.equal(
+      new RegExp(`\\.adm-ships-table th:nth-child\\(${n}\\)[^{]*\\{ width:`).test(cssSrc), false,
+      `Spalte ${n} hat eine Breitenregel — sie soll den Rest frei teilen (auto)`,
+    );
+  }
+  // Keine Prozentbreite mehr auf dieser Tabelle — sonst droht dieselbe
+  // Unterschreitung erneut.
+  assert.equal(/\.adm-ships-table th:nth-child\(\d\)[^{]*\{ width: \d+%/.test(cssSrc), false,
+    "eine Prozentbreite ist zurückgekehrt");
   // Kein Scroll-Wrapper mehr um die Sendungstabelle.
   assert.equal(/adm-ships-table[\s\S]{0,120}table-scroll/.test(listSrc), false);
   // Lange Werte brechen kontrolliert.
   assert.match(cssSrc, /\.adm-ship-no \{[^}]*overflow-wrap: anywhere;/);
   assert.match(cssSrc, /\.adm-ship-cust-name \{[^}]*overflow-wrap: anywhere;/);
+  assert.match(cssSrc, /\.adm-ship-carrier \{[^}]*overflow-wrap: anywhere;/);
+});
+
+test("10b — der Tabelle-zu-Karten-Umschalter liegt bei 1200px, nicht mehr bei 900px", () => {
+  // Bei 900px (Standardbreakpoint einfacherer Adminlisten) reichte den drei
+  // freien Textspalten der Platz nicht mehr, sobald Status/Preis/Aktion feste
+  // Mindestbreiten bekamen — gemessen (Playwright, echte gebaute App): bei
+  // 1150px blieben nur ~114px Inhaltsbreite je Textspalte übrig, weniger als
+  // das längste unteilbare Wort ("ConfidaraExpress", 112px) mit Reserve
+  // braucht. 1200px hält durchgehend ≥ 127px. Gleiches Muster wie
+  // .adm-canc-table (1080px) und .inv-table (1100px).
+  const block = cssSrc.slice(
+    cssSrc.indexOf(".adm-ships-table table { min-width: 0;"),
+    cssSrc.indexOf("/* ── Rechnungsverwaltung"),
+  );
+  assert.match(block, /@media \(max-width: 1200px\) \{\s*\n\s*\.adm-ships-table \{ display: none; \}\s*\n\s*\.adm-ships-cards \{ display: flex; \}\s*\n\}/);
 });
 
 test("11 — mobile Kartenansicht ersetzt die Tabelle", () => {
@@ -569,6 +609,68 @@ test("24 — kein Logging, kein Tokenzugriff in den neuen Dateien", () => {
       assert.equal(code.includes(bad), false, `${rel}: ${bad} darf nicht vorkommen`);
     }
   }
+});
+
+// ═══ I) Pagination: Gesamtanzahl vs. Seitenanzahl ════════════════════════════
+
+test("32 — genau eine Seite zeigt nur die Gesamtanzahl, keine Navigation", () => {
+  const v = shipmentPaginationView({ page: 1, pageSize: 25, total: 5 });
+  assert.deepEqual(v, { totalPages: 1, showNav: false, label: "5 Sendungen" });
+  // Randfall total===pageSize: genau eine volle Seite, immer noch keine Navigation.
+  const voll = shipmentPaginationView({ page: 1, pageSize: 25, total: 25 });
+  assert.equal(voll.totalPages, 1);
+  assert.equal(voll.showNav, false);
+});
+
+test("33 — Singular „1 Sendung“, nicht „1 Sendungen“", () => {
+  assert.equal(shipmentPaginationView({ page: 1, pageSize: 25, total: 1 }).label, "1 Sendung");
+  assert.equal(shipmentPaginationView({ page: 1, pageSize: 25, total: 0 }).label, "0 Sendungen");
+  assert.equal(shipmentPaginationView({ page: 1, pageSize: 25, total: 2 }).label, "2 Sendungen");
+});
+
+test("34 — mehrere Seiten: „Seite X von Y · Z Sendungen“, Navigation sichtbar", () => {
+  // 57 Sendungen / 25 pro Seite = 3 Seiten (Rest 7).
+  const v1 = shipmentPaginationView({ page: 1, pageSize: 25, total: 57 });
+  assert.deepEqual(v1, { totalPages: 3, showNav: true, label: "Seite 1 von 3 · 57 Sendungen" });
+  const v2 = shipmentPaginationView({ page: 2, pageSize: 25, total: 57 });
+  assert.equal(v2.label, "Seite 2 von 3 · 57 Sendungen");
+  const v3 = shipmentPaginationView({ page: 3, pageSize: 25, total: 57 });
+  assert.equal(v3.label, "Seite 3 von 3 · 57 Sendungen");
+  // Exakt zwei volle Seiten (50/25=2) — keine überzählige leere dritte Seite.
+  assert.equal(shipmentPaginationView({ page: 1, pageSize: 25, total: 50 }).totalPages, 2);
+});
+
+test("35 — unbekannter Gesamtzähler wird ehrlich degradiert, nie erfunden", () => {
+  for (const bad of [null, undefined, NaN, -1, "57"]) {
+    const v = shipmentPaginationView({ page: 3, pageSize: 25, total: bad });
+    assert.deepEqual(v, { totalPages: null, showNav: true, label: "Seite 3" },
+      `total=${JSON.stringify(bad)} muss ehrlich degradieren`);
+  }
+});
+
+test("36 — ungültige Seitenzahl fällt sicher auf 1 zurück", () => {
+  for (const bad of [0, -1, NaN, undefined, null]) {
+    const v = shipmentPaginationView({ page: bad, pageSize: 25, total: null });
+    assert.equal(v.label, "Seite 1", `page=${JSON.stringify(bad)} muss auf Seite 1 fallen`);
+  }
+});
+
+test("37 — die Seite rendert Zurück/Weiter NUR wenn showNav true ist — kein natives confirm, keine dritte Quelle", () => {
+  // Zwei Stellen: Zurück-Button und Weiter-Button, beide hinter pagination.showNav.
+  const navGuards = (listSrc.match(/\{pagination\.showNav && \(/g) || []).length;
+  assert.equal(navGuards, 2, "erwartet je einen showNav-Guard für Zurück und Weiter");
+  assert.match(listSrc, /shipmentPaginationView\(\{ page, pageSize: PAGE_SIZE, total \}\)/,
+    "die Seite berechnet die Pagination-Ansicht nicht über den zentralen Helfer");
+  // Die alte, mehrdeutige Formulierung ist vollständig verschwunden.
+  assert.equal(/gesamt/.test(listSrc), false, "„… gesamt“ steht noch im Quelltext");
+  // Der Button-Zustand (disabled) hängt weiterhin an page/hasMore — NICHT an
+  // einer zweiten, konkurrierenden Berechnung aus pagination.totalPages.
+  assert.match(listSrc, /disabled=\{loading \|\| page <= 1\}/);
+  assert.match(listSrc, /disabled=\{loading \|\| !hasMore\}/);
+});
+
+test("38 — die Seitenanzeige ist für Screenreader live, ohne den Fokus zu stehlen", () => {
+  assert.match(listSrc, /<span className="adm-page-ind" aria-live="polite">\{pagination\.label\}<\/span>/);
 });
 
 test("25 — Selbsttest: die Prüflogik greift tatsächlich", () => {

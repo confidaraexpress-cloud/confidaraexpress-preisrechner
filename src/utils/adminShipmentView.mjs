@@ -546,3 +546,42 @@ export function draftBulkConfirmText(total) {
     : `${total} automatisch erzeugte, nicht gespeicherte Entwürfe werden endgültig gelöscht.`;
   return `${satz} ${bleibtErhalten}`;
 }
+
+// ── Pagination-Darstellung (Admin → Sendungen) ──────────────────────────────
+// Die frühere Formulierung „Seite 1 · 5 gesamt" vermischte zwei verschiedene
+// Aussagen — GESAMTANZAHL der Sendungen und ANZAHL DER SEITEN — und ließ bei
+// genau einer Seite zwei dauerhaft deaktivierte Zurück-/Weiter-Buttons stehen,
+// obwohl es technisch korrekt war (5 gesamt = fünf SENDUNGEN, nicht fünf Seiten).
+// Diese Funktion trennt beide Aussagen sauber und entscheidet zusätzlich, ob die
+// Navigation überhaupt einen Sinn ergibt.
+//
+// total kommt unverändert aus selectListTotal() — nie geraten, nie hochgerechnet.
+// Ist es (ausnahmsweise) unbekannt, weil das Backend keinen Zähler liefert,
+// degradiert die Funktion ehrlich auf die alte, seitenzahl-lose Anzeige statt
+// eine Gesamt- oder Seitenzahl zu erfinden; die Navigation bleibt dann nutzbar
+// (showNav: true), weil ohne Gesamtzahl nicht ausgeschlossen werden kann, dass
+// es weitere Seiten gibt.
+//
+// → { totalPages, showNav, label }
+//   totalPages: Anzahl der Seiten, oder null wenn total unbekannt ist.
+//   showNav:    soll die Zurück-/Weiter-Navigation überhaupt gerendert werden?
+//               false NUR wenn total bekannt ist UND totalPages <= 1 — dann
+//               gäbe es ohnehin nie eine zweite Seite, und dauerhaft
+//               deaktivierte Buttons sind kein sinnvoller UI-Zustand.
+//   label:      Anzeigetext. Bei genau einer Seite NUR die Gesamtanzahl
+//               ("5 Sendungen"/"1 Sendung", Singular berücksichtigt) — OHNE
+//               "Seite 1 ·"-Präfix, der bei einer einzigen Seite nichts
+//               Zusätzliches aussagt. Bei mehreren Seiten "Seite X von Y ·
+//               Z Sendungen".
+export function shipmentPaginationView({ page, pageSize, total }) {
+  const p = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  if (!Number.isFinite(total) || total < 0) {
+    return { totalPages: null, showNav: true, label: `Seite ${p}` };
+  }
+  const n = Math.max(0, Math.floor(total));
+  const size = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 1;
+  const totalPages = Math.max(1, Math.ceil(n / size));
+  const countLabel = n === 1 ? "1 Sendung" : `${n} Sendungen`;
+  if (totalPages <= 1) return { totalPages, showNav: false, label: countLabel };
+  return { totalPages, showNav: true, label: `Seite ${p} von ${totalPages} · ${countLabel}` };
+}

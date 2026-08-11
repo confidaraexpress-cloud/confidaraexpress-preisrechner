@@ -824,15 +824,31 @@ a.adm-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2
    Keine neuen Animationen, keine Hintergrundeffekte. */
 
 /* Sechs Spalten passen auf übliche Desktopbreiten — kein horizontales Scrollen.
-   Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben. */
+   Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben.
+
+   WARUM px statt Prozent fuer Status/Preis/Aktion (gleiches Muster wie
+   .adm-canc-table/.inv-table): mit reinen Prozentbreiten unterschreitet die
+   berechnete Spaltenbreite den tatsaechlichen Inhalt, sobald die Tabelle
+   schmaler wird — gemessen (Playwright, 1920px, Entwurfszeile mit
+   Loeschbutton): die Aktionsgruppe „Details" + Loeschen braucht 110px, dazu
+   2 × 14px Zellpolster = 138px. Bei 10% Spaltenbreite unterschritt SOGAR
+   1440px (111px Spalte) diesen Bedarf um 26px — die Aktion lief buchstaeblich
+   aus der abgerundeten Tabellenkante heraus (.table-card{overflow:hidden}).
+   Absolute Breiten fuer diese drei Spalten entkoppeln sie von der
+   Tabellenbreite:
+     • Status — laengstes Label „Label bereit" 104px + Polster, Marker
+                (Tracking/Label) duerfen bei Bedarf separat umbrechen
+                (.adm-ship-markers{flex-wrap:wrap}) → 140px
+     • Preis  — laengster erwarteter Betrag „12.345,67 €" 84px + Polster → 120px
+     • Aktion — 138px Bedarf + Reserve, MUSS immer vollstaendig sichtbar
+                bleiben (Details + Loeschen bei Entwuerfen) → 150px
+   Sendung/Kunde/Versand bleiben `auto` und teilen sich den Rest gleichmaessig
+   (identisches Muster zu .adm-canc-table: Kunde/Sendung/Grund). */
 .adm-ships-table table { min-width: 0; table-layout: fixed; }
 .adm-ships-table th, .adm-ships-table td { vertical-align: top; }
-.adm-ships-table th:nth-child(1), .adm-ships-table td:nth-child(1) { width: 17%; }
-.adm-ships-table th:nth-child(2), .adm-ships-table td:nth-child(2) { width: 21%; }
-.adm-ships-table th:nth-child(3), .adm-ships-table td:nth-child(3) { width: 23%; }
-.adm-ships-table th:nth-child(4), .adm-ships-table td:nth-child(4) { width: 17%; }
-.adm-ships-table th:nth-child(5), .adm-ships-table td:nth-child(5) { width: 12%; }
-.adm-ships-table th:nth-child(6), .adm-ships-table td:nth-child(6) { width: 10%; }
+.adm-ships-table th:nth-child(4), .adm-ships-table td:nth-child(4) { width: 140px; }
+.adm-ships-table th:nth-child(5), .adm-ships-table td:nth-child(5) { width: 120px; }
+.adm-ships-table th:nth-child(6), .adm-ships-table td:nth-child(6) { width: 150px; }
 
 /* Spalte „Sendung": Bestellnummer primär, Datum sekundär. */
 .adm-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -875,7 +891,20 @@ a.adm-ship-cust-name:focus-visible { outline: var(--ce-focus-ring); outline-offs
 .adm-scard-actions { display: flex; gap: 8px; margin-top: 13px; }
 .adm-scard-actions .btn { min-height: 44px; flex: 1; justify-content: center; }
 
-@media (max-width: 900px) {
+/* Umschaltpunkt bei 1200px statt der bei einfacheren Admin-Listen ueblichen
+   900px: die drei starren Spalten (Status/Preis/Aktion) belegen zusammen
+   410px; darunter bleiben Sendung/Kunde/Versand zu schmal fuer ihr eigenes
+   Wortmaterial — gemessen an den laengsten UNTEILBAREN Woertern, die dort
+   vorkommen ("ConfidaraExpress" 112px, "Versandpartner" 96px,
+   "Bestellnummer" 94px). Bei 1200px Viewport bleiben den drei Textspalten
+   rechnerisch je ~127px Inhaltsbreite (echte gebaute App, Playwright
+   nachgemessen) — 15px Reserve über dem groessten Einzelwort. Unterhalb davon
+   sackt die Reserve schnell ab (bei 1150px nur noch ~114px, praktisch ohne
+   Puffer) und "Ohne Bestellnummer" faengt an, mitten im Wort umzubrechen statt
+   nur an der Wortgrenze zwischen "Ohne" und "Bestellnummer". Gleiches Muster
+   wie .adm-canc-table (1080px) und .inv-table (1100px) — je mehr feste
+   Spalten eine Liste traegt, desto frueher muss sie auf Karten wechseln. */
+@media (max-width: 1200px) {
   .adm-ships-table { display: none; }
   .adm-ships-cards { display: flex; }
 }

@@ -5,6 +5,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState } from "../../components/ui/StateView";
 import {
   ADMIN_METRICS, adminMetricViews, allMetricsUnavailable, selectListTotal,
+  metricsFailureKind,
 } from "../../utils/adminOverview.mjs";
 import {
   listAdminUsers, listAdminInvoices, listAdminCancellationRequests,
@@ -33,7 +34,8 @@ const LOADERS = {
   support: (p) => listAdminSupportRequests(p),
 };
 
-const METRICS_ERROR = "Die Kennzahlen konnten nicht geladen werden.";
+const METRICS_ERROR_FULL = "Die Kennzahlen konnten nicht geladen werden.";
+const METRICS_ERROR_PARTIAL = "Einige Kennzahlen konnten nicht geladen werden.";
 
 const BEREICHE = [
   { to: "/admin/users", icon: "admin", title: "Kunden",
@@ -85,6 +87,7 @@ export default function AdminOverviewPage() {
     setEntries((prev) => Object.fromEntries(
       ADMIN_METRICS.map((m) => [m.key, { total: prev[m.key]?.total ?? null, loading: true }])));
 
+    let erfolgreich = 0;
     let gescheitert = 0;
     await Promise.all(ADMIN_METRICS.map(async (m) => {
       let total = null;
@@ -94,6 +97,7 @@ export default function AdminOverviewPage() {
         if (r.ok) {
           const d = await r.json().catch(() => null);
           total = selectListTotal(d);
+          erfolgreich += 1;
         } else if (r.status !== 401 && r.status !== 403) {
           // 401/403 behandelt apiFetch zentral (Logout/Redirect).
           gescheitert += 1;
@@ -109,7 +113,10 @@ export default function AdminOverviewPage() {
       }));
     }));
 
-    if (mountedRef.current && gescheitert > 0) setError(METRICS_ERROR);
+    if (mountedRef.current) {
+      const kind = metricsFailureKind(erfolgreich, gescheitert);
+      setError(kind === "partial" ? METRICS_ERROR_PARTIAL : kind === "full" ? METRICS_ERROR_FULL : "");
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -150,7 +157,7 @@ export default function AdminOverviewPage() {
         {error && allesLeer ? (
           <div className="ce-card">
             <ErrorState
-              title={METRICS_ERROR}
+              title={METRICS_ERROR_FULL}
               text="Die Bereiche unten sind davon unabhängig erreichbar."
               action={(
                 <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={laedt}>

@@ -366,7 +366,13 @@ test("17 — die Übersicht zeigt nur belegte Werte und erfindet keine API", () 
   // Offene Freischaltungen sind bewusst zurückgestellt (kein Serverfilter).
   assert.match(read("../utils/adminOverview.mjs"), /offene Freischaltungen/i,
     "die zurückgestellte Kennzahl ist nicht dokumentiert");
-  assert.equal(/status: "pending"/.test(modell), false,
+  // GET /admin/users kennt laut Backend-Vertrag (USER_PARAMS) keinen
+  // Statusfilter — nur die customers-Kennzahl selbst darf das prüfen; ein
+  // anderer Metrik-Eintrag (z. B. cancellations) darf durchaus "pending" als
+  // eigenen, gültigen Statuswert tragen.
+  const customersBlock = modell.match(/\{\s*key: "customers",[\s\S]*?\n {2}\},/);
+  assert.ok(customersBlock, "customers-Kennzahl nicht gefunden");
+  assert.equal(/status/.test(customersBlock[0]), false,
     "es wird ein Statusfilter für /admin/users gesendet, den es nicht gibt");
 });
 

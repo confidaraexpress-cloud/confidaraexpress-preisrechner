@@ -16,22 +16,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { customerInvoiceSummary, isOverdueInvoice } from "./customerInvoiceView.mjs";
 
-// ── Schnellaktionen ─────────────────────────────────────────────────────────
-// AUSSCHLIESSLICH bereits vorhandene Ziele. `page` entspricht exakt einem Wert
-// des bestehenden page-States (DashboardPage), `route` einer bestehenden Route.
-// Es entsteht dadurch keine neue Navigations- oder Routingarchitektur — der
-// Aufrufer reicht die Werte an seine vorhandenen Handler weiter.
-//
-// Genau EINE Aktion ist primär (`primary: true`): mehr als eine hervorgehobene
-// Fläche nebeneinander hebt sich gegenseitig auf.
-export const QUICK_ACTIONS = Object.freeze([
-  { key: "new", label: "Neue Sendung", desc: "Versandauftrag anlegen und buchen", icon: "plus", page: "new", primary: true },
-  { key: "calculator", label: "Versand berechnen", desc: "Preise und Laufzeiten vergleichen", icon: "zap", route: "/calculator" },
-  { key: "shipments", label: "Sendungen ansehen", desc: "Aufträge und Sendungsverfolgung", icon: "package", page: "shipments" },
-  { key: "invoices", label: "Rechnungen ansehen", desc: "Belege und offene Beträge", icon: "invoice", page: "invoices" },
-  { key: "support", label: "Supportanfrage erstellen", desc: "Persönliche Unterstützung anfordern", icon: "mail", page: "support" },
-]);
-
 // ── Zeitpunkt einer Sendung als vergleichbare Zahl ──────────────────────────
 // Nicht parsebare oder fehlende Werte ergeben NaN und landen dadurch ans Ende
 // (siehe sortByCreatedAtDesc) — statt die Sortierung unbestimmt zu machen.

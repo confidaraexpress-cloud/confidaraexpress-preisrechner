@@ -667,18 +667,26 @@ Mustern. Business-, API-, Status- und Routinglogik blieben unangetastet.
 
 - **Zwei Zustände, eine Seite.** `hasOperationalData()` (`utils/overviewModules.mjs`)
   entscheidet: Hat das Konto Sendungen oder Rechnungen, zeigt die Übersicht
-  Schnellaktionen, letzte Sendungen, offene Rechnungen und Benachrichtigungen —
-  „01 Ablauf", „02 Vorteile" und der Trust-Block erscheinen dann NICHT. Ein
-  leeres Konto bekommt genau umgekehrt das Onboarding. Das **Carrier-Netzwerk
-  bleibt in beiden Zuständen** (Markenfläche). Solange nichts geladen ist, gilt
-  das Konto als operativ — sonst blitzt beim ersten Rendern das Onboarding auf.
+  letzte Sendungen, offene Rechnungen und Benachrichtigungen — „01 Ablauf",
+  „02 Vorteile" und der Trust-Block erscheinen dann NICHT. Ein leeres Konto
+  bekommt genau umgekehrt das Onboarding. Das **Carrier-Netzwerk bleibt in
+  beiden Zuständen** (Markenfläche). Solange nichts geladen ist, gilt das
+  Konto als operativ — sonst blitzt beim ersten Rendern das Onboarding auf.
+- **Die frühere Schnellaktionen-Sektion ist ersatzlos entfernt** (fünf Karten:
+  Neue Sendung, Versand berechnen, Sendungen ansehen, Rechnungen ansehen,
+  Supportanfrage erstellen). Dieselben fünf Ziele stehen bereits dauerhaft in
+  der Sidebar — eine zweite Verlinkung auf der Übersicht war redundant. Kein
+  Platzhalter, kein Ersatzblock: Auf die KPI-Karten folgt jetzt direkt „Letzte
+  Sendungen"; der Abstand dorthin trägt bewusst den Sektionsrhythmus von
+  `.pp-sec` (64px), nicht den kleineren 34-px-Rhythmus der übrigen Modulfolge
+  (siehe `.ov-mod-grid > .ov-mod` in `overview.css`).
 - **Nur vorhandene Daten und Ziele.** Die Module rufen KEINE API und
   navigieren nicht selbst: `shipments`/`invoices`/`invoiceSummary` reicht
   `DashboardPage` bereits herein, Benachrichtigungen kommen aus dem
   bestehenden `NotificationsProvider` (ein Takt, ein Zustand), Ziele laufen
   über `navigateTo`/`navigate`. Der frühere Kopfzeilen-CTA „Neue Sendung"
-  (`.pp-cta`) ist entfallen — dasselbe Ziel ist jetzt die eine primäre
-  Schnellaktion; zwei Einstiege waren doppelte Navigation.
+  (`.pp-cta`) ist entfallen — dasselbe Ziel bleibt über die Sidebar
+  erreichbar.
 - **Eine Initialenquelle.** `utils/accountIdentity.mjs` (`accountInitials` /
   `accountDisplayName`) speiste zu Paket-D-Zeiten Sidebar, Benutzerchip UND
   Profilhero. Die fest verdrahtete Marke „CE" im Profil ist weg: ein Konto

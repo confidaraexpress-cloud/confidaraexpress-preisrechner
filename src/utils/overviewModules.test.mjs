@@ -2,28 +2,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  QUICK_ACTIONS, recentShipments, overviewInvoiceFacts, topNotifications, hasOperationalData,
+  recentShipments, overviewInvoiceFacts, topNotifications, hasOperationalData,
 } from "./overviewModules.mjs";
 
 const ship = (id, created_at, over) => ({ id, created_at, status: "booked", price_final: 10, ...over });
 
-test("1 — Schnellaktionen nutzen ausschließlich vorhandene Ziele", () => {
-  const SEITEN = ["new", "shipments", "invoices", "support"];
-  const ROUTEN = ["/calculator"];
-  for (const a of QUICK_ACTIONS) {
-    assert.ok(a.page || a.route, `${a.key}: kein Ziel`);
-    if (a.page) assert.ok(SEITEN.includes(a.page), `${a.key}: unbekannte Seite ${a.page}`);
-    if (a.route) assert.ok(ROUTEN.includes(a.route), `${a.key}: unbekannte Route ${a.route}`);
-    assert.ok(a.label && a.desc && a.icon, `${a.key}: unvollständig`);
-  }
-  assert.equal(QUICK_ACTIONS.length, 5);
-});
-
-test("2 — genau EINE Schnellaktion ist visuell primär", () => {
-  assert.equal(QUICK_ACTIONS.filter((a) => a.primary).length, 1);
-});
-
-test("3 — letzte Sendungen: neueste zuerst, gedeckelt, ohne Mutation", () => {
+test("1 — letzte Sendungen: neueste zuerst, gedeckelt, ohne Mutation", () => {
   const list = [
     ship(1, "2026-08-01T10:00:00Z"),
     ship(2, "2026-08-06T10:00:00Z"),
@@ -38,14 +22,14 @@ test("3 — letzte Sendungen: neueste zuerst, gedeckelt, ohne Mutation", () => {
   assert.deepEqual(list, kopie, "die Eingabeliste wurde mutiert");
 });
 
-test("4 — Sendungen ohne verwertbares Datum verschwinden nicht, sie stehen hinten", () => {
+test("2 — Sendungen ohne verwertbares Datum verschwinden nicht, sie stehen hinten", () => {
   const rows = recentShipments([
     ship(1, null), ship(2, "2026-08-06T10:00:00Z"), ship(3, "kein datum"),
   ], 10);
   assert.deepEqual(rows.map((s) => s.id), [2, 1, 3]);
 });
 
-test("5 — letzte Sendungen verändern die Sendungsdaten nicht", () => {
+test("3 — letzte Sendungen verändern die Sendungsdaten nicht", () => {
   const s = ship(1, "2026-08-06T10:00:00Z", { price_final: 22.19, status: "label_ready", weight: 5 });
   const [row] = recentShipments([s], 1);
   assert.equal(row, s, "die Sendung wird nicht 1:1 durchgereicht");
@@ -53,7 +37,7 @@ test("5 — letzte Sendungen verändern die Sendungsdaten nicht", () => {
   assert.equal(row.status, "label_ready");
 });
 
-test("6 — offene Rechnungen kommen aus der bestehenden Serversummary", () => {
+test("4 — offene Rechnungen kommen aus der bestehenden Serversummary", () => {
   const invoices = [{ id: 1, status: "open", is_overdue: true }];
   const summary = { open_count: 2, open_amount: 99.5, overdue_count: 1, next_due_date: "2026-08-20", currency: "EUR" };
   const facts = overviewInvoiceFacts(invoices, summary);
@@ -64,7 +48,7 @@ test("6 — offene Rechnungen kommen aus der bestehenden Serversummary", () => {
   assert.equal(facts.nextDueDate, "2026-08-20");
 });
 
-test("7 — ohne offene Forderung bleibt das Modul stumm (keine Nullkarte)", () => {
+test("5 — ohne offene Forderung bleibt das Modul stumm (keine Nullkarte)", () => {
   assert.equal(overviewInvoiceFacts([], null).showModule, false);
   assert.equal(overviewInvoiceFacts([], null).state, "empty");
   const bezahlt = overviewInvoiceFacts([{ id: 1, status: "paid" }], { open_count: 0 });
@@ -72,7 +56,7 @@ test("7 — ohne offene Forderung bleibt das Modul stumm (keine Nullkarte)", () 
   assert.equal(bezahlt.state, "noOpen");
 });
 
-test("8 — die Überfälligkeit stammt nur aus dem Serverflag, nie aus einem Datumsvergleich", () => {
+test("6 — die Überfälligkeit stammt nur aus dem Serverflag, nie aus einem Datumsvergleich", () => {
   const summary = { open_count: 1, open_amount: 10, currency: "EUR" }; // ohne overdue_count
   const facts = overviewInvoiceFacts(
     [{ id: 1, status: "open", is_overdue: true }, { id: 2, status: "open", due_date: "1999-01-01" }],
@@ -83,7 +67,7 @@ test("8 — die Überfälligkeit stammt nur aus dem Serverflag, nie aus einem Da
   assert.equal(facts.overdueCount, 1);
 });
 
-test("9 — wichtigste Benachrichtigungen: ungelesene zuerst, dann die neuesten", () => {
+test("7 — wichtigste Benachrichtigungen: ungelesene zuerst, dann die neuesten", () => {
   const items = [
     { id: 1, read: true, updatedAt: "2026-08-06T10:00:00Z" },
     { id: 2, read: false, updatedAt: "2026-08-01T10:00:00Z" },
@@ -95,13 +79,13 @@ test("9 — wichtigste Benachrichtigungen: ungelesene zuerst, dann die neuesten"
   assert.deepEqual(topNotifications(null), []);
 });
 
-test("10 — Arbeitsfläche sobald irgendetwas Operatives vorliegt", () => {
+test("8 — Arbeitsfläche sobald irgendetwas Operatives vorliegt", () => {
   assert.equal(hasOperationalData({ shipments: [{ id: 1 }], invoices: [] }), true);
   assert.equal(hasOperationalData({ shipments: [], invoices: [{ id: 1 }] }), true);
   assert.equal(hasOperationalData({ shipments: [], invoices: [] }), false);
 });
 
-test("11 — vor dem ersten erfolgreichen Laden blitzt kein Onboarding auf", () => {
+test("9 — vor dem ersten erfolgreichen Laden blitzt kein Onboarding auf", () => {
   // ready:false → die Seite gilt als operativ, die Module zeigen ihre eigenen
   // Ladezustände. Sonst stünde beim ersten Rendern kurz das Onboarding da.
   assert.equal(hasOperationalData({ shipments: [], invoices: [], ready: false }), true);

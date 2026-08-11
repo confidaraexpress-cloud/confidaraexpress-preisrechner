@@ -459,13 +459,6 @@ export default function DashboardPage() {
             onNewShipment={() => navigateTo("new")}
             onAllShipments={() => navigateTo("shipments")}
             onAllInvoices={() => navigateTo("invoices")}
-            /* Schnellaktionen nutzen ausschließlich die BESTEHENDE Navigation:
-               `page` läuft über navigateTo (page-State), `route` über den
-               vorhandenen Router. Keine neue Routing- oder page-State-Logik. */
-            onQuickAction={(action) => {
-              if (action.route) { navigate(action.route); return; }
-              navigateTo(action.page);
-            }}
             onProfile={() => navigateTo("profile")}
             onNotificationNav={navigateFromNotification}
           />

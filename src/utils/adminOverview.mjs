@@ -89,7 +89,7 @@ export const ADMIN_METRICS = Object.freeze([
     icon: "invoice",
     to: "/admin/invoices",
     linkLabel: "Zur Rechnungsliste",
-    params: { status: "open" },
+    params: { status: "unpaid" },
   },
   {
     key: "invoicesOverdue",
@@ -108,7 +108,7 @@ export const ADMIN_METRICS = Object.freeze([
     icon: "ban",
     to: "/admin/cancellation-requests",
     linkLabel: "Zu den Stornierungsanfragen",
-    params: { status: "open" },
+    params: { status: "pending" },
     tone: "warning",
   },
   {
@@ -170,4 +170,15 @@ export function adminMetricViews(entries) {
 export function allMetricsUnavailable(views) {
   const list = Array.isArray(views) ? views : [];
   return list.length > 0 && list.every((v) => v.state === "unavailable");
+}
+
+/** Klassifiziert einen Ladedurchlauf anhand der Erfolgs-/Fehlerzahl:
+ *  "none" — kein einziger Fehler → keine Fehlerzeile.
+ *  "partial" — mindestens ein Erfolg UND mindestens ein Fehler.
+ *  "full" — kein einziger Erfolg (alles fehlgeschlagen). */
+export function metricsFailureKind(succeeded, failed) {
+  const s = Number.isFinite(succeeded) ? Math.max(0, succeeded) : 0;
+  const f = Number.isFinite(failed) ? Math.max(0, failed) : 0;
+  if (f === 0) return "none";
+  return s > 0 ? "partial" : "full";
 }

@@ -258,6 +258,71 @@ test("die Sammellöschung hängt nicht an den gesetzten Listenfiltern", async ()
   await page.close();
 });
 
+test("nach der Sammellöschung landet der Admin auf Seite 1, nicht auf einer leeren Seite", async () => {
+  // Ausgangslage: 60 Entwürfe auf drei Seiten, der Admin steht auf Seite 3. Nach dem
+  // Aufräumen bleibt EINE gebuchte Sendung übrig — Seite 3 gäbe es dann nicht mehr.
+  // Ohne Seitenrücksprung sähe der Admin eine leere Liste und müsste sich selbst
+  // zurückblättern, obwohl die Aktion erfolgreich war.
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const alle = Array.from({ length: 60 }, (_, i) => ({ ...DRAFT_A, id: 800 + i }));
+  const state = { rows: [...alle, BOOKED], draftTotal: 60, calls: [] };
+
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const p = url.pathname;
+    state.calls.push(`${req.method()} ${p}${url.search}`);
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+
+    if (p.endsWith("/kundenbereich")) return json({ user: ADMIN });
+    if (req.method() === "DELETE" && p.endsWith("/admin/shipments/drafts")) {
+      const n = state.rows.filter((r) => r.status === "draft").length;
+      state.rows = state.rows.filter((r) => r.status !== "draft");
+      state.draftTotal = 0;
+      return json({ deletedCount: n });
+    }
+    if (p.endsWith("/admin/shipments")) {
+      // Echte Pagination: der Server schneidet nach offset/limit zu.
+      const offset = Number(url.searchParams.get("offset") || 0);
+      const limit = Number(url.searchParams.get("limit") || 25);
+      const seite = state.rows.slice(offset, offset + limit);
+      return json({
+        shipments: seite,
+        pagination: { limit, offset, count: seite.length, total: state.rows.length },
+        deletableDraftTotal: state.draftTotal,
+      });
+    }
+    return json({});
+  });
+  await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
+  await openList(page);
+
+  // Auf Seite 3 blättern.
+  await page.getByRole("button", { name: /Weiter/ }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: /Weiter/ }).click();
+  await page.waitForTimeout(400);
+  const vorher = state.calls.filter((c) => c.startsWith("GET /admin/shipments?")).pop();
+  assert.ok(/offset=50/.test(vorher), `Seite 3 wurde nicht geladen: ${vorher}`);
+
+  await page.getByRole("button", { name: "60 Entwürfe löschen" }).click();
+  await page.waitForSelector("[role=dialog]", { timeout: 5000 });
+  await page.locator("[role=dialog]").getByRole("button", { name: /Entwürfe löschen/ }).click();
+  await page.waitForTimeout(900);
+
+  // Der letzte Listenabruf zeigt wieder auf den Anfang …
+  const nachher = state.calls.filter((c) => c.startsWith("GET /admin/shipments?")).pop();
+  assert.ok(/offset=0(&|$)/.test(nachher), `nach dem Aufräumen wurde nicht Seite 1 geladen: ${nachher}`);
+  // … und der Admin sieht die verbliebene Sendung statt einer leeren Seite.
+  assert.equal(await page.locator(".adm-ships-table tbody tr").count(), 1,
+    "die verbliebene Sendung wird nach dem Aufräumen nicht angezeigt");
+  assert.ok(await page.getByText("60 Entwürfe wurden gelöscht.").isVisible(),
+    "die Erfolgsmeldung fehlt nach dem Seitenwechsel");
+  // Genau EIN Bulk-Request, und kein doppelter Listenabruf durch Reload + Seitenwechsel.
+  assert.equal(state.calls.filter((c) => c.startsWith("DELETE /admin/shipments/drafts")).length, 1);
+  await page.close();
+});
+
 test("die Aktionen bleiben bei 1024 px und 768 px bedienbar, ohne die Tabelle zu sprengen", async () => {
   for (const width of [1440, 1280, 1024, 900, 768]) {
     const page = await browser.newPage({ viewport: { width, height: 1000 } });

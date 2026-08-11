@@ -281,7 +281,13 @@ export default function AdminShipmentsPage() {
       // Die Zahl stammt IMMER aus der Backendantwort — nie aus der lokalen Liste.
       setBulkOpen(false);
       setDeleteNotice(draftBulkDeleteMessage(Number(d?.deletedCount)));
-      await load();
+      // Die Ergebnismenge ist gerade systemweit kleiner geworden — dieselbe Lage wie beim
+      // Anwenden oder Zurücksetzen eines Filters, und deshalb dieselbe Antwort: zurück auf
+      // Seite 1. Ohne das landet ein Admin, der auf Seite 3 aufgeräumt hat, auf einer nun
+      // leeren Seite 3 und müsste sich selbst zurückblättern. Der Seitenwechsel löst den
+      // Ladeeffekt aus; nur wenn wir bereits auf Seite 1 stehen, laden wir direkt neu.
+      if (page !== 1) setPage(1);
+      else await load();
     } catch {
       setDeleteError(draftBulkDeleteError(0));
     } finally {

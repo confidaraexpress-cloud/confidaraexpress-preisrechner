@@ -140,16 +140,28 @@ test("11 — ein laufender Request sperrt Auslöser und Dialoge (kein Doppel-Sub
 });
 
 test("12 — nach Erfolg wird die Liste neu geladen, der Filterzustand bleibt", () => {
-  // load() liest `applied` + `page` aus dem State — ein erneuter Aufruf verwirft weder
-  // Filter noch Seite. Entscheidend ist, dass NICHT resetFilters()/setPage(1) aufgerufen wird.
+  // load() liest `applied` + `page` aus dem State — ein erneuter Aufruf verwirft die Filter
+  // nicht. Entscheidend ist, dass NICHT resetFilters() läuft und kein Browser-Reload erzwungen
+  // wird; die Rückmeldung soll stehen bleiben.
   const single = pageCode.slice(pageCode.indexOf("const confirmSingleDelete"), pageCode.indexOf("const confirmBulkDelete"));
   const bulk = pageCode.slice(pageCode.indexOf("const confirmBulkDelete"), pageCode.indexOf("const chips ="));
   for (const [name, slice] of [["Einzellöschung", single], ["Sammellöschung", bulk]]) {
-    assert.ok(/await load\(\);/.test(slice), `${name}: kein Neuladen nach Erfolg`);
+    assert.ok(/load\(\);/.test(slice), `${name}: kein Neuladen nach Erfolg`);
     assert.ok(!/resetFilters\(|setApplied\(|setDraft\(/.test(slice), `${name}: verwirft den Filterzustand`);
-    assert.ok(!/setPage\(/.test(slice), `${name}: springt auf eine andere Seite`);
     assert.ok(!/location\.reload|window\.location/.test(slice), `${name}: erzwingt einen Browser-Reload`);
   }
+  // Die Einzellöschung entfernt EINE Zeile — die aktuelle Seite bleibt gültig, also bleibt
+  // der Admin, wo er ist.
+  assert.ok(!/setPage\(/.test(single), "Einzellöschung: springt ohne Anlass auf eine andere Seite");
+  // Die Sammellöschung verkleinert die Ergebnismenge systemweit. Genau wie applyFilters()
+  // und resetFilters() muss sie deshalb auf Seite 1 zurück — sonst landet ein Admin, der auf
+  // Seite 3 aufgeräumt hat, auf einer nun leeren Seite. Der Seitenwechsel löst den Ladeeffekt
+  // aus; nur auf Seite 1 wird direkt neu geladen (kein doppelter Abruf).
+  assert.match(
+    bulk,
+    /if \(page !== 1\) setPage\(1\);\s*\n\s*else await load\(\);/,
+    "Sammellöschung: kein Rücksprung auf Seite 1 (oder doppelter Listenabruf)",
+  );
 });
 
 test("13 — die Erfolgszahl stammt aus der Antwort, nicht aus der geladenen Liste", () => {

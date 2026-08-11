@@ -49,7 +49,7 @@ const PAKET_D_CSS = ["styles/overview.css", "styles/support.css", "styles/notifi
 /* ══════════ 1 — operative Module bei vorhandenen Daten ═══════════════════ */
 
 test("1 — die Übersicht zeigt bei vorhandenen Daten die operativen Module", () => {
-  for (const modul of ["<QuickActions", "<RecentShipments", "<OpenInvoices", "<OverviewNotifications"]) {
+  for (const modul of ["<RecentShipments", "<OpenInvoices", "<OverviewNotifications"]) {
     assert.ok(overview.includes(modul), `Modul fehlt: ${modul}`);
   }
   // Sie hängen am tatsächlichen Datenbestand, nicht an einem Schalter.
@@ -64,24 +64,34 @@ test("2 — ohne operative Daten führt Onboarding statt bedeutungsloser Nullkar
   const code = stripJs(overview);
   assert.equal((code.match(/\{!operational && \(/g) || []).length, 3,
     "erwartet: Ablauf, Vorteile und Trust hängen am Onboarding-Zweig");
-  // … die Schnellaktionen dagegen immer (ein leeres Konto braucht den Einstieg).
-  const quickIndex = code.indexOf("<QuickActions");
-  const erstesOnboarding = code.indexOf("{!operational && (");
-  assert.ok(quickIndex > -1 && quickIndex < erstesOnboarding,
-    "die Schnellaktionen dürfen nicht im Onboarding-Zweig hängen");
   // Keine leere Tabelle: das Sendungsmodul erscheint gar nicht erst.
   assert.match(overview, /\{operational && \(\s*<div className="ov-mod-grid">/);
 });
 
-/* ══════════ 3 — Schnellaktionen ═════════════════════════════════════════ */
+/* ══════════ 3 — Schnellaktionen sind restlos entfernt ═══════════════════ */
 
-test("3 — Schnellaktionen verwenden vorhandene Ziele über die bestehende Navigation", () => {
-  // Ziele: siehe overviewModules.test.mjs (dort gegen die Allowlist geprüft).
-  assert.match(dashPage, /onQuickAction=\{\(action\) => \{/);
-  assert.match(dashPage, /if \(action\.route\) \{ navigate\(action\.route\); return; \}/);
-  assert.match(dashPage, /navigateTo\(action\.page\)/);
-  // Kein zweiter Navigationsweg im Modul selbst.
-  assert.ok(!/useNavigate|navigate\(/.test(modules), "die Module dürfen nicht selbst navigieren");
+test("3 — die Schnellaktionen sind restlos entfernt und hinterlassen keinen Ersatzblock", () => {
+  // Kein Aufruf, keine Komponente, kein Datenarray, kein Handler — an keiner
+  // der vier Stellen, die die Sektion zuvor trug.
+  assert.ok(!/<QuickActions\b/.test(overview), "die Übersicht rendert noch <QuickActions>");
+  assert.ok(!/export function QuickActions\b/.test(modules), "OverviewModules.jsx exportiert QuickActions noch");
+  assert.ok(!/QUICK_ACTIONS/.test(overviewLogic), "overviewModules.mjs führt QUICK_ACTIONS noch");
+  assert.ok(!/onQuickAction/.test(dashPage), "DashboardPage.jsx trägt noch den onQuickAction-Handler");
+  // Die fünf Kartentexte waren ausschließlich im entfernten Datenarray belegt
+  // (siehe overviewModules.test.mjs, vor der Entfernung geprüft) — sie dürfen
+  // in keiner der vier Dateien wieder auftauchen.
+  for (const beschreibung of [
+    "Versandauftrag anlegen und buchen", "Preise und Laufzeiten vergleichen",
+    "Aufträge und Sendungsverfolgung", "Belege und offene Beträge",
+    "Persönliche Unterstützung anfordern",
+  ]) {
+    for (const [name, code] of [["Overview", overview], ["OverviewModules", modules], ["overviewModules.mjs", overviewLogic], ["DashboardPage", dashPage]]) {
+      assert.ok(!code.includes(beschreibung), `${name}: Schnellaktionen-Beschreibung „${beschreibung}“ ist zurück`);
+    }
+  }
+  // Kein CSS-Rest der Sektion (vollständige Liste inkl. Responsive-Overrides:
+  // Test 26 unten).
+  assert.ok(!/ov-quick/.test(overviewCss), "overview.css führt noch eine ov-quick-Regel");
 });
 
 test("4 — kein doppelter „Neue Sendung\"-Einstieg mehr in der Kopfzeile", () => {
@@ -392,7 +402,9 @@ test("25 — jeder Iconbutton OHNE sichtbaren Namen trägt aria-label UND title"
 
 test("26 — die entfernten Klassen sind in keinem Stylesheet und keinem Markup mehr", () => {
   const ENTFALLEN = ["pp-cta", "pp-bell", "sup-empty", "sup-empty-title", "sup-empty-text",
-    "sup-list-intro", "ntf-empty-title", "sup-dialog-select", "sup-dialog-alert"];
+    "sup-list-intro", "ntf-empty-title", "sup-dialog-select", "sup-dialog-alert",
+    "ov-quick", "ov-quick-grid", "ov-quick-card", "ov-quick-card--primary",
+    "ov-quick-ic", "ov-quick-text", "ov-quick-label", "ov-quick-desc"];
   const jsxDateien = [];
   const sammle = (dir) => {
     for (const e of readdirSync(dir)) {

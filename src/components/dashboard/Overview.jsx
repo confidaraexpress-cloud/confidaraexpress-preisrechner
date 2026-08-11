@@ -6,7 +6,7 @@ import { useNotifications } from "../../context/NotificationsContext";
 import { computeKpis } from "../../utils/kpis";
 import { hasOperationalData } from "../../utils/overviewModules.mjs";
 import { notificationTarget } from "../../utils/notificationsView.mjs";
-import { QuickActions, RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
+import { RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
 import markPrimary from "../../assets/brand/mark-primary.svg";
 import dhlLogo        from "../../assets/carriers/dhl.svg";
 import upsLogo        from "../../assets/carriers/ups.svg";
@@ -135,7 +135,7 @@ const TRUST = [
 // `!loading` zurück, statt die Karten dauerhaft leer zu lassen.
 export function Overview({
   user, shipments, invoices, invoiceSummary, loading, kpisReady,
-  onNewShipment, onAllShipments, onAllInvoices, onQuickAction, onProfile, onNotificationNav,
+  onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
 }) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
@@ -208,8 +208,8 @@ export function Overview({
         </div>
         {/* Utility-Cluster der Übersicht: Glocke und Benutzerchip — mehr nicht.
             Der frühere „Neue Sendung"-Knopf ist hier entfallen: dasselbe Ziel
-            steht seit Paket D als primäre Schnellaktion direkt darunter, und
-            zwei Einstiege nebeneinander sind doppelte Navigation. */}
+            bleibt über die permanente Sidebar erreichbar — ein zweiter
+            Einstieg auf der Übersicht wäre redundante Navigation. */}
         <div className="pp-actions">
           {/* Dieselbe Position wie zuvor — aus der dekorativen Glocke ist eine echte
               Schaltfläche geworden. Zustand und Polling kommen aus dem Shell-Provider;
@@ -254,11 +254,19 @@ export function Overview({
       </div>
 
       {/* ── Operative Module (Paket D) ──────────────────────────────────────
-          Schnellaktionen, letzte Sendungen, offene Rechnungen und die
-          wichtigsten Benachrichtigungen — alle aus bereits vorhandenen Daten
-          und bestehenden Zielen. Sie stehen VOR den erklärenden Abschnitten:
-          wer täglich arbeitet, soll zuerst seine Vorgänge sehen. */}
-      <QuickActions onAction={onQuickAction} />
+          Letzte Sendungen, offene Rechnungen und die wichtigsten
+          Benachrichtigungen — alle aus bereits vorhandenen Daten und
+          bestehenden Zielen. Sie stehen VOR den erklärenden Abschnitten: wer
+          täglich arbeitet, soll zuerst seine Vorgänge sehen.
+
+          Die frühere Schnellaktionen-Sektion (fünf Karten: Neue Sendung,
+          Versand berechnen, Sendungen ansehen, Rechnungen ansehen,
+          Supportanfrage erstellen) ist ersatzlos entfernt — dieselben fünf
+          Ziele stehen bereits dauerhaft in der Sidebar, eine zweite
+          Verlinkung war redundant. Kein Platzhalter, kein Ersatzinhalt: die
+          erste Sektion nach den KPI-Karten ist jetzt direkt „Letzte
+          Sendungen" (siehe overview.css, `.ov-mod-grid > .ov-mod` für den
+          bewussten Abstand zu den KPI-Karten). */}
 
       {operational && (
         <div className="ov-mod-grid">

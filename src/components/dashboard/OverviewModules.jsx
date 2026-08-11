@@ -6,13 +6,16 @@ import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { customerShipmentNumbers, NOT_ASSIGNED_TEXT } from "../../utils/businessNumbers.mjs";
 import { notificationSubline, relativeTime } from "../../utils/notificationsView.mjs";
-import { QUICK_ACTIONS, recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
+import { recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    OPERATIVE ÜBERSICHTSMODULE (Paket D, Teil 1)
    ───────────────────────────────────────────────────────────────────────────
-   Vier Module über den bereits vorhandenen Daten der Dashboardseite:
-   Schnellaktionen, letzte Sendungen, offene Rechnungen, Benachrichtigungen.
+   Drei Module über den bereits vorhandenen Daten der Dashboardseite:
+   letzte Sendungen, offene Rechnungen, Benachrichtigungen. Die frühere
+   Schnellaktionen-Sektion ist ersatzlos entfernt — ihre fünf Ziele sind
+   bereits über die permanente Sidebar erreichbar, eine zweite Verlinkung war
+   redundant.
 
    Kein Modul lädt selbst Daten, keines kennt eine Route, keines rechnet einen
    Geschäftswert nach. Alles kommt als Prop herein; Sortierung und Auswahl
@@ -34,35 +37,6 @@ function ModuleHead({ title, actionLabel, onAction }) {
         </button>
       )}
     </div>
-  );
-}
-
-/* ── Schnellaktionen ────────────────────────────────────────────────────────
-   Fünf bereits vorhandene Ziele als Interactive Cards. Genau eine Karte ist
-   primär markiert (QUICK_ACTIONS[].primary) — der Rest ist gleichwertig.
-   Keine riesige CTA-Fläche, keine zweite Navigationsebene: der Aufrufer
-   entscheidet über `onAction`, was ein Ziel bedeutet. */
-export function QuickActions({ onAction }) {
-  return (
-    <section className="ov-mod ov-quick" aria-labelledby="ov-quick-title">
-      <ModuleHead title={<span id="ov-quick-title">Schnellaktionen</span>} />
-      <div className="ov-quick-grid">
-        {QUICK_ACTIONS.map((a) => (
-          <button
-            key={a.key}
-            type="button"
-            className={`ce-card-interactive ov-quick-card${a.primary ? " ov-quick-card--primary" : ""}`}
-            onClick={() => onAction(a)}
-          >
-            <span className="ov-quick-ic" aria-hidden="true"><Icon n={a.icon} s={18} /></span>
-            <span className="ov-quick-text">
-              <span className="ov-quick-label">{a.label}</span>
-              <span className="ov-quick-desc">{a.desc}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </section>
   );
 }
 

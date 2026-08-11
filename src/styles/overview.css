@@ -213,8 +213,8 @@
 .pp-kpi-note { white-space: normal; }
 
 /* ══════════ Operative Module (Paket D) ══════════
-   Schnellaktionen, letzte Sendungen, offene Rechnungen und Benachrichtigungen.
-   Material ausschließlich aus der Foundation: Flächen/Kanten/Tiefen kommen aus
+   Letzte Sendungen, offene Rechnungen und Benachrichtigungen. Material
+   ausschließlich aus der Foundation: Flächen/Kanten/Tiefen kommen aus
    .ce-card bzw. .ce-card-interactive (primitives.css), Farben aus den
    --ce-color-*-Rollen, Radien aus --ce-radius-*. Hier steht nur Layout. */
 .ov-mod { margin-top: 34px; }
@@ -230,9 +230,17 @@
   line-height: var(--ce-text-title-section-line);
   color: var(--ce-color-text-primary);
 }
-/* Zwei gleichwertige Module nebeneinander; darunter bricht alles einspaltig. */
+/* Zwei gleichwertige Module nebeneinander; darunter bricht alles einspaltig.
+   .ov-mod-grid folgt seit der Entfernung der Schnellaktionen (ersatzlos,
+   keine Platzhaltersektion) direkt auf die KPI-Reihe weiter oben — deshalb
+   trägt der Abstand hier bewusst denselben Wert wie .pp-sec (64px, s. u.),
+   NICHT mehr den kleineren 34-px-Rhythmus der übrigen Modulfolge
+   (.ov-mod-grid → Benachrichtigungen bleibt bei 34px, siehe .ov-mod oben):
+   der Übergang von den Kennzahlen zu „Letzte Sendungen" ist jetzt der erste
+   Abschnittswechsel der Seite und soll sich auch so lesen — weder direkt an
+   die KPI-Karten angeklebt noch ein zufälliges Loch. */
 .ov-mod-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--ce-space-5); align-items: start; }
-.ov-mod-grid > .ov-mod { margin-top: 34px; min-width: 0; }
+.ov-mod-grid > .ov-mod { margin-top: 64px; min-width: 0; }
 
 .ov-card { overflow: hidden; }
 .ov-card--pad { padding: var(--ce-space-5); }
@@ -241,47 +249,6 @@
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
-}
-
-/* ── Schnellaktionen ────────────────────────────────────────────────────── */
-.ov-quick-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--ce-space-3);
-}
-.ov-quick-card {
-  display: flex; align-items: flex-start; gap: var(--ce-space-3);
-  min-width: 0; padding: var(--ce-space-4); text-align: left;
-  /* Touchziel: die Karte ist die Aktion, mindestens 44 px hoch. */
-  min-height: 44px;
-}
-.ov-quick-ic {
-  display: grid; place-items: center; flex: none;
-  width: 34px; height: 34px; border-radius: var(--ce-radius-md);
-  color: var(--ce-color-brand-ink);
-  background: var(--ce-color-brand-soft);
-  border: 1px solid var(--ce-color-brand-border);
-}
-.ov-quick-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ov-quick-label {
-  font-size: var(--ce-text-body-size);
-  font-weight: 600;
-  line-height: var(--ce-text-body-line);
-  color: var(--ce-color-text-primary);
-}
-.ov-quick-desc {
-  font-size: var(--ce-text-body-s-size);
-  line-height: var(--ce-text-body-s-line);
-  color: var(--ce-color-text-secondary);
-}
-/* Genau EINE primäre Schnellaktion — markiert über Kante und Fläche, nicht
-   über eine zweite Buttonfamilie oder eine eigene Farbe. */
-.ov-quick-card--primary {
-  border-color: var(--ce-color-brand-border);
-  background: var(--ce-color-brand-soft);
-}
-.ov-quick-card--primary .ov-quick-ic {
-  color: var(--ce-color-text-inverse);
-  background: var(--ce-color-brand);
-  border-color: var(--ce-color-brand);
 }
 
 /* ── Listenmodule (letzte Sendungen, Benachrichtigungen) ────────────────── */
@@ -349,19 +316,14 @@
 }
 
 @media (max-width: 1120px) {
-  .ov-quick-grid { grid-template-columns: repeat(3, 1fr); }
   .ov-mod-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .ov-quick-grid { grid-template-columns: repeat(2, 1fr); }
   /* Auf schmalen Breiten stapeln die Zeilen: Status und Betrag rutschen unter
      den Haupttext, statt ihn auf wenige Zeichen zusammenzudrücken. */
   .ov-list-row { flex-wrap: wrap; }
   .ov-list-main { flex: 1 1 100%; }
   .ov-list-num { margin-left: auto; }
-}
-@media (max-width: 460px) {
-  .ov-quick-grid { grid-template-columns: 1fr; }
 }
 /* Der prefers-reduced-motion-Block der Übersicht steht gesammelt am Dateiende —
    .ov-ntf-btn ist dort mit aufgenommen. Ein zweiter Block hier oben würde die

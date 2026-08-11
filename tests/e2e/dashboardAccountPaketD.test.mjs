@@ -73,10 +73,11 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".ov-quick-grid", { timeout: 20000 });
+  await page.waitForSelector(".ov-mod-grid", { timeout: 20000 });
 
-  assert.equal(await page.locator(".ov-quick-card").count(), 5, "fünf Schnellaktionen erwartet");
-  assert.equal(await page.locator(".ov-quick-card--primary").count(), 1, "genau eine primäre Aktion");
+  // Die frühere Schnellaktionen-Sektion ist ersatzlos entfernt — dieselben
+  // Ziele stehen bereits dauerhaft in der Sidebar.
+  assert.equal(await page.locator(".ov-quick-card").count(), 0, "die Schnellaktionen sind zurück");
   assert.ok(await page.locator(".ov-list-row").first().isVisible(), "die letzten Sendungen fehlen");
   assert.ok(await page.locator(".ov-inv-amount").isVisible(), "die offenen Rechnungen fehlen");
   assert.match(await page.locator(".ov-inv-overdue .badge--overdue").innerText(), /überfällig/);
@@ -94,13 +95,15 @@ test("ein leeres Konto wird geführt statt mit leeren Tabellen begrüßt", async
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page, { empty: true });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".ov-quick-grid", { timeout: 20000 });
+  await page.waitForSelector(".pp-flow", { timeout: 20000 });
   await page.waitForTimeout(400);
 
   assert.ok(await page.locator(".pp-flow").isVisible(), "das Onboarding fehlt");
   assert.ok(await page.locator(".pp-bento").isVisible(), "die Vorteile fehlen im Onboarding");
   assert.equal(await page.locator(".ov-list-row").count(), 0, "leere Sendungsliste statt Onboarding");
-  assert.equal(await page.locator(".ov-quick-card").count(), 5, "auch leere Konten brauchen den Einstieg");
+  // Auch im Onboarding gibt es keine Schnellaktionen mehr — ersatzlos entfernt
+  // in beiden Zuständen, kein Platzhalter.
+  assert.equal(await page.locator(".ov-quick-card").count(), 0, "die Schnellaktionen sind im Onboarding zurück");
   await page.close();
 });
 

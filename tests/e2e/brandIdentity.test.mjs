@@ -342,7 +342,7 @@ test("8 — das Favicon wird ausgeliefert und zeigt die Markengeometrie", async 
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
 
   const href = await page.getAttribute('link[rel="icon"]', "href");
-  assert.equal(href, "/favicon.svg", "die Favicon-Verknüpfung stimmt nicht");
+  assert.equal(href, "/favicon-v2.svg", "die Favicon-Verknüpfung stimmt nicht");
 
   const antwort = await page.request.get(`${BASE}${href}`);
   assert.equal(antwort.status(), 200, "das Favicon wird nicht ausgeliefert");

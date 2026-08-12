@@ -848,8 +848,10 @@ Sie wird von **keiner Komponente importiert** — sie ist reine Quelle und lande
 nicht im Bundle.
 
 Aus ihr sind sechs Produktassets abgeleitet, durch **Subpath-Filterung**: die
-Pfadstrings sind wörtlich übernommen, angepasst wurden ausschließlich der
-Ausschnitt (`viewBox`) und die Produktfarben.
+Pfadstrings sind wörtlich übernommen, angepasst wurde ausschließlich der
+Ausschnitt (`viewBox`) — die Standardassets tragen seit dem Markenabschluss
+zusätzlich die **Originalfarben** des Masters (siehe unten), nur die
+Reverse-Fassungen färben um.
 
 | Band im Master | y-Bereich | Subpaths | Verwendung |
 |---|---|---|---|
@@ -889,15 +891,29 @@ Ausschnitt (`viewBox`) und die Produktfarben.
   bis 1440 px — kein Breakpoint-Umschalten nötig. Die 44-px-Topbar der
   eingeloggten App (zu flach auch für die reine Wortmarke ohne weitere
   Verkleinerung) bleibt beim Signet.
-- **Verbindliche Produktfarben: Navy `#111A33`, Blau `#5367E8`** — identisch mit
-  `--ce-color-text-primary` / `--ce-color-brand`. Die Masterfarben `#011B55` /
-  `#004AFC` bleiben **im Master** und dürfen in keinem Produktasset auftauchen.
-- **Reverse ist EINFARBIG hell — gemessen, nicht gewählt.** `#5367E8` erreicht
-  auf der Chipfläche der Sidebar (effektiv `#242D3A`) nur 2,96:1 und auf den
-  übrigen dunklen Flächen 3,45–4,39:1. Off-White misst dort 13–19:1. Der blaue
-  Akzent bleibt allen hellen Flächen vorbehalten (4,69:1). Keine dritte
-  Markenfarbe. Die Begründung samt Zahlen steht im Markenblock von
-  `primitives.css`.
+- **Verbindliche Markenfarben: Navy `#011B55`, Blau `#004AFC`** — die
+  Originalfarben des Masters. Sie gelten für **jedes** Standard-Logoasset, in
+  Web, E-Mail und Rechnungs-PDF gleichermaßen; die Marke sieht damit in allen
+  drei Kanälen identisch aus.
+
+  Bis zum Markenabschluss trugen die **Webassets** stattdessen die UI-Tokens
+  `#111A33` / `#5367E8`, um sich der Oberfläche anzugleichen — während E-Mail
+  und PDF bereits die Originalfarben führten. Das war eine Farbdivergenz
+  zwischen den Kanälen und ist behoben. **Gemessen**: das neue Blau erreicht
+  auf Weiß 6,20:1 gegenüber 4,69:1 vorher, ist also auch kontraststärker;
+  Navy misst 16,29:1.
+
+  **UI-Tokens und Logofarben sind ab hier zwei getrennte Systeme.**
+  `--ce-color-text-primary` (`#111A33`) und `--ce-color-brand` (`#5367E8`)
+  bleiben für Oberflächen, Buttons, Links und Fokus unverändert gültig — sie
+  färben nur keine Markengeometrie mehr. Auch `theme-color` in `index.html`
+  bleibt beim UI-Token: Browser-Chrome ist kein Logoasset.
+- **Reverse ist EINFARBIG hell — gemessen, nicht gewählt.** Auf der Chipfläche
+  der Sidebar (effektiv `#242D3A`) erreicht das Markenblau nur ~3:1, auf den
+  übrigen dunklen Flächen 3,45–4,39:1. Off-White misst dort 13–19:1. Dunkle
+  Flächen tragen deshalb weiterhin `tone="reverse"` in `#F7F8FC` — die
+  Originalfarben werden dort **nicht** erzwungen. Keine dritte Markenfarbe.
+  Die Begründung samt Zahlen steht im Markenblock von `primitives.css`.
 - **Kein Claim produktiv.** „IHRE VERSANDVERMITTLUNG" steht im Master und bleibt
   dort unangetastet, wird aber in kein Produktasset übernommen (Abstimmung mit
   den AGB steht aus — die AGB führen CE als *Wiederverkäufer*, nicht als
@@ -906,9 +922,24 @@ Ausschnitt (`viewBox`) und die Produktfarben.
   `.app-shell`-Hintergrund bleibt bestehen; das einzige Wasserzeichen ist
   weiterhin das lokale Detail des Trust-Tiles der Übersicht.
 - **Favicon:** Signet-Geometrie, nur transformiert, auf eigener Fläche in
-  Primary Navy — ein Favicon steht je nach Browserthema auf hellem ODER dunklem
-  Grund. Rand 5/64 zugunsten der Erkennbarkeit bei 16 px. Keine vereinfachte
-  Zweitform.
+  Master-Navy `#011B55` — ein Favicon steht je nach Browserthema auf hellem
+  ODER dunklem Grund. Rand 5/64 zugunsten der Erkennbarkeit bei 16 px. Keine
+  vereinfachte Zweitform. Bewusst **einfarbig hell auf Trägerfläche** statt
+  zweifarbig: bei 16 px verschmelzen die E-Striche mit dem C, und Markenblau
+  auf Master-Navy misst nur 4,6:1; Off-White darauf misst 15,3:1.
+- **Browser-Icons sind versioniert und werden kurz gecacht.** Die Datei heißt
+  `favicon-v2.svg`, das Apple-Touch-Icon `apple-touch-icon-v1.png` — bei jeder
+  sichtbaren Änderung wird die Zahl hochgezählt. Grund: `nginx.conf` liefert
+  statische Assets mit `expires 1y` + `immutable` aus, und `immutable`
+  unterdrückt die Revalidierung **auch bei Strg+R**. Ein Wechsel unter festem
+  Namen wäre für wiederkehrende Besucher bis zu einem Jahr unsichtbar geblieben
+  — genau das ist beim Wechsel der alten CE-Textmarke auf das echte Signet
+  passiert. Zusätzlich haben beide Pfade in `nginx.conf` eine eigene
+  `location ^~`-Regel mit `max-age=3600, must-revalidate`. **Der `^~`-Modifier
+  ist tragend**: ohne ihn prüft nginx nach dem Präfixtreffer weiterhin die
+  regulären Ausdrücke, und der generische Assetblock würde wieder gewinnen.
+  Für gehashte Buildassets bleibt dieser Block unverändert aggressiv.
+  `brandIdentity.test.mjs` (14b) sichert Reihenfolge, Modifier und Cachezeiten.
 - **Proportionen:** `.ce-brandmark-img` trägt `height: auto` und wird über die
   BREITE gesetzt — Signet und Wortmarke haben verschiedene Seitenverhältnisse
   (1,19:1 gegen 1,92:1). Ein E2E-Test misst das gerenderte Kastenverhältnis
@@ -923,20 +954,34 @@ Ausschnitt (`viewBox`) und die Produktfarben.
   mit der gestapelten Marke zerschnitt die fixierte Leiste sie sichtbar.
   Overlay (998) und Leiste (1000) sind unverändert. Ein E2E-Test hält fest,
   dass die Markenfläche dort tatsächlich die oberste Ebene ist.
-- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 18 Tests — u. a.:
+- Governance: `src/styles/brandIdentity.test.mjs` (Quelltext, 20 Tests — u. a.:
   jeder Pfad steht wörtlich im Master · jede Variante trägt in Standard und
   Reverse exakt dieselbe Geometrie · `lockup` enthält Signet und Wortmarke in
-  Originalposition · `wordmark` enthält weder Signet noch Claim · keine
-  Masterfarbe im Produktasset · kein HTML-Nachbau · Favicon == Signet) und
+  Originalposition · `wordmark` enthält weder Signet noch Claim · **jede
+  Farbfläche stammt aus derselben Farbgruppe des Masters** (ein vertauschtes
+  Paar bestünde die reine Hexprüfung) · kein UI-Token färbt Markengeometrie ·
+  kein HTML-Nachbau · Favicon == Signet · **Icon-Cachestrategie**) und
   `tests/e2e/brandIdentity.test.mjs` (echter Dev-Server, 8 Tests — Proportionen
   gegen die viewBox, Kontraste gegen die echten Verlaufsstopps, kein
   Abschneiden, die öffentliche Leiste ohne Überlauf auf 360–1440 px, der
   Drawer nicht verdeckt).
 
-Bewusst nicht Teil dieses Pakets: **E-Mails** (Paket 2) und **PDF-Dokumente**
-(Paket 3) sind unverändert; Carrierlabel und Commercial Invoice bekommen
-dauerhaft kein CE-Branding. Apple-Touch-Icon, Manifest und OG-Bild gab es
-vorher nicht und wurden nicht neu eingeführt.
+**E-Mails** (Paket 2) und **PDF-Dokumente** (Paket 3) sind eigene Pakete und
+tragen dieselbe Marke in denselben Originalfarben; sie werden von Webänderungen
+nicht berührt. Carrierlabel, Commercial Invoice und Zollunterlagen bekommen
+dauerhaft kein CE-Branding — dort ist ConfidaraExpress nicht Herausgeber.
+
+Ein **Apple-Touch-Icon** gibt es seit dem Markenabschluss
+(`public/apple-touch-icon-v1.png`, 180 × 180): Safari/iOS kann für
+`apple-touch-icon` kein SVG. Es wird von `scripts/export-apple-touch-icon.mjs`
+aus `favicon-v2.svg` gerastert — dieselbe Geometrie, keine zweite Quelle, keine
+neue Abhängigkeit (Playwright liegt bereits vor). Bewusst vollflächig **ohne**
+eigene Rundung: iOS legt seine eigene Maske darüber, eigene Ecken ergäben einen
+doppelten Rand.
+
+**Manifest und OG-Bild gibt es weiterhin nicht** und sie wurden bewusst nicht
+neu eingeführt — PWA liegt außerhalb des Markenpakets, ein OG-Bild will
+gestaltet und nicht generiert werden.
 
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 

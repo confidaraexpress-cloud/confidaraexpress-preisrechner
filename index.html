@@ -5,9 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ConfidaraExpress | Kundenportal</title>
     <meta name="description" content="ConfidaraExpress – Ihr B2B-Versandportal. Preise vergleichen, Sendungen buchen und verwalten." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Primary Navy der Marke. Stand zuvor auf #0B1F4D — einem Navy, den es
-         sonst nirgends im Produkt gab. -->
+    <!-- Versionierter Dateiname, KEIN fester /favicon.svg. Grund: nginx liefert
+         statische Assets mit `immutable` aus; ein Browser, der die alte Datei
+         unter dem alten Namen im Cache hat, fragt sie nicht wieder an — auch
+         nicht bei Strg+R. Ein neuer Name macht jeden alten Cacheeintrag
+         wirkungslos. Bei jeder sichtbaren Aenderung die Zahl hochzaehlen. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg" />
+    <!-- Apple Touch Icon: Safari/iOS kann kein SVG, deshalb PNG. 180x180 ist
+         die groesste von iOS angeforderte Kantenlaenge. Vollflaechig — iOS legt
+         seine eigene abgerundete Maske darueber. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v1.png" />
+    <!-- Browser-Chrome, KEIN Logoasset: bleibt deshalb beim UI-Token und wandert
+         nicht auf die Markenfarbe mit. Stand zuvor auf #0B1F4D — einem Navy,
+         den es sonst nirgends im Produkt gab. -->
     <meta name="theme-color" content="#111A33" />
     <link rel="canonical" href="https://confidaraexpress.de/login" />
     <meta property="og:type" content="website" />

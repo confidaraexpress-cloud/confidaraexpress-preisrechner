@@ -22,12 +22,18 @@ const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "");
 const stripXml = (s) => s.replace(/<!--[\s\S]*?-->/g, "");
 
-const NAVY = "#111A33";
-const BLAU = "#5367E8";
+// Originalfarben des Markenmasters. Sie sind ab dem Markenabschluss auch die
+// Farben der Standard-Produktassets: Web, E-Mail und Rechnungs-PDF zeigen
+// dieselbe Marke in denselben Farben. Vorher trugen die Webassets die
+// UI-Tokens (#111A33 / #5367E8) — eine Angleichung an das Oberflächensystem,
+// die die Marke gegenüber E-Mail und PDF verstimmt hat.
+const NAVY = "#011B55";
+const BLAU = "#004AFC";
 const HELL = "#F7F8FC";
-// Originalfarben des Masters — sie dürfen NICHT in die Produktassets wandern.
-const MASTER_NAVY = "#011B55";
-const MASTER_BLAU = "#004AFC";
+// UI-Tokens des Produkts. Sie bleiben für Oberflächen gültig, haben in einem
+// LOGOASSET aber nichts mehr verloren.
+const UI_NAVY = "#111A33";
+const UI_BLAU = "#5367E8";
 
 const A = (name) => stripXml(read(`../assets/brand/${name}.svg`));
 const master = A("confidara-master");
@@ -46,7 +52,7 @@ const PAARE = [
   ["lockup-standard", "lockup-reverse", "lockup"],
 ];
 
-const favicon    = stripXml(readFileSync(new URL("../../public/favicon.svg", import.meta.url), "utf8"));
+const favicon    = stripXml(readFileSync(new URL("../../public/favicon-v2.svg", import.meta.url), "utf8"));
 const brandLogo  = read("../components/ui/BrandLogo.jsx");
 const primitives = read("./primitives.css");
 const indexHtml  = stripXml(readFileSync(new URL("../../index.html", import.meta.url), "utf8"));
@@ -92,7 +98,7 @@ const ALLE_CSS = readdirSync(new URL("./", import.meta.url))
 test("1 — der Master liegt im Repo und trägt Signet, Wortmarke und Claim", () => {
   assert.ok(existsSync(new URL("../assets/brand/confidara-master.svg", import.meta.url)));
   assert.match(master, /viewBox="0 0 1254 1254"/, "viewBox des Masters verändert");
-  assert.ok(master.includes(MASTER_NAVY) && master.includes(MASTER_BLAU),
+  assert.ok(master.includes(NAVY) && master.includes(BLAU),
     "der Master muss seine Originalfarben behalten");
   const baender = { signet: 0, wortmarke: 0, claim: 0 };
   for (const s of subpaths(master)) {
@@ -161,10 +167,33 @@ test("6 — die Lockup-Komposition enthält das Signet in unveränderter Origina
 
 /* ══════════ 3 — Farben ═════════════════════════════════════════════════ */
 
-test("7 — Standardassets tragen Primary Navy und Primary Blue", () => {
+test("7 — Standardassets tragen die Originalfarben des Masters", () => {
   for (const name of ["signet-standard", "wordmark-standard", "lockup-standard"]) {
     const fills = [...assets[name].matchAll(/fill="(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1].toUpperCase());
     assert.deepEqual([...new Set(fills)].sort(), [NAVY, BLAU].sort(), `${name}: falsche Farben`);
+  }
+});
+
+test("7b — jede Farbfläche stammt aus DERSELBEN Farbgruppe des Masters", () => {
+  // Nicht nur „die richtigen zwei Hexwerte kommen vor", sondern: die Geometrie,
+  // die im Master navy ist, ist auch im Produktasset navy. Ein vertauschtes
+  // Paar hätte Test 7 bestanden und die Marke trotzdem falsch eingefärbt.
+  const gruppen = {};
+  for (const m of master.matchAll(/<path\s+d="([^"]+)"\s+fill="([^"]+)"/g)) {
+    const d = m[1], starts = [...d.matchAll(/M /g)].map((x) => x.index);
+    gruppen[m[2].toUpperCase()] = starts.map((s, i) => d.slice(s, starts[i + 1] ?? d.length).trim());
+  }
+  const gruppeVon = (sub) => Object.entries(gruppen).find(([, arr]) => arr.includes(sub))?.[0] ?? null;
+
+  for (const name of ["signet-standard", "wordmark-standard", "lockup-standard"]) {
+    for (const m of assets[name].matchAll(/<path\s+d="([^"]+)"\s+fill="([^"]+)"/g)) {
+      const d = m[1], fill = m[2].toUpperCase();
+      const starts = [...d.matchAll(/M /g)].map((x) => x.index);
+      const subs = starts.map((s, i) => d.slice(s, starts[i + 1] ?? d.length).trim());
+      const herkunft = [...new Set(subs.map(gruppeVon))];
+      assert.deepEqual(herkunft, [fill],
+        `${name}: Pfad mit fill=${fill} stammt aus Mastergruppe ${herkunft.join(",")} — Farbzuordnung vertauscht`);
+    }
   }
 });
 
@@ -175,12 +204,22 @@ test("8 — Reverseassets stehen einfarbig hell", () => {
   }
 });
 
-test("9 — die Originalfarben des Masters bleiben in den Produktassets außen vor", () => {
-  for (const [name, svg] of Object.entries(assets)) {
-    for (const alt of [MASTER_NAVY, MASTER_BLAU]) {
-      assert.ok(!new RegExp(alt, "i").test(svg), `${name}: Masterfarbe ${alt} steht noch drin`);
+test("9 — kein LOGOASSET trägt mehr einen UI-Token als Markenfarbe", () => {
+  // Gezielt auf die Logoassets, NICHT global auf Hexwerte: die UI-Tokens
+  // #111A33 / #5367E8 bleiben für Oberflächen (Stylesheets) selbstverständlich
+  // gültig — sie dürfen nur die Marke nicht mehr einfärben.
+  for (const name of ["signet-standard", "wordmark-standard", "lockup-standard",
+                      "signet-reverse", "wordmark-reverse", "lockup-reverse"]) {
+    for (const ui of [UI_NAVY, UI_BLAU]) {
+      assert.ok(!new RegExp(`fill="${ui}"`, "i").test(assets[name]),
+        `${name}: UI-Token ${ui} färbt noch Markengeometrie`);
     }
   }
+  // Das Favicon ist der dokumentierte Sonderfall: seine TRÄGERFLÄCHE darf den
+  // UI-Navy behalten (siehe Test 15), die Markengeometrie darauf steht hell.
+  assert.ok(!new RegExp(`<path[^>]*fill="${UI_BLAU}"`, "i").test(favicon),
+    "Favicon: UI-Blau färbt Markengeometrie");
+
   // Und die vor der Markenintegration abgelösten Paare kehren nirgends zurück.
   for (const alt of ["#0A1633", "#2C438C", "#8EA2F0", "#0B1F4D", "#2563eb", "#60a5fa"]) {
     const re = new RegExp(alt, "i");
@@ -263,7 +302,57 @@ test("14 — das Favicon nutzt exakt die Signet-Geometrie", () => {
   assert.deepEqual(fav, [...SIGNET_SUBS].sort(), "das Favicon zeigt eine andere Geometrie als das Signet");
   assert.match(favicon, new RegExp(`<rect width="64" height="64" rx="14" fill="${NAVY}"`, "i"));
   assert.ok(favicon.includes(`fill="${HELL}"`), "die Marke steht nicht in der hellen Fassung");
-  assert.match(indexHtml, /<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg" \/>/);
+  assert.match(indexHtml, /<link rel="icon" type="image\/svg\+xml" href="\/favicon-v2\.svg" \/>/);
+  // Genau EINE aktive Favicon-Quelle — kein zweiter Kandidat, den der Browser
+  // stattdessen bevorzugen könnte.
+  assert.equal((indexHtml.match(/rel="icon"/g) || []).length, 1, "mehr als eine Favicon-Referenz");
+  assert.ok(!/rel="shortcut icon"|rel="mask-icon"/.test(indexHtml), "konkurrierende Icon-Referenz");
+});
+
+test("14b — Browser-Icons hängen nicht im Ein-Jahres-Cache fest", () => {
+  // Der sichtbare Anlass: das Favicon lief über den generischen Assetblock mit
+  // `expires 1y` + `immutable`. `immutable` unterdrückt die Revalidierung auch
+  // bei Strg+R — ein Markenwechsel wäre für wiederkehrende Besucher bis zu
+  // einem Jahr unsichtbar geblieben.
+  const nginx = readFileSync(new URL("../../nginx.conf", import.meta.url), "utf8");
+  const ohneKommentar = nginx.replace(/^\s*#.*$/gm, "");
+
+  const iconBlock = /location\s+\^~\s+\/favicon\s*\{([^}]*)\}/.exec(ohneKommentar);
+  const appleBlock = /location\s+\^~\s+\/apple-touch-icon\s*\{([^}]*)\}/.exec(ohneKommentar);
+  assert.ok(iconBlock, "keine eigene Location für das Favicon");
+  assert.ok(appleBlock, "keine eigene Location für das Apple-Touch-Icon");
+
+  for (const [name, block] of [["favicon", iconBlock[1]], ["apple-touch-icon", appleBlock[1]]]) {
+    assert.ok(!/immutable/.test(block), `${name}: steht weiterhin auf immutable`);
+    assert.match(block, /max-age=(\d+)/, `${name}: keine begrenzte Cachezeit`);
+    const maxAge = Number(/max-age=(\d+)/.exec(block)[1]);
+    assert.ok(maxAge > 0 && maxAge <= 86400, `${name}: max-age=${maxAge} ist zu lang für ein Icon`);
+    // `expires` UND `add_header Cache-Control` zusammen erzeugen zwei
+    // widersprüchliche Cache-Control-Header in derselben Antwort.
+    assert.ok(!/\bexpires\b/.test(block), `${name}: expires zusätzlich zum add_header gesetzt`);
+  }
+
+  // Der `^~`-Modifier ist tragend: ohne ihn prüft nginx nach dem Präfixtreffer
+  // trotzdem noch die regulären Ausdrücke und der generische Assetblock gewinnt.
+  assert.match(ohneKommentar, /location\s+\^~\s+\/favicon\b/, "Präfix-Location ohne ^~ — der Regexblock würde gewinnen");
+
+  // Und die Icon-Blöcke müssen VOR dem generischen Assetblock stehen.
+  const generisch = ohneKommentar.indexOf("location ~* \\.(js|css|png");
+  assert.ok(generisch > -1, "generischer Assetblock nicht gefunden");
+  assert.ok(ohneKommentar.indexOf("location ^~ /favicon") < generisch, "Iconblock steht hinter dem Assetblock");
+
+  // Der generische Cache bleibt für gehashte Buildassets unverändert aggressiv.
+  const rest = ohneKommentar.slice(generisch);
+  assert.match(rest, /expires\s+1y/, "der generische Assetcache wurde entschärft");
+  assert.match(rest, /immutable/, "der generische Assetcache wurde entschärft");
+
+  // Versionierte Dateinamen entwerten die bereits verteilten Alt-Caches sofort.
+  for (const datei of ["favicon-v2.svg", "apple-touch-icon-v1.png"]) {
+    assert.ok(indexHtml.includes(`/${datei}`), `index.html verweist nicht auf ${datei}`);
+    assert.ok(existsSync(new URL(`../../public/${datei}`, import.meta.url)), `${datei} fehlt in public/`);
+  }
+  assert.ok(!existsSync(new URL("../../public/favicon.svg", import.meta.url)),
+    "das alte, unversionierte favicon.svg liegt noch daneben");
 });
 
 test("15 — jede Fläche wählt Variante und Tonlage nach ihrer echten Größe", () => {

@@ -17,7 +17,9 @@ import {
   shipmentDialogLabel,
 } from "./customerCancellation.mjs";
 
-const booked = (over = {}) => ({ status: "booked", jumingo_shipment_id: "JUM123456", ...over });
+// Der Sendungshandle ist die interne shipments.id — dieselbe ID wie bei Label
+// und Tracking. Die Providerreferenz spielt kundenseitig keine Rolle mehr.
+const booked = (over = {}) => ({ status: "booked", id: 4711, ...over });
 
 // ── Sichtbarkeit ─────────────────────────────────────────────────────────────
 test("Grenzen und cancelbare Status wie vom Backend vorgegeben", () => {
@@ -43,9 +45,17 @@ test("Button NICHT sichtbar bei nicht-cancelbarem Sendungsstatus", () => {
   }
 });
 
-test("Button NICHT sichtbar ohne jumingo_shipment_id (Request nicht adressierbar)", () => {
+test("Button NICHT sichtbar ohne CE-Sendungshandle (Request nicht adressierbar)", () => {
   assert.equal(canRequestCancellation({ status: "booked" }), false);
-  assert.equal(canRequestCancellation({ status: "booked", jumingo_shipment_id: "" }), false);
+  assert.equal(canRequestCancellation({ status: "booked", id: "" }), false);
+  assert.equal(canRequestCancellation({ status: "booked", id: null }), false);
+});
+
+test("Die Providerreferenz ist kein Kriterium mehr — eine Sendung ohne sie bleibt anfragbar", () => {
+  // Sie sagt nichts darüber aus, ob der Kunde über seine Sendung sprechen darf;
+  // ob eine Stornierung fachlich möglich ist, entscheidet der Server.
+  assert.equal(canRequestCancellation({ status: "booked", id: 4711 }), true);
+  assert.equal(canRequestCancellation({ status: "booked", id: 4711, jumingo_shipment_id: "" }), true);
 });
 
 test("hasCancellationRequest erkennt gesetzten Status, ignoriert leer/null", () => {
@@ -184,8 +194,16 @@ test("readErrorCode liest error/code defensiv", () => {
   assert.equal(readErrorCode(null), "");
 });
 
-test("shipmentDialogLabel: Referenz bevorzugt, sonst maskierte JUMiNGO-ID", () => {
+test("shipmentDialogLabel: eigene Referenz bevorzugt, sonst die CE-Bestellnummer", () => {
   assert.equal(shipmentDialogLabel({ reference_number: "REF-9" }), "REF-9");
-  assert.equal(shipmentDialogLabel({ jumingo_shipment_id: "ABCD123456" }), "••••3456");
+  assert.equal(shipmentDialogLabel({ business_order_number: "CE-BS-2026-0042" }), "CE-BS-2026-0042");
+  assert.equal(shipmentDialogLabel({ reference_number: "REF-9", business_order_number: "CE-BS-2026-0042" }), "REF-9");
   assert.equal(shipmentDialogLabel({}), "");
+});
+
+test("shipmentDialogLabel zeigt NIE die Providerreferenz", () => {
+  // Vorher stand hier ersatzweise deren maskierte Endung — eine fremde ID in
+  // kundensichtbarem Text, die der Kunde nirgends wiederfindet.
+  assert.equal(shipmentDialogLabel({ jumingo_shipment_id: "ABCD123456" }), "");
+  assert.equal(shipmentDialogLabel({ id: 4711, jumingo_shipment_id: "ABCD123456" }), "");
 });

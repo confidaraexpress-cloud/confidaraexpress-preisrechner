@@ -250,10 +250,12 @@ export default function DashboardPage() {
   // gemeldeten Cancellation-Status setzen (Button verschwindet sofort) und
   // anschließend die Liste mit dem Backend abgleichen (Serverwahrheit über
   // cancellation_status/cancellation_requested_at; keine rein lokale Wahrheit).
-  const handleCancellationRequested = useCallback((jumingoShipmentId, patch) => {
+  // `shipmentId` ist der ConfidaraExpress-Sendungshandle (shipments.id) — derselbe
+  // Wert, mit dem die Anfrage gestellt wurde.
+  const handleCancellationRequested = useCallback((shipmentId, patch) => {
     if (patch && patch.status) {
       setShipments((prev) => prev.map((s) =>
-        s.jumingo_shipment_id === jumingoShipmentId
+        s.id === shipmentId
           ? { ...s, cancellation_status: patch.status, cancellation_requested_at: patch.requestedAt ?? s.cancellation_requested_at ?? null }
           : s));
     }

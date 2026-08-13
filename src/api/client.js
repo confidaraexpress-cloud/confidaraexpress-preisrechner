@@ -120,14 +120,18 @@ function selectTracking(d) {
   };
 }
 
-// getTracking(shipmentId): GET /api/tracking/:shipmentId über das zentrale
-// apiFetch (Bearer-Auth; 401/403 → zentraler Logout/Redirect). Wirft NICHT bei
-// HTTP-Fehlern, sondern liefert { ok:false, status } zurück, damit der Aufrufer
-// wie gewohnt eine kundenfreundliche Statusmeldung wählen kann. Bei Erfolg:
-// { ok:true, status, ...defensiv selektierte Felder }. Kein Logging von Daten.
+// getTracking(shipmentId): GET /api/shipments/:shipmentId/tracking über das
+// zentrale apiFetch (Bearer-Auth; 401/403 → zentraler Logout/Redirect).
+// `shipmentId` ist der ConfidaraExpress-Sendungshandle (shipments.id) — dieselbe
+// ID wie bei Label und Stornoanfrage. Die Providerreferenz löst das Backend
+// intern auf; sie verlässt den Server nicht mehr.
+// Wirft NICHT bei HTTP-Fehlern, sondern liefert { ok:false, status } zurück,
+// damit der Aufrufer wie gewohnt eine kundenfreundliche Statusmeldung wählen
+// kann. Bei Erfolg: { ok:true, status, ...defensiv selektierte Felder }.
+// Kein Logging von Daten.
 export async function getTracking(shipmentId) {
   const id = encodeURIComponent(String(shipmentId ?? "").trim());
-  const r = await apiFetch(`/api/tracking/${id}`, { auth: true });
+  const r = await apiFetch(`/api/shipments/${id}/tracking`, { auth: true });
   if (!r.ok) return { ok: false, status: r.status };
   let d = {};
   try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }
@@ -190,16 +194,16 @@ export function deleteDraft(id) {
 }
 
 // ── Stornierungsanfrage (Kunde) ──────────────────────────────────────────────
-// POST /kunde/shipments/:shipmentId/cancellation-request — stellt eine ANFRAGE
+// POST /api/shipments/:shipmentId/cancellation-request — stellt eine ANFRAGE
 // auf Stornierung (KEINE echte Carrier-/JUMiNGO-Stornierung, keine Erstattung).
-// `shipmentId` ist AUSSCHLIESSLICH die jumingo_shipment_id (nicht die interne
-// numerische ID) — konsistent mit Tracking/Label. Pfadbasis wie die
-// Sendungsliste (/kunde/shipments, ohne /api). Body enthält ausschließlich
-// `reason` (keine user_id, keine interne ID). Auth + 401/403-Handling zentral
-// über apiFetch. Gibt die rohe Response zurück; der Aufrufer wertet Status/JSON
-// selbst aus (u. a. 409 bereits vorhanden, „nicht erlaubt", 404, 422, 429).
+// `shipmentId` ist der ConfidaraExpress-Sendungshandle (shipments.id) — dieselbe
+// ID wie bei Tracking/Label, im selben Namensraum. Body enthält ausschließlich
+// `reason` (keine user_id, keine Providerreferenz). Auth + 401/403-Handling
+// zentral über apiFetch. Gibt die rohe Response zurück; der Aufrufer wertet
+// Status/JSON selbst aus (u. a. 409 bereits vorhanden, „nicht erlaubt", 404,
+// 422, 429).
 export function requestShipmentCancellation(shipmentId, reason) {
-  return apiFetch(`/kunde/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/cancellation-request`, {
+  return apiFetch(`/api/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/cancellation-request`, {
     method: "POST",
     auth: true,
     body: JSON.stringify({ reason }),

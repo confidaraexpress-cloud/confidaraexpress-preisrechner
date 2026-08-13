@@ -51,7 +51,9 @@ test("1 — Sendungen, Entwürfe, Adressbuch und Rechnungen tragen die Eyebrow �
 
 test("2 — „Track“ ist vollständig durch „Sendung verfolgen“ ersetzt", () => {
   assert.ok(!/>Track</.test(shipmentsList), "der rohe Button-Text „Track“ darf nicht mehr vorkommen");
-  assert.match(shipmentsList, /onTrack\(s\.jumingo_shipment_id\)\}>Sendung verfolgen</);
+  // Adressiert wird über den ConfidaraExpress-Sendungshandle (shipments.id),
+  // nicht mehr über die Providerreferenz.
+  assert.match(shipmentsList, /onTrack\(s\.id\)\}>Sendung verfolgen</);
 });
 
 /* ══════════ 3 — Sendungsdetail: Muted Card statt Inline-Style ════════════ */
@@ -254,7 +256,11 @@ test("22 — der Adressbuch-Kebab-Trigger trägt sowohl aria-label als auch titl
 
 test("23 — Business-Nummernkreise, JUMiNGO-Felder und Zahlungsstatuslogik sind unverändert nachweisbar", () => {
   assert.match(shipmentsList, /customerShipmentNumbers\(s\)/);
-  assert.match(shipmentsList, /s\.jumingo_shipment_id/);
+  // Die Sendungsliste adressiert ausschließlich über den CE-Handle; die
+  // Providerreferenz kommt in ihr nicht mehr vor (White Label + Providerwechsel).
+  assert.ok(!/s\.jumingo_shipment_id/.test(shipmentsList),
+    "die Sendungsliste darf die Providerreferenz nicht mehr verwenden");
+  assert.match(shipmentsList, /onLabel=\{handleDownloadLabel\}/);
   assert.match(invoicesList, /businessOrderNumberOf\(inv\)/);
   assert.match(customerInvoiceView, /isOverdueInvoice\(inv\)/);
   assert.match(addressBookView, /export const ROLE_BOTH = "both";/);

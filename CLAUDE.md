@@ -983,6 +983,49 @@ doppelten Rand.
 neu eingeführt — PWA liegt außerhalb des Markenpakets, ein OG-Bild will
 gestaltet und nicht generiert werden.
 
+## Sendungshandle — vor jeder Sendungsoperation lesen
+
+Eine gebuchte Sendung wird kundenseitig **ausschließlich über `shipments.id`**
+adressiert — den providerneutralen ConfidaraExpress-Sendungshandle. Alle drei
+Operationen liegen in **einem** Namensraum:
+
+| Operation | Pfad |
+|---|---|
+| Label | `GET /api/shipments/:shipmentId/label` |
+| Tracking | `GET /api/shipments/:shipmentId/tracking` |
+| Stornoanfrage | `POST /api/shipments/:shipmentId/cancellation-request` |
+
+`jumingo_shipment_id` ist eine **externe Providerreferenz**. Sie steht in keinem
+Kundenpfad mehr, in keinem Dialogtext, in keiner Sichtbarkeitsbedingung und in
+keinem Dateinamen — der Server löst sie intern auf. Wer eine Sendungsoperation
+ergänzt, nimmt `s.id`, nicht `s.jumingo_shipment_id`.
+
+**Verbindlich:**
+
+- **Keine ID-Heuristik.** Kein „numerisch → interne ID, String → Providerreferenz".
+  Jeder Pfad nimmt genau EIN Format entgegen und löst genau EINE Spalte auf.
+- **Die Altpfade** (`/api/jumingo/label/:id`, `/api/tracking/:id`,
+  `/kunde/shipments/:id/cancellation-request`) bleiben backendseitig bestehen und
+  werden vom Frontend **nicht mehr aufgerufen**. Grund: gehashte JS-Bundles gehen
+  mit `immutable` raus — ein zum Deploymentzeitpunkt geöffneter Tab hält sein
+  altes Bundle. Entfernbar, sobald kein Client sie mehr aufruft.
+- **`GET /api/tracking/public/:key` bleibt unverändert.** Die öffentliche
+  Sendungsverfolgung adressiert über die Carrier-Trackingnummer, nicht über den
+  Handle, und ist bewusst kein Teil dieses Namensraums.
+- **Das Abholzeitfenster bleibt bei der Providerreferenz.** Es ist ein
+  Entwurfsvorgang VOR der Buchung (Backend löst über `jumingo_shipment_id` UND
+  `status='draft'` auf). Die beiden Ebenen nicht vermischen.
+- **Der Dateiname der Label-PDF** kommt aus der CE-Bestellnummer. Bei einem
+  Blob-Download entscheidet das `download`-Attribut, **nicht** das serverseitige
+  `Content-Disposition` — der Hinweis muss deshalb vom Aufrufer mitkommen
+  (`downloadLabel(id, businessOrderNumber)`).
+- **Die Buchungsantwort** trägt beides: `shipmentId` (unverändert die
+  Providerreferenz — der Wert, den der Client gesendet hat) und additiv
+  `ceShipmentId` (der Handle). Der Label-Button des Erfolgsbildschirms hängt am
+  Handle, Sichtbarkeit und Handler an derselben Bedingung.
+
+Governance: `src/utils/providerNeutralShipmentHandle.test.mjs` (8 Tests).
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

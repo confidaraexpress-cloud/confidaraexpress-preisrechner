@@ -281,17 +281,25 @@ const ROW = {
 };
 
 test("Pfadvertrag: Kunden-POST und alle drei Adminrouten ohne /api-Präfix", () => {
-  // Kunde
-  assert.ok(clientSrc.includes("`/kunde/shipments/${encodeURIComponent(String(shipmentId ?? \"\").trim())}/cancellation-request`"),
+  // Kunde: adressiert über den ConfidaraExpress-Sendungshandle (shipments.id) im
+  // gemeinsamen Namensraum /api/shipments/:shipmentId/* — dort liegen auch Label
+  // und Tracking. Der frühere Pfad /kunde/shipments/:jumingoId/... adressierte
+  // über die Providerreferenz und existiert backendseitig nur noch als Altpfad.
+  assert.ok(clientSrc.includes("`/api/shipments/${encodeURIComponent(String(shipmentId ?? \"\").trim())}/cancellation-request`"),
     "Kunden-POST nutzt nicht den vereinbarten Pfad");
+  assert.ok(!clientSrc.includes("/kunde/shipments/${encodeURIComponent"),
+    "der Altpfad über die Providerreferenz darf im Client nicht mehr aufgerufen werden");
   // Admin: Liste, Detail, Update
   assert.ok(adminApiSrc.includes("`/admin/cancellation-requests${buildQuery(query, CANCELLATION_PARAMS)}`"), "Adminliste");
   assert.equal((adminApiSrc.match(/`\/admin\/cancellation-requests\/\$\{encodeURIComponent\(id\)\}`/g) || []).length, 2,
     "Detail UND Update müssen denselben Pfad nutzen");
   assert.match(adminApiSrc, /method:\s*"PATCH"/, "Update muss PATCH sein");
-  // Und NIRGENDS ein /api-Präfix für Storno.
+  // Und NIRGENDS die historische Pfaddrift: `/api/kunde/...` bzw. `/api/admin/...`
+  // waren dieselben Pfade mit vorgestelltem `/api` und liefen deshalb produktiv
+  // in den 404-Handler. GENAU das bleibt verboten — nicht jedes `/api`, sonst
+  // wäre der bewusst gewählte neutrale Namensraum nicht mehr erreichbar.
   for (const [name, src] of [["adminApi.js", adminApiSrc], ["client.js", clientSrc]]) {
-    assert.equal(/["'`]\/api\/[^"'`]*cancellation/.test(src), false, `${name}: /api-Storno-Pfad`);
+    assert.equal(/["'`]\/api\/(kunde|admin)\/[^"'`]*cancellation/.test(src), false, `${name}: /api-Storno-Driftpfad`);
   }
 });
 

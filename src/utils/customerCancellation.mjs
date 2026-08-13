@@ -30,15 +30,18 @@ export function hasCancellationRequest(shipment) {
 }
 
 // Darf für diese Sendung eine Stornierung angefragt werden? Nur bei
-// booked/label_ready, ohne bestehende Anfrage und mit vorhandener
-// jumingo_shipment_id (ohne die ist der Request nicht adressierbar — analog zum
-// Label-Button, der dieselbe ID benötigt).
+// booked/label_ready, ohne bestehende Anfrage und mit vorhandenem
+// ConfidaraExpress-Sendungshandle (shipments.id) — ohne den ist der Request
+// nicht adressierbar, analog zum Label-Button, der denselben Handle benutzt.
+// Bewusst NICHT mehr an der Providerreferenz: eine Sendung ohne sie ist
+// weiterhin eine CE-Sendung, über die der Kunde sprechen können muss, und ob
+// eine Stornierung fachlich möglich ist, entscheidet ohnehin der Server.
 export function canRequestCancellation(shipment) {
   if (!shipment) return false;
   if (hasCancellationRequest(shipment)) return false;
   if (!CANCELLABLE_SHIPMENT_STATUSES.includes(shipment.status)) return false;
-  const jid = shipment.jumingo_shipment_id;
-  return jid !== undefined && jid !== null && String(jid).trim() !== "";
+  const id = shipment.id;
+  return id !== undefined && id !== null && String(id).trim() !== "";
 }
 
 // Zustand des Reason-Textes für Zeichenzähler und Button-Freigabe. `length` ist
@@ -131,16 +134,20 @@ export function readErrorCode(body) {
   return "";
 }
 
-// Kurzes, PII-armes Label zur Sendungsidentifikation im Dialog: Referenznummer
-// bevorzugt, sonst maskierte jumingo_shipment_id (letzte 4). Nie Adressen.
+// Kurzes, PII-armes Label zur Sendungsidentifikation im Dialog: eigene
+// Referenznummer bevorzugt, sonst die ConfidaraExpress-Bestellnummer (CE-BS…).
+// Nie Adressen.
+//
+// Vorher stand hier ersatzweise die maskierte jumingo_shipment_id (letzte vier
+// Zeichen). Das war eine Providerreferenz in kundensichtbarem Text — maskiert,
+// aber trotzdem eine fremde ID, die der Kunde nirgends wiederfindet. Die
+// Bestellnummer ist der Wert, den er in Sendungsliste, E-Mail und Rechnung
+// ohnehin sieht. Alt-Sendungen ohne Bestellnummer tragen kein Kürzel; der
+// Dialog nennt die Sendung dann ohne Nummer, statt eine fremde ID zu zeigen.
 export function shipmentDialogLabel(shipment) {
   if (!shipment) return "";
-  const ref = shipment.reference_number;
-  if (ref !== undefined && ref !== null && String(ref).trim() !== "") return String(ref).trim();
-  const jid = shipment.jumingo_shipment_id;
-  if (jid !== undefined && jid !== null && String(jid).trim() !== "") {
-    const s = String(jid).trim();
-    return `••••${s.slice(-4)}`;
+  for (const value of [shipment.reference_number, shipment.business_order_number]) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
   }
   return "";
 }

@@ -15,10 +15,16 @@ import { mapLabelError, LABEL_TEXT_500, LABEL_TEXT_NETZ } from "./labelErrors.mj
 //   · eine JSON-„Erfolgs"-Antwort wird nie als PDF-Datei gespeichert.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function downloadLabel(id) {
+// `id` ist der ConfidaraExpress-Sendungshandle (shipments.id) — dieselbe ID wie
+// bei Tracking und Stornoanfrage. Die Providerreferenz löst das Backend intern
+// auf; sie steht dadurch weder im Pfad noch im Dateinamen der PDF.
+// `filenameHint` ist optional die kundensichtbare Bestellnummer: bei einem
+// Blob-Download entscheidet das `download`-Attribut, NICHT das serverseitige
+// Content-Disposition. Ohne Hinweis bleibt der Handle als Dateiname.
+export async function downloadLabel(id, filenameHint) {
   let r;
   try {
-    r = await apiFetch(`/api/jumingo/label/${id}`, { auth: true });
+    r = await apiFetch(`/api/shipments/${encodeURIComponent(String(id ?? "").trim())}/label`, { auth: true });
   } catch {
     throw new Error(LABEL_TEXT_NETZ);
   }
@@ -52,7 +58,9 @@ export async function downloadLabel(id) {
   try {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `label-${id}.pdf`;
+    // Gleiche Bereinigung wie serverseitig — nie ein roher Wert im Dateinamen.
+    const base = String(filenameHint ?? "").trim() || String(id ?? "").trim();
+    a.download = `label-${base.replace(/[^a-zA-Z0-9\-_]/g, "_")}.pdf`;
     a.click();
   } finally {
     URL.revokeObjectURL(url);

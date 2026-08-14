@@ -925,10 +925,13 @@ export default function BookingPage() {
   };
 
   const handleDownloadLabel = async () => {
-    if (!booking?.shipmentId) return;
+    // Der Label-Abruf läuft über den ConfidaraExpress-Sendungshandle
+    // (`ceShipmentId` aus der Buchungsantwort), nicht über die Providerreferenz
+    // in `shipmentId` — das ist der Wert, den DIESER Client gesendet hat.
+    if (!booking?.ceShipmentId) return;
     setLabelLoading(true); setLabelError("");
     try {
-      await downloadLabel(booking.shipmentId);
+      await downloadLabel(booking.ceShipmentId, booking.businessOrderNumber);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -1346,7 +1349,7 @@ export default function BookingPage() {
             </div>
 
             {labelError && <div className="alert alert-error mb-16" role="alert">{labelError}</div>}
-            {booking?.shipmentId && (
+            {booking?.ceShipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
               </button>

@@ -49,11 +49,11 @@ function CancellationStatusPill({ status }) {
 function ShipmentRowActions({ s, onTrack, onLabel, onCancel }) {
   return (
     <div className="flex gap-8 stn-actions">
-      {s.jumingo_shipment_id && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.jumingo_shipment_id)}>Sendung verfolgen</button>
+      {s.id && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.id)}>Sendung verfolgen</button>
       )}
       {(s.status === "booked" || s.status === "label_ready") && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s.jumingo_shipment_id)}>Label</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s)}>Label</button>
       )}
       {canRequestCancellation(s) && (
         <button className="btn btn-ghost btn-sm" onClick={() => onCancel(s)}>Stornieren</button>
@@ -100,10 +100,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
     fetchTracking(id);
   };
 
-  const handleDownloadLabel = async (id) => {
+  // `s` ist die Sendungszeile: der Handle adressiert den Request, die
+  // Bestellnummer benennt die heruntergeladene Datei.
+  const handleDownloadLabel = async (s) => {
     setLabelError("");
     try {
-      await downloadLabel(id);
+      await downloadLabel(s.id, s.business_order_number);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -119,12 +121,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
     if (submittingRef.current) return;
     const s = cancelShipment;
     if (!s) return;
-    const jid = s.jumingo_shipment_id;
+    const ceId = s.id;
     submittingRef.current = true;
     setCancelBusy(true);
     setCancelError("");
     try {
-      const resp = await requestShipmentCancellation(jid, reason);
+      const resp = await requestShipmentCancellation(ceId, reason);
       if (!mountedRef.current) return;
       if (resp.ok) {
         let d = {};
@@ -134,7 +136,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
         const requestedAt = cr.createdAt || cr.created_at || null;
         setCancelShipment(null);
         setNotice({ type: "success", text: "Ihre Stornierungsanfrage wird bearbeitet. Wir melden uns persönlich bei Ihnen." });
-        onCancellationRequested?.(jid, { status, requestedAt });
+        onCancellationRequested?.(ceId, { status, requestedAt });
         return;
       }
       if (resp.status === 401 || resp.status === 403) return; // zentraler Logout/Redirect via apiFetch
@@ -222,14 +224,14 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                           <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onCancel={openCancel} />
                         </td>
                       </tr>
-                      {trackingId === s.jumingo_shipment_id && (
+                      {trackingId === s.id && (
                         <tr>
                           <td colSpan={7} className="shipment-detail-cell">
                           <div className="ce-card-muted shipment-detail-card">
                             {/* Sendungsdetail: die drei kundensichtbaren Werte GETRENNT benannt.
-                                JUMiNGO-Shipment-ID/-Ordernummer und die interne shipments.id
-                                werden hier bewusst NICHT angezeigt — die IDs bleiben lediglich
-                                im State/API-Aufruf (Track/Label) erhalten. */}
+                                Die interne shipments.id (Sendungshandle für Track/Label/Storno)
+                                und erst recht die JUMiNGO-Referenz werden hier bewusst NICHT
+                                angezeigt — der Handle lebt nur im State und im API-Aufruf. */}
                             <dl className="shipment-detail-numbers">
                               <div className="shipment-detail-item">
                                 <dt className="shipment-detail-label">{NUMBER_LABELS.businessOrder}</dt>
@@ -312,7 +314,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                                       Tracking ist noch nicht verfügbar. Die Sendungsverfolgung erscheint,
                                       sobald der Versanddienstleister die Sendung übernommen hat.
                                     </p>
-                                    <button className="btn btn-ghost btn-sm" onClick={() => fetchTracking(s.jumingo_shipment_id)}>
+                                    <button className="btn btn-ghost btn-sm" onClick={() => fetchTracking(s.id)}>
                                       <Icon n="refresh" s={13} /> Aktualisieren
                                     </button>
                                   </div>

@@ -140,8 +140,17 @@ export async function getTracking(shipmentId) {
 
 // ── Zoll-Handelsrechnung (Customs commercial invoice) ────────────────────────
 // Dünne Wrapper um das bereits gemergte, auth-geschützte Confidara-Gateway.
-// `:shipmentId` ist AUSSCHLIESSLICH die interne Confidara-Shipment-ID. Die PDF
-// wird NUR über dieses Gateway übertragen — NIE direkt an JUMiNGO aus dem Browser.
+// `:shipmentId` ist die von /calculate-price gelieferte ÖFFENTLICHE Sendungs-ID
+// ("s_"+32 Hex, JUMiNGO-Referenz) — serverseitig geprüft mit parsePublicShipmentId()
+// und über jumingo_shipment_id + user_id aufgelöst. NICHT die interne shipments.id.
+//
+// Diese Zeile stand bis zur Behebung des Save-Draft-Fehlers falsch hier („interne
+// Confidara-Shipment-ID"). Zwei andere Module beriefen sich darauf und leiteten
+// daraus ab, `bookingData.shipmentId` sei die interne ID — genau daraus entstand
+// die unsichtbare Aktion „Als Entwurf speichern". Wer diese Zuordnung ändert,
+// prüft sie am Backendpfad, nicht an einem Kommentar.
+//
+// Die PDF wird NUR über dieses Gateway übertragen — NIE direkt an JUMiNGO aus dem Browser.
 // Kein Logging von Datei-/Body-Daten, keine Base64, keine Client-Persistenz.
 const ciPath = (shipmentId) =>
   `/api/jumingo/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/commercial-invoice`;

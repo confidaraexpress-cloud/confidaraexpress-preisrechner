@@ -74,6 +74,9 @@ export default function BookingPage() {
       return {
         tariff: flowShipment.selected,
         shipmentId: flowShipment.shipmentId,
+        // Der CE-Sendungshandle muss auch auf diesem Weg mitkommen, sonst
+        // verschwände „Als Entwurf speichern" nach einem Reload/Browser-Vorwärts.
+        ceShipmentId: flowShipment.ceShipmentId ?? null,
         form: flowShipment.form,
         customs: flowShipment.customs,
       };
@@ -1160,7 +1163,12 @@ export default function BookingPage() {
             )}
 
             <SaveDraftAction
-              shipmentId={bookingData?.shipmentId}
+              // AUSSCHLIESSLICH der ConfidaraExpress-Sendungshandle (shipments.id).
+              // Hier stand bookingData.shipmentId — die JUMiNGO-Referenz
+              // ("s_"+32 Hex). POST /api/kunde/drafts/:id/save löst aber nur
+              // shipments.id auf, und hasSavableShipmentId() verwarf die
+              // Providerform korrekt: die Aktion war dadurch dauerhaft unsichtbar.
+              shipmentId={bookingData?.ceShipmentId}
               onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
               // Auch der zweite Entwurfspfad beendet nach bestätigtem Erfolg
               // den aktiven temporären ShippingFlow (Context + sessionStorage)

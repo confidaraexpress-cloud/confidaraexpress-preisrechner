@@ -53,6 +53,8 @@ let scriptedFormDraftAbort = false;  // true = Anfrage schlägt bereits auf Netz
 let scriptedShipmentDraftStatus = 0; // dito für den Sendungsentwurf der Buchungsseite
 let formDraftListOverride = null;    // { drafts:[...] } | null — von einzelnen Tests gesetzt
 let resumeDetailOverride = null;     // { id, revision, schemaVersion, formData } | null
+let ceShipmentIdOverride;            // undefined = Standard; null simuliert ein Backend ohne das Feld
+let zuletztGespeicherteDraftId = null; // ID, mit der POST /api/kunde/drafts/:id/save tatsächlich kam
 
 async function setupRoutes(ziel) {
   await ziel.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -63,8 +65,18 @@ async function setupRoutes(ziel) {
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
     if (p.endsWith("/calculate-price")) {
       calcCount++;
+      // WICHTIG — die beiden IDs exakt wie im Produktivbackend, mit ihren ECHTEN Formen:
+      //   shipmentId    JUMiNGO-Referenz "s_"+32 Hex (Eingabe für /book)
+      //   ceShipmentId  interne shipments.id (positive Ganzzahl) — für Entwürfe
+      // Vorher lieferte dieser Mock als `shipmentId` eine Ganzzahl. Genau dadurch war
+      // „Als Entwurf speichern" hier grün, während es produktiv dauerhaft unsichtbar
+      // blieb: hasSavableShipmentId() lehnt die JUMiNGO-Form korrekt ab. Diese Form
+      // NIE wieder auf eine Ganzzahl vereinfachen — sie ist der Regressionsschutz.
       return json({
-        tariffs: TARIFFS, shipmentId: 4240 + calcCount, // echte positive Ganzzahl — hasSavableShipmentId
+        tariffs: TARIFFS,
+        // "s_" + genau 32 Hexzeichen (JUMiNGO OpenAPI 1.0.4, CreateShipmentResult).
+        shipmentId: `s_${String(calcCount).padStart(2, "0")}a1b2c3d4e5f60718293a4b5c6d7e8f90`.slice(0, 34),
+        ceShipmentId: ceShipmentIdOverride === undefined ? 4240 + calcCount : ceShipmentIdOverride,
         publicCarriers: [{ id: "dhl", name: "DHL" }, { id: "ups", name: "UPS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE",
       });
@@ -97,7 +109,11 @@ async function setupRoutes(ziel) {
       return json(formDraftListOverride || { drafts: [], nextCursor: null });
     }
     // Sendungsentwurf speichern (Buchungsseite, SaveDraftAction) — unabhängiger Pfad.
-    if (/\/api\/kunde\/drafts\/[\w-]+\/save$/.test(p)) {
+    // NUR Ziffern, exakt wie parseId() im Backend (`^[0-9]{1,15}$`): eine versehentlich
+    // gesendete JUMiNGO-Referenz läuft hier — wie produktiv — ins Leere statt still zu
+    // gelingen. Die zuletzt gespeicherte ID wird für die Vertragsprüfung festgehalten.
+    if (/\/api\/kunde\/drafts\/\d+\/save$/.test(p)) {
+      zuletztGespeicherteDraftId = p.match(/\/drafts\/(\d+)\/save$/)[1];
       if (scriptedShipmentDraftStatus) return json({ error: "server_error" }, scriptedShipmentDraftStatus);
       return json({ ok: true });
     }
@@ -1121,5 +1137,82 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
   const z2 = await zustand(page);
   assert.equal(z2.empfaenger, null, "„Neue Sendung\" zeigt nach „Speichern und verlassen\" noch die alte Sendung");
   assert.equal(z2.pakete, "1");
+  await ctx.close();
+});
+
+/* ══════════ 14 — Save-Draft nutzt den CE-Sendungshandle ═══════════════════
+   Regression. `/calculate-price` liefert ZWEI IDs mit verschiedener Bedeutung:
+   `shipmentId` ist die JUMiNGO-Referenz ("s_"+32 Hex), `ceShipmentId` die
+   interne shipments.id. „Als Entwurf speichern" bekam die erste — der Guard
+   hasSavableShipmentId() lehnte sie korrekt ab, und die Aktion war produktiv
+   dauerhaft unsichtbar. Der Mock oben liefert seit dieser Phase beide IDs in
+   ihrer ECHTEN Form; damit prüfen die Tests 32/33 denselben Pfad ebenfalls
+   scharf. */
+
+test("38 — „Als Entwurf speichern“ ist sichtbar, obwohl shipmentId eine JUMiNGO-Referenz ist", async () => {
+  const { ctx, page } = await neueSeite();
+  await bisZurBuchung(page);
+
+  // Gegenprobe zuerst: die Buchungsseite trägt tatsächlich die Providerform.
+  const jumingoForm = await page.evaluate(() => {
+    try { return (window.history.state?.usr?.shipmentId ?? null); } catch { return null; }
+  });
+  assert.ok(/^s_[a-f0-9]{32}$/.test(String(jumingoForm)),
+    `der Vorgang trägt keine JUMiNGO-Referenz (war „${jumingoForm}") — der Test prüft sonst nichts`);
+
+  const saveBtn = page.locator(".bk-savedraft button").first();
+  assert.ok(await saveBtn.count() > 0,
+    "die Sendungsentwurf-Aktion fehlt — sie hängt wieder an der Providerreferenz");
+  await ctx.close();
+});
+
+test("39 — der Speicherrequest geht mit der internen shipments.id, nie mit der Providerreferenz", async () => {
+  const { ctx, page } = await neueSeite();
+  zuletztGespeicherteDraftId = null;
+  await bisZurBuchung(page);
+
+  await page.locator(".bk-savedraft button").first().click();
+  await page.waitForTimeout(1000);
+
+  const done = await page.locator(".bk-savedraft-done").innerText().catch(() => "");
+  assert.ok(/Entwurf gespeichert/.test(done), `keine Erfolgsanzeige („${done}")`);
+  assert.ok(zuletztGespeicherteDraftId !== null,
+    "es kam kein Speicherrequest an — die gesendete ID passte nicht auf den Backendpfad (nur Ziffern)");
+  assert.ok(/^[0-9]+$/.test(zuletztGespeicherteDraftId),
+    `der Speicherrequest trug keine interne ID: „${zuletztGespeicherteDraftId}"`);
+  await ctx.close();
+});
+
+test("40 — ohne ceShipmentId bleibt die Aktion verborgen, statt die Providerreferenz zu senden", async () => {
+  // Fail-safe: ein Backend ohne das additive Feld (oder ein fehlgeschlagener
+  // Draft-INSERT → null) darf NICHT dazu führen, dass ersatzweise die
+  // JUMiNGO-Referenz gesendet wird. Dann lieber keine Aktion.
+  ceShipmentIdOverride = null;
+  const { ctx, page } = await neueSeite();
+  zuletztGespeicherteDraftId = null;
+  await bisZurBuchung(page);
+
+  const saveBtn = page.locator(".bk-savedraft button").first();
+  assert.equal(await saveBtn.count(), 0,
+    "die Aktion erscheint ohne CE-Handle — sie würde die Providerreferenz senden");
+  assert.equal(zuletztGespeicherteDraftId, null, "es ging ein Speicherrequest raus, obwohl kein Handle vorlag");
+
+  ceShipmentIdOverride = undefined;
+  await ctx.close();
+});
+
+test("41 — der CE-Handle überlebt einen Reload des Vorgangs (Aktion bleibt sichtbar)", async () => {
+  // Der Handle liegt im gespiegelten Vorgang (sessionStorage). Ohne ihn wäre
+  // „Als Entwurf speichern" nach jedem Reload/Browser-Vorwärts wieder weg.
+  const { ctx, page } = await neueSeite();
+  await bisZurBuchung(page);
+  assert.ok(await page.locator(".bk-savedraft button").first().count() > 0, "Aktion fehlt schon vor dem Reload");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+
+  const nachReload = page.locator(".bk-savedraft button").first();
+  assert.ok(await nachReload.count() > 0,
+    "nach dem Reload fehlt die Aktion — der CE-Handle wird im Vorgang nicht mitgeführt");
   await ctx.close();
 });

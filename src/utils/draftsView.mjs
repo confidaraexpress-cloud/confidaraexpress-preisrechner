@@ -131,11 +131,17 @@ export function mapDraftDeleteErrorToMessage(code) {
 }
 
 // ── „Als Entwurf speichern" — Verfügbarkeit der numerischen Shipment-ID ─────
-// Der Save-Endpunkt erwartet die interne numerische Shipment-ID. bookingData
-// .shipmentId (aus /calculate-price → NewShipmentPage → Router-State) ist
-// exakt dieselbe ID, die client.js bereits für Commercial-Invoice/Pickup-
-// Window als "interne Confidara-Shipment-ID" verwendet (siehe ciPath-Kommentar
-// in api/client.js) — kein Raten, kein neuer Vertrag.
+// Der Save-Endpunkt (POST /api/kunde/drafts/:id/save) erwartet AUSSCHLIESSLICH die
+// interne shipments.id — er löst `WHERE id=$1 AND user_id=$2 AND status='draft'`
+// auf und prüft den Pfadwert mit `^[0-9]{1,15}$`.
+//
+// Der passende Wert ist `ceShipmentId` aus der /calculate-price-Antwort, NICHT
+// `shipmentId`: letzteres ist die JUMiNGO-Referenz ("s_"+32 Hex) und Eingabe für
+// /book, Abholzeitfenster und Handelsrechnung. Hier stand früher die Annahme,
+// beide seien dasselbe (mit Verweis auf einen damals falschen Kommentar in
+// api/client.js) — dadurch bekam SaveDraftAction die Providerreferenz, dieser
+// Guard lehnte sie korrekt ab, und die Aktion war produktiv dauerhaft unsichtbar.
+// Der Guard war nie das Problem und wird nicht aufgeweicht.
 //
 // Strikt auf positive Ganzzahl geprüft (Number ODER reiner Ziffern-String ohne
 // führende Null): verhindert Requests mit NaN, negativen/dezimalen Werten oder

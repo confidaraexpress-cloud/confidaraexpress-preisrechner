@@ -290,6 +290,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Es wird KEIN calculate-price ausgelöst: die Daten kommen aus dem Vorgang.
   const [tariffs, setTariffs]       = useState(flowInit ? flowInit.tariffs : []);
   const [shipmentId, setShipmentId] = useState(flowInit ? flowInit.shipmentId : null);
+  // ConfidaraExpress-Sendungshandle (shipments.id) DESSELBEN Entwurfs. Streng
+  // getrennt von `shipmentId` (JUMiNGO-Referenz, Eingabe für /book): nur dieser
+  // Wert darf an „Als Entwurf speichern" gehen, weil der Save-Endpunkt
+  // ausschließlich shipments.id auflöst.
+  const [ceShipmentId, setCeShipmentId] = useState(flowInit ? flowInit.ceShipmentId : null);
   // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
   // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
   const [customs, setCustoms]       = useState(flowInit ? flowInit.customs : null);
@@ -361,11 +366,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   useEffect(() => {
     setFlowScope("shipment", {
       form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
-      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs,
+      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, ceShipmentId, customs,
       calculatedAt: calculatedAtRef.current,
     });
   }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
-      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs, setFlowScope]);
+      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, ceShipmentId, customs, setFlowScope]);
 
   /* ── Scrollposition wiederherstellen ─────────────────────────────────────
      Erst NACHDEM Formular und Angebotsbereich gerendert sind — vorher ist das
@@ -458,6 +463,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setTariffs([]);
     setSelected(null);
     setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
+    setCeShipmentId(null); // gehört zum selben Entwurf — dieselbe verworfene Gruppe
     setCustoms(null);    // alte Zollentscheidung mit verwerfen
     setError("");
     calculatedAtRef.current = null;
@@ -931,6 +937,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       }
       setTariffs(d.tariffs || []);
       setShipmentId(d.shipmentId);
+      setCeShipmentId(d.ceShipmentId ?? null);
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({
         customsRequired:   d.customsRequired === true,
@@ -1022,11 +1029,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
       // Eintrag — genau der Kreislauf, der vermieden werden soll.
       const ausRueckkehr = typeof window !== "undefined"
         && window.history.state?.usr?.returnTarget === "offers";
-      navigate("/booking", { state: { tariff, shipmentId, form, customs }, replace: ausRueckkehr });
+      navigate("/booking", { state: { tariff, shipmentId, ceShipmentId, form, customs }, replace: ausRueckkehr });
     } else {
       navigate("/login");
     }
-  }, [authed, shipmentId, form, customs, navigate, setFlowScope, setFlowStep]);
+  }, [authed, shipmentId, ceShipmentId, form, customs, navigate, setFlowScope, setFlowStep]);
 
   // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es) →
   // sonst bräche ein neues Objekt bei jedem Render den React.memo-Vergleich der

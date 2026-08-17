@@ -13,6 +13,24 @@ import { BrandLogo } from "../ui/BrandLogo";
 // Neue Sendung=plus · Preisrechner=zap · Entwürfe=form · Sendungen=package ·
 // Sendungsverfolgung=mapPin · Adressbuch=idcard · Rechnungen=invoice ·
 // Unternehmen & Konto (=profile) = building · Abmelden (hardcodiert danach) = logout.
+// „Lager & Aufträge" ist ein eigener Modulbereich INNERHALB derselben Sidebar —
+// keine zweite Navigation, keine rechte Zusatzleiste, keine eigene Designwelt.
+// Er steht direkt unter „Übersicht" und wird durch eine eigene, dezent
+// abgesetzte Fläche als zusammengehörig erkennbar (.pp-nav-module, siehe
+// dashboard-premium.css). Die Einträge sind gewöhnliche page-Werte und nutzen
+// dieselben .nitem-Regeln wie jede andere Navigation.
+const INVENTORY_GROUP = {
+  label: "Lager & Aufträge",
+  icon: "layers",
+  items: [
+    { id: "inventory", label: "Lagerübersicht", icon: "dashboard" },
+    { id: "products",  label: "Artikel",        icon: "cube"       },
+    { id: "stock",     label: "Bestand",        icon: "layers"     },
+    { id: "orders",    label: "Aufträge",       icon: "cart"       },
+    { id: "movements", label: "Bewegungen",     icon: "packageMove" },
+  ],
+};
+
 const NAV_GROUPS = [
   {
     label: "Versand",
@@ -94,6 +112,29 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             <button className={`nitem ${page === "overview" ? "on" : ""}`} onClick={() => navigateTo("overview")}>
               <Icon n="dashboard" s={18} /><span>Übersicht</span>
             </button>
+
+            {/* Modulblock „Lager & Aufträge" — eigene Fläche, gleiche Bauteile.
+                Der Kopf ist eine Überschrift, kein Bedienelement: der Block ist
+                bewusst NICHT einklappbar. Einklappbar wäre nur dann besser,
+                wenn er den Blick auf anderes verstellte; er steht aber ganz oben
+                und ist fünf Zeilen hoch. Ein zusätzlicher Zustand, der auf jeder
+                Seite erhalten bleiben müsste, wäre reine Komplexität. */}
+            <div className={`pp-nav-module${INVENTORY_GROUP.items.some(i => i.id === page) ? " pp-nav-module--active" : ""}`}>
+              <div className="pp-nav-module-head">
+                <Icon n={INVENTORY_GROUP.icon} s={15} />
+                <span>{INVENTORY_GROUP.label}</span>
+              </div>
+              {INVENTORY_GROUP.items.map((item) => (
+                <button
+                  key={item.id}
+                  className={`nitem ${page === item.id ? "on" : ""}`}
+                  onClick={() => handleNav(item)}
+                >
+                  <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+
             {NAV_GROUPS.map((group) => {
               // Aktive Gruppe rein aus dem bestehenden page-Wert abgeleitet
               // (kein neuer State). Bei „overview" ist keine Gruppe aktiv; auf

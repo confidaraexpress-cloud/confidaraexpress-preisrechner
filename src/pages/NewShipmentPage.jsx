@@ -133,7 +133,7 @@ const SHIPPING_MODE_OPTIONS = [
   { id: "economy",  icon: "clock",   label: "Economy",           desc: "Günstigster Tarif, längere Laufzeit"    },
 ];
 
-export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
+export default function NewShipmentPage({ prefillAddress, onPrefillApplied, prefillInventory, onInventoryPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
@@ -290,6 +290,18 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
   // Es wird KEIN calculate-price ausgelöst: die Daten kommen aus dem Vorgang.
   const [tariffs, setTariffs]       = useState(flowInit ? flowInit.tariffs : []);
   const [shipmentId, setShipmentId] = useState(flowInit ? flowInit.shipmentId : null);
+  // Optionaler Lagerbezug (Modul „Lager & Aufträge"): AUSSCHLIESSLICH IDs und
+  // Mengen — keine Bestandswerte, keine Artikelstammdaten, keine Preise. Er
+  // wird bei jeder Preisanfrage mitgeschickt; der Server löst daraus den
+  // geprüften Kontext auf und friert ihn auf dem Entwurf ein.
+  //
+  // Er gehört zum FORMULAR, nicht zum Ergebnis: er überlebt deshalb
+  // resetResults()/invalidateResults() (Paketdaten ändern und neu rechnen lässt
+  // den Lagerbezug bestehen) und wird nur durch einen frischen Vorgang gelöscht.
+  // Ohne Lagerbezug ist er null — für jede normale Sendung ändert sich nichts.
+  const [inventoryContext, setInventoryContext] = useState(flowInit ? (flowInit.inventoryContext || null) : null);
+  // Hinweiszeile über dem Formular, wenn der Vorgang aus Lager oder Auftrag kommt.
+  const [inventoryNotice, setInventoryNotice] = useState("");
   // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
   // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
   const [customs, setCustoms]       = useState(flowInit ? flowInit.customs : null);
@@ -362,10 +374,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setFlowScope("shipment", {
       form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
       sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs,
+      inventoryContext,
       calculatedAt: calculatedAtRef.current,
     });
   }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
-      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs, setFlowScope]);
+      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, customs, inventoryContext, setFlowScope]);
 
   /* ── Scrollposition wiederherstellen ─────────────────────────────────────
      Erst NACHDEM Formular und Angebotsbereich gerendert sind — vorher ist das
@@ -491,6 +504,28 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     onPrefillApplied?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillAddress]);
+
+  // ── Lager/Auftrag → „Neue Sendung": Werte-Patch + Lagerbezug ───────────────
+  // Exakt dieselbe Einmal-Semantik wie beim Adressbuch-Prefill darüber: der
+  // Effekt feuert nur bei gesetztem prefillInventory und meldet sich sofort
+  // über onInventoryPrefillApplied ab. Ein erneuter Mount ohne neues Prefill
+  // wendet nichts an — alte Artikel-/Auftragsdaten können bei einer späteren
+  // normalen Sendung nicht wieder auftauchen.
+  //
+  // Der Unterschied zum Adressbuch ist nur der zusätzliche Lagerbezug; das
+  // Formular selbst wird auf demselben Weg befüllt. Es entsteht keine zweite
+  // Formularlogik.
+  useEffect(() => {
+    if (!prefillInventory || !prefillInventory.inventory) return;
+    const merged = { ...form, ...(prefillInventory.form || {}) };
+    setForm(merged);
+    setInventoryContext(prefillInventory.inventory);
+    setInventoryNotice(prefillInventory.notice || "");
+    setBaseline(getShipmentFormSnapshot({ form: merged, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }));
+    invalidateResults();
+    onInventoryPrefillApplied?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillInventory]);
 
   // ── Länderwechsel ────────────────────────────────────────────────────────────
   // Das Land wird unmittelbar geändert (kein Bestätigungsdialog, keine
@@ -618,6 +653,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
     setResumeNotice("");
     setResumeConflict(false);
     setSaveMode("idle");
+    // Ein frischer Vorgang hat keinen Lagerbezug mehr. Das ist der EINZIGE Ort,
+    // an dem er gelöscht wird: resetResults() lässt ihn bewusst stehen, damit
+    // eine geänderte Paketangabe mit erneuter Preisberechnung den Bezug zum
+    // Artikel oder Auftrag nicht verliert.
+    setInventoryContext(null);
+    setInventoryNotice("");
     resetResults();
     // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
     // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
@@ -852,6 +893,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
           publicCarrierIds:   selectedPublicCarrierIds,
+          // Optionaler Lagerbezug: nur vorhanden, wenn der Vorgang aus Artikel
+          // oder Auftrag gestartet wurde. Bei jeder normalen Sendung fehlt das
+          // Feld vollständig — der Server erkennt daran „kein Lagerbezug" und
+          // löst keine einzige Bestandsabfrage aus.
+          ...(inventoryContext ? { inventory: inventoryContext } : {}),
           // Fortsetzen: Source-Felder AUSSCHLIESSLICH aus der geladenen Detail-
           // response (resumeSource) — nie aus URL-Parametern oder Form-State.
           ...(sourceAtSend ? { sourceFormDraftId: sourceAtSend.id, sourceFormDraftRevision: sourceAtSend.revision } : {}),
@@ -1130,6 +1176,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, resu
           {resumeNotice && (
             <div className="dft-resume-info" role="status">
               <Icon n="info" s={16} c="currentColor" /><span>{resumeNotice}</span>
+            </div>
+          )}
+          {/* Herkunftshinweis eines Vorgangs aus Lager oder Auftrag. Bewusst
+              derselbe Hinweisstil wie beim Fortsetzen eines Entwurfs — es gibt
+              keine zweite Hinweisdarstellung. Bei jeder normalen Sendung ist der
+              Text leer und die Zeile erscheint nicht. */}
+          {inventoryNotice && (
+            <div className="dft-resume-info" role="status">
+              <Icon n="layers" s={16} c="currentColor" /><span>{inventoryNotice}</span>
             </div>
           )}
 

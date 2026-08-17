@@ -257,6 +257,47 @@
 }
 .pp-nav-utility-divider { height: 1px; margin: 14px 12px 6px; background: var(--ce-sidebar-divider); }
 
+/* ── Modulblock „Lager & Aufträge" ──
+   Ein eigener Produktbereich INNERHALB derselben Sidebar — keine zweite
+   Navigation und keine zweite Designwelt. Die Abgrenzung entsteht ausschließlich
+   aus bereits vorhandenen Sidebar-Tokens: die vertiefte Fläche ist dieselbe, die
+   auch die Supportkarte trägt (--ce-sidebar-well), die Kante dieselbe wie überall
+   (--ce-sidebar-border), der Radius kommt aus der Foundation.
+
+   Bewusst NICHT: eigene Farbe, eigener Verlauf, Schatten, Glow, backdrop-filter,
+   Bewegung. Die Fläche ist ruhig; erkennbar wird der Bereich durch Material und
+   Innenabstand, nicht durch Signalfarbe.
+
+   Der aktive Unterpunkt bleibt vollständig sichtbar: .nitem.on gilt hier
+   unverändert (Fläche + Border + Akzentkante + Schriftschnitt). Der Block selbst
+   markiert zusätzlich, dass man sich in ihm befindet — mehrfach codiert, nie
+   allein farbig. */
+.pp-nav-module {
+  margin: 10px 0 4px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--ce-sidebar-border);
+  border-radius: var(--ce-radius-lg);
+  background: var(--ce-sidebar-well);
+  display: flex; flex-direction: column; gap: 2px;
+  transition: border-color 140ms ease;
+}
+.pp-nav-module--active { border-color: var(--ce-sidebar-active-border); }
+.pp-nav-module-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px 8px;
+  font-family: var(--fs); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ce-sidebar-section);
+}
+.pp-nav-module--active .pp-nav-module-head { color: var(--ce-sidebar-text-muted); }
+.pp-nav-module-head svg { flex: 0 0 15px; width: 15px; height: 15px; color: var(--ce-sidebar-icon); }
+/* Innerhalb des Blocks ist die Umrandung des Blocks die Kante — die Einträge
+   brauchen keine zweite. Nur der aktive Eintrag behält seine eigene. */
+.pp-nav-module .nitem { padding-inline: 10px; }
+/* Die Trennlinie vor einer Folgegruppe entfällt direkt nach dem Modulblock:
+   die Blockkante trennt bereits. */
+.pp-nav-module + .nsec { margin-top: 6px; border-top: none; }
+
 .nitem {
   position: relative; display: flex; align-items: center; gap: 12px;
   width: 100%; min-height: 40px; text-align: left;

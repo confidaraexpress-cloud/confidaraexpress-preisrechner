@@ -35,9 +35,15 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
+  // Sidebar-Markierung für die route-basierten Seiten. Die beiden Detailseiten
+  // des Lagermoduls markieren bewusst ihren LISTENbereich (Artikel bzw.
+  // Aufträge) — der Kunde soll sehen, wo er sich befindet, und der Bereich hat
+  // keinen eigenen Navigationseintrag.
   const activePage =
     location.pathname === "/calculator" ? "calculator" :
-    location.pathname === "/booking"    ? "booking"    : "";
+    location.pathname === "/booking"    ? "booking"    :
+    location.pathname.startsWith("/inventory/products") ? "products" :
+    location.pathname.startsWith("/inventory/orders")   ? "orders"   : "";
 
   const navigateTo = (id) => {
     setSidebarOpen(false);
@@ -85,7 +91,21 @@ export function DashboardLayout() {
             )}
           />
         )}
-        <Outlet />
+        {/* Die Detailseiten des Lagermoduls bringen ihren eigenen <PageHeader>
+            mit (Titel = Artikel- bzw. Auftragsnummer, Zurück-Link in den Kopf).
+            Sie bekommen deshalb KEINEN ROUTE_HEADERS-Eintrag — sonst stünden
+            zwei Seitenköpfe übereinander — wohl aber denselben Utility-Cluster
+            wie jede andere Kundenseite, damit Glocke und Benutzerchip überall an
+            derselben Stelle sitzen. */}
+        <Outlet context={{
+          navigateTo,
+          utility: (
+            <UtilityCluster>
+              <NotificationBell variant="page" navigateTo={navigateTo} />
+              <UserChip user={user} onClick={() => navigateTo("profile")} />
+            </UtilityCluster>
+          ),
+        }} />
         <LegalLinks />
       </main>
       </div>

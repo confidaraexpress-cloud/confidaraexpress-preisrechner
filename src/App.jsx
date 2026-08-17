@@ -23,6 +23,13 @@ const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
 const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
 
+// Lager & Aufträge: DETAILseiten mit echter Route. Die fünf Listenbereiche
+// laufen als page-State in DashboardPage (unverändertes Navigationsmodell);
+// eine Entitäts-ID gehört aber nicht in einen page-String — dafür gibt es hier
+// zwei echte Routen, genau wie im Adminbereich (/admin/users/:id).
+const ProductDetailPage = React.lazy(() => import("./pages/inventory/ProductDetailPage"));
+const OrderDetailPage   = React.lazy(() => import("./pages/inventory/OrderDetailPage"));
+
 // Admin (separater, URL-basierter Bereich — hinter AdminRoute-UX-Gate;
 // serverseitig zusätzlich durch requireAdmin geschützt).
 const AdminOverviewPage  = React.lazy(() => import("./pages/admin/AdminOverviewPage"));
@@ -76,6 +83,10 @@ export default function App() {
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/booking"    element={<BookingPage />} />
+          {/* Detailseiten des Lagermoduls — dieselbe App-Shell, dieselbe
+              Sidebar, derselbe Seitenkopf-Mechanismus wie /calculator. */}
+          <Route path="/inventory/products/:id" element={<ProductDetailPage />} />
+          <Route path="/inventory/orders/:id"   element={<OrderDetailPage />} />
         </Route>
 
         {/* Public: tracking + legal pages. */}

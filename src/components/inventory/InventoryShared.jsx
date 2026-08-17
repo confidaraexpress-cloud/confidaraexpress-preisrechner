@@ -118,16 +118,22 @@ export function InlineSuccess({ text }) {
 /* ── Dialog ──
    Nutzt den globalen Dialogmechanismus (useDialog): Fokusfalle, Fokusrückgabe
    und Escape kommen von dort, nicht aus einer zweiten Eigenbaulösung. */
-export function InventoryDialog({ open, onClose, title, children, footer, size = "md", busy = false }) {
+export function InventoryDialog({ open, onClose, title, children, footer, size = "md", busy = false, scrollBody = false }) {
   // useDialog LIEFERT die Ref (es nimmt keine entgegen) — Fokusfalle,
   // Fokusrückgabe und Escape kommen vollständig von dort. Während eines
   // laufenden Vorgangs ist Escape abgeschaltet, damit ein halb abgeschickter
   // Bestandsvorgang nicht versehentlich weggetippt wird.
+  //
+  // `scrollBody` ist eine OPT-IN-Variante für den einzigen wirklich langen
+  // Dialog des Bereichs (Artikelformular): dort scrollt sonst der gesamte Dialog,
+  // und Titel wie Speichern-Knopf laufen nach oben beziehungsweise unten aus dem
+  // Bild. Bewusst opt-in statt global: jeder andere Dialog ist kurz genug und
+  // soll sich nicht mitändern.
   const ref = useDialog({ open, onClose, closeOnEscape: !busy });
   if (!open) return null;
   return (
     <div className="ce-dialog-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
-      <div className={`ce-dialog ce-dialog--${size}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
+      <div className={`ce-dialog ce-dialog--${size}${scrollBody ? " inv-dialog-split" : ""}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className="ce-dialog-head">
           <h2 className="ce-dialog-title">{title}</h2>
           <button type="button" className="btn btn-icon btn-sm" aria-label="Dialog schließen" onClick={onClose} disabled={busy}>
@@ -137,6 +143,43 @@ export function InventoryDialog({ open, onClose, title, children, footer, size =
         <div className="ce-dialog-body">{children}</div>
         {footer && <div className="ce-dialog-actions">{footer}</div>}
       </div>
+    </div>
+  );
+}
+
+/* ── Einklappbarer Formularabschnitt ──
+   Für optionale Feldgruppen: die Möglichkeiten bleiben vollständig erhalten,
+   sichtbar ist zunächst nur, was der Nutzer gerade braucht.
+
+   Der Kopf ist ein echtes <button> mit aria-expanded/aria-controls — Tastatur,
+   Rollenzuordnung und Fokusring kommen sonst nicht von selbst. Eingeklappt
+   verschwindet der Inhalt AUS DEM DOM: nur optisch verborgene Felder blieben
+   für Tastatur und Screenreader erreichbar und würden beim Absenden trotzdem
+   mitgeschickt.
+
+   `filled` markiert einen Abschnitt, der bereits Daten trägt — er startet
+   geöffnet (siehe ProductForm), damit vorhandene Angaben nie versteckt werden. */
+export function CollapsibleSection({ id, title, hint, open, onToggle, filled, children, disabled }) {
+  return (
+    <div className={`inv-section${open ? " inv-section--open" : ""}`}>
+      <button
+        type="button"
+        className="inv-section-head"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+        disabled={disabled}
+      >
+        <span className="inv-section-label">{title}</span>
+        {filled && !open && <span className="inv-section-filled">ausgefüllt</span>}
+        <span className="inv-section-chevron" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+      </button>
+      {open && (
+        <div id={id} className="inv-section-body">
+          {hint && <p className="inv-section-hint">{hint}</p>}
+          {children}
+        </div>
+      )}
     </div>
   );
 }

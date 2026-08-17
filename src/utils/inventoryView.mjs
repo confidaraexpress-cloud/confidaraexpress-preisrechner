@@ -120,6 +120,65 @@ export function stockLevelView(row) {
     : ["badge--success", "Bestand ausreichend"];
 }
 
+/**
+ * „Niedriger Bestand" als Information statt als Etikett.
+ *
+ * Gibt `null` zurück, wenn kein Mindestbestand gepflegt ist oder der Bestand
+ * reicht — dann gibt es nichts zu sagen. Sonst die drei Zahlen, die den Satz
+ * tragen: verfügbar, Mindestbestand, Fehlmenge. Die Fehlmenge wird hier NUR
+ * angezeigt (Differenz zweier bereits vorhandener Werte), nicht als
+ * Datenbankwahrheit behandelt.
+ */
+export function lowStockInfo(row) {
+  if (!isLowStock(row)) return null;
+  const available = zahlOderNull(row.available ?? row.stock?.available);
+  const minStock = zahlOderNull(row.minStock);
+  if (available === null || minStock === null) return null;
+  return { available, minStock, missing: minStock - available };
+}
+
+/* ══════════ Sperrbestand ═══════════════════════════════════════════════════ */
+
+// Die Codes stammen aus dem Backend (lib/inventory.js BLOCK_REASONS). Die
+// Beschriftung entsteht ausschließlich hier — ein Rohwert erscheint nie im
+// sichtbaren Text. Bewusst kurz und branchenneutral: ein Maschinenbauer, ein
+// Handwerksbetrieb und ein Fachhändler müssen dieselbe Liste verstehen.
+export const BLOCK_REASONS = Object.freeze([
+  { value: "damaged", label: "Beschädigt" },
+  { value: "inspection", label: "Prüfung erforderlich" },
+  { value: "on_hold", label: "Zurückgestellt" },
+  { value: "other", label: "Sonstiger Grund" },
+]);
+
+/** Grundcode → sichtbarer Text. Unbekannter Code → neutraler Ersatz, nie roh. */
+export function blockReasonLabel(value) {
+  const bekannt = BLOCK_REASONS.find((r) => r.value === value);
+  return bekannt ? bekannt.label : "Grund nicht angegeben";
+}
+
+/**
+ * Ein Eintrag der Sperrhistorie als Anzeigezeile.
+ * `{ id, action, title, meta, quantityText, rawReason }`
+ * `rawReason` gehört höchstens in ein title-Attribut, nie in den Fließtext.
+ */
+export function blockEntryView(entry) {
+  if (!entry || typeof entry !== "object") return null;
+  const menge = zahlOderNull(entry.quantity);
+  const gesperrt = entry.action === "block";
+  const bekannt = BLOCK_REASONS.some((r) => r.value === entry.reason);
+  return {
+    id: String(entry.id ?? ""),
+    action: gesperrt ? "block" : "unblock",
+    title: gesperrt ? blockReasonLabel(entry.reason) : "Sperre aufgehoben",
+    note: typeof entry.note === "string" && entry.note.trim() ? entry.note.trim() : null,
+    warehouseName: typeof entry.warehouseName === "string" ? entry.warehouseName : null,
+    createdAt: entry.createdAt || null,
+    quantityText: menge === null ? "—" : `${menge.toLocaleString("de-DE")} ${menge === 1 ? "Einheit" : "Einheiten"}`,
+    blockedAfter: zahlOderNull(entry.blockedAfter),
+    rawReason: gesperrt && !bekannt && entry.reason ? String(entry.reason) : null,
+  };
+}
+
 /* ══════════ Prefill in den bestehenden Versandprozess ═══════════════════ */
 
 // Beide Wege (Artikel versenden, Auftrag versenden) münden in DENSELBEN
@@ -217,6 +276,8 @@ const ERROR_TEXTS = Object.freeze({
   LOCATION_DUPLICATE: "Dieser Lagerplatz existiert bereits.",
   DUPLICATE_ENTRY: "Dieser Eintrag existiert bereits.",
   INVENTORY_RATE_LIMITED: "Zu viele Vorgänge in kurzer Zeit. Bitte einen Moment warten.",
+  // Eigener Satz: hier fehlt GESPERRTER Bestand, nicht verfügbarer.
+  INSUFFICIENT_BLOCKED_STOCK: "Es ist weniger Bestand gesperrt, als Sie freigeben möchten.",
 });
 
 /**
@@ -417,4 +478,28 @@ export function dateTimeShort(value) {
 export function isInventoryEmpty(stats) {
   if (!stats) return false;
   return zahlOderNull(stats.activeProducts) === 0;
+}
+
+/* ══════════ Optionale Formularabschnitte des Artikels ═════════════════════ */
+
+/* Welche Felder gehören zu welchem einklappbaren Abschnitt.
+   Hier statt in der Komponente, weil es reine Zuordnung ist — und weil ein
+   Test sie so ohne Browser prüfen kann. */
+export const SECTION_FIELDS = Object.freeze({
+  dimensions: ["lengthCm", "widthCm", "heightCm"],
+  customs: ["unitValue", "hsCode", "countryOfOrigin", "customsDescription"],
+});
+
+/**
+ * Trägt ein optionaler Abschnitt bereits Daten?
+ *
+ * Grundlage der Regel „vorhandene Angaben werden nie versteckt": ein Abschnitt
+ * mit Inhalt startet beim Bearbeiten geöffnet. Geprüft werden die tatsächlichen
+ * Formularwerte (Strings), nicht das Rohobjekt — dieselbe Aussage gilt damit
+ * für Anlegen und Bearbeiten. Reiner Leerraum zählt nicht als Wert, eine
+ * gesetzte 0 dagegen schon.
+ */
+export function sectionHasData(values, section) {
+  const felder = SECTION_FIELDS[section] || [];
+  return felder.some((k) => String(values?.[k] ?? "").trim() !== "");
 }

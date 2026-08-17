@@ -3,12 +3,13 @@ import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
-import { InlineError, InventoryDialog, QuantityField, StockBadge } from "../../components/inventory/InventoryShared";
+import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
-import { getProduct, updateProduct } from "../../api/inventoryApi";
+import { getProduct, updateProduct, postBlock, postUnblock, postReceipt } from "../../api/inventoryApi";
 import {
   formatKg, formatUnits, signedQuantity, movementTypeView,
   inventoryErrorText, mapProductToShipment,
+  lowStockInfo, BLOCK_REASONS, blockEntryView,
 } from "../../utils/inventoryView.mjs";
 
 function dtDE(value) {
@@ -45,6 +46,16 @@ export default function ProductDetailPage() {
   const [shipOpen, setShipOpen] = useState(false);
   const [shipQty, setShipQty] = useState("1");
 
+  // Bestandsvorgänge dieser Seite: Wareneingang, Sperren, Freigeben. Ein
+  // gemeinsamer Zustand statt drei Sätzen — es ist immer höchstens einer offen.
+  const [stockDialog, setStockDialog] = useState(null); // "receipt" | "block" | "unblock" | null
+  const [stockQty, setStockQty] = useState("1");
+  const [stockReason, setStockReason] = useState(BLOCK_REASONS[0].value);
+  const [stockNote, setStockNote] = useState("");
+  const [stockBusy, setStockBusy] = useState(false);
+  const [stockError, setStockError] = useState("");
+  const [success, setSuccess] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -70,6 +81,52 @@ export default function ProductDetailPage() {
       await load();
     } catch { setFormError("Der Artikel konnte nicht gespeichert werden."); }
     finally { setSaving(false); }
+  };
+
+  // Das Lager der Bestandsvorgänge: die Detailseite zeigt einen Artikel, und der
+  // Bestand hängt immer an einem Lager. Genutzt wird das erste (bei einem Lager
+  // das einzige); mehrere Lager bleiben über die Tabelle sichtbar.
+  const primaryWarehouse = data?.balances?.[0] || null;
+
+  const oeffneStock = (art) => {
+    setStockDialog(art);
+    setStockQty("1");
+    setStockReason(BLOCK_REASONS[0].value);
+    setStockNote("");
+    setStockError("");
+    setSuccess("");
+  };
+
+  // Ein Pfad für alle drei Vorgänge: Menge senden, Antwort abwarten, neu laden.
+  // Der Client rechnet nichts aus und schickt keinen Zielwert — er nennt eine
+  // Menge, alles Weitere entscheidet der Server.
+  const stockAbsenden = async () => {
+    if (!primaryWarehouse) { setStockError("Für diesen Artikel ist noch kein Lager hinterlegt."); return; }
+    const menge = Number(String(stockQty).trim());
+    if (!Number.isInteger(menge) || menge < 1) { setStockError("Bitte eine ganze Menge größer null angeben."); return; }
+    const notiz = stockNote.trim();
+    if (stockDialog === "block" && stockReason === "other" && !notiz) {
+      setStockError("Bitte beschreiben Sie den Grund kurz in der Notiz.");
+      return;
+    }
+    setStockBusy(true);
+    setStockError("");
+    try {
+      const basis = { productId: id, warehouseId: primaryWarehouse.warehouseId, quantity: menge };
+      const res = stockDialog === "receipt" ? await postReceipt({ ...basis, note: notiz || undefined })
+        : stockDialog === "block" ? await postBlock({ ...basis, reason: stockReason, note: notiz || undefined })
+        : await postUnblock({ ...basis, note: notiz || undefined });
+      if (!res.ok) {
+        setStockError(inventoryErrorText(await res.json().catch(() => null), "Der Vorgang konnte nicht ausgeführt werden."));
+        return;
+      }
+      setSuccess(stockDialog === "receipt" ? `${menge} Einheiten eingebucht.`
+        : stockDialog === "block" ? `${menge} Einheiten gesperrt.`
+        : `${menge} Einheiten wieder freigegeben.`);
+      setStockDialog(null);
+      await load();
+    } catch { setStockError("Der Vorgang konnte nicht ausgeführt werden."); }
+    finally { setStockBusy(false); }
   };
 
   // Der Prefill reist im History-State zum Dashboard und wird dort genau einmal
@@ -102,6 +159,9 @@ export default function ProductDetailPage() {
   }
 
   const p = data?.product;
+  const gesperrt = Number(p?.stock?.blocked ?? 0);
+  const niedrig = p ? lowStockInfo({ available: p.stock?.available, minStock: p.minStock }) : null;
+  const sperrEintraege = (data?.blocks || []).map(blockEntryView).filter(Boolean);
 
   return (
     <div className="page-body">
@@ -122,19 +182,58 @@ export default function ProductDetailPage() {
       />
 
       <InlineError text={error} onRetry={load} />
+      <InlineSuccess text={success} />
       {loading && <ListSkeleton rows={4} label="Artikel wird geladen" />}
 
       {!loading && p && (
         <>
           <section className="ce-card inv-detail-section">
             <h2 className="inv-section-title">Bestand</h2>
+            {/* Fünf Werte, immer dieselbe Reihenfolge — sie bilden die Formel ab:
+                verfügbar = physisch − reserviert − gesperrt. „Gesperrt" bleibt
+                dauerhaft sichtbar, seit echte Aktionen dahinterstehen. */}
             <div className="inv-detail-stock">
               <div><span className="inv-detail-k">Physisch</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.onHand)}</span></div>
               <div><span className="inv-detail-k">Reserviert</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.reserved)}</span></div>
+              <div><span className="inv-detail-k">Gesperrt</span><span className={`inv-detail-v ce-num${gesperrt > 0 ? " inv-num-blocked" : ""}`}>{formatUnits(p.stock?.blocked)}</span></div>
               <div><span className="inv-detail-k">Verfügbar</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.available)}</span></div>
               <div><span className="inv-detail-k">Mindestbestand</span><span className="inv-detail-v ce-num">{p.minStock ?? "—"}</span></div>
             </div>
+            <p className="inv-detail-formula">Verfügbar = physisch − reserviert − gesperrt.</p>
             <StockBadge row={{ available: p.stock?.available, minStock: p.minStock }} />
+
+            {/* Niedriger Bestand als Information statt als Etikett: die drei
+                Zahlen sagen, wie weit es fehlt — und daneben steht die Handlung,
+                die es behebt. Kein zweiter Wareneingangspfad: derselbe Dialog. */}
+            {niedrig && (
+              <div className="inv-lowstock" role="status">
+                <Icon n="info" s={16} />
+                <span className="inv-lowstock-text">
+                  <strong>{formatUnits(niedrig.available)} verfügbar</strong> bei Mindestbestand {formatUnits(niedrig.minStock)} —{" "}
+                  {formatUnits(niedrig.missing)} {niedrig.missing === 1 ? "Einheit" : "Einheiten"} fehlen.
+                </span>
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => oeffneStock("receipt")}>
+                  <Icon n="packageMove" s={16} />Bestand einbuchen
+                </button>
+              </div>
+            )}
+
+            {/* Nur relevante Aktionen: „Sperre aufheben" erscheint erst, wenn es
+                etwas aufzuheben gibt. */}
+            <div className="inv-detail-actions">
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("receipt")}>
+                <Icon n="packageMove" s={16} />Bestand einbuchen
+              </button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("block")}
+                      disabled={Number(p.stock?.available ?? 0) < 1}>
+                <Icon n="shield" s={16} />Bestand sperren
+              </button>
+              {gesperrt > 0 && (
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("unblock")}>
+                  <Icon n="check" s={16} />Sperre aufheben
+                </button>
+              )}
+            </div>
 
             {data.balances?.length > 0 && (
               <div className="ce-table-container inv-detail-table">
@@ -201,13 +300,56 @@ export default function ProductDetailPage() {
             </dl>
           </section>
 
+          {/* Warum ist hier etwas gesperrt? Erscheint nur, wenn es tatsächlich
+              eine Sperre gab — sonst wäre es eine leere Karte ohne Aussage.
+              Bewusst getrennt von den Bewegungen: eine Sperre verändert keinen
+              physischen Bestand und gehört deshalb nicht ins Bewegungsledger. */}
+          {(gesperrt > 0 || sperrEintraege.length > 0) && (
+            <section className="ce-card inv-detail-section">
+              <h2 className="inv-section-title">Gesperrter Bestand</h2>
+              {gesperrt > 0 && (
+                <p className="inv-detail-blocked-sum">
+                  <strong className="ce-num">{formatUnits(gesperrt)}</strong>{" "}
+                  {gesperrt === 1 ? "Einheit ist" : "Einheiten sind"} aktuell gesperrt und stehen weder für
+                  Aufträge noch für den Versand zur Verfügung. Physisch liegen sie weiterhin im Lager.
+                </p>
+              )}
+              <ul className="inv-block-list">
+                {sperrEintraege.map((b) => (
+                  <li key={b.id} className="inv-block-item">
+                    <span className={`badge ${b.action === "block" ? "badge--warning" : "badge--neutral"}`}>
+                      <span className="badge-dot" aria-hidden="true" />
+                      {b.action === "block" ? "Gesperrt" : "Freigegeben"}
+                    </span>
+                    <span className="inv-block-main">
+                      <span className="inv-block-title" title={b.rawReason ? `Serverwert: ${b.rawReason}` : undefined}>{b.title}</span>
+                      {b.note && <span className="inv-cell-meta">{b.note}</span>}
+                    </span>
+                    <span className="ce-num inv-block-qty">{b.quantityText}</span>
+                    <span className="inv-cell-meta">{dtDE(b.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="ce-card inv-detail-section">
-            <h2 className="inv-section-title">Letzte Bestandsbewegungen</h2>
+            <div className="inv-detail-head">
+              <h2 className="inv-section-title">Letzte Bestandsbewegungen</h2>
+              {data.movements?.length > 0 && (
+                <button type="button" className="btn btn-link btn-sm"
+                        onClick={() => navigate(`/dashboard?page=movements&product=${encodeURIComponent(id)}`)}>
+                  Alle Bewegungen anzeigen<Icon n="chevronRight" s={14} />
+                </button>
+              )}
+            </div>
             {(!data.movements || data.movements.length === 0)
               ? <p className="inv-cell-meta">Für diesen Artikel wurde noch keine Bewegung gebucht.</p>
               : (
                 <ul className="inv-movement-list">
-                  {data.movements.map((m) => {
+                  {/* Bewusst nur die letzten fünf: die Detailseite gibt einen
+                      Überblick, die vollständige Liste zeigt die Bewegungsseite. */}
+                  {data.movements.slice(0, 5).map((m) => {
                     const [cls, text, roh] = movementTypeView(m.type);
                     return (
                       <li key={m.id} className="inv-movement-item">
@@ -215,6 +357,7 @@ export default function ProductDetailPage() {
                           <span className="badge-dot" aria-hidden="true" />{text}
                         </span>
                         <span className={`ce-num inv-movement-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
+                        <span className="inv-cell-meta">Bestand danach: <span className="ce-num">{formatUnits(m.onHandAfter)}</span></span>
                         <span className="inv-cell-meta">{m.warehouseName}</span>
                         <span className="inv-cell-meta">{dtDE(m.createdAt)}</span>
                       </li>
@@ -226,8 +369,81 @@ export default function ProductDetailPage() {
         </>
       )}
 
-      <InventoryDialog open={editOpen} onClose={() => { if (!saving) setEditOpen(false); }} title="Artikel bearbeiten" size="lg" busy={saving}>
+      <InventoryDialog open={editOpen} onClose={() => { if (!saving) setEditOpen(false); }} title="Artikel bearbeiten" size="lg" busy={saving} scrollBody>
         <ProductForm initial={p} busy={saving} error={formError} onCancel={() => setEditOpen(false)} onSubmit={speichern} />
+      </InventoryDialog>
+
+      {/* Wareneingang, Sperren und Freigeben teilen sich EINEN Dialog: dieselbe
+          Form, dieselbe Fehlerbehandlung, nur andere Beschriftung und ein
+          zusätzliches Grundfeld beim Sperren. */}
+      <InventoryDialog
+        open={Boolean(stockDialog)}
+        onClose={() => { if (!stockBusy) setStockDialog(null); }}
+        title={stockDialog === "receipt" ? "Bestand einbuchen" : stockDialog === "block" ? "Bestand sperren" : "Sperre aufheben"}
+        busy={stockBusy}
+        footer={
+          <>
+            <button type="button" className="btn btn-outline" onClick={() => setStockDialog(null)} disabled={stockBusy}>Abbrechen</button>
+            <button type="button" className="btn btn-primary" onClick={stockAbsenden} disabled={stockBusy}>
+              {stockBusy ? "Wird ausgeführt …"
+                : stockDialog === "receipt" ? "Bestand einbuchen"
+                : stockDialog === "block" ? "Bestand sperren" : "Sperre aufheben"}
+            </button>
+          </>
+        }
+      >
+        {p && stockDialog && (
+          <>
+            <InlineError text={stockError} />
+            <dl className="inv-dialog-facts">
+              <div><dt>Artikel</dt><dd>{p.name}</dd></div>
+              <div><dt>Lager</dt><dd>{primaryWarehouse?.warehouseName || "—"}</dd></div>
+              <div>
+                <dt>{stockDialog === "unblock" ? "Gesperrt" : "Verfügbar"}</dt>
+                <dd className="ce-num">{formatUnits(stockDialog === "unblock" ? gesperrt : p.stock?.available)}</dd>
+              </div>
+            </dl>
+
+            <QuantityField
+              id="inv-stock-qty"
+              label="Menge"
+              value={stockQty}
+              onChange={setStockQty}
+              disabled={stockBusy}
+              autoFocus
+              max={stockDialog === "block" ? (p.stock?.available ?? undefined)
+                : stockDialog === "unblock" ? (gesperrt || undefined) : undefined}
+              hint={stockDialog === "receipt"
+                ? "Erhöht den physischen Bestand und wird als Wareneingang festgehalten."
+                : stockDialog === "block"
+                  ? "Die Einheiten bleiben physisch im Lager, stehen aber nicht mehr für Aufträge und Sendungen zur Verfügung."
+                  : "Die Einheiten stehen danach wieder für Aufträge und Sendungen zur Verfügung."}
+            />
+
+            {stockDialog === "block" && (
+              <div className="inv-field">
+                <label className="field-label" htmlFor="inv-block-reason">Grund</label>
+                <select id="inv-block-reason" className="field-select" value={stockReason}
+                        onChange={(e) => setStockReason(e.target.value)} disabled={stockBusy}>
+                  {BLOCK_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div className="inv-field">
+              <label className="field-label" htmlFor="inv-stock-note">
+                Notiz{stockDialog === "block" && stockReason === "other" ? " *" : " (optional)"}
+              </label>
+              <textarea id="inv-stock-note" className="field-textarea" rows={2} maxLength={500}
+                        value={stockNote} onChange={(e) => setStockNote(e.target.value)} disabled={stockBusy} />
+              {stockDialog === "block" && (
+                <p className="inv-field-hint">
+                  Grund und Notiz bleiben dauerhaft nachvollziehbar — auch nach der Freigabe.
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </InventoryDialog>
 
       <InventoryDialog
@@ -237,7 +453,7 @@ export default function ProductDetailPage() {
         footer={
           <>
             <button type="button" className="btn btn-outline" onClick={() => setShipOpen(false)}>Abbrechen</button>
-            <button type="button" className="btn btn-primary" onClick={versenden}>Weiter zur Sendung</button>
+            <button type="button" className="btn btn-primary" onClick={versenden}>Versand vorbereiten</button>
           </>
         }
       >

@@ -203,6 +203,9 @@
 }
 .inv-cell-link { text-align: left; padding: 0; min-height: 0; }
 .inv-num-low { color: var(--ce-color-status-warning-fg); font-weight: 600; }
+/* Gesperrter Bestand: dieselbe Warnrolle wie ein niedriger Bestand — es ist
+   keine Störung, aber eine Zahl, die man nicht überlesen soll. */
+.inv-num-blocked { color: var(--ce-color-status-warning-fg); font-weight: 600; }
 .inv-num-out { color: var(--ce-color-text-secondary); }
 .inv-num-in  { color: var(--ce-color-status-success-fg); }
 
@@ -393,4 +396,146 @@
      ohnehin deutlich größer als 44 px, braucht aber die Regel, damit sie beim
      Kürzen der Innenabstände nicht darunter fällt. */
   .inv-stat--action { min-height: 44px; }
+}
+
+/* ── Einklappbare Formularabschnitte ──
+   Optionale Feldgruppen: alle Möglichkeiten bleiben, sichtbar ist zunächst nur,
+   was der Nutzer gerade braucht. Der Kopf ist ein echtes <button> — Fokusring
+   und Tastaturbedienung kommen aus der Foundation. */
+.inv-section {
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  min-width: 0;
+}
+.inv-section--open { background: var(--ce-color-surface-muted); }
+.inv-section-head {
+  display: flex; align-items: center; gap: var(--ce-space-3);
+  width: 100%; padding: var(--ce-space-3) var(--ce-space-4);
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
+  line-height: var(--ce-text-label-line); letter-spacing: 0.06em; text-transform: uppercase;
+  text-align: left; color: var(--ce-color-text-secondary);
+  background: none; border: none; border-radius: var(--ce-radius-md); cursor: pointer;
+  transition: color 140ms ease;
+}
+.inv-section-head:hover { color: var(--ce-color-text-primary); }
+.inv-section-head[disabled] { cursor: default; opacity: 0.6; }
+.inv-section-label { min-width: 0; overflow-wrap: break-word; }
+/* Sagt vor dem Aufklappen, dass hier bereits etwas steht — sonst müsste man
+   jeden Abschnitt öffnen, um das herauszufinden. */
+.inv-section-filled {
+  font-size: var(--ce-text-micro-size); font-weight: 600; letter-spacing: 0.04em;
+  color: var(--ce-color-brand-ink); text-transform: none;
+}
+.inv-section-chevron { margin-left: auto; display: inline-flex; transition: transform 140ms ease; }
+.inv-section--open .inv-section-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .inv-section-chevron { transition: none; } }
+.inv-section-body {
+  display: flex; flex-direction: column; gap: var(--ce-space-3);
+  padding: 0 var(--ce-space-4) var(--ce-space-4);
+}
+.inv-section-hint {
+  margin: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+/* Innerhalb eines Abschnitts trägt der Abschnitt selbst die Überschrift — das
+   fieldset braucht keine zweite. */
+.inv-fieldset--bare { gap: var(--ce-space-3); }
+
+/* ── Geteilter Dialog: Kopf und Aktionen bleiben stehen, die Felder scrollen ──
+   Opt-in (InventoryDialog scrollBody) und nur für das lange Artikelformular:
+   dort lief sonst der Titel nach oben und „Änderungen speichern" nach unten aus
+   dem Bild. min-height:0 ist tragend — ohne das wächst das Flex-Kind über den
+   Dialog hinaus, statt zu scrollen. */
+.inv-dialog-split { display: flex; flex-direction: column; overflow: hidden; }
+.inv-dialog-split > .ce-dialog-head { flex: 0 0 auto; }
+.inv-dialog-split > .ce-dialog-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.inv-dialog-split .inv-form { flex: 1 1 auto; min-height: 0; }
+.inv-dialog-split .inv-form-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column; gap: var(--ce-space-4);
+  padding-right: var(--ce-space-2);
+}
+.inv-dialog-split .inv-form-actions {
+  flex: 0 0 auto; margin-top: var(--ce-space-4);
+  padding-top: var(--ce-space-4); border-top: 1px solid var(--ce-color-border-subtle);
+}
+
+/* ── Bestandsbereich der Artikeldetailseite ── */
+.inv-detail-formula {
+  margin: 0 0 var(--ce-space-3);
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+.inv-detail-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); margin-top: var(--ce-space-4); }
+.inv-detail-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); flex-wrap: wrap; }
+.inv-detail-head .inv-section-title { margin-bottom: var(--ce-space-2); }
+
+/* Niedriger Bestand als Information mit Handlung — keine Alarmfläche. */
+.inv-lowstock {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--ce-space-3); margin-top: var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-status-warning-border);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-status-warning-surface);
+  color: var(--ce-color-status-warning-fg);
+}
+.inv-lowstock-text {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary);
+}
+.inv-lowstock .btn { flex: 0 0 auto; }
+
+/* ── Sperrhistorie ── */
+.inv-detail-blocked-sum {
+  margin: 0 0 var(--ce-space-3); max-width: 70ch;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
+}
+.inv-block-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.inv-block-item {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--ce-space-3); padding: var(--ce-space-3) 0; min-width: 0;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.inv-block-item:last-child { border-bottom: none; }
+.inv-block-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 12rem; }
+.inv-block-title {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-block-qty {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); flex: 0 0 auto;
+}
+
+/* ── Fakten im Bestandsdialog ── */
+.inv-dialog-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--ce-space-3); margin: 0 0 var(--ce-space-4);
+}
+.inv-dialog-facts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-dialog-facts dt {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  line-height: var(--ce-text-micro-line); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+}
+.inv-dialog-facts dd {
+  margin: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+  min-width: 0; overflow-wrap: break-word;
+}
+
+/* Filterchip der Bewegungsliste — sagt, warum die Liste verkürzt ist. */
+.inv-toolbar-chip { align-self: flex-end; gap: var(--ce-space-2); }
+
+@media (max-width: 860px) {
+  .inv-section-head,
+  .inv-detail-actions .btn,
+  .inv-lowstock .btn,
+  .inv-toolbar-chip { min-height: 44px; }
 }

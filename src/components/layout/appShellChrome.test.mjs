@@ -222,15 +222,22 @@ test("9 — die Firmenkarte ist restlos entfernt und hinterlässt keinen Ersatzb
   assert.ok(!/accountDisplayName\(user\)/.test(sidebarJsx), "die Namensquelle wird noch aufgerufen");
   assert.ok(!/from ["']\.\.\/\.\.\/utils\/accountIdentity\.mjs["']/.test(sidebarJsx),
     "der Import der Identitätsquelle lebt noch, obwohl nichts ihn mehr braucht");
-  // Kein Ersatzblock: Logo und Navigation stehen jetzt direkt hintereinander
-  // (getrennt nur durch das schließende </div> der Logozeile und Whitespace) —
-  // kein neues <div> dazwischen.
-  const logoEndeBisNav = sidebarJsx.slice(
+  // Kein Ersatzblock zwischen Marke und Navigation. Erlaubt ist dort GENAU EIN
+  // Element: der Scrollbereich .pp-side-scroll — ein reiner Layoutbehälter ohne
+  // eigenen Inhalt. Alles andere wäre der Platzhalter, den es nicht geben darf.
+  const logoEndeBisNav = stripJsxComments(sidebarJsx.slice(
     sidebarJsx.indexOf("</button>", sidebarJsx.indexOf("pp-close")),
     sidebarJsx.indexOf('<nav className="pp-nav">'),
-  );
-  assert.doesNotMatch(stripJsxComments(logoEndeBisNav), /<div/,
-    "zwischen Logo und Navigation steht noch ein <div> — kein Platzhalter erlaubt");
+  ));
+  const oeffnendeTags = logoEndeBisNav.match(/<[a-zA-Z]/g) || [];
+  assert.equal(oeffnendeTags.length, 1,
+    "zwischen Logo und Navigation steht mehr als der Scrollbereich — kein Platzhalter erlaubt");
+  assert.match(logoEndeBisNav, /<div className="pp-side-scroll">/,
+    "das Element zwischen Logo und Navigation ist nicht der Scrollbereich");
+  // Und kein Text: der Behälter ist reines Layout. (Die schließenden Tags der
+  // Logozeile liegen zwangsläufig mit im Ausschnitt und zählen nicht als Inhalt.)
+  assert.doesNotMatch(logoEndeBisNav.replace(/<[^>]*>/g, ""), /\w/,
+    "zwischen Logo und Navigation steht Text — kein Ersatzblock erlaubt");
 
   // Und die zugehörige Fläche ist ebenfalls weg, nicht nur unbenutzt.
   assert.equal(block(premium, ".pp-identity"), null, "die CSS-Regel der Firmenkarte lebt noch");
@@ -333,14 +340,48 @@ test("13 — mobile Sidebar öffnet und schließt weiterhin", () => {
     "öffentlicher Drawer nutzt weiterhin .sidebar-overlay — Scope ist zwingend");
 });
 
-test("14 — die gesamte Sidebarspalte scrollt, nicht nur die Navigation", () => {
+test("14 — die Marke steht fest, alles darunter liegt in EINEM Scrollbereich", () => {
+  // Frühere Fassung: die gesamte Spalte (.pp-side-in) scrollte, Marke inklusive.
+  // Das war die Korrektur eines noch älteren Fehlers — damals scrollte nur
+  // .pp-nav, während Supportkarte und Fußzeile AUSSERHALB des Scrollbereichs
+  // unbeweglich darunter standen und den letzten Eintrag abschnitten.
+  // Jetzt: die Marke ist der feste Kopf, und der Scrollbereich umfasst alles
+  // andere. Die Lehre von damals bleibt der Kern dieses Tests — nichts darf
+  // unterhalb des Scrollbereichs stranden.
   const inner = block(premium, ".pp-side-in");
+  const scroll = block(premium, ".pp-side-scroll");
   const nav = block(premium, ".pp-nav");
-  assert.ok(inner && nav, ".pp-side-in oder .pp-nav fehlt");
-  assert.match(inner, /overflow-y:\s*auto/, "Scrollcontainer muss die gesamte Spalte sein");
-  // Kein zweiter Scrollbereich: sonst wird Abmelden/Support/Footer abgeschnitten.
+  const logo = block(premium, ".pp-logo");
+  assert.ok(inner && scroll && nav && logo, "eine der Sidebar-Regeln fehlt");
+
+  // Der Rahmen scrollt nicht mehr — sonst entstünden zwei Scrollachsen übereinander.
+  assert.doesNotMatch(inner, /overflow-y:\s*auto/, ".pp-side-in darf nicht mehr selbst scrollen");
+  assert.match(scroll, /overflow-y:\s*auto/, "der Scrollbereich scrollt nicht");
+  // min-height:0 ist tragend: ein Flex-Kind bekommt sonst min-height:auto,
+  // wächst über den Container hinaus und die Leiste erschiene nie.
+  assert.match(scroll, /min-height:\s*0/, "ohne min-height:0 scrollt der Bereich nicht, er wächst");
+  // Genau EIN Scrollbereich in der Spalte.
   assert.doesNotMatch(nav, /overflow-y:\s*auto/, "kein doppelter Scrollbereich in der Navigation");
   assert.match(nav, /flex:\s*1 0 auto/, "Navigation darf nie unter ihre Inhaltshöhe schrumpfen");
+  assert.match(logo, /flex:\s*0 0 auto/, "die Marke darf als fester Kopf weder wachsen noch schrumpfen");
+
+  // Und das Entscheidende: Navigation, Supportkarte UND Fußzeile liegen INNERHALB
+  // des Scrollbereichs. Läge eines davon darunter, wäre der alte Fehler zurück.
+  const jsx = stripJsxComments(sidebarJsx);
+  const start = jsx.indexOf('<div className="pp-side-scroll">');
+  assert.ok(start > 0, "der Scrollbereich fehlt im Markup");
+  const bereich = jsx.slice(start);
+  for (const [marke, was] of [['className="pp-nav"', "Navigation"], ['className="pp-scard"', "Supportkarte"], ['className="pp-foot"', "Fußzeile"]]) {
+    assert.ok(bereich.includes(marke), `${was} liegt nicht im Scrollbereich`);
+  }
+
+  // Kein Querbalken durch den neuen Bereich.
+  assert.match(scroll, /overflow-x:\s*hidden/, "der Scrollbereich darf keinen Querbalken bekommen");
+
+  // Die Leiste ist gestaltet und nutzt ausschließlich Tokens — Farbliterale
+  // stehen im Chrome nirgends (siehe Test 1).
+  assert.match(scroll, /scrollbar-width:\s*thin/, "die Scrollleiste ist nicht schmal gestellt");
+  assert.match(scroll, /scrollbar-color:\s*var\(--ce-sidebar-scroll-thumb\)/, "die Leiste nutzt den Sidebar-Token nicht");
 });
 
 /* ── Effekte / Performance ──────────────────────────────────────────────── */

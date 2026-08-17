@@ -245,8 +245,38 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   nicht unter ~12:1 fallen — `appShellChrome.test.mjs` misst das.
 - Der aktive Navigationseintrag ist mehrfach codiert (Fläche + Border +
   Akzentkante als `inset`-Schatten + Schriftschnitt), nicht allein farbig.
-- Die gesamte Sidebarspalte (`.pp-side-in`) scrollt — nicht `.pp-nav` separat,
-  sonst wird auf kurzen Viewports „Abmelden" abgeschnitten.
+- **Die Marke steht fest, alles darunter scrollt in EINEM Bereich.**
+  `.pp-side-in` ist der unbewegliche Rahmen, `.pp-side-scroll` der Scrollbereich —
+  er umfasst Navigation, Supportkarte **und** Fußzeile. `.pp-logo` bleibt als
+  Kopf darüber (`flex: 0 0 auto`).
+
+  Zwei Fassungen davor, beide aus einem echten Fehler heraus verworfen: Lag
+  `overflow-y` allein auf `.pp-nav`, standen Supportkarte und Fußzeile
+  **außerhalb** des Scrollbereichs, belegten dauerhaft Höhe und schnitten den
+  letzten Navigationseintrag mittendrin ab. Danach scrollte die gesamte Spalte
+  inklusive Marke — funktionsfähig, aber `scrollbar-width: none` blendete jede
+  Anzeige aus: die Spalte scrollte, ohne dass man es sehen konnte. Gemessen auf
+  1366×768 lag „Unternehmen & Konto" 115 px, „Abmelden" 209 px unter dem
+  Viewport; selbst auf 1920×1080 war „Abmelden" abgeschnitten.
+
+  **Wer den Scrollbereich wieder auf `.pp-nav` verengt, holt den ersten Fehler
+  zurück; wer die Leiste wieder ausblendet, den zweiten.** Die Leiste ist schmal
+  und dezent (`scrollbar-width: thin` + `--ce-sidebar-scroll-thumb`), nicht
+  unsichtbar. Sobald `scrollbar-width` gesetzt ist, ignoriert Chromium
+  `::-webkit-scrollbar` vollständig — der Hover-Zustand läuft dort deshalb
+  ebenfalls über `scrollbar-color`.
+- **Der Modulblock „Lager & Aufträge" ist einklappbar.** Der Kopf ist ein echtes
+  `<button>` mit `aria-expanded`/`aria-controls`; eingeklappt verschwinden die
+  Einträge **aus dem DOM**, nicht nur optisch (sonst blieben sie für Tastatur und
+  Screenreader erreichbar). Standard offen; ein Wechsel **in** den Lagerbereich
+  öffnet ihn wieder, damit der aktive Eintrag nie verborgen startet — bewusst an
+  den Wechsel gebunden, nicht an jeden Render, sonst wirkte die Schaltfläche
+  innerhalb des Bereichs kaputt. Reiner UI-Zustand der Komponente, **keine
+  Persistenz** in `localStorage`, Backend oder Context.
+
+  Das kehrt eine frühere Festlegung um („bewusst nicht einklappbar"): sie galt,
+  als der Block fünf Zeilen in einer kurzen Navigation waren. Mit der gewachsenen
+  Sidebar spart das Einklappen auf kurzen Viewports fünf Zeilen Scrollweg.
 - Legal Pages (Impressum, Datenschutz, AGB, Widerruf) und der Auth-Bereich
   liegen außerhalb dieses Rahmens und bleiben unverändert.
 

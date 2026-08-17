@@ -76,6 +76,10 @@
   .sidebar-close-btn,
   .hamburger-btn,
   .ntf-bell { min-height: 44px; min-width: 44px; }
+  /* Der Klappkopf des Lagerblocks ist ein echtes Bedienelement und fällt
+     deshalb unter dieselbe Regel — er ist nur kein `.nitem` und wäre sonst mit
+     rund 25 px das kleinste Ziel der Sidebar. */
+  .pp-side .pp-nav-module-head { min-height: 44px; }
   .sidebar-close-btn,
   .hamburger-btn { display: flex; align-items: center; justify-content: center; }
 

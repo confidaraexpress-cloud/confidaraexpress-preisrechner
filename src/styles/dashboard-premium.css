@@ -179,10 +179,19 @@
   overflow: visible;
 }
 
-/* Scrollcontainer ist die GESAMTE Spalte, nicht nur die Navigation. Vorher lag
-   overflow-y auf .pp-nav — reichte die Höhe nicht, wurde dort ein Eintrag hart
-   mittendrin abgeschnitten, während Support-Karte und Fußzeile darunter stehen
-   blieben. Jetzt scrollt die Spalte als Ganzes. */
+/* Die Spalte selbst scrollt NICHT mehr — sie ist der Rahmen. Die Marke bleibt
+   oben stehen, alles darunter liegt in EINEM Scrollbereich (.pp-side-scroll).
+
+   Warum genau so: früher lag overflow-y auf .pp-nav allein. Reichte die Höhe
+   nicht, wurde dort ein Eintrag hart mittendrin abgeschnitten, während
+   Supportkarte und Fußzeile unbeweglich darunter stehen blieben — sie lagen
+   AUSSERHALB des Scrollbereichs und belegten dauerhaft Platz. Danach scrollte
+   deshalb die gesamte Spalte inklusive Marke.
+   Beides ist jetzt aufgelöst: der Scrollbereich umfasst Navigation, Supportkarte
+   UND Fußzeile, also alles, was scrollen soll — nichts bleibt gestrandet. Die
+   Marke steht als Kopf darüber und ist der einzige Teil, der nicht mitscrollt.
+   Wer den Scrollbereich wieder auf .pp-nav verengt, holt den alten Fehler
+   zurück. */
 .pp-side-in {
   position: relative;
   height: 100%;
@@ -195,10 +204,44 @@
   border: none;
   border-radius: 0;
   box-shadow: none;
-  overflow-y: auto;
-  scrollbar-width: none;
+  /* Kein eigener Scroll: der Rahmen ist unbeweglich, gescrollt wird innen. */
+  overflow: hidden;
 }
-.pp-side-in::-webkit-scrollbar { display: none; }
+
+/* Der Scrollbereich. min-height:0 ist tragend — ein Flex-Kind bekommt sonst
+   min-height:auto und wächst über den Container hinaus, statt zu scrollen; die
+   Leiste erschiene nie. overflow-x bleibt hidden: die Sidebar darf durch diese
+   Änderung keinen Querbalken bekommen. */
+.pp-side-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Schmale, zurückhaltende Leiste in der vorhandenen Sidebar-Farbfamilie —
+     kein heller Standardbalken, keine Library, kein JavaScript.
+
+     Zwei Schreibweisen, bewusst BEIDE: Chromium und Firefox verstehen die
+     Standardeigenschaften; ältere WebKit-Stände nur ::-webkit-scrollbar. Sobald
+     `scrollbar-width` gesetzt ist, ignoriert Chromium die ::-webkit-Regeln
+     vollständig — der Hover-Zustand muss dort deshalb ebenfalls über
+     `scrollbar-color` laufen, sonst bliebe er in genau dem Browser wirkungslos,
+     in dem die Anwendung überwiegend läuft. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--ce-sidebar-scroll-thumb) transparent;
+  /* Trägheitsfreies Anhalten am Rand — verhindert, dass der Hauptinhalt
+     weiterscrollt, wenn die Navigation ihr Ende erreicht. */
+  overscroll-behavior: contain;
+}
+.pp-side-scroll::-webkit-scrollbar { width: 6px; }
+.pp-side-scroll::-webkit-scrollbar-track { background: transparent; }
+.pp-side-scroll::-webkit-scrollbar-thumb {
+  background: var(--ce-sidebar-scroll-thumb);
+  border-radius: var(--ce-radius-full);
+}
+.pp-side-scroll:hover::-webkit-scrollbar-thumb { background: var(--ce-sidebar-scroll-thumb-hover); }
+.pp-side-scroll:hover { scrollbar-color: var(--ce-sidebar-scroll-thumb-hover) transparent; }
 
 /* ── Marke ──
    Ruhige, leicht hellere Iconfläche + klarere Hierarchie zwischen Wortmarke
@@ -207,7 +250,9 @@
    darunter ist entfallen, siehe unten) — deshalb 28px statt der früheren 20px:
    ein einzelner, bewusster Übergang statt eines leeren Rests der alten
    Kartenlücke. */
-.pp-logo { display: flex; align-items: center; gap: 11px; padding: 2px 6px 28px; }
+/* flex:0 0 auto — die Marke ist der unbewegliche Kopf der Spalte und darf beim
+   Schrumpfen der Höhe weder wachsen noch gestaucht werden. */
+.pp-logo { flex: 0 0 auto; display: flex; align-items: center; gap: 11px; padding: 2px 6px 22px; }
 /* Die Marke kommt aus components/ui/BrandLogo.jsx — ein Bauteil für das ganze
    Produkt. Hier steht nur noch, was DIESE Fläche anders macht als die
    Grundregel in primitives.css: eine etwas größere Chipfläche (36 statt 34)
@@ -245,7 +290,7 @@
 .nsec {
   font-family: var(--fs); font-size: 11px; font-weight: 600;
   letter-spacing: 0.17em; text-transform: uppercase;
-  color: var(--ce-sidebar-section); padding: 16px 12px 7px;
+  color: var(--ce-sidebar-section); padding: 13px 12px 6px;
 }
 .nsec--active { color: var(--ce-sidebar-text-muted); }
 /* Sehr feine Trennlinie oberhalb der Folgegruppen (nicht vor der ersten) —
@@ -255,7 +300,7 @@
   margin-top: 6px;
   border-top: 1px solid var(--ce-sidebar-divider);
 }
-.pp-nav-utility-divider { height: 1px; margin: 14px 12px 6px; background: var(--ce-sidebar-divider); }
+.pp-nav-utility-divider { height: 1px; margin: 11px 12px 5px; background: var(--ce-sidebar-divider); }
 
 /* ── Modulblock „Lager & Aufträge" ──
    Ein eigener Produktbereich INNERHALB derselben Sidebar — keine zweite
@@ -273,24 +318,50 @@
    markiert zusätzlich, dass man sich in ihm befindet — mehrfach codiert, nie
    allein farbig. */
 .pp-nav-module {
-  margin: 10px 0 4px;
-  padding: 8px 8px 10px;
+  margin: 8px 0 4px;
+  padding: 6px 8px 8px;
   border: 1px solid var(--ce-sidebar-border);
   border-radius: var(--ce-radius-lg);
   background: var(--ce-sidebar-well);
   display: flex; flex-direction: column; gap: 2px;
   transition: border-color 140ms ease;
 }
+/* Eingeklappt trägt der Block nur noch seinen Kopf — der untere Innenabstand
+   würde dann als leere Fläche darunter stehen. */
+.pp-nav-module--collapsed { padding-bottom: 6px; }
 .pp-nav-module--active { border-color: var(--ce-sidebar-active-border); }
+/* Der Kopf ist jetzt die Klappschaltfläche — er trägt deshalb Buttonzurücksetzung
+   und Trefferfläche, behält aber exakt seine bisherige Typografie und Farbe: die
+   Bedienbarkeit ist neu, das Erscheinungsbild nicht. */
 .pp-nav-module-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 4px 6px 8px;
+  width: 100%; padding: 5px 6px; margin-bottom: 2px;
   font-family: var(--fs); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.14em; text-transform: uppercase;
+  letter-spacing: 0.14em; text-transform: uppercase; text-align: left;
   color: var(--ce-sidebar-section);
+  background: none; border: none; border-radius: var(--ce-radius-sm);
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease;
 }
+.pp-nav-module-head:hover { color: var(--ce-sidebar-text-muted); background: var(--ce-sidebar-surface-hover); }
 .pp-nav-module--active .pp-nav-module-head { color: var(--ce-sidebar-text-muted); }
 .pp-nav-module-head svg { flex: 0 0 15px; width: 15px; height: 15px; color: var(--ce-sidebar-icon); }
+/* Der Chevron sitzt rechts und zeigt den Zustand an. Gedreht statt zweites Icon:
+   eine Form, eine Bedeutung — und die 140ms-Drehung ist eine Zustandsreaktion,
+   kein Ambiente (siehe Bewegungsregel der App-Shell). */
+.pp-nav-module-chevron {
+  margin-left: auto;
+  display: flex;
+  transition: transform 140ms ease;
+}
+.pp-nav-module--collapsed .pp-nav-module-chevron { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .pp-nav-module-chevron { transition: none; }
+}
+/* Die Einträge liegen seit dem Einklappen in einem eigenen Behälter (er trägt
+   die id, auf die aria-controls zeigt) und brauchen deshalb den Zeilenabstand
+   des Blocks selbst. */
+.pp-nav-module-items { display: flex; flex-direction: column; gap: 2px; }
 /* Innerhalb des Blocks ist die Umrandung des Blocks die Kante — die Einträge
    brauchen keine zweite. Nur der aktive Eintrag behält seine eigene. */
 .pp-nav-module .nitem { padding-inline: 10px; }
@@ -530,16 +601,22 @@
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-/* Kurze Viewports (Laptops, Mobile-Drawer): die Navigation ist zwar scrollbar,
-   ein halb abgeschnittener „Abmelden"-Eintrag liest sich aber wie ein Fehler.
-   Der vertikale Rhythmus wird daher gestrafft, bis die komplette Navigation
-   samt Support-Karte ohne Scrollen hineinpasst. Reine Abstände, keine
-   Struktur- oder Reihenfolgeänderung. */
+/* Kurze Viewports (Laptops, Mobile-Drawer): der vertikale Rhythmus wird
+   gestrafft, damit möglichst viel Navigation ohne Scrollen sichtbar ist.
+
+   Anders als früher ist das KEIN Versprechen mehr, dass alles hineinpasst — mit
+   dem Modulblock „Lager & Aufträge" reicht die Höhe auf 1366×768 und darunter
+   nachweislich nicht (gemessen: 418 px Überhang). Dafür ist der Scrollbereich
+   zuständig; diese Straffung verringert nur, wie oft und wie weit gescrollt
+   werden muss. Reine Abstände, keine Struktur- oder Reihenfolgeänderung. */
 @media (max-height: 940px) {
   .pp-side-in { padding: 16px 14px 12px; }
-  .pp-logo { padding: 0 6px 18px; }
-  .nsec { padding: 13px 12px 6px; }
+  .pp-logo { padding: 0 6px 16px; }
+  .nsec { padding: 11px 12px 5px; }
   .nitem { min-height: 37px; padding-block: 7px; }
+  .pp-nav-module { margin: 6px 0 3px; padding: 5px 8px 6px; }
+  .pp-nav-module--collapsed { padding-bottom: 5px; }
+  .pp-nav-module-head { padding-block: 4px; }
   .pp-nav-utility-divider { margin: 9px 12px 4px; }
   .pp-scard { margin-top: 11px; padding: 10px; }
   .scard-s { margin-top: 7px; }

@@ -1026,6 +1026,37 @@ ergänzt, nimmt `s.id`, nicht `s.jumingo_shipment_id`.
 
 Governance: `src/utils/providerNeutralShipmentHandle.test.mjs` (8 Tests).
 
+### Vor der Buchung: ZWEI IDs, strikt getrennt
+
+`/calculate-price` liefert beide — sie bedeuten **nicht** dasselbe und dürfen nie
+gegeneinander ausgetauscht werden:
+
+| Feld | Bedeutung | Wofür |
+|---|---|---|
+| `shipmentId` | JUMiNGO-/Providerreferenz (`s_` + 32 Hex) | `/book`, Abholzeitfenster, Handelsrechnung |
+| `ceShipmentId` | ConfidaraExpress-Sendungshandle (`shipments.id`) | „Als Entwurf speichern" (`POST /api/kunde/drafts/:id/save`) |
+
+- **`hasSavableShipmentId` verlangt die interne ID** (positive Ganzzahl) und lehnt
+  die Providerform ab — **das ist richtig so und wird nicht aufgeweicht**. Wer eine
+  Entwurfsaktion baut, korrigiert die Datenquelle, nicht den Guard.
+- **`hasUsableShipmentReference` ist der andere Validator** (akzeptiert die
+  Providerform). Die beiden nie vertauschen.
+- **Ohne `ceShipmentId` erscheint die Aktion nicht** — statt ersatzweise die
+  Providerreferenz zu senden. Fail-safe, nicht fail-open.
+- Beide IDs gehören zum **selben** Entwurf: sie werden gemeinsam gespiegelt und
+  gemeinsam verworfen (`dropOffers`). Der Handle liegt additiv im Vorgang, damit
+  die Aktion einen Reload überlebt.
+
+Diese Trennung stand einmal falsch dokumentiert: ein Kommentar in `api/client.js`
+nannte die Handelsrechnungs-ID „interne Confidara-Shipment-ID" (tatsächlich die
+Providerreferenz), zwei Module beriefen sich darauf — und „Als Entwurf speichern"
+war dadurch produktiv dauerhaft unsichtbar. **ID-Zuordnungen am Backendpfad
+prüfen, nie an einem Kommentar.** Governance:
+`src/utils/saveDraftShipmentId.test.mjs` (11 Tests) und
+`tests/e2e/shippingFlowRestore.test.mjs` (Tests 38–41; der dortige Mock liefert
+beide IDs bewusst in ihrer ECHTEN Form — eine Ganzzahl als `shipmentId` hatte den
+Fehler jahrelang verdeckt).
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

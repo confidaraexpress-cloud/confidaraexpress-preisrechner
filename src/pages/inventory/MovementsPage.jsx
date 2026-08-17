@@ -1,0 +1,189 @@
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
+import { InlineError } from "../../components/inventory/InventoryShared";
+import { getMovements } from "../../api/inventoryApi";
+import { MOVEMENT_TYPES, movementTypeView, signedQuantity, formatUnits, inventoryErrorText } from "../../utils/inventoryView.mjs";
+
+const PAGE_LIMIT = 25;
+
+// dtDE ohne Sekunden — dieselbe ruhige Formatierung wie in den Entwürfen.
+function dtDE(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/* ── Bewegungen ──────────────────────────────────────────────────────────────
+   Das Bestandsledger. Es dokumentiert ausschließlich PHYSISCHE Änderungen:
+   eine Reservierung oder deren Freigabe bewegt keine Ware und erscheint deshalb
+   hier bewusst nicht — sie ist über den Auftrag nachvollziehbar.
+
+   Einträge werden nie geändert oder gelöscht; eine Korrektur ist immer eine
+   neue Gegenbewegung. Deshalb gibt es hier keine Zeilenaktion. */
+export default function MovementsPage({ utility }) {
+  const [items, setItems] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [type, setType] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
+  const seq = useRef(0);
+
+  const load = useCallback(async (cursor = null) => {
+    const meins = ++seq.current;
+    if (cursor) setLoadingMore(true); else { setLoading(true); setError(""); }
+    try {
+      const res = await getMovements({
+        limit: PAGE_LIMIT, cursor: cursor || undefined,
+        type: type || undefined, from: from || undefined, to: to || undefined,
+      });
+      if (seq.current !== meins) return;
+      if (!res.ok) { setError(inventoryErrorText(await res.json().catch(() => null), "Die Bewegungen konnten nicht geladen werden.")); return; }
+      const data = await res.json();
+      setItems((cur) => (cursor ? [...cur, ...(data.movements || [])] : (data.movements || [])));
+      setNextCursor(data.nextCursor || null);
+    } catch {
+      if (seq.current === meins) setError("Die Bewegungen konnten nicht geladen werden.");
+    } finally {
+      if (seq.current === meins) { setLoading(false); setLoadingMore(false); }
+    }
+  }, [type, from, to]);
+
+  useEffect(() => { load(null); }, [load]);
+
+  const hatFilter = Boolean(type || from || to);
+
+  return (
+    <div className="page-body">
+      <PageHeader
+        eyebrow="Lager & Aufträge"
+        title="Bewegungen"
+        subtitle="Jede physische Bestandsänderung mit Zeitpunkt, Menge, Grund und Referenz."
+        utility={utility}
+      />
+
+      <InlineError text={error} onRetry={() => load(null)} />
+
+      <div className="ce-toolbar inv-toolbar">
+        <div className="inv-toolbar-filter">
+          <label className="field-label" htmlFor="inv-mv-type">Typ</label>
+          <select id="inv-mv-type" className="field-select" value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="">Alle</option>
+            {MOVEMENT_TYPES.map((t) => <option key={t} value={t}>{movementTypeView(t)[1]}</option>)}
+          </select>
+        </div>
+        <div className="inv-toolbar-filter">
+          <label className="field-label" htmlFor="inv-mv-from">Von</label>
+          <input id="inv-mv-from" className="field-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div className="inv-toolbar-filter">
+          <label className="field-label" htmlFor="inv-mv-to">Bis</label>
+          <input id="inv-mv-to" className="field-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
+      </div>
+
+      {loading && <ListSkeleton rows={6} label="Bewegungen werden geladen" />}
+
+      {!loading && items.length === 0 && !hatFilter && (
+        <EmptyState
+          icon="packageMove"
+          title="Noch keine Bewegungen"
+          text="Sobald Sie Bestand einbuchen, korrigieren oder versenden, entsteht hier ein nachvollziehbarer Eintrag."
+        />
+      )}
+
+      {!loading && items.length === 0 && hatFilter && (
+        <NoResultsState
+          title="Keine Bewegungen gefunden"
+          text="Für diesen Zeitraum oder Typ gibt es keine Einträge."
+          action={<button type="button" className="btn btn-outline" onClick={() => { setType(""); setFrom(""); setTo(""); }}>Filter zurücksetzen</button>}
+        />
+      )}
+
+      {!loading && items.length > 0 && (
+        <>
+          <div className="ce-table-container inv-list-table">
+            <table className="ce-list-table">
+              <caption className="sr-only">Bestandsbewegungen</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Zeitpunkt</th>
+                  <th scope="col">Artikel</th>
+                  <th scope="col">Typ</th>
+                  <th scope="col" className="ce-num">Menge</th>
+                  <th scope="col" className="ce-num">Bestand danach</th>
+                  <th scope="col">Lager</th>
+                  <th scope="col">Referenz</th>
+                  <th scope="col">Benutzer</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((m) => {
+                  const [cls, text, roh] = movementTypeView(m.type);
+                  return (
+                    <tr key={m.id}>
+                      <td className="inv-cell-meta">{dtDE(m.createdAt)}</td>
+                      <td>
+                        <span className="inv-cell-sku">{m.sku}</span>
+                        <div className="inv-cell-meta">{m.productName}</div>
+                      </td>
+                      <td>
+                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
+                          <span className="badge-dot" aria-hidden="true" />{text}
+                        </span>
+                      </td>
+                      <td className={`ce-num${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</td>
+                      <td className="ce-num">{formatUnits(m.onHandAfter)}</td>
+                      <td>{m.warehouseName}</td>
+                      <td className="inv-cell-meta">
+                        {m.referenceType === "shipment" ? `Sendung ${m.referenceId}`
+                          : m.referenceType === "order" ? `Auftrag ${m.referenceId}`
+                          : (m.note || "—")}
+                      </td>
+                      <td className="inv-cell-meta">{m.createdByName || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <ul className="ce-list-cards inv-list-cards">
+            {items.map((m) => {
+              const [cls, text, roh] = movementTypeView(m.type);
+              return (
+                <li key={m.id} className="ce-card inv-card">
+                  <div className="inv-card-head">
+                    <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
+                      <span className="badge-dot" aria-hidden="true" />{text}
+                    </span>
+                    <span className={`ce-num inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
+                  </div>
+                  <div className="inv-card-title-static">{m.productName}</div>
+                  <div className="inv-cell-meta">{m.sku} · {m.warehouseName}</div>
+                  <dl className="inv-card-facts">
+                    <div><dt>Zeitpunkt</dt><dd>{dtDE(m.createdAt)}</dd></div>
+                    <div><dt>Bestand danach</dt><dd className="ce-num">{formatUnits(m.onHandAfter)}</dd></div>
+                  </dl>
+                  {m.note && <p className="inv-cell-meta">{m.note}</p>}
+                </li>
+              );
+            })}
+          </ul>
+
+          {nextCursor && (
+            <div className="inv-more">
+              <button type="button" className="btn btn-outline" onClick={() => load(nextCursor)} disabled={loadingMore}>
+                {loadingMore ? "Wird geladen …" : "Weitere Bewegungen laden"}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

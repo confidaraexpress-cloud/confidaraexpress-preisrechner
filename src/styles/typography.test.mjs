@@ -384,10 +384,13 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   assert.deepEqual(Object.keys(pkg.devDependencies), ["playwright"]);
   // Keine Routendefinition angefasst.
   const app = read("../App.jsx");
-  // Momentaufnahme: 29 Routen. Eine Routenänderung ist in dieser Phase
-  // ausgeschlossen und müsste hier bewusst nachgezogen werden.
-  assert.equal((app.match(/<Route /g) || []).length, 30,
-    "die Routenzahl ist unverändert (30 seit /versicherungsinformationen)");
+  // Momentaufnahme. Eine Routenänderung ist in dieser Phase ausgeschlossen und
+  // muss hier bewusst nachgezogen werden — zuletzt +2 für die beiden
+  // Detailseiten des Lagermoduls (/inventory/products/:id, /inventory/orders/:id).
+  // Sie sind echte Routen, weil eine Entitäts-ID nicht in einen page-String
+  // gehört; die fünf LISTENbereiche des Moduls bleiben page-State.
+  assert.equal((app.match(/<Route /g) || []).length, 32,
+    "die Routenzahl ist unverändert (32 seit dem Lagermodul)");
 });
 
 /* ══════════ 13 — bestehende Governance ═══════════════════════════════════ */

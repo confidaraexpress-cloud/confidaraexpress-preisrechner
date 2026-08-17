@@ -138,10 +138,16 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   // Stand nach dem Härtungspaket: exakt 30 (gemessen), jedes davon lokal an
   // einem konkreten Element (IDs, Nummern, E-Mail, pre-wrap-Freitext,
   // Admin-Dichtekompromisse). Wer ein weiteres braucht, begründet es hier.
+  //
+  // +1 (31) für `.inv-cell-sku` im Lagermodul: eine SKU ist ein vom Kunden frei
+  // vergebener technischer String ohne Wortgrenzen ("ART-2026-DE-XL-0001") und
+  // steht in einer schmalen Tabellenspalte. Genau der sanktionierte Fall —
+  // lokal an EINEM Element, nicht auf einem Container. Der Artikelpicker teilt
+  // sich diese Klasse, statt eine zweite Regel zu führen.
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 30, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 30)`);
+  assert.ok(gesamt <= 31, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 31)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

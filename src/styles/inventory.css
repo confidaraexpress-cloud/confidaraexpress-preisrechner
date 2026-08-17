@@ -1,0 +1,284 @@
+/* ── Lager & Aufträge ────────────────────────────────────────────────────────
+   Isolierter inv-Scope, reine Zusatzklassen. Es entsteht KEIN neues Karten-,
+   Badge-, Button-, Formular- oder Dialogsystem: die Seiten nutzen durchgehend
+   die vorhandenen Primitives (.ce-card, .badge, .btn, .field-input,
+   .ce-list-table, .ce-dialog*) und Muster (PageHeader, StateView, ce-toolbar).
+
+   Hier stehen nur die Ergänzungen, die es dafür sonst nirgends gibt:
+   Kennzahlraster, Positionsliste, Detailabschnitte und die
+   Tabelle-↔-Karten-Umschaltung.
+
+   Verbindlich wie überall im System:
+     • Farben ausschließlich aus den Foundation-Tokens — kein Hexliteral
+     • Radius nur aus --ce-radius-*, Tiefe nur aus --ce-elevation-*
+     • kein Glow, kein farbiger Schatten, keine Bewegung als Ambiente
+     • höchstes Schriftgewicht 600, nichts unter 11 px
+     • Umschaltung Tabelle ↔ Karten bei 1100 px VIEWPORT, nicht 768 px: in der
+       App-Shell ist die reale Contentbreite Viewport − 252 px Sidebar − 56 px
+       Rahmen (Vorbild: Rechnungsliste) */
+
+/* ── Kennzahlkarten ──
+   Bewusst NICHT die KPI-Familie der Übersicht (--ce-kpi-*): die gilt laut
+   Projektregel ausschließlich für die vier Karten der Kundenübersicht und darf
+   nicht ausgeweitet werden. Hier: gewöhnliche Base Cards. */
+.inv-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--ce-space-4);
+  margin-bottom: var(--ce-space-6);
+}
+.inv-stat { padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
+.inv-stat-head { display: flex; align-items: center; gap: var(--ce-space-2); min-width: 0; }
+.inv-stat-ic { display: inline-flex; color: var(--ce-color-text-muted); flex: 0 0 auto; }
+.inv-stat-label {
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-stat-value {
+  font-family: var(--fs); font-size: var(--ce-text-title-page-size); font-weight: 600;
+  line-height: 1.15; color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.inv-stat-hint {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+.inv-stat--warn .inv-stat-value { color: var(--ce-color-status-warning-fg); }
+
+/* ── Abschnitte und Titel ── */
+.inv-section-title {
+  font-family: var(--fs); font-size: var(--ce-text-title-section-size); font-weight: 600;
+  line-height: var(--ce-text-title-section-line); color: var(--ce-color-text-primary);
+  margin: 0 0 var(--ce-space-3);
+}
+.inv-quick, .inv-warehouses, .inv-detail-section {
+  padding: var(--ce-space-5); margin-bottom: var(--ce-space-4); min-width: 0;
+}
+.inv-quick-row { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); }
+.inv-warehouse-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.inv-warehouse-item { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
+.inv-warehouse-name {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  color: var(--ce-color-text-primary); min-width: 0; overflow-wrap: break-word;
+}
+
+/* ── Toolbar ──
+   flex: 1 1 auto am Suchfeld: beim Stapeln (column) wird die Zeilen-basis zur
+   HÖHE — ohne diese Regel bekäme das Feld auf Mobil eine feste Höhe. */
+.inv-toolbar { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); align-items: flex-end; margin-bottom: var(--ce-space-4); }
+.inv-toolbar-search { flex: 1 1 auto; min-width: 0; }
+.inv-toolbar-filter { flex: 0 1 200px; min-width: 0; }
+.inv-toolbar-check {
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  min-height: 40px;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
+  cursor: pointer;
+}
+
+/* ── Listen: Tabelle ab 1100 px, darunter Karten ── */
+.inv-list-table { display: block; }
+.inv-list-cards { display: none; }
+@media (max-width: 1100px) {
+  .inv-list-table { display: none; }
+  .inv-list-cards { display: flex; flex-direction: column; gap: var(--ce-space-3); list-style: none; margin: 0; padding: 0; }
+}
+
+.inv-cell-sku {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-text-primary);
+  /* Technischer String: bricht LOKAL an beliebiger Stelle, damit eine lange
+     SKU die Spalte nicht sprengt. Bewusst nur hier, nie global. */
+  overflow-wrap: anywhere;
+}
+.inv-cell-meta {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-cell-link { text-align: left; padding: 0; min-height: 0; }
+.inv-num-low { color: var(--ce-color-status-warning-fg); font-weight: 600; }
+.inv-num-out { color: var(--ce-color-text-secondary); }
+.inv-num-in  { color: var(--ce-color-status-success-fg); }
+
+.inv-row-actions { display: flex; gap: var(--ce-space-2); justify-content: flex-end; flex-wrap: wrap; }
+
+/* ── Karten (Mobil/Tablet) ── */
+.inv-card { padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-3); min-width: 0; }
+.inv-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
+.inv-card-title, .inv-card-title-static {
+  font-family: var(--fs); font-size: var(--ce-text-title-card-size); font-weight: 600;
+  line-height: var(--ce-text-title-card-line); color: var(--ce-color-text-primary);
+  text-align: left; padding: 0; min-height: 0; min-width: 0; overflow-wrap: break-word;
+}
+.inv-card-qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-weight: 600; }
+.inv-card-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--ce-space-3); margin: 0; }
+.inv-card-facts > div { min-width: 0; }
+.inv-card-facts dt {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+}
+.inv-card-facts dd {
+  margin: 2px 0 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
+}
+.inv-card-actions { display: flex; gap: var(--ce-space-2); flex-wrap: wrap; }
+
+.inv-more { display: flex; justify-content: center; margin-top: var(--ce-space-4); }
+
+/* ── Hinweiszeilen ──
+   Schmaler Streifen statt einer flächigen Zustandsfläche: bereits geladene
+   Daten bleiben stehen (dieselbe Regel wie im Benachrichtigungspanel). */
+.inv-inline-error, .inv-inline-success {
+  display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap;
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  margin-bottom: var(--ce-space-4);
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  min-width: 0;
+}
+.inv-inline-error { color: var(--ce-color-status-error-fg); border-color: var(--ce-color-status-error-border); background: var(--ce-color-status-error-surface); }
+.inv-inline-success { color: var(--ce-color-status-success-fg); border-color: var(--ce-color-status-success-border); background: var(--ce-color-status-success-surface); }
+
+/* ── Formulare ── */
+.inv-form { display: flex; flex-direction: column; gap: var(--ce-space-5); min-width: 0; }
+.inv-fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); min-width: 0; }
+.inv-legend {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ce-color-text-muted);
+  padding: 0; margin-bottom: var(--ce-space-1);
+}
+.inv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.inv-field-hint, .inv-field-error {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  margin: 0; min-width: 0; overflow-wrap: break-word;
+}
+.inv-field-hint { color: var(--ce-color-text-muted); }
+.inv-field-error { color: var(--ce-color-status-error-fg); }
+.inv-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-3); }
+.inv-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ce-space-3); }
+.inv-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--ce-space-3); }
+.inv-form-note, .inv-dialog-note {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted); margin: 0; min-width: 0; overflow-wrap: break-word;
+}
+.inv-form-actions { display: flex; gap: var(--ce-space-3); justify-content: flex-end; flex-wrap: wrap; }
+.inv-dialog-lead {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary); margin: 0 0 var(--ce-space-4);
+}
+
+/* ── Artikelauswahl ── */
+.inv-picker { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.inv-picker-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 240px; overflow-y: auto;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  padding: var(--ce-space-2);
+  margin-top: var(--ce-space-2);
+}
+.inv-picker-empty {
+  padding: var(--ce-space-3);
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted);
+}
+.inv-picker-item {
+  display: flex; align-items: baseline; gap: var(--ce-space-3); flex-wrap: wrap;
+  width: 100%; min-height: 40px; text-align: left;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid transparent; border-radius: var(--ce-radius-sm);
+  background: none; cursor: pointer; min-width: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-primary);
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+/* Hover: die vorhandene gedämpfte Fläche der Foundation — es gibt bewusst
+   kein eigenes Hover-Token und keinen neuen Farbwert. */
+.inv-picker-item:hover { background: var(--ce-color-surface-muted); }
+.inv-picker-item.on { border-color: var(--ce-color-brand-border); background: var(--ce-color-brand-soft); }
+/* Kein eigenes anywhere: die SKU im Picker trägt zusätzlich .inv-cell-sku
+   und erbt deren lokale Bruchregel — eine Regel je technischem String. */
+.inv-picker-sku { font-weight: 600; }
+.inv-picker-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
+.inv-picker-avail { color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+/* ── Auftragspositionen ── */
+.inv-positions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.inv-position {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-3);
+  padding: var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md);
+  min-width: 0;
+}
+.inv-position-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-position-name {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-position-qty { display: flex; align-items: center; gap: var(--ce-space-2); flex: 0 0 auto; }
+.inv-position-qty .field-input { width: 88px; }
+.inv-position-warn {
+  flex: 1 0 100%; margin: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-status-warning-fg); overflow-wrap: break-word;
+}
+
+/* ── Detailseiten ── */
+.inv-detail-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--ce-space-4); margin-bottom: var(--ce-space-3); }
+.inv-detail-stock > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-detail-k {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+}
+.inv-detail-v {
+  font-family: var(--fs); font-size: var(--ce-text-title-section-size); font-weight: 600;
+  color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.inv-detail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-3); margin: 0; }
+.inv-detail-list > div { min-width: 0; }
+.inv-detail-list dt {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+}
+.inv-detail-list dd {
+  margin: 2px 0 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-detail-table { margin-top: var(--ce-space-4); }
+.inv-address {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-style: normal;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+  margin-bottom: var(--ce-space-4); min-width: 0; overflow-wrap: break-word;
+}
+.inv-movement-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.inv-movement-item {
+  display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap;
+  padding-bottom: var(--ce-space-2);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+  min-width: 0;
+}
+.inv-movement-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.inv-movement-qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-weight: 600; min-width: 48px; }
+
+.inv-dialog-picked {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
+  flex-wrap: wrap; padding: var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md);
+  margin-bottom: var(--ce-space-3); min-width: 0;
+}
+
+/* ── Trefferflächen unter 860 px (WCAG 2.5.5) ──
+   Wie im übrigen System: jedes Bedienelement erreicht 44 px. Textlinks in
+   Fließtext bleiben ausgenommen (Inline-Ausnahme). */
+@media (max-width: 860px) {
+  .inv-row-actions .btn,
+  .inv-card-actions .btn,
+  .inv-form-actions .btn,
+  .inv-quick-row .btn,
+  .inv-picker-item,
+  .inv-position-qty .btn { min-height: 44px; }
+  .inv-toolbar-check { min-height: 44px; }
+}

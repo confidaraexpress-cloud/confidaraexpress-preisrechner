@@ -289,7 +289,11 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   "/admin/invoices", "/admin/invoices/backfill", "/admin/invoices/:id",
                   "/admin/cancellation-requests", "/admin/cancellation-requests/:id",
                   "/admin/support-requests", "/admin/support-requests/:id",
-                  "/admin/audit-logs", "*"];
+                  "/admin/audit-logs",
+                  // Lager & Aufträge: NUR die beiden Detailseiten sind Routen.
+                  // Die fünf Listenbereiche laufen als page-State — eine
+                  // Entitäts-ID gehört nicht in einen page-String.
+                  "/inventory/products/:id", "/inventory/orders/:id", "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");
 
@@ -297,7 +301,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
   // sondern Werte des lokalen page-States (CLAUDE.md, Navigationsmodell). Das
   // Abschlusspaket hat daran nichts gedreht.
   const dash = read("../pages/DashboardPage.jsx");
-  assert.match(dash, /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"\]/,
+  // Der bestehende Bestand ist unverändert; das Lagermodul hängt seine fünf
+  // Listenbereiche additiv HINTEN an, statt einen bestehenden Wert zu ersetzen.
+  assert.match(dash, /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements"\]/,
     "der page-State des Dashboards hat sich verändert");
   for (const p of ["drafts", "addressbook"]) {
     assert.ok(!app.includes(`path="/${p}"`), `${p} ist zu einer Route geworden`);

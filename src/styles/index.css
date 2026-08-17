@@ -44,6 +44,11 @@
    (Leseseite außerhalb der App-Shell). Reine Zusatzklassen auf
    Foundation-Tokens; keine Kollision mit bestehenden Scopes. */
 @import './insurance-info.css';
+/* Lager & Aufträge — isolierter inv-Scope (Kennzahlraster, Positionsliste,
+   Detailabschnitte, Tabelle-↔-Karten-Umschaltung). Reine Zusatzklassen auf den
+   Foundation-Tokens; kein zweites Karten-, Badge-, Button- oder Dialogsystem
+   und keine Kollision mit bestehenden Scopes. */
+@import './inventory.css';
 /* Gemeinsame Interface-Muster (Paket A, Phase 3): Seitenkopf, Utility-Cluster,
    Toolbar, Listenrahmen, Dialoge, Drawer und Zustandsflächen. Steht als
    EINZIGE Ebene NACH den Bereichs-Stylesheets — anders als primitives.css,

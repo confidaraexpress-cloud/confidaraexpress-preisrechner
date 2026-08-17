@@ -26,7 +26,12 @@ const MONTH_WATCH_INTERVAL_MS = 60_000;
 // Gültige Werte des lokalen page-States. Unveränderter Bestand — nur an EINER
 // Stelle geführt, weil ihn seit dem History-Fix zwei Stellen lesen (Startwert
 // und ?page=-Effekt).
-const DASHBOARD_PAGES = ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"];
+// Die fünf Lagerbereiche sind gewöhnliche page-Werte — dasselbe Modell wie alle
+// übrigen Unterseiten. Die beiden DETAILseiten (Artikel, Auftrag) laufen dagegen
+// über echte Routen (/inventory/products/:id, /inventory/orders/:id), weil eine
+// Entitäts-ID nicht in einen page-String gehört.
+const DASHBOARD_PAGES = ["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",
+  "inventory", "products", "stock", "orders", "movements"];
 
 // Startbereich eines Mounts: Query schlägt History-State schlägt Übersicht.
 // Bewusst als reine Funktion außerhalb der Komponente — sie wird an zwei
@@ -47,6 +52,11 @@ const DraftsPage       = React.lazy(() => import("./DraftsPage"));
 // Benannter Export → auf `default` abbilden, wie React.lazy es verlangt.
 const SupportRequestsView = React.lazy(() =>
   import("../components/support/SupportRequestsView").then(m => ({ default: m.SupportRequestsView })));
+const InventoryOverviewPage = React.lazy(() => import("./inventory/InventoryOverviewPage"));
+const ProductsPage          = React.lazy(() => import("./inventory/ProductsPage"));
+const StockPage             = React.lazy(() => import("./inventory/StockPage"));
+const OrdersPage            = React.lazy(() => import("./inventory/OrdersPage"));
+const MovementsPage         = React.lazy(() => import("./inventory/MovementsPage"));
 
 // Übersicht und Profil haben keinen Eintrag: Die Übersicht nutzt den Overview-Hero,
 // das Profil rendert seinen eigenen Seitenkopf inkl. „Profil bearbeiten“-Button
@@ -127,6 +137,15 @@ export default function DashboardPage() {
   // zurückgesetzt (gleiche Einmal-Semantik wie addressPrefill) — enthält bewusst
   // KEINE Preise/Tarife/Carrier/Shipment-ID.
   const [resumeDraft, setResumeDraft] = useState(null);
+  // Lager/Auftrag → „Neue Sendung": derselbe Einmal-Mechanismus wie
+  // addressPrefill, nur mit zusätzlicher Lagerabsicht. Der Wert trägt
+  //   { form, inventory, notice }
+  // — `form` ist ein gewöhnlicher Werte-Patch auf die bestehenden Felder,
+  // `inventory` enthält AUSSCHLIESSLICH IDs und Mengen (keine Bestandswerte,
+  // keine Preise), und `notice` ist der Hinweis, den die Seite anzeigt.
+  // Wird beim Mount von NewShipmentPage genau einmal angewendet und danach hier
+  // zurückgesetzt — ein späterer normaler Versand sieht davon nichts mehr.
+  const [inventoryPrefill, setInventoryPrefill] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -332,6 +351,25 @@ export default function DashboardPage() {
     }
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Versand-Prefill aus den Lager-DETAILseiten ────────────────────────────
+  // Die beiden Detailseiten laufen als echte Routen im DashboardLayout und
+  // können den Prefill-State dieser Komponente nicht direkt setzen. Sie geben
+  // ihn deshalb im History-State mit — dieselbe Mechanik, mit der DashboardPage
+  // seinen Bereich ohnehin transportiert.
+  //
+  // Genau EINMAL lesen und SOFORT aus der History entfernen: bliebe er im
+  // Eintrag stehen, würde ein späteres Browser-Zurück denselben Prefill erneut
+  // anwenden — genau das darf nicht passieren (der Prefill ist eine einmalige
+  // Übergabe, kein Zustand).
+  useEffect(() => {
+    const mitgegeben = location.state?.inventoryPrefill;
+    if (!mitgegeben) return;
+    setInventoryPrefill(mitgegeben);
+    setPage("new");
+    const { inventoryPrefill: _weg, ...rest } = location.state || {};
+    navigate("/dashboard", { replace: true, state: { ...rest, page: "new" } });
+  }, [location.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Führt eine interne Zielnavigation tatsächlich aus (Seite/Route/Logout).
   const performNav = (target) => {
     if (!target) return;
@@ -370,6 +408,19 @@ export default function DashboardPage() {
   // EINMAL (nicht bei jedem Render neu). Deregistrierung erfolgt über den
   // Effekt-Cleanup beim Unmount (fn = null).
   const registerLeaveGuard = useCallback((fn) => { leaveGuardRef.current = fn; }, []);
+
+  // Lager/Auftrag → „Neue Sendung". Bewusst DERSELBE Weg wie beim Adressbuch:
+  // Prefill setzen, dann navigateTo("new"). Es gibt keinen zweiten
+  // Versandeinstieg und keine zweite Formularlogik — der Lagerbereich reicht
+  // nur Werte an den bestehenden Prozess weiter.
+  const applyInventoryPrefill = useCallback((payload) => {
+    if (!payload || !payload.inventory) return;
+    setInventoryPrefill(payload);
+    navigateTo("new");
+    // navigateTo ist innerhalb dieses Renders stabil (setPage/navigate);
+    // die Abhängigkeit bleibt bewusst leer wie bei registerLeaveGuard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // „Clean Executive Logistics": EINE gemeinsame Shell für alle eingeloggten
   // Kundenseiten. Die früheren seitenabhängigen Hintergrund-Scopes
@@ -473,6 +524,8 @@ export default function DashboardPage() {
               <NewShipmentPage
                 prefillAddress={addressPrefill}
                 onPrefillApplied={() => setAddressPrefill(null)}
+                prefillInventory={inventoryPrefill}
+                onInventoryPrefillApplied={() => setInventoryPrefill(null)}
                 resumeDraft={resumeDraft}
                 onResumeApplied={() => setResumeDraft(null)}
                 registerLeaveGuard={registerLeaveGuard}
@@ -539,6 +592,42 @@ export default function DashboardPage() {
         )}
 
         {page === "profile"   && <Profile user={user} utility={utilityCluster} />}
+
+        {/* ── Lager & Aufträge ──────────────────────────────────────────────
+            Fünf Bereiche, ein Muster: jede Seite bringt ihren eigenen
+            <PageHeader> mit und läuft durch .page-body — deshalb wird sie hier
+            NICHT zusätzlich gewickelt (sonst doppelter Rahmen, wie bei
+            Adressbuch und Entwürfen).
+
+            „Artikel versenden" und „Versand vorbereiten" setzen den
+            Versand-Prefill und wechseln auf „Neue Sendung" — exakt derselbe
+            Weg, den das Adressbuch seit jeher nimmt. Es entsteht kein zweiter
+            Versandprozess. */}
+        {page === "inventory" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <InventoryOverviewPage utility={utilityCluster} onNavigate={navigateTo} />
+          </Suspense>
+        )}
+        {page === "products" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <ProductsPage utility={utilityCluster} onShipProduct={applyInventoryPrefill} />
+          </Suspense>
+        )}
+        {page === "stock" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <StockPage utility={utilityCluster} onNavigate={navigateTo} />
+          </Suspense>
+        )}
+        {page === "orders" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <OrdersPage utility={utilityCluster} onPrepareShipment={applyInventoryPrefill} />
+          </Suspense>
+        )}
+        {page === "movements" && (
+          <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
+            <MovementsPage utility={utilityCluster} />
+          </Suspense>
+        )}
 
         {/* Ein Footer für ALLE Kundenseiten. Die Übersicht trug bis hierher
             stattdessen eine werbliche Selbstbeschreibung statt eines Footers;

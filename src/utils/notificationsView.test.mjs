@@ -166,8 +166,10 @@ test("12 — das Ziel wird aus Typ und ID abgeleitet, nie aus einer Server-URL",
 test("13 — Deep-Links sind kodiert und folgen dem ?page=-Modell", () => {
   const sup = normalizeNotification({ id: 1, type: "support_reply", supportRequestId: 12 });
   assert.equal(notificationHref(sup), "/dashboard?page=support&ticket=12");
-  // Und die Zielseite steht in der Allowlist von DashboardPage.
-  assert.match(dashPage, /"profile", "tracking", "support"\]/);
+  // Und die Zielseite steht in der Allowlist von DashboardPage. Geprüft wird das
+  // ZIEL, nicht das Listenende: die Liste wurde seither additiv um die
+  // Lagerbereiche verlängert, "support" bleibt aber unverändert enthalten.
+  assert.match(dashPage, /"profile", "tracking", "support"[,\]]/);
 });
 
 test("14 — die Glocke navigiert nur über die geprüften Ziele", () => {

@@ -199,10 +199,53 @@ export function emptyScope(scope) {
     shipmentId: null,
     ceShipmentId: null,
     customs: null,
+    // Optionaler Lagerbezug (Modul „Lager & Aufträge"): { orderId } oder
+    // { warehouseId, items:[{ productId, quantity }] }. Ausschließlich die
+    // ABSICHT des Kunden — IDs und Mengen, keine Bestandswerte, keine
+    // Artikelstammdaten, keine Preise. Der Server löst daraus bei
+    // /calculate-price den geprüften Kontext auf und friert ihn auf dem Draft
+    // ein; dieser Wert hier existiert nur, damit die Absicht einen Reload
+    // überlebt und bei jedem Repricing erneut mitgeschickt werden kann.
+    //
+    // Er gehört zum FORMULAR, nicht zum Ergebnis: er überlebt deshalb
+    // dropOffers (der Kunde ändert Paketdaten und rechnet neu — der Lagerbezug
+    // bleibt) und wird erst mit resetToFreshShipment verworfen.
+    //
+    // Additiv OHNE Versionssprung: ein laufender Vorgang aus der Zeit davor
+    // liefert `undefined` → null. Er würde durch eine Versionserhöhung grundlos
+    // verworfen (dieselbe Begründung wie bei trackingEmail/labelTrackingEmail).
+    inventoryContext: null,
     calculatedAt: null,
     scrollY: 0,
     updatedAt: null,
   };
+}
+
+// Normalisiert die Lagerabsicht. Alles, was nicht exakt einer der beiden
+// erlaubten Formen entspricht, wird VERWORFEN (null) — nie halb übernommen:
+// ein halber Lagerbezug würde eine falsche Ausbuchung vorbereiten.
+export function normalizeInventoryContext(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const isId = (v) => typeof v === "string" && /^[0-9]{1,19}$/.test(v) && !/^0+$/.test(v);
+  const isQty = (v) => Number.isInteger(v) && v >= 1 && v <= 1000000;
+
+  if (raw.orderId !== undefined && raw.orderId !== null && raw.orderId !== "") {
+    if (!isId(String(raw.orderId))) return null;
+    return { orderId: String(raw.orderId), orderNumber: typeof raw.orderNumber === "string" ? raw.orderNumber : null };
+  }
+  if (!Array.isArray(raw.items) || raw.items.length === 0 || raw.items.length > 100) return null;
+  const items = [];
+  for (const it of raw.items) {
+    if (!it || typeof it !== "object") return null;
+    if (!isId(String(it.productId))) return null;
+    const qty = typeof it.quantity === "number" ? it.quantity : Number(it.quantity);
+    if (!isQty(qty)) return null;
+    items.push({ productId: String(it.productId), quantity: qty });
+  }
+  const warehouseId = raw.warehouseId !== undefined && raw.warehouseId !== null && raw.warehouseId !== ""
+    ? String(raw.warehouseId) : null;
+  if (warehouseId !== null && !isId(warehouseId)) return null;
+  return { warehouseId, items };
 }
 
 export function normalizeScope(raw, scope) {
@@ -234,6 +277,7 @@ export function normalizeScope(raw, scope) {
     ceShipmentId: typeof src.ceShipmentId === "number" || (typeof src.ceShipmentId === "string" && src.ceShipmentId.trim())
       ? src.ceShipmentId : null,
     customs: plainObjectOrNull(src.customs),
+    inventoryContext: normalizeInventoryContext(src.inventoryContext),
     calculatedAt: nonNegInt(src.calculatedAt),
     scrollY: nonNegInt(src.scrollY) ?? 0,
     updatedAt: nonNegInt(src.updatedAt),

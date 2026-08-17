@@ -22,16 +22,31 @@ function dtDE(value) {
 
    Einträge werden nie geändert oder gelöscht; eine Korrektur ist immer eine
    neue Gegenbewegung. Deshalb gibt es hier keine Zeilenaktion. */
-export default function MovementsPage({ utility }) {
+// Der Startfilter „heutige Versandbewegungen" aus der Lagerübersicht. Das Datum
+// entsteht LOKAL (nicht per toISOString): der Nutzer meint seinen Tag, nicht den
+// UTC-Tag — vor 01:00 MEZ läge der UTC-Tag sonst einen Tag zurück.
+function heuteIso() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export default function MovementsPage({ utility, initialFilter = null, onFilterApplied }) {
+  const heute = initialFilter === "shipmentsToday";
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
-  const [type, setType] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  // Beim Mount abgeleitet statt per Effekt nachgereicht — sonst lüde die Seite
+  // zweimal, einmal ungefiltert und einmal gefiltert.
+  const [type, setType] = useState(heute ? "SHIPMENT" : "");
+  const [from, setFrom] = useState(heute ? heuteIso() : "");
+  const [to, setTo] = useState(heute ? heuteIso() : "");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const seq = useRef(0);
+
+  // Der Startfilter wirkt GENAU EINMAL — danach gehört die Auswahl dem Nutzer.
+  useEffect(() => { if (initialFilter && onFilterApplied) onFilterApplied(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async (cursor = null) => {
     const meins = ++seq.current;

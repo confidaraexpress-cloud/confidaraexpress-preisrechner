@@ -146,6 +146,10 @@ export default function DashboardPage() {
   // Wird beim Mount von NewShipmentPage genau einmal angewendet und danach hier
   // zurückgesetzt — ein späterer normaler Versand sieht davon nichts mehr.
   const [inventoryPrefill, setInventoryPrefill] = useState(null);
+  // Einmaliger Startfilter für eine Lagerlistenseite (siehe navigateTo).
+  // Trägt die Zielseite mit, damit ein Filter nicht versehentlich auf einer
+  // anderen Seite landet, wenn der Nutzer zwischendurch woanders hinwechselt.
+  const [inventoryFilter, setInventoryFilter] = useState(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -391,9 +395,15 @@ export default function DashboardPage() {
   // Interne Seitennavigation. Verlässt der Nutzer „Neue Sendung" mit
   // ungespeicherten Angaben, fängt der registrierte Guard die Navigation ab
   // (Dialog). Bei gleicher Zielseite (kein Verlassen) und ohne Guard: direkt.
-  const navigateTo = (id) => {
+  // Der optionale zweite Parameter ist ein EINMALIGER Startfilter für die
+  // Zielseite („Alle anzeigen" aus der Lagerübersicht). Er ist bewusst kein
+  // Bestandteil des Navigationsmodells: `page` bleibt der einzige Zustand, die
+  // URL ändert sich nicht, und die Zielseite verbraucht den Filter genau einmal —
+  // exakt das Muster, das der Adressbuch-Prefill seit jeher nutzt.
+  const navigateTo = (id, filter = null) => {
     const target = { type: "page", page: id };
     if (page === "new" && id !== "new" && leaveGuardRef.current && leaveGuardRef.current(target)) return;
+    setInventoryFilter(filter ? { page: id, filter } : null);
     performNav(target);
   };
 
@@ -605,7 +615,11 @@ export default function DashboardPage() {
             Versandprozess. */}
         {page === "inventory" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <InventoryOverviewPage utility={utilityCluster} onNavigate={navigateTo} />
+            <InventoryOverviewPage
+              utility={utilityCluster}
+              onNavigate={navigateTo}
+              onNewShipment={() => navigateTo("new")}
+            />
           </Suspense>
         )}
         {page === "products" && (
@@ -615,17 +629,31 @@ export default function DashboardPage() {
         )}
         {page === "stock" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <StockPage utility={utilityCluster} onNavigate={navigateTo} />
+            <StockPage
+              utility={utilityCluster}
+              onNavigate={navigateTo}
+              initialFilter={inventoryFilter?.page === "stock" ? inventoryFilter.filter : null}
+              onFilterApplied={() => setInventoryFilter(null)}
+            />
           </Suspense>
         )}
         {page === "orders" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <OrdersPage utility={utilityCluster} onPrepareShipment={applyInventoryPrefill} />
+            <OrdersPage
+              utility={utilityCluster}
+              onPrepareShipment={applyInventoryPrefill}
+              initialFilter={inventoryFilter?.page === "orders" ? inventoryFilter.filter : null}
+              onFilterApplied={() => setInventoryFilter(null)}
+            />
           </Suspense>
         )}
         {page === "movements" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <MovementsPage utility={utilityCluster} />
+            <MovementsPage
+              utility={utilityCluster}
+              initialFilter={inventoryFilter?.page === "movements" ? inventoryFilter.filter : null}
+              onFilterApplied={() => setInventoryFilter(null)}
+            />
           </Suspense>
         )}
 

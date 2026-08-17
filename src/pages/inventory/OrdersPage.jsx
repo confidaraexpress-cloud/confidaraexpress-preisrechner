@@ -18,13 +18,16 @@ const PAGE_LIMIT = 25;
    und in EINER Transaktion: ist eine Position nicht deckbar, entsteht gar kein
    Auftrag. Die Anzeige „Verfügbar: X" im Formular ist Orientierung — ob
    reserviert werden darf, entscheidet ausschließlich das Backend. */
-export default function OrdersPage({ utility, onPrepareShipment }) {
+export default function OrdersPage({ utility, onPrepareShipment, initialFilter = null, onFilterApplied }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // Startfilter aus der Lagerübersicht („Alle offenen Aufträge anzeigen").
+  // Beim Mount abgeleitet statt per Effekt nachgereicht — sonst lüde die Seite
+  // zweimal, einmal ungefiltert und einmal gefiltert.
+  const [statusFilter, setStatusFilter] = useState(initialFilter === "open" ? "open" : "");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +39,9 @@ export default function OrdersPage({ utility, onPrepareShipment }) {
   const [preparingId, setPreparingId] = useState(null);
 
   const seq = useRef(0);
+
+  // Der Startfilter wirkt GENAU EINMAL — danach gehört die Auswahl dem Nutzer.
+  useEffect(() => { if (initialFilter && onFilterApplied) onFilterApplied(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);

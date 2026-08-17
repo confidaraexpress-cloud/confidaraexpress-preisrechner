@@ -375,17 +375,24 @@ test("11 — Tokens, Primitives und Typografie bleiben eingehalten", () => {
 
 test("12 — Phase 3 fasst weder Routing noch API noch Businesslogik an", () => {
   const app = read("../App.jsx");
-  assert.equal((app.match(/<Route /g) || []).length, 30,
-    "die Routenzahl ist unverändert (30 seit /versicherungsinformationen)");
+  // Momentaufnahme. Eine Routenänderung ist in dieser Phase ausgeschlossen und
+  // muss hier bewusst nachgezogen werden — zuletzt +2 für die beiden
+  // Detailseiten des Lagermoduls (/inventory/products/:id, /inventory/orders/:id).
+  // Sie sind echte Routen, weil eine Entitäts-ID nicht in einen page-String
+  // gehört; die fünf LISTENbereiche des Moduls bleiben page-State.
+  assert.equal((app.match(/<Route /g) || []).length, 32,
+    "die Routenzahl ist unverändert (32 seit dem Lagermodul)");
 
   const client = read("../api/client.js");
   assert.match(client, /export const token = \(\) => localStorage\.getItem\("ce_token"\)/);
   assert.match(client, /export const API = import\.meta\.env\.VITE_API_URL/);
 
-  // Der page-State des Dashboards kennt dieselben Werte wie zuvor.
+  // Der page-State des Dashboards behält JEDEN bestehenden Wert in unveränderter
+  // Reihenfolge; das Lagermodul hängt seine fünf Listenbereiche additiv hinten
+  // an, statt einen bestehenden Wert zu ersetzen oder umzusortieren.
   const dashPage = read("../pages/DashboardPage.jsx");
   assert.match(dashPage,
-    /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support"\]/,
+    /\["overview", "new", "drafts", "addressbook", "shipments", "invoices", "profile", "tracking", "support",\s*\n?\s*"inventory", "products", "stock", "orders", "movements"\]/,
     "die Seitenliste des Dashboards hat sich geändert");
 
   const pkg = JSON.parse(read("../../package.json"));

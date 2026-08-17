@@ -17,12 +17,16 @@ const PAGE_LIMIT = 25;
    der Kunde den GEZÄHLTEN Ist-Bestand, das Delta bildet der Server gegen den
    gespeicherten Stand. Der Client rechnet nichts aus und schickt keinen
    Bestandswert. */
-export default function StockPage({ utility, onNavigate }) {
+export default function StockPage({ utility, onNavigate, initialFilter = null, onFilterApplied }) {
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [lowOnly, setLowOnly] = useState(false);
+  // Startfilter aus der Lagerübersicht („Alle betroffenen Artikel anzeigen").
+  // Er wird beim Mount ABGELEITET, nicht per Effekt nachgereicht: ein Effekt
+  // würde erst nach dem ersten Laden feuern und damit zweimal laden — einmal
+  // ungefiltert, einmal gefiltert.
+  const [lowOnly, setLowOnly] = useState(initialFilter === "low");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
@@ -42,6 +46,11 @@ export default function StockPage({ utility, onNavigate }) {
   const [warehouses, setWarehouses] = useState([]);
 
   const seq = useRef(0);
+
+  // Der Startfilter wirkt GENAU EINMAL: danach meldet die Seite ihn ab, damit
+  // ein späterer Wechsel hierher wieder ungefiltert beginnt und der Nutzer den
+  // Haken selbst kontrolliert.
+  useEffect(() => { if (initialFilter && onFilterApplied) onFilterApplied(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);

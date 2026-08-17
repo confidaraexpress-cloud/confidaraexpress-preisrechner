@@ -21,13 +21,34 @@
    Bewusst NICHT die KPI-Familie der Übersicht (--ce-kpi-*): die gilt laut
    Projektregel ausschließlich für die vier Karten der Kundenübersicht und darf
    nicht ausgeweitet werden. Hier: gewöhnliche Base Cards. */
+/* Feste Spaltenzahlen statt auto-fit: es sind SECHS Karten, und `auto-fit` mit
+   200px-Minimum ergab auf breiten Screens fünf Karten in der ersten Reihe und
+   eine allein darunter. 3 / 2 / 1 teilen sechs restlos — es kann keine verwaiste
+   Karte mehr entstehen.
+
+   Die Schwellen sind Viewportbreiten, weil die reale Contentbreite in der
+   App-Shell davon abhängt (Viewport − 252 px Sidebar − 56 px Rahmen); 1100 px
+   ist dieselbe Schwelle, an der auch die Rechnungstabelle umschaltet. */
 .inv-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--ce-space-4);
   margin-bottom: var(--ce-space-6);
 }
+@media (min-width: 620px)  { .inv-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .inv-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
 .inv-stat { padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
+/* Aufklappbare Karte. Hover, Kante, Tiefe und Fokusring kommen vollständig aus
+   dem vorhandenen Primitive `.ce-card-interactive` — hier steht nur noch, was
+   ein <button> zusätzlich braucht: es zentriert seinen Text sonst und bringt
+   seine eigene Schrift mit. Kein zweites Kartenmaterial, keine eigene Tiefe. */
+.inv-stat--action { text-align: left; font: inherit; width: 100%; }
+.inv-stat--action:hover .inv-stat-chevron { color: var(--ce-color-brand-ink); }
+.inv-stat-chevron {
+  margin-left: auto; display: inline-flex; flex: 0 0 auto;
+  color: var(--ce-color-text-muted); transition: color 140ms ease;
+}
 .inv-stat-head { display: flex; align-items: center; gap: var(--ce-space-2); min-width: 0; }
 .inv-stat-ic { display: inline-flex; color: var(--ce-color-text-muted); flex: 0 0 auto; }
 .inv-stat-label {
@@ -52,10 +73,94 @@
   line-height: var(--ce-text-title-section-line); color: var(--ce-color-text-primary);
   margin: 0 0 var(--ce-space-3);
 }
-.inv-quick, .inv-warehouses, .inv-detail-section {
+.inv-quick, .inv-warehouses, .inv-detail-section, .inv-onboarding, .inv-ops {
   padding: var(--ce-space-5); margin-bottom: var(--ce-space-4); min-width: 0;
 }
 .inv-quick-row { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); }
+.inv-quick-note {
+  margin: var(--ce-space-3) 0 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+
+/* ── Vorschauliste einer Kennzahl ──
+   Dieselbe Zeilenform im Dialog und in den operativen Karten. Der Zahlenanteil
+   steht rechts und bricht nicht — der Text weicht („Meta hält, Text weicht"). */
+.inv-preview-lead {
+  margin: 0 0 var(--ce-space-4);
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 400;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
+}
+.inv-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.inv-preview-item {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--ce-space-3); padding: var(--ce-space-3) 0; min-width: 0;
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.inv-preview-item:last-child { border-bottom: none; }
+.inv-preview-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-preview-primary {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-preview-secondary, .inv-preview-meta {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+  min-width: 0; overflow-wrap: break-word;
+}
+.inv-preview-value {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
+  flex: 0 0 auto; text-align: right;
+}
+.inv-preview-empty, .inv-preview-note {
+  margin: var(--ce-space-3) 0 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+
+/* ── Einstieg für ein leeres Lager ── */
+.inv-onboarding-lead {
+  margin: 0 0 var(--ce-space-4); max-width: 62ch;
+  font-family: var(--fs); font-size: var(--ce-text-body-l-size); font-weight: 400;
+  line-height: var(--ce-text-body-l-line); color: var(--ce-color-text-secondary);
+}
+.inv-steps {
+  list-style: none; margin: 0 0 var(--ce-space-5); padding: 0;
+  display: grid; grid-template-columns: 1fr; gap: var(--ce-space-4);
+}
+@media (min-width: 780px) { .inv-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.inv-step { display: flex; align-items: flex-start; gap: var(--ce-space-3); min-width: 0; }
+.inv-step-num {
+  flex: 0 0 auto; width: 26px; height: 26px; border-radius: var(--ce-radius-full);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink);
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
+  line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.inv-step-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-step-title {
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+}
+.inv-step-hint {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
+.inv-onboarding-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-4); }
+
+/* ── Operative Hinweise ──
+   Zwei gleichwertige Karten nebeneinander, gestapelt sobald es eng wird. */
+.inv-ops-grid {
+  display: grid; grid-template-columns: 1fr; gap: var(--ce-space-4);
+  margin-bottom: var(--ce-space-4);
+}
+@media (min-width: 1100px) { .inv-ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.inv-ops-grid .inv-ops { margin-bottom: 0; }
+.inv-ops-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.inv-ops-head .inv-section-title { margin-bottom: var(--ce-space-2); }
+.inv-ops-all { margin-top: var(--ce-space-3); }
 .inv-warehouse-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .inv-warehouse-item { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
 .inv-warehouse-name {
@@ -279,6 +384,13 @@
   .inv-form-actions .btn,
   .inv-quick-row .btn,
   .inv-picker-item,
+  .inv-onboarding-actions .btn,
+  .inv-ops-head .btn,
+  .inv-ops-all,
   .inv-position-qty .btn { min-height: 44px; }
   .inv-toolbar-check { min-height: 44px; }
+  /* Die aufklappbare Kennzahlkarte ist selbst das Bedienelement — sie ist
+     ohnehin deutlich größer als 44 px, braucht aber die Regel, damit sie beim
+     Kürzen der Innenabstände nicht darunter fällt. */
+  .inv-stat--action { min-height: 44px; }
 }

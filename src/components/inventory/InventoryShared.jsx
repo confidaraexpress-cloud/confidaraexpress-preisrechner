@@ -13,16 +13,55 @@ import { formatUnits, isLowStock, stockLevelView } from "../../utils/inventoryVi
    Familie gilt laut CLAUDE.md ausschließlich für die vier Karten der
    Kundenübersicht und darf nicht ausgeweitet werden. Diese Karte ist eine
    gewöhnliche Base Card mit der bestehenden Zahlentypografie. */
-export function InventoryStatCard({ icon, label, value, hint, tone = "" }) {
-  return (
-    <div className={`ce-card inv-stat${tone ? ` inv-stat--${tone}` : ""}`}>
+export function InventoryStatCard({ icon, label, value, hint, tone = "", onClick, detailLabel }) {
+  const inhalt = (
+    <>
       <div className="inv-stat-head">
         <span className="inv-stat-ic"><Icon n={icon} s={18} /></span>
         <span className="inv-stat-label">{label}</span>
+        {onClick && <span className="inv-stat-chevron" aria-hidden="true"><Icon n="chevronRight" s={16} /></span>}
       </div>
       <div className="inv-stat-value ce-num">{value}</div>
       {hint && <div className="inv-stat-hint">{hint}</div>}
-    </div>
+    </>
+  );
+  const klassen = `ce-card inv-stat${tone ? ` inv-stat--${tone}` : ""}`;
+  // Ein echtes <button>, kein <div onClick>: Tastaturbedienung (Enter/Space),
+  // Rollenzuordnung und der Fokusring der Foundation kommen sonst nicht von
+  // selbst. `detailLabel` sagt an, wohin der Klick führt — „128" allein wäre für
+  // einen Screenreader keine Handlungsaufforderung.
+  if (!onClick) return <div className={klassen}>{inhalt}</div>;
+  // `.ce-card-interactive` ist das vorhandene Primitive für eine anklickbare
+  // Karte: Hover, Kante, Tiefe und Fokusring kommen von dort, nicht aus einer
+  // zweiten Eigenbaulösung.
+  return (
+    <button type="button" className={`${klassen} ce-card-interactive inv-stat--action`} onClick={onClick} aria-label={detailLabel}>
+      {inhalt}
+    </button>
+  );
+}
+
+/* ── Vorschauliste einer Kennzahl ──
+   Eine Zeilenform für alle sechs Aufklappungen: was es ist, die Einordnung, der
+   Bezug (nur wenn vorhanden) und der Zahlenanteil. Die Zeilen kommen fertig aus
+   overviewPreviewRows() — hier wird nichts abgeleitet und nichts gerechnet. */
+export function InventoryPreviewList({ rows, emptyText }) {
+  if (!rows || rows.length === 0) {
+    return <p className="inv-preview-empty">{emptyText}</p>;
+  }
+  return (
+    <ul className="inv-preview-list">
+      {rows.map((r) => (
+        <li key={r.id} className="inv-preview-item">
+          <div className="inv-preview-main">
+            <span className="inv-preview-primary">{r.primary}</span>
+            {r.secondary && <span className="inv-preview-secondary">{r.secondary}</span>}
+            {r.meta && <span className="inv-preview-meta">{r.meta}</span>}
+          </div>
+          <span className="inv-preview-value ce-num">{r.value}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -197,6 +197,7 @@ export function emptyScope(scope) {
     publicCarriers: [],
     selected: null,
     shipmentId: null,
+    ceShipmentId: null,
     customs: null,
     calculatedAt: null,
     scrollY: 0,
@@ -225,6 +226,13 @@ export function normalizeScope(raw, scope) {
     // beides unverändert übernehmen, nichts umwandeln.
     shipmentId: typeof src.shipmentId === "number" || (typeof src.shipmentId === "string" && src.shipmentId.trim())
       ? src.shipmentId : null,
+    // ADDITIV, ohne Versionssprung (Präzedenz: trackingEmail): ein Vorgang aus der
+    // Zeit davor liefert `undefined` → null und wird NICHT verworfen. Trägt den
+    // ConfidaraExpress-Sendungshandle desselben Entwurfs — nötig, weil „Als Entwurf
+    // speichern" ausschließlich shipments.id adressieren darf. Gleiche defensive
+    // Übernahme wie oben: nichts umwandeln, nichts raten.
+    ceShipmentId: typeof src.ceShipmentId === "number" || (typeof src.ceShipmentId === "string" && src.ceShipmentId.trim())
+      ? src.ceShipmentId : null,
     customs: plainObjectOrNull(src.customs),
     calculatedAt: nonNegInt(src.calculatedAt),
     scrollY: nonNegInt(src.scrollY) ?? 0,
@@ -341,6 +349,7 @@ export function dropOffers(scopeState) {
     publicCarriers: [],
     selected: null,
     shipmentId: null,
+    ceShipmentId: null,
     customs: null,
     calculatedAt: null,
     scrollY: 0,

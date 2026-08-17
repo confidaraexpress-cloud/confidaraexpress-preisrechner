@@ -4,10 +4,11 @@ import { saveDraft } from "../../api/client";
 import { hasSavableShipmentId, mapDraftErrorToMessage } from "../../utils/draftsView.mjs";
 
 // „Als Entwurf speichern" — sekundäre, vollständig eigenständige Aktion.
-// Ruft POST /api/kunde/drafts/:id/save mit der internen numerischen Shipment-
-// ID (bookingData.shipmentId — dieselbe ID, die client.js bereits für
-// Commercial-Invoice/Pickup-Window als "interne Confidara-Shipment-ID"
-// verwendet). REIN additiv: berührt KEINEN Buchungs-/Preis-/Tarif-/Carrier-
+// Ruft POST /api/kunde/drafts/:id/save mit der internen numerischen Shipment-ID
+// (`bookingData.ceShipmentId` — der ConfidaraExpress-Sendungshandle aus der
+// /calculate-price-Antwort). NIEMALS `bookingData.shipmentId`: das ist die
+// JUMiNGO-Referenz ("s_"+32 Hex), die dieser Endpunkt nicht auflöst.
+// REIN additiv: berührt KEINEN Buchungs-/Preis-/Tarif-/Carrier-
 // State, löst kein Reprice/Recalculate aus, verändert /book nicht. Kein
 // AutoSave — nur auf expliziten Klick.
 //

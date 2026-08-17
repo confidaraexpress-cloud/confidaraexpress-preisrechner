@@ -72,14 +72,36 @@ test("2 — es bleibt bei EINER Sidebar und EINEM Navigationsbauteil", () => {
   assert.ok(block.includes('className={`nitem'), "die Lagereinträge nutzen nicht das bestehende Eintragsbauteil");
 });
 
-test("3 — der Modulblock ist kein Bedienelement (bewusst nicht einklappbar)", () => {
+test("3 — der Modulblock ist einklappbar und sagt seinen Zustand an", () => {
+  // Bewusste Umkehr einer früheren Festlegung: der Kopf war eine reine
+  // Überschrift, weil ein einklappbarer Block für fünf Zeilen ganz oben als
+  // Komplexität ohne Nutzen galt. Mit dem gewachsenen Menü ist der Nutzen da —
+  // auf kurzen Viewports spart das Einklappen fünf Zeilen Scrollweg.
   const code = ohneKommentare(sidebar);
   const block = code.slice(code.indexOf("pp-nav-module"), code.indexOf("NAV_GROUPS.map"));
-  // Der Kopf ist eine Überschrift, kein <button>: ein einklappbarer Block
-  // bräuchte einen seitenübergreifend erhaltenen Zustand für fünf Zeilen ganz
-  // oben — das wäre Komplexität ohne Nutzen.
-  const kopf = block.slice(block.indexOf("pp-nav-module-head"), block.indexOf("</div>"));
-  assert.ok(!kopf.includes("<button"), "der Blockkopf darf kein Bedienelement sein");
+
+  // Ein echtes <button>, kein klickbares <div>: Tastatur, Rollenzuordnung und
+  // Fokusring kommen sonst nicht von selbst.
+  assert.ok(/<button[^>]*className="pp-nav-module-head"/s.test(block),
+    "der Blockkopf ist kein echtes Bedienelement");
+  // Der Zustand muss ANGESAGT werden, nicht nur gezeichnet — ein Chevron allein
+  // erreicht keinen Screenreader.
+  assert.ok(/aria-expanded=\{inventoryOpen\}/.test(block), "aria-expanded fehlt am Klappkopf");
+  assert.ok(/aria-controls="pp-nav-module-items"/.test(block), "aria-controls fehlt am Klappkopf");
+  assert.ok(/id="pp-nav-module-items"/.test(block), "das von aria-controls benannte Ziel fehlt");
+
+  // Eingeklappt verschwinden die Einträge aus dem DOM. Nur optisch zu verbergen
+  // ließe sie für Tastatur und Screenreader erreichbar, obwohl sie unsichtbar sind.
+  assert.ok(/\{inventoryOpen && \(/.test(block), "die Einträge werden eingeklappt nicht aus dem DOM genommen");
+
+  // Standard offen (§8) …
+  assert.ok(/useState\(true\)/.test(code), "der Block startet nicht standardmäßig geöffnet");
+  // … und wer in den Lagerbereich wechselt, sieht den aktiven Eintrag (§9).
+  assert.ok(/useEffect\(\(\) => \{ if \(inventoryActive\) setInventoryOpen\(true\); \}, \[inventoryActive\]\)/.test(code),
+    "ein Wechsel in den Lagerbereich öffnet den Block nicht");
+
+  // Kein persistierter Zustand: reiner UI-State dieser Komponente.
+  assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");
 });
 
 test("4 — der Modulblock nutzt ausschließlich vorhandene Sidebar-Tokens", () => {

@@ -442,6 +442,13 @@
 
   --ce-sidebar-well: rgba(0, 0, 0, 0.16);
 
+  /* Scrollleiste des Navigationsbereichs. Bewusst KEINE eigene Farbe: dieselbe
+     Weiß-Deckkraft-Familie wie Kante und Trenner, nur etwas kräftiger — die
+     Leiste soll auffindbar sein, ohne als heller Balken neben der Navigation zu
+     stehen. Hover deutlicher, damit der Griff beim Anfassen sichtbar reagiert. */
+  --ce-sidebar-scroll-thumb: rgba(255, 255, 255, 0.16);
+  --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.3);
+
   /* Aktiver Eintrag: blau getönter Verlauf statt einer reinen Weiß-Aufhellung
      — der frühere Zustand war vom Hover kaum zu unterscheiden. */
   --ce-sidebar-active-bg: linear-gradient(90deg, rgba(52, 101, 210, 0.28), rgba(255, 255, 255, 0.075));

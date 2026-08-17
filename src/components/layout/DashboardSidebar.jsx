@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
@@ -73,6 +73,18 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // Dialog darf die bestehende Navigation (page-State) nicht berühren.
   const [supportOpen, setSupportOpen] = useState(false);
 
+  // Ein-/Ausklappen des Lagerblocks. Reiner UI-Zustand DIESER Komponente:
+  // keine Persistenz in localStorage, Backend oder Context — der Zustand ist
+  // billig wiederherzustellen und eine gespeicherte Einklappung wäre für den
+  // Nutzen zu viel Maschinerie. Standard ist offen.
+  const inventoryActive = INVENTORY_GROUP.items.some((i) => i.id === page);
+  const [inventoryOpen, setInventoryOpen] = useState(true);
+  // Wer in den Lagerbereich wechselt, soll den aktiven Eintrag sehen — ein
+  // zuvor eingeklappter Block würde ihn sonst verbergen. Bewusst an den WECHSEL
+  // gebunden (nicht an jeden Render): innerhalb des Bereichs bleibt das Zuklappen
+  // möglich, sonst wirkte die Schaltfläche dort kaputt.
+  useEffect(() => { if (inventoryActive) setInventoryOpen(true); }, [inventoryActive]);
+
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
     else navigateTo(item.id);
@@ -108,84 +120,105 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
             </button>
           </div>
 
-          <nav className="pp-nav">
-            <button className={`nitem ${page === "overview" ? "on" : ""}`} onClick={() => navigateTo("overview")}>
-              <Icon n="dashboard" s={18} /><span>Übersicht</span>
-            </button>
+          {/* Der Scrollbereich der Spalte. Er umfasst BEWUSST Navigation,
+              Supportkarte UND Fußzeile — alles unterhalb der Marke. Läge er nur
+              um die Navigation, stünden Karte und Fußzeile unbeweglich darunter,
+              belegten dauerhaft Höhe und der letzte Navigationseintrag würde
+              mittendrin abgeschnitten (genau der Fehler, der diese Konstruktion
+              einmal ersetzt hat). Die Marke bleibt als Kopf darüber stehen. */}
+          <div className="pp-side-scroll">
+            <nav className="pp-nav">
+              <button className={`nitem ${page === "overview" ? "on" : ""}`} onClick={() => navigateTo("overview")}>
+                <Icon n="dashboard" s={18} /><span>Übersicht</span>
+              </button>
 
-            {/* Modulblock „Lager & Aufträge" — eigene Fläche, gleiche Bauteile.
-                Der Kopf ist eine Überschrift, kein Bedienelement: der Block ist
-                bewusst NICHT einklappbar. Einklappbar wäre nur dann besser,
-                wenn er den Blick auf anderes verstellte; er steht aber ganz oben
-                und ist fünf Zeilen hoch. Ein zusätzlicher Zustand, der auf jeder
-                Seite erhalten bleiben müsste, wäre reine Komplexität. */}
-            <div className={`pp-nav-module${INVENTORY_GROUP.items.some(i => i.id === page) ? " pp-nav-module--active" : ""}`}>
-              <div className="pp-nav-module-head">
-                <Icon n={INVENTORY_GROUP.icon} s={15} />
-                <span>{INVENTORY_GROUP.label}</span>
-              </div>
-              {INVENTORY_GROUP.items.map((item) => (
+              {/* Modulblock „Lager & Aufträge" — eigene Fläche, gleiche Bauteile.
+                  Der Kopf ist die Klappschaltfläche des Blocks: ein echtes
+                  <button> mit aria-expanded/aria-controls, damit der Zustand auch
+                  ohne den sichtbaren Chevron erfassbar ist. Die Einträge selbst
+                  bleiben gewöhnliche .nitem-Buttons.
+                  Eingeklappt werden sie AUS DEM DOM genommen, nicht nur optisch
+                  versteckt — sonst blieben sie für Tastatur und Screenreader
+                  erreichbar, obwohl sie unsichtbar sind. */}
+              <div className={`pp-nav-module${inventoryActive ? " pp-nav-module--active" : ""}${inventoryOpen ? "" : " pp-nav-module--collapsed"}`}>
                 <button
-                  key={item.id}
-                  className={`nitem ${page === item.id ? "on" : ""}`}
-                  onClick={() => handleNav(item)}
+                  type="button"
+                  className="pp-nav-module-head"
+                  aria-expanded={inventoryOpen}
+                  aria-controls="pp-nav-module-items"
+                  onClick={() => setInventoryOpen((v) => !v)}
                 >
-                  <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                  <Icon n={INVENTORY_GROUP.icon} s={15} />
+                  <span>{INVENTORY_GROUP.label}</span>
+                  <span className="pp-nav-module-chevron" aria-hidden="true"><Icon n="chevron" s={15} /></span>
                 </button>
-              ))}
-            </div>
-
-            {NAV_GROUPS.map((group) => {
-              // Aktive Gruppe rein aus dem bestehenden page-Wert abgeleitet
-              // (kein neuer State). Bei „overview" ist keine Gruppe aktiv; auf
-              // der /calculator-Route (page === "calculator") ist „Versand" aktiv.
-              const isActiveGroup = group.items.some((item) => item.id === page);
-              return (
-                <React.Fragment key={group.label}>
-                  <div className={`nsec${isActiveGroup ? " nsec--active" : ""}`}>{group.label}</div>
-                  {group.items.map((item) => (
-                    <button
-                      key={item.id}
-                      className={`nitem ${page === item.id ? "on" : ""}`}
-                      onClick={() => handleNav(item)}
-                    >
-                      <Icon n={item.icon} s={18} /><span>{item.label}</span>
-                    </button>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-            {/* Sitzungsaktion optisch von der Inhaltsnavigation trennen (rein
-                dekorativ). Abmelden bleibt funktional unverändert. */}
-            <div className="pp-nav-utility-divider" aria-hidden="true" />
-            <button className="nitem" onClick={handleLogout}>
-              <Icon n="logout" s={18} /><span>Abmelden</span>
-            </button>
-          </nav>
-
-          {/* Supportkarte: die GESAMTE Karte ist die Aktion — ein <button>, kein
-              mailto-Link mehr. Der Kunde schreibt seine Anfrage im Formular; das
-              Postfach ist nicht mehr der Einstieg. Kein „Live Support", kein
-              grüner Statuspunkt, kein Headset-Icon — stattdessen das vorhandene
-              mail-Icon. Wortlaut zentral in utils/supportRequest.mjs. */}
-          <button type="button" className="pp-scard" onClick={() => setSupportOpen(true)}>
-            <div className="pp-scard-top">
-              <div className="scard-ic"><Icon n="mail" s={17} /></div>
-              <div style={{ minWidth: 0 }}>
-                <div className="scard-k">{SUPPORT_CARD.kicker}</div>
-                <div className="scard-t">{SUPPORT_CARD.title}</div>
+                {inventoryOpen && (
+                  <div id="pp-nav-module-items" className="pp-nav-module-items">
+                    {INVENTORY_GROUP.items.map((item) => (
+                      <button
+                        key={item.id}
+                        className={`nitem ${page === item.id ? "on" : ""}`}
+                        onClick={() => handleNav(item)}
+                      >
+                        <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="scard-a">
-              <span>{SUPPORT_CARD.action}</span>
-              <Icon n="chevronRight" s={14} />
-            </div>
-            <div className="scard-s">{SUPPORT_CARD.hint}</div>
-          </button>
 
-          <div className="pp-foot">
-            <div>© 2026 ConfidaraExpress</div>
-            <div>Alle Rechte vorbehalten.</div>
+              {NAV_GROUPS.map((group) => {
+                // Aktive Gruppe rein aus dem bestehenden page-Wert abgeleitet
+                // (kein neuer State). Bei „overview" ist keine Gruppe aktiv; auf
+                // der /calculator-Route (page === "calculator") ist „Versand" aktiv.
+                const isActiveGroup = group.items.some((item) => item.id === page);
+                return (
+                  <React.Fragment key={group.label}>
+                    <div className={`nsec${isActiveGroup ? " nsec--active" : ""}`}>{group.label}</div>
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        className={`nitem ${page === item.id ? "on" : ""}`}
+                        onClick={() => handleNav(item)}
+                      >
+                        <Icon n={item.icon} s={18} /><span>{item.label}</span>
+                      </button>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {/* Sitzungsaktion optisch von der Inhaltsnavigation trennen (rein
+                  dekorativ). Abmelden bleibt funktional unverändert. */}
+              <div className="pp-nav-utility-divider" aria-hidden="true" />
+              <button className="nitem" onClick={handleLogout}>
+                <Icon n="logout" s={18} /><span>Abmelden</span>
+              </button>
+            </nav>
+
+            {/* Supportkarte: die GESAMTE Karte ist die Aktion — ein <button>, kein
+                mailto-Link mehr. Der Kunde schreibt seine Anfrage im Formular; das
+                Postfach ist nicht mehr der Einstieg. Kein „Live Support", kein
+                grüner Statuspunkt, kein Headset-Icon — stattdessen das vorhandene
+                mail-Icon. Wortlaut zentral in utils/supportRequest.mjs. */}
+            <button type="button" className="pp-scard" onClick={() => setSupportOpen(true)}>
+              <div className="pp-scard-top">
+                <div className="scard-ic"><Icon n="mail" s={17} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="scard-k">{SUPPORT_CARD.kicker}</div>
+                  <div className="scard-t">{SUPPORT_CARD.title}</div>
+                </div>
+              </div>
+              <div className="scard-a">
+                <span>{SUPPORT_CARD.action}</span>
+                <Icon n="chevronRight" s={14} />
+              </div>
+              <div className="scard-s">{SUPPORT_CARD.hint}</div>
+            </button>
+
+            <div className="pp-foot">
+              <div>© 2026 ConfidaraExpress</div>
+              <div>Alle Rechte vorbehalten.</div>
+            </div>
           </div>
         </div>
       </aside>

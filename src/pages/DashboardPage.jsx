@@ -16,6 +16,7 @@ import { businessMonthKey } from "../utils/kpis";
 import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
 import { BrandLogo } from "../components/ui/BrandLogo";
+import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -540,6 +541,7 @@ export default function DashboardPage() {
             Phase 3 IM Seitenkopf statt als freischwebender Mount darüber.
             Unterhalb von 860 px blendet er sich aus — dort trägt die Topbar
             die Glocke, und ein zweiter Chip wäre eine doppelte Identität. */}
+        <ContentErrorBoundary key={page}>
         {PAGE_HEADERS[page] && (
           <DashboardSectionHeader
             eyebrow={PAGE_HEADERS[page].eyebrow}
@@ -694,6 +696,7 @@ export default function DashboardPage() {
             />
           </Suspense>
         )}
+        </ContentErrorBoundary>
 
         {/* Ein Footer für ALLE Kundenseiten. Die Übersicht trug bis hierher
             stattdessen eine werbliche Selbstbeschreibung statt eines Footers;

@@ -169,7 +169,7 @@ test("12 — der Artikel-Prefill rechnet das Warengewicht, aber lässt den Empf�
   for (const k of Object.keys(p.form)) {
     assert.ok(!k.startsWith("r_"), "ein Artikel kennt keinen Empfänger");
   }
-  assert.deepEqual(p.inventory, { warehouseId: "3", items: [{ productId: "11", quantity: 5 }] });
+  assert.deepEqual(p.inventory, { warehouseId: "3", items: [{ productId: "11", quantity: 5, name: "Artikel A", sku: "A-1" }] });
 });
 
 test("13 — ein rechnerisch unzulässiges Gesamtgewicht wird NICHT gekappt, sondern weggelassen", () => {
@@ -192,8 +192,10 @@ test("14 — ungültige Mengen ergeben null (keine Sendung mit Menge 0 oder 1,5)
 test("15 — bekannte Fehlercodes werden übersetzt, der Code erscheint nie im Text", () => {
   assert.match(inventoryErrorText({ code: "INSUFFICIENT_STOCK" }), /nicht genügend Bestand/i);
   assert.match(inventoryErrorText({ code: "ORDER_NOT_FOUND" }), /Auftrag/i);
+  // Auftrags-Race (Finding 2): kein Bestandsfehler, kein Rassen-/Lock-Jargon.
+  assert.match(inventoryErrorText({ code: "ORDER_RESERVATION_IN_USE" }), /Sendung gebucht/i);
   for (const code of ["INSUFFICIENT_STOCK", "PRODUCT_NOT_FOUND", "WAREHOUSE_NOT_FOUND", "ORDER_NOT_FOUND",
-                      "INVALID_QUANTITY", "CONCURRENT_STOCK_CHANGE", "RESERVATION_NOT_FOUND"]) {
+                      "INVALID_QUANTITY", "CONCURRENT_STOCK_CHANGE", "RESERVATION_NOT_FOUND", "ORDER_RESERVATION_IN_USE"]) {
     assert.ok(!inventoryErrorText({ code }).includes(code), `${code} steht im sichtbaren Text`);
   }
   // Unbekannter Code → Servertext, dann neutraler Satz. Nie der Code selbst.
@@ -236,8 +238,19 @@ test("18 — ein kaputter oder halber Lagerbezug wird VERWORFEN, nie teilweise �
     assert.equal(normalizeInventoryContext(schlecht), null, `${JSON.stringify(schlecht)} hätte verworfen werden müssen`);
   }
   assert.deepEqual(normalizeInventoryContext({ orderId: "7" }), { orderId: "7", orderNumber: null });
+  // name/sku sind additiv und rein kosmetisch (Herkunftshinweis) — ohne sie: null.
   assert.deepEqual(normalizeInventoryContext({ warehouseId: "3", items: [{ productId: "11", quantity: 5 }] }),
-    { warehouseId: "3", items: [{ productId: "11", quantity: 5 }] });
+    { warehouseId: "3", items: [{ productId: "11", quantity: 5, name: null, sku: null }] });
+  assert.deepEqual(
+    normalizeInventoryContext({ warehouseId: "3", items: [{ productId: "11", quantity: 5, name: "Tisch", sku: "ART-1" }] }),
+    { warehouseId: "3", items: [{ productId: "11", quantity: 5, name: "Tisch", sku: "ART-1" }] });
+});
+
+test("18b — name/sku sind kosmetisch: kein Einfluss auf Gültigkeit, werden auf 200 Zeichen gekappt", () => {
+  const lang = "X".repeat(500);
+  const n = normalizeInventoryContext({ items: [{ productId: "1", quantity: 1, name: lang, sku: 123 }] });
+  assert.equal(n.items[0].name.length, 200);
+  assert.equal(n.items[0].sku, null, "ein Nicht-String wird verworfen, nicht in einen String gezwungen");
 });
 
 test("19 — eine einzige kaputte Position verwirft den GESAMTEN Lagerbezug", () => {

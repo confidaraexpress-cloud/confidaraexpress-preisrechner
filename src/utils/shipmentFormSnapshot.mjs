@@ -9,6 +9,7 @@
 // erst für calculate-price angewendeten Provider-Defaults (30/20/15 usw.).
 // Leere Gewicht-/Maßwerte bleiben null; ungültige Zahlen werden nie zu NaN.
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
+import { normalizeInventoryContext } from "./inventoryView.mjs";
 
 // ── Normalisierung (stabil, deterministisch) ────────────────────────────────
 function trimStr(v) {
@@ -63,8 +64,17 @@ function party(form, p) {
   };
 }
 
-// state: { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }
+// state: { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+//          inventoryContext }
 // Rückgabe: kanonischer formData-Snapshot (feste Key-Reihenfolge). Reine Funktion.
+//
+// inventoryContext (Audit-Finding 1): derselbe Lagerbezug, der bei jeder
+// /calculate-price-Anfrage als `inventory` mitgeschickt wird — hier zusätzlich in
+// den gespeicherten Formularentwurf aufgenommen, damit „Als Entwurf speichern" →
+// „Entwurf später öffnen" den fachlichen Bezug zu Artikel/Auftrag NICHT verliert.
+// Fehlt er (normale Sendung, oder ein Aufrufer, der ihn nicht mitgibt), liefert
+// normalizeInventoryContext(undefined) → null — unverändertes Verhalten für jede
+// normale Sendung.
 export function getShipmentFormSnapshot(state) {
   const s = state || {};
   const form = s.form || {};
@@ -84,6 +94,7 @@ export function getShipmentFormSnapshot(state) {
       shippingModeFilter: FORM_SHIPPING_MODES.includes(s.shippingModeFilter) ? s.shippingModeFilter : "all",
       publicCarrierIds: dedupeIds(s.selectedPublicCarrierIds),
     },
+    inventoryContext: normalizeInventoryContext(s.inventoryContext),
   };
 }
 

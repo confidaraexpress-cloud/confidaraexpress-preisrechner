@@ -124,7 +124,7 @@ test("Abgrenzung: der Snapshot fuehrt genau einen ergebnisabhaengigen Wert", () 
   // Alle uebrigen Snapshot-Felder sind eigenstaendige Eingaben und jederzeit
   // darstellbar; nur publicCarrierIds haengt an einer frueheren Angebotsantwort.
   const snapshot = getShipmentFormSnapshot(VOLLSTAENDIGE_OPTIONEN);
-  assert.deepEqual(Object.keys(snapshot).sort(), ["packages", "recipient", "sender", "shippingOptions"]);
+  assert.deepEqual(Object.keys(snapshot).sort(), ["inventoryContext", "packages", "recipient", "sender", "shippingOptions"]);
   assert.deepEqual(Object.keys(snapshot.shippingOptions).sort(),
     ["publicCarrierIds", "serviceFilter", "shippingDate", "shippingModeFilter"]);
 });

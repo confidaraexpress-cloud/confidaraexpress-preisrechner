@@ -597,6 +597,31 @@
 .profile-hint { padding: 13px 15px; border-radius: 12px; }
 .profile-form-body { padding: 18px 24px; }
 
+/* ── Lieferscheineinstellung ────────────────────────────────────────────────
+   Drei Optionen als native Radios auf dem globalen forms.css-Primitive (dort steht
+   die Grundlinie für accent-color und Fokusring) — kein zweites Auswahlbauteil und
+   kein eigenes Farbliteral. Auswahl über Fläche + Rand + Schriftschnitt, also
+   mehrfach codiert und nicht allein farbig. */
+.dn-mode-fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dn-mode-fieldset > .field-label { padding: 0; margin-bottom: 2px; }
+.dn-mode-fieldset:disabled { opacity: .6; }
+.dn-mode-option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; cursor: pointer;
+  border: 1px solid var(--ce-color-border-default); border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+}
+.dn-mode-option:hover { border-color: var(--ce-color-border-strong); }
+.dn-mode-option.selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
+.dn-mode-option input[type="radio"] { margin-top: 2px; flex-shrink: 0; }
+.dn-mode-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dn-mode-label { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-mode-option .field-hint { margin: 0; }
+.profile-saved {
+  display: flex; align-items: center; gap: 6px; margin: 12px 0 0;
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-success-solid);
+}
+
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */

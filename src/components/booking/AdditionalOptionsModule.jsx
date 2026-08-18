@@ -63,6 +63,13 @@ export function AdditionalOptionsModule({
   trackingEmailError,
   labelTrackingEmail, onLabelTrackingEmailChange, labelTrackingEmailEnabled,
   onLabelTrackingEmailEnabledChange, labelTrackingEmailError,
+  // Eigene Lieferscheinnummer. Bewusst OHNE Schalter: das Feld erscheint nur, wenn es
+  // fachlich überhaupt anwendbar ist (Kontomodus „Eigenes Lieferscheinsystem" UND eine
+  // Sendung mit Lagerbezug) — ein Schalter davor wäre eine zweite Entscheidung über
+  // dieselbe Sache. `deliveryNoteText` kommt vom Aufrufer, damit dieses Modul keine
+  // eigene Textquelle bekommt.
+  showExternalDeliveryNote, externalDeliveryNoteNumber, onExternalDeliveryNoteNumberChange,
+  deliveryNoteText,
 }) {
   return (
     <div className="calc-panel addopt-panel mb-16">
@@ -155,6 +162,28 @@ export function AdditionalOptionsModule({
             </div>
           )}
         </div>
+
+        {/* 5) Eigene Lieferscheinnummer — nur bei Kontomodus „Eigenes Lieferschein-
+            system" und einer Sendung mit Lagerbezug. Optional: ein Unternehmen kann
+            seinen Lieferschein weiterhin vollständig außerhalb von Confidara führen. */}
+        {showExternalDeliveryNote && deliveryNoteText && (
+          <div className="addopt-option">
+            <div className="field">
+              <label className="field-label" htmlFor="booking-external-delivery-note">
+                {deliveryNoteText.externalFieldLabel}
+              </label>
+              <input
+                id="booking-external-delivery-note"
+                className="field-input"
+                value={externalDeliveryNoteNumber}
+                onChange={e => onExternalDeliveryNoteNumberChange(e.target.value)}
+                placeholder={deliveryNoteText.externalFieldPlaceholder}
+                maxLength={deliveryNoteText.externalFieldMaxLen}
+              />
+              <span className="field-hint">{deliveryNoteText.externalFieldHint}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

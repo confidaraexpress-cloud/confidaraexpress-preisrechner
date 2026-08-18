@@ -293,7 +293,10 @@ test("6 — die Korrektur meldet den GEZÄHLTEN Bestand, kein clientseitiges Del
   await page.goto(`${BASE}/dashboard?page=stock`, { waitUntil: "networkidle" });
   await page.waitForTimeout(400);
 
-  await page.locator(".inv-row-actions button", { hasText: "Korrigieren" }).first().click();
+  // „Korrigieren" steht im Zeilenmenü: drei Knöpfe nebeneinander (336 px)
+  // passten nie in die Aktionsspalte (271 px selbst auf 1920 px).
+  await page.locator(".inv-row-actions .inv-actions button").first().click();
+  await page.getByRole("menuitem", { name: "Bestand korrigieren" }).click();
   await page.locator("#inv-stock-qty").fill("98");
   await page.locator(".ce-dialog-actions button", { hasText: "Korrektur buchen" }).click();
   await page.waitForTimeout(400);
@@ -301,6 +304,10 @@ test("6 — die Korrektur meldet den GEZÄHLTEN Bestand, kein clientseitiges Del
   assert.ok(body, "die Korrektur wurde nicht gesendet");
   assert.equal(body.countedQuantity, 98, "es wird nicht der gezählte Bestand gesendet");
   assert.ok(!("delta" in body), "der Client rechnet das Delta selbst aus");
+  // Der Korrekturgrund ist ein eigenes Feld — er wird nicht in den Notiztext
+  // geschrieben, und das abgelöste Ja/Nein-Feld `damage` geht nicht mehr raus.
+  assert.equal(body.reason, "stocktake", "der Korrekturgrund fehlt im Request");
+  assert.ok(!("damage" in body), "das abgelöste damage-Feld wird noch gesendet");
   await page.close();
 });
 

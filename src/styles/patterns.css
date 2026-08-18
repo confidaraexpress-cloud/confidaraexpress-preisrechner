@@ -115,6 +115,21 @@
   /* Die Seitenaktion ist Teil der Schrumpfkette des Asides, gibt aber selbst
      nie Breite ab — nachgeben tut allein der Chip. */
   flex-shrink: 0;
+  /* … das gilt für den einzelnen Knopf, nicht für das Bündel.
+
+     `flex-shrink: 0` hält die Breite des Bündels auf seinem max-content, also
+     auf ALLEN Knöpfen in EINER Zeile — das `flex-wrap` darüber kam damit nie
+     zum Zug. Bei zwei Aktionen (Bestandsseite: „Bestand korrigieren" +
+     „Bestand einbuchen") maß das Bündel 406 px und ragte auf 390 px um 46 px
+     aus dem Bild; sichtbar war das nicht, weil `body { overflow-x: hidden }`
+     es kaschiert — die primäre Aktion war schlicht angeschnitten und der Rest
+     nicht erreichbar. Dieselbe Klasse Fehler, die der Absatz oben für den
+     Benutzerchip beschreibt.
+
+     `max-width: 100%` greift ausschließlich, wenn das Bündel ohnehin zu breit
+     wäre; dann bricht es in eine zweite Zeile um. Ein Layout, das heute passt,
+     ändert sich dadurch nicht, und kein einzelner Knopf wird gestaucht. */
+  max-width: 100%;
 }
 
 /* Adminvariante — gleiche Struktur, funktionaler Titel, dichter gesetzt. */

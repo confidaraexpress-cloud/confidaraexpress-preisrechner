@@ -220,7 +220,13 @@ test("13 — inventory.css trägt kein Farb-, Radius- oder Schattenliteral", () 
   const regeln = inventoryCss.replace(/\/\*[\s\S]*?\*\//g, "");
   assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(regeln), "Farbliteral in inventory.css");
   assert.ok(!/rgba?\(/.test(regeln), "freier Farbwert in inventory.css");
-  assert.ok(!/box-shadow:\s*(?!var\()/.test(regeln), "freier Schatten in inventory.css");
+  // Der Lookahead gehört HINTER den Doppelpunkt, nicht hinter `\s*`: bei
+  // `box-shadow:\s*(?!var\()` darf `\s*` auf null Zeichen zurückfallen, der
+  // Lookahead sieht dann das Leerzeichen statt `var(` — und ein korrekter
+  // Tokenwert („box-shadow: var(--ce-elevation-3)") gälte als freier Schatten.
+  // Bis hierher stand in inventory.css überhaupt kein box-shadow, deshalb ist
+  // das nie aufgefallen.
+  assert.ok(!/box-shadow:(?!\s*var\()/.test(regeln), "freier Schatten in inventory.css");
   assert.ok(!/backdrop-filter/.test(regeln), "backdrop-filter ist systemweit unzulässig");
   // Jeder Radius aus der Foundation.
   for (const m of regeln.matchAll(/border-radius:\s*([^;]+);/g)) {

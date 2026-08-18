@@ -52,7 +52,7 @@ export function DraftActionsMenu({ draft, busy, disabled, onDelete }) {
         onClick={() => setOpen((v) => !v)}
         disabled={busy || disabled}
       >
-        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="settings" s={16} />}
+        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="dots" s={16} />}
       </button>
       {open && (
         <div className="dft-actions-menu" role="menu">

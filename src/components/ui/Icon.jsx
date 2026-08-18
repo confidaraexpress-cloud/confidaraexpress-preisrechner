@@ -39,6 +39,13 @@ const paths = {
   download:
     "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3",
   menu: "M3 12h18M3 6h18M3 18h18",
+  /* Drei Punkte = „weitere Aktionen". Bewusst als drei Kreisbögen und nicht als
+     Nullstrecken (`M5 12h.01`): eine Nullstrecke ergäbe mit stroke-width 1.75
+     einen Punkt von 1,75 Einheiten im 24er-Raster, bei 16 px also 1,2 px — zu
+     zart. Die Ringe mit r=1 werden vom 1,75 breiten Strich fast geschlossen und
+     lesen bei 16 px als voller Punkt. Reine Linienführung, keine Fläche. */
+  dots:
+    "M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0",
   close: "M18 6L6 18M6 6l12 12",
   chevron: "M6 9l6 6 6-6",
   admin:

@@ -292,8 +292,12 @@ test("25 — der Artikelfilter wirkt und ist sichtbar abwählbar", () => {
   assert.match(code, /\}, \[type, productId, from, to\]\)/, "der Filter löst kein Neuladen aus");
   // Ohne sichtbaren Hinweis sähe der Nutzer eine verkürzte Liste ohne Grund.
   assert.match(code, /inv-toolbar-chip/);
-  assert.match(code, /onClick=\{\(\) => setProductId\(""\)\}/);
-  assert.match(code, /const hatFilter = Boolean\(type \|\| productId \|\| from \|\| to\)/);
+  // Der Chip räumt den Filter weg. Geprüft wird die WIRKUNG, nicht der exakte
+  // Handlerrumpf: seit der Bewegungsseite den Artikelnamen selbst hält, setzt
+  // derselbe Klick zusätzlich den Namen zurück.
+  const chip = code.slice(code.indexOf("inv-toolbar-chip"));
+  assert.match(chip.slice(0, 200), /setProductId\(""\)/);
+  assert.match(code, /const hatFilter = aktiveFilter > 0/);
 });
 
 /* ══════════ 6 — Designsystem ═════════════════════════════════════════════ */
@@ -303,7 +307,10 @@ test("26 — die neuen Flächen nutzen ausschließlich Foundation-Tokens", () =>
   const neu = regeln.slice(regeln.indexOf(".inv-section {"));
   assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(neu), "Farbliteral in den neuen Regeln");
   assert.ok(!/rgba?\(/.test(neu), "freier Farbwert in den neuen Regeln");
-  assert.ok(!/box-shadow:\s*(?!var\()/.test(neu), "freier Schatten in den neuen Regeln");
+  // Der Vorgriff steht INNERHALB der Klammer: `box-shadow:\s*(?!var\()` wäre
+  // eine Falle — `\s*` fällt auf null Zeichen zurück, der Vorgriff sieht dann
+  // das Leerzeichen statt „var(" und meldet jeden korrekten Tokenschatten.
+  assert.ok(!/box-shadow:(?!\s*var\()/.test(neu), "freier Schatten in den neuen Regeln");
   for (const m of neu.matchAll(/border-radius:\s*([^;]+);/g)) {
     assert.ok(/var\(--ce-radius-/.test(m[1]), `freier Radius „${m[1].trim()}“`);
   }

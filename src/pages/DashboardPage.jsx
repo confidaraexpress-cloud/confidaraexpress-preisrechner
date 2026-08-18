@@ -45,6 +45,30 @@ function waehleStartbereich(location) {
   return "overview";
 }
 
+/* Der Artikelfilter eines Deep-Links (`?page=movements&product=…`) — aus
+   DEMSELBEN `location` wie der Startbereich und ebenfalls schon beim ERSTEN
+   Rendern.
+
+   Warum nicht erst im Effekt darunter: die Zielseite ist lazy geladen und liest
+   ihren Startfilter genau einmal beim Mounten. Ist ihr Chunk noch nicht im
+   Browser, hängt sie beim ersten Rendern, der Effekt läuft, und sie sieht den
+   Filter. Liegt der Chunk dagegen schon vor (zweiter Aufruf im selben Tab,
+   warmer Cache), mountet sie SOFORT — vor dem Effekt des Elternteils — und
+   startete ungefiltert. Genau das war gemessen reproduzierbar: derselbe
+   Deep-Link filterte beim ersten Aufruf und beim zweiten nicht mehr.
+
+   Der Bereich (`page`) wird aus demselben Grund seit jeher hier abgeleitet;
+   der Filter zieht nun nach. */
+function waehleStartfilter(location) {
+  const params = new URLSearchParams(location.search);
+  const p = params.get("page");
+  const produkt = params.get("product");
+  if (p === "movements" && /^[1-9][0-9]*$/.test(produkt || "")) {
+    return { page: "movements", filter: { productId: produkt } };
+  }
+  return null;
+}
+
 const NewShipmentPage  = React.lazy(() => import("./NewShipmentPage"));
 const TrackingPage     = React.lazy(() => import("./TrackingPage"));
 const AddressBookPage  = React.lazy(() => import("./AddressBookPage"));
@@ -149,7 +173,13 @@ export default function DashboardPage() {
   // Einmaliger Startfilter für eine Lagerlistenseite (siehe navigateTo).
   // Trägt die Zielseite mit, damit ein Filter nicht versehentlich auf einer
   // anderen Seite landet, wenn der Nutzer zwischendurch woanders hinwechselt.
-  const [inventoryFilter, setInventoryFilter] = useState(null);
+  const [inventoryFilter, setInventoryFilter] = useState(() => waehleStartfilter(location));
+  // Die Adresse, aus der der Startfilter oben stammt. Der Effekt weiter unten
+  // darf ihn beim ersten Lauf NICHT erneut setzen: die Zielseite hat ihn dann
+  // bereits verbraucht und per onFilterApplied verworfen — ein zweites Setzen
+  // holte ihn zurück und ein späterer Wechsel zurück auf die Seite filterte
+  // erneut, ohne dass jemand danach gefragt hätte.
+  const startSuche = useRef(location.search);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -349,10 +379,9 @@ export default function DashboardPage() {
       // eigene Route und kann navigateTo nicht aufrufen, gibt den Artikelfilter
       // deshalb in der Query mit. Er läuft danach durch denselben einmaligen
       // Startfilter-Weg wie jeder andere Filter aus der Lagerübersicht.
-      const produkt = params.get("product");
-      setInventoryFilter(p === "movements" && /^[1-9][0-9]*$/.test(produkt || "")
-        ? { page: "movements", filter: { productId: produkt } }
-        : null);
+      // Beim ERSTEN Lauf steht derselbe Filter bereits im Anfangszustand
+      // (waehleStartfilter) — hier nur noch für spätere Adressänderungen.
+      if (location.search !== startSuche.current) setInventoryFilter(waehleStartfilter(location));
       // Die URL wird wie bisher bereinigt — der Bereich wandert dabei in den
       // History-State des ERSETZTEN Eintrags. Vorhandene State-Werte bleiben
       // erhalten (Spread), damit z. B. `justBooked` nicht verloren geht.

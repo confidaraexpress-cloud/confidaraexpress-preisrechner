@@ -1,10 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { Icon } from "../../components/ui/Icon";
-import { InlineError } from "../../components/inventory/InventoryShared";
-import { getMovements } from "../../api/inventoryApi";
-import { MOVEMENT_TYPES, adjustmentReasonLabel, movementTypeView, signedQuantity, formatUnits, inventoryErrorText } from "../../utils/inventoryView.mjs";
+import { InlineError, ProductFilterField } from "../../components/inventory/InventoryShared";
+import { getMovements, getProduct } from "../../api/inventoryApi";
+import {
+  adjustmentReasonLabel, movementTypeView, movementTypeOptions, movementReferenceView,
+  movementNote, signedQuantity, formatUnits, inventoryErrorText,
+} from "../../utils/inventoryView.mjs";
 
 const PAGE_LIMIT = 25;
 
@@ -19,10 +23,17 @@ function dtDE(value) {
 /* ── Bewegungen ──────────────────────────────────────────────────────────────
    Das Bestandsledger. Es dokumentiert ausschließlich PHYSISCHE Änderungen:
    eine Reservierung oder deren Freigabe bewegt keine Ware und erscheint deshalb
-   hier bewusst nicht — sie ist über den Auftrag nachvollziehbar.
+   hier bewusst nicht — sie ist über den Auftrag nachvollziehbar. Ebenso bleibt
+   der Sperrbestand (`inventory_blocks`) außen vor: er ist ein eigenes Ledger,
+   und beides zu mischen machte die Frage „warum hat dieser Artikel jetzt 15
+   Stück?" schwerer statt leichter.
 
    Einträge werden nie geändert oder gelöscht; eine Korrektur ist immer eine
-   neue Gegenbewegung. Deshalb gibt es hier keine Zeilenaktion. */
+   neue Gegenbewegung. Deshalb gibt es hier keine Zeilenaktion.
+
+   Die Zeile beantwortet acht Fragen: was (Artikel) · wann (Zeitpunkt) · warum
+   (Typ + Grund + Notiz) · wie viel (Menge mit Vorzeichen) · was blieb (Bestand
+   danach) · wo (Lager) · wodurch (Referenz) · wer (erfassendes Konto). */
 // Der Startfilter „heutige Versandbewegungen" aus der Lagerübersicht. Das Datum
 // entsteht LOKAL (nicht per toISOString): der Nutzer meint seinen Tag, nicht den
 // UTC-Tag — vor 01:00 MEZ läge der UTC-Tag sonst einen Tag zurück.
@@ -33,9 +44,12 @@ function heuteIso() {
 }
 
 export default function MovementsPage({ utility, initialFilter = null, onFilterApplied }) {
+  const navigate = useNavigate();
   const heute = initialFilter === "shipmentsToday";
-  // Artikelfilter aus „Alle Bewegungen anzeigen" der Artikeldetailseite. Der
-  // Endpunkt kennt `productId` bereits — hier kommt nur der Startwert dazu.
+  // Artikelfilter aus „Alle Bewegungen anzeigen" der Artikeldetailseite und aus
+  // dem Zeilenmenü der Bestandsseite. Der Endpunkt kennt `productId` bereits —
+  // hier kommt der Startwert dazu, und seit dieser Fassung auch die sichtbare
+  // Bedienung desselben Filters.
   const startArtikel = initialFilter && typeof initialFilter === "object" && initialFilter.productId
     ? String(initialFilter.productId) : "";
   const [items, setItems] = useState([]);
@@ -44,6 +58,10 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
   // zweimal, einmal ungefiltert und einmal gefiltert.
   const [type, setType] = useState(heute ? "SHIPMENT" : "");
   const [productId, setProductId] = useState(startArtikel);
+  // Der Name des gefilterten Artikels. Er kommt aus der Auswahl, aus den
+  // geladenen Zeilen oder — bei einem Deep-Link ohne Treffer — aus einem
+  // gezielten Nachladen (siehe Effekt unten).
+  const [productName, setProductName] = useState("");
   const [from, setFrom] = useState(heute ? heuteIso() : "");
   const [to, setTo] = useState(heute ? heuteIso() : "");
   const [loading, setLoading] = useState(true);
@@ -77,28 +95,59 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
 
   useEffect(() => { load(null); }, [load]);
 
-  const hatFilter = Boolean(type || productId || from || to);
-  // Der Artikelname steht nicht im Filter, aber in jeder Zeile — er kommt aus
-  // den geladenen Daten statt aus einem zweiten Aufruf.
-  const artikelName = productId ? (items[0]?.productName || null) : null;
+  /* Den Namen des gefilterten Artikels auflösen — sonst stünde im Filterchip
+     eine nackte „#100".
+
+     Zuerst aus den geladenen Zeilen: die tragen den Namen ohnehin, das kostet
+     keine Anfrage. Nur wenn der Filter NICHTS findet (ein Artikel ohne
+     Bewegungen, oder zusätzlich eingeschränkt auf Typ und Zeitraum), wird der
+     Artikel gezielt einmal nachgeladen. Genau dieser Fall ist der
+     unangenehmste: eine leere Liste, deren Grund man nicht lesen kann. */
+  useEffect(() => {
+    if (!productId) { setProductName(""); return; }
+    const ausZeilen = items.find((m) => String(m.productId) === String(productId))?.productName;
+    if (ausZeilen) { setProductName(ausZeilen); return; }
+    if (loading || productName) return;
+    let abgebrochen = false;
+    getProduct(productId).then(async (r) => {
+      if (abgebrochen || !r.ok) return;
+      const p = (await r.json()).product;
+      if (p?.name) setProductName(p.name);
+    }).catch(() => { /* ohne Namen bleibt der Chip bei der ID — kein Fehlerfall */ });
+    return () => { abgebrochen = true; };
+  }, [productId, items, loading, productName]);
+
+  const artikelWaehlen = (p) => { setProductId(String(p.id)); setProductName(p.name || ""); };
+  const alleFilterWeg = () => { setType(""); setProductId(""); setProductName(""); setFrom(""); setTo(""); };
+
+  const aktiveFilter = [type, productId, from, to].filter(Boolean).length;
+  const hatFilter = aktiveFilter > 0;
+  // Sichtbar sind die heute erzeugbaren Typen — plus jeder Typ, der in den
+  // geladenen Zeilen tatsächlich vorkommt (Altdaten bleiben filterbar).
+  const typOptionen = movementTypeOptions(items);
 
   return (
     <div className="page-body">
       <PageHeader
         eyebrow="Lager & Aufträge"
         title="Bewegungen"
-        subtitle="Jede physische Bestandsänderung mit Zeitpunkt, Menge, Grund und Referenz."
+        subtitle="Alle physischen Bestandsänderungen mit Zeitpunkt, Menge, Grund und Referenz nachvollziehen."
         utility={utility}
       />
 
       <InlineError text={error} onRetry={() => load(null)} />
 
       <div className="ce-toolbar inv-toolbar">
+        <ProductFilterField
+          id="inv-mv-product"
+          label="Artikel oder SKU"
+          onSelect={artikelWaehlen}
+        />
         <div className="inv-toolbar-filter">
           <label className="field-label" htmlFor="inv-mv-type">Typ</label>
           <select id="inv-mv-type" className="field-select" value={type} onChange={(e) => setType(e.target.value)}>
             <option value="">Alle</option>
-            {MOVEMENT_TYPES.map((t) => <option key={t} value={t}>{movementTypeView(t)[1]}</option>)}
+            {typOptionen.map((t) => <option key={t} value={t}>{movementTypeView(t)[1]}</option>)}
           </select>
         </div>
         <div className="inv-toolbar-filter">
@@ -109,13 +158,22 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
           <label className="field-label" htmlFor="inv-mv-to">Bis</label>
           <input id="inv-mv-to" className="field-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        {/* Kommt der Nutzer über „Alle Bewegungen anzeigen" eines Artikels, ist
-            die Liste gefiltert. Ohne sichtbaren Hinweis sähe er eine verkürzte
-            Liste ohne erkennbaren Grund — deshalb ein abwählbarer Filterchip. */}
+        {/* Kommt der Nutzer über „Bewegungen anzeigen" oder „Alle Bewegungen
+            anzeigen" eines Artikels, ist die Liste gefiltert. Ohne sichtbaren
+            Hinweis sähe er eine verkürzte Liste ohne erkennbaren Grund —
+            deshalb ein abwählbarer Filterchip. */}
         {productId && (
-          <button type="button" className="btn btn-sm btn-outline inv-toolbar-chip" onClick={() => setProductId("")}>
-            Artikel: {artikelName || `#${productId}`}
+          <button type="button" className="btn btn-sm btn-outline inv-toolbar-chip"
+                  onClick={() => { setProductId(""); setProductName(""); }}>
+            Artikel: {productName || `#${productId}`}
             <Icon n="close" s={14} />
+          </button>
+        )}
+        {/* Erst ab zwei gesetzten Filtern: einen einzelnen Filter räumt man an
+            seinem eigenen Bedienelement weg, dafür braucht es keinen Knopf. */}
+        {aktiveFilter > 1 && (
+          <button type="button" className="btn btn-sm btn-link inv-toolbar-reset" onClick={alleFilterWeg}>
+            Filter zurücksetzen
           </button>
         )}
       </div>
@@ -125,16 +183,16 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
       {!loading && items.length === 0 && !hatFilter && (
         <EmptyState
           icon="packageMove"
-          title="Noch keine Bewegungen"
-          text="Sobald Sie Bestand einbuchen, korrigieren oder versenden, entsteht hier ein nachvollziehbarer Eintrag."
+          title="Noch keine Bestandsbewegungen vorhanden"
+          text="Wareneingänge, Versand und Bestandskorrekturen erscheinen hier automatisch."
         />
       )}
 
       {!loading && items.length === 0 && hatFilter && (
         <NoResultsState
           title="Keine Bewegungen gefunden"
-          text="Für diesen Zeitraum oder Typ gibt es keine Einträge."
-          action={<button type="button" className="btn btn-outline" onClick={() => { setType(""); setProductId(""); setFrom(""); setTo(""); }}>Filter zurücksetzen</button>}
+          text="Für die gewählten Filter gibt es keine Einträge."
+          action={<button type="button" className="btn btn-outline" onClick={alleFilterWeg}>Filter zurücksetzen</button>}
         />
       )}
 
@@ -152,35 +210,46 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                   <th scope="col" className="ce-num">Bestand danach</th>
                   <th scope="col">Lager</th>
                   <th scope="col">Referenz</th>
-                  <th scope="col">Benutzer</th>
+                  {/* NICHT „Benutzer": das Backend liefert
+                      COALESCE(company_name, name, email) des erfassenden Kontos,
+                      und ConfidaraExpress kennt je Firma genau einen Zugang —
+                      kein Mitarbeitermodell. Dort steht also das Konto, nicht
+                      eine handelnde Person. */}
+                  <th scope="col">Erfasst durch</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((m) => {
                   const [cls, text, roh] = movementTypeView(m.type);
+                  const grund = adjustmentReasonLabel(m.reason);
+                  const notiz = movementNote(m);
+                  const ref = movementReferenceView(m);
                   return (
                     <tr key={m.id}>
                       <td className="inv-cell-meta">{dtDE(m.createdAt)}</td>
                       <td>
-                        <span className="inv-cell-sku">{m.sku}</span>
-                        <div className="inv-cell-meta">{m.productName}</div>
+                        {/* Der Name führt, die SKU steht darunter: gesucht wird
+                            nach dem Artikel, nicht nach seiner Nummer. */}
+                        <button type="button" className="btn btn-link inv-cell-link"
+                                onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
+                        <div className="inv-cell-meta"><span className="inv-cell-sku">{m.sku}</span></div>
                       </td>
                       <td>
                         <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
                           <span className="badge-dot" aria-hidden="true" />{text}
                         </span>
-                        {/* Der Korrekturgrund steht als eigenes Feld an der
-                            Bewegung — nur manuelle Korrekturen tragen einen. */}
-                        {adjustmentReasonLabel(m.reason) && <div className="inv-cell-meta">{adjustmentReasonLabel(m.reason)}</div>}
+                        {/* Grund und Notiz sind zwei verschiedene Dinge und
+                            stehen deshalb getrennt: der Grund ist die
+                            strukturierte Ursache der Korrektur, die Notiz freier
+                            Text des Erfassers. Fehlt eines, entsteht keine
+                            leere Zeile. */}
+                        {grund && <div className="inv-cell-meta inv-mv-reason">{grund}</div>}
+                        {notiz && <div className="inv-cell-meta inv-mv-note">Notiz: {notiz}</div>}
                       </td>
                       <td className={`ce-num${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</td>
                       <td className="ce-num">{formatUnits(m.onHandAfter)}</td>
                       <td>{m.warehouseName}</td>
-                      <td className="inv-cell-meta">
-                        {m.referenceType === "shipment" ? `Sendung ${m.referenceId}`
-                          : m.referenceType === "order" ? `Auftrag ${m.referenceId}`
-                          : (m.note || "—")}
-                      </td>
+                      <td className="inv-cell-meta"><MovementReference reference={ref} navigate={navigate} /></td>
                       <td className="inv-cell-meta">{m.createdByName || "—"}</td>
                     </tr>
                   );
@@ -192,24 +261,28 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
           <ul className="ce-list-cards inv-list-cards">
             {items.map((m) => {
               const [cls, text, roh] = movementTypeView(m.type);
+              const grund = adjustmentReasonLabel(m.reason);
+              const notiz = movementNote(m);
+              const ref = movementReferenceView(m);
               return (
                 <li key={m.id} className="ce-card inv-card">
                   <div className="inv-card-head">
                     <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
                       <span className="badge-dot" aria-hidden="true" />{text}
                     </span>
-                    <span className={`ce-num inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
+                    <span className={`inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                   </div>
-                  <div className="inv-card-title-static">{m.productName}</div>
-                  <div className="inv-cell-meta">
-                    {m.sku} · {m.warehouseName}
-                    {adjustmentReasonLabel(m.reason) ? ` · ${adjustmentReasonLabel(m.reason)}` : ""}
-                  </div>
+                  <button type="button" className="btn btn-link inv-card-title"
+                          onClick={() => navigate(`/inventory/products/${m.productId}`)}>{m.productName}</button>
+                  <div className="inv-cell-meta">{m.sku} · {m.warehouseName}</div>
+                  {grund && <div className="inv-cell-meta inv-mv-reason">{grund}</div>}
+                  {notiz && <div className="inv-cell-meta inv-mv-note">Notiz: {notiz}</div>}
                   <dl className="inv-card-facts">
                     <div><dt>Zeitpunkt</dt><dd>{dtDE(m.createdAt)}</dd></div>
                     <div><dt>Bestand danach</dt><dd>{formatUnits(m.onHandAfter)}</dd></div>
+                    {ref && <div><dt>Referenz</dt><dd><MovementReference reference={ref} navigate={navigate} /></dd></div>}
+                    <div><dt>Erfasst durch</dt><dd>{m.createdByName || "—"}</dd></div>
                   </dl>
-                  {m.note && <p className="inv-cell-meta">{m.note}</p>}
                 </li>
               );
             })}
@@ -226,4 +299,27 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
       )}
     </div>
   );
+}
+
+/* ── Referenz einer Bewegung ──
+   Verlinkt wird NUR, wo es eine echte Zielseite gibt: ein Auftrag hat mit
+   `/inventory/orders/:id` eine Kundendetailseite. Für Sendungen gibt es keine
+   kundenseitige Detailroute, und die Sendungsliste kennt keinen Filter — die
+   Sendungsnummer bleibt deshalb Text. Ein Link, der auf einer ungefilterten
+   Liste landete, wäre ein Versprechen, das die Seite nicht hält.
+
+   Fehlt die kundenseitige Nummer (eine Sendung ohne Bestellnummer), steht dort
+   nur die Art der Referenz. Die interne ID wird nie angezeigt: sie sagt einem
+   Kunden nichts. */
+function MovementReference({ reference, navigate }) {
+  if (!reference) return "—";
+  if (reference.kind === "order" && reference.number && reference.orderId) {
+    return (
+      <button type="button" className="btn btn-link inv-cell-link"
+              onClick={() => navigate(`/inventory/orders/${reference.orderId}`)}>
+        {reference.label} {reference.number}
+      </button>
+    );
+  }
+  return <span className="inv-mv-ref">{reference.number ? `${reference.label} ${reference.number}` : reference.label}</span>;
 }

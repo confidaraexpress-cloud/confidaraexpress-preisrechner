@@ -757,10 +757,51 @@
 
 /* Filterchip der Bewegungsliste — sagt, warum die Liste verkürzt ist. */
 .inv-toolbar-chip { align-self: flex-end; gap: var(--ce-space-2); }
+.inv-toolbar-reset { align-self: flex-end; }
+
+/* ── Artikelfilter in der Werkzeugleiste ──
+   Die Trefferliste schwebt über dem Inhalt, statt die Zeile aufzuklappen: sonst
+   spränge die gesamte Filterzeile bei jedem Tastenanschlag. `position: relative`
+   auf dem Feld ist der Anker; die Leiste selbst clippt nicht (.ce-toolbar hat
+   kein overflow), die Liste kann also frei nach unten laufen. */
+.inv-productfilter { position: relative; }
+.inv-productfilter-list {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+  margin-top: 4px; max-height: 260px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--ce-space-2);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-2);
+}
+/* Auf schmalen Viewports steht das Feld in voller Breite — die Liste darf dann
+   nicht schmaler als der Bildschirmrand werden. */
+.inv-productfilter-list .inv-picker-item { flex-wrap: wrap; }
+
+/* ── Grund, Notiz und Referenz einer Bewegung ──
+   Beide stehen als Unterzeile am Bewegungstyp statt in eigenen Spalten: eine
+   zusätzliche Spalte je Angabe machte die Tabelle waagerecht scrollbar, und
+   beide sind Erläuterungen zum Typ, keine eigenständigen Merkmale.
+
+   Getrennt gehalten: der Grund ist die strukturierte Ursache (`reason`), die
+   Notiz freier Text (`note`, bis 500 Zeichen). Deshalb bekommt die Notiz eine
+   Höhengrenze — ein langer Lieferscheintext soll die Zeile nicht sprengen. Der
+   Grund ist immer kurz und bleibt vollständig. */
+.inv-mv-reason { color: var(--ce-color-text-secondary); }
+.inv-mv-note {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; max-width: 32ch;
+}
+.inv-mv-ref { overflow-wrap: break-word; }
 
 @media (max-width: 860px) {
   .inv-section-head,
   .inv-detail-actions .btn,
   .inv-lowstock .btn,
+  .inv-productfilter-list .inv-picker-item,
+  .inv-toolbar-reset,
   .inv-toolbar-chip { min-height: 44px; }
+  /* Auf Mobil trägt die Karte den vollen Text — dort ist Platz in der Höhe. */
+  .inv-mv-note { -webkit-line-clamp: none; max-width: none; display: block; }
 }

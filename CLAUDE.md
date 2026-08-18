@@ -861,6 +861,71 @@ Carrierquote, erzeugt **keine** Sendung, bucht **kein** Label und verlangt
   Nachsynchronisierung, Vorschau- und Mengenregeln, Doppelartikel, Erklärblock,
   Zusatzangaben, Zielnavigation, Bestandskonflikt, Foundation-Konformität).
 
+## Bewegungen — vor jeder Änderung an der Bestands-Historie lesen
+
+Die Seite erzeugt keine Funktionen, sie erklärt vorhandene Daten. Jede Zeile
+beantwortet acht Fragen: was (Artikel) · wann · warum (Typ + Grund + Notiz) ·
+wie viel (Menge mit Vorzeichen) · was blieb (Bestand danach) · wo (Lager) ·
+wodurch (Referenz) · wer (erfassendes Konto).
+
+- **Nur tatsächlich erzeugbare Typen im Filter.** `insertMovement()` ist der
+  einzige Schreiber und wird nur aus `goodsIn` (RECEIPT), `consume` (SHIPMENT)
+  und der Korrekturaktion (ADJUSTMENT_IN/-OUT/DAMAGE) aufgerufen. `RETURN`,
+  `TRANSFER_IN` und `TRANSFER_OUT` sind benannt und per CHECK erlaubt, aber kein
+  Codepfad schreibt sie — sie stehen deshalb **nicht** im sichtbaren Filter
+  (`PRODUCIBLE_MOVEMENT_TYPES`). Eine Filteroption mit garantiert null Treffern
+  behauptet eine Funktion, die es nicht gibt.
+- **Altdaten werden nicht versteckt.** `movementTypeOptions(items)` ergänzt jeden
+  Typ, der in den geladenen Zeilen vorkommt. Die Beschriftung aller acht Typen
+  bleibt in `MOVEMENT_LABELS` — eine vorhandene Zeile heißt nie „Unbekannter
+  Status". Kommt ein Retouren- oder Umlagerungsvorgang, wandert sein Typ in
+  `PRODUCIBLE_MOVEMENT_TYPES`.
+- **Grund und Notiz sind zwei Dinge.** `reason` ist die strukturierte Ursache
+  einer Korrektur, `note` freier Text (bis 500 Zeichen). Beide stehen als
+  Unterzeile am Typ — der Grund schlicht, die Notiz mit dem Präfix „Notiz:".
+  Bis zu diesem Paket fiel `note` in die REFERENZSPALTE: eine freie Notiz wurde
+  als Referenz ausgegeben. Fehlt eines von beiden, entsteht keine leere Zeile.
+  Kein Grund wird je aus Typ oder Menge abgeleitet.
+- **Referenzen zeigen die kundenseitige Nummer, nie die interne ID.**
+  `reference_id` ist eine Zeilen-ID und für einen Kunden bedeutungslos. Der
+  Endpunkt liefert additiv `referenceNumber` (CE-Bestellnummer beziehungsweise
+  CE-AU…-Auftragsnummer), aufgelöst über zwei **mandantengebundene** Joins
+  (`user_id = m.user_id`). Fehlt die Nummer, steht dort nur „Sendung" — nie die
+  ID, nie eine Providerreferenz.
+- **Verlinkt wird nur, wo es eine Zielseite gibt.** Ein Auftrag hat
+  `/inventory/orders/:id`. Für Sendungen gibt es **keine** kundenseitige
+  Detailroute und die Sendungsliste kennt keinen Filter — die Sendungsnummer
+  bleibt deshalb Text. Ein Link auf eine ungefilterte Liste wäre ein
+  Versprechen, das die Seite nicht hält.
+- **„Erfasst durch", nicht „Benutzer".** Das Backend liefert
+  `COALESCE(company_name, name, email)` des erfassenden Kontos, und
+  ConfidaraExpress kennt je Firma genau einen Zugang — es gibt kein
+  Mitarbeitermodell. Dort steht das Konto, nicht eine handelnde Person. Für
+  diese Spalte wurde **keine** Benutzer-/Rollenarchitektur gebaut.
+- **Der Artikelfilter ist jetzt sichtbar bedienbar.** `ProductFilterField`
+  (`InventoryShared.jsx`) nutzt dieselbe Artikelsuche wie der `ProductPicker`
+  (`getProducts` mit `q`) — eine Suche, zwei Darstellungen. Der Endpunkt filtert
+  über `productId`, deshalb wird ein konkreter Artikel ausgewählt und nicht frei
+  getextet. Alle vier Filter (Artikel · Typ · Von · Bis) wirken gemeinsam.
+- **Der Startfilter eines Deep-Links entsteht beim ERSTEN Rendern**
+  (`waehleStartfilter` in `DashboardPage.jsx`), genau wie der Bereich
+  (`waehleStartbereich`). Vorher stand er nur im Effekt — und die Zielseite ist
+  lazy geladen: bei kaltem Chunk hängt sie beim ersten Rendern, der Effekt läuft,
+  der Filter kommt an; bei **warmem** Chunk mountet sie sofort, vor dem Effekt,
+  und startete ungefiltert. Gemessen: derselbe Deep-Link
+  (`?page=movements&product=…`) filterte beim ersten Aufruf und beim zweiten
+  nicht mehr. Der Effekt setzt den Filter deshalb **nur noch bei einer späteren
+  Adressänderung** (`location.search !== startSuche.current`) — sonst holte er
+  ihn zurück, nachdem die Zielseite ihn bereits verbraucht hat.
+- Bewusst unangetastet: `on_hand`/`reserved`/`blocked`/`available`, die
+  Bewegungserzeugung, Wareneingang, Korrekturtransaktionen, Versandverbrauch,
+  Aufträge und die Race-Condition-Absicherung. Der **Sperrbestand
+  (`inventory_blocks`) bleibt ein eigenes Ledger** und wird nicht in diese Liste
+  gemischt. Bewegungen sind append-only: keine Bearbeiten-, keine Löschaktion.
+- Governance: `src/utils/movementsUx.test.mjs` (47 Tests) und backendseitig
+  `tests/inventory-movement-references.test.js` (13 Tests, echte Route gegen eine
+  echte Datenbank — inklusive Mandantentrennung der Referenzauflösung).
+
 ## Premium-Adminportal (Paket E)
 
 Das Adminportal ist **keine eigene Designwelt mehr**. Shell, Navigation,

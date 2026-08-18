@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
 import { formatUnits, isLowStock, stockLevelView } from "../../utils/inventoryView.mjs";
+import { getProducts } from "../../api/inventoryApi";
 
 /* ── Wiederverwendbare Bauteile des Lagerbereichs ────────────────────────────
    Bewusst wenige, dafür überall dieselben. Alle bauen auf den bestehenden
@@ -360,6 +361,87 @@ export function ProductPicker({ products, loading, value, onChange, onSearch, di
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ── Artikelfilter für eine Werkzeugleiste ──
+   Dieselbe Suche wie im ProductPicker (getProducts mit `q`) — es gibt genau
+   EINE Artikelsuche im Lagerbereich und keine zweite API. Anders ist nur die
+   Darstellung: der Picker steht in einem Dialog und zeigt seine Liste dauerhaft
+   offen, hier gehört ein schmales Feld in eine Filterzeile, dessen Trefferliste
+   erst beim Tippen erscheint.
+
+   Warum überhaupt eine Auswahl und kein Freitextfilter: der Endpunkt filtert
+   über `productId`, nicht über einen Suchbegriff. Der Nutzer tippt „Tisch" oder
+   eine SKU und wählt den konkreten Artikel — erst der hat eine ID. */
+export function ProductFilterField({ id, label, onSelect, disabled, placeholder = "Name oder SKU" }) {
+  const [term, setTerm] = useState("");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const seq = useRef(0);
+
+  useEffect(() => {
+    const suchbegriff = term.trim();
+    if (!suchbegriff) { setItems([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      const meins = ++seq.current;
+      setLoading(true);
+      try {
+        const res = await getProducts({ limit: 8, q: suchbegriff });
+        if (seq.current !== meins) return;
+        setItems(res.ok ? ((await res.json()).products || []) : []);
+        setOpen(true);
+      } catch {
+        if (seq.current === meins) { setItems([]); setOpen(true); }
+      } finally {
+        if (seq.current === meins) setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [term]);
+
+  useEffect(() => {
+    if (!open) return;
+    const aussen = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", aussen);
+    return () => document.removeEventListener("mousedown", aussen);
+  }, [open]);
+
+  const waehle = (p) => { onSelect(p); setTerm(""); setItems([]); setOpen(false); };
+
+  return (
+    <div className="inv-toolbar-filter inv-productfilter" ref={wrapRef}>
+      <label className="field-label" htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        className="field-input"
+        type="search"
+        placeholder={placeholder}
+        value={term}
+        onChange={(e) => setTerm(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); } }}
+        disabled={disabled}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={`${id}-list`}
+      />
+      {open && (
+        <div className="inv-productfilter-list" id={`${id}-list`} role="listbox" aria-label={label}>
+          {loading && <div className="inv-picker-empty">Artikel werden gesucht …</div>}
+          {!loading && items.length === 0 && <div className="inv-picker-empty">Kein Artikel gefunden.</div>}
+          {!loading && items.map((p) => (
+            <button key={p.id} type="button" role="option" aria-selected="false"
+                    className="inv-picker-item" onClick={() => waehle(p)}>
+              <span className="inv-cell-sku inv-picker-sku">{p.sku}</span>
+              <span className="inv-picker-name">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

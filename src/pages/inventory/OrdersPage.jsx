@@ -83,17 +83,38 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
     setTimeout(() => setSuccess((cur) => (cur === text ? "" : cur)), 5000);
   };
 
+  /* Gibt dem Formular das Ergebnis zurück (`{ ok, body }`), damit es auf einen
+     Bestandskonflikt reagieren kann: bei INSUFFICIENT_STOCK benennt es den
+     betroffenen Artikel und zieht die angezeigten Bestände nach. Die Mengen
+     bleiben unverändert stehen — automatisch etwas anderes zu bestellen, als
+     der Nutzer eingetragen hat, wäre keine Hilfe.
+
+     Nach Erfolg geht es auf die Auftragsdetailseite. Der Auftrag ist dort
+     vollständig zu sehen (Empfänger, Positionen, Reservierungsstand) und die
+     nächste Handlung — „Versand vorbereiten" — steht bereit, ohne dass sie
+     jemand ungefragt auslöst. */
   const anlegen = async (payload) => {
     setSaving(true);
     setFormError("");
     try {
       const res = await createOrder(payload);
-      if (!res.ok) { setFormError(inventoryErrorText(await res.json().catch(() => null), "Der Auftrag konnte nicht angelegt werden.")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setFormError(inventoryErrorText(body, "Der Auftrag konnte nicht angelegt werden."));
+        return { ok: false, body };
+      }
       const data = await res.json();
       setFormOpen(false);
+      if (data.order?.id) { navigate(`/inventory/orders/${data.order.id}`); return { ok: true }; }
+      // Ohne Auftrags-ID gibt es kein Ziel — dann bleibt die Liste stehen und
+      // bestätigt den Vorgang an Ort und Stelle.
       zeigeErfolg(`Auftrag ${data.order?.orderNumber} angelegt. Der Bestand ist reserviert.`);
       await load(null);
-    } catch { setFormError("Der Auftrag konnte nicht angelegt werden."); }
+      return { ok: true };
+    } catch {
+      setFormError("Der Auftrag konnte nicht angelegt werden.");
+      return { ok: false, body: null };
+    }
     finally { setSaving(false); }
   };
 

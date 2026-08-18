@@ -414,6 +414,27 @@
 .inv-picker-sku { font-weight: 600; }
 .inv-picker-name { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .inv-picker-avail { color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Bereits als Position enthalten: der Eintrag bleibt bedienbar (der Klick führt
+   zur vorhandenen Position), ist aber sichtbar zurückgenommen. Kein neuer
+   Farbwert — dieselbe gedämpfte Fläche wie im Hover. */
+.inv-picker-item--added { background: var(--ce-color-surface-muted); }
+.inv-picker-added {
+  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
+  letter-spacing: 0.04em; color: var(--ce-color-text-muted); white-space: nowrap;
+}
+
+/* ── Empfänger aus dem Adressbuch ──
+   Nutzt die Auswahlfläche der Artikelsuche (.inv-picker*) — im selben Dialog
+   soll nicht zweierlei Listenmaterial stehen. Eigen sind nur die Kopfzeile mit
+   „Abbrechen" und die zweizeilige Adresszeile. */
+.inv-addrpicker-open { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; }
+.inv-addrpicker-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.inv-addrpicker-item { flex-direction: column; align-items: flex-start; gap: 2px; }
+.inv-addrpicker-name { font-weight: 600; min-width: 0; overflow-wrap: break-word; }
+.inv-addrpicker-meta { color: var(--ce-color-text-muted); min-width: 0; overflow-wrap: break-word; }
+/* Der Hinweis unter der Liste trägt ein Icon — es sitzt auf der ersten Zeile,
+   der Text läuft daneben weiter (kein Blockeinzug pro Folgezeile). */
+.inv-addrpicker .inv-field-hint svg { vertical-align: -2px; margin-right: 4px; }
 
 /* ── Auftragspositionen ── */
 .inv-positions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); }
@@ -434,6 +455,44 @@
   flex: 1 0 100%; margin: 0;
   font-family: var(--fs); font-size: var(--ce-text-body-s-size);
   color: var(--ce-color-status-warning-fg); overflow-wrap: break-word;
+}
+/* SKU und verfügbarer Bestand in einer Zeile unter dem Artikelnamen. Beide sind
+   Metadaten — die Zahl trägt deshalb KEIN .ce-num (das ist ein Spaltenmarker mit
+   text-align: right und richtete den Wert an der Kartenkante aus, weit weg von
+   seiner Bedeutung; siehe CLAUDE.md „Bestandsseite und Kennzahlenausrichtung").
+   Die tabellarischen Ziffern kommen hier aus der Blockklasse selbst. */
+.inv-position-sku { display: flex; align-items: baseline; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
+.inv-position-avail { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* Was die eingetippte Menge für den Bestand bedeutet — Darstellung, keine
+   Zusage: die verbindliche Prüfung läuft serverseitig und atomar. */
+.inv-position-preview {
+  flex: 1 0 100%; margin: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted); overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+
+/* ── „Was passiert mit dem Bestand?" ──
+   Eine ruhige, vertiefte Fläche unter den Positionen — sie erklärt den einzigen
+   Nebeneffekt des Anlegens. Sie ersetzt den früheren Fußzeilensatz unter den
+   Buttons; zwei Erklärungen an zwei Stellen sind eine zu viel. */
+.inv-stock-explain {
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface-muted);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  min-width: 0;
+}
+.inv-stock-explain-title {
+  display: flex; align-items: center; gap: var(--ce-space-2); margin: 0 0 var(--ce-space-2);
+  font-family: var(--fs); font-size: var(--ce-text-title-card-size); font-weight: 600;
+  line-height: var(--ce-text-title-card-line); color: var(--ce-color-text-primary);
+}
+.inv-stock-explain-list {
+  margin: 0; padding-left: var(--ce-space-4);
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary); min-width: 0; overflow-wrap: break-word;
 }
 
 /* Auftragszusammenfassung im Seitenkopf, neben dem Statusbadge. Bewusst Fließ-
@@ -534,6 +593,8 @@
   .inv-onboarding-actions .btn,
   .inv-ops-head .btn,
   .inv-ops-all,
+  .inv-addrpicker-open .btn,
+  .inv-addrpicker-head .btn,
   .inv-position-qty .btn { min-height: 44px; }
   .inv-toolbar-check { min-height: 44px; }
   /* Die aufklappbare Kennzahlkarte ist selbst das Bedienelement — sie ist

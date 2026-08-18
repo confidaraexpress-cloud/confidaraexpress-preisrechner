@@ -29,6 +29,11 @@
 // gegen manipulierte sessionStorage-Inhalte.
 
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
+// Kanonisch definiert in inventoryView.mjs (siehe dortiger Kommentar zum
+// Importzyklus) — hier nur verwendet und unter demselben Namen weiter exportiert,
+// damit bestehende Importe `from "./shippingFlowState.mjs"` unverändert gelten.
+import { normalizeInventoryContext } from "./inventoryView.mjs";
+export { normalizeInventoryContext };
 
 export const FLOW_SCHEMA_VERSION = 1;
 export const FLOW_STORAGE_KEY = `ce_shipping_flow_v${FLOW_SCHEMA_VERSION}`;
@@ -219,33 +224,6 @@ export function emptyScope(scope) {
     scrollY: 0,
     updatedAt: null,
   };
-}
-
-// Normalisiert die Lagerabsicht. Alles, was nicht exakt einer der beiden
-// erlaubten Formen entspricht, wird VERWORFEN (null) — nie halb übernommen:
-// ein halber Lagerbezug würde eine falsche Ausbuchung vorbereiten.
-export function normalizeInventoryContext(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const isId = (v) => typeof v === "string" && /^[0-9]{1,19}$/.test(v) && !/^0+$/.test(v);
-  const isQty = (v) => Number.isInteger(v) && v >= 1 && v <= 1000000;
-
-  if (raw.orderId !== undefined && raw.orderId !== null && raw.orderId !== "") {
-    if (!isId(String(raw.orderId))) return null;
-    return { orderId: String(raw.orderId), orderNumber: typeof raw.orderNumber === "string" ? raw.orderNumber : null };
-  }
-  if (!Array.isArray(raw.items) || raw.items.length === 0 || raw.items.length > 100) return null;
-  const items = [];
-  for (const it of raw.items) {
-    if (!it || typeof it !== "object") return null;
-    if (!isId(String(it.productId))) return null;
-    const qty = typeof it.quantity === "number" ? it.quantity : Number(it.quantity);
-    if (!isQty(qty)) return null;
-    items.push({ productId: String(it.productId), quantity: qty });
-  }
-  const warehouseId = raw.warehouseId !== undefined && raw.warehouseId !== null && raw.warehouseId !== ""
-    ? String(raw.warehouseId) : null;
-  if (warehouseId !== null && !isId(warehouseId)) return null;
-  return { warehouseId, items };
 }
 
 export function normalizeScope(raw, scope) {

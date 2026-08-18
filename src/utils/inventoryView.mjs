@@ -336,6 +336,80 @@ export function blockEntryView(entry) {
   };
 }
 
+/* ══════════ Lagerbezug-Snapshot (Absicht) ═══════════════════════════════════
+
+   Kanonische Heimat von normalizeInventoryContext(): sie stand ursprünglich in
+   shippingFlowState.mjs, das aber bereits AUS formDraftsView.mjs importiert
+   (FORM_SERVICE_FILTERS/FORM_SHIPPING_MODES) — ein Import in umgekehrter
+   Richtung (formDraftsView.mjs → shippingFlowState.mjs) hätte einen Importzyklus
+   erzeugt, exakt die Falle, die dieses Projekt an anderer Stelle bereits einmal
+   umgangen hat (AuthContext ↔ ShippingFlowContext). inventoryView.mjs importiert
+   nichts aus beiden und ist damit der zyklusfreie gemeinsame Ort; die alte
+   Exportstelle bleibt über einen Re-Export erhalten (shippingFlowState.mjs). */
+
+// Normalisiert die Lagerabsicht. Alles, was nicht exakt einer der beiden
+// erlaubten Formen entspricht, wird VERWORFEN (null) — nie halb übernommen: ein
+// halber Lagerbezug würde eine falsche Ausbuchung vorbereiten.
+//
+// name/sku je Artikelposition sind ADDITIV und REIN KOSMETISCH: sie tragen den
+// Herkunftshinweis (inventoryOriginNotice) über einen Reload/ein Fortsetzen
+// hinweg, ohne dafür einen Artikel erneut abrufen zu müssen. Sie sind niemals
+// Teil einer fachlichen Entscheidung — weder hier noch serverseitig (das Backend
+// liest aus derselben Absicht ausschließlich productId/quantity/orderId, siehe
+// lib/inventoryShipment.js).
+export function normalizeInventoryContext(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const isId = (v) => typeof v === "string" && /^[0-9]{1,19}$/.test(v) && !/^0+$/.test(v);
+  const isQty = (v) => Number.isInteger(v) && v >= 1 && v <= 1000000;
+  const dispStr = (v) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 200) : null);
+
+  if (raw.orderId !== undefined && raw.orderId !== null && raw.orderId !== "") {
+    if (!isId(String(raw.orderId))) return null;
+    return { orderId: String(raw.orderId), orderNumber: typeof raw.orderNumber === "string" ? raw.orderNumber : null };
+  }
+  if (!Array.isArray(raw.items) || raw.items.length === 0 || raw.items.length > 100) return null;
+  const items = [];
+  for (const it of raw.items) {
+    if (!it || typeof it !== "object") return null;
+    if (!isId(String(it.productId))) return null;
+    const qty = typeof it.quantity === "number" ? it.quantity : Number(it.quantity);
+    if (!isQty(qty)) return null;
+    items.push({ productId: String(it.productId), quantity: qty, name: dispStr(it.name), sku: dispStr(it.sku) });
+  }
+  const warehouseId = raw.warehouseId !== undefined && raw.warehouseId !== null && raw.warehouseId !== ""
+    ? String(raw.warehouseId) : null;
+  if (warehouseId !== null && !isId(warehouseId)) return null;
+  return { warehouseId, items };
+}
+
+/**
+ * Der Herkunftshinweis EINER Quelle — abgeleitet aus dem bereits normalisierten
+ * Lagerbezug, nicht aus einem separaten, nur einmalig gesetzten Text. Damit lässt
+ * sich derselbe Satz sowohl beim ERSTEN Prefill (Auftrag/Artikel → „Neue Sendung")
+ * als auch bei jedem SPÄTEREN Reload/Fortsetzen erzeugen — eine fachliche Quelle,
+ * keine zwei unabhängigen Wahrheiten (technicalInventoryContext + separater
+ * UI-Text). Bei einer normalen Sendung (context === null) liefert sie "": die
+ * Hinweiszeile erscheint dann gar nicht.
+ *
+ * Trägt AUSSCHLIESSLICH Confidara-eigene Fachbegriffe (Artikel, Auftrag, Menge) —
+ * nie Providerinterna (kein JUMiNGO-Name, keine Providerreferenz, kein Preis).
+ */
+export function inventoryOriginNotice(context) {
+  if (!context || typeof context !== "object") return "";
+  if (context.orderId) {
+    return context.orderNumber
+      ? `Versand aus Auftrag ${context.orderNumber}. Bitte Paketdaten prüfen und ergänzen.`
+      : "Versand aus einem Auftrag. Bitte Paketdaten prüfen und ergänzen.";
+  }
+  const item = Array.isArray(context.items) ? context.items[0] : null;
+  if (!item) return "";
+  const qty = Number(item.quantity) || 0;
+  const label = (typeof item.name === "string" && item.name.trim())
+    || (typeof item.sku === "string" && item.sku.trim())
+    || "Artikel";
+  return `Versand von ${qty} × ${label}. Bitte Empfänger und Paketdaten ergänzen.`;
+}
+
 /* ══════════ Prefill in den bestehenden Versandprozess ═══════════════════ */
 
 // Beide Wege (Artikel versenden, Auftrag versenden) münden in DENSELBEN
@@ -376,13 +450,8 @@ export function mapOrderPrefillToShipment(prefill) {
   }
 
   const orderNumber = prefill.order && typeof prefill.order.orderNumber === "string" ? prefill.order.orderNumber : null;
-  return {
-    form,
-    inventory: { orderId: String(prefill.order?.id ?? ""), orderNumber },
-    notice: orderNumber
-      ? `Versand aus Auftrag ${orderNumber}. Bitte Paketdaten prüfen und ergänzen.`
-      : "Versand aus einem Auftrag. Bitte Paketdaten prüfen und ergänzen.",
-  };
+  const inv = { orderId: String(prefill.order?.id ?? ""), orderNumber };
+  return { form, inventory: inv, notice: inventoryOriginNotice(inv) };
 }
 
 /**
@@ -405,14 +474,14 @@ export function mapProductToShipment(product, quantity, warehouseId = null) {
     if (total >= 0.1 && total <= 1000) form.weight = String(total);
   }
 
-  return {
-    form,
-    inventory: {
-      warehouseId: warehouseId != null ? String(warehouseId) : null,
-      items: [{ productId: String(product.id), quantity: qty }],
-    },
-    notice: `Versand von ${qty} × ${product.name || product.sku || "Artikel"}. Bitte Empfänger und Paketdaten ergänzen.`,
+  const inv = {
+    warehouseId: warehouseId != null ? String(warehouseId) : null,
+    // name/sku sind rein kosmetisch (siehe normalizeInventoryContext) — sie tragen
+    // den Herkunftshinweis über einen Reload hinweg, ohne den Artikel erneut
+    // abzurufen. Fachlich verwendet wird ausschließlich productId/quantity.
+    items: [{ productId: String(product.id), quantity: qty, name: product.name || null, sku: product.sku || null }],
   };
+  return { form, inventory: inv, notice: inventoryOriginNotice(inv) };
 }
 
 /* ══════════ Fehlermeldungen ═════════════════════════════════════════════ */
@@ -435,6 +504,10 @@ const ERROR_TEXTS = Object.freeze({
   INVENTORY_RATE_LIMITED: "Zu viele Vorgänge in kurzer Zeit. Bitte einen Moment warten.",
   // Eigener Satz: hier fehlt GESPERRTER Bestand, nicht verfügbarer.
   INSUFFICIENT_BLOCKED_STOCK: "Es ist weniger Bestand gesperrt, als Sie freigeben möchten.",
+  // Auftrags-Race (Finding 2): eine Reservierung dieses Auftrags wird gerade
+  // exklusiv für eine laufende Buchung gehalten — kein Bestandsfehler, sondern ein
+  // zeitlicher Konflikt. Betrifft POST /api/kunde/orders/:id/cancel.
+  ORDER_RESERVATION_IN_USE: "Für diesen Auftrag wird gerade eine Sendung gebucht. Bitte versuchen Sie es in Kürze erneut.",
 });
 
 /**

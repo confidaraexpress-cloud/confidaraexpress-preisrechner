@@ -40,6 +40,7 @@ const SHIPMENT_FIELD_ORDER = [
 const firstShipmentErrorField = (errs) =>
   SHIPMENT_FIELD_ORDER.find((k) => errs[k]) || Object.keys(errs)[0] || null;
 import { hasSavableShipmentId } from "../utils/draftsView.mjs";
+import { inventoryOriginNotice } from "../utils/inventoryView.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
@@ -275,7 +276,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [baseline, setBaseline] = useState(() =>
     getShipmentFormSnapshot(flowInit
       ? { form: profilSeed(), shippingDate: todayISO(), serviceFilter: "all", shippingModeFilter: "all", selectedPublicCarrierIds: [] }
-      : { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds })
+      // resumeInit statt eines Auto-Defaults: ein fortgesetzter Entwurf ist bereits
+      // gespeichert — sein Lagerbezug ist der Ausgangspunkt, nicht etwas Ungespeichertes
+      // (sonst zeigte ein order-/artikelbezogener Entwurf sofort nach dem Fortsetzen
+      // fälschlich „ungespeicherte Änderungen", noch bevor der Nutzer etwas geändert hat).
+      : { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+          inventoryContext: (resumeInit && resumeInit.inventoryContext) || null })
   );
   const [pendingTarget, setPendingTarget] = useState(null); // { type, ... } | null — pausierte Zielnavigation
   // EIN Save-Zustand für BEIDE Oberflächen (Verlassen-Dialog + sichtbarer Button):
@@ -305,9 +311,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // neu rechnen lässt den Lagerbezug bestehen) und wird nur durch einen frischen
   // Vorgang gelöscht. Ohne Lagerbezug ist er null — für jede normale Sendung
   // ändert sich nichts.
-  const [inventoryContext, setInventoryContext] = useState(flowInit ? (flowInit.inventoryContext || null) : null);
-  // Hinweiszeile über dem Formular, wenn der Vorgang aus Lager oder Auftrag kommt.
-  const [inventoryNotice, setInventoryNotice] = useState("");
+  //
+  // Vorrang beim Mount: fortgesetzter Formularentwurf > Sitzungsvorgang — exakt
+  // dieselbe Priorität wie beim übrigen Formularzustand (RESTORE_PRIORITY,
+  // shippingFlowState.mjs). resumeInit trug diesen Wert bislang gar nicht: ein
+  // fortgesetzter Entwurf verlor seinen Lager-/Auftragsbezug genau hier
+  // (Audit-Finding 1).
+  const [inventoryContext, setInventoryContext] = useState(
+    (resumeInit && resumeInit.inventoryContext) || (flowInit ? (flowInit.inventoryContext || null) : null)
+  );
+  // Herkunftshinweis: ABGELEITET, keine eigene Wahrheit (Audit-Finding 3) — siehe
+  // inventoryOriginNotice() in inventoryView.mjs. Ein Reload oder ein
+  // fortgesetzter Entwurf zeigt den Hinweis dadurch automatisch wieder, ohne ihn
+  // an jeder Wiederherstellungsstelle erneut setzen zu müssen; er verschwindet
+  // ebenso automatisch, sobald inventoryContext auf null gesetzt wird.
+  const inventoryNotice = inventoryOriginNotice(inventoryContext);
   // Zoll-Top-Level aus calculate-price (routenbezogen, NICHT pro Tarif) — nur
   // gespeichert und an BookingPage weitergereicht. Keine eigene EU-Logik hier.
   const [customs, setCustoms]       = useState(flowInit ? flowInit.customs : null);
@@ -528,8 +546,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const merged = { ...form, ...(prefillInventory.form || {}) };
     setForm(merged);
     setInventoryContext(prefillInventory.inventory);
-    setInventoryNotice(prefillInventory.notice || "");
-    setBaseline(getShipmentFormSnapshot({ form: merged, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }));
+    // inventoryNotice ist abgeleitet (siehe oben) — sie folgt inventoryContext im
+    // nächsten Render automatisch, kein separates Setzen mehr nötig.
+    setBaseline(getShipmentFormSnapshot({
+      form: merged, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
+      inventoryContext: prefillInventory.inventory,
+    }));
     invalidateResults();
     onInventoryPrefillApplied?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -594,8 +616,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Aktueller fachlicher Snapshot (nur payload-bestimmende Felder). Dirty = echte
   // Änderung ggü. Baseline UND speicherbarer Zustand (shipmentFormSnapshot.mjs).
   const currentSnapshot = useMemo(
-    () => getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds }),
-    [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds]
+    () => getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext }),
+    [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext]
   );
   const isDirty = isShipmentFormDirty(currentSnapshot, baseline);
   // Live-Refs, damit der stabil registrierte Guard keinen veralteten Closure liest.
@@ -664,9 +686,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     // Ein frischer Vorgang hat keinen Lagerbezug mehr. Das ist der EINZIGE Ort,
     // an dem er gelöscht wird: resetResults() lässt ihn bewusst stehen, damit
     // eine geänderte Paketangabe mit erneuter Preisberechnung den Bezug zum
-    // Artikel oder Auftrag nicht verliert.
+    // Artikel oder Auftrag nicht verliert. inventoryNotice folgt automatisch (abgeleitet).
     setInventoryContext(null);
-    setInventoryNotice("");
     resetResults();
     // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
     // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
@@ -688,7 +709,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const saveCurrentFormDraft = async () => {
     if (saving) return { ok: false };
     setSaving(true); setSaveMode("idle"); setSaveStatus("idle");
-    const snapshot = getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds });
+    // inventoryContext MUSS mit in den Snapshot (Audit-Finding 1): ohne ihn verlor
+    // ein aus Lager/Auftrag stammender Vorgang seinen fachlichen Bezug genau hier —
+    // der gemeinsame Reset im Erfolgspfad löscht ihn danach lokal, und ohne ihn im
+    // gespeicherten Snapshot wäre er beim späteren Fortsetzen unwiderruflich weg.
+    const snapshot = getShipmentFormSnapshot({ form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext });
     const source = resumeSource;
     const isPatch = !!(source && hasSavableShipmentId(source.id));
     try {
@@ -748,9 +773,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       setServiceFilter(init.serviceFilter);
       setShippingModeFilter(init.shippingModeFilter);
       setSelectedPublicCarrierIds(init.selectedPublicCarrierIds);
+      setInventoryContext(init.inventoryContext); // Audit-Finding 1/3: Lagerbezug + Hinweis folgen der geladenen Version
       resetResults();
       setResumeSource(resumeSourceFromDraft(payload));
-      setBaseline(getShipmentFormSnapshot({ form: init.form, shippingDate: nextDate, serviceFilter: init.serviceFilter, shippingModeFilter: init.shippingModeFilter, selectedPublicCarrierIds: init.selectedPublicCarrierIds }));
+      setBaseline(getShipmentFormSnapshot({
+        form: init.form, shippingDate: nextDate, serviceFilter: init.serviceFilter,
+        shippingModeFilter: init.shippingModeFilter, selectedPublicCarrierIds: init.selectedPublicCarrierIds,
+        inventoryContext: init.inventoryContext,
+      }));
       setSaving(false);
       setSaveMode("idle"); setSaveStatus("idle");
       setPendingTarget(null); // im Formular bleiben — keine Navigation
@@ -1038,6 +1068,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       setServiceFilter(init.serviceFilter);
       setShippingModeFilter(init.shippingModeFilter);
       setSelectedPublicCarrierIds(init.selectedPublicCarrierIds);
+      setInventoryContext(init.inventoryContext); // Audit-Finding 1/3: Lagerbezug + Hinweis folgen der geladenen Version
       resetResults();                                  // frische Grundlage → alte Ergebnisse verwerfen
       setResumeSource(resumeSourceFromDraft(payload)); // aktualisierte Revision
       setResumeConflict(false); setResumeNotice("");

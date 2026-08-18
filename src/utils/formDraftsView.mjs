@@ -20,6 +20,8 @@
 // hier AUSSCHLIESSLICH clientseitig als kind:"shipment" ergänzt (kein neuer
 // Backend-Vertrag).
 
+import { normalizeInventoryContext } from "./inventoryView.mjs";
+
 export const FORM_DRAFT_KIND = "form";
 export const SHIPMENT_DRAFT_KIND = "shipment";
 
@@ -250,7 +252,16 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
     ? opt.publicCarrierIds.map((x) => safeStr(x)).filter((x) => x.length > 0)
     : [];
 
-  return { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds };
+  // Lagerbezug (Audit-Finding 1): additiv, defensiv re-validiert — genau dieselbe
+  // Prüfung wie beim Sitzungsvorgang (shippingFlowState.mjs). Ein Entwurf aus der
+  // Zeit VOR diesem Feld liefert `undefined` → null (normale Sendung), kein Fehler.
+  // Der gespeicherte Snapshot ist trotz serverseitiger Validierung beim Speichern
+  // KEIN Autoritätsbeweis für das Fortsetzen — dieselbe Regel wie überall sonst in
+  // diesem Modul (serviceFilter/shippingModeFilter fallen bei unbekanntem Wert
+  // ebenso auf "all" zurück, statt dem Snapshot blind zu vertrauen).
+  const inventoryContext = normalizeInventoryContext(fd.inventoryContext);
+
+  return { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };
 }
 
 // ── Resume-Payload (Frontend-Vertrag) ───────────────────────────────────────

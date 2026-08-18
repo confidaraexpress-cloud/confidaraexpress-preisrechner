@@ -797,6 +797,70 @@ Kundenantwort kennt kein solches Feld. Beides würde neue Backenddaten brauchen.
 - Governance: `src/utils/stockPageUx.test.mjs` (32 Tests) und backendseitig
   `tests/inventory-adjustment-reasons.test.js` (22 Tests).
 
+## „Auftrag erstellen" — vor jeder Änderung am Auftragsdialog lesen
+
+Ein Auftrag reserviert Bestand. Mehr nicht: der Dialog berechnet **keine**
+Carrierquote, erzeugt **keine** Sendung, bucht **kein** Label und verlangt
+**keine** Paketmaße. Er bleibt ein einziger Schritt in drei Abschnitten
+(Empfänger → Positionen → Zusatzangaben) — kein Wizard.
+
+- **Pflichtfelder kommen exakt vom Backend**, nicht aus Gewohnheit.
+  `validateRecipient()` (`routes/orders.js`) verlangt `fullName`,
+  `streetAndNumber`, `city`, `country` — sonst nichts. **Die PLZ steht bewusst
+  nicht darunter**: sie läuft über `validatePostalCode(country, …)` und ist damit
+  landesabhängig. Das Formular trug zuvor unbedingt „PLZ *" und lehnte eine leere
+  Eingabe immer ab; für Länder ohne Postleitzahlsystem (IE, AE, HK …) war das ein
+  erfundener Stern vor einer gültigen Adresse. Feldlängen spiegeln
+  `RECIPIENT_LIMITS` 1:1 (`ORDER_RECIPIENT_LIMITS`).
+- **Das Adressbuch wird benutzt, nicht nachgebaut.** Die Auswahl liest den
+  bestehenden Endpunkt über `getAddresses()` mit dem vorhandenen Reiterbegriff
+  `TAB_RECIPIENT` (serverseitig „recipient ODER both"). Die Feldauslegung steht
+  als `mapAddressToOrderRecipient()` **neben** `mapAddressToShipmentFormPatch()`
+  in `addressBookView.mjs` — eine Stelle, an der Adressbuchfelder ausgelegt
+  werden. Die Bauteile der Adressbuchseite (Reiter, Favoriten, Standardflags,
+  Verwaltungsmenü) sind bewusst NICHT übernommen; die Liste nutzt das
+  Auswahlmaterial `.inv-picker*`, das im selben Dialog schon für Artikel steht.
+- **Die Übernahme ist eine Vorbelegung und lässt danach los.** Gesetzt wird
+  ausschließlich im Klickhandler, nie in einem Effekt: wer nach der Übernahme die
+  Straße korrigiert, behält seine Korrektur. Es entsteht keine Referenz auf die
+  Adressbuchzeile (der Auftrag speichert einen Snapshot) und **nichts wird
+  zurückgeschrieben**.
+- **Das Land zeigt „Deutschland" und sendet `DE`** — dieselbe Liste
+  (`utils/countries.js`) wie das Versandformular, keine zweite Länderquelle. Das
+  frühere zweistellige Freitextfeld ist entfallen.
+- **Vorschau ist Darstellung, Sperre ist Bedienhilfe.** `reservationPreview()`
+  sagt, was die eingetippte Menge bindet und was danach übrig bleibt; bei
+  Überschreitung wird **keine negative Restmenge** behauptet, dort steht
+  „Nur 17 Einheiten verfügbar." Der Absendeknopf sperrt erst nach dem ersten
+  Absendeversuch und nur bei einem Fehler, den der Nutzer sieht. Ohne bekannten
+  Bestand wird **nicht** gesperrt (fail-open). Das ist ausdrücklich **keine
+  Race-Condition-Absicherung** — die bleibt vollständig serverseitig und atomar.
+  `available` wird nie selbst gerechnet, sondern gelesen.
+- **Doppelte Artikel entstehen gar nicht erst.** Ein bereits enthaltener Artikel
+  wird in der Auswahlliste als „bereits im Auftrag" markiert; ein Klick führt zur
+  vorhandenen Position und fokussiert deren Mengenfeld. Das frühere stille
+  Hochzählen um 1 sah für den Nutzer aus, als sei nichts passiert. Backendseitig
+  wurde dafür **nichts** ergänzt — der Server fasst gleiche Artikel weiterhin
+  zusammen (UNIQUE `order_id`/`product_id`).
+- **Eine Erklärung, an der richtigen Stelle.** „Was passiert mit dem Bestand?"
+  (`STOCK_EXPLANATION`) steht unter den Positionen und ersetzt den früheren
+  Fußzeilensatz unter den Buttons. Kein Lagerfachjargon („Allocation",
+  „Commitment", „Fulfillment Reservation").
+- **Nach Erfolg geht es auf die Auftragsdetailseite**, nicht in den
+  Versandprozess. Dort steht der Auftrag vollständig, und „Versand vorbereiten"
+  wartet — ausgelöst wird es von niemandem ungefragt.
+- **`INSUFFICIENT_STOCK` benennt den Artikel und zieht die Zahlen nach.** Der
+  Server liefert `details.productId` mit (`inventory.reserve`); daraus entsteht
+  die Meldung, ohne zu raten. Die **Mengen bleiben unverändert** — automatisch
+  etwas anderes zu bestellen, als der Nutzer eingetragen hat, wäre keine Hilfe.
+- Bewusst unangetastet: atomare Reservierung, `inventory_reservations`,
+  Auftragsstatus, Sendungsverbrauch, gesperrter Bestand, Provider-Buchung. **Das
+  Backend wurde für dieses Paket nicht geändert.**
+- Governance: `src/utils/orderCreateUx.test.mjs` (69 Tests — Pflichtfeldparität,
+  landesabhängige PLZ, Adressbuchmapper ohne fremde Felder, Vorbelegung ohne
+  Nachsynchronisierung, Vorschau- und Mengenregeln, Doppelartikel, Erklärblock,
+  Zusatzangaben, Zielnavigation, Bestandskonflikt, Foundation-Konformität).
+
 ## Premium-Adminportal (Paket E)
 
 Das Adminportal ist **keine eigene Designwelt mehr**. Shell, Navigation,

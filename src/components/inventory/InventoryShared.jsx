@@ -313,7 +313,7 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
    Serverseitige Suche mit Verzögerung; die Liste zeigt den VERFÜGBAREN Bestand
    als Orientierung. Die Auswahl schickt nur productId + Menge — der Server
    entscheidet über Verfügbarkeit. */
-export function ProductPicker({ products, loading, value, onChange, onSearch, disabled }) {
+export function ProductPicker({ products, loading, value, onChange, onSearch, disabled, addedIds }) {
   const [term, setTerm] = useState("");
   useEffect(() => {
     const t = setTimeout(() => onSearch(term.trim()), 300);
@@ -335,21 +335,30 @@ export function ProductPicker({ products, loading, value, onChange, onSearch, di
       <div className="inv-picker-list" role="listbox" aria-label="Artikel">
         {loading && <div className="inv-picker-empty">Artikel werden geladen …</div>}
         {!loading && products.length === 0 && <div className="inv-picker-empty">Keine Artikel gefunden.</div>}
-        {!loading && products.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            role="option"
-            aria-selected={value === p.id}
-            className={`inv-picker-item${value === p.id ? " on" : ""}`}
-            onClick={() => onChange(p)}
-            disabled={disabled}
-          >
-            <span className="inv-cell-sku inv-picker-sku">{p.sku}</span>
-            <span className="inv-picker-name">{p.name}</span>
-            <span className="inv-picker-avail ce-num">{formatUnits(p.stock?.available)} verfügbar</span>
-          </button>
-        ))}
+        {!loading && products.map((p) => {
+          // `addedIds` ist optional und ändert für bestehende Aufrufer nichts.
+          // Der Eintrag bleibt bedienbar: der Aufrufer entscheidet, was ein
+          // erneuter Klick bedeutet (im Auftragsformular: zur bereits
+          // vorhandenen Position springen statt eine zweite anzulegen).
+          const bereits = Array.isArray(addedIds) && addedIds.some((id) => String(id) === String(p.id));
+          return (
+            <button
+              key={p.id}
+              type="button"
+              role="option"
+              aria-selected={value === p.id}
+              className={`inv-picker-item${value === p.id ? " on" : ""}${bereits ? " inv-picker-item--added" : ""}`}
+              onClick={() => onChange(p)}
+              disabled={disabled}
+            >
+              <span className="inv-cell-sku inv-picker-sku">{p.sku}</span>
+              <span className="inv-picker-name">{p.name}</span>
+              {bereits
+                ? <span className="inv-picker-added">bereits im Auftrag</span>
+                : <span className="inv-picker-avail ce-num">{formatUnits(p.stock?.available)} verfügbar</span>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

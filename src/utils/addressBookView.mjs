@@ -307,6 +307,49 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
   };
 }
 
+// Adressobjekt → Empfängerform eines Auftrags (`recipient` in
+// POST /api/kunde/orders). Geschwister-Mapper zu mapAddressToShipmentFormPatch:
+// dieselbe Quelle, dieselben Feldbedeutungen, nur ein anderes Zielschema
+// (contactName→fullName, addressAdd→addressAddition, postalCode/city/country/
+// phone/email/company direkt). Bewusst HIER und nicht im Auftragsformular — es
+// gibt genau eine Stelle, an der Adressbuchfelder ausgelegt werden.
+//
+// `state`, `label`, `notes`, `role` und die Standardflags haben im Auftrag kein
+// Ziel und werden NICHT übernommen (keine Felder erfinden, die es nicht gibt).
+// Das Ergebnis ist eine reine Vorbelegung: der Auftrag speichert einen Snapshot,
+// es entsteht KEINE dauerhafte Referenz auf die Adressbuchzeile.
+export function mapAddressToOrderRecipient(address) {
+  const a = address || {};
+  return {
+    company: a.company || "",
+    fullName: a.contactName || "",
+    streetAndNumber: a.streetAndNumber || "",
+    addressAddition: a.addressAdd || "",
+    postalCode: a.postalCode || "",
+    city: a.city || "",
+    country: (a.country || "DE").toUpperCase(),
+    phone: a.phone || "",
+    email: a.email || "",
+  };
+}
+
+// Ein-Zeilen-Beschriftung einer Adresse für Auswahllisten: der beste vorhandene
+// Name, danach Ort und Land. Reine Darstellung — nie ein roher Backendwert als
+// Ersatz, nie „undefined" im Text.
+export function addressPickerLabel(address) {
+  const a = address || {};
+  const name = (a.label || a.company || a.contactName || "").trim();
+  return name || "Ohne Bezeichnung";
+}
+
+export function addressPickerMeta(address) {
+  const a = address || {};
+  return [a.streetAndNumber, [a.postalCode, a.city].filter(Boolean).join(" ").trim(), a.country]
+    .map((t) => (typeof t === "string" ? t.trim() : ""))
+    .filter(Boolean)
+    .join(" · ");
+}
+
 // ── Sichtbare Zeilen-/Karten-Hauptaktion „Sendung erstellen" ────────────────
 // Exakter, verbindlicher Button-Text (Fachvorgabe — NICHT „Neue Sendung",
 // „Versand erstellen", „Sendung anlegen", „Jetzt versenden" oder „Buchen").

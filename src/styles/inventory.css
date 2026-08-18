@@ -181,6 +181,19 @@
   cursor: pointer;
 }
 
+/* Ein Spaltenkopf darf umbrechen, eine Zahl nicht.
+
+   `.ce-num` bringt `white-space: nowrap` mit (primitives.css) — gedacht für die
+   WERTE, denn eine Zahl mitten im Umbruch ist unlesbar. Auf dem `<th>` wirkte
+   dieselbe Regel jedoch auch auf die Überschrift: „Reservierte Einheiten" blieb
+   einzeilig und schob die Mindestbreite der Tabelle von 945 auf 1088 px, sodass
+   sie ab 1366 px waagerecht scrollte (gemessen). Zweizeilig gesetzt fällt die
+   Spalte auf die Breite ihres längsten Wortes zurück — die Tabelle passt wieder,
+   und die Überschrift muss nicht abgekürzt werden. Die Zahlen darunter bleiben
+   unverändert nowrap. */
+.inv-list-table thead th.ce-num,
+.inv-detail-table thead th.ce-num { white-space: normal; }
+
 /* ── Listen: Tabelle ab 1100 px, darunter Karten ── */
 .inv-list-table { display: block; }
 .inv-list-cards { display: none; }
@@ -421,6 +434,16 @@
   flex: 1 0 100%; margin: 0;
   font-family: var(--fs); font-size: var(--ce-text-body-s-size);
   color: var(--ce-color-status-warning-fg); overflow-wrap: break-word;
+}
+
+/* Auftragszusammenfassung im Seitenkopf, neben dem Statusbadge. Bewusst Fließ-
+   text und keine Kennzahlkarten: es sind drei Zahlen, die in EINEN Satz passen.
+   Der Meta-Bereich des Seitenkopfs bricht bei Bedarf um (patterns.css), die
+   Zeile landet dann unter dem Badge. */
+.inv-order-summary {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
+  min-width: 0; overflow-wrap: break-word;
 }
 
 /* ── Detailseiten ── */

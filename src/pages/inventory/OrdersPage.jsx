@@ -6,19 +6,27 @@ import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/St
 import { InlineError, InlineSuccess, InventoryDialog } from "../../components/inventory/InventoryShared";
 import { OrderCreateForm } from "../../components/inventory/OrderCreateForm";
 import { getOrders, createOrder, getOrderShippingPrefill } from "../../api/inventoryApi";
-import { orderStatusView, formatUnits, inventoryErrorText, isOrderShippable, mapOrderPrefillToShipment } from "../../utils/inventoryView.mjs";
+import { orderStatusView, formatUnits, inventoryErrorText, isOrderShippable, mapOrderPrefillToShipment, dateShort } from "../../utils/inventoryView.mjs";
+// Vorhandener Auflöser aus dem Preisrechner — „DE" ist eine Eingabehilfe, kein
+// Text für eine Empfängerzeile. Keine zweite Länderdatenquelle.
+import { countryName } from "../../utils/calculatorValidation.mjs";
 
 const PAGE_LIMIT = 25;
 
 /* ── Aufträge ────────────────────────────────────────────────────────────────
-   Ein Auftrag ist eine Kommissionierliste mit Empfänger — kein
-   Verkaufsauftrag: keine Preise, keine Rechnung, keine Steuer.
+   Ein Auftrag hält fest, welche Artikel für welchen Empfänger vorgesehen sind
+   — kein Verkaufsauftrag: keine Preise, keine Rechnung, keine Steuer.
+
+   Die Oberfläche vermeidet bewusst Lagerfachsprache („Kommissionierliste",
+   „Picking", „Fulfillment"): ConfidaraExpress hat Händler, Maschinenbauer,
+   Handwerksbetriebe und Kanzleien als Kunden, und keine dieser Funktionen ist
+   in V1 überhaupt vorhanden.
 
    Beim Anlegen wird Bestand reserviert. Das passiert vollständig serverseitig
    und in EINER Transaktion: ist eine Position nicht deckbar, entsteht gar kein
    Auftrag. Die Anzeige „Verfügbar: X" im Formular ist Orientierung — ob
    reserviert werden darf, entscheidet ausschließlich das Backend. */
-export default function OrdersPage({ utility, onPrepareShipment, initialFilter = null, onFilterApplied }) {
+export default function OrdersPage({ utility, onNavigate, onPrepareShipment, initialFilter = null, onFilterApplied }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -112,7 +120,7 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
       <PageHeader
         eyebrow="Lager & Aufträge"
         title="Aufträge"
-        subtitle="Kommissionierlisten mit reserviertem Bestand — Ausgangspunkt für den Versand."
+        subtitle="Verwalten Sie Aufträge mit Artikeln und bereiten Sie daraus direkt Sendungen vor."
         utility={utility}
         actions={
           <button type="button" className="btn btn-primary" onClick={() => { setFormError(""); setFormOpen(true); }}>
@@ -145,11 +153,19 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
       {loading && <ListSkeleton rows={5} label="Aufträge werden geladen" />}
 
       {!loading && items.length === 0 && !hatFilter && (
+        /* Ein Auftrag ist kein Pflichtweg — wer nur etwas verschicken will, kommt
+           ohne ihn aus. Der zweite Weg steht deshalb NUR hier im leeren Zustand
+           und nicht dauerhaft auf der Seite. */
         <EmptyState
           icon="cart"
-          title="Noch keine Aufträge"
-          text="Ein Auftrag bündelt Empfänger und Artikel und reserviert den Bestand, bis Sie versenden."
+          title="Noch keine Aufträge vorhanden"
+          text="Erstellen Sie einen Auftrag, wenn Sie Artikel für einen Empfänger reservieren und anschließend gemeinsam versenden möchten."
           action={<button type="button" className="btn btn-primary" onClick={() => setFormOpen(true)}>Auftrag erstellen</button>}
+          secondaryAction={onNavigate && (
+            <button type="button" className="btn btn-link" onClick={() => onNavigate("new")}>
+              Neue Sendung ohne Auftrag<Icon n="arrowRight" s={16} />
+            </button>
+          )}
         />
       )}
 
@@ -170,9 +186,13 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
                 <tr>
                   <th scope="col">Auftragsnummer</th>
                   <th scope="col">Empfänger</th>
+                  {/* Drei Zahlen, zwei Bedeutungen: „Positionen" ist ein COUNT
+                      über die Auftragspositionen, die beiden anderen sind SUMMEN
+                      über Mengen. Ohne das Wort „Einheiten" liest man „1 / 1 / 0"
+                      leicht als dreimal dasselbe. */}
                   <th scope="col" className="ce-num">Positionen</th>
-                  <th scope="col" className="ce-num">Reserviert</th>
-                  <th scope="col" className="ce-num">Versendet</th>
+                  <th scope="col" className="ce-num">Reservierte Einheiten</th>
+                  <th scope="col" className="ce-num">Versendete Einheiten</th>
                   <th scope="col">Status</th>
                   <th scope="col">Erstellt</th>
                   <th scope="col" className="ce-col-actions">Aktionen</th>
@@ -189,7 +209,7 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
                       </td>
                       <td>
                         {o.recipient?.company || o.recipient?.fullName || "—"}
-                        <div className="inv-cell-meta">{o.recipient?.city} {o.recipient?.country}</div>
+                        <div className="inv-cell-meta">{[o.recipient?.city, o.recipient?.country && countryName(o.recipient.country)].filter(Boolean).join(", ")}</div>
                       </td>
                       <td className="ce-num">{formatUnits(o.itemCount)}</td>
                       <td className="ce-num">{formatUnits(o.openQuantity)}</td>
@@ -199,10 +219,13 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
                           <span className="badge-dot" aria-hidden="true" />{text}
                         </span>
                       </td>
-                      <td className="inv-cell-meta">{new Date(o.createdAt).toLocaleDateString("de-DE")}</td>
+                      <td className="inv-cell-meta">{dateShort(o.createdAt)}</td>
                       <td className="ce-col-actions">
+                        {/* Kein „Öffnen": die Auftragsnummer links ist bereits der
+                            Link auf dieselbe Detailseite. Zwei Wege zum selben
+                            Ziel in einer Zeile sind keine Wahlfreiheit, sondern
+                            Rauschen. */}
                         <div className="inv-row-actions">
-                          <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/orders/${o.id}`)}>Öffnen</button>
                           {isOrderShippable(o) && (
                             <button type="button" className="btn btn-sm btn-primary" disabled={preparingId === o.id}
                                     onClick={() => versandVorbereiten(o)}>
@@ -230,15 +253,15 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
                     </span>
                   </div>
                   <div className="inv-cell-meta">
-                    {o.recipient?.company || o.recipient?.fullName || "—"} · {o.recipient?.city} {o.recipient?.country}
+                    {[o.recipient?.company || o.recipient?.fullName || "—", o.recipient?.city,
+                       o.recipient?.country && countryName(o.recipient.country)].filter(Boolean).join(" · ")}
                   </div>
                   <dl className="inv-card-facts">
                     <div><dt>Positionen</dt><dd>{formatUnits(o.itemCount)}</dd></div>
-                    <div><dt>Reserviert</dt><dd>{formatUnits(o.openQuantity)}</dd></div>
-                    <div><dt>Versendet</dt><dd>{formatUnits(o.shippedQuantity)}</dd></div>
+                    <div><dt>Reservierte Einheiten</dt><dd>{formatUnits(o.openQuantity)}</dd></div>
+                    <div><dt>Versendete Einheiten</dt><dd>{formatUnits(o.shippedQuantity)}</dd></div>
                   </dl>
                   <div className="inv-card-actions">
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/orders/${o.id}`)}>Öffnen</button>
                     {isOrderShippable(o) && (
                       <button type="button" className="btn btn-sm btn-primary" disabled={preparingId === o.id} onClick={() => versandVorbereiten(o)}>
                         Versand vorbereiten

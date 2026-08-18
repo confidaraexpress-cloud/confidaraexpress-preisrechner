@@ -7,17 +7,14 @@ import { InlineError, InventoryDialog } from "../../components/inventory/Invento
 import { getOrder, cancelOrder, getOrderShippingPrefill } from "../../api/inventoryApi";
 import {
   orderStatusView, formatUnits, formatKg, inventoryErrorText,
-  isOrderShippable, mapOrderPrefillToShipment,
+  isOrderShippable, mapOrderPrefillToShipment, orderSummary, dateShort as dDE,
 } from "../../utils/inventoryView.mjs";
+// Vorhandener Auflöser aus dem Preisrechner — „DE" ist eine Eingabehilfe, kein
+// Text, den man einem Empfänger vorlegt. Keine zweite Länderdatenquelle.
+import { countryName } from "../../utils/calculatorValidation.mjs";
 // Sendungsstatus kommt aus dem BESTEHENDEN Bauteil — der Lagerbereich führt
 // kein zweites Statusmodell für Sendungen und keine zweite Badge-Abbildung.
 import { StatusBadge } from "../../components/ui/StatusBadge";
-
-function dDE(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("de-DE");
-}
 
 /* ── Auftragsdetail (echte Route /inventory/orders/:id) ──────────────────────
    Zeigt Auftrag, Positionen mit Reservierungsstand und die verbundenen
@@ -105,6 +102,9 @@ export default function OrderDetailPage() {
   const o = data?.order;
   const [statusCls, statusText, statusRoh] = o ? orderStatusView(o.status) : ["", "", null];
   const versandbereit = isOrderShippable(o);
+  // Ein Satz statt dreier Zahlen nebeneinander: „Positionen" zählt Positionen,
+  // die beiden anderen Werte zählen Mengen (siehe utils/inventoryView.mjs).
+  const zusammenfassung = orderSummary(o);
   const stornierbar = o && o.status !== "cancelled" && o.status !== "shipped";
 
   return (
@@ -116,9 +116,12 @@ export default function OrderDetailPage() {
         backLink={zurueck}
         utility={ctx.utility}
         meta={o && (
-          <span className={`badge ${statusCls}`} title={statusRoh ? `Serverwert: ${statusRoh}` : undefined}>
-            <span className="badge-dot" aria-hidden="true" />{statusText}
-          </span>
+          <>
+            <span className={`badge ${statusCls}`} title={statusRoh ? `Serverwert: ${statusRoh}` : undefined}>
+              <span className="badge-dot" aria-hidden="true" />{statusText}
+            </span>
+            {zusammenfassung && <span className="inv-order-summary">{zusammenfassung}</span>}
+          </>
         )}
         actions={o && (
           <>
@@ -147,7 +150,7 @@ export default function OrderDetailPage() {
               {o.recipient?.streetAndNumber}<br />
               {o.recipient?.addressAddition && <>{o.recipient.addressAddition}<br /></>}
               {o.recipient?.postalCode} {o.recipient?.city}<br />
-              {o.recipient?.country}
+              {o.recipient?.country ? countryName(o.recipient.country) : null}
             </address>
             <dl className="inv-detail-list">
               <div><dt>Lager</dt><dd>{o.warehouseName}</dd></div>
@@ -189,8 +192,8 @@ export default function OrderDetailPage() {
               </table>
             </div>
             <p className="inv-form-note">
-              Reservierte Ware bleibt physisch im Lager und ist nur verplant. Ausgebucht wird sie erst
-              mit der Buchung der Sendung.
+              Reservierte Ware liegt weiterhin im Lager und ist nur für diesen Auftrag vorgemerkt.
+              Aus dem Lager entfernt wird sie erst mit der Buchung der Sendung.
             </p>
           </section>
 
@@ -226,7 +229,9 @@ export default function OrderDetailPage() {
                 </div>
               )}
             <p className="inv-form-note">
-              Label und Sendungsverfolgung finden Sie wie gewohnt unter „Sendungen".
+              Label und Sendungsverfolgung finden Sie wie gewohnt unter{" "}
+              <button type="button" className="btn btn-link inv-cell-link"
+                      onClick={() => navigate("/dashboard?page=shipments")}>Sendungen</button>.
             </p>
           </section>
         </>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { InlineError } from "./InventoryShared";
+import { InlineError, CollapsibleSection } from "./InventoryShared";
+import { SECTION_FIELDS, sectionHasData } from "../../utils/inventoryView.mjs";
 
 /* ── Artikelformular ─────────────────────────────────────────────────────────
    Anlegen und Bearbeiten teilen sich dieses eine Formular — es gibt keine
@@ -104,73 +105,123 @@ export function ProductForm({ initial, busy, error, onSubmit, onCancel }) {
   const [errs, setErrs] = useState({});
   const set = (k) => (val) => setV((cur) => ({ ...cur, [k]: val }));
 
+  // Startzustand der optionalen Abschnitte: beim Anlegen zu, beim Bearbeiten
+  // geöffnet, sobald dort etwas steht. Bewusst EINMAL beim Mount abgeleitet —
+  // ein Effekt würde den Abschnitt beim Tippen wieder aufreißen, und ein
+  // absichtlich zugeklappter Abschnitt bliebe nicht zu.
+  const [offen, setOffen] = useState(() => ({
+    dimensions: sectionHasData(ausInitial(initial), "dimensions"),
+    customs: sectionHasData(ausInitial(initial), "customs"),
+  }));
+  const toggle = (key) => () => setOffen((cur) => ({ ...cur, [key]: !cur[key] }));
+
   const absenden = (e) => {
     e.preventDefault();
     const gefunden = pruefe(v);
     setErrs(gefunden);
-    if (Object.keys(gefunden).length > 0) return;
-    onSubmit(zuPayload(v));
+    if (Object.keys(gefunden).length === 0) { onSubmit(zuPayload(v)); return; }
+    // Ein Fehler in einem eingeklappten Abschnitt wäre unauffindbar: der Nutzer
+    // sähe eine abgelehnte Eingabe ohne sichtbare Ursache. Betroffene Abschnitte
+    // gehen deshalb auf.
+    setOffen((cur) => ({
+      dimensions: cur.dimensions || SECTION_FIELDS.dimensions.some((k) => gefunden[k]),
+      customs: cur.customs || SECTION_FIELDS.customs.some((k) => gefunden[k]),
+    }));
   };
 
   return (
     <form onSubmit={absenden} className="inv-form" noValidate>
-      <InlineError text={error} />
+      {/* Der Scrollbereich umfasst nur die Felder — Dialogtitel und Aktionen
+          bleiben im geteilten Dialog stehen (siehe InventoryDialog scrollBody).
+          Ohne diesen Wrapper ist es ein neutraler <div> ohne eigene Regeln. */}
+      <div className="inv-form-scroll">
+        <InlineError text={error} />
 
-      <fieldset className="inv-fieldset" disabled={busy}>
-        <legend className="inv-legend">Stammdaten</legend>
-        <div className="inv-grid-2">
-          <Feld id="p-sku" label="SKU *" value={v.sku} onChange={set("sku")} error={errs.sku}
-                hint="Innerhalb Ihres Kontos eindeutig." maxLength={64} />
-          <Feld id="p-ean" label="EAN / GTIN" value={v.ean} onChange={set("ean")} maxLength={20} />
-        </div>
-        <Feld id="p-name" label="Bezeichnung *" value={v.name} onChange={set("name")} error={errs.name} maxLength={255} />
-        <div className="inv-field">
-          <label className="field-label" htmlFor="p-desc">Beschreibung</label>
-          <textarea id="p-desc" className="field-textarea" rows={2} value={v.description}
-                    onChange={(e) => set("description")(e.target.value)} maxLength={5000} />
-        </div>
-      </fieldset>
-
-      <fieldset className="inv-fieldset" disabled={busy}>
-        <legend className="inv-legend">Versanddaten</legend>
-        <div className="inv-grid-4">
-          <Feld id="p-weight" label="Gewicht kg *" value={v.weightKg} onChange={set("weightKg")} error={errs.weightKg} inputMode="decimal" />
-          <Feld id="p-length" label="Länge cm" value={v.lengthCm} onChange={set("lengthCm")} error={errs.lengthCm} inputMode="decimal" />
-          <Feld id="p-width"  label="Breite cm" value={v.widthCm}  onChange={set("widthCm")}  error={errs.widthCm}  inputMode="decimal" />
-          <Feld id="p-height" label="Höhe cm"   value={v.heightCm} onChange={set("heightCm")} error={errs.heightCm} inputMode="decimal" />
-        </div>
-        <p className="inv-form-note">
-          Artikelmaße sind Stammdaten, keine Paketmaße. Sie werden beim Versand nicht automatisch
-          zu einem Paket verrechnet — die Paketdaten bestätigen Sie weiterhin selbst.
-        </p>
-      </fieldset>
-
-      <fieldset className="inv-fieldset" disabled={busy}>
-        <legend className="inv-legend">Zoll- und Wertangaben</legend>
-        <div className="inv-grid-3">
-          <Feld id="p-value" label="Warenwert je Stück (EUR)" value={v.unitValue} onChange={set("unitValue")} error={errs.unitValue} inputMode="decimal" />
-          <Feld id="p-hs" label="HS-Code" value={v.hsCode} onChange={set("hsCode")} error={errs.hsCode} inputMode="numeric" maxLength={12} />
-          <Feld id="p-origin" label="Ursprungsland" value={v.countryOfOrigin} onChange={set("countryOfOrigin")} error={errs.countryOfOrigin} maxLength={2} placeholder="DE" />
-        </div>
-        <Feld id="p-customs" label="Zollbeschreibung" value={v.customsDescription} onChange={set("customsDescription")} maxLength={255}
-              hint="Wird bei zollpflichtigen Sendungen als Warenbeschreibung vorgeschlagen." />
-      </fieldset>
-
-      <fieldset className="inv-fieldset" disabled={busy}>
-        <legend className="inv-legend">Bestandsführung</legend>
-        <div className="inv-grid-2">
-          <Feld id="p-min" label="Mindestbestand" value={v.minStock} onChange={set("minStock")} error={errs.minStock} inputMode="numeric"
-                hint="Unterhalb dieses Werts wird der Artikel als niedriger Bestand markiert." />
-          <div className="inv-field">
-            <label className="field-label" htmlFor="p-status">Status</label>
-            <select id="p-status" className="field-select" value={v.status} onChange={(e) => set("status")(e.target.value)}>
-              <option value="active">Aktiv</option>
-              <option value="inactive">Inaktiv</option>
-            </select>
-            <p className="inv-field-hint">Inaktive Artikel bleiben mit ihrer Historie erhalten, können aber nicht beauftragt werden.</p>
+        {/* Grunddaten: alles, was ein Artikel mindestens braucht. Genau drei
+            Pflichtfelder — sie entsprechen exakt der serverseitigen Prüfung
+            (sku, name, weightKg). Keine erfundene UI-Pflicht. */}
+        <fieldset className="inv-fieldset" disabled={busy}>
+          <legend className="inv-legend">Grunddaten</legend>
+          <div className="inv-grid-2">
+            <Feld id="p-sku" label="SKU *" value={v.sku} onChange={set("sku")} error={errs.sku}
+                  hint="Innerhalb Ihres Kontos eindeutig." maxLength={64} />
+            <Feld id="p-ean" label="EAN / GTIN" value={v.ean} onChange={set("ean")} maxLength={20} />
           </div>
-        </div>
-      </fieldset>
+          <Feld id="p-name" label="Bezeichnung *" value={v.name} onChange={set("name")} error={errs.name} maxLength={255} />
+          {/* Das Gewicht steht bei den Grunddaten, weil es Pflicht ist: ein
+              Pflichtfeld gehört nie hinter eine Klappe. Länge/Breite/Höhe sind
+              optional und liegen deshalb im Abschnitt darunter. */}
+          <div className="inv-grid-2">
+            <Feld id="p-weight" label="Gewicht kg *" value={v.weightKg} onChange={set("weightKg")} error={errs.weightKg} inputMode="decimal"
+                  hint="Gewicht einer einzelnen Einheit." />
+          </div>
+          <div className="inv-field">
+            <label className="field-label" htmlFor="p-desc">Beschreibung</label>
+            <textarea id="p-desc" className="field-textarea" rows={2} value={v.description}
+                      onChange={(e) => set("description")(e.target.value)} maxLength={5000} />
+          </div>
+        </fieldset>
+
+        <CollapsibleSection
+          id="p-section-dimensions"
+          title="Weitere Versanddaten"
+          hint="Optional. Nützlich, wenn Sie die Maße Ihrer Artikel dauerhaft hinterlegen möchten."
+          open={offen.dimensions}
+          onToggle={toggle("dimensions")}
+          filled={sectionHasData(v, "dimensions")}
+          disabled={busy}
+        >
+          <fieldset className="inv-fieldset inv-fieldset--bare" disabled={busy}>
+            <legend className="sr-only">Weitere Versanddaten</legend>
+            <div className="inv-grid-3">
+              <Feld id="p-length" label="Länge cm" value={v.lengthCm} onChange={set("lengthCm")} error={errs.lengthCm} inputMode="decimal" />
+              <Feld id="p-width"  label="Breite cm" value={v.widthCm}  onChange={set("widthCm")}  error={errs.widthCm}  inputMode="decimal" />
+              <Feld id="p-height" label="Höhe cm"   value={v.heightCm} onChange={set("heightCm")} error={errs.heightCm} inputMode="decimal" />
+            </div>
+            <p className="inv-form-note">
+              Artikelmaße sind Stammdaten, keine Paketmaße. Sie werden beim Versand nicht automatisch
+              zu einem Paket verrechnet — die Paketdaten bestätigen Sie weiterhin selbst.
+            </p>
+          </fieldset>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          id="p-section-customs"
+          title="Zoll & internationale Sendungen"
+          hint="Optional für internationale bzw. zollpflichtige Sendungen. Einmal hinterlegt, stehen die Angaben bei jeder Sendung dieses Artikels bereit."
+          open={offen.customs}
+          onToggle={toggle("customs")}
+          filled={sectionHasData(v, "customs")}
+          disabled={busy}
+        >
+          <fieldset className="inv-fieldset inv-fieldset--bare" disabled={busy}>
+            <legend className="sr-only">Zoll & internationale Sendungen</legend>
+            <div className="inv-grid-3">
+              <Feld id="p-value" label="Warenwert je Stück (EUR)" value={v.unitValue} onChange={set("unitValue")} error={errs.unitValue} inputMode="decimal" />
+              <Feld id="p-hs" label="HS-Code" value={v.hsCode} onChange={set("hsCode")} error={errs.hsCode} inputMode="numeric" maxLength={12} />
+              <Feld id="p-origin" label="Ursprungsland" value={v.countryOfOrigin} onChange={set("countryOfOrigin")} error={errs.countryOfOrigin} maxLength={2} placeholder="DE" />
+            </div>
+            <Feld id="p-customs" label="Zollbeschreibung" value={v.customsDescription} onChange={set("customsDescription")} maxLength={255}
+                  hint="Wird bei zollpflichtigen Sendungen als Warenbeschreibung vorgeschlagen." />
+          </fieldset>
+        </CollapsibleSection>
+
+        <fieldset className="inv-fieldset" disabled={busy}>
+          <legend className="inv-legend">Bestandsführung</legend>
+          <div className="inv-grid-2">
+            <Feld id="p-min" label="Mindestbestand" value={v.minStock} onChange={set("minStock")} error={errs.minStock} inputMode="numeric"
+                  hint="Unterhalb dieses Werts wird der Artikel als niedriger Bestand markiert." />
+            <div className="inv-field">
+              <label className="field-label" htmlFor="p-status">Status</label>
+              <select id="p-status" className="field-select" value={v.status} onChange={(e) => set("status")(e.target.value)}>
+                <option value="active">Aktiv</option>
+                <option value="inactive">Inaktiv</option>
+              </select>
+              <p className="inv-field-hint">Inaktive Artikel bleiben mit ihrer Historie erhalten, können aber nicht beauftragt werden.</p>
+            </div>
+          </div>
+        </fieldset>
+      </div>
 
       <div className="inv-form-actions">
         <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>Abbrechen</button>

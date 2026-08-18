@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
+import { Icon } from "../../components/ui/Icon";
 import { InlineError } from "../../components/inventory/InventoryShared";
 import { getMovements } from "../../api/inventoryApi";
 import { MOVEMENT_TYPES, movementTypeView, signedQuantity, formatUnits, inventoryErrorText } from "../../utils/inventoryView.mjs";
@@ -33,11 +34,16 @@ function heuteIso() {
 
 export default function MovementsPage({ utility, initialFilter = null, onFilterApplied }) {
   const heute = initialFilter === "shipmentsToday";
+  // Artikelfilter aus „Alle Bewegungen anzeigen" der Artikeldetailseite. Der
+  // Endpunkt kennt `productId` bereits — hier kommt nur der Startwert dazu.
+  const startArtikel = initialFilter && typeof initialFilter === "object" && initialFilter.productId
+    ? String(initialFilter.productId) : "";
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   // Beim Mount abgeleitet statt per Effekt nachgereicht — sonst lüde die Seite
   // zweimal, einmal ungefiltert und einmal gefiltert.
   const [type, setType] = useState(heute ? "SHIPMENT" : "");
+  const [productId, setProductId] = useState(startArtikel);
   const [from, setFrom] = useState(heute ? heuteIso() : "");
   const [to, setTo] = useState(heute ? heuteIso() : "");
   const [loading, setLoading] = useState(true);
@@ -54,7 +60,8 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
     try {
       const res = await getMovements({
         limit: PAGE_LIMIT, cursor: cursor || undefined,
-        type: type || undefined, from: from || undefined, to: to || undefined,
+        type: type || undefined, productId: productId || undefined,
+        from: from || undefined, to: to || undefined,
       });
       if (seq.current !== meins) return;
       if (!res.ok) { setError(inventoryErrorText(await res.json().catch(() => null), "Die Bewegungen konnten nicht geladen werden.")); return; }
@@ -66,11 +73,14 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
     } finally {
       if (seq.current === meins) { setLoading(false); setLoadingMore(false); }
     }
-  }, [type, from, to]);
+  }, [type, productId, from, to]);
 
   useEffect(() => { load(null); }, [load]);
 
-  const hatFilter = Boolean(type || from || to);
+  const hatFilter = Boolean(type || productId || from || to);
+  // Der Artikelname steht nicht im Filter, aber in jeder Zeile — er kommt aus
+  // den geladenen Daten statt aus einem zweiten Aufruf.
+  const artikelName = productId ? (items[0]?.productName || null) : null;
 
   return (
     <div className="page-body">
@@ -99,6 +109,15 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
           <label className="field-label" htmlFor="inv-mv-to">Bis</label>
           <input id="inv-mv-to" className="field-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
+        {/* Kommt der Nutzer über „Alle Bewegungen anzeigen" eines Artikels, ist
+            die Liste gefiltert. Ohne sichtbaren Hinweis sähe er eine verkürzte
+            Liste ohne erkennbaren Grund — deshalb ein abwählbarer Filterchip. */}
+        {productId && (
+          <button type="button" className="btn btn-sm btn-outline inv-toolbar-chip" onClick={() => setProductId("")}>
+            Artikel: {artikelName || `#${productId}`}
+            <Icon n="close" s={14} />
+          </button>
+        )}
       </div>
 
       {loading && <ListSkeleton rows={6} label="Bewegungen werden geladen" />}
@@ -115,7 +134,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
         <NoResultsState
           title="Keine Bewegungen gefunden"
           text="Für diesen Zeitraum oder Typ gibt es keine Einträge."
-          action={<button type="button" className="btn btn-outline" onClick={() => { setType(""); setFrom(""); setTo(""); }}>Filter zurücksetzen</button>}
+          action={<button type="button" className="btn btn-outline" onClick={() => { setType(""); setProductId(""); setFrom(""); setTo(""); }}>Filter zurücksetzen</button>}
         />
       )}
 

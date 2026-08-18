@@ -91,6 +91,16 @@ export function postReceipt(payload) {
 export function postAdjustment(payload) {
   return apiFetch(`/api/kunde/inventory/adjustment`, { method: "POST", auth: true, body: JSON.stringify(payload) });
 }
+// Bestand sperren / freigeben. Beide senden eine MENGE, nie einen Zielwert:
+// „sperre N" und „gib N frei" sind nachvollziehbar, ein gesetzter Absolutwert
+// wäre es nicht. `on_hand` verändert sich dabei nicht — eine Sperre ist keine
+// physische Warenbewegung, sondern verschiebt verfügbaren in gesperrten Bestand.
+export function postBlock(payload) {
+  return apiFetch(`/api/kunde/inventory/block`, { method: "POST", auth: true, body: JSON.stringify(payload) });
+}
+export function postUnblock(payload) {
+  return apiFetch(`/api/kunde/inventory/unblock`, { method: "POST", auth: true, body: JSON.stringify(payload) });
+}
 
 // ── Aufträge ──────────────────────────────────────────────────────────────────
 export function getOrders(params, { signal } = {}) {

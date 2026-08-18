@@ -210,7 +210,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
                     <td className="ce-col-actions">
                       <div className="inv-row-actions">
                         <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/products/${p.id}`)}>Öffnen</button>
-                        <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormError(""); setFormOpen(true); }}>Bearbeiten</button>
+                        <button type="button" className="btn btn-sm btn-outline" onClick={() => { setEditing(p); setFormError(""); setFormOpen(true); }}>Bearbeiten</button>
                         <button type="button" className="btn btn-sm btn-primary" disabled={p.status === "inactive"}
                                 onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
                       </div>
@@ -239,7 +239,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
                 </dl>
                 <div className="inv-card-actions">
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/products/${p.id}`)}>Öffnen</button>
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormOpen(true); }}>Bearbeiten</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => { setEditing(p); setFormOpen(true); }}>Bearbeiten</button>
                   <button type="button" className="btn btn-sm btn-primary" disabled={p.status === "inactive"}
                           onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
                 </div>
@@ -263,6 +263,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
         title={editing ? "Artikel bearbeiten" : "Artikel anlegen"}
         size="lg"
         busy={saving}
+        scrollBody
       >
         <ProductForm
           initial={editing}
@@ -280,7 +281,7 @@ export default function ProductsPage({ utility, onShipProduct }) {
         footer={
           <>
             <button type="button" className="btn btn-outline" onClick={() => setShipTarget(null)}>Abbrechen</button>
-            <button type="button" className="btn btn-primary" onClick={versendeBestaetigen}>Weiter zur Sendung</button>
+            <button type="button" className="btn btn-primary" onClick={versendeBestaetigen}>Versand vorbereiten</button>
           </>
         }
       >

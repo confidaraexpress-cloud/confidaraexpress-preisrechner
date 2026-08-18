@@ -345,6 +345,14 @@ export default function DashboardPage() {
       // Ganzzahl übernommen und der Query-Param anschließend wie bisher entfernt.
       const ticket = parseInt(params.get("ticket"), 10);
       setSupportTicketId(Number.isInteger(ticket) && ticket > 0 ? ticket : null);
+      // „Alle Bewegungen anzeigen" von der Artikeldetailseite: sie ist eine
+      // eigene Route und kann navigateTo nicht aufrufen, gibt den Artikelfilter
+      // deshalb in der Query mit. Er läuft danach durch denselben einmaligen
+      // Startfilter-Weg wie jeder andere Filter aus der Lagerübersicht.
+      const produkt = params.get("product");
+      setInventoryFilter(p === "movements" && /^[1-9][0-9]*$/.test(produkt || "")
+        ? { page: "movements", filter: { productId: produkt } }
+        : null);
       // Die URL wird wie bisher bereinigt — der Bereich wandert dabei in den
       // History-State des ERSETZTEN Eintrags. Vorhandene State-Werte bleiben
       // erhalten (Spread), damit z. B. `justBooked` nicht verloren geht.

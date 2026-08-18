@@ -70,7 +70,7 @@ export function AddressActionsMenu({
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >
-        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="settings" s={16} />}
+        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="dots" s={16} />}
       </button>
       {open && (
         <div className="abk-actions-menu" role="menu">

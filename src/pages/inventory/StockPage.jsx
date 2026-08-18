@@ -210,14 +210,23 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
   const zeilenAktionen = (b) => (
     <>
       <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffne("receipt", ausZeile(b))}>Einbuchen</button>
+      {/* Der Name allein reicht als Ansage nicht: derselbe Artikel kann in zwei
+          Lagern zweimal in der Liste stehen. Die SKU steht in der Zeile daneben. */}
       <RowActionsMenu
-        label={`Weitere Aktionen für ${b.sku}`}
+        label={`Weitere Aktionen für ${b.productName}, ${b.warehouseName}`}
         items={[
           { key: "adjust", icon: "refresh", label: "Bestand korrigieren", onClick: () => oeffne("adjust", ausZeile(b)) },
           Number(b.blocked ?? 0) > 0
             ? { key: "unblock", icon: "shield", label: "Sperre verwalten", onClick: () => oeffne("unblock", ausZeile(b)) }
             : { key: "block", icon: "shield", label: "Bestand sperren", disabled: Number(b.available ?? 0) < 1,
-                onClick: () => oeffne("block", ausZeile(b)) },
+                disabledReason: "Keine verfügbaren Einheiten", onClick: () => oeffne("block", ausZeile(b)) },
+          // Beantwortet die Frage, die eine Bestandszahl offen lässt: warum ist
+          // er jetzt so hoch? Der Bewegungsendpunkt filtert nach ARTIKEL, nicht
+          // nach Lager — deshalb heißt die Aktion bewusst nur „Bewegungen
+          // anzeigen" und behauptet keinen Lagerfilter. Das Lager steht in der
+          // Bewegungstabelle als eigene Spalte.
+          { key: "movements", icon: "layers", label: "Bewegungen anzeigen",
+            onClick: () => onNavigate("movements", { productId: b.productId }) },
         ]}
       />
     </>

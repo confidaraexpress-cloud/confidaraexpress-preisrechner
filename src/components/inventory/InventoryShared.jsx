@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
 import { formatUnits, isLowStock, stockLevelView } from "../../utils/inventoryView.mjs";
@@ -201,19 +201,58 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
   const wrapRef = useRef(null);
   const triggerRef = useRef(null);
   const firstItemRef = useRef(null);
+  const menuRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  /* Das Menü liegt FIXIERT im Viewport, nicht absolut in der Zeile.
+
+     Grund, gemessen: `.ce-table-container` trägt `overflow: hidden` (es braucht
+     das für seine runden Ecken und den waagerechten Tabellenlauf). Ein absolut
+     positioniertes Menü kann daraus nicht heraus — bei der letzten Tabellenzeile
+     war exakt der erste Eintrag sichtbar und der Rest abgeschnitten. In der
+     Karte lief dasselbe Menü nach links aus dem Bild (auf 390 px bis x = −56).
+     Beides ist mit CSS allein nicht lösbar, solange der Container clippt.
+
+     Die Position kommt deshalb aus dem echten Rechteck des Auslösers: rechts
+     bündig mit ihm, in den Viewport geklemmt, und nach OBEN aufklappend, wenn
+     unten kein Platz ist. Bei Scroll und Größenänderung wird nachgeführt statt
+     geschlossen — das Menü bleibt so an seiner Zeile. */
+  const platziere = useCallback(() => {
+    const t = triggerRef.current?.getBoundingClientRect();
+    const m = menuRef.current;
+    if (!t || !m) return;
+    const rand = 8;
+    const breite = m.offsetWidth;
+    const hoehe = m.offsetHeight;
+    const links = Math.min(Math.max(t.right - breite, rand), Math.max(rand, window.innerWidth - breite - rand));
+    const passtUnten = t.bottom + 6 + hoehe <= window.innerHeight - rand;
+    const oben = passtUnten ? t.bottom + 6 : Math.max(rand, t.top - 6 - hoehe);
+    setPos({ top: oben, left: links });
+  }, []);
+
+  // useLayoutEffect: die Messung läuft VOR dem Zeichnen, das Menü erscheint
+  // also nie kurz an einer falschen Stelle.
+  useLayoutEffect(() => { if (open) platziere(); }, [open, platziere]);
 
   useEffect(() => {
     if (!open) return;
     firstItemRef.current?.focus();
     const onOutside = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
     const onKey = (e) => { if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } };
+    const nachfuehren = () => platziere();
     document.addEventListener("mousedown", onOutside);
     document.addEventListener("keydown", onKey);
+    // `true` = Capture: auch das Scrollen eines Containers wird erfasst, nicht
+    // nur das des Fensters.
+    window.addEventListener("scroll", nachfuehren, true);
+    window.addEventListener("resize", nachfuehren);
     return () => {
       document.removeEventListener("mousedown", onOutside);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", nachfuehren, true);
+      window.removeEventListener("resize", nachfuehren);
     };
-  }, [open]);
+  }, [open, platziere]);
 
   const sichtbar = (items || []).filter(Boolean);
   if (sichtbar.length === 0) return null;
@@ -237,10 +276,11 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
       >
-        <Icon n="settings" s={16} />
+        {/* Drei Punkte, kein Zahnrad: hier stehen Vorgänge, keine Einstellungen. */}
+        <Icon n="dots" s={16} />
       </button>
       {open && (
-        <div className="inv-actions-menu" role="menu">
+        <div className="inv-actions-menu" role="menu" ref={menuRef} style={{ top: pos.top, left: pos.left }}>
           {sichtbar.map((item, i) => (
             <button
               key={item.key || item.label}
@@ -251,7 +291,16 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
               onClick={() => fuehreAus(item)}
               disabled={item.disabled}
             >
-              {item.icon && <Icon n={item.icon} s={15} />}{item.label}
+              {item.icon && <Icon n={item.icon} s={15} />}
+              <span className="inv-actions-item-text">
+                {item.label}
+                {/* Der Grund steht im Menü selbst und NUR im deaktivierten
+                    Zustand. Ein `title` allein wäre auf Mobil unsichtbar, und
+                    eine dauerhaft mitlaufende Zeile blähte das Menü auf. */}
+                {item.disabled && item.disabledReason && (
+                  <span className="inv-actions-item-reason">{item.disabledReason}</span>
+                )}
+              </span>
             </button>
           ))}
         </div>

@@ -244,8 +244,13 @@
 /* Kebab für die selteneren Zeilenaktionen. Auslöser ist das vorhandene
    Primitive `.btn.btn-icon`; eigenes Material braucht nur die Klappfläche. */
 .inv-actions { position: relative; flex-shrink: 0; }
+/* `fixed`, nicht `absolute` — die Koordinaten liefert RowActionsMenu aus dem
+   echten Rechteck des Auslösers. Begründung dort: `.ce-table-container` trägt
+   `overflow: hidden`, ein absolutes Menü wurde bei der letzten Tabellenzeile
+   nach dem ersten Eintrag abgeschnitten und in der Karte links aus dem Bild
+   geschoben. `top`/`left` kommen deshalb als Inline-Style. */
 .inv-actions-menu {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--ce-z-dropdown); min-width: 200px;
+  position: fixed; z-index: var(--ce-z-dropdown); min-width: 200px; max-width: calc(100vw - 16px);
   background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-lg); box-shadow: var(--ce-elevation-3);
   padding: 6px; display: flex; flex-direction: column;
@@ -260,6 +265,19 @@
 .inv-actions-item:hover, .inv-actions-item:focus-visible { background: var(--ce-color-surface-muted); }
 .inv-actions-item:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
 .inv-actions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
+/* Beschriftung und (nur im deaktivierten Zustand) ihre Begründung stehen
+   untereinander. Der Eintrag richtet sich dann oben aus, damit das Icon zur
+   Beschriftung gehört und nicht zwischen beide Zeilen rutscht. */
+.inv-actions-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.inv-actions-item:has(.inv-actions-item-reason) { align-items: flex-start; }
+/* Die Begründung bleibt bewusst LESBAR (`--ce-color-text-muted`, 5,11:1) und
+   erbt nicht die Disabled-Farbe der Beschriftung (2,61:1, nur für inaktive
+   Elemente gedacht). Ein Satz, den der Nutzer lesen soll, darf nicht mit dem
+   ausgegraut werden, was er erklärt. */
+.inv-actions-item-reason {
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+}
 
 /* SKU über der Bezeichnung — beide sind Inline-Elemente und stünden sonst in
    einer Zeile hintereinander („ART-1001Kugellager 6203-2RS"). */

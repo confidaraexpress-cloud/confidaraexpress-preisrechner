@@ -31,6 +31,9 @@ const detailPage = lies("../pages/inventory/ProductDetailPage.jsx");
 const movementsPage = lies("../pages/inventory/MovementsPage.jsx");
 const shared = lies("../components/inventory/InventoryShared.jsx");
 const css = lies("../styles/inventory.css");
+const icon = lies("../components/ui/Icon.jsx");
+const adressMenu = lies("../components/addressbook/AddressActionsMenu.jsx");
+const entwurfMenu = lies("../components/drafts/DraftActionsMenu.jsx");
 
 /* Jede „darf NICHT vorkommen"-Prüfung läuft am kommentarfreien Quelltext.
    Sonst schlägt sie an, sobald ein Kommentar die abgelöste Fassung ERKLÄRT —
@@ -206,6 +209,110 @@ test("E3c das Zeilenmenü gibt den Fokus ZUERST an seinen Auslöser zurück", ()
     "Fokusrückgabe muss VOR der Aktion stehen");
   assert.match(shared, /aria-haspopup="menu"/);
   assert.match(shared, /role="menuitem"/);
+});
+
+/* ── Zeilenmenü: Inhalt, Icon, deaktivierter Eintrag ───────────────────────── */
+
+test("E3d das Menü hat in BEIDEN Sperrzuständen drei Einträge", () => {
+  // Vorher waren es zwei, von denen einer bei verfügbar = 0 deaktiviert war —
+  // das Menü wirkte dadurch einträgig und wie eine Wiederholung der Kopfaktion.
+  const menu = stockPage.slice(stockPage.indexOf("<RowActionsMenu"), stockPage.indexOf("/>", stockPage.indexOf("<RowActionsMenu")));
+  const labels = [...menu.matchAll(/label: "([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(labels, ["Bestand korrigieren", "Sperre verwalten", "Bestand sperren", "Bewegungen anzeigen"],
+    "erwartet: Korrigieren · (Sperre verwalten | Bestand sperren) · Bewegungen");
+  // Die beiden Sperrfassungen schließen einander aus — je Zustand bleiben drei.
+  assert.match(menu, /Number\(b\.blocked \?\? 0\) > 0\s*\?[\s\S]*Sperre verwalten[\s\S]*:\s*\{[\s\S]*Bestand sperren/);
+});
+
+test("E3e „Bewegungen anzeigen“ öffnet die Bewegungsseite mit Artikelfilter", () => {
+  assert.match(stockPage, /onNavigate\("movements", \{ productId: b\.productId \}\)/);
+  // Kein behaupteter Lagerfilter: der Endpunkt filtert nur nach Artikel.
+  assert.doesNotMatch(stockCode, /Bewegungen dieses Lagers|warehouseId: b\.warehouseId \}\)/);
+  assert.doesNotMatch(stockCode, /label: "Bewegungen[^"]*Lager/);
+});
+
+test("E3f der deaktivierte Sperreintrag sagt, warum", () => {
+  assert.match(stockPage, /disabled: Number\(b\.available \?\? 0\) < 1,\s*\n?\s*disabledReason: "Keine verfügbaren Einheiten"/);
+  // Die Begründung steht im Menü selbst — nicht nur in einem title-Attribut,
+  // das auf Mobil niemand sieht.
+  assert.match(shared, /item\.disabled && item\.disabledReason/);
+  assert.match(shared, /className="inv-actions-item-reason"/);
+  assert.match(css, /\.inv-actions-item-reason \{/);
+});
+
+test("E3g die Begründung erscheint nur im deaktivierten Zustand", () => {
+  // Sonst bliebe das Menü dauerhaft aufgebläht.
+  const i = shared.indexOf("inv-actions-item-reason");
+  const block = shared.slice(Math.max(0, i - 300), i);
+  assert.match(block, /item\.disabled &&/, "die Zeile hängt nicht am Disabled-Zustand");
+});
+
+test("E3h der Auslöser trägt Drei-Punkte, kein Zahnrad", () => {
+  // Ab dem Auslöser suchen: `{open &&` steht schon weiter oben in
+  // CollapsibleSection, ein globales indexOf ergäbe einen leeren Ausschnitt —
+  // und ein leerer Ausschnitt bestünde jede doesNotMatch-Prüfung.
+  const ab = shared.indexOf('aria-haspopup="menu"');
+  assert.ok(ab > 0, "Auslöser des Zeilenmenüs nicht gefunden");
+  const trigger = shared.slice(ab, shared.indexOf("{open &&", ab));
+  assert.match(trigger, /<Icon n="dots"/, "Zahnrad statt Drei-Punkte im Auslöser");
+  assert.doesNotMatch(trigger, /n="settings"/);
+  // Das Icon kommt aus dem bestehenden System, nicht aus einer neuen Library.
+  assert.match(icon, /^\s*dots:/m, "dots fehlt im paths-Objekt von Icon.jsx");
+});
+
+test("E3i dieselbe Funktion trägt überall dasselbe Icon", () => {
+  // Adressbuch und Entwürfe nutzen dasselbe „Weitere Aktionen"-Konzept.
+  for (const [name, quelle] of [["Adressbuch", adressMenu], ["Entwürfe", entwurfMenu]]) {
+    assert.match(quelle, /<Icon n="dots" s=\{16\} \/>/, `${name}: Auslöser trägt kein Drei-Punkte-Icon`);
+    assert.doesNotMatch(quelle, /n="settings"/, `${name}: Zahnrad noch vorhanden`);
+  }
+});
+
+test("E3j in Adressbuch und Entwürfen wurde NUR das Icon getauscht", () => {
+  // Menüinhalt und Verhalten bleiben unangetastet.
+  assert.match(entwurfMenu, /<Icon n="trash" s=\{15\} \/> Löschen/);
+  for (const quelle of [adressMenu, entwurfMenu]) {
+    assert.match(quelle, /role="menu"/);
+    assert.match(quelle, /role="menuitem"/);
+    assert.match(quelle, /e\.key === "Escape"/);
+    assert.match(quelle, /wrapRef\.current && !wrapRef\.current\.contains\(e\.target\)/);
+    assert.match(quelle, /triggerRef\.current\?\.focus\(\)/);
+  }
+});
+
+test("E3l das Menü kann seinen Container verlassen", () => {
+  // `.ce-table-container` trägt `overflow: hidden` — ein absolut positioniertes
+  // Menü wurde bei der letzten Tabellenzeile nach dem ERSTEN Eintrag
+  // abgeschnitten, und in der Karte lief es auf 390 px bis x = −56 aus dem Bild.
+  // Beides ist mit CSS allein nicht lösbar, solange der Container clippt.
+  const i = css.indexOf(".inv-actions-menu {");
+  assert.ok(i > 0);
+  const regel = css.slice(i, css.indexOf("}", i));
+  assert.match(regel, /position: fixed/, "ein absolutes Menü kann den Container nicht verlassen");
+  assert.doesNotMatch(regel, /position: absolute/);
+  // Die Koordinaten kommen aus dem echten Rechteck des Auslösers.
+  assert.match(shared, /triggerRef\.current\?\.getBoundingClientRect\(\)/);
+  assert.match(shared, /style=\{\{ top: pos\.top, left: pos\.left \}\}/);
+});
+
+test("E3m das Menü bleibt im Viewport und folgt seiner Zeile", () => {
+  const i = shared.indexOf("const platziere");
+  assert.ok(i > 0, "Positionierung fehlt");
+  const block = shared.slice(i, shared.indexOf("}, []);", i));
+  // In den Viewport geklemmt statt blind rechtsbündig.
+  assert.match(block, /Math\.min\(Math\.max\(/);
+  // Nach oben aufklappen, wenn unten kein Platz ist.
+  assert.match(block, /passtUnten \? t\.bottom \+ 6 : Math\.max\(rand, t\.top - 6 - hoehe\)/);
+  // Vor dem Zeichnen messen — kein Aufblitzen an falscher Stelle.
+  assert.match(shared, /useLayoutEffect\(\(\) => \{ if \(open\) platziere\(\); \}/);
+  // Beim Scrollen nachführen statt schließen; Capture erfasst auch Container.
+  assert.match(shared, /window\.addEventListener\("scroll", nachfuehren, true\)/);
+  assert.match(shared, /window\.addEventListener\("resize", nachfuehren\)/);
+});
+
+test("E3k die Ansage nennt Artikel UND Lager", () => {
+  // Derselbe Artikel kann in zwei Lagern zweimal in der Liste stehen.
+  assert.match(stockPage, /label=\{`Weitere Aktionen für \$\{b\.productName\}, \$\{b\.warehouseName\}`\}/);
 });
 
 test("E4 es gibt genau EINE primäre Aktion im Seitenkopf", () => {

@@ -4,7 +4,7 @@ import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/St
 import { Icon } from "../../components/ui/Icon";
 import { InlineError } from "../../components/inventory/InventoryShared";
 import { getMovements } from "../../api/inventoryApi";
-import { MOVEMENT_TYPES, movementTypeView, signedQuantity, formatUnits, inventoryErrorText } from "../../utils/inventoryView.mjs";
+import { MOVEMENT_TYPES, adjustmentReasonLabel, movementTypeView, signedQuantity, formatUnits, inventoryErrorText } from "../../utils/inventoryView.mjs";
 
 const PAGE_LIMIT = 25;
 
@@ -169,6 +169,9 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                         <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
                           <span className="badge-dot" aria-hidden="true" />{text}
                         </span>
+                        {/* Der Korrekturgrund steht als eigenes Feld an der
+                            Bewegung — nur manuelle Korrekturen tragen einen. */}
+                        {adjustmentReasonLabel(m.reason) && <div className="inv-cell-meta">{adjustmentReasonLabel(m.reason)}</div>}
                       </td>
                       <td className={`ce-num${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</td>
                       <td className="ce-num">{formatUnits(m.onHandAfter)}</td>
@@ -198,10 +201,13 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                     <span className={`ce-num inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                   </div>
                   <div className="inv-card-title-static">{m.productName}</div>
-                  <div className="inv-cell-meta">{m.sku} · {m.warehouseName}</div>
+                  <div className="inv-cell-meta">
+                    {m.sku} · {m.warehouseName}
+                    {adjustmentReasonLabel(m.reason) ? ` · ${adjustmentReasonLabel(m.reason)}` : ""}
+                  </div>
                   <dl className="inv-card-facts">
                     <div><dt>Zeitpunkt</dt><dd>{dtDE(m.createdAt)}</dd></div>
-                    <div><dt>Bestand danach</dt><dd className="ce-num">{formatUnits(m.onHandAfter)}</dd></div>
+                    <div><dt>Bestand danach</dt><dd>{formatUnits(m.onHandAfter)}</dd></div>
                   </dl>
                   {m.note && <p className="inv-cell-meta">{m.note}</p>}
                 </li>

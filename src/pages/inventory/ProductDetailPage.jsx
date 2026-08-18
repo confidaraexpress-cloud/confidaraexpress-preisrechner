@@ -8,7 +8,7 @@ import { ProductForm } from "../../components/inventory/ProductForm";
 import { getProduct, updateProduct, postBlock, postUnblock, postReceipt } from "../../api/inventoryApi";
 import {
   formatKg, formatUnits, signedQuantity, movementTypeView,
-  inventoryErrorText, mapProductToShipment,
+  inventoryErrorText, mapProductToShipment, adjustmentReasonLabel,
   lowStockInfo, BLOCK_REASONS, blockEntryView,
 } from "../../utils/inventoryView.mjs";
 
@@ -191,13 +191,18 @@ export default function ProductDetailPage() {
             <h2 className="inv-section-title">Bestand</h2>
             {/* Fünf Werte, immer dieselbe Reihenfolge — sie bilden die Formel ab:
                 verfügbar = physisch − reserviert − gesperrt. „Gesperrt" bleibt
-                dauerhaft sichtbar, seit echte Aktionen dahinterstehen. */}
+                dauerhaft sichtbar, seit echte Aktionen dahinterstehen.
+
+                Ohne `.ce-num`: das Primitive richtet eine TABELLENSPALTE rechts
+                aus. Hier steht der Wert unter seiner Beschriftung, beide
+                linksbündig — die tabellarischen Ziffern kommen aus
+                `.inv-detail-v`, die gemeinsame Höhe aus dem Raster. */}
             <div className="inv-detail-stock">
-              <div><span className="inv-detail-k">Physisch</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.onHand)}</span></div>
-              <div><span className="inv-detail-k">Reserviert</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.reserved)}</span></div>
-              <div><span className="inv-detail-k">Gesperrt</span><span className={`inv-detail-v ce-num${gesperrt > 0 ? " inv-num-blocked" : ""}`}>{formatUnits(p.stock?.blocked)}</span></div>
-              <div><span className="inv-detail-k">Verfügbar</span><span className="inv-detail-v ce-num">{formatUnits(p.stock?.available)}</span></div>
-              <div><span className="inv-detail-k">Mindestbestand</span><span className="inv-detail-v ce-num">{p.minStock ?? "—"}</span></div>
+              <div><span className="inv-detail-k">Physisch</span><span className="inv-detail-v">{formatUnits(p.stock?.onHand)}</span></div>
+              <div><span className="inv-detail-k">Reserviert</span><span className="inv-detail-v">{formatUnits(p.stock?.reserved)}</span></div>
+              <div><span className="inv-detail-k">Gesperrt</span><span className={`inv-detail-v${gesperrt > 0 ? " inv-num-blocked" : ""}`}>{formatUnits(p.stock?.blocked)}</span></div>
+              <div><span className="inv-detail-k">Verfügbar</span><span className="inv-detail-v">{formatUnits(p.stock?.available)}</span></div>
+              <div><span className="inv-detail-k">Mindestbestand</span><span className="inv-detail-v">{p.minStock ?? "—"}</span></div>
             </div>
             <p className="inv-detail-formula">Verfügbar = physisch − reserviert − gesperrt.</p>
             <StockBadge row={{ available: p.stock?.available, minStock: p.minStock }} />
@@ -219,11 +224,20 @@ export default function ProductDetailPage() {
             )}
 
             {/* Nur relevante Aktionen: „Sperre aufheben" erscheint erst, wenn es
-                etwas aufzuheben gibt. */}
+                etwas aufzuheben gibt.
+
+                „Bestand einbuchen" steht hier nur, solange der Hinweisstreifen
+                oben ihn NICHT bereits trägt — sonst stünde dieselbe Aktion
+                zweimal untereinander auf derselben Karte, einmal als
+                Hauptaktion und drei Zeilen darunter noch einmal als
+                Nebenaktion. Erreichbar bleibt sie in beiden Fällen genau
+                einmal (CLAUDE.md: „Genau eine Stelle je Aktion"). */}
             <div className="inv-detail-actions">
-              <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("receipt")}>
-                <Icon n="packageMove" s={16} />Bestand einbuchen
-              </button>
+              {!niedrig && (
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("receipt")}>
+                  <Icon n="packageMove" s={16} />Bestand einbuchen
+                </button>
+              )}
               <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("block")}
                       disabled={Number(p.stock?.available ?? 0) < 1}>
                 <Icon n="shield" s={16} />Bestand sperren
@@ -242,7 +256,10 @@ export default function ProductDetailPage() {
                   <thead>
                     <tr>
                       <th scope="col">Lager</th>
-                      <th scope="col" className="ce-num">Bestand</th>
+                      {/* „Physisch" wie im Kennzahlenband darüber und auf der
+                          Bestandsseite — „Bestand" wäre neben reserviert,
+                          gesperrt und verfügbar mehrdeutig. */}
+                      <th scope="col" className="ce-num">Physisch</th>
                       <th scope="col" className="ce-num">Reserviert</th>
                       <th scope="col" className="ce-num">Gesperrt</th>
                       <th scope="col" className="ce-num">Verfügbar</th>
@@ -358,6 +375,9 @@ export default function ProductDetailPage() {
                         </span>
                         <span className={`ce-num inv-movement-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                         <span className="inv-cell-meta">Bestand danach: <span className="ce-num">{formatUnits(m.onHandAfter)}</span></span>
+                        {/* Nur manuelle Korrekturen tragen einen Grund; er steht
+                            als eigenes Feld an der Bewegung, nicht in der Notiz. */}
+                        {adjustmentReasonLabel(m.reason) && <span className="inv-cell-meta">{adjustmentReasonLabel(m.reason)}</span>}
                         <span className="inv-cell-meta">{m.warehouseName}</span>
                         <span className="inv-cell-meta">{dtDE(m.createdAt)}</span>
                       </li>
@@ -400,7 +420,7 @@ export default function ProductDetailPage() {
               <div><dt>Lager</dt><dd>{primaryWarehouse?.warehouseName || "—"}</dd></div>
               <div>
                 <dt>{stockDialog === "unblock" ? "Gesperrt" : "Verfügbar"}</dt>
-                <dd className="ce-num">{formatUnits(stockDialog === "unblock" ? gesperrt : p.stock?.available)}</dd>
+                <dd>{formatUnits(stockDialog === "unblock" ? gesperrt : p.stock?.available)}</dd>
               </div>
             </dl>
 

@@ -233,9 +233,9 @@ export default function OrdersPage({ utility, onPrepareShipment, initialFilter =
                     {o.recipient?.company || o.recipient?.fullName || "—"} · {o.recipient?.city} {o.recipient?.country}
                   </div>
                   <dl className="inv-card-facts">
-                    <div><dt>Positionen</dt><dd className="ce-num">{formatUnits(o.itemCount)}</dd></div>
-                    <div><dt>Reserviert</dt><dd className="ce-num">{formatUnits(o.openQuantity)}</dd></div>
-                    <div><dt>Versendet</dt><dd className="ce-num">{formatUnits(o.shippedQuantity)}</dd></div>
+                    <div><dt>Positionen</dt><dd>{formatUnits(o.itemCount)}</dd></div>
+                    <div><dt>Reserviert</dt><dd>{formatUnits(o.openQuantity)}</dd></div>
+                    <div><dt>Versendet</dt><dd>{formatUnits(o.shippedQuantity)}</dd></div>
                   </dl>
                   <div className="inv-card-actions">
                     <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/orders/${o.id}`)}>Öffnen</button>

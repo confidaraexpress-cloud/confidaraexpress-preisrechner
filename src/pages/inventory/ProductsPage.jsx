@@ -232,9 +232,9 @@ export default function ProductsPage({ utility, onShipProduct }) {
                 </div>
                 <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
                 <dl className="inv-card-facts">
-                  <div><dt>Bestand</dt><dd className="ce-num">{formatUnits(p.stock?.onHand)}</dd></div>
-                  <div><dt>Reserviert</dt><dd className="ce-num">{formatUnits(p.stock?.reserved)}</dd></div>
-                  <div><dt>Verfügbar</dt><dd className="ce-num">{formatUnits(p.stock?.available)}</dd></div>
+                  <div><dt>Bestand</dt><dd>{formatUnits(p.stock?.onHand)}</dd></div>
+                  <div><dt>Reserviert</dt><dd>{formatUnits(p.stock?.reserved)}</dd></div>
+                  <div><dt>Verfügbar</dt><dd>{formatUnits(p.stock?.available)}</dd></div>
                   <div><dt>Gewicht</dt><dd>{formatKg(p.weightKg)}</dd></div>
                 </dl>
                 <div className="inv-card-actions">

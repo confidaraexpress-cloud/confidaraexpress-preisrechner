@@ -21,7 +21,7 @@ export function InventoryStatCard({ icon, label, value, hint, tone = "", onClick
         <span className="inv-stat-label">{label}</span>
         {onClick && <span className="inv-stat-chevron" aria-hidden="true"><Icon n="chevronRight" s={16} /></span>}
       </div>
-      <div className="inv-stat-value ce-num">{value}</div>
+      <div className="inv-stat-value">{value}</div>
       {hint && <div className="inv-stat-hint">{hint}</div>}
     </>
   );
@@ -178,6 +178,82 @@ export function CollapsibleSection({ id, title, hint, open, onToggle, filled, ch
         <div id={id} className="inv-section-body">
           {hint && <p className="inv-section-hint">{hint}</p>}
           {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Weitere Zeilenaktionen (Kebab) ──
+   Dasselbe Muster wie AddressActionsMenu/DraftActionsMenu: Fokus auf den ersten
+   Eintrag beim Öffnen, Klick nach außen und Escape schließen, und der Fokus geht
+   ZUERST an den Auslöser zurück, DANN läuft die Aktion — sonst merkt sich ein
+   Dialog beim Öffnen den gerade angeklickten Menüeintrag, der mit dem Menü
+   verschwindet, und der Fokus landete nach „Abbrechen" auf <body>.
+
+   Warum überhaupt ein Menü: die Bestandszeile trägt drei Aktionen, deren Knöpfe
+   zusammen 336 px messen — die Aktionsspalte bekommt selbst auf 1920 px nur
+   271 px. Nebeneinander brachen sie deshalb IMMER um, mit der dritten Aktion
+   allein auf einer zweiten, rechtsbündigen Zeile. Sichtbar bleibt die häufigste
+   Aktion; die selteneren stehen mit vollem Namen im Menü. */
+export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const triggerRef = useRef(null);
+  const firstItemRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    firstItemRef.current?.focus();
+    const onOutside = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } };
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const sichtbar = (items || []).filter(Boolean);
+  if (sichtbar.length === 0) return null;
+
+  const fuehreAus = (item) => {
+    setOpen(false);
+    triggerRef.current?.focus();
+    item.onClick?.();
+  };
+
+  return (
+    <div className="inv-actions" ref={wrapRef}>
+      <button
+        type="button"
+        ref={triggerRef}
+        className="btn btn-sm btn-icon"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        title={label}
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+      >
+        <Icon n="settings" s={16} />
+      </button>
+      {open && (
+        <div className="inv-actions-menu" role="menu">
+          {sichtbar.map((item, i) => (
+            <button
+              key={item.key || item.label}
+              ref={i === 0 ? firstItemRef : undefined}
+              type="button"
+              role="menuitem"
+              className="inv-actions-item"
+              onClick={() => fuehreAus(item)}
+              disabled={item.disabled}
+            >
+              {item.icon && <Icon n={item.icon} s={15} />}{item.label}
+            </button>
+          ))}
         </div>
       )}
     </div>

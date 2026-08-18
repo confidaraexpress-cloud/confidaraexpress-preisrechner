@@ -747,6 +747,56 @@ Bewusst zurückgestellt: eine Empfänger-/Zielspalte in „Letzte Sendungen" —
 zeigt dort ebenfalls keine). Ebenso der „Antwortstatus" der Supportliste: die
 Kundenantwort kennt kein solches Feld. Beides würde neue Backenddaten brauchen.
 
+## Bestandsseite und Kennzahlenausrichtung
+
+- **`.ce-num` markiert eine TABELLENSPALTE — sonst nichts.** Das Primitive
+  bringt `text-align: right` mit (primitives.css). Auf einem frei stehenden
+  Element in einer Karte richtete es jeden Wert an der rechten Kante seiner
+  Zelle aus, während die Beschriftung links stand: die fünf Kennzahlen der
+  Artikeldetailseite standen dadurch 81 bis 194 px von ihrer eigenen
+  Beschriftung entfernt, und der Versatz änderte sich mit der Fensterbreite.
+  Betroffen waren ebenso die Kennzahlkarten der Lagerübersicht und die
+  Kartenfakten aller vier Listen. Wo Beschriftung und Wert UNTEREINANDER
+  stehen, trägt die Zahl deshalb kein `.ce-num`; die tabellarischen Ziffern
+  kommen aus der jeweiligen Blockklasse.
+- **Die Kennzahlen teilen sich zwei Zeilenspuren** (`grid-template-rows:
+  subgrid` auf `.inv-detail-stock > div`, als `@supports`-Stufe über der
+  Flexspalte). Damit hängt die Wertposition an der Rasterspur, nicht an der
+  Textlänge — eine zweizeilige Beschriftung schiebt nicht mehr nur IHREN Wert
+  nach unten. Kein Ausgleich je einzelner Kennzahl.
+- **Korrekturgrund statt Ja/Nein.** Die Frage „Fehlmenge ist Bruch oder
+  Schwund" ist ein Auswahlfeld geworden (Inventurdifferenz · Beschädigung ·
+  Schwund · Sonstiges). Der Grund wird serverseitig als eigenes Feld der
+  Bewegung gespeichert (`inventory_movements.reason`), **nicht** im Notiztext.
+  Der Bewegungstyp bleibt die führende Angabe und ändert sich nicht: die
+  Verlustgründe buchen weiter DAMAGE, die übrigen ADJUSTMENT_OUT/-IN. Das alte
+  Feld `damage` bleibt backendseitig gültig, weil gehashte Bundles mit
+  `immutable` ausgeliefert werden.
+- **Vorschauen sind Darstellung, keine Autorität.** `receiptPreview()` und
+  `adjustmentPreview()` (`utils/inventoryView.mjs`) sagen, was der eingetippte
+  Wert bedeutet. Gesendet wird unverändert der GEZÄHLTE Bestand, nie ein selbst
+  gerechnetes Delta. Eine Vorschau erscheint **nur bei belastbarer Grundlage**:
+  aus der Bestandszeile (genau ein Paar Artikel/Lager) oder bei genau einem
+  Lager — die Artikelsuche liefert `SUM(on_hand)` über alle Lager und taugt
+  sonst nicht als Ausgangswert.
+- **Drei Zeilenaktionen passen nicht nebeneinander.** Knöpfe für Einbuchen,
+  Korrigieren und Sperren messen zusammen 336 px; die Aktionsspalte bekommt
+  selbst auf 1920 px nur 271 px. Sichtbar bleibt „Einbuchen", der Rest steht im
+  Zeilenmenü (`RowActionsMenu`, gleiches Muster wie `AddressActionsMenu`:
+  Fokusfalle nach außen, Escape, und Fokusrückgabe an den Auslöser VOR der
+  Aktion). Das Bündel aus Knopf und Kebab trägt `.inv-row-actions--tight`
+  (`flex-wrap: nowrap`): mit Umbruch meldete es als Mindestbreite nur den
+  breitesten Knopf, und die Tabelle gab ihm 131 statt der nötigen 132 px.
+- **Zwei behobene Altlasten aus derselben Ecke:** `.ce-page-header-actions` hielt
+  über `flex-shrink: 0` seine max-content-Breite und brach deshalb nie um — zwei
+  Kopfaktionen ragten auf 390 px um 46 px aus dem Bild, kaschiert von
+  `body { overflow-x: hidden }` (jetzt `max-width: 100%`). Und `.inv-card-title`
+  ist ein `.btn`: dessen `white-space: nowrap` verhinderte den Umbruch langer
+  Artikelnamen, dessen Flexzentrierung stellte kurze Namen mittig — beides
+  gezielt aufgehoben.
+- Governance: `src/utils/stockPageUx.test.mjs` (32 Tests) und backendseitig
+  `tests/inventory-adjustment-reasons.test.js` (22 Tests).
+
 ## Premium-Adminportal (Paket E)
 
 Das Adminportal ist **keine eigene Designwelt mehr**. Shell, Navigation,

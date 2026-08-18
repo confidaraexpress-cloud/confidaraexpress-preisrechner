@@ -649,6 +649,7 @@ export default function DashboardPage() {
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
             <OrdersPage
               utility={utilityCluster}
+              onNavigate={navigateTo}
               onPrepareShipment={applyInventoryPrefill}
               initialFilter={inventoryFilter?.page === "orders" ? inventoryFilter.filter : null}
               onFilterApplied={() => setInventoryFilter(null)}

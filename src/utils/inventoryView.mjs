@@ -534,6 +534,52 @@ export function positionLabel(count) {
   return `${n.toLocaleString("de-DE")} ${n === 1 ? "Position" : "Positionen"}`;
 }
 
+/** „1 Einheit" / „5 Einheiten" — nie „1 Einheiten". */
+export function unitLabel(count) {
+  const n = zahlOderNull(count);
+  if (n === null) return "—";
+  return `${n.toLocaleString("de-DE")} ${n === 1 ? "Einheit" : "Einheiten"}`;
+}
+
+/**
+ * Eine Auftragszeile in einem Satz: „3 Positionen · 7 Einheiten reserviert · 2 versendet".
+ *
+ * Der Satz ist nötig, weil die drei Zahlen NICHT dasselbe zählen: `itemCount`
+ * ist ein COUNT über die Positionen, `openQuantity` und `shippedQuantity` sind
+ * SUMMEN über Mengen (siehe routes/orders.js). Nebeneinander in einer
+ * Zahlenreihe liest man sie leicht als dreimal dasselbe.
+ *
+ * Die Einheit steht bewusst nur EINMAL: „… 7 Einheiten reserviert · 2
+ * versendet" — die zweite Zahl erbt sie aus der ersten und der Satz bleibt kurz.
+ * Rückgabe null, wenn keine der drei Zahlen vorliegt — dann gibt es nichts zu
+ * sagen.
+ */
+export function orderSummary(order) {
+  if (!order || typeof order !== "object") return null;
+  const positionen = zahlOderNull(order.itemCount);
+  const reserviert = zahlOderNull(order.openQuantity);
+  const versendet = zahlOderNull(order.shippedQuantity);
+  const teile = [];
+  if (positionen !== null) teile.push(positionLabel(positionen));
+  if (reserviert !== null) teile.push(`${unitLabel(reserviert)} reserviert`);
+  if (versendet !== null) teile.push(`${versendet.toLocaleString("de-DE")} versendet`);
+  return teile.length > 0 ? teile.join(" · ") : null;
+}
+
+/**
+ * Datum ohne Uhrzeit, zweistellig: „18.08.2026".
+ *
+ * `toLocaleDateString("de-DE")` allein liefert „18.8.2026" — im selben Modul
+ * steht daneben dateTimeShort() mit zweistelligen Feldern, und beide Formen
+ * nebeneinander sehen nach Zufall aus.
+ */
+export function dateShort(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 /** Kurzer Zeitpunkt ohne Sekunden — dieselbe Regel wie dtDE() bei den Entwürfen. */
 export function dateTimeShort(value) {
   if (!value) return null;

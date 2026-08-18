@@ -10,6 +10,7 @@ import { NotificationBell } from "../notifications/NotificationBell";
 import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
 import { BrandLogo } from "../ui/BrandLogo";
+import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -78,6 +79,7 @@ export function DashboardLayout() {
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>
         </div>
+        <ContentErrorBoundary key={location.pathname}>
         {ROUTE_HEADERS[activePage] && (
           <DashboardSectionHeader
             eyebrow={ROUTE_HEADERS[activePage].eyebrow}
@@ -106,6 +108,7 @@ export function DashboardLayout() {
             </UtilityCluster>
           ),
         }} />
+        </ContentErrorBoundary>
         <LegalLinks />
       </main>
       </div>

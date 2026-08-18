@@ -15,6 +15,7 @@ import { countryName } from "../../utils/calculatorValidation.mjs";
 // Sendungsstatus kommt aus dem BESTEHENDEN Bauteil — der Lagerbereich führt
 // kein zweites Statusmodell für Sendungen und keine zweite Badge-Abbildung.
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
 
 /* ── Auftragsdetail (echte Route /inventory/orders/:id) ──────────────────────
    Zeigt Auftrag, Positionen mit Reservierungsstand und die verbundenen
@@ -37,6 +38,11 @@ export default function OrderDetailPage() {
   const [preparing, setPreparing] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Lieferschein-Download je Sendung: die laufende Sendungs-ID und ein
+  // Fehlerzustand. Beides zeilenbezogen — ein Fehler an einer Sendung darf die
+  // anderen Zeilen nicht betreffen.
+  const [dnBusyId, setDnBusyId] = useState(null);
+  const [dnError, setDnError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +58,40 @@ export default function OrderDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  const ladeLieferschein = async (s) => {
+    if (!s?.id || !s?.deliveryNote?.number || dnBusyId) return;
+    setDnBusyId(s.id); setDnError("");
+    try {
+      await downloadDeliveryNote(s.id, s.deliveryNote.number);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setDnError(e.message);
+    }
+    setDnBusyId(null);
+  };
+
+  // Drei Fälle, klar getrennt:
+  //   Confidara-Lieferschein → Nummer als Downloadaktion
+  //   eigener Lieferschein   → Nummer als Text (kein PDF in Confidara, also kein Knopf)
+  //   keiner                 → Gedankenstrich, keine leere Zeile
+  const renderDeliveryNoteCell = (s) => {
+    if (s.deliveryNote?.number) {
+      return (
+        <button
+          type="button"
+          className="btn btn-link inv-cell-link"
+          onClick={() => ladeLieferschein(s)}
+          disabled={dnBusyId === s.id}
+        >
+          {dnBusyId === s.id ? "Wird geladen …" : s.deliveryNote.number}
+        </button>
+      );
+    }
+    if (s.externalDeliveryNoteNumber) {
+      return <span className="inv-cell-meta">Eigener Lieferschein {s.externalDeliveryNoteNumber}</span>;
+    }
+    return <span className="inv-cell-meta">—</span>;
+  };
 
   const versandVorbereiten = async () => {
     setPreparing(true);
@@ -199,6 +239,7 @@ export default function OrderDetailPage() {
 
           <section className="ce-card inv-detail-section">
             <h2 className="inv-section-title">Verbundene Sendungen</h2>
+            {dnError && <InlineError text={dnError} />}
             {(!data.shipments || data.shipments.length === 0)
               ? <p className="inv-cell-meta">Für diesen Auftrag wurde noch keine Sendung gebucht.</p>
               : (
@@ -211,6 +252,7 @@ export default function OrderDetailPage() {
                         <th scope="col">Carrier</th>
                         <th scope="col">Sendungsnummer</th>
                         <th scope="col">Status</th>
+                        <th scope="col">Lieferschein</th>
                         <th scope="col">Gebucht</th>
                       </tr>
                     </thead>
@@ -221,6 +263,13 @@ export default function OrderDetailPage() {
                           <td>{s.carrier || "—"}</td>
                           <td className="inv-cell-meta">{s.trackingNumber || "—"}</td>
                           <td><StatusBadge status={s.status} /></td>
+                          {/* Je Sendung ein eigener Lieferschein — bei Teilversand hat jede
+                              Sendung ihren. Deshalb hier in der Zeile und nicht als ein
+                              Kasten oben am Auftrag, der nur einen Wert tragen könnte.
+                              Confidara-Lieferschein: Nummer + Download.
+                              Eigener Lieferschein: nur die Nummer als Text — es liegt kein
+                              PDF in Confidara, also wird auch kein Download behauptet. */}
+                          <td>{renderDeliveryNoteCell(s)}</td>
                           <td className="inv-cell-meta">{dDE(s.createdAt)}</td>
                         </tr>
                       ))}

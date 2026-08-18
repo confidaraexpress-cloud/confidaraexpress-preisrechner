@@ -39,6 +39,8 @@ import {
 } from "../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
+import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
+import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
@@ -109,6 +111,10 @@ export default function BookingPage() {
   const [addressError, setAddressError] = useState("");
   const [labelLoading, setLabelLoading] = useState(false);
   const [labelError, setLabelError] = useState("");
+  // Eigener Zustand für den Lieferschein: ein fehlgeschlagener Lieferscheindownload
+  // darf die Labelmeldung nicht überschreiben und umgekehrt.
+  const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false);
+  const [deliveryNoteError, setDeliveryNoteError] = useState("");
   // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
   // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
   // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
@@ -275,6 +281,20 @@ export default function BookingPage() {
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
 
+  /* ── Eigene Lieferscheinnummer ──────────────────────────────────────────────
+     Sichtbar NUR bei Kontomodus „Eigenes Lieferscheinsystem" UND nur bei einer
+     Sendung mit Lagerbezug: ohne Warendaten gäbe es gar keinen Lieferschein, auf
+     den sich eine Nummer beziehen könnte. Bewusst KEIN Schalter und KEIN neuer
+     Schritt — ein einzelnes optionales Feld in den bereits vorhandenen
+     Zusatzangaben, wie die Referenznummer daneben.
+
+     Der Lagerbezug wird am Vorgang erkannt (derselbe inventoryContext, den auch
+     „Neue Sendung" führt) — nicht an einem eigenen Flag. */
+  const hasInventoryContext = !!flowShipment?.inventoryContext;
+  const showExternalDeliveryNote = showsExternalDeliveryNoteField(user, hasInventoryContext);
+  const [externalDeliveryNoteNumber, setExternalDeliveryNoteNumber] =
+    useState(flowBooking?.externalDeliveryNoteNumber || "");
+
   // Validiert wird NUR die jeweils aktive Option; ein ausgeschalteter, evtl.
   // ungültiger Restwert darf die Buchung nicht blockieren, weil er auch nicht
   // gesendet wird. Das Frontend ersetzt die serverseitige Prüfung nicht.
@@ -322,9 +342,16 @@ export default function BookingPage() {
       // Rückkehr wieder offen.
       trackingEmail: trackingEmailEnabled ? trackingEmail : "",
       labelTrackingEmail: labelTrackingEmailEnabled ? labelTrackingEmail : "",
+      // Dieselbe Regel: gespiegelt wird nur, was auch gesendet würde. Ist das Feld
+      // gar nicht sichtbar (anderer Kontomodus oder Sendung ohne Lagerbezug), bleibt
+      // der Vorgang leer — ein unsichtbarer Restwert darf nie mitgebucht werden.
+      externalDeliveryNoteNumber: showExternalDeliveryNote ? externalDeliveryNoteNumber : "",
     });
+  // Reihenfolge ohne Bedeutung für React — die vier E-Mail-Abhängigkeiten stehen
+  // aber bewusst am Ende: sharedShipmentEmailOptions.test.mjs (6) verankert dort.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, setFlowBooking,
+      showExternalDeliveryNote, externalDeliveryNoteNumber,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
@@ -753,6 +780,11 @@ export default function BookingPage() {
             trackingEmailEnabled, trackingEmail,
             labelTrackingEmailEnabled, labelTrackingEmail,
           }),
+          // Eigene Lieferscheinnummer — nur wenn das Feld überhaupt sichtbar war und
+          // etwas darinsteht. Ein unsichtbarer Restwert wird nie mitgebucht. Der Wert
+          // geht ausschließlich in die lokale Sendung, nie an den Provider.
+          ...(showExternalDeliveryNote && externalDeliveryNoteNumber.trim()
+            ? { externalDeliveryNoteNumber: externalDeliveryNoteNumber.trim() } : {}),
           // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
           // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
           labelFormat,
@@ -941,6 +973,21 @@ export default function BookingPage() {
     setLabelLoading(false);
   };
 
+  // Lieferschein — derselbe Weg wie das Label: Sendungshandle aus der Buchungsantwort,
+  // Blob-Download, eigener Fehlerzustand. Der Knopf erscheint NUR, wenn die
+  // Buchungsantwort tatsächlich einen Lieferschein meldet (`booking.deliveryNote`) —
+  // nie anhand des Kontomodus geraten.
+  const handleDownloadDeliveryNote = async () => {
+    if (!booking?.ceShipmentId || !booking?.deliveryNote?.number) return;
+    setDeliveryNoteLoading(true); setDeliveryNoteError("");
+    try {
+      await downloadDeliveryNote(booking.ceShipmentId, booking.deliveryNote.number);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setDeliveryNoteError(e.message);
+    }
+    setDeliveryNoteLoading(false);
+  };
+
   /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
      Es führt IMMER zum Angebotsvergleich — unabhängig davon, was im
      Browserverlauf davor liegt.
@@ -1124,6 +1171,10 @@ export default function BookingPage() {
               labelTrackingEmailError={emailShowErrors ? labelTrackingEmailProblem : null}
               labelFormat={labelFormat}
               onLabelFormatChange={setLabelFormat}
+              showExternalDeliveryNote={showExternalDeliveryNote}
+              externalDeliveryNoteNumber={externalDeliveryNoteNumber}
+              onExternalDeliveryNoteNumberChange={setExternalDeliveryNoteNumber}
+              deliveryNoteText={DELIVERY_NOTE_TEXT}
             />
 
             {modules.customs && (
@@ -1360,6 +1411,16 @@ export default function BookingPage() {
             {booking?.ceShipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+              </button>
+            )}
+            {/* Lieferschein — erscheint NUR, wenn die Buchungsantwort tatsächlich einen
+                gemeldet hat. Ohne Lieferschein bleibt hier keine leere Zeile stehen. */}
+            {deliveryNoteError && <div className="alert alert-error mb-16" role="alert">{deliveryNoteError}</div>}
+            {booking?.ceShipmentId && booking?.deliveryNote?.number && (
+              <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadDeliveryNote} disabled={deliveryNoteLoading}>
+                {deliveryNoteLoading
+                  ? <><span className="spinner spinner-dark" /> Lieferschein wird geladen…</>
+                  : <>Lieferschein {booking.deliveryNote.number} herunterladen</>}
               </button>
             )}
             {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling

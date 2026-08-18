@@ -106,6 +106,12 @@ export const BOOKING_KEYS = Object.freeze([
   // damit sie eine Zurücknavigation überleben. Gespiegelt wird nur, was auch
   // gebucht würde (siehe BookingPage): ein ausgeschalteter Bereich landet leer.
   "trackingEmail", "labelTrackingEmail",
+  // Eigene Lieferscheinnummer (nur im Kontomodus „Eigenes Lieferscheinsystem" und nur
+  // bei einer Sendung mit Lagerbezug sichtbar). Reine Frontendeingabe ohne Serverquelle
+  // — sie gehört wie `reference` in den laufenden Vorgang, damit sie Zurücknavigation
+  // und Reload übersteht. ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem
+  // älteren Bundle liefert hier `undefined` → "" und wird nicht grundlos verworfen.
+  "externalDeliveryNoteNumber",
 ]);
 
 /* ══════════ defensive Helfer ═════════════════════════════════════════════ */

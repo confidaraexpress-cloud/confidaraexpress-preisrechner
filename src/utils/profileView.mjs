@@ -198,6 +198,66 @@ export function paymentTermValue(user) {
 // NICHT verändert). Sicherheitshinweis in der sachlich korrekten Variante: die
 // Passwortänderung verlangt nur das aktuelle Passwort (keine separate Bestätigung),
 // daher „geschützt verarbeitet" statt „bestätigt".
+// ── Lieferscheine ───────────────────────────────────────────────────────────
+// Eine Kontoeinstellung mit drei Werten. Sie läuft über denselben PATCH /kunde/profil
+// wie alle anderen Profilfelder — es gibt keine zweite Speicherstrecke.
+//
+// Der Wert `external` verhält sich beim Buchen wie `none` (es entsteht kein
+// Confidara-Lieferschein); der Unterschied ist rein darstellerisch: nur dort bietet die
+// Oberfläche das Feld für die eigene Lieferscheinnummer an.
+export const DELIVERY_NOTE_MODES = ["confidara", "external", "none"];
+export const DEFAULT_DELIVERY_NOTE_MODE = "none";
+
+// Fail-safe: ein unbekannter oder fehlender Wert gilt als „keine Lieferscheine". Ein
+// Konto, dessen Antwort das Feld noch nicht trägt (altes Backend), verhält sich damit
+// exakt wie bisher.
+export function deliveryNoteMode(user) {
+  const v = user?.delivery_note_mode;
+  return DELIVERY_NOTE_MODES.includes(v) ? v : DEFAULT_DELIVERY_NOTE_MODE;
+}
+
+// Nur der eine Schlüssel — dieselbe strukturelle Mass-Assignment-Sicherheit wie bei den
+// übrigen Karten. Ein ungültiger Wert wird gar nicht erst gesendet.
+export function buildDeliveryNotePatch(mode) {
+  const value = DELIVERY_NOTE_MODES.includes(mode) ? mode : DEFAULT_DELIVERY_NOTE_MODE;
+  return { delivery_note_mode: value };
+}
+
+// Zeigt die Oberfläche das Feld für die eigene Lieferscheinnummer? Nur im Modus
+// `external` UND nur dort, wo überhaupt strukturierte Warendaten vorliegen (Versand aus
+// Artikel oder Auftrag). Für eine gewöhnliche Sendung ohne Lagerbezug wäre das Feld eine
+// Funktion ohne Gegenstück — es gibt dort keinen Lieferschein, auf den es sich bezöge.
+export function showsExternalDeliveryNoteField(user, hasInventoryContext) {
+  return deliveryNoteMode(user) === "external" && hasInventoryContext === true;
+}
+
+// Kundensprache — bewusst OHNE technische Begriffe (kein „shipment_items", kein
+// „delivery_note_mode", kein „Inventory Context").
+export const DELIVERY_NOTE_TEXT = {
+  title: "Lieferscheine",
+  subtitle: "Warenbegleitpapiere für Ihre Sendungen",
+  fieldLabel: "Standard für neue Sendungen",
+  options: {
+    confidara: {
+      label: "Automatisch mit Confidara erstellen",
+      hint: "Für Sendungen aus Lagerartikeln oder Aufträgen erstellt Confidara nach erfolgreicher Buchung automatisch einen Lieferschein.",
+    },
+    external: {
+      label: "Eigenes Lieferscheinsystem",
+      hint: "Confidara erstellt keinen eigenen Lieferschein. Bei Bedarf können Sie Ihre eigene Lieferscheinnummer zur Sendung hinterlegen.",
+    },
+    none: {
+      label: "Keine Lieferscheine",
+      hint: "Der bisherige Versandprozess bleibt unverändert.",
+    },
+  },
+  externalFieldLabel: "Eigene Lieferscheinnummer",
+  externalFieldHint: "Optional. Die Nummer aus Ihrem eigenen System wird mit dieser Sendung verknüpft.",
+  externalFieldPlaceholder: "z. B. LS-58421",
+  // Spiegelt die Backendgrenze (lib/deliveryNotes.js EXTERNAL_DELIVERY_NOTE_NUMBER_MAX).
+  externalFieldMaxLen: 64,
+};
+
 export const PROFILE_TEXT = {
   companyTitle: "Unternehmensdaten",
   companySubtitle: "Stammdaten Ihres Unternehmens",

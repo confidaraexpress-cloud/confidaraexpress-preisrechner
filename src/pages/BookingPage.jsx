@@ -1023,7 +1023,7 @@ export default function BookingPage() {
     <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
         <p className="text-muted mb-16">Kein Angebot ausgewählt</p>
-        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
+        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Versandkostenrechner</button>
       </div>
     </div>
   );
@@ -1031,8 +1031,8 @@ export default function BookingPage() {
   if (!addrReady) return (
     <div className="page-with-navbar booking-no-tariff">
       <div className="text-center">
-        <p className="text-muted mb-16">Adressdaten unvollständig — bitte im Preisrechner ausfüllen</p>
-        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Preisrechner</button>
+        <p className="text-muted mb-16">Adressdaten unvollständig — bitte im Versandkostenrechner ausfüllen</p>
+        <button className="btn btn-primary" onClick={() => navigate("/calculator")}>Zum Versandkostenrechner</button>
       </div>
     </div>
   );

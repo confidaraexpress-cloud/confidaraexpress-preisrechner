@@ -71,6 +71,13 @@ const paths = {
   briefcase:    "M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM8 6.5v-1a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1M3 12.5h18",
   idcard:       "M4 5.5h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1ZM9 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 16c.4-1.6 1.7-2.5 3-2.5s2.6.9 3 2.5M15 9.5h3M15 13h3",
   shieldCheck:  "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM8.5 11.5l2.5 2.5 4.5-4.5",
+  /* Bild (Firmenlogo) und Hochladen. `upload` ist bewusst die gespiegelte
+     Konstruktion von `download` — beide gehören zusammen und sollen es auch
+     aussehen. Der Kreis in `image` ist als Pfad gezeichnet, weil die Komponente
+     genau EIN <path> rendert (nur `truck` ist ein Sonderfall mit eigenem
+     Markup); ein zweiter Sonderfall wäre für ein Icon nicht gerechtfertigt. */
+  image:        "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM11 9a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21",
+  upload:       "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
   /* ── Premium-Übersicht („Highend Blue") ── */
   form:         "M9 4h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM8 6H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2M8.5 12.5h7M8.5 16.5h4",
   layers:       "M12 2 21 7 12 12 3 7ZM3 12l9 5 9-5M3 17l9 5 9-5",

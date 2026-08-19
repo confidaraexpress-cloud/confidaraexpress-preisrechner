@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useNavigate } from "react-router-dom";
 import { API, apiFetch, setAuthErrorHandler, token as getToken } from "../api/client";
 import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
+import { clearCompanyLogoCache } from "../api/companyLogoApi";
 
 const AuthContext = createContext(null);
 
@@ -12,10 +13,18 @@ const AuthContext = createContext(null);
 // lädt /kundenbereich beim Mount) und über updateUser/refreshUser synchron
 // bleibt — ohne neue globale State-Bibliothek. Defensiv: falls das Backend es
 // je unter `user` liefert, wird auch das übernommen; sonst null.
+// Formt die /kundenbereich-Antwort in das User-Objekt (Fortsetzung): das
+// Firmenlogo kommt — wie `pendingEmailChange` — TOP-LEVEL neben `user` und wird
+// aus demselben Grund in das User-Objekt gefaltet: eine Quelle, überlebt Reloads,
+// bleibt über updateUser/refreshUser synchron. Geliefert werden ausschließlich
+// METADATEN (Version, Typ, Größe, Maße), nie das Bild selbst.
+// Defensiv gegen ein Backend OHNE dieses Feld: dann steht hier null, und die
+// Oberfläche zeigt unverändert die Initiale — kein Fehler, kein leerer Kasten.
 function userFromKundenbereich(d) {
   const u = (d && d.user) || {};
   const pending = d?.pendingEmailChange ?? u.pendingEmailChange ?? null;
-  return { ...u, pendingEmailChange: pending };
+  const logo = d?.companyLogo ?? u.companyLogo ?? null;
+  return { ...u, pendingEmailChange: pending, companyLogo: logo };
 }
 
 export function AuthProvider({ children }) {
@@ -38,6 +47,7 @@ export function AuthProvider({ children }) {
     setAuthErrorHandler(() => {
       localStorage.removeItem("ce_token");
       clearShippingFlowStorage();   // dieselbe Bereinigung wie beim Abmelden
+      clearCompanyLogoCache();      // Object-URL des Firmenlogos freigeben
       setAuthed(false);
       setUser(null);
       setSessionExpired(true);
@@ -107,6 +117,10 @@ export function AuthProvider({ children }) {
     // authed-Wächter. Bewusst eine reine Funktion ohne React — keine Kopplung
     // von client.js oder AuthContext an einen weiteren Kontext.
     clearShippingFlowStorage();
+    // Das Firmenlogo liegt als Object-URL im Arbeitsspeicher des Tabs. Es
+    // überlebte sonst den Kontowechsel im selben Tab — dieselbe Bereinigung wie
+    // beim zentralen 401/403-Handler oben.
+    clearCompanyLogoCache();
     setAuthed(false);
     setUser(null);
     setSessionExpired(false);

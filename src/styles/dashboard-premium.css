@@ -696,6 +696,38 @@
   font-size: var(--ce-text-body-s-size); color: var(--ce-color-success-solid);
 }
 
+/* ── Unternehmenslogo (Kontoeinstellungen) ─────────────────────────────────
+   Vorschau links, Erklärung rechts, Aktionen darunter. Unter 560 px stapelt
+   die Zeile — Reflow statt Stauchung, wie überall im System. */
+.profile-logo-row { display: flex; align-items: flex-start; gap: 16px; }
+.profile-logo-copy { min-width: 0; flex: 1 1 auto; }
+.profile-logo-desc {
+  margin: 0; font-size: var(--ce-text-body-s-size); line-height: 1.5;
+  color: var(--ce-color-text-secondary);
+}
+.profile-logo-meta {
+  margin: 6px 0 0; font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+/* Dieselbe Einpassung wie im Chip (siehe .ce-comark-img in overview.css):
+   `contain` hält jedes Seitenverhältnis unverzerrt. Die Fläche ist quadratisch
+   wie die Initialenfläche daneben, damit der Wechsel Logo ↔ Initiale die
+   Kartenhöhe nicht springen lässt. */
+.profile-logo-preview {
+  width: 68px; height: 68px; flex-shrink: 0;
+  object-fit: contain;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+}
+.profile-logo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.profile-logo-req { display: block; margin-top: 10px; }
+
+@media (max-width: 560px) {
+  .profile-logo-row { flex-direction: column; }
+}
+
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */

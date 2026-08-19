@@ -433,6 +433,15 @@ komfortabel erreichbar, aber ausschließlich durch eine **bewusste Aktion**.
   (`utils/newShipmentForm.mjs`) — kein zweites Objektliteral daneben. Alle Werte
   sind `""`, nie `null`/`undefined`: die Felder sind kontrollierte React-
   Eingaben, und `undefined` kippt sie in unkontrollierte um.
+
+  Nicht verwechseln mit `blankNewShipmentForm()` in `utils/formDraftsView.mjs`.
+  Das ist **nicht** der Ausgangszustand von „Neue Sendung", sondern
+  ausschließlich die Grundlage, auf die `buildResumeInitialState()` einen
+  GESPEICHERTEN Entwurf legt — und es trägt dort weiterhin `s_country: "DE"`,
+  `r_country: "CH"` und `packageCount: "1"` als Rückfallwerte für Entwürfe,
+  denen ein Feld fehlt. Das ist Absicht: ein ausdrücklich geöffneter Entwurf
+  ist ein anderer Fall als ein neuer Vorgang. Wer die beiden zusammenlegt,
+  bringt die Vorbelegung durch die Hintertür zurück.
 - **Das Profil ist Datenquelle, kein Autor.** Der frühere `profilSeed()` schrieb
   Firma, Name, Straße, PLZ, Ort, Land, Telefon und E-Mail beim Mount ins
   Formular. Er ist **ersatzlos entfallen**; dieselben Daten liefert

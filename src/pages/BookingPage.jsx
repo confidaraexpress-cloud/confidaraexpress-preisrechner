@@ -1307,7 +1307,9 @@ export default function BookingPage() {
               shipmentId={bookingData?.ceShipmentId}
               onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
               // Auch der zweite Entwurfspfad beendet nach bestätigtem Erfolg
-              // den aktiven temporären ShippingFlow (Context + sessionStorage)
+              // den aktiven temporären ShippingFlow (seit dem Paket „leerer
+              // Nullzustand" nur noch der Context — es wird nichts mehr in den
+              // sessionStorage gespiegelt)
               // — derselbe Grund wie beim Formularentwurf: der Vorgang ist
               // jetzt sicher unter „Entwürfe" gespeichert, „Neue Sendung" darf
               // ihn nicht mehr resurrektieren. `location.state` (bookingData)

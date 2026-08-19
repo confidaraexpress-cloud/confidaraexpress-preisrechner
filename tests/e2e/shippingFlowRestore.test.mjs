@@ -163,6 +163,25 @@ async function formularFuellen(page) {
   await page.waitForTimeout(250);
 }
 
+/* Einen Sidebar-Eintrag anklicken — auch einen der zweiten Ebene.
+   Die Gruppen sind nach jedem Reload zugeklappt, und eingeklappte Einträge
+   tragen `visibility: hidden` (bewusst: weder fokussierbar noch klickbar). Ein
+   direkter Klick auf `.nitem` läuft dort in einen 30-Sekunden-Timeout. Der
+   Gruppenkopf ist ein echtes `<button.pp-nav-group-head>` und wird deshalb
+   zuerst geöffnet — genau das tut auch ein echter Nutzer. */
+async function sidebarEintrag(page, label) {
+  const eintrag = page.locator(".nitem", { hasText: label }).first();
+  if (!(await eintrag.isVisible().catch(() => false))) {
+    for (const kopf of await page.locator("button.pp-nav-group-head").all()) {
+      if ((await kopf.getAttribute("aria-expanded")) === "true") continue;
+      await kopf.click();
+      await page.waitForTimeout(300);
+      if (await eintrag.isVisible().catch(() => false)) break;
+    }
+  }
+  await eintrag.click();
+}
+
 /* Liest den fachlichen Zustand aus dem DOM. */
 async function zustand(page) {
   return page.evaluate(() => {
@@ -446,11 +465,8 @@ test("10 — „Neue Sendung“ über die Sidebar startet einen FRISCHEN Vorgang
     if (await weiter.count()) { await weiter.click(); await page.waitForTimeout(700); }
   }
 
-  // Zurück über die Navigation. Die Gruppe ist zugeklappt und ihre Einträge
-  // tragen `visibility: hidden` — der Gruppenkopf muss zuerst geöffnet werden.
-  const kopf = page.locator("button.pp-nav-group-head", { hasText: "Versand" }).first();
-  if ((await kopf.getAttribute("aria-expanded")) !== "true") await kopf.click();
-  await page.locator(".pp-nav-group-items .nitem", { hasText: "Neue Sendung" }).first().click();
+  // Zurück über die Navigation.
+  await sidebarEintrag(page, "Neue Sendung");
   await page.waitForTimeout(1300);
 
   const z = await zustand(page);
@@ -896,19 +912,29 @@ test("25 — erfolgreiches Speichern eines Formularentwurfs setzt Formular, Ange
   await page.waitForTimeout(400);
 
   const vor = await zustand(page);
-  assert.equal(vor.speicher, true, "der Vorgang wurde vor dem Speichern nicht gespiegelt");
+  // Seit dem Paket „leerer Nullzustand" wird nichts mehr gespiegelt. Die
+  // Vorbedingung ist deshalb der SICHTBARE Vorgang, nicht ein Speicherinhalt.
+  assert.equal(vor.speicher, false, "der Vorgang wurde doch gespiegelt");
+  assert.equal(vor.empfaenger, "Dora Beispiel", "Vorbedingung: das Formular ist gefüllt");
   assert.equal(vor.angebote, 2);
 
   await page.locator("button.dft-savedraft-cta").click();
   await page.waitForTimeout(1000);
 
-  const meldung = await page.locator(".dft-save-status").innerText().catch(() => "");
+  // Gezielt die Erfolgsquittung, nicht „irgendeine Hinweiszeile": `.dft-save-status`
+  // ist die gemeinsame Klasse aller ruhigen Hinweiszeilen (Vorgangshinweis,
+  // Rechenhinweis, Paketpflicht, Speicherquittung). Nach dem Speichern steht das
+  // Formular wieder leer da, also erscheint zusätzlich der Paketpflicht-Hinweis —
+  // ein unspezifischer Locator träfe zwei Knoten, Playwright bräche im Strict-Mode
+  // ab, und das `.catch(() => "")` machte daraus stillschweigend "".
+  const meldung = await page.locator(".dft-save-status", { hasText: "Entwurf gespeichert" })
+    .first().innerText().catch(() => "");
   assert.ok(/Entwurf gespeichert/.test(meldung), `keine Erfolgsmeldung („${meldung}")`);
 
   const nach = await zustand(page);
   assert.equal(nach.speicher, false, "der Vorgang liegt nach dem Speichern noch im sessionStorage");
   assert.equal(nach.empfaenger, null, "der Empfänger wurde nicht zurückgesetzt");
-  assert.equal(nach.pakete, "1", "die Paketanzahl steht nicht wieder auf dem Standard");
+  assert.equal(nach.pakete, null, "die Paketanzahl trägt wieder einen Wert — sie startet leer");
   assert.equal(nach.gewicht, null, "das Gewicht wurde nicht geleert");
   assert.equal(nach.angebote, 0, "die Angebote wurden nicht entfernt");
   assert.equal(nach.ausgewaehlt, 0, "die Auswahl wurde nicht entfernt");
@@ -933,14 +959,14 @@ test("26 — nach dem Speichern öffnet ein Reiterwechsel zu „Neue Sendung\" e
 
   await page.locator(".nitem", { hasText: "Übersicht" }).first().click();
   await page.waitForTimeout(600);
-  await page.locator(".nitem", { hasText: "Neue Sendung" }).first().click();
+  await sidebarEintrag(page, "Neue Sendung");
   await page.waitForTimeout(900);
 
   const z = await zustand(page);
   assert.equal(z.titel, "Neue Sendung");
   assert.equal(z.empfaenger, null, "der Empfänger erscheint nach dem Reiterwechsel erneut");
   assert.equal(z.ort, null, "der Zielort erscheint nach dem Reiterwechsel erneut");
-  assert.equal(z.pakete, "1");
+  assert.equal(z.pakete, null, "die Paketanzahl startet leer");
   assert.equal(z.gewicht, null);
   assert.equal(z.laenge, null);
   assert.equal(z.angebote, 0, "alte Angebote erscheinen nach dem Reiterwechsel erneut");
@@ -968,10 +994,15 @@ test("27 — ein Tastenanschlag direkt nach dem Speichern schreibt die alten Ang
   await page.locator('input[placeholder="Erika Muster"]').fill("X");
   await page.waitForTimeout(400);
 
+  // Mit dem Wegfall des Spiegels ist die Falle strukturell erledigt: es gibt
+  // keinen Effekt mehr, der überhaupt etwas zurückschreiben könnte. Der
+  // Speicher muss deshalb LEER bleiben. Der Tastenanschlag muss trotzdem
+  // angekommen sein — sonst prüfte der Test einen toten Ablauf.
   const roh = await page.evaluate((k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, SPEICHER);
-  const geparst = roh ? JSON.parse(roh) : null;
-  assert.equal(geparst?.shipment?.tariffs?.length ?? 0, 0, "alte Tarife wurden nach dem Tastenanschlag zurückgeschrieben");
-  assert.equal(geparst?.shipment?.form?.r_fullName, "X", "der neue Zustand wird nicht mehr gespiegelt");
+  assert.equal(roh, null, "nach dem Tastenanschlag liegt wieder ein Vorgang im sessionStorage");
+  const nach = await zustand(page);
+  assert.equal(nach.empfaenger, "X", "der Tastenanschlag kam nicht an — der Test prüfte einen toten Ablauf");
+  assert.equal(nach.angebote, 0, "die alten Angebote kamen nach dem Tastenanschlag zurück");
   assert.deepEqual(fehler, [], "unerwartete Seitenfehler: " + fehler.join(" | "));
   await ctx.close();
 });
@@ -998,7 +1029,10 @@ test("28 — ein Serverfehler beim Speichern lässt Formular, Angebote und Vorga
   assert.equal(z.empfaenger, "Dora Beispiel", "der Empfänger ging trotz Fehler verloren");
   assert.equal(z.angebote, 2, "die Angebote gingen trotz Fehler verloren");
   assert.equal(z.ausgewaehlt, 1, "die Auswahl ging trotz Fehler verloren");
-  assert.equal(z.speicher, true, "der Vorgang wurde trotz Fehler aus dem Speicher entfernt");
+  // Dass der Vorgang lebt, belegen die drei Zeilen darüber — er steht sichtbar
+  // auf der Seite. Der Speicher bleibt dabei unverändert leer: auch im
+  // Fehlerfall wird nichts gespiegelt.
+  assert.equal(z.speicher, false, "der Vorgang wurde doch gespiegelt");
   await ctx.close();
 });
 
@@ -1023,7 +1057,9 @@ test("29 — ein Netzwerkfehler beim Speichern (catch-Zweig) lässt Formular, An
   const z = await zustand(page);
   assert.equal(z.empfaenger, "Dora Beispiel", "der Empfänger ging trotz Netzwerkfehler verloren");
   assert.equal(z.angebote, 2, "die Angebote gingen trotz Netzwerkfehler verloren");
-  assert.equal(z.speicher, true, "der Vorgang wurde trotz Netzwerkfehler aus dem Speicher entfernt");
+  // Wie in Test 28: der lebende Vorgang steht sichtbar auf der Seite, der
+  // Speicher bleibt leer.
+  assert.equal(z.speicher, false, "der Vorgang wurde doch gespiegelt");
   await ctx.close();
 });
 
@@ -1058,7 +1094,10 @@ test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvor
   await page.waitForTimeout(600);
   await formularFuellen(page); // hinterlässt einen UNGESICHERTEN Sitzungsvorgang mit „Dora Beispiel"
   await page.waitForTimeout(600);
-  assert.equal((await zustand(page)).speicher, true, "der Sitzungsvorgang wurde nicht gespiegelt");
+  // Der Sitzungsvorgang lebt im Arbeitsspeicher, nicht im sessionStorage.
+  const vorher = await zustand(page);
+  assert.equal(vorher.speicher, false, "der Vorgang wurde doch gespiegelt");
+  assert.equal(vorher.empfaenger, "Dora Beispiel", "Vorbedingung: ein ungesicherter Sitzungsvorgang liegt vor");
 
   formDraftListOverride = {
     drafts: [{
@@ -1082,7 +1121,7 @@ test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvor
     },
   };
 
-  await page.locator(".nitem", { hasText: "Entwürfe" }).first().click();
+  await sidebarEintrag(page, "Entwürfe");
   await page.waitForTimeout(700);
   // Der Verlassen-Dialog bleibt erhalten (ungesicherte Angaben) — „Verwerfen"
   // heißt: ohne Formularentwurf weitergehen. Der Sitzungsvorgang selbst bleibt
@@ -1113,7 +1152,8 @@ test("32 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang nach er
   await bisZurBuchung(page);
   const vorSpeichern = await zustand(page);
   assert.equal(vorSpeichern.url, "/booking");
-  assert.equal(vorSpeichern.speicher, true, "der Vorgang wurde auf dem Weg zur Buchung nicht gespiegelt");
+  assert.equal(vorSpeichern.speicher, false, "der Vorgang wurde doch gespiegelt");
+  assert.equal(vorSpeichern.keinAngebot, false, "Vorbedingung: die Buchungsseite trägt das gewählte Angebot");
 
   const saveBtn = page.locator(".bk-savedraft button").first();
   assert.ok(await saveBtn.count() > 0, "die Sendungsentwurf-Aktion fehlt auf der Buchungsseite");
@@ -1129,8 +1169,12 @@ test("32 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang nach er
   assert.equal(nach.url, "/booking");
   assert.equal(nach.keinAngebot, false, "die Buchungsseite verlor ihre Daten nach dem Löschen des Context");
 
-  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(900);
+  // Der Rückweg läuft bewusst INNERHALB der SPA („← Zurück"), nicht über einen
+  // Reload: ein Reload baut den React-Baum neu auf und leert den Vorgang
+  // ohnehin — er könnte den Unterschied zwischen „beendet" und „lebt" gar
+  // nicht mehr zeigen. Test 33 ist die Gegenprobe auf demselben Weg.
+  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.waitForTimeout(1200);
   const frisch = await zustand(page);
   assert.equal(frisch.empfaenger, null, "„Neue Sendung\" zeigt nach dem Sendungsentwurf noch die alte Sendung");
   assert.equal(frisch.angebote, 0);
@@ -1151,9 +1195,19 @@ test("33 — ein Speicherfehler auf der Buchungsseite lässt den Vorgang unanget
   assert.ok(fehlerText.length > 0, "keine Fehlermeldung nach fehlgeschlagenem Sendungsentwurf");
 
   const z = await zustand(page);
-  assert.equal(z.speicher, true, "der Vorgang wurde trotz Fehler aus dem Speicher entfernt");
   assert.equal(z.url, "/booking");
   assert.equal(z.keinAngebot, false, "die Buchungsseite verlor ihre Daten trotz Speicherfehler");
+  assert.equal(z.speicher, false, "der Vorgang wurde doch gespiegelt");
+
+  // Die beiden Zeilen darüber belegen nur, dass die Buchungsseite steht — ihre
+  // Daten kommen primär aus `location.state` und überleben auch einen
+  // gelöschten Context. Der belastbare Beleg ist der Rückweg innerhalb der
+  // SPA: er zeigt den Vorgang selbst. Genau die Gegenprobe zu Test 32.
+  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
+  await page.waitForTimeout(1200);
+  const zurueck = await zustand(page);
+  assert.equal(zurueck.empfaenger, "Dora Beispiel", "der Vorgang ging trotz Speicherfehler verloren");
+  assert.equal(zurueck.angebote, 2, "die Angebote gingen trotz Speicherfehler verloren");
   await ctx.close();
 });
 
@@ -1173,7 +1227,9 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
   await page.waitForTimeout(600);
   await formularFuellen(page);
   await page.waitForTimeout(500);
-  assert.equal((await zustand(page)).speicher, true, "der Vorgang wurde vor dem Verlassen nicht gespiegelt");
+  const vorVerlassen = await zustand(page);
+  assert.equal(vorVerlassen.speicher, false, "der Vorgang wurde doch gespiegelt");
+  assert.equal(vorVerlassen.empfaenger, "Dora Beispiel", "Vorbedingung: ungespeicherte Angaben liegen vor");
 
   // Interne Navigation bei ungespeicherten Angaben → der Verlassen-Dialog
   // pausiert sie und bietet „Als Entwurf speichern" als Primäraktion an.
@@ -1195,11 +1251,11 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
   const speicherRoh = await page.evaluate((k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, SPEICHER);
   assert.equal(speicherRoh, null, "der Vorgang liegt nach „Speichern und verlassen\" noch im sessionStorage");
 
-  await page.locator(".nitem", { hasText: "Neue Sendung" }).first().click();
+  await sidebarEintrag(page, "Neue Sendung");
   await page.waitForTimeout(900);
   const z2 = await zustand(page);
   assert.equal(z2.empfaenger, null, "„Neue Sendung\" zeigt nach „Speichern und verlassen\" noch die alte Sendung");
-  assert.equal(z2.pakete, "1");
+  assert.equal(z2.pakete, null, "die Paketanzahl startet leer");
   await ctx.close();
 });
 
@@ -1265,8 +1321,11 @@ test("40 — ohne ceShipmentId bleibt die Aktion verborgen, statt die Providerre
 });
 
 test("41 — der CE-Handle überlebt einen Reload des Vorgangs (Aktion bleibt sichtbar)", async () => {
-  // Der Handle liegt im gespiegelten Vorgang (sessionStorage). Ohne ihn wäre
-  // „Als Entwurf speichern" nach jedem Reload/Browser-Vorwärts wieder weg.
+  // Der Handle reist im `location.state` mit, den React Router in
+  // `history.state.usr` ablegt — deshalb übersteht er einen Reload, obwohl
+  // der Vorgang selbst seit dem Paket „leerer Nullzustand" nicht mehr
+  // gespiegelt wird. Ohne ihn wäre „Als Entwurf speichern" nach jedem
+  // Reload/Browser-Vorwärts wieder weg.
   const { ctx, page } = await neueSeite();
   await bisZurBuchung(page);
   assert.ok(await page.locator(".bk-savedraft button").first().count() > 0, "Aktion fehlt schon vor dem Reload");

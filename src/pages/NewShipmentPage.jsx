@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
-import { countries, normalizeCountryCode } from "../utils/countries";
+// `normalizeCountryCode` wird hier nicht mehr gebraucht: die Länder-
+// Normalisierung ist mit dem Profil-Seed nach newShipmentForm.mjs gewandert
+// (senderPatchFromProfile) — sie greift dort unverändert weiter.
+import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -16,6 +19,10 @@ import { normalizeApiError, normalizeThrownError, summaryMessage } from "../util
 import { focusFirstError, fieldErrorProps } from "../utils/focusField";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
+import {
+  createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
+  packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
+} from "../utils/newShipmentForm.mjs";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
 // serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
@@ -83,6 +90,7 @@ import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetCo
 // Werte sind da, UND sie gehören jetzt diesem Formular — eine spätere Korrektur
 // hier ändert den Adressbucheintrag nicht.
 const ADDRESS_TAKEN_NOTE = "Adresse aus dem Adressbuch übernommen. Sie können sie hier frei anpassen.";
+const PROFILE_SENDER_NOTE = "Absenderadresse aus Ihrem Konto übernommen. Sie können sie hier frei anpassen.";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -112,6 +120,12 @@ function getErrors(form) {
   if (!form.s_street?.trim())               e.s_street   = "Straße ist ein Pflichtfeld.";
   else if (form.s_street.length > 200)      e.s_street   = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.s_addition?.length > 100)        e.s_addition = "Adresszusatz darf maximal 100 Zeichen enthalten.";
+  // Das Land startet leer („Land auswählen") statt mit einem vorausgewählten
+  // „DE". Es muss deshalb ausdrücklich gewählt werden: ohne Land ist die
+  // PLZ-Formatprüfung regellos (jedes Format gilt), und die Route stünde nicht
+  // fest. Die Prüfung steht VOR der PLZ, damit ein fehlendes Land nicht als
+  // PLZ-Fehler erscheint.
+  if (!form.s_country?.trim())              e.s_country  = "Bitte wählen Sie ein Land.";
   { const m = postalErr(form.s_country, form.s_zip); if (m) e.s_zip = m; }
   if (!form.s_city?.trim())                 e.s_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.s_city.length > 100)        e.s_city     = "Stadt darf maximal 100 Zeichen enthalten.";
@@ -126,6 +140,7 @@ function getErrors(form) {
   if (!form.r_street?.trim())               e.r_street   = "Straße ist ein Pflichtfeld.";
   else if (form.r_street.length > 200)      e.r_street   = "Straße darf maximal 200 Zeichen enthalten.";
   if (form.r_addition?.length > 100)        e.r_addition = "Adresszusatz darf maximal 100 Zeichen enthalten.";
+  if (!form.r_country?.trim())              e.r_country  = "Bitte wählen Sie ein Land.";
   { const m = postalErr(form.r_country, form.r_zip); if (m) e.r_zip = m; }
   if (!form.r_city?.trim())                 e.r_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.r_city.length > 100)        e.r_city     = "Stadt darf maximal 100 Zeichen enthalten.";
@@ -134,21 +149,15 @@ function getErrors(form) {
     else if (!EMAIL_RE.test(form.r_email))  e.r_email    = "E-Mail-Adresse ist ungültig.";
   }
 
-  if (!form.packageCount) {
-    e.packageCount = "Anzahl muss zwischen 1 und 99 liegen.";
-  } else {
-    const pc = Number(form.packageCount);
-    if (!Number.isInteger(pc) || pc < 1 || pc > 99) e.packageCount = "Anzahl muss zwischen 1 und 99 liegen.";
-  }
-  if (!form.weight) {
-    e.weight = "Gewicht ist ein Pflichtfeld.";
-  } else {
-    const w = Number(form.weight);
-    if (isNaN(w) || w < 0.1 || w > 1000) e.weight = "Gewicht muss zwischen 0,1 und 1.000 kg liegen.";
-  }
-  if (form.length) { const v = Number(form.length); if (isNaN(v) || v < 0.1 || v > 300) e.length = "Länge muss zwischen 0,1 und 300 cm liegen."; }
-  if (form.width)  { const v = Number(form.width);  if (isNaN(v) || v < 0.1 || v > 300) e.width  = "Breite muss zwischen 0,1 und 300 cm liegen."; }
-  if (form.height) { const v = Number(form.height); if (isNaN(v) || v < 0.1 || v > 300) e.height = "Höhe muss zwischen 0,1 und 300 cm liegen."; }
+  // Anzahl, Gewicht UND alle drei Maße sind Pflicht — eine Quelle für alle
+  // fünf (newShipmentForm.mjs), dieselben Grenzen wie serverseitig.
+  //
+  // Bis hierher galten Länge, Breite und Höhe als optional: geprüft wurde nur,
+  // WENN bereits etwas eingetragen war (`if (form.length) { … }`). Ein leeres
+  // Feld kam damit ohne Beanstandung durch den Knopf „Angebote vergleichen",
+  // und das Backend ersetzte es still durch 30/20/15 cm. Der Kunde bekam einen
+  // Preis für Maße, die er nie eingegeben hat.
+  Object.assign(e, packageErrors(form));
 
   return e;
 }
@@ -265,60 +274,34 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [vatMode, setVatMode] = useState(flowInit ? flowInit.vatMode : "net");
 
   // ── Form ──
-  // Profil-Seed als benannte Funktion, weil er an drei Stellen gebraucht wird:
-  // als Startwert ohne Vorgang, als Dirty-Baseline eines wiederhergestellten
-  // Vorgangs (der Vorgang ist ja weiterhin ungespeichert) und beim bewussten
-  // Zurücksetzen.
-  const profilSeed = useCallback(() => ({
-    s_company:  user?.company_name || "",
-    s_fullName: user?.name         || "",
-    s_street:   user?.street       || "",
-    s_addition: "",
-    s_zip:      user?.zip          || "",
-    s_city:     user?.city         || "",
-    // Das Land läuft über die Länderliste, nicht direkt aus dem Profil: Die Spalte
-    // `users.country` ist VARCHAR(10) ohne CHECK, und die Registrierung schrieb sie
-    // lange ungeprüft. Ein Wert wie „DEU" landete damit unverändert im `<select>`,
-    // das ihn gar nicht darstellen kann — das Feld sah unauffällig aus, während
-    // jeder Entwurf dieses Kontos am Server scheiterte (400 auf sender.country) und
-    // jede Buchung ebenso. `normalizeCountryCode` gibt genau den Wert zurück, den
-    // die Liste kennt, und rät nichts: Unbekanntes fällt auf dieselbe Vorgabe
-    // zurück wie ein Konto ganz ohne Land. Der gespeicherte Profilwert bleibt
-    // unberührt und in den Kontoeinstellungen sichtbar.
-    s_country:  normalizeCountryCode(user?.country),
-    s_phone:    user?.phone        || "",
-    s_email:    user?.email        || "",
-    r_company:  "",
-    r_fullName: "",
-    r_street:   "",
-    r_addition: "",
-    r_zip:      "",
-    r_city:     "",
-    r_country:  "DE",
-    r_phone:    "",
-    r_email:    "",
-    packageCount: "1",
-    weight: "", length: "", width: "", height: "",
-    max_price: "", latestDeliveryDate: "",
-  }), [user]);
+  // „Neue Sendung" startet LEER. Der frühere `profilSeed()` schrieb Firma, Name,
+  // Straße, PLZ, Ort, Land, Telefon und E-Mail des Kontos automatisch ins
+  // Formular — der Kunde sah ausgefüllte Felder, ohne etwas eingegeben zu haben,
+  // und konnte nicht unterscheiden, was er selbst geprüft hatte und was das
+  // System angenommen hat. Das Profil bleibt Datenquelle, aber ausschließlich
+  // für die bewusste Übernahme (`uebernimmProfilAbsender`, siehe unten).
+  const leeresFormular = useCallback(() => createEmptyShipmentForm(), []);
 
-  // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form).
-  // Sitzungs-Restore: vollständig aus dem laufenden Vorgang.
-  // Normalfall: unverändert aus dem Profil geseedet (synchron beim Mount).
+  // Resume-Fall: Formular kommt vollständig aus dem Snapshot (resumeInit.form) —
+  //   das ist der EINZIGE Weg, auf dem gespeicherte Angaben zurückkommen, und er
+  //   verlangt, dass der Kunde einen Entwurf ausdrücklich öffnet.
+  // Sitzungs-Restore: aus dem laufenden Vorgang im Arbeitsspeicher (Wechsel
+  //   innerhalb derselben SPA-Sitzung; ein Reload hat keinen Vorgang mehr).
+  // Normalfall: leer.
   const [form, setForm] = useState(() =>
-    resumeInit ? resumeInit.form : flowInit ? flowInit.form : profilSeed());
+    resumeInit ? resumeInit.form : flowInit ? flowInit.form : leeresFormular());
 
   // ── Dirty-State / interner Verlassen-Guard ─────────────────────────────────
   // Baseline = fachlicher Snapshot NACH allen automatischen Startwerten
-  // (Profil-Prefill/Resume synchron beim Mount; Adressbuch-Prefill wird im Effekt
-  // weiter unten nachgezogen). Reine Auto-Defaults erzeugen dadurch NIE Dirty.
-  // Beim Sitzungs-Restore ist die Baseline bewusst der PROFIL-Seed, nicht der
+  // (Resume synchron beim Mount; Adressbuch-Prefill wird im Effekt weiter unten
+  // nachgezogen). Reine Auto-Defaults erzeugen dadurch NIE Dirty.
+  // Beim Sitzungs-Restore ist die Baseline bewusst das LEERE Formular, nicht der
   // wiederhergestellte Stand: der Vorgang ist weiterhin ungespeichert, also muss
   // der Verlassen-Guard weiter warnen. Ohne diese Unterscheidung fiele die
   // Warnung nach einem „Zurück" still weg.
   const [baseline, setBaseline] = useState(() =>
     getShipmentFormSnapshot(flowInit
-      ? { form: profilSeed(), shippingDate: todayISO(), serviceFilter: "all", shippingModeFilter: "all", selectedPublicCarrierIds: [] }
+      ? { form: leeresFormular(), shippingDate: todayISO(), serviceFilter: "all", shippingModeFilter: "all", selectedPublicCarrierIds: [] }
       // resumeInit statt eines Auto-Defaults: ein fortgesetzter Entwurf ist bereits
       // gespeichert — sein Lagerbezug ist der Ausgangspunkt, nicht etwas Ungespeichertes
       // (sonst zeigte ein order-/artikelbezogener Entwurf sofort nach dem Fortsetzen
@@ -526,6 +509,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Sendung ist `errors` bis zum ersten Klick leer → kein Hinweis, Verhalten
   // unverändert. Bei einem fortgesetzten Entwurf ist es beim Mount vorbelegt.
   const calcHint = calcValid ? null : missingFieldsHint(errors);
+  // Zweite, sanftere Erklärung für den häufigsten Fall: das Paket ist noch nicht
+  // vollständig. Sie erscheint als Hinweiszeile am deaktivierten Knopf, ohne
+  // dass ein einziges Feld rot markiert wird — ein frisches Formular soll
+  // erklären, was fehlt, und nicht wie ein Fehlerprotokoll aussehen. Die roten
+  // Markierungen entstehen unverändert erst beim Weiterklicken (getErrors).
+  const paketHinweis = packageComplete(form) ? "" : packageHint(form);
 
   const buildParty = (p) => ({
     ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
@@ -592,6 +581,31 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     });
     invalidateResults();
     setAddressNote(p => ({ ...p, [prefix]: ADDRESS_TAKEN_NOTE }));
+  };
+
+  // ── Komfortfunktion: eigene Absenderadresse übernehmen ──────────────────────
+  // Das Gegenstück zum entfallenen automatischen Profil-Prefill. Dieselben
+  // Daten, derselbe Normalisierungsweg — nur wird jetzt der Kunde gefragt, statt
+  // sie ihm unterzuschieben.
+  //
+  // Aufbau exakt wie die Adressbuchübernahme darüber: EIN gebündelter Patch,
+  // GENAU EINE invalidateResults(), Feldfehler der ersetzten Felder fallen weg.
+  // Und wie dort wird die Baseline bewusst NICHT nachgezogen — das ist eine
+  // Nutzeraktion, die Seite gilt danach zu Recht als geändert (Verlassen-Hinweis
+  // erscheint, „Als Entwurf speichern" ist bedienbar).
+  const profilAbsenderVerfuegbar = hasProfileSenderData(user);
+  const uebernimmProfilAbsender = () => {
+    const patch = senderPatchFromProfile(user);
+    const keys = Object.keys(patch);
+    setForm(p => ({ ...p, ...patch }));
+    setErrors(p => {
+      if (!keys.some(k => p[k])) return p;
+      const n = { ...p };
+      for (const k of keys) delete n[k];
+      return n;
+    });
+    invalidateResults();
+    setAddressNote(p => ({ ...p, s: PROFILE_SENDER_NOTE }));
   };
 
   // ── Adressbuch → „Neue Sendung": optionaler Werte-Patch ─────────────────────
@@ -753,7 +767,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Entwurfsspeicherns (saveCurrentFormDraft) — beide stellen denselben
   // frischen Zustand her.
   const resetToFreshShipment = () => {
-    const seed = profilSeed();
+    const seed = leeresFormular();
     setForm(seed);
     setShippingDate(todayISO());
     setServiceFilter("all");
@@ -1026,9 +1040,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       const r = await apiFetch(`/api/jumingo/calculate-price`, {
         method: "POST", auth: true, signal: ac.signal,
         body: JSON.stringify({
-          packageCount: Number(form.packageCount),
-          weight: Number(form.weight), length: Number(form.length) || 30,
-          width: Number(form.width) || 20, height: Number(form.height) || 15,
+          // Genau die eingegebenen Werte — kein Ersatzwert. Hier stand bis zu
+          // diesem Paket `Number(form.length) || 30` (und 20/15): `Number("")`
+          // ist 0 und damit falsy, ein leeres Feld wurde also zu 30 cm. Der
+          // Kunde bekam einen Preis für Maße, die er nie eingegeben hat.
+          // `packagePayload()` liefert null, sobald etwas fehlt — dieser Zweig
+          // ist dann durch getErrors() oben ohnehin schon abgebrochen.
+          ...packagePayload(form),
           sender:             buildParty("s"),
           recipient:          buildParty("r"),
           serviceFilter:      serviceFilter,
@@ -1284,16 +1302,23 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     );
   };
 
+  // Das Land startet LEER. Ein vorausgewähltes „DE" war eine Annahme über die
+  // Sendung — beim Empfänger besonders fragwürdig, und beim Absender überschrieb
+  // sie stillschweigend das, was im Konto stand. Die Auswahl bleibt Pflicht
+  // (getErrors), die Optionsliste ist unverändert dieselbe wie überall sonst.
   const countrySelect = (p) => (
     <div className="field">
-      <label className="field-label">Land</label>
+      <label className="field-label" htmlFor={`ns-${p}-country`}>Land *</label>
       <select
-        className="field-input field-select"
+        id={`ns-${p}-country`}
+        className={`field-input field-select${errors[`${p}_country`] ? " field-input-error" : ""}`}
         value={form[`${p}_country`]}
         onChange={e => upd(`${p}_country`, e.target.value)}
       >
+        <option value="">Land auswählen</option>
         {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
       </select>
+      {errors[`${p}_country`] && <span className="field-error">{errors[`${p}_country`]}</span>}
     </div>
   );
 
@@ -1598,6 +1623,25 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       rutscht unter die Überschrift — nichts wird abgeschnitten. */}
                   <div className="calc-section-head">
                     <div className="calc-section-title">Absender</div>
+                    {/* Zwei Abkürzungen nebeneinander, beide ausdrücklich vom
+                        Nutzer ausgelöst: die eigene Kontoanschrift und das
+                        Adressbuch. Der frühere automatische Profil-Prefill ist
+                        genau dadurch ersetzt — dieselben Daten, nur auf Wunsch.
+                        Ohne hinterlegte Kontoanschrift erscheint der linke
+                        Knopf gar nicht erst: eine Aktion, die sichtbar nichts
+                        tut, ist schlechter als keine. */}
+                    {profilAbsenderVerfuegbar && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={uebernimmProfilAbsender}
+                        disabled={loading}
+                        title="Absenderadresse aus Ihrem Konto übernehmen"
+                      >
+                        <Icon n="user" s={16} />
+                        Eigene Adresse
+                      </button>
+                    )}
                     <AddressPickerButton
                       tab={TAB_SENDER}
                       onSelect={(a) => uebernimmAdressbuchAdresse(a, "s")}
@@ -1740,30 +1784,30 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   identischer Pakete (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
               <div className="field-row field-row-5">
                 <div className="field">
-                  <label className="field-label">Anzahl</label>
-                  <input className={`field-input${errors.packageCount ? " field-input-error" : ""}`} type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder="1" />
+                  <label className="field-label" htmlFor="ns-packageCount">Anzahl *</label>
+                  <input id="ns-packageCount" className={`field-input${errors.packageCount ? " field-input-error" : ""}`} type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.packageCount} />
                   {errors.packageCount
                     ? <span className="field-error">{errors.packageCount}</span>
                     : <span className="field-hint">Identische Pakete</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Gewicht kg *</label>
-                  <input className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder="5" />
+                  <label className="field-label" htmlFor="ns-weight">Gewicht kg *</label>
+                  <input id="ns-weight" className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.weight} />
                   {errors.weight && <span className="field-error">{errors.weight}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Länge cm</label>
-                  <input className={`field-input${errors.length ? " field-input-error" : ""}`} type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder="30" />
+                  <label className="field-label" htmlFor="ns-length">Länge cm *</label>
+                  <input id="ns-length" className={`field-input${errors.length ? " field-input-error" : ""}`} type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.length} />
                   {errors.length && <span className="field-error">{errors.length}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Breite cm</label>
-                  <input className={`field-input${errors.width  ? " field-input-error" : ""}`} type="number" value={form.width}  onChange={e => upd("width",  e.target.value)} placeholder="20" />
+                  <label className="field-label" htmlFor="ns-width">Breite cm *</label>
+                  <input id="ns-width" className={`field-input${errors.width ? " field-input-error" : ""}`} type="number" value={form.width} onChange={e => upd("width", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.width} />
                   {errors.width  && <span className="field-error">{errors.width}</span>}
                 </div>
                 <div className="field">
-                  <label className="field-label">Höhe cm</label>
-                  <input className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder="15" />
+                  <label className="field-label" htmlFor="ns-height">Höhe cm *</label>
+                  <input id="ns-height" className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.height} />
                   {errors.height && <span className="field-error">{errors.height}</span>}
                 </div>
               </div>
@@ -1793,7 +1837,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 disabled={loading || !calcValid || saving || addressBlocksCalculation}
                 title={addressBlocksCalculation
                   ? "Bitte korrigieren Sie zuerst PLZ und Ort."
-                  : (calcHint || undefined)}
+                  : (calcHint || paketHinweis || undefined)}
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>
@@ -1813,9 +1857,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   : <><Icon n="form" s={16} /> Als Entwurf speichern</>
                 }
               </button>
-              {/* Sekundärste Stufe: der laufende Vorgang bleibt bei Zurück,
-                  Sidebar und Reload absichtlich erhalten — dies ist der eine
-                  bewusste Weg, ihn zu beenden. */}
+              {/* Sekundärste Stufe: der laufende Vorgang bleibt bei einem Wechsel
+                  innerhalb der Sitzung erhalten (Sidebar, Zurück) und endet mit
+                  dem Reload — dies ist der eine bewusste Weg, ihn sofort zu
+                  beenden. */}
               <button
                 type="button"
                 className="btn btn-link dft-reset-cta"
@@ -1842,6 +1887,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             {calcHint && !loading && (
               <div className="dft-save-status" role="status">
                 <Icon n="info" s={15} c="currentColor" /><span>{calcHint}</span>
+              </div>
+            )}
+
+            {/* Erklärt den deaktivierten CTA auf einem FRISCHEN Formular, ohne
+                ein einziges Feld rot zu markieren. `calcHint` speist sich aus
+                bereits sichtbaren Fehlern und ist vor dem ersten Klick leer —
+                der Kunde stünde sonst vor einem toten Knopf ohne Begründung.
+                Sobald geklickt wurde, übernimmt `calcHint` (spezifischer). */}
+            {!calcHint && paketHinweis && !loading && (
+              <div className="dft-save-status" role="status">
+                <Icon n="info" s={15} c="currentColor" /><span>{paketHinweis}</span>
               </div>
             )}
 

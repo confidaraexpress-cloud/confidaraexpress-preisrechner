@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
+import { packageSummaryLine } from "../utils/newShipmentForm.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
@@ -361,16 +362,13 @@ export default function BookingPage() {
 
   const tariff = bookingData?.tariff;
 
-  // Paketdaten (Gewicht/Maße) als fertiger Anzeige-String — einmal abgeleitet,
-  // in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung) verwendet.
-  // Kein erzwungener Platzhalter: ergibt "" (falsy), wenn beides fehlt.
-  const packageDims = bookingData?.form || {};
-  const packageInfo = [
-    packageDims.weight ? `${packageDims.weight} kg` : null,
-    (packageDims.length && packageDims.width && packageDims.height)
-      ? `${packageDims.length}×${packageDims.width}×${packageDims.height} cm`
-      : null,
-  ].filter(Boolean).join(" · ") || null;
+  // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
+  // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
+  // verwendet. Der Kunde soll Gewicht UND Abmessungen vor der verbindlichen
+  // Bestellung noch einmal kontrollieren können; die Ableitung liegt rein und
+  // getestet in newShipmentForm.mjs. Kein erzwungener Platzhalter: null, wenn
+  // nichts vorliegt.
+  const packageInfo = packageSummaryLine(bookingData?.form);
 
   // ── Versicherung: abgeleitete Werte, Validierung, Repricing ────────────────
   const asNum = (v) => { const n = typeof v === "number" ? v : Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };

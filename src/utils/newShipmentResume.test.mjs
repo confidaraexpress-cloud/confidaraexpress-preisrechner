@@ -205,13 +205,16 @@ test("Verdrahtung: neue Sendung startet unverändert ohne Filter und ohne Fehler
   assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.selectedPublicCarrierIds : flowInit ? flowInit.selectedPublicCarrierIds : []"),
     "Vorrangkette des Carrier-Filters verändert");
   assert.ok(PAGE_CODE.includes("resumeInit ? getErrors(resumeInit.form) : {}"));
-  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : flowInit ? flowInit.form : profilSeed()"),
+  assert.ok(PAGE_CODE.includes("resumeInit ? resumeInit.form : flowInit ? flowInit.form : leeresFormular()"),
     "Vorrangkette des Formular-Seeds verändert");
-  // Der Profil-Seed selbst ist unverändert — er ist nur in eine benannte
-  // Funktion gewandert, weil ihn drei Stellen brauchen (Startwert,
-  // Dirty-Baseline eines wiederhergestellten Vorgangs, bewusstes Zurücksetzen).
-  assert.ok(/const profilSeed = useCallback\(\(\) => \(\{\s*\n\s*s_company:/.test(PAGE_CODE),
-    "Formular-Seed der neuen Sendung verändert");
+  // Der dritte Zweig ist seit dem Paket „leerer Nullzustand" das LEERE Formular
+  // statt des Profil-Seeds: „Neue Sendung" ist ein neuer Vorgang und beginnt
+  // ohne Annahmen. Die ersten beiden Zweige — bewusst geöffneter Entwurf und
+  // laufender Vorgang derselben Sitzung — sind unverändert.
+  assert.ok(PAGE_CODE.includes("const leeresFormular = useCallback(() => createEmptyShipmentForm(), [])"),
+    "Ausgangszustand kommt nicht mehr aus createEmptyShipmentForm");
+  assert.ok(!/const profilSeed = /.test(PAGE_CODE),
+    "der automatische Profil-Seed ist zurück");
 });
 
 test("Verdrahtung: genau EIN Preisrequest je Aufruf, kein automatischer Wiederversand", () => {
@@ -257,7 +260,11 @@ test("Verdrahtung: ungültige Daten senden keinen Request und markieren die Feld
 
 test("Verdrahtung: Payload-Felder der Preisberechnung sind unverändert", () => {
   for (const feld of [
-    "packageCount: Number(form.packageCount)", "weight: Number(form.weight)",
+    // Anzahl, Gewicht und die drei Maße kommen seit dem Paket „verpflichtende
+    // Paketmaße" gebündelt aus packagePayload(form) — ohne die früheren
+    // `|| 30/20/15`-Ersatzwerte. Die gesendeten SCHLÜSSEL sind unverändert;
+    // ein eigener Test unten prüft sie am erzeugten Objekt.
+    "...packagePayload(form)",
     "sender:             buildParty(\"s\")", "recipient:          buildParty(\"r\")",
     "serviceFilter:      serviceFilter", "shippingModeFilter: shippingModeFilter",
     "shippingDate:       shippingDate", "publicCarrierIds:   selectedPublicCarrierIds",
@@ -265,6 +272,19 @@ test("Verdrahtung: Payload-Felder der Preisberechnung sind unverändert", () => 
   ]) {
     assert.ok(CALCULATE.includes(feld), `Payload-Feld verändert: ${feld}`);
   }
+  // Kein Ersatzwert mehr im Payload — das war die Quelle der 30/20/15 cm.
+  assert.ok(!/\|\|\s*(30|20|15)\b/.test(CALCULATE),
+    "der Payload trägt wieder einen Maß-Ersatzwert");
+});
+
+test("Verdrahtung: packagePayload sendet genau die eingegebenen Paketwerte", async () => {
+  const { packagePayload } = await import("./newShipmentForm.mjs");
+  const form = { packageCount: "2", weight: "5", length: "30", width: "20", height: "15" };
+  assert.deepEqual(packagePayload(form),
+    { packageCount: 2, weight: 5, length: 30, width: 20, height: 15 });
+  // Fehlt eine Angabe, entsteht überhaupt kein Payload — statt eines Ersatzwerts.
+  for (const feld of ["packageCount", "weight", "length", "width", "height"])
+    assert.equal(packagePayload({ ...form, [feld]: "" }), null, `${feld} leer liefert trotzdem Werte`);
 });
 
 test("Verdrahtung: die Auswahl bleibt nach der Antwort normal filterbar", () => {

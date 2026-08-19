@@ -357,6 +357,31 @@ export function flowHasContent(flow) {
 }
 
 /* ══════════ Ablauf und Wiederherstellung ═════════════════════════════════ */
+/*
+ * ACHTUNG: DIESER ABSCHNITT IST NICHT MEHR VERDRAHTET — UND DARF ES NICHT
+ * WIEDER WERDEN.
+ *
+ * `flowHasContent`, `isExpired`, `dropOffers`, `restoreFlow`, `normalizeFlow`,
+ * `flowFingerprint`, `serializeFlow` und `parseFlow` bildeten zusammen die
+ * Persistenz des Vorgangs: Spiegel in den `sessionStorage`, Wiederherstellung
+ * beim Mount, 60-Minuten-Frist. Mit dem Paket „leerer Nullzustand" wurde diese
+ * Persistenz vollständig entfernt — der Vorgang lebt ausschließlich im
+ * Arbeitsspeicher des ShippingFlowProviders.
+ *
+ * Grund: „Neue Sendung" ist ein NEUER Vorgang. Ein F5 auf einem halb
+ * ausgefüllten Formular holte Absender, Empfänger, Paketdaten und alte Angebote
+ * zurück, obwohl der Kunde nichts gespeichert hatte. Wer Angaben behalten will,
+ * speichert einen Entwurf — bewusst, serverseitig, geräteübergreifend.
+ *
+ * Wer diese Funktionen wieder an den Provider hängt, holt genau diesen Fehler
+ * zurück. Sie stehen hier nur noch, weil ihre Entfernung ein eigener Eingriff
+ * ist (siehe Follow-up im Abschlussbericht) — nicht, weil sie gebraucht werden.
+ *
+ * `droppedNotice` bleibt aus demselben Grund erhalten und wird weiterhin von
+ * „Neue Sendung" und dem Preisrechner importiert; ohne Wiederherstellung gibt
+ * es allerdings keinen Grund mehr, der gemeldet werden könnte — der Hinweis
+ * kann nicht mehr erscheinen.
+ */
 
 // Frist überschritten?
 export function isExpired(flow, now) {

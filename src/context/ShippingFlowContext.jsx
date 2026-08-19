@@ -1,15 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { readShippingFlow, writeShippingFlow, clearShippingFlowStorage } from "../utils/shippingFlowStorage";
+import { clearShippingFlowStorage } from "../utils/shippingFlowStorage";
 import {
   emptyFlow,
-  flowFingerprint,
-  flowHasContent,
   normalizeScope,
   normalizeBooking,
-  parseFlow,
-  restoreFlow,
-  serializeFlow,
 } from "../utils/shippingFlowState.mjs";
 
 // Temporärer Versandvorgang — EIN Zustand für „Neue Sendung", Angebotsvergleich
@@ -24,52 +19,47 @@ import {
 // `interfaceFlowPersistence.test.mjs` prüft genau das.
 //
 // ── Was er tut ──────────────────────────────────────────────────────────────
-// Er hält den Vorgang im Speicher und spiegelt ihn in den sessionStorage —
-// tab-lokal, versioniert, ohne jede tabübergreifende Synchronisierung. Die
-// gesamte Zustandsprüfung liegt in shippingFlowState.mjs (rein und getestet);
-// hier steht nur die Anbindung an React und den Browser.
+// Er hält den Vorgang AUSSCHLIESSLICH im Arbeitsspeicher — tab-lokal,
+// kurzlebig, ohne jede Persistenz. Die Zustandsprüfung liegt in
+// shippingFlowState.mjs (rein und getestet); hier steht nur die Anbindung an
+// React.
+//
+// ── Warum nichts mehr persistiert wird ──────────────────────────────────────
+// Bis zum Paket „leerer Nullzustand" spiegelte der Provider den Vorgang in den
+// sessionStorage und stellte ihn beim Mount daraus wieder her. Damit überlebte
+// ein halb ausgefülltes Formular jeden Browser-Reload: F5 auf „Neue Sendung"
+// holte Absender, Empfänger, Paketdaten und alte Angebote zurück, obwohl der
+// Kunde nichts gespeichert hatte.
+//
+// Der Vorgang lebt seitdem nur noch hier. Das trennt die beiden Fälle sauber:
+//   • Wechsel INNERHALB der laufenden SPA-Sitzung (Sidebar, „Zurück" aus der
+//     Buchung, Browser-Vorwärts) — der Provider hängt außerhalb von <Routes>
+//     und wird dabei nicht abgehängt, der Vorgang bleibt also erhalten.
+//   • Browser-Reload — der React-Baum entsteht neu, der Vorgang ist weg, das
+//     Formular startet leer.
+// Wer Angaben behalten will, speichert einen Entwurf: bewusst, serverseitig,
+// geräteübergreifend. Genau dafür gibt es ihn.
 //
 // ── Was er NICHT tut ────────────────────────────────────────────────────────
 // Keine API-Aufrufe. Keine Buchungs-, Preis- oder Zolllogik. Keine Kopplung an
-// client.js. Er ersetzt kein Entwurfssystem: Entwürfe sind bewusst gespeichert,
-// serverseitig und geräteübergreifend — dieser Vorgang ist automatisch,
-// tab-lokal und kurzlebig.
+// client.js. Er ersetzt kein Entwurfssystem.
 
 const ShippingFlowContext = createContext(null);
 
-const speicherLesen = readShippingFlow;
-const speicherLoeschen = clearShippingFlowStorage;
-const speicherSchreiben = (text) => (text == null ? (speicherLoeschen(), true) : writeShippingFlow(text));
-
 const jetzt = () => Date.now();
-const heuteISO = () => new Date().toISOString().slice(0, 10);
 
 export function ShippingFlowProvider({ children }) {
-  // Einmalig beim Mount aus dem Speicher lesen. Danach ist der React-State die
-  // führende Quelle und der Speicher nur noch Spiegel — es wird NIE wieder
-  // gelesen, damit kein Lese-/Schreibkreis entstehen kann.
-  const startRef = useRef(undefined);
-  if (startRef.current === undefined) {
-    const { flow, dropped } = restoreFlow(parseFlow(speicherLesen()), { now: jetzt(), today: heuteISO() });
-    startRef.current = { flow: flow || emptyFlow(jetzt()), dropped };
-  }
+  const [flow, setFlow] = useState(() => emptyFlow(jetzt()));
+  // Es gibt keinen Wiederherstellungsweg mehr und damit auch keinen Grund, der
+  // gemeldet werden müsste. Der Wert bleibt im Vertrag, damit die Seiten
+  // unverändert bleiben — er ist dauerhaft null.
+  const [droppedReason, setDroppedReason] = useState(null);
 
-  const [flow, setFlow] = useState(startRef.current.flow);
-  // Grund, warum beim Wiederherstellen Angebote verworfen wurden. Die Seiten
-  // holen ihn EINMAL ab und zeigen ihn als normalen Hinweis; danach ist er weg.
-  const [droppedReason, setDroppedReason] = useState(startRef.current.dropped);
-
-  // Spiegel. Geschrieben wird ausschließlich, wenn sich der fachliche Inhalt
-  // geändert hat — der Fingerabdruck lässt Zeitstempel bewusst außen vor, sonst
-  // schriebe jeder Render.
-  const letzterFingerRef = useRef(flowFingerprint(startRef.current.flow));
-  useEffect(() => {
-    const finger = flowFingerprint(flow);
-    if (finger === letzterFingerRef.current) return;
-    letzterFingerRef.current = finger;
-    if (!flowHasContent(flow)) { speicherLoeschen(); return; }
-    speicherSchreiben(serializeFlow(flow));
-  }, [flow]);
+  // Einmalig einen Restwert aus einem älteren Bundle abräumen. Gehashte
+  // Bundles gehen mit `immutable` hinaus: ein zum Deploymentzeitpunkt offener
+  // Tab kann den Schlüssel noch geschrieben haben, und er lebt sonst bis zum
+  // Schließen des Tabs weiter.
+  useEffect(() => { clearShippingFlowStorage(); }, []);
 
   /* ── Schreibzugriffe ──────────────────────────────────────────────────── */
 
@@ -99,10 +89,8 @@ export function ShippingFlowProvider({ children }) {
 
   // Vollständiges Löschen — Abmeldung, erfolgreiche Buchung, bewusster Neustart.
   const clearFlow = useCallback(() => {
-    const leer = emptyFlow(jetzt());
-    letzterFingerRef.current = flowFingerprint(leer);
-    speicherLoeschen();
-    setFlow(leer);
+    clearShippingFlowStorage();
+    setFlow(emptyFlow(jetzt()));
     setDroppedReason(null);
   }, []);
 

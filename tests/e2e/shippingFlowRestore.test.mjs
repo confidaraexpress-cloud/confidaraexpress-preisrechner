@@ -138,14 +138,26 @@ const EINGABEN = [
 ];
 
 async function formularFuellen(page) {
+  // Der ABSENDER kommt seit dem Paket „leerer Nullzustand" nicht mehr
+  // automatisch aus dem Profil — er wird hier über dieselbe Komfortaktion
+  // gefüllt, die auch der Kunde benutzt.
+  const eigene = page.locator("button", { hasText: "Eigene Adresse" }).first();
+  if (await eigene.count()) { await eigene.click(); await page.waitForTimeout(150); }
+  // Auch das Empfängerland startet leer und muss gewählt werden.
+  const land = page.locator("#ns-r-country");
+  if (await land.count()) await land.selectOption("DE");
+
   for (const [ph, wert] of EINGABEN) {
     const el = page.locator(`input[placeholder="${ph}"]`).first();
     if (await el.count()) await el.fill(wert);
   }
   const plz = page.locator('input[placeholder="26133"]');
   if (await plz.count() > 1) await plz.nth(1).fill("20457");
-  for (const [ph, wert] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) {
-    const el = page.locator(`input[placeholder="${ph}"]`).first();
+  // Paketfelder über ihre ids — die Platzhalter tragen jetzt „z. B." davor und
+  // taugen nicht mehr als Selektor. Alle fünf sind Pflicht.
+  for (const [id, wert] of [["ns-packageCount", "2"], ["ns-weight", "5.5"],
+                            ["ns-length", "40"], ["ns-width", "30"], ["ns-height", "20"]]) {
+    const el = page.locator(`#${id}`);
     if (await el.count()) await el.fill(wert);
   }
   await page.waitForTimeout(250);
@@ -164,11 +176,13 @@ async function zustand(page) {
       empfaenger: w["Erika Muster"] || null,
       ort: w["Zürich"] || null,
       plz: w["26133"] || null,
-      pakete: w["1"] || null,
-      gewicht: w["5"] || null,
-      laenge: w["30"] || null,
-      breite: w["20"] || null,
-      hoehe: w["15"] || null,
+      // Paketfelder über ihre ids: die Platzhalter heißen jetzt „z. B. 5" usw.
+      // und die Anzahl startet leer — ein Platzhalter-Selektor träfe nichts.
+      pakete: document.getElementById("ns-packageCount")?.value || null,
+      gewicht: document.getElementById("ns-weight")?.value || null,
+      laenge: document.getElementById("ns-length")?.value || null,
+      breite: document.getElementById("ns-width")?.value || null,
+      hoehe: document.getElementById("ns-height")?.value || null,
       angebote: document.querySelectorAll(".offer-card").length,
       ausgewaehlt: document.querySelectorAll(".offer-card--selected").length,
       keinAngebot: document.body.innerText.includes("Kein Angebot ausgewählt"),
@@ -358,7 +372,13 @@ test("6 — der sichtbare Zurück-Button ersetzt den Buchungseintrag (kein Kreis
 
 /* ══════════ 3 — Reload ══════════════════════════════════════════════════ */
 
-test("7 — Reload auf „Neue Sendung\" stellt den Vorgang wieder her", async () => {
+test("7 — Reload auf „Neue Sendung\" startet einen LEEREN Vorgang", async () => {
+  // UMGEKEHRT gegenüber dem Vorzustand: bis zum Paket „leerer Nullzustand"
+  // stellte ein Reload Formular und Angebote aus dem sessionStorage wieder her.
+  // Das war fachlich falsch — „Neue Sendung" ist ein NEUER Vorgang, und ein F5
+  // holte Adressen und Paketdaten zurück, die der Kunde nie gespeichert hatte.
+  // Der Vorgang lebt seitdem nur im Arbeitsspeicher: er übersteht jeden Wechsel
+  // INNERHALB der Sitzung (Tests 1–6, 10 ff.) und endet mit dem Reload.
   const { ctx, page } = await neueSeite();
   const vorher = calcCount;
   await bisZurBuchung(page);
@@ -369,11 +389,13 @@ test("7 — Reload auf „Neue Sendung\" stellt den Vorgang wieder her", async (
   await page.waitForTimeout(1400);
 
   const z = await zustand(page);
-  assert.equal(z.titel, "Neue Sendung");
-  assert.equal(z.empfaenger, "Dora Beispiel", "Reload hat das Formular verloren");
-  assert.equal(z.gewicht, "5.5");
-  assert.equal(z.angebote, 2, "Reload hat die Angebote verloren");
-  assert.equal(calcCount - vorher, 1, "Reload hat neu berechnet");
+  assert.equal(z.empfaenger, null, "der Reload hat das Formular wiederhergestellt");
+  assert.equal(z.gewicht, null, "der Reload hat die Paketdaten wiederhergestellt");
+  assert.equal(z.angebote, 0, "der Reload hat die Angebote wiederhergestellt");
+  assert.equal(calcCount - vorher, 1, "der Reload hat neu berechnet");
+  // Und im Speicher liegt tatsächlich nichts mehr.
+  const rest = await page.evaluate((k) => sessionStorage.getItem(k), SPEICHER);
+  assert.equal(rest, null, "der Vorgang liegt weiterhin im sessionStorage");
   await ctx.close();
 });
 
@@ -399,14 +421,20 @@ test("9 — direkter Einstieg auf /booking ohne Vorgang bleibt sicher", async ()
 
 /* ══════════ 4 — Sidebar ═════════════════════════════════════════════════ */
 
-test("10 — Wechsel über die Sidebar und zurück erhält den Vorgang", async () => {
+test("10 — „Neue Sendung“ über die Sidebar startet einen FRISCHEN Vorgang", async () => {
+  // UMGEKEHRT gegenüber dem Vorzustand: bis zum Paket „leerer Nullzustand"
+  // erhielt dieser Weg den laufenden Vorgang. Das war fachlich falsch — wer in
+  // der Navigation „Neue Sendung" wählt, will eine NEUE Sendung, nicht die
+  // halb fertige von vorhin. Der laufende Vorgang bleibt weiterhin erhalten,
+  // wenn der Kunde aus der Buchung heraus „Zurück" drückt (Tests 1–6): dieser
+  // Weg läuft nicht über die Navigation, sondern über `state.page`.
   const { ctx, page } = await neueSeite();
-  const vorher = calcCount;
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   await formularFuellen(page);
   await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
   await page.waitForTimeout(1400);
+  assert.equal((await zustand(page)).angebote, 2, "Vorbedingung: es gibt Angebote");
 
   await page.locator(".nitem", { hasText: "Rechnungen" }).first().click();
   await page.waitForTimeout(700);
@@ -417,13 +445,18 @@ test("10 — Wechsel über die Sidebar und zurück erhält den Vorgang", async (
     const weiter = dialog.locator("button").filter({ hasText: /Verwerfen|Ohne Speichern|Trotzdem/i }).first();
     if (await weiter.count()) { await weiter.click(); await page.waitForTimeout(700); }
   }
-  await page.locator(".nitem", { hasText: "Neue Sendung" }).first().click();
+
+  // Zurück über die Navigation. Die Gruppe ist zugeklappt und ihre Einträge
+  // tragen `visibility: hidden` — der Gruppenkopf muss zuerst geöffnet werden.
+  const kopf = page.locator("button.pp-nav-group-head", { hasText: "Versand" }).first();
+  if ((await kopf.getAttribute("aria-expanded")) !== "true") await kopf.click();
+  await page.locator(".pp-nav-group-items .nitem", { hasText: "Neue Sendung" }).first().click();
   await page.waitForTimeout(1300);
 
   const z = await zustand(page);
-  assert.equal(z.empfaenger, "Dora Beispiel", "Sidebar-Rückkehr hat das Formular verloren");
-  assert.equal(z.angebote, 2, "Sidebar-Rückkehr hat die Angebote verloren");
-  assert.equal(calcCount - vorher, 1, "Sidebar-Rückkehr hat neu berechnet");
+  assert.equal(z.empfaenger, null, "der alte Empfänger steht noch im Formular");
+  assert.equal(z.gewicht, null, "die alten Paketdaten stehen noch im Formular");
+  assert.equal(z.angebote, 0, "die alten Angebote sind noch da");
   await ctx.close();
 });
 
@@ -435,7 +468,12 @@ test("11 — Abmelden löscht Vorgang und Speicher", async () => {
   await page.waitForTimeout(600);
   await formularFuellen(page);
   await page.waitForTimeout(600);
-  assert.equal((await zustand(page)).speicher, true, "der Vorgang wurde nicht gespiegelt");
+  // Der Vorgang wird seit dem Paket „leerer Nullzustand" NICHT mehr in den
+  // sessionStorage gespiegelt — er lebt nur im Arbeitsspeicher. Die frühere
+  // Vorbedingung „der Vorgang wurde gespiegelt" ist damit gegenstandslos; der
+  // Speicher muss im Gegenteil schon vor der Abmeldung leer sein.
+  assert.equal((await zustand(page)).speicher, false, "der Vorgang wurde doch gespiegelt");
+  assert.equal((await zustand(page)).empfaenger, "Dora Beispiel", "Vorbedingung: das Formular ist gefüllt");
 
   await page.locator(".nitem", { hasText: "Abmelden" }).first().click();
   await page.waitForTimeout(1200);
@@ -483,7 +521,10 @@ test("12 — erfolgreiche Buchung löscht den Vorgang, der Erfolgsbildschirm ble
   assert.ok(nachher.text.includes("CE-RE26-00001"), "die Rechnungsnummer wurde zu früh entfernt");
 
   // Und „Neue Sendung" vom Erfolgsbildschirm startet leer.
-  const neu = page.locator("button").filter({ hasText: /^Neue Sendung$/ }).first();
+  // NICHT `.nitem`: der gleichnamige Sidebar-Eintrag liegt in einer
+  // zugeklappten Gruppe und ist `visibility: hidden`. Gemeint ist der Knopf
+  // AUF dem Erfolgsbildschirm.
+  const neu = page.locator("button:not(.nitem)").filter({ hasText: /^Neue Sendung$/ }).first();
   if (await neu.count()) {
     await neu.click();
     await page.waitForTimeout(1200);
@@ -516,7 +557,11 @@ test("13 — „Eingaben zurücksetzen\" startet bewusst leer", async () => {
   const z = await zustand(page);
   assert.equal(z.empfaenger, null, "der Empfänger wurde nicht geleert");
   assert.equal(z.angebote, 0, "die Angebote wurden nicht verworfen");
-  assert.equal(z.pakete, "1", "die Paketanzahl steht nicht wieder auf dem Standard");
+  // Die Paketanzahl startet seit dem Paket „leerer Nullzustand" LEER — der
+  // frühere Standardwert „1" war ein sichtbarer, aber unbestätigter Wert.
+  assert.equal(z.pakete, null, "die Paketanzahl trägt wieder einen Standardwert");
+  assert.equal(z.gewicht, null, "das Gewicht wurde nicht geleert");
+  assert.equal(z.laenge, null, "die Maße wurden nicht geleert");
   await ctx.close();
 });
 
@@ -541,44 +586,45 @@ test("14 — zwei Tabs beeinflussen sich nicht", async () => {
   await tabB.waitForTimeout(800);
   assert.equal((await zustand(tabB)).keinAngebot, true);
 
-  // Tab A ist unverändert.
+  // Tab A ist von Tab B unberührt — solange er nicht neu geladen wird.
+  assert.equal((await zustand(tabA)).empfaenger, "Dora Beispiel", "Tab B hat Tab A überschrieben");
+  // Nach einem Reload startet auch Tab A leer: der Vorgang lebt nur im
+  // Arbeitsspeicher, es gibt keine tab-lokale Wiederherstellung mehr. Die
+  // Unabhängigkeit der Tabs ist damit strukturell — es wird schlicht nichts
+  // geteilt, weder zwischen Tabs noch über einen Reload hinweg.
   await tabA.reload({ waitUntil: "networkidle" });
   await tabA.waitForTimeout(1200);
-  assert.equal((await zustand(tabA)).empfaenger, "Dora Beispiel", "Tab B hat Tab A überschrieben");
+  assert.equal((await zustand(tabA)).empfaenger, null, "der Reload hat Tab A wiederhergestellt");
   await c1.close();
   await c2.close();
 });
 
 /* ══════════ 7 — Ablauf und Robustheit ═══════════════════════════════════ */
 
-test("15 — ein abgelaufener Vorgang behält das Formular und verwirft die Angebote", async () => {
+test("15 — es wird NICHTS gespiegelt, also kann auch nichts ablaufen", async () => {
+  // ERSETZT den früheren Ablauftest. Die 60-Minuten-Frist gab es ausschließlich,
+  // damit ein aus dem sessionStorage WIEDERHERGESTELLTER Vorgang keine veralteten
+  // Angebote zeigt. Mit dem Paket „leerer Nullzustand" gibt es keine
+  // Wiederherstellung mehr — der Vorgang endet mit dem Reload, und damit ist die
+  // Frist gegenstandslos. Geprüft wird deshalb die Zusage, die an ihre Stelle
+  // getreten ist: es entsteht überhaupt kein Speichereintrag.
   const { ctx, page } = await neueSeite();
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   await formularFuellen(page);
   await page.locator("button", { hasText: "Angebote vergleichen" }).first().click();
   await page.waitForTimeout(1400);
+  assert.equal((await zustand(page)).angebote, 2, "Vorbedingung: es gibt Angebote");
 
-  // Den gespiegelten Vorgang künstlich altern lassen (61 Minuten).
-  await page.evaluate((k) => {
-    const roh = JSON.parse(sessionStorage.getItem(k));
-    const alt = Date.now() - 61 * 60 * 1000;
-    roh.updatedAt = alt;
-    roh.createdAt = alt;
-    sessionStorage.setItem(k, JSON.stringify(roh));
-  }, SPEICHER);
-
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForTimeout(1400);
-
-  const z = await zustand(page);
-  assert.equal(z.empfaenger, "Dora Beispiel", "das Formular hätte erhalten bleiben müssen");
-  assert.equal(z.gewicht, "5.5");
-  assert.equal(z.angebote, 0, "abgelaufene Angebote werden weiter angezeigt");
-  const text = await page.locator(".calc-page-wrap").innerText();
-  assert.ok(/älter als eine Stunde/.test(text), "es fehlt der verständliche Hinweis");
-  assert.ok(!/[A-Z_]{5,}/.test(text.split("\n").find((l) => l.includes("älter als eine Stunde")) || ""),
-    "technischer Rohwert im Hinweis");
+  // Weder Formular noch Angebote landen in irgendeinem Speicher.
+  const gespeichert = await page.evaluate((k) => ({
+    sitzung: (() => { try { return sessionStorage.getItem(k); } catch { return null; } })(),
+    sitzungSchluessel: (() => { try { return Object.keys(sessionStorage); } catch { return []; } })(),
+    lokal: (() => { try { return Object.keys(localStorage); } catch { return []; } })(),
+  }), SPEICHER);
+  assert.equal(gespeichert.sitzung, null, "der Vorgang wird wieder gespiegelt");
+  assert.deepEqual(gespeichert.sitzungSchluessel, [], "es liegt etwas im sessionStorage");
+  assert.deepEqual(gespeichert.lokal, ["ce_token"], "es liegt etwas Zusätzliches im localStorage");
   await ctx.close();
 });
 
@@ -635,17 +681,22 @@ test("18 — ohne verfügbaren sessionStorage funktioniert die Seite weiter", as
 
 /* ══════════ 8 — unveränderte Verträge ═══════════════════════════════════ */
 
-test("19 — der Vorgang enthält keine Tokens, Passwörter oder Dokumente", async () => {
+test("19 — kein Vorgangsinhalt verlässt den Arbeitsspeicher", async () => {
+  // Die frühere Fassung durchsuchte den gespiegelten Vorgang nach Tokens,
+  // Passwörtern und Dokumenten. Diese Zusage ist seit dem Paket „leerer
+  // Nullzustand" strikt STÄRKER erfüllt: es wird gar nichts mehr gespiegelt,
+  // also kann auch nichts durchsickern. Geprüft wird deshalb, dass nach einem
+  // vollständigen Vorgang bis zur Buchungsseite wirklich kein Eintrag
+  // zurückbleibt — und dass der einzige localStorage-Schlüssel weiterhin das
+  // Sitzungstoken ist.
   const { ctx, page } = await neueSeite();
   await bisZurBuchung(page);
-  const roh = await page.evaluate((k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, SPEICHER);
-  assert.ok(roh, "kein Vorgang gespiegelt");
-  for (const verboten of ["ce_token", "e2e-token", "Bearer", "password", "authorization"]) {
-    assert.ok(!roh.toLowerCase().includes(verboten.toLowerCase()), `„${verboten}" liegt im Vorgang`);
-  }
-  // Und der Vorgang liegt NICHT im localStorage.
-  const lokal = await page.evaluate(() => Object.keys(localStorage));
-  assert.deepEqual(lokal, ["ce_token"], "der Vorgang wurde im localStorage abgelegt");
+  const speicher = await page.evaluate(() => ({
+    sitzung: (() => { try { return Object.keys(sessionStorage); } catch { return []; } })(),
+    lokal: (() => { try { return Object.keys(localStorage); } catch { return []; } })(),
+  }));
+  assert.deepEqual(speicher.sitzung, [], "der Vorgang hat etwas im sessionStorage hinterlassen");
+  assert.deepEqual(speicher.lokal, ["ce_token"], "der Vorgang wurde im localStorage abgelegt");
   await ctx.close();
 });
 
@@ -694,6 +745,18 @@ test("20 — der /book-Payload bleibt feldgleich", async () => {
 async function ueberSidebar(page, ziele) {
   for (const ziel of ziele) {
     const eintrag = page.locator(".nitem", { hasText: ziel }).first();
+    // Einträge einer zugeklappten Gruppe tragen `visibility: hidden` und sind
+    // damit weder fokussierbar noch klickbar (bewusst so). Ist das Ziel nicht
+    // sichtbar, wird die passende Gruppe zuerst geöffnet — genau das tut auch
+    // ein echter Nutzer.
+    if (await eintrag.count() && !(await eintrag.isVisible())) {
+      for (const kopf of await page.locator("button.pp-nav-group-head").all()) {
+        if ((await kopf.getAttribute("aria-expanded")) === "true") continue;
+        await kopf.click();
+        await page.waitForTimeout(300);
+        if (await eintrag.isVisible()) break;
+      }
+    }
     if (await eintrag.count()) { await eintrag.click(); await page.waitForTimeout(700); }
     const dialog = page.locator("[role=dialog]");
     if (await dialog.count()) {

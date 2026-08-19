@@ -22,6 +22,7 @@ import { readFileSync } from "node:fs";
 
 import { countries, normalizeCountryCode } from "./countries.js";
 import { companyBaseline, buildCompanyPatch } from "./profileView.mjs";
+import { createEmptyShipmentForm } from "./newShipmentForm.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (code) => code
@@ -83,9 +84,28 @@ test("A6 jeder Code der Liste übersteht die Normalisierung unverändert", () =>
 
 /* ══════════ B — Alle drei Seed-Punkte laufen darüber ═════════════════════ */
 
-test("B1 „Neue Sendung“ seedet das Absenderland über die Normalisierung", () => {
-  assert.match(seite, /s_country:\s*normalizeCountryCode\(user\?\.country\)/);
-  assert.doesNotMatch(seite, /s_country:\s*user\?\.country\s*\|\|/);
+// „Neue Sendung" belegt den Absender seit dem Paket „leerer Nullzustand" NICHT
+// mehr automatisch aus dem Profil — das Formular startet leer, und die Daten
+// kommen erst auf ausdrückliche Anforderung („Eigene Adresse"). Die
+// Normalisierungspflicht gilt dort unverändert weiter: sie ist der Grund, warum
+// ein Konto mit „DEU" überhaupt eine anzeigbare Auswahl bekommt.
+test("B1 die Absenderübernahme von „Neue Sendung“ normalisiert das Land", () => {
+  const modul = lies("./newShipmentForm.mjs");
+  assert.match(modul, /s_country:\s*normalizeCountryCode\(u\.country\)/);
+  assert.doesNotMatch(modul, /s_country:\s*u\.country\s*\|\|/);
+  // Und die Seite benutzt genau diese Funktion, statt eine zweite zu bauen.
+  assert.match(seite, /senderPatchFromProfile\(user\)/);
+});
+
+test("B1b der Ausgangszustand trägt gar kein Land mehr", () => {
+  // Am erzeugten Objekt gemessen, nicht am Quelltext: das ist die Aussage, auf
+  // die es ankommt, und sie hält auch, wenn der Aufbau der Funktion sich ändert.
+  const leer = createEmptyShipmentForm();
+  assert.equal(leer.s_country, "", "Absenderland ist vorbelegt");
+  assert.equal(leer.r_country, "", "Empfängerland ist vorbelegt");
+  // Und wirklich JEDES Feld ist leer — kein Rest eines alten Defaults.
+  for (const [k, v] of Object.entries(leer))
+    assert.equal(v, "", `Feld ${k} startet nicht leer (${JSON.stringify(v)})`);
 });
 
 test("B2 der Versandkostenrechner ebenso", () => {
@@ -171,10 +191,11 @@ test("D3 die Feldzuordnung deckt jedes Feld ab, das die Entwurfsroute ablehnen k
 test("D4 jeder zugeordnete Formularschlüssel existiert auch im Formular", () => {
   const map = seite.slice(seite.indexOf("const SHIPMENT_FIELD_MAP"), seite.indexOf("const SHIPMENT_FIELD_ORDER"));
   const ziele = [...map.matchAll(/:\s*"([a-zA-Z_]+)"/g)].map((m) => m[1]);
-  const seed = seite.slice(seite.indexOf("const profilSeed"), seite.indexOf("// ── Fortsetzen-Status"));
-  // Mehrere Schlüssel stehen in einer Zeile (weight/length/width/height) —
-  // deshalb alle Schlüssel des Blocks, nicht nur zeilenführende.
-  const bekannt = new Set([...seed.matchAll(/\b([a-zA-Z_]+):/g)].map((m) => m[1]));
+  // Der Formularbestand steht seit dem Paket „leerer Nullzustand" nicht mehr als
+  // Objektliteral in der Seite, sondern wird in newShipmentForm.mjs aus
+  // Präfixen und Suffixen aufgebaut. Der Test prüft deshalb gegen das echte
+  // erzeugte Formular — das ist genauer als ein Quelltextmuster.
+  const bekannt = new Set(Object.keys(createEmptyShipmentForm()));
   bekannt.add("shippingDate");   // eigener State, kein Formularfeld
   for (const z of new Set(ziele)) {
     assert.ok(bekannt.has(z), `Zuordnungsziel ${z} existiert im Formular nicht`);

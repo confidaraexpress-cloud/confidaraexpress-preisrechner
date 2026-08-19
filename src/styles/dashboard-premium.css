@@ -333,19 +333,22 @@
 .pp-nav-group-head svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
 .pp-nav-group-head:hover svg { color: var(--ce-sidebar-text-muted); }
 
-/* Der aktive BEREICH — sichtbar auch (und gerade) bei geschlossener Gruppe:
-   der Nutzer soll erkennen, wo er sich befindet, ohne dass sich etwas
-   ungefragt aufklappt. Bewusst deutlich schwächer als ein aktiver Eintrag:
-   flache, sehr leichte Fläche statt Verlauf, 2px-Kante statt 3px, keine
-   Border. Damit gibt es nie zwei gleich starke Aktivflächen übereinander —
-   der aktive Unterpunkt bleibt die deutliche Markierung, der Kopf die
-   dezente. */
-.pp-nav-group--active .pp-nav-group-head {
+/* Die GEÖFFNETE Gruppe — und nur sie. Die Hervorhebung folgt ausschließlich
+   dem Klappzustand, nicht der Route: vorher leuchtete „Lager & Aufträge" auch
+   auf /stock, während die Gruppe nach einem Reload zu war, und behauptete
+   damit einen geöffneten Bereich, den es nicht gab. Da höchstens eine Gruppe
+   offen sein kann, leuchtet auch höchstens eine.
+
+   Bewusst deutlich schwächer als ein aktiver Eintrag: flache, sehr leichte
+   Fläche statt Verlauf, 2px-Kante statt 3px, keine Border. Der aktive
+   Unterpunkt bleibt die deutliche Markierung, der Kopf die dezente — zwei
+   gleich starke Flächen übereinander wären keine Hierarchie. */
+.pp-nav-group--open .pp-nav-group-head {
   color: var(--ce-sidebar-text-strong);
   background: var(--ce-sidebar-active-bg-soft);
   box-shadow: inset 2px 0 0 var(--ce-sidebar-active-accent);
 }
-.pp-nav-group--active .pp-nav-group-head svg { color: var(--ce-sidebar-active-icon); }
+.pp-nav-group--open .pp-nav-group-head svg { color: var(--ce-sidebar-active-icon); }
 
 /* Das Label darf schrumpfen, damit der Chevron nie aus der Spalte gedrückt
    wird; „LAGER & AUFTRÄGE" bricht dann an der Wortgrenze um. */

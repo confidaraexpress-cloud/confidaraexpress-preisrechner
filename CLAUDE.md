@@ -328,9 +328,7 @@ Konto              ˅  Unternehmen & Konto · Supportanfragen
   sichtbaren Namen ändert, benennt keine Route um.
 - **Geschlossen ist der Normalzustand — nichts öffnet sich von selbst.** Nach
   jedem Reload sind alle drei Gruppen zu, auch die des aktuellen Bereichs. Es
-  gibt dafür **keinen Effekt**; `activeGroupId` wird zwar weiter generisch aus
-  dem `page`-Wert abgeleitet, steuert aber ausschließlich die **Markierung**
-  des Kopfes, nie den Klappzustand.
+  gibt dafür **keinen Effekt**.
 - **Accordion by construction.** Der Klappzustand ist EIN Wert (`null` oder
   eine Gruppen-id), kein Booleantripel: „höchstens eine Gruppe offen" ist damit
   eine Eigenschaft des Datentyps und keine Regel, die irgendwo durchgesetzt
@@ -343,11 +341,25 @@ Konto              ˅  Unternehmen & Konto · Supportanfragen
   einen ihrer Einträge benutzt. Ein Reload wertet das Modul neu aus und setzt
   ihn zwangsläufig auf `null` — die Reload-Regel bleibt damit erfüllt, ohne
   dass irgendetwas persistiert wird.
-- **Der aktive Bereich wird MARKIERT, nicht aufgeklappt.** Der Gruppenkopf
-  trägt dafür eine flache, sehr leichte Fläche (`--ce-sidebar-active-bg-soft`,
-  13 %) plus 2-px-Akzentkante — gemessen deutlich schwächer als ein aktiver
-  Eintrag (0,32-Verlauf, 3-px-Kante, zusätzlich Border). Zwei gleich starke
-  Aktivflächen übereinander wären keine Hierarchie.
+- **Die Hervorhebung folgt AUSSCHLIESSLICH dem Klappzustand, nie der Route.**
+  Hervorgehoben ist die Gruppe, die der Nutzer geöffnet hat — und da höchstens
+  eine offen sein kann, leuchtet höchstens eine. Aus dem `page`-Wert entsteht
+  **kein** Gruppenzustand mehr, weder Klappzustand noch Markierung; er markiert
+  nur noch den einzelnen aktiven Eintrag.
+
+  Das kehrt eine frühere Fassung um, in der der Kopf leuchtete, sobald die
+  Route in seinem Bereich lag: auf `/stock` leuchtete „Lager & Aufträge",
+  während die Gruppe nach einem Reload zugeklappt war — die Sidebar behauptete
+  einen geöffneten Bereich, den es nicht gab. Es gibt jetzt genau EINE Aussage
+  je Zeichen: der Kopf sagt „diese Gruppe ist offen", der Eintrag sagt „hier
+  bist du". Ein Test prüft, dass die Hervorhebung aus genau EINER CSS-Regel
+  kommt.
+
+  Der geöffnete Kopf trägt dafür eine flache, sehr leichte Fläche
+  (`--ce-sidebar-active-bg-soft`, 13 %) plus 2-px-Akzentkante — gemessen
+  deutlich schwächer als ein aktiver Eintrag (0,32-Verlauf, 3-px-Kante,
+  zusätzlich Border). Zwei gleich starke Flächen übereinander wären keine
+  Hierarchie.
 - **Eingeklappt bleiben die Einträge im DOM** — ohne Inhalt gäbe es nichts zu
   animieren. Bedienbar sind sie deshalb trotzdem nicht: `visibility: hidden`
   nimmt sie aus Fokusreihenfolge **und** Accessibility-Baum; der Wechsel ist

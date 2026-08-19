@@ -133,18 +133,15 @@ function NavItem({ item, page, onNavigate, variant }) {
 // Browser, statt es zu behaupten.
 function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
   const itemsId = `pp-nav-group-${group.id}-items`;
-  // Der Bereich ist aktiv, wenn irgendein Eintrag der Gruppe die aktuelle Seite
-  // ist — unabhängig davon, ob die Gruppe gerade offen ist. Genau dafür braucht
-  // der geschlossene Kopf seine dezente Markierung.
-  const active = group.items.some((item) => item.id === page);
+  // Die Hervorhebung des Kopfes folgt AUSSCHLIESSLICH dem Klappzustand, nicht
+  // der Route. Vorher leuchtete „Lager & Aufträge" auch auf /stock, während die
+  // Gruppe nach einem Reload zu war — die Sidebar behauptete damit einen
+  // geöffneten Bereich, den es nicht gab. Es gibt jetzt genau EINE Aussage:
+  // hervorgehoben ist die Gruppe, die der Nutzer selbst geöffnet hat, und
+  // höchstens eine. Wo er sich innerhalb der Gruppe befindet, sagt weiterhin
+  // der aktive Eintrag (.nitem.on) — sichtbar, sobald die Gruppe offen ist.
   return (
-    <div
-      className={
-        "pp-nav-group" +
-        (active ? " pp-nav-group--active" : "") +
-        (open ? " pp-nav-group--open" : "")
-      }
-    >
+    <div className={"pp-nav-group" + (open ? " pp-nav-group--open" : "")}>
       <button
         type="button"
         className="pp-nav-group-head"
@@ -203,13 +200,9 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // Klick auf eine andere schließt die bisherige und öffnet die neue.
   const toggleGroup = (id) => setOpenGroup((aktuell) => (aktuell === id ? null : id));
 
-  // Die Gruppe des aktuellen Bereichs — rein aus dem bestehenden page-Wert
-  // abgeleitet, kein zusätzlicher State. Sie steuert NICHT den Klappzustand,
-  // sondern nur die dezente Markierung am Gruppenkopf: „du bist hier drin",
-  // ohne den Bereich ungefragt aufzuklappen. Auf „overview"/„addressbook" ist
-  // keine Gruppe aktiv; auf /calculator (page === "calculator") ist Versand
-  // aktiv, auf /inventory/products/:id (page === "products") Lager & Aufträge.
-  const activeGroupId = NAV_GROUPS.find((g) => g.items.some((i) => i.id === page))?.id ?? null;
+  // Aus dem page-Wert wird KEIN Gruppenzustand mehr abgeleitet — weder der
+  // Klappzustand noch die Hervorhebung. Der page-Wert markiert ausschließlich
+  // den einzelnen aktiven Eintrag (siehe NavItem).
 
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }

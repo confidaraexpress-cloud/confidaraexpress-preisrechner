@@ -3,8 +3,8 @@
 // Geprüft wird die fachliche Struktur, die diese Sidebar tragen soll, und die
 // Regeln, an denen sie schon einmal gescheitert ist:
 //   1. Reihenfolge und Zusammensetzung (Übersicht · Versand · Adressbuch ·
-//      Lager & Aufträge · Konto · Abmelden)
-//   2. Versandrechnungen gehören in den Versandblock — aber die Route bleibt
+//      Rechnungen · Lager & Aufträge · Konto · Abmelden)
+//   2. Rechnungen sind ein eigenständiger Hauptpunkt — aber die Route bleibt
 //   3. Keine Gruppe „Verwaltung", keine Gruppe „Abrechnung"
 //   4. Accordion: EIN Wert trägt den Klappzustand, nichts öffnet sich von
 //      selbst, der aktive Bereich wird nur markiert
@@ -33,44 +33,57 @@ const regel = (sel) => {
 
 /* ══════════ 1 — Struktur und Reihenfolge ═════════════════════════════════ */
 
-test("1 — genau zwei direkte Einträge und drei Gruppen", () => {
+test("1 — genau drei direkte Einträge und drei Gruppen", () => {
   assert.ok(/OVERVIEW_ITEM = \{ id: "overview"/.test(code), "Übersicht fehlt als direkter Eintrag");
   assert.ok(/ADDRESSBOOK_ITEM = \{ id: "addressbook"/.test(code), "Adressbuch fehlt als direkter Eintrag");
+  assert.ok(/INVOICES_ITEM = \{ id: "invoices"/.test(code), "Rechnungen fehlt als direkter Eintrag");
   assert.equal((code.match(/<SidebarGroup/g) || []).length, 3, "es müssen genau drei Gruppen sein");
-  // Adressbuch bleibt bewusst EIGENSTÄNDIG: es ist eine gemeinsam genutzte
-  // Ressource (Versand, Empfänger, Aufträge) und gehört unter keine der Gruppen.
+  // Adressbuch und Rechnungen bleiben bewusst EIGENSTÄNDIG: das Adressbuch ist
+  // eine gemeinsam genutzte Ressource (Versand, Empfänger, Aufträge), und der
+  // Rechnungsbereich soll später auch Abo- und andere Abrechnungen aufnehmen —
+  // unter „Versand" wäre er dann falsch einsortiert.
   for (const gruppe of ["shipping", "warehouse", "account"]) {
     const start = code.indexOf(`id: "${gruppe}"`);
     const ende = code.indexOf("],", start);
-    assert.ok(!code.slice(start, ende).includes('"addressbook"'),
-      `Adressbuch darf nicht in der Gruppe ${gruppe} liegen`);
+    for (const frei of ["addressbook", "invoices"]) {
+      assert.ok(!code.slice(start, ende).includes(`"${frei}"`),
+        `${frei} darf nicht in der Gruppe ${gruppe} liegen`);
+    }
   }
 });
 
-test("2 — die Reihenfolge im <nav> ist Übersicht → Versand → Adressbuch → Lager → Konto → Abmelden", () => {
+test("2 — die Reihenfolge im <nav> ist Übersicht → Versand → Adressbuch → Rechnungen → Lager → Konto → Abmelden", () => {
   const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
-  const marken = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", '"warehouse"', '"account"', "handleLogout"];
+  const marken = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", "INVOICES_ITEM", '"warehouse"', '"account"', "handleLogout"];
   const pos = marken.map((m) => nav.indexOf(m));
   assert.ok(pos.every((v) => v >= 0), `nicht alle Bausteine gefunden: ${JSON.stringify(marken.map((m, i) => [m, pos[i]]))}`);
   assert.deepEqual([...pos].sort((a, b) => a - b), pos, "die Reihenfolge im <nav> stimmt nicht");
 });
 
-test("3 — der Versandblock trägt genau sechs Einträge in fester Reihenfolge", () => {
+test("3 — der Versandblock trägt genau fünf Einträge in fester Reihenfolge", () => {
   const start = code.indexOf('id: "shipping"');
   const block = code.slice(start, code.indexOf("],", start));
   const ids = [...block.matchAll(/id: "([a-z]+)"/g)].map((m) => m[1]).filter((id) => id !== "shipping");
-  assert.deepEqual(ids, ["new", "calculator", "drafts", "shipments", "tracking", "invoices"],
+  assert.deepEqual(ids, ["new", "calculator", "drafts", "shipments", "tracking"],
     "Bestand oder Reihenfolge des Versandblocks stimmt nicht");
+  // Rechnungen sind hier ausdrücklich NICHT mehr enthalten.
+  assert.ok(!block.includes('"invoices"'), "Rechnungen dürfen nicht mehr im Versandblock stehen");
 });
 
-/* ══════════ 2 — Versandrechnungen: Label neu, Route unverändert ══════════ */
+/* ══════════ 2 — Rechnungen: eigenständig, Route unverändert ═════════════ */
 
-test("4 — „Rechnungen“ heißt sichtbar „Versandrechnungen“ und liegt im Versandblock", () => {
-  assert.ok(code.includes('label: "Versandrechnungen"'), "das neue Label fehlt");
-  assert.ok(!code.includes('label: "Rechnungen"'), "das alte Label steht noch in der Sidebar");
-  const start = code.indexOf('id: "shipping"');
-  const block = code.slice(start, code.indexOf("],", start));
-  assert.ok(block.includes('id: "invoices"'), "Versandrechnungen liegen nicht im Versandblock");
+test("4 — „Rechnungen“ ist ein eigenständiger Hauptpunkt zwischen Adressbuch und Lager", () => {
+  assert.ok(code.includes('label: "Rechnungen"'), "das Label „Rechnungen“ fehlt");
+  assert.ok(!code.includes("Versandrechnungen"), "das alte Label „Versandrechnungen“ steht noch in der Sidebar");
+  // Kein Gruppenkopf, sondern ein direkter Eintrag — er wird über NavItem
+  // gerendert, nicht über SidebarGroup.
+  const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
+  assert.match(nav, /<NavItem item=\{INVOICES_ITEM\}/, "Rechnungen wird nicht als direkter Eintrag gerendert");
+  const posAdressbuch = nav.indexOf("ADDRESSBOOK_ITEM");
+  const posRechnungen = nav.indexOf("INVOICES_ITEM");
+  const posLager = nav.indexOf('"warehouse"');
+  assert.ok(posAdressbuch < posRechnungen && posRechnungen < posLager,
+    "Rechnungen steht nicht zwischen Adressbuch und Lager & Aufträge");
 });
 
 test("5 — der page-Wert bleibt „invoices“ — es wurde nichts umbenannt", () => {
@@ -79,6 +92,28 @@ test("5 — der page-Wert bleibt „invoices“ — es wurde nichts umbenannt", 
   // sind unangetastet.
   assert.ok(code.includes('id: "invoices"'), "der page-Wert wurde verändert");
   assert.match(dashPage, /"invoices"/, "DashboardPage kennt den Bereich invoices nicht mehr");
+});
+
+test("5b — die beiden umbenannten Einträge sind NUR umbenannt", () => {
+  // „Preisrechner" → „Versandkostenrechner", „Unternehmen & Konto" →
+  // „Kontoeinstellungen". Beides sind sichtbare Beschriftungen. Die
+  // page-/Routenwerte (`calculator`, `profile`) und die Route /calculator
+  // bleiben unverändert — wer den sichtbaren Namen ändert, benennt keine Route um.
+  assert.ok(code.includes('label: "Versandkostenrechner"'), "das neue Label des Rechners fehlt");
+  assert.ok(code.includes('label: "Kontoeinstellungen"'), "das neue Label der Kontoseite fehlt");
+  assert.ok(!code.includes('label: "Preisrechner"'), "das alte Label „Preisrechner“ steht noch");
+  assert.ok(!/label: "Unternehmen/.test(code), "das alte Label „Unternehmen & Konto“ steht noch");
+  assert.ok(code.includes('id: "calculator"'), "der page-Wert calculator wurde verändert");
+  assert.ok(code.includes('id: "profile"'), "der page-Wert profile wurde verändert");
+  // Die Route selbst ist unangetastet. Sie ist die einzige Ausnahme des
+  // page-State-Modells — die Sidebar setzt auch hier nur den page-Wert,
+  // die Weiche steht in DashboardPage.navigateTo.
+  assert.match(dashPage, /if \(target\.page === "calculator"\) \{ navigate\("\/calculator"\)/,
+    "die Route /calculator wurde verändert");
+  // Und der Seitenkopf der Route trägt denselben neuen Namen: zwei Beschriftungen
+  // für dieselbe Seite wären ein Widerspruch für den Nutzer.
+  assert.match(layout, /calculator:\s*\{[^}]*title:\s*"Versandkostenrechner"/,
+    "der Seitenkopf von /calculator trägt nicht den neuen Namen");
 });
 
 /* ══════════ 3 — Entfallene Gruppen ══════════════════════════════════════ */
@@ -214,10 +249,10 @@ test("11 — die Hierarchie entsteht aus Abstand und Einrückung", () => {
 
 /* ══════════ 6 — Typografie, Trefferfläche, Icons, Fokus ═════════════════ */
 
-test("12 — die fünf Einträge der ersten Ebene sind gleichrangig", () => {
-  // Übersicht · Versand · Adressbuch · Lager & Aufträge · Konto bilden EIN
-  // Hauptmenü. Ob ein Eintrag eine Gruppe ist, sagt der Chevron — nicht die
-  // Schriftgröße, nicht die Höhe, nicht der Innenabstand.
+test("12 — die Einträge der ersten Ebene sind gleichrangig", () => {
+  // Übersicht · Versand · Adressbuch · Rechnungen · Lager & Aufträge · Konto
+  // bilden EIN Hauptmenü. Ob ein Eintrag eine Gruppe ist, sagt der Chevron —
+  // nicht die Schriftgröße, nicht die Höhe, nicht der Innenabstand.
   const item = regel("\n.nitem");
   const head = regel(".pp-nav-group-head");
   assert.ok(item && head, ".nitem oder .pp-nav-group-head fehlt");

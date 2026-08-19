@@ -83,6 +83,19 @@
 }
 .pp-uchip:hover { border-color: var(--border-strong, #cbd5e1); background: var(--surface-subtle); }
 .ce-comark { width: 36px; height: 36px; flex-shrink: 0; display: block; }
+/* Firmenlogo im Chip. `contain` ist tragend: ein Kundenlogo hat ein beliebiges
+   Seitenverhältnis (ein Wortmarken-Logo misst leicht 8:1), und `cover` würde es
+   beschneiden, ein gesetztes width+height ohne object-fit es stauchen. Es wird
+   deshalb in die 36-px-Fläche EINGEPASST — schmaler oder niedriger, aber nie
+   verzerrt und nie angeschnitten. Die helle Trägerfläche gibt Logos mit
+   transparentem Hintergrund einen definierten Grund; der Radius ist derselbe
+   wie beim Initialen-Squircle daneben (11.5/40 ≈ 10.35/36 → md). */
+.ce-comark-img {
+  object-fit: contain;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+}
 /* Der Chip ist die EINE Stelle der Kopfzeilen, die bei Platzmangel nachgibt:
    Name und Firma ellipsieren (Volltext im title-Attribut des Buttons), Glocke
    und Seitenaktion bleiben starr. Ohne diese Kette machte ein langer

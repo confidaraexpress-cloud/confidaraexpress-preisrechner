@@ -284,6 +284,7 @@ Standardzustand (auch nach jedem Reload) — alle Gruppen zu:
 Übersicht
 Versand            ›
 Adressbuch
+Rechnungen
 Lager & Aufträge   ›
 Konto              ›
 ──────────────────
@@ -294,16 +295,16 @@ Geöffnet ist immer höchstens EINE Gruppe:
 
 ```
 Versand            ˅
-    Neue Sendung · Preisrechner · Entwürfe · Sendungen ·
-    Sendungsverfolgung · Versandrechnungen
+    Neue Sendung · Versandkostenrechner · Entwürfe · Sendungen ·
+    Sendungsverfolgung
 Lager & Aufträge   ˅  Lagerübersicht · Artikel · Bestand · Aufträge · Bewegungen
-Konto              ˅  Unternehmen & Konto · Supportanfragen
+Konto              ˅  Kontoeinstellungen · Supportanfragen
 ```
 
 **Verbindlich:**
 
 - **Eine Konfiguration, zwei Bauteile.** `NAV_GROUPS` + `OVERVIEW_ITEM` +
-  `ADDRESSBOOK_ITEM` in `DashboardSidebar.jsx` sind die einzige Quelle;
+  `ADDRESSBOOK_ITEM` + `INVOICES_ITEM` in `DashboardSidebar.jsx` sind die einzige Quelle;
   gerendert wird über `NavItem` (jeder Eintrag) und `SidebarGroup` (jede
   Gruppe). Kein zweites Klapp- oder Eintragsmuster daneben.
 - **Keine Gruppe mit nur einem Eintrag.** Die früheren Abschnitte
@@ -317,15 +318,25 @@ Konto              ˅  Unternehmen & Konto · Supportanfragen
   `.pp-nav-group`) und **Einrückung** (`padding-inline-start` auf
   `.pp-nav-group-items .nitem`) — nicht aus Flächen, Kanten oder Linien. Die
   einzige verbliebene Linie steht vor „Abmelden".
-- **Adressbuch bleibt eigenständig.** Es ist eine gemeinsam genutzte Ressource
-  (Versand, Empfänger, Aufträge); unter einer der Gruppen behauptete es eine
-  Zugehörigkeit, die es nicht hat.
+- **Adressbuch und Rechnungen bleiben eigenständig.** Das Adressbuch ist eine
+  gemeinsam genutzte Ressource (Versand, Empfänger, Aufträge). „Rechnungen"
+  stand zwischenzeitlich als „Versandrechnungen" IM Versandblock — das war zu
+  eng: der Bereich soll später auch Abo- und andere Confidara-Abrechnungen
+  aufnehmen, und unter „Versand" wäre er dann falsch einsortiert. Beide sind
+  jetzt direkte Einträge der ersten Ebene; Rechnungen steht zwischen Adressbuch
+  und „Lager & Aufträge". Der Aktivzustand kommt dort — wie bei Übersicht und
+  Adressbuch — aus dem `page`-Wert; das Leuchtsystem der Gruppenköpfe gilt
+  weiterhin ausschließlich für Versand, Lager & Aufträge und Konto.
 - **„Lager & Aufträge" steht NICHT ganz oben.** Das kehrt eine frühere
   Festlegung um: ConfidaraExpress ist primär eine Versandplattform, das
   Lagermodul ein optionales Zusatzmodul. Es führt die Kernnavigation nicht an.
-- **„Versandrechnungen" ist nur eine Beschriftung.** Der page-Wert bleibt
-  `invoices`, Route, Seite und Rechnungslogik sind unverändert. Wer den
-  sichtbaren Namen ändert, benennt keine Route um.
+- **Drei Beschriftungen sind NUR Beschriftungen.** „Rechnungen" (page `invoices`),
+  „Versandkostenrechner" (page/Route `calculator` bzw. `/calculator`) und
+  „Kontoeinstellungen" (page `profile`) haben ihren sichtbaren Namen gewechselt —
+  Route, page-Wert, Seite, Preis- und Rechnungslogik sind unverändert. Wer den
+  sichtbaren Namen ändert, benennt keine Route um. Der Seitenkopf zieht mit
+  (`ROUTE_HEADERS.calculator` in `DashboardLayout.jsx`, `Profile.jsx`), damit
+  nicht zwei Namen für dieselbe Seite im Umlauf sind.
 - **Geschlossen ist der Normalzustand — nichts öffnet sich von selbst.** Nach
   jedem Reload sind alle drei Gruppen zu, auch die des aktuellen Bereichs. Es
   gibt dafür **keinen Effekt**.
@@ -374,9 +385,9 @@ Konto              ˅  Unternehmen & Konto · Supportanfragen
   EINEM Takt (`--ce-sidebar-expand-duration`, 200 ms) — sonst zerfällt das
   Öffnen in drei Bewegungen. Keine Bibliothek, kein JavaScript.
 - **Zwei Ebenen, klar getrennt.** Erste Ebene (Übersicht · Versand ·
-  Adressbuch · Lager & Aufträge · Konto): 15 px / 600 / mindestens 44 px hoch /
-  Icon 18 px — **alle fünf identisch**, nur der Chevron unterscheidet eine
-  Gruppe. Zweite Ebene: 14 px / 500 / 40 px / Icon 17 px, eingerückt.
+  Adressbuch · Rechnungen · Lager & Aufträge · Konto): 15 px / 600 / mindestens
+  44 px hoch / Icon 18 px — **alle sechs identisch**, nur der Chevron
+  unterscheidet eine Gruppe. Zweite Ebene: 14 px / 500 / 40 px / Icon 17 px, eingerückt.
   „Abmelden" trägt das Gewicht der zweiten Ebene ohne Einrückung (Aktion, kein
   Produktbereich). Unter 860 px erreicht **jedes** dieser Elemente 44 px —
   inklusive der zweiten Ebene, die dafür eine eigene, höher spezifische Regel
@@ -398,7 +409,7 @@ Konto              ˅  Unternehmen & Konto · Supportanfragen
   Höhe vollständig — bei 1366×700 ohne jeden Überhang. Mit einer geöffneten
   Gruppe trägt der Scrollbereich den Rest; mehr als eine Gruppe kann gar nicht
   offen sein.
-- Governance: `src/components/layout/sidebarNavigation.test.mjs` (19 Tests) und
+- Governance: `src/components/layout/sidebarNavigation.test.mjs` (22 Tests) und
   `src/components/layout/appShellChrome.test.mjs` (Chrome, Kontraste,
   Typografie).
 
@@ -1313,6 +1324,74 @@ doppelten Rand.
 **Manifest und OG-Bild gibt es weiterhin nicht** und sie wurden bewusst nicht
 neu eingeführt — PWA liegt außerhalb des Markenpakets, ein OG-Bild will
 gestaltet und nicht generiert werden.
+
+## Firmenlogo des Kunden — nicht mit der CE-Marke verwechseln
+
+Ein Kundenkonto kann ein **eigenes Firmenlogo** hinterlegen. Das ist etwas
+grundsätzlich anderes als alles im Abschnitt darüber: die CE-Marke gehört
+ConfidaraExpress und liegt als Asset im Repo, das Firmenlogo gehört dem Kunden
+und liegt in seinem Konto. Die beiden teilen sich keine Datei, keine Klasse und
+keinen Token.
+
+**Das Bild repräsentiert das UNTERNEHMEN, nicht die Person.** ConfidaraExpress
+kennt kein Personenbildmodell — es gibt kein Profilbild, keinen Avatar und keine
+Absicht, eines einzuführen. Alles heißt deshalb durchgängig `companyLogo`; ein
+Test verbietet `profile_picture`, `avatar` & Co. in den beteiligten Dateien.
+
+| Baustein | Datei | Aufgabe |
+|----------|-------|---------|
+| Anzeige-/Prüflogik | `utils/companyLogoView.mjs` | Metadaten lesen, Formatierung, Sofortprüfung, Fehlertext (rein) |
+| Zugriff | `api/companyLogoApi.js` | GET/POST/DELETE über `apiFetch`, Object-URL-Zwischenspeicher |
+| Einbindung | `hooks/useCompanyLogo.js` | ein Abruf je Fassung, liefert URL **oder null** |
+| Darstellung | `components/ui/UserChip.jsx` | `CompanyMark` (Chip, 36 px) · `CompanyLogoPreview` (Profil, 68 px) |
+
+**Verbindlich:**
+
+- **`null` heißt überall „zeig die Initiale".** Es gibt genau drei Wege dorthin,
+  und alle drei sind abgedeckt: kein Logo hinterlegt *oder ein Backend ohne das
+  Feld* (die Profilantwort liefert es dann schlicht nicht) · der Abruf scheitert
+  (der Service liefert `null`, statt zu werfen) · das Bild lädt, ist aber nicht
+  darstellbar (`onError`). Es gibt keinen Zustand, in dem eine leere Fläche
+  stünde — und keinen, in dem das Frontend ohne das Backend bricht.
+- **Das Bild kommt über `fetch`, nicht über `<img src>`.** Die Route ist
+  authentifiziert, und ein `<img>` kann keinen `Authorization`-Header senden.
+  Die Alternative wäre eine öffentliche oder signierte URL — also eine zweite
+  Zugriffsklasse für dieselben Daten. Stattdessen: Blob holen, Object-URL setzen.
+- **Die Version ist der Cache-Schlüssel.** Die Profilantwort liefert
+  `companyLogo.version` (gekürzter Inhaltshash). Der Zwischenspeicher liegt auf
+  **Modulebene** — der Chip hängt an vier Stellen im Baum und wird bei jedem
+  Bereichswechsel neu montiert; ohne ihn liefe bei jeder Navigation ein Abruf.
+  Nach Upload/Löschen wird die neue Fassung über `updateUser({ companyLogo })`
+  ins Konto gespiegelt; **das** ist das Cache-Busting, kein Zeitstempel-Suffix.
+- **Nichts wird persistiert.** Kein `localStorage`, kein `sessionStorage`, keine
+  Base64-Kopie, kein Logofeld im Profilformular. Die eine Kopie lebt als
+  Object-URL im Arbeitsspeicher des Tabs und wird an **beiden** Abmeldewegen
+  freigegeben (sichtbarer Logout und zentraler 401/403-Handler) — sonst
+  überlebte sie den Kontowechsel im selben Tab.
+- **`object-fit: contain`, nie `cover`.** Ein Kundenlogo hat ein beliebiges
+  Seitenverhältnis (eine Wortmarke misst leicht 8:1). `cover` würde beschneiden,
+  width+height ohne `object-fit` stauchen. Das Bild wird eingepasst — schmaler
+  oder niedriger, aber nie verzerrt und nie angeschnitten. Ein Smoke misst das
+  gerenderte Kastenverhältnis gegen die natürlichen Bildmaße.
+- **Die Clientprüfung ist Komfort, nicht Sicherheit.** `preCheckLogoFile()` gibt
+  sofortige Rückmeldung statt einer Rundreise; maßgeblich ist allein der Server
+  (MIME, Dateisignatur, Größe, Bildmaße). Ein **leerer** Dateityp wird deshalb
+  bewusst NICHT abgelehnt — manche Systeme liefern keinen, und der Client darf
+  keine gültige Datei blockieren, deren Typ er nur nicht kennt.
+- **Kein SVG.** Aktiver Inhalt ohne Sanitisierungsinfrastruktur. Es steht nicht
+  einmal im `accept` des Dateidialogs, und der Grund steht sichtbar in der Karte.
+- **Kein Zuschneide-Editor, keine Ablagefläche, keine Bildbearbeitung.** Ein
+  verstecktes `<input type="file">` (`.sr-only`) plus zwei `.btn` — mehr nicht.
+- **Die Karte sagt, wo das Logo NICHT erscheint.** Es ist ausschließlich im
+  eigenen Kundenportal sichtbar: nicht auf Versandlabels, nicht auf Rechnungen,
+  nicht auf Lieferscheinen, nicht auf Zollunterlagen und nirgends beim Provider.
+  Ein Kunde, der ein Logo hinterlegt, nimmt das sonst an.
+- Backendvertrag: `GET|POST|DELETE /api/kunde/company-logo` (Multipart, Feld
+  `logo`) und `companyLogo` als **Metadatenfeld** der `/kundenbereich`-Antwort.
+  Der Pfad trägt **keine** Konto-ID — das Konto steht im JWT, die
+  Mandantentrennung ist damit strukturell und nicht durch eine Prüfung erkauft.
+- Governance: `src/utils/companyLogo.test.mjs` (17 Tests) und backendseitig
+  `tests/company-logo.test.js` (32 Tests).
 
 ## Sendungshandle — vor jeder Sendungsoperation lesen
 

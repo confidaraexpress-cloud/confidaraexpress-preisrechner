@@ -11,15 +11,21 @@ import { BrandLogo } from "../ui/BrandLogo";
 // alles gerendert wird. Page-Keys und Routen sind unverändert; geändert haben
 // sich ausschließlich Reihenfolge, Gruppierung und zwei sichtbare Labels.
 //
-// Die Struktur ist bewusst flach: zwei direkte Einträge (Übersicht,
-// Adressbuch) und drei aufklappbare Gruppen (Versand, Lager & Aufträge,
-// Konto). Es gibt keine vierte Ebene und keine Gruppe mit nur einem Eintrag —
-// die früheren Abschnitte „Verwaltung" (nur Adressbuch) und „Abrechnung" (nur
-// Rechnungen) waren Überschriften über einer einzigen Zeile und sind entfallen.
+// Die Struktur ist bewusst flach: drei direkte Einträge (Übersicht,
+// Adressbuch, Rechnungen) und drei aufklappbare Gruppen (Versand, Lager &
+// Aufträge, Konto). Es gibt keine vierte Ebene und keine Gruppe mit nur einem
+// Eintrag — die früheren Abschnitte „Verwaltung" (nur Adressbuch) und
+// „Abrechnung" (nur Rechnungen) waren Überschriften über einer einzigen Zeile
+// und sind entfallen.
 //
 // Warum Adressbuch NICHT unter Versand oder Lager liegt: es ist eine gemeinsam
 // genutzte Ressource (Versand, Empfänger, Aufträge). Unter einer der beiden
 // Gruppen behauptete es eine Zugehörigkeit, die es nicht hat.
+//
+// Warum Rechnungen NICHT unter Versand liegt: der Bereich ist eine
+// eigenständige Produktfunktion und soll später auch Abo- und andere
+// Confidara-Abrechnungen aufnehmen können. Unter „Versand" wäre er dann
+// falsch einsortiert — und die Beschriftung „Versandrechnungen" wäre falsch.
 //
 // Warum „Lager & Aufträge" unter Adressbuch steht und nicht ganz oben:
 // ConfidaraExpress ist primär eine Versandplattform. Das Lagermodul ist ein
@@ -33,6 +39,12 @@ import { BrandLogo } from "../ui/BrandLogo";
 
 const OVERVIEW_ITEM = { id: "overview", label: "Übersicht", icon: "dashboard" };
 const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch", icon: "idcard" };
+// Rechnungen sind ein EIGENSTÄNDIGER Produktbereich, kein Unterpunkt des
+// Versands. Der Name ist bewusst neutral: der Bereich soll später auch
+// Abo- und andere Confidara-Abrechnungen aufnehmen können, ohne dass die
+// Navigation dann falsch beschriftet wäre. Der page-Wert bleibt „invoices" —
+// Route, Seite und Rechnungslogik sind unverändert.
+const INVOICES_ITEM = { id: "invoices", label: "Rechnungen", icon: "invoice" };
 
 // Gruppen-ids sind KEINE page-Werte: sie adressieren nur den Klappzustand und
 // die aria-controls-Ziele. „warehouse" statt „inventory", damit die id nicht
@@ -43,16 +55,13 @@ const NAV_GROUPS = [
     label: "Versand",
     icon: "truck",
     items: [
-      { id: "new",         label: "Neue Sendung",       icon: "plus"    },
-      { id: "calculator",  label: "Preisrechner",       icon: "zap"     },
-      { id: "drafts",      label: "Entwürfe",           icon: "form"    },
-      { id: "shipments",   label: "Sendungen",          icon: "package" },
-      { id: "tracking",    label: "Sendungsverfolgung", icon: "mapPin"  },
-      // Früher eine eigene Gruppe „Abrechnung" mit dem Label „Rechnungen".
-      // Fachlich sind es die Rechnungen zu Versandbuchungen — sie gehören in
-      // den Versandblock. Route, Seite und Rechnungslogik sind unverändert;
-      // geändert hat sich nur der sichtbare Name und die Position.
-      { id: "invoices",    label: "Versandrechnungen",  icon: "invoice" },
+      { id: "new",         label: "Neue Sendung",         icon: "plus"    },
+      // „Preisrechner" war zu unspezifisch — der Rechner berechnet
+      // Versandkosten. Route (/calculator) und page-Wert sind unverändert.
+      { id: "calculator",  label: "Versandkostenrechner", icon: "zap"     },
+      { id: "drafts",      label: "Entwürfe",             icon: "form"    },
+      { id: "shipments",   label: "Sendungen",            icon: "package" },
+      { id: "tracking",    label: "Sendungsverfolgung",   icon: "mapPin"  },
     ],
   },
   {
@@ -72,7 +81,9 @@ const NAV_GROUPS = [
     label: "Konto",
     icon: "user",
     items: [
-      { id: "profile", label: "Unternehmen & Konto", icon: "building" },
+      // „Unternehmen & Konto" unter der Gruppe „Konto" war eine sprachliche
+      // Dopplung. Der page-Wert bleibt „profile".
+      { id: "profile", label: "Kontoeinstellungen", icon: "building" },
       // Der Nachrichtenverlauf der eigenen Anfragen. Die Supportkarte weiter
       // unten bleibt der schnelle Weg, eine NEUE Anfrage zu stellen — dieser
       // Eintrag führt zu den bestehenden Vorgängen.
@@ -263,6 +274,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               />
 
               <NavItem item={ADDRESSBOOK_ITEM} page={page} onNavigate={handleNav} />
+              <NavItem item={INVOICES_ITEM} page={page} onNavigate={handleNav} />
 
               <SidebarGroup
                 group={gruppe("warehouse")}

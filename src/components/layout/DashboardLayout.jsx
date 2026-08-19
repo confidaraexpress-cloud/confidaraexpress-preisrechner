@@ -19,7 +19,7 @@ import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 const ROUTE_HEADERS = {
   calculator: {
     eyebrow: "Versand",
-    title: "Preisrechner",
+    title: "Versandkostenrechner",
     subtitle: "Berechnen Sie Versandkosten transparent auf Basis aktueller Carrier-Tarife.",
   },
   booking: {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
-import { countries } from "../utils/countries";
+import { countries, normalizeCountryCode } from "../utils/countries";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
@@ -92,7 +92,10 @@ export default function CalculatorPage() {
 
   // ── Form — route (country + zip) + package data only ──
   const [form, setForm] = useState(() => flowInit ? flowInit.form : ({
-    from_country: user?.country || "DE",
+    // Wie in „Neue Sendung": über die Länderliste, nie roh aus dem Profil.
+    // `users.country` ist VARCHAR(10) ohne CHECK — ein Wert wie „DEU" ginge sonst
+    // unverändert an /calculate-price und ins Auswahlfeld, das ihn nicht anzeigen kann.
+    from_country: normalizeCountryCode(user?.country),
     from_zip:     user?.zip     || "",
     to_country:   "DE",
     to_zip:       "",

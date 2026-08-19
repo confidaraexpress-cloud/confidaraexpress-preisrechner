@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
-import { countries } from "../utils/countries";
+import { countries, normalizeCountryCode } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -19,11 +19,34 @@ import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippin
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
 // serverseitiger Feldfehler am richtigen Eingabefeld, statt nur im Banner.
+// Vollständig für BEIDE Absender: /calculate-price und die Entwurfsroute
+// benennen ihre Felder identisch (sender.*/recipient.*/packages.*). Die Karte
+// war bisher auf die vier Route-Felder beschränkt — jeder andere abgelehnte
+// Feldpfad landete deshalb ohne Markierung im Sammeltext. Additiv ergänzt, kein
+// Eintrag geändert.
 const SHIPMENT_FIELD_MAP = {
+  "sender.company": "s_company",
+  "sender.fullName": "s_fullName",
+  "sender.streetAndNumber": "s_street",
+  "sender.addressAddition": "s_addition",
   "sender.postalCode": "s_zip",
-  "recipient.postalCode": "r_zip",
+  "sender.city": "s_city",
   "sender.country": "s_country",
+  "sender.phone": "s_phone",
+  "sender.email": "s_email",
+  "recipient.company": "r_company",
+  "recipient.fullName": "r_fullName",
+  "recipient.streetAndNumber": "r_street",
+  "recipient.addressAddition": "r_addition",
+  "recipient.postalCode": "r_zip",
+  "recipient.city": "r_city",
   "recipient.country": "r_country",
+  "recipient.phone": "r_phone",
+  "recipient.email": "r_email",
+  "packages.packageCount": "packageCount",
+  "packages.weight": "weight", "packages.length": "length",
+  "packages.width": "width", "packages.height": "height",
+  "shippingOptions.shippingDate": "shippingDate",
   from_zip: "s_zip", to_zip: "r_zip",
   from_country: "s_country", to_country: "r_country",
   weight: "weight", length: "length", width: "width", height: "height",
@@ -249,7 +272,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     s_addition: "",
     s_zip:      user?.zip          || "",
     s_city:     user?.city         || "",
-    s_country:  user?.country      || "DE",
+    // Das Land läuft über die Länderliste, nicht direkt aus dem Profil: Die Spalte
+    // `users.country` ist VARCHAR(10) ohne CHECK, und die Registrierung schrieb sie
+    // lange ungeprüft. Ein Wert wie „DEU" landete damit unverändert im `<select>`,
+    // das ihn gar nicht darstellen kann — das Feld sah unauffällig aus, während
+    // jeder Entwurf dieses Kontos am Server scheiterte (400 auf sender.country) und
+    // jede Buchung ebenso. `normalizeCountryCode` gibt genau den Wert zurück, den
+    // die Liste kennt, und rät nichts: Unbekanntes fällt auf dieselbe Vorgabe
+    // zurück wie ein Konto ganz ohne Land. Der gespeicherte Profilwert bleibt
+    // unberührt und in den Kontoeinstellungen sichtbar.
+    s_country:  normalizeCountryCode(user?.country),
     s_phone:    user?.phone        || "",
     s_email:    user?.email        || "",
     r_company:  "",
@@ -294,7 +326,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // EIN Save-Zustand für BEIDE Oberflächen (Verlassen-Dialog + sichtbarer Button):
   // garantiert maximal einen laufenden Form-Draft-Save und einheitliches Fehler-Mapping.
   const [saving, setSaving]         = useState(false);
-  const [saveMode, setSaveMode]     = useState("idle");   // idle | error | conflict | notFound | rateLimited
+  const [saveMode, setSaveMode]     = useState("idle");   // idle | error | fieldError | conflict | notFound | rateLimited
   const [saveStatus, setSaveStatus] = useState("idle");   // idle | saved (Inline-Erfolg des sichtbaren Buttons)
 
   // ── Results ──
@@ -776,6 +808,25 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       if (r.status === 429) { setSaveMode("rateLimited"); setSaving(false); return { ok: false }; }
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!mountedRef.current) return { ok: false };
+      // Ein abgelehntes Feld wird MARKIERT, nicht verschluckt.
+      //
+      // Bis hierher endete jede 400 im generischen „Der Entwurf konnte nicht
+      // gespeichert werden. Bitte versuche es erneut." — und genau dieses
+      // „erneut" war die falsche Auskunft: stammte der beanstandete Wert aus dem
+      // Profil (Absenderland, Absender-PLZ), konnte kein Wiederholen der Welt
+      // helfen. Der Server nennt das Feld längst (`field`); der Weg dorthin
+      // existiert ebenfalls längst und wird hier nur benutzt — derselbe
+      // Normalizer und dieselbe Feldzuordnung wie beim Preisrechner darüber.
+      if (r.status === 400) {
+        const norm = normalizeApiError({ status: r.status, body: d, fieldMap: SHIPMENT_FIELD_MAP });
+        if (norm.field) {
+          setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
+          focusFirstError(norm.field);
+          setSaveMode("fieldError");
+          setSaving(false);
+          return { ok: false };
+        }
+      }
       if (!r.ok || !d?.draft) throw new Error("save failed");
       // Erfolg: der Entwurf ist gesichert — der aktive Vorgang ist damit
       // fachlich beendet, nicht nur „Baseline aktualisieren". Ein erneutes
@@ -1693,6 +1744,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             )}
             {showInlineSave && saveMode === "error" && (
               <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Der Entwurf konnte nicht gespeichert werden. Bitte versuche es erneut.</span></div>
+            )}
+            {/* Getrennt von "error": hier hilft kein erneuter Versuch, sondern nur
+                die Korrektur des markierten Feldes. */}
+            {showInlineSave && saveMode === "fieldError" && (
+              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Eine Angabe im Formular ist nicht gültig. Das markierte Feld bitte korrigieren und erneut speichern.</span></div>
             )}
             {showInlineSave && saveMode === "notFound" && (
               <div className="dft-save-alert" role="status"><Icon n="info" s={14} c="currentColor" /><span>Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neuen Entwurf speichern.</span></div>

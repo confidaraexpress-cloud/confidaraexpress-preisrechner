@@ -10,6 +10,11 @@ import { Icon } from "../ui/Icon";
 // Aufrufer (NewShipmentPage).
 const MODE_MESSAGES = {
   error: "Der Entwurf konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+  // Eigener Zustand neben `error`, weil die Handlungsanweisung eine ANDERE ist:
+  // hier hilft kein erneuter Versuch, sondern nur eine Korrektur im Formular.
+  // Genau diese Verwechslung machte den accountabhängigen Entwurfsfehler
+  // unauffindbar — der Kunde probierte es wieder und wieder erfolglos.
+  fieldError: "Eine Angabe im Formular ist nicht gültig. Das betroffene Feld ist markiert — bitte korrigieren Sie es und speichern erneut.",
   conflict: "Dieser Entwurf wurde inzwischen an anderer Stelle geändert.",
   notFound: "Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neuen Entwurf speichern.",
   rateLimited: "Zu viele Speicheranfragen. Bitte versuche es in Kürze erneut.",
@@ -42,6 +47,8 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
 
   const message = MODE_MESSAGES[mode] || "";
   const isConflict = mode === "conflict";
+  // Bei einem Feldfehler wäre „Erneut versuchen" eine falsche Zusage — der Weg
+  // führt zurück ins Formular, nicht durch einen zweiten identischen Request.
   const primaryLabel = isConflict ? "Aktuelle Version laden"
     : (mode === "error" || mode === "rateLimited") ? "Erneut versuchen"
     : "Als Entwurf speichern";

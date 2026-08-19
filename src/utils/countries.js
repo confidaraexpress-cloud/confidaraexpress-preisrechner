@@ -86,3 +86,26 @@ const COUNTRY_LIST = [
 // ordnet Umlaute/ß korrekt ein (ä~a, ö~o, ü~u, ß~ss). Kopie via Spread — die
 // Quell-Liste bleibt unmutiert.
 export const countries = [...COUNTRY_LIST].sort((a, b) => a.name.localeCompare(b.name, "de"));
+
+// ── Ein Auswahlfeld darf nie einen Wert tragen, den es nicht darstellen kann ──
+// Ein `<select>` mit einem `value`, das in keiner `<option>` vorkommt, zeigt gar
+// keine Auswahl an — die Oberfläche behauptet dann etwas anderes, als im State
+// steht. Genau das passierte mit Profilen, deren `users.country` kein ISO-2-Code
+// ist: das Feld sah unauffällig aus, während der Zustand „DEU" trug, und jeder
+// Formularentwurf dieses Kontos scheiterte am Server (400 auf sender.country) —
+// ebenso jede Buchung (routes/jumingo.js validateAddress verlangt ISO-2).
+//
+// `users.country` ist VARCHAR(10) ohne CHECK; ein solcher Wert konnte also
+// tatsächlich entstehen. Diese Funktion ist die Grenze davor: sie nimmt einen
+// beliebigen gespeicherten Wert entgegen und liefert einen, den die Liste kennt.
+//
+// Sie RÄT NICHT: „DEU" wird nicht zu „DE" gemacht (das wäre eine erfundene
+// Länderzuordnung). Was die Liste nicht kennt, fällt auf den Ausgangswert
+// zurück — denselben, den ein Konto ganz ohne Land ohnehin bekommt. Der
+// gespeicherte Profilwert bleibt dabei unberührt und ist in den
+// Kontoeinstellungen weiterhin sicht- und korrigierbar.
+export function normalizeCountryCode(value, fallback = "DE") {
+  const v = typeof value === "string" ? value.trim().toUpperCase() : "";
+  if (!v) return fallback;
+  return countries.some((c) => c.code === v) ? v : fallback;
+}

@@ -17,6 +17,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { B2B_REQUIRED_FIELDS, b2bFieldError } from "./registrationValidation.mjs";
+// Eine Länderquelle für das ganze Portal (calculatorValidation.mjs importiert sie ebenso).
+import { normalizeCountryCode } from "./countries.js";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "street", "zip", "city", "country"];
@@ -46,7 +48,14 @@ export function companyBaseline(user) {
     street: str(user?.street),
     zip: str(user?.zip),
     city: str(user?.city),
-    country: user?.country ? str(user.country) : "DE",
+    // Über die Länderliste, nicht roh: ein gespeicherter Wert, den das Auswahlfeld
+    // nicht darstellen kann (`users.country` ist VARCHAR(10) ohne CHECK), machte die
+    // Unternehmenskarte unspeicherbar — das Feld sah gefüllt aus, der PATCH lehnte
+    // den unveränderten Wert aber mit „2-stelliger ISO-Ländercode erforderlich" ab.
+    // Der Kunde konnte sein Profil dadurch nicht selbst in Ordnung bringen.
+    // Die ANZEIGE der Profilseite bleibt bewusst ungefiltert („Nicht angegeben"),
+    // damit sie nicht behauptet, es sei ein Land hinterlegt.
+    country: normalizeCountryCode(user?.country),
   };
 }
 

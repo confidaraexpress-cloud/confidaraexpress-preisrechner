@@ -172,8 +172,11 @@ test("6 — es gibt genau eine Sidebar-Komponente auf allen Kundenrouten", () =>
 test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () => {
   const tok0 = tok;
   // Aktivzustand kommt weiterhin aus dem page-Vergleich, nicht aus der URL.
-  assert.match(sidebarJsx, /page === "overview" \? "on" : ""/, "Aktivmarkierung der Übersicht fehlt");
+  // Seit der Sidebar-Neustrukturierung gibt es dafür GENAU EINE Stelle: alle
+  // Einträge — direkte wie Gruppeneinträge — laufen durch dasselbe <NavItem>.
   assert.match(sidebarJsx, /page === item\.id \? "on" : ""/, "Aktivmarkierung der Nav-Einträge fehlt");
+  assert.match(sidebarJsx, /aria-current=\{page === item\.id \? "page" : undefined\}/,
+    "der aktive Eintrag muss auch angesagt werden, nicht nur gezeichnet");
 
   const on = block(premium, ".nitem.on");
   assert.ok(on, ".nitem.on fehlt");
@@ -200,16 +203,24 @@ test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () 
     "Aktivkante darf nicht als absolut positioniertes ::before umgesetzt werden");
 });
 
-test("8 — Navigationsstruktur und Aktionen sind unverändert", () => {
-  for (const id of ["new", "calculator", "drafts", "shipments", "tracking", "addressbook", "invoices", "profile"]) {
+test("8 — der Navigationsbestand bleibt vollständig erhalten", () => {
+  // Jeder page-Wert, den es vor der Neustrukturierung gab, existiert weiter.
+  // Umgeordnet wurde die Informationsarchitektur, nicht das Routing.
+  for (const id of ["overview", "new", "calculator", "drafts", "shipments", "tracking",
+                    "addressbook", "invoices", "profile", "support"]) {
     assert.ok(sidebarJsx.includes(`id: "${id}"`), `Navigationseintrag "${id}" fehlt`);
   }
-  for (const label of ["Versand", "Verwaltung", "Abrechnung", "Konto"]) {
+  // Drei Gruppen — „Verwaltung" (nur Adressbuch) und „Abrechnung" (nur
+  // Rechnungen) waren Überschriften über einer einzigen Zeile und sind entfallen.
+  for (const label of ["Versand", "Lager & Aufträge", "Konto"]) {
     assert.ok(sidebarJsx.includes(`label: "${label}"`), `Navigationsgruppe "${label}" fehlt`);
+  }
+  for (const weg of ["Verwaltung", "Abrechnung"]) {
+    assert.ok(!sidebarJsx.includes(`label: "${weg}"`), `Gruppe "${weg}" darf nicht zurückkehren`);
   }
   assert.match(sidebarJsx, /onClick=\{handleLogout\}/, "Abmelden-Aktion fehlt");
   assert.match(sidebarJsx, /Abmelden/, "Abmelden-Eintrag fehlt");
-  assert.match(sidebarJsx, /onClick=\{\(\) => navigateTo\("overview"\)\}/, "Übersicht-Navigation fehlt");
+  assert.match(sidebarJsx, /item=\{OVERVIEW_ITEM\}/, "Übersicht steht nicht mehr als direkter Eintrag");
 });
 
 test("9 — die Firmenkarte ist restlos entfernt und hinterlässt keinen Ersatzblock", () => {
@@ -714,10 +725,10 @@ test("29 — aktiver Menüpunkt: neutrale Außenborder, blaue Identität links",
 
 test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
   // Jeder gelesene Sekundärtext mindestens 11 px und mit gesetzter Zeilenhöhe.
-  // Seit Paket A, Phase 2.5 gilt die 11-px-Untergrenze AUSNAHMSLOS: auch das
-  // Gruppenlabel (.nsec) steht jetzt auf der Micro-Stufe (11 px) statt auf
-  // 9,5 px. Seine weite Laufweite und die Versalien halten es weiterhin klar
-  // von den Navigationseinträgen getrennt.
+  // Seit Paket A, Phase 2.5 gilt die 11-px-Untergrenze AUSNAHMSLOS; mit der
+  // Sidebar-Neustrukturierung ist der Gruppenkopf zusätzlich von 11 auf 12 px
+  // gewachsen. Seine weite Laufweite und die Versalien halten ihn weiterhin
+  // klar von den Navigationseinträgen (14 px) getrennt.
   for (const sel of [".pp-brand-sub", ".scard-k", ".scard-s", ".pp-foot"]) {
     const b = block(premium, sel);
     assert.ok(b, `${sel} fehlt`);
@@ -735,10 +746,23 @@ test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
     .map((m) => `${m[1]} (${m[2]}px)`);
   assert.deepEqual(small, [],
     `unerwartete Kleinschrift in der Sidebar: ${small.join(", ")}`);
-  // Das Gruppenlabel trägt seine Struktur über Laufweite und Versalien.
-  const nsec = block(premium, ".nsec");
-  assert.match(nsec, /letter-spacing:\s*0\.1[5-9]em/, ".nsec braucht weite Laufweite");
-  assert.match(nsec, /text-transform:\s*uppercase/, ".nsec ist ein Versalien-Strukturlabel");
+
+  // Der Gruppenkopf trägt seine Struktur über Laufweite und Versalien — nicht
+  // über eine Rahmenfläche. Es gibt nur noch DIESE eine Kopfform; die frühere
+  // Doppelung aus stummer Überschrift (.nsec) und Modulkopf ist aufgelöst.
+  const head = block(premium, ".pp-nav-group-head");
+  assert.ok(head, ".pp-nav-group-head fehlt");
+  assert.match(head, /letter-spacing:\s*0\.1[2-9]em/, "der Gruppenkopf braucht weite Laufweite");
+  assert.match(head, /text-transform:\s*uppercase/, "der Gruppenkopf ist ein Versalien-Strukturlabel");
+  // Navigationseinträge sind deutlich größer als der Gruppenkopf — die
+  // Lesbarkeit der Ziele geht der Beschriftung der Gruppe vor.
+  // Zeilenanfang als Anker: „.pp-nav-group-items .nitem {" enthält ebenfalls
+  // die Zeichenfolge „.nitem {" und würde sonst zuerst greifen.
+  const item = block(premium, "\n.nitem");
+  const itemSize = parseFloat(item.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
+  const headSize = parseFloat(head.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
+  assert.ok(itemSize >= 14, `Navigationseinträge messen ${itemSize}px — mindestens 14px erwartet`);
+  assert.ok(itemSize > headSize, "der Gruppenkopf darf nicht größer sein als die Einträge");
 });
 
 /* ── Markenassets (Sidebar-Bildmarke + lokales Trust-Wasserzeichen) ─────── */

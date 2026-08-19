@@ -25,10 +25,16 @@ import { mapAddressToOrderRecipient, addressPickerLabel, addressPickerMeta } fro
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const form = lies("../components/inventory/OrderCreateForm.jsx");
-const picker = lies("../components/inventory/RecipientAddressPicker.jsx");
+// Der Picker ist mit der Verallgemeinerung nach components/addressbook gewandert:
+// EIN Bauteil für Auftragsdialog und „Neue Sendung" (Reiter als Prop).
+const picker = lies("../components/addressbook/AddressPicker.jsx");
 const ordersPage = lies("../pages/inventory/OrdersPage.jsx");
 const shared = lies("../components/inventory/InventoryShared.jsx");
 const css = lies("../styles/inventory.css");
+// Das Material der Adressauswahl liegt seit ihrer Verallgemeinerung beim
+// Adressbuch — sie wird von zwei Bereichen genutzt und gehört damit in keins
+// der beiden Bereichs-Stylesheets.
+const abkCss = lies("../styles/addressbook.css");
 
 /* „Darf NICHT vorkommen" läuft am kommentarfreien Quelltext — sonst schlägt die
    Prüfung an, sobald ein Kommentar die abgelöste Fassung erklärt. */
@@ -173,7 +179,12 @@ test("B6 die Liste kommt aus dem bestehenden Adressbuch-Endpunkt", () => {
 });
 
 test("B7 gefiltert wird über den bestehenden Rollenbegriff (recipient ODER both)", () => {
-  assert.match(pickerCode, /tab: TAB_RECIPIENT/);
+  // Der Auftragsdialog übergibt den Reiter, der Picker reicht ihn an
+  // getAddresses durch — und normalisiert einen fehlenden Reiter auf
+  // TAB_RECIPIENT, damit nie ungefiltert geladen wird.
+  assert.match(formCode, /<AddressPicker tab=\{TAB_RECIPIENT\}/);
+  assert.match(pickerCode, /tab: reiter/);
+  assert.match(pickerCode, /tab === TAB_SENDER \? TAB_SENDER : TAB_RECIPIENT/);
 });
 
 test("B8 die Zeilenbeschriftung fällt nie auf einen Rohwert oder „undefined“ zurück", () => {
@@ -192,7 +203,7 @@ test("B9 manuelle Eingabe bleibt immer möglich — die Felder stehen unabhängi
   const empfaenger = formCode.slice(formCode.indexOf("Empfänger</legend>"), formCode.indexOf("Positionen</legend>"));
   assert.ok(empfaenger.includes('id="o-street"'));
   assert.ok(empfaenger.includes('id="o-city"'));
-  assert.match(empfaenger, /addressPickerOpen\s*\n?\s*\?\s*<RecipientAddressPicker/);
+  assert.match(empfaenger, /addressPickerOpen\s*\n?\s*\?\s*<AddressPicker/);
 });
 
 /* ══════════ C — Land als Name, ISO als Wert ══════════════════════════════ */
@@ -471,13 +482,25 @@ test("L2 die Bestandszahl der Position trägt kein .ce-num (Spaltenmarker)", () 
 test("L3 die neuen Bedienelemente erreichen unter 860 px 44 px", () => {
   const touch = css.slice(css.indexOf("@media (max-width: 860px)"));
   assert.match(touch, /\.inv-addrpicker-open \.btn/);
-  assert.match(touch, /\.inv-addrpicker-head \.btn/);
+  // Die Bedienelemente der Auswahl selbst tragen ihre Regel dort, wo sie
+  // definiert sind — im Adressbuch-Stylesheet, für BEIDE Aufrufer zugleich.
+  const abkTouch = abkCss.slice(abkCss.indexOf("@media (max-width: 860px)"));
+  assert.match(abkTouch, /\.abk-pick-head \.btn/);
+  assert.match(abkTouch, /\.abk-pick-item/);
 });
 
-test("L4 die Adressauswahl nutzt das vorhandene Auswahlmaterial, kein zweites", () => {
-  assert.match(pickerCode, /className="inv-picker inv-addrpicker"/);
-  assert.match(pickerCode, /className="inv-picker-list"/);
+test("L4 die Adressauswahl hat EIN Material — an EINER Stelle definiert", () => {
+  // Die Auswahl trägt die zentrale Familie .abk-pick*; sie ist kein Dialog und
+  // baut kein zweites Listenmuster nach.
+  assert.match(pickerCode, /className="abk-pick-panel"/);
+  assert.match(pickerCode, /className="abk-pick-list"/);
   assert.doesNotMatch(pickerCode, /ce-dialog|abk-dialog/);
+  // Definiert ist die Familie ausschließlich im Adressbuch-Stylesheet — nicht
+  // zusätzlich (und damit driftfähig) im Bereichs-Stylesheet des Lagers.
+  assert.match(abkCss, /\.abk-pick-item \{/);
+  assert.doesNotMatch(ohneKommentare(css), /\.abk-pick/);
+  // Die abgelösten Regeln sind ersatzlos entfallen, nicht nur umbenannt.
+  assert.doesNotMatch(ohneKommentare(css), /\.inv-addrpicker-(head|item|name|meta)/);
 });
 
 test("L5 kein Wizard: die drei Abschnitte stehen in einem Formular", () => {

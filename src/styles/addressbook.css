@@ -293,3 +293,84 @@
   .abk-role-options { grid-template-columns: 1fr; }
   .abk-dialog-card { padding: 20px; }
 }
+
+/* ─── Adressauswahl (AddressPicker / AddressPickerButton) ─────────────────────
+   EIN Auswahlbauteil für Auftragsdialog, „Neue Sendung" und künftige Stellen.
+   Es lebt hier, weil es zum Adressbuch gehört — nicht dort, wo es zufällig
+   zuerst gebraucht wurde. Die Werte sind bewusst 1:1 die des bisherigen
+   Auswahlmaterials (.inv-picker*), damit der Auftragsdialog unverändert
+   aussieht; neu sind nur die dritte Textzeile und die schwebende Fassung.
+
+   Alles läuft über Foundation-Tokens: kein eigener Farbwert, kein eigener
+   Radius, keine eigene Tiefe. */
+.abk-pick { display: inline-flex; flex: 0 0 auto; }
+/* Der Auslöser steht IN der Abschnittsüberschrift und ist bewusst leise
+   (btn-ghost, btn-sm) — das Formular bleibt die Hauptsache. */
+.abk-pick-trigger { gap: 6px; }
+/* Sehr schmale Viewports: das Wortlabel weicht, Symbol und Chevron bleiben.
+   Der zugängliche Name geht dabei NICHT verloren — er steht als title/aria am
+   Knopf, und die Fläche behält ihre 44 px. */
+.abk-pick-trigger-text { min-width: 0; }
+
+/* Die schwebende Fläche. `position: fixed`, weil .calc-panel `overflow: hidden`
+   trägt — die Koordinaten kommen gemessen aus AddressPickerButton. */
+.abk-pick-pop {
+  position: fixed; z-index: 60;
+  width: min(360px, calc(100vw - 16px));
+  padding: var(--ce-space-3);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-2);
+}
+
+.abk-pick-panel { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.abk-pick-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.abk-pick-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 240px; overflow-y: auto;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  padding: var(--ce-space-2);
+  margin-top: var(--ce-space-2);
+}
+.abk-pick-state {
+  padding: var(--ce-space-3);
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted);
+}
+/* Drei Zeilen je Treffer: Bezeichnung/Firma · Person · Anschrift. Sie stehen
+   UNTEREINANDER, damit zwei Einträge derselben Firma an derselben Adresse mit
+   unterschiedlichen Ansprechpartnern sichtbar verschieden sind. */
+.abk-pick-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; min-height: 40px; text-align: left;
+  padding: var(--ce-space-2) var(--ce-space-3);
+  border: 1px solid transparent; border-radius: var(--ce-radius-sm);
+  background: none; cursor: pointer; min-width: 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-primary);
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+/* Hover: die vorhandene gedämpfte Fläche der Foundation — kein eigenes
+   Hover-Token, kein neuer Farbwert. */
+.abk-pick-item:hover { background: var(--ce-color-surface-muted); }
+/* Nichts wird abgeschnitten: ein langer Firmenname bricht um und verliert kein
+   Zeichen. Deshalb `break-word` je Zeile statt Ellipsis oder slice(). */
+.abk-pick-name { font-weight: 600; min-width: 0; overflow-wrap: break-word; }
+.abk-pick-person { color: var(--ce-color-text-secondary); min-width: 0; overflow-wrap: break-word; }
+.abk-pick-meta { color: var(--ce-color-text-muted); min-width: 0; overflow-wrap: break-word; }
+.abk-pick-hint {
+  margin: var(--ce-space-2) 0 0;
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted);
+}
+/* Das Icon sitzt auf der ersten Zeile, der Text läuft daneben weiter (kein
+   Blockeinzug je Folgezeile). */
+.abk-pick-hint svg { vertical-align: -2px; margin-right: 4px; }
+
+/* WCAG 2.5.5: unter 860 px erreicht jedes Bedienelement der Auswahl 44 px. */
+@media (max-width: 860px) {
+  .abk-pick-trigger,
+  .abk-pick-head .btn,
+  .abk-pick-item { min-height: 44px; }
+}

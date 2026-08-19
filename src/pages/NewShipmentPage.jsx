@@ -47,8 +47,15 @@ import {
   hasUsableShipmentReference,
 } from "../utils/formDraftsView.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
+import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
+import { mapAddressToShipmentFormPatch, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
+
+// Quittung nach einer Adressbuchübernahme. Sie sagt beides in einem Satz: die
+// Werte sind da, UND sie gehören jetzt diesem Formular — eine spätere Korrektur
+// hier ändert den Adressbucheintrag nicht.
+const ADDRESS_TAKEN_NOTE = "Adresse aus dem Adressbuch übernommen. Sie können sie hier frei anpassen.";
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -342,6 +349,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // beim leeren Fehlerobjekt (der Nutzer füllt das Formular gerade erst aus).
   const [errors, setErrors]         = useState(() => (resumeInit ? getErrors(resumeInit.form) : {}));
 
+  // Quittung je Seite nach einer Adressbuchübernahme („s" | „r"). Reiner
+  // Anzeigezustand: er wandert NICHT in den Vorgang, nicht in den Entwurf und
+  // nicht in die Baseline — er sagt nur, was gerade passiert ist.
+  const [addressNote, setAddressNote] = useState({ s: "", r: "" });
+
   // ── Fortsetzen-Status (nur aktiv, wenn ein Formularentwurf fortgesetzt wird) ──
   // resumeSource trägt die Übergangs-Metadaten (interne Formularentwurf-ID +
   // Revision), die beim nächsten „Preise berechnen" EINMALIG mitgesendet werden.
@@ -508,6 +520,42 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Formular (vor der ersten Preisberechnung gibt es nichts zu invalidieren).
   const invalidateResults = () => {
     if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
+  };
+
+  // ── Adressbuchauswahl IM Formular (Absender- und Empfängerkopf) ────────────
+  // Reine Wertekopie in die neun s_*/r_*-Felder — dieselbe Feldauslegung wie
+  // beim Prefill von der Adressbuchseite (mapAddressToShipmentFormPatch). Es
+  // entsteht KEINE addressId-Referenz, nichts wird nachsynchronisiert und
+  // nichts ins Adressbuch zurückgeschrieben; der Entwurfs-Snapshot bleibt
+  // reine Werte (getShipmentFormSnapshot kennt kein Adressbuchfeld).
+  //
+  // Drei Dinge sind hier bewusst genau so und nicht anders:
+  //
+  // 1. EIN gebündelter Patch, EINE Invalidierung. Neun einzelne upd()-Aufrufe
+  //    liefen neun Mal durch invalidateResults() und erzeugten neun Renders für
+  //    einen einzigen Vorgang.
+  // 2. Die Baseline wird NICHT nachgezogen — anders als beim automatischen
+  //    Prefill beim Mount. Der Unterschied ist fachlich: das Prefill IST der
+  //    Ausgangszustand der Seite, diese Auswahl ist eine NUTZERÄNDERUNG. Wer
+  //    danach wegnavigiert, muss den Verlassen-Hinweis bekommen und den Entwurf
+  //    speichern können.
+  // 3. Alte Angebote, shipmentId/ceShipmentId, Zollentscheidung und Auswahl
+  //    fallen über invalidateResults() weg — eine geänderte Route darf niemals
+  //    mit einem Tarif von vorher gebucht werden.
+  const uebernimmAdressbuchAdresse = (address, prefix) => {
+    const patch = mapAddressToShipmentFormPatch(address, prefix);
+    const keys = Object.keys(patch);
+    setForm(p => ({ ...p, ...patch }));
+    // Sichtbare Feldfehler der ersetzten Felder verschwinden mit ihrem Wert —
+    // dieselbe Regel wie in upd(), nur für alle neun Schlüssel auf einmal.
+    setErrors(p => {
+      if (!keys.some(k => p[k])) return p;
+      const n = { ...p };
+      for (const k of keys) delete n[k];
+      return n;
+    });
+    invalidateResults();
+    setAddressNote(p => ({ ...p, [prefix]: ADDRESS_TAKEN_NOTE }));
   };
 
   // ── Adressbuch → „Neue Sendung": optionaler Werte-Patch ─────────────────────
@@ -679,6 +727,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setSortMode("recommended");
     setVatMode("net");
     setErrors({});
+    setAddressNote({ s: "", r: "" });
     setResumeSource(null);
     setResumeNotice("");
     setResumeConflict(false);
@@ -1449,7 +1498,21 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
                 <div>
-                  <div className="calc-section-title">Absender</div>
+                  {/* Die Adressbuchauswahl steht IN der Überschriftszeile, nicht
+                      als zweiter großer Knopf darunter: sie ist eine Abkürzung
+                      neben einem vollständig bedienbaren Formular. Auf schmalen
+                      Viewports bricht die Zeile um (flex-wrap), der Auslöser
+                      rutscht unter die Überschrift — nichts wird abgeschnitten. */}
+                  <div className="calc-section-head">
+                    <div className="calc-section-title">Absender</div>
+                    <AddressPickerButton
+                      tab={TAB_SENDER}
+                      onSelect={(a) => uebernimmAdressbuchAdresse(a, "s")}
+                      disabled={loading}
+                      title="Absenderadresse aus dem Adressbuch wählen"
+                    />
+                  </div>
+                  {addressNote.s && <p className="calc-section-note">{addressNote.s}</p>}
                   {addrField("s", "company",  "Unternehmen",         "text",  "Firma GmbH",       true)}
                   {addrField("s", "fullName", "Vor- und Nachname *", "text",  "Max Mustermann")}
                   {addrField("s", "street",   "Straße & Hausnr. *",  "text",  "Musterstraße 1")}
@@ -1477,7 +1540,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   {addrField("s", "email", "E-Mail",  "email", "max@firma.de", true)}
                 </div>
                 <div>
-                  <div className="calc-section-title">Empfänger</div>
+                  <div className="calc-section-head">
+                    <div className="calc-section-title">Empfänger</div>
+                    <AddressPickerButton
+                      tab={TAB_RECIPIENT}
+                      onSelect={(a) => uebernimmAdressbuchAdresse(a, "r")}
+                      disabled={loading}
+                      title="Empfängeradresse aus dem Adressbuch wählen"
+                    />
+                  </div>
+                  {addressNote.r && <p className="calc-section-note">{addressNote.r}</p>}
                   {addrField("r", "company",  "Unternehmen",         "text",  "Firma AG",           true)}
                   {addrField("r", "fullName", "Vor- und Nachname *", "text",  "Erika Muster")}
                   {addrField("r", "street",   "Straße & Hausnr. *",  "text",  "Beispielweg 5")}

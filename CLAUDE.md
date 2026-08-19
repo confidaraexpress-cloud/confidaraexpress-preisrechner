@@ -522,6 +522,91 @@ Verlassen-Dialog) sowie Fehlerfall, Persistenz-Falle, Entwurfsliste und
 Fortsetzen ohne Vermischung end-to-end gegen einen echten Dev-Server
 absichern.
 
+## Adressbuchauswahl im Versandformular — vor jeder Änderung daran lesen
+
+„Neue Sendung" kann Absender und Empfänger aus dem Adressbuch übernehmen. Die
+Auswahl steht **in der Abschnittsüberschrift** (`.calc-section-head`), rechts
+neben „ABSENDER" beziehungsweise „EMPFÄNGER" — nicht als zweiter großer Knopf
+darunter: sie ist eine Abkürzung neben einem vollständig bedienbaren Formular
+und soll es optisch nicht überstimmen. Auf schmalen Viewports bricht die ZEILE
+um (`flex-wrap`), es wird nichts gestaucht und nichts abgeschnitten.
+
+| Baustein | Datei | Aufgabe |
+|----------|-------|---------|
+| Auswahl | `components/addressbook/AddressPicker.jsx` | sucht, zeigt an, meldet die gewählte Adresse |
+| Auslöser + schwebende Fläche | `components/addressbook/AddressPickerButton.jsx` | Auf-/Zuklappen, Platzierung, Fokusrückgabe |
+| Feldauslegung | `utils/addressBookView.mjs` | `mapAddressToShipmentFormPatch` (unverändert) |
+| Darstellung | `utils/addressBookView.mjs` | `addressPickerLabel` · `addressPickerPerson` · `addressPickerMeta` |
+
+**Verbindlich:**
+
+- **EIN Bauteil, kein Duplikat.** `AddressPicker` ist die verallgemeinerte
+  Fassung des früheren `components/inventory/RecipientAddressPicker` (der auf
+  `TAB_RECIPIENT` festverdrahtet war und deshalb für den Absender hätte kopiert
+  werden müssen). Der Reiter ist jetzt eine Prop; Auftragsdialog und „Neue
+  Sendung" teilen sich dasselbe Bauteil. Der Picker kennt **weder** Sendung
+  noch Auftrag, Entwurf oder Buchung — er gibt die Adresse zurück, die
+  Feldauslegung bleibt außerhalb.
+- **Ein fehlender Reiter führt nie zu einer ungefilterten Liste.** Der Picker
+  normalisiert deterministisch auf `TAB_RECIPIENT`; sonst stünden im
+  Absenderfeld fremde Empfängeradressen. Serverseitig heißt der Filter weiterhin
+  „sender ODER both" bzw. „recipient ODER both".
+- **Kopie, keine Bindung.** Ein Klick setzt Werte — es entsteht keine
+  `addressId`, nichts wird nachsynchronisiert und **nichts** ins Adressbuch
+  zurückgeschrieben. Der Entwurfs-Snapshot bleibt reine Werte.
+- **EIN gebündelter Formularpatch, GENAU EINE `invalidateResults()`.** Neun
+  einzelne `upd()`-Aufrufe liefen neun Mal durch die Invalidierung und erzeugten
+  neun Renders für einen einzigen Vorgang.
+- **Die Baseline wird NICHT nachgezogen.** Das ist der Unterschied zum
+  automatischen Prefill beim Mount (dort ist `setBaseline` richtig, weil es der
+  Ausgangszustand ist): eine Auswahl im Picker ist eine **Nutzeränderung**. Die
+  Seite gilt danach als geändert — der Verlassen-Hinweis erscheint, „Als Entwurf
+  speichern" ist bedienbar. `addressPickerUx.test.mjs` (E3) hält beides fest.
+- **Der Standardabsender bleibt der Profil-Seed.** `is_default_sender` wird in
+  dieser Ausbaustufe bewusst NICHT zur automatischen Vorbelegung benutzt;
+  Profil-Seed, Mount-Prioritäten und Default-Initialisierung sind unverändert.
+- **Drei Zeilen je Treffer** (Bezeichnung/Firma · Person · Anschrift). Mit nur
+  Name + Anschrift sahen zwei Einträge DERSELBEN Firma an DERSELBEN Adresse mit
+  unterschiedlichen Ansprechpartnern identisch aus — genau der Fall, für den ein
+  Adressbuch zwei Zeilen führt. Die zweite Zeile wiederholt nie, was schon in
+  der ersten steht. **Nichts wird gekürzt**: lange Namen brechen um (CSS), sie
+  verlieren keine Zeichen — kein `slice()`, keine Ellipsis.
+- **Die Fläche schwebt `position: fixed` und wird gemessen platziert.**
+  `.calc-panel` trägt `overflow: hidden` (runde Ecken) — eine absolut
+  positionierte Fläche würde an der Panelkante abgeschnitten. Dieselbe Falle ist
+  im Zeilenmenü der Bestandsseite dokumentiert (`RowActionsMenu`). Zusätzlich
+  misst ein `ResizeObserver` neu, **sobald die Fläche wächst**: sie startet mit
+  einer Ladezeile und wird mit der Trefferliste deutlich höher — die einmalige
+  Messung beim Öffnen entschied an der falschen Höhe, ob unten Platz ist
+  (gemessen auf 390 × 780: 78 px unter dem Bildrand).
+- **Tastatur als NATIVER Listener am eigenen Knoten, nicht als
+  `onKeyDown`.** `useDialog` hängt sein Escape an den DOM-Knoten des Dialogs;
+  React 18 stellt Synthetic Events dagegen am Wurzelcontainer zu und damit
+  **nach** jedem nativen Listener eines Vorfahren. Ein `stopPropagation()` im
+  React-Handler kam zu spät: Escape schloss im Auftragsdialog erst die Auswahl
+  und dann den ganzen Dialog samt eingetragener Positionen. Im Browser gemessen.
+- **Kein `role="dialog"` auf der schwebenden Fläche.** Sie ist nicht modal und
+  fängt den Fokus absichtlich nicht ein — wer weitertabbt, verlässt sie, und sie
+  schließt sich dabei. Die Dialogrolle verspräche eine Fokusfalle, die das
+  Designsystem für echte Dialoge zu Recht einfordert. Es ist eine beschriftete
+  Gruppe (`role="group"`), und der Fokus kehrt beim Schließen **und** beim
+  Wählen an den Auslöser zurück.
+- **Ein überholtes Ergebnis kann ein neueres nie überschreiben** — zwei
+  Schichten, beide nötig: `AbortController` bricht den laufenden Request ab, der
+  Sequenzzähler verwirft eine Antwort, die bereits unterwegs war. Ein Abbruch
+  ist kein Fehler des Nutzers und erzeugt keine Meldung.
+- Bewusst **nicht** enthalten: automatischer Standardabsender, „zuletzt
+  verwendet", Favoritensortierung, automatisches Speichern manuell eingegebener
+  Empfänger, echte Dublettenerkennung, Adressverwaltung im Picker,
+  Carrier-Längenhinweise, neue Filter, neue Tabellen, neue Endpunkte. **Das
+  Backend wurde für dieses Paket nicht geändert.**
+- Governance: `src/utils/addressPickerUx.test.mjs` (39 Tests — Feldauslegung
+  ohne Referenz, keine Kürzung, Unterscheidbarkeit, Reiternormalisierung,
+  ein Endpunkt, Entprellung + Abbruch + Sequenz, Escape ohne Dialogschaden,
+  Position der Auslöser, gemessene Platzierung, EIN Patch / EINE Invalidierung,
+  Baseline unangetastet, Snapshot ohne Adressbuchbezug, kein zweiter Picker) und
+  `src/utils/orderCreateUx.test.mjs` (Regression des Auftragsdialogs).
+
 ## Dashboard-Navigationsmodell
 
 Die Navigation zwischen Dashboard-Unterseiten läuft **nicht über React Router URLs**, sondern über einen lokalen `page`-State in `DashboardPage.jsx`:
@@ -951,8 +1036,14 @@ Carrierquote, erzeugt **keine** Sendung, bucht **kein** Label und verlangt
   als `mapAddressToOrderRecipient()` **neben** `mapAddressToShipmentFormPatch()`
   in `addressBookView.mjs` — eine Stelle, an der Adressbuchfelder ausgelegt
   werden. Die Bauteile der Adressbuchseite (Reiter, Favoriten, Standardflags,
-  Verwaltungsmenü) sind bewusst NICHT übernommen; die Liste nutzt das
-  Auswahlmaterial `.inv-picker*`, das im selben Dialog schon für Artikel steht.
+  Verwaltungsmenü) sind bewusst NICHT übernommen. Das Auswahlbauteil selbst ist
+  inzwischen **verallgemeinert** (`components/addressbook/AddressPicker`, Reiter
+  als Prop) und wird von diesem Dialog **und** „Neue Sendung" genutzt; sein
+  Material heißt seitdem `.abk-pick*` und steht in `addressbook.css` statt in
+  `inventory.css` — dieselben Werte wie vorher, nur nicht mehr im Bereichs-
+  Stylesheet des Lagers. Der Dialog klappt die Auswahl unverändert **in-flow**
+  auf; die schwebende Fassung gehört zur Überschriftszeile langer Formulare
+  (siehe „Adressbuchauswahl im Versandformular").
 - **Die Übernahme ist eine Vorbelegung und lässt danach los.** Gesetzt wird
   ausschließlich im Klickhandler, nie in einem Effekt: wer nach der Übernahme die
   Straße korrigiert, behält seine Korrektur. Es entsteht keine Referenz auf die

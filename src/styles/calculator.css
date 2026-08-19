@@ -8,6 +8,24 @@
 .calc-panel-body { padding: 22px; }
 .calc-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ce-color-text-muted); margin: 18px 0 10px; }
 .calc-section-title:first-child { margin-top: 0; }
+/* Überschrift + Adressbuchauswahl in EINER Zeile. Der Abstand wandert dafür an
+   die Zeile; die Überschrift selbst trägt darin keine eigenen Ränder mehr,
+   sonst stünde der Auslöser um deren 18/10 px versetzt.
+   `flex-wrap` ist die Reflow-Regel dieses Systems: wird es eng, bricht die
+   ZEILE um (Auslöser unter die Überschrift) — es wird nichts gestaucht und
+   nichts abgeschnitten. */
+.calc-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--ce-space-3); flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+.calc-section-head .calc-section-title { margin: 0; }
+/* Quittung nach einer Übernahme — Hilfstext, kein Fehler und keine Warnung. */
+.calc-section-note {
+  margin: 0 0 12px;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted);
+}
 
 .vol-weight-box { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
 .vol-weight-label { font-size: 13px; color: var(--ce-color-brand-ink); font-weight: 500; }

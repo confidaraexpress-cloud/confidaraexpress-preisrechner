@@ -71,6 +71,10 @@ import {
 } from "../utils/formDraftsView.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
+import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
+import { AddressStatusLine } from "../components/address/AddressStatusLine";
+import { useAddressValidation } from "../hooks/useAddressValidation";
+import { ADDRESS_STATUS, addressBlocksSubmit, applyStreetSuggestion } from "../utils/addressValidationView.mjs";
 import { mapAddressToShipmentFormPatch, TAB_SENDER, TAB_RECIPIENT } from "../utils/addressBookView.mjs";
 import { ShipmentDraftLeaveDialog } from "../components/drafts/ShipmentDraftLeaveDialog";
 import { ShipmentResetConfirmDialog } from "../components/drafts/ShipmentResetConfirmDialog";
@@ -1223,6 +1227,44 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   );
 
   // ── Address field helpers ──
+  // ── Adressvalidierung (Absender und Empfänger) ─────────────────────────────
+  // Ein Hook je Adresse. Er prüft ausschließlich Land, PLZ, Ort und Straßenname —
+  // Name, Firma, Telefon und E-Mail werden nie mitgeschickt. Für Länder ohne
+  // Abdeckung (alles außer DE/AT/CH/LI) bleibt der Ablauf unverändert: der Hook
+  // meldet dann `unsupported` und zeigt gar nichts an.
+  const senderCheck = useAddressValidation({
+    country: form.s_country, postalCode: form.s_zip, city: form.s_city, street: form.s_street,
+  });
+  const recipientCheck = useAddressValidation({
+    country: form.r_country, postalCode: form.r_zip, city: form.r_city, street: form.r_street,
+  });
+
+  // Genau EIN gefundener Ort wird als Vorschlag angeboten — aber nur, solange das Feld
+  // leer ist. Ein bereits eingetragener (und gültiger) Ort wird NIE überschrieben: bei
+  // mehreren Orten zu einer PLZ wäre das schlicht geraten.
+  const autofillCity = (prefix, check) => {
+    const key = `${prefix}_city`;
+    if (check.cityOptions.length === 1 && !String(form[key] || "").trim()) {
+      upd(key, check.cityOptions[0]);
+    }
+  };
+  useEffect(() => { autofillCity("s", senderCheck); }, [senderCheck.cityOptions]);
+  useEffect(() => { autofillCity("r", recipientCheck); }, [recipientCheck.cityOptions]);
+
+  // Ein Vorschlag korrigiert die Schreibweise der STRASSE und behält die vom Kunden
+  // eingegebene Hausnummer bei — sie wird weder verworfen noch erfunden.
+  const applyStreet = (prefix, suggestion) => {
+    const key = `${prefix}_street`;
+    const text = typeof suggestion === "string" ? suggestion : suggestion?.street;
+    upd(key, applyStreetSuggestion(form[key], text));
+  };
+
+  // Ein eindeutiger Widerspruch (PLZ/Ort nachweislich unvereinbar) blockiert die
+  // Preisberechnung. `unverified` und `unavailable` blockieren AUSDRÜCKLICH nicht —
+  // eine Datenlücke oder ein Ausfall des Prüfdienstes darf niemanden am Versand hindern.
+  const addressBlocksCalculation =
+    addressBlocksSubmit(senderCheck.status) || addressBlocksSubmit(recipientCheck.status);
+
   const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
     const fk = `${p}_${key}`;
     const errMsg = errors[fk];
@@ -1566,7 +1608,18 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   {addressNote.s && <p className="calc-section-note">{addressNote.s}</p>}
                   {addrField("s", "company",  "Unternehmen",         "text",  "Firma GmbH",       true)}
                   {addrField("s", "fullName", "Vor- und Nachname *", "text",  "Max Mustermann")}
-                  {addrField("s", "street",   "Straße & Hausnr. *",  "text",  "Musterstraße 1")}
+                  <AddressSuggestInput
+                    id="ns-s-street"
+                    label="Straße & Hausnr."
+                    required
+                    value={form.s_street}
+                    onChange={(v) => upd("s_street", v)}
+                    onSelect={(item) => applyStreet("s", item)}
+                    suggestions={senderCheck.streetOptions}
+                    placeholder="Musterstraße 1"
+                    error={errors.s_street}
+                    autoComplete="address-line1"
+                  />
                   {addrField("s", "addition", "Adresszusatz",        "text",  "Etage, c/o …",     true)}
                   <div className="field-row field-row-2">
                     <div className="field">
@@ -1581,12 +1634,30 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                             : (!isPostalCodeRequired(form.s_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
                     </div>
                     <div className="field">
-                      <label className="field-label">Stadt *</label>
-                      <input className={`field-input${errors.s_city ? " field-input-error" : ""}`} value={form.s_city} onChange={e => upd("s_city", e.target.value)} placeholder="Stuttgart" />
-                      {errors.s_city && <span className="field-error">{errors.s_city}</span>}
+                      <AddressSuggestInput
+                        id="ns-s-city"
+                        label="Stadt"
+                        required
+                        value={form.s_city}
+                        onChange={(v) => upd("s_city", v)}
+                        onSelect={(item) => upd("s_city", typeof item === "string" ? item : item.city)}
+                        suggestions={senderCheck.cityOptions}
+                        placeholder="Stuttgart"
+                        error={errors.s_city}
+                        autoComplete="address-level2"
+                      />
                     </div>
                   </div>
                   {countrySelect("s")}
+                  {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
+                      im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
+                  <AddressStatusLine
+                    status={senderCheck.status}
+                    acknowledged={senderCheck.acknowledged}
+                    onAcknowledge={senderCheck.acknowledge}
+                    citySuggestions={senderCheck.cityOptions}
+                    onPickCity={(c) => upd("s_city", c)}
+                  />
                   {addrField("s", "phone", "Telefon", "tel",   "+49 711 …",    true)}
                   {addrField("s", "email", "E-Mail",  "email", "max@firma.de", true)}
                 </div>
@@ -1603,7 +1674,18 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   {addressNote.r && <p className="calc-section-note">{addressNote.r}</p>}
                   {addrField("r", "company",  "Unternehmen",         "text",  "Firma AG",           true)}
                   {addrField("r", "fullName", "Vor- und Nachname *", "text",  "Erika Muster")}
-                  {addrField("r", "street",   "Straße & Hausnr. *",  "text",  "Beispielweg 5")}
+                  <AddressSuggestInput
+                    id="ns-r-street"
+                    label="Straße & Hausnr."
+                    required
+                    value={form.r_street}
+                    onChange={(v) => upd("r_street", v)}
+                    onSelect={(item) => applyStreet("r", item)}
+                    suggestions={recipientCheck.streetOptions}
+                    placeholder="Beispielweg 5"
+                    error={errors.r_street}
+                    autoComplete="address-line1"
+                  />
                   {addrField("r", "addition", "Adresszusatz",        "text",  "Etage, c/o …",       true)}
                   <div className="field-row field-row-2">
                     <div className="field">
@@ -1618,12 +1700,30 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                             : (!isPostalCodeRequired(form.r_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
                     </div>
                     <div className="field">
-                      <label className="field-label">Stadt *</label>
-                      <input className={`field-input${errors.r_city ? " field-input-error" : ""}`} value={form.r_city} onChange={e => upd("r_city", e.target.value)} placeholder="Zürich" />
-                      {errors.r_city && <span className="field-error">{errors.r_city}</span>}
+                      <AddressSuggestInput
+                        id="ns-r-city"
+                        label="Stadt"
+                        required
+                        value={form.r_city}
+                        onChange={(v) => upd("r_city", v)}
+                        onSelect={(item) => upd("r_city", typeof item === "string" ? item : item.city)}
+                        suggestions={recipientCheck.cityOptions}
+                        placeholder="Zürich"
+                        error={errors.r_city}
+                        autoComplete="address-level2"
+                      />
                     </div>
                   </div>
                   {countrySelect("r")}
+                  {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
+                      im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
+                  <AddressStatusLine
+                    status={recipientCheck.status}
+                    acknowledged={recipientCheck.acknowledged}
+                    onAcknowledge={recipientCheck.acknowledge}
+                    citySuggestions={recipientCheck.cityOptions}
+                    onPickCity={(c) => upd("r_city", c)}
+                  />
                   {addrField("r", "phone", "Telefon", "tel",   "+41 44 …",       true)}
                   {addrField("r", "email", "E-Mail",  "email", "erika@firma.ch", true)}
                 </div>
@@ -1683,11 +1783,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {/* Calculate CTA + sichtbare „Als Entwurf speichern"-Aktion (sekundär) */}
           <div className="offers-calc-cta">
             <div className="dft-cta-row">
+              {/* Ein eindeutiger PLZ/Ort-Widerspruch blockiert die Preisberechnung: eine
+                  Tarifabfrage mit einer nachweislich unmöglichen Adresse liefert nur
+                  wertlose Ergebnisse. `unverified`/`unavailable` blockieren NICHT — eine
+                  Datenlücke darf niemanden am Versand hindern. */}
               <button
                 className="btn btn-primary btn-lg dft-cta-primary"
                 onClick={calculate}
-                disabled={loading || !calcValid || saving}
-                title={calcHint || undefined}
+                disabled={loading || !calcValid || saving || addressBlocksCalculation}
+                title={addressBlocksCalculation
+                  ? "Bitte korrigieren Sie zuerst PLZ und Ort."
+                  : (calcHint || undefined)}
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>

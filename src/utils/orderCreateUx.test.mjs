@@ -111,11 +111,15 @@ test("A10 Feldlängen stimmen mit RECIPIENT_LIMITS des Backends überein", () =>
 });
 
 test("A11 das Formular markiert nur die vier Pflichtfelder unbedingt mit *", () => {
-  // Zwei Schreibweisen: die Feldkomponente bekommt `label="…"`, das Landfeld
-  // ist ein eigenes <select> mit eigenem <label>. Beide werden erfasst.
+  // Drei Schreibweisen, ein Ergebnis: die Feldkomponente bekommt `label="… *"`, das
+  // Landfeld ist ein eigenes <select> mit eigenem <label>, und das Vorschlagsfeld der
+  // Adressvalidierung erhaelt `label="…"` plus `required` (den Stern haengt die
+  // Komponente selbst an). Gerendert steht in allen drei Faellen derselbe Stern —
+  // geprueft wird deshalb die MENGE der Pflichtfelder, nicht ihre Schreibweise.
   const sterne = [
     ...[...formCode.matchAll(/label="([^"]*\*)"/g)].map((m) => m[1]),
     ...[...formCode.matchAll(/<label className="field-label"[^>]*>([^<]*\*)<\/label>/g)].map((m) => m[1]),
+    ...[...formCode.matchAll(/<AddressSuggestInput[\s\S]*?label="([^"]+)"[\s\S]*?required/g)].map((m) => `${m[1]} *`),
   ];
   assert.deepEqual(sterne.sort(), [
     "Land *", "Name / Ansprechpartner *", "Ort *", "Straße und Hausnummer *",

@@ -63,6 +63,30 @@ export default function ImpressumPage() {
             </div>
 
             <div style={SECTION_STYLE}>
+              <h2 style={H2_STYLE}>Datenquellen und Lizenzhinweise</h2>
+              <p style={P_STYLE}>
+                Für die Prüfung und Vervollständigung von Postleitzahlen, Orten und Straßennamen in
+                Deutschland, Österreich, der Schweiz und Liechtenstein nutzen wir das offene
+                Verzeichnis der <strong>OpenPLZ API</strong> (openplzapi.org).
+              </p>
+              <p style={P_STYLE}>
+                Die dort bereitgestellten Daten stehen unter der{" "}
+                <strong>Open Data Commons Open Database License (ODbL) v1.0</strong>. Der Lizenztext
+                ist unter{" "}
+                <a
+                  href="https://opendatacommons.org/licenses/odbl/1-0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--ce-color-brand-ink)" }}
+                >
+                  opendatacommons.org/licenses/odbl/1-0/
+                </a>{" "}
+                abrufbar. Die ODbL verlangt diese Namensnennung; sie erfolgt hier für die genannte
+                Datenquelle.
+              </p>
+            </div>
+
+            <div style={SECTION_STYLE}>
               <h2 style={H2_STYLE}>Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
               <p style={P_STYLE}>
                 Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer

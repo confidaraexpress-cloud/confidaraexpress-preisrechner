@@ -1,0 +1,90 @@
+/* address-validation.css — Vorschlagsfeld und Statuszeile der Adressprüfung.
+
+   Reiner Zusatz-Scope auf den Foundation-Tokens: kein eigenes Farbliteral, kein zweites
+   Eingabe-, Button- oder Kartensystem. Das Feld selbst bleibt `.field-input` — die Liste
+   legt sich nur darüber. */
+
+.addr-suggest { display: block; }
+
+/* Anker der Vorschlagsliste. `position: relative` genügt hier: das Feld sitzt im normalen
+   Formularfluss (anders als der schwebende Adressbuch-Picker, der wegen `overflow: hidden`
+   auf `.calc-panel` gemessen platziert werden muss). */
+.addr-suggest-wrap { position: relative; }
+
+.addr-suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  /* An der Feldbreite ausgerichtet und nie breiter als der verfügbare Platz — damit kann
+     die Liste auf keinem Viewport aus dem Bild laufen. */
+  width: 100%;
+  max-width: 100%;
+  z-index: 30;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  /* Bewusst begrenzte Höhe: mehr als acht Vorschläge helfen niemandem, und eine lange
+     Liste verdeckt auf kleinen Geräten das restliche Formular. */
+  max-height: 288px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-3);
+}
+
+.addr-suggest-opt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 9px 10px;
+  border-radius: var(--ce-radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ce-color-text-primary);
+}
+
+/* Ein Zustand für Maus UND Tastatur: die Pfeiltasten setzen dieselbe Klasse, die der
+   Zeiger beim Überfahren erzeugt. Zwei getrennte Hervorhebungen wären verwirrend. */
+.addr-suggest-opt--active { background: var(--ce-color-brand-soft); }
+
+.addr-suggest-opt-text { font-weight: 500; }
+/* Straßennamen können lang sein und brechen an Wortgrenzen um — es wird nichts gekürzt
+   und nichts zeichenweise zerlegt. */
+.addr-suggest-opt-meta { font-size: 12px; color: var(--ce-color-text-muted); }
+
+/* ── Statuszeile ───────────────────────────────────────────────────────────── */
+.addr-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.addr-status > svg { flex-shrink: 0; }
+.addr-status-text { flex: 1 1 220px; min-width: 0; }
+
+.addr-status--success  { color: var(--ce-color-status-success-fg); }
+.addr-status--error    { color: var(--ce-color-status-error-fg); }
+.addr-status--warning  { color: var(--ce-color-status-warning-fg); }
+.addr-status--neutral,
+.addr-status--checking { color: var(--ce-color-text-secondary); }
+
+.addr-status--checking { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+
+/* Die Aktionen erben die Statusfarbe, damit „trotzdem verwenden" sichtbar zum Hinweis
+   gehört und nicht wie ein fremder Link daneben steht. */
+.addr-status-ack,
+.addr-status-city { color: inherit; text-decoration: underline; flex: 0 0 auto; }
+
+@media (max-width: 480px) {
+  /* Auf schmalen Geräten steht die Aktion in einer eigenen Zeile, statt den Text zu
+     quetschen. Die Trefferfläche bleibt dabei erhalten. */
+  .addr-status-ack { flex-basis: 100%; }
+  .addr-suggest-list { max-height: 220px; }
+}

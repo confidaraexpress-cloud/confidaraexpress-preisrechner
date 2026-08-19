@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
@@ -81,15 +81,34 @@ const NAV_GROUPS = [
   },
 ];
 
-// Ein Navigationseintrag. Dasselbe Bauteil für direkte Einträge und für
-// Gruppeneinträge — der Unterschied ist ausschließlich die Einrückung, und die
-// kommt aus dem umgebenden Container, nicht aus einer zweiten Klasse.
-function NavItem({ item, page, onNavigate }) {
+// Die zuletzt geöffnete Gruppe — MODULWEIT, bewusst kein State, kein Context,
+// kein Storage.
+//
+// Warum überhaupt: „Neue Sendung"/Adressbuch laufen als page-State in
+// DashboardPage, der Preisrechner und die Lagerdetailseiten als eigene Routen
+// in DashboardLayout. Ein Wechsel dazwischen hängt den einen Teilbaum ab und
+// montiert den anderen — die Sidebar wird also beim Klick auf „Preisrechner"
+// NEU gemountet. Ohne diese Zeile klappte die gerade geöffnete Gruppe genau in
+// dem Moment zu, in dem der Nutzer einen ihrer Einträge benutzt.
+//
+// Warum es die Reload-Regel nicht verletzt: ein Modulwert lebt im Dokument.
+// Ein vollständiger Reload wertet das Modul neu aus und setzt ihn damit
+// zwangsläufig auf null zurück — genau die geforderte Semantik („nach F5 alles
+// zu, innerhalb der Sitzung bleibt die Wahl bestehen"). Persistenz über den
+// Tab hinaus entsteht dabei nicht.
+let sitzungsOffeneGruppe = null;
+
+// Ein Navigationseintrag. EIN Bauteil für die erste Ebene (Übersicht,
+// Adressbuch), für Gruppeneinträge und für „Abmelden" — die Ebene entscheidet
+// über das Aussehen, nicht ein zweites Bauteil: Gruppeneinträge erkennt das
+// CSS am Container, „Abmelden" an `variant="utility"`.
+function NavItem({ item, page, onNavigate, variant }) {
+  const aktiv = page === item.id;
   return (
     <button
       type="button"
-      className={`nitem ${page === item.id ? "on" : ""}`}
-      aria-current={page === item.id ? "page" : undefined}
+      className={`nitem${variant ? ` nitem--${variant}` : ""}${aktiv ? " on" : ""}`}
+      aria-current={aktiv ? "page" : undefined}
       onClick={() => onNavigate(item)}
     >
       <Icon n={item.icon} s={18} /><span>{item.label}</span>
@@ -99,22 +118,31 @@ function NavItem({ item, page, onNavigate }) {
 
 // Eine aufklappbare Gruppe. EIN Bauteil für alle drei Gruppen — vorher trug
 // „Lager & Aufträge" eine eigene Implementierung samt eigener Kartenfläche,
-// während Versand und Konto nur unbedienbare Überschriften hatten. Drei
-// leicht verschiedene Muster für dieselbe Sache sind jetzt eines.
+// während Versand und Konto nur unbedienbare Überschriften hatten.
 //
 // Der Kopf ist ein echtes <button> mit aria-expanded/aria-controls; ein
-// klickbares <div> bekäme weder Tastaturbedienung noch Rollenzuordnung.
-// Eingeklappt verschwinden die Einträge AUS DEM DOM, nicht nur optisch —
-// sonst blieben sie für Tastatur und Screenreader erreichbar.
+// klickbares <div> bekäme weder Tastaturbedienung noch Rollenzuordnung. Er ist
+// gleichzeitig ein vollwertiger Eintrag der ERSTEN Ebene — gleiche Höhe,
+// gleiche Schriftgröße, gleiche Icongröße wie „Übersicht" und „Adressbuch".
+//
+// Die Einträge bleiben eingeklappt IM DOM (anders als zuvor): ohne Inhalt gibt
+// es nichts zu animieren, und die weiche Öffnung ist ausdrücklich gefordert.
+// Für Tastatur und Screenreader ändert das nichts — `visibility: hidden` im
+// eingeklappten Zustand nimmt sie aus Fokusreihenfolge UND Accessibility-Baum;
+// sichtbar wird sie erst wieder mit dem Öffnen. Ein Test misst das im echten
+// Browser, statt es zu behaupten.
 function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
   const itemsId = `pp-nav-group-${group.id}-items`;
+  // Der Bereich ist aktiv, wenn irgendein Eintrag der Gruppe die aktuelle Seite
+  // ist — unabhängig davon, ob die Gruppe gerade offen ist. Genau dafür braucht
+  // der geschlossene Kopf seine dezente Markierung.
   const active = group.items.some((item) => item.id === page);
   return (
     <div
       className={
         "pp-nav-group" +
         (active ? " pp-nav-group--active" : "") +
-        (open ? "" : " pp-nav-group--collapsed")
+        (open ? " pp-nav-group--open" : "")
       }
     >
       <button
@@ -124,17 +152,21 @@ function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
         aria-controls={itemsId}
         onClick={onToggle}
       >
-        <Icon n={group.icon} s={16} />
+        <Icon n={group.icon} s={18} />
         <span className="pp-nav-group-label">{group.label}</span>
-        <span className="pp-nav-group-chevron" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+        <span className="pp-nav-group-chevron" aria-hidden="true"><Icon n="chevron" s={18} /></span>
       </button>
-      {open && (
+      {/* Zwei Ebenen mit je einer Aufgabe: der Panel-Container animiert seine
+          Rasterspur von 0fr auf 1fr (robust, ohne die bekannte
+          height:auto-Falle), das innere Element kappt den Überstand und trägt
+          das dezente Ein-/Ausblenden. */}
+      <div className="pp-nav-group-panel">
         <div id={itemsId} className="pp-nav-group-items">
           {group.items.map((item) => (
             <NavItem key={item.id} item={item} page={page} onNavigate={onNavigate} />
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -151,31 +183,33 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // Dialog darf die bestehende Navigation (page-State) nicht berühren.
   const [supportOpen, setSupportOpen] = useState(false);
 
-  // Klappzustand aller drei Gruppen in EINEM Objekt. Reiner UI-Zustand dieser
-  // Komponente: keine Persistenz in localStorage, Backend oder Context — der
-  // Zustand ist billig wiederherzustellen, und eine gespeicherte Einklappung
-  // wäre für den Nutzen zu viel Maschinerie. Standard: alle offen.
-  const [openGroups, setOpenGroups] = useState(() =>
-    Object.fromEntries(NAV_GROUPS.map((g) => [g.id, true])));
+  // EIN Wert für den gesamten Klappzustand: null oder die id genau einer
+  // Gruppe. Damit ist „höchstens eine Gruppe offen" keine Regel, die irgendwo
+  // durchgesetzt werden müsste, sondern eine Eigenschaft des Datentyps — drei
+  // Booleans könnten einen ungültigen Zustand überhaupt erst darstellen.
+  //
+  // Startwert ist der Modulwert, also nach einem Reload zwingend null: die
+  // Sidebar öffnet NICHTS von selbst, auch nicht die Gruppe des aktuellen
+  // Bereichs. Der geschlossene Zustand ist der Normalfall.
+  const [openGroup, setOpenGroupState] = useState(sitzungsOffeneGruppe);
+
+  const setOpenGroup = (naechste) => setOpenGroupState((aktuell) => {
+    const wert = typeof naechste === "function" ? naechste(aktuell) : naechste;
+    sitzungsOffeneGruppe = wert;
+    return wert;
+  });
+
+  // Ein Klick auf die offene Gruppe schließt sie (dann ist keine offen), ein
+  // Klick auf eine andere schließt die bisherige und öffnet die neue.
+  const toggleGroup = (id) => setOpenGroup((aktuell) => (aktuell === id ? null : id));
 
   // Die Gruppe des aktuellen Bereichs — rein aus dem bestehenden page-Wert
-  // abgeleitet, kein zusätzlicher State. Auf „overview"/„addressbook" ist keine
-  // Gruppe aktiv; auf /calculator (page === "calculator") ist Versand aktiv,
-  // auf /inventory/orders/:id (page === "orders") Lager & Aufträge.
+  // abgeleitet, kein zusätzlicher State. Sie steuert NICHT den Klappzustand,
+  // sondern nur die dezente Markierung am Gruppenkopf: „du bist hier drin",
+  // ohne den Bereich ungefragt aufzuklappen. Auf „overview"/„addressbook" ist
+  // keine Gruppe aktiv; auf /calculator (page === "calculator") ist Versand
+  // aktiv, auf /inventory/products/:id (page === "products") Lager & Aufträge.
   const activeGroupId = NAV_GROUPS.find((g) => g.items.some((i) => i.id === page))?.id ?? null;
-
-  // Wer in einen Bereich wechselt, muss dessen aktiven Eintrag sehen — eine
-  // zuvor eingeklappte Gruppe würde ihn verbergen. Bewusst an den WECHSEL
-  // gebunden (Abhängigkeit ist die Gruppen-id, nicht jeder Render): innerhalb
-  // der Gruppe bleibt das Zuklappen möglich, sonst wirkte die Schaltfläche
-  // dort kaputt. Ist die Gruppe schon offen, wird derselbe Zustand
-  // zurückgegeben — das erspart einen überflüssigen Renderdurchlauf.
-  useEffect(() => {
-    if (!activeGroupId) return;
-    setOpenGroups((prev) => (prev[activeGroupId] ? prev : { ...prev, [activeGroupId]: true }));
-  }, [activeGroupId]);
-
-  const toggleGroup = (id) => setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const handleNav = (item) => {
     if (item.route) { setSidebarOpen(false); navigate(item.route); }
@@ -230,7 +264,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <SidebarGroup
                 group={gruppe("shipping")}
                 page={page}
-                open={openGroups.shipping}
+                open={openGroup === "shipping"}
                 onToggle={() => toggleGroup("shipping")}
                 onNavigate={handleNav}
               />
@@ -240,7 +274,7 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <SidebarGroup
                 group={gruppe("warehouse")}
                 page={page}
-                open={openGroups.warehouse}
+                open={openGroup === "warehouse"}
                 onToggle={() => toggleGroup("warehouse")}
                 onNavigate={handleNav}
               />
@@ -248,16 +282,17 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
               <SidebarGroup
                 group={gruppe("account")}
                 page={page}
-                open={openGroups.account}
+                open={openGroup === "account"}
                 onToggle={() => toggleGroup("account")}
                 onNavigate={handleNav}
               />
 
               {/* Sitzungsaktion optisch von der Inhaltsnavigation trennen — die
-                  einzige verbliebene Linie der Navigation. Abmelden bleibt
-                  funktional unverändert. */}
+                  einzige verbliebene Linie der Navigation. „Abmelden" ist eine
+                  Aktion, kein Produktbereich: es trägt deshalb bewusst NICHT
+                  das Gewicht der ersten Ebene. Funktional unverändert. */}
               <div className="pp-nav-utility-divider" aria-hidden="true" />
-              <button type="button" className="nitem" onClick={handleLogout}>
+              <button type="button" className="nitem nitem--utility" onClick={handleLogout}>
                 <Icon n="logout" s={18} /><span>Abmelden</span>
               </button>
             </nav>

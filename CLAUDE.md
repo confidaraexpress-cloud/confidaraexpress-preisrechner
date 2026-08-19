@@ -278,14 +278,26 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 Die Sidebar ist **ein** Navigationssystem, nicht eine Sammlung nachträglich
 angebauter Module. Sie hat genau zwei Ebenen:
 
+Standardzustand (auch nach jedem Reload) — alle Gruppen zu:
+
 ```
 Übersicht
-VERSAND ˅          Neue Sendung · Preisrechner · Entwürfe · Sendungen ·
-                   Sendungsverfolgung · Versandrechnungen
+Versand            ›
 Adressbuch
-LAGER & AUFTRÄGE ˅ Lagerübersicht · Artikel · Bestand · Aufträge · Bewegungen
-KONTO ˅            Unternehmen & Konto · Supportanfragen
+Lager & Aufträge   ›
+Konto              ›
+──────────────────
 Abmelden
+```
+
+Geöffnet ist immer höchstens EINE Gruppe:
+
+```
+Versand            ˅
+    Neue Sendung · Preisrechner · Entwürfe · Sendungen ·
+    Sendungsverfolgung · Versandrechnungen
+Lager & Aufträge   ˅  Lagerübersicht · Artikel · Bestand · Aufträge · Bewegungen
+Konto              ˅  Unternehmen & Konto · Supportanfragen
 ```
 
 **Verbindlich:**
@@ -314,26 +326,66 @@ Abmelden
 - **„Versandrechnungen" ist nur eine Beschriftung.** Der page-Wert bleibt
   `invoices`, Route, Seite und Rechnungslogik sind unverändert. Wer den
   sichtbaren Namen ändert, benennt keine Route um.
-- **Die aktive Gruppe öffnet sich selbst.** `activeGroupId` wird generisch aus
-  dem bestehenden `page`-Wert abgeleitet; ein Effekt öffnet die zugehörige
-  Gruppe. Bewusst an den **Wechsel** der Gruppen-id gebunden, nicht an jeden
-  `page`-Wechsel — sonst ließe sich die aktive Gruppe nie zuklappen. Der
-  Klappzustand ist reiner UI-State: **keine Persistenz** in `localStorage`,
-  Backend oder Context.
-- **Eingeklappt verschwinden die Einträge aus dem DOM**, nicht nur optisch —
-  sonst blieben sie für Tastatur und Screenreader erreichbar. Jeder Gruppenkopf
-  ist ein echtes `<button>` mit `aria-expanded`/`aria-controls`; der aktive
-  Eintrag trägt zusätzlich `aria-current="page"`.
-- **Maße:** Einträge 14 px / mindestens 42 px hoch, Gruppenköpfe 12 px in
-  Versalien mit weiter Laufweite, Icons 18 px (Einträge) bzw. 16 px
-  (Gruppenköpfe). Unter 860 px erreichen Einträge **und** Gruppenköpfe 44 px.
-  Die Sidebarbreite bleibt bei 252 px — gemessen, kein Text bricht oder ragt
-  heraus.
-- **Gemessen zur Höhe:** mit allen drei Gruppen offen überragt die Navigation
-  den Viewport um 155 px (1920×1080) bis 409 px (1280×720); dafür ist der
-  Scrollbereich da. Sind alle Gruppen zugeklappt, passt sie auf **jeder**
-  dieser Höhen vollständig — das Einklappen ist eine echte Abhilfe, keine
-  Dekoration.
+- **Geschlossen ist der Normalzustand — nichts öffnet sich von selbst.** Nach
+  jedem Reload sind alle drei Gruppen zu, auch die des aktuellen Bereichs. Es
+  gibt dafür **keinen Effekt**; `activeGroupId` wird zwar weiter generisch aus
+  dem `page`-Wert abgeleitet, steuert aber ausschließlich die **Markierung**
+  des Kopfes, nie den Klappzustand.
+- **Accordion by construction.** Der Klappzustand ist EIN Wert (`null` oder
+  eine Gruppen-id), kein Booleantripel: „höchstens eine Gruppe offen" ist damit
+  eine Eigenschaft des Datentyps und keine Regel, die irgendwo durchgesetzt
+  werden müsste. Ein Klick auf die offene Gruppe schließt sie.
+- **Der Startwert kommt aus einem Modulwert** (`sitzungsOffeneGruppe`), nicht
+  aus State, Context oder Storage. Grund: „Neue Sendung" läuft als `page`-State
+  in `DashboardPage`, der Preisrechner und die Lagerdetailseiten als Routen in
+  `DashboardLayout` — ein Wechsel dazwischen **montiert die Sidebar neu**. Ohne
+  den Modulwert klappte die Gruppe genau in dem Moment zu, in dem der Nutzer
+  einen ihrer Einträge benutzt. Ein Reload wertet das Modul neu aus und setzt
+  ihn zwangsläufig auf `null` — die Reload-Regel bleibt damit erfüllt, ohne
+  dass irgendetwas persistiert wird.
+- **Der aktive Bereich wird MARKIERT, nicht aufgeklappt.** Der Gruppenkopf
+  trägt dafür eine flache, sehr leichte Fläche (`--ce-sidebar-active-bg-soft`,
+  13 %) plus 2-px-Akzentkante — gemessen deutlich schwächer als ein aktiver
+  Eintrag (0,32-Verlauf, 3-px-Kante, zusätzlich Border). Zwei gleich starke
+  Aktivflächen übereinander wären keine Hierarchie.
+- **Eingeklappt bleiben die Einträge im DOM** — ohne Inhalt gäbe es nichts zu
+  animieren. Bedienbar sind sie deshalb trotzdem nicht: `visibility: hidden`
+  nimmt sie aus Fokusreihenfolge **und** Accessibility-Baum; der Wechsel ist
+  nur beim Schließen verzögert, damit sie während der Animation sichtbar
+  bleiben. Bei `prefers-reduced-motion` entfällt die Verzögerung, sonst bliebe
+  der zugeklappte Bereich kurz fokussierbar. Ein Browser-Smoke misst das.
+  Jeder Gruppenkopf ist ein echtes `<button>` mit `aria-expanded`/
+  `aria-controls`; der aktive Eintrag trägt zusätzlich `aria-current="page"`.
+- **Weiches Öffnen über `grid-template-rows: 0fr → 1fr`**, nicht über
+  `height: auto` (animiert in keinem Browser verlässlich) und nicht über eine
+  gemessene Pixelhöhe. Rasterspur, Einblendung und Chevrondrehung laufen in
+  EINEM Takt (`--ce-sidebar-expand-duration`, 200 ms) — sonst zerfällt das
+  Öffnen in drei Bewegungen. Keine Bibliothek, kein JavaScript.
+- **Zwei Ebenen, klar getrennt.** Erste Ebene (Übersicht · Versand ·
+  Adressbuch · Lager & Aufträge · Konto): 15 px / 600 / mindestens 44 px hoch /
+  Icon 18 px — **alle fünf identisch**, nur der Chevron unterscheidet eine
+  Gruppe. Zweite Ebene: 14 px / 500 / 40 px / Icon 17 px, eingerückt.
+  „Abmelden" trägt das Gewicht der zweiten Ebene ohne Einrückung (Aktion, kein
+  Produktbereich). Unter 860 px erreicht **jedes** dieser Elemente 44 px —
+  inklusive der zweiten Ebene, die dafür eine eigene, höher spezifische Regel
+  braucht (siehe unten).
+- **Keine Versalien im Gruppenkopf — gemessen, nicht gewählt.** Für das Label
+  bleiben in der 252-px-Spalte 137 px. „LAGER & AUFTRÄGE" braucht in Versalien
+  bei 15 px zwischen 143 px (ohne Laufweite) und 153 px (0,04 em) und bricht
+  damit in **jeder** Variante zweizeilig um — der Kopf maß dann 62 px neben
+  44 px hohen Nachbarn. Gemischt misst dasselbe Label 122 px. Wer Versalien
+  zurückholen will, braucht dafür eine breitere Spalte oder eine kleinere
+  Schrift; beides war ausdrücklich nicht gewollt.
+- **Die Trefferflächen-Falle hat eine zweite Ebene.** `.pp-side .nitem`
+  (responsive.css) und `.pp-nav-group-items .nitem` (dashboard-premium.css)
+  haben dieselbe Spezifität, und dashboard-premium.css wird **später**
+  importiert — die 40 px der zweiten Ebene gewannen. Gemessen: 38 px im
+  Drawer. `.pp-side .pp-nav-group-items .nitem` und `.pp-side .nitem--utility`
+  stellen das gezielt richtig.
+- **Gemessen zur Höhe:** geschlossen passt die Navigation auf jeder getesteten
+  Höhe vollständig — bei 1366×700 ohne jeden Überhang. Mit einer geöffneten
+  Gruppe trägt der Scrollbereich den Rest; mehr als eine Gruppe kann gar nicht
+  offen sein.
 - Governance: `src/components/layout/sidebarNavigation.test.mjs` (19 Tests) und
   `src/components/layout/appShellChrome.test.mjs` (Chrome, Kontraste,
   Typografie).

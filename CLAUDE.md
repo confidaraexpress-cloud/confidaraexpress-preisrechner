@@ -522,6 +522,56 @@ Verlassen-Dialog) sowie Fehlerfall, Persistenz-Falle, Entwurfsliste und
 Fortsetzen ohne Vermischung end-to-end gegen einen echten Dev-Server
 absichern.
 
+## Profildaten im Versandformular — warum ein Konto sonst dauerhaft scheitert
+
+Der Absender von „Neue Sendung" und des Versandkostenrechners wird aus dem
+**Profil** vorbelegt (`profilSeed()` → `users.*`). Damit gilt eine Regel, die
+zweimal übersehen wurde und beide Male denselben Fehler erzeugt hat:
+
+> **Was das Profil speichern kann, muss der Entwurf annehmen können — und was ein
+> Auswahlfeld anzeigen soll, muss in seiner Optionsliste stehen.**
+
+Wird eine der beiden Seiten enger als die andere, entsteht ein **accountabhängiger
+Totalausfall**: nicht ein Fehler beim Tippen, sondern ein Konto, das die Funktion
+nie benutzen kann, ohne dass der Kunde die Ursache irgendwo sieht.
+
+Zwei belegte Fälle:
+
+| Feld | Profilspalte | Was der Entwurf verlangte | Folge |
+|---|---|---|---|
+| `zip` | `users.zip VARCHAR(20)` | max. 10 | 400 auf `sender.postalCode` bei JEDEM Entwurf |
+| `country` | `users.country VARCHAR(10)`, **ohne CHECK**, bei der Registrierung ungeprüft | ISO-2 | 400 auf `sender.country` — und dieselbe Ablehnung in der Buchung |
+
+**Verbindlich:**
+
+- **Das Land läuft über `normalizeCountryCode()`** (`utils/countries.js`), nie roh
+  aus dem Profil. Ein `<select>` mit einem `value`, das in keiner `<option>`
+  vorkommt, zeigt gar keine Auswahl — die Oberfläche behauptet dann etwas anderes
+  als der State. Genau drei Seed-Punkte: `NewShipmentPage.profilSeed`,
+  `CalculatorPage`-Formularinit und `profileView.companyBaseline`. Der letzte ist
+  keine Kür: ohne ihn ließ sich die Unternehmenskarte des Profils **nicht mehr
+  speichern**, der Kunde konnte seinen eigenen Datensatz also nicht reparieren.
+- **Es wird nicht geraten.** „DEU" wird NICHT zu „DE" gemacht — eine
+  Alpha-3-Tabelle wäre eine erfundene Länderzuordnung. Unbekanntes bekommt
+  denselben Ausgangswert wie ein Konto ganz ohne Land.
+- **Die ANZEIGE der Profilseite bleibt ungefiltert** („Nicht angegeben"). Sie soll
+  nicht behaupten, es sei ein gültiges Land hinterlegt. Normalisiert werden
+  Eingabefelder und Payloads, nicht die Wahrheit über den gespeicherten Wert.
+- **Ein abgelehntes Feld wird markiert, nicht verschluckt.** Der Entwurfs-Save
+  wertet bei 400 `field` über `SHIPMENT_FIELD_MAP` aus (derselbe Weg wie der
+  Preisrechner) und setzt `saveMode="fieldError"` — einen EIGENEN Zustand neben
+  `error`, weil die Handlungsanweisung eine andere ist: bei einem Feldfehler hilft
+  kein erneuter Versuch. Das generische „Bitte versuche es erneut" war die falsche
+  Auskunft und hat genau diesen Fehler jahrelang unauffindbar gemacht.
+- **Die Entwurfsfunktion hängt an KEINER Rolle.** Die Routen sind rollenfrei und
+  ausschließlich kundenskopiert; der Speicherknopf hängt allein an `isDirty`. Wer
+  hier ein Rollen- oder Kontotyp-Gate einführt, baut den Fehler nach, den dieser
+  Fix beseitigt hat.
+- Governance: `src/utils/accountProfileSeed.test.mjs` (21 Tests) und backendseitig
+  `tests/form-drafts-accounts.test.js` (32 Tests, echte Routen gegen eine echte
+  Datenbank — acht Profilzustände, volle Ownership-Matrix, Schemaabgleich gegen
+  `information_schema`).
+
 ## Adressbuchauswahl im Versandformular — vor jeder Änderung daran lesen
 
 „Neue Sendung" kann Absender und Empfänger aus dem Adressbuch übernehmen. Die

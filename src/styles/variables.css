@@ -468,6 +468,11 @@
      bläuliche Außenborder wie ein vollständiger blauer Rahmen. Die blaue
      Identität trägt jetzt allein die linke Inset-Kante. */
   --ce-sidebar-active-border: rgba(255, 255, 255, 0.1);
+  /* Der aktive BEREICH am geschlossenen Gruppenkopf. Bewusst flach und sehr
+     leicht — er markiert „du bist hier drin", während der aktive EINTRAG
+     (--ce-sidebar-active-bg) die eigentliche Position zeigt. Zwei gleich
+     starke Flächen übereinander wären keine Hierarchie, sondern Rauschen. */
+  --ce-sidebar-active-bg-soft: rgba(82, 131, 255, 0.13);
   --ce-sidebar-active-accent: #6197ff;
   --ce-sidebar-active-icon: #98bfff;
   --ce-sidebar-active-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent), 0 5px 14px rgba(0, 0, 0, 0.1);
@@ -481,6 +486,14 @@
   --ce-sidebar-text-muted: #abbad4;
   --ce-sidebar-section: #8e9dbc;
   --ce-sidebar-icon: #a8b7d2;
+
+  /* Auf- und Zuklappen der Navigationsgruppen. EIN Takt für Rasterspur,
+     Einblendung und Chevrondrehung — sonst laufen drei Bewegungen mit drei
+     Geschwindigkeiten und das Öffnen zerfällt in Einzelteile. 200 ms liegt in
+     der geforderten Spanne (180–240) und bleibt eine Zustandsreaktion, kein
+     Ambiente. */
+  --ce-sidebar-expand-duration: 200ms;
+  --ce-sidebar-expand-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   /* Mobiles Drawer-Overlay — ruhig und dunkel, ohne backdrop-filter. */
   --ce-app-overlay: var(--ce-color-overlay-drawer);

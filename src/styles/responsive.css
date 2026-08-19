@@ -80,6 +80,15 @@
      fallen deshalb unter dieselbe Regel — sie sind nur keine `.nitem` und wären
      sonst mit rund 34 px die kleinsten Ziele der Sidebar. */
   .pp-side .pp-nav-group-head { min-height: 44px; }
+  /* Die zweite Ebene braucht die höhere Spezifität EXTRA: `.pp-side .nitem`
+     oben und `.pp-nav-group-items .nitem` in dashboard-premium.css haben
+     dieselbe Spezifität (zwei Klassen), und dashboard-premium.css wird SPÄTER
+     importiert — die 40 px der zweiten Ebene und die 38 px der
+     Kurzviewport-Stauchung gewannen dadurch gegen diese Regel. Gemessen: die
+     Kontoeinträge maßen im Drawer 38 px. Dieselbe Falle wie bei `.pp-side
+     .nitem` selbst, nur eine Ebene tiefer. */
+  .pp-side .pp-nav-group-items .nitem,
+  .pp-side .nitem--utility { min-height: 44px; }
   .sidebar-close-btn,
   .hamburger-btn { display: flex; align-items: center; justify-content: center; }
 

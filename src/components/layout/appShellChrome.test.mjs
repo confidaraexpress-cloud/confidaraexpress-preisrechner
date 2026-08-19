@@ -173,9 +173,11 @@ test("7 — aktiver Menüpunkt bleibt zustandsbasiert und mehrfach codiert", () 
   const tok0 = tok;
   // Aktivzustand kommt weiterhin aus dem page-Vergleich, nicht aus der URL.
   // Seit der Sidebar-Neustrukturierung gibt es dafür GENAU EINE Stelle: alle
-  // Einträge — direkte wie Gruppeneinträge — laufen durch dasselbe <NavItem>.
-  assert.match(sidebarJsx, /page === item\.id \? "on" : ""/, "Aktivmarkierung der Nav-Einträge fehlt");
-  assert.match(sidebarJsx, /aria-current=\{page === item\.id \? "page" : undefined\}/,
+  // Einträge — erste Ebene, Gruppeneinträge, Abmelden — laufen durch dasselbe
+  // <NavItem>.
+  assert.match(sidebarJsx, /const aktiv = page === item\.id;/, "Aktivmarkierung der Nav-Einträge fehlt");
+  assert.match(sidebarJsx, /\$\{aktiv \? " on" : ""\}/, "der aktive Eintrag trägt keine Zustandsklasse");
+  assert.match(sidebarJsx, /aria-current=\{aktiv \? "page" : undefined\}/,
     "der aktive Eintrag muss auch angesagt werden, nicht nur gezeichnet");
 
   const on = block(premium, ".nitem.on");
@@ -747,22 +749,33 @@ test("30 — Sidebar-Sekundärtexte sind lesbar dimensioniert", () => {
   assert.deepEqual(small, [],
     `unerwartete Kleinschrift in der Sidebar: ${small.join(", ")}`);
 
-  // Der Gruppenkopf trägt seine Struktur über Laufweite und Versalien — nicht
-  // über eine Rahmenfläche. Es gibt nur noch DIESE eine Kopfform; die frühere
-  // Doppelung aus stummer Überschrift (.nsec) und Modulkopf ist aufgelöst.
-  const head = block(premium, ".pp-nav-group-head");
-  assert.ok(head, ".pp-nav-group-head fehlt");
-  assert.match(head, /letter-spacing:\s*0\.1[2-9]em/, "der Gruppenkopf braucht weite Laufweite");
-  assert.match(head, /text-transform:\s*uppercase/, "der Gruppenkopf ist ein Versalien-Strukturlabel");
-  // Navigationseinträge sind deutlich größer als der Gruppenkopf — die
-  // Lesbarkeit der Ziele geht der Beschriftung der Gruppe vor.
+  // Der Gruppenkopf ist KEIN Strukturlabel mehr, sondern ein vollwertiger
+  // Eintrag der ersten Ebene. Er muss deshalb mit „Übersicht"/„Adressbuch"
+  // übereinstimmen — nicht kleiner, nicht leichter, nicht weit gesperrt.
   // Zeilenanfang als Anker: „.pp-nav-group-items .nitem {" enthält ebenfalls
   // die Zeichenfolge „.nitem {" und würde sonst zuerst greifen.
+  const head = block(premium, ".pp-nav-group-head");
   const item = block(premium, "\n.nitem");
+  assert.ok(head && item, ".pp-nav-group-head oder .nitem fehlt");
+  const wert = (b, prop) => b.match(new RegExp(prop + ":\\s*([^;]+);"))?.[1]?.trim();
+  for (const prop of ["font-size", "font-weight", "min-height", "padding-block", "padding-inline", "gap"]) {
+    assert.equal(wert(head, prop), wert(item, prop),
+      `${prop}: Gruppenkopf (${wert(head, prop)}) und Ebene-1-Eintrag (${wert(item, prop)}) müssen übereinstimmen`);
+  }
+  // KEINE Versalien und keine Sperrung: für das Label bleiben in der 252-px-
+  // Spalte 137 px, „LAGER & AUFTRÄGE" braucht in Versalien bei 15 px 143–153 px
+  // und bricht damit zwingend auf zwei Zeilen. Ein 62 px hoher Kopf neben
+  // 44-px-Nachbarn ist keine Gleichrangigkeit.
+  assert.ok(!/text-transform:\s*uppercase/.test(head),
+    "Versalien passen bei gleicher Schriftgröße nicht in die Spalte (gemessen)");
+  assert.ok(!/letter-spacing:/.test(head), "der Gruppenkopf braucht keine eigene Laufweite mehr");
+  // Die zweite Ebene steht darunter, aber nicht weit darunter.
+  const sub = block(premium, ".pp-nav-group-items .nitem");
+  const subSize = parseFloat(sub.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
   const itemSize = parseFloat(item.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
-  const headSize = parseFloat(head.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(itemSize >= 14, `Navigationseinträge messen ${itemSize}px — mindestens 14px erwartet`);
-  assert.ok(itemSize > headSize, "der Gruppenkopf darf nicht größer sein als die Einträge");
+  assert.ok(itemSize >= 15, `erste Ebene misst ${itemSize}px — mindestens 15px erwartet`);
+  assert.ok(subSize >= 14 && subSize < itemSize,
+    `zweite Ebene misst ${subSize}px — erwartet mindestens 14px und kleiner als ${itemSize}px`);
 });
 
 /* ── Markenassets (Sidebar-Bildmarke + lokales Trust-Wasserzeichen) ─────── */

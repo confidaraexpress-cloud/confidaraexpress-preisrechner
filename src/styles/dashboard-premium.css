@@ -301,53 +301,134 @@
    Gruppenkopf auf Höhe der direkten Einträge, Gruppeneinträge um eine Stufe
    eingerückt. Die einzige verbliebene Linie der Navigation steht vor
    „Abmelden" (Sitzungsaktion, kein Inhaltsziel). */
-.pp-nav-group { display: flex; flex-direction: column; gap: 2px; margin-top: 14px; }
+.pp-nav-group { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 /* Ein direkter Eintrag nach einer Gruppe (Adressbuch nach Versand) bekommt
-   denselben Abstand — sonst klebte er am letzten Gruppeneintrag. */
-.pp-nav-group + .nitem { margin-top: 14px; }
+   denselben Abstand — sonst klebte er am Gruppenkopf. */
+.pp-nav-group + .nitem { margin-top: 6px; }
 
+/* Der Gruppenkopf IST ein Eintrag der ersten Ebene — keine Rubrikenüberschrift.
+   Er teilt deshalb Höhe, Schriftgröße, Schriftschnitt, Icongröße, Innenabstand
+   und Radius mit „Übersicht" und „Adressbuch"; nur der Chevron unterscheidet
+   ihn.
+
+   KEINE Versalien mehr — gemessen, nicht gewählt: für das Label bleiben in der
+   252-px-Spalte 137 px. „LAGER & AUFTRÄGE" braucht in Versalien bei 15 px
+   zwischen 143 px (ohne Laufweite) und 153 px (0.04em) und bricht damit in
+   JEDER Variante auf zwei Zeilen — der Kopf maß dann 62 px neben 44 px hohen
+   Nachbarn. Versalien wären nur zulässig, solange das Ergebnis hochwertig
+   bleibt; ein zweizeiliger Kopf ist es nicht. Gemischt misst dasselbe Label
+   122 px und passt mit Luft. Damit sehen die fünf Einträge der ersten Ebene
+   tatsächlich gleich aus, statt es nur ungefähr zu tun. */
 .pp-nav-group-head {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; min-height: 34px; padding: 6px 12px;
-  font-family: var(--fs); font-size: 12px; font-weight: 600; line-height: 1.4;
-  letter-spacing: 0.16em; text-transform: uppercase; text-align: left;
-  color: var(--ce-sidebar-section);
-  background: none; border: none; border-radius: 9px;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 44px; text-align: left;
+  padding-block: 9px; padding-inline: 12px; border-radius: 9px;
+  font-family: var(--fs); font-size: 15px; font-weight: 600; line-height: 1.4;
+  color: var(--ce-sidebar-text);
+  background: none; border: 1px solid transparent;
   cursor: pointer;
-  transition: color 140ms ease, background-color 140ms ease;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
-.pp-nav-group-head:hover { color: var(--ce-sidebar-text-muted); background: var(--ce-sidebar-surface-hover); }
-/* Die aktive Gruppe hebt sich nur über den Textton ab — die eigentliche
-   Markierung trägt der aktive Eintrag darin (.nitem.on). */
-.pp-nav-group--active .pp-nav-group-head { color: var(--ce-sidebar-text-muted); }
-.pp-nav-group-head svg { flex: 0 0 16px; width: 16px; height: 16px; color: var(--ce-sidebar-icon); }
+.pp-nav-group-head:hover { color: var(--ce-sidebar-text-strong); background: var(--ce-sidebar-surface-hover); }
+.pp-nav-group-head svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
+.pp-nav-group-head:hover svg { color: var(--ce-sidebar-text-muted); }
+
+/* Der aktive BEREICH — sichtbar auch (und gerade) bei geschlossener Gruppe:
+   der Nutzer soll erkennen, wo er sich befindet, ohne dass sich etwas
+   ungefragt aufklappt. Bewusst deutlich schwächer als ein aktiver Eintrag:
+   flache, sehr leichte Fläche statt Verlauf, 2px-Kante statt 3px, keine
+   Border. Damit gibt es nie zwei gleich starke Aktivflächen übereinander —
+   der aktive Unterpunkt bleibt die deutliche Markierung, der Kopf die
+   dezente. */
+.pp-nav-group--active .pp-nav-group-head {
+  color: var(--ce-sidebar-text-strong);
+  background: var(--ce-sidebar-active-bg-soft);
+  box-shadow: inset 2px 0 0 var(--ce-sidebar-active-accent);
+}
+.pp-nav-group--active .pp-nav-group-head svg { color: var(--ce-sidebar-active-icon); }
+
 /* Das Label darf schrumpfen, damit der Chevron nie aus der Spalte gedrückt
    wird; „LAGER & AUFTRÄGE" bricht dann an der Wortgrenze um. */
 .pp-nav-group-label { min-width: 0; }
-/* Der Chevron sitzt rechts und zeigt den Zustand an. Gedreht statt zweites Icon:
-   eine Form, eine Bedeutung — und die 140ms-Drehung ist eine Zustandsreaktion,
-   kein Ambiente (siehe Bewegungsregel der App-Shell). */
+/* Der Chevron sitzt rechts und zeigt den Zustand an. Gedreht statt zweites
+   Icon: eine Form, eine Bedeutung. Er läuft in DERSELBEN Dauer wie das
+   Aufklappen, damit beides als eine Bewegung gelesen wird. */
 .pp-nav-group-chevron {
   margin-left: auto;
   display: flex;
-  transition: transform 140ms ease;
+  transform: rotate(-90deg);
+  transition: transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease);
 }
-.pp-nav-group--collapsed .pp-nav-group-chevron { transform: rotate(-90deg); }
-@media (prefers-reduced-motion: reduce) {
-  .pp-nav-group-chevron { transition: none; }
-}
-/* Die Einträge liegen in einem eigenen Behälter (er trägt die id, auf die
-   aria-controls zeigt). Die Einrückung sitzt am EINTRAG, nicht am Behälter:
-   so bleibt die Hover-/Aktivfläche über die volle Spaltenbreite durchgehend
-   und nur der Inhalt rückt ein. */
-.pp-nav-group-items { display: flex; flex-direction: column; gap: 2px; }
-.pp-nav-group-items .nitem { padding-inline-start: 22px; }
+.pp-nav-group--open .pp-nav-group-chevron { transform: rotate(0deg); }
 
+/* ── Weiches Auf- und Zuklappen ──
+   Die Rasterspur läuft von 0fr auf 1fr. Das ist der robuste Weg: eine
+   Animation zwischen `height: 0` und `height: auto` läuft in keinem Browser
+   verlässlich, und eine gemessene Pixelhöhe müsste bei jeder Textänderung neu
+   berechnet werden. Keine Bibliothek, kein JavaScript, keine gemessene Höhe.
+
+   Drei Ebenen, je eine Aufgabe:
+     .pp-nav-group-panel  animiert die Spur (Höhe)
+     .pp-nav-group-items  kappt den Überstand und trägt das dezente Erscheinen
+     die Einträge selbst bleiben unverändert
+
+   `visibility` ist der tragende Teil für die Bedienbarkeit: eingeklappt sind
+   die Einträge zwar im DOM (sonst gäbe es nichts zu animieren), aber NICHT
+   fokussierbar und nicht im Accessibility-Baum. Der Wechsel ist verzögert
+   (`0s linear <Dauer>`), damit sie während des Zuklappens sichtbar bleiben und
+   nicht vorzeitig verschwinden. */
+.pp-nav-group-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease);
+}
+.pp-nav-group--open .pp-nav-group-panel { grid-template-rows: 1fr; }
+
+/* Die Einrückung sitzt am EINTRAG, nicht am Behälter: so bleibt die Hover- und
+   Aktivfläche über die volle Spaltenbreite durchgehend, und nur der Inhalt
+   rückt ein. */
+.pp-nav-group-items {
+  display: flex; flex-direction: column; gap: 2px;
+  min-height: 0; overflow: hidden;
+  opacity: 0;
+  transform: translateY(-3px);
+  visibility: hidden;
+  transition:
+    opacity var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
+    transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
+    visibility 0s linear var(--ce-sidebar-expand-duration);
+}
+.pp-nav-group--open .pp-nav-group-items {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition:
+    opacity var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
+    transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
+    visibility 0s;
+}
+/* Der erste Eintrag braucht etwas Luft zum Kopf, sonst klebt die zweite Ebene
+   direkt an der ersten. Der Abstand liegt am Behälter, damit er bei
+   geschlossener Gruppe mit eingeklappt wird. */
+.pp-nav-group-items > :first-child { margin-top: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-nav-group-chevron,
+  .pp-nav-group-panel,
+  .pp-nav-group-items { transition: none; }
+  /* Ohne Bewegung darf die Sichtbarkeit nicht verzögert umschalten — sonst
+     bliebe der zugeklappte Bereich für die Dauer der Verzögerung fokussierbar. */
+  .pp-nav-group-items { transition: visibility 0s; }
+}
+
+/* Erste Navigationsebene: Übersicht · Versand · Adressbuch · Lager & Aufträge ·
+   Konto. Alle fünf tragen dieselbe Höhe, Schrift, Icongröße und denselben
+   Innenabstand — welcher davon eine Gruppe ist, sagt allein der Chevron. */
 .nitem {
   position: relative; display: flex; align-items: center; gap: 12px;
-  width: 100%; min-height: 42px; text-align: left;
+  width: 100%; min-height: 44px; text-align: left;
   padding-block: 9px; padding-inline: 12px; border-radius: 9px;
-  font-family: var(--fs); font-size: 14px; font-weight: 500; line-height: 1.5;
+  font-family: var(--fs); font-size: 15px; font-weight: 600; line-height: 1.4;
   color: var(--ce-sidebar-text); background: none; border: 1px solid transparent;
   cursor: pointer;
   /* Nur Farbwechsel — kein transform, kein filter, kein Schattenaufbau. */
@@ -356,6 +437,22 @@
     color 140ms ease,
     border-color 140ms ease;
 }
+
+/* Zweite Ebene: eine Stufe ruhiger, aber ausdrücklich nicht klein und nicht
+   grau — 14 px gegen 15 px, Gewicht 500 gegen 600, Icon 17 gegen 18 px. Der
+   Unterschied soll die Hierarchie zeigen, nicht die Lesbarkeit kosten. */
+.pp-nav-group-items .nitem {
+  min-height: 40px;
+  padding-block: 8px;
+  padding-inline-start: 26px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.pp-nav-group-items .nitem svg { flex: 0 0 17px; width: 17px; height: 17px; }
+
+/* „Abmelden" ist eine Sitzungsaktion, kein Produktbereich — es trägt deshalb
+   das Gewicht der zweiten Ebene, aber ohne Einrückung. */
+.nitem--utility { min-height: 40px; padding-block: 8px; font-size: 14px; font-weight: 500; }
 /* Definierte Iconspalte → Beschriftungen fluchten exakt untereinander,
    unabhängig von der optischen Breite des jeweiligen Glyphen. */
 .nitem svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
@@ -609,16 +706,19 @@
    verringert nur, wie oft und wie weit gescrollt werden muss. Reine Abstände,
    keine Struktur- oder Reihenfolgeänderung.
 
-   Die Einträge bleiben hier bewusst über der früheren 37-px-Marke: die neue
-   Schriftgröße (14 px) braucht Zeilenraum, und wer eine Gruppe nicht braucht,
-   klappt sie zu — das spart mehr Höhe als jede weitere Stauchung. */
+   Die Einträge bleiben hier bewusst großzügig: die erste Ebene ist auf sechs
+   Zeilen geschrumpft (Übersicht · drei Gruppenköpfe · Adressbuch · Abmelden),
+   und wer eine Gruppe nicht braucht, lässt sie zu — das spart mehr Höhe als
+   jede weitere Stauchung. Gruppenkopf und Ebene-1-Eintrag werden GEMEINSAM
+   gestaucht, sonst fiele die mühsam hergestellte Gleichrangigkeit auf kurzen
+   Viewports wieder auseinander. */
 @media (max-height: 940px) {
   .pp-side-in { padding: 16px 14px 12px; }
   .pp-logo { padding: 0 6px 16px; }
-  .nitem { min-height: 39px; padding-block: 8px; }
-  .pp-nav-group { margin-top: 11px; }
-  .pp-nav-group + .nitem { margin-top: 11px; }
-  .pp-nav-group-head { min-height: 30px; padding-block: 5px; }
+  .nitem,
+  .pp-nav-group-head { min-height: 41px; padding-block: 8px; }
+  .pp-nav-group-items .nitem,
+  .nitem--utility { min-height: 38px; padding-block: 7px; }
   .pp-nav-utility-divider { margin: 11px 12px 5px; }
   .pp-scard { margin-top: 11px; padding: 10px; }
   .scard-s { margin-top: 7px; }

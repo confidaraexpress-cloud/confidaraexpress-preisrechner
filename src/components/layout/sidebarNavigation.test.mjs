@@ -6,9 +6,11 @@
 //      Lager & Aufträge · Konto · Abmelden)
 //   2. Versandrechnungen gehören in den Versandblock — aber die Route bleibt
 //   3. Keine Gruppe „Verwaltung", keine Gruppe „Abrechnung"
-//   4. Ein Klappsystem für alle drei Gruppen, aktive Gruppe öffnet sich
+//   4. Accordion: EIN Wert trägt den Klappzustand, nichts öffnet sich von
+//      selbst, der aktive Bereich wird nur markiert
 //   5. Keine zweite optische Sidebar (keine Box um eine Gruppe)
-//   6. Typografie, Trefferflächen, Icons, Fokus
+//   6. Typografie zweier Ebenen, Trefferflächen, Icons, Fokus
+//   7. Weiches Öffnen ohne height:auto-Falle, ohne Bedienbarkeitsverlust
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -94,38 +96,79 @@ test("6 — es gibt keine Gruppe „Verwaltung“ und keine Gruppe „Abrechnung
   assert.ok(!/^\.nsec[\s,{]/m.test(cssOhneKommentar), "die Regeln von .nsec sind noch vorhanden");
 });
 
-/* ══════════ 4 — Ein Klappsystem, aktive Gruppe öffnet ═══════════════════ */
+/* ══════════ 4 — Accordion, kein Selbstöffnen ════════════════════════════ */
 
-test("7 — alle drei Gruppen laufen durch DASSELBE Bauteil", () => {
+test("7 — ein Wert trägt den gesamten Klappzustand (Accordion by construction)", () => {
   assert.ok(/function SidebarGroup\(/.test(code), "das gemeinsame Gruppenbauteil fehlt");
   // Kein zweites Klappmuster daneben: genau ein Klappkopf im Quelltext.
   assert.equal((code.match(/className="pp-nav-group-head"/g) || []).length, 1,
     "es darf nur eine Stelle geben, die einen Gruppenkopf zeichnet");
-  // Ein gemeinsamer Zustand für alle Gruppen statt dreier Einzel-States.
-  assert.ok(/const \[openGroups, setOpenGroups\]/.test(code), "der gemeinsame Klappzustand fehlt");
-  assert.ok(!/setVersandOpen|setKontoOpen|setInventoryOpen/.test(code),
+
+  // EIN Wert (null oder eine Gruppen-id) statt dreier Booleans. Damit ist
+  // „höchstens eine Gruppe offen" eine Eigenschaft des Datentyps und keine
+  // Regel, die irgendwo durchgesetzt werden müsste — drei Booleans könnten
+  // einen ungültigen Zustand überhaupt erst darstellen.
+  assert.ok(/const \[openGroup, setOpenGroupState\] = useState\(/.test(code),
+    "der Klappzustand ist kein Einzelwert");
+  assert.ok(!/openGroups|setVersandOpen|setKontoOpen|setInventoryOpen/.test(code),
     "es gibt noch gruppenspezifische Einzelzustände");
+  // Jede Gruppe leitet ihr Offensein aus demselben Wert ab.
+  assert.equal((code.match(/open=\{openGroup === "/g) || []).length, 3,
+    "nicht alle drei Gruppen lesen denselben Wert");
+  // Ein Klick auf die offene Gruppe schließt sie; ein Klick auf eine andere
+  // wechselt — beides in einer Zeile, ohne Sonderfall.
+  assert.match(code, /toggleGroup = \(id\) => setOpenGroup\(\(aktuell\) => \(aktuell === id \? null : id\)\)/,
+    "das Accordion-Umschalten fehlt");
 });
 
-test("8 — die aktive Gruppe öffnet sich, egal welcher Bereich aktiv ist", () => {
-  // Der Nutzer darf nie auf einer Seite landen, deren aktiver Eintrag in einer
-  // geschlossenen Gruppe verborgen ist.
+test("8 — nichts öffnet sich von selbst; der aktive Bereich wird nur MARKIERT", () => {
+  // Bewusste Umkehr der ersten Fassung: dort öffnete ein Effekt die Gruppe des
+  // aktuellen Bereichs. Der geschlossene Zustand ist jetzt der Normalfall —
+  // auch auf /inventory/products/1 bleibt „Lager & Aufträge" nach einem Reload
+  // zu. Kein Effekt darf das aushebeln.
+  assert.ok(!/useEffect/.test(code), "die Sidebar darf keinen Klappzustand per Effekt setzen");
+  assert.ok(!/setOpenGroup\(activeGroupId\)/.test(code), "der aktive Bereich darf nicht automatisch aufklappen");
+
+  // Der aktive Bereich wird weiterhin aus dem page-Wert abgeleitet — aber nur
+  // noch, um den Kopf zu markieren.
   assert.ok(/activeGroupId = NAV_GROUPS\.find\(\(g\) => g\.items\.some\(\(i\) => i\.id === page\)\)/.test(code),
-    "die aktive Gruppe wird nicht generisch aus dem page-Wert abgeleitet");
-  assert.ok(/\}, \[activeGroupId\]\)/.test(code),
-    "die Öffnung hängt nicht am Wechsel der aktiven Gruppe");
-  // Bewusst an den WECHSEL gebunden, nicht an jeden Render: innerhalb einer
-  // Gruppe muss das Zuklappen möglich bleiben.
-  assert.ok(!/\}, \[page\]\)/.test(code),
-    "die Öffnung darf nicht an jedem page-Wechsel hängen — sonst ließe sich die aktive Gruppe nie zuklappen");
+    "der aktive Bereich wird nicht generisch aus dem page-Wert abgeleitet");
+  assert.match(code, /active \? " pp-nav-group--active" : ""/, "der aktive Bereich wird nicht markiert");
+
+  // Die Markierung ist SUBTIL — deutlich schwächer als ein aktiver Eintrag:
+  // flache Fläche statt Verlauf, schmalere Kante, keine Border.
+  const kopfAktiv = regel(".pp-nav-group--active .pp-nav-group-head");
+  const eintragAktiv = regel(".nitem.on");
+  assert.ok(kopfAktiv && eintragAktiv, "eine der beiden Aktivregeln fehlt");
+  assert.match(kopfAktiv, /background:\s*var\(--ce-sidebar-active-bg-soft\)/,
+    "der aktive Kopf trägt nicht die schwache Eigenfläche");
+  assert.ok(!/gradient/.test(kopfAktiv), "der aktive Kopf darf keinen Verlauf tragen");
+  assert.ok(!/border-color/.test(kopfAktiv), "der aktive Kopf darf keine Border tragen — sonst zwei gleich starke Karten");
+  // Die Akzentkante des Kopfes ist schmaler als die des aktiven Eintrags. Die
+  // des Eintrags steckt im Token (--ce-sidebar-active-shadow), nicht in der Regel.
+  const variables = lies("../../styles/variables.css");
+  const kopfKante = Number(kopfAktiv.match(/inset (\d+)px 0 0/)?.[1] ?? 0);
+  const eintragKante = Number(variables.match(/--ce-sidebar-active-shadow:\s*inset (\d+)px 0 0/)?.[1] ?? 0);
+  assert.ok(kopfKante > 0, "die Akzentkante des aktiven Kopfes fehlt");
+  assert.ok(kopfKante < eintragKante,
+    `Kopfkante ${kopfKante}px ist nicht schmaler als die Eintragskante ${eintragKante}px`);
+  assert.match(eintragAktiv, /box-shadow:\s*var\(--ce-sidebar-active-shadow\)/,
+    "der aktive Eintrag trägt seine Kante nicht mehr aus dem Token");
+
   // Auch die route-basierten Seiten markieren ihren Bereich (Preisrechner →
-  // Versand, /inventory/orders/:id → Lager & Aufträge).
+  // Versand, /inventory/products/:id → Lager & Aufträge).
   assert.match(layout, /"\/calculator" \? "calculator"/, "der Preisrechner markiert seinen Bereich nicht");
-  assert.match(layout, /startsWith\("\/inventory\/orders"\)\s*\?\s*"orders"/, "das Auftragsdetail markiert seinen Bereich nicht");
+  assert.match(layout, /startsWith\("\/inventory\/products"\)\s*\?\s*"products"/, "das Artikeldetail markiert seinen Bereich nicht");
 });
 
-test("9 — der Klappzustand wird nicht persistiert", () => {
+test("9 — der Klappzustand wird nicht persistiert und überlebt keinen Reload", () => {
   assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");
+  // Der Modulwert überlebt bewusst einen Remount der Sidebar beim
+  // Routenwechsel (zwei Routen-Teilbäume) — aber nie einen Reload: ein Reload
+  // wertet das Modul neu aus und setzt ihn zwangsläufig auf null.
+  assert.match(code, /^let sitzungsOffeneGruppe = null;$/m,
+    "der Sitzungswert fehlt oder startet nicht bei null");
+  assert.match(code, /useState\(sitzungsOffeneGruppe\)/, "der Startwert kommt nicht aus dem Sitzungswert");
 });
 
 /* ══════════ 5 — Keine zweite optische Sidebar ═══════════════════════════ */
@@ -157,21 +200,43 @@ test("11 — die Hierarchie entsteht aus Abstand und Einrückung", () => {
 
 /* ══════════ 6 — Typografie, Trefferfläche, Icons, Fokus ═════════════════ */
 
-test("12 — Navigationseinträge sind 14 px und mindestens 42 px hoch", () => {
+test("12 — die fünf Einträge der ersten Ebene sind gleichrangig", () => {
+  // Übersicht · Versand · Adressbuch · Lager & Aufträge · Konto bilden EIN
+  // Hauptmenü. Ob ein Eintrag eine Gruppe ist, sagt der Chevron — nicht die
+  // Schriftgröße, nicht die Höhe, nicht der Innenabstand.
   const item = regel("\n.nitem");
-  assert.ok(item, ".nitem fehlt");
-  assert.match(item, /font-size:\s*14px/, "die Einträge sind nicht auf die Body-Stufe gewachsen");
+  const head = regel(".pp-nav-group-head");
+  assert.ok(item && head, ".nitem oder .pp-nav-group-head fehlt");
+  const wert = (b, prop) => b.match(new RegExp(prop + ":\\s*([^;]+);"))?.[1]?.trim();
+  for (const prop of ["font-size", "font-weight", "min-height", "padding-block", "padding-inline", "gap", "border-radius"]) {
+    assert.equal(wert(head, prop), wert(item, prop),
+      `${prop}: Gruppenkopf (${wert(head, prop)}) ≠ Ebene-1-Eintrag (${wert(item, prop)})`);
+  }
+  assert.match(item, /font-size:\s*15px/, "die erste Ebene ist nicht auf 15px gewachsen");
+  assert.match(item, /font-weight:\s*600/, "die erste Ebene trägt nicht das kräftigere Gewicht");
   const hoehe = parseFloat(item.match(/min-height:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(hoehe >= 42, `Eintragshöhe ${hoehe}px — mindestens 42px erwartet`);
+  assert.ok(hoehe >= 44, `Eintragshöhe ${hoehe}px — mindestens 44px erwartet`);
+  // Auch die Icons: gleiche Größe auf der ersten Ebene.
+  assert.match(regel(".pp-nav-group-head svg"), /flex:\s*0 0 18px/, "das Gruppenkopf-Icon misst nicht 18px");
+  assert.match(regel("\n.nitem svg"), /flex:\s*0 0 18px/, "das Eintrags-Icon misst nicht 18px");
 });
 
-test("13 — der Gruppenkopf bleibt kleiner als die Einträge, aber über 11 px", () => {
-  const head = regel(".pp-nav-group-head");
-  assert.ok(head, ".pp-nav-group-head fehlt");
-  const groesse = parseFloat(head.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(groesse >= 11 && groesse < 14, `Gruppenkopf ${groesse}px — erwartet 11…13px`);
-  assert.match(head, /text-transform:\s*uppercase/, "der Gruppenkopf ist kein Versalienlabel");
-  assert.match(head, /letter-spacing:/, "dem Gruppenkopf fehlt die Laufweite");
+test("13 — die zweite Ebene ist ruhiger, aber weder klein noch grau", () => {
+  const sub = regel(".pp-nav-group-items .nitem");
+  assert.ok(sub, ".pp-nav-group-items .nitem fehlt");
+  const groesse = parseFloat(sub.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
+  assert.ok(groesse >= 14 && groesse < 15, `Unterpunkt ${groesse}px — erwartet 14px`);
+  assert.match(sub, /font-weight:\s*500/, "der Unterpunkt trägt nicht das leichtere Gewicht");
+  assert.match(sub, /padding-inline-start:\s*\d+px/, "die Einrückung der Unterpunkte fehlt");
+  const hoehe = parseFloat(sub.match(/min-height:\s*([\d.]+)px/)?.[1] ?? "0");
+  assert.ok(hoehe >= 38 && hoehe < 44, `Unterpunkthöhe ${hoehe}px — erwartet knapp unter der ersten Ebene`);
+  // Icons minimal leichter, nicht winzig.
+  assert.match(regel(".pp-nav-group-items .nitem svg"), /flex:\s*0 0 17px/, "das Unterpunkt-Icon misst nicht 17px");
+  // „Abmelden" ist eine Aktion, kein Produktbereich — zweite Ebene, ohne Einrückung.
+  const abmelden = regel(".nitem--utility");
+  assert.ok(abmelden, ".nitem--utility fehlt");
+  assert.match(abmelden, /font-size:\s*14px/, "„Abmelden“ trägt das Gewicht der ersten Ebene");
+  assert.ok(!/padding-inline-start/.test(abmelden), "„Abmelden“ darf nicht eingerückt sein");
 });
 
 test("14 — unter 860 px erreicht jedes Bedienelement 44 px", () => {
@@ -197,13 +262,70 @@ test("15 — Icons kommen aus EINER Quelle, in zwei festen Größen", () => {
     "der Chevron ist kein Icon aus Icon.jsx");
 });
 
-test("16 — der Chevron dreht kurz und respektiert reduzierte Bewegung", () => {
-  assert.match(cssOhneKommentar, /\.pp-nav-group--collapsed \.pp-nav-group-chevron \{ transform: rotate\(-90deg\); \}/,
-    "der geschlossene Zustand dreht den Chevron nicht");
+test("16 — Öffnen läuft weich, robust und in EINEM Takt", () => {
+  const variables = lies("../../styles/variables.css");
+  // Ein gemeinsamer Takt für Rasterspur, Einblendung und Chevron — sonst
+  // zerfällt das Öffnen in drei Bewegungen mit drei Geschwindigkeiten.
+  const dauer = Number(variables.match(/--ce-sidebar-expand-duration:\s*(\d+)ms/)?.[1] ?? 0);
+  assert.ok(dauer >= 180 && dauer <= 240, `Dauer ${dauer}ms — erwartet 180…240ms`);
+  assert.match(variables, /--ce-sidebar-expand-ease:/, "die gemeinsame Beschleunigungskurve fehlt");
+
+  // Robuste Technik: Rasterspur 0fr → 1fr. KEINE height:auto-Animation (läuft
+  // in keinem Browser verlässlich) und keine gemessene Pixelhöhe.
+  const panel = regel(".pp-nav-group-panel");
+  assert.match(panel, /display:\s*grid/, "der Panel-Container ist kein Raster");
+  assert.match(panel, /grid-template-rows:\s*0fr/, "der geschlossene Zustand hat keine 0fr-Spur");
+  assert.match(panel, /transition: grid-template-rows var\(--ce-sidebar-expand-duration\)/,
+    "die Höhe wird nicht im gemeinsamen Takt animiert");
+  assert.match(cssOhneKommentar, /\.pp-nav-group--open \.pp-nav-group-panel \{ grid-template-rows: 1fr; \}/,
+    "der geöffnete Zustand setzt keine 1fr-Spur");
+  assert.ok(!/height:\s*auto/.test(cssOhneKommentar.slice(
+    cssOhneKommentar.indexOf(".pp-nav-group {"), cssOhneKommentar.indexOf("\n.nitem {"))),
+    "es darf keine height:auto-Animation geben");
+
+  // Der Überstand wird gekappt, und die Einträge erscheinen dezent.
+  const items = regel(".pp-nav-group-items");
+  assert.match(items, /overflow:\s*hidden/, "der Überstand wird nicht gekappt");
+  assert.match(items, /min-height:\s*0/, "ohne min-height:0 kollabiert die Rasterspur nicht");
+  assert.match(items, /opacity:\s*0/, "die Unterpunkte blenden nicht ein");
+  assert.match(items, /transform:\s*translateY\(-\d+px\)/, "die Unterpunkte erscheinen ohne Bewegung");
+
+  // Der Chevron dreht im selben Takt.
   const chevron = regel(".pp-nav-group-chevron");
-  assert.match(chevron, /transition: transform 1\d\dms/, "die Drehung ist keine kurze Zustandsreaktion");
-  assert.match(cssOhneKommentar, /@media \(prefers-reduced-motion: reduce\) \{\s*\.pp-nav-group-chevron \{ transition: none; \}/,
-    "reduzierte Bewegung wird nicht respektiert");
+  assert.match(chevron, /transform:\s*rotate\(-90deg\)/, "der geschlossene Chevron zeigt nicht zur Seite");
+  assert.match(chevron, /transition: transform var\(--ce-sidebar-expand-duration\)/,
+    "der Chevron läuft nicht im gemeinsamen Takt");
+  assert.match(cssOhneKommentar, /\.pp-nav-group--open \.pp-nav-group-chevron \{ transform: rotate\(0deg\); \}/,
+    "der geöffnete Chevron zeigt nicht nach unten");
+});
+
+test("16b — eingeklappte Unterpunkte sind nicht bedienbar", () => {
+  // Die Einträge bleiben eingeklappt IM DOM (ohne Inhalt gäbe es nichts zu
+  // animieren). Damit sie trotzdem nicht per Tabulator erreichbar sind und
+  // nicht angesagt werden, trägt der Behälter `visibility: hidden` — das nimmt
+  // ihn aus Fokusreihenfolge UND Accessibility-Baum. Der Wechsel ist beim
+  // Schließen verzögert, damit die Einträge während der Animation sichtbar
+  // bleiben; beim Öffnen greift er sofort.
+  const items = regel(".pp-nav-group-items");
+  assert.match(items, /visibility:\s*hidden/, "eingeklappte Unterpunkte sind nicht aus dem Fokusfluss genommen");
+  assert.match(items, /transition:[\s\S]*visibility 0s linear var\(--ce-sidebar-expand-duration\)/,
+    "der Sichtbarkeitswechsel ist beim Schließen nicht verzögert");
+  const offen = regel(".pp-nav-group--open .pp-nav-group-items");
+  assert.match(offen, /visibility:\s*visible/, "geöffnete Unterpunkte werden nicht sichtbar");
+  assert.match(offen, /visibility 0s(?!\s+linear)/, "beim Öffnen darf die Sichtbarkeit nicht verzögert werden");
+});
+
+test("16c — reduzierte Bewegung schaltet die Animation ab, ohne die Bedienbarkeit zu brechen", () => {
+  const block = cssOhneKommentar.slice(cssOhneKommentar.indexOf("@media (prefers-reduced-motion: reduce)"));
+  const ende = block.indexOf("\n}\n", block.indexOf("{")) + 3;
+  const regeln = block.slice(0, ende);
+  for (const sel of [".pp-nav-group-chevron", ".pp-nav-group-panel", ".pp-nav-group-items"]) {
+    assert.ok(regeln.includes(sel), `${sel} wird bei reduzierter Bewegung nicht stillgelegt`);
+  }
+  // Ohne Bewegung darf die Sichtbarkeit NICHT verzögert umschalten — sonst
+  // bliebe der zugeklappte Bereich für die Dauer der Verzögerung fokussierbar.
+  assert.match(regeln, /\.pp-nav-group-items \{ transition: visibility 0s; \}/,
+    "bei reduzierter Bewegung bleibt die verzögerte Sichtbarkeit stehen");
 });
 
 test("17 — der Fokus bleibt sichtbar und gilt für die ganze Sidebar", () => {

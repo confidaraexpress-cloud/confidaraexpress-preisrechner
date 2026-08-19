@@ -103,19 +103,24 @@ test("3 — alle drei Gruppen teilen sich EIN Klappsystem und sagen ihren Zustan
   assert.ok(/aria-controls=\{itemsId\}/.test(code), "aria-controls fehlt am Klappkopf");
   assert.ok(/id=\{itemsId\}/.test(code), "das von aria-controls benannte Ziel fehlt");
 
-  // Eingeklappt verschwinden die Einträge aus dem DOM. Nur optisch zu verbergen
-  // ließe sie für Tastatur und Screenreader erreichbar, obwohl sie unsichtbar sind.
-  assert.ok(/\{open && \(/.test(code), "die Einträge werden eingeklappt nicht aus dem DOM genommen");
+  // Die Einträge bleiben eingeklappt IM DOM — ohne Inhalt gäbe es nichts zu
+  // animieren, und die weiche Öffnung ist ausdrücklich gefordert. Für Tastatur
+  // und Screenreader ändert das nichts: `visibility: hidden` nimmt den Behälter
+  // aus Fokusreihenfolge UND Accessibility-Baum (sidebarNavigation.test.mjs 16b,
+  // zusätzlich im echten Browser gemessen).
+  assert.ok(/className="pp-nav-group-panel"/.test(code), "der animierbare Behälter fehlt");
+  assert.match(dashboardCss, /\.pp-nav-group-items \{[^}]*visibility:\s*hidden/,
+    "eingeklappte Einträge sind nicht aus dem Fokusfluss genommen");
 
-  // Standard: alle Gruppen offen …
-  assert.ok(/NAV_GROUPS\.map\(\(g\) => \[g\.id, true\]\)/.test(code),
-    "die Gruppen starten nicht standardmäßig geöffnet");
-  // … und wer in einen Bereich wechselt, sieht dessen aktiven Eintrag: die
-  // zugehörige Gruppe öffnet sich, egal ob Versand, Lager oder Konto.
-  assert.ok(/\}, \[activeGroupId\]\)/.test(code),
-    "ein Bereichswechsel öffnet die zugehörige Gruppe nicht");
+  // Standard: alle Gruppen ZU — auch die des aktuellen Bereichs. Das kehrt die
+  // erste Fassung um: der geschlossene Zustand ist der Normalfall, nichts
+  // klappt von selbst auf.
+  assert.match(code, /^let sitzungsOffeneGruppe = null;$/m, "der Sitzungswert startet nicht bei null");
+  assert.ok(/useState\(sitzungsOffeneGruppe\)/.test(code), "der Startwert kommt nicht aus dem Sitzungswert");
+  assert.ok(!/useEffect/.test(code), "kein Effekt darf den Klappzustand setzen");
+  // Der aktive Bereich wird trotzdem markiert — nur eben ohne aufzuklappen.
   assert.ok(/activeGroupId = NAV_GROUPS\.find/.test(code),
-    "die aktive Gruppe wird nicht aus dem page-Wert abgeleitet");
+    "der aktive Bereich wird nicht aus dem page-Wert abgeleitet");
 
   // Kein persistierter Zustand: reiner UI-State dieser Komponente.
   assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");
@@ -130,23 +135,29 @@ test("4 — die Lagergruppe hat KEINE eigene Fläche mehr", () => {
       `${name}: die Modulblock-Klasse darf nicht zurückkehren`);
   }
 
-  const start = dashboardCss.indexOf(".pp-nav-group {");
-  assert.ok(start > 0, "die Gruppenregeln fehlen");
-  // Zeilenanfang als Endanker: „.pp-nav-group-items .nitem {" enthält ebenfalls
-  // die Zeichenfolge „.nitem {" und würde den Block zu früh abschneiden.
-  const block = dashboardCss.slice(start, dashboardCss.indexOf("\n.nitem {", start));
-  // Keine zweite Fläche, kein Rahmen, kein Radius um die Gruppe, kein Schatten.
-  assert.ok(!/\bbackground(-color)?:\s*(?!none)/.test(block.split(".pp-nav-group-head")[0]),
-    "die Gruppe darf keine eigene Hintergrundfläche tragen");
-  assert.ok(!/^\s*border:\s*(?!none)/m.test(block), "die Gruppe darf keinen Rahmen tragen");
-  assert.ok(!/box-shadow/.test(block), "die Gruppe darf keinen Schatten tragen");
-  assert.ok(!/backdrop-filter/.test(block), "backdrop-filter ist systemweit unzulässig");
-  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(block), "die Gruppe trägt ein Farbliteral");
-  assert.ok(!/rgba?\(/.test(block), "die Gruppe trägt einen freien Farbwert");
+  // Geprüft wird der GRUPPENCONTAINER selbst — nicht der Kopf darin. Der Kopf
+  // trägt seit der Nachbesserung bewusst eine sehr schwache Aktivfläche samt
+  // schmaler Kante („du bist in diesem Bereich"); das ist eine Zustands-, keine
+  // Behälterdekoration.
+  const containerRegel = (sel) => {
+    const m = dashboardCss.replace(/\/\*[\s\S]*?\*\//g, "")
+      .match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\{([^}]*)\\}"));
+    return m ? m[1] : null;
+  };
+  const gruppe = containerRegel(".pp-nav-group");
+  assert.ok(gruppe, ".pp-nav-group fehlt");
+  for (const verboten of ["background", "border:", "border-radius", "box-shadow", "backdrop-filter"]) {
+    assert.ok(!gruppe.includes(verboten), `die Gruppe darf kein ${verboten} tragen`);
+  }
   // Die Hierarchie kommt aus Abstand und Einrückung.
-  assert.match(block, /\.pp-nav-group\s*\{[^}]*margin-top:/, "der Gruppenabstand fehlt");
-  assert.match(block, /\.pp-nav-group-items \.nitem\s*\{[^}]*padding-inline-start:/,
+  assert.match(gruppe, /margin-top:\s*\d+px/, "der Gruppenabstand fehlt");
+  assert.match(containerRegel(".pp-nav-group-items .nitem"), /padding-inline-start:\s*\d+px/,
     "die Einrückung der Gruppeneinträge fehlt");
+  // Und weiterhin kein Farbliteral im Sidebarbereich — Farben stehen in variables.css.
+  const ohneKommentar = dashboardCss.replace(/\/\*[\s\S]*?\*\//g, "");
+  const sidebarCss = ohneKommentar.slice(
+    ohneKommentar.indexOf(".sidebar.pp-side"), ohneKommentar.indexOf(".ce-mail-dialog"));
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(sidebarCss), "ein Farbliteral steht in dashboard-premium.css");
 });
 
 /* ══════════ 2 — Navigationsmodell ════════════════════════════════════════ */

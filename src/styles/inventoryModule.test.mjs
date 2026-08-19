@@ -45,14 +45,26 @@ const BAUTEILE = [
 
 /* ══════════ 1 — Sidebar: ein Modulblock, keine zweite Navigation ═════════ */
 
-test("1 — der Lagerblock steht direkt unter „Übersicht“ und trägt fünf Einträge", () => {
+test("1 — die Lagergruppe steht unter Adressbuch und trägt fünf Einträge", () => {
+  // Bewusste Umkehr einer früheren Festlegung: der Block stand direkt unter
+  // „Übersicht" und führte damit die Kernnavigation an. ConfidaraExpress ist
+  // primär eine Versandplattform — das Lagermodul ist ein optionales
+  // Zusatzmodul und steht deshalb NACH Versand und Adressbuch.
   const code = ohneKommentare(sidebar);
-  const idxUebersicht = code.indexOf('navigateTo("overview")');
-  const idxModul = code.indexOf("pp-nav-module");
-  const idxGruppen = code.indexOf("NAV_GROUPS.map");
-  assert.ok(idxUebersicht > 0 && idxModul > 0 && idxGruppen > 0, "Ankerpunkte nicht gefunden");
-  assert.ok(idxUebersicht < idxModul, "der Lagerblock muss NACH der Übersicht stehen");
-  assert.ok(idxModul < idxGruppen, "der Lagerblock muss VOR den übrigen Gruppen stehen");
+  const idxVersand    = code.indexOf('label: "Versand"');
+  const idxAdressbuch = code.indexOf("ADDRESSBOOK_ITEM = ");
+  const idxLager      = code.indexOf('id: "warehouse"');
+  const idxKonto      = code.indexOf('id: "account"');
+  assert.ok(idxVersand > 0 && idxAdressbuch > 0 && idxLager > 0 && idxKonto > 0, "Ankerpunkte nicht gefunden");
+  assert.ok(idxVersand < idxLager, "die Lagergruppe muss NACH der Versandgruppe stehen");
+  assert.ok(idxLager < idxKonto, "die Lagergruppe muss VOR der Kontogruppe stehen");
+
+  // Reihenfolge im Markup: Übersicht → Versand → Adressbuch → Lager → Konto.
+  const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
+  const folge = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", '"warehouse"', '"account"']
+    .map((m) => nav.indexOf(m));
+  assert.ok(folge.every((v) => v > 0), `nicht alle Bausteine im <nav> gefunden: ${folge}`);
+  assert.deepEqual([...folge].sort((a, b) => a - b), folge, "die Reihenfolge im <nav> stimmt nicht");
 
   for (const id of ["inventory", "products", "stock", "orders", "movements"]) {
     assert.ok(code.includes(`id: "${id}"`), `Sidebar-Eintrag ${id} fehlt`);
@@ -67,56 +79,74 @@ test("2 — es bleibt bei EINER Sidebar und EINEM Navigationsbauteil", () => {
   // Genau ein <aside> und ein <nav> — keine zweite Navigation, keine rechte Leiste.
   assert.equal((code.match(/<aside/g) || []).length, 1, "es darf nur eine Sidebar geben");
   assert.equal((code.match(/<nav\b/g) || []).length, 1, "es darf nur eine Navigation geben");
-  // Die Lagereinträge nutzen dieselbe .nitem-Klasse wie jeder andere Eintrag.
-  const block = code.slice(code.indexOf("pp-nav-module"), code.indexOf("NAV_GROUPS.map"));
-  assert.ok(block.includes('className={`nitem'), "die Lagereinträge nutzen nicht das bestehende Eintragsbauteil");
+  // Alle Einträge — direkte wie Gruppeneinträge — laufen durch DASSELBE Bauteil.
+  assert.equal((code.match(/className=\{`nitem/g) || []).length, 1,
+    "es darf nur eine Stelle geben, die einen Navigationseintrag zeichnet");
+  assert.ok(/function NavItem\(/.test(code), "das gemeinsame Eintragsbauteil fehlt");
 });
 
-test("3 — der Modulblock ist einklappbar und sagt seinen Zustand an", () => {
-  // Bewusste Umkehr einer früheren Festlegung: der Kopf war eine reine
-  // Überschrift, weil ein einklappbarer Block für fünf Zeilen ganz oben als
-  // Komplexität ohne Nutzen galt. Mit dem gewachsenen Menü ist der Nutzen da —
-  // auf kurzen Viewports spart das Einklappen fünf Zeilen Scrollweg.
+test("3 — alle drei Gruppen teilen sich EIN Klappsystem und sagen ihren Zustand an", () => {
+  // Vorher: „Lager & Aufträge" war einklappbar, Versand und Konto waren stumme
+  // Überschriften — drei Bereiche mit drei verschiedenen Verhaltensweisen.
+  // Jetzt trägt ein einziges Bauteil (SidebarGroup) alle drei.
   const code = ohneKommentare(sidebar);
-  const block = code.slice(code.indexOf("pp-nav-module"), code.indexOf("NAV_GROUPS.map"));
+  assert.ok(/function SidebarGroup\(/.test(code), "das gemeinsame Gruppenbauteil fehlt");
+  assert.equal((code.match(/<SidebarGroup/g) || []).length, 3, "es müssen genau drei Gruppen sein");
 
   // Ein echtes <button>, kein klickbares <div>: Tastatur, Rollenzuordnung und
   // Fokusring kommen sonst nicht von selbst.
-  assert.ok(/<button[^>]*className="pp-nav-module-head"/s.test(block),
-    "der Blockkopf ist kein echtes Bedienelement");
+  assert.ok(/<button[^>]*className="pp-nav-group-head"/s.test(code),
+    "der Gruppenkopf ist kein echtes Bedienelement");
   // Der Zustand muss ANGESAGT werden, nicht nur gezeichnet — ein Chevron allein
   // erreicht keinen Screenreader.
-  assert.ok(/aria-expanded=\{inventoryOpen\}/.test(block), "aria-expanded fehlt am Klappkopf");
-  assert.ok(/aria-controls="pp-nav-module-items"/.test(block), "aria-controls fehlt am Klappkopf");
-  assert.ok(/id="pp-nav-module-items"/.test(block), "das von aria-controls benannte Ziel fehlt");
+  assert.ok(/aria-expanded=\{open\}/.test(code), "aria-expanded fehlt am Klappkopf");
+  assert.ok(/aria-controls=\{itemsId\}/.test(code), "aria-controls fehlt am Klappkopf");
+  assert.ok(/id=\{itemsId\}/.test(code), "das von aria-controls benannte Ziel fehlt");
 
   // Eingeklappt verschwinden die Einträge aus dem DOM. Nur optisch zu verbergen
   // ließe sie für Tastatur und Screenreader erreichbar, obwohl sie unsichtbar sind.
-  assert.ok(/\{inventoryOpen && \(/.test(block), "die Einträge werden eingeklappt nicht aus dem DOM genommen");
+  assert.ok(/\{open && \(/.test(code), "die Einträge werden eingeklappt nicht aus dem DOM genommen");
 
-  // Standard offen (§8) …
-  assert.ok(/useState\(true\)/.test(code), "der Block startet nicht standardmäßig geöffnet");
-  // … und wer in den Lagerbereich wechselt, sieht den aktiven Eintrag (§9).
-  assert.ok(/useEffect\(\(\) => \{ if \(inventoryActive\) setInventoryOpen\(true\); \}, \[inventoryActive\]\)/.test(code),
-    "ein Wechsel in den Lagerbereich öffnet den Block nicht");
+  // Standard: alle Gruppen offen …
+  assert.ok(/NAV_GROUPS\.map\(\(g\) => \[g\.id, true\]\)/.test(code),
+    "die Gruppen starten nicht standardmäßig geöffnet");
+  // … und wer in einen Bereich wechselt, sieht dessen aktiven Eintrag: die
+  // zugehörige Gruppe öffnet sich, egal ob Versand, Lager oder Konto.
+  assert.ok(/\}, \[activeGroupId\]\)/.test(code),
+    "ein Bereichswechsel öffnet die zugehörige Gruppe nicht");
+  assert.ok(/activeGroupId = NAV_GROUPS\.find/.test(code),
+    "die aktive Gruppe wird nicht aus dem page-Wert abgeleitet");
 
   // Kein persistierter Zustand: reiner UI-State dieser Komponente.
   assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");
 });
 
-test("4 — der Modulblock nutzt ausschließlich vorhandene Sidebar-Tokens", () => {
-  const start = dashboardCss.indexOf(".pp-nav-module {");
-  assert.ok(start > 0, "die Modulblock-Regeln fehlen");
-  const block = dashboardCss.slice(start, dashboardCss.indexOf(".nitem {", start));
-  // Keine eigene Farbe, kein Verlauf, kein Schatten, kein Glow, keine Bewegung
-  // als Ambiente — der Bereich hebt sich durch Material ab, nicht durch Signal.
-  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(block), "der Modulblock trägt ein Farbliteral");
-  assert.ok(!/rgba?\(/.test(block), "der Modulblock trägt einen freien Farbwert");
-  assert.ok(!/gradient/.test(block), "der Modulblock trägt einen Verlauf");
-  assert.ok(!/box-shadow/.test(block), "der Modulblock trägt einen Schatten");
+test("4 — die Lagergruppe hat KEINE eigene Fläche mehr", () => {
+  // Der frühere Modulblock trug Rahmen, Radius und eine vertiefte Eigenfläche
+  // (.pp-nav-module) und erzeugte damit eine zweite optische Sidebar innerhalb
+  // der Sidebar. Er ist ERSATZLOS entfernt — nicht nur entrahmt.
+  for (const [name, quelle] of [["DashboardSidebar.jsx", sidebar], ["dashboard-premium.css", dashboardCss]]) {
+    assert.ok(!/pp-nav-module[-\w]*\s*[{`"']/.test(quelle.replace(/\/\*[\s\S]*?\*\//g, "")),
+      `${name}: die Modulblock-Klasse darf nicht zurückkehren`);
+  }
+
+  const start = dashboardCss.indexOf(".pp-nav-group {");
+  assert.ok(start > 0, "die Gruppenregeln fehlen");
+  // Zeilenanfang als Endanker: „.pp-nav-group-items .nitem {" enthält ebenfalls
+  // die Zeichenfolge „.nitem {" und würde den Block zu früh abschneiden.
+  const block = dashboardCss.slice(start, dashboardCss.indexOf("\n.nitem {", start));
+  // Keine zweite Fläche, kein Rahmen, kein Radius um die Gruppe, kein Schatten.
+  assert.ok(!/\bbackground(-color)?:\s*(?!none)/.test(block.split(".pp-nav-group-head")[0]),
+    "die Gruppe darf keine eigene Hintergrundfläche tragen");
+  assert.ok(!/^\s*border:\s*(?!none)/m.test(block), "die Gruppe darf keinen Rahmen tragen");
+  assert.ok(!/box-shadow/.test(block), "die Gruppe darf keinen Schatten tragen");
   assert.ok(!/backdrop-filter/.test(block), "backdrop-filter ist systemweit unzulässig");
-  assert.ok(block.includes("var(--ce-sidebar-well)"), "der Blockgrund nutzt nicht die vorhandene vertiefte Fläche");
-  assert.ok(block.includes("var(--ce-radius-lg)"), "der Radius kommt nicht aus der Foundation");
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(block), "die Gruppe trägt ein Farbliteral");
+  assert.ok(!/rgba?\(/.test(block), "die Gruppe trägt einen freien Farbwert");
+  // Die Hierarchie kommt aus Abstand und Einrückung.
+  assert.match(block, /\.pp-nav-group\s*\{[^}]*margin-top:/, "der Gruppenabstand fehlt");
+  assert.match(block, /\.pp-nav-group-items \.nitem\s*\{[^}]*padding-inline-start:/,
+    "die Einrückung der Gruppeneinträge fehlt");
 });
 
 /* ══════════ 2 — Navigationsmodell ════════════════════════════════════════ */

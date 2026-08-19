@@ -39,7 +39,7 @@
 
 /* ── Badge ── */
 /* font-size 11px ist die Untergrenze des Projekts für Sekundärtexte im Chrome
-   (Test 30 in appShellChrome.test.mjs erlaubt darunter nur .nsec). */
+   (Test 30 in appShellChrome.test.mjs lässt darunter nichts zu). */
 .ntf-badge {
   position: absolute;
   top: -2px;

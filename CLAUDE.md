@@ -41,7 +41,7 @@ Drei voneinander isolierte Theme-Schichten:
 
 | Schicht | Präfix | Datei | Gilt für |
 |---------|--------|-------|----------|
-| App-Chrome „Executive Ivory + Midnight Slate" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
+| App-Chrome „Executive Ivory + Deep Navy" | `--ce-app-*`, `--ce-sidebar-*` | `variables.css` → `dashboard-premium.css` | Hintergrund + Sidebar des eingeloggten Bereichs |
 | App-Inhaltsflächen | `--surface*`, `--border-*`, `--text-*`, `--accent-blue*`, `--shadow-card*` | `variables.css` | Karten, Tabellen, Seitenköpfe im eingeloggten Bereich |
 | KPI-Karten „Executive Metric Cards" | `--ce-kpi-*` | `variables.css` → `overview.css` | **Nur** die vier Kennzahlkarten der Kundenübersicht |
 | Legacy-Light | `--navy`, `--gray*`, `--blue*` | `variables.css` | Booking, Legal, Offer-/Preisrechnerkarten |
@@ -208,7 +208,7 @@ Zusatz-Scopes ohne Kollision.
 Neue Bereichs-Stylesheets ans Ende anhängen; Änderungen an gemeinsamen
 Oberflächen gehören nach `variables.css` / `dashboard-premium.css`.
 
-## App-Layout „Executive Ivory + Midnight Slate" — wichtigste Regel
+## App-Layout „Executive Ivory + Deep Navy" — wichtigste Regel
 
 Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
 (Sidebar + `.main-content`), gerendert von `DashboardPage.jsx` und
@@ -234,8 +234,10 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   funktionaler Ladeindikator — nie als Ambiente.
 - Blau (`--accent-blue`, in der Sidebar `--ce-sidebar-active-accent`) ist
   Akzent: aktive Navigation, Links, Fokus, primäre Aktion. Keine blauen Flächen.
-- Die Sidebar ist mattes Midnight Slate (`--ce-sidebar-bg-*`), niemals schwarz
-  und niemals glasig — der Blaukanal muss klar über dem Rotkanal liegen.
+- Die Sidebar ist **Deep Navy** (`--ce-sidebar-bg-*`), niemals schwarz und
+  niemals glasig. Der Blaukanal liegt **mindestens 30 Punkte** über dem
+  Rotkanal (aktuell 44/36/32) — der Vorzustand lag bei 24/22/20 und las als
+  mattes Anthrazit. `sidebarNavigation.test.mjs` (19) misst das.
 - Die frühere Firmenkarte (Avatar + Firmenname + E-Mail direkt unter dem Logo)
   ist ersatzlos entfernt — kein Platzhalter, kein Ersatzblock, keine neue
   Hintergrundebene. Die Supportkarte bleibt die einzige Karte der Sidebar
@@ -265,20 +267,76 @@ Der gesamte eingeloggte Kundenbereich teilt sich **einen** Rahmen: `.app-shell`
   unsichtbar. Sobald `scrollbar-width` gesetzt ist, ignoriert Chromium
   `::-webkit-scrollbar` vollständig — der Hover-Zustand läuft dort deshalb
   ebenfalls über `scrollbar-color`.
-- **Der Modulblock „Lager & Aufträge" ist einklappbar.** Der Kopf ist ein echtes
-  `<button>` mit `aria-expanded`/`aria-controls`; eingeklappt verschwinden die
-  Einträge **aus dem DOM**, nicht nur optisch (sonst blieben sie für Tastatur und
-  Screenreader erreichbar). Standard offen; ein Wechsel **in** den Lagerbereich
-  öffnet ihn wieder, damit der aktive Eintrag nie verborgen startet — bewusst an
-  den Wechsel gebunden, nicht an jeden Render, sonst wirkte die Schaltfläche
-  innerhalb des Bereichs kaputt. Reiner UI-Zustand der Komponente, **keine
-  Persistenz** in `localStorage`, Backend oder Context.
-
-  Das kehrt eine frühere Festlegung um („bewusst nicht einklappbar"): sie galt,
-  als der Block fünf Zeilen in einer kurzen Navigation waren. Mit der gewachsenen
-  Sidebar spart das Einklappen auf kurzen Viewports fünf Zeilen Scrollweg.
+- **Die Navigation hat genau zwei Ebenen** — siehe „Sidebar-Informations­architektur"
+  weiter unten. Zwei direkte Einträge (Übersicht, Adressbuch), drei aufklappbare
+  Gruppen (Versand, Lager & Aufträge, Konto), eine Sitzungsaktion (Abmelden).
 - Legal Pages (Impressum, Datenschutz, AGB, Widerruf) und der Auth-Bereich
   liegen außerhalb dieses Rahmens und bleiben unverändert.
+
+## Sidebar-Informationsarchitektur — vor jeder Änderung an der Navigation lesen
+
+Die Sidebar ist **ein** Navigationssystem, nicht eine Sammlung nachträglich
+angebauter Module. Sie hat genau zwei Ebenen:
+
+```
+Übersicht
+VERSAND ˅          Neue Sendung · Preisrechner · Entwürfe · Sendungen ·
+                   Sendungsverfolgung · Versandrechnungen
+Adressbuch
+LAGER & AUFTRÄGE ˅ Lagerübersicht · Artikel · Bestand · Aufträge · Bewegungen
+KONTO ˅            Unternehmen & Konto · Supportanfragen
+Abmelden
+```
+
+**Verbindlich:**
+
+- **Eine Konfiguration, zwei Bauteile.** `NAV_GROUPS` + `OVERVIEW_ITEM` +
+  `ADDRESSBOOK_ITEM` in `DashboardSidebar.jsx` sind die einzige Quelle;
+  gerendert wird über `NavItem` (jeder Eintrag) und `SidebarGroup` (jede
+  Gruppe). Kein zweites Klapp- oder Eintragsmuster daneben.
+- **Keine Gruppe mit nur einem Eintrag.** Die früheren Abschnitte
+  „Verwaltung" (nur Adressbuch) und „Abrechnung" (nur Rechnungen) waren
+  Überschriften über einer einzigen Zeile und sind ersatzlos entfallen — samt
+  der Klasse `.nsec`.
+- **Keine Box um eine Gruppe.** Der frühere Modulblock `.pp-nav-module` trug
+  Rahmen, Radius und eine vertiefte Eigenfläche und erzeugte damit eine zweite
+  optische Sidebar innerhalb der Sidebar. Er ist **ersatzlos entfernt**, nicht
+  entrahmt. Die Hierarchie kommt aus **Abstand** (`margin-top` auf
+  `.pp-nav-group`) und **Einrückung** (`padding-inline-start` auf
+  `.pp-nav-group-items .nitem`) — nicht aus Flächen, Kanten oder Linien. Die
+  einzige verbliebene Linie steht vor „Abmelden".
+- **Adressbuch bleibt eigenständig.** Es ist eine gemeinsam genutzte Ressource
+  (Versand, Empfänger, Aufträge); unter einer der Gruppen behauptete es eine
+  Zugehörigkeit, die es nicht hat.
+- **„Lager & Aufträge" steht NICHT ganz oben.** Das kehrt eine frühere
+  Festlegung um: ConfidaraExpress ist primär eine Versandplattform, das
+  Lagermodul ein optionales Zusatzmodul. Es führt die Kernnavigation nicht an.
+- **„Versandrechnungen" ist nur eine Beschriftung.** Der page-Wert bleibt
+  `invoices`, Route, Seite und Rechnungslogik sind unverändert. Wer den
+  sichtbaren Namen ändert, benennt keine Route um.
+- **Die aktive Gruppe öffnet sich selbst.** `activeGroupId` wird generisch aus
+  dem bestehenden `page`-Wert abgeleitet; ein Effekt öffnet die zugehörige
+  Gruppe. Bewusst an den **Wechsel** der Gruppen-id gebunden, nicht an jeden
+  `page`-Wechsel — sonst ließe sich die aktive Gruppe nie zuklappen. Der
+  Klappzustand ist reiner UI-State: **keine Persistenz** in `localStorage`,
+  Backend oder Context.
+- **Eingeklappt verschwinden die Einträge aus dem DOM**, nicht nur optisch —
+  sonst blieben sie für Tastatur und Screenreader erreichbar. Jeder Gruppenkopf
+  ist ein echtes `<button>` mit `aria-expanded`/`aria-controls`; der aktive
+  Eintrag trägt zusätzlich `aria-current="page"`.
+- **Maße:** Einträge 14 px / mindestens 42 px hoch, Gruppenköpfe 12 px in
+  Versalien mit weiter Laufweite, Icons 18 px (Einträge) bzw. 16 px
+  (Gruppenköpfe). Unter 860 px erreichen Einträge **und** Gruppenköpfe 44 px.
+  Die Sidebarbreite bleibt bei 252 px — gemessen, kein Text bricht oder ragt
+  heraus.
+- **Gemessen zur Höhe:** mit allen drei Gruppen offen überragt die Navigation
+  den Viewport um 155 px (1920×1080) bis 409 px (1280×720); dafür ist der
+  Scrollbereich da. Sind alle Gruppen zugeklappt, passt sie auf **jeder**
+  dieser Höhen vollständig — das Einklappen ist eine echte Abhilfe, keine
+  Dekoration.
+- Governance: `src/components/layout/sidebarNavigation.test.mjs` (19 Tests) und
+  `src/components/layout/appShellChrome.test.mjs` (Chrome, Kontraste,
+  Typografie).
 
 ## Laufender Versandvorgang — vor jeder Änderung an Preisrechner, Neue Sendung oder Buchung lesen
 
@@ -937,7 +995,7 @@ Storno-, Support-, Audit- und Backfill-Logik sind unangetastet.
 
 - **Ein Grund, zwei Sidebars.** `.adm-shell` trägt dieselbe Ivory-Rampe wie
   `.app-shell` (`--ce-app-bg-*`). Die Adminnavigation bleibt bewusst **hell**,
-  damit der Bereichswechsel sichtbar ist — Midnight Slate (`--ce-sidebar-*`)
+  damit der Bereichswechsel sichtbar ist — Deep Navy (`--ce-sidebar-*`)
   gehört weiter allein dem Kundenportal. Der aktive Eintrag ist mehrfach
   codiert: Brand-Soft-Fläche + Brand-Kante + Indigo-`inset`-Akzentkante +
   Schriftschnitt. Die Marke wird nicht mehr nachgebaut: die Sidebar zeigt

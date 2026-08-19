@@ -6,7 +6,7 @@
    .app-shell (dashboard-premium.css), diese Datei beschreibt nur noch die
    Inhalte der Übersicht. Alle Selektoren hier sind übersichtsspezifisch
    (.pp-main, .pp-kpis, .tile, .pp-medal …) und kollidieren nicht mit den
-   Sidebar-Atomen (.pp-side*, .nitem, .nsec, .pp-scard, .pp-foot).
+   Sidebar-Atomen (.pp-side*, .nitem, .pp-nav-group*, .pp-scard, .pp-foot).
 
    Entfallen gegenüber vapor.css: die Hintergrund-Atmosphäre (.vp-bg, driftende
    Aurora-Wolken mit blur(80px), Bloom-Puls, Logistik-Netz-SVG mit Knoten und

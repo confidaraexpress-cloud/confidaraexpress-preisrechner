@@ -393,7 +393,7 @@
   --ce-size-dialog-lg: 720px;
   --ce-size-dialog-xl: 920px;
 
-  /* ── „Executive Ivory + Midnight Slate" — Chrome des eingeloggten Layouts ──
+  /* ── „Executive Ivory + Deep Navy" — Chrome des eingeloggten Layouts ──
      Genau eine Quelle für App-Hintergrund und Sidebar. Alle Regeln in
      dashboard-premium.css / dashboard.css lesen ausschließlich von hier; in den
      Sidebar-Regeln stehen keine Farbliterale mehr. Gilt NICHT für den
@@ -421,14 +421,24 @@
   /* Tiefe an der Sidebar-Kante — sichtbar, aber ohne harte Kante. */
   --ce-sidebar-shadow: 2px 0 16px rgba(9, 15, 25, 0.09);
 
-  /* Midnight Slate: deutlich dunkler als der bisherige Graphit, damit der
-     Sprung zur warmen Hauptfläche als Premiumkontrast liest — weiterhin
-     Navy/Slate-Material (Blaukanal klar über dem Rotkanal), bewusst nicht
-     schwarz. Auch hier gegenüber dem ersten Entwurf (#182334/#131e2d/#0f1825)
-     nachgezogen: der lag nur bei ΔE 3,2–3,7 zum Vorzustand. */
-  --ce-sidebar-bg-top: #17212f;
-  --ce-sidebar-bg-mid: #111a27;
-  --ce-sidebar-bg-bottom: #0c1420;
+  /* Deep Navy statt Midnight Slate. Der Vorzustand (#17212f/#111a27/#0c1420)
+     las als mattes Anthrazit: der Blauüberschuss (Blaukanal minus Rotkanal)
+     lag bei nur 24/22/20 Punkten, also nah am Neutralgrau. Die Rampe trägt
+     jetzt 44/36/32 Punkte — ein sattes, tiefes Navy mit sichtbarer Leuchtkraft,
+     ohne in Royal Blue zu kippen.
+
+     GEMESSEN, nicht gewählt (appShellChrome.test.mjs rechnet dieselben Werte
+     nach): Sidebar↔Hauptfläche 14,56:1 (Mindestmaß 12), Navigationstext auf
+     dem hellsten Verlaufspunkt 12,48:1, Gruppenüberschrift 5,32:1, aktiver
+     Eintrag auf dem dunkelsten Punkt seines Verlaufs 11,21:1. Alle elf
+     geprüften Paarungen liegen über WCAG AA.
+
+     Bewusst nicht: Neon, Royal Blue, metallischer Schimmer, Glassmorphism,
+     backdrop-filter. Die Leuchtkraft kommt allein aus dem Farbton, nicht aus
+     Effekten. */
+  --ce-sidebar-bg-top: #1c2848;
+  --ce-sidebar-bg-mid: #16203a;
+  --ce-sidebar-bg-bottom: #101a30;
 
   /* Flächen der Sidebar. Die frühere Firmenkarte (erhöhte Fläche, heller
      Verlauf + Schatten) ist entfernt; die Supportkarte bleibt die einzige
@@ -450,23 +460,27 @@
   --ce-sidebar-scroll-thumb-hover: rgba(255, 255, 255, 0.3);
 
   /* Aktiver Eintrag: blau getönter Verlauf statt einer reinen Weiß-Aufhellung
-     — der frühere Zustand war vom Hover kaum zu unterscheiden. */
-  --ce-sidebar-active-bg: linear-gradient(90deg, rgba(52, 101, 210, 0.28), rgba(255, 255, 255, 0.075));
+     — der frühere Zustand war vom Hover kaum zu unterscheiden. Mit der
+     Navy-Grundfläche etwas kräftiger und heller gezogen, damit der aktive
+     Eintrag gegen den nun selbst blauen Grund weiterhin klar heraussteht. */
+  --ce-sidebar-active-bg: linear-gradient(90deg, rgba(82, 131, 255, 0.32), rgba(255, 255, 255, 0.085));
   /* Neutral statt blau: zusammen mit blauer Fläche UND blauer Kante wirkte die
      bläuliche Außenborder wie ein vollständiger blauer Rahmen. Die blaue
      Identität trägt jetzt allein die linke Inset-Kante. */
   --ce-sidebar-active-border: rgba(255, 255, 255, 0.1);
-  --ce-sidebar-active-accent: #4f8cff;
-  --ce-sidebar-active-icon: #7fb0ff;
+  --ce-sidebar-active-accent: #6197ff;
+  --ce-sidebar-active-icon: #98bfff;
   --ce-sidebar-active-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent), 0 5px 14px rgba(0, 0, 0, 0.1);
 
-  /* Texte/Icons — gegen den dunkleren Grund nachgezogen und gemessen
-     (siehe appShellChrome.test.mjs, alle Paarungen ≥ WCAG AA). */
-  --ce-sidebar-text: #e9eef6;
+  /* Texte/Icons — gegen den Navy-Grund nachgezogen und gemessen (siehe
+     appShellChrome.test.mjs, alle Paarungen ≥ WCAG AA). Die Sekundärtöne
+     tragen jetzt selbst einen leichten Blaustich: neutrale Graustufen wirkten
+     auf der blauen Fläche schmutzig. Kontrast steigt dabei, er sinkt nicht. */
+  --ce-sidebar-text: #e8eefb;
   --ce-sidebar-text-strong: #ffffff;
-  --ce-sidebar-text-muted: #a7b4c6;
-  --ce-sidebar-section: #8593a8;
-  --ce-sidebar-icon: #a2b0c4;
+  --ce-sidebar-text-muted: #abbad4;
+  --ce-sidebar-section: #8e9dbc;
+  --ce-sidebar-icon: #a8b7d2;
 
   /* Mobiles Drawer-Overlay — ruhig und dunkel, ohne backdrop-filter. */
   --ce-app-overlay: var(--ce-color-overlay-drawer);

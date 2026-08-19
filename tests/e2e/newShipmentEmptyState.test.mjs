@@ -427,15 +427,23 @@ test("S8 — die Buchungsübersicht zeigt Gewicht UND L × B × H", async () => 
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 9 — 390 px ═══════════════════════════════════════════════════ */
+/* ══════════ 9 — Breiten ══════════════════════════════════════════════════ */
 
-test("S9 — 390 px: kein horizontaler Überlauf, Felder und Hinweis lesbar", async () => {
-  const { ctx, page, fehler } = await neueSeite({ width: 390, height: 780 });
+// Drei Breiten, eine Aussage: die neuen Placeholder, die Pflichtsterne, das
+// Länderfeld und die Hinweiszeile dürfen auf keiner davon Layoutprobleme
+// erzeugen. Unter 860 px liegt die Navigation im Drawer.
+for (const [name, viewport] of [
+  ["390 px", { width: 390, height: 780 }],
+  ["768 px", { width: 768, height: 900 }],
+  ["Desktop", { width: 1440, height: 900 }],
+]) {
+test(`S9 — ${name}: kein horizontaler Überlauf, Felder und Hinweis lesbar`, async () => {
+  const { ctx, page, fehler } = await neueSeite(viewport);
   try {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    // Mobil liegt die Navigation im Drawer.
+    // Unter 860 px liegt die Navigation im Drawer.
     const burger = page.locator(".mobile-topbar button, .pp-burger").first();
-    if (await burger.count()) await burger.click();
+    if (viewport.width < 860 && await burger.count()) await burger.click();
     await page.waitForTimeout(300);
     await ueberSidebarZuNeueSendung(page);
 
@@ -457,3 +465,4 @@ test("S9 — 390 px: kein horizontaler Überlauf, Felder und Hinweis lesbar", as
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
 });
+}

@@ -278,7 +278,30 @@ export default function DatenschutzPage() {
                 übermittelt.
               </p>
 
-              <h3 style={H3_STYLE}>7.2 Weitergabe an Jumingo</h3>
+              <h3 style={H3_STYLE}>7.2 Adressprüfung (OpenPLZ API)</h3>
+              <p style={P_STYLE}>
+                Bei der Eingabe einer Adresse in Deutschland, Österreich, der Schweiz oder
+                Liechtenstein prüfen wir Postleitzahl, Ort und Straßenname gegen das offene
+                Verzeichnis der OpenPLZ API und schlagen passende Orte und Straßen vor. Die Abfrage
+                erfolgt <strong>ausschließlich über unser eigenes Backend</strong> — Ihr Browser
+                stellt keine Verbindung zu diesem Dienst her.
+              </p>
+              <p style={P_STYLE}>
+                Übermittelt werden dabei <strong>nur</strong> Land, Postleitzahl, Ortsname und
+                Straßenname. <strong>Nicht übermittelt</strong> werden insbesondere: Name, Firma,
+                Hausnummer, Adresszusatz, E-Mail-Adresse, Telefonnummer, Kontodaten sowie sämtliche
+                Sendungs- und Rechnungsangaben. Ein Personenbezug entsteht dadurch nicht.
+              </p>
+              <p style={P_STYLE}>
+                Für Adressen außerhalb der genannten vier Länder findet keine solche Abfrage statt.
+                Die Angaben werden nicht dauerhaft beim Anbieter gespeichert; wir halten Ergebnisse
+                für kurze Zeit in einem Zwischenspeicher, um wiederholte Abfragen zu vermeiden.
+                <br /><br />
+                <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse
+                an korrekten Zustelladressen und der Vermeidung von Fehlsendungen).
+              </p>
+
+              <h3 style={H3_STYLE}>7.3 Weitergabe an Jumingo</h3>
               <p style={P_LAST}>
                 Zur Ermittlung der Versandpreise werden die oben genannten Daten über unser Backend an
                 den Versanddienstleister Jumingo weitergeleitet (siehe Abschnitt 8 und 14). Mit Jumingo

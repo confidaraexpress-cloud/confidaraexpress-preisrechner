@@ -6,6 +6,10 @@ import {
   UI_ROLE_OPTIONS, ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH,
   validateAddressForm, normalizeAddressForm, canSetDefaultSender, canSetDefaultRecipient,
 } from "../../utils/addressBookView.mjs";
+import { AddressSuggestInput } from "../address/AddressSuggestInput";
+import { AddressStatusLine } from "../address/AddressStatusLine";
+import { useAddressValidation } from "../../hooks/useAddressValidation";
+import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
 
 const TITLES = { create: "Neue Adresse", edit: "Adresse bearbeiten", duplicate: "Adresse duplizieren" };
 
@@ -51,6 +55,23 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Adressprüfung der eingegebenen Anschrift. Es werden ausschließlich Land, PLZ, Ort und
+  // Straßenname geprüft — Firma, Ansprechpartner, E-Mail und Telefon bleiben im Formular.
+  // Für Länder ohne Abdeckung meldet der Hook `unsupported` und zeigt nichts an; das
+  // Speichern einer Adresse wird durch die Prüfung NIE blockiert (das Adressbuch ist eine
+  // Stammdatenpflege, keine Buchung).
+  const addressCheck = useAddressValidation({
+    country: form.country, postalCode: form.postalCode, city: form.city, street: form.streetAndNumber,
+  });
+
+  // Genau EIN gefundener Ort wird ergänzt — aber nur in ein leeres Feld. Bei mehreren
+  // gültigen Orten zu einer PLZ wäre jede Auswahl geraten; dann bleiben es Vorschläge.
+  useEffect(() => {
+    if (addressCheck.cityOptions.length === 1 && !String(form.city || "").trim()) {
+      setForm((prev) => (String(prev.city || "").trim() ? prev : { ...prev, city: addressCheck.cityOptions[0] }));
+    }
+  }, [addressCheck.cityOptions]);
 
   const upd = (key, value) => {
     setForm((prev) => {
@@ -169,7 +190,19 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             {/* Abschnitt 3 — Anschrift */}
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Anschrift</div>
-              {field("streetAndNumber", "Straße und Hausnummer", { placeholder: "Musterstraße 1", maxLength: 200 })}
+              <AddressSuggestInput
+                id="abk-streetAndNumber"
+                label="Straße und Hausnummer"
+                value={form.streetAndNumber}
+                onChange={(v) => upd("streetAndNumber", v)}
+                onSelect={(item) => upd("streetAndNumber",
+                  applyStreetSuggestion(form.streetAndNumber, typeof item === "string" ? item : item.street))}
+                suggestions={addressCheck.streetOptions}
+                placeholder="Musterstraße 1"
+                maxLength={200}
+                error={errors.streetAndNumber}
+                autoComplete="address-line1"
+              />
               {field("addressAdd", "Adresszusatz", { optional: true, placeholder: "Etage, c/o …", maxLength: 100 })}
               <div className="field-row field-row-2">
                 <div className="field">
@@ -189,8 +222,26 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                         ? <span className="field-hint">Beispiel: {postalCodeExample(form.country)}</span>
                         : (!isPostalCodeRequired(form.country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
                 </div>
-                {field("city", "Ort", { placeholder: "Berlin" })}
+                <AddressSuggestInput
+                  id="abk-city"
+                  label="Ort"
+                  value={form.city}
+                  onChange={(v) => upd("city", v)}
+                  onSelect={(item) => upd("city", typeof item === "string" ? item : item.city)}
+                  suggestions={addressCheck.cityOptions}
+                  placeholder="Berlin"
+                  error={errors.city}
+                  autoComplete="address-level2"
+                />
               </div>
+              {/* Ergebnis der Adressprüfung — nur sichtbar, wenn es etwas zu sagen gibt. */}
+              <AddressStatusLine
+                status={addressCheck.status}
+                acknowledged={addressCheck.acknowledged}
+                onAcknowledge={addressCheck.acknowledge}
+                citySuggestions={addressCheck.cityOptions}
+                onPickCity={(c) => upd("city", c)}
+              />
               {field("state", "Bundesland / Region", { optional: true, placeholder: "z. B. Berlin", maxLength: 100 })}
               <div className="field">
                 <label className="field-label" htmlFor="abk-country">Land</label>

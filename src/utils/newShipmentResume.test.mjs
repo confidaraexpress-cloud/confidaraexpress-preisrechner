@@ -238,8 +238,14 @@ test("Verdrahtung: laufende Anfrage blockiert einen zweiten Klick (keine Doppelr
   const gesetztIdx = CALCULATE.indexOf("calcInFlight.current = true;");
   assert.ok(gesetztIdx > CALCULATE.indexOf("const errs = getErrors(form);"),
     "Guard darf erst nach der Validierung gesetzt werden");
-  assert.ok(PAGE_CODE.includes("disabled={loading || !calcValid || saving}"),
-    "CTA muss waehrend Laden/Speichern deaktiviert bleiben");
+  // Geprueft werden die BEDINGUNGEN, nicht der genaue Wortlaut: der Ausdruck darf um
+  // weitere Sperrgruende wachsen (z. B. eine nachweislich widerspruechliche Adresse),
+  // solange Laden, Ungueltigkeit und Speichern weiterhin sperren.
+  const ctaDisabled = (PAGE_CODE.match(/disabled=\{loading \|\| !calcValid \|\| saving[^}]*\}/) || [])[0];
+  assert.ok(ctaDisabled, "CTA muss waehrend Laden/Speichern deaktiviert bleiben");
+  for (const grund of ["loading", "!calcValid", "saving"]) {
+    assert.ok(ctaDisabled.includes(grund), `Sperrgrund ${grund} fehlt am CTA`);
+  }
 });
 
 test("Verdrahtung: ungültige Daten senden keinen Request und markieren die Felder", () => {

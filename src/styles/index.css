@@ -53,4 +53,9 @@
    Toolbar, Listenrahmen, Dialoge, Drawer und Zustandsflächen. Steht als
    EINZIGE Ebene NACH den Bereichs-Stylesheets — anders als primitives.css,
    das deren Sonderfälle bewusst stehen ließ, führt diese Ebene sie zusammen. */
+/* Adressvalidierung (Vorschlagsfeld + Statuszeile). Reiner Zusatz-Scope, wird von
+   allen Adressformularen genutzt (Sendung, Adressbuch, Auftrag) und kollidiert mit
+   keinem Bereichs-Stylesheet. Steht VOR patterns.css, damit die Musterebene wie bei
+   allen Bereichs-Stylesheets das letzte Wort behaelt. */
+@import './address-validation.css';
 @import './patterns.css';

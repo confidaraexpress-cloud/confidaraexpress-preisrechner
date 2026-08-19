@@ -8,6 +8,10 @@ import { formatUnits } from "../../utils/inventoryView.mjs";
 // keine zweite Länderdatei, keine zweite Adressbuchlogik.
 import { countries } from "../../utils/countries";
 import { mapAddressToOrderRecipient, TAB_RECIPIENT } from "../../utils/addressBookView.mjs";
+import { AddressSuggestInput } from "../address/AddressSuggestInput";
+import { AddressStatusLine } from "../address/AddressStatusLine";
+import { useAddressValidation } from "../../hooks/useAddressValidation";
+import { applyStreetSuggestion } from "../../utils/addressValidationView.mjs";
 import {
   ORDER_RECIPIENT_LIMITS, emptyOrderRecipient, postalCodeRequirement,
   validateOrderRecipient, normalizeOrderRecipient, reservationPreview,
@@ -196,6 +200,21 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
     }
   };
 
+  // Adressprüfung der Lieferadresse — dieselbe zentrale Logik wie in „Neue Sendung" und im
+  // Adressbuch. Ein Auftrag reserviert nur Bestand; die Prüfung blockiert das Anlegen NICHT.
+  const addressCheck = useAddressValidation({
+    country: recipient.country, postalCode: recipient.postalCode,
+    city: recipient.city, street: recipient.streetAndNumber,
+  });
+
+  // Dieselbe Regel wie in den anderen Adressformularen: genau ein Ort wird ergänzt,
+  // mehrere bleiben Vorschläge.
+  useEffect(() => {
+    if (addressCheck.cityOptions.length === 1 && !String(recipient.city || "").trim()) {
+      setRecipient((cur) => (String(cur.city || "").trim() ? cur : { ...cur, city: addressCheck.cityOptions[0] }));
+    }
+  }, [addressCheck.cityOptions]);
+
   const plzRegel = postalCodeRequirement(recipient.country);
   const positionsFehler = positionErrors(positions);
   const absendbar = canSubmitOrder({ recipient, positions });
@@ -237,8 +256,16 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
                 error={errs.fullName} maxLength={ORDER_RECIPIENT_LIMITS.fullName} autoComplete="name" />
         </div>
         <div className="inv-grid-2">
-          <Feld id="o-street" label="Straße und Hausnummer *" value={recipient.streetAndNumber} onChange={set("streetAndNumber")}
-                error={errs.streetAndNumber} maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber} autoComplete="address-line1" />
+          <AddressSuggestInput
+            id="o-street" label="Straße und Hausnummer" required
+            value={recipient.streetAndNumber}
+            onChange={(v) => set("streetAndNumber")(v)}
+            onSelect={(item) => set("streetAndNumber")(
+              applyStreetSuggestion(recipient.streetAndNumber, typeof item === "string" ? item : item.street))}
+            suggestions={addressCheck.streetOptions}
+            error={errs.streetAndNumber}
+            maxLength={ORDER_RECIPIENT_LIMITS.streetAndNumber}
+            autoComplete="address-line1" />
           <Feld id="o-add" label="Adresszusatz" value={recipient.addressAddition} onChange={set("addressAddition")}
                 maxLength={ORDER_RECIPIENT_LIMITS.addressAddition} autoComplete="address-line2" />
         </div>
@@ -251,8 +278,15 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             <Feld id="o-zip" label={plzRegel.required ? "PLZ *" : "PLZ"} value={recipient.postalCode} onChange={set("postalCode")}
                   error={errs.postalCode} maxLength={ORDER_RECIPIENT_LIMITS.postalCode} autoComplete="postal-code" />
           )}
-          <Feld id="o-city" label="Ort *" value={recipient.city} onChange={set("city")}
-                error={errs.city} maxLength={ORDER_RECIPIENT_LIMITS.city} autoComplete="address-level2" />
+          <AddressSuggestInput
+            id="o-city" label="Ort" required
+            value={recipient.city}
+            onChange={(v) => set("city")(v)}
+            onSelect={(item) => set("city")(typeof item === "string" ? item : item.city)}
+            suggestions={addressCheck.cityOptions}
+            error={errs.city}
+            maxLength={ORDER_RECIPIENT_LIMITS.city}
+            autoComplete="address-level2" />
           <div className="inv-field">
             <label className="field-label" htmlFor="o-country">Land *</label>
             {/* Sichtbar der Landesname, gespeichert und gesendet unverändert der
@@ -266,6 +300,14 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             {errs.country && <p className="inv-field-error">{errs.country}</p>}
           </div>
         </div>
+        {/* Ergebnis der Adressprüfung — erscheint nur, wenn es etwas zu sagen gibt. */}
+        <AddressStatusLine
+          status={addressCheck.status}
+          acknowledged={addressCheck.acknowledged}
+          onAcknowledge={addressCheck.acknowledge}
+          citySuggestions={addressCheck.cityOptions}
+          onPickCity={(c) => set("city")(c)}
+        />
         <div className="inv-grid-2">
           <Feld id="o-phone" label="Telefon" value={recipient.phone} onChange={set("phone")}
                 maxLength={ORDER_RECIPIENT_LIMITS.phone} autoComplete="tel" />

@@ -657,6 +657,58 @@ um (`flex-wrap`), es wird nichts gestaucht und nichts abgeschnitten.
   Baseline unangetastet, Snapshot ohne Adressbuchbezug, kein zweiter Picker) und
   `src/utils/orderCreateUx.test.mjs` (Regression des Auftragsdialogs).
 
+## Adressvalidierung im Formular — vor jeder Änderung daran lesen
+
+Jedes Adressformular (Neue Sendung, Adressbuch, Auftragsdialog) prüft Land, PLZ, Ort und
+Straße gegen ein offenes Verzeichnis und schlägt Orte und Straßen vor. Das **ergänzt** die
+bestehende Formatprüfung (`postalCode.mjs`, generierte libaddressinput-Regeln) und ersetzt
+sie nicht — beide laufen nebeneinander.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/addressValidationView.mjs` | Zustände, Fingerabdruck, Texte |
+| Ablauf | `hooks/useAddressValidation.js` | Entprellung, Abbruch, Sequenz, Invalidierung |
+| Eingabe | `components/address/AddressSuggestInput.jsx` | EIN Vorschlagsfeld für alle Formulare |
+| Anzeige | `components/address/AddressStatusLine.jsx` | Statuszeile, „trotzdem verwenden" |
+| Zugriff | `api/addressValidationApi.js` | einziger Weg zur CE-Adress-API |
+
+**Verbindlich:**
+
+- **Nur ein eindeutiger Widerspruch blockiert.** `addressBlocksSubmit()` gibt ausschließlich
+  bei `invalid` true zurück. `unverified` und `unavailable` blockieren **nie** — eine
+  Datenlücke, ein Neubaugebiet oder ein Ausfall des Prüfdienstes darf einen realen Kunden
+  nicht am Versand hindern. Beide Zustände bieten stattdessen „Adresse trotzdem verwenden".
+- **Nicht unterstützte Länder verhalten sich exakt wie vorher.** Außerhalb DE/AT/CH/LI wird
+  nicht gefragt, nichts angezeigt und nichts blockiert.
+- **Das Frontend entscheidet nichts.** Keine Ortsliste, keine Straßenliste, keine
+  Landesdatenbank im Client. Jeder Status kommt aus der serverbestätigten Antwort; eine
+  unbekannte oder kaputte Antwort wird zu `unverified`, nie zu `invalid`.
+- **Die Hausnummer gilt nie als bestätigt.** Der Text lautet bewusst „PLZ, Ort und Straße
+  bestätigt". `houseNumberVerified` wird auch bei einer manipulierten Antwort auf `false`
+  gezwungen. Ein Vorschlag korrigiert die Schreibweise der Straße und **behält die
+  Hausnummer des Kunden** — sie wird weder verworfen noch erfunden.
+- **Genau ein Ort wird ergänzt, mehrere nie.** Auto-Fill greift nur in ein LEERES Feld und
+  nur bei genau einem Treffer; bei mehreren gültigen Orten bleiben es Vorschläge. Ein
+  bereits eingetragener Ort wird nie überschrieben.
+- **Jede Änderung an Land, PLZ, Ort oder Straßenname verwirft die Bestätigung**
+  (`addressFingerprint`). Die Hausnummer steht bewusst NICHT im Fingerabdruck — sie wird
+  ohnehin nie geprüft, ein Verfall bei jedem Tippen wäre Schikane.
+- **Entwürfe bleiben unvollständig speicherbar.** Der Entwurfsknopf hängt unverändert allein
+  an `canExplicitSave`; die Adressprüfung fasst `form_drafts` nicht an. Auch das Adressbuch
+  blockiert das Speichern nicht — dort ist die Prüfung reine Hilfestellung.
+- **Ein Feld, ein Muster.** `AddressSuggestInput` ist ein normales Eingabefeld mit
+  Vorschlagsliste (Combobox: `aria-expanded`/`-controls`/`-activedescendant`, Pfeiltasten,
+  Enter, Escape, Klick außerhalb). **Kein Auswahlzwang** — freies Tippen bleibt jederzeit
+  möglich, sonst wären lückenhafte Datenbestände ein Versandhindernis. Höchstens acht
+  Vorschläge, Liste so breit wie das Feld, `max-height` — sie kann auf keinem Viewport
+  aus dem Bild laufen.
+- **Anfragehygiene:** 300 ms Entprellung, `AbortController` **und** Sequenzzähler (eine
+  bereits unterwegs befindliche Antwort darf ein neueres Ergebnis nie überschreiben), ein
+  Abbruch erzeugt keine Fehlermeldung, Straßensuche erst ab zwei Zeichen und nur innerhalb
+  einer bekannten PLZ/Ort-Kombination.
+- Governance: `src/utils/addressValidationUx.test.mjs` (36 Tests) und
+  `tests/e2e/addressValidation.test.mjs` (10 Browser-Smokes gegen gemocktes Backend).
+
 ## Dashboard-Navigationsmodell
 
 Die Navigation zwischen Dashboard-Unterseiten läuft **nicht über React Router URLs**, sondern über einen lokalen `page`-State in `DashboardPage.jsx`:

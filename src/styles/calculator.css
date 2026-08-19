@@ -315,6 +315,54 @@
 .booking-total-label { font-size: 15px; font-weight: 600; color: var(--navy); }
 .booking-total-amount { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--blue2); }
 .booking-payment-note { text-align: right; font-size: 11px; color: var(--ce-color-text-muted); margin-top: 4px; }
+/* ── Gutscheinfeld (Bestellübersicht, Schritt 2) ───────────────────────────────
+   Bewusst KEINE eigene Karte: das Feld liegt innerhalb der bestehenden Übersicht,
+   getrennt nur durch eine dünne Linie. Es nutzt die globalen Primitives (.btn,
+   .field-input) und bringt kein zweites Bedienmuster mit. Alle Farben aus den
+   Foundation-Rollen — keine eigenen Hexwerte, kein Verlauf, kein Glow. */
+.booking-voucher { padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border); }
+.booking-voucher-label {
+  display: block; margin-bottom: 6px;
+  font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-text-secondary);
+}
+/* Zeile bricht auf schmalen Viewports um; der Knopf behält seine Bedienbreite,
+   das Eingabefeld gibt nach (min-width: 0 verhindert das Sprengen der Zeile). */
+.booking-voucher-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.booking-voucher-input { flex: 1 1 200px; min-width: 0; }
+.booking-voucher-apply { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; }
+.booking-voucher-msg { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--ce-color-text-secondary); }
+
+.booking-voucher-applied-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.booking-voucher-applied-row > svg { color: var(--ce-color-status-success-fg); flex-shrink: 0; }
+.booking-voucher-applied-text {
+  display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline;
+  flex: 1 1 auto; min-width: 0;
+  font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary);
+}
+.booking-voucher-applied-meta { font-weight: 400; color: var(--ce-color-text-muted); overflow-wrap: anywhere; }
+.booking-voucher-remove { flex: 0 0 auto; }
+
+/* Rabatt- und Endbetragszeilen. „Zu zahlen" trägt dieselbe Auszeichnung wie der
+   bisherige Gesamtbetrag, damit der zu zahlende Betrag die dominante Zahl bleibt. */
+.booking-discount-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 6px; }
+.booking-discount-label { font-size: 13px; color: var(--ce-color-text-secondary); }
+.booking-discount-val {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 13px; font-weight: 600; color: var(--ce-color-text-primary);
+}
+
+/* Testsendungs-/Testlabel-Hinweis. Warnrolle, keine erfundene Farbe. */
+.booking-test-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; margin: 12px 0 0;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-status-warning-surface);
+  border: 1px solid var(--ce-color-status-warning-border);
+}
+.booking-test-note svg { color: var(--ce-color-status-warning-fg); flex-shrink: 0; margin-top: 1px; }
+.booking-test-note span { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-primary); }
+
 .booking-printer-note {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 10px 12px; margin-bottom: 16px;

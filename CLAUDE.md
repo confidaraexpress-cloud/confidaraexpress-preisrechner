@@ -459,7 +459,10 @@ komfortabel erreichbar, aber ausschließlich durch eine **bewusste Aktion**.
   navigiert direkt mit `state.page`) und ist deshalb von der Zurücksetzung nicht
   betroffen.
 - Governance: `utils/newShipmentEmptyState.test.mjs` (24 Tests) und
-  `tests/e2e/newShipmentEmptyState.test.mjs` (9 Browser-Smokes).
+  `tests/e2e/newShipmentEmptyState.test.mjs` (11 Browser-Smokes; der
+  Breitentest läuft bewusst über den direkten Einstieg — den Weg über die
+  Sidebar prüft S3, und der Drawer unter 860 px wäre dort nur ein zweiter,
+  für das Layoutziel bedeutungsloser Fehlerpfad).
 
 ## Paketmaße sind Pflicht — kein Ersatzwert, nirgends
 

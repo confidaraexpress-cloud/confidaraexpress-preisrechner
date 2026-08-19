@@ -431,7 +431,12 @@ test("S8 — die Buchungsübersicht zeigt Gewicht UND L × B × H", async () => 
 
 // Drei Breiten, eine Aussage: die neuen Placeholder, die Pflichtsterne, das
 // Länderfeld und die Hinweiszeile dürfen auf keiner davon Layoutprobleme
-// erzeugen. Unter 860 px liegt die Navigation im Drawer.
+// erzeugen.
+//
+// Bewusst über den DIREKTEN Einstieg, nicht über die Sidebar: der Weg dorthin
+// ist die Aussage von S3, hier geht es allein um das Layout der Seite. Unter
+// 860 px liegt die Navigation im Drawer — ihn je Breite zu öffnen brächte
+// einen zweiten, für dieses Ziel bedeutungslosen Fehlerpfad in den Test.
 for (const [name, viewport] of [
   ["390 px", { width: 390, height: 780 }],
   ["768 px", { width: 768, height: 900 }],
@@ -440,12 +445,7 @@ for (const [name, viewport] of [
 test(`S9 — ${name}: kein horizontaler Überlauf, Felder und Hinweis lesbar`, async () => {
   const { ctx, page, fehler } = await neueSeite(viewport);
   try {
-    await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    // Unter 860 px liegt die Navigation im Drawer.
-    const burger = page.locator(".mobile-topbar button, .pp-burger").first();
-    if (viewport.width < 860 && await burger.count()) await burger.click();
-    await page.waitForTimeout(300);
-    await ueberSidebarZuNeueSendung(page);
+    await zuNeueSendung(page);
 
     const ueberlauf = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth);

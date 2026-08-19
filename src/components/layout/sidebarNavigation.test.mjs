@@ -121,23 +121,37 @@ test("7 — ein Wert trägt den gesamten Klappzustand (Accordion by construction
     "das Accordion-Umschalten fehlt");
 });
 
-test("8 — nichts öffnet sich von selbst; der aktive Bereich wird nur MARKIERT", () => {
-  // Bewusste Umkehr der ersten Fassung: dort öffnete ein Effekt die Gruppe des
-  // aktuellen Bereichs. Der geschlossene Zustand ist jetzt der Normalfall —
-  // auch auf /inventory/products/1 bleibt „Lager & Aufträge" nach einem Reload
-  // zu. Kein Effekt darf das aushebeln.
+test("8 — die Hervorhebung folgt AUSSCHLIESSLICH dem Klappzustand", () => {
+  // Zwei bewusste Umkehrungen gegenüber den Vorfassungen: es öffnet sich nichts
+  // von selbst, UND aus der Route wird auch keine Hervorhebung mehr abgeleitet.
+  // Vorher leuchtete „Lager & Aufträge" auf /stock, während die Gruppe nach
+  // einem Reload zu war — die Sidebar behauptete einen geöffneten Bereich, den
+  // es nicht gab. Jetzt gibt es genau EINE Aussage: hervorgehoben ist, was der
+  // Nutzer geöffnet hat.
   assert.ok(!/useEffect/.test(code), "die Sidebar darf keinen Klappzustand per Effekt setzen");
-  assert.ok(!/setOpenGroup\(activeGroupId\)/.test(code), "der aktive Bereich darf nicht automatisch aufklappen");
 
-  // Der aktive Bereich wird weiterhin aus dem page-Wert abgeleitet — aber nur
-  // noch, um den Kopf zu markieren.
-  assert.ok(/activeGroupId = NAV_GROUPS\.find\(\(g\) => g\.items\.some\(\(i\) => i\.id === page\)\)/.test(code),
-    "der aktive Bereich wird nicht generisch aus dem page-Wert abgeleitet");
-  assert.match(code, /active \? " pp-nav-group--active" : ""/, "der aktive Bereich wird nicht markiert");
+  // Aus dem page-Wert entsteht KEIN Gruppenzustand mehr — weder Klappzustand
+  // noch Hervorhebung. Er markiert nur noch den einzelnen aktiven Eintrag.
+  assert.ok(!/activeGroupId/.test(code),
+    "aus dem page-Wert darf keine Gruppenmarkierung mehr abgeleitet werden");
+  assert.ok(!/pp-nav-group--active/.test(code), "die routenabhängige Gruppenklasse ist noch vorhanden");
+  assert.match(code, /"pp-nav-group" \+ \(open \? " pp-nav-group--open" : ""\)/,
+    "die Gruppenklasse hängt nicht allein am Klappzustand");
+
+  // Es gibt GENAU EINE Regel, die den Kopf hervorhebt, und die hängt am
+  // Klappzustand. Eine zweite Quelle würde die Aussage wieder aufweichen.
+  // Den WERT prüfen, nicht per Lookahead überspringen: `\s*(?!none)` gibt beim
+  // Backtracking das Leerzeichen frei und greift dann auf ihm — `background: none`
+  // rutschte damit durch.
+  const kopfFlaechen = [...cssOhneKommentar.matchAll(/^([^{}\n]*\.pp-nav-group-head)\s*\{([^}]*)\}/gm)]
+    .filter(([, , decls]) => (decls.match(/^\s*background:\s*([^;]+)/m)?.[1] ?? "none").trim() !== "none")
+    .map(([, sel]) => sel.trim());
+  assert.deepEqual(kopfFlaechen, [".pp-nav-group--open .pp-nav-group-head"],
+    `die Hervorhebung des Kopfes kommt aus mehr als einer Quelle: ${kopfFlaechen.join(" | ")}`);
 
   // Die Markierung ist SUBTIL — deutlich schwächer als ein aktiver Eintrag:
   // flache Fläche statt Verlauf, schmalere Kante, keine Border.
-  const kopfAktiv = regel(".pp-nav-group--active .pp-nav-group-head");
+  const kopfAktiv = regel(".pp-nav-group--open .pp-nav-group-head");
   const eintragAktiv = regel(".nitem.on");
   assert.ok(kopfAktiv && eintragAktiv, "eine der beiden Aktivregeln fehlt");
   assert.match(kopfAktiv, /background:\s*var\(--ce-sidebar-active-bg-soft\)/,
@@ -157,8 +171,8 @@ test("8 — nichts öffnet sich von selbst; der aktive Bereich wird nur MARKIERT
 
   // Auch die route-basierten Seiten markieren ihren Bereich (Preisrechner →
   // Versand, /inventory/products/:id → Lager & Aufträge).
-  assert.match(layout, /"\/calculator" \? "calculator"/, "der Preisrechner markiert seinen Bereich nicht");
-  assert.match(layout, /startsWith\("\/inventory\/products"\)\s*\?\s*"products"/, "das Artikeldetail markiert seinen Bereich nicht");
+  assert.match(layout, /"\/calculator" \? "calculator"/, "der Preisrechner markiert seinen EINTRAG nicht");
+  assert.match(layout, /startsWith\("\/inventory\/products"\)\s*\?\s*"products"/, "das Artikeldetail markiert seinen EINTRAG nicht");
 });
 
 test("9 — der Klappzustand wird nicht persistiert und überlebt keinen Reload", () => {

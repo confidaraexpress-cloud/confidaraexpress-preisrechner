@@ -118,9 +118,10 @@ test("3 — alle drei Gruppen teilen sich EIN Klappsystem und sagen ihren Zustan
   assert.match(code, /^let sitzungsOffeneGruppe = null;$/m, "der Sitzungswert startet nicht bei null");
   assert.ok(/useState\(sitzungsOffeneGruppe\)/.test(code), "der Startwert kommt nicht aus dem Sitzungswert");
   assert.ok(!/useEffect/.test(code), "kein Effekt darf den Klappzustand setzen");
-  // Der aktive Bereich wird trotzdem markiert — nur eben ohne aufzuklappen.
-  assert.ok(/activeGroupId = NAV_GROUPS\.find/.test(code),
-    "der aktive Bereich wird nicht aus dem page-Wert abgeleitet");
+  // Und die Route erzeugt auch keine Hervorhebung mehr: hervorgehoben ist
+  // ausschließlich die Gruppe, die der Nutzer selbst geöffnet hat.
+  assert.ok(!/activeGroupId|pp-nav-group--active/.test(code),
+    "aus dem page-Wert darf keine Gruppenmarkierung mehr abgeleitet werden");
 
   // Kein persistierter Zustand: reiner UI-State dieser Komponente.
   assert.ok(!/localStorage|sessionStorage/.test(code), "der Klappzustand darf nicht persistiert werden");

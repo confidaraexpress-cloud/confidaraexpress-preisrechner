@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Icon } from "../ui/Icon";
 import { InlineError, ProductPicker, CollapsibleSection } from "./InventoryShared";
-import { RecipientAddressPicker } from "./RecipientAddressPicker";
+import { AddressPicker } from "../addressbook/AddressPicker";
 import { getProduct, getProducts, getWarehouses } from "../../api/inventoryApi";
 import { formatUnits } from "../../utils/inventoryView.mjs";
 // Länderliste und Adressbuchauslegung kommen aus den bestehenden Quellen —
 // keine zweite Länderdatei, keine zweite Adressbuchlogik.
 import { countries } from "../../utils/countries";
-import { mapAddressToOrderRecipient } from "../../utils/addressBookView.mjs";
+import { mapAddressToOrderRecipient, TAB_RECIPIENT } from "../../utils/addressBookView.mjs";
 import {
   ORDER_RECIPIENT_LIMITS, emptyOrderRecipient, postalCodeRequirement,
   validateOrderRecipient, normalizeOrderRecipient, reservationPreview,
@@ -209,8 +209,13 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
         <legend className="inv-legend">Empfänger</legend>
         <p className="inv-field-hint">An diese Adresse geht die spätere Sendung. Sie können sie hier eingeben oder aus dem Adressbuch übernehmen.</p>
 
+        {/* Dieselbe Auswahl wie in „Neue Sendung", nur mit anderem Reiter — ein
+            Bauteil, zwei Aufrufer (components/addressbook/AddressPicker).
+            Hier bleibt sie bewusst IN-FLOW aufklappend (die schwebende Fassung
+            gehört in die Abschnittsüberschrift eines langen Formulars); nur der
+            Reiter kommt jetzt als Prop statt festverdrahtet. */}
         {addressPickerOpen
-          ? <RecipientAddressPicker onSelect={adresseUebernehmen} onClose={() => setAddressPickerOpen(false)} disabled={busy} />
+          ? <AddressPicker tab={TAB_RECIPIENT} onSelect={adresseUebernehmen} onClose={() => setAddressPickerOpen(false)} disabled={busy} />
           : (
             <div className="inv-addrpicker-open">
               <button type="button" className="btn btn-outline btn-sm" onClick={() => { setPrefillNote(""); setAddressPickerOpen(true); }}>

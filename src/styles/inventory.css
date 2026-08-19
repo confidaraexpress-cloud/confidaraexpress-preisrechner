@@ -423,18 +423,14 @@
   letter-spacing: 0.04em; color: var(--ce-color-text-muted); white-space: nowrap;
 }
 
-/* ── Empfänger aus dem Adressbuch ──
-   Nutzt die Auswahlfläche der Artikelsuche (.inv-picker*) — im selben Dialog
-   soll nicht zweierlei Listenmaterial stehen. Eigen sind nur die Kopfzeile mit
-   „Abbrechen" und die zweizeilige Adresszeile. */
+/* ── Auslöserzeile „Aus Adressbuch auswählen" ──
+   Nur noch die Zeile mit Knopf und Übernahmehinweis. Die Auswahlfläche selbst
+   ist mit der Verallgemeinerung des Pickers nach `addressbook.css` gewandert
+   (`.abk-pick*`) — sie wird jetzt von Auftragsdialog UND „Neue Sendung"
+   genutzt und gehört damit nicht mehr in ein Bereichs-Stylesheet des Lagers.
+   Die früheren `.inv-addrpicker-head/-item/-name/-meta` sind ersatzlos
+   entfallen, nicht umbenannt. */
 .inv-addrpicker-open { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; }
-.inv-addrpicker-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
-.inv-addrpicker-item { flex-direction: column; align-items: flex-start; gap: 2px; }
-.inv-addrpicker-name { font-weight: 600; min-width: 0; overflow-wrap: break-word; }
-.inv-addrpicker-meta { color: var(--ce-color-text-muted); min-width: 0; overflow-wrap: break-word; }
-/* Der Hinweis unter der Liste trägt ein Icon — es sitzt auf der ersten Zeile,
-   der Text läuft daneben weiter (kein Blockeinzug pro Folgezeile). */
-.inv-addrpicker .inv-field-hint svg { vertical-align: -2px; margin-right: 4px; }
 
 /* ── Auftragspositionen ── */
 .inv-positions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); }
@@ -594,7 +590,6 @@
   .inv-ops-head .btn,
   .inv-ops-all,
   .inv-addrpicker-open .btn,
-  .inv-addrpicker-head .btn,
   .inv-position-qty .btn { min-height: 44px; }
   .inv-toolbar-check { min-height: 44px; }
   /* Die aufklappbare Kennzahlkarte ist selbst das Bedienelement — sie ist

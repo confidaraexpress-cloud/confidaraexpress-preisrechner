@@ -97,6 +97,26 @@ export function repriceInsurance(payload, { signal } = {}) {
   });
 }
 
+// ── Gutschein prüfen / Checkout-Vorschau (auth) ──────────────────────────────
+// POST /api/jumingo/cart-total — der Server bepreist den Entwurf beim Provider und prüft
+// optional einen Gutscheincode.
+//
+// WICHTIG (Backend-Vertrag): Gesendet werden AUSSCHLIESSLICH Auswahlangaben — welche Sendung,
+// welcher Tarif, welcher Codewunsch. NIEMALS Beträge, Rabatthöhen oder Prozentwerte: das
+// Backend würde sie ohnehin ignorieren, und ein Client darf keinen Preis vorgeben. Zurück
+// kommen ausschließlich fertige CE-Kundenbeträge (Allowlist) — keine Providerpreise.
+//
+// Das Frontend entscheidet NIE selbst, ob ein Code gilt. Es gibt keine clientseitige Regel
+// „Code X ⇒ 100 %"; der 0-Euro-Zustand entsteht allein aus dieser serverbestätigten Antwort.
+export function checkVoucher({ shipmentId, tariffId, shipperTariffId, voucherCode }, { signal } = {}) {
+  return apiFetch(`/api/jumingo/cart-total`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ shipmentId, tariffId, shipperTariffId, voucherCode }),
+    signal,
+  });
+}
+
 // ── Tracking (auth) ──────────────────────────────────────────────────────────
 // Liest die additiven Tracking-Felder defensiv: Der Backend-Vertrag legt noch
 // nicht endgültig fest, ob trackingAvailable/trackingNumber/trackingStatus/

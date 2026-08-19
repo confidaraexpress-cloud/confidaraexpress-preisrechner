@@ -144,10 +144,16 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   // steht in einer schmalen Tabellenspalte. Genau der sanktionierte Fall —
   // lokal an EINEM Element, nicht auf einem Container. Der Artikelpicker teilt
   // sich diese Klasse, statt eine zweite Regel zu führen.
+  //
+  // +1 (32) für `.booking-voucher-applied-meta`: ein Gutscheincode ist ein technischer
+  // String ohne Wortgrenzen (bis 64 Zeichen, vom Provider vergeben) und steht in der
+  // Bestätigungszeile der Bestellübersicht. Ohne die Regel schiebt ein langer Code die
+  // Zeile auf 390 px aus der Karte. Wieder der sanktionierte Fall: lokal an EINEM
+  // eigenen Element, nicht auf der Zeile und nicht auf einem Container.
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 31, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 31)`);
+  assert.ok(gesamt <= 32, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 32)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

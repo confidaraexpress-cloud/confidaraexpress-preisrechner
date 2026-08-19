@@ -11,7 +11,11 @@ import { money } from "../../utils/formatters";
 // bestätigt ist (Standard/Premium ohne Warenwert, Repricing, stale, Fehler), wird
 // KEIN Gesamtbetrag dargestellt — nur der belegte Versandpreis plus ein Hinweis
 // zum Versicherungszustand.
-export function PriceSummaryModule({ priceView, paymentTerm }) {
+// `voucherLines` ist null, solange kein Gutschein bestätigt ist — dann bleibt die Darstellung
+// EXAKT wie bisher (ein Gesamtbetrag). Mit bestätigtem Gutschein treten Zwischensumme,
+// Rabattzeile und „Zu zahlen" an die Stelle des Gesamtbetrags. Die Werte kommen fertig aus der
+// serverbestätigten Antwort — hier wird nichts gerechnet und nichts abgezogen.
+export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
   const insured = v.selectedInsuranceType === "standard" || v.selectedInsuranceType === "premium";
@@ -54,10 +58,32 @@ export function PriceSummaryModule({ priceView, paymentTerm }) {
               <span className="text-sm font-bold booking-confirm-val">{money(v.insuranceGross)}</span>
             </div>
           )}
-          <div className="booking-total-row mt-8">
-            <span className="booking-total-label">Gesamtbetrag brutto</span>
-            <span className="booking-total-amount">{money(v.totalGross)}</span>
-          </div>
+          {voucherLines && voucherLines.hasVoucher ? (
+            <>
+              <div className="booking-total-row mt-8">
+                <span className="booking-total-label">Zwischensumme</span>
+                <span className="text-sm font-bold booking-confirm-val">{money(voucherLines.subtotalGross)}</span>
+              </div>
+              <div className="booking-discount-row">
+                <span className="booking-discount-label">
+                  Gutschein {voucherLines.code}
+                  {Number.isFinite(voucherLines.percent) ? ` · ${voucherLines.percent} %` : ""}
+                </span>
+                {/* Minuszeichen gehört zur Darstellung des Rabatts; der Betrag selbst kommt
+                    unverändert aus der Serverantwort. */}
+                <span className="booking-discount-val">−{money(voucherLines.discountGross)}</span>
+              </div>
+              <div className="booking-total-row mt-8">
+                <span className="booking-total-label">Zu zahlen</span>
+                <span className="booking-total-amount">{money(voucherLines.finalGross)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="booking-total-row mt-8">
+              <span className="booking-total-label">Gesamtbetrag brutto</span>
+              <span className="booking-total-amount">{money(v.totalGross)}</span>
+            </div>
+          )}
         </>
       ) : (
         <>

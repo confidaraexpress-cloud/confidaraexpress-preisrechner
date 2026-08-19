@@ -8,10 +8,14 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 // deaktiviert — dieselbe Freigabe-Bedingung, die auch der Guard in doBook nutzt
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
-  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking,
+  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
   onBook, onNavigateShipments, onNavigateNew, userEmail,
 }) {
-  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking });
+  // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
+  // solange darf nicht bestellt werden. Die bestehende Gate-Funktion bleibt unverändert;
+  // diese Bedingung kommt additiv dazu.
+  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking })
+    && voucherChecking !== true;
   return (
     <>
       {error && <div className="alert alert-error">{error}</div>}

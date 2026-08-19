@@ -918,6 +918,56 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   `shipmentEmailOptions.test.mjs` / `sharedShipmentEmailOptions.test.mjs`
   (10 + 14 Quelltext- + 17 E2E-Tests) decken die beiden Zusatzempfänger ab.
 
+## Gutscheincode im Buchungsschritt 2 — vor jeder Änderung daran lesen
+
+Version 1 unterstützt **ausschließlich den offiziellen JUMiNGO-Testgutschein**. Es ist bewusst
+KEINE Rabattengine: keine Kampagnen, keine Laufzeiten, keine Stapelung, keine Mehrfachgutscheine
+und keine kommerzielle Behandlung anderer Codes.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/voucherView.mjs` | Zustände, Antwortauswertung, Preiszeilen, Invalidierung |
+| Darstellung | `components/booking/VoucherModule.jsx` | Eingabe, Anwenden, Angewendet, Entfernen |
+| Preiszeilen | `components/booking/PriceSummaryModule.jsx` | Zwischensumme · Rabatt · Zu zahlen |
+| Zugriff | `api/client.js` → `checkVoucher()` | einziger Aufrufpfad zum Preview-Endpunkt |
+
+**Verbindlich:**
+
+- **Das Frontend entscheidet NIE über Gültigkeit oder Höhe.** Es gibt keine Codeliste, keine
+  Prozentrechnung und keinen Pfad zu einem 0-Euro-Zustand ohne serverbestätigte Antwort. Der
+  Sandboxcode steht in **keiner** Frontenddatei; ein Test prüft das über alle vier beteiligten
+  Dateien.
+- **Gesendet wird NUR der Code.** Weder `/api/jumingo/cart-total` noch `/book` bekommen Beträge,
+  Prozentwerte oder Rabatthöhen — das Backend ignorierte sie ohnehin und prüft unmittelbar vor der
+  Bestellung erneut. `price_final` bleibt unverändert das bestehende Drift-Gate (der reguläre
+  Anzeigepreis), **nicht** der Rabattwert.
+- **0 ist ein gültiger Betrag.** Nirgends darf eine Falsy-Prüfung daraus „fehlt" machen; die
+  Auswertung nutzt ausschließlich `Number.isFinite`. Ein bestätigter Gutschein ohne belegten
+  `finalGross`/`subtotalGross` gilt als **ungültig** (fail-safe, nicht fail-open).
+- **Position:** unter der Preisaufstellung, VOR Bestätigungen und Bestellknopf, innerhalb der
+  bestehenden Übersichtskarte — **keine zweite große Karte**. Es werden nur die vorhandenen
+  Primitives benutzt (`.field-input`, `.btn`).
+- **Ohne Gutschein bleibt die Preisdarstellung exakt wie bisher** (ein Gesamtbetrag). Erst ein
+  bestätigter Gutschein ersetzt ihn durch Zwischensumme · Rabatt · „Zu zahlen".
+- **Invalidierung folgt einem Fingerabdruck**, nicht einem Effekt je Feld:
+  `voucherInvalidationKey()` listet die preisbildenden Größen **vollständig auf**, damit ein neues
+  Feld eine bewusste Entscheidung erzwingt. Referenznummer, Labelformat und die informativen
+  E-Mail-Optionen stehen bewusst NICHT darin — ein überschießender Verfall wäre genauso störend
+  wie ein fehlender.
+- **Während der Prüfung ist die Bestellung gesperrt** (`doBook`-Guard UND deaktivierter Knopf) —
+  in diesem Moment steht der anzuzeigende Betrag nicht fest.
+- **Ein bestätigter Gutschein zeigt den Testlabel-Hinweis.** Eine Sandbox-Testbuchung erzeugt laut
+  Guide ein TESTLABEL, das nicht für reale Pakete taugt; das darf die Oberfläche nicht verschweigen.
+- **Zwei getrennte Fehlertexte:** „nicht anwendbar" (erneuter Versuch hilft nicht) und
+  „gerade nicht prüfbar" (technisch, erneut versuchen). Beide nennen keine Interna — kein
+  Providername, kein Status, kein Tarif, keine Rolle. Alle Ablehnungsgründe sind für den Kunden
+  ununterscheidbar.
+- **Der Gutschein gehört NICHT in `form_drafts` oder den Vorgang.** Ein Formularentwurf existiert
+  vor Tarif und Checkout; `shippingFlowState.mjs` und der Entwurfs-Snapshot kennen ihn nicht.
+- Governance: `src/utils/voucherUx.test.mjs` (30 Tests) und
+  `tests/e2e/voucherCheckout.test.mjs` (8 Browser-Smokes gegen einen echten Dev-Server mit
+  gemocktem Backend — **niemals eine echte Bestellung**).
+
 ## Verwaltung und Abrechnung (Paket C)
 
 Sendungen, Sendungsdetails, Entwürfe, Tracking (intern + öffentlich),

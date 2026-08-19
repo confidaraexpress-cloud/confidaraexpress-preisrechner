@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
-import { apiFetch, repriceInsurance, saveDraftPickupWindow } from "../api/client";
+import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
 import { Icon } from "../components/ui/Icon";
@@ -29,6 +29,11 @@ import { BookingLiveSummary } from "../components/booking/BookingLiveSummary";
 import { BookingStickySummary } from "../components/booking/BookingStickySummary";
 import { TermsModule } from "../components/booking/TermsModule";
 import { BookingActionModule } from "../components/booking/BookingActionModule";
+import { VoucherModule } from "../components/booking/VoucherModule";
+import {
+  VOUCHER_STATUS, readVoucherResponse, voucherPriceLines,
+  voucherInvalidationKey, shouldInvalidateVoucher, normalizeVoucherInput,
+} from "../utils/voucherView.mjs";
 import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
   autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
@@ -414,6 +419,80 @@ export default function BookingPage() {
     "";
   const insValid = !isInsured || (goodsValueError === "" && insValueError === "");
 
+  // ── Gutschein (JUMiNGO-Testgutschein, Version 1) ────────────────────────────
+  // Kleiner, endlicher State — kein zusätzliches State-Management. Das Frontend entscheidet
+  // NIE selbst über Gültigkeit oder Rabatthöhe: `voucher` enthält ausschließlich das, was der
+  // Server bestätigt hat (utils/voucherView.mjs). Es gibt hier bewusst keine Codeliste und
+  // keine Prozentrechnung.
+  const [voucherInput,  setVoucherInput]  = useState("");
+  const [voucher,       setVoucher]       = useState({ status: VOUCHER_STATUS.IDLE, code: null, percent: null, totals: null });
+  const voucherAbort = useRef(null);
+
+  // Preis-/tarifrelevanter Fingerabdruck des aktuellen Vorgangs. Ändert er sich, verfällt ein
+  // angewendeter Gutschein sofort — sonst stünde ein bestätigter Betrag neben einer inzwischen
+  // anderen Sendung. Referenznummer, Labelformat und die E-Mail-Optionen stehen bewusst NICHT
+  // darin (sie ändern den Preis nicht).
+  const voucherKey = voucherInvalidationKey({
+    tariffId: tariff?.id, shipperTariffId: tariff?.shipper_tariff_id, serviceType: tariff?.serviceType,
+    insuranceType, insuranceValue, goodsValue,
+    weight: bookingData?.form?.weight, length: bookingData?.form?.length,
+    width: bookingData?.form?.width, height: bookingData?.form?.height,
+    packageCount: bookingData?.form?.packageCount,
+    senderCountry: form.s_country, senderZip: form.s_zip,
+    recipientCountry: form.r_country, recipientZip: form.r_zip,
+    shippingDate: bookingData?.form?.shippingDate,
+    pickupWindow: pickupWindow ? `${pickupWindow.from ?? ""}-${pickupWindow.until ?? ""}` : "",
+  });
+  const voucherKeyRef = useRef(voucherKey);
+  useEffect(() => {
+    if (shouldInvalidateVoucher(voucherKeyRef.current, voucherKey)) {
+      voucherKeyRef.current = voucherKey;
+      // Laufende Prüfung abbrechen: ihr Ergebnis gehörte zu einem überholten Zustand.
+      if (voucherAbort.current) voucherAbort.current.abort();
+      setVoucher((prev) => (prev.status === VOUCHER_STATUS.IDLE ? prev
+        : { status: VOUCHER_STATUS.IDLE, code: null, percent: null, totals: null }));
+    } else {
+      voucherKeyRef.current = voucherKey;
+    }
+  }, [voucherKey]);
+
+  // Laufende Gutscheinprüfung beim Verlassen abbrechen.
+  useEffect(() => () => { if (voucherAbort.current) voucherAbort.current.abort(); }, []);
+
+  const applyVoucher = async () => {
+    const code = normalizeVoucherInput(voucherInput);
+    if (!code) return;
+    if (voucherAbort.current) voucherAbort.current.abort();
+    const controller = new AbortController();
+    voucherAbort.current = controller;
+    setVoucher({ status: VOUCHER_STATUS.CHECKING, code: null, percent: null, totals: null });
+    try {
+      const r = await checkVoucher({
+        shipmentId:      bookingData?.shipmentId,
+        tariffId:        tariff?.id,
+        shipperTariffId: tariff?.shipper_tariff_id,
+        voucherCode:     code,
+      }, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      if (!r.ok) { setVoucher({ status: VOUCHER_STATUS.ERROR, code: null, percent: null, totals: null }); return; }
+      const body = await r.json().catch(() => null);
+      setVoucher(readVoucherResponse(body));
+    } catch (e) {
+      // Ein Abbruch ist kein Fehler des Nutzers und erzeugt keine Meldung.
+      if (e && e.name === "AbortError") return;
+      setVoucher({ status: VOUCHER_STATUS.ERROR, code: null, percent: null, totals: null });
+    }
+  };
+
+  const removeVoucher = () => {
+    if (voucherAbort.current) voucherAbort.current.abort();
+    setVoucherInput("");
+    setVoucher({ status: VOUCHER_STATUS.IDLE, code: null, percent: null, totals: null });
+  };
+
+  const voucherApplied  = voucher.status === VOUCHER_STATUS.APPLIED;
+  const voucherChecking = voucher.status === VOUCHER_STATUS.CHECKING;
+
   // ── Zentrales Price-View-Model (Paket B) ────────────────────────────────────
   // EINZIGE Preisquelle für Live-Leiste, Versicherungskarten, Preiszusammenfassung
   // und Buchungs-Gate. Kein Preselect wird lokal zum Gesamtpreis addiert; der
@@ -652,6 +731,9 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
+    // Während einer laufenden Gutscheinprüfung nicht buchen: der angezeigte Betrag steht
+    // in diesem Moment nicht fest. Rein defensiv — der Bestellknopf ist ohnehin deaktiviert.
+    if (voucherChecking) return;
     // Ausschlussgüter-Bestätigung ist Pflicht — zweite Sicherung gegen einen
     // programmatisch ausgelösten Submit (der Buchen-Button ist zusätzlich
     // deaktiviert). Fehlt sie, klare, an der Checkbox aria-verknüpfte Meldung.
@@ -788,6 +870,11 @@ export default function BookingPage() {
           // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
           // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
           labelFormat,
+          // Gutschein: NUR der Code, und nur wenn er serverseitig bestätigt wurde. Es werden
+          // ausdrücklich KEINE Beträge, Prozentwerte oder Rabatthöhen mitgesendet — der Server
+          // ignorierte sie ohnehin und prüft den Gutschein unmittelbar vor der Bestellung
+          // erneut vollständig gegen den Provider. Der Code ist ein Wunsch, keine Zusage.
+          ...(voucherApplied && voucher.code ? { voucherCode: voucher.code } : {}),
           ...insurancePayload,
           ...customsPayload,
         }),
@@ -1307,8 +1394,34 @@ export default function BookingPage() {
                       <span className="text-sm font-bold booking-confirm-val">{packageInfo}</span>
                     </div>
                   )}
-                  <PriceSummaryModule priceView={priceView} paymentTerm={user?.payment_term || 7} />
+                  <PriceSummaryModule
+                    priceView={priceView}
+                    paymentTerm={user?.payment_term || 7}
+                    voucherLines={voucherApplied ? voucherPriceLines({ voucher, fallbackGross: priceView.totalGross }) : null}
+                  />
+                  {/* Gutscheinfeld: unter der Preisaufstellung, VOR Bestätigungen und
+                      Bestellknopf. Bewusst innerhalb derselben Übersichtskarte. */}
+                  <VoucherModule
+                    status={voucher.status}
+                    code={voucher.code}
+                    percent={voucher.percent}
+                    inputCode={voucherInput}
+                    onInputChange={setVoucherInput}
+                    onApply={applyVoucher}
+                    onRemove={removeVoucher}
+                    disabled={loading}
+                  />
                 </div>
+                {voucherApplied && (
+                  <div className="booking-test-note" role="note">
+                    <Icon n="info" s={15} c="currentColor" />
+                    <span>
+                      Testsendung: Diese Buchung wird als Test ausgeführt. Das erzeugte
+                      Versandlabel ist ein <strong>Testlabel</strong> und darf nicht für den
+                      realen Versand verwendet werden.
+                    </span>
+                  </div>
+                )}
                 {modules.printerNote && (
                   <div className="booking-printer-note" role="note">
                     <Icon n="printer" s={15} c="currentColor" />
@@ -1336,6 +1449,7 @@ export default function BookingPage() {
                   prohibitedGoodsAccepted={prohibitedGoodsAccepted}
                   insuranceBlocksBooking={insuranceBlocksBooking}
                   pickupBlocksBooking={pickupHydrationBlocks}
+                  voucherChecking={voucherChecking}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}

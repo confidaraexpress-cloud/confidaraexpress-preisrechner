@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { BILLING_MODES as ADMIN_BILLING_MODES } from "../utils/billingModeView.mjs";
 import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
 import { buildSupportPatchBody } from "../utils/adminSupportView.mjs";
 import { buildPriceMarkupBody } from "../utils/customerMarkup.mjs";
@@ -291,6 +292,54 @@ export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent, expre
     auth: true,
     body: JSON.stringify(body),
   });
+}
+
+// ── Testbuchungsberechtigung (Admin) ─────────────────────────────────────────
+// PUT /admin/users/:id/test-booking — schaltet `users.test_booking_enabled`
+// frei oder entzieht es. Dieselbe Pfadkonvention wie oben: `/admin/…` OHNE
+// führendes `/api`.
+//
+// Der Body enthält AUSSCHLIESSLICH { testBookingEnabled: true|false }:
+//   • KEINE userId im Body — die :id stammt allein aus der Adminroute.
+//   • KEIN Rollen-, Status- oder Aufschlagsfeld — der Endpunkt ändert genau
+//     diese eine Spalte.
+//   • KEINE Auditfelder — wer die Änderung vorgenommen hat, setzt der Server
+//     aus der Adminsitzung.
+//
+// Strikt boolesch: ein anderer Typ wird gar nicht erst gesendet. Das Backend
+// prüft zusätzlich autoritativ (400 INVALID_TEST_BOOKING_REQUEST) — dieser
+// Guard ist Komfort, keine Sicherheit.
+export function setAdminUserTestBooking(userId, enabled) {
+  if (enabled !== true && enabled !== false) return Promise.reject(new Error("invalid_test_booking_value"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/test-booking`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ testBookingEnabled: enabled }),
+  });
+}
+
+// PUT /admin/users/:id/billing-mode — Abrechnungsart eines Kontos setzen.
+//
+// Gesendet wird AUSSCHLIESSLICH der Modus; das ausführende Adminkonto kommt
+// serverseitig aus dem JWT und nie aus dem Body. Ein ungültiger Wert wird gar
+// nicht erst gesendet — die erlaubte Menge ist dieselbe wie im Kundenportal und
+// im Backend (eine Liste, drei Leser).
+export function setAdminUserBillingMode(userId, billingMode) {
+  if (!ADMIN_BILLING_MODES.includes(billingMode)) return Promise.reject(new Error("invalid_billing_mode"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/billing-mode`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ billingMode }),
+  });
+}
+
+// POST /admin/consolidated-invoices/run — den Sammelrechnungslauf manuell anstoßen.
+//
+// Bewusst OHNE Parameter: kein Konto, kein Zeitraum, kein Stichtag. Ein Aufruf, über
+// den sich der Abrechnungsstichtag von außen setzen ließe, wäre ein Weg, einen noch
+// laufenden Zeitraum vorzeitig zu fakturieren.
+export function runConsolidatedInvoicing() {
+  return apiFetch(`/admin/consolidated-invoices/run`, { method: "POST", auth: true });
 }
 
 // Erlaubte Query-Parameter für GET /admin/invoices (Backend-Vertrag). Bewusst

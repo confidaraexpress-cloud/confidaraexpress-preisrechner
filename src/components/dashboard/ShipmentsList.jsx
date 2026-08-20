@@ -6,6 +6,7 @@ import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { downloadLabel } from "../../utils/downloadLabel";
+import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
 import { customerShipmentNumbers, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
@@ -46,7 +47,7 @@ function CancellationStatusPill({ status }) {
 /* Aktionen einer Sendungszeile — identisch in Tabelle und Mobilkarte.
    Reine Darstellungs-Extraktion (Paket A, Phase 3): dieselben Bedingungen,
    dieselben Handler, keine geänderte Logik. */
-function ShipmentRowActions({ s, onTrack, onLabel, onCancel }) {
+function ShipmentRowActions({ s, onTrack, onLabel, onOrderConfirmation, onCancel }) {
   return (
     <div className="flex gap-8 stn-actions">
       {s.id && (
@@ -54,6 +55,12 @@ function ShipmentRowActions({ s, onTrack, onLabel, onCancel }) {
       )}
       {(s.status === "booked" || s.status === "label_ready") && (
         <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s)}>Label</button>
+      )}
+      {/* Auftragsbestätigung — erscheint NUR, wenn die Zeile tatsächlich eine Nummer
+          trägt. Sendungen, die vor diesem Paket gebucht wurden, haben keine; dort
+          bleibt der Knopf weg statt in einen 404 zu laufen. */}
+      {s.id && s.order_confirmation_number && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onOrderConfirmation(s)}>Auftragsbestätigung</button>
       )}
       {canRequestCancellation(s) && (
         <button className="btn btn-ghost btn-sm" onClick={() => onCancel(s)}>Stornieren</button>
@@ -108,6 +115,19 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
       await downloadLabel(s.id, s.business_order_number);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
+    }
+  };
+
+  // Auftragsbestätigung — derselbe Weg wie das Label: der Handle adressiert den
+  // Request, die Bestätigungsnummer benennt die Datei. Der Fehler teilt sich bewusst
+  // die Anzeigezeile mit dem Label: es ist dieselbe Stelle derselben Zeile, und zwei
+  // gleichzeitig sichtbare Fehlerbanner über einer Tabelle wären Lärm.
+  const handleDownloadOrderConfirmation = async (s) => {
+    setLabelError("");
+    try {
+      await downloadOrderConfirmation(s.id, s.order_confirmation_number);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message);
     }
   };
 
@@ -221,7 +241,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
                         <td className="ce-col-actions">
-                          <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onCancel={openCancel} />
+                          <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onOrderConfirmation={handleDownloadOrderConfirmation} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.id && (
@@ -413,7 +433,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                     <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
                   </div>
                   <div className="ce-list-card-actions">
-                    <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onCancel={openCancel} />
+                    <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onOrderConfirmation={handleDownloadOrderConfirmation} onCancel={openCancel} />
                   </div>
                 </li>
               );

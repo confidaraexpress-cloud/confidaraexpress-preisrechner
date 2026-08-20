@@ -1805,6 +1805,66 @@ prüfen, nie an einem Kommentar.** Governance:
 beide IDs bewusst in ihrer ECHTEN Form — eine Ganzzahl als `shipmentId` hatte den
 Fehler jahrelang verdeckt).
 
+## Abrechnungsart des Kontos — vor jeder Änderung an Profil, Buchung oder Rechnungen lesen
+
+Ein Konto rechnet entweder je Sendung ab (Einzelrechnung, Standard und unverändertes
+Verhalten jedes Bestandskontos) oder gesammelt über 7 Tage.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung + Texte (rein) | `utils/billingModeView.mjs` | Modus, Patch, Vorschau, Erfolgsbildschirm |
+| Zugriff | `api/client.js` → `getCurrentConsolidatedPeriod()` | einziger Weg zur Zeitraumvorschau |
+| Kundenkarte | `components/dashboard/Profile.jsx` | „Abrechnung & Rechnungen" |
+| Adminkarte | `components/admin/BillingModeSection.jsx` | Umstellung durch Support/Onboarding |
+
+**Verbindlich:**
+
+- **Das Frontend rechnet nichts.** Kein Datumsrechnen, keine Preis- oder Steuerlogik,
+  keine aus einer kaputten Antwort erfundene Zahl. Zeiträume und Beträge kommen fertig
+  vom Server. **0 ist überall ein gültiger Wert** — die Auswertung nutzt
+  `Number.isFinite`, nie eine Falsy-Prüfung.
+- **Ein unbekannter oder fehlender Modus gilt als Einzelrechnung.** Ein Backend ohne
+  das Feld liefert es schlicht nicht, und die Oberfläche darf daraus nie eine
+  Sammelabrechnung behaupten.
+- **Gespeichert wird über denselben `PATCH /kunde/profil`** wie jedes andere
+  Profilfeld — dieselbe `isEnum`-Regel wie der Lieferscheinmodus, keine zweite
+  Speicherstrecke, GENAU ein Schlüssel im Body. Das Kundenportal ruft den
+  Adminendpunkt nicht auf.
+- **Die Zeitraumvorschau wird NUR bei Sammelabrechnung geholt.** Ein Request, den ein
+  Konto nie braucht, stünde sonst in jedem Profilaufruf jedes Bestandskunden. Ein
+  Ausfall ergibt eine ruhige Hinweiszeile — keine leere Fläche, kein Renderfehler;
+  der laufende Abruf setzt nach dem Unmount nichts mehr.
+- **Die Vorschau weist sich als Vorschau aus** („Voraussichtlicher Rechnungsbetrag",
+  `periodPreviewNote`). Ein Betrag ohne diesen Vorbehalt sähe aus wie eine
+  feststehende Rechnungssumme, obwohl der Zeitraum noch läuft. Offene Sendungen aus
+  ÄLTEREN Zeiträumen werden mitgezählt, nicht verschwiegen.
+- **Der Erfolgsbildschirm der Buchung zeigt bei Sammelabrechnung KEINE
+  Rechnungsnummer und kein Fälligkeitsdatum** — zu dieser Sendung gibt es noch keine
+  Rechnung, und ein Platzhalter wäre eine Behauptung über einen Beleg, den es nicht
+  gibt. Auch der Rechnungs-Zustellhinweis entfällt dort: er spricht über eine
+  Rechnungs-E-Mail, die es noch nicht gibt. Die Entscheidung liegt in
+  `bookingBillingNotice()`, nicht als Modusvergleich im JSX.
+- **Die Karten sagen, was die Umstellung NICHT tut:** sie gilt für künftige
+  Buchungen; bereits gebuchte Sendungen behalten ihre Abrechnung. Ohne diesen Satz
+  nimmt ein Nutzer an, offene Sendungen würden mit umgestellt.
+- **Kein zweites Auswahlbauteil.** Kundenseitig dieselben Radios auf demselben
+  `forms.css`-Primitive wie die Lieferscheinauswahl (`.dn-mode-fieldset`); im Admin
+  ein `.field-select` (dort zählt Dichte). Der Adminzustand ist doppelt codiert —
+  Badge MIT TEXT plus Auswahlstellung, nie allein farblich.
+- **Die Adminkarte hat bewusst KEINEN Bestätigungsdialog** (anders als die
+  Testbuchungsberechtigung): eine Abrechnungsart ist keine Berechtigung, sie ist
+  umkehrbar und wirkt nur für künftige Buchungen. Ein Dialog wäre Zeremonie ohne
+  Gegenwert. Ein Umstellen auf den bereits gesetzten Wert sendet nichts.
+- **Eine Werteliste für das ganze Frontend** (`BILLING_MODES`) — Profil, Buchung,
+  Admin-API und Adminkarte lesen dieselbe. Kein technischer Bezeichner steht im
+  sichtbaren Text.
+- **Nichts wird persistiert.** Kein `localStorage`, kein `sessionStorage`. Der
+  Vorschau-Endpunkt ist read-only und trägt keine Konto-ID — das Konto steht im JWT.
+- Governance: `src/utils/billingModeUx.test.mjs` (31 Tests) und
+  `tests/e2e/billingMode.test.mjs` (8 Browser-Smokes gegen einen echten Dev-Server
+  mit gemocktem Backend — **niemals eine Bestellung, niemals ein echter
+  Sammelrechnungslauf**).
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

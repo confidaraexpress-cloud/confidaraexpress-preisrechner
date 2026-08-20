@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine } from "../utils/newShipmentForm.mjs";
+import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
@@ -47,6 +48,7 @@ import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
+import { downloadOrderConfirmation } from "../utils/downloadOrderConfirmation";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
@@ -121,6 +123,8 @@ export default function BookingPage() {
   // darf die Labelmeldung nicht überschreiben und umgekehrt.
   const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false);
   const [deliveryNoteError, setDeliveryNoteError] = useState("");
+  const [orderConfirmationLoading, setOrderConfirmationLoading] = useState(false);
+  const [orderConfirmationError, setOrderConfirmationError] = useState("");
   // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
   // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
   // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
@@ -1073,6 +1077,21 @@ export default function BookingPage() {
     setDeliveryNoteLoading(false);
   };
 
+  // Auftragsbestätigung — derselbe Weg wie Label und Lieferschein: Sendungshandle aus
+  // der Buchungsantwort, Blob-Download, eigener Fehlerzustand. Der Knopf erscheint NUR,
+  // wenn die Buchungsantwort tatsächlich eine Auftragsbestätigung meldet
+  // (`booking.orderConfirmation`) — nie unterstellt.
+  const handleDownloadOrderConfirmation = async () => {
+    if (!booking?.ceShipmentId || !booking?.orderConfirmation?.number) return;
+    setOrderConfirmationLoading(true); setOrderConfirmationError("");
+    try {
+      await downloadOrderConfirmation(booking.ceShipmentId, booking.orderConfirmation.number);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setOrderConfirmationError(e.message);
+    }
+    setOrderConfirmationLoading(false);
+  };
+
   /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
      Es führt IMMER zum Angebotsvergleich — unabhängig davon, was im
      Browserverlauf davor liegt.
@@ -1477,16 +1496,27 @@ export default function BookingPage() {
                   <CopyableNumber value={booking.businessOrderNumber} label={NUMBER_LABELS.businessOrder} size="lg" />
                 </div>
               )}
-              <div>
-                <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
-                <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
-              </div>
+              {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —
+                  Nummer und Fälligkeit werden deshalb gar nicht erst angezeigt. Ein
+                  Platzhalter wäre eine Behauptung über einen Beleg, den es nicht gibt.
+                  Der Hinweis darunter sagt stattdessen, wo der Betrag erscheinen wird. */}
+              {bookingBillingNotice(booking).showsInvoiceNumber && (
+                <div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
+                  <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
+                </div>
+              )}
             </div>
             {/* Klare Trennung: Buchungsbestätigung (bereits versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
             <div className="booking-success-delivery mb-16">
               <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
-              <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>
-              {(() => {
+              {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die
+                  Einzelabrechnung; bei Sammelabrechnung tritt der Sammelhinweis an seine
+                  Stelle, statt beide nebeneinander zu behaupten. */}
+              {bookingBillingNotice(booking).consolidated
+                ? <p className="text-muted mb-8">{bookingBillingNotice(booking).text}</p>
+                : <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>}
+              {!bookingBillingNotice(booking).consolidated && (() => {
                 const hint = invoiceDeliveryHint(invoiceDeliveryMode);
                 const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
                 const icon = hint.tone === "success" ? "check" : "info";
@@ -1525,6 +1555,18 @@ export default function BookingPage() {
             {booking?.ceShipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+              </button>
+            )}
+            {/* Auftragsbestätigung — erscheint NUR, wenn die Buchungsantwort tatsächlich
+                eine gemeldet hat. Sie steht VOR dem Lieferschein: sie betrifft jede
+                Buchung, der Lieferschein nur Konten mit Lagerbezug. Die Bestätigung
+                kommt zusätzlich per E-Mail; der Knopf ist die Sofortkopie. */}
+            {orderConfirmationError && <div className="alert alert-error mb-16" role="alert">{orderConfirmationError}</div>}
+            {booking?.ceShipmentId && booking?.orderConfirmation?.number && (
+              <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadOrderConfirmation} disabled={orderConfirmationLoading}>
+                {orderConfirmationLoading
+                  ? <><span className="spinner spinner-dark" /> Auftragsbestätigung wird geladen…</>
+                  : <>Auftragsbestätigung {booking.orderConfirmation.number} herunterladen</>}
               </button>
             )}
             {/* Lieferschein — erscheint NUR, wenn die Buchungsantwort tatsächlich einen

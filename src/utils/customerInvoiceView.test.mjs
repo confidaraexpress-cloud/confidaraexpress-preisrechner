@@ -13,6 +13,7 @@ import {
   TONE,
   isOverdueInvoice,
   paymentStatus,
+  isTestInvoice,
   documentStatusMeta, emailDeliveryMeta,
   invoicePeriod, unavailableActionReason,
   INVOICE_FILTERS, matchesInvoiceFilter,
@@ -290,4 +291,44 @@ test("24 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   // Und die Exportprüfung erkennt einen vorhandenen Export.
   assert.equal("paymentStatus" in viewModule, true);
   assert.ok(Object.values(TONE).length === 4 && new Set(Object.values(TONE)).size === 4);
+});
+
+// ─── Testrechnung einer eigenen Testbuchung ─────────────────────────────────
+// Die Liste enthält seit dem Testrechnungspaket zusätzlich die EIGENEN Testrechnungen
+// des Kunden. Sie sind KEINE Forderungen — ohne eigenen Zustand läsen sie sich als
+// offene Zahlungspflicht.
+
+test("Testrechnung: eigener, neutraler Zustand statt Offen", () => {
+  assert.deepEqual(paymentStatus({ status: "unpaid", is_test_booking: true }), [TONE.NEUTRAL, "Testrechnung"]);
+  // Der Zustand steht ZUERST: er beschreibt die Art des Belegs, nicht den Zahlungsstand.
+  assert.deepEqual(paymentStatus({ status: "unpaid", is_test_booking: true, is_overdue: true }),
+    [TONE.NEUTRAL, "Testrechnung"]);
+});
+
+test("Testrechnung: strikt boolesch — kein truthy-Zufall", () => {
+  for (const bad of ["true", 1, "1", {}, null, undefined]) {
+    assert.equal(isTestInvoice({ is_test_booking: bad }), false, JSON.stringify(bad));
+  }
+  assert.equal(isTestInvoice({ is_test_booking: true }), true);
+  // Ein Backend ohne das Feld liefert schlicht keine Testrechnung.
+  assert.equal(isTestInvoice({}), false);
+  assert.equal(isTestInvoice(null), false);
+});
+
+test("produktive Rechnungen behalten ihre drei Zustände unverändert", () => {
+  assert.deepEqual(paymentStatus({ status: "paid" }), [TONE.POSITIVE, "Bezahlt"]);
+  assert.deepEqual(paymentStatus({ status: "unpaid", is_overdue: true }), [TONE.CRITICAL, "Überfällig"]);
+  assert.deepEqual(paymentStatus({ status: "unpaid" }), [TONE.ATTENTION, "Offen"]);
+});
+
+test("Filter Offen schliesst Testrechnungen aus", () => {
+  const test_ = { status: "unpaid", is_test_booking: true };
+  const offen = { status: "unpaid" };
+  assert.equal(matchesInvoiceFilter(test_, "open"), false, "Testrechnung ist keine offene Forderung");
+  assert.equal(matchesInvoiceFilter(offen, "open"), true);
+  // „Alle" zeigt sie weiterhin — der Kunde soll seinen Testvorgang vollständig sehen.
+  assert.equal(matchesInvoiceFilter(test_, ""), true);
+  // „Bezahlt" und „Überfällig" schließen sie von selbst aus.
+  assert.equal(matchesInvoiceFilter(test_, "paid"), false);
+  assert.equal(matchesInvoiceFilter(test_, "overdue"), false);
 });

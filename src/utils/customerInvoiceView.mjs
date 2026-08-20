@@ -46,18 +46,38 @@ export function isOverdueInvoice(inv) {
   return !!inv && inv.is_overdue === true;
 }
 
-// ── Zahlungsstatus — drei echte Kundenzustände ──────────────────────────────
+// ── Testrechnung einer eigenen Testbuchung ─────────────────────────────────
+// `is_test_booking` kommt aus der Sendung (shipments.is_test_booking) und wird vom
+// Server geliefert — das Frontend leitet es NICHT ab. Strikt `=== true`: ein fehlendes
+// Feld (Backend vor dem Testrechnungspaket) ist keine Testrechnung.
+export function isTestInvoice(inv) {
+  return !!inv && inv.is_test_booking === true;
+}
+
+// ── Zahlungsstatus — vier Kundenzustände ────────────────────────────────────
+//   Testrechnung      → „Testrechnung" (neutral, KEINE Forderung)
 //   paid              → „Bezahlt" (positiv)
 //   unpaid + overdue  → „Überfällig" (kritisch)
 //   unpaid            → „Offen" (Aufmerksamkeit)
 //
-// Es gibt bewusst KEINEN „nicht zahlungswirksam"-Zustand mehr: der Endpunkt
-// GET /kunde/invoices liefert seit dem Go-live ausschließlich produktive
-// Forderungen (Filter in der WHERE-Klausel, routes/kunde.js). Ein
-// Produktivitätscheck an dieser Stelle wäre eine zweite, konkurrierende
-// Wahrheit im Frontend — genau die Doppellogik, die die Architektur vermeidet.
+// ─── Warum es den Testzustand wieder gibt ──────────────────────────────────
+// Bis zum Testrechnungspaket lieferte GET /kunde/invoices ausschließlich produktive
+// Forderungen — ein Produktivitätscheck im Frontend wäre eine zweite, konkurrierende
+// Wahrheit gewesen. Diese Voraussetzung gilt nicht mehr: die Liste enthält jetzt
+// zusätzlich die EIGENEN Testrechnungen des Kunden, damit sein Testvorgang vollständig
+// ist.
+//
+// Sie sind ausdrücklich KEINE Forderungen (`is_productive` ist für sie false, und die
+// serverseitige Zusammenfassung zählt sie nicht mit). Stünde dort trotzdem „Offen",
+// sähe eine Testrechnung wie eine offene Zahlungspflicht aus — genau der Fehler, den
+// dieses Paket an anderer Stelle beseitigt. Der Zustand steht deshalb ZUERST: er
+// beschreibt die Art des Belegs, nicht seinen Zahlungsstand.
+//
+// Das bleibt keine Doppellogik: entschieden wird weiterhin serverseitig, hier wird ein
+// geliefertes Feld angezeigt.
 // → [tone, label]
 export function paymentStatus(inv) {
+  if (isTestInvoice(inv)) return [TONE.NEUTRAL, "Testrechnung"];
   if (inv && inv.status === "paid") return [TONE.POSITIVE, "Bezahlt"];
   if (isOverdueInvoice(inv)) return [TONE.CRITICAL, "Überfällig"];
   return [TONE.ATTENTION, "Offen"];
@@ -184,7 +204,15 @@ export function matchesInvoiceFilter(inv, filterValue) {
   if (!inv) return false;
   if (filterValue === "paid") return inv.status === "paid";
   if (filterValue === "overdue") return isOverdueInvoice(inv);
-  if (filterValue === "open") return inv.status !== "paid"; // schließt überfällige mit ein (Teilmenge von „offen")
+  if (filterValue === "open") {
+    // Eine Testrechnung trägt technisch status='unpaid', ist aber KEINE offene Forderung
+    // (is_productive ist für sie false, die Zusammenfassung zählt sie nicht mit). Ohne
+    // diesen Ausschluss stünde sie unter „Offen" und läse sich wie eine Zahlungspflicht.
+    // „Überfällig" und „Bezahlt" schließen sie bereits von selbst aus: is_overdue kommt aus
+    // derselben Forderungsdefinition, und bezahlt ist sie nie.
+    if (isTestInvoice(inv)) return false;
+    return inv.status !== "paid"; // schließt überfällige mit ein (Teilmenge von „offen")
+  }
   return true;
 }
 

@@ -293,6 +293,30 @@ export function updateAdminCustomerPriceMarkup(userId, priceMarkupPercent, expre
   });
 }
 
+// ── Testbuchungsberechtigung (Admin) ─────────────────────────────────────────
+// PUT /admin/users/:id/test-booking — schaltet `users.test_booking_enabled`
+// frei oder entzieht es. Dieselbe Pfadkonvention wie oben: `/admin/…` OHNE
+// führendes `/api`.
+//
+// Der Body enthält AUSSCHLIESSLICH { testBookingEnabled: true|false }:
+//   • KEINE userId im Body — die :id stammt allein aus der Adminroute.
+//   • KEIN Rollen-, Status- oder Aufschlagsfeld — der Endpunkt ändert genau
+//     diese eine Spalte.
+//   • KEINE Auditfelder — wer die Änderung vorgenommen hat, setzt der Server
+//     aus der Adminsitzung.
+//
+// Strikt boolesch: ein anderer Typ wird gar nicht erst gesendet. Das Backend
+// prüft zusätzlich autoritativ (400 INVALID_TEST_BOOKING_REQUEST) — dieser
+// Guard ist Komfort, keine Sicherheit.
+export function setAdminUserTestBooking(userId, enabled) {
+  if (enabled !== true && enabled !== false) return Promise.reject(new Error("invalid_test_booking_value"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/test-booking`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ testBookingEnabled: enabled }),
+  });
+}
+
 // Erlaubte Query-Parameter für GET /admin/invoices (Backend-Vertrag). Bewusst
 // allowlisted; Pagination über limit/offset, `overdue` nur als "true".
 const INVOICE_PARAMS = ["status", "user_id", "overdue", "limit", "offset"];

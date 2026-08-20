@@ -549,6 +549,12 @@
 /* ── Produktion & Backfill (Phase 5) ─────────────────────────────────────────
    Bewusst nur Light-/Legacy-Tokens (--navy/--gray../--blue../--border..); keine
    Vermischung mit --auth-/--ce-. Ergänzt bestehende .adm-card/.adm-chip/.badge. */
+/* Testbuchungskarte — der Kartenkörper stapelt Schalter, Hinweise und Meldungen
+   in gleichmäßigem Abstand. Kein eigenes Material, keine eigene Farbe: der
+   Schalter kommt aus forms.css, die Hinweise aus .adm-note, die Meldungen aus
+   den globalen .alert-Rollen. */
+.adm-testbooking-body { display: flex; flex-direction: column; gap: 14px; }
+
 .adm-card-head-action { margin-left: auto; }
 .adm-card-head-action svg { color: inherit; }
 .adm-readiness-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }

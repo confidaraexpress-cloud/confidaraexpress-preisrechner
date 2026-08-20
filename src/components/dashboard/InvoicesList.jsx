@@ -18,6 +18,11 @@ import {
   customerInvoiceSummary,
 } from "../../utils/customerInvoiceView.mjs";
 import { businessOrderNumberOf } from "../../utils/businessNumbers.mjs";
+// Gutschriften: eigener Abschnitt UNTER den Rechnungen, nicht in die Liste gemischt.
+import { CreditNotesSection } from "./CreditNotesSection";
+// Eine gutgeschriebene Rechnung bleibt unverändert in der Liste stehen — nur der
+// offene Betrag darunter ändert sich.
+import { invoiceCreditLine } from "../../utils/creditNoteView.mjs";
 
 // Rechnungsliste (Kunde) — Phase 5: Forderungsklassifizierung, sechs fachliche
 // Bereiche, Premium-Statussystem, mobile Kartenansicht, lokale Filter.
@@ -104,9 +109,15 @@ function PeriodBlock({ inv }) {
 }
 
 function AmountBlock({ inv }) {
+  // Der ausgestellte Rechnungsbetrag bleibt unverändert stehen — er ist der Beleg.
+  // Nur WENN etwas gutgeschrieben ist, kommt eine zweite Zeile darunter: sie sagt,
+  // was gutgeschrieben wurde und was davon noch offen ist. Ohne Gutschrift sieht
+  // die Zelle exakt aus wie bisher.
+  const creditLine = invoiceCreditLine(inv, (v) => formatInvoiceAmount(v, inv.currency));
   return (
     <div>
       <span className="inv-amount-value">{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</span>
+      {creditLine && <div className="inv-amount-credit">{creditLine}</div>}
     </div>
   );
 }
@@ -173,7 +184,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
         <StatusPill tone={payTone} label={payLabel} />
       </div>
       <dl className="inv-card-kv">
-        <div className="inv-card-kv-row"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
+        <div className="inv-card-kv-row"><dt>Betrag</dt><dd><AmountBlock inv={inv} /></dd></div>
         <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
         {p.serviceDay && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{isoDayDE(p.serviceDay)}</dd></div>}
         {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
@@ -357,6 +368,9 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
             </ul>
           </>
         )}
+
+        {/* Gutschriften — eigener Abschnitt, erscheint nur, wenn es welche gibt. */}
+        <CreditNotesSection />
       </div>
 
       {previewInvoice && (

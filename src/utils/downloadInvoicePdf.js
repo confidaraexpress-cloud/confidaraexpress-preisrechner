@@ -87,3 +87,27 @@ export async function downloadAdminInvoicePdf(invoiceId, invoiceNumber) {
   const { blob, filename } = await fetchAdminInvoicePdf(invoiceId, invoiceNumber);
   saveBlob(blob, filename);
 }
+
+// ── Gutschriften ────────────────────────────────────────────────────────────
+// Dasselbe Muster wie beim Rechnungs-PDF: authentifizierter Blob-Download,
+// temporäre Object-URL, Freigabe im finally. KEINE öffentliche URL, kein
+// <a href> auf eine Server-URL, kein Base64.
+const safeCreditNoteName = (nummer) =>
+  `gutschrift-${String(nummer == null ? "" : nummer).replace(/[^A-Za-z0-9._-]/g, "") || "dokument"}.pdf`;
+
+export function fetchCustomerCreditNotePdf(id, creditNoteNumber) {
+  return fetchInvoicePdf(`/kunde/credit-notes/${encodeURIComponent(String(id))}/pdf`, safeCreditNoteName(creditNoteNumber));
+}
+
+export async function downloadCustomerCreditNotePdf(id, creditNoteNumber) {
+  const { blob, filename } = await fetchCustomerCreditNotePdf(id, creditNoteNumber);
+  saveBlob(blob, filename);
+}
+
+// Admin: derselbe Beleg. Der Endpunkt stößt einen zuvor fehlgeschlagenen
+// Renderlauf erneut an — der Beleg selbst ändert sich dabei nie.
+export async function downloadAdminCreditNotePdf(id, creditNoteNumber) {
+  const { blob, filename } = await fetchInvoicePdf(
+    `/admin/credit-notes/${encodeURIComponent(String(id))}/pdf`, safeCreditNoteName(creditNoteNumber));
+  saveBlob(blob, filename);
+}

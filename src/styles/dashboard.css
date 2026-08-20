@@ -301,6 +301,17 @@ tr:hover td { background: var(--surface-subtle); }
 
 .inv-amount-value { font-family: var(--ce-font-numeric); font-size: 14px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
+/* Zweite Zeile unter dem Rechnungsbetrag — erscheint NUR, wenn zu dieser Rechnung
+   tatsächlich etwas gutgeschrieben ist. Der ausgestellte Betrag darüber bleibt
+   unverändert: er ist der Beleg, gemindert wird die Forderung. Bewusst als
+   Hilfstext (Body Small, muted), damit die Belegzahl die führende bleibt. */
+.inv-amount-credit { font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; margin-top: 2px; }
+
+/* Abschnittstitel der Gutschriftliste. Card Title der Typografieskala — die Seite
+   trägt ihren Display-L-Titel bereits im Seitenkopf, ein zweiter großer Titel wäre
+   ein zweiter Seitenkopf. */
+.ce-section-title { font-size: 16px; font-weight: 600; color: var(--ce-color-text-primary); margin: 24px 0 4px; }
+
 .inv-doc-cell { display: flex; flex-direction: column; gap: 5px; }
 .inv-doc-note { font-size: 11px; color: var(--ce-color-text-muted); }
 

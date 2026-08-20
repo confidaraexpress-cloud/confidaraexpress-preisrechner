@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { CancellationSettlementSection } from "../../components/admin/CancellationSettlementSection";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -108,6 +109,10 @@ export default function AdminCancellationRequestDetailPage() {
   const [conflict, setConflict] = useState(null); // null | { current: object|null }
   // Bestätigungsdialog für terminale Entscheidungen (accepted/rejected).
   const [decision, setDecision] = useState(null); // null | "accepted" | "rejected"
+  // Providerstorno und bereits ausgestellte Gutschrift kommen aus DERSELBEN
+  // Detailantwort (kein zweiter Abruf). Sie liegen NEBEN der Anfrage im Body und
+  // werden deshalb getrennt gehalten — die kanonische Anfrageform bleibt unberührt.
+  const [settlement, setSettlement] = useState({ providerCancellation: null, creditNote: null });
 
   // Übernimmt eine kanonische Anfrage in State + Formular-Baseline.
   const adopt = useCallback((canonical) => {
@@ -137,6 +142,10 @@ export default function AdminCancellationRequestDetailPage() {
       try { d = await r.json(); } catch { d = {}; }
       if (!mountedRef.current) return;
       const canonical = normalizeCancellationRequest(selectRequest(d));
+      setSettlement({
+        providerCancellation: d && d.providerCancellation ? d.providerCancellation : null,
+        creditNote: d && d.creditNote ? d.creditNote : null,
+      });
       if (canonical) { adopt(canonical); } else { setReq(null); setError(GENERIC_ERROR); }
     } catch {
       if (mountedRef.current) { setError(GENERIC_ERROR); setReq(null); }
@@ -413,6 +422,17 @@ export default function AdminCancellationRequestDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 4b) Abwicklung — Providerstorno nachtragen und Gutschrift erstellen.
+            Bewusst eine EIGENE Karte neben „Interne Bearbeitung": dort entscheidet
+            ConfidaraExpress über die ANFRAGE, hier wird das Ergebnis abgewickelt. */}
+        <CancellationSettlementSection
+          requestId={id}
+          cancellationStatus={req.status}
+          providerCancellation={settlement.providerCancellation}
+          creditNote={settlement.creditNote}
+          onChanged={load}
+        />
 
         {/* 5) Interne Bearbeitung — Status (nur nicht-terminal) + Notiz (immer) */}
         <div className="adm-card">

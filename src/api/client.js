@@ -298,3 +298,11 @@ export function confirmEmailChange(token) {
     body: JSON.stringify({ token }),
   });
 }
+
+// ── Gutschriften (Kundenportal) ─────────────────────────────────────────────
+// Eigener Namensraum neben /kunde/invoices: eine Gutschrift ist ein eigener
+// Beleg mit eigener Nummer (CE-GU…). Read-only — das Frontend erzeugt keine
+// Gutschrift und kennt keinen Betrag, den es senden könnte.
+export function getCreditNotes() {
+  return apiFetch("/kunde/credit-notes", { auth: true });
+}

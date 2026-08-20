@@ -423,6 +423,63 @@ export function updateAdminCancellationRequest(id, payload = {}) {
   });
 }
 
+// ── Providerstorno und Gutschrift (Admin) ───────────────────────────────────
+// DREI getrennte Aktionen, weil es drei getrennte Tatsachen sind:
+//   1. „ConfidaraExpress nimmt die Anfrage an"  → updateAdminCancellationRequest
+//   2. „Der Dienstleister hat storniert"        → setProviderCancellationStatus
+//   3. „Der Kunde bekommt sein Geld zurück"     → createCreditNoteForCancellation
+// Schritt 3 ist bewusst KEIN Seiteneffekt von Schritt 2: eine Gutschrift ist ein
+// Steuerdokument mit eigener Nummer und darf nicht nebenbei entstehen.
+
+// PUT /admin/cancellation-requests/:id/provider-cancellation
+// Hält fest, wo der Betreiber mit dem Storno beim Versanddienstleister steht.
+// Löst NICHTS aus: kein Providerkontakt, keine Gutschrift, keine Rechnungs- oder
+// Zahlungsmutation. Der Vermerk ist optional und rein intern.
+export function setProviderCancellationStatus(id, providerStatus, note) {
+  const body = { providerStatus };
+  if (note !== undefined) body.note = note;
+  return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}/provider-cancellation`, {
+    method: "PUT", auth: true, body: JSON.stringify(body),
+  });
+}
+
+// POST /admin/cancellation-requests/:id/credit-note
+// AUSDRÜCKLICH OHNE BODY. Der Erstattungsbetrag entsteht serverseitig aus dem
+// eingefrorenen Beleg — es gibt keinen Weg, von hier einen Betrag, Prozentwert
+// oder Teilbetrag hereinzureichen, und in V1 auch keine freie Teilgutschrift.
+export function createCreditNoteForCancellation(id) {
+  return apiFetch(`/admin/cancellation-requests/${encodeURIComponent(id)}/credit-note`, {
+    method: "POST", auth: true,
+  });
+}
+
+const CREDIT_NOTE_PARAMS = ["refundStatus", "limit", "offset"];
+
+// GET /admin/credit-notes — paginierte Liste, optionaler Erstattungsfilter.
+export function listAdminCreditNotes(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/credit-notes${buildQuery(query, CREDIT_NOTE_PARAMS)}`, { auth: true });
+}
+
+// GET /admin/credit-notes/:id — Detail inklusive Positionen.
+export function getAdminCreditNote(id) {
+  return apiFetch(`/admin/credit-notes/${encodeURIComponent(id)}`, { auth: true });
+}
+
+// PATCH /admin/credit-notes/:id/refund — REIN ORGANISATORISCH: hält fest, ob der
+// Betrag zurückgezahlt wurde. Es entsteht kein Guthaben, es wird nichts
+// verrechnet, und die Originalrechnung bleibt unverändert.
+export function setCreditNoteRefundStatus(id, refundStatus, note) {
+  const body = { refundStatus };
+  if (note !== undefined) body.note = note;
+  return apiFetch(`/admin/credit-notes/${encodeURIComponent(id)}/refund`, {
+    method: "PATCH", auth: true, body: JSON.stringify(body),
+  });
+}
+
 // ── Supportanfragen (Admin) ─────────────────────────────────────────────────
 // Erlaubte Query-Parameter laut Backendvertrag. `userId` filtert auf einen Kunden
 // (Supportspalte im Kundenprofil) — dieselbe Liste, kein zweiter Endpunkt.

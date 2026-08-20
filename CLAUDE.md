@@ -1865,6 +1865,68 @@ Verhalten jedes Bestandskontos) oder gesammelt über 7 Tage.
   mit gemocktem Backend — **niemals eine Bestellung, niemals ein echter
   Sammelrechnungslauf**).
 
+## Storno und Gutschrift im Portal — vor jeder Änderung daran lesen
+
+Wird eine Sendung storniert, entsteht **keine geänderte Rechnung, sondern ein
+zweiter Beleg**: die Gutschrift (`CE-GU26-00001`). Die Originalrechnung bleibt
+unverändert bestehen — sie ist der ausgestellte Beleg; gemindert wird die
+FORDERUNG, nicht das Dokument.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/creditNoteView.mjs` | Providerzustände, Knopfbedingung, Normalisierung, Anzeigezeilen |
+| Adminabwicklung | `components/admin/CancellationSettlementSection.jsx` | Providerstorno nachtragen, Gutschrift erstellen |
+| Kundenansicht | `components/dashboard/CreditNotesSection.jsx` | eigener Abschnitt unter den Rechnungen |
+| Zugriff | `api/adminApi.js` · `api/client.js` · `utils/downloadInvoicePdf.js` | Endpunkte und Blob-Download |
+
+**Verbindlich:**
+
+- **Das Frontend entscheidet nichts.** Kein Erstattungsbetrag wird gerechnet,
+  keiner gesendet: `createCreditNoteForCancellation()` schickt **keinen Body**.
+  Es gibt keinen Weg, von hier einen Betrag, Prozentwert oder Teilbetrag
+  hereinzureichen — und in V1 **keine freie Teilgutschrift**. Ein Browser-Smoke
+  misst den leeren Body im echten Request.
+- **DREI Tatsachen, DREI Aktionen.** „ConfidaraExpress nimmt die Anfrage an"
+  (Karte „Interne Bearbeitung"), „der Dienstleister hat storniert" (Auswahlfeld)
+  und „der Kunde bekommt sein Geld zurück" (**eigener Knopf**) sind getrennt. Die
+  Gutschrift ist ausdrücklich **kein Seiteneffekt** der Providerbestätigung —
+  zwei Handler, zwei Endpunkte. Ein Steuerdokument mit eigener Nummer darf nicht
+  nebenbei entstehen; ein ausgestellter Beleg lässt sich nicht zurücknehmen.
+- **Die Karte sagt sichtbar, dass sie beim Dienstleister NICHTS auslöst.** Ohne
+  diesen Satz nimmt ein Admin an, das Auswahlfeld storniere dort. Der Storno
+  läuft außerhalb des Portals; hier wird nur festgehalten, wo er steht.
+- **Der Providerstand lässt sich erst nach angenommener Anfrage nachtragen.**
+  Sonst stünde am Vorgang, der Carrier habe storniert, während die Sendung
+  fachlich weiterläuft. `confirmed` ist terminal, `failed` bleibt änderbar (ein
+  zweiter Versuch ist ein realer Betreibervorgang).
+- **Der gesperrte Knopf trägt seinen Grund.** Kein bloßes Ausgrauen — daneben
+  steht, was noch fehlt. Fehlercodes des Servers erscheinen als Klartext, nie als
+  Rohcode.
+- **Die Rechnungszeile bleibt, wie sie ist.** Der ausgestellte Betrag ist die
+  führende Zahl; nur WENN etwas gutgeschrieben ist, kommt eine zweite, ruhige
+  Zeile darunter („Gutschrift … · offen …" bzw. „Vollständig gutgeschrieben").
+  Ohne Gutschrift sieht die Zelle exakt aus wie bisher.
+- **Gutschriften stehen in einem EIGENEN Abschnitt**, nicht in der
+  Rechnungsliste: zwei Dokumentarten unter einer Überschrift hätten die Frage
+  „wie viel schulde ich?" unbeantwortbar gemacht, und eine Zeile mit Minusbetrag
+  in einer Rechnungsliste liest sich wie eine fehlerhafte Rechnung. Der Abschnitt
+  erscheint **nur, wenn es Gutschriften gibt** — ein leerer Block wäre für die
+  meisten Konten eine dauerhafte Fläche ohne Aussage.
+- **Der Kunde liest ausdrücklich, dass die Rechnung bestehen bleibt.** Sonst
+  nimmt er an, sie sei verschwunden oder ersetzt worden.
+- **0 ist überall ein gültiger Betrag** — geprüft wird mit `Number.isFinite`, nie
+  über eine Falsy-Abfrage.
+- **Kein Guthaben, kein Wallet, keine Verrechnung.** Der Erstattungsstand ist rein
+  organisatorisch; die Wörter kommen im Modul nicht vor.
+- **Download über den bestehenden authentifizierten Blobweg** (temporäre
+  Object-URL, Freigabe im finally). Keine öffentliche URL, kein Base64, kein
+  Redirect. Ein noch nicht fertiger Beleg zeigt „Beleg wird erstellt" statt eines
+  Knopfes ins Leere.
+- Governance: `src/utils/creditNoteUx.test.mjs` (25 Tests) und
+  `tests/e2e/creditNotes.test.mjs` (16 Browser-Smokes gegen einen echten
+  Dev-Server mit gemocktem Backend — **niemals eine echte Bestellung, niemals
+  eine echte Stornierung, niemals eine echte Gutschrift**).
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

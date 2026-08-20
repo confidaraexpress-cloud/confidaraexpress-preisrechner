@@ -1109,6 +1109,14 @@ und keine kommerzielle Behandlung anderer Codes.
   „gerade nicht prüfbar" (technisch, erneut versuchen). Beide nennen keine Interna — kein
   Providername, kein Status, kein Tarif, keine Rolle. Alle Ablehnungsgründe sind für den Kunden
   ununterscheidbar.
+- **Es gibt keine kontoindividuelle Testfreigabe mehr.** Die Adminsektion
+  „Testbuchungen freischalten" (`TestBookingSection`, `utils/adminTestBooking.mjs`,
+  `setAdminUserTestBooking`) ist ersatzlos entfernt. Serverseitig entscheidet der globale
+  Pre-Live-Schalter `JUMINGO_SANDBOX_ENABLED` zusammen mit der Authentifizierung; Rolle und
+  `users.test_booking_enabled` haben keine Autorität mehr. Eine Adminsteuerung, die einen
+  wirkungslosen Wert schreibt, wäre eine tote Steuerung — deshalb keine Restanzeige. Der
+  Schalter ist eine SERVERkonfiguration und steht in keiner Frontenddatei;
+  `prelivesandboxUi.test.mjs` prüft beides.
 - **Der Gutschein gehört NICHT in `form_drafts` oder den Vorgang.** Ein Formularentwurf existiert
   vor Tarif und Checkout; `shippingFlowState.mjs` und der Entwurfs-Snapshot kennen ihn nicht.
 - Governance: `src/utils/voucherUx.test.mjs` (30 Tests) und
@@ -1852,7 +1860,7 @@ Verhalten jedes Bestandskontos) oder gesammelt über 7 Tage.
   ein `.field-select` (dort zählt Dichte). Der Adminzustand ist doppelt codiert —
   Badge MIT TEXT plus Auswahlstellung, nie allein farblich.
 - **Die Adminkarte hat bewusst KEINEN Bestätigungsdialog** (anders als die
-  Testbuchungsberechtigung): eine Abrechnungsart ist keine Berechtigung, sie ist
+  früheren Testbuchungsberechtigung): eine Abrechnungsart ist keine Berechtigung, sie ist
   umkehrbar und wirkt nur für künftige Buchungen. Ein Dialog wäre Zeremonie ohne
   Gegenwert. Ein Umstellen auf den bereits gesetzten Wert sendet nichts.
 - **Eine Werteliste für das ganze Frontend** (`BILLING_MODES`) — Profil, Buchung,

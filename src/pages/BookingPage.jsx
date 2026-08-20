@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine } from "../utils/newShipmentForm.mjs";
+import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
@@ -1495,16 +1496,27 @@ export default function BookingPage() {
                   <CopyableNumber value={booking.businessOrderNumber} label={NUMBER_LABELS.businessOrder} size="lg" />
                 </div>
               )}
-              <div>
-                <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
-                <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
-              </div>
+              {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —
+                  Nummer und Fälligkeit werden deshalb gar nicht erst angezeigt. Ein
+                  Platzhalter wäre eine Behauptung über einen Beleg, den es nicht gibt.
+                  Der Hinweis darunter sagt stattdessen, wo der Betrag erscheinen wird. */}
+              {bookingBillingNotice(booking).showsInvoiceNumber && (
+                <div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
+                  <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
+                </div>
+              )}
             </div>
             {/* Klare Trennung: Buchungsbestätigung (bereits versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
             <div className="booking-success-delivery mb-16">
               <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
-              <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>
-              {(() => {
+              {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die
+                  Einzelabrechnung; bei Sammelabrechnung tritt der Sammelhinweis an seine
+                  Stelle, statt beide nebeneinander zu behaupten. */}
+              {bookingBillingNotice(booking).consolidated
+                ? <p className="text-muted mb-8">{bookingBillingNotice(booking).text}</p>
+                : <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>}
+              {!bookingBillingNotice(booking).consolidated && (() => {
                 const hint = invoiceDeliveryHint(invoiceDeliveryMode);
                 const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
                 const icon = hint.tone === "success" ? "check" : "info";

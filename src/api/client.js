@@ -158,6 +158,24 @@ export async function getTracking(shipmentId) {
   return { ok: true, status: r.status, ...selectTracking(d) };
 }
 
+// ── Laufender Sammelzeitraum ─────────────────────────────────────────────────
+// Read-only Vorschau auf den noch offenen 7-Tage-Zeitraum eines Kontos mit
+// Sammelabrechnung. Der Aufruf erzeugt KEINE Rechnung und verändert nichts.
+//
+// Adressiert wird ohne Konto-ID — das Konto steht im JWT, die Mandantentrennung
+// ist damit strukturell und nicht durch eine Prüfung erkauft (dieselbe Regel wie
+// beim Firmenlogo).
+//
+// Wirft NICHT bei HTTP-Fehlern: die Karte soll bei einem Ausfall eine ruhige
+// Hinweiszeile zeigen können, statt zu brechen.
+export async function getCurrentConsolidatedPeriod() {
+  const r = await apiFetch(`/kunde/consolidated-invoice/current`, { auth: true });
+  if (!r.ok) return { ok: false, status: r.status };
+  let d = {};
+  try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }
+  return { ok: true, status: r.status, data: d };
+}
+
 // ── Zoll-Handelsrechnung (Customs commercial invoice) ────────────────────────
 // Dünne Wrapper um das bereits gemergte, auth-geschützte Confidara-Gateway.
 // `:shipmentId` ist die von /calculate-price gelieferte ÖFFENTLICHE Sendungs-ID

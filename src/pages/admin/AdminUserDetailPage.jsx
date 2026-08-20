@@ -32,6 +32,9 @@ import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSect
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
 import { TestBookingSection } from "../../components/admin/TestBookingSection";
+import { BillingModeSection } from "../../components/admin/BillingModeSection";
+import { setAdminUserBillingMode } from "../../api/adminApi";
+import { billingMode as readBillingMode } from "../../utils/billingModeView.mjs";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
   TEST_BOOKING_TEXTS,
@@ -227,6 +230,30 @@ export default function AdminUserDetailPage() {
   const [tbBusy, setTbBusy] = useState(false);
   const [tbError, setTbError] = useState("");
   const [tbSuccess, setTbSuccess] = useState("");
+
+  // Abrechnungsart. Eigener Zustand neben der Testbuchungsberechtigung — die beiden
+  // sind fachlich unabhängig und dürfen sich weder Fehler- noch Erfolgsmeldung teilen.
+  const [bmBusy, setBmBusy] = useState(false);
+  const [bmError, setBmError] = useState("");
+  const [bmSuccess, setBmSuccess] = useState("");
+  const changeBillingMode = async (next) => {
+    // Ein Umstellen auf den bereits gesetzten Wert wäre serverseitig ein erlaubtes
+    // No-Op — es erzeugte aber nur einen Auditeintrag und eine Erfolgsmeldung, die
+    // nichts meldet.
+    if (bmBusy || !user || next === readBillingMode(user)) return;
+    setBmBusy(true); setBmError(""); setBmSuccess("");
+    try {
+      const r = await setAdminUserBillingMode(user.id, next);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setBmError(d?.error || "Die Abrechnungsart konnte nicht geändert werden."); setBmBusy(false); return; }
+      // Serverwahrheit übernehmen, nicht der lokal gewählte Wert.
+      setUser((prev) => (prev ? { ...prev, billing_mode: d.billingMode } : prev));
+      setBmSuccess("Abrechnungsart geändert.");
+    } catch (e) {
+      setBmError(e?.message || "Die Abrechnungsart konnte nicht geändert werden.");
+    }
+    setBmBusy(false);
+  };
   const tbInFlight = useRef(false);
 
   const markupInputRef = useRef(null);
@@ -764,6 +791,16 @@ export default function AdminUserDetailPage() {
             setTbSuccess("");
             setTbDialog(next);
           }}
+        />
+
+        {/* 3d) Abrechnung — Einzel- oder Sammelrechnung. Support/Onboarding dürfen
+             das umstellen; die Änderung wirkt ausschließlich für künftige Buchungen. */}
+        <BillingModeSection
+          mode={readBillingMode(u)}
+          busy={bmBusy}
+          error={bmError}
+          successText={bmSuccess}
+          onChange={changeBillingMode}
         />
 
         {/* 4) Aktivität und Zahlung — EINE Quelle für die Debitorenwerte (früher

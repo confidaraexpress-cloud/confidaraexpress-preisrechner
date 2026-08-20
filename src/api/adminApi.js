@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { BILLING_MODES as ADMIN_BILLING_MODES } from "../utils/billingModeView.mjs";
 import { buildCancellationPatchBody } from "../utils/adminCancellations.mjs";
 import { buildSupportPatchBody } from "../utils/adminSupportView.mjs";
 import { buildPriceMarkupBody } from "../utils/customerMarkup.mjs";
@@ -315,6 +316,30 @@ export function setAdminUserTestBooking(userId, enabled) {
     auth: true,
     body: JSON.stringify({ testBookingEnabled: enabled }),
   });
+}
+
+// PUT /admin/users/:id/billing-mode — Abrechnungsart eines Kontos setzen.
+//
+// Gesendet wird AUSSCHLIESSLICH der Modus; das ausführende Adminkonto kommt
+// serverseitig aus dem JWT und nie aus dem Body. Ein ungültiger Wert wird gar
+// nicht erst gesendet — die erlaubte Menge ist dieselbe wie im Kundenportal und
+// im Backend (eine Liste, drei Leser).
+export function setAdminUserBillingMode(userId, billingMode) {
+  if (!ADMIN_BILLING_MODES.includes(billingMode)) return Promise.reject(new Error("invalid_billing_mode"));
+  return apiFetch(`/admin/users/${encodeURIComponent(userId)}/billing-mode`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify({ billingMode }),
+  });
+}
+
+// POST /admin/consolidated-invoices/run — den Sammelrechnungslauf manuell anstoßen.
+//
+// Bewusst OHNE Parameter: kein Konto, kein Zeitraum, kein Stichtag. Ein Aufruf, über
+// den sich der Abrechnungsstichtag von außen setzen ließe, wäre ein Weg, einen noch
+// laufenden Zeitraum vorzeitig zu fakturieren.
+export function runConsolidatedInvoicing() {
+  return apiFetch(`/admin/consolidated-invoices/run`, { method: "POST", auth: true });
 }
 
 // Erlaubte Query-Parameter für GET /admin/invoices (Backend-Vertrag). Bewusst

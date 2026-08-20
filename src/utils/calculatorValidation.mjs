@@ -170,26 +170,28 @@ export function getCalculatorErrors(form = {}) {
     setBanner({ title: "Gewicht prüfen", message: "Das Gewicht muss zwischen 0,1 und 1.000 kg liegen." });
   }
 
-  // ── Maße (einzeln optional; ein gesetzter Wert muss gültig sein) ──
+  // ── Maße: alle drei sind PFLICHT ──
+  //
+  // Bis zu diesem Paket waren sie optional, und das Backend ersetzte leere
+  // Felder still durch 30 × 20 × 15 cm (`Number("") === 0` → falsy → Fallback).
+  // Der frühere Hinweis „… oder lassen Sie alle drei Felder leer, um mit
+  // Standardmaßen zu rechnen" beschrieb genau das — ein Preis für ein Paket,
+  // das der Kunde nie beschrieben hat. Diese Möglichkeit gibt es nicht mehr:
+  // ohne Maße keine Tarifabfrage, hier wie serverseitig.
   for (const [key, label] of [["length", "Länge"], ["width", "Breite"], ["height", "Höhe"]]) {
+    if (String(form[key] ?? "").trim() === "") {
+      fieldErrors[key] = `Bitte geben Sie die ${label} ein.`;
+      setBanner({
+        title: "Maße fehlen",
+        message: "Bitte geben Sie Länge, Breite und Höhe vollständig ein — ohne Maße lässt sich kein Tarif berechnen.",
+      });
+      continue;
+    }
     const msg = dimensionError(form[key], label);
     if (msg) {
       fieldErrors[key] = msg;
       setBanner({ title: "Maße prüfen", message: msg });
     }
-  }
-
-  // Teilweise ausgefüllte Maße: entweder alle drei oder keines — sonst rechnet
-  // das Backend mit Standardmaßen weiter, was der Kunde nicht erwartet.
-  const gesetzt = ["length", "width", "height"].filter((k) => String(form[k] ?? "").trim() !== "");
-  if (gesetzt.length > 0 && gesetzt.length < 3) {
-    for (const k of ["length", "width", "height"]) {
-      if (String(form[k] ?? "").trim() === "" && !fieldErrors[k]) fieldErrors[k] = "Bitte vollständig ausfüllen.";
-    }
-    setBanner({
-      title: "Maße unvollständig",
-      message: "Bitte geben Sie Länge, Breite und Höhe vollständig ein — oder lassen Sie alle drei Felder leer, um mit Standardmaßen zu rechnen.",
-    });
   }
 
   return { fieldErrors, banner };

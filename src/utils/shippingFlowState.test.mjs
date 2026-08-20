@@ -368,15 +368,26 @@ test("27 — Abmeldung und Buchungserfolg löschen den Vorgang", () => {
     "nach erfolgreicher Buchung wird der Vorgang nicht gelöscht");
 });
 
-test("28 — es wird ausschließlich sessionStorage benutzt", () => {
+test("28 — der Vorgang wird NIRGENDS persistiert", () => {
+  // UMGEKEHRT gegenüber dem Vorzustand: bis zum Paket „leerer Nullzustand" wurde
+  // der Vorgang in den sessionStorage gespiegelt und beim Mount daraus
+  // wiederhergestellt. Damit überlebte ein halb ausgefülltes Formular jeden
+  // Browser-Reload — „Neue Sendung" ist aber ein NEUER Vorgang. Wer Angaben
+  // behalten will, speichert einen Entwurf: bewusst und serverseitig.
   for (const datei of ["src/utils/shippingFlowStorage.js", "src/context/ShippingFlowContext.jsx",
                        "src/utils/shippingFlowState.mjs"]) {
     const code = read(datei);
     assert.ok(!code.includes("localStorage"), `${datei}: localStorage ist für den Vorgang unzulässig`);
+    assert.ok(!/setItem\(|getItem\(/.test(code),
+      `${datei}: der Vorgang wird wieder gelesen oder geschrieben`);
   }
   const speicher = read("src/utils/shippingFlowStorage.js");
-  assert.equal((speicher.match(/try \{/g) || []).length, 3,
-    "jeder Speicherzugriff muss abgesichert sein (Privatmodus, volles Kontingent)");
+  // Übrig bleibt genau EIN Zugriff: das Abräumen eines Restwerts aus einem
+  // älteren, zum Deploymentzeitpunkt noch offenen Tab. Auch er ist gegen den
+  // Privatmodus abgesichert.
+  assert.equal((speicher.match(/try \{/g) || []).length, 1,
+    "es darf genau einen abgesicherten Zugriff geben (nur noch Löschen)");
+  assert.ok(/removeItem\(/.test(speicher), "das Abräumen fehlt");
   // Keine tabübergreifende Synchronisierung.
   for (const datei of ["src/context/ShippingFlowContext.jsx", "src/utils/shippingFlowStorage.js"]) {
     assert.ok(!/BroadcastChannel|addEventListener\(\s*["']storage/.test(read(datei)),
@@ -384,14 +395,20 @@ test("28 — es wird ausschließlich sessionStorage benutzt", () => {
   }
 });
 
-test("29 — der Vorgang wird nur bei echter Änderung geschrieben", () => {
+test("29 — ein Reload stellt nichts wieder her, ein Sitzungswechsel schon", () => {
   const ctx = read("src/context/ShippingFlowContext.jsx");
-  assert.ok(/letzterFingerRef/.test(ctx), "kein Schreibvergleich vorhanden");
-  assert.ok(/if \(finger === letzterFingerRef\.current\) return;/.test(ctx),
-    "identischer Snapshot muss den Schreibvorgang überspringen");
-  // Gelesen wird genau einmal, beim Mount — sonst entstünde ein Lese-/Schreibkreis.
-  assert.equal((ctx.match(/speicherLesen\(\)/g) || []).length, 1,
-    "der Speicher darf nur beim Mount gelesen werden");
+  // Der Vorgang startet IMMER leer — es gibt keinen Wiederherstellungspfad mehr.
+  assert.ok(/useState\(\(\) => emptyFlow\(jetzt\(\)\)\)/.test(ctx),
+    "der Provider startet nicht mit einem leeren Vorgang");
+  assert.ok(!/restoreFlow|parseFlow|serializeFlow/.test(ctx),
+    "der Provider stellt wieder aus einem Speicher her");
+  // Der Provider hängt weiterhin AUSSERHALB von <Routes> — nur dadurch überlebt
+  // der Vorgang den Wechsel zwischen /dashboard und /booking innerhalb der
+  // laufenden Sitzung. Genau diese Trennung ist der Kern des Pakets:
+  // In-Memory-Vorgang ja, persistente Wiederherstellung nein.
+  const app = read("src/App.jsx");
+  assert.ok(/<ShippingFlowProvider>[\s\S]*<Routes>/.test(app),
+    "der Provider steht nicht mehr außerhalb der Routen");
 });
 
 test("30 — die Prüflogik greift tatsächlich", () => {

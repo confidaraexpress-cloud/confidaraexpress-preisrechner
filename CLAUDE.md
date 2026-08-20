@@ -413,6 +413,101 @@ Konto              ˅  Kontoeinstellungen · Supportanfragen
   `src/components/layout/appShellChrome.test.mjs` (Chrome, Kontraste,
   Typografie).
 
+## „Neue Sendung" startet leer — vor jeder Änderung am Formularstart lesen
+
+**Produktregel: „Neue Sendung" ist ein NEUER Vorgang.** Das Formular beginnt
+vollständig leer — kein Absender aus dem Profil, kein Empfänger, keine
+Paketdaten, **kein vorausgewähltes Land**. Gespeicherte Angaben bleiben
+komfortabel erreichbar, aber ausschließlich durch eine **bewusste Aktion**.
+
+| Fall | Ergebnis |
+|---|---|
+| Sidebar → „Neue Sendung" | leer (auch wenn die Seite schon offen war) |
+| Browser-Reload (F5) | leer |
+| Wechsel innerhalb der Sitzung (Sidebar, „Zurück" aus der Buchung) | Vorgang bleibt |
+| Entwürfe → Entwurf ausdrücklich öffnen | Entwurfsdaten werden geladen |
+
+**Verbindlich:**
+
+- **Eine Quelle für den Ausgangszustand.** `createEmptyShipmentForm()`
+  (`utils/newShipmentForm.mjs`) — kein zweites Objektliteral daneben. Alle Werte
+  sind `""`, nie `null`/`undefined`: die Felder sind kontrollierte React-
+  Eingaben, und `undefined` kippt sie in unkontrollierte um.
+
+  Nicht verwechseln mit `blankNewShipmentForm()` in `utils/formDraftsView.mjs`.
+  Das ist **nicht** der Ausgangszustand von „Neue Sendung", sondern
+  ausschließlich die Grundlage, auf die `buildResumeInitialState()` einen
+  GESPEICHERTEN Entwurf legt — und es trägt dort weiterhin `s_country: "DE"`,
+  `r_country: "CH"` und `packageCount: "1"` als Rückfallwerte für Entwürfe,
+  denen ein Feld fehlt. Das ist Absicht: ein ausdrücklich geöffneter Entwurf
+  ist ein anderer Fall als ein neuer Vorgang. Wer die beiden zusammenlegt,
+  bringt die Vorbelegung durch die Hintertür zurück.
+- **Das Profil ist Datenquelle, kein Autor.** Der frühere `profilSeed()` schrieb
+  Firma, Name, Straße, PLZ, Ort, Land, Telefon und E-Mail beim Mount ins
+  Formular. Er ist **ersatzlos entfallen**; dieselben Daten liefert
+  `senderPatchFromProfile()` an die sichtbare Aktion „Eigene Adresse" in der
+  Absender-Kopfzeile. Ohne hinterlegte Anschrift erscheint sie gar nicht
+  (`hasProfileSenderData`). Die Länder-Normalisierung
+  (`normalizeCountryCode`) gilt dort unverändert weiter — sie ist der Grund,
+  warum ein Konto mit „DEU" überhaupt eine anzeigbare Auswahl bekommt.
+- **Der Vorgang lebt nur im Arbeitsspeicher.** `ShippingFlowContext` spiegelt
+  **nichts** mehr in den `sessionStorage` und liest von dort nicht mehr. Der
+  Provider hängt weiterhin außerhalb `<Routes>` — nur dadurch übersteht der
+  Vorgang den Wechsel `/dashboard` ↔ `/booking` **innerhalb** der Sitzung. Ein
+  Reload baut den React-Baum neu auf, und der Vorgang ist weg. Genau diese
+  Trennung ist der Kern: transienter Vorgang ja, persistente Wiederherstellung
+  nein. `shippingFlowStorage.js` kann seitdem nur noch **löschen** (Restwerte
+  aus einem älteren, offenen Tab; beide Abmeldewege nutzen es weiter).
+- **Sidebar „Neue Sendung" braucht ZWEI Dinge**, einzeln reicht keines:
+  `clearFlow()` leert den Context, und ein **Remount-Schlüssel**
+  (`neueSendungKey` in `DashboardPage`) erzwingt eine neue Instanz. Steht `page`
+  bereits auf `"new"`, ist `setPage("new")` ein No-Op — die Seite bliebe gemountet
+  und ihr LOKALER Formularzustand überlebte das Leeren des Contexts. Dieselbe
+  Falle ist beim Entwurfsspeichern dokumentiert.
+- **Der Weg aus der Buchung zurück läuft NICHT über `navigateTo`** (BookingPage
+  navigiert direkt mit `state.page`) und ist deshalb von der Zurücksetzung nicht
+  betroffen.
+- Governance: `utils/newShipmentEmptyState.test.mjs` (24 Tests) und
+  `tests/e2e/newShipmentEmptyState.test.mjs` (11 Browser-Smokes; der
+  Breitentest läuft bewusst über den direkten Einstieg — den Weg über die
+  Sidebar prüft S3, und der Drawer unter 860 px wäre dort nur ein zweiter,
+  für das Layoutziel bedeutungsloser Fehlerpfad).
+
+## Paketmaße sind Pflicht — kein Ersatzwert, nirgends
+
+**ConfidaraExpress berechnet niemals einen Tarif auf Maßen, die der Kunde nicht
+eingegeben hat.** Anzahl, Gewicht, Länge, Breite und Höhe sind vollständig
+Pflicht — im Formular, im Preisrechner und serverseitig.
+
+Bis zu diesem Paket galten Länge, Breite und Höhe als optional und wurden an
+**fünf** Stellen still durch `30 / 20 / 15` ersetzt: `Number("")` ist `0` und
+damit falsy, also griff `Number(form.length) || 30`. Ein leeres Eingabefeld
+erzeugte damit ein vollwertiges Paket, bekam einen Tarif und war buchbar — der
+Kunde sah einen Preis für Maße, die er nie beschrieben hat, während der Carrier
+nach dem echten Paket abrechnet.
+
+- **Eine Regel je Seite, beide identisch.** Frontend:
+  `packageFieldError`/`packageComplete`/`packagePayload`
+  (`utils/newShipmentForm.mjs`). Backend: `lib/packageDimensions.js`. Grenzen
+  unverändert: Gewicht 0,1–1000 kg, Maße 0,1–300 cm, Anzahl 1–99 ganzzahlig.
+- **Erst Anwesenheit, dann parsen, dann Bereich** — nie in einem Schritt und nie
+  über eine Falsy-Abfrage. Boolean, Array und Objekt gelten nicht als Zahl
+  (`Number(true) === 1` wäre sonst ein gültiges Maß von 1 cm).
+- **`packagePayload()` liefert `null`, sobald etwas fehlt.** Es gibt keinen Pfad,
+  auf dem ein unvollständiges Paket zu einem Request wird.
+- **Beispiele sind Placeholder, niemals Werte**: „z. B. 5 / 30 / 20 / 15", bei
+  der Anzahl „1". Eine nackte „5" in einem Zahlenfeld ist von einer echten
+  Eingabe nicht zu unterscheiden — deshalb steht „z. B." davor. Kein
+  `defaultValue`, kein vorbelegter State.
+- **Keine Fehlerwand auf leerem Formular.** Rote Markierungen entstehen
+  unverändert erst beim Weiterklicken; der deaktivierte CTA trägt stattdessen
+  eine ruhige Hinweiszeile (`packageHint`), die sagt, was fehlt.
+- **Die Buchungsübersicht zeigt Gewicht UND Maße** (`packageSummaryLine`):
+  „5 kg · 30 × 20 × 15 cm", bei mehreren Paketen „2 Pakete · je 5 kg · …". Nur
+  tatsächlich gespeicherte Werte — nichts wird ergänzt oder gerundet.
+- **Der frühere Rechnerhinweis „… oder lassen Sie alle drei Felder leer, um mit
+  Standardmaßen zu rechnen" ist entfallen.** Diese Möglichkeit gibt es nicht mehr.
+
 ## Laufender Versandvorgang — vor jeder Änderung an Preisrechner, Neue Sendung oder Buchung lesen
 
 Der Kunde kann während eines Versandvorgangs zwischen „Neue Sendung",

@@ -236,11 +236,20 @@ test("C9 der Picker verwaltet nichts — er wählt aus", () => {
 /* ══════════ D — Auslöser und schwebende Fläche ═══════════════════════════ */
 
 test("D1 der Auslöser sitzt in der Überschriftszeile, nicht darunter", () => {
+  // Beim Absender steht seit dem Paket „leerer Nullzustand" die Komfortaktion
+  // „Eigene Adresse" mit in derselben Zeile — der frühere automatische
+  // Profil-Prefill ist dadurch ersetzt. Geprüft wird deshalb: der Auslöser liegt
+  // INNERHALB der Kopfzeile (vor deren schließendem </div>), nicht darunter.
   for (const abschnitt of ["Absender", "Empfänger"]) {
-    const re = new RegExp(
-      `<div className="calc-section-head">\\s*<div className="calc-section-title">${abschnitt}</div>\\s*<AddressPickerButton`
-    );
-    assert.match(seite, re, `${abschnitt}: Auslöser steht nicht in der Kopfzeile`);
+    const start = seite.indexOf(`<div className="calc-section-title">${abschnitt}</div>`);
+    assert.ok(start > -1, `${abschnitt}: Abschnittsüberschrift nicht gefunden`);
+    const kopfEnde = seite.indexOf("</div>", seite.indexOf("<AddressPickerButton", start));
+    const kopf = seite.slice(start, kopfEnde);
+    assert.ok(kopf.includes("<AddressPickerButton"), `${abschnitt}: Auslöser steht nicht in der Kopfzeile`);
+    // Zwischen Titel und Auslöser darf kein Formularfeld liegen — sonst wäre er
+    // faktisch doch darunter gerutscht.
+    assert.ok(!/<AddressSuggestInput|addrField\(/.test(kopf),
+      `${abschnitt}: zwischen Überschrift und Auslöser liegt ein Formularfeld`);
   }
 });
 
@@ -325,11 +334,20 @@ test("E6 jede Seite bekommt ihren eigenen Reiter", () => {
   assert.match(seite, /tab=\{TAB_RECIPIENT\}[\s\S]{0,160}uebernimmAdressbuchAdresse\(a, "r"\)/);
 });
 
-test("E7 der Standardabsender bleibt in dieser Fassung der Profil-Seed", () => {
-  // Ausdrücklich NICHT Teil dieses Pakets: eine automatische Vorbelegung aus
+test("E7 nichts belegt den Absender automatisch vor", () => {
+  // Ausdrücklich NICHT vorhanden: eine automatische Vorbelegung aus
   // is_default_sender. Die Auswahl passiert immer durch den Nutzer.
   assert.doesNotMatch(seite, /isDefaultSender|is_default_sender/);
-  assert.match(seite, /const profilSeed = /);
+  // Seit dem Paket „leerer Nullzustand" gilt das auch für das PROFIL: der
+  // frühere `profilSeed()` schrieb Firma, Name, Straße, PLZ, Ort, Land, Telefon
+  // und E-Mail beim Mount ins Formular. Er ist ersatzlos entfallen; die Daten
+  // kommen nur noch über die ausdrückliche Aktion „Eigene Adresse".
+  assert.doesNotMatch(seite, /const profilSeed = /,
+    "der automatische Profil-Seed ist zurück");
+  assert.match(seite, /const uebernimmProfilAbsender = /,
+    "die bewusste Übernahme fehlt");
+  assert.match(seite, /createEmptyShipmentForm\(\)/,
+    "der Ausgangszustand kommt nicht aus dem leeren Formular");
 });
 
 test("E8 der Entwurfs-Snapshot bleibt reine Werte — ohne Adressbuchbezug", () => {

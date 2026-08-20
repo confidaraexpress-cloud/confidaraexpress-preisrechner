@@ -205,7 +205,10 @@ export default function CalculatorPage() {
   const chargeWeight = volWeight && form.weight
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
-  const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight && !!form.packageCount;
+  // Maße sind seit „verpflichtende Paketmaße" ebenfalls Pflicht — ohne sie gibt
+  // es keinen Tarif mehr (weder hier noch serverseitig).
+  const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight && !!form.packageCount
+    && !!form.length && !!form.width && !!form.height;
 
   const resetResults = () => {
     setHasResults(false);
@@ -371,9 +374,13 @@ export default function CalculatorPage() {
           to_zip:             form.to_zip,
           packageCount:       Number(form.packageCount),
           weight:             Number(form.weight),
-          length:             Number(form.length) || 30,
-          width:              Number(form.width)  || 20,
-          height:             Number(form.height) || 15,
+          // Genau die eingegebenen Maße — kein Ersatzwert. Hier stand
+          // `Number(form.length) || 30` (und 20/15): `Number("")` ist 0 und
+          // damit falsy, ein leeres Feld wurde also zu 30 cm. Die Vorprüfung
+          // oben lässt einen unvollständigen Request gar nicht mehr zu.
+          length:             Number(form.length),
+          width:              Number(form.width),
+          height:             Number(form.height),
           serviceFilter:      serviceFilter,
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
@@ -762,11 +769,14 @@ export default function CalculatorPage() {
                   beschrieben, per aria-describedby verbunden und anspringbar). */}
               <div className="field-row field-row-5">
                 {[
-                  { key: "packageCount", label: "Anzahl",       ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
-                  { key: "weight",       label: "Gewicht kg *", ph: "5"  },
-                  { key: "length",       label: "Länge cm",     ph: "30" },
-                  { key: "width",        label: "Breite cm",    ph: "20" },
-                  { key: "height",       label: "Höhe cm",      ph: "15" },
+                  // Die Beispiele sind PLACEHOLDER, keine Werte. Eine nackte „5"
+                  // in einem Zahlenfeld ist von einer echten Eingabe nicht zu
+                  // unterscheiden — deshalb steht „z. B." davor.
+                  { key: "packageCount", label: "Anzahl *",     ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
+                  { key: "weight",       label: "Gewicht kg *", ph: "z. B. 5"  },
+                  { key: "length",       label: "Länge cm *",   ph: "z. B. 30" },
+                  { key: "width",        label: "Breite cm *",  ph: "z. B. 20" },
+                  { key: "height",       label: "Höhe cm *",    ph: "z. B. 15" },
                 ].map(({ key, label, ph, hint, extra }) => {
                   const err = fieldErrors[key];
                   const a11y = fieldErrorProps(key, err);

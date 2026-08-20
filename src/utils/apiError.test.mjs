@@ -17,7 +17,11 @@ import { describePostalFormat } from "./postalCode.mjs";
 const basisForm = {
   from_country: "DE", from_zip: "70173",
   to_country: "DE", to_zip: "10115",
-  packageCount: "1", weight: "2", length: "", width: "", height: "",
+  // Maße sind seit dem Paket „verpflichtende Paketmaße" Pflicht — die
+  // Basisform ist deshalb vollständig, damit jeder Test nur den EINEN Fehler
+  // prüft, den er meint. Zuvor standen hier leere Maße, weil das Backend sie
+  // still durch 30/20/15 ersetzte.
+  packageCount: "1", weight: "2", length: "30", width: "20", height: "15",
 };
 const mit = (over) => ({ ...basisForm, ...over });
 
@@ -97,12 +101,19 @@ test("8 — fehlendes Gewicht, Gewicht 0 und negative Maße werden je konkret ge
   assert.match(negativ.fieldErrors.length, /größer als 0/);
 });
 
-test("9 — teilweise ausgefüllte Maße werden als unvollständig erkannt", () => {
-  const r = getCalculatorErrors(mit({ length: "30", width: "", height: "" }));
-  assert.ok(r.fieldErrors.width && r.fieldErrors.height, "die fehlenden Maße müssen markiert werden");
-  assert.equal(r.banner.title, "Maße unvollständig");
-  // Alle drei leer bleibt erlaubt (Backend rechnet mit Standardmaßen).
-  assert.deepEqual(getCalculatorErrors(mit({ length: "", width: "", height: "" })).fieldErrors, {});
+test("9 — fehlende Maße werden erkannt, auch wenn ALLE drei leer sind", () => {
+  const teilweise = getCalculatorErrors(mit({ length: "30", width: "", height: "" }));
+  assert.ok(teilweise.fieldErrors.width && teilweise.fieldErrors.height,
+    "die fehlenden Maße müssen markiert werden");
+  assert.equal(teilweise.banner.title, "Maße fehlen");
+
+  // UMGEKEHRT gegenüber dem Vorzustand: „alle drei leer" war erlaubt, und das
+  // Backend rechnete dann mit 30 × 20 × 15 cm weiter. Der Kunde bekam einen
+  // Preis für ein Paket, das er nie beschrieben hat — genau das ist behoben.
+  const alleLeer = getCalculatorErrors(mit({ length: "", width: "", height: "" }));
+  for (const feld of ["length", "width", "height"])
+    assert.ok(alleLeer.fieldErrors[feld], `${feld} wird nicht als fehlend erkannt`);
+  assert.equal(alleLeer.banner.title, "Maße fehlen");
 });
 
 test("10 — mehrere Fehler: das oberste Feld wird angesprungen, Anzahl wird genannt", () => {

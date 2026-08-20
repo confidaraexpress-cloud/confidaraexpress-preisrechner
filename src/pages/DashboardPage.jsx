@@ -17,6 +17,7 @@ import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary";
+import { useShippingFlow } from "../context/ShippingFlowContext";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
 // Vergleich ohne Netzwerkzugriff — 60 s sind billig und lassen den Wechsel
@@ -127,6 +128,13 @@ export default function DashboardPage() {
   // dadurch schlicht `/dashboard`, und ein Browser-Zurück von `/booking` landete
   // auf der Übersicht statt auf „Neue Sendung".
   const [page, setPage] = useState(() => waehleStartbereich(location));
+  // Beenden eines laufenden Vorgangs beim bewussten Start einer neuen Sendung.
+  const { clearFlow } = useShippingFlow();
+  // Remount-Schlüssel für „Neue Sendung": jeder Klick auf den Navigationseintrag
+  // erhöht ihn und erzwingt damit eine frische Instanz der Seite. Ohne ihn wäre
+  // ein Klick bei bereits offener Seite ein No-Op — der lokale Formularzustand
+  // bliebe stehen, obwohl der geteilte Vorgang gelöscht wurde.
+  const [neueSendungKey, setNeueSendungKey] = useState(0);
   // Vorgang, der aus einer Glockenmeldung heraus direkt geöffnet werden soll.
   const [supportTicketId, setSupportTicketId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -442,6 +450,24 @@ export default function DashboardPage() {
     const target = { type: "page", page: id };
     if (page === "new" && id !== "new" && leaveGuardRef.current && leaveGuardRef.current(target)) return;
     setInventoryFilter(filter ? { page: id, filter } : null);
+    // „Neue Sendung" aus der Navigation heißt: NEUER Vorgang. Ein noch laufender
+    // wird beendet und die Seite frisch montiert.
+    //
+    // Zwei Dinge sind dafür nötig, und beide einzeln reichen nicht:
+    //   • clearFlow() leert den Context — sonst holte der Mount-once-
+    //     Initialisierer von NewShipmentPage den alten Vorgang zurück.
+    //   • der Remount-Schlüssel erzwingt eine neue Instanz — steht `page`
+    //     bereits auf „new", ist setPage("new") ein No-Op, die Seite bleibt
+    //     gemountet und ihr LOKALER State (Formular, Angebote, Auswahl) überlebt
+    //     das Leeren des Contexts unbeschadet. Dieselbe Falle ist beim
+    //     Entwurfsspeichern dokumentiert.
+    //
+    // Der Weg aus der Buchung zurück zu den Angeboten läuft NICHT hierüber
+    // (BookingPage navigiert direkt mit `state.page`), bleibt also unberührt.
+    if (id === "new") {
+      clearFlow();
+      setNeueSendungKey((k) => k + 1);
+    }
     performNav(target);
   };
 
@@ -571,6 +597,7 @@ export default function DashboardPage() {
           <div className="page-body">
             <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
               <NewShipmentPage
+                key={neueSendungKey}
                 prefillAddress={addressPrefill}
                 onPrefillApplied={() => setAddressPrefill(null)}
                 prefillInventory={inventoryPrefill}

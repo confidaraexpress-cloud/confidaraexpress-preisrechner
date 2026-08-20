@@ -9,9 +9,9 @@ import { BILLING_MODES, BILLING_MODE_TEXT } from "../../utils/billingModeView.mj
 // und Onboarding: ein Kunde, der auf Sammelrechnung wechseln möchte, soll nicht
 // auf ein Selfservice-Feature warten müssen. Rein darstellend; der Request liegt
 // in der Seite (ein Request-Pfad, ein Zustand) — dieselbe Aufteilung wie bei
-// `TestBookingSection` und `CustomerMarkupSection`.
+// `CustomerMarkupSection`.
 //
-// Bewusst OHNE Bestätigungsdialog, anders als die Testbuchungsberechtigung: eine
+// Bewusst OHNE Bestätigungsdialog: eine
 // Abrechnungsart ist keine Berechtigung, sie ist umkehrbar, und sie wirkt
 // ausschließlich für KÜNFTIGE Buchungen. Bereits gebuchte Sendungen tragen ihre
 // Abrechnungsart eingefroren und werden nicht umsortiert; ausgestellte Rechnungen

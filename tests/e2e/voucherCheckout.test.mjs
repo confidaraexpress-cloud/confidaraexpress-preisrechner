@@ -13,6 +13,12 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+// Warum dieser Test zwischenzeitlich vollständig rot war — und niemand es bemerkt hat:
+// Er stand NICHT in `npm run test:e2e` (package.json). Dadurch liefen zwei spätere Pakete
+// an ihm vorbei: „Paketmaße sind Pflicht" stellte die Platzhalter auf „z. B. 5" um (die
+// Selektoren trafen nichts mehr), und „Neue Sendung startet leer" entfernte den
+// automatischen Profil-Seed (Absender und Empfängerland blieben leer, der CTA dauerhaft
+// deaktiviert). Beides ist unten korrigiert; der Test ist jetzt registriert.
 
 const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -21,9 +27,14 @@ function chromiumExecutablePath() {
   return root && existsSync(path.join(root, "chromium")) ? path.join(root, "chromium") : undefined;
 }
 
+// Die Anschrift ist VOLLSTÄNDIG, damit die Komfortaktion „Eigene Adresse" den Absender
+// wirklich füllen kann. Seit dem Paket „Neue Sendung startet leer" gibt es keinen
+// automatischen Profil-Seed mehr — ohne vollständige Profildaten bliebe der Absender leer
+// und der Preisrechner-CTA dauerhaft deaktiviert.
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
   role: "customer", status: "approved", country: "DE", zip: "73207", customer_number: "CE-K-10030",
+  street: "Musterstraße 1", city: "Plochingen", phone: "+4971531234567",
 };
 
 // Beträge wie im Auftragsbeispiel: 8,91 € Einkauf netto → 10,69 € CE netto → 12,72 € CE brutto.
@@ -98,14 +109,30 @@ async function zurBestelluebersicht(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
   const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
+
+  // ABSENDER über die sichtbare Komfortaktion — genau den Weg nimmt auch der Kunde,
+  // seit „Neue Sendung" leer startet und es keinen automatischen Profil-Seed mehr gibt.
+  const eigene = page.locator("button", { hasText: "Eigene Adresse" }).first();
+  await eigene.click();
+  await page.waitForTimeout(150);
+
+  // EMPFÄNGER: das Land startet ebenfalls leer und muss ausdrücklich gewählt werden.
+  await page.locator("#ns-r-country").selectOption("DE");
   for (const [ph, v] of [
-    ["Max Mustermann", "Max Mustermann"], ["Musterstraße 1", "Hauptstrasse 1"], ["Stuttgart", "Berlin"],
     ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
   ]) await fill(ph, v);
   const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
   await emp.nth(4).fill("80331");
   await emp.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+
+  // Paketfelder über ihre ids. Die Platzhalter tragen seit dem Paket „Paketmaße sind
+  // Pflicht" ein „z. B." davor und taugen nicht mehr als Selektor; die ids sind stabil.
+  // Alle fünf Felder sind Pflicht, sonst bleibt der CTA deaktiviert.
+  for (const [id, v] of [["ns-packageCount", "2"], ["ns-weight", "5.5"],
+                         ["ns-length", "40"], ["ns-width", "30"], ["ns-height", "20"]]) {
+    await page.locator(`#${id}`).fill(v);
+  }
+  await page.waitForTimeout(250);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
@@ -277,12 +304,17 @@ test("Smoke 5 — Referenznummer behält den Gutschein, eine Preisänderung verw
   assert.match(await page.locator(".booking-confirm-box").innerText(), /Zu zahlen/);
 
   // (b) Preisrelevante Änderung: zurück in „Neue Sendung", Gewicht ändern, neu berechnen.
+  //
+  // Der Weg zurück läuft über den SICHTBAREN „← Zurück"-Button, NICHT über page.goto().
+  // Seit „Neue Sendung startet leer" lebt der Vorgang ausschließlich im Arbeitsspeicher:
+  // ein vollständiger Seitenaufbau (goto/Reload) verwirft ihn samt Formular, und der Test
+  // hätte danach ein leeres Formular vor sich statt einer preisrelevanten ÄNDERUNG.
+  // Die SPA-Navigation erhält den Vorgang — genau wie beim echten Nutzer.
   await page.getByRole("button", { name: /Zurück zur Übersicht/ }).click();
   await page.waitForSelector("#booking-reference-toggle", { timeout: 20000 });
-  await page.locator(".booking-back-btn, button:has-text('Zurück')").first().click().catch(() => {});
-  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.locator("button").filter({ hasText: /^← Zurück$/ }).first().click();
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  await page.getByPlaceholder("5", { exact: true }).first().fill("9.5");
+  await page.locator("#ns-weight").fill("9.5");
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();

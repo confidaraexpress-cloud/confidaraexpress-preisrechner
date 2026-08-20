@@ -10,7 +10,6 @@ import {
   getAdminCustomerPriceMarkup,
   updateAdminCustomerPriceMarkup,
   setAdminUserStatus,
-  setAdminUserTestBooking,
 } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
@@ -31,18 +30,10 @@ import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
-import { TestBookingSection } from "../../components/admin/TestBookingSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
 import { setAdminUserBillingMode } from "../../api/adminApi";
 import { billingMode as readBillingMode } from "../../utils/billingModeView.mjs";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
-import {
-  TEST_BOOKING_TEXTS,
-  isTestBookingEnabled,
-  selectTestBookingResponse,
-  testBookingError,
-  testBookingHasChange,
-} from "../../utils/adminTestBooking.mjs";
 import {
   APPROVAL_ERRORS,
   MARKUP_SAVE_ERRORS,
@@ -221,17 +212,7 @@ export default function AdminUserDetailPage() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
 
-  // ── Testbuchungsberechtigung ──────────────────────────────────────────────
-  // `tbDialog` trägt den ANGEFORDERTEN Zielwert (true = freischalten,
-  // false = entziehen) oder null für „kein Dialog offen". Ein einzelner Wert
-  // statt zweier Booleans: „offen" und „welche Richtung" sind dieselbe Aussage,
-  // und zwei Flags könnten widersprüchlich werden.
-  const [tbDialog, setTbDialog] = useState(null);
-  const [tbBusy, setTbBusy] = useState(false);
-  const [tbError, setTbError] = useState("");
-  const [tbSuccess, setTbSuccess] = useState("");
-
-  // Abrechnungsart. Eigener Zustand neben der Testbuchungsberechtigung — die beiden
+  // Abrechnungsart. Eigener Zustand — die beiden
   // sind fachlich unabhängig und dürfen sich weder Fehler- noch Erfolgsmeldung teilen.
   const [bmBusy, setBmBusy] = useState(false);
   const [bmError, setBmError] = useState("");
@@ -254,7 +235,6 @@ export default function AdminUserDetailPage() {
     }
     setBmBusy(false);
   };
-  const tbInFlight = useRef(false);
 
   const markupInputRef = useRef(null);
   const markupSectionRef = useRef(null);
@@ -536,42 +516,6 @@ export default function AdminUserDetailPage() {
     }
   };
 
-  // ── Testbuchungsberechtigung setzen ───────────────────────────────────────
-  // Ein PUT mit ausschließlich { testBookingEnabled }; die Kunden-ID stammt
-  // allein aus der Adminroute (useParams), nie aus einer Eingabe.
-  //
-  // Die Antwort wird nur übernommen, wenn sie verwertbar ist — sonst wird die
-  // Backend-Realität frisch nachgeladen. Kein geratener Zwischenzustand: eine
-  // Berechtigung falsch anzuzeigen ist schlimmer als kurz zu laden.
-  const confirmTestBooking = async () => {
-    const next = tbDialog;
-    if (next !== true && next !== false) return;
-    if (tbInFlight.current) return;              // Doppelübermittlung ausgeschlossen
-    tbInFlight.current = true;
-    setTbBusy(true);
-    setTbError("");
-    setTbSuccess("");
-    try {
-      const r = await setAdminUserTestBooking(id, next);
-      if (!r.ok) {
-        const msg = testBookingError(r.status);  // null bei 401/403 (zentral)
-        if (msg) setTbError(msg);
-        return;
-      }
-      let d = {};
-      try { d = await r.json(); } catch { d = {}; }
-      const confirmed = selectTestBookingResponse(d);
-      if (confirmed) setUser((prev) => (prev ? { ...prev, test_booking_enabled: confirmed.testBookingEnabled } : prev));
-      else await load();
-      setTbSuccess(next ? TEST_BOOKING_TEXTS.successOn : TEST_BOOKING_TEXTS.successOff);
-      setTbDialog(null);
-    } catch {
-      setTbError(testBookingError(0));
-    } finally {
-      tbInFlight.current = false;
-      setTbBusy(false);
-    }
-  };
 
   // ── Freischaltung / Reaktivierung ─────────────────────────────────────────
   // Nutzt weiterhin den bestehenden Statusendpunkt (PATCH /admin/users/:id/status)
@@ -773,26 +717,6 @@ export default function AdminUserDetailPage() {
           onBlock={() => { setApproveMsg(null); setBlockOpen(true); }}
         />
 
-        {/* 3c) Testbuchungen — eine ausdrücklich vergebene PRODUKTberechtigung,
-             getrennt von Status, Rolle und Aufschlag. Die Adminrolle ist
-             ausdrücklich KEINE Ersatzpermission: auch ein Adminkonto braucht
-             diese Freischaltung (serverseitig in lib/sandboxVoucher.js). */}
-        <TestBookingSection
-          enabled={isTestBookingEnabled(u)}
-          busy={tbBusy}
-          error={tbError}
-          successText={tbSuccess}
-          onRequestChange={(next) => {
-            // Ein Umschalten auf den bereits gesetzten Wert wäre serverseitig ein
-            // erlaubtes No-Op — es erzeugte aber nur einen Auditeintrag und eine
-            // Erfolgsmeldung, die nichts meldet.
-            if (!testBookingHasChange(isTestBookingEnabled(u), next)) return;
-            setTbError("");
-            setTbSuccess("");
-            setTbDialog(next);
-          }}
-        />
-
         {/* 3d) Abrechnung — Einzel- oder Sammelrechnung. Support/Onboarding dürfen
              das umstellen; die Änderung wirkt ausschließlich für künftige Buchungen. */}
         <BillingModeSection
@@ -919,27 +843,6 @@ export default function AdminUserDetailPage() {
           busy={blockBusy}
           onCancel={() => { if (!blockBusy) setBlockOpen(false); }}
           onConfirm={confirmBlock}
-        />
-      )}
-
-      {/* Testbuchungsberechtigung — beide Richtungen bestätigt, kein Umschalten
-          durch einen Klick. Der Entzug ist nicht „gefährlich" im Sinne des
-          roten Buttons (er zerstört nichts), aber er wirkt sofort und nimmt
-          einem arbeitenden Testkunden die Grundlage — deshalb `irreversible`. */}
-      {tbDialog !== null && (
-        <ConfirmDialog
-          title={tbDialog ? TEST_BOOKING_TEXTS.grantTitle : TEST_BOOKING_TEXTS.revokeTitle}
-          text={tbDialog ? TEST_BOOKING_TEXTS.grantText : TEST_BOOKING_TEXTS.revokeText}
-          subline={targetLabel}
-          note={TEST_BOOKING_TEXTS.auditNote}
-          confirmLabel={tbDialog ? TEST_BOOKING_TEXTS.grantConfirm : TEST_BOOKING_TEXTS.revokeConfirm}
-          confirmIcon={tbDialog ? "check" : "x"}
-          icon="settings"
-          irreversible={!tbDialog}
-          busy={tbBusy}
-          busyLabel={TEST_BOOKING_TEXTS.busy}
-          onCancel={() => { if (!tbBusy) setTbDialog(null); }}
-          onConfirm={confirmTestBooking}
         />
       )}
 

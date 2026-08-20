@@ -47,6 +47,7 @@ import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
+import { downloadOrderConfirmation } from "../utils/downloadOrderConfirmation";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
@@ -121,6 +122,8 @@ export default function BookingPage() {
   // darf die Labelmeldung nicht überschreiben und umgekehrt.
   const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false);
   const [deliveryNoteError, setDeliveryNoteError] = useState("");
+  const [orderConfirmationLoading, setOrderConfirmationLoading] = useState(false);
+  const [orderConfirmationError, setOrderConfirmationError] = useState("");
   // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
   // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
   // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
@@ -1073,6 +1076,21 @@ export default function BookingPage() {
     setDeliveryNoteLoading(false);
   };
 
+  // Auftragsbestätigung — derselbe Weg wie Label und Lieferschein: Sendungshandle aus
+  // der Buchungsantwort, Blob-Download, eigener Fehlerzustand. Der Knopf erscheint NUR,
+  // wenn die Buchungsantwort tatsächlich eine Auftragsbestätigung meldet
+  // (`booking.orderConfirmation`) — nie unterstellt.
+  const handleDownloadOrderConfirmation = async () => {
+    if (!booking?.ceShipmentId || !booking?.orderConfirmation?.number) return;
+    setOrderConfirmationLoading(true); setOrderConfirmationError("");
+    try {
+      await downloadOrderConfirmation(booking.ceShipmentId, booking.orderConfirmation.number);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setOrderConfirmationError(e.message);
+    }
+    setOrderConfirmationLoading(false);
+  };
+
   /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
      Es führt IMMER zum Angebotsvergleich — unabhängig davon, was im
      Browserverlauf davor liegt.
@@ -1525,6 +1543,18 @@ export default function BookingPage() {
             {booking?.ceShipmentId && (
               <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
                 {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
+              </button>
+            )}
+            {/* Auftragsbestätigung — erscheint NUR, wenn die Buchungsantwort tatsächlich
+                eine gemeldet hat. Sie steht VOR dem Lieferschein: sie betrifft jede
+                Buchung, der Lieferschein nur Konten mit Lagerbezug. Die Bestätigung
+                kommt zusätzlich per E-Mail; der Knopf ist die Sofortkopie. */}
+            {orderConfirmationError && <div className="alert alert-error mb-16" role="alert">{orderConfirmationError}</div>}
+            {booking?.ceShipmentId && booking?.orderConfirmation?.number && (
+              <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadOrderConfirmation} disabled={orderConfirmationLoading}>
+                {orderConfirmationLoading
+                  ? <><span className="spinner spinner-dark" /> Auftragsbestätigung wird geladen…</>
+                  : <>Auftragsbestätigung {booking.orderConfirmation.number} herunterladen</>}
               </button>
             )}
             {/* Lieferschein — erscheint NUR, wenn die Buchungsantwort tatsächlich einen

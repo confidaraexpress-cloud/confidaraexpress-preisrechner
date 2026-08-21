@@ -339,3 +339,172 @@ input[type="radio"]:focus-visible {
   .adm-note-input,
   .adm-modal-input { transition: none; }
 }
+
+/* ── Innenliegende Beschriftung („Floating Label") ────────────────────────────
+   PROTOTYP, ausschließlich OPT-IN über <Field labelMode="floating" />. In dieser
+   Ausbaustufe setzt das nur „Neue Sendung". Jede Regel hier hängt an
+   `.ce-field--floating` — ein Standardfeld ohne diese Klasse ist von der ganzen
+   Sektion unberührt, im Kundenportal wie im Adminportal.
+
+   WARUM `.ce-field.ce-field--floating` und nicht nur `.ce-field--floating`:
+   „Neue Sendung" liegt in `.offers-form-section` (NewShipmentPage.jsx), und
+   calculator.css hält dort zwei Sonderfälle —
+     .offers-form-section .field-input { padding: 11px 14px }
+     .offers-form-section .field-label { font-size: 12px; margin-bottom: 6px }
+   Beide haben (0,2,0), genau wie ein einfaches `.ce-field--floating .ce-field-*`,
+   und calculator.css wird SPÄTER importiert: bei Gleichstand gewinnt es. Gemessen
+   war die Folge nicht subtil — das Feld blieb 40 px hoch, die Beschriftung 12 px,
+   und das angehobene Label lag 11,8 px ÜBER dem Feldtext, also mitten darin. Die
+   zweite Klasse hebt die Floating-Variante auf (0,3,0) und entscheidet das
+   eindeutig, ohne eine einzige Regel des Preisrechners anzufassen.
+
+   Warum eine eigene Höhe: die Standardhöhen (Kunde 40 px, Admin 36 px) tragen
+   ein innenliegendes Label rechnerisch nicht. Bei 36 px bleiben nach Rahmen,
+   geschwebtem Label (12 px) und Feldtext (13 px) noch 0,95 px für Innenabstand
+   UND Zeilenabstand zusammen; bei 40 px sind es 3,55 px. Deshalb 54 px für die
+   Floating-Variante — und NUR für sie: --ce-size-control-md und
+   --ce-size-control-admin bleiben unverändert.
+
+   Die Geometrie ist durchgerechnet, nicht geschätzt (Desktop):
+     Feld 54 · Rahmen 2 · Innenabstand oben 26 / unten 6 → Textfeld 20 px
+     Feldtext  14 px × 1.4 = 19,6 px, Oberkante bei 27 px
+     Label oben 12 px × 1.4 = 16,8 px, von 7 px bis 23,8 px
+     → 3,2 px Abstand zwischen Labelunterkante und Textoberkante.
+   Der Ruhezustand nutzt dieselbe Größe wie der Feldtext und sitzt mittig
+   ((54 − 19,6) / 2 = 17,2 → 17 px), also genau dort, wo sonst der Platzhalter
+   steht.
+
+   Es wird NICHT über transform: scale() verkleinert: das ergäbe optisch 10,5 px
+   und läge damit unter der 11-px-Untergrenze der Typografieskala und zwischen
+   zwei Stufen. Bewegt wird die POSITION, die Größe wechselt zwischen zwei echten
+   Stufen der Skala (14 → 12).
+
+   DOM-Reihenfolge: Eingabe ZUERST, Beschriftung danach. Das ist keine Kosmetik,
+   sondern die Voraussetzung für die Autofill-Ergänzung weiter unten — sie
+   braucht einen Geschwisterselektor. Für Screenreader ändert es nichts: die
+   Verbindung läuft über `htmlFor`/`id`, nicht über die Reihenfolge. */
+
+.ce-field.ce-field--floating .ce-field-control { position: relative; }
+
+.ce-field.ce-field--floating .ce-field-input {
+  min-height: 54px;
+  padding: 26px 14px 6px;
+  font-size: 14px;
+}
+/* Der Chevron des Selects behält seine Spur (36 px + 12 px Abstand, siehe oben);
+   das Kurzform-Padding darüber hätte sie überschrieben. */
+.ce-field.ce-field--floating .ce-field-input.field-select { padding-right: 36px; }
+.ce-field.ce-field--floating .ce-field-input.field-textarea { min-height: 88px; padding-bottom: 10px; }
+
+/* Der Platzhalter ist im Ruhezustand unsichtbar — dort steht die Beschriftung.
+   Er erscheint erst, wenn das Label nach oben gewandert ist, und zeigt dann das,
+   wofür er gedacht ist: ein Beispiel („z. B. 5"), nicht eine zweite Bezeichnung. */
+.ce-field.ce-field--floating .ce-field-input::placeholder {
+  opacity: 0;
+  transition: opacity var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ce-field.ce-field--floating.is-floating .ce-field-input::placeholder { opacity: 1; }
+
+.ce-field.ce-field--floating .ce-field-label {
+  position: absolute;
+  left: 15px;                      /* Rahmen 1 + Innenabstand 14 */
+  top: 17px;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--ce-color-text-placeholder);
+  pointer-events: none;            /* der Klick geht an das Feld darunter */
+  transition: top var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              font-size var(--ce-motion-fast) var(--ce-motion-ease-standard),
+              color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+
+.ce-field.ce-field--floating.is-floating .ce-field-label {
+  top: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ce-color-text-secondary);
+}
+.ce-field.ce-field--floating.is-floating:focus-within .ce-field-label { color: var(--ce-color-brand-ink); }
+/* Der Fehler gewinnt gegen den Fokus — und das musste ausdrücklich geschrieben
+   werden. Die Fokusregel darüber hat (0,4,0), eine einfache `.is-error`-Regel
+   nur (0,3,0): nach einem abgelehnten Feld springt der Fokus genau dorthin
+   (focusFirstError), und im Browser gemessen trug die Beschriftung dann das
+   Markenindigo statt der Fehlerfarbe — der auffälligste Moment des Formulars
+   sah aus wie ein ganz normaler Fokus. Zwei Selektoren, damit der Fall mit und
+   ohne Fokus gleich aussieht. */
+.ce-field.ce-field--floating.is-error .ce-field-label,
+.ce-field.ce-field--floating.is-error:focus-within .ce-field-label { color: var(--ce-color-status-error-fg); }
+.ce-field.ce-field--floating.is-disabled .ce-field-label { color: var(--ce-color-text-disabled); }
+
+/* Browser-Autofill: Chrome füllt in der Vorschauphase, ohne den Wert an
+   JavaScript zu geben — der React-Zustand kann das Label dort nicht anheben.
+   Diese beiden Regeln ergänzen ihn, sie ersetzen ihn nicht.
+
+   Bewusst als GESCHWISTERSELEKTOR und ausdrücklich NICHT als
+   `:has(.ce-field-input:-webkit-autofill)`: Chromium verwirft eine solche Regel
+   beim Parsen vollständig (im Browser gemessen — sie tauchte in cssRules gar
+   nicht erst auf). Deshalb steht die Eingabe im DOM vor der Beschriftung.
+   Zwei getrennte Regeln, weil ein vom Browser nicht gekannter Selektor sonst
+   die ganze Liste ungültig machen würde. */
+.ce-field.ce-field--floating .ce-field-input:-webkit-autofill ~ .ce-field-label {
+  top: 7px; font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
+}
+.ce-field.ce-field--floating .ce-field-input:autofill ~ .ce-field-label {
+  top: 7px; font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
+}
+
+/* Einheit (kg, cm) rechts im Feld — dekorativ (aria-hidden). Die Bedeutung
+   bekommt der Screenreader über den unsichtbaren Labelzusatz, nicht hier.
+   Sichtbar erst im Schwebezustand: im Ruhezustand stünde sie neben der
+   Beschriftung und läse sich als deren Bestandteil. */
+.ce-field.ce-field--has-unit .ce-field-input { padding-right: 40px; }
+.ce-field.ce-field--floating .ce-field-unit {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ce-color-text-muted);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ce-field.ce-field--floating.is-floating .ce-field-unit { opacity: 1; }
+/* Die nativen Zählpfeile eines Zahlenfeldes sitzen genau dort, wo die Einheit
+   steht — sie würden verdeckt. Deshalb entfallen sie NUR in Feldern mit
+   Einheit; „Anzahl" behält seine Pfeile. */
+.ce-field.ce-field--has-unit .ce-field-input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.ce-field.ce-field--has-unit .ce-field-input[type="number"]::-webkit-outer-spin-button,
+.ce-field.ce-field--has-unit .ce-field-input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Touch: 56 px statt 54, und der Feldtext wächst auf 16 px. Unter 16 px zoomt
+   Safari auf iOS beim Fokussieren jedes Eingabefeld — zusammen mit der
+   Labelbewegung wären das zwei Bewegungen gleichzeitig. Gilt ausschließlich für
+   die Floating-Variante; die Standardfelder bleiben bei ihren 44 px und 14 px. */
+@media (pointer: coarse) {
+  .ce-field.ce-field--floating .ce-field-input {
+    min-height: 56px;
+    padding: 25px 14px 6px;
+    font-size: 16px;
+  }
+  .ce-field.ce-field--floating .ce-field-input.field-select { padding-right: 36px; }
+  .ce-field.ce-field--has-unit .ce-field-input { padding-right: 40px; }
+  .ce-field.ce-field--floating .ce-field-label { top: 17px; font-size: 16px; }
+  .ce-field.ce-field--floating.is-floating .ce-field-label { top: 6px; font-size: 12px; }
+  .ce-field.ce-field--floating .ce-field-input:-webkit-autofill ~ .ce-field-label { top: 6px; font-size: 12px; }
+  .ce-field.ce-field--floating .ce-field-input:autofill ~ .ce-field-label { top: 6px; font-size: 12px; }
+  .ce-field.ce-field--floating .ce-field-unit { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ce-field.ce-field--floating .ce-field-label,
+  .ce-field.ce-field--floating .ce-field-unit,
+  .ce-field.ce-field--floating .ce-field-input::placeholder { transition: none; }
+}

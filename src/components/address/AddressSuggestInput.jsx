@@ -16,16 +16,23 @@ import React, { useEffect, useId, useRef, useState } from "react";
 // als der schwebende Adressbuch-Picker, der wegen `overflow: hidden` auf `.calc-panel`
 // gemessen platziert werden muss. Hier ist das nicht nötig: das Feld sitzt im normalen
 // Formularfluss, und die Liste ist kurz (max. 8 Einträge).
+// `floating` ist eine reine Darstellungsoption und ausdrücklich OPT-IN: ohne sie
+// rendert die Komponente exakt dasselbe Markup wie zuvor. Sie wird in dieser
+// Ausbaustufe nur von „Neue Sendung" gesetzt — Adressbuch und Auftragsdialog
+// nutzen dieselbe Komponente unverändert weiter. Combobox-Verhalten, ARIA,
+// Tastaturbedienung, Vorschlagsquelle und Auswahl sind in beiden Fassungen
+// identisch; verschoben wird ausschließlich die Beschriftung.
 export function AddressSuggestInput({
   id, label, value, onChange, onSelect, suggestions = [], placeholder, maxLength,
   error, hint, required, disabled, autoComplete, inputMode, className = "",
-  emptyHint,
+  emptyHint, floating = false,
 }) {
   const reactId = useId();
   const inputId = id || `addr-${reactId}`;
   const listId = `${inputId}-list`;
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [fokussiert, setFokussiert] = useState(false);
   const wrapRef = useRef(null);
 
   const items = suggestions.slice(0, 8);
@@ -81,17 +88,37 @@ export function AddressSuggestInput({
   const showList = open && hasItems && !disabled;
   const activeId = showList && active >= 0 ? `${inputId}-opt-${active}` : undefined;
 
+  // Schwebezustand aus dem React-Wert plus Fokus — dieselbe Ableitung wie in
+  // <Field />, damit beide Bauteile auf „Neue Sendung" im Gleichtakt laufen.
+  const angehoben = floating && (String(value ?? "").length > 0 || fokussiert);
+  const fehlerId = `${inputId}-err`;
+  const hinweisId = `${inputId}-hint`;
+  const hinweisText = hint || emptyHint;
+  const beschreibung = error ? fehlerId : (hinweisText ? hinweisId : undefined);
+
+  const rahmenKlasse = floating
+    ? ["addr-suggest", "field", "ce-field", "ce-field--floating",
+       angehoben ? "is-floating" : "", error ? "is-error" : "", disabled ? "is-disabled" : "",
+       className].filter(Boolean).join(" ")
+    : `addr-suggest ${className}`.trim();
+
+  const beschriftung = label && (
+    <label className={floating ? "field-label ce-field-label" : "field-label"} htmlFor={inputId}>
+      {label}{required ? " *" : ""}
+    </label>
+  );
+
   return (
-    <div className={`addr-suggest ${className}`.trim()} ref={wrapRef}>
-      {label && (
-        <label className="field-label" htmlFor={inputId}>
-          {label}{required ? " *" : ""}
-        </label>
-      )}
+    <div className={rahmenKlasse} ref={wrapRef}>
+      {!floating && beschriftung}
+      {/* Im Floating-Modus steht die Beschriftung IM Feldrahmen — also innerhalb
+          von .addr-suggest-wrap, das ohnehin `position: relative` trägt und der
+          Bezugspunkt der Vorschlagsliste ist. Dadurch bleibt die Liste
+          unverändert 4 px unter der Feldunterkante, auch bei 54 px Feldhöhe. */}
       <div className="addr-suggest-wrap">
         <input
           id={inputId}
-          className={`field-input${error ? " field-input-error" : ""}`}
+          className={`field-input${floating ? " ce-field-input" : ""}${error ? " field-input-error" : ""}`}
           type="text"
           role="combobox"
           aria-expanded={showList}
@@ -99,6 +126,8 @@ export function AddressSuggestInput({
           aria-autocomplete="list"
           aria-activedescendant={activeId}
           aria-invalid={error ? "true" : undefined}
+          aria-required={floating && required ? "true" : undefined}
+          aria-describedby={floating ? beschreibung : undefined}
           autoComplete={autoComplete || "off"}
           inputMode={inputMode}
           value={value}
@@ -106,9 +135,11 @@ export function AddressSuggestInput({
           maxLength={maxLength}
           disabled={disabled}
           onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-          onFocus={() => { if (hasItems) setOpen(true); }}
+          onFocus={() => { setFokussiert(true); if (hasItems) setOpen(true); }}
+          onBlur={() => setFokussiert(false)}
           onKeyDown={onKeyDown}
         />
+        {floating && beschriftung}
         {showList && (
           <ul className="addr-suggest-list" id={listId} role="listbox" aria-label={label || "Vorschläge"}>
             {items.map((item, i) => {
@@ -134,10 +165,10 @@ export function AddressSuggestInput({
         )}
       </div>
       {error
-        ? <span className="field-error">{error}</span>
+        ? <span className="field-error" id={floating ? fehlerId : undefined}>{error}</span>
         : hint
-          ? <span className="field-hint">{hint}</span>
-          : (emptyHint ? <span className="field-hint">{emptyHint}</span> : null)}
+          ? <span className="field-hint" id={floating ? hinweisId : undefined}>{hint}</span>
+          : (emptyHint ? <span className="field-hint" id={floating ? hinweisId : undefined}>{emptyHint}</span> : null)}
     </div>
   );
 }

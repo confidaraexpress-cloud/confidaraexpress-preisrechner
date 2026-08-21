@@ -362,3 +362,63 @@ test("(P1-d) das technische Feld wurde NICHT umbenannt", () => {
   assert.ok(/businessOrderNumber/.test(modul), "der Snapshot-Schlüssel businessOrderNumber fehlt");
   assert.ok(/CE-BS/.test(modul), "der Nummernkreis CE-BS wurde verändert");
 });
+
+test("(P1-e) OrderDetailPage beschriftet CE-BS und Trackingnummer korrekt", () => {
+  // Die Tabelle „Verbundene Sendungen" trug beide Beschriftungen verkehrt herum:
+  //   „Bestellnummer"  stand über businessOrderNumber (= CE-BS, die Sendungsnummer)
+  //   „Sendungsnummer" stand über trackingNumber      (= Carrier-Trackingnummer)
+  // Ein isoliertes Umbenennen der ersten Spalte hätte zwei gleichnamige Spalten erzeugt —
+  // deshalb wurden beide gemeinsam korrigiert. Die Felder selbst sind unverändert.
+  const src = read("pages/inventory/OrderDetailPage.jsx");
+
+  // Die Seite trägt ZWEI Tabellen: zuerst „Auftragspositionen mit Reservierungsstand",
+  // danach „Sendungen zu diesem Auftrag". Ein `indexOf("<thead>")` auf der ganzen Datei
+  // greift die ERSTE — also die falsche, in der es weder eine Sendungs- noch eine
+  // Trackingnummer gibt. Deshalb wird ab der Beschriftung der Sendungstabelle geschnitten.
+  const tabelle = src.slice(src.indexOf("Sendungen zu diesem Auftrag"));
+  assert.ok(tabelle, "die Tabelle 'Sendungen zu diesem Auftrag' fehlt");
+  const kopf = tabelle.slice(tabelle.indexOf("<thead>"), tabelle.indexOf("</thead>"));
+
+  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(kopf), "Spalte 'Sendungsnummer' fehlt");
+  assert.ok(/<th[^>]*>Trackingnummer<\/th>/.test(kopf), "Spalte 'Trackingnummer' fehlt");
+  assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(kopf),
+    "CE-BS wird in OrderDetailPage weiterhin als 'Bestellnummer' beschriftet");
+
+  // Jede Beschriftung genau EINMAL — sonst stünden zwei gleichnamige Spalten nebeneinander.
+  for (const label of ["Sendungsnummer", "Trackingnummer"]) {
+    const treffer = kopf.match(new RegExp(`<th[^>]*>${label}</th>`, "g")) || [];
+    assert.equal(treffer.length, 1, `Spalte '${label}' steht ${treffer.length}× im Tabellenkopf`);
+  }
+
+  // Die Datenfelder sind unverändert und stehen weiterhin in derselben Spaltenreihenfolge:
+  // Sendungsnummer → businessOrderNumber, Carrier → carrier, Trackingnummer → trackingNumber.
+  const koerper = tabelle.slice(tabelle.indexOf("<tbody>"), tabelle.indexOf("</tbody>"));
+  const iBusiness = koerper.indexOf("s.businessOrderNumber");
+  const iCarrier  = koerper.indexOf("s.carrier");
+  const iTracking = koerper.indexOf("s.trackingNumber");
+  assert.ok(iBusiness > -1 && iCarrier > -1 && iTracking > -1, "ein Datenfeld der Tabelle fehlt");
+  assert.ok(iBusiness < iCarrier && iCarrier < iTracking,
+    "die Zellenreihenfolge passt nicht mehr zu den Spaltenüberschriften");
+});
+
+test("(P1-f) systemweit: CE-BS heißt Sendungsnummer, die Carriernummer Trackingnummer", () => {
+  // Zusammenfassende Zusage über alle kundensichtbaren Oberflächen dieses Pakets.
+  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
+  assert.equal(NUMBER_LABELS.tracking, "Trackingnummer");
+  assert.notEqual(NUMBER_LABELS.businessOrder, NUMBER_LABELS.tracking,
+    "Sendungs- und Trackingnummer dürfen nie dieselbe Beschriftung tragen");
+
+  // Keine dieser drei Oberflächen beschriftet CE-BS noch als „Bestellnummer".
+  for (const rel of [
+    "pages/BookingPage.jsx",
+    "components/dashboard/ShipmentsList.jsx",
+    "pages/inventory/OrderDetailPage.jsx",
+  ]) {
+    assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(readCode(rel)),
+      `${rel}: Spaltenüberschrift „Bestellnummer" lebt noch`);
+  }
+
+  // Gegenprobe bleibt: die echte Bestellnummer des KUNDEN darf weiterhin so heißen.
+  assert.ok(/Referenznummer \/ Bestellnummer/.test(read("components/booking/AdditionalOptionsModule.jsx")),
+    "die Beschriftung der Kundenreferenz wurde fälschlich mit umbenannt");
+});

@@ -165,6 +165,19 @@ export function getAdminShipmentTracking(id) {
   return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/tracking`, { auth: true });
 }
 
+// POST /admin/shipments/:id/email-deliveries/:deliveryId/retry — stößt EINE bereits
+// fehlgeschlagene Zusatzzustellung erneut an. Bewusst OHNE Body: Empfänger, Betreff,
+// Inhalt, Anhang und Trackinglink stehen serverseitig fest und dürfen von keiner
+// Clienteingabe bestimmt werden (sonst wäre die Funktion ein offenes Mailrelais).
+// Der Server erlaubt den Versuch ausschließlich für eine Zustellung im Status
+// „failed", die zu GENAU dieser Sendung gehört, und auditiert ihn.
+export function retryAdminShipmentEmailDelivery(shipmentId, deliveryId) {
+  return apiFetch(
+    `/admin/shipments/${encodeURIComponent(shipmentId)}/email-deliveries/${encodeURIComponent(deliveryId)}/retry`,
+    { method: "POST", auth: true }
+  );
+}
+
 // Erlaubte Query-Parameter für GET /admin/users. Das Backend bietet aktuell
 // KEINE Server-Filter — nur Pagination über limit/offset. Bewusst allowlisted.
 const USER_PARAMS = ["limit", "offset"];

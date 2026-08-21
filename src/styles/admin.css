@@ -418,6 +418,22 @@
 .adm-track-note { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); margin: 0 0 12px; overflow-wrap: anywhere; }
 .adm-track-link { margin-top: 12px; }
 
+/* ── Zusätzliche E-Mail-Zustellungen (Sendungsdetail) ────────────────────── */
+/* Eine Zeile je Zustellung: links Art, Adresse und Zeitpunkt, rechts Status und
+   — nur bei „Fehlgeschlagen" — der erneute Versuch. Ab Werk zweispaltig; wird es
+   eng, bricht die ZEILE um (Reflow vor Mid-Word-Break), damit lange Adressen
+   nicht zeichenweise zerlegt werden. */
+.adm-maildel { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid var(--ce-color-border-subtle); }
+.adm-maildel:last-of-type { border-bottom: 0; }
+.adm-maildel-main { flex: 1 1 auto; min-width: 0; }
+.adm-maildel-type { font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-primary); }
+/* Die Adresse ist ein technischer String und bricht deshalb LOKAL auf ihrem
+   eigenen Element — nicht global (siehe Responsive-Regeln). */
+.adm-maildel-to { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); overflow-wrap: anywhere; }
+.adm-maildel-meta { font-size: var(--ce-text-label-size); color: var(--ce-color-text-muted); }
+.adm-maildel-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
 /* ── Bestätigungsdialog (Label-Download) ─────────────────────────────────── */
 /* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
 .adm-modal { text-align: center; }

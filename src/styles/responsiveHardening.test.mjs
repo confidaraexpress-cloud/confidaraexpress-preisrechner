@@ -150,10 +150,17 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   // Bestätigungszeile der Bestellübersicht. Ohne die Regel schiebt ein langer Code die
   // Zeile auf 390 px aus der Karte. Wieder der sanktionierte Fall: lokal an EINEM
   // eigenen Element, nicht auf der Zeile und nicht auf einem Container.
+  //
+  // +1 (33) für `.adm-maildel-to`: die Empfängeradresse einer zusätzlichen
+  // Sendungsbenachrichtigung im Adminportal. Eine E-Mail-Adresse ist der bereits
+  // sanktionierte technische String (dieselbe Begründung wie `.abk-contact-email`),
+  // sie darf bis 255 Zeichen lang sein und steht in einer Kartenzeile der
+  // Admin-Dichte. Lokal an EINEM eigenen Element, nicht auf der Zeile
+  // (`.adm-maildel`) und nicht auf der Karte.
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 32, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 32)`);
+  assert.ok(gesamt <= 33, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 33)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

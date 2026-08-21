@@ -1048,6 +1048,28 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   Vorgänge nicht grundlos verworfen werden (ein alter Vorgang liefert
   `undefined` → `""`). Das Versenden, die Deduplizierung gleicher Adressen und
   der Label-Anhang passieren serverseitig.
+
+  **Der serverseitige Vertrag im Detail** (Go-Live Paket 3): `/book` prüft beide
+  Adressen **vor jedem Providerkontakt** und lehnt mit `400 { error, field }` ab —
+  `field` ist `trackingEmail` oder `labelTrackingEmail`. Diesen Fall führt
+  `BookingPage` zurück auf Schritt 1 an das betroffene Feld; er darf **nicht** in
+  den Adressen-Zweig laufen, der „Preise neu berechnen" verlangt (falsche Ursache,
+  wirkungslose Handlung). Die Serverregel ist bewusst **strenger** als
+  `shipmentEmailError()` — sie weist zusätzlich Adresslisten (`,;<>`) und
+  Steuerzeichen ab —, deshalb ist der Zweig trotz Clientprüfung erreichbar.
+
+  **Die Zustellung ist asynchron und dauerhaft, nicht Teil der Buchungsantwort.**
+  Der Server legt beim Buchen einen Zustellauftrag je Adresse an und sendet, sobald
+  Trackingnummer beziehungsweise Label vorliegen — was bei Abholsendungen später
+  sein kann als die Buchung selbst. Deshalb behauptet die Oberfläche **nirgends**,
+  die Zusatzmail sei bereits versendet: die Schalter sagen „senden", der
+  Erfolgsbildschirm nennt nur die Buchungsbestätigung an die Kontoadresse. Wer dort
+  eine Bestätigung ergänzen will, bräuchte einen kundenseitigen Statusendpunkt —
+  den gibt es bewusst nicht (kein Kunden-Resend, siehe Backendvertrag).
+
+  **Gleiche Adresse in beiden Feldern ergibt GENAU EINE Mail** (die stärkere Option
+  gewinnt, serverseitig, ohne Rücksicht auf Groß-/Kleinschreibung). Das Frontend
+  dedupliziert nicht und darf es nicht: es kennt weder Zustellzustand noch Retry.
 - **`/tracking` versteht `?nummer=…`.** Der Trackinglink der Versand-E-Mails
   zeigt auf die eigene öffentliche Seite; ohne diese Auswertung liefe er auf
   eine leere Suchmaske. Genau einmal beim Mount (`ranOnce`), damit ein späteres

@@ -3,7 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
-import { getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking } from "../../api/adminApi";
+import {
+  getAdminShipment, downloadAdminShipmentLabel, getAdminShipmentTracking,
+  retryAdminShipmentEmailDelivery,
+} from "../../api/adminApi";
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
@@ -20,6 +23,9 @@ import {
   trackingLinkOrNull,
   trackingView,
 } from "../../utils/adminShipmentView.mjs";
+import {
+  canRetryDelivery, deliveryStatusMeta, deliveryTypeLabel, sortDeliveries,
+} from "../../utils/shipmentEmailDeliveryView.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -49,6 +55,17 @@ const TRACK_ERRORS = {
   409: "Für diese Sendung ist keine Live-Abfrage beim Versanddienstleister möglich.",
   502: "Der Trackingdienst ist momentan nicht erreichbar.",
   default: "Die Live-Trackingdaten konnten nicht geladen werden.",
+};
+
+// Fehlertexte des erneuten Zustellversuchs. Der 409 ist der fachlich wichtige
+// Fall: der Server nimmt einen Versuch NUR für eine tatsächlich fehlgeschlagene
+// Zustellung an — hat der Worker sie zwischenzeitlich selbst zugestellt oder
+// läuft sie gerade, ist der Knopf gegenstandslos.
+const RETRY_ERRORS = {
+  404: "Diese Zustellung gehört nicht zu dieser Sendung oder existiert nicht mehr.",
+  409: "Diese Zustellung ist derzeit nicht wiederholbar. Bitte laden Sie die Seite neu.",
+  429: "Zu viele Versuche. Bitte in Kürze erneut versuchen.",
+  default: "Der Versand konnte nicht erneut angestoßen werden.",
 };
 
 // [badge-Klasse, Anzeigetext]. Farbe heuristisch nach Status-Schlüsselwort,
@@ -123,6 +140,12 @@ const refOf = (s) => firstDefined(s.reference_number, s.reference, s.customer_re
 const jumingoOf = (s) => firstDefined(s.jumingo_shipment_id, s.jumingoShipmentId, s.jumingo_id, s.jumingo_shipment_id_masked);
 const orderOf = (s) => firstDefined(s.order_number, s.orderNumber, s.order_id);
 const invoiceOf = (s) => (s.invoice && typeof s.invoice === "object" ? s.invoice : null);
+// Zusätzliche Sendungsbenachrichtigungen. Ein Backend ohne dieses Feld liefert es
+// schlicht nicht — dann bleibt die Liste leer und die Karte erscheint gar nicht.
+const emailDeliveriesOf = (s) =>
+  Array.isArray(s.email_deliveries) ? s.email_deliveries
+  : Array.isArray(s.emailDeliveries) ? s.emailDeliveries
+  : [];
 
 function fmtDateTime(v) {
   if (!v) return "—";
@@ -239,6 +262,8 @@ export default function AdminShipmentDetailPage() {
   const [trackBusy, setTrackBusy] = useState(false);       // Tracking-Abruf läuft
   const [trackData, setTrackData] = useState(null);        // nur minimierte Felder
   const [trackError, setTrackError] = useState(null);      // Fehlertext
+  const [retryBusyId, setRetryBusyId] = useState(null);    // laufender Zustellversuch
+  const [retryMsg, setRetryMsg] = useState(null);          // { type, text }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -249,6 +274,8 @@ export default function AdminShipmentDetailPage() {
     setLabelMsg(null);
     setTrackData(null); // kein Cache über Sendungen hinweg
     setTrackError(null);
+    setRetryMsg(null);
+    setRetryBusyId(null);
     try {
       const r = await getAdminShipment(id);
       if (!r.ok) {
@@ -327,6 +354,7 @@ export default function AdminShipmentDetailPage() {
   const ident = shipmentIdentity(s);
   const cust = customerIdentity(s);
   const sections = detailSections(s);
+  const emailDeliveries = sortDeliveries(emailDeliveriesOf(s));
   const [statusCls, statusLabel] = shipmentStatusMeta(statusOf(s));
   // EIN Tracking-View-Model für Kopfbereich, Versanddaten und Live-Block. Die
   // drei Zustände (gespeicherte Nummer / Live-Daten / Carrier-Link) kommen ab
@@ -378,6 +406,31 @@ export default function AdminShipmentDetailPage() {
       setTrackError(TRACK_ERRORS.default);
     } finally {
       setTrackBusy(false);
+    }
+  };
+
+  // Erneuter Zustellversuch EINER fehlgeschlagenen Zusatzmail. Es wird kein Body
+  // gesendet: Empfänger, Betreff, Inhalt, Anhang und Trackinglink stehen
+  // serverseitig fest. Nach dem Anstoßen wird die Detailseite neu geladen, statt
+  // den Zustand lokal umzuschreiben — der maßgebliche Status steht in der
+  // Datenbank, und der Worker kann ihn zwischenzeitlich weitergedreht haben.
+  const retryDelivery = async (deliveryId) => {
+    setRetryBusyId(deliveryId);
+    setRetryMsg(null);
+    try {
+      const r = await retryAdminShipmentEmailDelivery(id, deliveryId);
+      if (!r.ok) {
+        if (r.status !== 401 && r.status !== 403) {
+          setRetryMsg({ type: "error", text: RETRY_ERRORS[r.status] || RETRY_ERRORS.default });
+        }
+        return;
+      }
+      setRetryMsg({ type: "success", text: "Der Versand wurde erneut angestoßen." });
+      await load();
+    } catch {
+      setRetryMsg({ type: "error", text: RETRY_ERRORS.default });
+    } finally {
+      setRetryBusyId(null);
     }
   };
 
@@ -503,6 +556,68 @@ export default function AdminShipmentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* 4b) Zusätzliche E-Mail-Zustellungen — NUR wenn der Kunde welche bestellt
+             hat. Der Normalfall ist die leere Liste; eine leere Karte würde eine
+             Funktion behaupten, die diese Sendung gar nicht nutzt (dieselbe Regel
+             wie bei der Zollkarte weiter unten). Sachliche Statusanzeige, keine
+             neue Adminseite, kein Menüpunkt, kein Dashboardmodul. */}
+        {emailDeliveries.length > 0 && (
+          <div className="adm-card">
+            <div className="adm-card-head"><Icon n="mail" s={17} /> Zusätzliche E-Mail-Zustellungen</div>
+            <div className="adm-card-body">
+              {retryMsg && (
+                <div
+                  className={`alert ${retryMsg.type === "success" ? "alert-success" : "alert-error"}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Icon n={retryMsg.type === "success" ? "check" : "info"} s={16} />
+                  {retryMsg.text}
+                </div>
+              )}
+              {emailDeliveries.map((row) => {
+                const [cls, text, roh] = deliveryStatusMeta(row.status);
+                return (
+                  <div className="adm-maildel" key={row.id}>
+                    <div className="adm-maildel-main">
+                      <div className="adm-maildel-type">{deliveryTypeLabel(row.notification_type)}</div>
+                      {/* Die Adresse steht vollständig: ein Supportfall lebt genau davon,
+                          und diese Seite liefert ohnehin auditiert Adressdaten aus. */}
+                      <div className="adm-maildel-to">{dash(row.recipient_email)}</div>
+                      <div className="adm-maildel-meta">
+                        {row.status === "sent" && row.sent_at
+                          ? `Gesendet am ${fmtDateTime(row.sent_at)}`
+                          : row.status === "pending" && row.next_attempt_at
+                            ? `Nächster Versuch: ${fmtDateTime(row.next_attempt_at)}`
+                            : null}
+                      </div>
+                    </div>
+                    <div className="adm-maildel-side">
+                      {/* Rohwert höchstens im title, nie im sichtbaren Text. */}
+                      <span className={`badge ${cls}`} title={roh || undefined}>{text}</span>
+                      {canRetryDelivery(row) && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={() => retryDelivery(row.id)}
+                          disabled={retryBusyId != null}
+                        >
+                          {retryBusyId === row.id ? "Wird angestoßen …" : "Erneut versuchen"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="adm-support-hint">
+                Diese Nachrichten gehen zusätzlich an die vom Kunden angegebenen Adressen.
+                Empfänger, Betreff, Inhalt und Anhang stehen serverseitig fest und sind hier
+                nicht veränderbar.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 5) Adressbereich / PII — standardmäßig eingeklappt */}
         <div className="adm-card">

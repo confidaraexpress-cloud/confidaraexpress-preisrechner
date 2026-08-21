@@ -945,6 +945,21 @@ export default function BookingPage() {
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (r.status === 400 || r.status === 422) {
         const backendMsg = asStr(d.error);
+        // Zusatzempfänger: das Backend prüft die beiden Adressen serverseitig VOR
+        // jedem Providerkontakt und nennt im Ablehnungsfall das Feld. Diese Fälle
+        // dürfen NICHT in den Adressen-Zweig darunter laufen — der würde „Absender-
+        // oder Empfängeradresse … Preise neu berechnen" behaupten, also die falsche
+        // Ursache UND eine Handlung, die nichts repariert. Die serverseitige Regel
+        // ist strenger als die clientseitige (sie weist zusätzlich Adresslisten und
+        // Steuerzeichen ab); dieser Zweig ist also erreichbar, obwohl der Client
+        // vorher geprüft hat.
+        if (d?.field === "trackingEmail" || d?.field === "labelTrackingEmail") {
+          setEmailShowErrors(true);
+          setStep(1);
+          setError(backendMsg || "Bitte prüfen Sie die zusätzliche E-Mail-Adresse.");
+          setLoading(false);
+          return;
+        }
         // Bei zollpflichtiger Sendung stammt ein 400 typischerweise aus dem
         // Customs-Gate → konkrete Backend-Meldung anzeigen und auf der Seite
         // bleiben (NICHT in den Adressen-"neu berechnen"-Flow leiten).

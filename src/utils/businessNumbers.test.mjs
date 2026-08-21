@@ -109,12 +109,19 @@ test("customerInvoiceNumbers: Rechnung trägt Rechnungs-, Bestell- und Kundennum
 
 test("Beschriftungen sind eindeutig und verwechseln die Nummernkreise nicht", () => {
   assert.equal(NUMBER_LABELS.customer, "Kundennummer");
-  assert.equal(NUMBER_LABELS.businessOrder, "Bestellnummer");
+  // GEÄNDERT (Go-Live Paket 1): CE-BS heißt sichtbar „Sendungsnummer". „Bestellnummer" ist
+  // auf einem Beleg die Nummer, unter der der KUNDE bestellt hat — und die steht als
+  // customerReference direkt daneben. Der technische Schlüssel `businessOrder` und die
+  // Datenquelle business_order_number sind unverändert.
+  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
   assert.equal(NUMBER_LABELS.invoice, "Rechnungsnummer");
   assert.equal(NUMBER_LABELS.jumingoOrder, "JUMiNGO-Ordernummer");
   // Die externe Beschriftung darf nicht schlicht „Bestellnummer" lauten.
   assert.notEqual(NUMBER_LABELS.jumingoOrder, NUMBER_LABELS.businessOrder);
   assert.ok(/JUMiNGO/.test(NUMBER_LABELS.jumingoOrder));
+  // Die echte Kundenreferenz bleibt getrennt beschriftet — sie ist die Bestellnummer des Kunden.
+  assert.equal(NUMBER_LABELS.customerReference, "Ihre Referenz");
+  assert.notEqual(NUMBER_LABELS.customerReference, NUMBER_LABELS.businessOrder);
 });
 
 // ── Oberflächen-Verträge ────────────────────────────────────────────────────
@@ -132,14 +139,16 @@ test("(1–3) Kundenprofil zeigt customer_number, nicht editierbar, Legacy siche
     "interne users.id im Kundennummern-Block");
 });
 
-test("(4–5) Sendungsliste zeigt die Bestellnummer und nutzt keine JUMiNGO-ID als Ersatz", () => {
+test("(4–5) Sendungsliste zeigt die Sendungsnummer und nutzt keine JUMiNGO-ID als Ersatz", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
   assert.ok(src.includes("customerShipmentNumbers(s)"), "Sendungsliste nutzt die zentrale Nummernsicht nicht");
-  assert.ok(/<th[^>]*>Bestellnummer<\/th>/.test(src), "Spalte 'Bestellnummer' fehlt");
-  assert.ok(src.includes("nums.businessOrderNumber"), "Bestellnummer wird nicht gerendert");
+  // GEÄNDERT (Go-Live Paket 1): die Spaltenüberschrift heißt „Sendungsnummer".
+  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(src), "Spalte 'Sendungsnummer' fehlt");
+  assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(src), "die alte Spaltenüberschrift lebt noch");
+  assert.ok(src.includes("nums.businessOrderNumber"), "die Nummer wird nicht gerendert");
   // Kein Fallback auf JUMiNGO-/interne Werte in der Nummern-Zelle.
   const cell = src.slice(src.indexOf("nums.businessOrderNumber"), src.indexOf("</td>", src.indexOf("nums.businessOrderNumber")));
-  assert.ok(!/jumingo_shipment_id|s\.id\b|order_number/.test(cell), "Ersatzwert in der Bestellnummern-Zelle");
+  assert.ok(!/jumingo_shipment_id|s\.id\b|order_number/.test(cell), "Ersatzwert in der Sendungsnummern-Zelle");
 });
 
 test("(6) Sendungsdetail trennt Bestell-, Tracking- und Kundenreferenz", () => {
@@ -297,4 +306,59 @@ test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {
   assert.equal(cols, 7, "Sendungsliste hat nicht die erwartete Spaltenzahl");
   const spans = [...src.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
   for (const sp of spans) assert.equal(sp, cols, `colSpan ${sp} passt nicht zu ${cols} Spalten`);
+});
+
+// ── Go-Live Paket 1: CE-BS heißt sichtbar „Sendungsnummer" ──────────────────
+// Die technische Nummer (business_order_number / businessOrderNumber / CE-BS) ist
+// unverändert; geprüft wird ausschließlich die kundensichtbare BESCHRIFTUNG.
+
+test("(P1-a) Buchungserfolg und Sendungsliste beschriften CE-BS als „Sendungsnummer\"", () => {
+  // Beide Oberflächen lesen dieselbe zentrale Beschriftung — es gibt keinen zweiten Text.
+  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
+
+  const booking = read("pages/BookingPage.jsx");
+  assert.ok(booking.includes("NUMBER_LABELS.businessOrder"),
+    "der Erfolgsbildschirm nutzt die zentrale Beschriftung nicht");
+  assert.ok(booking.includes("booking.businessOrderNumber"),
+    "der Erfolgsbildschirm liest das CE-BS-Feld nicht mehr");
+
+  const liste = read("components/dashboard/ShipmentsList.jsx");
+  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(liste), "Spaltenüberschrift der Sendungsliste");
+  assert.ok(liste.includes("NUMBER_LABELS.businessOrder"),
+    "die Kartenansicht der Sendungsliste nutzt die zentrale Beschriftung nicht");
+});
+
+test("(P1-b) keine dieser Oberflächen nennt CE-BS noch „Bestellnummer\"", () => {
+  // Gezielt: das Wort als sichtbare Beschriftung NEBEN dem CE-BS-Feld. Kommentare und
+  // echte Kundenreferenzen bleiben ausdrücklich erlaubt (siehe P1-c).
+  for (const rel of ["pages/BookingPage.jsx", "components/dashboard/ShipmentsList.jsx"]) {
+    const src = read(rel)
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")   // JSX-Kommentare
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(src), `${rel}: Spaltenüberschrift „Bestellnummer" lebt noch`);
+    assert.ok(!/"Bestellnummer"/.test(src), `${rel}: literale Beschriftung „Bestellnummer" lebt noch`);
+  }
+});
+
+test("(P1-c) die echte Bestellnummer des KUNDEN darf weiterhin so heißen", () => {
+  // Gegenprobe: das Referenzfeld der Buchung beschreibt ausdrücklich die Bestellnummer des
+  // Kunden. Dieser Text darf von der Umbenennung NICHT erfasst worden sein.
+  const optionen = read("components/booking/AdditionalOptionsModule.jsx");
+  assert.ok(/Referenznummer \/ Bestellnummer/.test(optionen),
+    "die Beschriftung der Kundenreferenz wurde fälschlich mit umbenannt");
+  assert.ok(/z\. B\. Bestellnummer, Kostenstelle/.test(optionen),
+    "der Platzhalter der Kundenreferenz wurde fälschlich mit umbenannt");
+  // Und die zentrale Beschriftung der Kundenreferenz bleibt getrennt.
+  assert.equal(NUMBER_LABELS.customerReference, "Ihre Referenz");
+});
+
+test("(P1-d) das technische Feld wurde NICHT umbenannt", () => {
+  // Schlüssel, Feldname und Nummernkreis bleiben unverändert — es ist eine Beschriftung.
+  assert.ok(Object.prototype.hasOwnProperty.call(NUMBER_LABELS, "businessOrder"),
+    "der Schlüssel businessOrder wurde umbenannt");
+  const modul = read("utils/businessNumbers.mjs");
+  assert.ok(/business_order_number/.test(modul), "die Datenquelle business_order_number fehlt");
+  assert.ok(/businessOrderNumber/.test(modul), "der Snapshot-Schlüssel businessOrderNumber fehlt");
+  assert.ok(/CE-BS/.test(modul), "der Nummernkreis CE-BS wurde verändert");
 });

@@ -23,7 +23,16 @@
 // Einheitliche Beschriftungen — verhindert abweichende Bezeichnungen je Seite.
 export const NUMBER_LABELS = Object.freeze({
   customer: "Kundennummer",
-  businessOrder: "Bestellnummer",
+  // CE-BS… heißt sichtbar „Sendungsnummer". Auf einem Beleg ist „Bestellnummer" die
+  // Nummer, unter der der KUNDE bestellt hat — und genau die steht als
+  // `customerReference` („Ihre Referenz") direkt daneben. Zwei Felder mit derselben
+  // Bedeutung nebeneinander waren die Hauptquelle von Rückfragen.
+  //
+  // Der technische Bezeichner bleibt unverändert `businessOrder` und die Datenquelle
+  // unverändert `shipments.business_order_number` / `service_snapshot.businessOrderNumber`
+  // — das hier ist eine BESCHRIFTUNG, keine Umbenennung. Der Schlüssel dieses Objekts
+  // wird bewusst NICHT mit umbenannt: er zeigt auf das Feld, nicht auf das Label.
+  businessOrder: "Sendungsnummer",
   invoice: "Rechnungsnummer",
   jumingoOrder: "JUMiNGO-Ordernummer",
   tracking: "Trackingnummer",

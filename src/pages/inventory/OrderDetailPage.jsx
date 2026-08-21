@@ -248,9 +248,14 @@ export default function OrderDetailPage() {
                     <caption className="sr-only">Sendungen zu diesem Auftrag</caption>
                     <thead>
                       <tr>
-                        <th scope="col">Bestellnummer</th>
-                        <th scope="col">Carrier</th>
+                        {/* CE-BS… ist die Sendungsnummer, die Carrier-Nummer ist die
+                            Trackingnummer. Bis Go-Live Paket 1 hießen beide Spalten hier
+                            verkehrt herum: „Bestellnummer" stand über businessOrderNumber,
+                            „Sendungsnummer" über trackingNumber. Beschriftungen korrigiert —
+                            die Felder selbst sind unverändert. */}
                         <th scope="col">Sendungsnummer</th>
+                        <th scope="col">Carrier</th>
+                        <th scope="col">Trackingnummer</th>
                         <th scope="col">Status</th>
                         <th scope="col">Lieferschein</th>
                         <th scope="col">Gebucht</th>

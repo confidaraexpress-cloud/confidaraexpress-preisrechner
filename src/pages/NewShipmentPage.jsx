@@ -16,7 +16,8 @@ import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
 import { DateCalendar } from "../components/common/DateCalendar";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
-import { focusFirstError, fieldErrorProps } from "../utils/focusField";
+import { focusFirstError } from "../utils/focusField";
+import { Field } from "../components/ui/Field";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
 import {
@@ -1283,22 +1284,61 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const addressBlocksCalculation =
     addressBlocksSubmit(senderCheck.status) || addressBlocksSubmit(recipientCheck.status);
 
+  /* ── Felder dieser Seite laufen über <Field labelMode="floating" /> ─────────
+     Prototyp der künftigen systemweiten Feldsprache: die Beschriftung liegt IM
+     Feld und wandert bei Fokus oder vorhandenem Wert nach oben. Aktiviert ist
+     das ausschließlich hier — jede andere Seite nutzt dieselbe Komponente
+     unverändert im gestapelten Modus bzw. gar nicht.
+
+     Nebenbei geschlossen: die Beschriftungen dieser Seite hatten bisher weder
+     `id` noch `htmlFor` (13 Stellen). Ein Label ohne Verbindung ist für einen
+     Screenreader kein Label — <Field /> erzwingt beides. Ebenso trägt jedes Feld
+     jetzt `data-field`, womit focusFirstError() nach einem Serverfehler nicht
+     mehr nur die beiden PLZ-Felder findet. */
   const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
     const fk = `${p}_${key}`;
-    const errMsg = errors[fk];
     return (
-      <div className="field">
-        <label className="field-label">
-          {label}{optional && <span className="field-optional"> (optional)</span>}
-        </label>
-        <input
-          className={`field-input${errMsg ? " field-input-error" : ""}`}
-          type={type} value={form[fk]}
-          onChange={e => upd(fk, e.target.value)}
-          placeholder={placeholder}
-        />
-        {errMsg && <span className="field-error">{errMsg}</span>}
-      </div>
+      <Field
+        id={`ns-${p}-${key}`}
+        fieldKey={fk}
+        labelMode="floating"
+        label={label}
+        required={!optional}
+        optional={optional}
+        type={type}
+        value={form[fk]}
+        onChange={(v) => upd(fk, v)}
+        placeholder={placeholder}
+        error={errors[fk]}
+      />
+    );
+  };
+
+  // PLZ: Beschriftung und Beispiel sind zwei verschiedene Dinge. Der Platzhalter
+  // trägt deshalb ausschließlich das landesabhängige Beispiel — der frühere
+  // Rückfallwert "PLZ" hätte im Floating-Modus nur die Beschriftung wiederholt.
+  // Hinweiszeile, Eingabemodus, Maximallänge und Validierung sind unverändert.
+  const zipField = (p) => {
+    const fk = `${p}_zip`;
+    const land = form[`${p}_country`];
+    const beispiel = postalCodeExample(land);
+    return (
+      <Field
+        id={`ns-${p}-zip`}
+        fieldKey={fk}
+        labelMode="floating"
+        label="PLZ"
+        required
+        value={form[fk]}
+        onChange={(v) => upd(fk, v)}
+        placeholder={beispiel || ""}
+        inputMode={postalCodeInputMode(land)}
+        maxLength={postalCodeMaxLength()}
+        error={errors[fk]}
+        hint={beispiel
+          ? `Beispiel: ${beispiel}`
+          : (!isPostalCodeRequired(land) ? "Für dieses Land optional." : undefined)}
+      />
     );
   };
 
@@ -1306,20 +1346,25 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Sendung — beim Empfänger besonders fragwürdig, und beim Absender überschrieb
   // sie stillschweigend das, was im Konto stand. Die Auswahl bleibt Pflicht
   // (getErrors), die Optionsliste ist unverändert dieselbe wie überall sonst.
+  // Ein <select> zeigt immer einen Wert an — auch „Land auswählen" ist einer.
+  // Es gibt dort keinen sichtbaren Leerzustand, den eine ruhende Beschriftung
+  // besetzen könnte; ihr Label steht deshalb dauerhaft oben (in <Field /> aus
+  // `as="select"` abgeleitet), statt einen Leerzustand vorzutäuschen.
   const countrySelect = (p) => (
-    <div className="field">
-      <label className="field-label" htmlFor={`ns-${p}-country`}>Land *</label>
-      <select
-        id={`ns-${p}-country`}
-        className={`field-input field-select${errors[`${p}_country`] ? " field-input-error" : ""}`}
-        value={form[`${p}_country`]}
-        onChange={e => upd(`${p}_country`, e.target.value)}
-      >
-        <option value="">Land auswählen</option>
-        {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-      </select>
-      {errors[`${p}_country`] && <span className="field-error">{errors[`${p}_country`]}</span>}
-    </div>
+    <Field
+      id={`ns-${p}-country`}
+      fieldKey={`${p}_country`}
+      as="select"
+      labelMode="floating"
+      label="Land"
+      required
+      value={form[`${p}_country`]}
+      onChange={(v) => upd(`${p}_country`, v)}
+      error={errors[`${p}_country`]}
+    >
+      <option value="">Land auswählen</option>
+      {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+    </Field>
   );
 
   return (
@@ -1650,10 +1695,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {addressNote.s && <p className="calc-section-note">{addressNote.s}</p>}
-                  {addrField("s", "company",  "Unternehmen",         "text",  "Firma GmbH",       true)}
-                  {addrField("s", "fullName", "Vor- und Nachname *", "text",  "Max Mustermann")}
+                  {addrField("s", "company",  "Unternehmen",       "text",  "Firma GmbH",     true)}
+                  {addrField("s", "fullName", "Vor- und Nachname", "text",  "Max Mustermann")}
                   <AddressSuggestInput
                     id="ns-s-street"
+                    floating
                     label="Straße & Hausnr."
                     required
                     value={form.s_street}
@@ -1664,33 +1710,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     error={errors.s_street}
                     autoComplete="address-line1"
                   />
-                  {addrField("s", "addition", "Adresszusatz",        "text",  "Etage, c/o …",     true)}
+                  {addrField("s", "addition", "Adresszusatz",      "text",  "Etage, c/o …",   true)}
                   <div className="field-row field-row-2">
-                    <div className="field">
-                      <label className="field-label">PLZ *</label>
-                      <input className={`field-input${errors.s_zip  ? " field-input-error" : ""}`} value={form.s_zip}  onChange={e => upd("s_zip",  e.target.value)}
-                        placeholder={postalCodeExample(form.s_country) || "PLZ"} inputMode={postalCodeInputMode(form.s_country)} maxLength={postalCodeMaxLength()}
-                        {...fieldErrorProps("s_zip", errors.s_zip).input} />
-                      {errors.s_zip
-                        ? <span className="field-error" id={fieldErrorProps("s_zip", errors.s_zip).errorId}>{errors.s_zip}</span>
-                        : (postalCodeExample(form.s_country)
-                            ? <span className="field-hint">Beispiel: {postalCodeExample(form.s_country)}</span>
-                            : (!isPostalCodeRequired(form.s_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
-                    </div>
-                    <div className="field">
-                      <AddressSuggestInput
-                        id="ns-s-city"
-                        label="Stadt"
-                        required
-                        value={form.s_city}
-                        onChange={(v) => upd("s_city", v)}
-                        onSelect={(item) => upd("s_city", typeof item === "string" ? item : item.city)}
-                        suggestions={senderCheck.cityOptions}
-                        placeholder="Stuttgart"
-                        error={errors.s_city}
-                        autoComplete="address-level2"
-                      />
-                    </div>
+                    {zipField("s")}
+                    <AddressSuggestInput
+                      id="ns-s-city"
+                      floating
+                      label="Stadt"
+                      required
+                      value={form.s_city}
+                      onChange={(v) => upd("s_city", v)}
+                      onSelect={(item) => upd("s_city", typeof item === "string" ? item : item.city)}
+                      suggestions={senderCheck.cityOptions}
+                      placeholder="Stuttgart"
+                      error={errors.s_city}
+                      autoComplete="address-level2"
+                    />
                   </div>
                   {countrySelect("s")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
@@ -1716,10 +1751,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {addressNote.r && <p className="calc-section-note">{addressNote.r}</p>}
-                  {addrField("r", "company",  "Unternehmen",         "text",  "Firma AG",           true)}
-                  {addrField("r", "fullName", "Vor- und Nachname *", "text",  "Erika Muster")}
+                  {addrField("r", "company",  "Unternehmen",       "text",  "Firma AG",     true)}
+                  {addrField("r", "fullName", "Vor- und Nachname", "text",  "Erika Muster")}
                   <AddressSuggestInput
                     id="ns-r-street"
+                    floating
                     label="Straße & Hausnr."
                     required
                     value={form.r_street}
@@ -1730,33 +1766,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     error={errors.r_street}
                     autoComplete="address-line1"
                   />
-                  {addrField("r", "addition", "Adresszusatz",        "text",  "Etage, c/o …",       true)}
+                  {addrField("r", "addition", "Adresszusatz",      "text",  "Etage, c/o …", true)}
                   <div className="field-row field-row-2">
-                    <div className="field">
-                      <label className="field-label">PLZ *</label>
-                      <input className={`field-input${errors.r_zip  ? " field-input-error" : ""}`} value={form.r_zip}  onChange={e => upd("r_zip",  e.target.value)}
-                        placeholder={postalCodeExample(form.r_country) || "PLZ"} inputMode={postalCodeInputMode(form.r_country)} maxLength={postalCodeMaxLength()}
-                        {...fieldErrorProps("r_zip", errors.r_zip).input} />
-                      {errors.r_zip
-                        ? <span className="field-error" id={fieldErrorProps("r_zip", errors.r_zip).errorId}>{errors.r_zip}</span>
-                        : (postalCodeExample(form.r_country)
-                            ? <span className="field-hint">Beispiel: {postalCodeExample(form.r_country)}</span>
-                            : (!isPostalCodeRequired(form.r_country) ? <span className="field-hint">Für dieses Land optional.</span> : null))}
-                    </div>
-                    <div className="field">
-                      <AddressSuggestInput
-                        id="ns-r-city"
-                        label="Stadt"
-                        required
-                        value={form.r_city}
-                        onChange={(v) => upd("r_city", v)}
-                        onSelect={(item) => upd("r_city", typeof item === "string" ? item : item.city)}
-                        suggestions={recipientCheck.cityOptions}
-                        placeholder="Zürich"
-                        error={errors.r_city}
-                        autoComplete="address-level2"
-                      />
-                    </div>
+                    {zipField("r")}
+                    <AddressSuggestInput
+                      id="ns-r-city"
+                      floating
+                      label="Stadt"
+                      required
+                      value={form.r_city}
+                      onChange={(v) => upd("r_city", v)}
+                      onSelect={(item) => upd("r_city", typeof item === "string" ? item : item.city)}
+                      suggestions={recipientCheck.cityOptions}
+                      placeholder="Zürich"
+                      error={errors.r_city}
+                      autoComplete="address-level2"
+                    />
                   </div>
                   {countrySelect("r")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
@@ -1782,34 +1807,34 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys/Validierung unverändert). Anzahl = Anzahl
                   identischer Pakete (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
+              {/* Die Einheit steht nicht mehr im sichtbaren Beschriftungstext
+                  („Gewicht kg *"), sondern als eigenes, dekoratives Zeichen rechts
+                  im Feld. Für Screenreader trägt die Beschriftung sie unsichtbar
+                  weiter (unitLabel) — sichtbar „Gewicht", vorgelesen „Gewicht in
+                  Kilogramm", nicht doppelt. Die Platzhalter bleiben unverändert
+                  Beispiele aus PACKAGE_PLACEHOLDERS und werden nie zu Werten. */}
               <div className="field-row field-row-5">
-                <div className="field">
-                  <label className="field-label" htmlFor="ns-packageCount">Anzahl *</label>
-                  <input id="ns-packageCount" className={`field-input${errors.packageCount ? " field-input-error" : ""}`} type="number" min="1" max="99" step="1" value={form.packageCount} onChange={e => upd("packageCount", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.packageCount} />
-                  {errors.packageCount
-                    ? <span className="field-error">{errors.packageCount}</span>
-                    : <span className="field-hint">Identische Pakete</span>}
-                </div>
-                <div className="field">
-                  <label className="field-label" htmlFor="ns-weight">Gewicht kg *</label>
-                  <input id="ns-weight" className={`field-input${errors.weight ? " field-input-error" : ""}`} type="number" value={form.weight} onChange={e => upd("weight", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.weight} />
-                  {errors.weight && <span className="field-error">{errors.weight}</span>}
-                </div>
-                <div className="field">
-                  <label className="field-label" htmlFor="ns-length">Länge cm *</label>
-                  <input id="ns-length" className={`field-input${errors.length ? " field-input-error" : ""}`} type="number" value={form.length} onChange={e => upd("length", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.length} />
-                  {errors.length && <span className="field-error">{errors.length}</span>}
-                </div>
-                <div className="field">
-                  <label className="field-label" htmlFor="ns-width">Breite cm *</label>
-                  <input id="ns-width" className={`field-input${errors.width ? " field-input-error" : ""}`} type="number" value={form.width} onChange={e => upd("width", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.width} />
-                  {errors.width  && <span className="field-error">{errors.width}</span>}
-                </div>
-                <div className="field">
-                  <label className="field-label" htmlFor="ns-height">Höhe cm *</label>
-                  <input id="ns-height" className={`field-input${errors.height ? " field-input-error" : ""}`} type="number" value={form.height} onChange={e => upd("height", e.target.value)} placeholder={PACKAGE_PLACEHOLDERS.height} />
-                  {errors.height && <span className="field-error">{errors.height}</span>}
-                </div>
+                <Field id="ns-packageCount" fieldKey="packageCount" labelMode="floating"
+                       label="Anzahl" required type="number" min="1" max="99" step="1"
+                       value={form.packageCount} onChange={(v) => upd("packageCount", v)}
+                       placeholder={PACKAGE_PLACEHOLDERS.packageCount}
+                       error={errors.packageCount} hint="Identische Pakete" />
+                <Field id="ns-weight" fieldKey="weight" labelMode="floating"
+                       label="Gewicht" required type="number" unit="kg" unitLabel="in Kilogramm"
+                       value={form.weight} onChange={(v) => upd("weight", v)}
+                       placeholder={PACKAGE_PLACEHOLDERS.weight} error={errors.weight} />
+                <Field id="ns-length" fieldKey="length" labelMode="floating"
+                       label="Länge" required type="number" unit="cm" unitLabel="in Zentimetern"
+                       value={form.length} onChange={(v) => upd("length", v)}
+                       placeholder={PACKAGE_PLACEHOLDERS.length} error={errors.length} />
+                <Field id="ns-width" fieldKey="width" labelMode="floating"
+                       label="Breite" required type="number" unit="cm" unitLabel="in Zentimetern"
+                       value={form.width} onChange={(v) => upd("width", v)}
+                       placeholder={PACKAGE_PLACEHOLDERS.width} error={errors.width} />
+                <Field id="ns-height" fieldKey="height" labelMode="floating"
+                       label="Höhe" required type="number" unit="cm" unitLabel="in Zentimetern"
+                       value={form.height} onChange={(v) => upd("height", v)}
+                       placeholder={PACKAGE_PLACEHOLDERS.height} error={errors.height} />
               </div>
               <p className="pkg-count-note">
                 <Icon n="info" s={13} c="currentColor" />

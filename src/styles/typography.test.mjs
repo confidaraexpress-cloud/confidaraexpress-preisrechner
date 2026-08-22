@@ -9,6 +9,7 @@
 // die gehören zu Phase 1/2 und haben dort ihre eigene Governance.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const STYLES = new URL("./", import.meta.url);
@@ -389,8 +390,22 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   // Detailseiten des Lagermoduls (/inventory/products/:id, /inventory/orders/:id).
   // Sie sind echte Routen, weil eine Entitäts-ID nicht in einen page-String
   // gehört; die fünf LISTENbereiche des Moduls bleiben page-State.
-  assert.equal((app.match(/<Route /g) || []).length, 32,
-    "die Routenzahl ist unverändert (32 seit dem Lagermodul)");
+  //
+  // GEMESSEN WIRD DIE ROUTENOBERFLÄCHE, nicht die Zahl der <Route>-Knoten.
+  // Der frühere Zähler über alle <Route> vermischte zwei verschiedene Dinge:
+  // eine ansteuerbare URL und eine pfadlose Layoutroute, die gar keine URL
+  // hinzufügt (React-Router-Muster für einen gemeinsamen Rahmen — so hängen
+  // DashboardLayout, NavbarLayout, AdminLayout und die Fehlergrenze des
+  // Auth-Bereichs an ihren Kindern). Beide Zahlen stehen deshalb einzeln:
+  // eine neue erreichbare Seite fällt weiterhin sofort auf, ein zusätzlicher
+  // Rahmen ohne eigene Adresse ebenfalls — nur eben als das, was er ist.
+  const mitPfad = (app.match(/<Route [^>]*\bpath=/g) || []).length;
+  const indexRt = (app.match(/<Route index\b/g) || []).length;
+  const pfadlos = (app.match(/<Route /g) || []).length - mitPfad - indexRt;
+  assert.equal(mitPfad + indexRt, 29,
+    "die Zahl der ansteuerbaren Routen ist unverändert (29 seit dem Lagermodul)");
+  assert.equal(pfadlos, 4,
+    "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });
 
 /* ══════════ 13 — bestehende Governance ═══════════════════════════════════ */
@@ -405,7 +420,7 @@ test("13 — die Governance aus Phase 1 und 2 bleibt registriert", () => {
     "src/components/dashboard/overviewKpiCards.test.mjs",
     "src/styles/typography.test.mjs",             // diese Phase
   ]) {
-    assert.ok(pkg.scripts.test.includes(t), `${t} muss im Testlauf bleiben`);
+    assert.ok(pruefeImTestlauf(t), `${t} muss im Testlauf bleiben`);
   }
   // Die Phase-2-Primitives lesen weiterhin die Typografietokens.
   assert.match(css["forms.css"], /font-size:\s*var\(--ce-text-label-size\)/);

@@ -18,6 +18,7 @@
 // der Normalfall, kein Fehler.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { pruefeImE2eLauf } from "../../scripts/governance.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 
 const roh = readFileSync(new URL("./variables.css", import.meta.url), "utf8");
@@ -350,7 +351,6 @@ test("12 — die DM-Sans-Gewichtsfrage (O1) ist durch einen echten Messtest abge
   assert.match(inhalt, /font-synthesis:none|font-synthesis: none/,
     "ohne abgeschaltete Kunstfettung wäre die Gewichtsmessung nicht aussagekräftig");
   assert.match(inhalt, /fvar/, "die binäre Achsenprüfung fehlt");
-  const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts["test:e2e"], /tests\/e2e\/fontWeightAxis\.test\.mjs/,
-    "der Gewichtstest muss im e2e-Lauf registriert sein");
+  assert.ok(pruefeImE2eLauf("tests/e2e/fontWeightAxis.test.mjs"),
+    "der Gewichtstest muss im e2e-Lauf mitlaufen");
 });

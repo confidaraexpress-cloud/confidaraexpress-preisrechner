@@ -10,6 +10,7 @@
 // tests/e2e/shippingProcessPaketB.test.mjs.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import { readFileSync } from "node:fs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -240,15 +241,21 @@ test("17 — Auswahlkarten bleiben echte <input type=\"radio\">, keine unechten 
 
 /* ══════════ 18 — bestehende Paket-A-Governance bleibt eingebunden ════════ */
 
-test("18 — die Paket-A-Governance-Dateien sind weiterhin im Testlauf verdrahtet", () => {
-  const pkg = read("../../package.json");
+test("18 — die Paket-A-Governance-Dateien laufen weiterhin mit", () => {
+  // Seit der Umstellung auf Auffindung ist „steht im Skript" kein taugliches
+  // Maß mehr: `npm test` nennt keine Datei mehr einzeln, sondern durchsucht
+  // src/ rekursiv. Geprüft wird deshalb die Konjunktion aus „das Skript sucht
+  // wirklich" und „die Datei liegt im durchsuchten Bereich" — beides zusammen
+  // heißt: sie läuft.
   for (const datei of [
-    "designTokens.test.mjs", "interfacePrimitives.test.mjs", "typography.test.mjs",
-    "interfacePatterns.test.mjs", "appShellChrome.test.mjs",
+    "src/styles/designTokens.test.mjs", "src/styles/interfacePrimitives.test.mjs",
+    "src/styles/typography.test.mjs", "src/styles/interfacePatterns.test.mjs",
+    "src/components/layout/appShellChrome.test.mjs",
   ]) {
-    assert.ok(pkg.includes(datei), `${datei} muss weiterhin im npm-test-Skript stehen`);
+    assert.ok(pruefeImTestlauf(datei), `${datei} muss weiterhin mitlaufen`);
   }
-  assert.ok(pkg.includes("shippingProcess.test.mjs"), "diese Datei muss sich selbst im Testlauf eintragen");
+  assert.ok(pruefeImTestlauf("src/styles/shippingProcess.test.mjs"),
+    "diese Datei muss selbst mitlaufen");
 });
 
 /* ══════════ 19 — Sticky-Verhalten der Buchungszusammenfassung ═════════════

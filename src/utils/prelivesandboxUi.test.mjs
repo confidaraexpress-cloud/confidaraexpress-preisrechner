@@ -15,6 +15,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { pruefeNichtVorhanden } from "../../scripts/governance.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,10 +59,13 @@ test("3 — es gibt keinen Aufrufpfad mehr zum entfernten Adminendpunkt", () => 
   assert.ok(!api.includes("/test-booking"), "der Endpunktpfad darf nirgends mehr stehen");
 });
 
-test("4 — die entfernte Testdatei ist auch aus dem Testlauf ausgetragen", () => {
-  // Sonst bricht `npm test` an einer Datei, die es nicht mehr gibt.
-  assert.ok(!paket.scripts.test.includes("adminTestBooking"),
-    "adminTestBooking.test.mjs darf nicht mehr registriert sein");
+test("4 — die entfernte Testdatei ist auch wirklich weg", () => {
+  // Früher wurde geprüft, dass der Name nicht mehr im Testskript steht. Seit
+  // der Umstellung auf Auffindung wäre das bedeutungslos: eine wieder
+  // angelegte Datei liefe automatisch mit, ohne dass irgendwo ihr Name stünde.
+  // Das tragfähige Maß ist deshalb ihre Abwesenheit auf der Platte.
+  assert.ok(pruefeNichtVorhanden("src/utils/adminTestBooking.test.mjs"),
+    "adminTestBooking.test.mjs darf es nicht mehr geben");
 });
 
 test("5 — das Frontend entscheidet weiterhin NICHTS über den Sandboxgutschein", () => {

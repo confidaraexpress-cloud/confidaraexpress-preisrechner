@@ -1,0 +1,86 @@
+name: CI
+
+# ─── Warum es diese Datei gibt ────────────────────────────────────────────────
+# Ein Audit hat gemessen, dass zwei Testdateien im Repository lagen, aber in
+# keinem Lauf vorkamen: `src/utils/voucherUx.test.mjs` (30 Prüfungen) und
+# `tests/e2e/addressValidation.test.mjs` (10 Browserprüfungen). Beide waren
+# geschrieben, beide grün, beide nie ausgeführt — weil `package.json` jede
+# Datei einzeln aufführte und beim Anlegen niemand daran dachte.
+#
+# Der Fehler war nicht die vergessene Zeile. Der Fehler war, dass nichts die
+# Suiten zwingend grün hielt und dass es überhaupt eine Liste gab. Beides ist
+# behoben: `npm test` und `scripts/run-e2e.mjs` SUCHEN die Dateien, und diese
+# Pipeline führt sie bei jedem Pull Request aus.
+#
+# Was hier NICHT passiert und auch nicht passieren darf:
+#   • kein Zugriff auf ein echtes Backend — jede E2E-Suite mockt ihre Aufrufe
+#     über `page.route` gegen einen lokalen Vite-Dev-Server
+#   • keine echte Bestellung, keine echte E-Mail, keine Produktionsdaten
+#   • keine Secrets — dieser Lauf braucht keine
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # ── Schnell und billig: läuft in Sekunden und fängt das meiste ─────────────
+  unit:
+    name: Unit-Tests und Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      # `npm ci` statt `npm install`: geprüft wird exakt das, was auch
+      # ausgeliefert wird.
+      - run: npm ci
+      - name: Unit-Tests (Auffindung über src/)
+        run: npm test
+      # Der Build ist eine eigene Aussage: fehlende statische Importe und
+      # falsche CSS-Pfade meldet erst Vite, kein Test.
+      - name: Produktionsbuild
+        run: npm run build
+
+  # ── Browser-E2E, auf vier Läufe verteilt ──────────────────────────────────
+  # Jede Suite startet ihren EIGENEN Dev-Server und ihren eigenen Chromium;
+  # nacheinander dauert der volle Lauf entsprechend lang. Die Aufteilung
+  # kommt aus demselben Skript wie der lokale Lauf — es gibt genau eine
+  # Quelle dafür, welche Dateien es gibt.
+  e2e:
+    name: Browser-E2E ${{ matrix.shard }}/4
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # ein roter Teil darf die anderen nicht abbrechen
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      # Nur Chromium: die Suiten starten ausschließlich Chromium, die übrigen
+      # Browser wären reine Downloadzeit.
+      - name: Chromium bereitstellen
+        run: npx playwright install --with-deps chromium
+      - name: E2E-Teil ${{ matrix.shard }}
+        run: node scripts/run-e2e.mjs --shard ${{ matrix.shard }}/4
+
+  # ── Nur Laufzeitabhängigkeiten ────────────────────────────────────────────
+  # Ein Fund in einem Buildwerkzeug ist eine andere Frage als einer in dem,
+  # was tatsächlich im Browser des Kunden landet.
+  audit:
+    name: Sicherheitsprüfung der Laufzeitabhängigkeiten
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high

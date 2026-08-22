@@ -3,7 +3,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test \"src/**/*.test.mjs\"",
+    "test": "node --test \"src/**/*.test.mjs\" \"tests/e2e/helpers/*.test.mjs\"",
     "test:e2e": "node scripts/run-e2e.mjs"
   },
   "dependencies": {
@@ -16,5 +16,8 @@
   },
   "devDependencies": {
     "playwright": "^1.60.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

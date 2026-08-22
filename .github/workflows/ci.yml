@@ -17,6 +17,21 @@ name: CI
 #     über `page.route` gegen einen lokalen Vite-Dev-Server
 #   • keine echte Bestellung, keine echte E-Mail, keine Produktionsdaten
 #   • keine Secrets — dieser Lauf braucht keine
+#
+# ─── Node 22 ist Pflicht, nicht Geschmack ─────────────────────────────────────
+# `npm test` übergibt Suchmuster („src/**/*.test.mjs" und
+# „tests/e2e/helpers/*.test.mjs"). Das Auflösen übernimmt NODE, nicht die
+# Shell (die Anführungszeichen verhindern das gerade) — und Node kann das erst
+# ab Version 22. Diese Datei stand zunächst auf "20"; der erste echte Lauf
+# brach dort sofort ab mit
+#
+#     Could not find '/home/runner/work/…/src/**/*.test.mjs'
+#
+# während derselbe Befehl lokal auf Node 22 alle 2273 Prüfungen ausführte.
+# Genau diese Sorte Abweichung soll die Pipeline finden — hier hat sie mit
+# ihrem ersten Lauf sich selbst gefunden. Die Fassung steht zusätzlich als
+# `engines` in `package.json`, damit ein zu altes Node schon bei `npm ci`
+# eine verständliche Meldung erzeugt statt später eine kryptische.
 
 on:
   pull_request:
@@ -32,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       # `npm ci` statt `npm install`: geprüft wird exakt das, was auch
       # ausgeliefert wird.
@@ -60,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - run: npm ci
       # Nur Chromium: die Suiten starten ausschließlich Chromium, die übrigen
@@ -80,7 +95,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high

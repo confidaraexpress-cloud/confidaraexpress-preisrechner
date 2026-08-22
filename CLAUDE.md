@@ -2089,12 +2089,83 @@ ausgelieferten Modul vorkommen. `npm audit --omit=dev` misst dadurch mehr, als
 es behauptet. Die Umhängung nach `devDependencies` ist richtig, berührt aber
 mehrere Governance-Tests und gehört in ein eigenes Paket.
 
+### Jede E2E-Suite beendet ihren Dev-Server wirklich
+
+`spawn("npx", ["vite", …])` erzeugt keinen Prozess, sondern drei:
+`npx` → `sh -c vite` → `node …/vite`. **`server.kill(…)` signalisiert nur den
+npx-Prozess**; Kind und Enkel bleiben stehen — mitsamt dem gebundenen Port.
+
+Gemessen, an drei unabhängigen Stellen dasselbe Bild:
+
+- Nach einem vollen lokalen Lauf standen die Dev-Server der bereits beendeten
+  Suiten noch auf ihren Ports (`authErrors` 5225, `adminDraftDeletion` 5236,
+  `bookingOptionControls` 5248, `addressValidation` 5263 …), teils eine halbe
+  Stunde lang.
+- `adminOverviewMetrics` — die einzige der ersten sechs Suiten **mit**
+  `detached: true` + `process.kill(-pid)` — räumte sauber auf.
+- Der GitHub-Actions-Runner meldete am Jobende von sich aus
+  `Terminate orphan process: pid (…) (sh)` / `(node)`, in vier Paaren.
+
+Die Folge ist keine Kleinigkeit: **ein zweiter `npm run test:e2e` auf derselben
+Maschine fällt in jeder Suite aus**, weil `--strictPort` nicht ausweicht — und
+zwar jedes Mal erst nach der vollen Startfrist von 90 Sekunden. Der Lauf war
+damit nicht wiederholbar, was der Zweck dieser Testinfrastruktur ist.
+
+**Verbindlich, und beide Teile gehören zusammen:**
+
+- **`detached: true`** macht das Kind zum Anführer einer eigenen Prozessgruppe.
+  Erst dadurch adressiert ein negatives Signal die ganze Gruppe. Ohne
+  `detached` gehörte das Kind zur Gruppe des Testlaufs — ein `kill(-pid)`
+  träfe dann den Testlauf selbst oder liefe ins Leere.
+- **`process.kill(-server.pid, …)`** im Teardown, in `try` gefasst: ist die
+  Gruppe schon weg, wirft der Aufruf `ESRCH`, und ein ungefangener Wurf im
+  `after`-Haken färbte eine erfolgreiche Suite rot — der Aufräumcode zerstörte
+  dann genau das, wofür er da ist. Der zweite Kill auf das Kind bleibt als
+  Rückfallebene.
+
+25 der 33 Suiten trugen das Muster nicht. Vier setzten sogar ausdrücklich
+`detached: false`. **Eine Wortsuche nach „detached" beantwortet die Frage
+nicht** — in zwölf Dateien steht das Wort ausschließlich in Playwrights
+`waitForSelector({ state: "detached" })`. Die Prüfung schaut deshalb ins
+Spawn-Statement, nicht in die Datei.
+
+Erkannt werden Suiten am einheitlichen `server = spawn(` — bewusst nicht an
+`spawn("npx", ["vite"…])`: zwei Suiten (`insuranceTerms`,
+`newShipmentFloatingLabels`) starten denselben Server über `npm run dev` und
+fielen aus einer zu engen Erkennung heraus. Ein eigener Test hält fest, dass
+die Erkennung keine spawn-nutzende Datei übersieht.
+
+Governance: `tests/e2e/helpers/devServerTeardown.test.mjs` (4 Tests) und
+`tests/e2e/helpers/portUniqueness.test.mjs` (3 Tests) — zwei Seiten derselben
+Fehlerklasse: ein fremder Server auf meinem Port.
+
 ### CI
 
 `.github/workflows/ci.yml`: Unit-Tests + Build, vier parallele E2E-Teile über
 `scripts/run-e2e.mjs --shard i/4`, und `npm audit --omit=dev`. Kein echtes
 Backend, keine echte Bestellung, keine E-Mail, keine Secrets — jede E2E-Suite
 mockt ihre Aufrufe über `page.route` gegen einen lokalen Dev-Server.
+
+**Node 22 ist Pflicht, nicht Geschmack.** `npm test` lautet
+`node --test "src/**/*.test.mjs" …`; das Auflösen dieses Musters übernimmt
+**Node**, nicht die Shell (die Anführungszeichen verhindern das gerade) — und
+Node kann das erst ab Version 22. Die Datei stand zunächst auf `"20"`, und der
+erste echte Lauf brach dort sofort ab (`Could not find '…/src/**/*.test.mjs'`),
+während derselbe Befehl lokal auf Node 22 alle Prüfungen ausführte. Die
+Pipeline hat mit ihrem ersten Lauf sich selbst gefunden. Die Fassung steht
+zusätzlich als `engines` in `package.json`, damit ein zu altes Node schon bei
+`npm ci` eine verständliche Meldung erzeugt.
+
+**Die beiden Helferprüfungen liefen zunächst nirgends.** Sie liegen unter
+`tests/e2e/helpers/` — `scripts/run-e2e.mjs` sucht dort nicht (nicht rekursiv,
+und sie brauchen keinen Browser), `npm test` durchsuchte nur `src/`, und der
+CI-Schritt, den ihr eigener Kommentar behauptete, existierte nie. Das ist
+exakt der Fehler, gegen den dieses Paket angetreten ist. `npm test` sucht
+deshalb jetzt **zwei** Muster ab:
+
+```
+node --test "src/**/*.test.mjs" "tests/e2e/helpers/*.test.mjs"
+```
 
 ### Offener Punkt aus diesem Paket
 

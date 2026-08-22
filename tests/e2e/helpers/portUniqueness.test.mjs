@@ -25,12 +25,20 @@
  * Ein eindeutiger Port je Suite beseitigt die ganze Fehlerklasse. Diese Datei
  * hält das fest — sie ist billig und läuft ohne Browser.
  *
- * Hinweis: die Datei liegt unter `tests/e2e/helpers/` und wird deshalb von
- * `scripts/run-e2e.mjs` NICHT als Browsersuite gestartet (das sucht nur
- * `tests/e2e/*.test.mjs`, nicht rekursiv). Sie läuft auch nicht über
- * `npm test` mit, das `src/` durchsucht. Aufruf:
- *     node --test tests/e2e/helpers/portUniqueness.test.mjs
- * In der CI läuft sie als eigener Schritt des Unit-Jobs.
+ * Hinweis zur Einhängung: die Datei liegt unter `tests/e2e/helpers/` und wird
+ * von `scripts/run-e2e.mjs` bewusst NICHT als Browsersuite gestartet (das sucht
+ * nur `tests/e2e/*.test.mjs`, nicht rekursiv) — sie braucht keinen Browser.
+ * Gelaufen wird sie über `npm test`, dessen zweites Suchmuster genau dieses
+ * Verzeichnis abdeckt:
+ *
+ *     node --test "src/**\/*.test.mjs" "tests/e2e/helpers/*.test.mjs"
+ *
+ * Diese Zeile stand hier zunächst falsch: sie behauptete einen eigenen
+ * CI-Schritt, den es nie gab — die Datei lief damit in KEINEM Lauf. Das ist
+ * exakt der Fehler, gegen den dieses Härtungspaket angetreten ist
+ * (`voucherUx.test.mjs` und `addressValidation.test.mjs` lagen ebenso da,
+ * ohne je ausgeführt zu werden). Wer das Suchmuster aus `package.json`
+ * entfernt, stellt ihn wieder her.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

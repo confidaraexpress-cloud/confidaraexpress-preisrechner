@@ -192,7 +192,7 @@ async function adressenFuellen(page) {
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--port", String(PORT), "--strictPort", "--host", "127.0.0.1"], {
-    cwd: process.cwd(), stdio: "ignore", env: { ...process.env, BROWSER: "none" },
+    cwd: process.cwd(), stdio: "ignore", env: { detached: true, ...process.env, BROWSER: "none" },
   });
   const bis = Date.now() + 60000;
   for (;;) {
@@ -205,7 +205,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGTERM");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 /* ══════════ 1 — frisches Formular ist leer ═══════════════════════════════ */

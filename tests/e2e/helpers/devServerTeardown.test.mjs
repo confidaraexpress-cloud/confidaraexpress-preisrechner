@@ -82,14 +82,54 @@ test("0 — die Pruefung sieht ALLE Suiten, die einen Dev-Server starten", () =>
     `Teardown-Pruefung greift dort nicht: ${uebersehen.join(", ")}`);
 });
 
+/** Der Text des spawn-Aufrufs, von `server = spawn(` bis zum schliessenden `);`. */
+function spawnStatement(src) {
+  const m = /\bserver\s*=\s*spawn\(/.exec(src);
+  if (!m) return null;
+  const ende = src.indexOf(");", m.index);
+  return ende === -1 ? null : src.slice(m.index, ende + 2);
+}
+
+/** Steht `detached: true` im OPTIONSOBJEKT des Aufrufs — und nicht in einem
+ *  verschachtelten Objekt darin?
+ *
+ *  Das ist keine Spitzfindigkeit, sondern ein gemessener Fehler: in
+ *  `newShipmentEmptyState` landete die Option zunaechst INNERHALB von
+ *  `env: { … }`. Dort ist sie bedeutungslos — sie wird zu einer
+ *  Umgebungsvariable namens „detached" — und der Dev-Server lief undetached
+ *  weiter. Eine reine Textsuche nach `detached: true` sah die Zeile und war
+ *  zufrieden; der Server ueberlebte den Lauf trotzdem. Deshalb wird hier die
+ *  Klammertiefe mitgezaehlt statt nur nach Text zu suchen. */
+function detachedImOptionsobjekt(stmt) {
+  let paren = 0, brace = 0, optionsTiefe = null;
+  for (let i = 0; i < stmt.length; i++) {
+    const c = stmt[i];
+    if (c === "(") paren++;
+    else if (c === ")") paren--;
+    else if (c === "{") {
+      brace++;
+      // Das Optionsobjekt ist das erste `{` direkt in der Argumentliste.
+      if (optionsTiefe === null && paren === 1) optionsTiefe = brace;
+    } else if (c === "}") brace--;
+    else if (optionsTiefe !== null && brace === optionsTiefe && stmt.startsWith("detached", i)) {
+      if (/^detached\s*:\s*true\b/.test(stmt.slice(i))) return true;
+    }
+  }
+  return false;
+}
+
 test("1 — jede Suite mit Dev-Server startet ihn in einer EIGENEN Prozessgruppe", () => {
   const ohne = serverSuiten()
-    .filter(({ src }) => !/detached:\s*true/.test(src))
+    .filter(({ src }) => {
+      const stmt = spawnStatement(src);
+      return !stmt || !detachedImOptionsobjekt(stmt);
+    })
     .map(({ name }) => name);
 
   assert.deepEqual(ohne, [],
-    "Ohne `detached: true` gehoert der Dev-Server zur Prozessgruppe des Testlaufs.\n" +
-    "Ein Gruppenkill ist dann nicht moeglich, und der Server ueberlebt die Suite:\n  " +
+    "`detached: true` fehlt im OPTIONSOBJEKT des spawn-Aufrufs (in einem\n" +
+    "verschachtelten `env: {…}` wirkt es NICHT). Ohne eigene Prozessgruppe ist\n" +
+    "kein Gruppenkill moeglich, und der Server ueberlebt die Suite:\n  " +
     ohne.join("\n  "));
 });
 

@@ -192,7 +192,8 @@ async function adressenFuellen(page) {
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--port", String(PORT), "--strictPort", "--host", "127.0.0.1"], {
-    cwd: process.cwd(), stdio: "ignore", env: { detached: true, ...process.env, BROWSER: "none" },
+    cwd: process.cwd(), stdio: "ignore", detached: true,
+    env: { ...process.env, BROWSER: "none" },
   });
   const bis = Date.now() + 60000;
   for (;;) {

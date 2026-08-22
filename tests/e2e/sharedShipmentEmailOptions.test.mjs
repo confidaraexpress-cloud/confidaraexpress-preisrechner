@@ -13,7 +13,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
 
-const PORT = 5247, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5259, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;

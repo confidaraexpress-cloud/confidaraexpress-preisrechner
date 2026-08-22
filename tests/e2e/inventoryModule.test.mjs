@@ -16,7 +16,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { ueberSidebar } from "./helpers/newShipmentForm.mjs";
+import { ueberSidebar, fuellePaket } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -52,14 +52,42 @@ const AUFTRAG = {
 let server, browser;
 
 // NewShipmentPage adressiert seine Felder über das Label, nicht über eine id.
-// Der Helfer sucht das .field mit der passenden Beschriftung und liefert dessen
-// Eingabe — dieselbe Adressierung, die auch ein Mensch nutzt.
-// Absender und Empfänger tragen DIESELBEN Beschriftungen; der Absender steht im
-// DOM zuerst. `stelle: "last"` adressiert deshalb den Empfänger — genau die
-// Reihenfolge, die auch ein Mensch auf dem Bildschirm sieht.
+/* Adressierung über die stabilen ids des Formulars.
+
+   Vorher suchte dieser Helfer das `.field` mit passender `.field-label` und
+   unterschied Absender von Empfänger über `first`/`last` in der DOM-Reihen-
+   folge. Beides ist gebrochen:
+
+     · Die Beschriftung des Gewichtsfeldes lautet „Gewicht"; die Einheit „kg"
+       ist seit der Floating-Label-Umstellung ein EIGENES Element. Der
+       Suchtext „Gewicht kg" traf deshalb nichts mehr und lief jedes Mal in
+       einen 30-Sekunden-Timeout.
+     · `first`/`last` über gleiche Beschriftungen ist dieselbe Sorte
+       Positionsannahme wie ein `nth(4)`: ein zusätzliches Feld irgendwo im
+       Formular hätte sie still auf das falsche gelenkt.
+
+   Die ids (`ns-s-*` Absender, `ns-r-*` Empfänger, `ns-*` Paket) vergibt der
+   Produktcode ausdrücklich und stabil. */
+const NS_ID = {
+  "Vor- und Nachname": "fullName",
+  "Straße & Hausnr.":  "street",
+  "PLZ":               "zip",
+  "Stadt":             "city",
+  "Gewicht kg":        null,      // Paketfeld, siehe PAKET_ID
+  "Länge cm":          null,
+  "Breite cm":         null,
+  "Höhe cm":           null,
+};
+const PAKET_ID = {
+  "Gewicht kg": "ns-weight", "Länge cm": "ns-length",
+  "Breite cm":  "ns-width",  "Höhe cm":  "ns-height",
+};
+
 function feld(page, label, stelle = "first") {
-  const alle = page.locator(".field", { has: page.locator(".field-label", { hasText: label }) }).locator("input");
-  return stelle === "last" ? alle.last() : alle.first();
+  if (PAKET_ID[label]) return page.locator(`#${PAKET_ID[label]}`);
+  const key = NS_ID[label];
+  if (!key) throw new Error(`unbekannte Feldbeschriftung im Test: ${label}`);
+  return page.locator(`#ns-${stelle === "last" ? "r" : "s"}-${key}`);
 }
 const empf = (page, label) => feld(page, label, "last");
 
@@ -67,6 +95,10 @@ const empf = (page, label) => feld(page, label, "last");
 // freigeschaltetes Konto. Der Absender wird deshalb wie im echten Ablauf
 // ausgefüllt, sonst bleibt der Berechnen-Knopf zu Recht deaktiviert.
 async function fuelleAbsender(page) {
+  // Das LAND zuerst und ausdruecklich: seit "Neue Sendung startet leer" gibt es
+  // keinen Profil-Seed mehr, das Auswahlfeld beginnt ohne Wert, und ohne Land
+  // bleibt der CTA zu Recht gesperrt. Ausserdem haengt die PLZ-Regel daran.
+  await page.locator("#ns-s-country").selectOption("DE");
   await feld(page, "Vor- und Nachname").fill("Max Mustermann");
   await feld(page, "Straße & Hausnr.").fill("Senderweg 1");
   await feld(page, "PLZ").fill("10115");
@@ -452,11 +484,16 @@ test("10 — eine normale Sendung schickt KEIN inventory-Feld an die Preisberech
   await page.waitForTimeout(500);
 
   await fuelleAbsender(page);
+  await page.locator("#ns-r-country").selectOption("DE");
   await empf(page, "Vor- und Nachname").fill("Erika Muster");
   await empf(page, "Straße & Hausnr.").fill("Zielweg 9");
   await empf(page, "PLZ").fill("20095");
   await empf(page, "Stadt").fill("Hamburg");
-  await feld(page, "Gewicht kg").fill("2");
+  // Anzahl und alle drei Masse sind seit dem Paket "Paketmasse sind Pflicht"
+  // verbindlich; ohne sie bleibt der CTA zu Recht gesperrt (sein title nennt
+  // genau die fehlenden Felder). Es wird nichts erzwungen - die Angaben werden
+  // ergaenzt, wie ein Kunde es auch muesste.
+  await fuellePaket(page, { packageCount: "1", weight: "2", length: "30", width: "20", height: "15" });
   await page.locator("button", { hasText: CTA_BERECHNEN }).first().click();
   await page.waitForTimeout(900);
 
@@ -477,7 +514,11 @@ test("11 — eine Sendung aus dem Lager schickt den Lagerbezug mit (nur IDs und 
   await page.waitForTimeout(700);
 
   await fuelleAbsender(page);
-  await feld(page, "Gewicht kg").fill("2");
+  // Anzahl und alle drei Masse sind seit dem Paket "Paketmasse sind Pflicht"
+  // verbindlich; ohne sie bleibt der CTA zu Recht gesperrt (sein title nennt
+  // genau die fehlenden Felder). Es wird nichts erzwungen - die Angaben werden
+  // ergaenzt, wie ein Kunde es auch muesste.
+  await fuellePaket(page, { packageCount: "1", weight: "2", length: "30", width: "20", height: "15" });
   await page.locator("button", { hasText: CTA_BERECHNEN }).first().click();
   await page.waitForTimeout(900);
 

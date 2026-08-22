@@ -20,7 +20,7 @@ import path from "node:path";
 // automatischen Profil-Seed (Absender und Empfängerland blieben leer, der CTA dauerhaft
 // deaktiviert). Beides ist unten korrigiert; der Test ist jetzt registriert.
 
-const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5260, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;

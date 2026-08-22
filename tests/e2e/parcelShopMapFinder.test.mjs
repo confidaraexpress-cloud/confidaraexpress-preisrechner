@@ -147,7 +147,20 @@ test("1 — „Paketshops suchen“ öffnet das Fenster als echten Dialog", asyn
 
 test("2 — während des Requests steht ein Ladezustand im Fenster, kein leeres Loch", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await setupRoutes(page, { verzoegerung: () => 700 });
+  /* 5000 statt 700 ms. Das ist KEIN hochgesetztes Test-Timeout, sondern eine
+     langsamere ANTWORT des gemockten Servers — die Wartefristen der Zusicherungen
+     unten sind unverändert.
+
+     Gemessen: mit 700 ms war beim Öffnen des Fensters bereits alles da
+     (0 Skelette, „20 Paketshops"). Die Suche läuft nämlich schon vor dem
+     Öffnen an; nach 700 ms ist sie fertig, bevor das Fenster steht. Der
+     Ladezustand war damit gar nicht mehr erreichbar — der Test prüfte einen
+     Zustand, den er selbst unmöglich gemacht hatte, statt eine Regression.
+
+     Mit 5000 ms ist die Antwort beim Öffnen nachweislich noch unterwegs, und
+     die eigentliche Aussage ist wieder prüfbar: das Fenster steht sofort und
+     zeigt einen Ladezustand statt eines leeren Lochs. */
+  await setupRoutes(page, { verzoegerung: () => 5000 });
   await oeffneFinder(page);
   await page.locator(".ps-trigger").first().click();
 

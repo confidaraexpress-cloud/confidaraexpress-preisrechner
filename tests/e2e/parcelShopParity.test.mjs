@@ -42,7 +42,7 @@ import {
 } from "../fixtures/accessPointsDpd.mjs";
 import { MAP_TEST_ENGINE_SCRIPT } from "../fixtures/mapTestEngine.mjs";
 
-const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5258, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;

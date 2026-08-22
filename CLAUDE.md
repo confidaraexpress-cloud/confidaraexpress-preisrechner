@@ -1937,6 +1937,177 @@ console.log("User:", user);
 
 **Neue Abhängigkeiten:** `package.json` verwendet `"latest"` für alle Dependencies — das ist ein Stabilitätsrisiko. Neue Pakete mit exakter Version (`"^x.y.z"`) pinnen und vorher auf Aktualität und Vertrauenswürdigkeit prüfen (`npm info <paket>`).
 
+## Härtung: Auffindung statt Dateiliste, Fehlergrenzen, Auslieferungsheader
+
+Dieses Paket hat nichts Fachliches geändert. Es schließt drei Lücken, die ein
+Audit gemessen hat, und macht den bestehenden Zustand reproduzierbar prüfbar.
+**Kein Business-, API-, Routing-, Preis- oder Berechtigungsverhalten wurde
+berührt.**
+
+### Testdateien werden GESUCHT, nicht aufgezählt
+
+`package.json` führte jede Testdatei einzeln auf. Zwei Dateien lagen dadurch im
+Repository, ohne je zu laufen: `src/utils/voucherUx.test.mjs` (30 Prüfungen) und
+`tests/e2e/addressValidation.test.mjs` (10 Browserprüfungen). Beide waren
+geschrieben, beide nie ausgeführt — die zweite war beim ersten Lauf sofort rot.
+
+- `npm test` → `node --test "src/**/*.test.mjs"`
+- `npm run test:e2e` → `node scripts/run-e2e.mjs` (sucht `tests/e2e/*.test.mjs`)
+
+**Was da ist, läuft.** Es gibt keine Ausnahmeliste: wer eine Suite nicht laufen
+lassen will, löscht oder verschiebt sie — beides steht im Diff, ein stiller
+Ausschluss stünde dort nicht.
+
+`scripts/run-e2e.mjs --shard i/n` teilt die Suiten **reihum** auf (Datei k →
+Teil k mod n), weil ihre Laufzeiten stark schwanken und benachbarte Dateien oft
+zum selben Thema gehören; blockweise bekäme ein Teil alle schweren. Lokaler Lauf
+und CI teilen sich **dieselbe** Auffindung — zwei getrennte Listen wären genau
+der Fehler von oben.
+
+**Governance-Tests messen das jetzt richtig.** Fünf Dateien prüften ihre eigene
+Fortdauer über `pkg.scripts.test.includes("…")`. Unter Auffindung ist das
+bedeutungslos; sie nutzen deshalb `scripts/governance.mjs`
+(`pruefeImTestlauf` / `pruefeImE2eLauf` / `pruefeNichtVorhanden`), das die
+Konjunktion prüft: das Skript sucht wirklich rekursiv **und** die Datei liegt im
+durchsuchten Bereich. Für eine bewusst entfernte Datei zählt ihre Abwesenheit
+auf der Platte, nicht ihr Fehlen in einem String.
+
+### Ein Formularhelfer für alle Versand-E2E
+
+Zehn Suiten trugen eine wörtlich kopierte Hilfsfunktion, die „Neue Sendung" über
+**Platzhaltertexte** ansprach (`getByPlaceholder("5", { exact: true })`). Als das
+Paket „Paketmaße sind Pflicht" den Maßfeldern ein „z. B." voranstellte, fielen
+zehn Suiten gleichzeitig aus — nicht weil das Produkt kaputt war, sondern weil
+zehn Kopien derselben Annahme existierten.
+
+`tests/e2e/helpers/newShipmentForm.mjs` ist jetzt die einzige Stelle. Verbindlich:
+
+- **Ein Platzhalter ist Beschriftungstext und kein Selektor.** Angesprochen wird
+  über die stabilen `ns-…`-ids, die der Produktcode ausdrücklich vergibt
+  (`addrField` / `zipField` / `countrySelect` in `NewShipmentPage.jsx`).
+- **Kein positionsbasierter Zugriff mehr** (`.booking-addr-grid > div nth(1)
+  input nth(4)`) — der zählte Eingabefelder in DOM-Reihenfolge und hätte bei
+  jedem eingefügten Feld still das falsche getroffen.
+- **Das Land steht ZUERST.** Seit „Neue Sendung startet leer" ist es ohne
+  Auswahl leer; die PLZ-Regel und die Adressprüfung hängen daran.
+- **Nichts wird erzwungen.** `berechneAngebote()` prüft, dass der CTA bedienbar
+  IST, und schlägt sonst mit dem sichtbaren Hinweis fehl. Kein `force`-Klick,
+  kein Entfernen von `disabled` — genau das würde die Produktprüfung umgehen,
+  um die es geht.
+
+**Jede E2E-Suite, die die Buchungsseite erreicht, muss
+`GET /api/legal/booking-context` beantworten** (`{ enabled: false }` = Server mit
+abgeschalteter Schranke, der heutige Produktivzustand). Ohne Antwort greift der
+Sammelfall `200 {}`, `parseBookingContext` wertet das fail-closed als `error`,
+und die Bestellung ist gesperrt. Das ist richtiges Produktverhalten; die Suite
+muss den Endpunkt schlicht kennen. Beide Zustände prüft
+`tests/e2e/legalBookingGate.test.mjs`.
+
+### Fehlergrenzen an allen sechs Stellen
+
+`ContentErrorBoundary` deckte nur das Kundendashboard ab. Wurzel, Auth-Bereich,
+öffentliche Seiten und Adminportal waren offen — dort erzeugte ein Renderfehler
+weiterhin eine weiße Seite.
+
+| Ort | Datei | Rahmen |
+|---|---|---|
+| Wurzel | `main.jsx` | über Router UND AuthProvider |
+| Auth | `App.jsx` (`AuthAreaBoundary`) | `.container` |
+| öffentlich | `NavbarLayout.jsx` | `.container` |
+| Admin | `AdminLayout.jsx` | `.adm-page` |
+| Dashboard-Layout | `DashboardLayout.jsx` | `.page-body` (bestand bereits) |
+| Dashboard-Seiten | `DashboardPage.jsx` | `.page-body` (bestand bereits) |
+
+Verbindlich:
+
+- **Es gibt GENAU EINE Fehlergrenzen-Komponente.** Kein zweites Muster daneben;
+  ein Test sucht projektweit nach `getDerivedStateFromError`/`componentDidCatch`
+  und lässt genau eine Datei zu.
+- **Die Wurzelgrenze liegt ÜBER Router und AuthProvider** — innerhalb könnte sie
+  einen Fehler des Routers selbst nicht sehen, und genau dort entstünde die
+  weiße Seite, gegen die das Muster gebaut ist.
+- **Zwei Ursachen, zwei Handlungen.** Ein nicht mehr ladbarer Codeabschnitt
+  (alle Seiten sind `React.lazy`, die Bündel gehen mit `immutable` raus — ein
+  zum Deploymentzeitpunkt offener Tab fragt nach einem Dateinamen, den es nicht
+  mehr gibt) braucht **Neuladen**; „Erneut versuchen" fordert denselben
+  fehlenden Abschnitt erneut an und hilft dort nie. `isChunkLoadError()` trennt
+  beides an den bekannten Browser-Wortlauten und gilt im Zweifel als
+  gewöhnlicher Renderfehler — lieber „erneut versuchen" anbieten als
+  fälschlich versprechen, Neuladen behebe das Problem.
+- **Nie von selbst neu laden.** Ein reproduzierbarer Renderfehler würde daraus
+  eine Schleife machen, die der Nutzer nicht anhalten kann.
+- **Kein technischer Rohwert in der sichtbaren Fläche, keine Nutzerdaten und
+  keine Tokens im Log.** Geloggt werden Fehlerobjekt und Komponentenspur.
+- Jede Bereichsgrenze trägt `key={pathname}`; sonst bliebe die Fehlerfläche
+  einer verlassenen Seite stehen und blockierte die nächste.
+- Governance: `src/components/common/errorBoundaryCoverage.test.mjs` (12 Tests,
+  drei Mutationen gegengeprüft).
+
+### Auslieferung: Sicherheitsheader und eine gemessene CSP
+
+`nginx.conf` setzt `X-Content-Type-Options`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy` und eine `Content-Security-Policy`.
+
+- **`add_header` wird NICHT vererbt**, sobald eine `location` selbst eines
+  setzt. Vier Locations tun das (Cache-Control) — der Block ist dort deshalb
+  wiederholt. Wer eine neue Location mit `add_header` anlegt, MUSS ihn
+  mitkopieren, sonst verliert genau dieser Pfad still seine Header.
+- **Die CSP ist gemessen, nicht geschätzt.** Der echte `dist/`-Build lief in
+  Chromium hinter der Richtlinie: React montiert, sieben Schriften laden, der
+  blob:-Worker von maplibre startet, das PDF-`iframe` wird akzeptiert — null
+  `securitypolicyviolation`. Gegenprobe: ohne den Kachelhost in `img-src`
+  meldet derselbe Lauf genau eine `img-src`-Verletzung, das Messinstrument
+  greift also.
+- `style-src 'unsafe-inline'` ist **unvermeidbar** (React-`style={{…}}`-Attribute
+  und Laufzeitstile von maplibre), `'unsafe-eval'` ist **nicht** nötig.
+- **ACHTUNG, Kopplung an den Build:** `connect-src` und `img-src` nennen zwei
+  Hosts, die als Buildvariablen im Bündel landen (`VITE_API_URL` aus `.env`,
+  Kachelhost aus `src/config/map.js` bzw. `VITE_MAP_STYLE_URL`). Wer einen davon
+  ändert, MUSS ihn in `nginx.conf` nachziehen — sonst blockiert der Browser jeden
+  API-Aufruf beziehungsweise die Karte. Die Richtlinie ist ein Deploymentvertrag,
+  kein Selbstläufer.
+
+### Abhängigkeiten sind festgenagelt
+
+`"latest"` stand bei vier Paketen. Das war kein theoretisches Risiko: es hatte
+das Projekt bereits still von **React 18 auf 19** gehoben, ohne dass irgendwo
+eine Entscheidung dazu stand (CLAUDE.md nennt oben weiterhin React 18 — der Text
+beschreibt insoweit nicht mehr den Bestand). Alle vier tragen jetzt den Bereich
+ihrer tatsächlich getesteten Fassung, und `Dockerfile` nutzt `npm ci` statt
+`npm install` — ein Build, dessen Abhängigkeiten von package-lock.json abweichen,
+bricht ab, statt ungetesteten Code auszuliefern.
+
+`react-router-dom` ist auf `^7.18.2` gehoben (fünf Advisories bis 7.18.1,
+darunter ein Open Redirect über Backslash in `<Link>`/`useNavigate` — beide
+werden hier benutzt), `vite` auf `^8.0.16` (zwei Advisories, beide
+Windows- und Dev-Server-spezifisch, ohne Wirkung auf das ausgelieferte
+Statikpaket).
+
+**Offen und bewusst nicht in diesem Paket:** `vite` und `@vitejs/plugin-react`
+stehen unter `dependencies`, obwohl sie reine Buildwerkzeuge sind und in keinem
+ausgelieferten Modul vorkommen. `npm audit --omit=dev` misst dadurch mehr, als
+es behauptet. Die Umhängung nach `devDependencies` ist richtig, berührt aber
+mehrere Governance-Tests und gehört in ein eigenes Paket.
+
+### CI
+
+`.github/workflows/ci.yml`: Unit-Tests + Build, vier parallele E2E-Teile über
+`scripts/run-e2e.mjs --shard i/4`, und `npm audit --omit=dev`. Kein echtes
+Backend, keine echte Bestellung, keine E-Mail, keine Secrets — jede E2E-Suite
+mockt ihre Aufrufe über `page.route` gegen einen lokalen Dev-Server.
+
+### Offener Punkt aus diesem Paket
+
+**Der Preisrechner sagt nicht, warum sein CTA gesperrt ist.** „Neue Sendung"
+trägt bei unvollständigen Maßen eine Hinweiszeile (`packageHint`,
+`NewShipmentPage.jsx`); auf `/calculator` steht nur der deaktivierte Knopf ohne
+Begründung — gemessen, `.offers-calc-cta` enthält dort ausschließlich „Angebote
+vergleichen". Das widerspricht der eigenen Regel unter „Paketmaße sind Pflicht",
+in deren Geltungsbereich der Preisrechner ausdrücklich steht. Bewusst NICHT in
+diesem Paket behoben: das wäre eine sichtbare Oberflächenänderung und keine
+Härtung. In `tests/e2e/calculatorErrors.test.mjs` steht die Stelle als Kommentar
+markiert, damit die Prüfung dorthin wandert, sobald die Zeile existiert.
+
 ## Was nicht geändert werden sollte
 
 - **Auth-Logik** — serverseitig gesteuert; kein clientseitiges Freischalten

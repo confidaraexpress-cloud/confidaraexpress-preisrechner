@@ -9,13 +9,18 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
   error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
+  legalBlocksBooking,
   onBook, onNavigateShipments, onNavigateNew, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
   // solange darf nicht bestellt werden. Die bestehende Gate-Funktion bleibt unverändert;
   // diese Bedingung kommt additiv dazu.
+  // Legal-Buchungsschranke (Paket 4-B): solange der Kontext lädt oder nicht auslieferbar ist,
+  // steht nicht fest, welche Fassungen gelten — dann darf nicht bestellt werden. Bei
+  // ausgeschalteter Schranke ist der Wert false und dieser Ausdruck unverändert.
   const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking })
-    && voucherChecking !== true;
+    && voucherChecking !== true
+    && legalBlocksBooking !== true;
   return (
     <>
       {error && <div className="alert alert-error">{error}</div>}

@@ -377,6 +377,15 @@
 .booking-agb-link { color: var(--blue2); font-weight: 600; }
 /* Fehlermeldung der Ausschlussgüter-Bestätigung direkt unter der Checkbox. */
 .booking-prohibited-error { margin: -14px 0 20px; }
+/* Vertragsunterlagen der aktiven Legal-Buchungsschranke (Paket 4-B) — eine ruhige Liste
+   ÜBER den beiden Bestätigungen, bewusst keine zweite Karte: sie gehört in die bestehende
+   Übersichtskarte, direkt zu den Checkboxen, auf die sie sich bezieht. */
+.booking-legal-docs { margin-bottom: 18px; }
+.booking-legal-docs-title { font-size: 12px; font-weight: 600; color: var(--ce-color-text-primary); margin: 0 0 6px; }
+.booking-legal-docs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.booking-legal-docs-list li { font-size: 13px; line-height: 1.6; color: var(--ce-color-text-secondary); }
+.booking-legal-docs-version { color: var(--ce-color-text-muted); }
+.booking-legal-error { display: block; margin-bottom: 16px; }
 .booking-book-btn { font-size: 15px; padding: 13px; }
 .booking-email-note { text-align: center; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 12px; }
 .booking-tracking-note { display: flex; align-items: flex-start; justify-content: center; gap: 8px; max-width: 480px; margin: 0 auto 16px; padding: 11px 14px; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-secondary); text-align: left; background: var(--blue-light); border: 1px solid var(--ce-color-brand-border-soft); border-radius: var(--radius); }

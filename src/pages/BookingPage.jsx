@@ -32,6 +32,11 @@ import { BookingStickySummary } from "../components/booking/BookingStickySummary
 import { TermsModule } from "../components/booking/TermsModule";
 import { BookingActionModule } from "../components/booking/BookingActionModule";
 import { VoucherModule } from "../components/booking/VoucherModule";
+import { useLegalBookingContext } from "../hooks/useLegalBookingContext";
+import {
+  legalGateBlocks, legalBookingPayload, isLegalSetChanged,
+  legalSetChangedBetween, LEGAL_SET_CHANGED_TEXT,
+} from "../utils/legalBookingView.mjs";
 import {
   VOUCHER_STATUS, readVoucherResponse, voucherPriceLines,
   voucherInvalidationKey, shouldInvalidateVoucher, normalizeVoucherInput,
@@ -114,6 +119,26 @@ export default function BookingPage() {
   // Separate Pflichtbestätigung „keine ausgeschlossenen Güter" (eigenständig,
   // ersetzt/schwächt die AGB-Bestätigung nicht). Reines Frontend-Buchungs-Gate.
   const [prohibitedGoodsAccepted, setProhibitedGoodsAccepted] = useState(false);
+  // Legal-Buchungsschranke (Paket 4-B). Bei ausgeschalteter Schranke (Standard) liefert der
+  // Server `enabled:false`, und alles Weitere verhält sich exakt wie vor diesem Paket.
+  const { legalContext, reloadLegalContext } = useLegalBookingContext();
+  // Wechselt das gültige Set, verfallen BEIDE Bestätigungen. Eine Zustimmung zu Fassung A ist
+  // keine Zustimmung zu Fassung B — auch dann nicht, wenn der Wechsel still passiert, während
+  // die Seite offen steht. Der Vergleich läuft über den zuletzt GESEHENEN Schlüssel; beim
+  // ersten Laden gibt es keinen Vorgänger und damit auch nichts zurückzusetzen.
+  const gesehenerSetKey = useRef(null);
+  useEffect(() => {
+    const vorher = { setKey: gesehenerSetKey.current };
+    if (legalSetChangedBetween(vorher, legalContext)) {
+      setAgbAccepted(false);
+      setProhibitedGoodsAccepted(false);
+    }
+    if (legalContext.setKey) gesehenerSetKey.current = legalContext.setKey;
+  }, [legalContext]);
+  // Blockiert die Schranke die Bestellung? Nur solange geladen wird oder der Kontext nicht
+  // auslieferbar ist. Bei ausgeschalteter Schranke ist der Wert false — der bestehende
+  // Gate-Vertrag bleibt damit unverändert.
+  const legalBlocksBooking = legalGateBlocks(legalContext);
   const [prohibitedShowError, setProhibitedShowError] = useState(false);
   const [conflict, setConflict] = useState("");
   const [addressError, setAddressError] = useState("");
@@ -733,6 +758,11 @@ export default function BookingPage() {
 
   const doBook = async () => {
     if (!agbAccepted) return;
+    // Legal-Buchungsschranke: solange der Kontext lädt oder nicht auslieferbar ist, wird nicht
+    // bestellt. Rein defensiv — der Bestellknopf ist ohnehin deaktiviert. KEIN Rückfall auf die
+    // statischen AGB-Seiten: bei aktiver Schranke ist die versionierte Fassung die einzige,
+    // die serverseitig als Nachweis entsteht.
+    if (legalBlocksBooking) return;
     // Während einer laufenden Gutscheinprüfung nicht buchen: der angezeigte Betrag steht
     // in diesem Moment nicht fest. Rein defensiv — der Bestellknopf ist ohnehin deaktiviert.
     if (voucherChecking) return;
@@ -877,6 +907,11 @@ export default function BookingPage() {
           // ignorierte sie ohnehin und prüft den Gutschein unmittelbar vor der Bestellung
           // erneut vollständig gegen den Provider. Der Code ist ein Wunsch, keine Zusage.
           ...(voucherApplied && voucher.code ? { voucherCode: voucher.code } : {}),
+          // Legal-Buchungsschranke: NUR bei aktiver Schranke entstehen hier Felder — der
+          // gesehene Setschlüssel und die beiden Bestätigungen. Ist die Schranke aus (Standard),
+          // bleibt das Objekt leer und der Payload exakt der bisherige. Gesendet wird weder ein
+          // Zeitpunkt noch eine Dokument-ID: beides bestimmt der Server.
+          ...legalBookingPayload(legalContext, { agbAccepted, prohibitedGoodsAccepted }),
           ...insurancePayload,
           ...customsPayload,
         }),
@@ -910,6 +945,21 @@ export default function BookingPage() {
         // Preis) → Spezialdialog mit den neuen verfügbaren Grenzen; Buchung gestoppt,
         // das Fenster wird NICHT still überschrieben. Erst nach bewusster Bestätigung
         // wird der Wunsch verworfen (NULL/NULL) und eine erneute Buchung erlaubt.
+        // Paket 4-B — Fassungswechsel zwischen Anzeige und Bestellung. Eigener Pfad, bewusst
+        // VOR allen anderen 409-Zweigen: er darf niemals im Duplikat-, Preisdrift- oder
+        // Versicherungszweig landen, denn deren Handlungsanweisungen („Zu meinen Sendungen",
+        // „Preis aktualisieren") reparieren hier nichts. Es wird NICHT automatisch erneut
+        // gebucht — der Kunde muss die neue Fassung sehen und selbst erneut bestätigen.
+        if (isLegalSetChanged(r.status, d)) {
+          setAgbAccepted(false);
+          setProhibitedGoodsAccepted(false);
+          setProhibitedShowError(false);
+          reloadLegalContext();          // neue Fassung holen und anzeigen
+          setStep(2);                    // zurück an die Bestätigungsstelle
+          setError(LEGAL_SET_CHANGED_TEXT);
+          setLoading(false);
+          return;
+        }
         if (d?.code === "PICKUP_WINDOW_CHANGED") {
           setPickupWindowChanged({
             availableFrom: d.availableFrom,
@@ -1466,6 +1516,7 @@ export default function BookingPage() {
                   </div>
                 )}
                 <TermsModule
+                  legalContext={legalContext}
                   accepted={agbAccepted}
                   onChange={setAgbAccepted}
                   prohibitedAccepted={prohibitedGoodsAccepted}
@@ -1484,6 +1535,7 @@ export default function BookingPage() {
                   insuranceBlocksBooking={insuranceBlocksBooking}
                   pickupBlocksBooking={pickupHydrationBlocks}
                   voucherChecking={voucherChecking}
+                  legalBlocksBooking={legalBlocksBooking}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}

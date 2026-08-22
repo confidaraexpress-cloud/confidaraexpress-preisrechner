@@ -48,11 +48,23 @@ async function setup(page, { onCalc } = {}) {
 }
 
 // Formular mit gültigen Basisdaten füllen; `to_zip` bleibt Sache des Tests.
-async function fill(page, { toZip }) {
+//
+// Die MASSE gehören seit dem Paket „Paketmaße sind Pflicht" dazu. Vorher waren
+// sie optional und wurden serverseitig still durch 30/20/15 ersetzt; heute
+// sperrt der CTA ohne sie — und zwar richtigerweise. Wer sie hier wegließe,
+// prüfte nicht mehr die Fehlerdarstellung des Preisrechners, sondern nur noch
+// die Maßsperre davor. Zwei Tests dieser Datei setzen sie deshalb ausdrücklich
+// NICHT und belegen genau diese Sperre.
+async function fill(page, { toZip, masse = true }) {
   await page.fill("#calc-from-zip", "70173");
   await page.fill("#calc-to-zip", toZip);
   await page.fill("#calc-weight", "2");
   await page.fill("#calc-packageCount", "1");
+  if (masse) {
+    await page.fill("#calc-length", "30");
+    await page.fill("#calc-width", "20");
+    await page.fill("#calc-height", "15");
+  }
 }
 
 test.before(async () => {
@@ -148,12 +160,9 @@ test("Eingaben bleiben nach einem Serverfehler vollständig erhalten", async () 
   });
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  // `fill` setzt die Maße mit — ohne sie greift (korrekt) schon die Vorprüfung
+  // und der Request erreicht den Server gar nicht.
   await fill(page, { toZip: "10115" });
-  // Maße vollständig — sonst greift (korrekt) schon die Vorprüfung und der
-  // Request erreicht den Server gar nicht.
-  await page.fill("#calc-length", "30");
-  await page.fill("#calc-width", "20");
-  await page.fill("#calc-height", "15");
   await page.getByRole("button", { name: /Angebote vergleichen/i }).first().click();
   await page.waitForTimeout(500);
 
@@ -245,5 +254,76 @@ test("eine gültige Anfrage funktioniert unverändert (keine Regression)", async
   assert.ok(anzahl > 0, "gültige Anfragen müssen weiterhin Angebote liefern");
   assert.equal(await page.locator(".alert-error").count(), 0, "kein Fehlerbanner bei Erfolg");
   assert.deepEqual(konsole, [], "keine Konsolenfehler");
+  await page.close();
+});
+
+/* ── Gegenprobe: die Maßpflicht selbst ────────────────────────────────────────
+   Die Tests darüber setzen die Maße, damit sie das prüfen können, wofür sie da
+   sind — die Fehlerdarstellung. Damit dieses Ausfüllen nicht unbemerkt zur
+   Umgehung einer echten Produktprüfung wird, belegen die beiden folgenden
+   Läufe die Sperre ausdrücklich.
+
+   Der Ausgangsfall: bis zum Paket „Paketmaße sind Pflicht" ersetzte der Server
+   ein leeres Maßfeld still durch 30/20/15. Der Kunde bekam einen Preis für ein
+   Paket, das er nie beschrieben hat, während der Carrier nach dem echten Paket
+   abrechnet. */
+
+test("ohne Maße bleibt der CTA gesperrt und es geht KEIN Request hinaus", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const konsole = await setup(page);
+  let gesendet = 0;
+  page.on("request", (r) => { if (r.url().includes("calculate-price")) gesendet++; });
+
+  await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  await fill(page, { toZip: "10115", masse: false });
+
+  const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
+  assert.equal(await cta.isDisabled(), true,
+    "ohne Länge, Breite und Höhe darf die Berechnung nicht auslösbar sein");
+
+  // Ein deaktivierter Knopf wird NICHT erzwungen — ein `force`-Klick würde
+  // genau die Prüfung umgehen, um die es hier geht. Stattdessen wird belegt,
+  // dass auch kein Request entsteht.
+  await page.waitForTimeout(300);
+  assert.equal(gesendet, 0, "ein unvollständiges Paket darf den Server nie erreichen");
+  assert.deepEqual(konsole, [], "keine Konsolenfehler");
+  await page.close();
+});
+
+test("die Sperre nennt, was fehlt — und löst sich, sobald es da ist", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setup(page);
+  await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  await fill(page, { toZip: "10115", masse: false });
+
+  const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
+  // Keine Fehlerwand auf einem noch nicht abgeschickten Formular: rote
+  // Markierungen entstehen erst beim Weiterklicken.
+  assert.equal(await page.locator(".field-input-error").count(), 0,
+    "ein noch nicht abgesendetes Formular darf keine Fehlerwand zeigen");
+
+  /* BEWUSST NICHT GEPRÜFT: eine Hinweiszeile am gesperrten CTA.
+     „Neue Sendung" hat sie (`packageHint`, NewShipmentPage.jsx:518), der
+     PREISRECHNER hat sie NICHT — hier steht nur der deaktivierte Knopf ohne
+     Begründung. Gemessen, nicht vermutet: `.offers-calc-cta` enthält auf
+     /calculator ausschließlich den Text „Angebote vergleichen".
+
+     Das ist eine offene Lücke gegenüber der eigenen Regel (CLAUDE.md,
+     „Paketmaße sind Pflicht": der deaktivierte CTA soll sagen, was fehlt — und
+     der Preisrechner steht dort ausdrücklich im Geltungsbereich). Sie wird hier
+     NICHT durch eine Testerwartung vorweggenommen: ein Test, der eine noch
+     nicht gebaute Oberfläche verlangt, ist kein Regressionsschutz. Sobald die
+     Zeile da ist, gehört die Prüfung hierher. */
+
+  // Genau ein fehlendes Maß reicht für die Sperre.
+  await page.fill("#calc-length", "30");
+  await page.fill("#calc-width", "20");
+  assert.equal(await cta.isDisabled(), true, "zwei von drei Maßen dürfen nicht genügen");
+
+  await page.fill("#calc-height", "15");
+  await page.waitForTimeout(200);
+  assert.equal(await cta.isDisabled(), false, "vollständige Maße müssen die Sperre lösen");
   await page.close();
 });

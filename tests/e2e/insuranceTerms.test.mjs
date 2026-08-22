@@ -22,6 +22,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -84,6 +85,14 @@ async function setupRoutes(page, tariffs) {
     const p = new URL(route.request().url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
+    // Legal-Buchungsschranke (Go-Live Paket 4-B): `enabled:false` ist die
+    // Antwort eines Servers mit ABGESCHALTETER Schranke — der heutige
+    // Produktivzustand. Ohne diese Antwort liefe der Mock in den Sammelfall
+    // `200 {}`; `parseBookingContext` wertet das fail-closed als `error` und
+    // sperrt die Bestellung. Das ist richtiges Produktverhalten und darf nicht
+    // aufgeweicht werden — die Suite muss den Endpunkt schlicht beantworten.
+    // Beide Zustände der Schranke prüft `legalBookingGate.test.mjs`.
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: [] });
     if (p.endsWith("/kunde/invoices")) return json({ invoices: [], summary: null });
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
@@ -115,15 +124,7 @@ async function setupRoutes(page, tariffs) {
 async function zurBuchung(page, angebot = 0) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
-  for (const [ph, v] of [
-    ["Max Mustermann", "Max Mustermann"], ["Musterstraße 1", "Hauptstrasse 1"], ["Stuttgart", "Berlin"],
-    ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
-  ]) await fill(ph, v);
-  const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await emp.nth(4).fill("80331");
-  await emp.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+  await fuelleVersandformular(page);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").nth(angebot).locator("button.offer-cta-btn").click();
@@ -332,7 +333,7 @@ test("6 — zwei Tarife, zwei verschiedene Links (kein Carriername-Mapping)", as
 
 /* ── 7. Restore ──────────────────────────────────────────────────────────── */
 
-test("7 — der Bedingungslink übersteht Reload und Wiederherstellung", async () => {
+test("7 — der Bedingungslink übersteht einen Reload; die Versicherungswahl bewusst nicht", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
@@ -344,12 +345,30 @@ test("7 — der Bedingungslink übersteht Reload und Wiederherstellung", async (
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   await zuSchritt2(page);
 
-  // Auswahl und Werte sind wieder da …
-  assert.match(await gewaehlt(page), /Standardversicherung/);
-  assert.equal(await page.locator(SEL.goods).inputValue(), "500");
-  // … und der Bedingungslink des Tarifs ebenso (er steckt im Tarifobjekt).
+  /* ZWEI verschiedene Dinge, die ein Reload verschieden behandelt — und genau
+     das ist heute die Aussage dieses Tests:
+
+     • Der TARIF übersteht ihn. Er kommt aus `location.state`, und React Router
+       legt den in `history.state.usr` ab; ein Reload stellt ihn deshalb wieder
+       her (BookingPage, Quelle 1). Mit ihm überlebt sein Bedingungslink — er
+       steckt im Tarifobjekt und wird nicht über den Carriernamen zugeordnet.
+
+     • Der VORGANGSZUSTAND übersteht ihn NICHT. Seit „Neue Sendung startet
+       leer" lebt `ShippingFlowContext` ausschließlich im Arbeitsspeicher und
+       spiegelt nichts mehr in den `sessionStorage`. Ein Reload baut den
+       React-Baum neu auf, und Versicherungswahl samt Warenwert sind weg.
+
+     Bis zu diesem Paket erwartete der Test hier die Wiederherstellung beider
+     Werte. Das war einmal richtig und ist es seit der bewussten Produkt-
+     änderung nicht mehr — die Erwartung wurde nachgezogen, nicht das Produkt. */
+  assert.match(await gewaehlt(page), /Keine zusätzliche Transportversicherung/,
+    "nach einem Reload muss der Versicherungsteil auf dem sicheren Ausgangswert stehen");
+  assert.equal(await page.locator(SEL.goods).count(), 0,
+    "ohne gewählte Versicherung darf es kein Warenwertfeld geben");
+
   const link = karte(page, "Keine zusätzliche Transportversicherung").locator(SEL.terms);
-  assert.equal(await link.getAttribute("href"), AGB_A, "der Tariflink hat die Wiederherstellung nicht überlebt");
+  assert.equal(await link.getAttribute("href"), AGB_A,
+    "der Bedingungslink des Tarifs hat den Reload nicht überlebt");
 
   await page.close();
 });

@@ -29,9 +29,10 @@ const STREETS = [
   { street: "Schweinheimer Weg", postalCode: "63743", city: "Aschaffenburg" },
 ];
 
-const S_STREET = "#ns-s-street";
-const S_CITY   = "#ns-s-city";
-const S_ZIP    = ".booking-addr-grid > div:nth-child(1) input.field-input";
+const S_STREET  = "#ns-s-street";
+const S_CITY    = "#ns-s-city";
+const S_ZIP     = "#ns-s-zip";
+const S_COUNTRY = "#ns-s-country";
 
 let server, browser;
 
@@ -93,10 +94,24 @@ async function zumFormular(page) {
 }
 
 // Absenderfelder befüllen (Firma/Name sind für die Prüfung irrelevant, aber Pflichtfelder).
-async function fuelleAbsender(page, { zip, city, street } = {}) {
+//
+// Das LAND wird ausdrücklich gesetzt und steht ZUERST. Zwei Gründe, beide aus
+// dem tatsächlichen Verhalten:
+//   · Seit „Neue Sendung startet leer" gibt es keinen Profil-Seed mehr; ohne
+//     Auswahl ist `s_country` leer, und die Adressprüfung antwortet dann
+//     `unsupported` — sie fragt gar nicht erst. Ohne diese Zeile prüft die
+//     ganze Datei nichts.
+//   · Die PLZ-Regel hängt am Land. Wird es nachträglich gesetzt, wechselt die
+//     Regel unter einer bereits eingetragenen PLZ.
+//
+// Angesprochen wird über die stabilen ids. Der frühere Zugriff
+// `.booking-addr-grid > div:nth-child(1) input.field-input` mit `.nth(4)`
+// zählte Eingabefelder in DOM-Reihenfolge — ein zusätzliches Feld im
+// Absenderblock hätte ihn still auf ein anderes gelenkt.
+async function fuelleAbsender(page, { zip, city, street, country = "DE" } = {}) {
+  await page.locator(S_COUNTRY).selectOption(country);
   await page.getByPlaceholder("Max Mustermann", { exact: true }).first().fill("Max Mustermann");
-  const zipInput = page.locator(S_ZIP).nth(4);
-  if (zip !== undefined) await zipInput.fill(zip);
+  if (zip !== undefined) await page.locator(S_ZIP).fill(zip);
   if (city !== undefined) await page.locator(S_CITY).fill(city);
   if (street !== undefined) await page.locator(S_STREET).fill(street);
 }
@@ -245,8 +260,7 @@ test("Smoke 7 — ein nicht unterstütztes Land verhält sich wie bisher", async
   await setupRoutes(page);
   await zumFormular(page);
   // Empfängerland auf Irland stellen (kein Postleitzahlsystem, keine Anbieterabdeckung).
-  const selects = page.locator(".booking-addr-grid select.field-select");
-  await selects.nth(1).selectOption("IE");
+  await page.locator("#ns-r-country").selectOption("IE");
   await page.waitForTimeout(900);
 
   // Keine Statuszeile, keine Vorschläge, keine Blockade — genau wie vor dieser Funktion.

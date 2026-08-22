@@ -111,9 +111,15 @@ test("Benutzerchip und Profilhero zeigen dieselbe Initiale", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard?page=profile`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".profile-avatar-lg", { timeout: 20000 });
+  // Auf den Profilhero eingegrenzt. `.profile-avatar-lg` allein trifft seit dem
+  // Firmenlogo-Paket ZWEI Elemente: den Hero und die Initialenfläche der Karte
+  // „Unternehmenslogo" (CompanyLogoPreview zeigt sie, solange kein Logo
+  // hinterlegt ist — hier der Fall, der Mock liefert keines). Beide zeigen
+  // dieselbe Initiale aus derselben Quelle; gemeint ist hier der Hero.
+  const heroAvatar = page.locator(".profile-account-identity .profile-avatar-lg");
+  await heroAvatar.waitFor({ state: "visible", timeout: 20000 });
 
-  const profil = (await page.locator(".profile-avatar-lg").innerText()).trim();
+  const profil = (await heroAvatar.innerText()).trim();
   const chip = (await page.locator(".ce-comark text").evaluate((el) => el.textContent)).trim();
   assert.equal(profil, "M", "die Initiale stammt nicht aus dem Firmennamen „Muster GmbH“");
   assert.equal(chip, profil, "Benutzerchip und Profil zeigen verschiedene Initialen");

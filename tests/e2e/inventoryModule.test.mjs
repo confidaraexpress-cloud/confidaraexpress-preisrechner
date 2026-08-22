@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { ueberSidebar } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -182,7 +183,7 @@ test.after(async () => {
 
 /* ══════════ Sidebar ══════════════════════════════════════════════════════ */
 
-test("1 — der Modulblock steht in derselben Sidebar, direkt unter „Übersicht“", async () => {
+test("1 — „Lager & Aufträge\u201c ist eine Gruppe derselben Sidebar, NICHT deren Kopf", async () => {
   const page = await neueSeite(neueAufzeichnung());
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
 
@@ -190,35 +191,72 @@ test("1 — der Modulblock steht in derselben Sidebar, direkt unter „Übersich
   assert.equal(await page.locator("aside.pp-side").count(), 1, "es gibt mehr als eine Sidebar");
   assert.equal(await page.locator("nav.pp-nav").count(), 1, "es gibt mehr als eine Navigation");
 
-  const block = page.locator(".pp-nav-module");
-  assert.equal(await block.count(), 1);
-  await assert.doesNotReject(block.waitFor({ state: "visible", timeout: 5000 }));
+  /* Der frühere Modulblock `.pp-nav-module` ist ERSATZLOS entfernt — er trug
+     Rahmen, Radius und eine vertiefte Eigenfläche und erzeugte damit eine
+     zweite optische Sidebar innerhalb der Sidebar. „Lager & Aufträge" ist
+     seitdem eine von drei gleichrangigen Klappgruppen. */
+  assert.equal(await page.locator(".pp-nav-module").count(), 0,
+    "der Modulblock ist zurück — er war ersatzlos entfernt, nicht entrahmt");
+  assert.equal(await page.locator(".nsec").count(), 0,
+    "die abgeschaffte Abschnittsklasse .nsec ist zurück");
 
-  // Reihenfolge im DOM: Übersicht → Modulblock → Versandgruppe.
-  const uebersicht = await page.locator('nav.pp-nav .nitem', { hasText: "Übersicht" }).first().boundingBox();
-  const blockBox = await block.boundingBox();
-  const versand = await page.locator("nav.pp-nav .nsec", { hasText: "Versand" }).first().boundingBox();
-  assert.ok(uebersicht.y < blockBox.y, "der Lagerblock steht nicht unter der Übersicht");
-  assert.ok(blockBox.y + blockBox.height <= versand.y + 2, "der Lagerblock steht nicht vor der Versandgruppe");
+  const kopf = page.getByRole("button", { name: "Lager & Aufträge", exact: true }).first();
+  await assert.doesNotReject(kopf.waitFor({ state: "visible", timeout: 5000 }));
+  assert.equal(await kopf.getAttribute("aria-expanded"), "false",
+    "Gruppen starten geschlossen — auch die des Lagermoduls, auch nach einem Reload");
 
-  // Fünf Einträge, in der geforderten Reihenfolge.
-  const labels = await block.locator(".nitem span").allTextContents();
+  /* Das Lagermodul FÜHRT die Navigation nicht an: ConfidaraExpress ist primär
+     eine Versandplattform, das Lager ein optionales Zusatzmodul. Es steht nach
+     Übersicht, Versand, Adressbuch und Rechnungen. */
+  const y = async (l) => (await l.boundingBox()).y;
+  const yUebersicht = await y(page.getByRole("button", { name: "Übersicht", exact: true }).first());
+  const yVersand    = await y(page.getByRole("button", { name: "Versand", exact: true }).first());
+  const yRechnungen = await y(page.getByRole("button", { name: "Rechnungen", exact: true }).first());
+  const yLager      = await y(kopf);
+  assert.ok(yUebersicht < yVersand && yVersand < yRechnungen && yRechnungen < yLager,
+    `Reihenfolge der Sidebar stimmt nicht: Übersicht ${yUebersicht}, Versand ${yVersand}, ` +
+    `Rechnungen ${yRechnungen}, Lager ${yLager}`);
+
+  // Fünf Einträge, in der geforderten Reihenfolge — auch eingeklappt im DOM.
+  const labels = await page.locator("#pp-nav-group-warehouse-items .nitem span").allTextContents();
   assert.deepEqual(labels, ["Lagerübersicht", "Artikel", "Bestand", "Aufträge", "Bewegungen"]);
   await page.close();
 });
 
-test("2 — der Block hebt sich sichtbar ab, ohne eine zweite Designwelt zu sein", async () => {
+test("2 — die Gruppe hat KEINE eigene Fläche; die Hierarchie kommt aus Abstand und Einrückung", async () => {
   const page = await neueSeite(neueAufzeichnung());
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-  const stil = await page.locator(".pp-nav-module").evaluate((el) => {
+
+  /* Diese Prüfung ist gegenüber der früheren umgekehrt, nicht abgeschwächt.
+     Vorher wurde eine eigene Fläche mit Kante und Rundung VERLANGT; genau die
+     hat sich als zweite optische Sidebar innerhalb der Sidebar erwiesen und
+     ist ersatzlos entfallen. Verlangt wird jetzt ihre Abwesenheit — und
+     zusätzlich, dass die Hierarchie überhaupt sichtbar ist, nur eben über
+     Abstand und Einrückung statt über Flächen und Kanten. */
+  const gruppe = page.locator(".pp-nav-group").filter({ hasText: "Lager & Aufträge" }).first();
+  const stil = await gruppe.evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, border: s.borderTopWidth, radius: s.borderTopLeftRadius, shadow: s.boxShadow, filter: s.backdropFilter };
+    return {
+      bg: s.backgroundColor, border: s.borderTopWidth, radius: s.borderTopLeftRadius,
+      shadow: s.boxShadow, filter: s.backdropFilter, abstand: parseFloat(s.marginTop),
+    };
   });
-  assert.notEqual(stil.bg, "rgba(0, 0, 0, 0)", "der Block hat keine eigene Fläche");
-  assert.notEqual(stil.border, "0px", "der Block hat keine Kante");
-  assert.notEqual(stil.radius, "0px", "der Block hat keine Rundung");
-  assert.equal(stil.shadow, "none", "der Block trägt einen Schatten");
+  assert.equal(stil.bg, "rgba(0, 0, 0, 0)", "die Gruppe hat wieder eine eigene Fläche");
+  assert.equal(stil.border, "0px", "die Gruppe hat wieder eine Kante");
+  assert.equal(stil.radius, "0px", "die Gruppe hat wieder eine Rundung");
+  assert.equal(stil.shadow, "none", "die Gruppe trägt einen Schatten");
   assert.ok(stil.filter === "none" || !stil.filter, "backdrop-filter ist unzulässig");
+  assert.ok(stil.abstand > 0, "ohne Abstand nach oben gibt es keine sichtbare Hierarchie mehr");
+
+  // Zweite Ebene: eingerückt gegenüber dem Gruppenkopf.
+  await page.getByRole("button", { name: "Lager & Aufträge", exact: true }).first().click();
+  await page.waitForTimeout(300);
+  const einzug = await page.locator("#pp-nav-group-warehouse-items .nitem").first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).paddingInlineStart));
+  const kopfEinzug = await page.locator(".pp-nav-group-head").first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).paddingInlineStart));
+  assert.ok(einzug > kopfEinzug,
+    `die zweite Ebene ist nicht eingerückt (Eintrag ${einzug}px, Kopf ${kopfEinzug}px)`);
   await page.close();
 });
 
@@ -229,14 +267,14 @@ test("3 — jeder der fünf Bereiche lässt sich öffnen und zeigt genau einen S
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
   for (const [label, titel] of [["Lagerübersicht", "Lagerübersicht"], ["Artikel", "Artikel"],
                                 ["Bestand", "Bestand"], ["Aufträge", "Aufträge"], ["Bewegungen", "Bewegungen"]]) {
-    await page.locator(".pp-nav-module .nitem", { hasText: label }).first().click();
+    await ueberSidebar(page, label);
     await page.waitForTimeout(350);
     const koepfe = page.locator(".ce-page-header");
     assert.equal(await koepfe.count(), 1, `${label}: ${await koepfe.count()} Seitenköpfe`);
     assert.equal(await page.locator(".ce-page-header-title").innerText(), titel);
     assert.equal(await page.locator(".ce-page-header-eyebrow").innerText(), "LAGER & AUFTRÄGE".toUpperCase().slice(0, 0) || await page.locator(".ce-page-header-eyebrow").innerText());
     // Und der Eintrag ist als aktiv erkennbar.
-    const aktiv = await page.locator(".pp-nav-module .nitem.on span").innerText();
+    const aktiv = (await page.locator(".pp-nav-group-items .nitem.on span").textContent()).trim();
     assert.equal(aktiv, label);
   }
   await page.close();
@@ -245,7 +283,7 @@ test("3 — jeder der fünf Bereiche lässt sich öffnen und zeigt genau einen S
 test("4 — die Artikeldetailseite läuft über eine echte Route in derselben Shell", async () => {
   const page = await neueSeite(neueAufzeichnung());
   await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-  await page.locator(".pp-nav-module .nitem", { hasText: "Artikel" }).first().click();
+  await ueberSidebar(page, "Artikel");
   await page.waitForTimeout(400);
   await page.locator("button.inv-cell-link", { hasText: "Artikel A" }).first().click();
   await page.waitForTimeout(500);
@@ -253,7 +291,7 @@ test("4 — die Artikeldetailseite läuft über eine echte Route in derselben Sh
   assert.match(page.url(), /\/inventory\/products\/100$/, "die Detailseite hat keine echte Route");
   // Dieselbe Shell, dieselbe Sidebar — und der Listenbereich bleibt markiert.
   assert.equal(await page.locator("aside.pp-side").count(), 1);
-  assert.equal(await page.locator(".pp-nav-module .nitem.on span").innerText(), "Artikel");
+  assert.equal((await page.locator(".pp-nav-group-items .nitem.on span").textContent()).trim(), "Artikel");
   assert.equal(await page.locator(".ce-page-header").count(), 1);
   await page.close();
 });
@@ -347,7 +385,14 @@ test("8 — „Versand vorbereiten“ füllt das BESTEHENDE Formular „Neue Sen
   await page.waitForTimeout(700);
 
   // Es ist wirklich das bestehende Formular (dieselben Feld-IDs), kein zweites.
-  assert.equal(await page.locator(".pp-nav .nitem.on span").innerText(), "Neue Sendung");
+  /* `textContent`, nicht `innerText`: „Neue Sendung" liegt in der Gruppe
+     „Versand", und die startet eingeklappt. Eingeklappte Einträge bleiben im
+     DOM (sonst gäbe es nichts zu animieren), sind aber `visibility: hidden` —
+     `innerText` liefert dafür einen leeren String. Geprüft wird hier, WELCHER
+     Eintrag als aktiv markiert ist, nicht ob er gerade sichtbar ist; dass eine
+     zugeklappte Gruppe ihre Einträge verbirgt, ist eigene, gewollte Logik und
+     wird von sidebarNavigation.test.mjs geprüft. */
+  assert.equal((await page.locator(".pp-nav .nitem.on span").textContent()).trim(), "Neue Sendung");
   assert.equal(await empf(page, "Vor- und Nachname").inputValue(), "Erika Muster");
   assert.equal(await empf(page, "Straße & Hausnr.").inputValue(), "Zielweg 9");
   assert.equal(await empf(page, "PLZ").inputValue(), "20095");
@@ -372,9 +417,9 @@ test("9 — der Prefill wirkt GENAU EINMAL — eine spätere normale Sendung ist
   assert.equal(await empf(page, "Vor- und Nachname").inputValue(), "Erika Muster");
 
   // Weg und zurück über die Sidebar — der Prefill darf NICHT erneut greifen.
-  await page.locator("nav.pp-nav .nitem", { hasText: "Übersicht" }).first().click();
+  await ueberSidebar(page, "Übersicht");
   await page.waitForTimeout(400);
-  await page.locator("nav.pp-nav .nitem", { hasText: "Neue Sendung" }).first().click();
+  await ueberSidebar(page, "Neue Sendung");
   await page.waitForTimeout(600);
 
   // Der laufende Vorgang bleibt erhalten (das ist gewollt), aber es wird nichts

@@ -222,7 +222,7 @@ test("Smoke 5 — eine geänderte PLZ verwirft die alte Bestätigung", async () 
   await fuelleAbsender(page, { zip: "63743", city: "Aschaffenburg", street: "Schweinheimer Straße 187" });
   await page.waitForTimeout(900);
   // PLZ ändern → die Straßenvorschläge der alten PLZ dürfen nicht stehen bleiben.
-  await page.locator(S_ZIP).nth(4).fill("99999");
+  await page.locator(S_ZIP).fill("99999");
   await page.waitForTimeout(1200);
   // Entscheidend ist, dass keine BESTÄTIGUNG der alten Adresse stehen bleibt — und dass
   // die Straßenvorschläge der alten PLZ verschwunden sind (die neue PLZ kennt sie nicht).

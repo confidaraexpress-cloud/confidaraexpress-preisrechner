@@ -1,9 +1,10 @@
 import React from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Icon } from "../ui/Icon";
 import { BrandLogo } from "../ui/BrandLogo";
 import { Footer } from "./Footer";
+import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 
 function Navbar() {
   const { authed } = useAuth();
@@ -73,10 +74,20 @@ function Navbar() {
 }
 
 export function NavbarLayout() {
+  const { pathname } = useLocation();
   return (
     <>
       <Navbar />
-      <Outlet />
+      {/* Fehlergrenze um den Inhalt der öffentlichen Seiten (Tracking,
+          Impressum, Datenschutz, AGB, Widerruf, Versicherungsinformationen).
+          Navigationsleiste und Fußzeile bleiben dadurch stehen — der Besucher
+          kommt weiter, statt vor einer weißen Seite zu stehen. Der Schlüssel
+          ist der Pfad: ein Fehler auf der verlassenen Seite darf die nächste
+          nicht blockieren. Diese Seiten laufen NICHT durch `.page-body` —
+          deshalb ihr eigener Rahmen `.container`. */}
+      <ContentErrorBoundary key={pathname} bereich="oeffentlich" wrapperClassName="container">
+        <Outlet />
+      </ContentErrorBoundary>
       <Footer />
     </>
   );

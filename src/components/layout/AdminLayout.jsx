@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { AdminSidebar } from "./AdminSidebar";
+import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 
 // Eigenständiger Adminbereich-Rahmen (Light-Theme, adm- Prefix, URL-basiertes
 // Routing). Kein Bezug zum State-basierten Kunden-Dashboard und keine
@@ -9,6 +10,7 @@ import { AdminSidebar } from "./AdminSidebar";
 // <Outlet /> gerendert.
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { pathname } = useLocation();
   const close = () => setSidebarOpen(false);
 
   return (
@@ -26,7 +28,14 @@ export function AdminLayout() {
           <span className="adm-topbar-title">Adminbereich</span>
           <span className="adm-topbar-spacer" aria-hidden="true" />
         </div>
-        <Outlet />
+        {/* Fehlergrenze um den Inhalt des Adminbereichs. Adminsidebar und
+            Topbar bleiben stehen; der Schlüssel ist der Pfad, damit ein Fehler
+            auf einer Detailseite die nächste Liste nicht blockiert. Der
+            Adminbereich hat seinen eigenen Rahmen (`.adm-page`) und läuft
+            nicht durch `.page-body`. */}
+        <ContentErrorBoundary key={pathname} bereich="admin" wrapperClassName="adm-page">
+          <Outlet />
+        </ContentErrorBoundary>
       </main>
     </div>
   );

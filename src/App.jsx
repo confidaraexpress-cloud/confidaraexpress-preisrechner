@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { ContentErrorBoundary } from "./components/common/ContentErrorBoundary";
 import { useAuth } from "./context/AuthContext";
 import { ShippingFlowProvider } from "./context/ShippingFlowContext";
 import { ParcelShopFinderProvider } from "./context/ParcelShopFinderContext";
@@ -46,6 +47,21 @@ const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admi
 const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
 
+/* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
+   und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
+   Renderfehler oder ein nicht mehr ladbarer Codeabschnitt keine weiße Seite
+   erzeugt, bekommen sie über eine pfadlose Layoutroute ihre eigene Grenze.
+   Bewusst `.container` als Rahmen: die Glaswelt des Auth-Bereichs ist genau
+   das, was in diesem Fall nicht gerendert werden konnte. */
+function AuthAreaBoundary() {
+  const { pathname } = useLocation();
+  return (
+    <ContentErrorBoundary key={pathname} bereich="auth" wrapperClassName="container">
+      <Outlet />
+    </ContentErrorBoundary>
+  );
+}
+
 export default function App() {
   const { authed, loadingUser } = useAuth();
   if (loadingUser) return <LoadingScreen />;
@@ -69,12 +85,14 @@ export default function App() {
     <Suspense fallback={<LoadingScreen />}>
       <ScrollToTop />
       <Routes>
-        <Route path="/login"    element={<AuthPage />} />
-        <Route path="/register" element={<AuthPage />} />
+        <Route element={<AuthAreaBoundary />}>
+          <Route path="/login"    element={<AuthPage />} />
+          <Route path="/register" element={<AuthPage />} />
 
-        {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
-            Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
-        <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
+          {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
+              Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
+          <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
+        </Route>
 
         {/* Protected: calculator + booking inside dashboard layout (sidebar visible).
             Buchung lief bis Paket B unter dem öffentlichen NavbarLayout — Route und

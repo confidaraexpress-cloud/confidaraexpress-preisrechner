@@ -11,7 +11,7 @@ import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
-import { businessOrderNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { orderConfirmationNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import {
   TRACKING_HINTS,
   TRACKING_LABELS,
@@ -505,12 +505,14 @@ export default function AdminShipmentDetailPage() {
               ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
               ["Maße (L × B × H)", dimensions(s)],
               ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
-              // Nummern strikt getrennt benannt: „Bestellnummer" ist AUSSCHLIESSLICH die interne
-              // Confidara-Nummer (CE-BS…). Die externe JUMiNGO-Ordernummer trägt eine eigene,
-              // unmissverständliche Beschriftung — sie hieß hier zuvor „Bestell-Nr." und war
-              // damit von der Confidara-Bestellnummer nicht unterscheidbar.
-              [NUMBER_LABELS.businessOrder, businessOrderNumberOf(s)
-                ? <span className="adm-mono">{businessOrderNumberOf(s)}</span> : "—"],
+              // Nummern strikt getrennt benannt: „Auftragsbestätigung" ist AUSSCHLIESSLICH die
+              // CE-Vorgangsnummer (CE-AB…). Die externe JUMiNGO-Ordernummer trägt weiter unten
+              // eine eigene, unmissverständliche Beschriftung — sie hieß hier einmal
+              // „Bestell-Nr." und war damit von der CE-Nummer nicht unterscheidbar.
+              // Die interne Bestellnummer (CE-BS…) wird auch im Admin nicht mehr angezeigt:
+              // sie bezeichnet denselben Vorgang und stand hier als zweite Nummer daneben.
+              [NUMBER_LABELS.orderConfirmation, orderConfirmationNumberOf(s)
+                ? <span className="adm-mono">{orderConfirmationNumberOf(s)}</span> : "—"],
               [NUMBER_LABELS.adminCustomerReference, refDisplay(refOf(s))],
               // Beschriftung sagt ausdrücklich „gespeichert": das ist die bei
               // ConfidaraExpress hinterlegte Nummer, NICHT das Ergebnis einer

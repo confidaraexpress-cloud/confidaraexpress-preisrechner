@@ -80,7 +80,7 @@ function StatusBadge({ status }) {
 
 // ── Zellinhalte (geteilt zwischen Tabelle und Mobilkarte) ────────────────────
 
-// Spalte „Sendung": Bestellnummer primär (Link), Datum sekundär. Die interne
+// Spalte „Sendung": Auftragsbestätigungsnummer primär (Link), Datum sekundär. Die interne
 // Sendungs-ID ist bewusst NICHT mehr die Navigation.
 function ShipmentCell({ row }) {
   const f = shipmentFields(row);

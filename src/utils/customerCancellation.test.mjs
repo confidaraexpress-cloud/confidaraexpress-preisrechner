@@ -194,10 +194,15 @@ test("readErrorCode liest error/code defensiv", () => {
   assert.equal(readErrorCode(null), "");
 });
 
-test("shipmentDialogLabel: eigene Referenz bevorzugt, sonst die CE-Bestellnummer", () => {
+test("shipmentDialogLabel: eigene Referenz bevorzugt, sonst die Auftragsbestätigung", () => {
   assert.equal(shipmentDialogLabel({ reference_number: "REF-9" }), "REF-9");
-  assert.equal(shipmentDialogLabel({ business_order_number: "CE-BS-2026-0042" }), "CE-BS-2026-0042");
-  assert.equal(shipmentDialogLabel({ reference_number: "REF-9", business_order_number: "CE-BS-2026-0042" }), "REF-9");
+  assert.equal(shipmentDialogLabel({ order_confirmation_number: "CE-AB26-00042" }), "CE-AB26-00042");
+  assert.equal(shipmentDialogLabel({ reference_number: "REF-9", order_confirmation_number: "CE-AB26-00042" }), "REF-9");
+  // Die Trackingnummer ist die letzte Stufe — sie steht in der Sendungsliste
+  // und in den Versandmails, ist also für den Kunden wiederfindbar.
+  assert.equal(shipmentDialogLabel({ tracking_number: "1Z999" }), "1Z999");
+  // Die interne Bestellnummer (CE-BS…) ist ausdrücklich KEIN Kürzel mehr.
+  assert.equal(shipmentDialogLabel({ business_order_number: "CE-BS26-00042" }), "");
   assert.equal(shipmentDialogLabel({}), "");
 });
 

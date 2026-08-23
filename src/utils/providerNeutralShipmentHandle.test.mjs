@@ -68,8 +68,13 @@ test("4 — der Dateiname der Label-PDF trägt nie eine rohe Providerreferenz", 
   // Zuvor stand dort `label-${id}.pdf` mit id = jumingo_shipment_id, also
   // wörtlich „label-s_5f3a….pdf" in einem kundensichtbaren Artefakt.
   assert.match(downloadLabelJs, /a\.download = `label-\$\{base\.replace\(\/\[\^a-zA-Z0-9\\-_\]\/g, "_"\)\}\.pdf`/);
-  assert.match(shipmentsList, /downloadLabel\(s\.id, s\.business_order_number\)/,
-    "die Sendungsliste reicht die Bestellnummer als Dateinamen nicht durch");
+  // Nummernumstellung: der Dateiname trägt die AUFTRAGSBESTÄTIGUNGSNUMMER (CE-AB…) —
+  // die interne Bestellnummer (CE-BS…) steht in keinem kundensichtbaren Artefakt mehr,
+  // ein Dateiname eingeschlossen. Fehlt sie, bleibt der Handle als Dateiname.
+  assert.match(shipmentsList, /downloadLabel\(s\.id, s\.order_confirmation_number\)/,
+    "die Sendungsliste reicht die Auftragsbestätigungsnummer als Dateinamen nicht durch");
+  assert.ok(!/downloadLabel\([^)]*business_order_number/.test(shipmentsList),
+    "die interne Bestellnummer benennt wieder eine Kundendatei");
 });
 
 /* ══════════ 3 — Sichtbarkeit und Dialogtext ══════════════════════════════ */
@@ -84,7 +89,7 @@ test("5 — der Storno-Button hängt am CE-Handle, nicht an der Providerreferenz
 
 test("6 — der Dialog benennt die Sendung nie über die Providerreferenz", () => {
   assert.equal(shipmentDialogLabel({ reference_number: "REF-9" }), "REF-9");
-  assert.equal(shipmentDialogLabel({ business_order_number: "CE-BS-2026-0042" }), "CE-BS-2026-0042");
+  assert.equal(shipmentDialogLabel({ order_confirmation_number: "CE-AB26-00042" }), "CE-AB26-00042");
   assert.equal(shipmentDialogLabel({ jumingo_shipment_id: JUMINGO_ID }), "");
 });
 
@@ -95,7 +100,7 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   // unverändert die JUMiNGO-Referenz — das ist der Wert, den DIESER Client gesendet
   // hat; ihn umzudeuten wäre ein stiller Vertragsbruch.
   assert.match(bookingPage, /if \(!booking\?\.ceShipmentId\) return;/);
-  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, booking\.businessOrderNumber\)/);
+  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, booking\.orderConfirmationNumber\)/);
   // Die Sichtbarkeit des Buttons muss an derselben Bedingung hängen wie der
   // Handler — sonst zeigte er sich und täte beim Klick nichts.
   assert.match(bookingPage, /\{booking\?\.ceShipmentId && \(/);

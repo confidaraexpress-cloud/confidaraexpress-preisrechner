@@ -248,12 +248,11 @@ export default function OrderDetailPage() {
                     <caption className="sr-only">Sendungen zu diesem Auftrag</caption>
                     <thead>
                       <tr>
-                        {/* CE-BS… ist die Sendungsnummer, die Carrier-Nummer ist die
-                            Trackingnummer. Bis Go-Live Paket 1 hießen beide Spalten hier
-                            verkehrt herum: „Bestellnummer" stand über businessOrderNumber,
-                            „Sendungsnummer" über trackingNumber. Beschriftungen korrigiert —
-                            die Felder selbst sind unverändert. */}
-                        <th scope="col">Sendungsnummer</th>
+                        {/* CE-AB… ist die Vorgangsnummer der Versandbuchung, die
+                            Carrier-Nummer ist die Trackingnummer. Nicht zu verwechseln mit
+                            der Auftragsnummer des LAGERauftrags (CE-AU…) — die steht oben
+                            am Auftrag selbst, nicht je Sendung. */}
+                        <th scope="col">Auftragsbestätigung</th>
                         <th scope="col">Carrier</th>
                         <th scope="col">Trackingnummer</th>
                         <th scope="col">Status</th>
@@ -264,7 +263,7 @@ export default function OrderDetailPage() {
                     <tbody>
                       {data.shipments.map((s) => (
                         <tr key={s.id}>
-                          <td>{s.businessOrderNumber || "—"}</td>
+                          <td>{s.orderConfirmationNumber || "—"}</td>
                           <td>{s.carrier || "—"}</td>
                           <td className="inv-cell-meta">{s.trackingNumber || "—"}</td>
                           <td><StatusBadge status={s.status} /></td>

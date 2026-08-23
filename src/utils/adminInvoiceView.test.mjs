@@ -77,6 +77,11 @@ const PROD_OPEN = {
   customer_number: "CE-K-10031", snapshot_company: "Borner Spedition GmbH (historisch)",
   snapshot_name: "A. Muster", snapshot_email: "alt@example.com", snapshot_vat_id: "DE111",
   business_order_number: "CE-BS26-00042", jumingo_order_number: "JU-77",
+  // CE-AB… der Rechnung selbst (eingefrorener Leistungs-Snapshot) und der
+  // verknüpften Sendung (live). Beide Werte existieren nebeneinander; die
+  // Sendungsverknüpfung liest ausdrücklich den Sendungswert.
+  order_confirmation_number: "CE-AB26-00042",
+  shipment_order_confirmation_number: "CE-AB26-00042",
   name: "Neuer Name", email: "neu@example.com", company_name: "Borner Spedition GmbH",
   current_customer_number: "CE-K-10031",
   shipment_status: "label_ready", shipment_carrier: "ups", shipment_from_country: "DE",
@@ -92,7 +97,8 @@ const PREVIEW_INV = { ...TEST_INV, id: 105, document_mode: "preview", document_m
 const LEGACY_INV = { ...PROD_OPEN, id: 107, invoice_number: "CE-1784413235576-AF896D",
   document_mode: null, document_mode_label: "unknown", is_test_document: null,
   is_productive: false, is_overdue: false, is_payable: false,
-  customer_number: null, business_order_number: null, snapshot_company: null, snapshot_name: null,
+  customer_number: null, business_order_number: null, order_confirmation_number: null,
+  shipment_order_confirmation_number: null, snapshot_company: null, snapshot_name: null,
   snapshot_email: null, snapshot_vat_id: null, shipment_id: null };
 
 // ═══ A) Forderungsklassifizierung ════════════════════════════════════════════
@@ -356,7 +362,8 @@ test("14 — Beträge werden nur angezeigt, nie berechnet", () => {
 test("15 — die Sendungsverknüpfung erfindet keine Nummer", () => {
   const s = linkedShipment(PROD_OPEN);
   assert.equal(s.linked, true);
-  assert.equal(s.orderNumber, "CE-BS26-00042");
+  // `orderNumber` trägt die sichtbare Vorgangsnummer (CE-AB…), nicht CE-BS.
+  assert.equal(s.orderNumber, "CE-AB26-00042");
   assert.equal(s.orderNumberKnown, true);
   assert.equal(s.carrier, "ups");
   assert.equal(s.route, "DE → GB");
@@ -365,9 +372,12 @@ test("15 — die Sendungsverknüpfung erfindet keine Nummer", () => {
   const legacy = linkedShipment(LEGACY_INV);
   assert.equal(legacy.linked, false);
   assert.equal(legacy.orderNumberKnown, false);
-  assert.equal(SHIPMENT_NO_ORDER_NUMBER, "Bestandsrechnung ohne Bestellnummer");
+  assert.equal(SHIPMENT_NO_ORDER_NUMBER, "Bestandsrechnung ohne Vorgangsnummer");
   assert.equal(SHIPMENT_NO_ORDER_NUMBER.includes("107"), false);
   assert.equal(linkedShipment({ shipment_id: 900 }).orderNumber, "", "ohne Nummer wird keine erfunden");
+  // Und die interne Bestellnummer ist ausdrücklich KEIN Ersatz.
+  assert.equal(linkedShipment({ shipment_id: 900, shipment_business_order_number: "CE-BS26-00042" }).orderNumber, "",
+    "die interne Bestellnummer dient wieder als Ersatz");
 });
 
 // ═══ E) Liste: Spalten, Kunde, Filter, Responsive ════════════════════════════

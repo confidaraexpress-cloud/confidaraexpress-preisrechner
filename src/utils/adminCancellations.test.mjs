@@ -275,7 +275,11 @@ const cssSrc      = _read("styles/admin.css");
 const ROW = {
   id: 7, status: "pending", reasonPreview: "Der Empfänger hat die Lieferung storniert.", revision: 1,
   createdAt: "2026-07-29T10:00:00Z", updatedAt: "2026-07-29T10:00:00Z",
-  shipment: { id: 900, jumingoShipmentId: "s_x", orderNumber: "JU-77", status: "label_ready",
+  // Die Sendung trägt BEIDES: die CE-Vorgangsnummer (CE-AB…) und die
+  // JUMiNGO-Ordernummer. Genau so lässt sich prüfen, dass die Zelle die eine
+  // zeigt und die andere niemals als Ersatz verwendet.
+  shipment: { id: 900, jumingoShipmentId: "s_x", orderConfirmationNumber: "CE-AB26-00042",
+    orderNumber: "JU-77", status: "label_ready",
     carrier: "ups", fromCountry: "DE", toCountry: "GB" },
   customer: { id: 2, company: "Borner Spedition GmbH", contactName: "A. Muster", email: "k@ce.de" },
 };
@@ -337,13 +341,16 @@ test("Liste: sieben fachliche Spalten, keine dominante User-/Shipment-ID", () =>
   assert.equal(cell.secondary, "A. Muster");
   assert.equal(cancellationCustomerCell({ customer: { id: 5 } }).primary, "Kunde nicht auflösbar");
   const ship = cancellationShipmentCell(normalizeCancellationRequest(ROW));
-  assert.equal(ship.primary, "JU-77");
+  assert.equal(ship.primary, "CE-AB26-00042");
   assert.equal(ship.secondary, "ups · DE → GB");
-  // Ohne Nummer: ehrlicher Text, NIE aus der ID gebildet.
-  const noNo = cancellationShipmentCell({ shipment: { id: 900 } });
+  // Die Providerreferenz ist KEIN Ersatz und erscheint nirgends in der Zelle.
+  assert.equal(Object.values(ship).includes("JU-77"), false, "JUMiNGO-Ordernummer in der Sendungszelle");
+  // Ohne Vorgangsnummer: ehrlicher Text, NIE aus der ID oder der Providernummer gebildet.
+  const noNo = cancellationShipmentCell({ shipment: { id: 900, orderNumber: "JU-77" } });
   assert.equal(noNo.known, false);
-  assert.equal(noNo.primary, "Ohne Bestellnummer");
+  assert.equal(noNo.primary, "Ohne Vorgangsnummer");
   assert.equal(noNo.primary.includes("900"), false);
+  assert.equal(noNo.primary.includes("JU-77"), false);
   assert.equal(cancellationLabel({ id: 7 }), "Anfrage #7");
 });
 
@@ -418,7 +425,9 @@ test("Detail: echtes <h1>, fachliche Karten, technische Infos eingeklappt", () =
   }
   assert.match(detailSrc, /Kundenkonto öffnen/);
   assert.match(detailSrc, /Sendung öffnen/);
-  assert.match(detailSrc, /\["Bestellnummer", ship\.known/);
+  // Nummernumstellung: die Sendungskarte trägt die zentrale Beschriftung der
+  // Auftragsbestätigung — kein eigener Text, keine interne Bestellnummer.
+  assert.match(detailSrc, /\[NUMBER_LABELS\.orderConfirmation, ship\.known/);
   // Der volle Grund steht nur hier.
   assert.match(detailSrc, /<p className="adm-reason">\{String\(req\.reason\)\}<\/p>/);
   // reviewedBy ist ein OBJEKT { id, name } — es darf nie roh gerendert werden.
@@ -484,7 +493,7 @@ test("Selbsttest: die Prüflogik greift tatsächlich", () => {
   // Kernaussagen sind keine Tautologien.
   assert.notEqual(cancellationStatusMeta("pending")[1], cancellationStatusMeta("in_review")[1]);
   assert.notEqual(cancellationShipmentCell({ shipment: { id: 1 } }).primary,
-                  cancellationShipmentCell({ shipment: { id: 1, orderNumber: "JU-1" } }).primary);
+                  cancellationShipmentCell({ shipment: { id: 1, orderConfirmationNumber: "CE-AB26-00001" } }).primary);
   assert.notEqual(cancellationEmptyState({ count: 0 }).title, cancellationEmptyState({ count: 0, status: "accepted" }).title);
   assert.equal(('<th scope="col">A</th><th scope="col">B</th>'.match(/<th scope="col"/g) || []).length, 2);
   // Und der Pfadtest würde eine Drift wirklich bemerken.

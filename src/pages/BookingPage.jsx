@@ -1120,7 +1120,7 @@ export default function BookingPage() {
     if (!booking?.ceShipmentId) return;
     setLabelLoading(true); setLabelError("");
     try {
-      await downloadLabel(booking.ceShipmentId, booking.businessOrderNumber);
+      await downloadLabel(booking.ceShipmentId, booking.orderConfirmationNumber);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -1552,15 +1552,17 @@ export default function BookingPage() {
           <div className="booking-success-wrap">
             <div className="booking-success-icon"><Icon n="check" s={40} /></div>
             <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
-            {/* Die Confidara-Bestellnummer ist die primäre Vorgangsnummer und steht zuerst;
-                die Rechnungsnummer wird getrennt daneben ausgewiesen und dient NICHT mehr als
-                allgemeine Vorgangsnummer. Fehlt die Bestellnummer (Legacy-/Bestandsfall), wird
-                die Zeile ausgelassen — es wird keine Ersatznummer erzeugt. */}
+            {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
+                Vorgangsnummer und steht zuerst; die Rechnungsnummer wird getrennt daneben
+                ausgewiesen und dient NICHT als allgemeine Vorgangsnummer. Fehlt die
+                Auftragsbestätigungsnummer, wird die Zeile ausgelassen — es wird keine
+                Ersatznummer erzeugt, insbesondere nicht die interne Bestellnummer (CE-BS…),
+                die Provider-Ordernummer oder eine interne Datenbank-ID. */}
             <div className="booking-success-numbers mb-16" style={{ display: "flex", flexWrap: "wrap", gap: "10px 32px", justifyContent: "center" }}>
-              {booking.businessOrderNumber && (
+              {booking.orderConfirmationNumber && (
                 <div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.businessOrder}</div>
-                  <CopyableNumber value={booking.businessOrderNumber} label={NUMBER_LABELS.businessOrder} size="lg" />
+                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.orderConfirmation}</div>
+                  <CopyableNumber value={booking.orderConfirmationNumber} label={NUMBER_LABELS.orderConfirmation} size="lg" />
                 </div>
               )}
               {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —

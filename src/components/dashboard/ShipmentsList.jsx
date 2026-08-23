@@ -9,7 +9,7 @@ import { downloadLabel } from "../../utils/downloadLabel";
 import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
-import { customerShipmentNumbers, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import {
   canRequestCancellation,
@@ -108,11 +108,14 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
   };
 
   // `s` ist die Sendungszeile: der Handle adressiert den Request, die
-  // Bestellnummer benennt die heruntergeladene Datei.
+  // Auftragsbestätigungsnummer benennt die heruntergeladene Datei. Sie ist die
+  // sichtbare Vorgangsnummer — die interne Bestellnummer (CE-BS…) steht in
+  // keinem kundensichtbaren Artefakt mehr, auch nicht in einem Dateinamen.
+  // Fehlt sie (Sendung aus der Zeit davor), bleibt der Handle als Dateiname.
   const handleDownloadLabel = async (s) => {
     setLabelError("");
     try {
-      await downloadLabel(s.id, s.business_order_number);
+      await downloadLabel(s.id, s.order_confirmation_number);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -208,7 +211,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
               <table>
                 <caption className="sr-only">Ihre Sendungen</caption>
                 <thead>
-                  <tr><th scope="col">Sendungsnummer</th><th scope="col">Carrier</th><th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th><th scope="col">Status</th><th scope="col">Datum</th><th scope="col">Aktionen</th></tr>
+                  <tr><th scope="col">Auftragsbestätigung</th><th scope="col">Carrier</th><th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th><th scope="col">Status</th><th scope="col">Datum</th><th scope="col">Aktionen</th></tr>
                 </thead>
                 <tbody>
                   {shipments.map((s) => {
@@ -216,14 +219,15 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                     return (
                     <React.Fragment key={s.id}>
                       <tr>
-                        {/* Die Confidara-Bestellnummer ist die primäre Vorgangsnummer und steht
-                            daher zuerst und optisch hervorgehoben. Legacy-Sendungen ohne Nummer
-                            zeigen einen neutralen Hinweis — NIE die interne Shipment-ID und NIE
-                            die JUMiNGO-Shipment-/Ordernummer als Ersatz. */}
+                        {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
+                            Vorgangsnummer und steht daher zuerst und optisch hervorgehoben.
+                            Sendungen aus der Zeit vor CE-AB zeigen einen neutralen Hinweis —
+                            NIE die interne Bestellnummer (CE-BS…), NIE die interne Shipment-ID
+                            und NIE die JUMiNGO-Shipment-/Ordernummer als Ersatz. */}
                         <td>
-                          {nums.businessOrderNumber
-                            ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.businessOrderNumber}</span>
-                            : <span className="text-muted" style={{ fontSize: 12 }}>{NOT_ASSIGNED_TEXT}</span>}
+                          {nums.orderConfirmationNumber
+                            ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                            : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
                           {nums.trackingNumber && (
                             <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
                               {NUMBER_LABELS.tracking}: {nums.trackingNumber}
@@ -254,9 +258,9 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                                 angezeigt — der Handle lebt nur im State und im API-Aufruf. */}
                             <dl className="shipment-detail-numbers">
                               <div className="shipment-detail-item">
-                                <dt className="shipment-detail-label">{NUMBER_LABELS.businessOrder}</dt>
+                                <dt className="shipment-detail-label">{NUMBER_LABELS.orderConfirmation}</dt>
                                 <dd className="shipment-detail-value mono font-bold">
-                                  {nums.businessOrderNumber || NOT_ASSIGNED_TEXT}
+                                  {nums.orderConfirmationNumber || NO_ORDER_CONFIRMATION_TEXT}
                                 </dd>
                               </div>
                               {nums.trackingNumber && (
@@ -405,9 +409,9 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
                 <li className="ce-list-card" key={`card-${s.id}`}>
                   <div className="ce-list-card-head">
                     <div style={{ minWidth: 0 }}>
-                      {nums.businessOrderNumber
-                        ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.businessOrderNumber}</span>
-                        : <span className="text-muted" style={{ fontSize: 12 }}>{NOT_ASSIGNED_TEXT}</span>}
+                      {nums.orderConfirmationNumber
+                        ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                        : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
                       {nums.trackingNumber && (
                         <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
                           {NUMBER_LABELS.tracking}: {nums.trackingNumber}

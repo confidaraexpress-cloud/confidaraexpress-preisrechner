@@ -83,7 +83,7 @@ function CustomerCell({ row }) {
   );
 }
 
-// Geschäftliche Sendungsnummer primär, Carrier + Route sekundär. Fehlt die
+// Geschäftliche Vorgangsnummer (CE-AB…) primär, Carrier + Route sekundär. Fehlt die
 // Nummer, wird das ehrlich benannt — nie aus der internen ID konstruiert.
 function ShipmentCell({ row }) {
   const s = cancellationShipmentCell(row);

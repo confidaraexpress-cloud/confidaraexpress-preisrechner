@@ -205,12 +205,15 @@ test("13 — der Abholfensterkonflikt (PICKUP_WINDOW_CHANGED) ist funktional unv
 
 /* ══════════ 14 — Buchungserfolg zeigt dieselben Geschäftsnummern ═════════ */
 
-test("14 — der Erfolgsscreen zeigt weiterhin Bestellnummer und Rechnungsnummer über CopyableNumber", () => {
-  assert.match(bookingPage, /booking\.businessOrderNumber/);
+test("14 — der Erfolgsscreen zeigt Auftragsbestätigungs- und Rechnungsnummer über CopyableNumber", () => {
+  // Nummernumstellung: sichtbare Vorgangsnummer ist CE-AB…, nicht mehr CE-BS….
+  assert.match(bookingPage, /booking\.orderConfirmationNumber/);
   assert.match(bookingPage, /booking\.invoiceNumber/);
   assert.match(bookingPage, /<CopyableNumber/);
-  assert.match(bookingPage, /NUMBER_LABELS\.businessOrder/);
+  assert.match(bookingPage, /NUMBER_LABELS\.orderConfirmation/);
   assert.match(bookingPage, /NUMBER_LABELS\.invoice/);
+  assert.ok(!/booking\.businessOrderNumber/.test(bookingPage),
+    "die interne Bestellnummer steht wieder auf dem Erfolgsbildschirm");
 });
 
 /* ══════════ 15 — kein Routing-, API- oder Backendvertrag geändert ════════ */

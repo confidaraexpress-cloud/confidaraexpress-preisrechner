@@ -12,10 +12,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  NUMBER_LABELS, NOT_ASSIGNED_TEXT,
+  NUMBER_LABELS, NOT_ASSIGNED_TEXT, NO_ORDER_CONFIRMATION_TEXT,
   displayNumber, hasNumber, numberOrNotAssigned,
   customerNumberOf, businessOrderNumberOf, invoiceNumberOf,
   jumingoOrderNumberOf, trackingNumberOf, customerReferenceOf,
+  orderConfirmationNumberOf,
   customerShipmentNumbers, adminShipmentNumbers, customerInvoiceNumbers,
 } from "./businessNumbers.mjs";
 
@@ -26,7 +27,12 @@ const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf8");
 const readCode = (rel) => read(rel).replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const CUSTOMER_NO = "CE-K-10030";
+// CE-BS… existiert TECHNISCH unverändert weiter (Spalte, UNIQUE-Index, Zähler,
+// Vergabe) — es ist nur keine kundensichtbare Geschäftsnummer mehr. Die Fixture
+// bleibt deshalb bestehen: mehrere Tests belegen ausdrücklich, dass der Wert
+// weiterhin lesbar ist und NIRGENDS mehr angezeigt wird.
 const ORDER_NO = "CE-BS26-00001";
+const CONFIRMATION_NO = "CE-AB26-00001";
 const INVOICE_NO = "CE-RE26-00001";
 const JUMINGO_NO = "JUMINGO-EXT-77421";
 
@@ -67,23 +73,31 @@ test("Feld-Extraktion liest snake_case und camelCase, aber NIE interne IDs", () 
   assert.equal(invoiceNumberOf({ id: 4711 }), null);
 });
 
-test("Bestellnummer fällt NIEMALS auf JUMiNGO-Werte oder interne IDs zurück", () => {
-  const legacyShipment = { id: 4711, jumingo_shipment_id: "JMG-SHIP-123", order_number: JUMINGO_NO, business_order_number: null };
-  assert.equal(businessOrderNumberOf(legacyShipment), null, "Legacy-Sendung darf keine Bestellnummer erfinden");
+test("Vorgangsnummer fällt NIEMALS auf JUMiNGO-Werte, CE-BS oder interne IDs zurück", () => {
+  // Eine Sendung aus der Zeit VOR CE-AB: sie trägt eine interne Bestellnummer und
+  // Providerreferenzen — und bekommt trotzdem KEINE Vorgangsnummer angedichtet.
+  const legacyShipment = { id: 4711, jumingo_shipment_id: "JMG-SHIP-123", order_number: JUMINGO_NO,
+    business_order_number: ORDER_NO, order_confirmation_number: null };
+  assert.equal(orderConfirmationNumberOf(legacyShipment), null, "Legacy-Sendung darf keine Vorgangsnummer erfinden");
+  // Die interne Bestellnummer bleibt lesbar — sie ist nur kein Anzeigewert mehr.
+  assert.equal(businessOrderNumberOf(legacyShipment), ORDER_NO);
   // Die externe Nummer ist nur über die EIGENE Funktion lesbar.
   assert.equal(jumingoOrderNumberOf(legacyShipment), JUMINGO_NO);
   const nums = customerShipmentNumbers(legacyShipment);
-  assert.equal(nums.businessOrderNumber, null);
+  assert.equal(nums.orderConfirmationNumber, null);
   assert.ok(!Object.values(nums).includes(JUMINGO_NO), "JUMiNGO-Nummer in der Kundensicht");
+  assert.ok(!Object.values(nums).includes(ORDER_NO), "interne Bestellnummer in der Kundensicht");
   assert.ok(!Object.values(nums).includes(4711), "interne ID in der Kundensicht");
 });
 
-test("customerShipmentNumbers: nur kundensichtbare Werte, keine JUMiNGO-/DB-Identifikatoren", () => {
-  const s = { id: 9, business_order_number: ORDER_NO, tracking_number: "1Z999", reference_number: "PO-4711",
+test("customerShipmentNumbers: nur kundensichtbare Werte, keine JUMiNGO-/DB-/CE-BS-Identifikatoren", () => {
+  const s = { id: 9, business_order_number: ORDER_NO, order_confirmation_number: CONFIRMATION_NO,
+    tracking_number: "1Z999", reference_number: "PO-4711",
     order_number: JUMINGO_NO, jumingo_shipment_id: "JMG-1" };
   const nums = customerShipmentNumbers(s);
-  assert.deepEqual(nums, { businessOrderNumber: ORDER_NO, trackingNumber: "1Z999", customerReference: "PO-4711" });
+  assert.deepEqual(nums, { orderConfirmationNumber: CONFIRMATION_NO, trackingNumber: "1Z999", customerReference: "PO-4711" });
   assert.equal(Object.keys(nums).length, 3, "Kundensicht darf keine weiteren Felder enthalten");
+  assert.ok(!Object.values(nums).includes(ORDER_NO), "CE-BS in der Kundensicht");
 });
 
 test("adminShipmentNumbers: interne und externe Nummern strikt getrennt benannt", () => {
@@ -95,33 +109,42 @@ test("adminShipmentNumbers: interne und externe Nummern strikt getrennt benannt"
   assert.equal(nums.internalShipmentId, 9);
 });
 
-test("customerInvoiceNumbers: Rechnung trägt Rechnungs-, Bestell- und Kundennummer", () => {
-  const inv = { id: 5, invoice_number: INVOICE_NO, business_order_number: ORDER_NO, customer_number: CUSTOMER_NO };
+test("customerInvoiceNumbers: Rechnung trägt Rechnungs-, Vorgangs- und Kundennummer", () => {
+  const inv = { id: 5, invoice_number: INVOICE_NO, business_order_number: ORDER_NO,
+    order_confirmation_number: CONFIRMATION_NO, customer_number: CUSTOMER_NO };
   assert.deepEqual(customerInvoiceNumbers(inv), {
-    invoiceNumber: INVOICE_NO, businessOrderNumber: ORDER_NO, customerNumber: CUSTOMER_NO,
+    invoiceNumber: INVOICE_NO, orderConfirmationNumber: CONFIRMATION_NO, customerNumber: CUSTOMER_NO,
   });
+  // Auch hier: die vorhandene interne Bestellnummer wird NICHT mitgeliefert.
+  assert.ok(!Object.values(customerInvoiceNumbers(inv)).includes(ORDER_NO), "CE-BS in der Rechnungssicht");
   // Legacy-Rechnung: nur die Rechnungsnummer bleibt.
   const legacy = customerInvoiceNumbers({ id: 5, invoice_number: INVOICE_NO });
   assert.equal(legacy.invoiceNumber, INVOICE_NO);
-  assert.equal(legacy.businessOrderNumber, null);
+  assert.equal(legacy.orderConfirmationNumber, null);
   assert.equal(legacy.customerNumber, null);
 });
 
 test("Beschriftungen sind eindeutig und verwechseln die Nummernkreise nicht", () => {
   assert.equal(NUMBER_LABELS.customer, "Kundennummer");
-  // GEÄNDERT (Go-Live Paket 1): CE-BS heißt sichtbar „Sendungsnummer". „Bestellnummer" ist
-  // auf einem Beleg die Nummer, unter der der KUNDE bestellt hat — und die steht als
-  // customerReference direkt daneben. Der technische Schlüssel `businessOrder` und die
-  // Datenquelle business_order_number sind unverändert.
-  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
+  // GEÄNDERT (Nummernumstellung): die sichtbare Vorgangsnummer einer Versandbuchung
+  // ist die Auftragsbestätigung (CE-AB…). Die interne Bestellnummer (CE-BS…) hat
+  // GAR KEINE kundensichtbare Beschriftung mehr — es gibt bewusst keinen Schlüssel
+  // dafür, damit sie nicht versehentlich wieder angezeigt werden kann.
+  assert.equal(NUMBER_LABELS.orderConfirmation, "Auftragsbestätigung");
+  assert.equal(NUMBER_LABELS.businessOrder, undefined, "die interne Bestellnummer hat wieder eine Beschriftung");
+  assert.ok(!Object.values(NUMBER_LABELS).includes("Sendungsnummer"),
+    "die frühere Beschriftung Sendungsnummer ist zurück");
   assert.equal(NUMBER_LABELS.invoice, "Rechnungsnummer");
   assert.equal(NUMBER_LABELS.jumingoOrder, "JUMiNGO-Ordernummer");
-  // Die externe Beschriftung darf nicht schlicht „Bestellnummer" lauten.
-  assert.notEqual(NUMBER_LABELS.jumingoOrder, NUMBER_LABELS.businessOrder);
+  // Die externe Beschriftung darf nicht mit der Vorgangsnummer verwechselbar sein.
+  assert.notEqual(NUMBER_LABELS.jumingoOrder, NUMBER_LABELS.orderConfirmation);
   assert.ok(/JUMiNGO/.test(NUMBER_LABELS.jumingoOrder));
   // Die echte Kundenreferenz bleibt getrennt beschriftet — sie ist die Bestellnummer des Kunden.
   assert.equal(NUMBER_LABELS.customerReference, "Ihre Referenz");
-  assert.notEqual(NUMBER_LABELS.customerReference, NUMBER_LABELS.businessOrder);
+  assert.notEqual(NUMBER_LABELS.customerReference, NUMBER_LABELS.orderConfirmation);
+  // Und der neutrale Text für Altsendungen behauptet nichts Nachträgliches.
+  assert.equal(NO_ORDER_CONFIRMATION_TEXT, "Ohne Vorgangsnummer");
+  assert.notEqual(NO_ORDER_CONFIRMATION_TEXT, NOT_ASSIGNED_TEXT);
 });
 
 // ── Oberflächen-Verträge ────────────────────────────────────────────────────
@@ -139,54 +162,65 @@ test("(1–3) Kundenprofil zeigt customer_number, nicht editierbar, Legacy siche
     "interne users.id im Kundennummern-Block");
 });
 
-test("(4–5) Sendungsliste zeigt die Sendungsnummer und nutzt keine JUMiNGO-ID als Ersatz", () => {
+test("(4–5) Sendungsliste zeigt die Auftragsbestätigung und nutzt keinen Ersatzwert", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
   assert.ok(src.includes("customerShipmentNumbers(s)"), "Sendungsliste nutzt die zentrale Nummernsicht nicht");
-  // GEÄNDERT (Go-Live Paket 1): die Spaltenüberschrift heißt „Sendungsnummer".
-  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(src), "Spalte 'Sendungsnummer' fehlt");
-  assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(src), "die alte Spaltenüberschrift lebt noch");
-  assert.ok(src.includes("nums.businessOrderNumber"), "die Nummer wird nicht gerendert");
-  // Kein Fallback auf JUMiNGO-/interne Werte in der Nummern-Zelle.
-  const cell = src.slice(src.indexOf("nums.businessOrderNumber"), src.indexOf("</td>", src.indexOf("nums.businessOrderNumber")));
-  assert.ok(!/jumingo_shipment_id|s\.id\b|order_number/.test(cell), "Ersatzwert in der Sendungsnummern-Zelle");
+  // GEÄNDERT (Nummernumstellung): die Spaltenüberschrift heißt „Auftragsbestätigung".
+  assert.ok(/<th[^>]*>Auftragsbestätigung<\/th>/.test(src), "Spaltenüberschrift Auftragsbestätigung fehlt");
+  assert.ok(!/<th[^>]*>(Sendungsnummer|Bestellnummer)<\/th>/.test(src), "eine alte Spaltenüberschrift lebt noch");
+  assert.ok(src.includes("nums.orderConfirmationNumber"), "die Vorgangsnummer wird nicht gerendert");
+  // Kein Fallback auf CE-BS, JUMiNGO- oder interne Werte in der Nummern-Zelle.
+  const cell = src.slice(src.indexOf("nums.orderConfirmationNumber"), src.indexOf("</td>", src.indexOf("nums.orderConfirmationNumber")));
+  assert.ok(!/jumingo_shipment_id|s\.id\b|order_number|business_order_number/.test(cell),
+    "Ersatzwert in der Vorgangsnummern-Zelle");
+  // Altsendungen bekommen einen neutralen Hinweis, keine Ersatznummer.
+  assert.ok(cell.includes("NO_ORDER_CONFIRMATION_TEXT"), "Altsendungen tragen keinen neutralen Hinweis");
 });
 
-test("(6) Sendungsdetail trennt Bestell-, Tracking- und Kundenreferenz", () => {
+test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
   const block = src.slice(src.indexOf("shipment-detail-numbers"), src.indexOf("</dl>"));
-  assert.ok(block.includes("NUMBER_LABELS.businessOrder"), "Bestellnummer fehlt im Detail");
+  assert.ok(block.includes("NUMBER_LABELS.orderConfirmation"), "Auftragsbestätigung fehlt im Detail");
+  assert.ok(!/businessOrder|business_order_number/.test(block), "die interne Bestellnummer steht im Kundendetail");
   assert.ok(block.includes("NUMBER_LABELS.tracking"), "Trackingnummer fehlt im Detail");
   assert.ok(block.includes("NUMBER_LABELS.customerReference"), "Kundenreferenz fehlt im Detail");
   // Kundensicht: keine JUMiNGO-/internen Identifikatoren im Detailblock.
   assert.ok(!/jumingo|order_number|s\.id\b/i.test(block), "interne/externe ID im Kunden-Sendungsdetail");
 });
 
-test("(7) Buchungserfolg zeigt Bestell- und Rechnungsnummer getrennt", () => {
+test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getrennt", () => {
   const src = read("pages/BookingPage.jsx");
   const block = src.slice(src.indexOf("booking-success-numbers"), src.indexOf("booking-success-delivery"));
-  assert.ok(block.includes("booking.businessOrderNumber"), "Bestellnummer fehlt im Erfolgsscreen");
+  assert.ok(block.includes("booking.orderConfirmationNumber"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
-  assert.ok(block.includes("NUMBER_LABELS.businessOrder") && block.includes("NUMBER_LABELS.invoice"),
+  assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("NUMBER_LABELS.invoice"),
     "Nummern nicht getrennt beschriftet");
-  // Bestellnummer steht VOR der Rechnungsnummer (primäre Vorgangsnummer).
-  assert.ok(block.indexOf("businessOrderNumber") < block.indexOf("invoiceNumber"),
-    "Bestellnummer muss zuerst stehen");
+  // Die Vorgangsnummer steht VOR der Rechnungsnummer.
+  assert.ok(block.indexOf("orderConfirmationNumber") < block.indexOf("invoiceNumber"),
+    "die Auftragsbestätigungsnummer muss zuerst stehen");
+  // Kein CE-BS und keine Providerreferenz auf dem Erfolgsbildschirm.
+  assert.ok(!/businessOrderNumber|business_order_number|jumingo/i.test(block),
+    "interne Bestellnummer oder Providerreferenz im Erfolgsbildschirm");
 });
 
-test("(8) Rechnungsliste zeigt Rechnungs- und Bestellnummer getrennt", () => {
-  // Phase 5: die sechs fachlichen Bereiche fassen Rechnungs- und Bestellnummer in EINER
+test("(8) Rechnungsliste zeigt Rechnungs- und Auftragsbestätigungsnummer getrennt", () => {
+  // Phase 5: die sechs fachlichen Bereiche fassen Rechnungs- und Vorgangsnummer in EINER
   // gemeinsamen "Rechnung"-Spalte zusammen (InvoiceNumberBlock) statt in zwei eigenen
   // <th>-Spalten — beide Werte bleiben aber weiterhin getrennt gelesen und dargestellt,
   // nie ineinander verschmolzen oder aus einer ID ersetzt.
   const src = read("components/dashboard/InvoicesList.jsx");
   assert.ok(/<th scope="col">Rechnung<\/th>/.test(src), "Spalte 'Rechnung' fehlt");
-  assert.ok(src.includes("businessOrderNumberOf(inv)"), "Bestellnummer wird nicht gelesen");
+  assert.ok(src.includes("orderConfirmationNumberOf(inv)"), "Vorgangsnummer wird nicht gelesen");
   assert.ok(src.includes("inv.invoice_number"), "Rechnungsnummer fehlt");
   const fnStart = src.indexOf("function InvoiceNumberBlock");
   const cell = src.slice(fnStart, src.indexOf("\n}", fnStart));
-  assert.ok(cell.includes("businessOrderNumberOf(inv)") && cell.includes("inv.invoice_number"),
-    "Rechnungs- und Bestellnummer müssen beide in der Rechnungs-Zelle gelesen werden");
-  assert.ok(!/order_number|jumingo|inv\.id\b/.test(cell), "Ersatzwert in der Bestellnummern-Zelle");
+  assert.ok(cell.includes("orderConfirmationNumberOf(inv)") && cell.includes("inv.invoice_number"),
+    "Rechnungs- und Vorgangsnummer müssen beide in der Rechnungs-Zelle gelesen werden");
+  assert.ok(!/order_number|jumingo|inv\.id\b|businessOrderNumberOf/.test(cell),
+    "Ersatzwert in der Vorgangsnummern-Zelle");
+  // Die interne Bestellnummer wird auf der ganzen Seite nicht mehr gelesen.
+  assert.ok(!/businessOrderNumberOf|business_order_number/.test(src),
+    "die Rechnungsliste liest weiterhin die interne Bestellnummer");
 });
 
 test("(9–10) Admin-Kundenliste und -detail zeigen die Kundennummer", () => {
@@ -205,22 +239,27 @@ test("(9–10) Admin-Kundenliste und -detail zeigen die Kundennummer", () => {
 
 test("(11) Admin-Sendungsansichten trennen Confidara- und JUMiNGO-Nummer", () => {
   const detail = read("pages/admin/AdminShipmentDetailPage.jsx");
-  assert.ok(detail.includes("NUMBER_LABELS.businessOrder"), "Confidara-Bestellnummer fehlt");
+  assert.ok(detail.includes("NUMBER_LABELS.orderConfirmation"), "Confidara-Vorgangsnummer fehlt");
   assert.ok(detail.includes("NUMBER_LABELS.jumingoOrder"), "JUMiNGO-Ordernummer nicht eigens beschriftet");
-  assert.ok(detail.includes("businessOrderNumberOf(s)"), "Bestellnummer wird nicht gelesen");
+  assert.ok(detail.includes("orderConfirmationNumberOf(s)"), "Vorgangsnummer wird nicht gelesen");
   // Die alte, verwechselbare Beschriftung darf nicht mehr existieren.
   assert.ok(!/"Bestell-Nr\."/.test(detail), "alte Beschriftung 'Bestell-Nr.' für die JUMiNGO-Nummer");
   const list = read("pages/admin/AdminShipmentsPage.jsx");
-  // Die Liste führt die Confidara-Bestellnummer seit der UX-Bereinigung als
-  // primären Wert der Spalte „Sendung" (shipmentIdentity → businessOrderNumber),
-  // statt als eigene Spalte. Die Trennung bleibt damit unverändert erhalten.
+  // Die Liste führt die Confidara-Vorgangsnummer als primären Wert der Spalte
+  // „Sendung" (shipmentIdentity → orderConfirmationNumber), statt als eigene Spalte.
+  // Die Trennung bleibt damit unverändert erhalten.
   assert.ok(/<th scope="col">Sendung<\/th>/.test(list), "Spalte 'Sendung' fehlt");
-  assert.ok(list.includes("shipmentIdentity(row)"), "Bestellnummer wird nicht als Kennung gelesen");
+  assert.ok(list.includes("shipmentIdentity(row)"), "die Vorgangsnummer wird nicht als Kennung gelesen");
   const view = read("utils/adminShipmentView.mjs");
+  assert.ok(/orderConfirmationNumber: str\(firstDefined\(r\.order_confirmation_number, r\.orderConfirmationNumber\)\)/.test(view),
+    "die Vorgangsnummer wird nicht aus dem fachlichen Feld gelesen");
+  assert.ok(/if \(f\.orderConfirmationNumber\) return \{ primary: f\.orderConfirmationNumber, kind: "order_confirmation" \}/.test(view),
+    "die Auftragsbestätigungsnummer ist nicht die primäre Sendungskennung");
+  // Die interne Bestellnummer bleibt im ADMIN-Datenmodell lesbar (technische Sicht),
+  // führt dort aber keine Kennung mehr an.
   assert.ok(/businessOrderNumber: str\(firstDefined\(r\.business_order_number, r\.businessOrderNumber\)\)/.test(view),
-    "die Bestellnummer wird nicht aus dem fachlichen Feld gelesen");
-  assert.ok(/if \(f\.businessOrderNumber\) return \{ primary: f\.businessOrderNumber, kind: "order_number" \}/.test(view),
-    "die Bestellnummer ist nicht die primäre Sendungskennung");
+    "das technische Legacy-Feld wurde entfernt");
+  assert.ok(!/kind: "order_number"/.test(view), "die interne Bestellnummer ist wieder eine Sendungskennung");
   // Die JUMiNGO-Nummer erscheint in der Liste gar nicht mehr — noch klarere Trennung.
   assert.ok(!/jumingo/i.test(list), "die JUMiNGO-Kennung gehört nicht in die Sendungsliste");
 });
@@ -234,9 +273,17 @@ test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", (
   // mehr ein eigener Kartenkopf; das <h1> selbst liegt in PageHeader.jsx.
   assert.ok(/title=\{`Rechnung \$\{number\}`\}/.test(src), "Rechnungsnummer ist nicht der Seitentitel");
   assert.ok(src.includes("const number = dash(invoiceNoOf(inv));"), "Rechnungsnummer wird nicht aus dem fachlichen Feld gelesen");
-  // Bestellnummer: aus der Sendungsverknüpfung, eigen beschriftet, mit ehrlichem Legacy-Zustand.
-  assert.ok(src.includes("NUMBER_LABELS.businessOrder") && src.includes("shipment.orderNumber"), "Bestellnummer fehlt");
-  assert.ok(src.includes("SHIPMENT_NO_ORDER_NUMBER"), "fehlende Bestellnummer wird nicht ehrlich benannt");
+  // Vorgangsnummer: aus der Sendungsverknüpfung, eigen beschriftet, mit ehrlichem Legacy-Zustand.
+  assert.ok(src.includes("NUMBER_LABELS.orderConfirmation") && src.includes("shipment.orderNumber"), "Vorgangsnummer fehlt");
+  assert.ok(src.includes("SHIPMENT_NO_ORDER_NUMBER"), "fehlende Vorgangsnummer wird nicht ehrlich benannt");
+  // Und die Quelle dieses Werts ist die Auftragsbestätigung, nicht CE-BS: eine
+  // interne Bestellnummer unter der Beschriftung „Auftragsbestätigung" wäre eine
+  // Falschaussage über ein Dokument, das es zu diesem Wert nicht gibt.
+  assert.ok(/r\.shipment_order_confirmation_number, r\.shipmentOrderConfirmationNumber/.test(view),
+    "die verknüpfte Sendung liefert nicht die Auftragsbestätigungsnummer");
+  const linked = view.slice(view.indexOf("export function linkedShipment"), view.indexOf("\n}", view.indexOf("export function linkedShipment")));
+  assert.ok(!/business_order_number|businessOrderNumber/.test(linked),
+    "die Sendungsverknüpfung liest weiterhin die interne Bestellnummer");
   // Kundennummer: HISTORISCH aus dem Rechnungssnapshot, getrennt von den aktuellen Stammdaten.
   assert.ok(src.includes("NUMBER_LABELS.customer") && src.includes("recipient.customerNumber"), "Kundennummer fehlt");
   assert.ok(src.includes("account.customerNumber"), "aktuelle Kundennummer fehlt als getrennter Wert");
@@ -245,7 +292,7 @@ test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", (
     "die historische Kundennummer stammt nicht ausschließlich aus dem fachlichen Snapshotfeld");
   assert.ok(/customerNumber: str\(firstDefined\(r\.current_customer_number, r\.currentCustomerNumber\)\)/.test(view),
     "die aktuelle Kundennummer stammt nicht aus dem eigenen Live-Feld");
-  assert.ok(!/orderNumber[^\n]{0,60}\b(r\.id|r\.shipment_id|idOf\()/.test(view), "Bestellnummer aus einer ID abgeleitet");
+  assert.ok(!/orderNumber[^\n]{0,60}\b(r\.id|r\.shipment_id|idOf\()/.test(view), "Vorgangsnummer aus einer ID abgeleitet");
   assert.ok(!/customerNumber[^\n]{0,60}\b(r\.id|r\.user_id|idOf\()/.test(view), "Kundennummer aus einer ID abgeleitet");
 });
 
@@ -308,117 +355,84 @@ test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {
   for (const sp of spans) assert.equal(sp, cols, `colSpan ${sp} passt nicht zu ${cols} Spalten`);
 });
 
-// ── Go-Live Paket 1: CE-BS heißt sichtbar „Sendungsnummer" ──────────────────
-// Die technische Nummer (business_order_number / businessOrderNumber / CE-BS) ist
-// unverändert; geprüft wird ausschließlich die kundensichtbare BESCHRIFTUNG.
+// ── Nummernumstellung: CE-AB ist die sichtbare Vorgangsnummer ───────────────
+// Die interne Bestellnummer (business_order_number / CE-BS) bleibt TECHNISCH
+// unverändert bestehen — Spalte, UNIQUE-Index, Zähler und Vergabe sind nicht
+// angetastet. Geprüft wird hier ausschließlich, dass sie im aktiven sichtbaren
+// Produkt nicht mehr als Geschäftsidentifier erscheint.
 
-test("(P1-a) Buchungserfolg und Sendungsliste beschriften CE-BS als „Sendungsnummer\"", () => {
+test("(N-a) Buchungserfolg und Sendungsliste zeigen die Auftragsbestätigung", () => {
   // Beide Oberflächen lesen dieselbe zentrale Beschriftung — es gibt keinen zweiten Text.
-  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
+  assert.equal(NUMBER_LABELS.orderConfirmation, "Auftragsbestätigung");
 
   const booking = read("pages/BookingPage.jsx");
-  assert.ok(booking.includes("NUMBER_LABELS.businessOrder"),
+  assert.ok(booking.includes("NUMBER_LABELS.orderConfirmation"),
     "der Erfolgsbildschirm nutzt die zentrale Beschriftung nicht");
-  assert.ok(booking.includes("booking.businessOrderNumber"),
-    "der Erfolgsbildschirm liest das CE-BS-Feld nicht mehr");
+  assert.ok(booking.includes("booking.orderConfirmationNumber"),
+    "der Erfolgsbildschirm liest die Auftragsbestätigungsnummer nicht");
 
   const liste = read("components/dashboard/ShipmentsList.jsx");
-  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(liste), "Spaltenüberschrift der Sendungsliste");
-  assert.ok(liste.includes("NUMBER_LABELS.businessOrder"),
-    "die Kartenansicht der Sendungsliste nutzt die zentrale Beschriftung nicht");
+  assert.ok(liste.includes("nums.orderConfirmationNumber"),
+    "die Sendungsliste liest die Auftragsbestätigungsnummer nicht");
 });
 
-test("(P1-b) keine dieser Oberflächen nennt CE-BS noch „Bestellnummer\"", () => {
-  // Gezielt: das Wort als sichtbare Beschriftung NEBEN dem CE-BS-Feld. Kommentare und
-  // echte Kundenreferenzen bleiben ausdrücklich erlaubt (siehe P1-c).
-  for (const rel of ["pages/BookingPage.jsx", "components/dashboard/ShipmentsList.jsx"]) {
-    const src = read(rel)
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")   // JSX-Kommentare
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
-    assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(src), `${rel}: Spaltenüberschrift „Bestellnummer" lebt noch`);
-    assert.ok(!/"Bestellnummer"/.test(src), `${rel}: literale Beschriftung „Bestellnummer" lebt noch`);
-  }
-});
-
-test("(P1-c) die echte Bestellnummer des KUNDEN darf weiterhin so heißen", () => {
-  // Gegenprobe: das Referenzfeld der Buchung beschreibt ausdrücklich die Bestellnummer des
-  // Kunden. Dieser Text darf von der Umbenennung NICHT erfasst worden sein.
-  const optionen = read("components/booking/AdditionalOptionsModule.jsx");
-  assert.ok(/Referenznummer \/ Bestellnummer/.test(optionen),
-    "die Beschriftung der Kundenreferenz wurde fälschlich mit umbenannt");
-  assert.ok(/z\. B\. Bestellnummer, Kostenstelle/.test(optionen),
-    "der Platzhalter der Kundenreferenz wurde fälschlich mit umbenannt");
-  // Und die zentrale Beschriftung der Kundenreferenz bleibt getrennt.
-  assert.equal(NUMBER_LABELS.customerReference, "Ihre Referenz");
-});
-
-test("(P1-d) das technische Feld wurde NICHT umbenannt", () => {
-  // Schlüssel, Feldname und Nummernkreis bleiben unverändert — es ist eine Beschriftung.
-  assert.ok(Object.prototype.hasOwnProperty.call(NUMBER_LABELS, "businessOrder"),
-    "der Schlüssel businessOrder wurde umbenannt");
-  const modul = read("utils/businessNumbers.mjs");
-  assert.ok(/business_order_number/.test(modul), "die Datenquelle business_order_number fehlt");
-  assert.ok(/businessOrderNumber/.test(modul), "der Snapshot-Schlüssel businessOrderNumber fehlt");
-  assert.ok(/CE-BS/.test(modul), "der Nummernkreis CE-BS wurde verändert");
-});
-
-test("(P1-e) OrderDetailPage beschriftet CE-BS und Trackingnummer korrekt", () => {
-  // Die Tabelle „Verbundene Sendungen" trug beide Beschriftungen verkehrt herum:
-  //   „Bestellnummer"  stand über businessOrderNumber (= CE-BS, die Sendungsnummer)
-  //   „Sendungsnummer" stand über trackingNumber      (= Carrier-Trackingnummer)
-  // Ein isoliertes Umbenennen der ersten Spalte hätte zwei gleichnamige Spalten erzeugt —
-  // deshalb wurden beide gemeinsam korrigiert. Die Felder selbst sind unverändert.
-  const src = read("pages/inventory/OrderDetailPage.jsx");
-
-  // Die Seite trägt ZWEI Tabellen: zuerst „Auftragspositionen mit Reservierungsstand",
-  // danach „Sendungen zu diesem Auftrag". Ein `indexOf("<thead>")` auf der ganzen Datei
-  // greift die ERSTE — also die falsche, in der es weder eine Sendungs- noch eine
-  // Trackingnummer gibt. Deshalb wird ab der Beschriftung der Sendungstabelle geschnitten.
-  const tabelle = src.slice(src.indexOf("Sendungen zu diesem Auftrag"));
-  assert.ok(tabelle, "die Tabelle 'Sendungen zu diesem Auftrag' fehlt");
-  const kopf = tabelle.slice(tabelle.indexOf("<thead>"), tabelle.indexOf("</thead>"));
-
-  assert.ok(/<th[^>]*>Sendungsnummer<\/th>/.test(kopf), "Spalte 'Sendungsnummer' fehlt");
-  assert.ok(/<th[^>]*>Trackingnummer<\/th>/.test(kopf), "Spalte 'Trackingnummer' fehlt");
-  assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(kopf),
-    "CE-BS wird in OrderDetailPage weiterhin als 'Bestellnummer' beschriftet");
-
-  // Jede Beschriftung genau EINMAL — sonst stünden zwei gleichnamige Spalten nebeneinander.
-  for (const label of ["Sendungsnummer", "Trackingnummer"]) {
-    const treffer = kopf.match(new RegExp(`<th[^>]*>${label}</th>`, "g")) || [];
-    assert.equal(treffer.length, 1, `Spalte '${label}' steht ${treffer.length}× im Tabellenkopf`);
-  }
-
-  // Die Datenfelder sind unverändert und stehen weiterhin in derselben Spaltenreihenfolge:
-  // Sendungsnummer → businessOrderNumber, Carrier → carrier, Trackingnummer → trackingNumber.
-  const koerper = tabelle.slice(tabelle.indexOf("<tbody>"), tabelle.indexOf("</tbody>"));
-  const iBusiness = koerper.indexOf("s.businessOrderNumber");
-  const iCarrier  = koerper.indexOf("s.carrier");
-  const iTracking = koerper.indexOf("s.trackingNumber");
-  assert.ok(iBusiness > -1 && iCarrier > -1 && iTracking > -1, "ein Datenfeld der Tabelle fehlt");
-  assert.ok(iBusiness < iCarrier && iCarrier < iTracking,
-    "die Zellenreihenfolge passt nicht mehr zu den Spaltenüberschriften");
-});
-
-test("(P1-f) systemweit: CE-BS heißt Sendungsnummer, die Carriernummer Trackingnummer", () => {
-  // Zusammenfassende Zusage über alle kundensichtbaren Oberflächen dieses Pakets.
-  assert.equal(NUMBER_LABELS.businessOrder, "Sendungsnummer");
-  assert.equal(NUMBER_LABELS.tracking, "Trackingnummer");
-  assert.notEqual(NUMBER_LABELS.businessOrder, NUMBER_LABELS.tracking,
-    "Sendungs- und Trackingnummer dürfen nie dieselbe Beschriftung tragen");
-
-  // Keine dieser drei Oberflächen beschriftet CE-BS noch als „Bestellnummer".
+test("(N-b) KEINE kundensichtbare Oberfläche zeigt die interne Bestellnummer", () => {
   for (const rel of [
     "pages/BookingPage.jsx",
     "components/dashboard/ShipmentsList.jsx",
+    "components/dashboard/OverviewModules.jsx",
+    "components/dashboard/InvoicesList.jsx",
     "pages/inventory/OrderDetailPage.jsx",
   ]) {
-    assert.ok(!/<th[^>]*>Bestellnummer<\/th>/.test(readCode(rel)),
-      `${rel}: Spaltenüberschrift „Bestellnummer" lebt noch`);
+    const src = readCode(rel);
+    assert.ok(!/businessOrderNumber|business_order_number/.test(src),
+      `${rel}: die interne Bestellnummer wird weiterhin angezeigt`);
+    assert.ok(!/Sendungsnummer/.test(src),
+      `${rel}: die Beschriftung „Sendungsnummer" lebt noch`);
   }
+});
 
-  // Gegenprobe bleibt: die echte Bestellnummer des KUNDEN darf weiterhin so heißen.
-  assert.ok(/Referenznummer \/ Bestellnummer/.test(read("components/booking/AdditionalOptionsModule.jsx")),
-    "die Beschriftung der Kundenreferenz wurde fälschlich mit umbenannt");
+test("(N-c) die echte Referenz des KUNDEN bleibt unverändert erhalten", () => {
+  // Gegenprobe: die Nummernumstellung darf die Kundenreferenz nicht mit entfernen.
+  assert.equal(NUMBER_LABELS.customerReference, "Ihre Referenz");
+  assert.ok(readCode("components/dashboard/ShipmentsList.jsx").includes("nums.customerReference"),
+    "die Kundenreferenz wurde mit entfernt");
+});
+
+test("(N-d) das technische Feld existiert WEITERHIN — nur ohne Anzeige", () => {
+  // Ausdrückliches Nicht-Ziel: businessOrderNumberOf bleibt als Leser bestehen,
+  // damit Adminwerkzeuge und Altdaten weiterhin darauf zugreifen können.
+  assert.equal(typeof businessOrderNumberOf, "function", "der Leser wurde entfernt");
+  assert.equal(businessOrderNumberOf({ business_order_number: ORDER_NO }), ORDER_NO);
+  // Und der Adminvertrag führt sie weiterhin.
+  const nums = adminShipmentNumbers({ business_order_number: ORDER_NO });
+  assert.equal(nums.businessOrderNumber, ORDER_NO);
+});
+
+test("(N-e) OrderDetailPage beschriftet Auftragsbestätigung und Trackingnummer korrekt", () => {
+  const src = readCode("pages/inventory/OrderDetailPage.jsx");
+  assert.ok(/<th[^>]*>Auftragsbestätigung<\/th>/.test(src), "Spaltenüberschrift Auftragsbestätigung fehlt");
+  assert.ok(/<th[^>]*>Trackingnummer<\/th>/.test(src), "Spaltenüberschrift Trackingnummer fehlt");
+  assert.ok(src.includes("s.orderConfirmationNumber"), "die Auftragsbestätigungsnummer wird nicht gelesen");
+  assert.ok(src.includes("s.trackingNumber"), "die Trackingnummer wird nicht gelesen");
+  // Die Zellenreihenfolge folgt den Spaltenüberschriften.
+  const iAb = src.indexOf("s.orderConfirmationNumber");
+  const iCarrier = src.indexOf("s.carrier");
+  const iTracking = src.indexOf("s.trackingNumber");
+  assert.ok(iAb < iCarrier && iCarrier < iTracking,
+    "die Zellenreihenfolge passt nicht mehr zu den Spaltenüberschriften");
+});
+
+test("(N-f) systemweit: keine Providerreferenz als sichtbarer Identifier", () => {
+  assert.equal(NUMBER_LABELS.tracking, "Trackingnummer");
+  assert.notEqual(NUMBER_LABELS.orderConfirmation, NUMBER_LABELS.tracking,
+    "Vorgangs- und Trackingnummer dürfen nie dieselbe Beschriftung tragen");
+
+  // Der frühere Rückfall `businessOrderNumber || orderNumber` im Admin-Storno zeigte
+  // eine JUMiNGO-Ordernummer als primäre Zelle. Er darf nicht zurückkehren.
+  const storno = readCode("utils/adminCancellations.mjs");
+  assert.ok(!/\|\|\s*s\.orderNumber/.test(storno),
+    "der Admin-Storno fällt wieder auf die JUMiNGO-Ordernummer zurück");
+  assert.ok(/const number = s\.orderConfirmationNumber \|\| ""/.test(storno),
+    "die Storno-Zelle nutzt nicht die Auftragsbestätigungsnummer");
 });

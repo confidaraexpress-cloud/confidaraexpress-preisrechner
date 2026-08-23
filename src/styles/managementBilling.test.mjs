@@ -261,7 +261,10 @@ test("23 — Business-Nummernkreise, JUMiNGO-Felder und Zahlungsstatuslogik sind
   assert.ok(!/s\.jumingo_shipment_id/.test(shipmentsList),
     "die Sendungsliste darf die Providerreferenz nicht mehr verwenden");
   assert.match(shipmentsList, /onLabel=\{handleDownloadLabel\}/);
-  assert.match(invoicesList, /businessOrderNumberOf\(inv\)/);
+  // Nummernumstellung: die Rechnungsliste zeigt die Auftragsbestätigungsnummer
+  // (CE-AB…) als Vorgangsbezug — die interne Bestellnummer (CE-BS…) bleibt
+  // technisch bestehen, wird hier aber nicht mehr gelesen.
+  assert.match(invoicesList, /orderConfirmationNumberOf\(inv\)/);
   assert.match(customerInvoiceView, /isOverdueInvoice\(inv\)/);
   assert.match(addressBookView, /export const ROLE_BOTH = "both";/);
 });

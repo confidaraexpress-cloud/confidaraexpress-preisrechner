@@ -305,12 +305,12 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
    Verlinkt wird NUR, wo es eine echte Zielseite gibt: ein Auftrag hat mit
    `/inventory/orders/:id` eine Kundendetailseite. Für Sendungen gibt es keine
    kundenseitige Detailroute, und die Sendungsliste kennt keinen Filter — die
-   Sendungsnummer bleibt deshalb Text. Ein Link, der auf einer ungefilterten
+   Vorgangsnummer bleibt deshalb Text. Ein Link, der auf einer ungefilterten
    Liste landete, wäre ein Versprechen, das die Seite nicht hält.
 
-   Fehlt die kundenseitige Nummer (eine Sendung ohne Bestellnummer), steht dort
-   nur die Art der Referenz. Die interne ID wird nie angezeigt: sie sagt einem
-   Kunden nichts. */
+   Fehlt die kundenseitige Nummer (eine Sendung aus der Zeit vor CE-AB), steht dort
+   nur die Art der Referenz. Weder die interne Bestellnummer (CE-BS…) noch die
+   interne ID werden angezeigt: sie sagen einem Kunden nichts. */
 function MovementReference({ reference, navigate }) {
   if (!reference) return "—";
   if (reference.kind === "order" && reference.number && reference.orderId) {

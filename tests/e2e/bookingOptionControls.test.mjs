@@ -14,6 +14,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5248, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -51,6 +52,14 @@ async function setupRoutes(page) {
     const p = new URL(route.request().url()).pathname;
     const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
+    // Legal-Buchungsschranke (Go-Live Paket 4-B): `enabled:false` ist die
+    // Antwort eines Servers mit ABGESCHALTETER Schranke — der heutige
+    // Produktivzustand. Ohne diese Antwort liefe der Mock in den Sammelfall
+    // `200 {}`; `parseBookingContext` wertet das fail-closed als `error` und
+    // sperrt die Bestellung. Das ist richtiges Produktverhalten und darf nicht
+    // aufgeweicht werden — die Suite muss den Endpunkt schlicht beantworten.
+    // Beide Zustände der Schranke prüft `legalBookingGate.test.mjs`.
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: [] });
     if (p.endsWith("/kunde/invoices")) return json({ invoices: [], summary: null });
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
@@ -81,15 +90,7 @@ async function schalte(page, sel, an) {
 async function zurBuchung(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
-  for (const [ph, v] of [
-    ["Max Mustermann", "Max Mustermann"], ["Musterstraße 1", "Hauptstrasse 1"], ["Stuttgart", "Berlin"],
-    ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
-  ]) await fill(ph, v);
-  const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await emp.nth(4).fill("80331");
-  await emp.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+  await fuelleVersandformular(page);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
@@ -97,7 +98,7 @@ async function zurBuchung(page) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -109,7 +110,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 /* ══════════ Schaltergeometrie ══════════ */

@@ -113,14 +113,56 @@ test("1 — auf 390 px erreicht jedes Bedienelement der App-Shell 44 px", async 
       // `.auth-field-link` und Textlinks in Fließtext fallen unter die
       // Inline-Ausnahme von WCAG 2.5.5/2.5.8 und sind hier nicht gemeint.
       const AUSGENOMMEN = ["auth-field-link", "ce-page-header-back", "adm-back"];
+
+      /* GEMESSEN WIRD DIE TREFFERFLÄCHE, NICHT DER KASTEN DES ELEMENTS.
+         WCAG 2.5.5 fordert eine ausreichend große Fläche, die der Nutzer
+         TRIFFT — nicht, dass ein bestimmter DOM-Knoten groß ist.
+
+         Zwei Bauarten im System trennen beides bewusst:
+           · das versteckte `<input type="file">` der Logokarte (`.sr-only`,
+             1 px hoch) wird über einen sichtbaren `.btn` bedient,
+           · die Radios für Abrechnungsart und Lieferscheinmodus sind 18 px
+             hoch und werden über ihr umschließendes Label bedient.
+         In beiden Fällen ist der Kasten des `input` bedeutungslos; getroffen
+         wird das Label. Der frühere Kastenvergleich meldete deshalb sechs
+         Verstöße, die keine waren — und hätte umgekehrt ein zu kleines LABEL
+         nie bemerkt. Diese Messung ist damit nicht lockerer, sondern näher an
+         der Regel und an einer Stelle strenger. */
+      const bedienflaeche = (el) => {
+        const eigen = el.getBoundingClientRect();
+        const label = el.id
+          ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) || el.closest("label")
+          : el.closest("label");
+        if (!label) return { r: eigen, ueber: null };
+        const lr = label.getBoundingClientRect();
+        // Das Label zählt nur, wenn es selbst sichtbar ist und mehr Fläche
+        // bietet — sonst bleibt der eigene Kasten maßgeblich.
+        if (lr.height > eigen.height && getComputedStyle(label).display !== "none") {
+          return { r: lr, ueber: "label" };
+        }
+        return { r: eigen, ueber: null };
+      };
+
       const treffer = [];
       for (const el of document.querySelectorAll("button, .nitem, input:not([type=hidden]), select, textarea")) {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;                    // nicht gerendert
+        const eigen = el.getBoundingClientRect();
+        if (eigen.width === 0 && eigen.height === 0) continue;             // nicht gerendert
         if (getComputedStyle(el).display === "none") continue;
         if (AUSGENOMMEN.some((k) => el.classList.contains(k))) continue;
-        if (el.closest("p, td, .ce-list-card-meta")) continue;            // inline im Text
-        if (r.height < 44) treffer.push(`${el.tagName.toLowerCase()}.${el.className}`.slice(0, 70) + ` h=${Math.round(r.height)}`);
+        if (el.closest("p, td, .ce-list-card-meta")) continue;             // inline im Text
+        /* Aus Barrierebaum UND Fokusreihenfolge genommen — der Nutzer kann es
+           gar nicht erreichen, es ist kein Bedienelement. Konkreter Fall: das
+           `<input type="file">` der Logokarte (`aria-hidden` + `tabIndex={-1}`),
+           ausgelöst wird es ausschließlich über den sichtbaren Knopf daneben.
+           BEIDES muss zutreffen — ein bloß `aria-hidden`es, aber fokussierbares
+           Element bliebe per Tastatur bedienbar und wird weiter gemessen. */
+        if (el.getAttribute("aria-hidden") === "true" && el.tabIndex === -1) continue;
+
+        const { r, ueber } = bedienflaeche(el);
+        if (r.height < 44) {
+          const wie = ueber ? ` (über ${ueber})` : "";
+          treffer.push(`${el.tagName.toLowerCase()}.${el.className}`.slice(0, 70) + ` h=${Math.round(r.height)}${wie}`);
+        }
       }
       return treffer;
     });

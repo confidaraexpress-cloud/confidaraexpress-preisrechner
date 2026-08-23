@@ -14,6 +14,7 @@
 // Zielsystem entsprechen.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -525,14 +526,13 @@ test("12 — die Primitive-Regeln nutzen kein font-weight 700", () => {
 /* ══════════ 13 — Phase-1-Governance und Einbindung ═══════════════════════ */
 
 test("13 — die Phase-1-Governance bleibt registriert und die Primitives sind eingebunden", () => {
-  const pkg = JSON.parse(read("../../package.json"));
   for (const t of ["src/styles/designTokens.test.mjs", "src/styles/numericFontAudit.test.mjs",
                    "src/components/layout/appShellChrome.test.mjs",
                    "src/components/dashboard/overviewKpiCards.test.mjs"]) {
-    assert.ok(pkg.scripts.test.includes(t), `die bestehende Governance ${t} muss im Testlauf bleiben`);
+    assert.ok(pruefeImTestlauf(t), `die bestehende Governance ${t} muss im Testlauf bleiben`);
   }
-  assert.ok(pkg.scripts.test.includes("src/styles/interfacePrimitives.test.mjs"),
-    "diese Governance muss selbst registriert sein");
+  assert.ok(pruefeImTestlauf("src/styles/interfacePrimitives.test.mjs"),
+    "diese Governance muss selbst mitlaufen");
 
   // Die Primitive-Ebene ist genau einmal eingebunden, nach buttons/forms und
   // vor den Bereichs-Stylesheets.

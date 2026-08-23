@@ -52,7 +52,7 @@ let browser = null;
 
 before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], {
-    stdio: "ignore", detached: false, cwd: REPO_ROOT,
+    stdio: "ignore", detached: true, cwd: REPO_ROOT,
   });
   const deadline = Date.now() + 90_000;
   for (;;) {
@@ -65,7 +65,13 @@ before(async () => {
 
 after(async () => {
   if (browser) await browser.close();
-  if (server && !server.killed) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 // Objektive Glyphenprüfung per Pixel-Scanline (identisches Verfahren wie in der

@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleVersandformular, ueberSidebar } from "./helpers/newShipmentForm.mjs";
 import { chromium } from "playwright";
 
 // Browserauflösung, ohne einen Pfad fest zu verdrahten:
@@ -88,7 +89,7 @@ let browser = null;
 
 before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], {
-    stdio: "ignore", detached: false,
+    stdio: "ignore", detached: true,
   });
   const deadline = Date.now() + 90_000;
   for (;;) {
@@ -104,7 +105,13 @@ before(async () => {
 
 after(async () => {
   if (browser) await browser.close();
-  if (server && !server.killed) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 // Öffnet eine Seite mit vollständig gemockter API. `calls` sammelt jede
@@ -169,7 +176,7 @@ async function openApp({ latency = 0, carrierAware = true, formData = DRAFT_FORM
 
 // Regulärer Fortsetzen-Pfad: Sidebar → Entwürfe → Fortsetzen.
 async function resumeDraft(page) {
-  await page.getByRole("button", { name: "Entwürfe" }).first().click();
+  await ueberSidebar(page, "Entwürfe");
   await page.waitForSelector("text=Fortsetzen", { timeout: 20_000 });
   await page.getByRole("button", { name: /Fortsetzen/ }).first().click();
   await page.waitForSelector("button:has-text('Angebote vergleichen')", { timeout: 20_000 });
@@ -272,7 +279,7 @@ test("Entwurf fortsetzen: schneller Doppelklick erzeugt nur einen Request", asyn
 
 test("Neue Sendung: Ablauf unverändert, bewusste Carrier-Auswahl bleibt erhalten", async () => {
   const { page, calls } = await openApp();
-  await page.getByRole("button", { name: "Neue Sendung" }).first().click();
+  await ueberSidebar(page, "Neue Sendung");
   await page.waitForSelector("button:has-text('Angebote vergleichen')", { timeout: 20_000 });
 
   // Vor der ersten Berechnung gibt es fachlich noch keine Carrier-Auswahl:
@@ -286,12 +293,11 @@ test("Neue Sendung: Ablauf unverändert, bewusste Carrier-Auswahl bleibt erhalte
   const cta = ctaOf(page);
   assert.equal(await cta.isDisabled(), true, "leeres Formular muss den CTA weiterhin sperren");
 
-  const fill = async (ph, v) => await page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
-  for (const [ph, v] of [["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"]]) await fill(ph, v);
-  const empfaenger = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await empfaenger.nth(4).fill("80331");
-  await empfaenger.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+  // Absender UND Empfänger: seit „Neue Sendung startet leer" gibt es keinen
+  // Profil-Seed mehr, der Absender wäre sonst unvollständig und der CTA bliebe
+  // (korrekt) gesperrt. Die Sperre davor bleibt genau deshalb stehen — sie ist
+  // die eigentliche Aussage dieses Abschnitts.
+  await fuelleVersandformular(page);
 
   assert.equal(await cta.isDisabled(), false);
   await cta.click();
@@ -323,8 +329,10 @@ test("Unvollständiger Entwurf: keine Anfrage, Feld markiert, Hinweis sichtbar",
   assert.match(hinweis.trim(), /Empfänger – Stadt/, "Hinweis muss das fehlende Feld benennen");
   assert.equal(calls.length, 0, "ungültige Daten dürfen keine Anfrage auslösen");
 
-  // Nach der Korrektur reicht EIN Klick.
-  await page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input").nth(5).fill("Muenchen");
+  // Nach der Korrektur reicht EIN Klick. Angesprochen über die stabile id des
+  // Feldes, nicht über seine Position im Raster — ein zusätzliches Eingabefeld
+  // im Empfängerblock hätte `nth(5)` still auf ein anderes Feld gelenkt.
+  await page.locator("#ns-r-city").fill("Muenchen");
   assert.equal(await ctaOf(page).isDisabled(), false);
   await ctaOf(page).click();
   await page.waitForSelector(".offer-card", { timeout: 20_000 });

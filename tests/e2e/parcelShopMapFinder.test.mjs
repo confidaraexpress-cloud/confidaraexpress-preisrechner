@@ -17,6 +17,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
 import {
   DPD_RESPONSE, DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED,
   DPD_EXPECTED_SUNDAY, FREITAG,
@@ -87,17 +88,7 @@ async function oeffneFinder(page) {
   await page.clock.setFixedTime(new Date(FREITAG));
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
-  for (const [ph, v] of [
-    ["Max Mustermann", "Max Mustermann"], ["Musterstraße 1", ABSENDER.street], ["Stuttgart", ABSENDER.city],
-    ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
-  ]) await fill(ph, v);
-  const abs = page.locator(".booking-addr-grid > div").nth(0).locator("input.field-input");
-  await abs.nth(4).fill(ABSENDER.zip);
-  const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await emp.nth(4).fill("80331");
-  await emp.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+  await fuelleVersandformular(page, { absender: { ...STANDARD_ABSENDER, ...ABSENDER } });
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   // Der Einstieg sitzt seit der Integration in die Angebote direkt an der
@@ -120,7 +111,7 @@ async function noHorizontalOverflow(page) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -132,7 +123,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 // ═══════════ Fenster: Öffnen, Rollen, Schließen ════════════════════════════
@@ -156,7 +153,20 @@ test("1 — „Paketshops suchen“ öffnet das Fenster als echten Dialog", asyn
 
 test("2 — während des Requests steht ein Ladezustand im Fenster, kein leeres Loch", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await setupRoutes(page, { verzoegerung: () => 700 });
+  /* 5000 statt 700 ms. Das ist KEIN hochgesetztes Test-Timeout, sondern eine
+     langsamere ANTWORT des gemockten Servers — die Wartefristen der Zusicherungen
+     unten sind unverändert.
+
+     Gemessen: mit 700 ms war beim Öffnen des Fensters bereits alles da
+     (0 Skelette, „20 Paketshops"). Die Suche läuft nämlich schon vor dem
+     Öffnen an; nach 700 ms ist sie fertig, bevor das Fenster steht. Der
+     Ladezustand war damit gar nicht mehr erreichbar — der Test prüfte einen
+     Zustand, den er selbst unmöglich gemacht hatte, statt eine Regression.
+
+     Mit 5000 ms ist die Antwort beim Öffnen nachweislich noch unterwegs, und
+     die eigentliche Aussage ist wieder prüfbar: das Fenster steht sofort und
+     zeigt einen Ladezustand statt eines leeren Lochs. */
+  await setupRoutes(page, { verzoegerung: () => 5000 });
   await oeffneFinder(page);
   await page.locator(".ps-trigger").first().click();
 

@@ -22,7 +22,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const PORT = 5237, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5256, BASE = `http://127.0.0.1:${PORT}`;
 
 // Seitenverhältnisse der Assets (viewBox des Masters, unverändert).
 const SEITE = { signet: 506 / 424, wordmark: 1176 / 135, lockup: 1176 / 613 };

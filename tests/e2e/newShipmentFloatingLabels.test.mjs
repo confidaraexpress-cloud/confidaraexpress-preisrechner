@@ -20,7 +20,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const PORT = 5253, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5262, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;

@@ -51,7 +51,7 @@ async function setup(page, overrides = {}) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -63,13 +63,36 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
+/* Der Kundenpfad des Labels läuft seit dem Paket „Sendungshandle" über
+   `GET /api/shipments/:shipmentId/label` — die Providerreferenz steht in keinem
+   Kundenpfad mehr. Die Mocks unten greifen deshalb den Pfadbestandteil
+   "/label" ab statt des abgelösten "/api/jumingo/label/".
+
+   Die Falle dabei: der Sammel-Fallback von `setup` beantwortet JEDEN nicht
+   getroffenen Pfad mit `200 {}`. Ein ins Leere zeigender Label-Mock hätte den
+   Test also NICHT rot gemacht, sondern still auf den „kein PDF"-Zweig gelenkt —
+   dieselbe sichtbare Meldung wie im 500er-Fall, aus einem anderen Grund. Ein
+   Test unten belegt deshalb ausdrücklich, dass der Mock tatsächlich greift. */
 test("Label-500 {error:'Fehler'}: Kunde sieht die kuratierte Meldung, nie das nackte Wort", async () => {
   const page = await browser.newPage();
+  const labelPfade = [];
+  page.on("request", (r) => {
+    const p = new URL(r.url()).pathname;
+    // Nur echte API-Aufrufe. Ein bloßes `includes("/label")` fing im Dev-Server
+    // auch das Quellmodul `/src/utils/labelErrors.mjs` mit ein.
+    if (p.startsWith("/api/") && p.endsWith("/label")) labelPfade.push(p);
+  });
   await setup(page, {
-    "/api/jumingo/label/": (route, json) => json({ error: "Fehler" }, 500),
+    "/label": (route, json) => json({ error: "Fehler" }, 500),
   });
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /Label/ }).first().click();
@@ -77,13 +100,23 @@ test("Label-500 {error:'Fehler'}: Kunde sieht die kuratierte Meldung, nie das na
   const t = (await page.locator('.alert-error[role="alert"]').first().innerText()).replace(/\s+/g, " ").trim();
   assert.notEqual(t, "Fehler", "das nackte Backend-Wort darf nie erscheinen");
   assert.match(t, /momentan nicht geladen werden/, `unerwarteter Text: ${t}`);
+
+  // Beweis, dass der Mock wirklich gegriffen hat und nicht der Sammel-Fallback
+  // (`200 {}` → derselbe sichtbare Text aus einem anderen Grund). Zugleich die
+  // Regressionssperre gegen den abgelösten Providerpfad: der Kundenpfad läuft
+  // über den ConfidaraExpress-Sendungshandle, nicht über jumingo_shipment_id.
+  assert.equal(labelPfade.length, 1, `erwartet genau ein Labelaufruf, bekommen: ${labelPfade.join(", ")}`);
+  assert.match(labelPfade[0], /^\/api\/shipments\/\d+\/label$/,
+    `der Kundenpfad des Labels hat sich geändert: ${labelPfade[0]}`);
+  assert.ok(!labelPfade[0].includes("jumingo"),
+    "die Providerreferenz darf in keinem Kundenpfad stehen");
   await page.close();
 });
 
 test("Label-Antwort ist JSON statt PDF (2xx): Fehlermeldung statt kaputter Datei", async () => {
   const page = await browser.newPage();
   await setup(page, {
-    "/api/jumingo/label/": (route, json) => json({ irgendwas: true }, 200),
+    "/label": (route, json) => json({ irgendwas: true }, 200),
   });
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /Label/ }).first().click();
@@ -96,7 +129,7 @@ test("Label-Antwort ist JSON statt PDF (2xx): Fehlermeldung statt kaputter Datei
 test("Label noch nicht bereit (409, Altbackend-Text): verständliche Wartemeldung", async () => {
   const page = await browser.newPage();
   await setup(page, {
-    "/api/jumingo/label/": (route, json) => json({ error: "Label noch nicht verfügbar — Bestellnummer fehlt", code: "LABEL_NOT_READY" }, 409),
+    "/label": (route, json) => json({ error: "Label noch nicht verfügbar — Bestellnummer fehlt", code: "LABEL_NOT_READY" }, 409),
   });
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /Label/ }).first().click();

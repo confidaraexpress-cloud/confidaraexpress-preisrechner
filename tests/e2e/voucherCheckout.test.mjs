@@ -20,7 +20,7 @@ import path from "node:path";
 // automatischen Profil-Seed (Absender und Empfängerland blieben leer, der CTA dauerhaft
 // deaktiviert). Beides ist unten korrigiert; der Test ist jetzt registriert.
 
-const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5260, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -79,6 +79,14 @@ async function setupRoutes(page, { voucherMode = "ok" } = {}) {
     const p = url.pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
+    // Legal-Buchungsschranke (Go-Live Paket 4-B): `enabled:false` ist die
+    // Antwort eines Servers mit ABGESCHALTETER Schranke — der heutige
+    // Produktivzustand. Ohne diese Antwort liefe der Mock in den Sammelfall
+    // `200 {}`; `parseBookingContext` wertet das fail-closed als `error` und
+    // sperrt die Bestellung. Das ist richtiges Produktverhalten und darf nicht
+    // aufgeweicht werden — die Suite muss den Endpunkt schlicht beantworten.
+    // Beide Zustände der Schranke prüft `legalBookingGate.test.mjs`.
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: [] });
     if (p.endsWith("/kunde/invoices")) return json({ invoices: [], summary: null });
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
@@ -147,7 +155,7 @@ async function wendeAn(page, code) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -159,7 +167,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 /* ══════════ Smoke 1 — Position ══════════ */

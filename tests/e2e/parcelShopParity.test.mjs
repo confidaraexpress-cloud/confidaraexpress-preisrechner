@@ -35,13 +35,14 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
 import {
   DPD_RESPONSE, DPD_ACCESS_POINTS, DPD_EXPECTED_SORTED, DPD_WORKSTATE_CLOSED,
   DPD_EXPECTED_SUNDAY, DPD_EXPECTED_BEFORE_0730, DPD_EXPECTED_AFTER_2100, FREITAG,
 } from "../fixtures/accessPointsDpd.mjs";
 import { MAP_TEST_ENGINE_SCRIPT } from "../fixtures/mapTestEngine.mjs";
 
-const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5258, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -107,17 +108,7 @@ async function oeffneFinder(page) {
   await page.clock.setFixedTime(new Date(FREITAG));
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
-  for (const [ph, v] of [
-    ["Max Mustermann", "Max Mustermann"], ["Musterstraße 1", ABSENDER.street], ["Stuttgart", ABSENDER.city],
-    ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
-  ]) await fill(ph, v);
-  const abs = page.locator(".booking-addr-grid > div").nth(0).locator("input.field-input");
-  await abs.nth(4).fill(ABSENDER.zip);
-  const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await emp.nth(4).fill("80331");
-  await emp.nth(5).fill("Muenchen");
-  for (const [ph, v] of [["1", "2"], ["5", "5.5"], ["30", "40"], ["20", "30"], ["15", "20"]]) await fill(ph, v);
+  await fuelleVersandformular(page, { absender: { ...STANDARD_ABSENDER, ...ABSENDER } });
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   // Der Einstieg sitzt seit der Integration in die Angebote direkt an der
@@ -150,7 +141,7 @@ async function noHorizontalOverflow(page) {
 }
 
 test.before(async () => {
-  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
+  server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
   for (;;) {
     try { const r = await fetch(`${BASE}/`); if (r.ok) break; } catch { /* noch nicht bereit */ }
@@ -162,7 +153,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGKILL");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 test("1 — die Suche sendet die Straße mit, auch wenn der Carrier sie nicht verlangt (DPD)", async () => {

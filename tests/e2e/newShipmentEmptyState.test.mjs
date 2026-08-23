@@ -20,7 +20,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
+const PORT = 5257, BASE = `http://127.0.0.1:${PORT}`;
 
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
@@ -72,6 +72,14 @@ async function setupRoutes(ziel) {
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
 
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
+    // Legal-Buchungsschranke (Go-Live Paket 4-B): `enabled:false` ist die
+    // Antwort eines Servers mit ABGESCHALTETER Schranke — der heutige
+    // Produktivzustand. Ohne diese Antwort liefe der Mock in den Sammelfall
+    // `200 {}`; `parseBookingContext` wertet das fail-closed als `error` und
+    // sperrt die Bestellung. Das ist richtiges Produktverhalten und darf nicht
+    // aufgeweicht werden — die Suite muss den Endpunkt schlicht beantworten.
+    // Beide Zustände der Schranke prüft `legalBookingGate.test.mjs`.
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/calculate-price")) {
       calcBodies.push(JSON.parse(req.postData() || "{}"));
       return json({
@@ -184,7 +192,8 @@ async function adressenFuellen(page) {
 
 test.before(async () => {
   server = spawn("npx", ["vite", "--port", String(PORT), "--strictPort", "--host", "127.0.0.1"], {
-    cwd: process.cwd(), stdio: "ignore", env: { ...process.env, BROWSER: "none" },
+    cwd: process.cwd(), stdio: "ignore", detached: true,
+    env: { ...process.env, BROWSER: "none" },
   });
   const bis = Date.now() + 60000;
   for (;;) {
@@ -197,7 +206,13 @@ test.before(async () => {
 
 test.after(async () => {
   if (browser) await browser.close();
-  if (server) server.kill("SIGTERM");
+  if (server) {
+    // Die Prozessgruppe, nicht nur das Kind: npx startet `sh -c vite`,
+    // das seinerseits node startet. Ein Signal an den npx-Prozess laesst
+    // den Enkel — den eigentlichen Dev-Server — auf seinem Port stehen.
+    try { process.kill(-server.pid, "SIGKILL"); } catch { /* schon beendet */ }
+    try { server.kill("SIGKILL"); } catch { /* schon beendet */ }
+  }
 });
 
 /* ══════════ 1 — frisches Formular ist leer ═══════════════════════════════ */

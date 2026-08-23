@@ -7,7 +7,7 @@ import { Icon } from "./Icon";
 // `inputRef` (Paket D) reicht eine Ref an das Eingabefeld durch — der
 // Sicherheitsbereich des Profils setzt damit den Fokus in das erste Feld,
 // sobald der Nutzer das Formular öffnet. Ohne die Prop ändert sich nichts.
-export function PasswordField({ label, value, onChange, onKeyDown, placeholder, dark = true, slim = false, id, autoComplete, required = false, inputRef }) {
+export function PasswordField({ label, value, onChange, onKeyDown, onBlur, placeholder, dark = true, slim = false, id, autoComplete, required = false, inputRef }) {
   const [show, setShow] = useState(false);
   const toggleLabel = show ? "Passwort verbergen" : "Passwort anzeigen";
 
@@ -24,6 +24,7 @@ export function PasswordField({ label, value, onChange, onKeyDown, placeholder, 
           value={value}
           onChange={onChange}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           placeholder={placeholder || "••••••••"}
           autoComplete={autoComplete}
           required={required || undefined}
@@ -58,6 +59,7 @@ export function PasswordField({ label, value, onChange, onKeyDown, placeholder, 
           value={value}
           onChange={onChange}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           placeholder={placeholder || "••••••••"}
           /* autoComplete wurde bisher nur im slim-Modus durchgereicht — im
              Standardmodus ging die Angabe der Aufrufer verloren, sodass

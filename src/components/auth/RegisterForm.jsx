@@ -4,12 +4,15 @@ import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { countries } from "../../utils/countries";
 import { B2B_NOTICE, B2B_ACTIVATION_NOTE } from "../../utils/registrationValidation.mjs";
+// Die sichtbare Zusage „min. 8 Zeichen" kommt aus derselben Konstante wie die
+// Prüfung — Text und Regel können damit nicht auseinanderlaufen.
+import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
 
 // Pflichtfeld-Markierung. Das Sternchen ist rein visuell (aria-hidden) — für
 // Screenreader trägt das jeweilige Eingabefeld required/aria-required.
 const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
-export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange }) {
+export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur }) {
   const upd = (k, v) => onChange(k, v);
   return (
     <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
@@ -67,7 +70,7 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
 
       <div className="auth-field">
         <div className="auth-field-row">
-          <label className="auth-field-label">Passwort (min. 8 Zeichen) <Req /></label>
+          <label className="auth-field-label">Passwort (min. {PASSWORD_MIN_LEN} Zeichen) <Req /></label>
         </div>
         <div className="auth-input-wrap">
           <span className="auth-input-ico"><Icon n="lock" s={18} /></span>
@@ -75,7 +78,14 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
             slim
             value={form.password}
             onChange={(e) => upd("password", e.target.value)}
-            placeholder="Mind. 8 Zeichen"
+            /* Der CTA ist bei zu kurzem Passwort deaktiviert — und Chromium
+               unterdrückt dann auch die implizite Formularabsendung per Enter.
+               Ohne diese Rückmeldung sähe der Kunde einen gesperrten Knopf ganz
+               ohne Begründung (im UAT gemessen). Bewusst beim Verlassen des
+               Feldes, nicht beim Tippen: sonst stünde schon nach dem ersten
+               Zeichen „mindestens 8 Zeichen". */
+            onBlur={() => onPasswordBlur?.()}
+            placeholder={`Mind. ${PASSWORD_MIN_LEN} Zeichen`}
             autoComplete="new-password"
             required
             aria-required="true"

@@ -25,6 +25,9 @@ import {
 } from "../../utils/profileView.mjs";
 import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
+// Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
+// Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
+import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../../utils/passwordPolicy.mjs";
 import { CopyableNumber } from "../ui/CopyableNumber";
 import { CompanyLogoPreview } from "../ui/UserChip";
 import { useCompanyLogo } from "../../hooks/useCompanyLogo";
@@ -48,6 +51,14 @@ import {
 // /kundenbereich). Es wird kein nicht speicherbarer Wert vorgetäuscht.
 
 const EMPTY_PW_FORM = { currentPassword: "", newPassword: "", newPasswordConfirm: "" };
+
+// Wortlaute der Passwortänderung — wortgleich zu vorher (ein Governance-Test
+// prüft den Text). Die Regel selbst (8–128, Code-Points) steht in
+// passwordPolicy.mjs; hier steht nur die Formulierung.
+const PW_CHANGE_TEXTS = Object.freeze({
+  tooShort: `Das neue Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen lang sein.`,
+  tooLong:  `Das neue Passwort darf höchstens ${PASSWORD_MAX_LEN} Zeichen lang sein.`,
+});
 
 export function Profile({ user, utility }) {
   const { updateUser } = useAuth();
@@ -251,8 +262,9 @@ export function Profile({ user, utility }) {
     const { currentPassword, newPassword, newPasswordConfirm } = pwForm;
     if (!currentPassword) return "Bitte geben Sie Ihr aktuelles Passwort ein.";
     if (!newPassword) return "Bitte geben Sie ein neues Passwort ein.";
-    if (newPassword.length < 8) return "Das neue Passwort muss mindestens 8 Zeichen lang sein.";
-    if (newPassword.length > 128) return "Das neue Passwort darf höchstens 128 Zeichen lang sein.";
+    // Länge über die zentrale Regel; die beiden Wortlaute bleiben unverändert.
+    const lengthError = passwordLengthError(newPassword, PW_CHANGE_TEXTS);
+    if (lengthError) return lengthError;
     if (newPassword === currentPassword) return "Das neue Passwort darf nicht mit dem aktuellen Passwort identisch sein.";
     if (newPasswordConfirm !== newPassword) return "Die neuen Passwörter stimmen nicht überein.";
     return "";

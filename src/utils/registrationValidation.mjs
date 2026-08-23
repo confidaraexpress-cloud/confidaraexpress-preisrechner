@@ -12,7 +12,17 @@
 // Regeln hier spiegeln sie nur, damit Nutzende Fehler sofort sehen statt erst
 // nach dem Absenden. Grenzwerte bewusst identisch gehalten.
 
+import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "./passwordPolicy.mjs";
+
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Fehlertexte des Registrierungsformulars. Die REGEL (8–128, Zählung in
+// Code-Points) steht ausschließlich in passwordPolicy.mjs; hier steht nur der
+// Wortlaut. Beide Texte sind gegenüber vorher unverändert.
+export const REG_PASSWORD_TEXTS = Object.freeze({
+  tooShort: `Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen enthalten.`,
+  tooLong:  `Passwort darf maximal ${PASSWORD_MAX_LEN} Zeichen enthalten.`,
+});
 
 // Spiegel von B2B_FIELD_RULES im Backend. apiField ist der tatsächliche JSON-Feldname
 // des bestehenden API-Vertrags (snake_case) — es gibt bewusst keine parallelen
@@ -47,9 +57,15 @@ export function getRegErrors(form = {}, passwordRepeat = "") {
   if (!form.email?.trim())                     e.email    = "E-Mail ist ein Pflichtfeld.";
   else if (!EMAIL_RE.test(form.email.trim()))  e.email    = "Bitte eine gültige geschäftliche E-Mail-Adresse eingeben.";
 
-  if (!form.password)                          e.password = "Passwort ist ein Pflichtfeld.";
-  else if (form.password.length < 8)           e.password = "Passwort muss mindestens 8 Zeichen enthalten.";
-  else if (form.password.length > 128)         e.password = "Passwort darf maximal 128 Zeichen enthalten.";
+  // Länge über die zentrale Regel — nie über form.password.length: `.length`
+  // zählt UTF-16-Code-Units, sodass sieben getippte Zeichen mit einem Emoji
+  // darin als 8 durchgingen (UAT T-003).
+  if (!form.password) {
+    e.password = "Passwort ist ein Pflichtfeld.";
+  } else {
+    const pwError = passwordLengthError(form.password, REG_PASSWORD_TEXTS);
+    if (pwError) e.password = pwError;
+  }
 
   if (form.password && passwordRepeat !== form.password)
     e.passwordRepeat = "Die Passwörter stimmen nicht überein.";

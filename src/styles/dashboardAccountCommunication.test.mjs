@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN } from "../utils/passwordPolicy.mjs";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(path.join(SRC, rel), "utf8");
@@ -198,13 +199,34 @@ test("11 — Passwortregeln, Felder und API sind unverändert", () => {
   assert.match(profile, /JSON\.stringify\(pwForm\)/);
   for (const regel of [
     "Bitte geben Sie Ihr aktuelles Passwort ein.",
-    "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
-    "Das neue Passwort darf höchstens 128 Zeichen lang sein.",
     "Das neue Passwort darf nicht mit dem aktuellen Passwort identisch sein.",
     "Die neuen Passwörter stimmen nicht überein.",
   ]) {
     assert.ok(profile.includes(regel), `Passwortregel verändert: ${regel}`);
   }
+  // Die beiden LÄNGENtexte tragen seit der UAT-Korrektur T-003 die Zahl nicht
+  // mehr als Literal, sondern aus passwordPolicy.mjs — Text und Prüfung können
+  // damit nicht auseinanderlaufen. Geprüft wird deshalb zweistufig: die Quelle
+  // interpoliert die zentrale Konstante, UND der daraus entstehende Satz ist
+  // wortgleich zum bisherigen Wortlaut.
+  assert.match(profile, /mindestens \$\{PASSWORD_MIN_LEN\} Zeichen lang sein\./,
+    "Längentext nutzt nicht mehr die zentrale Konstante");
+  assert.match(profile, /höchstens \$\{PASSWORD_MAX_LEN\} Zeichen lang sein\./,
+    "Längentext nutzt nicht mehr die zentrale Konstante");
+  assert.equal(
+    `Das neue Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen lang sein.`,
+    "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
+    "Der sichtbare Wortlaut hat sich geändert",
+  );
+  assert.equal(
+    `Das neue Passwort darf höchstens ${PASSWORD_MAX_LEN} Zeichen lang sein.`,
+    "Das neue Passwort darf höchstens 128 Zeichen lang sein.",
+    "Der sichtbare Wortlaut hat sich geändert",
+  );
+  // Die Längenprüfung läuft über die zentrale Regel, nicht über .length.
+  assert.match(profile, /passwordLengthError\(newPassword, PW_CHANGE_TEXTS\)/);
+  assert.ok(!/newPassword\.length\s*[<>]/.test(profile),
+    "Profile.jsx prüft die Passwortlänge wieder selbst statt über passwordPolicy.mjs");
   // Der bewusste Verzicht auf auth:true (401 = falsches Passwort, nicht Session-Ende)
   // bleibt bestehen.
   assert.match(profile, /triggerAuthError\(\)/);

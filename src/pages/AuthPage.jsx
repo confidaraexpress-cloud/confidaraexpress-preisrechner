@@ -17,7 +17,18 @@ import {
   getRegErrors,
   mapApiRegistrationError,
   buildRegistrationPayload,
+  REG_PASSWORD_TEXTS,
 } from "../utils/registrationValidation.mjs";
+// Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
+// Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
+import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../utils/passwordPolicy.mjs";
+
+// Wortlaute des Zurücksetzen-Formulars. Der Kurztext bleibt wortgleich zur
+// bisherigen Meldung; der Langtext fehlte hier vorher vollständig.
+const RESET_PASSWORD_TEXTS = Object.freeze({
+  tooShort: `Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen haben`,
+  tooLong:  `Passwort darf maximal ${PASSWORD_MAX_LEN} Zeichen haben`,
+});
 // Auth-Fehlerzuordnung: Codes → Kundentexte, Transportfehler über die zentrale
 // Klassifizierung (apiError.mjs). Ersetzt die früheren rohen e.message-Anzeigen
 // und die leeren Banner aus `new Error(d.error)` ohne Fallback.
@@ -170,7 +181,11 @@ export default function AuthPage() {
   const handleReset = async () => {
     setError("");
     if (newPassword !== newPasswordConfirm) { setError("Passwörter stimmen nicht überein"); return; }
-    if (newPassword.length < 8) { setError("Passwort muss mindestens 8 Zeichen haben"); return; }
+    // Dieselbe zentrale Regel wie im Registrierungsformular. Vorher stand hier
+    // nur eine Untergrenze als Zahlenliteral — die Obergrenze fehlte ganz, das
+    // Backend lehnte >128 also erst nach dem Absenden ab.
+    const resetPwError = passwordLengthError(newPassword, RESET_PASSWORD_TEXTS);
+    if (resetPwError) { setError(resetPwError); return; }
     setLoading(true);
     try {
       const r = await fetch(`${API}/auth/reset-password`, { method: "POST", headers: jsonH, body: JSON.stringify({ token: resetToken, password: newPassword }) });
@@ -197,6 +212,19 @@ export default function AuthPage() {
         if (regPasswordRepeat && regPasswordRepeat !== v) n.passwordRepeat = "Die Passwörter stimmen nicht überein.";
         else delete n.passwordRepeat;
       }
+      return n;
+    });
+  };
+
+  // Zeigt den Längenhinweis, sobald der Kunde das Passwortfeld verlässt.
+  // Ein leeres Feld bleibt still — das ist kein Fehler, sondern ein noch nicht
+  // ausgefülltes Pflichtfeld, und eine Fehlerwand auf leerem Formular ist im
+  // Designsystem ausdrücklich unerwünscht.
+  const handleRegPasswordBlur = () => {
+    setRegErrors(p => {
+      const n = { ...p };
+      const err = regForm.password ? passwordLengthError(regForm.password, REG_PASSWORD_TEXTS) : null;
+      if (err) n.password = err; else if (n.password) delete n.password;
       return n;
     });
   };
@@ -329,6 +357,7 @@ export default function AuthPage() {
                   loading={loading}
                   errors={regErrors}
                   regValid={regValid}
+                  onPasswordBlur={handleRegPasswordBlur}
                   passwordRepeat={regPasswordRepeat}
                   onPasswordRepeatChange={handleRegPasswordRepeat}
                 />

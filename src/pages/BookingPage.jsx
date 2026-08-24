@@ -1576,7 +1576,7 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
-            {/* Klare Trennung: Buchungsbestätigung (bereits versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
+            {/* Klare Trennung: Auftragsbestätigung (wird per E-Mail versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
             <div className="booking-success-delivery mb-16">
               <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
               {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die

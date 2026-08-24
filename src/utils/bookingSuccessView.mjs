@@ -1,12 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Erfolgsscreen nach Buchung — reine, framework-freie Anzeigelogik (.mjs, wie invoiceView).
-// Trennt die BUCHUNGSBESTÄTIGUNG (wird im /book immer versendet) klar von der späteren
-// RECHNUNGS-E-Mail und beschreibt korrekt, was mit der Rechnung passiert — abhängig davon, ob
-// das erzeugte Rechnungsdokument produktiv (is_test_document=false) oder eine interne Vorschau
-// (Testbetrieb) ist. Das Frontend kennt den globalen INVOICE_TEST_MODE NICHT direkt; der Modus
-// wird stattdessen aus dem tatsächlich erzeugten Rechnungsdatensatz abgeleitet (Serverwahrheit:
-// is_test_document + document_status). Solange das Dokument noch erstellt wird, gilt PENDING
-// (neutrale, immer korrekte Formulierung). Kein React, kein Netzwerk, keine Backend-Änderung.
+// Trennt die AUFTRAGSBESTÄTIGUNG (wird im /book asynchron ausgelöst, s. BOOKING_CONFIRMATION_LINE
+// unten) klar von der späteren RECHNUNGS-E-Mail und beschreibt korrekt, was mit der Rechnung
+// passiert — abhängig davon, ob das erzeugte Rechnungsdokument produktiv (is_test_document=false)
+// oder eine interne Vorschau (Testbetrieb) ist. Das Frontend kennt den globalen INVOICE_TEST_MODE
+// NICHT direkt; der Modus wird stattdessen aus dem tatsächlich erzeugten Rechnungsdatensatz
+// abgeleitet (Serverwahrheit: is_test_document + document_status). Solange das Dokument noch
+// erstellt wird, gilt PENDING (neutrale, immer korrekte Formulierung). Kein React, kein Netzwerk,
+// keine Backend-Änderung.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Modus der Rechnungszustellung, den der Erfolgsscreen kommuniziert.
@@ -57,9 +58,11 @@ export function isTerminalDeliveryMode(mode) {
 }
 
 // Immer gültige Grundaussagen des Erfolgsscreens (modus-unabhängig, nie irreführend):
-// 1) Die BUCHUNGSBESTÄTIGUNG wurde bereits per E-Mail versendet (getrennt von der Rechnung).
+// 1) Die AUFTRAGSBESTÄTIGUNG wird per E-Mail versendet (getrennt von der Rechnung) — Präsens,
+//    weil /book den Versand nur anstößt (triggerOrderConfirmationEmailAsync, fire-and-forget),
+//    ohne auf eine bestätigte Zustellung zu warten.
 // 2) Die Rechnung wird automatisch erstellt und erscheint anschließend unter „Rechnungen".
-export const BOOKING_CONFIRMATION_LINE = "Ihre Buchungsbestätigung wurde per E-Mail versendet.";
+export const BOOKING_CONFIRMATION_LINE = "Ihre Auftragsbestätigung wird per E-Mail versendet.";
 export const INVOICE_AUTOCREATE_LINE = "Ihre Rechnung wird automatisch erstellt und steht anschließend im Bereich Rechnungen zum Ansehen und Herunterladen bereit.";
 
 // Modus-spezifischer Zusatzhinweis zur Rechnungs-E-Mail. tone ∈ info|success|warning|error für die

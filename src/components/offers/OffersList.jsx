@@ -3,6 +3,11 @@ import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
 import { money } from "../../utils/formatters";
+import { DateCalendar } from "../common/DateCalendar";
+import { fmtDE } from "../../utils/date";
+import {
+  activeResultFilterCount, deliveryChipLabel, emptyFilterHint as buildEmptyFilterHint,
+} from "../../utils/offersFilterView.mjs";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -23,11 +28,13 @@ export function OffersList({
   selected, onSelect, onBook,
   sortMode, onSortChange,
   onRecalculate,
-  maxPrice, onMaxPriceChange, onClearFilters,
+  maxPrice, onMaxPriceChange,
+  latestDeliveryDate, onLatestDeliveryChange, shippingDate,
+  onClearFilters,
   vatMode, onVatToggle,
   senderPrefill,
 }) {
-  // Aktives Filter-Dropdown: "price" | "days" | null. Es ist immer höchstens
+  // Aktives Filter-Dropdown: "price" | "delivery" | null. Es ist immer höchstens
   // eines offen; das Öffnen des einen schließt das andere. Ersetzt den früheren
   // kombinierten Inline-Panel-Toggle durch rechts angedockte JUMiNGO-Dropdowns.
   const [openFilter, setOpenFilter] = useState(null);
@@ -56,8 +63,16 @@ export function OffersList({
     else onMaxPriceChange(String(val));
   };
 
-  const activeFilterCount = [maxPrice].filter(Boolean).length;
+  // ── Aktive ERGEBNISFILTER ───────────────────────────────────────────────────
+  // Zählung und Leerzustandstext kommen aus utils/offersFilterView.mjs — dort
+  // steht die Begründung samt Messwerten. Kurz: hier zählte bis zu diesem
+  // Paket ausschließlich `maxPrice`, während `latestDeliveryDate` in beiden
+  // Seiten wirksam mitfilterte. Ergebnis war eine Überschrift, die 41 Angebote
+  // meldete, während 21 Karten standen — ohne Chip und ohne Zurücksetzen.
+  const activeFilterCount = activeResultFilterCount({ maxPrice, latestDeliveryDate });
   const hasFilter  = activeFilterCount > 0;
+  const emptyFilterHint = buildEmptyFilterHint({ maxPrice, latestDeliveryDate });
+
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
   const showTrust  = hasResults && !loading && tariffs.length > 0;
@@ -144,6 +159,26 @@ export function OffersList({
               </span>
             </button>
 
+            {/* Filterpunkt „Lieferung" → rechts angedocktes Dropdown. Bewusst
+                DASSELBE Chip-/Dropdown-Muster wie der Preisfilter (ein
+                gemeinsamer `openFilter`-Zustand, höchstens eines offen) —
+                kein zweites Overlay- oder Dialogmuster daneben. Die Bedienung
+                im Formular („Späteste Lieferzeit") bleibt unverändert
+                bestehen; beide schreiben denselben Wert. */}
+            <button
+              className={`offers-sort-btn offers-filter-chip${latestDeliveryDate ? " has-filter" : ""}${openFilter === "delivery" ? " open" : ""}`}
+              onClick={() => setOpenFilter(o => (o === "delivery" ? null : "delivery"))}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={openFilter === "delivery"}
+            >
+              <Icon n="calendar" s={12} c="currentColor" />
+              {deliveryChipLabel(latestDeliveryDate)}
+              <span className="offers-filter-chip-caret" aria-hidden="true">
+                <Icon n="chevron" s={13} c="currentColor" />
+              </span>
+            </button>
+
             {hasFilter && (
               <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
                 <Icon n="x" s={11} c="currentColor" />
@@ -205,6 +240,43 @@ export function OffersList({
               )}
             </div>
           )}
+
+          {/* ── Lieferungs-Dropdown: filtert live über deliveryDateMax → derselbe
+                 rein clientseitige Mechanismus wie im Formular (kein API-Request).
+                 Die FILTERREGEL selbst liegt unverändert in den Seiten. ── */}
+          {openFilter === "delivery" && (
+            <div className="offers-filter-dropdown offers-delivery-dropdown" role="dialog" aria-label="Lieferzeitfilter">
+              <div className="offers-filter-dd-head">
+                <span className="offers-filter-dd-title">Späteste Lieferzeit</span>
+                <span className={`offers-filter-dd-status${latestDeliveryDate ? " is-set" : ""}`}>
+                  {latestDeliveryDate ? `bis ${fmtDE(latestDeliveryDate)}` : "Beliebig"}
+                </span>
+              </div>
+              <p className="offers-filter-dd-sub">Angebote ausblenden, die später zustellen</p>
+              <div className="date-quick-options">
+                <button
+                  type="button"
+                  className={`date-quick-btn ${!latestDeliveryDate ? "active" : ""}`}
+                  onClick={() => onLatestDeliveryChange("")}
+                >
+                  Beliebig
+                </button>
+              </div>
+              <DateCalendar
+                value={latestDeliveryDate || ""}
+                onSelect={(iso) => { onLatestDeliveryChange(iso || ""); setOpenFilter(null); }}
+                minDate={shippingDate}
+                onClose={() => setOpenFilter(null)}
+              />
+              {latestDeliveryDate && (
+                <div className="offers-filter-dd-foot">
+                  <button className="offers-filter-dd-clear" onClick={() => onLatestDeliveryChange("")} type="button">
+                    Lieferzeitfilter zurücksetzen
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -232,10 +304,16 @@ export function OffersList({
           <div className="offers-empty">
             <div className="offers-empty-icon"><Icon n="filter" s={26} c="currentColor" /></div>
             <p className="offers-empty-title">Filter anpassen</p>
-            <p className="offers-empty-sub">
-              Alle Tarife wurden durch Ihre Preisfilter ausgeblendet.
-              Erhöhen Sie das Preislimit oder entfernen Sie den Filter.
-            </p>
+            {/* Der Text nennt die TATSÄCHLICHE Ursache. Vorher stand hier
+                unabhängig vom gesetzten Filter „Erhöhen Sie das Preislimit" —
+                bei gesetzter spätester Lieferzeit war das die falsche
+                Handlungsanweisung und führte ins Leere. */}
+            <p className="offers-empty-sub">{emptyFilterHint}</p>
+            {hasFilter && (
+              <button className="btn btn-outline btn-sm" onClick={onClearFilters} type="button">
+                Filter zurücksetzen
+              </button>
+            )}
           </div>
         )}
 

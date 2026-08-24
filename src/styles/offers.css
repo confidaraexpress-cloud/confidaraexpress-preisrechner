@@ -112,6 +112,13 @@
 }
 .offers-filter-dd-clear:hover { text-decoration: underline; }
 
+/* Lieferzeit-Dropdown: dasselbe Material wie das Preis-Dropdown, nur etwas
+   breiter — der eingebettete Kalender (.dc, 7 Spalten) wird bei 320 px inkl.
+   36 px Innenabstand auf ~40 px je Tag gequetscht. 336 px hält die Tagesfelder
+   auf der Größe, die sie auch im Formular haben. Mobile (< 768px) übersteuert
+   .offers-filter-dropdown die Breite ohnehin auf `auto`. */
+.offers-delivery-dropdown { width: 336px; }
+
 .offers-price-slider {
   width: 100%; height: 8px; border-radius: var(--radius-full);
   background: var(--gray100); accent-color: var(--blue);
@@ -135,6 +142,10 @@
 }
 .offers-empty-title { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
 .offers-empty-sub { font-size: 14px; color: var(--ce-color-text-muted); line-height: 1.55; max-width: 440px; margin: 0 auto; }
+/* Rückweg aus dem leeren Zustand: EINE Hauptaktion, mittig unter dem Text
+   (Musterebene „Zustände"). Nutzt das globale Button-Primitive, kein eigenes
+   Material. */
+.offers-empty .btn { margin-top: 16px; }
 
 /* ─── Offer Card — Interactive Card (Paket B) ────────────────────────────────
    Foundation-Tokens statt eigenem Material: Surface, Border Default, Radius LG,

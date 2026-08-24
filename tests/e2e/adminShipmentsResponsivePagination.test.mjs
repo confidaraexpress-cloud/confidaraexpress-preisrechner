@@ -26,25 +26,34 @@ const ADMIN = {
   name: "Anna Admin", role: "admin", status: "approved", country: "DE",
 };
 
-// Worst-case Zeilen: langer Kundenname, "Ohne Bestellnummer", beide Marker, Entwurf
+// Worst-case Zeilen: langer Kundenname, "Ohne Vorgangsnummer", beide Marker, Entwurf
 // mit Löschbutton — dieselben Fixtures wie die Breakpoint-Messung.
+//
+// Sichtbarer Geschäftsidentifier ist die Auftragsbestätigungsnummer (CE-AB…).
+// `business_order_number` bleibt in den Zeilen stehen, obwohl sie nicht mehr
+// angezeigt wird: nur dadurch wäre ein Rückfall auf die interne Bestellnummer
+// überhaupt beobachtbar. ROW_BOOKED und ROW_DRAFT tragen bewusst GAR KEINE
+// Vorgangsnummer — sie prüfen den Zustand ohne Nummer bzw. den Entwurf.
 const ROW_BOOKED = {
   id: 701, user_id: 10, status: "booked", selected_carrier: "dhl-express", service_type: "pickup",
   from_country: "DE", to_country: "AT", price_final: 12345.67, package_count: 3,
   created_at: "2026-08-09T10:00:00Z", customer_company: "ConfidaraExpress UG", customer_number: "CE-K-10001",
-  business_order_number: null, has_tracking: true, label_available: true,
+  business_order_number: null, order_confirmation_number: null,
+  has_tracking: true, label_available: true,
 };
 const ROW_LABEL_READY = {
   id: 702, user_id: 11, status: "label_ready", selected_carrier: "ups", service_type: "dropoff",
   from_country: "DE", to_country: "DE", price_final: 8.9, package_count: 1,
   created_at: "2026-08-08T10:00:00Z", customer_company: "Muster Logistik und Spedition GmbH", customer_number: "CE-K-10002",
-  business_order_number: "CE-BS26-00042", has_tracking: true, label_available: true,
+  business_order_number: "CE-BS26-00042", order_confirmation_number: "CE-AB26-00042",
+  has_tracking: true, label_available: true,
 };
 const ROW_DRAFT = {
   id: 703, user_id: 12, status: "draft", selected_carrier: "dhl", service_type: "pickup",
   from_country: "DE", to_country: "DE", price_final: null, package_count: 1,
   created_at: "2026-08-07T10:00:00Z", customer_company: "ACME GmbH", customer_number: "CE-K-10003",
-  business_order_number: null, has_tracking: false, label_available: false,
+  business_order_number: null, order_confirmation_number: null,
+  has_tracking: false, label_available: false,
 };
 
 let server, browser;
@@ -208,9 +217,13 @@ test("die Kartenansicht zeigt Sendung, Kunde, Versand, Status, Preis vollständi
   await setupRoutes(page, { rows: [ROW_LABEL_READY] });
   await openList(page);
   const text = await page.locator(".adm-scard").first().innerText();
-  for (const erwartet of ["CE-BS26-00042", "Muster Logistik und Spedition GmbH", "CE-K-10002", "UPS", "Paketshop", "Label bereit", "8,90"]) {
+  for (const erwartet of ["CE-AB26-00042", "Muster Logistik und Spedition GmbH", "CE-K-10002", "UPS", "Paketshop", "Label bereit", "8,90"]) {
     assert.ok(text.includes(erwartet), `Kartenansicht ohne „${erwartet}"`);
   }
+  // Gegenprobe: die Zeile trägt beide Nummern. Sichtbar ist ausschließlich CE-AB —
+  // die interne Bestellnummer darf in der Karte nicht auftauchen.
+  assert.ok(!text.includes("CE-BS26-00042"),
+    "die Kartenansicht zeigt wieder die interne Bestellnummer");
   await page.close();
 });
 

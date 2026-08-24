@@ -439,7 +439,7 @@ export default function AdminInvoiceDetailPage() {
             {shipment.linked ? (
               <>
                 <KV items={[
-                  [NUMBER_LABELS.businessOrder, shipment.orderNumberKnown
+                  [NUMBER_LABELS.orderConfirmation, shipment.orderNumberKnown
                     ? <span className="adm-mono">{shipment.orderNumber}</span>
                     : <span className="adm-muted">{SHIPMENT_NO_ORDER_NUMBER}</span>],
                   ["Carrier", shipment.carrier ? resolveCarrierName(shipment.carrier) : "—"],

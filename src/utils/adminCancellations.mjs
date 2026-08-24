@@ -92,11 +92,12 @@ function normalizeShipment(raw, root) {
     carrier: firstOf(s, "carrier", "selected_carrier", "carrier_name") ?? firstOf(root, "carrier"),
     serviceType: firstOf(s, "service_type", "serviceType", "service") ?? firstOf(root, "service_type", "serviceType"),
     status: firstOf(s, "status", "state"),
-    // Geschäftliche Sendungskennung. `orderNumber` ist die vom Listen-/Detailvertrag
-    // gelieferte JUMiNGO-Ordernummer; `businessOrderNumber` die interne Bestellnummer,
-    // falls sie ein Endpunkt mitliefert. Es wird NIE eine Nummer aus der ID gebildet.
+    // Sichtbare Sendungskennung: die Auftragsbestätigungsnummer (CE-AB…).
+    // `orderNumber` ist die JUMiNGO-Ordernummer — ein ausdrücklich PROVIDERinterner
+    // Diagnosewert, der NIE als Ersatz für die frühere Sendungsnummer angezeigt wird.
+    // Es wird NIE eine Nummer aus der ID gebildet.
+    orderConfirmationNumber: firstOf(s, "orderConfirmationNumber", "order_confirmation_number"),
     orderNumber: firstOf(s, "orderNumber", "order_number"),
-    businessOrderNumber: firstOf(s, "businessOrderNumber", "business_order_number"),
     price: firstOf(s, "price_final", "price_gross", "priceGross", "price"),
     fromCountry: firstOf(s, "from_country", "fromCountry", "origin_country"),
     toCountry: firstOf(s, "to_country", "toCountry", "destination_country"),
@@ -258,7 +259,7 @@ export const CANCELLATION_DECISION_DIALOG = Object.freeze({
 });
 
 // ── Liste: Anzeige-Helfer ────────────────────────────────────────────────────
-export const CANCELLATION_NO_ORDER_NUMBER = "Ohne Bestellnummer";
+export const CANCELLATION_NO_ORDER_NUMBER = "Ohne Vorgangsnummer";
 export const CANCELLATION_UNKNOWN_CUSTOMER = "Kunde nicht auflösbar";
 
 // Fachliche Kennung einer Anfrage — „Anfrage #123", die technische ID bleibt sekundär.
@@ -283,7 +284,9 @@ export function cancellationCustomerCell(row) {
 // → { primary, secondary, known, id }
 export function cancellationShipmentCell(row) {
   const s = (row && row.shipment) || {};
-  const number = s.businessOrderNumber || s.orderNumber || "";
+  // NUR die CE-Vorgangsnummer. Der frühere Rückfall auf s.orderNumber zeigte eine
+  // JUMiNGO-Referenz als primären Identifier — genau das darf nicht mehr passieren.
+  const number = s.orderConfirmationNumber || "";
   const from = s.fromCountry ? String(s.fromCountry).toUpperCase() : "";
   const to = s.toCountry ? String(s.toCountry).toUpperCase() : "";
   const route = from || to ? `${from || "?"} → ${to || "?"}` : "";

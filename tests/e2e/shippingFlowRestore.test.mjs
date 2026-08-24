@@ -90,8 +90,15 @@ async function setupRoutes(ziel) {
       });
     }
     if (p.endsWith("/book")) {
+      // Die Buchungsantwort trägt seit der Nummernumstellung die Auftragsbestätigungs-
+      // nummer (CE-AB…) — das ist der Wert, den der Erfolgsbildschirm anzeigt.
+      // `businessOrderNumber` und `orderNumber` bleiben bewusst im Mock stehen: sie
+      // tragen hier denselben String "CE-1001", und ein Rückfall auf die interne
+      // Bestellnummer ODER die JUMiNGO-Ordernummer wäre damit unten in EINER
+      // Gegenprobe sichtbar.
       return json({
-        shipmentId: 4711, businessOrderNumber: "CE-1001", invoiceNumber: "CE-RE26-00001",
+        shipmentId: 4711, orderConfirmationNumber: "CE-AB26-00001",
+        businessOrderNumber: "CE-1001", invoiceNumber: "CE-RE26-00001",
         orderNumber: "CE-1001", trackingNumber: "TRK-1", status: "booked",
       });
     }
@@ -537,12 +544,18 @@ test("12 — erfolgreiche Buchung löscht den Vorgang, der Erfolgsbildschirm ble
     text: document.body.innerText,
     speicher: (() => { try { return sessionStorage.getItem(k); } catch { return null; } })(),
   }), SPEICHER);
-  if (!/CE-1001|gebucht|erfolgreich/i.test(nachher.text)) { await ctx.close(); return; }
+  if (!/CE-AB26-00001|gebucht|erfolgreich/i.test(nachher.text)) { await ctx.close(); return; }
   assert.equal(nachher.speicher, null, "nach der Buchung liegt der Vorgang noch im Speicher");
   // Der Erfolgsbildschirm lebt aus `booking`, nicht aus dem gelöschten Vorgang:
-  // Geschäftsnummer und Rechnungsnummer müssen weiterhin dastehen.
-  assert.ok(nachher.text.includes("CE-1001"), "die Geschäftsnummer wurde zu früh entfernt");
+  // Vorgangsnummer und Rechnungsnummer müssen weiterhin dastehen. Sichtbare
+  // Vorgangsnummer ist die Auftragsbestätigung (CE-AB…).
+  assert.ok(nachher.text.includes("CE-AB26-00001"), "die Vorgangsnummer wurde zu früh entfernt");
   assert.ok(nachher.text.includes("CE-RE26-00001"), "die Rechnungsnummer wurde zu früh entfernt");
+  // Gegenprobe: "CE-1001" steht im Mock sowohl als interne Bestellnummer als auch als
+  // JUMiNGO-Ordernummer. Erscheint der String, ist der Erfolgsbildschirm auf eine der
+  // beiden zurückgefallen — beides ist ausgeschlossen.
+  assert.ok(!nachher.text.includes("CE-1001"),
+    "der Erfolgsbildschirm fällt auf die interne Bestellnummer oder die Providerreferenz zurück");
 
   // Und „Neue Sendung" vom Erfolgsbildschirm startet leer.
   // NICHT `.nitem`: der gleichnamige Sidebar-Eintrag liegt in einer

@@ -52,7 +52,11 @@ export function shipmentFields(row) {
     trackingStatus: str(firstDefined(r.tracking_status, r.trackingStatus)),
     hasTracking: firstDefined(r.has_tracking, r.hasTracking) === true,
     labelAvailable: firstDefined(r.label_available, r.labelAvailable) === true,
-    // Geschäftsnummer — ausschließlich aus dem fachlichen Feld, nie aus der ID.
+    // Sichtbare Vorgangsnummer (CE-AB…) — ausschließlich aus dem fachlichen Feld,
+    // nie aus der ID und nie aus einer Providerreferenz.
+    orderConfirmationNumber: str(firstDefined(r.order_confirmation_number, r.orderConfirmationNumber)),
+    // Interne Legacy-Referenz (CE-BS…). Bleibt für den technischen Adminbereich
+    // erhalten, ist aber NICHT mehr der sichtbare Geschäftsidentifier.
     businessOrderNumber: str(firstDefined(r.business_order_number, r.businessOrderNumber)),
     maskedTracking: str(firstDefined(r.masked_tracking_number, r.maskedTrackingNumber)),
     maskedJumingoId: str(firstDefined(r.masked_jumingo_shipment_id, r.maskedJumingoShipmentId)),
@@ -64,18 +68,19 @@ export function shipmentFields(row) {
 }
 
 // ── Sendungskennung („Sendung"-Spalte) ──────────────────────────────────────
-// Primär die INTERNE Bestellnummer (CE-BS…). Fehlt sie, wird KEINE Nummer
-// erfunden und auch keine aus der ID abgeleitet — stattdessen ein ehrlicher,
-// nicht irreführender Zustand.
+// Primär die Auftragsbestätigungsnummer (CE-AB…) — die sichtbare CE-Vorgangsnummer.
+// Fehlt sie, wird KEINE Nummer erfunden, keine aus der ID abgeleitet und
+// ausdrücklich NICHT auf die interne Bestellnummer (CE-BS…) oder eine
+// JUMiNGO-Referenz zurückgefallen — stattdessen ein ehrlicher Zustand.
 //
 // → { primary, kind }
-//   kind: "order_number" | "draft" | "missing"
+//   kind: "order_confirmation" | "draft" | "missing"
 export function shipmentIdentity(row) {
   const f = shipmentFields(row);
-  if (f.businessOrderNumber) return { primary: f.businessOrderNumber, kind: "order_number" };
+  if (f.orderConfirmationNumber) return { primary: f.orderConfirmationNumber, kind: "order_confirmation" };
   if (f.status === "draft") return { primary: "Entwurf", kind: "draft" };
-  // Gebuchte Alt-Sendungen aus der Zeit vor der Bestellnummern-Einführung.
-  return { primary: "Ohne Bestellnummer", kind: "missing" };
+  // Gebuchte Sendungen aus der Zeit vor Einführung der Auftragsbestätigung.
+  return { primary: "Ohne Vorgangsnummer", kind: "missing" };
 }
 
 // ── Kunde ───────────────────────────────────────────────────────────────────

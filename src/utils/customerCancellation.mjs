@@ -135,18 +135,27 @@ export function readErrorCode(body) {
 }
 
 // Kurzes, PII-armes Label zur Sendungsidentifikation im Dialog: eigene
-// Referenznummer bevorzugt, sonst die ConfidaraExpress-Bestellnummer (CE-BS…).
+// Referenznummer bevorzugt, sonst die Auftragsbestätigungsnummer (CE-AB…).
 // Nie Adressen.
 //
 // Vorher stand hier ersatzweise die maskierte jumingo_shipment_id (letzte vier
 // Zeichen). Das war eine Providerreferenz in kundensichtbarem Text — maskiert,
 // aber trotzdem eine fremde ID, die der Kunde nirgends wiederfindet. Die
-// Bestellnummer ist der Wert, den er in Sendungsliste, E-Mail und Rechnung
-// ohnehin sieht. Alt-Sendungen ohne Bestellnummer tragen kein Kürzel; der
+// Auftragsbestätigungsnummer ist der Wert, den er in Sendungsliste, E-Mail und
+// Rechnung ohnehin sieht. Sendungen ohne diese Werte tragen kein Kürzel; der
 // Dialog nennt die Sendung dann ohne Nummer, statt eine fremde ID zu zeigen.
 export function shipmentDialogLabel(shipment) {
   if (!shipment) return "";
-  for (const value of [shipment.reference_number, shipment.business_order_number]) {
+  // Reihenfolge: die EIGENE Referenz des Kunden zuerst (er erkennt sie am schnellsten),
+  // dann die Auftragsbestätigungsnummer (CE-AB…), dann die Trackingnummer, sofern sie
+  // bereits vorliegt. Ausdrücklich NICHT: die interne Bestellnummer (CE-BS…), die
+  // Shipment-ID oder eine JUMiNGO-Referenz. Trägt die Sendung keinen dieser Werte,
+  // nennt der Dialog sie ohne Nummer — statt eine fremde ID zu zeigen.
+  for (const value of [
+    shipment.reference_number,
+    shipment.order_confirmation_number ?? shipment.orderConfirmationNumber,
+    shipment.tracking_number ?? shipment.trackingNumber,
+  ]) {
     if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
   }
   return "";

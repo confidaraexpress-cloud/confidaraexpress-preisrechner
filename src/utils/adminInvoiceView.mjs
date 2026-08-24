@@ -304,13 +304,17 @@ export function customerCell(row) {
 // Es wird KEINE Nummer erfunden. Fehlt die Bestellnummer, wird der Bestandsfall
 // ehrlich benannt.
 // → { linked, shipmentId, orderNumber, orderNumberKnown, carrier, route, status, packages }
-export const SHIPMENT_NO_ORDER_NUMBER = "Bestandsrechnung ohne Bestellnummer";
+// `orderNumber` trägt die AUFTRAGSBESTÄTIGUNGSNUMMER (CE-AB…) der verknüpften Sendung —
+// die sichtbare Vorgangsnummer. Die interne Bestellnummer (CE-BS…) wird hier bewusst
+// NICHT mehr gelesen: sie bleibt technisch bestehen, hat aber keine Anzeigerolle mehr.
+// Der Feldname bleibt `orderNumber`, damit der Vertrag der Seite unverändert bleibt.
+export const SHIPMENT_NO_ORDER_NUMBER = "Bestandsrechnung ohne Vorgangsnummer";
 
 export function linkedShipment(row) {
   const r = row && typeof row === "object" ? row : {};
   const shipmentId = firstDefined(r.shipment_id, r.shipmentId) ?? null;
   const orderNumber = str(firstDefined(
-    r.business_order_number, r.businessOrderNumber, r.shipment_business_order_number, r.shipmentBusinessOrderNumber));
+    r.shipment_order_confirmation_number, r.shipmentOrderConfirmationNumber));
   const from = str(firstDefined(r.shipment_from_country, r.shipmentFromCountry)).toUpperCase();
   const to = str(firstDefined(r.shipment_to_country, r.shipmentToCountry)).toUpperCase();
   const packages = numOrNull(firstDefined(r.shipment_package_count, r.shipmentPackageCount));

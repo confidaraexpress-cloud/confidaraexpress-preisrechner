@@ -66,6 +66,9 @@ const BOOKED = {
   from_country: "DE", to_country: "GB", price_final: "49.25", package_count: 1,
   created_at: "2026-07-20T10:00:00.000Z", tracking_status: "in_transit",
   has_tracking: true, label_available: true, business_order_number: "CE-BS26-00042",
+  // CE-AB… ist die sichtbare Vorgangsnummer; CE-BS… steht bewusst daneben, damit
+  // belegbar ist, dass die Kennung NICHT auf sie zurückfällt.
+  order_confirmation_number: "CE-AB26-00042",
   masked_tracking_number: "••••6784", masked_jumingo_shipment_id: "••••8877",
   customer_company: "Borner Spedition GmbH", customer_number: "CE-K-10031",
 };
@@ -103,18 +106,21 @@ test("1 — Felder werden nur aus erlaubten Schlüsseln gelesen", () => {
   assert.equal(empty.hasTracking, false);
 });
 
-test("2 — die Sendungskennung nutzt die Bestellnummer, erfindet aber nie eine", () => {
-  assert.deepEqual(shipmentIdentity(BOOKED), { primary: "CE-BS26-00042", kind: "order_number" });
+test("2 — die Sendungskennung nutzt die Auftragsbestätigung, erfindet aber nie eine", () => {
+  assert.deepEqual(shipmentIdentity(BOOKED), { primary: "CE-AB26-00042", kind: "order_confirmation" });
+  // Die interne Bestellnummer ist KEIN Ersatz — auch nicht, wenn sie vorliegt.
+  assert.deepEqual(shipmentIdentity({ status: "booked", business_order_number: "CE-BS26-00042" }),
+    { primary: "Ohne Vorgangsnummer", kind: "missing" });
   // Entwurf ohne Nummer → ehrlicher Zustand statt „—" oder erfundener Nummer.
   assert.deepEqual(shipmentIdentity(DRAFT), { primary: "Entwurf", kind: "draft" });
   // Gebuchte Alt-Sendung ohne Nummer → ebenfalls ehrlich benannt.
-  assert.deepEqual(shipmentIdentity(LEGACY), { primary: "Ohne Bestellnummer", kind: "missing" });
+  assert.deepEqual(shipmentIdentity(LEGACY), { primary: "Ohne Vorgangsnummer", kind: "missing" });
   // Nie aus der internen ID abgeleitet.
   for (const row of [DRAFT, LEGACY]) {
     assert.equal(shipmentIdentity(row).primary.includes(String(row.id)), false,
       "die interne ID darf nie als Nummer erscheinen");
   }
-  assert.equal(/CE-BS\$\{|`CE-BS/.test(viewSrc), false, "keine Nummer im Code konstruiert");
+  assert.equal(/CE-BS\$\{|`CE-BS|CE-AB\$\{|`CE-AB/.test(viewSrc), false, "keine Nummer im Code konstruiert");
 });
 
 test("3 — der Kunde wird fachlich dargestellt, nie als user_id", () => {

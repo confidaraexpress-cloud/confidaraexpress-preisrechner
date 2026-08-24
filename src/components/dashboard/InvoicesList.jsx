@@ -17,7 +17,7 @@ import {
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
 } from "../../utils/customerInvoiceView.mjs";
-import { businessOrderNumberOf } from "../../utils/businessNumbers.mjs";
+import { orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 
 // Rechnungsliste (Kunde) — Phase 5: Forderungsklassifizierung, sechs fachliche
 // Bereiche, Premium-Statussystem, mobile Kartenansicht, lokale Filter.
@@ -71,11 +71,13 @@ function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
 
 // ── Zellen (gemeinsam für Desktop-Tabelle und Mobilkarte genutzt) ──────────
 function InvoiceNumberBlock({ inv }) {
-  const order = businessOrderNumberOf(inv);
+  // Vorgangsbezug der Rechnung: die Auftragsbestätigungsnummer (CE-AB…) aus dem
+  // eingefrorenen Leistungs-Snapshot. Kein Rückfall auf die interne Bestellnummer.
+  const order = orderConfirmationNumberOf(inv);
   return (
     <div className="inv-cell-number">
       <span className="inv-cell-number-value">{inv.invoice_number}</span>
-      <span className="inv-cell-order">{order || "Bestellung nicht hinterlegt"}</span>
+      <span className="inv-cell-order">{order || "Ohne Vorgangsnummer"}</span>
     </div>
   );
 }

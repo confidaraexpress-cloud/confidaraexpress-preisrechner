@@ -4,7 +4,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
-import { customerShipmentNumbers, NOT_ASSIGNED_TEXT } from "../../utils/businessNumbers.mjs";
+import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT } from "../../utils/businessNumbers.mjs";
 import { notificationSubline, relativeTime } from "../../utils/notificationsView.mjs";
 import { recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
 
@@ -77,7 +77,7 @@ export function RecentShipments({ shipments, loading, onAll, onOpen }) {
                 <li className="ov-list-row" key={s.id}>
                   <div className="ov-list-main">
                     <span className="ov-list-primary mono">
-                      {nums.businessOrderNumber || NOT_ASSIGNED_TEXT}
+                      {nums.orderConfirmationNumber || NO_ORDER_CONFIRMATION_TEXT}
                     </span>
                     <span className="ov-list-secondary">
                       {s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "Carrier offen"}

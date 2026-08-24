@@ -7,6 +7,7 @@ import { getAdminCancellationRequest, updateAdminCancellationRequest } from "../
 import { money } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { serviceLabel, shipmentStatusMeta } from "../../utils/adminShipments";
+import { NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import {
   cancellationStatusMeta,
   cancellationStatusOptions,
@@ -370,7 +371,7 @@ export default function AdminCancellationRequestDetailPage() {
           <div className="adm-card-head"><Icon n="package" s={17} /> Sendung</div>
           <div className="adm-card-body">
             <KV items={[
-              ["Bestellnummer", ship.known
+              [NUMBER_LABELS.orderConfirmation, ship.known
                 ? <span className="adm-mono">{ship.primary}</span>
                 : <span className="adm-muted">{ship.primary}</span>],
               ["Carrier", req.shipment?.carrier ? resolveCarrierName(req.shipment.carrier) : "—"],

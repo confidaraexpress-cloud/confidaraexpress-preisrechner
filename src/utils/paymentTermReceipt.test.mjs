@@ -108,15 +108,18 @@ test("(B3) das Modul rechnet KEIN Fälligkeitsdatum", () => {
 
 // ── C. Was NICHT angefasst wurde ────────────────────────────────────────────
 
-test("(C1) die AGB-Klausel bleibt unverändert — PHASE-4-LIVE-GATE", () => {
-  // §1 des Auftrags: Rechtstexte werden in diesem Paket ausdrücklich NICHT umgeschrieben.
-  // Die Klausel nennt weiterhin ein abweichendes Zahlungsziel; der Widerspruch zwischen
-  // Oberfläche/Beleg (7 Tage nach Erhalt) und AGB (28 Tage nach Rechnungsdatum) ist bekannt
-  // und muss VOR dem Livegang juristisch aufgelöst werden. Dieser Test hält den Zustand
-  // fest, damit die Klausel nicht unbemerkt und ohne Rechtsprüfung mitwandert.
-  const agb = read("pages/AGBPage.jsx");
-  assert.ok(/28 Tagen<\/strong> nach Rechnungsdatum/.test(agb.replace(/\s+/g, " ")),
-    "die AGB-Klausel wurde verändert — das gehört in eine eigene, rechtlich geprüfte Phase");
+test("(C1) die AGB-Zahlungsklausel deckt sich mit der Geschäftsregel", () => {
+  // In Phase 3 stand hier das Gegenteil: die Klausel MUSSTE unverändert bleiben, weil ein
+  // Rechtstext nicht nebenbei umgeschrieben wird. Phase 4 hat die Angleichung ausdrücklich
+  // beauftragt — geändert wurde ausschließlich der Zahlungsparameter (28 → 7 Tage,
+  // Rechnungsdatum → Rechnungserhalt), keine andere Klausel.
+  const agb = read("pages/AGBPage.jsx").replace(/\s+/g, " ");
+  assert.ok(/7 Tagen<\/strong> rein netto nach Rechnungserhalt/.test(agb),
+    "die AGB-Klausel nennt nicht die geltende Zahlungsregel");
+  assert.ok(!/28 Tagen/.test(agb), "die alte 28-Tage-Regel steht noch in den AGB");
+  assert.ok(!/nach Rechnungsdatum ohne Abzug/.test(agb), "der alte Fristbeginn steht noch in den AGB");
+  // Ein Rechtstext ist versionierter STATISCHER Text, kein UI-Formatter: er darf sich nie aus
+  // der Anzeigequelle speisen, sonst änderte eine UI-Anpassung stillschweigend die AGB.
   assert.ok(!/paymentTerm\.mjs/.test(agb), "die AGB dürfen nicht aus der UI-Quelle gespeist werden");
 });
 

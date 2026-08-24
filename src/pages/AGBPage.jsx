@@ -255,9 +255,9 @@ export default function AGBPage() {
               </p>
               <p style={P_STYLE}>
                 <strong>5.5</strong> Soweit keine abweichende individuelle Vereinbarung getroffen wurde,
-                sind Rechnungen innerhalb von <strong>28 Tagen</strong> nach Rechnungsdatum ohne Abzug
-                fällig. Individuell vereinbarte Zahlungsziele bleiben unberührt. Eine Skontogewährung
-                findet nicht statt, sofern nicht schriftlich abweichend vereinbart.
+                sind Rechnungen innerhalb von <strong>7 Tagen</strong> rein netto nach Rechnungserhalt
+                ohne Abzug fällig. Individuell vereinbarte Zahlungsziele bleiben unberührt. Eine
+                Skontogewährung findet nicht statt, sofern nicht schriftlich abweichend vereinbart.
               </p>
               <p style={P_STYLE}>
                 <strong>5.6</strong> Bei Zahlungsverzug ist Confidara Express berechtigt, Verzugszinsen in

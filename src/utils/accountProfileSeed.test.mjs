@@ -103,9 +103,18 @@ test("B1b der Ausgangszustand trägt gar kein Land mehr", () => {
   const leer = createEmptyShipmentForm();
   assert.equal(leer.s_country, "", "Absenderland ist vorbelegt");
   assert.equal(leer.r_country, "", "Empfängerland ist vorbelegt");
-  // Und wirklich JEDES Feld ist leer — kein Rest eines alten Defaults.
-  for (const [k, v] of Object.entries(leer))
+  // Und wirklich jedes ANDERE Feld ist leer — kein Rest eines alten Defaults.
+  //
+  // Die Paketanzahl ist die einzige bewusste Vorgabe des Ausgangszustands (Normalfall 1,
+  // siehe PACKAGE_COUNT_DEFAULT in newShipmentForm.mjs). Sie steht hier als benannte
+  // Ausnahme statt die Prüfung zu lockern: ein zweites vorbelegtes Feld — und damit auch
+  // jedes zurückkehrende Land — fällt weiterhin sofort auf.
+  const VORBELEGT = new Set(["packageCount"]);
+  for (const [k, v] of Object.entries(leer)) {
+    if (VORBELEGT.has(k)) continue;
     assert.equal(v, "", `Feld ${k} startet nicht leer (${JSON.stringify(v)})`);
+  }
+  assert.equal(leer.packageCount, "1", "die Paketanzahl trägt nicht ihre Vorgabe");
 });
 
 test("B2 der Versandkostenrechner ebenso", () => {

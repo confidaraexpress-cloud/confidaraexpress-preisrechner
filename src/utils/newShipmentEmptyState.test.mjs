@@ -19,8 +19,9 @@ import { readFileSync } from "node:fs";
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageFieldError, packageErrors, packageComplete, packageHint,
-  packagePayload, packageSummaryLine, PACKAGE_FIELDS, PACKAGE_PLACEHOLDERS,
+  packagePayload, packageSummaryLine, PACKAGE_FIELDS, PACKAGE_PLACEHOLDERS, PACKAGE_COUNT_DEFAULT,
 } from "./newShipmentForm.mjs";
+import { buildResumeInitialState } from "./formDraftsView.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (code) => code
@@ -37,10 +38,20 @@ const VOLL = { packageCount: "1", weight: "5", length: "30", width: "20", height
 
 /* ══════════ TEST 1 — frisches Formular ist leer ══════════════════════════ */
 
-test("1 — jedes user-editierbare Feld startet leer", () => {
+test("1 — jedes user-editierbare Feld startet leer, nur die Anzahl trägt ihre Vorgabe", () => {
   const leer = createEmptyShipmentForm();
-  for (const [k, v] of Object.entries(leer))
+  // Die Regel ist unverändert „alles leer" — mit GENAU EINER benannten Ausnahme.
+  // Sie steht hier als Allowlist und nicht als gelockerte Prüfung: ein zweites
+  // vorbelegtes Feld fällt weiterhin sofort auf.
+  const VORBELEGT = { packageCount: PACKAGE_COUNT_DEFAULT };
+  for (const [k, v] of Object.entries(leer)) {
+    if (k in VORBELEGT) {
+      assert.equal(v, VORBELEGT[k], `${k} trägt nicht die erwartete Vorgabe`);
+      continue;
+    }
     assert.equal(v, "", `${k} startet nicht leer: ${JSON.stringify(v)}`);
+  }
+  assert.equal(PACKAGE_COUNT_DEFAULT, "1", "die Vorgabe der Paketanzahl ist nicht 1");
   // Alle erwarteten Felder sind da — ein fehlendes würde React von kontrolliert
   // auf unkontrolliert kippen lassen.
   for (const p of ["s", "r"])
@@ -113,9 +124,16 @@ test("4 — die Adressbuchauswahl bleibt für beide Seiten erhalten", () => {
 
 /* ══════════ TEST 5 — Paketfelder leer + Placeholder ══════════════════════ */
 
-test("5 — Paketfelder sind leer und tragen nur Beispiel-Placeholder", () => {
+test("5 — Maße starten leer, die Anzahl mit 1; Placeholder bleiben Beispiele", () => {
   const leer = createEmptyShipmentForm();
-  for (const k of PACKAGE_FIELDS) assert.equal(leer[k], "", `${k} ist vorbelegt`);
+  // Gewicht und Maße bleiben leer: jede Vorgabe dort wäre eine Behauptung über ein
+  // Paket, das niemand beschrieben hat. Die Anzahl ist der Sonderfall — sie hat ein
+  // echtes Minimum (eine Sendung ohne Paket gibt es nicht).
+  for (const k of PACKAGE_FIELDS) {
+    if (k === "packageCount") continue;
+    assert.equal(leer[k], "", `${k} ist vorbelegt`);
+  }
+  assert.equal(leer.packageCount, "1", "die Paketanzahl startet nicht mit 1");
   // Die Beispiele sind als solche erkennbar — eine nackte „5" in einem
   // Zahlenfeld ist von einer echten Eingabe nicht zu unterscheiden.
   assert.equal(PACKAGE_PLACEHOLDERS.packageCount, "1");
@@ -274,4 +292,66 @@ test("21 — Sidebar „Neue Sendung“ beendet den laufenden Vorgang und montie
 test("22 — der Vorgang lebt nur im Speicher (Reload startet leer)", () => {
   assert.ok(!/getItem\(|setItem\(/.test(provider), "der Provider liest oder schreibt wieder einen Speicher");
   assert.ok(/useState\(\(\) => emptyFlow\(jetzt\(\)\)\)/.test(provider), "der Provider startet nicht leer");
+});
+
+/* ══════════ TESTS 25–28 — Vorgabe der Paketanzahl ════════════════════════
+ *
+ * „Neue Sendung" startet weiterhin leer — die Anzahl ist die einzige Ausnahme
+ * und trägt ihren Normalfall 1. Die vier Prüfungen darunter halten fest, dass
+ * daraus KEIN Festwert wird und dass die Vorgabe nichts überschreibt, was der
+ * Kunde bereits gespeichert hat.
+ */
+
+test("25 — eine neue Sendung startet mit Anzahl 1 und ist damit ohne Zutun vollständig", () => {
+  const leer = createEmptyShipmentForm();
+  assert.equal(leer.packageCount, "1");
+  // Der eigentliche Zweck: eine Standardsendung braucht dieses Feld nicht mehr.
+  // Nur Gewicht und Maße fehlen noch — die Anzahl meldet keinen Fehler mehr.
+  assert.equal(packageFieldError("packageCount", leer.packageCount), null,
+    "die Vorgabe erzeugt selbst einen Feldfehler");
+  const voll = { ...leer, weight: "5", length: "30", width: "20", height: "15" };
+  assert.equal(packageComplete(voll), true,
+    "eine Standardsendung ist trotz unberührter Anzahl nicht vollständig");
+});
+
+test("26 — die Anzahl bleibt frei editierbar (Vorgabe, kein Festwert)", () => {
+  // Fachlich: andere Werte sind gültig und werden nicht auf 1 zurückgebogen.
+  for (const wert of ["2", "3", "17", "99"]) {
+    assert.equal(packageFieldError("packageCount", wert), null, `${wert} wird abgelehnt`);
+    const form = { packageCount: wert, weight: "5", length: "30", width: "20", height: "15" };
+    assert.equal(packagePayload(form).packageCount, Number(wert),
+      `${wert} kommt nicht im Payload an`);
+  }
+  // Im Markup: ein kontrolliertes Feld am gemeinsamen upd(), ohne Sperre.
+  const feld = seite.slice(seite.indexOf('id="ns-packageCount"'));
+  const bis = feld.slice(0, feld.indexOf("/>"));
+  assert.ok(/value=\{form\.packageCount\}/.test(bis), "die Anzahl ist kein kontrolliertes Feld mehr");
+  assert.ok(/onChange=\{\(v\) => upd\("packageCount", v\)\}/.test(bis), "die Eingabe läuft nicht mehr über upd()");
+  assert.ok(!/readOnly|disabled/.test(bis), "die Anzahl wurde gesperrt — sie ist eine Vorgabe, kein Festwert");
+  // Und die Grenzen sind unverändert.
+  assert.ok(/min="1"/.test(bis) && /max="99"/.test(bis) && /step="1"/.test(bis),
+    "die Eingabegrenzen der Anzahl haben sich geändert");
+});
+
+test("27 — ein gespeicherter Entwurf behält seine eigene Anzahl", () => {
+  // Der Entwurfspfad läuft über buildResumeInitialState und ist von der Vorgabe
+  // unberührt: ein Entwurf mit 3 Paketen wird mit 3 geöffnet, nicht mit 1.
+  const mit3 = buildResumeInitialState({ packages: { packageCount: 3, weight: 8 } });
+  assert.equal(mit3.form.packageCount, "3", "die Vorgabe hat den gespeicherten Wert überschrieben");
+  assert.equal(mit3.form.weight, "8");
+  // Ein Entwurf ohne Anzahl fällt auf denselben Normalfall zurück — nicht auf leer.
+  const ohne = buildResumeInitialState({ packages: { weight: 8 } });
+  assert.equal(ohne.form.packageCount, "1", "ein Entwurf ohne Anzahl startet nicht mit 1");
+});
+
+test("28 — Zurücksetzen stellt die Vorgabe wieder her, nicht ein leeres Feld", () => {
+  // resetToFreshShipment ist die gemeinsame Grundlage von „Eingaben zurücksetzen"
+  // und dem Erfolgspfad des Entwurfsspeicherns. Beide holen ihren Zustand aus
+  // derselben Fabrik — deshalb genügt hier, dass genau das im Code steht.
+  assert.ok(seite.includes("const resetToFreshShipment = () => {"), "der Zurücksetzen-Pfad fehlt");
+  const reset = seite.slice(seite.indexOf("const resetToFreshShipment = () => {"));
+  assert.ok(/const seed = leeresFormular\(\);/.test(reset.slice(0, 400)),
+    "das Zurücksetzen baut seinen Zustand nicht mehr aus dem leeren Formular");
+  // Und das leere Formular trägt die Vorgabe — damit ist der Reset mitgeprüft.
+  assert.equal(createEmptyShipmentForm().packageCount, "1");
 });

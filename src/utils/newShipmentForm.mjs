@@ -34,6 +34,19 @@ export const DIMENSION_MIN_CM = 0.1;
 export const DIMENSION_MAX_CM = 300;
 export const PACKAGE_COUNT_MAX = 99;
 
+// Vorbelegung der Paketanzahl. EIN Wert, EINE Quelle — der leere Ausgangszustand und der
+// Zurücksetzen-Pfad lesen beide hier.
+//
+// Warum die Anzahl als EINZIGES Paketfeld vorbelegt ist: sie hat einen echten Normalfall.
+// Eine Sendung besteht aus mindestens einem Paket, und „1" ist der mit Abstand häufigste
+// Wert — anders als Gewicht und Maße, wo jede Vorgabe eine Behauptung über ein Paket wäre,
+// das niemand beschrieben hat (siehe „Paketmaße sind Pflicht"). Der Kunde muss für eine
+// normale Standardsendung dieses Feld deshalb gar nicht mehr anfassen.
+//
+// Es bleibt ein VORGABEwert, kein Festwert: das Feld ist unverändert editierbar, und die
+// Prüfregeln (ganzzahlig, 1…99) sind unberührt.
+export const PACKAGE_COUNT_DEFAULT = "1";
+
 // Beispielwerte. Sie sind PLACEHOLDER und niemals Formularwerte — das „z. B."
 // steht bewusst davor: eine nackte „5" in einem Zahlenfeld ist von einer echten
 // Eingabe nicht zu unterscheiden. Bei der Anzahl genügt die „1", weil dort keine
@@ -55,12 +68,20 @@ export const PACKAGE_PLACEHOLDERS = Object.freeze({
  *
  * Das Land ist ebenfalls leer. Ein vorausgewähltes „DE" ist eine Annahme über
  * die Sendung, keine Tatsache — und beim Empfänger war sie besonders fragwürdig.
+ *
+ * GENAU EINE Ausnahme: die Paketanzahl startet mit `PACKAGE_COUNT_DEFAULT` ("1").
+ * Sie ist keine Annahme über die Sendung, sondern ihr Minimum — eine Sendung ohne
+ * Paket gibt es nicht. Alles andere bleibt leer.
  */
 export function createEmptyShipmentForm() {
   const form = {};
   for (const p of PARTY_PREFIXES)
     for (const s of PARTY_SUFFIXES) form[`${p}_${s}`] = "";
   for (const k of PACKAGE_FIELDS) form[k] = "";
+  // Einzige Ausnahme vom leeren Ausgangszustand — begründet bei PACKAGE_COUNT_DEFAULT.
+  // Sie steht NACH der Schleife, damit die Schleife die Regel „alles leer" unverändert
+  // ausspricht und die Ausnahme als solche sichtbar bleibt.
+  form.packageCount = PACKAGE_COUNT_DEFAULT;
   form.max_price = "";
   form.latestDeliveryDate = "";
   return form;

@@ -40,7 +40,7 @@ export default function AGBPage() {
 
             {/* ── Stand ── */}
             <p style={{ ...P_STYLE, color: "var(--gray400, #94a3b8)", fontSize: 13, marginBottom: 24 }}>
-              Stand: Mai 2026
+              Stand: August 2026
             </p>
 
             {/* ── Inhaltsverzeichnis ── */}

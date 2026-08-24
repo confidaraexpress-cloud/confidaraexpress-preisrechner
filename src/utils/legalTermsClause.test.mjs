@@ -53,9 +53,19 @@ test("(4) der Rechtstext ist statisch — kein UI-Formatter speist ihn", () => {
 });
 
 test("(5) der angezeigte Stand wurde NICHT eigenmächtig verändert", () => {
-  // §53 des Auftrags: keine Version und kein Wirkungsdatum erfinden. Solange keine fachlich
-  // freigegebene Zielfassung benannt ist, bleibt der bestehende Stand stehen — die Angabe
-  // ist im Abschlussbericht als manueller Schritt vermerkt.
-  assert.ok(/Stand: Mai 2026/.test(flach),
+  // Die Sperre bleibt, was sie war: ein Wirkungsdatum darf nicht ERFUNDEN werden.
+  // Sie zeigt nur auf einen anderen Wert, weil jetzt eine fachlich freigegebene
+  // Zielfassung existiert — August 2026, freigegeben zusammen mit der
+  // registrierten AGB-Fassung 2026-08 (legal/terms/2026-08 im API-Repository).
+  //
+  // Website und registrierte PDF müssen denselben Stand zeigen: die
+  // Auftragsbestätigung und die Rechnung tragen die eingefrorene PDF-Fassung,
+  // der Kunde liest denselben Text auf /agb. Liefen die beiden auseinander,
+  // gäbe es zwei Stände desselben Vertrags im Umlauf.
+  //
+  // Wer diesen Wert ändert, ändert einen veröffentlichten Rechtstext. Das ist
+  // eine fachliche Freigabe, keine Codepflege — und es gehört immer eine neue,
+  // registrierte Fassung dazu.
+  assert.ok(/Stand: August 2026/.test(flach),
     "der Stand wurde geändert — ein Wirkungsdatum darf nicht erfunden werden");
 });

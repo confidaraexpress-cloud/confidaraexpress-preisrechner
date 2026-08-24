@@ -1,4 +1,4 @@
-// Tests für die reine Erfolgsscreen-Logik nach Buchung (Buchungsbestätigung ≠ Rechnungs-E-Mail,
+// Tests für die reine Erfolgsscreen-Logik nach Buchung (Auftragsbestätigung ≠ Rechnungs-E-Mail,
 // Rechnungs-Deep-Link, Modus-Ableitung + Hinweise). Läuft über `node --test` (npm test). Kein
 // React-Render (das Repo hat keine Render-Testinfrastruktur) → Verhalten wird über reine Funktionen
 // plus einen Quelltext-Vertrag auf BookingPage.jsx abgesichert.
@@ -13,15 +13,19 @@ import {
   BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "./bookingSuccessView.mjs";
 
-// ── Trennung Buchungsbestätigung ↔ Rechnung ──────────────────────────────────
-test("1 — Buchungsbestätigung und Rechnung werden getrennt und unterschiedlich formuliert", () => {
-  assert.match(BOOKING_CONFIRMATION_LINE, /Buchungsbestätigung/);
+// ── Trennung Auftragsbestätigung ↔ Rechnung ──────────────────────────────────
+test("1 — Auftragsbestätigung und Rechnung werden getrennt und unterschiedlich formuliert", () => {
+  assert.match(BOOKING_CONFIRMATION_LINE, /Auftragsbestätigung/);
   assert.match(BOOKING_CONFIRMATION_LINE, /versendet/);
   assert.match(INVOICE_AUTOCREATE_LINE, /Rechnung/);
   assert.match(INVOICE_AUTOCREATE_LINE, /Rechnungen/); // verweist auf den Reiter
   assert.notEqual(BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE);
-  // die Buchungsbestätigungszeile behauptet NICHT, die Rechnung sei per E-Mail versendet worden
+  // die Auftragsbestätigungszeile behauptet NICHT, die Rechnung sei per E-Mail versendet worden
   assert.doesNotMatch(BOOKING_CONFIRMATION_LINE, /Rechnung/);
+  // /book löst den Mailversand nur AN (triggerOrderConfirmationEmailAsync, fire-and-forget) und
+  // wartet nicht auf eine bestätigte Zustellung — die Zeile darf deshalb nie das abgeschlossene
+  // Perfekt "wurde ... versendet" behaupten, nur das laufende Präsens.
+  assert.doesNotMatch(BOOKING_CONFIRMATION_LINE, /wurde[^.]*versendet/);
 });
 
 // ── Deep-Link „Zu meinen Rechnungen" ─────────────────────────────────────────

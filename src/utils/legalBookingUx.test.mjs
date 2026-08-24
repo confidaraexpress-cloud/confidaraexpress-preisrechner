@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  LEGAL_DOCUMENT_TYPES, LEGAL_LOADING, LEGAL_DISABLED, LEGAL_READY, LEGAL_ERROR,
+  LEGAL_REQUIRED_DOCUMENT_TYPES, LEGAL_SUPPORTED_DOCUMENT_TYPES, LEGAL_LOADING, LEGAL_DISABLED, LEGAL_READY, LEGAL_ERROR,
   LEGAL_ERROR_TEXT, LEGAL_SET_CHANGED_TEXT,
   parseBookingContext, legalLoadingContext, legalTermsDocument,
   legalGateBlocks, legalGateError, legalBookingPayload,
@@ -65,13 +65,33 @@ test("(1) enabled:false ist eine vollständige Aussage — Checkout läuft wie b
     "bei ausgeschalteter Schranke entstehen Legal-Felder im Payload");
 });
 
-test("(2) enabled:true mit vollständigem Set → drei Dokumente in fester Reihenfolge", () => {
+test("(2) enabled:true mit vollständigem Set → Dokumente in fester Reihenfolge", () => {
   assert.equal(ctxAn.state, LEGAL_READY);
   assert.equal(ctxAn.setKey, "CE-B2B-2026-08");
-  assert.deepEqual(ctxAn.documents.map((d) => d.type), LEGAL_DOCUMENT_TYPES);
-  // Auch bei umgekehrter Serverreihenfolge bleibt die Anzeige stabil.
+  // Die Fixture trägt noch alle drei Typen (historisches Set): dann werden auch alle drei
+  // angezeigt — die Reihenfolge kommt aus SUPPORTED, nicht aus der Serverantwort.
+  assert.deepEqual(ctxAn.documents.map((d) => d.type), LEGAL_SUPPORTED_DOCUMENT_TYPES);
   const gedreht = parseBookingContext(200, { ...antwortAn, documents: [...antwortAn.documents].reverse() });
-  assert.deepEqual(gedreht.documents.map((d) => d.type), LEGAL_DOCUMENT_TYPES);
+  assert.deepEqual(gedreht.documents.map((d) => d.type), LEGAL_SUPPORTED_DOCUMENT_TYPES);
+});
+
+test("(2b) ein NEUES Zwei-Dokument-Set ist vollständig — B2B wird nicht mehr verlangt", () => {
+  // Der Kern des Zwei-Dokument-Vertrags: terms + privacy genügen. Vorher ergab genau diese
+  // Antwort `error` und hätte JEDE Bestellung blockiert.
+  const zwei = antwortAn.documents.filter((d) => d.type !== "b2b_contract_information");
+  const ctx = parseBookingContext(200, { ...antwortAn, documents: zwei });
+  assert.equal(ctx.state, LEGAL_READY, "ein Zwei-Dokument-Set gilt als unbrauchbar");
+  assert.deepEqual(ctx.documents.map((d) => d.type), ["terms", "privacy"]);
+  assert.equal(legalGateBlocks(ctx), false, "die Schranke blockiert ein gültiges neues Set");
+});
+
+test("(2c) fehlt terms ODER privacy, bleibt es fail-closed", () => {
+  for (const fehlt of ["terms", "privacy"]) {
+    const rest = antwortAn.documents.filter((d) => d.type !== fehlt && d.type !== "b2b_contract_information");
+    const ctx = parseBookingContext(200, { ...antwortAn, documents: rest });
+    assert.equal(ctx.state, LEGAL_ERROR, `ohne ${fehlt} galt der Kontext als brauchbar`);
+    assert.equal(legalGateBlocks(ctx), true, `ohne ${fehlt} blockiert die Schranke nicht`);
+  }
 });
 
 test("(3) unvollständige oder kaputte Antwort → error, NIEMALS disabled", () => {
@@ -80,7 +100,7 @@ test("(3) unvollständige oder kaputte Antwort → error, NIEMALS disabled", () 
     ["500", 500, { error: "Fehler" }],
     ["kein Body", 200, null],
     ["ohne setKey", 200, { ...antwortAn, setKey: "" }],
-    ["nur zwei Dokumente", 200, { ...antwortAn, documents: antwortAn.documents.slice(0, 2) }],
+    ["nur ein Dokument", 200, { ...antwortAn, documents: antwortAn.documents.slice(0, 1) }],
     ["Dokument ohne url", 200, { ...antwortAn, documents: [{ type: "terms", version: "2026-08" }, ...antwortAn.documents.slice(1)] }],
     ["documents kein Array", 200, { enabled: true, setKey: "X", documents: "alles gut" }],
   ];
@@ -278,7 +298,10 @@ test("(20) das Frontend führt keine eigene Fassungs- oder Dokumentliste", () =>
     assert.ok(!/\d{4}-\d{2}\.pdf|AGB_ConfidaraExpress/.test(src), `${name} trägt einen Dateinamen`);
   }
   // Die Typen sind eine reine Vollständigkeits-/Reihenfolgeangabe, keine Fassungsliste.
-  assert.deepEqual(LEGAL_DOCUMENT_TYPES, ["terms", "privacy", "b2b_contract_information"]);
+  // ERFORDERLICH sind seit dem Zwei-Dokument-Vertrag genau zwei; UNTERSTÜTZT bleibt der
+  // ausgelaufene B2B-Typ, damit ein historisches Set nichts verliert.
+  assert.deepEqual(LEGAL_REQUIRED_DOCUMENT_TYPES, ["terms", "privacy"]);
+  assert.deepEqual(LEGAL_SUPPORTED_DOCUMENT_TYPES, ["terms", "privacy", "b2b_contract_information"]);
 });
 
 test("(21) die Meldung zum Fassungswechsel nennt keine Interna", () => {

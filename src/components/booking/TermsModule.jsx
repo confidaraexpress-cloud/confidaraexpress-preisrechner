@@ -14,16 +14,20 @@ import {
 // exakt aus wie bisher: dieselben zwei Checkboxen, dieselben Links auf `/agb` und
 // `/agb#paragraf-8`. Das ist der heutige Produktivzustand und bleibt unverändert.
 //
-// Mit aktiver Schranke kommt ein Block „Vertragsunterlagen" mit den drei VERSIONIERTEN
-// Dokumenten dazu, und beide Checkboxen verweisen auf die versionierte AGB-Fassung statt auf
-// die Webseite.
+// Mit aktiver Schranke kommt ein Block „Vertragsunterlagen" mit den VERSIONIERTEN Dokumenten
+// des Sets dazu, und beide Checkboxen verweisen auf die versionierte AGB-Fassung statt auf die
+// Webseite. Ein neues Set führt genau zwei: AGB und Datenschutzerklärung.
 //
-// ─── Warum Datenschutz und B2B-Information KEINE Checkbox bekommen ──────────────────────────
-// Sie werden bereitgestellt und angezeigt, nicht zugestimmt. Eine Checkbox „Ich akzeptiere die
+// Die Liste wird generisch aus `legalContext.documents` gerendert — sie zählt nichts fest ab.
+// Deshalb hat der Wechsel von drei auf zwei Pflichtdokumente an dieser Komponente nichts
+// geändert: sie zeigt, was das Set trägt.
+//
+// ─── Warum die Datenschutzerklärung KEINE Checkbox bekommt ──────────────────────────────────
+// Sie wird bereitgestellt und angezeigt, nicht zugestimmt. Eine Checkbox „Ich akzeptiere die
 // Datenschutzerklärung" würde eine Einwilligung behaupten, die es rechtlich nicht gibt und die
 // serverseitig auch nirgends gespeichert wird — es entstehen ausschließlich zwei
-// Acceptance-Zeilen (AGB + ausgeschlossene Güter). Die Zugehörigkeit dieser Informations-
-// dokumente zur Buchung belegt das eingefrorene Set, keine Zustimmung.
+// Acceptance-Zeilen (AGB + ausgeschlossene Güter). Die Zugehörigkeit des Informationsdokuments
+// zur Buchung belegt das eingefrorene Set, keine Zustimmung.
 //
 // ─── Warum die zweite Checkbox auf DASSELBE AGB-PDF zeigt ───────────────────────────────────
 // `/agb#paragraf-8` verweist auf die jeweils aktuelle Webseite. Bei aktiver Schranke wäre das

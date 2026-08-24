@@ -6,9 +6,21 @@
 // Der Server ist die einzige Autorität. Es gibt hier keine Dokumentliste, keine Version, keinen
 // Schalter und keine Ersatzfassung: Was gilt, sagt `GET /api/legal/booking-context`.
 
-// Die drei Dokumenttypen des vollständigen Sets. Fehlt einer, ist der Kontext unbrauchbar —
-// eine Bestellung mit halbem Legal-Kontext gibt es nicht.
-export const LEGAL_DOCUMENT_TYPES = Object.freeze(["terms", "privacy", "b2b_contract_information"]);
+// ZWEI Listen, wie serverseitig auch — der Unterschied ist tragend.
+//
+// REQUIRED   was ein heute gültiges Set enthalten MUSS: AGB und Datenschutzerklärung. Fehlt
+//            einer davon, ist der Kontext unbrauchbar — eine Bestellung mit halbem
+//            Legal-Kontext gibt es nicht.
+// SUPPORTED  was überhaupt vorkommen KANN, inklusive der ausgelaufenen
+//            B2B-Vertragsinformationen. Sie bestimmt allein die ANZEIGEreihenfolge: liefert
+//            der Server für ein historisches Set noch eine solche Fassung, wird sie an ihrer
+//            Stelle mit angezeigt statt stillschweigend verschluckt.
+//
+// Neue Sets tragen sie nicht mehr. Deshalb erscheint sie im heutigen Checkout auch nicht —
+// nicht, weil das Frontend sie ausblendet, sondern weil es sie nicht mehr gibt.
+export const LEGAL_REQUIRED_DOCUMENT_TYPES = Object.freeze(["terms", "privacy"]);
+export const LEGAL_SUPPORTED_DOCUMENT_TYPES =
+  Object.freeze(["terms", "privacy", "b2b_contract_information"]);
 export const LEGAL_TERMS_TYPE = "terms";
 
 // Vier Zustände, mehr braucht der Checkout nicht.
@@ -45,13 +57,15 @@ export function parseBookingContext(status, body) {
     // bereits aufgelöst, geprüft und die Integrität der Dateien bestätigt. Diese Prüfung fängt
     // eine strukturell unbrauchbare Antwort ab, sie ersetzt die serverseitige nicht.
     const typen = documents.map((d) => d && d.type);
-    const vollstaendig = LEGAL_DOCUMENT_TYPES.every((t) => typen.includes(t));
+    const vollstaendig = LEGAL_REQUIRED_DOCUMENT_TYPES.every((t) => typen.includes(t));
     const brauchbar = documents.every((d) => d && typeof d.url === "string" && d.url && d.version);
     if (!setKey || !vollstaendig || !brauchbar) {
       return { state: LEGAL_ERROR, setKey: null, documents: [] };
     }
-    // Feste Reihenfolge — unabhängig davon, wie der Server sortiert hat.
-    const sortiert = LEGAL_DOCUMENT_TYPES
+    // Feste Reihenfolge — unabhängig davon, wie der Server sortiert hat. Geordnet nach
+    // SUPPORTED, damit ein historisches Set nichts verliert; `filter(Boolean)` entfernt die
+    // Typen, die es in diesem Set gar nicht gibt (bei einem neuen Set die B2B-Fassung).
+    const sortiert = LEGAL_SUPPORTED_DOCUMENT_TYPES
       .map((t) => documents.find((d) => d.type === t))
       .filter(Boolean);
     return { state: LEGAL_READY, setKey, documents: sortiert };

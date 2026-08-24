@@ -214,8 +214,14 @@ test("(E2) die Sammelrechnung erklärt ihre sofortige Fälligkeit", () => {
   const hint = BILLING_MODE_TEXT.options.consolidated_7d.hint;
   assert.ok(/sofort fällig/i.test(hint));
   assert.ok(/Zahlungsaufschub/.test(hint), "der Grund gehört dazu, sonst wirkt es wie eine Verschärfung");
-  assert.ok(/7 Kalendertagen/.test(BILLING_MODE_TEXT.options.single.hint),
-    "die Einzelrechnung nennt weiterhin ihr unverändertes Zahlungsziel");
+  // Die DAUER des Zahlungsziels ist unverändert 7 Tage; geändert hat sich allein der
+  // Bezugspunkt — die Frist läuft ab Rechnungserhalt statt ab Rechnungsdatum.
+  const einzel = BILLING_MODE_TEXT.options.single.hint;
+  assert.ok(/7 Tagen/.test(einzel), "die Einzelrechnung nennt weiterhin ihr Zahlungsziel");
+  assert.ok(/nach Rechnungserhalt/.test(einzel), "der Fristbeginn fehlt");
+  assert.ok(!/nach Rechnungsdatum/.test(einzel), "der alte Fristbeginn steht noch");
+  // Auch die Sammelrechnung bezieht ihre sofortige Fälligkeit auf den Erhalt.
+  assert.ok(/Rechnungserhalt/.test(hint), "die Sammelrechnung nennt den Bezugspunkt nicht");
 });
 
 // ── F. Adminportal ───────────────────────────────────────────────────────────

@@ -1,5 +1,11 @@
 import React from "react";
 import { money } from "../../utils/formatters";
+import { paymentTermSentence } from "../../utils/paymentTerm.mjs";
+
+// Der Satz steht hier als drittes Glied einer Aufzählung und beginnt deshalb klein. Nur der
+// ERSTE Buchstabe wird herabgesetzt — ein volles toLowerCase() zerstörte im Deutschen die
+// Substantivgroßschreibung („7 tagen rein netto nach rechnungserhalt").
+const lowerFirst = (s) => (typeof s === "string" && s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 // Preisaufschlüsselung im Bestätigungsschritt — REINE DARSTELLUNG. Alle Beträge
 // stammen aus dem zentralen Price-View-Model (bookingPriceView) — dieselbe Quelle
@@ -113,7 +119,7 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
       )}
 
       <p className="booking-payment-note">
-        inkl. 19 % MwSt. auf Versand · Zahlung auf Rechnung · zahlbar innerhalb von {paymentTerm} Tagen
+        inkl. 19 % MwSt. auf Versand · Zahlung auf Rechnung · {lowerFirst(paymentTermSentence(paymentTerm))}
       </p>
     </>
   );

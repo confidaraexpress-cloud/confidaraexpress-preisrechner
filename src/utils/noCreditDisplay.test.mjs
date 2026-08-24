@@ -70,11 +70,15 @@ test("3 — die Karte heißt „Aktivität und Zahlung“ (nicht mehr „Zahlung
 // ─── 4.–7. Debitoreninformationen bleiben sichtbar ────────────────────────────
 
 test("4 — Zahlungsziel bleibt sichtbar", () => {
-  // Es beträgt für ALLE Kunden sieben Kalendertage — deshalb steht es einmal im
-  // Kundendetail und nicht mehr in jeder Zeile der Liste.
+  // Es beträgt für ALLE Kunden sieben Tage — deshalb steht es einmal im Kundendetail
+  // und nicht mehr in jeder Zeile der Liste.
   assert.match(userDetailSrc, /<Stat label="Zahlungsziel" value=\{PAYMENT_TERM_TEXT\} text \/>/);
+  // Der Wortlaut kommt aus der EINEN zentralen Quelle, nicht aus einem Literal in der
+  // Adminansicht — sonst driftet er beim nächsten Mal wieder von Profil und Beleg weg.
   const viewSrc = read("utils/adminCustomerView.mjs");
-  assert.match(viewSrc, /export const PAYMENT_TERM_TEXT = "7 Kalendertage";/);
+  assert.match(viewSrc, /export const PAYMENT_TERM_TEXT = paymentTermLabel\(PAYMENT_TERM_DAYS\);/);
+  assert.ok(!/PAYMENT_TERM_TEXT = "/.test(viewSrc), "der Wortlaut steht wieder als Literal dort");
+  assert.match(viewSrc, /from "\.\/paymentTerm\.mjs"/);
   assert.equal(/<th[^>]*>Zahlungsziel<\/th>/.test(usersListSrc), false,
     "in der Liste ist die Spalte bewusst entfallen (für alle Kunden identisch)");
 });

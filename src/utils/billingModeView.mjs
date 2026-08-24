@@ -10,6 +10,8 @@
 // in WELCHEM Beleg der Betrag erscheint. Das Frontend berechnet dabei nichts und
 // entscheidet nichts — jede Zahl und jeder Zeitraum kommt vom Server.
 
+import { PAYMENT_TERM_DAYS, paymentTermSentence } from "./paymentTerm.mjs";
+
 export const BILLING_MODES = ["single", "consolidated_7d"];
 export const DEFAULT_BILLING_MODE = "single";
 
@@ -43,11 +45,13 @@ export const BILLING_MODE_TEXT = {
   options: {
     single: {
       label: "Einzelrechnung je Sendung",
-      hint: "Für jede gebuchte Sendung erhalten Sie sofort eine eigene Rechnung, zahlbar innerhalb von 7 Kalendertagen.",
+      // Der Zahlungszielsatz kommt aus der EINEN zentralen Quelle — er nennt seit dem Wechsel
+      // des Bezugspunkts auch, ab wann die Frist läuft (Rechnungserhalt, nicht Rechnungsdatum).
+      hint: `Für jede gebuchte Sendung erhalten Sie sofort eine eigene Rechnung. ${paymentTermSentence(PAYMENT_TERM_DAYS)}.`,
     },
     consolidated_7d: {
       label: "Sammelrechnung alle 7 Tage",
-      hint: "Ihre Sendungen werden über einen Zeitraum von 7 Tagen gesammelt und am Folgetag in einer Rechnung zusammengefasst. Diese Rechnung ist sofort fällig — den Zahlungsaufschub haben Sie bereits durch den Sammelzeitraum.",
+      hint: "Ihre Sendungen werden über einen Zeitraum von 7 Tagen gesammelt und am Folgetag in einer Rechnung zusammengefasst. Diese Rechnung ist mit Rechnungserhalt sofort fällig — den Zahlungsaufschub haben Sie bereits durch den Sammelzeitraum.",
     },
   },
   // Steht als ruhiger Hinweis unter der Auswahl, nicht als Warnung: die Umstellung ist

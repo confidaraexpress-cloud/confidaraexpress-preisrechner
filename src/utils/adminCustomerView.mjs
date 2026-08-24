@@ -9,7 +9,8 @@
 // GESCHÄFTSREGELN (unverändert, hier nur abgebildet):
 //   • ConfidaraExpress ist reines B2B — es gibt keine Privatkunden.
 //   • Es gibt KEIN Kreditlimit und KEINE automatische Sperrung bei Zahlungsverzug.
-//   • Das Zahlungsziel beträgt für alle Kunden sieben Kalendertage.
+//   • Das Zahlungsziel beträgt für alle Kunden sieben Tage NACH RECHNUNGSERHALT
+//     (nicht nach Rechnungsdatum). Der Wortlaut kommt aus utils/paymentTerm.mjs.
 //   • Offene/überfällige Rechnungen blockieren Buchungen NICHT automatisch; ein
 //     Kunde wird ausschließlich manuell durch einen Admin blockiert.
 //   • Vor jeder echten Transition nach „approved" muss ein individueller
@@ -20,6 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { isApprovalBlocked, missingB2BAccountFields } from "./b2bAccount.mjs";
+import { PAYMENT_TERM_DAYS, paymentTermLabel } from "./paymentTerm.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -268,7 +270,9 @@ export function markupRequirementText(status) {
 // EINE Quelle für die Debitorenwerte — sie standen bisher doppelt in „Zahlung"
 // und „Aggregierte Kennzahlen". Reine Information: kein Kreditlimit, keine
 // automatische Sperre, kein individuelles Zahlungsziel.
-export const PAYMENT_TERM_TEXT = "7 Kalendertage";
+// Der Wortlaut kommt aus der EINEN zentralen Quelle. Er nennt seit dem Wechsel des
+// Bezugspunkts auch, WOVON gezählt wird: vom Rechnungserhalt, nicht vom Rechnungsdatum.
+export const PAYMENT_TERM_TEXT = paymentTermLabel(PAYMENT_TERM_DAYS);
 
 export function activityMetrics(summary) {
   const s = summary && typeof summary === "object" ? summary : {};

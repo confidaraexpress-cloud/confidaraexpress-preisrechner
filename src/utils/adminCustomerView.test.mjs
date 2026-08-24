@@ -352,7 +352,9 @@ test("20 — überfällige Rechnungen lösen keine automatische Sperre aus", () 
   assert.equal(/hasOverdue[\s\S]{0,200}setAdminUserStatus/.test(detailSrc), false);
   assert.equal(/invoices_overdue[\s\S]{0,200}blocked/.test(detailSrc), false);
   // Und das Zahlungsziel ist für alle Kunden identisch.
-  assert.equal(PAYMENT_TERM_TEXT, "7 Kalendertage");
+  // Seit dem Wechsel des Bezugspunkts nennt der Text auch, WOVON gezählt wird.
+  assert.equal(PAYMENT_TERM_TEXT, "7 Tage nach Rechnungserhalt");
+  assert.ok(!/Rechnungsdatum/.test(PAYMENT_TERM_TEXT));
   assert.equal(/individuelle[sn]? Zahlungsziel/i.test(detailSrc), false);
 });
 

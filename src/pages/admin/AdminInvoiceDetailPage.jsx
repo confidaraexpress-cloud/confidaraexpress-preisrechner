@@ -10,6 +10,7 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { downloadAdminInvoicePdf, fetchAdminInvoicePdf } from "../../utils/downloadInvoicePdf";
 import { InvoicePdfPreviewModal } from "../../components/dashboard/InvoicePdfPreviewModal";
 import { NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { paymentTermLabel } from "../../utils/paymentTerm.mjs";
 import { shipmentStatusMeta } from "../../utils/adminShipments";
 import {
   DOCUMENT_ERROR_NOTE,
@@ -369,7 +370,10 @@ export default function AdminInvoiceDetailPage() {
               [amounts.vatRate != null ? `Umsatzsteuer (${String(amounts.vatRate).replace(".", ",")} %)` : "Umsatzsteuer", moneyOrDash(amounts.vat)],
               ["Brutto", moneyOrDash(amounts.gross)],
               ["Währung", dash(amounts.currency)],
-              ["Zahlungsziel", amounts.paymentTerm != null ? `${amounts.paymentTerm} Kalendertage` : "—"],
+              // Der Wortlaut kommt aus der zentralen Quelle und nennt den Bezugspunkt mit:
+              // die Frist läuft ab Rechnungserhalt (Bereitstellung), nicht ab Rechnungsdatum.
+              // Ein fehlender gespeicherter Wert bleibt „—" — hier wird nichts unterstellt.
+              ["Zahlungsziel", amounts.paymentTerm != null ? paymentTermLabel(amounts.paymentTerm) : "—"],
               ["Fällig am", productive
                 ? <span className={overdue ? "adm-overdue" : undefined}>{fmtDate(dueOf(inv))}{overdue ? " · überfällig" : ""}</span>
                 : <span className="adm-muted">Keine Forderung</span>],

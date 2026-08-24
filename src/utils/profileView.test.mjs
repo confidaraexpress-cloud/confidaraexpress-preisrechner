@@ -176,7 +176,12 @@ test("21 — companyAddressLine baut kompakte Adresse nur aus echten Werten", ()
 });
 
 test("22 — paymentTermValue nutzt den realen Backendwert", () => {
-  assert.equal(paymentTermValue(USER), "7 Tage");
+  // Der Wortlaut nennt seit dem Wechsel des Bezugspunkts auch, ab wann die Frist läuft:
+  // ab Rechnungserhalt, nicht ab Rechnungsdatum. Er kommt aus utils/paymentTerm.mjs.
+  assert.equal(paymentTermValue(USER), "7 Tage nach Rechnungserhalt");
+  assert.ok(!/Rechnungsdatum/.test(paymentTermValue(USER)));
+  // 0 bleibt auf `users.payment_term` „nichts hinterlegt" — das Backend normalisiert die
+  // Spalte auf die Business Rule, ein 0-Zahlungsziel gibt es dort nicht.
   assert.equal(paymentTermValue({ payment_term: 0 }), "Nicht hinterlegt");
 });
 

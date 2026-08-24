@@ -19,6 +19,7 @@
 import { B2B_REQUIRED_FIELDS, b2bFieldError } from "./registrationValidation.mjs";
 // Eine Länderquelle für das ganze Portal (calculatorValidation.mjs importiert sie ebenso).
 import { normalizeCountryCode } from "./countries.js";
+import { paymentTermLabel } from "./paymentTerm.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "street", "zip", "city", "country"];
@@ -196,10 +197,15 @@ export function companyAddressLine(user) {
   return user?.street ? `${user.street}, ${user.zip || ""} ${user.city || ""}`.trim() : "";
 }
 
-// Zahlungsziel-Anzeige aus dem realen Backendwert (payment_term). Bewusst „X Tage"
-// (nicht „Kalendertage" — dafür gibt es keine belegte fachliche Grundlage).
+// Zahlungsziel-Anzeige aus dem realen Backendwert (payment_term), formuliert über die EINE
+// zentrale Quelle. Der Bezugspunkt gehört sichtbar dazu: „7 Tage" allein sagt nicht, ab wann
+// gezählt wird — und genau das hat sich geändert (Rechnungserhalt statt Rechnungsdatum).
+// `users.payment_term` kennt 0 NICHT als gültigen Wert — das Backend normalisiert die Spalte
+// ausnahmslos auf die Business Rule; 0 steht dort für „nichts hinterlegt". (Auf `invoices`
+// bedeutet 0 dagegen „sofort fällig" — deshalb behandelt paymentTermLabel es dort korrekt,
+// und deshalb bleibt die Unterscheidung hier beim Aufrufer.)
 export function paymentTermValue(user) {
-  return user?.payment_term ? `${user.payment_term} Tage` : "Nicht hinterlegt";
+  return user?.payment_term ? paymentTermLabel(user.payment_term) : "Nicht hinterlegt";
 }
 
 // ── Funktionale Texte (§10/§28) ─────────────────────────────────────────────

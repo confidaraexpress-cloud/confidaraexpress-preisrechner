@@ -117,11 +117,20 @@ export function trackingNumberOf(source) {
 }
 
 // Auftragsbestätigungsnummer (CE-AB…/CE-TEST-AB…) — die sichtbare Vorgangsnummer.
-// Quelle: order_confirmations.confirmation_number, von den Shipment-/Rechnungs-APIs
-// additiv mitgeliefert. Sendungen aus der Zeit vor CE-AB liefern null.
+// Drei reale Formen, alle DIESELBE Nummer:
+//   • order_confirmation_number  — Shipment-/Rechnungs-/Adminlisten (snake_case, GET)
+//   • orderConfirmation.number   — die /book-Erfolgsantwort (routes/jumingo.js), die
+//                                  additiv { number, issuedAt } verschachtelt, weil sie
+//                                  zusätzlich unterscheidet, OB überhaupt eine Bestätigung
+//                                  entstanden ist
+//   • orderConfirmationNumber    — flacher camelCase-Rückfall für ältere Fixtures/Mocks;
+//                                  kein bekannter echter Endpunkt liefert ihn (mehr)
+// Reihenfolge ist unkritisch für echte Objekte (jede Quelle liefert immer nur EINE
+// Form), verschachtelt gewinnt aber bewusst vor dem flachen Rückfall. Sendungen aus der
+// Zeit vor CE-AB liefern null.
 export function orderConfirmationNumberOf(source) {
   const s = source || {};
-  return displayNumber(s.order_confirmation_number ?? s.orderConfirmationNumber);
+  return displayNumber(s.order_confirmation_number ?? s.orderConfirmation?.number ?? s.orderConfirmationNumber);
 }
 
 export function customerReferenceOf(source) {

@@ -49,7 +49,7 @@ import {
   INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_TARGET, resolveInvoiceDeliveryMode, isTerminalDeliveryMode,
   findInvoiceByNumber, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
-import { NUMBER_LABELS } from "../utils/businessNumbers.mjs";
+import { NUMBER_LABELS, orderConfirmationNumberOf } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
@@ -1120,7 +1120,7 @@ export default function BookingPage() {
     if (!booking?.ceShipmentId) return;
     setLabelLoading(true); setLabelError("");
     try {
-      await downloadLabel(booking.ceShipmentId, booking.orderConfirmationNumber);
+      await downloadLabel(booking.ceShipmentId, orderConfirmationNumberOf(booking));
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -1147,10 +1147,11 @@ export default function BookingPage() {
   // wenn die Buchungsantwort tatsächlich eine Auftragsbestätigung meldet
   // (`booking.orderConfirmation`) — nie unterstellt.
   const handleDownloadOrderConfirmation = async () => {
-    if (!booking?.ceShipmentId || !booking?.orderConfirmation?.number) return;
+    const confirmationNumber = orderConfirmationNumberOf(booking);
+    if (!booking?.ceShipmentId || !confirmationNumber) return;
     setOrderConfirmationLoading(true); setOrderConfirmationError("");
     try {
-      await downloadOrderConfirmation(booking.ceShipmentId, booking.orderConfirmation.number);
+      await downloadOrderConfirmation(booking.ceShipmentId, confirmationNumber);
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setOrderConfirmationError(e.message);
     }
@@ -1559,10 +1560,10 @@ export default function BookingPage() {
                 Ersatznummer erzeugt, insbesondere nicht die interne Bestellnummer (CE-BS…),
                 die Provider-Ordernummer oder eine interne Datenbank-ID. */}
             <div className="booking-success-numbers mb-16" style={{ display: "flex", flexWrap: "wrap", gap: "10px 32px", justifyContent: "center" }}>
-              {booking.orderConfirmationNumber && (
+              {orderConfirmationNumberOf(booking) && (
                 <div>
                   <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.orderConfirmation}</div>
-                  <CopyableNumber value={booking.orderConfirmationNumber} label={NUMBER_LABELS.orderConfirmation} size="lg" />
+                  <CopyableNumber value={orderConfirmationNumberOf(booking)} label={NUMBER_LABELS.orderConfirmation} size="lg" />
                 </div>
               )}
               {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —
@@ -1631,11 +1632,11 @@ export default function BookingPage() {
                 Buchung, der Lieferschein nur Konten mit Lagerbezug. Die Bestätigung
                 kommt zusätzlich per E-Mail; der Knopf ist die Sofortkopie. */}
             {orderConfirmationError && <div className="alert alert-error mb-16" role="alert">{orderConfirmationError}</div>}
-            {booking?.ceShipmentId && booking?.orderConfirmation?.number && (
+            {booking?.ceShipmentId && orderConfirmationNumberOf(booking) && (
               <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadOrderConfirmation} disabled={orderConfirmationLoading}>
                 {orderConfirmationLoading
                   ? <><span className="spinner spinner-dark" /> Auftragsbestätigung wird geladen…</>
-                  : <>Auftragsbestätigung {booking.orderConfirmation.number} herunterladen</>}
+                  : <>Auftragsbestätigung {orderConfirmationNumberOf(booking)} herunterladen</>}
               </button>
             )}
             {/* Lieferschein — erscheint NUR, wenn die Buchungsantwort tatsächlich einen

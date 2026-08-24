@@ -92,20 +92,23 @@ test("7 die Fehlertexte sind handlungsleitend und nennen keine Interna", () => {
 // ─── 3. Erfolgsbildschirm ────────────────────────────────────────────────────
 
 test("8 der Knopf erscheint NUR, wenn die Buchungsantwort eine Bestätigung meldet", () => {
-  // Nie aus dem Kontozustand geraten — genau wie beim Lieferschein.
+  // Nie aus dem Kontozustand geraten — genau wie beim Lieferschein. Beide Stellen lesen
+  // seit dem CE-AB-Contract-Fix über denselben zentralen Helper (businessNumbers.mjs),
+  // der sowohl die verschachtelte /book-Form (orderConfirmation.number) als auch ältere
+  // Formen versteht — statt eines direkten, an die verschachtelte Form gebundenen Zugriffs.
   assert.ok(
-    /booking\?\.ceShipmentId && booking\?\.orderConfirmation\?\.number/.test(bookingCode),
+    /booking\?\.ceShipmentId && orderConfirmationNumberOf\(booking\)/.test(bookingCode),
     "Sichtbarkeit hängt nicht an der gemeldeten Nummer"
   );
   // Handler und Sichtbarkeit an derselben Bedingung.
   assert.ok(
-    /if \(!booking\?\.ceShipmentId \|\| !booking\?\.orderConfirmation\?\.number\) return;/.test(bookingCode),
+    /if \(!booking\?\.ceShipmentId \|\| !confirmationNumber\) return;/.test(bookingCode),
     "Handler prüft die Bedingung nicht erneut"
   );
 });
 
 test("9 der Erfolgsbildschirm nennt die Nummer im Knopftext", () => {
-  assert.ok(/Auftragsbestätigung \{booking\.orderConfirmation\.number\} herunterladen/.test(bookingSrc),
+  assert.ok(/Auftragsbestätigung \{orderConfirmationNumberOf\(booking\)\} herunterladen/.test(bookingSrc),
     "die Nummer steht nicht im Knopf");
 });
 

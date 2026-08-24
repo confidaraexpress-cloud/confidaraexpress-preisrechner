@@ -90,6 +90,46 @@ test("Vorgangsnummer fällt NIEMALS auf JUMiNGO-Werte, CE-BS oder interne IDs zu
   assert.ok(!Object.values(nums).includes(4711), "interne ID in der Kundensicht");
 });
 
+test("orderConfirmationNumberOf: verschachtelte /book-Antwortform (routes/jumingo.js:4078)", () => {
+  const CONFIRMATION_TEST_NO = "CE-TEST-AB26-00123";
+  // CASE 1 — echte Produktions-/book-Antwort: nur die verschachtelte Form.
+  const production = { shipmentId: "s1", ceShipmentId: 4711, invoiceNumber: "CE-RE26-00099",
+    orderConfirmation: { number: CONFIRMATION_NO, issuedAt: "2026-08-24T00:00:00Z" } };
+  assert.equal(orderConfirmationNumberOf(production), CONFIRMATION_NO);
+
+  // CASE 2 — Sandbox-/Testbuchung: dieselbe verschachtelte Form, CE-TEST-AB-Kreis.
+  const sandbox = { ...production, testBooking: true,
+    orderConfirmation: { number: CONFIRMATION_TEST_NO, issuedAt: "2026-08-24T00:00:00Z" } };
+  assert.equal(orderConfirmationNumberOf(sandbox), CONFIRMATION_TEST_NO);
+
+  // CASE 3 — optionaler flacher Legacy-/Fixturewert (kein bekannter echter Endpunkt
+  // liefert ihn mehr, aber ältere Mocks dürfen ihn weiterhin verwenden).
+  const legacyFlat = { orderConfirmationNumber: "CE-AB26-00999" };
+  assert.equal(orderConfirmationNumberOf(legacyFlat), "CE-AB26-00999");
+
+  // CASE 4 — beide Formen gleichzeitig vorhanden und UNTERSCHIEDLICH: die verschachtelte,
+  // reale Backendquelle muss gewinnen, nicht der flache Rückfall.
+  const beide = { orderConfirmation: { number: CONFIRMATION_NO }, orderConfirmationNumber: "CE-AB26-00999" };
+  assert.equal(orderConfirmationNumberOf(beide), CONFIRMATION_NO, "die verschachtelte Form muss Vorrang haben");
+
+  // CASE 5 — keine CE-AB-Nummer vorhanden (kein orderConfirmation-Objekt entstanden):
+  // keine erfundene Nummer, insbesondere kein CE-BS-, Provider- oder DB-ID-Rückfall.
+  const ohneBestaetigung = { shipmentId: "s1", ceShipmentId: 4712, invoiceNumber: "CE-RE26-00100",
+    businessOrderNumber: ORDER_NO, orderNumber: JUMINGO_NO, orderConfirmation: null };
+  assert.equal(orderConfirmationNumberOf(ohneBestaetigung), null);
+
+  // Negative Assertion: dieselbe Antwort trägt zusätzlich CE-BS, die externe JUMiNGO-
+  // Ordernummer UND eine interne Shipment-ID neben der echten Auftragsbestätigung — nur
+  // die Auftragsbestätigung darf zurückkommen, keiner der drei Altwerte.
+  const mitAltwerten = { shipmentId: 123, businessOrderNumber: "CE-BS26-99999", orderNumber: "JUMINGO-123",
+    orderConfirmation: { number: CONFIRMATION_NO } };
+  const ergebnis = orderConfirmationNumberOf(mitAltwerten);
+  assert.equal(ergebnis, CONFIRMATION_NO);
+  assert.notEqual(ergebnis, "CE-BS26-99999");
+  assert.notEqual(ergebnis, "JUMINGO-123");
+  assert.notEqual(ergebnis, 123);
+});
+
 test("customerShipmentNumbers: nur kundensichtbare Werte, keine JUMiNGO-/DB-/CE-BS-Identifikatoren", () => {
   const s = { id: 9, business_order_number: ORDER_NO, order_confirmation_number: CONFIRMATION_NO,
     tracking_number: "1Z999", reference_number: "PO-4711",
@@ -191,7 +231,7 @@ test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => 
 test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getrennt", () => {
   const src = read("pages/BookingPage.jsx");
   const block = src.slice(src.indexOf("booking-success-numbers"), src.indexOf("booking-success-delivery"));
-  assert.ok(block.includes("booking.orderConfirmationNumber"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
+  assert.ok(block.includes("orderConfirmationNumberOf(booking)"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("NUMBER_LABELS.invoice"),
     "Nummern nicht getrennt beschriftet");
@@ -368,7 +408,7 @@ test("(N-a) Buchungserfolg und Sendungsliste zeigen die Auftragsbestätigung", (
   const booking = read("pages/BookingPage.jsx");
   assert.ok(booking.includes("NUMBER_LABELS.orderConfirmation"),
     "der Erfolgsbildschirm nutzt die zentrale Beschriftung nicht");
-  assert.ok(booking.includes("booking.orderConfirmationNumber"),
+  assert.ok(booking.includes("orderConfirmationNumberOf(booking)"),
     "der Erfolgsbildschirm liest die Auftragsbestätigungsnummer nicht");
 
   const liste = read("components/dashboard/ShipmentsList.jsx");

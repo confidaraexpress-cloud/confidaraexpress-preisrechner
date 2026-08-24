@@ -100,7 +100,7 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   // unverändert die JUMiNGO-Referenz — das ist der Wert, den DIESER Client gesendet
   // hat; ihn umzudeuten wäre ein stiller Vertragsbruch.
   assert.match(bookingPage, /if \(!booking\?\.ceShipmentId\) return;/);
-  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, booking\.orderConfirmationNumber\)/);
+  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/);
   // Die Sichtbarkeit des Buttons muss an derselben Bedingung hängen wie der
   // Handler — sonst zeigte er sich und täte beim Klick nichts.
   assert.match(bookingPage, /\{booking\?\.ceShipmentId && \(/);

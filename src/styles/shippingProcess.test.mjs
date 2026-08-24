@@ -207,7 +207,10 @@ test("13 — der Abholfensterkonflikt (PICKUP_WINDOW_CHANGED) ist funktional unv
 
 test("14 — der Erfolgsscreen zeigt Auftragsbestätigungs- und Rechnungsnummer über CopyableNumber", () => {
   // Nummernumstellung: sichtbare Vorgangsnummer ist CE-AB…, nicht mehr CE-BS….
-  assert.match(bookingPage, /booking\.orderConfirmationNumber/);
+  // Gelesen über den zentralen Helper (businessNumbers.mjs), der die verschachtelte
+  // /book-Form (orderConfirmation.number) versteht — nicht mehr über einen direkten,
+  // an eine einzelne Form gebundenen Feldzugriff.
+  assert.match(bookingPage, /orderConfirmationNumberOf\(booking\)/);
   assert.match(bookingPage, /booking\.invoiceNumber/);
   assert.match(bookingPage, /<CopyableNumber/);
   assert.match(bookingPage, /NUMBER_LABELS\.orderConfirmation/);

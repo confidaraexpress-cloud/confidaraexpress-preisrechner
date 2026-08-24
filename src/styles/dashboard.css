@@ -447,10 +447,16 @@ tr:hover td { background: var(--surface-subtle); }
 
 /* Account-Hero: Status/Konto-Chips */
 .profile-meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; }
+/* Der Chip bricht an WORTGRENZEN, statt starr nowrap zu bleiben. Er ist eine
+   Beschriftung, keine Bedieneinheit — nowrap ist ausdrücklich nur für `.btn`
+   reserviert. Gemessen: mit „Zahlungsziel: 7 Tage nach Rechnungserhalt" ragte der
+   Chip auf 390 px um 5 px aus dem Bild, und die Zeile darüber (.profile-meta-row)
+   konnte das nicht auffangen — sie umbricht zwischen den Chips, nicht in einem.
+   Kein `anywhere`/`break-all`: Reflow vor Mid-Word-Break. */
 .profile-meta-chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: var(--radius-full);
-  font-size: 11px; font-weight: 600; white-space: nowrap;
+  font-size: 11px; font-weight: 600; white-space: normal;
   background: var(--gray100); color: var(--ce-color-text-secondary);
   border: 1px solid var(--ce-color-border-subtle);
 }

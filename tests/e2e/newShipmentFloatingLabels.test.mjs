@@ -19,6 +19,10 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+// Die erwartete Vorbelegung wird aus der PRODUKTIVEN Konstante gelesen, nicht als
+// "1" hier wiederholt: ändert sich die Produktentscheidung, zieht der Test mit,
+// statt eine zweite Wahrheit zu behaupten.
+import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
 
 const PORT = 5262, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -133,14 +137,24 @@ test("1 — die frische Seite ist vollständig leer, Labels sind keine Werte", a
   const { ctx, page, fehler } = await neueSeite();
   try {
     const werte = await page.evaluate(() => {
+      // Die Paketanzahl steht bewusst NICHT in dieser Liste: sie ist die einzige
+      // dokumentierte Ausnahme vom leeren Ausgangszustand (PACKAGE_COUNT_DEFAULT
+      // in utils/newShipmentForm.mjs) und wird unten mit ihrem ERWARTETEN WERT
+      // geprüft — nicht auf leer und auch nicht gar nicht. Sonst fiele mit der
+      // widersprüchlichen Zusicherung auch die Prüfung der Vorbelegung weg.
       const ids = ["ns-s-company", "ns-s-fullName", "ns-s-street", "ns-s-addition", "ns-s-zip",
                    "ns-s-city", "ns-s-country", "ns-r-fullName", "ns-r-zip", "ns-r-city",
-                   "ns-packageCount", "ns-weight", "ns-length", "ns-width", "ns-height"];
-      return Object.fromEntries(ids.map((i) => [i, document.getElementById(i)?.value ?? "FEHLT"]));
+                   "ns-weight", "ns-length", "ns-width", "ns-height"];
+      return {
+        leer: Object.fromEntries(ids.map((i) => [i, document.getElementById(i)?.value ?? "FEHLT"])),
+        packageCount: document.getElementById("ns-packageCount")?.value ?? "FEHLT",
+      };
     });
-    for (const [id, wert] of Object.entries(werte)) {
+    for (const [id, wert] of Object.entries(werte.leer)) {
       assert.equal(wert, "", `${id} ist nicht leer: ${JSON.stringify(wert)}`);
     }
+    assert.equal(werte.packageCount, PACKAGE_COUNT_DEFAULT,
+      `ns-packageCount trägt nicht die dokumentierte Vorbelegung: ${JSON.stringify(werte.packageCount)}`);
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
 });

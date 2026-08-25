@@ -269,11 +269,12 @@ test("5 — Uhrzeit 10:30 reduziert die Liste weiter, ohne neuen Preisrequest", 
     null, { timeout: 10000 });
 
   const geo = await oeffneZeitliste(page);
-  // Die Optionen kommen aus den geladenen Tarifen, nicht aus einer festen Liste.
+  // Fristenraster (LIEFERFRIST_RASTER) VEREINIGT mit den echten Tarifzeiten.
+  // 16:00 stammt aus dem Raster: der Filter vergleicht <= und nicht =.
   const optionen = await page.locator(".offers-time-option").allTextContents();
   assert.deepEqual(optionen.map((s) => s.trim()),
     ["Beliebig", "08:00 Uhr", "09:00 Uhr", "10:00 Uhr", "10:30 Uhr",
-     "12:00 Uhr", "13:00 Uhr", "17:00 Uhr", "18:00 Uhr"]);
+     "12:00 Uhr", "13:00 Uhr", "16:00 Uhr", "17:00 Uhr", "18:00 Uhr"]);
 
   // D3: die Liste öffnet UNTERHALB des Auslösers.
   assert.ok(geo.listeOben >= geo.triggerUnten - 1,

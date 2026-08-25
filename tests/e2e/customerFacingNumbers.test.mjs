@@ -170,7 +170,7 @@ test("(2) Sendungsdetail: Vorgangs- und Trackingnummer getrennt beschriftet", as
   await page.close();
 });
 
-test("(3) Rechnungsliste: Vorgangsbezug ist CE-AB, nie CE-BS", async () => {
+test("(3) Rechnungsliste: nur die Rechnungsnummer, kein CE-AB und kein CE-BS", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard?page=invoices`, { waitUntil: "domcontentloaded" });
@@ -178,7 +178,7 @@ test("(3) Rechnungsliste: Vorgangsbezug ist CE-AB, nie CE-BS", async () => {
 
   const zelle = await page.locator(".inv-cell-number").first().innerText();
   assert.ok(zelle.includes("CE-RE26-00001"), "die Rechnungsnummer fehlt");
-  assert.ok(zelle.includes(CE_AB), "der Vorgangsbezug muss die Auftragsbestätigungsnummer sein");
+  assert.ok(!zelle.includes(CE_AB), "die Auftragsbestätigungsnummer ist kundenseitig aus der Rechnungsliste entfallen");
   await keineAltnummer(page, "Rechnungsliste");
   await page.close();
 });

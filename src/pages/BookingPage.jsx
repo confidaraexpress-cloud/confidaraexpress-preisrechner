@@ -513,6 +513,8 @@ export default function BookingPage() {
         tariffId:        tariff?.id,
         shipperTariffId: tariff?.shipper_tariff_id,
         voucherCode:     code,
+        // Zollblock aus DERSELBEN Quelle wie die Buchung — bei EU/DE leer.
+        ...buildCustomsPayload(),
       }, { signal: controller.signal });
       if (controller.signal.aborted) return;
       if (!r.ok) { setVoucher({ status: VOUCHER_STATUS.ERROR, code: null, percent: null, totals: null }); return; }
@@ -701,6 +703,42 @@ export default function BookingPage() {
     const dt = new Date(y, m - 1, d);
     return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
   };
+  // ── EINE Quelle fuer den customsData-Block ────────────────────────────────
+  // Genutzt von der Buchung (/book) UND von der Gutschein-Vorschau (/cart-total).
+  // Beide brauchen denselben Block: /cart/total bepreist den Zustand, den die Sendung BEIM
+  // PROVIDER hat — ohne Zolldaten bleibt eine Drittlandsendung dort `missing_data`, der
+  // Warenkorb unbepreist, und der Testgutschein hat nichts, worauf er sich beziehen koennte.
+  //
+  // Es wird NICHTS zusaetzlich erfasst: die Werte stammen unveraendert aus den bereits
+  // ausgefuellten Zollfeldern dieser Seite. Bei EU/DE (customsRequired === false) liefert die
+  // Funktion ein LEERES Objekt — der Payload beider Aufrufer ist dann byte-identisch zu vorher.
+  const buildCustomsPayload = () => (customsRequired
+    ? {
+        customsData: {
+          exportReason: customsExportReason,
+          currency: "EUR",
+          items: customsItems.map((it) => ({
+            description:   it.description.trim(),
+            quantity:      Number(it.quantity),
+            netWeight:     Number(String(it.netWeight).replace(",", ".")),
+            value:         Number(String(it.value).replace(",", ".")),
+            originCountry: it.originCountry,
+            unitOfMeasurement: it.unitOfMeasurement,
+            ...(it.hsTariffNumber.trim() ? { hsTariffNumber: it.hsTariffNumber.trim() } : {}),
+          })),
+          // Rechnungs-Metadaten je nach internem Modus (KEIN invoiceMode-Key, KEIN
+          // document/Upload-Key): Proforma sendet invoiceNumber/invoiceDate NICHT
+          // (nur remarks), Commercial sendet Nummer (getrimmt) + Datum + remarks.
+          // Der Helper laesst leere Werte weg (kein "" / kein null).
+          ...buildCustomsInvoiceMeta({
+            invoiceNumber: invoiceMode === COMMERCIAL ? customsInvoiceNumber : "",
+            invoiceDate:   invoiceMode === COMMERCIAL ? customsInvoiceDate : "",
+            invoiceRemark: customsInvoiceRemark,
+          }),
+        },
+      }
+    : {});
+
   // Rechnungsnummer/-datum sind NUR im commercial-Modus sichtbar UND dann Pflicht.
   // In proforma keine Zusatzpflicht (Felder sind ausgeblendet).
   const commercialActive = customsRequired && invoiceMode === COMMERCIAL;
@@ -848,32 +886,8 @@ export default function BookingPage() {
         : { insuranceSelection: { type: "none" } };
       // customsData NUR bei zollpflichtiger Route (Backend-Vertrag). Sonst bleibt
       // der bestehende Payload unverändert (EU/DE ohne customsData).
-      const customsPayload = customsRequired
-        ? {
-            customsData: {
-              exportReason: customsExportReason,
-              currency: "EUR",
-              items: customsItems.map((it) => ({
-                description:   it.description.trim(),
-                quantity:      Number(it.quantity),
-                netWeight:     Number(String(it.netWeight).replace(",", ".")),
-                value:         Number(String(it.value).replace(",", ".")),
-                originCountry: it.originCountry,
-                unitOfMeasurement: it.unitOfMeasurement,
-                ...(it.hsTariffNumber.trim() ? { hsTariffNumber: it.hsTariffNumber.trim() } : {}),
-              })),
-              // Rechnungs-Metadaten je nach internem Modus (KEIN invoiceMode-Key, KEIN
-              // document/Upload-Key): Proforma sendet invoiceNumber/invoiceDate NICHT
-              // (nur remarks), Commercial sendet Nummer (getrimmt) + Datum + remarks.
-              // Der Helper lässt leere Werte weg (kein "" / kein null).
-              ...buildCustomsInvoiceMeta({
-                invoiceNumber: invoiceMode === COMMERCIAL ? customsInvoiceNumber : "",
-                invoiceDate:   invoiceMode === COMMERCIAL ? customsInvoiceDate : "",
-                invoiceRemark: customsInvoiceRemark,
-              }),
-            },
-          }
-        : {};
+      // Gebaut vom gemeinsamen Erbauer — dieselbe Quelle wie die Gutschein-Vorschau.
+      const customsPayload = buildCustomsPayload();
       const r = await apiFetch(`/api/jumingo/book`, {
         method: "POST", auth: true,
         body: JSON.stringify({

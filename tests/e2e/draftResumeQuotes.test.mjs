@@ -362,10 +362,22 @@ test("Regression Drei-Klick-Ablauf: erster Klick liefert Angebote, keine Sendung
   assert.equal(calls.length, 1, "genau eine Preisberechnung");
   assert.equal(calls[0].sourceFormDraftId, 77, "der erste Request traegt die Entwurfsherkunft");
 
-  // Die verbrauchte Source darf nicht erneut gesendet werden: ein zweiter,
-  // bewusster Klick ist eine normale Neuberechnung — kein 404-Leerlauf.
+  // Ein zweiter Klick OHNE Änderung setzt seit der Wiederverwendung unveränderter
+  // Berechnungen gar keinen Request mehr ab — die verbrauchte Source kann auf
+  // diesem Weg also erst recht nicht erneut hinausgehen.
   await ctaOf(page).click();
   await page.waitForTimeout(1200);
+  assert.equal(calls.length, 1, "ein unveränderter Klick darf nicht erneut rechnen");
+  assert.equal(await page.locator(".offer-card").count(), 2, "die Angebote bleiben stehen");
+
+  // Die eigentliche Zusicherung dieses Tests, unverändert: sobald wirklich neu
+  // gerechnet wird, darf die bereits verbrauchte Entwurfs-ID NIE wieder im
+  // Payload stehen. Dafür braucht es einen echten Anlass — ein preisrelevantes
+  // Feld ändern, sonst greift die Wiederverwendung oben.
+  await page.locator("#ns-weight").fill("7");
+  await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 0, null, { timeout: 10_000 });
+  await ctaOf(page).click();
+  await page.waitForSelector(".offer-card", { timeout: 20_000 });
   assert.equal(calls.length, 2);
   assert.equal(calls[1].sourceFormDraftId, undefined,
     "eine bereits verbrauchte Entwurfs-ID darf nie erneut gesendet werden");

@@ -194,10 +194,15 @@ test("C5 — die normale Datumszeile trägt den früheren Inline-Stil nicht mehr
   assert.ok(!/offer-tl-time-early/.test(karte));
   // Datum ist wieder allein die primäre Information …
   assert.match(karte, /\{end\.primary && <span className="offer-tl-primary">\{end\.primary\}<\/span>\}/);
-  // … und die Uhrzeit läuft für JEDEN Tarif über dieselbe Unterzeile.
-  assert.match(karte, /if \(zeitText\) secondary\.push\(zeitText\);/);
-  assert.ok(!/secondary\.push\(zeitText\)[\s\S]{0,80}frueh/.test(karte),
-    "die Unterzeile darf nicht mehr von der Frühzeit abhängen");
+  // … und die Unterzeile entfällt GENAU dann, wenn das grüne Feld erscheint.
+  assert.match(karte, /if \(zeitText && !earlyNote\) secondary\.push\(zeitText\);/);
+  // Entscheidend: derselbe Wert steuert beides — earlyNote wird hereingereicht,
+  // nicht in buildEnd neu berechnet. Sonst könnten Feld und Unterdrückung
+  // auseinanderlaufen.
+  assert.match(karte, /function buildEnd\(t, etaLabel, earlyNote\)/);
+  assert.match(karte, /const earlyNote = earlyDeliveryNote\(t\);\n\s*const end\s*= buildEnd\(t, etaLabel, earlyNote\);/);
+  assert.ok(!/buildEnd\([\s\S]{0,40}isEarlyDelivery/.test(karte),
+    "buildEnd darf die Frühzeit nicht zweitklassifizieren");
 });
 
 test("C6 — das Hinweisfeld steht am Lieferende, nicht beim Preis oder Carrier", () => {
@@ -228,7 +233,9 @@ test("U1 — ohne Datum ist das Feld deaktiviert und nennt den Grund", () => {
 
 test("U2 — mit Datum ist das Feld bedienbar", () => {
   const q = lies(TIME_SELECT);
-  assert.match(q, /\{!hasDate && \(/, "der Hinweis erscheint nur ohne Datum");
+  assert.match(q, /\{!hasDate && <p className="offers-time-hint"/, "der Hinweis erscheint nur ohne Datum");
+  assert.match(q, /if \(!hasDate && open\) setOpen\(false\)/,
+    "fällt das Datum weg, muss eine offene Liste schließen");
 });
 
 test("U3 — die Optionen sind „Beliebig“ plus die echten Tarifzeiten", () => {
@@ -263,8 +270,8 @@ test("U5 — das Formularfeld fasst Datum und Uhrzeit kompakt zusammen", () => {
 test("U6 — „Beliebig“ setzt die Uhrzeit auf \"\" und lässt das Datum stehen", () => {
   const q = lies(TIME_SELECT);
   // Der Leerwert IST „Beliebig" — es gibt keinen zweiten Rücksetzweg im Bauteil.
-  assert.match(q, /onChange\(e\.target\.value\)/);
-  assert.match(q, /value=\{v\}/);
+  assert.match(q, /const werte = \["", \.\.\.\(options \|\| \[\]\)\];/);
+  assert.match(q, /const waehle = \(v\) => \{\n\s*onChange\(v\);/);
   // Das Datum wird vom Uhrzeit-Handler der Seiten nicht angefasst.
   for (const seite of ["src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
     const h = lies(seite).match(/const handleLatestDeliveryTimeChange = \(zeit\) => \{[\s\S]*?\n  \};/);
@@ -275,9 +282,10 @@ test("U6 — „Beliebig“ setzt die Uhrzeit auf \"\" und lässt das Datum steh
 
 test("U7 — ein Auswahlfeld auf dem vorhandenen Primitive, keine Pillenreihe mehr", () => {
   const q = lies(TIME_SELECT);
-  assert.match(q, /className="field-select offers-time-select"/,
-    "das Feld muss das vorhandene forms.css-Primitive nutzen");
+  assert.match(q, /className=\{`field-select offers-time-trigger/,
+    "der Auslöser muss weiterhin wie das forms.css-Primitive aussehen");
   assert.ok(!/role="radio"/.test(q), "die frühere Radiogruppe ist ersetzt");
+  assert.ok(!/<select/.test(nurCode(q)), "das native Select ist ersetzt");
   // Die abgelöste Komponente ist entfernt, nicht nur abgehängt.
   assert.ok(!existsSync(path.join(WURZEL, "src/components/offers/DeliveryTimeChips.jsx")),
     "DeliveryTimeChips.jsx muss gelöscht sein — keine tote Komponente");
@@ -286,6 +294,143 @@ test("U7 — ein Auswahlfeld auf dem vorhandenen Primitive, keine Pillenreihe me
     assert.ok(!/DeliveryTimeChips/.test(lies(datei)), `${datei}: Restreferenz`);
     assert.match(lies(datei), /DeliveryTimeSelect/, `${datei}: nutzt das neue Feld nicht`);
   }
+});
+
+/* ══════════ N) Keine doppelte Lieferzeit in der Hauptansicht ══════════════ */
+
+// Spiegel der Kartenregel: die graue Unterzeile entfällt GENAU dann, wenn das
+// grüne Feld erscheint. Beides aus EINEM Wert — so kann die Anzeige nicht
+// auseinanderlaufen.
+const kartenZeilen = (t) => {
+  const note = earlyDeliveryNote(t);
+  const zeit = deliveryTimeLabel(t);
+  return { grau: note ? "" : zeit, gruen: note };
+};
+
+test("N1 — 12:00: nur das grüne Feld, keine zusätzliche graue Zeile", () => {
+  const z = kartenZeilen({ deliveryTimeUntil: "12:00", deliveryTimeUntilMinutes: 720 });
+  assert.equal(z.gruen, "Lieferung bis 12:00 Uhr");
+  assert.equal(z.grau, "", "die graue Uhrzeit darf nicht zusätzlich erscheinen");
+  // Der Zeitwert steht in der Hauptansicht genau EINMAL.
+  const treffer = [z.grau, z.gruen].filter((x) => x.includes("12:00"));
+  assert.equal(treffer.length, 1);
+});
+
+test("N2 — 10:30 und 09:00 verhalten sich identisch", () => {
+  for (const [zeit, min] of [["10:30", 630], ["09:00", 540], ["08:00", 480]]) {
+    const z = kartenZeilen({ deliveryTimeUntil: zeit, deliveryTimeUntilMinutes: min });
+    assert.equal(z.gruen, `Lieferung bis ${zeit} Uhr`);
+    assert.equal(z.grau, "", zeit);
+  }
+});
+
+test("N3 — 17:00 und 18:00 behalten ihre graue Zeile und bekommen kein Feld", () => {
+  for (const [zeit, min] of [["17:00", 1020], ["18:00", 1080]]) {
+    const z = kartenZeilen({ deliveryTimeUntil: zeit, deliveryTimeUntilMinutes: min });
+    assert.equal(z.grau, `bis ${zeit} Uhr`, "die neutrale Zeile muss bleiben");
+    assert.equal(z.gruen, "", zeit);
+  }
+});
+
+test("N4 — FedEx First: grünes Feld, KEINE graue Doppelzeile", () => {
+  const z = kartenZeilen({ shippingMode: "standard", deliveryTimeUntil: "10:00", deliveryTimeUntilMinutes: 600 });
+  assert.equal(z.gruen, "Lieferung bis 10:00 Uhr");
+  assert.equal(z.grau, "");
+});
+
+test("N5 — UPS Express Saver: nur die normale graue 17:00-Zeile", () => {
+  const z = kartenZeilen({ shippingMode: "express", deliveryTimeUntil: "17:00", deliveryTimeUntilMinutes: 1020 });
+  assert.equal(z.grau, "bis 17:00 Uhr");
+  assert.equal(z.gruen, "");
+});
+
+test("N6 — an der echten Antwort: 22 Karten mit Feld, 19 mit grauer Zeile, nie beides", () => {
+  let mitFeld = 0, mitGrau = 0;
+  for (const t of TARIFE_41) {
+    const z = kartenZeilen(t);
+    assert.ok(!(z.grau && z.gruen), `${t.id}: zeigt die Uhrzeit doppelt`);
+    assert.ok(z.grau || z.gruen, `${t.id}: verliert die Uhrzeit ganz`);
+    if (z.gruen) mitFeld += 1; else mitGrau += 1;
+  }
+  assert.equal(mitFeld, 22);
+  assert.equal(mitGrau, 19);
+  assert.equal(mitFeld + mitGrau, 41, "keine Karte ohne Zeitangabe");
+});
+
+/* ══════════ D) Dropdown — Öffnungsrichtung, Ebene, Tastatur ═══════════════ */
+
+test("D1 — die Liste öffnet IMMER nach unten, ohne Flip", () => {
+  const q = lies(TIME_SELECT);
+  assert.match(q, /const top = t\.bottom \+ ABSTAND;/, "die Oberkante hängt am Auslöser");
+  // Kein Zweig, der bei Platzmangel nach oben klappt (anders als der
+  // AddressPickerButton, der genau das tut).
+  assert.ok(!/t\.top - ABSTAND - hoehe/.test(q), "Upward-Flip-Formel gefunden");
+  assert.ok(!/passtUnten/.test(nurCode(q)), "Flip-Entscheidung gefunden");
+});
+
+test("D2 — bei wenig Platz wird die Liste niedriger und scrollt intern", () => {
+  const q = lies(TIME_SELECT);
+  assert.match(q, /const platz = window\.innerHeight - top - RAND;/);
+  assert.match(q, /maxHeight: Math\.max\(MIN_HOEHE, Math\.min\(MAX_HOEHE, platz\)\)/);
+  const css = lies("src/styles/offers.css");
+  const regel = css.match(/\.offers-time-list\s*\{([^}]*)\}/);
+  assert.ok(regel, ".offers-time-list muss definiert sein");
+  assert.match(regel[1], /overflow-y:\s*auto/);
+});
+
+test("D3 — Portal an document.body gegen Clipping und transformierte Vorfahren", () => {
+  const q = lies(TIME_SELECT);
+  assert.match(q, /createPortal\(/);
+  assert.match(q, /document\.body,/);
+  const css = lies("src/styles/offers.css");
+  const regel = css.match(/\.offers-time-list\s*\{([^}]*)\}/)[1];
+  assert.match(regel, /position:\s*fixed/);
+});
+
+test("D4 — die Liste liegt auf der vorhandenen Schwebe-Ebene, kein Fantasiewert", () => {
+  const css = lies("src/styles/offers.css");
+  const regel = css.match(/\.offers-time-list\s*\{([^}]*)\}/)[1];
+  const z = regel.match(/z-index:\s*(\d+)/);
+  assert.ok(z, "die Liste braucht eine Ebene");
+  const ebene = Number(z[1]);
+  // Über den beiden Wirtsflächen (40 = Angebots-Dropdown, 50 = Formularfilter),
+  // unter Drawer (999) und Navigationsleiste (1000).
+  assert.ok(ebene > 50, `zu niedrig: ${ebene}`);
+  assert.ok(ebene < 999, `zu hoch — Navigation und Modals müssen darüber bleiben: ${ebene}`);
+  const abk = lies("src/styles/addressbook.css").match(/\.abk-pick-pop\s*\{([^}]*)\}/)[1];
+  assert.equal(ebene, Number(abk.match(/z-index:\s*(\d+)/)[1]),
+    "dieselbe Ebene wie die vorhandene schwebende Adressauswahl");
+});
+
+test("D5 — Combobox-Semantik statt Dialog", () => {
+  const q = lies(TIME_SELECT);
+  for (const attr of ['role="combobox"', 'aria-haspopup="listbox"', "aria-expanded={open}",
+                      'role="listbox"', 'role="option"', "aria-selected=", "aria-activedescendant="]) {
+    assert.ok(q.includes(attr), `${attr} fehlt`);
+  }
+  assert.ok(!/role="dialog"/.test(q), "keine falsche Dialogsemantik");
+});
+
+test("D6 — Tastatur vollständig: öffnen, navigieren, wählen, schließen", () => {
+  const q = lies(TIME_SELECT);
+  for (const taste of ["Enter", "ArrowDown", "ArrowUp", "Home", "End", "Tab", "Escape"]) {
+    assert.ok(q.includes(`"${taste}"`), `${taste} wird nicht behandelt`);
+  }
+  assert.ok(/" "|Spacebar/.test(q), "Leertaste wird nicht behandelt");
+  // Escape nativ am Umschlag — sonst schließt zuerst die umgebende Fläche.
+  assert.match(q, /knoten\.addEventListener\("keydown", beiEscape\)/);
+  assert.match(q, /e\.stopPropagation\(\)/);
+  // Fokus kehrt zum Auslöser zurück.
+  assert.match(q, /setOpen\(false\);\n\s*triggerRef\.current\?\.focus\(\);/);
+});
+
+test("D7 — Außenklick berücksichtigt den Umschlag UND die portalierte Liste", () => {
+  const q = lies(TIME_SELECT);
+  // Die Liste ist kein DOM-Nachfahre des Umschlags — beide Knoten müssen
+  // getrennt geprüft werden, sonst schließt der erste Klick in die Liste sie.
+  assert.match(q, /const imWrap = wrapRef\.current\?\.contains\(e\.target\);/);
+  assert.match(q, /const inListe = listRef\.current\?\.contains\(e\.target\);/);
+  assert.match(q, /if \(!imWrap && !inListe\) setOpen\(false\);/);
 });
 
 /* ══════════ Q) Quelle: nie das UTC-Rohfeld ════════════════════════════════ */

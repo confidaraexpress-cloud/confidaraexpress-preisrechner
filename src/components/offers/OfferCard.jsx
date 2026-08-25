@@ -54,7 +54,7 @@ function buildStart(t) {
   return { title, primary, secondary };
 }
 
-function buildEnd(t, etaLabel) {
+function buildEnd(t, etaLabel, earlyNote) {
   // Lieferzeitraum (deliveryDateMin/Max) hat Vorrang vor dem Einzeldatum —
   // exakt dieselbe Priorität wie im DetailsPanel (siehe hasDeliveryRange),
   // damit Timeline und Details nie auseinanderlaufen. Sind Min und Max
@@ -80,9 +80,18 @@ function buildEnd(t, etaLabel) {
   // eigene Aussage. Die Sonderinformation steht deshalb jetzt als eigenes,
   // kleines Feld unter der Timeline (`earlyNote`) — die Datumszeile bleibt
   // davon unberührt.
+  // Trägt der Tarif das grüne Hinweisfeld, entfällt die graue Zeile: sie sagte
+  // wörtlich dasselbe („bis 12:00 Uhr" neben „Lieferung bis 12:00 Uhr"), nur
+  // schwächer. Für jeden anderen Tarif — 17:00, 18:00, alles ohne Frühzeit —
+  // bleibt sie unverändert die normale Lieferinformation.
+  //
+  // Entschieden wird über GENAU DEN WERT, der auch das Feld rendert (`earlyNote`
+  // wird hereingereicht, nicht neu berechnet). Damit können Anzeige und
+  // Unterdrückung nicht auseinanderlaufen — auch nicht in dem Randfall, in dem
+  // `isEarlyDelivery` zwar true ist, aber kein Zeittext entsteht.
   const zeitText = deliveryTimeLabel(t);
   const secondary = [];
-  if (zeitText) secondary.push(zeitText);
+  if (zeitText && !earlyNote) secondary.push(zeitText);
   return { title: "Lieferung", primary, secondary };
 }
 
@@ -379,8 +388,8 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   const unavailable = t.availableForDate === false;
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
   const start = buildStart(t);
-  const end   = buildEnd(t, etaLabel);
   const earlyNote = earlyDeliveryNote(t);
+  const end   = buildEnd(t, etaLabel, earlyNote);
   // null, wenn das Backend die Übergabeart nicht klassifiziert hat — dann wird
   // keine behauptet.
   const handoverText = handoverLabel(handoverMode(t));

@@ -67,15 +67,15 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
                    "s_country", "s_phone", "s_email", "r_company", "r_fullName", "r_street",
                    "r_addition", "r_zip", "r_city", "r_country", "r_phone", "r_email",
                    "packageCount", "weight", "length", "width", "height",
-                   "max_price", "latestDeliveryDate"]) {
+                   "max_price", "latestDeliveryDate", "latestDeliveryTime"]) {
     assert.ok(SHIPMENT_FORM_KEYS.includes(k), `${k} fehlt im Sendungsformular`);
   }
-  assert.equal(SHIPMENT_FORM_KEYS.length, 25);
+  assert.equal(SHIPMENT_FORM_KEYS.length, 26);
   // Preisrechner: nur Route (Land + PLZ) und Paketdaten — keine Adressen.
   assert.deepEqual([...CALCULATOR_FORM_KEYS], [
     "from_country", "from_zip", "to_country", "to_zip",
     "packageCount", "weight", "length", "width", "height",
-    "max_price", "latestDeliveryDate",
+    "max_price", "latestDeliveryDate", "latestDeliveryTime",
   ]);
   for (const k of CALCULATOR_FORM_KEYS) {
     assert.ok(!k.startsWith("s_") && !k.startsWith("r_"), `${k}: der Preisrechner führt keine Adressen`);

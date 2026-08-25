@@ -8,6 +8,9 @@ import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
+import { applyResultFilters } from "../utils/offersFilterView.mjs";
+import { deliveryTimeOptions } from "../utils/deliveryTimeView.mjs";
+import DeliveryTimeChips from "../components/offers/DeliveryTimeChips.jsx";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
@@ -110,7 +113,11 @@ function postalErr(country, value) {
 // aus. Nur die rein clientseitigen Anzeige-Filter (max_price, latestDeliveryDate)
 // lassen Tarife + shipmentId unangetastet — sie filtern lediglich die bereits
 // berechnete Liste, ohne die Buchungsgrundlage zu ändern.
-const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate"]);
+// `latestDeliveryTime` gehört zwingend hierher: eine Uhrzeitauswahl arbeitet
+// ausschließlich auf den BEREITS geladenen Tarifen und darf niemals einen neuen
+// /calculate-price-Request auslösen. Sie steht aus demselben Grund NICHT im
+// calcKey — der Schlüssel beschreibt die Payload, nicht die Anzeige.
+const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate", "latestDeliveryTime"]);
 
 function getErrors(form) {
   const e = {};
@@ -683,6 +690,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const clearFilters = () => {
     upd("max_price", "");
     upd("latestDeliveryDate", "");
+    upd("latestDeliveryTime", "");
   };
 
   useEffect(() => {
@@ -959,19 +967,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // useEffect + setFiltered. Das spart pro Filteränderung (v. a. Preis-Slider)
   // den zusätzlichen zweiten Render (setFiltered). Filterbedingungen und
   // Reihenfolge sind unverändert; tariffs wird nie mutiert (Kopie via Spread).
-  const filtered = useMemo(() => {
-    let f = [...tariffs];
-    if (form.max_price) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(form.max_price));
-    // Client-Filter „Späteste Lieferzeit": spätestes Lieferdatum (deliveryDateMax →
-    // deliveryDate). Tarife ohne Lieferdatum bleiben sichtbar (kein gültiges Angebot
-    // ausblenden). Rein clientseitig — kein Recalc, kein /calculate-price-Request.
-    if (form.latestDeliveryDate) f = f.filter(t => {
-      const dd = t.deliveryDateMax || t.deliveryDate;
-      if (!dd) return true;
-      return String(dd).split("T")[0] <= form.latestDeliveryDate;
-    });
-    return f;
-  }, [tariffs, form.max_price, form.latestDeliveryDate]);
+  const filtered = useMemo(
+    // EINE Regel, importiert statt kopiert (utils/offersFilterView.mjs). Rein
+    // clientseitig: kein Recalc, kein /calculate-price-Request — weder beim
+    // Datum noch bei der Uhrzeit (beide stehen in FILTER_ONLY_FIELDS).
+    () => applyResultFilters(tariffs, {
+      maxPrice: form.max_price,
+      latestDeliveryDate: form.latestDeliveryDate,
+      latestDeliveryTime: form.latestDeliveryTime,
+    }),
+    [tariffs, form.max_price, form.latestDeliveryDate, form.latestDeliveryTime]);
+
+  // Wählbare Uhrzeiten kommen aus den GELADENEN Tarifen (nie aus einer festen
+  // Liste) — damit hat jede angebotene Uhrzeit mindestens einen realen Tarif.
+  // Bewusst aus `tariffs`, nicht aus `filtered`: sonst entfernte die eigene
+  // Auswahl gerade die Option, mit der man sie wieder lockern wollte.
+  const zeitOptionen = useMemo(() => deliveryTimeOptions(tariffs), [tariffs]);
 
   const sorted = React.useMemo(() => {
     if (sortMode === "recommended") return filtered;
@@ -993,13 +1004,33 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setShippingDate(iso); setDatePickerOpen(false);
     // Späteste Lieferzeit darf nie vor dem Versanddatum liegen → ungültige
     // Auswahl beim Vorziehen des Versanddatums verwerfen.
-    if (form.latestDeliveryDate && form.latestDeliveryDate < iso) upd("latestDeliveryDate", "");
+    if (form.latestDeliveryDate && form.latestDeliveryDate < iso) {
+      upd("latestDeliveryDate", "");
+      upd("latestDeliveryTime", "");   // keine verwaiste Uhrzeit ohne Datum
+    }
     resetResults();
   };
 
   // Auswahl im „Späteste Lieferzeit"-Kalender (reiner Client-Filter, kein Recalc).
+  //
+  // Eine Uhrzeit ohne Datum ergibt keinen Zeitpunkt und wäre ein Filter, der
+  // nichts filtern kann — deshalb räumt JEDES Leeren des Datums die Uhrzeit
+  // zwingend mit ab. Es gibt bewusst keinen Pfad, auf dem eine verwaiste
+  // Uhrzeit stehen bleibt: dieselbe Funktion trägt Kalenderauswahl UND
+  // „Beliebig".
+  //
+  // Das Popover schließt hier NICHT mehr automatisch: erst mit einem gesetzten
+  // Datum wird die optionale Uhrzeitzeile darunter bedienbar, und ein sofortiges
+  // Schließen hätte sie unerreichbar gemacht. Geschlossen wird über die Uhrzeit,
+  // „Beliebig", Escape, einen Klick nach außen oder den Auslöser selbst.
   const handleLatestDeliveryChange = (iso) => {
     upd("latestDeliveryDate", iso || "");
+    if (!iso) { upd("latestDeliveryTime", ""); setLatestOpen(false); }
+  };
+
+  // Uhrzeitauswahl — reiner Anzeigefilter auf den bereits geladenen Tarifen.
+  const handleLatestDeliveryTimeChange = (zeit) => {
+    upd("latestDeliveryTime", zeit || "");
     setLatestOpen(false);
   };
 
@@ -1682,13 +1713,20 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               {latestOpen && (
                 <div className="date-picker-body date-picker-body--latest">
                   <div className="date-quick-options">
-                    <button className={`date-quick-btn ${!form.latestDeliveryDate ? "active" : ""}`} onClick={() => { upd("latestDeliveryDate", ""); setLatestOpen(false); }}>Beliebig</button>
+                    <button className={`date-quick-btn ${!form.latestDeliveryDate ? "active" : ""}`} onClick={() => handleLatestDeliveryChange("")}>Beliebig</button>
                   </div>
                   <DateCalendar
                     value={form.latestDeliveryDate}
                     onSelect={handleLatestDeliveryChange}
                     minDate={shippingDate}
                     onClose={() => setLatestOpen(false)}
+                  />
+                  <DeliveryTimeChips
+                    options={zeitOptionen}
+                    value={form.latestDeliveryTime}
+                    onChange={handleLatestDeliveryTimeChange}
+                    hasDate={!!form.latestDeliveryDate}
+                    idPrefix="ns-form"
                   />
                 </div>
               )}
@@ -2016,7 +2054,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             maxPrice={form.max_price}
             onMaxPriceChange={v => upd("max_price", v)}
             latestDeliveryDate={form.latestDeliveryDate}
-            onLatestDeliveryChange={v => upd("latestDeliveryDate", v)}
+            onLatestDeliveryChange={handleLatestDeliveryChange}
+            latestDeliveryTime={form.latestDeliveryTime}
+            onLatestDeliveryTimeChange={handleLatestDeliveryTimeChange}
+            deliveryTimeOptions={zeitOptionen}
             shippingDate={shippingDate}
             onClearFilters={clearFilters}
             vatMode={vatMode}

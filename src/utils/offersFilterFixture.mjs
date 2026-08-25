@@ -2,6 +2,12 @@
 // belegten `/api/jumingo/calculate-price`-Antwort (DE→DE, 3 kg, 10×10×10 cm,
 // Versanddatum 2026-08-28, serviceFilter/shippingModeFilter beide "all").
 //
+// Seit der Uhrzeit-Erweiterung tragen die Zeilen zusätzlich `deliveryTimeUntil`
+// und `deliveryTimeUntilMinutes` — beide unverändert aus derselben Antwort. Die
+// Verteilung ist die gemessene: 19 Tarife tragen den generischen Tagesendwert
+// (17:00/18:00), 22 eine konkrete Produktzeit (08:00–13:00), dazwischen liegt
+// kein Wert. Keine Zeit ist erfunden oder gerundet.
+//
 // Reduziert auf GENAU die Felder, die die Ergebnisfilter lesen — es sind keine
 // Adress-, Konto-, Preis-Einkaufs- oder Providerdaten enthalten, keine IDs
 // jenseits der öffentlichen Tarifkennung.
@@ -20,7 +26,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-02",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-1381",
@@ -28,7 +36,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-02",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "1381",
@@ -36,7 +46,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-3708",
@@ -44,7 +56,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-02",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3262",
@@ -52,7 +66,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3708",
@@ -60,7 +76,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-3298",
@@ -68,7 +86,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-02",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3307",
@@ -76,7 +96,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "18:00",
+    "deliveryTimeUntilMinutes": 1080
   },
   {
     "id": "3297",
@@ -84,7 +106,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-3264",
@@ -92,7 +116,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3264",
@@ -100,7 +126,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-3266",
@@ -108,7 +136,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3283",
@@ -116,7 +146,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3266",
@@ -124,7 +156,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3588",
@@ -132,7 +166,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-08-29",
-    "deliveryDate": "2026-08-29"
+    "deliveryDate": "2026-08-29",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3278",
@@ -140,7 +176,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "s-3257",
@@ -148,7 +186,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "18:00",
+    "deliveryTimeUntilMinutes": 1080
   },
   {
     "id": "3267",
@@ -156,7 +196,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "4088",
@@ -164,7 +206,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "13:00",
+    "deliveryTimeUntilMinutes": 780
   },
   {
     "id": "s-3265",
@@ -172,7 +216,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:30",
+    "deliveryTimeUntilMinutes": 630
   },
   {
     "id": "3257",
@@ -180,7 +226,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "18:00",
+    "deliveryTimeUntilMinutes": 1080
   },
   {
     "id": "3265",
@@ -188,7 +236,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:30",
+    "deliveryTimeUntilMinutes": 630
   },
   {
     "id": "3287",
@@ -196,7 +246,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3279",
@@ -204,7 +256,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "s-3258",
@@ -212,7 +266,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3258",
@@ -220,7 +276,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "4087",
@@ -228,7 +286,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:00",
+    "deliveryTimeUntilMinutes": 600
   },
   {
     "id": "3587",
@@ -236,7 +296,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-29",
-    "deliveryDate": "2026-08-29"
+    "deliveryDate": "2026-08-29",
+    "deliveryTimeUntil": "18:00",
+    "deliveryTimeUntilMinutes": 1080
   },
   {
     "id": "3280",
@@ -244,7 +306,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:00",
+    "deliveryTimeUntilMinutes": 600
   },
   {
     "id": "3573",
@@ -252,7 +316,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-29",
-    "deliveryDate": "2026-08-29"
+    "deliveryDate": "2026-08-29",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3281",
@@ -260,7 +326,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "09:00",
+    "deliveryTimeUntilMinutes": 540
   },
   {
     "id": "s-3259",
@@ -268,7 +336,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:30",
+    "deliveryTimeUntilMinutes": 630
   },
   {
     "id": "3259",
@@ -276,7 +346,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "10:30",
+    "deliveryTimeUntilMinutes": 630
   },
   {
     "id": "1016",
@@ -284,7 +356,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-29",
-    "deliveryDate": "2026-08-29"
+    "deliveryDate": "2026-08-29",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "3282",
@@ -292,7 +366,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "08:00",
+    "deliveryTimeUntilMinutes": 480
   },
   {
     "id": "3286",
@@ -300,7 +376,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "standard",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "17:00",
+    "deliveryTimeUntilMinutes": 1020
   },
   {
     "id": "3290",
@@ -308,7 +386,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "12:00",
+    "deliveryTimeUntilMinutes": 720
   },
   {
     "id": "s-3260",
@@ -316,7 +396,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "09:00",
+    "deliveryTimeUntilMinutes": 540
   },
   {
     "id": "3260",
@@ -324,7 +406,9 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "09:00",
+    "deliveryTimeUntilMinutes": 540
   },
   {
     "id": "s-3268",
@@ -332,7 +416,9 @@ export const TARIFE_41 = [
     "serviceType": "dropoff",
     "shippingMode": "express",
     "deliveryDateMax": "2026-09-01",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "09:00",
+    "deliveryTimeUntilMinutes": 540
   },
   {
     "id": "3268",
@@ -340,6 +426,8 @@ export const TARIFE_41 = [
     "serviceType": "pickup",
     "shippingMode": "express",
     "deliveryDateMax": "2026-08-31",
-    "deliveryDate": "2026-08-31"
+    "deliveryDate": "2026-08-31",
+    "deliveryTimeUntil": "09:00",
+    "deliveryTimeUntilMinutes": 540
   }
 ];

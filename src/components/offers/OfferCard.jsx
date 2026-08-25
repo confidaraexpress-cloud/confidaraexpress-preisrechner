@@ -5,6 +5,7 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
+import { isEarlyDelivery, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -68,9 +69,26 @@ function buildEnd(t, etaLabel) {
   else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
   else                                primary = etaLabel;
 
+  // Die Zustellzeit steht seit jeher hier — bisher aber ausnahmslos als
+  // schwächste Zeile der Karte (.offer-tl-sub, 13 px / 500 / muted). Genau
+  // deshalb ging eine konkrete 12:00-Zusage neben dem Tagesendwert 17:00 unter,
+  // obwohl beide dasselbe Feld sind.
+  //
+  // Jetzt entscheidet die UHRZEIT über die Gewichtung, nicht der Tarifname und
+  // ausdrücklich NICHT `shippingMode` (`FEDEX FIRST®` stellt bis 10:00 zu und ist
+  // serverseitig als „standard" klassifiziert; `UPS EXPRESS SAVER ®` ist
+  // „express" und trägt nur 17:00):
+  //
+  //   früh  → in die Hauptzeile, neben das Datum („31. Aug., bis 12:00 Uhr")
+  //   sonst → bleibt unverändert die dezente Unterzeile
+  //
+  // Der Tagesendwert wird NICHT entfernt, nur nicht betont. Im Detailpanel
+  // („Termin & Abholung") erscheinen beide Fälle unverändert gleich.
+  const zeitText = deliveryTimeLabel(t);
+  const frueh = isEarlyDelivery(t);
   const secondary = [];
-  if (t.deliveryTimeUntil) secondary.push(fmtUntil(t.deliveryTimeUntil));
-  return { title: "Lieferung", primary, secondary };
+  if (zeitText && !frueh) secondary.push(zeitText);
+  return { title: "Lieferung", primary, secondary, earlyTime: frueh ? zeitText : "" };
 }
 
 // ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
@@ -469,7 +487,17 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
-                  {end.primary && <span className="offer-tl-primary">{end.primary}</span>}
+                  {end.primary && (
+                    <span className="offer-tl-primary">
+                      {end.primary}
+                      {end.earlyTime && (
+                        <>
+                          {", "}
+                          <span className="offer-tl-time-early">{end.earlyTime}</span>
+                        </>
+                      )}
+                    </span>
+                  )}
                   {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
                 </div>
               </div>

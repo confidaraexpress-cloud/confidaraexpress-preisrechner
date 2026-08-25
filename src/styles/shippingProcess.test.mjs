@@ -103,12 +103,65 @@ test("7 — Angebotskarten sind auf Interactive-Card-Tokens umgestellt", () => {
   const regel = offersCss.match(/\.offer-card\s*\{([^}]*)\}/);
   assert.ok(regel, ".offer-card muss in offers.css definiert sein");
   assert.match(regel[1], /var\(--ce-color-border-default\)/);
-  assert.match(regel[1], /var\(--ce-radius-lg\)/);
-  assert.match(regel[1], /var\(--ce-elevation-1\)/);
+  // Etwas rechteckiger + klarer abgehoben: Radius MD, Ruheschatten Elevation 2.
+  // Beides Tokens — die Regel schreibt keinen freien Radius- oder Schattenwert.
+  assert.match(regel[1], /var\(--ce-radius-md\)/);
+  assert.match(regel[1], /var\(--ce-elevation-2\)/);
+  assert.ok(!/border-radius:\s*\d/.test(regel[1]), "kein freier Radiuswert");
+  assert.ok(!/box-shadow:(?!\s*var\()/.test(regel[1]), "kein freier Schattenwert");
+  // Hover hebt NICHT die Tiefe an (Elevation 3 ist der Dialog-Overlay), sondern
+  // die Kante — sonst gäbe es für den Hover keine freie Stufe mehr.
+  const hover = offersCss.match(/\.offer-card:hover\s*\{([^}]*)\}/);
+  assert.ok(hover, ".offer-card:hover muss definiert sein");
+  assert.match(hover[1], /var\(--ce-elevation-2\)/);
+  assert.match(hover[1], /var\(--ce-color-border-strong\)/);
   const ausgewaehlt = offersCss.match(/\.offer-card--selected\s*\{([^}]*)\}/);
   assert.ok(ausgewaehlt, ".offer-card--selected muss definiert sein");
   assert.match(ausgewaehlt[1], /var\(--ce-color-brand\)/, "ausgewählt trägt die Brand-Border");
   assert.match(ausgewaehlt[1], /var\(--ce-color-brand-soft\)/, "ausgewählt trägt Brand Soft als Fläche");
+});
+
+test("7b — die Angebotssektion ist auf Desktop begrenzt und zentriert, Mobile bleibt voll", () => {
+  const sektion = offersCss.match(/\.offers-section\s*\{([^}]*)\}/);
+  assert.ok(sektion, ".offers-section muss definiert sein");
+  const breite = sektion[1].match(/max-width:\s*(\d+)px/);
+  assert.ok(breite, "die Sektion braucht eine Breitenbegrenzung");
+  const px = Number(breite[1]);
+  assert.ok(px >= 1000 && px <= 1120, `unerwartete Breite ${px}px`);
+  assert.match(sektion[1], /margin-inline:\s*auto/, "ohne Zentrierung klebt die Liste links");
+
+  // Die Begrenzung sitzt auf der SEKTION — Ergebniskopf, Filterleiste und Karten
+  // halten dieselbe Kante. Eine zweite max-width auf der Karte liefe dem zuwider.
+  const karte = offersCss.match(/\.offer-card\s*\{([^}]*)\}/);
+  assert.ok(!/max-width/.test(karte[1]), ".offer-card darf keine eigene Breite setzen");
+
+  // Gemessene Wirkung: Karte = Sektion − 2px Rahmen − 56px .offers-body-Padding.
+  const body = offersCss.match(/\.offers-body\s*\{([^}]*)\}/);
+  assert.match(body[1], /padding:\s*20px 28px/, "die Rechnung oben hängt an diesem Innenabstand");
+  assert.equal(px - 2 - 56, 1022, "Kartenbreite auf breiten Desktops");
+
+  // Mobile: keine erzwungene Breite, keine waagerechte Scrollfläche auf der Karte.
+  const mobil = offersCss.slice(offersCss.indexOf("@media (max-width: 767px)"));
+  assert.ok(!/\.offers-section\s*\{[^}]*width:/.test(mobil),
+    "unter 768px darf die Sektion keine feste Breite bekommen");
+  assert.ok(!/\.offer-card\s*\{[^}]*overflow-x/.test(mobil));
+});
+
+test("7c — die frühe Zustellzeit trägt ein Foundation-Token und nicht nur Farbe", () => {
+  const regel = offersCss.match(/\.offer-tl-time-early\s*\{([^}]*)\}/);
+  assert.ok(regel, ".offer-tl-time-early muss definiert sein");
+  assert.match(regel[1], /var\(--ce-color-status-success-fg\)/, "keine freie Farbe");
+  assert.ok(!/#[0-9a-f]{3,8}/i.test(regel[1]), "kein Hexliteral");
+
+  // Bedeutung hängt nicht allein an der Farbe: die frühe Zeit wechselt die Zeile
+  // (Unterzeile → Hauptzeile) und damit Größe und Schnitt. Beide Stufen prüfen.
+  const sub  = offersCss.match(/\.offer-tl-sub\s*\{([^}]*)\}/)[1];
+  const prim = offersCss.match(/\.offer-tl-primary\s*\{([^}]*)\}/)[1];
+  assert.match(sub,  /font-weight:\s*500/);
+  assert.match(prim, /font-weight:\s*600/);
+  const karte = read("../components/offers/OfferCard.jsx");
+  assert.match(karte, /offer-tl-primary[\s\S]{0,400}offer-tl-time-early/,
+    "die frühe Zeit muss INNERHALB der Hauptzeile stehen");
 });
 
 /* ══════════ 8 — Badge-Logik: „Günstigste" nie auf nicht verfügbarem Angebot ═ */

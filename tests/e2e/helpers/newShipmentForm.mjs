@@ -54,7 +54,10 @@ export const STANDARD_PAKET = Object.freeze({
 /* Reihenfolge mit Absicht: Land ZUERST. Die PLZ-Prüfung und ihr Beispiel
    hängen am gewählten Land — wird das Land nachträglich gesetzt, wechselt die
    Regel unter einer bereits eingetragenen PLZ. */
-const ADRESSFELDER = ["country", "company", "fullName", "street", "zip", "city"];
+// `state` steht NACH `country`: das Feld erscheint erst, wenn ein Land mit Bundesstaatpflicht
+// (US/CA) gewählt ist. Bestehende Suiten übergeben es nicht — `fuelleAdresse` überspringt jeden
+// undefined-Wert, ihr Ablauf bleibt damit unverändert.
+const ADRESSFELDER = ["country", "state", "company", "fullName", "street", "zip", "city"];
 const PAKETFELDER  = ["packageCount", "weight", "length", "width", "height"];
 
 async function setzeFeld(page, id, wert) {

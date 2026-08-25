@@ -178,11 +178,33 @@ test("19 — mapAddressToShipmentFormPatch mappt auf das bestehende NewShipmentP
   assert.deepEqual(patch, {
     s_company: "Beispiel GmbH", s_fullName: "Max Mustermann", s_street: "Musterstraße 1",
     s_addition: "Tor 3", s_zip: "10115", s_city: "Berlin", s_country: "DE",
-    s_phone: "+49 1", s_email: "a@b.de",
+    s_state: "", s_phone: "+49 1", s_email: "a@b.de",
   });
   const rPatch = mapAddressToShipmentFormPatch(a, "r");
   assert.equal(Object.keys(rPatch).every(k => k.startsWith("r_")), true);
-  assert.equal(Object.prototype.hasOwnProperty.call(patch, "s_state"), false, "kein state-Feld, da NewShipmentPage keins hat");
+  // `s_state` gehört seit dem Zollpaket zum Formshape (Providervertrag: Bundesstaat ist für
+  // US/CA Pflicht). Für ein Land OHNE Bundesstaatpflicht — hier DE — ist er leer, nicht
+  // weggelassen: das Formular führt kontrollierte Eingaben, undefined kippte sie in
+  // unkontrollierte. Die frühere Zusicherung „kein state-Feld" ist damit bewusst überholt.
+  assert.equal(patch.s_state, "", "ohne Bundesstaatpflicht bleibt das Feld leer");
+});
+
+// 19b. Die eigentliche Sicherheitseigenschaft der Übernahme: das Adressbuchfeld ist historisch
+// FREITEXT („Bundesland / Region", z. B. „Bayern"). Ein solcher Wert darf niemals als
+// US-Bundesstaat in eine Sendung wandern — er würde providerseitig abgelehnt.
+test("19b — der Freitext des Adressbuchs wird nur als belegter Code übernommen", () => {
+  const frei = addr({ role: ROLE_SENDER, country: "US", state: "Kalifornien" });
+  assert.equal(mapAddressToShipmentFormPatch(frei, "s").s_state, "",
+    "ausgeschriebener Name darf nicht als Code durchgereicht werden");
+  const code = addr({ role: ROLE_SENDER, country: "US", state: "ca" });
+  assert.equal(mapAddressToShipmentFormPatch(code, "s").s_state, "CA",
+    "ein belegter Code wird normalisiert übernommen");
+  // Und ein Code des FALSCHEN Landes zählt nicht: NL ist Newfoundland (CA), nicht US.
+  const fremd = addr({ role: ROLE_SENDER, country: "US", state: "NL" });
+  assert.equal(mapAddressToShipmentFormPatch(fremd, "s").s_state, "");
+  // Länder ohne Bundesstaatpflicht bleiben unberührt, auch mit gefülltem Adressbuchfeld.
+  const de = addr({ role: ROLE_SENDER, country: "DE", state: "Bayern" });
+  assert.equal(mapAddressToShipmentFormPatch(de, "s").s_state, "");
 });
 
 // 20. „both" erfordert Auswahl sender/recipient für „Neue Sendung".

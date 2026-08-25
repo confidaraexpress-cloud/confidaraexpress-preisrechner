@@ -21,6 +21,7 @@
 // Backend-Vertrag).
 
 import { normalizeInventoryContext } from "./inventoryView.mjs";
+import { normalizeStateCode } from "./stateCodes.mjs";
 
 export const FORM_DRAFT_KIND = "form";
 export const SHIPMENT_DRAFT_KIND = "shipment";
@@ -173,8 +174,8 @@ export function formFormShippingDate(draft) {
 // umgeht bewusst das Profil-Prefill → Sender startet leer, dann Snapshot).
 export function blankNewShipmentForm() {
   return {
-    s_company: "", s_fullName: "", s_street: "", s_addition: "", s_zip: "", s_city: "", s_country: "DE", s_phone: "", s_email: "",
-    r_company: "", r_fullName: "", r_street: "", r_addition: "", r_zip: "", r_city: "", r_country: "CH", r_phone: "", r_email: "",
+    s_company: "", s_fullName: "", s_street: "", s_addition: "", s_zip: "", s_city: "", s_country: "DE", s_state: "", s_phone: "", s_email: "",
+    r_company: "", r_fullName: "", r_street: "", r_addition: "", r_zip: "", r_city: "", r_country: "CH", r_state: "", r_phone: "", r_email: "",
     packageCount: "1", weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "", latestDeliveryTime: "",
   };
@@ -218,6 +219,9 @@ function mapParty(src, prefix, base) {
   set("phone", src.phone);
   set("email", src.email);
   base[`${prefix}_country`] = safeCountry(src.country, base[`${prefix}_country`]);
+  // Bundesstaat NACH dem Land setzen — er wird gegen das aufgelöste Land geprüft, und ein
+  // Wert, der zu diesem Land nicht gehört, fällt auf leer zurück statt mitgeschleppt zu werden.
+  base[`${prefix}_state`] = normalizeStateCode(base[`${prefix}_country`], src.state);
 }
 
 // Vollständiger Initialzustand für „Neue Sendung" aus einem Formularentwurf-

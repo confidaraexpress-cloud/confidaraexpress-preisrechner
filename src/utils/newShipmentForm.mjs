@@ -25,7 +25,12 @@ export const PACKAGE_FIELDS = Object.freeze(["packageCount", "weight", "length",
 export const PARTY_PREFIXES = Object.freeze(["s", "r"]);
 
 const PARTY_SUFFIXES = Object.freeze([
-  "company", "fullName", "street", "addition", "zip", "city", "country", "phone", "email",
+  // `state` ist der Bundesstaat/die Provinz und betrifft AUSSCHLIESSLICH US- und CA-Adressen
+  // (Providervertrag: „the state is required only for US and Canada"). Er steht hier im
+  // gemeinsamen Feldvertrag, damit Formular, Entwurf und Vorgang ihn wie jedes andere
+  // Adressfeld tragen; sichtbar und geprüft wird er nur bei diesen beiden Ländern, und für
+  // jedes andere Ziel bleibt er leer und wird nicht gesendet.
+  "company", "fullName", "street", "addition", "zip", "city", "country", "state", "phone", "email",
 ]);
 
 export const WEIGHT_MIN_KG = 0.1;

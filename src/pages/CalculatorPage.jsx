@@ -6,6 +6,7 @@ import { countries, normalizeCountryCode } from "../utils/countries";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
 import { deliveryTimeOptions, latestDeliveryFieldValue } from "../utils/deliveryTimeView.mjs";
+import { revealOffers } from "../utils/revealOffers.mjs";
 import DeliveryTimeSelect from "../components/offers/DeliveryTimeSelect.jsx";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
@@ -149,6 +150,10 @@ export default function CalculatorPage() {
   // Tarife tatsächlich angekommen sind — ein Fehlversuch hinterlässt hier
   // nichts, der nächste Klick rechnet also neu.
   const lastCalcKeyRef = useRef("");
+  /* Anker des Angebotsbereichs. Einziger Zweck: die bereits gültigen Angebote
+     sichtbar machen, wenn der Wiederverwendungszweig greift und deshalb NICHT
+     neu gerechnet wird. Dieselbe Rolle wie `offersRef` in NewShipmentPage. */
+  const offersRef = useRef(null);
 
   /* ── Spiegelung in den laufenden Vorgang ─────────────────────────────────
      Abhängigkeiten sind die tatsächlichen Zustandswerte; der Effekt läuft
@@ -399,6 +404,11 @@ export default function CalculatorPage() {
       lastCalcKeyRef.current !== "" && lastCalcKeyRef.current === calcKeyRef.current
     ) {
       setError(null);
+      // Der Knopf darf nicht tot wirken. Es wird NICHTS neu berechnet, nichts
+      // sortiert und nichts zurückgesetzt — der bereits gültige Angebotsbereich
+      // rückt lediglich ins Bild. Begründung und Motion-Regel stehen in
+      // `utils/revealOffers.mjs`.
+      revealOffers(offersRef.current);
       return;
     }
     setHasResults(false); setTariffs([]);
@@ -917,6 +927,7 @@ export default function CalculatorPage() {
 
         {/* ── Offers ── */}
         {(hasResults || loading) && (
+          <div ref={offersRef}>
           <OffersList
             sorted={sorted}
             filtered={filtered}
@@ -942,6 +953,7 @@ export default function CalculatorPage() {
             onVatToggle={setVatMode}
             senderPrefill={senderPrefill}
           />
+          </div>
         )}
         </div>
       </div>

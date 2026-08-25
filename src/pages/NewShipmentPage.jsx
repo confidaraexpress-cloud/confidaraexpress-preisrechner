@@ -669,8 +669,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     resetResults();
   };
 
+  // Setzt ALLE reinen Ergebnisfilter zurück. Beide Schlüssel stehen in
+  // FILTER_ONLY_FIELDS — `upd` ruft für sie bewusst KEIN invalidateResults(),
+  // die bereits berechneten Tarife und die shipmentId bleiben also erhalten
+  // und es entsteht KEIN neuer /calculate-price-Request. Wer hier einen
+  // weiteren Filter ergänzt, trägt ihn zusätzlich in FILTER_ONLY_FIELDS und
+  // in activeFilterCount (OffersList) ein.
   const clearFilters = () => {
     upd("max_price", "");
+    upd("latestDeliveryDate", "");
   };
 
   useEffect(() => {
@@ -1975,6 +1982,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
             onRecalculate={calculate}
             maxPrice={form.max_price}
             onMaxPriceChange={v => upd("max_price", v)}
+            latestDeliveryDate={form.latestDeliveryDate}
+            onLatestDeliveryChange={v => upd("latestDeliveryDate", v)}
+            shippingDate={shippingDate}
             onClearFilters={clearFilters}
             vatMode={vatMode}
             onVatToggle={setVatMode}

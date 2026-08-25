@@ -70,7 +70,10 @@ export const OFFERS_DROPPED_NOTICE = Object.freeze({
 
 const PARTY_SUFFIXES = ["company", "fullName", "street", "addition", "zip", "city", "country", "phone", "email"];
 const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
-const CLIENT_FILTER_KEYS = ["max_price", "latestDeliveryDate"];
+// `latestDeliveryTime` ist additiv ergänzt — OHNE Versionssprung, damit ein
+// laufender Vorgang nicht grundlos verworfen wird (ein alter Vorgang liefert
+// `undefined` → ""). Gleiche Disziplin wie bei trackingEmail/labelTrackingEmail.
+const CLIENT_FILTER_KEYS = ["max_price", "latestDeliveryDate", "latestDeliveryTime"];
 
 export const SHIPMENT_FORM_KEYS = Object.freeze([
   ...PARTY_SUFFIXES.map((k) => `s_${k}`),

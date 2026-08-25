@@ -9,6 +9,7 @@ import {
   activeResultFilterCount, deliveryChipLabel, emptyFilterHint as buildEmptyFilterHint,
   offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
+import DeliveryTimeChips from "./DeliveryTimeChips.jsx";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -31,6 +32,7 @@ export function OffersList({
   onRecalculate,
   maxPrice, onMaxPriceChange,
   latestDeliveryDate, onLatestDeliveryChange, shippingDate,
+  latestDeliveryTime, onLatestDeliveryTimeChange, deliveryTimeOptions,
   onClearFilters,
   vatMode, onVatToggle,
   senderPrefill,
@@ -72,7 +74,7 @@ export function OffersList({
   // meldete, während 21 Karten standen — ohne Chip und ohne Zurücksetzen.
   const activeFilterCount = activeResultFilterCount({ maxPrice, latestDeliveryDate });
   const hasFilter  = activeFilterCount > 0;
-  const emptyFilterHint = buildEmptyFilterHint({ maxPrice, latestDeliveryDate });
+  const emptyFilterHint = buildEmptyFilterHint({ maxPrice, latestDeliveryDate, latestDeliveryTime });
 
   const showCards  = !loading && sorted.length > 0;
   const showSortBar = hasResults && !loading && tariffs.length > 0;
@@ -172,11 +174,11 @@ export function OffersList({
               className={`offers-sort-btn offers-filter-chip${latestDeliveryDate ? " has-filter" : ""}${openFilter === "delivery" ? " open" : ""}`}
               onClick={() => setOpenFilter(o => (o === "delivery" ? null : "delivery"))}
               type="button"
-              aria-haspopup="dialog"
+              aria-haspopup="true"
               aria-expanded={openFilter === "delivery"}
             >
               <Icon n="calendar" s={12} c="currentColor" />
-              {deliveryChipLabel(latestDeliveryDate)}
+              {deliveryChipLabel(latestDeliveryDate, latestDeliveryTime)}
               <span className="offers-filter-chip-caret" aria-hidden="true">
                 <Icon n="chevron" s={13} c="currentColor" />
               </span>
@@ -244,15 +246,23 @@ export function OffersList({
             </div>
           )}
 
-          {/* ── Lieferungs-Dropdown: filtert live über deliveryDateMax → derselbe
+          {/* ── Lieferungs-Dropdown. role="group", NICHT "dialog": die Fläche ist
+                 nicht modal, fängt den Fokus bewusst nicht ein und hat keine
+                 Fokusrückgabe — die Dialogrolle verspräche genau die Fokusfalle,
+                 die das Designsystem für echte Dialoge einfordert (dasselbe
+                 Argument wie beim AddressPicker). Statt die falsche Semantik um
+                 eine weitere Bediengruppe zu erweitern, ist sie korrigiert.
+                 Lieferungs-Dropdown: filtert live über deliveryDateMax → derselbe
                  rein clientseitige Mechanismus wie im Formular (kein API-Request).
                  Die FILTERREGEL selbst liegt unverändert in den Seiten. ── */}
           {openFilter === "delivery" && (
-            <div className="offers-filter-dropdown offers-delivery-dropdown" role="dialog" aria-label="Lieferzeitfilter">
+            <div className="offers-filter-dropdown offers-delivery-dropdown" role="group" aria-label="Späteste Lieferzeit">
               <div className="offers-filter-dd-head">
                 <span className="offers-filter-dd-title">Späteste Lieferzeit</span>
                 <span className={`offers-filter-dd-status${latestDeliveryDate ? " is-set" : ""}`}>
-                  {latestDeliveryDate ? `bis ${fmtDE(latestDeliveryDate)}` : "Beliebig"}
+                  {latestDeliveryDate
+                    ? `bis ${fmtDE(latestDeliveryDate)}${latestDeliveryTime ? `, ${latestDeliveryTime}` : ""}`
+                    : "Beliebig"}
                 </span>
               </div>
               <p className="offers-filter-dd-sub">Angebote ausblenden, die später zustellen</p>
@@ -267,9 +277,22 @@ export function OffersList({
               </div>
               <DateCalendar
                 value={latestDeliveryDate || ""}
-                onSelect={(iso) => { onLatestDeliveryChange(iso || ""); setOpenFilter(null); }}
+                onSelect={(iso) => {
+                  onLatestDeliveryChange(iso || "");
+                  // Mit gesetztem Datum bleibt die Fläche offen: erst dann ist die
+                  // optionale Uhrzeitzeile darunter bedienbar. Ohne Datum (Beliebig)
+                  // gibt es nichts mehr zu wählen — dann schließen.
+                  if (!iso) setOpenFilter(null);
+                }}
                 minDate={shippingDate}
                 onClose={() => setOpenFilter(null)}
+              />
+              <DeliveryTimeChips
+                options={deliveryTimeOptions}
+                value={latestDeliveryTime}
+                onChange={(zeit) => { onLatestDeliveryTimeChange(zeit); setOpenFilter(null); }}
+                hasDate={!!latestDeliveryDate}
+                idPrefix="offers-dd"
               />
               {latestDeliveryDate && (
                 <div className="offers-filter-dd-foot">

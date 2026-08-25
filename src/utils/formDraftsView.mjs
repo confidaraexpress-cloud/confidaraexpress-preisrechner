@@ -176,7 +176,7 @@ export function blankNewShipmentForm() {
     s_company: "", s_fullName: "", s_street: "", s_addition: "", s_zip: "", s_city: "", s_country: "DE", s_phone: "", s_email: "",
     r_company: "", r_fullName: "", r_street: "", r_addition: "", r_zip: "", r_city: "", r_country: "CH", r_phone: "", r_email: "",
     packageCount: "1", weight: "", length: "", width: "", height: "",
-    max_price: "", latestDeliveryDate: "",
+    max_price: "", latestDeliveryDate: "", latestDeliveryTime: "",
   };
 }
 

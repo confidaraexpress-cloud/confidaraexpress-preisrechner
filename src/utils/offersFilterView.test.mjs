@@ -211,27 +211,178 @@ test("G1 — beide Seiten reichen den Lieferzeitfilter an OffersList durch", () 
   for (const seite of SEITEN) {
     const q = lies(seite);
     assert.match(q, /latestDeliveryDate=\{form\.latestDeliveryDate\}/, seite);
-    assert.match(q, /onLatestDeliveryChange=\{v => upd\("latestDeliveryDate", v\)\}/, seite);
+    assert.match(q, /onLatestDeliveryChange=\{handleLatestDeliveryChange\}/, seite);
+    assert.match(q, /latestDeliveryTime=\{form\.latestDeliveryTime\}/, seite);
+    assert.match(q, /onLatestDeliveryTimeChange=\{handleLatestDeliveryTimeChange\}/, seite);
+    assert.match(q, /deliveryTimeOptions=\{zeitOptionen\}/, seite);
     assert.match(q, /shippingDate=\{shippingDate\}/, `${seite}: minDate für den Kalender fehlt`);
   }
 });
 
-test("G2 — die Filterregel selbst ist auf beiden Seiten unverändert und identisch", () => {
-  const regeln = SEITEN.map((seite) => {
-    const m = lies(seite).match(
-      /if \(form\.latestDeliveryDate\) f = f\.filter\(t => \{[\s\S]*?\n    \}\);/
-    );
-    assert.ok(m, `${seite}: die Lieferzeitregel wurde verändert oder entfernt`);
-    return m[0].replace(/\s+/g, " ");
+test("G2 — es gibt nur noch EINE Filterregel, und beide Seiten importieren sie", () => {
+  // Vorher stand die Regel dreimal im Repository (zwei Seiten + Testspiegel) und
+  // ein Zeichenvergleich hielt sie zusammen. Mit der Uhrzeit als zweiter
+  // Dimension ist Zentralisierung die belastbarere Zusicherung: die Seiten
+  // dürfen GAR KEINE eigene Regel mehr enthalten.
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    assert.match(q, /import \{ applyResultFilters \} from "\.\.\/utils\/offersFilterView\.mjs";/,
+      `${seite}: die zentrale Filterregel wird nicht importiert`);
+    assert.match(q, /applyResultFilters\(tariffs, \{/,
+      `${seite}: die zentrale Filterregel wird nicht aufgerufen`);
+    assert.ok(!/f = f\.filter\(t => \{[\s\S]*?deliveryDateMax/.test(q),
+      `${seite}: enthält wieder eine eigene Kopie der Lieferzeitregel`);
+    assert.ok(!/t\.netPrice <= Number\(/.test(q),
+      `${seite}: enthält wieder eine eigene Kopie der Preisregel`);
+  }
+});
+
+test("G3 — die Uhrzeit ist ein reiner Anzeigefilter und löst nie eine Neuberechnung aus", () => {
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    const menge = q.match(/const FILTER_ONLY_FIELDS = new Set\(\[([^\]]*)\]\)/);
+    assert.ok(menge, `${seite}: FILTER_ONLY_FIELDS fehlt`);
+    assert.match(menge[1], /"latestDeliveryTime"/,
+      `${seite}: ohne diesen Eintrag ruft upd() invalidateResults() und verwirft die Tarife`);
+    assert.match(menge[1], /"latestDeliveryDate"/, seite);
+    assert.match(menge[1], /"max_price"/, seite);
+    // Der Recalc-Schlüssel beschreibt die PAYLOAD — kein Anzeigefilter darin.
+    const key = q.match(/calcKeyRef\.current = JSON\.stringify\(\{[\s\S]*?\n  \}\);/);
+    assert.ok(key, `${seite}: calcKeyRef nicht gefunden`);
+    assert.ok(!/latestDelivery/.test(key[0]), `${seite}: Anzeigefilter im Recalc-Schlüssel`);
+    assert.ok(!/max_price/.test(key[0]), `${seite}: Preisfilter im Recalc-Schlüssel`);
+  }
+});
+
+/* ══════════ F) Uhrzeitfilter — Datum UND Uhrzeit ═══════════════════════════ */
+
+test("F1 — nur Datum: unverändertes Verhalten, die Uhrzeit ändert nichts", () => {
+  const ohne = applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31" });
+  const leer = applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "" });
+  assert.equal(ohne.length, 21, "der im Audit gemessene Wert hat sich verändert");
+  assert.deepEqual(leer.map((t) => t.id), ohne.map((t) => t.id));
+  for (const v of [null, undefined, "kaputt"]) {
+    assert.deepEqual(
+      applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: v }).map((t) => t.id),
+      ohne.map((t) => t.id), String(v));
+  }
+});
+
+// Die fünf fachlichen Fälle des Paarvergleichs, jeder einzeln benannt.
+const ZEITFAELLE = [
+  { id: "a", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "10:00", sichtbar: true,
+    warum: "früher am Stichtag" },
+  { id: "b", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "12:00", sichtbar: true,
+    warum: "exakt zur Frist — die Grenze ist einschließend" },
+  { id: "c", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "13:00", sichtbar: false,
+    warum: "später am Stichtag" },
+  { id: "d", deliveryDateMax: "2026-09-01", deliveryTimeUntil: "09:00", sichtbar: false,
+    warum: "früh, aber einen Tag zu spät" },
+  { id: "e", deliveryDateMax: "2026-08-30", deliveryTimeUntil: "17:00", sichtbar: true,
+    warum: "Tagesendwert, aber einen Tag früher — schlägt die Frist nachweislich" },
+];
+
+test("F2 — Datum + 12:00 vergleicht das PAAR (Tag, Uhrzeit)", () => {
+  const f = applyResultFilters(ZEITFAELLE, {
+    latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00",
   });
-  assert.equal(regeln[0], regeln[1], "die beiden Seiten filtern unterschiedlich");
-  // Wortgleich mit dem Test-Spiegel in offersFilterView.mjs — läuft eine der
-  // drei Stellen weg, schlägt dieser Test fehl statt still falsch zu messen.
-  const spiegel = lies("src/utils/offersFilterView.mjs")
-    .match(/if \(latestDeliveryDate\) f = f\.filter\(t => \{[\s\S]*?\n  \}\);/)[0]
-    .replace(/\s+/g, " ").replace("latestDeliveryDate)", "form.latestDeliveryDate)")
-    .replace("<= latestDeliveryDate", "<= form.latestDeliveryDate");
-  assert.equal(regeln[0], spiegel, "Testspiegel und Produktivregel sind auseinandergelaufen");
+  const sichtbar = f.map((t) => t.id);
+  for (const fall of ZEITFAELLE) {
+    assert.equal(sichtbar.includes(fall.id), fall.sichtbar, `${fall.id}: ${fall.warum}`);
+  }
+  assert.deepEqual(sichtbar, ["a", "b", "e"]);
+});
+
+test("F3 — ohne verwertbare Uhrzeit fällt ein Tarif bei gesetzter Zeit heraus (fail-safe)", () => {
+  const ohneZeit = [
+    { id: "null", deliveryDateMax: "2026-08-31", deliveryTimeUntil: null },
+    { id: "leer", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "" },
+    { id: "murks", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "abc" },
+    { id: "fehlt", deliveryDateMax: "2026-08-31" },
+  ];
+  // Es wird weder „Tagesende“ noch „erfüllt die Frist“ unterstellt.
+  assert.deepEqual(
+    applyResultFilters(ohneZeit, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" }), []);
+  // Ohne gesetzte Uhrzeit bleiben genau dieselben Tarife sichtbar wie bisher.
+  assert.equal(applyResultFilters(ohneZeit, { latestDeliveryDate: "2026-08-31" }).length, 4);
+});
+
+test("F3b — fehlt das Lieferdatum selbst, bleibt die bisherige Semantik unverändert", () => {
+  const ohneDatum = [{ id: "x", deliveryTimeUntil: "17:00" }];
+  assert.equal(applyResultFilters(ohneDatum, { latestDeliveryDate: "2026-08-31" }).length, 1);
+  assert.equal(
+    applyResultFilters(ohneDatum, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" }).length, 1,
+    "diese Semantik wurde bewusst nicht nebenbei geändert");
+});
+
+test("F4 — die Uhrzeit steht in FILTER_ONLY_FIELDS: kein /calculate-price-Request", () => {
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    const menge = q.match(/const FILTER_ONLY_FIELDS = new Set\(\[([^\]]*)\]\)/);
+    assert.ok(menge, `${seite}: FILTER_ONLY_FIELDS fehlt`);
+    assert.match(menge[1], /"latestDeliveryTime"/, seite);
+    assert.match(q, /if \(!FILTER_ONLY_FIELDS\.has\(k\)\) invalidateResults\(\);/, seite);
+  }
+});
+
+test("F5 — wird das Datum geleert, verschwindet die Uhrzeit mit", () => {
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    const h = q.match(/const handleLatestDeliveryChange = \(iso\) => \{[\s\S]*?\n  \};/);
+    assert.ok(h, `${seite}: handleLatestDeliveryChange fehlt`);
+    assert.match(h[0], /if \(!iso\) \{[\s\S]*?upd\("latestDeliveryTime", ""\)/,
+      `${seite}: eine verwaiste Uhrzeit ohne Datum bliebe stehen`);
+    assert.match(q, /upd\("latestDeliveryDate", ""\);\s*\n\s*upd\("latestDeliveryTime", ""\);/, seite);
+  }
+});
+
+test("F6 — Zurücksetzen leert Preis, Datum UND Uhrzeit, ohne neuen Preisrequest", () => {
+  for (const seite of SEITEN) {
+    const q = lies(seite);
+    const c = q.match(/const clearFilters = \(\) => \{[\s\S]*?\n  \};/);
+    assert.ok(c, `${seite}: clearFilters fehlt`);
+    for (const k of ["max_price", "latestDeliveryDate", "latestDeliveryTime"]) {
+      assert.match(c[0], new RegExp(`upd\\("${k}", ""\\)`), `${seite}: ${k} wird nicht geleert`);
+    }
+    assert.ok(!/calculate|fetch|setTariffs\(\[\]\)/.test(c[0]),
+      `${seite}: Zurücksetzen darf weder rechnen noch Tarife verwerfen`);
+  }
+  assert.equal(applyResultFilters(TARIFE_41,
+    { maxPrice: "", latestDeliveryDate: "", latestDeliveryTime: "" }).length, 41);
+});
+
+test("F7 — an der echten Antwort reduziert 31.08. + 12:00 weiter als das Datum allein", () => {
+  const nurDatum = applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31" });
+  const mitZeit  = applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" });
+  assert.equal(nurDatum.length, 21);
+  assert.ok(mitZeit.length < nurDatum.length);
+  for (const t of mitZeit) {
+    assert.ok(`${t.deliveryDateMax} ${t.deliveryTimeUntil}` <= "2026-08-31 12:00",
+      `${t.id} erfüllt die Frist nicht`);
+  }
+  const raus = nurDatum.filter((t) => !mitZeit.some((m) => m.id === t.id));
+  for (const t of raus) {
+    assert.ok(`${t.deliveryDateMax} ${t.deliveryTimeUntil}` > "2026-08-31 12:00", `${t.id}`);
+  }
+});
+
+/* ══════════ Z) Sichtbare Texte ════════════════════════════════════════════ */
+
+test("Z1 — der Chip nennt Datum und Uhrzeit, kompakt und ohne „Uhr“", () => {
+  assert.equal(deliveryChipLabel("", ""), "Lieferung");
+  assert.equal(deliveryChipLabel("2026-08-31", ""), "Lieferung bis 31.08.2026");
+  assert.equal(deliveryChipLabel("2026-08-31", "12:00"), "Lieferung bis 31.08.2026, 12:00");
+  // Eine Uhrzeit ohne Datum ergibt keinen Zeitpunkt — der Chip behauptet keinen.
+  assert.equal(deliveryChipLabel("", "12:00"), "Lieferung");
+});
+
+test("Z2 — der Leerzustand nennt bei gesetzter Uhrzeit Datum UND Uhrzeit", () => {
+  const t = emptyFilterHint({ latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" });
+  assert.match(t, /31\.08\.2026/);
+  assert.match(t, /12:00/);
+  assert.ok(!/garantiert|zugesichert/i.test(t));
+  assert.equal(emptyFilterHint({ latestDeliveryDate: "2026-08-31" }),
+    emptyFilterHint({ latestDeliveryDate: "2026-08-31", latestDeliveryTime: "" }));
 });
 
 // ── Regression / Governance ──────────────────────────────────────────────────
@@ -303,6 +454,6 @@ test("Ü5 — der Filterzustand bleibt über Chip und Zurücksetzen sichtbar", (
   // Die Überschrift erklärt den Filter nicht mehr — deshalb MÜSSEN die beiden
   // anderen Anzeiger bleiben. Ohne sie wäre die Reduktion unerklärt.
   const q = lies(OFFERS_LIST);
-  assert.match(q, /deliveryChipLabel\(latestDeliveryDate\)/);
+  assert.match(q, /deliveryChipLabel\(latestDeliveryDate, latestDeliveryTime\)/);
   assert.match(q, /\{hasFilter && \(\s*<button className="offers-filter-reset-btn"/);
 });

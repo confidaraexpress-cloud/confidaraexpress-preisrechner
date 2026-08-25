@@ -95,11 +95,18 @@ async function zeigeAngebote(page) {
   await page.waitForSelector(".offer-card", { timeout: 20000 });
 }
 
-// Setzt die späteste Lieferzeit über den NEUEN Chip an der Ergebnisliste.
+// Setzt die späteste Lieferzeit über den Chip an der Ergebnisliste.
+//
+// Die Fläche bleibt seit der Uhrzeit-Erweiterung nach der DATUMSauswahl bewusst
+// offen — erst mit gesetztem Datum ist die optionale Uhrzeitzeile darunter
+// bedienbar, ein sofortiges Schließen hätte sie unerreichbar gemacht. Diese
+// Suite prüft ausschließlich den Datumsfilter und schließt deshalb selbst
+// (Escape ist der vorhandene, hier unveränderte Weg).
 async function setzeLieferzeit(page, tag) {
   await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).click();
   await page.waitForSelector(".offers-delivery-dropdown", { timeout: 10000 });
   await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${tag}$`) }).first().click();
+  await page.keyboard.press("Escape");
   await page.waitForSelector(".offers-delivery-dropdown", { state: "detached", timeout: 10000 });
 }
 

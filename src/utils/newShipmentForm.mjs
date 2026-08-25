@@ -84,6 +84,7 @@ export function createEmptyShipmentForm() {
   form.packageCount = PACKAGE_COUNT_DEFAULT;
   form.max_price = "";
   form.latestDeliveryDate = "";
+  form.latestDeliveryTime = "";
   return form;
 }
 

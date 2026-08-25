@@ -108,11 +108,20 @@ export function repriceInsurance(payload, { signal } = {}) {
 //
 // Das Frontend entscheidet NIE selbst, ob ein Code gilt. Es gibt keine clientseitige Regel
 // „Code X ⇒ 100 %"; der 0-Euro-Zustand entsteht allein aus dieser serverbestätigten Antwort.
-export function checkVoucher({ shipmentId, tariffId, shipperTariffId, voucherCode }, { signal } = {}) {
+// customsData ist OPTIONAL und wird nur bei zollpflichtigen Sendungen mitgegeben — genau der
+// Block, den /book ohnehin sendet, aus derselben Quelle im Formular (nichts wird doppelt
+// erfasst). Er ist nötig, weil /cart/total den Zustand bepreist, den die Sendung BEIM PROVIDER
+// hat: ohne Zolldaten bleibt eine Drittlandsendung dort `missing_data` und der Warenkorb
+// unbepreist. Bei EU/DE fehlt das Feld wie bisher und der Request ist byte-identisch zu vorher.
+// Auch hier gilt unverändert: KEINE Beträge, keine Rabatthöhen, keine Prozentwerte.
+export function checkVoucher({ shipmentId, tariffId, shipperTariffId, voucherCode, customsData }, { signal } = {}) {
   return apiFetch(`/api/jumingo/cart-total`, {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ shipmentId, tariffId, shipperTariffId, voucherCode }),
+    body: JSON.stringify({
+      shipmentId, tariffId, shipperTariffId, voucherCode,
+      ...(customsData ? { customsData } : {}),
+    }),
     signal,
   });
 }

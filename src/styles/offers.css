@@ -355,26 +355,67 @@
 .offer-early-note-icon { display: flex; flex-shrink: 0; }
 
 /* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
-   Dropdown). Das Feld selbst ist das vorhandene Primitive .field-select; hier
-   stehen nur Beschriftung, das führende Icon und der Hinweis ohne Datum. */
+   Dropdown). Der Auslöser trägt weiterhin `.field-select` aus forms.css und
+   sieht damit aus wie jedes andere Auswahlfeld des Systems — nur die Liste ist
+   jetzt eigenes DOM statt einer vom Browser gezeichneten Select-Popup, deren
+   Öffnungsrichtung sich nicht steuern ließ. */
 .offers-time-row { margin-top: 12px; }
 .offers-time-label {
   display: block;
   font-size: 12px; font-weight: 600; line-height: 1.4;
   color: var(--ce-color-text-secondary); margin-bottom: 6px;
 }
-.offers-time-field { position: relative; }
-.offers-time-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  display: flex; pointer-events: none;
-  color: var(--ce-color-text-muted);
+
+/* Der Auslöser ist ein <button> mit derselben Feldoptik. `.field-select` bringt
+   Fläche, Kante, Höhe, Radius, Schrift und Fokusring mit; hier kommen nur die
+   Innenaufteilung und das Abschalten des Hintergrund-Chevrons dazu — der steckt
+   jetzt als Icon im Markup, damit er sich beim Öffnen drehen kann. */
+.offers-time-trigger {
+  display: flex; align-items: center; gap: 8px;
+  padding-right: 10px;
+  background-image: none;
+  text-align: left;
 }
-/* Platz für das führende Icon; der Chevron rechts kommt aus .field-select. */
-.offers-time-select { padding-left: 35px; }
-.offers-time-select:disabled { cursor: not-allowed; }
-.offers-time-field:has(.offers-time-select:disabled) .offers-time-icon {
-  color: var(--ce-color-text-disabled);
+.offers-time-icon { display: flex; flex-shrink: 0; color: var(--ce-color-text-muted); }
+.offers-time-value { flex: 1 1 auto; min-width: 0; }
+.offers-time-caret {
+  display: flex; flex-shrink: 0; color: var(--ce-color-text-muted);
+  transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
+.offers-time-trigger.is-open .offers-time-caret { transform: rotate(180deg); }
+.offers-time-trigger:disabled { cursor: not-allowed; }
+.offers-time-trigger:disabled .offers-time-icon,
+.offers-time-trigger:disabled .offers-time-caret { color: var(--ce-color-text-disabled); }
+
+/* Die Optionsliste. `position: fixed` + Portal an document.body: `.calc-panel`
+   trägt `overflow: hidden`, und beide Wirtsflächen animieren beim Öffnen einen
+   `transform` — ein transformierter Vorfahr würde `fixed` neu verankern. Die
+   Koordinaten kommen gemessen aus DeliveryTimeSelect.
+
+   Ebene 60 = dieselbe Stufe wie die schwebende Adressauswahl (addressbook.css):
+   über Formularfeldern, Karten und den beiden Wirts-Dropdowns (40/50), aber
+   unter Drawer (999) und Navigationsleiste (1000). Kein Fantasiewert. */
+.offers-time-list {
+  position: fixed; z-index: 60;
+  margin: 0; padding: 4px; list-style: none;
+  overflow-y: auto;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-3);
+}
+.offers-time-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 36px; padding: 6px 10px;
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: 14px; line-height: 1.4;
+  color: var(--ce-color-text-primary);
+  cursor: pointer;
+}
+.offers-time-option.is-marked { background: var(--ce-color-surface-subtle); }
+.offers-time-option.is-selected { font-weight: 600; }
+.offers-time-check { display: flex; flex-shrink: 0; color: var(--ce-color-brand-ink); }
+
 .offers-time-hint {
   font-size: 13px; line-height: 1.5; color: var(--ce-color-text-muted);
   margin: 6px 0 0;

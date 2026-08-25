@@ -16,9 +16,19 @@ import { hasSavableShipmentId, mapDraftErrorToMessage } from "../../utils/drafts
 // Requeststart, nie bei 401/403/Fehler) — der Aufrufer (BookingPage) beendet
 // darüber den aktiven temporären ShippingFlow: derselbe Entwurf ist jetzt
 // sicher serverseitig gespeichert, ein späteres „Neue Sendung" darf ihn nicht
-// erneut zeigen. Für einen Sendungsentwurf gibt es keine „Fortsetzen"-Aktion
-// (DraftsPage) — das Löschen des Flows hat deshalb keine Rückwirkung darauf.
-export function SaveDraftAction({ shipmentId, onNavigateDrafts, onSaved }) {
+// erneut zeigen.
+//
+// `bookingOptions` ist der Entwurfszustand der „Zusätzlichen Optionen" (Schalter
+// UND Werte). Er wird mitgespeichert, damit ein fortgesetzter Entwurf den Bereich
+// exakt so wieder öffnet, wie der Kunde ihn verlassen hat — vorher gingen genau
+// diese vier Angaben beim Speichern verloren. Serverseitig landen sie in einem
+// EIGENEN Entwurfsfeld und beeinflussen KEINE Buchung; was gebucht wird,
+// entscheidet allein der /book-Request.
+//
+// Seit dem Abschlusspaket ist ein Sendungsentwurf fortsetzbar (DraftsPage) — das
+// Löschen des Flows nach dem Speichern bleibt trotzdem richtig: fortgesetzt wird
+// über den gespeicherten Entwurf, nicht über den beendeten Vorgang.
+export function SaveDraftAction({ shipmentId, bookingOptions, onNavigateDrafts, onSaved }) {
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -28,7 +38,7 @@ export function SaveDraftAction({ shipmentId, onNavigateDrafts, onSaved }) {
     if (status === "saving" || status === "saved") return; // idempotent: kein Doppel-Request
     setStatus("saving"); setErrorMsg("");
     try {
-      const r = await saveDraft(shipmentId);
+      const r = await saveDraft(shipmentId, bookingOptions);
       if (r.status === 401 || r.status === 403) { setStatus("idle"); return; } // zentraler Auth-Redirect übernimmt
       if (r.ok) { setStatus("saved"); onSaved?.(); return; }
       let d = null; try { d = await r.json(); } catch { d = null; }

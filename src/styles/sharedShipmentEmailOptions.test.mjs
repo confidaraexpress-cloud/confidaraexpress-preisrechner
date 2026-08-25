@@ -50,10 +50,18 @@ test("4 — das Modul bleibt zustandslos", () => {
     "Schalterzustand, Werte und Fehler gehören in den Orchestrator");
 });
 
-test("5 — beide Schalter werden aus vorhandenen Werten abgeleitet", () => {
-  // Eine gespeicherte Adresse darf nicht unsichtbar werden.
-  assert.match(bookingPage, /useState\(\s*\(\) => !!\(flowBooking\?\.trackingEmail \|\| ""\)\.trim\(\)\)/);
-  assert.match(bookingPage, /useState\(\s*\(\) => !!\(flowBooking\?\.labelTrackingEmail \|\| ""\)\.trim\(\)\)/);
+test("5 — beide Schalter kommen aus der Stellung ODER aus der vorhandenen Adresse", () => {
+  // Die WERTABLEITUNG bleibt der zweite Teil der Oder-Kette und ist die
+  // Sicherheitseigenschaft: eine gespeicherte Adresse öffnet ihren Bereich in
+  // jedem Fall und kann nie unsichtbar werden — auch dann nicht, wenn die
+  // Stellung fehlt (älteres Bundle → `undefined`) oder manipuliert wurde.
+  //
+  // Die gespeicherte STELLUNG steht davor und fügt genau den Fall hinzu, den die
+  // Adresse nicht ausdrücken kann: „Option an, Feld noch leer". Beim Fortsetzen
+  // eines Sendungsentwurfs ist das der Unterschied zwischen „so wie ich es
+  // verlassen habe" und „schon wieder zugeklappt".
+  assert.match(bookingPage, /useState\(\s*\(\) => flowBooking\?\.trackingEmailEnabled === true \|\| !!\(flowBooking\?\.trackingEmail \|\| ""\)\.trim\(\)\)/);
+  assert.match(bookingPage, /useState\(\s*\(\) => flowBooking\?\.labelTrackingEmailEnabled === true \|\| !!\(flowBooking\?\.labelTrackingEmail \|\| ""\)\.trim\(\)\)/);
 });
 
 test("6 — der Vorgang spiegelt nur aktive Adressen", () => {

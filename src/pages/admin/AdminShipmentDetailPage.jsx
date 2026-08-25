@@ -137,6 +137,17 @@ const widthOf = (s) => firstDefined(s.width, s.width_cm, s.b, s.w);
 const heightOf = (s) => firstDefined(s.height, s.height_cm, s.h);
 const pkgOf = (s) => firstDefined(s.package_count, s.packageCount, s.packages, s.parcel_count);
 const refOf = (s) => firstDefined(s.reference_number, s.reference, s.customer_reference);
+
+// Gewähltes Labeldruckformat einer gebuchten Sendung. Nur die beiden belegten Werte werden
+// benannt; alles andere — insbesondere NULL bei Sendungen aus der Zeit vor der Persistenz —
+// erscheint als „Nicht erfasst". Kein stiller A4-Ersatz: das Format ging damals zwar mit dem
+// A4-Default an den Provider, aber ein Client konnte auch A6 senden, ohne dass es festgehalten
+// wurde. Ein Default würde genau diese Fälle rückwirkend falsch beschriften.
+const LABEL_FORMAT_NAMES = { A4: "DIN A4", A6: "DIN A6" };
+function labelFormatDisplay(value) {
+  const key = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return LABEL_FORMAT_NAMES[key] || <span className="adm-muted">Nicht erfasst</span>;
+}
 const jumingoOf = (s) => firstDefined(s.jumingo_shipment_id, s.jumingoShipmentId, s.jumingo_id, s.jumingo_shipment_id_masked);
 const orderOf = (s) => firstDefined(s.order_number, s.orderNumber, s.order_id);
 const invoiceOf = (s) => (s.invoice && typeof s.invoice === "object" ? s.invoice : null);
@@ -505,6 +516,10 @@ export default function AdminShipmentDetailPage() {
               ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
               ["Maße (L × B × H)", dimensions(s)],
               ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
+              // Gewähltes Labeldruckformat. „Nicht erfasst" ist ausdrücklich NICHT dasselbe wie
+              // A4: Sendungen aus der Zeit vor der Persistenz haben keinen gespeicherten Wert,
+              // und ein stiller A4-Ersatz würde eine Kundenwahl behaupten, die niemand kennt.
+              ["Labelformat", labelFormatDisplay(s.label_format)],
               // Nummern strikt getrennt benannt: „Auftragsbestätigung" ist AUSSCHLIESSLICH die
               // CE-Vorgangsnummer (CE-AB…). Die externe JUMiNGO-Ordernummer trägt weiter unten
               // eine eigene, unmissverständliche Beschriftung — sie hieß hier einmal

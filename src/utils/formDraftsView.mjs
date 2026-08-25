@@ -287,6 +287,50 @@ export function buildResumePayload(draft) {
     formData: draft.formData,
   };
 }
+// ── Resume eines SENDUNGSentwurfs ───────────────────────────────────────────
+// Ein Sendungsentwurf (shipments-Zeile, is_saved_draft=true) ist etwas anderes als
+// ein Formularentwurf, und die Unterschiede sind fachlich, nicht kosmetisch:
+//
+//   • Er kennt KEINE Revision und KEINEN serverseitigen Verbrauch. Es gibt dort
+//     nichts, was `calculate-price` als Quelle melden könnte — deshalb bekommt er
+//     bewusst weder `sourceFormDraftId` noch `sourceFormDraftRevision`, und
+//     `resumeSourceFromDraft` liefert für ihn (weiterhin) null.
+//   • Er trägt zusätzlich den Entwurfszustand der „Zusätzlichen Optionen".
+//
+// Gemeinsam ist beiden ausschließlich der Weg ins Formular: `formData` läuft durch
+// dasselbe `buildResumeInitialState`. Es entsteht also keine zweite
+// Wiederherstellungsmechanik, nur ein zweiter Herkunftsnachweis.
+export function isValidShipmentResumeDraft(resumeDraft) {
+  return (
+    !!resumeDraft && typeof resumeDraft === "object" &&
+    resumeDraft.kind === SHIPMENT_DRAFT_KIND &&
+    !!resumeDraft.formData && typeof resumeDraft.formData === "object" &&
+    isPositiveIntId(resumeDraft.sourceShipmentDraftId)
+  );
+}
+// Baut den Resume-Payload aus der Detail-Response eines Sendungsentwurfs.
+// Bewusst OHNE Preis, Tarif, Carrier, Providerreferenz und Trackingdaten: ein
+// fortgesetzter Entwurf wird neu berechnet, ein mitgeführter alter Preis wäre eine
+// Zusage, die niemand halten kann.
+export function buildShipmentResumePayload(draft) {
+  if (!draft || typeof draft !== "object") return null;
+  return {
+    kind: SHIPMENT_DRAFT_KIND,
+    sourceShipmentDraftId: draft.id,
+    formData: draft.formData,
+    // Rohform des Servers — die Auslegung übernimmt draftBookingOptions.mjs an
+    // genau einer Stelle. Fehlt das Feld (Entwurf aus der Zeit davor), bleibt es
+    // null und die Optionen starten im leeren Ausgangszustand.
+    bookingOptions: draft.bookingOptions ?? null,
+  };
+}
+// Trägt dieser Payload einen fortsetzbaren Entwurf — gleich welcher Herkunft?
+// Der EINE Einstieg für „Neue Sendung": dort ist nur relevant, dass `formData`
+// belastbar ist, nicht, aus welcher Tabelle es stammt.
+export function isAnyResumeDraft(resumeDraft) {
+  return isValidResumeDraft(resumeDraft) || isValidShipmentResumeDraft(resumeDraft);
+}
+
 // Nur die Metadaten für den calculate-price-Übergang (ID + Revision). null,
 // wenn der Payload nicht gültig ist (dann normaler Neuversand ohne Source-Felder).
 export function resumeSourceFromDraft(resumeDraft) {

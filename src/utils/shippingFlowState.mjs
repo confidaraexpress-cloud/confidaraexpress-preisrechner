@@ -109,6 +109,21 @@ export const BOOKING_KEYS = Object.freeze([
   // damit sie eine Zurücknavigation überleben. Gespiegelt wird nur, was auch
   // gebucht würde (siehe BookingPage): ein ausgeschalteter Bereich landet leer.
   "trackingEmail", "labelTrackingEmail",
+  // Schalterstellungen der vier Zusatzoptionen. ADDITIV ohne Versionssprung (dieselbe
+  // Begründung wie bei den beiden Adressen darüber): ein laufender Vorgang aus einem
+  // älteren Bundle liefert hier `undefined` → false und verhält sich damit exakt wie
+  // vorher, weil ein vorhandener WERT seinen Bereich weiterhin von sich aus öffnet.
+  //
+  // Warum der Wert allein nicht reicht: „Option an, Feld noch leer" und „Option aus"
+  // sind am Wert nicht unterscheidbar, ebenso „Format ändern an, aber A4 gewählt".
+  // Für die Buchung ist das bedeutungslos — beim Fortsetzen eines Entwurfs und beim
+  // Zurückspringen aus der Buchung ist es der Unterschied zwischen „so wie ich es
+  // verlassen habe" und „schon wieder zugeklappt".
+  //
+  // Sicherheit unverändert: gespiegelt wird ein Wert weiterhin NUR bei aktiver Option
+  // (siehe BookingPage), und der /book-Payload verlangt zusätzlich einen nicht leeren
+  // Wert. Eine Schalterstellung allein bucht nichts.
+  "referenceEnabled", "trackingEmailEnabled", "labelTrackingEmailEnabled", "labelFormatEnabled",
   // Eigene Lieferscheinnummer (nur im Kontomodus „Eigenes Lieferscheinsystem" und nur
   // bei einer Sendung mit Lagerbezug sichtbar). Reine Frontendeingabe ohne Serverquelle
   // — sie gehört wie `reference` in den laufenden Vorgang, damit sie Zurücknavigation
@@ -309,6 +324,14 @@ export function normalizeBooking(raw) {
     // wird gekappt, nicht übernommen. Validiert wird beim Buchen, nicht hier.
     trackingEmail: str(src.trackingEmail).slice(0, 255),
     labelTrackingEmail: str(src.labelTrackingEmail).slice(0, 255),
+    // Schalterstellungen — reiner Anzeigezustand. `bool()` lässt ausschließlich ein
+    // echtes true durch; alles andere (auch ein fehlender Wert aus einem älteren
+    // Vorgang) ist false, und der Bereich öffnet dann wie bisher allein über einen
+    // vorhandenen Wert.
+    referenceEnabled: bool(src.referenceEnabled),
+    trackingEmailEnabled: bool(src.trackingEmailEnabled),
+    labelTrackingEmailEnabled: bool(src.labelTrackingEmailEnabled),
+    labelFormatEnabled: bool(src.labelFormatEnabled),
     updatedAt: nonNegInt(src.updatedAt),
   };
 }

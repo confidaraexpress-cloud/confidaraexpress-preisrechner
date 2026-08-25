@@ -78,9 +78,11 @@ import { hasSavableShipmentId } from "../utils/draftsView.mjs";
 import { inventoryOriginNotice } from "../utils/inventoryView.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
+  isValidShipmentResumeDraft,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
   hasUsableShipmentReference,
 } from "../utils/formDraftsView.mjs";
+import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
@@ -201,9 +203,18 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Auswahlliste entsteht erst aus einer Preisberechnungsantwort, die nach dem
   // Fortsetzen nicht mehr existiert. Ungeprüft übernommen würde er die ERSTE
   // Berechnung einschränken und könnte fälschlich null Angebote liefern.
+  //
+  // Zwei Herkünfte, EIN Weg ins Formular: ein Formularentwurf (`form_drafts`) und ein
+  // gespeicherter Sendungsentwurf (`shipments`, is_saved_draft=true) liefern beide
+  // dasselbe `formData` und laufen deshalb durch dieselbe Rehydration. Unterschiedlich
+  // ist nur, was SONST noch am Entwurf hängt: der Formularentwurf trägt Revision und
+  // serverseitigen Verbrauch (resumeSource → calculate-price), der Sendungsentwurf den
+  // Entwurfszustand der „Zusätzlichen Optionen" (Effekt weiter unten). Für das Formular
+  // selbst sind beide identisch — deshalb hier eine Oder-Verknüpfung und kein zweiter
+  // Initialisierer.
   const resumeInitRef = useRef(undefined);
   if (resumeInitRef.current === undefined) {
-    resumeInitRef.current = isValidResumeDraft(resumeDraft)
+    resumeInitRef.current = (isValidResumeDraft(resumeDraft) || isValidShipmentResumeDraft(resumeDraft))
       ? resumeInitialState(buildResumeInitialState(resumeDraft.formData, { today: todayISO() }))
       : null;
   }
@@ -225,6 +236,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Ein bewusst geöffneter Entwurf überschreibt den Sitzungsvorgang VOLLSTÄNDIG
   // — es wird nichts gemischt.
   const { shipment: flowShipment, setScope: setFlowScope, clearScope: clearFlowScope,
+          setBooking: setFlowBooking,
           setStep: setFlowStep, droppedReason, consumeDroppedReason } = useShippingFlow();
   const flowInitRef = useRef(undefined);
   if (flowInitRef.current === undefined) {
@@ -420,6 +432,29 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   useEffect(() => {
     if (!resumeInit) return;
     clearFlowScope("shipment");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ── „Zusätzliche Optionen" eines Sendungsentwurfs zurückholen ────────────
+     Der Entwurfszustand der vier Schalter gehört zur BUCHUNG, nicht zum Formular —
+     er wird deshalb in den Buchungsbereich des Vorgangs geschrieben und von
+     BookingPage beim Mount gelesen. Kein zweiter Übergabeweg, kein Prop-Durchreichen
+     über zwei Seiten hinweg.
+
+     Die REIHENFOLGE ist tragend: `clearScope("shipment")` im Effekt darüber setzt den
+     Buchungsbereich mit zurück (ein Entwurf ersetzt den Vorgang vollständig). Dieser
+     Effekt steht deshalb DANACH — umgekehrt hätte das Leeren die soeben
+     wiederhergestellten Optionen sofort wieder verworfen. Dieselbe Falle wie beim
+     Spiegel-Effekt, nur eine Ebene weiter.
+
+     Nur bei einem SENDUNGSentwurf: ein Formularentwurf existiert vor Tarif und
+     Checkout und kennt diese Optionen gar nicht. Und nur, wenn tatsächlich etwas
+     eingestellt war — sonst würde ein Entwurf ohne Zusatzoptionen den Vorgang grundlos
+     mit lauter Standardwerten beschreiben. */
+  useEffect(() => {
+    if (!isValidShipmentResumeDraft(resumeDraft)) return;
+    if (!hasAnyDraftBookingOption(resumeDraft.bookingOptions)) return;
+    setFlowBooking(draftBookingOptionsToFlow(resumeDraft.bookingOptions));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

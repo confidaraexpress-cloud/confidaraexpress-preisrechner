@@ -80,7 +80,11 @@ test("3 — CALLSITE: die von BookingPage übergebene Eigenschaft besteht den Gu
 test("4 — die Komponente prüft weiterhin GENAU diesen Guard", () => {
   // Wäre der Guard in der Komponente entfallen, prüfte Test 3 ins Leere.
   assert.match(saveDraftAction, /if \(!hasSavableShipmentId\(shipmentId\)\) return null;/);
-  assert.match(saveDraftAction, /saveDraft\(shipmentId\)/, "gespeichert wird nicht mit dem geprüften Wert");
+  // Das ERSTE Argument muss der geprüfte Wert sein. Bewusst mit Wortgrenze statt
+  // schließender Klammer: seit dem Entwurfszustand der „Zusätzlichen Optionen"
+  // folgt ein zweites Argument. Ein `saveDraft(irgendwasAnderes, …)` fiele hier
+  // weiterhin auf, ein `saveDraft(shipmentIdRoh)` ebenso.
+  assert.match(saveDraftAction, /saveDraft\(shipmentId\b/, "gespeichert wird nicht mit dem geprüften Wert");
 });
 
 /* ══════════ 3 — Der Guard wurde NICHT aufgeweicht ════════════════════════ */

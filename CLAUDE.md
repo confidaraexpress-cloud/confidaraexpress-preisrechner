@@ -592,9 +592,10 @@ nächste „Neue Sendung" die gerade gespeicherte Sendung erneut:
 **Nur nach bestätigtem Erfolg, nie beim Requeststart.** Bei 409/404/429/
 401/403 oder einem Netzwerkfehler (catch-Zweig) bleiben Formular, Angebote,
 Filter, Sortierung und Auswahl vollständig erhalten — der Kunde kann erneut
-speichern. Für den Sendungsentwurf gibt es keine „Fortsetzen"-Aktion
-(`DraftsPage.jsx`/`DraftsList.jsx` reichen `onResume` nur an Formularentwürfe
-durch), das Löschen des Flows hat dort also keine Rückwirkung.
+speichern. Der Sendungsentwurf ist inzwischen ebenfalls fortsetzbar (siehe
+„Zusatzoptionen im Entwurf") — das Löschen des Flows nach dem Speichern bleibt
+trotzdem richtig: fortgesetzt wird über den GESPEICHERTEN Entwurf, nicht über
+den beendeten temporären Vorgang.
 
 **Die Persistenz-Falle:** `NewShipmentPage` bleibt nach dem Speichern
 gemountet, und der Spiegel-Effekt aus „Laufender Versandvorgang" ist an
@@ -1025,10 +1026,13 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   bereits verfügbaren (`availableForDate !== false`) Angeboten.
 - **„Zusätzliche Optionen" sind Progressive Disclosure.** Referenznummer und
   Labelformat zeigen im Grundzustand nur eine Schalterzeile (`<Switch>`); die
-  Detailfelder erscheinen erst nach dem Einschalten. Beide Schalter sind reiner
-  UI-Zustand in `BookingPage` und werden beim Mount aus den vorhandenen Werten
-  **abgeleitet** (Referenz vorhanden → an; Format ≠ A4 → an) — das
-  Vorgangsschema (`BOOKING_KEYS`) bleibt unverändert. Die beiden Optionen
+  Detailfelder erscheinen erst nach dem Einschalten. Beide Schalter werden beim
+  Mount aus der gespeicherten Stellung **oder** aus den vorhandenen Werten
+  abgeleitet (Referenz vorhanden → an; Format ≠ A4 → an). Die Wertableitung ist
+  dabei die Sicherheitseigenschaft und bleibt bestehen; die Stellung liegt
+  zusätzlich **additiv** im Vorgangsschema (`BOOKING_KEYS`), weil der Wert
+  „an, aber noch leer" nicht ausdrücken kann — siehe „Zusatzoptionen im
+  Entwurf". Die beiden Optionen
   verhalten sich beim Ausschalten **bewusst unterschiedlich**: die
   Referenznummer bleibt im Formular stehen (versehentliches Ausschalten
   vernichtet nichts) und wird nur nicht gebucht — das Labelformat fällt
@@ -1046,8 +1050,9 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   Backendvertrag). `BOOKING_KEYS` wurde additiv um `trackingEmail` /
   `labelTrackingEmail` erweitert — **ohne** Versionssprung, damit laufende
   Vorgänge nicht grundlos verworfen werden (ein alter Vorgang liefert
-  `undefined` → `""`). Das Versenden, die Deduplizierung gleicher Adressen und
-  der Label-Anhang passieren serverseitig.
+  `undefined` → `""`) — ebenso additiv folgten später die vier
+  Schalterstellungen (siehe „Zusatzoptionen im Entwurf"). Das Versenden, die
+  Deduplizierung gleicher Adressen und der Label-Anhang passieren serverseitig.
 
   **Der serverseitige Vertrag im Detail** (Go-Live Paket 3): `/book` prüft beide
   Adressen **vor jedem Providerkontakt** und lehnt mit `400 { error, field }` ab —
@@ -1086,6 +1091,98 @@ Designwelt auf den Paket-A-Primitives/-Mustern:
   echten `/book`-Request geprüften Payload-Fälle;
   `shipmentEmailOptions.test.mjs` / `sharedShipmentEmailOptions.test.mjs`
   (10 + 14 Quelltext- + 17 E2E-Tests) decken die beiden Zusatzempfänger ab.
+
+## Zusatzoptionen im Entwurf — vor jeder Änderung an den vier Schaltern lesen
+
+Die vier „Zusätzlichen Optionen" (Referenznummer · Tracking-Adresse ·
+Label+Tracking-Adresse · Labelformat) überleben jetzt einen gespeicherten
+Sendungsentwurf und die Rückkehr aus der Buchung — **1:1, Schalterstellung
+inklusive**. Drei belegte Lücken sind damit geschlossen:
+
+| | Vorher | Jetzt |
+|---|---|---|
+| P2-A | das gebuchte `labelFormat` wurde nirgends festgehalten | `shipments.label_format` (Backend) |
+| P2-B | die Schalterstellung war nur abgeleitet — „an, aber leer" ging verloren | additiv in `BOOKING_KEYS` |
+| P2-C | „Als Entwurf speichern" speicherte die Optionen nicht; ein Sendungsentwurf war nicht fortsetzbar | `draft_booking_options` + `GET /api/kunde/drafts/:id` |
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Übersetzung (rein) | `utils/draftBookingOptions.mjs` | Buchungsseite ↔ Entwurfsform, defensiv |
+| Herkunftsnachweis | `utils/formDraftsView.mjs` | `isValidShipmentResumeDraft` · `buildShipmentResumePayload` · `isAnyResumeDraft` |
+| Zugriff | `api/client.js` | `getShipmentDraft(id)` · `saveDraft(id, bookingOptions)` |
+
+**Verbindlich:**
+
+- **AUS heißt LEER — und zwar im Erbauer, nicht an der Aufrufstelle.**
+  `buildDraftBookingOptions()` erzwingt die Invariante zentral: ein
+  ausgeschalteter Schalter speichert **nie** einen Wert (Labelformat: den
+  Standard A4). Damit kann ein Entwurfswert nicht unsichtbar wieder wirksam
+  werden, und die Adresse eines Dritten liegt nicht auf dem Server, wenn die
+  Option aus ist. `draftBookingOptionsToFlow()` verwirft denselben Fall beim
+  LESEN ein zweites Mal — ein von Hand veränderter Entwurf bringt einen Wert
+  nicht zurück. Wer die Regel an einer Aufrufstelle nachbaut, muss sie an
+  jeder künftigen erneut bedenken.
+- **Die Schalterstellung liegt ADDITIV im Vorgang, ohne Versionssprung.** Das
+  kehrt eine frühere Festlegung um („die Schalter sind reiner UI-Zustand und
+  werden ausschließlich abgeleitet"). Gemessen hat die Ableitung einen Fall
+  nicht getragen: „Option an, Feld noch leer" und „Option aus" sind am WERT
+  nicht unterscheidbar, ebenso „Format ändern an, A4 gewählt". Beim Fortsetzen
+  stand der Bereich dann wieder zu, obwohl der Kunde ihn geöffnet hatte.
+- **Die Wertableitung bleibt trotzdem stehen — sie ist die Sicherheits­eigenschaft.**
+  Der Schalter kommt aus `Stellung === true || vorhandener Wert`, in genau
+  dieser Reihenfolge. Eine Und-Verknüpfung oder ein Weglassen des zweiten
+  Zweigs würde einen gespeicherten Wert verbergen; ein Vorgang aus einem
+  älteren Bundle liefert `undefined` → `false` und verhält sich exakt wie vorher.
+- **Die Stellung hat KEINE Buchungswirkung.** Sie steht im Vorgang und im
+  Entwurf, aber in keinem `/book`-Payload: gebucht wird eine Adresse
+  beziehungsweise ein Wert, nie ein Schalter (unveränderter Backendvertrag —
+  eine vorhandene Adresse IST die Aktivierung).
+- **Entwurf und Buchung sind zwei Zustände in zwei Spalten.** Der
+  Formularschnappschuss liegt serverseitig in `shipments.draft_booking_options`
+  (JSONB); was gebucht wurde, steht unverändert in `reference_number`,
+  `tracking_email`, `label_tracking_email` und `label_format`. **`/book` liest
+  den Entwurfszustand nie** — die Regel „ein deaktivierter Schalter darf
+  niemals einen versteckten Wert wirksam werden lassen" ist dadurch strukturell
+  und nicht angewiesen.
+- **Fortsetzen führt nach „Neue Sendung", nicht in die Buchung.** Ein
+  fortgesetzter Entwurf wird **neu berechnet**; der Resume-Payload trägt
+  deshalb weder Preis noch Tarif, Carrier, Trackingnummer oder
+  Providerreferenz. Ein mitgeführter alter Preis wäre eine Zusage, die niemand
+  halten kann.
+- **Zwei Herkünfte, EIN Weg ins Formular.** Formularentwurf und
+  Sendungsentwurf liefern beide `formData` und laufen durch dasselbe
+  `buildResumeInitialState()` — es gibt keinen zweiten Rehydrationsweg und
+  keinen zweiten Feldmapper. Unterschiedlich ist nur, was SONST am Entwurf
+  hängt: der Formularentwurf trägt Revision und serverseitigen Verbrauch
+  (`resumeSourceFromDraft` → calculate-price), der Sendungsentwurf den
+  Entwurfszustand der Optionen. `resumeSourceFromDraft` liefert für einen
+  Sendungsentwurf deshalb weiterhin `null`; die beiden Validatoren nie
+  vertauschen.
+- **Die Reihenfolge der beiden Mount-Effekte ist tragend.**
+  `clearScope("shipment")` setzt den Buchungsbereich **mit** zurück (ein
+  Entwurf ersetzt den Vorgang vollständig). Der Effekt, der
+  `setFlowBooking(draftBookingOptionsToFlow(…))` aufruft, steht deshalb
+  DANACH — umgekehrt wäre die Wiederherstellung im selben Commit sofort wieder
+  weg. Dieselbe Falle wie beim Spiegel-Effekt, eine Ebene weiter.
+- **Der Vorgang wird nur bei echtem Inhalt beschrieben**
+  (`hasAnyDraftBookingOption`) — ein Entwurf ohne Zusatzoptionen soll den
+  laufenden Vorgang nicht mit lauter Standardwerten füllen. „An, aber leer"
+  zählt dabei als Inhalt: der Kunde hat den Bereich bewusst geöffnet.
+- **Kein neuer Speicherweg im Browser.** Kein `localStorage`, kein
+  `sessionStorage`, keine zweite Entwurfsablage — gespeichert wird über den
+  vorhandenen Entwurfsendpunkt, gehalten wird im vorhandenen
+  `ShippingFlowContext`.
+- **Die Fortsetzen-Aktion sieht bei beiden Entwurfsarten gleich aus**
+  (`DraftDesktopRow`/`DraftCard` wie `FormDraft*`): sichtbarer Button,
+  Löschen bleibt sekundär im Kebab. Der Zweig in `DraftsPage.onResume` hängt
+  am `kind`, **nie** an der id — die Namensräume sind getrennt (`form:7` ≠
+  `shipment:7`).
+- Governance: `src/utils/draftBookingOptionsUx.test.mjs` (28 Tests) und
+  `tests/e2e/draftBookingOptions.test.mjs` (7 Browser-Smokes gegen einen echten
+  Dev-Server mit gemocktem Backend — **niemals eine echte Bestellung**; zwei
+  davon sind gegen eine Mutation des jeweiligen Effekts gegengeprüft).
+  Backendseitig `tests/draft-booking-options.test.js` (30 Tests, davon 6 gegen
+  echtes PostgreSQL).
 
 ## Gutscheincode im Buchungsschritt 2 — vor jeder Änderung daran lesen
 

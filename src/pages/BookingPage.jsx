@@ -51,6 +51,7 @@ import {
 } from "../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
+import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../utils/downloadOrderConfirmation";
@@ -278,10 +279,17 @@ export default function BookingPage() {
      `form.reference` und `labelFormat`, und ein gespeicherter Wert kann nicht
      unsichtbar mitgebucht werden. Danach laufen sie eigenständig, damit ein
      eingeschalteter, aber noch leerer Bereich offen bleibt. */
+  //
+  // Zwei Quellen, ODER-verknüpft — und die Reihenfolge ist Absicht: ein vorhandener
+  // WERT öffnet seinen Bereich IMMER, unabhängig von jeder gespeicherten
+  // Schalterstellung. Damit kann kein Wert unsichtbar im Formular liegen. Die
+  // gespeicherte Stellung fügt nur den Fall hinzu, den der Wert nicht ausdrücken
+  // kann: „eingeschaltet, aber noch leer" (bzw. „Format ändern an, A4 gewählt").
+  // Genau dieser Fall ging beim Fortsetzen eines Entwurfs bisher verloren.
   const [referenceEnabled, setReferenceEnabled] = useState(
-    () => !!(flowBooking?.reference || "").trim());
+    () => flowBooking?.referenceEnabled === true || !!(flowBooking?.reference || "").trim());
   const [labelFormatEnabled, setLabelFormatEnabled] = useState(
-    () => (flowBooking?.labelFormat || "A4") !== "A4");
+    () => flowBooking?.labelFormatEnabled === true || (flowBooking?.labelFormat || "A4") !== "A4");
 
   // Ausschalten behält die Eingabe im Formular — versehentliches Ausschalten
   // vernichtet nichts, und beim Wiedereinschalten steht sie wieder da. Gebucht
@@ -308,10 +316,10 @@ export default function BookingPage() {
      abgeleitet — keine zweite Wahrheit neben der Adresse selbst. */
   const [trackingEmail, setTrackingEmail] = useState(flowBooking?.trackingEmail || "");
   const [trackingEmailEnabled, setTrackingEmailEnabled] = useState(
-    () => !!(flowBooking?.trackingEmail || "").trim());
+    () => flowBooking?.trackingEmailEnabled === true || !!(flowBooking?.trackingEmail || "").trim());
   const [labelTrackingEmail, setLabelTrackingEmail] = useState(flowBooking?.labelTrackingEmail || "");
   const [labelTrackingEmailEnabled, setLabelTrackingEmailEnabled] = useState(
-    () => !!(flowBooking?.labelTrackingEmail || "").trim());
+    () => flowBooking?.labelTrackingEmailEnabled === true || !!(flowBooking?.labelTrackingEmail || "").trim());
   // Fehler erscheinen erst, wenn der Kunde weitergehen will — nicht schon beim
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
@@ -381,11 +389,17 @@ export default function BookingPage() {
       // gar nicht sichtbar (anderer Kontomodus oder Sendung ohne Lagerbezug), bleibt
       // der Vorgang leer — ein unsichtbarer Restwert darf nie mitgebucht werden.
       externalDeliveryNoteNumber: showExternalDeliveryNote ? externalDeliveryNoteNumber : "",
+      // Die Schalterstellungen selbst — der Teil, den ein Wert nicht ausdrücken kann.
+      // Sie tragen KEINE Buchungswirkung: der Payload verlangt zusätzlich einen nicht
+      // leeren Wert, und ein ausgeschalteter Bereich spiegelt oben ohnehin leer.
+      referenceEnabled, trackingEmailEnabled, labelTrackingEmailEnabled, labelFormatEnabled,
     });
   // Reihenfolge ohne Bedeutung für React — die vier E-Mail-Abhängigkeiten stehen
   // aber bewusst am Ende: sharedShipmentEmailOptions.test.mjs (6) verankert dort.
+  // Aus demselben Grund steht `labelFormatEnabled` mittendrin und nicht hinter
+  // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
-      goodsValue, insuranceValue, insValueManual, setFlowBooking,
+      goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
       showExternalDeliveryNote, externalDeliveryNoteNumber,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
@@ -1390,6 +1404,23 @@ export default function BookingPage() {
               // shipments.id auf, und hasSavableShipmentId() verwarf die
               // Providerform korrekt: die Aktion war dadurch dauerhaft unsichtbar.
               shipmentId={bookingData?.ceShipmentId}
+              // Entwurfszustand der „Zusätzlichen Optionen" — Schalter UND Werte.
+              // Ohne diese Prop speicherte der Sendungsentwurf Adressen, Paket und
+              // Versanddatum, aber KEINE der vier Optionen: ein fortgesetzter
+              // Entwurf öffnete den Bereich leer, obwohl der Kunde ihn ausgefüllt
+              // hatte. Die Invariante „aus heißt leer" setzt der Erbauer durch,
+              // nicht diese Aufrufstelle — ein ausgeschalteter Schalter kann
+              // deshalb keinen versteckten Wert mitspeichern.
+              bookingOptions={buildDraftBookingOptions({
+                referenceEnabled,
+                reference: form.reference,
+                trackingEmailEnabled,
+                trackingEmail,
+                labelTrackingEmailEnabled,
+                labelTrackingEmail,
+                labelFormatEnabled,
+                labelFormat,
+              })}
               onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
               // Auch der zweite Entwurfspfad beendet nach bestätigtem Erfolg
               // den aktiven temporären ShippingFlow (seit dem Paket „leerer

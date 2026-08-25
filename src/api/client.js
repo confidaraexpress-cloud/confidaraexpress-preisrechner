@@ -225,11 +225,25 @@ export function getDrafts({ limit, cursor } = {}, { signal } = {}) {
   return apiFetch(`/api/kunde/drafts${toQueryString(params)}`, { auth: true, signal });
 }
 
+// Lädt EINEN gespeicherten Sendungsentwurf zum Fortsetzen. Antwort trägt `formData` in
+// derselben Form wie ein Formularentwurf plus `bookingOptions` (Entwurfszustand der
+// Zusatzoptionen). Bewusst ohne Preis/Tarif/Carrier — ein fortgesetzter Entwurf wird neu
+// berechnet.
+export function getShipmentDraft(id, { signal } = {}) {
+  return apiFetch(`/api/kunde/drafts/${encodeURIComponent(String(id))}`, { auth: true, signal });
+}
+
 // Speichert einen bestehenden technischen Draft bewusst als Benutzer-Entwurf
 // (idempotent). `id` MUSS die interne numerische Shipment-ID sein.
-export function saveDraft(id) {
+//
+// `bookingOptions` ist der Entwurfszustand der „Zusätzlichen Optionen" (Schalter + Werte) und
+// wird nur mitgesendet, wenn der Aufrufer ihn kennt — ohne ihn verhält sich der Endpunkt exakt
+// wie zuvor. Er landet serverseitig ausschließlich im Entwurfszustand und beeinflusst keine
+// Buchung; was gebucht wird, entscheidet allein der /book-Request.
+export function saveDraft(id, bookingOptions) {
   return apiFetch(`/api/kunde/drafts/${encodeURIComponent(String(id))}/save`, {
     method: "POST", auth: true,
+    ...(bookingOptions ? { body: JSON.stringify({ bookingOptions }) } : {}),
   });
 }
 

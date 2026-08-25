@@ -155,15 +155,28 @@ test("12 — ausgeschaltetes Labelformat fällt wirklich auf A4 zurück", () => 
 
 /* ══════════ Wiederherstellung ══════════ */
 
-test("13 — beide Schalter werden aus vorhandenen Werten abgeleitet", () => {
-  // Kein gespeicherter Wert darf unsichtbar werden: eine vorhandene
-  // Referenznummer bzw. ein Format ungleich A4 öffnet den jeweiligen Bereich.
+test("13 — beide Schalter kommen aus der Stellung ODER aus dem vorhandenen Wert", () => {
+  // Zwei Aussagen, beide tragend:
+  //
+  //  1. Die WERTABLEITUNG bleibt bestehen. Sie ist die Sicherheitseigenschaft:
+  //     eine vorhandene Referenznummer bzw. ein Format ungleich A4 öffnet den
+  //     Bereich in JEDEM Fall — auch wenn die gespeicherte Stellung fehlt oder
+  //     (aus einem älteren Bundle) `undefined` ist. Kein gespeicherter Wert kann
+  //     dadurch unsichtbar wirksam werden.
+  //  2. Die gespeicherte STELLUNG kommt hinzu und steht VORNE in der Oder-Kette.
+  //     Sie fügt genau den Fall hinzu, den der Wert nicht ausdrücken kann:
+  //     „eingeschaltet, aber noch leer" bzw. „Format ändern an, A4 gewählt".
+  //     Genau dieser Fall ging beim Fortsetzen eines Entwurfs bisher verloren.
+  //
+  // Die Reihenfolge ist kein Geschmack: eine Und-Verknüpfung oder eine Fassung
+  // OHNE den zweiten Teil würde einen vorhandenen Wert verbergen — deshalb wird
+  // hier die vollständige Oder-Kette verankert und nicht nur ihr erster Teil.
   assert.match(bookingPage,
-    /useState\(\s*\(\) => !!\(flowBooking\?\.reference \|\| ""\)\.trim\(\)\)/,
-    "der Referenzschalter muss aus dem gespeicherten Wert abgeleitet werden");
+    /useState\(\s*\(\) => flowBooking\?\.referenceEnabled === true \|\| !!\(flowBooking\?\.reference \|\| ""\)\.trim\(\)\)/,
+    "der Referenzschalter muss aus Stellung ODER gespeichertem Wert kommen");
   assert.match(bookingPage,
-    /useState\(\s*\(\) => \(flowBooking\?\.labelFormat \|\| "A4"\) !== "A4"\)/,
-    "der Formatschalter muss aus dem gespeicherten Format abgeleitet werden");
+    /useState\(\s*\(\) => flowBooking\?\.labelFormatEnabled === true \|\| \(flowBooking\?\.labelFormat \|\| "A4"\) !== "A4"\)/,
+    "der Formatschalter muss aus Stellung ODER gespeichertem Format kommen");
 });
 
 test("14 — der Vorgang spiegelt nur eine aktive Referenznummer", () => {
@@ -175,11 +188,30 @@ test("14 — der Vorgang spiegelt nur eine aktive Referenznummer", () => {
     "referenceEnabled muss in den Abhängigkeiten des Spiegel-Effekts stehen");
 });
 
-test("15 — es entsteht kein neuer persistierter Schlüssel im Vorgang", () => {
-  // Die Schalter sind reiner UI-Zustand; sie werden abgeleitet, nicht gespeichert.
+test("15 — die Schalterstellung liegt ADDITIV im Vorgang, ohne Versionssprung", () => {
+  // Das kehrt eine frühere Festlegung um, und zwar bewusst. Bis dahin galt: die
+  // Schalter sind reiner UI-Zustand und werden ausschließlich abgeleitet. Gemessen
+  // hat das einen Fall nicht getragen — „Option an, Feld noch leer" und „Option aus"
+  // sind am Wert nicht unterscheidbar, ebenso „Format ändern an, A4 gewählt". Beim
+  // Fortsetzen eines Entwurfs stand der Bereich dann wieder zu, obwohl der Kunde ihn
+  // geöffnet hatte.
+  //
+  // Was dabei NICHT aufgeweicht wurde und hier mitgeprüft wird:
+  //  • ADDITIV, ohne Versionssprung — ein laufender Vorgang aus einem älteren
+  //    Bundle liefert `undefined` → false und verhält sich exakt wie vorher.
+  //  • KEINE Buchungswirkung: die Stellung steht im Vorgang, aber in keinem
+  //    /book-Payload (Test 6 hält fest, dass dort weiterhin nur Werte stehen).
   const flowState = lies("../utils/shippingFlowState.mjs");
-  assert.ok(!/referenceEnabled|labelFormatEnabled/.test(flowState),
-    "der Schalterzustand darf das Vorgangsschema nicht erweitern");
+  const schluessel = flowState.slice(flowState.indexOf("BOOKING_KEYS"), flowState.indexOf("defensive Helfer"));
+  for (const k of ["referenceEnabled", "trackingEmailEnabled", "labelTrackingEmailEnabled", "labelFormatEnabled"]) {
+    assert.ok(new RegExp(`"${k}"`).test(schluessel), `${k} fehlt im Vorgangsschema`);
+  }
+  // Kein Versionssprung: die Schemaversion bleibt bei 1, sonst würde ein laufender
+  // Vorgang beim Deployment grundlos verworfen.
+  assert.match(flowState, /FLOW_SCHEMA_VERSION = 1\b/, "die Schemaversion darf sich dafür nicht ändern");
+  // Und die Stellung wird defensiv gelesen (bool()), nie roh übernommen.
+  assert.match(flowState, /referenceEnabled:\s*bool\(/);
+  assert.match(flowState, /labelFormatEnabled:\s*bool\(/);
 });
 
 /* ══════════ Layout ══════════ */

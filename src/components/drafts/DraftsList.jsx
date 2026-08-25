@@ -12,7 +12,9 @@ import { combinedDraftKey, FORM_DRAFT_KIND } from "../../utils/formDraftsView.mj
 // → Empty-State → Desktop-Tabelle/Mobil-Karten (CSS-Toggle, kein JS-Breakpoint)
 // + „Weitere laden". Beide Entwurfstypen (form/shipment) teilen sich dieselben
 // Spalten; je Zeile/Karte entscheidet EIN kontrollierter Zweig über die Variante
-// (FormDraft* vs. Draft*) — keine vielen ungeordneten if-Blöcke. React-Key ist
+// (FormDraft* vs. Draft*) — keine vielen ungeordneten if-Blöcke. Beide Varianten
+// tragen inzwischen dieselben Aktionen (Fortsetzen + Kebab); der Zweig entscheidet
+// nur noch über Badge und Spaltenformatierung. React-Key ist
 // der Kombischlüssel (form:7 ≠ shipment:7), damit gleiche IDs nicht kollidieren.
 //
 // canShowEmpty: nur true, wenn BEIDE Quellen erfolgreich UND leer waren. Bei
@@ -42,14 +44,14 @@ export function DraftsList({
     if (d.kind === FORM_DRAFT_KIND) {
       return <FormDraftDesktopRow key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
     }
-    return <DraftDesktopRow key={key} draft={d} busy={deletingKey === key} onDelete={onDelete} />;
+    return <DraftDesktopRow key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
   };
   const renderCard = (d) => {
     const key = combinedDraftKey(d);
     if (d.kind === FORM_DRAFT_KIND) {
       return <FormDraftCard key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
     }
-    return <DraftCard key={key} draft={d} busy={deletingKey === key} onDelete={onDelete} />;
+    return <DraftCard key={key} draft={d} busy={deletingKey === key} resuming={resumingKey === key} onDelete={onDelete} onResume={onResume} />;
   };
 
   return (

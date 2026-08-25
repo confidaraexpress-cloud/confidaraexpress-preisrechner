@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { DraftsHeader } from "../components/drafts/DraftsHeader";
 import { DraftsList } from "../components/drafts/DraftsList";
 import { DraftDeleteConfirmDialog } from "../components/drafts/DraftDeleteConfirmDialog";
-import { getDrafts, deleteDraft } from "../api/client";
+import { getDrafts, deleteDraft, getShipmentDraft } from "../api/client";
 import { getFormDrafts, getFormDraft, deleteFormDraft } from "../api/formDraftsApi";
 import { removeDraftFromList, mapDraftDeleteErrorToMessage } from "../utils/draftsView.mjs";
 import {
   FORM_DRAFT_KIND, mergeDraftSources, appendFormDraftPage, removeDraftById, combinedDraftKey,
   buildResumePayload, isValidResumeDraft, mapFormDraftDeleteErrorToMessage, resolveCombinedEmpty,
+  buildShipmentResumePayload, isValidShipmentResumeDraft,
 } from "../utils/formDraftsView.mjs";
 
 const PAGE_LIMIT = 20;
@@ -152,24 +153,32 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft, utility }
   // „Fortsetzen": Detail-Snapshot laden, validieren, dann zur „Neue Sendung"-
   // Seite navigieren (Elternteil übernimmt State + Seitenwechsel). Kein Preis,
   // kein Tarif, keine BookingPage — nur der Formular-Snapshot.
+  //
+  // BEIDE Entwurfsarten laufen durch diese eine Funktion; der `kind` wählt
+  // ausschließlich Endpunkt, Payloadbauer und Prüfer. Getrennte Namensräume
+  // (form:7 ≠ shipment:7) sind der Grund, warum das nicht anhand der id gehen darf
+  // — dieselbe Regel wie beim Löschen einen Block darüber.
   const onResume = async (draft) => {
     if (resumingKey || deletingKey) return; // Doppelklick / paralleles Löschen sperren
+    const isForm = draft.kind === FORM_DRAFT_KIND;
     const key = combinedDraftKey(draft);
     setResumingKey(key); setActionError("");
     try {
-      const r = await getFormDraft(draft.id);
+      const r = isForm ? await getFormDraft(draft.id) : await getShipmentDraft(draft.id);
       if (r.status === 401 || r.status === 403) { if (mountedRef.current) setResumingKey(null); return; }
       if (r.status === 404) {
         if (mountedRef.current) {
-          setFormItems((prev) => removeDraftById(prev, draft.id));
+          if (isForm) setFormItems((prev) => removeDraftById(prev, draft.id));
+          else setShipmentItems((prev) => removeDraftById(prev, draft.id));
           setResumingKey(null);
           setActionError("Dieser Entwurf ist nicht mehr verfügbar.");
         }
         return;
       }
       let d = null; try { d = await r.json(); } catch { d = null; }
-      const payload = buildResumePayload(d?.draft);
-      if (!r.ok || !isValidResumeDraft(payload)) throw new Error("Der Entwurf konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
+      const payload = isForm ? buildResumePayload(d?.draft) : buildShipmentResumePayload(d?.draft);
+      const gueltig = isForm ? isValidResumeDraft(payload) : isValidShipmentResumeDraft(payload);
+      if (!r.ok || !gueltig) throw new Error("Der Entwurf konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
       onResumeFormDraft?.(payload); // navigiert weg → DraftsPage wird unmountet
     } catch (e) {
       if (mountedRef.current) { setResumingKey(null); setActionError(e?.message || "Der Entwurf konnte nicht geladen werden. Bitte versuchen Sie es erneut."); }

@@ -10,6 +10,7 @@ import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
 import { deliveryTimeOptions, latestDeliveryFieldValue } from "../utils/deliveryTimeView.mjs";
+import { revealOffers } from "../utils/revealOffers.mjs";
 import DeliveryTimeSelect from "../components/offers/DeliveryTimeSelect.jsx";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
@@ -1071,6 +1072,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       lastCalcKeyRef.current !== "" && lastCalcKeyRef.current === calcKeyRef.current
     ) {
       setError("");
+      // Der Knopf darf nicht tot wirken. Es wird NICHTS neu berechnet, nichts
+      // sortiert und nichts zurückgesetzt — der bereits gültige Angebotsbereich
+      // rückt lediglich ins Bild. Begründung und Motion-Regel stehen in
+      // `utils/revealOffers.mjs`.
+      revealOffers(offersRef.current);
       return;
     }
     setHasResults(false); setTariffs([]);

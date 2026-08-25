@@ -14,6 +14,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
+// Erwartete Vorbelegung aus der PRODUKTIVEN Konstante, nicht als "1" wiederholt.
+import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -210,8 +212,9 @@ async function zustand(page) {
       empfaenger: w["Erika Muster"] || null,
       ort: w["Zürich"] || null,
       plz: w["26133"] || null,
-      // Paketfelder über ihre ids: die Platzhalter heißen jetzt „z. B. 5" usw.
-      // und die Anzahl startet leer — ein Platzhalter-Selektor träfe nichts.
+      // Paketfelder über ihre ids: die Platzhalter heißen „z. B. 5" usw. — ein
+      // Platzhalter-Selektor träfe nichts. Die Anzahl trägt als einziges Feld
+      // eine Vorbelegung (PACKAGE_COUNT_DEFAULT), die übrigen starten leer.
       pakete: document.getElementById("ns-packageCount")?.value || null,
       gewicht: document.getElementById("ns-weight")?.value || null,
       laenge: document.getElementById("ns-length")?.value || null,
@@ -594,9 +597,11 @@ test("13 — „Eingaben zurücksetzen\" startet bewusst leer", async () => {
   const z = await zustand(page);
   assert.equal(z.empfaenger, null, "der Empfänger wurde nicht geleert");
   assert.equal(z.angebote, 0, "die Angebote wurden nicht verworfen");
-  // Die Paketanzahl startet seit dem Paket „leerer Nullzustand" LEER — der
-  // frühere Standardwert „1" war ein sichtbarer, aber unbestätigter Wert.
-  assert.equal(z.pakete, null, "die Paketanzahl trägt wieder einen Standardwert");
+  // Die Paketanzahl ist die EINZIGE dokumentierte Ausnahme vom leeren
+  // Ausgangszustand (PACKAGE_COUNT_DEFAULT, utils/newShipmentForm.mjs): sie
+  // startet mit „1". Alles ANDERE am Formular ist nach dem Zurücksetzen leer —
+  // genau das prüfen die Zeilen darüber und darunter weiterhin.
+  assert.equal(z.pakete, PACKAGE_COUNT_DEFAULT, "die Paketanzahl trägt nicht ihre dokumentierte Vorbelegung");
   assert.equal(z.gewicht, null, "das Gewicht wurde nicht geleert");
   assert.equal(z.laenge, null, "die Maße wurden nicht geleert");
   await ctx.close();
@@ -955,7 +960,7 @@ test("25 — erfolgreiches Speichern eines Formularentwurfs setzt Formular, Ange
   const nach = await zustand(page);
   assert.equal(nach.speicher, false, "der Vorgang liegt nach dem Speichern noch im sessionStorage");
   assert.equal(nach.empfaenger, null, "der Empfänger wurde nicht zurückgesetzt");
-  assert.equal(nach.pakete, null, "die Paketanzahl trägt wieder einen Wert — sie startet leer");
+  assert.equal(nach.pakete, PACKAGE_COUNT_DEFAULT, "die Paketanzahl trägt nicht ihre dokumentierte Vorbelegung");
   assert.equal(nach.gewicht, null, "das Gewicht wurde nicht geleert");
   assert.equal(nach.angebote, 0, "die Angebote wurden nicht entfernt");
   assert.equal(nach.ausgewaehlt, 0, "die Auswahl wurde nicht entfernt");
@@ -987,7 +992,7 @@ test("26 — nach dem Speichern öffnet ein Reiterwechsel zu „Neue Sendung\" e
   assert.equal(z.titel, "Neue Sendung");
   assert.equal(z.empfaenger, null, "der Empfänger erscheint nach dem Reiterwechsel erneut");
   assert.equal(z.ort, null, "der Zielort erscheint nach dem Reiterwechsel erneut");
-  assert.equal(z.pakete, null, "die Paketanzahl startet leer");
+  assert.equal(z.pakete, PACKAGE_COUNT_DEFAULT, "die Paketanzahl trägt nicht ihre dokumentierte Vorbelegung");
   assert.equal(z.gewicht, null);
   assert.equal(z.laenge, null);
   assert.equal(z.angebote, 0, "alte Angebote erscheinen nach dem Reiterwechsel erneut");
@@ -1276,7 +1281,7 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
   await page.waitForTimeout(900);
   const z2 = await zustand(page);
   assert.equal(z2.empfaenger, null, "„Neue Sendung\" zeigt nach „Speichern und verlassen\" noch die alte Sendung");
-  assert.equal(z2.pakete, null, "die Paketanzahl startet leer");
+  assert.equal(z2.pakete, PACKAGE_COUNT_DEFAULT, "die Paketanzahl trägt nicht ihre dokumentierte Vorbelegung");
   await ctx.close();
 });
 

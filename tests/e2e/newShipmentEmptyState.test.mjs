@@ -17,6 +17,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
+// Erwartete Vorbelegung aus der PRODUKTIVEN Konstante, nicht als "1" wiederholt:
+// ändert sich die Produktentscheidung, zieht der Test mit.
+import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -223,8 +226,13 @@ test("S1 — „Neue Sendung“ startet vollständig leer (kein Profil, keine Ma
     await zuNeueSendung(page);
     const f = await felder(page);
     // Paket: alle fünf leer, Beispiele nur als Placeholder.
-    for (const k of ["packageCount", "weight", "length", "width", "height"])
+    for (const k of ["weight", "length", "width", "height"])
       assert.equal(f[k], "", `${k} ist vorbelegt: ${JSON.stringify(f[k])}`);
+    // Die Paketanzahl ist die EINZIGE dokumentierte Ausnahme vom leeren
+    // Ausgangszustand (PACKAGE_COUNT_DEFAULT). Sie wird gegen ihren Wert
+    // geprüft, nicht auf leer — und auch nicht gar nicht.
+    assert.equal(f.packageCount, PACKAGE_COUNT_DEFAULT,
+      `Paketanzahl ohne dokumentierte Vorbelegung: ${JSON.stringify(f.packageCount)}`);
     assert.equal(f.phWeight, "z. B. 5");
     assert.equal(f.phLength, "z. B. 30");
     // Absender: NICHT aus dem Profil.
@@ -257,8 +265,10 @@ test("S2 — F5 auf einem ausgefüllten Formular: alles wieder leer", async () =
     // Formularzustand darf auch beim erneuten Öffnen nicht zurückkommen.
     await zuNeueSendung(page);
     const nachher = await felder(page);
-    for (const k of ["packageCount", "weight", "length", "width", "height"])
+    for (const k of ["weight", "length", "width", "height"])
       assert.equal(nachher[k], "", `${k} kam nach dem Reload zurück: ${JSON.stringify(nachher[k])}`);
+    assert.equal(nachher.packageCount, PACKAGE_COUNT_DEFAULT,
+      `Paketanzahl ohne dokumentierte Vorbelegung: ${JSON.stringify(nachher.packageCount)}`);
     assert.equal(nachher.sCompany, "", "Absenderfirma kam nach dem Reload zurück");
     assert.equal(nachher.rStreet, "", "Empfängerstraße kam nach dem Reload zurück");
     assert.equal(nachher.rCity, "", "Empfängerort kam nach dem Reload zurück");
@@ -288,8 +298,10 @@ test("S3 — Sidebar „Neue Sendung“ nach Bereichswechsel startet frisch", as
     // … und über die SIDEBAR zurück. Genau dieser Weg muss frisch starten.
     await ueberSidebarZuNeueSendung(page);
     const f = await felder(page);
-    for (const k of ["packageCount", "weight", "length", "width", "height"])
+    for (const k of ["weight", "length", "width", "height"])
       assert.equal(f[k], "", `${k} überlebte den Sidebar-Neustart: ${JSON.stringify(f[k])}`);
+    assert.equal(f.packageCount, PACKAGE_COUNT_DEFAULT,
+      `Paketanzahl ohne dokumentierte Vorbelegung: ${JSON.stringify(f.packageCount)}`);
     assert.deepEqual(fehler, []);
   } finally { await ctx.close(); }
 });

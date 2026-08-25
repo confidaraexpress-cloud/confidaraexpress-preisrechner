@@ -147,21 +147,33 @@ test("7b — die Angebotssektion ist auf Desktop begrenzt und zentriert, Mobile 
   assert.ok(!/\.offer-card\s*\{[^}]*overflow-x/.test(mobil));
 });
 
-test("7c — die frühe Zustellzeit trägt ein Foundation-Token und nicht nur Farbe", () => {
-  const regel = offersCss.match(/\.offer-tl-time-early\s*\{([^}]*)\}/);
-  assert.ok(regel, ".offer-tl-time-early muss definiert sein");
-  assert.match(regel[1], /var\(--ce-color-status-success-fg\)/, "keine freie Farbe");
+test("7c — das Frühzeit-Hinweisfeld nutzt Foundation-Tokens und trägt sichtbaren Text", () => {
+  const regel = offersCss.match(/\.offer-early-note\s*\{([^}]*)\}/);
+  assert.ok(regel, ".offer-early-note muss definiert sein");
+  for (const token of ["--ce-color-status-success-surface", "--ce-color-status-success-border",
+                       "--ce-color-status-success-fg", "--ce-radius-sm"]) {
+    assert.ok(regel[1].includes(token), `${token} fehlt — keine freien Werte erlaubt`);
+  }
   assert.ok(!/#[0-9a-f]{3,8}/i.test(regel[1]), "kein Hexliteral");
+  assert.ok(!/border-radius:\s*(999|9999|50%)/.test(regel[1]), "keine Pillenform");
 
-  // Bedeutung hängt nicht allein an der Farbe: die frühe Zeit wechselt die Zeile
-  // (Unterzeile → Hauptzeile) und damit Größe und Schnitt. Beide Stufen prüfen.
-  const sub  = offersCss.match(/\.offer-tl-sub\s*\{([^}]*)\}/)[1];
-  const prim = offersCss.match(/\.offer-tl-primary\s*\{([^}]*)\}/)[1];
-  assert.match(sub,  /font-weight:\s*500/);
-  assert.match(prim, /font-weight:\s*600/);
+  // Kleiner Statushinweis, kein Button: Label-Stufe, kein Schatten.
+  assert.match(regel[1], /font-size:\s*12px/);
+  assert.match(regel[1], /font-weight:\s*600/);
+  assert.ok(!/box-shadow/.test(regel[1]), "ein Statushinweis trägt keine Tiefe");
+
+  // Die frühere Inline-Färbung IN der Datumszeile ist zurückgenommen.
+  assert.ok(!/\.offer-tl-time-early\s*\{/.test(offersCss),
+    "die Inline-Hervorhebung darf nicht wieder in der Datumszeile stehen");
+
   const karte = read("../components/offers/OfferCard.jsx");
-  assert.match(karte, /offer-tl-primary[\s\S]{0,400}offer-tl-time-early/,
-    "die frühe Zeit muss INNERHALB der Hauptzeile stehen");
+  assert.ok(!/offer-tl-time-early/.test(karte), "die Karte darf die Inline-Klasse nicht mehr setzen");
+  // Die normale Hauptzeile trägt wieder ausschließlich das Datum.
+  assert.match(karte, /\{end\.primary && <span className="offer-tl-primary">\{end\.primary\}<\/span>\}/);
+  // Farbe ist nie der alleinige Träger: der Text steht vollständig im Feld.
+  assert.match(karte, /\{earlyNote\}/);
+  assert.match(karte, /offer-early-note-icon[\s\S]{0,120}aria-hidden="true"/,
+    "das dekorative Icon muss vor Screenreadern verborgen sein");
 });
 
 /* ══════════ 8 — Badge-Logik: „Günstigste" nie auf nicht verfügbarem Angebot ═ */

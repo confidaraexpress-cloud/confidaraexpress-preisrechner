@@ -320,24 +320,64 @@
 .offer-tl-primary { font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary); line-height: 1.3; margin-top: 1px; }
 .offer-tl-sub     { font-size: 13px; font-weight: 500; color: var(--ce-color-text-muted); line-height: 1.3; }
 
-/* Konkrete frühe Zustellzeit — steht in der HAUPTZEILE neben dem Datum
-   („31. Aug., bis 12:00 Uhr"). Die Bedeutung hängt nicht allein an der Farbe:
-   die Zeit wechselt gegenüber einem Tagesendwert die Zeile (Unterzeile →
-   Hauptzeile) und damit auch die Stufe (13 px/500/muted → 14 px/600). Der
-   Farbwert ist ein vorhandenes Foundation-Token (5,63:1 auf Weiß), keine neue
-   Farbe. Bewusst ohne Icon — die Karte trägt bereits Logo, Badge und
-   Timeline-Punkte. */
-.offer-tl-time-early { color: var(--ce-color-status-success-fg); }
+/* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten — „Lieferung bis
+   10:30 Uhr“. Es ersetzt die frühere Inline-Färbung IN der Datumszeile
+   (.offer-tl-time-early): die presste Datum und Uhrzeit zusammen und markierte
+   einen Teil davon farbig, statt die Sonderinformation als eigene Aussage zu
+   zeigen. Die Datumszeile ist seitdem wieder neutral.
 
-/* Uhrzeitzeile des Lieferzeitfilters (Formular-Popover + Angebots-Dropdown) */
+   Kleiner Statushinweis, kein Button und kein Marketing-Badge: sehr helle
+   Success-Fläche, feine Kontur, kleiner Radius (SM = 8 px, bewusst keine
+   Pillenform), Label-Stufe 12/600 wie jeder andere Statusmarker des Systems.
+   Alle drei Farbwerte sind Foundation-Tokens — keine freie Grünfarbe.
+
+   Es liegt als Geschwister UNTER .offer-tl-labels und damit außerhalb der
+   1fr-Rasterspur des Endknotens: so kann es die Timeline nicht verziehen und
+   die Preisspalte nicht verschieben. `align-self: flex-end` stellt es unter das
+   Lieferende; die Farbe ist nie der alleinige Bedeutungsträger, der Text steht
+   vollständig da. */
+.offer-early-note {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 9px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-success-surface);
+  border: 1px solid var(--ce-color-status-success-border);
+  color: var(--ce-color-status-success-fg);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+}
+.offer-early-note-icon { display: flex; flex-shrink: 0; }
+
+/* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
+   Dropdown). Das Feld selbst ist das vorhandene Primitive .field-select; hier
+   stehen nur Beschriftung, das führende Icon und der Hinweis ohne Datum. */
 .offers-time-row { margin-top: 12px; }
 .offers-time-label {
+  display: block;
   font-size: 12px; font-weight: 600; line-height: 1.4;
-  color: var(--ce-color-text-secondary); margin-bottom: 8px;
+  color: var(--ce-color-text-secondary); margin-bottom: 6px;
 }
-.offers-time-chips { flex-wrap: wrap; }
-.offers-time-disabled {
-  font-size: 13px; line-height: 1.5; color: var(--ce-color-text-muted); margin: 0;
+.offers-time-field { position: relative; }
+.offers-time-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; pointer-events: none;
+  color: var(--ce-color-text-muted);
+}
+/* Platz für das führende Icon; der Chevron rechts kommt aus .field-select. */
+.offers-time-select { padding-left: 35px; }
+.offers-time-select:disabled { cursor: not-allowed; }
+.offers-time-field:has(.offers-time-select:disabled) .offers-time-icon {
+  color: var(--ce-color-text-disabled);
+}
+.offers-time-hint {
+  font-size: 13px; line-height: 1.5; color: var(--ce-color-text-muted);
+  margin: 6px 0 0;
 }
 .offer-tl-transport-icon  { display: flex; margin-top: 2px; color: var(--warn); }
 

@@ -9,7 +9,7 @@ import {
   activeResultFilterCount, deliveryChipLabel, emptyFilterHint as buildEmptyFilterHint,
   offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
-import DeliveryTimeChips from "./DeliveryTimeChips.jsx";
+import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -287,7 +287,7 @@ export function OffersList({
                 minDate={shippingDate}
                 onClose={() => setOpenFilter(null)}
               />
-              <DeliveryTimeChips
+              <DeliveryTimeSelect
                 options={deliveryTimeOptions}
                 value={latestDeliveryTime}
                 onChange={(zeit) => { onLatestDeliveryTimeChange(zeit); setOpenFilter(null); }}

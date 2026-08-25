@@ -17,7 +17,6 @@ import {
   FILTER_EMPTY_TEXT, LIST_EMPTY_TITLE, LIST_EMPTY_TEXT, LOADING_TEXT, LOAD_ERROR_TEXT,
   customerInvoiceSummary,
 } from "../../utils/customerInvoiceView.mjs";
-import { orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 
 // Rechnungsliste (Kunde) — Phase 5: Forderungsklassifizierung, sechs fachliche
 // Bereiche, Premium-Statussystem, mobile Kartenansicht, lokale Filter.
@@ -71,13 +70,21 @@ function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
 
 // ── Zellen (gemeinsam für Desktop-Tabelle und Mobilkarte genutzt) ──────────
 function InvoiceNumberBlock({ inv }) {
-  // Vorgangsbezug der Rechnung: die Auftragsbestätigungsnummer (CE-AB…) aus dem
-  // eingefrorenen Leistungs-Snapshot. Kein Rückfall auf die interne Bestellnummer.
-  const order = orderConfirmationNumberOf(inv);
+  // Nur die Rechnungsnummer. Die Auftragsbestätigungsnummer (CE-AB…) stand hier als
+  // zweite Zeile und ist kundenseitig entfallen: sie bezeichnet den AUFTRAG, nicht die
+  // Zahlungsforderung, und die Rechnungsansicht soll die Rechnung zeigen. Der Vorgang
+  // bleibt über die Auftragsbestätigung selbst und die Sendungsliste auffindbar.
+  //
+  // Es wird nur die ANZEIGE entfernt: `service_snapshot.orderConfirmationNumber` bleibt
+  // im Backend, in der Rechnungsantwort, im PDF-Metablock und in der Adminsicht
+  // unverändert erhalten. `orderConfirmationNumberOf()` (businessNumbers.mjs) behält
+  // seine übrigen Aufrufer.
+  //
+  // Kein Platzhalter und kein „—“ an der frei gewordenen Stelle: der frühere Rückfalltext
+  // „Ohne Vorgangsnummer“ beschrieb eine Datenlücke, die den Kunden nichts angeht.
   return (
     <div className="inv-cell-number">
       <span className="inv-cell-number-value">{inv.invoice_number}</span>
-      <span className="inv-cell-order">{order || "Ohne Vorgangsnummer"}</span>
     </div>
   );
 }

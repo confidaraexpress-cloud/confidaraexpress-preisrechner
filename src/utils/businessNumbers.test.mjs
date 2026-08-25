@@ -243,23 +243,29 @@ test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getren
     "interne Bestellnummer oder Providerreferenz im Erfolgsbildschirm");
 });
 
-test("(8) Rechnungsliste zeigt Rechnungs- und Auftragsbestätigungsnummer getrennt", () => {
-  // Phase 5: die sechs fachlichen Bereiche fassen Rechnungs- und Vorgangsnummer in EINER
-  // gemeinsamen "Rechnung"-Spalte zusammen (InvoiceNumberBlock) statt in zwei eigenen
-  // <th>-Spalten — beide Werte bleiben aber weiterhin getrennt gelesen und dargestellt,
-  // nie ineinander verschmolzen oder aus einer ID ersetzt.
+test("(8) Rechnungsliste zeigt AUSSCHLIESSLICH die Rechnungsnummer", () => {
+  // GEÄNDERT: die Zelle trug zusätzlich die Auftragsbestätigungsnummer (CE-AB…) als
+  // Vorgangsbezug. Sie ist kundenseitig entfallen — die Rechnungsansicht zeigt die
+  // Rechnung, nicht den Auftrag. Backend, Rechnungsantwort, PDF-Metablock und Adminsicht
+  // führen die Nummer unverändert weiter; nur diese Darstellung liest sie nicht mehr.
+  //
+  // Gescannt wird der CODE, nicht die Begründung darüber: der Kommentar an der Zelle nennt
+  // `orderConfirmationNumberOf` ausdrücklich, damit niemand es versehentlich zurückholt.
   const src = read("components/dashboard/InvoicesList.jsx");
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(/<th scope="col">Rechnung<\/th>/.test(src), "Spalte 'Rechnung' fehlt");
-  assert.ok(src.includes("orderConfirmationNumberOf(inv)"), "Vorgangsnummer wird nicht gelesen");
-  assert.ok(src.includes("inv.invoice_number"), "Rechnungsnummer fehlt");
-  const fnStart = src.indexOf("function InvoiceNumberBlock");
-  const cell = src.slice(fnStart, src.indexOf("\n}", fnStart));
-  assert.ok(cell.includes("orderConfirmationNumberOf(inv)") && cell.includes("inv.invoice_number"),
-    "Rechnungs- und Vorgangsnummer müssen beide in der Rechnungs-Zelle gelesen werden");
-  assert.ok(!/order_number|jumingo|inv\.id\b|businessOrderNumberOf/.test(cell),
-    "Ersatzwert in der Vorgangsnummern-Zelle");
-  // Die interne Bestellnummer wird auf der ganzen Seite nicht mehr gelesen.
-  assert.ok(!/businessOrderNumberOf|business_order_number/.test(src),
+  assert.ok(code.includes("inv.invoice_number"), "Rechnungsnummer fehlt");
+  const fnStart = code.indexOf("function InvoiceNumberBlock");
+  const cell = code.slice(fnStart, code.indexOf("\n}", fnStart));
+  assert.ok(cell.includes("inv.invoice_number"), "die Rechnungsnummer fehlt in der Zelle");
+  // Weder eine Vorgangsnummer noch ein Ersatzwert an ihrer Stelle: kein Platzhalter,
+  // kein „—", keine ID.
+  assert.ok(!/orderConfirmationNumberOf|order_confirmation_number/.test(cell),
+    "die Auftragsbestätigungsnummer steht wieder in der Kundenrechnungszelle");
+  assert.ok(!/order_number|jumingo|inv\.id\b|businessOrderNumberOf|Ohne Vorgangsnummer/.test(cell),
+    "Ersatzwert an der Stelle der entfernten Vorgangsnummer");
+  // Die interne Bestellnummer wird auf der ganzen Seite nicht gelesen.
+  assert.ok(!/businessOrderNumberOf|business_order_number/.test(code),
     "die Rechnungsliste liest weiterhin die interne Bestellnummer");
 });
 

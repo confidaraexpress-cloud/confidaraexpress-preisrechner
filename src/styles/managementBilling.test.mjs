@@ -261,10 +261,16 @@ test("23 — Business-Nummernkreise, JUMiNGO-Felder und Zahlungsstatuslogik sind
   assert.ok(!/s\.jumingo_shipment_id/.test(shipmentsList),
     "die Sendungsliste darf die Providerreferenz nicht mehr verwenden");
   assert.match(shipmentsList, /onLabel=\{handleDownloadLabel\}/);
-  // Nummernumstellung: die Rechnungsliste zeigt die Auftragsbestätigungsnummer
-  // (CE-AB…) als Vorgangsbezug — die interne Bestellnummer (CE-BS…) bleibt
-  // technisch bestehen, wird hier aber nicht mehr gelesen.
-  assert.match(invoicesList, /orderConfirmationNumberOf\(inv\)/);
+  // Die Rechnungsliste zeigt kundenseitig KEINE Vorgangsnummer mehr: weder die
+  // Auftragsbestätigungsnummer (CE-AB…) noch die interne Bestellnummer (CE-BS…).
+  // Beide bleiben backendseitig, im PDF-Metablock und in der Adminsicht erhalten.
+  // Gescannt wird der CODE, nicht die Begründung darüber: der Kommentar an der
+  // betroffenen Stelle nennt den entfernten Aufruf ausdrücklich, damit niemand ihn
+  // versehentlich zurückholt. Ein Scan über den Rohtext verwechselte ihn mit dem Verstoß.
+  const invoicesListCode = invoicesList
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/orderConfirmationNumberOf|business_order_number/.test(invoicesListCode),
+    "die Kundenrechnungsliste zeigt wieder eine Vorgangsnummer");
   assert.match(customerInvoiceView, /isOverdueInvoice\(inv\)/);
   assert.match(addressBookView, /export const ROLE_BOTH = "both";/);
 });

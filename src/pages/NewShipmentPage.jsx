@@ -76,6 +76,7 @@ const firstShipmentErrorField = (errs) =>
   SHIPMENT_FIELD_ORDER.find((k) => errs[k]) || Object.keys(errs)[0] || null;
 import { hasSavableShipmentId } from "../utils/draftsView.mjs";
 import { inventoryOriginNotice } from "../utils/inventoryView.mjs";
+import { requiresState, statesForCountry, stateFieldError } from "../utils/stateCodes.mjs";
 import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   isValidShipmentResumeDraft,
@@ -138,6 +139,11 @@ function getErrors(form) {
   // PLZ-Fehler erscheint.
   if (!form.s_country?.trim())              e.s_country  = "Bitte wählen Sie ein Land.";
   { const m = postalErr(form.s_country, form.s_zip); if (m) e.s_zip = m; }
+  // Bundesstaat: dieselbe Landesregel wie serverseitig (nur US/CA). Die Prüfung steht hier,
+  // damit ein fehlender Bundesstaat schon im Formular sichtbar wird statt erst als
+  // Feldfehler der Buchung — für alle übrigen Länder liefert stateFieldError "" und es
+  // ändert sich nichts.
+  { const m = stateFieldError(form.s_country, form.s_state); if (m) e.s_state = m; }
   if (!form.s_city?.trim())                 e.s_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.s_city.length > 100)        e.s_city     = "Stadt darf maximal 100 Zeichen enthalten.";
   if (form.s_email) {
@@ -153,6 +159,11 @@ function getErrors(form) {
   if (form.r_addition?.length > 100)        e.r_addition = "Adresszusatz darf maximal 100 Zeichen enthalten.";
   if (!form.r_country?.trim())              e.r_country  = "Bitte wählen Sie ein Land.";
   { const m = postalErr(form.r_country, form.r_zip); if (m) e.r_zip = m; }
+  // Bundesstaat: dieselbe Landesregel wie serverseitig (nur US/CA). Die Prüfung steht hier,
+  // damit ein fehlender Bundesstaat schon im Formular sichtbar wird statt erst als
+  // Feldfehler der Buchung — für alle übrigen Länder liefert stateFieldError "" und es
+  // ändert sich nichts.
+  { const m = stateFieldError(form.r_country, form.r_state); if (m) e.r_state = m; }
   if (!form.r_city?.trim())                 e.r_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.r_city.length > 100)        e.r_city     = "Stadt darf maximal 100 Zeichen enthalten.";
   if (form.r_email) {
@@ -573,6 +584,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     postalCode:      form[`${p}_zip`],
     city:            form[`${p}_city`],
     country:         form[`${p}_country`],
+    // Nur bei gesetztem Bundesstaat — für alle Länder ohne Bundesstaatpflicht entsteht das
+    // Feld nicht und der Payload ist unverändert.
+    ...(form[`${p}_state`] ? { state: form[`${p}_state`] } : {}),
     ...(form[`${p}_phone`] ? { phone: form[`${p}_phone`] } : {}),
     ...(form[`${p}_email`] ? { email: form[`${p}_email`] } : {}),
   });
@@ -1484,6 +1498,33 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     </Field>
   );
 
+  // Bundesstaat/Provinz — erscheint AUSSCHLIESSLICH bei US- und CA-Zielen, weil der
+  // Providervertrag ihn nur dort verlangt. Bei jedem anderen Land wird das Feld gar nicht
+  // gerendert; nationale und europäische Sendungen sehen exakt dasselbe Formular wie bisher.
+  // Auswahlfeld statt Freitext: gesendet wird der zweistellige Code, und eine ausgeschriebene
+  // Eingabe („Kalifornien") würde providerseitig abgelehnt.
+  const stateSelect = (p) => {
+    if (!requiresState(form[`${p}_country`])) return null;
+    return (
+      <Field
+        id={`ns-${p}-state`}
+        fieldKey={`${p}_state`}
+        as="select"
+        labelMode="floating"
+        label="Bundesstaat"
+        required
+        value={form[`${p}_state`]}
+        onChange={(v) => upd(`${p}_state`, v)}
+        error={errors[`${p}_state`]}
+      >
+        <option value="">Bundesstaat auswählen</option>
+        {statesForCountry(form[`${p}_country`]).map(st => (
+          <option key={st.code} value={st.code}>{st.name}</option>
+        ))}
+      </Field>
+    );
+  };
+
   return (
     <div className="page-with-navbar">
 
@@ -1855,6 +1896,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {countrySelect("s")}
+                  {stateSelect("s")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
                       im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
                   <AddressStatusLine
@@ -1911,6 +1953,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     />
                   </div>
                   {countrySelect("r")}
+                  {stateSelect("r")}
                   {/* Ergebnis der Adressprüfung. Erscheint erst, wenn es etwas zu sagen gibt —
                       im Ausgangszustand und für Länder ohne Abdeckung bleibt hier nichts stehen. */}
                   <AddressStatusLine

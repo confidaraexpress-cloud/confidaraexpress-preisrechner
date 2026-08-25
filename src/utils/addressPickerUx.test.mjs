@@ -65,12 +65,16 @@ const adresse = {
 
 /* ══════════ A — Feldauslegung: Kopie, keine Bindung ═══════════════════════ */
 
-test("A1 die Auswahl füllt genau die neun Adressfelder der jeweiligen Seite", () => {
+test("A1 die Auswahl füllt genau die zehn Adressfelder der jeweiligen Seite", () => {
+  // Zehn statt neun seit dem Zollpaket: `state` (Bundesstaat) gehört zum Formshape, weil der
+  // Providervertrag ihn für US/CA verlangt. Er wird gefiltert übernommen — die Regel dazu
+  // prüft addressBookView.test.mjs (19b).
   for (const [prefix, gegen] of [["s", "r"], ["r", "s"]]) {
     const patch = mapAddressToShipmentFormPatch(adresse, prefix);
     assert.deepEqual(Object.keys(patch).sort(), [
       `${prefix}_addition`, `${prefix}_city`, `${prefix}_company`, `${prefix}_country`,
-      `${prefix}_email`, `${prefix}_fullName`, `${prefix}_phone`, `${prefix}_street`, `${prefix}_zip`,
+      `${prefix}_email`, `${prefix}_fullName`, `${prefix}_phone`, `${prefix}_state`,
+      `${prefix}_street`, `${prefix}_zip`,
     ].sort());
     // Die andere Seite wird nicht angefasst: eine Empfängerauswahl darf niemals
     // den Absender überschreiben.
@@ -81,7 +85,10 @@ test("A1 die Auswahl füllt genau die neun Adressfelder der jeweiligen Seite", (
 test("A2 es entsteht KEINE Referenz auf den Adressbucheintrag", () => {
   const patch = mapAddressToShipmentFormPatch(adresse, "r");
   const alsText = JSON.stringify(patch);
-  for (const feld of ["addressId", "address_id", "id", "label", "notes", "role", "favorite", "isDefaultSender", "isDefaultRecipient", "state"]) {
+  // `state` steht bewusst NICHT mehr in dieser Liste: er ist seit dem Zollpaket ein echtes
+  // Adressfeld der Sendung (US/CA-Pflicht), kein Verweis auf die Adressbuchzeile. Alle übrigen
+  // Verwaltungsfelder bleiben verboten — die Übernahme ist weiterhin eine Kopie ohne Bindung.
+  for (const feld of ["addressId", "address_id", "id", "label", "notes", "role", "favorite", "isDefaultSender", "isDefaultRecipient"]) {
     assert.ok(!Object.prototype.hasOwnProperty.call(patch, feld), `${feld} darf nicht im Patch stehen`);
   }
   assert.ok(!alsText.includes("42"), "die Adressbuch-ID darf nirgends mitwandern");

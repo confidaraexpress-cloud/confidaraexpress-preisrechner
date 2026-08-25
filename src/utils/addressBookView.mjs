@@ -11,6 +11,7 @@
 //     isDefaultRecipient, favorite, createdAt, updatedAt }
 // ─────────────────────────────────────────────────────────────────────────────
 import { validatePostalCode } from "./postalCode.mjs";
+import { normalizeStateCode } from "./stateCodes.mjs";
 
 // ── Kanonische Backend-Rollenwerte ───────────────────────────────────────────
 export const ROLE_SENDER = "sender";
@@ -302,6 +303,11 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
     [`${p}_zip`]: a.postalCode || "",
     [`${p}_city`]: a.city || "",
     [`${p}_country`]: (a.country || "DE").toUpperCase(),
+    // Bundesstaat nur übernehmen, wenn er für DIESES Land überhaupt gilt und ein belegter Code
+    // ist. Das Adressbuchfeld ist historisch Freitext („Bundesland / Region", z. B. „Berlin"):
+    // ein solcher Wert darf nicht als US-Bundesstaat in eine Sendung wandern, sondern fällt hier
+    // auf leer zurück und wird im Formular bewusst neu gewählt.
+    [`${p}_state`]: normalizeStateCode(a.country, a.state),
     [`${p}_phone`]: a.phone || "",
     [`${p}_email`]: a.email || "",
   };

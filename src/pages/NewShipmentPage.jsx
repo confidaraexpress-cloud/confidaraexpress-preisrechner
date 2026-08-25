@@ -9,7 +9,7 @@ import { countries } from "../utils/countries";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
-import { deliveryTimeOptions, latestDeliveryFieldValue } from "../utils/deliveryTimeView.mjs";
+import { deliveryDeadlineOptions, latestDeliveryFieldValue } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import DeliveryTimeSelect from "../components/offers/DeliveryTimeSelect.jsx";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -979,11 +979,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     }),
     [tariffs, form.max_price, form.latestDeliveryDate, form.latestDeliveryTime]);
 
-  // Wählbare Uhrzeiten kommen aus den GELADENEN Tarifen (nie aus einer festen
-  // Liste) — damit hat jede angebotene Uhrzeit mindestens einen realen Tarif.
+  // Wählbare Fristen = allgemeines Raster + die tatsächlich geladenen
+  // Tarifzeiten. Vor der ersten Berechnung ist `tariffs` leer und es bleibt das
+  // Raster — der Kunde kann seine späteste Uhrzeit also nennen, BEVOR er
+  // Angebote sieht. Weil das Raster auch danach Teil der Menge bleibt,
+  // überlebt eine vorab gewählte Frist die Ankunft der Tarife.
+  //
   // Bewusst aus `tariffs`, nicht aus `filtered`: sonst entfernte die eigene
-  // Auswahl gerade die Option, mit der man sie wieder lockern wollte.
-  const zeitOptionen = useMemo(() => deliveryTimeOptions(tariffs), [tariffs]);
+  // Auswahl gerade die Option, mit der man sie wieder lockern wollte. Die
+  // Werte stehen in `deliveryTimeView.mjs`, nicht hier.
+  const zeitOptionen = useMemo(() => deliveryDeadlineOptions(tariffs), [tariffs]);
 
   const sorted = React.useMemo(() => {
     if (sortMode === "recommended") return filtered;

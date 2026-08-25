@@ -15,6 +15,7 @@ import {
   FRUEHZUSTELLUNG_GRENZE_MINUTEN, normalizeDeliveryTime, deliveryTimeMinutes,
   isEarlyDelivery, deliveryTimeLabel, deliveryTimeOptions,
   deliveryTimeOptionLabel, latestDeliveryFieldValue, earlyDeliveryNote,
+  LIEFERFRIST_RASTER, deliveryDeadlineOptions,
 } from "./deliveryTimeView.mjs";
 import { TARIFE_41 } from "./offersFilterFixture.mjs";
 
@@ -238,14 +239,14 @@ test("U2 — mit Datum ist das Feld bedienbar", () => {
     "fällt das Datum weg, muss eine offene Liste schließen");
 });
 
-test("U3 — die Optionen sind „Beliebig“ plus die echten Tarifzeiten", () => {
+test("U3 — die Optionen sind „Beliebig“ plus Fristenraster und Tarifzeiten", () => {
   const q = lies(TIME_SELECT);
   assert.match(q, /const werte = \["", \.\.\.\(options \|\| \[\]\)\];/);
   assert.ok(!/"[0-2]\d:[0-5]\d"/.test(q), "keine hartcodierte Uhrzeit im Bauteil");
-  // An echten Daten: genau die vorkommenden Zeiten, dedupliziert und sortiert.
-  const werte = ["", ...deliveryTimeOptions(TARIFE_41)];
+  // An echten Daten: Raster und Tarifzeiten zusammen, dedupliziert und sortiert.
+  const werte = ["", ...deliveryDeadlineOptions(TARIFE_41)];
   assert.deepEqual(werte,
-    ["", "08:00", "09:00", "10:00", "10:30", "12:00", "13:00", "17:00", "18:00"]);
+    ["", "08:00", "09:00", "10:00", "10:30", "12:00", "13:00", "16:00", "17:00", "18:00"]);
 });
 
 test("U4 — der gewählte Wert erscheint als „10:30 Uhr“, gespeichert bleibt „10:30“", () => {

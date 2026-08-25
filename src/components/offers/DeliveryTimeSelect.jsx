@@ -69,10 +69,15 @@ export default function DeliveryTimeSelect({ options, value, onChange, hasDate, 
   const hinweisId = `${idPrefix}-zeit-hinweis`;
 
   // „Beliebig“ ist immer die erste Wahlmöglichkeit und zugleich der Leerwert.
-  // Die übrigen Zeiten kommen aus `deliveryTimeOptions(tariffs)` — also aus den
-  // TATSÄCHLICH geladenen Tarifen, nie aus einer festen Liste. Eine hartcodierte
-  // Uhrzeit hätte auf vielen Routen garantiert null Treffer, und eine
-  // Filteroption ohne möglichen Treffer behauptet eine Funktion, die es nicht gibt.
+  // Die übrigen Zeiten kommen als Prop herein — sie werden hier weder gewählt
+  // noch ergänzt noch gefiltert; das Bauteil kennt keine Uhrzeit. Zusammengestellt
+  // werden sie von `deliveryDeadlineOptions(tariffs)` in `deliveryTimeView.mjs`:
+  // allgemeines Fristenraster vereinigt mit den echten Tarifzeiten.
+  //
+  // Die Rückfallregel darunter ist der Grund, warum das Raster auch NACH der
+  // Berechnung Teil dieser Menge bleiben muss: steht der gespeicherte Wert nicht
+  // in `werte`, zeigt das Feld „Beliebig“, während der Formularwert weiterhin
+  // filtert — Anzeige und Wirkung liefen dann auseinander.
   const werte = ["", ...(options || [])];
   const aktiv = werte.includes(value) ? value : "";
   const [markiert, setMarkiert] = useState(0);

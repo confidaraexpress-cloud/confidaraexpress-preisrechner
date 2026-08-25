@@ -5,7 +5,7 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
-import { isEarlyDelivery, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -69,26 +69,21 @@ function buildEnd(t, etaLabel) {
   else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
   else                                primary = etaLabel;
 
-  // Die Zustellzeit steht seit jeher hier — bisher aber ausnahmslos als
-  // schwächste Zeile der Karte (.offer-tl-sub, 13 px / 500 / muted). Genau
-  // deshalb ging eine konkrete 12:00-Zusage neben dem Tagesendwert 17:00 unter,
-  // obwohl beide dasselbe Feld sind.
+  // Die NORMALE Lieferzeile bleibt neutral und zweizeilig: Datum als primäre
+  // Information, Uhrzeit als sekundäre Unterzeile — für JEDEN Tarif gleich,
+  // ob 10:30 oder 18:00.
   //
-  // Jetzt entscheidet die UHRZEIT über die Gewichtung, nicht der Tarifname und
-  // ausdrücklich NICHT `shippingMode` (`FEDEX FIRST®` stellt bis 10:00 zu und ist
-  // serverseitig als „standard" klassifiziert; `UPS EXPRESS SAVER ®` ist
-  // „express" und trägt nur 17:00):
-  //
-  //   früh  → in die Hauptzeile, neben das Datum („31. Aug., bis 12:00 Uhr")
-  //   sonst → bleibt unverändert die dezente Unterzeile
-  //
-  // Der Tagesendwert wird NICHT entfernt, nur nicht betont. Im Detailpanel
-  // („Termin & Abholung") erscheinen beide Fälle unverändert gleich.
+  // Eine Vorfassung hat beides in EINE Zeile gezogen („Mi., 26.08., bis 10:30
+  // Uhr“) und die Uhrzeit darin grün eingefärbt. Im Livebild trug das nicht:
+  // die Zeile wirkte gedrängt, und eine farbige Stelle mitten in einer sonst
+  // neutralen Datumsangabe liest sich wie eine Markierung, nicht wie eine
+  // eigene Aussage. Die Sonderinformation steht deshalb jetzt als eigenes,
+  // kleines Feld unter der Timeline (`earlyNote`) — die Datumszeile bleibt
+  // davon unberührt.
   const zeitText = deliveryTimeLabel(t);
-  const frueh = isEarlyDelivery(t);
   const secondary = [];
-  if (zeitText && !frueh) secondary.push(zeitText);
-  return { title: "Lieferung", primary, secondary, earlyTime: frueh ? zeitText : "" };
+  if (zeitText) secondary.push(zeitText);
+  return { title: "Lieferung", primary, secondary };
 }
 
 // ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
@@ -385,6 +380,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
   const start = buildStart(t);
   const end   = buildEnd(t, etaLabel);
+  const earlyNote = earlyDeliveryNote(t);
   // null, wenn das Backend die Übergabeart nicht klassifiziert hat — dann wird
   // keine behauptet.
   const handoverText = handoverLabel(handoverMode(t));
@@ -487,20 +483,25 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
-                  {end.primary && (
-                    <span className="offer-tl-primary">
-                      {end.primary}
-                      {end.earlyTime && (
-                        <>
-                          {", "}
-                          <span className="offer-tl-time-early">{end.earlyTime}</span>
-                        </>
-                      )}
-                    </span>
-                  )}
+                  {end.primary && <span className="offer-tl-primary">{end.primary}</span>}
                   {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
                 </div>
               </div>
+              {/* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten.
+                  Bewusst ein GESCHWISTER von .offer-tl-labels statt ein Kind des
+                  Endknotens: dessen Spalte ist eine 1fr-Rasterspur, ein breiteres
+                  Kind darin verzöge die Timeline und damit die Preisspalte. Hier
+                  steht es unter dem Lieferende, hat die volle Timelinebreite und
+                  kann das Layout nicht verschieben. Das Icon ist dekorativ — die
+                  Aussage steht vollständig im sichtbaren Text. */}
+              {earlyNote && (
+                <p className="offer-early-note">
+                  <span className="offer-early-note-icon" aria-hidden="true">
+                    <Icon n="check" s={13} c="currentColor" />
+                  </span>
+                  {earlyNote}
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -5,8 +5,8 @@ import { Icon } from "../components/ui/Icon";
 import { countries, normalizeCountryCode } from "../utils/countries";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
-import { deliveryTimeOptions } from "../utils/deliveryTimeView.mjs";
-import DeliveryTimeChips from "../components/offers/DeliveryTimeChips.jsx";
+import { deliveryTimeOptions, latestDeliveryFieldValue } from "../utils/deliveryTimeView.mjs";
+import DeliveryTimeSelect from "../components/offers/DeliveryTimeSelect.jsx";
 import { OffersList } from "../components/offers/OffersList";
 import { useAuth } from "../context/AuthContext";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../utils/date";
@@ -737,7 +737,10 @@ export default function CalculatorPage() {
                 <Icon n="calendar" s={15} c="var(--ce-color-brand-ink)" />
                 <div>
                   <div className="service-filter-trigger-title">Späteste Lieferzeit</div>
-                  <div className="service-filter-trigger-val">{form.latestDeliveryDate ? fmtShortDE(form.latestDeliveryDate) : "Beliebig"}</div>
+                  <div className="service-filter-trigger-val">{latestDeliveryFieldValue(
+                      form.latestDeliveryDate ? fmtShortDE(form.latestDeliveryDate) : "",
+                      form.latestDeliveryTime,
+                    )}</div>
                 </div>
               </div>
               <div className={`service-filter-chevron ${latestOpen ? "open" : ""}`}>
@@ -755,7 +758,7 @@ export default function CalculatorPage() {
                   minDate={shippingDate}
                   onClose={() => setLatestOpen(false)}
                 />
-                <DeliveryTimeChips
+                <DeliveryTimeSelect
                   options={zeitOptionen}
                   value={form.latestDeliveryTime}
                   onChange={handleLatestDeliveryTimeChange}

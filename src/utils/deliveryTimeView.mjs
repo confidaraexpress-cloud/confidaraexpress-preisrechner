@@ -72,8 +72,13 @@ export function isEarlyDelivery(tariff) {
 }
 
 /** Sichtbarer Zeittext eines Tarifs: „bis 12:00 Uhr“ — oder "" ohne Angabe.
- *  Bewusst dieselbe Form für frühe und für Tagesendzeiten: unterschieden wird
- *  über die Gewichtung, nicht über den Wortlaut. */
+ *  Bewusst dieselbe Form für frühe und für Tagesendzeiten: die NORMALE
+ *  Lieferzeile der Timeline zeigt beide identisch und neutral. Unterschieden
+ *  wird ausschließlich über das zusätzliche Hinweisfeld (siehe
+ *  `earlyDeliveryNote`) — nicht über eine eingefärbte Stelle mitten in der
+ *  Datumszeile. Genau diese Inline-Färbung hat im Livebild nicht getragen: sie
+ *  presste Datum und Uhrzeit in eine Zeile und markierte einen Teil davon
+ *  farbig, statt die Sonderinformation als eigene Aussage zu zeigen. */
 export function deliveryTimeLabel(tariff) {
   const s = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
   return s ? `bis ${s} Uhr` : "";
@@ -94,4 +99,46 @@ export function deliveryTimeOptions(tariffs) {
     if (s) menge.add(s);
   }
   return [...menge].sort();
+}
+
+/** Beschriftung EINER Uhrzeitoption der Auswahl: „10:30 Uhr“ — und „Beliebig“
+ *  für den Leerwert. Reine Darstellung: der gespeicherte Wert bleibt "10:30"
+ *  beziehungsweise "". „Uhr“ steht nie im Datenwert. */
+export function deliveryTimeOptionLabel(zeit) {
+  const s = normalizeDeliveryTime(zeit);
+  return s ? `${s} Uhr` : "Beliebig";
+}
+
+/** Wert des Formularfelds „Späteste Lieferzeit“ — EIN Formatierer für beide
+ *  Seiten, damit dort nicht zwei Textlogiken nebeneinander entstehen.
+ *
+ *  Der bereits formatierte Datumstext wird übergeben (die Seiten benutzen
+ *  `fmtShortDE`, der Ergebnischip dagegen das kompakte Tagesformat) — hier wird
+ *  ausschließlich die Uhrzeit angehängt, nie ein Datum formatiert:
+ *
+ *      ""                        → „Beliebig“
+ *      „Mi., 26. Aug.“           → „Mi., 26. Aug.“
+ *      „Mi., 26. Aug.“ + „10:30“ → „Mi., 26. Aug. · 10:30“
+ *
+ *  Ohne Datum ist auch eine gesetzte Uhrzeit bedeutungslos und wird nicht
+ *  gezeigt — es gibt keinen Zustand „Uhrzeit ohne Datum“. */
+export function latestDeliveryFieldValue(datumText, zeit) {
+  const d = String(datumText ?? "").trim();
+  if (!d) return "Beliebig";
+  const z = normalizeDeliveryTime(zeit);
+  return z ? `${d} · ${z}` : d;
+}
+
+/** Text des zusätzlichen Hinweisfelds für besonders frühe Zustellzeiten —
+ *  „Lieferung bis 10:30 Uhr“ — oder "" für jeden anderen Tarif.
+ *
+ *  Es wird AUSSCHLIESSLICH der vorliegende Providerzeitwert wiedergegeben. Kein
+ *  „garantiert“, kein „zugesichert“, kein „Express“: es gibt kein Feld, das
+ *  eine Zustellzeit als zugesichert ausweist (`guaranteed_delivery_date` steht
+ *  auf allen gemessenen Rohtarifen auf 0). Der Hinweis sagt, was der Tarif
+ *  angibt — nicht, was jemand verspricht. */
+export function earlyDeliveryNote(tariff) {
+  if (!isEarlyDelivery(tariff)) return "";
+  const zeit = deliveryTimeLabel(tariff);
+  return zeit ? `Lieferung ${zeit}` : "";
 }

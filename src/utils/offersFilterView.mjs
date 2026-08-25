@@ -51,6 +51,23 @@ export function deliveryChipLabel(latestDeliveryDate) {
   return latestDeliveryDate ? `Lieferung bis ${tagDE(latestDeliveryDate)}` : "Lieferung";
 }
 
+/** Beschriftung der Ergebnisüberschrift. Genannt wird ausschließlich die Zahl
+ *  der TATSÄCHLICH sichtbaren Angebote — nicht mehr „x von y … angezeigt".
+ *
+ *  Grund: die frühere Fassung erklärte den Filterzustand ein zweites Mal. Seit
+ *  der Lieferzeitfilter einen eigenen, dauerhaft sichtbaren Chip an derselben
+ *  Leiste hat („Lieferung bis 31.08.2026"), ist der Bezug auf die Gesamtzahl
+ *  redundant: der Chip sagt bereits, DASS gefiltert wird, und der Knopf
+ *  „Zurücksetzen" daneben, wie man es rückgängig macht. Die Überschrift
+ *  beantwortet dafür die eine Frage, die der Kunde beim Scannen der Liste
+ *  wirklich hat — wie viele Angebote stehen hier.
+ *
+ *  Der Singular ist ein eigener Zweig, kein angehängtes „e": „1 Angebot". */
+export function offersCountLabel(visibleCount) {
+  const n = Number.isFinite(visibleCount) ? visibleCount : 0;
+  return n === 1 ? "1 Angebot" : `${n} Angebote`;
+}
+
 /** Hinweistext, wenn ALLE Tarife weggefiltert wurden. Drei unterscheidbare
  *  Fälle, weil die Handlungsanweisung je Fall eine andere ist — vorher stand
  *  dort unabhängig vom gesetzten Filter „Erhöhen Sie das Preislimit", was bei

@@ -128,14 +128,14 @@ test.after(async () => {
   }
 });
 
-test("1 — ohne Filter: 41 Karten, „41 Angebote gefunden“, kein aktiver Lieferzeit-Chip", async () => {
+test("1 — ohne Filter: 41 Karten, „41 Angebote“, kein aktiver Lieferzeit-Chip", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   const zaehler = { n: 0 };
   await setupRoutes(page, zaehler);
   await zeigeAngebote(page);
 
   assert.equal(await anzahlKarten(page), 41);
-  assert.match(await ueberschrift(page), /^41 Angebote gefunden$/);
+  assert.match(await ueberschrift(page), /^41 Angebote$/);
   const chip = page.locator(".offers-filter-chip", { hasText: "Lieferung" });
   assert.equal(await chip.count(), 1, "der Lieferzeit-Chip fehlt an der Ergebnisliste");
   assert.equal((await chip.textContent()).trim(), "Lieferung");
@@ -145,7 +145,7 @@ test("1 — ohne Filter: 41 Karten, „41 Angebote gefunden“, kein aktiver Lie
   await page.close();
 });
 
-test("2 — späteste Lieferzeit 31.08.: 21 Karten und „21 von 41 Angeboten angezeigt“", async () => {
+test("2 — späteste Lieferzeit 31.08.: 21 Karten und „21 Angebote“", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   const zaehler = { n: 0 };
   await setupRoutes(page, zaehler);
@@ -156,7 +156,10 @@ test("2 — späteste Lieferzeit 31.08.: 21 Karten und „21 von 41 Angeboten an
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   assert.equal(await anzahlKarten(page), 21);
-  assert.match(await ueberschrift(page), /^21 von 41 Angeboten angezeigt$/);
+  assert.match(await ueberschrift(page), /^21 Angebote$/);
+  // Die Überschrift bezieht sich nicht mehr auf die Gesamtzahl — der Filter
+  // bleibt über Chip und Zurücksetzen sichtbar (Test 3 prüft beides).
+  assert.doesNotMatch(await ueberschrift(page), /von 41|angezeigt|gefunden/);
   // Der günstigste Tarif (DPD Paketshop, 5,71 €) stellt erst am 02.09. zu und
   // MUSS verschwinden — das ist richtiges Verhalten, nicht der Fehler.
   const preise = await page.locator(".offer-price").allInnerTexts();
@@ -198,7 +201,7 @@ test("4 — Zurücksetzen bringt alle 41 Karten zurück, ohne neue Preisberechnu
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 41, null, { timeout: 10000 });
 
   assert.equal(await anzahlKarten(page), 41);
-  assert.match(await ueberschrift(page), /^41 Angebote gefunden$/);
+  assert.match(await ueberschrift(page), /^41 Angebote$/);
   assert.equal((await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).textContent()).trim(), "Lieferung");
   assert.equal(await page.locator(".offers-filter-reset-btn").count(), 0);
   assert.equal(zaehler.n, vorReset, "das Zurücksetzen hat eine Preisberechnung ausgelöst");
@@ -239,18 +242,18 @@ test("6 — der Versandkostenrechner verhält sich identisch (dieselbe OffersLis
   await page.waitForSelector(".offer-card", { timeout: 20000 });
 
   assert.equal(await anzahlKarten(page), 41);
-  assert.match(await ueberschrift(page), /^41 Angebote gefunden$/);
+  assert.match(await ueberschrift(page), /^41 Angebote$/);
   const nachBerechnung = zaehler.n;
 
   await setzeLieferzeit(page, "31");
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
-  assert.match(await ueberschrift(page), /^21 von 41 Angeboten angezeigt$/);
+  assert.match(await ueberschrift(page), /^21 Angebote$/);
   assert.match((await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).textContent()).trim(),
     /^Lieferung bis 31\.08\.2026$/);
 
   await page.locator(".offers-filter-reset-btn").click();
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 41, null, { timeout: 10000 });
-  assert.match(await ueberschrift(page), /^41 Angebote gefunden$/);
+  assert.match(await ueberschrift(page), /^41 Angebote$/);
   assert.equal(zaehler.n, nachBerechnung, "Filtern/Zurücksetzen hat eine Preisberechnung ausgelöst");
   await page.close();
 });

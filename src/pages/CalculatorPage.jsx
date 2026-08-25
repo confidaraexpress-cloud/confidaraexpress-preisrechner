@@ -131,6 +131,17 @@ export default function CalculatorPage() {
   const calcSeq    = useRef(0);
   const calcAbort  = useRef(null);
   const calcKeyRef = useRef("");
+  // In-Flight-Guard als Ref, NICHT über den `loading`-State: mehrere Klicks
+  // innerhalb desselben Ticks lesen alle denselben (noch alten) State-Wert und
+  // kämen an einer State-Prüfung vorbei. Der Ref wirkt sofort. (Dieselbe
+  // Konstruktion wie in NewShipmentPage; hier fehlte sie bislang — der Abort
+  // verhinderte zwar zwei GLEICHZEITIGE Antworten, der zweite Klick löste aber
+  // trotzdem einen weiteren Provideraufruf aus.)
+  const calcInFlight = useRef(false);
+  // Schlüssel der zuletzt ERFOLGREICH berechneten Angebote. Nur gesetzt, wenn
+  // Tarife tatsächlich angekommen sind — ein Fehlversuch hinterlässt hier
+  // nichts, der nächste Klick rechnet also neu.
+  const lastCalcKeyRef = useRef("");
 
   /* ── Spiegelung in den laufenden Vorgang ─────────────────────────────────
      Abhängigkeiten sind die tatsächlichen Zustandswerte; der Effekt läuft
@@ -345,7 +356,22 @@ export default function CalculatorPage() {
   });
 
   const calculate = async () => {
+    // Genau EIN Preisrequest je Nutzeraktion (Muster aus NewShipmentPage).
+    if (calcInFlight.current) return;
+    // Unveränderte Eingaben → die vorhandenen Angebote gelten weiter. Kein
+    // zweiter /calculate-price, kein zweites JUMiNGO-Shipment. Der Schlüssel
+    // enthält ausschließlich preisbestimmende Größen; ändert sich eine davon,
+    // hat `upd` bereits `invalidateResults()` gerufen und `hasResults`/`tariffs`
+    // sind leer — dieser Zweig greift dann gar nicht erst.
+    if (
+      hasResults && tariffs.length > 0 &&
+      lastCalcKeyRef.current !== "" && lastCalcKeyRef.current === calcKeyRef.current
+    ) {
+      setError(null);
+      return;
+    }
     setHasResults(false); setTariffs([]);
+    lastCalcKeyRef.current = "";
     // Ungültige Eingaben werden gar nicht erst gesendet: Der Kunde bekommt die
     // Korrekturanweisung sofort am Feld, statt nach einem Netzwerkumlauf einen
     // Sammeltext zu sehen.
@@ -361,6 +387,7 @@ export default function CalculatorPage() {
       return;
     }
     setFieldErrors({});
+    calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
     setError(null); setLoading(true); setSelected(null);
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
@@ -428,6 +455,10 @@ export default function CalculatorPage() {
       }
       setTariffs(d.tariffs || []);
       calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
+      // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
+      // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon
+      // verworfen.
+      lastCalcKeyRef.current = reqKey;
       setHasResults(true);
       setLoading(false);
     } catch (e) {
@@ -439,6 +470,12 @@ export default function CalculatorPage() {
       const norm = normalizeThrownError(e);
       setError({ title: norm.title, message: norm.message });
       setLoading(false);
+    } finally {
+      // Genau hier — und nur hier — wird der nächste Klick wieder freigegeben.
+      // `finally` deckt auch die frühen Returns im try-Block ab (veralteter
+      // Request, Abbruch, fachliche Ablehnung), sodass der CTA nie dauerhaft
+      // blockiert bleibt.
+      calcInFlight.current = false;
     }
   };
 

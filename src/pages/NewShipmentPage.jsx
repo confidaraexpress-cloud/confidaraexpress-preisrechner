@@ -398,6 +398,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // innerhalb desselben Ticks lesen alle denselben (noch alten) State-Wert und
   // kämen an einer State-Prüfung vorbei. Der Ref wirkt sofort.
   const calcInFlight = useRef(false);
+  // Schlüssel der zuletzt ERFOLGREICH berechneten Angebote. Nur gesetzt, wenn
+  // Tarife tatsächlich angekommen sind — ein Fehlversuch hinterlässt hier
+  // nichts, der nächste Klick rechnet also neu.
+  const lastCalcKeyRef = useRef("");
+
 
   /* ── Entwurf schlägt Sitzungsvorgang ─────────────────────────────────────
      Ein bewusst geöffneter Formularentwurf ersetzt den temporären Vorgang
@@ -1014,7 +1019,31 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     // alle vor dem nächsten Render los (der `loading`-State ist dann in jedem
     // Closure noch false) und erzeugen parallele Anfragen.
     if (calcInFlight.current) return;
+    // Unveränderte Eingaben → die vorhandenen Angebote gelten weiter. Kein
+    // zweiter /calculate-price, kein zweites JUMiNGO-Shipment, keine 2 Sekunden
+    // Wartezeit für ein Ergebnis, das bereits auf dem Schirm steht.
+    //
+    // Der Vergleich läuft über denselben `calcKeyRef`, der auch veraltete
+    // Antworten verwirft: er enthält AUSSCHLIESSLICH preisbestimmende Größen
+    // (Paket, Absender, Empfänger, Versanddatum, Service-/Modusfilter,
+    // Carrierauswahl) und bewusst NICHT die reinen Anzeigefilter. Ändert sich
+    // eines dieser Felder, ruft `upd` bereits `invalidateResults()` — dann sind
+    // `hasResults`/`tariffs` leer und dieser Zweig greift gar nicht erst.
+    //
+    // Zwei Fälle sind ausgenommen und MÜSSEN neu rechnen:
+    //   • ein fortzusetzender Formularentwurf (`resumeSource`) — der Request
+    //     verbraucht ihn serverseitig; ein übersprungener Aufruf ließe ihn stehen.
+    //   • ein Lagerbezug (`inventoryContext`), der im Schlüssel nicht vorkommt.
+    if (
+      !resumeSource && !inventoryContext &&
+      hasResults && tariffs.length > 0 &&
+      lastCalcKeyRef.current !== "" && lastCalcKeyRef.current === calcKeyRef.current
+    ) {
+      setError("");
+      return;
+    }
     setHasResults(false); setTariffs([]);
+    lastCalcKeyRef.current = "";
     const errs = getErrors(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -1154,6 +1183,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         exportDeclaration: d.exportDeclaration ?? null,
       });
       calculatedAtRef.current = Date.now();      // Ablauffrist des Vorgangs beginnt jetzt
+      // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
+      // ABSENDEN, nicht der aktuelle — eine zwischenzeitliche Eingabe hätte den
+      // Request oben bereits verworfen.
+      lastCalcKeyRef.current = reqKey;
       setHasResults(true);
       setLoading(false);
     } catch (e) {

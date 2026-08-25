@@ -7,6 +7,7 @@ import { DateCalendar } from "../common/DateCalendar";
 import { fmtDE } from "../../utils/date";
 import {
   activeResultFilterCount, deliveryChipLabel, emptyFilterHint as buildEmptyFilterHint,
+  offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
 
 const SORT_OPTIONS = [
@@ -103,13 +104,15 @@ export function OffersList({
       {/* ── Result Header ── */}
       <div className="offers-result-header">
         <div>
+          {/* Nur die Zahl der SICHTBAREN Angebote — die Begründung steht bei
+              offersCountLabel(). Der Filterzustand wird nicht doppelt erklärt:
+              dafür stehen der Chip („Lieferung bis …") und „Zurücksetzen"
+              unmittelbar darunter in derselben Leiste. */}
           <div className="offers-result-count">
             {loading
               ? "Preise werden geladen…"
               : hasResults
-                ? (hasFilter
-                    ? `${filtered.length} von ${tariffs.length} Angeboten angezeigt`
-                    : `${tariffs.length} Angebot${tariffs.length !== 1 ? "e" : ""} gefunden`)
+                ? offersCountLabel(filtered.length)
                 : "Versandangebote"
             }
           </div>

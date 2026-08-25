@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import {
   activeResultFilterCount, hasActiveResultFilter, deliveryChipLabel,
-  emptyFilterHint, applyResultFilters,
+  emptyFilterHint, applyResultFilters, offersCountLabel,
 } from "./offersFilterView.mjs";
 import { TARIFE_41 } from "./offersFilterFixture.mjs";
 
@@ -39,8 +39,8 @@ test("A1 — ohne Filter bleiben alle 41 Tarife sichtbar", () => {
 test("A2 — ohne Filter meldet die Zählung 0, die Überschrift zeigt die Gesamtzahl", () => {
   assert.equal(activeResultFilterCount({ maxPrice: "", latestDeliveryDate: "" }), 0);
   assert.equal(hasActiveResultFilter({ maxPrice: "", latestDeliveryDate: "" }), false);
-  // hasFilter === false ⇒ OffersList rendert den „gefunden"-Zweig.
-  assert.match(lies(OFFERS_LIST), /\$\{tariffs\.length\} Angebot\$\{tariffs\.length !== 1 \? "e" : ""\} gefunden/);
+  // Die Überschrift nennt jetzt ausschließlich die sichtbare Zahl.
+  assert.match(lies(OFFERS_LIST), /offersCountLabel\(filtered\.length\)/);
 });
 
 test("A3 — ohne gesetztes Datum ist der Lieferzeit-Chip kein aktiver Filter", () => {
@@ -87,18 +87,16 @@ test("B4 — der Lieferzeitfilter zählt jetzt als aktiver Filter und zeigt sein
   assert.equal(deliveryChipLabel("2026-08-31"), "Lieferung bis 31.08.2026");
 });
 
-test("B5 — die Überschrift lautet dann „21 von 41 Angeboten angezeigt“", () => {
-  const quelle = lies(OFFERS_LIST);
-  assert.match(quelle, /\$\{filtered\.length\} von \$\{tariffs\.length\} Angeboten angezeigt/);
+test("B5 — die Überschrift lautet dann schlicht „21 Angebote“", () => {
   const f = applyResultFilters(TARIFE_41, { latestDeliveryDate: "2026-08-31" });
-  assert.equal(`${f.length} von ${TARIFE_41.length} Angeboten angezeigt`, "21 von 41 Angeboten angezeigt");
+  assert.equal(offersCountLabel(f.length), "21 Angebote");
 });
 
-test("B6 — Singular: 1 von 41 Angeboten angezeigt", () => {
+test("B6 — Singular: „1 Angebot“, nicht „1 Angebote“", () => {
   const f = applyResultFilters(TARIFE_41, { maxPrice: "19", latestDeliveryDate: "2026-08-31" });
   assert.equal(f.length, 1, "erwartet genau den DHL-Express-Tarif zu 18,65 €");
   assert.equal(f[0].id, "3307");
-  assert.equal(`${f.length} von ${TARIFE_41.length} Angeboten angezeigt`, "1 von 41 Angeboten angezeigt");
+  assert.equal(offersCountLabel(f.length), "1 Angebot");
 });
 
 // ── C) Nur Preisfilter ───────────────────────────────────────────────────────
@@ -266,4 +264,45 @@ test("H3 — der Chip nutzt die vorhandenen Filter-Primitives, kein Eigenmateria
 
 test("H4 — diese Testdatei läuft im Unit-Testlauf mit", () => {
   pruefeImTestlauf("src/utils/offersFilterView.test.mjs");
+});
+
+/* ══════════ Ü) Ergebnisüberschrift ═══════════════════════════════════════ */
+
+test("Ü1 — die Überschrift nennt nur die sichtbare Zahl", () => {
+  assert.equal(offersCountLabel(41), "41 Angebote");
+  assert.equal(offersCountLabel(21), "21 Angebote");
+  assert.equal(offersCountLabel(1), "1 Angebot");
+  assert.equal(offersCountLabel(0), "0 Angebote");
+});
+
+test("Ü2 — kein „von“, kein „angezeigt“, kein „gefunden“", () => {
+  for (const n of [0, 1, 2, 21, 41, 999]) {
+    const t = offersCountLabel(n);
+    assert.doesNotMatch(t, / von /, t);
+    assert.doesNotMatch(t, /angezeigt/, t);
+    assert.doesNotMatch(t, /gefunden/, t);
+  }
+});
+
+test("Ü3 — die alten Formulierungen stehen nicht mehr im Quelltext", () => {
+  const q = lies(OFFERS_LIST);
+  assert.doesNotMatch(q, /Angeboten angezeigt/, "„x von y Angeboten angezeigt“ ist zurück");
+  assert.doesNotMatch(q, /Angebote? gefunden/, "„x Angebote gefunden“ ist zurück");
+  assert.doesNotMatch(q, /von \$\{tariffs\.length\}/, "der Bezug auf die Gesamtzahl ist zurück");
+});
+
+test("Ü4 — ein kaputter Zählwert erzeugt keine „NaN Angebote“", () => {
+  // Der Wert kommt aus `filtered.length` und ist immer eine Zahl; die Absicherung
+  // steht trotzdem, damit hier nie ein Rohwert in der Überschrift landet.
+  assert.equal(offersCountLabel(undefined), "0 Angebote");
+  assert.equal(offersCountLabel(NaN), "0 Angebote");
+  assert.equal(offersCountLabel(null), "0 Angebote");
+});
+
+test("Ü5 — der Filterzustand bleibt über Chip und Zurücksetzen sichtbar", () => {
+  // Die Überschrift erklärt den Filter nicht mehr — deshalb MÜSSEN die beiden
+  // anderen Anzeiger bleiben. Ohne sie wäre die Reduktion unerklärt.
+  const q = lies(OFFERS_LIST);
+  assert.match(q, /deliveryChipLabel\(latestDeliveryDate\)/);
+  assert.match(q, /\{hasFilter && \(\s*<button className="offers-filter-reset-btn"/);
 });

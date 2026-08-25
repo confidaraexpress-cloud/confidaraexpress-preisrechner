@@ -84,20 +84,65 @@ export function deliveryTimeLabel(tariff) {
   return s ? `bis ${s} Uhr` : "";
 }
 
-/** Auswahlmöglichkeiten des Uhrzeitfilters — abgeleitet aus den TATSÄCHLICH
- *  geladenen Tarifen, nie aus einer festen Liste.
+/** Die in den geladenen Tarifen TATSÄCHLICH vorkommenden Zustellzeiten —
+ *  dedupliziert, aufsteigend sortiert, Tarife ohne verwertbare Zeit übergangen.
  *
- *  Grund: eine hartcodierte Liste böte auf vielen Routen Uhrzeiten an, zu denen
- *  garantiert kein Tarif zustellt — eine Filteroption mit sicher null Treffern
- *  behauptet eine Funktion, die es nicht gibt. So hat jede angebotene Uhrzeit
- *  mindestens einen realen Tarifbezug. Dedupliziert und aufsteigend sortiert;
- *  Tarife ohne verwertbare Zeit werden übergangen. */
+ *  Das ist der reale Anteil der Auswahlliste. Ohne Tarife ist er leer; es wird
+ *  hier nichts ergänzt und nichts geraten. Die Liste, die das Auswahlfeld
+ *  wirklich anbietet, entsteht in `deliveryDeadlineOptions()`. */
 export function deliveryTimeOptions(tariffs) {
   const menge = new Set();
   for (const t of Array.isArray(tariffs) ? tariffs : []) {
     const s = normalizeDeliveryTime(t?.deliveryTimeUntil);
     if (s) menge.add(s);
   }
+  return [...menge].sort();
+}
+
+/** Allgemeines Fristenraster des Uhrzeitfilters.
+ *
+ *  DIESE ZEITEN SIND KEINE CARRIERZUSAGEN und behaupten nicht, dass irgendein
+ *  Tarif zu ihnen zustellt. Sie sind Fristen des KUNDEN: „ich brauche das
+ *  Paket bis …". Zulässig sind sie, weil der Filter `<=` vergleicht und nicht
+ *  `=` (siehe `applyResultFilters` in `offersFilterView.mjs`) — die Frist
+ *  16:00 hält jeder Tarif ein, der um 13:00 zustellt, auch wenn kein einziger
+ *  Tarif exakt 16:00 trägt.
+ *
+ *  Genau daran hing der behobene Fehler: solange die Auswahl ausschließlich
+ *  aus den geladenen Tarifen entstand, war sie VOR der ersten Preisberechnung
+ *  zwangsläufig leer — das Feld stand bedienbar da und bot nur „Beliebig“ an.
+ *  Der Kunde konnte seine Frist also erst benennen, nachdem er die Angebote
+ *  schon gesehen hatte. Das kehrt die Reihenfolge um, die die Seite meint.
+ *
+ *  Die frühere Begründung gegen eine feste Liste („eine Option mit garantiert
+ *  null Treffern behauptet eine Funktion, die es nicht gibt“) trifft auf einen
+ *  GLEICHHEITSfilter zu, nicht auf einen Fristenfilter. Bleibt eine Frist ohne
+ *  Treffer, sagt der bestehende Leerzustand das wahrheitsgemäß und nennt die
+ *  wirksame Handlung (spätere Uhrzeit oder Filter entfernen).
+ *
+ *  Ganze Stunden, bewusst grob: das Raster ist eine Bedienhilfe, keine
+ *  Nachbildung eines Produktkatalogs. Die feinen realen Werte (10:30, 17:00 …)
+ *  kommen aus den Tarifen dazu, sobald es welche gibt. */
+export const LIEFERFRIST_RASTER = Object.freeze([
+  "08:00", "09:00", "10:00", "12:00", "13:00", "16:00", "18:00",
+]);
+
+/** Die Auswahlmöglichkeiten des Uhrzeitfilters: Fristenraster VEREINIGT mit den
+ *  echten Tarifzeiten, dedupliziert und aufsteigend sortiert.
+ *
+ *  Zwei Eigenschaften, die beide gebraucht werden:
+ *    • Ohne Tarife steht das Raster allein — die Frist ist vor der ersten
+ *      Berechnung wählbar.
+ *    • Das Raster bleibt AUCH NACH der Berechnung Teil der Menge. Nur dadurch
+ *      überlebt eine vorab gewählte Frist die Ankunft der Tarife: das
+ *      Auswahlfeld fällt auf „Beliebig“ zurück, sobald der gespeicherte Wert
+ *      nicht mehr in seiner Optionsliste steht.
+ *
+ *  „HH:MM“ sortiert lexikografisch bereits chronologisch — es wird nichts
+ *  geparst und keine Zeit umgerechnet. */
+export function deliveryDeadlineOptions(tariffs) {
+  const menge = new Set(LIEFERFRIST_RASTER);
+  for (const s of deliveryTimeOptions(tariffs)) menge.add(s);
   return [...menge].sort();
 }
 

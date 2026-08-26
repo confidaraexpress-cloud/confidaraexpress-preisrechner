@@ -3,6 +3,7 @@
 //   node --test src/utils/customerCancellation.test.mjs   (bzw. `npm test`)
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   CANCELLATION_REASON_MIN,
   CANCELLATION_REASON_MAX,
@@ -211,4 +212,69 @@ test("shipmentDialogLabel zeigt NIE die Providerreferenz", () => {
   // kundensichtbarem Text, die der Kunde nirgends wiederfindet.
   assert.equal(shipmentDialogLabel({ jumingo_shipment_id: "ABCD123456" }), "");
   assert.equal(shipmentDialogLabel({ id: 4711, jumingo_shipment_id: "ABCD123456" }), "");
+});
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Regression: der Wiederherstellungszweig übergab eine Variable, die es nicht gibt
+
+   In `submitCancel` (ShipmentsList.jsx) stand im Zweig „Serverzustand hat sich
+   geändert" `onCancellationRequested?.(jid, …)`. `jid` war ein Restname aus der
+   Zeit, als die Stornierung über die JUMiNGO-Referenz adressiert wurde — die
+   Variable existiert in der Funktion nicht. In einem ES-Modul (strict mode) ist
+   das ein ReferenceError, geworfen INNERHALB des try und vom äußeren catch
+   gefangen. Sichtbare Folge: der Kunde las „konnte nicht gesendet werden",
+   obwohl der Server geantwortet hatte, und die Liste wurde nie abgeglichen
+   (`fetchData()` lief nicht) — die Zeile behielt ihren alten Zustand.
+
+   Erwartet wird `ceId`: derselbe CE-Sendungshandle, mit dem der Request
+   adressiert wird, den der Erfolgszweig übergibt und den der Empfänger
+   (DashboardPage.handleCancellationRequested) gegen `s.id` der Zeilen vergleicht.
+
+   Das gerenderte Verhalten prüft tests/e2e/cancellationRecovery.test.mjs.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+const listeQuelle = readFileSync(new URL("../components/dashboard/ShipmentsList.jsx", import.meta.url), "utf8");
+const dashboardQuelle = readFileSync(new URL("../pages/DashboardPage.jsx", import.meta.url), "utf8");
+// Kommentarfreier Quelltext — eine Erklärung darf keine Zusicherung belegen und
+// keine verletzen: der Kommentar an der Fundstelle nennt den alten Namen absichtlich.
+const ohneKommentare = (t) => t
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .split("\n").map((l) => l.replace(/(^|\s)\/\/.*$/, "$1")).join("\n");
+
+function submitCancelQuelle() {
+  const code = ohneKommentare(listeQuelle);
+  const von = code.indexOf("const submitCancel = async (reason) => {");
+  const bis = code.indexOf("\n  };", von);
+  assert.ok(von > 0 && bis > von, "submitCancel nicht gefunden");
+  return code.slice(von, bis);
+}
+
+test("Stornoabgleich: jede übergebene ID ist im Gültigkeitsbereich deklariert", () => {
+  const fn = submitCancelQuelle();
+  const argumente = [...fn.matchAll(/onCancellationRequested\?\.\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
+  assert.equal(argumente.length, 2, `erwartet zwei Aufrufstellen, gefunden: ${argumente.length}`);
+  for (const name of argumente) {
+    // Genau das war der Fehler: ein Name, den die Funktion nirgends bindet.
+    assert.match(fn, new RegExp(`const ${name}\\b\\s*=`),
+      `\`${name}\` ist in submitCancel nicht deklariert — das erzeugt einen ReferenceError`);
+  }
+  // Und beide Zweige übergeben denselben Handle, mit dem auch der Request lief.
+  assert.deepEqual(argumente, ["ceId", "ceId"]);
+  assert.match(fn, /const ceId = s\.id;/, "ceId ist nicht mehr der Sendungshandle der Zeile");
+  assert.match(fn, /requestShipmentCancellation\(ceId, reason\)/,
+    "der Request wird mit einer anderen ID adressiert als der Abgleich");
+  assert.ok(!/\bjid\b/.test(fn), "der abgelöste Name steht wieder im Code");
+});
+
+test("Stornoabgleich: der Empfänger vergleicht genau diese ID", () => {
+  // handleCancellationRequested sucht die Zeile über `s.id === shipmentId`. Die
+  // Zeilen kommen aus GET /kunde/shipments und tragen dort `shipments.id` — den
+  // CE-Sendungshandle. `ceId = s.id` ist damit exakt der erwartete Wert; die
+  // Providerreferenz (jumingo_shipment_id) wäre es NICHT und träfe keine Zeile.
+  const code = ohneKommentare(dashboardQuelle);
+  assert.match(code, /const handleCancellationRequested = useCallback\(\(shipmentId, patch\) =>/);
+  assert.match(code, /s\.id === shipmentId/, "der Empfänger vergleicht eine andere ID");
+  assert.match(code, /fetchData\(\);/, "der Abgleich lädt die Liste nicht mehr nach");
+  assert.ok(!/jumingo_shipment_id/.test(code.slice(code.indexOf("handleCancellationRequested"), code.indexOf("handleCancellationRequested") + 600)),
+    "der Abgleich stützt sich auf die Providerreferenz");
 });

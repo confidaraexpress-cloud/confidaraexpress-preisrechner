@@ -292,7 +292,10 @@ test("22 — die KPI-Karten darüber bleiben unangetastet", () => {
   for (const ic of ["packageMove", "routeArrow", "seal", "clockDelay"]) {
     assert.ok(code.includes(`icon: "${ic}"`), `KPI-Icon ${ic} wurde verändert`);
   }
-  assert.match(code, /const k = useMemo\(\(\) => computeKpis\(shipments\), \[shipments\]\)/, "die KPI-Berechnung wurde verändert");
+  // Phase 1 (Betriebsreife): die KPI kommen vorrangig aus dem serverseitigen
+  // stats-Aggregat (alle Zeilen) und fallen ohne stats auf computeKpis über die
+  // geladenen Zeilen zurück — fail-safe, gleiche Ergebnisform (utils/kpis.mjs).
+  assert.match(code, /kpisFromServerStats\(serverStats\) \|\| computeKpis\(shipments\)/, "die KPI-Berechnung wurde verändert");
   assert.match(code, /ready \? kpi\.value : "—"/, "der Lade-/Fehlerzustand der KPI-Karten wurde verändert");
   // Die vier Kontextzeilen unverändert.
   for (const t of ["Noch nicht abgeschlossen", "Auf dem Weg zum Empfänger", "Im aktuellen Monat", "Über dem geplanten Liefertermin"]) {

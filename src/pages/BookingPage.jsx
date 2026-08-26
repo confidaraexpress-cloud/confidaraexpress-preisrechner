@@ -169,7 +169,10 @@ export default function BookingPage() {
     let attempt = 0;
     const poll = async () => {
       try {
-        const r = await apiFetch(`/kunde/invoices`, { auth: true });
+        // limit=20 (Phase 1): die soeben gebuchte Rechnung ist die NEUSTE und steht damit
+        // sicher in der ersten Seite (Sortierung created_at DESC) — der Poll braucht nie
+        // die Vollliste. Ein altes Backend ignoriert den Parameter unschädlich.
+        const r = await apiFetch(`/kunde/invoices?limit=20`, { auth: true });
         if (r.ok) {
           const d = await r.json().catch(() => ({}));
           const mode = resolveInvoiceDeliveryMode(findInvoiceByNumber(d.invoices, booking.invoiceNumber));

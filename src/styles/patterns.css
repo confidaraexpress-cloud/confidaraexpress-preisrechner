@@ -588,3 +588,21 @@ td.ce-col-actions,
   color: var(--ce-color-text-secondary);
 }
 .empty .btn { margin-top: var(--ce-space-4); }
+
+/* ── Seitenweises Nachladen (Phase 1 Betriebsreife) ───────────────────────────
+   EIN gemeinsames Muster für „Weitere … laden" unter paginierten Kundenlisten
+   (Sendungen, Rechnungen — dieselbe Bedienidee wie die Auftragsliste des
+   Lagermoduls, dort bereichseigen als .inv-more). Zentriert, ruhig, eine
+   bewusste Aktion je Seite; der Button selbst ist das globale .btn-Primitive. */
+.ce-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--ce-space-4);
+}
+.ce-load-more-error {
+  margin: var(--ce-space-2) 0 0;
+  text-align: center;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-status-error-fg); /* dieselbe Fehlertextrolle wie .field-error */
+}

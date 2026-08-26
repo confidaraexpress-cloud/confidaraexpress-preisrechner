@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { useNotifications } from "../../context/NotificationsContext";
-import { computeKpis } from "../../utils/kpis";
+import { computeKpis, kpisFromServerStats } from "../../utils/kpis";
 import { hasOperationalData } from "../../utils/overviewModules.mjs";
 import { notificationTarget } from "../../utils/notificationsView.mjs";
 import { RecentShipments, OpenInvoices, OverviewNotifications } from "./OverviewModules";
@@ -134,13 +134,22 @@ const TRUST = [
 // Bleibt der Wert aus (älterer Aufrufer), fällt das Verhalten auf das bisherige
 // `!loading` zurück, statt die Karten dauerhaft leer zu lassen.
 export function Overview({
-  user, shipments, invoices, invoiceSummary, loading, kpisReady,
+  user, shipments, invoices, invoiceSummary, serverStats, loading, kpisReady,
   onNewShipment, onAllShipments, onAllInvoices, onProfile, onNotificationNav,
 }) {
   const navigate = useNavigate();
   const name = user?.name || user?.company_name || "Kunde";
 
-  const k = useMemo(() => computeKpis(shipments), [shipments]);
+  // KPI-Quelle (Phase 1 Betriebsreife): Seit die Sendungsliste paginiert geladen wird,
+  // zählt das SERVERSEITIGE stats-Aggregat über alle Sendungen — computeKpis über die
+  // sichtbare Seite wäre bei mehr als einer Seite eine falsche Zahl. Fehlt stats (altes
+  // Backend, unbrauchbare Antwort), fällt die Karte auf computeKpis über die geladenen
+  // Zeilen zurück — exakt das Verhalten vor diesem Paket. kpisFromServerStats ist
+  // fail-safe (null statt geratener Werte) und liefert dieselbe Ergebnisform.
+  const k = useMemo(
+    () => kpisFromServerStats(serverStats) || computeKpis(shipments),
+    [serverStats, shipments]
+  );
   const todayLabel = getTodayLabel();
   const ready = kpisReady === undefined ? !loading : kpisReady;
 

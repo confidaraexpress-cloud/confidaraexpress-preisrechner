@@ -159,6 +159,22 @@ export default function DashboardPage() {
   // betrifft nur den Rechnungsbereich und soll dort eigenständig mit Retry angezeigt
   // werden, ohne die übrigen Dashboarddaten als fehlerhaft zu markieren.
   const [invoicesError, setInvoicesError] = useState("");
+  // ── Keyset-Pagination (Phase 1 Betriebsreife) ──────────────────────────────
+  // Beide Listen werden seitenweise geladen (limit=50). `…Cursor` ist der opake
+  // nextCursor des Backends (null = Ende — auch bei einem alten Backend ohne
+  // Pagination: dessen Antwort trägt kein nextCursor, ?? null macht daraus
+  // „alles geladen", exakt das bisherige Verhalten). `shipmentsStats` ist das
+  // serverseitige KPI-Aggregat über ALLE Sendungen; ohne (altes Backend) fällt
+  // die Übersicht auf computeKpis über die geladenen Zeilen zurück.
+  // Der Cursor wird NIE dekodiert oder interpretiert — nur opak zurückgereicht
+  // (dieselbe Regel wie bei den Entwürfen, api/client.js getDrafts).
+  const [shipmentsCursor, setShipmentsCursor] = useState(null);
+  const [shipmentsStats, setShipmentsStats] = useState(null);
+  const [shipmentsMoreLoading, setShipmentsMoreLoading] = useState(false);
+  const [shipmentsMoreError, setShipmentsMoreError] = useState("");
+  const [invoicesCursor, setInvoicesCursor] = useState(null);
+  const [invoicesMoreLoading, setInvoicesMoreLoading] = useState(false);
+  const [invoicesMoreError, setInvoicesMoreError] = useState("");
   const [bookingToast, setBookingToast] = useState(false);
   // Adressbuch → „Neue Sendung": reiner Werte-Patch (s_*/r_*-Formfelder), KEINE
   // dauerhafte addressId-Referenz. Wird einmalig beim Mount von NewShipmentPage
@@ -202,12 +218,18 @@ export default function DashboardPage() {
     // erfolgreich geladenen Sendungen nicht mit als „fehlgeschlagen" markieren (und
     // umgekehrt) — jede Quelle bekommt ihren eigenen Fehlerzustand.
     Promise.allSettled([
-      apiFetch(`/kunde/shipments`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
-      apiFetch(`/kunde/invoices`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
+      // limit=50: Erstladung als Seite statt Vollabruf (Phase 1). Ein altes Backend
+      // ignoriert den Parameter und liefert die Vollliste ohne nextCursor/stats —
+      // beides wird unten skew-tolerant auf null abgebildet.
+      apiFetch(`/kunde/shipments?limit=50`, { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
+      apiFetch(`/kunde/invoices?limit=50`,  { auth: true }).then(r => { if (!r.ok) throw toErr(r); return r.json(); }),
     ]).then(([shipRes, invRes]) => {
       if (shipRes.status === "fulfilled") {
         if (seq === shipmentsReq.current) {
           setShipments(shipRes.value.shipments || []);
+          setShipmentsCursor(shipRes.value.nextCursor ?? null);
+          setShipmentsStats(shipRes.value.stats ?? null);
+          setShipmentsMoreError("");
           setShipmentsLoaded(true);
         }
       } else if (!(shipRes.reason?.status === 401 || shipRes.reason?.status === 403)) {
@@ -216,6 +238,8 @@ export default function DashboardPage() {
       if (invRes.status === "fulfilled") {
         setInvoices(invRes.value.invoices || []);
         setInvoiceSummary(invRes.value.summary || null);
+        setInvoicesCursor(invRes.value.nextCursor ?? null);
+        setInvoicesMoreError("");
       } else if (!(invRes.reason?.status === 401 || invRes.reason?.status === 403)) {
         setInvoicesError("Die Rechnungen konnten nicht geladen werden.");
       }
@@ -236,14 +260,67 @@ export default function DashboardPage() {
   const reloadShipments = useCallback(async () => {
     const seq = ++shipmentsReq.current;
     try {
-      const r = await apiFetch(`/kunde/shipments`, { auth: true });
+      // Refetch als frische erste Seite: Liste, Cursor und Stats werden gemeinsam
+      // zurückgesetzt — nachgeladene Seiten sind danach wieder über „Weitere
+      // Sendungen laden" erreichbar. Die KPI bleiben korrekt, weil sie aus dem
+      // stats-Aggregat über ALLE Zeilen kommen, nicht aus der sichtbaren Seite.
+      const r = await apiFetch(`/kunde/shipments?limit=50`, { auth: true });
       if (!r.ok) return;
       const d = await r.json();
       if (seq !== shipmentsReq.current) return;   // veraltete Antwort verwerfen
       setShipments(d.shipments || []);
+      setShipmentsCursor(d.nextCursor ?? null);
+      setShipmentsStats(d.stats ?? null);
+      setShipmentsMoreError("");
       setShipmentsLoaded(true);
     } catch { /* Netzwerkfehler: Anzeige unverändert lassen */ }
   }, []);
+
+  // ── Nachladen weiterer Seiten (Phase 1) ────────────────────────────────────
+  // Anfügen, nie ersetzen: der Kunde behält, was er sieht. Der Sequenzzähler
+  // schützt gegen einen parallel laufenden Refetch — kommt der zuerst an, wird
+  // die veraltete Nachladeantwort verworfen statt an die frische Seite gehängt.
+  // Kein automatisches Nachladen, kein Scroll-Trigger: eine bewusste Aktion je
+  // Seite (derselbe Grundsatz wie bei den Aufträgen, OrdersPage).
+  const loadMoreShipments = useCallback(async () => {
+    if (!shipmentsCursor || shipmentsMoreLoading) return;
+    setShipmentsMoreLoading(true);
+    setShipmentsMoreError("");
+    const seq = shipmentsReq.current;
+    try {
+      const r = await apiFetch(`/kunde/shipments?limit=50&cursor=${encodeURIComponent(shipmentsCursor)}`, { auth: true });
+      if (!r.ok) throw new Error(String(r.status));
+      const d = await r.json();
+      if (seq !== shipmentsReq.current) return;   // Refetch war schneller → verwerfen
+      setShipments(prev => [...prev, ...(d.shipments || [])]);
+      setShipmentsCursor(d.nextCursor ?? null);
+      if (d.stats) setShipmentsStats(d.stats);
+    } catch {
+      if (seq === shipmentsReq.current)
+        setShipmentsMoreError("Weitere Sendungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.");
+    } finally {
+      setShipmentsMoreLoading(false);
+    }
+  }, [shipmentsCursor, shipmentsMoreLoading]);
+
+  const loadMoreInvoices = useCallback(async () => {
+    if (!invoicesCursor || invoicesMoreLoading) return;
+    setInvoicesMoreLoading(true);
+    setInvoicesMoreError("");
+    try {
+      const r = await apiFetch(`/kunde/invoices?limit=50&cursor=${encodeURIComponent(invoicesCursor)}`, { auth: true });
+      if (!r.ok) throw new Error(String(r.status));
+      const d = await r.json();
+      setInvoices(prev => [...prev, ...(d.invoices || [])]);
+      setInvoicesCursor(d.nextCursor ?? null);
+      // summary ist die GESAMTaussage des Servers und wird ersetzt, nicht gemischt.
+      if (d.summary) setInvoiceSummary(d.summary);
+    } catch {
+      setInvoicesMoreError("Weitere Rechnungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.");
+    } finally {
+      setInvoicesMoreLoading(false);
+    }
+  }, [invoicesCursor, invoicesMoreLoading]);
 
   // ── Rückkehr auf die Übersicht ─────────────────────────────────────────────
   // DashboardPage bleibt beim internen Seitenwechsel gemountet (page-State, keine
@@ -297,13 +374,21 @@ export default function DashboardPage() {
   const reloadInvoices = useCallback(async (opts) => {
     const silent = !(opts && opts.silent === false);
     try {
-      const r = await apiFetch(`/kunde/invoices`, { auth: true });
+      // Frische erste Seite (Phase 1): dieselbe Zurücksetzung wie fetchData. Der
+      // Dokumentstatus-Poll der Rechnungsliste betrifft praktisch immer frisch
+      // gebuchte Rechnungen — und die stehen auf Seite 1 (Sortierung created_at
+      // DESC). Eine zuvor nachgeladene Erweiterung klappt dabei bewusst auf die
+      // erste Seite zurück (seltener Fall, Button erscheint wieder) — das ist
+      // einfacher und vorhersagbarer als ein Seiten-Merge mit eigener Wahrheit.
+      const r = await apiFetch(`/kunde/invoices?limit=50`, { auth: true });
       if (!r.ok) { if (!silent) setInvoicesRefreshError(true); return; }
       let d = null;
       try { d = await r.json(); } catch { d = null; }
       if (!d) { if (!silent) setInvoicesRefreshError(true); return; }
       setInvoices(d.invoices || []);
       setInvoiceSummary(d.summary || null);
+      setInvoicesCursor(d.nextCursor ?? null);
+      setInvoicesMoreError("");
       setInvoicesRefreshError(false);
     } catch { if (!silent) setInvoicesRefreshError(true); }
   }, []);
@@ -583,6 +668,7 @@ export default function DashboardPage() {
             shipments={shipments}
             invoices={invoices}
             invoiceSummary={invoiceSummary}
+            serverStats={shipmentsStats}
             loading={loading}
             kpisReady={shipmentsLoaded}
             onNewShipment={() => navigateTo("new")}
@@ -630,7 +716,17 @@ export default function DashboardPage() {
           </Suspense>
         )}
 
-        {page === "shipments" && <ShipmentsList shipments={shipments} loading={loading} onCancellationRequested={handleCancellationRequested} />}
+        {page === "shipments" && (
+          <ShipmentsList
+            shipments={shipments}
+            loading={loading}
+            onCancellationRequested={handleCancellationRequested}
+            hasMore={!!shipmentsCursor}
+            loadingMore={shipmentsMoreLoading}
+            loadMoreError={shipmentsMoreError}
+            onLoadMore={loadMoreShipments}
+          />
+        )}
 
         {/* Kein .page-body-Wrapper: TrackingPage bringt mit .page-with-navbar
             bereits einen eigenen Seiten-Wrapper mit. Als direktes Kind von
@@ -656,6 +752,10 @@ export default function DashboardPage() {
             onReload={reloadInvoices}
             refreshError={invoicesRefreshError}
             onRetry={fetchData}
+            hasMore={!!invoicesCursor}
+            loadingMore={invoicesMoreLoading}
+            loadMoreError={invoicesMoreError}
+            onLoadMore={loadMoreInvoices}
           />
         )}
         {page === "support" && (

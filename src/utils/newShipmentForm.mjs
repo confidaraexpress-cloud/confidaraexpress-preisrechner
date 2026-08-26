@@ -24,6 +24,46 @@ import { normalizeCountryCode } from "./countries.js";
 export const PACKAGE_FIELDS = Object.freeze(["packageCount", "weight", "length", "width", "height"]);
 export const PARTY_PREFIXES = Object.freeze(["s", "r"]);
 
+/** Der Adresspayload EINER Partei ("s" = Absender, "r" = Empfänger) aus dem Formular.
+ *
+ *  ─── Warum das hier steht und nicht zweimal in den Seiten ────────────────────────────────
+ *  Diese Abbildung existierte WÖRTLICH ZWEIMAL: einmal in `NewShipmentPage` für
+ *  `/calculate-price` und einmal in `BookingPage` für `/book`. Beide Fassungen waren bis auf
+ *  eine Zeile identisch — und genau diese eine Zeile fehlte in der zweiten: der Bundesstaat.
+ *
+ *  Live belegt (DE→USA, New York): die Oberfläche zeigte „Bundesstaat * → New York", der
+ *  Preisrechner sendete `state: "NY"`, der Vorgang trug `r_state` unverändert bis zur
+ *  Buchungsseite — und der finale `/book`-Payload enthielt KEIN `state`. Das Backend lehnte
+ *  korrekt mit 400 ab („recipient.state fehlt"). Der Fehler lag ausschließlich darin, dass
+ *  eine zweite Feldliste gepflegt werden musste und beim State-Paket übersehen wurde.
+ *
+ *  Deshalb gibt es die Liste ab jetzt EINMAL. Ein künftiges Adressfeld wird an einer Stelle
+ *  ergänzt und ist damit in BEIDEN Payloads — es kann nicht mehr auf halbem Weg verloren gehen.
+ *
+ *  ─── Vertrag ────────────────────────────────────────────────────────────────────────────
+ *  Pflichtfelder stehen immer im Ergebnis (auch leer, damit die serverseitige Prüfung greift
+ *  statt still zu passieren); optionale Felder erscheinen NUR mit Wert. Für ein Ziel ohne
+ *  Bundesstaatpflicht bleibt `state` leer und das Feld entsteht gar nicht — der Payload ist
+ *  dann byte-identisch zu vorher. Gesendet wird ausschließlich der zweistellige CODE ("NY"),
+ *  nie der Anzeigename: im Formular steht bereits der Code, dieses Modul formatiert nichts um.
+ */
+export function buildPartyPayload(form, prefix) {
+  const f = form || {};
+  const v = (suffix) => f[`${prefix}_${suffix}`];
+  return {
+    ...(v("company")  ? { company:         v("company")  } : {}),
+    fullName:        v("fullName"),
+    streetAndNumber: v("street"),
+    ...(v("addition") ? { addressAddition: v("addition") } : {}),
+    postalCode:      v("zip"),
+    city:            v("city"),
+    country:         v("country"),
+    ...(v("state")    ? { state:           v("state")    } : {}),
+    ...(v("phone")    ? { phone:           v("phone")    } : {}),
+    ...(v("email")    ? { email:           v("email")    } : {}),
+  };
+}
+
 const PARTY_SUFFIXES = Object.freeze([
   // `state` ist der Bundesstaat/die Provinz und betrifft AUSSCHLIESSLICH US- und CA-Adressen
   // (Providervertrag: „the state is required only for US and Canada"). Er steht hier im

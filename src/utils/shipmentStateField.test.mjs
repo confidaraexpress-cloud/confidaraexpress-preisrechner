@@ -13,12 +13,13 @@ import { readFileSync } from "node:fs";
 
 import { requiresState, statesForCountry, normalizeStateCode, stateFieldError, US_STATES, CA_STATES }
   from "./stateCodes.mjs";
-import { createEmptyShipmentForm } from "./newShipmentForm.mjs";
+import { createEmptyShipmentForm, buildPartyPayload } from "./newShipmentForm.mjs";
 import { mapAddressToShipmentFormPatch } from "./addressBookView.mjs";
 import { blankNewShipmentForm, buildResumeInitialState } from "./formDraftsView.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const seite = lies("../pages/NewShipmentPage.jsx");
+const seite   = lies("../pages/NewShipmentPage.jsx");
+const buchung = lies("../pages/BookingPage.jsx");
 
 /* ══════════ 1 — Die Landesregel ══════════ */
 
@@ -90,8 +91,22 @@ test("8 — beide Seiten rendern das Feld direkt hinter dem Land", () => {
 });
 
 test("9 — der Payload trägt den Bundesstaat nur, wenn er gesetzt ist", () => {
-  assert.match(seite, /\.\.\.\(form\[`\$\{p\}_state`\] \? \{ state: form\[`\$\{p\}_state`\] \} : \{\}\)/,
-    "ein leeres Feld darf kein state: \"\" erzeugen");
+  // Geprüft wird jetzt die FUNKTION statt des Quelltexts EINER Seite: die Feldliste lag
+  // zweimal vor (Preisrechner + Buchung), und genau die zweite Kopie verlor `state`.
+  const mit = buildPartyPayload({ r_country: "US", r_state: "NY" }, "r");
+  assert.equal(mit.state, "NY");
+  const ohne = buildPartyPayload({ r_country: "DE", r_state: "" }, "r");
+  assert.ok(!("state" in ohne), "ein leeres Feld darf kein state: \"\" erzeugen");
+});
+
+test("9b — BEIDE Seiten bauen ihren Payload aus derselben Quelle", () => {
+  // Die eigentliche Regressionssicherung des Live-Bugs: /calculate-price UND /book müssen
+  // durch denselben Erbauer laufen, sonst kann ein Feld erneut auf halbem Weg verschwinden.
+  for (const [name, code] of [["NewShipmentPage", seite], ["BookingPage", buchung]]) {
+    assert.match(code, /buildPartyPayload\(/, `${name} muss den gemeinsamen Erbauer benutzen`);
+    assert.ok(!/fullName:\s+f?o?r?m?\[`\$\{p\}_fullName`\]/.test(code),
+      `${name} darf keine eigene Adress-Feldliste mehr führen`);
+  }
 });
 
 test("10 — die Formularprüfung nutzt dieselbe Landesregel wie der Server", () => {

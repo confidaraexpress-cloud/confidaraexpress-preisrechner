@@ -41,6 +41,16 @@ export const BOOK_FEHLER = {
     message: "Das ausgewählte Angebot ist nicht mehr verfügbar. Bitte lassen Sie die Versandangebote erneut berechnen.",
     retryable: false,
   },
+  // Zeitüberschreitung UNSERES Limits während /book (Phase 1, F5): der Ausgang ist
+  // UNBEKANNT — der Server kann die Bestellung nach dem Abbruch noch platziert haben.
+  // Deshalb ausdrücklich KEINE „bitte erneut versuchen"-Aufforderung, sondern zuerst
+  // der Blick in die Sendungsliste. Serverseitig schützt der Buchungsclaim zusätzlich
+  // vor einer Doppelbuchung desselben Vorgangs; der Text verlässt sich darauf nicht.
+  ZEIT_UNBEKANNT: {
+    title: "Keine Antwort vom Server",
+    message: "Der Server hat nicht rechtzeitig geantwortet. Ob die Buchung durchgeführt wurde, lässt sich gerade nicht feststellen. Bitte prüfen Sie zuerst unter „Sendungen“, ob die Sendung angelegt wurde, bevor Sie die Buchung erneut auslösen.",
+    retryable: false,
+  },
 };
 
 // Restpfad einer NICHT-ok-Antwort. `body` ist der defensiv gelesene JSON-Body
@@ -68,6 +78,9 @@ export function mapBookUnreadableSuccess() {
 // Versuch ein, ohne fälschlich Erfolg oder endgültiges Scheitern zu behaupten.
 export function mapBookThrownError(e) {
   const n = normalizeThrownError(e);
+  // Zeitlimit VOR dem Netz-Sammelfall: ein Timeout heißt bei der Buchung „Ausgang
+  // unbekannt", nicht „Verbindung prüfen und erneut versuchen".
+  if (n.code === "TIMEOUT") return BOOK_FEHLER.ZEIT_UNBEKANNT;
   if (n.code === "NETWORK_ERROR" || n.code === "ABORTED") return BOOK_FEHLER.NETZ;
   return { title: n.title, message: n.message, retryable: n.retryable === true };
 }

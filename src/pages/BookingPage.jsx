@@ -889,7 +889,12 @@ export default function BookingPage() {
       // Gebaut vom gemeinsamen Erbauer — dieselbe Quelle wie die Gutschein-Vorschau.
       const customsPayload = buildCustomsPayload();
       const r = await apiFetch(`/api/jumingo/book`, {
-        method: "POST", auth: true,
+        // 150 s: die serverseitige /book-Kette spricht den Provider mehrfach
+        // (Rates + PUT + cart/total + Order) mit Einzeltimeouts von in Summe
+        // deutlich über 100 s. Ein kürzeres Clientlimit würde eine noch
+        // laufende, gültige Buchung als Fehler anzeigen. KEIN automatischer
+        // Retry — ein Timeout heißt hier „Ausgang unbekannt" (mapBookThrownError).
+        method: "POST", auth: true, timeoutMs: 150000,
         body: JSON.stringify({
           shipmentId:      bookingData?.shipmentId,
           tariffId:        tariff?.id,

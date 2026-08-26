@@ -58,4 +58,9 @@
    keinem Bereichs-Stylesheet. Steht VOR patterns.css, damit die Musterebene wie bei
    allen Bereichs-Stylesheets das letzte Wort behaelt. */
 @import './address-validation.css';
+/* Dokumente-Drawer der Sendungsliste — isolierter sdoc-Scope. Reine
+   Zusatzklassen; der Drawerrahmen selbst kommt aus patterns.css. Steht deshalb
+   VOR patterns.css, damit die Musterebene wie bei allen Bereichs-Stylesheets
+   das letzte Wort behaelt. */
+@import './shipment-documents.css';
 @import './patterns.css';

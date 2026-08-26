@@ -55,8 +55,15 @@ test("5 — downloadLabel: kein blindes d.error mehr, PDF/JSON getrennt, Netz ku
 });
 
 test("6 — Banner an beiden Kundenstellen sind Live-Regionen", () => {
-  const shipments = strip(src("../components/dashboard/ShipmentsList.jsx"));
+  // Der Erfolgsbildschirm trägt seinen Labelfehler unverändert selbst. In der
+  // Sendungsliste gibt es seit dem Dokumente-Drawer keinen eigenen Labeldownload
+  // mehr — der Fehler eines Dokumentdownloads erscheint jetzt IM Drawer, und zwar
+  // nach derselben Regel: eine Live-Region, kein stiller Text.
+  const drawer = strip(src("../components/dashboard/ShipmentDocumentsDrawer.jsx"));
   const booking = strip(src("../pages/BookingPage.jsx"));
-  assert.match(shipments, /\{labelError && \(\s*<div className="alert alert-error mb-16" role="alert">/);
+  assert.match(drawer, /\{downloadError && \(\s*<div className="alert alert-error mb-16" role="alert">/);
   assert.match(booking, /\{labelError && <div className="alert alert-error mb-16" role="alert">/);
+  // Und die Liste selbst zeigt keinen verwaisten Downloadfehler mehr an.
+  const shipments = strip(src("../components/dashboard/ShipmentsList.jsx"));
+  assert.ok(!/labelError/.test(shipments), "die Liste trägt wieder einen eigenen Labelfehler");
 });

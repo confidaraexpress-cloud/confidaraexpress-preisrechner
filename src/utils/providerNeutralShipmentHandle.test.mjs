@@ -71,10 +71,23 @@ test("4 — der Dateiname der Label-PDF trägt nie eine rohe Providerreferenz", 
   // Nummernumstellung: der Dateiname trägt die AUFTRAGSBESTÄTIGUNGSNUMMER (CE-AB…) —
   // die interne Bestellnummer (CE-BS…) steht in keinem kundensichtbaren Artefakt mehr,
   // ein Dateiname eingeschlossen. Fehlt sie, bleibt der Handle als Dateiname.
-  assert.match(shipmentsList, /downloadLabel\(s\.id, s\.order_confirmation_number\)/,
-    "die Sendungsliste reicht die Auftragsbestätigungsnummer als Dateinamen nicht durch");
-  assert.ok(!/downloadLabel\([^)]*business_order_number/.test(shipmentsList),
-    "die interne Bestellnummer benennt wieder eine Kundendatei");
+  // Verbliebener direkter Aufrufer ist der Erfolgsbildschirm; die Sendungsliste lädt
+  // seit dem Dokumente-Drawer kein Label mehr selbst.
+  const bookingPage = read("../pages/BookingPage.jsx");
+  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/,
+    "der Erfolgsbildschirm reicht die Auftragsbestätigungsnummer als Dateinamen nicht durch");
+  assert.ok(!/downloadLabel\(/.test(shipmentsList),
+    "die Sendungsliste lädt wieder selbst ein Label");
+  for (const [name, quelle] of [["BookingPage", bookingPage], ["ShipmentsList", shipmentsList]]) {
+    assert.ok(!/downloadLabel\([^)]*business_order_number/.test(quelle),
+      `${name}: die interne Bestellnummer benennt wieder eine Kundendatei`);
+  }
+  // Der Drawer benennt gar nichts selbst: der Name kommt aus Content-Disposition,
+  // der Rückfall ist ein neutraler Dateiname je Typ — nie eine Providerreferenz,
+  // nie eine interne ID.
+  const drawer = read("../components/dashboard/ShipmentDocumentsDrawer.jsx");
+  assert.match(drawer, /documentFallbackFilename\(doc\.type\)/);
+  assert.ok(!/jumingo|s_\$\{|shipments\.id/.test(drawer), "der Drawer nennt eine interne oder Providerreferenz");
 });
 
 /* ══════════ 3 — Sichtbarkeit und Dialogtext ══════════════════════════════ */

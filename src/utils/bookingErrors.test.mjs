@@ -50,8 +50,17 @@ test("5 — Netzabbruch/Abort: Verbindungstext, nie Failed to fetch; Timeout eig
   assert.match(netz.message, /versuchen Sie die Buchung erneut/);
   const abort = mapBookThrownError(Object.assign(new Error("x"), { name: "AbortError" }));
   assert.equal(abort, BOOK_FEHLER.NETZ, "Abbruch während der Buchung wird wie ein Verbindungsproblem erklärt");
-  const timeout = mapBookThrownError(Object.assign(new Error("x"), { name: "TimeoutError" }));
-  assert.match(timeout.title, /Zeitüberschreitung/);
+  // Phase 1 (F5): ein ZEITLIMIT während /book heißt „Ausgang unbekannt" — eigener
+  // Text, der zuerst in die Sendungsliste führt und NICHT zum blinden Retry
+  // auffordert (retryable: false). Gilt für beide Timeout-Namen gleichermaßen
+  // (AbortSignal.timeout → TimeoutError; zentrales apiFetch-Limit → ApiTimeoutError).
+  for (const name of ["TimeoutError", "ApiTimeoutError"]) {
+    const timeout = mapBookThrownError(Object.assign(new Error("x"), { name }));
+    assert.equal(timeout, BOOK_FEHLER.ZEIT_UNBEKANNT, `${name} muss als „Ausgang unbekannt" erklärt werden`);
+    assert.equal(timeout.retryable, false, "ein Buchungs-Timeout darf nicht zum Retry auffordern");
+    assert.match(timeout.message, /Sendungen/, "der Text muss zuerst in die Sendungsliste führen");
+    assert.ok(!/versuchen Sie die Buchung erneut/.test(timeout.message));
+  }
 });
 
 test("6 — BookingPage: Restpfad nutzt den Mapper, Body defensiv, kein Sammelwurf mehr", () => {

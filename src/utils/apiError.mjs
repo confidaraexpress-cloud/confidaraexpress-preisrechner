@@ -211,7 +211,10 @@ export function normalizeThrownError(e) {
     return { code: "ABORTED", type: ERROR_TYPE.NETWORK, title: "Abgebrochen", retryable: true,
       message: "Die Anfrage wurde abgebrochen.", fieldMessage: null, field: null };
   }
-  if (e && e.name === "TimeoutError") {
+  // "TimeoutError" wäre AbortSignal.timeout(); "ApiTimeoutError" ist das zentrale
+  // apiFetch-Zeitlimit (api/client.js, Phase 1 Betriebsreife) — beide bedeuten
+  // dasselbe: UNSER Limit hat abgebrochen, kein Abbruch des Aufrufers.
+  if (e && (e.name === "TimeoutError" || e.name === "ApiTimeoutError")) {
     return { code: "TIMEOUT", type: ERROR_TYPE.TECHNICAL, title: "Zeitüberschreitung", retryable: true,
       message: "Die Anfrage dauert länger als erwartet. Bitte versuchen Sie es erneut.", fieldMessage: null, field: null };
   }

@@ -151,6 +151,32 @@ export function businessMonthKey(now = new Date()) {
   return y && m ? `${y}-${m}` : null;
 }
 
+// ── Serverseitige Sendungsstatistik → KPI-Form (Phase 1 Betriebsreife) ──
+// Seit die Sendungsliste paginiert geladen wird (GET /kunde/shipments?limit=…), sieht der
+// Client nur noch eine Seite — computeKpis() über diese Teilmenge wäre eine falsche Zahl.
+// Der Server liefert deshalb im paginierten Modus ein `stats`-Aggregat über ALLE Zeilen,
+// dessen Prädikate exakt die Funktionen dieses Moduls spiegeln (Backend:
+// routes/kunde.js · SHIPMENT_STATS_SQL — Querverweis dort).
+//
+// Fail-safe, nicht fail-open: nur ein vollständig belegtes Aggregat (alle sechs Zähler
+// endliche Zahlen ≥ 0) wird übernommen; alles andere ergibt null, und der Aufrufer fällt
+// auf computeKpis über die geladenen Zeilen zurück — exakt das Verhalten vor diesem Paket
+// (relevant für den Deployment-Skew: neues Frontend + altes Backend liefert kein stats).
+// 0 ist überall ein gültiger Wert; geprüft wird mit Number.isFinite, nie über Falsy.
+export function kpisFromServerStats(stats) {
+  if (!stats || typeof stats !== "object" || Array.isArray(stats)) return null;
+  const lesen = (key) => {
+    const n = Number(stats[key]);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  const total = lesen("total"), active = lesen("active"), inTransit = lesen("in_transit");
+  const delivered = lesen("delivered_this_month"), delayed = lesen("delayed"), new24 = lesen("new_24h");
+  if ([total, active, inTransit, delivered, delayed, new24].some((v) => v === null)) return null;
+  // hasCreatedAt speist die Fußzeile „+n neu · 24 h": mit mindestens einer Sendung ist die
+  // Aussage belastbar (jede Zeile trägt serverseitig ein created_at) — leeres Konto wie bisher.
+  return { active, inTransit, delivered, delayed, new24, hasCreatedAt: total > 0 };
+}
+
 // ── Aggregat für die vier KPI-Karten der Übersicht ──
 // `now` ist injizierbar (Default: aktueller Zeitpunkt) — nötig für deterministische
 // Tests der Verzögerungslogik.

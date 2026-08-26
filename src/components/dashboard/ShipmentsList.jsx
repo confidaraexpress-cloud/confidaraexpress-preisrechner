@@ -70,7 +70,7 @@ function ShipmentRowActions({ s, onTrack, onLabel, onOrderConfirmation, onCancel
   );
 }
 
-export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
+export function ShipmentsList({ shipments, loading, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
@@ -445,6 +445,19 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested }) {
           </ul>
           </>
         )}
+
+        {/* Nachladen weiterer Seiten (Phase 1 Betriebsreife): sichtbar nur, solange der
+            Server einen nextCursor meldet — null/fehlend heißt verbindlich „alles geladen"
+            (auch gegen ein altes Backend ohne Pagination). Eine bewusste Aktion je Seite,
+            kein Scroll-Trigger — dasselbe Muster wie die Auftragsliste. */}
+        {hasMore && (
+          <div className="ce-load-more">
+            <button type="button" className="btn btn-outline" onClick={onLoadMore} disabled={loadingMore}>
+              {loadingMore ? "Wird geladen …" : "Weitere Sendungen laden"}
+            </button>
+          </div>
+        )}
+        {loadMoreError && <p className="ce-load-more-error" role="alert">{loadMoreError}</p>}
       </div>
 
       {cancelShipment && (

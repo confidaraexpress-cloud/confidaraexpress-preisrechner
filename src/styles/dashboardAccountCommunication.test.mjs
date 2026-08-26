@@ -391,14 +391,17 @@ test("23 — Leer-, Fehler- und Ladezustände laufen über StateView/FormAlert",
 /* ══════════ 24 — Datenverträge unangetastet ══════════════════════════ */
 
 test("24 — KPI-Berechnung, Rechnungs- und Sendungsfelder sind unverändert", () => {
-  assert.match(overview, /const k = useMemo\(\(\) => computeKpis\(shipments\), \[shipments\]\)/);
+  // Phase 1 (Betriebsreife): KPI vorrangig aus dem serverseitigen stats-Aggregat,
+  // fail-safe zurück auf computeKpis (utils/kpis.mjs · kpisFromServerStats).
+  assert.match(overview, /kpisFromServerStats\(serverStats\) \|\| computeKpis\(shipments\)/);
   assert.match(overview, /ready \? kpi\.value : "—"/);
   for (const t of ["Noch nicht abgeschlossen", "Auf dem Weg zum Empfänger", "Im aktuellen Monat", "Über dem geplanten Liefertermin"]) {
     assert.ok(overview.includes(t), `KPI-Kontextzeile verändert: ${t}`);
   }
-  // Die Sendungs- und Rechnungsabrufe der Seite sind unverändert.
-  assert.match(dashPage, /apiFetch\(`\/kunde\/shipments`, \{ auth: true \}\)/);
-  assert.match(dashPage, /apiFetch\(`\/kunde\/invoices`,  \{ auth: true \}\)/);
+  // Die Sendungs- und Rechnungsabrufe der Seite laden seit Phase 1 als erste
+  // Keyset-Seite (limit=50) — ein altes Backend ignoriert den Parameter.
+  assert.match(dashPage, /apiFetch\(`\/kunde\/shipments\?limit=50`, \{ auth: true \}\)/);
+  assert.match(dashPage, /apiFetch\(`\/kunde\/invoices\?limit=50`,  \{ auth: true \}\)/);
 });
 
 /* ══════════ 25 — Iconbuttons vollständig beschriftet ════════════════ */

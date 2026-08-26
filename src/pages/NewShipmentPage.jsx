@@ -1156,7 +1156,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
     try {
       const r = await apiFetch(`/api/jumingo/calculate-price`, {
-        method: "POST", auth: true, signal: ac.signal,
+        // 60 s statt der 30-s-Vorgabe: der Server spricht für die Tarifliste den
+        // Provider (Draft + Rates) mit eigenen Timeouts — 30 s wären zu knapp.
+        method: "POST", auth: true, signal: ac.signal, timeoutMs: 60000,
         body: JSON.stringify({
           // Genau die eingegebenen Werte — kein Ersatzwert. Hier stand bis zu
           // diesem Paket `Number(form.length) || 30` (und 20/15): `Number("")`

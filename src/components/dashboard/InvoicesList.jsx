@@ -197,7 +197,7 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
   );
 }
 
-export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry, refreshError }) {
+export function InvoicesList({ invoices, summary, loading, error, onReload, onRetry, refreshError, hasMore, loadingMore, loadMoreError, onLoadMore }) {
   const { refresh: refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState("");
   const [downloadingId, setDownloadingId] = useState(null);
@@ -366,6 +366,18 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
             </ul>
           </>
         )}
+
+        {/* Nachladen weiterer Seiten (Phase 1 Betriebsreife): sichtbar nur, solange der
+            Server einen nextCursor meldet — auch bei aktiver Suche, denn ältere Treffer
+            liegen dann erst in den noch nicht geladenen Seiten. Kein Scroll-Trigger. */}
+        {hasMore && (
+          <div className="ce-load-more">
+            <button type="button" className="btn btn-outline" onClick={onLoadMore} disabled={loadingMore}>
+              {loadingMore ? "Wird geladen …" : "Weitere Rechnungen laden"}
+            </button>
+          </div>
+        )}
+        {loadMoreError && <p className="ce-load-more-error" role="alert">{loadMoreError}</p>}
       </div>
 
       {previewInvoice && (

@@ -23,16 +23,51 @@ export const setAuthErrorHandler = (fn) => { authErrorHandler = fn; };
 // Invalidierung sein kann).
 export const triggerAuthError = () => { if (authErrorHandler) authErrorHandler(); };
 
+// ── Zeitüberschreitung (Phase 1 Betriebsreife, F5) ───────────────────────────
+// Bis zu diesem Paket hatte KEIN Request ein Zeitlimit: ein hängender Server
+// (Verbindung angenommen, nie geantwortet) ließ jeden Lade-Spinner unbegrenzt
+// stehen. Jetzt trägt jeder apiFetch-Aufruf ein Standardlimit von 30 s bis zum
+// EINTREFFEN DER ANTWORTKOPFZEILEN; lang laufende Vorgänge übergeben ein
+// eigenes `timeoutMs` (Preisrechner 60 s — Providerkette serverseitig bis ~45 s;
+// Buchung 150 s — die /book-Kette spricht den Provider mehrfach mit Timeouts
+// von in Summe deutlich über 100 s; Zoll-PDF-Upload 90 s).
+//
+// Drei Fehlerklassen, strikt getrennt:
+//   • ApiTimeoutError  — UNSER Limit hat abgebrochen. Eigener Name/Code, damit
+//     Aufrufer (v. a. die Buchung) ihn von einem gewöhnlichen Netzfehler
+//     unterscheiden können: bei /book heißt Timeout „Ausgang UNBEKANNT", nicht
+//     „bitte erneut versuchen".
+//   • AbortError des AUFRUFERS — unverändert weitergeworfen (Original), damit
+//     die bestehende Stille-Abbruch-Behandlung (Sequenz-/Debounce-Muster der
+//     Picker und des Preisrechners) exakt wie bisher greift.
+//   • alles andere (echter Netz-/Serverfehler) — unverändert weitergeworfen.
+//
+// Es gibt KEINEN automatischen Retry — nirgends, und für /book ausdrücklich
+// niemals: ein wiederholter /book könnte eine zweite echte Bestellung auslösen.
+export class ApiTimeoutError extends Error {
+  constructor(timeoutMs) {
+    super(`Der Server hat innerhalb von ${Math.round(timeoutMs / 1000)} Sekunden nicht geantwortet.`);
+    this.name = "ApiTimeoutError";
+    this.code = "API_TIMEOUT";
+    this.timeoutMs = timeoutMs;
+  }
+}
+export const isApiTimeout = (e) => !!e && e.name === "ApiTimeoutError";
+
+export const DEFAULT_TIMEOUT_MS = 30000;
+
 // ── Minimal central fetch wrapper (no dependency, no global fetch patch) ─────
-// apiFetch("/path", { auth, method, body, headers, ... })
+// apiFetch("/path", { auth, method, body, headers, timeoutMs, signal, ... })
 //   - auth: true  → adds Authorization (Bearer) + JSON Content-Type via authH()
 //   - On 401/403 for an authenticated request: removes ce_token and fires the
 //     central auth-error handler (→ logout + redirect). The raw Response is
 //     still returned so existing callers keep their own .ok/.json()/status logic.
 //   - Public requests (auth falsy) pass through untouched; their 401/403 is
 //     returned normally and never triggers a logout.
+//   - timeoutMs: Limit bis zu den Antwortkopfzeilen (Default 30 s; 0/null = aus).
+//     Ein Aufrufer-Signal bleibt voll wirksam (beides bricht denselben fetch ab).
 export async function apiFetch(pathOrUrl, options = {}) {
-  const { auth = false, headers, ...rest } = options;
+  const { auth = false, headers, timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...rest } = options;
   const url = /^https?:\/\//.test(pathOrUrl) ? pathOrUrl : `${API}${pathOrUrl}`;
   // FormData (Multipart-Upload): der Browser MUSS den Content-Type inklusive
   // Boundary selbst setzen. Daher bei auth:true nur den Bearer-Header, KEINEN
@@ -40,7 +75,31 @@ export async function apiFetch(pathOrUrl, options = {}) {
   const isFormData = typeof FormData !== "undefined" && rest.body instanceof FormData;
   const authHeaders = auth ? (isFormData ? { Authorization: `Bearer ${token()}` } : authH()) : null;
   const finalHeaders = auth ? { ...authHeaders, ...headers } : headers;
-  const res = await fetch(url, { ...rest, headers: finalHeaders });
+
+  // Aufrufer-Signal und Zeitlimit auf EINEN Controller zusammenführen. Nach dem
+  // Eintreffen der Kopfzeilen wird der Timer gelöscht — ein langsamer Body wird
+  // bewusst nicht abgebrochen (das Ziel ist der hängende, nie antwortende Server).
+  const controller = new AbortController();
+  const onCallerAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener("abort", onCallerAbort, { once: true });
+  }
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  let res;
+  try {
+    res = await fetch(url, { ...rest, headers: finalHeaders, signal: controller.signal });
+  } catch (e) {
+    // Reihenfolge tragend: ein Abbruch DES AUFRUFERS bleibt das Original —
+    // erst ein Abbruch, den niemand angefordert hat, ist unser Timeout.
+    if (signal && signal.aborted) throw e;
+    if (e && e.name === "AbortError") throw new ApiTimeoutError(timeoutMs);
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+    if (signal) signal.removeEventListener("abort", onCallerAbort);
+  }
   if (auth && (res.status === 401 || res.status === 403)) {
     localStorage.removeItem("ce_token");
     if (authErrorHandler) authErrorHandler();
@@ -215,7 +274,9 @@ export function getCommercialInvoiceStatus(shipmentId) {
 export function uploadCommercialInvoice(shipmentId, file) {
   const formData = new FormData();
   formData.append("file", file);
-  return apiFetch(ciPath(shipmentId), { method: "POST", auth: true, body: formData });
+  // Eigenes Zeitlimit: der Upload läuft serverseitig weiter zum Provider durch;
+  // 30 s wären für eine mehrseitige PDF über eine langsame Leitung zu knapp.
+  return apiFetch(ciPath(shipmentId), { method: "POST", auth: true, body: formData, timeoutMs: 90000 });
 }
 
 // DELETE → entfernt ausschließlich die commercial-invoice (idempotent). Kein Body.

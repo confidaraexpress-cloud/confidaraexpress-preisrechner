@@ -309,12 +309,17 @@ test("13 — der Monats-Takt ist ein LOKALER Vergleich mit gemäßigtem Interval
 // ── Veraltete Antworten ─────────────────────────────────────────────────────
 test("14 — überholte Sendungsantworten werden verworfen", () => {
   assert.match(dashboardCode, /const shipmentsReq = useRef\(0\)/, "die Sequenzreferenz fehlt");
-  // Beide Abrufwege nehmen an der Sequenz teil …
+  // GENAU die beiden ERSETZENDEN Abrufwege zählen die Sequenz hoch (fetchData +
+  // reloadShipments). Das ANFÜGENDE Nachladen (Phase 1, loadMoreShipments) zählt
+  // bewusst NICHT hoch — es erfindet keinen neuen Stand, sondern hängt an den
+  // bestehenden an; hochzählen würde einen parallel laufenden Refetch entwerten.
   assert.equal((dashboardCode.match(/\+\+shipmentsReq\.current/g) || []).length, 2,
-    "sowohl fetchData als auch reloadShipments müssen die Sequenz hochzählen");
-  // … und beide prüfen sie vor dem Schreiben.
-  assert.equal((dashboardCode.match(/seq [=!]== shipmentsReq\.current/g) || []).length, 2,
-    "beide Wege müssen vor setState auf Aktualität prüfen");
+    "nur fetchData und reloadShipments dürfen die Sequenz hochzählen");
+  // Alle Konsumenten prüfen vor dem Schreiben: die beiden ersetzenden Wege je
+  // einmal, das Nachladen zweimal (Antwortpfad UND Fehlerpfad — eine veraltete
+  // Nachladeantwort darf weder anfügen noch eine Fehlerzeile setzen).
+  assert.equal((dashboardCode.match(/seq [=!]== shipmentsReq\.current/g) || []).length, 4,
+    "alle Wege müssen vor setState auf Aktualität prüfen");
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

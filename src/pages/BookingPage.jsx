@@ -169,7 +169,10 @@ export default function BookingPage() {
     let attempt = 0;
     const poll = async () => {
       try {
-        const r = await apiFetch(`/kunde/invoices`, { auth: true });
+        // limit=20 (Phase 1): die soeben gebuchte Rechnung ist die NEUSTE und steht damit
+        // sicher in der ersten Seite (Sortierung created_at DESC) — der Poll braucht nie
+        // die Vollliste. Ein altes Backend ignoriert den Parameter unschädlich.
+        const r = await apiFetch(`/kunde/invoices?limit=20`, { auth: true });
         if (r.ok) {
           const d = await r.json().catch(() => ({}));
           const mode = resolveInvoiceDeliveryMode(findInvoiceByNumber(d.invoices, booking.invoiceNumber));
@@ -880,7 +883,12 @@ export default function BookingPage() {
       // Gebaut vom gemeinsamen Erbauer — dieselbe Quelle wie die Gutschein-Vorschau.
       const customsPayload = buildCustomsPayload();
       const r = await apiFetch(`/api/jumingo/book`, {
-        method: "POST", auth: true,
+        // 150 s: die serverseitige /book-Kette spricht den Provider mehrfach
+        // (Rates + PUT + cart/total + Order) mit Einzeltimeouts von in Summe
+        // deutlich über 100 s. Ein kürzeres Clientlimit würde eine noch
+        // laufende, gültige Buchung als Fehler anzeigen. KEIN automatischer
+        // Retry — ein Timeout heißt hier „Ausgang unbekannt" (mapBookThrownError).
+        method: "POST", auth: true, timeoutMs: 150000,
         body: JSON.stringify({
           shipmentId:      bookingData?.shipmentId,
           tariffId:        tariff?.id,

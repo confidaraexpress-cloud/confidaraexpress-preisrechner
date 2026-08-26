@@ -1992,6 +1992,87 @@ Verhalten jedes Bestandskontos) oder gesammelt über 7 Tage.
   mit gemocktem Backend — **niemals eine Bestellung, niemals ein echter
   Sammelrechnungslauf**).
 
+## Proforma-Rechnung auf dem Erfolgsbildschirm — vor jeder Änderung daran lesen
+
+Nach einer erfolgreichen Buchung kann der Kunde seine eigene Proforma-Rechnung
+(das Zollbegleitdokument einer Drittlandsendung) direkt vom Erfolgsbildschirm
+laden — **sofern der Server eine meldet**. Der Beleg selbst entsteht
+serverseitig nach dem Commit der Buchung und liegt dort unveränderlich; das
+Frontend zeigt ihn nur an.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/proformaDocumentView.mjs` | Zustände, Pfad-Guard, Nachladetakt, alle sichtbaren Texte |
+| Download | `utils/downloadProforma.js` | Blob-Download über den SERVERPFAD, Serverdateiname |
+| Zugriff | `api/client.js` → `getShipmentDocuments()` | einziger Weg zur Dokument-Metadaten-API |
+| Darstellung | `pages/BookingPage.jsx` (Schritt 3) | gedeckeltes Nachladen + drei Anzeigezustände |
+
+**Verbindlich:**
+
+- **Die Dokument-Metadaten-API ist die einzige Quelle.** Ob es zu einer Sendung
+  eine Proforma gibt, sagt ausschließlich `GET /api/shipments/:id/documents` —
+  **nie** das Zielland, die Zollpflicht, `customsInvoiceMode`, `exportReason`,
+  `use_commercial_invoice`, der Tarif oder der Provider. Fachlich fällt die
+  Entscheidung PROFORMA ↔ COMMERCIAL serverseitig aus dem persistierten
+  Zollsnapshot; ein zweiter, clientseitiger Ableitungsweg wäre eine zweite
+  Wahrheit, die zwangsläufig irgendwann abweicht. Ein Test schneidet Effekt,
+  Handler und Oberfläche aus der Buchungsseite und verbietet dort jeden dieser
+  Begriffe — die Seite trägt daneben unverändert den echten Zollablauf.
+- **Eine erfolgreiche Buchung bleibt erfolgreich.** Der Metadatenabruf hat
+  bewusst **keinen** Fehlerzustand: ein Netzfehler, ein 500er oder ein kaputter
+  Body ergeben `absent` — also exakt den Bildschirm, den es vor diesem Paket
+  gab. Nichts wird entfernt, nichts umgefärbt, `/book` wird nie erneut
+  ausgelöst. Ein nicht auswertbarer Abruf überschreibt einen bereits gefundenen
+  Beleg **nicht** mit „nicht vorhanden", sondern wird im Budget wiederholt.
+- **Vier Zustände, drei Anzeigen.** `ready` → Downloadknopf (mit der
+  servergelieferten PF-Nummer) · `processing` → ruhiger Hinweis „wird erstellt" ·
+  `failed` → neutrales „derzeit nicht verfügbar. Ihre Buchung ist davon nicht
+  betroffen." · `absent` → **gar nichts**. Der Fehlerfall trägt **kein Rot** und
+  **keinen Wiederholen-Knopf**: neben „Sendung erfolgreich gebucht!" liest sich
+  eine rote Fläche wie ein Zweifel an der Buchung, und ein weiterer Anlauf des
+  Kunden ändert am serverseitigen Zustand des Belegs nichts.
+- **`ready` verlangt ZWEI Dinge:** den Serverzustand **und** einen benutzbaren
+  Pfad. Alles Unbekannte gilt als `processing`, nie als ladbar — sonst
+  behauptete ein künftiger Serverzustand einen Download, den es nicht gibt.
+- **Der Pfad kommt vom Server** (`downloadPath` aus der Liste) und wird **nie**
+  im Frontend gebaut; ein Test verbietet das Pfadliteral in allen vier
+  beteiligten Dateien. Er wird trotzdem geprüft (`isSafeApiPath`): `apiFetch`
+  reicht eine absolute URL unverändert durch **und** hängt den Bearer-Token an —
+  ein Pfad auf einen fremden Host würde das Kundentoken dorthin senden.
+- **Gedeckeltes Nachladen, kein Hintergrundworker.** Erster Abruf **sofort**
+  (der Beleg entsteht unmittelbar nach dem Commit), danach fester Takt von 2 s
+  mit einem Budget von 30 s — kein `setInterval`, kein Backoff über Minuten (das
+  Muster der Rechnungszustellung nebenan wartet auf einen Mailversand und darf
+  deshalb länger laufen). Gestoppt wird bei **jedem** Endzustand, beim Unmount
+  und beim Schrittwechsel; läuft das Budget ab, bleibt der ruhige Hinweis stehen.
+  `nextProformaPollDelay` prüft erst den TYP, dann den Wert — `Number(null)` ist
+  `0` und hätte sonst einen Takt erzeugt, der sein Budget nie erreicht.
+- **Der Dateiname kommt vom Server** (`Content-Disposition`, gelesen mit dem
+  vorhandenen `filenameFromContentDisposition`). Es wird **kein** eigener
+  Belegname erfunden und die serverseitige Namensregel nicht nachgebaut.
+  **GEMESSEN:** `Content-Disposition` ist kein CORS-safelisted Response-Header,
+  und `middleware/cors.js` setzt kein `exposedHeaders` — im Produktivbetrieb
+  liest der Browser ihn deshalb **nicht**. Der Rückfall ist ein neutraler,
+  konstanter Name (`proforma-rechnung.pdf`) **ohne** Belegnummer. Gibt das
+  Backend den Header später frei, greift der Servername ohne Frontendänderung;
+  beide Richtungen sind als Browser-Smoke gemessen.
+- **Kein Interna im sichtbaren Text.** Keine Fehlercodes, keine Codepunkte
+  (der Rendererfehler des Belegs trägt serverseitig welche), kein Status, kein
+  Providername. Der Serverfreitext wird **nicht** angezeigt — bewusst strenger
+  als die drei Nachbarhelfer (Auditbefund #3 des Labeldownloads: dort stand
+  wortwörtlich „Fehler" im Kundenbanner).
+- **Label, Auftragsbestätigung und Lieferschein sind unverändert** und laufen
+  weiter über ihre eigenen Helfer — sie wurden **nicht** auf die Dokumentliste
+  umgestellt. Die Dokumentliste wird an genau EINER Stelle abgefragt.
+- **Kein Backend, kein Schema, keine ENV, kein P6.** Kein Dokument-Drawer, keine
+  Änderung an der Sendungsliste, kein zweiter Abrufweg, kein `localStorage`.
+- Governance: `src/utils/proformaSuccessDownload.test.mjs` (16 Tests) und
+  `tests/e2e/proformaSuccessDownload.test.mjs` (6 Browser-Smokes gegen einen
+  echten Dev-Server mit gemocktem Backend — **niemals eine echte Bestellung**).
+  Drei Kernaussagen sind mutationsgeprüft: ein unbekannter Status als „ladbar",
+  ein Nachladen ohne Obergrenze und ein Abbruch des Nachladens im Zustand
+  `processing` färben je genau die zuständige Prüfung rot.
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

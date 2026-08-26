@@ -324,6 +324,25 @@ export function deleteDraft(id) {
   });
 }
 
+// ── Dokumente einer Sendung (Metadaten, keine Bytes) ─────────────────────────
+// GET /api/shipments/:shipmentId/documents — der SERVER sagt, welche Dokumente es
+// zu dieser Sendung gibt (LABEL · ORDER_CONFIRMATION · DELIVERY_NOTE · PROFORMA),
+// in welchem Zustand sie sind (ready · processing · failed) und unter welchem Pfad
+// sie liegen. Die Antwort trägt ausdrücklich KEINE PDF-Bytes.
+//
+// `shipmentId` ist der ConfidaraExpress-Sendungshandle (shipments.id) — derselbe
+// Wert wie bei Label, Tracking, Lieferschein, Auftragsbestätigung und Storno.
+//
+// Diese Liste ist die EINZIGE Quelle dafür, ob es zu einer Sendung eine
+// Proforma-Rechnung gibt. Sie wird nicht aus Zielland, Zollpflicht, Rechnungsmodus
+// oder Tarif abgeleitet — siehe utils/proformaDocumentView.mjs.
+export function getShipmentDocuments(shipmentId, { signal } = {}) {
+  return apiFetch(
+    `/api/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/documents`,
+    { auth: true, signal }
+  );
+}
+
 // ── Stornierungsanfrage (Kunde) ──────────────────────────────────────────────
 // POST /api/shipments/:shipmentId/cancellation-request — stellt eine ANFRAGE
 // auf Stornierung (KEINE echte Carrier-/JUMiNGO-Stornierung, keine Erstattung).

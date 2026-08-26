@@ -4,7 +4,7 @@ import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
-import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
+import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, getShipmentDocuments } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
 import { Icon } from "../components/ui/Icon";
@@ -55,6 +55,11 @@ import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../utils/downloadOrderConfirmation";
+import { downloadProforma } from "../utils/downloadProforma";
+import {
+  PROFORMA_VIEW, PROFORMA_TEXT, findProformaEntry, proformaViewState,
+  proformaDownloadPath, proformaDownloadLabel, proformaKeepPolling, nextProformaPollDelay,
+} from "../utils/proformaDocumentView.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
@@ -151,6 +156,16 @@ export default function BookingPage() {
   const [deliveryNoteError, setDeliveryNoteError] = useState("");
   const [orderConfirmationLoading, setOrderConfirmationLoading] = useState(false);
   const [orderConfirmationError, setOrderConfirmationError] = useState("");
+  // Proforma-Rechnung des Erfolgsscreens. `proformaEntry` ist die Zeile aus der
+  // Dokument-Metadaten-Antwort — die EINZIGE Quelle dafür, ob es zu dieser Sendung
+  // eine eigene Proforma gibt (siehe utils/proformaDocumentView.mjs). Startwert
+  // `null` heißt „keine": solange nichts geladen ist, sieht der Bildschirm exakt
+  // so aus wie vor diesem Paket. Fehler beim LADEN erzeugen bewusst keinen
+  // eigenen Zustand — nur der Downloadversuch des Kunden hat einen.
+  const [proformaEntry, setProformaEntry] = useState(null);
+  const [proformaLoading, setProformaLoading] = useState(false);
+  const [proformaError, setProformaError] = useState("");
+  const proformaTimerRef = useRef(null);
   // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
   // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
   // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
@@ -194,6 +209,54 @@ export default function BookingPage() {
     return () => {
       cancelled = true;
       if (invoiceModeTimerRef.current) { clearTimeout(invoiceModeTimerRef.current); invoiceModeTimerRef.current = null; }
+    };
+  }, [step, booking]);
+
+  // ── Proforma-Rechnung des Erfolgsscreens auflösen ───────────────────────────
+  // Fragt die BESTEHENDE Dokument-Metadaten-API (GET /api/shipments/:id/documents,
+  // reine Metadaten, keine Bytes). Sie ist die Wahrheit darüber, ob es zu dieser
+  // Sendung eine eigene Proforma gibt — hier wird NICHTS aus Zielland, Zollpflicht,
+  // Rechnungsmodus, Tarif oder Provider abgeleitet.
+  //
+  // Erster Abruf sofort (das PDF entsteht serverseitig unmittelbar nach dem Commit
+  // der Buchung), danach ein kurzer fester Takt mit harter Obergrenze — kein
+  // Endlospolling, kein Hintergrundworker. Gestoppt wird bei jedem Endzustand
+  // (keine Proforma · fertig · fehlgeschlagen), beim Unmount und beim Schrittwechsel.
+  //
+  // KRITISCH: Eine erfolgreiche Buchung bleibt erfolgreich. Dieser Effekt kann den
+  // Erfolgsscreen nicht umfärben und nichts entfernen — jeder Fehler wird
+  // geschluckt. Ein nicht auswertbarer Abruf überschreibt einen bereits gefundenen
+  // Beleg NICHT mit „nicht vorhanden": er wird innerhalb des Budgets erneut
+  // versucht. Es wird niemals eine zweite Bestellung ausgelöst.
+  useEffect(() => {
+    if (step !== 3 || !booking || !booking.ceShipmentId) return undefined;
+    let cancelled = false;
+    let attempt = 0;
+    const lauf = async () => {
+      let antwort = null; // null = Abruf nicht auswertbar (Netz, Status, kaputter Body)
+      try {
+        const r = await getShipmentDocuments(booking.ceShipmentId);
+        if (r.ok) {
+          const d = await r.json().catch(() => null);
+          antwort = { entry: findProformaEntry(d) };
+        }
+      } catch { /* still bleiben — der Erfolgsscreen bleibt unberührt */ }
+      if (cancelled) return;
+      let weiter = true;
+      if (antwort) {
+        setProformaEntry(antwort.entry);
+        weiter = proformaKeepPolling(proformaViewState(antwort.entry));
+      }
+      if (!weiter) return;
+      const delay = nextProformaPollDelay(attempt);
+      if (delay == null) return; // Budget erschöpft — der ruhige Hinweis bleibt stehen
+      attempt += 1;
+      proformaTimerRef.current = setTimeout(lauf, delay);
+    };
+    lauf();
+    return () => {
+      cancelled = true;
+      if (proformaTimerRef.current) { clearTimeout(proformaTimerRef.current); proformaTimerRef.current = null; }
     };
   }, [step, booking]);
 
@@ -1185,6 +1248,23 @@ export default function BookingPage() {
     setOrderConfirmationLoading(false);
   };
 
+  // Proforma-Rechnung — derselbe Weg wie die drei anderen Dokumente, mit EINEM
+  // Unterschied: der Pfad wird nicht hier gebaut, sondern kommt aus der
+  // Dokument-Metadaten-Antwort des Servers. Deshalb gibt es auch keine
+  // Sichtbarkeitsbedingung aus Zolldaten — der Knopf existiert nur, wenn der
+  // Server die Proforma als `ready` MIT Pfad meldet.
+  const handleDownloadProforma = async () => {
+    const pfad = proformaDownloadPath(proformaEntry);
+    if (!pfad) return;
+    setProformaLoading(true); setProformaError("");
+    try {
+      await downloadProforma(pfad);
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setProformaError(e.message); // globaler Auth-Redirect übernimmt sonst
+    }
+    setProformaLoading(false);
+  };
+
   /* ── Sichtbares „Zurück" ─────────────────────────────────────────────────
      Es führt IMMER zum Angebotsvergleich — unabhängig davon, was im
      Browserverlauf davor liegt.
@@ -1692,6 +1772,35 @@ export default function BookingPage() {
                   ? <><span className="spinner spinner-dark" /> Lieferschein wird geladen…</>
                   : <>Lieferschein {booking.deliveryNote.number} herunterladen</>}
               </button>
+            )}
+            {/* Proforma-Rechnung — das Zollbegleitdokument einer Drittlandsendung.
+                Ob es sie gibt, sagt AUSSCHLIESSLICH die Dokument-Metadaten-API; es wird
+                weder aus dem Zielland noch aus dem Rechnungsmodus geschlossen. Ohne
+                Proformazeile bleibt hier keine leere Zeile und kein Hinweis stehen.
+                Sie steht nach den drei Versand-/Auftragsunterlagen, weil sie einen
+                anderen Empfänger hat: die Zollbehörde.
+
+                Der „nicht verfügbar"-Fall trägt bewusst KEIN Rot und keinen
+                Wiederholen-Knopf: neben „Sendung erfolgreich gebucht!" liest sich eine
+                rote Fläche wie ein Zweifel an der Buchung — und ein weiterer Anlauf
+                des Kunden ändert am serverseitigen Zustand des Belegs nichts. */}
+            {proformaError && <div className="alert alert-error mb-16" role="alert">{proformaError}</div>}
+            {proformaViewState(proformaEntry) === PROFORMA_VIEW.READY && (
+              <button className="btn btn-outline btn-full mb-16" onClick={handleDownloadProforma} disabled={proformaLoading}>
+                {proformaLoading
+                  ? <><span className="spinner spinner-dark" /> {PROFORMA_TEXT.loading}</>
+                  : proformaDownloadLabel(proformaEntry)}
+              </button>
+            )}
+            {proformaViewState(proformaEntry) === PROFORMA_VIEW.PROCESSING && (
+              <div className="alert alert-info mb-16" role="status" aria-live="polite">
+                <Icon n="info" s={16} />{PROFORMA_TEXT.processing}
+              </div>
+            )}
+            {proformaViewState(proformaEntry) === PROFORMA_VIEW.FAILED && (
+              <div className="alert alert-info mb-16" role="status">
+                <Icon n="info" s={16} />{PROFORMA_TEXT.failed}
+              </div>
             )}
             {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling
                 direkt nach der Buchung (Status wäre ohnehin „new"/nicht verfügbar).

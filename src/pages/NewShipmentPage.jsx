@@ -27,6 +27,7 @@ import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippin
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
+  buildPartyPayload,
 } from "../utils/newShipmentForm.mjs";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
@@ -576,20 +577,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Markierungen entstehen unverändert erst beim Weiterklicken (getErrors).
   const paketHinweis = packageComplete(form) ? "" : packageHint(form);
 
-  const buildParty = (p) => ({
-    ...(form[`${p}_company`]  ? { company:         form[`${p}_company`]  } : {}),
-    fullName:        form[`${p}_fullName`],
-    streetAndNumber: form[`${p}_street`],
-    ...(form[`${p}_addition`] ? { addressAddition: form[`${p}_addition`] } : {}),
-    postalCode:      form[`${p}_zip`],
-    city:            form[`${p}_city`],
-    country:         form[`${p}_country`],
-    // Nur bei gesetztem Bundesstaat — für alle Länder ohne Bundesstaatpflicht entsteht das
-    // Feld nicht und der Payload ist unverändert.
-    ...(form[`${p}_state`] ? { state: form[`${p}_state`] } : {}),
-    ...(form[`${p}_phone`] ? { phone: form[`${p}_phone`] } : {}),
-    ...(form[`${p}_email`] ? { email: form[`${p}_email`] } : {}),
-  });
+  // EINE gemeinsame Quelle mit der Buchungsseite (utils/newShipmentForm.mjs) — siehe dort,
+  // warum die Liste nicht mehr zweimal gepflegt wird.
+  const buildParty = (p) => buildPartyPayload(form, p);
 
   const resetResults = () => {
     setHasResults(false);

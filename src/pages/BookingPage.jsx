@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
-import { packageSummaryLine } from "../utils/newShipmentForm.mjs";
+import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
@@ -779,20 +779,11 @@ export default function BookingPage() {
   );
   const customsValid = customsFieldsValid && !commercialInvoiceBusy;
 
-  const buildParty = (p) => {
-    const f = bookingData?.form || {};
-    return {
-      ...(f[`${p}_company`]  ? { company:         f[`${p}_company`]  } : {}),
-      fullName:        f[`${p}_fullName`],
-      streetAndNumber: f[`${p}_street`],
-      ...(f[`${p}_addition`] ? { addressAddition: f[`${p}_addition`] } : {}),
-      postalCode:      f[`${p}_zip`],
-      city:            f[`${p}_city`],
-      country:         f[`${p}_country`],
-      ...(f[`${p}_phone`] ? { phone: f[`${p}_phone`] } : {}),
-      ...(f[`${p}_email`] ? { email: f[`${p}_email`] } : {}),
-    };
-  };
+  // EINE gemeinsame Quelle mit dem Preisrechner (utils/newShipmentForm.mjs).
+  // Diese Funktion trug bis hierher eine EIGENE Feldliste — und in ihr fehlte `state`.
+  // Ergebnis live: die Oberfläche zeigte „New York", /calculate-price sendete state:"NY",
+  // der Vorgang trug r_state bis hierher, und /book bekam ihn trotzdem nicht.
+  const buildParty = (p) => buildPartyPayload(bookingData?.form, p);
 
   const fmtAddr = (p) => {
     const f = bookingData?.form || {};

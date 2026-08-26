@@ -154,7 +154,16 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
         // nicht gefunden): Dialog schließen, Info anzeigen, Liste reconcilen.
         setCancelShipment(null);
         setNotice({ type: "info", text: cls.message });
-        onCancellationRequested?.(jid, cls.markPending ? { status: "pending" } : {});
+        // `ceId` — derselbe CE-Sendungshandle, mit dem der Request adressiert wurde
+        // und den der Erfolgszweig darüber übergibt. Hier stand `jid`, ein Restname
+        // aus der Zeit, als die Stornierung über die JUMiNGO-Referenz lief: die
+        // Variable existiert in dieser Funktion nicht mehr. In einem ES-Modul
+        // (strict mode) ist das ein ReferenceError — geworfen INNERHALB des try,
+        // vom äußeren catch gefangen und dort als „konnte nicht gesendet werden"
+        // ausgegeben. Sichtbare Folge: die Liste wurde nie abgeglichen
+        // (`fetchData()` lief nicht) und die Zeile behielt ihren alten Zustand,
+        // obwohl der Server gerade gemeldet hatte, dass er sich geändert hat.
+        onCancellationRequested?.(ceId, cls.markPending ? { status: "pending" } : {});
       }
     } catch {
       if (mountedRef.current) {

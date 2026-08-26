@@ -260,7 +260,11 @@ test("23 — Business-Nummernkreise, JUMiNGO-Felder und Zahlungsstatuslogik sind
   // Providerreferenz kommt in ihr nicht mehr vor (White Label + Providerwechsel).
   assert.ok(!/s\.jumingo_shipment_id/.test(shipmentsList),
     "die Sendungsliste darf die Providerreferenz nicht mehr verwenden");
-  assert.match(shipmentsList, /onLabel=\{handleDownloadLabel\}/);
+  // Die dokumentbezogene Aktion der Liste ist seit dem Dokumente-Drawer EINE
+  // zentrale Aktion („Dokumente") statt eines Knopfes je Dokumenttyp; sie hängt
+  // unverändert am CE-Handle der Zeile.
+  assert.match(shipmentsList, /onDocuments=\{setDocumentsShipment\}/);
+  assert.match(shipmentsList, /shipmentId=\{documentsShipment\.id\}/);
   // Die Rechnungsliste zeigt kundenseitig KEINE Vorgangsnummer mehr: weder die
   // Auftragsbestätigungsnummer (CE-AB…) noch die interne Bestellnummer (CE-BS…).
   // Beide bleiben backendseitig, im PDF-Metablock und in der Adminsicht erhalten.

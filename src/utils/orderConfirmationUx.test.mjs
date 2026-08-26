@@ -130,32 +130,48 @@ test("11 die Auftragsbestätigung steht VOR dem Lieferschein", () => {
 
 // ─── 4. Sendungsliste ────────────────────────────────────────────────────────
 
-test("12 die Liste zeigt den Knopf nur bei vorhandener Nummer", () => {
-  // Sendungen von vor diesem Paket haben keine — dort bleibt der Knopf weg, statt in
-  // einen 404 zu laufen.
-  assert.ok(/s\.id && s\.order_confirmation_number/.test(listCode),
-    "Sichtbarkeit hängt nicht an der Nummer der Zeile");
+/* Seit dem Dokumente-Drawer hat die SENDUNGSLISTE keinen eigenen
+   Auftragsbestätigungsknopf mehr: dokumentbezogene Aktionen laufen dort über
+   EINE zentrale Aktion, und welche Dokumente es gibt, sagt der Server. Die
+   Zusicherungen der früheren Tests 12–15 wandern damit an ihren neuen Ort —
+   inhaltlich unverändert:
+     · Sichtbarkeit wird nicht aus der Zeile geraten  → jetzt: gar nicht mehr geraten
+     · Tabelle und Karte tragen DIESELBE Aktion       → unverändert geprüft
+     · der Download nutzt den richtigen Adressweg     → jetzt der Serverpfad im Drawer
+     · genau EIN Aufrufpfad je Oberfläche             → unverändert geprüft
+   Der Erfolgsbildschirm ist davon unberührt und behält seinen direkten Knopf. */
+
+test("12 die Liste rät nicht mehr, ob es eine Auftragsbestätigung gibt", () => {
+  // Der frühere Knopf hing an `s.order_confirmation_number` der Zeile. Diese
+  // Ableitung ist ersatzlos entfallen — sie war eine zweite Wahrheit neben der
+  // Dokumentliste des Servers.
+  assert.ok(!/onOrderConfirmation/.test(listCode), "die Liste trägt wieder eine eigene AB-Aktion");
+  assert.ok(!/downloadOrderConfirmation/.test(listCode), "die Liste lädt die AB wieder selbst");
+  assert.ok(/onDocuments=\{setDocumentsShipment\}/.test(listCode), "die zentrale Dokumentaktion fehlt");
 });
 
 test("13 beide Darstellungen (Tabelle und Karte) bekommen dieselbe Aktion", () => {
-  const matches = listCode.match(/onOrderConfirmation=\{handleDownloadOrderConfirmation\}/g) || [];
+  const matches = listCode.match(/onDocuments=\{setDocumentsShipment\}/g) || [];
   assert.strictEqual(matches.length, 2, "Tabelle und Mobilkarte müssen dieselbe Aktion tragen");
   // Und beide über DIESELBE Komponente — kein zweites Aktionsmuster daneben.
   const uses = listCode.match(/<ShipmentRowActions/g) || [];
   assert.strictEqual(uses.length, 2);
 });
 
-test("14 der Download nutzt Handle und Nummer der Zeile", () => {
-  assert.ok(/downloadOrderConfirmation\(s\.id, s\.order_confirmation_number\)/.test(listCode),
-    "falsche Argumente");
+test("14 der Drawer lädt über den SERVERGELIEFERTEN Pfad, nicht über einen gebauten", () => {
+  const drawerCode = strip(read("../components/dashboard/ShipmentDocumentsDrawer.jsx"));
+  assert.ok(/documentDownloadPath\(doc\)/.test(drawerCode), "der Pfad kommt nicht aus der Serverantwort");
+  assert.ok(!/order-confirmation/.test(drawerCode), "der Drawer baut einen eigenen Dokumentpfad");
+  assert.ok(!/\$\{shipmentId\}\//.test(drawerCode), "der Drawer setzt einen Pfad aus der Sendungs-ID zusammen");
 });
 
 test("15 es gibt genau EINEN Aufrufpfad je Oberfläche", () => {
-  for (const [name, code] of [["BookingPage", bookingCode], ["ShipmentsList", listCode]]) {
-    const calls = (code.match(/downloadOrderConfirmation\(/g) || []).length;
-    // je einmal im Handler aufgerufen (der Import zählt nicht mit, er hat keine Klammer)
-    assert.strictEqual(calls, 1, `${name} ruft den Download ${calls}-mal auf`);
-  }
+  // Die Auftragsbestätigung wird nur noch an EINER Stelle direkt geladen: auf dem
+  // Erfolgsbildschirm. Die Sendungsliste ruft den Helfer gar nicht mehr auf.
+  assert.strictEqual((bookingCode.match(/downloadOrderConfirmation\(/g) || []).length, 1,
+    "BookingPage ruft den Download nicht genau einmal auf");
+  assert.strictEqual((listCode.match(/downloadOrderConfirmation\(/g) || []).length, 0,
+    "die Sendungsliste ruft den Download wieder selbst auf");
 });
 
 test("16 kein SICHTBARER Text dieses Pakets nennt den Upstream-Anbieter", () => {
@@ -165,7 +181,7 @@ test("16 kein SICHTBARER Text dieses Pakets nennt den Upstream-Anbieter", () => 
   // einen Fehlalarm auf Bestandszeilen, die dieses Paket gar nicht anfasst.
   const sichtbar = [
     ...(dlSrc.match(/"[^"]{10,200}"/g) || []),                 // Fehlertexte des Downloads
-    "Auftragsbestätigung",                                      // Knopftext der Liste
+    "Auftragsbestätigung",                                      // Beschriftung im Dokumente-Drawer
     (bookingSrc.match(/Auftragsbestätigung \{[^}]*\} herunterladen/) || [""])[0],
     (bookingSrc.match(/Auftragsbestätigung wird geladen…/) || [""])[0],
   ];

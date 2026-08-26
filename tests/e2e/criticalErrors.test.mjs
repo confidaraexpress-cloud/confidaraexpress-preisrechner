@@ -43,6 +43,17 @@ async function setup(page, overrides = {}) {
     }
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: [SHIPMENT] });
+    // Seit dem Dokumente-Drawer führt der Kundenweg zum Label über die
+    // Dokumentliste: der Server sagt, dass es ein Label gibt UND unter welchem
+    // Pfad. Ohne diese Antwort zeigte der Drawer den leeren Zustand, und der
+    // Labelmock unten würde nie erreicht.
+    if (/^\/api\/shipments\/\d+\/documents$/.test(p)) return json({
+      shipmentId: SHIPMENT.id,
+      documents: [{
+        type: "LABEL", category: "SHIPPING", status: "ready",
+        label: "Versandlabel", downloadPath: `/api/shipments/${SHIPMENT.id}/label`,
+      }],
+    });
     if (p.endsWith("/kunde/invoices")) return json({ invoices: [INVOICE], summary: { open_amount: 10, open_count: 1, overdue_count: 0, next_due_date: null, currency: "EUR", mixed_currency: false } });
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "s", pagination: {} });
     return json({});
@@ -72,6 +83,18 @@ test.after(async () => {
   }
 });
 
+/* Der Weg zum Label führt seit dem Dokumente-Drawer über die zentrale Aktion
+   „Dokumente" der Sendungsliste: die Liste bietet keinen eigenen Labelknopf mehr
+   an. Der Download selbst ist unverändert derselbe Request auf denselben Pfad —
+   die drei Fehlerfälle darunter prüfen genau das. */
+async function ladeLabelUeberDenDrawer(page) {
+  await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Dokumente" }).first().click();
+  await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
+  await page.locator(".sdoc-row", { hasText: "Versandlabel" })
+    .getByRole("button", { name: /Herunterladen/ }).click();
+}
+
 /* Der Kundenpfad des Labels läuft seit dem Paket „Sendungshandle" über
    `GET /api/shipments/:shipmentId/label` — die Providerreferenz steht in keinem
    Kundenpfad mehr. Die Mocks unten greifen deshalb den Pfadbestandteil
@@ -94,12 +117,14 @@ test("Label-500 {error:'Fehler'}: Kunde sieht die kuratierte Meldung, nie das na
   await setup(page, {
     "/label": (route, json) => json({ error: "Fehler" }, 500),
   });
-  await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Label/ }).first().click();
+  await ladeLabelUeberDenDrawer(page);
   await page.waitForSelector('.alert-error[role="alert"]', { timeout: 10000 });
   const t = (await page.locator('.alert-error[role="alert"]').first().innerText()).replace(/\s+/g, " ").trim();
   assert.notEqual(t, "Fehler", "das nackte Backend-Wort darf nie erscheinen");
-  assert.match(t, /momentan nicht geladen werden/, `unerwarteter Text: ${t}`);
+  // Der Drawer nutzt den gemeinsamen, dokumentneutralen Text ("Das Dokument …")
+  // statt der labelspezifischen Formulierung. Die Zusicherung ist dieselbe:
+  // ein kuratierter Satz, niemals der Serverfreitext.
+  assert.match(t, /Dokument konnte nicht geladen werden/, `unerwarteter Text: ${t}`);
 
   // Beweis, dass der Mock wirklich gegriffen hat und nicht der Sammel-Fallback
   // (`200 {}` → derselbe sichtbare Text aus einem anderen Grund). Zugleich die
@@ -118,11 +143,10 @@ test("Label-Antwort ist JSON statt PDF (2xx): Fehlermeldung statt kaputter Datei
   await setup(page, {
     "/label": (route, json) => json({ irgendwas: true }, 200),
   });
-  await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Label/ }).first().click();
+  await ladeLabelUeberDenDrawer(page);
   await page.waitForSelector('.alert-error[role="alert"]', { timeout: 10000 });
   const t = (await page.locator('.alert-error[role="alert"]').first().innerText()).replace(/\s+/g, " ");
-  assert.match(t, /momentan nicht geladen werden/);
+  assert.match(t, /Dokument konnte nicht geladen werden/);
   await page.close();
 });
 
@@ -131,8 +155,7 @@ test("Label noch nicht bereit (409, Altbackend-Text): verständliche Wartemeldun
   await setup(page, {
     "/label": (route, json) => json({ error: "Label noch nicht verfügbar — Bestellnummer fehlt", code: "LABEL_NOT_READY" }, 409),
   });
-  await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Label/ }).first().click();
+  await ladeLabelUeberDenDrawer(page);
   await page.waitForSelector('.alert-error[role="alert"]', { timeout: 10000 });
   assert.match((await page.locator('.alert-error[role="alert"]').first().innerText()), /wird noch erstellt/);
   await page.close();

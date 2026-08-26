@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOKUMENTE-DRAWER DER SENDUNGSLISTE — isolierter sdoc-Scope.
+
+   Reine Zusatzklassen auf den Foundation-Tokens. Der Rahmen selbst (Overlay,
+   Fläche, Kopf, scrollender Körper) kommt unverändert aus dem gemeinsamen
+   Drawermuster in patterns.css (.ce-drawer*) — hier steht ausschließlich das
+   Innenleben: Gruppen, Dokumentzeilen, Zustände.
+
+   Kein zweites Drawer-, Karten-, Button- oder Badgesystem. Keine eigenen
+   Farbliterale, keine Glasflächen, keine Bewegung als Ambiente.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sdoc-head-text { min-width: 0; }
+.sdoc-title {
+  font-size: var(--ce-text-title-section-size);
+  line-height: var(--ce-text-title-section-line);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+.sdoc-subtitle {
+  margin-top: 2px;
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-muted);
+}
+
+.sdoc-body { padding: var(--ce-space-5) var(--ce-space-6); }
+
+.sdoc-group + .sdoc-group { margin-top: var(--ce-space-6); }
+.sdoc-group-title {
+  font-size: var(--ce-text-micro-size);
+  line-height: var(--ce-text-micro-line);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+  padding-bottom: var(--ce-space-2);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+
+.sdoc-list { display: flex; flex-direction: column; }
+.sdoc-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ce-space-3);
+  /* Wird es eng, bricht die ZEILE um (Aktion unter den Text) — der Text wird
+     nicht zeichenweise zerlegt und nichts wird gestaucht. */
+  flex-wrap: wrap;
+  padding: var(--ce-space-4) 0;
+}
+.sdoc-row + .sdoc-row { border-top: 1px solid var(--ce-color-border-subtle); }
+
+.sdoc-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface-muted);
+  color: var(--ce-color-text-secondary);
+}
+.sdoc-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Das nachgiebige Glied der Zeile: der Name weicht, Icon und Aktion halten. */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sdoc-row-name {
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+.sdoc-row-number {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted);
+}
+
+/* Belegnummern sind technische Strings ohne Wortgrenzen (PF-2026-000042,
+   CE-AB-2026-000001) und stehen in einem 560-px-Drawer neben einem Knopf
+   beziehungsweise neben dem Schließen. Sie brechen deshalb LOKAL — an genau
+   diesen beiden Elementen, nie auf einer Zeile oder einem Container, und in
+   EINER Regel statt in zweien. Ohne sie schiebt eine lange Nummer die Aktion
+   aus dem Layout oder erzeugt eine horizontale Bildlaufleiste. */
+.sdoc-subtitle,
+.sdoc-row-number { overflow-wrap: anywhere; }
+
+.sdoc-row-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+/* Zustände tragen Text, nicht nur Farbe. Der gescheiterte Beleg bleibt bewusst
+   in der Mutedrolle: ein roter Alarm neben einer gebuchten Sendung läse sich wie
+   ein Problem mit der Sendung selbst. */
+.sdoc-row-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-secondary);
+  white-space: nowrap;
+}
+.sdoc-row-state--muted { color: var(--ce-color-text-muted); }
+
+/* Zustandsflächen (leer · Ladefehler) — dieselbe Anordnung wie .ce-state,
+   nur schmaler, weil sie in einem 560-px-Drawer statt auf einer Seite steht. */
+.sdoc-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ce-space-3);
+  padding: var(--ce-space-8) var(--ce-space-4);
+  text-align: center;
+  color: var(--ce-color-text-muted);
+}
+.sdoc-state-text {
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+  max-width: 34ch;
+}
+
+.sdoc-skeleton { display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.sdoc-skeleton-row { height: 56px; border-radius: var(--ce-radius-md); }
+
+@media (max-width: 480px) {
+  .sdoc-body { padding: var(--ce-space-4); }
+  /* Unter 480 px steht die Aktion unter dem Dokumentnamen und nimmt die volle
+     Breite — kein gequetschter Knopf am rechten Rand. */
+  .sdoc-row-action { margin-inline-start: 0; width: 100%; }
+  .sdoc-row-action .btn { width: 100%; }
+}

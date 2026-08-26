@@ -2073,6 +2073,80 @@ Frontend zeigt ihn nur an.
   ein Nachladen ohne Obergrenze und ein Abbruch des Nachladens im Zustand
   `processing` färben je genau die zuständige Prüfung rot.
 
+## Dokumente-Drawer der Sendungsliste — vor jeder Änderung daran lesen
+
+Jede Sendung der Kundenliste hat **eine** dokumentbezogene Aktion: „Dokumente".
+Sie öffnet einen Drawer, der alle Belege dieser Sendung gruppiert zeigt.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/shipmentDocumentsView.mjs` | Gruppierung, Zustände, Pfad-Guard, Nachladetakt, alle sichtbaren Texte |
+| Download | `utils/downloadDocument.js` | Blob-Download über den SERVERPFAD, Serverdateiname |
+| Drawer | `components/dashboard/ShipmentDocumentsDrawer.jsx` | Laden, gedeckeltes Nachladen, Darstellung |
+| Material | `styles/shipment-documents.css` | isolierter `sdoc-`-Scope über dem `.ce-drawer`-Muster |
+
+**Verbindlich:**
+
+- **Der Server sagt, welche Dokumente es gibt.** Allein
+  `GET /api/shipments/:id/documents`. Vorher trug die Liste zwei Einzelknöpfe mit
+  je eigener, GERATENER Sichtbarkeit: „Label" hing an `status === "booked" ||
+  "label_ready"`, „Auftragsbestätigung" an einer Nummer in der Zeile. Beide
+  Ableitungen sind ersatzlos entfallen — sie waren eine zweite Wahrheit neben der
+  Dokumentliste. Auch die GRUPPE kommt aus der Antwort (`category`); es wird kein
+  Dokumentname geparst und kein Zielland ausgewertet.
+- **Kein Vorabfetch, kein N+1.** Die Liste ruft die Dokument-API nie auf. Der
+  Drawer wird erst durch den Klick **gemountet** — ohne Auswahl gibt es keine
+  Komponente und damit keinen Effekt, der laden könnte. Ein Test misst das am
+  bedingten Rendern, ein Browser-Smoke am tatsächlichen Netzverkehr.
+- **Vier Zustände, drei Anzeigen.** `ready` (mit sicherem Pfad) → Downloadknopf ·
+  `processing` → „Wird erstellt …" · `failed` → „Derzeit nicht verfügbar", ruhig
+  und **ohne** Wiederholen-Knopf (der Kunde kann am Serverzustand nichts ändern)
+  und **ohne** Alarmfarbe · unbekannter Status → `processing`, nie ladbar.
+  „Erneut versuchen" gibt es ausschließlich für den **Ladefehler der Liste** —
+  das ist ein reiner GET und verliert keine Sendungsdaten.
+- **Der Pfad kommt vom Server** (`downloadPath`) und wird **nie** aus Sendungs-ID,
+  Typ oder Nummer zusammengebaut. Er wird trotzdem geprüft (`isSafeApiPath`):
+  `apiFetch` reicht eine absolute URL unverändert durch **und** hängt den
+  Bearer-Token an — ein Pfad auf einen fremden Host würde das Kundentoken dorthin
+  senden. Ein `ready` mit fremdem Pfad erzeugt deshalb gar keine Aktion.
+- **Eine Regel, nicht zwei.** Pfad-Guard und Nachladetakt (sofort, dann 2 s,
+  Budget 30 s) stehen in diesem Modul; `proformaDocumentView.mjs` (P5B) reicht
+  beide unter seinen bisherigen Namen weiter. Ebenso teilen sich beide Wege die
+  Downloadmechanik in `downloadDocument.js` — proformaeigen bleiben nur
+  Rückfallname und Texte. **Der Erfolgsbildschirm ist dabei unverändert
+  geblieben** (Verhalten, Texte, Knöpfe) und wird von seinen eigenen Tests und
+  Smokes weiter gedeckt.
+- **Die drei älteren Helfer bleiben unangetastet** (`downloadLabel`,
+  `downloadDeliveryNote`, `downloadOrderConfirmation`): sie adressieren über die
+  Sendungs-ID statt über einen Serverpfad und tragen eigene Fehlercodes. Der
+  Erfolgsbildschirm benutzt sie weiter.
+- **Der Dateiname kommt aus `Content-Disposition`** (seit dem Backend-Härtungs-
+  paket per CORS freigegeben); Rückfall ist ein neutraler Name je Typ
+  (`versandlabel.pdf`, `lieferschein.pdf`, `proforma-rechnung.pdf`,
+  `auftragsbestaetigung.pdf`) — nie eine zusammengebaute Belegnummer, nie eine
+  interne ID.
+- **Tracking und Stornierung bleiben eigenständig.** Sie sind keine Dokumente.
+  Entfernt wurden ausschließlich die beiden direkten Dokumentknöpfe der Liste.
+- **Keine Sendungsdetailseite.** Der Drawer ist bewusst die leichte zentrale
+  Ansicht: keine Route, kein Deep-Link, kein zweiter Ort für Sendungsdaten.
+- **Kein zweites Drawersystem.** Rahmen aus `patterns.css` (`.ce-drawer*`),
+  Fokusfalle/Escape/Fokusrückgabe aus `useDialog` — dieselbe Infrastruktur wie
+  der Adressbuch-Drawer. Icons aus `Icon.jsx` (`lucide-react` ist im Projekt
+  entfernt und durch Tests verboten), keine Emojis.
+- **Nichts wird persistiert.** Kein `localStorage`, kein `sessionStorage`; der
+  geladene Zustand lebt im Komponentenzustand und ist beim erneuten Öffnen weg.
+- Governance: `src/utils/shipmentDocumentsDrawer.test.mjs` (21 Tests) und
+  `tests/e2e/shipmentDocumentsDrawer.test.mjs` (8 Browser-Smokes gegen einen
+  echten Dev-Server mit gemocktem Backend — **niemals eine Buchung**). Zwei
+  Kernaussagen sind mutationsgeprüft: ein entfernter Pfad-Guard und eine
+  verschluckte unbekannte Kategorie färben je genau die zuständige Prüfung rot.
+
+Vier bestehende Governance-Tests pinnten die alte Listenoberfläche
+(`managementBilling` 23, `labelErrors` 6, `orderConfirmationUx` 12–15,
+`providerNeutralShipmentHandle` 4). Sie prüfen dieselben Zusicherungen an ihrem
+neuen Ort weiter — Live-Region des Fehlerbanners, EIN Aufrufpfad je Oberfläche,
+kein Dateiname mit Provider- oder interner Referenz.
+
 ## ConfidaraExpress — Buchung, Preise & Jumingo
 
 - **Frontend ersetzt keine serverseitige Prüfung.** Preis-, Tarif-, Auth-, Zahlungs- und Buchungsvalidierung passieren im Backend — das Frontend prüft sie nie ersatzweise.

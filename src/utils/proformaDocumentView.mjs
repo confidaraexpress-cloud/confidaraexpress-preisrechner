@@ -24,6 +24,10 @@
 
 // Fachlicher Dokumenttyp aus dem Serververtrag (P5A). Bewusst als Konstante:
 // ein Tippfehler in einem String-Vergleich wäre sonst ein stiller Totalausfall.
+import {
+  isSafeApiPath, DOCUMENT_POLL_INTERVAL_MS, DOCUMENT_POLL_BUDGET_MS, nextDocumentPollDelay,
+} from "./shipmentDocumentsView.mjs";
+
 export const PROFORMA_TYPE = "PROFORMA";
 
 // Was die Oberfläche anzeigt. Absichtlich NICHT die Serverzustände selbst —
@@ -41,24 +45,13 @@ export const PROFORMA_VIEW = {
 const SERVER_READY = "ready";
 const SERVER_FAILED = "failed";
 
-/**
- * Ist `path` ein Pfad auf DIESE API — und nicht auf einen fremden Host?
- *
- * Das ist kein Formalismus. `apiFetch` reicht eine absolute http(s)-URL
- * unverändert durch UND hängt bei `auth: true` den Bearer-Token an. Ein
- * `downloadPath`, der (durch einen Fehler oder eine manipulierte Antwort) auf
- * einen fremden Host zeigte, würde das Kundentoken dorthin senden. Deshalb wird
- * ausschließlich ein relativer Pfad akzeptiert; „//host/…" ist protokollrelativ
- * und damit ebenfalls ein fremder Host.
- */
-export function isSafeApiPath(path) {
-  if (typeof path !== "string") return false;
-  const p = path.trim();
-  if (!p.startsWith("/") || p.startsWith("//")) return false;
-  // Steuerzeichen, Leerraum und Anführungszeichen haben in einem Pfad nichts zu
-  // suchen — sie deuten auf eine kaputte oder gebastelte Antwort hin.
-  return !/[\s"'<>\\]/.test(p);
-}
+// Pfad-Guard: EINE Regel für alle Sendungsdokumente, definiert in
+// shipmentDocumentsView.mjs und hier unverändert weitergereicht (der
+// Erfolgsbildschirm importiert sie seit P5B unter diesem Namen). Sie ist keine
+// Formsache: `apiFetch` reicht eine absolute URL unverändert durch UND hängt den
+// Bearer-Token an — ein Pfad auf einen fremden Host würde das Kundentoken
+// dorthin senden.
+export { isSafeApiPath };
 
 /**
  * Die Proforma-Zeile aus der Dokumentliste — oder `null`.
@@ -104,26 +97,18 @@ export function proformaDownloadPath(entry) {
 // deshalb länger laufen). Läuft das Budget ab, während der Beleg noch entsteht,
 // bleibt der ruhige „wird erstellt"-Hinweis stehen — die Oberfläche behauptet
 // nichts Falsches, sie hört nur auf zu fragen.
-export const PROFORMA_POLL_INTERVAL_MS = 2000;
-export const PROFORMA_POLL_BUDGET_MS = 30000;
+// Werte und Namen des P5B-Vertrags bleiben; die Kadenz selbst steht einmal in
+// shipmentDocumentsView.mjs und gilt dort für jedes Sendungsdokument. Zwei
+// getrennte Fassungen desselben Taktes wären zwei Regeln mit demselben Inhalt.
+export const PROFORMA_POLL_INTERVAL_MS = DOCUMENT_POLL_INTERVAL_MS;
+export const PROFORMA_POLL_BUDGET_MS = DOCUMENT_POLL_BUDGET_MS;
 
 /**
  * Wartezeit vor dem nächsten Abruf — oder `null`, wenn das Budget erschöpft ist.
  * `attempt` ist die Zahl der bereits ERFOLGTEN Nachladeversuche (der sofortige
  * erste Abruf zählt nicht mit).
  */
-export function nextProformaPollDelay(attempt) {
-  // Erst der TYP, dann der Wert — nie in einem Schritt: `Number(null)` und
-  // `Number("")` sind `0`, `Number("3")` ist `3`. Ohne diese Reihenfolge
-  // erzeugte ein versehentlich übergebenes `null` einen gültigen Takt und damit
-  // ein Nachladen, das sein Budget nie erreicht. Dieselbe Disziplin wie bei den
-  // Paketmaßen.
-  if (typeof attempt !== "number") return null;
-  const n = attempt;
-  if (!Number.isInteger(n) || n < 0) return null;
-  const verbraucht = (n + 1) * PROFORMA_POLL_INTERVAL_MS;
-  return verbraucht <= PROFORMA_POLL_BUDGET_MS ? PROFORMA_POLL_INTERVAL_MS : null;
-}
+export const nextProformaPollDelay = nextDocumentPollDelay;
 
 /** Weiter nachladen? Nur, solange der Beleg tatsächlich noch entsteht. */
 export function proformaKeepPolling(state) {

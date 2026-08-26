@@ -1,6 +1,5 @@
-import { apiFetch } from "../api/client";
-import { filenameFromContentDisposition } from "./invoiceView.mjs";
-import { isSafeApiPath, proformaDownloadMessage, PROFORMA_DOWNLOAD_TEXT } from "./proformaDocumentView.mjs";
+import { downloadDocument } from "./downloadDocument";
+import { proformaDownloadMessage, PROFORMA_DOWNLOAD_TEXT } from "./proformaDocumentView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Download der eigenen Proforma-Rechnung (Zollbegleitdokument).
@@ -48,47 +47,13 @@ const FALLBACK_DATEINAME = "proforma-rechnung.pdf";
 // EINE Stelle, an der Kundentext für die Proforma entsteht.
 
 export async function downloadProforma(downloadPath) {
-  // Fail-safe: ohne benutzbaren Serverpfad wird gar nicht erst gefragt. Dieser
-  // Fall ist über die Oberfläche nicht erreichbar (der Knopf erscheint nur bei
-  // `ready` MIT Pfad) — er steht hier, damit ein künftiger Aufrufer nicht
-  // versehentlich einen selbst gebauten Pfad hineinreicht.
-  if (!isSafeApiPath(downloadPath)) throw new Error(PROFORMA_DOWNLOAD_TEXT.allgemein);
-
-  let r;
-  try {
-    r = await apiFetch(downloadPath.trim(), { auth: true });
-  } catch {
-    throw new Error(PROFORMA_DOWNLOAD_TEXT.netz);
-  }
-
-  if (!r.ok) {
-    let body = null;
-    try { body = await r.json(); } catch { body = null; }
-    const code = body && typeof body.code === "string" ? body.code : null;
-    const err = new Error(proformaDownloadMessage(r.status, code));
-    err.status = r.status;
-    err.code = code;
-    throw err;
-  }
-
-  // Erfolgsstatus, aber kein PDF (z. B. eine JSON-/HTML-Antwort eines Proxys):
-  // niemals als Datei speichern — der Kunde bekäme sonst eine kaputte PDF, und
-  // bei einem Zolldokument fiele das erst am Schalter auf.
-  const contentType = String(r.headers.get("content-type") || "").toLowerCase();
-  if (!contentType.startsWith("application/pdf")) throw new Error(PROFORMA_DOWNLOAD_TEXT.allgemein);
-
-  const roh = await r.blob();
-  if (!roh || roh.size === 0) throw new Error(PROFORMA_DOWNLOAD_TEXT.allgemein);
-  const blob = roh.type === "application/pdf" ? roh : new Blob([roh], { type: "application/pdf" });
-
-  const dateiname = filenameFromContentDisposition(r.headers.get("content-disposition"), FALLBACK_DATEINAME);
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = dateiname;
-    a.click();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  // Die Mechanik (Abruf, Content-Type-Prüfung, Blob, Object-URL, revoke) und der
+  // Pfad-Guard stehen im gemeinsamen Dokumenthelfer; hier bleiben die beiden
+  // Dinge, die AN DIESEM Beleg hängen: sein neutraler Rückfalldateiname und
+  // seine kuratierten Texte.
+  return downloadDocument(downloadPath, {
+    fallbackFilename: FALLBACK_DATEINAME,
+    message: proformaDownloadMessage,
+    errorText: { netz: PROFORMA_DOWNLOAD_TEXT.netz, allgemein: PROFORMA_DOWNLOAD_TEXT.allgemein },
+  });
 }

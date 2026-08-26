@@ -28,6 +28,11 @@ const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const bookingPage  = lies("../pages/BookingPage.jsx");
 const viewModul    = lies("./proformaDocumentView.mjs");
 const downloadMod  = lies("./downloadProforma.js");
+// Die MECHANIK des Downloads (Abruf, Content-Type-Prüfung, Blob, Object-URL,
+// Pfad-Guard) steht seit dem Dokumente-Drawer im gemeinsamen Helfer; die
+// proformaeigenen Teile (Rückfallname, Texte) blieben in downloadProforma.js.
+// Beide Dateien werden deshalb gemeinsam geprüft — die Aussagen sind dieselben.
+const genericMod  = lies("./downloadDocument.js");
 const apiClient    = lies("../api/client.js");
 
 // Der Proforma-Teil der Buchungsseite, isoliert: Effekt und Oberfläche. Nur so
@@ -77,14 +82,17 @@ test("2 — der Downloadpfad wird nie im Frontend gebaut", () => {
     ["BookingPage.jsx", bookingPage],
     ["proformaDocumentView.mjs", viewModul],
     ["downloadProforma.js", downloadMod],
+    ["downloadDocument.js", genericMod],
     ["api/client.js", apiClient],
   ]) {
     assert.ok(!pfadLiteral.test(quelle), `${name} darf keinen eigenen Proforma-Pfad bilden`);
   }
   assert.ok(handler.includes("proformaDownloadPath(proformaEntry)"),
     "der Handler nimmt den servergelieferten Pfad");
-  assert.ok(downloadMod.includes("apiFetch(downloadPath.trim()"),
+  assert.ok(genericMod.includes("apiFetch(downloadPath.trim()"),
     "der Downloadhelfer ruft genau diesen Pfad auf");
+  assert.ok(downloadMod.includes("downloadDocument(downloadPath, {"),
+    "die Proforma reicht den servergelieferten Pfad unverändert weiter");
 });
 
 /* ═════════ 2 — Auswertung der Antwort ═════════ */
@@ -250,10 +258,10 @@ test("13 — drei Zustände, drei Anzeigen — und nichts bei `absent`", () => {
 });
 
 test("14 — der Dateiname kommt vom Server, das Frontend erfindet keinen", () => {
-  assert.ok(downloadMod.includes("filenameFromContentDisposition("),
+  assert.ok(genericMod.includes("filenameFromContentDisposition("),
     "der serverseitige Dateiname wird gelesen");
   // Kein nachgebautes Namensschema, keine erfundene Belegnummer.
-  assert.ok(!/PF-/.test(downloadMod), "keine Proforma-Belegnummer im Frontend");
+  assert.ok(!/PF-/.test(downloadMod) && !/PF-/.test(genericMod), "keine Proforma-Belegnummer im Frontend");
   assert.ok(!/`Proforma[-_]\$\{/.test(downloadMod), "kein zusammengebauter Belegname");
   assert.ok(downloadMod.includes('const FALLBACK_DATEINAME = "proforma-rechnung.pdf"'),
     "der Rückfall ist ein neutraler, konstanter Name");
@@ -277,11 +285,12 @@ test("15 — Downloadfehler sind kuratiert, nie Serverfreitext", () => {
 test("16 — der Download rendert nichts nach und speichert nichts zwischen", () => {
   // Ausgeliefert werden die serverseitig gespeicherten Bytes (P4/P5A). Das
   // Frontend hält davon keine Kopie: Object-URL wird im finally freigegeben.
-  assert.ok(downloadMod.includes("URL.revokeObjectURL(url)"), "die Object-URL wird freigegeben");
+  assert.ok(genericMod.includes("URL.revokeObjectURL(url)"), "die Object-URL wird freigegeben");
   for (const verboten of ["localStorage", "sessionStorage", "indexedDB", "base64", "dangerouslySetInnerHTML"]) {
-    assert.ok(!downloadMod.includes(verboten), `${verboten} hat hier nichts zu suchen`);
-    assert.ok(!viewModul.includes(verboten), `${verboten} hat hier nichts zu suchen`);
+    for (const [name, quelle] of [["downloadProforma.js", downloadMod], ["downloadDocument.js", genericMod], ["proformaDocumentView.mjs", viewModul]]) {
+      assert.ok(!quelle.includes(verboten), `${verboten} hat in ${name} nichts zu suchen`);
+    }
   }
   // Nur echte PDFs werden gespeichert — eine JSON-/HTML-Antwort nie.
-  assert.ok(downloadMod.includes('if (!contentType.startsWith("application/pdf")) throw'));
+  assert.ok(genericMod.includes('if (!contentType.startsWith("application/pdf")) throw'));
 });

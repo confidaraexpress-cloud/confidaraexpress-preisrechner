@@ -5,10 +5,10 @@ import { EmptyState } from "../ui/StateView";
 import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
-import { downloadLabel } from "../../utils/downloadLabel";
-import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
 import { CancellationRequestDialog } from "./CancellationRequestDialog";
+import { ShipmentDocumentsDrawer } from "./ShipmentDocumentsDrawer";
+import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import {
@@ -47,20 +47,23 @@ function CancellationStatusPill({ status }) {
 /* Aktionen einer Sendungszeile — identisch in Tabelle und Mobilkarte.
    Reine Darstellungs-Extraktion (Paket A, Phase 3): dieselben Bedingungen,
    dieselben Handler, keine geänderte Logik. */
-function ShipmentRowActions({ s, onTrack, onLabel, onOrderConfirmation, onCancel }) {
+function ShipmentRowActions({ s, onTrack, onDocuments, onCancel }) {
   return (
     <div className="flex gap-8 stn-actions">
       {s.id && (
         <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.id)}>Sendung verfolgen</button>
       )}
-      {(s.status === "booked" || s.status === "label_ready") && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onLabel(s)}>Label</button>
-      )}
-      {/* Auftragsbestätigung — erscheint NUR, wenn die Zeile tatsächlich eine Nummer
-          trägt. Sendungen, die vor diesem Paket gebucht wurden, haben keine; dort
-          bleibt der Knopf weg statt in einen 404 zu laufen. */}
-      {s.id && s.order_confirmation_number && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onOrderConfirmation(s)}>Auftragsbestätigung</button>
+      {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe. Vorher standen
+          hier „Label" und „Auftragsbestätigung" nebeneinander — je Dokumenttyp ein
+          weiterer Knopf, und jeder trug seine eigene Sichtbarkeitsbedingung aus der
+          Zeile (Status, vorhandene Nummer). Beides ist entfallen: welche Dokumente
+          es gibt, sagt der Server im Drawer, nicht diese Liste.
+
+          Tracking und Stornierung bleiben eigenständig — sie sind keine Dokumente. */}
+      {s.id && (
+        <button className="btn btn-ghost btn-sm" onClick={() => onDocuments(s)}>
+          <Icon n="form" s={15} /> {DOCUMENTS_TEXT.action}
+        </button>
       )}
       {canRequestCancellation(s) && (
         <button className="btn btn-ghost btn-sm" onClick={() => onCancel(s)}>Stornieren</button>
@@ -74,7 +77,10 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
-  const [labelError, setLabelError] = React.useState("");
+  // Die Sendung, deren Dokumente offen sind — `null` heißt: kein Drawer
+  // gemountet und damit auch kein Abruf. Beim Rendern der Liste wird
+  // NICHTS vorab geholt (kein N+1).
+  const [documentsShipment, setDocumentsShipment] = React.useState(null);
 
   // ── Stornierungsanfrage ────────────────────────────────────────────────────
   const [cancelShipment, setCancelShipment] = React.useState(null); // aktive Zielsendung / null
@@ -105,33 +111,6 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
     if (trackingId === id) { setTrackingId(null); return; } // erneuter Klick = einklappen
     setTrackingId(id);
     fetchTracking(id);
-  };
-
-  // `s` ist die Sendungszeile: der Handle adressiert den Request, die
-  // Auftragsbestätigungsnummer benennt die heruntergeladene Datei. Sie ist die
-  // sichtbare Vorgangsnummer — die interne Bestellnummer (CE-BS…) steht in
-  // keinem kundensichtbaren Artefakt mehr, auch nicht in einem Dateinamen.
-  // Fehlt sie (Sendung aus der Zeit davor), bleibt der Handle als Dateiname.
-  const handleDownloadLabel = async (s) => {
-    setLabelError("");
-    try {
-      await downloadLabel(s.id, s.order_confirmation_number);
-    } catch (e) {
-      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
-    }
-  };
-
-  // Auftragsbestätigung — derselbe Weg wie das Label: der Handle adressiert den
-  // Request, die Bestätigungsnummer benennt die Datei. Der Fehler teilt sich bewusst
-  // die Anzeigezeile mit dem Label: es ist dieselbe Stelle derselben Zeile, und zwei
-  // gleichzeitig sichtbare Fehlerbanner über einer Tabelle wären Lärm.
-  const handleDownloadOrderConfirmation = async (s) => {
-    setLabelError("");
-    try {
-      await downloadOrderConfirmation(s.id, s.order_confirmation_number);
-    } catch (e) {
-      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message);
-    }
   };
 
   const openCancel = (s) => { setCancelError(""); setNotice(null); setCancelShipment(s); };
@@ -190,11 +169,6 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
   return (
     <>
       <div className="page-body">
-        {labelError && (
-          <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} />{labelError}
-          </div>
-        )}
         {notice && (
           <div className={`alert ${notice.type === "success" ? "alert-success" : "alert-info"} mb-16`} role="status">
             <Icon n={notice.type === "success" ? "check" : "info"} s={16} />{notice.text}
@@ -245,7 +219,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
                         <td className="ce-col-actions">
-                          <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onOrderConfirmation={handleDownloadOrderConfirmation} onCancel={openCancel} />
+                          <ShipmentRowActions s={s} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.id && (
@@ -437,7 +411,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
                   </div>
                   <div className="ce-list-card-actions">
-                    <ShipmentRowActions s={s} onTrack={loadTracking} onLabel={handleDownloadLabel} onOrderConfirmation={handleDownloadOrderConfirmation} onCancel={openCancel} />
+                    <ShipmentRowActions s={s} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                   </div>
                 </li>
               );
@@ -459,6 +433,16 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
         )}
         {loadMoreError && <p className="ce-load-more-error" role="alert">{loadMoreError}</p>}
       </div>
+
+      {/* Erst der Klick montiert den Drawer — und erst der Drawer holt die
+          Dokumentliste. Die Sendungsliste selbst fragt nie danach. */}
+      {documentsShipment && (
+        <ShipmentDocumentsDrawer
+          shipmentId={documentsShipment.id}
+          contextNumber={customerShipmentNumbers(documentsShipment).orderConfirmationNumber || null}
+          onClose={() => setDocumentsShipment(null)}
+        />
+      )}
 
       {cancelShipment && (
         <CancellationRequestDialog

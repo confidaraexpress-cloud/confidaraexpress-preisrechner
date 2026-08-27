@@ -26,6 +26,13 @@ const draftActionsMenu = read("../components/drafts/DraftActionsMenu.jsx");
 const draftEmptyState = read("../components/drafts/DraftEmptyState.jsx");
 const formatters = read("../utils/formatters.js");
 const addressBookView = read("../utils/addressBookView.mjs");
+// Modularisierungs-Audit: addressBookView.mjs ist seither die Fassade; die
+// Funktionskörper wohnen in Fachmodulen. Die beiden Quelltext-Prüfungen dieses
+// Tests wandern MIT ihrem Modul um (addressBadgeList → addressMenuView.mjs,
+// ROLE_BOTH → addressRoles.mjs); die Fassade wird zusätzlich geprüft, damit die
+// Kette Konsument → Fassade → Fachmodul geschlossen bleibt.
+const addressMenuView = read("../utils/addressMenuView.mjs");
+const addressRoles = read("../utils/addressRoles.mjs");
 const addressDesktopRow = read("../components/addressbook/AddressDesktopRow.jsx");
 const addressActionsMenu = read("../components/addressbook/AddressActionsMenu.jsx");
 const addressList = read("../components/addressbook/AddressList.jsx");
@@ -136,7 +143,9 @@ test("10 — AddressBadges rendert über addressBadgeList (höchstens drei Badge
   assert.match(addressDesktopRow, /import \{ addressBadgeList \} from "\.\.\/\.\.\/utils\/addressBookView\.mjs"/);
   assert.match(addressDesktopRow, /addressBadgeList\(address\)\.map/);
   assert.ok(!/address\.isDefaultSender && <span/.test(addressDesktopRow), "die alte Vier-Badge-Logik darf nicht wiederkommen");
-  assert.match(addressBookView, /export function addressBadgeList/);
+  assert.match(addressMenuView, /export function addressBadgeList/);
+  assert.match(addressBookView, /export \{[\s\S]*?\baddressBadgeList\b[\s\S]*?\} from "\.\/addressMenuView\.mjs"/,
+    "die Fassade reicht addressBadgeList aus addressMenuView.mjs weiter");
 });
 
 /* ══════════ 11 — kein outline:none ohne Ersatz in den neuen Kebab-Menüs ═══ */
@@ -276,5 +285,7 @@ test("23 — Business-Nummernkreise, JUMiNGO-Felder und Zahlungsstatuslogik sind
   assert.ok(!/orderConfirmationNumberOf|business_order_number/.test(invoicesListCode),
     "die Kundenrechnungsliste zeigt wieder eine Vorgangsnummer");
   assert.match(customerInvoiceView, /isOverdueInvoice\(inv\)/);
-  assert.match(addressBookView, /export const ROLE_BOTH = "both";/);
+  assert.match(addressRoles, /export const ROLE_BOTH = "both";/);
+  assert.match(addressBookView, /export \{[\s\S]*?\bROLE_BOTH\b[\s\S]*?\} from "\.\/addressRoles\.mjs"/,
+    "die Fassade reicht ROLE_BOTH aus addressRoles.mjs weiter");
 });

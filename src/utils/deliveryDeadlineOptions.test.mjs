@@ -14,7 +14,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { pruefeImTestlauf } from "../../scripts/governance.mjs";
+import { pruefeImTestlauf, schnitt } from "../../scripts/governance.mjs";
 
 import {
   LIEFERFRIST_RASTER, deliveryDeadlineOptions, deliveryTimeOptions,
@@ -163,8 +163,7 @@ test("T7 — die Uhrzeit bleibt reiner Anzeigefilter (kein Preisschlüssel)", ()
       `${seite}: latestDeliveryTime ist kein reiner Filter mehr`);
     // Der Preisschlüssel darf keine der drei Filtergrößen enthalten — sonst
     // löste eine Uhrzeitwahl eine neue Preisberechnung aus.
-    const schluessel = q.slice(q.indexOf("calcKeyRef.current = JSON.stringify({"));
-    const block = schluessel.slice(0, schluessel.indexOf("});"));
+    const block = schnitt(q, "calcKeyRef.current = JSON.stringify({", "});", seite);
     for (const feld of ["latestDeliveryTime", "latestDeliveryDate", "max_price"]) {
       assert.ok(!block.includes(feld), `${seite}: ${feld} steht im Preisschlüssel`);
     }

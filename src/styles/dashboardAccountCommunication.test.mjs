@@ -39,6 +39,12 @@ const PAKET_D_DATEIEN = [
   "components/dashboard/Overview.jsx",
   "components/dashboard/OverviewModules.jsx",
   "components/dashboard/Profile.jsx",
+  // Die drei ausgelagerten Einstellungskarten tragen frühere Profile-Abschnitte —
+  // die Paket-D-Garantien (Emojis, Iconbutton-Beschriftung) gelten dort weiter.
+  "components/dashboard/DeliveryNoteCard.jsx",
+  "components/dashboard/BillingModeCard.jsx",
+  "components/dashboard/CompanyLogoCard.jsx",
+  "components/dashboard/ProfileCardHead.jsx",
   "components/support/SupportRequestsView.jsx",
   "components/support/SupportThread.jsx",
   "components/support/SupportRequestDialog.jsx",

@@ -6,6 +6,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+// Fail-closed Quelltextschnitt: ein verschobener Anker macht den Scan LAUT,
+// statt still einen leeren/zu weiten Ausschnitt zu prüfen.
+import { schnitt } from "../../scripts/governance.mjs";
 
 import {
   BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE_TEXT,
@@ -21,6 +24,9 @@ const src = (p) => fs.readFileSync(path.join(here, "..", p), "utf8");
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
 
 const profileSrc = strip(src("components/dashboard/Profile.jsx"));
+// Die Abrechnungskarte ist seit der Modularisierung eine eigene Abschnitts-
+// komponente — die Karten-Zusicherungen (D1–D8) messen an ihrer Datei.
+const bmKarteSrc = strip(src("components/dashboard/BillingModeCard.jsx"));
 const bookingSrc = strip(src("pages/BookingPage.jsx"));
 const adminSecSrc = strip(src("components/admin/BillingModeSection.jsx"));
 const adminPageSrc = strip(src("pages/admin/AdminUserDetailPage.jsx"));
@@ -59,7 +65,7 @@ test("(A2) der Patch trägt GENAU einen Schlüssel und nie einen ungültigen Wer
 
 test("(A3) es gibt genau EINE Werteliste im Frontend", () => {
   assert.deepEqual(BILLING_MODES, ["single", "consolidated_7d"]);
-  for (const [name, s] of [["Profile", profileSrc], ["Admin-Sektion", adminSecSrc],
+  for (const [name, s] of [["Profile", profileSrc], ["Abrechnungs-Karte", bmKarteSrc], ["Admin-Sektion", adminSecSrc],
                            ["Admin-API", adminApiSrc], ["Admin-Seite", adminPageSrc]]) {
     assert.ok(!/\["single",\s*"consolidated_7d"\]/.test(s), `${name} darf keine zweite Werteliste führen`);
   }
@@ -146,30 +152,32 @@ test("(C4) bei Sammelabrechnung steht kein Rechnungs-Zustellhinweis", () => {
 console.log("\n── D. Profilkarte ──");
 
 test("(D1) gespeichert wird über denselben Profil-PATCH wie alle anderen Felder", () => {
-  assert.ok(/apiFetch\(`\/kunde\/profil`, \{\s*method: "PATCH",\s*auth: true,\s*body: JSON\.stringify\(buildBillingModePatch\(mode\)\)/.test(profileSrc),
+  assert.ok(/apiFetch\(`\/kunde\/profil`, \{\s*method: "PATCH",\s*auth: true,\s*body: JSON\.stringify\(buildBillingModePatch\(mode\)\)/.test(bmKarteSrc),
     "keine zweite Speicherstrecke");
-  assert.ok(!/setAdminUserBillingMode|billing-mode/.test(profileSrc),
-    "das Kundenportal darf den Adminendpunkt nicht aufrufen");
+  for (const s of [bmKarteSrc, profileSrc]) {
+    assert.ok(!/setAdminUserBillingMode|billing-mode/.test(s),
+      "das Kundenportal darf den Adminendpunkt nicht aufrufen");
+  }
 });
 
 test("(D2) bei einem Fehler bleibt keine ungespeicherte Auswahl stehen", () => {
-  const slice = profileSrc.slice(profileSrc.indexOf("const saveBillingMode"), profileSrc.indexOf("const renderBillingModeCard"));
+  const slice = schnitt(bmKarteSrc, "const saveBillingMode", "const period = periodData", "(D2) BillingModeCard");
   assert.equal((slice.match(/setBmMode\(serverBmMode\)/g) || []).length, 2,
     "Rückfall auf die Serverwahrheit im Fehler- UND im Ausnahmezweig");
 });
 
 test("(D3) die Serverwahrheit gewinnt nach jedem Laden", () => {
-  assert.ok(/const serverBmMode = billingMode\(user\);/.test(profileSrc));
-  assert.ok(/useEffect\(\(\) => \{ setBmMode\(serverBmMode\); \}, \[serverBmMode\]\);/.test(profileSrc));
+  assert.ok(/const serverBmMode = billingMode\(user\);/.test(bmKarteSrc));
+  assert.ok(/useEffect\(\(\) => \{ setBmMode\(serverBmMode\); \}, \[serverBmMode\]\);/.test(bmKarteSrc));
 });
 
 test("(D4) die Zeitraumvorschau wird NUR bei Sammelabrechnung geholt", () => {
-  assert.ok(/if \(serverBmMode !== "consolidated_7d"\) \{ setPeriodData\(null\); setPeriodError\(""\); return undefined; \}/.test(profileSrc),
+  assert.ok(/if \(serverBmMode !== "consolidated_7d"\) \{ setPeriodData\(null\); setPeriodError\(""\); return undefined; \}/.test(bmKarteSrc),
     "ein Einzelrechnungskonto darf die Anfrage gar nicht erst stellen");
 });
 
 test("(D5) ein Ausfall der Vorschau bricht die Karte nicht", () => {
-  const slice = profileSrc.slice(profileSrc.indexOf("const [periodData"), profileSrc.indexOf("const logoMeta"));
+  const slice = schnitt(bmKarteSrc, "const [periodData", "const saveBillingMode", "(D5) BillingModeCard");
   assert.ok(/setPeriodError\(BILLING_MODE_TEXT\.periodLoadError\)/.test(slice));
   assert.ok(/catch \{/.test(slice), "auch ein geworfener Fehler muss abgefangen werden");
   // Und der laufende Abruf darf nach dem Unmount nichts mehr setzen.
@@ -180,19 +188,19 @@ test("(D6) die Vorschau weist sich als Vorschau aus", () => {
   assert.ok(/Vorschau auf den laufenden Zeitraum/.test(BILLING_MODE_TEXT.periodPreviewNote));
   assert.ok(/^Voraussichtlich/.test(BILLING_MODE_TEXT.periodAmountLabel),
     "ein Betrag ohne Vorbehalt sähe aus wie eine feststehende Rechnungssumme");
-  assert.ok(/BILLING_MODE_TEXT\.periodPreviewNote/.test(profileSrc));
+  assert.ok(/BILLING_MODE_TEXT\.periodPreviewNote/.test(bmKarteSrc));
 });
 
 test("(D7) die Karte sagt, was die Umstellung NICHT tut", () => {
   assert.ok(/Bereits gebuchte Sendungen behalten die Abrechnung/.test(BILLING_MODE_TEXT.changeNote));
-  assert.ok(/BILLING_MODE_TEXT\.changeNote/.test(profileSrc));
+  assert.ok(/BILLING_MODE_TEXT\.changeNote/.test(bmKarteSrc));
   assert.ok(/BILLING_MODE_TEXT\.changeNote/.test(adminSecSrc), "im Adminportal ebenso");
 });
 
 test("(D8) dieselben Primitives wie die Lieferscheinauswahl — kein zweites Bauteil", () => {
-  assert.ok(/className="dn-mode-fieldset"/.test(profileSrc));
-  assert.ok(/name="billingMode"/.test(profileSrc));
-  assert.ok(!/className="bm-mode-/.test(profileSrc), "keine eigene Auswahlklasse");
+  assert.ok(/className="dn-mode-fieldset"/.test(bmKarteSrc));
+  assert.ok(/name="billingMode"/.test(bmKarteSrc));
+  assert.ok(!/className="bm-mode-/.test(bmKarteSrc), "keine eigene Auswahlklasse");
 });
 
 // ── E. Kundensprache ─────────────────────────────────────────────────────────
@@ -278,7 +286,7 @@ test("(G2) der Vorschau-Endpunkt ist read-only und ohne Konto-ID", () => {
 });
 
 test("(G3) nichts wird persistiert", () => {
-  for (const [name, s] of [["view", viewSrc], ["Profile", profileSrc], ["Admin-Sektion", adminSecSrc]]) {
+  for (const [name, s] of [["view", viewSrc], ["Profile", profileSrc], ["Abrechnungs-Karte", bmKarteSrc], ["Admin-Sektion", adminSecSrc]]) {
     assert.ok(!/localStorage|sessionStorage/.test(s), `${name} darf die Abrechnungsart nicht speichern`);
   }
 });

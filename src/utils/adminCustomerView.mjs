@@ -349,3 +349,52 @@ export const BLOCK_DIALOG = Object.freeze({
   cancel: "Abbrechen",
   confirm: "Kunde blockieren",
 });
+
+// ── Kundendetail: Antwort-Entpacken und Fehlertexte ─────────────────────────
+
+export const ERROR_MESSAGES = {
+  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
+  500: "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+};
+export const GENERIC_ERROR = "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
+
+// Ladefehler der Aufschlagssektion (GET). 404 wird eigens benannt, weil dort der
+// Kunde selbst gemeint ist; alles andere bleibt bewusst unspezifisch (keine
+// technischen Details).
+export const MARKUP_LOAD_ERRORS = {
+  404: "Der Kunde wurde nicht gefunden oder ist nicht mehr verfügbar.",
+  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
+  default: "Der Kundenaufschlag konnte nicht geladen werden.",
+};
+
+// Fehlertexte für die Anonymisierung (verständlich, kein roher Backend-Body).
+export const ANON_ERRORS = {
+  400: "Bestätigung ungültig oder Aktion nicht erlaubt.",
+  404: "Kunde wurde nicht gefunden.",
+  409: "Anonymisierung konnte aufgrund eines Konflikts nicht durchgeführt werden.",
+  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
+  500: "Account konnte nicht anonymisiert werden.",
+  default: "Account konnte nicht anonymisiert werden.",
+};
+
+// Fehlertexte für die harte Löschung. 409 ist kein Fehlerfall, sondern der
+// erwartete Delete-Guard (abhängige Sendungs-/Rechnungsdaten) → Anonymisierung.
+export const DELETE_ERRORS = {
+  404: "Kunde wurde nicht gefunden.",
+  409: "Kunde kann aufgrund vorhandener Sendungs-/Rechnungsdaten nicht hart gelöscht werden. Bitte Anonymisierung verwenden.",
+  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
+  default: "Kunde konnte nicht gelöscht werden.",
+};
+
+// Backend-Vertrag: { user: {...}, summary: {...} }. Defensiv entpacken.
+export function selectUser(d) {
+  if (d && typeof d === "object" && !Array.isArray(d)) {
+    if (d.user && typeof d.user === "object") return d.user;
+    if (d.data && typeof d.data === "object" && !Array.isArray(d.data)) return d.data;
+    return d;
+  }
+  return null;
+}
+export function selectSummary(d) {
+  return d && typeof d.summary === "object" && d.summary ? d.summary : {};
+}

@@ -24,6 +24,10 @@ import {
   DELIVERY_NOTE_MODES, DELIVERY_NOTE_TEXT, deliveryNoteMode, buildDeliveryNotePatch,
 } from "../../utils/profileView.mjs";
 import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+// Nur der Hilfetext des EORI-Felds. Formatprüfung und Normalisierung laufen bereits in
+// profileView.mjs (companyBaseline/buildCompanyPatch/validateCompanyForm) — hier steht
+// keine zweite Regel.
+import { EORI_HINT, eoriFieldError } from "../../utils/eori.mjs";
 import { accountInitials, accountDisplayName } from "../../utils/accountIdentity.mjs";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
@@ -38,7 +42,7 @@ import {
 } from "../../utils/companyLogoView.mjs";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
-//   Unternehmensdaten → { company_name, vat_id, street, zip, city, country }
+//   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
 //   Ansprechpartner   → { name }
 // Response: { user: { ...aktualisiertes User-Objekt } }
 //
@@ -399,6 +403,29 @@ export function Profile({ user, utility }) {
                 onChange={e => updCompany("vat_id", e.target.value)} placeholder="DE123456789" />
             </div>
             <div className="field">
+              {/* Optional — bewusst OHNE Pflichtsternchen: die EORI ist ein Stammdatum,
+                  kein Registrierungserfordernis. Verlangt wird sie ausschließlich beim
+                  Buchen einer zollpflichtigen Sendung, und dort sagt es die Buchungsseite.
+                  Der Hilfetext nennt den Zweck und behauptet NICHT, die Eingabe sei damit
+                  behördlich geprüft — geprüft wird nur das Format. */}
+              <label className="field-label" htmlFor="pf-eori">EORI-Nummer</label>
+              <input id="pf-eori" className="field-input" value={companyForm.eori_number}
+                onChange={e => updCompany("eori_number", e.target.value)}
+                placeholder="DE123456789012345" autoComplete="off"
+                aria-describedby="pf-eori-hint" />
+              <span className="field-hint" id="pf-eori-hint">{EORI_HINT}</span>
+              {/* Der Formatfehler kommt hier AUCH aus der Clientprüfung, nicht nur aus einer
+                  Backendantwort: ein ungültiges Format sperrt den Speichern-Knopf, und ein
+                  gesperrter Knopf ohne Begründung ist genau das Muster, das dieses Projekt
+                  an anderer Stelle als Fehler festgehalten hat. Gezeigt wird er erst, wenn
+                  tatsächlich etwas eingetippt wurde — ein leeres Feld ist gültig. Ein
+                  Backendfehler am selben Feld hat Vorrang (er ist die Serverwahrheit). */}
+              {fieldErr("eori_number")
+                || (eoriFieldError(companyForm.eori_number)
+                  ? <span className="profile-field-error" role="alert">{eoriFieldError(companyForm.eori_number)}</span>
+                  : null)}
+            </div>
+            <div className="field">
               <label className="field-label" htmlFor="pf-street">Straße & Hausnummer</label>
               <input id="pf-street" className="field-input" value={companyForm.street}
                 onChange={e => updCompany("street", e.target.value)} />
@@ -429,6 +456,7 @@ export function Profile({ user, utility }) {
             {renderRows([
               { k: "Firmenname", v: user?.company_name || "Nicht angegeben", empty: !user?.company_name },
               { k: "USt-ID", v: user?.vat_id || "Noch nicht hinterlegt", empty: !user?.vat_id },
+              { k: "EORI-Nummer", v: user?.eori_number || "Noch nicht hinterlegt", empty: !user?.eori_number },
               { k: "Adresse", v: addressLine || "Keine Adresse hinterlegt", empty: !addressLine },
               { k: "Land", v: countryName || "Nicht angegeben", empty: !countryName },
             ])}

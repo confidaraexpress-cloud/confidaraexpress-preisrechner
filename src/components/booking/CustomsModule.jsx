@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { countries } from "../../utils/countries";
 import { CustomsInvoiceModeSection } from "./CustomsInvoiceModeSection";
+import { CustomsEoriSection } from "./CustomsEoriSection";
 
 // Exportgründe: Anzeige deutsch, gesendet wird der englische Enum-Wert.
 const EXPORT_REASONS = [
@@ -40,6 +41,11 @@ export function CustomsModule({
   invoiceDate, onInvoiceDateChange, invoiceDateError,
   invoiceRemark, onInvoiceRemarkChange,
   ci,
+  // Kontozustand für die EORI-Zeile. `eoriRequired` wird auf true gesetzt, sobald das
+  // Backend die Buchung mit EORI_REQUIRED abgelehnt hat — dann erscheint dieselbe
+  // Inline-Fläche, die auch ein leeres Kontofeld auslöst. Der Vorgang bleibt dabei
+  // vollständig erhalten; der Kunde kann unmittelbar erneut buchen.
+  user, eoriRequired, onEoriSaved,
 }) {
   const totalValue = items.reduce((s, it) => s + asNum(it.value), 0);
   const totalWeight = items.reduce((s, it) => s + asNum(it.netWeight), 0);
@@ -54,6 +60,8 @@ export function CustomsModule({
           Für Sendungen außerhalb der EU benötigen wir Angaben zum Wareninhalt.
           Diese Angaben werden für die Zollabfertigung benötigt.
         </p>
+
+        <CustomsEoriSection user={user} required={eoriRequired} onSaved={onEoriSaved} />
 
         <div className="field">
           <label className="field-label" htmlFor="customs-reason">Exportgrund</label>

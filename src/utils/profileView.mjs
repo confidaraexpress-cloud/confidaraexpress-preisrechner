@@ -8,8 +8,8 @@
 // autoritativ und validiert erneut.
 //
 // WICHTIG (Backend-Abgleich, siehe routes/kunde.js PROFILE_EDITABLE_FIELDS):
-// Editierbar sind ausschließlich  name, company_name, vat_id, street, zip, city,
-// country. E-Mail, Passwort, Status, Rolle, Zahlungsziel, Kreditwerte, id sind
+// Editierbar sind ausschließlich  name, company_name, vat_id, eori_number, street,
+// zip, city, country. E-Mail, Passwort, Status, Rolle, Zahlungsziel, Kreditwerte, id sind
 // NICHT editierbar und tauchen in keinem PATCH-Body auf. Ein „phone"/Telefon-Feld
 // existiert im Nutzer-Datenmodell NICHT (keine users.phone-Spalte, nicht in der
 // Whitelist, nicht in /kundenbereich) — die Ansprechpartner-Karte führt daher
@@ -20,9 +20,12 @@ import { B2B_REQUIRED_FIELDS, b2bFieldError } from "./registrationValidation.mjs
 // Eine Länderquelle für das ganze Portal (calculatorValidation.mjs importiert sie ebenso).
 import { normalizeCountryCode } from "./countries.js";
 import { paymentTermLabel } from "./paymentTerm.mjs";
+// EORI-Format und -Normalisierung — EINE Regel für Profil und Zollhinweis, gespiegelt
+// aus lib/eori.js des Backends. Sie prüft das FORMAT, nie die behördliche Gültigkeit.
+import { eoriFieldError, normalizeEori } from "./eori.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
-export const COMPANY_FIELDS = ["company_name", "vat_id", "street", "zip", "city", "country"];
+export const COMPANY_FIELDS = ["company_name", "vat_id", "eori_number", "street", "zip", "city", "country"];
 export const CONTACT_FIELDS = ["name"];
 
 // Backend-Längengrenzen (routes/kunde.js PROFILE_EDITABLE_FIELDS). Frontend prüft
@@ -46,6 +49,10 @@ export function companyBaseline(user) {
   return {
     company_name: str(user?.company_name),
     vat_id: str(user?.vat_id),
+    // Bereits in kanonischer Form aus dem Backend; die Normalisierung hier macht die
+    // Baseline unabhängig davon, ob ein Altwert noch anders geschrieben gespeichert ist —
+    // sonst gälte das Formular sofort nach dem Öffnen als geändert.
+    eori_number: normalizeEori(user?.eori_number),
     street: str(user?.street),
     zip: str(user?.zip),
     city: str(user?.city),
@@ -73,6 +80,9 @@ export function buildCompanyPatch(form) {
   return {
     company_name: trimmed(form?.company_name),
     vat_id: trimmed(form?.vat_id),
+    // Getrimmt, groß, ohne Trenner — dieselbe Form, die das Backend speichert. Damit ist
+    // der Dirty-Vergleich ehrlich: „DE 123" und „de123" sind nicht zwei Änderungen.
+    eori_number: normalizeEori(form?.eori_number),
     street: trimmed(form?.street),
     zip: trimmed(form?.zip),
     city: trimmed(form?.city),
@@ -147,6 +157,10 @@ export function validateCompanyForm(form) {
   if (country !== "" && !/^[A-Z]{2}$/i.test(country)) {
     errors.country = "Bitte ein gültiges Land wählen.";
   }
+  // Die EORI hat KEINEN Eintrag in FIELD_MAXLEN: ihre Länge ist Teil der Formatregel und
+  // steht zusammen mit ihr in eori.mjs. Eine zweite Zahl hier wäre eine zweite Wahrheit.
+  const eoriFehler = eoriFieldError(form?.eori_number);
+  if (eoriFehler) errors.eori_number = eoriFehler;
   return errors;
 }
 

@@ -13,6 +13,10 @@ import { money } from "../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../utils/carrierMap";
 import { downloadLabel } from "../utils/downloadLabel";
 import { useAuth } from "../context/AuthContext";
+// Nur die Formatprüfung des Kontofelds — die Buchungsentscheidung selbst trifft
+// ausschließlich das Backend (422 EORI_REQUIRED). Hier wird nur entschieden, ob die
+// Erfassungsfläche im Zollabschnitt gezeigt wird.
+import { hasUsableEori } from "../utils/eori.mjs";
 import { getBookingModules } from "../utils/bookingModules";
 import { pickupWindowBlocksBooking, formatDuration } from "../utils/pickupWindowClient";
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
@@ -75,6 +79,10 @@ const COMMERCIAL_INVOICE_BOOK_ERRORS = {
 
 export default function BookingPage() {
   const { user } = useAuth();
+  // Setzt das Backend, wenn eine Zollbuchung ohne hinterlegte EORI abgelehnt wurde
+  // (422 EORI_REQUIRED). Der Zollabschnitt zeigt dann dieselbe Inline-Fläche wie bei
+  // einem leeren Kontofeld — der Versandvorgang bleibt dabei vollständig erhalten.
+  const [eoriRequired, setEoriRequired] = useState(false);
   const navigate = useNavigate();
   const { state: navState } = useLocation();
 
@@ -1013,6 +1021,18 @@ export default function BookingPage() {
       // Serverseitiger Zollrechnungs-Guard (stabile Codes, statusunabhängig). Zurück
       // zum Customs-/Übersichtsschritt, Felder markieren, KEIN Auto-Retry/-Upload/
       // -Delete/-Book. Bei DOCUMENT_REQUIRED/MODE_CONFLICT genau EIN kontrollierter GET.
+      // Zoll-EORI fehlt: zurück an den Zollabschnitt, wo die Nummer direkt erfasst und
+      // über die bestehende Profil-API gespeichert werden kann. Bewusst KEIN Sprung in
+      // die Kontoeinstellungen — der Vorgang lebt nur im Arbeitsspeicher und wäre weg.
+      // Ebenso bewusst NICHT im Adressen- oder Preiszweig: deren Handlungsanweisung
+      // („Preise neu berechnen") repariert hier nichts.
+      if (d?.code === "EORI_REQUIRED") {
+        setLoading(false);
+        setEoriRequired(true);
+        setStep(1);
+        setError(typeof d.error === "string" && d.error.trim() ? d.error.trim() : "");
+        return;
+      }
       if (d?.code && COMMERCIAL_INVOICE_BOOK_ERRORS[d.code]) {
         setLoading(false);
         setStep(1);
@@ -1487,6 +1507,9 @@ export default function BookingPage() {
                   onRemove: ci.remove,
                   onRetryStatus: ci.refreshStatus,
                 }}
+                user={user}
+                eoriRequired={eoriRequired || !hasUsableEori(user?.eori_number)}
+                onEoriSaved={() => { setEoriRequired(false); setError(""); }}
               />
             )}
 

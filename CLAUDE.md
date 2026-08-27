@@ -753,6 +753,63 @@ um (`flex-wrap`), es wird nichts gestaucht und nichts abgeschnitten.
   Baseline unangetastet, Snapshot ohne Adressbuchbezug, kein zweiter Picker) und
   `src/utils/orderCreateUx.test.mjs` (Regression des Auftragsdialogs).
 
+## EORI-Nummer — vor jeder Änderung an Kontoeinstellungen oder Zollbuchung lesen
+
+Zollpflichtige Sendungen brauchen die EORI-Nummer des Unternehmens. Sie ist ein
+**Kontostammdatum**, gebraucht wird sie aber erst beim Buchen — deshalb steht sie an
+zwei Stellen und ist trotzdem nur EIN Wert.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Format + Normalisierung | `utils/eori.mjs` | spiegelt `lib/eori.js` des Backends |
+| Kontoeinstellungen | `utils/profileView.mjs` · `components/dashboard/Profile.jsx` | Feld der Unternehmenskarte |
+| Zollbuchung | `components/booking/CustomsEoriSection.jsx` | Inline-Erfassung im Zollabschnitt |
+| Fehlerpfad | `pages/BookingPage.jsx` | `EORI_REQUIRED` aus `/book` |
+
+**Verbindlich:**
+
+- **Das Frontend prüft das FORMAT, nie die Gültigkeit.** Es gibt keinen Registerabruf,
+  keine Prüfziffer, keine Länderdatenbank. Der Fehlertext lautet deshalb „Format der
+  EORI-Nummer ist ungültig" und **nicht** „EORI ist ungültig" — das Zweite wäre eine
+  Behauptung über eine Prüfung, die nirgends stattfindet. Kein hartes DE-Präfix: eine
+  EORI beginnt mit dem Ländercode des VERGEBENDEN Staates.
+- **Die Zollpflicht entscheidet ausschließlich der Server.** Im Client steht keine
+  Länderliste und keine zweite Zollregel; ein Test verbietet `EU_COUNTRIES`,
+  `isCustomsRequired` und `country !== "DE"` in `BookingPage.jsx`. Die Erfassungsfläche
+  hängt am Backendbefund oder am leeren Kontofeld — nie an einer eigenen Ableitung.
+- **Die Serverwahrheit gewinnt über den lokal bekannten Kontowert.** Lehnt `/book` mit
+  `422 EORI_REQUIRED` ab, während das im Browser gehaltene Konto noch eine Nummer trägt
+  (zwischenzeitlich entfernt, oder die Serverregel ist strenger), erscheint das
+  **Eingabefeld** — nicht die Bestätigungszeile, die der Ablehnung widerspräche. Die
+  Reihenfolge in `CustomsEoriSection` ist deshalb tragend: erst `required`, dann der
+  vorhandene Wert.
+- **Nachgetragen wird INLINE, nie über eine Navigation.** Der Versandvorgang lebt nur im
+  Arbeitsspeicher; ein Sprung in die Kontoeinstellungen vernichtet Formular, Angebote und
+  Auswahl. Gespeichert wird über den **vorhandenen** `PATCH /kunde/profil` mit **genau
+  einem** Schlüssel im Body — kein anderes Profilfeld wird überschrieben, keine zweite
+  Speicherstrecke, kein `localStorage`. Danach wird der Kontozustand aus der Serverantwort
+  übernommen (`updateUser`), und die Buchung ist unmittelbar erneut auslösbar.
+- **Es entsteht keine zweite EORI an der Sendung.** Gespeichert wird das KONTOfeld; der
+  Buchungspayload liest die Nummer unverändert serverseitig. Die Sektion schreibt keinen
+  Sendungs- oder Buchungszustand.
+- **`EORI_REQUIRED` gehört NICHT in den Preis-/Adressenzweig.** Dessen Handlungsanweisung
+  („Preise neu berechnen") repariert hier nichts. Der Zweig steht bewusst VOR dem
+  Handelsrechnungszweig, damit er dort nicht hängenbleibt.
+- **Das Profilfeld ist optional — kein Pflichtsternchen**, mit sachlichem Hilfetext („Für
+  zollpflichtige Sendungen erforderlich."). Die USt-ID bleibt unverändert daneben stehen.
+  Ein Formatfehler erscheint AM FELD: das ist bewusst etwas mehr als bei den Nachbarfeldern
+  (dort sperrt ein Clientfehler nur den Knopf) — ein gesperrter Knopf ohne Begründung ist
+  genau das Muster, das dieses Dokument an anderer Stelle als offenen Punkt festhält. Ein
+  Backendfehler am selben Feld hat Vorrang.
+- **Normalisiert wird wie serverseitig** (getrimmt, groß, ohne Leerzeichen und
+  Bindestriche) — in `companyBaseline` UND `buildCompanyPatch`. Sonst gälte „DE 123-456"
+  gegenüber gespeichertem „DE123456" als Änderung, und die Karte wäre nach dem Öffnen
+  sofort „geändert". **Keine zweite Längenzahl** in `FIELD_MAXLEN`: die Länge gehört zur
+  Formatregel in `eori.mjs`.
+- Governance: `src/utils/eoriUx.test.mjs` (15 Tests) und `tests/e2e/eoriCustoms.test.mjs`
+  (5 Browser-Smokes gegen einen echten Dev-Server mit gemocktem Backend — **niemals eine
+  echte Bestellung**).
+
 ## Adressvalidierung im Formular — vor jeder Änderung daran lesen
 
 Jedes Adressformular (Neue Sendung, Adressbuch, Auftragsdialog) prüft Land, PLZ, Ort und

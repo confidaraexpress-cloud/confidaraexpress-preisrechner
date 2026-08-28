@@ -100,12 +100,15 @@ test("9 — unbekannter Modus fällt sicher auf den neutralen PENDING-Hinweis zu
 test("10 — BookingPage verdrahtet Trennung, Deep-Link und Modus-Hinweis", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const src = fs.readFileSync(path.join(here, "../pages/BookingPage.jsx"), "utf8");
+  // Der Zustellmodus-Poll lebt seit der Modularisierung im eigenen Hook.
+  const hookSrc = fs.readFileSync(path.join(here, "../hooks/useInvoiceDeliveryMode.js"), "utf8");
   assert.ok(src.includes('from "../utils/bookingSuccessView.mjs"'), "importiert die reine Erfolgslogik");
   assert.ok(src.includes("BOOKING_CONFIRMATION_LINE") && src.includes("INVOICE_AUTOCREATE_LINE"), "zeigt beide getrennten Zeilen");
   assert.ok(src.includes("invoiceDeliveryHint(invoiceDeliveryMode)"), "rendert den modus-spezifischen Hinweis");
   assert.ok(src.includes("navigate(INVOICES_DASHBOARD_TARGET)"), "Zu-meinen-Rechnungen oeffnet den Rechnungsbereich");
   assert.ok(/Zu meinen Rechnungen/.test(src) && /Zu meinen Sendungen/.test(src), "beide Aktionen vorhanden");
-  assert.ok(src.includes("resolveInvoiceDeliveryMode(findInvoiceByNumber"), "Modus aus Serverwahrheit der erzeugten Rechnung");
+  assert.ok(hookSrc.includes("resolveInvoiceDeliveryMode(findInvoiceByNumber"), "Modus aus Serverwahrheit der erzeugten Rechnung");
   // keine ambige Alt-Formulierung mehr, die Bestätigung und Rechnung vermischt
-  assert.ok(!src.includes("Bestätigung wurde an"), "alte, verwechselbare Formulierung entfernt");
+  assert.ok(!src.includes("Bestätigung wurde an") && !hookSrc.includes("Bestätigung wurde an"),
+    "alte, verwechselbare Formulierung entfernt");
 });

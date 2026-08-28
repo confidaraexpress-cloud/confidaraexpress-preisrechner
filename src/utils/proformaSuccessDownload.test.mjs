@@ -26,6 +26,8 @@ import {
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const bookingPage  = lies("../pages/BookingPage.jsx");
+// Der Metadaten-Poll lebt seit der Modularisierung im eigenen Hook.
+const proformaHook = lies("../hooks/useProformaDocument.js");
 const viewModul    = lies("./proformaDocumentView.mjs");
 const downloadMod  = lies("./downloadProforma.js");
 // Die MECHANIK des Downloads (Abruf, Content-Type-Prüfung, Blob, Object-URL,
@@ -44,9 +46,9 @@ function schnitt(quelle, von, bis) {
   assert.ok(a >= 0 && b > a, `Ankertext nicht gefunden: ${von.slice(0, 40)}`);
   return quelle.slice(a, b);
 }
-const effekt = schnitt(bookingPage,
+const effekt = schnitt(proformaHook,
   "// ── Proforma-Rechnung des Erfolgsscreens auflösen",
-  "// ── F3: Preisdrift OHNE Versicherung");
+  "}, [step, booking]);");
 const oberflaeche = schnitt(bookingPage,
   "{/* Proforma-Rechnung — das Zollbegleitdokument",
   "{/* Ruhiger Hinweis");
@@ -80,6 +82,7 @@ test("2 — der Downloadpfad wird nie im Frontend gebaut", () => {
   const pfadLiteral = /\/proforma(?![A-Za-z])/;
   for (const [name, quelle] of [
     ["BookingPage.jsx", bookingPage],
+    ["useProformaDocument.js", proformaHook],
     ["proformaDocumentView.mjs", viewModul],
     ["downloadProforma.js", downloadMod],
     ["downloadDocument.js", genericMod],
@@ -201,14 +204,19 @@ test("10 — die bestehende Erfolgsdarstellung ist unangetastet", () => {
                         "downloadDeliveryNote(booking.ceShipmentId"]) {
     assert.ok(bookingPage.includes(helfer), `unverändert: ${helfer}`);
   }
-  // Genau EIN Aufruf der Dokumentliste im ganzen Frontend — kein zweiter Abrufweg.
-  assert.equal(bookingPage.split("getShipmentDocuments(").length - 1, 1,
+  // Genau EIN Aufruf der Dokumentliste auf dem Erfolgsbildschirm-Weg — kein zweiter
+  // Abrufweg. Seit der Modularisierung liegt er im Hook; die Seite selbst ruft die
+  // API nicht mehr direkt (beides wird gemessen, damit kein zweiter Aufrufer entsteht).
+  assert.equal(proformaHook.split("getShipmentDocuments(").length - 1, 1,
     "die Dokumentliste wird an genau einer Stelle abgefragt");
+  assert.equal(bookingPage.split("getShipmentDocuments(").length - 1, 0,
+    "die Buchungsseite selbst fragt die Dokumentliste nicht mehr direkt ab");
 });
 
 test("11 — keine P6-Funktion vorweggenommen", () => {
   for (const spaeter of ["DocumentsDrawer", "documentsDrawer", "ce-documents-drawer"]) {
     assert.ok(!bookingPage.includes(spaeter), `${spaeter} gehört zu P6`);
+    assert.ok(!proformaHook.includes(spaeter), `${spaeter} gehört zu P6 (Hook)`);
   }
   // Die Sendungsliste bleibt unberührt: sie fragt die Dokumentliste nicht ab.
   assert.ok(!lies("../components/dashboard/ShipmentsList.jsx").includes("getShipmentDocuments"),

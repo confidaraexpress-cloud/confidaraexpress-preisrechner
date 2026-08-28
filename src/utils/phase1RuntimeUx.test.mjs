@@ -153,5 +153,7 @@ test("D4 — beide Listen bieten das Nachladen als bewusste Aktion an (kein Scro
 });
 
 test("D5 — der Erfolgsbildschirm-Poll der Buchung lädt eine kleine Seite (limit=20)", () => {
-  assert.match(bookingSrc, /apiFetch\(`\/kunde\/invoices\?limit=20`, \{ auth: true \}\)/);
+  // Der Poll lebt seit der Modularisierung in hooks/useInvoiceDeliveryMode.js.
+  const pollSrc = src("../hooks/useInvoiceDeliveryMode.js");
+  assert.match(pollSrc, /apiFetch\(`\/kunde\/invoices\?limit=20`, \{ auth: true \}\)/);
 });

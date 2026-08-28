@@ -72,7 +72,8 @@ test("T6 — die Grenze ist eine benannte Konstante, keine verstreute Magic Numb
   const karte = lies(OFFER_CARD);
   assert.ok(!/\b900\b/.test(karte), "die Schwelle darf nicht in der Karte stehen");
   for (const seite of ["src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx",
-                       "src/components/offers/OffersList.jsx"]) {
+                       "src/components/offers/OffersList.jsx",
+                       "src/components/offers/ShipmentFilterBar.jsx"]) {
     assert.ok(!/FRUEHZUSTELLUNG_GRENZE_MINUTEN\s*=/.test(lies(seite)), `${seite}: zweite Definition`);
   }
   // Sie ist ausdrücklich eine Darstellungsheuristik — der Kommentar sagt das.
@@ -154,6 +155,7 @@ test("O4 — an der echten Antwort entstehen genau die vorkommenden acht Uhrzeit
 test("O5 — keine feste Uhrzeitliste im Produktivcode", () => {
   for (const datei of ["src/components/offers/DeliveryTimeSelect.jsx",
                        "src/components/offers/OffersList.jsx",
+                       "src/components/offers/ShipmentFilterBar.jsx",
                        "src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
     const q = lies(datei);
     // Zeitliterale wie "14:00" dürften nur aus den Daten kommen.
@@ -262,9 +264,12 @@ test("U5 — das Formularfeld fasst Datum und Uhrzeit kompakt zusammen", () => {
   assert.equal(latestDeliveryFieldValue("", ""), "Beliebig");
   // Ohne Datum ist auch eine gesetzte Uhrzeit bedeutungslos.
   assert.equal(latestDeliveryFieldValue("", "10:30"), "Beliebig");
-  // Beide Seiten benutzen genau diesen einen Formatierer.
+  // Beide Seiten benutzen genau diesen einen Formatierer — seit der Modularisierung
+  // über die EINE gemeinsame Filterleiste (das frühere 222-Zeilen-Duplikat je Seite).
+  assert.match(lies("src/components/offers/ShipmentFilterBar.jsx"), /latestDeliveryFieldValue\(/,
+    "die gemeinsame Filterleiste formatiert das Feld");
   for (const seite of ["src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
-    assert.match(lies(seite), /latestDeliveryFieldValue\(/, seite);
+    assert.match(lies(seite), /<ShipmentFilterBar/, `${seite}: nutzt die gemeinsame Filterleiste nicht`);
   }
 });
 
@@ -291,9 +296,15 @@ test("U7 — ein Auswahlfeld auf dem vorhandenen Primitive, keine Pillenreihe me
   assert.ok(!existsSync(path.join(WURZEL, "src/components/offers/DeliveryTimeChips.jsx")),
     "DeliveryTimeChips.jsx muss gelöscht sein — keine tote Komponente");
   for (const datei of ["src/components/offers/OffersList.jsx",
-                       "src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
+                       "src/components/offers/ShipmentFilterBar.jsx"]) {
     assert.ok(!/DeliveryTimeChips/.test(lies(datei)), `${datei}: Restreferenz`);
     assert.match(lies(datei), /DeliveryTimeSelect/, `${datei}: nutzt das neue Feld nicht`);
+  }
+  // Die Seiten erreichen das Feld über die gemeinsame Filterleiste — direkt
+  // referenzieren sie es nicht mehr (und die abgelöste Pillenreihe nirgends).
+  for (const datei of ["src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
+    assert.ok(!/DeliveryTimeChips/.test(lies(datei)), `${datei}: Restreferenz`);
+    assert.match(lies(datei), /<ShipmentFilterBar/, `${datei}: nutzt die gemeinsame Filterleiste nicht`);
   }
 });
 
@@ -440,6 +451,7 @@ test("Q1 — es wird ausschließlich das normalisierte CE-Feldpaar gelesen", () 
   for (const datei of ["src/utils/deliveryTimeView.mjs", "src/utils/offersFilterView.mjs",
                        OFFER_CARD, "src/components/offers/OffersList.jsx",
                        "src/components/offers/DeliveryTimeSelect.jsx",
+                       "src/components/offers/ShipmentFilterBar.jsx",
                        "src/pages/NewShipmentPage.jsx", "src/pages/CalculatorPage.jsx"]) {
     const q = nurCode(lies(datei));
     assert.ok(!/delivery_time_until/.test(q),

@@ -40,7 +40,8 @@ test("T1b — das Raster ist unveränderlich und liegt an genau EINER Stelle", (
   assert.equal(Object.isFrozen(LIEFERFRIST_RASTER), true);
   // Keine Seite und kein Bauteil darf eine eigene Zeitliste führen — sonst
   // driften die beiden Einstiegsseiten auseinander.
-  for (const datei of [...SEITEN, "src/components/offers/DeliveryTimeSelect.jsx",
+  for (const datei of [...SEITEN, "src/components/offers/ShipmentFilterBar.jsx",
+                       "src/components/offers/DeliveryTimeSelect.jsx",
                        "src/components/offers/OffersList.jsx"]) {
     const treffer = (lies(datei).match(/"[0-2]\d:[0-5]\d"/g) || []).filter((x) => x !== '""');
     assert.deepEqual(treffer, [], `${datei}: eigene Uhrzeit ${treffer.join(", ")}`);
@@ -173,10 +174,15 @@ test("T7 — die Uhrzeit bleibt reiner Anzeigefilter (kein Preisschlüssel)", ()
 test("T7b — beide Seiten benutzen dieselbe Quelle, ohne Drift", () => {
   for (const seite of SEITEN) {
     const q = lies(seite);
-    assert.match(q, /import \{ deliveryDeadlineOptions, latestDeliveryFieldValue \} from "\.\.\/utils\/deliveryTimeView\.mjs";/, seite);
+    assert.match(q, /import \{ deliveryDeadlineOptions \} from "\.\.\/utils\/deliveryTimeView\.mjs";/, seite);
     assert.match(q, /const zeitOptionen = useMemo\(\(\) => deliveryDeadlineOptions\(tariffs\), \[tariffs\]\);/, seite);
     assert.match(q, /deliveryTimeOptions=\{zeitOptionen\}/, `${seite}: Prop nicht mehr verdrahtet`);
   }
+  // Der Feld-Formatierer lebt seit der Modularisierung in der EINEN gemeinsamen
+  // Filterleiste — nicht mehr je Seite (das war das 222-Zeilen-Duplikat).
+  assert.match(lies("src/components/offers/ShipmentFilterBar.jsx"),
+    /import \{ latestDeliveryFieldValue \} from "\.\.\/\.\.\/utils\/deliveryTimeView\.mjs";/,
+    "die Filterleiste importiert den Formatierer aus derselben Quelle");
 });
 
 test("T8 — keine Zusicherung im Fristentext", () => {

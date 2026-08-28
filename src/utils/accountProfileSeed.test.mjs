@@ -216,7 +216,14 @@ test("D4 jeder zugeordnete Formularschlüssel existiert auch im Formular", () =>
 test("E1 Erfolg beendet den Vorgang weiterhin vollständig", () => {
   const block = seite.slice(seite.indexOf("const saveCurrentFormDraft"), seite.indexOf("const reloadCurrentDraft"));
   assert.match(block, /resetToFreshShipment\(\)/);
-  const reset = seite.slice(seite.indexOf("const resetToFreshShipment"), seite.indexOf("// ── EINZIGE Save-Orchestrierung"));
+  // Fail-closed: `seite` ist kommentarbereinigt — der frühere End-Anker war ein
+  // KOMMENTAR und lief still auf -1; der „Ausschnitt" umfasste 46 979 statt ~900
+  // Zeichen, und die Treffer stammten aus ganz anderen Codezeilen. End-Anker ist
+  // jetzt die nächste Codezeile nach der Funktion.
+  const resetStart = seite.indexOf("const resetToFreshShipment");
+  const resetEnde  = seite.indexOf("const saveCurrentFormDraft", resetStart);
+  assert.ok(resetStart > -1 && resetEnde > resetStart, "resetToFreshShipment-Ausschnitt nicht auffindbar");
+  const reset = seite.slice(resetStart, resetEnde);
   assert.match(reset, /clearFlowScope\("shipment"\)/);
   assert.match(reset, /setBaseline\(getShipmentFormSnapshot/);
 });

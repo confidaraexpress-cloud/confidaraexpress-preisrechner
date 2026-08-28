@@ -22,6 +22,9 @@ const bookingPage      = read("../pages/BookingPage.jsx");
 const orderDetailPage  = read("../pages/inventory/OrderDetailPage.jsx");
 const optionsModule    = read("../components/booking/AdditionalOptionsModule.jsx");
 const profileComponent = read("../components/dashboard/Profile.jsx");
+// Die Lieferscheinkarte ist seit der Modularisierung eine eigene
+// Abschnittskomponente — 6d misst an ihrer Datei.
+const dnKarte          = read("../components/dashboard/DeliveryNoteCard.jsx");
 const downloadHelper   = read("./downloadDeliveryNote.js");
 
 /* ══════════ 1 — Modus und PATCH ══════════ */
@@ -157,9 +160,11 @@ test("6c — der Erfolgsbildschirm zeigt den Download nur bei tatsächlich vorha
 });
 
 test("6d — die Profileinstellung nutzt den bestehenden Profil-PATCH", () => {
-  assert.match(profileComponent, /apiFetch\(`\/kunde\/profil`/);
-  assert.match(profileComponent, /buildDeliveryNotePatch\(mode\)/);
+  assert.match(dnKarte, /apiFetch\(`\/kunde\/profil`/);
+  assert.match(dnKarte, /buildDeliveryNotePatch\(mode\)/);
   // Keine zweite Speicherstrecke nur für Lieferscheine.
-  assert.ok(!profileComponent.includes("/kunde/delivery-note"),
-    "es darf keinen eigenen Settings-Endpunkt geben");
+  for (const src of [dnKarte, profileComponent]) {
+    assert.ok(!src.includes("/kunde/delivery-note"),
+      "es darf keinen eigenen Settings-Endpunkt geben");
+  }
 });

@@ -72,3 +72,53 @@ export function pruefeNichtVorhanden(relPfad) {
   }
   return true;
 }
+
+/* ── Fail-closed Quelltext-Scans ──────────────────────────────────────────────
+ *
+ * Viele Governance-Tests prüfen Produktionsdateien als Text (readFileSync +
+ * indexOf + slice). Dieses Muster hat zwei stille Fehlerzustände, beide belegt:
+ * ein Anker, der die Datei verlässt (etwa weil Code in ein eigenes Modul
+ * umzieht), liefert indexOf -1 — `slice(-1)` macht daraus einen leeren bzw.
+ * falschen Ausschnitt, und jede „darf-nicht-enthalten"-Prüfung darauf wird
+ * GRÜN, ohne irgendetwas zu prüfen. Die drei Helfer machen beide Fälle LAUT.
+ * Vorbild ist schnitt() aus proformaSuccessDownload.test.mjs. */
+
+/** Liest eine Quelldatei projektrelativ; eine fehlende Datei ist ein LAUTER
+ *  Fehler, nie ein leerer Scan. */
+export function leseQuelle(relPfad) {
+  const voll = path.join(WURZEL, relPfad);
+  if (!existsSync(voll)) {
+    throw new Error(
+      `Quelldatei fehlt: ${relPfad} — dieser Quelltext-Scan zeigt ins Leere. ` +
+      "Wurde der Code verschoben, muss der Test auf die neue Datei zeigen."
+    );
+  }
+  return readFileSync(voll, "utf8");
+}
+
+/** Position eines Ankers — -1 ist immer ein Testfehler. */
+export function ankerPosition(quelle, anker, kontext) {
+  const idx = quelle.indexOf(anker);
+  if (idx === -1) {
+    throw new Error(
+      `Anker nicht gefunden${kontext ? ` (${kontext})` : ""}: „${String(anker).slice(0, 60)}…" — ` +
+      "der Scan würde sonst still einen leeren/falschen Ausschnitt prüfen."
+    );
+  }
+  return idx;
+}
+
+/** Ausschnitt zwischen zwei Ankern; der End-Anker wird NACH dem Start gesucht
+ *  und muss existieren — der Ausschnitt darf nie still bis zum Dateiende
+ *  wachsen. Ohne `bis` läuft der Ausschnitt ausdrücklich bis zum Dateiende. */
+export function schnitt(quelle, von, bis, kontext) {
+  const start = ankerPosition(quelle, von, kontext);
+  if (bis === undefined) return quelle.slice(start);
+  const ende = quelle.indexOf(bis, start + String(von).length);
+  if (ende === -1) {
+    throw new Error(
+      `End-Anker nicht gefunden${kontext ? ` (${kontext})` : ""}: „${String(bis).slice(0, 60)}…"`
+    );
+  }
+  return quelle.slice(start, ende);
+}

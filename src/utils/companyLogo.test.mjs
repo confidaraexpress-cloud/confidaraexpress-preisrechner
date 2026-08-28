@@ -9,6 +9,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+// Fail-closed Quelltextschnitt: ein verschobener Anker macht den Scan LAUT,
+// statt still einen leeren/zu weiten Ausschnitt zu prüfen.
+import { schnitt } from "../../scripts/governance.mjs";
 import {
   COMPANY_LOGO_TEXT, LOGO_ACCEPT, LOGO_MAX_BYTES, LOGO_MIME_TYPES,
   companyLogoMeta, hasCompanyLogo, formatLogoSize, formatLogoDimensions,
@@ -21,11 +24,15 @@ const api      = lies("../api/companyLogoApi.js");
 const hook     = lies("../hooks/useCompanyLogo.js");
 const chip     = lies("../components/ui/UserChip.jsx");
 const profil   = lies("../components/dashboard/Profile.jsx");
+// Die Logokarte ist seit der Modularisierung eine eigene Abschnittskomponente —
+// die Einbindungs-Zusicherungen messen an ihrer Datei.
+const logoKarte = lies("../components/dashboard/CompanyLogoCard.jsx");
 const auth     = lies("../context/AuthContext.jsx");
 const overview = lies("../styles/overview.css");
 const premium  = lies("../styles/dashboard-premium.css");
 
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
 
 const meta = (over = {}) => ({
   version: "abcdef0123456789", mimeType: "image/png",
@@ -117,7 +124,7 @@ test("7 — die Grenzwerte spiegeln den Backendvertrag, ohne ihn zu ersetzen", (
 test("8 — das Bild ist das Logo des UNTERNEHMENS, nirgends ein Personenbild", () => {
   // Kein avatar/profile_picture/userImage — weder als Feldname noch als Klasse.
   // ConfidaraExpress hat kein Personenbildmodell, und dieses Feature führt keines ein.
-  for (const datei of [view, api, hook, ohneKommentare(chip)]) {
+  for (const datei of [view, api, hook, ohneKommentare(chip), ohneKommentare(logoKarte)]) {
     assert.ok(!/profile_picture|profilePicture|userAvatar|user_avatar|avatarUrl/.test(datei),
       "ein Personenbildbegriff ist in den Logodateien aufgetaucht");
   }
@@ -129,11 +136,12 @@ test("9 — der Zugriff läuft über die Serviceschicht, nicht über fetch in de
   assert.match(api, /import \{ apiFetch \} from "\.\/client"/, "der Service nutzt nicht das zentrale apiFetch");
   assert.ok(!/\bfetch\(/.test(ohneKommentare(chip)), "im Chip steht ein eigenes fetch");
   assert.ok(!/\bfetch\(/.test(ohneKommentare(hook)), "im Hook steht ein eigenes fetch");
-  // Auch das Profil ruft ausschließlich die Servicefunktionen auf.
-  assert.match(profil, /import \{ uploadCompanyLogo, deleteCompanyLogo \} from "\.\.\/\.\.\/api\/companyLogoApi"/,
-    "das Profil greift nicht über die Serviceschicht zu");
-  const profilCode = ohneKommentare(profil);
-  assert.ok(!/fetch\(`?\$?\{?[^)]*company-logo/.test(profilCode), "im Profil steht ein direkter Aufruf des Logopfads");
+  // Auch die Logokarte ruft ausschließlich die Servicefunktionen auf.
+  assert.match(logoKarte, /import \{ uploadCompanyLogo, deleteCompanyLogo \} from "\.\.\/\.\.\/api\/companyLogoApi"/,
+    "die Logokarte greift nicht über die Serviceschicht zu");
+  for (const code of [ohneKommentare(logoKarte), ohneKommentare(profil)]) {
+    assert.ok(!/fetch\(`?\$?\{?[^)]*company-logo/.test(code), "ein direkter Aufruf des Logopfads in der Oberfläche");
+  }
 });
 
 test("10 — der Endpunkt trägt keine Konto-ID: Mandantentrennung steht serverseitig", () => {
@@ -186,9 +194,9 @@ test("13 — ein Abruf je Fassung; die Version ist der Cache-Schlüssel", () => 
   assert.match(hook, /\}, \[version\]\)/, "der Effekt hängt nicht ausschließlich an der Version");
   // Nach dem Speichern wird die neue Version ins Konto gespiegelt — genau das
   // ist der Cache-Busting-Mechanismus.
-  assert.match(profil, /updateUser\(\{ companyLogo: d\.companyLogo \?\? null \}\)/,
+  assert.match(logoKarte, /updateUser\(\{ companyLogo: d\.companyLogo \?\? null \}\)/,
     "die neue Fassung wird nicht ins Konto gespiegelt");
-  assert.match(profil, /updateUser\(\{ companyLogo: null \}\)/, "das Entfernen wird nicht gespiegelt");
+  assert.match(logoKarte, /updateUser\(\{ companyLogo: null \}\)/, "das Entfernen wird nicht gespiegelt");
 });
 
 test("14 — das Bild wird eingepasst, nie verzerrt und nie angeschnitten", () => {
@@ -221,11 +229,11 @@ test("15 — die Sektion nennt Zweck, Grenzen und den SVG-Grund", () => {
   for (const schluessel of ["title", "description", "requirements", "empty", "remove"]) {
     assert.ok(COMPANY_LOGO_TEXT[schluessel], `COMPANY_LOGO_TEXT.${schluessel} fehlt`);
   }
-  assert.ok(!profil.includes(COMPANY_LOGO_TEXT.description), "der Erklärtext steht als Literal im JSX");
+  assert.ok(!logoKarte.includes(COMPANY_LOGO_TEXT.description), "der Erklärtext steht als Literal im JSX");
 });
 
 test("16 — die Bedienung nutzt die Foundation-Primitives, kein Eigenbau", () => {
-  const abschnitt = profil.slice(profil.indexOf("renderCompanyLogoCard"), profil.indexOf("renderSecurityCard"));
+  const abschnitt = logoKarte;
   assert.match(abschnitt, /className="btn btn-outline btn-sm"/, "der Uploadknopf ist kein .btn");
   assert.match(abschnitt, /className="btn btn-ghost btn-sm"/, "das Entfernen ist kein .btn");
   assert.match(abschnitt, /<FormAlert tone="error"/, "Fehler laufen nicht über das gemeinsame Bauteil");
@@ -243,7 +251,7 @@ test("16 — die Bedienung nutzt die Foundation-Primitives, kein Eigenbau", () =
 test("17 — der Dateidialog wird nach jeder Auswahl zurückgesetzt", () => {
   // Ohne das Zurücksetzen löst dieselbe Datei beim zweiten Wählen kein
   // change-Ereignis aus — der Kunde klickt, und nichts passiert.
-  const abschnitt = profil.slice(profil.indexOf("const onLogoSelected"), profil.indexOf("const onLogoRemove"));
+  const abschnitt = schnitt(logoKarte, "const onLogoSelected", "const onLogoRemove", "(17) CompanyLogoCard");
   assert.match(abschnitt, /e\.target\.value = "";/, "das Dateifeld wird nicht zurückgesetzt");
   const posReset = abschnitt.indexOf('e.target.value = ""');
   const posUpload = abschnitt.indexOf("await uploadCompanyLogo");

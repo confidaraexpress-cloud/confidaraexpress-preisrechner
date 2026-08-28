@@ -4,16 +4,18 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { FormAlert } from "../ui/FormAlert";
-import { apiFetch, authH, triggerAuthError, getCurrentConsolidatedPeriod } from "../../api/client";
-import { money } from "../../utils/formatters";
-import {
-  BILLING_MODES, BILLING_MODE_TEXT, billingMode, buildBillingModePatch,
-  consolidatedPeriodView,
-} from "../../utils/billingModeView.mjs";
+import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { countries } from "../../utils/countries";
 import { useAuth } from "../../context/AuthContext";
 import { EmailChangeSection } from "./EmailChangeSection";
+// Die drei Einstellungskarten mit eigener Speicherstrecke (Lieferschein,
+// Abrechnungsart, Firmenlogo) sind eigenständige Abschnittskomponenten nach dem
+// Vorbild der EmailChangeSection — jede trägt ihren Zustand selbst.
+import { DeliveryNoteCard } from "./DeliveryNoteCard";
+import { BillingModeCard } from "./BillingModeCard";
+import { CompanyLogoCard } from "./CompanyLogoCard";
+import { cardHead } from "./ProfileCardHead";
 import {
   companyBaseline, contactBaseline,
   buildCompanyPatch, buildContactPatch,
@@ -21,7 +23,6 @@ import {
   canSaveCompany, canSaveContact, isEditActionDisabled,
   companyAddressLine, paymentTermValue, PROFILE_TEXT,
   mapApiProfileError,
-  DELIVERY_NOTE_MODES, DELIVERY_NOTE_TEXT, deliveryNoteMode, buildDeliveryNotePatch,
 } from "../../utils/profileView.mjs";
 import { customerNumberOf, NOT_ASSIGNED_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 // Nur der Hilfetext des EORI-Felds. Formatprüfung und Normalisierung laufen bereits in
@@ -33,13 +34,6 @@ import { accountInitials, accountDisplayName } from "../../utils/accountIdentity
 // Wahrheit im Frontend; Spiegel von lib/passwordPolicy.js im Backend.
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "../../utils/passwordPolicy.mjs";
 import { CopyableNumber } from "../ui/CopyableNumber";
-import { CompanyLogoPreview } from "../ui/UserChip";
-import { useCompanyLogo } from "../../hooks/useCompanyLogo";
-import { uploadCompanyLogo, deleteCompanyLogo } from "../../api/companyLogoApi";
-import {
-  COMPANY_LOGO_TEXT, LOGO_ACCEPT, companyLogoMeta,
-  formatLogoSize, formatLogoDimensions, preCheckLogoFile, logoErrorMessage,
-} from "../../utils/companyLogoView.mjs";
 
 // Benötigt Backend: PATCH /kunde/profil — bereichsweise Teilupdates:
 //   Unternehmensdaten → { company_name, vat_id, eori_number, street, zip, city, country }
@@ -88,62 +82,9 @@ export function Profile({ user, utility }) {
   // seltene, bewusste Handlung ist. Regeln, Felder und API sind unverändert.
   const [pwOpen, setPwOpen] = useState(false);
 
-  // Lieferscheineinstellung. Eigener Speicherzustand statt der Ein-Karten-Editregel:
-  // eine Auswahl aus drei Optionen hat keinen Bearbeiten-Modus — sie wird umgestellt und
-  // gespeichert. Gespeichert wird über denselben PATCH /kunde/profil wie alle anderen
-  // Profilfelder, es gibt keine zweite Speicherstrecke.
-  const [dnMode, setDnMode] = useState(() => deliveryNoteMode(user));
-  const [dnSaving, setDnSaving] = useState(false);
-  const [dnError, setDnError] = useState("");
-  const [dnSaved, setDnSaved] = useState(false);
-  // Serverwahrheit gewinnt: nach einem erfolgreichen Speichern (updateUser) und nach
-  // jedem Neuladen folgt die Auswahl dem Konto, nicht dem lokalen Zwischenstand.
-  const serverDnMode = deliveryNoteMode(user);
-  useEffect(() => { setDnMode(serverDnMode); }, [serverDnMode]);
-
-  // Abrechnungsart. Exakt dasselbe Muster wie die Lieferscheineinstellung darüber:
-  // eine Auswahl aus zwei Optionen hat keinen Bearbeiten-Modus, sie wird umgestellt und
-  // über denselben PATCH /kunde/profil gespeichert. Keine zweite Speicherstrecke.
-  const [bmMode, setBmMode] = useState(() => billingMode(user));
-  const [bmSaving, setBmSaving] = useState(false);
-  const [bmError, setBmError] = useState("");
-  const [bmSaved, setBmSaved] = useState(false);
-  const serverBmMode = billingMode(user);
-  useEffect(() => { setBmMode(serverBmMode); }, [serverBmMode]);
-
-  // Vorschau auf den laufenden Sammelzeitraum. Sie wird NUR bei Sammelabrechnung geholt —
-  // ein Einzelrechnungskonto stellt die Anfrage gar nicht erst. Der Abruf verändert
-  // serverseitig nichts (read-only) und darf die Karte bei einem Ausfall nicht brechen:
-  // ein Fehler ergibt eine ruhige Hinweiszeile, keine leere Fläche.
-  const [periodData, setPeriodData] = useState(null);
-  const [periodError, setPeriodError] = useState("");
-  useEffect(() => {
-    if (serverBmMode !== "consolidated_7d") { setPeriodData(null); setPeriodError(""); return undefined; }
-    let alive = true;
-    (async () => {
-      try {
-        const r = await getCurrentConsolidatedPeriod();
-        if (!alive) return;
-        if (!r.ok) { setPeriodError(BILLING_MODE_TEXT.periodLoadError); return; }
-        setPeriodError(""); setPeriodData(r.data);
-      } catch {
-        if (alive) setPeriodError(BILLING_MODE_TEXT.periodLoadError);
-      }
-    })();
-    return () => { alive = false; };
-  }, [serverBmMode]);
-
-  // Firmenlogo. Das Bild selbst kommt aus derselben Quelle wie im Benutzerchip
-  // (ein Abruf je Fassung, Modulzwischenspeicher) — hier wird nichts zweites
-  // geladen. Der Dateidialog läuft über ein verstecktes <input type="file">, das
-  // ein regulärer .btn auslöst: ein nativer Dateiknopf lässt sich nicht auf die
-  // Foundation-Primitives bringen.
-  const logoMeta = companyLogoMeta(user);
-  const logoUrl = useCompanyLogo(user);
-  const logoInputRef = useRef(null);
-  const [logoBusy, setLogoBusy] = useState("");     // "" | "upload" | "remove"
-  const [logoError, setLogoError] = useState("");
-  const [logoSaved, setLogoSaved] = useState("");
+  // Lieferschein, Abrechnungsart und Firmenlogo sind eigenständige
+  // Abschnittskomponenten (DeliveryNoteCard, BillingModeCard, CompanyLogoCard)
+  // mit je eigenem Zustand und eigener Speicherstrecke — siehe Imports oben.
 
   const companyBtnRef = useRef(null);
   const contactBtnRef = useRef(null);
@@ -323,17 +264,8 @@ export function Profile({ user, utility }) {
   };
 
   // ── Render-Helfer ──────────────────────────────────────────────────────────
-  const cardHead = (icon, title, subtitle, action) => (
-    <div className="table-card-header profile-card-head">
-      <div className="profile-card-icon"><Icon n={icon} s={21} /></div>
-      <div className="profile-card-heading">
-        <span className="table-card-title">{title}</span>
-        {subtitle && <span className="profile-card-sub">{subtitle}</span>}
-      </div>
-      {action}
-    </div>
-  );
-
+  // Der gemeinsame Kartenkopf (cardHead) kommt aus ProfileCardHead.jsx — dieselbe
+  // Fassung nutzen auch die drei ausgelagerten Einstellungskarten.
   const editButton = (card, ref, onClick, label) => (
     <button
       type="button"
@@ -517,309 +449,6 @@ export function Profile({ user, utility }) {
     </div>
   );
 
-  // Speichert die Lieferscheineinstellung über denselben Profil-PATCH wie alle anderen
-  // Felder. Der Wert wird optimistisch angezeigt (die Auswahl fühlt sich sofort an) und
-  // bei einem Fehler auf die Serverwahrheit zurückgesetzt — es bleibt nie eine Auswahl
-  // stehen, die nicht gespeichert wurde.
-  const saveDeliveryNoteMode = async (mode) => {
-    if (dnSaving || mode === serverDnMode) return;
-    setDnMode(mode);
-    setDnSaving(true); setDnError(""); setDnSaved(false);
-    try {
-      const r = await apiFetch(`/kunde/profil`, {
-        method: "PATCH",
-        auth: true,
-        body: JSON.stringify(buildDeliveryNotePatch(mode)),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setDnMode(serverDnMode);
-        setDnError(d?.error || "Die Einstellung konnte nicht gespeichert werden.");
-        setDnSaving(false);
-        return;
-      }
-      if (d.user) updateUser(d.user);
-      setDnSaved(true);
-    } catch (e) {
-      setDnMode(serverDnMode);
-      setDnError(normalizeThrownError(e).message);
-    }
-    setDnSaving(false);
-  };
-
-  // Native Radios auf dem globalen forms.css-Primitive — dasselbe Muster wie die
-  // Zollrechnungsauswahl der Buchung. Kein zweites Auswahlbauteil.
-  const renderDeliveryNoteCard = () => (
-    <div className="table-card profile-card">
-      {cardHead("form", DELIVERY_NOTE_TEXT.title, DELIVERY_NOTE_TEXT.subtitle, null)}
-      <div className="profile-section-body">
-        <fieldset className="dn-mode-fieldset" disabled={dnSaving}>
-          <legend className="field-label">{DELIVERY_NOTE_TEXT.fieldLabel}</legend>
-          {DELIVERY_NOTE_MODES.map((mode) => {
-            const opt = DELIVERY_NOTE_TEXT.options[mode];
-            const id = `dn-mode-${mode}`;
-            return (
-              <label key={mode} className={`dn-mode-option${dnMode === mode ? " selected" : ""}`} htmlFor={id}>
-                <input
-                  id={id}
-                  type="radio"
-                  name="deliveryNoteMode"
-                  value={mode}
-                  checked={dnMode === mode}
-                  onChange={() => saveDeliveryNoteMode(mode)}
-                />
-                <span className="dn-mode-text">
-                  <span className="dn-mode-label">{opt.label}</span>
-                  <span className="field-hint">{opt.hint}</span>
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
-        {dnError && <FormAlert tone="error" message={dnError} className="mt-16" />}
-        {dnSaved && !dnError && (
-          <p className="profile-saved" role="status">
-            <Icon n="check" s={14} /> Einstellung gespeichert
-          </p>
-        )}
-      </div>
-    </div>
-  );
-
-  // Speichert die Abrechnungsart über denselben Profil-PATCH. Optimistische Anzeige mit
-  // Rückfall auf die Serverwahrheit bei einem Fehler — es bleibt nie eine Auswahl stehen,
-  // die nicht gespeichert wurde.
-  const saveBillingMode = async (mode) => {
-    if (bmSaving || mode === serverBmMode) return;
-    setBmMode(mode);
-    setBmSaving(true); setBmError(""); setBmSaved(false);
-    try {
-      const r = await apiFetch(`/kunde/profil`, {
-        method: "PATCH",
-        auth: true,
-        body: JSON.stringify(buildBillingModePatch(mode)),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setBmMode(serverBmMode);
-        setBmError(d?.error || "Die Einstellung konnte nicht gespeichert werden.");
-        setBmSaving(false);
-        return;
-      }
-      if (d.user) updateUser(d.user);
-      setBmSaved(true);
-    } catch (e) {
-      setBmMode(serverBmMode);
-      setBmError(normalizeThrownError(e).message);
-    }
-    setBmSaving(false);
-  };
-
-  // Dieselben nativen Radios auf demselben forms.css-Primitive wie die
-  // Lieferscheinauswahl — kein zweites Auswahlbauteil, keine eigenen Klassen.
-  const renderBillingModeCard = () => {
-    const period = periodData ? consolidatedPeriodView(periodData) : null;
-    return (
-      <div className="table-card profile-card">
-        {cardHead("invoice", BILLING_MODE_TEXT.title, BILLING_MODE_TEXT.subtitle, null)}
-        <div className="profile-section-body">
-          <fieldset className="dn-mode-fieldset" disabled={bmSaving}>
-            <legend className="field-label">{BILLING_MODE_TEXT.fieldLabel}</legend>
-            {BILLING_MODES.map((mode) => {
-              const opt = BILLING_MODE_TEXT.options[mode];
-              const id = `bm-mode-${mode}`;
-              return (
-                <label key={mode} className={`dn-mode-option${bmMode === mode ? " selected" : ""}`} htmlFor={id}>
-                  <input
-                    id={id}
-                    type="radio"
-                    name="billingMode"
-                    value={mode}
-                    checked={bmMode === mode}
-                    onChange={() => saveBillingMode(mode)}
-                  />
-                  <span className="dn-mode-text">
-                    <span className="dn-mode-label">{opt.label}</span>
-                    <span className="field-hint">{opt.hint}</span>
-                  </span>
-                </label>
-              );
-            })}
-          </fieldset>
-          <p className="field-hint mt-8">{BILLING_MODE_TEXT.changeNote}</p>
-          {bmError && <FormAlert tone="error" message={bmError} className="mt-16" />}
-          {bmSaved && !bmError && (
-            <p className="profile-saved" role="status">
-              <Icon n="check" s={14} /> Einstellung gespeichert
-            </p>
-          )}
-          {/* Laufender Zeitraum — ausschließlich Serverwerte, nichts wird gerechnet.
-              Erscheint nur bei Sammelabrechnung und nur, wenn der Server tatsächlich
-              einen Zeitraum liefert; sonst steht dort der leere Zustand. */}
-          {serverBmMode === "consolidated_7d" && (
-            <div className="bm-period mt-16">
-              <h4 className="field-label">{BILLING_MODE_TEXT.periodTitle}</h4>
-              {periodError && <FormAlert tone="error" message={periodError} className="mt-8" />}
-              {!periodError && (!period || !period.hasPeriod) && (
-                <p className="field-hint">{BILLING_MODE_TEXT.periodEmpty}</p>
-              )}
-              {!periodError && period && period.hasPeriod && (
-                <>
-                  <div className="summary-detail-row summary-detail-row-border">
-                    <span className="text-sm text-muted summary-detail-key">Zeitraum</span>
-                    <span className="text-sm font-bold summary-detail-val">{period.rangeLabel}</span>
-                  </div>
-                  <div className="summary-detail-row summary-detail-row-border">
-                    <span className="text-sm text-muted summary-detail-key">{BILLING_MODE_TEXT.periodCountLabel}</span>
-                    <span className="text-sm font-bold summary-detail-val">{period.shipmentCount}</span>
-                  </div>
-                  <div className="summary-detail-row summary-detail-row-border">
-                    <span className="text-sm text-muted summary-detail-key">{BILLING_MODE_TEXT.periodAmountLabel}</span>
-                    <span className="text-sm font-bold summary-detail-val">{money(period.grossAmount)}</span>
-                  </div>
-                  {period.invoiceDateLabel && (
-                    <div className="summary-detail-row summary-detail-row-border">
-                      <span className="text-sm text-muted summary-detail-key">{BILLING_MODE_TEXT.periodInvoiceDateLabel}</span>
-                      <span className="text-sm font-bold summary-detail-val">{period.invoiceDateLabel}</span>
-                    </div>
-                  )}
-                  <p className="field-hint mt-8">{BILLING_MODE_TEXT.periodPreviewNote}</p>
-                  {period.earlierCount > 0 && (
-                    <p className="field-hint">
-                      {period.earlierCount === 1
-                        ? "1 weitere Sendung aus einem früheren Zeitraum wartet noch auf ihre Rechnung."
-                        : `${period.earlierCount} weitere Sendungen aus früheren Zeiträumen warten noch auf ihre Rechnung.`}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // ── Firmenlogo ─────────────────────────────────────────────────────────────
-  // Der Upload läuft über den eigenen, auth-geschützten Endpunkt (Multipart) —
-  // NICHT über PATCH /kunde/profil: der JSON-Body ist serverseitig auf 100 KB
-  // gedeckelt, ein Bild passt dort nicht hinein.
-  //
-  // Die Clientprüfung davor ist reiner Komfort (sofortige Rückmeldung statt
-  // Rundreise) und ausdrücklich KEIN Ersatz für die Serverprüfung: der Server
-  // prüft MIME-Typ, Dateisignatur, Größe und Bildmaße erneut und ist allein
-  // maßgeblich.
-  const onLogoSelected = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    // Den Dateidialog sofort zurücksetzen: sonst löst dieselbe Datei beim
-    // zweiten Wählen kein change-Ereignis aus.
-    e.target.value = "";
-    if (!file) return;
-
-    const complaint = preCheckLogoFile(file);
-    if (complaint) { setLogoError(complaint); setLogoSaved(""); return; }
-
-    setLogoBusy("upload"); setLogoError(""); setLogoSaved("");
-    try {
-      const r = await uploadCompanyLogo(file);
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setLogoError(logoErrorMessage(d)); setLogoBusy(""); return; }
-      // Der Server liefert die neuen Metadaten inklusive Version zurück. Sie in
-      // das Konto zu spiegeln, ist zugleich der Cache-Busting-Mechanismus: die
-      // geänderte Version lässt den Bildzwischenspeicher nicht mehr greifen, und
-      // Chip wie Vorschau holen dieselbe neue Fassung.
-      updateUser({ companyLogo: d.companyLogo ?? null });
-      setLogoSaved(COMPANY_LOGO_TEXT.savedUpload);
-    } catch (err) {
-      setLogoError(normalizeThrownError(err).message);
-    }
-    setLogoBusy("");
-  };
-
-  const onLogoRemove = async () => {
-    if (logoBusy) return;
-    setLogoBusy("remove"); setLogoError(""); setLogoSaved("");
-    try {
-      const r = await deleteCompanyLogo();
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setLogoError(logoErrorMessage(d, COMPANY_LOGO_TEXT.removeError)); setLogoBusy(""); return; }
-      updateUser({ companyLogo: null });
-      setLogoSaved(COMPANY_LOGO_TEXT.savedRemove);
-    } catch (err) {
-      setLogoError(normalizeThrownError(err).message);
-    }
-    setLogoBusy("");
-  };
-
-  const renderCompanyLogoCard = () => {
-    const size = formatLogoSize(logoMeta?.sizeBytes);
-    const dims = formatLogoDimensions(logoMeta);
-    const facts = [size, dims].filter(Boolean).join(" · ");
-    return (
-      <div className="table-card profile-card">
-        {cardHead("image", COMPANY_LOGO_TEXT.title, COMPANY_LOGO_TEXT.subtitle, null)}
-        <div className="profile-section-body">
-          <div className="profile-logo-row">
-            <CompanyLogoPreview logoUrl={logoUrl} initial={accountInitials(user)} />
-            <div className="profile-logo-copy">
-              <p className="profile-logo-desc">{COMPANY_LOGO_TEXT.description}</p>
-              {logoMeta
-                ? facts && <p className="profile-logo-meta">{facts}</p>
-                : <p className="profile-logo-meta">{COMPANY_LOGO_TEXT.empty}</p>}
-            </div>
-          </div>
-
-          {/* Das native Dateifeld bleibt unsichtbar, ist aber ein echtes
-              Formularelement — der sichtbare Knopf löst es aus. Keine
-              Drag-and-drop-Fläche, kein Zuschneide-Editor: das war nicht
-              Teil der Aufgabe. */}
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept={LOGO_ACCEPT}
-            className="sr-only"
-            onChange={onLogoSelected}
-            aria-hidden="true"
-            tabIndex={-1}
-          />
-
-          <div className="profile-logo-actions">
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={logoBusy !== ""}
-            >
-              <Icon n="upload" s={14} />
-              {logoBusy === "upload" ? COMPANY_LOGO_TEXT.uploading : (logoMeta ? COMPANY_LOGO_TEXT.replace : COMPANY_LOGO_TEXT.choose)}
-            </button>
-            {logoMeta && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={onLogoRemove}
-                disabled={logoBusy !== ""}
-              >
-                {logoBusy === "remove" ? COMPANY_LOGO_TEXT.removing : COMPANY_LOGO_TEXT.remove}
-              </button>
-            )}
-          </div>
-
-          <p className="field-hint profile-logo-req">
-            {COMPANY_LOGO_TEXT.requirements} {COMPANY_LOGO_TEXT.svgHint}
-          </p>
-
-          {logoError && <FormAlert tone="error" message={logoError} className="mt-16" />}
-          {logoSaved && !logoError && (
-            <p className="profile-saved" role="status">
-              <Icon n="check" s={14} /> {logoSaved}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   const renderSecurityCard = () => (
     <div className="table-card profile-card">
       {cardHead("shield", "Sicherheit", "Schützen Sie Ihr Konto", null)}
@@ -956,13 +585,13 @@ export function Profile({ user, utility }) {
             {renderCompanyCard()}
             {/* Das Logo gehört zu den Unternehmensdaten und steht deshalb
                 direkt darunter — nicht in der Kontospalte. */}
-            {renderCompanyLogoCard()}
+            <CompanyLogoCard user={user} />
             {renderContactCard()}
           </div>
           <div className="profile-col">
             {renderAccountCard()}
-            {renderDeliveryNoteCard()}
-            {renderBillingModeCard()}
+            <DeliveryNoteCard user={user} />
+            <BillingModeCard user={user} />
             {renderSecurityCard()}
           </div>
         </div>

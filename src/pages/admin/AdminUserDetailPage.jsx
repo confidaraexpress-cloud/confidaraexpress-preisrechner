@@ -15,6 +15,11 @@ import { money } from "../../utils/formatters";
 import { userStatusMeta, userRoleMeta } from "../../utils/adminUsers";
 import { b2bCompletenessHint, missingB2BAccountFields, isAnonymizedAccount } from "../../utils/b2bAccount.mjs";
 import {
+  ANON_ERRORS,
+  DELETE_ERRORS,
+  ERROR_MESSAGES,
+  GENERIC_ERROR,
+  MARKUP_LOAD_ERRORS,
   OVERDUE_NOTE,
   PAYMENT_TERM_TEXT,
   accountStatusCopy,
@@ -22,6 +27,8 @@ import {
   customerNumberFromDetail,
   deleteEligibility,
   isSelfAccount,
+  selectSummary,
+  selectUser,
   BLOCK_DIALOG,
   SELF_ACTION_REASON,
   statusSuccessMessage,
@@ -49,52 +56,9 @@ import {
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
-const ERROR_MESSAGES = {
-  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
-  500: "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
-};
-const GENERIC_ERROR = "Der Kunde konnte nicht geladen werden. Bitte versuchen Sie es erneut.";
-
-// Ladefehler der Aufschlagssektion (GET). 404 wird eigens benannt, weil dort der
-// Kunde selbst gemeint ist; alles andere bleibt bewusst unspezifisch (keine
-// technischen Details).
-const MARKUP_LOAD_ERRORS = {
-  404: "Der Kunde wurde nicht gefunden oder ist nicht mehr verfügbar.",
-  429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
-  default: "Der Kundenaufschlag konnte nicht geladen werden.",
-};
-
-// Fehlertexte für die Anonymisierung (verständlich, kein roher Backend-Body).
-const ANON_ERRORS = {
-  400: "Bestätigung ungültig oder Aktion nicht erlaubt.",
-  404: "Kunde wurde nicht gefunden.",
-  409: "Anonymisierung konnte aufgrund eines Konflikts nicht durchgeführt werden.",
-  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
-  500: "Account konnte nicht anonymisiert werden.",
-  default: "Account konnte nicht anonymisiert werden.",
-};
-
-// Fehlertexte für die harte Löschung. 409 ist kein Fehlerfall, sondern der
-// erwartete Delete-Guard (abhängige Sendungs-/Rechnungsdaten) → Anonymisierung.
-const DELETE_ERRORS = {
-  404: "Kunde wurde nicht gefunden.",
-  409: "Kunde kann aufgrund vorhandener Sendungs-/Rechnungsdaten nicht hart gelöscht werden. Bitte Anonymisierung verwenden.",
-  429: "Zu viele Adminaktionen. Bitte später erneut versuchen.",
-  default: "Kunde konnte nicht gelöscht werden.",
-};
-
-// Backend-Vertrag: { user: {...}, summary: {...} }. Defensiv entpacken.
-function selectUser(d) {
-  if (d && typeof d === "object" && !Array.isArray(d)) {
-    if (d.user && typeof d.user === "object") return d.user;
-    if (d.data && typeof d.data === "object" && !Array.isArray(d.data)) return d.data;
-    return d;
-  }
-  return null;
-}
-function selectSummary(d) {
-  return d && typeof d.summary === "object" && d.summary ? d.summary : {};
-}
+// Fehlertexte und das defensive Entpacken der Detailantwort (selectUser/
+// selectSummary) stehen seit der Modularisierung in utils/adminCustomerView.mjs —
+// dort liegen bereits alle übrigen Texte und die Hüllen-Lesung der Kundennummer.
 
 // ── Feld-Getter: NUR erlaubte Felder. password/password_hash/token/secret/
 // reset_token werden NIE gelesen — kein Object.keys, kein Spread des Objekts.

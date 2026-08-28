@@ -119,10 +119,15 @@ test("9 — fehlende Kreditfelder in der API verursachen keinen Fehler", () => {
   for (const [label, src] of [["Liste", usersListSrc], ["Detail", userDetailSrc]]) {
     assert.equal(/u\.credit/.test(src), false, `${label}: kein direkter Zugriff auf credit_*`);
   }
-  // Beide Seiten entpacken die Antwort weiterhin defensiv.
+  // Beide Seiten entpacken die Antwort weiterhin defensiv. Das Detail tut das
+  // seit der Modularisierung über selectSummary aus dem Fachmodul — die Aufruf-
+  // stelle steht in der Seite, die defensive Regel im Modul. Beide Seiten der
+  // Verdrahtung werden geprüft, damit keine still verschwinden kann.
   assert.match(usersListSrc, /function selectRows\(d\)/, "Liste liest die Antwort defensiv");
-  assert.match(userDetailSrc, /function selectSummary\(d\)/, "Detail liest summary defensiv");
-  assert.match(userDetailSrc, /return d && typeof d\.summary === "object" && d\.summary \? d\.summary : \{\};/,
+  assert.match(userDetailSrc, /setSummary\(selectSummary\(d\)\);/, "Detail liest summary defensiv über selectSummary");
+  const viewSrc = stripComments(read("utils/adminCustomerView.mjs"));
+  assert.match(viewSrc, /export function selectSummary\(d\)/, "selectSummary lebt im Fachmodul");
+  assert.match(viewSrc, /return d && typeof d\.summary === "object" && d\.summary \? d\.summary : \{\};/,
     "fehlendes summary fällt auf {} zurück");
 });
 

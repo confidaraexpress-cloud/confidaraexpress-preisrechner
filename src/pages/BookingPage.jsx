@@ -4,7 +4,7 @@ import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
-import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, getShipmentDocuments } from "../api/client";
+import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
 import { Icon } from "../components/ui/Icon";
@@ -22,6 +22,8 @@ import { pickupWindowBlocksBooking, formatDuration } from "../utils/pickupWindow
 import { buildCustomsInvoiceMeta } from "../utils/customsInvoiceMeta";
 import { PROFORMA, COMMERCIAL, isCommercialOnly, resolveInvoiceMode, canSelectProforma, customsInvoiceFieldsValid, commercialInvoiceMutationBusy } from "../utils/customsInvoiceMode";
 import { useCommercialInvoice } from "../hooks/useCommercialInvoice";
+import { useInvoiceDeliveryMode } from "../hooks/useInvoiceDeliveryMode";
+import { useProformaDocument } from "../hooks/useProformaDocument";
 import { OfferSummaryModule } from "../components/booking/OfferSummaryModule";
 import { DropoffNoticeModule } from "../components/booking/DropoffNoticeModule";
 import { PickupWindowModule } from "../components/booking/PickupWindowModule";
@@ -50,8 +52,7 @@ import {
   autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
 } from "../utils/bookingPriceView.mjs";
 import {
-  INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_TARGET, resolveInvoiceDeliveryMode, isTerminalDeliveryMode,
-  findInvoiceByNumber, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
+  INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
@@ -61,11 +62,10 @@ import { downloadDeliveryNote } from "../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../utils/downloadOrderConfirmation";
 import { downloadProforma } from "../utils/downloadProforma";
 import {
-  PROFORMA_VIEW, PROFORMA_TEXT, findProformaEntry, proformaViewState,
-  proformaDownloadPath, proformaDownloadLabel, proformaKeepPolling, nextProformaPollDelay,
+  PROFORMA_VIEW, PROFORMA_TEXT, proformaViewState,
+  proformaDownloadPath, proformaDownloadLabel,
 } from "../utils/proformaDocumentView.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
-import { nextRefreshDelay } from "../utils/invoiceView.mjs";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
 // (keine Backend-Rohtexte/Stacks). Verhalten je Code steuert doBook (zurück zum
@@ -164,109 +164,15 @@ export default function BookingPage() {
   const [deliveryNoteError, setDeliveryNoteError] = useState("");
   const [orderConfirmationLoading, setOrderConfirmationLoading] = useState(false);
   const [orderConfirmationError, setOrderConfirmationError] = useState("");
-  // Proforma-Rechnung des Erfolgsscreens. `proformaEntry` ist die Zeile aus der
-  // Dokument-Metadaten-Antwort — die EINZIGE Quelle dafür, ob es zu dieser Sendung
-  // eine eigene Proforma gibt (siehe utils/proformaDocumentView.mjs). Startwert
-  // `null` heißt „keine": solange nichts geladen ist, sieht der Bildschirm exakt
-  // so aus wie vor diesem Paket. Fehler beim LADEN erzeugen bewusst keinen
-  // eigenen Zustand — nur der Downloadversuch des Kunden hat einen.
-  const [proformaEntry, setProformaEntry] = useState(null);
+  // Download-Zustand des Proforma-Belegs: nur der Downloadversuch des Kunden hat
+  // einen sichtbaren Fehlerzustand — der Metadaten-Poll lebt im Hook
+  // useProformaDocument und erzeugt bewusst keinen (Begründung dort).
   const [proformaLoading, setProformaLoading] = useState(false);
   const [proformaError, setProformaError] = useState("");
-  const proformaTimerRef = useRef(null);
-  // Rechnungs-Zustellungsmodus für den Erfolgsscreen — aus der Serverwahrheit der SOEBEN erzeugten
-  // Rechnung abgeleitet (is_test_document + document_status), NICHT clientseitig geraten. Startet
-  // neutral (PENDING) und wird kurz nachgeladen, bis das Dokument einen Endzustand erreicht.
-  const [invoiceDeliveryMode, setInvoiceDeliveryMode] = useState(INVOICE_DELIVERY_MODE.PENDING);
-  const invoiceModeTimerRef = useRef(null);
-
-  // Auf dem Erfolgsscreen den Rechnungs-Zustellungsmodus auflösen: kurzes, gedeckeltes Nachladen der
-  // BESTEHENDEN Kundenrechnungsliste (GET /kunde/invoices — keine neue/serverseitige Änderung),
-  // Rechnung per Nummer finden und den Modus aus is_test_document/document_status ableiten. Stoppt,
-  // sobald ein Endzustand (produktiv/Vorschau/fehlgeschlagen) erreicht ist oder die Backoff-Obergrenze
-  // (≈ 2 Min) greift. Kein Einfluss auf Buchung/Rechnung/PDF/E-Mail. Timer wird bei Unmount/
-  // Schrittwechsel vollständig bereinigt.
-  useEffect(() => {
-    if (step !== 3 || !booking || !booking.invoiceNumber) return undefined;
-    let cancelled = false;
-    let attempt = 0;
-    const poll = async () => {
-      try {
-        // limit=20 (Phase 1): die soeben gebuchte Rechnung ist die NEUSTE und steht damit
-        // sicher in der ersten Seite (Sortierung created_at DESC) — der Poll braucht nie
-        // die Vollliste. Ein altes Backend ignoriert den Parameter unschädlich.
-        const r = await apiFetch(`/kunde/invoices?limit=20`, { auth: true });
-        if (r.ok) {
-          const d = await r.json().catch(() => ({}));
-          const mode = resolveInvoiceDeliveryMode(findInvoiceByNumber(d.invoices, booking.invoiceNumber));
-          if (cancelled) return;
-          setInvoiceDeliveryMode(mode);
-          if (isTerminalDeliveryMode(mode)) return; // fertig aufgelöst → nicht weiter nachladen
-        }
-      } catch { /* still bleiben — neutraler PENDING-Hinweis ist nie irreführend */ }
-      if (cancelled) return;
-      const delay = nextRefreshDelay(attempt);
-      if (delay == null) return; // Obergrenze erreicht
-      attempt += 1;
-      invoiceModeTimerRef.current = setTimeout(poll, delay);
-    };
-    // Erster Versuch nach dem ersten Backoff-Intervall (das PDF wird nach dem Commit asynchron erzeugt).
-    const first = nextRefreshDelay(attempt);
-    attempt += 1;
-    invoiceModeTimerRef.current = setTimeout(poll, first);
-    return () => {
-      cancelled = true;
-      if (invoiceModeTimerRef.current) { clearTimeout(invoiceModeTimerRef.current); invoiceModeTimerRef.current = null; }
-    };
-  }, [step, booking]);
-
-  // ── Proforma-Rechnung des Erfolgsscreens auflösen ───────────────────────────
-  // Fragt die BESTEHENDE Dokument-Metadaten-API (GET /api/shipments/:id/documents,
-  // reine Metadaten, keine Bytes). Sie ist die Wahrheit darüber, ob es zu dieser
-  // Sendung eine eigene Proforma gibt — hier wird NICHTS aus Zielland, Zollpflicht,
-  // Rechnungsmodus, Tarif oder Provider abgeleitet.
-  //
-  // Erster Abruf sofort (das PDF entsteht serverseitig unmittelbar nach dem Commit
-  // der Buchung), danach ein kurzer fester Takt mit harter Obergrenze — kein
-  // Endlospolling, kein Hintergrundworker. Gestoppt wird bei jedem Endzustand
-  // (keine Proforma · fertig · fehlgeschlagen), beim Unmount und beim Schrittwechsel.
-  //
-  // KRITISCH: Eine erfolgreiche Buchung bleibt erfolgreich. Dieser Effekt kann den
-  // Erfolgsscreen nicht umfärben und nichts entfernen — jeder Fehler wird
-  // geschluckt. Ein nicht auswertbarer Abruf überschreibt einen bereits gefundenen
-  // Beleg NICHT mit „nicht vorhanden": er wird innerhalb des Budgets erneut
-  // versucht. Es wird niemals eine zweite Bestellung ausgelöst.
-  useEffect(() => {
-    if (step !== 3 || !booking || !booking.ceShipmentId) return undefined;
-    let cancelled = false;
-    let attempt = 0;
-    const lauf = async () => {
-      let antwort = null; // null = Abruf nicht auswertbar (Netz, Status, kaputter Body)
-      try {
-        const r = await getShipmentDocuments(booking.ceShipmentId);
-        if (r.ok) {
-          const d = await r.json().catch(() => null);
-          antwort = { entry: findProformaEntry(d) };
-        }
-      } catch { /* still bleiben — der Erfolgsscreen bleibt unberührt */ }
-      if (cancelled) return;
-      let weiter = true;
-      if (antwort) {
-        setProformaEntry(antwort.entry);
-        weiter = proformaKeepPolling(proformaViewState(antwort.entry));
-      }
-      if (!weiter) return;
-      const delay = nextProformaPollDelay(attempt);
-      if (delay == null) return; // Budget erschöpft — der ruhige Hinweis bleibt stehen
-      attempt += 1;
-      proformaTimerRef.current = setTimeout(lauf, delay);
-    };
-    lauf();
-    return () => {
-      cancelled = true;
-      if (proformaTimerRef.current) { clearTimeout(proformaTimerRef.current); proformaTimerRef.current = null; }
-    };
-  }, [step, booking]);
+  // Rechnungs-Zustellmodus + Proforma-Beleg des Erfolgsscreens: beide Polls sind
+  // wortgleich in eigene Hooks gezogen (Reihenfolge = bisherige Effektreihenfolge).
+  const { invoiceDeliveryMode } = useInvoiceDeliveryMode({ step, booking });
+  const { proformaEntry } = useProformaDocument({ step, booking });
 
   // ── F3: Preisdrift OHNE Versicherung — /book 409 PRICE_CHANGED ──────────────
   // Der Backend-Gate im none-Pfad vergleicht price_final. Hat sich der Preis seit

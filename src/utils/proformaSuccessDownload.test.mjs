@@ -49,12 +49,17 @@ function schnitt(quelle, von, bis) {
 const effekt = schnitt(proformaHook,
   "// ── Proforma-Rechnung des Erfolgsscreens auflösen",
   "}, [step, booking]);");
-const oberflaeche = schnitt(bookingPage,
-  "{/* Proforma-Rechnung — das Zollbegleitdokument",
-  "{/* Ruhiger Hinweis");
-const handler = schnitt(bookingPage,
+// Seit der Modularisierung leben Oberfläche und Handler der Erfolgsdokumente in
+// components/booking/BookingSuccessDocuments.jsx (wortgleich aus der Seite gezogen).
+const successDocs = lies("../components/booking/BookingSuccessDocuments.jsx");
+const oberflaecheStart = successDocs.indexOf("{/* Proforma-Rechnung — das Zollbegleitdokument");
+assert.ok(oberflaecheStart >= 0, "Ankertext nicht gefunden: Proforma-Oberfläche");
+// Der Proformateil ist der LETZTE Block des Bausteins — der Ausschnitt läuft
+// deshalb bewusst bis zum Dateiende (danach kommt nur der Komponentenabschluss).
+const oberflaeche = successDocs.slice(oberflaecheStart);
+const handler = schnitt(successDocs,
   "const handleDownloadProforma = async () => {",
-  "/* ── Sichtbares ");
+  "return (");
 
 /* ═════════ 1 — Die Metadaten-API ist die einzige Quelle ═════════ */
 
@@ -82,6 +87,7 @@ test("2 — der Downloadpfad wird nie im Frontend gebaut", () => {
   const pfadLiteral = /\/proforma(?![A-Za-z])/;
   for (const [name, quelle] of [
     ["BookingPage.jsx", bookingPage],
+    ["BookingSuccessDocuments.jsx", successDocs],
     ["useProformaDocument.js", proformaHook],
     ["proformaDocumentView.mjs", viewModul],
     ["downloadProforma.js", downloadMod],
@@ -199,23 +205,28 @@ test("9 — der Metadatenabruf kann den Erfolgsscreen nicht beschädigen", () =>
 test("10 — die bestehende Erfolgsdarstellung ist unangetastet", () => {
   assert.ok(bookingPage.includes("Sendung erfolgreich gebucht!"), "die Erfolgsmeldung steht unverändert");
   // Label, Auftragsbestätigung und Lieferschein laufen weiterhin über ihre
-  // eigenen Helfer — sie wurden NICHT auf die Dokumentliste umgestellt.
+  // eigenen Helfer — sie wurden NICHT auf die Dokumentliste umgestellt. Sie leben
+  // seit der Modularisierung im Erfolgsdokumente-Baustein.
   for (const helfer of ["downloadLabel(booking.ceShipmentId", "downloadOrderConfirmation(booking.ceShipmentId",
                         "downloadDeliveryNote(booking.ceShipmentId"]) {
-    assert.ok(bookingPage.includes(helfer), `unverändert: ${helfer}`);
+    assert.ok(successDocs.includes(helfer), `unverändert: ${helfer}`);
   }
   // Genau EIN Aufruf der Dokumentliste auf dem Erfolgsbildschirm-Weg — kein zweiter
-  // Abrufweg. Seit der Modularisierung liegt er im Hook; die Seite selbst ruft die
-  // API nicht mehr direkt (beides wird gemessen, damit kein zweiter Aufrufer entsteht).
+  // Abrufweg. Seit der Modularisierung liegt er im Hook; weder die Seite noch der
+  // Dokumentbaustein rufen die API direkt (alles wird gemessen, damit kein zweiter
+  // Aufrufer entsteht).
   assert.equal(proformaHook.split("getShipmentDocuments(").length - 1, 1,
     "die Dokumentliste wird an genau einer Stelle abgefragt");
   assert.equal(bookingPage.split("getShipmentDocuments(").length - 1, 0,
     "die Buchungsseite selbst fragt die Dokumentliste nicht mehr direkt ab");
+  assert.equal(successDocs.split("getShipmentDocuments(").length - 1, 0,
+    "der Dokumentbaustein fragt die Dokumentliste nicht selbst ab");
 });
 
 test("11 — keine P6-Funktion vorweggenommen", () => {
   for (const spaeter of ["DocumentsDrawer", "documentsDrawer", "ce-documents-drawer"]) {
     assert.ok(!bookingPage.includes(spaeter), `${spaeter} gehört zu P6`);
+    assert.ok(!successDocs.includes(spaeter), `${spaeter} gehört zu P6 (Dokumentbaustein)`);
     assert.ok(!proformaHook.includes(spaeter), `${spaeter} gehört zu P6 (Hook)`);
   }
   // Die Sendungsliste bleibt unberührt: sie fragt die Dokumentliste nicht ab.

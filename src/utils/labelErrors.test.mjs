@@ -60,7 +60,9 @@ test("6 — Banner an beiden Kundenstellen sind Live-Regionen", () => {
   // mehr — der Fehler eines Dokumentdownloads erscheint jetzt IM Drawer, und zwar
   // nach derselben Regel: eine Live-Region, kein stiller Text.
   const drawer = strip(src("../components/dashboard/ShipmentDocumentsDrawer.jsx"));
-  const booking = strip(src("../pages/BookingPage.jsx"));
+  // Der Labelfehler des Erfolgsbildschirms lebt seit der Modularisierung im
+  // Erfolgsdokumente-Baustein (wortgleich aus der Buchungsseite gezogen).
+  const booking = strip(src("../components/booking/BookingSuccessDocuments.jsx"));
   assert.match(drawer, /\{downloadError && \(\s*<div className="alert alert-error mb-16" role="alert">/);
   assert.match(booking, /\{labelError && <div className="alert alert-error mb-16" role="alert">/);
   // Und die Liste selbst zeigt keinen verwaisten Downloadfehler mehr an.

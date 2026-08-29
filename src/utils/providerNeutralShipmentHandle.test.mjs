@@ -71,14 +71,18 @@ test("4 — der Dateiname der Label-PDF trägt nie eine rohe Providerreferenz", 
   // Nummernumstellung: der Dateiname trägt die AUFTRAGSBESTÄTIGUNGSNUMMER (CE-AB…) —
   // die interne Bestellnummer (CE-BS…) steht in keinem kundensichtbaren Artefakt mehr,
   // ein Dateiname eingeschlossen. Fehlt sie, bleibt der Handle als Dateiname.
-  // Verbliebener direkter Aufrufer ist der Erfolgsbildschirm; die Sendungsliste lädt
-  // seit dem Dokumente-Drawer kein Label mehr selbst.
+  // Verbliebener direkter Aufrufer ist der Erfolgsbildschirm — seit der Modularisierung
+  // sein Dokumentbaustein components/booking/BookingSuccessDocuments.jsx; die
+  // Sendungsliste lädt seit dem Dokumente-Drawer kein Label mehr selbst.
   const bookingPage = read("../pages/BookingPage.jsx");
-  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/,
+  const successDocs = read("../components/booking/BookingSuccessDocuments.jsx");
+  assert.match(successDocs, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/,
     "der Erfolgsbildschirm reicht die Auftragsbestätigungsnummer als Dateinamen nicht durch");
   assert.ok(!/downloadLabel\(/.test(shipmentsList),
     "die Sendungsliste lädt wieder selbst ein Label");
-  for (const [name, quelle] of [["BookingPage", bookingPage], ["ShipmentsList", shipmentsList]]) {
+  assert.ok(!/downloadLabel\(/.test(bookingPage),
+    "die Buchungsseite selbst lädt wieder direkt ein Label");
+  for (const [name, quelle] of [["BookingPage", bookingPage], ["BookingSuccessDocuments", successDocs], ["ShipmentsList", shipmentsList]]) {
     assert.ok(!/downloadLabel\([^)]*business_order_number/.test(quelle),
       `${name}: die interne Bestellnummer benennt wieder eine Kundendatei`);
   }
@@ -112,11 +116,14 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   // `/book` liefert additiv `ceShipmentId` (shipments.id). `shipmentId` bleibt dort
   // unverändert die JUMiNGO-Referenz — das ist der Wert, den DIESER Client gesendet
   // hat; ihn umzudeuten wäre ein stiller Vertragsbruch.
-  assert.match(bookingPage, /if \(!booking\?\.ceShipmentId\) return;/);
-  assert.match(bookingPage, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/);
+  // Seit der Modularisierung: Handler und Sichtbarkeit leben wortgleich im
+  // Erfolgsdokumente-Baustein.
+  const successDocs = read("../components/booking/BookingSuccessDocuments.jsx");
+  assert.match(successDocs, /if \(!booking\?\.ceShipmentId\) return;/);
+  assert.match(successDocs, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/);
   // Die Sichtbarkeit des Buttons muss an derselben Bedingung hängen wie der
   // Handler — sonst zeigte er sich und täte beim Klick nichts.
-  assert.match(bookingPage, /\{booking\?\.ceShipmentId && \(/);
+  assert.match(successDocs, /\{booking\?\.ceShipmentId && \(/);
 });
 
 test("8 — das Abholzeitfenster bleibt bewusst bei der Providerreferenz", () => {

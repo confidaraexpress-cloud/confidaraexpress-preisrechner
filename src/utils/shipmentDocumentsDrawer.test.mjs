@@ -320,12 +320,17 @@ test("18 — der Drawer verhält sich wie jeder Dialog des Systems", () => {
 /* ═════════ 8 — P5B bleibt, wie es war ═════════ */
 
 test("19 — der Erfolgsbildschirm ist von P6 nicht berührt", () => {
-  assert.ok(!/ShipmentDocumentsDrawer|shipmentDocumentsView/.test(bookingPage),
-    "der Drawer ist in den Buchungsablauf gewandert");
-  // Die drei direkten Dokumentknöpfe des Erfolgsbildschirms bleiben unverändert.
+  // Seit der Modularisierung leben die direkten Dokumentknöpfe des Erfolgsbildschirms
+  // wortgleich in components/booking/BookingSuccessDocuments.jsx.
+  const successDocs = lies("../components/booking/BookingSuccessDocuments.jsx");
+  for (const quelle of [bookingPage, successDocs]) {
+    assert.ok(!/ShipmentDocumentsDrawer|shipmentDocumentsView/.test(quelle),
+      "der Drawer ist in den Buchungsablauf gewandert");
+  }
+  // Die direkten Dokumentknöpfe des Erfolgsbildschirms bleiben unverändert.
   for (const behalten of ["downloadLabel(booking.ceShipmentId", "downloadOrderConfirmation(booking.ceShipmentId",
                           "downloadDeliveryNote(booking.ceShipmentId", "downloadProforma(pfad)"]) {
-    assert.ok(bookingPage.includes(behalten), `der Erfolgsbildschirm hat ${behalten} verloren`);
+    assert.ok(successDocs.includes(behalten), `der Erfolgsbildschirm hat ${behalten} verloren`);
   }
 });
 

@@ -8,6 +8,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { normalizeEori, eoriFieldError, hasUsableEori, EORI_MAX_LENGTH, EORI_FORMAT_ERROR, EORI_HINT } from "./eori.mjs";
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+import { schnitt, ankerPosition } from "../../scripts/governance.mjs";
 import {
   COMPANY_FIELDS, FIELD_MAXLEN, companyBaseline, buildCompanyPatch,
   isCompanyDirty, validateCompanyForm, mapApiProfileError,
@@ -107,7 +109,7 @@ test("(B4) ein Formatfehler erscheint AM FELD, das Leeren bleibt erlaubt", () =>
 
 test("(B5) das Profilfeld ist optional — kein Pflichtsternchen, mit sachlichem Hilfetext", () => {
   assert.ok(profileSrc.includes('htmlFor="pf-eori"'), "das EORI-Feld fehlt in der Unternehmenskarte");
-  const feld = profileSrc.slice(profileSrc.indexOf('htmlFor="pf-eori"'), profileSrc.indexOf('htmlFor="pf-street"'));
+  const feld = schnitt(profileSrc, 'htmlFor="pf-eori"', 'htmlFor="pf-street"', "EORI-Feld (B5)");
   assert.ok(!feld.includes("{req}"), "die EORI darf kein Pflichtsternchen tragen");
   assert.ok(!/requiredProps\("eori_number"\)/.test(profileSrc), "die EORI darf kein B2B-Pflichtfeld sein");
   assert.ok(feld.includes("EORI_HINT"), "der Hilfetext fehlt");
@@ -128,7 +130,8 @@ test("(C1) fehlt die EORI, erscheint die Erfassung INLINE im Zollabschnitt", () 
   // Und die Serverwahrheit gewinnt: `required` wird VOR dem lokal bekannten Kontowert
   // ausgewertet — lehnt /book mit EORI_REQUIRED ab, braucht der Kunde das Eingabefeld
   // und nicht eine Bestätigungszeile, die der Ablehnung widerspricht.
-  assert.ok(sectionSrc.indexOf("if (!required)") < sectionSrc.indexOf('data-testid="customs-eori-ok"'),
+  assert.ok(ankerPosition(sectionSrc, "if (!required)", "required-Zweig (C1)")
+          < ankerPosition(sectionSrc, 'data-testid="customs-eori-ok"', "OK-Zeile (C1)"),
     "der Kontowert darf die serverseitige Anforderung nicht überstimmen");
 });
 
@@ -152,8 +155,8 @@ test("(C3) nach dem Speichern bleibt der Versandvorgang bestehen", () => {
 
 test("(C4) EORI_REQUIRED öffnet DENSELBEN Inline-Weg — nicht den Adressen-/Preiszweig", () => {
   assert.ok(bookingSrc.includes('d?.code === "EORI_REQUIRED"'), "der Zweig fehlt");
-  const zweig = bookingSrc.slice(bookingSrc.indexOf('d?.code === "EORI_REQUIRED"'),
-                                bookingSrc.indexOf("COMMERCIAL_INVOICE_BOOK_ERRORS[d.code]"));
+  const zweig = schnitt(bookingSrc, 'd?.code === "EORI_REQUIRED"',
+    "COMMERCIAL_INVOICE_BOOK_ERRORS[d.code]", "EORI-Zweig (C4)");
   assert.ok(/setEoriRequired\(true\)/.test(zweig), "die Inline-Fläche wird nicht aktiviert");
   assert.ok(/setStep\(1\)/.test(zweig), "der Kunde landet nicht am Zollabschnitt");
   assert.ok(!/Preise? neu berechnen|priceChange|setPriceChange/.test(zweig),

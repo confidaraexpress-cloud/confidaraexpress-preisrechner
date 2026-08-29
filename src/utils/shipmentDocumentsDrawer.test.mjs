@@ -23,6 +23,8 @@ import {
   documentIcon, documentFallbackFilename, hasProcessingDocument, nextDocumentPollDelay,
   isSafeApiPath, documentDownloadMessage,
 } from "./shipmentDocumentsView.mjs";
+// Fail-closed Quelltextzugriff: ein fehlender Anker ist ein LAUTER Fehler.
+import { schnitt } from "../../scripts/governance.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const drawer     = lies("../components/dashboard/ShipmentDocumentsDrawer.jsx");
@@ -233,7 +235,7 @@ test("12 — drei Zustände, drei Anzeigen, genau eine Aktion je Zeile", () => {
   // Ein gescheiterter Beleg bekommt KEINEN Wiederholen-Knopf (der Kunde kann am
   // Serverzustand nichts ändern) und keine Alarmfläche. „Erneut versuchen" gibt es
   // ausschließlich für den LADEFEHLER der Liste — ein reiner GET.
-  const zeile = drawerCode.slice(drawerCode.indexOf("function DocumentRow"), drawerCode.indexOf("export function ShipmentDocumentsDrawer"));
+  const zeile = schnitt(drawerCode, "function DocumentRow", "export function ShipmentDocumentsDrawer", "Dokumentzeile (12)");
   assert.ok(!/Erneut|retry/i.test(zeile), "die Dokumentzeile bietet ein Wiederholen an");
   assert.ok(!/alert-error|alert-danger/.test(zeile), "der Fehlerfall ist rot gestaltet");
   assert.ok(zeile.includes("DOCUMENTS_TEXT.failed") && zeile.includes("DOCUMENTS_TEXT.processing"));

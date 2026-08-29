@@ -16,6 +16,8 @@ import { requiresState, statesForCountry, normalizeStateCode, stateFieldError, U
 import { createEmptyShipmentForm, buildPartyPayload } from "./newShipmentForm.mjs";
 import { mapAddressToShipmentFormPatch } from "./addressBookView.mjs";
 import { blankNewShipmentForm, buildResumeInitialState } from "./formDraftsView.mjs";
+// Fail-closed Quelltextzugriff: ein fehlender Anker ist ein LAUTER Fehler.
+import { ankerPosition } from "../../scripts/governance.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const seite   = lies("../pages/NewShipmentPage.jsx");
@@ -80,7 +82,8 @@ test("7 — das Feld erscheint AUSSCHLIESSLICH bei Bundesstaatpflicht", () => {
     "ohne diese Bedingung erschiene das Feld auch bei nationalem Versand");
   // Und es steht als Auswahlfeld da, nicht als Freitext — ein ausgeschriebener Name würde
   // providerseitig abgelehnt.
-  const block = seite.slice(seite.indexOf("const stateSelect"), seite.indexOf("const stateSelect") + 1100);
+  const start = ankerPosition(seite, "const stateSelect", "stateSelect-Feld (7)");
+  const block = seite.slice(start, start + 1100);
   assert.match(block, /as="select"/);
   assert.match(block, /statesForCountry\(form\[`\$\{p\}_country`\]\)\.map/);
 });

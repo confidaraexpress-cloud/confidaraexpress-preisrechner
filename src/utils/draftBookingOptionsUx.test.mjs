@@ -32,6 +32,8 @@ import {
 } from "./formDraftsView.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+const { schnitt, ankerPosition } = await import("../../scripts/governance.mjs");
 const bookingPage     = lies("../pages/BookingPage.jsx");
 const newShipmentPage = lies("../pages/NewShipmentPage.jsx");
 const draftsPage      = lies("../pages/DraftsPage.jsx");
@@ -201,7 +203,7 @@ test("13 — ein vorhandener Wert öffnet seinen Bereich auch OHNE gespeicherte 
 });
 
 test("14 — die Stellung wird gespiegelt, aber ein ausgeschalteter Wert nicht", () => {
-  const eff = bookingPage.slice(bookingPage.indexOf("setFlowBooking({"), bookingPage.indexOf("const tariff = bookingData"));
+  const eff = schnitt(bookingPage, "setFlowBooking({", "const tariff = bookingData", "Spiegel-Effekt (14)");
   assert.match(eff, /referenceEnabled, trackingEmailEnabled, labelTrackingEmailEnabled, labelFormatEnabled,/,
     "die Schalterstellungen werden nicht gespiegelt — ein Reload verlöre sie wieder");
   // Und die Werte weiterhin nur bei aktiver Option (unveränderte Regel).
@@ -228,8 +230,9 @@ test("15 — die Stellung hat KEINE Buchungswirkung", () => {
 
   // Und im Payloadliteral selbst taucht kein Schalter mehr auf, nachdem die beiden legitimen
   // Verwendungen entfernt sind: die Übergabe an den Payloadbauer und die Referenz-Bedingung.
-  const start = bookingPage.indexOf("const doBook");
-  const payload = bookingPage.slice(start, start + 9000)
+  // Fenster = der GANZE doBook (fail-closed): das frühere feste 9000-Zeichen-Fenster
+  // wäre bei fehlendem Start-Anker still leer geworden und deckte den Handler nur teilweise.
+  const payload = schnitt(bookingPage, "const doBook", "const handlePriceChangeRecalculate", "doBook (15)")
     .replace(/buildShipmentEmailPayload\(\{[\s\S]*?\}\)/g, "")
     .replace(/referenceEnabled && form\.reference\.trim\(\)/g, "");
   for (const k of ["referenceEnabled", "trackingEmailEnabled", "labelTrackingEmailEnabled", "labelFormatEnabled"]) {
@@ -241,7 +244,7 @@ test("15 — die Stellung hat KEINE Buchungswirkung", () => {
 
 test("16 — „Als Entwurf speichern“ bekommt alle vier Optionen mit", () => {
   assert.match(bookingPage, /import \{ buildDraftBookingOptions \} from "\.\.\/utils\/draftBookingOptions\.mjs"/);
-  const aufruf = bookingPage.slice(bookingPage.indexOf("<SaveDraftAction"), bookingPage.indexOf("<SaveDraftAction") + 1400);
+  const aufruf = schnitt(bookingPage, "<SaveDraftAction", "/>", "SaveDraftAction-Aufruf (16)");
   assert.match(aufruf, /bookingOptions=\{buildDraftBookingOptions\(\{/,
     "die Aufrufstelle reicht die Optionen nicht durch");
   for (const feld of ["referenceEnabled", "trackingEmailEnabled", "labelTrackingEmailEnabled", "labelFormatEnabled",
@@ -334,8 +337,8 @@ test("22 — die Fortsetzen-Aktion steht bei beiden Entwurfsarten gleich", () =>
 });
 
 test("23 — der wiederhergestellte Zustand landet im Buchungsbereich, nicht im Formular", () => {
-  const eff = newShipmentPage.slice(newShipmentPage.indexOf('if (!isValidShipmentResumeDraft(resumeDraft)) return;'),
-                                    newShipmentPage.indexOf('if (!isValidShipmentResumeDraft(resumeDraft)) return;') + 400);
+  const effStart = ankerPosition(newShipmentPage, 'if (!isValidShipmentResumeDraft(resumeDraft)) return;', "Options-Effekt (23)");
+  const eff = newShipmentPage.slice(effStart, effStart + 400);
   assert.match(eff, /hasAnyDraftBookingOption\(resumeDraft\.bookingOptions\)/,
     "ein Entwurf ohne Optionen beschriebe den Vorgang grundlos");
   assert.match(eff, /setFlowBooking\(draftBookingOptionsToFlow\(resumeDraft\.bookingOptions\)\)/,
@@ -353,8 +356,8 @@ test("24 — die Reihenfolge stimmt: erst leeren, DANN wiederherstellen", () => 
 });
 
 test("25 — beide Entwurfsarten rehydrieren das Formular über DIESELBE Funktion", () => {
-  const init = newShipmentPage.slice(newShipmentPage.indexOf("const resumeInitRef = useRef(undefined);"),
-                                     newShipmentPage.indexOf("const resumeInit = resumeInitRef.current;"));
+  const init = schnitt(newShipmentPage, "const resumeInitRef = useRef(undefined);",
+    "const resumeInit = resumeInitRef.current;", "Mount-once-Initialisierer (25)");
   assert.match(init, /isValidResumeDraft\(resumeDraft\) \|\| isValidShipmentResumeDraft\(resumeDraft\)/);
   assert.equal((init.match(/buildResumeInitialState\(/g) || []).length, 1,
     "es gibt einen zweiten Rehydrationsweg");

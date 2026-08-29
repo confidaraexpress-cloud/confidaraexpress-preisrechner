@@ -23,14 +23,18 @@ import { readFileSync } from "node:fs";
 import { resumeInitialState, missingFieldsHint, RESULT_DERIVED_RESUME_FIELDS } from "./newShipmentResume.mjs";
 import { getShipmentFormSnapshot } from "./shipmentFormSnapshot.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+import { schnitt, ankerPosition } from "../../scripts/governance.mjs";
 
 const PAGE = readFileSync(new URL("../pages/NewShipmentPage.jsx", import.meta.url), "utf8");
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const PAGE_CODE = stripComments(PAGE);
 // Rumpf von calculate() — von der Deklaration bis zur nächsten Top-Level-Funktion.
-const CALCULATE = PAGE_CODE.slice(
-  PAGE_CODE.indexOf("const calculate = async () => {"),
-  PAGE_CODE.indexOf("const reloadFormDraft = async () => {")
+const CALCULATE = schnitt(
+  PAGE_CODE,
+  "const calculate = async () => {",
+  "const reloadFormDraft = async () => {",
+  "calculate()-Rumpf"
 );
 
 // Vollständiger, realistischer Entwurf (alle vom Snapshot getragenen Felder).
@@ -228,7 +232,7 @@ test("Verdrahtung: genau EIN Preisrequest je Aufruf, kein automatischer Wiederve
 });
 
 test("Verdrahtung: laufende Anfrage blockiert einen zweiten Klick (keine Doppelrequests)", () => {
-  const kopf = CALCULATE.slice(0, CALCULATE.indexOf("setHasResults(false)"));
+  const kopf = CALCULATE.slice(0, ankerPosition(CALCULATE, "setHasResults(false)", "calculate()-Kopf"));
   // Bewusst ein Ref, kein State: mehrere Klicks im selben Tick sehen denselben
   // (noch alten) State-Wert und kaemen an einer State-Pruefung vorbei.
   assert.ok(/if \(calcInFlight\.current\) return;/.test(kopf), "In-Flight-Guard fehlt am Anfang von calculate()");
@@ -238,8 +242,8 @@ test("Verdrahtung: laufende Anfrage blockiert einen zweiten Klick (keine Doppelr
   assert.ok(/\} finally \{[\s\S]*calcInFlight\.current = false;[\s\S]*\}/.test(CALCULATE),
     "Guard wird nicht in finally zurueckgesetzt (CTA koennte dauerhaft blockieren)");
   // Erst NACH der Validierung setzen: ein abgelehnter Klick darf nichts blockieren.
-  const gesetztIdx = CALCULATE.indexOf("calcInFlight.current = true;");
-  assert.ok(gesetztIdx > CALCULATE.indexOf("const errs = getErrors(form);"),
+  const gesetztIdx = ankerPosition(CALCULATE, "calcInFlight.current = true;", "Guard-Setzung");
+  assert.ok(gesetztIdx > ankerPosition(CALCULATE, "const errs = getErrors(form);", "Validierung"),
     "Guard darf erst nach der Validierung gesetzt werden");
   // Geprueft werden die BEDINGUNGEN, nicht der genaue Wortlaut: der Ausdruck darf um
   // weitere Sperrgruende wachsen (z. B. eine nachweislich widerspruechliche Adresse),
@@ -252,7 +256,7 @@ test("Verdrahtung: laufende Anfrage blockiert einen zweiten Klick (keine Doppelr
 });
 
 test("Verdrahtung: ungültige Daten senden keinen Request und markieren die Felder", () => {
-  const vorRequest = CALCULATE.slice(0, CALCULATE.indexOf("apiFetch("));
+  const vorRequest = CALCULATE.slice(0, ankerPosition(CALCULATE, "apiFetch(", "Requeststelle"));
   assert.ok(vorRequest.includes("const errs = getErrors(form);"), "Validierung vor dem Request fehlt");
   assert.ok(/if \(Object\.keys\(errs\)\.length > 0\) \{[\s\S]*setErrors\(errs\);[\s\S]*return;/.test(vorRequest),
     "ungültige Daten müssen VOR dem Request mit gesetzten Fehlern abbrechen");
@@ -306,7 +310,7 @@ test("Verdrahtung: Entwurfshydrierung bleibt synchron und einmalig", () => {
 
 test("Verdrahtung: keine künstlichen Workarounds im Klickpfad", () => {
   assert.ok(!/onClick=\{[^}]*calculate[^}]*calculate/.test(PAGE_CODE), "doppelter Aufruf im Klick-Handler");
-  const ctaBlock = PAGE_CODE.slice(PAGE_CODE.indexOf("offers-calc-cta"), PAGE_CODE.indexOf("dft-savedraft-cta"));
+  const ctaBlock = schnitt(PAGE_CODE, "offers-calc-cta", "dft-savedraft-cta", "CTA-Block");
   assert.ok(ctaBlock.includes("onClick={calculate}"), "CTA ruft nicht mehr calculate auf");
   assert.ok(!/setTimeout|requestAnimationFrame/.test(ctaBlock), "Timer/Frame-Trick im CTA-Pfad");
 });
@@ -331,7 +335,7 @@ test("Verdrahtung: der Guard bleibt scharf (serverseitiges Persistenz-Signal)", 
 });
 
 test("Verdrahtung: eine verbrauchte Entwurfs-ID wird nie erneut gesendet", () => {
-  const block = PAGE_CODE.slice(PAGE_CODE.indexOf("if (sourceAtSend) {"), PAGE_CODE.indexOf("const newPublicCarriers"));
+  const block = schnitt(PAGE_CODE, "if (sourceAtSend) {", "const newPublicCarriers", "sourceAtSend-Block");
   const geloest = block.indexOf("if (t.consumed) setResumeSource(null);");
   const guard = block.indexOf("if (t.blocking ||");
   assert.ok(geloest !== -1, "verbrauchter Entwurf wird nicht geloest");

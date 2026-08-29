@@ -57,6 +57,9 @@ const stripComments = (src) =>
 
 const listSrc   = stripComments(read("pages/admin/AdminShipmentsPage.jsx"));
 const detailSrc = stripComments(read("pages/admin/AdminShipmentDetailPage.jsx"));
+// Die Ansichtsbibliothek der Detailseite ist seit der Modularisierung ein eigenes Modul —
+// dieselben Hygiene-Invarianten (kein Logging, keine Tokens) gelten dort weiter.
+const detailViewSrc = stripComments(read("utils/adminShipmentDetailView.mjs"));
 const cssSrc    = read("styles/admin.css");
 const viewSrc   = stripComments(read("utils/adminShipmentView.mjs"));
 
@@ -576,8 +579,9 @@ test("31 — es gibt keine zweite Tracking-Bedingungslogik mehr auf der Seite", 
   assert.equal(/trackData\.\w/.test(rendered), false, "die Rohdaten werden noch direkt gerendert");
   // Der Live-Block erscheint erst nach einer Abfrage.
   assert.match(detailSrc, /\{track\.live\.loaded && \(/);
-  // Kein Status wird erfunden, wenn keiner geliefert wurde.
-  assert.match(detailSrc, /"Kein Trackingstatus"/);
+  // Kein Status wird erfunden, wenn keiner geliefert wurde — der Fallback-Text
+  // wohnt seit der Modularisierung in der Ansichtsbibliothek der Detailseite.
+  assert.match(detailViewSrc, /"Kein Trackingstatus"/);
   assert.match(detailSrc, /\{track\.live\.status \|\| "Noch kein Status geliefert"\}/);
   // Live- und gespeicherte Nummer bleiben maskiert.
   assert.match(detailSrc, /<dd className="adm-mask">\{maskTail\(track\.live\.number\) \|\| "Nicht geliefert"\}<\/dd>/);
@@ -608,7 +612,7 @@ test("24 — kein Logging, kein Tokenzugriff in den neuen Dateien", () => {
   // wird — geprüft wird ausschließlich ausgeführter Code. `://` bleibt erhalten,
   // damit URLs nicht versehentlich zerschnitten werden.
   const stripAllComments = (src) => stripComments(src).replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-  for (const rel of ["utils/adminShipmentView.mjs", "pages/admin/AdminShipmentsPage.jsx", "pages/admin/AdminShipmentDetailPage.jsx"]) {
+  for (const rel of ["utils/adminShipmentView.mjs", "utils/adminShipmentDetailView.mjs", "pages/admin/AdminShipmentsPage.jsx", "pages/admin/AdminShipmentDetailPage.jsx"]) {
     const code = stripAllComments(read(rel));
     assert.equal(/console\.(log|info|warn|error|debug|table|dir)\s*\(/.test(code), false, `${rel}: kein Logging`);
     for (const bad of ["ce_token", "localStorage", "sessionStorage", "document.cookie"]) {
@@ -680,7 +684,7 @@ test("38 — die Seitenanzeige ist für Screenreader live, ohne den Fokus zu ste
 });
 
 test("25 — Selbsttest: die Prüflogik greift tatsächlich", () => {
-  for (const [label, src] of [["liste", listSrc], ["detail", detailSrc], ["modul", viewSrc]]) {
+  for (const [label, src] of [["liste", listSrc], ["detail", detailSrc], ["modul", viewSrc], ["detailmodul", detailViewSrc]]) {
     assert.ok(src.length > 800, `${label}: Quelle wirkt leer (${src.length} Zeichen)`);
   }
   assert.ok(cssSrc.length > 5000, "Stylesheet wirkt leer");

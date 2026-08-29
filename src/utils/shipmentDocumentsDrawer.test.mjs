@@ -23,6 +23,8 @@ import {
   documentIcon, documentFallbackFilename, hasProcessingDocument, nextDocumentPollDelay,
   isSafeApiPath, documentDownloadMessage,
 } from "./shipmentDocumentsView.mjs";
+// Fail-closed Quelltextzugriff: ein fehlender Anker ist ein LAUTER Fehler.
+import { schnitt } from "../../scripts/governance.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const drawer     = lies("../components/dashboard/ShipmentDocumentsDrawer.jsx");
@@ -233,7 +235,7 @@ test("12 — drei Zustände, drei Anzeigen, genau eine Aktion je Zeile", () => {
   // Ein gescheiterter Beleg bekommt KEINEN Wiederholen-Knopf (der Kunde kann am
   // Serverzustand nichts ändern) und keine Alarmfläche. „Erneut versuchen" gibt es
   // ausschließlich für den LADEFEHLER der Liste — ein reiner GET.
-  const zeile = drawerCode.slice(drawerCode.indexOf("function DocumentRow"), drawerCode.indexOf("export function ShipmentDocumentsDrawer"));
+  const zeile = schnitt(drawerCode, "function DocumentRow", "export function ShipmentDocumentsDrawer", "Dokumentzeile (12)");
   assert.ok(!/Erneut|retry/i.test(zeile), "die Dokumentzeile bietet ein Wiederholen an");
   assert.ok(!/alert-error|alert-danger/.test(zeile), "der Fehlerfall ist rot gestaltet");
   assert.ok(zeile.includes("DOCUMENTS_TEXT.failed") && zeile.includes("DOCUMENTS_TEXT.processing"));
@@ -318,12 +320,17 @@ test("18 — der Drawer verhält sich wie jeder Dialog des Systems", () => {
 /* ═════════ 8 — P5B bleibt, wie es war ═════════ */
 
 test("19 — der Erfolgsbildschirm ist von P6 nicht berührt", () => {
-  assert.ok(!/ShipmentDocumentsDrawer|shipmentDocumentsView/.test(bookingPage),
-    "der Drawer ist in den Buchungsablauf gewandert");
-  // Die drei direkten Dokumentknöpfe des Erfolgsbildschirms bleiben unverändert.
+  // Seit der Modularisierung leben die direkten Dokumentknöpfe des Erfolgsbildschirms
+  // wortgleich in components/booking/BookingSuccessDocuments.jsx.
+  const successDocs = lies("../components/booking/BookingSuccessDocuments.jsx");
+  for (const quelle of [bookingPage, successDocs]) {
+    assert.ok(!/ShipmentDocumentsDrawer|shipmentDocumentsView/.test(quelle),
+      "der Drawer ist in den Buchungsablauf gewandert");
+  }
+  // Die direkten Dokumentknöpfe des Erfolgsbildschirms bleiben unverändert.
   for (const behalten of ["downloadLabel(booking.ceShipmentId", "downloadOrderConfirmation(booking.ceShipmentId",
                           "downloadDeliveryNote(booking.ceShipmentId", "downloadProforma(pfad)"]) {
-    assert.ok(bookingPage.includes(behalten), `der Erfolgsbildschirm hat ${behalten} verloren`);
+    assert.ok(successDocs.includes(behalten), `der Erfolgsbildschirm hat ${behalten} verloren`);
   }
 });
 

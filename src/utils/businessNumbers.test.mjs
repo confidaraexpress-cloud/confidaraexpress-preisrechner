@@ -19,6 +19,8 @@ import {
   orderConfirmationNumberOf,
   customerShipmentNumbers, adminShipmentNumbers, customerInvoiceNumbers,
 } from "./businessNumbers.mjs";
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+import { schnitt } from "../../scripts/governance.mjs";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf8");
@@ -198,7 +200,7 @@ test("(1–3) Kundenprofil zeigt customer_number, nicht editierbar, Legacy siche
   const view = read("utils/profileView.mjs");
   assert.ok(!/customer_number/.test(view), "customer_number darf nicht Teil der Profil-Formularlogik sein");
   assert.ok(!/<input[^>]*customer/i.test(src), "Kundennummer darf kein Eingabefeld sein");
-  assert.ok(!/user\?\.id|user\.id/.test(src.slice(src.indexOf("profile-account-customer-number"), src.indexOf("profile-meta-row"))),
+  assert.ok(!/user\?\.id|user\.id/.test(schnitt(src, "profile-account-customer-number", "profile-meta-row", "Kundennummern-Block (1–3)")),
     "interne users.id im Kundennummern-Block");
 });
 
@@ -210,7 +212,7 @@ test("(4–5) Sendungsliste zeigt die Auftragsbestätigung und nutzt keinen Ersa
   assert.ok(!/<th[^>]*>(Sendungsnummer|Bestellnummer)<\/th>/.test(src), "eine alte Spaltenüberschrift lebt noch");
   assert.ok(src.includes("nums.orderConfirmationNumber"), "die Vorgangsnummer wird nicht gerendert");
   // Kein Fallback auf CE-BS, JUMiNGO- oder interne Werte in der Nummern-Zelle.
-  const cell = src.slice(src.indexOf("nums.orderConfirmationNumber"), src.indexOf("</td>", src.indexOf("nums.orderConfirmationNumber")));
+  const cell = schnitt(src, "nums.orderConfirmationNumber", "</td>", "Vorgangsnummern-Zelle (4–5)");
   assert.ok(!/jumingo_shipment_id|s\.id\b|order_number|business_order_number/.test(cell),
     "Ersatzwert in der Vorgangsnummern-Zelle");
   // Altsendungen bekommen einen neutralen Hinweis, keine Ersatznummer.
@@ -219,7 +221,7 @@ test("(4–5) Sendungsliste zeigt die Auftragsbestätigung und nutzt keinen Ersa
 
 test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
-  const block = src.slice(src.indexOf("shipment-detail-numbers"), src.indexOf("</dl>"));
+  const block = schnitt(src, "shipment-detail-numbers", "</dl>", "Sendungsdetail-Nummern (6)");
   assert.ok(block.includes("NUMBER_LABELS.orderConfirmation"), "Auftragsbestätigung fehlt im Detail");
   assert.ok(!/businessOrder|business_order_number/.test(block), "die interne Bestellnummer steht im Kundendetail");
   assert.ok(block.includes("NUMBER_LABELS.tracking"), "Trackingnummer fehlt im Detail");
@@ -230,7 +232,7 @@ test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => 
 
 test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getrennt", () => {
   const src = read("pages/BookingPage.jsx");
-  const block = src.slice(src.indexOf("booking-success-numbers"), src.indexOf("booking-success-delivery"));
+  const block = schnitt(src, "booking-success-numbers", "booking-success-delivery", "Erfolgsbildschirm-Nummern (7)");
   assert.ok(block.includes("orderConfirmationNumberOf(booking)"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("NUMBER_LABELS.orderConfirmation") && block.includes("NUMBER_LABELS.invoice"),
@@ -255,8 +257,7 @@ test("(8) Rechnungsliste zeigt AUSSCHLIESSLICH die Rechnungsnummer", () => {
   const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   assert.ok(/<th scope="col">Rechnung<\/th>/.test(src), "Spalte 'Rechnung' fehlt");
   assert.ok(code.includes("inv.invoice_number"), "Rechnungsnummer fehlt");
-  const fnStart = code.indexOf("function InvoiceNumberBlock");
-  const cell = code.slice(fnStart, code.indexOf("\n}", fnStart));
+  const cell = schnitt(code, "function InvoiceNumberBlock", "\n}", "InvoiceNumberBlock (8)");
   assert.ok(cell.includes("inv.invoice_number"), "die Rechnungsnummer fehlt in der Zelle");
   // Weder eine Vorgangsnummer noch ein Ersatzwert an ihrer Stelle: kein Platzhalter,
   // kein „—", keine ID.
@@ -327,7 +328,7 @@ test("(12) Admin-Rechnungsdetail zeigt Kunden-, Bestell- und Rechnungsnummer", (
   // Falschaussage über ein Dokument, das es zu diesem Wert nicht gibt.
   assert.ok(/r\.shipment_order_confirmation_number, r\.shipmentOrderConfirmationNumber/.test(view),
     "die verknüpfte Sendung liefert nicht die Auftragsbestätigungsnummer");
-  const linked = view.slice(view.indexOf("export function linkedShipment"), view.indexOf("\n}", view.indexOf("export function linkedShipment")));
+  const linked = schnitt(view, "export function linkedShipment", "\n}", "linkedShipment (R)");
   assert.ok(!/business_order_number|businessOrderNumber/.test(linked),
     "die Sendungsverknüpfung liest weiterhin die interne Bestellnummer");
   // Kundennummer: HISTORISCH aus dem Rechnungssnapshot, getrennt von den aktuellen Stammdaten.
@@ -392,7 +393,7 @@ test("(16) Responsive/Barrierefreiheit: Nummern umbrechbar, Kopieraktion bedienb
 
 test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {
   const src = read("components/dashboard/ShipmentsList.jsx");
-  const head = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
+  const head = schnitt(src, "<thead>", "</thead>", "Tabellenkopf");
   // <th[ >] statt <th>: die Zahlenspalten tragen seit Paket A, Phase 2.5 eine
   // Ausrichtungsklasse. Geprüft wird weiterhin die Spaltenzahl, nicht das Attribut.
   const cols = (head.match(/<th[ >]/g) || []).length;

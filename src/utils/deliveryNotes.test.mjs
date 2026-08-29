@@ -155,7 +155,10 @@ test("6b — das Auftragsdetail zeigt den Lieferschein JE SENDUNG (Teilversand)"
 });
 
 test("6c — der Erfolgsbildschirm zeigt den Download nur bei tatsächlich vorhandenem Lieferschein", () => {
-  assert.match(bookingPage, /booking\?\.ceShipmentId && booking\?\.deliveryNote\?\.number/,
+  // Der Lieferschein-Knopf lebt seit der Modularisierung wortgleich im
+  // Erfolgsdokumente-Baustein components/booking/BookingSuccessDocuments.jsx.
+  const successDocs = read("../components/booking/BookingSuccessDocuments.jsx");
+  assert.match(successDocs, /booking\?\.ceShipmentId && booking\?\.deliveryNote\?\.number/,
     "die Sichtbarkeit darf nie aus dem Kontomodus geraten werden");
 });
 

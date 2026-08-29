@@ -16,6 +16,8 @@ import {
   normalizeVoucherInput, canSubmitVoucher, readVoucherResponse, voucherPriceLines,
   voucherInvalidationKey, shouldInvalidateVoucher, VOUCHER_PRICE_RELEVANT_KEYS,
 } from "./voucherView.mjs";
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+import { schnitt } from "../../scripts/governance.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
@@ -192,8 +194,8 @@ test("18 SICHERHEIT: das Frontend rechnet keinen Rabatt", () => {
 });
 
 test("19 SICHERHEIT: der Buchungspayload trägt NUR den Code, keine Beträge", () => {
-  const payload = pageCode.slice(pageCode.indexOf("await apiFetch(`/api/jumingo/book`"),
-                                 pageCode.indexOf("if (r.status === 409"));
+  const payload = schnitt(pageCode, "await apiFetch(`/api/jumingo/book`",
+    "if (r.status === 409", "/book-Payload (19)");
   assert.ok(/voucherCode: voucher\.code/.test(payload), "der Code muss mitgesendet werden");
   for (const verboten of ["discountGross", "voucherPercent", "voucherValue", "finalGross",
                           "subtotalGross", "discount:", "percent:"]) {
@@ -269,8 +271,8 @@ test("28 der Testlabel-Hinweis erscheint nur bei bestätigter Testbuchung", () =
 });
 
 test("29 die Styles nutzen nur Foundation-Tokens (keine eigenen Farbwerte)", () => {
-  const block = calculatorCss.slice(calculatorCss.indexOf(".booking-voucher {"),
-                                    calculatorCss.indexOf(".booking-printer-note {"));
+  const block = schnitt(calculatorCss, ".booking-voucher {",
+    ".booking-printer-note {", "Gutschein-Styles (29)");
   assert.ok(block.length > 0, "Gutschein-Styles fehlen");
   assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(block), "kein Hexwert im Gutscheinblock");
   assert.ok(!/rgba?\(/.test(block), "kein rgb/rgba im Gutscheinblock");

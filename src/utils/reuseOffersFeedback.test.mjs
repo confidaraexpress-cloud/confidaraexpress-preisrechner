@@ -18,7 +18,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { pruefeImTestlauf } from "../../scripts/governance.mjs";
+import { pruefeImTestlauf, ankerPosition } from "../../scripts/governance.mjs";
 
 import { revealOffers, offersScrollBehavior } from "./revealOffers.mjs";
 
@@ -111,10 +111,14 @@ for (const [name, quelle] of SEITEN) {
   });
 
   test(`8 — ${name}: die vier Guard-Bedingungen sind unverändert`, () => {
-    const kopf = quelle.slice(
-      quelle.indexOf("if (", quelle.indexOf("calcInFlight.current) return;")),
-      quelle.indexOf("lastCalcKeyRef.current === calcKeyRef.current") + 60
-    );
+    // Fail-closed: beide Anker müssen existieren und in dieser Reihenfolge stehen —
+    // sonst wüchse der Ausschnitt still über die halbe Datei und die vier
+    // includes-Prüfungen wären vakuum-wahr.
+    const inFlight = ankerPosition(quelle, "calcInFlight.current) return;", `${name}: In-Flight-Guard (8)`);
+    const guardStart = quelle.indexOf("if (", inFlight);
+    const guardEnde = ankerPosition(quelle, "lastCalcKeyRef.current === calcKeyRef.current", `${name}: Guard-Ende (8)`);
+    assert.ok(guardStart !== -1 && guardStart < guardEnde, `${name}: Guard-Kopf nicht gefunden (8)`);
+    const kopf = quelle.slice(guardStart, guardEnde + 60);
     for (const teil of [
       "hasResults", "tariffs.length > 0",
       'lastCalcKeyRef.current !== ""', "lastCalcKeyRef.current === calcKeyRef.current",

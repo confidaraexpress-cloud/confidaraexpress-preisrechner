@@ -16,6 +16,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
 const dlSrc      = read("./downloadOrderConfirmation.js");
 const bookingSrc = read("../pages/BookingPage.jsx");
+// Der Dokumentbereich des Erfolgsbildschirms lebt seit der Modularisierung
+// wortgleich in components/booking/BookingSuccessDocuments.jsx.
+const docsSrc    = read("../components/booking/BookingSuccessDocuments.jsx");
 const listSrc    = read("../components/dashboard/ShipmentsList.jsx");
 const dlNoteSrc  = read("./downloadDeliveryNote.js");
 
@@ -26,6 +29,7 @@ const strip = (s) => s
   .split("\n").map((l) => l.replace(/(^|\s)\/\/.*$/, "$1")).join("\n");
 const dlCode      = strip(dlSrc);
 const bookingCode = strip(bookingSrc);
+const docsCode    = strip(docsSrc);
 const listCode    = strip(listSrc);
 
 // ─── 1. Adressierung ─────────────────────────────────────────────────────────
@@ -97,33 +101,32 @@ test("8 der Knopf erscheint NUR, wenn die Buchungsantwort eine Bestätigung meld
   // der sowohl die verschachtelte /book-Form (orderConfirmation.number) als auch ältere
   // Formen versteht — statt eines direkten, an die verschachtelte Form gebundenen Zugriffs.
   assert.ok(
-    /booking\?\.ceShipmentId && orderConfirmationNumberOf\(booking\)/.test(bookingCode),
+    /booking\?\.ceShipmentId && orderConfirmationNumberOf\(booking\)/.test(docsCode),
     "Sichtbarkeit hängt nicht an der gemeldeten Nummer"
   );
   // Handler und Sichtbarkeit an derselben Bedingung.
   assert.ok(
-    /if \(!booking\?\.ceShipmentId \|\| !confirmationNumber\) return;/.test(bookingCode),
+    /if \(!booking\?\.ceShipmentId \|\| !confirmationNumber\) return;/.test(docsCode),
     "Handler prüft die Bedingung nicht erneut"
   );
 });
 
 test("9 der Erfolgsbildschirm nennt die Nummer im Knopftext", () => {
-  assert.ok(/Auftragsbestätigung \{orderConfirmationNumberOf\(booking\)\} herunterladen/.test(bookingSrc),
+  assert.ok(/Auftragsbestätigung \{orderConfirmationNumberOf\(booking\)\} herunterladen/.test(docsSrc),
     "die Nummer steht nicht im Knopf");
 });
 
 test("10 401/403 erzeugen keine eigene Meldung (zentraler Redirect)", () => {
-  const idx = bookingCode.indexOf("handleDownloadOrderConfirmation");
-  const body = bookingCode.slice(idx, idx + 700);
+  const idx = docsCode.indexOf("handleDownloadOrderConfirmation");
+  assert.ok(idx !== -1, "Handler nicht gefunden — der Scan liefe auf einem leeren Ausschnitt");
+  const body = docsCode.slice(idx, idx + 700);
   assert.ok(/e\?\.status !== 401 && e\?\.status !== 403/.test(body), "doppelte Fehlerbehandlung bei Auth");
 });
 
 test("11 die Auftragsbestätigung steht VOR dem Lieferschein", () => {
   // Sie betrifft jede Buchung, der Lieferschein nur Konten mit Lagerbezug.
-  const oc = bookingCode.indexOf("handleDownloadOrderConfirmation(s)") >= 0
-    ? bookingCode.indexOf("onClick={handleDownloadOrderConfirmation}")
-    : bookingCode.indexOf("onClick={handleDownloadOrderConfirmation}");
-  const dn = bookingCode.indexOf("onClick={handleDownloadDeliveryNote}");
+  const oc = docsCode.indexOf("onClick={handleDownloadOrderConfirmation}");
+  const dn = docsCode.indexOf("onClick={handleDownloadDeliveryNote}");
   assert.ok(oc > 0 && dn > 0, "beide Knöpfe müssen existieren");
   assert.ok(oc < dn, "der Lieferschein steht vor der Auftragsbestätigung");
 });
@@ -168,8 +171,10 @@ test("14 der Drawer lädt über den SERVERGELIEFERTEN Pfad, nicht über einen ge
 test("15 es gibt genau EINEN Aufrufpfad je Oberfläche", () => {
   // Die Auftragsbestätigung wird nur noch an EINER Stelle direkt geladen: auf dem
   // Erfolgsbildschirm. Die Sendungsliste ruft den Helfer gar nicht mehr auf.
-  assert.strictEqual((bookingCode.match(/downloadOrderConfirmation\(/g) || []).length, 1,
-    "BookingPage ruft den Download nicht genau einmal auf");
+  assert.strictEqual((docsCode.match(/downloadOrderConfirmation\(/g) || []).length, 1,
+    "der Erfolgsdokumente-Baustein ruft den Download nicht genau einmal auf");
+  assert.strictEqual((bookingCode.match(/downloadOrderConfirmation\(/g) || []).length, 0,
+    "die Buchungsseite selbst ruft den Download wieder direkt auf");
   assert.strictEqual((listCode.match(/downloadOrderConfirmation\(/g) || []).length, 0,
     "die Sendungsliste ruft den Download wieder selbst auf");
 });
@@ -182,8 +187,8 @@ test("16 kein SICHTBARER Text dieses Pakets nennt den Upstream-Anbieter", () => 
   const sichtbar = [
     ...(dlSrc.match(/"[^"]{10,200}"/g) || []),                 // Fehlertexte des Downloads
     "Auftragsbestätigung",                                      // Beschriftung im Dokumente-Drawer
-    (bookingSrc.match(/Auftragsbestätigung \{[^}]*\} herunterladen/) || [""])[0],
-    (bookingSrc.match(/Auftragsbestätigung wird geladen…/) || [""])[0],
+    (docsSrc.match(/Auftragsbestätigung \{[^}]*\} herunterladen/) || [""])[0],
+    (docsSrc.match(/Auftragsbestätigung wird geladen…/) || [""])[0],
   ];
   for (const t of sichtbar) {
     for (const leak of ["jumingo", "sandbox"]) {

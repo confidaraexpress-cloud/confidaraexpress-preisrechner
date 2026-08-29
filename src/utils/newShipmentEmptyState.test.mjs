@@ -22,6 +22,8 @@ import {
   packagePayload, packageSummaryLine, PACKAGE_FIELDS, PACKAGE_PLACEHOLDERS, PACKAGE_COUNT_DEFAULT,
 } from "./newShipmentForm.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
+// Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
+import { schnitt } from "../../scripts/governance.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (code) => code
@@ -100,18 +102,15 @@ test("3b — ohne hinterlegte Anschrift erscheint die Aktion gar nicht", () => {
 });
 
 test("3c — die Übernahme ist EIN Patch mit GENAU EINER Invalidierung", () => {
-  const fn = seite.slice(seite.indexOf("const uebernimmProfilAbsender = "),
-                         seite.indexOf("const profilAbsenderVerfuegbar") + 1 || undefined);
-  const block = seite.slice(seite.indexOf("const uebernimmProfilAbsender = "));
-  const ende = block.indexOf("\n  };");
-  const koerper = block.slice(0, ende);
+  // Funktionsrumpf fail-closed geschnitten: von der Deklaration bis zur
+  // schließenden Klammer auf Deklarationsebene ("\n  };").
+  const koerper = schnitt(seite, "const uebernimmProfilAbsender = ", "\n  };", "Profilabsender-Übernahme (3c)");
   assert.equal((koerper.match(/setForm\(/g) || []).length, 1, "mehr als ein Formularpatch");
   assert.equal((koerper.match(/invalidateResults\(\)/g) || []).length, 1, "nicht genau eine Invalidierung");
   // Die Baseline wird NICHT nachgezogen: eine Nutzeraktion macht die Seite
   // „dirty" — sonst verschwände der Verlassen-Hinweis und der Entwurfsknopf
   // bliebe gesperrt.
   assert.ok(!/setBaseline\(/.test(koerper), "die Baseline wird nachgezogen");
-  void fn;
 });
 
 /* ══════════ TEST 4 — Adressbuch ══════════════════════════════════════════ */
@@ -196,7 +195,7 @@ test("13 — jede Paketänderung verwirft alte Angebote", () => {
   // upd() ruft invalidateResults() für jedes NICHT rein clientseitige Filterfeld.
   // Die Ausnahmeliste ist deshalb die Stelle, an der ein Paketfeld versehentlich
   // vom Verwerfen ausgenommen werden könnte.
-  const menge = seite.slice(seite.indexOf("const FILTER_ONLY_FIELDS"), seite.indexOf("function getErrors"));
+  const menge = schnitt(seite, "const FILTER_ONLY_FIELDS", "function getErrors", "FILTER_ONLY_FIELDS (13)");
   for (const k of PACKAGE_FIELDS)
     assert.ok(!menge.includes(`"${k}"`), `${k} steht in FILTER_ONLY_FIELDS und würde Angebote NICHT verwerfen`);
   assert.ok(seite.includes("if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();"),
@@ -323,8 +322,7 @@ test("26 — die Anzahl bleibt frei editierbar (Vorgabe, kein Festwert)", () => 
       `${wert} kommt nicht im Payload an`);
   }
   // Im Markup: ein kontrolliertes Feld am gemeinsamen upd(), ohne Sperre.
-  const feld = seite.slice(seite.indexOf('id="ns-packageCount"'));
-  const bis = feld.slice(0, feld.indexOf("/>"));
+  const bis = schnitt(seite, 'id="ns-packageCount"', "/>", "Anzahl-Feld (26)");
   assert.ok(/value=\{form\.packageCount\}/.test(bis), "die Anzahl ist kein kontrolliertes Feld mehr");
   assert.ok(/onChange=\{\(v\) => upd\("packageCount", v\)\}/.test(bis), "die Eingabe läuft nicht mehr über upd()");
   assert.ok(!/readOnly|disabled/.test(bis), "die Anzahl wurde gesperrt — sie ist eine Vorgabe, kein Festwert");

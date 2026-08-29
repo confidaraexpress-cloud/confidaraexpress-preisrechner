@@ -292,6 +292,12 @@ test("H — auf 390 px läuft nichts aus dem Bild, auch mit langer Belegnummer",
   await page.waitForSelector(".ce-list-card", { timeout: 20000 });
   await dokumenteKnopf(page).click();
   await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
+  // Gemessen wird erst, wenn die ZEILEN da sind: der Drawer-Rahmen erscheint vor
+  // der geladenen Dokumentliste, und auf einem langsamen Runner war `.sdoc-row`
+  // beim evaluate noch null (CI-Lauf 33269152931, Job E2E 4/4 — lokal grün).
+  // Der tiefste gemessene Knoten ist die Wartebedingung; die Messung selbst
+  // bleibt unverändert.
+  await page.waitForSelector(".sdoc-row-action .btn", { timeout: 15000 });
 
   // Der Drawer nimmt die volle Breite und erzeugt keine Querleiste.
   const messung = await page.evaluate(() => {

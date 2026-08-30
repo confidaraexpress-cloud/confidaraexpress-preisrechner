@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeEori, eoriFieldError, hasUsableEori, EORI_MAX_LENGTH, EORI_FORMAT_ERROR, EORI_HINT } from "./eori.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt, ankerPosition } from "../../scripts/governance.mjs";
+import { buchungsFlaeche, buchungsSeite } from "../testing/quelltext.mjs";
 import {
   COMPANY_FIELDS, FIELD_MAXLEN, companyBaseline, buildCompanyPatch,
   isCompanyDirty, validateCompanyForm, mapApiProfileError,
@@ -24,7 +25,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/
 
 const eoriSrc      = strip(src("utils/eori.mjs"));
 const profileSrc   = strip(src("components/dashboard/Profile.jsx"));
-const bookingSrc   = strip(src("pages/BookingPage.jsx"));
+const bookingSrc   = strip(buchungsFlaeche());
 const customsSrc   = strip(src("components/booking/CustomsModule.jsx"));
 const sectionSrc   = strip(src("components/booking/CustomsEoriSection.jsx"));
 
@@ -177,7 +178,11 @@ test("(C5) das Frontend entscheidet die Zollpflicht NICHT", () => {
 
 test("(C6) nicht zollpflichtige Sendungen bleiben unberührt", () => {
   // Die Sektion lebt ausschließlich im Zollmodul, und das rendert nur bei modules.customs.
-  assert.ok(!bookingSrc.includes("<CustomsEoriSection"), "die Sektion gehört in das Zollmodul");
+  // Diese Zusage gilt der SEITE, nicht der Buchungsfläche: sie sagt „das gehört in
+  // eine Komponente, nicht in die Seite". Auf der Fläche (Seite + Komponenten) wäre
+  // sie zwangsläufig verletzt — dort steht die Komponente ja.
+  const nurDieSeite = strip(buchungsSeite());
+  assert.ok(!nurDieSeite.includes("<CustomsEoriSection"), "die Sektion gehört in das Zollmodul");
   assert.ok(/\{modules\.customs && \(/.test(bookingSrc), "das Zollmodul ist nicht mehr bedingt");
 });
 

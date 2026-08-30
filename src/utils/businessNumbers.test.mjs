@@ -21,6 +21,7 @@ import {
 } from "./businessNumbers.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const SRC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(SRC, rel), "utf8");
@@ -231,7 +232,7 @@ test("(6) Sendungsdetail trennt Vorgangs-, Tracking- und Kundenreferenz", () => 
 });
 
 test("(7) Buchungserfolg zeigt Auftragsbestätigungs- und Rechnungsnummer getrennt", () => {
-  const src = read("pages/BookingPage.jsx");
+  const src = buchungsFlaeche();
   const block = schnitt(src, "booking-success-numbers", "booking-success-delivery", "Erfolgsbildschirm-Nummern (7)");
   assert.ok(block.includes("orderConfirmationNumberOf(booking)"), "Auftragsbestätigungsnummer fehlt im Erfolgsscreen");
   assert.ok(block.includes("booking.invoiceNumber"), "Rechnungsnummer fehlt im Erfolgsscreen");
@@ -412,7 +413,7 @@ test("(N-a) Buchungserfolg und Sendungsliste zeigen die Auftragsbestätigung", (
   // Beide Oberflächen lesen dieselbe zentrale Beschriftung — es gibt keinen zweiten Text.
   assert.equal(NUMBER_LABELS.orderConfirmation, "Auftragsbestätigung");
 
-  const booking = read("pages/BookingPage.jsx");
+  const booking = buchungsFlaeche();
   assert.ok(booking.includes("NUMBER_LABELS.orderConfirmation"),
     "der Erfolgsbildschirm nutzt die zentrale Beschriftung nicht");
   assert.ok(booking.includes("orderConfirmationNumberOf(booking)"),

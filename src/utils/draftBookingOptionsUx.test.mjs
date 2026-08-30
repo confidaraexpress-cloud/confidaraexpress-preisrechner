@@ -25,6 +25,7 @@ import {
 } from "./draftBookingOptions.mjs";
 import { BOOKING_KEYS, normalizeBooking } from "./shippingFlowState.mjs";
 import { buildShipmentEmailPayload } from "./shipmentEmailOptions.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 import {
   isValidResumeDraft, isValidShipmentResumeDraft, isAnyResumeDraft,
   buildResumePayload, buildShipmentResumePayload, resumeSourceFromDraft,
@@ -34,7 +35,7 @@ import {
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 const { schnitt, ankerPosition } = await import("../../scripts/governance.mjs");
-const bookingPage     = lies("../pages/BookingPage.jsx");
+const bookingPage     = buchungsFlaeche();
 const newShipmentPage = lies("../pages/NewShipmentPage.jsx");
 const draftsPage      = lies("../pages/DraftsPage.jsx");
 const saveDraftAction = lies("../components/booking/SaveDraftAction.jsx");

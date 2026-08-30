@@ -25,13 +25,14 @@ import {
 } from "./shipmentDocumentsView.mjs";
 // Fail-closed Quelltextzugriff: ein fehlender Anker ist ein LAUTER Fehler.
 import { schnitt } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const drawer     = lies("../components/dashboard/ShipmentDocumentsDrawer.jsx");
 const liste      = lies("../components/dashboard/ShipmentsList.jsx");
 const genericMod = lies("./downloadDocument.js");
 const viewModul  = lies("./shipmentDocumentsView.mjs");
-const bookingPage = lies("../pages/BookingPage.jsx");
+const bookingPage = buchungsFlaeche();
 
 // Kommentarfreier Quelltext — eine Erklärung darf keine Zusicherung belegen,
 // die der ausgeführte Code nicht trägt.

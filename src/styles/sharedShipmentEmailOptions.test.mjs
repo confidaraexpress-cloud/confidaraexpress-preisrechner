@@ -11,12 +11,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const modul       = lies("../components/booking/AdditionalOptionsModule.jsx");
-const bookingPage = lies("../pages/BookingPage.jsx");
+const bookingPage = buchungsFlaeche();
 const flowState   = lies("../utils/shippingFlowState.mjs");
 const trackingPg  = lies("../pages/TrackingPage.jsx");
 

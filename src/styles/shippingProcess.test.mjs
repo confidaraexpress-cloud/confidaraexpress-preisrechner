@@ -12,13 +12,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import { readFileSync } from "node:fs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 const appJsx = read("../App.jsx");
 const dashboardLayout = read("../components/layout/DashboardLayout.jsx");
-const bookingPage = read("../pages/BookingPage.jsx");
+const bookingPage = buchungsFlaeche();
 const calculatorPage = read("../pages/CalculatorPage.jsx");
 const newShipmentPage = read("../pages/NewShipmentPage.jsx");
 const dropoffModule = read("../components/booking/DropoffNoticeModule.jsx");

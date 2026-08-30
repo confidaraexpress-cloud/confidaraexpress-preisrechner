@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 import {
   LEGAL_REQUIRED_DOCUMENT_TYPES, LEGAL_SUPPORTED_DOCUMENT_TYPES, LEGAL_LOADING, LEGAL_DISABLED, LEGAL_READY, LEGAL_ERROR,
@@ -27,7 +28,7 @@ const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
 const stripComments = (src) =>
   src.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/(^|\s)\/\/.*$/, "$1")).join("\n");
 
-const bookingPage  = read("../pages/BookingPage.jsx");
+const bookingPage  = buchungsFlaeche();
 const termsModule  = read("../components/booking/TermsModule.jsx");
 const actionModule = read("../components/booking/BookingActionModule.jsx");
 const legalApi     = read("../api/legalApi.js");

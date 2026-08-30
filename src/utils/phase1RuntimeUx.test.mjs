@@ -21,12 +21,13 @@ import { fileURLToPath } from "node:url";
 
 import { kpisFromServerStats, computeKpis } from "./kpis.mjs";
 import { normalizeThrownError } from "./apiError.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = (p) => fs.readFileSync(path.join(here, p), "utf8");
 const clientSrc = src("../api/client.js");
 const dashSrc = src("../pages/DashboardPage.jsx");
-const bookingSrc = src("../pages/BookingPage.jsx");
+const bookingSrc = buchungsFlaeche();
 
 /* ══════════ A · kpisFromServerStats (Verhalten) ══════════ */
 

@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { canRequestCancellation, shipmentDialogLabel } from "./customerCancellation.mjs";
+import { buchungsFlaeche, buchungsSeite } from "../testing/quelltext.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
@@ -25,7 +26,7 @@ const client         = read("../api/client.js");
 const downloadLabelJs = read("./downloadLabel.js");
 const shipmentsList  = read("../components/dashboard/ShipmentsList.jsx");
 const dashboardPage  = read("../pages/DashboardPage.jsx");
-const bookingPage    = read("../pages/BookingPage.jsx");
+const bookingPage    = buchungsFlaeche();
 
 const JUMINGO_ID = "s_fb1bc92aba1c4d70a3eaa44d687ae179";
 
@@ -74,7 +75,10 @@ test("4 — der Dateiname der Label-PDF trägt nie eine rohe Providerreferenz", 
   // Verbliebener direkter Aufrufer ist der Erfolgsbildschirm — seit der Modularisierung
   // sein Dokumentbaustein components/booking/BookingSuccessDocuments.jsx; die
   // Sendungsliste lädt seit dem Dokumente-Drawer kein Label mehr selbst.
-  const bookingPage = read("../pages/BookingPage.jsx");
+  // Diese Zusage gilt der SEITE, nicht der Buchungsfläche: sie sagt „das gehört in
+  // eine Komponente, nicht in die Seite". Auf der Fläche (Seite + Komponenten) wäre
+  // sie zwangsläufig verletzt — dort steht die Komponente ja.
+  const bookingPage = buchungsSeite();
   const successDocs = read("../components/booking/BookingSuccessDocuments.jsx");
   assert.match(successDocs, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/,
     "der Erfolgsbildschirm reicht die Auftragsbestätigungsnummer als Dateinamen nicht durch");

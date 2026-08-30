@@ -16,6 +16,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 import {
   PROFORMA_TYPE, PROFORMA_VIEW, PROFORMA_TEXT,
@@ -25,7 +26,7 @@ import {
 } from "./proformaDocumentView.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const bookingPage  = lies("../pages/BookingPage.jsx");
+const bookingPage  = buchungsFlaeche();
 // Der Metadaten-Poll lebt seit der Modularisierung im eigenen Hook.
 const proformaHook = lies("../hooks/useProformaDocument.js");
 const viewModul    = lies("./proformaDocumentView.mjs");

@@ -24,6 +24,7 @@ import {
 import { buildResumeInitialState } from "./formDraftsView.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (code) => code
@@ -34,7 +35,7 @@ const seite     = ohneKommentare(lies("../pages/NewShipmentPage.jsx"));
 const rechner   = ohneKommentare(lies("../pages/CalculatorPage.jsx"));
 const dashboard = ohneKommentare(lies("../pages/DashboardPage.jsx"));
 const provider  = ohneKommentare(lies("../context/ShippingFlowContext.jsx"));
-const buchung   = ohneKommentare(lies("../pages/BookingPage.jsx"));
+const buchung   = ohneKommentare(buchungsFlaeche());
 
 const VOLL = { packageCount: "1", weight: "5", length: "30", width: "20", height: "15" };
 

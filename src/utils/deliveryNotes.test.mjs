@@ -16,9 +16,10 @@ import {
   deliveryNoteMode, buildDeliveryNotePatch, showsExternalDeliveryNoteField,
 } from "./profileView.mjs";
 import { BOOKING_KEYS } from "./shippingFlowState.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
-const bookingPage      = read("../pages/BookingPage.jsx");
+const bookingPage      = buchungsFlaeche();
 const orderDetailPage  = read("../pages/inventory/OrderDetailPage.jsx");
 const optionsModule    = read("../components/booking/AdditionalOptionsModule.jsx");
 const profileComponent = read("../components/dashboard/Profile.jsx");

@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 import {
   INVOICE_DELIVERY_MODE, INVOICES_DASHBOARD_PAGE, INVOICES_DASHBOARD_TARGET, SHIPMENTS_DASHBOARD_TARGET,
   findInvoiceByNumber, resolveInvoiceDeliveryMode, isTerminalDeliveryMode, invoiceDeliveryHint,
@@ -99,7 +100,7 @@ test("9 — unbekannter Modus fällt sicher auf den neutralen PENDING-Hinweis zu
 // (kompensiert das Fehlen einer React-Render-Testinfrastruktur)
 test("10 — BookingPage verdrahtet Trennung, Deep-Link und Modus-Hinweis", () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const src = fs.readFileSync(path.join(here, "../pages/BookingPage.jsx"), "utf8");
+  const src = buchungsFlaeche();
   // Der Zustellmodus-Poll lebt seit der Modularisierung im eigenen Hook.
   const hookSrc = fs.readFileSync(path.join(here, "../hooks/useInvoiceDeliveryMode.js"), "utf8");
   assert.ok(src.includes('from "../utils/bookingSuccessView.mjs"'), "importiert die reine Erfolgslogik");

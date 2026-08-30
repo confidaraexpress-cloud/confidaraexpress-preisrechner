@@ -19,6 +19,7 @@ import {
   carrierTermsHref,
 } from "../../utils/insuranceTerms.mjs";
 import { httpUrlOrNull, isHttpUrl, EXTERNAL_LINK_REL } from "../../utils/externalLink.mjs";
+import { buchungsFlaeche } from "../../testing/quelltext.mjs";
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 // Kommentare abziehen: eine Begründung darf den alten Wortlaut nennen —
@@ -28,7 +29,7 @@ const ohneKommentare = (s) => s.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?
 const modul     = read("./InsuranceModule.jsx");
 const dialog    = read("./InsuranceDetailsDialog.jsx");
 const terms     = read("../../utils/insuranceTerms.mjs");
-const booking   = read("../../pages/BookingPage.jsx");
+const booking   = buchungsFlaeche();
 const css       = read("../../styles/calculator.css");
 const flow      = read("../../utils/shippingFlowState.mjs");
 const pkg       = JSON.parse(read("../../../package.json"));

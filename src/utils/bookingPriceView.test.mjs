@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
   insuranceValueFieldsVisible, autofillInsuranceValue, goodsExceedsInsuranceMax,
@@ -163,7 +164,7 @@ test("(26) Inhaltsbeschreibungs-Feld ist aus dem Versicherungs-UI entfernt", () 
   assert.ok(!/insContent|onInsContentChange|contentPlaceholder/.test(mod), "kein insContent-State/-Prop mehr im UI");
 });
 test("(27) technischer contentDescription-Vertrag bleibt (Default „Paket“ weiter gesendet)", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/contentDescription/.test(page), "contentDescription muss weiter Teil des Payloads sein");
   assert.ok(/"Paket"/.test(page), "sicherer Default „Paket“ bleibt erhalten");
 });
@@ -195,11 +196,11 @@ test("(33) Wechsel auf none stellt bestätigten Basistarif wieder her", () => {
   assert.equal(priceViewBlocksBooking(v), false);
 });
 test("(34) PRICE_CHANGED-Flow (none-Pfad) bleibt unberührt vom View-Model", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/PRICE_CHANGED/.test(page) && /confirmedFinalPriceRef/.test(page), "none-Preisdrift-Flow erhalten");
 });
 test("(35) PICKUP_WINDOW_CHANGED-Flow bleibt unberührt", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/PICKUP_WINDOW_CHANGED/.test(page), "Pickup-Window-Drift-Flow erhalten");
 });
 
@@ -233,11 +234,11 @@ test("(42) Carrier-Fallback (unbekannte publicCarrierId) — View robust", () =>
   assert.equal(v.totalGross, 37.19);
 });
 test("(43) Label-Logik unangetastet (A4/A6 im Payload)", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/labelFormat/.test(page), "labelFormat bleibt Teil des /book-Payloads");
 });
 test("(44) Referenznummer-Logik unangetastet", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/referenceNumber/.test(page), "Referenznummer bleibt erhalten");
 });
 test("(45) 7-Tage-Rechnung unverändert (paymentTerm-Hinweis bleibt)", () => {
@@ -394,12 +395,12 @@ test("(P22) keine JUMiNGO-Rohfelder (insuranceModel/insuranceProvider) im Bookin
   }
 });
 test("(P23) BookingPage übergibt dasselbe priceView an Live-Leiste UND Preiszusammenfassung", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/<BookingLiveSummary[^>]*priceView=\{priceView\}/.test(page), "Live-Leiste erhält priceView");
   assert.ok(/<PriceSummaryModule[^>]*priceView=\{priceView\}/.test(page), "Preiszusammenfassung erhält priceView");
 });
 test("(P24) INSURANCE_VALUE_MAX/Gate/Reprice-Vertrag unverändert (Regression)", () => {
-  const page = read("../pages/BookingPage.jsx");
+  const page = buchungsFlaeche();
   assert.ok(/priceViewBlocksBooking/.test(page), "Buchungs-Gate bleibt am View-Model");
   assert.ok(/repriceInsurance/.test(page), "Reprice-Aufruf bleibt erhalten");
 });

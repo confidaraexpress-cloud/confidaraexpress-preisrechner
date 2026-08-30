@@ -17,9 +17,10 @@ import { readFileSync } from "node:fs";
 
 import { buildPartyPayload } from "./newShipmentForm.mjs";
 import { buildResumeInitialState } from "./formDraftsView.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const buchung = lies("../pages/BookingPage.jsx");
+const buchung = buchungsFlaeche();
 
 /* ══════════ Die vom Live-Fehler betroffenen Fälle ══════════ */
 

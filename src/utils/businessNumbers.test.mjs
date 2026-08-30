@@ -425,8 +425,14 @@ test("(N-a) Buchungserfolg und Sendungsliste zeigen die Auftragsbestätigung", (
 });
 
 test("(N-b) KEINE kundensichtbare Oberfläche zeigt die interne Bestellnummer", () => {
+  // Der Erfolgsbildschirm ist seit seiner Auslagerung eine eigene Komponente. Eine
+  // NEGATIVE Zusage („nirgends sichtbar") wird still schwächer, sobald der geprüfte
+  // Inhalt in eine Datei wandert, die nicht auf der Liste steht — sie bleibt grün und
+  // misst weniger. Der Erfolgsbildschirm steht deshalb ausdrücklich mit drauf.
   for (const rel of [
     "pages/BookingPage.jsx",
+    "components/booking/BookingSuccessStep.jsx",
+    "components/booking/BookingSuccessDocuments.jsx",
     "components/dashboard/ShipmentsList.jsx",
     "components/dashboard/OverviewModules.jsx",
     "components/dashboard/InvoicesList.jsx",

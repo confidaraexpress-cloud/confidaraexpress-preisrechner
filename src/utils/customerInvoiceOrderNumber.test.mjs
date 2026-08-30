@@ -70,10 +70,16 @@ test("T4 — der Auslesehelfer funktioniert unverändert", () => {
 test("T4b — die übrigen Aufrufer sind unberührt", () => {
   // Sendungsliste, Übersicht und Erfolgsbildschirm zeigen die Nummer weiterhin: dort
   // bezeichnet sie den Vorgang, um den es tatsächlich geht.
+  // Der Erfolgsbildschirm ist seit seiner Auslagerung components/booking/BookingSuccessStep.jsx.
+  // Gemessen an `pages/BookingPage.jsx` bestand diese Zusage zuletzt nur noch, weil dort ein
+  // TOTER Import von `orderConfirmationNumberOf` stehen geblieben war — die Anzeige selbst war
+  // längst umgezogen. Genau die Sorte stiller Fehlschluss, gegen die diese Prüfungen gebaut sind:
+  // der Test war grün, ohne noch etwas zu messen. Der tote Import ist entfernt, der Messpunkt
+  // zeigt auf die Datei, in der die Nummer tatsächlich angezeigt wird.
   for (const datei of [
     "src/components/dashboard/ShipmentsList.jsx",
     "src/components/dashboard/OverviewModules.jsx",
-    "src/pages/BookingPage.jsx",
+    "src/components/booking/BookingSuccessStep.jsx",
   ]) {
     assert.ok(/orderConfirmationNumber/.test(nurCode(lies(datei))),
       `${datei}: die Auftragsbestätigungsnummer ist dort verschwunden`);

@@ -30,9 +30,10 @@ import { readFileSync } from "node:fs";
 import { hasSavableShipmentId } from "./draftsView.mjs";
 import { hasUsableShipmentReference } from "./formDraftsView.mjs";
 import { normalizeScope, dropOffers } from "./shippingFlowState.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
-const bookingPage     = read("../pages/BookingPage.jsx");
+const bookingPage     = buchungsFlaeche();
 const newShipmentPage = read("../pages/NewShipmentPage.jsx");
 const saveDraftAction = read("../components/booking/SaveDraftAction.jsx");
 

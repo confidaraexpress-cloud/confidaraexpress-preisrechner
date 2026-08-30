@@ -9,6 +9,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 import {
   FLOW_SCHEMA_VERSION, FLOW_STORAGE_KEY, FLOW_TTL_MS, FLOW_SCOPES,
@@ -363,7 +364,7 @@ test("27 — Abmeldung und Buchungserfolg löschen den Vorgang", () => {
   const ctx = read("src/context/ShippingFlowContext.jsx");
   assert.ok(/warAngemeldetRef\.current && !authed/.test(ctx),
     "der Provider leert seinen Speicherzustand nicht bei der Abmeldung");
-  const booking = read("src/pages/BookingPage.jsx");
+  const booking = buchungsFlaeche();
   assert.ok(/setBooking\(d\); setStep\(3\);[\s\S]{0,400}?clearFlow\(\);/.test(booking),
     "nach erfolgreicher Buchung wird der Vorgang nicht gelöscht");
 });
@@ -422,7 +423,7 @@ test("30 — die Prüflogik greift tatsächlich", () => {
 /* ══════════ 8 — Determinismus der Rücknavigation ═════════════════════════ */
 
 test("31 — der sichtbare Zurück-Button hängt nicht an der Browser-History", () => {
-  const booking = read("src/pages/BookingPage.jsx");
+  const booking = buchungsFlaeche();
   const zurueck = booking.match(/const goBackToOffers = \(\) => \{[\s\S]*?\n  \};/);
   assert.ok(zurueck, "goBackToOffers nicht gefunden");
   const rumpf = zurueck[0];
@@ -584,7 +585,7 @@ test("38 — der zweite Entwurfspfad (Buchungsseite) beendet den Vorgang ebenfal
   const fehlerTeil = onClick.slice(onClick.indexOf("setStatus(\"error\")"));
   assert.ok(!/onSaved/.test(fehlerTeil), "onSaved wird auch bei einem Fehler aufgerufen");
 
-  const booking = read("src/pages/BookingPage.jsx");
+  const booking = buchungsFlaeche();
   assert.ok(/<SaveDraftAction[\s\S]*?onSaved=\{clearFlow\}/.test(booking),
     "BookingPage verdrahtet onSaved nicht mit clearFlow");
 });

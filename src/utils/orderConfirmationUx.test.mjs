@@ -11,11 +11,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buchungsFlaeche, buchungsSeite } from "../testing/quelltext.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
 const dlSrc      = read("./downloadOrderConfirmation.js");
-const bookingSrc = read("../pages/BookingPage.jsx");
+const bookingSrc = buchungsFlaeche();
 // Der Dokumentbereich des Erfolgsbildschirms lebt seit der Modularisierung
 // wortgleich in components/booking/BookingSuccessDocuments.jsx.
 const docsSrc    = read("../components/booking/BookingSuccessDocuments.jsx");
@@ -173,7 +174,10 @@ test("15 es gibt genau EINEN Aufrufpfad je Oberfläche", () => {
   // Erfolgsbildschirm. Die Sendungsliste ruft den Helfer gar nicht mehr auf.
   assert.strictEqual((docsCode.match(/downloadOrderConfirmation\(/g) || []).length, 1,
     "der Erfolgsdokumente-Baustein ruft den Download nicht genau einmal auf");
-  assert.strictEqual((bookingCode.match(/downloadOrderConfirmation\(/g) || []).length, 0,
+  // Diese Zusage gilt der SEITE, nicht der Buchungsfläche: sie sagt „das gehört in
+  // eine Komponente, nicht in die Seite". Auf der Fläche (Seite + Komponenten) wäre
+  // sie zwangsläufig verletzt — dort steht die Komponente ja.
+  assert.strictEqual((strip(buchungsSeite()).match(/downloadOrderConfirmation\(/g) || []).length, 0,
     "die Buchungsseite selbst ruft den Download wieder direkt auf");
   assert.strictEqual((listCode.match(/downloadOrderConfirmation\(/g) || []).length, 0,
     "die Sendungsliste ruft den Download wieder selbst auf");

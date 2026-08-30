@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 // Fail-closed Quelltextschnitt: ein verschobener Anker macht den Scan LAUT,
 // statt still einen leeren/zu weiten Ausschnitt zu prüfen.
 import { schnitt } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 import {
   BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE_TEXT,
@@ -27,7 +28,7 @@ const profileSrc = strip(src("components/dashboard/Profile.jsx"));
 // Die Abrechnungskarte ist seit der Modularisierung eine eigene Abschnitts-
 // komponente — die Karten-Zusicherungen (D1–D8) messen an ihrer Datei.
 const bmKarteSrc = strip(src("components/dashboard/BillingModeCard.jsx"));
-const bookingSrc = strip(src("pages/BookingPage.jsx"));
+const bookingSrc = strip(buchungsFlaeche());
 const adminSecSrc = strip(src("components/admin/BillingModeSection.jsx"));
 const adminPageSrc = strip(src("pages/admin/AdminUserDetailPage.jsx"));
 const clientSrc = strip(src("api/client.js"));

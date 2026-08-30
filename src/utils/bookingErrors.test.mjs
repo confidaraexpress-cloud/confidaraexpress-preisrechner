@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 import {
   mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, BOOK_FEHLER,
 } from "./bookingErrors.mjs";
@@ -64,7 +65,7 @@ test("5 — Netzabbruch/Abort: Verbindungstext, nie Failed to fetch; Timeout eig
 });
 
 test("6 — BookingPage: Restpfad nutzt den Mapper, Body defensiv, kein Sammelwurf mehr", () => {
-  const page = strip(src("../pages/BookingPage.jsx"));
+  const page = strip(buchungsFlaeche());
   assert.ok(!/throw new Error\(d\.error \|\| "Buchung fehlgeschlagen"\)/.test(page), "der alte Sammelwurf muss ersetzt sein");
   assert.ok(!/setError\(e\.message\)/.test(page), "rohes e.message darf nicht mehr angezeigt werden");
   assert.match(page, /mapBookRestError\(r\.status, d\)/);
@@ -82,7 +83,7 @@ test("6 — BookingPage: Restpfad nutzt den Mapper, Body defensiv, kein Sammelwu
 });
 
 test("7 — keine Navigation/Erfolgsanzeige im Fehlerfall (setStep(3) nur im Erfolgszweig)", () => {
-  const page = strip(src("../pages/BookingPage.jsx"));
+  const page = strip(buchungsFlaeche());
   const doBook = page.slice(page.indexOf("const r = await apiFetch(`/api/jumingo/book`"), page.indexOf("const handlePriceChangeRecalculate"));
   const erfolgIdx = doBook.indexOf("setBooking(d); setStep(3);");
   assert.ok(erfolgIdx > -1, "Erfolgszweig fehlt");

@@ -57,7 +57,7 @@ import { NUMBER_LABELS, orderConfirmationNumberOf } from "../utils/businessNumbe
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
-import { BookingSuccessDocuments } from "../components/booking/BookingSuccessDocuments";
+import { BookingSuccessStep } from "../components/booking/BookingSuccessStep";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
@@ -1522,118 +1522,22 @@ export default function BookingPage() {
         )}
 
         {/* ── Step 3: Buchung erfolgreich ── */}
+        {/* Schritt 3 — der Erfolgsbildschirm. Oberfläche, Texte und Bedingungen liegen
+            WÖRTLICH in components/booking/BookingSuccessStep.jsx; hier steht nur noch,
+            WANN er erscheint und WAS er bekommt. Die Komponente lädt nichts nach: nach
+            einer bezahlten Bestellung darf diese Anzeige von keinem Request abhängen. */}
         {step === 3 && booking && (
-          <div className="booking-success-wrap">
-            <div className="booking-success-icon"><Icon n="check" s={40} /></div>
-            <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
-            {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
-                Vorgangsnummer und steht zuerst; die Rechnungsnummer wird getrennt daneben
-                ausgewiesen und dient NICHT als allgemeine Vorgangsnummer. Fehlt die
-                Auftragsbestätigungsnummer, wird die Zeile ausgelassen — es wird keine
-                Ersatznummer erzeugt, insbesondere nicht die interne Bestellnummer (CE-BS…),
-                die Provider-Ordernummer oder eine interne Datenbank-ID. */}
-            <div className="booking-success-numbers mb-16" style={{ display: "flex", flexWrap: "wrap", gap: "10px 32px", justifyContent: "center" }}>
-              {orderConfirmationNumberOf(booking) && (
-                <div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.orderConfirmation}</div>
-                  <CopyableNumber value={orderConfirmationNumberOf(booking)} label={NUMBER_LABELS.orderConfirmation} size="lg" />
-                </div>
-              )}
-              {/* Bei Sammelabrechnung gibt es zu DIESER Sendung noch keine Rechnung —
-                  Nummer und Fälligkeit werden deshalb gar nicht erst angezeigt. Ein
-                  Platzhalter wäre eine Behauptung über einen Beleg, den es nicht gibt.
-                  Der Hinweis darunter sagt stattdessen, wo der Betrag erscheinen wird. */}
-              {bookingBillingNotice(booking).showsInvoiceNumber && (
-                <div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.invoice}</div>
-                  <CopyableNumber value={booking.invoiceNumber} label={NUMBER_LABELS.invoice} size="lg" />
-                </div>
-              )}
-            </div>
-            {/* Klare Trennung: Auftragsbestätigung (wird per E-Mail versendet) ≠ spätere Rechnung/Rechnungs-E-Mail. */}
-            <div className="booking-success-delivery mb-16">
-              <p className="text-muted mb-4">{BOOKING_CONFIRMATION_LINE}{user?.email ? ` (an ${user.email})` : ""}</p>
-              {/* Der Standardsatz zur automatischen Rechnungserstellung gilt nur für die
-                  Einzelabrechnung; bei Sammelabrechnung tritt der Sammelhinweis an seine
-                  Stelle, statt beide nebeneinander zu behaupten. */}
-              {bookingBillingNotice(booking).consolidated
-                ? <p className="text-muted mb-8">{bookingBillingNotice(booking).text}</p>
-                : <p className="text-muted mb-8">{INVOICE_AUTOCREATE_LINE}</p>}
-              {!bookingBillingNotice(booking).consolidated && (() => {
-                const hint = invoiceDeliveryHint(invoiceDeliveryMode);
-                const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
-                const icon = hint.tone === "success" ? "check" : "info";
-                return (
-                  <div className={`alert ${cls}`} role="status" aria-live="polite">
-                    <Icon n={icon} s={16} />{hint.text}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
-                Formular-State abgeleitet, keine neue Server-Anfrage. */}
-            <div className="calc-panel booking-success-recap mb-16">
-              <div className="calc-panel-header"><Icon n="invoice" s={18} c="var(--ce-color-brand-ink)" /><h3>Ihre Buchung</h3></div>
-              <div className="calc-panel-body">
-                <div className="summary-detail-row summary-detail-row-border">
-                  <span className="text-sm text-muted summary-detail-key">Carrier</span>
-                  <span className="text-sm font-bold summary-detail-val">{publicCarrierDisplay(tariff).name} — {publicServiceName(tariff)}</span>
-                </div>
-                <div className="summary-detail-row summary-detail-row-border">
-                  <span className="text-sm text-muted summary-detail-key">Route</span>
-                  <span className="text-sm font-bold summary-detail-val">{bookingData.form.s_city} → {bookingData.form.r_city}</span>
-                </div>
-                {tariff.serviceType && (
-                  <div className="summary-detail-row summary-detail-row-border">
-                    <span className="text-sm text-muted summary-detail-key">Serviceart</span>
-                    <span className="text-sm font-bold summary-detail-val">{tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}</span>
-                  </div>
-                )}
-                <PriceSummaryModule priceView={priceView} paymentTerm={user?.payment_term || 7} />
-              </div>
-            </div>
-
-            {/* Label, Auftragsbestätigung, Lieferschein und Proforma-Rechnung —
-                Zustände, Handler und Oberfläche wortgleich in
-                components/booking/BookingSuccessDocuments.jsx. */}
-            <BookingSuccessDocuments booking={booking} proformaEntry={proformaEntry} />
-            {/* Ruhiger Hinweis — bewusst KEIN sofortiger Tracking-Call/Polling
-                direkt nach der Buchung (Status wäre ohnehin „new"/nicht verfügbar).
-                Der Trackingstatus erscheint später in „Meine Sendungen". Ist
-                trackingAvailable am Tarif explizit false, würde der optimistische
-                Text irreführen — dann ehrlicher Hinweis statt „wird vorbereitet". */}
-            {tariff.trackingAvailable === false ? (
-              <p className="booking-tracking-note">
-                <Icon n="truck" s={15} c="currentColor" />
-                <span>Für diesen Tarif ist keine Sendungsverfolgung verfügbar.</span>
-              </p>
-            ) : (
-              <p className="booking-tracking-note">
-                <Icon n="truck" s={15} c="currentColor" />
-                <span>
-                  Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
-                  Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
-                </span>
-              </p>
-            )}
-            {/* Aktionspriorität (Paket B): Label steht bereits oben, sofern verfügbar.
-                Danach Sendung ansehen → weitere Sendung erstellen → Rechnungen als
-                sekundärer Weg. Ziele/Links unverändert, nur Reihenfolge/Gewichtung. */}
-            <div className="flex-center gap-12" style={{ flexWrap: "wrap" }}>
-              <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>
-                <Icon n="package" s={16} /> Zu meinen Sendungen
-              </button>
-              {/* Bewusster Neustart: der alte Vorgang ist beim Buchungserfolg
-                  bereits gelöscht — der erneute Aufruf schützt den Fall, dass
-                  der Kunde diesen Bildschirm über Browser-Zurück wieder
-                  erreicht und dann neu beginnt. */}
-              <button className="btn btn-outline" onClick={() => { clearFlow(); navigate("/calculator"); }}>Neue Sendung</button>
-              <button className="btn btn-outline" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
-                <Icon n="invoice" s={16} /> Zu meinen Rechnungen
-              </button>
-            </div>
-          </div>
+          <BookingSuccessStep
+            booking={booking}
+            bookingData={bookingData}
+            tariff={tariff}
+            priceView={priceView}
+            user={user}
+            invoiceDeliveryMode={invoiceDeliveryMode}
+            proformaEntry={proformaEntry}
+            navigate={navigate}
+            clearFlow={clearFlow}
+          />
         )}
 
       </div>

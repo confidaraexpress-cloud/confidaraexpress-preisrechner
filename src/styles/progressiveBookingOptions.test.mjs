@@ -13,6 +13,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 // Kommentare beschreiben oft genau das, was eine Regel verbietet („kein
@@ -20,7 +21,7 @@ const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const switchKomponente = lies("../components/ui/Switch.jsx");
 const modul            = lies("../components/booking/AdditionalOptionsModule.jsx");
-const bookingPage      = lies("../pages/BookingPage.jsx");
+const bookingPage      = buchungsFlaeche();
 const forms            = lies("./forms.css");
 const calculator       = lies("./calculator.css");
 

@@ -18,10 +18,11 @@ import {
 } from "./voucherView.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.join(here, p), "utf8");
-const bookingPage   = read("../pages/BookingPage.jsx");
+const bookingPage   = buchungsFlaeche();
 const voucherModule = read("../components/booking/VoucherModule.jsx");
 const priceSummary  = read("../components/booking/PriceSummaryModule.jsx");
 const apiClient     = read("../api/client.js");

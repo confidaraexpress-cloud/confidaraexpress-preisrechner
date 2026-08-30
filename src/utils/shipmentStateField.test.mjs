@@ -18,10 +18,11 @@ import { mapAddressToShipmentFormPatch } from "./addressBookView.mjs";
 import { blankNewShipmentForm, buildResumeInitialState } from "./formDraftsView.mjs";
 // Fail-closed Quelltextzugriff: ein fehlender Anker ist ein LAUTER Fehler.
 import { ankerPosition } from "../../scripts/governance.mjs";
+import { buchungsFlaeche } from "../testing/quelltext.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const seite   = lies("../pages/NewShipmentPage.jsx");
-const buchung = lies("../pages/BookingPage.jsx");
+const buchung = buchungsFlaeche();
 
 /* ══════════ 1 — Die Landesregel ══════════ */
 

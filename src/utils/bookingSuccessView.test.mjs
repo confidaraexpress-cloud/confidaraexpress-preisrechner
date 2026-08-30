@@ -103,7 +103,14 @@ test("10 — BookingPage verdrahtet Trennung, Deep-Link und Modus-Hinweis", () =
   const src = buchungsFlaeche();
   // Der Zustellmodus-Poll lebt seit der Modularisierung im eigenen Hook.
   const hookSrc = fs.readFileSync(path.join(here, "../hooks/useInvoiceDeliveryMode.js"), "utf8");
-  assert.ok(src.includes('from "../utils/bookingSuccessView.mjs"'), "importiert die reine Erfolgslogik");
+  // Der Importpfad wird TIEFENUNABHÄNGIG geprüft. Die frühere Fassung verlangte wörtlich
+  // `from "../utils/bookingSuccessView.mjs"` — also genau die Verschachtelungstiefe von
+  // `pages/`. Seit der Erfolgsbildschirm in `components/booking/` liegt, lautet sein Import
+  // `"../../utils/…"`; die Zusage bestand nur noch, weil in BookingPage.jsx eine TOTE
+  // Importzeile aus der alten Tiefe stehen geblieben war. Sie maß damit die Dateiablage,
+  // nicht die Verdrahtung.
+  assert.match(src, /from "(?:\.\.\/)+utils\/bookingSuccessView\.mjs"/,
+    "importiert die reine Erfolgslogik");
   assert.ok(src.includes("BOOKING_CONFIRMATION_LINE") && src.includes("INVOICE_AUTOCREATE_LINE"), "zeigt beide getrennten Zeilen");
   assert.ok(src.includes("invoiceDeliveryHint(invoiceDeliveryMode)"), "rendert den modus-spezifischen Hinweis");
   assert.ok(src.includes("navigate(INVOICES_DASHBOARD_TARGET)"), "Zu-meinen-Rechnungen oeffnet den Rechnungsbereich");

@@ -53,7 +53,6 @@ import {
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
-import { NUMBER_LABELS, orderConfirmationNumberOf } from "../utils/businessNumbers.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";

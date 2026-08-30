@@ -117,7 +117,13 @@ test("A — Dokumente öffnen: drei Gruppen, Proforma ladbar, Serverpfad angespr
   await zurSendungsliste(page);
 
   await dokumenteKnopf(page).click();
-  await page.waitForSelector(".sdoc-drawer", { timeout: 15000 });
+  // Auf die GELADENE Liste warten, nicht auf die Drawerhülle: `.sdoc-drawer` steht
+  // unbedingt im Markup, während der Rumpf noch das Skeleton zeigt. Lokal löst der
+  // Abruf im selben Tick auf, auf einem ausgelasteten Runner nicht — dort las die
+  // Gruppenzusage eine leere Liste und wurde rot. Gemessen: mit 600 ms Verzögerung
+  // im Dokumentenabruf fällt die alte Wartestelle reproduzierbar aus, diese nicht.
+  // Der Test weiter unten benutzt bereits dieselbe Stelle.
+  await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
 
   // Der Abruf gilt GENAU dieser Sendung.
   assert.ok(protokoll.includes(`/api/shipments/${CE_ID}/documents`), `Abrufe: ${protokoll.join(", ")}`);

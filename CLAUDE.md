@@ -862,6 +862,73 @@ sie nicht — beide laufen nebeneinander.
 - Governance: `src/utils/addressValidationUx.test.mjs` (36 Tests) und
   `tests/e2e/addressValidation.test.mjs` (10 Browser-Smokes gegen gemocktes Backend).
 
+## No-Customs-Launch — vor jeder Änderung an Länderauswahl oder Zoll-UI lesen
+
+ConfidaraExpress startet **ohne Zollprozess**: angeboten wird ausschließlich EU-Versand
+(abzüglich der Sondergebiete). Zwei Konsequenzen im Frontend, beide sauber getrennt.
+
+### 1. Die Länderauswahl folgt dem Server
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/launchScopeView.mjs` | Antwort lesen · Liste filtern |
+| Zugriff | `api/launchScopeApi.js` | EIN Weg zu `GET /api/shipping/launch-scope`, ein Promise je Tab |
+| Einbindung | `hooks/useLaunchScope.js` | `{ countries }` für ein Auswahlfeld |
+
+- **Es gibt KEINE zweite Länderliste im Client.** Gefiltert wird die vorhandene Anzeigeliste
+  (`utils/countries.js`) gegen die SERVERliste. Eine eigene Aufzählung der EU-Codes wäre eine
+  zweite gepflegte Wahrheit, die zwangsläufig abweicht — und die Abweichung wäre genau dort
+  sichtbar, wo sie weh tut: entweder bietet die Oberfläche ein Land an, das der Server ablehnt
+  (der Kunde füllt ein Formular für nichts), oder sie verbirgt eins, das buchbar wäre. Ein Test
+  verbietet Ländercodes im Auswertungsmodul.
+- **Acht Auswahlfelder in sechs Dateien** hängen am Hook: `AddressFormDrawer`, `RegisterForm`,
+  `OrderCreateForm`, `Profile`, `NewShipmentPage`, `CalculatorPage` (zwei). Die **ANZEIGE**
+  eines gespeicherten Landes (`countries.find(...)` in `AddressCard`, `AddressDesktopRow`,
+  `Profile`, `BookingPage`) läuft weiter über die volle Liste: ein Konto mit einem nicht mehr
+  angebotenen Land soll den Ländernamen sehen, keinen rohen Code.
+- **Drittländer VERSCHWINDEN, sie werden nicht deaktiviert.** Eine ausgegraute Option wäre ein
+  Angebot mit Sternchen.
+- **Ist der Scope unbekannt** (erster Abruf unterwegs ODER Endpunkt ausgefallen), wird die
+  VOLLE Liste gezeigt. Bewusst fail-soft: eine leere Auswahl wäre fail-closed und machte den
+  Preisrechner bei einer kurzen Störung unbenutzbar — auch für die Inlandsendung. Die volle
+  Liste ist degradiert, aber funktionsfähig; wer dann ein nicht angebotenes Land wählt, bekommt
+  vom Server `422 ROUTE_NOT_SUPPORTED`. **Der Fehlerfall darf hier großzügig sein, WEIL er
+  nichts entscheidet** — die Sperre liegt vollständig serverseitig.
+- **Nichts wird persistiert.** Kein `localStorage`, kein `sessionStorage`; der Cache liegt auf
+  Modulebene, damit acht Formulare nicht acht Abrufe erzeugen.
+
+### 2. Jede Zolloberfläche ist unerreichbar — und keine Datei gelöscht
+
+`config/launchMode.mjs` trägt `CUSTOMS_UI_ENABLED = false`. Abgeschaltet sind: Zollmodul der
+Buchungsseite (`utils/bookingModules.js`), Proforma-Download des Erfolgsbildschirms
+(`hooks/useProformaDocument.js` — der Poll unterbleibt ganz), EORI-Feld und Anzeigezeile der
+Kontoeinstellungen, Abschnitt „Zoll & internationale Sendungen" der Artikelpflege, Zollkarte der
+Admin-Sendungsdetailseite (`utils/adminShipmentView.mjs`).
+
+- **Der Schalter steht immer NEBEN der fachlichen Bedingung, nie an ihrer Stelle:**
+  `CUSTOMS_UI_ENABLED && r.customsRequired === true` · `CUSTOMS_UI_ENABLED &&
+  isCustomsRelevant(row)`. Für Customs V2 fällt nur die Konstante weg — niemand muss Logik
+  rekonstruieren.
+- **Er ist eine Konstante, KEINE Vite-Umgebungsvariable.** Er ist eine Produktaussage im
+  ausgelieferten Bundle, kein Betriebsschalter: was gilt, bestimmt der Server, und die beiden
+  auseinanderlaufen zu lassen wäre schlimmer als gar kein Schalter.
+- **Er ist ausdrücklich KEINE Sicherheitsmaßnahme.** Wer ihn auf `true` dreht, bekommt
+  Formularfelder zurück — aber keine buchbare Drittlandsendung.
+- **`validateCompanyForm` prüft die EORI nur bei sichtbarem Feld.** Ohne Eingabefeld stammt der
+  Wert ausschließlich aus der Baseline; ein Konto mit einem formal ungültigen Altwert hätte
+  seine Unternehmensdaten sonst gar nicht mehr speichern können — mit einer Begründung, die auf
+  ein unsichtbares Feld zeigt. Das ist die unter „Profildaten im Versandformular" dokumentierte
+  Fehlerklasse. Die Formatregel in `utils/eori.mjs` ist unverändert.
+- **Gelöscht ist nichts** und **kein gespeicherter Wert angetastet**: `CustomsModule`,
+  `CustomsEoriSection`, `CustomsInvoiceModeSection`, `CommercialInvoiceUpload`,
+  `useCommercialInvoice`, `useProformaDocument`, `eori.mjs`, `customsInvoiceMode.mjs` und
+  `proformaDocumentView.mjs` liegen unverändert im Repository.
+- Governance: `src/utils/launchScopeUx.test.mjs` (18 Tests) und
+  `tests/e2e/noCustomsLaunchMode.test.mjs` (5 Browser-Smokes gegen einen echten Dev-Server mit
+  gemocktem Backend — **niemals eine echte Bestellung**). Drei Mutationen sind gegengeprüft:
+  Scope-Filter wirkungslos → A4 · Zollmodul wieder aktiv → C2/D2 · ein Auswahlfeld zurück auf
+  die volle Liste → B3.
+
 ## Dashboard-Navigationsmodell
 
 Die Navigation zwischen Dashboard-Unterseiten läuft **nicht über React Router URLs**, sondern über einen lokalen `page`-State in `DashboardPage.jsx`:

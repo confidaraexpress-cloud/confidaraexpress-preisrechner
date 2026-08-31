@@ -213,8 +213,15 @@ test("B9 manuelle Eingabe bleibt immer möglich — die Felder stehen unabhängi
 /* ══════════ C — Land als Name, ISO als Wert ══════════════════════════════ */
 
 test("C1 das Landfeld ist eine Auswahl aus der bestehenden Länderliste", () => {
-  assert.match(formCode, /import \{ countries \} from "\.\.\/\.\.\/utils\/countries"/);
-  assert.match(formCode, /countries\.map\(c => <option key=\{c\.code\} value=\{c\.code\}>\{c\.name\}<\/option>\)/);
+  // Die Zusage ist unverändert: EINE Auswahl aus der gemeinsamen Länderliste, kein
+  // Freitextfeld und keine zweite Aufzählung im Bauteil. Seit dem No-Customs-Launch ist die
+  // Liste zusätzlich auf das aktuelle Versandangebot gefiltert — die Filterung kommt vom
+  // Server (GET /api/shipping/launch-scope) und läuft über useLaunchScope, das seinerseits
+  // utils/countries.js als Grundlage benutzt. Es entsteht dadurch KEINE zweite gepflegte
+  // Länderquelle; ein Test dafür steht in launchScopeUx.test.mjs.
+  assert.match(formCode, /import \{ useLaunchScope \} from "\.\.\/\.\.\/hooks\/useLaunchScope"/);
+  assert.match(formCode, /const \{ countries: launchCountries \} = useLaunchScope\(\)/);
+  assert.match(formCode, /launchCountries\.map\(c => <option key=\{c\.code\} value=\{c\.code\}>\{c\.name\}<\/option>\)/);
 });
 
 test("C2 gesendet wird unverändert der ISO-Code", () => {

@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeEori, eoriFieldError, hasUsableEori, EORI_MAX_LENGTH, EORI_FORMAT_ERROR, EORI_HINT } from "./eori.mjs";
 // Fail-closed Quelltextzugriff: fehlende Anker sind LAUTE Fehler, nie leere Ausschnitte.
 import { schnitt, ankerPosition } from "../../scripts/governance.mjs";
+import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
 import { buchungsFlaeche, buchungsSeite } from "../testing/quelltext.mjs";
 import {
   COMPANY_FIELDS, FIELD_MAXLEN, companyBaseline, buildCompanyPatch,
@@ -100,12 +101,41 @@ test("(B3) eine andere Schreibweise desselben Werts ist KEINE Änderung", () => 
 
 test("(B4) ein Formatfehler erscheint AM FELD, das Leeren bleibt erlaubt", () => {
   const base = companyBaseline({ company_name: "Muster GmbH" });
+
+  // Die FORMATREGEL selbst ist vom Launch-Modus unberührt und wird deshalb unverändert
+  // direkt geprüft — leer ist gültig, Unsinn nicht. Das ist die eigentliche Zusage.
+  assert.equal(eoriFieldError(""), "");
+  assert.equal(eoriFieldError("!!"), EORI_FORMAT_ERROR);
+
+  // Ihre VERDRAHTUNG in die Unternehmenskarte hängt dagegen am Launch-Schalter: ohne
+  // sichtbares Eingabefeld darf ein gespeicherter Altwert das Speichern der Karte nicht
+  // blockieren (siehe die Begründung in profileView.validateCompanyForm). Leer bleibt in
+  // BEIDEN Konfigurationen fehlerfrei.
   assert.equal(validateCompanyForm({ ...base, eori_number: "" }).eori_number, undefined);
-  assert.equal(validateCompanyForm({ ...base, eori_number: "!!" }).eori_number, EORI_FORMAT_ERROR);
+  assert.equal(
+    validateCompanyForm({ ...base, eori_number: "!!" }).eori_number,
+    CUSTOMS_UI_ENABLED ? EORI_FORMAT_ERROR : undefined,
+    "die Feldprüfung folgt der Sichtbarkeit des Feldes"
+  );
+
   // Und ein Backend-Feldfehler landet ebenfalls am Feld statt in der Kartenmeldung.
+  // Diese Zuordnung ist vom Launch-Modus unabhängig.
   const m = mapApiProfileError({ error: EORI_FORMAT_ERROR, code: "INVALID_EORI_FORMAT", field: "eori_number" });
   assert.equal(m.fieldErrors.eori_number, EORI_FORMAT_ERROR);
   assert.equal(m.generalError, "");
+});
+
+test("(B6) im Launch-Modus ist die EORI-Erfassung ausgeblendet, aber vollständig erhalten", () => {
+  // ConfidaraExpress bietet keinen Drittlandversand an; die EORI wird ausschließlich für
+  // eine zollpflichtige Sendung gebraucht. Das Feld ist deshalb nicht erreichbar — gelöscht
+  // ist nichts, und der gespeicherte Wert bleibt in der Datenbank unangetastet.
+  assert.equal(CUSTOMS_UI_ENABLED, false, "der Launch-Modus ist der Auslieferungszustand");
+  assert.ok(profileSrc.includes("CUSTOMS_UI_ENABLED && <div className=\"field\">"),
+    "das EORI-Feld muss am Launch-Schalter hängen");
+  // Markup, Hilfetext, Formatprüfung und das Modul eori.mjs bleiben vorhanden — für
+  // Customs V2 fällt nur die Bedingung weg.
+  assert.ok(profileSrc.includes('htmlFor="pf-eori"'), "das Feld selbst darf nicht entfernt werden");
+  assert.equal(typeof eoriFieldError, "function", "die Formatregel bleibt lauffähig");
 });
 
 test("(B5) das Profilfeld ist optional — kein Pflichtsternchen, mit sachlichem Hilfetext", () => {

@@ -48,6 +48,7 @@ import {
   validateShipmentFilters,
 } from "./adminShipmentView.mjs";
 import { shipmentStatusMeta, SHIPMENT_STATUS_OPTIONS } from "./adminShipments.js";
+import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SRC = join(__dirname, "..");
@@ -397,10 +398,15 @@ test("20 — Abschnitts-Sichtbarkeit verhindert leere Karten", () => {
   assert.equal(full.customer, true);
   assert.equal(full.trackingNumber, true);
   assert.equal(full.label, true);
-  assert.equal(full.customs, true);
+  // Die Zollkarte ist im Launch-Modus abgeschaltet (CUSTOMS_UI_ENABLED === false in
+  // config/launchMode.mjs) — ConfidaraExpress bietet keinen Drittlandversand an, und eine
+  // Rubrik für ein nicht angebotenes Produkt gehört auch in die Adminansicht nicht.
+  // Die fachliche Erkennung `isCustomsRelevant` ist unverändert erhalten und wird unten
+  // gegen BEIDE Richtungen geprüft; hier steht nur, was die Karte heute zeigt.
+  assert.equal(full.customs, CUSTOMS_UI_ENABLED, "Zollkarte folgt dem Launch-Schalter");
   assert.equal(full.invoice, false, "ohne invoice-Objekt keine Rechnungskarte");
   const inland = detailSections(INLAND);
-  assert.equal(inland.customs, false);
+  assert.equal(inland.customs, false, "eine Inlandsendung hat in keiner Konfiguration eine Zollkarte");
   assert.equal(inland.trackingNumber, false);
   assert.equal(inland.label, false);
   assert.equal(detailSections({ ...BOOKED, invoice: { id: 5 } }).invoice, true);

@@ -23,6 +23,7 @@ import { paymentTermLabel } from "./paymentTerm.mjs";
 // EORI-Format und -Normalisierung — EINE Regel für Profil und Zollhinweis, gespiegelt
 // aus lib/eori.js des Backends. Sie prüft das FORMAT, nie die behördliche Gültigkeit.
 import { eoriFieldError, normalizeEori } from "./eori.mjs";
+import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
 
 // Feldgruppen exakt nach Backend-Whitelist (snake_case = echte Spalten-/Body-Namen).
 export const COMPANY_FIELDS = ["company_name", "vat_id", "eori_number", "street", "zip", "city", "country"];
@@ -159,8 +160,18 @@ export function validateCompanyForm(form) {
   }
   // Die EORI hat KEINEN Eintrag in FIELD_MAXLEN: ihre Länge ist Teil der Formatregel und
   // steht zusammen mit ihr in eori.mjs. Eine zweite Zahl hier wäre eine zweite Wahrheit.
-  const eoriFehler = eoriFieldError(form?.eori_number);
-  if (eoriFehler) errors.eori_number = eoriFehler;
+  //
+  // Im Launch-Modus gibt es kein EORI-Eingabefeld, und dann darf der gespeicherte Wert das
+  // Speichern der Karte auch nicht blockieren: `companyForm.eori_number` stammt dort
+  // ausschließlich aus der Baseline. Ein Konto mit einem formal ungültigen Altwert könnte
+  // seine Unternehmensdaten sonst gar nicht mehr ändern — ein gesperrter Knopf mit einer
+  // Begründung, die auf ein unsichtbares Feld zeigt. Genau diese Fehlerklasse ist in
+  // CLAUDE.md unter „Profildaten im Versandformular" als accountabhängiger Totalausfall
+  // dokumentiert. Die Formatregel selbst bleibt unverändert und gilt sofort wieder mit.
+  if (CUSTOMS_UI_ENABLED) {
+    const eoriFehler = eoriFieldError(form?.eori_number);
+    if (eoriFehler) errors.eori_number = eoriFehler;
+  }
   return errors;
 }
 

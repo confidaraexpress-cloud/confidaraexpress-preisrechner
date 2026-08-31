@@ -7,6 +7,8 @@ import { FormAlert } from "../ui/FormAlert";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
 import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { countries } from "../../utils/countries";
+import { useLaunchScope } from "../../hooks/useLaunchScope";
+import { CUSTOMS_UI_ENABLED } from "../../config/launchMode.mjs";
 import { useAuth } from "../../context/AuthContext";
 import { EmailChangeSection } from "./EmailChangeSection";
 // Die drei Einstellungskarten mit eigener Speicherstrecke (Lieferschein,
@@ -112,6 +114,12 @@ export function Profile({ user, utility }) {
 
   const companyBase = companyBaseline(user);
   const contactBase = contactBaseline(user);
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  // Die ANZEIGE eines gespeicherten Landes läuft weiter über die volle Liste: ein Konto,
+  // das noch ein nicht mehr angebotenes Land trägt, soll seinen Wert lesbar sehen und
+  // nicht plötzlich einen rohen Ländercode.
+  const { countries: launchCountries } = useLaunchScope();
   const countryName = countries.find(c => c.code === user?.country)?.name;
   const paymentTerm = paymentTermValue(user);
   // Kundennummer ausschließlich aus dem API-Feld customer_number — nie aus user.id abgeleitet.
@@ -334,7 +342,19 @@ export function Profile({ user, utility }) {
               <input id="pf-vat" className="field-input" value={companyForm.vat_id}
                 onChange={e => updCompany("vat_id", e.target.value)} placeholder="DE123456789" />
             </div>
-            <div className="field">
+            {/* ── Launch-Modus: die EORI-Nummer wird nicht erfasst ──────────────────────
+                Sie identifiziert den Ausführer gegenüber dem Zoll und wird ausschließlich
+                für eine zollpflichtige Sendung gebraucht. Solange ConfidaraExpress keinen
+                Drittlandversand anbietet, wäre das Feld eine Abfrage ohne Verwendung — und
+                ein Stammdatum, das der Kunde pflegt, ohne dass es je gelesen wird.
+
+                Der gespeicherte Wert bleibt unangetastet: `users.eori_number` wird nicht
+                geleert, nicht migriert und beim Speichern der Unternehmenskarte nicht
+                überschrieben (`buildCompanyPatch` sendet nur geänderte Felder, und dieses
+                kann sich ohne Eingabefeld nicht ändern). Für Customs V2 fällt hier nur die
+                Bedingung weg — Feld, Hilfetext, Formatprüfung und `utils/eori.mjs` sind
+                vollständig erhalten. */}
+            {CUSTOMS_UI_ENABLED && <div className="field">
               {/* Optional — bewusst OHNE Pflichtsternchen: die EORI ist ein Stammdatum,
                   kein Registrierungserfordernis. Verlangt wird sie ausschließlich beim
                   Buchen einer zollpflichtigen Sendung, und dort sagt es die Buchungsseite.
@@ -356,7 +376,7 @@ export function Profile({ user, utility }) {
                 || (eoriFieldError(companyForm.eori_number)
                   ? <span className="profile-field-error" role="alert">{eoriFieldError(companyForm.eori_number)}</span>
                   : null)}
-            </div>
+            </div>}
             <div className="field">
               <label className="field-label" htmlFor="pf-street">Straße & Hausnummer</label>
               <input id="pf-street" className="field-input" value={companyForm.street}
@@ -377,7 +397,7 @@ export function Profile({ user, utility }) {
                 <label className="field-label" htmlFor="pf-country">Land</label>
                 <select id="pf-country" className="field-input field-select" value={companyForm.country}
                   onChange={e => updCompany("country", e.target.value)}>
-                  {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
               </div>
             </div>
@@ -388,7 +408,12 @@ export function Profile({ user, utility }) {
             {renderRows([
               { k: "Firmenname", v: user?.company_name || "Nicht angegeben", empty: !user?.company_name },
               { k: "USt-ID", v: user?.vat_id || "Noch nicht hinterlegt", empty: !user?.vat_id },
-              { k: "EORI-Nummer", v: user?.eori_number || "Noch nicht hinterlegt", empty: !user?.eori_number },
+              // Im Launch-Modus gibt es kein Eingabefeld dafür (siehe oben) — eine Zeile
+              // „Noch nicht hinterlegt" für etwas, das man nicht hinterlegen kann, wäre eine
+              // Aufforderung ins Leere. Der gespeicherte Wert bleibt in der Datenbank.
+              ...(CUSTOMS_UI_ENABLED
+                ? [{ k: "EORI-Nummer", v: user?.eori_number || "Noch nicht hinterlegt", empty: !user?.eori_number }]
+                : []),
               { k: "Adresse", v: addressLine || "Keine Adresse hinterlegt", empty: !addressLine },
               { k: "Land", v: countryName || "Nicht angegeben", empty: !countryName },
             ])}

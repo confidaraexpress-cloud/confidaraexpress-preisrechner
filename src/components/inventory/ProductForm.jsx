@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { InlineError, CollapsibleSection } from "./InventoryShared";
 import { SECTION_FIELDS, sectionHasData } from "../../utils/inventoryView.mjs";
+import { CUSTOMS_UI_ENABLED } from "../../config/launchMode.mjs";
 
 /* ── Artikelformular ─────────────────────────────────────────────────────────
    Anlegen und Bearbeiten teilen sich dieses eine Formular — es gibt keine
@@ -185,7 +186,16 @@ export function ProductForm({ initial, busy, error, onSubmit, onCancel }) {
           </fieldset>
         </CollapsibleSection>
 
-        <CollapsibleSection
+        {/* ── Launch-Modus: keine Zollangaben am Artikel ────────────────────────────
+            HS-Code, Ursprungsland, Warenwert und Zollbeschreibung werden ausschließlich für
+            eine zollpflichtige Sendung gebraucht. Solange ConfidaraExpress keinen
+            Drittlandversand anbietet, wäre der Abschnitt eine Datenpflege ohne Verwendung.
+
+            Gespeicherte Werte bleiben unverändert: `products.hs_code`,
+            `products.country_of_origin` und `products.customs_description` werden nicht
+            geleert und nicht migriert. Der Abschnitt ist vollständig erhalten — für
+            Customs V2 fällt hier nur die Bedingung weg. */}
+        {CUSTOMS_UI_ENABLED && <CollapsibleSection
           id="p-section-customs"
           title="Zoll & internationale Sendungen"
           hint="Optional für internationale bzw. zollpflichtige Sendungen. Einmal hinterlegt, stehen die Angaben bei jeder Sendung dieses Artikels bereit."
@@ -204,7 +214,7 @@ export function ProductForm({ initial, busy, error, onSubmit, onCancel }) {
             <Feld id="p-customs" label="Zollbeschreibung" value={v.customsDescription} onChange={set("customsDescription")} maxLength={255}
                   hint="Wird bei zollpflichtigen Sendungen als Warenbeschreibung vorgeschlagen." />
           </fieldset>
-        </CollapsibleSection>
+        </CollapsibleSection>}
 
         <fieldset className="inv-fieldset" disabled={busy}>
           <legend className="inv-legend">Bestandsführung</legend>

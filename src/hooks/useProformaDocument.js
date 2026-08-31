@@ -3,6 +3,7 @@ import { getShipmentDocuments } from "../api/client";
 import {
   findProformaEntry, proformaViewState, proformaKeepPolling, nextProformaPollDelay,
 } from "../utils/proformaDocumentView.mjs";
+import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
 
 /* ── useProformaDocument({ step, booking }) ────────────────────────────────
    Wortgleich aus pages/BookingPage.jsx herausgelöst (Modularisierung Phase 2):
@@ -37,6 +38,15 @@ export function useProformaDocument({ step, booking }) {
   // Beleg NICHT mit „nicht vorhanden": er wird innerhalb des Budgets erneut
   // versucht. Es wird niemals eine zweite Bestellung ausgelöst.
   useEffect(() => {
+    // ── Launch-Modus: es gibt keine eigene Proforma ────────────────────────────
+    // Der Zollbeleg entsteht serverseitig nur für eine Drittlandsendung, und die ist im
+    // Launch gar nicht buchbar. Der Abruf würde also zuverlässig „keine Proforma" liefern —
+    // eine Anfrage je Erfolgsbildschirm, die nie etwas findet. Sie unterbleibt deshalb ganz.
+    //
+    // Der Startwert `null` ist bereits der Zustand „keine Proforma": der Erfolgsbildschirm
+    // zeigt dann weder Downloadknopf noch Hinweis. Hook, Poll-Logik und
+    // proformaDocumentView.mjs bleiben vollständig erhalten und unverändert lauffähig.
+    if (!CUSTOMS_UI_ENABLED) return undefined;
     if (step !== 3 || !booking || !booking.ceShipmentId) return undefined;
     let cancelled = false;
     let attempt = 0;

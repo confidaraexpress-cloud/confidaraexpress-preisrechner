@@ -111,6 +111,19 @@
   .abk-search-input,
   .abk-filter-pill { min-height: 44px; }
 
+  /* Werkzeugleiste über den Angeboten: Segmente (Sortierung, MwSt.),
+     Filterchips und die Zurücksetzen-Aktion. Sie standen bisher in KEINER
+     dieser Listen und maßen auf dem Telefon rund 26 px — die kleinsten
+     Bedienziele des Versandprozesses. Die Segmente brauchen zusätzlich
+     `align-items: center`, sonst wächst nur der Kasten und die Beschriftung
+     klebt oben. */
+  .offers-sort-btn,
+  .offers-filter-chip,
+  .offers-filter-reset-btn { min-height: 44px; }
+  .offers-segment .offers-segment-item {
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
   /* Öffentliche Navigationsleiste. */
   .navbar-actions .btn,
   .mobile-drawer .btn { min-height: 44px; }

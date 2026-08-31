@@ -80,6 +80,41 @@ async function zeigeAngebote(page) {
   await page.waitForSelector(".offer-card", { timeout: 20000 });
 }
 
+// Wartet, bis das Dokument wirklich stillsteht.
+//
+// `globals.css` setzt `html { scroll-behavior: smooth }`. Jeder Fokuswechsel
+// davor — der Filterchip, der Kalendertag — kann deshalb eine rund 500 ms lange
+// Scrollanimation des Browsers auslösen. Playwrights eigenes „scroll into view“
+// vor einem Klick verdrängt eine laufende Animation nur VORÜBERGEHEND: gemessen
+// lief sie danach zu ihrem alten Ziel weiter und zog die Seite um 1085 px
+// zurück, NACHDEM der Klick bereits zugestellt war. Der Auslöser stand dann
+// bündig an der Fensterunterkante, und die Liste (position: fixed, immer
+// unterhalb des Auslösers) lag vollständig außerhalb des Bildes.
+//
+// Das ist eine Scroll-Wettlaufsituation der Testchoreografie, kein Verhalten des
+// Bauteils: mit einem gewöhnlichen Klick auf denselben Auslöser greift die
+// Platzprüfung in `DeliveryTimeSelect.oeffne()` wie vorgesehen, holt den
+// Auslöser in die Bildmitte und die Liste öffnet regulär darunter.
+//
+// Diese Funktion nimmt der Messung nichts weg — sie stellt nur sicher, dass
+// gemessen wird, was das Bauteil tut, und nicht, wo eine Restanimation die Seite
+// gerade hingezogen hat. Dieselbe Aufgabe wie das `getAnimations()`-Warten
+// darunter, eine Ebene tiefer.
+async function scrollBeruhigt(page) {
+  await page.evaluate(() => new Promise((fertig) => {
+    let letzte = window.scrollY, ruhig = 0, frames = 0;
+    const tick = () => {
+      if (window.scrollY === letzte) ruhig += 1;
+      else { ruhig = 0; letzte = window.scrollY; }
+      // 5 ruhige Frames reichen; 180 Frames (~3 s) sind die Notbremse, damit ein
+      // dauerhaft scrollendes Dokument den Test nicht hängen lässt.
+      if (ruhig >= 5 || (frames += 1) > 180) return fertig();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+}
+
 // Öffnet die Uhrzeitliste und liefert Geometrie von Auslöser und Liste.
 async function oeffneZeitliste(page) {
   // Die Wirtsfläche animiert beim Aufklappen 160 ms (`translateY(-6px) → none`).
@@ -89,8 +124,12 @@ async function oeffneZeitliste(page) {
   await page.evaluate(() => Promise.all(
     (document.querySelector(".offers-delivery-dropdown")?.getAnimations() || [])
       .map((a) => a.finished.catch(() => {}))));
+  await scrollBeruhigt(page);
   await page.locator(".offers-time-trigger").click();
   await page.waitForSelector(".offers-time-list", { timeout: 10000 });
+  // Auch NACH dem Klick: die Platzprüfung des Bauteils holt den Auslöser bei
+  // Bedarf in die Bildmitte. Erst wenn dieser Sprung durch ist, steht die Liste.
+  await scrollBeruhigt(page);
   return page.evaluate(() => {
     const t = document.querySelector(".offers-time-trigger").getBoundingClientRect();
     const l = document.querySelector(".offers-time-list").getBoundingClientRect();

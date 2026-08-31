@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
@@ -42,6 +42,14 @@ export function OffersList({
   // kombinierten Inline-Panel-Toggle durch rechts angedockte JUMiNGO-Dropdowns.
   const [openFilter, setOpenFilter] = useState(null);
   const filterZoneRef = useRef(null);
+  // Die drei Gruppenbeschriftungen der Werkzeugleiste sind die zugänglichen
+  // Namen ihrer Gruppen (`aria-labelledby`). Feste ids wären ein latenter
+  // Doppelbefund, sobald zwei Angebotslisten in EINEM Dokument stünden —
+  // dasselbe Muster wie in `DeliveryTimeSelect`.
+  const leisteId = useId();
+  const sortLabelId = `offers-sort-label${leisteId}`;
+  const vatLabelId = `offers-vat-label${leisteId}`;
+  const filterLabelId = `offers-filter-label${leisteId}`;
   const badges = useMemo(() => assignBadges(sorted), [sorted]);
 
   // Slider-Obergrenze aus der ungefilterten Tarifliste ableiten, damit der
@@ -130,83 +138,154 @@ export function OffersList({
              (Mobile) abgeschnitten werden. ── */}
       {showSortBar && (
         <div className="offers-filter-zone" ref={filterZoneRef}>
-          <div className="offers-sort-bar">
-            <span className="offers-sort-label">Sortierung</span>
-            {SORT_OPTIONS.map(o => (
-              <button
-                key={o.id}
-                className={`offers-sort-btn${sortMode === o.id ? " active" : ""}`}
-                onClick={() => onSortChange(o.id)}
-                type="button"
-                /* Die aktive Sortierung war bislang nur an der Fläche erkennbar.
-                   aria-pressed macht sie für Screenreader hörbar — die Gruppe
-                   ist ein Umschalter, keine sortierbare Tabellenspalte
-                   (aria-sort gehört an <th> und wäre hier falsch). */
-                aria-pressed={sortMode === o.id}
-              >
-                {o.label}
-              </button>
-            ))}
-            <div className="offers-sort-sep" />
+          {/* ── Toolbar in vier gewichteten Gruppen ──────────────────────────────
+                 Bis hierher lagen Sortierung, Filter, Zurücksetzen und die
+                 MwSt.-Umschaltung als EINE flache Reihe gleich aussehender
+                 `.offers-sort-btn` nebeneinander, getrennt nur durch zwei
+                 Striche. Vier fachlich verschiedene Dinge sahen damit gleich
+                 wichtig aus, und die MwSt.-Umschaltung — eine reine
+                 Darstellungsfrage — stand optisch auf einer Stufe mit der
+                 Sortierung.
 
-            {/* Filterpunkt „Preis" → rechts angedocktes Dropdown */}
-            <button
-              className={`offers-sort-btn offers-filter-chip${maxPrice ? " has-filter" : ""}${openFilter === "price" ? " open" : ""}`}
-              onClick={() => setOpenFilter(o => (o === "price" ? null : "price"))}
-              type="button"
-              aria-haspopup="dialog"
-              aria-expanded={openFilter === "price"}
-            >
-              <Icon n="filter" s={12} c="currentColor" />
-              {maxPrice ? `Preis · bis ${money(Number(maxPrice))}` : "Preis"}
-              <span className="offers-filter-chip-caret" aria-hidden="true">
-                <Icon n="chevron" s={13} c="currentColor" />
-              </span>
-            </button>
+                 Jetzt trägt jede Gruppe ihre eigene Beschriftung und ihr
+                 eigenes Gewicht:
+                   Sortierung   primär    gefüllter Aktivzustand
+                   MwSt.        sekundär  getönter Aktivzustand
+                   Filter       kontextuell  Chips (unverändert)
+                   Zurücksetzen Utility   Textaktion
 
-            {/* Filterpunkt „Lieferung" → rechts angedocktes Dropdown. Bewusst
-                DASSELBE Chip-/Dropdown-Muster wie der Preisfilter (ein
-                gemeinsamer `openFilter`-Zustand, höchstens eines offen) —
-                kein zweites Overlay- oder Dialogmuster daneben. Die Bedienung
-                im Formular („Späteste Lieferzeit") bleibt unverändert
-                bestehen; beide schreiben denselben Wert. */}
-            <button
-              className={`offers-sort-btn offers-filter-chip${latestDeliveryDate ? " has-filter" : ""}${openFilter === "delivery" ? " open" : ""}`}
-              onClick={() => setOpenFilter(o => (o === "delivery" ? null : "delivery"))}
-              type="button"
-              aria-haspopup="true"
-              aria-expanded={openFilter === "delivery"}
-            >
-              <Icon n="calendar" s={12} c="currentColor" />
-              {deliveryChipLabel(latestDeliveryDate, latestDeliveryTime)}
-              <span className="offers-filter-chip-caret" aria-hidden="true">
-                <Icon n="chevron" s={13} c="currentColor" />
-              </span>
-            </button>
+                 Klassennamen und Handler der einzelnen Bedienelemente sind
+                 unverändert — `.offers-sort-btn`, `.offers-filter-chip`,
+                 `.offers-filter-reset-btn` und `.offers-vat-toggle` bleiben
+                 bestehen, ebenso jeder `onClick`. Keine Funktion ist entfallen:
+                 vier Sortierungen, beide MwSt.-Stellungen, beide Filter und das
+                 Zurücksetzen stehen vollständig.
 
-            {hasFilter && (
-              <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
-                <Icon n="x" s={11} c="currentColor" />
-                Zurücksetzen
-              </button>
-            )}
+                 An der Zugänglichkeit hat sich genau zweierlei geändert, beides
+                 zum Besseren: die MwSt.-Schalter tragen jetzt `aria-pressed`
+                 (die Sortierung hatte es bereits), und die drei Gruppen werden
+                 über ihre SICHTBARE Beschriftung benannt statt über ein
+                 unsichtbares `aria-label` („Preisdarstellung") — der hörbare und
+                 der gelesene Name sind damit derselbe. ── */}
+          <div className="offers-toolbar">
+            <div className="offers-toolbar-row">
+              {/* ── Gruppe A · Sortierung (primäre Steuerung) ── */}
+              <div className="offers-toolgroup">
+                <span className="offers-toolgroup-label" id={sortLabelId}>Sortierung</span>
+                <div className="offers-segment offers-segment--primary" role="group" aria-labelledby={sortLabelId}>
+                  {SORT_OPTIONS.map(o => (
+                    <button
+                      key={o.id}
+                      className={`offers-sort-btn offers-segment-item${sortMode === o.id ? " active" : ""}`}
+                      onClick={() => onSortChange(o.id)}
+                      type="button"
+                      /* Die aktive Sortierung war bislang nur an der Fläche erkennbar.
+                         aria-pressed macht sie für Screenreader hörbar — die Gruppe
+                         ist ein Umschalter, keine sortierbare Tabellenspalte
+                         (aria-sort gehört an <th> und wäre hier falsch). */
+                      aria-pressed={sortMode === o.id}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            <div className="offers-sort-sep" />
-            <div className="offers-vat-toggle" role="group" aria-label="Preisdarstellung">
-              <button
-                className={`offers-sort-btn${vatMode !== "gross" ? " active" : ""}`}
-                onClick={() => onVatToggle("net")}
-                type="button"
-              >
-                exkl. MwSt.
-              </button>
-              <button
-                className={`offers-sort-btn${vatMode === "gross" ? " active" : ""}`}
-                onClick={() => onVatToggle("gross")}
-                type="button"
-              >
-                inkl. MwSt.
-              </button>
+              {/* ── Gruppe B · MwSt. (sekundäre Darstellungsumschaltung) ──
+                     Bewusst schwächer gewichtet als die Sortierung: sie ändert
+                     nicht, WELCHE Angebote erscheinen, sondern nur, wie ihr
+                     Preis geschrieben wird. `.offers-vat-toggle` bleibt als
+                     Gruppenklasse erhalten. */}
+              <div className="offers-toolgroup">
+                {/* „Preisanzeige", nicht „MwSt.": die beiden Segmente heißen bereits
+                    „exkl. MwSt." / „inkl. MwSt." — eine dritte Nennung desselben
+                    Worts in derselben Zeile benennt die Gruppe nicht, sie
+                    wiederholt sie nur. Die Segmentbeschriftungen bleiben
+                    absichtlich WÖRTLICH wie auf den Angebotskarten
+                    (`OfferCard.jsx`): der Schalter sagt damit exakt, was danach
+                    an der Karte steht. */}
+                <span className="offers-toolgroup-label" id={vatLabelId}>Preisanzeige</span>
+                <div
+                  className="offers-vat-toggle offers-segment offers-segment--secondary"
+                  role="group"
+                  aria-labelledby={vatLabelId}
+                >
+                  <button
+                    className={`offers-sort-btn offers-segment-item${vatMode !== "gross" ? " active" : ""}`}
+                    onClick={() => onVatToggle("net")}
+                    type="button"
+                    aria-pressed={vatMode !== "gross"}
+                  >
+                    exkl. MwSt.
+                  </button>
+                  <button
+                    className={`offers-sort-btn offers-segment-item${vatMode === "gross" ? " active" : ""}`}
+                    onClick={() => onVatToggle("gross")}
+                    type="button"
+                    aria-pressed={vatMode === "gross"}
+                  >
+                    inkl. MwSt.
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="offers-toolbar-row offers-toolbar-row--filter">
+              {/* ── Gruppe C · Filter (kontextuelle Eingrenzung) ──
+                     Reihenfolge wie in der Gestaltungsreferenz: erst das
+                     Lieferdatum, dann der Preis. Beide Chips sind unverändert —
+                     dieselben Klassen, dieselben Handler, derselbe
+                     `openFilter`-Zustand (höchstens einer offen). */}
+              <div className="offers-toolgroup">
+                <span className="offers-toolgroup-label" id={filterLabelId}>Filter</span>
+                <div className="offers-chipset" role="group" aria-labelledby={filterLabelId}>
+                  {/* Filterpunkt „Lieferung" → rechts angedocktes Dropdown. Bewusst
+                      DASSELBE Chip-/Dropdown-Muster wie der Preisfilter — kein
+                      zweites Overlay- oder Dialogmuster daneben. Die Bedienung
+                      im Formular („Späteste Lieferzeit") bleibt unverändert
+                      bestehen; beide schreiben denselben Wert. */}
+                  <button
+                    className={`offers-sort-btn offers-filter-chip${latestDeliveryDate ? " has-filter" : ""}${openFilter === "delivery" ? " open" : ""}`}
+                    onClick={() => setOpenFilter(o => (o === "delivery" ? null : "delivery"))}
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded={openFilter === "delivery"}
+                  >
+                    <Icon n="calendar" s={12} c="currentColor" />
+                    {deliveryChipLabel(latestDeliveryDate, latestDeliveryTime)}
+                    <span className="offers-filter-chip-caret" aria-hidden="true">
+                      <Icon n="chevron" s={13} c="currentColor" />
+                    </span>
+                  </button>
+
+                  {/* Filterpunkt „Preis" → rechts angedocktes Dropdown */}
+                  <button
+                    className={`offers-sort-btn offers-filter-chip${maxPrice ? " has-filter" : ""}${openFilter === "price" ? " open" : ""}`}
+                    onClick={() => setOpenFilter(o => (o === "price" ? null : "price"))}
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={openFilter === "price"}
+                  >
+                    <Icon n="filter" s={12} c="currentColor" />
+                    {maxPrice ? `Preis · bis ${money(Number(maxPrice))}` : "Preis"}
+                    <span className="offers-filter-chip-caret" aria-hidden="true">
+                      <Icon n="chevron" s={13} c="currentColor" />
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Gruppe D · Zurücksetzen (Utility) ──
+                     Erscheint unverändert nur bei aktivem Filter und trägt
+                     dieselbe Klasse wie zuvor. Neu ist nur die ruhigere,
+                     rahmenlose Darstellung: eine Aufräumaktion soll auffindbar
+                     sein, aber nicht so laut wie die Steuerung selbst. */}
+              {hasFilter && (
+                <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
+                  <Icon n="x" s={11} c="currentColor" />
+                  Zurücksetzen
+                </button>
+              )}
             </div>
           </div>
 

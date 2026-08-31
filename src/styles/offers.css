@@ -48,46 +48,151 @@
   font-size: 13px; color: var(--ce-color-text-muted); margin-top: 3px;
 }
 
-/* ─── Sort + Filter Bar ─────────────────────────────────────────────────────── */
-.offers-sort-bar {
-  display: flex; align-items: center; gap: 8px;
+/* ─── Toolbar: Sortierung · MwSt. · Filter · Zurücksetzen ────────────────────
+   Vier fachlich verschiedene Dinge, vier verschiedene Gewichte. Bis zu diesem
+   Paket lagen sie als EINE flache Reihe gleich aussehender Pills nebeneinander,
+   getrennt nur durch zwei 1-px-Striche: die Sortierung sah aus wie die
+   MwSt.-Umschaltung, und die sah aus wie ein Filter. Ein Nutzer musste die
+   Beschriftungen lesen, um die Bedienlogik zu erkennen.
+
+   Die Hierarchie steht jetzt im Material, nicht im Text:
+
+     Sortierung    primär       gefüllte Marke, weiße Schrift
+     MwSt.         sekundär     getönte Marke, Markentinte
+     Filter        kontextuell  Chip mit Kante (unverändert)
+     Zurücksetzen  Utility      Textaktion ohne Rahmen
+
+   Radius, Tiefe und Farben kommen ausschließlich aus der Foundation. ─────── */
+.offers-toolbar {
+  display: flex; flex-direction: column; gap: 10px;
   padding: 12px 20px;
-  background: var(--gray50);
-  border-bottom: 1px solid var(--border);
+  background: var(--ce-color-surface-subtle);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+/* Zwei Reihen: oben die Steuerung (Sortierung ↔ MwSt.), unten der Kontext
+   (Filter ↔ Zurücksetzen). `space-between` hält die sekundären Gruppen rechts,
+   ohne dass irgendwo eine feste Breite nötig wäre. */
+.offers-toolbar-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px 24px; flex-wrap: wrap;
+}
+/* Die zweite Reihe sitzt optisch tiefer als die erste — eine feine Trennlinie
+   statt eines weiteren Kastens. Kein zweiter Rahmen, keine zweite Fläche. */
+.offers-toolbar-row--filter {
+  padding-top: 10px;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+/* Die Beschriftung steht NEBEN ihrer Gruppe, nicht darüber.
+   Gemessen: gestapelt maß die Leiste 184 px, nebeneinander 120 px. Beides
+   funktioniert; 120 px gewinnt, weil die Leiste über der Angebotsliste sitzt
+   und jede Zeile Höhe dort einen Angebotsblock nach unten schiebt. Der Gewinn
+   an Klarheit bleibt derselbe: jede Gruppe ist benannt und optisch geschlossen
+   — sie steht nur waagerecht statt senkrecht. */
+.offers-toolgroup { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Micro-Stufe der Typografieskala (11 px / 600). Die Beschriftung benennt die
+   Gruppe — sie ersetzt die früheren Trennstriche, die nur trennten, ohne zu
+   sagen, was sie trennen. */
+.offers-toolgroup-label {
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-micro-size);
+  font-weight: var(--ce-text-micro-weight);
+  line-height: var(--ce-text-micro-line);
+  letter-spacing: var(--ce-text-micro-tracking);
+  text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Segmented Control ──────────────────────────────────────────────────────
+   Eine Spur, mehrere Segmente: die Zusammengehörigkeit ist damit sichtbar,
+   ohne dass jedes Segment eine eigene Kante braucht. Genau das erzeugte vorher
+   den „Button-Teppich" — vier gleich starke Umrandungen nebeneinander. */
+.offers-segment {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 3px;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-1);
   flex-wrap: wrap;
 }
-.offers-sort-label {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.09em; color: var(--ce-color-text-muted); flex-shrink: 0; margin-right: 2px;
+/* Höher spezifisch als `.offers-sort-btn` — und das ist kein Zufall, sondern
+   nötig: die Basisregel steht in dieser Datei WEITER UNTEN (die Chips bauen
+   darauf auf) und gewänne bei gleicher Spezifität allein durch die Reihenfolge.
+   Gemessen sah der erste Entwurf deshalb genauso aus wie vorher — vier weiße
+   Pillen mit eigener Kante, nur in einem Kasten. */
+.offers-segment .offers-segment-item {
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  border-radius: var(--ce-radius-sm);
+  padding: 7px 14px;
 }
+.offers-segment .offers-segment-item:hover {
+  background: var(--ce-color-surface-muted);
+  border-color: transparent;
+  color: var(--ce-color-text-primary);
+}
+/* Primär (Sortierung): gefüllt. Sie entscheidet, welches Angebot oben steht —
+   die folgenreichste Einstellung der Seite und deshalb die einzige mit
+   Vollfläche. */
+.offers-segment.offers-segment--primary .offers-segment-item.active,
+.offers-segment.offers-segment--primary .offers-segment-item.active:hover {
+  background: var(--ce-color-brand);
+  border-color: var(--ce-color-brand);
+  color: var(--ce-color-text-inverse);
+}
+/* Sekundär (MwSt.): getönt. Sie ändert nur die Schreibweise des Preises, nicht
+   das Ergebnis — dieselbe Formensprache, eine Stufe leiser. */
+.offers-segment.offers-segment--secondary .offers-segment-item.active,
+.offers-segment.offers-segment--secondary .offers-segment-item.active:hover {
+  background: var(--ce-color-brand-soft);
+  border-color: var(--ce-color-brand-border);
+  color: var(--ce-color-brand-ink);
+}
+
+/* ── Basis aller Bedienelemente der Toolbar ────────────────────────────────
+   `.offers-sort-btn` bleibt die gemeinsame Grundlage (Chips bauen unverändert
+   darauf auf); die Segmente überschreiben davon oben nur Rahmen und Fläche. */
 .offers-sort-btn {
-  padding: 5px 13px; border-radius: var(--radius-full);
-  border: 1.5px solid var(--border); background: white;
-  font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
-  cursor: pointer; transition: all 0.15s; font-family: var(--ce-font-sans); white-space: nowrap;
+  padding: 7px 14px; border-radius: var(--ce-radius-sm);
+  border: 1px solid var(--ce-color-border-subtle); background: var(--ce-color-surface);
+  font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary);
+  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  font-family: var(--ce-font-sans); white-space: nowrap;
 }
-.offers-sort-btn:hover { border-color: var(--ce-color-border-strong); color: var(--navy); background: var(--gray50); }
-/* Aktiv: Brand Soft + Brand Ink (Paket B) — dasselbe Muster wie jeder andere
+.offers-sort-btn:hover { border-color: var(--ce-color-border-strong); color: var(--ce-color-text-primary); background: var(--ce-color-surface-subtle); }
+.offers-sort-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+/* Aktiv außerhalb eines Segments (Rückfall) — Brand Soft, wie jeder andere
    Filterchip im Versandprozess. */
-.offers-sort-btn.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
-.offers-sort-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
-/* Filter-Chips „Preis" / „Lieferzeit" — Basis ist .offers-sort-btn, ergänzt um
-   Dropdown-Caret + aktive/geöffnete Zustände. */
-.offers-filter-chip { display: inline-flex; align-items: center; gap: 6px; }
-.offers-filter-chip.has-filter { border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
+.offers-sort-btn.active { border-color: var(--ce-color-brand-border); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+
+/* ── Filter-Chips „Lieferung" / „Preis" ────────────────────────────────────
+   Kontextuelle Eingrenzung: eigene Kante, damit sie als einzeln an- und
+   abschaltbar lesbar bleiben — anders als die Segmente, die sich eine Spur
+   teilen und immer genau einen aktiven Zustand haben. */
+.offers-chipset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.offers-filter-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--ce-radius-full); }
+.offers-filter-chip.has-filter { border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
 .offers-filter-chip.open { border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
 .offers-filter-chip-caret { display: inline-flex; align-items: center; margin-left: -1px; transition: transform 0.2s ease; }
 .offers-filter-chip.open .offers-filter-chip-caret { transform: rotate(180deg); }
-.offers-filter-reset-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 13px; border-radius: var(--radius-full);
-  border: 1.5px solid var(--border); background: white;
-  font-size: 12px; font-weight: 600; color: var(--ce-color-text-secondary);
-  cursor: pointer; transition: all 0.15s; font-family: var(--ce-font-sans); white-space: nowrap;
-}
-.offers-filter-reset-btn:hover { border-color: var(--ce-color-border-strong); color: var(--navy); background: var(--gray50); }
 
-.offers-vat-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+/* ── Zurücksetzen (Utility) ────────────────────────────────────────────────
+   Rahmenlos. Es ist eine Aufräumaktion, kein Steuerungselement: sichtbar,
+   sobald ein Filter greift, aber nie so laut wie das, was es zurücknimmt. */
+.offers-filter-reset-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: var(--ce-radius-sm);
+  border: 1px solid transparent; background: transparent;
+  font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted);
+  cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+  font-family: var(--ce-font-sans); white-space: nowrap; flex-shrink: 0;
+}
+.offers-filter-reset-btn:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.offers-filter-reset-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+
+.offers-vat-toggle { flex-shrink: 0; }
 
 /* ─── Filter-Zone + rechts angedockte Dropdowns (JUMiNGO-artig) ────────────── */
 /* Die Zone umschließt Sortierleiste UND Dropdowns. Die Leiste selbst scrollt
@@ -667,10 +772,31 @@
 @media (max-width: 767px) {
   .offers-result-header { padding: 16px 16px; gap: 10px; }
   .offers-result-count { font-size: 18px; }
-  .offers-sort-bar { padding: 10px 14px; gap: 5px; overflow-x: auto; flex-wrap: nowrap; }
-  .offers-sort-label { display: none; }
-  .offers-sort-btn { font-size: 11px; padding: 5px 10px; }
-  .offers-filter-reset-btn { font-size: 11px; padding: 5px 10px; }
+  /* Auf schmalen Viewports stapeln die Gruppen, statt horizontal zu scrollen:
+     die Beschriftungen BLEIBEN sichtbar — sie sind hier wertvoller als auf dem
+     Desktop, weil die Gruppen untereinander stehen und die räumliche
+     Zusammengehörigkeit allein nicht mehr trägt. Die frühere Fassung blendete
+     `.offers-sort-label` aus und ließ die ganze Leiste seitwärts scrollen; die
+     MwSt.-Umschaltung war damit auf einem Telefon unauffindbar, weil sie am
+     rechten Ende des Scrollbereichs lag. */
+  .offers-toolbar { padding: 14px; gap: 12px; }
+  .offers-toolbar-row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .offers-toolbar-row--filter { padding-top: 12px; }
+  /* Die Beschriftung wandert ÜBER ihre Gruppe. Bliebe sie daneben, teilte sie
+     sich die Zeilenbreite mit der Spur — die Spur bekäme `width: 100%` der
+     Gruppe und liefe um die Labelbreite aus dem Bild (gemessen auf 390 px:
+     waagerechte Scrollfläche in der Leiste). */
+  .offers-toolgroup { flex-direction: column; align-items: stretch; gap: 6px; }
+  .offers-segment { width: 100%; }
+  /* Zwei je Zeile statt „drei und einer allein": die Segmente teilen sich die
+     Spur zu gleichen Teilen (2 px Lücke, 3 px Innenrand der Spur). Vier
+     Sortierungen ergeben damit ein 2×2-Raster, die beiden MwSt.-Segmente eine
+     einzige Zeile. */
+  .offers-segment .offers-segment-item {
+    flex: 1 1 calc(50% - 1px); text-align: center; min-width: 0;
+  }
+  .offers-sort-btn { font-size: 12px; padding: 7px 11px; }
+  .offers-filter-reset-btn { font-size: 12px; padding: 7px 11px; align-self: flex-start; }
   .offers-body { padding: 14px; }
 
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */

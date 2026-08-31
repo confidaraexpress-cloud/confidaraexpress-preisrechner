@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
-import { countries } from "../../utils/countries";
+import { useLaunchScope } from "../../hooks/useLaunchScope";
 import { B2B_NOTICE, B2B_ACTIVATION_NOTE } from "../../utils/registrationValidation.mjs";
 // Die sichtbare Zusage „min. 8 Zeichen" kommt aus derselben Konstante wie die
 // Prüfung — Text und Regel können damit nicht auseinanderlaufen.
@@ -13,6 +13,9 @@ import { PASSWORD_MIN_LEN } from "../../utils/passwordPolicy.mjs";
 const Req = () => <span className="auth-req" aria-hidden="true">*</span>;
 
 export function RegisterForm({ form, onChange, onRegister, loading, errors = {}, regValid = true, passwordRepeat = "", onPasswordRepeatChange, onPasswordBlur }) {
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  const { countries: launchCountries } = useLaunchScope();
   const upd = (k, v) => onChange(k, v);
   return (
     <form noValidate onSubmit={(e) => { e.preventDefault(); onRegister(); }}>
@@ -212,7 +215,7 @@ export function RegisterForm({ form, onChange, onRegister, loading, errors = {},
               onChange={(e) => upd("country", e.target.value)}
               autoComplete="country"
             >
-              {countries.map((c) => (
+              {launchCountries.map((c) => (
                 <option key={c.code} value={c.code}>{c.name}</option>
               ))}
             </select>

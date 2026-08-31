@@ -25,6 +25,8 @@
 // AUTORITÄT: Das Backend bleibt in allem verbindlich.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { CUSTOMS_UI_ENABLED } from "../config/launchMode.mjs";
+
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 const str = (v) => (v === null || v === undefined ? "" : String(v).trim());
 const numOrNull = (v) => {
@@ -425,7 +427,18 @@ export function detailSections(row) {
     trackingNumber: storedTracking(row).present,
     label: f.labelAvailable,
     invoice: !!inv,
-    customs: isCustomsRelevant(row),
+    // Launch-Modus: die Zollkarte erscheint nicht.
+    //
+    // Anders als bei den kundenseitigen Flächen ist das hier eine ausdrückliche
+    // Betreiberentscheidung und keine Folge fehlender Daten: es gibt aktuell keine
+    // produktiven Kunden und damit keine historische Zollsendung, deren Karte einem Admin
+    // noch etwas zeigen würde. Sichtbar bliebe eine Rubrik für ein Produkt, das
+    // ConfidaraExpress nicht anbietet.
+    //
+    // `isCustomsRelevant(row)` bleibt in der Bedingung stehen und unverändert erhalten —
+    // für Customs V2 fällt hier nur die Konstante weg. Es wird kein Feld der Antwort
+    // ausgeblendet und kein gespeicherter Zollsnapshot angetastet.
+    customs: CUSTOMS_UI_ENABLED && isCustomsRelevant(row),
   };
 }
 

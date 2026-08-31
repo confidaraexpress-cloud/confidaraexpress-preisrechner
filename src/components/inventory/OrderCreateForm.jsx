@@ -6,7 +6,7 @@ import { getProduct, getProducts, getWarehouses } from "../../api/inventoryApi";
 import { formatUnits } from "../../utils/inventoryView.mjs";
 // Länderliste und Adressbuchauslegung kommen aus den bestehenden Quellen —
 // keine zweite Länderdatei, keine zweite Adressbuchlogik.
-import { countries } from "../../utils/countries";
+import { useLaunchScope } from "../../hooks/useLaunchScope";
 import { mapAddressToOrderRecipient, TAB_RECIPIENT } from "../../utils/addressBookView.mjs";
 import { AddressSuggestInput } from "../address/AddressSuggestInput";
 import { AddressStatusLine } from "../address/AddressStatusLine";
@@ -59,6 +59,9 @@ function Feld({ id, label, value, onChange, error, hint, ...rest }) {
 const START_ZUSATZ = Object.freeze({ customerReference: "", notes: "" });
 
 export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  const { countries: launchCountries } = useLaunchScope();
   const [recipient, setRecipient] = useState(() => emptyOrderRecipient());
   const [customerReference, setCustomerReference] = useState(START_ZUSATZ.customerReference);
   const [notes, setNotes] = useState(START_ZUSATZ.notes);
@@ -295,7 +298,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
             <select id="o-country" className="field-select" value={recipient.country}
                     onChange={(e) => set("country")(e.target.value)}
                     aria-invalid={errs.country ? "true" : undefined} autoComplete="country">
-              {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+              {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
             </select>
             {errs.country && <p className="inv-field-error">{errs.country}</p>}
           </div>

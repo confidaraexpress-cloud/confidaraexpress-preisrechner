@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
-import { countries } from "../../utils/countries";
+import { useLaunchScope } from "../../hooks/useLaunchScope";
 import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../../utils/postalCode.mjs";
 import {
   UI_ROLE_OPTIONS, ROLE_SENDER, ROLE_RECIPIENT, ROLE_BOTH,
@@ -24,6 +24,9 @@ function focusableElements(root) {
 // Mutation (create/update) übernimmt der Orchestrator über `onSubmit`, der
 // { ok:true } oder { ok:false, fieldErrors?, message? } zurückgibt.
 export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  const { countries: launchCountries } = useLaunchScope();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -251,7 +254,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                   value={form.country}
                   onChange={(e) => upd("country", e.target.value)}
                 >
-                  {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                  {launchCountries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
                 {errors.country && <span className="field-error">{errors.country}</span>}
               </div>

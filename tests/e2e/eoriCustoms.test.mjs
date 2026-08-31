@@ -14,6 +14,24 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+
+// ── Launch-Modus: die positiven Zollfälle sind im Browser nicht erreichbar ───────────────────
+// `CUSTOMS_UI_ENABLED` (src/config/launchMode.mjs) steht auf `false` und wird beim Build in das
+// Bundle kompiliert — anders als beim Backend, wo `tests/helpers/customsV2Scope.js` den Zustand
+// im Prozess herstellen kann, gibt es hier keinen Weg, die Zolloberfläche im Browser zu öffnen.
+// Die betroffenen Fälle überspringen sich deshalb AUSDRÜCKLICH und mit Grund, statt rot zu
+// stehen oder still zu verschwinden.
+//
+// Was weiterläuft: die NEGATIVEN Fälle. Sie sind in beiden Konfigurationen gültig und decken
+// genau das ab, was der Launch behauptet. Die Logik selbst bleibt vollständig geprüft — durch
+// `src/utils/eoriUx.test.mjs` und `src/utils/proformaSuccessDownload.test.mjs`.
+//
+// Wieder aktiv, sobald CUSTOMS_UI_ENABLED auf `true` steht (Customs V2). Kein Test wurde
+// gelöscht, keine Zusage abgeschwächt.
+import { CUSTOMS_UI_ENABLED } from "../../src/config/launchMode.mjs";
+const ZOLL_UI_AUS = CUSTOMS_UI_ENABLED
+  ? false
+  : "Zolloberfläche im Launch-Modus abgeschaltet (CUSTOMS_UI_ENABLED=false)";
 import { fuelleVersandformular, STANDARD_EMPFAENGER } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5356, BASE = `http://127.0.0.1:${PORT}`;
@@ -153,7 +171,7 @@ test.after(async () => {
 
 /* ══════════ 1 — Kontoeinstellungen: EORI speichern ══════════ */
 
-test("1 — die EORI lässt sich in den Kontoeinstellungen speichern und wird normalisiert", async () => {
+test("1 — die EORI lässt sich in den Kontoeinstellungen speichern und wird normalisiert", { skip: ZOLL_UI_AUS }, async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const zustand = { user: basisUser({ eori_number: null }), protokoll: [] };
   await setupRoutes(page, zustand);
@@ -185,7 +203,7 @@ test("1 — die EORI lässt sich in den Kontoeinstellungen speichern und wird no
 
 /* ══════════ 2 — Formatfehler bleibt am Feld ══════════ */
 
-test("2 — ein Formatfehler wird am Feld gemeldet und nichts gespeichert", async () => {
+test("2 — ein Formatfehler wird am Feld gemeldet und nichts gespeichert", { skip: ZOLL_UI_AUS }, async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const zustand = { user: basisUser({ eori_number: null }), protokoll: [] };
   await setupRoutes(page, zustand);
@@ -207,7 +225,7 @@ test("2 — ein Formatfehler wird am Feld gemeldet und nichts gespeichert", asyn
 
 /* ══════════ 3 — Zollflow ohne EORI: Inline-Erfassung, Vorgang bleibt ══════════ */
 
-test("3 — fehlende EORI: Inline-Hinweis, Speichern im Zollabschnitt, Vorgang bleibt bestehen", async () => {
+test("3 — fehlende EORI: Inline-Hinweis, Speichern im Zollabschnitt, Vorgang bleibt bestehen", { skip: ZOLL_UI_AUS }, async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const zustand = {
     user: basisUser({ eori_number: null }), protokoll: [], customsRequired: true, gebucht: false,
@@ -245,7 +263,7 @@ test("3 — fehlende EORI: Inline-Hinweis, Speichern im Zollabschnitt, Vorgang b
 
 /* ══════════ 4 — Backend-EORI_REQUIRED öffnet denselben Weg ══════════ */
 
-test("4 — EORI_REQUIRED aus dem Backend führt zurück an den Zollabschnitt, nicht in den Preiszweig", async () => {
+test("4 — EORI_REQUIRED aus dem Backend führt zurück an den Zollabschnitt, nicht in den Preiszweig", { skip: ZOLL_UI_AUS }, async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   // Das Konto TRÄGT eine EORI — die Oberfläche zeigt deshalb zunächst keine Fläche.
   // Erst die Serverantwort löst sie aus; genau das ist der Fall „EORI zwischenzeitlich

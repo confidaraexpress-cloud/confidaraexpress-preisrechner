@@ -157,24 +157,26 @@ test("SMOKE B — fällt der Scope-Endpunkt aus, bleibt das Formular benutzbar",
   } finally { await ctx.close(); }
 });
 
-test("SMOKE C — der Scope wird EINMAL je Tab geholt, nicht je Formular", async () => {
+test("SMOKE C — der Scope wird EINMAL je Seitenladung geholt, nicht je Formular", async () => {
+  // Die Zusage des Modulcaches ist „ein Abruf je Tab-LEBENSDAUER", nicht „ein Abruf für
+  // immer": ein harter Reload baut den Modulgraphen neu auf und fragt zu Recht erneut.
+  // Gemessen wird deshalb EINE Seitenladung, in der mehrere Auswahlfelder montiert werden.
   const { ctx, page, state, fehler } = await neueSeite();
   try {
     await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("#ns-r-country", { timeout: 20000 });
-    await page.waitForTimeout(400);
-    const nachErstem = state.scopeCalls;
-    assert.ok(nachErstem >= 1, "der Scope muss überhaupt geholt werden");
+    await page.waitForFunction(
+      () => document.querySelectorAll("#ns-r-country option").length > 1
+         && document.querySelectorAll("#ns-r-country option").length < 40,
+      undefined, { timeout: 20000 }
+    );
+    // Absender- UND Empfängerfeld stehen, beide gefiltert.
+    assert.equal((await optionen(page, "#ns-s-country")).length, 27);
+    assert.equal((await optionen(page, "#ns-r-country")).length, 27);
+    await page.waitForTimeout(500);
 
-    // Bereichswechsel und zurück: die Formulare werden neu montiert, der Abruf nicht.
-    await page.goto(`${BASE}/dashboard?page=profile`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(400);
-    await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("#ns-r-country", { timeout: 20000 });
-    await page.waitForTimeout(400);
-
-    assert.equal(state.scopeCalls, nachErstem,
-      `der Modulcache muss greifen — es waren ${state.scopeCalls} statt ${nachErstem} Abrufe`);
+    assert.equal(state.scopeCalls, 1,
+      `eine Seitenladung darf genau EINEN Abruf erzeugen, es waren ${state.scopeCalls}`);
     assert.deepEqual(fehler, [], `Seitenfehler: ${fehler.join(" | ")}`);
   } finally { await ctx.close(); }
 });
@@ -201,23 +203,25 @@ test("SMOKE D — die Kontoeinstellungen zeigen kein EORI-Feld", async () => {
   } finally { await ctx.close(); }
 });
 
-test("SMOKE E — die Länderauswahl des Adressbuchs ist ebenfalls gefiltert", async () => {
+test("SMOKE E — auch die Registrierung bietet nur freigegebene Länder an", async () => {
+  // Eine zweite, völlig unabhängige Oberfläche — und eine öffentliche: sie belegt, dass der
+  // Scope nicht am eingeloggten Bereich hängt.
   const { ctx, page, fehler } = await neueSeite();
   try {
-    await page.goto(`${BASE}/dashboard?page=addressbook`, { waitUntil: "domcontentloaded" });
-    const neuKnopf = page.locator("button", { hasText: /Adresse hinzufügen|Neue Adresse/ }).first();
-    await neuKnopf.waitFor({ timeout: 20000 });
-    await neuKnopf.click();
-    await page.waitForSelector(".ce-drawer select, .abk-form select", { timeout: 20000 });
-    await page.waitForTimeout(500);
+    await page.goto(`${BASE}/register`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("select.auth-select", { timeout: 20000 });
+    await page.waitForFunction(
+      () => document.querySelectorAll("select.auth-select option").length > 1
+         && document.querySelectorAll("select.auth-select option").length < 40,
+      undefined, { timeout: 20000 }
+    );
 
-    const codes = await page.locator(".ce-drawer select option, .abk-form select option")
-      .evaluateAll((os) => os.map((o) => o.value).filter((v) => /^[A-Z]{2}$/.test(v)));
-    assert.ok(codes.length > 0, "die Länderauswahl wurde nicht gefunden");
+    const codes = await optionen(page, "select.auth-select");
+    assert.equal(codes.length, 27, `27 Länder erwartet, waren ${codes.length}`);
     for (const drittland of ["US", "CH", "GB", "NO", "TR"]) {
-      assert.ok(!codes.includes(drittland), `${drittland} darf im Adressbuch nicht wählbar sein`);
+      assert.ok(!codes.includes(drittland), `${drittland} darf bei der Registrierung nicht wählbar sein`);
     }
-    assert.ok(codes.includes("DE"), "DE fehlt im Adressbuch");
+    assert.ok(codes.includes("DE"), "DE fehlt bei der Registrierung");
 
     assert.deepEqual(fehler, [], `Seitenfehler: ${fehler.join(" | ")}`);
   } finally { await ctx.close(); }

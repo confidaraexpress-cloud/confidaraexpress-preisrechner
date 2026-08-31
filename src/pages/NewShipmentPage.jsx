@@ -5,7 +5,7 @@ import { Icon } from "../components/ui/Icon";
 // `normalizeCountryCode` wird hier nicht mehr gebraucht: die Länder-
 // Normalisierung ist mit dem Profil-Seed nach newShipmentForm.mjs gewandert
 // (senderPatchFromProfile) — sie greift dort unverändert weiter.
-import { countries } from "../utils/countries";
+import { useLaunchScope } from "../hooks/useLaunchScope";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
@@ -200,6 +200,9 @@ const SHIPPING_MODE_OPTIONS = [
 ];
 
 export default function NewShipmentPage({ prefillAddress, onPrefillApplied, prefillInventory, onInventoryPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  const { countries: launchCountries } = useLaunchScope();
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
@@ -1485,7 +1488,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       error={errors[`${p}_country`]}
     >
       <option value="">Land auswählen</option>
-      {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
     </Field>
   );
 

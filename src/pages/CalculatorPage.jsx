@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
-import { countries, normalizeCountryCode } from "../utils/countries";
+import { normalizeCountryCode } from "../utils/countries";
+import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
@@ -44,6 +45,9 @@ const SHIPPING_MODE_OPTIONS = [
 ];
 
 export default function CalculatorPage() {
+  // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
+  // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
+  const { countries: launchCountries } = useLaunchScope();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -600,7 +604,7 @@ export default function CalculatorPage() {
                       value={form.from_country}
                       onChange={e => { upd("from_country", e.target.value); resetResults(); }}
                     >
-                      {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                     </select>
                   </div>
                   <div className="field">
@@ -631,7 +635,7 @@ export default function CalculatorPage() {
                       value={form.to_country}
                       onChange={e => { upd("to_country", e.target.value); resetResults(); }}
                     >
-                      {countries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                     </select>
                   </div>
                   <div className="field">

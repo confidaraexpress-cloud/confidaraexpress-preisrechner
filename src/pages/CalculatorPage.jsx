@@ -47,7 +47,8 @@ const SHIPPING_MODE_OPTIONS = [
 export default function CalculatorPage() {
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
-  const { countries: launchCountries } = useLaunchScope();
+  // Zwei Listen: die Herkunft ist auf die Versandursprünge beschränkt, das Ziel nicht.
+  const { countries: launchCountries, originCountries: launchOriginCountries } = useLaunchScope();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -604,7 +605,7 @@ export default function CalculatorPage() {
                       value={form.from_country}
                       onChange={e => { upd("from_country", e.target.value); resetResults(); }}
                     >
-                      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      {launchOriginCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                     </select>
                   </div>
                   <div className="field">

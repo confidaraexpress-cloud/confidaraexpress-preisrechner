@@ -202,7 +202,8 @@ const SHIPPING_MODE_OPTIONS = [
 export default function NewShipmentPage({ prefillAddress, onPrefillApplied, prefillInventory, onInventoryPrefillApplied, resumeDraft, onResumeApplied, registerLeaveGuard, commitLeave } = {}) {
   // Nur die Länder, die ConfidaraExpress heute anbietet — die Liste kommt vom Server
   // (GET /api/shipping/launch-scope), nicht aus einer zweiten Aufzählung im Client.
-  const { countries: launchCountries } = useLaunchScope();
+  // Zwei Listen: der ABSENDER ist auf die Versandursprünge beschränkt, der Empfänger nicht.
+  const { countries: launchCountries, originCountries: launchOriginCountries } = useLaunchScope();
   const { authed, user } = useAuth();
   const navigate = useNavigate();
 
@@ -1488,7 +1489,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       error={errors[`${p}_country`]}
     >
       <option value="">Land auswählen</option>
-      {launchCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+      {(p === "s" ? launchOriginCountries : launchCountries)
+        .map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
     </Field>
   );
 

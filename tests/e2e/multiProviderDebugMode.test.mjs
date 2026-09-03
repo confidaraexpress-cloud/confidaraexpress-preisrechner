@@ -325,14 +325,50 @@ test("6 — Auswahl und Sperre bleiben unter der Toenung sichtbar", async () => 
   // den Klick nicht ab (`pointer-events: none`).
   const buchbar = page.locator(".offer-card:not(.offer-card--unavailable)").first();
   await buchbar.click();
+  // Der Zeiger steht nach dem Klick auf der Karte, und `.offer-card:hover` faerbt die
+  // Kante ebenfalls um. Er wird weggefahren, damit der Vergleich unten allein den
+  // AUSWAHLzustand misst und nicht den Hoverzustand.
+  await page.mouse.move(0, 0);
   await page.waitForSelector(".offer-card--selected", { timeout: 10000 });
   const sel = page.locator(".offer-card--selected");
   assert.equal(await sel.count(), 1);
   assert.ok(await sel.evaluate((el) => el.classList.contains("offer-card--debug")),
     "die ausgewaehlte Karte hat ihren Ton verloren");
-  // Der Auswahlzustand bleibt an seiner Rahmenfarbe erkennbar — der Ton uebermalt ihn nicht.
+
+  // ─── AUF DEN GERENDERTEN ZUSTAND WARTEN, NICHT AUF DIE KLASSE ──────────────────────
+  // `.offer-card` traegt in offers.css bewusst `transition: border-color 120ms`
+  // (`--ce-motion-fast`). Die Klasse steht damit rund hundert Millisekunden VOR der
+  // Farbe. Gemessen, Bild fuer Bild nach dem Klick: bei 16 ms ist `--selected` gesetzt
+  // und der Rahmen liegt noch unveraendert auf `rgb(216, 221, 230)`; das Markenindigo
+  // `rgb(83, 103, 232)` ist erst bei ~119 ms erreicht. Wer direkt nach
+  // `waitForSelector` misst, liest den Ausgangswert — genau daran ist dieser Test in
+  // der CI gescheitert, mit `rgb(216, 221, 230)` auf BEIDEN Seiten.
+  //
+  // Gewartet wird deshalb auf die AUSSAGE selbst und nicht auf eine Frist. Ein fester
+  // Schlafwert waere entweder zu kurz (der Flake bliebe) oder zu lang (jede Ausfuehrung
+  // zahlte ihn), und er wuerde bei einer kuenftigen Aenderung der Dauer erneut kippen.
+  //
+  // Verglichen wird mit einer Karte, die WEDER ausgewaehlt NOCH gesperrt ist. Der
+  // fruehere Selektor `:not(.offer-card--selected)` traf als erstes eine
+  // `--unavailable`-Karte — ein gesperrtes Angebot ist nicht der Gegenpol zu
+  // "ausgewaehlt", und seine Kante steht ohnehin auf dem Ausgangswert.
+  const VERGLEICHSKARTE = ".offer-card:not(.offer-card--selected):not(.offer-card--unavailable)";
+  await page.waitForFunction((auswahl) => {
+    const a = document.querySelector(".offer-card--selected");
+    const b = document.querySelector(auswahl);
+    if (!a || !b) return false;
+    return getComputedStyle(a).borderColor !== getComputedStyle(b).borderColor;
+  }, VERGLEICHSKARTE, { timeout: 10000 });
+
+  // Die urspruengliche Aussage bleibt unveraendert: gemessen wird der GERENDERTE
+  // Unterschied, nicht das Vorhandensein einer Klasse.
+  //
+  // Der Schatten taugt dafuer ausdruecklich NICHT als stabilerer Ersatz: `.offer-card`
+  // und `.offer-card--selected` tragen beide `var(--ce-elevation-2)`, er ist in beiden
+  // Zustaenden identisch. Ein Wechsel auf ihn waere keine robustere Messung, sondern
+  // gar keine mehr.
   const rahmen = await sel.evaluate((el) => getComputedStyle(el).borderColor);
-  const rahmenAndere = await page.locator(".offer-card:not(.offer-card--selected)").first()
+  const rahmenAndere = await page.locator(VERGLEICHSKARTE).first()
     .evaluate((el) => getComputedStyle(el).borderColor);
   assert.notEqual(rahmen, rahmenAndere, "ausgewaehlt und nicht ausgewaehlt sehen gleich aus");
   await page.close();

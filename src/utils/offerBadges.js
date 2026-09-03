@@ -2,6 +2,8 @@
 // Bewusst nur faktische Labels: "Günstigste" und "Schnellste".
 // Kein "Top Empfehlung"/Ribbon und kein "Teuerste" mehr — diese werteten
 // Angebote subjektiv bzw. negativ und erzeugten visuelle Unruhe.
+import { offerKey, offerBlocked, sameOffer } from "./offerIdentity.mjs";
+
 export function assignBadges(sorted) {
   const map = new Map();
   if (!sorted || sorted.length === 0) return map;
@@ -9,7 +11,10 @@ export function assignBadges(sorted) {
   // Nicht verfügbare/nicht buchbare Angebote sind für beide Auszeichnungen
   // von vornherein raus (Paket B) — "Günstigste"/"Schnellste" darf nie auf
   // einer Karte stehen, die der Kunde ohnehin nicht buchen kann.
-  const bookable    = sorted.filter(t => t.availableForDate !== false);
+  // Gesperrt ist gesperrt — egal aus welchem Grund. `offerBlocked` fasst beide
+  // ausdrücklichen Backendaussagen zusammen (`bookable === false` und
+  // `availableForDate === false`); ein FEHLENDES Feld sperrt weiterhin nichts.
+  const bookable    = sorted.filter(t => !offerBlocked(t));
   const withPrice   = bookable.filter(t => t.netPrice != null);
   const withTransit = bookable.filter(t => t.transitDaysMax != null);
 
@@ -29,13 +34,17 @@ export function assignBadges(sorted) {
   }
 
   // Ist dasselbe Angebot günstigste UND schnellste Option → dezentes kombiniertes Label.
-  if (cheapest && fastest && cheapest.id === fastest.id) {
-    map.set(cheapest.id, { key: "best", label: "Günstigste · Schnellste", color: "blue" });
+  // Verglichen und geschlüsselt wird über die Angebotsidentität, nicht über `id`.
+  // Zwei Angebote OHNE `id` waren dort `undefined === undefined` → true: sie galten als
+  // dasselbe Angebot, bekamen fälschlich das kombinierte Label, und alle Karten ohne `id`
+  // lasen anschließend denselben Kartenschlüssel `undefined` zurück.
+  if (cheapest && fastest && sameOffer(cheapest, fastest)) {
+    map.set(offerKey(cheapest), { key: "best", label: "Günstigste · Schnellste", color: "blue" });
     return map;
   }
 
-  if (cheapest) map.set(cheapest.id, { key: "cheapest", label: "Günstigste", color: "green"  });
-  if (fastest)  map.set(fastest.id,  { key: "fastest",  label: "Schnellste", color: "violet" });
+  if (cheapest) map.set(offerKey(cheapest), { key: "cheapest", label: "Günstigste", color: "green"  });
+  if (fastest)  map.set(offerKey(fastest),  { key: "fastest",  label: "Schnellste", color: "violet" });
 
   return map;
 }

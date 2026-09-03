@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
+import { offerKey, sameOffer } from "../../utils/offerIdentity.mjs";
 import { money } from "../../utils/formatters";
 import { DateCalendar } from "../common/DateCalendar";
 import { fmtDE } from "../../utils/date";
@@ -424,11 +425,16 @@ export function OffersList({
 
         {showCards && sorted.map((t, idx) => (
           <OfferCard
-            key={t.id}
+            /* Identität aus EINER Quelle (utils/offerIdentity.mjs). Ein Angebot ohne
+               `id` erzeugte hier sonst dreimal `undefined` — und `undefined === undefined`
+               ist `true`: jede solche Karte hätte sich als ausgewählt dargestellt und
+               sich mit allen anderen ein Badge geteilt. Der Index als Rückfallschlüssel
+               ist ausdrücklich zulässig, aber nur, wenn es gar keine Identität gibt. */
+            key={offerKey(t) ?? `idx:${idx}`}
             tariff={t}
-            badge={badges.get(t.id) || null}
+            badge={badges.get(offerKey(t)) || null}
             isTop={idx === 0}
-            selected={selected?.id === t.id}
+            selected={sameOffer(selected, t)}
             onSelect={onSelect}
             onBook={onBook}
             vatMode={vatMode}

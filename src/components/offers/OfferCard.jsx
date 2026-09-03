@@ -4,6 +4,7 @@ import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
+import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIdentity.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 
@@ -385,7 +386,18 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
 
-  const unavailable = t.availableForDate === false;
+  // Gesperrt ist gesperrt — aus welchem Grund, entscheidet EINE Stelle
+  // (utils/offerIdentity.mjs): entweder das Backend sagt „an diesem Datum nicht"
+  // oder „nur Preisauskunft". Ein FEHLENDES Feld sperrt nichts.
+  const unavailable = offerBlocked(t);
+  // Der Grund wird ÜBERSETZT, nie durchgereicht — ein roher Backendcode im
+  // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
+  // nennt den Einkaufsprovider nicht.
+  const unavailableText = offerBlockedLabel(t);
+  // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
+  // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
+  // `aria-controls` zeigte bei allen auf denselben Bereich.
+  const detailsId = `offer-details-${offerKey(t) ?? "unbekannt"}`;
   const etaLabel    = fmtDelivery(t) || "Auf Anfrage";
   const start = buildStart(t);
   const earlyNote = earlyDeliveryNote(t);
@@ -448,8 +460,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             <div className="offer-service-type">{publicServiceName(t)}</div>
             {/* Sekundärer Einstieg in den Paketshop-Finder — nur bei Angeboten,
                 die ihn tatsächlich anbieten können. Er steht bewusst hier bei
-                den Serviceinformationen und NICHT neben Preis oder Haupt-CTA. */}
-            <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />
+                den Serviceinformationen und NICHT neben Preis oder Haupt-CTA.
+
+                Auf einem gesperrten Angebot erscheint er nicht: die Suche führt
+                zu Abgabestellen für eine Sendung, die von dieser Karte aus gar
+                nicht beauftragt werden kann. Das ist kein neuer Sonderfall,
+                sondern dieselbe Grenze wie beim CTA — was nicht auswählbar ist,
+                bekommt auch keinen Folgeschritt. */}
+            {!unavailable && <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />}
           </div>
         </div>
 
@@ -458,7 +476,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           {unavailable ? (
             <div className="offer-unavail">
               <Icon n="info" s={15} c="currentColor" />
-              <span>Nicht verfügbar für dieses Datum</span>
+              <span>{unavailableText}</span>
             </div>
           ) : (
             <div className="offer-timeline">
@@ -544,12 +562,12 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             type="button"
             disabled={unavailable}
             aria-label={
-              unavailable ? `${carrierName} nicht verfügbar`
+              unavailable ? `${carrierName}: ${unavailableText}`
               : `${carrierName} Angebot auswählen`
             }
           >
             {unavailable
-              ? "Nicht verfügbar"
+              ? unavailableText
               : <>Angebot auswählen <Icon n="arrow" s={15} c="currentColor" /></>}
           </button>
           <button
@@ -557,7 +575,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             onClick={toggleDetails}
             type="button"
             aria-expanded={detailsOpen}
-            aria-controls={`offer-details-${t.id}`}
+            aria-controls={detailsId}
           >
             {detailsOpen ? "Details ausblenden" : "Details anzeigen"}
             <span className={`offer-details-chevron${detailsOpen ? " open" : ""}`} aria-hidden="true">
@@ -586,7 +604,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
       {/* ── Details Panel (lazy) ── */}
       {detailsMounted && (
         <div
-          id={`offer-details-${t.id}`}
+          id={detailsId}
           className={`offer-details-panel${detailsOpen ? "--open" : "--closed"}`}
           role="region"
           aria-label={`Details für ${carrierName}`}

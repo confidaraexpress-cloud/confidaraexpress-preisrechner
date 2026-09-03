@@ -19,6 +19,43 @@
 // Eigenschaft — Shopabgabe-Tarife (dropoff) tragen durchgängig ein um ein bis
 // zwei Tage späteres `deliveryDateMax` als die Abholtarife — hätte eine
 // handgeschriebene Fixture nicht zwingend getroffen.
+// ─── Der Zeitpunkt, zu dem diese Antwort gemessen wurde ──────────────────────
+//
+// Die Tarife tragen ABSOLUTE Zustelldaten (29.08. / 31.08. / 01.09. / 02.09.2026)
+// — das ist der echte, belegte Datenstand und wird nicht umgeschrieben. Damit
+// hängt aber jeder Test, der den Lieferdatum-Kalender BEDIENT, an einem realen
+// Kalendermonat: `DateCalendar` zeigt den Monat des Versanddatums (Vorbelegung
+// `todayISO()`) und deaktiviert alles davor.
+//
+// Genau daran ist die Browser-E2E am 01.09.2026 zerbrochen: vier Suiten klickten
+// fest den Tag „31", und der September hat 30 Tage — die Zelle existierte nicht,
+// jeder Klick lief 30 s in einen Timeout. Der letzte grüne main-Lauf war der
+// 31.08.2026, also der letzte Tag, an dem es den Tag 31 gab.
+//
+// Der Ausweg ist NICHT, die Daten monatlich nachzuziehen oder „31" durch „30" zu
+// ersetzen — beides wäre dieselbe Bombe mit neuem Zünddatum. Stattdessen wird die
+// BROWSERZEIT auf den Messzeitpunkt fixiert (`page.clock.setFixedTime`, im Repo
+// bereits für die Paketshop-Öffnungszeiten etabliert). Dann zeigt der Kalender
+// verlässlich den August 2026, und die Daten unten bleiben unverändert gültig —
+// unabhängig davon, welchen Tag, Monat oder welches Jahr die CI gerade hat.
+//
+// Mittag mit explizitem Offset, nicht Mitternacht: `setFixedTime` fixiert einen
+// absoluten Zeitpunkt, den lokalen Kalendertag bildet erst die Zeitzone des
+// Browsers. 12:00+02:00 (= 10:00 UTC) liegt in JEDER Zone zwischen UTC-9 und
+// UTC+13 auf dem 28.08.2026; um Mitternacht kippte der Tag schon bei einer
+// Stunde Versatz. Dieselbe Begründung wie bei `FREITAG` in
+// `tests/fixtures/accessPointsDpd.mjs`.
+export const VERSANDZEITPUNKT = "2026-08-28T12:00:00+02:00";
+
+// Die Lieferfrist, auf die die Ergebnisfilter-Tests einschränken: Versandtag + 3.
+// `deliveryDateMax <= LIEFERFRIST_ISO` trifft 4 + 17 = 21 der 41 Tarife.
+export const LIEFERFRIST_ISO = "2026-08-31";
+
+// Derselbe Tag als Kalenderzelle. Die E2E-Suiten klicken AUSSCHLIESSLICH über
+// diese Konstante — eine abgeschriebene „31" in einer einzelnen Testdatei wäre
+// genau das Copy/Paste-Datum, das diese Bombe erzeugt hat.
+export const LIEFERFRIST_TAG = "31";
+
 export const TARIFE_41 = [
   {
     "id": "s-2036",

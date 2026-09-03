@@ -14,7 +14,8 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
-import { TARIFE_41 } from "../../src/utils/offersFilterFixture.mjs";
+import { TARIFE_41, VERSANDZEITPUNKT, LIEFERFRIST_TAG }
+  from "../../src/utils/offersFilterFixture.mjs";
 
 const PORT = 5345, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -46,6 +47,13 @@ let server, browser;
 
 function setupRoutes(page, zaehler) {
   return (async () => {
+    // Browserzeit auf den Messzeitpunkt der Fixture fixieren. Ohne das hängt der
+    // Lieferdatum-Kalender am REALEN Kalendermonat, und der Tag, den diese Suite
+    // anklickt, existiert nur in Monaten mit 31 Tagen (Begründung samt Vorfall in
+    // `offersFilterFixture.mjs`). Der Aufruf steht ganz oben in dieser Funktion,
+    // durch die JEDE navigierende Seite dieser Datei läuft — damit vor jeder
+    // Navigation und vor der Routenregistrierung.
+    await page.clock.setFixedTime(new Date(VERSANDZEITPUNKT));
     await page.route("**/api.confidaraexpress.de/**", async (route) => {
       const p = new URL(route.request().url()).pathname;
       const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -275,7 +283,7 @@ test("4 — Lieferdatum 31.08. filtert wie bisher auf 21 Karten", async () => {
   assert.equal(zaehler.n, 1);
 
   await oeffneLieferzeit(page);
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   assert.equal(await anzahlKarten(page), 21);
@@ -302,7 +310,7 @@ test("5 — Uhrzeit 10:30 reduziert die Liste weiter, ohne neuen Preisrequest", 
   assert.equal(await page.locator(".offers-time-trigger").isDisabled(), true);
   assert.match(await page.locator(".offers-time-hint").textContent(), /Erst ein Datum wählen/);
 
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(
     () => document.querySelector(".offers-time-trigger") && !document.querySelector(".offers-time-trigger").disabled,
     null, { timeout: 10000 });
@@ -347,7 +355,7 @@ test("6 — Zurücksetzen bringt alle 41 Karten zurück, ohne neuen Preisrequest
   await zeigeAngebote(page);
 
   await oeffneLieferzeit(page);
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(
     () => document.querySelector(".offers-time-trigger") && !document.querySelector(".offers-time-trigger").disabled,
     null, { timeout: 10000 });
@@ -460,7 +468,7 @@ test("8 — auf Mobile bleibt die Karte voll breit, ohne waagerechte Scrollfläc
 
   // Und das Uhrzeitfeld ist auf Mobile bedienbar.
   await oeffneLieferzeit(page);
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(
     () => document.querySelector(".offers-time-trigger") && !document.querySelector(".offers-time-trigger").disabled,
     null, { timeout: 10000 });
@@ -481,7 +489,7 @@ async function bereitFuerZeitliste(page, zaehler) {
   await setupRoutes(page, zaehler);
   await zeigeAngebote(page);
   await oeffneLieferzeit(page);
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(
     () => document.querySelector(".offers-time-trigger") && !document.querySelector(".offers-time-trigger").disabled,
     null, { timeout: 10000 });
@@ -597,7 +605,7 @@ test("14 — mehrfaches Umstellen der Uhrzeit erzeugt KEINEN weiteren Preisreque
   assert.equal(zaehler.n, 1, "das Laden der Tarife ist der EINE erlaubte Request");
 
   await oeffneLieferzeit(page);
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(
     () => document.querySelector(".offers-time-trigger") && !document.querySelector(".offers-time-trigger").disabled,
     null, { timeout: 10000 });

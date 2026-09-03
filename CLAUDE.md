@@ -2703,10 +2703,27 @@ Transglobal-Karten zeigen ihren echten Einkaufspreis statt des Kundenpreises.
   an zwei verschiedenen Färbungen zu erkennen und die Gruppe optisch gerade nicht eine.
   Eine Markierung ohne Kennung ist **keine** Gruppe: sie ließe sich keiner zweiten Karte
   zuordnen und wäre eine grüne Karte ohne Gegenstück.
-- **Farbe ist nie die einzige Aussage.** Zu jeder Einfärbung gehört ein lesbarer Text
-  („JUMiNGO", „Transglobal · Einkauf · gleich m1") und ein Farbpunkt — dieselbe Regel, die
-  das Projekt für Statusbadges festhält. „Einkauf" steht dort, weil ein Einkaufsnetto
-  neben einem Kundenpreis sonst als sensationell günstiges Angebot missverstanden wird.
+- **Die Färbung ist die einzige SICHTBARE Aussage.** Die Karte bekommt kein Etikett,
+  keinen Farbpunkt, keine Zusatzzeile und keine Zusatzhöhe — sie sieht in beiden
+  Stellungen gleich aus, nur ihre Fläche ist leicht getönt. Gemessen auf vier Breiten
+  sind die Kartenhöhen mit und ohne Modus **bitgleich**. Ein sichtbares technisches
+  Etikett auf einer Angebotskarte wäre Entwicklerinformation an einer Stelle, an der
+  sonst ausschließlich Kundeninformation steht.
+
+  Eine frühere Fassung trug dort ein Etikett („JUMiNGO", „Transglobal · Einkauf ·
+  gleich m1"). Es ist ersatzlos entfallen; `.offer-debug-tag`, `.offer-debug-dot` und
+  die sechs zugehörigen Rahmen-/Textfarbtokens sind mit ihm verschwunden.
+- **Farbe bleibt trotzdem nicht die einzige MASCHINENLESBARE Aussage.** Was die Färbung
+  kodiert, steht als unsichtbarer Text daneben (`.sr-only`, die vorhandene
+  Projektkonvention aus `layout.css`): „Providerquelle: JUMiNGO" bzw. zusätzlich
+  „, identisches Angebot bei anderem Provider vorhanden". Bewusst ein Element **im**
+  Kartentext und ausdrücklich **kein** `aria-label` an der Karte — das würde ihren
+  gesamten zugänglichen Namen ersetzen und Carrier, Laufzeit und Preis verschlucken.
+- **Die Gruppenkennung wird nirgends gerendert.** `matchGroup` dient allein der internen
+  Zuordnung und der Farbwahl: nicht sichtbar, nicht als Tooltip, nicht im `title`, nicht
+  in einem `data-`-Attribut — und auch nicht in der Screenreader-Beschreibung, dort steht
+  nur die TATSACHE eines Gegenstücks. Ebenso wenig erscheint die Preisgrundlage
+  (`priceBasis`) irgendwo im DOM: sie ist keine Aussage der Färbung.
 - **Der Ton ist eine eigene Ebene (`::before`), nicht der `background` der Karte.**
   `.offer-card--unavailable` setzt eine eigene Flächenfarbe; ein Wettstreit zweier
   `background`-Deklarationen hätte entweder den Ton oder den Gesperrt-Zustand verschluckt.
@@ -2731,13 +2748,21 @@ Transglobal-Karten zeigen ihren echten Einkaufspreis statt des Kundenpreises.
 - **Ersatzlos entfernbar:** `utils/offerDebugView.mjs`, `styles/multi-provider-debug.css`,
   dessen Import, die neun Tokens und die drei Zeilen in `OfferCard.jsx`. Das Blatt
   definiert nichts, worauf ein anderes zeigt.
-- Governance: `src/utils/multiProviderDebugUx.test.mjs` (14 Tests) und
-  `tests/e2e/multiProviderDebugMode.test.mjs` (7 Browser-Smokes gegen einen echten
+- Governance: `src/utils/multiProviderDebugUx.test.mjs` (15 Tests) und
+  `tests/e2e/multiProviderDebugMode.test.mjs` (8 Browser-Smokes gegen einen echten
   Dev-Server mit gemocktem Backend — **niemals eine Bestellung**; gemessen werden die
   tatsächlich GERECHNETEN Flächenfarben, nicht die Klassennamen, auf vier Breiten).
-  Vier Mutationen sind gegengeprüft: „Grün gewinnt" entfernt · eine unbekannte Quelle
-  bekommt doch eine Farbe · ein fehlender Debugblock färbt trotzdem · die Karte trägt
-  die Zusatzklasse nicht mehr.
+
+  **„Sichtbar" wird an einer Kopie ohne die `.sr-only`-Elemente gemessen, nicht per
+  `innerText`.** Die Screenreader-Konvention hält ihr Element im Rendering (1 × 1 Pixel,
+  geclippt), und `innerText` liest es mit — ein Test darauf könnte die unsichtbare
+  Beschreibung nicht von einem echten Etikett unterscheiden.
+
+  Sieben Mutationen sind gegengeprüft: „Grün gewinnt" entfernt · eine unbekannte Quelle
+  bekommt doch eine Farbe · ein fehlender Debugblock färbt trotzdem · die Karte trägt die
+  Zusatzklasse nicht mehr · ein sichtbares Etikett kehrt zurück · die
+  Screenreader-Beschreibung entfällt ersatzlos · die Gruppenkennung wandert in die
+  Beschreibung.
 
 
 ## Was nicht geändert werden sollte

@@ -449,15 +449,15 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
       aria-disabled={unavailable || undefined}
     >
       <div className="offer-card-inner">
-        {/* Kennzeichnung des Vergleichsmodus. Sie steht VOR Zone 1, damit die
-            Herkunft gelesen wird, bevor Carrier und Preis wirken — und sie traegt
-            Text UND Punkt, weil die Einfaerbung allein keine Aussage sein darf. */}
-        {debugAnsicht && (
-          <div className="offer-debug-tag">
-            <span className="offer-debug-dot" aria-hidden="true" />
-            {debugAnsicht.text}
-          </div>
-        )}
+        {/* Vergleichsmodus: die Faerbung ist die einzige SICHTBARE Aussage — die Karte
+            bekommt kein Etikett, keine Zusatzzeile und keine Zusatzhoehe. Damit die
+            Farbe nicht die einzige MASCHINENLESBARE Aussage bleibt, steht dieselbe
+            Information unsichtbar daneben (`.sr-only`, vorhandene Projektkonvention).
+            Bewusst ein Element IM Kartentext und kein `aria-label` an der Karte: das
+            wuerde ihren gesamten zugaenglichen Namen ersetzen und Carrier, Laufzeit und
+            Preis verschlucken. Die Gruppenkennung erscheint hier NICHT — beschrieben
+            wird nur, DASS ein Gegenstueck existiert. */}
+        {debugAnsicht && <span className="sr-only">{debugAnsicht.srText}</span>}
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-1">
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten

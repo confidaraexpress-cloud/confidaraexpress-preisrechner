@@ -52,9 +52,13 @@ test("A3 — jede Regel des Debugblatts haengt an .offer-card--debug", () => {
   // keine einzige Zeile dieser Datei. Das ist der Grund, warum die Datei
   // gefahrlos ausgeliefert werden kann.
   const selektoren = [...ohneKommentare(CSS_DEBUG).matchAll(/^([^@\s][^{]*)\{/gm)].map((m) => m[1].trim());
-  assert.ok(selektoren.length >= 6, `zu wenige Regeln gefunden: ${selektoren.length}`);
+  assert.ok(selektoren.length >= 4, `zu wenige Regeln gefunden: ${selektoren.length}`);
   for (const s of selektoren) {
-    assert.ok(/\.offer-card--debug|\.offer-debug-/.test(s), `Regel ausserhalb des Debug-Scopes: ${s}`);
+    assert.ok(/\.offer-card--debug/.test(s), `Regel ausserhalb des Debug-Scopes: ${s}`);
+  }
+  // Und es gibt KEINE Etikettregel mehr — die Faerbung ist die einzige sichtbare Aussage.
+  for (const weg of [".offer-debug-tag", ".offer-debug-dot"]) {
+    assert.ok(!CSS_DEBUG.includes(weg), `${weg} ist zurueck`);
   }
 });
 
@@ -76,13 +80,19 @@ test("B1 — Blau nur JUMiNGO, Orange nur Transglobal", () => {
   const j = offerDebugView(angebot({ provider: "jumingo", priceBasis: "customer_price",
                                      matchedAcrossProviders: false, matchGroup: null }));
   assert.equal(j.tone, DEBUG_TONE_JUMINGO);
-  assert.equal(j.text, "JUMiNGO");
   assert.equal(offerDebugCardClass(angebot({ provider: "jumingo" })), " offer-card--debug offer-card--debug-jumingo");
 
   const t = offerDebugView(angebot({ provider: "transglobal", priceBasis: "provider_net",
                                      matchedAcrossProviders: false, matchGroup: null }));
   assert.equal(t.tone, DEBUG_TONE_TRANSGLOBAL);
-  assert.match(t.text, /^Transglobal · Einkauf$/, "der Einkaufshinweis fehlt");
+  assert.equal(offerDebugCardClass(angebot({ provider: "transglobal" })), " offer-card--debug offer-card--debug-transglobal");
+
+  // Die Ansicht traegt KEIN sichtbares Textfeld mehr — nur den Ton und die unsichtbare
+  // Beschreibung. Ein zurueckgekehrtes `text` waere der Weg, auf dem ein Etikett
+  // unbemerkt wieder in die Karte gelangt.
+  for (const v of [j, t]) {
+    assert.deepEqual(Object.keys(v).sort(), ["matchGroup", "srText", "tone"]);
+  }
 });
 
 test("B2 — GRUEN GEWINNT: beide Karten eines Paares tragen denselben Ton", () => {
@@ -92,10 +102,16 @@ test("B2 — GRUEN GEWINNT: beide Karten eines Paares tragen denselben Ton", () 
   assert.equal(j.tone, DEBUG_TONE_MATCH);
   assert.equal(t.tone, DEBUG_TONE_MATCH);
   assert.equal(j.matchGroup, t.matchGroup);
-  // Die Herkunft bleibt trotzdem lesbar — die Farbe ersetzt sie nicht.
-  assert.match(j.text, /JUMiNGO/);
-  assert.match(t.text, /Transglobal/);
-  assert.match(j.text, /gleich m1/);
+  // Die Herkunft bleibt fuer Screenreader lesbar — die Farbe ersetzt sie nicht.
+  assert.match(j.srText, /JUMiNGO/);
+  assert.match(t.srText, /Transglobal/);
+  // Die Gruppenkennung erreicht KEINEN Text, auch nicht den unsichtbaren.
+  for (const v of [j, t]) {
+    assert.match(v.srText, /identisches Angebot bei anderem Provider vorhanden/);
+    for (const verboten of ["m1", "gleich", "Einkauf", "provider_net", "customer_price", "matchGroup"]) {
+      assert.ok(!v.srText.includes(verboten), `"${verboten}" steht in der Beschreibung: ${v.srText}`);
+    }
+  }
 });
 
 test("B3 — eine Markierung OHNE Kennung ist keine Gruppe", () => {
@@ -109,22 +125,52 @@ test("B3 — eine Markierung OHNE Kennung ist keine Gruppe", () => {
   assert.equal(v.tone, DEBUG_TONE_JUMINGO);
 });
 
-test("B4 — die Faerbung traegt IMMER einen lesbaren Text und einen Punkt", () => {
-  assert.match(OFFER_CARD, /offer-debug-dot/, "der Farbpunkt fehlt in der Karte");
-  assert.match(OFFER_CARD, /debugAnsicht\.text/, "der lesbare Text fehlt in der Karte");
+test("B4 — die Karte traegt KEIN sichtbares Etikett, sondern eine unsichtbare Beschreibung", () => {
+  // Die frueheren sichtbaren Bauteile sind ersatzlos verschwunden.
+  for (const weg of ["offer-debug-tag", "offer-debug-dot", "debugAnsicht.text"]) {
+    assert.ok(!OFFER_CARD.includes(weg), `${weg} ist in der Karte zurueck`);
+  }
+  // Stattdessen genau EIN Element, und es traegt die Projektkonvention fuer
+  // Screenreader-Text.
+  assert.match(OFFER_CARD, /debugAnsicht && <span className="sr-only">\{debugAnsicht\.srText\}<\/span>/,
+    "die unsichtbare Beschreibung fehlt oder hat eine andere Form");
+  // KEIN `aria-label` an der Karte: das wuerde ihren gesamten zugaenglichen Namen
+  // ersetzen und Carrier, Laufzeit und Preis verschlucken.
+  assert.ok(!/aria-label=\{[^}]*debugAnsicht/.test(OFFER_CARD), "die Karte traegt ein aria-label des Debugmodus");
+  // Und die Beschreibung ist nie leer.
   for (const p of ["jumingo", "transglobal"]) {
-    const v = offerDebugView(angebot({ provider: p, matchedAcrossProviders: false, matchGroup: null }));
-    assert.ok(v.text.trim().length >= 6, `Text zu kurz: ${v.text}`);
+    for (const g of [null, "m1"]) {
+      const v = offerDebugView(angebot({ provider: p, matchedAcrossProviders: g !== null, matchGroup: g }));
+      assert.ok(v.srText.trim().length >= 20, `Beschreibung zu kurz: ${v.srText}`);
+    }
+  }
+});
+
+test("B4b — die Gruppenkennung erreicht das DOM in KEINER Form", () => {
+  // Nicht sichtbar, nicht als Tooltip, nicht als `title`, nicht als `data-`-Attribut.
+  const quelle = ohneKommentare(OFFER_CARD);
+  for (const muster of [/title=\{[^}]*matchGroup/, /data-[\w-]+=\{[^}]*matchGroup/,
+                        /\{\s*debugAnsicht\.matchGroup\s*\}/]) {
+    assert.ok(!muster.test(quelle), `die Gruppenkennung wird gerendert: ${muster}`);
+  }
+  // `content: ""` ist die Pflichtangabe, ohne die eine Pseudo-Ebene gar nicht rendert.
+  // Verboten ist ausschliesslich ein Pseudo-Element, das TEXT erzeugt.
+  const inhalte = [...ohneKommentare(CSS_DEBUG).matchAll(/content:\s*([^;}]+)/g)].map((m) => m[1].trim());
+  for (const c of inhalte) {
+    assert.match(c, /^(""|'')$/, `das Debugblatt erzeugt Text ueber ein Pseudo-Element: content: ${c}`);
   }
 });
 
 test("B5 — die drei Toene stehen als Tokens in variables.css, nicht als Literal im Blatt", () => {
-  for (const ton of ["jumingo", "transglobal", "match"]) {
-    for (const rolle of ["bg", "border", "fg"]) {
-      const name = `--ce-debug-provider-${ton}-${rolle}`;
-      assert.ok(CSS_VARS.includes(`${name}:`), `${name} ist nicht definiert`);
-      assert.ok(CSS_DEBUG.includes(`var(${name})`), `${name} wird nicht benutzt`);
-    }
+  // Genau DREI Tokens — je Ton eine Flaeche. Rahmen- und Textfarben gab es fuer das
+  // entfallene Etikett; ein totes Token waere genau der Bestand, den das Projekt an
+  // anderer Stelle bereits einmal aufgeraeumt hat.
+  const definiert = [...CSS_VARS.matchAll(/(--ce-debug-provider-[\w-]+):/g)].map((m) => m[1]).sort();
+  assert.deepEqual(definiert, ["--ce-debug-provider-jumingo-bg",
+                               "--ce-debug-provider-match-bg",
+                               "--ce-debug-provider-transglobal-bg"]);
+  for (const name of definiert) {
+    assert.ok(CSS_DEBUG.includes(`var(${name})`), `${name} wird nicht benutzt`);
   }
   // Kein Farbliteral im Bereichsblatt — dieselbe Disziplin wie im Adminportal.
   const ohne = ohneKommentare(CSS_DEBUG);

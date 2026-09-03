@@ -44,44 +44,12 @@
    Aenderung zwei Klassen setzt. */
 .offer-card--debug-match::before { background: var(--ce-debug-provider-match-bg); }
 
-/* ── Die Kennzeichnung: Farbe ist NIE die einzige Aussage ───────────────────── */
-.offer-debug-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ce-space-2);
-  margin-bottom: var(--ce-space-2);
-  padding: var(--ce-space-1) var(--ce-space-2);
-  border: 1px solid var(--ce-debug-provider-jumingo-border);
-  border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-surface);
-  color: var(--ce-debug-provider-jumingo-fg);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: var(--ce-text-micro-line);
-  letter-spacing: var(--ce-text-micro-tracking);
-}
+/* Es gibt bewusst KEIN sichtbares Etikett und KEINEN Farbpunkt. Die Faerbung ist die
+   einzige sichtbare Aussage des Modus; die Karte behaelt damit exakt ihr Layout und ihre
+   Hoehe aus dem Produktionszustand. Was die Farbe kodiert, steht fuer Screenreader als
+   unsichtbarer Text in der Karte (`.sr-only` aus layout.css) — dafuer braucht dieses
+   Blatt keine eigene Regel.
 
-.offer-card--debug-transglobal .offer-debug-tag {
-  border-color: var(--ce-debug-provider-transglobal-border);
-  color: var(--ce-debug-provider-transglobal-fg);
-}
-.offer-card--debug-match .offer-debug-tag {
-  border-color: var(--ce-debug-provider-match-border);
-  color: var(--ce-debug-provider-match-fg);
-}
-
-/* Der Punkt traegt die Farbe zusaetzlich zum Text — dieselbe Bauart wie bei den
-   Statusbadges des Systems. */
-.offer-debug-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--ce-radius-full);
-  background: currentColor;
-  flex: 0 0 auto;
-}
-
-/* Ein gesperrtes Angebot bleibt gesperrt: `.offer-card--unavailable` daempft die
-   ganze Karte, und der Ton daempft mit. Es wird hier ausdruecklich NICHTS
-   zurueckgedreht — ein Debugton darf einen Zustand nicht uebermalen. */
-.offer-card--unavailable .offer-debug-tag { opacity: 0.85; }
+   Ein gesperrtes Angebot bleibt gesperrt: `.offer-card--unavailable` daempft die ganze
+   Karte, und der Ton daempft mit. Es wird hier ausdruecklich NICHTS zurueckgedreht — ein
+   Debugton darf einen Zustand nicht uebermalen. */

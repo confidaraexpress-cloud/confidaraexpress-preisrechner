@@ -306,17 +306,12 @@
      Orange und Gruen sind hier definiert, weil es im System keine Flaechenrolle
      dafuer gibt; sie werden AUSSCHLIESSLICH von multi-provider-debug.css gelesen
      und sind mit dem Modus wieder entfernbar.
-     Die drei Textfarben messen auf der jeweiligen Tonflaeche ueber weiss
-     mindestens 4,5:1 (Indigo 6,3:1 · Orange 5,1:1 · Gruen 5,0:1). */
+     Es gibt bewusst nur je EINEN Wert je Ton: der Modus faerbt ausschliesslich die
+     Flaeche. Rahmen- und Textfarben gab es fuer ein sichtbares Etikett, das ersatzlos
+     entfallen ist — die Karte traegt im Vergleichsmodus keinen zusaetzlichen Text. */
   --ce-debug-provider-jumingo-bg:         rgba(83, 103, 232, 0.07);
-  --ce-debug-provider-jumingo-border:     rgba(83, 103, 232, 0.42);
-  --ce-debug-provider-jumingo-fg:         #3d4fc4;
   --ce-debug-provider-transglobal-bg:     rgba(193, 100, 16, 0.08);
-  --ce-debug-provider-transglobal-border: rgba(193, 100, 16, 0.46);
-  --ce-debug-provider-transglobal-fg:     #9a5008;
   --ce-debug-provider-match-bg:           rgba(20, 122, 80, 0.09);
-  --ce-debug-provider-match-border:       rgba(20, 122, 80, 0.48);
-  --ce-debug-provider-match-fg:           #106848;
   --ce-space-11: 80px;
   --ce-space-12: 96px;
 

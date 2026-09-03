@@ -113,6 +113,25 @@ async function angebote(page, mitDebug, viewport = { width: 1440, height: 1200 }
 const tonFarbe = (page, n) => page.locator(".offer-card").nth(n)
   .evaluate((el) => getComputedStyle(el, "::before").backgroundColor);
 
+// Was ein SEHENDER Betrachter auf den Karten lesen kann.
+//
+// `innerText` taugt dafuer nicht: die Screenreader-Konvention des Projekts (`.sr-only`)
+// haelt ihr Element im Rendering — 1x1 Pixel, geclippt — und `innerText` liest es mit.
+// Ein Test, der darauf baut, wuerde die unsichtbare Beschreibung faelschlich als
+// sichtbaren Text melden UND umgekehrt ein echtes Etikett nicht von ihr unterscheiden.
+// Gemessen wird deshalb an einer Kopie, aus der die sr-only-Elemente entfernt sind.
+const sichtbarerText = (page) => page.evaluate(() =>
+  [...document.querySelectorAll(".offer-card")].map((karte) => {
+    const kopie = karte.cloneNode(true);
+    kopie.querySelectorAll(".sr-only").forEach((n) => n.remove());
+    return kopie.textContent.replace(/\s+/g, " ").trim();
+  }).join(" \u2502 "));
+
+// Die Hoehen aller Karten — der Nachweis, dass durch den entfallenen Text keine Luecke
+// und keine Verschiebung entsteht.
+const kartenHoehen = (page) => page.locator(".offer-card")
+  .evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().height)));
+
 test.before(async () => {
   server = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", String(PORT), "--strictPort"], { detached: true, stdio: "ignore" });
   const deadline = Date.now() + 90000;
@@ -143,10 +162,14 @@ test("1 — OHNE Debugblock ist die Liste die heutige: keine Klasse, keine Kennz
   // Die Tonebene existiert nicht — `::before` traegt keine Flaeche.
   const farbe = await tonFarbe(page, 0);
   assert.match(farbe, /rgba\(0, 0, 0, 0\)|transparent/, `unerwartete Tonflaeche ohne Debugblock: ${farbe}`);
-  // Und die Providernamen stehen nirgends im sichtbaren Text.
-  const text = await page.locator(".offers-list, .offer-card").first().innerText();
-  for (const wort of ["Transglobal", "JUMiNGO", "Einkauf"]) {
-    assert.ok(!text.includes(wort), `"${wort}" steht ohne Debugblock in der Oberflaeche`);
+  // Und weder sichtbar noch unsichtbar steht irgendwo eine Providerangabe.
+  assert.equal(await page.locator(".sr-only", { hasText: "Providerquelle" }).count(), 0,
+    "ohne Debugblock entsteht eine Providerbeschreibung");
+  // Gelesen wird der ROHE Textinhalt aller Karten (also einschliesslich eines etwaigen
+  // unsichtbaren Elements) — ohne Debugblock darf dort gar nichts davon stehen.
+  const roh = (await page.locator(".offer-card").allTextContents()).join(" ");
+  for (const wort of ["Transglobal", "JUMiNGO", "Einkauf", "Providerquelle", "m1"]) {
+    assert.ok(!roh.includes(wort), `"${wort}" steht ohne Debugblock in der Oberflaeche`);
   }
   await page.close();
 });
@@ -176,21 +199,68 @@ test("2 — MIT Debugblock traegt jede Karte genau EINEN Ton, und die drei Toene
   await page.close();
 });
 
-test("3 — Farbe ist nie die einzige Aussage: jede Karte nennt ihre Quelle im Text", async () => {
+test("3 — KEIN sichtbarer Debugtext auf der Karte, aber eine unsichtbare Beschreibung", async () => {
   const page = await browser.newPage();
   await angebote(page, true);
-  const texte = await page.locator(".offer-debug-tag").allInnerTexts();
-  assert.equal(texte.length, 4);
-  assert.deepEqual(texte.map((t) => t.trim()), [
-    "JUMiNGO · gleich m1",
-    "Transglobal · Einkauf · gleich m1",
-    "JUMiNGO",
-    "Transglobal · Einkauf",
+
+  // (a) Der sichtbare Kartentext nennt kein einziges technisches Wort.
+  const sichtbar = await sichtbarerText(page);
+  for (const verboten of ["JUMiNGO", "Jumingo", "JUMINGO", "Transglobal", "TG",
+                          "Einkauf", "customer_price", "provider_net",
+                          "gleich m1", "matchGroup", "m1", "m2", "debug", "Providerquelle"]) {
+    assert.ok(!sichtbar.includes(verboten), `"${verboten}" steht sichtbar auf einer Karte: ${sichtbar}`);
+  }
+  // Und es gibt kein Etikett und keinen Farbpunkt mehr.
+  for (const weg of [".offer-debug-tag", ".offer-debug-dot"]) {
+    assert.equal(await page.locator(weg).count(), 0, `${weg} ist zurueck`);
+  }
+
+  // (b) Fuer Screenreader steht die Information trotzdem da — je Karte genau einmal.
+  const beschreibungen = await page.locator(".offer-card .sr-only").allTextContents();
+  assert.deepEqual(beschreibungen, [
+    "Providerquelle: JUMiNGO, identisches Angebot bei anderem Provider vorhanden",
+    "Providerquelle: Transglobal, identisches Angebot bei anderem Provider vorhanden",
+    "Providerquelle: JUMiNGO",
+    "Providerquelle: Transglobal",
   ]);
-  // Der Farbpunkt steht zusaetzlich zum Text und ist fuer Screenreader unsichtbar.
-  assert.equal(await page.locator(".offer-debug-tag .offer-debug-dot").count(), 4);
-  assert.equal(await page.locator(".offer-debug-dot[aria-hidden='true']").count(), 4);
+  // Die Gruppenkennung erreicht auch die unsichtbare Beschreibung nicht.
+  for (const b of beschreibungen) assert.ok(!/m[0-9]|gleich/.test(b), `Gruppenkennung in: ${b}`);
+
+  // (c) Sie ist wirklich UNSICHTBAR — gemessen an der gerechneten Geometrie, nicht am
+  //     Klassennamen.
+  const masse = await page.locator(".offer-card .sr-only").evaluateAll((els) => els.map((el) => {
+    const r = el.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height), pos: getComputedStyle(el).position };
+  }));
+  for (const m of masse) {
+    assert.ok(m.w <= 1 && m.h <= 1, `die Beschreibung ist sichtbar: ${m.w}x${m.h}`);
+    assert.equal(m.pos, "absolute", "die Beschreibung nimmt Platz im Fluss ein");
+  }
+
+  // (d) Kein Tooltip, kein title-, kein data-Attribut mit der Kennung.
+  const attribute = await page.locator(".offer-card").evaluateAll((els) => els.flatMap((el) =>
+    [el, ...el.querySelectorAll("*")].flatMap((n) => [...n.attributes].map((a) => `${a.name}=${a.value}`))));
+  for (const a of attribute) {
+    assert.ok(!/\bm[12]\b|matchGroup|provider_net|customer_price/.test(a),
+      `Debugwert in einem Attribut: ${a}`);
+  }
   await page.close();
+});
+
+test("3b — der entfallene Text hinterlaesst KEINE Luecke: gleiche Kartenhoehen in beiden Stellungen", async () => {
+  const aus = await browser.newPage();
+  await angebote(aus, false);
+  const hoehenAus = await kartenHoehen(aus);
+  await aus.close();
+
+  const an = await browser.newPage();
+  await angebote(an, true);
+  const hoehenAn = await kartenHoehen(an);
+  await an.close();
+
+  assert.equal(hoehenAn.length, hoehenAus.length);
+  assert.deepEqual(hoehenAn, hoehenAus,
+    `der Vergleichsmodus veraendert die Kartenhoehen: ${hoehenAus.join("/")} → ${hoehenAn.join("/")}`);
 });
 
 test("4 — BEIDE Karten des Paares bleiben stehen, mit ihrem jeweils eigenen Preis", async () => {
@@ -279,20 +349,28 @@ test("7 — vier Breiten: nichts laeuft ueber, nichts wird abgeschnitten", async
     const page = await browser.newPage();
     await angebote(page, true, { width: b.width, height: b.height });
     assert.equal(await page.locator(".offer-card--debug").count(), 4, `${b.name}: Toenung fehlt`);
-    assert.equal(await page.locator(".offer-debug-tag").count(), 4, `${b.name}: Kennzeichnung fehlt`);
+    assert.equal(await page.locator(".offer-debug-tag").count(), 0, `${b.name}: ein Etikett ist zurueck`);
+    // Kein technisches Wort im sichtbaren Text — auf jeder Breite.
+    const sichtbar = await sichtbarerText(page);
+    for (const verboten of ["JUMiNGO", "Transglobal", "Einkauf", "m1", "Providerquelle"]) {
+      assert.ok(!sichtbar.includes(verboten), `${b.name}: "${verboten}" steht sichtbar`);
+    }
+    // Die unsichtbare Beschreibung bleibt auf jeder Breite erhalten.
+    assert.equal(await page.locator(".offer-card .sr-only").count(), 4,
+      `${b.name}: die Screenreader-Beschreibung fehlt`);
 
     // Kein waagerechter Ueberlauf der Seite.
     const ueberlauf = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(ueberlauf <= 1, `${b.name}: die Seite scrollt waagerecht (${ueberlauf}px)`);
 
-    // Die Kennzeichnung bleibt vollstaendig INNERHALB ihrer Karte.
-    const raus = await page.locator(".offer-debug-tag").evaluateAll((tags) => tags.filter((t) => {
-      const karte = t.closest(".offer-card");
-      const a = t.getBoundingClientRect(), k = karte.getBoundingClientRect();
-      return a.right > k.right + 1 || a.left < k.left - 1 || a.width === 0 || a.height === 0;
+    // Die unsichtbare Beschreibung darf keinen Platz beanspruchen — sonst waere sie
+    // auf schmalen Viewports doch eine Layoutveraenderung.
+    const platz = await page.locator(".offer-card .sr-only").evaluateAll((els) => els.filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 1 || r.height > 1;
     }).length);
-    assert.equal(raus, 0, `${b.name}: eine Kennzeichnung ragt aus ihrer Karte`);
+    assert.equal(platz, 0, `${b.name}: die Beschreibung beansprucht Platz`);
 
     // Und die Tonflaeche deckt die Karte vollstaendig ab (inset: 0).
     const luecke = await page.locator(".offer-card").first().evaluate((el) => {

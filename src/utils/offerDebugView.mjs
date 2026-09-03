@@ -17,17 +17,33 @@
 // Oberflaeche ist dieselbe wie vorher. Das ist der Grund, warum dieser Modus im Frontend
 // KEINEN eigenen Schalter hat: ein zweiter Schalter koennte gegen den Server stehen.
 //
-// ─── FARBE IST NIE DIE EINZIGE AUSSAGE ───────────────────────────────────────────────
-// Zu jeder Einfaerbung gehoert ein LESBARER Text. Dieselbe Regel, die das Projekt fuer
-// Statusbadges festhaelt ("immer mit Punkt UND Text") — eine rein farbige Kodierung waere
-// fuer farbfehlsichtige Betrachter und in Screenshots ohne Legende bedeutungslos.
+// ─── DIE KARTE BLEIBT SICHTBAR UNVERAENDERT ──────────────────────────────────────────
+// Die Faerbung ist die EINZIGE sichtbare Aussage des Modus. Es entsteht kein Badge, kein
+// Etikett, keine zusaetzliche Zeile und keine Zusatzhoehe — die Karte sieht in beiden
+// Stellungen gleich aus, nur ihre Flaeche ist leicht getoent. Ein sichtbares technisches
+// Etikett auf einer Angebotskarte ist Entwicklerinformation an einer Stelle, an der sonst
+// ausschliesslich Kundeninformation steht.
+//
+// ─── FARBE IST TROTZDEM NICHT DIE EINZIGE MASCHINENLESBARE AUSSAGE ───────────────────
+// Was der sehende Betrachter an der Faerbung ablesen kann, steht fuer Screenreader als
+// unsichtbarer Text daneben (`.sr-only`, die vorhandene Projektkonvention) — additiv im
+// Kartentext, ausdruecklich NICHT als `aria-label` an der Karte selbst: das wuerde den
+// gesamten zugaenglichen Namen der Karte ERSETZEN und Carrier, Laufzeit und Preis
+// verschlucken.
+//
+// ─── DIE GRUPPENKENNUNG WIRD NIRGENDS GERENDERT ──────────────────────────────────────
+// `matchGroup` dient allein der internen Zuordnung und der Farbwahl. Sie erscheint in
+// keinem sichtbaren Text, in keinem `title`, in keinem `data-`-Attribut und auch nicht in
+// der Screenreader-Beschreibung — dort steht nur die TATSACHE, dass ein Gegenstueck
+// existiert.
 
 export const DEBUG_TONE_MATCH       = "match";
 export const DEBUG_TONE_JUMINGO     = "jumingo";
 export const DEBUG_TONE_TRANSGLOBAL = "transglobal";
 
-// Die Anzeigenamen der beiden Einkaufsquellen. Sie stehen NUR hier und werden nur im
-// Vergleichsmodus gerendert; im Produktionszustand erreicht dieser Text keine Oberflaeche.
+// Die Namen der beiden Einkaufsquellen. Sie stehen NUR hier, erscheinen ausschliesslich in
+// der unsichtbaren Screenreader-Beschreibung des Vergleichsmodus und erreichen im
+// Produktionszustand ueberhaupt keine Oberflaeche.
 const QUELLENNAME = {
   [DEBUG_TONE_JUMINGO]:     "JUMiNGO",
   [DEBUG_TONE_TRANSGLOBAL]: "Transglobal",
@@ -38,9 +54,11 @@ const istText = (w) => typeof w === "string" && w.trim() !== "";
 /**
  * Liest den Debugblock eines Angebots.
  *
- * @returns {null | { tone, providerLabel, text, matchGroup, isProviderNet }}
+ * @returns {null | { tone, srText, matchGroup }}
  *          `null`, sobald der Block fehlt oder eine unbekannte Quelle nennt — es wird
- *          KEINE Farbe erfunden.
+ *          KEINE Farbe erfunden. `srText` ist ausschliesslich fuer Screenreader bestimmt
+ *          und wird nie sichtbar gerendert; `matchGroup` verlaesst dieses Modul nur als
+ *          interner Wert und erreicht das DOM in keiner Form.
  */
 export function offerDebugView(tariff) {
   const d = tariff && typeof tariff === "object" ? tariff.debug : null;
@@ -59,17 +77,16 @@ export function offerDebugView(tariff) {
   // verschiedenen Faerbungen zu erkennen und die Gruppe optisch gerade nicht eine.
   const tone = matchGroup !== null ? DEBUG_TONE_MATCH : quelle;
 
-  const providerLabel = QUELLENNAME[quelle];
-  const isProviderNet = d.priceBasis === "provider_net";
+  // Die Beschreibung fuer Screenreader — sie benennt GENAU das, was die Farbe kodiert:
+  // die Einkaufsquelle und, sofern belegt, die Tatsache eines Gegenstuecks. Nicht mehr.
+  // Die Preisgrundlage steht bewusst NICHT darin: sie ist keine Aussage der Faerbung, und
+  // ein Wort wie "Einkauf" in einer Angebotskarte ist ohne den umgebenden Vergleich
+  // irrefuehrend statt hilfreich.
+  const srText = matchGroup !== null
+    ? `Providerquelle: ${QUELLENNAME[quelle]}, identisches Angebot bei anderem Provider vorhanden`
+    : `Providerquelle: ${QUELLENNAME[quelle]}`;
 
-  // Der sichtbare Text sagt in dieser Reihenfolge: woher · welcher Betrag · welches Paar.
-  // "Einkauf" steht dort, weil ein Einkaufsnetto neben einem Kundenpreis sonst als
-  // sensationell guenstiges Angebot missverstanden wird.
-  const teile = [providerLabel];
-  if (isProviderNet)        teile.push("Einkauf");
-  if (matchGroup !== null)  teile.push(`gleich ${matchGroup}`);
-
-  return { tone, providerLabel, text: teile.join(" · "), matchGroup, isProviderNet };
+  return { tone, srText, matchGroup };
 }
 
 /**

@@ -99,3 +99,27 @@ test("7 — die Angebotskarte leitet Kennzeichnung UND Knotentitel aus diesem Mo
   assert.match(cm, /handoverMode\(tariff\) === HANDOVER_DROPOFF/,
     "offerSupportsAccessPointSearch prüft serviceType selbst statt über den Helfer");
 });
+
+/* ── Die Übergabeart gilt auch für ein Angebot, das nur eine Preisauskunft ist ──
+ *
+ * Bis zur Transglobal-Datenparität ersetzte die Hinweiszeile eines nicht
+ * auswählbaren Angebots die GANZE Zone 2 — und mit ihr verschwand die
+ * Kennzeichnung der Übergabeart. Sichtbar wurde das erst, als mit Transglobal
+ * eine ganze Klasse dauerhaft nicht direkt buchbarer Angebote hinzukam: dort war
+ * eine Paketshopabgabe von einer Türabholung nicht mehr zu unterscheiden.
+ *
+ * Die Übergabeart ist eine Eigenschaft des PRODUKTS, nicht der Buchbarkeit. Sie
+ * steht deshalb VOR der Verzweigung. Diese Prüfung hält die Stelle fest — eine
+ * Rückverlagerung in den Timeline-Zweig macht die Aussage wieder unsichtbar. */
+test("die Übergabeart steht außerhalb des Timeline-Zweigs", () => {
+  const src = readFileSync(new URL("../components/offers/OfferCard.jsx", import.meta.url), "utf8");
+  const zone2 = src.slice(src.indexOf('className="offer-zone-2"'));
+  const handover = zone2.indexOf('className="offer-handover"');
+  const verzweigung = zone2.indexOf("{unavailable ? (");
+  const timeline = zone2.indexOf('className="offer-timeline"');
+
+  assert.ok(handover > 0 && verzweigung > 0 && timeline > 0, "Zone 2 hat sich strukturell geändert");
+  assert.ok(handover < verzweigung,
+    "die Übergabeart steht wieder INNERHALB der Verzweigung — auf einem gesperrten Angebot wäre sie damit unsichtbar");
+  assert.ok(verzweigung < timeline, "die Verzweigung steht nicht mehr vor der Timeline");
+});

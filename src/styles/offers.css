@@ -369,11 +369,16 @@
 
 /* Übergabeart als kleine Überschrift des Prozessbereichs. Body-Größe (14px)
    statt Label (12px) für mehr Präsenz; Gewicht bleibt bei 600, dem laut
-   typography.test.mjs global höchsten zulässigen UI-Gewicht. margin-bottom
-   statt größerem .offer-timeline-Gap, da der Gap gleichmäßig auf ALLE
-   Geschwister wirkt und sonst auch den engen Rail→Labels-Abstand aufweitet. */
+   typography.test.mjs global höchsten zulässigen UI-Gewicht.
+
+   16px, nicht 12px: die Zeile stand ursprünglich INNERHALB von .offer-timeline
+   (gap: 4px) und maß dadurch 12 + 4 = 16px bis zur Prozesslinie. Seit sie —
+   damit sie auch auf einem nur preisauskunftsfähigen Angebot sichtbar bleibt —
+   vor der Verzweigung steht, greift dieser Gap nicht mehr; der Abstand trägt
+   die vollen 16px jetzt selbst. Der Rail→Labels-Abstand bleibt davon unberührt,
+   was der Grund war, ihn nie über den Gap zu lösen. */
 .offer-handover {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   text-align: center;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-body-size);

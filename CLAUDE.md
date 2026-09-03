@@ -2765,6 +2765,54 @@ Transglobal-Karten zeigen ihren echten Einkaufspreis statt des Kundenpreises.
   Beschreibung.
 
 
+## Übergabeart gilt auch ohne Buchbarkeit — vor jeder Änderung an Zone 2 lesen
+
+Die Kennzeichnung der Übergabeart (`.offer-handover`, „Abholung an Ihrer Adresse" /
+„Abgabe im Paketshop") steht **vor** der Verzweigung `unavailable ? Hinweis : Timeline`
+und damit auf JEDER Karte.
+
+Vorher ersetzte die Hinweiszeile eines nicht auswählbaren Angebots die **ganze** Zone 2 —
+und mit ihr verschwand die Übergabeart. Solange nur einzelne Tarife an einem Datum
+ausfielen, ist das nicht aufgefallen. Mit den Transglobal-Angeboten kam eine ganze Klasse
+dauerhaft nur preisauskunftsfähiger Karten hinzu: dort war eine **Paketshopabgabe von
+einer Türabholung nicht mehr zu unterscheiden** — bei einer Frage, deren falsche Antwort
+jemanden umsonst zum Paketshop schickt.
+
+**Verbindlich:**
+
+- Die Übergabeart ist eine Eigenschaft des **Produkts**, nicht der Buchbarkeit. Sie gilt
+  unverändert weiter, auch wenn das Angebot gerade nur eine Preisauskunft ist.
+- Die Zeile hängt allein an `serviceType` (über `handoverMode`), **nicht** an der
+  Einkaufsquelle — es gibt hier keine Providerabfrage.
+- Wer sie zurück in den Timeline-Zweig verschiebt, macht sie auf jedem gesperrten Angebot
+  wieder unsichtbar. `handoverMode.test.mjs` misst die Reihenfolge im Quelltext.
+
+**Der Paketshop-Finder bleibt davon unberührt.** Er hängt weiter an
+`offerSupportsAccessPointSearch` (Shopabgabe **und** auflösbarer Carrier-Suchcode aus
+`accessPoint.provider`). Transglobal-Angebote führen kein `accessPoint` — sie zeigen die
+Abgabeart, bieten aber keine Suche an, die es für sie nicht gibt. Ein Einstieg, der
+nichts öffnet, wäre schlechter als gar keiner.
+
+## Transglobal-Laufzeit — kein Frontendcode nötig
+
+Die Angebotskarte hat für die Transglobal-Datenparität **keine** Änderung an der
+Laufzeitdarstellung gebraucht. Der Server liefert seit dem Paritätspaket dieselben Felder
+wie für JUMiNGO:
+
+- geschlossene Spanne → `transitDaysMin`/`transitDaysMax`; `fmtDelivery` baut daraus wie
+  bisher „1 Tag" bzw. „1–2 Tage",
+- nach oben offene Laufzeit → `transitDaysMin` gesetzt, `transitDaysMax` **`null`**, und
+  die Aussage steht in `deliveryTime` („ab 1 Tag"). `fmtDelivery` fällt genau dort schon
+  immer auf `deliveryTime` zurück.
+
+**Es wird keine Obergrenze erfunden, nur damit eine Sortierung eine Zahl vorfindet.** Die
+Folgen sind gewollt und geprüft: „Schnellste" (`offerBadges`) filtert auf
+`transitDaysMax != null` und lässt eine offene Laufzeit außen vor; die Sortierung nach
+Laufzeit setzt `?? 999` und stellt sie ans Ende; der Lieferzeitfilter arbeitet auf
+`deliveryDateMax` und lässt Angebote ohne Lieferdatum unverändert stehen. Keine dieser
+Stellen hat eine Providerabfrage bekommen.
+
+
 ## Was nicht geändert werden sollte
 
 - **Auth-Logik** — serverseitig gesteuert; kein clientseitiges Freischalten

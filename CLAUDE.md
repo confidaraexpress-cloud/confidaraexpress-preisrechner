@@ -508,6 +508,43 @@ nach dem echten Paket abrechnet.
 - **Der frühere Rechnerhinweis „… oder lassen Sie alle drei Felder leer, um mit
   Standardmaßen zu rechnen" ist entfallen.** Diese Möglichkeit gibt es nicht mehr.
 
+## Ort ist Pflicht — auch im Preisrechner
+
+Dieselbe Fehlerklasse wie „Paketmaße sind Pflicht", eine Ebene weiter. Der
+Preisrechner erhob bis hierher **nur Land und PLZ**. Der Server ersetzte den
+fehlenden Ort still durch die **Hauptstadt des Landes** (`COUNTRY_DEFAULTS`,
+`routes/jumingo.js`) — der Kunde bekam einen Tarif für „Berlin", ohne das je
+gesagt zu haben, während der Carrier nach der echten Adresse fährt.
+
+- **Land, PLZ UND Ort sind auf beiden Seiten Pflicht.** Ohne sie ist der CTA
+  gesperrt, und `getCalculatorErrors` lässt den Request gar nicht erst entstehen.
+- **Der Ort wird NIE aus der Postleitzahl abgeleitet.** Es gibt im Client keine
+  Ortsliste und keine PLZ→Ort-Zuordnung; ein so erzeugter Ort wäre eine
+  erfundene Adresse. Geprüft wird ausschließlich **Anwesenheit** (getrimmt) und
+  die Länge — nie die Existenz des Ortes. Die Adressvalidierung (OpenPLZ) bleibt
+  davon unberührt und ist weiterhin Hilfestellung, keine Schranke.
+- **Eine Grenze, nicht zwei:** `CITY_MAX_LENGTH` (100) spiegelt „Neue Sendung".
+  Zwei verschiedene Grenzen für dasselbe Feld auf zwei Seiten sind genau die
+  Drift, die dieses Projekt an `users.zip` und `users.country` schon zweimal
+  bezahlt hat.
+- **Der Ort wird getrimmt gesendet** (`from_city`/`to_city`) — die flachen
+  Legacy-Felder, die `/calculate-price` bereits kennt. **Das Backend wurde für
+  diesen Punkt nicht geändert.**
+- **Additiv im Vorgang, ohne Versionssprung:** `CALCULATOR_FORM_KEYS` trägt
+  beide Schlüssel; ein laufender Vorgang aus einem älteren Bundle liefert
+  `undefined`, `str()` macht daraus `""` — also den Zustand eines frisch
+  geöffneten Formulars. Ein Vorgang wird dafür nicht verworfen.
+- **Der Herkunftsort wird wie die PLZ aus dem Profil vorbelegt** (`user.city`),
+  über dieselbe Quelle und dieselbe Regel. Der Zielort startet leer.
+- Governance: `src/utils/apiError.test.mjs` (21–26) und
+  `tests/e2e/calculatorErrors.test.mjs` (Sperre ohne Ort, kein Request, Ort
+  getrimmt im echten Payload).
+
+**Weiterhin offen** (siehe „Offener Punkt"): der gesperrte CTA des
+Preisrechners nennt seinen Grund nicht. Mit dem Ort sind es jetzt zwei
+Gruppen von Pflichtfeldern ohne Hinweiszeile — die Lücke wird dadurch
+breiter, nicht neu.
+
 ## Laufender Versandvorgang — vor jeder Änderung an Preisrechner, Neue Sendung oder Buchung lesen
 
 Der Kunde kann während eines Versandvorgangs zwischen „Neue Sendung",

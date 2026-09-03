@@ -17,15 +17,27 @@
  * vom Aufrufer wie „noch nicht bekannt" behandelt — nie wie „keine Länder".
  * @returns {{codes: string[]} | null}
  */
-export function parseLaunchScope(body) {
-  if (!body || typeof body !== "object") return null;
-  const roh = body.countries;
+function leseCodes(roh) {
   if (!Array.isArray(roh) || roh.length === 0) return null;
   const codes = roh
     .filter((c) => typeof c === "string")
     .map((c) => c.trim().toUpperCase())
     .filter((c) => /^[A-Z]{2}$/.test(c));
-  return codes.length > 0 ? { codes } : null;
+  return codes.length > 0 ? codes : null;
+}
+
+export function parseLaunchScope(body) {
+  if (!body || typeof body !== "object") return null;
+  // ZIELländer: bevorzugt das explizite Feld, sonst das ältere `countries` — der Server
+  // liefert beide byteweise gleich. Der Rückfall ist keine Doppelpflege, sondern trägt den
+  // umgekehrten Fall: ein neues Bundle gegen einen noch nicht ausgerollten Server.
+  const codes = leseCodes(body.destinationCountries) ?? leseCodes(body.countries);
+  if (codes === null) return null;
+  // URSPRUNGSländer. Fehlt das Feld (älterer Server), bleibt es `null` — „nicht bekannt",
+  // nie „keine Länder". `scopedOriginCountries` behandelt das wie jeden anderen unbekannten
+  // Scope: fail-soft auf die Zielliste. Die Sperre liegt unverändert serverseitig.
+  const originCodes = leseCodes(body.originCountries);
+  return { codes, originCodes };
 }
 
 /**
@@ -49,6 +61,26 @@ export function scopedCountries(alle, scope) {
   if (!Array.isArray(alle)) return [];
   if (!scope || !Array.isArray(scope.codes)) return alle;
   const erlaubt = new Set(scope.codes);
+  return alle.filter((c) => c && erlaubt.has(c.code));
+}
+
+/**
+ * Die Liste für ein ABSENDER-Auswahlfeld.
+ *
+ * ConfidaraExpress versendet ab Deutschland; wohin versendet wird, ist eine andere Frage
+ * (`scopedCountries`). Bis zu dieser Trennung stand dieselbe Liste in beiden Feldern, und
+ * Frankreich war als Absenderland wählbar, obwohl der Server jede Route von dort mit
+ * `origin_not_supported` ablehnt.
+ *
+ * `originCodes === null` heißt „der Server hat dazu nichts gesagt" — bei einem älteren
+ * Server oder einem Ausfall. Dann gilt dieselbe fail-soft-Regel wie überall in diesem Modul:
+ * lieber die weitere Liste als ein leeres Feld. Buchbar wird dadurch nichts, die Sperre liegt
+ * vollständig serverseitig.
+ */
+export function scopedOriginCountries(alle, scope) {
+  if (!Array.isArray(alle)) return [];
+  if (!scope || !Array.isArray(scope.originCodes)) return scopedCountries(alle, scope);
+  const erlaubt = new Set(scope.originCodes);
   return alle.filter((c) => c && erlaubt.has(c.code));
 }
 

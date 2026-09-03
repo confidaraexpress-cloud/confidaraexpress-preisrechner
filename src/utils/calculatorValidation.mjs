@@ -21,7 +21,7 @@ import { countries } from "./countries.js";
 // Reihenfolge der Felder im Formular — bestimmt, welches Feld bei mehreren
 // Fehlern angesprungen wird (immer das oberste sichtbare).
 export const CALCULATOR_FIELD_ORDER = [
-  "from_country", "from_zip", "to_country", "to_zip",
+  "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",
   "packageCount", "weight", "length", "width", "height",
 ];
 
@@ -31,10 +31,14 @@ export const CALCULATOR_FIELD_ORDER = [
 export const CALCULATOR_FIELD_MAP = {
   "sender.postalCode": "from_zip",
   "recipient.postalCode": "to_zip",
+  "sender.city": "from_city",
+  "recipient.city": "to_city",
   "sender.country": "from_country",
   "recipient.country": "to_country",
   from_zip: "from_zip",
   to_zip: "to_zip",
+  from_city: "from_city",
+  to_city: "to_city",
   from_country: "from_country",
   to_country: "to_country",
   weight: "weight",
@@ -104,6 +108,37 @@ export function postalCodeTexts(country, value, label) {
   };
 }
 
+// ── Ort ─────────────────────────────────────────────────────────────────────
+// Geprüft wird ANWESENHEIT, nicht Existenz. Es gibt im Client keine Ortsliste
+// und ausdrücklich KEINE Ableitung aus der Postleitzahl: ein aus der PLZ
+// erzeugter Ort wäre eine erfundene Adresse — der Kunde bekäme einen Tarif für
+// einen Ort, den er nie genannt hat. Dieselbe Disziplin wie bei den Paketmaßen.
+//
+// Die Obergrenze spiegelt „Neue Sendung" (dort 100 Zeichen). Zwei verschiedene
+// Grenzen für dasselbe Feld auf zwei Seiten wären genau die Drift, die dieses
+// Projekt an `users.zip`/`users.country` schon zweimal bezahlt hat.
+export const CITY_MAX_LENGTH = 100;
+
+// `seite` ist „die Herkunft" bzw. „das Ziel" — er steht nur im Bannertext.
+function cityError(value, seite) {
+  const v = String(value ?? "").trim();
+  if (v === "") {
+    return {
+      title: "Ort fehlt",
+      message: `Bitte geben Sie den Ort für ${seite} ein.`,
+      fieldMessage: "Bitte geben Sie den Ort ein.",
+    };
+  }
+  if (v.length > CITY_MAX_LENGTH) {
+    return {
+      title: "Ort prüfen",
+      message: `Der Ort für ${seite} darf höchstens ${CITY_MAX_LENGTH} Zeichen enthalten.`,
+      fieldMessage: `Höchstens ${CITY_MAX_LENGTH} Zeichen.`,
+    };
+  }
+  return null;
+}
+
 const num = (v) => (v === "" || v == null ? NaN : Number(v));
 
 // Prüft ein Maßfeld (Länge/Breite/Höhe). Leer ist erlaubt — das Backend setzt
@@ -127,10 +162,10 @@ export function getCalculatorErrors(form = {}) {
   let banner = null;
   const setBanner = (b) => { if (!banner) banner = b; };
 
-  // ── Route: Land + PLZ je Seite ──
-  for (const [zipKey, countryKey, label] of [
-    ["from_zip", "from_country", "Herkunfts-Postleitzahl"],
-    ["to_zip", "to_country", "Ziel-Postleitzahl"],
+  // ── Route: Land, PLZ und Ort je Seite ──
+  for (const [zipKey, countryKey, cityKey, label, seite] of [
+    ["from_zip", "from_country", "from_city", "Herkunfts-Postleitzahl", "die Herkunft"],
+    ["to_zip", "to_country", "to_city", "Ziel-Postleitzahl", "das Ziel"],
   ]) {
     if (!String(form[countryKey] || "").trim()) {
       fieldErrors[countryKey] = "Bitte wählen Sie ein Land aus.";
@@ -141,6 +176,11 @@ export function getCalculatorErrors(form = {}) {
     if (texts) {
       fieldErrors[zipKey] = texts.fieldMessage;
       setBanner({ title: texts.title, message: texts.message });
+    }
+    const ort = cityError(form[cityKey], seite);
+    if (ort) {
+      fieldErrors[cityKey] = ort.fieldMessage;
+      setBanner({ title: ort.title, message: ort.message });
     }
   }
 

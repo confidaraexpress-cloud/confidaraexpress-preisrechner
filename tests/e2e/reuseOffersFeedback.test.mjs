@@ -325,6 +325,9 @@ test("R7 — der Versandkostenrechner reagiert identisch", async () => {
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
   for (const [id, wert] of [
     ["calc-from-zip", "97421"], ["calc-to-zip", "63743"], ["calc-weight", "3"],
+    // Ort beider Seiten ist Pflicht (siehe „Ort ist Pflicht"); das Testkonto
+    // dieser Datei trägt keinen Ort im Profil.
+    ["calc-from-city", "Schweinfurt"], ["calc-to-city", "Aschaffenburg"],
     ["calc-packageCount", "1"], ["calc-length", "10"], ["calc-width", "10"], ["calc-height", "10"],
   ]) await page.fill(`#${id}`, wert);
 

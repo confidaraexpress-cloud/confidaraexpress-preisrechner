@@ -63,4 +63,11 @@
    VOR patterns.css, damit die Musterebene wie bei allen Bereichs-Stylesheets
    das letzte Wort behaelt. */
 @import './shipment-documents.css';
+/* TEMPORAERER Multi-Provider-Vergleichsmodus — isolierter Zusatz-Scope auf
+   .offer-card. Wirkt ausschliesslich, wenn der Server einem Angebot einen
+   Debugblock beilegt; im Produktionszustand ist keine seiner Regeln aktiv.
+   Steht VOR patterns.css wie alle Bereichs-Stylesheets. Diese Datei ist mit dem
+   Abschluss der Transglobal-Anbindung ersatzlos entfernbar — sie definiert
+   nichts, worauf ein anderes Blatt zeigt. */
+@import './multi-provider-debug.css';
 @import './patterns.css';

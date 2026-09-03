@@ -2674,6 +2674,72 @@ einkauft. Manche Angebote sind heute reine Preisauskünfte und nicht buchbar.
   `src/styles/shippingProcess.test.mjs` (8/8b — Badgeregel jetzt über `offerBlocked`
   statt über den rohen Feldvergleich).
 
+## Temporärer Multi-Provider-Vergleichsmodus — vor jeder Änderung an der Angebotskarte lesen
+
+Ein **Anzeigemodus für die Integrationsarbeit**, kein Kundenfeature. Ist er serverseitig
+an, färbt die Angebotsliste jede Karte sehr leicht ein — **Blau** nur JUMiNGO, **Orange**
+nur Transglobal, **Grün** bei beiden Quellen belegt dasselbe Produkt — und die
+Transglobal-Karten zeigen ihren echten Einkaufspreis statt des Kundenpreises.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/offerDebugView.mjs` | Ton, lesbarer Text, Zusatzklasse |
+| Darstellung | `components/offers/OfferCard.jsx` | Tonklasse + Kennzeichnung, sonst nichts |
+| Material | `styles/multi-provider-debug.css` | isolierter Scope, Tokens aus `variables.css` |
+
+**Verbindlich:**
+
+- **Es gibt KEINEN Schalter im Frontend.** Weder eine Vite-Variable noch `localStorage`
+  noch ein Query-Parameter. Der Modus ist genau dann an, wenn der Server einem Angebot
+  einen `debug`-Block beilegt — im Produktionszustand tut er das nicht, dann gibt
+  `offerDebugView` `null` zurück, es entsteht weder Klasse noch Text, und die Oberfläche
+  ist Zeile für Zeile die heutige. Ein zweiter Schalter könnte gegen den Server stehen.
+- **Das Frontend entscheidet nichts.** Weder die Herkunft noch die Gleichheit: beide
+  Aussagen kommen fertig vom Server. In `offerDebugView.mjs` steht deshalb **kein**
+  Provider-, Preis-, Namens- oder Laufzeitvergleich — jeder davon wäre eine zweite
+  Wahrheit neben der kuratierten Gleichheitsregistry des Backends und genau die Quelle
+  falscher Grünmarkierungen. Ein Test verbietet die Begriffe namentlich.
+- **Grün gewinnt.** Beide Karten eines Paares tragen denselben Ton — sonst wäre ein Paar
+  an zwei verschiedenen Färbungen zu erkennen und die Gruppe optisch gerade nicht eine.
+  Eine Markierung ohne Kennung ist **keine** Gruppe: sie ließe sich keiner zweiten Karte
+  zuordnen und wäre eine grüne Karte ohne Gegenstück.
+- **Farbe ist nie die einzige Aussage.** Zu jeder Einfärbung gehört ein lesbarer Text
+  („JUMiNGO", „Transglobal · Einkauf · gleich m1") und ein Farbpunkt — dieselbe Regel, die
+  das Projekt für Statusbadges festhält. „Einkauf" steht dort, weil ein Einkaufsnetto
+  neben einem Kundenpreis sonst als sensationell günstiges Angebot missverstanden wird.
+- **Der Ton ist eine eigene Ebene (`::before`), nicht der `background` der Karte.**
+  `.offer-card--unavailable` setzt eine eigene Flächenfarbe; ein Wettstreit zweier
+  `background`-Deklarationen hätte entweder den Ton oder den Gesperrt-Zustand verschluckt.
+  Die Ebene trägt `pointer-events: none` — sonst finge sie den Klick auf die Karte ab.
+- **Kein Zustand wird zurückgedreht.** Hover, Fokus, Auswahl und Nichtverfügbarkeit kommen
+  unverändert aus `offers.css`; das Debugblatt fasst keinen ihrer Selektoren an. Die
+  Zusatzklasse wird ANGEHÄNGT, nicht ersetzt. Ein Browser-Smoke misst, dass die
+  ausgewählte Karte ihre Rahmenfarbe behält.
+- **Es wird nicht dedupliziert.** Beide Karten eines Paares bleiben in der Liste, jede mit
+  ihrem eigenen Preis. `OffersList.jsx` liest den Debugblock nirgends — eine Gruppe darf
+  die Liste nicht kürzen.
+- **Sortierung, Preisfilter, Steuerumschalter und Empfehlung arbeiten unverändert auf
+  `netPrice`/`finalPrice`.** Weil der Server den Debugbetrag GENAU in diese Felder
+  schreibt, rechnen sie strukturell auf dem Wert, den die Karte zeigt — es gibt keinen
+  zweiten Preispfad und keine Sonderbehandlung. Die Auszeichnung „Günstigste" bleibt
+  dabei auf **buchbare** Angebote beschränkt: ein gesperrtes Transglobal-Angebot zeigt
+  zwar den niedrigsten Betrag, darf ihn aber nicht als Bestpreis behaupten.
+- **Farbwerte stehen in `variables.css`** (`--ce-debug-provider-*`), das Bereichsblatt
+  trägt **kein** Farbliteral — dieselbe Disziplin wie im Adminportal. Das Blau ist
+  absichtlich das Markenindigo (eine zweite blaue Familie wäre eine neue Farbe im System);
+  Verwechslung mit dem Auswahlzustand besteht nicht, der zusätzlich Rahmenfarbe und Ring trägt.
+- **Ersatzlos entfernbar:** `utils/offerDebugView.mjs`, `styles/multi-provider-debug.css`,
+  dessen Import, die neun Tokens und die drei Zeilen in `OfferCard.jsx`. Das Blatt
+  definiert nichts, worauf ein anderes zeigt.
+- Governance: `src/utils/multiProviderDebugUx.test.mjs` (14 Tests) und
+  `tests/e2e/multiProviderDebugMode.test.mjs` (7 Browser-Smokes gegen einen echten
+  Dev-Server mit gemocktem Backend — **niemals eine Bestellung**; gemessen werden die
+  tatsächlich GERECHNETEN Flächenfarben, nicht die Klassennamen, auf vier Breiten).
+  Vier Mutationen sind gegengeprüft: „Grün gewinnt" entfernt · eine unbekannte Quelle
+  bekommt doch eine Farbe · ein fehlender Debugblock färbt trotzdem · die Karte trägt
+  die Zusatzklasse nicht mehr.
+
+
 ## Was nicht geändert werden sollte
 
 - **Auth-Logik** — serverseitig gesteuert; kein clientseitiges Freischalten

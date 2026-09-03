@@ -7,6 +7,7 @@ import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "
 import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIdentity.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -431,17 +432,32 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
     if (!unavailable) onBook(t);
   };
 
+  // Temporaerer Vergleichsmodus: `null`, solange der Server keinen Debugblock
+  // beilegt — dann entsteht weder eine Zusatzklasse noch eine Kennzeichnung, und
+  // die Karte ist Zeile fuer Zeile die heutige. Das Frontend entscheidet hier
+  // nichts selbst (siehe utils/offerDebugView.mjs).
+  const debugAnsicht = offerDebugView(t);
+
   const ctaClass = unavailable
     ? "offer-cta-btn--disabled"
     : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
 
   return (
     <div
-      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}`}
+      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}${offerDebugCardClass(t)}`}
       onClick={handleSelect}
       aria-disabled={unavailable || undefined}
     >
       <div className="offer-card-inner">
+        {/* Kennzeichnung des Vergleichsmodus. Sie steht VOR Zone 1, damit die
+            Herkunft gelesen wird, bevor Carrier und Preis wirken — und sie traegt
+            Text UND Punkt, weil die Einfaerbung allein keine Aussage sein darf. */}
+        {debugAnsicht && (
+          <div className="offer-debug-tag">
+            <span className="offer-debug-dot" aria-hidden="true" />
+            {debugAnsicht.text}
+          </div>
+        )}
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-1">
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten

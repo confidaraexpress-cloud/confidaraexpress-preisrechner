@@ -7,6 +7,7 @@ import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "
 import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIdentity.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -431,17 +432,32 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
     if (!unavailable) onBook(t);
   };
 
+  // Temporaerer Vergleichsmodus: `null`, solange der Server keinen Debugblock
+  // beilegt — dann entsteht weder eine Zusatzklasse noch eine Kennzeichnung, und
+  // die Karte ist Zeile fuer Zeile die heutige. Das Frontend entscheidet hier
+  // nichts selbst (siehe utils/offerDebugView.mjs).
+  const debugAnsicht = offerDebugView(t);
+
   const ctaClass = unavailable
     ? "offer-cta-btn--disabled"
     : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
 
   return (
     <div
-      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}`}
+      className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}${offerDebugCardClass(t)}`}
       onClick={handleSelect}
       aria-disabled={unavailable || undefined}
     >
       <div className="offer-card-inner">
+        {/* Vergleichsmodus: die Faerbung ist die einzige SICHTBARE Aussage — die Karte
+            bekommt kein Etikett, keine Zusatzzeile und keine Zusatzhoehe. Damit die
+            Farbe nicht die einzige MASCHINENLESBARE Aussage bleibt, steht dieselbe
+            Information unsichtbar daneben (`.sr-only`, vorhandene Projektkonvention).
+            Bewusst ein Element IM Kartentext und kein `aria-label` an der Karte: das
+            wuerde ihren gesamten zugaenglichen Namen ersetzen und Carrier, Laufzeit und
+            Preis verschlucken. Die Gruppenkennung erscheint hier NICHT — beschrieben
+            wird nur, DASS ein Gegenstueck existiert. */}
+        {debugAnsicht && <span className="sr-only">{debugAnsicht.srText}</span>}
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-1">
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten

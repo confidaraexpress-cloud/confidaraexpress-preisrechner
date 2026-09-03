@@ -288,6 +288,30 @@
   --ce-space-8: 40px;
   --ce-space-9: 48px;
   --ce-space-10: 64px;
+
+  /* ─── TEMPORAERER MULTI-PROVIDER-VERGLEICHSMODUS ──────────────────────────────
+     Nur wirksam, solange der Server einem Angebot einen Debugblock beilegt; im
+     Produktionszustand tut er das nicht und keine dieser Variablen wird gelesen.
+     Sie faerben die GANZE Angebotskarte sehr leicht ein — Blau: nur JUMiNGO,
+     Orange: nur Transglobal, Gruen: belegt dasselbe Produkt bei beiden.
+
+     Bewusst sehr niedrige Deckkraft: die Karte behaelt ihre eigene Flaeche, und
+     Hover-, Fokus-, Auswahl- und Nichtverfuegbar-Zustand bleiben lesbar. Eine
+     kraeftige Flaeche haette den Auswahlzustand (Brand Border + Brand Soft)
+     ueberdeckt und damit ausgerechnet die Bedienung gestoert, die geprueft wird.
+
+     Das Blau ist ABSICHTLICH das Markenindigo: eine zweite blaue Familie waere
+     eine neue Farbe im System. Verwechslungsgefahr mit dem Auswahlzustand besteht
+     nicht — dieser traegt zusaetzlich Rahmenfarbe und Ring.
+     Orange und Gruen sind hier definiert, weil es im System keine Flaechenrolle
+     dafuer gibt; sie werden AUSSCHLIESSLICH von multi-provider-debug.css gelesen
+     und sind mit dem Modus wieder entfernbar.
+     Es gibt bewusst nur je EINEN Wert je Ton: der Modus faerbt ausschliesslich die
+     Flaeche. Rahmen- und Textfarben gab es fuer ein sichtbares Etikett, das ersatzlos
+     entfallen ist — die Karte traegt im Vergleichsmodus keinen zusaetzlichen Text. */
+  --ce-debug-provider-jumingo-bg:         rgba(83, 103, 232, 0.07);
+  --ce-debug-provider-transglobal-bg:     rgba(193, 100, 16, 0.08);
+  --ce-debug-provider-match-bg:           rgba(20, 122, 80, 0.09);
   --ce-space-11: 80px;
   --ce-space-12: 96px;
 

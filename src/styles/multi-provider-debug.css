@@ -1,0 +1,55 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TEMPORAERER MULTI-PROVIDER-VERGLEICHSMODUS
+
+   Wirkt ausschliesslich auf Karten, denen der Server einen Debugblock beigelegt
+   hat (`.offer-card--debug`). Im Produktionszustand liefert er keinen — dann
+   greift in dieser Datei KEINE Regel, und die Angebotsliste sieht aus wie immer.
+
+   Alles hier ist ADDITIV: kein bestehender Selektor wird umdefiniert, keine
+   Zustandsregel ueberschrieben. Hover, Fokus, Auswahl und Nichtverfuegbarkeit
+   kommen unveraendert aus offers.css und bleiben wirksam (siehe unten).
+
+   Diese Datei ist mit dem Abschluss der Anbindung ersatzlos loeschbar: sie
+   definiert nichts, worauf ein anderes Blatt zeigt.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Die Tonflaeche liegt als eigene Ebene UNTER dem Karteninhalt, nicht als
+   `background` der Karte: `.offer-card--unavailable` setzt eine eigene
+   Flaechenfarbe, und ein Wettstreit zweier `background`-Deklarationen haette
+   entweder den Ton oder den Nichtverfuegbar-Zustand verschluckt. Als
+   Pseudo-Ebene bleiben beide sichtbar.
+
+   `pointer-events: none` — die Ebene liegt ueber der Kartenflaeche und duerfte
+   sonst den Klick auf die Karte abfangen. */
+.offer-card--debug { position: relative; }
+
+.offer-card--debug::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--ce-debug-provider-jumingo-bg);
+}
+
+/* Der Inhalt bleibt ueber der Tonebene. `.offer-card-inner` traegt keinen
+   eigenen z-index, deshalb genuegt hier einer. */
+.offer-card--debug > .offer-card-inner { position: relative; z-index: 1; }
+
+.offer-card--debug-transglobal::before { background: var(--ce-debug-provider-transglobal-bg); }
+/* GRUEN GEWINNT — steht deshalb zuletzt und bei gleicher Spezifitaet. Die
+   Reihenfolge ist die Regel; das Frontend vergibt ohnehin nur EINE Tonklasse
+   (offerDebugView), diese Zeile ist die Absicherung dagegen, dass eine spaetere
+   Aenderung zwei Klassen setzt. */
+.offer-card--debug-match::before { background: var(--ce-debug-provider-match-bg); }
+
+/* Es gibt bewusst KEIN sichtbares Etikett und KEINEN Farbpunkt. Die Faerbung ist die
+   einzige sichtbare Aussage des Modus; die Karte behaelt damit exakt ihr Layout und ihre
+   Hoehe aus dem Produktionszustand. Was die Farbe kodiert, steht fuer Screenreader als
+   unsichtbarer Text in der Karte (`.sr-only` aus layout.css) — dafuer braucht dieses
+   Blatt keine eigene Regel.
+
+   Ein gesperrtes Angebot bleibt gesperrt: `.offer-card--unavailable` daempft die ganze
+   Karte, und der Ton daempft mit. Es wird hier ausdruecklich NICHTS zurueckgedreht — ein
+   Debugton darf einen Zustand nicht uebermalen. */

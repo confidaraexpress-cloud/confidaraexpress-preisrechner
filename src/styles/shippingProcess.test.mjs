@@ -179,18 +179,23 @@ test("7c — das Frühzeit-Hinweisfeld nutzt Foundation-Tokens und trägt sichtb
 
 /* ══════════ 8 — Badge-Logik: „Günstigste" nie auf nicht verfügbarem Angebot ═ */
 
-test("8 — 'Günstigste'/'Schnellste' werden nie einem nicht verfügbaren Angebot zugewiesen", async () => {
+test("8 — 'Günstigste'/'Schnellste' werden nie einem gesperrten Angebot zugewiesen", async () => {
   const { assignBadges } = await import("../utils/offerBadges.js");
+  const { offerKey } = await import("../utils/offerIdentity.mjs");
+  // Geschlüsselt wird seit der Multi-Provider-Anzeige über die Angebotsidentität, nicht
+  // über die rohe `id` — sonst teilten sich alle Angebote ohne `id` denselben Eintrag.
+  const k = (id) => offerKey({ id });
+
   const tariffs = [
     { id: "teuer-verfuegbar", netPrice: 20, transitDaysMax: 3, transitDaysMin: 2, availableForDate: true },
     { id: "billig-NICHT-verfuegbar", netPrice: 5, transitDaysMax: 1, transitDaysMin: 1, availableForDate: false },
     { id: "mittel-verfuegbar", netPrice: 12, transitDaysMax: 4, transitDaysMin: 3, availableForDate: true },
   ];
   const badges = assignBadges(tariffs);
-  assert.ok(!badges.has("billig-NICHT-verfuegbar"),
+  assert.ok(!badges.has(k("billig-NICHT-verfuegbar")),
     "ein nicht verfügbares Angebot darf auch dann kein Badge tragen, wenn es objektiv am günstigsten/schnellsten wäre");
-  assert.equal(badges.get("mittel-verfuegbar")?.key, "cheapest", "das günstigste VERFÜGBARE Angebot trägt das Badge");
-  assert.equal(badges.get("teuer-verfuegbar")?.key, "fastest", "das schnellste VERFÜGBARE Angebot trägt das Badge");
+  assert.equal(badges.get(k("mittel-verfuegbar"))?.key, "cheapest", "das günstigste VERFÜGBARE Angebot trägt das Badge");
+  assert.equal(badges.get(k("teuer-verfuegbar"))?.key, "fastest", "das schnellste VERFÜGBARE Angebot trägt das Badge");
 
   // Randfall: ist überhaupt nichts verfügbar, gibt es auch kein Badge.
   const alleGesperrt = assignBadges([
@@ -198,12 +203,47 @@ test("8 — 'Günstigste'/'Schnellste' werden nie einem nicht verfügbaren Angeb
     { id: "b", netPrice: 2, availableForDate: false },
   ]);
   assert.equal(alleGesperrt.size, 0, "ohne ein einziges verfügbares Angebot darf kein Badge vergeben werden");
+
+  // DIESELBE Zusage für den zweiten Sperrgrund: ein Angebot, das nur eine Preisauskunft
+  // ist (`bookable: false`), darf ebenso wenig als „Günstigste" ausgezeichnet werden.
+  const mitQuoteOnly = assignBadges([
+    { offerId: "a".repeat(32), netPrice: 5,  transitDaysMax: 1, transitDaysMin: 1, bookable: false },
+    { id: "j1", netPrice: 20, transitDaysMax: 3, transitDaysMin: 2, bookable: true },
+    { id: "j2", netPrice: 12, transitDaysMax: 4, transitDaysMin: 3, bookable: true },
+  ]);
+  assert.ok(!mitQuoteOnly.has("a".repeat(32)), "ein nur-Preisauskunft-Angebot trägt ein Badge");
+  assert.equal(mitQuoteOnly.get(k("j2"))?.key, "cheapest");
+
+  // Und zwei Angebote OHNE `id` sind nicht dasselbe Angebot: früher ergab
+  // `undefined === undefined` das kombinierte Label unter dem Schlüssel `undefined`.
+  const ohneId = assignBadges([
+    { offerId: "b".repeat(32), netPrice: 5,  transitDaysMax: 9, transitDaysMin: 9 },
+    { offerId: "c".repeat(32), netPrice: 50, transitDaysMax: 1, transitDaysMin: 1 },
+  ]);
+  assert.equal(ohneId.get("b".repeat(32))?.key, "cheapest");
+  assert.equal(ohneId.get("c".repeat(32))?.key, "fastest");
 });
 
-test("8b — die Angebotskarte zeigt einen verständlichen Grund statt eines Rohwerts", () => {
-  assert.match(offerCard, /Nicht verfügbar für dieses Datum/);
+test("8b — die Angebotskarte zeigt einen verständlichen Grund statt eines Rohwerts", async () => {
+  // Der Text steht seit der Multi-Provider-Anzeige in EINER Übersetzungstabelle statt als
+  // Literal in der Karte — es gibt jetzt zwei Sperrgründe, und die Karte soll sie nicht
+  // einzeln kennen. Die Zusage ist unverändert: verständlicher Satz, nie der Rohwert.
+  const { offerBlockedLabel, OFFER_BLOCKED_FALLBACK } = await import("../utils/offerIdentity.mjs");
+  assert.equal(offerBlockedLabel({ availableForDate: false }), "Nicht verfügbar für dieses Datum");
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "quote_only" }), "Derzeit nicht direkt buchbar");
+  // Ein UNBEKANNTER Grund ergibt den neutralen Satz — niemals den Rohwert.
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "irgendwas_neues" }), OFFER_BLOCKED_FALLBACK);
+  assert.ok(!OFFER_BLOCKED_FALLBACK.includes("irgendwas"));
+  // Ein nicht gesperrtes Angebot hat keinen Grund.
+  assert.equal(offerBlockedLabel({ bookable: true }), null);
+  assert.equal(offerBlockedLabel({}), null, "ein fehlendes Feld sperrt nicht");
+
   assert.ok(!/\{t\.unavailableReason\}/.test(offerCard) && !/\{tariff\.reason\}/.test(offerCard),
     "kein roher Backend-Grund darf direkt gerendert werden");
+  // Und die Karte liest den Sperrzustand aus der einen Quelle, nicht mehr selbst.
+  assert.match(offerCard, /offerBlocked\(t\)/);
+  assert.ok(!/t\.availableForDate === false/.test(offerCard),
+    "die Karte leitet den Sperrzustand wieder selbst ab");
 });
 
 /* ══════════ 9 — Dropoff-Guardrail unverändert ═════════════════════════════ */

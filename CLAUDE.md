@@ -2592,6 +2592,88 @@ diesem Paket behoben: das wäre eine sichtbare Oberflächenänderung und keine
 Härtung. In `tests/e2e/calculatorErrors.test.mjs` steht die Stelle als Kommentar
 markiert, damit die Prüfung dorthin wandert, sobald die Zeile existiert.
 
+## Angebote aus zwei Einkaufsquellen — vor jeder Änderung an der Angebotsliste lesen
+
+Der Angebotsvergleich zeigt seit Paket 2.3 Angebote aus **zwei** Einkaufsquellen in
+**einer** Liste. Für den Kunden ist das unsichtbar: er sieht Versanddienstleister
+(UPS, DHL, DPD, GLS …), Laufzeit und Preis — **nie**, über wen ConfidaraExpress
+einkauft. Manche Angebote sind heute reine Preisauskünfte und nicht buchbar.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Identität + Sperre (rein) | `utils/offerIdentity.mjs` | `offerKey` · `sameOffer` · `offerBlocked` · `offerBlockedLabel` |
+| Liste | `components/offers/OffersList.jsx` | React-Key, Badge-Zuordnung, Auswahlvergleich |
+| Karte | `components/offers/OfferCard.jsx` | Sperrdarstellung, DOM-Kennung, CTA-Grenze |
+| Badges | `utils/offerBadges.js` | „Günstigste"/„Schnellste" nur unter auswählbaren |
+
+**Verbindlich:**
+
+- **`offerId` ist die Identität, die Tarif-ID nur noch der Rückfall.** Bis hierher
+  war `t.id` die eine Kennung eines Angebots. Das trägt nicht mehr: die Namensräume
+  der beiden Einkaufsquellen **überschneiden sich gemessen** — die eine führt eine
+  Tarif-ID 23, die andere eine ServiceID 23. Auf `t.id` wären das dieselbe Karte;
+  ein Test fährt genau diesen Fall und verlangt zwei unterscheidbare Karten. Der
+  Rückfall auf `t:<id>` ist Absicht: eine Antwort aus einem älteren Bundle trägt
+  noch keine `offerId`, und die Auswahl muss dort weiter funktionieren.
+- **`null` ist KEINE Identität.** `sameOffer(a, b)` vergleicht zwei Angebote ohne
+  Kennung als **verschieden**. Das ist die tragende Zeile des Moduls, und sie
+  schließt vier Fehler, die alle aussehen wie „geht doch" — denn
+  `undefined === undefined` ist `true`:
+  `selected?.id === t.id` machte jede kennungslose Karte zur ausgewählten ·
+  `badges.get(t.id)` gab allen dasselbe Badge · `offer-details-${t.id}` erzeugte
+  mehrfach denselben Knotennamen, auf den `aria-controls` bei allen zeigte ·
+  `key={t.id}` ließ React auf den Index zurückfallen und schob den Aufklappzustand
+  beim Sortieren auf die jeweils nächste Karte. Keiner dieser Fälle wirft.
+- **`bookable` ist eine harte Grenze, kein Hinweis.** Ein gesperrtes Angebot hat
+  keinen Klickhandler, keinen bedienbaren CTA, keine Navigation zur Buchungsseite
+  und erzeugt keinen Buchungsrequest — geprüft am DOM UND am ausbleibenden Request.
+  Die Oberfläche ist damit die zweite Schranke, nicht die einzige: die erste steht
+  serverseitig (ein solches Angebot trägt gar keine Tarifreferenz).
+- **Ein FEHLENDES Feld sperrt nichts.** Gesperrt wird ausschließlich bei einer
+  ausdrücklichen Aussage des Backends (`bookable === false` oder
+  `availableForDate === false`). Wer auf `!t.bookable` prüft, sperrt jedes Angebot
+  aus einer älteren Antwort — dieselbe Fehlerklasse wie eine Falsy-Prüfung auf
+  einen Betrag.
+- **Der Grund wird ÜBERSETZT, nie durchgereicht.** `quote_only` → „Derzeit nicht
+  direkt buchbar", `date_unavailable` → „Nicht verfügbar für dieses Datum",
+  unbekannter Grund → „Derzeit nicht buchbar". Ein roher Backendcode im sichtbaren
+  Text wäre dieselbe Fehlerklasse wie ein roher Status (`statusFallback`). Das
+  Datum hat Vorrang: es ist die konkretere Aussage und stand schon vor der zweiten
+  Einkaufsquelle so auf der Karte.
+- **Kein Einkaufsprovider im sichtbaren Text — auch nicht als Erklärung.** Der Satz
+  lautet „Derzeit nicht direkt buchbar", **nicht** „<Anbieter> noch nicht buchbar".
+  Dass ein Angebot nicht direkt buchbar ist, ist eine Eigenschaft des Angebots und
+  keine Auskunft darüber, bei wem ConfidaraExpress einkauft. Ein Test durchsucht
+  Übersetzungstabelle und Angebotsoberfläche fallunabhängig nach beiden
+  Anbieternamen.
+- **Es entsteht KEINE neue Darstellung.** Die vorhandene neutrale Deaktiviert-Optik
+  (gedämpfte Karte, graustufiges Logo, gesperrter CTA, Hinweiszeile statt
+  Zeitleiste) trägt jetzt beide Gründe — sie hing bisher nur an einem. Kein neues
+  Badge, kein Farbcode, keine Provider-Kennzeichnung, keine zweite Liste und keine
+  zweite Sektion: ein Angebot ist ein Angebot.
+- **Der PREIS bleibt auf einer gesperrten Karte sichtbar.** Ein Angebot, das man
+  nicht auswählen kann, ist trotzdem eine Preisauskunft — genau dafür steht es da.
+- **Der Paketshop-Finder erscheint auf einer gesperrten Karte nicht.** Die Suche
+  führte zu Abgabestellen für eine Sendung, die von dieser Karte aus gar nicht
+  beauftragt werden kann. Dieselbe Grenze wie beim CTA.
+- **Badges nur unter auswählbaren Angeboten.** „Günstigste"/„Schnellste" hingen
+  bisher allein an `availableForDate`; sie laufen jetzt über dieselbe Sperre. Ein
+  Preisversprechen auf einem Angebot, das niemand nehmen kann, wäre eine
+  Falschauskunft.
+- **Die Oberfläche rechnet weiterhin KEINEN Preis** — auch nicht für die neue
+  Quelle. Kein Aufschlag, kein Steuersatz, keine Summenbildung; angezeigt wird, was
+  der Server geliefert hat. Die bestehende Regel gilt unverändert für beide Quellen.
+- **Kein Sortieren nach Quelle, keine Zusammenfassung ähnlicher Angebote.** Liefern
+  beide Quellen „UPS Express", bleiben es zwei Karten. Die Reihenfolge ist die der
+  Serverantwort, keine Rangfolge.
+- Governance: `src/utils/multiProviderOffers.test.mjs` (13 Tests — kollidierende
+  Provider-IDs, `null` als Nicht-Identität, Vorrang der `offerId`, Identität in
+  Key/Badge/Auswahl, DOM-Kennung, beide Sperrgründe, Übersetzung, gesperrter CTA
+  ohne Handler und ohne Request, kein Badge, kein Providername, kein Preis in der
+  Oberfläche, sichtbarer Preis trotz Sperre) und die nachgezogenen Bestandsanker in
+  `src/styles/shippingProcess.test.mjs` (8/8b — Badgeregel jetzt über `offerBlocked`
+  statt über den rohen Feldvergleich).
+
 ## Was nicht geändert werden sollte
 
 - **Auth-Logik** — serverseitig gesteuert; kein clientseitiges Freischalten

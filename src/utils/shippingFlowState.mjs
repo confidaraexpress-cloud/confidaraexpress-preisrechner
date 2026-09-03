@@ -83,7 +83,12 @@ export const SHIPMENT_FORM_KEYS = Object.freeze([
 ]);
 
 export const CALCULATOR_FORM_KEYS = Object.freeze([
-  "from_country", "from_zip", "to_country", "to_zip",
+  // Ort beider Seiten: ADDITIV ohne Versionssprung — dieselbe Begründung wie bei
+  // `latestDeliveryTime` und den Zusatzoptionen. Ein laufender Vorgang aus einem
+  // älteren Bundle kennt die beiden Schlüssel nicht; `str()` macht daraus "" und
+  // damit exakt den Zustand eines frisch geöffneten Formulars. Einen Vorgang
+  // dafür zu verwerfen wäre die härtere und unnötige Antwort.
+  "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",
   ...PACKAGE_KEYS,
   ...CLIENT_FILTER_KEYS,
 ]);

@@ -14,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
 import { FormAlert } from "../components/ui/FormAlert";
 import { errorFromResponse, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
-import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP } from "../utils/calculatorValidation.mjs";
+import { getCalculatorErrors, firstErrorField, CALCULATOR_FIELD_MAP, CITY_MAX_LENGTH } from "../utils/calculatorValidation.mjs";
 import { focusFirstError, fieldErrorProps } from "../utils/focusField";
 import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
 import { useShippingFlow } from "../context/ShippingFlowContext";
@@ -109,8 +109,12 @@ export default function CalculatorPage() {
     // unverändert an /calculate-price und ins Auswahlfeld, das ihn nicht anzeigen kann.
     from_country: normalizeCountryCode(user?.country),
     from_zip:     user?.zip     || "",
+    // Der Ort wird wie die PLZ aus dem Profil vorbelegt — dieselbe Quelle,
+    // dieselbe Regel. Er wird NIE aus der Postleitzahl abgeleitet.
+    from_city:    user?.city    || "",
     to_country:   "DE",
     to_zip:       "",
+    to_city:      "",
     packageCount: "1",
     weight: "", length: "", width: "", height: "",
     max_price: "", latestDeliveryDate: "", latestDeliveryTime: "",
@@ -234,8 +238,13 @@ export default function CalculatorPage() {
 
   // Maße sind seit „verpflichtende Paketmaße" ebenfalls Pflicht — ohne sie gibt
   // es keinen Tarif mehr (weder hier noch serverseitig).
+  // Ort beider Seiten ist Pflicht: der Server ersetzte einen fehlenden Ort bisher
+  // still durch die Hauptstadt des Landes (COUNTRY_DEFAULTS) — der Kunde bekam
+  // einen Tarif für „Berlin", ohne das je gesagt zu haben. Dieselbe Klasse
+  // stiller Ersatzwerte wie zuvor bei den Paketmaßen.
   const calcValid = !!form.from_zip && !!form.to_zip && !!form.weight && !!form.packageCount
-    && !!form.length && !!form.width && !!form.height;
+    && !!form.length && !!form.width && !!form.height
+    && !!String(form.from_city ?? "").trim() && !!String(form.to_city ?? "").trim();
 
   const resetResults = () => {
     setHasResults(false);
@@ -456,8 +465,10 @@ export default function CalculatorPage() {
         body: JSON.stringify({
           from_country:       form.from_country,
           from_zip:           form.from_zip,
+          from_city:          String(form.from_city ?? "").trim(),
           to_country:         form.to_country,
           to_zip:             form.to_zip,
+          to_city:            String(form.to_city ?? "").trim(),
           packageCount:       Number(form.packageCount),
           weight:             Number(form.weight),
           // Genau die eingegebenen Maße — kein Ersatzwert. Hier stand
@@ -624,6 +635,20 @@ export default function CalculatorPage() {
                       ? <span className="field-error" id={fieldErrorProps("from_zip", fieldErrors.from_zip).errorId}>{fieldErrors.from_zip}</span>
                       : (postalCodeExample(form.from_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.from_country)}</span>)}
                   </div>
+                  <div className="field">
+                    <label className="field-label" htmlFor="calc-from-city">Ort *</label>
+                    <input
+                      id="calc-from-city"
+                      className={`field-input${fieldErrors.from_city ? " field-input-error" : ""}`}
+                      value={form.from_city}
+                      onChange={e => { upd("from_city", e.target.value); resetResults(); }}
+                      placeholder="z. B. Stuttgart"
+                      maxLength={CITY_MAX_LENGTH}
+                      {...fieldErrorProps("from_city", fieldErrors.from_city).input}
+                    />
+                    {fieldErrors.from_city
+                      && <span className="field-error" id={fieldErrorProps("from_city", fieldErrors.from_city).errorId}>{fieldErrors.from_city}</span>}
+                  </div>
                 </div>
 
                 {/* Ziel */}
@@ -654,6 +679,20 @@ export default function CalculatorPage() {
                     {fieldErrors.to_zip
                       ? <span className="field-error" id={fieldErrorProps("to_zip", fieldErrors.to_zip).errorId}>{fieldErrors.to_zip}</span>
                       : (postalCodeExample(form.to_country) && <span className="field-hint">Beispiel: {postalCodeExample(form.to_country)}</span>)}
+                  </div>
+                  <div className="field">
+                    <label className="field-label" htmlFor="calc-to-city">Ort *</label>
+                    <input
+                      id="calc-to-city"
+                      className={`field-input${fieldErrors.to_city ? " field-input-error" : ""}`}
+                      value={form.to_city}
+                      onChange={e => { upd("to_city", e.target.value); resetResults(); }}
+                      placeholder="z. B. Berlin"
+                      maxLength={CITY_MAX_LENGTH}
+                      {...fieldErrorProps("to_city", fieldErrors.to_city).input}
+                    />
+                    {fieldErrors.to_city
+                      && <span className="field-error" id={fieldErrorProps("to_city", fieldErrors.to_city).errorId}>{fieldErrors.to_city}</span>}
                   </div>
                 </div>
 

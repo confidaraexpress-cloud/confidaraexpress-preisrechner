@@ -58,6 +58,12 @@ async function setup(page, { onCalc } = {}) {
 async function fill(page, { toZip, masse = true }) {
   await page.fill("#calc-from-zip", "70173");
   await page.fill("#calc-to-zip", toZip);
+  // Der ORT beider Seiten ist seit „Ort ist Pflicht" ebenfalls Voraussetzung des
+  // CTA — aus demselben Grund wie die Maße darunter: der Server ersetzte ihn
+  // vorher still durch die Hauptstadt des Landes. Das Testkonto dieser Datei
+  // trägt keinen Ort im Profil, also wird er hier gesetzt.
+  await page.fill("#calc-from-city", "Stuttgart");
+  await page.fill("#calc-to-city", "Berlin");
   await page.fill("#calc-weight", "2");
   await page.fill("#calc-packageCount", "1");
   if (masse) {
@@ -331,5 +337,78 @@ test("die Sperre nennt, was fehlt — und löst sich, sobald es da ist", async (
   await page.fill("#calc-height", "15");
   await page.waitForTimeout(200);
   assert.equal(await cta.isDisabled(), false, "vollständige Maße müssen die Sperre lösen");
+  await page.close();
+});
+
+// ── Ort ist Pflicht ─────────────────────────────────────────────────────────
+// Dieselbe Fehlerklasse wie bei den Maßen darüber, eine Ebene weiter: der Server
+// ersetzte einen fehlenden Ort still durch die Hauptstadt des Landes
+// (COUNTRY_DEFAULTS). Der Kunde bekam einen Tarif für „Berlin", ohne das je
+// gesagt zu haben.
+test("ohne Ort bleibt der CTA gesperrt und es geht KEIN Request hinaus", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const konsole = await setup(page);
+  let gesendet = 0;
+  page.on("request", (r) => { if (r.url().includes("calculate-price")) gesendet++; });
+
+  await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  await fill(page, { toZip: "10115" });
+
+  const cta = page.getByRole("button", { name: /Angebote vergleichen/i }).first();
+  assert.equal(await cta.isDisabled(), false, "das vollständige Formular muss auslösbar sein");
+
+  // Der Ort wird NICHT aus der Postleitzahl abgeleitet: ein geleertes Ortsfeld
+  // sperrt, obwohl die PLZ „10115" eindeutig auf Berlin zeigt. Genau das ist die
+  // Zusage — es gibt im Client keine PLZ→Ort-Ableitung.
+  await page.fill("#calc-to-city", "");
+  await page.waitForTimeout(200);
+  assert.equal(await cta.isDisabled(), true,
+    "ohne Zielort darf die Berechnung nicht auslösbar sein");
+
+  // Ein Feld voller Leerzeichen gilt nicht als ausgefüllt.
+  await page.fill("#calc-to-city", "   ");
+  await page.waitForTimeout(200);
+  assert.equal(await cta.isDisabled(), true, "Leerzeichen sind kein Ort");
+
+  // Deaktivierter Knopf wird nicht erzwungen — belegt wird, dass nichts hinausgeht.
+  await page.waitForTimeout(300);
+  assert.equal(gesendet, 0, "eine Sendung ohne Ort darf den Server nie erreichen");
+
+  await page.fill("#calc-to-city", "Berlin");
+  await page.waitForTimeout(200);
+  assert.equal(await cta.isDisabled(), false, "ein gesetzter Ort muss die Sperre lösen");
+
+  // Dasselbe gilt für die Herkunft.
+  await page.fill("#calc-from-city", "");
+  await page.waitForTimeout(200);
+  assert.equal(await cta.isDisabled(), true, "auch der Herkunftsort ist Pflicht");
+
+  assert.deepEqual(konsole, [], "keine Konsolenfehler");
+  await page.close();
+});
+
+test("der Ort wandert als eigenes Feld in den calculate-price-Request", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setup(page);
+  let body = null;
+  page.on("request", (r) => {
+    if (r.url().includes("calculate-price") && r.method() === "POST") {
+      try { body = JSON.parse(r.postData() || "null"); } catch { body = null; }
+    }
+  });
+
+  await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
+  await fill(page, { toZip: "10115" });
+  // Umgebende Leerzeichen gehören zur Eingabe, nicht in den Payload.
+  await page.fill("#calc-to-city", "  Berlin  ");
+  await page.getByRole("button", { name: /Angebote vergleichen/i }).first().click();
+  await page.waitForFunction(() => true);
+  await page.waitForTimeout(800);
+
+  assert.ok(body, "es wurde kein calculate-price-Request abgesetzt");
+  assert.equal(body.from_city, "Stuttgart");
+  assert.equal(body.to_city, "Berlin", "der Ort muss getrimmt übertragen werden");
   await page.close();
 });

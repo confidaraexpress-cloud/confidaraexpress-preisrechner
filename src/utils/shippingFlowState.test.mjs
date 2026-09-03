@@ -72,9 +72,9 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
     assert.ok(SHIPMENT_FORM_KEYS.includes(k), `${k} fehlt im Sendungsformular`);
   }
   assert.equal(SHIPMENT_FORM_KEYS.length, 26);
-  // Preisrechner: nur Route (Land + PLZ) und Paketdaten — keine Adressen.
+  // Preisrechner: nur Route (Land, PLZ, Ort) und Paketdaten — keine Namen, keine Straßen.
   assert.deepEqual([...CALCULATOR_FORM_KEYS], [
-    "from_country", "from_zip", "to_country", "to_zip",
+    "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",
     "packageCount", "weight", "length", "width", "height",
     "max_price", "latestDeliveryDate", "latestDeliveryTime",
   ]);

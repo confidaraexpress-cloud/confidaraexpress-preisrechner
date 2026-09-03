@@ -221,6 +221,10 @@ test("P6 — der Versandkostenrechner verhält sich identisch", async () => {
   await page.waitForSelector("#calc-to-zip", { timeout: 20000 });
   await page.fill("#calc-from-zip", "97421");
   await page.fill("#calc-to-zip", "63743");
+  // Ort beider Seiten ist Pflicht (siehe „Ort ist Pflicht"); das Testkonto
+  // dieser Datei trägt keinen Ort im Profil.
+  await page.fill("#calc-from-city", "Schweinfurt");
+  await page.fill("#calc-to-city", "Aschaffenburg");
   await page.fill("#calc-weight", "3");
   await page.fill("#calc-packageCount", "1");
   await page.fill("#calc-length", "10");

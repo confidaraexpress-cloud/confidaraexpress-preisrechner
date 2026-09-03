@@ -10,13 +10,13 @@ import {
 } from "./apiError.mjs";
 import {
   getCalculatorErrors, firstErrorField, postalCodeTexts, countryName,
-  CALCULATOR_FIELD_MAP,
+  CALCULATOR_FIELD_MAP, CALCULATOR_FIELD_ORDER, CITY_MAX_LENGTH,
 } from "./calculatorValidation.mjs";
 import { describePostalFormat } from "./postalCode.mjs";
 
 const basisForm = {
-  from_country: "DE", from_zip: "70173",
-  to_country: "DE", to_zip: "10115",
+  from_country: "DE", from_zip: "70173", from_city: "Stuttgart",
+  to_country: "DE", to_zip: "10115", to_city: "Berlin",
   // Maße sind seit dem Paket „verpflichtende Paketmaße" Pflicht — die
   // Basisform ist deshalb vollständig, damit jeder Test nur den EINEN Fehler
   // prüft, den er meint. Zuvor standen hier leere Maße, weil das Backend sie
@@ -217,4 +217,65 @@ test("20 — Ländername und PLZ-Texte sind robust gegen unbekannte Codes", () =
   assert.equal(countryName("DE"), "Deutschland");
   assert.equal(countryName("XX"), "XX", "unbekannter Code darf nicht werfen");
   assert.equal(postalCodeTexts("DE", "10115", "Ziel-Postleitzahl"), null, "gültige PLZ ergibt keinen Text");
+});
+
+// ══════════ Ort ist Pflicht (Preisrechner) ══════════
+//
+// Der Server ersetzte einen fehlenden Ort bisher still durch die Hauptstadt des
+// Landes (COUNTRY_DEFAULTS). Der Kunde bekam damit einen Tarif für „Berlin",
+// ohne das je gesagt zu haben — dieselbe Klasse stiller Ersatzwerte wie zuvor
+// bei den Paketmaßen. Diese Prüfungen halten fest, dass es diesen Weg nicht
+// mehr gibt und dass der Client den Ort NICHT aus der PLZ ableitet.
+
+test("21 — beide Orte fehlen: je ein Feldfehler, kein geratener Ort", () => {
+  const { fieldErrors, banner } = getCalculatorErrors(mit({ from_city: "", to_city: "" }));
+  assert.equal(fieldErrors.from_city, "Bitte geben Sie den Ort ein.");
+  assert.equal(fieldErrors.to_city, "Bitte geben Sie den Ort ein.");
+  assert.equal(banner.title, "Ort fehlt");
+  // Das Banner nennt die betroffene Seite — nicht bloß „Ort fehlt".
+  assert.match(banner.message, /Herkunft/);
+  // Nirgends darf eine Hauptstadt als Ersatz auftauchen.
+  assert.doesNotMatch(JSON.stringify({ fieldErrors, banner }), /Berlin|Wien|Paris/);
+});
+
+test("22 — reine Leerzeichen sind kein Ort", () => {
+  const { fieldErrors } = getCalculatorErrors(mit({ from_city: "   " }));
+  assert.equal(fieldErrors.from_city, "Bitte geben Sie den Ort ein.",
+    "ein Feld voller Leerzeichen darf nicht als ausgefüllt gelten");
+  assert.equal(fieldErrors.to_city, undefined, "die andere Seite bleibt unberührt");
+});
+
+test("23 — ein zu langer Ort wird als Längenfehler gemeldet, nicht als fehlend", () => {
+  const zuLang = "x".repeat(CITY_MAX_LENGTH + 1);
+  const { fieldErrors, banner } = getCalculatorErrors(mit({ to_city: zuLang }));
+  assert.equal(fieldErrors.to_city, `Höchstens ${CITY_MAX_LENGTH} Zeichen.`);
+  assert.equal(banner.title, "Ort prüfen");
+  // Genau an der Grenze ist der Wert gültig.
+  assert.equal(getCalculatorErrors(mit({ to_city: "x".repeat(CITY_MAX_LENGTH) })).fieldErrors.to_city, undefined);
+});
+
+test("24 — der Ort steht in der Sprungreihenfolge direkt hinter SEINER PLZ", () => {
+  assert.deepEqual(CALCULATOR_FIELD_ORDER.slice(0, 6),
+    ["from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city"]);
+  // Fehlt beides auf derselben Seite, wird die PLZ angesprungen — sie steht darüber.
+  const r = getCalculatorErrors(mit({ from_zip: "", from_city: "" }));
+  assert.equal(firstErrorField(r.fieldErrors), "from_zip");
+  // Fehlt nur der Herkunftsort, gewinnt er gegen einen späteren Paketfehler.
+  const r2 = getCalculatorErrors(mit({ from_city: "", weight: "" }));
+  assert.equal(firstErrorField(r2.fieldErrors), "from_city");
+});
+
+test("25 — ein Serverfehler am Ort landet AM Ortsfeld", () => {
+  assert.equal(mapServerField("sender.city", CALCULATOR_FIELD_MAP), "from_city");
+  assert.equal(mapServerField("recipient.city", CALCULATOR_FIELD_MAP), "to_city");
+  assert.equal(mapServerField("from_city", CALCULATOR_FIELD_MAP), "from_city");
+  assert.equal(mapServerField("to_city", CALCULATOR_FIELD_MAP), "to_city");
+});
+
+test("26 — ein fehlendes Land verdrängt die Ortsmeldung derselben Seite nicht doppelt", () => {
+  // Ohne Land bricht die Seite nach der Landmeldung ab (unveränderte Regel) —
+  // es entsteht KEIN zusätzlicher Ortsfehler, der zwei Ursachen behaupten würde.
+  const { fieldErrors } = getCalculatorErrors(mit({ from_country: "", from_city: "" }));
+  assert.equal(fieldErrors.from_country, "Bitte wählen Sie ein Land aus.");
+  assert.equal(fieldErrors.from_city, undefined);
 });

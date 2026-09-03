@@ -23,7 +23,8 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
-import { TARIFE_41 } from "../../src/utils/offersFilterFixture.mjs";
+import { TARIFE_41, VERSANDZEITPUNKT, LIEFERFRIST_TAG }
+  from "../../src/utils/offersFilterFixture.mjs";
 
 const PORT = 5343, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -61,6 +62,13 @@ let server, browser;
 // und nicht behauptet werden muss.
 function setupRoutes(page, zaehler) {
   return (async () => {
+    // Browserzeit auf den Messzeitpunkt der Fixture fixieren. Ohne das hängt der
+    // Lieferdatum-Kalender am REALEN Kalendermonat, und der Tag, den diese Suite
+    // anklickt, existiert nur in Monaten mit 31 Tagen (Begründung samt Vorfall in
+    // `offersFilterFixture.mjs`). Der Aufruf steht ganz oben in dieser Funktion,
+    // durch die JEDE navigierende Seite dieser Datei läuft — damit vor jeder
+    // Navigation und vor der Routenregistrierung.
+    await page.clock.setFixedTime(new Date(VERSANDZEITPUNKT));
     await page.route("**/api.confidaraexpress.de/**", async (route) => {
       const p = new URL(route.request().url()).pathname;
       const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -159,7 +167,7 @@ test("2 — späteste Lieferzeit 31.08.: 21 Karten und „21 Angebote“", async
   await zeigeAngebote(page);
   const nachBerechnung = zaehler.n;
 
-  await setzeLieferzeit(page, "31");
+  await setzeLieferzeit(page, LIEFERFRIST_TAG);
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   assert.equal(await anzahlKarten(page), 21);
@@ -181,7 +189,7 @@ test("3 — der gesetzte Filter ist an der Ergebnisliste sichtbar und benannt", 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page, { n: 0 });
   await zeigeAngebote(page);
-  await setzeLieferzeit(page, "31");
+  await setzeLieferzeit(page, LIEFERFRIST_TAG);
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   const chip = page.locator(".offers-filter-chip", { hasText: "Lieferung" });
@@ -200,7 +208,7 @@ test("4 — Zurücksetzen bringt alle 41 Karten zurück, ohne neue Preisberechnu
   const zaehler = { n: 0 };
   await setupRoutes(page, zaehler);
   await zeigeAngebote(page);
-  await setzeLieferzeit(page, "31");
+  await setzeLieferzeit(page, LIEFERFRIST_TAG);
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
   const vorReset = zaehler.n;
 
@@ -220,7 +228,7 @@ test("5 — der Filter des Formulars und der Chip zeigen denselben Wert", async 
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page, { n: 0 });
   await zeigeAngebote(page);
-  await setzeLieferzeit(page, "31");
+  await setzeLieferzeit(page, LIEFERFRIST_TAG);
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   const werte = await page.locator(".service-filter-trigger-val").allInnerTexts();
@@ -256,7 +264,7 @@ test("6 — der Versandkostenrechner verhält sich identisch (dieselbe OffersLis
   assert.match(await ueberschrift(page), /^41 Angebote$/);
   const nachBerechnung = zaehler.n;
 
-  await setzeLieferzeit(page, "31");
+  await setzeLieferzeit(page, LIEFERFRIST_TAG);
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
   assert.match(await ueberschrift(page), /^21 Angebote$/);
   assert.match((await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).textContent()).trim(),

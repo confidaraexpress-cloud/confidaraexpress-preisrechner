@@ -18,7 +18,8 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
-import { TARIFE_41 } from "../../src/utils/offersFilterFixture.mjs";
+import { TARIFE_41, VERSANDZEITPUNKT, LIEFERFRIST_TAG }
+  from "../../src/utils/offersFilterFixture.mjs";
 
 const PORT = 5344, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -54,6 +55,13 @@ let server, browser;
 // berechneten unterscheidbar bleibt.
 function setupRoutes(page, zaehler) {
   return (async () => {
+    // Browserzeit auf den Messzeitpunkt der Fixture fixieren. Ohne das hängt der
+    // Lieferdatum-Kalender am REALEN Kalendermonat, und der Tag, den diese Suite
+    // anklickt, existiert nur in Monaten mit 31 Tagen (Begründung samt Vorfall in
+    // `offersFilterFixture.mjs`). Der Aufruf steht ganz oben in dieser Funktion,
+    // durch die JEDE navigierende Seite dieser Datei läuft — damit vor jeder
+    // Navigation und vor der Routenregistrierung.
+    await page.clock.setFixedTime(new Date(VERSANDZEITPUNKT));
     await page.route("**/api.confidaraexpress.de/**", async (route) => {
       const p = new URL(route.request().url()).pathname;
       const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -162,7 +170,7 @@ test("P3 — reine Anzeigefilter lösen KEINE Preisberechnung aus", async () => 
   // Späteste Lieferzeit über den Chip setzen …
   await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).click();
   await page.waitForSelector(".offers-delivery-dropdown", { timeout: 10000 });
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
   assert.equal(z.n, nachErster, "der Lieferzeitfilter hat eine Preisberechnung ausgelöst");
 
@@ -201,7 +209,7 @@ test("P5 — die Überschrift nennt nur die sichtbare Zahl", async () => {
 
   await page.locator(".offers-filter-chip", { hasText: "Lieferung" }).click();
   await page.waitForSelector(".offers-delivery-dropdown", { timeout: 10000 });
-  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: /^31$/ }).first().click();
+  await page.locator(".offers-delivery-dropdown .dc-day", { hasText: new RegExp(`^${LIEFERFRIST_TAG}$`) }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".offer-card").length === 21, null, { timeout: 10000 });
 
   const t = (await ueberschrift(page)).trim();

@@ -15,7 +15,8 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_ABSENDER } from "./helpers/newShipmentForm.mjs";
-import { TARIFE_41 } from "../../src/utils/offersFilterFixture.mjs";
+import { TARIFE_41, VERSANDZEITPUNKT, LIEFERFRIST_TAG }
+  from "../../src/utils/offersFilterFixture.mjs";
 
 const PORT = 5346, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -47,6 +48,13 @@ let server, browser;
 
 function setupRoutes(page, zaehler) {
   return (async () => {
+    // Browserzeit auf den Messzeitpunkt der Fixture fixieren. Ohne das hängt der
+    // Lieferdatum-Kalender am REALEN Kalendermonat, und der Tag, den diese Suite
+    // anklickt, existiert nur in Monaten mit 31 Tagen (Begründung samt Vorfall in
+    // `offersFilterFixture.mjs`). Der Aufruf steht ganz oben in dieser Funktion,
+    // durch die JEDE navigierende Seite dieser Datei läuft — damit vor jeder
+    // Navigation und vor der Routenregistrierung.
+    await page.clock.setFixedTime(new Date(VERSANDZEITPUNKT));
     await page.route("**/api.confidaraexpress.de/**", async (route) => {
       const p = new URL(route.request().url()).pathname;
       const json = (b) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
@@ -208,7 +216,7 @@ test("R2 — Uhrzeitfilter geändert: clientseitig gefiltert, 0 Requests, sichtb
   await setupRoutes(page, z);
   await zeigeAngebote(page);
 
-  await waehleDatum(page, "31");
+  await waehleDatum(page, LIEFERFRIST_TAG);
   await waehleZeit(page, "12:00 Uhr");
   await schliesseFlaeche(page);
   const gefiltert = await anzahlKarten(page);
@@ -230,7 +238,7 @@ test("R3 — Lieferdatumfilter geändert: 0 Requests, sichtbar", async () => {
   await setupRoutes(page, z);
   await zeigeAngebote(page);
 
-  await waehleDatum(page, "31");
+  await waehleDatum(page, LIEFERFRIST_TAG);
   await schliesseFlaeche(page);
   const gefiltert = await anzahlKarten(page);
   assert.ok(gefiltert > 0 && gefiltert <= 41);

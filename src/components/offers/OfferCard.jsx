@@ -489,6 +489,22 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
 
         {/* ── Zone 2: Versandablauf / Timeline ── */}
         <div className="offer-zone-2">
+          {/* Übergabeart — die Antwort auf „muss ich das wegbringen oder wird es
+              geholt?". Sie steht als Kopfzeile der Prozessdarstellung: sie
+              beschreibt genau deren linkes Ende. Neben dem Preis oder am Carrier
+              wäre sie eine Behauptung ohne Zusammenhang. Reine Typografie, kein
+              Badge — sie soll schnell lesbar sein, aber Preis und Hauptaktion
+              nicht Konkurrenz machen. Die Versalien macht das Stylesheet.
+
+              Sie steht bewusst VOR der Verzweigung und damit auch auf einem
+              Angebot, das gerade nicht auswählbar ist. Vorher ersetzte die
+              Hinweiszeile die ganze Zone — mit ihr verschwand die Übergabeart,
+              und eine Paketshopabgabe war von einer Türabholung nicht mehr zu
+              unterscheiden. Das ist eine Eigenschaft des PRODUKTS und nicht der
+              Buchbarkeit: sie gilt unverändert weiter, auch wenn das Angebot nur
+              eine Preisauskunft ist. Providerneutral — die Zeile hängt allein an
+              `serviceType`, nicht an der Einkaufsquelle. */}
+          {handoverText && <p className="offer-handover">{handoverText}</p>}
           {unavailable ? (
             <div className="offer-unavail">
               <Icon n="info" s={15} c="currentColor" />
@@ -496,14 +512,6 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             </div>
           ) : (
             <div className="offer-timeline">
-              {/* Übergabeart — die Antwort auf „muss ich das wegbringen oder
-                  wird es geholt?". Sie steht bewusst HIER, als Kopfzeile der
-                  Prozessdarstellung: sie beschreibt genau deren linkes Ende.
-                  Neben dem Preis oder am Carrier wäre sie eine Behauptung ohne
-                  Zusammenhang. Reine Typografie, kein Badge — sie soll schnell
-                  lesbar sein, aber Preis und Hauptaktion nicht Konkurrenz
-                  machen. Die Versalien macht das Stylesheet, nicht der Text. */}
-              {handoverText && <p className="offer-handover">{handoverText}</p>}
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
                 <span className="offer-tl-track">

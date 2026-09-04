@@ -135,6 +135,19 @@ export const BOOKING_KEYS = Object.freeze([
   // und Reload übersteht. ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem
   // älteren Bundle liefert hier `undefined` → "" und wird nicht grundlos verworfen.
   "externalDeliveryNoteNumber",
+  // Angaben zur Art der Adresse (Wohn- oder Geschäftsadresse). Sie sind PREISRELEVANT:
+  // manche Zustelldienste erheben für Wohnadressen einen Zuschlag, und ohne die Angabe
+  // steht der Preis nicht fest.
+  //
+  // DREIWERTIG — das ist hier keine Feinheit, sondern die ganze Regel: `true` (ja),
+  // `false` (nein, Geschäftsadresse) und `null` (noch nicht beantwortet) sind DREI
+  // verschiedene Zustände. Ein `false` ist eine vollwertige Antwort und darf niemals
+  // wie „fehlt" behandelt werden — sonst fragt die Oberfläche immer wieder nach einer
+  // Angabe, die der Kunde längst gemacht hat.
+  //
+  // ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem älteren Bundle liefert
+  // `undefined` → `null`, also „noch nicht beantwortet". Genau richtig.
+  "deliveryIsResidential", "collectionIsResidential",
 ]);
 
 /* ══════════ defensive Helfer ═════════════════════════════════════════════ */
@@ -143,6 +156,9 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const str = (v) => (typeof v === "string" ? v : v == null ? "" : typeof v === "number" && Number.isFinite(v) ? String(v) : "");
 const bool = (v) => v === true;
+// Dreiwertig: true | false | null. `bool()` waere hier falsch — es macht aus einem
+// bewussten „nein" ein „nicht beantwortet" und damit aus einer Antwort eine Luecke.
+const tristate = (v) => (v === true ? true : v === false ? false : null);
 const oneOf = (v, list, fallback) => (list.includes(v) ? v : fallback);
 const finiteInt = (v) => (Number.isInteger(v) && Number.isFinite(v) ? v : null);
 
@@ -305,6 +321,9 @@ export function emptyBooking() {
     insValueManual: false,
     trackingEmail: "",
     labelTrackingEmail: "",
+    // Noch nicht beantwortet — ausdrücklich nicht `false`.
+    deliveryIsResidential: null,
+    collectionIsResidential: null,
     updatedAt: null,
   };
 }
@@ -337,6 +356,9 @@ export function normalizeBooking(raw) {
     trackingEmailEnabled: bool(src.trackingEmailEnabled),
     labelTrackingEmailEnabled: bool(src.labelTrackingEmailEnabled),
     labelFormatEnabled: bool(src.labelFormatEnabled),
+    // Dreiwertig (siehe BOOKING_KEYS): ein gespeichertes `false` bleibt `false`.
+    deliveryIsResidential: tristate(src.deliveryIsResidential),
+    collectionIsResidential: tristate(src.collectionIsResidential),
     updatedAt: nonNegInt(src.updatedAt),
   };
 }

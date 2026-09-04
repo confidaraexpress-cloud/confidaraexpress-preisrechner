@@ -9,6 +9,7 @@ import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
 import {
   adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
+  benoetigteAdressfragen,
 } from "../utils/addressTypeQuestions.mjs";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
@@ -387,11 +388,18 @@ export default function BookingPage() {
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
-  /* Welche Adressfragen dieses Angebot braucht, haengt an der UEBERGABEART — nicht am
-     Einkaufsprovider und nicht am Carrier. Bei einer Paketshopabgabe faehrt niemand zur
-     Absenderadresse, also entfaellt die Abholfrage dort. */
-  const adresstypVollstaendig = adressangabenVollstaendig(adresstyp, tariff?.serviceType);
-  const adresstypHinweis = adressangabenHinweis(adresstyp, tariff?.serviceType);
+  /* WELCHE Zusatzangaben dieses Angebot braucht, sagt der SERVER — als providerneutrale
+     Liste am Angebot selbst. Hier wird nichts abgeleitet: kein Providervergleich, kein
+     Schluss aus der Uebergabeart, kein Rueckfall auf "sicherheitshalber fragen".
+
+     Fehlt das Feld (aelteres Bundle, wiederhergestellter Vorgang, Tarif ohne Angebot),
+     ist die Liste leer und es wird nichts verlangt. Das ist Absicht: die Sperre liegt
+     serverseitig, und ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern
+     nur eine Pflichtfrage fuer ein Angebot, dessen Preis gar nicht daran haengt. */
+  const noetigeAdressangaben = tariff?.requiredPriceInputs;
+  const adresstypFragen = benoetigteAdressfragen(noetigeAdressangaben);
+  const adresstypVollstaendig = adressangabenVollstaendig(adresstyp, noetigeAdressangaben);
+  const adresstypHinweis = adressangabenHinweis(adresstyp, noetigeAdressangaben);
 
   // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
   // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
@@ -897,7 +905,7 @@ export default function BookingPage() {
           // Preisrelevante Angaben zur Adressart. Nur die fuer DIESES Angebot noetigen
           // Felder — bei einer Paketshopabgabe entfaellt die Abholfrage. `null`, solange
           // etwas fehlt; dann kommt der Request gar nicht erst zustande (Guard unten).
-          priceInputs:     adressangabenPayload(adresstyp, tariff?.serviceType),
+          priceInputs:     adressangabenPayload(adresstyp, noetigeAdressangaben),
           tariffId:        tariff?.id,
           shipperTariffId: tariff?.shipper_tariff_id,
           // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
@@ -1333,13 +1341,17 @@ export default function BookingPage() {
             />
 
             {/* Art der Adresse — preisrelevant, deshalb VOR den optionalen Zusatzangaben.
-                Welche der beiden Fragen erscheint, entscheidet die Uebergabeart. */}
-            <AddressTypeModule
-              fulfillmentMode={tariff?.serviceType}
-              werte={adresstyp}
-              onChange={setAdresstypFeld}
-              showErrors={adresstypShowErrors}
-            />
+                WELCHE Fragen erscheinen, sagt das Angebot. Braucht es keine, entsteht die
+                Karte gar nicht erst — ein leerer Abschnitt waere eine Behauptung, hier sei
+                etwas zu tun. */}
+            {adresstypFragen.length > 0 && (
+              <AddressTypeModule
+                fragen={adresstypFragen}
+                werte={adresstyp}
+                onChange={setAdresstypFeld}
+                showErrors={adresstypShowErrors}
+              />
+            )}
 
             <AdditionalOptionsModule
               reference={form.reference}

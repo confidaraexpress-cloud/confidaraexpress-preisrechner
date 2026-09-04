@@ -32,36 +32,56 @@
    Weder in den Feldnamen noch in den Texten. Der Kunde sieht den Carrier, nie den
    Einkaufsweg. Für ihn ist das schlicht eine Angabe zur Adresse. */
 
-/* Die Übergabearten des öffentlichen Vertrags — dieselben Werte wie `serviceType`. */
-const PICKUP = "pickup";
-const DROPOFF = "dropoff";
-
-/* Die Feldnamen. Bewusst beschreibend und providerneutral. */
+/* Die Feldnamen. Bewusst beschreibend und providerneutral — dieselben Schlüssel, die der
+   Server im Angebot deklariert. */
 export const FELD_ZUSTELLUNG = "deliveryIsResidential";
 export const FELD_ABHOLUNG = "collectionIsResidential";
+
+/* Genau die Schlüssel, die diese Oberfläche darstellen kann. Ein unbekannter Schlüssel aus
+   einer neueren Serverfassung wird verworfen statt angezeigt: eine Frage, für die es hier
+   weder Text noch Bedienelement gibt, wäre ein leeres Pflichtfeld — und damit eine Sperre
+   ohne Ausweg. */
+const DARSTELLBAR = [FELD_ZUSTELLUNG, FELD_ABHOLUNG];
 
 /* Ist das eine echte Antwort? `false` ist eine — `null`/`undefined` nicht. */
 export const istBeantwortet = (w) => w === true || w === false;
 
-/** Welche Fragen braucht dieses Angebot? Feldnamen, feste Reihenfolge. */
-export function benoetigteAdressfragen(uebergabeart) {
-  if (uebergabeart === PICKUP) return [FELD_ABHOLUNG, FELD_ZUSTELLUNG];
-  if (uebergabeart === DROPOFF) return [FELD_ZUSTELLUNG];
-  // Unbekannte Übergabeart: die Zustellfrage gilt immer, die Abholfrage wird NICHT
-  // geraten. Lieber eine Frage zu wenig stellen als eine zu erfinden — der Server
-  // prüft ohnehin und lehnt fail-closed ab, wenn ihm etwas fehlt.
-  return [FELD_ZUSTELLUNG];
+/**
+ * Welche Fragen braucht dieses Angebot?
+ *
+ * ─── DIE ANTWORT KOMMT VOM SERVER, NICHT VON HIER ────────────────────────────
+ * Übergeben wird `requiredPriceInputs` des Angebots. Diese Funktion LEITET NICHTS
+ * AB — sie filtert nur auf das, was darstellbar ist, und behält die Reihenfolge
+ * des Servers.
+ *
+ * Eine frühere Fassung schloss aus der Übergabeart auf die nötigen Fragen und
+ * verlangte die Zustellfrage im Zweifel IMMER. Das war falsch, und zwar
+ * messbar: dadurch bekam auch ein Angebot, dessen Preis überhaupt nicht an einer
+ * Wohnadressdeklaration hängt, eine Pflichtfrage — und der bestehende
+ * Buchungsweg war blockiert. Zehn Browser-Suiten sind daran gescheitert.
+ *
+ * ─── FEHLT DAS FELD, IST DIE LISTE LEER ──────────────────────────────────────
+ * Nicht „dann fragen wir sicherheitshalber". Ein Angebot aus einem älteren
+ * Bundle, ein wiederhergestellter Vorgang oder eine Antwort ohne das Feld
+ * dürfen keine neue Pflichtfrage erzeugen. Die Sperre liegt ohnehin
+ * serverseitig: wer ohne nötige Angabe bucht, wird dort fail-closed abgelehnt.
+ * Ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern nur eine
+ * unbeantwortbare Frage.
+ */
+export function benoetigteAdressfragen(requiredPriceInputs) {
+  if (!Array.isArray(requiredPriceInputs)) return [];
+  return requiredPriceInputs.filter((k) => DARSTELLBAR.includes(k));
 }
 
 /** Welche der benötigten Angaben fehlen noch? */
-export function fehlendeAdressangaben(werte, uebergabeart) {
+export function fehlendeAdressangaben(werte, requiredPriceInputs) {
   const w = werte && typeof werte === "object" ? werte : {};
-  return benoetigteAdressfragen(uebergabeart).filter((f) => !istBeantwortet(w[f]));
+  return benoetigteAdressfragen(requiredPriceInputs).filter((f) => !istBeantwortet(w[f]));
 }
 
 /** Sind alle für dieses Angebot nötigen Angaben da? */
-export const adressangabenVollstaendig = (werte, uebergabeart) =>
-  fehlendeAdressangaben(werte, uebergabeart).length === 0;
+export const adressangabenVollstaendig = (werte, requiredPriceInputs) =>
+  fehlendeAdressangaben(werte, requiredPriceInputs).length === 0;
 
 /* Die sichtbaren Texte. Sie stehen HIER und nicht im JSX, damit sie geprüft werden
    können und nicht an zwei Stellen auseinanderlaufen. */
@@ -77,8 +97,8 @@ export const ADRESSFRAGE_TEXT = Object.freeze({
 });
 
 /** Der Hinweis unter einem gesperrten Weiter-Knopf — nennt, was fehlt. */
-export function adressangabenHinweis(werte, uebergabeart) {
-  const fehlt = fehlendeAdressangaben(werte, uebergabeart);
+export function adressangabenHinweis(werte, requiredPriceInputs) {
+  const fehlt = fehlendeAdressangaben(werte, requiredPriceInputs);
   if (fehlt.length === 0) return "";
   if (fehlt.length === 2) return "Bitte geben Sie an, ob Abhol- und Lieferadresse Privatadressen sind.";
   return fehlt[0] === FELD_ABHOLUNG
@@ -97,9 +117,13 @@ export function adressangabenHinweis(werte, uebergabeart) {
  * Fehlt eine benötigte Angabe, entsteht `null` — es gibt keinen Pfad, auf dem ein
  * unvollständiger Satz zu einem Request wird.
  */
-export function adressangabenPayload(werte, uebergabeart) {
-  if (!adressangabenVollstaendig(werte, uebergabeart)) return null;
+export function adressangabenPayload(werte, requiredPriceInputs) {
+  const noetig = benoetigteAdressfragen(requiredPriceInputs);
+  if (!adressangabenVollstaendig(werte, requiredPriceInputs)) return null;
+  // Ohne noetige Angaben entsteht KEIN leeres Objekt, sondern `null` — sonst stuende im
+  // Buchungsrequest ein bedeutungsloses `priceInputs: {}`.
+  if (noetig.length === 0) return null;
   const aus = {};
-  for (const f of benoetigteAdressfragen(uebergabeart)) aus[f] = werte[f];
+  for (const f of noetig) aus[f] = werte[f];
   return aus;
 }

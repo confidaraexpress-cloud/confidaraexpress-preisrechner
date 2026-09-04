@@ -28,7 +28,15 @@ const USER = {
   role: "customer", status: "approved", country: "DE", zip: "73207", customer_number: "CE-K-10030",
 };
 
-const basisTarif = (uebergabe) => ({
+// Die vom SERVER deklarierten Zusatzangaben — providerneutral, in der Reihenfolge des
+// Vertrags (Zustellung zuerst). Der Test setzt sie wie /calculate-price sie liefert.
+const NOETIG = {
+  pickup:  ["deliveryIsResidential", "collectionIsResidential"],
+  dropoff: ["deliveryIsResidential"],
+};
+
+const basisTarif = (uebergabe, requiredPriceInputs = NOETIG[uebergabe]) => ({
+  requiredPriceInputs,
   id: 1, shipper_tariff_id: 1, publicCarrierId: "dhl", publicCarrierName: "DHL Express",
   publicServiceName: "Standardversand", serviceType: uebergabe, currency: "EUR",
   netPrice: 18.65, vatAmount: 3.54, finalPrice: 22.19, transitDaysMin: 1, transitDaysMax: 2,
@@ -44,7 +52,7 @@ const FELD_ABHOL  = "collectionIsResidential";
 
 let server, browser;
 
-async function setupRoutes(page, { uebergabe = "pickup", onBook } = {}) {
+async function setupRoutes(page, { uebergabe = "pickup", onBook, noetig } = {}) {
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -65,7 +73,7 @@ async function setupRoutes(page, { uebergabe = "pickup", onBook } = {}) {
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [basisTarif(uebergabe)], availableShippingModes: ["standard"],
+      shipmentId: "s1", tariffs: [basisTarif(uebergabe, noetig)], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
@@ -132,6 +140,28 @@ test("2 — Paketshopabgabe fragt NICHT nach der Abholadresse", async () => {
   assert.equal(await page.locator(`#${FELD_ABHOL}-ja`).count(), 0,
     "bei Paketshopabgabe wurde nach der Abholadresse gefragt");
   assert.equal(await page.locator(`#${FELD_LIEFER}-ja`).count(), 1);
+  await page.close();
+});
+
+test("2b — ein Angebot OHNE Zusatzbedarf zeigt gar keine Adressfrage", async () => {
+  // Der Regressionsschutz fuer den bestehenden Buchungsweg: `requiredPriceInputs: []`
+  // heisst KEINE Karte, KEINE Pflichtfrage, KEIN Gate. Genau hier ist die frühere Fassung
+  // gescheitert — sie verlangte die Zustellfrage immer und blockierte damit zehn Suiten.
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  await setupRoutes(page, { uebergabe: "pickup", noetig: [] });
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  await fuelleVersandformular(page);
+  await page.locator(".offers-calc-cta button").first().click();
+  await page.waitForSelector(".offer-card", { timeout: 20000 });
+  await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
+  await page.waitForSelector("button.btn-primary", { timeout: 20000 });
+
+  assert.equal(await page.locator(".adr-typ-group").count(), 0,
+    "ein Angebot ohne Zusatzbedarf zeigt trotzdem eine Adressfrage");
+  // Und der Weg nach Schritt 2 ist frei.
+  await page.locator("button.btn-primary", { hasText: "Weiter" }).first().click();
+  await page.waitForSelector("button.booking-book-btn", { timeout: 20000 });
   await page.close();
 });
 

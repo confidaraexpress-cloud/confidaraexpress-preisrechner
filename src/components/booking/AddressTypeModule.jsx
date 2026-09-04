@@ -1,6 +1,4 @@
-import {
-  benoetigteAdressfragen, ADRESSFRAGE_TEXT, istBeantwortet,
-} from "../../utils/addressTypeQuestions.mjs";
+import { ADRESSFRAGE_TEXT, istBeantwortet } from "../../utils/addressTypeQuestions.mjs";
 
 /* Angaben zur Art der Adresse — preisrelevant, deshalb Pflicht.
 
@@ -17,9 +15,9 @@ import {
    Für den Kunden ist das eine Frage zu seiner Adresse. Über wen ConfidaraExpress
    einkauft, steht hier nicht — nicht im Text, nicht im Feldnamen, nicht in einer
    Klasse. Alle Texte kommen aus `addressTypeQuestions.mjs`. */
-export function AddressTypeModule({ fulfillmentMode, werte, onChange, showErrors = false }) {
-  const fragen = benoetigteAdressfragen(fulfillmentMode);
-
+export function AddressTypeModule({ fragen, werte, onChange, showErrors = false }) {
+  // Die Liste kommt fertig herein — dieses Bauteil entscheidet NICHT, was gefragt wird.
+  // Es kennt weder Provider noch Uebergabeart und soll beides auch nicht kennen.
   return (
     <div className="calc-panel">
       <div className="calc-section-head">

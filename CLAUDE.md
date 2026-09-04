@@ -2836,9 +2836,22 @@ keiner uns vorliegenden Datenquelle lässt sich das ableiten.
   kennt zwei Zustände, diese Angabe hat drei. Er stünde beim Öffnen auf „aus" und
   behauptete damit eine Antwort, die niemand gegeben hat — daraus entsteht ein Preis für
   eine Adressart, die nie erklärt wurde. Zwei Radios **ohne Vorauswahl** sagen die Wahrheit.
-- **Nur fragen, was dieses Angebot braucht.** Bei einer Paketshopabgabe entfällt die
-  Abholfrage: dorthin fährt niemand, ein abholbezogener Zuschlag kann nicht entstehen. Eine
-  Pflichtfrage ohne Preiswirkung ist genau die Reibung, an der Formulare verlassen werden.
+- **WELCHE Fragen erscheinen, sagt der SERVER** — über `requiredPriceInputs` am Angebot.
+  Das Frontend leitet **nichts** ab: kein Providervergleich, kein Schluss aus der
+  Übergabeart, kein Rückfall auf „sicherheitshalber fragen". `benoetigteAdressfragen()`
+  filtert die Serverliste nur auf das, was darstellbar ist, und behält deren Reihenfolge.
+- **Fehlt das Feld, ist die Liste LEER.** Ein Angebot aus einem älteren Bundle, ein
+  wiederhergestellter Vorgang oder ein Tarif ohne zugehöriges Angebot dürfen keine neue
+  Pflichtfrage erzeugen — und braucht ein Angebot nichts, entsteht die Karte gar nicht erst.
+
+  Das ist die Korrektur eines echten Fehlers: eine frühere Fassung leitete aus der
+  Übergabeart ab und verlangte die Zustellfrage IMMER. Dadurch bekam auch ein Angebot,
+  dessen Preis nicht daran hängt, ein Pflichtfeld — der bestehende Buchungsweg war
+  blockiert, und **zehn Browser-Suiten sind daran gescheitert**. Ein zu vorsichtiges
+  Frontend erzeugt hier keinen Schutz, sondern nur eine unbeantwortbare Frage; die Sperre
+  liegt serverseitig und ist fail-closed.
+- **Ein unbekannter Schlüssel wird verworfen, nicht angezeigt.** Eine Frage ohne Text und
+  ohne Bedienelement wäre ein leeres Pflichtfeld — also eine Sperre ohne Ausweg.
 - **Nach der Stapelbarkeit wird NICHT gefragt.** Der Carrier bewertet sie laut Vertrag im
   Nachhinein und berechnet einen Zuschlag dann nach — unabhängig von unserer Erklärung. Ein
   „ja" schützt nicht, ein „nein" kauft den Zuschlag sofort ein. Die Frage senkt kein Risiko.

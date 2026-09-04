@@ -28,22 +28,68 @@ const ohneKommentar = (p) => lies(p)
   .replace(/\/\*[\s\S]*?\*\//g, "")
   .replace(/^[ 	]*\/\/.*$/gm, "");
 
-/* ══════════ A — WELCHE FRAGE WANN ═════════════════════════════════════════ */
+/* ══════════ A — DIE LISTE KOMMT VOM SERVER ═══════════════════════════════ */
 
-test("(A1) Abholung fragt nach beiden Adressen", () => {
-  assert.deepEqual(benoetigteAdressfragen("pickup"), [FELD_ABHOLUNG, FELD_ZUSTELLUNG]);
+const TG_PICKUP  = ["deliveryIsResidential", "collectionIsResidential"];
+const TG_DROPOFF = ["deliveryIsResidential"];
+const JUMINGO    = [];
+
+test("(A1) es wird genau das gefragt, was das Angebot deklariert", () => {
+  assert.deepEqual(benoetigteAdressfragen(TG_PICKUP), [FELD_ZUSTELLUNG, FELD_ABHOLUNG]);
+  assert.deepEqual(benoetigteAdressfragen(TG_DROPOFF), [FELD_ZUSTELLUNG]);
+  assert.deepEqual(benoetigteAdressfragen(JUMINGO), []);
 });
 
-test("(A2) Paketshopabgabe fragt NICHT nach der Abholadresse", () => {
-  // Dorthin fährt niemand — ein abholbezogener Zuschlag kann gar nicht entstehen.
-  // Die Frage wäre eine Pflichtangabe ohne jede Wirkung.
-  assert.deepEqual(benoetigteAdressfragen("dropoff"), [FELD_ZUSTELLUNG]);
+test("(A2) ein Angebot ohne Zusatzbedarf erzeugt KEINE Pflichtfrage", () => {
+  // Der Kern der Korrektur. Eine frühere Fassung leitete aus der Übergabeart ab und
+  // verlangte die Zustellfrage im Zweifel IMMER — dadurch bekam auch ein Angebot, dessen
+  // Preis überhaupt nicht an einer Wohnadressdeklaration hängt, ein Pflichtfeld, und der
+  // bestehende Buchungsweg war blockiert. Zehn Browser-Suiten sind daran gescheitert.
+  assert.deepEqual(fehlendeAdressangaben({}, JUMINGO), []);
+  assert.equal(adressangabenVollstaendig({}, JUMINGO), true,
+    "ein Angebot ohne Zusatzbedarf galt als unvollständig");
+  assert.equal(adressangabenHinweis({}, JUMINGO), "");
+  assert.equal(adressangabenPayload({}, JUMINGO), null,
+    "ohne nötige Angaben darf kein leeres priceInputs entstehen");
 });
 
-test("(A3) eine unbekannte Übergabeart erfindet keine Frage", () => {
-  for (const unbekannt of [undefined, null, "", "PICKUP", "abholung", 1, {}]) {
-    assert.deepEqual(benoetigteAdressfragen(unbekannt), [FELD_ZUSTELLUNG],
-      `${JSON.stringify(unbekannt)} hat eine Frage erfunden oder verloren`);
+test("(A3) ein FEHLENDES Feld ist leer — nicht \"sicherheitshalber fragen\"", () => {
+  // Ein Angebot aus einem älteren Bundle, ein wiederhergestellter Vorgang oder ein Tarif
+  // ohne zugehöriges Angebot dürfen keine neue Pflichtfrage erzeugen. Die Sperre liegt
+  // serverseitig; ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern nur
+  // eine Frage für ein Angebot, dessen Preis gar nicht daran hängt.
+  for (const fehlt of [undefined, null, "", 0, false, {}, "deliveryIsResidential"]) {
+    assert.deepEqual(benoetigteAdressfragen(fehlt), [],
+      `${JSON.stringify(fehlt)} hat eine Frage erfunden`);
+    assert.equal(adressangabenVollstaendig({}, fehlt), true);
+  }
+});
+
+test("(A4) ein unbekannter Schlüssel wird verworfen, nicht angezeigt", () => {
+  // Eine Frage ohne Text und ohne Bedienelement wäre ein leeres Pflichtfeld — also eine
+  // Sperre ohne Ausweg. Auch der bewusst NICHT erhobene Stapelbarkeitsschlüssel fällt
+  // hier heraus, falls ihn je ein Server mitschickt.
+  assert.deepEqual(benoetigteAdressfragen(["itemsAreStackable"]), []);
+  assert.deepEqual(benoetigteAdressfragen(["itemsAreStackable", FELD_ZUSTELLUNG]), [FELD_ZUSTELLUNG]);
+  assert.deepEqual(benoetigteAdressfragen(["quatsch", FELD_ABHOLUNG, 42]), [FELD_ABHOLUNG]);
+});
+
+test("(A5) die Reihenfolge des Servers bleibt erhalten", () => {
+  assert.deepEqual(benoetigteAdressfragen([FELD_ABHOLUNG, FELD_ZUSTELLUNG]),
+    [FELD_ABHOLUNG, FELD_ZUSTELLUNG]);
+  assert.deepEqual(benoetigteAdressfragen([FELD_ZUSTELLUNG, FELD_ABHOLUNG]),
+    [FELD_ZUSTELLUNG, FELD_ABHOLUNG]);
+});
+
+test("(A6) das Frontend prüft NIRGENDS einen Provider", () => {
+  const quellen = [
+    ohneKommentar("utils/addressTypeQuestions.mjs"),
+    ohneKommentar("components/booking/AddressTypeModule.jsx"),
+  ].join(String.fromCharCode(10));
+  for (const verboten of ["transglobal", "jumingo", "provider", "serviceType",
+                          "fulfillmentMode", "pickup", "dropoff"]) {
+    assert.ok(!quellen.toLowerCase().includes(verboten.toLowerCase()),
+      `"${verboten}" steht in der Adressfragenlogik — die Ableitung gehört auf den Server`);
   }
 });
 
@@ -59,23 +105,24 @@ test("(B1) `false` ist eine ANTWORT, kein fehlender Wert", () => {
     assert.equal(istBeantwortet(leer), false, `${JSON.stringify(leer)} galt als Antwort`);
   }
   const beides = { [FELD_ABHOLUNG]: false, [FELD_ZUSTELLUNG]: false };
-  assert.equal(adressangabenVollstaendig(beides, "pickup"), true,
+  assert.equal(adressangabenVollstaendig(beides, TG_PICKUP), true,
     "zwei bewusste Neins galten als unvollständig");
 });
 
 test("(B2) fehlende Angaben werden NAMENTLICH gemeldet", () => {
-  assert.deepEqual(fehlendeAdressangaben({}, "pickup"), [FELD_ABHOLUNG, FELD_ZUSTELLUNG]);
-  assert.deepEqual(fehlendeAdressangaben({ [FELD_ABHOLUNG]: false }, "pickup"), [FELD_ZUSTELLUNG]);
+  // Reihenfolge wie vom Server deklariert: Zustellung zuerst.
+  assert.deepEqual(fehlendeAdressangaben({}, TG_PICKUP), [FELD_ZUSTELLUNG, FELD_ABHOLUNG]);
+  assert.deepEqual(fehlendeAdressangaben({ [FELD_ABHOLUNG]: false }, TG_PICKUP), [FELD_ZUSTELLUNG]);
   // Eine bei Dropoff mitgelieferte Abholangabe fehlt nicht — sie wird gar nicht gebraucht.
-  assert.deepEqual(fehlendeAdressangaben({ [FELD_ZUSTELLUNG]: true }, "dropoff"), []);
+  assert.deepEqual(fehlendeAdressangaben({ [FELD_ZUSTELLUNG]: true }, TG_DROPOFF), []);
 });
 
 /* ══════════ C — PAYLOAD ═══════════════════════════════════════════════════ */
 
 test("(C1) unvollständig ergibt NULL — kein halber Satz geht raus", () => {
-  assert.equal(adressangabenPayload({}, "pickup"), null);
-  assert.equal(adressangabenPayload({ [FELD_ABHOLUNG]: true }, "pickup"), null);
-  assert.equal(adressangabenPayload({}, "dropoff"), null);
+  assert.equal(adressangabenPayload({}, TG_PICKUP), null);
+  assert.equal(adressangabenPayload({ [FELD_ABHOLUNG]: true }, TG_PICKUP), null);
+  assert.equal(adressangabenPayload({}, TG_DROPOFF), null);
 });
 
 test("(C2) gesendet wird nur, was DIESES Angebot braucht", () => {
@@ -83,13 +130,13 @@ test("(C2) gesendet wird nur, was DIESES Angebot braucht", () => {
   // weil der Kunde vorher ein Abholangebot angesehen hat). Ein Server, der sie
   // ignoriert, wäre die schwächere Garantie.
   const werte = { [FELD_ABHOLUNG]: true, [FELD_ZUSTELLUNG]: false };
-  assert.deepEqual(adressangabenPayload(werte, "dropoff"), { [FELD_ZUSTELLUNG]: false });
-  assert.deepEqual(adressangabenPayload(werte, "pickup"),
+  assert.deepEqual(adressangabenPayload(werte, TG_DROPOFF), { [FELD_ZUSTELLUNG]: false });
+  assert.deepEqual(adressangabenPayload(werte, TG_PICKUP),
     { [FELD_ABHOLUNG]: true, [FELD_ZUSTELLUNG]: false });
 });
 
 test("(C3) `false` überlebt den Payload unverändert", () => {
-  const p = adressangabenPayload({ [FELD_ABHOLUNG]: false, [FELD_ZUSTELLUNG]: false }, "pickup");
+  const p = adressangabenPayload({ [FELD_ABHOLUNG]: false, [FELD_ZUSTELLUNG]: false }, TG_PICKUP);
   assert.equal(p[FELD_ABHOLUNG], false);
   assert.equal(p[FELD_ZUSTELLUNG], false);
   assert.equal(JSON.parse(JSON.stringify(p))[FELD_ZUSTELLUNG], false,
@@ -109,11 +156,11 @@ test("(D1) kein Providername in irgendeinem sichtbaren Text", () => {
 });
 
 test("(D2) der Hinweis nennt, WAS fehlt — nicht nur dass etwas fehlt", () => {
-  assert.equal(adressangabenHinweis({ [FELD_ABHOLUNG]: true, [FELD_ZUSTELLUNG]: true }, "pickup"), "");
-  const beide = adressangabenHinweis({}, "pickup");
+  assert.equal(adressangabenHinweis({ [FELD_ABHOLUNG]: true, [FELD_ZUSTELLUNG]: true }, TG_PICKUP), "");
+  const beide = adressangabenHinweis({}, TG_PICKUP);
   assert.match(beide, /Abhol- und Lieferadresse/);
-  assert.match(adressangabenHinweis({ [FELD_ZUSTELLUNG]: false }, "pickup"), /Abholadresse/);
-  assert.match(adressangabenHinweis({ [FELD_ABHOLUNG]: false }, "pickup"), /Lieferadresse/);
+  assert.match(adressangabenHinweis({ [FELD_ZUSTELLUNG]: false }, TG_PICKUP), /Abholadresse/);
+  assert.match(adressangabenHinweis({ [FELD_ABHOLUNG]: false }, TG_PICKUP), /Lieferadresse/);
 });
 
 test("(D3) die Texte stehen im Modul, nicht im JSX", () => {

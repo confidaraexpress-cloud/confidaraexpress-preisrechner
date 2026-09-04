@@ -7,6 +7,10 @@ import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
+import {
+  adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
+  benoetigteAdressfragen,
+} from "../utils/addressTypeQuestions.mjs";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -29,6 +33,7 @@ import { PickupWindowModule } from "../components/booking/PickupWindowModule";
 import { SaveDraftAction } from "../components/booking/SaveDraftAction";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
+import { AddressTypeModule } from "../components/booking/AddressTypeModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
@@ -285,6 +290,19 @@ export default function BookingPage() {
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
 
+  /* ── Art der Adresse (preisrelevant) ────────────────────────────────────────
+     DREIWERTIG: true / false / null. `null` heisst „noch nicht beantwortet" und
+     ist etwas anderes als `false` („Geschaeftsadresse"). Der Ausgangswert kommt
+     aus dem laufenden Vorgang; ein `false` von dort muss `false` bleiben — mit
+     `|| null` oder `!!` waere es still zu „unbeantwortet" geworden, und der Kunde
+     haette dieselbe Frage nach jeder Rueckkehr erneut vorgefunden. */
+  const [adresstyp, setAdresstyp] = useState(() => ({
+    deliveryIsResidential: flowBooking?.deliveryIsResidential ?? null,
+    collectionIsResidential: flowBooking?.collectionIsResidential ?? null,
+  }));
+  const setAdresstypFeld = (feld, wert) => setAdresstyp((a) => ({ ...a, [feld]: wert }));
+  const [adresstypShowErrors, setAdresstypShowErrors] = useState(false);
+
   /* ── Eigene Lieferscheinnummer ──────────────────────────────────────────────
      Sichtbar NUR bei Kontomodus „Eigenes Lieferscheinsystem" UND nur bei einer
      Sendung mit Lagerbezug: ohne Warendaten gäbe es gar keinen Lieferschein, auf
@@ -354,6 +372,11 @@ export default function BookingPage() {
       // Sie tragen KEINE Buchungswirkung: der Payload verlangt zusätzlich einen nicht
       // leeren Wert, und ein ausgeschalteter Bereich spiegelt oben ohnehin leer.
       referenceEnabled, trackingEmailEnabled, labelTrackingEmailEnabled, labelFormatEnabled,
+      // Dreiwertig gespiegelt — hier gilt die Regel „nur spiegeln, was gebucht wuerde"
+      // ausdruecklich NICHT: eine bewusste Antwort „Geschaeftsadresse" ist ein Wert,
+      // den der Kunde gegeben hat, und er soll die Rueckkehr ueberleben.
+      deliveryIsResidential: adresstyp.deliveryIsResidential,
+      collectionIsResidential: adresstyp.collectionIsResidential,
     });
   // Reihenfolge ohne Bedeutung für React — die vier E-Mail-Abhängigkeiten stehen
   // aber bewusst am Ende: sharedShipmentEmailOptions.test.mjs (6) verankert dort.
@@ -361,10 +384,22 @@ export default function BookingPage() {
   // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
-      showExternalDeliveryNote, externalDeliveryNoteNumber,
+      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
+  /* WELCHE Zusatzangaben dieses Angebot braucht, sagt der SERVER — als providerneutrale
+     Liste am Angebot selbst. Hier wird nichts abgeleitet: kein Providervergleich, kein
+     Schluss aus der Uebergabeart, kein Rueckfall auf "sicherheitshalber fragen".
+
+     Fehlt das Feld (aelteres Bundle, wiederhergestellter Vorgang, Tarif ohne Angebot),
+     ist die Liste leer und es wird nichts verlangt. Das ist Absicht: die Sperre liegt
+     serverseitig, und ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern
+     nur eine Pflichtfrage fuer ein Angebot, dessen Preis gar nicht daran haengt. */
+  const noetigeAdressangaben = tariff?.requiredPriceInputs;
+  const adresstypFragen = benoetigteAdressfragen(noetigeAdressangaben);
+  const adresstypVollstaendig = adressangabenVollstaendig(adresstyp, noetigeAdressangaben);
+  const adresstypHinweis = adressangabenHinweis(adresstyp, noetigeAdressangaben);
 
   // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
   // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
@@ -820,6 +855,15 @@ export default function BookingPage() {
       );
       return;
     }
+    // Zweite Haelfte der doppelten Absicherung (die erste ist das Weiter-Gate): ohne
+    // vollstaendige Adressangaben entsteht KEIN Request. Es gibt damit keinen Pfad, auf
+    // dem eine Buchung mit unbekannter Adressart beim Anbieter ankommt.
+    if (!adresstypVollstaendig) {
+      setAdresstypShowErrors(true);
+      setStep(1);
+      setError(adresstypHinweis);
+      return;
+    }
     setError(""); setConflict(""); setAddressError(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
@@ -849,6 +893,19 @@ export default function BookingPage() {
         method: "POST", auth: true, timeoutMs: 150000,
         body: JSON.stringify({
           shipmentId:      bookingData?.shipmentId,
+          // Die providerneutrale Angebotskennung. SIE bestimmt serverseitig, ueber wen
+          // gebucht wird — der Server schlaegt Provider und Tarif dazu selbst nach. Sie
+          // sagt fuer sich genommen nichts aus: kein Provider, kein Preis, kein Tarif.
+          //
+          // `tariffId`/`shipperTariffId` bleiben unveraendert daneben stehen. Sie WAEHLEN
+          // nichts mehr aus, sie stimmen nur zu: der Server vergleicht sie gegen seinen
+          // eigenen Datensatz und lehnt bei Abweichung ab. Fehlt die Kennung (ein Angebot
+          // aus einem aelteren Bundle), laeuft alles exakt wie bisher.
+          offerId:         tariff?.offerId,
+          // Preisrelevante Angaben zur Adressart. Nur die fuer DIESES Angebot noetigen
+          // Felder — bei einer Paketshopabgabe entfaellt die Abholfrage. `null`, solange
+          // etwas fehlt; dann kommt der Request gar nicht erst zustande (Guard unten).
+          priceInputs:     adressangabenPayload(adresstyp, noetigeAdressangaben),
           tariffId:        tariff?.id,
           shipperTariffId: tariff?.shipper_tariff_id,
           // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
@@ -1179,6 +1236,15 @@ export default function BookingPage() {
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie fortfahren.");
       return;
     }
+    // Art der Adresse: preisrelevant und deshalb Pflicht. Wie bei den Zollangaben
+    // erscheint der Fehler erst hier — eine gerade geöffnete Seite soll nicht sofort
+    // rot sein. Der Server prüft dieselbe Regel erneut und lehnt fail-closed ab; dies
+    // erspart dem Kunden nur den Umweg über eine abgelehnte Buchung.
+    if (!adresstypVollstaendig) {
+      setAdresstypShowErrors(true);
+      setError(adresstypHinweis);
+      return;
+    }
     // Versicherungswerte: ab hier sind fehlende/ungültige Beträge kein „noch
     // nicht ausgefüllt" mehr, sondern ein echter Befund — sie werden sichtbar.
     // Das Weiter-Gate selbst bleibt unverändert (es hat Versicherungswerte nie
@@ -1273,6 +1339,19 @@ export default function BookingPage() {
               recipientAddr={fmtAddr("r")}
               packageInfo={packageInfo}
             />
+
+            {/* Art der Adresse — preisrelevant, deshalb VOR den optionalen Zusatzangaben.
+                WELCHE Fragen erscheinen, sagt das Angebot. Braucht es keine, entsteht die
+                Karte gar nicht erst — ein leerer Abschnitt waere eine Behauptung, hier sei
+                etwas zu tun. */}
+            {adresstypFragen.length > 0 && (
+              <AddressTypeModule
+                fragen={adresstypFragen}
+                werte={adresstyp}
+                onChange={setAdresstypFeld}
+                showErrors={adresstypShowErrors}
+              />
+            )}
 
             <AdditionalOptionsModule
               reference={form.reference}

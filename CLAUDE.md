@@ -2813,6 +2813,69 @@ Laufzeit setzt `?? 999` und stellt sie ans Ende; der Lieferzeitfilter arbeitet a
 Stellen hat eine Providerabfrage bekommen.
 
 
+## Angaben zur Art der Adresse — vor jeder Änderung am Buchungsschritt lesen
+
+Die Buchung fragt, ob Liefer- und (nur bei Abholung) Abholadresse Privatadressen sind.
+Das ist **preisrelevant**: manche Zustelldienste berechnen dafür einen Zuschlag, und aus
+keiner uns vorliegenden Datenquelle lässt sich das ableiten.
+
+| Baustein | Datei | Aufgabe |
+|---|---|---|
+| Auswertung (rein) | `utils/addressTypeQuestions.mjs` | welche Frage, was fehlt, Payload, alle Texte |
+| Darstellung | `components/booking/AddressTypeModule.jsx` | zwei Radios je Frage |
+| Vorgang | `utils/shippingFlowState.mjs` | `deliveryIsResidential` · `collectionIsResidential` |
+
+**Verbindlich:**
+
+- **DREIWERTIG: `true` / `false` / `null`.** Das ist die tragende Regel. Ein „Nein,
+  Geschäftsadresse" ist eine **vollständige Antwort** und darf nie zu „noch nicht
+  beantwortet" werden — sonst bekommt der Kunde dieselbe Frage nach jeder Rückkehr erneut
+  vorgelegt. Deshalb `?? null` und nie `|| null`, deshalb `tristate()` statt `bool()` im
+  Vorgangsschema, und deshalb `checked={wert === true}` statt `checked={wert}`.
+- **KEIN `<Switch>`.** Das Designsystem hat einen, und er wäre hier falsch: ein Schalter
+  kennt zwei Zustände, diese Angabe hat drei. Er stünde beim Öffnen auf „aus" und
+  behauptete damit eine Antwort, die niemand gegeben hat — daraus entsteht ein Preis für
+  eine Adressart, die nie erklärt wurde. Zwei Radios **ohne Vorauswahl** sagen die Wahrheit.
+- **WELCHE Fragen erscheinen, sagt der SERVER** — über `requiredPriceInputs` am Angebot.
+  Das Frontend leitet **nichts** ab: kein Providervergleich, kein Schluss aus der
+  Übergabeart, kein Rückfall auf „sicherheitshalber fragen". `benoetigteAdressfragen()`
+  filtert die Serverliste nur auf das, was darstellbar ist, und behält deren Reihenfolge.
+- **Fehlt das Feld, ist die Liste LEER.** Ein Angebot aus einem älteren Bundle, ein
+  wiederhergestellter Vorgang oder ein Tarif ohne zugehöriges Angebot dürfen keine neue
+  Pflichtfrage erzeugen — und braucht ein Angebot nichts, entsteht die Karte gar nicht erst.
+
+  Das ist die Korrektur eines echten Fehlers: eine frühere Fassung leitete aus der
+  Übergabeart ab und verlangte die Zustellfrage IMMER. Dadurch bekam auch ein Angebot,
+  dessen Preis nicht daran hängt, ein Pflichtfeld — der bestehende Buchungsweg war
+  blockiert, und **zehn Browser-Suiten sind daran gescheitert**. Ein zu vorsichtiges
+  Frontend erzeugt hier keinen Schutz, sondern nur eine unbeantwortbare Frage; die Sperre
+  liegt serverseitig und ist fail-closed.
+- **Ein unbekannter Schlüssel wird verworfen, nicht angezeigt.** Eine Frage ohne Text und
+  ohne Bedienelement wäre ein leeres Pflichtfeld — also eine Sperre ohne Ausweg.
+- **Nach der Stapelbarkeit wird NICHT gefragt.** Der Carrier bewertet sie laut Vertrag im
+  Nachhinein und berechnet einen Zuschlag dann nach — unabhängig von unserer Erklärung. Ein
+  „ja" schützt nicht, ein „nein" kauft den Zuschlag sofort ein. Die Frage senkt kein Risiko.
+- **Doppelt abgesichert** wie die Zollangaben: Weiter-Gate **und** Buchungs-Guard. Ohne
+  vollständige Angaben entsteht kein Request — `adressangabenPayload()` liefert dann `null`.
+  Gesendet wird nur, was das Angebot braucht; eine nicht benötigte Angabe wird **verworfen**,
+  nicht mitgeschickt.
+- **`offerId` geht mit in den `/book`-Payload.** Sie bestimmt serverseitig den Provider;
+  `tariffId`/`shipperTariffId` bleiben daneben stehen und **stimmen nur noch zu**, statt
+  auszuwählen. Ohne sie läuft der JUMiNGO-Pfad exakt wie bisher.
+- **Kein Providername** in Feldnamen, Texten, Klassen oder Kommentaren der Oberfläche. Für
+  den Kunden ist das eine Frage zu seiner Adresse.
+- **Die Texte stehen im Modul, nicht im JSX** — sonst laufen sie auseinander.
+- Gemessener Befund dabei behoben: die Auswahlzeilen erreichten auf 834 px nur 37 px statt
+  der projektweit geforderten 44 px (`responsive.css`, `.adr-typ-group .ci-mode-option`).
+- Governance: `src/utils/addressTypeQuestions.test.mjs` (14 Tests, 4 Mutationen gegengeprüft)
+  und `tests/e2e/addressTypeQuestions.test.mjs` (8 Browser-Smokes auf 1440/834/390, Pickup
+  und Dropoff, mit geprüftem `/book`-Körper — **niemals eine echte Bestellung**).
+
+**Achtung, Testfalle:** Quelltextzusicherungen dieser Suite messen auf **kommentarfreiem**
+Code. Die Begründung, warum hier kein `<Switch>` steht, enthält zwangsläufig das Wort
+„Switch"; die Begründung, warum kein Providername auftaucht, spricht zwangsläufig vom
+Einkauf. Beides hat den Test beim ersten Lauf rot gefärbt, obwohl der Code korrekt war.
+
 ## Was nicht geändert werden sollte
 
 - **Auth-Logik** — serverseitig gesteuert; kein clientseitiges Freischalten

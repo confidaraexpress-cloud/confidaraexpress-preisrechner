@@ -383,9 +383,8 @@ export default function BookingPage() {
   // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
-      showExternalDeliveryNote, externalDeliveryNoteNumber,
-      trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail,
-      adresstyp]);
+      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp,
+      trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
   /* Welche Adressfragen dieses Angebot braucht, haengt an der UEBERGABEART — nicht am

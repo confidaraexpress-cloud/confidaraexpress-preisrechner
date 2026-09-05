@@ -19,6 +19,17 @@ export function mapAddressToShipmentFormPatch(address, prefix) {
   const p = prefix === "r" ? "r" : "s";
   return {
     [`${p}_company`]: a.company || "",
+    // Die strukturierte Kontaktperson wird übernommen, wenn die Adresse sie führt.
+    //
+    // Trägt sie nur den alten `contactName` (Altbestand), bleiben diese beiden Felder
+    // LEER — sie werden nicht aus ihm erzeugt. Der Kunde sieht dann zwei leere
+    // Pflichtfelder und ergänzt sie bewusst; das ist der ganze Zweck der Trennung. Ein
+    // geratener Nachname wäre schlimmer als ein leeres Feld.
+    [`${p}_firstName`]: a.firstName || "",
+    [`${p}_lastName`]: a.lastName || "",
+    // Der Altwert wandert weiter in das (nicht mehr sichtbare) Legacyfeld, damit er im
+    // Vorgang und im Entwurf nicht verloren geht. Gebucht wird er nur, solange die
+    // strukturierten Felder fehlen — und die sind Pflicht, also praktisch nie.
     [`${p}_fullName`]: a.contactName || "",
     [`${p}_street`]: a.streetAndNumber || "",
     [`${p}_addition`]: a.addressAdd || "",

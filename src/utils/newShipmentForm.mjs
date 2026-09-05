@@ -52,15 +52,25 @@ export function buildPartyPayload(form, prefix) {
   const v = (suffix) => f[`${prefix}_${suffix}`];
   return {
     ...(v("company")  ? { company:         v("company")  } : {}),
-    fullName:        v("fullName"),
+    // Die Kontaktperson steht strukturiert im Payload. Pflichtfelder gehen IMMER mit —
+    // auch leer, damit die serverseitige Prüfung greift, statt dass ein fehlender
+    // Schlüssel still durchrutscht.
+    firstName:       v("firstName"),
+    lastName:        v("lastName"),
+    email:           v("email"),
+    phone:           v("phone"),
+    // `fullName` ist kein Eingabefeld mehr, sondern ein Altbestandswert: ein geöffneter
+    // Entwurf oder eine gespeicherte Adresse aus der Zeit davor trägt ihn noch. Er wird
+    // deshalb nur mitgesendet, wenn er tatsächlich vorliegt — und der Server benutzt ihn
+    // ausschließlich, solange die strukturierten Felder fehlen. Zurückgerechnet wird er
+    // nirgends.
+    ...(v("fullName") ? { fullName:        v("fullName") } : {}),
     streetAndNumber: v("street"),
     ...(v("addition") ? { addressAddition: v("addition") } : {}),
     postalCode:      v("zip"),
     city:            v("city"),
     country:         v("country"),
     ...(v("state")    ? { state:           v("state")    } : {}),
-    ...(v("phone")    ? { phone:           v("phone")    } : {}),
-    ...(v("email")    ? { email:           v("email")    } : {}),
   };
 }
 
@@ -70,7 +80,12 @@ const PARTY_SUFFIXES = Object.freeze([
   // gemeinsamen Feldvertrag, damit Formular, Entwurf und Vorgang ihn wie jedes andere
   // Adressfeld tragen; sichtbar und geprüft wird er nur bei diesen beiden Ländern, und für
   // jedes andere Ziel bleibt er leer und wird nicht gesendet.
-  "company", "fullName", "street", "addition", "zip", "city", "country", "state", "phone", "email",
+  // `firstName`/`lastName` sind die strukturierte Kontaktperson (Versandkontaktvertrag).
+  // `fullName` bleibt in der Liste, damit ein Entwurf oder eine gespeicherte Adresse aus
+  // der Zeit davor weiterhin vollständig geladen und angezeigt werden kann — es ist ein
+  // LESEwert, kein Eingabefeld mehr, und wird nie in Vor-/Nachname zerlegt.
+  "company", "firstName", "lastName", "fullName",
+  "street", "addition", "zip", "city", "country", "state", "phone", "email",
 ]);
 
 export const WEIGHT_MIN_KG = 0.1;
@@ -303,4 +318,65 @@ export function packagePayload(form) {
     width: Number(form.width),
     height: Number(form.height),
   };
+}
+
+/* ── Der Versandkontakt ───────────────────────────────────────────────────────────────
+   Vorname, Nachname, E-Mail und Telefon sind Pflicht — providerneutral, als
+   ConfidaraExpress-Produktregel. Diese Funktion spiegelt `lib/shippingContact.js` des
+   Backends: dieselben Felder, dieselben Grenzen, dieselbe Reihenfolge.
+
+   Sie ERSETZT die serverseitige Prüfung nicht. Sie verhindert nur, dass der Kunde einen
+   Knopf drückt, der garantiert 400 liefert — dieselbe Rolle wie die Paketregeln oben.
+
+   ── Warum 35 und nicht 100 ──────────────────────────────────────────────────────────
+   Der an den Carrier gehende Name ist der ZUSAMMENGESETZTE „Vorname Nachname" und dort
+   auf 35 Zeichen begrenzt. Die 35 wird bewusst nicht halbiert: ein starres 17/17 wäre
+   eine erfundene Grenze und würde „Ann Schmidt-Wellenkamp" grundlos ablehnen. Geprüft
+   wird jedes Feld für sich gegen die Spaltenbreite und der Gesamtname gegen die
+   Carriergrenze — genau wie serverseitig.
+
+   Das Telefon wird auf ANWESENHEIT geprüft, nicht auf Format: ConfidaraExpress hatte nie
+   eine Telefonformatregel, und eine hier erfundene würde gültige Schreibweisen
+   ablehnen, die jeder Carrier annimmt.
+*/
+export const CONTACT_NAME_PART_MAX = 35;
+export const CONTACT_FULL_NAME_MAX = 35;
+export const CONTACT_EMAIL_MAX = 254;
+export const CONTACT_PHONE_MAX = 40;
+
+const CONTACT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Feldfehler des Versandkontakts EINER Partei — Schlüssel wie im Formular (`s_…`/`r_…`). */
+export function shippingContactErrors(form, prefix) {
+  const f = form || {};
+  const v = (suffix) => (typeof f[`${prefix}_${suffix}`] === "string" ? f[`${prefix}_${suffix}`].trim() : "");
+  const e = {};
+
+  const vor = v("firstName");
+  if (!vor)                              e[`${prefix}_firstName`] = "Vorname ist ein Pflichtfeld.";
+  else if (vor.length > CONTACT_NAME_PART_MAX)
+    e[`${prefix}_firstName`] = `Vorname darf maximal ${CONTACT_NAME_PART_MAX} Zeichen enthalten.`;
+
+  const nach = v("lastName");
+  if (!nach)                             e[`${prefix}_lastName`] = "Nachname ist ein Pflichtfeld.";
+  else if (nach.length > CONTACT_NAME_PART_MAX)
+    e[`${prefix}_lastName`] = `Nachname darf maximal ${CONTACT_NAME_PART_MAX} Zeichen enthalten.`;
+
+  // Die Gesamtgrenze wird am Nachnamen gemeldet — dort steht der Cursor zuletzt, und die
+  // Meldung nennt trotzdem ausdrücklich beide Felder.
+  if (vor && nach && `${vor} ${nach}`.length > CONTACT_FULL_NAME_MAX)
+    e[`${prefix}_lastName`] = `Vor- und Nachname dürfen zusammen maximal ${CONTACT_FULL_NAME_MAX} Zeichen enthalten.`;
+
+  const mail = v("email");
+  if (!mail)                             e[`${prefix}_email`] = "E-Mail-Adresse ist ein Pflichtfeld.";
+  else if (mail.length > CONTACT_EMAIL_MAX)
+    e[`${prefix}_email`] = `E-Mail darf maximal ${CONTACT_EMAIL_MAX} Zeichen enthalten.`;
+  else if (!CONTACT_EMAIL_RE.test(mail)) e[`${prefix}_email`] = "E-Mail-Adresse ist ungültig.";
+
+  const tel = v("phone");
+  if (!tel)                              e[`${prefix}_phone`] = "Telefonnummer ist ein Pflichtfeld.";
+  else if (tel.length > CONTACT_PHONE_MAX)
+    e[`${prefix}_phone`] = `Telefonnummer darf maximal ${CONTACT_PHONE_MAX} Zeichen enthalten.`;
+
+  return e;
 }

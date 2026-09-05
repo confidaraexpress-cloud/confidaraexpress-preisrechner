@@ -13,7 +13,8 @@ import { ROLE_SENDER, validateRoleDefaultConsistency } from "./addressRoles.mjs"
 // (UI_ROLE_OPTIONS), das Shape bleibt identisch.
 export function emptyAddressForm(initialRole = ROLE_SENDER) {
   return {
-    label: "", company: "", contactName: "", email: "", phone: "",
+    label: "", company: "", contactName: "",
+    firstName: "", lastName: "", email: "", phone: "",
     streetAndNumber: "", addressAdd: "", postalCode: "", city: "", state: "", country: "DE",
     notes: "", role: initialRole, favorite: false, isDefaultSender: false, isDefaultRecipient: false,
   };
@@ -27,6 +28,10 @@ export function addressToFormValues(address) {
     label: a.label || "",
     company: a.company || "",
     contactName: a.contactName || "",
+    // Altbestand trägt nur `contactName`. Vor- und Nachname bleiben dann LEER — sie
+    // werden nicht aus ihm erzeugt, und der Nutzer ergänzt sie beim Bearbeiten.
+    firstName: a.firstName || "",
+    lastName: a.lastName || "",
     email: a.email || "",
     phone: a.phone || "",
     streetAndNumber: a.streetAndNumber || "",
@@ -77,6 +82,21 @@ export function validateAddressForm(form) {
   const f = form || {};
   const errors = {};
 
+  // ── Versandkontakt ─────────────────────────────────────────────────────────────
+  // Dieselbe Produktregel wie im Versandformular: eine Adresse, mit der versendet
+  // werden soll, trägt eine vollständige Kontaktperson. Eine ALTBESTANDSadresse lässt
+  // sich weiterhin öffnen und ansehen — gespeichert wird sie erst wieder, wenn die vier
+  // Felder stehen. Genau deshalb erscheinen sie beim Bearbeiten leer und als Pflicht.
+  if (!f.firstName?.trim()) errors.firstName = "Vorname ist ein Pflichtfeld.";
+  else if (f.firstName.trim().length > 35) errors.firstName = "Vorname darf maximal 35 Zeichen enthalten.";
+  if (!f.lastName?.trim()) errors.lastName = "Nachname ist ein Pflichtfeld.";
+  else if (f.lastName.trim().length > 35) errors.lastName = "Nachname darf maximal 35 Zeichen enthalten.";
+  if (f.firstName?.trim() && f.lastName?.trim()
+      && `${f.firstName.trim()} ${f.lastName.trim()}`.length > 35)
+    errors.lastName = "Vor- und Nachname dürfen zusammen maximal 35 Zeichen enthalten.";
+  if (!f.email?.trim()) errors.email = "E-Mail-Adresse ist ein Pflichtfeld.";
+  if (!f.phone?.trim()) errors.phone = "Telefonnummer ist ein Pflichtfeld.";
+
   if (!f.streetAndNumber?.trim()) errors.streetAndNumber = "Straße und Hausnummer ist ein Pflichtfeld.";
   if (!f.city?.trim()) errors.city = "Ort ist ein Pflichtfeld.";
 
@@ -112,8 +132,12 @@ export function normalizeAddressForm(form) {
     label: optional(f.label),
     company: optional(f.company),
     contactName: optional(f.contactName),
-    email: optional(f.email),
-    phone: optional(f.phone),
+    // Pflichtfelder gehen getrimmt und IMMER mit — auch leer, damit die serverseitige
+    // Prüfung greift, statt dass ein fehlender Schlüssel still durchrutscht.
+    firstName: (f.firstName || "").trim(),
+    lastName: (f.lastName || "").trim(),
+    email: (f.email || "").trim(),
+    phone: (f.phone || "").trim(),
     streetAndNumber: (f.streetAndNumber || "").trim(),
     addressAdd: optional(f.addressAdd),
     postalCode: (f.postalCode || "").trim(),

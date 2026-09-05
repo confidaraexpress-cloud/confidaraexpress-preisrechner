@@ -26,7 +26,7 @@ import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippin
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
-  buildPartyPayload,
+  buildPartyPayload, shippingContactErrors,
 } from "../utils/newShipmentForm.mjs";
 
 // Backend-Feldpfad → Formularschlüssel dieser Seite. Damit landet ein
@@ -38,6 +38,8 @@ import {
 // Eintrag geändert.
 const SHIPMENT_FIELD_MAP = {
   "sender.company": "s_company",
+  "sender.firstName": "s_firstName",
+  "sender.lastName": "s_lastName",
   "sender.fullName": "s_fullName",
   "sender.streetAndNumber": "s_street",
   "sender.addressAddition": "s_addition",
@@ -47,6 +49,8 @@ const SHIPMENT_FIELD_MAP = {
   "sender.phone": "s_phone",
   "sender.email": "s_email",
   "recipient.company": "r_company",
+  "recipient.firstName": "r_firstName",
+  "recipient.lastName": "r_lastName",
   "recipient.fullName": "r_fullName",
   "recipient.streetAndNumber": "r_street",
   "recipient.addressAddition": "r_addition",
@@ -68,8 +72,10 @@ const SHIPMENT_FIELD_MAP = {
 // Reihenfolge im Formular — bestimmt, welches Feld bei mehreren Fehlern
 // angesprungen wird (immer das oberste).
 const SHIPMENT_FIELD_ORDER = [
-  "s_fullName", "s_company", "s_street", "s_addition", "s_zip", "s_city", "s_email",
-  "r_fullName", "r_company", "r_street", "r_addition", "r_zip", "r_city", "r_email",
+  "s_firstName", "s_lastName", "s_company", "s_street", "s_addition", "s_zip", "s_city",
+  "s_email", "s_phone",
+  "r_firstName", "r_lastName", "r_company", "r_street", "r_addition", "r_zip", "r_city",
+  "r_email", "r_phone",
   "packageCount", "weight", "length", "width", "height", "shippingDate",
 ];
 const firstShipmentErrorField = (errs) =>
@@ -126,8 +132,11 @@ const FILTER_ONLY_FIELDS = new Set(["max_price", "latestDeliveryDate", "latestDe
 function getErrors(form) {
   const e = {};
 
-  if (!form.s_fullName?.trim())             e.s_fullName = "Name ist ein Pflichtfeld.";
-  else if (form.s_fullName.length > 100)    e.s_fullName = "Name darf maximal 100 Zeichen enthalten.";
+  // Vorname, Nachname, E-Mail und Telefon kommen aus dem gemeinsamen Versandkontakt-
+  // vertrag (newShipmentForm.mjs), der `lib/shippingContact.js` des Backends spiegelt.
+  // Sie werden hier NICHT ein zweites Mal formuliert — zwei Fassungen derselben Regel
+  // liefen unweigerlich auseinander.
+  Object.assign(e, shippingContactErrors(form, "s"));
   if (form.s_company?.length > 200)         e.s_company  = "Unternehmen darf maximal 200 Zeichen enthalten.";
   if (!form.s_street?.trim())               e.s_street   = "Straße ist ein Pflichtfeld.";
   else if (form.s_street.length > 200)      e.s_street   = "Straße darf maximal 200 Zeichen enthalten.";
@@ -146,13 +155,10 @@ function getErrors(form) {
   { const m = stateFieldError(form.s_country, form.s_state); if (m) e.s_state = m; }
   if (!form.s_city?.trim())                 e.s_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.s_city.length > 100)        e.s_city     = "Stadt darf maximal 100 Zeichen enthalten.";
-  if (form.s_email) {
-    if (form.s_email.length > 254)          e.s_email    = "E-Mail darf maximal 254 Zeichen enthalten.";
-    else if (!EMAIL_RE.test(form.s_email))  e.s_email    = "E-Mail-Adresse ist ungültig.";
-  }
+  // (E-Mail: siehe shippingContactErrors — sie ist seit dem Versandkontaktvertrag
+  //  Pflicht und wird dort geprüft, mit demselben Muster wie bisher.)
 
-  if (!form.r_fullName?.trim())             e.r_fullName = "Name ist ein Pflichtfeld.";
-  else if (form.r_fullName.length > 100)    e.r_fullName = "Name darf maximal 100 Zeichen enthalten.";
+  Object.assign(e, shippingContactErrors(form, "r"));
   if (form.r_company?.length > 200)         e.r_company  = "Unternehmen darf maximal 200 Zeichen enthalten.";
   if (!form.r_street?.trim())               e.r_street   = "Straße ist ein Pflichtfeld.";
   else if (form.r_street.length > 200)      e.r_street   = "Straße darf maximal 200 Zeichen enthalten.";
@@ -166,10 +172,8 @@ function getErrors(form) {
   { const m = stateFieldError(form.r_country, form.r_state); if (m) e.r_state = m; }
   if (!form.r_city?.trim())                 e.r_city     = "Stadt ist ein Pflichtfeld.";
   else if (form.r_city.length > 100)        e.r_city     = "Stadt darf maximal 100 Zeichen enthalten.";
-  if (form.r_email) {
-    if (form.r_email.length > 254)          e.r_email    = "E-Mail darf maximal 254 Zeichen enthalten.";
-    else if (!EMAIL_RE.test(form.r_email))  e.r_email    = "E-Mail-Adresse ist ungültig.";
-  }
+  // (E-Mail: siehe shippingContactErrors — sie ist seit dem Versandkontaktvertrag
+  //  Pflicht und wird dort geprüft, mit demselben Muster wie bisher.)
 
   // Anzahl, Gewicht UND alle drei Maße sind Pflicht — eine Quelle für alle
   // fünf (newShipmentForm.mjs), dieselben Grenzen wie serverseitig.
@@ -1658,7 +1662,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   </div>
                   {addressNote.s && <p className="calc-section-note">{addressNote.s}</p>}
                   {addrField("s", "company",  "Unternehmen",       "text",  "Firma GmbH",     true)}
-                  {addrField("s", "fullName", "Vor- und Nachname", "text",  "Max Mustermann")}
+                  {/* Die Kontaktperson steht strukturiert. Ein einzelnes Namensfeld konnte
+                      „Max Mustermann" und „Muster GmbH" nicht unterscheiden — die Firma
+                      steht deshalb darüber und getrennt. Zwei Spalten im vorhandenen
+                      Raster, unter 600 px stapeln sie wie jede andere `field-row-2`. */}
+                  <div className="field-row field-row-2">
+                    {addrField("s", "firstName", "Vorname",  "text", "Max")}
+                    {addrField("s", "lastName",  "Nachname", "text", "Mustermann")}
+                  </div>
                   <AddressSuggestInput
                     id="ns-s-street"
                     floating
@@ -1700,8 +1711,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     citySuggestions={senderCheck.cityOptions}
                     onPickCity={(c) => upd("s_city", c)}
                   />
-                  {addrField("s", "phone", "Telefon", "tel",   "+49 711 …",    true)}
-                  {addrField("s", "email", "E-Mail",  "email", "max@firma.de", true)}
+                  {/* Pflicht seit dem Versandkontaktvertrag — der Carrier braucht einen
+                      erreichbaren Ansprechpartner, und ConfidaraExpress erhebt ihn
+                      deshalb generell, nicht je nach Tarif. */}
+                  {addrField("s", "phone", "Telefon", "tel",   "+49 711 …")}
+                  {addrField("s", "email", "E-Mail",  "email", "max@firma.de")}
                 </div>
                 <div>
                   <div className="calc-section-head">
@@ -1715,7 +1729,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   </div>
                   {addressNote.r && <p className="calc-section-note">{addressNote.r}</p>}
                   {addrField("r", "company",  "Unternehmen",       "text",  "Firma AG",     true)}
-                  {addrField("r", "fullName", "Vor- und Nachname", "text",  "Erika Muster")}
+                  <div className="field-row field-row-2">
+                    {addrField("r", "firstName", "Vorname",  "text", "Erika")}
+                    {addrField("r", "lastName",  "Nachname", "text", "Muster")}
+                  </div>
                   <AddressSuggestInput
                     id="ns-r-street"
                     floating
@@ -1757,8 +1774,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     citySuggestions={recipientCheck.cityOptions}
                     onPickCity={(c) => upd("r_city", c)}
                   />
-                  {addrField("r", "phone", "Telefon", "tel",   "+41 44 …",       true)}
-                  {addrField("r", "email", "E-Mail",  "email", "erika@firma.ch", true)}
+                  {addrField("r", "phone", "Telefon", "tel",   "+41 44 …")}
+                  {addrField("r", "email", "E-Mail",  "email", "erika@firma.ch")}
                 </div>
               </div>
             </div>

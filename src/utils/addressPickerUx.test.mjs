@@ -65,15 +65,17 @@ const adresse = {
 
 /* ══════════ A — Feldauslegung: Kopie, keine Bindung ═══════════════════════ */
 
-test("A1 die Auswahl füllt genau die zehn Adressfelder der jeweiligen Seite", () => {
-  // Zehn statt neun seit dem Zollpaket: `state` (Bundesstaat) gehört zum Formshape, weil der
-  // Providervertrag ihn für US/CA verlangt. Er wird gefiltert übernommen — die Regel dazu
-  // prüft addressBookView.test.mjs (19b).
+test("A1 die Auswahl füllt genau die zwölf Adressfelder der jeweiligen Seite", () => {
+  // Zehn seit dem Zollpaket (`state` gehört zum Formshape, weil der Providervertrag ihn
+  // für US/CA verlangt), zwölf seit dem Versandkontaktvertrag: `firstName` und `lastName`
+  // sind die strukturierte Kontaktperson. `fullName` bleibt daneben als Altbestandswert —
+  // es ist kein Eingabefeld mehr, geht aber im Vorgang nicht verloren.
   for (const [prefix, gegen] of [["s", "r"], ["r", "s"]]) {
     const patch = mapAddressToShipmentFormPatch(adresse, prefix);
     assert.deepEqual(Object.keys(patch).sort(), [
       `${prefix}_addition`, `${prefix}_city`, `${prefix}_company`, `${prefix}_country`,
-      `${prefix}_email`, `${prefix}_fullName`, `${prefix}_phone`, `${prefix}_state`,
+      `${prefix}_email`, `${prefix}_firstName`, `${prefix}_lastName`, `${prefix}_fullName`,
+      `${prefix}_phone`, `${prefix}_state`,
       `${prefix}_street`, `${prefix}_zip`,
     ].sort());
     // Die andere Seite wird nicht angefasst: eine Empfängerauswahl darf niemals

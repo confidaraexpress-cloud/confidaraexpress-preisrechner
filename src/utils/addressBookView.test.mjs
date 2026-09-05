@@ -130,8 +130,12 @@ test("15 — leere optionale Felder werden zu null normalisiert (Pflichtfelder b
   const n = normalizeAddressForm(form);
   assert.equal(n.company, null);
   assert.equal(n.addressAdd, null);
-  assert.equal(n.phone, null);
-  assert.equal(n.email, null);
+  // E-Mail und Telefon sind seit dem Versandkontaktvertrag PFLICHT und verhalten sich
+  // deshalb wie die Straße: getrimmter String, nie null. Die Zusicherung dieses Tests —
+  // „optionale Felder werden null, Pflichtfelder bleiben Strings" — ist unverändert;
+  // nur die Zuordnung der beiden Felder hat sich geändert.
+  assert.equal(n.phone, "", "Pflichtfeld bleibt String");
+  assert.equal(n.email, "", "Pflichtfeld bleibt String");
   assert.equal(n.notes, null);
   assert.equal(n.state, null);
   assert.equal(n.streetAndNumber, "Musterstraße 1", "Pflichtfeld bleibt getrimmter String, kein null");
@@ -173,13 +177,30 @@ test("18b — Duplikat-Label wird sinnvoll gekennzeichnet, ohne das Original zu 
 
 // 19. Adressobjekt wird korrekt in bestehendes Shipment-Formshape gemappt.
 test("19 — mapAddressToShipmentFormPatch mappt auf das bestehende NewShipmentPage-Formshape", () => {
-  const a = addr({ role: ROLE_SENDER, company: "Beispiel GmbH", contactName: "Max Mustermann", streetAndNumber: "Musterstraße 1", addressAdd: "Tor 3", postalCode: "10115", city: "Berlin", country: "de", email: "a@b.de", phone: "+49 1" });
+  const a = addr({ role: ROLE_SENDER, company: "Beispiel GmbH", contactName: "Max Mustermann",
+                   firstName: "Max", lastName: "Mustermann",
+                   streetAndNumber: "Musterstraße 1", addressAdd: "Tor 3", postalCode: "10115",
+                   city: "Berlin", country: "de", email: "a@b.de", phone: "+49 1" });
   const patch = mapAddressToShipmentFormPatch(a, "s");
   assert.deepEqual(patch, {
-    s_company: "Beispiel GmbH", s_fullName: "Max Mustermann", s_street: "Musterstraße 1",
+    s_company: "Beispiel GmbH",
+    // Die strukturierte Kontaktperson wird übernommen; der Altwert wandert weiter in das
+    // Legacyfeld, damit ein Vorgang ihn nicht verliert.
+    s_firstName: "Max", s_lastName: "Mustermann", s_fullName: "Max Mustermann",
+    s_street: "Musterstraße 1",
     s_addition: "Tor 3", s_zip: "10115", s_city: "Berlin", s_country: "DE",
     s_state: "", s_phone: "+49 1", s_email: "a@b.de",
   });
+
+  // Und der ALTBESTAND: nur `contactName`, keine strukturierten Felder. Sie bleiben leer —
+  // aus „Müller GmbH" entsteht kein Vorname und kein Nachname.
+  const alt = addr({ role: ROLE_SENDER, contactName: "Müller GmbH",
+                     streetAndNumber: "Musterstraße 1", postalCode: "10115",
+                     city: "Berlin", country: "DE" });
+  const altPatch = mapAddressToShipmentFormPatch(alt, "s");
+  assert.equal(altPatch.s_firstName, "", "aus contactName wurde ein Vorname erzeugt");
+  assert.equal(altPatch.s_lastName, "", "aus contactName wurde ein Nachname erzeugt");
+  assert.equal(altPatch.s_fullName, "Müller GmbH", "der Altwert ging verloren");
   const rPatch = mapAddressToShipmentFormPatch(a, "r");
   assert.equal(Object.keys(rPatch).every(k => k.startsWith("r_")), true);
   // `s_state` gehört seit dem Zollpaket zum Formshape (Providervertrag: Bundesstaat ist für
@@ -262,7 +283,11 @@ test("25 — addressToFormValues ignoriert unbekannte Response-Felder", () => {
   const dirty = { ...addr(), unexpectedField: "x", __proto__hack: 1, internalDebugFlag: true };
   const form = addressToFormValues(dirty);
   const knownKeys = [
-    "label", "company", "contactName", "email", "phone", "streetAndNumber", "addressAdd",
+    // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen.
+    // `contactName` bleibt in der Liste: ein Altbestand trägt ihn noch, und die
+    // Oberfläche zeigt ihn, solange die strukturierten Felder leer sind.
+    "label", "company", "contactName", "firstName", "lastName",
+    "email", "phone", "streetAndNumber", "addressAdd",
     "postalCode", "city", "state", "country", "notes", "role", "favorite",
     "isDefaultSender", "isDefaultRecipient",
   ];
@@ -284,8 +309,25 @@ test("toQueryString sendet nur allowlistete Keys (keine erfundenen Parameter)", 
 });
 
 test("validateAddressForm: vollständiges gültiges Formular hat keine Fehler", () => {
-  const form = { streetAndNumber: "Musterstraße 1", city: "Berlin", country: "DE", postalCode: "10115", contactName: "Max Mustermann", email: "a@b.de", role: ROLE_SENDER, isDefaultSender: true, isDefaultRecipient: false };
+  // „Vollständig" heißt seit dem Versandkontaktvertrag: Kontaktperson strukturiert,
+  // E-Mail UND Telefon vorhanden.
+  const form = { streetAndNumber: "Musterstraße 1", city: "Berlin", country: "DE", postalCode: "10115",
+                 firstName: "Max", lastName: "Mustermann", email: "a@b.de", phone: "+49 30 1234",
+                 role: ROLE_SENDER, isDefaultSender: true, isDefaultRecipient: false };
   assert.deepEqual(validateAddressForm(form), {});
+});
+
+test("validateAddressForm: eine ALTBESTANDSadresse ist unvollständig für den Versand", () => {
+  // Nur `contactName`, keine strukturierten Felder, kein Telefon: lesbar ja, speicherbar
+  // nein. Und aus „Müller GmbH" entsteht dabei kein Personenname.
+  const alt = { streetAndNumber: "Musterstraße 1", city: "Berlin", country: "DE", postalCode: "10115",
+                contactName: "Müller GmbH", role: ROLE_SENDER,
+                isDefaultSender: false, isDefaultRecipient: false };
+  const e = validateAddressForm(alt);
+  assert.equal(e.firstName, "Vorname ist ein Pflichtfeld.");
+  assert.equal(e.lastName, "Nachname ist ein Pflichtfeld.");
+  assert.equal(e.email, "E-Mail-Adresse ist ein Pflichtfeld.");
+  assert.equal(e.phone, "Telefonnummer ist ein Pflichtfeld.");
 });
 
 test("validateAddressForm: fehlendes Land/Straße/Ort werden als Pflichtfeld-Fehler erkannt", () => {

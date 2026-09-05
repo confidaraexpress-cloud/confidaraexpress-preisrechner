@@ -233,6 +233,10 @@
   color: var(--ce-color-text-muted); margin-bottom: 12px;
 }
 .abk-drawer-unsaved-note { font-size: 12px; color: var(--ce-color-text-muted); margin-right: auto; }
+/* Altbestandshinweis im Kontaktabschnitt: nennt den bisher gespeicherten Namen, während
+   Vor- und Nachname noch leer sind. Steht im Abschnittsfluss, nicht in der Fußzeile — deshalb ohne das `margin-right: auto` der Zeile darüber.
+   Nur Foundation-Tokens, kein Farbliteral. */
+.abk-drawer-hint { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); margin: -4px 0 4px; }
 
 .abk-role-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .abk-role-option {

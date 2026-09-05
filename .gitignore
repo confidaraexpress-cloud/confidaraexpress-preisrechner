@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env.local
 .env.*.local
+
+# Belegbilder der Tarifkarten-Paritaetspruefung. Sie entstehen beim Lauf von
+# tests/e2e/offerCardParity.test.mjs neu und gehoeren nicht in die Versionierung.
+tests/e2e/screenshots/

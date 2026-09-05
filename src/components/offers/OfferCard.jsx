@@ -66,10 +66,26 @@ function buildEnd(t, etaLabel, earlyNote) {
   const hasRange = !!(minDay && maxDay);
 
   let primary;
+  let title = "Lieferung";
   if (hasRange && minDay !== maxDay) primary = `${fmtDay(t.deliveryDateMin)} – ${fmtDay(t.deliveryDateMax)}`;
   else if (hasRange)                 primary = fmtDay(t.deliveryDateMin);
   else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
-  else                                primary = etaLabel;
+  else {
+    // KEIN Kalenderdatum vorhanden. Dann steht hier die Laufzeit — und der Knoten
+    // heisst auch so.
+    //
+    // Vorher trug er unveraendert den Titel „Lieferung" und darunter „1–2 Tage".
+    // Das liest sich wie ein Zustelltermin, ist aber keiner: es ist eine Dauer.
+    // Ein Datum daraus zu RECHNEN waere die naheliegende und falsche Loesung —
+    // wir kennen weder Abholtag noch Feiertage noch Cutoff, und eine erfundene
+    // Kalenderangabe waere eine Zusage, die niemand halten kann.
+    //
+    // Die visuelle Struktur bleibt exakt dieselbe; nur der Inhalt sagt die
+    // Wahrheit. Providerneutral: entschieden wird an den DATEN, nicht daran, von
+    // wem das Angebot stammt.
+    title = "Voraussichtliche Laufzeit";
+    primary = etaLabel;
+  }
 
   // Die NORMALE Lieferzeile bleibt neutral und zweizeilig: Datum als primäre
   // Information, Uhrzeit als sekundäre Unterzeile — für JEDEN Tarif gleich,
@@ -94,7 +110,7 @@ function buildEnd(t, etaLabel, earlyNote) {
   const zeitText = deliveryTimeLabel(t);
   const secondary = [];
   if (zeitText && !earlyNote) secondary.push(zeitText);
-  return { title: "Lieferung", primary, secondary };
+  return { title, primary, secondary };
 }
 
 // ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
@@ -505,12 +521,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               eine Preisauskunft ist. Providerneutral — die Zeile hängt allein an
               `serviceType`, nicht an der Einkaufsquelle. */}
           {handoverText && <p className="offer-handover">{handoverText}</p>}
-          {unavailable ? (
-            <div className="offer-unavail">
-              <Icon n="info" s={15} c="currentColor" />
-              <span>{unavailableText}</span>
-            </div>
-          ) : (
+          {/* Die Timeline steht auf JEDEM Angebot.
+              Vorher ersetzte eine Hinweiszeile die ganze Zone, sobald das Angebot
+              nicht buchbar war — und mit ihr verschwanden Uebergabeart, Laufzeit
+              und Ablauf. Damit sah eine vollstaendige, korrekte Preisauskunft aus
+              wie eine unfertige Karte. Der Ablauf ist eine Eigenschaft des
+              PRODUKTS; ob man es gerade bestellen kann, ist eine andere Frage und
+              steht dort, wo sie hingehoert: an der Aktion. */}
+          {(
             <div className="offer-timeline">
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
@@ -580,6 +598,11 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               <div className="offer-price-na">Preis auf Anfrage</div>
             )}
           </div>
+          {/* Der Grund steht AN der Aktion — und zwar IM Knopf, nicht daneben.
+              Eine zusaetzliche Statuszeile darueber war der erste Versuch; im Bild
+              stand derselbe Satz dann zweimal untereinander, und die Karte wurde
+              25 px hoeher als eine buchbare daneben. Beides gemessen, beides
+              unnoetig: der Knopf sagt es bereits. */}
           <button
             className={`offer-cta-btn ${ctaClass}`}
             onClick={handleBook}

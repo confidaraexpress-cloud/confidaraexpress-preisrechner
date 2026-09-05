@@ -111,15 +111,24 @@ test("7 — die Angebotskarte leitet Kennzeichnung UND Knotentitel aus diesem Mo
  * Die Übergabeart ist eine Eigenschaft des PRODUKTS, nicht der Buchbarkeit. Sie
  * steht deshalb VOR der Verzweigung. Diese Prüfung hält die Stelle fest — eine
  * Rückverlagerung in den Timeline-Zweig macht die Aussage wieder unsichtbar. */
-test("die Übergabeart steht außerhalb des Timeline-Zweigs", () => {
+test("die Übergabeart hängt nicht an der Buchbarkeit", () => {
+  // Diese Zusicherung hat ihre FORM geändert, nicht ihre Absicht.
+  //
+  // Sie verlangte, dass die Übergabeart VOR der Verzweigung `{unavailable ? (` steht —
+  // denn innerhalb wäre sie auf einem gesperrten Angebot unsichtbar gewesen, und eine
+  // Paketshopabgabe ließe sich nicht mehr von einer Türabholung unterscheiden.
+  //
+  // Die Verzweigung gibt es nicht mehr: Zone 2 rendert Übergabeart UND Timeline
+  // unabhängig davon, ob man das Angebot gerade bestellen kann. Damit ist die
+  // ursprüngliche Sorge stärker erledigt als durch eine Reihenfolge — es gibt keinen
+  // Zweig, in den etwas hineinrutschen könnte.
   const src = readFileSync(new URL("../components/offers/OfferCard.jsx", import.meta.url), "utf8");
-  const zone2 = src.slice(src.indexOf('className="offer-zone-2"'));
-  const handover = zone2.indexOf('className="offer-handover"');
-  const verzweigung = zone2.indexOf("{unavailable ? (");
-  const timeline = zone2.indexOf('className="offer-timeline"');
+  const zone2 = src.slice(src.indexOf('className="offer-zone-2"'),
+                          src.indexOf('className="offer-zone-3"'));
 
-  assert.ok(handover > 0 && verzweigung > 0 && timeline > 0, "Zone 2 hat sich strukturell geändert");
-  assert.ok(handover < verzweigung,
-    "die Übergabeart steht wieder INNERHALB der Verzweigung — auf einem gesperrten Angebot wäre sie damit unsichtbar");
-  assert.ok(verzweigung < timeline, "die Verzweigung steht nicht mehr vor der Timeline");
+  assert.ok(zone2.indexOf('className="offer-handover"') > 0, "die Übergabeart fehlt in Zone 2");
+  assert.ok(zone2.indexOf('className="offer-timeline"') > 0, "die Timeline fehlt in Zone 2");
+  assert.ok(!zone2.includes("{unavailable ? ("),
+    "Zone 2 verzweigt wieder auf die Buchbarkeit — damit verschwindet auf einem "
+    + "gesperrten Angebot entweder die Übergabeart oder der Ablauf");
 });

@@ -66,10 +66,26 @@ function buildEnd(t, etaLabel, earlyNote) {
   const hasRange = !!(minDay && maxDay);
 
   let primary;
+  let title = "Lieferung";
   if (hasRange && minDay !== maxDay) primary = `${fmtDay(t.deliveryDateMin)} – ${fmtDay(t.deliveryDateMax)}`;
   else if (hasRange)                 primary = fmtDay(t.deliveryDateMin);
   else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
-  else                                primary = etaLabel;
+  else {
+    // KEIN Kalenderdatum vorhanden. Dann steht hier die Laufzeit — und der Knoten
+    // heisst auch so.
+    //
+    // Vorher trug er unveraendert den Titel „Lieferung" und darunter „1–2 Tage".
+    // Das liest sich wie ein Zustelltermin, ist aber keiner: es ist eine Dauer.
+    // Ein Datum daraus zu RECHNEN waere die naheliegende und falsche Loesung —
+    // wir kennen weder Abholtag noch Feiertage noch Cutoff, und eine erfundene
+    // Kalenderangabe waere eine Zusage, die niemand halten kann.
+    //
+    // Die visuelle Struktur bleibt exakt dieselbe; nur der Inhalt sagt die
+    // Wahrheit. Providerneutral: entschieden wird an den DATEN, nicht daran, von
+    // wem das Angebot stammt.
+    title = "Voraussichtliche Laufzeit";
+    primary = etaLabel;
+  }
 
   // Die NORMALE Lieferzeile bleibt neutral und zweizeilig: Datum als primäre
   // Information, Uhrzeit als sekundäre Unterzeile — für JEDEN Tarif gleich,
@@ -94,20 +110,28 @@ function buildEnd(t, etaLabel, earlyNote) {
   const zeitText = deliveryTimeLabel(t);
   const secondary = [];
   if (zeitText && !earlyNote) secondary.push(zeitText);
-  return { title: "Lieferung", primary, secondary };
+  return { title, primary, secondary };
 }
 
-// ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
-// Lokale Variante (Arbeitstage-Wording), ohne den geteilten fmtDelivery-Helfer
-// zu verändern (der weiterhin Karte/ETA & BookingPage versorgt).
-function fmtTransitDetail(t) {
-  const a = t.transitDaysMin, b = t.transitDaysMax;
-  if (a != null && b != null) {
-    if (a === b) return a === 0 ? "Noch heute" : a === 1 ? "1 Arbeitstag" : `${a} Arbeitstage`;
-    return `${a}–${b} Arbeitstage`;
-  }
-  return fmtDelivery(t) || null;
-}
+// ── Versandlaufzeit als Detailzeile ──
+//
+// Hier stand eine lokale Variante, die dieselben Zahlen als „1–3 Arbeitstage"
+// ausgab, während die Kartenfläche darüber „1–3 Tage" zeigte. Zwei Beschriftungen
+// für DIESELBE Zahl auf DERSELBEN Karte — und die zweite behauptete mehr als die
+// erste.
+//
+// Gesucht, nicht vermutet: für „Arbeitstage" gibt es bei KEINEM Provider einen
+// Beleg. JUMiNGO liefert `transit_time_min/max` als blanke Zahlen, Transglobal
+// einen blanken `TransitTimeEstimate`. Die Aufwertung zu Arbeitstagen war eine
+// Deutung ohne Quelle — bei einer Laufzeit ist das der Unterschied zwischen
+// „übermorgen" und „Dienstag".
+//
+// Deshalb dieselbe neutrale Formulierung wie auf der Kartenfläche. JUMiNGO
+// verliert dabei NICHTS Echtes: seine kalenderbezogenen Angaben (Abholtermin,
+// Zeitfenster, Liefertermin, Lieferzeitraum, Lieferung bis) stehen unverändert
+// im Abschnitt „Termin & Abholung" — das ist seine reale Zusatzsemantik, und die
+// bleibt. Weg fällt allein ein Wort, das keine Datenquelle deckt.
+const fmtTransitDetail = (t) => fmtDelivery(t) || null;
 
 // ── tariffLimits → natürliche, kundennahe deutsche Sätze ──
 // Jeder bekannte Operant hat ein Satz-Template mit Slot für Operator-Wort + Wert.
@@ -237,7 +261,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // die "Termin & Abholung" konkreter zeigt (Abgabestelle, Lieferzeit), werden
   // hier bewusst NICHT wiederholt. Der Tarifname spannt die volle Breite.
   const features = [];
-  if (transitDetail)               features.push({ icon: "clock",   label: "Versandlaufzeit",        value: transitDetail });
+  // Dieselbe Beschriftung wie der Timeline-Knoten: es ist eine Schätzung, keine Zusage.
+  if (transitDetail)               features.push({ icon: "clock",   label: "Voraussichtliche Laufzeit", value: transitDetail });
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
@@ -505,12 +530,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               eine Preisauskunft ist. Providerneutral — die Zeile hängt allein an
               `serviceType`, nicht an der Einkaufsquelle. */}
           {handoverText && <p className="offer-handover">{handoverText}</p>}
-          {unavailable ? (
-            <div className="offer-unavail">
-              <Icon n="info" s={15} c="currentColor" />
-              <span>{unavailableText}</span>
-            </div>
-          ) : (
+          {/* Die Timeline steht auf JEDEM Angebot.
+              Vorher ersetzte eine Hinweiszeile die ganze Zone, sobald das Angebot
+              nicht buchbar war — und mit ihr verschwanden Uebergabeart, Laufzeit
+              und Ablauf. Damit sah eine vollstaendige, korrekte Preisauskunft aus
+              wie eine unfertige Karte. Der Ablauf ist eine Eigenschaft des
+              PRODUKTS; ob man es gerade bestellen kann, ist eine andere Frage und
+              steht dort, wo sie hingehoert: an der Aktion. */}
+          {(
             <div className="offer-timeline">
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
@@ -580,6 +607,11 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               <div className="offer-price-na">Preis auf Anfrage</div>
             )}
           </div>
+          {/* Der Grund steht AN der Aktion — und zwar IM Knopf, nicht daneben.
+              Eine zusaetzliche Statuszeile darueber war der erste Versuch; im Bild
+              stand derselbe Satz dann zweimal untereinander, und die Karte wurde
+              25 px hoeher als eine buchbare daneben. Beides gemessen, beides
+              unnoetig: der Knopf sagt es bereits. */}
           <button
             className={`offer-cta-btn ${ctaClass}`}
             onClick={handleBook}

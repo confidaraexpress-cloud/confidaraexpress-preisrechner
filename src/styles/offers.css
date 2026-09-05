@@ -306,10 +306,28 @@
 
 /* Nicht verfügbar — abgeschwächt, nicht buchbar wirkend, aber lesbar; kein
    Hover-Effekt, weil die Karte nicht auswählbar ist. */
-.offer-card--unavailable { cursor: default; opacity: 0.72; background: var(--ce-color-surface-muted); }
+/* ── Nicht bestellbar ist NICHT minderwertig ──────────────────────────────────
+   Diese Regel hat frueher die ganze Karte entwertet: `opacity: 0.72`, graue
+   Flaeche, Carrierlogo in Graustufen, gedaempfter und kleinerer Preis. Damit sah
+   eine vollstaendige, korrekte Preisauskunft aus wie ein Fehler.
+
+   Sie ist es nicht. Carrier, Service, Uebergabeart, Laufzeit und Preis sind
+   real; nur BESTELLEN kann man gerade nicht. Die Karte behaelt deshalb ihre
+   volle Wertigkeit — der Unterschied steht am Knopf und in der Zeile darueber,
+   also genau dort, wo die Einschraenkung gilt.
+
+   Was bleibt: kein Zeigerwechsel (die Karte ist nicht anklickbar) und kein
+   Hover-Anheben (es gibt nichts auszuwaehlen). Beides sind Aussagen ueber die
+   AKTION, nicht ueber den Wert der Auskunft.
+
+   Der KLASSENNAME bleibt bewusst `--unavailable`: er beschreibt weiterhin
+   korrekt die Buchbarkeit, und rund zehn Browser-Suiten sprechen Karten ueber
+   `:not(.offer-card--unavailable)` an. Ein Rename haette sie alle angefasst,
+   ohne dass sich an der Aussage etwas aendert. Falsch war die Gestaltung, nicht
+   der Name. */
+.offer-card--unavailable { cursor: default; }
 .offer-card--unavailable:hover { border-color: var(--ce-color-border-default); box-shadow: var(--ce-elevation-2); }
-.offer-card--unavailable .offer-logo-tile img { filter: grayscale(1); opacity: 0.7; }
-.offer-card--unavailable .offer-price { color: var(--ce-color-text-muted); }
+
 
 /* 4-zone grid (desktop): Zone1 | Zone2 | Zone3 in der Top-Row, Zone4 volle Breite */
 .offer-card-inner {
@@ -564,7 +582,9 @@
 .offer-price-sub { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 4px; }
 .offer-price-na  { font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); text-align: right; }
 /* Nicht verfügbar: Preis bleibt sichtbar, aber weniger dominant */
-.offer-card--unavailable .offer-price { font-size: 24px; color: var(--ce-color-text-muted); }
+/* Der Preis behaelt seine volle Groesse und Farbe — er ist real, auch wenn das
+   Angebot gerade nicht bestellbar ist. Ihn zu verkleinern sagte dem Kunden
+   „diese Zahl gilt nicht so richtig", und das stimmt nicht. */
 
 .offer-cta-btn {
   width: 100%; min-width: 180px; height: 44px;

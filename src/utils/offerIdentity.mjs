@@ -55,6 +55,35 @@ export function sameOffer(a, b) {
    Ein FEHLENDES Feld sperrt nichts. Das ist die tragende Zeile: `undefined`
    heißt „dazu sagt das Backend nichts", nicht „nein". Wer hier auf
    `!t.bookable` prüft, sperrt jedes Angebot aus einer älteren Antwort. */
+/* ─── DARSTELLUNG UND BUCHBARKEIT SIND ZWEI FRAGEN ──────────────────────────
+   Lange beantwortete `offerBlocked` beide, und die Karte machte daraus einen
+   einzigen Zustand: gesperrt hiess ausgegraut, Preis gedaempft und verkleinert,
+   Carrierlogo in Graustufen, Timeline durch eine Hinweiszeile ersetzt.
+
+   Das ist eine Verwechslung. Ein Angebot, das man gerade nicht bestellen kann,
+   ist deswegen keine minderwertige Auskunft: Carrier, Service, Uebergabeart,
+   Laufzeit und vor allem der PREIS sind vollstaendig real und genau das, wofuer
+   der Kunde den Preisrechner geoeffnet hat. Sie blass zu zeichnen sagt ihm
+   "diese Zahl gilt nicht so richtig" — und das stimmt nicht.
+
+   Deshalb gibt es ab hier zwei Begriffe:
+
+     offerBookable(t)   Darf der Kunde DIESES Angebot beauftragen? Steuert
+                        ausschliesslich Folgeschritte: CTA, Kartenklick,
+                        Paketshopsuche, Auszeichnungen.
+
+     offerBlocked(t)    Unveraendert das Gegenteil davon — bleibt als Name
+                        erhalten, weil mehrere Aufrufer ihn tragen. Er steuert
+                        aber NICHT mehr die optische Wertigkeit der Karte.
+
+   Wer eine neue Sperre einbaut, entscheidet damit ueber Aktionen. Ueber das
+   Aussehen der Karte entscheidet er nicht. */
+
+/** Darf dieses Angebot beauftragt werden? Die einzige Frage, die Aktionen steuert. */
+export function offerBookable(tariff) {
+  return !offerBlocked(tariff);
+}
+
 export function offerBlocked(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   return t.bookable === false || t.availableForDate === false;

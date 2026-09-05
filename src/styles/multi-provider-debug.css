@@ -14,10 +14,12 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Die Tonflaeche liegt als eigene Ebene UNTER dem Karteninhalt, nicht als
-   `background` der Karte: `.offer-card--unavailable` setzt eine eigene
-   Flaechenfarbe, und ein Wettstreit zweier `background`-Deklarationen haette
-   entweder den Ton oder den Nichtverfuegbar-Zustand verschluckt. Als
-   Pseudo-Ebene bleiben beide sichtbar.
+   `background` der Karte. Der urspruengliche Grund war ein Wettstreit zweier
+   `background`-Deklarationen mit `.offer-card--unavailable`; diese Regel setzt
+   inzwischen keine eigene Flaechenfarbe mehr (siehe offers.css — nicht
+   bestellbar heisst nicht minderwertig). Die eigene Ebene bleibt trotzdem
+   richtig: sie haelt den Ton unabhaengig von jeder kuenftigen Flaechenregel und
+   kostet nichts.
 
    `pointer-events: none` — die Ebene liegt ueber der Kartenflaeche und duerfte
    sonst den Klick auf die Karte abfangen. */
@@ -50,6 +52,7 @@
    unsichtbarer Text in der Karte (`.sr-only` aus layout.css) — dafuer braucht dieses
    Blatt keine eigene Regel.
 
-   Ein gesperrtes Angebot bleibt gesperrt: `.offer-card--unavailable` daempft die ganze
-   Karte, und der Ton daempft mit. Es wird hier ausdruecklich NICHTS zurueckgedreht — ein
-   Debugton darf einen Zustand nicht uebermalen. */
+   Ein nicht bestellbares Angebot bleibt nicht bestellbar: `.offer-card--unavailable`
+   nimmt der Karte Zeigerwechsel und Hover-Anheben, und der Ton dreht davon nichts
+   zurueck. Es wird hier ausdruecklich NICHTS uebermalt — ein Debugton darf einen
+   Zustand nicht aufheben. */

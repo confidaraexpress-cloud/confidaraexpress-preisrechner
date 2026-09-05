@@ -8,6 +8,7 @@ import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIden
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
+import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -266,6 +267,18 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
+  // ── Belegte Angebotsmetadaten ──────────────────────────────────────────────────
+  // Beide kommen fertig vom Server und werden hier nur eingereiht — keine Rechnung,
+  // keine Ableitung, keine Providerabfrage. Fehlt eine Angabe, entsteht keine Zeile:
+  // deshalb `!== null` und kein Platzhalter.
+  //
+  // Die Labelzeile nennt FORMATE, in denen ein Label entstehen kann. Sie ist
+  // ausdruecklich NICHT die Aussage „Drucker erforderlich" — die steht eine Zeile
+  // hoeher, kommt aus `printerRequired` und bleibt davon unberuehrt.
+  const gewichtZeile = chargeableWeightLine(t);
+  const labelZeile   = labelCapabilityLine(t);
+  if (gewichtZeile !== null)       features.push({ icon: "cube",    label: OFFER_METADATA_LABEL.chargeableWeight, value: gewichtZeile });
+  if (labelZeile !== null)         features.push({ icon: "layers",  label: OFFER_METADATA_LABEL.labelCapability,  value: labelZeile });
   if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
 
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;

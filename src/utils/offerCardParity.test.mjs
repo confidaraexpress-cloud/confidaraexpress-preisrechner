@@ -164,6 +164,29 @@ test("(C3) die drei Laufzeitformen werden ehrlich benannt", () => {
   assert.equal(TG_OFFEN.transitDaysMax, null, "eine erfundene Obergrenze wäre Scheingenauigkeit");
 });
 
+test("(C4) KEINE Aufwertung zu Arbeitstagen — dafür gibt es keine Datenquelle", () => {
+  // Vorher stand auf DERSELBEN Karte vorne „1–2 Tage" und in den Details
+  // „1–2 Arbeitstage". Gesucht, nicht vermutet: für die Arbeitstagssemantik gibt es
+  // bei keinem Provider einen Beleg — JUMiNGO liefert `transit_time_min/max` als
+  // blanke Zahlen, Transglobal einen blanken `TransitTimeEstimate`. Bei einer
+  // Laufzeit ist das der Unterschied zwischen „übermorgen" und „Dienstag".
+  assert.ok(!CARD_CODE.includes("Arbeitstag"),
+    "die Karte wertet die Laufzeit weiterhin zu Arbeitstagen auf");
+  // Karte und Details ziehen aus DERSELBEN Quelle — zwei Formulierungen für
+  // dieselbe Zahl wären auf einer Karte sofort sichtbar.
+  assert.ok(/const fmtTransitDetail = \(t\) => fmtDelivery\(t\)/.test(CARD_CODE),
+    "die Detailzeile hat wieder eine eigene Formulierung");
+});
+
+test("(C5) JUMiNGO verliert dabei nichts Echtes", () => {
+  // Was tatsächlich aus JUMiNGO-Daten stammt, bleibt: Kalenderangaben im Abschnitt
+  // „Termin & Abholung". Weg fällt allein ein Wort ohne Quelle.
+  for (const zeile of ["Abholtermin", "Zeitfenster", "Liefertermin", "Lieferzeitraum"]) {
+    assert.ok(CARD.includes(`label="${zeile}"`), `die Kalenderangabe "${zeile}" ist verschwunden`);
+  }
+  assert.ok(CARD.includes('label="Lieferung"'), "die Zustellzeit ist verschwunden");
+});
+
 /* ══════════ D — ÜBERGABEART ═══════════════════════════════════════════════ */
 
 test("(D1) Abholung und Paketshopabgabe erscheinen auf beiden Quellen gleich", () => {
@@ -201,9 +224,24 @@ test("(E2) ein TG-Angebot behauptet weder Tracking noch Druckerbedarf", () => {
 /* ══════════ F — WHITE LABEL ═══════════════════════════════════════════════ */
 
 test("(F1) kein sichtbarer Providerbezug und keine interne Referenz", () => {
+  // Gemessen auf KOMMENTARFREIEM Code. Sonst prüft der Test die Erklärung statt des
+  // Programms: die Begründung, warum „Arbeitstage" bei keinem Provider belegt ist,
+  // muss beide Provider zwangsläufig nennen — und hat diesen Test beim ersten Lauf
+  // rot gefärbt, obwohl kein einziger Name in der Oberfläche steht. Zeichenketten in
+  // JSX bleiben in `CARD_CODE` erhalten; nur Kommentare fallen weg.
   for (const verboten of ["Transglobal", "JUMiNGO", "QuoteID", "quoteId",
                           "providerServiceId", "transglobalexpress"]) {
-    assert.ok(!CARD.includes(verboten), `"${verboten}" steht in der Tarifkarte`);
+    assert.ok(!CARD_CODE.includes(verboten), `"${verboten}" steht in der Tarifkarte`);
+  }
+});
+
+test("(F3) der Vergleichsmodus ist fail-closed", async () => {
+  const m = await import("./offerDebugView.mjs");
+  // Ohne Debugblock des Servers entsteht weder Ansicht noch Zusatzklasse — und ein
+  // fehlerhafter Block schaltet ihn ebenso wenig ein.
+  for (const t of [{}, { debug: null }, { debug: {} }, { debug: "true" }, { debug: { tone: "x" } }]) {
+    assert.equal(m.offerDebugView(t), null, `${JSON.stringify(t)} hat den Modus eingeschaltet`);
+    assert.equal(m.offerDebugCardClass(t), "", `${JSON.stringify(t)} erzeugte eine Zusatzklasse`);
   }
 });
 

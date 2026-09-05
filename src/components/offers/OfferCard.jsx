@@ -113,17 +113,25 @@ function buildEnd(t, etaLabel, earlyNote) {
   return { title, primary, secondary };
 }
 
-// ── Versandlaufzeit als ganze Detailzeile: "1–3 Arbeitstage" ──
-// Lokale Variante (Arbeitstage-Wording), ohne den geteilten fmtDelivery-Helfer
-// zu verändern (der weiterhin Karte/ETA & BookingPage versorgt).
-function fmtTransitDetail(t) {
-  const a = t.transitDaysMin, b = t.transitDaysMax;
-  if (a != null && b != null) {
-    if (a === b) return a === 0 ? "Noch heute" : a === 1 ? "1 Arbeitstag" : `${a} Arbeitstage`;
-    return `${a}–${b} Arbeitstage`;
-  }
-  return fmtDelivery(t) || null;
-}
+// ── Versandlaufzeit als Detailzeile ──
+//
+// Hier stand eine lokale Variante, die dieselben Zahlen als „1–3 Arbeitstage"
+// ausgab, während die Kartenfläche darüber „1–3 Tage" zeigte. Zwei Beschriftungen
+// für DIESELBE Zahl auf DERSELBEN Karte — und die zweite behauptete mehr als die
+// erste.
+//
+// Gesucht, nicht vermutet: für „Arbeitstage" gibt es bei KEINEM Provider einen
+// Beleg. JUMiNGO liefert `transit_time_min/max` als blanke Zahlen, Transglobal
+// einen blanken `TransitTimeEstimate`. Die Aufwertung zu Arbeitstagen war eine
+// Deutung ohne Quelle — bei einer Laufzeit ist das der Unterschied zwischen
+// „übermorgen" und „Dienstag".
+//
+// Deshalb dieselbe neutrale Formulierung wie auf der Kartenfläche. JUMiNGO
+// verliert dabei NICHTS Echtes: seine kalenderbezogenen Angaben (Abholtermin,
+// Zeitfenster, Liefertermin, Lieferzeitraum, Lieferung bis) stehen unverändert
+// im Abschnitt „Termin & Abholung" — das ist seine reale Zusatzsemantik, und die
+// bleibt. Weg fällt allein ein Wort, das keine Datenquelle deckt.
+const fmtTransitDetail = (t) => fmtDelivery(t) || null;
 
 // ── tariffLimits → natürliche, kundennahe deutsche Sätze ──
 // Jeder bekannte Operant hat ein Satz-Template mit Slot für Operator-Wort + Wert.
@@ -253,7 +261,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // die "Termin & Abholung" konkreter zeigt (Abgabestelle, Lieferzeit), werden
   // hier bewusst NICHT wiederholt. Der Tarifname spannt die volle Breite.
   const features = [];
-  if (transitDetail)               features.push({ icon: "clock",   label: "Versandlaufzeit",        value: transitDetail });
+  // Dieselbe Beschriftung wie der Timeline-Knoten: es ist eine Schätzung, keine Zusage.
+  if (transitDetail)               features.push({ icon: "clock",   label: "Voraussichtliche Laufzeit", value: transitDetail });
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });

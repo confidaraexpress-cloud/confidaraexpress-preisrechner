@@ -24,6 +24,8 @@ import {
 } from "./newShipmentForm.mjs";
 import { validateAddressForm, addressToFormValues, emptyAddressForm } from "./addressForm.mjs";
 import { mapAddressToShipmentFormPatch } from "./addressShipmentMapping.mjs";
+import { getShipmentFormSnapshot } from "./shipmentFormSnapshot.mjs";
+import { buildResumeInitialState } from "./formDraftsView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(HIER, "..");
@@ -168,4 +170,58 @@ test("D14 — Telefon und E-Mail sind keine Zusatzangaben mehr", () => {
       assert.ok(!/,\s*true\s*\)/.test(zeile),
         `${p}_${feld} ist noch als optional markiert: ${zeile.trim()}`);
     }
+});
+
+/* ══════════ Der Entwurfsrundweg ═══════════════════════════════════════════ */
+
+/* Speichern und Fortsetzen sind zwei Module und waren beide unabhaengig voneinander
+   luckenhaft: der Snapshot schrieb die Kontaktperson nicht, und das Fortsetzen las sie
+   nicht. Jede Haelfte fuer sich sah in ihrem eigenen Test in Ordnung aus — gefunden hat
+   den Fehler erst ein Browserlauf. Dieser Test schliesst die Schleife an einer Stelle. */
+
+const ZUSTAND = (form) => ({
+  form, shippingDate: "2026-08-01", serviceFilter: "all",
+  shippingModeFilter: "all", selectedPublicCarrierIds: [],
+});
+
+test("D15 — ein HEUTIGER Entwurf ueberlebt Speichern und Fortsetzen vollstaendig", () => {
+  const form = {
+    s_company: "Muster GmbH", s_firstName: "Max", s_lastName: "Mustermann",
+    s_email: "max@example.com", s_phone: "+49301234567",
+    s_street: "Hauptstr. 1", s_zip: "10115", s_city: "Berlin", s_country: "DE",
+    r_company: "Empfang AG", r_firstName: "Erika", r_lastName: "Empfaenger",
+    r_email: "erika@example.com", r_phone: "+49891234567",
+    r_street: "Bahnhofstr. 9", r_zip: "80331", r_city: "Muenchen", r_country: "DE",
+    packageCount: "1", weight: "5", length: "30", width: "20", height: "15",
+  };
+
+  // A — gespeichert wird die Kontaktperson strukturiert.
+  const snap = getShipmentFormSnapshot(ZUSTAND(form));
+  assert.equal(snap.sender.firstName, "Max");
+  assert.equal(snap.sender.lastName, "Mustermann");
+  assert.equal(snap.recipient.firstName, "Erika");
+  assert.equal(snap.recipient.lastName, "Empfaenger");
+  assert.equal(snap.recipient.email, "erika@example.com");
+  assert.equal(snap.recipient.phone, "+49891234567");
+  // Kein Gesamtname wird dabei erzeugt.
+  assert.equal(snap.sender.fullName, "", "aus Vor- und Nachname wurde ein fullName synthetisiert");
+
+  // B — und beim Fortsetzen kommt sie vollstaendig zurueck.
+  const { form: zurueck } = buildResumeInitialState(snap);
+  for (const [k, v] of [["s_firstName", "Max"], ["s_lastName", "Mustermann"],
+                        ["s_email", "max@example.com"], ["s_phone", "+49301234567"],
+                        ["r_firstName", "Erika"], ["r_lastName", "Empfaenger"],
+                        ["r_email", "erika@example.com"], ["r_phone", "+49891234567"]])
+    assert.equal(zurueck[k], v, `${k} ging auf dem Entwurfsrundweg verloren`);
+});
+
+test("D16 — ein ALTBESTANDSentwurf wird beim Fortsetzen NICHT zerlegt", () => {
+  // Nur ein Gesamtname, wie ihn ein Entwurf aus der Zeit vor dem Kontaktvertrag traegt.
+  const { form } = buildResumeInitialState({
+    sender: { fullName: "Jean Dupont", streetAndNumber: "Rue 1", postalCode: "75001",
+              city: "Paris", country: "FR" },
+  });
+  assert.equal(form.s_fullName, "Jean Dupont", "der Altbestandswert ging verloren");
+  assert.equal(form.s_firstName, "", "aus dem Gesamtnamen wurde ein Vorname erzeugt");
+  assert.equal(form.s_lastName, "", "aus dem Gesamtnamen wurde ein Nachname erzeugt");
 });

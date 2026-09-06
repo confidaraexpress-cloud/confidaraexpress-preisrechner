@@ -1170,8 +1170,16 @@ test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvor
   resumeDetailOverride = {
     id: 951, revision: 2, schemaVersion: 1,
     formData: {
-      sender: { company: "Andere Firma GmbH", fullName: "Otto Absender", streetAndNumber: "Kurfürstendamm 1", postalCode: "10707", city: "Berlin", country: "DE" },
-      recipient: { company: "Fortsetzen Empfänger AG", fullName: "Frieda Fortsetzen", streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
+      // Ein HEUTE gespeicherter Formularentwurf. Er traegt die Kontaktperson deshalb
+      // strukturiert — `fullName` waere hier ein Altbestandswert, den es bei einem
+      // frisch gespeicherten Entwurf nicht gibt, und `mapParty` zerlegt ihn bewusst
+      // nicht. Die Legacyform wird an ihrer eigenen Stelle geprueft (formDraftsView).
+      sender: { company: "Andere Firma GmbH", firstName: "Otto", lastName: "Absender",
+                email: "otto@example.com", phone: "+49301234567",
+                streetAndNumber: "Kurfürstendamm 1", postalCode: "10707", city: "Berlin", country: "DE" },
+      recipient: { company: "Fortsetzen Empfänger AG", firstName: "Frieda", lastName: "Fortsetzen",
+                   email: "frieda@example.com", phone: "+492211234567",
+                   streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
       packages: { packageCount: 3, weight: 9.5, length: 50, width: 40, height: 30 },
       shippingOptions: { shippingDate: null, serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
     },

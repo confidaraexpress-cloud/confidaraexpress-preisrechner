@@ -1182,6 +1182,9 @@ test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvor
                    streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
       packages: { packageCount: 3, weight: 9.5, length: 50, width: 40, height: 30 },
       shippingOptions: { shippingDate: null, serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
+      // Die vier Sendungsangaben (Paket 9A) — ein heute gespeicherter Entwurf traegt sie mit.
+      declarations: { content: "Ersatzteile", goodsValue: 250,
+                      collectionIsResidential: false, deliveryIsResidential: true },
     },
   };
 

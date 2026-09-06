@@ -18,6 +18,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5253, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -144,6 +145,11 @@ async function zurBestelluebersicht(page) {
                          ["ns-length", "40"], ["ns-width", "30"], ["ns-height", "20"]]) {
     await page.locator(`#${id}`).fill(v);
   }
+  // Die vier Sendungsangaben (Paket 9A). Sie sind Pflicht, weil sie den Vergleichspreis
+  // mitbestimmen — ohne sie bleibt der CTA gesperrt. Gefuellt wird ueber den GEMEINSAMEN
+  // Helfer, damit eine spaetere Produktaenderung nicht wieder in jeder Suite einzeln
+  // nachgezogen werden muss.
+  await fuelleSendungsangaben(page);
   await page.waitForTimeout(250);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });

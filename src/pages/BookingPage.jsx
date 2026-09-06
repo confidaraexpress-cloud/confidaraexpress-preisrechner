@@ -193,7 +193,21 @@ export default function BookingPage() {
   // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
   // Validierung, eigene Payload-Felder: goodsValue → details.value_amount,
   // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
-  const [goodsValue, setGoodsValue]         = useState(flowBooking?.goodsValue || "");     // Warenwert (EUR)
+  // ─── Der Warenwert wird NICHT hier erhoben ──────────────────────────────────
+  // Er steht seit Paket 9A im Sendungsformular und ist damit bereits VOR dem
+  // Angebotsvergleich erklärt und serverseitig eingefroren. Ihn hier ein zweites Mal
+  // editierbar zu machen erzeugte eine zweite Wahrheit über denselben Sachverhalt: der
+  // Vergleich beruhte auf dem einen Wert, die Buchung auf dem anderen — und der Server
+  // lehnt die Abweichung fail closed ab, ohne dass der Kunde den Grund sähe.
+  //
+  // Deshalb: derselbe Wert, nur angezeigt. Der VERSICHERUNGSwert daneben bleibt
+  // unverändert frei wählbar — das ist eine andere Angabe mit einer anderen Bedeutung,
+  // und die bestehende Versicherungslogik ist davon nicht berührt.
+  //
+  // Der Rückfall auf den Vorgangswert trägt einen fortgesetzten Vorgang aus der Zeit
+  // davor; er erfindet nichts, sondern liest, was dieser Vorgang bereits hatte.
+  const [goodsValue, setGoodsValue]         = useState(
+    () => String(bookingData?.form?.declaredGoodsValue ?? flowBooking?.goodsValue ?? ""));
   const [insuranceValue, setInsuranceValue] = useState(flowBooking?.insuranceValue || ""); // Versicherungswert (EUR)
   // Progressive Disclosure: der Versicherungswert spiegelt den Warenwert, bis der
   // Nutzer ihn bewusst anpasst (insValueManual); das Feld ist bei Bedarf einblendbar
@@ -296,9 +310,20 @@ export default function BookingPage() {
      aus dem laufenden Vorgang; ein `false` von dort muss `false` bleiben — mit
      `|| null` oder `!!` waere es still zu „unbeantwortet" geworden, und der Kunde
      haette dieselbe Frage nach jeder Rueckkehr erneut vorgefunden. */
+  /* Seit Paket 9A werden beide Fragen bereits im SENDUNGSFORMULAR beantwortet — sie
+     bestimmen dort den Vergleichspreis mit und werden serverseitig an der Sendung
+     eingefroren. Der Ausgangswert kommt deshalb zuerst von dort und erst danach aus dem
+     laufenden Vorgang (der einen fortgesetzten Vorgang aus der Zeit davor trägt).
+
+     Der Kunde bekommt die Frage damit im Regelfall gar nicht mehr zu sehen: `AddressTypeModule`
+     erscheint unten nur, solange das Angebot eine Angabe verlangt UND sie noch fehlt.
+     Was hier steht, WÄHLT nichts aus — der Server liest die eingefrorene Zeile und
+     vergleicht den mitgeschickten Wert nur noch gegen sie. */
   const [adresstyp, setAdresstyp] = useState(() => ({
-    deliveryIsResidential: flowBooking?.deliveryIsResidential ?? null,
-    collectionIsResidential: flowBooking?.collectionIsResidential ?? null,
+    deliveryIsResidential:
+      bookingData?.form?.deliveryIsResidential ?? flowBooking?.deliveryIsResidential ?? null,
+    collectionIsResidential:
+      bookingData?.form?.collectionIsResidential ?? flowBooking?.collectionIsResidential ?? null,
   }));
   const setAdresstypFeld = (feld, wert) => setAdresstyp((a) => ({ ...a, [feld]: wert }));
   const [adresstypShowErrors, setAdresstypShowErrors] = useState(false);
@@ -1494,6 +1519,9 @@ export default function BookingPage() {
                     onGoodsValueChange={handleGoodsValueChange}
                     onGoodsValueBlur={() => setInsShowErrors(true)}
                     goodsValueError={insShowErrors ? goodsValueError : ""}
+                    // Aus dem Sendungsformular übernommen und dort bereits bepreist —
+                    // hier nur noch sichtbar, nicht änderbar.
+                    goodsValueLocked
                     insuranceValue={insuranceValue}
                     onInsuranceValueChange={handleInsuranceValueChange}
                     onInsuranceValueBlur={() => setInsShowErrors(true)}

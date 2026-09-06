@@ -56,6 +56,11 @@ const DRAFT_FORM_DATA = {
     shippingDate: "2030-06-01", serviceFilter: "pickup", shippingModeFilter: "express",
     publicCarrierIds: ["ups"],
   },
+  // Die vier Sendungsangaben (Paket 9A). Ein gespeicherter Entwurf traegt sie seitdem
+  // mit — ohne sie bliebe der CTA nach dem Fortsetzen gesperrt, und das waere zwar
+  // korrektes Produktverhalten, aber nicht das, was diese Suite misst.
+  declarations: { content: "Ersatzteile", goodsValue: 250,
+                  collectionIsResidential: false, deliveryIsResidential: true },
 };
 
 // Route bietet DHL und TNT — kein UPS.

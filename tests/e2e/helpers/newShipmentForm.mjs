@@ -70,6 +70,43 @@ const ADRESSFELDER = ["country", "state", "company", "firstName", "lastName",
                       "email", "phone", "street", "zip", "city"];
 const PAKETFELDER  = ["packageCount", "weight", "length", "width", "height"];
 
+/* Die vier Sendungsangaben, die seit Paket 9A VOR dem Angebotsvergleich erhoben werden:
+   Inhalt, Warenwert und je Seite die Adressart. Sie sind Pflicht, weil sie den Preis
+   mitbestimmen — ohne sie bleibt der CTA gesperrt, und das ist Produktverhalten, kein
+   Testproblem.
+
+   Auch hier gilt die Regel dieser Datei: EINE Stelle. Die vorherige Fassung dieses
+   Helfers hätte nach der Produktänderung jede Suite gleichzeitig scheitern lassen, die
+   „Angebote vergleichen" klickt. */
+export const STANDARD_SENDUNGSANGABEN = Object.freeze({
+  declaredContent: "Ersatzteile",
+  declaredGoodsValue: "250",
+  collectionIsResidential: false,   // geschäftlich
+  deliveryIsResidential: true,      // privat
+});
+
+const ADRESSART_FELDER = ["collectionIsResidential", "deliveryIsResidential"];
+
+/** Füllt Inhalt und Warenwert und beantwortet beide Adressfragen.
+ *
+ *  Die Adressart ist DREIWERTIG: `true`/`false` klicken die jeweilige Option, `null`
+ *  lässt die Frage ausdrücklich unbeantwortet — so prüft eine Suite den gesperrten
+ *  Zustand, ohne den CTA zu erzwingen. */
+export async function fuelleSendungsangaben(page, angaben = STANDARD_SENDUNGSANGABEN) {
+  for (const feld of ["declaredContent", "declaredGoodsValue"]) {
+    const wert = angaben[feld];
+    if (wert === undefined || wert === null) continue;
+    await setzeFeld(page, `ns-${feld}`, wert);
+  }
+  for (const feld of ADRESSART_FELDER) {
+    const wert = angaben[feld];
+    if (wert !== true && wert !== false) continue;   // null = bewusst unbeantwortet
+    const radio = page.locator(`#${feld}-${wert ? "ja" : "nein"}`);
+    await radio.waitFor({ state: "visible", timeout: 20000 });
+    await radio.check();
+  }
+}
+
 async function setzeFeld(page, id, wert) {
   const el = page.locator(`#${id}`);
   await el.waitFor({ state: "visible", timeout: 20000 });
@@ -106,11 +143,13 @@ export async function fuelleVersandformular(page, {
   absender = STANDARD_ABSENDER,
   empfaenger = STANDARD_EMPFAENGER,
   paket = STANDARD_PAKET,
+  sendungsangaben = STANDARD_SENDUNGSANGABEN,
 } = {}) {
   await page.waitForSelector("#ns-weight", { timeout: 20000 });
   await fuelleAdresse(page, "s", absender);
   await fuelleAdresse(page, "r", empfaenger);
   await fuellePaket(page, paket);
+  await fuelleSendungsangaben(page, sendungsangaben);
 }
 
 /** Der Angebots-CTA. Eine Stelle, damit ein Klassenwechsel nicht wieder zehn

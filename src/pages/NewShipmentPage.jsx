@@ -77,6 +77,9 @@ const SHIPMENT_FIELD_ORDER = [
   "r_firstName", "r_lastName", "r_company", "r_street", "r_addition", "r_zip", "r_city",
   "r_email", "r_phone",
   "packageCount", "weight", "length", "width", "height", "shippingDate",
+  // Die Sendungsangaben stehen ANS ENDE: sie sind im Formular unterhalb der Paketdaten,
+  // und der Sprung zum ersten Fehler soll der Leserichtung folgen.
+  "declaredContent", "declaredGoodsValue", "collectionIsResidential", "deliveryIsResidential",
 ];
 const firstShipmentErrorField = (errs) =>
   SHIPMENT_FIELD_ORDER.find((k) => errs[k]) || Object.keys(errs)[0] || null;
@@ -90,6 +93,9 @@ import {
   hasUsableShipmentReference,
 } from "../utils/formDraftsView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
+import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
+import { AddressTypeModule } from "../components/booking/AddressTypeModule";
+import { FELD_ABHOLUNG, FELD_ZUSTELLUNG } from "../utils/addressTypeQuestions.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
@@ -184,6 +190,13 @@ function getErrors(form) {
   // und das Backend ersetzte es still durch 30/20/15 cm. Der Kunde bekam einen
   // Preis für Maße, die er nie eingegeben hat.
   Object.assign(e, packageErrors(form));
+
+  // Die vier Sendungsangaben (Inhalt, Warenwert, zweimal Adressart). Sie sind Pflicht,
+  // weil aus ihnen ein abschliessend bepreisbarer Sendungskontext entsteht: ohne sie
+  // wird vor dem Vergleich etwas anderes gefragt als vor der Buchung, und die Differenz
+  // laesst sich danach nicht mehr von einer echten Preisaenderung unterscheiden.
+  // Die Regeln stehen EINMAL (utils/shipmentDeclarations.mjs) und spiegeln den Server.
+  Object.assign(e, declarationErrors(form));
 
   return e;
 }
@@ -1095,6 +1108,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     s: [form.s_company, form.s_fullName, form.s_street, form.s_addition, form.s_zip, form.s_city, form.s_country, form.s_phone, form.s_email],
     r: [form.r_company, form.r_fullName, form.r_street, form.r_addition, form.r_zip, form.r_city, form.r_country, form.r_phone, form.r_email],
     serviceFilter, shippingModeFilter, shippingDate, publicCarrierIds: selectedPublicCarrierIds,
+    // Die vier Sendungsangaben sind PREISBESTIMMEND und gehoeren deshalb in den
+    // Schluessel: aendert der Kunde die Adressart oder den Warenwert, gelten die
+    // vorhandenen Angebote nicht mehr, und eine noch laufende Antwort darf nicht mehr
+    // uebernommen werden. Die reinen Anzeigefilter bleiben unveraendert draussen.
+    declarations: [form.declaredContent, form.declaredGoodsValue,
+                   form.collectionIsResidential, form.deliveryIsResidential],
   });
 
   const calculate = async () => {
@@ -1180,6 +1199,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           shippingModeFilter: shippingModeFilter,
           shippingDate:       shippingDate,
           publicCarrierIds:   selectedPublicCarrierIds,
+          // Die vier Sendungsangaben. Sie entstehen nur vollstaendig oder gar nicht —
+          // `declarationsPayload` liefert `null`, solange etwas fehlt, und dieser Zweig
+          // ist dann durch `getErrors()` oben ohnehin schon abgebrochen. Der Server
+          // friert sie an der Entwurfszeile ein; der Buchungspfad liest sie von dort.
+          declarations:       declarationsPayload(form),
           // Optionaler Lagerbezug: nur vorhanden, wenn der Vorgang aus Artikel
           // oder Auftrag gestartet wurde. Bei jeder normalen Sendung fehlt das
           // Feld vollständig — der Server erkennt daran „kein Lagerbezug" und
@@ -1827,6 +1851,52 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   <span className="vol-weight-value">Abrechn.: {chargeWeight} kg</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* ── Angaben zur Sendung ───────────────────────────────────────────────
+              Vier Angaben, die den Preis mitbestimmen: WAS versendet wird, WAS es wert
+              ist und ob Abhol- bzw. Lieferadresse Privatadressen sind.
+
+              Sie stehen HIER und nicht auf der Buchungsseite, weil sie den Preis
+              beeinflussen: wer sie erst nach dem Vergleich erhebt, vergleicht Angebote
+              auf einer anderen Grundlage, als er sie später bucht.
+
+              Kein Providername, kein Vorgabewert, keine Vorauswahl. */}
+          <div className="calc-panel mb-16">
+            <div className="calc-panel-header"><Icon n="form" s={18} c="var(--ce-color-brand-ink)" /><h3>Angaben zur Sendung</h3></div>
+            <div className="calc-panel-body">
+              <div className="field-row field-row-2">
+                <Field id="ns-declaredContent" fieldKey="declaredContent" labelMode="floating"
+                       label="Inhalt der Sendung" required type="text"
+                       maxLength={DECLARED_CONTENT_MAX}
+                       value={form.declaredContent} onChange={(v) => upd("declaredContent", v)}
+                       placeholder="z. B. Ersatzteile"
+                       error={errors.declaredContent}
+                       hint="Kurze Beschreibung des Inhalts." />
+                <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue" labelMode="floating"
+                       label="Warenwert" required type="number" unit="EUR" unitLabel="in Euro"
+                       min="0" step="0.01"
+                       value={form.declaredGoodsValue} onChange={(v) => upd("declaredGoodsValue", v)}
+                       placeholder="z. B. 250"
+                       error={errors.declaredGoodsValue}
+                       hint="Tatsächlicher Warenwert der Sendung." />
+              </div>
+
+              {/* Dieselbe Bedienoberfläche wie im Buchungsschritt — sie ist dreiwertig
+                  (privat / geschäftlich / noch nicht beantwortet) und kennt weder
+                  Provider noch Übergabeart. Beide Fragen stehen hier fest, weil vor dem
+                  Vergleich noch nicht feststeht, ob abgeholt oder abgegeben wird. */}
+              <AddressTypeModule
+                // Eigene Gruppenklasse: `.adr-typ-group` ist der etablierte Marker der
+                // BUCHUNGSSEITE. Ohne eine eigene Kennzeichnung träfe jeder Selektor,
+                // der dort auf die Buchungsseite wartet, schon dieses Formular.
+                gruppeKlasse="ns-adr-typ-group"
+                fragen={[FELD_ABHOLUNG, FELD_ZUSTELLUNG]}
+                werte={{ [FELD_ABHOLUNG]: form[FELD_ABHOLUNG], [FELD_ZUSTELLUNG]: form[FELD_ZUSTELLUNG] }}
+                onChange={(feld, wert) => upd(feld, wert)}
+                showErrors={!!(errors[FELD_ABHOLUNG] || errors[FELD_ZUSTELLUNG])}
+              />
             </div>
           </div>
 

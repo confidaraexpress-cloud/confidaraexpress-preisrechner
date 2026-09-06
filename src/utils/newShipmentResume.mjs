@@ -70,6 +70,11 @@ const FIELD_LABELS = Object.assign(Object.create(null), {
   length:       "Länge",
   width:        "Breite",
   height:       "Höhe",
+  // Die vier Sendungsangaben, die vor dem Angebotsvergleich erhoben werden.
+  declaredContent:         "Inhalt der Sendung",
+  declaredGoodsValue:      "Warenwert",
+  collectionIsResidential: "Art der Abholadresse",
+  deliveryIsResidential:   "Art der Lieferadresse",
 });
 
 // Stabile Anzeigereihenfolge (Absender → Empfänger → Paket), unabhängig von der

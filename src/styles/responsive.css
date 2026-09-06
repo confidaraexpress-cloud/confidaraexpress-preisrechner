@@ -111,7 +111,8 @@
      an der ein Buchungsformular verlassen wird.
      `align-items: center` statt `flex-start`: sonst klebt der Radioknopf bei
      erzwungener Höhe oben in der Zeile statt neben seinem Text. */
-  .adr-typ-group .ci-mode-option { min-height: 44px; align-items: center; }
+  .adr-typ-group .ci-mode-option,
+  .ns-adr-typ-group .ci-mode-option { min-height: 44px; align-items: center; }
 
   /* Werkzeugleiste des Adressbuchs: Rollenreiter, Suche und Filterchips
      tragen dort eigene, kompaktere Höhen (33 / 40 px). */

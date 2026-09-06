@@ -142,8 +142,12 @@ test("1 — die frische Seite ist vollständig leer, Labels sind keine Werte", a
       // in utils/newShipmentForm.mjs) und wird unten mit ihrem ERWARTETEN WERT
       // geprüft — nicht auf leer und auch nicht gar nicht. Sonst fiele mit der
       // widersprüchlichen Zusicherung auch die Prüfung der Vorbelegung weg.
-      const ids = ["ns-s-company", "ns-s-fullName", "ns-s-street", "ns-s-addition", "ns-s-zip",
-                   "ns-s-city", "ns-s-country", "ns-r-fullName", "ns-r-zip", "ns-r-city",
+      // `ns-s-fullName` gibt es seit dem Versandkontaktvertrag nicht mehr — aus dem einen
+      // Namensfeld wurden `firstName` und `lastName`.
+      const ids = ["ns-s-company", "ns-s-firstName", "ns-s-lastName", "ns-s-street",
+                   "ns-s-addition", "ns-s-zip",
+                   "ns-s-city", "ns-s-country", "ns-r-firstName", "ns-r-lastName",
+                   "ns-r-zip", "ns-r-city",
                    "ns-weight", "ns-length", "ns-width", "ns-height"];
       return {
         leer: Object.fromEntries(ids.map((i) => [i, document.getElementById(i)?.value ?? "FEHLT"])),
@@ -164,7 +168,7 @@ test("1 — die frische Seite ist vollständig leer, Labels sind keine Werte", a
 test("2 — im Ruhezustand liegt die Beschriftung innerhalb der Feldfläche", async () => {
   const { ctx, page } = await neueSeite();
   try {
-    for (const id of ["ns-s-fullName", "ns-weight", "ns-s-zip"]) {
+    for (const id of ["ns-s-firstName", "ns-weight", "ns-s-zip"]) {
       const m = await messung(page, id);
       assert.ok(m, `${id} fehlt`);
       assert.equal(m.hatFloatingKlasse, true, `${id} nutzt die Floating-Variante nicht`);
@@ -184,10 +188,10 @@ test("2 — im Ruhezustand liegt die Beschriftung innerhalb der Feldfläche", as
 test("3 — Fokus hebt die Beschriftung an und verschiebt das Feld nicht", async () => {
   const { ctx, page } = await neueSeite();
   try {
-    const vorher = await messung(page, "ns-s-fullName");
-    await page.focus("#ns-s-fullName");
+    const vorher = await messung(page, "ns-s-firstName");
+    await page.focus("#ns-s-firstName");
     await page.waitForTimeout(250);
-    const nachher = await messung(page, "ns-s-fullName");
+    const nachher = await messung(page, "ns-s-firstName");
 
     assert.equal(nachher.floating, true, "das Label ist nicht angehoben");
     assert.ok(nachher.label.y < vorher.label.y, "das Label ist nicht nach oben gewandert");
@@ -202,20 +206,20 @@ test("3 — Fokus hebt die Beschriftung an und verschiebt das Feld nicht", async
 test("4 — gefüllt bleibt oben, geleert kehrt in die Ruheposition zurück", async () => {
   const { ctx, page } = await neueSeite();
   try {
-    await page.fill("#ns-s-fullName", "Max Mustermann");
+    await page.fill("#ns-s-firstName", "Max");
     await page.waitForTimeout(200);
-    assert.equal((await messung(page, "ns-s-fullName")).floating, true, "gefüllt + fokussiert");
+    assert.equal((await messung(page, "ns-s-firstName")).floating, true, "gefüllt + fokussiert");
 
     await page.click("body", { position: { x: 5, y: 5 } });
     await page.waitForTimeout(250);
-    const geblurrt = await messung(page, "ns-s-fullName");
+    const geblurrt = await messung(page, "ns-s-firstName");
     assert.equal(geblurrt.floating, true, "gefüllt + unfokussiert muss oben bleiben");
     assert.equal(geblurrt.labelFontSize, "12px");
 
-    await page.fill("#ns-s-fullName", "");
+    await page.fill("#ns-s-firstName", "");
     await page.click("body", { position: { x: 5, y: 5 } });
     await page.waitForTimeout(250);
-    const leer = await messung(page, "ns-s-fullName");
+    const leer = await messung(page, "ns-s-firstName");
     assert.equal(leer.floating, false, "leer + unfokussiert muss zurückkehren");
     assert.equal(leer.labelFontSize, leer.inputFontSize);
   } finally { await ctx.close(); }
@@ -227,7 +231,7 @@ test("5 — angehobenes Label und Feldtext überschneiden sich nirgends", async 
   const { ctx, page } = await neueSeite();
   try {
     const felder = [
-      ["ns-s-fullName", "Max Mustermann"],
+      ["ns-s-firstName", "Max Mustermann"],
       ["ns-s-zip", "70173"],
       ["ns-weight", "5"],
       ["ns-s-addition", "Etage 4, c/o Empfang"],
@@ -329,9 +333,17 @@ test("8 — der Fehlerzustand färbt Label und Rahmen und meldet ihn zugänglich
     await page.selectOption("#ns-s-country", "DE");
     await page.selectOption("#ns-r-country", "DE");
     for (const [id, wert] of [
-      ["ns-s-fullName", "Max Mustermann"], ["ns-s-street", "Musterstraße 1"],
+      // Seit dem Versandkontaktvertrag sind fuer BEIDE Parteien Vorname, Nachname,
+      // E-Mail und Telefon Pflicht. Ohne sie bleibt der CTA zu Recht gesperrt, und das
+      // `waitForFunction` unten koennte nie erfuellt werden - der Test haette dann die
+      // Validierung gemessen statt den Fehlerzustand, um den es ihm geht.
+      ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
+      ["ns-s-email", "max@example.com"], ["ns-s-phone", "+49301234567"],
+      ["ns-s-street", "Musterstraße 1"],
       ["ns-s-zip", "70173"], ["ns-s-city", "Stuttgart"],
-      ["ns-r-fullName", "Erika Muster"], ["ns-r-street", "Beispielweg 5"],
+      ["ns-r-firstName", "Erika"], ["ns-r-lastName", "Muster"],
+      ["ns-r-email", "erika@example.com"], ["ns-r-phone", "+49891234567"],
+      ["ns-r-street", "Beispielweg 5"],
       ["ns-r-zip", "80331"], ["ns-r-city", "München"],
       ["ns-packageCount", "1"], ["ns-weight", "5"],
       ["ns-length", "30"], ["ns-width", "20"], ["ns-height", "15"],
@@ -421,10 +433,10 @@ test("9 — die Vorschlagsliste bleibt direkt unter dem Feld und verdeckt es nic
 test("10 — der Fokusring ist unverändert der Foundation-Ring", async () => {
   const { ctx, page } = await neueSeite();
   try {
-    await page.focus("#ns-s-fullName");
+    await page.focus("#ns-s-firstName");
     await page.waitForTimeout(200);
     const r = await page.evaluate(() => {
-      const cs = getComputedStyle(document.getElementById("ns-s-fullName"));
+      const cs = getComputedStyle(document.getElementById("ns-s-firstName"));
       return { outlineWidth: cs.outlineWidth, outlineColor: cs.outlineColor,
                offset: cs.outlineOffset, shadow: cs.boxShadow, border: cs.borderTopWidth };
     });
@@ -442,7 +454,7 @@ test("11 — die Floating-Felder messen 54 px, die Standardfelder bleiben 40 px"
   const { ctx, page } = await neueSeite();
   try {
     const hoehen = await page.evaluate(() =>
-      ["ns-s-fullName", "ns-s-zip", "ns-s-country", "ns-weight", "ns-packageCount"]
+      ["ns-s-firstName", "ns-s-zip", "ns-s-country", "ns-weight", "ns-packageCount"]
         .map((id) => ({ id, h: Math.round(document.getElementById(id).getBoundingClientRect().height) })));
     for (const { id, h } of hoehen) assert.equal(h, 54, `${id} misst ${h} px statt 54`);
 
@@ -480,7 +492,7 @@ test("12 — 390 px: kein Überlauf, 44-px-Ziele, keine Überlappung", async () 
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert.ok(ueberlauf <= 0, `horizontaler Überlauf: ${ueberlauf} px`);
 
-    const felder = ["ns-s-fullName", "ns-s-zip", "ns-s-country", "ns-weight", "ns-length"];
+    const felder = ["ns-s-firstName", "ns-s-zip", "ns-s-country", "ns-weight", "ns-length"];
     for (const id of felder) {
       const m = await messung(page, id);
       assert.ok(m.input.h >= 44, `${id}: nur ${m.input.h} px hoch (WCAG 2.5.5)`);

@@ -118,16 +118,28 @@ async function neueSeite(opts = {}) {
 async function zurBestelluebersicht(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  const fill = async (ph, v) => page.getByPlaceholder(ph, { exact: true }).first().fill(String(v));
   await page.locator("button", { hasText: "Eigene Adresse" }).first().click();
   await page.waitForTimeout(150);
   await page.locator("#ns-r-country").selectOption("DE");
-  for (const [ph, v] of [
-    ["Firma AG", "Empfang AG"], ["Erika Muster", "Erika Empfaenger"], ["Beispielweg 5", "Bahnhofstrasse 9"],
-  ]) await fill(ph, v);
-  const emp = page.locator(".booking-addr-grid > div").nth(1).locator("input.field-input");
-  await emp.nth(4).fill("80331");
-  await emp.nth(5).fill("Muenchen");
+  // Ueber die STABILEN ids statt ueber Platzhalter und Feldpositionen. Beide Zugriffe
+  // sind mit dem Versandkontaktvertrag gebrochen: der Platzhalter des Namensfeldes gibt
+  // es nicht mehr (aus einem Feld wurden zwei), und `nth(4)`/`nth(5)` zaehlten Eingaben
+  // in DOM-Reihenfolge — zwei zusaetzliche Felder haben sie still verschoben.
+  for (const [id, v] of [
+    ["ns-r-company",   "Empfang AG"],
+    ["ns-r-firstName", "Erika"], ["ns-r-lastName", "Empfaenger"],
+    ["ns-r-email",     "erika@example.com"], ["ns-r-phone", "+49891234567"],
+    ["ns-r-street",    "Bahnhofstrasse 9"],
+    ["ns-r-zip",       "80331"], ["ns-r-city", "Muenchen"],
+  ]) await page.locator(`#${id}`).fill(v);
+  // Der Profil-Seed („Eigene Adresse") traegt Firma, Anschrift und E-Mail des Kontos —
+  // aber keine getrennte Kontaktperson und keine Telefonnummer: das Konto fuehrt einen
+  // einzelnen Ansprechpartnernamen, und der wird nicht zerlegt. Beides wird deshalb
+  // ausdruecklich ergaenzt, so wie es auch ein Kunde tun muss.
+  for (const [id, v] of [
+    ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
+    ["ns-s-phone",     "+49301234567"], ["ns-s-email", "max@example.com"],
+  ]) await page.locator(`#${id}`).fill(v);
   for (const [id, v] of [["ns-packageCount", "1"], ["ns-weight", "5.5"],
                          ["ns-length", "40"], ["ns-width", "30"], ["ns-height", "20"]]) {
     await page.locator(`#${id}`).fill(v);

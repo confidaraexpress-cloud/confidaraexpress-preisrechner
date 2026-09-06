@@ -42,12 +42,12 @@ const BASE = `http://127.0.0.1:${PORT}`;
 // Konstellation, in der die alte Fassung beim ersten Klick 0 Angebote lieferte.
 const DRAFT_FORM_DATA = {
   sender: {
-    company: "Muster GmbH", fullName: "Max Mustermann", streetAndNumber: "Hauptstrasse 1",
+    company: "Muster GmbH", firstName: "Max", lastName: "Mustermann", streetAndNumber: "Hauptstrasse 1",
     addressAddition: "Haus 2", postalCode: "10115", city: "Berlin", country: "DE",
     phone: "+4930123456", email: "max@example.com",
   },
   recipient: {
-    company: "Empfang AG", fullName: "Erika Empfaenger", streetAndNumber: "Bahnhofstrasse 9",
+    company: "Empfang AG", firstName: "Erika", lastName: "Empfaenger", streetAndNumber: "Bahnhofstrasse 9",
     addressAddition: "", postalCode: "80331", city: "Muenchen", country: "DE",
     phone: "+4989987654", email: "erika@example.com",
   },
@@ -192,8 +192,11 @@ test("Entwurf fortsetzen: EIN Klick lädt Angebote, ohne veralteten Carrier-Filt
 
   // Alle echten Sendungsdaten sind wiederhergestellt.
   const werte = await formValues(page);
-  for (const erwartet of ["Muster GmbH", "Max Mustermann", "10115", "Berlin",
-                          "Empfang AG", "Erika Empfaenger", "80331", "Muenchen",
+  // Vor- und Nachname stehen seit dem Versandkontaktvertrag in zwei getrennten Feldern;
+  // der Entwurf traegt sie so, und so kommen sie zurueck. Ein zusammengesetzter String
+  // stuende in keinem einzelnen Feld.
+  for (const erwartet of ["Muster GmbH", "Max", "Mustermann", "10115", "Berlin",
+                          "Empfang AG", "Erika", "Empfaenger", "80331", "Muenchen",
                           "2", "5.5", "40", "30", "20"]) {
     assert.ok(werte.includes(erwartet), `Entwurfswert fehlt im Formular: ${erwartet}`);
   }
@@ -223,7 +226,15 @@ test("Entwurf fortsetzen: EIN Klick lädt Angebote, ohne veralteten Carrier-Filt
   assert.equal(payload.recipient.postalCode, "80331");
   assert.equal(payload.recipient.city, "Muenchen");
   assert.equal(payload.recipient.country, "DE");
-  assert.equal(payload.recipient.fullName, "Erika Empfaenger");
+  // Die Kontaktperson wird beim Fortsetzen STRUKTURIERT durchgereicht: der Entwurf
+  // traegt `firstName`/`lastName`, und genau so kommen sie im Preisrequest an.
+  // `fullName` ist seit dem Versandkontaktvertrag keine Quelle mehr, sondern nur noch
+  // ein Altbestandswert - dieser Entwurf traegt keinen, also entsteht das Feld nicht.
+  // Das ist die eigentliche Zusicherung: es wird NICHTS zusammengesetzt.
+  assert.equal(payload.recipient.firstName, "Erika");
+  assert.equal(payload.recipient.lastName, "Empfaenger");
+  assert.equal(payload.recipient.fullName, undefined,
+    "aus Vor- und Nachname wurde ein Gesamtname synthetisiert");
   assert.equal(payload.recipient.phone, "+4989987654");
   assert.equal(payload.recipient.email, "erika@example.com");
   // Die Entwurfsherkunft wird weiterhin genau einmal mitgesendet.

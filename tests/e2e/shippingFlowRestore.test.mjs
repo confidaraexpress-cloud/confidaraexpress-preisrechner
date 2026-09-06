@@ -148,10 +148,23 @@ function fehlerSammler(page) {
   return fehler;
 }
 
-/* Die Felder tragen keine id/name-Attribute — Auswahl über den Platzhalter. */
+/* Restliche Felder ueber ihren Platzhalter. Der frueher hier stehende Hinweis, die
+   Felder truegen keine id, stimmte nicht: `addrField` vergibt jedem eine (`ns-…`).
+   Kontaktperson, E-Mail und Telefon laufen deshalb unten ueber ihre ids. */
 const EINGABEN = [
-  ["Firma AG", "ACME Logistik GmbH"], ["Erika Muster", "Dora Beispiel"],
+  ["Firma AG", "ACME Logistik GmbH"],
   ["Beispielweg 5", "Hafenstr. 12"], ["Zürich", "Hamburg"],
+];
+
+/* Kontaktperson und Pflichtkontakt ueber die STABILEN ids. Der Platzhalter des frueheren
+   kombinierten Namensfeldes existiert nicht mehr, und der Profil-Seed traegt weder eine
+   getrennte Kontaktperson noch eine Telefonnummer — das Konto fuehrt einen einzelnen
+   Ansprechpartnernamen (der nicht zerlegt wird) und gar keine Telefonspalte. */
+const KONTAKT = [
+  ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
+  ["ns-s-email", "max@example.com"], ["ns-s-phone", "+49301234567"],
+  ["ns-r-firstName", "Dora"], ["ns-r-lastName", "Beispiel"],
+  ["ns-r-email", "dora@example.com"], ["ns-r-phone", "+49401234567"],
 ];
 
 async function formularFuellen(page) {
@@ -166,6 +179,10 @@ async function formularFuellen(page) {
 
   for (const [ph, wert] of EINGABEN) {
     const el = page.locator(`input[placeholder="${ph}"]`).first();
+    if (await el.count()) await el.fill(wert);
+  }
+  for (const [id, wert] of KONTAKT) {
+    const el = page.locator(`#${id}`);
     if (await el.count()) await el.fill(wert);
   }
   const plz = page.locator('input[placeholder="26133"]');
@@ -209,7 +226,17 @@ async function zustand(page) {
     return {
       url: location.pathname + location.search,
       titel: document.querySelector(".ce-page-header-title, h1")?.textContent?.trim() ?? null,
-      empfaenger: w["Erika Muster"] || null,
+      // Der Empfaengername steht seit dem Versandkontaktvertrag in ZWEI Feldern; der
+      // frueher hier gelesene Platzhalter des kombinierten Feldes existiert nicht mehr
+      // und lieferte deshalb null, obwohl das Formular korrekt gefuellt war.
+      //
+      // Zusammengesetzt wird AUSSCHLIESSLICH hier, zur Anzeige in der bestehenden
+      // Zusicherung. Es entsteht dabei kein Produktionswert, kein Payloadfeld und
+      // keine Rueckrichtung: gelesen werden zwei bereits strukturierte DOM-Werte.
+      empfaenger: (() => {
+        const v = (id) => document.getElementById(id)?.value?.trim() || "";
+        return [v("ns-r-firstName"), v("ns-r-lastName")].filter(Boolean).join(" ") || null;
+      })(),
       ort: w["Zürich"] || null,
       plz: w["26133"] || null,
       // Paketfelder über ihre ids: die Platzhalter heißen „z. B. 5" usw. — ein
@@ -768,8 +795,11 @@ test("20 — der /book-Payload bleibt feldgleich", async () => {
   }
   // Der Navigationsmarker darf NIE im Payload landen.
   assert.ok(!("fromFlow" in payload), "der Navigationsmarker ist in den Buchungspayload geraten");
-  assert.equal(payload.sender.fullName, "Max Mustermann");
-  assert.equal(payload.recipient.fullName, "Dora Beispiel");
+  // Der Payload traegt die Kontaktperson strukturiert.
+  assert.equal(payload.sender.firstName, "Max");
+  assert.equal(payload.sender.lastName, "Mustermann");
+  assert.equal(payload.recipient.firstName, "Dora");
+  assert.equal(payload.recipient.lastName, "Beispiel");
   await ctx.close();
 });
 
@@ -1017,7 +1047,7 @@ test("27 — ein Tastenanschlag direkt nach dem Speichern schreibt die alten Ang
   // Genau der Moment aus der Persistenz-Falle: die Seite bleibt gemountet,
   // der an lokale Werte gebundene Spiegel-Effekt würde bei veraltetem
   // Zustand sofort wieder feuern und die alten Tarife zurückschreiben.
-  await page.locator('input[placeholder="Erika Muster"]').fill("X");
+  await page.locator("#ns-r-firstName").fill("X");
   await page.waitForTimeout(400);
 
   // Mit dem Wegfall des Spiegels ist die Falle strukturell erledigt: es gibt
@@ -1140,8 +1170,16 @@ test("31 — „Entwurf fortsetzen\" überschreibt einen vorhandenen Sitzungsvor
   resumeDetailOverride = {
     id: 951, revision: 2, schemaVersion: 1,
     formData: {
-      sender: { company: "Andere Firma GmbH", fullName: "Otto Absender", streetAndNumber: "Kurfürstendamm 1", postalCode: "10707", city: "Berlin", country: "DE" },
-      recipient: { company: "Fortsetzen Empfänger AG", fullName: "Frieda Fortsetzen", streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
+      // Ein HEUTE gespeicherter Formularentwurf. Er traegt die Kontaktperson deshalb
+      // strukturiert — `fullName` waere hier ein Altbestandswert, den es bei einem
+      // frisch gespeicherten Entwurf nicht gibt, und `mapParty` zerlegt ihn bewusst
+      // nicht. Die Legacyform wird an ihrer eigenen Stelle geprueft (formDraftsView).
+      sender: { company: "Andere Firma GmbH", firstName: "Otto", lastName: "Absender",
+                email: "otto@example.com", phone: "+49301234567",
+                streetAndNumber: "Kurfürstendamm 1", postalCode: "10707", city: "Berlin", country: "DE" },
+      recipient: { company: "Fortsetzen Empfänger AG", firstName: "Frieda", lastName: "Fortsetzen",
+                   email: "frieda@example.com", phone: "+492211234567",
+                   streetAndNumber: "Domplatz 1", postalCode: "50667", city: "Köln", country: "DE" },
       packages: { packageCount: 3, weight: 9.5, length: 50, width: 40, height: 30 },
       shippingOptions: { shippingDate: null, serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
     },

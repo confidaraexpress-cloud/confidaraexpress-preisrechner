@@ -33,6 +33,11 @@ const S_STREET  = "#ns-s-street";
 const S_CITY    = "#ns-s-city";
 const S_ZIP     = "#ns-s-zip";
 const S_COUNTRY = "#ns-s-country";
+// Kontaktperson und Pflichtkontakt — ueber ihre STABILEN ids, wie die Felder darueber.
+const S_FIRST   = "#ns-s-firstName";
+const S_LAST    = "#ns-s-lastName";
+const S_EMAIL   = "#ns-s-email";
+const S_PHONE   = "#ns-s-phone";
 
 let server, browser;
 
@@ -110,7 +115,14 @@ async function zumFormular(page) {
 // Absenderblock hätte ihn still auf ein anderes gelenkt.
 async function fuelleAbsender(page, { zip, city, street, country = "DE" } = {}) {
   await page.locator(S_COUNTRY).selectOption(country);
-  await page.getByPlaceholder("Max Mustermann", { exact: true }).first().fill("Max Mustermann");
+  // Frueher ueber den Platzhalter „Max Mustermann" angesprochen. Der Platzhalter ist
+  // BESCHRIFTUNGSTEXT und kein Selektor — mit dem Versandkontaktvertrag wurde aus dem
+  // einen Namensfeld zwei, und dieser Zugriff lief in einen Timeout. Genau die Falle,
+  // die der gemeinsame Formularhelfer schon einmal beseitigt hat.
+  await page.locator(S_FIRST).fill("Max");
+  await page.locator(S_LAST).fill("Mustermann");
+  await page.locator(S_EMAIL).fill("max@example.com");
+  await page.locator(S_PHONE).fill("+49301234567");
   if (zip !== undefined) await page.locator(S_ZIP).fill(zip);
   if (city !== undefined) await page.locator(S_CITY).fill(city);
   if (street !== undefined) await page.locator(S_STREET).fill(street);

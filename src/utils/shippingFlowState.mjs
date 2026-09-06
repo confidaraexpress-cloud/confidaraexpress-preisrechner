@@ -68,7 +68,16 @@ export const OFFERS_DROPPED_NOTICE = Object.freeze({
 
 /* ══════════ Formularschlüssel je Bereich (Positivliste) ═══════════════════ */
 
-const PARTY_SUFFIXES = ["company", "fullName", "street", "addition", "zip", "city", "country", "phone", "email"];
+// ACHTUNG: diese Liste ist die ZWEITE ihrer Art — `PARTY_SUFFIXES` in
+// `newShipmentForm.mjs` beschreibt dieselben Felder für Formular und Payload. Wer dort
+// ein Adressfeld ergänzt, muss es hier ebenfalls ergänzen, sonst überlebt es den Weg
+// „Buchung → Zurück → Buchung" nicht: der Vorgang spiegelt nur, was hier steht.
+//
+// `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen. `fullName`
+// bleibt daneben, damit ein Altbestandswert aus einem fortgesetzten Entwurf den
+// Rundweg übersteht — abgeleitet oder zerlegt wird er nirgends.
+const PARTY_SUFFIXES = ["company", "firstName", "lastName", "fullName",
+                        "street", "addition", "zip", "city", "country", "phone", "email"];
 const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
 // `latestDeliveryTime` ist additiv ergänzt — OHNE Versionssprung, damit ein
 // laufender Vorgang nicht grundlos verworfen wird (ein alter Vorgang liefert

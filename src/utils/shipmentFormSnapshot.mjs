@@ -53,6 +53,12 @@ function dedupeIds(arr) {
 function party(form, p) {
   return {
     company: trimStr(form[`${p}_company`]),
+    // Die strukturierte Kontaktperson wird MITGESPEICHERT — sonst verlöre ein Entwurf
+    // beim Fortsetzen genau die Felder, die das Formular verpflichtend erhebt.
+    firstName: trimStr(form[`${p}_firstName`]),
+    lastName: trimStr(form[`${p}_lastName`]),
+    // Der Altbestandswert reist mit, damit ein fortgesetzter Entwurf aus der Zeit davor
+    // seinen gespeicherten Namen behält. Zerlegt wird er nirgends.
     fullName: trimStr(form[`${p}_fullName`]),
     streetAndNumber: trimStr(form[`${p}_street`]),
     addressAddition: trimStr(form[`${p}_addition`]),
@@ -130,7 +136,8 @@ export function hasMeaningfulShipmentChanges(currentSnapshot, baselineSnapshot) 
 // Enthält der Snapshot überhaupt einen sinnvoll speicherbaren Zustand? Reine
 // Auto-Defaults (leere Adressen, packageCount=1, Filter „all", Standardland)
 // zählen NICHT. Land ist bewusst ausgenommen (immer vorbelegt).
-const PARTY_TEXT_KEYS = ["company", "fullName", "streetAndNumber", "addressAddition", "postalCode", "city", "phone", "email"];
+const PARTY_TEXT_KEYS = ["company", "firstName", "lastName", "fullName", "streetAndNumber",
+                         "addressAddition", "postalCode", "city", "phone", "email"];
 function partyHasText(party) {
   return !!party && PARTY_TEXT_KEYS.some((k) => trimStr(party[k]) !== "");
 }

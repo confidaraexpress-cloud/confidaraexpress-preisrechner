@@ -185,9 +185,21 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
             <div className="abk-drawer-section">
               <div className="abk-drawer-section-title">Firma und Kontakt</div>
               {field("company", "Firma", { optional: true, placeholder: "Beispiel GmbH", maxLength: 200 })}
-              {field("contactName", "Ansprechpartner", { optional: true, placeholder: "Max Mustermann", maxLength: 35, hint: "Max. 35 Zeichen." })}
-              {field("email", "E-Mail", { optional: true, type: "email", placeholder: "logistik@beispiel.de" })}
-              {field("phone", "Telefon", { optional: true, type: "tel", placeholder: "+49 30 1234" })}
+              {/* Die Kontaktperson strukturiert — dieselbe Regel wie im Versandformular.
+                  Eine Adresse aus der Zeit davor öffnet sich mit leeren Namensfeldern:
+                  der alte `contactName` wird NICHT zerlegt, sondern bleibt darunter als
+                  Altwert sichtbar, bis die Felder ergänzt sind. */}
+              {field("firstName", "Vorname", { placeholder: "Max", maxLength: 35 })}
+              {field("lastName", "Nachname", { placeholder: "Mustermann", maxLength: 35,
+                                               hint: "Vor- und Nachname zusammen max. 35 Zeichen." })}
+              {form.contactName && !(form.firstName || form.lastName) && (
+                <p className="abk-drawer-hint">
+                  Bisher gespeichert: <strong>{form.contactName}</strong>. Bitte tragen Sie
+                  Vor- und Nachname getrennt ein.
+                </p>
+              )}
+              {field("email", "E-Mail", { type: "email", placeholder: "logistik@beispiel.de" })}
+              {field("phone", "Telefon", { type: "tel", placeholder: "+49 30 1234" })}
             </div>
 
             {/* Abschnitt 3 — Anschrift */}

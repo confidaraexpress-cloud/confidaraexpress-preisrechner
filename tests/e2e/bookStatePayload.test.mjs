@@ -51,7 +51,8 @@ const TARIFF = {
 
 // Genau die Adresse aus dem Live-Mitschnitt.
 const US_EMPFAENGER = Object.freeze({
-  country: "US", state: "NY", fullName: "John Doe",
+  country: "US", state: "NY", firstName: "John", lastName: "Doe",
+  email: "john@example.com", phone: "+12125550100",
   street: "350 5th Ave", zip: "10118", city: "New York",
 });
 
@@ -175,7 +176,9 @@ test("2 — derselbe Wert steht schon im /calculate-price-Payload (die Kette ist
 test("3 — DE→DE: kein state im /book-Payload, Verhalten unverändert", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
-  await bisZurBuchung(page, { country: "DE", fullName: "Erika Muster", street: "Hauptstr. 1", zip: "10115", city: "Berlin" });
+  await bisZurBuchung(page, { country: "DE", firstName: "Erika", lastName: "Muster",
+                              email: "erika@example.com", phone: "+49301234567",
+                              street: "Hauptstr. 1", zip: "10115", city: "Berlin" });
   const payload = await bucheUndLiesPayload(page);
   assert.equal(payload.recipient?.country, "DE");
   assert.ok(!("state" in (payload.recipient || {})), "für DE darf kein state-Feld entstehen");

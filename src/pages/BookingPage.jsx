@@ -785,7 +785,11 @@ export default function BookingPage() {
     const f = bookingData?.form || {};
     const parts = [];
     if (f[`${p}_company`])  parts.push(f[`${p}_company`]);
-    parts.push(f[`${p}_fullName`]);
+    // Die Kontaktperson aus den strukturierten Feldern; für einen fortgesetzten
+    // Altvorgang bleibt der gespeicherte Gesamtname die Rückfallanzeige. Zerlegt wird
+    // er nirgends — hier wird nur gelesen, was vorliegt.
+    const person = [f[`${p}_firstName`], f[`${p}_lastName`]].filter(Boolean).join(" ");
+    parts.push(person || f[`${p}_fullName`]);
     parts.push(f[`${p}_street`]);
     if (f[`${p}_addition`]) parts.push(f[`${p}_addition`]);
     const zipCity = [f[`${p}_zip`], f[`${p}_city`]].filter(Boolean).join(" ");
@@ -1192,11 +1196,17 @@ export default function BookingPage() {
     });
   };
 
-  const addrReady =
-    !!bookingData?.form?.s_fullName && !!bookingData?.form?.s_street &&
-    !!bookingData?.form?.s_zip      && !!bookingData?.form?.s_city   &&
-    !!bookingData?.form?.r_fullName && !!bookingData?.form?.r_street &&
-    !!bookingData?.form?.r_zip      && !!bookingData?.form?.r_city;
+  /* Die Adresse ist vollständig, wenn Anschrift UND Kontaktperson stehen.
+     Geprüft wird `firstName`/`lastName` statt des früheren `fullName`: seit dem
+     Versandkontaktvertrag ist der Gesamtname keine Eingabe mehr, sondern eine
+     abgeleitete Größe — ein Gate darauf wäre bei jeder neuen Sendung dauerhaft zu
+     und die Buchungsseite bliebe leer. */
+  const addrVollstaendig = (p) => {
+    const f = bookingData?.form || {};
+    return !!f[`${p}_firstName`] && !!f[`${p}_lastName`] &&
+           !!f[`${p}_street`]    && !!f[`${p}_zip`] && !!f[`${p}_city`];
+  };
+  const addrReady = addrVollstaendig("s") && addrVollstaendig("r");
 
   if (!tariff) return (
     <div className="page-with-navbar booking-no-tariff">

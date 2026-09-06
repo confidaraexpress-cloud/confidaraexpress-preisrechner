@@ -47,8 +47,10 @@ const ENTWURF_LISTE = {
   id: ENTWURF_ID, jumingoShipmentId: "s_" + "a".repeat(32), status: "draft",
   weight: "5", length: "30", width: "20", height: "15", packageCount: 1,
   fromCountry: "DE", toCountry: "DE", fromPostalCode: "10115", toPostalCode: "80331",
-  senderAddress:    { fullName: "Max Mustermann", streetAndNumber: "Musterweg 1", postalCode: "10115", city: "Berlin",  country: "DE" },
-  recipientAddress: { fullName: "Erika Beispiel", streetAndNumber: "Zielstraße 2", postalCode: "80331", city: "München", country: "DE" },
+  senderAddress:    { firstName: "Max", lastName: "Mustermann", email: "max@example.com", phone: "+49301234567",
+                      streetAndNumber: "Musterweg 1", postalCode: "10115", city: "Berlin",  country: "DE" },
+  recipientAddress: { firstName: "Erika", lastName: "Beispiel", email: "erika@example.com", phone: "+49891234567",
+                      streetAndNumber: "Zielstraße 2", postalCode: "80331", city: "München", country: "DE" },
   requestedShippingDate: "2026-09-01", createdAt: "2026-08-20T10:00:00Z", updatedAt: "2026-08-20T12:00:00Z",
 };
 const ENTWURF_FORMDATA = {

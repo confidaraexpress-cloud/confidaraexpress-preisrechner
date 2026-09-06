@@ -42,12 +42,12 @@ const BASE = `http://127.0.0.1:${PORT}`;
 // Konstellation, in der die alte Fassung beim ersten Klick 0 Angebote lieferte.
 const DRAFT_FORM_DATA = {
   sender: {
-    company: "Muster GmbH", fullName: "Max Mustermann", streetAndNumber: "Hauptstrasse 1",
+    company: "Muster GmbH", firstName: "Max", lastName: "Mustermann", streetAndNumber: "Hauptstrasse 1",
     addressAddition: "Haus 2", postalCode: "10115", city: "Berlin", country: "DE",
     phone: "+4930123456", email: "max@example.com",
   },
   recipient: {
-    company: "Empfang AG", fullName: "Erika Empfaenger", streetAndNumber: "Bahnhofstrasse 9",
+    company: "Empfang AG", firstName: "Erika", lastName: "Empfaenger", streetAndNumber: "Bahnhofstrasse 9",
     addressAddition: "", postalCode: "80331", city: "Muenchen", country: "DE",
     phone: "+4989987654", email: "erika@example.com",
   },

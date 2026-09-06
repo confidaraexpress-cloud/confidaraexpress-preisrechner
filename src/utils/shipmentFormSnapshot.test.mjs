@@ -24,7 +24,10 @@ test("Snapshot: enthält exakt die erlaubten Felder (kein UI-/Ergebnis-State)", 
   const snap = getShipmentFormSnapshot(blankState());
   assert.deepEqual(Object.keys(snap).sort(), ["inventoryContext", "packages", "recipient", "sender", "shippingOptions"]);
   assert.equal(snap.inventoryContext, null, "eine normale Sendung hat keinen Lagerbezug");
-  assert.deepEqual(Object.keys(snap.sender).sort(), ["addressAddition", "city", "company", "country", "email", "fullName", "phone", "postalCode", "streetAndNumber"].sort());
+  // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen;
+  // `fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs erhalten.
+  assert.deepEqual(Object.keys(snap.sender).sort(), ["addressAddition", "city", "company", "country",
+    "email", "firstName", "lastName", "fullName", "phone", "postalCode", "streetAndNumber"].sort());
   assert.deepEqual(Object.keys(snap.packages).sort(), ["height", "length", "packageCount", "weight", "width"]);
   assert.deepEqual(Object.keys(snap.shippingOptions).sort(), ["publicCarrierIds", "serviceFilter", "shippingDate", "shippingModeFilter"]);
 });

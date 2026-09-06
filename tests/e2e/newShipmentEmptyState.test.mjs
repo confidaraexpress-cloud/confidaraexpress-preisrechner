@@ -165,9 +165,13 @@ async function felder(page) {
       phWeight: ph("ns-weight"), phLength: ph("ns-length"),
       sCountry: v("ns-s-country"), rCountry: v("ns-r-country"),
       sStreet: v("ns-s-street"), rStreet: v("ns-r-street"),
-      // Absenderfirma/-name tragen keine id — über den Platzhalter lesen.
-      sCompany: document.querySelector('input[placeholder="Firma GmbH"]')?.value ?? null,
-      sName: document.querySelector('input[placeholder="Max Mustermann"]')?.value ?? null,
+      // Über die stabilen ids. Früher stand hier ein Zugriff über den Platzhalter mit
+      // dem Hinweis, die Felder trügen keine id — das stimmte schon damals nicht
+      // (`addrField` vergibt jedem Feld eine) und brach, als der Versandkontaktvertrag
+      // aus dem einen Namensfeld zwei machte.
+      sCompany: v("ns-s-company"),
+      sFirstName: v("ns-s-firstName"),
+      sLastName: v("ns-s-lastName"),
       rCity: document.querySelector('input[placeholder="Zürich"]')?.value ?? null,
       angebote: document.querySelectorAll(".offer-card").length,
     };
@@ -237,7 +241,8 @@ test("S1 — „Neue Sendung“ startet vollständig leer (kein Profil, keine Ma
     assert.equal(f.phLength, "z. B. 30");
     // Absender: NICHT aus dem Profil.
     assert.equal(f.sCompany, "", "Firma kam automatisch aus dem Profil");
-    assert.equal(f.sName, "", "Name kam automatisch aus dem Profil");
+    assert.equal(f.sFirstName, "", "Vorname kam automatisch aus dem Profil");
+    assert.equal(f.sLastName, "", "Nachname kam automatisch aus dem Profil");
     assert.equal(f.sStreet, "", "Straße kam automatisch aus dem Profil");
     // Land: beide leer, „Land auswählen".
     assert.equal(f.sCountry, "", "Absenderland ist vorausgewählt");

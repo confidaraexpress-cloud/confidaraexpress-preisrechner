@@ -38,12 +38,14 @@
 /** Vollständiger, gültiger Standardvorgang. Einzelne Werte lassen sich je
  *  Suite überschreiben; die Struktur bleibt dieselbe. */
 export const STANDARD_ABSENDER = Object.freeze({
-  company: "Muster GmbH", fullName: "Max Mustermann",
+  company: "Muster GmbH", firstName: "Max", lastName: "Mustermann",
+  email: "max@example.com", phone: "+49301234567",
   street: "Hauptstrasse 1", zip: "70173", city: "Berlin", country: "DE",
 });
 
 export const STANDARD_EMPFAENGER = Object.freeze({
-  company: "Empfang AG", fullName: "Erika Empfaenger",
+  company: "Empfang AG", firstName: "Erika", lastName: "Empfaenger",
+  email: "erika@example.com", phone: "+49891234567",
   street: "Bahnhofstrasse 9", zip: "80331", city: "Muenchen", country: "DE",
 });
 
@@ -57,7 +59,15 @@ export const STANDARD_PAKET = Object.freeze({
 // `state` steht NACH `country`: das Feld erscheint erst, wenn ein Land mit Bundesstaatpflicht
 // (US/CA) gewählt ist. Bestehende Suiten übergeben es nicht — `fuelleAdresse` überspringt jeden
 // undefined-Wert, ihr Ablauf bleibt damit unverändert.
-const ADRESSFELDER = ["country", "state", "company", "fullName", "street", "zip", "city"];
+// Seit dem Versandkontaktvertrag steht die Kontaktperson STRUKTURIERT im Formular, und
+// E-Mail und Telefon sind Pflichtfelder. Das frühere kombinierte `fullName` gibt es als
+// Eingabefeld nicht mehr — es steht deshalb auch hier nicht mehr, sonst liefe jede Suite
+// in einen Timeout auf eine id, die die Seite gar nicht rendert.
+//
+// Genau dafür gibt es diese Datei: die Produktänderung ist an EINER Stelle nachgezogen,
+// nicht in zehn Kopien.
+const ADRESSFELDER = ["country", "state", "company", "firstName", "lastName",
+                      "email", "phone", "street", "zip", "city"];
 const PAKETFELDER  = ["packageCount", "weight", "length", "width", "height"];
 
 async function setzeFeld(page, id, wert) {

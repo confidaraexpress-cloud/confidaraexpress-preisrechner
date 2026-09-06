@@ -64,14 +64,21 @@ test("1 — der Speicherschlüssel trägt die Schemaversion", () => {
 
 test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite ab", () => {
   // „Neue Sendung": beide Parteien vollständig + Paket + Client-Filter.
-  for (const k of ["s_company", "s_fullName", "s_street", "s_addition", "s_zip", "s_city",
-                   "s_country", "s_phone", "s_email", "r_company", "r_fullName", "r_street",
+  // `s_firstName`/`s_lastName` sind mit dem Versandkontaktvertrag dazugekommen;
+  // `s_fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs in der Liste.
+  //
+  // Die Liste MUSS vollständig sein: was hier fehlt, überlebt den Weg
+  // „Buchung → Zurück → Buchung" nicht — der Vorgang spiegelt nur, was er kennt.
+  for (const k of ["s_company", "s_firstName", "s_lastName", "s_fullName",
+                   "s_street", "s_addition", "s_zip", "s_city",
+                   "s_country", "s_phone", "s_email",
+                   "r_company", "r_firstName", "r_lastName", "r_fullName", "r_street",
                    "r_addition", "r_zip", "r_city", "r_country", "r_phone", "r_email",
                    "packageCount", "weight", "length", "width", "height",
                    "max_price", "latestDeliveryDate", "latestDeliveryTime"]) {
     assert.ok(SHIPMENT_FORM_KEYS.includes(k), `${k} fehlt im Sendungsformular`);
   }
-  assert.equal(SHIPMENT_FORM_KEYS.length, 26);
+  assert.equal(SHIPMENT_FORM_KEYS.length, 30);
   // Preisrechner: nur Route (Land, PLZ, Ort) und Paketdaten — keine Namen, keine Straßen.
   assert.deepEqual([...CALCULATOR_FORM_KEYS], [
     "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",

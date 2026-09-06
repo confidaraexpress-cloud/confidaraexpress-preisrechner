@@ -27,7 +27,8 @@ const USER = {
 };
 
 const US_EMPFAENGER = {
-  country: "US", state: "OR", company: "Acme Inc", fullName: "Jane Doe",
+  country: "US", state: "OR", company: "Acme Inc", firstName: "Jane", lastName: "Doe",
+  email: "jane@example.com", phone: "+15035550100",
   street: "100 West 33rd Street", zip: "97452", city: "Leaburg",
 };
 

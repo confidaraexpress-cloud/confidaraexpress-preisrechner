@@ -69,7 +69,11 @@ let server, browser;
    Die ids (`ns-s-*` Absender, `ns-r-*` Empfänger, `ns-*` Paket) vergibt der
    Produktcode ausdrücklich und stabil. */
 const NS_ID = {
-  "Vor- und Nachname": "fullName",
+  // Seit dem Versandkontaktvertrag zwei getrennte Felder statt einem.
+  "Vorname":           "firstName",
+  "Nachname":          "lastName",
+  "E-Mail":            "email",
+  "Telefon":           "phone",
   "Straße & Hausnr.":  "street",
   "PLZ":               "zip",
   "Stadt":             "city",
@@ -99,7 +103,10 @@ async function fuelleAbsender(page) {
   // keinen Profil-Seed mehr, das Auswahlfeld beginnt ohne Wert, und ohne Land
   // bleibt der CTA zu Recht gesperrt. Ausserdem haengt die PLZ-Regel daran.
   await page.locator("#ns-s-country").selectOption("DE");
-  await feld(page, "Vor- und Nachname").fill("Max Mustermann");
+  await feld(page, "Vorname").fill("Max");
+  await feld(page, "Nachname").fill("Mustermann");
+  await feld(page, "E-Mail").fill("max@example.com");
+  await feld(page, "Telefon").fill("+49301234567");
   await feld(page, "Straße & Hausnr.").fill("Senderweg 1");
   await feld(page, "PLZ").fill("10115");
   await feld(page, "Stadt").fill("Berlin");
@@ -431,7 +438,12 @@ test("8 — „Versand vorbereiten“ füllt das BESTEHENDE Formular „Neue Sen
      zugeklappte Gruppe ihre Einträge verbirgt, ist eigene, gewollte Logik und
      wird von sidebarNavigation.test.mjs geprüft. */
   assert.equal((await page.locator(".pp-nav .nitem.on span").textContent()).trim(), "Neue Sendung");
-  assert.equal(await empf(page, "Vor- und Nachname").inputValue(), "Erika Muster");
+  // Die Anschrift des Auftrags kommt vollständig an. Vor- und Nachname NICHT: ein
+  // Auftrag führt einen einzelnen Empfängernamen, und der wird seit dem
+  // Versandkontaktvertrag nicht mehr zerlegt. Der Kunde ergänzt ihn bewusst —
+  // dieselbe Regel wie bei einer Adressbuchzeile aus der Zeit davor.
+  assert.equal(await empf(page, "Vorname").inputValue(), "", "der Auftragsname wurde zerlegt");
+  assert.equal(await empf(page, "Nachname").inputValue(), "", "der Auftragsname wurde zerlegt");
   assert.equal(await empf(page, "Straße & Hausnr.").inputValue(), "Zielweg 9");
   assert.equal(await empf(page, "PLZ").inputValue(), "20095");
   assert.equal(await empf(page, "Stadt").inputValue(), "Hamburg");
@@ -452,7 +464,8 @@ test("9 — der Prefill wirkt GENAU EINMAL — eine spätere normale Sendung ist
   await page.waitForTimeout(400);
   await page.locator("button", { hasText: "Versand vorbereiten" }).first().click();
   await page.waitForTimeout(700);
-  assert.equal(await empf(page, "Vor- und Nachname").inputValue(), "Erika Muster");
+  assert.equal(await empf(page, "Straße & Hausnr.").inputValue(), "Zielweg 9",
+    "die Auftragsanschrift überlebt den Wechsel");
 
   // Weg und zurück über die Sidebar — der Prefill darf NICHT erneut greifen.
   await ueberSidebar(page, "Übersicht");
@@ -475,7 +488,7 @@ test("9 — der Prefill wirkt GENAU EINMAL — eine spätere normale Sendung ist
     const bestaetigen = page.locator(".ce-dialog button", { hasText: /Zurücksetzen|Ja/ });
     if (await bestaetigen.count()) await bestaetigen.first().click();
     await page.waitForTimeout(400);
-    assert.equal(await empf(page, "Vor- und Nachname").inputValue(), "", "Auftragsdaten überleben das Zurücksetzen");
+    assert.equal(await empf(page, "Straße & Hausnr.").inputValue(), "", "Auftragsdaten überleben das Zurücksetzen");
     assert.equal(await page.locator(".dft-resume-info").count(), 0, "der Herkunftshinweis überlebt das Zurücksetzen");
   }
   await page.close();
@@ -491,7 +504,10 @@ test("10 — eine normale Sendung schickt KEIN inventory-Feld an die Preisberech
 
   await fuelleAbsender(page);
   await page.locator("#ns-r-country").selectOption("DE");
-  await empf(page, "Vor- und Nachname").fill("Erika Muster");
+  await empf(page, "Vorname").fill("Erika");
+  await empf(page, "Nachname").fill("Muster");
+  await empf(page, "E-Mail").fill("erika@example.com");
+  await empf(page, "Telefon").fill("+49401234567");
   await empf(page, "Straße & Hausnr.").fill("Zielweg 9");
   await empf(page, "PLZ").fill("20095");
   await empf(page, "Stadt").fill("Hamburg");

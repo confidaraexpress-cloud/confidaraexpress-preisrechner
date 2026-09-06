@@ -190,7 +190,17 @@ async function adressenFuellen(page) {
   await page.locator('button', { hasText: "Eigene Adresse" }).first().click();
   await page.selectOption("#ns-r-country", "DE");
   await page.fill("#ns-r-street", "Hafenstr. 12");
-  await page.fill('input[placeholder="Erika Muster"]', "Dora Beispiel");
+  // Über die stabilen ids — der Platzhalter des früheren kombinierten Namensfeldes
+  // existiert nicht mehr. Der Profil-Seed liefert weder Kontaktperson noch Telefon
+  // (das Konto führt einen einzelnen Ansprechpartnernamen, der nicht zerlegt wird,
+  // und gar keine Telefonnummer), beides wird deshalb ausdrücklich gesetzt.
+  await page.fill("#ns-r-firstName", "Dora");
+  await page.fill("#ns-r-lastName", "Beispiel");
+  await page.fill("#ns-r-email", "dora@example.com");
+  await page.fill("#ns-r-phone", "+49401234567");
+  await page.fill("#ns-s-firstName", "Max");
+  await page.fill("#ns-s-lastName", "Mustermann");
+  await page.fill("#ns-s-phone", "+49301234567");
   await page.fill('input[placeholder="Zürich"]', "Hamburg");
   const plz = page.locator('#ns-r-zip, input[placeholder="26133"]').last();
   if (await plz.count()) await plz.fill("20457");

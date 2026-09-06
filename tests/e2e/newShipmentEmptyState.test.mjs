@@ -20,6 +20,7 @@ import { chromium } from "playwright";
 // Erwartete Vorbelegung aus der PRODUKTIVEN Konstante, nicht als "1" wiederholt:
 // ändert sich die Produktentscheidung, zieht der Test mit.
 import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
+import { fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -186,6 +187,9 @@ async function paketFuellen(page, { packageCount = "1", weight = "5", length = "
   }
 }
 
+// Bringt Adressen UND die vier Sendungsangaben in einen gültigen Zustand — beides
+// gehört zusammen, weil beides den CTA freigibt. Die Sendungsangaben (Paket 9A) laufen
+// über den GEMEINSAMEN Helfer, damit sie nicht ein zweites Mal gepflegt werden müssen.
 async function adressenFuellen(page) {
   await page.locator('button', { hasText: "Eigene Adresse" }).first().click();
   await page.selectOption("#ns-r-country", "DE");
@@ -205,6 +209,7 @@ async function adressenFuellen(page) {
   const plz = page.locator('#ns-r-zip, input[placeholder="26133"]').last();
   if (await plz.count()) await plz.fill("20457");
   await page.waitForTimeout(200);
+  await fuelleSendungsangaben(page);
 }
 
 test.before(async () => {

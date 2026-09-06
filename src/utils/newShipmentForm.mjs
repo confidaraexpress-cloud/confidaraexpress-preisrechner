@@ -20,6 +20,7 @@
 // Anzahl 1–99 als ganze Zahl.
 
 import { normalizeCountryCode } from "./countries.js";
+import { blankDeclarations } from "./shipmentDeclarations.mjs";
 
 export const PACKAGE_FIELDS = Object.freeze(["packageCount", "weight", "length", "width", "height"]);
 export const PARTY_PREFIXES = Object.freeze(["s", "r"]);
@@ -142,6 +143,12 @@ export function createEmptyShipmentForm() {
   // Sie steht NACH der Schleife, damit die Schleife die Regel „alles leer" unverändert
   // ausspricht und die Ausnahme als solche sichtbar bleibt.
   form.packageCount = PACKAGE_COUNT_DEFAULT;
+  // Die vier Sendungsangaben, die vor dem Angebotsvergleich erhoben werden. Sie folgen
+  // derselben Regel wie alles andere: KEIN Vorgabewert. Die beiden Adressartfragen starten
+  // ausdrücklich als `null` und nicht als `false` — „noch nicht beantwortet" ist ein
+  // eigener Zustand, und ein vorausgewähltes „Geschäftsadresse" wäre eine preiswirksame
+  // Behauptung über eine Adresse, die niemand beschrieben hat.
+  Object.assign(form, blankDeclarations());
   form.max_price = "";
   form.latestDeliveryDate = "";
   form.latestDeliveryTime = "";

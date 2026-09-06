@@ -22,8 +22,13 @@ const blankState = (over = {}) => ({
 
 test("Snapshot: enthält exakt die erlaubten Felder (kein UI-/Ergebnis-State)", () => {
   const snap = getShipmentFormSnapshot(blankState());
-  assert.deepEqual(Object.keys(snap).sort(), ["inventoryContext", "packages", "recipient", "sender", "shippingOptions"]);
+  assert.deepEqual(Object.keys(snap).sort(), ["declarations", "inventoryContext", "packages", "recipient", "sender", "shippingOptions"]);
   assert.equal(snap.inventoryContext, null, "eine normale Sendung hat keinen Lagerbezug");
+  // Die vier Sendungsangaben. Im Entwurf ist jede für sich optional: ein Zwischenstand
+  // ist kein Vertrag. Fehlende Werte stehen als `null` — nicht als `""` und schon gar
+  // nicht als `false`, das bei der Adressart eine Antwort wäre.
+  assert.deepEqual(snap.declarations,
+    { content: null, goodsValue: null, collectionIsResidential: null, deliveryIsResidential: null });
   // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen;
   // `fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs erhalten.
   assert.deepEqual(Object.keys(snap.sender).sort(), ["addressAddition", "city", "company", "country",
@@ -84,7 +89,7 @@ test("Dirty: identische Snapshots → clean", () => {
 });
 test("Dirty: Key-Reihenfolge-unabhängig (gleiche Werte, andere Objekt-Reihenfolge) → clean", () => {
   const base = getShipmentFormSnapshot(blankState({ form: { r_company: "A" } }));
-  const reordered = { shippingOptions: base.shippingOptions, packages: base.packages, recipient: base.recipient, sender: base.sender, inventoryContext: base.inventoryContext };
+  const reordered = { shippingOptions: base.shippingOptions, packages: base.packages, recipient: base.recipient, sender: base.sender, inventoryContext: base.inventoryContext, declarations: base.declarations };
   assert.equal(hasMeaningfulShipmentChanges(base, reordered), false);
 });
 test("Dirty: reine Auto-Defaults (leeres Formular) → clean", () => {

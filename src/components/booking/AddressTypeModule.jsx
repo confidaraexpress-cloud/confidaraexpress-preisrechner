@@ -15,7 +15,15 @@ import { ADRESSFRAGE_TEXT, istBeantwortet } from "../../utils/addressTypeQuestio
    Für den Kunden ist das eine Frage zu seiner Adresse. Über wen ConfidaraExpress
    einkauft, steht hier nicht — nicht im Text, nicht im Feldnamen, nicht in einer
    Klasse. Alle Texte kommen aus `addressTypeQuestions.mjs`. */
-export function AddressTypeModule({ fragen, werte, onChange, showErrors = false }) {
+/* `gruppeKlasse` benennt die Fieldset-Gruppe. Sie ist ein Parameter, weil dieselbe
+   Bedienoberfläche seit Paket 9A an ZWEI Stellen steht: im Sendungsformular (dort werden
+   die Fragen erhoben) und weiterhin auf der Buchungsseite (dort werden sie angezeigt
+   bzw. nachgefordert). Beide Vorkommen brauchen eine unterscheidbare Kennzeichnung —
+   sonst trifft ein Selektor, der die eine Stelle meint, die andere mit. Genau das ist
+   beim Umzug beinahe passiert: `.adr-typ-group` war in vier Browserprüfungen der Marker
+   der BUCHUNGSSEITE, und das neue Formularfeld hätte ihn vorzeitig erfüllt. */
+export function AddressTypeModule({ fragen, werte, onChange, showErrors = false,
+                                    gruppeKlasse = "adr-typ-group" }) {
   // Die Liste kommt fertig herein — dieses Bauteil entscheidet NICHT, was gefragt wird.
   // Es kennt weder Provider noch Uebergabeart und soll beides auch nicht kennen.
   return (
@@ -34,7 +42,7 @@ export function AddressTypeModule({ fragen, werte, onChange, showErrors = false 
         const wert = werte ? werte[feld] : null;
         const offen = showErrors && !istBeantwortet(wert);
         return (
-          <fieldset key={feld} className="dn-mode-fieldset adr-typ-group" aria-describedby="adr-typ-help">
+          <fieldset key={feld} className={`dn-mode-fieldset ${gruppeKlasse}`} aria-describedby="adr-typ-help">
             <legend className="field-label">{text.label}</legend>
             <p className="field-hint">{text.hint}</p>
 

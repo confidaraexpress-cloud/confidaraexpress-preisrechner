@@ -10,6 +10,7 @@
 // Leere Gewicht-/Maßwerte bleiben null; ungültige Zahlen werden nie zu NaN.
 import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs";
 import { normalizeInventoryContext } from "./inventoryView.mjs";
+import { declarationsSnapshot } from "./shipmentDeclarations.mjs";
 
 // ── Normalisierung (stabil, deterministisch) ────────────────────────────────
 function trimStr(v) {
@@ -101,6 +102,12 @@ export function getShipmentFormSnapshot(state) {
       publicCarrierIds: dedupeIds(s.selectedPublicCarrierIds),
     },
     inventoryContext: normalizeInventoryContext(s.inventoryContext),
+    // Die vier Sendungsangaben. Sie MÜSSEN in den Entwurf: das Formular erhebt sie
+    // verpflichtend, und ein gespeicherter Entwurf, der sie verliert, präsentiert dem
+    // Kunden beim Fortsetzen vier leere Pflichtfelder, die er bereits ausgefüllt hatte.
+    // Im Entwurf ist jede Angabe für sich optional (`null` = noch nicht beantwortet) —
+    // ein Zwischenstand ist kein Vertrag.
+    declarations: declarationsSnapshot(form),
   };
 }
 

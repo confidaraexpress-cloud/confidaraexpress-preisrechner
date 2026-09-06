@@ -82,7 +82,7 @@ function CardPrice({ price }) {
 export function InsuranceModule({
   insCards, insuranceType, onSelectType,
   isInsured, tariff,
-  goodsValue, onGoodsValueChange, onGoodsValueBlur, goodsValueError,
+  goodsValue, onGoodsValueChange, onGoodsValueBlur, goodsValueError, goodsValueLocked = false,
   insuranceValue, onInsuranceValueChange, onInsuranceValueBlur, insValueError,
   insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
   repriceError, isRepricing, isStale, repriceConfirmed,
@@ -201,18 +201,29 @@ export function InsuranceModule({
         <div className="ins-inputs">
           <div className="field">
             <label className="field-label" htmlFor="ins-goods">Warenwert der Sendung (EUR)</label>
+            {/* Gesperrt, wenn der Warenwert bereits im Sendungsformular erklärt wurde:
+                er hat den Vergleichspreis mitbestimmt und ist serverseitig eingefroren.
+                Ein zweites editierbares Feld wäre eine zweite Wahrheit über denselben
+                Sachverhalt. `readOnly` statt `disabled` — der Wert bleibt lesbar,
+                fokussierbar und für Screenreader vorhanden. */}
             <input
               id="ins-goods"
               className={`field-input${goodsValueError ? " field-input-error" : ""}`}
               type="number" inputMode="decimal" min="0" max="9999999" step="0.01"
               value={goodsValue}
-              onChange={e => onGoodsValueChange(e.target.value)}
+              onChange={e => { if (!goodsValueLocked) onGoodsValueChange(e.target.value); }}
               onBlur={onGoodsValueBlur}
+              readOnly={goodsValueLocked}
+              aria-readonly={goodsValueLocked || undefined}
               placeholder="z. B. 500"
             />
             {goodsValueError
               ? <span className="field-error">{goodsValueError}</span>
-              : <span className="field-hint">Tatsächlicher Warenwert der Sendung.</span>}
+              : <span className="field-hint">
+                  {goodsValueLocked
+                    ? "Aus Ihren Angaben zur Sendung übernommen."
+                    : "Tatsächlicher Warenwert der Sendung."}
+                </span>}
           </div>
 
           {goodsOverMax && (

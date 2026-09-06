@@ -58,6 +58,10 @@ const ENTWURF_FORMDATA = {
   recipient: ENTWURF_LISTE.recipientAddress,
   packages:  { packageCount: 1, weight: 5, length: 30, width: 20, height: 15 },
   shippingOptions: { shippingDate: "2026-09-01", serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
+  // Die vier Sendungsangaben (Paket 9A) — ohne sie bliebe der CTA nach dem Fortsetzen
+  // gesperrt, was korrektes Produktverhalten waere, aber nicht die Aussage dieser Suite.
+  declarations: { content: "Ersatzteile", goodsValue: 250,
+                  collectionIsResidential: false, deliveryIsResidential: true },
 };
 
 const REF_TOGGLE   = "#booking-reference-toggle";

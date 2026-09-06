@@ -47,9 +47,19 @@ test("1 — jedes user-editierbare Feld startet leer, nur die Anzahl trägt ihre
   // Sie steht hier als Allowlist und nicht als gelockerte Prüfung: ein zweites
   // vorbelegtes Feld fällt weiterhin sofort auf.
   const VORBELEGT = { packageCount: PACKAGE_COUNT_DEFAULT };
+  // Zwei Felder starten als `null` statt `""` — und das ist dieselbe Regel, nicht ihre
+  // Ausnahme. Die Adressartfragen sind DREIWERTIG: `true` (privat), `false`
+  // (geschäftlich) und „noch nicht beantwortet". Ein leerer String wäre dort kein
+  // leerer Zustand, sondern ein VIERTER, den niemand deuten kann; ein `false` wäre die
+  // Behauptung „Geschäftsadresse", und die ist preiswirksam.
+  const UNBEANTWORTET = ["collectionIsResidential", "deliveryIsResidential"];
   for (const [k, v] of Object.entries(leer)) {
     if (k in VORBELEGT) {
       assert.equal(v, VORBELEGT[k], `${k} trägt nicht die erwartete Vorgabe`);
+      continue;
+    }
+    if (UNBEANTWORTET.includes(k)) {
+      assert.strictEqual(v, null, `${k} startet nicht als „unbeantwortet": ${JSON.stringify(v)}`);
       continue;
     }
     assert.equal(v, "", `${k} startet nicht leer: ${JSON.stringify(v)}`);

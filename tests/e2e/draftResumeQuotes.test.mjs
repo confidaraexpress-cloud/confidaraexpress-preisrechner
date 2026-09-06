@@ -226,7 +226,15 @@ test("Entwurf fortsetzen: EIN Klick lädt Angebote, ohne veralteten Carrier-Filt
   assert.equal(payload.recipient.postalCode, "80331");
   assert.equal(payload.recipient.city, "Muenchen");
   assert.equal(payload.recipient.country, "DE");
-  assert.equal(payload.recipient.fullName, "Erika Empfaenger");
+  // Die Kontaktperson wird beim Fortsetzen STRUKTURIERT durchgereicht: der Entwurf
+  // traegt `firstName`/`lastName`, und genau so kommen sie im Preisrequest an.
+  // `fullName` ist seit dem Versandkontaktvertrag keine Quelle mehr, sondern nur noch
+  // ein Altbestandswert - dieser Entwurf traegt keinen, also entsteht das Feld nicht.
+  // Das ist die eigentliche Zusicherung: es wird NICHTS zusammengesetzt.
+  assert.equal(payload.recipient.firstName, "Erika");
+  assert.equal(payload.recipient.lastName, "Empfaenger");
+  assert.equal(payload.recipient.fullName, undefined,
+    "aus Vor- und Nachname wurde ein Gesamtname synthetisiert");
   assert.equal(payload.recipient.phone, "+4989987654");
   assert.equal(payload.recipient.email, "erika@example.com");
   // Die Entwurfsherkunft wird weiterhin genau einmal mitgesendet.

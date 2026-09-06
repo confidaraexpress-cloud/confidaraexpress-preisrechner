@@ -226,7 +226,17 @@ async function zustand(page) {
     return {
       url: location.pathname + location.search,
       titel: document.querySelector(".ce-page-header-title, h1")?.textContent?.trim() ?? null,
-      empfaenger: w["Erika Muster"] || null,
+      // Der Empfaengername steht seit dem Versandkontaktvertrag in ZWEI Feldern; der
+      // frueher hier gelesene Platzhalter des kombinierten Feldes existiert nicht mehr
+      // und lieferte deshalb null, obwohl das Formular korrekt gefuellt war.
+      //
+      // Zusammengesetzt wird AUSSCHLIESSLICH hier, zur Anzeige in der bestehenden
+      // Zusicherung. Es entsteht dabei kein Produktionswert, kein Payloadfeld und
+      // keine Rueckrichtung: gelesen werden zwei bereits strukturierte DOM-Werte.
+      empfaenger: (() => {
+        const v = (id) => document.getElementById(id)?.value?.trim() || "";
+        return [v("ns-r-firstName"), v("ns-r-lastName")].filter(Boolean).join(" ") || null;
+      })(),
       ort: w["Zürich"] || null,
       plz: w["26133"] || null,
       // Paketfelder über ihre ids: die Platzhalter heißen „z. B. 5" usw. — ein

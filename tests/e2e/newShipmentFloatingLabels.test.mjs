@@ -333,9 +333,17 @@ test("8 — der Fehlerzustand färbt Label und Rahmen und meldet ihn zugänglich
     await page.selectOption("#ns-s-country", "DE");
     await page.selectOption("#ns-r-country", "DE");
     for (const [id, wert] of [
-      ["ns-s-firstName", "Max Mustermann"], ["ns-s-street", "Musterstraße 1"],
+      // Seit dem Versandkontaktvertrag sind fuer BEIDE Parteien Vorname, Nachname,
+      // E-Mail und Telefon Pflicht. Ohne sie bleibt der CTA zu Recht gesperrt, und das
+      // `waitForFunction` unten koennte nie erfuellt werden - der Test haette dann die
+      // Validierung gemessen statt den Fehlerzustand, um den es ihm geht.
+      ["ns-s-firstName", "Max"], ["ns-s-lastName", "Mustermann"],
+      ["ns-s-email", "max@example.com"], ["ns-s-phone", "+49301234567"],
+      ["ns-s-street", "Musterstraße 1"],
       ["ns-s-zip", "70173"], ["ns-s-city", "Stuttgart"],
-      ["ns-r-firstName", "Erika Muster"], ["ns-r-street", "Beispielweg 5"],
+      ["ns-r-firstName", "Erika"], ["ns-r-lastName", "Muster"],
+      ["ns-r-email", "erika@example.com"], ["ns-r-phone", "+49891234567"],
+      ["ns-r-street", "Beispielweg 5"],
       ["ns-r-zip", "80331"], ["ns-r-city", "München"],
       ["ns-packageCount", "1"], ["ns-weight", "5"],
       ["ns-length", "30"], ["ns-width", "20"], ["ns-height", "15"],

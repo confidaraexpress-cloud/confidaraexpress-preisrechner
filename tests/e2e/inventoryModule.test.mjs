@@ -536,6 +536,12 @@ test("11 — eine Sendung aus dem Lager schickt den Lagerbezug mit (nur IDs und 
   await page.waitForTimeout(700);
 
   await fuelleAbsender(page);
+  // Der Auftrag fuehrt einen einzelnen Empfaengernamen und keine Kontaktdaten. Vor- und
+  // Nachname werden daraus NICHT abgeleitet (Versandkontaktvertrag), E-Mail und Telefon
+  // gibt es dort gar nicht — der Kunde ergaenzt sie, und dieser Test tut dasselbe.
+  for (const [id, v] of [["ns-r-firstName", "Erika"], ["ns-r-lastName", "Muster"],
+                         ["ns-r-email", "erika@example.com"], ["ns-r-phone", "+49401234567"]])
+    await page.locator(`#${id}`).fill(v);
   // Anzahl und alle drei Masse sind seit dem Paket "Paketmasse sind Pflicht"
   // verbindlich; ohne sie bleibt der CTA zu Recht gesperrt (sein title nennt
   // genau die fehlenden Felder). Es wird nichts erzwungen - die Angaben werden

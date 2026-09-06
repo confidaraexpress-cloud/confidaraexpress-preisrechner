@@ -192,8 +192,11 @@ test("Entwurf fortsetzen: EIN Klick lädt Angebote, ohne veralteten Carrier-Filt
 
   // Alle echten Sendungsdaten sind wiederhergestellt.
   const werte = await formValues(page);
-  for (const erwartet of ["Muster GmbH", "Max Mustermann", "10115", "Berlin",
-                          "Empfang AG", "Erika Empfaenger", "80331", "Muenchen",
+  // Vor- und Nachname stehen seit dem Versandkontaktvertrag in zwei getrennten Feldern;
+  // der Entwurf traegt sie so, und so kommen sie zurueck. Ein zusammengesetzter String
+  // stuende in keinem einzelnen Feld.
+  for (const erwartet of ["Muster GmbH", "Max", "Mustermann", "10115", "Berlin",
+                          "Empfang AG", "Erika", "Empfaenger", "80331", "Muenchen",
                           "2", "5.5", "40", "30", "20"]) {
     assert.ok(werte.includes(erwartet), `Entwurfswert fehlt im Formular: ${erwartet}`);
   }

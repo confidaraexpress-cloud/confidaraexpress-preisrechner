@@ -6,7 +6,7 @@ import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
-import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess } from "../utils/bookingErrors.mjs";
+import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang, BOOK_FEHLER } from "../utils/bookingErrors.mjs";
 import {
   adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
   benoetigteAdressfragen,
@@ -1022,6 +1022,31 @@ export default function BookingPage() {
         }
         return;
       }
+      // ─── CE-19: OFFENER AUSGANG — muss VOR allem anderen abgefangen werden ───────────
+      // Das ist der schwerste Befund des Pakets, und er ist ein ERFOLGSpfad-Problem:
+      // Transglobal beantwortet einen mehrdeutigen oder klärungspflichtigen Ausgang mit
+      // `202 BOOKING_PENDING`. Ein 202 hat `r.ok === true` und einen lesbaren Objektbody —
+      // er lief damit an JEDEM Fehlerzweig vorbei bis zur Erfolgszuweisung ganz unten und
+      // zeigte dem Kunden den ERFOLGSBILDSCHIRM für eine Buchung, deren Ausgang niemand
+      // kennt. Weder `if (!r.ok)` noch die 409-/400-Zweige konnten ihn je sehen.
+      //
+      // (Der Aufruf der Erfolgszuweisung wird hier bewusst NICHT als Literal genannt: die
+      // zugehörige Prüfung misst die Reihenfolge über indexOf auf genau diesem Namen, und
+      // ein Kommentar oberhalb der echten Stelle würde ihren Messpunkt verschieben — die
+      // im Projekt bereits belegte Falle.)
+      //
+      // Der Zustand wird als `conflict` gesetzt, nicht als `error`: nur der Konfliktzweig
+      // ERSETZT den Buchen-Button durch „Zu meinen Sendungen". Der Kunde kann die Buchung
+      // damit strukturell nicht erneut absenden — und genau darauf kommt es an, weil beim
+      // Anbieter unter Umständen bereits eine echte, kostenpflichtige Sendung liegt.
+      // Ein blosser Hinweistext liesse den Knopf stehen.
+      //
+      // `clearFlow()` wird bewusst NICHT gerufen: der Vorgang ist nicht abgeschlossen.
+      if (istOffenerAusgang(r.status, d)) {
+        setConflict(BOOK_FEHLER.PRUEFUNG_LAEUFT.message);
+        setLoading(false);
+        return;
+      }
       if (r.status === 409) {
         // P0 — Abholzeitfenster-Drift: das gespeicherte individuelle Fenster ist
         // gegen den frischen Tarif nicht mehr gültig. Eigener Code (NICHT Duplikat/
@@ -1059,6 +1084,19 @@ export default function BookingPage() {
         // unterscheidbar, kein Duplikat-Text. Öffnet den Preisdrift-Dialog.
         if (d?.code === "PRICE_CHANGED") {
           setPriceChange({ oldPrice: d.oldPrice, newPrice: d.newPrice });
+          setLoading(false);
+          return;
+        }
+        // ─── CE-19: 409-Codes, die NICHT „bereits verarbeitet" bedeuten ───────────────
+        // `OFFER_NOT_BOOKABLE`, `BOOKING_FAILED` und `BOOKING_IN_PROGRESS` fielen bisher
+        // in den Sammelzweig ganz unten und bekamen den Text „Diese Sendung wurde bereits
+        // verarbeitet" — bei `OFFER_NOT_BOOKABLE` eine falsche Ursache UND eine falsche
+        // Handlung: es wurde gerade NICHTS beauftragt, und die richtige Handlung ist neu
+        // berechnen. Bei versicherter Buchung landeten sie sogar im Reprice-Zweig darunter
+        // und forderten eine Versicherungsaktualisierung, die nichts repariert.
+        // Der Zweig steht deshalb VOR beiden.
+        if (d?.code === "OFFER_NOT_BOOKABLE" || d?.code === "BOOKING_FAILED" || d?.code === "BOOKING_IN_PROGRESS") {
+          setConflict(mapBookRestError(r.status, d).message);
           setLoading(false);
           return;
         }

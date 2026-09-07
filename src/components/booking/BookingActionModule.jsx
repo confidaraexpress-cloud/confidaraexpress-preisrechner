@@ -23,7 +23,21 @@ export function BookingActionModule({
     && legalBlocksBooking !== true;
   return (
     <>
-      {error && <div className="alert alert-error">{error}</div>}
+      {/* ─── CE-19: der Fehlerzustand trägt ZWEI Formen ────────────────────────────────
+          Die fachlichen Zweige der Buchungsseite setzen eine Zeichenkette; der Restpfad
+          setzt seit der Fehlerklassifizierung ein Objekt `{ title, message, retryable }`
+          aus `utils/bookingErrors.mjs`. Diese Stelle rendert bis hierher ausschliesslich
+          `{error}` — ein Objekt als React-Kind ist aber kein Text, sondern ein
+          Renderfehler („Objects are not valid as a React child"), und er trifft genau die
+          Antworten, die dem Kunden etwas Wichtiges zu sagen haetten (404/429/5xx).
+          Beide Formen werden deshalb ausdruecklich behandelt. */}
+      {error && (typeof error === "string"
+        ? <div className="alert alert-error">{error}</div>
+        : <div className="alert alert-error" role="alert">
+            {error.title ? <strong>{error.title}</strong> : null}
+            {error.title && error.message ? " " : null}
+            {error.message ? <span>{error.message}</span> : null}
+          </div>)}
       {conflict ? (
         <div className="booking-conflict-box">
           <p className="booking-conflict-text"><Icon n="shield" s={16} c="var(--ce-color-brand-ink)" /> {conflict}</p>

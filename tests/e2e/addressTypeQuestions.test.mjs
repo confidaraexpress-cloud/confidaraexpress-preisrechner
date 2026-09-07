@@ -14,7 +14,8 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
+import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN, angebotsCta }
+  from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5271, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -52,7 +53,7 @@ const FELD_ABHOL  = "collectionIsResidential";
 
 let server, browser;
 
-async function setupRoutes(page, { uebergabe = "pickup", onBook, noetig } = {}) {
+async function setupRoutes(page, { uebergabe = "pickup", onBook, onCalc, noetig } = {}) {
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const p = new URL(req.url()).pathname;
@@ -72,11 +73,14 @@ async function setupRoutes(page, { uebergabe = "pickup", onBook, noetig } = {}) 
     if (p.includes("/api/kunde/form-drafts")) return json({ drafts: [], nextCursor: null });
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
-    if (p.includes("/api/jumingo/calculate-price")) return json({
+    if (p.includes("/api/jumingo/calculate-price")) {
+      if (onCalc) onCalc(JSON.parse(req.postData() || "{}"));
+      return json({
       shipmentId: "s1", tariffs: [basisTarif(uebergabe, noetig)], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
-    });
+      });
+    }
     if (p.includes("/api/jumingo/draft/pickup-window")) return json({
       pickupWindow: null, availableFrom: "2026-08-07T09:00:00Z", availableUntil: "2026-08-07T17:00:00Z",
       minimumMinutes: 120, adjustable: true,
@@ -86,10 +90,17 @@ async function setupRoutes(page, { uebergabe = "pickup", onBook, noetig } = {}) 
   await page.addInitScript(() => { localStorage.setItem("ce_token", "e2e-token"); window.__ceBookCalls = 0; });
 }
 
-async function zurBuchung(page) {
+/* `angaben` reicht die vier Sendungsangaben durch. Ein Feld auf `null` laesst die Frage
+   ausdruecklich UNBEANTWORTET — damit prueft eine Suite den gesperrten Zustand, ohne
+   irgendetwas zu erzwingen. */
+async function bisZumFormular(page, angaben = STANDARD_SENDUNGSANGABEN) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
-  await fuelleVersandformular(page);
+  await fuelleVersandformular(page, { sendungsangaben: angaben });
+}
+
+async function zurBuchung(page, angaben = STANDARD_SENDUNGSANGABEN) {
+  await bisZumFormular(page, angaben);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
@@ -170,11 +181,20 @@ test("2b — ein Angebot OHNE Zusatzbedarf zeigt gar keine Adressfrage", async (
 test("3 — ein bewusstes „Nein\" ueberlebt Zurueck und Vor", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page, { uebergabe: "pickup" });
-  await zurBuchung(page);
+  /* Das „Nein" wird seit Paket 9A dort gegeben, wo es hingehoert: im Sendungsformular.
+     Es ist die EINGEFRORENE Angabe der Sendung — der Server vergleicht einen
+     mitgeschickten Wert nur noch gegen sie und lehnt eine Abweichung ab. Genau deshalb
+     stammt es hier aus dem Formular und nicht mehr aus einem Klick auf der
+     Buchungsseite: sonst pruefte der Test einen Vorrang, den es nicht gibt.
 
-  await waehle(page, FELD_ABHOL, false);
-  await waehle(page, FELD_LIEFER, false);
+     Die Aussage bleibt woertlich dieselbe — ein bewusstes „Nein" darf auf dem Weg
+     Buchung -> Zurueck -> Buchung weder verschwinden noch still zu „unbeantwortet"
+     werden. */
+  await zurBuchung(page, { ...STANDARD_SENDUNGSANGABEN,
+                           [FELD_ABHOL]: false, [FELD_LIEFER]: false });
+
   assert.equal(await page.locator(`#${FELD_ABHOL}-nein`).isChecked(), true);
+  assert.equal(await page.locator(`#${FELD_LIEFER}-nein`).isChecked(), true);
 
   // Zurueck zu den Angeboten und wieder hinein.
   await page.locator("button.btn-outline", { hasText: "Zurück" }).first().click();
@@ -191,16 +211,60 @@ test("3 — ein bewusstes „Nein\" ueberlebt Zurueck und Vor", async () => {
   await page.close();
 });
 
-test("4 — ohne Antwort ist keine der beiden Optionen markiert", async () => {
-  // Ein Schalter stuende hier auf „aus" und behauptete eine Antwort. Zwei Radios
-  // ohne Vorauswahl sagen die Wahrheit.
+test("4 — die Buchungsseite zeigt GENAU die Antworten aus dem Sendungsformular", async () => {
+  /* Die Aussage dieses Tests ist unveraendert: hier wird NICHTS erfunden. Nur der Ort,
+     an dem geantwortet wird, hat sich verschoben.
+
+     Bis Paket 9A wurden beide Fragen erst auf der Buchungsseite gestellt, und dieser
+     Test verlangte, dass KEINE Option vorausgewaehlt ist — ein Schalter haette dort auf
+     „aus" gestanden und damit eine Antwort behauptet, die niemand gegeben hat.
+
+     Seit 9A werden sie im SENDUNGSFORMULAR beantwortet und bestimmen bereits den
+     Vergleichspreis mit; die Buchungsseite zeigt sie nur noch an. Eine Vorauswahl ist
+     hier deshalb kein stiller Vorgabewert mehr, sondern die Antwort des Kunden — und
+     genau das wird gemessen: ein bewusstes „Nein" (`false`) muss als „Nein" ankommen,
+     nicht als „unbeantwortet" und nicht als „Ja".
+
+     Der Test ist damit auch die Probe auf den Dreiwertigkeitsvertrag: wer den
+     `??`-Ausgangswert in `BookingPage` auf `||` zurueckdreht, macht aus dem
+     gespeicherten `false` ein `null` — dann ist bei der Abholung KEINE Option markiert
+     und diese Pruefung faellt. */
   const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
   await setupRoutes(page, { uebergabe: "pickup" });
-  await zurBuchung(page);
-  for (const feld of [FELD_ABHOL, FELD_LIEFER]) {
-    assert.equal(await page.locator(`#${feld}-ja`).isChecked(), false, `${feld}: Ja war vorausgewaehlt`);
-    assert.equal(await page.locator(`#${feld}-nein`).isChecked(), false, `${feld}: Nein war vorausgewaehlt`);
-  }
+  // geschaeftlich / privat — zwei verschiedene Antworten, damit ein vertauschtes oder
+  // pauschal gesetztes Feld auffaellt.
+  await zurBuchung(page, { ...STANDARD_SENDUNGSANGABEN,
+                           [FELD_ABHOL]: false, [FELD_LIEFER]: true });
+
+  assert.equal(await page.locator(`#${FELD_ABHOL}-nein`).isChecked(), true,
+    "das Nein der Abholadresse kam auf der Buchungsseite nicht an");
+  assert.equal(await page.locator(`#${FELD_ABHOL}-ja`).isChecked(), false,
+    "aus dem Nein der Abholadresse wurde ein Ja");
+  assert.equal(await page.locator(`#${FELD_LIEFER}-ja`).isChecked(), true,
+    "das Ja der Lieferadresse kam auf der Buchungsseite nicht an");
+  assert.equal(await page.locator(`#${FELD_LIEFER}-nein`).isChecked(), false,
+    "aus dem Ja der Lieferadresse wurde ein Nein");
+  await page.close();
+});
+
+test("4b — eine unbeantwortete Angabe erreicht die Buchungsseite gar nicht erst", async () => {
+  /* Die zweite Haelfte der alten Aussage, an ihrem heutigen Ort: `null` darf niemals
+     still zu `false` werden. Seit 9A ist das keine Frage der Buchungsseite mehr — die
+     Angabe ist Voraussetzung des Vergleichs, und ohne sie entsteht kein Angebot, das man
+     buchen koennte. Die Sperre liegt damit FRUEHER und ist strenger als zuvor.
+
+     Es wird ausdruecklich nichts erzwungen: geprueft wird, dass der CTA deaktiviert
+     BLEIBT. */
+  const anfragen = [];
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  await setupRoutes(page, { uebergabe: "pickup", onCalc: (b) => anfragen.push(b) });
+  // Alles vollstaendig — bis auf die Adressart der Abholung.
+  await bisZumFormular(page, { ...STANDARD_SENDUNGSANGABEN, [FELD_ABHOL]: null });
+
+  assert.equal(await angebotsCta(page).isDisabled(), true,
+    "eine fehlende Adressart wurde still als Geschaeftsadresse durchgewinkt");
+  assert.equal(anfragen.length, 0, "es wurde ohne vollstaendige Angaben bepreist");
+  assert.equal(await page.locator(".offer-card").count(), 0, "es entstanden Angebote ohne Angabe");
   await page.close();
 });
 
@@ -240,17 +304,27 @@ test("5 — der /book-Koerper traegt false als false und nur die noetigen Felder
   await page.close();
 });
 
-test("6 — ohne Antwort kommt gar kein Buchungsrequest zustande", async () => {
-  const koerper = [];
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
-  await setupRoutes(page, { uebergabe: "pickup", onBook: (b) => koerper.push(b) });
-  await zurBuchung(page);
+test("6 — ohne Antwort entsteht weder eine Preisanfrage noch eine Buchung", async () => {
+  /* Die urspruengliche Zusicherung lautete: ohne beantwortete Adressart kommt kein
+     Buchungsrequest zustande. Sie gilt unveraendert — sie wird seit Paket 9A nur eine
+     Stufe frueher eingeloest, und dadurch STRENGER: es entsteht nicht einmal ein
+     Angebot, das sich buchen liesse.
 
-  await page.locator("button.btn-primary", { hasText: "Weiter" }).first().click();
-  await new Promise((r) => setTimeout(r, 1000));
-  // Die Seite bleibt auf Schritt 1, und es wurde nichts gebucht.
-  assert.equal(await page.locator(".adr-typ-group").count() > 0, true,
-    "die Seite ist trotz fehlender Angabe weitergegangen");
+     Frueher konnte der Test die Luecke auf der Buchungsseite herstellen, weil dort
+     geantwortet wurde. Heute ist die Angabe Voraussetzung des Vergleichs; wer sie
+     weglaesst, kommt ueber das Formular nicht hinaus. Der Test misst deshalb beide
+     Enden der Kette in einem Durchlauf. */
+  const koerper = [], anfragen = [];
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  await setupRoutes(page, { uebergabe: "pickup",
+                            onBook: (b) => koerper.push(b), onCalc: (b) => anfragen.push(b) });
+  await bisZumFormular(page, { ...STANDARD_SENDUNGSANGABEN, [FELD_LIEFER]: null });
+
+  // Der CTA bleibt gesperrt — er wird NICHT erzwungen.
+  assert.equal(await angebotsCta(page).isDisabled(), true,
+    "der Vergleich war trotz fehlender Adressart bedienbar");
+  await new Promise((r) => setTimeout(r, 800));
+  assert.equal(anfragen.length, 0, "es wurde ohne Adressangabe bepreist");
   assert.equal(koerper.length, 0, "es wurde ohne Adressangabe gebucht");
   await page.close();
 });

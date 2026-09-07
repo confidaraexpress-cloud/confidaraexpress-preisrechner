@@ -75,10 +75,30 @@ test("2 — die Formularschlüssel decken genau die Felder der jeweiligen Seite 
                    "r_company", "r_firstName", "r_lastName", "r_fullName", "r_street",
                    "r_addition", "r_zip", "r_city", "r_country", "r_phone", "r_email",
                    "packageCount", "weight", "length", "width", "height",
-                   "max_price", "latestDeliveryDate", "latestDeliveryTime"]) {
+                   "max_price", "latestDeliveryDate", "latestDeliveryTime",
+                   // Die vier Sendungsangaben aus Paket 9A. Sie sind Pflicht VOR dem
+                   // Vergleich — fehlen sie hier, steht der Kunde nach „← Zurück" vor
+                   // einem dauerhaft gesperrten „Angebote vergleichen". Genau der Fall,
+                   // den der Kommentar oben beschreibt; er war real eingetreten.
+                   "declaredContent", "declaredGoodsValue",
+                   "collectionIsResidential", "deliveryIsResidential"]) {
     assert.ok(SHIPMENT_FORM_KEYS.includes(k), `${k} fehlt im Sendungsformular`);
   }
-  assert.equal(SHIPMENT_FORM_KEYS.length, 30);
+  assert.equal(SHIPMENT_FORM_KEYS.length, 34);
+  // Die beiden Adressartfelder sind DREIWERTIG und dürfen nicht zu Zeichenketten
+  // normalisiert werden: `str(false)` wäre "", und aus einem bewussten
+  // „Geschäftsadresse" würde beim Zurückkehren „noch nicht beantwortet".
+  {
+    const wieder = normalizeForm({ collectionIsResidential: false, deliveryIsResidential: true,
+                                   declaredContent: "Ersatzteile", declaredGoodsValue: "250" }, "shipment");
+    assert.equal(wieder.collectionIsResidential, false, "ein bewusstes Nein wurde verworfen");
+    assert.equal(wieder.deliveryIsResidential, true);
+    assert.equal(wieder.declaredContent, "Ersatzteile");
+    assert.equal(wieder.declaredGoodsValue, "250");
+    const alt = normalizeForm({}, "shipment");
+    assert.equal(alt.collectionIsResidential, null, "ein Altvorgang darf nicht still zu false werden");
+    assert.equal(alt.deliveryIsResidential, null);
+  }
   // Preisrechner: nur Route (Land, PLZ, Ort) und Paketdaten — keine Namen, keine Straßen.
   assert.deepEqual([...CALCULATOR_FORM_KEYS], [
     "from_country", "from_zip", "from_city", "to_country", "to_zip", "to_city",

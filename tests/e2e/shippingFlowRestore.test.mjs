@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 // Erwartete Vorbelegung aus der PRODUKTIVEN Konstante, nicht als "1" wiederholt.
 import { PACKAGE_COUNT_DEFAULT } from "../../src/utils/newShipmentForm.mjs";
+import { fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -194,6 +195,13 @@ async function formularFuellen(page) {
     const el = page.locator(`#${id}`);
     if (await el.count()) await el.fill(wert);
   }
+  // Die vier Sendungsangaben (Inhalt, Warenwert, beide Adressarten). Sie sind seit
+  // Paket 9A PFLICHT vor dem Angebotsvergleich — ohne sie bleibt „Angebote vergleichen"
+  // zu Recht gesperrt, und diese Suite lief in 32 Timeouts, bevor auch nur eine ihrer
+  // Wiederherstellungs-Zusicherungen erreicht war. Gefuellt wird ueber den GEMEINSAMEN
+  // Helfer, damit die naechste Produktaenderung nicht wieder in jeder Suite einzeln
+  // nachgezogen werden muss.
+  await fuelleSendungsangaben(page);
   await page.waitForTimeout(250);
 }
 

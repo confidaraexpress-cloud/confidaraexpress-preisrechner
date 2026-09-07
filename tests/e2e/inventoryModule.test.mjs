@@ -16,7 +16,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { ueberSidebar, fuellePaket } from "./helpers/newShipmentForm.mjs";
+import { ueberSidebar, fuellePaket, fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5241, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -516,6 +516,10 @@ test("10 — eine normale Sendung schickt KEIN inventory-Feld an die Preisberech
   // genau die fehlenden Felder). Es wird nichts erzwungen - die Angaben werden
   // ergaenzt, wie ein Kunde es auch muesste.
   await fuellePaket(page, { packageCount: "1", weight: "2", length: "30", width: "20", height: "15" });
+  // Die vier Sendungsangaben aus Paket 9A — ebenfalls Pflicht vor dem Vergleich.
+  // Dieselbe Begruendung wie bei den Paketmassen darueber: sie werden ergaenzt, wie ein
+  // Kunde es auch muesste, nicht umgangen.
+  await fuelleSendungsangaben(page);
   await page.locator("button", { hasText: CTA_BERECHNEN }).first().click();
   await page.waitForTimeout(900);
 
@@ -547,6 +551,10 @@ test("11 — eine Sendung aus dem Lager schickt den Lagerbezug mit (nur IDs und 
   // genau die fehlenden Felder). Es wird nichts erzwungen - die Angaben werden
   // ergaenzt, wie ein Kunde es auch muesste.
   await fuellePaket(page, { packageCount: "1", weight: "2", length: "30", width: "20", height: "15" });
+  // Die vier Sendungsangaben aus Paket 9A — ebenfalls Pflicht vor dem Vergleich.
+  // Dieselbe Begruendung wie bei den Paketmassen darueber: sie werden ergaenzt, wie ein
+  // Kunde es auch muesste, nicht umgangen.
+  await fuelleSendungsangaben(page);
   await page.locator("button", { hasText: CTA_BERECHNEN }).first().click();
   await page.waitForTimeout(900);
 

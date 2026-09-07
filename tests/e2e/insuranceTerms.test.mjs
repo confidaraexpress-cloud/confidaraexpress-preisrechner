@@ -22,7 +22,8 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
+import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN }
+  from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5251, BASE = `http://127.0.0.1:${PORT}`;
 
@@ -338,7 +339,11 @@ test("7 — der Bedingungslink übersteht einen Reload; die Versicherungswahl be
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
   await waehle(page, "Standardversicherung");
-  await page.locator(SEL.goods).fill("500");
+  // Der Warenwert wird hier NICHT mehr gesetzt: seit Paket 9A stammt er aus dem
+  // Sendungsformular, hat dort den Vergleichspreis mitbestimmt und ist auf dieser Seite
+  // uebernommen und gesperrt. Ein `.fill()` liefe in einen Timeout — und es waere auch
+  // fachlich falsch, den Wert hier ein zweites Mal zu behaupten. Die Aussage des Tests
+  // haengt nicht daran: gemessen wird, was ein Reload mit der VERSICHERUNGSWAHL macht.
   await page.waitForTimeout(700);
 
   await page.reload({ waitUntil: "networkidle" });
@@ -375,34 +380,60 @@ test("7 — der Bedingungslink übersteht einen Reload; die Versicherungswahl be
 
 /* ── 8. Warenwert-Fehlertiming ───────────────────────────────────────────── */
 
-test("8 — der Warenwert-Fehler erscheint erst nach echter Interaktion", async () => {
+test("8 — der Warenwert ist UEBERNOMMEN und hier nicht editierbar", async () => {
+  /* ─── Was dieser Test bis Paket 9A geprueft hat ────────────────────────────────────
+     Der Warenwert war ein EDITIERBARES Feld dieser Seite, und gemessen wurde sein
+     Fehlertiming: kein roter Befund beim blossen Einblenden, erst nach echter
+     Interaktion (betreten und leer verlassen), und wieder weg bei gueltigem Wert.
+
+     ─── Warum das hier nicht mehr messbar ist ───────────────────────────────────────
+     Seit Paket 9A wird der Warenwert im SENDUNGSFORMULAR erhoben — vor dem
+     Angebotsvergleich, weil er den Preis mitbestimmt — und serverseitig an der Sendung
+     eingefroren. Auf dieser Seite ist er deshalb `readOnly`: ein zweites editierbares
+     Feld waere eine zweite Wahrheit ueber denselben Sachverhalt, und ein hier
+     eingetippter Wert waere ein Betrag, den niemand bepreist hat.
+
+     Damit kann es das alte Fehlertiming an dieser Stelle gar nicht mehr geben — es gibt
+     keine Eingabe, die zu spaet oder zu frueh beanstandet werden koennte. Der Test
+     bewacht deshalb den VERTRAG, der an seine Stelle getreten ist. Er ist damit auch die
+     geforderte Mutationsprobe: wer `readOnly` entfernt, faellt hier auf.
+
+     Das alte Fehlertiming ist nicht verlorengegangen — es gilt jetzt am editierbaren
+     Feld des Sendungsformulars (`ns-declaredGoodsValue`) und wird dort von
+     `newShipmentFloatingLabels` gemessen. */
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   await setupRoutes(page, [TARIFF_MIT_LINK]);
   await zurBuchung(page);
 
   const modul = page.locator(".booking-insurance-box");
-  // Standard wählen → das Feld erscheint, aber KEIN roter Fehler.
   await waehle(page, "Standardversicherung");
-  assert.equal(await page.locator(SEL.goods).count(), 1, "das Warenwertfeld fehlt");
+  const feld = page.locator(SEL.goods);
+  assert.equal(await feld.count(), 1, "das Warenwertfeld fehlt");
+
+  // 1. Der Wert stammt aus dem Sendungsformular — er wird nicht neu erfragt.
+  assert.equal(await feld.inputValue(), String(STANDARD_SENDUNGSANGABEN.declaredGoodsValue),
+    "der Warenwert der Sendung kam auf der Buchungsseite nicht an");
+
+  // 2. Er ist gesperrt. `readOnly`, nicht `disabled`: der Wert bleibt lesbar,
+  //    fokussierbar und fuer Screenreader vorhanden.
+  assert.equal(await feld.getAttribute("readonly") !== null, true,
+    "der uebernommene Warenwert ist wieder editierbar — es gaebe zwei Wahrheiten darueber");
+  assert.equal(await feld.isEditable(), false, "das Feld nimmt Eingaben entgegen");
+  assert.equal(await feld.getAttribute("aria-readonly"), "true",
+    "die Sperre ist fuer Screenreader nicht erkennbar");
+
+  // 3. Ein uebernommener Wert wird nie beanstandet — es gibt nichts zu korrigieren.
+  //    Das ist der Rest der urspruenglichen Aussage: keine Fehlerwand ohne Zutun.
   assert.equal(await modul.locator(".field-error").count(), 0,
-    "der Fehler erscheint schon beim Einblenden des Feldes");
-  assert.equal(await page.locator(`${SEL.goods}.field-input-error`).count(), 0, "das Feld ist schon rot umrandet");
+    "ein uebernommener Warenwert wird als Fehler markiert");
+  assert.match(await modul.locator(".field-hint").first().innerText(),
+    /Aus Ihren Angaben zur Sendung/,
+    "die Herkunft des Wertes wird dem Kunden nicht erklaert");
 
-  // Feld betreten und leer wieder verlassen → jetzt IST es ein Befund.
-  await page.locator(SEL.goods).click();
-  await page.locator(".booking-insurance-box").click({ position: { x: 5, y: 5 } });
-  await page.waitForTimeout(150);
-  assert.match(await modul.locator(".field-error").first().innerText(), /Bitte geben Sie den Warenwert an\./);
-  assert.equal(await page.locator(`${SEL.goods}.field-input-error`).count(), 1, "das Feld ist nicht als fehlerhaft markiert");
-
-  // Gültiger Wert → der Fehler verschwindet wieder.
-  await page.locator(SEL.goods).fill("500");
-  await page.waitForTimeout(150);
-  assert.equal(await modul.locator(".field-error").count(), 0, "der Fehler bleibt trotz gültigem Wert stehen");
-
-  // Zurück auf „keine Zusatzversicherung“: keine Wertfehler mehr.
+  // 4. Zurueck auf „keine Zusatzversicherung": kein Wertfehler (unveraendert).
   await waehle(page, "Keine zusätzliche Transportversicherung");
-  assert.equal(await modul.locator(".field-error").count(), 0, "ohne Zusatzversicherung erscheint ein Wertfehler");
+  assert.equal(await modul.locator(".field-error").count(), 0,
+    "ohne Zusatzversicherung erscheint ein Wertfehler");
 
   await page.close();
 });
@@ -517,7 +548,9 @@ test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der B
 
   // Ebene 1 → 2: Karte öffnet den Dialog.
   await waehle(page, "Standardversicherung");
-  await page.locator(SEL.goods).fill("500");
+  // Kein `.fill()` auf den Warenwert — er ist seit Paket 9A uebernommen und gesperrt
+  // (siehe Test 8). Fuer den Weg Karte -> Dialog -> Informationsseite ist er ohnehin
+  // ohne Bedeutung.
   await page.waitForTimeout(700);
   await karte(page, "Standardversicherung").locator(SEL.details).click();
   await page.waitForSelector(SEL.dialog, { timeout: 5000 });
@@ -563,7 +596,10 @@ test("10c — Karte → Dialog → interne Informationsseite, ohne Verlust der B
   await page.waitForSelector(SEL.cards, { timeout: 20000 });
   await zuSchritt2(page);
   assert.match(await gewaehlt(page), /Standardversicherung/, "die Versicherungsauswahl ging verloren");
-  assert.equal(await page.locator(SEL.goods).inputValue(), "500", "der Warenwert ging verloren");
+  // Der uebernommene Warenwert stammt seit Paket 9A aus dem Sendungsformular — der Test
+  // liest ihn dort, statt eine Zahl zu wiederholen, die auseinanderlaufen koennte.
+  assert.equal(await page.locator(SEL.goods).inputValue(),
+    String(STANDARD_SENDUNGSANGABEN.declaredGoodsValue), "der Warenwert ging verloren");
 
   await page.close();
 });

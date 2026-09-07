@@ -84,11 +84,35 @@ const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
 // `undefined` → ""). Gleiche Disziplin wie bei trackingEmail/labelTrackingEmail.
 const CLIENT_FILTER_KEYS = ["max_price", "latestDeliveryDate", "latestDeliveryTime"];
 
+/* Die vier Sendungsangaben von Paket 9A. Sie sind seitdem PFLICHT vor dem
+   Angebotsvergleich — und sie gehören damit zwingend in den laufenden Vorgang.
+
+   Ohne sie ging beim Weg zurück von der Buchungsseite („← Zurück") genau das
+   verloren, was den Vergleich überhaupt erst freigibt: der Kunde stand vor einem
+   dauerhaft deaktivierten „Angebote vergleichen" und musste Inhalt, Warenwert und
+   beide Adressarten erneut eintragen, um eine einzige Zahl zu ändern. Der Spiegel
+   schrieb sie ohnehin mit; verworfen hat sie allein diese Allowlist.
+
+   ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem älteren Bundle kennt
+   die Schlüssel nicht — die Textfelder werden dann zu "", die beiden Adressarten zu
+   `null` („noch nicht beantwortet"). Genau der Zustand eines frisch geöffneten
+   Formulars, und kein Grund, einen Vorgang zu verwerfen. */
+const DECLARATION_TEXT_KEYS = ["declaredContent", "declaredGoodsValue"];
+
+/* DREIWERTIG, und deshalb KEINE Zeichenketten. `str(false)` wäre "" — aus einem
+   bewussten „Geschäftsadresse" würde damit beim Zurückkehren „noch nicht
+   beantwortet", und der Kunde fände dieselbe Frage erneut vor. Sie laufen deshalb
+   durch `tristate()`, wie im Buchungsbereich nebenan. */
+const DECLARATION_TRISTATE_KEYS = Object.freeze(["collectionIsResidential", "deliveryIsResidential"]);
+const TRISTATE_FORM_KEYS = new Set(DECLARATION_TRISTATE_KEYS);
+
 export const SHIPMENT_FORM_KEYS = Object.freeze([
   ...PARTY_SUFFIXES.map((k) => `s_${k}`),
   ...PARTY_SUFFIXES.map((k) => `r_${k}`),
   ...PACKAGE_KEYS,
   ...CLIENT_FILTER_KEYS,
+  ...DECLARATION_TEXT_KEYS,
+  ...DECLARATION_TRISTATE_KEYS,
 ]);
 
 export const CALCULATOR_FORM_KEYS = Object.freeze([
@@ -218,7 +242,9 @@ export function normalizeForm(raw, scope) {
   if (!keys) return null;
   const src = plainObjectOrNull(raw) || {};
   const out = {};
-  for (const k of keys) out[k] = str(src[k]);
+  // Fast alle Formularwerte sind Zeichenketten (kontrollierte Eingaben). Die beiden
+  // Adressartfelder sind es ausdrücklich NICHT — sie tragen true/false/null.
+  for (const k of keys) out[k] = TRISTATE_FORM_KEYS.has(k) ? tristate(src[k]) : str(src[k]);
   return out;
 }
 

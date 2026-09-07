@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { existsSync } from "node:fs";
+import { fuelleSendungsangaben } from "./helpers/newShipmentForm.mjs";
 import path from "node:path";
 // Die erwartete Vorbelegung wird aus der PRODUKTIVEN Konstante gelesen, nicht als
 // "1" hier wiederholt: ändert sich die Produktentscheidung, zieht der Test mit,
@@ -348,6 +349,11 @@ test("8 — der Fehlerzustand färbt Label und Rahmen und meldet ihn zugänglich
       ["ns-packageCount", "1"], ["ns-weight", "5"],
       ["ns-length", "30"], ["ns-width", "20"], ["ns-height", "15"],
     ]) await page.fill(`#${id}`, wert);
+    // Seit Paket 9A sind zusaetzlich Inhalt, Warenwert und beide Adressarten Pflicht.
+    // Dieselbe Begruendung wie im Kommentar oben: ohne sie bleibt der CTA zu Recht
+    // gesperrt, und das `waitForFunction` darunter koennte nie erfuellt werden — der
+    // Test haette dann die Validierung gemessen statt den Fehlerzustand, um den es geht.
+    await fuelleSendungsangaben(page);
 
     const cta = page.locator("button.btn-primary.btn-lg").first();
     await cta.waitFor({ state: "visible" });

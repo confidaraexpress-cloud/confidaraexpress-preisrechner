@@ -46,6 +46,43 @@ export const BOOK_FEHLER = {
   // Deshalb ausdrücklich KEINE „bitte erneut versuchen"-Aufforderung, sondern zuerst
   // der Blick in die Sendungsliste. Serverseitig schützt der Buchungsclaim zusätzlich
   // vor einer Doppelbuchung desselben Vorgangs; der Text verlässt sich darauf nicht.
+  // ─── CE-19: der Ausgang ist OFFEN — der Provider kann bereits gebucht haben ─────────
+  // Serverseitig ist das ein eigener, ausdrücklich benannter Zustand: JUMiNGO antwortet
+  // `502 BOOKING_OUTCOME_UNKNOWN` mit dem Text „bitte buchen Sie sie NICHT erneut",
+  // Transglobal `202 BOOKING_PENDING` für einen mehrdeutigen oder klärungspflichtigen
+  // Ausgang. In beiden Fällen liegt beim Anbieter unter Umständen eine echte, bezahlte
+  // Sendung — ein zweiter Versuch erzeugte eine ZWEITE davon, an einen echten Empfänger.
+  //
+  // Deshalb steht hier bewusst KEINE Aufforderung zum Wiederholen, in keiner Formulierung.
+  // Der Server sperrt den Vorgang zusätzlich (der Buchungsclaim bleibt stehen, das Angebot
+  // gilt als verbraucht); dieser Text verlässt sich darauf nicht.
+  PRUEFUNG_LAEUFT: {
+    title: "Buchungsstatus wird geprüft",
+    message: "Ihre Buchung wurde entgegengenommen, das Ergebnis steht aber noch nicht fest. Bitte senden Sie die Buchung NICHT erneut ab — es könnte sonst eine zweite Sendung entstehen. Den Stand finden Sie unter „Sendungen“; wir melden uns, sobald der Status feststeht.",
+    retryable: false,
+  },
+  // Der Preis konnte VOR der Bestellung nicht bestätigt werden. Hier ist ausdrücklich
+  // nichts beauftragt worden — ein erneuter Versuch ist sicher und die richtige Handlung.
+  PREIS_UNBESTAETIGT: {
+    title: "Preis konnte nicht bestätigt werden",
+    message: "Der Preis für dieses Angebot ließ sich gerade nicht bestätigen. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es in einem Moment erneut.",
+    retryable: true,
+  },
+  // Das Angebot ist nicht (mehr) buchbar oder die Buchung ist sauber gescheitert, ohne
+  // dass etwas beauftragt wurde. Die Handlung ist NEU BERECHNEN, nicht wiederholen: ein
+  // zweiter Versuch mit demselben Angebot endete genauso.
+  NEU_BERECHNEN: {
+    title: "Angebot nicht mehr buchbar",
+    message: "Dieses Angebot kann nicht mehr gebucht werden. Es wurde nichts beauftragt. Bitte lassen Sie die Versandangebote neu berechnen und wählen Sie erneut.",
+    retryable: false,
+  },
+  // Für dieselbe Sendung läuft bereits eine Buchung. Kein zweiter Versuch — er würde
+  // entweder abgewiesen oder, schlimmer, eine zweite Sendung erzeugen.
+  BUCHUNG_LAEUFT: {
+    title: "Buchung läuft bereits",
+    message: "Für diese Sendung läuft bereits eine Buchung. Bitte senden Sie sie nicht erneut ab und prüfen Sie den Stand unter „Sendungen“.",
+    retryable: false,
+  },
   ZEIT_UNBEKANNT: {
     title: "Keine Antwort vom Server",
     message: "Der Server hat nicht rechtzeitig geantwortet. Ob die Buchung durchgeführt wurde, lässt sich gerade nicht feststellen. Bitte prüfen Sie zuerst unter „Sendungen“, ob die Sendung angelegt wurde, bevor Sie die Buchung erneut auslösen.",
@@ -53,9 +90,48 @@ export const BOOK_FEHLER = {
   },
 };
 
+// ─── CE-19: die REALEN Backendcodes, nach Handlungsklasse ──────────────────────────
+// Ermittelt aus dem Code, nicht aus Auditbezeichnungen: `lib/booking/bookHandler.js`
+// (JUMiNGO) und `lib/booking/transglobalBookingEntry.js` (Transglobal).
+//
+//   Code                        Status   Ausgang                       Wiederholen?
+//   BOOKING_OUTCOME_UNKNOWN     502      offen, evtl. gebucht          NIEMALS
+//   BOOKING_PENDING             202      offen, evtl. gebucht          NIEMALS
+//   BOOKING_IN_PROGRESS         409      läuft bereits                 NIEMALS
+//   PRICE_UNCONFIRMED           503      nichts beauftragt             ja, sicher
+//   OFFER_NOT_BOOKABLE          409      nichts beauftragt             neu berechnen
+//   BOOKING_FAILED              409      nichts beauftragt             neu berechnen
+//
+// Die Zuordnung steht VOR der Statusauswertung, und das ist der Kern des Befunds: ein
+// `502 BOOKING_OUTCOME_UNKNOWN` fiel bisher in den Sammelzweig `status >= 500` und bekam
+// damit den Text „Bitte versuchen Sie es erneut." — obwohl der Server im selben Body
+// wörtlich „bitte buchen Sie sie NICHT erneut" sagt. Der Client hat die einzige Warnung
+// überschrieben, die vor einer doppelten, kostenpflichtigen Sendung schützt.
+const BOOK_CODE_FEHLER = {
+  BOOKING_OUTCOME_UNKNOWN: "PRUEFUNG_LAEUFT",
+  BOOKING_PENDING:         "PRUEFUNG_LAEUFT",
+  BOOKING_IN_PROGRESS:     "BUCHUNG_LAEUFT",
+  PRICE_UNCONFIRMED:       "PREIS_UNBESTAETIGT",
+  OFFER_NOT_BOOKABLE:      "NEU_BERECHNEN",
+  BOOKING_FAILED:          "NEU_BERECHNEN",
+};
+
+// Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?
+// Eigener Export, weil die Buchungsseite das auch für einen ERFOLGSSTATUS (202) wissen
+// muss, wo `mapBookRestError` gar nicht läuft.
+export function istOffenerAusgang(status, body) {
+  const code = body && typeof body === "object" ? body.code : null;
+  return code === "BOOKING_PENDING" || code === "BOOKING_OUTCOME_UNKNOWN";
+}
+
 // Restpfad einer NICHT-ok-Antwort. `body` ist der defensiv gelesene JSON-Body
 // (null bei leerem/unlesbarem Body — z. B. HTML-Fehlerseite eines Proxys).
 export function mapBookRestError(status, body) {
+  // Ein bekannter Backendcode entscheidet IMMER vor dem Status. Ein Status ist eine
+  // Transportklasse, ein Code ist eine fachliche Aussage über den Ausgang — und nur die
+  // zweite weiß, ob eine Wiederholung eine zweite Sendung erzeugen würde.
+  const code = body && typeof body === "object" ? body.code : null;
+  if (code && BOOK_CODE_FEHLER[code]) return BOOK_FEHLER[BOOK_CODE_FEHLER[code]];
   if (status === 404) return BOOK_FEHLER.ANGEBOT_WEG;   // abgelaufenes/fremdes Angebot — neu berechnen ist die Handlung
   if (status === 429) return BOOK_FEHLER.RATE_LIMITED;
   if (status >= 500) return BOOK_FEHLER.SERVER;

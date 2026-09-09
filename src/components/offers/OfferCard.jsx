@@ -5,6 +5,8 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIdentity.mjs";
+import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
+  from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
@@ -370,6 +372,15 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
           {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
           {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
           {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
+          {/* Die Erklärung zum vorläufigen Preis — hier ausführlich, auf der Karte nur als
+              kurzes Etikett. Sie steht in der Preisaufschlüsselung, weil sie genau diese
+              Zahlen betrifft, und erscheint AUSSCHLIESSLICH bei einem ausdrücklich
+              vorläufigen Preis. Sie behauptet keine Richtung: nicht „steigt", nicht
+              „mindestens", nicht „garantiert" — nur, wann der endgültige Betrag entsteht. */}
+          {isIndicativePrice(t) && (
+            <DetailRow label={INDICATIVE_PRICE_LABEL}
+                       value={INDICATIVE_PRICE_EXPLANATION} subtle />
+          )}
         </div>
       )}
 
@@ -449,6 +460,23 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // Service-Typ (Abholung/Shopabgabe) wird hier NICHT wiederholt — er ist
   // bereits der Start-Knoten in Zone 2.
   const metaItems = [];
+  // ─── VORLÄUFIGER PREIS ────────────────────────────────────────────────────────────
+  // Zuerst in der Zeile, weil es die einzige Aussage hier ist, die den PREIS betrifft —
+  // und der Preis steht direkt darüber.
+  //
+  // Bewusst in Zone 4 und NICHT im Preisblock: dort hängt die Anzeige am Netto-/Brutto-
+  // Umschalter, und der Hinweis wäre in einer der beiden Stellungen verschwunden. Der
+  // Betrag wechselt, sein Status nicht. Zone 4 trägt ohnehin eine Mindesthöhe für gleiche
+  // Kartenhöhen — es entsteht kein zusätzlicher Platzbedarf, der CTA rückt nicht, und der
+  // Text ist ein echter Knoten und damit für Screenreader lesbar.
+  //
+  // Das Signal ist ausschließlich `priceCompleteness === "indicative"`. NICHT `bookable`,
+  // NICHT `unavailableReason`, NICHT `requiredPriceInputs`: die drei tragen bei einem
+  // vorläufigen und einem vollständig berechneten Preis desselben Angebots gemessen
+  // identische Werte.
+  if (isIndicativePrice(t)) {
+    metaItems.push({ icon: "info", label: INDICATIVE_PRICE_LABEL, tone: "info" });
+  }
   if (t.trackingAvailable) {
     metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "info" });
   }

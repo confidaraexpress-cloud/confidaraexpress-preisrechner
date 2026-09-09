@@ -113,6 +113,10 @@
      erzwungener Höhe oben in der Zeile statt neben seinem Text. */
   .adr-typ-group .ci-mode-option,
   .ns-adr-typ-group .ci-mode-option { min-height: 44px; align-items: center; }
+  /* Die Aenderung der festgeschriebenen Angaben ist das einzige Bedienelement ihrer
+     Flaeche — dieselbe Trefferflaeche wie jedes andere (WCAG 2.5.5). `.btn-link` ist
+     ein Textknopf ohne eigene Hoehe und bekommt sie deshalb hier. */
+  .adr-typ-summary .adr-typ-edit { min-height: 44px; }
 
   /* Werkzeugleiste des Adressbuchs: Rollenreiter, Suche und Filterchips
      tragen dort eigene, kompaktere Höhen (33 / 40 px). */

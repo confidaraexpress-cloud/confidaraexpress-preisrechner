@@ -12,6 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { buchungsFlaeche } from "../testing/quelltext.mjs";
+import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
 
 const lies = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
@@ -113,9 +114,16 @@ test("11 — der Payload trägt die Adresse, nie den Schalterzustand", () => {
   assert.ok(!/trackingEmailEnabled\s*:/.test(body) && !/labelTrackingEmailEnabled\s*:/.test(body),
     "UI-Aktivierungsflags gehören nicht in den Payload");
   // Die bestehenden Felder bleiben unangetastet.
-  for (const feld of ["referenceNumber:", "labelFormat,", "sender:", "recipient:", "weight:", "content:"]) {
+  for (const feld of ["referenceNumber:", "labelFormat,", "sender:", "recipient:", "weight:"]) {
     assert.ok(body.includes(feld), `bestehendes Payload-Feld fehlt: ${feld}`);
   }
+  /* `content` entsteht seit TG-7 über einen Erbauer — ein Angebot mit vorab erhobenen
+     Sendungsangaben darf es nicht mitschicken. Die Zusicherung bleibt: für den
+     bestehenden Weg trägt der Payload das Feld unverändert. */
+  assert.ok(body.includes("...bookingContentPayload(form.content, noetigeAdressangaben)"),
+    "bestehendes Payload-Feld fehlt: content");
+  assert.deepEqual(bookingContentPayload("Bücher", []), { content: "Bücher" },
+    "der bestehende Weg sendet die Inhaltsangabe nicht mehr");
 });
 
 test("12 — der Trackinglink der Mail hat im Frontend ein Ziel", () => {

@@ -21,7 +21,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  mapBookRestError, istOffenerAusgang, BOOK_FEHLER,
+  mapBookRestError, istOffenerAusgang, fordertNeuberechnung, BOOK_FEHLER,
 } from "./bookingErrors.mjs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
@@ -130,13 +130,26 @@ test("10 — der offene Ausgang sperrt den Buchen-Knopf, statt nur zu warnen", (
 });
 
 test("11 — die 409-Codes ohne Bestellung landen nicht im Duplikat-Text", () => {
-  const codeZweig = seite.indexOf('d?.code === "OFFER_NOT_BOOKABLE"');
+  /* Die Zusicherung ist unveraendert: ein Ausgang, bei dem NICHTS beauftragt wurde,
+     darf weder im Duplikat-Text noch im Versicherungs-Reprice landen. Gemessen wird
+     sie seit TG-7 an der Stelle, die das jetzt entscheidet — die Codeliste steht in
+     `bookingErrors.mjs` und nicht mehr als Literal auf der Seite.
+
+     Der frueher hier gepinnte Ausdruck `d?.code === "OFFER_NOT_BOOKABLE"` war ein
+     Quelltextanker auf EINEN von inzwischen sechs Codes; die Behauptung galt fuer die
+     anderen fuenf nie mit. Die Pruefung laeuft deshalb jetzt ueber die Funktion selbst
+     und deckt damit alle ab. */
+  for (const code of ["OFFER_NOT_BOOKABLE", "BOOKING_FAILED"]) {
+    assert.equal(fordertNeuberechnung({ code }), true,
+      `${code} fordert keine Neuberechnung`);
+  }
+  const codeZweig = seite.indexOf("fordertNeuberechnung(d)");
   const duplikat  = seite.indexOf("Diese Sendung wurde bereits verarbeitet");
   const reprice   = seite.indexOf("if (isInsured)");
-  assert.ok(codeZweig > 0, "OFFER_NOT_BOOKABLE wird auf der Buchungsseite nicht behandelt");
-  assert.ok(codeZweig < duplikat, "OFFER_NOT_BOOKABLE landet im Duplikat-Text");
+  assert.ok(codeZweig > 0, "die Neuberechnungs-Weiche fehlt auf der Buchungsseite");
+  assert.ok(codeZweig < duplikat, "ein Ausgang ohne Bestellung landet im Duplikat-Text");
   assert.ok(codeZweig < reprice,
-    "OFFER_NOT_BOOKABLE landet bei versicherter Buchung im Versicherungs-Reprice");
+    "ein Ausgang ohne Bestellung landet bei versicherter Buchung im Versicherungs-Reprice");
 });
 
 test("12 — die Fehlerfläche rendert BEIDE Formen des Fehlerzustands", () => {

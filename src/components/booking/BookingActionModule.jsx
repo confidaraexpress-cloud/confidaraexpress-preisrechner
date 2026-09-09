@@ -8,9 +8,9 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 // deaktiviert — dieselbe Freigabe-Bedingung, die auch der Guard in doBook nutzt
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
-  error, conflict, addressError, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
+  error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
   legalBlocksBooking,
-  onBook, onNavigateShipments, onNavigateNew, userEmail,
+  onBook, onNavigateShipments, onNavigateNew, onRecalculate, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
   // solange darf nicht bestellt werden. Die bestehende Gate-Funktion bleibt unverändert;
@@ -43,6 +43,22 @@ export function BookingActionModule({
           <p className="booking-conflict-text"><Icon n="shield" s={16} c="var(--ce-color-brand-ink)" /> {conflict}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateShipments}>
             Zu meinen Sendungen
+          </button>
+        </div>
+      ) : recalcNotice ? (
+        /* ─── TG-7: nichts beauftragt, aber das Angebot trägt nicht mehr ──────────────
+           Bis hierher liefen diese Fälle durch den Konfliktzweig darüber und boten „Zu
+           meinen Sendungen" an. Das ist die falsche Handlung UND eine falsche Auskunft:
+           es wurde nichts bestellt, in der Sendungsliste steht also nichts, das man dort
+           nachsehen könnte. Der Text sagte bereits „bitte neu berechnen" — nur der Knopf
+           führte woandershin.
+
+           Wie der Konfliktzweig ERSETZT auch dieser den Bestellknopf: mit derselben
+           Angebotskennung entstünde ohnehin dieselbe Ablehnung. */
+        <div className="booking-conflict-box">
+          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {recalcNotice}</p>
+          <button className="btn btn-primary btn-full" onClick={onRecalculate}>
+            Angebote neu berechnen
           </button>
         </div>
       ) : addressError ? (

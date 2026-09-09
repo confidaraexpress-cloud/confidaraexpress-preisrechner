@@ -1,4 +1,5 @@
-import { ADRESSFRAGE_TEXT, istBeantwortet } from "../../utils/addressTypeQuestions.mjs";
+import { ADRESSFRAGE_TEXT, istBeantwortet, ADRESSART_FEST_HINWEIS, ADRESSART_AENDERN }
+  from "../../utils/addressTypeQuestions.mjs";
 
 /* Angaben zur Art der Adresse — preisrelevant, deshalb Pflicht.
 
@@ -77,6 +78,57 @@ export function AddressTypeModule({ fragen, werte, onChange, showErrors = false,
           </fieldset>
         );
       })}
+    </div>
+  );
+}
+
+/* Angaben zur Art der Adresse, NACHDEM sie den Preis mitbestimmt haben.
+
+   ─── WARUM HIER KEIN BEDIENELEMENT MEHR STEHT ────────────────────────────────
+   Die Angabe ist zu diesem Zeitpunkt keine offene Frage mehr, sondern ein Teil des
+   Angebots, das der Kunde ausgewählt hat. Ein Radio daneben würde etwas anderes
+   behaupten: dass die Antwort hier noch etwas bewirkt. Sie bewirkt nichts — der
+   Preis daneben ist bereits gerechnet, und die Sendung trägt die Angabe fest.
+
+   ─── WARUM KEIN `disabled` RADIO ─────────────────────────────────────────────
+   Ein deaktiviertes Radio ist nicht fokussierbar und wird von Vorlesesoftware in
+   der Regel übersprungen. Der Wert wäre dann für sehende Nutzer blass und für
+   andere gar nicht vorhanden — die Angabe ginge genau dort verloren, wo sie zur
+   Kontrolle steht. Deshalb: normaler Text, in derselben Zeilenform, in der die
+   Sendungsdetails darüber ihre Werte zeigen.
+
+   ─── DIE ÄNDERUNG FÜHRT ZURÜCK, NICHT WEITER ─────────────────────────────────
+   „Ändern" ist ein echter Knopf und damit erreichbar. Er ändert hier NICHTS,
+   sondern führt auf den Weg zurück, auf dem die Angabe erhoben wurde. Alles andere
+   wäre ein zweiter Preis zu einer Angabe, die der erste nicht kannte. */
+export function AddressTypeSummary({ eintraege, onEdit, gruppeKlasse = "adr-typ-summary" }) {
+  if (!Array.isArray(eintraege) || eintraege.length === 0) return null;
+  return (
+    <div className={`calc-panel ${gruppeKlasse}`}>
+      <div className="calc-section-head">
+        <h3 className="calc-section-title">Angaben zur Adresse</h3>
+      </div>
+      <p className="field-hint" id="adr-typ-fest-help">{ADRESSART_FEST_HINWEIS}</p>
+
+      {eintraege.map((e, i) => (
+        <div
+          key={e.feld}
+          className={`summary-detail-row${i < eintraege.length - 1 ? " summary-detail-row-border" : ""}`}
+          data-feld={e.feld}
+        >
+          <span className="text-sm text-muted summary-detail-key">{e.adresse}</span>
+          <span className="text-sm font-bold summary-detail-val">{e.wertText}</span>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        className="btn btn-link adr-typ-edit"
+        onClick={onEdit}
+        aria-describedby="adr-typ-fest-help"
+      >
+        {ADRESSART_AENDERN}
+      </button>
     </div>
   );
 }

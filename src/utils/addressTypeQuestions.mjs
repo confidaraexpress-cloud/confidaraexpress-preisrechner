@@ -96,6 +96,67 @@ export const ADRESSFRAGE_TEXT = Object.freeze({
   },
 });
 
+/* ── Die READ-ONLY-Darstellung nach der Preisberechnung ──────────────────────
+   Sobald eine Angabe beantwortet ist, hat sie den Vergleichspreis MITBESTIMMT und
+   wurde an der Sendung festgehalten. Sie darf danach nicht mehr als offene Frage
+   erscheinen: zwei Bedienelemente für denselben Sachverhalt wären zwei Wahrheiten,
+   und die zweite käme zu spät — der Preis daneben bliebe der alte.
+
+   Deshalb werden die beantworteten Angaben ab hier nur noch GELESEN. Geändert wird
+   an der Stelle, an der sie erhoben wurden; von dort entsteht eine neue Berechnung.
+
+   Die Texte stehen wie alle anderen HIER und nicht im JSX. */
+export const ADRESSE_KURZ = Object.freeze({
+  [FELD_ZUSTELLUNG]: "Lieferadresse",
+  [FELD_ABHOLUNG]: "Abholadresse",
+});
+
+/* Die beiden Antworten in der Sprache des Kunden. `false` ist eine vollwertige
+   Antwort und bekommt deshalb ein eigenes Wort — kein „nicht privat". */
+export const ADRESSART_ANTWORT = Object.freeze({
+  privat: "Privatadresse",
+  geschaeftlich: "Geschäftsadresse",
+});
+
+export const ADRESSART_FEST_HINWEIS =
+  "Diese Angaben haben den Preis mitbestimmt und gehören zum berechneten Angebot. "
+  + "Wenn Sie sie ändern möchten, berechnen Sie die Angebote bitte neu.";
+
+export const ADRESSART_AENDERN = "Ändern";
+
+/** Das Antwortwort zu einem dreiwertigen Wert. `null` hat keines — es gibt keine Antwort. */
+export function adressartText(wert) {
+  if (wert === true) return ADRESSART_ANTWORT.privat;
+  if (wert === false) return ADRESSART_ANTWORT.geschaeftlich;
+  return null;
+}
+
+/**
+ * Teilt die für DIESES Angebot nötigen Angaben in „steht fest" und „fehlt noch".
+ *
+ * Das ist die einzige Stelle, die darüber entscheidet, ob die Buchungsseite eine
+ * Angabe anzeigt oder abfragt. Die Grenze ist ausschliesslich `istBeantwortet` —
+ * also ein echter Boolean. Ein `false` gehört damit zu den festen Angaben und wird
+ * nie erneut gefragt; genau dieser Fehler entstünde aus einer Truthiness-Prüfung.
+ *
+ * Angaben, die dieses Angebot nicht braucht, kommen in keiner der beiden Listen vor.
+ *
+ * @returns {{fest: Array<{feld, adresse, wert, wertText}>, offen: string[]}}
+ */
+export function adressangabenAnsicht(werte, requiredPriceInputs) {
+  const w = werte && typeof werte === "object" ? werte : {};
+  const fest = [];
+  const offen = [];
+  for (const feld of benoetigteAdressfragen(requiredPriceInputs)) {
+    if (istBeantwortet(w[feld])) {
+      fest.push({ feld, adresse: ADRESSE_KURZ[feld], wert: w[feld], wertText: adressartText(w[feld]) });
+    } else {
+      offen.push(feld);
+    }
+  }
+  return { fest, offen };
+}
+
 /** Der Hinweis unter einem gesperrten Weiter-Knopf — nennt, was fehlt. */
 export function adressangabenHinweis(werte, requiredPriceInputs) {
   const fehlt = fehlendeAdressangaben(werte, requiredPriceInputs);

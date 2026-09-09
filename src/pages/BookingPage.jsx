@@ -6,11 +6,19 @@ import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
-import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang, BOOK_FEHLER } from "../utils/bookingErrors.mjs";
+import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
+  fordertNeuberechnung, BOOK_FEHLER } from "../utils/bookingErrors.mjs";
+import { customerText } from "../utils/apiError.mjs";
 import {
   adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
-  benoetigteAdressfragen,
+  adressangabenAnsicht,
 } from "../utils/addressTypeQuestions.mjs";
+import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
+import {
+  priceChangeAnsicht, preisIstBestaetigbar,
+  PREISAENDERUNG_TITEL, PREISAENDERUNG_TEXT,
+  PREISAENDERUNG_NEU_BERECHNEN, PREISAENDERUNG_FORTFAHREN,
+} from "../utils/priceChangeView.mjs";
 import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
@@ -33,7 +41,7 @@ import { PickupWindowModule } from "../components/booking/PickupWindowModule";
 import { SaveDraftAction } from "../components/booking/SaveDraftAction";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
-import { AddressTypeModule } from "../components/booking/AddressTypeModule";
+import { AddressTypeModule, AddressTypeSummary } from "../components/booking/AddressTypeModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
@@ -152,6 +160,10 @@ export default function BookingPage() {
   const legalBlocksBooking = legalGateBlocks(legalContext);
   const [prohibitedShowError, setProhibitedShowError] = useState(false);
   const [conflict, setConflict] = useState("");
+  /* TG-7: „es wurde nichts beauftragt, aber dieses Angebot traegt nicht mehr".
+     Eigener Zustand neben `conflict`, weil die HANDLUNG eine andere ist —
+     neu berechnen statt in die Sendungsliste sehen. */
+  const [recalcNotice, setRecalcNotice] = useState("");
   const [addressError, setAddressError] = useState("");
   // Download-Zustände und -Handler der Erfolgsdokumente (Label, Auftragsbestätigung,
   // Lieferschein, Proforma) leben wortgleich in components/booking/BookingSuccessDocuments.
@@ -422,9 +434,14 @@ export default function BookingPage() {
      serverseitig, und ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern
      nur eine Pflichtfrage fuer ein Angebot, dessen Preis gar nicht daran haengt. */
   const noetigeAdressangaben = tariff?.requiredPriceInputs;
-  const adresstypFragen = benoetigteAdressfragen(noetigeAdressangaben);
   const adresstypVollstaendig = adressangabenVollstaendig(adresstyp, noetigeAdressangaben);
   const adresstypHinweis = adressangabenHinweis(adresstyp, noetigeAdressangaben);
+  /* Beantwortet heisst FEST: die Angabe hat den Vergleichspreis mitbestimmt und ist an
+     der Sendung eingefroren. Sie wird ab hier nur noch gezeigt — geaendert wird sie dort,
+     wo sie erhoben wurde, und von dort entsteht eine neue Berechnung. Nur eine noch
+     OFFENE Angabe bekommt weiterhin ihre Frage; das traegt einen fortgesetzten Vorgang
+     aus der Zeit vor dieser Erhebung. */
+  const adresstypAnsicht = adressangabenAnsicht(adresstyp, noetigeAdressangaben);
 
   // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
   // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
@@ -893,7 +910,7 @@ export default function BookingPage() {
       setError(adresstypHinweis);
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -952,7 +969,12 @@ export default function BookingPage() {
           // `form.content` bleibt bewusst intern bestehen (Default "") und dient
           // weiterhin als Fallback der Versicherungs-Inhaltsbeschreibung
           // (contentDescription). Kein neu erzeugter content-Wert in diesem Slice.
-          content:         form.content,
+          //
+          // AUSNAHME seit TG-7: verlangt das Angebot die vorab erhobenen Angaben, wird
+          // das Feld GAR NICHT gesendet — dort liest der Server es nicht als Beschreibung,
+          // sondern als Behauptung über die eingefrorene Inhaltsangabe. Die Regel und ihre
+          // Begründung stehen in utils/shipmentDeclarations.mjs, nicht hier.
+          ...bookingContentPayload(form.content, noetigeAdressangaben),
           // Optionale Referenznummer nur senden, wenn die Option aktiv ist UND
           // nach trim ein Wert vorliegt → leerer Fall lässt den bestehenden
           // Payload unverändert. Der Schalter ist damit die einzige Stelle, an
@@ -1082,8 +1104,13 @@ export default function BookingPage() {
         // Versicherungskonflikten abfangen. Nur dieser Konflikt trägt den Code
         // "PRICE_CHANGED" (Duplikate/Versicherungsdrift tun das nicht) → sauber
         // unterscheidbar, kein Duplikat-Text. Öffnet den Preisdrift-Dialog.
+        // Welche der drei Antwortformen vorliegt, entscheidet der KÖRPER — nie ein
+        // Requestfeld. Ohne bestätigbares Preispaar entsteht kein Vergleich und kein
+        // Bestätigungsknopf, sondern der neutrale Hinweis mit Neuberechnung; sonst bleibt
+        // der bestehende Bestätigungsweg Zeile für Zeile derselbe. Begründung in
+        // utils/priceChangeView.mjs.
         if (d?.code === "PRICE_CHANGED") {
-          setPriceChange({ oldPrice: d.oldPrice, newPrice: d.newPrice });
+          setPriceChange(priceChangeAnsicht(d));
           setLoading(false);
           return;
         }
@@ -1095,8 +1122,21 @@ export default function BookingPage() {
         // berechnen. Bei versicherter Buchung landeten sie sogar im Reprice-Zweig darunter
         // und forderten eine Versicherungsaktualisierung, die nichts repariert.
         // Der Zweig steht deshalb VOR beiden.
-        if (d?.code === "OFFER_NOT_BOOKABLE" || d?.code === "BOOKING_FAILED" || d?.code === "BOOKING_IN_PROGRESS") {
+        //
+        // ─── TG-7: „nichts beauftragt" bekommt die Handlung „neu berechnen" ──────────
+        // `BOOKING_IN_PROGRESS` bleibt im Konfliktzweig: dort LÄUFT eine Buchung, und
+        // die Sendungsliste ist genau der richtige Ort. Die übrigen Codes dieser Klasse
+        // (Angebot nicht mehr buchbar, sauber gescheitert, bereits verwendet, passt
+        // nicht zu den Daten, abweichende oder fehlende Sendungsangaben) haben nichts
+        // ausgelöst — sie führen zur Neuberechnung. Welche Codes das sind, sagt
+        // `bookingErrors.mjs`; hier steht keine zweite Liste.
+        if (d?.code === "BOOKING_IN_PROGRESS") {
           setConflict(mapBookRestError(r.status, d).message);
+          setLoading(false);
+          return;
+        }
+        if (fordertNeuberechnung(d)) {
+          setRecalcNotice(mapBookRestError(r.status, d).message);
           setLoading(false);
           return;
         }
@@ -1109,13 +1149,19 @@ export default function BookingPage() {
           setLoading(false);
           return;
         }
-        setConflict(d.error || "Diese Sendung wurde bereits verarbeitet oder befindet sich bereits in Bearbeitung.");
+        // `asStr` statt `d.error`: der Wert wird als React-Kind gerendert, und ein Objekt
+        // wäre dort kein Text, sondern ein Renderfehler. `d` selbst kann zudem `null`
+        // sein (409 mit unlesbarem Körper) — dann wirft schon der Feldzugriff.
+        setConflict(asStr(d?.error) || "Diese Sendung wurde bereits verarbeitet oder befindet sich bereits in Bearbeitung.");
         setLoading(false);
         return;
       }
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (r.status === 400 || r.status === 422) {
-        const backendMsg = asStr(d.error);
+        // `customerText` statt `d.error`: manche Antworten legen ihren Maschinenschlüssel
+        // in `error` (`invoice_data_incomplete`) — der stand dem Kunden bis TG-7 wörtlich
+        // im Banner. Für jede Antwort mit echtem Klartext ist das Ergebnis unverändert.
+        const backendMsg = asStr(customerText(d));
         // Zusatzempfänger: das Backend prüft die beiden Adressen serverseitig VOR
         // jedem Providerkontakt und nennt im Ablehnungsfall das Feld. Diese Fälle
         // dürfen NICHT in den Adressen-Zweig darunter laufen — der würde „Absender-
@@ -1137,6 +1183,16 @@ export default function BookingPage() {
         if (customsRequired) {
           setCustomsShowErrors(true);
           setError(backendMsg || "Die Zollangaben sind unvollständig oder ungültig. Bitte prüfen Sie die Angaben zum Wareninhalt.");
+          setLoading(false);
+          return;
+        }
+        // Fehlende Rechnungs-Pflichtdaten sind KEIN Adressfehler. Der Adresszweig
+        // darunter böte „Adressen vervollständigen & neu berechnen" an — beides
+        // repariert hier nichts, und die Angaben liegen im Konto, nicht im Formular.
+        // Deshalb der normale Hinweisbereich: der Vorgang bleibt vollständig stehen,
+        // und nach dem Ergänzen im Konto ist dieselbe Buchung erneut auslösbar.
+        if (d?.error === "invoice_data_incomplete") {
+          setError(backendMsg || "Für die Buchung fehlen noch Rechnungsdaten.");
           setLoading(false);
           return;
         }
@@ -1193,6 +1249,9 @@ export default function BookingPage() {
   // jede Bestätigung nutzt den aktuellen Serverpreis, der Nutzer entscheidet
   // je Runde bewusst.
   const continueWithNewPrice = () => {
+    // Zweite Hälfte derselben Absicherung wie die Sichtbarkeit des Knopfes: auch ein
+    // programmatischer Aufruf darf ohne bestätigbares Preispaar nichts auslösen.
+    if (!preisIstBestaetigbar(priceChange)) return;
     const np = asNum(priceChange?.newPrice);
     if (np == null) return;                  // ungültiger newPrice → nur Neuberechnung möglich
     confirmedFinalPriceRef.current = np;     // neuer price_final für den nächsten /book
@@ -1417,9 +1476,16 @@ export default function BookingPage() {
                 WELCHE Fragen erscheinen, sagt das Angebot. Braucht es keine, entsteht die
                 Karte gar nicht erst — ein leerer Abschnitt waere eine Behauptung, hier sei
                 etwas zu tun. */}
-            {adresstypFragen.length > 0 && (
+            {adresstypAnsicht.fest.length > 0 && (
+              <AddressTypeSummary
+                eintraege={adresstypAnsicht.fest}
+                onEdit={goBackToOffers}
+              />
+            )}
+
+            {adresstypAnsicht.offen.length > 0 && (
               <AddressTypeModule
-                fragen={adresstypFragen}
+                fragen={adresstypAnsicht.offen}
                 werte={adresstyp}
                 onChange={setAdresstypFeld}
                 showErrors={adresstypShowErrors}
@@ -1657,6 +1723,7 @@ export default function BookingPage() {
                   error={error}
                   conflict={conflict}
                   addressError={addressError}
+                  recalcNotice={recalcNotice}
                   loading={loading}
                   agbAccepted={agbAccepted}
                   prohibitedGoodsAccepted={prohibitedGoodsAccepted}
@@ -1667,6 +1734,7 @@ export default function BookingPage() {
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}
+                  onRecalculate={handlePriceChangeRecalculate}
                   userEmail={user?.email}
                 />
               </div>
@@ -1715,22 +1783,28 @@ export default function BookingPage() {
             ref={priceDriftRef}
           >
             <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="var(--ce-color-brand-ink)" /></div>
-            <h2 id="price-drift-title" className="price-drift-title">Preisänderung erkannt</h2>
+            <h2 id="price-drift-title" className="price-drift-title">{PREISAENDERUNG_TITEL}</h2>
             <p id="price-drift-desc" className="price-drift-desc">
-              Der Preis hat sich seit Ihrer Angebotsberechnung geändert.
+              {PREISAENDERUNG_TEXT[priceChange.kind]}
             </p>
 
-            <div className="price-drift-compare">
-              <div className="price-drift-col">
-                <span className="price-drift-col-label">Bisheriger Preis</span>
-                <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
+            {/* Der Vergleich erscheint NUR, wenn beide Beträge tatsächlich in der
+                Antwort standen. Fehlt einer, gäbe `money()` ihn als „0,00 €" aus —
+                also zwei erfundene Zahlen in genau dem Dialog, der um eine
+                Preisbestätigung bittet. */}
+            {preisIstBestaetigbar(priceChange) && (
+              <div className="price-drift-compare">
+                <div className="price-drift-col">
+                  <span className="price-drift-col-label">Bisheriger Preis</span>
+                  <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
+                </div>
+                <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="var(--ce-color-text-muted)" /></span>
+                <div className="price-drift-col price-drift-col--new">
+                  <span className="price-drift-col-label">Neuer Preis</span>
+                  <span className="price-drift-new">{money(priceChange.newPrice)}</span>
+                </div>
               </div>
-              <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="var(--ce-color-text-muted)" /></span>
-              <div className="price-drift-col price-drift-col--new">
-                <span className="price-drift-col-label">Neuer Preis</span>
-                <span className="price-drift-new">{money(priceChange.newPrice)}</span>
-              </div>
-            </div>
+            )}
 
             <div className="price-drift-actions">
               <button
@@ -1739,16 +1813,21 @@ export default function BookingPage() {
                 onClick={handlePriceChangeRecalculate}
                 disabled={loading}
               >
-                Angebote neu berechnen
+                {PREISAENDERUNG_NEU_BERECHNEN}
               </button>
-              <button
-                type="button"
-                className="btn btn-primary price-drift-btn"
-                onClick={continueWithNewPrice}
-                disabled={loading || asNum(priceChange.newPrice) == null}
-              >
-                {loading ? <><span className="spinner" /> Wird gebucht…</> : "Zum neuen Preis fortfahren"}
-              </button>
+              {/* Ohne bestätigbares Paar gibt es diesen Knopf GAR NICHT — nicht als
+                  deaktivierte Fassung. Ein gesperrter Knopf behauptete einen Weg, den
+                  der Server für dieses Angebot nicht anbietet. */}
+              {preisIstBestaetigbar(priceChange) && (
+                <button
+                  type="button"
+                  className="btn btn-primary price-drift-btn"
+                  onClick={continueWithNewPrice}
+                  disabled={loading}
+                >
+                  {loading ? <><span className="spinner" /> Wird gebucht…</> : PREISAENDERUNG_FORTFAHREN}
+                </button>
+              )}
             </div>
           </div>
         </div>

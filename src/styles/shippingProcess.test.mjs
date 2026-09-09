@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import { readFileSync } from "node:fs";
 import { buchungsFlaeche } from "../testing/quelltext.mjs";
+import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -268,12 +269,23 @@ test("10 — der /book-Payload trägt weiterhin dieselben Absender-/Empfänger-/
   assert.ok(bookCall, "der /book-Aufruf muss unverändert auffindbar sein");
   const body = bookCall[1];
   for (const feld of [
-    "sender:", "recipient:", "weight:", "content:", "referenceNumber:", "labelFormat,",
+    "sender:", "recipient:", "weight:", "referenceNumber:", "labelFormat,",
     "shipmentId:", "tariffId:", "shipperTariffId:", "price_final:",
     "...insurancePayload", "...customsPayload",
   ]) {
     assert.ok(body.includes(feld), `/book-Payload fehlt erwartetes Feld: ${feld}`);
   }
+  /* `content` steht seit TG-7 nicht mehr als Literal im Aufruf: es entsteht über
+     einen Erbauer, weil ein Angebot mit vorab erhobenen Sendungsangaben es NICHT
+     mitschicken darf — dort liest der Server dasselbe Feld als Behauptung über die
+     eingefrorene Inhaltsangabe und bricht bei Abweichung ab.
+
+     Die Zusicherung ist unverändert und wird jetzt am ERGEBNIS gemessen statt an der
+     Schreibweise: für den bestehenden Weg trägt der Payload das Feld wie bisher. */
+  assert.ok(body.includes("...bookingContentPayload(form.content, noetigeAdressangaben)"),
+    "/book-Payload baut die Inhaltsangabe nicht mehr über den Erbauer");
+  assert.deepEqual(bookingContentPayload("Bücher", []), { content: "Bücher" },
+    "der bestehende Weg sendet die Inhaltsangabe nicht mehr");
   // insuranceSelection/customsData werden separat aufgebaut und hier eingemischt
   // (...insurancePayload/...customsPayload) — die Schlüssel selbst müssen im
   // Aufbau der beiden Payload-Objekte weiterhin vorkommen.

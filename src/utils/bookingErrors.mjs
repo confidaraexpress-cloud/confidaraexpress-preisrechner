@@ -107,6 +107,27 @@ export const BOOK_FEHLER = {
 // damit den Text „Bitte versuchen Sie es erneut." — obwohl der Server im selben Body
 // wörtlich „bitte buchen Sie sie NICHT erneut" sagt. Der Client hat die einzige Warnung
 // überschrieben, die vor einer doppelten, kostenpflichtigen Sendung schützt.
+// ─── TG-7: vier weitere Codes, alle mit derselben Handlung ─────────────────────────
+// Sie standen bisher in keiner Tabelle und fielen damit in den 409-Sammelzweig der
+// Buchungsseite. Dessen Text („Diese Sendung wurde bereits verarbeitet …") und dessen
+// Knopf („Zu meinen Sendungen") sind für sie beide falsch: es wurde NICHTS beauftragt,
+// und in der Sendungsliste steht deshalb auch nichts, das man dort prüfen könnte.
+//
+//   Code                            Status  Ausgang                    Wiederholen?
+//   SHIPMENT_DECLARATIONS_MISMATCH  409     nichts beauftragt          neu berechnen
+//   SHIPMENT_DECLARATIONS_MISSING   409     nichts beauftragt          neu berechnen
+//   OFFER_ALREADY_USED              409     nichts beauftragt          neu berechnen
+//   OFFER_MISMATCH                  409     nichts beauftragt          neu berechnen
+//
+// Alle vier bedeuten dasselbe: das vorliegende Angebot trägt nicht mehr. Ein zweiter
+// Versuch mit derselben Angebotskennung endete zwangsläufig genauso — die einzige
+// Handlung, die etwas ändert, ist eine neue Berechnung. Genau das sagt NEU_BERECHNEN
+// bereits; es entsteht keine fünfte Fehlerklasse daneben.
+//
+// Die beiden Deklarationscodes sind nach TG-7 Defense-in-Depth: über die Oberfläche
+// ist eine abweichende Angabe nicht mehr erzeugbar, seit die beantworteten Werte auf
+// der Buchungsseite nur noch angezeigt werden. Erreichbar bleiben sie über einen
+// gebauten Request und über ein zum Deploymentzeitpunkt offenes Bundle.
 const BOOK_CODE_FEHLER = {
   BOOKING_OUTCOME_UNKNOWN: "PRUEFUNG_LAEUFT",
   BOOKING_PENDING:         "PRUEFUNG_LAEUFT",
@@ -114,7 +135,20 @@ const BOOK_CODE_FEHLER = {
   PRICE_UNCONFIRMED:       "PREIS_UNBESTAETIGT",
   OFFER_NOT_BOOKABLE:      "NEU_BERECHNEN",
   BOOKING_FAILED:          "NEU_BERECHNEN",
+  SHIPMENT_DECLARATIONS_MISMATCH: "NEU_BERECHNEN",
+  SHIPMENT_DECLARATIONS_MISSING:  "NEU_BERECHNEN",
+  OFFER_ALREADY_USED:             "NEU_BERECHNEN",
+  OFFER_MISMATCH:                 "NEU_BERECHNEN",
 };
+
+// Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
+// Angebotskennung nicht mehr trägt? Eigener Export, weil die Buchungsseite ihre
+// 409-Zweige in fester Reihenfolge prüft und dort denselben Satz Codes braucht,
+// ohne ihn ein zweites Mal aufzuschreiben.
+export function fordertNeuberechnung(body) {
+  const code = body && typeof body === "object" ? body.code : null;
+  return typeof code === "string" && BOOK_CODE_FEHLER[code] === "NEU_BERECHNEN";
+}
 
 // Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?
 // Eigener Export, weil die Buchungsseite das auch für einen ERFOLGSSTATUS (202) wissen

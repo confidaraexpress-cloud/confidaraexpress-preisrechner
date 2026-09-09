@@ -108,6 +108,21 @@ const CODE_MAP = {
 
   PICKUP_WINDOW_CHANGED: { type: ERROR_TYPE.BUSINESS, title: "Abholzeitfenster geändert", retryable: false,
     message: "Das Abholzeitfenster hat sich geändert. Bitte prüfen Sie die Angaben und bestätigen Sie erneut." },
+
+  // ── Rechnungs-Pflichtdaten (das Backend sendet diesen Schlüssel im Feld `error`) ──
+  // Der Wert ist ein MASCHINENSCHLÜSSEL, kein Satz — und er stand dem Kunden bis hierher
+  // wortwörtlich im Banner („invoice_data_incomplete"), weil die Buchungsseite `d.error`
+  // als Servertext las. Dieselbe Fehlerklasse wie ein roher Status im sichtbaren Text.
+  //
+  // Der Backendtext daneben („Rechnung kann nicht erstellt werden: Pflichtangaben
+  // fehlen.") ist zwar lesbar, sagt aber nicht, WO die Angaben fehlen. Deshalb ein
+  // eigener kuratierter Text mit der Handlung. Er nennt keinen Anbieter und gilt
+  // unabhängig davon, über wen ConfidaraExpress einkauft.
+  invoice_data_incomplete: {
+    type: ERROR_TYPE.BUSINESS, title: "Rechnungsdaten unvollständig", retryable: false,
+    message: "Für die Buchung fehlen noch Rechnungsdaten. Bitte vervollständigen Sie Ihre "
+      + "Unternehmens- und Rechnungsdaten in den Kontoeinstellungen und versuchen Sie es anschließend erneut.",
+  },
 };
 
 // ── HTTP-Status → Einordnung, wenn KEIN bekannter Code vorliegt ──────────────
@@ -166,6 +181,37 @@ export function mapServerField(serverField, fieldMap) {
 
 const isText = (v) => typeof v === "string" && v.trim() !== "";
 
+/* ── Ein Maschinenschlüssel ist KEIN Kundentext ──────────────────────────────
+   Manche Routen legen ihren Code in `error` statt in `code`
+   (`{ error: "invoice_data_incomplete", message: "…" }`). Wer `error` dann als
+   Servertext liest, zeigt dem Kunden den Schlüssel.
+
+   Erkannt wird ausschliesslich, was in `CODE_MAP` STEHT — nicht „sieht aus wie ein
+   Code". Eine Formregel (kein Leerzeichen, Unterstriche) würde auch einwortige
+   Klartexte wie „Fehler" erfassen und damit das Verhalten anderer Bildschirme
+   verändern; diese Prüfung kann per Konstruktion nur Schlüssel treffen, für die es
+   bereits einen kuratierten Text gibt. */
+const istBekannterSchluessel = (v) =>
+  isText(v) && Object.prototype.hasOwnProperty.call(CODE_MAP, v.trim());
+
+/**
+ * Der Text, den ein Kunde aus diesem Antwortkörper lesen darf.
+ *
+ * Reihenfolge: ein bekannter Maschinenschlüssel in `error` wird über seinen
+ * kuratierten Text aufgelöst, sonst gilt `error`, sonst `message`. `null`, wenn die
+ * Antwort nichts Verwertbares trägt — dann entscheidet der Aufrufer.
+ */
+export function customerText(body) {
+  const d = body && typeof body === "object" ? body : {};
+  if (istBekannterSchluessel(d.error)) {
+    const bekannt = CODE_MAP[d.error.trim()];
+    return bekannt.message || (isText(d.message) ? d.message.trim() : null);
+  }
+  if (isText(d.error)) return d.error.trim();
+  if (isText(d.message)) return d.message.trim();
+  return null;
+}
+
 // ── Hauptfunktion ───────────────────────────────────────────────────────────
 // normalizeApiError({ status, body, fieldMap })
 //   status   HTTP-Status der Antwort
@@ -175,8 +221,12 @@ export function normalizeApiError({ status, body, fieldMap } = {}) {
   const d = body && typeof body === "object" ? body : {};
   // Beide historischen Formen lesen: `error` (Mehrheit der Routen) UND `message`
   // (providerneutraler 422). Genau hier ging die konkrete Meldung bisher verloren.
-  const serverText = isText(d.error) ? d.error.trim() : (isText(d.message) ? d.message.trim() : null);
-  const code = isText(d.code) ? d.code.trim() : null;
+  const serverText = customerText(d);
+  // Manche Routen legen ihren Schlüssel in `error` statt in `code`. Er wird nur dann als
+  // Code gewertet, wenn er in CODE_MAP steht — ein gewöhnlicher Servertext kann so nie
+  // versehentlich zum Code werden.
+  const code = isText(d.code) ? d.code.trim()
+    : (istBekannterSchluessel(d.error) ? d.error.trim() : null);
   const field = mapServerField(d.field, fieldMap);
 
   const known = code && CODE_MAP[code] ? CODE_MAP[code] : null;

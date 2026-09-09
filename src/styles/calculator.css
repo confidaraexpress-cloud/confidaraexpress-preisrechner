@@ -1236,3 +1236,11 @@
 .bk-savedraft-link:hover { border-bottom-color: var(--blue2); }
 .bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); }
+
+/* ── TG-7: die festgeschriebenen Angaben zur Art der Adresse ─────────────────
+   Kein eigenes Material: die Zeilen sind dieselben `.summary-detail-row` wie in
+   den Sendungsdetails darueber, die Flaeche ist ein normales `.calc-panel`, und
+   „Aendern" ist der vorhandene `.btn-link`. Hier steht nur, was die Zusammen-
+   stellung braucht — Abstand nach dem Hinweis und die Ausrichtung des Links. */
+.adr-typ-summary .summary-detail-row:first-of-type { margin-top: 4px; }
+.adr-typ-summary .adr-typ-edit { margin-top: 12px; padding-inline: 0; }

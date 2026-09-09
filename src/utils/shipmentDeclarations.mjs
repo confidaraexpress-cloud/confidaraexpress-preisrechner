@@ -170,3 +170,36 @@ export function declarationsFromSnapshot(snapshot) {
 
 /** Der Warenwert als Zahl — für die Buchungsseite, die ihn anzeigt und weiterreicht. */
 export const declaredGoodsValueNumber = (form) => alsZahl(form && form.declaredGoodsValue);
+
+/* ── Die Namenskollision auf der Leitung ─────────────────────────────────────
+   Oben steht es bereits: `declaredContent` (diese vier Angaben) und `form.content`
+   des Bestellformulars sind ZWEI Werte mit zwei Aufgaben. Im Buchungsrequest
+   trugen sie bis hierher denselben Namen — `content`.
+
+   Solange nur ein Weg diesen Namen las, war das folgenlos. Es lesen aber zwei:
+   der eine nimmt ihn als Inhaltsbeschreibung entgegen, der andere vergleicht ihn
+   gegen die eingefrorene Inhaltsangabe der Sendung und bricht bei Abweichung ab.
+   Für ein Angebot der zweiten Art ist ein mitgeschicktes `form.content` damit
+   keine Beschreibung mehr, sondern eine BEHAUPTUNG über die Deklaration — und
+   zwar eine, die der Kunde nie aufgestellt hat: das sichtbare Eingabefeld dafür
+   gibt es auf der Buchungsseite nicht mehr, der Wert stammt aus einem anderen
+   Zusammenhang.
+
+   Heute fällt das nicht auf, weil der Wert dort im Regelfall leer ist und ein
+   leerer Wert als „nichts behauptet" gilt. Ein fortgesetzter Vorgang aus einem
+   älteren Bundle kann ihn aber gefüllt mitbringen — dann bricht die Buchung mit
+   einer Begründung ab, die auf ein Feld zeigt, das der Kunde nirgends sieht.
+
+   ─── DIE REGEL ──────────────────────────────────────────────────────────────
+   Verlangt das Angebot die vorab erhobenen Angaben, wird `content` NICHT
+   mitgeschickt. Nicht „mit dem richtigen Wert", sondern GAR NICHT: die
+   maßgebliche Angabe steht bereits eingefroren an der Sendung, und ein
+   Clientwert kann dort nichts mehr entscheiden. Ihn aus `declaredContent`
+   nachzubilden wäre eine zweite Quelle für dieselbe Aussage — und die erste
+   Abweichung zwischen beiden wäre wieder ein Abbruch ohne sichtbaren Grund.
+
+   Für jedes andere Angebot bleibt der Request unverändert. */
+export function bookingContentPayload(formContent, requiredPriceInputs) {
+  if (Array.isArray(requiredPriceInputs) && requiredPriceInputs.length > 0) return {};
+  return { content: formContent };
+}

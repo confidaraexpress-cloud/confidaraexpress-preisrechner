@@ -170,6 +170,18 @@ test("(11) angemeldete Live-Ansicht: Abschnitte, neutrales Statuslabel, Carrierl
   assert.match(liste, /tracking\?\.liveTracking === false \? TRACKING_LEGS_TEXT\.liveUnavailable/);
 });
 
+test("(13) Stand und Hinweise je Abschnitt: vom Server übernommen, nur Texte, nie abgeleitet", () => {
+  const legs = trackingLegsOf({ trackingLegs: [
+    { carrier: "UPS", trackingReference: A, status: "delivered", errorMessages: ["Adresse unvollständig", 42, "", null], events: [] },
+    { carrier: "UPS", trackingReference: B, events: [EV("011", "delivered", "DELIVERED", "X", "2026-05-12", "14:46:53", "12-05-2026 14:46:53")] },
+  ] });
+  assert.equal(legs[0].status, "delivered");
+  assert.deepEqual(legs[0].errorMessages, ["Adresse unvollständig"]);
+  // Ohne Serverangabe KEIN abgeleiteter Stand — auch nicht aus einem Zustellereignis.
+  assert.equal(legs[1].status, null);
+  assert.deepEqual(legs[1].errorMessages, []);
+});
+
 test("(12) API-Client reicht Abschnitte und Stand durch — ohne sie bleibt alles beim Alten", () => {
   const c = ohneKommentare(lies("../api/client.js"));
   const sel = c.slice(c.indexOf("function selectTracking"), c.indexOf("export async function getTracking"));

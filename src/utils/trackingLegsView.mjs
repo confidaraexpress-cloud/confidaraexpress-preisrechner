@@ -98,6 +98,10 @@ export function trackingLegsOf(result) {
         key: `leg-${i}`,
         carrier: text(l.carrier),
         trackingReference: referenz && TRACKING_REFERENCE_RE.test(referenz) ? referenz : null,
+        // Der Stand DIESES Abschnitts, wie der Server ihn bestimmt hat — nicht hier abgeleitet.
+        status: text(l.status),
+        // Nur die Adminantwort trägt sie; ausschließlich Texte werden übernommen.
+        errorMessages: (Array.isArray(l.errorMessages) ? l.errorMessages : []).map(text).filter(Boolean),
         carrierTrackingPage: httpUrlOrNull(l.carrierTrackingPage),
         events: aufsteigend((Array.isArray(l.events) ? l.events : []).map(anzeigeEreignis), l.eventsChronological),
       };

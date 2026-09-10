@@ -12,6 +12,7 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
 import { orderConfirmationNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+import { eventWhenText } from "../../utils/trackingLegsView.mjs";
 import {
   TRACKING_HINTS,
   TRACKING_LABELS,
@@ -261,7 +262,8 @@ export default function AdminShipmentDetailPage() {
 
   // Tracking wird NUR nach bewusstem Klick geladen. Jeder Klick lädt neu (kein
   // Cache). Es werden ausschließlich die minimierten Felder im State gehalten —
-  // nie das rohe Objekt, keine Events, kein Logging, keine Persistierung.
+  // nie das rohe Objekt, kein Logging, keine Persistierung. Ereignisse gibt es nur
+  // als ausgewertete, providerneutrale Transportabschnitte (selectTracking → legs).
   const loadTracking = async () => {
     setTrackBusy(true);
     setTrackError(null);
@@ -594,8 +596,8 @@ export default function AdminShipmentDetailPage() {
                   <Icon n="download" s={14} /> Label herunterladen
                 </button>
               )}
-              {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist: ohne
-                  JUMiNGO-Sendungs-ID antwortet das Backend mit 409. Der Button
+              {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist (Aussage
+                  des Backends bzw. Alt-Vertrag: ohne Sendungs-ID 409). Der Button
                   betrifft ausschließlich Live-Daten und Carrier-Link — nicht die
                   gespeicherte Trackingnummer. */}
               <button
@@ -664,6 +666,48 @@ export default function AdminShipmentDetailPage() {
                     <span className="adm-support-hint">{track.link.hint}</span>
                   )}
                 </div>
+                {/* Transportabschnitte der Live-Antwort — providerneutral: je Abschnitt
+                    Carrier, Nummer, Stand, Hinweise und Ereignisse mit Ort und Zeitangabe,
+                    wie sie geliefert wurde. Keine Paketnummern, kein Anbieterlink. */}
+                {track.live.legs.map((leg) => {
+                  const [legKlasse, legText] = trackStatusMeta(leg.status);
+                  const carrierName = leg.carrier ? resolveCarrierName(leg.carrier) : null;
+                  return (
+                    <div key={leg.key} className="adm-track adm-track-leg">
+                      <div className="adm-track-head">
+                        <span className="adm-track-title">
+                          {[carrierName, leg.trackingReference ? maskTail(leg.trackingReference) : null].filter(Boolean).join(" · ") || TRACKING_LABELS.legTitle}
+                        </span>
+                        <span className={`badge ${legKlasse}`}>{legText}</span>
+                      </div>
+                      <dl className="adm-kv">
+                        <div className="adm-kv-item"><dt>Carrier</dt><dd>{carrierName || "—"}</dd></div>
+                        <div className="adm-kv-item">
+                          <dt>{TRACKING_LABELS.liveNumber}</dt>
+                          <dd className="adm-mask">{maskTail(leg.trackingReference) || "Nicht geliefert"}</dd>
+                        </div>
+                        <div className="adm-kv-item"><dt>{TRACKING_LABELS.liveStatus}</dt><dd>{leg.status || "Noch kein Status geliefert"}</dd></div>
+                      </dl>
+                      {leg.errorMessages.length > 0 && (
+                        <div className="alert alert-error adm-track-leg-errors" style={{ marginTop: 12 }}>
+                          <Icon n="x" s={16} />{TRACKING_LABELS.legErrors}: {leg.errorMessages.join(" · ")}
+                        </div>
+                      )}
+                      {leg.events.length > 0 ? (
+                        <dl className="adm-kv adm-track-events" style={{ marginTop: 12 }}>
+                          {leg.events.map((ev, i) => (
+                            <div key={i} className="adm-kv-item">
+                              <dt>{eventWhenText(ev) || TRACKING_LABELS.eventNoTime}</dt>
+                              <dd>{ev.description}{ev.location ? ` · ${ev.location}` : ""}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <p className="adm-track-note">{TRACKING_HINTS.noLegEvents}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

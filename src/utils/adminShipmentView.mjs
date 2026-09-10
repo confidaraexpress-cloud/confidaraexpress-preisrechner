@@ -278,11 +278,17 @@ export const TRACKING_LABELS = Object.freeze({
   liveStatus: "Trackingstatus",
   carrierLink: "Carrier-Link",
   lookupAction: "Live-Tracking abfragen",
+  // Transportabschnitte der Live-Antwort (providerneutral). Keine Paketnummern.
+  legTitle: "Transportabschnitt",
+  legErrors: "Hinweise des Versanddienstleisters",
+  eventNoTime: "Ohne Zeitangabe",
 });
 
 export const TRACKING_HINTS = Object.freeze({
   lookupBlocked:
     "Für diese Sendung ist keine JUMiNGO-Sendungs-ID hinterlegt. Ohne sie kann beim Versanddienstleister nichts abgefragt werden.",
+  lookupUnavailable:
+    "Für diese Sendung ist keine Live-Abfrage möglich — es fehlt die dafür nötige Buchungsreferenz.",
   noLiveData:
     "Der Versanddienstleister liefert zu dieser Sendung noch keine Live-Trackingdaten. Eine gespeicherte Trackingnummer bleibt davon unberührt.",
   noLink:
@@ -290,6 +296,7 @@ export const TRACKING_HINTS = Object.freeze({
   // Kurzwert, kein Satz: er steht in einer schmalen .adm-kv-Zelle (min. 210 px),
   // in der ein langer Text mit `word-break: break-word` mitten im Wort bräche.
   noStoredNumber: "Nicht gespeichert",
+  noLegEvents: "Für diesen Transportabschnitt liegen noch keine Ereignisse vor.",
 });
 
 // Tri-State-Deutung eines Backend-Booleans: true | false | null (unbekannt).
@@ -321,7 +328,13 @@ export function storedTracking(row) {
 }
 
 // (Vorbedingung) Ist eine Live-Abfrage überhaupt möglich?
-// Ohne jumingo_shipment_id antwortet GET /admin/shipments/:id/tracking mit 409 —
+// Liefert das Backend die ausdrückliche Aussage `tracking_lookup_available`
+// (boolean), gilt ausschließlich sie — sie kennt die Providerzuordnung der Sendung.
+// Eine Sendung, die ohne jumingo_shipment_id gebucht ist, bleibt damit abfragbar,
+// wenn der Server das sagt.
+//
+// Ohne diese Aussage (ältere Antwort) gilt der bisherige Vertrag: ohne
+// jumingo_shipment_id antwortet GET /admin/shipments/:id/tracking mit 409 —
 // der Button wird dann gar nicht erst aktiv angeboten.
 //
 // Bewusst FAIL-OPEN, wenn das Feld in der Antwort gar nicht vorkommt: gesperrt
@@ -337,6 +350,11 @@ const JUMINGO_ID_KEYS = Object.freeze([
 
 export function trackingLookup(row) {
   if (!row || typeof row !== "object") return { possible: false, hint: TRACKING_HINTS.lookupBlocked };
+  if (typeof row.tracking_lookup_available === "boolean") {
+    return row.tracking_lookup_available
+      ? { possible: true, hint: "" }
+      : { possible: false, hint: TRACKING_HINTS.lookupUnavailable };
+  }
   if (!JUMINGO_ID_KEYS.some((k) => k in row)) return { possible: true, hint: "" };
   const id = str(firstDefined(...JUMINGO_ID_KEYS.map((k) => row[k])));
   return { possible: !!id, hint: id ? "" : TRACKING_HINTS.lookupBlocked };
@@ -346,19 +364,22 @@ export function trackingLookup(row) {
 // `live` ist das bereits minimierte Objekt der Seite
 // ({ available, status, number, link, carrier, source }) — hier wird nichts
 // nachgeladen und nichts ergänzt.
-// → { loaded, hasData, status, number, carrier, source, link, hint }
+// `legs` sind die bereits über utils/trackingLegsView.mjs ausgewerteten
+// Transportabschnitte (leer, wenn die Antwort keine trägt).
+// → { loaded, hasData, status, number, carrier, source, link, hint, legs }
 export function liveTracking(live) {
   const l = live && typeof live === "object" ? live : null;
   if (!l) {
-    return { loaded: false, hasData: false, status: "", number: "", carrier: "", source: "", link: null, hint: "" };
+    return { loaded: false, hasData: false, status: "", number: "", carrier: "", source: "", link: null, hint: "", legs: [] };
   }
   const number = str(l.number);
   const status = str(l.status);
   const flag = boolish(l.available);
+  const legs = Array.isArray(l.legs) ? l.legs : [];
   // Das Backend setzt trackingAvailable = Boolean(Live-Trackingnummer). Ein
   // gelieferter Status ist ebenfalls ein Live-Datum; fehlt das Flag, entscheidet
   // allein der tatsächliche Inhalt — nie eine Annahme.
-  const hasData = flag === true || !!number || !!status;
+  const hasData = flag === true || !!number || !!status || legs.length > 0;
   return {
     loaded: true,
     hasData,
@@ -368,6 +389,7 @@ export function liveTracking(live) {
     source: str(l.source),
     link: trackingLinkOrNull(l.link),
     hint: hasData ? "" : TRACKING_HINTS.noLiveData,
+    legs,
   };
 }
 

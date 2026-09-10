@@ -88,13 +88,16 @@ export const OTHER_CATEGORY_LABEL = "Weitere Dokumente";
 
 // Reihenfolge INNERHALB einer Gruppe. Ein unbekannter Typ hängt sich hinten an,
 // in der Reihenfolge der Serverantwort — er wird nicht unterschlagen.
-const TYPE_ORDER = ["LABEL", "DELIVERY_NOTE", "PROFORMA", "ORDER_CONFIRMATION"];
+// TG-F5: das Abholetikett steht direkt hinter den Versandetiketten — es gehört zur Übergabe
+// an den Carrier, nicht zu den Geschäftsunterlagen.
+const TYPE_ORDER = ["LABEL", "COLLECTION_LABEL", "DELIVERY_NOTE", "PROFORMA", "ORDER_CONFIRMATION"];
 
 // Ersatzbeschriftung, falls der Server ausnahmsweise keine mitschickt. Der
 // Server liefert `label` — das hier ist nur das Netz darunter, damit nie eine
 // namenlose Zeile entsteht.
 const TYPE_FALLBACK_LABELS = {
   LABEL: "Versandlabel",
+  COLLECTION_LABEL: "Abholetikett",
   DELIVERY_NOTE: "Lieferschein",
   PROFORMA: "Proforma-Rechnung",
   ORDER_CONFIRMATION: "Auftragsbestätigung",
@@ -104,6 +107,7 @@ const TYPE_FALLBACK_LABELS = {
 // zweite Bildsprache je Dokument und keine Emojis.
 const TYPE_ICONS = {
   LABEL: "printer",
+  COLLECTION_LABEL: "truck",
   DELIVERY_NOTE: "form",
   PROFORMA: "invoice",
   ORDER_CONFIRMATION: "seal",
@@ -116,12 +120,21 @@ export const documentIcon = (type) => TYPE_ICONS[type] || DEFAULT_DOCUMENT_ICON;
 // Belegnummer zusammengebaut und keine interne ID verwendet.
 const TYPE_FILENAMES = {
   LABEL: "versandlabel.pdf",
+  COLLECTION_LABEL: "abholetikett.pdf",
   DELIVERY_NOTE: "lieferschein.pdf",
   PROFORMA: "proforma-rechnung.pdf",
   ORDER_CONFIRMATION: "auftragsbestaetigung.pdf",
 };
 export const DEFAULT_DOCUMENT_FILENAME = "dokument.pdf";
-export const documentFallbackFilename = (type) => TYPE_FILENAMES[type] || DEFAULT_DOCUMENT_FILENAME;
+// TG-F5: bei Belegen mit Ordnungszahl trägt der Rückfallname sie + 1 („versandlabel-2.pdf"),
+// damit drei Etiketten nicht unter demselben Namen landen. Es ist die CE-Reihenfolge des
+// Servers, keine Paketnummer. Ohne Ordnungszahl bleibt der Name, wie er war.
+export const documentFallbackFilename = (type, ordinal) => {
+  const name = TYPE_FILENAMES[type];
+  if (!name) return DEFAULT_DOCUMENT_FILENAME;
+  if (typeof ordinal !== "number" || !Number.isInteger(ordinal) || ordinal < 0) return name;
+  return name.replace(/\.pdf$/, `-${ordinal + 1}.pdf`);
+};
 
 /**
  * Anzeigezustand eines Dokuments.
@@ -159,6 +172,32 @@ export function documentNumber(doc) {
 }
 
 /**
+ * Die Ordnungszahl eines Belegs innerhalb seiner Art — oder `null` (TG-F5).
+ *
+ * Sie ordnet mehrere Belege derselben Art (ein Etikett je Paket) und macht ihre Rückfallnamen
+ * unterscheidbar. Sie ist KEINE Paketnummer und wird nie als solche angezeigt.
+ */
+export function documentOrdinal(doc) {
+  const n = doc ? doc.ordinal : undefined;
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+// Eine Carrier-Sendungsnummer, wie sie auf dem Etikett steht: kurz und technisch. Dieselbe
+// Formregel wie serverseitig — was sie nicht erfüllt, wird nicht gezeigt.
+const CARRIER_REFERENCE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,39}$/;
+
+/**
+ * Die Carrier-Sendungsnummer eines Versandbelegs — oder `null` (TG-F5).
+ *
+ * Sie unterscheidet mehrere Etiketten derselben Sendung. Fehlt sie oder ist sie unbrauchbar,
+ * entsteht KEIN Platzhalter.
+ */
+export function documentCarrierReference(doc) {
+  const r = doc && typeof doc.carrierReference === "string" ? doc.carrierReference.trim() : "";
+  return CARRIER_REFERENCE_RE.test(r) ? r : null;
+}
+
+/**
  * Die Serverantwort in stabil sortierte Gruppen übersetzen.
  *
  * Defensiv gegen jede Antwortform: fehlender Body, fehlendes Array, kaputte
@@ -187,7 +226,12 @@ export function groupShipmentDocuments(body) {
     const sortiert = [...liste].sort((a, b) => {
       const ia = TYPE_ORDER.indexOf(a.type), ib = TYPE_ORDER.indexOf(b.type);
       // Unbekannte Typen ans Ende, untereinander in Serverreihenfolge.
-      return (ia === -1 ? TYPE_ORDER.length : ia) - (ib === -1 ? TYPE_ORDER.length : ib);
+      const art = (ia === -1 ? TYPE_ORDER.length : ia) - (ib === -1 ? TYPE_ORDER.length : ib);
+      if (art !== 0) return art;
+      // TG-F5: mehrere Belege DERSELBEN Art nach ihrer Ordnungszahl. Fehlt sie, bleibt die
+      // Serverreihenfolge — es wird keine Reihenfolge erfunden.
+      const oa = documentOrdinal(a), ob = documentOrdinal(b);
+      return oa !== null && ob !== null ? oa - ob : 0;
     });
     gruppen.push({
       key: kategorie,

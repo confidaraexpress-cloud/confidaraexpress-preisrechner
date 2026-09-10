@@ -50,6 +50,21 @@ const VIER = [
   DOK("ORDER_CONFIRMATION", "ORDER", "ready", { number: "CE-AB-2026-000001" }),
 ];
 
+// TG-F5: eine Mehrpaketsendung — drei Versandetiketten und ein Abholetikett, jedes mit
+// eigenem Pfad, dazu die Auftragsbestätigung. Die Antwort kommt bewusst UNSORTIERT: die
+// Reihenfolge der Oberfläche darf nicht an der Serverreihenfolge hängen.
+const PROVIDERBELEG = (type, ordinal, label, carrierReference) => ({
+  type, category: "SHIPPING", status: "ready", label, ordinal, carrierReference,
+  downloadPath: `/api/shipments/${CE_ID}/provider-documents/${type}/${ordinal}`,
+});
+const MEHRPAKET = [
+  DOK("ORDER_CONFIRMATION", "ORDER", "ready", { number: "CE-AB-2026-000001" }),
+  PROVIDERBELEG("COLLECTION_LABEL", 0, "Abholetikett", "1Z999AA10000000004"),
+  PROVIDERBELEG("LABEL", 2, "Versandlabel 3 von 3", "1Z999AA10000000003"),
+  PROVIDERBELEG("LABEL", 0, "Versandlabel 1 von 3", "1Z999AA10000000001"),
+  PROVIDERBELEG("LABEL", 1, "Versandlabel 2 von 3", "1Z999AA10000000002"),
+];
+
 let server, browser;
 
 async function setupRoutes(page, { dokumente, protokoll } = {}) {
@@ -66,6 +81,10 @@ async function setupRoutes(page, { dokumente, protokoll } = {}) {
     // Jede PDF-Route liefert dasselbe Testdokument — geprüft wird, WELCHER Pfad
     // angesprochen wurde, nicht der Inhalt.
     if (/^\/api\/shipments\/\d+\/(label|delivery-note|order-confirmation|proforma)$/.test(p)) {
+      return route.fulfill({ status: 200, headers: { "content-type": "application/pdf" }, body: PDF });
+    }
+    // TG-F5: jeder Providerbeleg hat seinen eigenen Pfad.
+    if (/^\/api\/shipments\/\d+\/provider-documents\/[A-Z_]+\/\d+$/.test(p)) {
       return route.fulfill({ status: 200, headers: { "content-type": "application/pdf" }, body: PDF });
     }
 
@@ -323,5 +342,70 @@ test("H — auf 390 px läuft nichts aus dem Bild, auch mit langer Belegnummer",
   assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
   assert.ok(messung.knopfRechts <= messung.zeileRechts + 1,
     "die lange Belegnummer schiebt den Knopf aus der Zeile");
+  await page.close();
+});
+
+/* ══════════ Smoke I — Mehrpaketsendung (TG-F5) ══════════ */
+
+test("I — Mehrpaketsendung: jedes Etikett eine Zeile, jede Zeile lädt ihren eigenen Beleg", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
+  const protokoll = [];
+  await setupRoutes(page, { protokoll, dokumente: () => ({ body: { shipmentId: CE_ID, documents: MEHRPAKET } }) });
+  await zurSendungsliste(page);
+  await dokumenteKnopf(page).click();
+  await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
+
+  const versand = page.locator(".sdoc-group").first();
+  // Stabil geordnet, obwohl die Antwort unsortiert kam — und das Abholetikett ist kein viertes Paket.
+  assert.deepEqual(await versand.locator(".sdoc-row-name").allTextContents(),
+    ["Versandlabel 1 von 3", "Versandlabel 2 von 3", "Versandlabel 3 von 3", "Abholetikett"]);
+  // Die Carriernummer steht unter dem Namen und unterscheidet die Etiketten.
+  assert.deepEqual(await versand.locator(".sdoc-row-number").allTextContents(),
+    ["1Z999AA10000000001", "1Z999AA10000000002", "1Z999AA10000000003", "1Z999AA10000000004"]);
+  assert.equal(await versand.getByRole("button", { name: /Herunterladen/ }).count(), 4, "nicht jedes Etikett ist ladbar");
+  const text = await page.locator(".sdoc-drawer").innerText();
+  assert.ok(!/Paket|undefined|null/.test(text), `erfundener oder leerer Text im Drawer: ${text}`);
+
+  // Das ZWEITE Etikett lädt über seinen eigenen Pfad — nicht über den Sammelpfad des ersten.
+  const zweite = versand.locator(".sdoc-row", { hasText: "Versandlabel 2 von 3" });
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 15000 }),
+    zweite.getByRole("button", { name: /Herunterladen/ }).click(),
+  ]);
+  assert.ok(protokoll.includes(`/api/shipments/${CE_ID}/provider-documents/LABEL/1`),
+    `Abrufe: ${protokoll.join(", ")}`);
+  assert.equal(download.suggestedFilename(), "versandlabel-2.pdf");
+
+  const abhol = versand.locator(".sdoc-row", { hasText: "Abholetikett" });
+  const [abholDownload] = await Promise.all([
+    page.waitForEvent("download", { timeout: 15000 }),
+    abhol.getByRole("button", { name: /Herunterladen/ }).click(),
+  ]);
+  assert.ok(protokoll.includes(`/api/shipments/${CE_ID}/provider-documents/COLLECTION_LABEL/0`));
+  assert.equal(abholDownload.suggestedFilename(), "abholetikett-1.pdf");
+  assert.ok(!protokoll.some((p) => /\/label$/.test(p)), "der Sammelpfad wurde angesprochen");
+  await page.close();
+});
+
+test("J — Mehrpaketsendung auf 390 px: alle Downloads in ihrer Zeile, kein Querüberlauf", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 780 } });
+  await setupRoutes(page, { dokumente: () => ({ body: { shipmentId: CE_ID, documents: MEHRPAKET } }) });
+  await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".ce-list-card", { timeout: 20000 });
+  await dokumenteKnopf(page).click();
+  await page.waitForSelector(".sdoc-row-action .btn", { timeout: 15000 });
+
+  const messung = await page.evaluate(() => ({
+    querUeberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    zeilen: [...document.querySelectorAll(".sdoc-row")].map((z) => {
+      const knopf = z.querySelector(".sdoc-row-action .btn");
+      return knopf ? knopf.getBoundingClientRect().right - z.getBoundingClientRect().right : null;
+    }),
+  }));
+  assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
+  assert.equal(messung.zeilen.filter((x) => x !== null).length, 5, "nicht jeder Beleg hat seinen Knopf");
+  for (const ueberstand of messung.zeilen) {
+    if (ueberstand !== null) assert.ok(ueberstand <= 1, `ein Knopf ragt ${ueberstand} px aus seiner Zeile`);
+  }
   await page.close();
 });

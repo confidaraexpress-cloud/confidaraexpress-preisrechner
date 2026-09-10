@@ -94,7 +94,7 @@ test("4 — der Dateiname der Label-PDF trägt nie eine rohe Providerreferenz", 
   // der Rückfall ist ein neutraler Dateiname je Typ — nie eine Providerreferenz,
   // nie eine interne ID.
   const drawer = read("../components/dashboard/ShipmentDocumentsDrawer.jsx");
-  assert.match(drawer, /documentFallbackFilename\(doc\.type\)/);
+  assert.match(drawer, /documentFallbackFilename\(doc\.type, documentOrdinal\(doc\)\)/); // TG-F5: je Typ plus Ordnungszahl — nie eine Referenz
   assert.ok(!/jumingo|s_\$\{|shipments\.id/.test(drawer), "der Drawer nennt eine interne oder Providerreferenz");
 });
 
@@ -127,7 +127,7 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   assert.match(successDocs, /downloadLabel\(booking\.ceShipmentId, orderConfirmationNumberOf\(booking\)\)/);
   // Die Sichtbarkeit des Buttons muss an derselben Bedingung hängen wie der
   // Handler — sonst zeigte er sich und täte beim Klick nichts.
-  assert.match(successDocs, /\{booking\?\.ceShipmentId && \(/);
+  assert.match(successDocs, /: booking\?\.ceShipmentId && \(/); // TG-F5: der Labelknopf ist der Rückfall ohne Versandbelege
 });
 
 test("8 — das Abholzeitfenster bleibt bewusst bei der Providerreferenz", () => {

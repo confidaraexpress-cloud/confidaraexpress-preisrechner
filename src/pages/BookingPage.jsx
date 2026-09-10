@@ -106,13 +106,16 @@ export default function BookingPage() {
   //                             Browser-Vorwärts schon bisher funktionierten.
   //   2. ShippingFlowContext  — der laufende Vorgang. Greift, wenn diese Seite
   //                             ohne state erreicht wird (z. B. Browser-Vorwärts
-  //                             nach einem Provider-Neuaufbau).
+  //                             nach einem Provider-Neuaufbau). Sendungsbezug ist
+  //                             die lokale Sendung ODER die JUMiNGO-Referenz: ein
+  //                             Angebot eines anderen Anbieters trägt keine
+  //                             JUMiNGO-Referenz, aber immer die lokale Sendung.
   //   3. sicherer leerer Zustand — „Kein Angebot ausgewählt", unverändert.
   const { shipment: flowShipment, booking: flowBooking, setBooking: setFlowBooking,
           setStep: setFlowStep, clearFlow } = useShippingFlow();
   const bookingData = useMemo(() => {
     if (navState?.tariff) return navState;
-    if (flowShipment?.selected && flowShipment.shipmentId != null) {
+    if (flowShipment?.selected && (flowShipment.shipmentId != null || flowShipment.ceShipmentId != null)) {
       return {
         tariff: flowShipment.selected,
         shipmentId: flowShipment.shipmentId,

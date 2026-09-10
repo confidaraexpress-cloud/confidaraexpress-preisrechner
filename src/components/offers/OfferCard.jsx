@@ -11,6 +11,8 @@ import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
+import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
+import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -250,12 +252,12 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   const insBaseCoverage  = posNum(ins?.insuranceValue);
   const insStandardPrice = posNum(ins?.extraInsurancePriceBruttoPreselect);
   const insPremiumPrice  = posNum(ins?.extraInsurancePremiumPriceBruttoPreselect);
-  // Versicherbarkeit nur aus expliziten Backend-Signalen ableiten (kein Raten).
-  const insInsurable =
-    t.insuranceAvailable === true || ins?.isInsurable === true ||
-    insBaseCoverage != null || insStandardPrice != null || insPremiumPrice != null;
-  const insExplicitlyUnavailable =
-    !insInsurable && (t.insuranceAvailable === false || ins?.isInsurable === false);
+  // Versicherbarkeit mit DEMSELBEN Gate wie die Buchungsseite (getBookingModules): die
+  // Karte sagt „möglich" genau dann, wenn die Buchung das Modul auch anbietet. Früher
+  // reichte hier schon ein „ab"-Preis — ein zweites, abweichendes Gate.
+  const insOffer = offerCardInsurance(t);
+  const insInsurable = insOffer.insurable;
+  const insExplicitlyUnavailable = insOffer.explicitlyUnavailable;
   const hasInsuranceSection = insInsurable || insExplicitlyUnavailable;
 
   // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
@@ -334,14 +336,24 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
         </div>
       )}
 
-      {/* ── Versicherung: reine read-only Anzeige (Phase 1) ──
-          Keine Auswahl, keine Checkbox, kein Button, keine Buchbarkeit.
-          Nur vorhandene Backend-Werte; der Hinweis stellt klar, dass eine
-          Zusatzversicherung (noch) nicht online auswählbar ist. */}
+      {/* ── Versicherung: reine read-only Anzeige ──
+          Keine Auswahl, keine Checkbox, kein Button. Gewählt wird auf der
+          Buchungsseite — mit demselben Gate wie hier. Zwei Modelle:
+          Stufen (Standard/Premium mit „ab"-Preisen) oder die zusätzliche
+          Transportabsicherung mit frei gewähltem Versicherungswert; diese
+          nennt KEINEN Preis, weil er erst mit den Angaben des Kunden entsteht. */}
       {hasInsuranceSection && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Versicherung</div>
-          {insInsurable ? (
+          {insInsurable && insOffer.coverModel ? (
+            <>
+              <DetailRow label={COVER_INSURANCE_TEXT.sectionTitle} value={COVER_INSURANCE_TEXT.offerAvailable} />
+              {insOffer.excessValue != null && (
+                <DetailRow label={COVER_INSURANCE_TEXT.excessLabel} value={money(insOffer.excessValue)} />
+              )}
+              <p className="offer-insurance-note">{COVER_INSURANCE_TEXT.offerPriceNote}</p>
+            </>
+          ) : insInsurable ? (
             <>
               {insBaseCoverage != null && (
                 <DetailRow label="Grunddeckung" value={`max. ${money(insBaseCoverage)} lt. Tarifdaten`} />
@@ -354,7 +366,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
                 <DetailRow label="Premium" value={`ab ${money(insPremiumPrice)}`} />
               )}
               <p className="offer-insurance-note">
-                Zusatzversicherung ist derzeit nicht online auswählbar.
+                Die Zusatzversicherung wählen Sie bei der Buchung.
               </p>
             </>
           ) : (

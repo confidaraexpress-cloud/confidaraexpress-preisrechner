@@ -20,6 +20,7 @@ import {
   detailSections,
   routeLabel,
   shipmentIdentity,
+  shipmentInsuranceView,
   shippingModeLabel,
   trackingLinkOrNull,
   trackingView,
@@ -238,6 +239,7 @@ export default function AdminShipmentDetailPage() {
   // hier ausschließlich von hier — es gibt keine zweite Bedingungslogik mehr.
   const track = trackingView(s, trackData);
   const invoice = invoiceOf(s);
+  const insurance = shipmentInsuranceView(s);
   const labelAvailable = labelAvailOf(s) === true || labelAvailOf(s) === "true";
 
   const openLabelConfirm = () => { setLabelMsg(null); setConfirmLabel(true); };
@@ -421,6 +423,24 @@ export default function AdminShipmentDetailPage() {
             ]} />
           </div>
         </div>
+
+        {/* 3b) Versicherung — NUR wenn die Sendung eine Absicherung trägt. Reine Anzeige
+             der gespeicherten Werte; eine leere Karte würde eine Absicherung behaupten. */}
+        {insurance && (
+          <div className="adm-card">
+            <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Versicherung</div>
+            <div className="adm-card-body">
+              <KV items={[
+                ["Art", insurance.typeLabel],
+                ["Versicherter Betrag", insurance.insuredAmount != null ? money(insurance.insuredAmount) : "—"],
+                ["Preis (steuerfrei)", insurance.premiumGross != null ? money(insurance.premiumGross) : "—"],
+                ...(insurance.excessValue != null ? [["Selbstbeteiligung", money(insurance.excessValue)]] : []),
+                ...(insurance.goodsAreNew != null ? [["Ware neu", insurance.goodsAreNew]] : []),
+                ...(insurance.goodsAreFragile != null ? [["Ware zerbrechlich", insurance.goodsAreFragile]] : []),
+              ]} />
+            </div>
+          </div>
+        )}
 
         {/* 4) Rechnungsbereich */}
         <div className="adm-card">

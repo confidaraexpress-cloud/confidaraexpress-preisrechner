@@ -299,7 +299,9 @@ test("11 — JUMiNGO-Endpunkte sind unverändert", () => {
   assert.match(newShipmentPage, /apiFetch\(`\/api\/jumingo\/calculate-price`/);
   const client = read("../api/client.js");
   assert.match(client, /`\/api\/jumingo\/draft\/pickup-window/);
-  assert.match(client, /`\/api\/jumingo\/reprice-insurance`/);
+  // TG-F8: die Neubepreisung läuft über den providerneutralen Endpunkt; der Server leitet
+  // Stufentarife intern an den bisherigen Handler weiter.
+  assert.match(client, /`\/api\/insurance\/reprice`/);
   assert.match(client, /`\/api\/jumingo\/access-points-search`/);
 });
 

@@ -105,7 +105,8 @@ async function setupRoutes(page, tariffs) {
       publicCarriers: [{ id: "dhl", name: "DHL Express" }, { id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
-    if (p.includes("/api/jumingo/reprice-insurance")) return json({
+    // Seit TG-F8 der providerneutrale Endpunkt — für Stufentarife unverändert beantwortet.
+    if (p.includes("/api/insurance/reprice")) return json({
       selectedInsurance: "standard",
       totals: { netPrice: 22.64, vatAmount: 3.54, finalPrice: 26.18, insuranceGross: 3.99 },
     });

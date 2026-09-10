@@ -126,6 +126,81 @@ export const INSURANCE_DIALOG = Object.freeze({
   ]),
 });
 
+// ── Zusätzliche Transportabsicherung (Deckungsbetragsmodell) ─────────────────
+// Ein ZWEITES Produkt neben den Stufen oben — und bewusst mit eigenen Texten. Es
+// kennt keine Stufen, keinen Premiumservice und keine feste Selbstbeteiligung von
+// 50,00 €: der Kunde wählt einen Versicherungswert, beantwortet zwei Fragen zur Ware,
+// und die Selbstbeteiligung nennt der Server am Tarif. Die Stufentexte oben dürfen
+// hier nicht erscheinen — sie beschreiben ein anderes Produkt.
+//
+// Dieselben White-Label-Regeln wie für die ganze Datei: keine Einkaufsquelle, keine
+// Versicherungsgesellschaft, keine Rollenaussage, keine Deckungszusage.
+export const COVER_INSURANCE_TEXT = Object.freeze({
+  sectionTitle:      "Zusätzliche Transportabsicherung",
+  sectionIntro:      "Wählen Sie optional eine zusätzliche Transportabsicherung für Ihre Sendung.",
+  cardName:          "Zusätzliche Transportabsicherung",
+  noneName:          "Keine zusätzliche Transportabsicherung",
+  cardDescription:   "Absicherung Ihrer Sendung bis zum von Ihnen gewählten Versicherungswert",
+  // Der Preis entsteht erst mit den Angaben des Kunden — nie aus einer Tabelle.
+  pricePending:      "Preis nach Ihren Angaben",
+  coverValueLabel:   "Versicherungswert (EUR)",
+  coverValueHint:    "Der Betrag, bis zu dem Ihre Sendung abgesichert werden soll.",
+  goodsNewQuestion:      "Ist die Ware neu?",
+  goodsFragileQuestion:  "Ist die Ware zerbrechlich?",
+  answerYes:         "Ja",
+  answerNo:          "Nein",
+  answerRequired:    "Bitte beantworten Sie diese Frage.",
+  answersMissing:    "Bitte beantworten Sie die Fragen zur Ware, bevor Sie buchen.",
+  excessLabel:       "Selbstbeteiligung",
+  insuredAmountLabel: "Versicherter Betrag",
+  confirmed:         "Preis der Transportabsicherung bestätigt",
+  note:              "Die zusätzliche Transportabsicherung wird ohne MwSt. separat ausgewiesen.",
+  unavailable:       "Für diesen Tarif ist derzeit keine zusätzliche Transportabsicherung verfügbar.",
+  // Preiszusammenfassung und Live-Leiste.
+  summaryUnknown:    "Preis der Transportabsicherung nach Ihren Angaben",
+  summaryLoading:    "Preis der Transportabsicherung wird aktualisiert …",
+  summaryError:      "Preis der Transportabsicherung konnte nicht bestätigt werden.",
+  summaryPending:    "Der Gesamtbetrag wird angezeigt, sobald der Preis der Transportabsicherung bestätigt ist.",
+  liveUnknown:       "Absicherung nach Ihren Angaben",
+  liveLoading:       "Absicherung wird berechnet …",
+  liveError:         "Absicherungspreis nicht bestätigt",
+  // Angebotskarte.
+  offerAvailable:    "Wählbar",
+  offerPriceNote:    "Der Preis wird bei der Buchung anhand Ihrer Angaben berechnet.",
+});
+
+// Geldbetrag in derselben Form wie `money()` der Oberfläche (de-DE, EUR). Hier lokal,
+// weil dieses Datenmodul ohne die JSX-Helfer testbar bleiben muss.
+const euro = (v) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(v);
+
+// „Selbstbeteiligung: 20,00 €" — ausschließlich aus dem Serverwert. Fehlt er oder ist
+// er keine Zahl ≥ 0, entsteht KEIN Satz: eine erfundene Selbstbeteiligung wäre eine
+// Vertragsaussage ohne Beleg.
+export function coverExcessText(excessValue) {
+  if (typeof excessValue !== "number" || !Number.isFinite(excessValue) || excessValue < 0) return null;
+  return `${COVER_INSURANCE_TEXT.excessLabel}: ${euro(excessValue)}`;
+}
+
+// Kartentexte des Deckungsbetragsmodells. „none" trägt dieselbe neutrale Aussage und
+// denselben Tarif-Bedingungslink wie im Stufenmodell; es gibt KEINEN Detaildialog —
+// der vorhandene Dialog beschreibt die Stufen.
+export function coverInsuranceCardCopy(id, excessValue) {
+  if (id === "none") {
+    return Object.freeze({
+      description: INSURANCE_TEXT.carrierLiability,
+      bullets: Object.freeze([]),
+      hasDetails: false,
+      hasCarrierTerms: true,
+    });
+  }
+  const excess = coverExcessText(excessValue);
+  return Object.freeze({
+    description: COVER_INSURANCE_TEXT.cardDescription,
+    bullets: Object.freeze(excess ? [{ text: excess, info: true }] : []),
+    hasDetails: false,
+  });
+}
+
 // Bedingungslink des KONKRETEN TARIFS. Quelle ist ausschließlich
 // `tariff.carrierLinks.agb` (Bedingungslink des Versanddienstleisters, wie ihn
 // der Tarif liefert) — bewusst KEIN Mapping über den Carriernamen: derselbe

@@ -62,7 +62,15 @@ import {
 import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
   autofillInsuranceValue, goodsExceedsInsuranceMax, INSURANCE_VALUE_MAX, PRICE_STATUS,
+  isInsuredType,
 } from "../utils/bookingPriceView.mjs";
+import {
+  INSURANCE_TYPE_TRANSIT_COVER, isCoverValueModel, coverExcessValue, coverValueError,
+  goodsAnswerError, tristateAnswer, buildCoverRepricePayload, buildCoverBookInsurancePayload,
+  coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice, isCoverBookError,
+  insuranceTypeForTariff, insuredPriceChangeView,
+} from "../utils/coverInsuranceView.mjs";
+import { COVER_INSURANCE_TEXT } from "../utils/insuranceTerms.mjs";
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
 } from "../utils/bookingSuccessView.mjs";
@@ -201,7 +209,10 @@ export default function BookingPage() {
   // wiederhergestellt: AGB- und Gefahrgutbestätigung (Einwilligungen werden neu
   // gegeben), Zoll-/Handelsrechnungsfelder (hängen am serverseitigen
   // Dokumentstatus) und das Abholzeitfenster (liegt autoritativ am Backend-Draft).
-  const [insuranceType, setInsuranceType]   = useState(flowBooking?.insuranceType || "none"); // "none" | "standard" | "premium"
+  // "none" | "standard" | "premium" | "transit_cover" — eine gespeicherte Auswahl gilt nur,
+  // wenn sie zum Modell DIESES Tarifs passt (Stufen oder Versicherungswert); sonst "none".
+  const [insuranceType, setInsuranceType]   = useState(
+    () => insuranceTypeForTariff(flowBooking?.insuranceType || "none", bookingData?.tariff));
   // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
   // Validierung, eigene Payload-Felder: goodsValue → details.value_amount,
   // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
@@ -221,6 +232,10 @@ export default function BookingPage() {
   const [goodsValue, setGoodsValue]         = useState(
     () => String(bookingData?.form?.declaredGoodsValue ?? flowBooking?.goodsValue ?? ""));
   const [insuranceValue, setInsuranceValue] = useState(flowBooking?.insuranceValue || ""); // Versicherungswert (EUR)
+  // Zusätzliche Transportabsicherung: die beiden Pflichtfragen zur Ware. DREIWERTIG und
+  // ohne Vorbelegung — `null` heißt „noch nicht beantwortet" und ist keine Antwort.
+  const [goodsAreNew, setGoodsAreNew]         = useState(() => tristateAnswer(flowBooking?.goodsAreNew));
+  const [goodsAreFragile, setGoodsAreFragile] = useState(() => tristateAnswer(flowBooking?.goodsAreFragile));
   // Progressive Disclosure: der Versicherungswert spiegelt den Warenwert, bis der
   // Nutzer ihn bewusst anpasst (insValueManual); das Feld ist bei Bedarf einblendbar
   // (insValueRevealed) und wird bei Warenwert über dem Maximum automatisch gezeigt.
@@ -396,6 +411,8 @@ export default function BookingPage() {
     setFlowBooking({
       step, labelFormat, reference: referenceEnabled ? form.reference : "", content: form.content,
       insuranceType, goodsValue, insuranceValue, insValueManual,
+      // Dreiwertig gespiegelt — eine bewusste Antwort „Nein" ist ein Wert und überlebt die Rückkehr.
+      goodsAreNew, goodsAreFragile,
       // Dieselbe Regel wie bei der Referenznummer: gespiegelt wird nur, was auch
       // gebucht würde — sonst stünde ein bewusst ausgeschalteter Bereich nach der
       // Rückkehr wieder offen.
@@ -421,7 +438,7 @@ export default function BookingPage() {
   // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
-      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp,
+      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp, goodsAreNew, goodsAreFragile,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
@@ -461,7 +478,10 @@ export default function BookingPage() {
   // `modules.insurance` ersetzt das frühere `insurable`-Gate, `modules.customs`
   // schaltet die Zollangaben nur bei backendseitig zollpflichtiger Route.
   const modules = getBookingModules(tariff, bookingData?.customs);
-  const isInsured = insuranceType === "standard" || insuranceType === "premium";
+  const isInsured = isInsuredType(insuranceType);
+  // Welches Absicherungsmodell dieser Tarif trägt, sagt der Server am Tarif
+  // (insuranceDetails.selectionModel) — Stufen oder frei gewählter Versicherungswert.
+  const coverModel = isCoverValueModel(tariff);
   const goodsValueNum     = asNum(goodsValue);
   const insuranceValueNum = asNum(insuranceValue);
   // Inhaltsbeschreibung: das sichtbare Feld wurde aus dem Versicherungsbereich
@@ -482,8 +502,12 @@ export default function BookingPage() {
   // Grenzen. Warenwert (goodsValue): 1..9.999.999. Versicherungswert (value):
   // 1..20.000. Komma-Eingaben werden über asNum() unterstützt. contentDescription
   // ist per maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
+  // Im Deckungsbetragsmodell ist der Warenwert eine reine Anzeige der eingefrorenen
+  // Sendungsangabe — er wird dort nicht erneut verlangt (auch 0 ist eine gültige
+  // Erklärung). Abgesichert wird der frei gewählte Versicherungswert daneben.
   const goodsValueError =
     !isInsured                 ? "" :
+    coverModel                 ? "" :
     !goodsValue.trim()         ? "Bitte geben Sie den Warenwert an." :
     goodsValueNum == null      ? "Bitte geben Sie einen gültigen Betrag ein." :
     goodsValueNum <= 0         ? "Der Warenwert muss größer als 0 € sein." :
@@ -491,12 +515,19 @@ export default function BookingPage() {
     "";
   const insValueError =
     !isInsured                 ? "" :
+    coverModel                 ? coverValueError(insuranceValue) :
     !insuranceValue.trim()     ? "Bitte geben Sie den Versicherungswert an." :
     insuranceValueNum == null  ? "Bitte geben Sie einen gültigen Betrag ein." :
     insuranceValueNum <= 0     ? "Der Versicherungswert muss größer als 0 € sein." :
     insuranceValueNum > 20000  ? "Der Versicherungswert darf höchstens 20.000 € betragen." :
     "";
   const insValid = !isInsured || (goodsValueError === "" && insValueError === "");
+  // Die beiden Pflichtfragen der zusätzlichen Transportabsicherung — eigene Bedingung
+  // NEBEN insValid. Solange eine Frage offen ist, gibt es weder Neubepreisung noch
+  // Buchung; ein unbeantwortetes „neu?" wird nie still zu „nein".
+  const goodsAreNewError     = isInsured && coverModel ? goodsAnswerError(goodsAreNew) : "";
+  const goodsAreFragileError = isInsured && coverModel ? goodsAnswerError(goodsAreFragile) : "";
+  const goodsAnswersValid = goodsAreNewError === "" && goodsAreFragileError === "";
 
   // ── Gutschein (JUMiNGO-Testgutschein, Version 1) ────────────────────────────
   // Kleiner, endlicher State — kein zusätzliches State-Management. Das Frontend entscheidet
@@ -579,20 +610,28 @@ export default function BookingPage() {
   // und Buchungs-Gate. Kein Preselect wird lokal zum Gesamtpreis addiert; der
   // Gesamtbetrag stammt immer aus dem Tarif (none) ODER 1:1 aus repriceResult.totals.
   const priceView = buildBookingPriceView({
-    tariff, insuranceType, repriceResult, repriceLoading, repriceStale, repriceError, insValid,
+    tariff, insuranceType, repriceResult, repriceLoading, repriceStale, repriceError,
+    insValid: insValid && goodsAnswersValid,
   });
 
   // Kartenpreise: „ab"-Preselect ODER — nur für die AUSGEWÄHLTE, bestätigte Stufe —
   // der exakte Aufpreis aus dem Reprice. Keine zweite Reprice-Anfrage für die andere Stufe.
-  const insCards = [
+  // Im Deckungsbetragsmodell genau zwei Karten: die Absicherung (Preis erst nach den
+  // Angaben des Kunden, nie ein „ab"-Betrag) und „keine". Keine Stufen.
+  const insCards = coverModel ? [
+    { id: INSURANCE_TYPE_TRANSIT_COVER, name: COVER_INSURANCE_TEXT.cardName, price: insuranceCardPrice({ cardType: INSURANCE_TYPE_TRANSIT_COVER, selectedType: insuranceType, view: priceView, preselectGross: null }) },
+    { id: "none", name: COVER_INSURANCE_TEXT.noneName, price: insuranceCardPrice({ cardType: "none", selectedType: insuranceType, view: priceView, preselectGross: null }) },
+  ] : [
     { id: "standard", name: "Standardversicherung",    price: insuranceCardPrice({ cardType: "standard", selectedType: insuranceType, view: priceView, preselectGross: insStdPrice }) },
     { id: "premium",  name: "Premiumversicherung",     price: insuranceCardPrice({ cardType: "premium",  selectedType: insuranceType, view: priceView, preselectGross: insPremPrice }) },
     { id: "none",     name: "Keine zusätzliche Transportversicherung", price: insuranceCardPrice({ cardType: "none",     selectedType: insuranceType, view: priceView, preselectGross: null }) },
   ];
 
   // Progressive Disclosure des Versicherungswert-Felds + Warenwert-über-Maximum.
-  const goodsOverMax = goodsExceedsInsuranceMax(goodsValue);
-  const insValueFieldVisible = insValueRevealed || insValueManual || goodsOverMax;
+  // Im Deckungsbetragsmodell ist der Versicherungswert die eigentliche Angabe — sein Feld
+  // steht immer offen, und die Stufengrenze gilt dort nicht.
+  const goodsOverMax = !coverModel && goodsExceedsInsuranceMax(goodsValue);
+  const insValueFieldVisible = coverModel || insValueRevealed || insValueManual || goodsOverMax;
 
   // Auto-Vorbelegung Versicherungswert = Warenwert, bis der Nutzer ihn manuell ändert.
   const handleGoodsValueChange = (v) => {
@@ -603,7 +642,12 @@ export default function BookingPage() {
   const handleInsuranceValueChange = (v) => { setInsuranceValue(v); setInsValueManual(true); };
   const handleSelectInsuranceType = (id) => {
     setInsuranceType(id);
-    if ((id === "standard" || id === "premium") && !insValueManual) setInsuranceValue(goodsValue);
+    if (isInsuredType(id) && !insValueManual) setInsuranceValue(goodsValue);
+  };
+  // Antwort auf eine der beiden Pflichtfragen — ausschließlich true/false.
+  const handleGoodsAnswer = (feld, wert) => {
+    if (feld === "goodsAreNew") setGoodsAreNew(tristateAnswer(wert));
+    else if (feld === "goodsAreFragile") setGoodsAreFragile(tristateAnswer(wert));
   };
 
   // Reprice-Request mit Seq-/Abort-Schutz: veraltete Antworten überschreiben den
@@ -614,21 +658,27 @@ export default function BookingPage() {
     const ac = new AbortController(); repriceAbort.current = ac;
     setRepriceLoading(true); setRepriceError("");
     try {
-      const r = await repriceInsurance({
-        shipmentId:          bookingData?.shipmentId,
-        tariffId:            tariff?.id,
-        shipperTariffId:     tariff?.shipper_tariff_id,
-        insuranceType:       type,
-        goodsValue:          goodsNum,
-        extraInsuranceValue: insNum,
-        contentDescription:  content,
-      }, { signal: ac.signal });
+      // Deckungsbetragsmodell: GENAU vier Felder — der Server liest Sendung, Preis und
+      // Selbstbeteiligung aus dem gespeicherten Angebot. Stufenmodell: der bisherige Körper,
+      // ergänzt um die Angebotskennung, an der der Server den Vertrag erkennt.
+      const r = await repriceInsurance(coverModel
+        ? buildCoverRepricePayload({ offerId: tariff?.offerId, coverValue: insNum, goodsAreNew, goodsAreFragile })
+        : {
+            shipmentId:          bookingData?.shipmentId,
+            tariffId:            tariff?.id,
+            shipperTariffId:     tariff?.shipper_tariff_id,
+            insuranceType:       type,
+            goodsValue:          goodsNum,
+            extraInsuranceValue: insNum,
+            contentDescription:  content,
+            ...(tariff?.offerId ? { offerId: tariff.offerId } : {}),
+          }, { signal: ac.signal });
       if (seq !== repriceSeq.current) return; // veraltet → ignorieren
       if (r.status === 401 || r.status === 403) { setRepriceLoading(false); return; } // zentraler Auth-Redirect
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!r.ok) {
         setRepriceResult(null); setRepriceStale(true);
-        setRepriceError(
+        setRepriceError(coverModel ? coverRepriceErrorText(r.status, d) :
           r.status === 400 ? (asStr(d?.error) || "Die Angaben zur Versicherung sind ungültig.") :
           r.status === 409 ? "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis." :
           r.status === 429 ? "Zu viele Anfragen. Bitte später erneut versuchen." :
@@ -658,11 +708,13 @@ export default function BookingPage() {
       return;
     }
     setRepriceStale(true);
-    if (!insValid) { setRepriceResult(null); return; }
+    // Zusätzliche Transportabsicherung: ohne beide Antworten zur Ware wird nicht bepreist —
+    // der Anbieter bepreist genau diese Angaben, und eine fehlende ist keine.
+    if (!insValid || !goodsAnswersValid) { setRepriceResult(null); return; }
     const id = setTimeout(() => runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription), 500);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insuranceType, goodsValue, insuranceValue]);
+  }, [insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile]);
 
   // Laufende Requests beim Unmount abbrechen.
   useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
@@ -879,6 +931,14 @@ export default function BookingPage() {
     }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
+    // Zusätzliche Transportabsicherung: ohne beide Antworten zur Ware keine Buchung. Eigene
+    // Bedingung vor dem unveränderten Preis-Gate darunter — der Kunde soll lesen, WAS fehlt,
+    // nicht nur, dass der Preis nicht bestätigt ist.
+    if (isInsured && !goodsAnswersValid) {
+      setInsShowErrors(true);
+      setError(COVER_INSURANCE_TEXT.answersMissing);
+      return;
+    }
     if (isInsured && (repriceStale || !repriceResult || repriceLoading || !insValid)) {
       // Falls die Ursache ein leerer/ungültiger Wert ist: den Feldfehler
       // sichtbar machen, damit der Kunde auf Schritt 1 sieht, WAS fehlt.
@@ -915,7 +975,12 @@ export default function BookingPage() {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
       // Standard/Premium senden. Für "none" nur { type: "none" }.
-      const insurancePayload = isInsured
+      // Zusätzliche Transportabsicherung: `transit_cover` mit denselben Angaben wie bei der
+      // Neubepreisung und dem dort bestätigten Gesamtbetrag. Der Server bucht ausschließlich
+      // die an das Angebot gebundene Auswahl; die Werte hier sind ein Konsistenzwächter.
+      const insurancePayload = isInsured && coverModel
+        ? buildCoverBookInsurancePayload({ coverValue: insuranceValueNum, goodsAreNew, goodsAreFragile, repriceResult })
+        : isInsured
         ? {
             insuranceSelection: {
               type:               repriceResult?.selectedInsurance || insuranceType,
@@ -1110,6 +1175,14 @@ export default function BookingPage() {
         // der bestehende Bestätigungsweg Zeile für Zeile derselbe. Begründung in
         // utils/priceChangeView.mjs.
         if (d?.code === "PRICE_CHANGED") {
+          // Versicherte Buchung mit Deckungsbetrag: der Server nennt den neuen GESAMTbetrag,
+          // der bisherige steht in der letzten Neubepreisung. „Fortfahren" bepreist und bindet
+          // dann neu, statt dieselbe Anfrage erneut zu senden (utils/coverInsuranceView.mjs).
+          if (isInsured && coverModel) {
+            setPriceChange(insuredPriceChangeView(d, repriceResult?.totals?.customerTotalGross));
+            setLoading(false);
+            return;
+          }
           setPriceChange(priceChangeAnsicht(d));
           setLoading(false);
           return;
@@ -1137,6 +1210,20 @@ export default function BookingPage() {
         }
         if (fordertNeuberechnung(d)) {
           setRecalcNotice(mapBookRestError(r.status, d).message);
+          setLoading(false);
+          return;
+        }
+        // Zusätzliche Transportabsicherung: fehlende oder abweichende Bindung, fehlende
+        // Betragsbestätigung oder nicht mehr verfügbare Absicherung. Die Auswahl bleibt
+        // stehen — sie wird hier weder still verworfen noch still gebucht. Wo ein neuer Preis
+        // die Ursache behebt, wird sofort neu bepreist; gebucht wird erst nach erneutem Klick.
+        // Nur die Codes der Absicherung selbst — ein fremder 409 läuft weiter unten.
+        if (isInsured && coverModel && isCoverBookError(d)) {
+          setRepriceResult(null); setRepriceStale(true);
+          setError(coverBookErrorText(d));
+          if (coverBookErrorRequiresReprice(d) && insValid && goodsAnswersValid) {
+            runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription);
+          }
           setLoading(false);
           return;
         }
@@ -1252,6 +1339,17 @@ export default function BookingPage() {
     // Zweite Hälfte derselben Absicherung wie die Sichtbarkeit des Knopfes: auch ein
     // programmatischer Aufruf darf ohne bestätigbares Preispaar nichts auslösen.
     if (!preisIstBestaetigbar(priceChange)) return;
+    // Versicherte Buchung mit Deckungsbetrag: NEU bepreisen und neu binden. Es wird hier
+    // bewusst NICHT sofort gebucht und NIE auf den unversicherten price_final-Weg
+    // ausgewichen — der Kunde sieht den bestätigten Gesamtbetrag und bucht erneut.
+    if (priceChange.insured) {
+      setPriceChange(null);
+      setRepriceResult(null); setRepriceStale(true);
+      if (insValid && goodsAnswersValid) {
+        runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription);
+      }
+      return;
+    }
     const np = asNum(priceChange?.newPrice);
     if (np == null) return;                  // ungültiger newPrice → nur Neuberechnung möglich
     confirmedFinalPriceRef.current = np;     // neuer price_final für den nächsten /book
@@ -1382,6 +1480,8 @@ export default function BookingPage() {
     // Das Weiter-Gate selbst bleibt unverändert (es hat Versicherungswerte nie
     // blockiert; das tut der Buchungs-Guard).
     if (!insValid) setInsShowErrors(true);
+    // Dasselbe für die beiden Pflichtfragen der zusätzlichen Transportabsicherung.
+    if (!goodsAnswersValid) setInsShowErrors(true);
     if (customsRequired && !customsValid) {
       setCustomsShowErrors(true);
       // Blockiert wird ausschließlich wegen unvollständiger FACHLICHER Zollangaben
@@ -1638,6 +1738,14 @@ export default function BookingPage() {
                     isRepricing={priceView.isRepricing}
                     isStale={priceView.isStale}
                     repriceConfirmed={priceView.status === PRICE_STATUS.REPRICE_CONFIRMED}
+                    coverModel={coverModel}
+                    excessValue={coverExcessValue(tariff)}
+                    goodsAreNew={goodsAreNew}
+                    goodsAreFragile={goodsAreFragile}
+                    onGoodsAnswerChange={handleGoodsAnswer}
+                    goodsAnswerErrors={insShowErrors
+                      ? { goodsAreNew: goodsAreNewError, goodsAreFragile: goodsAreFragileError }
+                      : {}}
                   />
                 ) : (
                   <p className="booking-ins-unavailable">

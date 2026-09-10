@@ -202,6 +202,9 @@ function selectTracking(d) {
   return {
     trackingAvailable:   pick("trackingAvailable"),
     trackingNumber:      pick("trackingNumber"),
+    // TG-F6: ALLE Trackingreferenzen der Sendung (Textliste in Anbieterreihenfolge). Fehlt
+    // sie, bleibt es bei der Einzelnummer darüber.
+    trackingReferences:  pick("trackingReferences"),
     trackingStatus:      pick("trackingStatus"),
     carrierTrackingPage: pick("carrierTrackingPage"),
     tracking:            payload.tracking, // bestehende Struktur/Events unverändert weiterreichen

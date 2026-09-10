@@ -29,16 +29,22 @@ const CSS_CODE = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* Ein Transglobal-Angebot, wie es heute wirklich ankommt: Carrier, Service,
    Übergabeart, Laufzeit als Spanne — aber KEINE Kalenderdaten, kein Tracking-Flag,
-   keine Druckerangabe, kein Access Point. */
+   keine Druckerangabe, kein Access Point.
+
+   Der Servicename traegt seit TG-F1 den KURATIERTEN Produktnamen und NICHT mehr den
+   generischen Klassennamen — und er traegt den Carrier nicht, weil die Karte ihn bereits
+   getrennt darstellt. Hier stand zuvor „UPS Express Saver"/„DPD PaketShop"; so kommt ein
+   Angebot nicht an. Keine Zusicherung dieser Datei haengt am Wert — die Fixture soll aber
+   zeigen, was sie zu zeigen behauptet. */
 const TG_DROPOFF = {
-  offerId: "a".repeat(32), publicCarrierId: "dpd", publicServiceName: "DPD PaketShop",
+  offerId: "a".repeat(32), publicCarrierId: "dpd", publicServiceName: "PaketShop",
   serviceType: "dropoff", transitDaysMin: 1, transitDaysMax: 2,
   netPrice: 9.4, vatAmount: 1.79, finalPrice: 11.19, currency: "EUR",
   bookable: false, unavailableReason: "quote_only", requiredPriceInputs: ["deliveryIsResidential"],
 };
 const TG_PICKUP = {
   ...TG_DROPOFF, offerId: "b".repeat(32), publicCarrierId: "ups",
-  publicServiceName: "UPS Express Saver", serviceType: "pickup",
+  publicServiceName: "Express Saver", serviceType: "pickup",
   transitDaysMin: 1, transitDaysMax: 1,
   requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
 };

@@ -20,13 +20,18 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   // Providerneutraler Paketshop-TYP (kein gebundener konkreter Shop — der
   // Dropoff-Guard bindet keine Access-Point-ID); daher zusätzlich „frei wählbar".
   const shopLabel = isDropoff ? (publicDropoffLabel(tariff) || "Paketshop") : null;
-  const handoverDate = tariff.pickupDate ? isoDayDE(tariff.pickupDate) : null;
-  // Gewähltes Abholzeitfenster (nur Pickup) hat Vorrang; sonst das Carrier-Fenster.
+  const handoverDate = (tariff.pickupDate || tariff.collectionDate)
+    ? isoDayDE(tariff.pickupDate || tariff.collectionDate) : null;
+  // Gewähltes Abholzeitfenster (nur Pickup) hat Vorrang; sonst das Carrier-Fenster; sonst
+  // die reine „bereit ab"-Zeit des Angebots. Die letzte Stufe wird NICHT zu einem Fenster
+  // ergaenzt — aus „ab 13 Uhr" folgt keine Endezeit, und eine erfundene waere eine Zusage.
   const win = (isPickup && pickupWindow && pickupWindow.from && pickupWindow.until)
     ? `${pickupWindow.from}–${pickupWindow.until} Uhr`
     : (isPickup && tariff.pickupTimeFrom && tariff.pickupTimeUntil)
       ? `${tariff.pickupTimeFrom}–${tariff.pickupTimeUntil} Uhr`
-      : null;
+      : (isPickup && tariff.collectionReadyFrom)
+        ? `bereit ab ${tariff.collectionReadyFrom} Uhr`
+        : null;
 
   // ── Zustellung ──
   const deliveryRange = (tariff.deliveryDateMin && tariff.deliveryDateMax && tariff.deliveryDateMin !== tariff.deliveryDateMax)

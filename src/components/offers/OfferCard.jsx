@@ -51,9 +51,21 @@ function buildStart(t) {
   else if (modus === HANDOVER_PICKUP) title = t.pickupToday ? "Abholung heute" : "Abholung";
   else                                title = "Versand";
 
-  const primary = t.pickupDate ? fmtDay(t.pickupDate) : null;
+  // ── Der Abholtermin — providerneutral, in der jeweils belegten Genauigkeit ──
+  // Es gibt zwei Formen, und sie sind NICHT dasselbe:
+  //   • ein echtes Von/Bis-Fenster  → „13:00–17:00 Uhr"
+  //   • nur eine „bereit ab"-Zeit   → „bereit ab 13:00 Uhr"
+  // Die zweite zu einem Fenster aufzurunden waere eine erfundene Zusage: aus „ab 13 Uhr"
+  // folgt kein „bis 17 Uhr". Dass eine Einkaufsquelle das Fenster kennt und die andere
+  // nicht, ist deshalb KEIN Grund, beide gleich darzustellen — providerneutral heisst,
+  // dieselbe Karte zeigt die tatsaechlich verfuegbare Leistung, nicht dieselbe Fiktion.
+  //
+  // Es wird nirgends nach dem Provider gefragt: gezeigt wird, was DA ist.
+  const abholTag = t.pickupDate || t.collectionDate || null;
+  const primary = abholTag ? fmtDay(abholTag) : null;
   const secondary = [];
   if (t.pickupTimeFrom && t.pickupTimeUntil)     secondary.push(`${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr`);
+  else if (t.collectionReadyFrom)                secondary.push(`bereit ab ${t.collectionReadyFrom} Uhr`);
   const dropoffLabel = publicDropoffLabel(t);
   if (dropoffLabel)                              secondary.push(dropoffLabel);
   return { title, primary, secondary };

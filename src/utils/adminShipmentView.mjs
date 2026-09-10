@@ -422,10 +422,41 @@ const EU_COUNTRIES = Object.freeze(new Set([
   "IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK",
 ]));
 
+// ── Versicherung einer Sendung (nur Anzeige) ────────────────────────────────
+// Liest ausschließlich die benannten Versicherungsspalten der Sendung. Ohne
+// gespeicherten Typ gibt es KEINE Versicherungskarte — eine leere Karte würde eine
+// Absicherung behaupten, die diese Sendung nicht hat. Die Warenangaben sind dreiwertig:
+// nur ein gespeichertes true/false wird als Antwort gezeigt.
+const INSURANCE_TYPE_LABELS = Object.freeze({
+  standard: "Standardversicherung",
+  premium: "Premiumversicherung",
+  transit_cover: "Zusätzliche Transportabsicherung",
+});
+const yesNoOrNull = (v) => (v === true ? "Ja" : v === false ? "Nein" : null);
+
+// → null | { typeLabel, insuredAmount, premiumGross, excessValue, goodsAreNew, goodsAreFragile }
+export function shipmentInsuranceView(row) {
+  const r = row && typeof row === "object" ? row : {};
+  const typ = str(firstDefined(r.extra_insurance_type, r.extraInsuranceType));
+  if (!typ || typ === "none") return null;
+  return {
+    // Ein unbekannter Typ wird neutral benannt, nie roh angezeigt.
+    typeLabel: INSURANCE_TYPE_LABELS[typ] || "Zusatzversicherung",
+    insuredAmount: numOrNull(firstDefined(r.extra_insurance_value, r.extraInsuranceValue)),
+    premiumGross: numOrNull(firstDefined(r.insurance_price_brutto, r.insurancePriceBrutto)),
+    excessValue: numOrNull(firstDefined(r.insurance_excess_value, r.insuranceExcessValue)),
+    goodsAreNew: yesNoOrNull(firstDefined(r.insurance_goods_are_new, r.insuranceGoodsAreNew)),
+    goodsAreFragile: yesNoOrNull(firstDefined(r.insurance_goods_are_fragile, r.insuranceGoodsAreFragile)),
+  };
+}
+
+// Zollrelevant ist eine Sendung AUSSCHLIESSLICH über ihre Route: verschiedene Länder und
+// ein Ziel außerhalb des EU-Zollraums. Ein gespeicherter Warenwert ist KEIN Zollmerkmal —
+// er wird seit der Vorab-Erhebung im Sendungsformular für jede Sendung erklärt (auch
+// Inland) und trägt die Versicherungsangaben mit. Die frühere Regel „Warenwert > 0 →
+// zollrelevant" hätte damit jede Inlandssendung als Zollfall markiert.
 export function isCustomsRelevant(row) {
   const f = shipmentFields(row);
-  const goodsValue = numOrNull(firstDefined(row?.goods_value, row?.goodsValue));
-  if (goodsValue !== null && goodsValue > 0) return true;
   if (!f.fromCountry || !f.toCountry) return false;
   const from = f.fromCountry.toUpperCase();
   const to = f.toCountry.toUpperCase();

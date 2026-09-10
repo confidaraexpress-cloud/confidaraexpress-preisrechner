@@ -5,7 +5,9 @@ import { InsuranceDetailsDialog } from "./InsuranceDetailsDialog";
 import {
   INSURANCE_CARD_COPY,
   INSURANCE_TEXT,
+  COVER_INSURANCE_TEXT,
   carrierTermsHref,
+  coverInsuranceCardCopy,
 } from "../../utils/insuranceTerms.mjs";
 import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLink.mjs";
 
@@ -24,6 +26,11 @@ import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLin
 // Preise stammen aus dem zentralen Price-View-Model (nur „ab"-Preselect ODER exakter
 // Aufpreis der ausgewählten, bestätigten Stufe) — keine lokale Prämienberechnung,
 // keine zweite Reprice-Anfrage für die nicht gewählte Stufe.
+//
+// ZWEITES MODELL — zusätzliche Transportabsicherung (`coverModel`): zwei Karten statt
+// drei, eigene neutrale Texte (keine Stufen-, Premium- oder 50-€-Aussagen, kein
+// Stufendialog), ein frei wählbarer Versicherungswert ohne Stufengrenze, zwei
+// Pflichtfragen zur Ware OHNE Vorbelegung und die Selbstbeteiligung aus dem Tarif.
 
 // Karteninhalte kommen aus dem zentralen Datenmodul (utils/insuranceTerms.mjs) —
 // dieselbe Quelle speist den Detaildialog, damit Karte und Dialog nicht
@@ -39,12 +46,14 @@ const CARD_COPY = INSURANCE_CARD_COPY;
 
 // Barrierefreier Name des nativen Radios: Kartenname + Preis in Worten, damit der
 // Preis NICHT nur farblich/visuell transportiert wird (Screenreader lesen ihn mit).
+// `unknownText` reist an der Karte mit: im Stufenmodell „Preis nach Warenwert", im
+// Deckungsbetragsmodell „Preis nach Ihren Angaben".
 function cardAriaLabel(c) {
   const p = (c && c.price) || { kind: "zero", value: 0 };
   const priceTxt =
     p.kind === "exact"     ? `Aufpreis ${money(p.value)}` :
     p.kind === "preselect" ? `ab ${money(p.value)}, steuerfrei` :
-    p.kind === "unknown"   ? "Preis nach Warenwert" :
+    p.kind === "unknown"   ? (c.unknownText || "Preis nach Warenwert") :
                              money(0);
   return `${c.name}: ${priceTxt}`;
 }
@@ -60,12 +69,12 @@ function withAmountNoWrap(text) {
   );
 }
 
-function CardPrice({ price }) {
+function CardPrice({ price, unknownText }) {
   const p = price || { kind: "zero", value: 0 };
   if (p.kind === "unknown") {
     return (
       <span className="ins-card-price">
-        <span className="ins-card-price-val ins-card-price-val--muted">Preis nach Warenwert</span>
+        <span className="ins-card-price-val ins-card-price-val--muted">{unknownText}</span>
       </span>
     );
   }
@@ -79,6 +88,40 @@ function CardPrice({ price }) {
   );
 }
 
+// Pflichtfrage zur Ware — zwei Radios OHNE Vorauswahl (dasselbe Muster wie die Angaben
+// zur Adresse): `checked` vergleicht strikt gegen true/false, ein `null` markiert keine
+// der beiden Optionen. Ein Schalter wäre hier falsch — er stünde auf „aus" und behauptete
+// eine Antwort, die niemand gegeben hat.
+function GoodsQuestion({ feld, frage, wert, onChange, error }) {
+  const errorId = `ins-${feld}-error`;
+  return (
+    <fieldset className="dn-mode-fieldset ins-goods-question" aria-describedby={error ? errorId : undefined}>
+      <legend className="field-label">{frage}</legend>
+      <label className="ci-mode-option" htmlFor={`ins-${feld}-ja`}>
+        <input
+          type="radio" id={`ins-${feld}-ja`} name={`ins-${feld}`} className="ci-mode-radio"
+          checked={wert === true}
+          onChange={() => onChange(feld, true)}
+        />
+        <span className="ci-mode-option-text">
+          <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerYes}</span>
+        </span>
+      </label>
+      <label className="ci-mode-option" htmlFor={`ins-${feld}-nein`}>
+        <input
+          type="radio" id={`ins-${feld}-nein`} name={`ins-${feld}`} className="ci-mode-radio"
+          checked={wert === false}
+          onChange={() => onChange(feld, false)}
+        />
+        <span className="ci-mode-option-text">
+          <span className="ci-mode-option-title">{COVER_INSURANCE_TEXT.answerNo}</span>
+        </span>
+      </label>
+      {error && <p className="field-error" id={errorId} role="alert">{error}</p>}
+    </fieldset>
+  );
+}
+
 export function InsuranceModule({
   insCards, insuranceType, onSelectType,
   isInsured, tariff,
@@ -86,11 +129,14 @@ export function InsuranceModule({
   insuranceValue, onInsuranceValueChange, onInsuranceValueBlur, insValueError,
   insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
   repriceError, isRepricing, isStale, repriceConfirmed,
+  coverModel = false, excessValue = null,
+  goodsAreNew = null, goodsAreFragile = null, onGoodsAnswerChange, goodsAnswerErrors = {},
 }) {
   const pending = isRepricing || isStale;
   // Bedingungslink des GEWÄHLTEN TARIFS — null, wenn der Tarif keinen (gültigen)
   // liefert. Dann erscheint kein Link, nicht etwa ein Ersatzlink.
   const carrierTerms = carrierTermsHref(tariff);
+  const unknownText = coverModel ? COVER_INSURANCE_TEXT.pricePending : "Preis nach Warenwert";
 
   // Reiner UI-Zustand des Detaildialogs (nichts davon wird gespeichert oder
   // gebucht). Das Rückgabeziel merkt sich den auslösenden Knopf, damit der
@@ -102,16 +148,23 @@ export function InsuranceModule({
   return (
     <div className="booking-insurance-box">
       <div className="ins-head">
-        <span className="ins-head-title"><Icon n="shieldCheck" s={18} c="currentColor" /> {INSURANCE_TEXT.sectionTitle}</span>
+        <span className="ins-head-title">
+          <Icon n="shieldCheck" s={18} c="currentColor" /> {coverModel ? COVER_INSURANCE_TEXT.sectionTitle : INSURANCE_TEXT.sectionTitle}
+        </span>
         <span className="ins-badge-taxfree">steuerfrei</span>
       </div>
-      <p className="ins-head-sub">{INSURANCE_TEXT.sectionIntro}</p>
+      <p className="ins-head-sub">{coverModel ? COVER_INSURANCE_TEXT.sectionIntro : INSURANCE_TEXT.sectionIntro}</p>
 
-      {/* Drei Optionskarten — Grundzustand neutral, nur die Auswahl blau. */}
-      <div className="ins-cards" role="radiogroup" aria-label="Transportversicherung wählen">
-        {insCards.map(c => {
+      {/* Optionskarten — Grundzustand neutral, nur die Auswahl blau. */}
+      <div
+        className="ins-cards" role="radiogroup"
+        aria-label={coverModel ? `${COVER_INSURANCE_TEXT.sectionTitle} wählen` : "Transportversicherung wählen"}
+      >
+        {insCards.map((karte) => ({ ...karte, unknownText })).map(c => {
           const selected = insuranceType === c.id;
-          const copy = CARD_COPY[c.id] || { bullets: [] };
+          const copy = coverModel
+            ? coverInsuranceCardCopy(c.id, excessValue)
+            : (CARD_COPY[c.id] || { bullets: [] });
           return (
             <label key={c.id} className={`ins-card${selected ? " ins-card--selected" : ""}`}>
               <input
@@ -133,7 +186,7 @@ export function InsuranceModule({
                   </span>
                   {copy.badge && <span className="ins-card-badge">{copy.badge}</span>}
                 </span>
-                <CardPrice price={c.price} />
+                <CardPrice price={c.price} unknownText={unknownText} />
               </span>
 
               {selected && isInsured && pending && (
@@ -190,13 +243,17 @@ export function InsuranceModule({
         })}
       </div>
 
-      <InsuranceDetailsDialog
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        returnFocusTo={detailsTrigger}
-      />
+      {/* Der Stufendialog beschreibt Standard/Premium — im Deckungsbetragsmodell gibt es
+          keinen Auslöser, also auch keinen Dialog. */}
+      {!coverModel && (
+        <InsuranceDetailsDialog
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          returnFocusTo={detailsTrigger}
+        />
+      )}
 
-      {/* Wertfelder NUR bei Standard/Premium (Progressive Disclosure). */}
+      {/* Wertfelder NUR bei gewählter Absicherung (Progressive Disclosure). */}
       {isInsured && (
         <div className="ins-inputs">
           <div className="field">
@@ -238,11 +295,13 @@ export function InsuranceModule({
 
           {insValueFieldVisible ? (
             <div className="field">
-              <label className="field-label" htmlFor="ins-value">Versicherungswert (EUR)</label>
+              <label className="field-label" htmlFor="ins-value">
+                {coverModel ? COVER_INSURANCE_TEXT.coverValueLabel : "Versicherungswert (EUR)"}
+              </label>
               <input
                 id="ins-value"
                 className={`field-input${insValueError ? " field-input-error" : ""}`}
-                type="number" inputMode="decimal" min="0" max={insuranceValueMax} step="0.01"
+                type="number" inputMode="decimal" min="0" max={coverModel ? undefined : insuranceValueMax} step="0.01"
                 value={insuranceValue}
                 onChange={e => onInsuranceValueChange(e.target.value)}
                 onBlur={onInsuranceValueBlur}
@@ -250,12 +309,29 @@ export function InsuranceModule({
               />
               {insValueError
                 ? <span className="field-error">{insValueError}</span>
-                : <span className="field-hint">Maximal {money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.</span>}
+                : <span className="field-hint">
+                    {coverModel
+                      ? COVER_INSURANCE_TEXT.coverValueHint
+                      : `Maximal ${money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.`}
+                  </span>}
             </div>
           ) : (
             <button type="button" className="ins-adjust-btn" onClick={onRevealInsValue}>
               Versicherungswert anpassen
             </button>
+          )}
+
+          {coverModel && (
+            <>
+              <GoodsQuestion
+                feld="goodsAreNew" frage={COVER_INSURANCE_TEXT.goodsNewQuestion}
+                wert={goodsAreNew} onChange={onGoodsAnswerChange} error={goodsAnswerErrors.goodsAreNew}
+              />
+              <GoodsQuestion
+                feld="goodsAreFragile" frage={COVER_INSURANCE_TEXT.goodsFragileQuestion}
+                wert={goodsAreFragile} onChange={onGoodsAnswerChange} error={goodsAnswerErrors.goodsAreFragile}
+              />
+            </>
           )}
         </div>
       )}
@@ -269,11 +345,15 @@ export function InsuranceModule({
             ) : pending ? (
               <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
             ) : repriceConfirmed ? (
-              <span className="ins-status-ok"><Icon n="check" s={14} c="currentColor" /> Versicherungspreis bestätigt</span>
+              <span className="ins-status-ok">
+                <Icon n="check" s={14} c="currentColor" /> {coverModel ? COVER_INSURANCE_TEXT.confirmed : "Versicherungspreis bestätigt"}
+              </span>
             ) : null}
           </div>
           <p className="ins-note">
-            Die Zusatzversicherung ist steuerfrei und wird ohne 19 % MwSt. separat ausgewiesen.
+            {coverModel
+              ? COVER_INSURANCE_TEXT.note
+              : "Die Zusatzversicherung ist steuerfrei und wird ohne 19 % MwSt. separat ausgewiesen."}
           </p>
         </div>
       )}

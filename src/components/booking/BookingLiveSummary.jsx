@@ -2,6 +2,9 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
+import { isInsuredType } from "../../utils/bookingPriceView.mjs";
+import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
+import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 
 // Permanente Live-Zusammenfassungsleiste — REINE DARSTELLUNG, sichtbar in Schritt 1
 // und 2. Vier Zonen: Versandprodukt · Übergabe · Zustellung · aktueller Preis. Alle
@@ -48,12 +51,19 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   // ── Preis (aus dem View-Model) ──
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
-  const insured = v.selectedInsuranceType === "standard" || v.selectedInsuranceType === "premium";
+  const insured = isInsuredType(v.selectedInsuranceType);
+  const cover = v.selectedInsuranceType === INSURANCE_TYPE_TRANSIT_COVER;
 
   // Sekundärzeile zum Versicherungszustand, wenn NOCH KEIN Gesamtpreis bestätigt ist.
   // Der Versandpreis bleibt in jedem Fall sichtbar; ein „ab"-Betrag wird nie addiert.
+  // Die zusätzliche Transportabsicherung hat keinen „ab"-Preis — ihr Preis entsteht erst
+  // mit den Angaben des Kunden, und die Texte nennen keine Stufe.
   let insNote = null, insNoteError = false, insNoteLoading = false;
-  if (!confirmed && insured) {
+  if (!confirmed && insured && cover) {
+    if (v.hasError)                      { insNote = COVER_INSURANCE_TEXT.liveError; insNoteError = true; }
+    else if (v.isRepricing || v.isStale) { insNote = COVER_INSURANCE_TEXT.liveLoading; insNoteLoading = true; }
+    else                                 { insNote = COVER_INSURANCE_TEXT.liveUnknown; }
+  } else if (!confirmed && insured) {
     if (v.hasError)                      { insNote = "Versicherungspreis nicht bestätigt"; insNoteError = true; }
     else if (v.isRepricing || v.isStale) { insNote = "Versicherung wird berechnet …";     insNoteLoading = true; }
     else if (v.hasInsurancePreselect)    { insNote = `Versicherung ab ${money(v.selectedInsurancePreselectGross)}`; }

@@ -142,6 +142,10 @@ const FORM_KEYS_BY_SCOPE = Object.freeze({
 export const BOOKING_KEYS = Object.freeze([
   "step", "labelFormat", "reference", "content",
   "insuranceType", "goodsValue", "insuranceValue", "insValueManual",
+  // Die beiden Pflichtfragen der zusätzlichen Transportabsicherung (Ware neu? zerbrechlich?).
+  // DREIWERTIG wie die Adressangaben: ein gespeichertes `false` ist eine Antwort und bleibt
+  // eine — sonst stünde dieselbe Frage nach jeder Rückkehr wieder offen.
+  "goodsAreNew", "goodsAreFragile",
   // Optionale Zusatzempfänger für Versandinformationen. Reine Frontendeingaben
   // ohne Serverquelle — genau wie reference gehören sie in den laufenden Vorgang,
   // damit sie eine Zurücknavigation überleben. Gespiegelt wird nur, was auch
@@ -354,6 +358,9 @@ export function emptyBooking() {
     goodsValue: "",
     insuranceValue: "",
     insValueManual: false,
+    // Noch nicht beantwortet — ausdrücklich nicht `false`.
+    goodsAreNew: null,
+    goodsAreFragile: null,
     trackingEmail: "",
     labelTrackingEmail: "",
     // Noch nicht beantwortet — ausdrücklich nicht `false`.
@@ -375,10 +382,13 @@ export function normalizeBooking(raw) {
     labelFormat: oneOf(src.labelFormat, ["A4", "A6"], "A4"),
     reference: str(src.reference).slice(0, 200),
     content: str(src.content).slice(0, 200),
-    insuranceType: oneOf(src.insuranceType, ["none", "standard", "premium"], "none"),
+    insuranceType: oneOf(src.insuranceType, ["none", "standard", "premium", "transit_cover"], "none"),
     goodsValue: str(src.goodsValue).slice(0, 32),
     insuranceValue: str(src.insuranceValue).slice(0, 32),
     insValueManual: bool(src.insValueManual),
+    // Dreiwertig (siehe BOOKING_KEYS): ein gespeichertes `false` bleibt `false`.
+    goodsAreNew: tristate(src.goodsAreNew),
+    goodsAreFragile: tristate(src.goodsAreFragile),
     // Dieselbe Obergrenze wie im Backend (255) — eine fremde/überlange Angabe
     // wird gekappt, nicht übernommen. Validiert wird beim Buchen, nicht hier.
     trackingEmail: str(src.trackingEmail).slice(0, 255),

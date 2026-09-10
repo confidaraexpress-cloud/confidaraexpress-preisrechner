@@ -22,9 +22,14 @@
 // Framework-frei und mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { INSURANCE_TYPE_TRANSIT_COVER } from "./coverInsuranceView.mjs";
+
 // Zentrale Frontend-Grenze für den Versicherungswert. Entspricht der bereits
 // bestehenden Inline-Grenze (BookingPage/InsuranceModule) und der Backend-Regel
 // (extra_insurance_value 1..20000). Hier nur zentralisiert — kein neuer Wert.
+// Gilt AUSSCHLIESSLICH für das Stufenmodell (Standard/Premium). Die zusätzliche
+// Transportabsicherung mit frei gewähltem Versicherungswert kennt diese Grenze nicht
+// (utils/coverInsuranceView.mjs).
 export const INSURANCE_VALUE_MAX = 20000;
 
 export const PRICE_STATUS = {
@@ -52,8 +57,11 @@ function pos(v) {
 
 function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
+// Versichert ist jede gewählte Absicherung — die beiden Stufen UND die zusätzliche
+// Transportabsicherung mit frei gewähltem Versicherungswert.
 export function isInsuredType(insuranceType) {
-  return insuranceType === "standard" || insuranceType === "premium";
+  return insuranceType === "standard" || insuranceType === "premium"
+    || insuranceType === INSURANCE_TYPE_TRANSIT_COVER;
 }
 
 // Zerlegt die Server-Totals (splitInsurancePricing) in die Anzeigefelder. `totalNet`
@@ -122,9 +130,20 @@ export function buildBookingPriceView({
   else if (totals)                        status = PRICE_STATUS.REPRICE_CONFIRMED;
   else                                    status = PRICE_STATUS.REPRICE_REQUIRED; // fail-closed
 
+  // Zusätzliche Transportabsicherung: versicherter Betrag und Selbstbeteiligung — reine
+  // Anzeige, ausschließlich aus der Serverantwort der Neubepreisung (nie aus dem Tarif,
+  // nie aus der Eingabe). Im Stufenmodell stehen beide auf null.
+  const coverIns = selectedInsuranceType === INSURANCE_TYPE_TRANSIT_COVER
+    && repriceResult && typeof repriceResult === "object"
+    && repriceResult.insurance && typeof repriceResult.insurance === "object"
+    ? repriceResult.insurance : null;
+  const coverInsuredAmount = coverIns ? num(coverIns.coverValue) : null;
+  const coverExcessValue   = coverIns ? num(coverIns.excessValue) : null;
+
   const base = {
     status,
     source: null,
+    coverInsuredAmount, coverExcessValue,
     shippingNet: null, shippingVat: null, shippingGross: null,
     insuranceGross: null, totalNet: null, totalGross: null,
     // Immer verfügbarer Basis-Versandpreis (Referenz, nie bestätigter Gesamtpreis).

@@ -185,6 +185,24 @@ test("10 — der Buchungsschritt 3 wird nie wiederhergestellt", () => {
   assert.equal(normalizeBooking(null), null);
 });
 
+test("TG-F8 — die zusätzliche Transportabsicherung überlebt die Normalisierung, ihre Fragen dreiwertig", () => {
+  assert.equal(normalizeBooking({ insuranceType: "transit_cover" }).insuranceType, "transit_cover");
+  assert.ok(BOOKING_KEYS.includes("goodsAreNew") && BOOKING_KEYS.includes("goodsAreFragile"));
+  // Ein bewusstes „Nein" bleibt „Nein" — es wird nie zu „nicht beantwortet".
+  const n = normalizeBooking({ goodsAreNew: false, goodsAreFragile: true });
+  assert.equal(n.goodsAreNew, false);
+  assert.equal(n.goodsAreFragile, true);
+  // Alles andere ist KEINE Antwort — auch keine truthy-Deutung von "true" oder 1.
+  for (const roh of [undefined, null, "true", "false", 1, 0, "", {}]) {
+    const m = normalizeBooking({ goodsAreNew: roh, goodsAreFragile: roh });
+    assert.equal(m.goodsAreNew, null, `${JSON.stringify(roh)} wurde als Antwort übernommen`);
+    assert.equal(m.goodsAreFragile, null);
+  }
+  // Der leere Vorgang behauptet keine Antwort.
+  assert.equal(emptyBooking().goodsAreNew, null);
+  assert.equal(emptyBooking().goodsAreFragile, null);
+});
+
 /* ══════════ 3 — „gibt es überhaupt einen Vorgang?" ═══════════════════════ */
 
 test("11 — der reine Profil-Seed gilt nicht als Vorgang", () => {

@@ -404,3 +404,53 @@ test("(P24) INSURANCE_VALUE_MAX/Gate/Reprice-Vertrag unverändert (Regression)",
   assert.ok(/priceViewBlocksBooking/.test(page), "Buchungs-Gate bleibt am View-Model");
   assert.ok(/repriceInsurance/.test(page), "Reprice-Aufruf bleibt erhalten");
 });
+
+// ─── TG-F8: zusätzliche Transportabsicherung im selben View-Model ─────────────
+const TARIFF_COVER = {
+  netPrice: 10.8, vatAmount: 2.05, finalPrice: 12.85, offerId: "a".repeat(32),
+  insuranceAvailable: true,
+  insuranceDetails: { isInsurable: true, selectionModel: "cover_value", excessValue: 20,
+                      requiresGoodsAreNew: true, requiresGoodsAreFragile: true, priceOnSelection: true },
+};
+const REPRICE_COVER = {
+  selectedInsurance: "transit_cover",
+  insurance: { coverValue: 500, excessValue: 20, goodsAreNew: true, goodsAreFragile: false, insuranceGross: 10 },
+  totals: { customerShippingNet: 10.8, shippingVat: 2.05, customerShippingGross: 12.85,
+            insuranceGross: 10, customerTotalGross: 22.85 },
+};
+
+test("(P25) transit_cover ist versichert — none bleibt unversichert, Stufen unverändert", () => {
+  assert.equal(isInsuredType("transit_cover"), true);
+  assert.equal(isInsuredType("standard"), true);
+  assert.equal(isInsuredType("premium"), true);
+  assert.equal(isInsuredType("none"), false);
+  assert.equal(isInsuredType("gold"), false);
+});
+
+test("(P26) Deckungsbetrag: Gesamt = Versand brutto + Absicherung, 1:1 aus der Neubepreisung", () => {
+  const v = buildBookingPriceView({ tariff: TARIFF_COVER, insuranceType: "transit_cover", repriceResult: REPRICE_COVER });
+  assert.equal(v.status, PRICE_STATUS.REPRICE_CONFIRMED);
+  assert.equal(v.totalGross, 22.85);
+  assert.equal(v.shippingGross, 12.85);
+  assert.equal(v.insuranceGross, 10);
+  assert.equal(v.hasConfirmedPrice, true);
+  assert.equal(v.coverInsuredAmount, 500);
+  assert.equal(v.coverExcessValue, 20);
+  // Kein „ab"-Preis: der Preis entsteht erst mit den Angaben des Kunden.
+  assert.equal(v.selectedInsurancePreselectGross, null);
+  assert.equal(v.hasInsurancePreselect, false);
+});
+
+test("(P27) Deckungsbetrag ohne Neubepreisung oder mit offenen Fragen: KEIN Gesamtbetrag", () => {
+  const ohne = buildBookingPriceView({ tariff: TARIFF_COVER, insuranceType: "transit_cover", repriceResult: null });
+  assert.equal(ohne.hasConfirmedPrice, false);
+  assert.equal(ohne.totalGross, null);
+  const offen = buildBookingPriceView({ tariff: TARIFF_COVER, insuranceType: "transit_cover",
+                                        repriceResult: REPRICE_COVER, insValid: false });
+  assert.equal(offen.status, PRICE_STATUS.REPRICE_REQUIRED);
+  assert.equal(priceViewBlocksBooking(offen), true);
+  // Eine Stufenauswahl trägt nie Deckungsbetragsfelder.
+  const std = view({ insuranceType: "standard", repriceResult: REPRICE_STD });
+  assert.equal(std.coverInsuredAmount, null);
+  assert.equal(std.coverExcessValue, null);
+});

@@ -141,14 +141,16 @@ export function saveDraftPickupWindow({ shipmentId, pickupTimeFrom, pickupTimeUn
 }
 
 // ── Versicherung: Live-Repricing (auth) ──────────────────────────────────────
-// POST /api/jumingo/reprice-insurance — read-only Preisberechnung für eine
-// gewählte Zusatzversicherung. WICHTIG (Backend-Vertrag): `insuranceType` wird
-// FLACH gesendet (nicht verschachtelt), `value_currency` NICHT, und es werden
-// KEINE Client-Preise übertragen. Gibt die rohe Response zurück (der Aufrufer
-// wertet Status/JSON selbst aus, konsistent mit den übrigen Callern). Optionales
-// AbortSignal, um veraltete In-Flight-Requests bei schneller Eingabe abzubrechen.
+// POST /api/insurance/reprice — die providerneutrale Neubepreisung einer gewählten
+// Zusatzabsicherung. Welcher Vertrag gilt, entscheidet der Server anhand der
+// `offerId`: das Stufenmodell (Standard/Premium) läuft dort unverändert durch den
+// bisherigen Handler, das Deckungsbetragsmodell bindet Preis und Auswahl an das
+// Angebot. WICHTIG (Backend-Vertrag): es werden KEINE Client-Preise übertragen; im
+// Stufenmodell bleibt `insuranceType` FLACH. Gibt die rohe Response zurück (der
+// Aufrufer wertet Status/JSON selbst aus, konsistent mit den übrigen Callern).
+// Optionales AbortSignal, um veraltete In-Flight-Requests abzubrechen.
 export function repriceInsurance(payload, { signal } = {}) {
-  return apiFetch(`/api/jumingo/reprice-insurance`, {
+  return apiFetch(`/api/insurance/reprice`, {
     method: "POST",
     auth: true,
     body: JSON.stringify(payload),

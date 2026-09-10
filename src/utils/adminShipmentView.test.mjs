@@ -36,6 +36,7 @@ import {
   shipmentEmptyState,
   shipmentFields,
   shipmentIdentity,
+  shipmentInsuranceView,
   shipmentMarkers,
   shipmentRouteLine,
   shippingModeLabel,
@@ -387,8 +388,11 @@ test("19 — der Zollabschnitt erscheint nur bei echter Zollrelevanz", () => {
   assert.equal(isCustomsRelevant(INLAND), false, "DE → DE ist nicht zollrelevant");
   assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "FR" }), false, "innerhalb der EU nicht");
   assert.equal(isCustomsRelevant(LEGACY), false, "ohne Länder keine Annahme");
-  // Ein gespeicherter Warenwert macht die Sendung ebenfalls zollrelevant.
-  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "DE", goods_value: "120" }), true);
+  // TG-F8 (§15): ein gespeicherter Warenwert ist KEIN Zollmerkmal. Er wird seit der
+  // Vorab-Erhebung für jede Sendung erklärt — auch im Inland — und trägt die
+  // Versicherungsangaben mit. Die frühere Erwartung „Warenwert → zollrelevant" hätte
+  // jede versicherte Inlandssendung zum Zollfall gemacht.
+  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "DE", goods_value: "120" }), false);
   // Und die Seite rendert die Karte genau daran.
   assert.match(detailSrc, /\{sections\.customs && \(/);
 });
@@ -759,4 +763,39 @@ test("25 — Selbsttest: die Prüflogik greift tatsächlich", () => {
   assert.notEqual(vFull.lookup.possible, vFull.live.hasData, "Vorbedingung und Live-Daten fallen zusammen");
   assert.equal(trackingLinkOrNull("https://x.example/1") === null, false, "die Linkprüfung verwirft alles");
   assert.notEqual(liveTracking(LIVE_FULL).hasData, liveTracking(LIVE_EMPTY).hasData);
+});
+
+// ═══ TG-F8: Zollerkennung ohne Warenwert, Versicherungskarte ═════════════════
+
+test("26 — der Warenwert allein macht keine Sendung zollrelevant — die Route entscheidet", () => {
+  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "DE", goods_value: "500" }), false,
+    "eine versicherte Inlandssendung ist kein Zollfall");
+  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "FR", goods_value: 900 }), false,
+    "innerhalb der EU auch mit Warenwert kein Zollfall");
+  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "CH" }), true, "DE → CH bleibt zollrelevant");
+  assert.equal(isCustomsRelevant({ from_country: "DE", to_country: "CH", goods_value: "500" }), true);
+  assert.equal(isCustomsRelevant({ goods_value: "500" }), false, "ohne Länder keine Annahme — auch mit Warenwert");
+  assert.ok(!/goods_value/.test(viewSrc.slice(viewSrc.indexOf("export function isCustomsRelevant"),
+    viewSrc.indexOf("export function detailSections"))), "die Zollerkennung liest den Warenwert wieder");
+});
+
+test("27 — die Versicherungskarte entsteht nur mit gespeichertem Typ, neutral benannt", () => {
+  assert.equal(shipmentInsuranceView(BOOKED), null, "ohne Versicherungstyp keine Karte");
+  assert.equal(shipmentInsuranceView({ extra_insurance_type: "none" }), null);
+  assert.equal(shipmentInsuranceView(null), null);
+  const tg = shipmentInsuranceView({
+    extra_insurance_type: "transit_cover", extra_insurance_value: "500.00", insurance_price_brutto: "10.00",
+    insurance_excess_value: "20", insurance_goods_are_new: true, insurance_goods_are_fragile: false,
+  });
+  assert.deepEqual(tg, { typeLabel: "Zusätzliche Transportabsicherung", insuredAmount: 500, premiumGross: 10,
+                         excessValue: 20, goodsAreNew: "Ja", goodsAreFragile: "Nein" });
+  assert.ok(!/transglobal/i.test(JSON.stringify(tg)), "der Anbieter steht in der Adminkarte");
+  const std = shipmentInsuranceView({ extra_insurance_type: "standard", extra_insurance_value: "300" });
+  assert.equal(std.typeLabel, "Standardversicherung");
+  assert.equal(std.excessValue, null, "eine Stufe erfindet keine Selbstbeteiligung");
+  assert.equal(std.goodsAreNew, null, "eine nicht gespeicherte Antwort wird nicht behauptet");
+  assert.equal(shipmentInsuranceView({ extra_insurance_type: "premium" }).typeLabel, "Premiumversicherung");
+  assert.equal(shipmentInsuranceView({ extra_insurance_type: "gold_xyz" }).typeLabel, "Zusatzversicherung",
+    "ein unbekannter Typ wird nie roh angezeigt");
+  assert.match(detailSrc, /\{insurance && \(/);
 });

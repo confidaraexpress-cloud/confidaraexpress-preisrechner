@@ -1,6 +1,9 @@
 import React from "react";
 import { money } from "../../utils/formatters";
 import { paymentTermSentence } from "../../utils/paymentTerm.mjs";
+import { isInsuredType } from "../../utils/bookingPriceView.mjs";
+import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
+import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 
 // Der Satz steht hier als drittes Glied einer Aufzählung und beginnt deshalb klein. Nur der
 // ERSTE Buchstabe wird herabgesetzt — ein volles toLowerCase() zerstörte im Deutschen die
@@ -21,10 +24,15 @@ const lowerFirst = (s) => (typeof s === "string" && s ? s.charAt(0).toLowerCase(
 // EXAKT wie bisher (ein Gesamtbetrag). Mit bestätigtem Gutschein treten Zwischensumme,
 // Rabattzeile und „Zu zahlen" an die Stelle des Gesamtbetrags. Die Werte kommen fertig aus der
 // serverbestätigten Antwort — hier wird nichts gerechnet und nichts abgezogen.
+//
+// Zusätzliche Transportabsicherung (Deckungsbetragsmodell): eigene, neutrale Bezeichnung
+// und zusätzlich versicherter Betrag und Selbstbeteiligung — beide ausschließlich aus der
+// bestätigten Neubepreisung. Keine Stufenbegriffe.
 export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
-  const insured = v.selectedInsuranceType === "standard" || v.selectedInsuranceType === "premium";
+  const insured = isInsuredType(v.selectedInsuranceType);
+  const cover = v.selectedInsuranceType === INSURANCE_TYPE_TRANSIT_COVER;
   const hasInsuranceAmount = Number(v.insuranceGross) > 0;
   const insLabel = v.selectedInsuranceType === "premium" ? "Premiumversicherung" : "Standardversicherung";
 
@@ -36,7 +44,11 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
 
   // Versicherungszeile im UNBESTÄTIGTEN Zustand (nur bei versicherter Auswahl).
   let insState = null;
-  if (!confirmed && insured) {
+  if (!confirmed && insured && cover) {
+    if (v.hasError)                     insState = { kind: "error",   text: COVER_INSURANCE_TEXT.summaryError };
+    else if (v.isRepricing || v.isStale) insState = { kind: "loading", text: COVER_INSURANCE_TEXT.summaryLoading };
+    else                                 insState = { kind: "unknown", text: COVER_INSURANCE_TEXT.summaryUnknown };
+  } else if (!confirmed && insured) {
     if (v.hasError)                     insState = { kind: "error",     text: "Versicherungspreis konnte nicht bestätigt werden." };
     else if (v.isRepricing || v.isStale) insState = { kind: "loading",   text: "Versicherungspreis wird aktualisiert …" };
     else if (v.hasInsurancePreselect)    insState = { kind: "preselect", text: `${insLabel} ab ${money(v.selectedInsurancePreselectGross)}`, taxfree: true };
@@ -59,9 +71,21 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
           {hasInsuranceAmount && (
             <div className="booking-confirm-row">
               <span className="text-sm text-muted">
-                Transportversicherung<span className="booking-tax-chip">steuerfrei</span>
+                {cover ? COVER_INSURANCE_TEXT.sectionTitle : "Transportversicherung"}<span className="booking-tax-chip">steuerfrei</span>
               </span>
               <span className="text-sm font-bold booking-confirm-val">{money(v.insuranceGross)}</span>
+            </div>
+          )}
+          {hasInsuranceAmount && cover && v.coverInsuredAmount != null && (
+            <div className="booking-confirm-row">
+              <span className="text-sm text-muted">{COVER_INSURANCE_TEXT.insuredAmountLabel}</span>
+              <span className="text-sm font-bold booking-confirm-val">{money(v.coverInsuredAmount)}</span>
+            </div>
+          )}
+          {hasInsuranceAmount && cover && v.coverExcessValue != null && (
+            <div className="booking-confirm-row">
+              <span className="text-sm text-muted">{COVER_INSURANCE_TEXT.excessLabel}</span>
+              <span className="text-sm font-bold booking-confirm-val">{money(v.coverExcessValue)}</span>
             </div>
           )}
           {voucherLines && voucherLines.hasVoucher ? (
@@ -112,7 +136,9 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
           )}
           {insured && (
             <p className="booking-total-pending" role="note">
-              Der Gesamtbetrag wird angezeigt, sobald der Versicherungspreis bestätigt ist.
+              {cover
+                ? COVER_INSURANCE_TEXT.summaryPending
+                : "Der Gesamtbetrag wird angezeigt, sobald der Versicherungspreis bestätigt ist."}
             </p>
           )}
         </>

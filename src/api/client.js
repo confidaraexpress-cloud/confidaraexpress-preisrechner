@@ -326,7 +326,7 @@ export function deleteDraft(id) {
 
 // ── Dokumente einer Sendung (Metadaten, keine Bytes) ─────────────────────────
 // GET /api/shipments/:shipmentId/documents — der SERVER sagt, welche Dokumente es
-// zu dieser Sendung gibt (LABEL · ORDER_CONFIRMATION · DELIVERY_NOTE · PROFORMA),
+// zu dieser Sendung gibt (LABEL · COLLECTION_LABEL · ORDER_CONFIRMATION · DELIVERY_NOTE · PROFORMA),
 // in welchem Zustand sie sind (ready · processing · failed) und unter welchem Pfad
 // sie liegen. Die Antwort trägt ausdrücklich KEINE PDF-Bytes.
 //

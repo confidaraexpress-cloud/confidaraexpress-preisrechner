@@ -6,9 +6,18 @@
 // aufgelöste Proforma-Eintrag (`proformaEntry`) — die Auflösung selbst (Poll,
 // Budget, Fehlerfreiheit) bleibt bewusst in der Seite bzw. im Hook: dieser
 // Baustein zeigt Belege an und lädt sie herunter, mehr nicht.
+//
+// TG-F5: meldet die Buchungsantwort Versandbelege (`booking.shippingDocuments`), bekommt
+// jeder davon einen eigenen Knopf — bei mehreren Paketen also jedes Etikett, nicht nur das
+// erste. Ohne diese Angabe bleibt es beim bisherigen Labelknopf.
 import { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { downloadLabel } from "../../utils/downloadLabel";
+import { downloadDocument } from "../../utils/downloadDocument";
+import {
+  bookingShippingDocuments, shippingDocumentButtonLabel, shippingDocumentLoadingLabel,
+  shippingDocumentFallbackFilename, BOOKING_SHIPPING_DOCUMENTS_TEXT,
+} from "../../utils/bookingShippingDocuments.mjs";
 import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
 import { downloadProforma } from "../../utils/downloadProforma";
@@ -32,6 +41,11 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
   // useProformaDocument und erzeugt bewusst keinen (Begründung dort).
   const [proformaLoading, setProformaLoading] = useState(false);
   const [proformaError, setProformaError] = useState("");
+  // TG-F5: die Versandbelege aus der Buchungsantwort — jedes Etikett und das Abholetikett mit
+  // eigenem, servergelieferten Pfad. Es lädt immer nur einer; `versandPfad` ist der Pfad,
+  // der gerade lädt.
+  const versanddokumente = bookingShippingDocuments(booking);
+  const [versandPfad, setVersandPfad] = useState("");
 
   const handleDownloadLabel = async () => {
     // Der Label-Abruf läuft über den ConfidaraExpress-Sendungshandle
@@ -45,6 +59,20 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
       if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
     setLabelLoading(false);
+  };
+
+  // Ein Versandbeleg — AUSSCHLIESSLICH über den Pfad aus der Buchungsantwort. Er wird hier
+  // weder gebaut noch aus Art und Nummer rekonstruiert; `downloadDocument` prüft ihn zusätzlich
+  // gegen fremde Hosts. Ein Fehler landet in derselben Meldung wie beim Label.
+  const handleDownloadShippingDocument = async (doc) => {
+    if (!doc || versandPfad) return;
+    setVersandPfad(doc.downloadPath); setLabelError("");
+    try {
+      await downloadDocument(doc.downloadPath, { fallbackFilename: shippingDocumentFallbackFilename(doc) });
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setLabelError(e.message); // globaler Auth-Redirect übernimmt sonst
+    }
+    setVersandPfad("");
   };
 
   // Lieferschein — derselbe Weg wie das Label: Sendungshandle aus der Buchungsantwort,
@@ -98,7 +126,33 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
   return (
     <>
       {labelError && <div className="alert alert-error mb-16" role="alert">{labelError}</div>}
-      {booking?.ceShipmentId && (
+      {/* TG-F5: meldet die Buchungsantwort Versandbelege, bekommt JEDER einen eigenen Knopf —
+          bei drei Paketen drei Etiketten, dazu das Abholetikett. Der Name kommt vom Server
+          („Versandlabel 2 von 3"); hier wird keine Paketnummer gebildet. Ohne diese Angabe
+          (ein Anbieter ohne Belegablage, eine ältere Antwort, eine nicht lesbare Ablage)
+          bleibt es beim bisherigen Labelknopf. */}
+      {versanddokumente.length > 0 ? (
+        <>
+          {versanddokumente.map((doc) => (
+            <button
+              key={`${doc.type}-${doc.ordinal}`}
+              type="button"
+              className={`btn ${doc.type === "LABEL" ? "btn-primary" : "btn-outline"} btn-full mb-16`}
+              onClick={() => handleDownloadShippingDocument(doc)}
+              disabled={versandPfad !== ""}
+            >
+              {versandPfad === doc.downloadPath
+                ? <><span className={doc.type === "LABEL" ? "spinner" : "spinner spinner-dark"} /> {shippingDocumentLoadingLabel(doc)}</>
+                : shippingDocumentButtonLabel(doc)}
+            </button>
+          ))}
+          {/* Mehrere Belege: der Kunde erfährt, wo er sie dauerhaft wiederfindet — die
+              Dokumentübersicht der Sendung lädt sie jederzeit neu vom Server. */}
+          {versanddokumente.length > 1 && (
+            <p className="text-muted text-sm mb-16">{BOOKING_SHIPPING_DOCUMENTS_TEXT.whereToFind}</p>
+          )}
+        </>
+      ) : booking?.ceShipmentId && (
         <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
           {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
         </button>

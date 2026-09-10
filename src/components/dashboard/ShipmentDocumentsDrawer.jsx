@@ -6,6 +6,7 @@ import { downloadDocument } from "../../utils/downloadDocument";
 import {
   DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, documentViewState, documentDownloadPath,
   documentLabel, documentNumber, documentIcon, documentFallbackFilename,
+  documentCarrierReference, documentOrdinal,
   hasProcessingDocument, nextDocumentPollDelay,
 } from "../../utils/shipmentDocumentsView.mjs";
 
@@ -36,6 +37,9 @@ import {
 function DocumentRow({ doc, onDownload, busy }) {
   const zustand = documentViewState(doc);
   const nummer = documentNumber(doc);
+  // TG-F5: die Carrier-Sendungsnummer unterscheidet mehrere Etiketten derselben Sendung. Sie
+  // steht nur, wo es keine Belegnummer gibt — und nie als leerer Platzhalter.
+  const referenz = nummer ? null : documentCarrierReference(doc);
   const name = documentLabel(doc);
   return (
     <li className="sdoc-row">
@@ -46,6 +50,7 @@ function DocumentRow({ doc, onDownload, busy }) {
         <span className="sdoc-row-name">{name}</span>
         {/* Fehlt die Nummer, bleibt hier KEIN leerer Platzhalter stehen. */}
         {nummer && <span className="sdoc-row-number mono">{nummer}</span>}
+        {referenz && <span className="sdoc-row-number mono">{referenz}</span>}
       </span>
       <span className="sdoc-row-action">
         {zustand === DOC_STATUS.READY && (
@@ -153,7 +158,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
     setBusyPath(pfad);
     setDownloadError("");
     try {
-      await downloadDocument(pfad, { fallbackFilename: documentFallbackFilename(doc.type) });
+      await downloadDocument(pfad, { fallbackFilename: documentFallbackFilename(doc.type, documentOrdinal(doc)) });
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setDownloadError(e.message); // globaler Auth-Redirect übernimmt sonst
     }
@@ -218,7 +223,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
                 <ul className="sdoc-list">
                   {gruppe.documents.map((doc, i) => (
                     <DocumentRow
-                      key={`${doc.type}-${i}`}
+                      key={`${doc.type}-${documentOrdinal(doc) ?? i}`}
                       doc={doc}
                       onDownload={handleDownload}
                       busy={busyPath !== "" && busyPath === documentDownloadPath(doc)}

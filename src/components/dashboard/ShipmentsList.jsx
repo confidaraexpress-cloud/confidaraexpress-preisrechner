@@ -15,6 +15,9 @@ import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
 } from "../../utils/trackingReferencesView.mjs";
 import {
+  trackingLegsOf, trackingStatusLabel, eventWhenText, trackingLegHeading, TRACKING_LEGS_TEXT,
+} from "../../utils/trackingLegsView.mjs";
+import {
   canRequestCancellation,
   hasCancellationRequest,
   customerCancellationStatusMeta,
@@ -304,7 +307,14 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                               const number = tracking?.trackingNumber;
                               // TG-F6: die Trackingantwort trägt ALLE Nummern der Sendung.
                               const liveNummern = multiTrackingReferencesOf(tracking);
-                              const statusLabel = labelForTrackStatus(tracking?.trackingStatus);
+                              // Providerneutrale Transportabschnitte: liefert der Server
+                              // `trackingLegs`, stammen Stand, Ereignisse und Zeitangaben von
+                              // dort (utils/trackingLegsView.mjs) — ohne erfundene Zeitzone.
+                              const legs = trackingLegsOf(tracking);
+                              const mitAbschnitten = legs.length > 0;
+                              const statusLabel = mitAbschnitten
+                                ? trackingStatusLabel(tracking?.trackingStatus)
+                                : labelForTrackStatus(tracking?.trackingStatus);
                               const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
                               // Live-Format: Events unter tracking.data.steps[]
                               // (date/time/type/location). tracking_events[] bleibt
@@ -336,6 +346,22 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 mapped[0].sortTs > mapped[mapped.length - 1].sortTs
                                   ? [...mapped].reverse()
                                   : mapped;
+
+                              // Je Abschnitt eine Timeline. Ohne Abschnitte bleibt es bei der
+                              // einen Timeline aus dem bisherigen Format.
+                              const sections = mitAbschnitten
+                                ? legs.map((leg) => ({
+                                    key: leg.key,
+                                    heading: legs.length > 1 ? trackingLegHeading(leg) : null,
+                                    link: legs.length > 1 ? leg.carrierTrackingPage : null,
+                                    events: leg.events.map((ev) => ({
+                                      title: ev.description,
+                                      when: eventWhenText(ev, { withSuffix: false }) || "",
+                                      location: ev.location,
+                                    })),
+                                  }))
+                                : [{ key: "events", heading: null, link: null, events }];
+                              const eventCount = sections.reduce((n, sec) => n + sec.events.length, 0);
 
                               // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
                               // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.
@@ -374,13 +400,20 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                       )}
                                     </div>
                                   )}
-                                  {events.length > 0 ? (
-                                    <div className="tracking-timeline">
-                                      {events.map((ev, i) => (
+                                  {eventCount > 0 ? sections.map((section) => (
+                                    <div key={section.key} className="tracking-timeline">
+                                      {/* Mehrere Abschnitte: je Abschnitt Carrier und Nummer — nie „Paket 2". */}
+                                      {section.heading && <p className="text-muted text-sm shipment-track-leg">{section.heading}</p>}
+                                      {section.link && (
+                                        <a className="shipment-track-link" href={section.link} target="_blank" rel="noopener noreferrer">
+                                          Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+                                        </a>
+                                      )}
+                                      {section.events.map((ev, i) => (
                                         <div key={i} className="track-event">
                                           {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
-                                          <div className={`track-dot ${i === events.length - 1 ? "active" : "done"}`}>
-                                            {i === events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
+                                          <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`}>
+                                            {i === section.events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
                                           </div>
                                           <div className="track-info">
                                             <div className="track-title">{ev.title}</div>
@@ -390,8 +423,10 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                         </div>
                                       ))}
                                     </div>
-                                  ) : (
-                                    <p className="text-muted text-sm shipment-track-noevents">Noch keine Ereignisse vorhanden.</p>
+                                  )) : (
+                                    <p className="text-muted text-sm shipment-track-noevents">
+                                      {tracking?.liveTracking === false ? TRACKING_LEGS_TEXT.liveUnavailable : "Noch keine Ereignisse vorhanden."}
+                                    </p>
                                   )}
                                 </div>
                               );

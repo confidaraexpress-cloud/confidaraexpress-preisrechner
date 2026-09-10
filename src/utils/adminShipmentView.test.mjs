@@ -594,6 +594,50 @@ test("31 — es gibt keine zweite Tracking-Bedingungslogik mehr auf der Seite", 
   assert.match(cssSrc, /\.adm-track-note \{/);
 });
 
+test("39 — die Live-Abfrage folgt der ausdrücklichen Backendaussage, providerneutral", () => {
+  // Gebucht OHNE JUMiNGO-Sendungs-ID, aber das Backend sagt: abfragbar → Button aktiv.
+  assert.deepEqual(trackingLookup({ ...BOOKED_NO_JUMINGO, tracking_lookup_available: true }), { possible: true, hint: "" });
+  assert.deepEqual(trackingLookup({ ...BOOKED, jumingo_shipment_id: null, tracking_lookup_available: true }), { possible: true, hint: "" });
+  // Das Backend sagt: nicht abfragbar → gesperrt, auch wenn eine Kennung dasteht.
+  const gesperrt = trackingLookup({ ...S683, tracking_lookup_available: false });
+  assert.equal(gesperrt.possible, false);
+  assert.ok(gesperrt.hint.length > 0, "eine Sperre wird begründet");
+  assert.equal(/transglobal/i.test(gesperrt.hint), false);
+  // Nur ein echter Boolean ist eine Aussage — sonst gilt der bisherige Vertrag.
+  assert.equal(trackingLookup({ ...BOOKED_NO_JUMINGO, tracking_lookup_available: "true" }).possible, false);
+  assert.equal(trackingLookup({ ...BOOKED_NO_JUMINGO, tracking_lookup_available: null }).possible, false);
+  assert.equal(trackingLookup({ id: 683 }).possible, true);
+});
+
+test("40 — Transportabschnitte im Admin-Detail: Carrier, Nummer, Stand, Hinweise, Ereignisse — über das View-Model", () => {
+  const legs = [{ key: "leg-0", carrier: "UPS", trackingReference: "1ZF7TEST0000000001", status: "delivered",
+    errorMessages: ["Address incomplete"], events: [] }];
+  assert.deepEqual(liveTracking({ legs }).legs, legs);
+  assert.equal(liveTracking({ legs }).hasData, true, "Abschnitte sind Live-Daten");
+  assert.deepEqual(liveTracking({ status: "in_transit" }).legs, []);
+  assert.deepEqual(liveTracking(null).legs, []);
+  assert.deepEqual(trackingView(S683, { legs }).live.legs, legs);
+  // Die Seite rendert ausschließlich das View-Model — nie trackData direkt.
+  assert.match(detailSrc, /\{track\.live\.legs\.map\(\(leg\) => \{/);
+  assert.equal(/trackData\?\./.test(detailSrc), false, "die Rohdaten werden direkt gerendert");
+  assert.match(detailViewSrc, /legs: trackingLegsOf\(o\)/);
+  // Je Abschnitt: Carrier, maskierte Nummer, Stand, Hinweise, Ereignisse mit Zeitangabe und Ort.
+  assert.match(detailSrc, /resolveCarrierName\(leg\.carrier\)/);
+  assert.match(detailSrc, /maskTail\(leg\.trackingReference\)/);
+  assert.match(detailSrc, /trackStatusMeta\(leg\.status\)/);
+  assert.match(detailSrc, /\{TRACKING_LABELS\.legErrors\}: \{leg\.errorMessages\.join\(" · "\)\}/);
+  assert.match(detailSrc, /eventWhenText\(ev\) \|\| TRACKING_LABELS\.eventNoTime/);
+  assert.match(detailSrc, /\{ev\.description\}\{ev\.location \? ` · \$\{ev\.location\}` : ""\}/);
+  assert.match(detailSrc, /\{TRACKING_HINTS\.noLegEvents\}/);
+  // Kein Anbietername, kein Abschnittslink, keine erfundene Paketnummer.
+  for (const [name, src] of [["Seite", detailSrc], ["Detail-Ansicht", detailViewSrc], ["Admin-Ansicht", viewSrc]]) {
+    assert.equal(/transglobal/i.test(src), false, `${name}: Anbietername im Code`);
+  }
+  const abschnitt = detailSrc.slice(detailSrc.indexOf("track.live.legs.map"), detailSrc.indexOf("track.live.legs.map") + 2600);
+  assert.equal(/<a\b|href=/.test(abschnitt), false, "ein Abschnitt verlinkt nach aussen");
+  assert.equal(/Paket\s*\{|Paket \$\{|`Paket/.test(abschnitt), false, "eine Paketnummer wird erfunden");
+});
+
 // ═══ H) Regression und Selbsttest ════════════════════════════════════════════
 
 test("23 — andere Adminmodule und Verträge bleiben unberührt", () => {

@@ -7,6 +7,7 @@
 // Bausteine KV/AddressBlock. Kein React, kein JSX, kein API-Zugriff — dieselbe Rolle
 // wie utils/adminShipmentView.mjs daneben, nur für die Detailseite.
 import { trackingLinkOrNull } from "./adminShipmentView.mjs";
+import { trackingLegsOf } from "./trackingLegsView.mjs";
 
 const firstDefined = (...vals) => vals.find((v) => v !== undefined && v !== null && v !== "");
 
@@ -26,6 +27,11 @@ function trackStatusMeta(status) {
 // Selektiert AUSSCHLIESSLICH die minimierten Felder — nie Events/Steps oder ein
 // ganzes JUMiNGO-Objekt. Liest top-level und (defensiv) unter `tracking`, aber
 // immer nur die erlaubten Skalar-Schlüssel.
+//
+// Einzige strukturierte Ausnahme: die providerneutralen Transportabschnitte
+// (`trackingLegs`), die das Backend der Adminsicht ausdrücklich liefert. Sie laufen
+// durch dieselbe reine Auswertung wie im Kundenportal (utils/trackingLegsView.mjs):
+// Carrier, geprüfte Nummer, Stand, Hinweise und Ereignisse — kein Rohobjekt.
 function selectTracking(d) {
   const o = d && typeof d === "object" ? d : {};
   const nested = o.tracking && typeof o.tracking === "object" ? o.tracking : null;
@@ -48,6 +54,7 @@ function selectTracking(d) {
     link: trackingLinkOrNull(typeof link === "string" ? link : null),
     carrier: pick("carrier", "carrier_name", "carrierName"),
     source: pick("source", "quelle"),
+    legs: trackingLegsOf(o),
   };
 }
 

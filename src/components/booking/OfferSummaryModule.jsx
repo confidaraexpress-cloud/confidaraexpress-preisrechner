@@ -27,9 +27,14 @@ export function OfferSummaryModule({ tariff }) {
   const deliveryLabel = (deliveryRange || deliveryDate) ? "Lieferung" : "Laufzeit";
 
   // Abholtermin/-fenster — nur wenn tatsächlich vorhanden (handlungsrelevant).
+  // Ein echtes Von/Bis-Fenster, sonst die reine „bereit ab"-Zeit. Die zweite zu einem
+  // Fenster aufzurunden waere eine erfundene Zusage — aus „ab 13 Uhr" folgt kein Endezeit.
+  // Es wird nicht nach dem Provider gefragt: gezeigt wird, was das Angebot traegt.
   const pickupWindow = (tariff.pickupTimeFrom && tariff.pickupTimeUntil)
-    ? `${tariff.pickupTimeFrom}–${tariff.pickupTimeUntil} Uhr` : null;
-  const pickupDate   = tariff.pickupDate ? isoDayDE(tariff.pickupDate) : null;
+    ? `${tariff.pickupTimeFrom}–${tariff.pickupTimeUntil} Uhr`
+    : (tariff.collectionReadyFrom ? `bereit ab ${tariff.collectionReadyFrom} Uhr` : null);
+  const abholTag     = tariff.pickupDate || tariff.collectionDate || null;
+  const pickupDate   = abholTag ? isoDayDE(abholTag) : null;
   const pickupValue  = [pickupDate, pickupWindow].filter(Boolean).join(" · ") || null;
 
   // Garantierte Zustellung bis Uhrzeit — nur bei echter Zeitangabe.

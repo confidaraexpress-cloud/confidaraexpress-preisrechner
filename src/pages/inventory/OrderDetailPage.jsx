@@ -16,6 +16,8 @@ import { countryName } from "../../utils/calculatorValidation.mjs";
 // kein zweites Statusmodell für Sendungen und keine zweite Badge-Abbildung.
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
+// TG-F6: mehrere Trackingnummern einer Sendung — vom Server geliefert, hier nur angezeigt.
+import { multiTrackingReferencesOf } from "../../utils/trackingReferencesView.mjs";
 
 /* ── Auftragsdetail (echte Route /inventory/orders/:id) ──────────────────────
    Zeigt Auftrag, Positionen mit Reservierungsstand und die verbundenen
@@ -265,7 +267,15 @@ export default function OrderDetailPage() {
                         <tr key={s.id}>
                           <td>{s.orderConfirmationNumber || "—"}</td>
                           <td>{s.carrier || "—"}</td>
-                          <td className="inv-cell-meta">{s.trackingNumber || "—"}</td>
+                          {/* TG-F6: bei mehreren Trackingnummern stehen ALLE untereinander;
+                              eine Einzelnummer bleibt, wie sie war. */}
+                          <td className="inv-cell-meta">
+                            {multiTrackingReferencesOf(s)
+                              ? multiTrackingReferencesOf(s).map((nr) => (
+                                  <span key={nr} style={{ display: "block", wordBreak: "break-all" }}>{nr}</span>
+                                ))
+                              : (s.trackingNumber || "—")}
+                          </td>
                           <td><StatusBadge status={s.status} /></td>
                           {/* Je Sendung ein eigener Lieferschein — bei Teilversand hat jede
                               Sendung ihren. Deshalb hier in der Zeile und nicht als ein

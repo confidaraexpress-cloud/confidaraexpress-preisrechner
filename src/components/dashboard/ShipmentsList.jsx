@@ -12,6 +12,9 @@ import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import {
+  multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
+} from "../../utils/trackingReferencesView.mjs";
+import {
   canRequestCancellation,
   hasCancellationRequest,
   customerCancellationStatusMeta,
@@ -199,6 +202,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                 <tbody>
                   {shipments.map((s) => {
                     const nums = customerShipmentNumbers(s);
+                    // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
+                    const alleNummern = multiTrackingReferencesOf(s);
                     return (
                     <React.Fragment key={s.id}>
                       <tr>
@@ -211,7 +216,13 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                           {nums.orderConfirmationNumber
                             ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
                             : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                          {nums.trackingNumber && (
+                          {/* TG-F6: in der engen Zelle nur die Anzahl — alle Nummern stehen im
+                              Sendungsdetail darunter. Eine Einzelnummer bleibt, wie sie war. */}
+                          {alleNummern ? (
+                            <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                              {trackingReferencesSummary(alleNummern)}
+                            </div>
+                          ) : nums.trackingNumber && (
                             <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
                               {NUMBER_LABELS.tracking}: {nums.trackingNumber}
                             </div>
@@ -246,7 +257,19 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                   {nums.orderConfirmationNumber || NO_ORDER_CONFIRMATION_TEXT}
                                 </dd>
                               </div>
-                              {nums.trackingNumber && (
+                              {/* TG-F6: ALLE Trackingnummern der Sendung, in Serverreihenfolge. */}
+                              {alleNummern ? (
+                                <div className="shipment-detail-item">
+                                  <dt className="shipment-detail-label">{TRACKING_REFERENCES_TEXT.plural}</dt>
+                                  <dd className="shipment-detail-value mono">
+                                    <ol className="shipment-tracking-references" style={{ margin: 0, paddingLeft: 18 }}>
+                                      {alleNummern.map((nr) => (
+                                        <li key={nr} style={{ wordBreak: "break-all" }}>{nr}</li>
+                                      ))}
+                                    </ol>
+                                  </dd>
+                                </div>
+                              ) : nums.trackingNumber && (
                                 <div className="shipment-detail-item">
                                   <dt className="shipment-detail-label">{NUMBER_LABELS.tracking}</dt>
                                   <dd className="shipment-detail-value mono">{nums.trackingNumber}</dd>
@@ -279,6 +302,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                               <p className="text-muted text-sm">{tracking.error}</p>
                             ) : (() => {
                               const number = tracking?.trackingNumber;
+                              // TG-F6: die Trackingantwort trägt ALLE Nummern der Sendung.
+                              const liveNummern = multiTrackingReferencesOf(tracking);
                               const statusLabel = labelForTrackStatus(tracking?.trackingStatus);
                               const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
                               // Live-Format: Events unter tracking.data.steps[]
@@ -332,7 +357,11 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 <div className="shipment-track-detail">
                                   {(number || statusLabel || carrierUrl) && (
                                     <div className="shipment-track-head">
-                                      {number && (
+                                      {liveNummern ? (
+                                        <span className="shipment-track-number">
+                                          {TRACKING_REFERENCES_TEXT.plural}: <strong style={{ wordBreak: "break-all" }}>{liveNummern.join(", ")}</strong>
+                                        </span>
+                                      ) : number && (
                                         <span className="shipment-track-number">
                                           Trackingnummer: <strong>{number}</strong>
                                         </span>
@@ -388,6 +417,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
           <ul className="ce-list-cards" aria-label="Sendungen">
             {shipments.map((s) => {
               const nums = customerShipmentNumbers(s);
+              // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
+              const alleNummern = multiTrackingReferencesOf(s);
               return (
                 <li className="ce-list-card" key={`card-${s.id}`}>
                   <div className="ce-list-card-head">
@@ -395,7 +426,11 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                       {nums.orderConfirmationNumber
                         ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
                         : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                      {nums.trackingNumber && (
+                      {alleNummern ? (
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          {trackingReferencesSummary(alleNummern)}
+                        </div>
+                      ) : nums.trackingNumber && (
                         <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
                           {NUMBER_LABELS.tracking}: {nums.trackingNumber}
                         </div>
@@ -403,6 +438,18 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     </div>
                     <StatusBadge status={s.status} />
                   </div>
+                  {/* TG-F6: die Karte hat Platz für die vollständige Liste — die Tracking-
+                      Detailzeile ist der Tabelle vorbehalten, mobil soll keine Nummer fehlen. */}
+                  {alleNummern && (
+                    <div className="ce-list-card-row">
+                      <span className="ce-list-card-key">{TRACKING_REFERENCES_TEXT.plural}</span>
+                      <span className="ce-list-card-val mono">
+                        {alleNummern.map((nr) => (
+                          <span key={nr} style={{ display: "block", wordBreak: "break-all" }}>{nr}</span>
+                        ))}
+                      </span>
+                    </div>
+                  )}
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Carrier</span>
                     <span className="ce-list-card-val">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>

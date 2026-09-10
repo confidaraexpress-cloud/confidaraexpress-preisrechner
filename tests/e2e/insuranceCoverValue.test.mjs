@@ -116,7 +116,15 @@ const karte = (page, id) => page.locator(`.ins-card:has(input[value="${id}"])`);
 const waehle = async (page, id) => { await karte(page, id).locator(".ins-card-name").click(); await page.waitForTimeout(150); };
 
 const VERBOTEN = ["Standardversicherung", "Premiumversicherung", "Premium", "Priorisierter Support",
-                  "50,00 €", "Status-Updates", "Transglobal", "TRANSGLOBAL", "JUMiNGO", "Jumingo"];
+                  "Status-Updates", "Transglobal", "TRANSGLOBAL", "JUMiNGO", "Jumingo"];
+// Der 50-€-Betrag der Stufentexte — als eigener Betrag, nicht als Teilzeichenkette: ein
+// gewählter Versicherungswert von 750,00 € enthält „50,00 €" und ist erlaubt.
+const VERBOTENER_BETRAG = /(^|[^\d.])50,00 €/;
+
+function pruefeKeinVerbotenerText(text) {
+  for (const v of VERBOTEN) assert.ok(!text.includes(v), `„${v}" ist sichtbar`);
+  assert.ok(!VERBOTENER_BETRAG.test(text), `„50,00 €" aus den Stufentexten ist sichtbar`);
+}
 
 async function sichtbarerText(page) {
   return (await page.evaluate(() => document.body.innerText)).replace(/\u00a0/g, " ");
@@ -156,8 +164,7 @@ test("1 — zwei neutrale Karten, Selbstbeteiligung 20,00 €, kein Stufen- oder
   assert.match(kartenText, /Preis nach Ihren Angaben/, "vor der Neubepreisung darf kein Preis erscheinen");
   assert.equal(await modul.locator(".ins-card-details-btn").count(), 0, "der Stufendialog hat hier keinen Auslöser");
 
-  const text = await sichtbarerText(page);
-  for (const v of VERBOTEN) assert.ok(!text.includes(v), `„${v}" ist sichtbar`);
+  pruefeKeinVerbotenerText(await sichtbarerText(page));
   // Standard ist „keine Absicherung": keine Wertfelder, keine Fragen, kein Request.
   assert.match(await page.locator(".ins-card--selected .ins-card-name").innerText(), /Keine zusätzliche Transportabsicherung/);
   assert.equal(await page.locator("#ins-value").count(), 0);
@@ -224,8 +231,7 @@ test("2 — Fragen ohne Vorbelegung; Neubepreisung erst nach beiden Antworten, m
   assert.match(summe, /Selbstbeteiligung\s*20,00 €/);
   assert.match(summe, /Gesamtbetrag brutto\s*22,85 €/);
 
-  const text = await sichtbarerText(page);
-  for (const v of VERBOTEN) assert.ok(!text.includes(v), `„${v}" ist sichtbar`);
+  pruefeKeinVerbotenerText(await sichtbarerText(page));
   await page.close();
 });
 

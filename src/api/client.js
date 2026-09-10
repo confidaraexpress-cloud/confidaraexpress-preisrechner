@@ -208,6 +208,12 @@ function selectTracking(d) {
     trackingStatus:      pick("trackingStatus"),
     carrierTrackingPage: pick("carrierTrackingPage"),
     tracking:            payload.tracking, // bestehende Struktur/Events unverändert weiterreichen
+    // Providerneutrale Transportabschnitte mit Ereignissen (siehe utils/trackingLegsView.mjs).
+    // Fehlen sie, bleibt die bisherige Darstellung über `tracking` unverändert.
+    trackingLegs:        Array.isArray(payload.trackingLegs) ? payload.trackingLegs : undefined,
+    trackingStatusText:  pick("trackingStatusText"),
+    carrier:             pick("carrier"),
+    liveTracking:        pick("liveTracking"),
   };
 }
 

@@ -7,6 +7,10 @@ import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 import { STATUS_STEPS, buildTrackingView } from "./trackingView";
+import {
+  trackingLegsOf, trackingLegEventCount, latestTrackingLegEvent, eventWhenText, trackingLegHeading,
+  TRACKING_LEGS_TEXT,
+} from "../utils/trackingLegsView.mjs";
 
 const ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -16,6 +20,17 @@ const ERROR_MESSAGES = {
 };
 
 const timeDE = (d) => (d ? new Date(d).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "");
+
+// Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten.
+function nachTagen(liste) {
+  const gruppen = [];
+  liste.forEach((ev) => {
+    const letzte = gruppen[gruppen.length - 1];
+    if (letzte && letzte.day === ev.groupKey) letzte.items.push(ev);
+    else gruppen.push({ day: ev.groupKey, items: [ev] });
+  });
+  return gruppen;
+}
 
 export default function TrackingPage() {
   const [id, setId] = useState("");
@@ -113,6 +128,14 @@ export default function TrackingPage() {
       ? [...mapped].reverse()
       : mapped;
 
+  // ── Transportabschnitte (providerneutral) ─────────────────────────────────────────────────
+  // Liefert der Server `trackingLegs`, kommen Ereignisse, Orte und Zeitangaben von dort — je
+  // Abschnitt, aufsteigend und ohne erfundene Zeitzone (utils/trackingLegsView.mjs). Mehrere
+  // Abschnitte erscheinen getrennt, jeweils mit Carrier und Nummer — nie als „Paket 2".
+  const legs = trackingLegsOf(result);
+  const mitAbschnitten = legs.length > 0;
+  const eventCount = mitAbschnitten ? trackingLegEventCount(legs) : events.length;
+
   // carrier kann String ODER Objekt ({ code, name, image, phone, id }) sein →
   // niemals das Objekt direkt rendern (React-Crash). Nur den Namen anzeigen.
   const carrierRaw = result?.tracking?.carrier || result?.tracking?.data?.carrier
@@ -128,24 +151,33 @@ export default function TrackingPage() {
   // Der JUMiNGO-Envelope result.tracking.status ("success") steuert die Anzeige NIEMALS. Ohne Events
   // UND ohne explizites Carrier-„delivered" bleibt die Timeline auf Stufe 0 — so entsteht nie
   // „Zugestellt" + „Keine Ereignisse" zugleich; ein echtes delivered bleibt auch bei leerer Liste sichtbar.
-  const { heroStatus, heroDesc, stepIndex } = buildTrackingView(result, { hasEvents: events.length > 0 });
+  const { heroStatus, heroDesc, stepIndex } = buildTrackingView(result, { hasEvents: eventCount > 0 });
 
-  // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr".
-  const heroWhen = !newest ? null
-    : newest.timestamp ? dtDE(newest.timestamp)
-    : ([newest.day, newest.timeText].filter(Boolean).join(" · ") || null);
+  // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr". Bei Abschnitten die
+  // Zeitangabe, wie sie geliefert wurde — ohne Zone.
+  const heroWhen = mitAbschnitten
+    ? eventWhenText(latestTrackingLegEvent(legs))
+    : (!newest ? null
+      : newest.timestamp ? dtDE(newest.timestamp)
+      : ([newest.day, newest.timeText].filter(Boolean).join(" · ") || null));
   // Carrier nur als reiner Name ("UPS", "DHL Express", …) — resolveCarrierName
   // normalisiert Werte wie "UPS shipment tracking" auf den bekannten Namen.
   const carrierDisplay = carrierName ? resolveCarrierName(carrierName) : null;
 
-  // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten
-  const dayGroups = [];
-  events.forEach((ev) => {
-    const day = ev.groupKey;
-    const last = dayGroups[dayGroups.length - 1];
-    if (last && last.day === day) last.items.push(ev);
-    else dayGroups.push({ day, items: [ev] });
-  });
+  // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten — je Abschnitt eine Timeline.
+  const dayGroups = nachTagen(events);
+  const sections = mitAbschnitten
+    ? legs.map((leg) => ({
+        key: leg.key,
+        heading: legs.length > 1 ? trackingLegHeading(leg) : null,
+        dayGroups: nachTagen(leg.events.map((ev) => ({
+          description: ev.description,
+          timeText: ev.day ? (ev.time ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : null) : ev.rawWhen,
+          location: ev.location,
+          groupKey: ev.day || TRACKING_LEGS_TEXT.noDate,
+        }))),
+      }))
+    : [{ key: "events", heading: null, dayGroups }];
 
   return (
     <div className="page-with-navbar">
@@ -222,40 +254,45 @@ export default function TrackingPage() {
                 ))}
               </div>
 
-              {events.length > 0 ? (
-                <div className="tracking-timeline">
-                  {dayGroups.map((group, gi) => (
-                    <div key={gi} className="tracking-day-group">
-                      <div className="tracking-day-label">{group.day}</div>
-                      {group.items.map((ev, i) => {
-                        // Aktiver Punkt = neuestes Ereignis = letztes Element
-                        // der letzten Tagesgruppe (Timeline läuft aufsteigend).
-                        const isLatest = gi === dayGroups.length - 1 && i === group.items.length - 1;
-                        return (
-                        <div key={i} className="track-event">
-                          <div className={`track-dot ${isLatest ? "active" : "done"}`}>
-                            {isLatest ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
+              {eventCount > 0 ? (
+                sections.map((section) => (
+                  <div key={section.key} className="tracking-timeline">
+                    {section.heading && <div className="tracking-day-label tracking-leg-heading">{section.heading}</div>}
+                    {section.dayGroups.map((group, gi) => (
+                      <div key={gi} className="tracking-day-group">
+                        <div className="tracking-day-label">{group.day}</div>
+                        {group.items.map((ev, i) => {
+                          // Aktiver Punkt = neuestes Ereignis = letztes Element
+                          // der letzten Tagesgruppe (Timeline läuft aufsteigend).
+                          const isLatest = gi === section.dayGroups.length - 1 && i === group.items.length - 1;
+                          return (
+                          <div key={i} className="track-event">
+                            <div className={`track-dot ${isLatest ? "active" : "done"}`}>
+                              {isLatest ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
+                            </div>
+                            <div className="track-info">
+                              <div className="track-title">{ev.description}</div>
+                              {ev.timeText && (
+                                <div className="track-time">{ev.timeText}</div>
+                              )}
+                              {ev.location && (
+                                <div className="track-time">{ev.location}</div>
+                              )}
+                            </div>
                           </div>
-                          <div className="track-info">
-                            <div className="track-title">{ev.description}</div>
-                            {ev.timeText && (
-                              <div className="track-time">{ev.timeText}</div>
-                            )}
-                            {ev.location && (
-                              <div className="track-time">{ev.location}</div>
-                            )}
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ))
               ) : (
                 <EmptyState
                   icon="package"
                   title="Keine Ereignisse verfügbar"
-                  text="Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden."
+                  text={result.liveTracking === false
+                    ? TRACKING_LEGS_TEXT.liveUnavailable
+                    : "Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden."}
                 />
               )}
             </div>

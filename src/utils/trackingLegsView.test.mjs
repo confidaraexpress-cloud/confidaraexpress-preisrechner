@@ -23,8 +23,9 @@ const ohneKommentare = (q) => q
 
 const A = "1ZF7TEST0000000001";
 const B = "1ZF7TEST0000000002";
-const EV = (code, status, description, location, date, time, raw) =>
-  ({ status, code, description, location, dateTime: { raw, date, time } });
+// Neutraler Kundenvertrag (TG22 Paket A): kein Eventcode, kein Rohdatum, keine Leg-Rolle.
+const EV = (status, description, location, date, time) =>
+  ({ status, description, location, dateTime: { date, time } });
 
 // Antwortform des Servers — die Projektion der bereinigten Staging-Antwort, auf zwei
 // Abschnitte verteilt.
@@ -33,16 +34,16 @@ const LIVE = Object.freeze({
   trackingReferences: [A, B], trackingStatus: "delivered", trackingStatusText: "DELIVERED",
   carrier: "UPS", carrierTrackingPage: null, liveTracking: true, source: "live",
   trackingLegs: [
-    { carrier: "UPS", role: "Primary", trackingReference: A, carrierTrackingPage: null, eventsChronological: true,
+    { carrier: "UPS", trackingReference: A, status: "in_transit", carrierTrackingPage: null,
       events: [
-        EV("003", "pending", "Shipper created a label, UPS has not received the package yet.", "US", "2026-05-04", "21:57:37", "04-05-2026 21:57:37"),
-        EV("160", "in_transit", "RFID Confirmed Pickup", "Laurel, MD US", "2026-05-05", "17:33:15", "05-05-2026 17:33:15"),
+        EV("pending", "Shipper created a label, UPS has not received the package yet.", "US", "2026-05-04", "21:57:37"),
+        EV("in_transit", "RFID Confirmed Pickup", "Laurel, MD US", "2026-05-05", "17:33:15"),
       ] },
-    { carrier: "UPS", role: "Primary", trackingReference: B,
-      carrierTrackingPage: `https://wwwapps.ups.com/WebTracking/processInputRequest?tracknum=${B}`, eventsChronological: true,
+    { carrier: "UPS", trackingReference: B, status: "delivered",
+      carrierTrackingPage: `https://wwwapps.ups.com/WebTracking/processInputRequest?tracknum=${B}`,
       events: [
-        EV("021", "in_transit", "Out For Delivery", "Castlegar, BC CA", "2026-05-12", "08:29:44", "12-05-2026 08:29:44"),
-        EV("011", "delivered", "DELIVERED", "GRAND FORKS RR2 CA", "2026-05-12", "14:46:53", "12-05-2026 14:46:53"),
+        EV("in_transit", "Out For Delivery", "Castlegar, BC CA", "2026-05-12", "08:29:44"),
+        EV("delivered", "DELIVERED", "GRAND FORKS RR2 CA", "2026-05-12", "14:46:53"),
       ] },
   ],
 });
@@ -76,21 +77,21 @@ test("(2) Ereignis: Beschreibung, Ort, Datum und Uhrzeit, wie sie geliefert wurd
 test("(3) mehrere Ereignisse: vollständig und älteste zuerst — auch aus absteigender Lieferung", () => {
   assert.equal(trackingLegEventCount(trackingLegsOf(LIVE)), 4);
   const absteigend = {
-    trackingLegs: [{ carrier: "UPS", trackingReference: A, eventsChronological: false, events: [
-      EV("011", "delivered", "DELIVERED", "X", "2026-05-12", "14:46:53", "12-05-2026 14:46:53"),
-      EV("005", "in_transit", "Arrived at Facility", "Y", "2026-05-11", "13:16:00", "11-05-2026 13:16:00"),
-      EV("003", "pending", "Label", "US", "2026-05-04", "21:57:37", "04-05-2026 21:57:37"),
+    trackingLegs: [{ carrier: "UPS", trackingReference: A, events: [
+      EV("delivered", "DELIVERED", "X", "2026-05-12", "14:46:53"),
+      EV("in_transit", "Arrived at Facility", "Y", "2026-05-11", "13:16"),
+      EV("pending", "Label", "US", "2026-05-04", "21:57:37"),
     ] }],
   };
-  assert.deepEqual(trackingLegsOf(absteigend)[0].events.map((e) => e.code), ["003", "005", "011"]);
+  assert.deepEqual(trackingLegsOf(absteigend)[0].events.map((e) => e.description), ["Label", "Arrived at Facility", "DELIVERED"]);
   // Ohne vollständige Zeitangaben bleibt die gelieferte Reihenfolge.
   const unvollstaendig = { trackingLegs: [{ events: [
-    EV("011", "delivered", "DELIVERED", "X", "2026-05-12", "14:46:53", "12-05-2026 14:46:53"),
-    EV("999", "unknown", "Customs Hold", "Y", null, null, "irgendwann"),
+    EV("delivered", "DELIVERED", "X", "2026-05-12", "14:46:53"),
+    EV("unknown", "Customs Hold", "Y", null, null),
   ] }] };
-  assert.deepEqual(trackingLegsOf(unvollstaendig)[0].events.map((e) => e.code), ["011", "999"]);
+  assert.deepEqual(trackingLegsOf(unvollstaendig)[0].events.map((e) => e.description), ["DELIVERED", "Customs Hold"]);
   assert.equal(latestTrackingLegEvent(trackingLegsOf(unvollstaendig)), null, "das jüngste Ereignis wurde geraten");
-  assert.equal(latestTrackingLegEvent(trackingLegsOf(LIVE)).code, "011");
+  assert.equal(latestTrackingLegEvent(trackingLegsOf(LIVE)).description, "DELIVERED");
 });
 
 test("(4) mehrere Abschnitte: getrennt, mit Carrier und Nummer — keine erfundene Paketnummer", () => {
@@ -113,14 +114,14 @@ test("(5) mehrere Trackingnummern: die Liste kommt unverändert vom Server", () 
 
 test("(6) unbekanntes Ereignis: sichtbar, mit Beschreibung — Stand ohne Label", () => {
   const legs = trackingLegsOf({ trackingStatus: "unknown", trackingLegs: [{ carrier: "UPS", events: [
-    EV("999", "unknown", "Customs Hold", "Leipzig DE", "2026-05-01", "10:00:00", "01-05-2026 10:00:00"),
+    EV("unknown", "Customs Hold", "Leipzig DE", "2026-05-01", "10:00:00"),
   ] }] });
   assert.equal(legs[0].events.length, 1);
   assert.equal(legs[0].events[0].description, "Customs Hold");
-  assert.equal(legs[0].events[0].code, "999");
+  assert.equal(legs[0].events[0].status, "unknown");
   assert.equal(trackingStatusLabel("unknown"), null);
   // Ein Ereignis ohne Beschreibung bleibt ein Ereignis.
-  assert.equal(trackingLegsOf({ trackingLegs: [{ events: [EV("999", "unknown", null, null, null, null, null)] }] })[0].events[0].description,
+  assert.equal(trackingLegsOf({ trackingLegs: [{ events: [EV("unknown", null, null, null, null)] }] })[0].events[0].description,
     TRACKING_LEGS_TEXT.eventFallback);
 });
 
@@ -132,13 +133,23 @@ test("(7) zugestelltes Ereignis: Zugestellt, jüngstes Ereignis ist die Zustellu
   assert.equal(buildTrackingView(LIVE, { hasEvents: true }).stepIndex, 3);
 });
 
-test("(8) keine erfundene Zeitzone: kein Zonentext, kein Datumsobjekt, Rohwert als Rückfall", () => {
+test("(8) keine erfundene Zeitzone: kein Zonentext, kein Datumsobjekt, keine geratene Zeitangabe", () => {
   const texte = trackingLegsOf(LIVE).flatMap((l) => l.events).map((e) => eventWhenText(e)).join(" | ");
   assert.ok(!/UTC|GMT|MEZ|MESZ|CET|CEST|Europe\/|Z\b|[+-]\d{2}:\d{2}/.test(texte), texte);
-  const roh = trackingLegsOf({ trackingLegs: [{ events: [EV("005", "in_transit", "Scan", null, null, null, "12-05-2026 14:46")] }] })[0].events[0];
-  assert.equal(eventWhenText(roh), "12-05-2026 14:46", "der Rohwert wurde verändert");
+  // Ohne zerlegbares Datum: keine Zeitangabe — auch kein Rohwert des Anbieters.
+  const ohneDatum = trackingLegsOf({ trackingLegs: [{ events: [
+    { status: "in_transit", description: "Scan", location: null, dateTime: { raw: "12-05-2026 14:46", date: null, time: null } },
+  ] }] })[0].events[0];
+  assert.equal(eventWhenText(ohneDatum), null, "eine Zeitangabe wurde geraten oder durchgereicht");
+  assert.ok(!("rawWhen" in ohneDatum) && !("code" in ohneDatum), "die Anzeige trägt Anbieterdiagnose");
+  // "HH:MM" ist eine gültige Uhrzeit — wie sie geliefert wurde.
+  const minute = trackingLegsOf({ trackingLegs: [{ events: [EV("in_transit", "Scan", null, "2026-05-12", "14:46")] }] })[0].events[0];
+  assert.equal(eventWhenText(minute), "12.05.2026 · 14:46 Uhr");
+  assert.equal(eventWhenText(trackingLegsOf({ trackingLegs: [{ events: [EV("x", "Scan", null, "2026-05-12", "25:99")] }] })[0].events[0]),
+    "12.05.2026", "eine unlesbare Uhrzeit wurde übernommen");
   const quelle = ohneKommentare(lies("trackingLegsView.mjs"));
   assert.ok(!/new Date\(|Date\.parse\(|toLocale|Intl\.DateTimeFormat/.test(quelle), "das Modul wandelt Zeitangaben in ein Datum um");
+  assert.ok(!/rawWhen|\.raw\b|e\.code/.test(quelle), "das Modul liest Anbieterdiagnose");
 });
 
 test("(9) kein Anbieterleck: weder Modul noch Seiten noch Client nennen einen Einkaufsanbieter", () => {
@@ -151,29 +162,35 @@ test("(9) kein Anbieterleck: weder Modul noch Seiten noch Client nennen einen Ei
   assert.deepEqual(trackingLegsOf(null), []);
 });
 
-test("(10) öffentliche Trackingseite: Abschnitte aus dem Modul, bisheriges Format bleibt Rückfall", () => {
+// Die Rohzweige, die es vor dem neutralen Trackingvertrag gab. Keine Kundenansicht darf sie lesen.
+const ROHZWEIG = /trackData|tracking\?\.data\b|tracking\?\.tracking\b|result\?\.data\b|result\?\.tracking\b|tracking_events|rawSteps|\.steps\b|rawWhen|labelForTrackStatus/;
+
+test("(10) öffentliche Trackingseite: ausschließlich Abschnitte aus dem Modul — kein Rohzweig", () => {
   const seite = ohneKommentare(lies("../pages/TrackingPage.jsx"));
   assert.match(seite, /const legs = trackingLegsOf\(result\);/);
+  assert.match(seite, /const eventCount = trackingLegEventCount\(legs\);/);
   assert.match(seite, /buildTrackingView\(result, \{ hasEvents: eventCount > 0 \}\)/);
-  assert.match(seite, /eventWhenText\(latestTrackingLegEvent\(legs\)\)/);
+  assert.match(seite, /const heroWhen = eventWhenText\(latestTrackingLegEvent\(legs\)\);/);
   assert.match(seite, /heading: legs\.length > 1 \? trackingLegHeading\(leg\) : null/);
-  // Das JUMiNGO-Format bleibt unverändert als Zweig bestehen.
-  assert.match(seite, /Array\.isArray\(trackData\.steps\)/);
-  assert.match(seite, /: \[\{ key: "events", heading: null, dayGroups \}\]/);
+  assert.match(seite, /const sections = legs\.map\(/);
+  assert.match(seite, /typeof result\?\.carrier === "string"/);
+  assert.ok(!ROHZWEIG.test(seite), `die Trackingseite liest noch ein Rohobjekt: ${seite.match(ROHZWEIG)}`);
 });
 
-test("(11) angemeldete Live-Ansicht: Abschnitte, neutrales Statuslabel, Carrierlink je Abschnitt", () => {
+test("(11) angemeldete Live-Ansicht: Abschnitte, neutrales Statuslabel, Carrierlink je Abschnitt — kein Rohzweig", () => {
   const liste = ohneKommentare(lies("../components/dashboard/ShipmentsList.jsx"));
   assert.match(liste, /const legs = trackingLegsOf\(tracking\);/);
-  assert.match(liste, /\? trackingStatusLabel\(tracking\?\.trackingStatus\)\s*: labelForTrackStatus\(tracking\?\.trackingStatus\)/);
+  assert.match(liste, /const statusLabel = trackingStatusLabel\(tracking\?\.trackingStatus\);/);
+  assert.match(liste, /const sections = legs\.map\(/);
   assert.match(liste, /link: legs\.length > 1 \? leg\.carrierTrackingPage : null/);
   assert.match(liste, /tracking\?\.liveTracking === false \? TRACKING_LEGS_TEXT\.liveUnavailable/);
+  assert.ok(!ROHZWEIG.test(liste), `die Live-Ansicht liest noch ein Rohobjekt: ${liste.match(ROHZWEIG)}`);
 });
 
 test("(13) Stand und Hinweise je Abschnitt: vom Server übernommen, nur Texte, nie abgeleitet", () => {
   const legs = trackingLegsOf({ trackingLegs: [
     { carrier: "UPS", trackingReference: A, status: "delivered", errorMessages: ["Adresse unvollständig", 42, "", null], events: [] },
-    { carrier: "UPS", trackingReference: B, events: [EV("011", "delivered", "DELIVERED", "X", "2026-05-12", "14:46:53", "12-05-2026 14:46:53")] },
+    { carrier: "UPS", trackingReference: B, events: [EV("delivered", "DELIVERED", "X", "2026-05-12", "14:46:53")] },
   ] });
   assert.equal(legs[0].status, "delivered");
   assert.deepEqual(legs[0].errorMessages, ["Adresse unvollständig"]);
@@ -182,11 +199,12 @@ test("(13) Stand und Hinweise je Abschnitt: vom Server übernommen, nur Texte, n
   assert.deepEqual(legs[1].errorMessages, []);
 });
 
-test("(12) API-Client reicht Abschnitte und Stand durch — ohne sie bleibt alles beim Alten", () => {
+test("(12) API-Client reicht Abschnitte und Stand durch — nie ein Rohobjekt, nur die oberste Ebene", () => {
   const c = ohneKommentare(lies("../api/client.js"));
   const sel = c.slice(c.indexOf("function selectTracking"), c.indexOf("export async function getTracking"));
   assert.match(sel, /trackingLegs:\s+Array\.isArray\(payload\.trackingLegs\) \? payload\.trackingLegs : undefined/);
   assert.match(sel, /trackingStatusText:\s+pick\("trackingStatusText"\)/);
   assert.match(sel, /liveTracking:\s+pick\("liveTracking"\)/);
-  assert.match(sel, /tracking:\s+payload\.tracking/);
+  assert.ok(!/\btracking:\s/.test(sel), "der Client reicht das Rohobjekt `tracking` weiter");
+  assert.ok(!/payload\.tracking\b|nested/.test(sel), "der Client liest Felder aus einem verschachtelten Rohobjekt");
 });

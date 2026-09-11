@@ -2,7 +2,7 @@ import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Icon } from "../ui/Icon";
 import { EmptyState } from "../ui/StateView";
-import { money, dateDE, dtDE, isoDayDE } from "../../utils/formatters";
+import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
 import { getTracking, requestShipmentCancellation } from "../../api/client";
 import { TRACKING_NOT_FOUND } from "../../utils/trackingMessages";
@@ -32,13 +32,6 @@ const TRACKING_ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte später erneut versuchen.",
   500: "Tracking aktuell nicht verfügbar.",
 };
-
-// trackingStatus dezent darstellen: bekannter Vertragswert "new" wird
-// kundenfreundlich übersetzt, sonst der Backend-Status unverändert gezeigt
-// (keine geratenen Werte). Reine Anzeige.
-const TRACK_STATUS_LABELS = { new: "In Vorbereitung" };
-const labelForTrackStatus = (s) =>
-  s == null || s === "" ? null : (TRACK_STATUS_LABELS[String(s).toLowerCase()] || String(s));
 
 // Sekundäres Statusbadge der Stornierungsanfrage (Actions-Zelle). Überschreibt
 // NICHT den normalen Sendungsstatus (eigene Spalte). Reiner Text (nicht nur
@@ -314,60 +307,25 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                               const number = tracking?.trackingNumber;
                               // TG-F6: die Trackingantwort trägt ALLE Nummern der Sendung.
                               const liveNummern = multiTrackingReferencesOf(tracking);
-                              // Providerneutrale Transportabschnitte: liefert der Server
-                              // `trackingLegs`, stammen Stand, Ereignisse und Zeitangaben von
-                              // dort (utils/trackingLegsView.mjs) — ohne erfundene Zeitzone.
+                              // Providerneutrale Transportabschnitte: Stand, Ereignisse und
+                              // Zeitangaben stammen für jeden Einkaufsweg aus derselben Form
+                              // (utils/trackingLegsView.mjs) — ohne erfundene Zeitzone. Ein
+                              // Rohobjekt eines Anbieters wird nicht gelesen.
                               const legs = trackingLegsOf(tracking);
-                              const mitAbschnitten = legs.length > 0;
-                              const statusLabel = mitAbschnitten
-                                ? trackingStatusLabel(tracking?.trackingStatus)
-                                : labelForTrackStatus(tracking?.trackingStatus);
+                              const statusLabel = trackingStatusLabel(tracking?.trackingStatus);
                               const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
-                              // Live-Format: Events unter tracking.data.steps[]
-                              // (date/time/type/location). tracking_events[] bleibt
-                              // defensiver Fallback.
-                              const trackData = tracking?.tracking?.data || {};
-                              const rawSteps = Array.isArray(trackData.steps) ? trackData.steps : [];
-                              const rawEvents = Array.isArray(trackData.tracking_events) ? trackData.tracking_events : [];
-                              const mapped = rawSteps.length > 0
-                                ? rawSteps.map((s) => ({
-                                    title: s.type || s.description || s.status || "Ereignis",
-                                    when: [s.date ? isoDayDE(s.date) : null, s.time].filter(Boolean).join(" "),
-                                    location: s.location || null,
-                                    sortTs: s.date ? Date.parse(`${s.date}T${s.time || "00:00"}`) : NaN,
-                                  }))
-                                : rawEvents.map((ev) => ({
-                                    title: ev.description || ev.status || "Ereignis",
-                                    when: ev.timestamp ? dtDE(ev.timestamp) : "",
-                                    location: ev.location || null,
-                                    sortTs: ev.timestamp ? Date.parse(ev.timestamp) : NaN,
-                                  }));
-                              // Chronologisch aufsteigend garantieren (ältestes oben,
-                              // neuestes unten; aktiver Punkt = letztes Event): nur bei
-                              // nachweislich absteigender Chronologie intern drehen,
-                              // sonst Backend-Reihenfolge unangetastet lassen.
-                              const events =
-                                mapped.length >= 2 &&
-                                Number.isFinite(mapped[0].sortTs) &&
-                                Number.isFinite(mapped[mapped.length - 1].sortTs) &&
-                                mapped[0].sortTs > mapped[mapped.length - 1].sortTs
-                                  ? [...mapped].reverse()
-                                  : mapped;
 
-                              // Je Abschnitt eine Timeline. Ohne Abschnitte bleibt es bei der
-                              // einen Timeline aus dem bisherigen Format.
-                              const sections = mitAbschnitten
-                                ? legs.map((leg) => ({
-                                    key: leg.key,
-                                    heading: legs.length > 1 ? trackingLegHeading(leg) : null,
-                                    link: legs.length > 1 ? leg.carrierTrackingPage : null,
-                                    events: leg.events.map((ev) => ({
-                                      title: ev.description,
-                                      when: eventWhenText(ev, { withSuffix: false }) || "",
-                                      location: ev.location,
-                                    })),
-                                  }))
-                                : [{ key: "events", heading: null, link: null, events }];
+                              // Je Abschnitt eine Timeline.
+                              const sections = legs.map((leg) => ({
+                                key: leg.key,
+                                heading: legs.length > 1 ? trackingLegHeading(leg) : null,
+                                link: legs.length > 1 ? leg.carrierTrackingPage : null,
+                                events: leg.events.map((ev) => ({
+                                  title: ev.description,
+                                  when: eventWhenText(ev, { withSuffix: false }) || "",
+                                  location: ev.location,
+                                })),
+                              }));
                               const eventCount = sections.reduce((n, sec) => n + sec.events.length, 0);
 
                               // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis

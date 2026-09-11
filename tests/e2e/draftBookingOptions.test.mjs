@@ -44,7 +44,7 @@ const TARIFF = {
 // Der gespeicherte Sendungsentwurf, wie ihn GET /api/kunde/drafts/:id liefert.
 const ENTWURF_ID = 4711;
 const ENTWURF_LISTE = {
-  id: ENTWURF_ID, jumingoShipmentId: "s_" + "a".repeat(32), status: "draft",
+  id: ENTWURF_ID, status: "draft",
   weight: "5", length: "30", width: "20", height: "15", packageCount: 1,
   fromCountry: "DE", toCountry: "DE", fromPostalCode: "10115", toPostalCode: "80331",
   senderAddress:    { firstName: "Max", lastName: "Mustermann", email: "max@example.com", phone: "+49301234567",
@@ -104,11 +104,10 @@ async function setupRoutes(page, { bookingOptions = null, gespeichert = {} } = {
 
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      // BEIDE IDs in ihrer ECHTEN Form: `shipmentId` ist die Providerreferenz,
-      // `ceShipmentId` der interne Handle. Nur mit dem Handle erscheint
-      // „Als Entwurf speichern“ überhaupt (hasSavableShipmentId lehnt die
-      // Providerform korrekt ab).
-      shipmentId: "s_" + "a".repeat(32), ceShipmentId: ENTWURF_ID,
+      // Die EINZIGE Sendungskennung ist der interne Handle (TG22 Paket A — keine
+      // Providerreferenz mehr). Nur mit ihm erscheint „Als Entwurf speichern“
+      // überhaupt (hasSavableShipmentId).
+      ceShipmentId: ENTWURF_ID,
       tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
@@ -171,7 +170,7 @@ async function bucheUndLiesPayload(page) {
     payload = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: "s1", ceShipmentId: ENTWURF_ID, trackingNumber: "TRACK1", labelUrl: null }),
+      body: JSON.stringify({ ceShipmentId: ENTWURF_ID, trackingNumber: "TRACK1", labelUrl: null }),
     });
   });
   const checks = page.getByRole("checkbox"); // AGB + Gefahrgut (die Schalter tragen role=switch)

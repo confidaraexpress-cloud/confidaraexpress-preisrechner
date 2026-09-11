@@ -190,7 +190,7 @@ async function setupRoutes(page, rec, opt = {}) {
     }
     if (p.endsWith("/api/jumingo/calculate-price")) {
       rec.calcBodies.push(req.postDataJSON());
-      return json({ shipmentId: "s_" + "a".repeat(32), ceShipmentId: 4242, tariffs: [], availableCarriers: [], availableShippingModes: [] });
+      return json({ ceShipmentId: 4242, tariffs: [], availableCarriers: [], availableShippingModes: [] });
     }
     if (p.includes("/api/kunde/")) return json({ items: [], drafts: [], nextCursor: null, pagination: { total: 0 } });
     return json({});

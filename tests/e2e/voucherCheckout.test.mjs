@@ -56,7 +56,6 @@ const TARIFF = {
 
 // Die serverbestätigte Gutscheinantwort (Allowlist des Preview-Endpunkts).
 const VOUCHER_OK = {
-  shipmentId: "s1",
   voucher: { applied: true, code: "jumingo-sandbox", percent: 100, reason: null },
   totals: {
     subtotalNet: 10.69, subtotalVat: 2.03, subtotalGross: 12.72,
@@ -100,7 +99,7 @@ async function setupRoutes(page, { voucherMode = "ok" } = {}) {
       return json(VOUCHER_OK);
     }
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
@@ -406,7 +405,7 @@ test("Smoke 7 — der /book-Payload trägt NUR den Code, keine selbst berechnete
     payload = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: "s1", ceShipmentId: 7, trackingNumber: "TRACK1",
+      body: JSON.stringify({ ceShipmentId: 7, trackingNumber: "TRACK1",
                              amount: 0, testBooking: true, voucherCode: "jumingo-sandbox" }),
     });
   });

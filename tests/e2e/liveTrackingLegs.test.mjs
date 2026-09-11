@@ -35,8 +35,9 @@ const SENDUNG = {
   tracking_number: A, tracking_references: [A, B], tracking_status: "in_transit",
 };
 
-const EV = (code, status, description, location, date, time, raw) =>
-  ({ status, code, description, location, dateTime: { raw, date, time } });
+// Neutraler Kundenvertrag (TG22 Paket A): kein Eventcode, kein Rohdatum, keine Leg-Rolle.
+const EV = (status, description, location, date, time) =>
+  ({ status, description, location, dateTime: { date, time } });
 
 // Angemeldete Antwort: zwei Abschnitte, alle Nummern. Paket B ist zugestellt, Paket A noch
 // unterwegs — die Sendung ist damit unterwegs, nicht zugestellt (Stand vom Server).
@@ -45,16 +46,16 @@ const LIVE = {
   trackingStatus: "in_transit", trackingStatusText: "RFID Confirmed Pickup", carrier: "UPS", carrierTrackingPage: null,
   liveTracking: true, source: "live",
   trackingLegs: [
-    { carrier: "UPS", role: "Primary", trackingReference: A, status: "in_transit", carrierTrackingPage: null, eventsChronological: true,
+    { carrier: "UPS", trackingReference: A, status: "in_transit", carrierTrackingPage: null,
       events: [
-        EV("003", "pending", "Shipper created a label, UPS has not received the package yet.", "US", "2026-05-04", "21:57:37", "04-05-2026 21:57:37"),
-        EV("160", "in_transit", "RFID Confirmed Pickup", "Laurel, MD US", "2026-05-05", "17:33:15", "05-05-2026 17:33:15"),
+        EV("pending", "Shipper created a label, UPS has not received the package yet.", "US", "2026-05-04", "21:57:37"),
+        EV("in_transit", "RFID Confirmed Pickup", "Laurel, MD US", "2026-05-05", "17:33:15"),
       ] },
-    { carrier: "UPS", role: "Primary", trackingReference: B, status: "delivered",
-      carrierTrackingPage: `https://wwwapps.ups.com/WebTracking/processInputRequest?tracknum=${B}`, eventsChronological: true,
+    { carrier: "UPS", trackingReference: B, status: "delivered",
+      carrierTrackingPage: `https://wwwapps.ups.com/WebTracking/processInputRequest?tracknum=${B}`,
       events: [
-        EV("021", "in_transit", "Out For Delivery", "Castlegar, BC CA", "2026-05-12", "08:29:44", "12-05-2026 08:29:44"),
-        EV("011", "delivered", "DELIVERED", "GRAND FORKS RR2 CA", "2026-05-12", "14:46:53", "12-05-2026 14:46:53"),
+        EV("in_transit", "Out For Delivery", "Castlegar, BC CA", "2026-05-12", "08:29:44"),
+        EV("delivered", "DELIVERED", "GRAND FORKS RR2 CA", "2026-05-12", "14:46:53"),
       ] },
   ],
 };
@@ -80,7 +81,7 @@ const ADMIN_DETAIL = {
   id: ID, user_id: 42, status: "booked", service_type: "pickup", selected_carrier: "ups",
   from_country: "DE", to_country: "CA", package_count: 2, created_at: "2026-09-10T00:00:00Z",
   business_order_number: "CE-BS-2026-0100", order_confirmation_number: "CE-AB-2026-000100",
-  tracking_number: A, jumingo_shipment_id: null, order_number: null, tracking_status: "in_transit",
+  tracking_number: A, order_number: null, tracking_status: "in_transit",
   tracking_lookup_available: true, label_available: false,
   customer_company: "Muster GmbH", customer_number: "CE-K-10030", customer_name: "Max Mustermann",
   invoice: null, email_deliveries: [],

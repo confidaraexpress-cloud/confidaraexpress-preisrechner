@@ -104,7 +104,7 @@ async function setupRoutes(page, { tariffs = [T_DPD_DROPOFF], accessPoints = DPD
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs, availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs, availableShippingModes: ["standard"],
       publicCarriers: [...new Map(tariffs.map((t) => [t.publicCarrierId, { id: t.publicCarrierId, name: t.publicCarrierName }])).values()],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });

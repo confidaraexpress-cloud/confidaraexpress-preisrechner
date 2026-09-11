@@ -39,7 +39,7 @@ async function setup(page, { onCalc } = {}) {
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
     if (p.includes("/calculate-price")) {
       if (onCalc) return onCalc(route, json);
-      return json({ shipmentId: 1, tariffs: [], publicCarriers: [] });
+      return json({ ceShipmentId: 1, tariffs: [], publicCarriers: [] });
     }
     return json({});
   });
@@ -245,7 +245,7 @@ test("eine gültige Anfrage funktioniert unverändert (keine Regression)", async
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const konsole = await setup(page, {
     onCalc: (route, json) => json({
-      shipmentId: 42,
+      ceShipmentId: 42,
       tariffs: [{
         id: 1, shipper_tariff_id: 100230, publicCarrierId: "dhl", publicCarrierName: "DHL Express",
         publicServiceName: "Expressversand", serviceType: "pickup", netPrice: 10.9, vatAmount: 2.07,

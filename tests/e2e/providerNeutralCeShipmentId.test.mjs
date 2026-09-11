@@ -2,10 +2,12 @@
 // gemocktes Backend.
 //
 // ─── Der Vertrag ─────────────────────────────────────────────────────────────
-//   ceShipmentId  shipments.id — die lokale Sendung. Das Backend legt sie an, bevor ein
-//                 Anbieter gefragt wird; jedes Angebot hängt an ihr.
-//   shipmentId    ausschließlich die externe JUMiNGO-Referenz — hier `null`, weil nur ein
-//                 anderer Anbieter angeboten hat (JUMiNGO ausgefallen oder nicht konfiguriert).
+//   ceShipmentId  shipments.id — die lokale Sendung und die EINZIGE Sendungskennung des
+//                 Clients. Das Backend legt sie an, bevor ein Anbieter gefragt wird; jedes
+//                 Angebot hängt an ihr.
+//   shipmentId    existiert im Kundenvertrag seit TG22 Paket A nicht mehr: die JUMiNGO-Referenz
+//                 löst ausschließlich der Server auf. Test 2 misst das am JUMiNGO-Weg
+//                 (Buchung, Warenkorbvorschau, Abholzeitfenster).
 //
 // Gemessen wird, was eine Quelltextprüfung nicht erreicht:
 //   • die Angebotskarte ist buchbar, obwohl keine JUMiNGO-Referenz existiert,
@@ -92,7 +94,7 @@ async function setupRoutes(page, protokoll) {
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (JUMINGO_ONLY.some((re) => re.test(p))) return json({ error: "nicht erwartet" }, 404);
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: null, ceShipmentId: CE_SHIPMENT_ID,
+      ceShipmentId: CE_SHIPMENT_ID,
       tariffs: [TARIF], availableShippingModes: [],
       publicCarriers: [{ id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
@@ -207,7 +209,8 @@ test("1 — Angebot ohne JUMiNGO-Referenz: Wiederherstellung, Absicherung und Bu
   assert.equal(protokoll.book.length, 1, "genau eine Buchungsanfrage");
   const body = protokoll.book[0];
   assert.equal(body.offerId, OFFER_ID, "die Buchung trägt nicht die Angebotskennung");
-  assert.equal(body.shipmentId ?? null, null, "die Buchung sendet eine JUMiNGO-Referenz");
+  assert.ok(!("shipmentId" in body), "die Buchung sendet eine JUMiNGO-Referenz");
+  assert.equal(body.ceShipmentId, CE_SHIPMENT_ID, "die Buchung trägt nicht den CE-Sendungshandle");
   assert.equal(body.tariffId ?? null, null, "die Buchung sendet eine JUMiNGO-Tarifkennung");
   assert.equal(body.shipperTariffId ?? null, null, "die Buchung sendet eine JUMiNGO-Tarifkennung");
   assert.equal(body.insuranceSelection && body.insuranceSelection.type, "transit_cover");
@@ -220,5 +223,135 @@ test("1 — Angebot ohne JUMiNGO-Referenz: Wiederherstellung, Absicherung und Bu
   for (const name of ["Transglobal", "TRANSGLOBAL", "JUMiNGO", "Jumingo"]) {
     assert.ok(!text.includes(name), `„${name}" ist sichtbar`);
   }
+  await page.close();
+});
+
+/* ══════════ 2 — JUMiNGO-Angebot: der Client nennt ausschließlich den CE-Handle ══════════ */
+
+// Ein JUMiNGO-Tarif mit Tarifkennungen und einstellbarem Abholzeitfenster — genau der Weg,
+// der bis TG22 Paket A die Providerreferenz an /book, /cart-total und das Abholzeitfenster
+// schickte.
+const JUMINGO_TARIF = {
+  id: 1, shipper_tariff_id: 1381, publicCarrierId: "ups", publicCarrierName: "UPS",
+  publicServiceName: "Standardversand", serviceType: "pickup", currency: "EUR",
+  netPrice: 10.69, vatAmount: 2.03, finalPrice: 12.72, transitDaysMin: 1, transitDaysMax: 2,
+  trackingAvailable: true, printerRequired: false, availableForDate: true,
+  pickupDate: "2026-09-07T00:00:00Z", pickupTimeFrom: "09:00", pickupTimeUntil: "17:00",
+  pickupWindowAdjustable: true, pickupWindowMinMinutes: 120,
+  deliveryDate: "2026-09-08T00:00:00Z",
+};
+// Eine Providerreferenz in JEDER Schreibweise, in der sie je ausgeliefert wurde.
+const PROVIDERREFERENZ = /\bs_[0-9a-z_]{3,}/i;
+
+async function setupJumingoRoutes(page, protokoll) {
+  await page.route("**/api.confidaraexpress.de/**", async (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const p = url.pathname;
+    const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+    protokoll.anfragen.push({ methode: req.method(), pfad: p, query: url.search, body: req.postData() || "" });
+
+    if (p.endsWith("/kundenbereich")) return json({ user: USER });
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
+    if (p.endsWith("/kunde/shipments")) return json({ shipments: [] });
+    if (p.endsWith("/kunde/invoices")) return json({ invoices: [], summary: null });
+    if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "", pagination: {} });
+    if (p.includes("/api/kunde/form-drafts")) return json({ drafts: [], nextCursor: null });
+    if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
+    if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
+    if (p.includes("/api/jumingo/calculate-price")) return json({
+      ceShipmentId: CE_SHIPMENT_ID, tariffs: [JUMINGO_TARIF], availableShippingModes: ["standard"],
+      publicCarriers: [{ id: "ups", name: "UPS" }],
+      customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
+    });
+    if (p.includes("/api/jumingo/draft/pickup-window")) {
+      protokoll.abholfenster.push({
+        methode: req.method(), query: Object.fromEntries(url.searchParams),
+        body: req.method() === "POST" ? req.postDataJSON() : null,
+      });
+      return json({ pickupTimeFrom: null, pickupTimeUntil: null });
+    }
+    if (p.includes("/api/jumingo/cart-total")) {
+      protokoll.warenkorb.push(req.postDataJSON());
+      return json({ voucher: { applied: false, code: null, reason: "invalid" } });
+    }
+    if (/^\/api\/shipments\/\d+\/documents$/.test(p)) return json({ shipmentId: CE_SHIPMENT_ID, documents: [] });
+    if (p.includes("/api/jumingo/book")) {
+      protokoll.book.push(req.postDataJSON());
+      return json({
+        message: "Sendung gebucht", ceShipmentId: CE_SHIPMENT_ID, invoiceNumber: null,
+        businessOrderNumber: "CE-BS26-00002", dueDate: null, amount: 12.72, billingMode: "single",
+        testBooking: false, voucherCode: null, deliveryNote: null,
+        orderConfirmation: { number: "CE-AB26-00002", issuedAt: "2026-09-11T10:00:00Z" },
+        shippingDocuments: [],
+      });
+    }
+    return json({});
+  });
+  await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
+}
+
+test("2 — JUMiNGO-Angebot: Buchung, Warenkorbvorschau und Abholzeitfenster adressieren nur den CE-Handle", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const protokoll = { anfragen: [], abholfenster: [], warenkorb: [], book: [] };
+  await setupJumingoRoutes(page, protokoll);
+
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  await fuelleVersandformular(page);
+  await page.locator(".offers-calc-cta button").first().click();
+  await page.waitForSelector(".offer-card", { timeout: 20000 });
+  await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
+  await page.waitForSelector(".steps-bar", { timeout: 20000 });
+
+  // Abholzeitfenster: die Hydrierung beim Einstieg adressiert den Entwurf über den CE-Handle.
+  const frist = Date.now() + 10000;
+  while (protokoll.abholfenster.length === 0 && Date.now() < frist) await page.waitForTimeout(100);
+  assert.ok(protokoll.abholfenster.length >= 1, "das Abholzeitfenster wurde nicht geladen");
+  for (const a of protokoll.abholfenster) {
+    const kennung = a.methode === "GET" ? a.query : a.body;
+    assert.equal(String(kennung.ceShipmentId), String(CE_SHIPMENT_ID), `Abholzeitfenster (${a.methode}) ohne CE-Handle`);
+    assert.ok(!("shipmentId" in kennung), `Abholzeitfenster (${a.methode}) trägt eine Providerreferenz`);
+  }
+
+  // Warenkorbvorschau: ein Gutscheinwunsch geht über den CE-Handle.
+  await page.getByRole("button", { name: /^Weiter/ }).first().click();
+  await page.waitForSelector(".booking-voucher-input", { timeout: 20000 });
+  await page.locator(".booking-voucher-input").fill("E2E-CODE");
+  await page.locator(".booking-voucher-apply").click();
+  const frist2 = Date.now() + 10000;
+  while (protokoll.warenkorb.length === 0 && Date.now() < frist2) await page.waitForTimeout(100);
+  assert.ok(protokoll.warenkorb.length >= 1, "die Warenkorbvorschau wurde nicht abgefragt");
+  for (const w of protokoll.warenkorb) {
+    assert.equal(w.ceShipmentId, CE_SHIPMENT_ID, "die Warenkorbvorschau trägt nicht den CE-Handle");
+    assert.ok(!("shipmentId" in w), "die Warenkorbvorschau trägt eine Providerreferenz");
+  }
+
+  // Buchung.
+  const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
+  await checks.nth(0).check();
+  await checks.nth(1).check();
+  await page.getByRole("button", { name: /Kostenpflichtig buchen/ }).click();
+  await page.waitForSelector(".booking-success-title", { timeout: 20000 });
+
+  assert.equal(protokoll.book.length, 1, "genau eine Buchungsanfrage");
+  const body = protokoll.book[0];
+  assert.equal(body.ceShipmentId, CE_SHIPMENT_ID, "die Buchung trägt nicht den CE-Handle");
+  assert.ok(!("shipmentId" in body), "die Buchung sendet eine Providerreferenz");
+  assert.equal(String(body.shipperTariffId), "1381", "der JUMiNGO-Weg verlor seine Tarifbestätigung");
+
+  // Keine einzige Anfrage trägt eine Providerreferenz — weder im Pfad, in der Query noch im Body.
+  for (const a of protokoll.anfragen) {
+    const roh = `${a.pfad}${a.query} ${a.body}`;
+    assert.ok(!PROVIDERREFERENZ.test(roh), `Providerreferenz in ${a.methode} ${a.pfad}: ${roh.slice(0, 160)}`);
+    assert.ok(!/[?&]shipmentId=/.test(a.query), `Providerfeld in der Query von ${a.pfad}`);
+    assert.ok(!/"shipmentId"\s*:/.test(a.body), `Providerfeld im Body von ${a.methode} ${a.pfad}`);
+  }
+  // Und kein Anbietername oder Referenzformat im sichtbaren Text.
+  const text = await sichtbarerText(page);
+  for (const name of ["Transglobal", "TRANSGLOBAL", "JUMiNGO", "Jumingo", "JUMINGO"]) {
+    assert.ok(!text.includes(name), `„${name}" ist sichtbar`);
+  }
+  assert.ok(!PROVIDERREFERENZ.test(text), "eine Providerreferenz ist sichtbar");
   await page.close();
 });

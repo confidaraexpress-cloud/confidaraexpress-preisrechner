@@ -95,23 +95,24 @@ const DATEINAME = { 0: `Versandlabel-${AB_NUMMER}-A4.pdf`, 1: `Versandlabel-${AB
 const SENDUNG = {
   id: CE_SHIPMENT_ID, status: "booked", weight: 2, price_final: 14.68, selected_carrier: "UPS",
   created_at: "2026-09-11T10:00:00Z", order_number: null, business_order_number: "CE-BS26-00022",
-  order_confirmation_number: AB_NUMMER, cancellation_status: null, jumingo_shipment_id: null,
+  order_confirmation_number: AB_NUMMER, cancellation_status: null,
   tracking_number: AWB, tracking_references: [AWB], tracking_status: "in_transit",
   service_type: "pickup", requested_shipping_date: ABHOLTAG, applied_tariff_display_name: "Standard",
 };
 
-const EV = (code, status, description, location, date, time) =>
-  ({ status, code, description, location, dateTime: { raw: `${date} ${time}`, date, time } });
+// Neutraler Kundenvertrag (TG22 Paket A): kein Eventcode, kein Rohdatum, keine Leg-Rolle.
+const EV = (status, description, location, date, time) =>
+  ({ status, description, location, dateTime: { date, time } });
 const TRACKING = {
   shipmentId: CE_SHIPMENT_ID, tracking: null, trackingAvailable: true, trackingNumber: AWB,
   trackingReferences: [AWB], trackingStatus: "in_transit", trackingStatusText: "Abholung bestätigt",
   carrier: "UPS", carrierTrackingPage: null, liveTracking: true, source: "live",
   trackingLegs: [{
-    carrier: "UPS", role: "Primary", trackingReference: AWB, status: "in_transit",
-    carrierTrackingPage: null, eventsChronological: true,
+    carrier: "UPS", trackingReference: AWB, status: "in_transit",
+    carrierTrackingPage: null,
     events: [
-      EV("003", "pending", "Versandlabel erstellt", "DE", ABHOLTAG, "08:15:00"),
-      EV("160", "in_transit", "Abholung bestätigt", "Aschaffenburg, DE", ABHOLTAG, "10:42:10"),
+      EV("pending", "Versandlabel erstellt", "DE", ABHOLTAG, "08:15:00"),
+      EV("in_transit", "Abholung bestätigt", "Aschaffenburg, DE", ABHOLTAG, "10:42:10"),
     ],
   }],
 };
@@ -150,7 +151,7 @@ async function setupRoutes(page, protokoll, { tarif = TARIF_22 } = {}) {
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (JUMINGO_ONLY.some((re) => re.test(p))) return json({ error: "nicht erwartet" }, 404);
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: null, ceShipmentId: CE_SHIPMENT_ID,
+      ceShipmentId: CE_SHIPMENT_ID,
       tariffs: [tarif], availableShippingModes: [],
       publicCarriers: [{ id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: tarif === TARIF_22 ? "DE" : "AT",
@@ -323,7 +324,8 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     assert.equal(protokoll.book.length, 1, "genau eine Buchungsanfrage");
     const body = protokoll.book[0];
     assert.equal(body.offerId, OFFER_ID_DE);
-    assert.equal(body.shipmentId ?? null, null, "die Buchung sendet eine JUMiNGO-Referenz");
+    assert.ok(!("shipmentId" in body), "die Buchung sendet eine JUMiNGO-Referenz");
+    assert.equal(body.ceShipmentId, CE_SHIPMENT_ID, "die Buchung trägt nicht den CE-Sendungshandle");
     assert.equal(body.tariffId ?? null, null, "die Buchung sendet eine Tarifkennung");
     assert.equal(body.shipperTariffId ?? null, null, "die Buchung sendet eine Tarifkennung");
     // Ohne Wahl sendet das Cover-Modell ausdrücklich „keine Absicherung" — nie eine Deckung.

@@ -21,7 +21,7 @@ const USER = {
 };
 const SHIPMENT = {
   id: 501, status: "label_ready", tracking_status: "in_transit",
-  business_order_number: "CE-BS26-00010", jumingo_shipment_id: "JMG-1", tracking_number: "003404341042",
+  business_order_number: "CE-BS26-00010", tracking_number: "003404341042",
   created_at: "2026-08-01T10:00:00Z", delivery_date_max: "2099-01-01",
 };
 const INVOICE = {

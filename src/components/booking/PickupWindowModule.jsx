@@ -22,7 +22,7 @@ import {
 // Draftfenster HYDRIERT (GET) — solange blockiert onHydrationChange die Buchung; ein Ladefehler
 // ebenfalls. Auswahl wird auf dem Draft persistiert (POST, fail-closed) und erst serverseitig
 // im /book buchungswirksam. KEINE Uhrzeit an /shipment-rates.
-export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydrationChange }) {
+export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHydrationChange }) {
   const boundFrom = toHHMM(tariff?.pickupTimeFrom);
   const boundUntil = toHHMM(tariff?.pickupTimeUntil);
   const bMin = toMin(boundFrom), bMax = toMin(boundUntil);
@@ -50,7 +50,7 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
     let alive = true;
     setHydrating(true); setHydrateError(false);
     report.current && report.current({ loading: true, error: false });
-    getDraftPickupWindow(shipmentId)
+    getDraftPickupWindow(ceShipmentId)
       .then(async (r) => {
         if (!alive) return;
         if (r.status === 401 || r.status === 403) return; // zentraler Auth-Redirect
@@ -68,7 +68,7 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
       .catch(() => { if (!alive) return; setHydrateError(true); setHydrating(false); report.current && report.current({ loading: false, error: true }); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adjustable, shipmentId]);
+  }, [adjustable, ceShipmentId]);
 
   // Validierung + „volles Fenster"-Erkennung aus der geteilten Quelle der Wahrheit
   // (pickupWindowClient.mjs) — identisch zu den Tests, kein Mirror-Drift.
@@ -100,7 +100,7 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
 
   // ── Debounced-Persistenz NUR nach echter Nutzeränderung (nicht bei Hydrierung) ──
   useEffect(() => {
-    if (!adjustable || !shipmentId || !touched || !valid || hydrating) return;
+    if (!adjustable || !ceShipmentId || !touched || !valid || hydrating) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       const resolved = isFull ? null : { from, until };
@@ -111,13 +111,13 @@ export function PickupWindowModule({ tariff, shipmentId, value, onChange, onHydr
       lastSentRef.current = key;
       onChange && onChange(resolved);
       setSaveState("saving");
-      saveDraftPickupWindow({ shipmentId, pickupTimeFrom, pickupTimeUntil })
+      saveDraftPickupWindow({ ceShipmentId, pickupTimeFrom, pickupTimeUntil })
         .then((r) => setSaveState(r && r.ok ? "saved" : "error"))
         .catch(() => setSaveState("error"));
     }, 600);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from, until, touched, valid, isFull, adjustable, shipmentId, hydrating]);
+  }, [from, until, touched, valid, isFull, adjustable, ceShipmentId, hydrating]);
 
   if (bMin == null || bMax == null) return null;
 

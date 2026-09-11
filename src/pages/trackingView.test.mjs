@@ -8,15 +8,15 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  resolveTransportStatus, statusLabelFor, resolveStepIndex, buildTrackingView, STATUS_STEPS,
+  resolveTransportStatus, resolveTrackingNumber, statusLabelFor, resolveStepIndex, buildTrackingView, STATUS_STEPS,
 } from "./trackingView.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ── 1) Envelope "success" + data.status "new" + keine Events → NICHT delivered, „Daten übermittelt", Stufe 0
-test("(1) tracking.status=success + data.status=new + steps=[] → Daten übermittelt, stepIndex 0, nicht delivered", () => {
-  const result = { trackingNumber: "1Z02W93E6890484666", tracking: { status: "success", data: { status: "new", steps: [] } } };
-  assert.equal(resolveTransportStatus(result), "new", "Envelope 'success' darf NICHT als Transportstatus gelesen werden");
+// ── 1) neutraler Vertrag: pending + Nummer + keine Events → NICHT delivered, „Daten übermittelt", Stufe 0
+test("(1) trackingStatus=pending + Nummer + keine Events → Daten übermittelt, stepIndex 0, nicht delivered", () => {
+  const result = { trackingNumber: "1Z02W93E6890484666", trackingStatus: "pending", tracking: null, trackingLegs: [] };
+  assert.equal(resolveTransportStatus(result), "pending");
   const v = buildTrackingView(result, { hasEvents: false });
   assert.equal(v.isDelivered, false);
   assert.equal(v.heroStatus, "Daten übermittelt");
@@ -24,10 +24,10 @@ test("(1) tracking.status=success + data.status=new + steps=[] → Daten übermi
   assert.notEqual(v.heroStatus, "Zugestellt");
 });
 
-// ── 2) Envelope "success", kein data.status, kein trackingStatus, keine Events → neutral, nicht delivered
-test("(2) nur Envelope success, kein Transportstatus, steps=[] → neutraler Zustand, nicht delivered", () => {
-  const result = { tracking: { status: "success", data: { steps: [] } } };
-  assert.equal(resolveTransportStatus(result), null, "kein Transportstatus vorhanden → null (Envelope ignoriert)");
+// ── 2) kein trackingStatus, keine Events → neutral, nicht delivered
+test("(2) kein Transportstatus, keine Events → neutraler Zustand, nicht delivered", () => {
+  const result = { tracking: null, trackingLegs: [] };
+  assert.equal(resolveTransportStatus(result), null, "kein Transportstatus vorhanden → null");
   const v = buildTrackingView(result, { hasEvents: false });
   assert.equal(v.isDelivered, false);
   assert.notEqual(v.heroStatus, "Zugestellt");
@@ -42,12 +42,15 @@ test("(3) trackingStatus=delivered → Zugestellt, stepIndex 3", () => {
   assert.equal(v.stepIndex, 3);
 });
 
-// ── 4) tracking.data.status=delivered → „Zugestellt"
-test("(4) tracking.data.status=delivered → Zugestellt", () => {
-  const v = buildTrackingView({ tracking: { status: "success", data: { status: "delivered" } } }, { hasEvents: false });
-  assert.equal(resolveTransportStatus({ tracking: { status: "success", data: { status: "delivered" } } }), "delivered");
-  assert.equal(v.heroStatus, "Zugestellt");
-  assert.equal(v.stepIndex, 3);
+// ── 4) Ein Rohobjekt eines Anbieters wird NIE gelesen — weder Status noch Nummer
+test("(4) tracking.data.status=delivered im Rohobjekt → wird ignoriert, nie Zugestellt", () => {
+  const roh = { tracking: { status: "success", trackingNumber: "RAW1", data: { status: "delivered", tracking_number: "RAW2" } },
+    data: { status: "delivered" } };
+  assert.equal(resolveTransportStatus(roh), null, "ein verschachtelter Rohstatus wurde gelesen");
+  assert.equal(resolveTrackingNumber(roh), null, "eine verschachtelte Rohnummer wurde gelesen");
+  const v = buildTrackingView(roh, { hasEvents: false });
+  assert.notEqual(v.heroStatus, "Zugestellt");
+  assert.equal(v.stepIndex, 0);
 });
 
 // ── 5) transit → „Unterwegs", Stufe 1
@@ -97,8 +100,9 @@ test("(8) Envelope-Werte success/ok/completed → nie Zugestellt / nie Stufe 3",
 // ── 9) echte Delivered-Sendung bleibt korrekt delivered (auch neben Envelope + mit Events)
 test("(9) echte Delivered-Sendung bleibt Zugestellt/Stufe 3", () => {
   const result = {
-    trackingStatus: "delivered",
-    tracking: { status: "success", data: { status: "delivered", steps: [{ type: "Zugestellt", date: "2026-07-10", time: "10:10" }] } },
+    trackingStatus: "delivered", tracking: null,
+    trackingLegs: [{ carrier: "UPS", status: "delivered",
+      events: [{ status: "delivered", description: "Zugestellt", location: null, dateTime: { date: "2026-07-10", time: "10:10" } }] }],
   };
   const v = buildTrackingView(result, { hasEvents: true });
   assert.equal(v.isDelivered, true);
@@ -113,7 +117,7 @@ test("(9) echte Delivered-Sendung bleibt Zugestellt/Stufe 3", () => {
 // ── 10) Neue Suche setzt altes Resultat weiterhin zurück (setResult(null) in track())
 test("(10) track() setzt result vor dem fetch zurück (kein Stale-Ergebnis)", () => {
   const src = readFileSync(join(__dirname, "TrackingPage.jsx"), "utf8");
-  const trackFn = src.slice(src.indexOf("const track = async"), src.indexOf("// Live-Format"));
+  const trackFn = src.slice(src.indexOf("const track = async"), src.indexOf("const [searchParams]"));
   const resetIdx = trackFn.indexOf("setResult(null)");
   const fetchIdx = trackFn.indexOf("await fetch(");
   assert.ok(resetIdx > 0, "setResult(null) muss im track-Handler vorhanden sein");

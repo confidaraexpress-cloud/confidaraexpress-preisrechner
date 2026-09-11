@@ -127,16 +127,19 @@ export function searchAccessPoints({ carrierCodes, countryCode, postCode, city, 
 // Speichern fail-closed: beide gesetzt ODER beide null; beide null → Fenster löschen.
 // Buchungswirksam erst serverseitig im /book (dort autoritativ gegen den frischen Tarif geprüft;
 // bei Drift 409 PICKUP_WINDOW_CHANGED). Gibt die rohe Response zurück — Aufrufer wertet selbst aus.
-export function getDraftPickupWindow(shipmentId) {
-  const id = encodeURIComponent(String(shipmentId ?? "").trim());
-  return apiFetch(`/api/jumingo/draft/pickup-window?shipmentId=${id}`, { auth: true });
+// Adressiert wird über den ConfidaraExpress-Sendungshandle `ceShipmentId` (shipments.id) —
+// dieselbe Kennung wie Label, Tracking und Stornoanfrage. Eine Providerreferenz kennt der
+// Client nicht.
+export function getDraftPickupWindow(ceShipmentId) {
+  const id = encodeURIComponent(String(ceShipmentId ?? "").trim());
+  return apiFetch(`/api/jumingo/draft/pickup-window?ceShipmentId=${id}`, { auth: true });
 }
 
-export function saveDraftPickupWindow({ shipmentId, pickupTimeFrom, pickupTimeUntil }) {
+export function saveDraftPickupWindow({ ceShipmentId, pickupTimeFrom, pickupTimeUntil }) {
   return apiFetch(`/api/jumingo/draft/pickup-window`, {
     method: "POST",
     auth: true,
-    body: JSON.stringify({ shipmentId, pickupTimeFrom, pickupTimeUntil }),
+    body: JSON.stringify({ ceShipmentId, pickupTimeFrom, pickupTimeUntil }),
   });
 }
 
@@ -175,12 +178,12 @@ export function repriceInsurance(payload, { signal } = {}) {
 // hat: ohne Zolldaten bleibt eine Drittlandsendung dort `missing_data` und der Warenkorb
 // unbepreist. Bei EU/DE fehlt das Feld wie bisher und der Request ist byte-identisch zu vorher.
 // Auch hier gilt unverändert: KEINE Beträge, keine Rabatthöhen, keine Prozentwerte.
-export function checkVoucher({ shipmentId, tariffId, shipperTariffId, voucherCode, customsData }, { signal } = {}) {
+export function checkVoucher({ ceShipmentId, tariffId, shipperTariffId, voucherCode, customsData }, { signal } = {}) {
   return apiFetch(`/api/jumingo/cart-total`, {
     method: "POST",
     auth: true,
     body: JSON.stringify({
-      shipmentId, tariffId, shipperTariffId, voucherCode,
+      ceShipmentId, tariffId, shipperTariffId, voucherCode,
       ...(customsData ? { customsData } : {}),
     }),
     signal,
@@ -188,19 +191,13 @@ export function checkVoucher({ shipmentId, tariffId, shipperTariffId, voucherCod
 }
 
 // ── Tracking (auth) ──────────────────────────────────────────────────────────
-// Liest die additiven Tracking-Felder defensiv: Der Backend-Vertrag legt noch
-// nicht endgültig fest, ob trackingAvailable/trackingNumber/trackingStatus/
-// carrierTrackingPage top-level oder unter `tracking` liegen — daher beide
-// Positionen prüfen (top-level hat Vorrang). Die bestehende verschachtelte
-// Struktur (`tracking` inkl. `tracking.data.tracking_events`) wird unverändert
-// weitergereicht, damit die vorhandene Timeline-Anzeige nicht bricht.
+// Neutraler Trackingvertrag (TG22 Paket A): jede Kunden-Trackingantwort hat für jeden
+// Einkaufsweg dieselbe flache Form. Gelesen wird AUSSCHLIESSLICH die oberste Ebene; ein
+// Rohobjekt eines Anbieters (`tracking`) gehört nicht zum Vertrag und wird weder gelesen
+// noch weitergereicht.
 function selectTracking(d) {
   const payload = d && typeof d === "object" ? d : {};
-  const nested  = payload.tracking && typeof payload.tracking === "object" ? payload.tracking : null;
-  const pick = (key) =>
-    payload[key] !== undefined ? payload[key]
-    : nested && nested[key] !== undefined ? nested[key]
-    : undefined;
+  const pick = (key) => payload[key];
   return {
     trackingAvailable:   pick("trackingAvailable"),
     trackingNumber:      pick("trackingNumber"),
@@ -209,9 +206,7 @@ function selectTracking(d) {
     trackingReferences:  pick("trackingReferences"),
     trackingStatus:      pick("trackingStatus"),
     carrierTrackingPage: pick("carrierTrackingPage"),
-    tracking:            payload.tracking, // bestehende Struktur/Events unverändert weiterreichen
     // Providerneutrale Transportabschnitte mit Ereignissen (siehe utils/trackingLegsView.mjs).
-    // Fehlen sie, bleibt die bisherige Darstellung über `tracking` unverändert.
     trackingLegs:        Array.isArray(payload.trackingLegs) ? payload.trackingLegs : undefined,
     trackingStatusText:  pick("trackingStatusText"),
     carrier:             pick("carrier"),
@@ -256,21 +251,16 @@ export async function getCurrentConsolidatedPeriod() {
 }
 
 // ── Zoll-Handelsrechnung (Customs commercial invoice) ────────────────────────
-// Dünne Wrapper um das bereits gemergte, auth-geschützte Confidara-Gateway.
-// `:shipmentId` ist die von /calculate-price gelieferte ÖFFENTLICHE Sendungs-ID
-// ("s_"+32 Hex, JUMiNGO-Referenz) — serverseitig geprüft mit parsePublicShipmentId()
-// und über jumingo_shipment_id + user_id aufgelöst. NICHT die interne shipments.id.
-//
-// Diese Zeile stand bis zur Behebung des Save-Draft-Fehlers falsch hier („interne
-// Confidara-Shipment-ID"). Zwei andere Module beriefen sich darauf und leiteten
-// daraus ab, `bookingData.shipmentId` sei die interne ID — genau daraus entstand
-// die unsichtbare Aktion „Als Entwurf speichern". Wer diese Zuordnung ändert,
+// Dünne Wrapper um das auth-geschützte Confidara-Gateway.
+// `:shipmentId` ist der ConfidaraExpress-Sendungshandle `ceShipmentId` (shipments.id) —
+// serverseitig über id + user_id aufgelöst. Die Providerreferenz löst ausschließlich das
+// Backend auf; der Client kennt sie nicht (TG22 Paket A). Wer diese Zuordnung ändert,
 // prüft sie am Backendpfad, nicht an einem Kommentar.
 //
-// Die PDF wird NUR über dieses Gateway übertragen — NIE direkt an JUMiNGO aus dem Browser.
+// Die PDF wird NUR über dieses Gateway übertragen — NIE direkt an einen Anbieter aus dem Browser.
 // Kein Logging von Datei-/Body-Daten, keine Base64, keine Client-Persistenz.
-const ciPath = (shipmentId) =>
-  `/api/jumingo/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/commercial-invoice`;
+const ciPath = (ceShipmentId) =>
+  `/api/shipments/${encodeURIComponent(String(ceShipmentId ?? "").trim())}/commercial-invoice`;
 
 // GET → { present: true|false, document: {...}|null }. Rohe Response zurück; der
 // Aufrufer liest Status/JSON defensiv (kein rohes Objekt rendern).

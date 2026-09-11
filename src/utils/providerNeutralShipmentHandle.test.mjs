@@ -130,9 +130,9 @@ test("7 — der Label-Download der Buchungsseite nutzt den CE-Handle aus der Buc
   assert.match(successDocs, /: booking\?\.ceShipmentId && \(/); // TG-F5: der Labelknopf ist der Rückfall ohne Versandbelege
 });
 
-test("8 — das Abholzeitfenster bleibt bewusst bei der Providerreferenz", () => {
-  // Es ist ein Entwurfsvorgang VOR der Buchung: das Backend löst dort über
-  // jumingo_shipment_id UND status='draft' auf. Der Sendungshandle gilt der
-  // gebuchten Sendung — die beiden Ebenen werden hier nicht vermischt.
-  assert.match(bookingPage, /<PickupWindowModule[\s\S]{0,200}shipmentId=\{bookingData\?\.shipmentId\}/);
+test("8 — auch das Abholzeitfenster adressiert über den CE-Handle", () => {
+  // TG22 Paket A: der Entwurf vor der Buchung wird ebenfalls über shipments.id adressiert
+  // (serverseitig weiterhin mit status='draft'); die Providerreferenz löst das Backend auf.
+  assert.match(bookingPage, /<PickupWindowModule[\s\S]{0,200}ceShipmentId=\{bookingData\?\.ceShipmentId\}/);
+  assert.doesNotMatch(bookingPage, /bookingData\?\.shipmentId\b/);
 });

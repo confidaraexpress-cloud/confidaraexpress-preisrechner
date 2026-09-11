@@ -285,7 +285,6 @@ export function emptyScope(scope) {
     tariffs: [],
     publicCarriers: [],
     selected: null,
-    shipmentId: null,
     ceShipmentId: null,
     customs: null,
     // Optionaler Lagerbezug (Modul „Lager & Aufträge"): { orderId } oder
@@ -327,15 +326,10 @@ export function normalizeScope(raw, scope) {
     tariffs: objectList(src.tariffs, 120),
     publicCarriers: objectList(src.publicCarriers, 64),
     selected: plainObjectOrNull(src.selected),
-    // shipmentId kommt vom Backend und darf Zahl ODER Zeichenkette sein —
-    // beides unverändert übernehmen, nichts umwandeln.
-    shipmentId: typeof src.shipmentId === "number" || (typeof src.shipmentId === "string" && src.shipmentId.trim())
-      ? src.shipmentId : null,
-    // ADDITIV, ohne Versionssprung (Präzedenz: trackingEmail): ein Vorgang aus der
-    // Zeit davor liefert `undefined` → null und wird NICHT verworfen. Trägt den
-    // ConfidaraExpress-Sendungshandle desselben Entwurfs — nötig, weil „Als Entwurf
-    // speichern" ausschließlich shipments.id adressieren darf. Gleiche defensive
-    // Übernahme wie oben: nichts umwandeln, nichts raten.
+    // Der ConfidaraExpress-Sendungshandle des Entwurfs — die EINZIGE Sendungskennung des
+    // Vorgangs (TG22 Paket A: eine Providerreferenz führt der Client nicht mehr). Er kommt
+    // vom Backend und darf Zahl ODER Zeichenkette sein — unverändert übernehmen, nichts
+    // umwandeln, nichts raten.
     ceShipmentId: typeof src.ceShipmentId === "number" || (typeof src.ceShipmentId === "string" && src.ceShipmentId.trim())
       ? src.ceShipmentId : null,
     customs: plainObjectOrNull(src.customs),
@@ -449,7 +443,7 @@ export function flowHasContent(flow) {
   for (const scope of FLOW_SCOPES) {
     const s = flow[scope];
     if (!s) continue;
-    if (s.tariffs.length > 0 || s.shipmentId != null || formHasInput(s.form, scope)) return true;
+    if (s.tariffs.length > 0 || s.ceShipmentId != null || formHasInput(s.form, scope)) return true;
   }
   return false;
 }
@@ -499,7 +493,6 @@ export function dropOffers(scopeState) {
     tariffs: [],
     publicCarriers: [],
     selected: null,
-    shipmentId: null,
     ceShipmentId: null,
     customs: null,
     calculatedAt: null,
@@ -530,7 +523,7 @@ export function restoreFlow(raw, { now = 0, today = null } = {}) {
     const inVergangenheit = !!(today && s.shippingDate && s.shippingDate < today);
     if (abgelaufen || inVergangenheit) {
       // Nur melden, wenn tatsächlich etwas verworfen wurde.
-      if (s.tariffs.length > 0 || s.shipmentId != null) {
+      if (s.tariffs.length > 0 || s.ceShipmentId != null) {
         grund = grund || (inVergangenheit ? DROP_REASON.PAST_DATE : DROP_REASON.EXPIRED);
       }
       naechster[scope] = dropOffers(s);

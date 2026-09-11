@@ -98,7 +98,7 @@ async function setupRoutes(page, zustand) {
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/address/")) return json({ status: "unsupported" });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       // Zollpflicht kommt IMMER vom Server — die Oberfläche leitet sie nie selbst ab.
       customsRequired: zustand.customsRequired === true,
@@ -119,7 +119,7 @@ async function setupRoutes(page, zustand) {
         }, 422);
       }
       zustand.gebucht = true;
-      return json({ shipmentId: "s1", ceShipmentId: 4711, trackingNumber: "TRACK1", labelUrl: null, invoiceNumber: "CE-RE-2026-000001" });
+      return json({ ceShipmentId: 4711, trackingNumber: "TRACK1", labelUrl: null, invoiceNumber: "CE-RE-2026-000001" });
     }
     return json({});
   });

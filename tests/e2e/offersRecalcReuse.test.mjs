@@ -51,7 +51,7 @@ const ABSENDER = { zip: "97421", city: "Schweinfurt", street: "Musterweg 1" };
 let server, browser;
 
 // Zählt JEDEN abgesetzten /calculate-price-Request. Jede Antwort trägt eine
-// eigene shipmentId, damit ein wiederverwendetes Ergebnis von einem neu
+// eigene ceShipmentId, damit ein wiederverwendetes Ergebnis von einem neu
 // berechneten unterscheidbar bleibt.
 function setupRoutes(page, zaehler) {
   return (async () => {
@@ -76,7 +76,7 @@ function setupRoutes(page, zaehler) {
       if (p.includes("/api/jumingo/calculate-price")) {
         zaehler.n += 1;
         return json({
-          shipmentId: `s_e2e_${zaehler.n}`, ceShipmentId: 4700 + zaehler.n, tariffs: TARIFE,
+          ceShipmentId: 4700 + zaehler.n, tariffs: TARIFE,
           availableShippingModes: ["express", "standard"],
           publicCarriers: [{ id: "ups", name: "UPS" }],
           customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,

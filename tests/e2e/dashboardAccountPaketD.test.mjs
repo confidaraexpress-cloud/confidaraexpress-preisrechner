@@ -25,8 +25,8 @@ const USER = {
   role: "customer", status: "approved", country: "DE", zip: "10115", customer_number: "CE-K-10030",
 };
 const SHIPMENTS = [
-  { id: 1, jumingo_shipment_id: "js1", status: "booked", weight: 5, price_final: 22.19, selected_carrier: "dhl", created_at: "2026-08-05T10:00:00Z", order_number: "CE-1001" },
-  { id: 2, jumingo_shipment_id: "js2", status: "label_ready", weight: 2, price_final: 12.5, selected_carrier: "ups", created_at: "2026-08-06T09:00:00Z", order_number: "CE-1002" },
+  { id: 1, status: "booked", weight: 5, price_final: 22.19, selected_carrier: "dhl", created_at: "2026-08-05T10:00:00Z", order_number: "CE-1001" },
+  { id: 2, status: "label_ready", weight: 2, price_final: 12.5, selected_carrier: "ups", created_at: "2026-08-06T09:00:00Z", order_number: "CE-1002" },
 ];
 const INVOICES = [{ id: 1, invoice_number: "RE-2026-0001", status: "open", is_overdue: true, gross_amount: 42.5, currency: "EUR", issued_at: "2026-08-01T00:00:00Z", due_date: "2026-07-20", document_status: "ready", download_available: true }];
 const SUMMARY = { open_count: 1, open_amount: 42.5, overdue_count: 1, next_due_date: "2026-07-20", currency: "EUR" };

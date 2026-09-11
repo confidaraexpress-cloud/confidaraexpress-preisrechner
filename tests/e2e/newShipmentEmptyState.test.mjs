@@ -88,7 +88,6 @@ async function setupRoutes(ziel) {
       calcBodies.push(JSON.parse(req.postData() || "{}"));
       return json({
         tariffs: TARIFFS,
-        shipmentId: "s_a1b2c3d4e5f60718293a4b5c6d7e8f90",
         ceShipmentId: 4242,
         publicCarriers: [{ id: "dhl", name: "DHL" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE",

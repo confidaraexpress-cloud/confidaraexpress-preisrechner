@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { API } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { EmptyState } from "../components/ui/StateView";
-import { dateDE, dtDE, isoDayDE } from "../utils/formatters";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 import { STATUS_STEPS, buildTrackingView } from "./trackingView";
@@ -18,8 +17,6 @@ const ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
   500: "Tracking aktuell nicht verfügbar.",
 };
-
-const timeDE = (d) => (d ? new Date(d).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "");
 
 // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten.
 function nachTagen(liste) {
@@ -84,100 +81,40 @@ export default function TrackingPage() {
     track(key);
   }, [searchParams]);
 
-  // Live-Format: Events liegen unter tracking.data.steps[] (date/time/type/
-  // location). Das frühere tracking_events[] bleibt defensiver Fallback.
-  const trackData = result?.tracking?.data || result?.data || result || {};
-  const rawSteps = Array.isArray(trackData.steps) ? trackData.steps : [];
-  const rawEvents = result?.tracking?.data?.tracking_events
-    || result?.data?.tracking_events
-    || result?.tracking_events
-    || [];
-  const mapped = rawSteps.length > 0
-    ? rawSteps.map((s) => ({
-        description: s.type || s.description || s.status || "Ereignis",
-        day: s.date ? isoDayDE(s.date) : null,
-        timeText: s.time ? `${s.time} Uhr` : null,
-        location: s.location || null,
-        groupKey: s.date ? isoDayDE(s.date) : "Ohne Datum",
-        timestamp: null,
-        sortTs: s.date ? Date.parse(`${s.date}T${s.time || "00:00"}`) : NaN,
-      }))
-    : (Array.isArray(rawEvents) ? rawEvents : []).map((ev) => {
-        const ts = ev.timestamp || ev.date || ev.time || ev.datetime || null;
-        return {
-          description: ev.description || ev.status || ev.event || ev.message || "Ereignis",
-          day: ts ? dateDE(ts) : null,
-          timeText: ts ? `${timeDE(ts)} Uhr` : null,
-          location: ev.location || ev.city || ev.place || null,
-          groupKey: ts ? dateDE(ts) : "Ohne Datum",
-          timestamp: ts,
-          sortTs: ts ? Date.parse(ts) : NaN,
-        };
-      });
-
-  // Garantie „chronologisch aufsteigend": ältestes Ereignis oben, neuestes
-  // unten (letzter Timeline-Punkt = aktueller Status). Liefert das Backend
-  // bereits aufsteigend, bleibt die Reihenfolge unangetastet. Nur wenn die
-  // Chronologie nachweislich absteigend ist (erstes Event neuer als letztes),
-  // wird intern gedreht. Nicht parsebare Datumswerte → keine Annahme.
-  const events =
-    mapped.length >= 2 &&
-    Number.isFinite(mapped[0].sortTs) &&
-    Number.isFinite(mapped[mapped.length - 1].sortTs) &&
-    mapped[0].sortTs > mapped[mapped.length - 1].sortTs
-      ? [...mapped].reverse()
-      : mapped;
-
   // ── Transportabschnitte (providerneutral) ─────────────────────────────────────────────────
-  // Liefert der Server `trackingLegs`, kommen Ereignisse, Orte und Zeitangaben von dort — je
-  // Abschnitt, aufsteigend und ohne erfundene Zeitzone (utils/trackingLegsView.mjs). Mehrere
-  // Abschnitte erscheinen getrennt, jeweils mit Carrier und Nummer — nie als „Paket 2".
+  // Die öffentliche Trackingantwort hat für jeden Einkaufsweg DIESELBE Form: Ereignisse, Orte und
+  // Zeitangaben stehen ausschließlich in `trackingLegs` — je Abschnitt, aufsteigend und ohne
+  // erfundene Zeitzone (utils/trackingLegsView.mjs). Ein Rohobjekt eines Anbieters wird nicht
+  // gelesen. Mehrere Abschnitte erscheinen getrennt, jeweils mit Carrier und Nummer — nie als „Paket 2".
   const legs = trackingLegsOf(result);
-  const mitAbschnitten = legs.length > 0;
-  const eventCount = mitAbschnitten ? trackingLegEventCount(legs) : events.length;
+  const eventCount = trackingLegEventCount(legs);
 
-  // carrier kann String ODER Objekt ({ code, name, image, phone, id }) sein →
-  // niemals das Objekt direkt rendern (React-Crash). Nur den Namen anzeigen.
-  const carrierRaw = result?.tracking?.carrier || result?.tracking?.data?.carrier
-    || result?.data?.carrier || result?.carrier;
-  const carrierName = typeof carrierRaw === "string" ? carrierRaw
-    : (carrierRaw && typeof carrierRaw === "object" ? (carrierRaw.name || null) : null);
-
-  // Neuestes Ereignis = LETZTES Element der aufsteigenden Timeline — treibt den Hero-Zeitpunkt.
-  const newest = events[events.length - 1];
+  // Carrier: ausschließlich der neutrale Name der Antwort — nie ein Objekt rendern.
+  const carrierName = typeof result?.carrier === "string" && result.carrier.trim() ? result.carrier.trim() : null;
 
   // ── Anzeige-Sicht aus REINER, unit-getesteter Logik (./trackingView) ─────────────────────────
-  // Statusquelle ist AUSSCHLIESSLICH der Transportstatus (result.trackingStatus / tracking.data.status).
-  // Der JUMiNGO-Envelope result.tracking.status ("success") steuert die Anzeige NIEMALS. Ohne Events
-  // UND ohne explizites Carrier-„delivered" bleibt die Timeline auf Stufe 0 — so entsteht nie
+  // Statusquelle ist AUSSCHLIESSLICH der Transportstatus result.trackingStatus. Ohne Events UND
+  // ohne explizites Carrier-„delivered" bleibt die Timeline auf Stufe 0 — so entsteht nie
   // „Zugestellt" + „Keine Ereignisse" zugleich; ein echtes delivered bleibt auch bei leerer Liste sichtbar.
   const { heroStatus, heroDesc, stepIndex } = buildTrackingView(result, { hasEvents: eventCount > 0 });
 
-  // Zeitpunkt des neuesten Ereignisses: "03.07.2026 · 10:10 Uhr". Bei Abschnitten die
-  // Zeitangabe, wie sie geliefert wurde — ohne Zone.
-  const heroWhen = mitAbschnitten
-    ? eventWhenText(latestTrackingLegEvent(legs))
-    : (!newest ? null
-      : newest.timestamp ? dtDE(newest.timestamp)
-      : ([newest.day, newest.timeText].filter(Boolean).join(" · ") || null));
+  // Zeitpunkt des neuesten Ereignisses, wie er geliefert wurde — ohne Zone.
+  const heroWhen = eventWhenText(latestTrackingLegEvent(legs));
   // Carrier nur als reiner Name ("UPS", "DHL Express", …) — resolveCarrierName
   // normalisiert Werte wie "UPS shipment tracking" auf den bekannten Namen.
   const carrierDisplay = carrierName ? resolveCarrierName(carrierName) : null;
 
   // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten — je Abschnitt eine Timeline.
-  const dayGroups = nachTagen(events);
-  const sections = mitAbschnitten
-    ? legs.map((leg) => ({
-        key: leg.key,
-        heading: legs.length > 1 ? trackingLegHeading(leg) : null,
-        dayGroups: nachTagen(leg.events.map((ev) => ({
-          description: ev.description,
-          timeText: ev.day ? (ev.time ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : null) : ev.rawWhen,
-          location: ev.location,
-          groupKey: ev.day || TRACKING_LEGS_TEXT.noDate,
-        }))),
-      }))
-    : [{ key: "events", heading: null, dayGroups }];
+  const sections = legs.map((leg) => ({
+    key: leg.key,
+    heading: legs.length > 1 ? trackingLegHeading(leg) : null,
+    dayGroups: nachTagen(leg.events.map((ev) => ({
+      description: ev.description,
+      timeText: ev.time ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : null,
+      location: ev.location,
+      groupKey: ev.day || TRACKING_LEGS_TEXT.noDate,
+    }))),
+  }));
 
   return (
     <div className="page-with-navbar">

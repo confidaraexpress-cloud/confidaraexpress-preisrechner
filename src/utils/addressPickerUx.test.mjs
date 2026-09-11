@@ -327,9 +327,9 @@ test("E3 die Baseline wird NICHT nachgezogen — die Seite gilt danach als geän
 });
 
 test("E4 die Übernahme verwirft alte Angebote vollständig", () => {
-  // invalidateResults → resetResults: Tarife, Auswahl, BEIDE IDs, Zoll.
+  // invalidateResults → resetResults: Tarife, Auswahl, Sendungskennung, Zoll.
   const reset = seite.slice(seite.indexOf("const resetResults = () => {"), seite.indexOf("const invalidateResults"));
-  for (const weg of ["setTariffs([])", "setSelected(null)", "setShipmentId(null)", "setCeShipmentId(null)", "setCustoms(null)", "setHasResults(false)"]) {
+  for (const weg of ["setTariffs([])", "setSelected(null)", "setCeShipmentId(null)", "setCustoms(null)", "setHasResults(false)"]) {
     assert.ok(reset.includes(weg), `resetResults muss ${weg} enthalten`);
   }
 });

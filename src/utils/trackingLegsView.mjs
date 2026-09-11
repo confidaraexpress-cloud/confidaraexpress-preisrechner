@@ -7,14 +7,16 @@
 //
 // ─── Der Server ist die Wahrheit ─────────────────────────────────────────────
 // `trackingLegs` kommt fertig vom Server: je Abschnitt Carrier, Trackingnummer, ein bereits
-// geprüfter Carrierlink und die Ereignisse mit Code, Beschreibung, Ort und Zeitangabe. Hier
+// geprüfter Carrierlink und die Ereignisse mit Stand, Beschreibung, Ort und Zeitangabe. Hier
 // wird nichts nachgeladen und kein Sendungsstand abgeleitet — der steht in `trackingStatus`.
+// Beide Einkaufswege liefern dieselbe Form; Anbieterdiagnose (Eventcode, Rohdatum) gehört
+// nicht zum Kundenvertrag und wird hier nicht gelesen.
 //
 // ─── Keine erfundene Zeitzone ─────────────────────────────────────────────────
 // Die Zeitangabe eines Ereignisses kommt als Datum und Uhrzeit OHNE Zone. Sie wird deshalb
 // NIE in ein Datumsobjekt verwandelt — das würde die Zone des Browsers behaupten. Umgestellt
-// wird nur der Text: "2026-05-12" → "12.05.2026"; die Uhrzeit bleibt, wie sie geliefert wurde.
-// Ohne zerlegbares Datum wird der Rohwert unverändert gezeigt.
+// wird nur der Text: "2026-05-12" → "12.05.2026"; die Uhrzeit bleibt, wie sie geliefert wurde
+// ("HH:MM" oder "HH:MM:SS"). Ohne zerlegbares Datum gibt es keine Zeitangabe — sie wird nicht geraten.
 //
 // ─── Keine erfundenen Paketnummern ───────────────────────────────────────────
 // Mehrere Abschnitte erscheinen als Abschnitte — mit Carrier und, falls vorhanden, ihrer
@@ -42,7 +44,8 @@ const STATUS_LABELS = Object.freeze({
 // Dieselbe Formregel wie für Trackingreferenzen (utils/trackingReferencesView.mjs).
 const TRACKING_REFERENCE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,39}$/;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_RE = /^(\d{2}):(\d{2}):(\d{2})$/;
+// "HH:MM" oder "HH:MM:SS" — nur im Wertebereich einer Uhrzeit.
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
 
 const text = (w) => (typeof w === "string" && w.trim() !== "" ? w.trim() : null);
 
@@ -65,14 +68,12 @@ function anzeigeEreignis(roh) {
   const day = d ? `${d[3]}.${d[2]}.${d[1]}` : null;
   return {
     description: text(e.description) || TRACKING_LEGS_TEXT.eventFallback,
-    code: text(e.code),
     status: text(e.status),
     location: text(e.location),
     day,
     time: t ? zeit.time : null,
-    // Ohne zerlegbares Datum: der Rohwert, unverändert — nie geraten.
-    rawWhen: day ? null : text(zeit.raw),
-    sortKey: d && t ? `${d[1]}${d[2]}${d[3]}${t[1]}${t[2]}${t[3]}` : null,
+    // Eine Uhrzeit ohne Sekunden sortiert wie die volle Minute.
+    sortKey: d && t ? `${d[1]}${d[2]}${d[3]}${t[1]}${t[2]}${t[3] ?? "00"}` : null,
   };
 }
 
@@ -125,15 +126,12 @@ export function latestTrackingLegEvent(legs) {
 
 /**
  * Die Zeitangabe eines Ereignisses als Text: "12.05.2026 · 14:46:53 Uhr" — ohne Zone. Ohne
- * zerlegbares Datum der Rohwert.
+ * zerlegbares Datum `null`.
  */
 export function eventWhenText(ev, { withSuffix = true } = {}) {
-  if (!ev || typeof ev !== "object") return null;
-  if (ev.day) {
-    const uhrzeit = ev.time ? (withSuffix ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : ev.time) : null;
-    return [ev.day, uhrzeit].filter(Boolean).join(" · ");
-  }
-  return ev.rawWhen || null;
+  if (!ev || typeof ev !== "object" || !ev.day) return null;
+  const uhrzeit = ev.time ? (withSuffix ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : ev.time) : null;
+  return [ev.day, uhrzeit].filter(Boolean).join(" · ");
 }
 
 /** Überschrift eines Abschnitts: Carrier und Trackingnummer, soweit vorhanden. */

@@ -61,7 +61,7 @@ async function setupRoutes(page) {
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
@@ -102,7 +102,7 @@ async function bucheUndLiesPayload(page) {
     payload = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: "s1", trackingNumber: "TRACK1", labelUrl: null }),
+      body: JSON.stringify({ trackingNumber: "TRACK1", labelUrl: null }),
     });
   });
   const checks = page.getByRole("checkbox"); // AGB + Gefahrgut (die Schalter tragen role=switch)
@@ -168,7 +168,9 @@ test("2 — Szenario 1: ohne Zusatzoption bleibt der Buchungsvertrag unveränder
   assert.ok(!("labelTrackingEmail" in payload));
   // Die bestehenden Felder sind unberührt.
   assert.equal(payload.labelFormat, "A4");
-  assert.equal(payload.shipmentId, "s1");
+  // TG22 Paket A: die Sendung heißt im Buchungsvertrag ausschließlich über den CE-Handle.
+  assert.equal(payload.ceShipmentId, 4711);
+  assert.ok(!("shipmentId" in payload), "der /book-Payload trägt eine Providerreferenz");
   await page.close();
 });
 
@@ -402,7 +404,7 @@ test("15 — der Trackinglink aus der Mail sucht direkt", async () => {
     angefragt = decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop());
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: "s1", tracking: { data: { tracking_number: "1Z999", status: "delivered", steps: [] } } }),
+      body: JSON.stringify({ tracking: null, trackingAvailable: true, trackingNumber: "1Z999", trackingStatus: "delivered", trackingLegs: [] }),
     });
   });
   await page.goto(`${BASE}/tracking?nummer=1Z999AA10123456784`, { waitUntil: "domcontentloaded" });

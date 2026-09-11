@@ -43,7 +43,7 @@ function vorgangMitAngeboten({ now = T0, shippingDate = "2026-08-10" } = {}) {
       tariffs: [{ id: "t1", netPrice: 12.9 }, { id: "t2", netPrice: 18.4 }],
       publicCarriers: [{ id: "dhl", name: "DHL" }],
       selected: { id: "t1", netPrice: 12.9 },
-      shipmentId: "ship-1",
+      ceShipmentId: 4711,
       customs: { customsRequired: false },
       calculatedAt: now,
       scrollY: 420,
@@ -235,7 +235,7 @@ test("13 — innerhalb der Frist bleibt alles erhalten", () => {
   const { flow, dropped } = restoreFlow(roh, { now: T0 + FLOW_TTL_MS - 1000, today: "2026-08-06" });
   assert.equal(dropped, null);
   assert.equal(flow.shipment.tariffs.length, 2);
-  assert.equal(flow.shipment.shipmentId, "ship-1");
+  assert.equal(flow.shipment.ceShipmentId, 4711);
   assert.deepEqual(flow.shipment.selected, { id: "t1", netPrice: 12.9 });
   assert.equal(flow.shipment.serviceFilter, "pickup");
   assert.equal(flow.shipment.sortMode, "cheapest");
@@ -257,7 +257,7 @@ test("14 — nach der Frist bleiben Formular und Filter, Angebote gehen", () => 
   assert.deepEqual(flow.shipment.tariffs, []);
   assert.deepEqual(flow.shipment.publicCarriers, []);
   assert.equal(flow.shipment.selected, null);
-  assert.equal(flow.shipment.shipmentId, null);
+  assert.equal(flow.shipment.ceShipmentId, null);
   assert.equal(flow.shipment.customs, null);
   assert.equal(flow.shipment.calculatedAt, null);
   assert.equal(flow.shipment.scrollY, 0);
@@ -271,7 +271,7 @@ test("15 — ein Versanddatum in der Vergangenheit verwirft die Angebote", () =>
   );
   assert.equal(dropped, DROP_REASON.PAST_DATE);
   assert.deepEqual(flow.shipment.tariffs, []);
-  assert.equal(flow.shipment.shipmentId, null);
+  assert.equal(flow.shipment.ceShipmentId, null);
   // Das Formular und das gewählte Datum bleiben stehen — der Kunde soll sehen,
   // was er gewählt hatte, und es bewusst korrigieren.
   assert.equal(flow.shipment.form.r_fullName, "Dora Beispiel");
@@ -599,9 +599,9 @@ test("36 — resetToFreshShipment setzt genau die Felder zurück, die der Spiege
   ]) {
     assert.ok(rumpf.includes(setter), `resetToFreshShipment: „${setter}" fehlt`);
   }
-  // resetResults() selbst deckt tariffs/selected/shipmentId/customs/calculatedAt ab.
+  // resetResults() selbst deckt tariffs/selected/ceShipmentId/customs/calculatedAt ab.
   const reset = ns.match(/const resetResults = \(\) => \{[\s\S]*?\n  \};/)[0];
-  for (const setter of ["setTariffs([])", "setSelected(null)", "setShipmentId(null)",
+  for (const setter of ["setTariffs([])", "setSelected(null)", "setCeShipmentId(null)",
                         "setCustoms(null)", "calculatedAtRef.current = null"]) {
     assert.ok(reset.includes(setter), `resetResults: „${setter}" fehlt`);
   }

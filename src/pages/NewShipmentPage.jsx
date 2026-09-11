@@ -126,7 +126,7 @@ function postalErr(country, value) {
 
 // Buchungsrelevante Felder lösen bei Änderung ein Verwerfen alter Ergebnisse
 // aus. Nur die rein clientseitigen Anzeige-Filter (max_price, latestDeliveryDate)
-// lassen Tarife + shipmentId unangetastet — sie filtern lediglich die bereits
+// lassen Tarife + Sendungskennung unangetastet — sie filtern lediglich die bereits
 // berechnete Liste, ohne die Buchungsgrundlage zu ändern.
 // `latestDeliveryTime` gehört zwingend hierher: eine Uhrzeitauswahl arbeitet
 // ausschließlich auf den BEREITS geladenen Tarifen und darf niemals einen neuen
@@ -369,15 +369,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [saveStatus, setSaveStatus] = useState("idle");   // idle | saved (Inline-Erfolg des sichtbaren Buttons)
 
   // ── Results ──
-  // Sitzungs-Restore setzt Tarife, shipmentId, Zollentscheidung und Auswahl
+  // Sitzungs-Restore setzt Tarife, ceShipmentId, Zollentscheidung und Auswahl
   // ATOMAR beim Mount — genau die Gruppe, die resetResults() zusammen verwirft.
   // Es wird KEIN calculate-price ausgelöst: die Daten kommen aus dem Vorgang.
   const [tariffs, setTariffs]       = useState(flowInit ? flowInit.tariffs : []);
-  const [shipmentId, setShipmentId] = useState(flowInit ? flowInit.shipmentId : null);
-  // ConfidaraExpress-Sendungshandle (shipments.id) DESSELBEN Entwurfs. Streng
-  // getrennt von `shipmentId` (JUMiNGO-Referenz, Eingabe für /book): nur dieser
-  // Wert darf an „Als Entwurf speichern" gehen, weil der Save-Endpunkt
-  // ausschließlich shipments.id auflöst.
+  // ConfidaraExpress-Sendungshandle (shipments.id) des Entwurfs — die EINZIGE
+  // Sendungskennung des Vorgangs. Buchung, Neubepreisung, Warenkorbvorschau,
+  // Abholzeitfenster, Handelsrechnung und „Als Entwurf speichern" adressieren
+  // über ihn; eine Providerreferenz kennt der Client nicht (TG22 Paket A).
   const [ceShipmentId, setCeShipmentId] = useState(flowInit ? flowInit.ceShipmentId : null);
   // Optionaler Lagerbezug (Modul „Lager & Aufträge"): AUSSCHLIESSLICH IDs und
   // Mengen — keine Bestandswerte, keine Artikelstammdaten, keine Preise. Er
@@ -508,12 +507,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   useEffect(() => {
     setFlowScope("shipment", {
       form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
-      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, ceShipmentId, customs,
+      sortMode, vatMode, tariffs, publicCarriers, selected, ceShipmentId, customs,
       inventoryContext,
       calculatedAt: calculatedAtRef.current,
     });
   }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
-      sortMode, vatMode, tariffs, publicCarriers, selected, shipmentId, ceShipmentId, customs,
+      sortMode, vatMode, tariffs, publicCarriers, selected, ceShipmentId, customs,
       inventoryContext, setFlowScope]);
 
   /* ── Scrollposition wiederherstellen ─────────────────────────────────────
@@ -572,8 +571,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setErrors(p => { if (!p[k]) return p; const n = { ...p }; delete n[k]; return n; });
     // Stale-State-Schutz: Ändert sich ein buchungsrelevantes Feld (Absender-,
     // Empfänger-, Paket- oder Routendaten), werden alte Tarife UND die
-    // shipmentId verworfen. So kann niemals ein veralteter Tarif / eine alte
-    // shipmentId mit nachträglich geänderten Daten an /book gehen — der Nutzer
+    // Sendungskennung verworfen. So kann niemals ein veralteter Tarif / eine alte
+    // Sendungskennung mit nachträglich geänderten Daten an /book gehen — der Nutzer
     // muss zwingend erneut „Preise berechnen“ ausführen.
     if (!FILTER_ONLY_FIELDS.has(k)) invalidateResults();
   };
@@ -604,8 +603,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setHasResults(false);
     setTariffs([]);
     setSelected(null);
-    setShipmentId(null); // alte shipmentId mit verwerfen → nie mit neuen Daten buchbar
-    setCeShipmentId(null); // gehört zum selben Entwurf — dieselbe verworfene Gruppe
+    setCeShipmentId(null); // alte Sendungskennung mit verwerfen → nie mit neuen Daten buchbar
     setCustoms(null);    // alte Zollentscheidung mit verwerfen
     setError("");
     calculatedAtRef.current = null;
@@ -616,7 +614,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Vermeidet unnötige Re-Renders bei jedem Tastendruck im noch leeren
   // Formular (vor der ersten Preisberechnung gibt es nichts zu invalidieren).
   const invalidateResults = () => {
-    if (hasResults || shipmentId || tariffs.length > 0 || selected) resetResults();
+    if (hasResults || ceShipmentId || tariffs.length > 0 || selected) resetResults();
   };
 
   // ── Adressbuchauswahl IM Formular (Absender- und Empfängerkopf) ────────────
@@ -636,7 +634,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   //    Ausgangszustand der Seite, diese Auswahl ist eine NUTZERÄNDERUNG. Wer
   //    danach wegnavigiert, muss den Verlassen-Hinweis bekommen und den Entwurf
   //    speichern können.
-  // 3. Alte Angebote, shipmentId/ceShipmentId, Zollentscheidung und Auswahl
+  // 3. Alte Angebote, ceShipmentId, Zollentscheidung und Auswahl
   //    fallen über invalidateResults() weg — eine geänderte Route darf niemals
   //    mit einem Tarif von vorher gebucht werden.
   const uebernimmAdressbuchAdresse = (address, prefix) => {
@@ -732,7 +730,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // automatische Feldleerung). Adress-/Firmen-/Kontaktfelder bleiben vollständig
   // erhalten — nur der Country-State wird aktualisiert. Wie bei jedem anderen
   // buchungsrelevanten Feld verwirft upd() über invalidateResults() lediglich
-  // vorhandene Preis-/Tarif-/shipmentId-Ergebnisse (Buchungssicherheit); es
+  // vorhandene Preis-/Tarif-/Sendungskennungs-Ergebnisse (Buchungssicherheit); es
   // werden KEINE Formularfelder verändert. Gebunden direkt am <select> onChange.
 
   const handleTogglePublicCarrier = (id) => {
@@ -742,7 +740,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
   // Setzt ALLE reinen Ergebnisfilter zurück. Beide Schlüssel stehen in
   // FILTER_ONLY_FIELDS — `upd` ruft für sie bewusst KEIN invalidateResults(),
-  // die bereits berechneten Tarife und die shipmentId bleiben also erhalten
+  // die bereits berechneten Tarife und die Sendungskennung bleiben also erhalten
   // und es entsteht KEIN neuer /calculate-price-Request. Wer hier einen
   // weiteren Filter ergänzt, trägt ihn zusätzlich in FILTER_ONLY_FIELDS und
   // in activeFilterCount (OffersList) ein.
@@ -1262,9 +1260,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         // Angebote zeigen. Maßgeblich ist das serverseitige Signal
         // (shipment_persistence_failed); ergänzend muss die LOKALE Sendung
         // (ceShipmentId = shipments.id) existieren — an ihr hängen alle Angebote,
-        // unabhängig vom Anbieter. Die JUMiNGO-Referenz (`shipmentId`) ist KEINE
-        // Sendungsgrundlage: sie fehlt, wenn nur ein anderer Anbieter angeboten hat,
-        // und ein solches Angebot ist trotzdem vollständig buchbar.
+        // unabhängig vom Anbieter. Eine Providerreferenz kennt der Client nicht.
         // Source-Metadaten bleiben bei blockiertem, NICHT verbrauchtem Entwurf
         // erhalten, damit ein bewusster erneuter Klick den Übergang neu versucht
         // (keine automatische Wiederholung).
@@ -1289,7 +1285,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
       setTariffs(d.tariffs || []);
-      setShipmentId(d.shipmentId);
       setCeShipmentId(d.ceShipmentId ?? null);
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({
@@ -1358,7 +1353,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   };
 
   // useCallback mit vollständigen Dependencies: Der Buchungs-Payload (tariff,
-  // shipmentId, form, customs) bleibt exakt gleich; die Referenz ist nur stabil,
+  // ceShipmentId, form, customs) bleibt exakt gleich; die Referenz ist nur stabil,
   // solange sich diese Werte nicht ändern → memoisierte OfferCards rendern durch
   // onBook nicht unnötig neu (bei reinen Angebots-Interaktionen ändern sie sich
   // nicht). setSelected ist als State-Setter stabil.
@@ -1387,11 +1382,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // Eintrag — genau der Kreislauf, der vermieden werden soll.
       const ausRueckkehr = typeof window !== "undefined"
         && window.history.state?.usr?.returnTarget === "offers";
-      navigate("/booking", { state: { tariff, shipmentId, ceShipmentId, form, customs }, replace: ausRueckkehr });
+      navigate("/booking", { state: { tariff, ceShipmentId, form, customs }, replace: ausRueckkehr });
     } else {
       navigate("/login");
     }
-  }, [authed, shipmentId, ceShipmentId, form, customs, navigate, setFlowScope, setFlowStep]);
+  }, [authed, ceShipmentId, form, customs, navigate, setFlowScope, setFlowStep]);
 
   // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es) →
   // sonst bräche ein neues Objekt bei jedem Render den React.memo-Vergleich der

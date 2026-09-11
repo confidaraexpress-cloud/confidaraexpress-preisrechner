@@ -50,7 +50,7 @@ async function setupRoutes(page, aufnahme = {}) {
     if (p.includes("/api/jumingo/calculate-price")) {
       aufnahme.body = JSON.parse(route.request().postData() || "{}");
       return json({
-        shipmentId: "s_" + "a".repeat(32), ceShipmentId: 1,
+        ceShipmentId: 1,
         tariffs: [], availableShippingModes: [], publicCarriers: [],
         customsRequired: true, fromCountryCode: "DE", toCountryCode: "US", exportDeclaration: null,
       });

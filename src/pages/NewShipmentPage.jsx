@@ -90,7 +90,6 @@ import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   isValidShipmentResumeDraft,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
-  hasUsableShipmentReference,
 } from "../utils/formDraftsView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
@@ -1261,12 +1260,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         if (t.consumed) setResumeSource(null);
         // Sicherheits-Guard: ohne verlässliche Sendungsgrundlage KEINE buchbaren
         // Angebote zeigen. Maßgeblich ist das serverseitige Signal
-        // (shipment_persistence_failed); ergänzend muss ein Sendungsbezug
-        // vorliegen, mit dem /book, Label und Abholfenster arbeiten können.
+        // (shipment_persistence_failed); ergänzend muss die LOKALE Sendung
+        // (ceShipmentId = shipments.id) existieren — an ihr hängen alle Angebote,
+        // unabhängig vom Anbieter. Die JUMiNGO-Referenz (`shipmentId`) ist KEINE
+        // Sendungsgrundlage: sie fehlt, wenn nur ein anderer Anbieter angeboten hat,
+        // und ein solches Angebot ist trotzdem vollständig buchbar.
         // Source-Metadaten bleiben bei blockiertem, NICHT verbrauchtem Entwurf
         // erhalten, damit ein bewusster erneuter Klick den Übergang neu versucht
         // (keine automatische Wiederholung).
-        if (t.blocking || !hasUsableShipmentReference(d.shipmentId)) {
+        if (t.blocking || !hasSavableShipmentId(d.ceShipmentId)) {
           setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);
           setLoading(false);
           return;

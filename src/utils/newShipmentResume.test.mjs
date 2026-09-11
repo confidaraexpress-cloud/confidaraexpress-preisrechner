@@ -317,9 +317,16 @@ test("Verdrahtung: keine künstlichen Workarounds im Klickpfad", () => {
 
 // ── Regression Drei-Klick-Ablauf: Sendungsgrundlage-Guard ───────────────────
 
-test("Verdrahtung: der Guard prueft den Sendungsbezug, nicht die interne ID", () => {
-  assert.ok(PAGE_CODE.includes("!hasUsableShipmentReference(d.shipmentId)"),
-    "der Guard muss den Sendungsbezug der Antwort pruefen");
+// Provider-Neutralitaet: Sendungsgrundlage ist die LOKALE Sendung (ceShipmentId =
+// shipments.id), nicht die JUMiNGO-Referenz. Frueher pruefte der Guard
+// `hasUsableShipmentReference(d.shipmentId)` — eine Antwort, in der nur ein anderer
+// Anbieter angeboten hat (`shipmentId: null`, `ceShipmentId` gesetzt), wurde damit beim
+// Fortsetzen eines Entwurfs faelschlich als Persistenzfehler blockiert.
+test("Verdrahtung: der Guard prueft die lokale Sendung, nicht die JUMiNGO-Referenz", () => {
+  assert.ok(PAGE_CODE.includes("!hasSavableShipmentId(d.ceShipmentId)"),
+    "der Guard muss die lokale Sendung (ceShipmentId) der Antwort pruefen");
+  assert.ok(!PAGE_CODE.includes("hasUsableShipmentReference(d.shipmentId)"),
+    "die JUMiNGO-Referenz darf keine Voraussetzung fuer Angebote mehr sein");
   assert.ok(!PAGE_CODE.includes("!hasSavableShipmentId(d.shipmentId)"),
     "hasSavableShipmentId gilt der INTERNEN numerischen ID und lehnt JUMiNGO-IDs ab");
   // Der Validator der internen Draft-ID bleibt dort, wo er hingehoert (PATCH-Pfad).
@@ -328,7 +335,7 @@ test("Verdrahtung: der Guard prueft den Sendungsbezug, nicht die interne ID", ()
 });
 
 test("Verdrahtung: der Guard bleibt scharf (serverseitiges Persistenz-Signal)", () => {
-  assert.ok(PAGE_CODE.includes("if (t.blocking || !hasUsableShipmentReference(d.shipmentId)) {"),
+  assert.ok(PAGE_CODE.includes("if (t.blocking || !hasSavableShipmentId(d.ceShipmentId)) {"),
     "shipment_persistence_failed muss weiterhin blockieren");
   assert.ok(PAGE_CODE.includes("setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);"),
     "die Meldung darf nicht pauschal unterdrueckt werden");

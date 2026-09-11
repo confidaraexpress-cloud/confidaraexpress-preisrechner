@@ -92,3 +92,19 @@ test("6 — die Buchung verlangt keine JUMiNGO-Referenz: das Angebot wird über 
   assert.ok(!/if\s*\(\s*!\s*shipmentId\s*\)\s*(return|\{)/.test(BOOKING),
     "die Buchungsseite bricht ohne JUMiNGO-Referenz ab");
 });
+
+test("7 — nach der Buchung bleibt die Bestätigung stehen, auch wenn der Vorgang geleert wird", () => {
+  // Gefunden im Browser-E2E: ohne location.state war der laufende Vorgang die EINZIGE Quelle.
+  // `clearFlow()` direkt nach dem Erfolg leerte sie, `tariff` wurde undefined — und eine bereits
+  // gebuchte Sendung zeigte „Kein Angebot ausgewählt" statt des Erfolgsbildschirms.
+  assert.ok(BOOKING.includes("const bookingData = laufendeBuchungsdaten ?? gebuchteBuchungsdaten;"),
+    "die Buchungsdaten hängen wieder allein am laufenden Vorgang");
+  const snapshot = BOOKING.indexOf("setGebuchteBuchungsdaten(bookingData);");
+  const erfolg = BOOKING.indexOf("setBooking(d); setStep(3);");
+  const leeren = BOOKING.indexOf("clearFlow();", erfolg);
+  assert.ok(snapshot > -1 && erfolg > -1 && leeren > -1, "Erfolgspfad nicht gefunden");
+  assert.ok(snapshot < erfolg && erfolg < leeren,
+    "der Stand zum Buchungszeitpunkt wird nicht vor dem Leeren des Vorgangs festgehalten");
+  // Genau eine Stelle setzt ihn — nur der Erfolgspfad, kein Fehlerzweig.
+  assert.equal(BOOKING.split("setGebuchteBuchungsdaten(").length - 1, 1);
+});

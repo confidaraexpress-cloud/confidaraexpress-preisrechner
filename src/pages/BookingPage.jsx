@@ -113,7 +113,7 @@ export default function BookingPage() {
   //   3. sicherer leerer Zustand — „Kein Angebot ausgewählt", unverändert.
   const { shipment: flowShipment, booking: flowBooking, setBooking: setFlowBooking,
           setStep: setFlowStep, clearFlow } = useShippingFlow();
-  const bookingData = useMemo(() => {
+  const laufendeBuchungsdaten = useMemo(() => {
     if (navState?.tariff) return navState;
     if (flowShipment?.selected && (flowShipment.shipmentId != null || flowShipment.ceShipmentId != null)) {
       return {
@@ -128,6 +128,13 @@ export default function BookingPage() {
     }
     return navState || null;
   }, [navState, flowShipment]);
+  // Der Erfolgsbildschirm lebt aus dem Stand zum Buchungszeitpunkt. `clearFlow()` leert den
+  // laufenden Vorgang unmittelbar nach der Buchung; wurde diese Seite ohne location.state
+  // erreicht (Quelle 2), wäre ihre einzige Quelle danach leer — und eine bereits gebuchte
+  // Sendung zeigte „Kein Angebot ausgewählt" statt der Bestätigung. Vor einer Buchung ist der
+  // Stand null und ändert nichts.
+  const [gebuchteBuchungsdaten, setGebuchteBuchungsdaten] = useState(null);
+  const bookingData = laufendeBuchungsdaten ?? gebuchteBuchungsdaten;
 
   // Schritt 1 oder 2 aus dem laufenden Vorgang; Schritt 3 (Erfolgsbildschirm)
   // wird NIE wiederhergestellt — er gehört zu einer abgeschlossenen Buchung.
@@ -1310,6 +1317,7 @@ export default function BookingPage() {
         setLoading(false);
         return;
       }
+      setGebuchteBuchungsdaten(bookingData);
       setBooking(d); setStep(3);
       // Der Vorgang ist abgeschlossen: temporären Zustand (Context UND
       // sessionStorage) löschen. Der Erfolgsbildschirm lebt ab hier

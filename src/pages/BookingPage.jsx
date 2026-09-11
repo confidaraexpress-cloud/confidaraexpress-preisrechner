@@ -1218,6 +1218,15 @@ export default function BookingPage() {
           setLoading(false);
           return;
         }
+        // Buchungssicherheit: ein VERBRAUCHTES Angebot heißt, beim Anbieter liegt ein Auftrag oder
+        // kann einer liegen (gebucht, unklarer Ausgang, klärungspflichtig). Kein erneuter Versuch,
+        // keine Neuberechnung — die Konfliktfläche ersetzt den Bestellknopf durch „Zu meinen
+        // Sendungen".
+        if (d?.code === "OFFER_ALREADY_USED") {
+          setConflict(mapBookRestError(r.status, d).message);
+          setLoading(false);
+          return;
+        }
         if (fordertNeuberechnung(d)) {
           setRecalcNotice(mapBookRestError(r.status, d).message);
           setLoading(false);

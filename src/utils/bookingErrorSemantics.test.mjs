@@ -28,7 +28,9 @@ const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 // Die Codes, bei denen beim Anbieter etwas liegen KANN. Für sie gilt ausnahmslos:
 // keine Wiederholung, und der Text muss das ausdrücklich sagen.
-const NIEMALS_WIEDERHOLEN = ["BOOKING_OUTCOME_UNKNOWN", "BOOKING_PENDING", "BOOKING_IN_PROGRESS"];
+// OFFER_ALREADY_USED gehört dazu: ein Angebot wird nur verbraucht, wenn beim Anbieter ein Auftrag
+// existiert oder existieren KANN.
+const NIEMALS_WIEDERHOLEN = ["BOOKING_OUTCOME_UNKNOWN", "BOOKING_PENDING", "BOOKING_IN_PROGRESS", "OFFER_ALREADY_USED"];
 
 test("1 — DER KERNBEFUND: ein unklarer JUMiNGO-Ausgang fordert NICHT zum Wiederholen auf", () => {
   const f = mapBookRestError(502, {

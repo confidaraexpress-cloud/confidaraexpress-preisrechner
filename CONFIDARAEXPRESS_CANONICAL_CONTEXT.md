@@ -2,10 +2,10 @@
 
 - **Schema-Version:** 2.1
 - **Status:** CANONICAL PROJECT SOURCE
-- **Last verified:** 2026-09-09
-- **Verified against Frontend `origin/main`:** `d65217bb94374d0b925fb1f04d132a6c4df10a59`
-- **Verified against Backend `origin/main`:** `8e9e79cfc00b429c7ba4f0d348a341de94876ffd`
-- **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09
+- **Last verified:** 2026-09-11 (Transglobal-Abschnitte; übrige Abschnitte Stand 2026-09-09)
+- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge)
+- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge)
+- **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09; Transglobal-Stand im Paket TG-22 am 2026-09-11 gegen den Code geprüft
 
 ---
 
@@ -78,17 +78,20 @@ Die folgenden Punkte wurden nach dem Repository-Audit ausdrücklich menschlich b
 
 **Status: PRODUCT_DECISION**
 
-Transglobal-Angebote dürfen Kunden aktuell sichtbar sein, obwohl Transglobal weiterhin quote_only ist und nicht produktiv gebucht werden kann.
+Transglobal-Angebote dürfen Kunden sichtbar sein. Außer dem Referenzservice (siehe unten) sind sie quote_only und nicht buchbar.
 
 Die UI muss diesen Zustand korrekt kommunizieren und darf Nicht-Buchbarkeit nicht verschleiern.
 
+Ein Transglobal-Angebot erscheint nur mit belegter Kontowährung EUR (`TRANSGLOBAL_ACCOUNT_CURRENCY`); ein Betrag unbekannter Währung wird nie mit Euro-Zeichen angezeigt.
+
 ### Transglobal-Buchung
 
-**Status: PRODUCT_DECISION**
+**Status: PRODUCT_DECISION** (bestätigt 2026-09-11)
 
-Transglobal-Buchungen bleiben vorerst nicht produktiv aktiviert.
-
-Eine spätere Aktivierung erfordert bewusste Freigabe nach vollständiger technischer und operativer Prüfung.
+- Referenzservice ist **Service 22 (UPS Standard Single)**. Öffentliche Buchbarkeit ist technisch vorbereitet, **ausschließlich DE→DE**, ein Paket, Abholung an einem Tag nach heute.
+- Alle anderen Transglobal-Services bleiben nicht öffentlich buchbar.
+- Die Transglobal-Konten (Staging und späteres Production-Konto) sind EUR-Konten; ConfidaraExpress unterstützt für Transglobal-Public-Booking zunächst ausschließlich EUR-Konten. Es gibt keine Währungsumrechnung.
+- Production-Aktivierung erfolgt manuell und erst nach Operations-Minimum, Legal/Datenschutz und finaler Activation-Checklist.
 
 ### Customs / Zoll
 
@@ -484,13 +487,19 @@ Dieser Runtime-Zustand ist aus dem Repository allein nicht beweisbar.
 
 **Status: IMPLEMENTED_CONDITIONALLY / DEFAULT DISABLED**
 
-Ein Transglobal-Buchungspfad ist technisch weitgehend bzw. vollständig vorbereitet.
+Der Transglobal-Buchungspfad ist implementiert und für Service 22 real gegen die deutsche Staging-Umgebung belegt (zwei Buchungen, mit und ohne Zusatzabsicherung, Labels A4 und Thermal, TrackOrder).
 
-Der aktuelle Produktvertrag hält Transglobal-Angebote jedoch quote_only.
+Öffentliche Buchbarkeit ist eine Konjunktion; alle Bedingungen müssen zutreffen:
 
-Zusätzlich existiert ein Buchungs-Gate.
+- Service `publicBookable` **und** Routenbereich in `publicBookableScopes` (heute nur Service 22, nur DE→DE),
+- `TRANSGLOBAL_PUBLIC_BOOKING_ENABLED` (Produktschalter, default aus),
+- belegte Kontowährung `TRANSGLOBAL_ACCOUNT_CURRENCY=EUR` (default nicht gesetzt ⇒ kein TG-Angebot),
+- Full Quote mit Buchungsreferenz, kuratierte Übergabeart und Preisklasse, beantwortete Adressarten,
+- bei Abholung ein Abholtag nach heute (Same-Day ist nicht öffentlich buchbar).
 
-Nicht daraus ableiten, dass Transglobal heute produktiv buchbar ist.
+Die Bestellung braucht zusätzlich `TRANSGLOBAL_BOOKING_ENABLED` (technischer Kill-Switch, default aus). Angebot und Buchung prüfen dieselbe Quelle.
+
+Nicht daraus ableiten, dass Transglobal heute produktiv buchbar ist: alle Schalter sind im Repository aus, der Runtime-Zustand ist UNKNOWN_RUNTIME_STATE.
 
 ### 6.5 Cross-Provider Matching
 
@@ -791,7 +800,7 @@ Production-Zustände nicht aus Repository-Defaults erfinden.
 | --- | --- | --- |
 | JUMiNGO Quote/Buchung | ACTIVE_CURRENT | produktiver Buchungspfad |
 | Transglobal Quote | ACTIVE_CURRENT / UNKNOWN_RUNTIME_STATE | benötigt Runtime-Konfiguration |
-| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus / quote-only Produktvertrag |
+| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus; öffentlich buchbar vorbereitet nur Service 22 DE→DE hinter Produktschalter, Buchungsschalter und Kontowährung |
 | Customs | IMPLEMENTED_DISABLED | opt-in aus + Launch-Scope blockiert Drittländer |
 | Legal Booking Gate | IMPLEMENTED_CONDITIONALLY | default aus |
 | Consolidated Invoicing | IMPLEMENTED_CONDITIONALLY | default aus |
@@ -994,6 +1003,7 @@ Folgende Punkte dürfen ohne aktuelle Runtime-/Produktbestätigung nicht als Fak
 - Welche Feature Flags aktuell in Production gesetzt sind.
 - Ob Transglobal-Credentials in Production vorhanden sind.
 - Ob Transglobal-Angebote technisch tatsächlich ausgespielt werden können; produktseitig ist ihre Sichtbarkeit bestätigt.
+- Aktueller Zustand von `TRANSGLOBAL_ACCOUNT_CURRENCY`, `TRANSGLOBAL_PUBLIC_BOOKING_ENABLED` und `TRANSGLOBAL_BOOKING_ENABLED` je Umgebung.
 - Aktueller `VAT_RATE` in Production.
 - Aktueller globaler Fallback `CONFIDARA_MARGIN`.
 - Aktueller Zustand von `LEGAL_BOOKING_GATE_ENABLED`.
@@ -1084,6 +1094,14 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.1 — 2026-09-11 (TG-22 Reference Enablement)
+
+- Produktentscheidung aufgenommen: Service 22 (UPS Standard Single) ist der Transglobal-Referenzservice; öffentliche Buchbarkeit technisch vorbereitet ausschließlich DE→DE, alle übrigen Transglobal-Services bleiben quote_only.
+- Währung als Kontoeigenschaft festgehalten: Transglobal-Antworten tragen kein Währungsfeld; belegte EUR-Konten, keine Umrechnung; ohne Kontozusicherung kein Transglobal-Angebot.
+- 6.4 und Feature-State-Tabelle an die Gate-Konjunktion angepasst; Runtime-Liste um die drei Transglobal-Zusicherungen ergänzt.
+- Production-Aktivierung bleibt manuell (Operations-Minimum, Legal/Datenschutz, Activation-Checklist).
+- Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-09 (Integration / Reverification)
 

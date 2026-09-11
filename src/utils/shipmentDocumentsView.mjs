@@ -126,12 +126,37 @@ const TYPE_FILENAMES = {
   ORDER_CONFIRMATION: "auftragsbestaetigung.pdf",
 };
 export const DEFAULT_DOCUMENT_FILENAME = "dokument.pdf";
+
+// ─── Formatvarianten eines Versandlabels ─────────────────────────────────────
+// Ein Label kann in zwei Formaten vorliegen — für einen A4-Drucker und für einen
+// Thermodrucker. Das sind zwei DARSTELLUNGEN desselben Etiketts, nicht zwei Sendungsstücke.
+// Der Server nennt das Format als geschlossenen Wert; alles andere gilt als „nicht
+// angegeben", und dann bleibt es beim bisherigen Rückfallnamen.
+export const LABEL_SIZES = Object.freeze(["A4", "THERMAL"]);
+const LABEL_SIZE_FILENAME_PART = Object.freeze(Object.assign(Object.create(null), {
+  A4: "a4",
+  THERMAL: "thermodruck",
+}));
+
+/** Das Format eines Versandbelegs — `"A4"`, `"THERMAL"` oder `null`. */
+export function documentLabelSize(doc) {
+  const s = doc && typeof doc.labelSize === "string" ? doc.labelSize.trim().toUpperCase() : "";
+  return LABEL_SIZES.includes(s) ? s : null;
+}
+
 // TG-F5: bei Belegen mit Ordnungszahl trägt der Rückfallname sie + 1 („versandlabel-2.pdf"),
 // damit drei Etiketten nicht unter demselben Namen landen. Es ist die CE-Reihenfolge des
-// Servers, keine Paketnummer. Ohne Ordnungszahl bleibt der Name, wie er war.
-export const documentFallbackFilename = (type, ordinal) => {
+// Servers, keine Stücknummer. Ohne Ordnungszahl bleibt der Name, wie er war.
+//
+// Nennt der Server das FORMAT eines Versandlabels, trägt der Rückfallname das Format statt
+// der Ordnungszahl („versandlabel-a4.pdf", „versandlabel-thermodruck.pdf"): bei zwei
+// Formatvarianten desselben Etiketts wäre „versandlabel-2.pdf" eine falsche Zählung. Der
+// eigentliche Dateiname kommt ohnehin vom Server (Content-Disposition) — dies ist nur das Netz.
+export const documentFallbackFilename = (type, ordinal, labelSize) => {
   const name = TYPE_FILENAMES[type];
   if (!name) return DEFAULT_DOCUMENT_FILENAME;
+  const format = type === "LABEL" && typeof labelSize === "string" ? LABEL_SIZE_FILENAME_PART[labelSize] : undefined;
+  if (format) return name.replace(/\.pdf$/, `-${format}.pdf`);
   if (typeof ordinal !== "number" || !Number.isInteger(ordinal) || ordinal < 0) return name;
   return name.replace(/\.pdf$/, `-${ordinal + 1}.pdf`);
 };

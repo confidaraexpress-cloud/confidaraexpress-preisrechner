@@ -57,7 +57,7 @@ import {
 } from "../utils/legalBookingView.mjs";
 import {
   VOUCHER_STATUS, readVoucherResponse, voucherPriceLines,
-  voucherInvalidationKey, shouldInvalidateVoucher, normalizeVoucherInput,
+  voucherInvalidationKey, shouldInvalidateVoucher, normalizeVoucherInput, voucherAvailableFor,
 } from "../utils/voucherView.mjs";
 import {
   buildBookingPriceView, priceViewBlocksBooking, insuranceCardPrice,
@@ -614,6 +614,9 @@ export default function BookingPage() {
 
   const voucherApplied  = voucher.status === VOUCHER_STATUS.APPLIED;
   const voucherChecking = voucher.status === VOUCHER_STATUS.CHECKING;
+  // Ohne Tarifkennung kann kein Code geprüft werden — dann gibt es kein Gutscheinfeld
+  // (utils/voucherView.mjs). Entschieden an der Form des Angebots, nicht an seiner Herkunft.
+  const voucherVerfuegbar = voucherAvailableFor(tariff);
 
   // ── Zentrales Price-View-Model (Paket B) ────────────────────────────────────
   // EINZIGE Preisquelle für Live-Leiste, Versicherungskarten, Preiszusammenfassung
@@ -1807,16 +1810,18 @@ export default function BookingPage() {
                   />
                   {/* Gutscheinfeld: unter der Preisaufstellung, VOR Bestätigungen und
                       Bestellknopf. Bewusst innerhalb derselben Übersichtskarte. */}
-                  <VoucherModule
-                    status={voucher.status}
-                    code={voucher.code}
-                    percent={voucher.percent}
-                    inputCode={voucherInput}
-                    onInputChange={setVoucherInput}
-                    onApply={applyVoucher}
-                    onRemove={removeVoucher}
-                    disabled={loading}
-                  />
+                  {voucherVerfuegbar && (
+                    <VoucherModule
+                      status={voucher.status}
+                      code={voucher.code}
+                      percent={voucher.percent}
+                      inputCode={voucherInput}
+                      onInputChange={setVoucherInput}
+                      onApply={applyVoucher}
+                      onRemove={removeVoucher}
+                      disabled={loading}
+                    />
+                  )}
                 </div>
                 {voucherApplied && (
                   <div className="booking-test-note" role="note">

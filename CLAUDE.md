@@ -166,7 +166,7 @@ Diese Regeln sind Frontend-spezifisch. Die **projektweiten** Provider-, Preis- u
 
 ### Sendungshandle
 
-Kundenseitige Sendungsoperationen (Label, Tracking, Stornoanfrage) adressieren über **`ceShipmentId`** (`shipments.id`), nicht über eine Providerreferenz. Vor der Buchung sind `shipmentId` (Providerreferenz) und `ceShipmentId` (interner Handle) **zwei verschiedene Werte** und dürfen nie getauscht werden.
+Kundenseitige Sendungsoperationen adressieren über **`ceShipmentId`** (`shipments.id`) — nach der Buchung (Label, Tracking, Stornoanfrage) **und** davor (Buchung, Neubepreisung, Warenkorbvorschau, Abholzeitfenster, Handelsrechnung, Entwurf speichern). Eine Providerreferenz kennt der Client nicht: sie steht in keiner Kundenantwort, wird nie gesendet und nie im Vorgang geführt. Das Backend nimmt die Altform nur noch als Eingabe älterer Bundles an.
 
 ### Dreiwertige Angaben
 
@@ -187,6 +187,8 @@ Auf der Buchungsseite gilt seitdem:
 ### Preisänderung
 
 Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** Beträge trägt. Fehlt einer, wird kein Betrag angezeigt und nur die Neuberechnung angeboten — ein Einzelbetrag wird nicht zu „neuer Preis" umgedeutet. Entschieden wird an der **Form der Antwort**, nie an einem Requestfeld.
+
+Mit Zusatzabsicherung übernimmt „Neuen Preis übernehmen" den Preis **ausschließlich** über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` — nie über eine Buchung. Erst nach der Serverbindung (neue `priceRevision`) bucht der Kunde bewusst erneut; `/book` sendet diese Revision mit. Eine erneute Abweichung öffnet wieder den Dialog, ein Fehler lässt ihn mit neutralem Hinweis offen.
 
 ### Fehlerdarstellung
 

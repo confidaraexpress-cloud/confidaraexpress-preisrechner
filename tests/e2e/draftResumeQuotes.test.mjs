@@ -75,11 +75,8 @@ const TARIFFS = [
     trackingAvailable: true, printerRequired: false },
 ];
 
-// JUMiNGO liefert die shipment_id als STRING (docs/jumingo/openapi/jumingo-openapi.yaml,
-// CreateShipmentResult: type string, Beispiel "s_fb1bc92aba1c4d70a3eaa44d687ae179").
-// Eine numerische Fixture wuerde den realen Vertrag verfehlen — genau daran ist der
-// Drei-Klick-Fehler zuvor unentdeckt geblieben.
-const jumingoShipmentId = (n) => `s_fb1bc92aba1c4d70a3eaa44d687ae${String(n).padStart(3, "0")}`;
+// TG22 Paket A: die calculate-price-Antwort traegt keine JUMiNGO-Referenz mehr — die EINZIGE
+// Sendungskennung des Clients ist der CE-Handle (`ceShipmentId`, shipments.id).
 
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
@@ -164,9 +161,9 @@ async function openApp({ latency = 0, carrierAware = true, formData = DRAFT_FORM
       let transition;
       if (src != null) { formDrafts.delete(src); transition = { sourceFormDraftId: src, consumed: true }; }
       return json({
-        // Beide IDs wie im Backend: die JUMiNGO-Referenz UND die lokale Sendung. Der
-        // Fortsetzen-Guard prueft seit der Provider-Neutralitaet die lokale Sendung.
-        shipmentId: jumingoShipmentId(++shipCounter), ceShipmentId: 4800 + shipCounter,
+        // Die Kennung wie im Backend: ausschliesslich die lokale Sendung. Der
+        // Fortsetzen-Guard prueft seit der Provider-Neutralitaet genau sie.
+        ceShipmentId: 4800 + (++shipCounter),
         tariffs, availableShippingModes: ["express"], publicCarriers,
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
         ...(transition ? { formDraftTransition: transition } : {}),
@@ -406,7 +403,7 @@ test("Regression Drei-Klick-Ablauf: erster Klick liefert Angebote, keine Sendung
 
 test("Provider-Neutralitaet: Fortsetzen mit Antwort OHNE JUMiNGO-Referenz zeigt Angebote", async () => {
   // Hat nur ein anderer Anbieter angeboten (JUMiNGO ausgefallen oder nicht konfiguriert),
-  // traegt die Antwort `shipmentId: null` — die lokale Sendung (`ceShipmentId`) existiert
+  // gibt es keinen JUMiNGO-Entwurf — die lokale Sendung (`ceShipmentId`) existiert
   // trotzdem, und an ihr haengen die Angebote. Frueher blockierte der Fortsetzen-Guard
   // genau diese Antwort mit „keine verlaessliche Sendungsgrundlage".
   const { page, calls } = await openApp();
@@ -414,7 +411,7 @@ test("Provider-Neutralitaet: Fortsetzen mit Antwort OHNE JUMiNGO-Referenz zeigt 
     const body = JSON.parse(route.request().postData() || "{}");
     calls.push(body);
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      shipmentId: null, ceShipmentId: 4810,
+      ceShipmentId: 4810,
       tariffs: [{ offerId: "0123456789abcdef0123456789abcdef", publicCarrierId: "dhl",
                   publicServiceName: "Expressversand", serviceType: "pickup", netPrice: 18.65,
                   vatAmount: 3.54, finalPrice: 22.19, currency: "EUR", transitDaysMin: 1,
@@ -436,12 +433,12 @@ test("Provider-Neutralitaet: Fortsetzen mit Antwort OHNE JUMiNGO-Referenz zeigt 
 });
 
 test("Provider-Neutralitaet: ohne lokale Sendung bleibt der Fortsetzen-Guard scharf", async () => {
-  // Gegenprobe: fehlt die LOKALE Sendung, gibt es keine buchbare Grundlage — auch wenn
-  // eine JUMiNGO-Referenz vorhanden ist.
+  // Gegenprobe: fehlt die LOKALE Sendung, gibt es keine buchbare Grundlage — gleich, was
+  // ein Anbieter serverseitig angelegt hat.
   const { page } = await openApp();
   await page.route("**/api/jumingo/calculate-price", async (route) => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify({
-      shipmentId: jumingoShipmentId(11), ceShipmentId: null, tariffs: TARIFFS,
+      ceShipmentId: null, tariffs: TARIFFS,
       availableShippingModes: ["express"],
       publicCarriers: TARIFFS.map((t) => ({ id: t.publicCarrierId, name: t.publicCarrierName })),
       formDraftTransition: { sourceFormDraftId: 77, consumed: true },
@@ -463,7 +460,7 @@ test("Sendungsgrundlage: Angebote nur bei belegter Persistenz (Guard bleibt scha
     const body = JSON.parse(route.request().postData() || "{}");
     calls.push(body);
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      shipmentId: jumingoShipmentId(9), ceShipmentId: 4809, tariffs: TARIFFS, availableShippingModes: ["express"],
+      ceShipmentId: 4809, tariffs: TARIFFS, availableShippingModes: ["express"],
       publicCarriers: TARIFFS.map((t) => ({ id: t.publicCarrierId, name: t.publicCarrierName })),
       formDraftTransition: { sourceFormDraftId: 77, consumed: false, reason: "shipment_persistence_failed" },
     }) });

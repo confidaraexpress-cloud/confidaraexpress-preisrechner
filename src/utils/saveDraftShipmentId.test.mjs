@@ -1,12 +1,13 @@
 // Regression: „Als Entwurf speichern" bekam die Providerreferenz statt der CE-ID.
 //
 // ─── Der Fehler ──────────────────────────────────────────────────────────────
-// `/calculate-price` liefert ZWEI IDs mit STRIKT verschiedener Bedeutung:
+// `/calculate-price` lieferte damals ZWEI IDs mit STRIKT verschiedener Bedeutung:
 //
-//   shipmentId    JUMiNGO-/Providerreferenz ("s_"+32 Hex) — Eingabe für /book,
-//                 Abholzeitfenster und Handelsrechnung.
-//   ceShipmentId  ConfidaraExpress-Sendungshandle (shipments.id) desselben
-//                 Entwurfs — providerneutral, für Entwurfsoperationen.
+//   shipmentId    JUMiNGO-/Providerreferenz ("s_"+32 Hex)
+//   ceShipmentId  ConfidaraExpress-Sendungshandle (shipments.id) desselben Entwurfs
+//
+// Seit TG22 Paket A liefert die Antwort nur noch `ceShipmentId`; die Providerreferenz
+// verlässt den Server nicht mehr. Die Regression bleibt als Reproduktion bestehen.
 //
 // Die Kette lief so:
 //   NewShipmentPage  setShipmentId(d.shipmentId)              → Providerreferenz
@@ -41,21 +42,21 @@ const saveDraftAction = read("../components/booking/SaveDraftAction.jsx");
 const JUMINGO_ID = "s_fb1bc92aba1c4d70a3eaa44d687ae179";
 const CE_ID = 4711;
 
-// Antwort von /calculate-price, wie das Backend sie liefert.
-const CALC_PRICE_ANTWORT = { shipmentId: JUMINGO_ID, ceShipmentId: CE_ID, tariffs: [] };
+// Antwort von /calculate-price, wie das Backend sie HEUTE liefert.
+const CALC_PRICE_ANTWORT = { ceShipmentId: CE_ID, tariffs: [] };
 
 /* ══════════ 1 — Der Fehler, exakt reproduziert ═══════════════════════════ */
 
 test("1 — REPRODUKTION: die Providerreferenz lässt die Aktion verschwinden", () => {
   // Genau der alte Zustand: bookingData.shipmentId = Providerreferenz.
-  const altesBookingData = { shipmentId: CALC_PRICE_ANTWORT.shipmentId };
+  const altesBookingData = { shipmentId: JUMINGO_ID };
   assert.equal(hasSavableShipmentId(altesBookingData.shipmentId), false,
     "der Guard müsste die JUMiNGO-Form ablehnen — sonst prüft dieser Test nichts");
   // → SaveDraftAction rendert `null`. Das war der produktive Zustand.
 });
 
 test("2 — KORREKTUR: der CE-Handle macht die Aktion sichtbar", () => {
-  const neuesBookingData = { shipmentId: CALC_PRICE_ANTWORT.shipmentId, ceShipmentId: CALC_PRICE_ANTWORT.ceShipmentId };
+  const neuesBookingData = { ceShipmentId: CALC_PRICE_ANTWORT.ceShipmentId };
   assert.equal(hasSavableShipmentId(neuesBookingData.ceShipmentId), true);
 });
 
@@ -113,9 +114,9 @@ test("6 — die beiden Validatoren bleiben getrennt und dürfen nicht getauscht 
 test("7 — NewShipmentPage übernimmt den Handle aus der Antwort und reicht ihn weiter", () => {
   assert.match(newShipmentPage, /setCeShipmentId\(d\.ceShipmentId \?\? null\);/,
     "der Handle wird nicht aus der calculate-price-Antwort übernommen");
-  assert.match(newShipmentPage, /state: \{ tariff, shipmentId, ceShipmentId, form, customs \}/,
+  assert.match(newShipmentPage, /state: \{ tariff, ceShipmentId, form, customs \}/,
     "der Handle erreicht die Buchungsseite nicht");
-  // Beide IDs gehören zum selben Entwurf und werden gemeinsam verworfen.
+  // Beim Verwerfen der Ergebnisse geht der Handle mit.
   assert.match(newShipmentPage, /setCeShipmentId\(null\);/,
     "beim Verwerfen der Ergebnisse bliebe ein veralteter Handle stehen");
 });
@@ -130,23 +131,22 @@ test("8 — der Handle wird NICHT aus der Providerreferenz abgeleitet", () => {
 /* ══════════ 5 — Der Vorgang trägt den Handle mit ═════════════════════════ */
 
 test("9 — der Handle wird im Vorgang mitgeführt (überlebt Reload/Rückkehr)", () => {
-  const s = normalizeScope({ shipmentId: JUMINGO_ID, ceShipmentId: CE_ID }, "shipment");
+  const s = normalizeScope({ ceShipmentId: CE_ID }, "shipment");
   assert.equal(s.ceShipmentId, CE_ID);
-  assert.equal(s.shipmentId, JUMINGO_ID, "die Providerreferenz bleibt für /book erhalten");
-  // Beide gehören zum selben Entwurf → gemeinsam verwerfen.
+  // TG22 Paket A: der Vorgang führt keine Providerreferenz mehr.
+  assert.ok(!("shipmentId" in s), "der Vorgang führt wieder eine Providerreferenz");
   assert.equal(dropOffers(s).ceShipmentId, null);
-  assert.equal(dropOffers(s).shipmentId, null);
 });
 
 test("10 — BookingPage liest den Handle auch aus dem Vorgang (nicht nur aus location.state)", () => {
-  assert.match(bookingPage, /ceShipmentId: flowShipment\.ceShipmentId \?\? null,/,
+  assert.match(bookingPage, /ceShipmentId: flowShipment\.ceShipmentId,/,
     "nach einem Reload verlöre die Buchungsseite den Handle");
 });
 
-test("11 — ein Vorgang aus der Zeit davor bleibt gültig (additiv, kein Versionssprung)", () => {
+test("11 — ein Vorgang aus der Zeit davor trägt keine Providerreferenz weiter", () => {
   const s = normalizeScope({ shipmentId: JUMINGO_ID }, "shipment");
   assert.equal(s.ceShipmentId, null, "fehlendes Feld → null, nicht undefined");
-  assert.equal(s.shipmentId, JUMINGO_ID, "der alte Vorgang darf nicht verworfen werden");
+  assert.ok(!("shipmentId" in s), "die Altreferenz wird in den Vorgang übernommen");
   // Fail-safe: ohne Handle erscheint die Aktion nicht — statt die Providerreferenz zu senden.
   assert.equal(hasSavableShipmentId(s.ceShipmentId), false);
 });

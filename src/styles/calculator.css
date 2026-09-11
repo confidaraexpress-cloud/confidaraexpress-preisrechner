@@ -1001,6 +1001,13 @@
 .price-drift-arrow { display: flex; align-items: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
 .price-drift-actions { display: flex; gap: 12px; }
 .price-drift-btn { flex: 1; }
+/* TG22 Paket A: Zusammensetzung einer versicherten Preisänderung — Versand und Absicherung. */
+.price-drift-breakdown { list-style: none; margin: -8px 0 18px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.price-drift-breakdown-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; line-height: 1.45; }
+.price-drift-breakdown-label { color: var(--ce-color-text-muted); min-width: 0; }
+.price-drift-breakdown-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; text-align: right; white-space: nowrap; }
+.price-drift-breakdown-row[data-changed="false"] .price-drift-breakdown-value { color: var(--ce-color-text-muted); }
+.price-drift-error { margin: 0 0 16px; }
 @media (max-width: 440px) {
   .price-drift-card { padding: 24px 18px 20px; }
   .price-drift-compare { flex-direction: column; gap: 10px; }

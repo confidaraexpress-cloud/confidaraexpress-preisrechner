@@ -35,7 +35,7 @@ const USER = {
   role: "customer", status: "approved", country: "DE", zip: "10115", customer_number: "CE-K-10030",
 };
 const SHIPMENTS = [
-  { id: 1, jumingo_shipment_id: "js1", status: "booked", weight: 5, price_final: 22.19,
+  { id: 1, status: "booked", weight: 5, price_final: 22.19,
     selected_carrier: "dhl", created_at: "2026-08-05T10:00:00Z", order_number: "CE-1001" },
 ];
 const ADRESSEN = [

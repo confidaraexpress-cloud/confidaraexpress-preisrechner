@@ -76,7 +76,7 @@ async function setupRoutes(page, tariffs, protokoll) {
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/shipping/launch-scope")) return json({ countries: ["DE"], partialCountries: [] });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s_e2e", ceShipmentId: 4711, tariffs, availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs, availableShippingModes: ["standard"],
       publicCarriers: [{ id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });

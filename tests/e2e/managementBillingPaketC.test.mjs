@@ -33,7 +33,7 @@ async function setupRoutes(page) {
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
     if (url.pathname.endsWith("/kundenbereich")) return json({ user: USER });
     if (url.pathname.endsWith("/kunde/shipments")) return json({
-      shipments: [{ id: 1, jumingo_shipment_id: "js1", status: "booked", weight: 5, price_final: 22.19, selected_carrier: "dhl", created_at: "2026-08-01T00:00:00Z", order_number: "CE-1001" }],
+      shipments: [{ id: 1, status: "booked", weight: 5, price_final: 22.19, selected_carrier: "dhl", created_at: "2026-08-01T00:00:00Z", order_number: "CE-1001" }],
     });
     if (url.pathname.endsWith("/kunde/invoices")) return json({
       invoices: [{ id: 1, invoice_number: "RE-2026-0001", status: "open", is_overdue: false, gross_amount: 42.5, currency: "EUR", issued_at: "2026-08-01T00:00:00Z", due_date: "2026-08-20", document_status: "ready", download_available: true }],
@@ -161,7 +161,7 @@ test("die öffentliche Trackingseite rendert ohne App-Shell-Chrome und ohne Übe
     if (url.pathname.startsWith("/api/tracking/public/")) {
       return route.fulfill({
         status: 200, contentType: "application/json",
-        body: JSON.stringify({ trackingStatus: "delivered", tracking: { data: { steps: [] } } }),
+        body: JSON.stringify({ trackingStatus: "delivered", tracking: null, trackingLegs: [] }),
       });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });

@@ -77,7 +77,7 @@ async function setupRoutes(page) {
     if (p.includes("/api/jumingo/calculate-price")) {
       letzterCalcPayload = JSON.parse(route.request().postData() || "{}");
       return json({
-        shipmentId: "s1", tariffs: [TARIFF], availableShippingModes: ["standard"],
+        ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
         publicCarriers: [{ id: "dhl", name: "DHL Express" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "US", exportDeclaration: null,
       });
@@ -110,7 +110,7 @@ async function bucheUndLiesPayload(page) {
     payload = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({
       status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: "s1", trackingNumber: "TRACK1", labelUrl: null }),
+      body: JSON.stringify({ trackingNumber: "TRACK1", labelUrl: null }),
     });
   });
   const checks = page.getByRole("checkbox");

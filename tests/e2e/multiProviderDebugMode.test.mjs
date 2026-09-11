@@ -88,7 +88,7 @@ function setupRoutes(page, mitDebug) {
     if (p.includes("/api/shipping/launch-scope")) return json({ countries: ["DE"], partialCountries: [] });
     if (p.includes("/api/jumingo/calculate-price")) {
       return json({
-        shipmentId: "s_e2e", ceShipmentId: 4711, tariffs: karten(mitDebug),
+        ceShipmentId: 4711, tariffs: karten(mitDebug),
         availableShippingModes: ["express", "standard"],
         publicCarriers: [{ id: "ups", name: "UPS" }, { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,

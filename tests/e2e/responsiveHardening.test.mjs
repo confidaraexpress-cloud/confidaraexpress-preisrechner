@@ -60,13 +60,13 @@ const SHIPMENTS = { shipments: [
   { id: 5001, business_order_number: "CE-BS26-00841", tracking_number: "1Z999AA10123456784",
     reference_number: "PO-2026-88431-EXPORT-FRANKREICH-NIEDERLASSUNG-SUED",
     selected_carrier: "UPS Standard", weight: 12.5, price_final: 47.61, status: "booked",
-    created_at: "2026-08-05T10:22:00.000Z", jumingo_shipment_id: "s_fb1bc92aba1c4d70a3eaa44d687ae179",
+    created_at: "2026-08-05T10:22:00.000Z",
     requested_shipping_date: "2026-08-11", tracking_status: null, delivered_this_month: false,
     delivery_date_max: "2026-08-14", cancellation_status: null, cancellation_requested_at: null },
   { id: 5002, business_order_number: "CE-BS26-00842", tracking_number: "00340434161094015902",
     reference_number: null, selected_carrier: "DHL Express", weight: 3, price_final: 21.9,
     status: "label_ready", created_at: "2026-08-03T08:00:00.000Z",
-    jumingo_shipment_id: "s_0a1b2c3d4e5f60718293a4b5c6d7e8f9", requested_shipping_date: "2026-08-08",
+    requested_shipping_date: "2026-08-08",
     tracking_status: "in_transit", delivered_this_month: false, delivery_date_max: "2026-08-06",
     cancellation_status: "pending", cancellation_requested_at: "2026-08-04T09:00:00.000Z" },
 ] };
@@ -82,7 +82,7 @@ const INVOICES = {
 };
 
 const DRAFTS = { items: [
-  { id: 301, jumingoShipmentId: "s_77a1b2c3d4e5f60718293a4b5c6d7e8f", status: "draft",
+  { id: 301, status: "draft",
     weight: 8.5, length: 40, width: 30, height: 25, packageCount: 2,
     fromCountry: "DE", toCountry: "FR", fromPostalCode: "63743", toPostalCode: "75019",
     senderAddress: { fullName: PERSON, company: FIRMA, streetAndNumber: STRASSE,
@@ -92,7 +92,7 @@ const DRAFTS = { items: [
       streetAndNumber: "128 Boulevard de la Villette", addressAddition: "",
       postalCode: "75019", city: "Paris", country: "FR", phone: "", email: "reception@cidal.example.fr" },
     requestedShippingDate: "2026-08-15", createdAt: "2026-08-01T10:00:00.000Z", updatedAt: "2026-08-06T16:45:00.000Z" },
-  { id: 302, jumingoShipmentId: "s_88b2c3d4e5f60718293a4b5c6d7e8f90", status: "draft",
+  { id: 302, status: "draft",
     weight: 2, length: 20, width: 15, height: 10, packageCount: 1,
     fromCountry: "DE", toCountry: "CH", fromPostalCode: "63743", toPostalCode: "8001",
     senderAddress: { fullName: PERSON, company: FIRMA, streetAndNumber: STRASSE,
@@ -125,9 +125,10 @@ async function setupRoutes(ziel) {
     ] });
     if (p.includes("/notifications/unread-count")) return json({ unreadCount: 2, snapshotAt: "" });
     if (p.includes("/kunde/notifications")) return json({ notifications: [], unreadCount: 0, snapshotAt: "" });
-    if (p.includes("/api/tracking/public/")) return json({ trackingStatus: "transit", trackingNumber: "1Z999AA10123456784",
-      tracking: { status: "success", trackingNumber: "1Z999AA10123456784", carrier: { code: "ups", name: "UPS" },
-        data: { status: "transit", steps: [{ date: "2026-08-07", time: "09:12", type: "Sendung abgeholt", location: "Aschaffenburg, DE" }] } } });
+    if (p.includes("/api/tracking/public/")) return json({ trackingStatus: "in_transit", trackingNumber: "1Z999AA10123456784",
+      tracking: null, trackingAvailable: true, carrier: "UPS", carrierTrackingPage: null, liveTracking: true, source: "live",
+      trackingLegs: [{ carrier: "UPS", trackingReference: "1Z999AA10123456784", status: "in_transit", carrierTrackingPage: null,
+        events: [{ status: "in_transit", description: "Sendung abgeholt", location: "Aschaffenburg, DE", dateTime: { date: "2026-08-07", time: "09:12" } }] }] });
     return json({ items: [], drafts: [], addresses: [], shipments: [], invoices: [], notifications: [], summary: null, pagination: { total: 0 } });
   });
   await ziel.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));

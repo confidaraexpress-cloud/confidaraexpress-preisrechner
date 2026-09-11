@@ -85,13 +85,22 @@ export function parseCoverValue(raw) {
  * Sendungsreferenz, keine Selbstbeteiligung. Der Server liest alles Übrige aus dem
  * gespeicherten Angebot.
  */
-export function buildCoverRepricePayload({ offerId, coverValue, goodsAreNew, goodsAreFragile } = {}) {
-  return {
+export function buildCoverRepricePayload({ offerId, coverValue, goodsAreNew, goodsAreFragile, acceptPriceChange } = {}) {
+  const koerper = {
     offerId: offerId ?? null,
     coverValue,
     goodsAreNew: tristateAnswer(goodsAreNew),
     goodsAreFragile: tristateAnswer(goodsAreFragile),
   };
+  // TG22 Paket A — die AUSDRÜCKLICHE Übernahme eines neuen Preises. Gesendet wird nur der
+  // Gesamtbetrag, den der Server zuvor als neuen Preis genannt hat: ein Bestätigungswert, keine
+  // Preisangabe. Der Server bindet ausschließlich seinen frischen Preis — und nur, wenn er exakt
+  // diesem Betrag entspricht. Ohne gültigen Betrag entsteht das Feld nicht.
+  const betrag = acceptPriceChange && typeof acceptPriceChange === "object" ? acceptPriceChange.expectedTotalGross : undefined;
+  if (typeof betrag === "number" && Number.isFinite(betrag) && betrag >= 0) {
+    koerper.acceptPriceChange = { expectedTotalGross: betrag };
+  }
+  return koerper;
 }
 
 /**
@@ -101,6 +110,11 @@ export function buildCoverRepricePayload({ offerId, coverValue, goodsAreNew, goo
  */
 export function buildCoverBookInsurancePayload({ coverValue, goodsAreNew, goodsAreFragile, repriceResult } = {}) {
   const totals = repriceResult && typeof repriceResult === "object" ? repriceResult.totals : null;
+  // TG22 Paket A — der Preisstand, zu dem bestätigt wird. Nur wenn der Server ihn genannt hat;
+  // weicht er beim Buchen ab (etwa nach einer Übernahme in einem zweiten Tab), bucht der Server
+  // nicht, sondern verlangt eine neue Bestätigung.
+  const revision = repriceResult && Number.isSafeInteger(repriceResult.priceRevision) && repriceResult.priceRevision >= 0
+    ? repriceResult.priceRevision : undefined;
   return {
     insuranceSelection: {
       type: INSURANCE_TYPE_TRANSIT_COVER,
@@ -109,6 +123,7 @@ export function buildCoverBookInsurancePayload({ coverValue, goodsAreNew, goodsA
       goodsAreFragile: tristateAnswer(goodsAreFragile),
     },
     confirmedTotalGross: totals ? totals.customerTotalGross : undefined,
+    ...(revision !== undefined ? { offerRevision: revision } : {}),
   };
 }
 
@@ -131,6 +146,21 @@ const REPRICE_TEXT = Object.freeze({
   OFFER_ALREADY_USED: "Dieses Angebot wurde bereits verwendet. Bitte berechnen Sie die Angebote neu.",
   SHIPMENT_NOT_DRAFT: "Diese Sendung kann nicht mehr geändert werden.",
   PRICE_UNCONFIRMED: "Der Preis konnte gerade nicht bestätigt werden. Bitte versuchen Sie es erneut.",
+  // TG22 Paket A
+  OFFER_PRICE_CONFLICT: "Der Preis wurde zwischenzeitlich aktualisiert. Bitte prüfen Sie den Betrag erneut.",
+  PRICE_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie den neuen Preis erneut.",
+});
+
+/* TG22 Paket A — Texte der versicherten Preisänderung. Kein Anbieter, kein Einkaufspreis. */
+export const COVER_PRICE_CHANGE_TEXT = Object.freeze({
+  intro: "Der Preis hat sich seit Ihrer letzten Bestätigung geändert. Es wurde nichts gebucht.",
+  shippingLabel: "Versand",
+  insuranceLabel: "Zusätzliche Transportabsicherung",
+  unchanged: "unverändert",
+  acceptLabel: "Neuen Preis übernehmen",
+  accepting: "Wird übernommen…",
+  accepted: "Der neue Preis wurde übernommen. Bitte prüfen Sie den Gesamtbetrag und buchen Sie danach verbindlich.",
+  acceptFailed: "Der neue Preis konnte gerade nicht bestätigt werden. Bitte versuchen Sie es erneut oder berechnen Sie die Angebote neu.",
 });
 
 /** Kundentext eines fehlgeschlagenen Neubepreisungs-Aufrufs. */
@@ -193,11 +223,46 @@ const istBetrag = (w) => typeof w === "number" && Number.isFinite(w);
 export function insuredPriceChangeView(body, previousTotalGross) {
   const d = body && typeof body === "object" && !Array.isArray(body) ? body : {};
   const basis = priceChangeAnsicht(d);
-  if (basis.kind === PRICE_CHANGE_KIND.CONFIRMABLE) return { ...basis, insured: true };
+  // TG22 Paket A: nennt der Server beide Beträge selbst, gelten ausschließlich sie — samt ihrer
+  // Zusammensetzung. Der clientseitige Altbetrag ist dann ohne Bedeutung.
+  if (basis.kind === PRICE_CHANGE_KIND.CONFIRMABLE) return { ...basis, insured: true, breakdown: aufschluesselung(d) };
   if (istBetrag(d.price) && istBetrag(previousTotalGross)) {
-    return { kind: PRICE_CHANGE_KIND.CONFIRMABLE, oldPrice: previousTotalGross, newPrice: d.price, insured: true };
+    return { kind: PRICE_CHANGE_KIND.CONFIRMABLE, oldPrice: previousTotalGross, newPrice: d.price, insured: true, breakdown: null };
   }
   return basis;
+}
+
+// Die serverseitige Zusammensetzung der Preisänderung — nur echte Zahlenpaare, sonst nichts.
+function aufschluesselung(d) {
+  const pc = d && d.priceChange && typeof d.priceChange === "object" && !Array.isArray(d.priceChange) ? d.priceChange : null;
+  if (!pc) return null;
+  const paar = (x) => (x && typeof x === "object" && istBetrag(x.oldGross) && istBetrag(x.newGross)
+    ? { oldGross: x.oldGross, newGross: x.newGross } : null);
+  const shipping = paar(pc.shipping);
+  const insurance = paar(pc.insurance);
+  return shipping || insurance ? { shipping, insurance } : null;
+}
+
+const alsCent = (w) => Math.round(w * 100);
+
+/**
+ * Die Zeilen, die der Dialog unter dem Gesamtvergleich zeigt: Versand und Absicherung, je mit
+ * altem und neuem Betrag und dem Hinweis, ob sich dieser Teil geändert hat. Ohne serverseitige
+ * Zusammensetzung gibt es keine Zeilen — es wird keine erfunden.
+ */
+export function priceChangeBreakdownLines(view) {
+  const b = view && view.breakdown && typeof view.breakdown === "object" ? view.breakdown : null;
+  if (!b) return [];
+  const zeilen = [];
+  if (b.shipping) {
+    zeilen.push({ id: "shipping", label: COVER_PRICE_CHANGE_TEXT.shippingLabel, ...b.shipping,
+                  changed: alsCent(b.shipping.oldGross) !== alsCent(b.shipping.newGross) });
+  }
+  if (b.insurance) {
+    zeilen.push({ id: "insurance", label: COVER_PRICE_CHANGE_TEXT.insuranceLabel, ...b.insurance,
+                  changed: alsCent(b.insurance.oldGross) !== alsCent(b.insurance.newGross) });
+  }
+  return zeilen;
 }
 
 /**

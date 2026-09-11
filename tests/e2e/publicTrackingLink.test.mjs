@@ -29,25 +29,27 @@ function chromiumExecutablePath() {
   return root && existsSync(path.join(root, "chromium")) ? path.join(root, "chromium") : undefined;
 }
 
-// Antwort der ÖFFENTLICHEN Trackingroute (GET /api/tracking/public/:key). Sie liefert
-// ausschließlich das Trackingteilobjekt — keine Adressen, keine Preise, keine Kontodaten.
+// Antwort der ÖFFENTLICHEN Trackingroute (GET /api/tracking/public/:key) im neutralen Vertrag:
+// ausschließlich normalisierter Stand, Carrier, Nummer und Abschnitte — keine Sendungskennung,
+// kein Rohobjekt, keine Adressen, keine Preise, keine Kontodaten.
 const TRACKING_OK = {
-  shipmentId: "s_72313e",
+  tracking: null,
   trackingAvailable: true,
   trackingNumber: NUMMER,
   trackingStatus: "in_transit",
+  trackingStatusText: null,
+  carrier: "DPD",
   carrierTrackingPage: "https://carrier.example/track/07350000123456",
-  tracking: {
+  liveTracking: true,
+  source: "live",
+  trackingLegs: [{
+    carrier: "DPD", trackingReference: NUMMER, status: "in_transit",
     carrierTrackingPage: "https://carrier.example/track/07350000123456",
-    data: {
-      tracking_number: NUMMER,
-      status: "in_transit",
-      events: [
-        { date: "2026-08-20T09:15:00Z", status: "picked_up", location: { country: "DE" } },
-        { date: "2026-08-21T07:40:00Z", status: "in_transit", location: { country: "AT" } },
-      ],
-    },
-  },
+    events: [
+      { status: "pending", description: "Sendung übernommen", location: "DE", dateTime: { date: "2026-08-20", time: "09:15" } },
+      { status: "in_transit", description: "Unterwegs", location: "AT", dateTime: { date: "2026-08-21", time: "07:40" } },
+    ],
+  }],
 };
 
 let server, browser;

@@ -77,7 +77,7 @@ async function setupRoutes(page, state) {
         state.stand = "2026-09";                       // ab jetzt gilt die neue Fassung
         return json({ error: "Die Vertragsunterlagen wurden aktualisiert. Bitte prüfen und bestätigen Sie die aktuelle Fassung erneut.", code: "LEGAL_SET_CHANGED" }, 409);
       }
-      return json({ success: true, shipmentId: "s1", ceShipmentId: 4711, orderNumber: "CE-BS-2026-0001", trackingNumber: "TRK-1" });
+      return json({ success: true, ceShipmentId: 4711, orderNumber: "CE-BS-2026-0001", trackingNumber: "TRK-1" });
     }
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
     if (p.endsWith("/kunde/shipments")) return json({ shipments: [] });
@@ -88,7 +88,7 @@ async function setupRoutes(page, state) {
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/cart-total")) return json({ voucher: { applied: false, code: null, reason: "invalid" } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "ups", name: "UPS" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });

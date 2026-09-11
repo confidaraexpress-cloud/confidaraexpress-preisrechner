@@ -218,10 +218,10 @@ test("16 — der Lagerbezug ist additiv im Vorgangsschema und standardmäßig nu
 });
 
 test("17 — der Lagerbezug überlebt dropOffers (er gehört zum Formular, nicht zum Ergebnis)", () => {
-  const scope = { ...emptyScope("shipment"), inventoryContext: { orderId: "7", orderNumber: "CE-AU26-00001" }, tariffs: [{ a: 1 }], shipmentId: "s_x" };
+  const scope = { ...emptyScope("shipment"), inventoryContext: { orderId: "7", orderNumber: "CE-AU26-00001" }, tariffs: [{ a: 1 }], ceShipmentId: 4711 };
   const danach = dropOffers(scope);
   assert.deepEqual(danach.tariffs, [], "Angebote müssen verworfen werden");
-  assert.equal(danach.shipmentId, null);
+  assert.equal(danach.ceShipmentId, null);
   assert.deepEqual(danach.inventoryContext, { orderId: "7", orderNumber: "CE-AU26-00001" },
     "der Lagerbezug darf bei einer erneuten Preisberechnung nicht verloren gehen");
 });

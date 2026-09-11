@@ -68,7 +68,7 @@ import {
   INSURANCE_TYPE_TRANSIT_COVER, isCoverValueModel, coverExcessValue, coverValueError,
   goodsAnswerError, tristateAnswer, buildCoverRepricePayload, buildCoverBookInsurancePayload,
   coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice, isCoverBookError,
-  insuranceTypeForTariff, insuredPriceChangeView,
+  insuranceTypeForTariff, insuredPriceChangeView, priceChangeBreakdownLines, COVER_PRICE_CHANGE_TEXT,
 } from "../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../utils/insuranceTerms.mjs";
 import {
@@ -115,13 +115,12 @@ export default function BookingPage() {
           setStep: setFlowStep, clearFlow } = useShippingFlow();
   const laufendeBuchungsdaten = useMemo(() => {
     if (navState?.tariff) return navState;
-    if (flowShipment?.selected && (flowShipment.shipmentId != null || flowShipment.ceShipmentId != null)) {
+    if (flowShipment?.selected && flowShipment.ceShipmentId != null) {
       return {
         tariff: flowShipment.selected,
-        shipmentId: flowShipment.shipmentId,
-        // Der CE-Sendungshandle muss auch auf diesem Weg mitkommen, sonst
-        // verschwände „Als Entwurf speichern" nach einem Reload/Browser-Vorwärts.
-        ceShipmentId: flowShipment.ceShipmentId ?? null,
+        // Der CE-Sendungshandle ist die einzige Sendungskennung des Vorgangs — auch auf
+        // diesem Weg (Reload/Browser-Vorwärts).
+        ceShipmentId: flowShipment.ceShipmentId,
         form: flowShipment.form,
         customs: flowShipment.customs,
       };
@@ -199,6 +198,12 @@ export default function BookingPage() {
   // wird (ausschließlich none-Pfad — der Versicherungspfad bleibt unberührt).
   const [priceChange, setPriceChange] = useState(null); // { oldPrice, newPrice } | null
   const confirmedFinalPriceRef = useRef(null);
+  // TG22 Paket A — die ausdrückliche Übernahme eines neuen Preises bei versicherter Buchung:
+  // läuft sie gerade, ist sie gescheitert (der Dialog bleibt offen, erneut versuchen oder neu
+  // berechnen), oder wurde sie übernommen (Hinweis, danach bucht der Kunde selbst)?
+  const [priceAccepting, setPriceAccepting] = useState(false);
+  const [priceAcceptError, setPriceAcceptError] = useState("");
+  const [priceAcceptNotice, setPriceAcceptNotice] = useState("");
 
   // Fokusfalle/-rückgabe/Escape der beiden Konfliktdialoge (Paket B, globales
   // Dialogsystem). Escape/Backdrop schließen NEUTRAL (nur die Anzeige) — sie
@@ -206,6 +211,8 @@ export default function BookingPage() {
   // Entscheidung bleibt ausschließlich den zwei Aktionen im Dialog vorbehalten.
   // Muss vor jedem frühen Return stehen (Hook-Reihenfolge).
   const priceDriftRef = useDialog({ open: !!priceChange, onClose: () => setPriceChange(null) });
+  // TG22 Paket A: ein geschlossener Preisdialog trägt keinen Übernahmefehler weiter.
+  useEffect(() => { if (!priceChange) setPriceAcceptError(""); }, [priceChange]);
   // closeOnEscape: !pickupResetting — dieselbe Regel wie überall im Projekt:
   // Escape schließt nicht während ein Request läuft (Draft-Reset läuft hier).
   const pickupDriftRef = useDialog({
@@ -588,7 +595,7 @@ export default function BookingPage() {
     setVoucher({ status: VOUCHER_STATUS.CHECKING, code: null, percent: null, totals: null });
     try {
       const r = await checkVoucher({
-        shipmentId:      bookingData?.shipmentId,
+        ceShipmentId:    bookingData?.ceShipmentId,
         tariffId:        tariff?.id,
         shipperTariffId: tariff?.shipper_tariff_id,
         voucherCode:     code,
@@ -669,7 +676,7 @@ export default function BookingPage() {
     const seq = ++repriceSeq.current;
     if (repriceAbort.current) repriceAbort.current.abort();
     const ac = new AbortController(); repriceAbort.current = ac;
-    setRepriceLoading(true); setRepriceError("");
+    setRepriceLoading(true); setRepriceError(""); setPriceAcceptNotice("");
     try {
       // Deckungsbetragsmodell: GENAU vier Felder — der Server liest Sendung, Preis und
       // Selbstbeteiligung aus dem gespeicherten Angebot. Stufenmodell: der bisherige Körper,
@@ -677,7 +684,7 @@ export default function BookingPage() {
       const r = await repriceInsurance(coverModel
         ? buildCoverRepricePayload({ offerId: tariff?.offerId, coverValue: insNum, goodsAreNew, goodsAreFragile })
         : {
-            shipmentId:          bookingData?.shipmentId,
+            ceShipmentId:        bookingData?.ceShipmentId,
             tariffId:            tariff?.id,
             shipperTariffId:     tariff?.shipper_tariff_id,
             insuranceType:       type,
@@ -691,6 +698,15 @@ export default function BookingPage() {
       let d = null; try { d = await r.json(); } catch { d = null; }
       if (!r.ok) {
         setRepriceResult(null); setRepriceStale(true);
+        // TG22 Paket A: eine versicherte Preisänderung mit beiden Serverbeträgen ist keine
+        // Fehlermeldung, sondern eine Entscheidung des Kunden — derselbe Dialog wie bei der Buchung.
+        const versicherteAenderung = coverModel && d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
+        if (versicherteAenderung && preisIstBestaetigbar(versicherteAenderung)) {
+          setRepriceError(""); setPriceAcceptError("");
+          setPriceChange(versicherteAenderung);
+          setRepriceLoading(false);
+          return;
+        }
         setRepriceError(coverModel ? coverRepriceErrorText(r.status, d) :
           r.status === 400 ? (asStr(d?.error) || "Die Angaben zur Versicherung sind ungültig.") :
           r.status === 409 ? "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis." :
@@ -744,9 +760,9 @@ export default function BookingPage() {
   const hsRequired = tariff?.hsTariffNumberRequired === true;
 
   // ── Zoll-Handelsrechnung: Statusautomat (GET/Upload/Delete) — nur bei
-  // zollpflichtiger Route mit interner shipmentId. Der Hook lädt den Status
+  // zollpflichtiger Route mit dem CE-Sendungshandle. Der Hook lädt den Status
   // einmal und hält present/absent/… vor. ──────────────────────────────────────
-  const ci = useCommercialInvoice({ shipmentId: bookingData?.shipmentId, enabled: customsRequired });
+  const ci = useCommercialInvoice({ shipmentId: bookingData?.ceShipmentId, enabled: customsRequired });
   const commercialOnly = isCommercialOnly(customsExportReason); // „Commercial"/Verkauf → Handelsrechnung zwingend
   const docActive = ci.status === "present" || ci.status === "uploading" || ci.status === "deleting";
   // Effektiver Rechnungstyp: gewerblich ODER Dokument aktiv → commercial; sonst
@@ -983,7 +999,7 @@ export default function BookingPage() {
       setError(adresstypHinweis);
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -1016,7 +1032,8 @@ export default function BookingPage() {
         // Retry — ein Timeout heißt hier „Ausgang unbekannt" (mapBookThrownError).
         method: "POST", auth: true, timeoutMs: 150000,
         body: JSON.stringify({
-          shipmentId:      bookingData?.shipmentId,
+          // Der CE-Sendungshandle — die Providerreferenz löst der Server selbst auf.
+          ceShipmentId:    bookingData?.ceShipmentId,
           // Die providerneutrale Angebotskennung. SIE bestimmt serverseitig, ueber wen
           // gebucht wird — der Server schlaegt Provider und Tarif dazu selbst nach. Sie
           // sagt fuer sich genommen nichts aus: kein Provider, kein Preis, kein Tarif.
@@ -1192,6 +1209,7 @@ export default function BookingPage() {
           // der bisherige steht in der letzten Neubepreisung. „Fortfahren" bepreist und bindet
           // dann neu, statt dieselbe Anfrage erneut zu senden (utils/coverInsuranceView.mjs).
           if (isInsured && coverModel) {
+            setPriceAcceptError("");
             setPriceChange(insuredPriceChangeView(d, repriceResult?.totals?.customerTotalGross));
             setLoading(false);
             return;
@@ -1352,6 +1370,53 @@ export default function BookingPage() {
     navigate("/dashboard?page=new");
   };
 
+  // TG22 Paket A — „Neuen Preis übernehmen" bei versicherter Buchung. Der Server bepreist frisch und
+  // bindet Versandpreis und Absicherung NUR, wenn der frische Gesamtbetrag exakt dem gezeigten neuen
+  // Preis entspricht. Danach wird NICHT gebucht: die Seite zeigt den neuen Stand, und der Kunde bucht
+  // selbst. Wandert der Preis erneut, erscheint derselbe Dialog mit den neuen Werten — jede Runde ist
+  // eine eigene Entscheidung, es gibt keine Schleife. Scheitert die Übernahme, bleibt der Dialog offen:
+  // erneut versuchen oder neu berechnen.
+  const acceptInsuredPriceChange = async (neuerPreis) => {
+    if (priceAccepting) return;
+    if (!insValid || !goodsAnswersValid) {
+      setPriceAcceptError(COVER_PRICE_CHANGE_TEXT.acceptFailed);
+      return;
+    }
+    const seq = ++repriceSeq.current;
+    if (repriceAbort.current) repriceAbort.current.abort();
+    const ac = new AbortController(); repriceAbort.current = ac;
+    setPriceAccepting(true); setPriceAcceptError(""); setPriceAcceptNotice(""); setRepriceError("");
+    try {
+      const r = await repriceInsurance(buildCoverRepricePayload({
+        offerId: tariff?.offerId, coverValue: insuranceValueNum, goodsAreNew, goodsAreFragile,
+        acceptPriceChange: { expectedTotalGross: neuerPreis },
+      }), { signal: ac.signal });
+      if (seq !== repriceSeq.current) return;
+      if (r.status === 401 || r.status === 403) return;
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (r.ok) {
+        setRepriceResult(d); setRepriceStale(false);
+        setPriceChange(null);
+        setPriceAcceptNotice(COVER_PRICE_CHANGE_TEXT.accepted);
+        return;
+      }
+      setRepriceResult(null); setRepriceStale(true);
+      const erneut = d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
+      if (erneut && preisIstBestaetigbar(erneut)) {
+        setPriceChange(erneut);
+        return;
+      }
+      setPriceAcceptError(coverRepriceErrorText(r.status, d));
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      if (seq !== repriceSeq.current) return;
+      setRepriceResult(null); setRepriceStale(true);
+      setPriceAcceptError(COVER_PRICE_CHANGE_TEXT.acceptFailed);
+    } finally {
+      if (seq === repriceSeq.current) setPriceAccepting(false);
+    }
+  };
+
   // F3 — „Zum neuen Preis fortfahren": den bestätigten neuen Preis als price_final
   // festhalten und erneut buchen. Der nächste /book sendet nie wieder den alten
   // Preis. Ändert sich der Preis erneut, öffnet doBook den Dialog mit den neuen
@@ -1366,11 +1431,7 @@ export default function BookingPage() {
     // bewusst NICHT sofort gebucht und NIE auf den unversicherten price_final-Weg
     // ausgewichen — der Kunde sieht den bestätigten Gesamtbetrag und bucht erneut.
     if (priceChange.insured) {
-      setPriceChange(null);
-      setRepriceResult(null); setRepriceStale(true);
-      if (insValid && goodsAnswersValid) {
-        runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription);
-      }
+      acceptInsuredPriceChange(priceChange.newPrice);
       return;
     }
     const np = asNum(priceChange?.newPrice);
@@ -1396,12 +1457,12 @@ export default function BookingPage() {
   // Wunsch bliebe sonst gespeichert und würde beim nächsten /book erneut 409 → das
   // ist fail-closed und wird als Fehler im Dialog gemeldet.
   const acceptNewPickupWindow = async () => {
-    const sid = bookingData?.shipmentId;
+    const sid = bookingData?.ceShipmentId;
     setPickupResetError("");
     setPickupResetting(true);
     try {
       if (sid) {
-        const r = await saveDraftPickupWindow({ shipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null });
+        const r = await saveDraftPickupWindow({ ceShipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null });
         if (r.status === 401 || r.status === 403) { setPickupResetting(false); return; } // zentraler Auth-Redirect
         if (!r.ok) { setPickupResetting(false); setPickupResetError("Das Zeitfenster konnte nicht zurückgesetzt werden. Bitte erneut versuchen."); return; }
       }
@@ -1561,6 +1622,9 @@ export default function BookingPage() {
         {error && (typeof error === "object"
           ? <FormAlert tone="error" title={error.title} message={error.message} className="mb-16" />
           : <div className="alert alert-error mb-16" role="alert">{error}</div>)}
+        {priceAcceptNotice && (
+          <div className="alert alert-success mb-16" role="status" id="price-change-accepted">{priceAcceptNotice}</div>
+        )}
 
         {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
@@ -1582,7 +1646,7 @@ export default function BookingPage() {
             {tariff.serviceType === "pickup" && tariff.pickupTimeFrom && tariff.pickupTimeUntil && (
               <PickupWindowModule
                 tariff={tariff}
-                shipmentId={bookingData?.shipmentId}
+                ceShipmentId={bookingData?.ceShipmentId}
                 value={pickupWindow}
                 onChange={setPickupWindow}
                 onHydrationChange={setPickupHydration}
@@ -1905,7 +1969,7 @@ export default function BookingPage() {
         <div
           className="price-drift-overlay"
           role="presentation"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setPriceChange(null); }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !priceAccepting) { setPriceChange(null); setPriceAcceptError(""); } }}
         >
           <div
             className="price-drift-card"
@@ -1918,7 +1982,7 @@ export default function BookingPage() {
             <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="var(--ce-color-brand-ink)" /></div>
             <h2 id="price-drift-title" className="price-drift-title">{PREISAENDERUNG_TITEL}</h2>
             <p id="price-drift-desc" className="price-drift-desc">
-              {PREISAENDERUNG_TEXT[priceChange.kind]}
+              {priceChange.insured ? COVER_PRICE_CHANGE_TEXT.intro : PREISAENDERUNG_TEXT[priceChange.kind]}
             </p>
 
             {/* Der Vergleich erscheint NUR, wenn beide Beträge tatsächlich in der
@@ -1939,12 +2003,33 @@ export default function BookingPage() {
               </div>
             )}
 
+            {/* TG22 Paket A: die serverseitige Zusammensetzung — was sich geändert hat (Versand oder
+                Absicherung) und was gleich blieb. Ohne Serverangabe keine Zeilen. */}
+            {priceChange.insured && priceChangeBreakdownLines(priceChange).length > 0 && (
+              <ul className="price-drift-breakdown">
+                {priceChangeBreakdownLines(priceChange).map((zeile) => (
+                  <li key={zeile.id} className="price-drift-breakdown-row" data-changed={zeile.changed ? "true" : "false"}>
+                    <span className="price-drift-breakdown-label">{zeile.label}</span>
+                    <span className="price-drift-breakdown-value">
+                      {zeile.changed
+                        ? <>{money(zeile.oldGross)} → {money(zeile.newGross)}</>
+                        : <>{money(zeile.newGross)} · {COVER_PRICE_CHANGE_TEXT.unchanged}</>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {priceAcceptError && (
+              <p className="field-error price-drift-error" role="alert">{priceAcceptError}</p>
+            )}
+
             <div className="price-drift-actions">
               <button
                 type="button"
+                id="price-drift-recalculate"
                 className="btn btn-outline price-drift-btn"
                 onClick={handlePriceChangeRecalculate}
-                disabled={loading}
+                disabled={loading || priceAccepting}
               >
                 {PREISAENDERUNG_NEU_BERECHNEN}
               </button>
@@ -1954,11 +2039,14 @@ export default function BookingPage() {
               {preisIstBestaetigbar(priceChange) && (
                 <button
                   type="button"
+                  id="price-drift-accept"
                   className="btn btn-primary price-drift-btn"
                   onClick={continueWithNewPrice}
-                  disabled={loading}
+                  disabled={loading || priceAccepting}
                 >
-                  {loading ? <><span className="spinner" /> Wird gebucht…</> : PREISAENDERUNG_FORTFAHREN}
+                  {priceChange.insured
+                    ? (priceAccepting ? <><span className="spinner" /> {COVER_PRICE_CHANGE_TEXT.accepting}</> : COVER_PRICE_CHANGE_TEXT.acceptLabel)
+                    : (loading ? <><span className="spinner" /> Wird gebucht…</> : PREISAENDERUNG_FORTFAHREN)}
                 </button>
               )}
             </div>

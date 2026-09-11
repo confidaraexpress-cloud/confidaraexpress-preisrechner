@@ -76,17 +76,13 @@ async function setupRoutes(ziel) {
     if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
     if (p.endsWith("/calculate-price")) {
       calcCount++;
-      // WICHTIG — die beiden IDs exakt wie im Produktivbackend, mit ihren ECHTEN Formen:
-      //   shipmentId    JUMiNGO-Referenz "s_"+32 Hex (Eingabe für /book)
-      //   ceShipmentId  interne shipments.id (positive Ganzzahl) — für Entwürfe
-      // Vorher lieferte dieser Mock als `shipmentId` eine Ganzzahl. Genau dadurch war
-      // „Als Entwurf speichern" hier grün, während es produktiv dauerhaft unsichtbar
-      // blieb: hasSavableShipmentId() lehnt die JUMiNGO-Form korrekt ab. Diese Form
-      // NIE wieder auf eine Ganzzahl vereinfachen — sie ist der Regressionsschutz.
+      // WICHTIG — die Sendungskennung exakt wie im Produktivbackend:
+      //   ceShipmentId  interne shipments.id (positive Ganzzahl) — die EINZIGE Kennung
+      // TG22 Paket A: die JUMiNGO-Referenz (`shipmentId`, "s_"+32 Hex) steht nicht mehr in
+      // der Antwort. Früher verwechselte der Client beide — „Als Entwurf speichern" war
+      // dadurch produktiv unsichtbar. Test 38 prüft, dass keine Providerform zurückkehrt.
       return json({
         tariffs: TARIFFS,
-        // "s_" + genau 32 Hexzeichen (JUMiNGO OpenAPI 1.0.4, CreateShipmentResult).
-        shipmentId: `s_${String(calcCount).padStart(2, "0")}a1b2c3d4e5f60718293a4b5c6d7e8f90`.slice(0, 34),
         ceShipmentId: ceShipmentIdOverride === undefined ? 4240 + calcCount : ceShipmentIdOverride,
         publicCarriers: [{ id: "dhl", name: "DHL" }, { id: "ups", name: "UPS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE",
@@ -100,7 +96,7 @@ async function setupRoutes(ziel) {
       // Bestellnummer ODER die JUMiNGO-Ordernummer wäre damit unten in EINER
       // Gegenprobe sichtbar.
       return json({
-        shipmentId: 4711, orderConfirmationNumber: "CE-AB26-00001",
+        orderConfirmationNumber: "CE-AB26-00001",
         businessOrderNumber: "CE-1001", invoiceNumber: "CE-RE26-00001",
         orderNumber: "CE-1001", trackingNumber: "TRK-1", status: "booked",
       });
@@ -783,7 +779,7 @@ test("20 — der /book-Payload bleibt feldgleich", async () => {
   await page.route("**/api.confidaraexpress.de/api/jumingo/book", async (route) => {
     payload = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({ status: 200, contentType: "application/json",
-      body: JSON.stringify({ shipmentId: 4711, orderNumber: "CE-1001", trackingNumber: "TRK-1", status: "booked" }) });
+      body: JSON.stringify({ orderNumber: "CE-1001", trackingNumber: "TRK-1", status: "booked" }) });
   });
   await bisZurBuchung(page);
   const weiter = page.locator("button").filter({ hasText: /Weiter: Buchung/ }).first();
@@ -797,10 +793,12 @@ test("20 — der /book-Payload bleibt feldgleich", async () => {
   await page.waitForTimeout(1500);
 
   if (!payload) { await ctx.close(); return; }
-  for (const feld of ["shipmentId", "tariffId", "price_final", "sender", "recipient",
+  for (const feld of ["ceShipmentId", "tariffId", "price_final", "sender", "recipient",
                       "weight", "content", "labelFormat", "insuranceSelection"]) {
     assert.ok(feld in payload, `/book-Payload: „${feld}" fehlt`);
   }
+  // TG22 Paket A: die Providerreferenz gehört nicht mehr zum Buchungsvertrag.
+  assert.ok(!("shipmentId" in payload), "/book-Payload: die Providerreferenz ist zurück");
   // Der Navigationsmarker darf NIE im Payload landen.
   assert.ok(!("fromFlow" in payload), "der Navigationsmarker ist in den Buchungspayload geraten");
   // Der Payload traegt die Kontaktperson strukturiert.
@@ -1335,24 +1333,27 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
 });
 
 /* ══════════ 14 — Save-Draft nutzt den CE-Sendungshandle ═══════════════════
-   Regression. `/calculate-price` liefert ZWEI IDs mit verschiedener Bedeutung:
-   `shipmentId` ist die JUMiNGO-Referenz ("s_"+32 Hex), `ceShipmentId` die
-   interne shipments.id. „Als Entwurf speichern" bekam die erste — der Guard
-   hasSavableShipmentId() lehnte sie korrekt ab, und die Aktion war produktiv
-   dauerhaft unsichtbar. Der Mock oben liefert seit dieser Phase beide IDs in
-   ihrer ECHTEN Form; damit prüfen die Tests 32/33 denselben Pfad ebenfalls
-   scharf. */
+   Regression. `/calculate-price` lieferte früher ZWEI IDs: die JUMiNGO-Referenz
+   ("s_"+32 Hex) als `shipmentId` und die interne shipments.id als `ceShipmentId`.
+   „Als Entwurf speichern" bekam die erste — der Guard hasSavableShipmentId()
+   lehnte sie korrekt ab, und die Aktion war produktiv dauerhaft unsichtbar.
+   Seit TG22 Paket A kennt der Client nur noch den CE-Handle; die Tests 38/39
+   prüfen, dass die Providerform nicht zurückkehrt und der Handle trägt. */
 
-test("38 — „Als Entwurf speichern“ ist sichtbar, obwohl shipmentId eine JUMiNGO-Referenz ist", async () => {
+test("38 — „Als Entwurf speichern“ ist sichtbar — der Vorgang trägt nur den CE-Sendungshandle", async () => {
   const { ctx, page } = await neueSeite();
   await bisZurBuchung(page);
 
-  // Gegenprobe zuerst: die Buchungsseite trägt tatsächlich die Providerform.
-  const jumingoForm = await page.evaluate(() => {
-    try { return (window.history.state?.usr?.shipmentId ?? null); } catch { return null; }
+  // Gegenprobe zuerst: die Buchungsseite trägt den CE-Handle — und keine Providerreferenz.
+  const kennung = await page.evaluate(() => {
+    try {
+      const usr = window.history.state?.usr || {};
+      return { providerreferenz: "shipmentId" in usr, ce: usr.ceShipmentId ?? null };
+    } catch { return { providerreferenz: false, ce: null }; }
   });
-  assert.ok(/^s_[a-f0-9]{32}$/.test(String(jumingoForm)),
-    `der Vorgang trägt keine JUMiNGO-Referenz (war „${jumingoForm}") — der Test prüft sonst nichts`);
+  assert.equal(kennung.providerreferenz, false, "der Vorgang trägt wieder eine Providerreferenz");
+  assert.ok(/^[0-9]+$/.test(String(kennung.ce)),
+    `der Vorgang trägt keinen CE-Handle (war „${kennung.ce}") — der Test prüft sonst nichts`);
 
   const saveBtn = page.locator(".bk-savedraft button").first();
   assert.ok(await saveBtn.count() > 0,

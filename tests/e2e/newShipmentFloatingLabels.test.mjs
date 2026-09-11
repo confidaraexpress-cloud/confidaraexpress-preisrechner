@@ -53,7 +53,7 @@ async function setupRoutes(ziel) {
     if (p.endsWith("/book")) return json({ error: "im Smoke nicht erlaubt" }, 500);
     if (p.endsWith("/calculate-price")) {
       if (calcAntwort) return json(calcAntwort.body, calcAntwort.status);
-      return json({ tariffs: [], shipmentId: "s_" + "a".repeat(32), ceShipmentId: 4242,
+      return json({ tariffs: [], ceShipmentId: 4242,
                     publicCarriers: [], customsRequired: false,
                     fromCountryCode: "DE", toCountryCode: "DE" });
     }

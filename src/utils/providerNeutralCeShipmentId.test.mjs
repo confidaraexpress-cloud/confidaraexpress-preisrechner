@@ -3,11 +3,11 @@
 // ─── Der Vertrag ─────────────────────────────────────────────────────────────
 //   ceShipmentId  shipments.id — die lokale ConfidaraExpress-Sendung. Das Backend legt sie
 //                 an, BEVOR irgendein Anbieter gefragt wird; jedes Angebot hängt an ihr.
-//   shipmentId    ausschließlich die externe JUMiNGO-Referenz. `null`, wenn JUMiNGO
-//                 ausgefallen, nicht konfiguriert oder ohne Tarife war.
+//                 TG22 Paket A: sie ist die EINZIGE Sendungskennung des Clients. Die
+//                 JUMiNGO-Referenz verlässt den Server nicht mehr.
 //
 // Eine Antwort, in der nur ein anderer Anbieter angeboten hat, sieht deshalb so aus:
-//   { shipmentId: null, ceShipmentId: 4711, tariffs: [ { offerId, bookable: true, … } ] }
+//   { ceShipmentId: 4711, tariffs: [ { offerId, bookable: true, … } ] }
 // und muss vollständig nutzbar sein — Fortsetzen eines Entwurfs, Wiederherstellung der
 // Buchungsseite aus dem laufenden Vorgang, Absicherung und Buchung.
 //
@@ -31,7 +31,6 @@ const BOOKING = ohneKommentare(buchungsFlaeche());
 
 const CE_ID = 4711;
 const TG_ONLY_ANTWORT = {
-  shipmentId: null,
   ceShipmentId: CE_ID,
   tariffs: [{ offerId: "0123456789abcdef0123456789abcdef", bookable: true, publicCarrierId: "ups" }],
 };
@@ -57,31 +56,44 @@ test("3 — Verdrahtung: NewShipmentPage prüft beim Fortsetzen die lokale Sendu
     "der Fortsetzen-Guard prüft nicht die lokale Sendung");
   assert.ok(!NEW_SHIPMENT.includes("hasUsableShipmentReference(d.shipmentId)"),
     "die JUMiNGO-Referenz ist wieder Voraussetzung für Angebote");
-  // Beide IDs werden weiterhin unverändert aus der Antwort übernommen.
-  assert.ok(NEW_SHIPMENT.includes("setShipmentId(d.shipmentId);"));
+  // TG22 Paket A: übernommen wird ausschließlich der CE-Handle.
   assert.ok(NEW_SHIPMENT.includes("setCeShipmentId(d.ceShipmentId ?? null);"));
+  assert.ok(!/setShipmentId\b|\bd\.shipmentId\b/.test(NEW_SHIPMENT), "die JUMiNGO-Referenz wird wieder übernommen");
 });
 
 /* ══════════ 2 — Wiederherstellung der Buchungsseite ══════════════════════ */
 
-test("4 — der laufende Vorgang trägt die lokale Sendung auch ohne JUMiNGO-Referenz", () => {
+test("4 — der laufende Vorgang trägt ausschließlich die lokale Sendung", () => {
   const s = normalizeScope({
-    shipmentId: null, ceShipmentId: CE_ID, tariffs: TG_ONLY_ANTWORT.tariffs,
+    ceShipmentId: CE_ID, tariffs: TG_ONLY_ANTWORT.tariffs,
     selected: TG_ONLY_ANTWORT.tariffs[0],
   }, "shipment");
-  assert.equal(s.shipmentId, null);
+  assert.ok(!("shipmentId" in s), "der Vorgang führt wieder eine Providerreferenz");
   assert.equal(s.ceShipmentId, CE_ID, "die lokale Sendung ginge im Vorgang verloren");
-  // Verworfen werden beide gemeinsam.
+  // Eine eingeschleuste Altreferenz wird nicht übernommen.
+  assert.ok(!("shipmentId" in normalizeScope({ shipmentId: "s_fb1bc92aba1c4d70a3eaa44d687ae179", ceShipmentId: CE_ID }, "shipment")));
   assert.equal(dropOffers(s).ceShipmentId, null);
 });
 
-test("5 — Verdrahtung: BookingPage stellt auch ohne JUMiNGO-Referenz wieder her", () => {
-  assert.ok(BOOKING.includes(
-    "if (flowShipment?.selected && (flowShipment.shipmentId != null || flowShipment.ceShipmentId != null)) {"),
-    "die Wiederherstellung verlangt wieder die JUMiNGO-Referenz");
-  assert.ok(!BOOKING.includes("if (flowShipment?.selected && flowShipment.shipmentId != null) {"));
-  // Die lokale Sendung reist bei der Wiederherstellung mit.
-  assert.ok(BOOKING.includes("ceShipmentId: flowShipment.ceShipmentId ?? null,"));
+test("5 — Verdrahtung: BookingPage stellt über die lokale Sendung wieder her", () => {
+  assert.ok(BOOKING.includes("if (flowShipment?.selected && flowShipment.ceShipmentId != null) {"),
+    "die Wiederherstellung hängt nicht an der lokalen Sendung");
+  assert.ok(!/flowShipment\.shipmentId\b/.test(BOOKING), "die Wiederherstellung liest wieder die JUMiNGO-Referenz");
+  assert.ok(BOOKING.includes("ceShipmentId: flowShipment.ceShipmentId,"));
+});
+
+test("5b — keine Sendeoperation der Buchungsseite nennt eine Providerreferenz", () => {
+  assert.ok(!/\bshipmentId:\s*bookingData\?\.shipmentId\b/.test(BOOKING), "ein Request trägt bookingData.shipmentId");
+  assert.ok(!/bookingData\?\.shipmentId\b/.test(BOOKING), "die Buchungsseite liest die JUMiNGO-Referenz");
+  for (const anker of [
+    /checkVoucher\(\{\s*ceShipmentId:\s*bookingData\?\.ceShipmentId,/,
+    /ceShipmentId:\s*bookingData\?\.ceShipmentId,\s*offerId:\s*tariff\?\.offerId,/,
+    /useCommercialInvoice\(\{ shipmentId: bookingData\?\.ceShipmentId, enabled: customsRequired \}\)/,
+    /saveDraftPickupWindow\(\{ ceShipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null \}\)/,
+    /<PickupWindowModule[\s\S]{0,200}ceShipmentId=\{bookingData\?\.ceShipmentId\}/,
+  ]) {
+    assert.match(BOOKING, anker);
+  }
 });
 
 test("6 — die Buchung verlangt keine JUMiNGO-Referenz: das Angebot wird über seine Kennung gebucht", () => {

@@ -84,7 +84,7 @@ function setupRoutes(page) {
     if (p.includes("/api/legal/booking-context")) return json({ enabled: false });
     if (p.includes("/api/shipping/launch-scope")) return json({ countries: ["DE"], partialCountries: [] });
     if (p.includes("/api/jumingo/calculate-price")) {
-      return json({ shipmentId: "s_e2e", ceShipmentId: 4711, tariffs: TARIFE,
+      return json({ ceShipmentId: 4711, tariffs: TARIFE,
         availableShippingModes: ["express", "standard"],
         publicCarriers: [{ id: "dpd", name: "DPD" }, { id: "ups", name: "UPS" }, { id: "gls", name: "GLS" }],
         customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null });

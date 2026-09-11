@@ -74,7 +74,7 @@ async function setupRoutes(page, {
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", tariffs: [DROPOFF_TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [DROPOFF_TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dpd", name: "DPD" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });

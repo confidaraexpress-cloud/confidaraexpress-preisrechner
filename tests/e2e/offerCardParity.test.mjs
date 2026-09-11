@@ -85,7 +85,7 @@ async function setupRoutes(page) {
       // (routes/jumingo.js: `tariffs: [...publicTariffs, ...publicTransglobalOffers]`).
       // Das ist die gemeinsame Kartenarchitektur bereits im Vertrag: das Frontend
       // bekommt gar keine Gelegenheit, nach Provider zu trennen.
-      shipmentId: "s1", tariffs: [JUMINGO, TG_PICKUP, TG_DROPOFF, TG_OFFEN],
+      ceShipmentId: 4711, tariffs: [JUMINGO, TG_PICKUP, TG_DROPOFF, TG_OFFEN],
       availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL" }, { id: "ups", name: "UPS" },
                        { id: "dpd", name: "DPD" }, { id: "gls", name: "GLS" }],

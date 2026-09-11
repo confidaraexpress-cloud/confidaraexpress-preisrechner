@@ -28,6 +28,9 @@ function chromiumExecutablePath() {
 // Werte, die NIRGENDS kundensichtbar auftauchen dürfen.
 const CE_BS = "CE-BS26-00042";
 const JUMINGO_ORDER = "JU-77-EXTERN";
+// Bewusst ein ALTER Serverstand: seit TG22 Paket A liefert /kunde/shipments die
+// Providerreferenz nicht mehr. Die Fixture trägt sie trotzdem — sonst prüfte die
+// Nicht-Sichtbarkeit unten ins Leere.
 const JUMINGO_SHIPMENT = "s_5f3a9c2b1d4e6f8a0b2c4d6e8f0a1b2c";
 // Und der Wert, der stattdessen stehen muss.
 const CE_AB = "CE-AB26-00087";

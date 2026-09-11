@@ -63,7 +63,7 @@ async function setupRoutes(page, { uebergabe = "pickup", onBook, onCalc, noetig 
     if (p.endsWith("/api/jumingo/book")) {
       if (onBook) onBook(JSON.parse(req.postData() || "{}"));
       await page.evaluate(() => { window.__ceBookCalls = (window.__ceBookCalls || 0) + 1; }).catch(() => {});
-      return json({ success: true, shipmentId: "s1", ceShipmentId: 1, trackingNumber: "X" });
+      return json({ success: true, ceShipmentId: 1, trackingNumber: "X" });
     }
     if (p.endsWith("/kundenbereich")) return json({ user: USER });
     if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
@@ -76,7 +76,7 @@ async function setupRoutes(page, { uebergabe = "pickup", onBook, onCalc, noetig 
     if (p.includes("/api/jumingo/calculate-price")) {
       if (onCalc) onCalc(JSON.parse(req.postData() || "{}"));
       return json({
-      shipmentId: "s1", tariffs: [basisTarif(uebergabe, noetig)], availableShippingModes: ["standard"],
+      ceShipmentId: 4711, tariffs: [basisTarif(uebergabe, noetig)], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
       });

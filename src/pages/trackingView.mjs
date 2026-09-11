@@ -3,11 +3,10 @@
 // (der Bug existiert nur hier) — nur von TrackingPage.jsx und ihrem Test importiert. Kein React,
 // kein I/O → direkt unit-testbar (node --test).
 //
-// KRITISCH (bewiesene Root Cause): Das JUMiNGO-„ShipmentTracking"-Objekt trägt einen
-// Top-Level-`status` (freier String, OpenAPI ShipmentTracking.status) — das ist der
-// Request-/Gesamtstatus der Trackingabfrage (z. B. "success"), NICHT der Transportstatus.
-// Der echte Transportstatus liegt in `trackingStatus` (Backend-normalisiert = data.status)
-// bzw. `tracking.data.status`. Der Envelope darf die Sendungsdarstellung NIEMALS steuern.
+// KRITISCH (bewiesene Root Cause): Ein Rohobjekt eines Anbieters trägt einen Top-Level-`status`
+// — den Request-/Gesamtstatus der Trackingabfrage (z. B. "success"), NICHT den Transportstatus.
+// Seit dem neutralen Trackingvertrag liefert der Server kein Rohobjekt mehr; der Transportstatus
+// steht ausschließlich in `trackingStatus`. Ein Envelope darf die Darstellung NIEMALS steuern.
 
 // Die vier Timeline-Stufen (Index 0..3).
 export const STATUS_STEPS = ["Daten übermittelt", "Unterwegs", "In Zustellung", "Zugestellt"];
@@ -51,35 +50,19 @@ function norm(v) {
   return typeof v === "string" && v.trim() ? v.trim().toLowerCase() : null;
 }
 
-// AUTORITATIVE Transport-Statusquelle. Priorität:
-//   1. result.trackingStatus         (Backend-normalisiert = data.status)
-//   2. result.tracking.data.status   (JUMiNGO ShipmentTracking.data.status)
-//   3. result.data.status            (verschachtelte Antwortform)
-// NIEMALS result.tracking.status (Envelope, z. B. "success") und NIEMALS result.status.
+// AUTORITATIVE Transport-Statusquelle: AUSSCHLIESSLICH result.trackingStatus (serverseitig
+// normalisiert, für jeden Einkaufsweg dieselbe Form). Ein Rohobjekt eines Anbieters
+// (`tracking`, `data`) gehört nicht zum Kundenvertrag und wird NIE gelesen — weder sein
+// Envelope ("success") noch ein darin verschachtelter Status. Ebenso NIEMALS result.status.
 export function resolveTransportStatus(result) {
   const r = result && typeof result === "object" ? result : {};
-  const tracking = r.tracking && typeof r.tracking === "object" ? r.tracking : null;
-  const trackingData = tracking && tracking.data && typeof tracking.data === "object" ? tracking.data : null;
-  const nestedData = r.data && typeof r.data === "object" ? r.data : null;
-  return (
-    norm(r.trackingStatus) ||
-    (trackingData ? norm(trackingData.status) : null) ||
-    (nestedData ? norm(nestedData.status) : null) ||
-    null
-  );
+  return norm(r.trackingStatus);
 }
 
 // Trackingnummer (nur zur Fallback-Entscheidung Hero „Daten übermittelt" vs. „…nicht verfügbar").
 export function resolveTrackingNumber(result) {
   const r = result && typeof result === "object" ? result : {};
-  const tracking = r.tracking && typeof r.tracking === "object" ? r.tracking : null;
-  const cands = [
-    r.trackingNumber,
-    tracking ? tracking.trackingNumber : undefined,
-    tracking && tracking.data ? tracking.data.tracking_number : undefined,
-  ];
-  for (const c of cands) if (typeof c === "string" && c.trim()) return c.trim();
-  return null;
+  return typeof r.trackingNumber === "string" && r.trackingNumber.trim() ? r.trackingNumber.trim() : null;
 }
 
 // Transportstatus → deutsches Label ODER null. Unbekannt/leer/Envelope → null (kein Raten,

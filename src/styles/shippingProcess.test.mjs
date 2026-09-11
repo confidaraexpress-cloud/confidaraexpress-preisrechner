@@ -270,11 +270,13 @@ test("10 — der /book-Payload trägt weiterhin dieselben Absender-/Empfänger-/
   const body = bookCall[1];
   for (const feld of [
     "sender:", "recipient:", "weight:", "referenceNumber:", "labelFormat,",
-    "shipmentId:", "tariffId:", "shipperTariffId:", "price_final:",
+    "ceShipmentId:", "tariffId:", "shipperTariffId:", "price_final:",
     "...insurancePayload", "...customsPayload",
   ]) {
     assert.ok(body.includes(feld), `/book-Payload fehlt erwartetes Feld: ${feld}`);
   }
+  // TG22 Paket A: die Buchung nennt den CE-Handle, nie die Providerreferenz.
+  assert.ok(!/(^|[\s{,])shipmentId:/m.test(body), "/book-Payload trägt wieder die Providerreferenz");
   /* `content` steht seit TG-7 nicht mehr als Literal im Aufruf: es entsteht über
      einen Erbauer, weil ein Angebot mit vorab erhobenen Sendungsangaben es NICHT
      mitschicken darf — dort liest der Server dasselbe Feld als Behauptung über die
@@ -320,7 +322,7 @@ test("13 — der Abholfensterkonflikt (PICKUP_WINDOW_CHANGED) ist funktional unv
   assert.match(bookingPage, /d\?\.code === "PICKUP_WINDOW_CHANGED"/);
   assert.match(bookingPage, /const acceptNewPickupWindow = /);
   assert.match(bookingPage, /const handlePickupWindowRecalculate = /);
-  assert.match(bookingPage, /saveDraftPickupWindow\(\{ shipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null \}\)/);
+  assert.match(bookingPage, /saveDraftPickupWindow\(\{ ceShipmentId: sid, pickupTimeFrom: null, pickupTimeUntil: null \}\)/);
 });
 
 /* ══════════ 14 — Buchungserfolg zeigt dieselben Geschäftsnummern ═════════ */

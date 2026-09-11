@@ -68,7 +68,7 @@ function setupRoutes(page, zaehler) {
       if (p.includes("/api/jumingo/calculate-price")) {
         zaehler.n += 1;
         return json({
-          shipmentId: "s_e2e", ceShipmentId: 4711, tariffs: TARIFE,
+          ceShipmentId: 4711, tariffs: TARIFE,
           availableShippingModes: ["express", "standard"],
           publicCarriers: [{ id: "ups", name: "UPS" }],
           customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,

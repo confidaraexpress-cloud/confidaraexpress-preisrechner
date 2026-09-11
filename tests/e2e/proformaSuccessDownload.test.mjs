@@ -105,7 +105,7 @@ async function setupRoutes(page, { dokumente, pdfKopfzeilen = {}, protokoll } = 
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      shipmentId: "s1", ceShipmentId: CE_SHIPMENT_ID, tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: CE_SHIPMENT_ID, tariffs: [TARIFF], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
@@ -114,7 +114,7 @@ async function setupRoutes(page, { dokumente, pdfKopfzeilen = {}, protokoll } = 
       minimumMinutes: 120, adjustable: true,
     });
     if (p.includes("/api/jumingo/book")) return json({
-      shipmentId: "s1", ceShipmentId: CE_SHIPMENT_ID, trackingNumber: "TRACK1", labelUrl: null,
+      ceShipmentId: CE_SHIPMENT_ID, trackingNumber: "TRACK1", labelUrl: null,
       invoiceNumber: "CE-RE-2026-000001",
     });
     return json({});

@@ -14,6 +14,7 @@ import {
   coverValueError, parseCoverValue, buildCoverRepricePayload, buildCoverBookInsurancePayload,
   insuranceTypeForTariff, coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice,
   insuredPriceChangeView, offerCardInsurance, COVER_BOOK_ERROR_CODES, isCoverBookError,
+  priceChangeBreakdownLines, COVER_PRICE_CHANGE_TEXT,
 } from "./coverInsuranceView.mjs";
 import {
   COVER_INSURANCE_TEXT, INSURANCE_TEXT, INSURANCE_CARD_COPY, INSURANCE_DIALOG,
@@ -170,6 +171,66 @@ test("A9 — versicherte Preisänderung: bestätigbar mit bisherigem und neuem G
   assert.deepEqual([paar.oldPrice, paar.newPrice, paar.insured], [1, 2, true]);
 });
 
+/* ══════════ A) TG22 Paket A — ausdrückliche Übernahme ══════════════════════ */
+
+test("A13 — Neubepreisung mit Übernahme: nur der vom Server genannte Gesamtbetrag, nie ein Preis", () => {
+  const basis = { offerId: "0123456789abcdef0123456789abcdef", coverValue: 500, goodsAreNew: true, goodsAreFragile: false };
+  assert.deepEqual(buildCoverRepricePayload({ ...basis, acceptPriceChange: { expectedTotalGross: 24.28 } }), {
+    ...basis, acceptPriceChange: { expectedTotalGross: 24.28 },
+  });
+  // Ohne gültigen Betrag entsteht KEIN Übernahmefeld — der Körper bleibt der Vier-Felder-Körper.
+  for (const kaputt of [undefined, null, {}, { expectedTotalGross: "24.28" }, { expectedTotalGross: NaN },
+                        { expectedTotalGross: -1 }, "24.28"]) {
+    assert.deepEqual(buildCoverRepricePayload({ ...basis, acceptPriceChange: kaputt }), basis, JSON.stringify(kaputt));
+  }
+  const koerper = buildCoverRepricePayload({ ...basis, acceptPriceChange: { expectedTotalGross: 24.28, customerPriceCents: 1 } });
+  assert.deepEqual(Object.keys(koerper.acceptPriceChange), ["expectedTotalGross"], "fremde Felder reisen mit");
+});
+
+test("A14 — /book trägt den Preisstand nur, wenn der Server ihn genannt hat", () => {
+  const totals = { customerTotalGross: 24.28 };
+  const mit = buildCoverBookInsurancePayload({ coverValue: 500, goodsAreNew: true, goodsAreFragile: false,
+    repriceResult: { totals, priceRevision: 1 } });
+  assert.equal(mit.offerRevision, 1);
+  assert.equal(mit.confirmedTotalGross, 24.28);
+  for (const revision of [undefined, null, -1, "1", 1.5]) {
+    const ohne = buildCoverBookInsurancePayload({ coverValue: 500, goodsAreNew: true, goodsAreFragile: false,
+      repriceResult: { totals, priceRevision: revision } });
+    assert.ok(!("offerRevision" in ohne), JSON.stringify(revision));
+  }
+});
+
+test("A15 — die Zusammensetzung kommt vom Server: Versand geändert, Absicherung unverändert", () => {
+  const v = insuredPriceChangeView({
+    code: "PRICE_CHANGED", oldPrice: 22.85, newPrice: 24.28, price: 24.28, offerRevision: 0,
+    priceChange: { shipping: { oldGross: 12.85, newGross: 14.28 }, insurance: { oldGross: 10, newGross: 10 } },
+  }, 99);
+  assert.deepEqual([v.oldPrice, v.newPrice, v.insured], [22.85, 24.28, true], "der clientseitige Altbetrag gewann");
+  const zeilen = priceChangeBreakdownLines(v);
+  assert.deepEqual(zeilen.map((z) => [z.id, z.oldGross, z.newGross, z.changed]),
+    [["shipping", 12.85, 14.28, true], ["insurance", 10, 10, false]]);
+  assert.deepEqual(zeilen.map((z) => z.label), ["Versand", "Zusätzliche Transportabsicherung"]);
+  // Unbrauchbare Zusammensetzung → keine Zeilen, aber der Vergleich bleibt.
+  for (const pc of [null, "x", { shipping: { oldGross: "12.85", newGross: 14.28 } }, { insurance: {} }]) {
+    const w = insuredPriceChangeView({ code: "PRICE_CHANGED", oldPrice: 22.85, newPrice: 24.28, priceChange: pc }, undefined);
+    assert.equal(preisIstBestaetigbar(w), true);
+    assert.deepEqual(priceChangeBreakdownLines(w), [], JSON.stringify(pc));
+  }
+  assert.deepEqual(priceChangeBreakdownLines(null), []);
+});
+
+test("A16 — Texte der Übernahme und der Konflikte: neutral, ohne Anbieter, ohne Rohtext", () => {
+  const texte = Object.values(COVER_PRICE_CHANGE_TEXT).join(" | ");
+  for (const v of ["Transglobal", "transglobal", "JUMiNGO", "Anbieter", "Einkauf", "Revision"]) {
+    assert.ok(!texte.includes(v), `„${v}" in den Übernahmetexten`);
+  }
+  assert.equal(COVER_PRICE_CHANGE_TEXT.acceptLabel, "Neuen Preis übernehmen");
+  const roh = { error: "ROHTEXT transglobal" };
+  assert.match(coverRepriceErrorText(409, { ...roh, code: "OFFER_PRICE_CONFLICT" }), /zwischenzeitlich aktualisiert/);
+  assert.match(coverRepriceErrorText(400, { ...roh, code: "PRICE_CONFIRMATION_REQUIRED" }), /erneut/);
+  assert.ok(!/ROHTEXT/.test(coverRepriceErrorText(409, { ...roh, code: "OFFER_PRICE_CONFLICT" })));
+});
+
 /* ══════════ A) Texte ═══════════════════════════════════════════════════════ */
 
 const STUFEN_BEGRIFFE = ["Premium", "Standard", "priorisiert", "Priorisiert", "50,00", "Status-Updates",
@@ -263,12 +324,21 @@ test("B4 — /book: transit_cover mit bestätigtem Gesamtbetrag; der Stufenkörp
   assert.match(seite, /\{ insuranceSelection: \{ type: "none" \} \}/);
 });
 
-test("B5 — eine versicherte Preisänderung öffnet den Dialog und bepreist beim Fortfahren NEU", () => {
+test("B5 — eine versicherte Preisänderung öffnet den Dialog und übernimmt beim Fortfahren AUSDRÜCKLICH", () => {
   assert.match(seite, /setPriceChange\(insuredPriceChangeView\(d, repriceResult\?\.totals\?\.customerTotalGross\)\)/);
   const fortfahren = seite.slice(seite.indexOf("const continueWithNewPrice = "));
   const zweig = fortfahren.slice(0, fortfahren.indexOf("confirmedFinalPriceRef.current = np"));
   assert.match(zweig, /if \(priceChange\.insured\) \{/);
-  assert.match(zweig, /runReprice\(insuranceType, goodsValueNum, insuranceValueNum, contentDescription\)/);
+  // TG22 Paket A: nicht mehr eine erneute Neubepreisung, die am alten Preisstand scheiterte, sondern
+  // die ausdrückliche Übernahme genau des vom Server genannten neuen Betrags.
+  assert.match(zweig, /acceptInsuredPriceChange\(priceChange\.newPrice\)/);
+  const annahme = seite.slice(seite.indexOf("const acceptInsuredPriceChange = "), seite.indexOf("const continueWithNewPrice = "));
+  assert.match(annahme, /acceptPriceChange: \{ expectedTotalGross: neuerPreis \}/);
+  assert.ok(!/doBook\(|\/api\/jumingo\/book/.test(annahme), "die Übernahme bucht");
+  // Eine erneute Preisänderung führt zurück in den Dialog — keine Schleife, kein Stillschweigen.
+  assert.match(annahme, /if \(erneut && preisIstBestaetigbar\(erneut\)\) \{\s*setPriceChange\(erneut\);/);
+  // Die gewöhnliche Neubepreisung öffnet denselben Dialog statt einer Fehlermeldung.
+  assert.match(seite, /coverModel && d\?\.code === "PRICE_CHANGED" \? insuredPriceChangeView\(d, undefined\) : null/);
   // Ein versicherter Vorgang fällt NIE in den price_final-Weg ohne Versicherung.
   assert.ok(zweig.indexOf("return;") > -1 && zweig.indexOf("doBook()") === -1,
     "die versicherte Bestätigung darf nicht still ohne neue Bindung buchen");

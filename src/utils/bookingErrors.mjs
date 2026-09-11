@@ -83,6 +83,15 @@ export const BOOK_FEHLER = {
     message: "Für diese Sendung läuft bereits eine Buchung. Bitte senden Sie sie nicht erneut ab und prüfen Sie den Stand unter „Sendungen“.",
     retryable: false,
   },
+  // Das Angebot ist bereits VERBRAUCHT. Serverseitig geschieht das ausschließlich, wenn beim
+  // Anbieter ein Auftrag existiert oder existieren KANN: gebucht, unklarer Ausgang,
+  // klärungspflichtig. Es ist also ausdrücklich NICHT „nichts beauftragt" — eine Neuberechnung
+  // lüde zu einer zweiten Sendung ein. Der richtige Ort ist die Sendungsliste.
+  ANGEBOT_VERWENDET: {
+    title: "Angebot bereits verwendet",
+    message: "Mit diesem Angebot wurde bereits eine Buchung ausgelöst. Bitte senden Sie sie nicht erneut ab und prüfen Sie den Stand unter „Sendungen“.",
+    retryable: false,
+  },
   ZEIT_UNBEKANNT: {
     title: "Keine Antwort vom Server",
     message: "Der Server hat nicht rechtzeitig geantwortet. Ob die Buchung durchgeführt wurde, lässt sich gerade nicht feststellen. Bitte prüfen Sie zuerst unter „Sendungen“, ob die Sendung angelegt wurde, bevor Sie die Buchung erneut auslösen.",
@@ -107,7 +116,7 @@ export const BOOK_FEHLER = {
 // damit den Text „Bitte versuchen Sie es erneut." — obwohl der Server im selben Body
 // wörtlich „bitte buchen Sie sie NICHT erneut" sagt. Der Client hat die einzige Warnung
 // überschrieben, die vor einer doppelten, kostenpflichtigen Sendung schützt.
-// ─── TG-7: vier weitere Codes, alle mit derselben Handlung ─────────────────────────
+// ─── TG-7: weitere Codes, alle mit derselben Handlung ──────────────────────────────
 // Sie standen bisher in keiner Tabelle und fielen damit in den 409-Sammelzweig der
 // Buchungsseite. Dessen Text („Diese Sendung wurde bereits verarbeitet …") und dessen
 // Knopf („Zu meinen Sendungen") sind für sie beide falsch: es wurde NICHTS beauftragt,
@@ -116,13 +125,18 @@ export const BOOK_FEHLER = {
 //   Code                            Status  Ausgang                    Wiederholen?
 //   SHIPMENT_DECLARATIONS_MISMATCH  409     nichts beauftragt          neu berechnen
 //   SHIPMENT_DECLARATIONS_MISSING   409     nichts beauftragt          neu berechnen
-//   OFFER_ALREADY_USED              409     nichts beauftragt          neu berechnen
 //   OFFER_MISMATCH                  409     nichts beauftragt          neu berechnen
 //
-// Alle vier bedeuten dasselbe: das vorliegende Angebot trägt nicht mehr. Ein zweiter
-// Versuch mit derselben Angebotskennung endete zwangsläufig genauso — die einzige
-// Handlung, die etwas ändert, ist eine neue Berechnung. Genau das sagt NEU_BERECHNEN
-// bereits; es entsteht keine fünfte Fehlerklasse daneben.
+// Alle bedeuten dasselbe: das vorliegende Angebot trägt nicht mehr. Ein zweiter Versuch
+// mit derselben Angebotskennung endete zwangsläufig genauso — die einzige Handlung, die
+// etwas ändert, ist eine neue Berechnung. Genau das sagt NEU_BERECHNEN bereits.
+//
+// ─── Buchungssicherheit: OFFER_ALREADY_USED ist KEIN „nichts beauftragt" ────────────
+//   OFFER_ALREADY_USED              409     gebucht / evtl. gebucht    NIEMALS
+// Ein Angebot wird serverseitig nur verbraucht, wenn beim Anbieter ein Auftrag existiert
+// oder existieren KANN (gebucht, unklarer Ausgang, klärungspflichtig). Er stand bis hierher
+// unter NEU_BERECHNEN — dessen Text („Es wurde nichts beauftragt") war dafür falsch, und die
+// Neuberechnung lud zu einer zweiten Sendung ein. Er führt deshalb in die Sendungsliste.
 //
 // Die beiden Deklarationscodes sind nach TG-7 Defense-in-Depth: über die Oberfläche
 // ist eine abweichende Angabe nicht mehr erzeugbar, seit die beantworteten Werte auf
@@ -137,7 +151,7 @@ const BOOK_CODE_FEHLER = {
   BOOKING_FAILED:          "NEU_BERECHNEN",
   SHIPMENT_DECLARATIONS_MISMATCH: "NEU_BERECHNEN",
   SHIPMENT_DECLARATIONS_MISSING:  "NEU_BERECHNEN",
-  OFFER_ALREADY_USED:             "NEU_BERECHNEN",
+  OFFER_ALREADY_USED:             "ANGEBOT_VERWENDET",
   OFFER_MISMATCH:                 "NEU_BERECHNEN",
 };
 

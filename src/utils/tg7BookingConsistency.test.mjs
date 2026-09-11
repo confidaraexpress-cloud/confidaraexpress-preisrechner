@@ -284,14 +284,33 @@ test("C7 — der Dialog zeigt Beträge und Bestätigung nur beim bestätigbaren 
 
 /* ══════════ D — FEHLER FÜHREN ZUR RICHTIGEN HANDLUNG ══════════════════════ */
 
-test("D1 — die vier Codes ohne Bestellung fordern eine Neuberechnung", () => {
-  for (const code of ["SHIPMENT_DECLARATIONS_MISMATCH", "SHIPMENT_DECLARATIONS_MISSING",
-                      "OFFER_ALREADY_USED", "OFFER_MISMATCH"]) {
+test("D1 — die drei Codes ohne Bestellung fordern eine Neuberechnung", () => {
+  for (const code of ["SHIPMENT_DECLARATIONS_MISMATCH", "SHIPMENT_DECLARATIONS_MISSING", "OFFER_MISMATCH"]) {
     assert.equal(fordertNeuberechnung({ code }), true, `${code} fordert keine Neuberechnung`);
     const f = mapBookRestError(409, { code, error: "…" });
     assert.equal(f, BOOK_FEHLER.NEU_BERECHNEN, `${code} bekommt den falschen Text`);
     assert.equal(f.retryable, false, `${code} laedt zum Wiederholen ein`);
   }
+});
+
+test("D1b — ein bereits verwendetes Angebot fuehrt in die Sendungsliste, nicht zur Neuberechnung", () => {
+  // Frueher stand OFFER_ALREADY_USED unter „nichts beauftragt → neu berechnen". Das stimmt nicht:
+  // verbraucht wird ein Angebot NUR, wenn beim Anbieter ein Auftrag existiert oder existieren
+  // KANN (gebucht, unklarer Ausgang, klaerungspflichtig). Eine Neuberechnung laedt dann zu einer
+  // zweiten Sendung ein; der richtige Ort ist die Sendungsliste.
+  assert.equal(fordertNeuberechnung({ code: "OFFER_ALREADY_USED" }), false);
+  const f = mapBookRestError(409, { code: "OFFER_ALREADY_USED", error: "…" });
+  assert.equal(f, BOOK_FEHLER.ANGEBOT_VERWENDET);
+  assert.equal(f.retryable, false);
+  assert.match(f.message, /nicht erneut/);
+  assert.match(f.message, /Sendungen/);
+  assert.doesNotMatch(f.message, /nichts beauftragt/, "die Meldung behauptet, es sei nichts beauftragt");
+  // Die Buchungsseite zeigt ihn als Konflikt — die Flaeche ersetzt den Bestellknopf durch
+  // „Zu meinen Sendungen" — und zwar VOR der Neuberechnungs-Weiche.
+  const s = ohneKommentar("pages/BookingPage.jsx");
+  const konflikt = s.indexOf('d?.code === "OFFER_ALREADY_USED"');
+  assert.ok(konflikt > 0 && konflikt < s.indexOf("fordertNeuberechnung(d)"),
+    "OFFER_ALREADY_USED wird nicht vor der Neuberechnungs-Weiche als Konflikt behandelt");
 });
 
 test("D2 — ein laufender Vorgang bleibt ein Konflikt, keine Neuberechnung", () => {

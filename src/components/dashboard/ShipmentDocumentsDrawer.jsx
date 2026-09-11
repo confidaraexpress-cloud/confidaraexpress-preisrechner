@@ -6,7 +6,7 @@ import { downloadDocument } from "../../utils/downloadDocument";
 import {
   DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, documentViewState, documentDownloadPath,
   documentLabel, documentNumber, documentIcon, documentFallbackFilename,
-  documentCarrierReference, documentOrdinal,
+  documentCarrierReference, documentOrdinal, documentLabelSize,
   hasProcessingDocument, nextDocumentPollDelay,
 } from "../../utils/shipmentDocumentsView.mjs";
 
@@ -158,7 +158,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
     setBusyPath(pfad);
     setDownloadError("");
     try {
-      await downloadDocument(pfad, { fallbackFilename: documentFallbackFilename(doc.type, documentOrdinal(doc)) });
+      await downloadDocument(pfad, { fallbackFilename: documentFallbackFilename(doc.type, documentOrdinal(doc), documentLabelSize(doc)) });
     } catch (e) {
       if (e?.status !== 401 && e?.status !== 403) setDownloadError(e.message); // globaler Auth-Redirect übernimmt sonst
     }

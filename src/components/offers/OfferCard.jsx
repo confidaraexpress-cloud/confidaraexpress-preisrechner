@@ -13,6 +13,7 @@ import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
+import { pickupContractOf, pickupTimeText, pickupWindowDetailText } from "../../utils/pickupContractView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -62,12 +63,13 @@ function buildStart(t) {
   // nicht, ist deshalb KEIN Grund, beide gleich darzustellen — providerneutral heisst,
   // dieselbe Karte zeigt die tatsaechlich verfuegbare Leistung, nicht dieselbe Fiktion.
   //
-  // Es wird nirgends nach dem Provider gefragt: gezeigt wird, was DA ist.
-  const abholTag = t.pickupDate || t.collectionDate || null;
-  const primary = abholTag ? fmtDay(abholTag) : null;
+  // Es wird nirgends nach dem Provider gefragt: gezeigt wird, was DA ist. Die Regel steht
+  // in utils/pickupContractView.mjs — derselbe Helfer liest den Termin im Detailbereich.
+  const abholung = pickupContractOf(t);
+  const primary = abholung.day ? fmtDay(abholung.day) : null;
   const secondary = [];
-  if (t.pickupTimeFrom && t.pickupTimeUntil)     secondary.push(`${t.pickupTimeFrom}–${t.pickupTimeUntil} Uhr`);
-  else if (t.collectionReadyFrom)                secondary.push(`bereit ab ${t.collectionReadyFrom} Uhr`);
+  const abholZeit = pickupTimeText(abholung);
+  if (abholZeit)                                 secondary.push(abholZeit);
   const dropoffLabel = publicDropoffLabel(t);
   if (dropoffLabel)                              secondary.push(dropoffLabel);
   return { title, primary, secondary };
@@ -168,7 +170,9 @@ const LIMIT_RULES = {
   second_length:             { order: 2, tpl: (op, v) => `Die zweitlängste Seite eines Packstücks darf ${op} ${v} cm lang sein.` },
   shortest_and_longest_side: { order: 2, tpl: (op, v) => `Die kürzeste und die längste Seite eines Packstücks dürfen zusammen ${op} ${v} cm lang sein.` },
   girth:                     { order: 3, tpl: (op, v) => `Das Gurtmaß eines Packstücks darf ${op} ${v} cm betragen.` },
-  packages_count:            { order: 4, tpl: (op, v) => `Mit diesem Versandtarif können ${op} ${v} Packstücke pro Sendung verschickt werden.` },
+  packages_count:            { order: 4, tpl: (op, v) => v === 1
+    ? `Mit diesem Versandtarif kann ${op} ${v} Packstück pro Sendung verschickt werden.`
+    : `Mit diesem Versandtarif können ${op} ${v} Packstücke pro Sendung verschickt werden.` },
   packages_total_weight:     { order: 5, tpl: (op, v) => `Das Gesamtgewicht aller Packstücke darf ${op} ${v} kg betragen.` },
 };
 
@@ -301,7 +305,10 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   const hasMain  = features.length > 0;
   const hasLimits = limitLines.length > 0;
   const dropoffLabel = publicDropoffLabel(t);
-  const hasTermin = !!(dropoffLabel || t.pickupDate || (t.pickupTimeFrom && t.pickupTimeUntil)
+  // Derselbe Abholvertrag wie im Startknoten der Timeline — ein Angebot mit „bereit ab"-Zeit
+  // zeigt ihn damit auch hier, und ein echtes Fenster bleibt ein Fenster.
+  const abholung = pickupContractOf(t);
+  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom
                    || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
   const hasHinweise = showPickupSurcharge;
   const hasLinks = carrierLinkItems.length > 0;
@@ -379,9 +386,12 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Termin &amp; Abholung</div>
           {dropoffLabel && <DetailRow label="Abgabestelle" value={dropoffLabel} />}
-          {t.pickupDate && <DetailRow label="Abholtermin" value={fmtDE(t.pickupDate)} />}
-          {t.pickupTimeFrom && t.pickupTimeUntil && (
-            <DetailRow label="Zeitfenster" value={`${t.pickupTimeFrom} – ${t.pickupTimeUntil} Uhr`} />
+          {abholung.day && <DetailRow label="Abholtermin" value={fmtDE(abholung.day)} />}
+          {abholung.windowFrom && (
+            <DetailRow label="Zeitfenster" value={pickupWindowDetailText(abholung)} />
+          )}
+          {abholung.readyFrom && (
+            <DetailRow label="Abholung" value={pickupTimeText(abholung)} />
           )}
           {hasDeliveryRange
             ? <DetailRow label="Lieferzeitraum" value={deliveryRange} />

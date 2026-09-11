@@ -34,6 +34,22 @@ export function normalizeVoucherInput(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+// ── Wo das Gutscheinfeld überhaupt eine Frage stellen kann ─────────────────────
+// Die Serverprüfung eines Codes braucht die Tarifkennung, zu der der Rabatt bestätigt wird
+// (`id` bzw. `shipper_tariff_id`). Ein Angebot, das keine solche Kennung trägt, kann gar
+// nicht geprüft werden: das Feld würde zu JEDEM Code „konnte gerade nicht geprüft werden"
+// melden. Dann wird es nicht angeboten — statt einer Eingabe, die nie funktionieren kann.
+//
+// Entschieden wird an der FORM des Angebots, nicht an seiner Herkunft. Ein Angebot mit
+// Tarifkennung verhält sich exakt wie bisher.
+const hatKennung = (w) => (typeof w === "number" && Number.isFinite(w))
+  || (typeof w === "string" && w.trim() !== "");
+
+export function voucherAvailableFor(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  return hatKennung(t.shipper_tariff_id) || hatKennung(t.id);
+}
+
 export function canSubmitVoucher(inputCode, status) {
   return normalizeVoucherInput(inputCode).length > 0 && status !== VOUCHER_STATUS.CHECKING;
 }

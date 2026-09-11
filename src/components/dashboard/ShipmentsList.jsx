@@ -11,6 +11,7 @@ import { ShipmentDocumentsDrawer } from "./ShipmentDocumentsDrawer";
 import { DOCUMENTS_TEXT } from "../../utils/shipmentDocumentsView.mjs";
 import { customerShipmentNumbers, NO_ORDER_CONFIRMATION_TEXT, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
+import { shipmentServiceNameOf, SHIPMENT_SERVICE_LABEL } from "../../utils/shipmentServiceNameView.mjs";
 import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
 } from "../../utils/trackingReferencesView.mjs";
@@ -288,6 +289,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 <dt className="shipment-detail-label">Carrier</dt>
                                 <dd className="shipment-detail-value">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</dd>
                               </div>
+                              {shipmentServiceNameOf(s) && (
+                                <div className="shipment-detail-item">
+                                  <dt className="shipment-detail-label">{SHIPMENT_SERVICE_LABEL}</dt>
+                                  <dd className="shipment-detail-value">{shipmentServiceNameOf(s)}</dd>
+                                </div>
+                              )}
                               <div className="shipment-detail-item">
                                 <dt className="shipment-detail-label">Buchungsdatum</dt>
                                 <dd className="shipment-detail-value">{dateDE(s.created_at)}</dd>
@@ -489,6 +496,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     <span className="ce-list-card-key">Carrier</span>
                     <span className="ce-list-card-val">{s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}</span>
                   </div>
+                  {shipmentServiceNameOf(s) && (
+                    <div className="ce-list-card-row">
+                      <span className="ce-list-card-key">{SHIPMENT_SERVICE_LABEL}</span>
+                      <span className="ce-list-card-val">{shipmentServiceNameOf(s)}</span>
+                    </div>
+                  )}
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Gewicht</span>
                     <span className="ce-list-card-val ce-num">{s.weight ? `${s.weight} kg` : "—"}</span>

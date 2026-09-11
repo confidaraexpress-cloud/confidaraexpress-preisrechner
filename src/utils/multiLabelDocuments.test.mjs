@@ -218,7 +218,7 @@ test("11 — Dokumentübersicht: Carriernummer statt leerer Zeile, eigener Rück
   const code = ohneKommentare(lies("../components/dashboard/ShipmentDocumentsDrawer.jsx"));
   assert.ok(code.includes("const referenz = nummer ? null : documentCarrierReference(doc);"));
   assert.ok(code.includes('{referenz && <span className="sdoc-row-number mono">{referenz}</span>}'));
-  assert.ok(code.includes("documentFallbackFilename(doc.type, documentOrdinal(doc))"));
+  assert.ok(code.includes("documentFallbackFilename(doc.type, documentOrdinal(doc), documentLabelSize(doc))"));
   assert.ok(code.includes("key={`${doc.type}-${documentOrdinal(doc) ?? i}`}"),
     "gleichartige Belege teilen sich einen Schlüssel");
 });

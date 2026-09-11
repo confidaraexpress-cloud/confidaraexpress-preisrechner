@@ -16,7 +16,9 @@
 // aus diesem Zustand.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isSafeApiPath, documentFallbackFilename, documentCarrierReference } from "./shipmentDocumentsView.mjs";
+import {
+  isSafeApiPath, documentFallbackFilename, documentCarrierReference, documentLabelSize,
+} from "./shipmentDocumentsView.mjs";
 
 // Die zwei Versandbelegarten, die ein Kunde bekommt — in dieser Reihenfolge. Alles andere
 // erscheint hier nicht.
@@ -39,7 +41,10 @@ const rang = (typ) => SHIPPING_DOCUMENT_TYPES.indexOf(typ);
  * Ordnungszahl. Derselbe Pfad zweimal ergibt einen Knopf. Ohne verwertbare Angabe entsteht
  * eine leere Liste — der Erfolgsbildschirm bleibt dann beim bisherigen Labelknopf.
  *
- * @returns {Array<{type:string, ordinal:number, label:string, downloadPath:string, carrierReference:string|null}>}
+ * `labelSize` ist das vom Server genannte Format eines Versandlabels (`"A4"`/`"THERMAL"`) oder
+ * `null`. Zwei Formate desselben Etiketts bleiben zwei Knöpfe — ihr Name kommt vom Server.
+ *
+ * @returns {Array<{type:string, ordinal:number, label:string, downloadPath:string, carrierReference:string|null, labelSize:string|null}>}
  */
 export function bookingShippingDocuments(booking) {
   const roh = booking && Array.isArray(booking.shippingDocuments) ? booking.shippingDocuments : [];
@@ -57,6 +62,7 @@ export function bookingShippingDocuments(booking) {
       label: d.label.trim(),
       downloadPath: d.downloadPath.trim(),
       carrierReference: documentCarrierReference(d),
+      labelSize: documentLabelSize(d),
     }))
     .filter((d) => (gesehen.has(d.downloadPath) ? false : (gesehen.add(d.downloadPath), true)))
     .sort((a, b) => (rang(a.type) - rang(b.type)) || (a.ordinal - b.ordinal));
@@ -69,4 +75,4 @@ export const shippingDocumentButtonLabel = (doc) => `${doc.label} ${BOOKING_SHIP
 export const shippingDocumentLoadingLabel = (doc) => `${doc.label} ${BOOKING_SHIPPING_DOCUMENTS_TEXT.loading}`;
 
 /** Der neutrale Rückfalldateiname — derselbe wie in der Dokumentübersicht. */
-export const shippingDocumentFallbackFilename = (doc) => documentFallbackFilename(doc.type, doc.ordinal);
+export const shippingDocumentFallbackFilename = (doc) => documentFallbackFilename(doc.type, doc.ordinal, doc.labelSize);

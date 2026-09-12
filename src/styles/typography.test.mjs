@@ -402,8 +402,10 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   const mitPfad = (app.match(/<Route [^>]*\bpath=/g) || []).length;
   const indexRt = (app.match(/<Route index\b/g) || []).length;
   const pfadlos = (app.match(/<Route /g) || []).length - mitPfad - indexRt;
-  assert.equal(mitPfad + indexRt, 29,
-    "die Zahl der ansteuerbaren Routen ist unverändert (29 seit dem Lagermodul)");
+  // Package C (dokumentierte Ankeränderung): +2 für die Buchungsklärung
+  // (/admin/reconciliation und /admin/reconciliation/:attemptId).
+  assert.equal(mitPfad + indexRt, 31,
+    "die Zahl der ansteuerbaren Routen ist unverändert (31 seit der Buchungsklärung)");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

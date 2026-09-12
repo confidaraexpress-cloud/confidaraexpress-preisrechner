@@ -418,6 +418,77 @@ export function updateAdminCancellationRequest(id, payload = {}) {
   });
 }
 
+// ── Buchungsklärung (Admin, Package C) ──────────────────────────────────────
+// Ungeklärte Buchungsvorgänge beider Anbieter über die KANONISCHEN Routen. Die
+// Transglobal-Aliasse des Backends bleiben für ältere Bundles bestehen; dieses
+// Frontend nutzt sie nicht. Keine dieser Aktionen kontaktiert einen Anbieter —
+// sie halten nur fest, was ein Mensch beim Anbieter festgestellt hat.
+//
+// Erlaubte Query-Parameter laut Backendvertrag: provider (transglobal|jumingo),
+// limit, offset. Ein anderer Anbieterwert wäre serverseitig ein 400.
+const RECONCILIATION_PARAMS = ["provider", "limit", "offset"];
+
+// GET /admin/reconciliation/attempts — die offenen Fälle, paginiert.
+export function listAdminReconciliationAttempts(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/reconciliation/attempts${buildQuery(query, RECONCILIATION_PARAMS)}`, { auth: true });
+}
+
+// GET /admin/reconciliation/attempts/:attemptId — ein Vorgang, vollständig
+// (auch ein bereits entschiedener). Serverseitig auditiert.
+export function getAdminReconciliationAttempt(attemptId) {
+  return apiFetch(`/admin/reconciliation/attempts/${encodeURIComponent(attemptId)}`, { auth: true });
+}
+
+// POST …/confirm-booked — der Body entsteht AUSSCHLIESSLICH über
+// buildConfirmBookedBody (utils/adminReconciliation.mjs): { confirm: true } plus,
+// nur wenn der Vorgang es verlangt, Anbieterreferenz und Absicherungsaussage.
+export function confirmAdminReconciliationBooked(attemptId, body) {
+  return apiFetch(`/admin/reconciliation/attempts/${encodeURIComponent(attemptId)}/confirm-booked`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+}
+
+// POST …/confirm-not-booked — nur die ausdrückliche Bestätigung, sonst nichts.
+export function confirmAdminReconciliationNotBooked(attemptId) {
+  return apiFetch(`/admin/reconciliation/attempts/${encodeURIComponent(attemptId)}/confirm-not-booked`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ confirm: true }),
+  });
+}
+
+// POST …/review — Prüfvermerk; der Vorgang bleibt offen. Nur ein Code aus der
+// festen Liste (REVIEW_CODE_OPTIONS) oder gar keiner.
+export function reviewAdminReconciliationAttempt(attemptId, reviewCode) {
+  return apiFetch(`/admin/reconciliation/attempts/${encodeURIComponent(attemptId)}/review`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(reviewCode ? { reviewCode } : {}),
+  });
+}
+
+// POST …/invoice-drift-review — die Rechnungsabweichung als geprüft vermerken.
+// Kein Body; der Befund selbst bleibt serverseitig unverändert.
+export function reviewAdminInvoiceDrift(attemptId) {
+  return apiFetch(`/admin/reconciliation/attempts/${encodeURIComponent(attemptId)}/invoice-drift-review`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+// ── Betriebs-Queues (Admin, Package C) ──────────────────────────────────────
+// GET /admin/operations/queues — reine Zähler je Queue ({ count, oldestAt,
+// oldestId }) aus EINEM lesenden Schnappschuss. Keine Handlung folgt daraus.
+export function getAdminOperationsQueues() {
+  return apiFetch("/admin/operations/queues", { auth: true });
+}
+
 // ── Supportanfragen (Admin) ─────────────────────────────────────────────────
 // Erlaubte Query-Parameter laut Backendvertrag. `userId` filtert auf einen Kunden
 // (Supportspalte im Kundenprofil) — dieselbe Liste, kein zweiter Endpunkt.

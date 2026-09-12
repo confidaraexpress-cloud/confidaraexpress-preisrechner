@@ -28,6 +28,8 @@ import {
   readCancellationConflict,
   applyConflictState,
   CANCELLATION_DECISION_DIALOG,
+  cancellationResolutionView,
+  CANCELLATION_RESOLUTION_NOT_RECORDED,
 } from "./adminCancellations.mjs";
 
 // ── Status-Meta / Labels (verbindliche Bezeichnungen) ────────────────────────
@@ -68,12 +70,36 @@ test("Status-Meta Fallback: unbekannt → „Unbekannter Status“; null → gra
   assert.deepEqual(cancellationStatusMeta(null), ["badge-gray", "—", null]);
 });
 
-test("Filteroptionen: Alle + vier Status in stabiler Reihenfolge", () => {
+// Package C (dokumentierte Ankeränderung): zusätzlich der Filterwert „open" direkt nach
+// „Alle" — pending UND in_review, dieselbe Menge wie Übersicht und Operations-Queue.
+test("Filteroptionen: Alle, „Offen oder in Prüfung“ + vier Status in stabiler Reihenfolge", () => {
   assert.deepEqual(
     CANCELLATION_STATUS_FILTER_OPTIONS.map((o) => o.value),
-    ["", "pending", "in_review", "accepted", "rejected"],
+    ["", "open", "pending", "in_review", "accepted", "rejected"],
   );
   assert.equal(CANCELLATION_STATUS_FILTER_OPTIONS[0].value, "");
+  assert.equal(CANCELLATION_STATUS_FILTER_OPTIONS[1].label, "Offen oder in Prüfung");
+});
+
+test("Package C: Entscheidung und Anbieterbezug werden kanonisch übernommen — Bestand bleibt „nicht erfasst“", () => {
+  const n = normalizeCancellationRequest({ id: 5, status: "accepted", resolvedAt: "2026-09-12T10:00:00Z",
+    resolvedBy: { id: 3, name: "Admin Eins" },
+    shipment: { id: 9, provider: "transglobal", providerBookingReference: "TG-1" } });
+  assert.equal(n.resolvedAt, "2026-09-12T10:00:00Z");
+  assert.deepEqual(n.resolvedBy, { id: 3, name: "Admin Eins" });
+  assert.equal(n.shipment.provider, "transglobal");
+  assert.equal(n.shipment.providerBookingReference, "TG-1");
+  assert.deepEqual(cancellationResolutionView(n), { decided: true, recorded: true, at: "2026-09-12T10:00:00Z", by: "Admin Eins" });
+  assert.deepEqual(cancellationResolutionView({ status: "rejected", resolvedAt: null }),
+    { decided: true, recorded: false, at: null, by: null }, "Bestand: entschieden, aber nicht erfasst");
+  assert.deepEqual(cancellationResolutionView({ status: "in_review", resolvedAt: "t" }),
+    { decided: false, recorded: false, at: null, by: null }, "ohne Entscheidung keine Entscheidungszeit");
+  assert.equal(cancellationResolutionView({ status: "accepted", resolvedAt: "t", resolvedBy: { id: 7 } }).by, "Admin #7");
+  assert.equal(CANCELLATION_RESOLUTION_NOT_RECORDED, "nicht erfasst");
+  // Ein älteres Backend ohne die Felder: null, nichts geraten.
+  const alt = normalizeCancellationRequest({ id: 6, status: "accepted" });
+  assert.equal(alt.resolvedAt, null);
+  assert.equal(alt.resolvedBy, null);
 });
 
 // ── Terminale Status / Übergänge ─────────────────────────────────────────────
@@ -357,6 +383,7 @@ test("Liste: sieben fachliche Spalten, keine dominante User-/Shipment-ID", () =>
 test("Liste: Filter, Reset, Lade-, Fehler- und Leerzustand", () => {
   assert.deepEqual(toCancellationApiFilters(""), {}, "Alle sendet keinen Status");
   assert.deepEqual(toCancellationApiFilters("in_review"), { status: "in_review" });
+  assert.deepEqual(toCancellationApiFilters("open"), { status: "open" }, "Package C: offen = pending + in_review");
   assert.deepEqual(toCancellationApiFilters("quatsch"), {}, "ungültiger Status wird nie gesendet");
   assert.equal(cancellationEmptyState({ count: 0 }).title, "Noch keine Stornierungsanfragen vorhanden.");
   assert.equal(cancellationEmptyState({ count: 0, status: "accepted" }).title,

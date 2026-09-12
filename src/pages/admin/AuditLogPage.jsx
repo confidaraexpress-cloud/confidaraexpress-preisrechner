@@ -19,6 +19,12 @@ const ACTION_LABELS = {
   "admin.shipment.view": "Sendungsdetail eingesehen",
   "admin.shipment.label_download": "Label heruntergeladen",
   "admin.shipment.tracking_view": "Tracking eingesehen",
+  // Package C: Buchungsklärung und Rechnungsabweichung.
+  "admin.shipment.reconcile_view": "Buchungsklärung eingesehen",
+  "admin.shipment.reconcile_booked": "Buchung als gebucht bestätigt",
+  "admin.shipment.reconcile_not_booked": "Buchung als nicht gebucht bestätigt",
+  "admin.shipment.reconcile_review": "Buchungsklärung geprüft",
+  "admin.shipment.invoice_drift_review": "Rechnungsabweichung geprüft",
 };
 
 // [badge-Klasse, Label]. Unbekannte Werte → grau + Rohwert (harmlos).

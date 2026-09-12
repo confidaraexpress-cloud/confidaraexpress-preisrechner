@@ -7,9 +7,9 @@
 //
 // Die Mocks bilden den echten Backend-Vertrag nach (siehe routes/admin.js):
 //   • GET /admin/cancellation-requests: status ∈ {pending,in_review,accepted,
-//     rejected} — jeder andere Wert (auch "open") → 400 CANCELLATION_STATUS_
-//     INVALID. Das ist der Grund, warum der frühere status:"open" dort nie
-//     unbemerkt hätte funktionieren dürfen.
+//     rejected} oder — seit Package C — der Filterwert "open" (pending UND
+//     in_review); jeder andere Wert → 400 CANCELLATION_STATUS_INVALID. Die
+//     Kennzahl „Offene Stornierungen" sendet "open" und zeigt dessen Zähler.
 //   • GET /admin/invoices: status wird NUR bei "unpaid"/"paid" gefiltert;
 //     jeder andere Wert wird vom Backend still IGNORIERT — die Antwort bleibt
 //     200, liefert aber den ungefilterten Gesamtbestand statt der erwarteten
@@ -39,12 +39,13 @@ const ADMIN = {
   name: "Anna Admin", role: "admin", status: "approved", country: "DE",
 };
 
-const CANCELLATION_VALID_STATUSES = new Set(["pending", "in_review", "accepted", "rejected"]);
+const CANCELLATION_VALID_STATUSES = new Set(["open", "pending", "in_review", "accepted", "rejected"]);
 
 // Feste, voneinander verschiedene Zähler je Filter — so beweist ein Test, dass
 // eine Kennzahl tatsächlich den zu IHREM Filter gehörenden Wert zeigt und
 // nicht zufällig einen benachbarten (z. B. den ungefilterten Rechnungsbestand).
-const TOTALS = { users: 11, invoicesUnpaid: 6, invoicesOverdue: 2, invoicesUnfiltered: 19, cancellations: 4, support: 5 };
+const TOTALS = { users: 11, invoicesUnpaid: 6, invoicesOverdue: 2, invoicesUnfiltered: 19,
+  cancellationsPending: 4, cancellationsOpen: 7, support: 5 };
 
 let server, browser;
 
@@ -89,7 +90,10 @@ async function setupRoutes(page, initial = {}) {
       if (!CANCELLATION_VALID_STATUSES.has(status)) {
         return json({ error: "Ungültiger Status.", code: "CANCELLATION_STATUS_INVALID" }, 400);
       }
-      return json({ cancellationRequests: [], pagination: { total: TOTALS.cancellations } });
+      // „open" (pending + in_review) hat einen anderen Zähler als „pending" allein — so
+      // beweist der Test, welcher Filter tatsächlich ankam.
+      return json({ cancellationRequests: [],
+        pagination: { total: status === "open" ? TOTALS.cancellationsOpen : TOTALS.cancellationsPending } });
     }
 
     if (p.endsWith("/admin/support-requests")) {
@@ -141,7 +145,7 @@ test("alle fünf Requests treffen den realen Vertrag; die Werte stammen aus der 
   const werte = (await metricValues(page)).map((w) => w.trim());
   // Reihenfolge laut ADMIN_METRICS: Kunden, offene Rechnungen, überfällige
   // Rechnungen, Stornierungen, Support.
-  assert.deepEqual(werte, ["11", "6", "2", "4", "5"]);
+  assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
 
   // Offene Rechnungen zeigt den GEFILTERTEN Bestand (6), nicht den
   // ungefilterten (19) — das beweist, dass status=unpaid tatsächlich ankam.
@@ -152,14 +156,13 @@ test("alle fünf Requests treffen den realen Vertrag; die Werte stammen aus der 
   assert.equal(await page.locator(".ce-state--error").count(), 0);
   assert.equal(await page.locator(".adm-metrics").count(), 1, "die Kennzahlenliste fehlt");
 
-  // Direkter Beweis, dass "open" bei keiner der drei betroffenen Kennzahlen
-  // je wieder gesendet wird.
-  assert.ok(state.calls.cancellations.every((qs) => !qs.includes("status=open")),
-    `cancellations sendete status=open: ${state.calls.cancellations}`);
+  // Rechnungen senden "open" nie; Stornierungen senden seit Package C genau "open"
+  // (pending UND in_review) — und nicht mehr "pending" allein.
   assert.ok(state.calls.invoices.every((qs) => !qs.includes("status=open")),
     `invoices sendete status=open: ${state.calls.invoices}`);
-  assert.ok(state.calls.cancellations.some((qs) => qs.includes("status=pending")),
-    "cancellations sendete nie status=pending");
+  assert.ok(state.calls.cancellations.length > 0
+    && state.calls.cancellations.every((qs) => qs.includes("status=open") && !qs.includes("status=pending")),
+    `cancellations sendete nicht status=open: ${state.calls.cancellations}`);
   assert.ok(state.calls.invoices.some((qs) => qs.includes("status=unpaid")),
     "invoices sendete nie status=unpaid");
   // Support bleibt bewusst bei "open" — das ist dort der korrekte Wert.
@@ -169,17 +172,21 @@ test("alle fünf Requests treffen den realen Vertrag; die Werte stammen aus der 
   await page.close();
 });
 
-console.log("\nStornierungen — realer 400-Vertrag statt Blanko-Mock\n");
+// Package C (dokumentierte Ankeränderung): bis dahin bewies dieser Fall, dass "open"
+// am Stornovertrag scheiterte. Das Backend kennt "open" jetzt als pending UND in_review;
+// der Fall beweist, dass die Kennzahl GENAU diesen Zähler zeigt — nicht den von pending.
+console.log("\nStornierungen — „offen“ heißt pending UND in_review (Package C)\n");
 
-test("ein regressiertes status=open würde am echten Vertrag scheitern (400) — die App sendet es nicht mehr", async () => {
+test("„Offene Stornierungen“ zeigt den Zähler von status=open, nicht den von pending allein", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const state = await setupRoutes(page);
   await openOverview(page);
 
   const werte = (await metricValues(page)).map((w) => w.trim());
-  assert.equal(werte[3], "4", "Stornierungen zeigt nicht den echten Zähler — status wurde vom Mock abgelehnt (400)");
+  assert.equal(werte[3], String(TOTALS.cancellationsOpen), "Stornierungen zeigt nicht den Zähler von status=open");
+  assert.notEqual(werte[3], String(TOTALS.cancellationsPending));
   assert.equal(state.calls.cancellations.length, 1);
-  assert.match(state.calls.cancellations[0], /status=pending/);
+  assert.match(state.calls.cancellations[0], /status=open/);
   await page.close();
 });
 
@@ -281,7 +288,7 @@ test("„Erneut versuchen“ lädt alle fünf Kennzahlen neu; nach Erfolg versch
   assert.equal(await page.locator(".ce-state--error").count(), 0);
 
   const werte = (await metricValues(page)).map((w) => w.trim());
-  assert.deepEqual(werte, ["11", "6", "2", "4", "5"]);
+  assert.deepEqual(werte, ["11", "6", "2", "7", "5"]);
   await page.close();
 });
 

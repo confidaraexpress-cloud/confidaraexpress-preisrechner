@@ -22,9 +22,15 @@ export const cancellationStatusMeta = (status) => STATUS_META[status] || statusF
 // Stabile Anzeige-Reihenfolge der Status (Liste/Filter/Select).
 export const CANCELLATION_STATUS_ORDER = ["pending", "in_review", "accepted", "rejected"];
 
+// Filterwert „offen" (Package C): KEIN Status einer Anfrage, sondern pending ODER
+// in_review — dieselbe Menge, die Adminübersicht und Operations-Queue zählen.
+export const CANCELLATION_OPEN_FILTER = "open";
+export const CANCELLATION_OPEN_FILTER_LABEL = "Offen oder in Prüfung";
+
 // Auswahl für den Status-Filter der Liste. „Alle" sendet keinen Filter.
 export const CANCELLATION_STATUS_FILTER_OPTIONS = [
   { value: "", label: "Alle" },
+  { value: CANCELLATION_OPEN_FILTER, label: CANCELLATION_OPEN_FILTER_LABEL },
   ...CANCELLATION_STATUS_ORDER.map((s) => ({ value: s, label: cancellationStatusMeta(s)[1] })),
 ];
 
@@ -98,6 +104,10 @@ function normalizeShipment(raw, root) {
     // Es wird NIE eine Nummer aus der ID gebildet.
     orderConfirmationNumber: firstOf(s, "orderConfirmationNumber", "order_confirmation_number"),
     orderNumber: firstOf(s, "orderNumber", "order_number"),
+    // Package C, adminintern: der gebuchte Anbieter und seine Buchungsreferenz — nur
+    // im Admindetail angezeigt, nie in einer Liste und nie in einer Kundensicht.
+    provider: firstOf(s, "provider"),
+    providerBookingReference: firstOf(s, "providerBookingReference", "provider_booking_reference"),
     price: firstOf(s, "price_final", "price_gross", "priceGross", "price"),
     fromCountry: firstOf(s, "from_country", "fromCountry", "origin_country"),
     toCountry: firstOf(s, "to_country", "toCountry", "destination_country"),
@@ -151,6 +161,9 @@ export function normalizeCancellationRequest(raw) {
     updatedAt: firstOf(raw, "updatedAt", "updated_at"),
     reviewedAt: firstOf(raw, "reviewedAt", "reviewed_at"),
     reviewedBy: firstOf(raw, "reviewedBy", "reviewed_by"),
+    // Package C: die abschließende Entscheidung (erster Übergang nach Angenommen/Abgelehnt).
+    resolvedAt: firstOf(raw, "resolvedAt", "resolved_at") ?? null,
+    resolvedBy: firstOf(raw, "resolvedBy", "resolved_by") ?? null,
     shipment: normalizeShipment(raw.shipment ?? raw.shipment_data, raw),
     customer: normalizeCustomer(raw.customer ?? raw.user, raw),
     invoice: raw.invoice ?? raw.invoice_data ?? null,
@@ -259,6 +272,21 @@ export const CANCELLATION_DECISION_DIALOG = Object.freeze({
 });
 
 // ── Liste: Anzeige-Helfer ────────────────────────────────────────────────────
+// ── Abschließende Entscheidung (Package C) ───────────────────────────────────
+// resolvedAt/resolvedBy entstehen beim ERSTEN Übergang nach Angenommen/Abgelehnt und
+// ändern sich danach nie. Eine vor Package C entschiedene Anfrage hat sie nicht — das
+// wird ehrlich als „nicht erfasst" benannt, nie aus dem letzten Bearbeitungszeitpunkt
+// geschätzt. → { decided, recorded, at, by }
+export const CANCELLATION_RESOLUTION_NOT_RECORDED = "nicht erfasst";
+export function cancellationResolutionView(req) {
+  const r = req && typeof req === "object" ? req : {};
+  if (!isTerminalCancellationStatus(r.status)) return { decided: false, recorded: false, at: null, by: null };
+  if (!r.resolvedAt) return { decided: true, recorded: false, at: null, by: null };
+  const p = r.resolvedBy && typeof r.resolvedBy === "object" ? r.resolvedBy : null;
+  const by = p ? (p.name || (p.id != null ? `Admin #${p.id}` : null)) : null;
+  return { decided: true, recorded: true, at: r.resolvedAt, by };
+}
+
 export const CANCELLATION_NO_ORDER_NUMBER = "Ohne Vorgangsnummer";
 export const CANCELLATION_UNKNOWN_CUSTOMER = "Kunde nicht auflösbar";
 
@@ -315,5 +343,6 @@ export function cancellationEmptyState({ count = 0, status = "" } = {}) {
 // keinen Status — ein ungültiger Wert würde serverseitig 400 auslösen.
 export function toCancellationApiFilters(status) {
   const s = typeof status === "string" ? status.trim() : "";
+  if (s === CANCELLATION_OPEN_FILTER) return { status: s };
   return s && CANCELLATION_STATUS_ORDER.includes(s) ? { status: s } : {};
 }

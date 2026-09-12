@@ -28,6 +28,8 @@ import {
 import {
   canRetryDelivery, deliveryStatusMeta, deliveryTypeLabel, sortDeliveries,
 } from "../../utils/shipmentEmailDeliveryView.mjs";
+import { documentsSummary, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
+import { attemptLabel } from "../../utils/adminReconciliation.mjs";
 import {
   trackStatusMeta, selectTracking, selectShipment,
   idOf, userIdOf, statusOf, carrierOf, serviceOf, dateOf, labelAvailOf,
@@ -240,6 +242,10 @@ export default function AdminShipmentDetailPage() {
   const track = trackingView(s, trackData);
   const invoice = invoiceOf(s);
   const insurance = shipmentInsuranceView(s);
+  // Package C: die Betriebssicht — `null` bei einem Backend ohne `operations`.
+  const ops = selectOperations(s);
+  const opsNotices = reconciliationNotices(ops);
+  const docSummary = documentsSummary(ops);
   const labelAvailable = labelAvailOf(s) === true || labelAvailOf(s) === "true";
 
   const openLabelConfirm = () => { setLabelMsg(null); setConfirmLabel(true); };
@@ -410,6 +416,91 @@ export default function AdminShipmentDetailPage() {
             ]} />
           </div>
         </div>
+
+        {/* 3a) Buchung & Betrieb (Package C) — nur mit einem Backend, das `operations`
+             liefert. Adminintern: Anbieter, Anbieterreferenzen und Buchungsversuche. Keine
+             Belegbytes, keine Rohantworten; entschieden wird ausschließlich in der
+             Buchungsklärung, nicht hier. */}
+        {ops && (
+          <div className="adm-card" id="adm-ship-ops">
+            <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Buchung &amp; Betrieb</div>
+            <div className="adm-card-body">
+              {opsNotices.map((n) => (
+                <div key={n.kind} className={`adm-note ${n.tone === "info" ? "adm-note--info" : "adm-note--warning"} adm-opnote`} role="note">
+                  <Icon n={n.tone === "info" ? "info" : "clockDelay"} s={16} />
+                  <span>
+                    {n.text}
+                    {n.to && <> <Link to={n.to}>Zur Buchungsklärung</Link></>}
+                  </span>
+                </div>
+              ))}
+              <KV items={[
+                ["Anbieter", ops.providerText],
+                ["Buchungsreferenz des Anbieters", ops.providerBookingReference
+                  ? <span className="adm-mono">{ops.providerBookingReference}</span> : "—"],
+                ["Leistung (Anbieter)", ops.providerServiceId ? <span className="adm-mono">{ops.providerServiceId}</span> : "—"],
+                ["Gebucht am", fmtDateTime(ops.bookedAt)],
+                ["Trackingreferenzen", ops.trackingReferences.length > 0
+                  ? <span className="adm-mask">{ops.trackingReferences.map((t) => maskTail(t) || t).join(" · ")}</span>
+                  : "—"],
+                ["Label gespeichert", docSummary.storedLabel ? "Ja" : "Nein"],
+                ["Anbieterbelege", docSummary.providerDocumentCount > 0
+                  ? ops.documents.providerDocuments.map((d) => d.typeText).join(" · ") : "Keine"],
+                ["Rechnungsdokument", ops.invoice
+                  ? <span className={`badge ${ops.invoice.documentMeta[0]}`}>{ops.invoice.documentMeta[1]}</span> : "—"],
+                ["Rechnungsmail", ops.invoice
+                  ? <span className={`badge ${ops.invoice.emailMeta[0]}`}>{ops.invoice.emailMeta[1]}</span> : "—"],
+                ["Mail Auftragsbestätigung", ops.orderConfirmation
+                  ? <span className={`badge ${ops.orderConfirmation.emailMeta[0]}`}>{ops.orderConfirmation.emailMeta[1]}</span> : "—"],
+                ["Stornierungsanfrage", ops.cancellation
+                  ? (
+                    <Link to={ops.cancellation.to} id="adm-ship-ops-cancellation">
+                      Anfrage #{ops.cancellation.id} · {ops.cancellation.statusMeta[1]}
+                    </Link>
+                  )
+                  : "Keine"],
+              ]} />
+
+              <div className="adm-op-subtitle">
+                Buchungsversuche{ops.attemptsLimited ? ` — die neuesten ${ops.attempts.length} von ${ops.attemptsTotal}` : ""}
+              </div>
+              {ops.attempts.length === 0 ? (
+                <p className="adm-addr-note">Keine Buchungsversuche erfasst.</p>
+              ) : (
+                <ul className="adm-opattempts">
+                  {ops.attempts.map((v) => (
+                    <li className="adm-opattempt" key={v.id}>
+                      <div className="adm-opattempt-main">
+                        <Link className="adm-opattempt-title" to={`/admin/reconciliation/${encodeURIComponent(v.id)}`}>
+                          {attemptLabel(v)}
+                        </Link>
+                        <span className="adm-opattempt-meta">
+                          {v.providerText} · begonnen {fmtDateTime(v.createdAt)}
+                          {v.providerBookingReference ? ` · Referenz ${v.providerBookingReference}` : ""}
+                        </span>
+                      </div>
+                      <span className="adm-opattempt-badges">
+                        <span className={`badge ${v.stateMeta[0]}`}>{v.stateMeta[1]}</span>
+                        {/* Ohne menschliche Entscheidung ist ein normal abgeschlossener Versuch
+                            NICHT „ungeklärt" — ungeklärt ist nur der offene Fall. */}
+                        {v.resolution
+                          ? <span className={`badge ${v.resolutionMeta[0]}`}>{v.resolutionMeta[1]}</span>
+                          : (ops.reconciliation.open && ops.reconciliation.attemptId === v.id
+                            ? <span className="badge badge-yellow">Ungeklärt</span> : null)}
+                        {v.isLatest && <span className="adm-chip">Neuester</span>}
+                        {v.invoiceDrift && (
+                          <span className={`badge ${v.invoiceDrift.reviewed ? "badge-gray" : "badge-yellow"}`}>
+                            Rechnungsabweichung {v.invoiceDrift.reviewed ? "geprüft" : "ungeprüft"}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 3) Preisbereich (nur Anzeige) */}
         <div className="adm-card">

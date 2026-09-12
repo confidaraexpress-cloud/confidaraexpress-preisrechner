@@ -22,6 +22,12 @@ import { fuelleVersandformular } from "./helpers/newShipmentForm.mjs";
 
 const PORT = 5347, BASE = `http://127.0.0.1:${PORT}`;
 
+// Das Versanddatum des gespeicherten Entwurfs liegt IMMER in der Zukunft. TG22 Paket B: ein
+// vergangenes Entwurfsdatum wird beim Fortsetzen geleert und die Berechnung bleibt gesperrt,
+// bis der Kunde aktiv ein neues Datum wählt. Diese Suite misst die Wiederherstellung der
+// Zusatzoptionen — ein festes Datum liefe sonst mit dem Kalender in genau diese Sperre.
+const ENTWURF_DATUM = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 function chromiumExecutablePath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
   return root && existsSync(path.join(root, "chromium")) ? path.join(root, "chromium") : undefined;
@@ -53,13 +59,13 @@ const ENTWURF_LISTE = {
                       streetAndNumber: "Musterweg 1", postalCode: "10115", city: "Berlin",  country: "DE" },
   recipientAddress: { firstName: "Erika", lastName: "Beispiel", email: "erika@example.com", phone: "+49891234567",
                       streetAndNumber: "Zielstraße 2", postalCode: "80331", city: "München", country: "DE" },
-  requestedShippingDate: "2026-09-01", createdAt: "2026-08-20T10:00:00Z", updatedAt: "2026-08-20T12:00:00Z",
+  requestedShippingDate: ENTWURF_DATUM, createdAt: "2026-08-20T10:00:00Z", updatedAt: "2026-08-20T12:00:00Z",
 };
 const ENTWURF_FORMDATA = {
   sender:    ENTWURF_LISTE.senderAddress,
   recipient: ENTWURF_LISTE.recipientAddress,
   packages:  { packageCount: 1, weight: 5, length: 30, width: 20, height: 15 },
-  shippingOptions: { shippingDate: "2026-09-01", serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
+  shippingOptions: { shippingDate: ENTWURF_DATUM, serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
   // Die vier Sendungsangaben (Paket 9A) — ohne sie bliebe der CTA nach dem Fortsetzen
   // gesperrt, was korrektes Produktverhalten waere, aber nicht die Aussage dieser Suite.
   declarations: { content: "Ersatzteile", goodsValue: 250,

@@ -129,9 +129,12 @@ export const INSURANCE_DIALOG = Object.freeze({
 // ── Zusätzliche Transportabsicherung (Deckungsbetragsmodell) ─────────────────
 // Ein ZWEITES Produkt neben den Stufen oben — und bewusst mit eigenen Texten. Es
 // kennt keine Stufen, keinen Premiumservice und keine feste Selbstbeteiligung von
-// 50,00 €: der Kunde wählt einen Versicherungswert, beantwortet zwei Fragen zur Ware,
-// und die Selbstbeteiligung nennt der Server am Tarif. Die Stufentexte oben dürfen
-// hier nicht erscheinen — sie beschreiben ein anderes Produkt.
+// 50,00 €: die Absicherung gilt bis zum Warenwert der Sendung, der Kunde beantwortet
+// zwei Fragen zur Ware, und die Selbstbeteiligung nennt der Server am Tarif. Die
+// Stufentexte oben dürfen hier nicht erscheinen — sie beschreiben ein anderes Produkt.
+//
+// TG22 Paket B: der Versicherungswert ist KEINE Eingabe mehr. Er ist der Warenwert, den der
+// Kunde im Sendungsformular erklärt hat — nur ihn bepreist der Server.
 //
 // Dieselben White-Label-Regeln wie für die ganze Datei: keine Einkaufsquelle, keine
 // Versicherungsgesellschaft, keine Rollenaussage, keine Deckungszusage.
@@ -140,11 +143,16 @@ export const COVER_INSURANCE_TEXT = Object.freeze({
   sectionIntro:      "Wählen Sie optional eine zusätzliche Transportabsicherung für Ihre Sendung.",
   cardName:          "Zusätzliche Transportabsicherung",
   noneName:          "Keine zusätzliche Transportabsicherung",
-  cardDescription:   "Absicherung Ihrer Sendung bis zum von Ihnen gewählten Versicherungswert",
+  cardDescription:   "Absicherung Ihrer Sendung bis zum angegebenen Warenwert",
   // Der Preis entsteht erst mit den Angaben des Kunden — nie aus einer Tabelle.
   pricePending:      "Preis nach Ihren Angaben",
-  coverValueLabel:   "Versicherungswert (EUR)",
-  coverValueHint:    "Der Betrag, bis zu dem Ihre Sendung abgesichert werden soll.",
+  // TG22 Paket B: der Warenwert IST der Versicherungswert — angezeigt, nicht gewählt.
+  goodsValueCoverHint: "Aus Ihren Angaben zur Sendung übernommen. Die zusätzliche Transportabsicherung gilt bis zu diesem Warenwert.",
+  coverValueMissing: "Für diese Sendung liegt kein gültiger Warenwert vor. Bitte berechnen Sie die Angebote neu.",
+  // TG22 Paket B — Aussagen des Tarifs ohne kaufbaren Zusatz, KEINE Fehler. Die Sätze mit Betrag
+  // bilden `coverBasicCoverText`/`coverLimitText` aus dem Serverwert; diese gelten ohne ihn.
+  basicCoverIncludedGeneric: "Für den Warenwert dieser Sendung ist bereits eine Grundabsicherung ohne Aufpreis enthalten.",
+  coverLimitGeneric: "Für den Warenwert dieser Sendung ist keine zusätzliche Transportabsicherung verfügbar.",
   goodsNewQuestion:      "Ist die Ware neu?",
   goodsFragileQuestion:  "Ist die Ware zerbrechlich?",
   answerYes:         "Ja",
@@ -179,6 +187,29 @@ const euro = (v) => new Intl.NumberFormat("de-DE", { style: "currency", currency
 export function coverExcessText(excessValue) {
   if (typeof excessValue !== "number" || !Number.isFinite(excessValue) || excessValue < 0) return null;
   return `${COVER_INSURANCE_TEXT.excessLabel}: ${euro(excessValue)}`;
+}
+
+const istPositiverBetrag = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+// Eine Grenze im Satz: glatte Beträge ohne Nachkommastellen („50 €", „2.500 €"), sonst centgenau.
+const grenzeEuro = (v) => new Intl.NumberFormat("de-DE", {
+  style: "currency", currency: "EUR",
+  minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2,
+}).format(v);
+
+// TG22 Paket B — die enthaltene Grundabsicherung als Satz mit der Grenze, die AUSSCHLIESSLICH der
+// Server nennt. Fehlt sie, bleibt der neutrale Satz ohne Betrag. Eine Information, kein Fehler.
+export function coverBasicCoverText(maxGoodsValue) {
+  return istPositiverBetrag(maxGoodsValue)
+    ? `Bis zu einem Warenwert von ${grenzeEuro(maxGoodsValue)} ist bereits eine Grundabsicherung ohne Aufpreis enthalten.`
+    : COVER_INSURANCE_TEXT.basicCoverIncludedGeneric;
+}
+
+// TG22 Paket B — der Warenwert liegt über der Höchstdeckung. Dieselbe Regel: der Betrag kommt vom Server.
+export function coverLimitText(maxCoverValue) {
+  return istPositiverBetrag(maxCoverValue)
+    ? `Eine zusätzliche Transportabsicherung ist für diesen Tarif nur bis zu einem Warenwert von ${grenzeEuro(maxCoverValue)} möglich.`
+    : COVER_INSURANCE_TEXT.coverLimitGeneric;
 }
 
 // Kartentexte des Deckungsbetragsmodells. „none" trägt dieselbe neutrale Aussage und

@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_SENDUNGSANGABEN, angebotsCta }
   from "./helpers/newShipmentForm.mjs";
@@ -417,6 +417,100 @@ test("7 — auf 1440, 834 und 390 ist alles bedienbar und nichts laeuft ueber", 
     await aendern.focus();
     assert.ok(await aendern.evaluate((el) => el === document.activeElement),
       `${breite}px: die Aenderung laesst sich nicht fokussieren`);
+
+    // Die Flaeche selbst: Innenmass, nichts abgeschnitten, Abstand zur naechsten Flaeche.
+    await pruefeAdressflaeche(page, ".adr-typ-summary", breite, "fest");
+    await page.close();
+  }
+});
+
+/* Die Flaeche „Angaben zur Adresse" — gemessen, nicht angenommen. `.calc-panel` traegt kein
+   Innenmass und schneidet mit `overflow: hidden` ab; stand der Inhalt direkt im Panel, klebte der
+   Titel am Rand und wurde am Radius beschnitten. Geprueft wird deshalb: der Inhalt sitzt in
+   `.calc-panel-body`, der Titel ist sichtbar und eingerueckt, nichts ragt ueber oder wird
+   abgeschnitten, und bis zur naechsten Flaeche bleibt Abstand. Der Screenshot unter
+   tests/e2e/screenshots/ ist Beleg, nicht Pruefmittel. */
+async function pruefeAdressflaeche(page, kernSelektor, breite, zustand) {
+  const m = await page.evaluate((sel) => {
+    const kern = document.querySelector(sel);
+    const panel = kern && kern.closest(".calc-panel");
+    if (!panel) return null;
+    const r = panel.getBoundingClientRect();
+    const titel = panel.querySelector(".calc-section-title");
+    const t = titel ? titel.getBoundingClientRect() : null;
+    let ueberstand = 0;
+    for (const el of panel.querySelectorAll("*")) {
+      const st = getComputedStyle(el);
+      const e = el.getBoundingClientRect();
+      if (st.display === "none" || st.visibility === "hidden" || st.opacity === "0") continue;
+      if (e.width === 0 || e.height === 0) continue;
+      ueberstand = Math.max(ueberstand, e.right - r.right, r.left - e.left, e.bottom - r.bottom);
+    }
+    const naechste = panel.nextElementSibling;
+    return {
+      oben: r.top + window.scrollY, hoehe: r.height,
+      hatKoerper: panel.querySelector(":scope > .calc-panel-body") !== null,
+      titel: t ? { sichtbar: t.width > 0 && t.height > 0, abstandOben: t.top - r.top, abstandLinks: t.left - r.left } : null,
+      abschnittX: panel.scrollWidth - panel.clientWidth,
+      abschnittY: panel.scrollHeight - panel.clientHeight,
+      ueberstand,
+      randUnten: parseFloat(getComputedStyle(panel).marginBottom),
+      abstandNaechste: naechste ? naechste.getBoundingClientRect().top - r.bottom : null,
+      seitenUeberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  }, kernSelektor);
+  const wo = `${breite}px (${zustand})`;
+  assert.ok(m, `${wo}: die Flaeche „Angaben zur Adresse“ fehlt`);
+  assert.ok(m.hatKoerper, `${wo}: der Inhalt steht nicht in .calc-panel-body`);
+  assert.ok(m.titel && m.titel.sichtbar, `${wo}: der Titel ist nicht sichtbar`);
+  assert.ok(m.titel.abstandOben >= 12, `${wo}: der Titel klebt am oberen Rand (${m.titel.abstandOben}px)`);
+  assert.ok(m.titel.abstandLinks >= 12, `${wo}: der Titel klebt am linken Rand (${m.titel.abstandLinks}px)`);
+  assert.ok(m.abschnittX <= 1 && m.abschnittY <= 1, `${wo}: der Inhalt wird abgeschnitten (${m.abschnittX}/${m.abschnittY}px)`);
+  assert.ok(m.ueberstand <= 1, `${wo}: ein Element ragt ${m.ueberstand}px aus der Flaeche`);
+  assert.ok(m.randUnten >= 16, `${wo}: kein Abstand zur naechsten Flaeche (${m.randUnten}px)`);
+  if (m.abstandNaechste !== null) {
+    assert.ok(m.abstandNaechste >= 12, `${wo}: die naechste Flaeche beginnt schon ${m.abstandNaechste}px danach`);
+  }
+  assert.ok(m.seitenUeberlauf <= 0, `${wo}: horizontaler Seitenueberlauf ${m.seitenUeberlauf}px`);
+  const ordner = path.join(process.cwd(), "tests", "e2e", "screenshots");
+  mkdirSync(ordner, { recursive: true });
+  await page.screenshot({
+    path: path.join(ordner, `adresstyp-${zustand}-${breite}.png`),
+    fullPage: true,
+    clip: { x: 0, y: Math.max(0, m.oben - 24), width: breite, height: Math.round(m.hoehe + 72) },
+  });
+}
+
+test("7b — die nachgeforderten Angaben sitzen auf 1440, 834 und 390 ebenso sauber in ihrer Flaeche", async () => {
+  for (const breite of [1440, 834, 390]) {
+    const page = await browser.newPage({ viewport: { width: breite, height: 900 } });
+    await setupRoutes(page, { uebergabe: "pickup" });
+    await zurBuchung(page);
+    // Derselbe Weg wie 2c: beide Angaben aus dem Eintrag entfernen und neu laden.
+    await page.evaluate(() => {
+      const s = window.history.state || {};
+      const usr = { ...(s.usr || {}) };
+      usr.form = { ...(usr.form || {}) };
+      delete usr.form.deliveryIsResidential;
+      delete usr.form.collectionIsResidential;
+      window.history.replaceState({ ...s, usr }, "");
+    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".adr-typ-group", { timeout: 20000 });
+    assert.equal(await page.locator(".adr-typ-group").count(), 2, `${breite}px: nicht beide Angaben nachgefordert`);
+    for (const feld of [FELD_ABHOL, FELD_LIEFER]) {
+      const box = await page.locator(`label[for="${feld}-nein"]`).boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= breite + 1, `${breite}px: ${feld} liegt ausserhalb`);
+    }
+    await pruefeAdressflaeche(page, ".adr-typ-group", breite, "nachgefordert");
+    // Bedienbar bleibt sie: eine Antwort laesst sich setzen. Danach steht sie entweder als gewaehlte
+    // Option da oder — weil sie nun beantwortet ist — bereits als feste Angabe in der Zusammenfassung.
+    await page.locator(`label[for="${FELD_LIEFER}-nein"]`).click();
+    await page.waitForFunction((feld) => {
+      const radio = document.getElementById(`${feld}-nein`);
+      const fest = document.querySelector(`.adr-typ-summary [data-feld="${feld}"] .summary-detail-val`);
+      return (radio !== null && radio.checked) || (fest !== null && /Geschäftsadresse/.test(fest.textContent || ""));
+    }, FELD_LIEFER, { timeout: 5000 });
     await page.close();
   }
 });

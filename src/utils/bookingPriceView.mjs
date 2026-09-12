@@ -28,8 +28,8 @@ import { INSURANCE_TYPE_TRANSIT_COVER } from "./coverInsuranceView.mjs";
 // bestehenden Inline-Grenze (BookingPage/InsuranceModule) und der Backend-Regel
 // (extra_insurance_value 1..20000). Hier nur zentralisiert — kein neuer Wert.
 // Gilt AUSSCHLIESSLICH für das Stufenmodell (Standard/Premium). Die zusätzliche
-// Transportabsicherung mit frei gewähltem Versicherungswert kennt diese Grenze nicht
-// (utils/coverInsuranceView.mjs).
+// Transportabsicherung kennt diese Grenze nicht: ihr Versicherungswert ist der Warenwert, und
+// ihre Grenzen nennt der Server (utils/coverInsuranceView.mjs).
 export const INSURANCE_VALUE_MAX = 20000;
 
 export const PRICE_STATUS = {
@@ -58,7 +58,7 @@ function pos(v) {
 function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 
 // Versichert ist jede gewählte Absicherung — die beiden Stufen UND die zusätzliche
-// Transportabsicherung mit frei gewähltem Versicherungswert.
+// Transportabsicherung bis zum Warenwert.
 export function isInsuredType(insuranceType) {
   return insuranceType === "standard" || insuranceType === "premium"
     || insuranceType === INSURANCE_TYPE_TRANSIT_COVER;

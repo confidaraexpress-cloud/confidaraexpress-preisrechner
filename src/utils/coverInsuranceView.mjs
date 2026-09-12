@@ -1,14 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Zusätzliche Transportabsicherung mit frei gewähltem Versicherungswert — reine
-// Logik der Buchungsseite (framework-frei, mit `node --test` prüfbar).
+// Zusätzliche Transportabsicherung — reine Logik der Buchungsseite (framework-frei,
+// mit `node --test` prüfbar).
 //
 // WAS DIESES MODELL VOM STUFENMODELL UNTERSCHEIDET
 //   Das bestehende Modell kennt drei Stufen (none/standard/premium) mit „ab"-Preisen
 //   aus dem Tarif. Dieses Modell kennt:
-//     • einen Versicherungswert, den der Kunde selbst wählt (getrennt vom Warenwert),
+//     • einen Versicherungswert, der dem Warenwert der Sendung entspricht (TG22 Paket B —
+//       vorher frei wählbar; bepreist wird aber ausschließlich der Warenwert),
 //     • zwei PFLICHTfragen zur Ware (neu? zerbrechlich?) — dreiwertig, ohne Vorbelegung,
 //     • eine Selbstbeteiligung, die ausschließlich der Server nennt,
-//     • einen Preis, der NUR aus der Neubepreisung stammt — nie aus einer Tabelle.
+//     • einen Preis, der NUR aus der Neubepreisung stammt — nie aus einer Tabelle,
+//     • zwei Aussagen ohne Kauf: die enthaltene Grundabsicherung (kleiner Warenwert) und die
+//       Höchstdeckung (großer Warenwert). Beide sind Informationen, keine Fehler.
 //
 // WELCHES MODELL GILT, SAGT DER TARIF
 //   `insuranceDetails.selectionModel === "cover_value"`. Kein Providervergleich, kein
@@ -16,20 +19,23 @@
 //   exakt wie vor diesem Paket.
 //
 // DER SERVER BLEIBT DIE AUTORITÄT
-//   Hier entsteht kein Preis und keine Selbstbeteiligung. Die Payload-Erbauer senden
-//   ausschließlich die Kundenangaben; Preis, Quote und Bindung liegen serverseitig.
+//   Hier entsteht kein Preis, keine Selbstbeteiligung und keine Grenze. Der mitgesendete
+//   Versicherungswert ist ein Konsistenzwächter: der Server vergleicht ihn mit dem
+//   eingefrorenen Warenwert und bepreist ausschließlich diesen.
 // ─────────────────────────────────────────────────────────────────────────────
-import { COVER_INSURANCE_TEXT } from "./insuranceTerms.mjs";
+import { COVER_INSURANCE_TEXT, coverBasicCoverText, coverLimitText } from "./insuranceTerms.mjs";
 import { getBookingModules } from "./bookingModules.js";
 import { PRICE_CHANGE_KIND, priceChangeAnsicht } from "./priceChangeView.mjs";
 
 export const INSURANCE_TYPE_TRANSIT_COVER = "transit_cover";
 export const SELECTION_MODEL_COVER_VALUE = "cover_value";
-
-// Dieselbe Eingabegrenze wie beim Warenwert. Sie ist KEINE Deckungsgrenze — eine
-// solche ist nicht belegt und wird hier nicht erfunden. Ob ein Betrag angenommen
-// wird, entscheidet die Neubepreisung.
-export const COVER_VALUE_INPUT_MAX = 9999999;
+// TG22 Paket B — woher der Versicherungswert kommt und was der Tarif über die Absicherung sagt.
+export const COVER_VALUE_SOURCE_GOODS_VALUE = "goods_value";
+export const COVER_STATE = Object.freeze({
+  AVAILABLE: "available",
+  BASIC_COVER_INCLUDED: "basic_cover_included",
+  ABOVE_COVER_LIMIT: "above_cover_limit",
+});
 
 const TIER_TYPES = Object.freeze(["standard", "premium"]);
 
@@ -58,40 +64,51 @@ export function goodsAnswerError(v) {
   return v === true || v === false ? "" : COVER_INSURANCE_TEXT.answerRequired;
 }
 
-// Kommaeingaben werden wie im übrigen Buchungsbereich akzeptiert.
-const normalisiert = (raw) => String(raw ?? "").trim().replace(",", ".");
+// Ein Geldbetrag in ganzen Cent: endlich, größer als 0, höchstens zwei Nachkommastellen.
+const istCentBetrag = (w) => typeof w === "number" && Number.isFinite(w) && w > 0
+  && Math.abs(w * 100 - Math.round(w * 100)) < 1e-6;
 
-/** Fehlertext des Versicherungswerts — `""`, wenn gültig. */
-export function coverValueError(raw) {
-  const s = normalisiert(raw);
-  if (s === "") return "Bitte geben Sie den Versicherungswert an.";
-  const n = Number(s);
-  if (!Number.isFinite(n)) return "Bitte geben Sie einen gültigen Betrag ein.";
-  if (n <= 0) return "Der Versicherungswert muss größer als 0 € sein.";
-  // Ein Wert mit mehr als zwei Nachkommastellen ist kein Centbetrag. Still zu runden
-  // hieße, einen anderen Betrag abzusichern als den, der dasteht.
-  if (!/^\d+(\.\d{1,2})?$/.test(s)) return "Bitte geben Sie höchstens zwei Nachkommastellen an.";
-  if (n > COVER_VALUE_INPUT_MAX) return "Der Versicherungswert darf höchstens 9.999.999 € betragen.";
-  return "";
-}
-
-/** Der gültige Versicherungswert als Zahl — sonst `null`. */
-export function parseCoverValue(raw) {
-  return coverValueError(raw) === "" ? Number(normalisiert(raw)) : null;
+/**
+ * TG22 Paket B — der Versicherungswert der zusätzlichen Transportabsicherung. Er IST der Warenwert:
+ * bevorzugt der Betrag, den der Server am Tarif nennt, sonst der eingefrorene Warenwert des
+ * Vorgangs (ein Tarif aus einer älteren Antwort trägt ihn noch nicht). Ohne gültigen Betrag
+ * `null` — dann gibt es nichts zu bepreisen und nichts zu buchen.
+ */
+export function coverValueForTariff(tariff, goodsValue) {
+  const d = detailsOf(tariff);
+  if (d && istCentBetrag(d.coverValue)) return d.coverValue;
+  const roh = String(goodsValue ?? "").trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(roh)) return null;
+  const n = Number(roh);
+  return istCentBetrag(n) ? n : null;
 }
 
 /**
- * Anfragekörper der Neubepreisung. GENAU vier Felder — kein Preis, kein Tarif, keine
- * Sendungsreferenz, keine Selbstbeteiligung. Der Server liest alles Übrige aus dem
- * gespeicherten Angebot.
+ * TG22 Paket B — was ein Tarif OHNE kaufbaren Zusatz über die Absicherung sagt: die enthaltene
+ * Grundabsicherung oder die Höchstdeckung. Eine INFORMATION, kein Fehler. Ohne Aussage `null`.
+ */
+export function coverInsuranceNotice(tariff) {
+  const d = detailsOf(tariff);
+  if (!d || d.selectionModel !== SELECTION_MODEL_COVER_VALUE) return null;
+  if (d.coverState === COVER_STATE.BASIC_COVER_INCLUDED) {
+    return { kind: COVER_STATE.BASIC_COVER_INCLUDED, text: coverBasicCoverText(d.basicCoverMaxGoodsValue) };
+  }
+  if (d.coverState === COVER_STATE.ABOVE_COVER_LIMIT) {
+    return { kind: COVER_STATE.ABOVE_COVER_LIMIT, text: coverLimitText(d.maxCoverValue) };
+  }
+  return null;
+}
+
+/**
+ * Anfragekörper der Neubepreisung. Höchstens vier Felder — kein Preis, kein Tarif, keine
+ * Sendungsreferenz, keine Selbstbeteiligung. Der Versicherungswert reist nur als gültiger
+ * Betrag mit (Konsistenzwächter); fehlt er, nennt ihn der Server selbst.
  */
 export function buildCoverRepricePayload({ offerId, coverValue, goodsAreNew, goodsAreFragile, acceptPriceChange } = {}) {
-  const koerper = {
-    offerId: offerId ?? null,
-    coverValue,
-    goodsAreNew: tristateAnswer(goodsAreNew),
-    goodsAreFragile: tristateAnswer(goodsAreFragile),
-  };
+  const koerper = { offerId: offerId ?? null };
+  if (istCentBetrag(coverValue)) koerper.coverValue = coverValue;
+  koerper.goodsAreNew = tristateAnswer(goodsAreNew);
+  koerper.goodsAreFragile = tristateAnswer(goodsAreFragile);
   // TG22 Paket A — die AUSDRÜCKLICHE Übernahme eines neuen Preises. Gesendet wird nur der
   // Gesamtbetrag, den der Server zuvor als neuen Preis genannt hat: ein Bestätigungswert, keine
   // Preisangabe. Der Server bindet ausschließlich seinen frischen Preis — und nur, wenn er exakt
@@ -115,13 +132,12 @@ export function buildCoverBookInsurancePayload({ coverValue, goodsAreNew, goodsA
   // nicht, sondern verlangt eine neue Bestätigung.
   const revision = repriceResult && Number.isSafeInteger(repriceResult.priceRevision) && repriceResult.priceRevision >= 0
     ? repriceResult.priceRevision : undefined;
+  const auswahl = { type: INSURANCE_TYPE_TRANSIT_COVER };
+  if (istCentBetrag(coverValue)) auswahl.coverValue = coverValue;
+  auswahl.goodsAreNew = tristateAnswer(goodsAreNew);
+  auswahl.goodsAreFragile = tristateAnswer(goodsAreFragile);
   return {
-    insuranceSelection: {
-      type: INSURANCE_TYPE_TRANSIT_COVER,
-      coverValue,
-      goodsAreNew: tristateAnswer(goodsAreNew),
-      goodsAreFragile: tristateAnswer(goodsAreFragile),
-    },
+    insuranceSelection: auswahl,
     confirmedTotalGross: totals ? totals.customerTotalGross : undefined,
     ...(revision !== undefined ? { offerRevision: revision } : {}),
   };
@@ -130,17 +146,27 @@ export function buildCoverBookInsurancePayload({ coverValue, goodsAreNew, goodsA
 /**
  * Eine gespeicherte Auswahl passt nur zum Modell DIESES Tarifs. Eine Stufe an einem
  * Deckungsbetragstarif (oder umgekehrt) wird nicht umgedeutet, sondern verworfen —
- * der Kunde wählt dann bewusst neu.
+ * der Kunde wählt dann bewusst neu. Sagt der Tarif, dass es keinen kaufbaren Zusatz gibt
+ * (Grundabsicherung, Höchstdeckung), wird keine Absicherung wiederhergestellt.
  */
 export function insuranceTypeForTariff(type, tariff) {
-  if (isCoverValueModel(tariff)) return type === INSURANCE_TYPE_TRANSIT_COVER ? type : "none";
+  if (isCoverValueModel(tariff)) {
+    if (coverInsuranceNotice(tariff) !== null) return "none";
+    return type === INSURANCE_TYPE_TRANSIT_COVER ? type : "none";
+  }
   return TIER_TYPES.includes(type) ? type : "none";
 }
 
 // Kundentexte der Neubepreisung — über den CODE entschieden, nie über den Rohtext.
 const REPRICE_TEXT = Object.freeze({
-  INSURANCE_SELECTION_INVALID: "Bitte geben Sie einen gültigen Versicherungswert an und beantworten Sie beide Fragen zur Ware.",
+  INSURANCE_SELECTION_INVALID: "Bitte beantworten Sie beide Fragen zur Ware.",
+  // TG22 Paket B: der mitgesendete Versicherungswert passt nicht zum eingefrorenen Warenwert — die
+  // Seite zeigt einen anderen Stand als der Server.
+  INSURANCE_SELECTION_MISMATCH: "Die Angaben zu dieser Sendung haben sich geändert. Bitte berechnen Sie die Angebote neu.",
   INSURANCE_UNAVAILABLE: COVER_INSURANCE_TEXT.unavailable,
+  // TG22 Paket B: Aussagen des Tarifs, keine Fehler — hier nur für Wege ohne Hinweisfläche.
+  INSURANCE_BASIC_COVER_INCLUDED: COVER_INSURANCE_TEXT.basicCoverIncludedGeneric,
+  INSURANCE_COVER_LIMIT_EXCEEDED: COVER_INSURANCE_TEXT.coverLimitGeneric,
   PRICE_CHANGED: "Der Preis für dieses Angebot hat sich geändert. Bitte berechnen Sie die Angebote neu.",
   OFFER_NOT_BOOKABLE: "Dieses Angebot kann derzeit nicht gebucht werden. Bitte berechnen Sie die Angebote neu.",
   // TG22 Paket B: verbraucht heißt „es kann ein Auftrag bestehen" — der Weg führt in die
@@ -208,6 +234,18 @@ export function coverBookErrorRequiresReprice(body) {
   return REPRICE_BEHEBT.includes(codeVon(body));
 }
 
+/**
+ * TG22 Paket B — eine Antwort der Neubepreisung, die eine AUSSAGE ist und kein Fehler: die
+ * Grundabsicherung ist enthalten, oder der Warenwert liegt über der Höchstdeckung. Den Betrag
+ * nennt der Server im Körper; ohne ihn bleibt der Satz ohne Betrag. Jede andere Antwort → `null`.
+ */
+export function coverRepriceNotice(body) {
+  const code = codeVon(body);
+  if (code === "INSURANCE_BASIC_COVER_INCLUDED") return coverBasicCoverText(body.basicCoverMaxGoodsValue);
+  if (code === "INSURANCE_COVER_LIMIT_EXCEEDED") return coverLimitText(body.maxCoverValue);
+  return null;
+}
+
 const istBetrag = (w) => typeof w === "number" && Number.isFinite(w);
 
 /**
@@ -271,15 +309,21 @@ export function priceChangeBreakdownLines(view) {
  * Was die Angebotskarte über die Absicherung sagen darf — mit DEMSELBEN Gate wie die
  * Buchungsseite (`getBookingModules`). Eine Karte, die „möglich" sagt, während die
  * Buchungsseite kein Modul zeigt (oder umgekehrt), wäre ein Widerspruch im Produkt.
+ *
+ * TG22 Paket B: ohne kaufbaren Zusatz kann der Tarif trotzdem etwas sagen — die enthaltene
+ * Grundabsicherung oder die Höchstdeckung (`notice`). Das ist KEIN „nicht verfügbar".
  */
 export function offerCardInsurance(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   const d = detailsOf(t);
   const insurable = getBookingModules(t).insurance === true;
+  const notice = insurable ? null : coverInsuranceNotice(t);
   return {
     insurable,
-    explicitlyUnavailable: !insurable && (t.insuranceAvailable === false || (d !== null && d.isInsurable === false)),
+    explicitlyUnavailable: !insurable && notice === null
+      && (t.insuranceAvailable === false || (d !== null && d.isInsurable === false)),
     coverModel: insurable && isCoverValueModel(t),
     excessValue: coverExcessValue(t),
+    notice,
   };
 }

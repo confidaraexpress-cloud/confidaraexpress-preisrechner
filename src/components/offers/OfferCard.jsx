@@ -262,7 +262,9 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   const insOffer = offerCardInsurance(t);
   const insInsurable = insOffer.insurable;
   const insExplicitlyUnavailable = insOffer.explicitlyUnavailable;
-  const hasInsuranceSection = insInsurable || insExplicitlyUnavailable;
+  // TG22 Paket B: auch eine Aussage ohne kaufbaren Zusatz (Grundabsicherung, Höchstdeckung) bekommt
+  // den Abschnitt — als Information, nicht als „nicht verfügbar".
+  const hasInsuranceSection = insInsurable || insExplicitlyUnavailable || insOffer.notice !== null;
 
   // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
   const hasDeliveryRange = !!(t.deliveryDateMin && t.deliveryDateMax);
@@ -347,8 +349,9 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
           Keine Auswahl, keine Checkbox, kein Button. Gewählt wird auf der
           Buchungsseite — mit demselben Gate wie hier. Zwei Modelle:
           Stufen (Standard/Premium mit „ab"-Preisen) oder die zusätzliche
-          Transportabsicherung mit frei gewähltem Versicherungswert; diese
-          nennt KEINEN Preis, weil er erst mit den Angaben des Kunden entsteht. */}
+          Transportabsicherung bis zum Warenwert; diese nennt KEINEN Preis, weil
+          er erst mit den Angaben des Kunden entsteht. Ohne kaufbaren Zusatz steht
+          dort die Aussage des Servers (Grundabsicherung, Höchstdeckung). */}
       {hasInsuranceSection && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Versicherung</div>
@@ -376,6 +379,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
                 Die Zusatzversicherung wählen Sie bei der Buchung.
               </p>
             </>
+          ) : insOffer.notice ? (
+            <p className="offer-insurance-note">{insOffer.notice.text}</p>
           ) : (
             <p className="offer-insurance-note">Keine Zusatzversicherung verfügbar.</p>
           )}

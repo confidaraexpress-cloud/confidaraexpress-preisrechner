@@ -190,6 +190,23 @@ Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** B
 
 Mit Zusatzabsicherung übernimmt „Neuen Preis übernehmen" den Preis **ausschließlich** über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` — nie über eine Buchung. Erst nach der Serverbindung (neue `priceRevision`) bucht der Kunde bewusst erneut; `/book` sendet diese Revision mit. Eine erneute Abweichung öffnet wieder den Dialog, ein Fehler lässt ihn mit neutralem Hinweis offen.
 
+### Labelformat ist eine Fähigkeit des Angebots
+
+- Die A4/A6-Auswahl erscheint **nur**, wenn `labelFormatOptions` ein nicht leeres Array ist (`utils/labelFormatOptions.mjs`). Fehlt das Feld, ist es `null` oder leer: keine Auswahl, **kein** `labelFormat` im `/book` (fail-closed).
+- Gesendet wird nur ein Wert aus den Optionen; ein gespeichertes Format (Vorgang/Entwurf) wird nur übernommen, wenn das Angebot es anbietet.
+- `labelSizes` bleibt reine Auskunft über gelieferte Formate (neutraler Hinweis, z. B. „DIN A4 und Thermodruck").
+
+### Absicherung gehört zu genau einem Angebot
+
+- Der Buchungsteil des Vorgangs trägt `insuranceOfferKey` (`offerKey`). Schritt, Absicherung, Versicherungswert und die beiden Warenantworten werden **nur** bei gleichem Schlüssel wiederhergestellt (`utils/insuranceRestore.mjs`); `null` passt nie, Entwürfe stellen nie eine Absicherung wieder her. Preisstand und `ceShipmentId` gehören nicht zum Schlüssel.
+- Jede relevante Eingabeänderung zählt die Neubepreisungssequenz hoch und bricht ab; nur die Antwort des neuesten Aufrufs darf den Preis bestätigen.
+
+### Buchungsfehler: kein Wiederholen bei offenem Ausgang
+
+- Nach dem Absenden der **finalen** Buchung sind Zeitlimit, Netzabbruch, unlesbarer Erfolg und 5xx **ohne** Code ein offener Ausgang (`PRUEFUNG_LAEUFT`): Konfliktfläche statt Bestellknopf, Weg in die Sendungen, nie „erneut versuchen".
+- `OFFER_ALREADY_USED` (Buchung und Neubepreisung) führt in die Sendungen, `COLLECTION_DATE_MISSING`/`LABEL_FORMAT_NOT_SUPPORTED` zur Neuberechnung, `INVALID_REFERENCE_NUMBER` an das Referenzfeld.
+- `422 BUSINESS_PROFILE_INCOMPLETE` (Buchung und Preisberechnung) zeigt den Weg ins Profil — keine Abmeldung. Echte 401/403 bleiben beim zentralen Auth-Redirect.
+
 ### Fehlerdarstellung
 
 Kein roher Backendwert im sichtbaren Text: unbekannte Status laufen über `statusFallback`, API-Fehler über `utils/apiError.mjs`, Buchungsfehler über `utils/bookingErrors.mjs`. Ein Fehlerzustand kann Zeichenkette **oder** Objekt sein — beide Formen müssen gerendert werden können (ein Objekt als React-Kind ist ein Renderfehler).

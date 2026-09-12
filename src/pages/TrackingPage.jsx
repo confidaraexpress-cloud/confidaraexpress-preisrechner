@@ -142,7 +142,10 @@ export default function TrackingPage() {
                 <Icon n="x" s={16} />{error}
               </div>
             )}
-            <button className="btn btn-primary btn-full" onClick={track} disabled={loading || !id.trim()}>
+            {/* `() => track()` statt `track`: als Handler übergeben bekäme `track` das
+                Klickereignis als `keyArg` — gesucht würde dann „[object Object]" statt der
+                eingegebenen Nummer. */}
+            <button className="btn btn-primary btn-full" onClick={() => track()} disabled={loading || !id.trim()}>
               {loading ? <><span className="spinner" /> Suche…</> : <><Icon n="search" s={16} /> Verfolgen</>}
             </button>
           </div>

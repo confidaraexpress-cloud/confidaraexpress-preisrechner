@@ -97,20 +97,33 @@ export function offerBlocked(tariff) {
    keine Auskunft darüber, bei wem ConfidaraExpress einkauft.
 
    Unbekannter Grund → der neutrale Satz. Nie der Rohwert. */
+// TG22 Paket B: `date_unavailable` sendet der Server, wenn der gewählte Abholtag der EINZIGE
+// Grund ist — dann hilft ein anderer Abholtermin, und genau das sagt der Hinweis darunter.
+// Nie „nächster Werktag": welcher Tag trägt, weiß nur eine neue Berechnung.
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
-  date_unavailable: "Nicht verfügbar für dieses Datum",
+  date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
 };
+// Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
+const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
 const GRUND_NEUTRAL = "Derzeit nicht buchbar";
+export const OFFER_DATE_UNAVAILABLE_HINT = "Bitte wählen Sie einen anderen Abholtermin.";
 
 export function offerBlockedLabel(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   if (!offerBlocked(t)) return null;
   // Das Datum hat Vorrang: es ist die konkretere Aussage, und sie stand schon
   // vor der zweiten Einkaufsquelle so auf der Karte.
-  if (t.availableForDate === false) return GRUND_TEXTE.date_unavailable;
+  if (t.availableForDate === false) return DATUM_NICHT_VERFUEGBAR;
   const text = GRUND_TEXTE[t.unavailableReason];
   return typeof text === "string" ? text : GRUND_NEUTRAL;
+}
+
+/** Handlungshinweis zum Sperrgrund — nur, wenn ein anderer Abholtermin tatsächlich hilft. */
+export function offerBlockedHint(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  if (!offerBlocked(t) || t.availableForDate === false) return null;
+  return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 
 export { GRUND_NEUTRAL as OFFER_BLOCKED_FALLBACK };

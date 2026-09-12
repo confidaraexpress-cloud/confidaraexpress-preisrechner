@@ -169,9 +169,19 @@ test("buildResumeInitialState: Versanddatum, Servicefilter, Versandmodus, Carrie
   assert.equal(s.shippingModeFilter, "express");
   assert.deepEqual(s.selectedPublicCarrierIds, ["ups", "dpd"]);
 });
-test("buildResumeInitialState: Versanddatum in der Vergangenheit → auf heute geklemmt", () => {
+// TG22 Paket B — bewusst geändert: früher wurde ein vergangenes Datum still auf heute geklemmt.
+// Eine Abholung „heute" ist aber eine andere Sendung als die gespeicherte; das Datum bleibt
+// deshalb leer und ist als abgelaufen markiert, der Kunde wählt vor der Berechnung neu.
+test("buildResumeInitialState: Versanddatum in der Vergangenheit → leer und als abgelaufen markiert", () => {
   const s = buildResumeInitialState({ shippingOptions: { shippingDate: "2020-01-01" } }, { today: "2026-07-21" });
-  assert.equal(s.shippingDate, "2026-07-21");
+  assert.equal(s.shippingDate, null);
+  assert.equal(s.shippingDateExpired, true);
+  // Heute selbst ist nicht vergangen, ein späteres Datum ohnehin nicht.
+  const heute = buildResumeInitialState({ shippingOptions: { shippingDate: "2026-07-21" } }, { today: "2026-07-21" });
+  assert.equal(heute.shippingDate, "2026-07-21");
+  assert.equal(heute.shippingDateExpired, false);
+  // Ohne Datum ist nichts abgelaufen — es fehlt nur.
+  assert.equal(buildResumeInitialState({}, { today: "2026-07-21" }).shippingDateExpired, false);
 });
 test("buildResumeInitialState: fehlende Werte → normale Defaults", () => {
   const s = buildResumeInitialState({}, { today: "2026-07-21" });

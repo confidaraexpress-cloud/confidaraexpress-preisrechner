@@ -235,6 +235,8 @@ const JUMINGO_TARIF = {
   id: 1, shipper_tariff_id: 1381, publicCarrierId: "ups", publicCarrierName: "UPS",
   publicServiceName: "Standardversand", serviceType: "pickup", currency: "EUR",
   netPrice: 10.69, vatAmount: 2.03, finalPrice: 12.72, transitDaysMin: 1, transitDaysMax: 2,
+  // TG22 Paket B: die Formatauswahl ist eine Fähigkeit des Angebots (fail-closed ohne Liste).
+  labelFormatOptions: ["A4", "A6"],
   trackingAvailable: true, printerRequired: false, availableForDate: true,
   pickupDate: "2026-09-07T00:00:00Z", pickupTimeFrom: "09:00", pickupTimeUntil: "17:00",
   pickupWindowAdjustable: true, pickupWindowMinMinutes: 120,

@@ -115,7 +115,9 @@ tr:hover td { background: var(--surface-subtle); }
 .track-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--ce-color-border-default); background: var(--ce-color-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
 .track-dot.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand); color: white; }
 .track-dot.done   { border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid); color: white; }
-.track-info { flex: 1; padding-top: 4px; }
+/* `min-width: 0` + `overflow-wrap`: eine lange Ortsangabe oder Trackingnummer bricht in der
+   schmalen Mobilkarte um, statt die Timeline seitlich aus der Karte zu schieben. */
+.track-info { flex: 1; min-width: 0; padding-top: 4px; overflow-wrap: anywhere; }
 .track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
 .track-time { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
 
@@ -135,6 +137,10 @@ tr:hover td { background: var(--surface-subtle); }
 .shipment-detail-item { display: flex; flex-direction: column; gap: 2px; }
 .shipment-detail-label { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); }
 .shipment-detail-value { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+/* TG22 Paket B: dieselbe Trackingansicht in der Mobilkarte — abgesetzt unter den Aktionen,
+   mit eigenem Innenabstand statt der Detailzeile der Tabelle. */
+.shipment-card-tracking { margin-top: 12px; padding: 12px 4px 0; border-top: 1px solid var(--border-subtle); min-width: 0; }
+.shipment-card-tracking .shipment-track-head { gap: 6px 10px; }
 
 /* ─── Steps (Paket B) ────────────────────────────────────────────────────────
    Kreis 32px, aktiv = Marken-Indigo, erledigt = Success, zukünftig = neutral —

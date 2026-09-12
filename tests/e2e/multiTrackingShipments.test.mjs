@@ -108,8 +108,8 @@ test("1 — Tabelle kompakt, Detail und Live-Ansicht vollständig, Einzelsendung
   await multiZeile.getByRole("button", { name: "Sendung verfolgen" }).click();
   await page.waitForSelector(".shipment-tracking-references li", { timeout: 15000 });
   assert.deepEqual((await page.locator(".shipment-tracking-references li").allTextContents()).map((t) => t.trim()), DREI);
-  await page.waitForSelector(".shipment-track-number", { timeout: 15000 });
-  assert.equal((await page.locator(".shipment-track-number").innerText()).trim(), `Trackingnummern: ${DREI.join(", ")}`);
+  await page.waitForSelector(".ce-list-table .shipment-track-number", { timeout: 15000 });
+  assert.equal((await page.locator(".ce-list-table .shipment-track-number").innerText()).trim(), `Trackingnummern: ${DREI.join(", ")}`);
   assert.ok(protokoll.includes(`/api/shipments/${MULTI_ID}/tracking`), "die Live-Ansicht kommt nicht vom Server");
 
   const detail = await page.locator(".shipment-detail-card").innerText();
@@ -118,8 +118,8 @@ test("1 — Tabelle kompakt, Detail und Live-Ansicht vollständig, Einzelsendung
   // Die Einzelsendung: eine Nummer, keine Liste.
   await multiZeile.getByRole("button", { name: "Sendung verfolgen" }).click(); // einklappen
   await einzelZeile.getByRole("button", { name: "Sendung verfolgen" }).click();
-  await page.waitForSelector(".shipment-track-number", { timeout: 15000 });
-  assert.equal((await page.locator(".shipment-track-number").innerText()).trim(), "Trackingnummer: 1ZEINZEL0001");
+  await page.waitForSelector(".ce-list-table .shipment-track-number", { timeout: 15000 });
+  assert.equal((await page.locator(".ce-list-table .shipment-track-number").innerText()).trim(), "Trackingnummer: 1ZEINZEL0001");
   assert.equal(await page.locator(".shipment-tracking-references").count(), 0);
   await page.close();
 });

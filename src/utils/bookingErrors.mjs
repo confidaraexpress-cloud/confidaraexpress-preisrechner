@@ -13,22 +13,19 @@
 // utils/apiError.mjs — dieses Modul übersetzt nur in die Buchungs-Wortwahl.
 // Framework-frei und damit ohne DOM mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
-import { normalizeApiError, normalizeThrownError } from "./apiError.mjs";
+import { normalizeApiError } from "./apiError.mjs";
+
+// TG22 Paket B — derselbe Satz bei /book und bei der Neubepreisung der Absicherung.
+export const OFFER_ALREADY_USED_TEXT = "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.";
+
+// TG22 Paket B — 400 INVALID_REFERENCE_NUMBER (Feld `referenceNumber`).
+export const REFERENCE_INVALID_TEXT =
+  "Die Referenznummer enthält unzulässige Zeichen. Bitte verwenden Sie höchstens 35 gut lesbare Zeichen.";
 
 export const BOOK_FEHLER = {
   RATE_LIMITED: {
     title: "Zu viele Anfragen",
     message: "Es wurden in kurzer Zeit zu viele Buchungsanfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es anschließend erneut.",
-    retryable: true,
-  },
-  SERVER: {
-    title: "Buchung momentan nicht möglich",
-    message: "Die Buchung konnte aufgrund eines technischen Problems nicht abgeschlossen werden. Ihre Angaben bleiben erhalten. Bitte versuchen Sie es erneut.",
-    retryable: true,
-  },
-  NETZ: {
-    title: "Verbindung unterbrochen",
-    message: "Die Verbindung zum Server wurde unterbrochen. Bitte prüfen Sie Ihre Internetverbindung und versuchen Sie die Buchung erneut.",
     retryable: true,
   },
   UNLESBAR: {
@@ -41,21 +38,20 @@ export const BOOK_FEHLER = {
     message: "Das ausgewählte Angebot ist nicht mehr verfügbar. Bitte lassen Sie die Versandangebote erneut berechnen.",
     retryable: false,
   },
-  // Zeitüberschreitung UNSERES Limits während /book (Phase 1, F5): der Ausgang ist
-  // UNBEKANNT — der Server kann die Bestellung nach dem Abbruch noch platziert haben.
-  // Deshalb ausdrücklich KEINE „bitte erneut versuchen"-Aufforderung, sondern zuerst
-  // der Blick in die Sendungsliste. Serverseitig schützt der Buchungsclaim zusätzlich
-  // vor einer Doppelbuchung desselben Vorgangs; der Text verlässt sich darauf nicht.
   // ─── CE-19: der Ausgang ist OFFEN — der Provider kann bereits gebucht haben ─────────
-  // Serverseitig ist das ein eigener, ausdrücklich benannter Zustand: JUMiNGO antwortet
-  // `502 BOOKING_OUTCOME_UNKNOWN` mit dem Text „bitte buchen Sie sie NICHT erneut",
-  // Transglobal `202 BOOKING_PENDING` für einen mehrdeutigen oder klärungspflichtigen
-  // Ausgang. In beiden Fällen liegt beim Anbieter unter Umständen eine echte, bezahlte
-  // Sendung — ein zweiter Versuch erzeugte eine ZWEITE davon, an einen echten Empfänger.
+  // Serverseitig ist das ein eigener, ausdrücklich benannter Zustand: `502
+  // BOOKING_OUTCOME_UNKNOWN` (auch nach einem Fehler NACH der Bestellung beim Anbieter) mit dem
+  // Text „bitte buchen Sie sie NICHT erneut", `202 BOOKING_PENDING` für einen mehrdeutigen oder
+  // klärungspflichtigen Ausgang. In beiden Fällen liegt beim Anbieter unter Umständen eine
+  // echte, bezahlte Sendung — ein zweiter Versuch erzeugte eine ZWEITE davon.
+  //
+  // ─── TG22 Paket B: dieselbe Lage OHNE Code ─────────────────────────────────────────
+  // Ein Zeitlimit, ein Verbindungsabbruch, ein unlesbarer Erfolg oder ein 5xx ohne Code nach
+  // dem Absenden der FINALEN Buchung sagen nichts darüber, ob bestellt wurde. Bis hierher
+  // bekamen sie „Bitte versuchen Sie es erneut" (Netz, 5xx, unlesbar) — genau die Einladung
+  // zur zweiten Sendung, die dieser Text verhindern soll. Sie laufen deshalb ebenfalls hierher.
   //
   // Deshalb steht hier bewusst KEINE Aufforderung zum Wiederholen, in keiner Formulierung.
-  // Der Server sperrt den Vorgang zusätzlich (der Buchungsclaim bleibt stehen, das Angebot
-  // gilt als verbraucht); dieser Text verlässt sich darauf nicht.
   PRUEFUNG_LAEUFT: {
     title: "Buchungsstatus wird geprüft",
     message: "Ihre Buchung wurde entgegengenommen, das Ergebnis steht aber noch nicht fest. Bitte senden Sie die Buchung NICHT erneut ab — es könnte sonst eine zweite Sendung entstehen. Den Stand finden Sie unter „Sendungen“; wir melden uns, sobald der Status feststeht.",
@@ -89,12 +85,7 @@ export const BOOK_FEHLER = {
   // lüde zu einer zweiten Sendung ein. Der richtige Ort ist die Sendungsliste.
   ANGEBOT_VERWENDET: {
     title: "Angebot bereits verwendet",
-    message: "Mit diesem Angebot wurde bereits eine Buchung ausgelöst. Bitte senden Sie sie nicht erneut ab und prüfen Sie den Stand unter „Sendungen“.",
-    retryable: false,
-  },
-  ZEIT_UNBEKANNT: {
-    title: "Keine Antwort vom Server",
-    message: "Der Server hat nicht rechtzeitig geantwortet. Ob die Buchung durchgeführt wurde, lässt sich gerade nicht feststellen. Bitte prüfen Sie zuerst unter „Sendungen“, ob die Sendung angelegt wurde, bevor Sie die Buchung erneut auslösen.",
+    message: OFFER_ALREADY_USED_TEXT,
     retryable: false,
   },
 };
@@ -112,36 +103,24 @@ export const BOOK_FEHLER = {
 //   BOOKING_FAILED              409      nichts beauftragt             neu berechnen
 //
 // Die Zuordnung steht VOR der Statusauswertung, und das ist der Kern des Befunds: ein
-// `502 BOOKING_OUTCOME_UNKNOWN` fiel bisher in den Sammelzweig `status >= 500` und bekam
+// `502 BOOKING_OUTCOME_UNKNOWN` fiel früher in den Sammelzweig `status >= 500` und bekam
 // damit den Text „Bitte versuchen Sie es erneut." — obwohl der Server im selben Body
-// wörtlich „bitte buchen Sie sie NICHT erneut" sagt. Der Client hat die einzige Warnung
-// überschrieben, die vor einer doppelten, kostenpflichtigen Sendung schützt.
+// wörtlich „bitte buchen Sie sie NICHT erneut" sagt.
 // ─── TG-7: weitere Codes, alle mit derselben Handlung ──────────────────────────────
-// Sie standen bisher in keiner Tabelle und fielen damit in den 409-Sammelzweig der
-// Buchungsseite. Dessen Text („Diese Sendung wurde bereits verarbeitet …") und dessen
-// Knopf („Zu meinen Sendungen") sind für sie beide falsch: es wurde NICHTS beauftragt,
-// und in der Sendungsliste steht deshalb auch nichts, das man dort prüfen könnte.
-//
-//   Code                            Status  Ausgang                    Wiederholen?
 //   SHIPMENT_DECLARATIONS_MISMATCH  409     nichts beauftragt          neu berechnen
 //   SHIPMENT_DECLARATIONS_MISSING   409     nichts beauftragt          neu berechnen
 //   OFFER_MISMATCH                  409     nichts beauftragt          neu berechnen
-//
-// Alle bedeuten dasselbe: das vorliegende Angebot trägt nicht mehr. Ein zweiter Versuch
-// mit derselben Angebotskennung endete zwangsläufig genauso — die einzige Handlung, die
-// etwas ändert, ist eine neue Berechnung. Genau das sagt NEU_BERECHNEN bereits.
+// ─── TG22 Paket B ──────────────────────────────────────────────────────────────────
+//   COLLECTION_DATE_MISSING         409     nichts beauftragt          neu berechnen
+//   LABEL_FORMAT_NOT_SUPPORTED      400     nichts beauftragt          neu berechnen
+// Beide tragen mit derselben Angebotskennung nicht: ohne Abholtag gibt es keinen Auftrag, und
+// ein Format, das dieses Angebot nicht kennt, entsteht nur aus einem veralteten Angebotsstand.
 //
 // ─── Buchungssicherheit: OFFER_ALREADY_USED ist KEIN „nichts beauftragt" ────────────
 //   OFFER_ALREADY_USED              409     gebucht / evtl. gebucht    NIEMALS
 // Ein Angebot wird serverseitig nur verbraucht, wenn beim Anbieter ein Auftrag existiert
-// oder existieren KANN (gebucht, unklarer Ausgang, klärungspflichtig). Er stand bis hierher
-// unter NEU_BERECHNEN — dessen Text („Es wurde nichts beauftragt") war dafür falsch, und die
-// Neuberechnung lud zu einer zweiten Sendung ein. Er führt deshalb in die Sendungsliste.
-//
-// Die beiden Deklarationscodes sind nach TG-7 Defense-in-Depth: über die Oberfläche
-// ist eine abweichende Angabe nicht mehr erzeugbar, seit die beantworteten Werte auf
-// der Buchungsseite nur noch angezeigt werden. Erreichbar bleiben sie über einen
-// gebauten Request und über ein zum Deploymentzeitpunkt offenes Bundle.
+// oder existieren KANN (gebucht, unklarer Ausgang, klärungspflichtig). Er führt deshalb in die
+// Sendungsliste.
 const BOOK_CODE_FEHLER = {
   BOOKING_OUTCOME_UNKNOWN: "PRUEFUNG_LAEUFT",
   BOOKING_PENDING:         "PRUEFUNG_LAEUFT",
@@ -153,6 +132,8 @@ const BOOK_CODE_FEHLER = {
   SHIPMENT_DECLARATIONS_MISSING:  "NEU_BERECHNEN",
   OFFER_ALREADY_USED:             "ANGEBOT_VERWENDET",
   OFFER_MISMATCH:                 "NEU_BERECHNEN",
+  COLLECTION_DATE_MISSING:        "NEU_BERECHNEN",
+  LABEL_FORMAT_NOT_SUPPORTED:     "NEU_BERECHNEN",
 };
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
@@ -172,6 +153,13 @@ export function istOffenerAusgang(status, body) {
   return code === "BOOKING_PENDING" || code === "BOOKING_OUTCOME_UNKNOWN";
 }
 
+// Ist dieser Buchungsfehler ein offener Ausgang? Dann gehört er in die Konfliktfläche, die
+// den Bestellknopf durch „Zu meinen Sendungen" ERSETZT — nicht in das Fehlerbanner, neben dem
+// der Knopf stehen bliebe.
+export function istUnklarerAusgang(fehler) {
+  return fehler === BOOK_FEHLER.PRUEFUNG_LAEUFT;
+}
+
 // Restpfad einer NICHT-ok-Antwort. `body` ist der defensiv gelesene JSON-Body
 // (null bei leerem/unlesbarem Body — z. B. HTML-Fehlerseite eines Proxys).
 export function mapBookRestError(status, body) {
@@ -182,7 +170,9 @@ export function mapBookRestError(status, body) {
   if (code && BOOK_CODE_FEHLER[code]) return BOOK_FEHLER[BOOK_CODE_FEHLER[code]];
   if (status === 404) return BOOK_FEHLER.ANGEBOT_WEG;   // abgelaufenes/fremdes Angebot — neu berechnen ist die Handlung
   if (status === 429) return BOOK_FEHLER.RATE_LIMITED;
-  if (status >= 500) return BOOK_FEHLER.SERVER;
+  // TG22 Paket B: ein 5xx OHNE bekannten Code nach dem Absenden der finalen Buchung sagt nicht,
+  // ob beim Anbieter bestellt wurde (ein Proxy-Timeout nach der Bestellung sieht genauso aus).
+  if (status >= 500) return BOOK_FEHLER.PRUEFUNG_LAEUFT;
   if (body === null || body === undefined) return BOOK_FEHLER.UNLESBAR;
   // Unerwarteter Reststatus mit lesbarem Body → zentrale Klassifizierung
   // (liest error UND message, wertet code aus, verliert nichts).
@@ -190,21 +180,16 @@ export function mapBookRestError(status, body) {
   return { title: n.title, message: n.message, retryable: n.retryable === true };
 }
 
-// Erfolgsstatus, aber der Body ließ sich nicht als Buchungsobjekt lesen —
-// KEINE Erfolgsanzeige, keine Navigation, Angaben bleiben erhalten.
+// Erfolgsstatus, aber der Body ließ sich nicht als Buchungsobjekt lesen — KEINE
+// Erfolgsanzeige. TG22 Paket B: der Server hat mit Erfolg geantwortet, gebucht sein KANN
+// also sehr wohl — offener Ausgang, kein „bitte erneut versuchen".
 export function mapBookUnreadableSuccess() {
-  return BOOK_FEHLER.UNLESBAR;
+  return BOOK_FEHLER.PRUEFUNG_LAEUFT;
 }
 
-// Geworfene Fehler (fetch-Abbruch, Timeout …). Ein Abbruch während der Buchung
-// wird wie ein Verbindungsproblem behandelt: ob die Order zustande kam, ist
-// clientseitig nicht feststellbar — der Text lädt zum bewussten erneuten
-// Versuch ein, ohne fälschlich Erfolg oder endgültiges Scheitern zu behaupten.
-export function mapBookThrownError(e) {
-  const n = normalizeThrownError(e);
-  // Zeitlimit VOR dem Netz-Sammelfall: ein Timeout heißt bei der Buchung „Ausgang
-  // unbekannt", nicht „Verbindung prüfen und erneut versuchen".
-  if (n.code === "TIMEOUT") return BOOK_FEHLER.ZEIT_UNBEKANNT;
-  if (n.code === "NETWORK_ERROR" || n.code === "ABORTED") return BOOK_FEHLER.NETZ;
-  return { title: n.title, message: n.message, retryable: n.retryable === true };
+// Geworfene Fehler der finalen Buchung (Zeitlimit, Netzabbruch, Abbruch). Ob die Bestellung
+// zustande kam, ist clientseitig nicht feststellbar: die Anfrage kann den Server erreicht
+// haben. TG22 Paket B: deshalb in JEDEM Fall der offene Ausgang — nie „erneut versuchen".
+export function mapBookThrownError(_e) {
+  return BOOK_FEHLER.PRUEFUNG_LAEUFT;
 }

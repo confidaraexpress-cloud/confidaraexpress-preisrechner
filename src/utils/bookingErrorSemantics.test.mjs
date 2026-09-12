@@ -21,16 +21,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  mapBookRestError, istOffenerAusgang, fordertNeuberechnung, BOOK_FEHLER,
+  mapBookRestError, istOffenerAusgang, fordertNeuberechnung, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
 } from "./bookingErrors.mjs";
 
 const src = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 // Die Codes, bei denen beim Anbieter etwas liegen KANN. Für sie gilt ausnahmslos:
 // keine Wiederholung, und der Text muss das ausdrücklich sagen.
-// OFFER_ALREADY_USED gehört dazu: ein Angebot wird nur verbraucht, wenn beim Anbieter ein Auftrag
-// existiert oder existieren KANN.
-const NIEMALS_WIEDERHOLEN = ["BOOKING_OUTCOME_UNKNOWN", "BOOKING_PENDING", "BOOKING_IN_PROGRESS", "OFFER_ALREADY_USED"];
+const NIEMALS_WIEDERHOLEN = ["BOOKING_OUTCOME_UNKNOWN", "BOOKING_PENDING", "BOOKING_IN_PROGRESS"];
 
 test("1 — DER KERNBEFUND: ein unklarer JUMiNGO-Ausgang fordert NICHT zum Wiederholen auf", () => {
   const f = mapBookRestError(502, {
@@ -44,12 +42,15 @@ test("1 — DER KERNBEFUND: ein unklarer JUMiNGO-Ausgang fordert NICHT zum Wiede
     "der Text muss das Wiederholen ausdrücklich untersagen, nicht bloß nicht dazu einladen");
 });
 
-test("2 — der generische 5xx bleibt unverändert wiederholbar", () => {
-  // Die Gegenprobe zu (1): der Codezweig darf den Sammelzweig nicht ersetzen, nur
-  // vorwegnehmen. Ein echter Serverfehler ohne Code ist weiterhin ein Wiederholungsfall.
-  assert.equal(mapBookRestError(500, { error: "Buchung fehlgeschlagen" }), BOOK_FEHLER.SERVER);
-  assert.equal(mapBookRestError(502, null), BOOK_FEHLER.SERVER);
-  assert.equal(BOOK_FEHLER.SERVER.retryable, true);
+test("2 — TG22 Paket B: ein 5xx OHNE Code ist nach der finalen Buchung ebenfalls ein offener Ausgang", () => {
+  // Bewusst geändert: früher „unverändert wiederholbar". Ein Proxy-Zeitlimit NACH der Bestellung
+  // beim Anbieter sieht genauso aus wie ein Fehler davor — der Client kann es nicht unterscheiden.
+  assert.equal(mapBookRestError(500, { error: "Buchung fehlgeschlagen" }), BOOK_FEHLER.PRUEFUNG_LAEUFT);
+  assert.equal(mapBookRestError(502, null), BOOK_FEHLER.PRUEFUNG_LAEUFT);
+  assert.equal(BOOK_FEHLER.PRUEFUNG_LAEUFT.retryable, false);
+  // Die Gegenprobe: ein Code, der „nichts beauftragt" sagt, bleibt wiederholbar — der Code
+  // entscheidet weiterhin vor dem Status.
+  assert.equal(mapBookRestError(503, { code: "PRICE_UNCONFIRMED" }), BOOK_FEHLER.PREIS_UNBESTAETIGT);
 });
 
 test("3 — jeder Code mit möglicherweise bestellter Sendung ist nicht wiederholbar", () => {
@@ -59,6 +60,13 @@ test("3 — jeder Code mit möglicherweise bestellter Sendung ist nicht wiederho
     assert.match(f.message, /nicht erneut|NICHT erneut/,
       `${code} sagt dem Kunden nicht, dass er nicht erneut senden soll`);
   }
+  // OFFER_ALREADY_USED: ebenfalls nie wiederholbar. TG22 Paket B gibt den Satz wörtlich vor — er
+  // führt in die Sendungen und behauptet nicht, es sei nichts beauftragt.
+  const verwendet = mapBookRestError(409, { code: "OFFER_ALREADY_USED" });
+  assert.equal(verwendet.retryable, false);
+  assert.equal(verwendet.message, OFFER_ALREADY_USED_TEXT);
+  assert.equal(OFFER_ALREADY_USED_TEXT, "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.");
+  assert.doesNotMatch(verwendet.message, /nichts beauftragt|neu berechnen/);
 });
 
 test("4 — ein Zustand OHNE Bestellung darf und soll wiederholt werden", () => {

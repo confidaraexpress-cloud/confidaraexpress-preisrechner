@@ -17,6 +17,7 @@ import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
 import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
+import { businessTodayISO } from "../utils/businessDate.mjs";
 import { getFormDraft, createFormDraft, updateFormDraft } from "../api/formDraftsApi";
 import { normalizeApiError, normalizeThrownError, summaryMessage } from "../utils/apiError.mjs";
 import { focusFirstError } from "../utils/focusField";
@@ -90,7 +91,9 @@ import {
   buildResumeInitialState, resumeSourceFromDraft, isValidResumeDraft, buildResumePayload,
   isValidShipmentResumeDraft,
   classifyFormDraftTransition, mapFormDraftStartError, SHIPMENT_PERSISTENCE_FAILED_MESSAGE,
+  RESUME_PAST_DATE_NOTICE,
 } from "../utils/formDraftsView.mjs";
+import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
 import { AddressTypeModule } from "../components/booking/AddressTypeModule";
@@ -246,7 +249,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const resumeInitRef = useRef(undefined);
   if (resumeInitRef.current === undefined) {
     resumeInitRef.current = (isValidResumeDraft(resumeDraft) || isValidShipmentResumeDraft(resumeDraft))
-      ? resumeInitialState(buildResumeInitialState(resumeDraft.formData, { today: todayISO() }))
+      ? resumeInitialState(buildResumeInitialState(resumeDraft.formData, { today: businessTodayISO() }))
       : null;
   }
   const resumeInit = resumeInitRef.current;
@@ -294,8 +297,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
   const [shippingModeFilter, setShippingModeFilter] = useState(resumeInit ? resumeInit.shippingModeFilter : flowInit ? flowInit.shippingModeFilter : "all");
   const [shippingModeOpen, setShippingModeOpen]     = useState(false);
+  // TG22 Paket B: ein fortgesetzter Entwurf bekommt KEIN Ersatzdatum. Lag sein Versanddatum in
+  // der Vergangenheit, bleibt es leer (`null`) — die Berechnung ist dann gesperrt, bis der Kunde
+  // bewusst ein Datum wählt. Ein stilles „heute" wäre eine andere Sendung als die gespeicherte.
   const [shippingDate, setShippingDate]             = useState(() =>
-    (resumeInit && resumeInit.shippingDate) ? resumeInit.shippingDate
+    resumeInit ? (resumeInit.shippingDate || null)
       : (flowInit && flowInit.shippingDate) ? flowInit.shippingDate
       : todayISO());
   const [datePickerOpen, setDatePickerOpen]         = useState(false);
@@ -409,6 +415,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const [selected, setSelected]     = useState(flowInit ? flowInit.selected : null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState("");
+  // TG22 Paket B: die letzte Preisberechnung scheiterte an fehlenden Profilangaben (422).
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [hasResults, setHasResults] = useState(!!(flowInit && flowInit.tariffs.length > 0));
   // Zeitpunkt der Preisberechnung — trägt die Ablauffrist des Vorgangs.
   const calculatedAtRef = useRef(flowInit ? flowInit.calculatedAt : null);
@@ -428,7 +436,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // resumeSource trägt die Übergangs-Metadaten (interne Formularentwurf-ID +
   // Revision), die beim nächsten „Preise berechnen" EINMALIG mitgesendet werden.
   const [resumeSource, setResumeSource]       = useState(() => resumeSourceFromDraft(resumeDraft)); // { id, revision } | null
-  const [resumeNotice, setResumeNotice]       = useState("");     // nicht blockierender Hinweis
+  // nicht blockierender Hinweis. TG22 Paket B: startet ein Entwurf mit vergangenem Versanddatum,
+  // sagt er sofort, warum das Datum leer ist und die Berechnung auf eine Wahl wartet.
+  const [resumeNotice, setResumeNotice]       = useState(() => (resumeInit && resumeInit.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : ""));
   const [resumeConflict, setResumeConflict]   = useState(false);  // 409 Konflikt → „Aktuelle Version laden"
   const [reloadingResume, setReloadingResume] = useState(false);
 
@@ -583,6 +593,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     ? Math.max(Number(form.weight), Number(volWeight)).toFixed(2) : form.weight || null;
 
   const calcValid = Object.keys(getErrors(form)).length === 0;
+  // TG22 Paket B: ohne Versanddatum keine Berechnung. Das tritt nur bei einem fortgesetzten
+  // Entwurf auf, dessen Datum vergangen ist — dort wird bewusst nichts ersetzt.
+  const datumFehlt = !shippingDate;
+  const DATUM_FEHLT_HINWEIS = "Bitte wählen Sie ein Versanddatum, um Angebote zu vergleichen.";
   // Hinweis am CTA — NUR aus bereits sichtbar markierten Feldern (`errors`), nie
   // aus einer stillen Vorabvalidierung des laufenden Tippens. Bei einer neuen
   // Sendung ist `errors` bis zum ersten Klick leer → kein Hinweis, Verhalten
@@ -962,8 +976,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       if (!mountedRef.current) return;
       const payload = buildResumePayload(d?.draft);
       if (!r.ok || !isValidResumeDraft(payload)) throw new Error("reload failed");
-      const init = buildResumeInitialState(payload.formData, { today: todayISO() });
-      const nextDate = init.shippingDate || todayISO();
+      // TG22 Paket B: Berliner Geschäftstag, und kein Ersatzdatum für ein vergangenes Entwurfsdatum.
+      const init = buildResumeInitialState(payload.formData, { today: businessTodayISO() });
+      const nextDate = init.shippingDate;
+      setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
       setForm(init.form);
       setShippingDate(nextDate);
       setServiceFilter(init.serviceFilter);
@@ -1064,6 +1080,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const handleDateChange    = (iso) => {
     if (!iso || iso < todayISO()) return;
     setShippingDate(iso); setDatePickerOpen(false);
+    // TG22 Paket B: mit einem gewählten Datum ist der Hinweis auf das abgelaufene Entwurfsdatum erledigt.
+    if (resumeNotice === RESUME_PAST_DATE_NOTICE) setResumeNotice("");
+    if (error === DATUM_FEHLT_HINWEIS) setError("");
     // Späteste Lieferzeit darf nie vor dem Versanddatum liegen → ungültige
     // Auswahl beim Vorziehen des Versanddatums verwerfen.
     if (form.latestDeliveryDate && form.latestDeliveryDate < iso) {
@@ -1146,6 +1165,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       revealOffers(offersRef.current);
       return;
     }
+    // TG22 Paket B: ohne Versanddatum wird nicht gerechnet — kein Ersatzdatum, kein Request.
+    if (!shippingDate) {
+      setError(DATUM_FEHLT_HINWEIS);
+      return;
+    }
     setHasResults(false); setTariffs([]);
     lastCalcKeyRef.current = "";
     const errs = getErrors(form);
@@ -1160,7 +1184,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     }
     setErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
-    setError(""); setLoading(true); setSelected(null);
+    setError(""); setProfileIncomplete(false); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
     // neutralisieren (nach consumed:true existiert der Draft ohnehin nicht mehr).
@@ -1243,6 +1267,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
           focusFirstError(norm.field);
         }
+        // TG22 Paket B: 422 BUSINESS_PROFILE_INCOMPLETE ist keine abgelaufene Sitzung — der Kunde
+        // bleibt angemeldet und bekommt den direkten Weg ins Unternehmensprofil.
+        setProfileIncomplete(norm.code === "BUSINESS_PROFILE_INCOMPLETE");
         setError(norm.message);
         setLoading(false);
         return;
@@ -1336,16 +1363,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       if (!mountedRef.current) return;
       const payload = buildResumePayload(d?.draft);
       if (!r.ok || !isValidResumeDraft(payload)) throw new Error("Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
-      const init = buildResumeInitialState(payload.formData, { today: todayISO() });
+      // TG22 Paket B: Berliner Geschäftstag, und kein Ersatzdatum für ein vergangenes Entwurfsdatum.
+      const init = buildResumeInitialState(payload.formData, { today: businessTodayISO() });
       setForm(init.form);
-      setShippingDate(init.shippingDate || todayISO());
+      setShippingDate(init.shippingDate);
       setServiceFilter(init.serviceFilter);
       setShippingModeFilter(init.shippingModeFilter);
       setSelectedPublicCarrierIds(init.selectedPublicCarrierIds);
       setInventoryContext(init.inventoryContext); // Audit-Finding 1/3: Lagerbezug + Hinweis folgen der geladenen Version
       resetResults();                                  // frische Grundlage → alte Ergebnisse verwerfen
       setResumeSource(resumeSourceFromDraft(payload)); // aktualisierte Revision
-      setResumeConflict(false); setResumeNotice("");
+      setResumeConflict(false); setResumeNotice(init.shippingDateExpired ? RESUME_PAST_DATE_NOTICE : "");
     } catch (e) {
       if (mountedRef.current) setError(e?.message || "Die aktuelle Version konnte nicht geladen werden. Bitte versuchen Sie es erneut.");
     }
@@ -1907,10 +1935,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               <button
                 className="btn btn-primary btn-lg dft-cta-primary"
                 onClick={calculate}
-                disabled={loading || !calcValid || saving || addressBlocksCalculation}
+                disabled={loading || !calcValid || saving || addressBlocksCalculation || datumFehlt}
                 title={addressBlocksCalculation
                   ? "Bitte korrigieren Sie zuerst PLZ und Ort."
-                  : (calcHint || paketHinweis || undefined)}
+                  : (datumFehlt ? DATUM_FEHLT_HINWEIS : (calcHint || paketHinweis || undefined))}
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>
@@ -1957,6 +1985,14 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 fortgesetzter, unvollständiger Entwurf wie ein toter Button:
                 die Felder sind zwar markiert, liegen aber weiter oben außerhalb
                 des Sichtbereichs. Die Felder selbst bleiben die Detailanzeige. */}
+            {/* TG22 Paket B: ohne Versanddatum (vergangenes Entwurfsdatum) ist der CTA gesperrt —
+                hier steht, warum. */}
+            {datumFehlt && !loading && (
+              <div className="dft-save-status" role="status" id="ns-date-missing">
+                <Icon n="info" s={15} c="currentColor" /><span>{DATUM_FEHLT_HINWEIS}</span>
+              </div>
+            )}
+
             {calcHint && !loading && (
               <div className="dft-save-status" role="status">
                 <Icon n="info" s={15} c="currentColor" /><span>{calcHint}</span>
@@ -2001,6 +2037,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               </div>
             )}
             {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
+            {/* TG22 Paket B: fehlende Profilangaben (422) — der Weg ins Profil steht direkt am Hinweis.
+                Keine Abmeldung, der Vorgang bleibt erhalten. */}
+            {error && profileIncomplete && (
+              <div className="dft-resume-info mt-8" role="note" id="ns-profile-incomplete">
+                <Icon n="info" s={16} c="currentColor" />
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate(PROFILE_DASHBOARD_TARGET)}>
+                  Unternehmensprofil vervollständigen
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

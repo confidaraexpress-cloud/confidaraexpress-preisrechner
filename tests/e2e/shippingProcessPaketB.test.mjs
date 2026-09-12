@@ -28,6 +28,8 @@ const TARIFF = {
   id: 1, shipper_tariff_id: 1, publicCarrierId: "dhl", publicCarrierName: "DHL Express",
   publicServiceName: "Expressversand", serviceType: "pickup", netPrice: 18.65, vatAmount: 3.54,
   finalPrice: 22.19, currency: "EUR", transitDaysMin: 1, transitDaysMax: 1,
+  // TG22 Paket B: die Formatauswahl ist eine Fähigkeit des Angebots (fail-closed ohne Liste).
+  labelFormatOptions: ["A4", "A6"],
   trackingAvailable: true, printerRequired: false, availableForDate: true,
   pickupDate: "2026-08-07T00:00:00Z", pickupTimeFrom: "09:00", pickupTimeUntil: "17:00",
   deliveryDate: "2026-08-08T00:00:00Z",

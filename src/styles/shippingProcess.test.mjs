@@ -269,7 +269,8 @@ test("10 — der /book-Payload trägt weiterhin dieselben Absender-/Empfänger-/
   assert.ok(bookCall, "der /book-Aufruf muss unverändert auffindbar sein");
   const body = bookCall[1];
   for (const feld of [
-    "sender:", "recipient:", "weight:", "referenceNumber:", "labelFormat,",
+    // TG22 Paket B: labelFormat nur noch über den Angebotshelfer (Formatwahl des Angebots).
+    "sender:", "recipient:", "weight:", "referenceNumber:", "...labelFormatBookPayload(tariff, labelFormat),",
     "ceShipmentId:", "tariffId:", "shipperTariffId:", "price_final:",
     "...insurancePayload", "...customsPayload",
   ]) {

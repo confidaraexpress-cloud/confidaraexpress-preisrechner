@@ -7,8 +7,15 @@ import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
-  fordertNeuberechnung, BOOK_FEHLER } from "../utils/bookingErrors.mjs";
-import { customerText } from "../utils/apiError.mjs";
+  fordertNeuberechnung, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
+  REFERENCE_INVALID_TEXT } from "../utils/bookingErrors.mjs";
+import { customerText, normalizeApiError } from "../utils/apiError.mjs";
+import {
+  labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
+} from "../utils/labelFormatOptions.mjs";
+import { restoredInsuranceState } from "../utils/insuranceRestore.mjs";
+import { offerKey } from "../utils/offerIdentity.mjs";
+import { sanitizeReferenceInput } from "../utils/referenceNumber.mjs";
 import {
   adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
   adressangabenAnsicht,
@@ -73,6 +80,7 @@ import {
 import { COVER_INSURANCE_TEXT } from "../utils/insuranceTerms.mjs";
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
+  PROFILE_DASHBOARD_TARGET,
 } from "../utils/bookingSuccessView.mjs";
 import { shipmentEmailError, buildShipmentEmailPayload } from "../utils/shipmentEmailOptions.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
@@ -135,9 +143,19 @@ export default function BookingPage() {
   const [gebuchteBuchungsdaten, setGebuchteBuchungsdaten] = useState(null);
   const bookingData = laufendeBuchungsdaten ?? gebuchteBuchungsdaten;
 
+  // TG22 Paket B — Schritt und Absicherung gehören zu GENAU EINEM Angebot. Einmal beim Mount
+  // bestimmt: stimmt der gespeicherte Angebotsschlüssel nicht mit diesem Angebot überein (anderes
+  // Angebot gewählt, Entwurf, älterer Vorgang), startet die Seite neutral — Schritt 1, keine
+  // Absicherung, keine Werte, keine Antworten — und löst deshalb auch keine Neubepreisung aus.
+  const startzustandRef = useRef(null);
+  if (startzustandRef.current === null) {
+    startzustandRef.current = restoredInsuranceState(flowBooking, bookingData?.tariff);
+  }
+  const startzustand = startzustandRef.current;
+
   // Schritt 1 oder 2 aus dem laufenden Vorgang; Schritt 3 (Erfolgsbildschirm)
   // wird NIE wiederhergestellt — er gehört zu einer abgeschlossenen Buchung.
-  const [step, setStep] = useState(() => (flowBooking?.step === 2 ? 2 : 1));
+  const [step, setStep] = useState(() => startzustand.step);
   // Kundengewähltes Abholzeitfenster (nur Pickup) — im Seiten-State, damit die Auswahl den
   // Schrittwechsel übersteht; die Draft-Persistenz übernimmt PickupWindowModule. {from,until}|null.
   const [pickupWindow, setPickupWindow] = useState(null);
@@ -181,6 +199,9 @@ export default function BookingPage() {
      Eigener Zustand neben `conflict`, weil die HANDLUNG eine andere ist —
      neu berechnen statt in die Sendungsliste sehen. */
   const [recalcNotice, setRecalcNotice] = useState("");
+  // TG22 Paket B: 422 BUSINESS_PROFILE_INCOMPLETE — Profilangaben fehlen. Eigener Zustand, weil die
+  // Handlung eine andere ist (Profil ergänzen) und der Bestellknopf danach wieder gilt.
+  const [profileHint, setProfileHint] = useState("");
   const [addressError, setAddressError] = useState("");
   // Download-Zustände und -Handler der Erfolgsdokumente (Label, Auftragsbestätigung,
   // Lieferschein, Proforma) leben wortgleich in components/booking/BookingSuccessDocuments.
@@ -228,8 +249,8 @@ export default function BookingPage() {
   // Dokumentstatus) und das Abholzeitfenster (liegt autoritativ am Backend-Draft).
   // "none" | "standard" | "premium" | "transit_cover" — eine gespeicherte Auswahl gilt nur,
   // wenn sie zum Modell DIESES Tarifs passt (Stufen oder Versicherungswert); sonst "none".
-  const [insuranceType, setInsuranceType]   = useState(
-    () => insuranceTypeForTariff(flowBooking?.insuranceType || "none", bookingData?.tariff));
+  // TG22 Paket B: nur, wenn der gespeicherte Stand zu DIESEM Angebot gehört (startzustand oben).
+  const [insuranceType, setInsuranceType]   = useState(() => startzustand.insuranceType);
   // Warenwert und Versicherungswert sind bewusst GETRENNT — eigener State, eigene
   // Validierung, eigene Payload-Felder: goodsValue → details.value_amount,
   // insuranceValue → value → extra_insurance_value. Beide als String-Eingabe.
@@ -248,15 +269,15 @@ export default function BookingPage() {
   // davor; er erfindet nichts, sondern liest, was dieser Vorgang bereits hatte.
   const [goodsValue, setGoodsValue]         = useState(
     () => String(bookingData?.form?.declaredGoodsValue ?? flowBooking?.goodsValue ?? ""));
-  const [insuranceValue, setInsuranceValue] = useState(flowBooking?.insuranceValue || ""); // Versicherungswert (EUR)
+  const [insuranceValue, setInsuranceValue] = useState(startzustand.insuranceValue); // Versicherungswert (EUR)
   // Zusätzliche Transportabsicherung: die beiden Pflichtfragen zur Ware. DREIWERTIG und
   // ohne Vorbelegung — `null` heißt „noch nicht beantwortet" und ist keine Antwort.
-  const [goodsAreNew, setGoodsAreNew]         = useState(() => tristateAnswer(flowBooking?.goodsAreNew));
-  const [goodsAreFragile, setGoodsAreFragile] = useState(() => tristateAnswer(flowBooking?.goodsAreFragile));
+  const [goodsAreNew, setGoodsAreNew]         = useState(() => startzustand.goodsAreNew);
+  const [goodsAreFragile, setGoodsAreFragile] = useState(() => startzustand.goodsAreFragile);
   // Progressive Disclosure: der Versicherungswert spiegelt den Warenwert, bis der
   // Nutzer ihn bewusst anpasst (insValueManual); das Feld ist bei Bedarf einblendbar
   // (insValueRevealed) und wird bei Warenwert über dem Maximum automatisch gezeigt.
-  const [insValueManual, setInsValueManual]     = useState(!!flowBooking?.insValueManual);
+  const [insValueManual, setInsValueManual]     = useState(startzustand.insValueManual);
   const [insValueRevealed, setInsValueRevealed] = useState(false);
   // Anzeigezeitpunkt der Wertfehler (dieselbe Regel wie bei Zollangaben und
   // Zusatzempfängern): Die Auswahl „Standard"/„Premium" BLENDET die Felder erst
@@ -287,14 +308,20 @@ export default function BookingPage() {
     reference: flowBooking?.reference || "",
   });
   const upd = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >
-  // entfernen, hart auf 35 Zeichen kappen (optional → kein Fehlerzustand).
-  const updReference = (v) => upd("reference", v.replace(/[<>]/g, "").slice(0, 35));
+  // TG22 Paket B: Feldfehler der Referenznummer aus einer serverseitigen Ablehnung
+  // (400 INVALID_REFERENCE_NUMBER). Jede neue Eingabe nimmt ihn zurück.
+  const [referenceError, setReferenceError] = useState("");
+  // Referenznummer clientseitig an die Backend-Regeln angleichen: < und >, Steuer-,
+  // Zeilentrenn- und Richtungszeichen entfernen, hart auf 35 Zeichen kappen
+  // (utils/referenceNumber.mjs; optional → kein Fehlerzustand).
+  const updReference = (v) => { setReferenceError(""); upd("reference", sanitizeReferenceInput(v)); };
 
   // ── Zusatzoption: Labeldruckformat (A4/A6) ──────────────────────────────────
   // Reiner /book-Payload-Wert (Default A4), NUR A4|A6. Kein Einfluss auf Preis
   // oder Reprice — bewusst NICHT in den Reprice-Deps und ohne Stale-Gate.
-  const [labelFormat, setLabelFormat] = useState(flowBooking?.labelFormat || "A4");
+  // TG22 Paket B: wählbar nur, was DIESES Angebot anbietet (`labelFormatOptions`). Ein
+  // gespeichertes Format wird nur übernommen, wenn das Angebot es kennt.
+  const [labelFormat, setLabelFormat] = useState(() => restoredLabelFormat(bookingData?.tariff, flowBooking?.labelFormat));
 
   /* ── Progressive Disclosure der Zusatzoptionen ────────────────────────────
      Beide Schalter sind reiner UI-Zustand. Sie werden EINMAL beim Mount aus den
@@ -423,6 +450,9 @@ export default function BookingPage() {
      Vorgang hält damit genau das, was auch gebucht würde, und die Ableitung des
      Schalters beim nächsten Mount bleibt richtig. Der bei ausgeschalteter Option
      lokal gehaltene Wert ist bewusst nur für die laufende Ansicht gedacht. */
+  // TG22 Paket B: der Angebotsschlüssel, zu dem der gespiegelte Absicherungsstand gehört.
+  // Preisstand und Sendungshandle gehören bewusst nicht dazu (utils/insuranceRestore.mjs).
+  const insuranceOfferKey = offerKey(bookingData?.tariff);
   useEffect(() => {
     if (step === 3) return;
     setFlowBooking({
@@ -430,6 +460,7 @@ export default function BookingPage() {
       insuranceType, goodsValue, insuranceValue, insValueManual,
       // Dreiwertig gespiegelt — eine bewusste Antwort „Nein" ist ein Wert und überlebt die Rückkehr.
       goodsAreNew, goodsAreFragile,
+      insuranceOfferKey,
       // Dieselbe Regel wie bei der Referenznummer: gespiegelt wird nur, was auch
       // gebucht würde — sonst stünde ein bewusst ausgeschalteter Bereich nach der
       // Rückkehr wieder offen.
@@ -455,10 +486,14 @@ export default function BookingPage() {
   // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
-      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp, goodsAreNew, goodsAreFragile,
+      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp, goodsAreNew, goodsAreFragile, insuranceOfferKey,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
+  // TG22 Paket B: welche Labelformate DIESES Angebot zur Wahl stellt (leer = keine Auswahl, kein
+  // labelFormat im /book) und in welchen Formaten es das Label ohnehin liefert.
+  const labelFormatOptions = labelFormatOptionsOf(tariff);
+  const labelInfo = labelDeliveryInfo(tariff);
   /* WELCHE Zusatzangaben dieses Angebot braucht, sagt der SERVER — als providerneutrale
      Liste am Angebot selbst. Hier wird nichts abgeleitet: kein Providervergleich, kein
      Schluss aus der Uebergabeart, kein Rueckfall auf "sicherheitshalber fragen".
@@ -696,8 +731,19 @@ export default function BookingPage() {
       if (seq !== repriceSeq.current) return; // veraltet → ignorieren
       if (r.status === 401 || r.status === 403) { setRepriceLoading(false); return; } // zentraler Auth-Redirect
       let d = null; try { d = await r.json(); } catch { d = null; }
+      // TG22 Paket B: auch während des Lesens kann eine Eingabe die Antwort überholt haben.
+      if (seq !== repriceSeq.current) return;
       if (!r.ok) {
         setRepriceResult(null); setRepriceStale(true);
+        // TG22 Paket B: ein VERBRAUCHTES Angebot heißt „es kann ein Auftrag bestehen" — kein
+        // „neu berechnen", sondern der Weg in die Sendungsliste. Die Konfliktfläche ersetzt den
+        // Bestellknopf; die Absicherung zeigt denselben Satz.
+        if (d?.code === "OFFER_ALREADY_USED") {
+          setRepriceError(OFFER_ALREADY_USED_TEXT);
+          setConflict(OFFER_ALREADY_USED_TEXT);
+          setRepriceLoading(false);
+          return;
+        }
         // TG22 Paket A: eine versicherte Preisänderung mit beiden Serverbeträgen ist keine
         // Fehlermeldung, sondern eine Entscheidung des Kunden — derselbe Dialog wie bei der Buchung.
         const versicherteAenderung = coverModel && d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
@@ -730,10 +776,19 @@ export default function BookingPage() {
   // Änderung markiert das letzte Ergebnis als veraltet → Buchung erst nach
   // frischem Reprice. contentDescription beeinflusst den Preis nicht und ist
   // bewusst NICHT in den Deps.
+  //
+  // TG22 Paket B — Race: JEDE relevante Änderung macht eine laufende Neubepreisung ungültig,
+  // nicht erst der nächste Start nach 500 ms. Vorher konnte eine Antwort zu den ALTEN Werten
+  // genau in dieser Debounce-Lücke eintreffen, `repriceStale` auf false setzen und den
+  // Bestellknopf mit einem Preis freigeben, der zu den neuen Eingaben nicht gehört. Deshalb:
+  // Sequenz hochzählen und abbrechen, bevor irgendetwas anderes passiert. Nur die Antwort des
+  // jeweils neuesten Aufrufs darf Ergebnis und `repriceStale = false` setzen.
   useEffect(() => {
+    repriceSeq.current++;
+    if (repriceAbort.current) repriceAbort.current.abort();
+    setRepriceLoading(false);
     if (insuranceType === "none") {
       setRepriceResult(null); setRepriceStale(false); setRepriceError("");
-      repriceSeq.current++; if (repriceAbort.current) repriceAbort.current.abort();
       return;
     }
     setRepriceStale(true);
@@ -999,7 +1054,7 @@ export default function BookingPage() {
       setError(adresstypHinweis);
       return;
     }
-    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setLoading(true);
+    setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setLoading(true);
     try {
       // /book erwartet insuranceSelection VERSCHACHTELT (nicht wie /reprice flach).
       // confirmedTotalGross ist reines Drift-Gate (nie Preisquelle) — nur bei
@@ -1087,9 +1142,10 @@ export default function BookingPage() {
           // geht ausschließlich in die lokale Sendung, nie an den Provider.
           ...(showExternalDeliveryNote && externalDeliveryNoteNumber.trim()
             ? { externalDeliveryNoteNumber: externalDeliveryNoteNumber.trim() } : {}),
-          // Labeldruckformat immer mitsenden (Default A4, sonst A6) — reiner
-          // Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
-          labelFormat,
+          // Labeldruckformat — reiner Fulfillment-Parameter ohne Preis-/Drift-Einfluss.
+          // TG22 Paket B: NUR, wenn dieses Angebot eine Formatwahl anbietet und der Wert eine
+          // seiner Optionen ist (utils/labelFormatOptions.mjs). Sonst fehlt das Feld ganz.
+          ...labelFormatBookPayload(tariff, labelFormat),
           // Gutschein: NUR der Code, und nur wenn er serverseitig bestätigt wurde. Es werden
           // ausdrücklich KEINE Beträge, Prozentwerte oder Rabatthöhen mitgesendet — der Server
           // ignorierte sie ohnehin und prüft den Gutschein unmittelbar vor der Bestellung
@@ -1271,8 +1327,15 @@ export default function BookingPage() {
         // (auf der Seite bleiben). Ohne Versicherung bleibt das bisherige
         // Duplikat-Verhalten (Sendung bereits verarbeitet) unverändert.
         if (isInsured) {
-          setRepriceStale(true);
-          setError(asStr(d.error) || "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis und bestätigen Sie erneut.");
+          setRepriceResult(null); setRepriceStale(true);
+          setError(asStr(d?.error) || "Der Preis hat sich geändert. Bitte aktualisieren Sie den Versicherungspreis und bestätigen Sie erneut.");
+          // TG22 Paket B: ein 409 ohne Code bei versicherter Buchung bekam bis hierher nur den Hinweis
+          // „bitte aktualisieren" — ohne dass eine Aktualisierung lief; der Knopf blieb gesperrt, bis
+          // der Kunde einen Wert änderte. Jetzt läuft dieselbe Neubepreisung wie bei jeder
+          // Wertänderung. Gebucht wird danach erst auf einen neuen, bewussten Klick.
+          if (insValid && goodsAnswersValid) {
+            runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription);
+          }
           setLoading(false);
           return;
         }
@@ -1285,6 +1348,28 @@ export default function BookingPage() {
       }
       if (r.status === 401 || r.status === 403) { setLoading(false); return; } // globaler Auth-Redirect übernimmt
       if (r.status === 400 || r.status === 422) {
+        // TG22 Paket B — drei Codes mit eigener Handlung, VOR den Feld-, Zoll- und Adresszweigen:
+        //   BUSINESS_PROFILE_INCOMPLETE (422): Profil vervollständigen — keine Abmeldung.
+        //   LABEL_FORMAT_NOT_SUPPORTED  (400): nichts beauftragt, das Angebot trägt → neu berechnen.
+        //   INVALID_REFERENCE_NUMBER    (400): Feldfehler an der Referenznummer, zurück zu Schritt 1.
+        if (d?.code === "BUSINESS_PROFILE_INCOMPLETE") {
+          setProfileHint(normalizeApiError({ status: r.status, body: d }).message);
+          setLoading(false);
+          return;
+        }
+        if (fordertNeuberechnung(d)) {
+          setRecalcNotice(mapBookRestError(r.status, d).message);
+          setLoading(false);
+          return;
+        }
+        if (d?.code === "INVALID_REFERENCE_NUMBER") {
+          setReferenceEnabled(true);
+          setReferenceError(REFERENCE_INVALID_TEXT);
+          setStep(1);
+          setError("Bitte prüfen Sie die Referenznummer, bevor Sie buchen.");
+          setLoading(false);
+          return;
+        }
         // `customerText` statt `d.error`: manche Antworten legen ihren Maschinenschlüssel
         // in `error` (`invoice_data_incomplete`) — der stand dem Kunden bis TG-7 wörtlich
         // im Banner. Für jede Antwort mit echtem Klartext ist das Ergebnis unverändert.
@@ -1335,15 +1420,24 @@ export default function BookingPage() {
       if (!r.ok) {
         // Restpfad (404/429/5xx/unlesbarer Body): früher ein Sammelwurf mit
         // rohem d.error — jetzt klare, unterscheidbare Meldungen. Der Kunde
-        // bleibt auf Schritt 2, alle Angaben bleiben erhalten, der Button wird
-        // über setLoading(false) unten wieder frei.
-        setError(mapBookRestError(r.status, d));
+        // bleibt auf Schritt 2, alle Angaben bleiben erhalten.
+        // TG22 Paket B: ein 5xx OHNE Code ist nach dem Absenden der finalen Buchung ein offener
+        // Ausgang — beim Anbieter kann bereits bestellt sein. Er ERSETZT den Bestellknopf durch
+        // „Zu meinen Sendungen" (Konflikt), statt neben einem weiterhin bedienbaren Knopf zu warnen.
+        const fehler = mapBookRestError(r.status, d);
+        if (istUnklarerAusgang(fehler)) {
+          setConflict(fehler.message);
+          setLoading(false);
+          return;
+        }
+        setError(fehler);
         setLoading(false);
         return;
       }
       if (!d || typeof d !== "object") {
-        // 2xx ohne lesbares Buchungsobjekt: KEIN Erfolg, keine Navigation.
-        setError(mapBookUnreadableSuccess());
+        // 2xx ohne lesbares Buchungsobjekt: KEIN Erfolg, keine Navigation — aber der Server hat mit
+        // Erfolg geantwortet, gebucht sein KANN also. TG22 Paket B: offener Ausgang, kein Retry.
+        setConflict(mapBookUnreadableSuccess().message);
         setLoading(false);
         return;
       }
@@ -1356,7 +1450,9 @@ export default function BookingPage() {
       clearFlow();
     } catch (e) {
       // Netzabbruch/Timeout: kein „Failed to fetch" mehr im Banner.
-      setError(mapBookThrownError(e));
+      // TG22 Paket B: ein Zeitlimit oder Verbindungsabbruch der FINALEN Buchung sagt nicht, ob
+      // bestellt wurde. Offener Ausgang: der Bestellknopf wird ersetzt, nie „erneut versuchen".
+      setConflict(mapBookThrownError(e).message);
     }
     setLoading(false);
   };
@@ -1401,6 +1497,12 @@ export default function BookingPage() {
         return;
       }
       setRepriceResult(null); setRepriceStale(true);
+      // TG22 Paket B: verbraucht — der Dialog schließt, die Konfliktfläche führt in die Sendungen.
+      if (d?.code === "OFFER_ALREADY_USED") {
+        setPriceChange(null);
+        setConflict(OFFER_ALREADY_USED_TEXT);
+        return;
+      }
       const erneut = d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
       if (erneut && preisIstBestaetigbar(erneut)) {
         setPriceChange(erneut);
@@ -1684,6 +1786,9 @@ export default function BookingPage() {
               onReferenceChange={updReference}
               referenceEnabled={referenceEnabled}
               onReferenceEnabledChange={toggleReference}
+              referenceError={referenceError}
+              labelFormatOptions={labelFormatOptions}
+              labelDeliveryInfo={labelInfo}
               labelFormatEnabled={labelFormatEnabled}
               onLabelFormatEnabledChange={toggleLabelFormat}
               trackingEmail={trackingEmail}
@@ -1764,7 +1869,8 @@ export default function BookingPage() {
                 trackingEmail,
                 labelTrackingEmailEnabled,
                 labelTrackingEmail,
-                labelFormatEnabled,
+                // TG22 Paket B: eine aktive Formatwahl nur, wenn dieses Angebot überhaupt eine anbietet.
+                labelFormatEnabled: labelFormatOptions.length > 0 && labelFormatEnabled,
                 labelFormat,
               })}
               onNavigateDrafts={() => navigate("/dashboard?page=drafts")}
@@ -1928,6 +2034,8 @@ export default function BookingPage() {
                   pickupBlocksBooking={pickupHydrationBlocks}
                   voucherChecking={voucherChecking}
                   legalBlocksBooking={legalBlocksBooking}
+                  profileHint={profileHint}
+                  onNavigateProfile={() => navigate(PROFILE_DASHBOARD_TARGET)}
                   onBook={doBook}
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}

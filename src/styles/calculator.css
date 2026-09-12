@@ -999,8 +999,11 @@
 .price-drift-col--new { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); border-radius: var(--ce-radius-sm); padding: 8px 6px; }
 .price-drift-new { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--ce-color-brand-ink); }
 .price-drift-arrow { display: flex; align-items: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
-.price-drift-actions { display: flex; gap: 12px; }
-.price-drift-btn { flex: 1; }
+/* TG22 Paket B: umbrechen statt auslaufen. Beide Beschriftungen sind nicht umbrechbar (.btn);
+   zwischen 441 px und der Kartenbreite passten sie nicht nebeneinander und schoben die zweite
+   Aktion aus dem Dialog. `flex: 1 1 auto` wächst je Zeile, bricht aber nach Inhaltsbreite um. */
+.price-drift-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.price-drift-btn { flex: 1 1 auto; }
 /* TG22 Paket A: Zusammensetzung einer versicherten Preisänderung — Versand und Absicherung. */
 .price-drift-breakdown { list-style: none; margin: -8px 0 18px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .price-drift-breakdown-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; line-height: 1.45; }
@@ -1017,6 +1020,12 @@
 
 /* Step success */
 .booking-success-wrap { text-align: center; padding: 40px 0; }
+/* TG22 Paket B — 390 px: eine lange E-Mail-Adresse und lange Belegbeschriftungen
+   („Auftragsbestätigung CE-AB… herunterladen") brechen um, statt die Seite zu verbreitern.
+   Nur hier und nur für die vollbreiten Belegknöpfe — die Regel „Buttons brechen nicht um"
+   (.btn) bleibt überall sonst unverändert. */
+.booking-success-delivery p { overflow-wrap: anywhere; }
+.booking-success-wrap .btn-full { white-space: normal; overflow-wrap: anywhere; }
 .booking-success-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border); color: var(--ce-color-status-success-fg); display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
 .booking-success-title { font-size: 24px; line-height: 1.25; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
 .booking-success-recap { text-align: left; max-width: 480px; margin: 0 auto 16px; }

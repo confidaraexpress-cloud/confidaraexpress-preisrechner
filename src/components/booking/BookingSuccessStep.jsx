@@ -33,8 +33,10 @@ import { PriceSummaryModule } from "./PriceSummaryModule";
 import { BookingSuccessDocuments } from "./BookingSuccessDocuments";
 import { bookingBillingNotice } from "../../utils/billingModeView.mjs";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
+import { money } from "../../utils/formatters";
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
+  bookingSuccessAmountView,
 } from "../../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 
@@ -42,6 +44,9 @@ export function BookingSuccessStep({
   booking, bookingData, tariff, priceView, user, invoiceDeliveryMode, proformaEntry,
   navigate, clearFlow,
 }) {
+  // TG22 Paket B: der gebuchte Betrag kommt ausschließlich aus der Buchungsantwort. Die
+  // Aufstellung der Buchungsseite erscheint nur, wenn sie ihn auf den Cent trägt.
+  const betrag = bookingSuccessAmountView(booking, priceView);
   return (
       <div className="booking-success-wrap">
         <div className="booking-success-icon"><Icon n="check" s={40} /></div>
@@ -110,7 +115,20 @@ export function BookingSuccessStep({
                 <span className="text-sm font-bold summary-detail-val">{tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}</span>
               </div>
             )}
-            <PriceSummaryModule priceView={priceView} paymentTerm={user?.payment_term || 7} />
+            {/* Drei Fälle, eine Quelle (`booking.amount`):
+                  • Aufstellung stimmt auf den Cent → Aufstellung mit dem gebuchten Gesamtbetrag,
+                  • Betrag vorhanden, Aufstellung weicht ab → nur der gebuchte Gesamtbetrag,
+                  • kein Betrag → kein Betrag, nur der Verweis auf Bestätigung und Rechnung. */}
+            {betrag.showBreakdown ? (
+              <PriceSummaryModule priceView={{ ...priceView, totalGross: betrag.totalGross }} paymentTerm={user?.payment_term || 7} />
+            ) : betrag.hasAmount ? (
+              <div className="booking-total-row mt-8" id="booking-success-amount">
+                <span className="booking-total-label">Gesamtbetrag brutto</span>
+                <span className="booking-total-amount">{money(betrag.totalGross)}</span>
+              </div>
+            ) : (
+              <p className="text-muted text-sm mt-8" id="booking-success-amount-hint">{betrag.hint}</p>
+            )}
           </div>
         </div>
 

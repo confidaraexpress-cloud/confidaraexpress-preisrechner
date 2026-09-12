@@ -143,7 +143,9 @@ const REPRICE_TEXT = Object.freeze({
   INSURANCE_UNAVAILABLE: COVER_INSURANCE_TEXT.unavailable,
   PRICE_CHANGED: "Der Preis für dieses Angebot hat sich geändert. Bitte berechnen Sie die Angebote neu.",
   OFFER_NOT_BOOKABLE: "Dieses Angebot kann derzeit nicht gebucht werden. Bitte berechnen Sie die Angebote neu.",
-  OFFER_ALREADY_USED: "Dieses Angebot wurde bereits verwendet. Bitte berechnen Sie die Angebote neu.",
+  // TG22 Paket B: verbraucht heißt „es kann ein Auftrag bestehen" — der Weg führt in die
+  // Sendungsliste, nie in eine Neuberechnung (wortgleich mit bookingErrors.mjs).
+  OFFER_ALREADY_USED: "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.",
   SHIPMENT_NOT_DRAFT: "Diese Sendung kann nicht mehr geändert werden.",
   PRICE_UNCONFIRMED: "Der Preis konnte gerade nicht bestätigt werden. Bitte versuchen Sie es erneut.",
   // TG22 Paket A

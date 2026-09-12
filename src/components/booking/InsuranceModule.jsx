@@ -29,8 +29,9 @@ import { EXTERNAL_LINK_REL, EXTERNAL_LINK_TARGET } from "../../utils/externalLin
 //
 // ZWEITES MODELL — zusätzliche Transportabsicherung (`coverModel`): zwei Karten statt
 // drei, eigene neutrale Texte (keine Stufen-, Premium- oder 50-€-Aussagen, kein
-// Stufendialog), ein frei wählbarer Versicherungswert ohne Stufengrenze, zwei
-// Pflichtfragen zur Ware OHNE Vorbelegung und die Selbstbeteiligung aus dem Tarif.
+// Stufendialog), zwei Pflichtfragen zur Ware OHNE Vorbelegung und die Selbstbeteiligung
+// aus dem Tarif. TG22 Paket B: der Versicherungswert IST der Warenwert — es gibt dafür kein
+// eigenes Eingabefeld mehr; der gesperrte Warenwert sagt, bis wohin abgesichert wird.
 
 // Karteninhalte kommen aus dem zentralen Datenmodul (utils/insuranceTerms.mjs) —
 // dieselbe Quelle speist den Detaildialog, damit Karte und Dialog nicht
@@ -122,13 +123,29 @@ function GoodsQuestion({ feld, frage, wert, onChange, error }) {
   );
 }
 
+// TG22 Paket B — der Tarif trägt KEINEN kaufbaren Zusatz, sagt aber etwas über die Absicherung:
+// die enthaltene Grundabsicherung oder die Höchstdeckung. Eine Information in der gewohnten Fläche
+// der Absicherung — kein Fehlerzustand, keine Karten, kein Preis, kein Bedienelement.
+export function InsuranceCoverNotice({ text }) {
+  return (
+    <div className="booking-insurance-box" role="note">
+      <div className="ins-head">
+        <span className="ins-head-title">
+          <Icon n="shieldCheck" s={18} c="currentColor" /> {COVER_INSURANCE_TEXT.sectionTitle}
+        </span>
+      </div>
+      <p className="ins-head-sub" id="ins-cover-notice">{text}</p>
+    </div>
+  );
+}
+
 export function InsuranceModule({
   insCards, insuranceType, onSelectType,
   isInsured, tariff,
   goodsValue, onGoodsValueChange, onGoodsValueBlur, goodsValueError, goodsValueLocked = false,
   insuranceValue, onInsuranceValueChange, onInsuranceValueBlur, insValueError,
   insValueFieldVisible, onRevealInsValue, goodsOverMax, insuranceValueMax,
-  repriceError, isRepricing, isStale, repriceConfirmed,
+  repriceError, repriceNotice = "", isRepricing, isStale, repriceConfirmed,
   coverModel = false, excessValue = null,
   goodsAreNew = null, goodsAreFragile = null, onGoodsAnswerChange, goodsAnswerErrors = {},
 }) {
@@ -262,7 +279,8 @@ export function InsuranceModule({
                 er hat den Vergleichspreis mitbestimmt und ist serverseitig eingefroren.
                 Ein zweites editierbares Feld wäre eine zweite Wahrheit über denselben
                 Sachverhalt. `readOnly` statt `disabled` — der Wert bleibt lesbar,
-                fokussierbar und für Screenreader vorhanden. */}
+                fokussierbar und für Screenreader vorhanden. Im Deckungsbetragsmodell ist
+                genau dieser Wert zugleich der Versicherungswert. */}
             <input
               id="ins-goods"
               className={`field-input${goodsValueError ? " field-input-error" : ""}`}
@@ -278,9 +296,10 @@ export function InsuranceModule({
               ? <span className="field-error">{goodsValueError}</span>
               : <span className="field-hint">
                   {goodsValueLocked
-                    ? "Aus Ihren Angaben zur Sendung übernommen."
+                    ? (coverModel ? COVER_INSURANCE_TEXT.goodsValueCoverHint : "Aus Ihren Angaben zur Sendung übernommen.")
                     : "Tatsächlicher Warenwert der Sendung."}
                 </span>}
+            {coverModel && insValueError && <span className="field-error">{insValueError}</span>}
           </div>
 
           {goodsOverMax && (
@@ -293,15 +312,14 @@ export function InsuranceModule({
             </p>
           )}
 
-          {insValueFieldVisible ? (
+          {/* Der frei wählbare Versicherungswert gehört ausschließlich zum Stufenmodell. */}
+          {!coverModel && (insValueFieldVisible ? (
             <div className="field">
-              <label className="field-label" htmlFor="ins-value">
-                {coverModel ? COVER_INSURANCE_TEXT.coverValueLabel : "Versicherungswert (EUR)"}
-              </label>
+              <label className="field-label" htmlFor="ins-value">Versicherungswert (EUR)</label>
               <input
                 id="ins-value"
                 className={`field-input${insValueError ? " field-input-error" : ""}`}
-                type="number" inputMode="decimal" min="0" max={coverModel ? undefined : insuranceValueMax} step="0.01"
+                type="number" inputMode="decimal" min="0" max={insuranceValueMax} step="0.01"
                 value={insuranceValue}
                 onChange={e => onInsuranceValueChange(e.target.value)}
                 onBlur={onInsuranceValueBlur}
@@ -310,16 +328,14 @@ export function InsuranceModule({
               {insValueError
                 ? <span className="field-error">{insValueError}</span>
                 : <span className="field-hint">
-                    {coverModel
-                      ? COVER_INSURANCE_TEXT.coverValueHint
-                      : `Maximal ${money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.`}
+                    {`Maximal ${money(insuranceValueMax)}. Standardmäßig entspricht er dem Warenwert.`}
                   </span>}
             </div>
           ) : (
             <button type="button" className="ins-adjust-btn" onClick={onRevealInsValue}>
               Versicherungswert anpassen
             </button>
-          )}
+          ))}
 
           {coverModel && (
             <>
@@ -342,6 +358,8 @@ export function InsuranceModule({
           <div className="ins-status" aria-live="polite">
             {repriceError ? (
               <span className="ins-status-error"><Icon n="info" s={14} c="currentColor" /> {repriceError}</span>
+            ) : repriceNotice ? (
+              <span className="field-hint" id="ins-reprice-notice">{repriceNotice}</span>
             ) : pending ? (
               <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
             ) : repriceConfirmed ? (

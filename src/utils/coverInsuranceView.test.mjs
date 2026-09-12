@@ -1,4 +1,6 @@
-// TG-F8 — zusätzliche Transportabsicherung mit frei gewähltem Versicherungswert.
+// TG-F8 — zusätzliche Transportabsicherung. Seit TG22 Paket B ist der Versicherungswert der
+// eingefrorene Warenwert der Sendung (keine eigene Eingabe mehr), und ein Tarif ohne kaufbaren
+// Zusatz sagt neutral, was gilt: enthaltene Grundabsicherung oder Höchstdeckung.
 //
 // Zwei Ebenen (wie im Repo etabliert — es gibt keine React-Render-Testschicht):
 //   A) Verhalten der reinen Logik (utils/coverInsuranceView.mjs, insuranceTerms.mjs).
@@ -9,16 +11,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  INSURANCE_TYPE_TRANSIT_COVER, SELECTION_MODEL_COVER_VALUE, COVER_VALUE_INPUT_MAX,
+  INSURANCE_TYPE_TRANSIT_COVER, SELECTION_MODEL_COVER_VALUE, COVER_VALUE_SOURCE_GOODS_VALUE, COVER_STATE,
   isCoverValueModel, coverExcessValue, tristateAnswer, goodsAnswerError,
-  coverValueError, parseCoverValue, buildCoverRepricePayload, buildCoverBookInsurancePayload,
+  coverValueForTariff, coverInsuranceNotice, coverRepriceNotice,
+  buildCoverRepricePayload, buildCoverBookInsurancePayload,
   insuranceTypeForTariff, coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice,
   insuredPriceChangeView, offerCardInsurance, COVER_BOOK_ERROR_CODES, isCoverBookError,
   priceChangeBreakdownLines, COVER_PRICE_CHANGE_TEXT,
 } from "./coverInsuranceView.mjs";
 import {
   COVER_INSURANCE_TEXT, INSURANCE_TEXT, INSURANCE_CARD_COPY, INSURANCE_DIALOG,
-  coverExcessText, coverInsuranceCardCopy,
+  coverExcessText, coverInsuranceCardCopy, coverBasicCoverText, coverLimitText,
 } from "./insuranceTerms.mjs";
 import { getBookingModules } from "./bookingModules.js";
 import { PRICE_CHANGE_KIND, preisIstBestaetigbar } from "./priceChangeView.mjs";
@@ -28,11 +31,33 @@ const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:
 // Intl setzt zwischen Betrag und Eurozeichen ein geschütztes Leerzeichen.
 const flach = (s) => String(s).replace(/\s/g, " ");
 
+// Die Beschreibung des Servers seit TG22 Paket B: Deckung = Warenwert, mit ihren Grenzen.
+const WARENWERT_DETAILS = {
+  isInsurable: true, selectionModel: "cover_value", excessValue: 20,
+  requiresGoodsAreNew: true, requiresGoodsAreFragile: true, priceOnSelection: true,
+  coverValueSource: "goods_value", coverState: "available", coverValue: 500,
+  basicCoverMaxGoodsValue: 50, maxCoverValue: 2500,
+};
 const TG_TARIF = {
   offerId: "0123456789abcdef0123456789abcdef", netPrice: 10.8, vatAmount: 2.05, finalPrice: 12.85,
-  bookable: true, insuranceAvailable: true,
+  bookable: true, insuranceAvailable: true, insuranceDetails: WARENWERT_DETAILS,
+};
+// Ein Tarif aus einer älteren Antwort — ohne Deckungsquelle. Er bleibt bedienbar.
+const TG_TARIF_ALT = {
+  ...TG_TARIF,
   insuranceDetails: { isInsurable: true, selectionModel: "cover_value", excessValue: 20,
                       requiresGoodsAreNew: true, requiresGoodsAreFragile: true, priceOnSelection: true },
+};
+// Warenwert bis 50 €: kein kaufbarer Zusatz, aber eine Aussage.
+const TG_GRUNDSCHUTZ = {
+  ...TG_TARIF, offerId: "b".repeat(32), insuranceAvailable: false,
+  insuranceDetails: { ...WARENWERT_DETAILS, isInsurable: false, priceOnSelection: false,
+                      coverState: "basic_cover_included", coverValue: null },
+};
+const TG_HOECHSTDECKUNG = {
+  ...TG_TARIF, offerId: "c".repeat(32), insuranceAvailable: false,
+  insuranceDetails: { ...WARENWERT_DETAILS, isInsurable: false, priceOnSelection: false,
+                      coverState: "above_cover_limit", coverValue: null },
 };
 const JU_TARIF = {
   id: 7, shipper_tariff_id: 3309, netPrice: 18.65, vatAmount: 3.54, finalPrice: 22.19,
@@ -46,7 +71,10 @@ const TG_NICHT_VERSICHERBAR = { offerId: "f".repeat(32), bookable: false, insura
 
 test("A1 — das Deckungsbetragsmodell kommt ausschließlich aus insuranceDetails.selectionModel", () => {
   assert.equal(SELECTION_MODEL_COVER_VALUE, "cover_value");
+  assert.equal(COVER_VALUE_SOURCE_GOODS_VALUE, "goods_value");
   assert.equal(isCoverValueModel(TG_TARIF), true);
+  assert.equal(isCoverValueModel(TG_TARIF_ALT), true);
+  assert.equal(isCoverValueModel(TG_GRUNDSCHUTZ), true, "die Grundabsicherung gehört zum selben Modell");
   assert.equal(isCoverValueModel(JU_TARIF), false, "ein Stufentarif ist kein Deckungsbetragstarif");
   for (const t of [null, undefined, {}, { insuranceDetails: null }, { insuranceDetails: { selectionModel: "tiers" } },
                    TG_NICHT_VERSICHERBAR]) {
@@ -67,12 +95,16 @@ test("A2 — die Selbstbeteiligung stammt aus dem Tarif; fehlt sie, wird keine e
 
 test("A3 — eine gespeicherte Auswahl gilt nur für das Modell DIESES Tarifs", () => {
   assert.equal(insuranceTypeForTariff("transit_cover", TG_TARIF), "transit_cover");
+  assert.equal(insuranceTypeForTariff("transit_cover", TG_TARIF_ALT), "transit_cover");
   assert.equal(insuranceTypeForTariff("standard", TG_TARIF), "none", "eine Stufe an einem Deckungsbetragstarif");
   assert.equal(insuranceTypeForTariff("premium", TG_TARIF), "none");
   assert.equal(insuranceTypeForTariff("transit_cover", JU_TARIF), "none", "Deckungsbetrag an einem Stufentarif");
   assert.equal(insuranceTypeForTariff("standard", JU_TARIF), "standard");
   assert.equal(insuranceTypeForTariff("premium", JU_TARIF), "premium");
   assert.equal(insuranceTypeForTariff("gold", JU_TARIF), "none");
+  // TG22 Paket B: ohne kaufbaren Zusatz wird keine Absicherung wiederhergestellt.
+  assert.equal(insuranceTypeForTariff("transit_cover", TG_GRUNDSCHUTZ), "none");
+  assert.equal(insuranceTypeForTariff("transit_cover", TG_HOECHSTDECKUNG), "none");
 });
 
 /* ══════════ A) Validierung ═════════════════════════════════════════════════ */
@@ -87,32 +119,35 @@ test("A4 — die Fragen zur Ware sind Pflicht und dreiwertig: null ist KEINE Ant
   assert.equal(tristateAnswer(false), false);
 });
 
-test("A5 — der Versicherungswert: Pflicht, > 0, höchstens zwei Nachkommastellen, KEINE 20.000-€-Stufengrenze", () => {
-  assert.equal(coverValueError("500"), "");
-  assert.equal(coverValueError("500,50"), "");
-  assert.equal(coverValueError("20000.01"), "", "die Stufengrenze gilt hier nicht");
-  assert.equal(coverValueError("150000"), "");
-  assert.equal(coverValueError(String(COVER_VALUE_INPUT_MAX)), "");
-  assert.match(coverValueError(""), /Versicherungswert an\./);
-  assert.match(coverValueError("   "), /Versicherungswert an\./);
-  assert.match(coverValueError("abc"), /gültigen Betrag/);
-  assert.match(coverValueError("0"), /größer als 0/);
-  assert.match(coverValueError("-5"), /größer als 0/);
-  assert.match(coverValueError("10.123"), /zwei Nachkommastellen/);
-  assert.match(coverValueError("10000000"), /höchstens/);
-  assert.equal(parseCoverValue("500,5"), 500.5);
-  assert.equal(parseCoverValue("0"), null);
+test("A5 — der Versicherungswert IST der Warenwert: vom Server am Tarif, sonst der eingefrorene Warenwert", () => {
+  // Der Serverwert gewinnt — auch gegen einen abweichenden Anzeigewert des Vorgangs.
+  assert.equal(coverValueForTariff(TG_TARIF, "999"), 500);
+  // Ein Tarif aus einer älteren Antwort: der eingefrorene Warenwert des Vorgangs.
+  assert.equal(coverValueForTariff(TG_TARIF_ALT, "250"), 250);
+  assert.equal(coverValueForTariff(TG_TARIF_ALT, "250,50"), 250.5);
+  assert.equal(coverValueForTariff(TG_TARIF_ALT, 75), 75);
+  for (const kaputt of ["", "   ", "abc", "0", "-5", "10.123", null, undefined]) {
+    assert.equal(coverValueForTariff(TG_TARIF_ALT, kaputt), null, JSON.stringify(kaputt));
+  }
+  // Ein unbrauchbarer Serverwert wird nicht übernommen.
+  assert.equal(coverValueForTariff({ insuranceDetails: { ...WARENWERT_DETAILS, coverValue: "500" } }, "250"), 250);
+  assert.equal(coverValueForTariff({ insuranceDetails: { ...WARENWERT_DETAILS, coverValue: 0 } }, ""), null);
 });
 
 /* ══════════ A) Payloads ════════════════════════════════════════════════════ */
 
-test("A6 — die Neubepreisung sendet GENAU offerId, coverValue, goodsAreNew, goodsAreFragile", () => {
+test("A6 — die Neubepreisung sendet höchstens offerId, coverValue (= Warenwert), goodsAreNew, goodsAreFragile", () => {
   const p = buildCoverRepricePayload({ offerId: TG_TARIF.offerId, coverValue: 500, goodsAreNew: true, goodsAreFragile: false });
   assert.deepEqual(Object.keys(p).sort(), ["coverValue", "goodsAreFragile", "goodsAreNew", "offerId"]);
   assert.deepEqual(p, { offerId: TG_TARIF.offerId, coverValue: 500, goodsAreNew: true, goodsAreFragile: false });
   // Kein Preis, keine Selbstbeteiligung, kein Tarif, keine Sendungsreferenz.
   for (const verboten of ["excessValue", "price", "insuranceGross", "tariffId", "shipperTariffId", "shipmentId", "provider"]) {
     assert.ok(!(verboten in p), `${verboten} im Neubepreisungskörper`);
+  }
+  // Ohne gültigen Betrag reist kein Versicherungswert mit — der Server nennt ihn selbst.
+  for (const kaputt of [null, undefined, 0, -1, "500", NaN, 10.123]) {
+    const ohne = buildCoverRepricePayload({ offerId: TG_TARIF.offerId, coverValue: kaputt, goodsAreNew: true, goodsAreFragile: false });
+    assert.deepEqual(ohne, { offerId: TG_TARIF.offerId, goodsAreNew: true, goodsAreFragile: false }, JSON.stringify(kaputt));
   }
 });
 
@@ -127,6 +162,9 @@ test("A7 — /book sendet transit_cover mit denselben Angaben und dem bestätigt
   // Ohne Neubepreisung gibt es keinen bestätigten Betrag — es wird keiner erfunden.
   assert.equal(buildCoverBookInsurancePayload({ coverValue: 1, goodsAreNew: true, goodsAreFragile: true }).confirmedTotalGross, undefined);
   assert.ok(!("excessValue" in p.insuranceSelection), "die Selbstbeteiligung setzt der Server");
+  // Ohne gültigen Betrag kein Versicherungswert — der Server bucht die Bindung mit dem Warenwert.
+  const ohne = buildCoverBookInsurancePayload({ coverValue: null, goodsAreNew: true, goodsAreFragile: false, repriceResult });
+  assert.deepEqual(ohne.insuranceSelection, { type: "transit_cover", goodsAreNew: true, goodsAreFragile: false });
 });
 
 /* ══════════ A) Fehler und Preisänderung ════════════════════════════════════ */
@@ -135,7 +173,8 @@ test("A8 — Fehlertexte kommen aus dem CODE, nie aus dem Rohtext des Servers", 
   const roh = { code: "INSURANCE_UNAVAILABLE", error: "ROHTEXT Transglobal" };
   assert.equal(coverRepriceErrorText(409, roh), COVER_INSURANCE_TEXT.unavailable);
   assert.match(coverRepriceErrorText(409, { code: "PRICE_CHANGED", price: 30 }), /neu/);
-  assert.match(coverRepriceErrorText(400, { code: "INSURANCE_SELECTION_INVALID" }), /Versicherungswert/);
+  assert.match(coverRepriceErrorText(400, { code: "INSURANCE_SELECTION_INVALID" }), /beide Fragen zur Ware/);
+  assert.match(coverRepriceErrorText(409, { code: "INSURANCE_SELECTION_MISMATCH", error: "ROHTEXT" }), /Angebote neu/);
   assert.match(coverRepriceErrorText(503, {}), /nicht bestätigt/);
   assert.match(coverRepriceErrorText(429, null), /Zu viele/);
   assert.equal(coverRepriceErrorText(500, { error: "boom" }), COVER_INSURANCE_TEXT.summaryError);
@@ -231,6 +270,52 @@ test("A16 — Texte der Übernahme und der Konflikte: neutral, ohne Anbieter, oh
   assert.ok(!/ROHTEXT/.test(coverRepriceErrorText(409, { ...roh, code: "OFFER_PRICE_CONFLICT" })));
 });
 
+/* ══════════ A) TG22 Paket B — Grundabsicherung und Höchstdeckung ═══════════ */
+
+test("A17 — Grundabsicherung und Höchstdeckung sind Aussagen, keine Fehler — mit dem Betrag des Servers", () => {
+  assert.deepEqual(COVER_STATE, { AVAILABLE: "available", BASIC_COVER_INCLUDED: "basic_cover_included",
+                                  ABOVE_COVER_LIMIT: "above_cover_limit" });
+  assert.equal(flach(coverBasicCoverText(50)),
+    "Bis zu einem Warenwert von 50 € ist bereits eine Grundabsicherung ohne Aufpreis enthalten.");
+  assert.equal(flach(coverLimitText(2500)),
+    "Eine zusätzliche Transportabsicherung ist für diesen Tarif nur bis zu einem Warenwert von 2.500 € möglich.");
+  assert.equal(flach(coverBasicCoverText(50.5)),
+    "Bis zu einem Warenwert von 50,50 € ist bereits eine Grundabsicherung ohne Aufpreis enthalten.");
+  // Ohne Serverbetrag der neutrale Satz — nie eine erfundene Grenze.
+  for (const kaputt of [undefined, null, 0, -1, "50", NaN]) {
+    assert.equal(coverBasicCoverText(kaputt), COVER_INSURANCE_TEXT.basicCoverIncludedGeneric, JSON.stringify(kaputt));
+    assert.equal(coverLimitText(kaputt), COVER_INSURANCE_TEXT.coverLimitGeneric, JSON.stringify(kaputt));
+  }
+  assert.deepEqual(coverInsuranceNotice(TG_GRUNDSCHUTZ), { kind: COVER_STATE.BASIC_COVER_INCLUDED, text: coverBasicCoverText(50) });
+  assert.deepEqual(coverInsuranceNotice(TG_HOECHSTDECKUNG), { kind: COVER_STATE.ABOVE_COVER_LIMIT, text: coverLimitText(2500) });
+  for (const t of [TG_TARIF, TG_TARIF_ALT, JU_TARIF, TG_NICHT_VERSICHERBAR, null, {}]) {
+    assert.equal(coverInsuranceNotice(t), null, JSON.stringify(t));
+  }
+  // Keine Fehlersprache und kein Anbieter in den Aussagen.
+  for (const text of [coverBasicCoverText(50), coverLimitText(2500),
+                      COVER_INSURANCE_TEXT.basicCoverIncludedGeneric, COVER_INSURANCE_TEXT.coverLimitGeneric]) {
+    assert.ok(!/nicht bestätigt|Fehler|fehlgeschlagen|Versicherung nicht verfügbar|Preis konnte|Transglobal|JUMiNGO/i.test(text), text);
+  }
+  // Die Buchungsseite zeigt dafür kein Auswahlmodul — der Tarif bleibt ohne Zusatz buchbar.
+  assert.equal(getBookingModules(TG_GRUNDSCHUTZ).insurance, false);
+  assert.equal(getBookingModules(TG_HOECHSTDECKUNG).insurance, false);
+});
+
+test("A18 — eine Aussage der Neubepreisung wird zum Hinweis; INS = 0 bleibt ein neutraler Fehler", () => {
+  assert.equal(flach(coverRepriceNotice({ code: "INSURANCE_BASIC_COVER_INCLUDED", basicCoverMaxGoodsValue: 50, error: "ROHTEXT" })),
+    flach(coverBasicCoverText(50)));
+  assert.equal(coverRepriceNotice({ code: "INSURANCE_BASIC_COVER_INCLUDED" }), COVER_INSURANCE_TEXT.basicCoverIncludedGeneric);
+  assert.equal(flach(coverRepriceNotice({ code: "INSURANCE_COVER_LIMIT_EXCEEDED", maxCoverValue: 2500 })), flach(coverLimitText(2500)));
+  for (const b of [{ code: "INSURANCE_UNAVAILABLE" }, { code: "PRICE_CHANGED" }, { code: "INSURANCE_SELECTION_MISMATCH" },
+                   {}, null, "INSURANCE_BASIC_COVER_INCLUDED"]) {
+    assert.equal(coverRepriceNotice(b), null, JSON.stringify(b));
+  }
+  // Warenwert > 50, aber der Anbieter nennt keinen positiven Preis: fail closed, neutral, ohne Anbieter.
+  const unavailable = coverRepriceErrorText(409, { code: "INSURANCE_UNAVAILABLE", error: "insurance_cost_not_positive" });
+  assert.equal(unavailable, COVER_INSURANCE_TEXT.unavailable);
+  assert.ok(!/insurance_cost|Transglobal|INS\b/.test(unavailable));
+});
+
 /* ══════════ A) Texte ═══════════════════════════════════════════════════════ */
 
 const STUFEN_BEGRIFFE = ["Premium", "Standard", "priorisiert", "Priorisiert", "50,00", "Status-Updates",
@@ -266,7 +351,7 @@ test("A10 — das Deckungsbetragsmodell nennt keine Stufe, keine 50 €, keinen 
 
 test("A11 — die Angebotskarte benutzt DASSELBE Gate wie die Buchungsseite", () => {
   const faelle = [
-    TG_TARIF, JU_TARIF, TG_NICHT_VERSICHERBAR, {},
+    TG_TARIF, TG_TARIF_ALT, JU_TARIF, TG_NICHT_VERSICHERBAR, TG_GRUNDSCHUTZ, TG_HOECHSTDECKUNG, {},
     // Ein „ab"-Preis ALLEIN machte die Karte früher versicherbar — die Buchung nicht.
     { insuranceDetails: { extraInsurancePriceBruttoPreselect: 3.99 } },
     { insuranceDetails: { insuranceValue: 500 } },
@@ -275,10 +360,19 @@ test("A11 — die Angebotskarte benutzt DASSELBE Gate wie die Buchungsseite", ()
   for (const t of faelle) {
     assert.equal(offerCardInsurance(t).insurable, getBookingModules(t).insurance, JSON.stringify(t));
   }
-  assert.deepEqual(offerCardInsurance(TG_TARIF), { insurable: true, explicitlyUnavailable: false, coverModel: true, excessValue: 20 });
+  assert.deepEqual(offerCardInsurance(TG_TARIF),
+    { insurable: true, explicitlyUnavailable: false, coverModel: true, excessValue: 20, notice: null });
   assert.equal(offerCardInsurance(JU_TARIF).coverModel, false);
+  assert.equal(offerCardInsurance(JU_TARIF).notice, null);
   assert.equal(offerCardInsurance(TG_NICHT_VERSICHERBAR).insurable, false);
   assert.equal(offerCardInsurance(TG_NICHT_VERSICHERBAR).explicitlyUnavailable, true);
+  // TG22 Paket B: die Grundabsicherung ist KEIN „nicht verfügbar", sondern eine Aussage.
+  assert.deepEqual(offerCardInsurance(TG_GRUNDSCHUTZ), {
+    insurable: false, explicitlyUnavailable: false, coverModel: false, excessValue: 20,
+    notice: { kind: COVER_STATE.BASIC_COVER_INCLUDED, text: coverBasicCoverText(50) },
+  });
+  assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).notice.kind, COVER_STATE.ABOVE_COVER_LIMIT);
+  assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).explicitlyUnavailable, false);
 });
 
 test("A12 — die Angebotskarte behauptet nicht mehr „nicht online auswählbar“ und nennt keinen Preis vorab", () => {
@@ -289,6 +383,9 @@ test("A12 — die Angebotskarte behauptet nicht mehr „nicht online auswählbar
   assert.match(karte, /COVER_INSURANCE_TEXT\.offerPriceNote/);
   // Das frühere Zweit-Gate (Preis → versicherbar) ist weg.
   assert.ok(!/insBaseCoverage != null \|\| insStandardPrice != null/.test(karte));
+  // TG22 Paket B: die Aussage ohne kaufbaren Zusatz steht als Hinweis — vor „nicht verfügbar".
+  assert.match(karte, /const hasInsuranceSection = insInsurable \|\| insExplicitlyUnavailable \|\| insOffer\.notice !== null/);
+  assert.match(karte, /\) : insOffer\.notice \? \(\s*<p className="offer-insurance-note">\{insOffer\.notice\.text\}<\/p>/);
 });
 
 /* ══════════ B) Buchungsseite ═══════════════════════════════════════════════ */
@@ -306,11 +403,15 @@ test("B1 — das Modell kommt aus dem Tarif; transit_cover ist versichert", () =
     /insuranceTypeForTariff\(flowBooking\.insuranceType \|\| "none", tariff\)/);
 });
 
-test("B2 — Neubepreisung: Deckungsbetragsmodell mit dem Vier-Felder-Körper, Stufen unverändert plus offerId", () => {
-  assert.match(seite, /buildCoverRepricePayload\(\{ offerId: tariff\?\.offerId, coverValue: insNum, goodsAreNew, goodsAreFragile \}\)/);
+test("B2 — Neubepreisung: Deckungsbetragsmodell mit dem Warenwert als Versicherungswert, Stufen unverändert plus offerId", () => {
+  assert.match(seite, /const coverValueNum = coverModel \? coverValueForTariff\(tariff, goodsValue\) : null/);
+  assert.match(seite, /buildCoverRepricePayload\(\{ offerId: tariff\?\.offerId, coverValue: coverValueNum, goodsAreNew, goodsAreFragile \}\)/);
   assert.match(seite, /insuranceType:\s+type,/, "der Stufenkörper sendet insuranceType weiterhin flach");
+  assert.match(seite, /extraInsuranceValue: insNum,/, "der Stufenkörper sendet seinen Versicherungswert unverändert");
   assert.match(seite, /\.\.\.\(tariff\?\.offerId \? \{ offerId: tariff\.offerId \} : \{\}\)/);
   assert.match(seite, /coverModel \? coverRepriceErrorText\(r\.status, d\)/);
+  // TG22 Paket B: eine Aussage des Servers (Grundabsicherung, Höchstdeckung) ist ein Hinweis, kein Fehler.
+  assert.match(seite, /const hinweis = coverModel \? coverRepriceNotice\(d\) : null;\s*if \(hinweis\) \{\s*setRepriceStale\(false\); setRepriceNotice\(hinweis\);/);
 });
 
 test("B3 — die Fragen zur Ware blockieren Neubepreisung und Buchung, bis sie beantwortet sind", () => {
@@ -322,10 +423,12 @@ test("B3 — die Fragen zur Ware blockieren Neubepreisung und Buchung, bis sie b
   assert.match(seite, /\}, \[insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile\]\);/);
 });
 
-test("B4 — /book: transit_cover mit bestätigtem Gesamtbetrag; der Stufenkörper bleibt Zeile für Zeile", () => {
-  assert.match(seite, /buildCoverBookInsurancePayload\(\{ coverValue: insuranceValueNum, goodsAreNew, goodsAreFragile, repriceResult \}\)/);
+test("B4 — /book: transit_cover mit dem Warenwert und dem bestätigten Gesamtbetrag; der Stufenkörper bleibt Zeile für Zeile", () => {
+  assert.match(seite, /buildCoverBookInsurancePayload\(\{ coverValue: coverValueNum, goodsAreNew, goodsAreFragile, repriceResult \}\)/);
   assert.match(seite, /value:\s+insuranceValueNum,/);
   assert.match(seite, /\{ insuranceSelection: \{ type: "none" \} \}/);
+  // Ohne gültigen Warenwert gibt es im Deckungsbetragsmodell nichts zu bepreisen und nichts zu buchen.
+  assert.match(seite, /coverModel\s+\? \(coverValueNum == null \? COVER_INSURANCE_TEXT\.coverValueMissing : ""\)/);
 });
 
 test("B5 — eine versicherte Preisänderung öffnet den Dialog und übernimmt beim Fortfahren AUSDRÜCKLICH", () => {
@@ -338,6 +441,7 @@ test("B5 — eine versicherte Preisänderung öffnet den Dialog und übernimmt b
   assert.match(zweig, /acceptInsuredPriceChange\(priceChange\.newPrice\)/);
   const annahme = seite.slice(seite.indexOf("const acceptInsuredPriceChange = "), seite.indexOf("const continueWithNewPrice = "));
   assert.match(annahme, /acceptPriceChange: \{ expectedTotalGross: neuerPreis \}/);
+  assert.match(annahme, /coverValue: coverValueNum/, "die Übernahme nennt einen anderen Versicherungswert als die Neubepreisung");
   assert.ok(!/doBook\(|\/api\/jumingo\/book/.test(annahme), "die Übernahme bucht");
   // Eine erneute Preisänderung führt zurück in den Dialog — keine Schleife, kein Stillschweigen.
   assert.match(annahme, /if \(erneut && preisIstBestaetigbar\(erneut\)\) \{\s*setPriceChange\(erneut\);/);
@@ -364,12 +468,17 @@ test("B6 — versicherte Buchungsablehnungen verwerfen die Absicherung nicht sti
   assert.ok(!/setInsuranceType\("none"\)/.test(seite), "die Absicherung wurde still abgewählt");
 });
 
-test("B7 — das Modul zeigt beide Pflichtfragen ohne Vorbelegung und keine Stufengrenze", () => {
+test("B7 — das Modul zeigt beide Pflichtfragen ohne Vorbelegung und KEIN Versicherungswert-Feld im Deckungsbetragsmodell", () => {
   assert.match(modul, /checked=\{wert === true\}/);
   assert.match(modul, /checked=\{wert === false\}/);
   assert.match(modul, /COVER_INSURANCE_TEXT\.goodsNewQuestion/);
   assert.match(modul, /COVER_INSURANCE_TEXT\.goodsFragileQuestion/);
-  assert.match(modul, /max=\{coverModel \? undefined : insuranceValueMax\}/);
+  // TG22 Paket B: der frei wählbare Versicherungswert gehört ausschließlich zum Stufenmodell; im
+  // Deckungsbetragsmodell sagt der gesperrte Warenwert, bis wohin abgesichert wird.
+  assert.match(modul, /\{!coverModel && \(insValueFieldVisible \? \(/);
+  assert.match(modul, /max=\{insuranceValueMax\}/);
+  assert.match(modul, /coverModel \? COVER_INSURANCE_TEXT\.goodsValueCoverHint/);
+  assert.match(seite, /const insValueFieldVisible = !coverModel && \(insValueRevealed \|\| insValueManual \|\| goodsOverMax\)/);
   assert.match(modul, /coverInsuranceCardCopy\(c\.id, excessValue\)/);
   assert.match(modul, /\{!coverModel && \(\s*<InsuranceDetailsDialog/, "der Stufendialog darf im Deckungsbetragsmodell nicht erscheinen");
   assert.ok(!/<Switch/.test(modul), "kein Schalter für eine dreiwertige Angabe");
@@ -395,6 +504,21 @@ test("B9 — kein Anbietername in den kundenseitigen Flächen der Absicherung", 
     const src = lies(datei);
     assert.ok(!/transglobal/i.test(src), `${datei} nennt den Anbieter`);
   }
+});
+
+test("B11 — ohne kaufbaren Zusatz: Hinweisfläche statt „nicht verfügbar“, ohne Bedienelement und ohne Preis", () => {
+  assert.match(seite, /const coverNotice = coverInsuranceNotice\(tariff\)/);
+  assert.match(seite, /\) : coverNotice \? \(\s*<InsuranceCoverNotice text=\{coverNotice\.text\} \/>/);
+  assert.match(seite, /repriceNotice=\{repriceNotice\}/);
+  assert.match(modul, /export function InsuranceCoverNotice\(\{ text \}\)/);
+  assert.match(modul, /\) : repriceNotice \? \(\s*<span className="field-hint" id="ins-reprice-notice">\{repriceNotice\}<\/span>/);
+  const hinweis = modul.slice(modul.indexOf("export function InsuranceCoverNotice"), modul.indexOf("export function InsuranceModule"));
+  assert.ok(hinweis.length > 0, "die Hinweisfläche fehlt");
+  assert.ok(!/<input|<button|field-error|ins-status-error|money\(/.test(hinweis),
+    "die Hinweisfläche trägt ein Bedienelement, einen Fehlerzustand oder einen Preis");
+  // Jede neue Eingabe verwirft einen alten Hinweis, bevor neu bepreist wird.
+  assert.match(seite, /setRepriceLoading\(true\); setRepriceError\(""\); setRepriceNotice\(""\);/);
+  assert.match(seite, /if \(insuranceType === "none"\) \{\s*setRepriceResult\(null\); setRepriceStale\(false\); setRepriceError\(""\); setRepriceNotice\(""\);/);
 });
 
 /* ══════════ B) Admin-Detail ═══════════════════════════════════════════════ */

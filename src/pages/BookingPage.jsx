@@ -50,7 +50,7 @@ import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModu
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
 import { AddressTypeModule, AddressTypeSummary } from "../components/booking/AddressTypeModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
-import { InsuranceModule } from "../components/booking/InsuranceModule";
+import { InsuranceModule, InsuranceCoverNotice } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
 import { BookingLiveSummary } from "../components/booking/BookingLiveSummary";
 import { BookingStickySummary } from "../components/booking/BookingStickySummary";
@@ -72,7 +72,8 @@ import {
   isInsuredType,
 } from "../utils/bookingPriceView.mjs";
 import {
-  INSURANCE_TYPE_TRANSIT_COVER, isCoverValueModel, coverExcessValue, coverValueError,
+  INSURANCE_TYPE_TRANSIT_COVER, isCoverValueModel, coverExcessValue, coverValueForTariff,
+  coverInsuranceNotice, coverRepriceNotice,
   goodsAnswerError, tristateAnswer, buildCoverRepricePayload, buildCoverBookInsurancePayload,
   coverRepriceErrorText, coverBookErrorText, coverBookErrorRequiresReprice, isCoverBookError,
   insuranceTypeForTariff, insuredPriceChangeView, priceChangeBreakdownLines, COVER_PRICE_CHANGE_TEXT,
@@ -261,9 +262,10 @@ export default function BookingPage() {
   // Vergleich beruhte auf dem einen Wert, die Buchung auf dem anderen — und der Server
   // lehnt die Abweichung fail closed ab, ohne dass der Kunde den Grund sähe.
   //
-  // Deshalb: derselbe Wert, nur angezeigt. Der VERSICHERUNGSwert daneben bleibt
-  // unverändert frei wählbar — das ist eine andere Angabe mit einer anderen Bedeutung,
-  // und die bestehende Versicherungslogik ist davon nicht berührt.
+  // Deshalb: derselbe Wert, nur angezeigt. Im Stufenmodell bleibt der VERSICHERUNGSwert
+  // daneben unverändert frei wählbar — das ist eine andere Angabe mit einer anderen Bedeutung.
+  // Bei der zusätzlichen Transportabsicherung IST der Warenwert der Versicherungswert
+  // (TG22 Paket B); dort gibt es kein zweites Feld.
   //
   // Der Rückfall auf den Vorgangswert trägt einen fortgesetzten Vorgang aus der Zeit
   // davor; er erfindet nichts, sondern liest, was dieser Vorgang bereits hatte.
@@ -294,6 +296,9 @@ export default function BookingPage() {
   const [repriceResult, setRepriceResult]   = useState(null);
   const [repriceLoading, setRepriceLoading] = useState(false);
   const [repriceError, setRepriceError]     = useState("");
+  // TG22 Paket B: eine Aussage der Neubepreisung, die KEIN Fehler ist (Grundabsicherung enthalten,
+  // Höchstdeckung überschritten) — neutral angezeigt, nie in der Fehlerfarbe.
+  const [repriceNotice, setRepriceNotice]   = useState("");
   const [repriceStale, setRepriceStale]     = useState(false);
   const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
   const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
@@ -532,10 +537,17 @@ export default function BookingPage() {
   const modules = getBookingModules(tariff, bookingData?.customs);
   const isInsured = isInsuredType(insuranceType);
   // Welches Absicherungsmodell dieser Tarif trägt, sagt der Server am Tarif
-  // (insuranceDetails.selectionModel) — Stufen oder frei gewählter Versicherungswert.
+  // (insuranceDetails.selectionModel) — Stufen oder zusätzliche Transportabsicherung.
   const coverModel = isCoverValueModel(tariff);
   const goodsValueNum     = asNum(goodsValue);
   const insuranceValueNum = asNum(insuranceValue);
+  // TG22 Paket B: der Versicherungswert der zusätzlichen Transportabsicherung IST der Warenwert —
+  // vom Server am Tarif genannt, sonst der eingefrorene Warenwert des Vorgangs. Er ist keine
+  // Eingabe; der Server vergleicht einen mitgesendeten Wert nur noch mit dem Warenwert.
+  const coverValueNum = coverModel ? coverValueForTariff(tariff, goodsValue) : null;
+  // Ohne kaufbaren Zusatz kann der Tarif trotzdem etwas sagen: die enthaltene Grundabsicherung
+  // oder die Höchstdeckung. Eine Information statt „nicht verfügbar".
+  const coverNotice = coverInsuranceNotice(tariff);
   // Inhaltsbeschreibung: das sichtbare Feld wurde aus dem Versicherungsbereich
   // ENTFERNT. Der technische contentDescription-Vertrag bleibt UNVERÄNDERT — es wird
   // weiter der bestehende sichere Default (Sendungsinhalt → "Paket") an /reprice und
@@ -555,8 +567,8 @@ export default function BookingPage() {
   // 1..20.000. Komma-Eingaben werden über asNum() unterstützt. contentDescription
   // ist per maxLength/slice bereits ≤ 35 → keine separate Fehlermeldung nötig.
   // Im Deckungsbetragsmodell ist der Warenwert eine reine Anzeige der eingefrorenen
-  // Sendungsangabe — er wird dort nicht erneut verlangt (auch 0 ist eine gültige
-  // Erklärung). Abgesichert wird der frei gewählte Versicherungswert daneben.
+  // Sendungsangabe — er wird dort nicht erneut verlangt. TG22 Paket B: er ist zugleich der
+  // Versicherungswert; ohne gültigen Betrag gibt es nichts zu bepreisen.
   const goodsValueError =
     !isInsured                 ? "" :
     coverModel                 ? "" :
@@ -567,7 +579,7 @@ export default function BookingPage() {
     "";
   const insValueError =
     !isInsured                 ? "" :
-    coverModel                 ? coverValueError(insuranceValue) :
+    coverModel                 ? (coverValueNum == null ? COVER_INSURANCE_TEXT.coverValueMissing : "") :
     !insuranceValue.trim()     ? "Bitte geben Sie den Versicherungswert an." :
     insuranceValueNum == null  ? "Bitte geben Sie einen gültigen Betrag ein." :
     insuranceValueNum <= 0     ? "Der Versicherungswert muss größer als 0 € sein." :
@@ -683,10 +695,10 @@ export default function BookingPage() {
   ];
 
   // Progressive Disclosure des Versicherungswert-Felds + Warenwert-über-Maximum.
-  // Im Deckungsbetragsmodell ist der Versicherungswert die eigentliche Angabe — sein Feld
-  // steht immer offen, und die Stufengrenze gilt dort nicht.
+  // Im Deckungsbetragsmodell gibt es KEIN Versicherungswert-Feld: der Wert IST der Warenwert
+  // (TG22 Paket B), und die Stufengrenze gilt dort nicht.
   const goodsOverMax = !coverModel && goodsExceedsInsuranceMax(goodsValue);
-  const insValueFieldVisible = coverModel || insValueRevealed || insValueManual || goodsOverMax;
+  const insValueFieldVisible = !coverModel && (insValueRevealed || insValueManual || goodsOverMax);
 
   // Auto-Vorbelegung Versicherungswert = Warenwert, bis der Nutzer ihn manuell ändert.
   const handleGoodsValueChange = (v) => {
@@ -711,13 +723,14 @@ export default function BookingPage() {
     const seq = ++repriceSeq.current;
     if (repriceAbort.current) repriceAbort.current.abort();
     const ac = new AbortController(); repriceAbort.current = ac;
-    setRepriceLoading(true); setRepriceError(""); setPriceAcceptNotice("");
+    setRepriceLoading(true); setRepriceError(""); setRepriceNotice(""); setPriceAcceptNotice("");
     try {
-      // Deckungsbetragsmodell: GENAU vier Felder — der Server liest Sendung, Preis und
-      // Selbstbeteiligung aus dem gespeicherten Angebot. Stufenmodell: der bisherige Körper,
+      // Deckungsbetragsmodell: höchstens vier Felder — der Server liest Sendung, Warenwert, Preis
+      // und Selbstbeteiligung aus dem gespeicherten Angebot. Der Versicherungswert ist der Warenwert
+      // (TG22 Paket B) und reist nur als Konsistenzwächter mit. Stufenmodell: der bisherige Körper,
       // ergänzt um die Angebotskennung, an der der Server den Vertrag erkennt.
       const r = await repriceInsurance(coverModel
-        ? buildCoverRepricePayload({ offerId: tariff?.offerId, coverValue: insNum, goodsAreNew, goodsAreFragile })
+        ? buildCoverRepricePayload({ offerId: tariff?.offerId, coverValue: coverValueNum, goodsAreNew, goodsAreFragile })
         : {
             ceShipmentId:        bookingData?.ceShipmentId,
             tariffId:            tariff?.id,
@@ -741,6 +754,16 @@ export default function BookingPage() {
         if (d?.code === "OFFER_ALREADY_USED") {
           setRepriceError(OFFER_ALREADY_USED_TEXT);
           setConflict(OFFER_ALREADY_USED_TEXT);
+          setRepriceLoading(false);
+          return;
+        }
+        // TG22 Paket B: der Server sagt, dass es für diesen Warenwert keinen kaufbaren Zusatz gibt
+        // (Grundabsicherung enthalten oder Höchstdeckung überschritten). Das ist KEIN Fehler: die
+        // Aussage steht neutral an der Absicherung, nichts bleibt als „wird aktualisiert" stehen,
+        // und gebucht wird ohne zusätzliche Transportabsicherung.
+        const hinweis = coverModel ? coverRepriceNotice(d) : null;
+        if (hinweis) {
+          setRepriceStale(false); setRepriceNotice(hinweis);
           setRepriceLoading(false);
           return;
         }
@@ -788,7 +811,7 @@ export default function BookingPage() {
     if (repriceAbort.current) repriceAbort.current.abort();
     setRepriceLoading(false);
     if (insuranceType === "none") {
-      setRepriceResult(null); setRepriceStale(false); setRepriceError("");
+      setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
       return;
     }
     setRepriceStale(true);
@@ -1063,7 +1086,7 @@ export default function BookingPage() {
       // Neubepreisung und dem dort bestätigten Gesamtbetrag. Der Server bucht ausschließlich
       // die an das Angebot gebundene Auswahl; die Werte hier sind ein Konsistenzwächter.
       const insurancePayload = isInsured && coverModel
-        ? buildCoverBookInsurancePayload({ coverValue: insuranceValueNum, goodsAreNew, goodsAreFragile, repriceResult })
+        ? buildCoverBookInsurancePayload({ coverValue: coverValueNum, goodsAreNew, goodsAreFragile, repriceResult })
         : isInsured
         ? {
             insuranceSelection: {
@@ -1484,7 +1507,7 @@ export default function BookingPage() {
     setPriceAccepting(true); setPriceAcceptError(""); setPriceAcceptNotice(""); setRepriceError("");
     try {
       const r = await repriceInsurance(buildCoverRepricePayload({
-        offerId: tariff?.offerId, coverValue: insuranceValueNum, goodsAreNew, goodsAreFragile,
+        offerId: tariff?.offerId, coverValue: coverValueNum, goodsAreNew, goodsAreFragile,
         acceptPriceChange: { expectedTotalGross: neuerPreis },
       }), { signal: ac.signal });
       if (seq !== repriceSeq.current) return;
@@ -1928,6 +1951,7 @@ export default function BookingPage() {
                     goodsOverMax={goodsOverMax}
                     insuranceValueMax={INSURANCE_VALUE_MAX}
                     repriceError={repriceError}
+                    repriceNotice={repriceNotice}
                     isRepricing={priceView.isRepricing}
                     isStale={priceView.isStale}
                     repriceConfirmed={priceView.status === PRICE_STATUS.REPRICE_CONFIRMED}
@@ -1940,6 +1964,8 @@ export default function BookingPage() {
                       ? { goodsAreNew: goodsAreNewError, goodsAreFragile: goodsAreFragileError }
                       : {}}
                   />
+                ) : coverNotice ? (
+                  <InsuranceCoverNotice text={coverNotice.text} />
                 ) : (
                   <p className="booking-ins-unavailable">
                     Für diesen Tarif ist keine Zusatzversicherung verfügbar.

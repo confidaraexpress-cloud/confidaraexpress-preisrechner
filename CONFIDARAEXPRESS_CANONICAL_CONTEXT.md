@@ -2,9 +2,9 @@
 
 - **Schema-Version:** 2.1
 - **Status:** CANONICAL PROJECT SOURCE
-- **Last verified:** 2026-09-11 (Transglobal-Abschnitte; übrige Abschnitte Stand 2026-09-09)
-- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge)
-- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge)
+- **Last verified:** 2026-09-13 (Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14; Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09)
+- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge)
+- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge)
 - **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09; Transglobal-Stand im Paket TG-22 am 2026-09-11 gegen den Code geprüft
 
 ---
@@ -414,6 +414,17 @@ Ein zweiter unkontrollierter Buchungsversuch könnte eine Doppelbuchung erzeugen
 
 Unsichere Ergebnisse sind entsprechend als Pending/Unknown zu behandeln.
 
+Package C (wirksam nach Merge): Jeder mutierende Providercall schreibt vorher einen Buchungsversuch. Bleibt der Ausgang unklar, bleibt die Sendung gesperrt (`booking`), bis ein Admin in der Buchungsklärung entscheidet — providerneutral für JUMiNGO und Transglobal:
+
+- „gebucht" schließt aus dem eingefrorenen Stand über denselben Abschluss wie eine normale Buchung ab, ohne Anbieterkontakt,
+- „nicht gebucht" gibt die Sendung als Entwurf frei (ein neues Angebot ist nötig) und informiert den Kunden neutral,
+- entscheidbar ist nur der neueste Versuch einer Sendung und erst nach einem Mindestalter,
+- kein automatischer Retry, keine automatische Providerstornierung, keine automatische Erstattung.
+
+Kunden sehen eine gesperrte Sendung neutral als „Buchungsstatus wird geprüft", ohne Aktion und ohne Anbieterangaben.
+
+Evidence anchors: `lib/booking/reconciliationActions.js`, `lib/booking/reconciliationPolicy.js`, `docs/runbook-buchungsklaerung.md`
+
 ### 5.12 White-Label-Grenze
 
 **Status: ACTIVE_CURRENT / PRODUCT_DECISION**
@@ -429,6 +440,18 @@ Der tatsächliche Carrier darf sichtbar sein, soweit dies für das Versandproduk
 Interne Backendstatuswerte, Fehlercodes und Providerrohmeldungen werden nicht ungefiltert als Kundentext ausgegeben.
 
 Frontendseitige Normalisierungs-/Darstellungslogik respektieren.
+
+### 5.14 Anonymisierte Konten werden nicht beliefert
+
+**Status: ACTIVE_CURRENT** (Package C, wirksam nach Merge)
+
+Die Kontoanonymisierung ersetzt personenbezogene Daten in place durch Tombstones; Rechnungen, Rechnungssnapshots, Rechnungszustellungen, Providerbelege und Labelbytes bleiben als Belege unverändert.
+
+Sie umfasst auch die Zusatzempfänger der Sendungen, die Empfängeradressen der Zustellhistorien und die Freitexte von Stornierungsanfragen. Ein erneutes Anonymisieren zieht das für früher anonymisierte Konten idempotent nach.
+
+An eine anonymisierte Adresse wird nie eine E-Mail gesendet — weder Zusatzbenachrichtigung noch Auftragsbestätigung noch Rechnung.
+
+Evidence anchors: `lib/anonymizeContactTraces.js`, `lib/anonymize.js`
 
 ---
 
@@ -471,6 +494,8 @@ Produktive Providerbuchungen dürfen nicht für normale Tests verwendet werden.
 
 Bestehende Sandbox-/Testmechanismen respektieren.
 
+Ein unklarer JUMiNGO-Bestellausgang wird über die providerneutrale Buchungsklärung aufgelöst (5.11), nicht durch einen manuellen Statusrückschritt (Package C, wirksam nach Merge).
+
 ### 6.3 Transglobal Quotes
 
 **Status: ACTIVE_CURRENT / UNKNOWN_RUNTIME_STATE**
@@ -500,6 +525,8 @@ Der Transglobal-Buchungspfad ist implementiert und für Service 22 real gegen di
 Die Bestellung braucht zusätzlich `TRANSGLOBAL_BOOKING_ENABLED` (technischer Kill-Switch, default aus). Angebot und Buchung prüfen dieselbe Quelle.
 
 Nicht daraus ableiten, dass Transglobal heute produktiv buchbar ist: alle Schalter sind im Repository aus, der Runtime-Zustand ist UNKNOWN_RUNTIME_STATE.
+
+Unklare Transglobal-Ausgänge laufen durch dieselbe Buchungsklärung wie JUMiNGO (5.11); die bisherigen Transglobal-Adminpfade bleiben als Aliasse der providerneutralen Routen bestehen (Package C, wirksam nach Merge).
 
 ### 6.5 Cross-Provider Matching
 
@@ -807,6 +834,8 @@ Production-Zustände nicht aus Repository-Defaults erfinden.
 | Tracking Sync Worker | IMPLEMENTED_CONDITIONALLY | default aus |
 | Overdue Notification Worker | ACTIVE_CURRENT | default an / opt-out |
 | Shipment Email Worker | ACTIVE_CURRENT | default an / opt-out |
+| Buchungsklärung (Package C) | IMPLEMENTED, wirksam nach Merge | kein Schalter; Adminaktion mit Bestätigung, ruft keinen Anbieter |
+| Betriebs-Queues (Package C) | IMPLEMENTED, wirksam nach Merge | kein Schalter; reiner Datenbankread |
 | JUMiNGO Sandbox/Testmechanismus | IMPLEMENTED_CONDITIONALLY | bewusst gated |
 | Multi-Provider Debug | IMPLEMENTED_CONDITIONALLY | Diagnosefunktion |
 
@@ -1094,6 +1123,14 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.1 — 2026-09-13 (Package C: Buchungsklärung, Betrieb, Datenschutz)
+
+- 5.11 um die providerneutrale Buchungsklärung ergänzt: Versuch vor dem Providercall, Entscheidung nur für den neuesten Versuch nach Mindestalter, kein automatischer Retry, keine automatische Providerstornierung oder Erstattung, neutrale Kundensicht („Buchungsstatus wird geprüft").
+- 5.14 neu: anonymisierte Konten werden nicht beliefert; Kontaktspuren der Zustellwege und Stornierungen gehören zur Anonymisierung, Belege bleiben.
+- 6.2 und 6.4 verweisen auf die gemeinsame Buchungsklärung; Feature-State-Tabelle um Buchungsklärung und Betriebs-Queues ergänzt.
+- Wirksam nach Merge der Package-C-Branches (Backend vor Frontend); kein Schalter, keine ENV-Änderung.
+- Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-11 (TG-22 Reference Enablement)
 

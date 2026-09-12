@@ -155,10 +155,12 @@ test("1 — angemeldet: Stand, alle Ereignisse, Abschnitte mit Carrier und Numme
   await page.waitForSelector(".shipment-track-detail .track-event", { timeout: 15000 });
   assert.ok(protokoll.includes(`/api/shipments/${ID}/tracking`), "die Live-Ansicht kommt nicht vom Server");
 
-  const detail = page.locator(".shipment-track-detail");
+  // TG22 Paket B: dieselbe Trackingansicht steht jetzt auch in der (hier ausgeblendeten)
+  // Mobilkarte — gemessen wird die Detailzeile der Tabelle.
+  const detail = page.locator(".ce-list-table .shipment-track-detail");
   // Ein zugestelltes Paket stellt die Sendung nicht zu: der Stand kommt vom Server.
   assert.equal((await detail.locator(".shipment-track-head .badge").innerText()).trim(), "Unterwegs");
-  assert.equal((await page.locator(".shipment-track-number").innerText()).trim(), `Trackingnummern: ${A}, ${B}`);
+  assert.equal((await page.locator(".ce-list-table .shipment-track-number").innerText()).trim(), `Trackingnummern: ${A}, ${B}`);
   assert.deepEqual((await detail.locator(".shipment-track-leg").allTextContents()).map((t) => t.trim()),
     [`UPS · ${A}`, `UPS · ${B}`]);
   const titel = (await detail.locator(".track-title").allTextContents()).map((t) => t.trim());

@@ -9,8 +9,8 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
   error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
-  legalBlocksBooking,
-  onBook, onNavigateShipments, onNavigateNew, onRecalculate, userEmail,
+  legalBlocksBooking, profileHint,
+  onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
   // solange darf nicht bestellt werden. Die bestehende Gate-Funktion bleibt unverändert;
@@ -38,6 +38,19 @@ export function BookingActionModule({
             {error.title && error.message ? " " : null}
             {error.message ? <span>{error.message}</span> : null}
           </div>)}
+      {/* ─── TG22 Paket B: Unternehmensprofil unvollständig (422) ────────────────────────
+          Keine abgelaufene Sitzung und kein Buchungsfehler: es fehlen Angaben im Profil. Der
+          Kunde bleibt angemeldet, der Vorgang bleibt stehen, und der Weg ins Profil steht
+          direkt am Hinweis. Der Bestellknopf bleibt — nach dem Ergänzen ist dieselbe
+          Buchung erneut auslösbar. */}
+      {profileHint && (
+        <div className="booking-conflict-box" role="alert" id="booking-profile-incomplete">
+          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {profileHint}</p>
+          <button type="button" className="btn btn-outline btn-full" onClick={onNavigateProfile}>
+            Unternehmensprofil vervollständigen
+          </button>
+        </div>
+      )}
       {conflict ? (
         <div className="booking-conflict-box">
           <p className="booking-conflict-text"><Icon n="shield" s={16} c="var(--ce-color-brand-ink)" /> {conflict}</p>

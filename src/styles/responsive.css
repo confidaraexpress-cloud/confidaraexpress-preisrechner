@@ -112,7 +112,10 @@
      `align-items: center` statt `flex-start`: sonst klebt der Radioknopf bei
      erzwungener Höhe oben in der Zeile statt neben seinem Text. */
   .adr-typ-group .ci-mode-option,
-  .ns-adr-typ-group .ci-mode-option { min-height: 44px; align-items: center; }
+  .ns-adr-typ-group .ci-mode-option,
+  /* TG22 Paket B: dieselbe Auswahlzeile trägt die beiden Pflichtfragen zur Ware der
+     zusätzlichen Transportabsicherung — dieselbe Trefferfläche. */
+  .ins-goods-question .ci-mode-option { min-height: 44px; align-items: center; }
   /* Die Aenderung der festgeschriebenen Angaben ist das einzige Bedienelement ihrer
      Flaeche — dieselbe Trefferflaeche wie jedes andere (WCAG 2.5.5). `.btn-link` ist
      ein Textknopf ohne eigene Hoehe und bekommt sie deshalb hier. */

@@ -77,7 +77,7 @@ export function ShipmentFilterBar({
                   <Icon n="clock" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versanddatum</div>
-                    <div className="service-filter-trigger-val">{labelForDate(shippingDate)}</div>
+                    <div className="service-filter-trigger-val">{shippingDate ? labelForDate(shippingDate) : "Bitte Datum wählen"}</div>
                   </div>
                 </div>
                 <div className={`service-filter-chevron ${datePickerOpen ? "open" : ""}`}>

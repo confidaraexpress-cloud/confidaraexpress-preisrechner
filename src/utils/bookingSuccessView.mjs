@@ -23,6 +23,37 @@ export const INVOICE_DELIVERY_MODE = Object.freeze({
 export const INVOICES_DASHBOARD_PAGE = "invoices";
 export const INVOICES_DASHBOARD_TARGET = "/dashboard?page=invoices";
 export const SHIPMENTS_DASHBOARD_TARGET = "/dashboard?page=shipments";
+export const PROFILE_DASHBOARD_TARGET = "/dashboard?page=profile";
+
+// ── TG22 Paket B: der gebuchte Betrag kommt vom Server ─────────────────────────
+// Der Erfolgsbildschirm zeigte bis hierher die Preisaufstellung der Buchungsseite. Die ist
+// der Stand VOR der Bestellung — nach einer Preisübernahme, einem Gutschein oder einer
+// serverseitigen Korrektur kann der tatsächlich gebuchte Betrag ein anderer sein. Nach einer
+// bezahlten Bestellung darf dort nur stehen, was der Server gebucht hat: `booking.amount`.
+//
+//   • „Gesamtbetrag brutto" ausschließlich aus `booking.amount`.
+//   • Die Aufschlüsselung (Versand, MwSt., Absicherung) nur, wenn ihr bestätigter Gesamtbetrag
+//     auf den Cent dem gebuchten entspricht — sonst stünden zwei widersprüchliche Zahlen da.
+//   • Fehlt `amount`: kein Betrag, nur der neutrale Verweis auf Auftragsbestätigung und Rechnung.
+export const BOOKING_AMOUNT_MISSING_HINT =
+  "Den gebuchten Gesamtbetrag finden Sie in Ihrer Auftragsbestätigung und auf Ihrer Rechnung.";
+
+const gueltigerBetrag = (v) => {
+  const n = typeof v === "number" ? v
+    : (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
+export function bookingSuccessAmountView(booking, priceView) {
+  const betrag = gueltigerBetrag(booking && typeof booking === "object" ? booking.amount : null);
+  if (betrag === null) {
+    return { hasAmount: false, totalGross: null, showBreakdown: false, hint: BOOKING_AMOUNT_MISSING_HINT };
+  }
+  const pv = priceView && typeof priceView === "object" ? priceView : null;
+  const aufstellung = pv && pv.hasConfirmedPrice === true ? gueltigerBetrag(pv.totalGross) : null;
+  const gleich = aufstellung !== null && Math.round(aufstellung * 100) === Math.round(betrag * 100);
+  return { hasAmount: true, totalGross: betrag, showBreakdown: gleich, hint: null };
+}
 
 // Sucht die soeben erzeugte Rechnung anhand der (aus dem /book-Response bekannten) Rechnungsnummer.
 // Rein; toleriert fehlende Liste/Nummer.

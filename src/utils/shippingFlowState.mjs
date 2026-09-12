@@ -146,6 +146,11 @@ export const BOOKING_KEYS = Object.freeze([
   // DREIWERTIG wie die Adressangaben: ein gespeichertes `false` ist eine Antwort und bleibt
   // eine — sonst stünde dieselbe Frage nach jeder Rückkehr wieder offen.
   "goodsAreNew", "goodsAreFragile",
+  // TG22 Paket B: zu WELCHEM Angebot die Absicherung oben gehört (`offerKey`). Schritt,
+  // Absicherung und Antworten werden nur wiederhergestellt, wenn das aktuelle Angebot
+  // denselben Schlüssel trägt (utils/insuranceRestore.mjs). ADDITIV ohne Versionssprung:
+  // ein älterer Vorgang liefert `null` und stellt damit keine Absicherung wieder her.
+  "insuranceOfferKey",
   // Optionale Zusatzempfänger für Versandinformationen. Reine Frontendeingaben
   // ohne Serverquelle — genau wie reference gehören sie in den laufenden Vorgang,
   // damit sie eine Zurücknavigation überleben. Gespiegelt wird nur, was auch
@@ -355,6 +360,8 @@ export function emptyBooking() {
     // Noch nicht beantwortet — ausdrücklich nicht `false`.
     goodsAreNew: null,
     goodsAreFragile: null,
+    // Kein Angebot → keine wiederherstellbare Absicherung.
+    insuranceOfferKey: null,
     trackingEmail: "",
     labelTrackingEmail: "",
     // Noch nicht beantwortet — ausdrücklich nicht `false`.
@@ -383,6 +390,10 @@ export function normalizeBooking(raw) {
     // Dreiwertig (siehe BOOKING_KEYS): ein gespeichertes `false` bleibt `false`.
     goodsAreNew: tristate(src.goodsAreNew),
     goodsAreFragile: tristate(src.goodsAreFragile),
+    // Angebotsschlüssel der Absicherung: nur eine nicht leere Zeichenkette, sonst `null`
+    // (und `null` passt beim Wiederherstellen zu keinem Angebot).
+    insuranceOfferKey: typeof src.insuranceOfferKey === "string" && src.insuranceOfferKey.trim() !== ""
+      ? src.insuranceOfferKey.trim().slice(0, 200) : null,
     // Dieselbe Obergrenze wie im Backend (255) — eine fremde/überlange Angabe
     // wird gekappt, nicht übernommen. Validiert wird beim Buchen, nicht hier.
     trackingEmail: str(src.trackingEmail).slice(0, 255),

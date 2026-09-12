@@ -17,6 +17,10 @@ import { Switch } from "../ui/Switch";
 // Umschreibungen derselben Tatsache und sprengten die kompakte Auswahl auf drei
 // Zeilen. Es geht keine Information verloren, die zur Wahl nötig ist: DIN A4 =
 // normaler Drucker, DIN A6 = Labeldrucker. Die Werte selbst sind unverändert.
+//
+// TG22 Paket B: WELCHE Formate wählbar sind, sagt das Angebot (`labelFormatOptions`, vom
+// Orchestrator als Liste übergeben). Ohne Optionen gibt es keine Auswahl — dann steht an
+// ihrer Stelle höchstens der neutrale Hinweis, in welchen Formaten das Label geliefert wird.
 const LABEL_FORMATS = [
   { id: "A4", name: "DIN A4", desc: "Standarddruck" },
   { id: "A6", name: "DIN A6", desc: "Labeldrucker" },
@@ -57,8 +61,9 @@ function EmailOption({ id, label, enabled, onEnabledChange, value, onChange, err
 }
 
 export function AdditionalOptionsModule({
-  reference, onReferenceChange, referenceEnabled, onReferenceEnabledChange,
+  reference, onReferenceChange, referenceEnabled, onReferenceEnabledChange, referenceError,
   labelFormat, onLabelFormatChange, labelFormatEnabled, onLabelFormatEnabledChange,
+  labelFormatOptions, labelDeliveryInfo,
   trackingEmail, onTrackingEmailChange, trackingEmailEnabled, onTrackingEmailEnabledChange,
   trackingEmailError,
   labelTrackingEmail, onLabelTrackingEmailChange, labelTrackingEmailEnabled,
@@ -71,11 +76,15 @@ export function AdditionalOptionsModule({
   showExternalDeliveryNote, externalDeliveryNoteNumber, onExternalDeliveryNoteNumberChange,
   deliveryNoteText,
 }) {
+  const wahlformate = Array.isArray(labelFormatOptions)
+    ? LABEL_FORMATS.filter(f => labelFormatOptions.includes(f.id))
+    : [];
   return (
     <div className="calc-panel addopt-panel mb-16">
       <div className="calc-panel-header"><Icon n="settings" s={18} c="var(--ce-color-brand-ink)" /><h3>Zusätzliche Optionen</h3></div>
       <div className="calc-panel-body">
-        {/* 1) Optionale Referenznummer — Funktion unverändert (max. 35, < > entfernt). */}
+        {/* 1) Optionale Referenznummer — max. 35 Zeichen; spitze Klammern und unsichtbare
+            Steuerzeichen entfernt der Orchestrator bereits bei der Eingabe. */}
         <div className="addopt-option">
           <Switch
             id="booking-reference-toggle"
@@ -89,12 +98,15 @@ export function AdditionalOptionsModule({
                 <label className="field-label" htmlFor="booking-reference">Referenznummer / Bestellnummer</label>
                 <input
                   id="booking-reference"
-                  className="field-input"
+                  className={`field-input${referenceError ? " field-input-error" : ""}`}
                   value={reference}
                   onChange={e => onReferenceChange(e.target.value)}
                   placeholder="z. B. Bestellnummer, Kostenstelle …"
                   maxLength={35}
+                  aria-invalid={referenceError ? "true" : undefined}
+                  aria-describedby={referenceError ? "booking-reference-error" : undefined}
                 />
+                {referenceError && <span className="field-error" id="booking-reference-error">{referenceError}</span>}
                 <span className="field-hint">
                   Optional – z. B. Bestellnummer, Kostenstelle oder interne Referenz. Max. 35 Zeichen.
                 </span>
@@ -125,43 +137,52 @@ export function AdditionalOptionsModule({
           error={labelTrackingEmailError}
         />
 
-        {/* 4) Labeldruckformat — nur A4/A6, Default A4. Der Schalter heißt „ändern":
-            ausgeschaltet gilt weiterhin das Standardformat, es fehlt nicht. */}
-        <div className="addopt-option">
-          <Switch
-            id="booking-labelformat-toggle"
-            checked={labelFormatEnabled}
-            onChange={onLabelFormatEnabledChange}
-            label="Versandlabel-Format ändern"
-            hint={`Aktuell: ${formatName(labelFormat)}`}
-          />
-          {labelFormatEnabled && (
-            <div className="addopt-reveal">
-              <div className="labelfmt-group" role="radiogroup" aria-label="Labelformat wählen">
-                {LABEL_FORMATS.map(f => {
-                  const selected = labelFormat === f.id;
-                  return (
-                    <label key={f.id} className={`labelfmt-card${selected ? " labelfmt-card--selected" : ""}`}>
-                      <input
-                        type="radio"
-                        name="labelFormat"
-                        value={f.id}
-                        checked={selected}
-                        onChange={() => onLabelFormatChange(f.id)}
-                      />
-                      <span className="labelfmt-radio" aria-hidden="true" />
-                      <span className="labelfmt-main">
-                        <span className="labelfmt-name">{f.name}</span>
-                        <span className="labelfmt-desc">{f.desc}</span>
-                      </span>
-                    </label>
-                  );
-                })}
+        {/* 4) Labeldruckformat — nur die Formate, die DIESES Angebot anbietet, Default A4.
+            Der Schalter heißt „ändern": ausgeschaltet gilt weiterhin das Standardformat,
+            es fehlt nicht. Ohne Optionen keine Auswahl (fail-closed), höchstens der
+            neutrale Lieferhinweis. */}
+        {wahlformate.length > 0 ? (
+          <div className="addopt-option">
+            <Switch
+              id="booking-labelformat-toggle"
+              checked={labelFormatEnabled}
+              onChange={onLabelFormatEnabledChange}
+              label="Versandlabel-Format ändern"
+              hint={`Aktuell: ${formatName(labelFormat)}`}
+            />
+            {labelFormatEnabled && (
+              <div className="addopt-reveal">
+                <div className="labelfmt-group" role="radiogroup" aria-label="Labelformat wählen">
+                  {wahlformate.map(f => {
+                    const selected = labelFormat === f.id;
+                    return (
+                      <label key={f.id} className={`labelfmt-card${selected ? " labelfmt-card--selected" : ""}`}>
+                        <input
+                          type="radio"
+                          name="labelFormat"
+                          value={f.id}
+                          checked={selected}
+                          onChange={() => onLabelFormatChange(f.id)}
+                        />
+                        <span className="labelfmt-radio" aria-hidden="true" />
+                        <span className="labelfmt-main">
+                          <span className="labelfmt-name">{f.name}</span>
+                          <span className="labelfmt-desc">{f.desc}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <span className="field-hint">Bestimmt das Druckformat Ihres Versandlabels.</span>
               </div>
-              <span className="field-hint">Bestimmt das Druckformat Ihres Versandlabels.</span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : labelDeliveryInfo ? (
+          <div className="addopt-option addopt-label-info" id="booking-label-delivery-info">
+            <Icon n="info" s={16} c="var(--ce-color-text-muted)" />
+            <span className="field-hint">{labelDeliveryInfo}</span>
+          </div>
+        ) : null}
 
         {/* 5) Eigene Lieferscheinnummer — nur bei Kontomodus „Eigenes Lieferschein-
             system" und einer Sendung mit Lagerbezug. Optional: ein Unternehmen kann

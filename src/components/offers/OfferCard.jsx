@@ -4,7 +4,7 @@ import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
-import { offerKey, offerBlocked, offerBlockedLabel } from "../../utils/offerIdentity.mjs";
+import { offerKey, offerBlocked, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
@@ -478,6 +478,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
   // nennt den Einkaufsprovider nicht.
   const unavailableText = offerBlockedLabel(t);
+  const unavailableHint = offerBlockedHint(t);
   // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
   // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
   // `aria-controls` zeigte bei allen auf denselben Bereich.
@@ -701,6 +702,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               ? unavailableText
               : <>Angebot auswählen <Icon n="arrow" s={15} c="currentColor" /></>}
           </button>
+          {/* TG22 Paket B: nur beim Abholtag als einzigem Grund — die HANDLUNG, nicht ein
+              zweites Mal der Grund. */}
+          {unavailableHint && <p className="offer-cta-hint">{unavailableHint}</p>}
           <button
             className="offer-details-link"
             onClick={toggleDetails}

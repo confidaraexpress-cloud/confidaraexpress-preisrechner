@@ -297,7 +297,9 @@ test("31 die Preisberechnung blockiert nur bei eindeutigem Widerspruch", () => {
   const code = strip(newShipSrc);
   assert.ok(/const addressBlocksCalculation =\s*\n?\s*addressBlocksSubmit\(senderCheck\.status\) \|\| addressBlocksSubmit\(recipientCheck\.status\)/.test(code),
     "das Gate muss über addressBlocksSubmit laufen");
-  assert.ok(/disabled=\{loading \|\| !calcValid \|\| saving \|\| addressBlocksCalculation\}/.test(code));
+  // TG22 Paket B: additiv ein eigener Grund — ohne Versanddatum (vergangenes Entwurfsdatum)
+  // wird ebenfalls nicht gerechnet. Die Adressregel selbst bleibt unverändert.
+  assert.ok(/disabled=\{loading \|\| !calcValid \|\| saving \|\| addressBlocksCalculation \|\| datumFehlt\}/.test(code));
   // Und ausdrücklich NICHT bei unverified/unavailable.
   assert.ok(!/status === ADDRESS_STATUS\.UNVERIFIED[^\n]*disabled/.test(code));
 });

@@ -46,12 +46,13 @@ function CancellationStatusPill({ status }) {
 
 /* Aktionen einer Sendungszeile — identisch in Tabelle und Mobilkarte.
    Reine Darstellungs-Extraktion (Paket A, Phase 3): dieselben Bedingungen,
-   dieselben Handler, keine geänderte Logik. */
-function ShipmentRowActions({ s, onTrack, onDocuments, onCancel }) {
+   dieselben Handler, keine geänderte Logik. `expanded` sagt Vorlesesoftware,
+   ob die Trackingansicht dieser Sendung gerade offen ist. */
+function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
   return (
     <div className="flex gap-8 stn-actions">
       {s.id && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onTrack(s.id)}>Sendung verfolgen</button>
+        <button className="btn btn-ghost btn-sm" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Sendung verfolgen</button>
       )}
       {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe. Vorher standen
           hier „Label" und „Auftragsbestätigung" nebeneinander — je Dokumenttyp ein
@@ -73,10 +74,118 @@ function ShipmentRowActions({ s, onTrack, onDocuments, onCancel }) {
   );
 }
 
+/* ── Trackingansicht einer Sendung ────────────────────────────────────────────
+   TG22 Paket B: dieselbe Ansicht in der Tabellen-Detailzeile UND in der Mobilkarte.
+   Bis hierher war sie der Tabelle vorbehalten — unter 1100 px ist die Tabelle aber
+   ausgeblendet, und „Sendung verfolgen" auf der Karte lud den Stand, ohne ihn je zu zeigen.
+
+   Reine Darstellung: Zustand, Endpunkt und „Aktualisieren" kommen aus der Liste. Beide
+   Stellen zeigen damit denselben Stand aus demselben Abruf. */
+function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
+  if (loading) return <div className="loading-center"><span className="spinner spinner-dark" /></div>;
+  if (tracking?.error) return <p className="text-muted text-sm">{tracking.error}</p>;
+
+  const number = tracking?.trackingNumber;
+  // TG-F6: die Trackingantwort trägt ALLE Nummern der Sendung.
+  const liveNummern = multiTrackingReferencesOf(tracking);
+  // Providerneutrale Transportabschnitte: Stand, Ereignisse und
+  // Zeitangaben stammen für jeden Einkaufsweg aus derselben Form
+  // (utils/trackingLegsView.mjs) — ohne erfundene Zeitzone. Ein
+  // Rohobjekt eines Anbieters wird nicht gelesen.
+  const legs = trackingLegsOf(tracking);
+  const statusLabel = trackingStatusLabel(tracking?.trackingStatus);
+  const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
+
+  // Je Abschnitt eine Timeline.
+  const sections = legs.map((leg) => ({
+    key: leg.key,
+    heading: legs.length > 1 ? trackingLegHeading(leg) : null,
+    link: legs.length > 1 ? leg.carrierTrackingPage : null,
+    events: leg.events.map((ev) => ({
+      title: ev.description,
+      when: eventWhenText(ev, { withSuffix: false }) || "",
+      location: ev.location,
+    })),
+  }));
+  const eventCount = sections.reduce((n, sec) => n + sec.events.length, 0);
+
+  // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
+  // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.
+  if (tracking?.trackingAvailable === false && !number) {
+    return (
+      <div className="shipment-track-pending">
+        <p className="text-muted text-sm">
+          Tracking ist noch nicht verfügbar. Die Sendungsverfolgung erscheint,
+          sobald der Versanddienstleister die Sendung übernommen hat.
+        </p>
+        <button className="btn btn-ghost btn-sm" onClick={onRefresh}>
+          <Icon n="refresh" s={13} /> Aktualisieren
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="shipment-track-detail">
+      {(number || statusLabel || carrierUrl) && (
+        <div className="shipment-track-head">
+          {liveNummern ? (
+            <span className="shipment-track-number">
+              {TRACKING_REFERENCES_TEXT.plural}: <strong style={{ wordBreak: "break-all" }}>{liveNummern.join(", ")}</strong>
+            </span>
+          ) : number && (
+            <span className="shipment-track-number">
+              Trackingnummer: <strong>{number}</strong>
+            </span>
+          )}
+          {statusLabel && <span className="badge badge--info">{statusLabel}</span>}
+          {carrierUrl && (
+            <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
+              Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+            </a>
+          )}
+        </div>
+      )}
+      {eventCount > 0 ? sections.map((section) => (
+        <div key={section.key} className="tracking-timeline">
+          {/* Mehrere Abschnitte: je Abschnitt Carrier und Nummer — nie „Paket 2". */}
+          {section.heading && <p className="text-muted text-sm shipment-track-leg">{section.heading}</p>}
+          {section.link && (
+            <a className="shipment-track-link" href={section.link} target="_blank" rel="noopener noreferrer">
+              Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+            </a>
+          )}
+          {section.events.map((ev, i) => (
+            <div key={i} className="track-event">
+              {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
+              <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`}>
+                {i === section.events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
+              </div>
+              <div className="track-info">
+                <div className="track-title">{ev.title}</div>
+                {ev.when && <div className="track-time">{ev.when}</div>}
+                {ev.location && <div className="track-time">{ev.location}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )) : (
+        <p className="text-muted text-sm shipment-track-noevents">
+          {tracking?.liveTracking === false ? TRACKING_LEGS_TEXT.liveUnavailable : "Noch keine Ereignisse vorhanden."}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function ShipmentsList({ shipments, loading, onCancellationRequested, hasMore, loadingMore, loadMoreError, onLoadMore }) {
   const [trackingId, setTrackingId] = React.useState(null);
   const [tracking, setTracking] = React.useState(null);
   const [trackLoading, setTrackLoading] = React.useState(false);
+  // TG22 Paket B: Antwortschutz. Klappt der Kunde eine andere Sendung auf (oder dieselbe zu),
+  // bevor der Abruf zurück ist, darf dessen Antwort die jetzt sichtbare Ansicht nicht mehr
+  // überschreiben — sonst stünde der Stand der einen Sendung unter der anderen.
+  const trackRequest = React.useRef(0);
   // Die Sendung, deren Dokumente offen sind — `null` heißt: kein Drawer
   // gemountet und damit auch kein Abruf. Beim Rendern der Liste wird
   // NICHTS vorab geholt (kein N+1).
@@ -94,21 +203,31 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
   // Holt den Trackingstand (auch für „Aktualisieren“), ohne die Zeile zu togglen.
   // Nutzt die zentrale getTracking-Funktion (defensives Feld-Lesen, Auth zentral).
   const fetchTracking = async (id) => {
+    const anfrage = ++trackRequest.current;
+    const aktuell = () => mountedRef.current && anfrage === trackRequest.current;
     setTrackLoading(true); setTracking(null);
     try {
       const res = await getTracking(id);
-      if (!res.ok) {
-        if (res.status !== 401 && res.status !== 403) // globaler Auth-Redirect übernimmt sonst
-          setTracking({ error: TRACKING_ERROR_MESSAGES[res.status] || "Tracking aktuell nicht verfügbar." });
+      if (!aktuell()) return;
+      if (!res || !res.ok) {
+        if (res?.status !== 401 && res?.status !== 403) // globaler Auth-Redirect übernimmt sonst
+          setTracking({ error: TRACKING_ERROR_MESSAGES[res?.status] || "Tracking aktuell nicht verfügbar." });
       } else {
         setTracking(res);
       }
-    } catch { setTracking({ error: "Tracking aktuell nicht verfügbar." }); }
+    } catch {
+      if (!aktuell()) return;
+      setTracking({ error: "Tracking aktuell nicht verfügbar." });
+    }
     setTrackLoading(false);
   };
 
   const loadTracking = (id) => {
-    if (trackingId === id) { setTrackingId(null); return; } // erneuter Klick = einklappen
+    if (trackingId === id) { // erneuter Klick = einklappen; ein laufender Abruf gilt nicht mehr
+      trackRequest.current++;
+      setTrackingId(null); setTrackLoading(false);
+      return;
+    }
     setTrackingId(id);
     fetchTracking(id);
   };
@@ -236,7 +355,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                         <td><StatusBadge status={s.status} /></td>
                         <td className="text-muted">{dateDE(s.created_at)}</td>
                         <td className="ce-col-actions">
-                          <ShipmentRowActions s={s} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
+                          <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.id && (
@@ -299,103 +418,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 </div>
                               )}
                             </dl>
-                            {trackLoading ? (
-                              <div className="loading-center"><span className="spinner spinner-dark" /></div>
-                            ) : tracking?.error ? (
-                              <p className="text-muted text-sm">{tracking.error}</p>
-                            ) : (() => {
-                              const number = tracking?.trackingNumber;
-                              // TG-F6: die Trackingantwort trägt ALLE Nummern der Sendung.
-                              const liveNummern = multiTrackingReferencesOf(tracking);
-                              // Providerneutrale Transportabschnitte: Stand, Ereignisse und
-                              // Zeitangaben stammen für jeden Einkaufsweg aus derselben Form
-                              // (utils/trackingLegsView.mjs) — ohne erfundene Zeitzone. Ein
-                              // Rohobjekt eines Anbieters wird nicht gelesen.
-                              const legs = trackingLegsOf(tracking);
-                              const statusLabel = trackingStatusLabel(tracking?.trackingStatus);
-                              const carrierUrl = isHttpUrl(tracking?.carrierTrackingPage) ? tracking.carrierTrackingPage : null;
-
-                              // Je Abschnitt eine Timeline.
-                              const sections = legs.map((leg) => ({
-                                key: leg.key,
-                                heading: legs.length > 1 ? trackingLegHeading(leg) : null,
-                                link: legs.length > 1 ? leg.carrierTrackingPage : null,
-                                events: leg.events.map((ev) => ({
-                                  title: ev.description,
-                                  when: eventWhenText(ev, { withSuffix: false }) || "",
-                                  location: ev.location,
-                                })),
-                              }));
-                              const eventCount = sections.reduce((n, sec) => n + sec.events.length, 0);
-
-                              // Backend sagt explizit „noch nicht verfügbar“ → freundlicher Hinweis
-                              // statt „Keine Events“. Manuelles Aktualisieren, kein Auto-Polling.
-                              if (tracking?.trackingAvailable === false && !number) {
-                                return (
-                                  <div className="shipment-track-pending">
-                                    <p className="text-muted text-sm">
-                                      Tracking ist noch nicht verfügbar. Die Sendungsverfolgung erscheint,
-                                      sobald der Versanddienstleister die Sendung übernommen hat.
-                                    </p>
-                                    <button className="btn btn-ghost btn-sm" onClick={() => fetchTracking(s.id)}>
-                                      <Icon n="refresh" s={13} /> Aktualisieren
-                                    </button>
-                                  </div>
-                                );
-                              }
-
-                              return (
-                                <div className="shipment-track-detail">
-                                  {(number || statusLabel || carrierUrl) && (
-                                    <div className="shipment-track-head">
-                                      {liveNummern ? (
-                                        <span className="shipment-track-number">
-                                          {TRACKING_REFERENCES_TEXT.plural}: <strong style={{ wordBreak: "break-all" }}>{liveNummern.join(", ")}</strong>
-                                        </span>
-                                      ) : number && (
-                                        <span className="shipment-track-number">
-                                          Trackingnummer: <strong>{number}</strong>
-                                        </span>
-                                      )}
-                                      {statusLabel && <span className="badge badge--info">{statusLabel}</span>}
-                                      {carrierUrl && (
-                                        <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
-                                          Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
-                                        </a>
-                                      )}
-                                    </div>
-                                  )}
-                                  {eventCount > 0 ? sections.map((section) => (
-                                    <div key={section.key} className="tracking-timeline">
-                                      {/* Mehrere Abschnitte: je Abschnitt Carrier und Nummer — nie „Paket 2". */}
-                                      {section.heading && <p className="text-muted text-sm shipment-track-leg">{section.heading}</p>}
-                                      {section.link && (
-                                        <a className="shipment-track-link" href={section.link} target="_blank" rel="noopener noreferrer">
-                                          Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
-                                        </a>
-                                      )}
-                                      {section.events.map((ev, i) => (
-                                        <div key={i} className="track-event">
-                                          {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
-                                          <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`}>
-                                            {i === section.events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
-                                          </div>
-                                          <div className="track-info">
-                                            <div className="track-title">{ev.title}</div>
-                                            {ev.when && <div className="track-time">{ev.when}</div>}
-                                            {ev.location && <div className="track-time">{ev.location}</div>}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )) : (
-                                    <p className="text-muted text-sm shipment-track-noevents">
-                                      {tracking?.liveTracking === false ? TRACKING_LEGS_TEXT.liveUnavailable : "Noch keine Ereignisse vorhanden."}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            <ShipmentTrackingDetail tracking={tracking} loading={trackLoading} onRefresh={() => fetchTracking(s.id)} />
                           </div>
                           </td>
                         </tr>
@@ -408,12 +431,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
             </div>
           </div>
 
-          {/* Mobile Kartenansicht (Paket A, Phase 3): unter 768 px zeigt die
+          {/* Mobile Kartenansicht (Paket A, Phase 3): bis 1100 px zeigt die
               Liste Karten statt einer quer gescrollten Tabelle — dasselbe
               Muster, das Rechnungen, Entwürfe, Adressbuch und die Adminlisten
               bereits nutzen. Gleiche Daten, gleiche Aktionen, gleiche
-              Bedingungen; die Tracking-Detailansicht bleibt der Tabelle
-              vorbehalten und ist über „Track" weiterhin erreichbar. */}
+              Bedingungen. TG22 Paket B: „Sendung verfolgen" zeigt den Stand jetzt
+              auch hier — dieselbe Trackingansicht wie in der Detailzeile der Tabelle. */}
           <ul className="ce-list-cards" aria-label="Sendungen">
             {shipments.map((s) => {
               const nums = customerShipmentNumbers(s);
@@ -438,8 +461,8 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     </div>
                     <StatusBadge status={s.status} />
                   </div>
-                  {/* TG-F6: die Karte hat Platz für die vollständige Liste — die Tracking-
-                      Detailzeile ist der Tabelle vorbehalten, mobil soll keine Nummer fehlen. */}
+                  {/* TG-F6: die Karte hat Platz für die vollständige Liste — mobil soll
+                      keine Nummer fehlen. */}
                   {alleNummern && (
                     <div className="ce-list-card-row">
                       <span className="ce-list-card-key">{TRACKING_REFERENCES_TEXT.plural}</span>
@@ -473,8 +496,13 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
                   </div>
                   <div className="ce-list-card-actions">
-                    <ShipmentRowActions s={s} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
+                    <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                   </div>
+                  {trackingId === s.id && (
+                    <div className="shipment-card-tracking">
+                      <ShipmentTrackingDetail tracking={tracking} loading={trackLoading} onRefresh={() => fetchTracking(s.id)} />
+                    </div>
+                  )}
                 </li>
               );
             })}

@@ -26,6 +26,8 @@
    gleich aus — ebenso „Format ändern an, aber A4 gewählt". Für die Buchung ist
    beides bedeutungslos, für die Wiederherstellung des Formulars nicht. */
 
+import { sanitizeReferenceInput } from "./referenceNumber.mjs";
+
 export const DRAFT_LABEL_FORMATS = Object.freeze(["A4", "A6"]);
 export const DEFAULT_LABEL_FORMAT = "A4";
 export const DRAFT_REFERENCE_MAX_LENGTH = 35;
@@ -87,7 +89,9 @@ export function draftBookingOptionsToFlow(raw) {
     // Werte: nur bei aktiver Option — dieselbe Regel wie beim Speichern. Ein Entwurf,
     // der (etwa durch eine ältere Fassung) doch einen Wert hinter einem ausgeschalteten
     // Schalter trüge, verliert ihn hier, statt ihn unsichtbar zurückzubringen.
-    reference:          on(ref.enabled) ? str(ref.value).slice(0, DRAFT_REFERENCE_MAX_LENGTH) : "",
+    // Ein Entwurf aus einer älteren Fassung kann Steuerzeichen tragen — dieselbe Bereinigung
+    // wie bei der Eingabe (utils/referenceNumber.mjs).
+    reference:          on(ref.enabled) ? sanitizeReferenceInput(str(ref.value)).slice(0, DRAFT_REFERENCE_MAX_LENGTH) : "",
     trackingEmail:      on(trk.enabled) ? str(trk.value).slice(0, DRAFT_EMAIL_MAX_LENGTH) : "",
     labelTrackingEmail: on(lbl.enabled) ? str(lbl.value).slice(0, DRAFT_EMAIL_MAX_LENGTH) : "",
     labelFormat:        fmtOn && DRAFT_LABEL_FORMATS.includes(fmtValue) ? fmtValue : DEFAULT_LABEL_FORMAT,

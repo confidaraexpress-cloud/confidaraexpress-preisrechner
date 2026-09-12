@@ -302,8 +302,8 @@ test("D1b — ein bereits verwendetes Angebot fuehrt in die Sendungsliste, nicht
   const f = mapBookRestError(409, { code: "OFFER_ALREADY_USED", error: "…" });
   assert.equal(f, BOOK_FEHLER.ANGEBOT_VERWENDET);
   assert.equal(f.retryable, false);
-  assert.match(f.message, /nicht erneut/);
-  assert.match(f.message, /Sendungen/);
+  // TG22 Paket B: wortgleicher Satz bei Buchung und Neubepreisung — mit dem Weg in die Sendungen.
+  assert.equal(f.message, "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.");
   assert.doesNotMatch(f.message, /nichts beauftragt/, "die Meldung behauptet, es sei nichts beauftragt");
   // Die Buchungsseite zeigt ihn als Konflikt — die Flaeche ersetzt den Bestellknopf durch
   // „Zu meinen Sendungen" — und zwar VOR der Neuberechnungs-Weiche.

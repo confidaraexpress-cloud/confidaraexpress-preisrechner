@@ -299,7 +299,11 @@ const modul = ohneKommentare(lies("src/components/booking/InsuranceModule.jsx"))
 test("B1 — das Modell kommt aus dem Tarif; transit_cover ist versichert", () => {
   assert.match(seite, /const coverModel = isCoverValueModel\(tariff\)/);
   assert.match(seite, /const isInsured = isInsuredType\(insuranceType\)/);
-  assert.match(seite, /insuranceTypeForTariff\(flowBooking\?\.insuranceType \|\| "none", bookingData\?\.tariff\)/);
+  // TG22 Paket B: die gespeicherte Auswahl läuft weiterhin durch insuranceTypeForTariff — jetzt im
+  // angebotsgebundenen Startzustand (utils/insuranceRestore.mjs), nicht mehr direkt auf der Seite.
+  assert.match(seite, /useState\(\(\) => startzustand\.insuranceType\)/);
+  assert.match(ohneKommentare(lies("src/utils/insuranceRestore.mjs")),
+    /insuranceTypeForTariff\(flowBooking\.insuranceType \|\| "none", tariff\)/);
 });
 
 test("B2 — Neubepreisung: Deckungsbetragsmodell mit dem Vier-Felder-Körper, Stufen unverändert plus offerId", () => {

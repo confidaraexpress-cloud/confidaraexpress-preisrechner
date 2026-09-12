@@ -114,7 +114,8 @@ test("11 — der Payload trägt die Adresse, nie den Schalterzustand", () => {
   assert.ok(!/trackingEmailEnabled\s*:/.test(body) && !/labelTrackingEmailEnabled\s*:/.test(body),
     "UI-Aktivierungsflags gehören nicht in den Payload");
   // Die bestehenden Felder bleiben unangetastet.
-  for (const feld of ["referenceNumber:", "labelFormat,", "sender:", "recipient:", "weight:"]) {
+  // TG22 Paket B: labelFormat läuft über den Angebotshelfer (nur bei Formatwahl des Angebots).
+  for (const feld of ["referenceNumber:", "...labelFormatBookPayload(tariff, labelFormat),", "sender:", "recipient:", "weight:"]) {
     assert.ok(body.includes(feld), `bestehendes Payload-Feld fehlt: ${feld}`);
   }
   /* `content` entsteht seit TG-7 über einen Erbauer — ein Angebot mit vorab erhobenen
@@ -137,7 +138,8 @@ test("12 — der Trackinglink der Mail hat im Frontend ein Ziel", () => {
 
 test("13 — die bestehenden Optionen sind unverändert", () => {
   // Referenznummer und Labelformat behalten Werte, Grenzen und Ausschaltregeln.
-  assert.match(bookingPage, /replace\(\/\[<>\]\/g, ""\)\.slice\(0, 35\)/);
+  // TG22 Paket B: das Sanitizing liegt im Helfer (spitze Klammern + Steuerzeichen, max. 35).
+  assert.match(bookingPage, /upd\("reference", sanitizeReferenceInput\(v\)\)/);
   assert.match(bookingPage, /if \(!on\) setLabelFormat\("A4"\);/);
   assert.match(modul, /maxLength=\{35\}/);
   const ids = [...modul.matchAll(/\{ id: "([^"]+)"/g)].map((m) => m[1]);

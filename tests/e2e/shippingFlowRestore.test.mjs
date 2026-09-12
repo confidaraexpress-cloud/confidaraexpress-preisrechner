@@ -36,11 +36,11 @@ const USER = {
 
 const TARIFFS = [
   { id: "t-dhl-1", tariffId: "t-dhl-1", carrier: "dhl", publicCarrierId: "dhl", carrierName: "DHL",
-    serviceName: "DHL Paket", netPrice: 12.9, grossPrice: 15.35, finalPrice: 15.35, currency: "EUR",
+    serviceName: "DHL Paket", netPrice: 12.9, grossPrice: 15.35, finalPrice: 15.35, currency: "EUR", labelFormatOptions: ["A4", "A6"],
     serviceType: "pickup", deliveryDateMin: "2027-08-10", deliveryDateMax: "2027-08-11",
     transitDaysMin: 2, transitDaysMax: 3, insuranceAvailable: true, availableForDate: true },
   { id: "t-ups-1", tariffId: "t-ups-1", carrier: "ups", publicCarrierId: "ups", carrierName: "UPS",
-    serviceName: "UPS Standard", netPrice: 18.4, grossPrice: 21.9, finalPrice: 21.9, currency: "EUR",
+    serviceName: "UPS Standard", netPrice: 18.4, grossPrice: 21.9, finalPrice: 21.9, currency: "EUR", labelFormatOptions: ["A4", "A6"],
     serviceType: "dropoff", deliveryDateMin: "2027-08-09", deliveryDateMax: "2027-08-09",
     transitDaysMin: 1, transitDaysMax: 1, insuranceAvailable: true, availableForDate: true },
 ];

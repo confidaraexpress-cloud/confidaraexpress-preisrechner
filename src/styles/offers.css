@@ -603,6 +603,9 @@
   background: var(--gray100); color: var(--ce-color-text-muted);
   border-color: var(--border); cursor: not-allowed;
 }
+/* TG22 Paket B: Handlungshinweis unter einem gesperrten CTA — nur wenn ein anderer
+   Abholtermin tatsächlich hilft. Der Grund selbst steht weiterhin genau einmal im Knopf. */
+.offer-cta-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--ce-color-text-muted); text-align: center; }
 /* .offer-cta-btn--pending (Paket B, entfernt): OfferCard.jsx baut ctaClass nur
    aus --disabled/--primary/--outline (Zeile ~389) — --pending war nie erreichbar.
    Der Dropoff-Guard selbst lebt unverändert im Buchungsschritt (siehe

@@ -157,10 +157,19 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   // sie darf bis 255 Zeichen lang sein und steht in einer Kartenzeile der
   // Admin-Dichte. Lokal an EINEM eigenen Element, nicht auf der Zeile
   // (`.adm-maildel`) und nicht auf der Karte.
+  //
+  // +3 (36) für TG22 Paket B, jeweils lokal an EINEM Element:
+  //   • `.track-info` — Ereignistext und Ortsangabe einer Sendungsverfolgung (Anbieterfreitext
+  //     ohne Wortgrenzen, etwa zusammengesetzte Ortsnamen) stehen jetzt auch in der schmalen
+  //     Mobilkarte; ohne die Regel schiebt ein langer Ort die Timeline aus der Karte.
+  //   • `.booking-success-delivery p` — die Bestätigungszeile nennt die E-Mail-Adresse des Kontos
+  //     (sanktionierter technischer String, bis 255 Zeichen) und lief auf 390 px aus dem Bild.
+  //   • `.booking-success-wrap .btn-full` — Belegknöpfe mit Vorgangsnummer
+  //     („Auftragsbestätigung CE-AB… herunterladen") auf dem Erfolgsbildschirm.
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 33, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 33)`);
+  assert.ok(gesamt <= 36, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 36)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

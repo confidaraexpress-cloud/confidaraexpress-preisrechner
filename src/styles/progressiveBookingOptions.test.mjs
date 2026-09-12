@@ -104,8 +104,13 @@ test("7 — die Aktuell-Anzeige liest den echten Wert, sie wird nicht getippt", 
 /* ══════════ Unveränderte Fachlichkeit ══════════ */
 
 test("8 — Werte, Grenzen und Texte der Referenznummer sind unverändert", () => {
-  assert.match(bookingPage, /replace\(\/\[<>\]\/g, ""\)\.slice\(0, 35\)/,
-    "Sanitizing und Maximallänge dürfen sich nicht ändern");
+  // TG22 Paket B: das Sanitizing liegt im Helfer utils/referenceNumber.mjs — spitze Klammern wie
+  // bisher, dazu Steuer-, Zeilentrenn- und Richtungszeichen; die Maximallänge bleibt 35.
+  assert.match(bookingPage, /upd\("reference", sanitizeReferenceInput\(v\)\)/,
+    "die Eingabe läuft nicht durch den Bereinigungshelfer");
+  const helfer = lies("../utils/referenceNumber.mjs");
+  assert.match(helfer, /export const REFERENCE_MAX_LENGTH = 35;/, "die Maximallänge darf sich nicht ändern");
+  assert.match(helfer, /\+ "<>\]"/, "spitze Klammern werden nicht mehr entfernt");
   assert.match(modul, /maxLength=\{35\}/);
   assert.match(modul, /placeholder="z\. B\. Bestellnummer, Kostenstelle …"/);
   assert.match(modul, /Max\. 35 Zeichen\./, "der Hilfetext bleibt erhalten");
@@ -115,7 +120,11 @@ test("8 — Werte, Grenzen und Texte der Referenznummer sind unverändert", () =
 test("9 — die Labelformate bleiben exakt A4 und A6 mit Default A4", () => {
   const ids = [...modul.matchAll(/\{ id: "([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, ["A4", "A6"], "es darf kein drittes Format entstehen");
-  assert.match(bookingPage, /useState\(flowBooking\?\.labelFormat \|\| "A4"\)/,
+  // TG22 Paket B: der Startwert kommt aus dem Angebot — ein gespeichertes Format nur, wenn das
+  // Angebot es anbietet, sonst dessen Standard (A4, wenn angeboten).
+  assert.match(bookingPage, /useState\(\(\) => restoredLabelFormat\(bookingData\?\.tariff, flowBooking\?\.labelFormat\)\)/,
+    "der Startwert kommt nicht mehr aus dem Angebot");
+  assert.match(lies("../utils/labelFormatOptions.mjs"), /return optionen\.includes\("A4"\) \? "A4" : optionen\[0\];/,
     "der Default muss A4 bleiben");
   assert.match(modul, /DIN A4/);
   assert.match(modul, /DIN A6/);
@@ -126,7 +135,8 @@ test("10 — der /book-Payload behält seine Feldnamen", () => {
   assert.ok(bookCall, "der /book-Aufruf muss auffindbar bleiben");
   const body = bookCall[1];
   assert.ok(body.includes("referenceNumber:"), "referenceNumber darf nicht umbenannt werden");
-  assert.ok(body.includes("labelFormat,"), "labelFormat darf nicht umbenannt werden");
+  // TG22 Paket B: labelFormat entsteht über den Angebotshelfer — nur bei Formatwahl des Angebots.
+  assert.ok(body.includes("...labelFormatBookPayload(tariff, labelFormat),"), "labelFormat darf nicht umbenannt werden");
   // Kein neues Feld für den reinen UI-Zustand.
   assert.ok(!/referenceEnabled\s*[,:]/.test(body), "der Schalterzustand gehört nicht in den Payload");
   assert.ok(!/labelFormatEnabled\s*[,:]/.test(body), "der Schalterzustand gehört nicht in den Payload");

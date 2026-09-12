@@ -237,10 +237,17 @@ function mapParty(src, prefix, base) {
   base[`${prefix}_state`] = normalizeStateCode(base[`${prefix}_country`], src.state);
 }
 
+// Hinweis beim Fortsetzen eines Entwurfs, dessen Versanddatum inzwischen vergangen ist.
+export const RESUME_PAST_DATE_NOTICE =
+  "Ihre Angaben sind erhalten geblieben. Das gespeicherte Versanddatum liegt in der Vergangenheit — bitte wählen Sie ein neues Versanddatum, bevor Sie die Angebote vergleichen.";
+
 // Vollständiger Initialzustand für „Neue Sendung" aus einem Formularentwurf-
-// Snapshot. `today` (YYYY-MM-DD) klemmt ein in der Vergangenheit liegendes
-// Versanddatum auf heute (die Seite lässt keine Vergangenheitsdaten zu). Rein
-// defensiv: nur bekannte Felder, keine NaN, unbekannte Enums → Defaults.
+// Snapshot. `today` (YYYY-MM-DD, Berliner Geschäftstag) erkennt ein vergangenes
+// Versanddatum. TG22 Paket B: es wird NICHT mehr still auf heute geklemmt — eine
+// Abholung „heute" ist eine andere Sendung als die gespeicherte. Das Datum bleibt
+// leer (`shippingDate: null`, `shippingDateExpired: true`), und der Kunde wählt
+// bewusst neu, bevor gerechnet wird. Rein defensiv: nur bekannte Felder, keine NaN,
+// unbekannte Enums → Defaults.
 export function buildResumeInitialState(formData, { today = null } = {}) {
   const form = blankNewShipmentForm();
   const fd = formData && typeof formData === "object" ? formData : {};
@@ -258,9 +265,10 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
   const opt = fd.shippingOptions && typeof fd.shippingOptions === "object" ? fd.shippingOptions : {};
 
   let shippingDate = null;
+  let shippingDateExpired = false;
   if (typeof opt.shippingDate === "string" && ISO_DATE_RE.test(opt.shippingDate.trim())) {
     shippingDate = opt.shippingDate.trim();
-    if (today && shippingDate < today) shippingDate = today; // Vergangenheit → heute
+    if (today && shippingDate < today) { shippingDate = null; shippingDateExpired = true; }
   }
 
   const serviceFilter = FORM_SERVICE_FILTERS.includes(opt.serviceFilter) ? opt.serviceFilter : "all";
@@ -284,7 +292,7 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
   // „Geschäftsadresse". Der gespeicherte Schnappschuss ist auch hier KEIN Autoritätsbeweis.
   Object.assign(form, declarationsFromSnapshot(fd.declarations));
 
-  return { form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };
+  return { form, shippingDate, shippingDateExpired, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };
 }
 
 // ── Resume-Payload (Frontend-Vertrag) ───────────────────────────────────────

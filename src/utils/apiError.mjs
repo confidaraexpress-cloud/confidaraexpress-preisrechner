@@ -123,6 +123,15 @@ const CODE_MAP = {
     message: "Für die Buchung fehlen noch Rechnungsdaten. Bitte vervollständigen Sie Ihre "
       + "Unternehmens- und Rechnungsdaten in den Kontoeinstellungen und versuchen Sie es anschließend erneut.",
   },
+
+  // ── TG22 Paket B: Geschäftsprofil unvollständig (422, Preisberechnung und Buchung) ──
+  // Ersetzt die frühere 403-Antwort dieses Falls. Ein 403 hätte der zentrale Client als
+  // abgelaufene Sitzung gewertet und den Kunden abgemeldet — obwohl nur Profilangaben fehlen.
+  BUSINESS_PROFILE_INCOMPLETE: {
+    type: ERROR_TYPE.BUSINESS, title: "Unternehmensprofil unvollständig", retryable: false,
+    message: "Für Preisberechnung und Buchung fehlen noch Angaben in Ihrem Unternehmensprofil. "
+      + "Bitte vervollständigen Sie Ihr Profil und versuchen Sie es anschließend erneut.",
+  },
 };
 
 // ── HTTP-Status → Einordnung, wenn KEIN bekannter Code vorliegt ──────────────

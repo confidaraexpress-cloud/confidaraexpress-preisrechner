@@ -1,12 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Gemeinsame Ableitung der Anzeigewerte BEIDER Buchungs-Zusammenfassungen:
-// der großen Live-Leiste (BookingLiveSummary, scrollt mit) und der kompakten
-// Sticky-Leiste (BookingStickySummary, erscheint erst darunter).
+// Gemeinsame Ableitung der Anzeigewerte ALLER Buchungs-Zusammenfassungen:
+// der großen Live-Leiste (BookingLiveSummary, scrollt mit), der kompakten
+// Sticky-Leiste (BookingStickySummary, erscheint erst darunter) und des
+// ausgewählten Angebots in Schritt 1 (OfferSummaryModule).
 //
-// Zweck: Übergabeart, Zustellzeitraum und der geltende Preis werden an GENAU
-// EINER Stelle bestimmt. Vorher lag diese Ableitung nur in BookingLiveSummary;
-// eine zweite Leiste hätte sie zwangsläufig dupliziert — und wäre bei jeder
-// Änderung auseinandergelaufen.
+// Zweck: Übergabeart, Zustellung und der geltende Preis werden an GENAU EINER
+// Stelle bestimmt. Vorher lag diese Ableitung in jeder Fläche einzeln — und lief
+// auseinander: das ausgewählte Angebot zeigte nach einer bestätigten Absicherung
+// weiter den Versandpreis des Tarifs, die Leiste darüber den Gesamtbetrag.
 //
 // WICHTIG — hier wird NICHTS gerechnet:
 //   • Keine Preisberechnung, keine Netto-/Brutto-Ableitung, keine Addition von
@@ -16,11 +17,13 @@
 //   • Keine JUMiNGO-Rohfelder, keine Providerlogik.
 //
 // Framework-frei (.mjs, wie kpis.mjs / draftsView.mjs), damit die Regeln mit
-// `node --test` direkt prüfbar sind. Einzige Abhängigkeit ist formatters.js —
-// selbst importfrei. Die Carrier-/Logoauflösung bleibt bewusst draußen:
-// carrierMap.js importiert SVG-Assets und ist deshalb nicht node-testbar.
+// `node --test` direkt prüfbar sind. Abhängigkeiten sind formatters.js und die
+// Zustellregel — beide importfrei bzw. selbst framework-frei. Die Carrier-/
+// Logoauflösung bleibt bewusst draußen: carrierMap.js importiert SVG-Assets und
+// ist deshalb nicht node-testbar.
 
 import { isoDayDE } from "./formatters.js";
+import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.mjs";
 
 // ── Übergabe ────────────────────────────────────────────────────────────────
 // serviceType ist der belegte, providerneutrale Vertrag ("pickup" | "dropoff").
@@ -36,37 +39,42 @@ export function handoverInfo(tariff) {
 }
 
 // ── Zustellung ──────────────────────────────────────────────────────────────
-// Vorrang: echter Zeitraum → einzelnes Datum → Freitext → „Auf Anfrage".
-// Ein Zeitraum entsteht nur, wenn beide Daten vorliegen UND verschieden sind —
-// sonst stünde dort „11.08.2026 – 11.08.2026".
+// Welche Aussage gilt und wie sie heißt, steht in deliveryContractView.mjs —
+// dieselbe Regel wie auf der Angebotskarte: „Zustellung" mit den Daten des
+// Angebots, „Voraussichtliche Laufzeit" bei reiner Laufzeit, sonst „Auf Anfrage".
+// Hier entsteht nur die Schreibweise der Buchungsflächen (TT.MM.JJJJ).
 export function deliveryInfo(tariff) {
-  const min = tariff?.deliveryDateMin;
-  const max = tariff?.deliveryDateMax;
-
-  const range = (min && max && min !== max) ? `${isoDayDE(min)} – ${isoDayDE(max)}` : null;
-  const single = !range && (min || tariff?.deliveryDate)
-    ? isoDayDE(min || tariff.deliveryDate)
-    : null;
-  const text = (typeof tariff?.deliveryTime === "string" && tariff.deliveryTime.trim())
-    ? tariff.deliveryTime.trim()
-    : null;
-
-  const until = tariff?.deliveryTimeUntil
-    ? (/^bis\b/i.test(tariff.deliveryTimeUntil) ? tariff.deliveryTimeUntil : `bis ${tariff.deliveryTimeUntil}`)
-    : null;
-
-  return { value: range || single || text || "Auf Anfrage", until, isRange: !!range };
+  const z = deliveryContractOf(tariff);
+  const value =
+    z.kind === "range"   ? `${isoDayDE(z.dayFrom)} – ${isoDayDE(z.dayUntil)}` :
+    z.kind === "date"    ? isoDayDE(z.day) :
+    z.kind === "transit" ? z.transit :
+    DELIVERY_ON_REQUEST;
+  return { label: z.label, value, until: z.until, isRange: z.kind === "range" };
 }
 
 // ── Preis ───────────────────────────────────────────────────────────────────
-// Genau die Regel der bestehenden Live-Leiste: Sobald ein Gesamtpreis bestätigt
-// ist, gilt dieser („Gesamt"); vorher der reine Versandpreis („Versand"). Es
-// wird NIE ein „ab"-Betrag addiert und nie ein Zwischenwert gebildet — die
-// Felder kommen unverändert aus dem Price-View-Model.
+// Sobald ein Gesamtpreis bestätigt ist, gilt dieser („Gesamt"); vorher der reine
+// Versandpreis („Versand"). Es wird NIE ein „ab"-Betrag addiert und nie ein
+// Zwischenwert gebildet — die Felder kommen unverändert aus dem Price-View-Model.
+//
+// TG22 Golden Offer Contract: hat der Server eine Preisänderung gemeldet, gilt
+// KEIN bisher gezeigter Betrag mehr — auch nicht der Versandpreis des Angebots,
+// denn genau der ist nicht mehr aktuell. Bis der Kunde den neuen Preis bestätigt
+// oder neu berechnet, steht dort kein Betrag.
+export const PRICE_CHANGED_LABEL = "Preis geändert";
+export const PRICE_CHANGED_HINT = "Nicht mehr aktuell";
+export const PRICE_CHANGED_SUMMARY =
+  "Der Preis hat sich geändert. Bis Sie den neuen Preis bestätigen oder die Angebote neu berechnen, "
+  + "wird kein Betrag angezeigt und nichts gebucht.";
+
 export function priceInfo(priceView) {
   const v = priceView || {};
+  if (v.isPriceChanged === true) {
+    return { confirmed: false, changed: true, label: PRICE_CHANGED_LABEL, gross: null, net: null };
+  }
   const confirmed = v.hasConfirmedPrice === true;
   return confirmed
-    ? { confirmed: true,  label: "Gesamt",  gross: v.totalGross ?? null,        net: v.totalNet ?? null }
-    : { confirmed: false, label: "Versand", gross: v.baseShippingGross ?? null, net: v.baseShippingNet ?? null };
+    ? { confirmed: true,  changed: false, label: "Gesamt",  gross: v.totalGross ?? null,        net: v.totalNet ?? null }
+    : { confirmed: false, changed: false, label: "Versand", gross: v.baseShippingGross ?? null, net: v.baseShippingNet ?? null };
 }

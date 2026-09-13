@@ -61,8 +61,28 @@ export function labelFormatBookPayload(tariff, labelFormat) {
   return labelFormatOptionsOf(tariff).includes(wert) ? { labelFormat: wert } : {};
 }
 
+// ─── Der gemeinsame Übersetzer der Labelangaben ─────────────────────────────
+// Karte („Verfügbare Labelformate") und Buchung („Versandlabel verfügbar als …") nennen
+// dieselben Formate mit denselben Namen. Ein Rohwert, für den es hier keinen Kundennamen gibt,
+// erscheint NICHT — „Thermal" oder „ZPL" sind Serverschreibweisen, kein Kundentext.
+//
 // Liefergrößen → Kundennamen. Die Schreibweise des Servers schwankt (THERMAL / Thermal).
 const LIEFERGROESSEN = Object.freeze({ A4: "DIN A4", A6: "DIN A6", THERMAL: "Thermodruck" });
+// Dateiformate → Kundennamen.
+const DATEIFORMATE = Object.freeze({ PDF: "PDF" });
+
+const kundenname = (tabelle, wert) =>
+  (typeof wert === "string" ? tabelle[wert.trim().toUpperCase()] ?? null : null);
+
+/** Kundenname einer gelieferten Labelgröße („A4" → „DIN A4", „Thermal" → „Thermodruck") — sonst `null`. */
+export function labelSizeName(wert) {
+  return kundenname(LIEFERGROESSEN, wert);
+}
+
+/** Kundenname eines Label-Dateiformats („PDF") — sonst `null`. */
+export function labelFileFormatName(wert) {
+  return kundenname(DATEIFORMATE, wert);
+}
 
 /**
  * Neutraler Hinweis, in welchen Formaten das Label geliefert wird — für Angebote OHNE Auswahl.
@@ -73,7 +93,7 @@ export function labelDeliveryInfo(tariff) {
   if (!Array.isArray(roh)) return null;
   const namen = [];
   for (const wert of roh) {
-    const name = typeof wert === "string" ? LIEFERGROESSEN[wert.trim().toUpperCase()] : undefined;
+    const name = labelSizeName(wert);
     if (name && !namen.includes(name)) namen.push(name);
   }
   if (namen.length === 0) return null;

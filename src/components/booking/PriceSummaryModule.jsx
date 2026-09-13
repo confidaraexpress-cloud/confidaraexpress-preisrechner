@@ -4,6 +4,11 @@ import { paymentTermSentence } from "../../utils/paymentTerm.mjs";
 import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
+import { PRICE_CHANGED_SUMMARY } from "../../utils/bookingSummaryView.mjs";
+
+// Ein fehlender Betrag erscheint als Gedankenstrich — `money(null)` ergäbe „0,00 €", also
+// einen erfundenen Nullbetrag in der verbindlichen Aufstellung.
+const betragOderStrich = (w) => (w == null ? "—" : money(w));
 
 // Der Satz steht hier als drittes Glied einer Aufzählung und beginnt deshalb klein. Nur der
 // ERSTE Buchstabe wird herabgesetzt — ein volles toLowerCase() zerstörte im Deutschen die
@@ -31,6 +36,10 @@ const lowerFirst = (s) => (typeof s === "string" && s ? s.charAt(0).toLowerCase(
 export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
+  // TG22 Golden Offer Contract: nach einer gemeldeten Preisänderung gilt kein Betrag —
+  // auch nicht der Versandpreis des Angebots. Die Aufstellung zeigt dann Striche und sagt,
+  // warum; sie nennt den alten Preis nicht mehr, als gälte er noch.
+  const changed = v.isPriceChanged === true;
   const insured = isInsuredType(v.selectedInsuranceType);
   const cover = v.selectedInsuranceType === INSURANCE_TYPE_TRANSIT_COVER;
   const hasInsuranceAmount = Number(v.insuranceGross) > 0;
@@ -38,13 +47,16 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
 
   // Versandwerte: bestätigt aus den Server-Totals, sonst aus dem immer verfügbaren
   // Basistarif — beide sind derselbe Versandpreis, nur die Quelle unterscheidet sich.
-  const shipNet   = confirmed ? v.shippingNet   : v.baseShippingNet;
-  const shipVat   = confirmed ? v.shippingVat   : v.baseShippingVat;
-  const shipGross = confirmed ? v.shippingGross  : v.baseShippingGross;
+  const shipNet   = changed ? null : confirmed ? v.shippingNet   : v.baseShippingNet;
+  const shipVat   = changed ? null : confirmed ? v.shippingVat   : v.baseShippingVat;
+  const shipGross = changed ? null : confirmed ? v.shippingGross  : v.baseShippingGross;
 
-  // Versicherungszeile im UNBESTÄTIGTEN Zustand (nur bei versicherter Auswahl).
+  // Versicherungszeile im UNBESTÄTIGTEN Zustand (nur bei versicherter Auswahl) — oder der
+  // Hinweis auf die offene Preisänderung, der jeden anderen Zustand verdrängt.
   let insState = null;
-  if (!confirmed && insured && cover) {
+  if (changed) {
+    insState = { kind: "error", text: PRICE_CHANGED_SUMMARY, id: "booking-price-changed-state" };
+  } else if (!confirmed && insured && cover) {
     if (v.hasError)                     insState = { kind: "error",   text: COVER_INSURANCE_TEXT.summaryError };
     else if (v.isRepricing || v.isStale) insState = { kind: "loading", text: COVER_INSURANCE_TEXT.summaryLoading };
     else                                 insState = { kind: "unknown", text: COVER_INSURANCE_TEXT.summaryUnknown };
@@ -59,11 +71,11 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
     <>
       <div className="booking-confirm-row">
         <span className="text-sm text-muted">Versand netto</span>
-        <span className="text-sm font-bold booking-confirm-val">{money(shipNet)}</span>
+        <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipNet)}</span>
       </div>
       <div className="booking-confirm-row">
         <span className="text-sm text-muted">MwSt. 19 %</span>
-        <span className="text-sm font-bold booking-confirm-val">{money(shipVat)}</span>
+        <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipVat)}</span>
       </div>
 
       {confirmed ? (
@@ -119,11 +131,12 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
         <>
           <div className="booking-confirm-row">
             <span className="text-sm text-muted">Versand brutto</span>
-            <span className="text-sm font-bold booking-confirm-val">{money(shipGross)}</span>
+            <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipGross)}</span>
           </div>
           {insState && (
             <div
               className={`booking-ins-state booking-ins-state--${insState.kind}`}
+              id={insState.id}
               role="status"
               aria-live="polite"
             >
@@ -134,7 +147,7 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
               </span>
             </div>
           )}
-          {insured && (
+          {insured && !changed && (
             <p className="booking-total-pending" role="note">
               {cover
                 ? COVER_INSURANCE_TEXT.summaryPending

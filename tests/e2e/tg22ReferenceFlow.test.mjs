@@ -56,7 +56,7 @@ const OFFER_ID_DE = "22de0000000000000000000000000022";
 const OFFER_ID_EU = "22eu0000000000000000000000000022";
 
 const TARIF_22 = {
-  offerId: OFFER_ID_DE, publicCarrierId: "ups", publicServiceName: "Standard",
+  offerId: OFFER_ID_DE, publicCarrierId: "ups", publicServiceName: "Standardversand",
   serviceType: "pickup", collectionDate: ABHOLTAG, collectionReadyFrom: "09:00",
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
@@ -97,7 +97,7 @@ const SENDUNG = {
   created_at: "2026-09-11T10:00:00Z", order_number: null, business_order_number: "CE-BS26-00022",
   order_confirmation_number: AB_NUMMER, cancellation_status: null,
   tracking_number: AWB, tracking_references: [AWB], tracking_status: "in_transit",
-  service_type: "pickup", requested_shipping_date: ABHOLTAG, applied_tariff_display_name: "Standard",
+  service_type: "pickup", requested_shipping_date: ABHOLTAG, applied_tariff_display_name: "Standardversand",
 };
 
 // Neutraler Kundenvertrag (TG22 Paket A): kein Eventcode, kein Rohdatum, keine Leg-Rolle.
@@ -302,7 +302,8 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     // Rücksicht auf Groß-/Kleinschreibung.
     const detailKlein = detailtext.toLowerCase();
     for (const erwartet of ["Termin & Abholung", "Abholtermin", ABHOLTAG_DE, "bereit ab 09:00 Uhr",
-                            "Verfügbare Labelformate", "PDF · A4 / Thermal",
+                            // TG22 Golden Offer Contract: Kundennamen statt Serverschreibweise.
+                            "Verfügbare Labelformate", "PDF · DIN A4 / Thermodruck",
                             "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
                             "Zusätzliche Transportabsicherung"]) {
       assert.ok(detailKlein.includes(erwartet.toLowerCase()), `die Details zeigen „${erwartet}" nicht: ${detailtext}`);

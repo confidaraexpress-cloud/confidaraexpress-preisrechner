@@ -186,9 +186,20 @@ test("der Preisänderungsdialog hat Fokusfalle, Fokusrückgabe und schließt per
   assert.equal(await page.locator(".price-drift-card").count(), 0, "Escape muss den Dialog schließen");
   assert.equal(page.url(), `${BASE}/booking`, "Escape darf nicht navigieren");
 
-  // Fokusrückgabe: der Fokus kehrt zum auslösenden Element zurück.
-  const fokusZurueck = await page.evaluate(() =>
-    document.activeElement?.textContent?.includes("Kostenpflichtig buchen"));
-  assert.ok(fokusZurueck, "der Fokus muss auf den auslösenden Buchen-Button zurückkehren");
+  // TG22 Golden Offer Contract: das Schließen reaktiviert den alten Preis NICHT. Der Bestellknopf
+  // bleibt durch den Hinweis ersetzt — der Fokus kehrt deshalb auf dessen erste Handlung zurück,
+  // nicht auf einen Knopf, der den alten Preis erneut absenden würde.
+  await page.locator("#booking-price-change-pending").waitFor({ timeout: 5000 });
+  assert.equal(await page.getByRole("button", { name: /Kostenpflichtig buchen/ }).count(), 0,
+    "nach dem Schließen ist der alte Preis wieder buchbar");
+  const fokusZurueck = await page.evaluate(() => document.activeElement?.id);
+  assert.equal(fokusZurueck, "booking-price-change-review",
+    "der Fokus muss auf „Preisänderung ansehen“ zurückkehren");
+
+  // Der Dialog lässt sich über den Hinweis erneut öffnen — wieder mit Fokusfalle.
+  await page.locator("#booking-price-change-review").click();
+  await page.waitForSelector(".price-drift-card", { timeout: 5000 });
+  assert.ok(await page.evaluate(() => !!document.activeElement?.closest(".price-drift-card")),
+    "der Fokus steht nach dem erneuten Öffnen nicht im Dialog");
   await page.close();
 });

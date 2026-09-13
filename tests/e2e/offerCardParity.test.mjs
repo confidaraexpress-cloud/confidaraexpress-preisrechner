@@ -201,7 +201,10 @@ test("3 — TG zeigt Laufzeit statt eines erfundenen Zustelldatums", async () =>
   await zuDenAngeboten(page);
 
   const j = await karteMessen(page, ".offer-card >> nth=0");
-  assert.match(j.text, /Lieferung/, "die JUMiNGO-Karte nennt kein Lieferdatum mehr");
+  // TG22 Golden Offer Contract: ein Angebot mit Anbieterdaten heißt „Zustellung" — mit Datum, wie
+  // im ausgewählten Angebot und in beiden Buchungsleisten (utils/deliveryContractView.mjs).
+  assert.match(j.text, /Zustellung\s+(Mo|Di|Mi|Do|Fr|Sa|So)\.,\s*\d{2}\.\d{2}\./, "die JUMiNGO-Karte nennt kein Zustelldatum mehr");
+  assert.doesNotMatch(j.text, /\bLieferung\b/, "die Karte benennt die Zustellung wieder anders als die Buchung");
 
   // Die drei TG-Karten: Laufzeit benannt als Laufzeit, in den drei Formen.
   const tgTexte = [];
@@ -216,6 +219,7 @@ test("3 — TG zeigt Laufzeit statt eines erfundenen Zustelldatums", async () =>
   for (const t of tgTexte) {
     assert.ok(!/\d{2}\.\d{2}\.\d{4}/.test(t), `erfundenes Datum auf einer TG-Karte: ${t.slice(0, 120)}`);
     assert.ok(!/\b(Mo|Di|Mi|Do|Fr|Sa|So)\.,/.test(t), `erfundener Wochentag: ${t.slice(0, 120)}`);
+    assert.ok(!/\bZustellung\b/.test(t), `eine Laufzeit ist als Zustellung benannt: ${t.slice(0, 120)}`);
   }
   await page.close();
 });

@@ -57,3 +57,28 @@ export function pickupWindowDetailText(vertrag) {
   const v = vertrag && typeof vertrag === "object" ? vertrag : {};
   return v.windowFrom && v.windowUntil ? `${v.windowFrom} – ${v.windowUntil} Uhr` : null;
 }
+
+/**
+ * Die Abholangabe der Buchungsflaechen (ausgewaehltes Angebot, Live-Leiste): Tag und Zeitzeile.
+ *
+ * TG22 Golden Offer Contract — bis hierher bildeten beide Flaechen die Zeile selbst. Jetzt lesen
+ * sie denselben Vertrag wie die Angebotskarte.
+ *
+ * Ein vom Kunden gewaehltes Zeitfenster gilt NUR, wenn das Angebot selbst ein Fenster traegt. Ein
+ * Angebot mit „bereit ab"-Zeit kennt keine Fensterwahl — aus einer Wahl darf dort keine Endzeit
+ * werden.
+ *
+ * @param   {object} tarif               ein Angebot der calculate-price-Antwort
+ * @param   {{from?: string, until?: string}|null} gewaehltesFenster  die Auswahl des Kunden
+ * @returns {{day: string|null, time: string|null}}
+ */
+export function pickupSummaryOf(tarif, gewaehltesFenster) {
+  const vertrag = pickupContractOf(tarif);
+  const wahl = gewaehltesFenster && typeof gewaehltesFenster === "object" ? gewaehltesFenster : {};
+  const von = text(wahl.from);
+  const bis = text(wahl.until);
+  const zeit = vertrag.windowFrom && vertrag.windowUntil && von && bis
+    ? `${von}–${bis} Uhr`
+    : pickupTimeText(vertrag);
+  return Object.freeze({ day: vertrag.day, time: zeit });
+}

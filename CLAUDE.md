@@ -190,6 +190,15 @@ Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** B
 
 Mit Zusatzabsicherung übernimmt „Neuen Preis übernehmen" den Preis **ausschließlich** über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` — nie über eine Buchung. Erst nach der Serverbindung (neue `priceRevision`) bucht der Kunde bewusst erneut; `/book` sendet diese Revision mit. Eine erneute Abweichung öffnet wieder den Dialog, ein Fehler lässt ihn mit neutralem Hinweis offen.
 
+- `recalculationRequired: true` ergibt **nie** einen Bestätigungsweg — auch nicht mit Beträgen und nicht aus dem zuletzt bestätigten Betrag ergänzt.
+- Der Dialog ist nur die Anzeige: Escape und Hintergrund schließen ihn, die Preisänderung bleibt offen (`priceChangePending` im Price-View-Model → Status `PRICE_CHANGED`, kein Betrag, Buchung gesperrt). Der Bestellknopf bleibt durch den Hinweis ersetzt, bis übernommen oder neu berechnet wurde.
+- „Angebote neu berechnen" verwirft die gespeicherten Angebote des Vorgangs; Formular und Angaben bleiben.
+- Nach einer übernommenen Preisänderung trägt das Angebot die Versandbeträge der Serverantwort (`utils/acceptedOfferPrice.mjs`) — auf der Buchungsseite und in der Angebotsliste.
+
+### Eine Preisprojektion
+
+Alle Preisflächen der Buchung (ausgewähltes Angebot, Live- und Sticky-Leiste, Preiszusammenfassung, Absicherungskarten, Buchungsgate) lesen **ein** `priceView` (`utils/bookingPriceView.mjs`); welcher Betrag gilt und wie er heißt („Gesamt"/„Versand"), entscheidet `priceInfo` (`utils/bookingSummaryView.mjs`). Der Nettogesamtbetrag ist `customerTotalNet` der Serverantwort — keine Addition im Client; fehlt er, bleibt er leer. Zustellung („Zustellung"/„Voraussichtliche Laufzeit") steht in `utils/deliveryContractView.mjs`, Abholung in `utils/pickupContractView.mjs`, Labelnamen („DIN A4", „Thermodruck") in `utils/labelFormatOptions.mjs` — Karte und Buchung nutzen dieselben Helfer.
+
 ### Labelformat ist eine Fähigkeit des Angebots
 
 - Die A4/A6-Auswahl erscheint **nur**, wenn `labelFormatOptions` ein nicht leeres Array ist (`utils/labelFormatOptions.mjs`). Fehlt das Feld, ist es `null` oder leer: keine Auswahl, **kein** `labelFormat` im `/book` (fail-closed).

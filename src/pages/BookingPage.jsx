@@ -14,7 +14,8 @@ import {
   labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
 } from "../utils/labelFormatOptions.mjs";
 import { restoredInsuranceState } from "../utils/insuranceRestore.mjs";
-import { offerKey } from "../utils/offerIdentity.mjs";
+import { offerKey, sameOffer } from "../utils/offerIdentity.mjs";
+import { tariffWithAcceptedShippingPrice, replaceOffer } from "../utils/acceptedOfferPrice.mjs";
 import { sanitizeReferenceInput } from "../utils/referenceNumber.mjs";
 import {
   adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
@@ -22,7 +23,7 @@ import {
 } from "../utils/addressTypeQuestions.mjs";
 import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
 import {
-  priceChangeAnsicht, preisIstBestaetigbar,
+  priceChangeAnsicht, preisIstBestaetigbar, pendingPriceChangeNotice,
   PREISAENDERUNG_TITEL, PREISAENDERUNG_TEXT,
   PREISAENDERUNG_NEU_BERECHNEN, PREISAENDERUNG_FORTFAHREN,
 } from "../utils/priceChangeView.mjs";
@@ -106,7 +107,8 @@ export default function BookingPage() {
   // einem leeren Kontofeld — der Versandvorgang bleibt dabei vollständig erhalten.
   const [eoriRequired, setEoriRequired] = useState(false);
   const navigate = useNavigate();
-  const { state: navState } = useLocation();
+  const location = useLocation();
+  const { state: navState } = location;
 
   // ── Quelle des Vorgangs, in dieser Reihenfolge ─────────────────────────────
   //   1. location.state       — der reguläre Handoff aus „Neue Sendung".
@@ -121,7 +123,7 @@ export default function BookingPage() {
   //                             JUMiNGO-Referenz, aber immer die lokale Sendung.
   //   3. sicherer leerer Zustand — „Kein Angebot ausgewählt", unverändert.
   const { shipment: flowShipment, booking: flowBooking, setBooking: setFlowBooking,
-          setStep: setFlowStep, clearFlow } = useShippingFlow();
+          setScope: setFlowScope, setStep: setFlowStep, clearFlow } = useShippingFlow();
   const laufendeBuchungsdaten = useMemo(() => {
     if (navState?.tariff) return navState;
     if (flowShipment?.selected && flowShipment.ceShipmentId != null) {
@@ -219,6 +221,15 @@ export default function BookingPage() {
   // bestätigten neuen Preis, der beim erneuten /book als price_final gesendet
   // wird (ausschließlich none-Pfad — der Versicherungspfad bleibt unberührt).
   const [priceChange, setPriceChange] = useState(null); // { oldPrice, newPrice } | null
+  // TG22 Golden Offer Contract: der Dialog ZEIGT die Preisänderung nur — er ist nicht ihr Zustand.
+  // Schließt der Kunde ihn (Escape, Hintergrund), bleibt `priceChange` stehen: der bisherige Preis
+  // gilt nicht wieder, und der Bestellknopf bleibt durch den Hinweis ersetzt. Gemerkt wird nur,
+  // WELCHE Preisänderung weggeklickt wurde — jede neue Serverantwort öffnet den Dialog erneut.
+  const [dismissedPriceChange, setDismissedPriceChange] = useState(null);
+  const priceChangeDialogOpen = !!priceChange && dismissedPriceChange !== priceChange;
+  // Rückgabeziel des Fokus: den Bestellknopf gibt es nach dem Schließen nicht mehr, den Hinweis
+  // an seiner Stelle schon.
+  const priceChangeActionRef = useRef(null);
   const confirmedFinalPriceRef = useRef(null);
   // TG22 Paket A — die ausdrückliche Übernahme eines neuen Preises bei versicherter Buchung:
   // läuft sie gerade, ist sie gescheitert (der Dialog bleibt offen, erneut versuchen oder neu
@@ -232,7 +243,12 @@ export default function BookingPage() {
   // lösen weder eine Neuberechnung noch eine Buchung aus; die fachliche
   // Entscheidung bleibt ausschließlich den zwei Aktionen im Dialog vorbehalten.
   // Muss vor jedem frühen Return stehen (Hook-Reihenfolge).
-  const priceDriftRef = useDialog({ open: !!priceChange, onClose: () => setPriceChange(null) });
+  const priceDriftRef = useDialog({
+    open: priceChangeDialogOpen,
+    onClose: () => { setDismissedPriceChange(priceChange); setPriceAcceptError(""); },
+    closeOnEscape: !priceAccepting,
+    returnFocusTo: priceChangeActionRef,
+  });
   // TG22 Paket A: ein geschlossener Preisdialog trägt keinen Übernahmefehler weiter.
   useEffect(() => { if (!priceChange) setPriceAcceptError(""); }, [priceChange]);
   // closeOnEscape: !pickupResetting — dieselbe Regel wie überall im Projekt:
@@ -679,6 +695,9 @@ export default function BookingPage() {
   const priceView = buildBookingPriceView({
     tariff, insuranceType, repriceResult, repriceLoading, repriceStale, repriceError,
     insValid: insValid && goodsAnswersValid,
+    // TG22 Golden Offer Contract: eine offene Preisänderung entwertet den bestätigten Preis auf
+    // JEDER Fläche und sperrt die Buchung — auch nachdem der Dialog geschlossen wurde.
+    priceChangePending: !!priceChange,
   });
 
   // Kartenpreise: „ab"-Preselect ODER — nur für die AUSGEWÄHLTE, bestätigte Stufe —
@@ -1000,8 +1019,12 @@ export default function BookingPage() {
     return parts.filter(Boolean).join(", ");
   };
 
-  const doBook = async () => {
+  const doBook = async (optionen) => {
     if (!agbAccepted) return;
+    // TG22 Golden Offer Contract: eine offene Preisänderung sperrt die Buchung. Weiter bucht nur die
+    // bewusste Bestätigung im Dialog („Zum neuen Preis fortfahren"), die sie im selben Zug schließt —
+    // ein Klick auf den Bestellknopf trägt diese Kennung nie.
+    if (priceChange && optionen?.nachPreisbestaetigung !== true) return;
     // Legal-Buchungsschranke: solange der Kontext lädt oder nicht auslieferbar ist, wird nicht
     // bestellt. Rein defensiv — der Bestellknopf ist ohnehin deaktiviert. KEIN Rückfall auf die
     // statischen AGB-Seiten: bei aktiver Schranke ist die versionierte Fassung die einzige,
@@ -1486,7 +1509,31 @@ export default function BookingPage() {
   // Navigation (gleicher Zielpfad wie „Zurück").
   const handlePriceChangeRecalculate = () => {
     setPriceChange(null);
+    // TG22 Golden Offer Contract: die gespeicherten Angebote tragen den alten Preis. Blieben sie im
+    // Vorgang, stünde dieselbe Karte mit demselben Preis wieder da — und dieselbe Buchung scheiterte
+    // an derselben Stelle erneut. Verworfen werden nur die Angebote; Formular und Angaben bleiben,
+    // neu berechnet wird bewusst über „Angebote berechnen".
+    setFlowScope("shipment", { tariffs: [], selected: null, calculatedAt: null });
+    setFlowStep("form");
     navigate("/dashboard?page=new");
+  };
+
+  // TG22 Golden Offer Contract — nach einer übernommenen Preisänderung trägt das ANGEBOT den neuen
+  // Versandpreis: auf dieser Seite (ausgewähltes Angebot, Preis ohne Absicherung) und in der
+  // Angebotsliste des Vorgangs (Zurück zum Vergleich). Übernommen werden ausschließlich die
+  // Versandbeträge der Serverantwort — gerechnet wird nichts (utils/acceptedOfferPrice.mjs).
+  const uebernimmAngebotspreis = (totals) => {
+    const neu = tariffWithAcceptedShippingPrice(tariff, totals);
+    if (!neu) return;
+    if (flowShipment) {
+      setFlowScope("shipment", {
+        tariffs: replaceOffer(flowShipment.tariffs, neu),
+        ...(sameOffer(flowShipment.selected, neu) ? { selected: neu } : {}),
+      });
+    }
+    if (navState?.tariff) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: { ...navState, tariff: neu } });
+    }
   };
 
   // TG22 Paket A — „Neuen Preis übernehmen" bei versicherter Buchung. Der Server bepreist frisch und
@@ -1517,6 +1564,7 @@ export default function BookingPage() {
         setRepriceResult(d); setRepriceStale(false);
         setPriceChange(null);
         setPriceAcceptNotice(COVER_PRICE_CHANGE_TEXT.accepted);
+        uebernimmAngebotspreis(d?.totals);
         return;
       }
       setRepriceResult(null); setRepriceStale(true);
@@ -1563,7 +1611,7 @@ export default function BookingPage() {
     if (np == null) return;                  // ungültiger newPrice → nur Neuberechnung möglich
     confirmedFinalPriceRef.current = np;     // neuer price_final für den nächsten /book
     setPriceChange(null);
-    doBook();
+    doBook({ nachPreisbestaetigung: true });
   };
 
   // P0 — „Angebote neu berechnen" aus dem Abholfenster-Dialog: den nun veralteten
@@ -1754,7 +1802,7 @@ export default function BookingPage() {
         {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
           <div>
-            <OfferSummaryModule tariff={tariff} />
+            <OfferSummaryModule tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
 
             {tariff.serviceType === "dropoff" && (
               <DropoffNoticeModule
@@ -2066,6 +2114,9 @@ export default function BookingPage() {
                   onNavigateShipments={() => navigate("/dashboard?page=shipments")}
                   onNavigateNew={() => navigate("/dashboard?page=new")}
                   onRecalculate={handlePriceChangeRecalculate}
+                  priceChangeNotice={pendingPriceChangeNotice(priceChange)}
+                  onReviewPriceChange={() => setDismissedPriceChange(null)}
+                  priceChangeActionRef={priceChangeActionRef}
                   userEmail={user?.email}
                 />
               </div>
@@ -2099,11 +2150,11 @@ export default function BookingPage() {
           Erscheint bei /book-Antwort 409 PRICE_CHANGED (none-Pfad). Ruhige,
           nicht-aggressive Optik; der Nutzer entscheidet bewusst zwischen
           Neuberechnung und Fortfahren zum neuen Preis. */}
-      {priceChange && (
+      {priceChangeDialogOpen && (
         <div
           className="price-drift-overlay"
           role="presentation"
-          onMouseDown={(e) => { if (e.target === e.currentTarget && !priceAccepting) { setPriceChange(null); setPriceAcceptError(""); } }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget && !priceAccepting) { setDismissedPriceChange(priceChange); setPriceAcceptError(""); } }}
         >
           <div
             className="price-drift-card"

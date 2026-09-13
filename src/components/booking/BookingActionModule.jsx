@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
 import { canSubmitBooking } from "../../utils/bookingGate";
+import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../utils/priceChangeView.mjs";
 
 // Buchungsaktion — Fehlermeldung, Konflikt-/Adressfehler-Zweige und der
 // verbindliche Buchen-Button. REINE DARSTELLUNG; alle Zustände/Handler kommen
@@ -10,6 +11,7 @@ import { canSubmitBooking } from "../../utils/bookingGate";
 export function BookingActionModule({
   error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
   legalBlocksBooking, profileHint,
+  priceChangeNotice, onReviewPriceChange, priceChangeActionRef,
   onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, userEmail,
 }) {
   // Während einer laufenden Gutscheinprüfung ist der anzuzeigende Endbetrag nicht bestimmt —
@@ -57,6 +59,38 @@ export function BookingActionModule({
           <button className="btn btn-primary btn-full" onClick={onNavigateShipments}>
             Zu meinen Sendungen
           </button>
+        </div>
+      ) : priceChangeNotice ? (
+        /* ─── TG22 Golden Offer Contract: eine OFFENE Preisänderung ──────────────────
+           Der Server hat eine Preisänderung gemeldet, und der Kunde hat den Dialog
+           geschlossen, ohne zu entscheiden. Der bisherige Preis gilt damit NICHT wieder:
+           dieser Hinweis ersetzt den Bestellknopf, bis der neue Preis übernommen oder neu
+           berechnet wurde. Den Dialog erneut öffnen kann nur, wer etwas zu bestätigen hat —
+           ohne bestätigbares Preispaar bleibt allein die Neuberechnung. */
+        <div className="booking-conflict-box" id="booking-price-change-pending">
+          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {priceChangeNotice.text}</p>
+          <div className="booking-conflict-actions">
+            {priceChangeNotice.reviewable && (
+              <button
+                type="button"
+                id="booking-price-change-review"
+                ref={priceChangeActionRef}
+                className="btn btn-primary btn-full"
+                onClick={onReviewPriceChange}
+              >
+                {PREISAENDERUNG_ANSEHEN}
+              </button>
+            )}
+            <button
+              type="button"
+              id="booking-price-change-recalculate"
+              ref={priceChangeNotice.reviewable ? undefined : priceChangeActionRef}
+              className={`btn ${priceChangeNotice.reviewable ? "btn-outline" : "btn-primary"} btn-full`}
+              onClick={onRecalculate}
+            >
+              {PREISAENDERUNG_NEU_BERECHNEN}
+            </button>
+          </div>
         </div>
       ) : recalcNotice ? (
         /* ─── TG-7: nichts beauftragt, aber das Angebot trägt nicht mehr ──────────────

@@ -25,7 +25,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  pickupContractOf, pickupTimeText, pickupWindowDetailText,
+  pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupSummaryOf,
 } from "../../utils/pickupContractView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -41,7 +41,7 @@ const LIVE    = "components/booking/BookingLiveSummary.jsx";
 /* Ein Abholangebot in GENAU der Feldmenge, die der Server fuer einen Abholvertrag ohne Fenster
    liefert: Kalendertag und „bereit ab"-Zeit, KEIN Fenster. */
 const TG_PICKUP = Object.freeze({
-  offerId: "a".repeat(32), publicCarrierId: "ups", publicServiceName: "Standard",
+  offerId: "a".repeat(32), publicCarrierId: "ups", publicServiceName: "Standardversand",
   serviceType: "pickup", transitDaysMin: 1, transitDaysMax: 2,
   netPrice: 12.34, vatAmount: 2.34, finalPrice: 14.68, currency: "EUR",
   bookable: true, unavailableReason: null,
@@ -144,12 +144,16 @@ test("(7) das Fenster hat Vorrang vor der „bereit ab\"-Zeit", () => {
   const beides = pickupContractOf({ ...MIT_FENSTER, collectionReadyFrom: "13:00" });
   assert.equal(pickupTimeText(beides), "09:00–17:00 Uhr");
   assert.equal(beides.readyFrom, null);
-  for (const datei of [HELFER, SUMMARY, LIVE]) {
-    const code = ohneKommentar(lies(datei));
-    const iFenster = code.indexOf("pickupTimeUntil");
-    const iAb      = code.indexOf("collectionReadyFrom");
-    assert.ok(iFenster !== -1 && iAb !== -1, `${datei} kennt eine der beiden Formen nicht`);
-    assert.ok(iFenster < iAb, `${datei} prueft die „bereit ab\"-Zeit VOR dem Fenster`);
+  // Die Reihenfolge steht im Helfer — und seit dem TG22 Golden Offer Contract NUR dort: die
+  // Buchungsflächen bilden die Zeile nicht mehr selbst, sie lesen ihn (§9).
+  const helfer = ohneKommentar(lies(HELFER));
+  const iFenster = helfer.indexOf("pickupTimeUntil");
+  const iAb      = helfer.indexOf("collectionReadyFrom");
+  assert.ok(iFenster !== -1 && iAb !== -1, `${HELFER} kennt eine der beiden Formen nicht`);
+  assert.ok(iFenster < iAb, `${HELFER} prueft die „bereit ab\"-Zeit VOR dem Fenster`);
+  for (const datei of [SUMMARY, LIVE]) {
+    assert.match(ohneKommentar(lies(datei)), /pickupSummaryOf\(tariff, pickupWindow\)/,
+      `${datei} liest den gemeinsamen Abholvertrag nicht`);
   }
 });
 
@@ -179,12 +183,29 @@ test("(9) Timeline UND Detailbereich der Karte lesen denselben Helfer", () => {
     assert.ok(details.includes(zeile), `Detailzeile ${zeile} fehlt`);
   }
 
-  for (const datei of [HELFER, SUMMARY, LIVE]) {
+  const helfer = ohneKommentar(lies(HELFER));
+  assert.ok(helfer.includes("collectionDate"), `${HELFER} zeigt den Abholtag nicht`);
+  assert.ok(helfer.includes("collectionReadyFrom"), `${HELFER} zeigt die Abholzeit nicht`);
+  assert.ok(helfer.includes("bereit ab"), `${HELFER} benennt die „bereit ab\"-Zeit nicht`);
+  // TG22 Golden Offer Contract: ausgewähltes Angebot und Live-Leiste lesen DENSELBEN Vertrag wie die
+  // Karte — keine eigene Ableitung aus den Rohfeldern mehr.
+  for (const datei of [SUMMARY, LIVE]) {
     const code = ohneKommentar(lies(datei));
-    assert.ok(code.includes("collectionDate"), `${datei} zeigt den Abholtag nicht`);
-    assert.ok(code.includes("collectionReadyFrom"), `${datei} zeigt die Abholzeit nicht`);
-    assert.ok(code.includes("bereit ab"), `${datei} benennt die „bereit ab\"-Zeit nicht`);
+    assert.ok(/from "\.\.\/\.\.\/utils\/pickupContractView\.mjs"/.test(code), `${datei} importiert den Helfer nicht`);
+    assert.ok(code.includes("pickupSummaryOf(tariff, pickupWindow)"), `${datei} liest den Abholvertrag nicht`);
+    assert.ok(!/collectionReadyFrom|collectionDate|pickupTimeFrom|pickupTimeUntil/.test(code),
+      `${datei} liest Abholfelder wieder direkt statt ueber den Helfer`);
   }
+});
+
+test("(11) Buchungsflächen: ein gewähltes Fenster gilt nur, wo das Angebot ein Fenster trägt", () => {
+  assert.deepEqual({ ...pickupSummaryOf(TG_PICKUP, { from: "10:00", until: "12:00" }) },
+    { day: "2026-09-15", time: "bereit ab 09:00 Uhr" }, "aus einer Wahl entstand bei „bereit ab\" eine Endzeit");
+  assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, null) }, { day: "2026-09-16", time: "09:00–17:00 Uhr" });
+  assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, { from: "11:00", until: "15:00" }) },
+    { day: "2026-09-16", time: "11:00–15:00 Uhr" });
+  assert.equal(pickupSummaryOf(MIT_FENSTER, { from: "11:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster galt");
+  assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null });
 });
 
 /* ══════════ §10  WHITE LABEL ═════════════════════════════════════════════ */

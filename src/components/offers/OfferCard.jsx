@@ -14,6 +14,7 @@ import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from 
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { pickupContractOf, pickupTimeText, pickupWindowDetailText } from "../../utils/pickupContractView.mjs";
+import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -32,11 +33,6 @@ const fmtDay = (iso) => {
     weekday: "short", day: "2-digit", month: "2-digit",
   });
 };
-
-// "bis 17:00 Uhr" — Cutoff-Uhrzeit konsistent oben (Timeline) & unten
-// (DetailsPanel "Lieferung bis"). Präfix nur ergänzen, falls noch nicht
-// vorhanden (defensiv, falls das Backend künftig selbst "bis" mitliefert).
-const fmtUntil = (time) => (/^bis\b/i.test(time || "") ? `${time} Uhr` : `bis ${time} Uhr`);
 
 // ── Zone 2: Versandablauf-Knoten aus vorhandenen Daten ableiten ──
 // Es werden ausschließlich real vorhandene Felder genutzt; fehlt alles,
@@ -76,35 +72,25 @@ function buildStart(t) {
 }
 
 function buildEnd(t, etaLabel, earlyNote) {
-  // Lieferzeitraum (deliveryDateMin/Max) hat Vorrang vor dem Einzeldatum —
-  // exakt dieselbe Priorität wie im DetailsPanel (siehe hasDeliveryRange),
-  // damit Timeline und Details nie auseinanderlaufen. Sind Min und Max
-  // derselbe Tag, wird wie bei einem Einzeldatum nur ein Tag gezeigt.
-  const minDay = t.deliveryDateMin?.split("T")[0];
-  const maxDay = t.deliveryDateMax?.split("T")[0];
-  const hasRange = !!(minDay && maxDay);
-
+  // Welche Aussage gilt und wie der Knoten heisst, entscheidet der gemeinsame
+  // Zustellvertrag (utils/deliveryContractView.mjs) — dieselbe Regel wie im
+  // Detailbereich, im ausgewaehlten Angebot und in beiden Buchungsleisten:
+  // Zeitraum → einzelner Tag („Zustellung") → Laufzeit („Voraussichtliche
+  // Laufzeit"). Sind Min und Max derselbe Tag, steht wie bei einem Einzeldatum
+  // nur ein Tag da.
+  //
+  // Ohne Kalenderdatum steht hier die Laufzeit — und der Knoten heisst auch so.
+  // „Lieferung / 1–2 Tage" las sich wie ein Zustelltermin, ist aber eine Dauer.
+  // Ein Datum daraus zu RECHNEN waere die naheliegende und falsche Loesung — wir
+  // kennen weder Abholtag noch Feiertage noch Cutoff, und eine erfundene
+  // Kalenderangabe waere eine Zusage, die niemand halten kann. Providerneutral:
+  // entschieden wird an den DATEN, nicht daran, von wem das Angebot stammt.
+  const zustellung = deliveryContractOf(t);
+  const title = zustellung.label;
   let primary;
-  let title = "Lieferung";
-  if (hasRange && minDay !== maxDay) primary = `${fmtDay(t.deliveryDateMin)} – ${fmtDay(t.deliveryDateMax)}`;
-  else if (hasRange)                 primary = fmtDay(t.deliveryDateMin);
-  else if (t.deliveryDate)           primary = fmtDay(t.deliveryDate);
-  else {
-    // KEIN Kalenderdatum vorhanden. Dann steht hier die Laufzeit — und der Knoten
-    // heisst auch so.
-    //
-    // Vorher trug er unveraendert den Titel „Lieferung" und darunter „1–2 Tage".
-    // Das liest sich wie ein Zustelltermin, ist aber keiner: es ist eine Dauer.
-    // Ein Datum daraus zu RECHNEN waere die naheliegende und falsche Loesung —
-    // wir kennen weder Abholtag noch Feiertage noch Cutoff, und eine erfundene
-    // Kalenderangabe waere eine Zusage, die niemand halten kann.
-    //
-    // Die visuelle Struktur bleibt exakt dieselbe; nur der Inhalt sagt die
-    // Wahrheit. Providerneutral: entschieden wird an den DATEN, nicht daran, von
-    // wem das Angebot stammt.
-    title = "Voraussichtliche Laufzeit";
-    primary = etaLabel;
-  }
+  if (zustellung.kind === "range")     primary = `${fmtDay(zustellung.dayFrom)} – ${fmtDay(zustellung.dayUntil)}`;
+  else if (zustellung.kind === "date") primary = fmtDay(zustellung.day);
+  else                                 primary = etaLabel;
 
   // Die NORMALE Lieferzeile bleibt neutral und zweizeilig: Datum als primäre
   // Information, Uhrzeit als sekundäre Unterzeile — für JEDEN Tarif gleich,
@@ -266,11 +252,9 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // den Abschnitt — als Information, nicht als „nicht verfügbar".
   const hasInsuranceSection = insInsurable || insExplicitlyUnavailable || insOffer.notice !== null;
 
-  // Lieferzeitraum aus min/max (beide nötig) — bevorzugt vor Einzeldatum.
-  const hasDeliveryRange = !!(t.deliveryDateMin && t.deliveryDateMax);
-  const deliveryRange = hasDeliveryRange
-    ? `${fmtDE(t.deliveryDateMin)} – ${fmtDE(t.deliveryDateMax)}`
-    : null;
+  // Zustellzeitraum, -termin und „bis"-Uhrzeit aus dem gemeinsamen Zustellvertrag — dieselbe
+  // Vorrangregel wie der Timeline-Knoten (Zeitraum vor Einzeldatum; gleiche Tage sind ein Tag).
+  const zustellung = deliveryContractOf(t);
 
   // Abholzuschlag nur als neutraler Hinweis — niemals als zusätzlicher Preis.
   const showPickupSurcharge = t.hasPickupSurcharge === true;
@@ -311,7 +295,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // zeigt ihn damit auch hier, und ein echtes Fenster bleibt ein Fenster.
   const abholung = pickupContractOf(t);
   const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom
-                   || hasDeliveryRange || t.deliveryDate || t.deliveryTimeUntil);
+                   || zustellung.kind === "range" || zustellung.kind === "date" || zustellung.until);
   const hasHinweise = showPickupSurcharge;
   const hasLinks = carrierLinkItems.length > 0;
 
@@ -398,10 +382,11 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
           {abholung.readyFrom && (
             <DetailRow label="Abholung" value={pickupTimeText(abholung)} />
           )}
-          {hasDeliveryRange
-            ? <DetailRow label="Lieferzeitraum" value={deliveryRange} />
-            : t.deliveryDate && <DetailRow label="Liefertermin" value={fmtDE(t.deliveryDate)} />}
-          {t.deliveryTimeUntil && <DetailRow label="Lieferung" value={fmtUntil(t.deliveryTimeUntil)} />}
+          {zustellung.kind === "range" && (
+            <DetailRow label="Zustellzeitraum" value={`${fmtDE(zustellung.dayFrom)} – ${fmtDE(zustellung.dayUntil)}`} />
+          )}
+          {zustellung.kind === "date" && <DetailRow label="Zustelltermin" value={fmtDE(zustellung.day)} />}
+          {zustellung.until && <DetailRow label="Zustellung" value={`${zustellung.until} Uhr`} />}
         </div>
       )}
 

@@ -39,6 +39,7 @@ export const PRICE_STATUS = {
   REPRICE_CONFIRMED: "REPRICE_CONFIRMED", // Preis vollständig aus repriceResult.totals
   REPRICE_ERROR:     "REPRICE_ERROR",     // Reprice fehlgeschlagen
   STALE:             "STALE",             // Auswahl/Eingabe seit letztem Reprice geändert
+  PRICE_CHANGED:     "PRICE_CHANGED",     // Server meldet Preisänderung → kein Betrag gilt, Buchung gesperrt
 };
 
 function num(v) {
@@ -55,8 +56,6 @@ function pos(v) {
   return n != null && n > 0 ? n : null;
 }
 
-function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
-
 // Versichert ist jede gewählte Absicherung — die beiden Stufen UND die zusätzliche
 // Transportabsicherung bis zum Warenwert.
 export function isInsuredType(insuranceType) {
@@ -64,16 +63,21 @@ export function isInsuredType(insuranceType) {
     || insuranceType === INSURANCE_TYPE_TRANSIT_COVER;
 }
 
-// Zerlegt die Server-Totals (splitInsurancePricing) in die Anzeigefelder. `totalNet`
-// = Versandnetto + Versicherung (Versicherung ist steuerfrei, netto=brutto) — reine
-// Summe zweier BELEGTER Serverwerte, KEINE Prämienberechnung.
+// Zerlegt die Server-Totals in die Anzeigefelder — jedes Feld 1:1 aus der Antwort.
+//
+// TG22 Golden Offer Contract: auch der Nettogesamtbetrag (`customerTotalNet`) kommt
+// vom Server, centgenau aus denselben Bestandteilen gebildet wie der Bruttobetrag.
+// Bis hierher addierte diese Datei Versandnetto und Versicherung selbst — eine
+// zweite Rechnung neben der des Servers. Fehlt das Feld (ältere Serverantwort),
+// bleibt `totalNet` null: es wird angezeigt, was der Server bestätigt, nie eine
+// eigene Rekonstruktion.
 function fromTotals(totals) {
   const shippingNet   = num(totals.customerShippingNet);
   const shippingVat   = num(totals.shippingVat);
   const shippingGross = num(totals.customerShippingGross);
   const insuranceGross = num(totals.insuranceGross);
   const totalGross    = num(totals.customerTotalGross);
-  const totalNet = (shippingNet != null && insuranceGross != null) ? round2(shippingNet + insuranceGross) : null;
+  const totalNet      = num(totals.customerTotalNet);
   return { shippingNet, shippingVat, shippingGross, insuranceGross, totalNet, totalGross };
 }
 
@@ -87,6 +91,8 @@ function shippingRefFromTariff(t) {
 
 // Kernfunktion. `insValid` = clientseitige Feldgültigkeit (Warenwert/Versicherungs-
 // wert); default true (abwärtssicher). `repriceError` akzeptiert bool ODER Fehlertext.
+// `priceChangePending` = der Server hat eine Preisänderung gemeldet, über die der
+// Kunde noch nicht entschieden hat (TG22 Golden Offer Contract).
 export function buildBookingPriceView({
   tariff,
   insuranceType,
@@ -95,6 +101,7 @@ export function buildBookingPriceView({
   repriceStale = false,
   repriceError = false,
   insValid = true,
+  priceChangePending = false,
 } = {}) {
   const t = tariff || {};
   const totals = (repriceResult && typeof repriceResult === "object"
@@ -121,8 +128,12 @@ export function buildBookingPriceView({
   const hasInsurancePreselect = selectedInsurancePreselectGross != null;
 
   // ── Status ──
+  // Eine gemeldete Preisänderung sticht jeden anderen Zustand: der zuletzt bestätigte
+  // Betrag — Basistarif ODER Neubepreisung — ist damit nicht mehr bestätigt. Schließt der
+  // Kunde den Dialog, bleibt dieser Zustand; er endet erst mit Übernahme oder Neuberechnung.
   let status;
-  if (!isInsuredType(insuranceType))      status = PRICE_STATUS.BASE_CONFIRMED;
+  if (priceChangePending === true)        status = PRICE_STATUS.PRICE_CHANGED;
+  else if (!isInsuredType(insuranceType)) status = PRICE_STATUS.BASE_CONFIRMED;
   else if (hasError)                      status = PRICE_STATUS.REPRICE_ERROR;
   else if (insValid === false)            status = PRICE_STATUS.REPRICE_REQUIRED;
   else if (repriceLoading)                status = PRICE_STATUS.REPRICING;
@@ -155,7 +166,15 @@ export function buildBookingPriceView({
     isRepricing: status === PRICE_STATUS.REPRICING,
     isStale:     status === PRICE_STATUS.STALE,
     hasError:    status === PRICE_STATUS.REPRICE_ERROR,
+    isPriceChanged: status === PRICE_STATUS.PRICE_CHANGED,
   };
+
+  if (status === PRICE_STATUS.PRICE_CHANGED) {
+    // Kein bestätigter Betrag, keine Versandreferenz — der Basis-Versandpreis steht nur
+    // noch als Rohwert im Modell (baseShipping*), die Anzeige zeigt ihn in diesem Zustand
+    // nicht (bookingSummaryView.priceInfo, PriceSummaryModule).
+    return { ...base, source: null, hasConfirmedPrice: false };
+  }
 
   if (status === PRICE_STATUS.BASE_CONFIRMED) {
     const net = num(t.netPrice), vat = num(t.vatAmount), gross = num(t.finalPrice);

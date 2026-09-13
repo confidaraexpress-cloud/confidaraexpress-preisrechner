@@ -61,6 +61,10 @@ const istBetrag = (w) => typeof w === "number" && Number.isFinite(w);
  */
 export function priceChangeAnsicht(body) {
   const d = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  // TG22 Golden Offer Contract: verlangt der Server ausdrücklich eine Neuberechnung, gibt es
+  // keinen Bestätigungsweg — auch dann nicht, wenn Beträge mitreisen. Eine Bestätigung sendete
+  // dasselbe Angebot erneut, und es scheiterte an derselben Stelle wieder.
+  if (d.recalculationRequired === true) return { kind: PRICE_CHANGE_KIND.RECALCULATE };
   if (istBetrag(d.oldPrice) && istBetrag(d.newPrice)) {
     return { kind: PRICE_CHANGE_KIND.CONFIRMABLE, oldPrice: d.oldPrice, newPrice: d.newPrice };
   }
@@ -92,3 +96,34 @@ export const PREISAENDERUNG_TEXT = Object.freeze({
 
 export const PREISAENDERUNG_NEU_BERECHNEN = "Angebote neu berechnen";
 export const PREISAENDERUNG_FORTFAHREN = "Zum neuen Preis fortfahren";
+export const PREISAENDERUNG_ANSEHEN = "Preisänderung ansehen";
+
+/* ─── Die OFFENE Preisänderung ────────────────────────────────────────────────
+   TG22 Golden Offer Contract: der Dialog ist nur die Anzeige der Entscheidung, nicht die
+   Entscheidung selbst. Schließt der Kunde ihn (Escape, Hintergrund), gilt der alte Preis
+   deshalb NICHT wieder — der Bestellknopf bleibt durch diesen Hinweis ersetzt, bis der neue
+   Preis übernommen oder neu berechnet wurde. Den Dialog erneut öffnen kann nur, wer auch
+   etwas zu bestätigen hat. */
+export const PREISAENDERUNG_OFFEN_TEXT = Object.freeze({
+  [PRICE_CHANGE_KIND.CONFIRMABLE]:
+    "Der Preis hat sich geändert. Gebucht wird erst, wenn Sie den neuen Preis bestätigen — "
+    + "oder Sie berechnen die Angebote neu. Es wurde nichts gebucht.",
+  [PRICE_CHANGE_KIND.RECALCULATE]:
+    "Der Preis für dieses Angebot ist nicht mehr aktuell. Bitte berechnen Sie die Angebote neu. "
+    + "Es wurde nichts gebucht.",
+});
+
+/**
+ * Der Hinweis zu einer offenen Preisänderung — oder `null`, wenn keine offen ist.
+ *
+ * @param   {object|null} ansicht  das Ergebnis von `priceChangeAnsicht` bzw. der versicherten Variante
+ * @returns {{reviewable: boolean, text: string}|null}
+ */
+export function pendingPriceChangeNotice(ansicht) {
+  if (!ansicht || typeof ansicht !== "object") return null;
+  const bestaetigbar = preisIstBestaetigbar(ansicht);
+  return Object.freeze({
+    reviewable: bestaetigbar,
+    text: PREISAENDERUNG_OFFEN_TEXT[bestaetigbar ? PRICE_CHANGE_KIND.CONFIRMABLE : PRICE_CHANGE_KIND.RECALCULATE],
+  });
+}

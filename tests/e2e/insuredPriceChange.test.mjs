@@ -41,7 +41,7 @@ const COVER_DETAILS = {
   requiresGoodsAreNew: true, requiresGoodsAreFragile: true, priceOnSelection: true,
 };
 const TARIF = {
-  offerId: OFFER_ID, publicCarrierId: "ups", publicServiceName: "Standard",
+  offerId: OFFER_ID, publicCarrierId: "ups", publicServiceName: "Standardversand",
   serviceType: "pickup", collectionDate: ABHOLTAG, collectionReadyFrom: "09:00",
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
   netPrice: 12.34, vatAmount: 2.34, finalPrice: 14.68, currency: "EUR",

@@ -287,6 +287,8 @@
 .offsum-service-name { font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary); }
 .offsum-service-mode { font-size: 11px; font-weight: 600; color: var(--blue2); background: var(--blue-light); border-radius: 999px; padding: 2px 10px; }
 .offsum-price { text-align: right; flex-shrink: 0; }
+/* Was der Betrag ist („Gesamt" / „Versand") — dieselbe Beschriftung wie in beiden Leisten. */
+.offsum-price-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); margin-bottom: 2px; }
 .offsum-price-net { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.15; white-space: nowrap; }
 .offsum-price-unit { font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); }
 .offsum-price-gross { font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); margin-top: 3px; white-space: nowrap; }
@@ -680,6 +682,10 @@
 
 /* Rechts — geltender Preis */
 .bsum-price { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.bsum-price-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ce-color-text-muted); line-height: 1.2; white-space: nowrap;
+}
 .bsum-price-gross {
   font-size: 16px; font-weight: 600; color: var(--ce-color-text-primary);
   font-family: var(--ce-font-numeric); letter-spacing: -0.01em;
@@ -967,6 +973,8 @@
 
 .booking-conflict-box { background: var(--blue-light, #dbeafe); border: 1px solid var(--border2, #c8d5e8); border-radius: var(--ce-radius-md); padding: 16px; }
 .booking-conflict-text { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px 0; color: var(--navy, #0B1F4D); font-size: 14px; line-height: 1.5; }
+/* Offene Preisänderung: zwei Handlungen untereinander (ansehen / neu berechnen). */
+.booking-conflict-actions { display: flex; flex-direction: column; gap: 8px; }
 
 /* ── F3: Preisdrift-Dialog („Preisänderung erkannt") — Premium-Overlay ──────────
    Erscheint bei /book 409 PRICE_CHANGED (none-Pfad). Ruhige Blau/Navy-Optik

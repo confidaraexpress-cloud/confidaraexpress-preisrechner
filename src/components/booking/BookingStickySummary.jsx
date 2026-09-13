@@ -106,13 +106,16 @@ export function BookingStickySummary({ tariff, priceView, observeRef }) {
           <div className="bsum-meta">
             <span className="bsum-chip">{handover.label}</span>
             <span className="bsum-delivery">
-              <span className="bsum-delivery-label">Zustellung</span>
+              <span className="bsum-delivery-label">{delivery.label}</span>
               <span className="bsum-delivery-val">{delivery.value}</span>
             </span>
           </div>
 
-          {/* Rechts — geltender Preis */}
+          {/* Rechts — geltender Preis. Das Label sagt, WAS der Betrag ist („Gesamt" oder
+              „Versand") — ohne es stand hier nach einer bestätigten Absicherung ein anderer
+              Betrag als in der Versandzeile darunter, und niemand sah, warum. */}
           <div className="bsum-price">
+            <span className="bsum-price-label">{preis.label}</span>
             <span className="bsum-price-gross">
               {preis.gross != null ? money(preis.gross) : "—"}
               <span className="bsum-price-unit"> brutto</span>

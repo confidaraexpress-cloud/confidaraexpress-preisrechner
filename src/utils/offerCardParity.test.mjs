@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { offerBookable, offerBlocked, offerBlockedLabel } from "./offerIdentity.mjs";
 import { handoverMode, handoverLabelForTariff, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { fmtDelivery } from "./formatters.js";
+import { deliveryContractOf } from "./deliveryContractView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const lies = (p) => fs.readFileSync(path.join(HIER, "..", p), "utf8");
@@ -146,9 +147,14 @@ test("(B5) der Grund steht GENAU EINMAL, und zwar am Knopf", () => {
 
 test("(C1) ohne Kalenderdatum heißt der Knoten NICHT „Lieferung“", () => {
   // „Lieferung / 1–2 Tage" liest sich wie ein Zustelltermin, ist aber eine Dauer.
-  const bau = CARD.slice(CARD.indexOf("function buildEnd"), CARD.indexOf("function fmtTransitDetail"));
-  assert.ok(bau.includes('title = "Voraussichtliche Laufzeit"'),
+  // TG22 Golden Offer Contract: der Knotentitel kommt aus dem gemeinsamen Zustellvertrag —
+  // dieselbe Beschriftung wie im ausgewählten Angebot und in beiden Buchungsleisten.
+  const bau = CARD.slice(CARD.indexOf("function buildEnd"), CARD.indexOf("function DetailRow"));
+  assert.ok(/const zustellung = deliveryContractOf\(t\);/.test(bau) && /const title = zustellung\.label;/.test(bau),
+    "der Knotentitel kommt nicht aus dem gemeinsamen Zustellvertrag");
+  assert.equal(deliveryContractOf(TG_PICKUP).label, "Voraussichtliche Laufzeit",
     "der laufzeitbasierte Knoten trägt weiterhin den Titel eines Termins");
+  assert.equal(deliveryContractOf(JUMINGO).label, "Zustellung");
   assert.ok(/return \{ title, primary, secondary \}/.test(bau),
     "der Titel wird nicht durchgereicht — dann greift die Unterscheidung nicht");
 });
@@ -186,11 +192,16 @@ test("(C4) KEINE Aufwertung zu Arbeitstagen — dafür gibt es keine Datenquelle
 
 test("(C5) JUMiNGO verliert dabei nichts Echtes", () => {
   // Was tatsächlich aus JUMiNGO-Daten stammt, bleibt: Kalenderangaben im Abschnitt
-  // „Termin & Abholung". Weg fällt allein ein Wort ohne Quelle.
-  for (const zeile of ["Abholtermin", "Zeitfenster", "Liefertermin", "Lieferzeitraum"]) {
+  // „Termin & Abholung". Weg fällt allein ein Wort ohne Quelle. Seit dem TG22 Golden Offer
+  // Contract heißen die Zustellzeilen wie auf allen anderen Flächen „Zustell…".
+  for (const zeile of ["Abholtermin", "Zeitfenster", "Zustelltermin", "Zustellzeitraum"]) {
     assert.ok(CARD.includes(`label="${zeile}"`), `die Kalenderangabe "${zeile}" ist verschwunden`);
   }
-  assert.ok(CARD.includes('label="Lieferung"'), "die Zustellzeit ist verschwunden");
+  assert.ok(CARD.includes('label="Zustellung"'), "die Zustellzeit ist verschwunden");
+  const zeitraum = deliveryContractOf({ ...JUMINGO, deliveryDate: null,
+    deliveryDateMin: "2026-09-11", deliveryDateMax: "2026-09-12", deliveryTimeUntil: "18:00" });
+  assert.equal(zeitraum.kind, "range");
+  assert.equal(zeitraum.until, "bis 18:00");
 });
 
 /* ══════════ D — ÜBERGABEART ═══════════════════════════════════════════════ */

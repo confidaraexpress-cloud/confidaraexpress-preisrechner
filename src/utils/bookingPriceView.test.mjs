@@ -28,7 +28,7 @@ const TARIFF = {
 };
 const REPRICE_STD = { selectedInsurance: "standard", totals: {
   customerShippingNet: 31.25, shippingVat: 5.94, customerShippingGross: 37.19,
-  insuranceGross: 4.49, customerTotalGross: 41.68,
+  insuranceGross: 4.49, customerTotalNet: 35.74, customerTotalGross: 41.68,
 } };
 const view = (over) => buildBookingPriceView({ tariff: TARIFF, ...over });
 
@@ -88,12 +88,18 @@ test("(8) Preselect wird NIE lokal zum Gesamtbetrag addiert", () => {
 test("(9) Netto/MwSt/Versicherung/Brutto exakt aus Serverwerten", () => {
   const v = view({ insuranceType: "premium", repriceResult: { totals: {
     customerShippingNet: 40, shippingVat: 7.6, customerShippingGross: 47.6,
-    insuranceGross: 9.99, customerTotalGross: 57.59 } } });
+    insuranceGross: 9.99, customerTotalNet: 49.99, customerTotalGross: 57.59 } } });
   assert.equal(v.shippingNet, 40);
   assert.equal(v.shippingVat, 7.6);
   assert.equal(v.insuranceGross, 9.99);
-  assert.equal(v.totalNet, 49.99);   // 40 + 9.99 (Versicherung steuerfrei)
+  // TG22 Golden Offer Contract: der Nettogesamtbetrag kommt vom Server (customerTotalNet) —
+  // der Client addiert 40 und 9,99 nicht mehr selbst.
+  assert.equal(v.totalNet, 49.99);
   assert.equal(v.totalGross, 57.59);
+  const ohneServerNetto = view({ insuranceType: "premium", repriceResult: { totals: {
+    customerShippingNet: 40, shippingVat: 7.6, customerShippingGross: 47.6,
+    insuranceGross: 9.99, customerTotalGross: 57.59 } } });
+  assert.equal(ohneServerNetto.totalNet, null, "ohne Serverbetrag rekonstruiert der Client den Nettogesamtbetrag");
 });
 test("(10) fehlende Preisfelder → fail-closed (nicht bestätigt)", () => {
   const vBase = buildBookingPriceView({ tariff: { netPrice: 10 }, insuranceType: "none" }); // kein finalPrice
@@ -350,14 +356,19 @@ test("(P16) PriceSummaryModule addiert den Preselect NICHT clientseitig zum Vers
 });
 test("(P17) BookingLiveSummary: Versand sichtbar + Versicherungshinweis wenn unbestätigt", () => {
   const bls = read("../components/booking/BookingLiveSummary.jsx");
-  assert.ok(/baseShippingGross/.test(bls), "Basis-Versandpreis wird nicht angezeigt");
+  // TG22 Golden Offer Contract: WELCHER Betrag gilt (Gesamt oder Basis-Versandpreis), wählt das
+  // gemeinsame Modul — die Leiste zeigt ihn nur.
+  assert.ok(/priceInfo\(v\)/.test(bls), "die Live-Leiste liest den Preis nicht aus priceInfo");
+  assert.ok(/baseShippingGross/.test(read("../utils/bookingSummaryView.mjs")), "Basis-Versandpreis wird nicht angezeigt");
   assert.ok(/blsum-ins-note/.test(bls), "Versicherungshinweiszeile fehlt");
   assert.ok(/Versicherung ab \$\{money\(v\.selectedInsurancePreselectGross\)\}/.test(bls), "Versicherung-ab-Hinweis fehlt");
   assert.ok(/nach Warenwert/.test(bls), "nach-Warenwert-Hinweis fehlt");
 });
 test("(P18) BookingLiveSummary: kontextuelles Label (Gesamt/Versand) statt fixem Kopf", () => {
   const bls = read("../components/booking/BookingLiveSummary.jsx");
-  assert.ok(/Gesamt/.test(bls) && /Versand/.test(bls), "kontextuelle Preis-Labels fehlen");
+  const modul = read("../utils/bookingSummaryView.mjs");
+  assert.ok(/label: "Gesamt"/.test(modul) && /label: "Versand"/.test(modul), "kontextuelle Preis-Labels fehlen");
+  assert.ok(/\{preis\.label\}/.test(bls), "die Live-Leiste zeigt das kontextuelle Label nicht");
   assert.ok(!/Aktueller Preis/.test(bls), "statischer Aktueller-Preis-Kopf soll entfallen");
 });
 test("(P19) InsuranceModule: stabiler Grid-Kopf (Name links, Preis rechts) + Badge", () => {
@@ -416,7 +427,7 @@ const REPRICE_COVER = {
   selectedInsurance: "transit_cover",
   insurance: { coverValue: 500, excessValue: 20, goodsAreNew: true, goodsAreFragile: false, insuranceGross: 10 },
   totals: { customerShippingNet: 10.8, shippingVat: 2.05, customerShippingGross: 12.85,
-            insuranceGross: 10, customerTotalGross: 22.85 },
+            insuranceGross: 10, customerTotalNet: 20.8, customerTotalGross: 22.85 },
 };
 
 test("(P25) transit_cover ist versichert — none bleibt unversichert, Stufen unverändert", () => {

@@ -60,12 +60,20 @@ test("(2b) es wird nichts aus Paketmassen gerechnet", () => {
 
 /* ══════════ §3  LABELFAEHIGKEITEN ═════════════════════════════════════════ */
 
-test("(3) Formate und Groessen werden als eine neutrale Zeile dargestellt", () => {
+test("(3) Formate und Groessen werden als eine neutrale Zeile mit Kundennamen dargestellt", () => {
+  // TG22 Golden Offer Contract: dieselben Namen wie der Lieferhinweis der Buchung — nie die rohe
+  // Serverschreibweise („A4 / Thermal").
   assert.equal(
     labelCapabilityLine({ labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"] }),
-    "PDF · A4 / Thermal");
+    "PDF · DIN A4 / Thermodruck");
   assert.equal(labelCapabilityLine({ labelFormats: ["PDF"], labelSizes: [] }), "PDF");
-  assert.equal(labelCapabilityLine({ labelFormats: [], labelSizes: ["A4"] }), "A4");
+  assert.equal(labelCapabilityLine({ labelFormats: [], labelSizes: ["A4"] }), "DIN A4");
+  // Schreibweisen des Servers werden zusammengeführt, die Reihenfolge bleibt die des Servers.
+  assert.equal(labelCapabilityLine({ labelFormats: ["pdf", "PDF"], labelSizes: ["THERMAL", "Thermal", "a6"] }),
+    "PDF · Thermodruck / DIN A6");
+  // Ein Rohwert ohne Kundennamen erscheint nicht.
+  assert.equal(labelCapabilityLine({ labelFormats: ["PDF", "ZPL"], labelSizes: ["Letter", "A4"] }), "PDF · DIN A4");
+  assert.equal(labelCapabilityLine({ labelFormats: ["ZPL"], labelSizes: ["Letter"] }), null);
   assert.equal(OFFER_METADATA_LABEL.labelCapability, "Verfügbare Labelformate");
 });
 

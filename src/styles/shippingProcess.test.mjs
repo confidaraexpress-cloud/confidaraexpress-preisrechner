@@ -315,8 +315,10 @@ test("12 — der Preisänderungsdialog (PRICE_CHANGED) ist funktional unverände
   assert.match(bookingPage, /const continueWithNewPrice = /);
   assert.match(bookingPage, /const handlePriceChangeRecalculate = /);
   assert.match(bookingPage, /confirmedFinalPriceRef\.current = np;/);
-  // Migriert: Fokusfalle über den gemeinsamen Hook, aber dieselbe Konflikterkennung.
-  assert.match(bookingPage, /useDialog\(\{ open: !!priceChange, onClose: \(\) => setPriceChange\(null\) \}\)/);
+  // Migriert: Fokusfalle über den gemeinsamen Hook, aber dieselbe Konflikterkennung. Seit dem TG22
+  // Golden Offer Contract schließt der Dialog nur die ANZEIGE — die Preisänderung bleibt offen, bis
+  // übernommen oder neu berechnet wurde (utils/tg22GoldenOfferContract.test.mjs, §B).
+  assert.match(bookingPage, /useDialog\(\{\s*open: priceChangeDialogOpen,\s*onClose: \(\) => \{ setDismissedPriceChange\(priceChange\); setPriceAcceptError\(""\); \},/);
 });
 
 test("13 — der Abholfensterkonflikt (PICKUP_WINDOW_CHANGED) ist funktional unverändert", () => {

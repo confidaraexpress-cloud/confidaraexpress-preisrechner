@@ -25,6 +25,7 @@ import {
   classifyCancellationError,
   readErrorCode,
 } from "../../utils/customerCancellation.mjs";
+import { BOOKING_IN_REVIEW_TEXT, isBookingInReview } from "../../utils/customerBookingStatus.mjs";
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -49,6 +50,17 @@ function CancellationStatusPill({ status }) {
    dieselben Handler, keine geänderte Logik. `expanded` sagt Vorlesesoftware,
    ob die Trackingansicht dieser Sendung gerade offen ist. */
 function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
+  /* Package C: eine Sendung in Buchungsklärung hat noch nichts, worauf sich eine
+     Aktion beziehen könnte — keine Trackingnummer, keine Dokumente, nichts zu
+     stornieren. Statt Knöpfen, die ins Leere führten, steht dort der Satz, der die
+     Lage erklärt. Und kein „erneut buchen": der Ausgang ist offen. */
+  if (isBookingInReview(s)) {
+    return (
+      <div className="flex gap-8 stn-actions">
+        <span className="text-muted text-sm">{BOOKING_IN_REVIEW_TEXT.note}</span>
+      </div>
+    );
+  }
   return (
     <div className="flex gap-8 stn-actions">
       {s.id && (

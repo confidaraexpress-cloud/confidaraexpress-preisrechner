@@ -19,9 +19,10 @@ import {
 const metric = (key) => ADMIN_METRICS.find((m) => m.key === key);
 
 // ── Statusparameter je Kennzahl ──────────────────────────────────────────────
-// Jede Kennzahl ruft einen eigenen Endpunkt mit eigenem Statuswertraum auf;
-// derselbe Literal "open" ist nur bei Support gültig. Damit darf derselbe
-// Fehler nicht erneut durch Copy/Paste zwischen den fünf Einträgen entstehen.
+// Jede Kennzahl ruft einen eigenen Endpunkt mit eigenem Statuswertraum auf. Seit
+// Package C kennt auch die Stornierungsliste den Filterwert "open" (pending UND
+// in_review); Rechnungen kennen ihn weiterhin NICHT. Damit darf der alte Fehler
+// nicht erneut durch Copy/Paste zwischen den Einträgen entstehen.
 test("customers: kein Statusfilter (GET /admin/users kennt keinen)", () => {
   assert.deepEqual(metric("customers").params, {});
 });
@@ -34,18 +35,21 @@ test("invoicesOverdue: overdue=true", () => {
   assert.equal(metric("invoicesOverdue").params.overdue, "true");
 });
 
-test("cancellations: status=pending, nicht „open“ (Backend kennt nur pending/in_review/accepted/rejected und lehnt „open“ mit 400 ab)", () => {
-  assert.equal(metric("cancellations").params.status, "pending");
+// Package C (dokumentierte Ankeränderung): vorher „pending" allein — eine Anfrage in
+// Prüfung fiel damit aus der Zahl „Offene Stornierungen". Der Backendfilter `open`
+// zählt pending UND in_review.
+test("cancellations: status=open — pending UND in_review zählen als offen (Backendfilter `open`, Package C)", () => {
+  assert.equal(metric("cancellations").params.status, "open");
 });
 
 test("support: status=open bleibt unverändert („open“ ist bei Support der echte Initialstatus)", () => {
   assert.equal(metric("support").params.status, "open");
 });
 
-test("keine Kennzahl außer support sendet noch den Wert „open“", () => {
+test("„open“ senden nur support und cancellations — nie eine Rechnungs- oder Kundenkennzahl", () => {
   for (const m of ADMIN_METRICS) {
-    if (m.key === "support") continue;
-    assert.notEqual(m.params.status, "open", `${m.key} darf „open“ nicht mehr senden`);
+    if (m.key === "support" || m.key === "cancellations") continue;
+    assert.notEqual(m.params.status, "open", `${m.key} darf „open“ nicht senden`);
   }
 });
 

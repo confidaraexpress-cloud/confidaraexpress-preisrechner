@@ -24,6 +24,8 @@ const STATUS_LABELS = {
 const TYPE_LABELS = {
   tracking:       "Tracking",
   label_tracking: "Label & Tracking",
+  // Package C: der neutrale Hinweis nach einer Klärung „nicht gebucht".
+  not_booked_notice: "Hinweis: Buchung nicht abgeschlossen",
 };
 
 /* [Badgeklasse, Anzeigetext, Rohwert] — dieselbe Form wie statusFallback(). */

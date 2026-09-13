@@ -11,6 +11,7 @@ const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", icon: "dashboard", end: true },
   { to: "/admin/users", label: "Kunden", icon: "admin" },
   { to: "/admin/shipments", label: "Sendungen", icon: "package" },
+  { to: "/admin/reconciliation", label: "Buchungsklärung", icon: "clockDelay" },
   { to: "/admin/invoices", label: "Rechnungen", icon: "invoice", end: true },
   { to: "/admin/invoices/backfill", label: "Produktion & Backfill", icon: "shieldCheck" },
   { to: "/admin/cancellation-requests", label: "Stornierungsanfragen", icon: "ban" },

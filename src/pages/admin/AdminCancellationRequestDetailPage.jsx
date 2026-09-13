@@ -25,7 +25,10 @@ import {
   CANCELLATION_CONFLICT_TEXT,
   CANCELLATION_CONFLICT_RELOAD,
   CANCELLATION_DECISION_DIALOG,
+  CANCELLATION_RESOLUTION_NOT_RECORDED,
+  cancellationResolutionView,
 } from "../../utils/adminCancellations.mjs";
+import { providerLabel } from "../../utils/adminReconciliation.mjs";
 
 const ERROR_MESSAGES = {
   429: "Zu viele Anfragen. Bitte versuchen Sie es in Kürze erneut.",
@@ -49,7 +52,19 @@ const SAVE_ERRORS = {
 function selectRequest(d) {
   if (d && typeof d === "object" && !Array.isArray(d)) {
     for (const k of ["cancellation_request", "cancellationRequest", "request", "data"]) {
-      if (d[k] && typeof d[k] === "object" && !Array.isArray(d[k])) return d[k];
+      const inner = d[k];
+      if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+        // Der Detailvertrag liefert Sendung, Kunde, Rechnung und Benachrichtigung NEBEN der
+        // Anfrage. Ohne diese Zusammenführung blieben Sendungs- und Kundenkarte leer
+        // („Ohne Vorgangsnummer", „Kunde nicht auflösbar"), obwohl der Server beides lieferte.
+        return {
+          ...inner,
+          shipment: inner.shipment ?? d.shipment,
+          customer: inner.customer ?? d.customer,
+          invoice: inner.invoice ?? d.invoice,
+          notification: inner.notification ?? d.notification,
+        };
+      }
     }
     return d;
   }
@@ -111,8 +126,12 @@ export default function AdminCancellationRequestDetailPage() {
   const [decision, setDecision] = useState(null); // null | "accepted" | "rejected"
 
   // Übernimmt eine kanonische Anfrage in State + Formular-Baseline.
-  const adopt = useCallback((canonical) => {
-    setReq(canonical);
+  // `keepContext`: eine PATCH-Antwort trägt nur die Anfrage selbst — Sendung, Kunde,
+  // Rechnung und Benachrichtigung aus dem Detailabruf bleiben dann stehen.
+  const adopt = useCallback((canonical, { keepContext = false } = {}) => {
+    setReq((prev) => (keepContext && prev
+      ? { ...canonical, shipment: prev.shipment, customer: prev.customer, invoice: prev.invoice, notification: prev.notification }
+      : canonical));
     const status = canonical.status ?? "";
     const adminNote = canonical.adminNote ?? null;
     setBaseline({ status, adminNote, revision: canonical.revision });
@@ -213,6 +232,8 @@ export default function AdminCancellationRequestDetailPage() {
   const reviewerName = req.reviewedBy && typeof req.reviewedBy === "object"
     ? (req.reviewedBy.name || (req.reviewedBy.id != null ? `Admin #${req.reviewedBy.id}` : "—"))
     : dash(req.reviewedBy);
+  // Package C: die ERSTE abschließende Entscheidung — Bestandsanfragen „nicht erfasst".
+  const resolution = cancellationResolutionView(req);
 
   // Getrennter Dirty-State: Status (nur nicht-terminal) und Notiz (immer).
   const statusDirty = isStatusDirty(baseline.status, editStatus);
@@ -256,7 +277,7 @@ export default function AdminCancellationRequestDetailPage() {
         }
         const canonical = normalizeCancellationRequest(selectRequest(d));
         if (canonical && canonical.revision !== undefined) {
-          adopt(canonical); // frische Revision/Status/Notiz aus der Response
+          adopt(canonical, { keepContext: true }); // frische Revision/Status/Notiz aus der Response
         } else {
           await load(); // Response ohne verwertbare Ressource → Serverstand neu holen
         }
@@ -384,6 +405,11 @@ export default function AdminCancellationRequestDetailPage() {
               })()],
               ["Route", route || "—"],
               ["Preis", moneyOrDash(req.shipment?.price)],
+              // Package C, adminintern: der gebuchte Anbieter und die Referenz, unter der die
+              // Sendung dort liegt — für die manuelle Bearbeitung beim Anbieter.
+              ["Anbieter", req.shipment?.provider ? providerLabel(req.shipment.provider) : "—"],
+              ["Buchungsreferenz des Anbieters", req.shipment?.providerBookingReference
+                ? <span className="adm-mono">{req.shipment.providerBookingReference}</span> : "—"],
             ]} />
             {sid != null && String(sid).trim() !== "" && (
               <div className="adm-track-link">
@@ -491,10 +517,19 @@ export default function AdminCancellationRequestDetailPage() {
             <KV items={[
               ["Eingegangen am", fmtDateTime(req.createdAt)],
               ["Zuletzt geändert", fmtDateTime(req.updatedAt)],
-              ["Entschieden am", fmtDateTime(req.reviewedAt)],
+              // Package C: „Entschieden" ist die ERSTE abschließende Entscheidung (resolved_*).
+              // Die letzte Bearbeitung (reviewed_*) wandert mit jeder Notiz weiter und steht
+              // deshalb getrennt daneben. Bestandsanfragen: „nicht erfasst", nie geschätzt.
+              ["Entschieden am", resolution.decided
+                ? (resolution.recorded ? fmtDateTime(resolution.at) : <span className="adm-muted">{CANCELLATION_RESOLUTION_NOT_RECORDED}</span>)
+                : "—"],
+              ["Entschieden von", resolution.decided
+                ? (resolution.recorded ? (resolution.by || "—") : <span className="adm-muted">{CANCELLATION_RESOLUTION_NOT_RECORDED}</span>)
+                : "—"],
+              ["Zuletzt bearbeitet am", fmtDateTime(req.reviewedAt)],
               // reviewedBy ist im Backendvertrag ein OBJEKT { id, name } — vorher wurde
               // es direkt gerendert und erschien als "[object Object]".
-              ["Entschieden von", reviewerName],
+              ["Zuletzt bearbeitet von", reviewerName],
             ]} />
           </div>
         </div>

@@ -9,8 +9,12 @@ import {
 } from "../../utils/adminOverview.mjs";
 import {
   listAdminUsers, listAdminInvoices, listAdminCancellationRequests,
-  listAdminSupportRequests,
+  listAdminSupportRequests, getAdminOperationsQueues,
 } from "../../api/adminApi";
+import {
+  OPERATIONS_LOAD_ERROR, OPERATIONS_START_UNKNOWN, OPERATIONS_UNAVAILABLE,
+  oldestDescription, operationsViews,
+} from "../../utils/adminOperations.mjs";
 
 // ── Adminübersicht ───────────────────────────────────────────────────────────
 // Eine Arbeitsfläche, keine reine Linkliste mehr: oben die offenen Vorgänge,
@@ -42,6 +46,8 @@ const BEREICHE = [
     desc: "Konten prüfen, freischalten, sperren und Aufschläge pflegen." },
   { to: "/admin/shipments", icon: "package", title: "Sendungen",
     desc: "Sendungen einsehen, Label und Tracking prüfen." },
+  { to: "/admin/reconciliation", icon: "clockDelay", title: "Buchungsklärung",
+    desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
   { to: "/admin/invoices", icon: "invoice", title: "Rechnungen",
     desc: "Forderungen, Zahlungsstatus und Rechnungsdokumente." },
   { to: "/admin/invoices/backfill", icon: "shieldCheck", title: "Produktion & Backfill",
@@ -69,6 +75,42 @@ function MetricCard({ view }) {
           {view.state === "unavailable" ? view.unavailableText : view.hint}
         </span>
       </Link>
+    </li>
+  );
+}
+
+function fmtDateTime(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleString("de-DE", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// Eine Betriebs-Queue (Package C). Bewusst NICHT die Kennzahlenkarte: die Queues sind
+// Zählungen mit Einstieg zum ältesten Fall, keine Kennzahlen — und die Kennzahlenreihe
+// bleibt genau so, wie sie ist. Eine Diagnose ist nie eine Handlungsaufforderung.
+function OpsCard({ view, loading }) {
+  const oldest = oldestDescription(view);
+  const klassen = ["ce-card", "adm-ops-item",
+    view.actionable ? "adm-ops-item--actionable" : "",
+    view.tone === "diagnostic" ? "adm-ops-item--diagnostic" : ""].filter(Boolean).join(" ");
+  return (
+    <li className={klassen} data-queue={view.key}>
+      <span className="adm-ops-head">
+        <span className="adm-ops-ic" aria-hidden="true"><Icon n={view.icon} s={16} /></span>
+        <span className="adm-ops-label">{view.label}</span>
+      </span>
+      <span className="adm-ops-count" aria-live="off">{loading ? "…" : view.display}</span>
+      <span className="adm-ops-hint">{!loading && view.state === "unavailable" ? OPERATIONS_UNAVAILABLE : view.hint}</span>
+      {oldest.kind === "date" && <span className="adm-ops-oldest">Ältester Fall: {fmtDateTime(oldest.at)}</span>}
+      {oldest.kind === "unknown_start" && <span className="adm-ops-oldest">{OPERATIONS_START_UNKNOWN}</span>}
+      {(view.oldestTo || view.listTo) && (
+        <span className="adm-ops-links">
+          {view.oldestTo && <Link to={view.oldestTo}>Ältesten Fall öffnen</Link>}
+          {view.listTo && <Link to={view.listTo}>Zur Liste</Link>}
+        </span>
+      )}
     </li>
   );
 }
@@ -121,6 +163,31 @@ export default function AdminOverviewPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Betriebs-Queues (Package C) ───────────────────────────────────────────
+  // Ein eigener, unabhängiger Abruf: ein Ausfall hier nimmt den Kennzahlen nichts
+  // weg und umgekehrt. Ein bereits geladener Stand bleibt bei einem Fehler stehen.
+  const [ops, setOps] = useState({ loading: true, error: "", data: null });
+  const loadOps = useCallback(async () => {
+    setOps((prev) => ({ ...prev, loading: true, error: "" }));
+    try {
+      const r = await getAdminOperationsQueues();
+      if (!mountedRef.current) return;
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) return; // zentraler Redirect via apiFetch
+        setOps((prev) => ({ loading: false, error: OPERATIONS_LOAD_ERROR, data: prev.data }));
+        return;
+      }
+      const d = await r.json().catch(() => null);
+      if (!mountedRef.current) return;
+      setOps({ loading: false, error: "", data: d });
+    } catch {
+      if (mountedRef.current) setOps((prev) => ({ loading: false, error: OPERATIONS_LOAD_ERROR, data: prev.data }));
+    }
+  }, []);
+  useEffect(() => { loadOps(); }, [loadOps]);
+  const opsView = operationsViews(ops.data);
+  const opsLaedt = ops.loading && !ops.data;
+
   const views = adminMetricViews(entries);
   const laedt = views.some((v) => v.state === "loading");
   const allesLeer = allMetricsUnavailable(views);
@@ -133,7 +200,7 @@ export default function AdminOverviewPage() {
         title="Adminbereich"
         subtitle="Offene Vorgänge auf einen Blick. Alle Bereiche sind zusätzlich serverseitig geschützt."
         actions={(
-          <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={laedt}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => { load(); loadOps(); }} disabled={laedt}>
             <Icon n="refresh" s={14} /> Aktualisieren
           </button>
         )}
@@ -171,6 +238,27 @@ export default function AdminOverviewPage() {
             {views.map((v) => <MetricCard key={v.key} view={v} />)}
           </ul>
         )}
+      </section>
+
+      <section className="adm-section" aria-labelledby="adm-ov-betrieb" id="adm-ops">
+        <h2 className="adm-section-title" id="adm-ov-betrieb">Betrieb</h2>
+        {/* Eigene Fehlerzeile — nicht die der Kennzahlen: beide Abrufe sind unabhängig. */}
+        {ops.error && (
+          <div className="adm-note adm-note--warning adm-ops-error" role="alert">
+            <Icon n="info" s={16} />
+            <span>{ops.error}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={loadOps} disabled={ops.loading}>
+              <Icon n="refresh" s={14} /> Erneut versuchen
+            </button>
+          </div>
+        )}
+        <ul className="adm-ops" aria-label="Betriebs-Queues">
+          {opsView.queues.map((v) => <OpsCard key={v.key} view={v} loading={opsLaedt} />)}
+        </ul>
+        <h3 className="adm-ops-sub">Diagnosen — nie automatisch aktionsfähig</h3>
+        <ul className="adm-ops" aria-label="Diagnosen">
+          {opsView.diagnostics.map((v) => <OpsCard key={v.key} view={v} loading={opsLaedt} />)}
+        </ul>
       </section>
 
       <section className="adm-section" aria-labelledby="adm-ov-bereiche">

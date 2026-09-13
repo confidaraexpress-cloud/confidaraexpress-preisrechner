@@ -1082,6 +1082,60 @@ a.adm-canc-ship-no:hover { text-decoration: underline; }
   .adm-canc-reason { -webkit-line-clamp: 4; }
 }
 
+/* ── Buchungsklärung (Package C) ─────────────────────────────────────────── */
+/* Liste: sieben Spalten wie die Stornierungsanfragen — derselbe Umschaltpunkt. */
+.adm-recon-table table { min-width: 0; table-layout: fixed; }
+.adm-recon-table th, .adm-recon-table td { vertical-align: top; }
+.adm-recon-table th { white-space: normal; }
+.adm-recon-no { font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; }
+.adm-recon-ship { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-recon-sub { font-size: 12px; color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.adm-recon-time { font-size: 12px; color: var(--ce-color-text-secondary); }
+.adm-recon-cards { display: none; list-style: none; flex-direction: column; gap: 12px; }
+@media (max-width: 1080px) {
+  .adm-recon-table { display: none; }
+  .adm-recon-cards { display: flex; }
+}
+
+/* Detail: Wartezeit und Nichtverfügbarkeit stehen als Hinweiszeile ÜBER den
+   Aktionen — Farbe ist nie der einzige Träger. */
+.adm-recon-wait,
+.adm-recon-unavailable { margin: 0 0 14px; }
+.adm-recon-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.adm-recon-review { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--ce-color-border-subtle); }
+.adm-recon-review .adm-edit-field { min-width: 240px; }
+.adm-recon-insurance { border: 0; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.adm-recon-insurance label { display: flex; align-items: center; gap: 8px; font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); }
+.adm-recon-drift-actions { margin-top: 14px; }
+
+/* ── Betriebs-Queues der Übersicht (Package C) ───────────────────────────── */
+/* Bewusst EIGENE Klassen: die Kennzahlenkarten (.adm-metric*) bleiben genau fünf
+   und unverändert. Eine Queue ist eine Zählung mit Einstieg, keine Kennzahl. */
+.adm-ops { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.adm-ops-item { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; height: 100%; }
+.adm-ops-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.adm-ops-ic { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: var(--ce-radius-sm); background: var(--ce-color-surface-muted); color: var(--ce-color-text-muted); }
+.adm-ops-label { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-secondary); min-width: 0; }
+.adm-ops-count { font-family: var(--ce-font-sans); font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; color: var(--ce-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.adm-ops-hint,
+.adm-ops-oldest { font-size: var(--ce-text-micro-size); line-height: 1.4; color: var(--ce-color-text-muted); }
+.adm-ops-links { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: auto; padding-top: 4px; font-size: 12px; }
+.adm-ops-item--actionable .adm-ops-ic { background: var(--ce-color-status-warning-surface); color: var(--ce-color-status-warning-fg); }
+.adm-ops-item--diagnostic .adm-ops-ic { background: var(--ce-color-status-info-surface); color: var(--ce-color-status-info-fg); }
+.adm-ops-sub { margin: 20px 0 10px; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-secondary); }
+.adm-ops-error { align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.adm-ops-error > span { flex: 1; min-width: 180px; }
+
+/* ── Betriebssicht im Sendungsdetail (Package C) ─────────────────────────── */
+.adm-opnote { margin-bottom: 12px; }
+.adm-opattempts { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.adm-opattempt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); background: var(--ce-color-surface-muted); }
+.adm-opattempt-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-opattempt-title { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-opattempt-meta { font-size: 12px; color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.adm-opattempt-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.adm-op-subtitle { margin: 18px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ce-color-text-muted); }
+
 /* Backfill-Vorschau: Mobilkarten statt einer fünfspaltigen Tabelle. */
 .adm-bf-cards { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 12px; }
 @media (max-width: 900px) {

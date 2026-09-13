@@ -46,6 +46,8 @@ const AdminCancellationRequestsPage = React.lazy(() => import("./pages/admin/Adm
 const AdminCancellationRequestDetailPage = React.lazy(() => import("./pages/admin/AdminCancellationRequestDetailPage"));
 const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSupportRequestsPage"));
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
+const AdminReconciliationPage = React.lazy(() => import("./pages/admin/AdminReconciliationPage"));
+const AdminReconciliationDetailPage = React.lazy(() => import("./pages/admin/AdminReconciliationDetailPage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
    und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
@@ -135,6 +137,9 @@ export default function App() {
           <Route path="/admin/invoices/:id" element={<AdminInvoiceDetailPage />} />
           <Route path="/admin/cancellation-requests"     element={<AdminCancellationRequestsPage />} />
           <Route path="/admin/cancellation-requests/:id" element={<AdminCancellationRequestDetailPage />} />
+          {/* Package C: Buchungsklärung — ungeklärte Buchungsvorgänge beider Anbieter. */}
+          <Route path="/admin/reconciliation"            element={<AdminReconciliationPage />} />
+          <Route path="/admin/reconciliation/:attemptId" element={<AdminReconciliationDetailPage />} />
           <Route path="/admin/support-requests"     element={<AdminSupportRequestsPage />} />
           <Route path="/admin/support-requests/:id" element={<AdminSupportRequestDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />

@@ -104,11 +104,13 @@ export const ADMIN_METRICS = Object.freeze([
   {
     key: "cancellations",
     label: "Offene Stornierungen",
-    hint: "Warten auf Prüfung",
+    hint: "Offen oder in Prüfung",
     icon: "ban",
     to: "/admin/cancellation-requests",
     linkLabel: "Zu den Stornierungsanfragen",
-    params: { status: "pending" },
+    // Package C: „offen" heißt pending ODER in_review. Das Backend kennt dafür den
+    // Filterwert `open` — dieselbe Menge wie die Operations-Queue `cancellations_open`.
+    params: { status: "open" },
     tone: "warning",
   },
   {

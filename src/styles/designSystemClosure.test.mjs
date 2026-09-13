@@ -288,6 +288,8 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   "/admin/shipments", "/admin/shipments/:id",
                   "/admin/invoices", "/admin/invoices/backfill", "/admin/invoices/:id",
                   "/admin/cancellation-requests", "/admin/cancellation-requests/:id",
+                  // Package C: die Buchungsklärung (Liste + ein Vorgang).
+                  "/admin/reconciliation", "/admin/reconciliation/:attemptId",
                   "/admin/support-requests", "/admin/support-requests/:id",
                   "/admin/audit-logs",
                   // Lager & Aufträge: NUR die beiden Detailseiten sind Routen.

@@ -267,7 +267,9 @@ test("11 — alle Admin-Dialoge laufen auf dem globalen Dialogsystem", () => {
 test("12 — Lade-, Fehler- und Leerzustände kommen aus dem Zustandsmuster", () => {
   const LISTEN = ["AdminUsersPage.jsx", "AdminShipmentsPage.jsx", "AdminInvoicesPage.jsx",
                   "AdminCancellationRequestsPage.jsx", "AdminSupportRequestsPage.jsx",
-                  "AuditLogPage.jsx", "AdminBackfillPage.jsx"];
+                  "AuditLogPage.jsx", "AdminBackfillPage.jsx",
+                  // Package C: die Liste der Buchungsklärung folgt demselben Zustandsmuster.
+                  "AdminReconciliationPage.jsx"];
   for (const f of LISTEN) {
     const src = seite(f);
     assert.match(src, /<ListSkeleton\b/, `${f}: kein Skeleton für die bekannte Listenstruktur`);
@@ -304,7 +306,8 @@ test("13 — jede Adminseite hat genau EINEN Seitenkopf", () => {
 test("14 — der Zurück-Link steht im Seitenkopf, nicht daneben", () => {
   const DETAILS = ["AdminUserDetailPage.jsx", "AdminShipmentDetailPage.jsx",
                    "AdminInvoiceDetailPage.jsx", "AdminCancellationRequestDetailPage.jsx",
-                   "AdminSupportRequestDetailPage.jsx", "AdminBackfillPage.jsx"];
+                   "AdminSupportRequestDetailPage.jsx", "AdminBackfillPage.jsx",
+                   "AdminReconciliationDetailPage.jsx"];
   for (const f of DETAILS) {
     const src = seite(f);
     assert.match(src, /backLink=\{back\}/, `${f}: der Zurück-Link hängt nicht am Seitenkopf`);
@@ -325,6 +328,7 @@ test("15 — jede Adminliste hat eine mobile Kartenansicht", () => {
     ["AdminSupportRequestsPage.jsx", "adm-sup-cards", "adm-sup-table"],
     ["AuditLogPage.jsx", "adm-audit-cards", "adm-audit-table"],
     ["AdminBackfillPage.jsx", "adm-bf-cards", "adm-bf-table"],
+    ["AdminReconciliationPage.jsx", "adm-recon-cards", "adm-recon-table"],
   ];
   const alleCss = admin + support;
   for (const [f, karten, tabelle] of LISTEN) {

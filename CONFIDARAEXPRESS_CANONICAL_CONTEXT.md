@@ -2,9 +2,9 @@
 
 - **Schema-Version:** 2.1
 - **Status:** CANONICAL PROJECT SOURCE
-- **Last verified:** 2026-09-13 (Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14; Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09)
-- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge)
-- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge)
+- **Last verified:** 2026-09-13 (TG22-Golden-Offer-Contract-Abschnitte 5.1, 5.12, 6.4, 8.4, 15; Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14; Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09)
+- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge)
+- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge)
 - **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09; Transglobal-Stand im Paket TG-22 am 2026-09-11 gegen den Code geprüft
 
 ---
@@ -306,6 +306,8 @@ Der Client darf Angebotswerte darstellen und vergleichen, aber niemals den final
 
 Die Buchung wird serverseitig gegen den gespeicherten Angebotszustand validiert.
 
+Auf der Buchungsseite gibt es genau **eine** Preisprojektion: Serverantwort → Price-View-Model → alle Preisflächen (ausgewähltes Angebot, Live- und Sticky-Leiste, Preiszusammenfassung, Absicherungskarten, Buchungsgate). Keine Fläche hält eine eigene Preiswahrheit; der Client addiert, rundet und rekonstruiert keine Beträge. Mit Absicherung stammen Netto- **und** Bruttogesamtbetrag aus der Neubepreisung (`customerTotalNet`, `customerTotalGross`, serverseitig centgenau gebildet); fehlt `customerTotalNet`, zeigt der Client keinen Nettogesamtbetrag. Nach der Buchung gilt ausschließlich `booking.amount` (TG22 Golden Offer Contract, wirksam nach Merge).
+
 Evidence anchors:
 
 - `lib/booking/offerRouting.js`
@@ -433,6 +435,8 @@ Providername und interne Providerreferenzen sollen nicht in kundenorientierten O
 
 Der tatsächliche Carrier darf sichtbar sein, soweit dies für das Versandprodukt erforderlich ist.
 
+**Produktentscheidung 2026-09-13 — Tarif-ID:** Die bestehende numerische Tarif-ID eines JUMiNGO-Angebots (etwa „Tarif-ID 3708") darf in den Angebotsdetails sichtbar bleiben — ohne Providernamen daneben. Das ist keine allgemeine Freigabe interner Providerreferenzen: Transglobal-ServiceID, Quote-, Buchungs- und Fehlerreferenzen, Einkaufspreise, interner Aufschlag und Rohdaten erscheinen nie kundenseitig, und ein technischer Feldname (`shipper_tariff_id`) steht nie als Text in der Oberfläche.
+
 ### 5.13 Rohwerte nicht ungefiltert in die UI
 
 **Status: ACTIVE_CURRENT**
@@ -521,6 +525,8 @@ Der Transglobal-Buchungspfad ist implementiert und für Service 22 real gegen di
 - belegte Kontowährung `TRANSGLOBAL_ACCOUNT_CURRENCY=EUR` (default nicht gesetzt ⇒ kein TG-Angebot),
 - Full Quote mit Buchungsreferenz, kuratierte Übergabeart und Preisklasse, beantwortete Adressarten,
 - bei Abholung ein Abholtag nach heute (Same-Day ist nicht öffentlich buchbar).
+
+Angebotsvertrag des Referenzservices (TG22 Golden Offer Contract): Leistungsname „Standardversand" (CE-Klassifikation wie ein Standardangebot der anderen Einkaufsquelle; eingefroren an Angebot, Sendung und Rechnung), Abholvertrag aus Abholtag und „bereit ab 09:00 Uhr" (kein Zeitfenster, kein „bis", keine Fensterwahl), Laufzeit „1–2 Tage" ohne berechnete Kalendertage (Zustelldaten erscheinen nur, wo ein Anbieter sie liefert), Labelformate „PDF · DIN A4 / Thermodruck" ohne Formatwahl, höchstens ein Packstück, zusätzliche Transportabsicherung nach Warenwert (bis 50 € Grundabsicherung ohne Aufpreis, oberhalb der Höchstdeckung kein Zusatz, sonst Preis ausschließlich über die Neubepreisung). Same-Day und `COLFEE` bleiben nicht freigegeben.
 
 Die Bestellung braucht zusätzlich `TRANSGLOBAL_BOOKING_ENABLED` (technischer Kill-Switch, default aus). Angebot und Buchung prüfen dieselbe Quelle.
 
@@ -637,6 +643,12 @@ Evidence anchor: `config/vatConfig.js`
 Buchungen werden gegen den gespeicherten/aktuellen serverseitigen Preisvertrag revalidiert.
 
 Preisabweichungen dürfen nicht still akzeptiert werden.
+
+Eine gemeldete Preisänderung (`409 PRICE_CHANGED`) entwertet den zuletzt bestätigten Preis auf allen Kundenflächen und sperrt die Buchung, bis der Kunde entscheidet; das Schließen des Dialogs reaktiviert den alten Preis nicht (TG22 Golden Offer Contract, wirksam nach Merge):
+
+- **Mit Neubindung** (Transglobal-Referenzservice mit Absicherung): der neue Gesamtbetrag wird ausschließlich über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` übernommen (neue Preisrevision); danach bucht der Kunde ausdrücklich erneut. Der übernommene Versandpreis gilt auch in der Angebotsliste.
+- **Ohne Neubindung** (JUMiNGO-Angebot mit `offerId`, mit oder ohne Absicherung): `/book` antwortet mit `recalculationRequired: true` und nur dem neuen Gesamtbetrag. Es gibt keinen Bestätigungsweg, nur „Angebote neu berechnen"; die gespeicherten Angebote werden dabei verworfen. Der Legacy-Weg ohne `offerId` bleibt unverändert.
+- Ein vom Client gesendeter Preis (`price_final`) hat im Transglobal-Weg keine Wirkung; maßgeblich sind gebundene Preisrevision, bestätigter Gesamtbetrag und Absicherungsauswahl.
 
 ---
 
@@ -869,6 +881,8 @@ UX:
 - vorhandene Komponenten und Helper bevorzugen
 - keine unnötigen Modals
 - keine rohen internen Status-/Fehlermeldungen an Kunden
+
+Gemeinsamer Anzeigevertrag der Angebots- und Buchungsflächen (TG22 Golden Offer Contract): jeder Preis trägt „Gesamt" oder „Versand"; die Zustellangabe heißt „Zustellung", solange Anbieterdaten vorliegen, bei reiner Laufzeit „Voraussichtliche Laufzeit"; Labelgrößen heißen „DIN A4", „DIN A6" und „Thermodruck", unbekannte Rohwerte erscheinen nicht; derselbe Abholvertrag (Zeitfenster oder „bereit ab") auf Karte und Buchung. Entschieden wird an den Feldern des Angebots, nie am Provider; die Layouts der Flächen bleiben eigenständig.
 
 ### Icon-System
 
@@ -1123,6 +1137,16 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.1 — 2026-09-13 (TG22 Golden Offer Contract)
+
+- 5.1: eine serverautoritative Preisprojektion auf der Buchungsseite; Netto- und Bruttogesamtbetrag der Neubepreisung kommen vom Server (`customerTotalNet`), keine Clientaddition; nach der Buchung gilt `booking.amount`.
+- 5.12: Produktentscheidung Tarif-ID — die numerische JUMiNGO-Tarif-ID darf ohne Providernamen sichtbar bleiben; keine allgemeine Freigabe interner Providerreferenzen, nie eine Transglobal-ServiceID.
+- 6.4: Angebotsvertrag des Referenzservices (Standardversand, „bereit ab 09:00 Uhr", Laufzeit ohne berechnete Daten, Labelformate, Absicherung nach Warenwert); Same-Day/`COLFEE` weiterhin nicht freigegeben.
+- 8.4: eine Preisänderung sperrt bis zur Entscheidung; Übernahme nur mit Neubindung über die Neubepreisung, ohne Neubindung nur Neuberechnung (`recalculationRequired`).
+- 15: gemeinsamer Anzeigevertrag (Gesamt/Versand, Zustellung/Voraussichtliche Laufzeit, DIN A4/Thermodruck, ein Abholvertrag).
+- Wirksam nach Merge der TG22-Golden-Offer-Contract-Branches (Backend vor Frontend); kein Schalter, keine ENV-Änderung.
+- Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-13 (Package C: Buchungsklärung, Betrieb, Datenschutz)
 

@@ -32,12 +32,19 @@ export function lieferadressZustand({
   offerId, geschaeft, privat, zuschlag,
   optionsId = "0a1b2c3d4e5f60718293a4b5c6d7e8f9",
   insuranceAvailable = false, insuranceDetails = null,
+  // TG22 Same-Day: `{ basis, zuschlag, block }` — der Versandpreis ohne Zuschlag, der Zuschlag der Abholung am
+  // selben Tag und der Block der Options- und Bindungsantwort (`pickupTodayUntil`, `collectionDate`,
+  // `collectionReadyFrom`). `geschaeft`/`privat` sind dann die Preise MIT diesem Zuschlag. Ohne Angabe gilt
+  // Zeile für Zeile der bisherige Vertrag.
+  sameDay = null,
 } = {}) {
   return {
-    offerId, geschaeft, privat, zuschlag, insuranceAvailable, insuranceDetails,
+    offerId, geschaeft, privat, zuschlag, insuranceAvailable, insuranceDetails, sameDay,
     revision: 0, optionsId, bound: null, insuranceSelected: false,
     optionsCalls: [], bindCalls: [],
     failOptions: 0, optionsDelayMs: 0, bindDelayMs: 0,
+    // Eine einmalige Ablehnung `{ status, body }` der nächsten Options- bzw. Bindungsanfrage.
+    optionsReject: null, bindReject: null,
   };
 }
 
@@ -45,6 +52,9 @@ const summen = (p) => ({
   customerShippingNet: p.net, shippingVat: p.vat, customerShippingGross: p.gross,
   insuranceGross: 0, customerTotalNet: p.net, customerTotalGross: p.gross,
 });
+
+// TG22 Same-Day: der Block, den Options- und Bindungsantwort für eine Abholung am selben Tag tragen.
+const selberTagBlock = (z) => ({ ...z.sameDay.block, surcharge: { ...z.sameDay.zuschlag } });
 
 export function optionsAntwort(z) {
   return {
@@ -54,13 +64,17 @@ export function optionsAntwort(z) {
       { value: false, surcharge: { net: 0, vat: 0, gross: 0 }, totals: summen(z.geschaeft) },
       { value: true, surcharge: { ...z.zuschlag }, totals: summen(z.privat) },
     ],
+    ...(z.sameDay ? { sameDayCollection: selberTagBlock(z) } : {}),
   };
 }
 
-/** Die öffentlichen Bestandteile einer Bindung — Geschäftsadresse genau eine Zeile. */
+/** Die öffentlichen Bestandteile einer Bindung — Geschäftsadresse genau eine Zeile (ohne Abholung am selben Tag). */
 export function bestandteile(z, wert) {
-  const basis = { type: "shipping_base", taxable: true, ...z.geschaeft };
-  return wert ? [basis, { type: "residential_delivery_surcharge", taxable: true, ...z.zuschlag }] : [basis];
+  const basis = { type: "shipping_base", taxable: true, ...(z.sameDay ? z.sameDay.basis : z.geschaeft) };
+  const selberTag = z.sameDay ? [{ type: "same_day_collection_surcharge", taxable: true, ...z.sameDay.zuschlag }] : [];
+  return wert
+    ? [basis, ...selberTag, { type: "residential_delivery_surcharge", taxable: true, ...z.zuschlag }]
+    : [basis, ...selberTag];
 }
 
 export function bindungsAntwort(z, wert, { insuranceReset = false, idempotent = false } = {}) {
@@ -74,6 +88,7 @@ export function bindungsAntwort(z, wert, { insuranceReset = false, idempotent = 
       priceCompleteness: "complete", insuranceAvailable: z.insuranceAvailable, insuranceDetails: z.insuranceDetails,
     },
     insuranceReset, idempotent,
+    ...(z.sameDay ? { sameDayCollection: selberTagBlock(z) } : {}),
   };
 }
 
@@ -107,6 +122,11 @@ export async function mockeLieferadresse(page, zustaende, anfragen = []) {
       if (!z) return unbekannt();
       z.optionsCalls.push(body);
       await warte(z.optionsDelayMs);
+      if (z.optionsReject) {
+        const ablehnung = z.optionsReject;
+        z.optionsReject = null;
+        return json(ablehnung.status, ablehnung.body);
+      }
       if (z.failOptions > 0) {
         z.failOptions -= 1;
         return json(503, { error: "Der Zuschlag konnte nicht berechnet werden.", code: "PRICE_INPUT_OPTIONS_UNAVAILABLE" });
@@ -121,6 +141,11 @@ export async function mockeLieferadresse(page, zustaende, anfragen = []) {
       if (!z) return unbekannt();
       z.bindCalls.push(body);
       await warte(z.bindDelayMs);
+      if (z.bindReject) {
+        const ablehnung = z.bindReject;
+        z.bindReject = null;
+        return json(ablehnung.status, ablehnung.body);
+      }
       const wert = body.deliveryIsResidential;
       // Doppelklick: genau dieser Zustand ist schon gebunden — derselbe Stand oder der davor.
       if (z.bound === wert && body.optionsId === z.optionsId

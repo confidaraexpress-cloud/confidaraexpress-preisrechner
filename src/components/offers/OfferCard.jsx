@@ -4,7 +4,8 @@ import { money, fmtDelivery } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
-import { offerKey, offerBlocked, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
+import { offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
+import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
@@ -463,12 +464,16 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // Gesperrt ist gesperrt — aus welchem Grund, entscheidet EINE Stelle
   // (utils/offerIdentity.mjs): entweder das Backend sagt „an diesem Datum nicht"
   // oder „nur Preisauskunft". Ein FEHLENDES Feld sperrt nichts.
-  const unavailable = offerBlocked(t);
+  // TG22 Residential: ein Angebot, das nur noch auf die Art der Lieferadresse wartet, ist
+  // AUSWÄHLBAR (Karte, Knopf, Buchungsseite) — gebucht wird erst nach der Bindung dort.
+  const unavailable = !offerSelectable(t);
   // Der Grund wird ÜBERSETZT, nie durchgereicht — ein roher Backendcode im
   // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
   // nennt den Einkaufsprovider nicht.
   const unavailableText = offerBlockedLabel(t);
   const unavailableHint = offerBlockedHint(t);
+  // „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." — nur, solange die Angabe aussteht.
+  const surchargeHint = offerSurchargeHint(t);
   // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
   // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
   // `aria-controls` zeigte bei allen auf denselben Bereich.
@@ -695,6 +700,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           {/* TG22 Paket B: nur beim Abholtag als einzigem Grund — die HANDLUNG, nicht ein
               zweites Mal der Grund. */}
           {unavailableHint && <p className="offer-cta-hint">{unavailableHint}</p>}
+          {/* TG22 Residential: der Preis darüber ist vorläufig („Vorläufiger Preis" in Zone 4); dieser
+              Satz sagt, wovon der endgültige Betrag abhängt. Kein „ab"-Betrag, kein Anbietername. */}
+          {surchargeHint && <p className="offer-cta-hint offer-surcharge-hint">{surchargeHint}</p>}
           <button
             className="offer-details-link"
             onClick={toggleDetails}

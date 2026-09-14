@@ -1,7 +1,12 @@
-/* Paket 9A — die vier Sendungsangaben von „Neue Sendung".
+/* Paket 9A / TG22 Residential — die Sendungsangaben von „Neue Sendung".
 
    Gemessen wird das reine Modul UND die Verdrahtung im Quelltext der Seite: ein Modul,
    das richtig rechnet und nirgends aufgerufen wird, ist keine Zusage.
+
+   Seit TG22 Residential sind es ZWEI Angaben: Inhalt und Warenwert. Die Art der
+   Lieferadresse wird erst nach der Angebotsauswahl auf der Buchungsseite gewählt
+   (residentialPriceInputs.test.mjs); eine Adressart aus einem älteren Formular oder
+   Entwurf wird ignoriert — nie übernommen, nie gesendet, nie zur Sperre.
 
    Kein Netz, kein React-Renderer, kein Backend. */
 
@@ -27,33 +32,27 @@ const BUCHUNG = lies("../pages/BookingPage.jsx");
 
 const VOLL = (over = {}) => ({
   declaredContent: "Ersatzteile", declaredGoodsValue: "250",
-  collectionIsResidential: false, deliveryIsResidential: true,
   ...over,
 });
 
 /* ══════════ Der Ausgangszustand ════════════════════════════════════════════ */
 
-test("A1 — der Ausgangszustand erfindet nichts: kein Inhalt, kein Wert, keine Antwort", () => {
-  assert.deepEqual(blankDeclarations(), {
-    declaredContent: "", declaredGoodsValue: "",
-    collectionIsResidential: null, deliveryIsResidential: null,
-  });
-  // Insbesondere KEIN `false`: das wäre die Behauptung „Geschäftsadresse", und die ist
-  // preiswirksam. Und kein "Paket"/0 — dieselbe Klasse von Ersatzwert.
+test("A1 — der Ausgangszustand erfindet nichts: kein Inhalt, kein Wert, keine Adressart", () => {
+  assert.deepEqual(blankDeclarations(), { declaredContent: "", declaredGoodsValue: "" });
+  // Kein "Paket"/0 — ein Ersatzwert wäre eine preiswirksame Behauptung über die Sendung.
   const leer = createEmptyShipmentForm();
-  assert.strictEqual(leer.collectionIsResidential, null);
-  assert.strictEqual(leer.deliveryIsResidential, null);
   assert.strictEqual(leer.declaredContent, "");
   assert.strictEqual(leer.declaredGoodsValue, "");
+  assert.ok(!("collectionIsResidential" in leer) && !("deliveryIsResidential" in leer),
+    "das leere Formular trägt wieder eine Adressart");
 });
 
-/* ══════════ Pflicht und Dreiwertigkeit ═════════════════════════════════════ */
+/* ══════════ Pflicht ════════════════════════════════════════════════════════ */
 
-test("B1 — alle vier sind Pflicht, jede wird einzeln benannt", () => {
-  for (const feld of ["declaredContent", "declaredGoodsValue",
-                      "collectionIsResidential", "deliveryIsResidential"]) {
+test("B1 — beide sind Pflicht, jede wird einzeln benannt", () => {
+  for (const feld of ["declaredContent", "declaredGoodsValue"]) {
     const f = VOLL();
-    f[feld] = feld.endsWith("Residential") ? null : "";
+    f[feld] = "";
     const e = declarationErrors(f);
     assert.ok(e[feld], `ohne ${feld} entstand kein Fehler`);
     assert.strictEqual(declarationsComplete(f), false);
@@ -62,11 +61,14 @@ test("B1 — alle vier sind Pflicht, jede wird einzeln benannt", () => {
   assert.deepEqual(declarationErrors(VOLL()), {});
 });
 
-test("B2 — `false` ist eine ANTWORT und blockiert nicht", () => {
-  const f = VOLL({ collectionIsResidential: false, deliveryIsResidential: false });
-  assert.deepEqual(declarationErrors(f), {},
-    "zwei Geschäftsadressen wurden als unbeantwortet behandelt");
-  assert.strictEqual(declarationsPayload(f).deliveryIsResidential, false);
+test("B2 — eine Adressart (auch eine unbeantwortete) sperrt nichts und wird nicht gesendet", () => {
+  for (const alt of [{ collectionIsResidential: null, deliveryIsResidential: null },
+                     { collectionIsResidential: false, deliveryIsResidential: true }]) {
+    const f = VOLL(alt);
+    assert.deepEqual(declarationErrors(f), {}, "eine Adressart sperrt den Vergleich");
+    assert.deepEqual(declarationsPayload(f), { content: "Ersatzteile", goodsValue: 250 },
+      "eine Adressart gelangt in den Vergleich");
+  }
 });
 
 test("B3 — der Warenwert folgt der Zahlendisziplin, das Dezimalkomma ist erlaubt", () => {
@@ -87,21 +89,16 @@ test("B4 — der Inhalt wird getrimmt und begrenzt, aber nie ersetzt", () => {
   assert.strictEqual(declarationsPayload(VOLL({ declaredContent: "" })), null);
 });
 
-test("B5 — der gesendete Block trägt GENAU die vier Schlüssel des Servers", () => {
-  assert.deepEqual(Object.keys(declarationsPayload(VOLL())).sort(),
-    ["collectionIsResidential", "content", "deliveryIsResidential", "goodsValue"]);
+test("B5 — der gesendete Block trägt GENAU Inhalt und Warenwert", () => {
+  assert.deepEqual(Object.keys(declarationsPayload(VOLL())).sort(), ["content", "goodsValue"]);
 });
 
 /* ══════════ Entwurf: lockerer, aber ohne Erfindung ═════════════════════════ */
 
-test("C1 — der Entwurf speichert jede Angabe für sich; fehlende stehen als null", () => {
-  const s = declarationsSnapshot({ declaredContent: "Ersatzteile" });
-  assert.strictEqual(s.content, "Ersatzteile");
-  assert.strictEqual(s.goodsValue, null);
-  assert.strictEqual(s.collectionIsResidential, null);
-  // Ein beantwortetes `false` bleibt `false` — sonst fände der Kunde die Frage nach dem
-  // Fortsetzen unbeantwortet vor, obwohl er sie beantwortet hatte.
-  assert.strictEqual(declarationsSnapshot({ collectionIsResidential: false }).collectionIsResidential, false);
+test("C1 — der Entwurf speichert jede Angabe für sich; fehlende stehen als null, eine Adressart gar nicht", () => {
+  assert.deepEqual(declarationsSnapshot({ declaredContent: "Ersatzteile" }), { content: "Ersatzteile", goodsValue: null });
+  assert.deepEqual(declarationsSnapshot({ collectionIsResidential: false, deliveryIsResidential: true }),
+    { content: null, goodsValue: null }, "der Entwurf speichert wieder eine Adressart");
 });
 
 test("C2 — ein Entwurf ohne diese Felder ergibt den leeren Zustand, keinen Fehler", () => {
@@ -112,20 +109,26 @@ test("C2 — ein Entwurf ohne diese Felder ergibt den leeren Zustand, keinen Feh
     blankDeclarations(), "ein unbrauchbarer Wert wurde übernommen");
 });
 
-test("C3 — Speichern und Fortsetzen ist verlustfrei", () => {
+test("C3 — Speichern und Fortsetzen ist verlustfrei; eine Adressart aus der Zeit davor kommt nicht zurück", () => {
   const form = { ...createEmptyShipmentForm(), ...VOLL() };
   const snapshot = getShipmentFormSnapshot({ form });
   const wieder = buildResumeInitialState(snapshot);
   assert.strictEqual(wieder.form.declaredContent, "Ersatzteile");
   assert.strictEqual(wieder.form.declaredGoodsValue, "250");
-  assert.strictEqual(wieder.form.collectionIsResidential, false,
-    "die beantwortete Geschäftsadresse ging beim Fortsetzen verloren");
-  assert.strictEqual(wieder.form.deliveryIsResidential, true);
+
+  // Ein Entwurf aus der Zeit der Adressfragen: die Werte werden ignoriert, und nichts sperrt.
+  const alt = buildResumeInitialState({
+    ...snapshot,
+    declarations: { ...snapshot.declarations, collectionIsResidential: false, deliveryIsResidential: true },
+  });
+  assert.ok(!("collectionIsResidential" in alt.form) && !("deliveryIsResidential" in alt.form),
+    "der Entwurf brachte eine Adressart zurück");
+  assert.deepEqual(declarationErrors(alt.form), {});
 });
 
 /* ══════════ Verdrahtung in der Seite ═══════════════════════════════════════ */
 
-test("D1 — die Seite prüft die vier Angaben mit DIESEM Modul, nicht mit einer zweiten Regel", () => {
+test("D1 — die Seite prüft die Angaben mit DIESEM Modul, nicht mit einer zweiten Regel", () => {
   assert.match(SEITE, /declarationErrors\(form\)/, "die Prüfung ist nicht verdrahtet");
   assert.match(SEITE, /declarations:\s+declarationsPayload\(form\)/,
     "der Block wird nicht mitgesendet");
@@ -134,32 +137,34 @@ test("D1 — die Seite prüft die vier Angaben mit DIESEM Modul, nicht mit einer
     "die Seite formuliert eine eigene Warenwertregel");
 });
 
-test("D2 — die vier Angaben stehen im Recalc-Schlüssel (sie sind preisbestimmend)", () => {
-  // Ohne sie behielte eine geänderte Adressart die alten Angebote — und der Kunde
-  // buchte zu einem Preis, der auf einer anderen Angabe beruht.
+test("D2 — Inhalt und Warenwert stehen im Recalc-Schlüssel, eine Adressart nicht", () => {
+  // Ohne sie behielte ein geänderter Warenwert die alten Angebote — und der Kunde buchte zu
+  // einem Preis, der auf einer anderen Angabe beruht.
   const start = SEITE.indexOf("calcKeyRef.current = JSON.stringify(");
   assert.ok(start > -1, "der Recalc-Schlüssel wurde nicht gefunden");
   const block = SEITE.slice(start, start + 1200);
-  for (const feld of ["declaredContent", "declaredGoodsValue",
-                      "collectionIsResidential", "deliveryIsResidential"])
+  for (const feld of ["declaredContent", "declaredGoodsValue"])
     assert.ok(block.includes(feld), `${feld} fehlt im Recalc-Schlüssel`);
+  for (const feld of ["collectionIsResidential", "deliveryIsResidential"])
+    assert.ok(!block.includes(feld), `${feld} steht wieder im Recalc-Schlüssel`);
 });
 
-test("D3 — die Adressfrage wird nicht neu gebaut, sondern wiederverwendet", () => {
-  assert.match(SEITE, /AddressTypeModule/, "die vorhandene Bedienoberfläche wird nicht benutzt");
-  // Kein Providername im neuen Abschnitt — weder im Text noch in einem Feldnamen. Der
-  // Ausschnitt endet bewusst am CTA: die Seite enthält weiter oben den ALTEN Routenpfad
+test("D3 — „Angaben zur Sendung“ stellt keine Adressfrage und nennt keinen Anbieter", () => {
+  assert.doesNotMatch(SEITE, /AddressTypeModule|collectionIsResidential|deliveryIsResidential/,
+    "die Adressfrage steht wieder im Sendungsformular");
+  // Kein Providername im Abschnitt — weder im Text noch in einem Feldnamen. Der Ausschnitt
+  // endet bewusst am CTA: die Seite enthält weiter oben den ALTEN Routenpfad
   // `/api/jumingo/calculate-price`, und der ist eine technische Adresse, kein sichtbarer
   // Providername. Ein Scan über die ganze Datei würde ihn treffen und damit etwas anderes
   // messen, als hier zugesagt ist.
   const start = SEITE.indexOf("Angaben zur Sendung");
-  assert.ok(start > -1, "der neue Abschnitt wurde nicht gefunden");
+  assert.ok(start > -1, "der Abschnitt wurde nicht gefunden");
   const abschnitt = SEITE.slice(start, SEITE.indexOf("offers-calc-cta", start));
   assert.ok(abschnitt.length > 200, "der Ausschnitt des Abschnitts ist leer");
   for (const verboten of ["transglobal", "Transglobal", "jumingo", "JUMiNGO", "Jumingo",
                           "UPS", "DHL", "DPD", "GLS", "TNT"])
     assert.ok(!abschnitt.includes(verboten),
-      `der Providername ${verboten} steht im neuen Abschnitt`);
+      `der Providername ${verboten} steht im Abschnitt`);
 });
 
 test("D4 — der Warenwert wird auf der Buchungsseite nur ANGEZEIGT", () => {
@@ -170,7 +175,7 @@ test("D4 — der Warenwert wird auf der Buchungsseite nur ANGEZEIGT", () => {
     "der Warenwert kommt nicht aus dem Sendungsformular");
 });
 
-test("D5 — die Adressart der Buchungsseite kommt aus dem Sendungsformular", () => {
-  assert.match(BUCHUNG, /bookingData\?\.form\?\.deliveryIsResidential/);
-  assert.match(BUCHUNG, /bookingData\?\.form\?\.collectionIsResidential/);
+test("D5 — die Buchungsseite liest keine Adressart aus dem Sendungsformular oder dem Vorgang", () => {
+  assert.doesNotMatch(BUCHUNG, /bookingData\?\.form\?\.(deliveryIsResidential|collectionIsResidential)/);
+  assert.doesNotMatch(BUCHUNG, /flowBooking\?\.(deliveryIsResidential|collectionIsResidential)/);
 });

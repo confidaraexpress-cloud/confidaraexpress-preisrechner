@@ -10,6 +10,8 @@
 // keine Backend-Änderung.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { readPriceComponents } from "./priceComponentsView.mjs";
+
 // Modus der Rechnungszustellung, den der Erfolgsscreen kommuniziert.
 export const INVOICE_DELIVERY_MODE = Object.freeze({
   PENDING: "pending",       // Dokument wird noch erstellt (Modus noch nicht entschieden)
@@ -53,6 +55,18 @@ export function bookingSuccessAmountView(booking, priceView) {
   const aufstellung = pv && pv.hasConfirmedPrice === true ? gueltigerBetrag(pv.totalGross) : null;
   const gleich = aufstellung !== null && Math.round(aufstellung * 100) === Math.round(betrag * 100);
   return { hasAmount: true, totalGross: betrag, showBreakdown: gleich, hint: null };
+}
+
+// TG22 Residential — die Bestandteile der Aufstellung auf dem Erfolgsbildschirm: bevorzugt die der
+// Buchungsantwort (`priceComponents`, der gebuchte Stand), sonst die bereits bestätigten der Seite.
+// Ohne gültige Bestandteile `null` — die Aufstellung zeigt dann ihre bisherigen Zeilen. Es wird
+// nichts gerechnet; die Aufstellung erscheint ohnehin nur, wenn ihr Gesamtbetrag dem gebuchten entspricht.
+export function bookingSuccessComponents(booking, priceView) {
+  const b = booking && typeof booking === "object" ? booking : {};
+  const ausBuchung = readPriceComponents(b.priceComponents);
+  if (ausBuchung) return ausBuchung;
+  const pv = priceView && typeof priceView === "object" ? priceView : {};
+  return readPriceComponents(pv.components);
 }
 
 // Sucht die soeben erzeugte Rechnung anhand der (aus dem /book-Response bekannten) Rechnungsnummer.

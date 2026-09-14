@@ -178,10 +178,9 @@ export function blankNewShipmentForm() {
     s_company: "", s_firstName: "", s_lastName: "", s_fullName: "", s_street: "", s_addition: "", s_zip: "", s_city: "", s_country: "DE", s_state: "", s_phone: "", s_email: "",
     r_company: "", r_firstName: "", r_lastName: "", r_fullName: "", r_street: "", r_addition: "", r_zip: "", r_city: "", r_country: "CH", r_state: "", r_phone: "", r_email: "",
     packageCount: "1", weight: "", length: "", width: "", height: "",
-    // Die vier Sendungsangaben gehören in den Ausgangszustand des Fortsetzens — sonst
+    // Die beiden Sendungsangaben gehören in den Ausgangszustand des Fortsetzens — sonst
     // wären sie beim Wiederherstellen unkontrollierte React-Felder, und der erste
-    // Tastendruck verlöre den Zustandswechsel. Die beiden Adressartfragen starten
-    // als `null` („noch nicht beantwortet"), nie als `false`.
+    // Tastendruck verlöre den Zustandswechsel.
     ...blankDeclarations(),
     max_price: "", latestDeliveryDate: "", latestDeliveryTime: "",
   };
@@ -286,10 +285,10 @@ export function buildResumeInitialState(formData, { today = null } = {}) {
   // ebenso auf "all" zurück, statt dem Snapshot blind zu vertrauen).
   const inventoryContext = normalizeInventoryContext(fd.inventoryContext);
 
-  // Die vier Sendungsangaben — defensiv zurückgelesen, genau wie Filter und Lagerbezug.
+  // Die beiden Sendungsangaben — defensiv zurückgelesen, genau wie Filter und Lagerbezug.
   // Ein Entwurf aus der Zeit VOR diesen Feldern liefert `undefined` und ergibt den leeren
-  // Ausgangszustand; eine unbeantwortete Adressart bleibt unbeantwortet und wird nie zu
-  // „Geschäftsadresse". Der gespeicherte Schnappschuss ist auch hier KEIN Autoritätsbeweis.
+  // Ausgangszustand. Eine Adressart aus einem älteren Entwurf wird ignoriert (TG22
+  // Residential). Der gespeicherte Schnappschuss ist auch hier KEIN Autoritätsbeweis.
   Object.assign(form, declarationsFromSnapshot(fd.declarations));
 
   return { form, shippingDate, shippingDateExpired, serviceFilter, shippingModeFilter, selectedPublicCarrierIds, inventoryContext };

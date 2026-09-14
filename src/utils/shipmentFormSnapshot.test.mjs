@@ -28,7 +28,7 @@ test("Snapshot: enthält exakt die erlaubten Felder (kein UI-/Ergebnis-State)", 
   // ist kein Vertrag. Fehlende Werte stehen als `null` — nicht als `""` und schon gar
   // nicht als `false`, das bei der Adressart eine Antwort wäre.
   assert.deepEqual(snap.declarations,
-    { content: null, goodsValue: null, collectionIsResidential: null, deliveryIsResidential: null });
+    { content: null, goodsValue: null });
   // `firstName`/`lastName` sind mit dem Versandkontaktvertrag dazugekommen;
   // `fullName` bleibt als Altbestandswert eines fortgesetzten Entwurfs erhalten.
   assert.deepEqual(Object.keys(snap.sender).sort(), ["addressAddition", "city", "company", "country",

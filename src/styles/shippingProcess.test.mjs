@@ -241,8 +241,9 @@ test("8b — die Angebotskarte zeigt einen verständlichen Grund statt eines Roh
 
   assert.ok(!/\{t\.unavailableReason\}/.test(offerCard) && !/\{tariff\.reason\}/.test(offerCard),
     "kein roher Backend-Grund darf direkt gerendert werden");
-  // Und die Karte liest den Sperrzustand aus der einen Quelle, nicht mehr selbst.
-  assert.match(offerCard, /offerBlocked\(t\)/);
+  // Und die Karte liest den Sperrzustand aus der einen Quelle, nicht mehr selbst. TG22 Residential:
+  // die Aktionsfrage beantwortet `offerSelectable` (auswählbar, auch wenn die Lieferadresse aussteht).
+  assert.match(offerCard, /offerSelectable\(t\)/);
   assert.ok(!/t\.availableForDate === false/.test(offerCard),
     "die Karte leitet den Sperrzustand wieder selbst ab");
 });

@@ -110,13 +110,13 @@ test("B1b der Ausgangszustand trägt gar kein Land mehr", () => {
   // Ausnahme statt die Prüfung zu lockern: ein zweites vorbelegtes Feld — und damit auch
   // jedes zurückkehrende Land — fällt weiterhin sofort auf.
   const VORBELEGT = new Set(["packageCount"]);
-  // Die beiden Adressartfragen sind DREIWERTIG und starten deshalb als `null`
-  // („noch nicht beantwortet"). Das ist kein Vorgabewert: ein `""` waere dort ein
-  // vierter, undeutbarer Zustand und ein `false` die Behauptung „Geschaeftsadresse".
-  const UNBEANTWORTET = new Set(["collectionIsResidential", "deliveryIsResidential"]);
+  // TG22 Residential: das Formular trägt keine Adressartfragen mehr — ohne Ausnahme startet jedes
+  // übrige Feld leer.
+  assert.ok(!("collectionIsResidential" in leer) && !("deliveryIsResidential" in leer),
+    "das leere Formular trägt wieder eine Adressart");
   for (const [k, v] of Object.entries(leer)) {
     if (VORBELEGT.has(k)) continue;
-    if (UNBEANTWORTET.has(k)) {
+    if (v === null) {
       assert.strictEqual(v, null, `Feld ${k} startet nicht als „unbeantwortet" (${JSON.stringify(v)})`);
       continue;
     }

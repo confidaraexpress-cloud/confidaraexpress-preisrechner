@@ -36,7 +36,7 @@ import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap"
 import { money } from "../../utils/formatters";
 import {
   INVOICES_DASHBOARD_TARGET, invoiceDeliveryHint, BOOKING_CONFIRMATION_LINE, INVOICE_AUTOCREATE_LINE,
-  bookingSuccessAmountView,
+  bookingSuccessAmountView, bookingSuccessComponents,
 } from "../../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
 
@@ -120,7 +120,7 @@ export function BookingSuccessStep({
                   • Betrag vorhanden, Aufstellung weicht ab → nur der gebuchte Gesamtbetrag,
                   • kein Betrag → kein Betrag, nur der Verweis auf Bestätigung und Rechnung. */}
             {betrag.showBreakdown ? (
-              <PriceSummaryModule priceView={{ ...priceView, totalGross: betrag.totalGross }} paymentTerm={user?.payment_term || 7} />
+              <PriceSummaryModule priceView={{ ...priceView, totalGross: betrag.totalGross, components: bookingSuccessComponents(booking, priceView) }} paymentTerm={user?.payment_term || 7} />
             ) : betrag.hasAmount ? (
               <div className="booking-total-row mt-8" id="booking-success-amount">
                 <span className="booking-total-label">Gesamtbetrag brutto</span>

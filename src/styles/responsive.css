@@ -105,21 +105,13 @@
   .abk-actions-trigger,
   .dft-actions-trigger { min-height: 44px; min-width: 44px; }
 
-  /* Auswahlzeilen der Adressart. Gemessen: auf 834 px maßen sie 37 px — sie tragen
-     `padding: 8px 4px` aus `.ci-mode-option` und keine eigene Mindesthöhe. Eine
-     Pflichtangabe, die man auf dem Tablet schlecht trifft, ist genau die Reibung,
-     an der ein Buchungsformular verlassen wird.
+  /* Auswahlzeilen der beiden Pflichtfragen zur Ware (zusätzliche Transportabsicherung).
+     Gemessen: auf 834 px maßen sie 37 px — sie tragen `padding: 8px 4px` aus
+     `.ci-mode-option` und keine eigene Mindesthöhe. Eine Pflichtangabe, die man auf dem
+     Tablet schlecht trifft, ist genau die Reibung, an der ein Buchungsformular verlassen wird.
      `align-items: center` statt `flex-start`: sonst klebt der Radioknopf bei
      erzwungener Höhe oben in der Zeile statt neben seinem Text. */
-  .adr-typ-group .ci-mode-option,
-  .ns-adr-typ-group .ci-mode-option,
-  /* TG22 Paket B: dieselbe Auswahlzeile trägt die beiden Pflichtfragen zur Ware der
-     zusätzlichen Transportabsicherung — dieselbe Trefferfläche. */
   .ins-goods-question .ci-mode-option { min-height: 44px; align-items: center; }
-  /* Die Aenderung der festgeschriebenen Angaben ist das einzige Bedienelement ihrer
-     Flaeche — dieselbe Trefferflaeche wie jedes andere (WCAG 2.5.5). `.btn-link` ist
-     ein Textknopf ohne eigene Hoehe und bekommt sie deshalb hier. */
-  .adr-typ-summary .adr-typ-edit { min-height: 44px; }
 
   /* Werkzeugleiste des Adressbuchs: Rollenreiter, Suche und Filterchips
      tragen dort eigene, kompaktere Höhen (33 / 40 px). */

@@ -80,7 +80,7 @@ const SHIPMENT_FIELD_ORDER = [
   "packageCount", "weight", "length", "width", "height", "shippingDate",
   // Die Sendungsangaben stehen ANS ENDE: sie sind im Formular unterhalb der Paketdaten,
   // und der Sprung zum ersten Fehler soll der Leserichtung folgen.
-  "declaredContent", "declaredGoodsValue", "collectionIsResidential", "deliveryIsResidential",
+  "declaredContent", "declaredGoodsValue",
 ];
 const firstShipmentErrorField = (errs) =>
   SHIPMENT_FIELD_ORDER.find((k) => errs[k]) || Object.keys(errs)[0] || null;
@@ -96,8 +96,6 @@ import {
 import { PROFILE_DASHBOARD_TARGET } from "../utils/bookingSuccessView.mjs";
 import { draftBookingOptionsToFlow, hasAnyDraftBookingOption } from "../utils/draftBookingOptions.mjs";
 import { declarationErrors, declarationsPayload, DECLARED_CONTENT_MAX } from "../utils/shipmentDeclarations.mjs";
-import { AddressTypeModule } from "../components/booking/AddressTypeModule";
-import { FELD_ABHOLUNG, FELD_ZUSTELLUNG } from "../utils/addressTypeQuestions.mjs";
 import { getShipmentFormSnapshot, isShipmentFormDirty, hasMeaningfulShipmentInput } from "../utils/shipmentFormSnapshot.mjs";
 import { AddressPickerButton } from "../components/addressbook/AddressPickerButton";
 import { AddressSuggestInput } from "../components/address/AddressSuggestInput";
@@ -193,7 +191,7 @@ function getErrors(form) {
   // Preis für Maße, die er nie eingegeben hat.
   Object.assign(e, packageErrors(form));
 
-  // Die vier Sendungsangaben (Inhalt, Warenwert, zweimal Adressart). Sie sind Pflicht,
+  // Die beiden Sendungsangaben (Inhalt, Warenwert). Sie sind Pflicht,
   // weil aus ihnen ein abschliessend bepreisbarer Sendungskontext entsteht: ohne sie
   // wird vor dem Vergleich etwas anderes gefragt als vor der Buchung, und die Differenz
   // laesst sich danach nicht mehr von einer echten Preisaenderung unterscheiden.
@@ -1124,12 +1122,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     s: [form.s_company, form.s_fullName, form.s_street, form.s_addition, form.s_zip, form.s_city, form.s_country, form.s_phone, form.s_email],
     r: [form.r_company, form.r_fullName, form.r_street, form.r_addition, form.r_zip, form.r_city, form.r_country, form.r_phone, form.r_email],
     serviceFilter, shippingModeFilter, shippingDate, publicCarrierIds: selectedPublicCarrierIds,
-    // Die vier Sendungsangaben sind PREISBESTIMMEND und gehoeren deshalb in den
-    // Schluessel: aendert der Kunde die Adressart oder den Warenwert, gelten die
+    // Die Sendungsangaben sind PREISBESTIMMEND und gehoeren deshalb in den
+    // Schluessel: aendert der Kunde Inhalt oder Warenwert, gelten die
     // vorhandenen Angebote nicht mehr, und eine noch laufende Antwort darf nicht mehr
     // uebernommen werden. Die reinen Anzeigefilter bleiben unveraendert draussen.
-    declarations: [form.declaredContent, form.declaredGoodsValue,
-                   form.collectionIsResidential, form.deliveryIsResidential],
+    // Die Art der Lieferadresse gehoert NICHT hierher: sie wird erst nach der
+    // Angebotsauswahl auf der Buchungsseite gefragt und aendert keine Angebotsliste.
+    declarations: [form.declaredContent, form.declaredGoodsValue],
   });
 
   const calculate = async () => {
@@ -1880,12 +1879,16 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           </div>
 
           {/* ── Angaben zur Sendung ───────────────────────────────────────────────
-              Vier Angaben, die den Preis mitbestimmen: WAS versendet wird, WAS es wert
-              ist und ob Abhol- bzw. Lieferadresse Privatadressen sind.
+              Zwei Angaben, die den Preis mitbestimmen: WAS versendet wird und WAS es
+              wert ist.
 
               Sie stehen HIER und nicht auf der Buchungsseite, weil sie den Preis
               beeinflussen: wer sie erst nach dem Vergleich erhebt, vergleicht Angebote
               auf einer anderen Grundlage, als er sie später bucht.
+
+              Die Art der Lieferadresse steht bewusst NICHT hier: ein möglicher Zuschlag
+              betrifft nur einzelne Angebote und wird erst nach deren Auswahl auf der
+              Buchungsseite gefragt.
 
               Kein Providername, kein Vorgabewert, keine Vorauswahl. */}
           <div className="calc-panel mb-16">
@@ -1907,21 +1910,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                        error={errors.declaredGoodsValue}
                        hint="Tatsächlicher Warenwert der Sendung." />
               </div>
-
-              {/* Dieselbe Bedienoberfläche wie im Buchungsschritt — sie ist dreiwertig
-                  (privat / geschäftlich / noch nicht beantwortet) und kennt weder
-                  Provider noch Übergabeart. Beide Fragen stehen hier fest, weil vor dem
-                  Vergleich noch nicht feststeht, ob abgeholt oder abgegeben wird. */}
-              <AddressTypeModule
-                // Eigene Gruppenklasse: `.adr-typ-group` ist der etablierte Marker der
-                // BUCHUNGSSEITE. Ohne eine eigene Kennzeichnung träfe jeder Selektor,
-                // der dort auf die Buchungsseite wartet, schon dieses Formular.
-                gruppeKlasse="ns-adr-typ-group"
-                fragen={[FELD_ABHOLUNG, FELD_ZUSTELLUNG]}
-                werte={{ [FELD_ABHOLUNG]: form[FELD_ABHOLUNG], [FELD_ZUSTELLUNG]: form[FELD_ZUSTELLUNG] }}
-                onChange={(feld, wert) => upd(feld, wert)}
-                showErrors={!!(errors[FELD_ABHOLUNG] || errors[FELD_ZUSTELLUNG])}
-              />
             </div>
           </div>
 

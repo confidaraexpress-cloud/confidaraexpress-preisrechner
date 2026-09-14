@@ -161,6 +161,36 @@ export function repriceInsurance(payload, { signal } = {}) {
   });
 }
 
+// ── Art der Lieferadresse nach der Angebotsauswahl (auth) ────────────────────
+// POST /api/offers/price-input-options — die Zuschlagsoptionen eines Angebots, das die Angabe
+// braucht. Gesendet werden AUSSCHLIESSLICH Angebotskennung und Preisstand — kein Preis, keine
+// Adresse. Der Server bepreist beide Möglichkeiten selbst und nennt Zuschlag und Totals.
+// Gibt die rohe Response zurück (der Aufrufer wertet Status/JSON selbst aus).
+export function loadPriceInputOptions({ offerId, offerRevision }, { signal } = {}) {
+  return apiFetch(`/api/offers/price-input-options`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ offerId, offerRevision }),
+    // Der Server bepreist beide Möglichkeiten beim Dienstleister — dieselbe Größenordnung wie der
+    // Preisrechner, nicht der Standard von 30 s.
+    timeoutMs: 60000,
+    signal,
+  });
+}
+
+// POST /api/offers/price-inputs — bindet die gewählte Angabe aus dem serverseitigen
+// Optionsstand. `expectedShippingGross` ist der Versandbetrag, den der Kunde gesehen hat: ein
+// Konsistenzwächter, keine Preisangabe. Gibt die rohe Response zurück.
+export function bindPriceInputs({ offerId, offerRevision, optionsId, deliveryIsResidential, expectedShippingGross },
+                                { signal } = {}) {
+  return apiFetch(`/api/offers/price-inputs`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ offerId, offerRevision, optionsId, deliveryIsResidential, expectedShippingGross }),
+    signal,
+  });
+}
+
 // ── Gutschein prüfen / Checkout-Vorschau (auth) ──────────────────────────────
 // POST /api/jumingo/cart-total — der Server bepreist den Entwurf beim Provider und prüft
 // optional einen Gutscheincode.

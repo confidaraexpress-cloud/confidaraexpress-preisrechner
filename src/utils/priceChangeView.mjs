@@ -45,7 +45,14 @@ export const PRICE_CHANGE_KIND = Object.freeze({
   CONFIRMABLE: "confirmable",
   /* Kein bestätigbares Paar: neutral hinweisen, neu berechnen lassen. */
   RECALCULATE: "recalculate",
+  /* TG22 Residential: der Preis eines Angebots mit gebundener Lieferadresse hat sich geändert.
+     Es gibt keine Übernahme — die Art der Lieferadresse wird neu geladen und neu bestätigt. */
+  REBIND: "rebind",
 });
+
+/** Verlangt die Antwort, die Art der Lieferadresse neu zu bestätigen? */
+export const istNeubindungNoetig = (body) =>
+  !!body && typeof body === "object" && !Array.isArray(body) && body.priceInputsRebindRequired === true;
 
 /* Eine echte, endliche Zahl. `null`, `undefined`, `NaN`, `""`, `[]` und `{}` sind
    KEINE Beträge — `Number("")` und `Number([])` sind beide `0`, und genau so
@@ -61,6 +68,9 @@ const istBetrag = (w) => typeof w === "number" && Number.isFinite(w);
  */
 export function priceChangeAnsicht(body) {
   const d = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  // TG22 Residential: eine verlangte Neubestätigung der Lieferadresse hat keinen Bestätigungsweg
+  // über Beträge — die Antwort trägt bewusst keine.
+  if (istNeubindungNoetig(d)) return { kind: PRICE_CHANGE_KIND.REBIND };
   // TG22 Golden Offer Contract: verlangt der Server ausdrücklich eine Neuberechnung, gibt es
   // keinen Bestätigungsweg — auch dann nicht, wenn Beträge mitreisen. Eine Bestätigung sendete
   // dasselbe Angebot erneut, und es scheiterte an derselben Stelle wieder.
@@ -92,6 +102,8 @@ export const PREISAENDERUNG_TEXT = Object.freeze({
     "Der Preis für dieses Angebot ist nicht mehr aktuell. "
     + "Bitte berechnen Sie die Angebote neu — Sie sehen dann den gültigen Preis und können erneut wählen. "
     + "Es wurde nichts gebucht und nichts berechnet.",
+  [PRICE_CHANGE_KIND.REBIND]:
+    "Der Preis für dieses Angebot hat sich geändert. Bitte wählen Sie die Art der Lieferadresse erneut.",
 });
 
 export const PREISAENDERUNG_NEU_BERECHNEN = "Angebote neu berechnen";
@@ -111,6 +123,9 @@ export const PREISAENDERUNG_OFFEN_TEXT = Object.freeze({
   [PRICE_CHANGE_KIND.RECALCULATE]:
     "Der Preis für dieses Angebot ist nicht mehr aktuell. Bitte berechnen Sie die Angebote neu. "
     + "Es wurde nichts gebucht.",
+  [PRICE_CHANGE_KIND.REBIND]:
+    "Der Preis für dieses Angebot hat sich geändert. Bitte wählen Sie die Art der Lieferadresse erneut. "
+    + "Es wurde nichts gebucht.",
 });
 
 /**
@@ -122,8 +137,10 @@ export const PREISAENDERUNG_OFFEN_TEXT = Object.freeze({
 export function pendingPriceChangeNotice(ansicht) {
   if (!ansicht || typeof ansicht !== "object") return null;
   const bestaetigbar = preisIstBestaetigbar(ansicht);
+  const art = bestaetigbar ? PRICE_CHANGE_KIND.CONFIRMABLE
+    : (ansicht.kind === PRICE_CHANGE_KIND.REBIND ? PRICE_CHANGE_KIND.REBIND : PRICE_CHANGE_KIND.RECALCULATE);
   return Object.freeze({
     reviewable: bestaetigbar,
-    text: PREISAENDERUNG_OFFEN_TEXT[bestaetigbar ? PRICE_CHANGE_KIND.CONFIRMABLE : PRICE_CHANGE_KIND.RECALCULATE],
+    text: PREISAENDERUNG_OFFEN_TEXT[art],
   });
 }

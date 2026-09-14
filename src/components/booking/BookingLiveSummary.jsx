@@ -5,7 +5,7 @@ import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../
 import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT } from "../../utils/bookingSummaryView.mjs";
+import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf } from "../../utils/pickupContractView.mjs";
 
 // Permanente Live-Zusammenfassungsleiste — REINE DARSTELLUNG, sichtbar in Schritt 1
@@ -41,6 +41,8 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   const preis = priceInfo(v);
   const insured = isInsuredType(v.selectedInsuranceType);
   const cover = v.selectedInsuranceType === INSURANCE_TYPE_TRANSIT_COVER;
+  // TG22 Residential: ein bestätigter Zuschlag für die Privatadresse — Bezeichnung und Betrag vom Server.
+  const zuschlagHinweis = surchargeSummaryNote(v);
 
   // Sekundärzeile, solange KEIN Gesamtpreis bestätigt ist: der Versicherungszustand — oder,
   // nach einer gemeldeten Preisänderung, dass der bisherige Preis nicht mehr gilt. Ein
@@ -108,6 +110,9 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
             {insNoteLoading && <span className="spinner spinner-dark" />}
             {insNote}
           </span>
+        )}
+        {zuschlagHinweis && (
+          <span className="blsum-ins-note" id="booking-live-surcharge-note">{zuschlagHinweis}</span>
         )}
       </div>
     </div>

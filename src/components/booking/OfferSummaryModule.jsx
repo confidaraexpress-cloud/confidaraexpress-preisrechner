@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
-import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT } from "../../utils/bookingSummaryView.mjs";
+import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf } from "../../utils/pickupContractView.mjs";
 
 // Step 1 — „Ausgewähltes Angebot". Kompakte, ruhige Zusammenfassung des gewählten
@@ -40,6 +40,9 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
   // Die Mehrwertsteuer betrifft nur den Versand. Enthält der bestätigte Gesamtbetrag eine
   // steuerfreie Absicherung, sagt der Hinweis das — ein Text, keine Rechnung.
   const mitAbsicherung = preis.confirmed && Number(priceView?.insuranceGross) > 0;
+  // TG22 Residential: ein bestätigter Zuschlag für die Privatadresse steht als eigene Zeile unter dem
+  // Preis — Bezeichnung und Betrag aus dem Serverbestandteil.
+  const zuschlagHinweis = surchargeSummaryNote(priceView);
 
   return (
     <div className="calc-panel mb-16">
@@ -76,6 +79,9 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
                   <>
                     <div className="offsum-price-gross">{money(preis.gross)} brutto</div>
                     <div className="offsum-price-vat">{mitAbsicherung ? "inkl. 19 % MwSt. auf Versand" : "inkl. 19 % MwSt."}</div>
+                    {zuschlagHinweis && (
+                      <div className="offsum-price-vat" id="offer-summary-surcharge-note">{zuschlagHinweis}</div>
+                    )}
                   </>
                 ) : (
                   <div className="offsum-price-vat">exkl. MwSt.</div>

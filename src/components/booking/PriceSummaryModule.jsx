@@ -5,6 +5,7 @@ import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { PRICE_CHANGED_SUMMARY } from "../../utils/bookingSummaryView.mjs";
+import { priceSummaryComponents } from "../../utils/priceComponentsView.mjs";
 
 // Ein fehlender Betrag erscheint als Gedankenstrich — `money(null)` ergäbe „0,00 €", also
 // einen erfundenen Nullbetrag in der verbindlichen Aufstellung.
@@ -67,12 +68,25 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
     else                                 insState = { kind: "unknown",   text: "Versicherungspreis nach Warenwert" };
   }
 
+  // TG22 Residential: trägt der BESTÄTIGTE Preis Serverbestandteile (Versand, Zuschlag Privatadresse,
+  // zusätzliche Transportabsicherung), treten sie an die Stelle der Sammelzeilen — steuerpflichtige
+  // netto, steuerfreie brutto, die MwSt. und der Gesamtbetrag unverändert aus den Server-Totals.
+  // Passen die Bestandteile nicht zum bestätigten Preis, bleibt die bisherige Aufstellung.
+  const bestandteile = priceSummaryComponents(v);
+
   return (
     <>
-      <div className="booking-confirm-row">
-        <span className="text-sm text-muted">Versand netto</span>
-        <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipNet)}</span>
-      </div>
+      {bestandteile ? bestandteile.taxable.map((k) => (
+        <div className="booking-confirm-row" key={k.type} data-component={k.type}>
+          <span className="text-sm text-muted">{k.label} netto</span>
+          <span className="text-sm font-bold booking-confirm-val">{money(k.net)}</span>
+        </div>
+      )) : (
+        <div className="booking-confirm-row">
+          <span className="text-sm text-muted">Versand netto</span>
+          <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipNet)}</span>
+        </div>
+      )}
       <div className="booking-confirm-row">
         <span className="text-sm text-muted">MwSt. 19 %</span>
         <span className="text-sm font-bold booking-confirm-val">{betragOderStrich(shipVat)}</span>
@@ -80,7 +94,14 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
 
       {confirmed ? (
         <>
-          {hasInsuranceAmount && (
+          {bestandteile ? bestandteile.taxFree.map((k) => (
+            <div className="booking-confirm-row" key={k.type} data-component={k.type}>
+              <span className="text-sm text-muted">
+                {k.label}<span className="booking-tax-chip">steuerfrei</span>
+              </span>
+              <span className="text-sm font-bold booking-confirm-val">{money(k.gross)}</span>
+            </div>
+          )) : hasInsuranceAmount && (
             <div className="booking-confirm-row">
               <span className="text-sm text-muted">
                 {cover ? COVER_INSURANCE_TEXT.sectionTitle : "Transportversicherung"}<span className="booking-tax-chip">steuerfrei</span>

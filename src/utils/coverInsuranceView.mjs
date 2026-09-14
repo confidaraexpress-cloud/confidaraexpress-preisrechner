@@ -267,6 +267,9 @@ export function insuredPriceChangeView(body, previousTotalGross) {
   // Preispaar ergänzt — auch nicht aus dem zuletzt bestätigten Betrag. Für dieses Angebot gibt
   // es keine Neubindung; eine Bestätigung liefe am selben Preisstand erneut auf.
   if (d.recalculationRequired === true) return basis;
+  // TG22 Residential: verlangt der Server eine neue Bestätigung der Lieferadresse, gibt es keine
+  // Übernahme — auch nicht aus dem zuletzt bestätigten Betrag ergänzt.
+  if (d.priceInputsRebindRequired === true) return basis;
   // TG22 Paket A: nennt der Server beide Beträge selbst, gelten ausschließlich sie — samt ihrer
   // Zusammensetzung. Der clientseitige Altbetrag ist dann ohne Bedeutung.
   if (basis.kind === PRICE_CHANGE_KIND.CONFIRMABLE) return { ...basis, insured: true, breakdown: aufschluesselung(d) };

@@ -4,7 +4,7 @@ import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { packageSummaryLine, buildPartyPayload } from "../utils/newShipmentForm.mjs";
 import { bookingBillingNotice } from "../utils/billingModeView.mjs";
-import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher } from "../api/client";
+import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPriceInputOptions, bindPriceInputs } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
   fordertNeuberechnung, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
@@ -13,14 +13,17 @@ import { customerText, normalizeApiError } from "../utils/apiError.mjs";
 import {
   labelFormatOptionsOf, restoredLabelFormat, labelFormatBookPayload, labelDeliveryInfo,
 } from "../utils/labelFormatOptions.mjs";
-import { restoredInsuranceState } from "../utils/insuranceRestore.mjs";
-import { offerKey, sameOffer } from "../utils/offerIdentity.mjs";
+import { restoredInsuranceState, insuranceRestoreKey } from "../utils/insuranceRestore.mjs";
+import { sameOffer } from "../utils/offerIdentity.mjs";
 import { tariffWithAcceptedShippingPrice, replaceOffer } from "../utils/acceptedOfferPrice.mjs";
 import { sanitizeReferenceInput } from "../utils/referenceNumber.mjs";
 import {
-  adressangabenVollstaendig, adressangabenPayload, adressangabenHinweis,
-  adressangabenAnsicht,
-} from "../utils/addressTypeQuestions.mjs";
+  RESIDENTIAL_STATUS, RESIDENTIAL_ACTION, RESIDENTIAL_TEXT,
+  offerRequiresResidentialChoice, offerRevisionOf, optionsRequestBody, readPriceInputOptions,
+  bindRequestBody, readPriceInputBinding, tariffWithPriceInputBinding, tariffMatchesOptionsBinding,
+  optionsAfterBinding, residentialBookPayload, residentialErrorAction, conflictRevisionOf,
+  isRebindRequired, isPriceInputsRequired, residentialModuleView, residentialBlocksBooking,
+} from "../utils/residentialPriceInputs.mjs";
 import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
 import {
   priceChangeAnsicht, preisIstBestaetigbar, pendingPriceChangeNotice,
@@ -49,7 +52,7 @@ import { PickupWindowModule } from "../components/booking/PickupWindowModule";
 import { SaveDraftAction } from "../components/booking/SaveDraftAction";
 import { ShipmentSummaryModule } from "../components/booking/ShipmentSummaryModule";
 import { AdditionalOptionsModule } from "../components/booking/AdditionalOptionsModule";
-import { AddressTypeModule, AddressTypeSummary } from "../components/booking/AddressTypeModule";
+import { ResidentialPriceInputModule } from "../components/booking/ResidentialPriceInputModule";
 import { CustomsModule } from "../components/booking/CustomsModule";
 import { InsuranceModule, InsuranceCoverNotice } from "../components/booking/InsuranceModule";
 import { PriceSummaryModule } from "../components/booking/PriceSummaryModule";
@@ -396,29 +399,24 @@ export default function BookingPage() {
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
 
-  /* ── Art der Adresse (preisrelevant) ────────────────────────────────────────
-     DREIWERTIG: true / false / null. `null` heisst „noch nicht beantwortet" und
-     ist etwas anderes als `false` („Geschaeftsadresse"). Der Ausgangswert kommt
-     aus dem laufenden Vorgang; ein `false` von dort muss `false` bleiben — mit
-     `|| null` oder `!!` waere es still zu „unbeantwortet" geworden, und der Kunde
-     haette dieselbe Frage nach jeder Rueckkehr erneut vorgefunden. */
-  /* Seit Paket 9A werden beide Fragen bereits im SENDUNGSFORMULAR beantwortet — sie
-     bestimmen dort den Vergleichspreis mit und werden serverseitig an der Sendung
-     eingefroren. Der Ausgangswert kommt deshalb zuerst von dort und erst danach aus dem
-     laufenden Vorgang (der einen fortgesetzten Vorgang aus der Zeit davor trägt).
+  /* ── Art der Lieferadresse (TG22 Residential) ────────────────────────────────
+     Nur für ein Angebot, dessen `requiredPriceInputs` die Angabe nennt — und erst NACH der
+     Angebotsauswahl. Der Server bepreist beide Möglichkeiten (Optionen), der Kunde wählt, der
+     Server bindet die Wahl am Angebot; erst dann ist es buchbar. Hier wird nichts gerechnet —
+     Regeln und Prüfungen stehen in utils/residentialPriceInputs.mjs.
 
-     Der Kunde bekommt die Frage damit im Regelfall gar nicht mehr zu sehen: `AddressTypeModule`
-     erscheint unten nur, solange das Angebot eine Angabe verlangt UND sie noch fehlt.
-     Was hier steht, WÄHLT nichts aus — der Server liest die eingefrorene Zeile und
-     vergleicht den mitgeschickten Wert nur noch gegen sie. */
-  const [adresstyp, setAdresstyp] = useState(() => ({
-    deliveryIsResidential:
-      bookingData?.form?.deliveryIsResidential ?? flowBooking?.deliveryIsResidential ?? null,
-    collectionIsResidential:
-      bookingData?.form?.collectionIsResidential ?? flowBooking?.collectionIsResidential ?? null,
-  }));
-  const setAdresstypFeld = (feld, wert) => setAdresstyp((a) => ({ ...a, [feld]: wert }));
-  const [adresstypShowErrors, setAdresstypShowErrors] = useState(false);
+     DREIWERTIG: `resBoundValue` ist true (Privatadresse), false (Geschäftsadresse) oder null
+     (nicht bestätigt). Er gilt erst, wenn die Optionsantwort ihn bestätigt oder eine Bindung
+     soeben gelungen ist — nie aus dem Sendungsformular und nie aus einem Clientspeicher. */
+  const [resStatus, setResStatus]             = useState(RESIDENTIAL_STATUS.IDLE);
+  const [resOptions, setResOptions]           = useState(null);
+  const [resBoundValue, setResBoundValue]     = useState(null);
+  const [resPendingValue, setResPendingValue] = useState(null);
+  const [resErrorKind, setResErrorKind]       = useState(null);
+  const [resNotice, setResNotice]             = useState("");
+  const resSeq     = useRef(0);      // ignoriert veraltete Antworten
+  const resAbort   = useRef(null);   // bricht laufende Anfragen ab
+  const resBinding = useRef(false);  // genau EINE Bindung zur Zeit (Doppelklick)
 
   /* ── Eigene Lieferscheinnummer ──────────────────────────────────────────────
      Sichtbar NUR bei Kontomodus „Eigenes Lieferscheinsystem" UND nur bei einer
@@ -471,9 +469,10 @@ export default function BookingPage() {
      Vorgang hält damit genau das, was auch gebucht würde, und die Ableitung des
      Schalters beim nächsten Mount bleibt richtig. Der bei ausgeschalteter Option
      lokal gehaltene Wert ist bewusst nur für die laufende Ansicht gedacht. */
-  // TG22 Paket B: der Angebotsschlüssel, zu dem der gespiegelte Absicherungsstand gehört.
-  // Preisstand und Sendungshandle gehören bewusst nicht dazu (utils/insuranceRestore.mjs).
-  const insuranceOfferKey = offerKey(bookingData?.tariff);
+  // TG22 Paket B: der Schlüssel, zu dem der gespiegelte Absicherungsstand gehört. TG22 Residential:
+  // `offerKey` PLUS Preisstand — nach einer neuen Bindung der Lieferadresse kommt keine alte
+  // Absicherung zurück. Das Sendungshandle gehört nicht dazu (utils/insuranceRestore.mjs).
+  const insuranceOfferKey = insuranceRestoreKey(bookingData?.tariff);
   useEffect(() => {
     if (step === 3) return;
     setFlowBooking({
@@ -495,11 +494,6 @@ export default function BookingPage() {
       // Sie tragen KEINE Buchungswirkung: der Payload verlangt zusätzlich einen nicht
       // leeren Wert, und ein ausgeschalteter Bereich spiegelt oben ohnehin leer.
       referenceEnabled, trackingEmailEnabled, labelTrackingEmailEnabled, labelFormatEnabled,
-      // Dreiwertig gespiegelt — hier gilt die Regel „nur spiegeln, was gebucht wuerde"
-      // ausdruecklich NICHT: eine bewusste Antwort „Geschaeftsadresse" ist ein Wert,
-      // den der Kunde gegeben hat, und er soll die Rueckkehr ueberleben.
-      deliveryIsResidential: adresstyp.deliveryIsResidential,
-      collectionIsResidential: adresstyp.collectionIsResidential,
     });
   // Reihenfolge ohne Bedeutung für React — die vier E-Mail-Abhängigkeiten stehen
   // aber bewusst am Ende: sharedShipmentEmailOptions.test.mjs (6) verankert dort.
@@ -507,7 +501,7 @@ export default function BookingPage() {
   // `labelFormat`: progressiveBookingOptions.test.mjs (14) verankert den Anfang.
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
-      showExternalDeliveryNote, externalDeliveryNoteNumber, adresstyp, goodsAreNew, goodsAreFragile, insuranceOfferKey,
+      showExternalDeliveryNote, externalDeliveryNoteNumber, goodsAreNew, goodsAreFragile, insuranceOfferKey,
       trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
@@ -524,14 +518,14 @@ export default function BookingPage() {
      serverseitig, und ein zu vorsichtiges Frontend erzeugt hier keinen Schutz, sondern
      nur eine Pflichtfrage fuer ein Angebot, dessen Preis gar nicht daran haengt. */
   const noetigeAdressangaben = tariff?.requiredPriceInputs;
-  const adresstypVollstaendig = adressangabenVollstaendig(adresstyp, noetigeAdressangaben);
-  const adresstypHinweis = adressangabenHinweis(adresstyp, noetigeAdressangaben);
-  /* Beantwortet heisst FEST: die Angabe hat den Vergleichspreis mitbestimmt und ist an
-     der Sendung eingefroren. Sie wird ab hier nur noch gezeigt — geaendert wird sie dort,
-     wo sie erhoben wurde, und von dort entsteht eine neue Berechnung. Nur eine noch
-     OFFENE Angabe bekommt weiterhin ihre Frage; das traegt einen fortgesetzten Vorgang
-     aus der Zeit vor dieser Erhebung. */
-  const adresstypAnsicht = adressangabenAnsicht(adresstyp, noetigeAdressangaben);
+  /* TG22 Residential: nennt die Liste die Art der Lieferadresse, erscheint in Schritt 1 die Auswahl
+     (Optionen vom Server, Bindung am Server). Bis eine Wahl gebunden ist, ist der Preis vorläufig,
+     die Absicherung nicht verfügbar und die Buchung gesperrt. Ein Angebot ohne diese Angabe bekommt
+     weder Frage noch Anfrage. */
+  const residentialRequired = offerRequiresResidentialChoice(tariff);
+  const residentialBlocks = residentialBlocksBooking({
+    required: residentialRequired, status: resStatus, boundValue: resBoundValue, tariff, options: resOptions,
+  });
 
   // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
   // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
@@ -698,6 +692,8 @@ export default function BookingPage() {
     // TG22 Golden Offer Contract: eine offene Preisänderung entwertet den bestätigten Preis auf
     // JEDER Fläche und sperrt die Buchung — auch nachdem der Dialog geschlossen wurde.
     priceChangePending: !!priceChange,
+    // TG22 Residential: ohne gebundene Art der Lieferadresse ist der Preis vorläufig, Buchung gesperrt.
+    priceInputsRequired: residentialBlocks,
   });
 
   // Kartenpreise: „ab"-Preselect ODER — nur für die AUSGEWÄHLTE, bestätigte Stufe —
@@ -786,6 +782,15 @@ export default function BookingPage() {
           setRepriceLoading(false);
           return;
         }
+        // TG22 Residential: die Art der Lieferadresse ist nicht (mehr) gebunden, oder der Preis hat sich
+        // geändert und verlangt eine neue Bestätigung. Kein Dialog, keine Übernahme — zurück an die
+        // Auswahl, die Optionen werden neu geladen.
+        if (residentialRequired && (isRebindRequired(d) || isPriceInputsRequired(d))) {
+          setRepriceError("");
+          forderNeubindung(isRebindRequired(d) ? RESIDENTIAL_TEXT.rebind : RESIDENTIAL_TEXT.required);
+          setRepriceLoading(false);
+          return;
+        }
         // TG22 Paket A: eine versicherte Preisänderung mit beiden Serverbeträgen ist keine
         // Fehlermeldung, sondern eine Entscheidung des Kunden — derselbe Dialog wie bei der Buchung.
         const versicherteAenderung = coverModel && d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
@@ -833,6 +838,12 @@ export default function BookingPage() {
       setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
       return;
     }
+    // TG22 Residential: vor der Bindung der Lieferadresse wird die Absicherung nicht bepreist — kein
+    // Request. Wird die Wahl gebunden, läuft dieser Effekt erneut (Abhängigkeit unten).
+    if (residentialBlocks) {
+      setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
+      return;
+    }
     setRepriceStale(true);
     // Zusätzliche Transportabsicherung: ohne beide Antworten zur Ware wird nicht bepreist —
     // der Anbieter bepreist genau diese Angaben, und eine fehlende ist keine.
@@ -840,7 +851,7 @@ export default function BookingPage() {
     const id = setTimeout(() => runReprice(insuranceType, goodsValueNum, insuranceValueNum, contentDescription), 500);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile]);
+  }, [insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile, residentialBlocks]);
 
   // Laufende Requests beim Unmount abbrechen.
   useEffect(() => () => { if (repriceAbort.current) repriceAbort.current.abort(); }, []);
@@ -1059,6 +1070,13 @@ export default function BookingPage() {
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie buchen.");
       return;
     }
+    // TG22 Residential — zweite Hälfte der doppelten Absicherung (die erste ist das Weiter-Gate):
+    // ohne gebundene Art der Lieferadresse entsteht KEIN Request. Zurück an die Auswahl.
+    if (residentialBlocks) {
+      setStep(1);
+      setError(RESIDENTIAL_TEXT.required);
+      return;
+    }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     // Zusätzliche Transportabsicherung: ohne beide Antworten zur Ware keine Buchung. Eigene
@@ -1089,15 +1107,6 @@ export default function BookingPage() {
           ? customsInvoiceBusyMessage
           : "Bitte vervollständigen Sie die Angaben zum Wareninhalt."
       );
-      return;
-    }
-    // Zweite Haelfte der doppelten Absicherung (die erste ist das Weiter-Gate): ohne
-    // vollstaendige Adressangaben entsteht KEIN Request. Es gibt damit keinen Pfad, auf
-    // dem eine Buchung mit unbekannter Adressart beim Anbieter ankommt.
-    if (!adresstypVollstaendig) {
-      setAdresstypShowErrors(true);
-      setStep(1);
-      setError(adresstypHinweis);
       return;
     }
     setError(""); setConflict(""); setAddressError(""); setRecalcNotice(""); setPriceAcceptNotice(""); setProfileHint(""); setLoading(true);
@@ -1144,10 +1153,6 @@ export default function BookingPage() {
           // eigenen Datensatz und lehnt bei Abweichung ab. Fehlt die Kennung (ein Angebot
           // aus einem aelteren Bundle), laeuft alles exakt wie bisher.
           offerId:         tariff?.offerId,
-          // Preisrelevante Angaben zur Adressart. Nur die fuer DIESES Angebot noetigen
-          // Felder — bei einer Paketshopabgabe entfaellt die Abholfrage. `null`, solange
-          // etwas fehlt; dann kommt der Request gar nicht erst zustande (Guard unten).
-          priceInputs:     adressangabenPayload(adresstyp, noetigeAdressangaben),
           tariffId:        tariff?.id,
           shipperTariffId: tariff?.shipper_tariff_id,
           // F3: Bei bewusst bestätigter Preisänderung (nur none-Pfad) den neuen
@@ -1202,6 +1207,10 @@ export default function BookingPage() {
           // bleibt das Objekt leer und der Payload exakt der bisherige. Gesendet wird weder ein
           // Zeitpunkt noch eine Dokument-ID: beides bestimmt der Server.
           ...legalBookingPayload(legalContext, { agbAccepted, prohibitedGoodsAccepted }),
+          // TG22 Residential: für ein Angebot mit Art der Lieferadresse der Preisstand (Pflicht) und die
+          // gebundene Wahl als reiner Konsistenzwächter — nie ein Wert aus dem Sendungsformular. Steht
+          // VOR der Absicherung: deren bestätigter Preisstand aus der Neubepreisung gilt dann.
+          ...residentialBookPayload(tariff),
           ...insurancePayload,
           ...customsPayload,
         }),
@@ -1306,6 +1315,18 @@ export default function BookingPage() {
         // Bestätigungsknopf, sondern der neutrale Hinweis mit Neuberechnung; sonst bleibt
         // der bestehende Bestätigungsweg Zeile für Zeile derselbe. Begründung in
         // utils/priceChangeView.mjs.
+        // TG22 Residential — VOR dem Preisänderungs- und dem Absicherungszweig: für ein Angebot mit Art
+        // der Lieferadresse gibt es bei einer Preisänderung keine Übernahme, und eine fehlende oder
+        // veraltete Bindung repariert keine Neubepreisung. Zurück an die Auswahl; Optionen neu laden.
+        if (residentialRequired && (isRebindRequired(d) || isPriceInputsRequired(d)
+            || d?.code === "PRICE_CONFIRMATION_REQUIRED" || d?.code === "OFFER_PRICE_CONFLICT"
+            || (d?.code === "SHIPMENT_DECLARATIONS_MISMATCH" && Array.isArray(d?.fields)
+                && d.fields.includes("deliveryIsResidential")))) {
+          forderNeubindung(isRebindRequired(d) ? RESIDENTIAL_TEXT.rebind
+            : isPriceInputsRequired(d) ? RESIDENTIAL_TEXT.required : RESIDENTIAL_TEXT.reconfirm);
+          setLoading(false);
+          return;
+        }
         if (d?.code === "PRICE_CHANGED") {
           // Versicherte Buchung mit Deckungsbetrag: der Server nennt den neuen GESAMTbetrag,
           // der bisherige steht in der letzten Neubepreisung. „Fortfahren" bepreist und bindet
@@ -1574,6 +1595,13 @@ export default function BookingPage() {
         setConflict(OFFER_ALREADY_USED_TEXT);
         return;
       }
+      // TG22 Residential: für ein Angebot mit Art der Lieferadresse lehnt der Server die Übernahme ab und
+      // verlangt eine neue Bestätigung der Lieferadresse — der Dialog schließt, die Auswahl lädt neu.
+      if (residentialRequired && (isRebindRequired(d) || isPriceInputsRequired(d))) {
+        setPriceChange(null);
+        forderNeubindung(isRebindRequired(d) ? RESIDENTIAL_TEXT.rebind : RESIDENTIAL_TEXT.required);
+        return;
+      }
       const erneut = d?.code === "PRICE_CHANGED" ? insuredPriceChangeView(d, undefined) : null;
       if (erneut && preisIstBestaetigbar(erneut)) {
         setPriceChange(erneut);
@@ -1613,6 +1641,174 @@ export default function BookingPage() {
     setPriceChange(null);
     doBook({ nachPreisbestaetigung: true });
   };
+
+  // ── TG22 Residential: Art der Lieferadresse laden und binden ──────────────────
+  // Nach einer gelungenen Bindung trägt das ANGEBOT die Serverwerte der Bindung — auf dieser Seite, in
+  // der Angebotsliste des Vorgangs und im Verlaufseintrag. Übernommen wird ausschließlich, was die
+  // Bindungsantwort nennt (utils/residentialPriceInputs.mjs); gerechnet wird nichts.
+  const uebernimmGebundenesAngebot = (neu) => {
+    if (!neu) return;
+    if (flowShipment) {
+      setFlowScope("shipment", {
+        tariffs: replaceOffer(flowShipment.tariffs, neu),
+        ...(sameOffer(flowShipment.selected, neu) ? { selected: neu } : {}),
+      });
+    }
+    if (navState?.tariff) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: { ...navState, tariff: neu } });
+    }
+  };
+
+  // Ein abgelehnter Stand — über den CODE entschieden: erneut versuchen, neu berechnen oder (verbraucht)
+  // in die Sendungen. Nie ein lokaler Ersatzpreis.
+  const setzeZuschlagsfehler = (status, d) => {
+    const aktion = residentialErrorAction(status, d);
+    setResStatus(RESIDENTIAL_STATUS.ERROR);
+    setResErrorKind(aktion);
+    setResPendingValue(null);
+    if (aktion === RESIDENTIAL_ACTION.USED) setConflict(OFFER_ALREADY_USED_TEXT);
+  };
+
+  // Lädt die Optionen zum aktuellen Preisstand. Nennt ein Konflikt den aktuellen Stand, wird damit genau
+  // EINMAL erneut geladen. `verwerfeBindung`: eine bestehende Bindung wird nicht übernommen — der Kunde
+  // bestätigt die Wahl ausdrücklich neu (Preisänderung, fehlende oder veraltete Bindung).
+  const ladeZuschlagsoptionen = async ({ revision, verwerfeBindung = false, erneut = false } = {}) => {
+    const seq = ++resSeq.current;
+    if (resAbort.current) resAbort.current.abort();
+    resBinding.current = false;
+    const body = optionsRequestBody(tariff, revision);
+    if (!body) { setzeZuschlagsfehler(0, { code: "OFFER_NOT_FOUND" }); return; }
+    const ac = new AbortController(); resAbort.current = ac;
+    setResStatus(RESIDENTIAL_STATUS.LOADING); setResErrorKind(null); setResPendingValue(null);
+    try {
+      const r = await loadPriceInputOptions(body, { signal: ac.signal });
+      if (seq !== resSeq.current) return;
+      if (r.status === 401 || r.status === 403) return;
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (seq !== resSeq.current) return;
+      if (!r.ok) {
+        const aktuell = conflictRevisionOf(d);
+        if (!erneut && d?.code === "OFFER_PRICE_CONFLICT" && aktuell !== null && aktuell !== body.offerRevision) {
+          ladeZuschlagsoptionen({ revision: aktuell, verwerfeBindung, erneut: true });
+          return;
+        }
+        setzeZuschlagsfehler(r.status, d);
+        return;
+      }
+      const optionen = readPriceInputOptions(d, tariff);
+      if (!optionen) { setzeZuschlagsfehler(0, null); return; }
+      setResOptions(optionen);
+      if (!verwerfeBindung && optionen.boundValue !== null) {
+        if (tariffMatchesOptionsBinding(tariff, optionen)) {
+          setResBoundValue(optionen.boundValue);
+          setResStatus(RESIDENTIAL_STATUS.READY);
+          return;
+        }
+        bindeZuschlag(optionen.boundValue, optionen, { still: true });
+        return;
+      }
+      setResBoundValue(null);
+      setResStatus(RESIDENTIAL_STATUS.READY);
+      setStep((s) => (s === 2 ? 1 : s));
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      if (seq !== resSeq.current) return;
+      setzeZuschlagsfehler(0, null);
+    }
+  };
+
+  // Bindet die gewählte Art der Lieferadresse. Genau EINE Bindung zur Zeit; beide Karten sind gesperrt.
+  // `still`: stellt eine am Server bereits bestehende Bindung am Angebot wieder her (Reload, zweiter
+  // Tab) — derselbe Endpunkt, dieselbe Wahl, am Server ohne Änderung.
+  const bindeZuschlag = async (wert, optionen, { still = false } = {}) => {
+    if (resBinding.current) return;
+    const body = bindRequestBody({ tariff, options: optionen, value: wert });
+    if (!body) { setzeZuschlagsfehler(0, null); return; }
+    resBinding.current = true;
+    const seq = ++resSeq.current;
+    if (resAbort.current) resAbort.current.abort();
+    const ac = new AbortController(); resAbort.current = ac;
+    const vorherigerStand = offerRevisionOf(tariff);
+    const hatteAbsicherung = insuranceType !== "none";
+    setResStatus(RESIDENTIAL_STATUS.BINDING); setResPendingValue(wert); setResErrorKind(null);
+    if (!still) setResNotice("");
+    try {
+      const r = await bindPriceInputs(body, { signal: ac.signal });
+      if (seq !== resSeq.current) return;
+      if (r.status === 401 || r.status === 403) return;
+      let d = null; try { d = await r.json(); } catch { d = null; }
+      if (seq !== resSeq.current) return;
+      if (!r.ok) {
+        const aktion = residentialErrorAction(r.status, d);
+        if (aktion === RESIDENTIAL_ACTION.RELOAD) {
+          setResNotice(RESIDENTIAL_TEXT.reconfirm);
+          ladeZuschlagsoptionen({ revision: conflictRevisionOf(d) ?? undefined, verwerfeBindung: true });
+          return;
+        }
+        if (still && aktion === RESIDENTIAL_ACTION.RETRY) {
+          setResBoundValue(null); setResPendingValue(null); setResStatus(RESIDENTIAL_STATUS.READY);
+          return;
+        }
+        setzeZuschlagsfehler(r.status, d);
+        return;
+      }
+      const bindung = readPriceInputBinding(d, { tariff, value: wert });
+      const neu = bindung ? tariffWithPriceInputBinding(tariff, bindung) : null;
+      if (!neu) { setzeZuschlagsfehler(0, null); return; }
+      setResOptions(optionsAfterBinding(optionen, bindung));
+      setResBoundValue(bindung.value);
+      setResPendingValue(null);
+      setResStatus(RESIDENTIAL_STATUS.READY);
+      setError((alt) => (alt === RESIDENTIAL_TEXT.required ? "" : alt));
+      // Eine neue Bindung (neuer Preisstand) hebt jede Absicherung auf — auch serverseitig. Keine alte
+      // Auswahl, kein alter Preis, keine alten Antworten.
+      if (bindung.insuranceReset || bindung.offerRevision !== vorherigerStand) {
+        setInsuranceType("none");
+        setGoodsAreNew(null); setGoodsAreFragile(null);
+        setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
+        if (bindung.insuranceReset || hatteAbsicherung) setResNotice(RESIDENTIAL_TEXT.insuranceReset);
+      }
+      uebernimmGebundenesAngebot(neu);
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      if (seq !== resSeq.current) return;
+      if (still) { setResBoundValue(null); setResPendingValue(null); setResStatus(RESIDENTIAL_STATUS.READY); return; }
+      setzeZuschlagsfehler(0, null);
+    } finally {
+      if (seq === resSeq.current) resBinding.current = false;
+    }
+  };
+
+  // Verlangt der Server eine neue Bestätigung (Preisänderung, fehlende oder veraltete Bindung): die
+  // bisherige Wahl gilt nicht mehr. Der Kunde wählt in Schritt 1 erneut — ohne Übernahmeweg.
+  const forderNeubindung = (hinweis) => {
+    setResBoundValue(null);
+    setResPendingValue(null);
+    setRepriceResult(null); setRepriceStale(false);
+    setResNotice(hinweis || "");
+    setStep(1);
+    ladeZuschlagsoptionen({ verwerfeBindung: true });
+  };
+
+  const waehleLieferadresse = (wert) => {
+    if (resStatus !== RESIDENTIAL_STATUS.READY || !resOptions) return;
+    bindeZuschlag(wert, resOptions);
+  };
+  const erneutZuschlagLaden = () => { setResNotice(""); ladeZuschlagsoptionen(); };
+
+  // Die Optionen laden automatisch, sobald ein solches Angebot auf der Seite steht — kein Knopf, kein
+  // lokaler Rückfall. Nach der Buchung (Schritt 3) nicht mehr.
+  useEffect(() => {
+    if (!residentialRequired || step === 3 || resStatus !== RESIDENTIAL_STATUS.IDLE) return;
+    ladeZuschlagsoptionen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [residentialRequired, step, resStatus]);
+  useEffect(() => () => { if (resAbort.current) resAbort.current.abort(); }, []);
+
+  const residentialView = residentialModuleView({
+    status: resStatus, options: resOptions, boundValue: resBoundValue, pendingValue: resPendingValue,
+    errorKind: resErrorKind, notice: resNotice,
+  });
 
   // P0 — „Angebote neu berechnen" aus dem Abholfenster-Dialog: den nun veralteten
   // Buchungs-Flow bewusst verlassen und frische Angebote berechnen (gleiches Ziel
@@ -1723,13 +1919,10 @@ export default function BookingPage() {
       setError("Bitte prüfen Sie die zusätzliche E-Mail-Adresse, bevor Sie fortfahren.");
       return;
     }
-    // Art der Adresse: preisrelevant und deshalb Pflicht. Wie bei den Zollangaben
-    // erscheint der Fehler erst hier — eine gerade geöffnete Seite soll nicht sofort
-    // rot sein. Der Server prüft dieselbe Regel erneut und lehnt fail-closed ab; dies
-    // erspart dem Kunden nur den Umweg über eine abgelehnte Buchung.
-    if (!adresstypVollstaendig) {
-      setAdresstypShowErrors(true);
-      setError(adresstypHinweis);
+    // TG22 Residential: ohne gebundene Art der Lieferadresse geht es nicht weiter — der Preis ist
+    // vorläufig und die Absicherung nicht verfügbar. Der Server prüft dieselbe Regel erneut.
+    if (residentialBlocks) {
+      setError(RESIDENTIAL_TEXT.required);
       return;
     }
     // Versicherungswerte: ab hier sind fehlende/ungültige Beträge kein „noch
@@ -1832,23 +2025,15 @@ export default function BookingPage() {
               packageInfo={packageInfo}
             />
 
-            {/* Art der Adresse — preisrelevant, deshalb VOR den optionalen Zusatzangaben.
-                WELCHE Fragen erscheinen, sagt das Angebot. Braucht es keine, entsteht die
-                Karte gar nicht erst — ein leerer Abschnitt waere eine Behauptung, hier sei
-                etwas zu tun. */}
-            {adresstypAnsicht.fest.length > 0 && (
-              <AddressTypeSummary
-                eintraege={adresstypAnsicht.fest}
-                onEdit={goBackToOffers}
-              />
-            )}
-
-            {adresstypAnsicht.offen.length > 0 && (
-              <AddressTypeModule
-                fragen={adresstypAnsicht.offen}
-                werte={adresstyp}
-                onChange={setAdresstypFeld}
-                showErrors={adresstypShowErrors}
+            {/* Art der Lieferadresse — preisrelevant, deshalb VOR den optionalen Zusatzangaben. Nur für
+                ein Angebot, das die Angabe nennt; sonst entsteht der Abschnitt gar nicht. */}
+            {residentialRequired && (
+              <ResidentialPriceInputModule
+                view={residentialView}
+                onSelect={waehleLieferadresse}
+                onRetry={erneutZuschlagLaden}
+                onRecalculate={handlePriceChangeRecalculate}
+                onNavigateShipments={() => navigate("/dashboard?page=shipments")}
               />
             )}
 
@@ -1975,8 +2160,13 @@ export default function BookingPage() {
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
-                {/* ── Zusatzversicherung (Modul) — Sichtbarkeit über die Config ── */}
-                {modules.insurance ? (
+                {/* ── Zusatzversicherung (Modul) — Sichtbarkeit über die Config ──
+                    TG22 Residential: vor der Bindung der Lieferadresse gibt es keine Absicherung. */}
+                {residentialRequired && residentialBlocks ? (
+                  <p className="booking-ins-unavailable" id="insurance-after-residential">
+                    {RESIDENTIAL_TEXT.insuranceAfterChoice}
+                  </p>
+                ) : modules.insurance ? (
                   <InsuranceModule
                     insCards={insCards}
                     insuranceType={insuranceType}

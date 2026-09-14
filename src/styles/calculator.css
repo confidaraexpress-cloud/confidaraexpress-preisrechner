@@ -772,6 +772,37 @@
 .ins-note { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.5; margin: 0; }
 .booking-ins-unavailable { font-size: 12px; color: var(--ce-color-text-muted); margin-bottom: 16px; }
 
+/* ─── TG22 Residential: „Art der Lieferadresse" nach der Angebotsauswahl ─────────
+   Zwei Auswahlkarten im Muster der übrigen Auswahlkarten des Versandprozesses: neutral im
+   Grundzustand, nur die Auswahl trägt Brand Border + Brand Soft. Die Beträge stehen in der
+   Zahlenschrift und rechtsbündig lesbar untereinander (brutto, darunter netto). Auf schmalen
+   Breiten stapeln die Karten; nichts läuft über. */
+.res-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 520px) { .res-cards { grid-template-columns: minmax(0, 1fr); } }
+.res-card {
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: 14px 16px; border: 1.5px solid var(--ce-color-border-default); border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface); cursor: pointer; box-shadow: var(--ce-elevation-1);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.res-card:hover { border-color: var(--ce-color-border-strong); box-shadow: var(--ce-elevation-2); }
+.res-card input { position: absolute; opacity: 0; width: 0; height: 0; }
+.res-card--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
+.res-card--locked { cursor: progress; }
+.res-card-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.res-card-radio { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ce-color-border-strong); background: var(--ce-color-surface); position: relative; }
+.res-card--selected .res-card-radio { border-color: var(--ce-color-brand); }
+.res-card--selected .res-card-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--ce-color-brand); }
+.res-card input:focus-visible ~ .res-card-head .res-card-radio { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.res-card-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; min-width: 0; overflow-wrap: break-word; }
+.res-card-price { display: flex; flex-direction: column; gap: 2px; padding-left: 27px; min-width: 0; }
+.res-card-price-val { font-family: var(--ce-font-numeric); font-size: 15px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.res-card-price-sub { font-family: var(--ce-font-numeric); font-size: 12px; color: var(--ce-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.res-state { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; }
+.res-state--loading { color: var(--blue2); }
+.res-state--error { color: var(--danger); flex-wrap: wrap; }
+.res-notice { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--ce-color-text-muted); }
+
 /* ── Versicherungsdetails-Dialog ────────────────────────────────────────────
    Läuft vollständig auf dem globalen Dialogsystem (.ce-dialog* aus patterns.css):
    ein Overlayton, eine der vier zulässigen Breiten (md), unter 480 px Vollbild,
@@ -1261,10 +1292,3 @@
 .bk-savedraft-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
 .bk-savedraft-error { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--danger); }
 
-/* ── TG-7: die festgeschriebenen Angaben zur Art der Adresse ─────────────────
-   Kein eigenes Material: die Zeilen sind dieselben `.summary-detail-row` wie in
-   den Sendungsdetails darueber, die Flaeche ist ein normales `.calc-panel`, und
-   „Aendern" ist der vorhandene `.btn-link`. Hier steht nur, was die Zusammen-
-   stellung braucht — Abstand nach dem Hinweis und die Ausrichtung des Links. */
-.adr-typ-summary .summary-detail-row:first-of-type { margin-top: 4px; }
-.adr-typ-summary .adr-typ-edit { margin-top: 12px; padding-inline: 0; }

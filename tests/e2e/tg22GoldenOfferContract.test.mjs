@@ -25,6 +25,7 @@ import { chromium } from "playwright";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fuelleVersandformular, STANDARD_PAKET, STANDARD_SENDUNGSANGABEN } from "./helpers/newShipmentForm.mjs";
+import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5393, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 4822;
@@ -61,13 +62,22 @@ const TG22 = (extra = {}) => ({
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
   netPrice: 15.33, vatAmount: 2.91, finalPrice: 18.24, currency: "EUR",
-  bookable: true, unavailableReason: null, priceCompleteness: "complete",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
+  // TG22 Residential: auswählbar, erst nach der Wahl der Lieferadresse buchbar und absicherbar.
+  bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
+  requiredPriceInputs: ["deliveryIsResidential"],
   chargeableWeight: 2, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"], labelFormatOptions: [],
-  insuranceAvailable: true, insuranceDetails: COVER_DETAILS,
+  insuranceAvailable: false, insuranceDetails: null,
   trackingAvailable: true, printerRequired: true,
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
   ...extra,
+});
+
+/* Dieselbe Absicherungsfähigkeit OHNE Angabe nach der Auswahl — der Weg der ausdrücklichen
+   Preisübernahme (TG22 Paket A, Tests D und G). Ein Angebot mit Art der Lieferadresse bekommt bei
+   einer Preisänderung stattdessen eine Neubestätigung (tg22ResidentialPriceInputs.test.mjs). */
+const TG22_KLASSISCH = (extra = {}) => TG22({
+  bookable: true, unavailableReason: null, priceCompleteness: "complete", requiredPriceInputs: [],
+  insuranceAvailable: true, insuranceDetails: COVER_DETAILS, ...extra,
 });
 
 /* Das Vergleichsangebot: Tarif-ID, Abholfenster, Zustelldaten, A4/A6-Wahl, Stufenversicherung. */
@@ -81,7 +91,8 @@ const VERGLEICH = (extra = {}) => ({
   deliveryDateMin: `${ZUSTELL_MIN}T00:00:00Z`, deliveryDateMax: `${ZUSTELL_MAX}T00:00:00Z`,
   deliveryTimeUntil: "18:00",
   trackingAvailable: true, printerRequired: false, availableForDate: true, bookable: true,
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
+  // TG22 Residential: das Vergleichsangebot kennt keine Angabe nach der Auswahl — die Liste ist leer.
+  requiredPriceInputs: [],
   labelFormatOptions: ["A4", "A6"],
   insuranceAvailable: true,
   insuranceDetails: { isInsurable: true, insuranceValue: 500,
@@ -169,11 +180,21 @@ async function setupRoutes(page, protokoll, szenario = {}) {
     }
     return json({});
   });
+  // TG22 Residential — NACH dem Sammel-Mock: Playwright prüft Routen in umgekehrter Reihenfolge.
+  // Geschäftsadresse = der Vergleichspreis; die Absicherung kommt mit der Bindung.
+  const nachBindung = szenario.nachBindung || { insuranceAvailable: true, insuranceDetails: COVER_DETAILS };
+  await mockeLieferadresse(page, lieferadressZustand({
+    offerId: TG22().offerId,
+    geschaeft: { net: 15.33, vat: 2.91, gross: 18.24 },
+    privat: { net: 18.51, vat: 3.52, gross: 22.03 },
+    zuschlag: { net: 3.18, vat: 0.61, gross: 3.79 },
+    ...nachBindung,
+  }), protokoll.lieferadresse);
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
   return zustand;
 }
 
-const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [] });
+const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [], lieferadresse: [] });
 const norm = (s) => String(s ?? "").replace(/ /g, " ").replace(/\s+/g, " ").trim();
 const inhalt = async (loc) => norm(await loc.first().textContent());
 const querUeberlauf = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -201,6 +222,10 @@ async function waehle(page, tarif) {
   await karteVon(page, tarif).locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   await page.waitForSelector("#booking-reference-toggle", { timeout: 20000 });
+  // TG22 Residential: ein Angebot mit Art der Lieferadresse wird erst mit der Wahl buchbar.
+  if (Array.isArray(tarif.requiredPriceInputs) && tarif.requiredPriceInputs.includes("deliveryIsResidential")) {
+    await waehleLieferadresse(page, false);
+  }
 }
 
 async function zuSchritt2(page) {
@@ -285,6 +310,10 @@ test("A — Angebotsliste: TG22 und Vergleichsangebot in einer Sprache, Tarif-ID
   assert.match(tgText, /bereit ab 09:00 Uhr/);
   assert.match(tgText, /15,33 €/);
   assert.doesNotMatch(tgText, /\bLieferung\b|\bZustellung\b/, "die Laufzeit ist wieder als Termin benannt");
+  // TG22 Residential: vorläufiger Preis und Zuschlagshinweis — ohne „ab“-Betrag.
+  assert.match(tgText, /Vorläufiger Preis/);
+  assert.match(tgText, /Bei einer privaten Lieferadresse kann ein Zuschlag anfallen\./);
+  assert.doesNotMatch(tgText, /ab \d+,\d{2} €/);
   await tg.locator(`button[aria-controls="offer-details-${TG22().offerId}"]`).click();
   await page.locator(`#offer-details-${TG22().offerId}`).waitFor({ timeout: 10000 });
   const tgDetails = await inhalt(page.locator(`#offer-details-${TG22().offerId}`));
@@ -378,8 +407,10 @@ test("B — TG22 mit Absicherung: eine Preisprojektion auf Kopf, Sticky, Aufstel
 test("C — TG22 mit Warenwert ≤ 50 €: Grundabsicherung ohne Neubepreisung, Preis unverändert", async () => {
   const { page, fehler } = await neueSeite();
   const protokoll = neuesProtokoll();
-  const tarif = TG22({ insuranceAvailable: false, insuranceDetails: COVER_GRUNDABSICHERUNG });
-  await setupRoutes(page, protokoll, { tarife: [tarif], betrag: 18.24 });
+  // TG22 Residential: die Aussage zur Grundabsicherung kommt mit der Bindung der Lieferadresse.
+  const tarif = TG22();
+  await setupRoutes(page, protokoll, { tarife: [tarif], betrag: 18.24,
+    nachBindung: { insuranceAvailable: false, insuranceDetails: COVER_GRUNDABSICHERUNG } });
   await zuDenAngeboten(page, { ...STANDARD_SENDUNGSANGABEN, declaredGoodsValue: "50" });
   await waehle(page, tarif);
   await zuSchritt2(page);
@@ -402,6 +433,7 @@ test("D — TG-Preisänderung: geschlossen bleibt gesperrt; übernommen aktualis
   const { page, fehler } = await neueSeite();
   const protokoll = neuesProtokoll();
   await setupRoutes(page, protokoll, {
+    tarife: [TG22_KLASSISCH(), VERGLEICH()],
     reprice: (body, zustand) => {
       if (!body.acceptPriceChange) return null;
       if (body.acceptPriceChange.expectedTotalGross !== STAND[1].gesamt) return null;
@@ -414,7 +446,7 @@ test("D — TG-Preisänderung: geschlossen bleibt gesperrt; übernommen aktualis
     betrag: 20.24,
   });
   await zuDenAngeboten(page);
-  await waehle(page, TG22());
+  await waehle(page, TG22_KLASSISCH());
   await zuSchritt2(page);
   await absichern(page);
   await bestaetigen(page);
@@ -588,11 +620,12 @@ for (const [name, viewport] of [["Tablet 834", { width: 834, height: 1112 }], ["
     const { page, fehler } = await neueSeite(viewport);
     const protokoll = neuesProtokoll();
     await setupRoutes(page, protokoll, {
+      tarife: [TG22_KLASSISCH(), VERGLEICH()],
       book: () => ({ status: 409, json: { error: "Der Preis hat sich geändert.", code: "PRICE_CHANGED", price: STAND[1].gesamt } }),
     });
     await zuDenAngeboten(page);
     assert.ok(await querUeberlauf(page) <= 0, "Angebote: horizontaler Überlauf");
-    await waehle(page, TG22());
+    await waehle(page, TG22_KLASSISCH());
     assert.ok(await querUeberlauf(page) <= 0, "Schritt 1: horizontaler Überlauf");
     assert.ok(await page.locator(".offsum-price-label").isVisible(), "das Preislabel des ausgewählten Angebots fehlt");
     await zuSchritt2(page);

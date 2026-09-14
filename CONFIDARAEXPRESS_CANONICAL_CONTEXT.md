@@ -2,9 +2,9 @@
 
 - **Schema-Version:** 2.1
 - **Status:** CANONICAL PROJECT SOURCE
-- **Last verified:** 2026-09-13 (TG22-Golden-Offer-Contract-Abschnitte 5.1, 5.12, 6.4, 8.4, 15; Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14; Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09)
-- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge)
-- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge)
+- **Last verified:** 2026-09-14 (TG22-Residential-Abschnitte 1A, 5.1, 5.4, 5.5, 6.4, 8.1, 8.4, 9.4, 14, 15); 2026-09-13 (TG22-Golden-Offer-Contract-Abschnitte 5.1, 5.12, 6.4, 8.4, 15; Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14); Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09
+- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `f745cc9` (wirksam nach Merge)
+- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `5b6dfb3` (wirksam nach Merge)
 - **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09; Transglobal-Stand im Paket TG-22 am 2026-09-11 gegen den Code geprüft
 
 ---
@@ -90,6 +90,9 @@ Ein Transglobal-Angebot erscheint nur mit belegter Kontowährung EUR (`TRANSGLOB
 
 - Referenzservice ist **Service 22 (UPS Standard Single)**. Öffentliche Buchbarkeit ist technisch vorbereitet, **ausschließlich DE→DE**, ein Paket, Abholung an einem Tag nach heute.
 - Alle anderen Transglobal-Services bleiben nicht öffentlich buchbar.
+- **Art der Lieferadresse nach der Angebotsauswahl** (Service 22, bestätigt 2026-09-14): „Neue Sendung" fragt vor dem Vergleich keine Adressart. Das Angebot zeigt einen vorläufigen Geschäftspreis; erst nach der Auswahl fragt die Buchung genau „Art der Lieferadresse" mit „Geschäftsadresse + 0,00 €" und „Privatadresse + X,XX €". Eine Abholadressfrage gibt es nicht — die Abholadresse ist für die bindungsrelevanten Quotes serverseitig geschäftlich.
+- X ist nie hartkodiert: zwei vollständige serverseitige Kundenszenarien (geschäftlich/privat) mit demselben Aufschlag, derselben MwSt. und demselben Sendungskontext; X = Privat − Geschäft in ganzen Cent. Aufschlag und MwSt. gelten auf den vollständigen Anbieterpreis einschließlich Zuschlag (kein 1:1-Durchreichen). Kundenbezeichnung ausschließlich „Zuschlag Privatadresse".
+- JUMiNGO bekommt keine Adressfrage, keinen neuen Providerweg und keine zusätzliche Providerlast.
 - Die Transglobal-Konten (Staging und späteres Production-Konto) sind EUR-Konten; ConfidaraExpress unterstützt für Transglobal-Public-Booking zunächst ausschließlich EUR-Konten. Es gibt keine Währungsumrechnung.
 - Production-Aktivierung erfolgt manuell und erst nach Operations-Minimum, Legal/Datenschutz und finaler Activation-Checklist.
 
@@ -308,6 +311,8 @@ Die Buchung wird serverseitig gegen den gespeicherten Angebotszustand validiert.
 
 Auf der Buchungsseite gibt es genau **eine** Preisprojektion: Serverantwort → Price-View-Model → alle Preisflächen (ausgewähltes Angebot, Live- und Sticky-Leiste, Preiszusammenfassung, Absicherungskarten, Buchungsgate). Keine Fläche hält eine eigene Preiswahrheit; der Client addiert, rundet und rekonstruiert keine Beträge. Mit Absicherung stammen Netto- **und** Bruttogesamtbetrag aus der Neubepreisung (`customerTotalNet`, `customerTotalGross`, serverseitig centgenau gebildet); fehlt `customerTotalNet`, zeigt der Client keinen Nettogesamtbetrag. Nach der Buchung gilt ausschließlich `booking.amount` (TG22 Golden Offer Contract, wirksam nach Merge).
 
+Preisbestandteile (Versand, gegebenenfalls „Zuschlag Privatadresse", gegebenenfalls die steuerfreie Absicherung) sind serverseitig eingefrorene Darstellungen derselben autoritativen Summen (`lib/priceComponents.js`). Sie ändern nie einen Gesamtbetrag; der Client zeigt sie und addiert sie nicht (TG22 Residential, wirksam nach Merge).
+
 Evidence anchors:
 
 - `lib/booking/offerRouting.js`
@@ -342,6 +347,8 @@ Bei booleschen Fragen gilt:
 
 `false` ist eine gültige Antwort und darf niemals mit „fehlt" gleichgesetzt werden.
 
+Die Abholadresse des Transglobal-Referenzservices ist keine unbeantwortete Frage, sondern eine serverseitige Produktfestlegung (`false`) für die bindungsrelevanten Quotes. Eine nicht gewählte Zustelladressart wird nie zu `false`: ohne gebundene Wahl wird nicht gebucht (TG22 Residential).
+
 ### 5.5 Preisrelevante Buchungsdaten werden eingefroren
 
 **Status: ACTIVE_CURRENT**
@@ -349,6 +356,8 @@ Bei booleschen Fragen gilt:
 Preisbestimmende bzw. buchungsrelevante Angaben werden vor bzw. im Buchungsprozess serverseitig persistiert und für die Buchungsentscheidung aus dem gespeicherten Zustand gelesen.
 
 Client-Abweichungen dürfen den gespeicherten Vertrag nicht still überschreiben.
+
+Die Art der Lieferadresse des Transglobal-Referenzservices wird am Angebot gebunden (`shipment_offers`, Compare-and-Swap auf die Preisrevision), nicht an der Sendung; die Buchung liest sie ausschließlich von dort (TG22 Residential).
 
 ### 5.6 Historische Dokumente bleiben historisch korrekt
 
@@ -523,12 +532,14 @@ Der Transglobal-Buchungspfad ist implementiert und für Service 22 real gegen di
 - Service `publicBookable` **und** Routenbereich in `publicBookableScopes` (heute nur Service 22, nur DE→DE),
 - `TRANSGLOBAL_PUBLIC_BOOKING_ENABLED` (Produktschalter, default aus),
 - belegte Kontowährung `TRANSGLOBAL_ACCOUNT_CURRENCY=EUR` (default nicht gesetzt ⇒ kein TG-Angebot),
-- Full Quote mit Buchungsreferenz, kuratierte Übergabeart und Preisklasse, beantwortete Adressarten,
+- Full Quote mit Buchungsreferenz, kuratierte Übergabeart und Preisklasse, gebundene Art der Lieferadresse (Service 22: nach der Angebotsauswahl; ohne Bindung nicht buchbar),
 - bei Abholung ein Abholtag nach heute (Same-Day ist nicht öffentlich buchbar).
 
 Angebotsvertrag des Referenzservices (TG22 Golden Offer Contract): Leistungsname „Standardversand" (CE-Klassifikation wie ein Standardangebot der anderen Einkaufsquelle; eingefroren an Angebot, Sendung und Rechnung), Abholvertrag aus Abholtag und „bereit ab 09:00 Uhr" (kein Zeitfenster, kein „bis", keine Fensterwahl), Laufzeit „1–2 Tage" ohne berechnete Kalendertage (Zustelldaten erscheinen nur, wo ein Anbieter sie liefert), Labelformate „PDF · DIN A4 / Thermodruck" ohne Formatwahl, höchstens ein Packstück, zusätzliche Transportabsicherung nach Warenwert (bis 50 € Grundabsicherung ohne Aufpreis, oberhalb der Höchstdeckung kein Zusatz, sonst Preis ausschließlich über die Neubepreisung). Same-Day und `COLFEE` bleiben nicht freigegeben.
 
 Die Bestellung braucht zusätzlich `TRANSGLOBAL_BOOKING_ENABLED` (technischer Kill-Switch, default aus). Angebot und Buchung prüfen dieselbe Quelle.
+
+Art der Lieferadresse (TG22 Residential, wirksam nach Merge): Das Vergleichsangebot trägt den echten Geschäftspreis eines Full Quotes ohne Adressart (`priceCompleteness: "indicative"`, `requiredPriceInputs: ["deliveryIsResidential"]`, `unavailableReason: "price_inputs_required"` — auswählbar, nicht buchbar). Nach der Auswahl bepreist `POST /api/offers/price-input-options` genau zwei vollständige Full Quotes parallel (kein Retry, 15-Minuten-Snapshot am Angebot, fail closed bei jeder Inkonsistenz); `POST /api/offers/price-inputs` bindet ohne Providerkontakt aus diesem Snapshot (neue Preisrevision, eine gebundene Absicherung wird zurückgesetzt). `/book` verlangt Bindung und `offerRevision`, revalidiert mit der gebundenen Wahl und prüft Fracht, Zuschlag, Einkauf, Aufschlag und Kundenpreis gegen die Bindung; jede Abweichung verlangt eine neue Wahl.
 
 Nicht daraus ableiten, dass Transglobal heute produktiv buchbar ist: alle Schalter sind im Repository aus, der Runtime-Zustand ist UNKNOWN_RUNTIME_STATE.
 
@@ -605,6 +616,8 @@ Provider-Einkaufsnetto
 
 Evidence anchor: `lib/pricing.js`
 
+Zustelladressart des Transglobal-Referenzservices (TG22 Residential): der vollständige Anbieterpreis jedes Szenarios (Fracht plus gegebenenfalls Zuschlag) durchläuft dieselbe Kette. Der Kundenzuschlag ist die Differenz der beiden Kunden-Netto-, MwSt.- und Bruttobeträge in ganzen Cent — nie separat versteuert, nie lokal berechnet. Eine negative oder widersprüchliche Differenz ist ein Fehler (`PRICE_INPUT_OPTIONS_INCONSISTENT`), kein Ersatzwert.
+
 ### 8.2 Kundenaufschlag
 
 **Status: ACTIVE_CURRENT**
@@ -649,6 +662,7 @@ Eine gemeldete Preisänderung (`409 PRICE_CHANGED`) entwertet den zuletzt bestä
 - **Mit Neubindung** (Transglobal-Referenzservice mit Absicherung): der neue Gesamtbetrag wird ausschließlich über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` übernommen (neue Preisrevision); danach bucht der Kunde ausdrücklich erneut. Der übernommene Versandpreis gilt auch in der Angebotsliste.
 - **Ohne Neubindung** (JUMiNGO-Angebot mit `offerId`, mit oder ohne Absicherung): `/book` antwortet mit `recalculationRequired: true` und nur dem neuen Gesamtbetrag. Es gibt keinen Bestätigungsweg, nur „Angebote neu berechnen"; die gespeicherten Angebote werden dabei verworfen. Der Legacy-Weg ohne `offerId` bleibt unverändert.
 - Ein vom Client gesendeter Preis (`price_final`) hat im Transglobal-Weg keine Wirkung; maßgeblich sind gebundene Preisrevision, bestätigter Gesamtbetrag und Absicherungsauswahl.
+- **Gebundene Art der Lieferadresse** (Transglobal-Referenzservice): eine Abweichung bei Revalidierung oder Neubepreisung antwortet `409 PRICE_CHANGED` mit `priceInputsRebindRequired: true` und ohne Beträge; es gibt keinen Übernahmeweg. Der Optionen-Snapshot desselben Stands wird verworfen, der Kunde wählt die Art der Lieferadresse zu frisch bepreisten Szenarien erneut (TG22 Residential, wirksam nach Merge).
 
 ---
 
@@ -685,6 +699,14 @@ Die Aktivierung hängt am entsprechenden Feature Gate.
 **Status: LEGACY_COMPATIBILITY**
 
 Nicht als aktuelle Source of Truth für das Zahlungsziel verwenden.
+
+### 9.4 Preisbestandteile auf Belegen
+
+**Status: IMPLEMENTED, wirksam nach Merge (TG22 Residential)**
+
+Eine Buchung mit eingefrorenen Preisbestandteilen trägt sie auf der Einzelrechnung (Positionsliste im Rechnungssnapshot), der Sammelrechnung (Positionen je Sendung) und der Auftragsbestätigung (Dokumentversion 6): Versanddienstleistung, gegebenenfalls „Zuschlag Privatadresse", MwSt., gegebenenfalls „Zusatzversicherung (steuerfrei)". Die Beträge kommen Cent für Cent aus dem Snapshot. Je Sendung gilt: Summe brutto = `price_final`, steuerpflichtig netto = `price_net`, MwSt. = `vat_amount`, steuerfrei = Absicherung — ein Widerspruch verhindert den Beleg. Sammelrechnungen mit Sendungen mit und ohne Bestandteile sind zulässig.
+
+Belege ohne Bestandteile und Auftragsbestätigungen bis Version 5 bleiben unverändert. Ein Positionstext der Anbieterrechnung erscheint nie auf einem Kundenbeleg.
 
 ---
 
@@ -839,7 +861,7 @@ Production-Zustände nicht aus Repository-Defaults erfinden.
 | --- | --- | --- |
 | JUMiNGO Quote/Buchung | ACTIVE_CURRENT | produktiver Buchungspfad |
 | Transglobal Quote | ACTIVE_CURRENT / UNKNOWN_RUNTIME_STATE | benötigt Runtime-Konfiguration |
-| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus; öffentlich buchbar vorbereitet nur Service 22 DE→DE hinter Produktschalter, Buchungsschalter und Kontowährung |
+| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus; öffentlich buchbar vorbereitet nur Service 22 DE→DE hinter Produktschalter, Buchungsschalter und Kontowährung; Art der Lieferadresse nach der Angebotsauswahl (TG22 Residential, wirksam nach Merge) |
 | Customs | IMPLEMENTED_DISABLED | opt-in aus + Launch-Scope blockiert Drittländer |
 | Legal Booking Gate | IMPLEMENTED_CONDITIONALLY | default aus |
 | Consolidated Invoicing | IMPLEMENTED_CONDITIONALLY | default aus |
@@ -883,6 +905,8 @@ UX:
 - keine rohen internen Status-/Fehlermeldungen an Kunden
 
 Gemeinsamer Anzeigevertrag der Angebots- und Buchungsflächen (TG22 Golden Offer Contract): jeder Preis trägt „Gesamt" oder „Versand"; die Zustellangabe heißt „Zustellung", solange Anbieterdaten vorliegen, bei reiner Laufzeit „Voraussichtliche Laufzeit"; Labelgrößen heißen „DIN A4", „DIN A6" und „Thermodruck", unbekannte Rohwerte erscheinen nicht; derselbe Abholvertrag (Zeitfenster oder „bereit ab") auf Karte und Buchung. Entschieden wird an den Feldern des Angebots, nie am Provider; die Layouts der Flächen bleiben eigenständig.
+
+TG22 Residential (wirksam nach Merge): ein Angebot, das nur noch auf die Art der Lieferadresse wartet, zeigt „Vorläufiger Preis" und „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." — kein „ab"-Betrag, kein Anbieter. Die Wahl heißt „Art der Lieferadresse" mit „Geschäftsadresse + 0,00 €" und „Privatadresse + X,XX €" (Serverbetrag); die Bestandteilzeile heißt „Zuschlag Privatadresse". Bis zur Bindung ist die Absicherung nicht wählbar und die Buchung gesperrt.
 
 ### Icon-System
 
@@ -1137,6 +1161,17 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.1 — 2026-09-14 (TG22 Residential)
+
+- 1A: Produktentscheidung „Art der Lieferadresse nach der Angebotsauswahl" (Service 22): keine Adressfrage vor dem Vergleich, keine Abholadressfrage, Zuschlag aus zwei vollständigen Serverszenarien, Kundenbezeichnung „Zuschlag Privatadresse", JUMiNGO unverändert.
+- 5.1, 5.4, 5.5: Preisbestandteile als Darstellung derselben Summen; Abholadresse als serverseitige Festlegung; Bindung der Wahl am Angebot.
+- 6.4: vorläufiges Vergleichsangebot, Optionen- und Bindungsendpunkt, Buchungsautorität mit Bindung und Preisrevision.
+- 8.1, 8.4: Szenariodifferenz in ganzen Cent; eine Drift der gebundenen Adressart führt nur zu einer neuen Wahl.
+- 9.4 neu: Preisbestandteile auf Einzelrechnung, Sammelrechnung und Auftragsbestätigung (Dokumentversion 6).
+- 14, 15: Feature-State und Anzeigevertrag ergänzt.
+- Wirksam nach Merge der Branches `feature/tg22-residential-pricing` (Backend vor Frontend); kein Schalter, keine ENV-Änderung; additive Schemaerweiterung über `db/init.js`.
+- Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-13 (TG22 Golden Offer Contract)
 

@@ -27,6 +27,7 @@ import path from "node:path";
 import {
   fuelleVersandformular, STANDARD_PAKET, STANDARD_EMPFAENGER, STANDARD_SENDUNGSANGABEN,
 } from "./helpers/newShipmentForm.mjs";
+import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5376, BASE = `http://127.0.0.1:${PORT}`;
 const CE_SHIPMENT_ID = 4722;
@@ -61,10 +62,12 @@ const TARIF_22 = {
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
   netPrice: 12.34, vatAmount: 2.34, finalPrice: 14.68, currency: "EUR",
-  bookable: true, unavailableReason: null, priceCompleteness: "complete",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
+  // TG22 Residential: im Vergleich auswählbar, aber erst nach der Wahl der Lieferadresse buchbar —
+  // vorläufiger Preis, die Absicherung kommt mit der Bindung (helpers/residentialPriceInputs.mjs).
+  bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
+  requiredPriceInputs: ["deliveryIsResidential"],
   chargeableWeight: 2, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"],
-  insuranceAvailable: true, insuranceDetails: COVER_DETAILS,
+  insuranceAvailable: false, insuranceDetails: null,
   trackingAvailable: true, printerRequired: true,
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
 };
@@ -72,8 +75,17 @@ const TARIF_22 = {
 // aber nur Preisauskunft.
 const TARIF_22_EU = {
   ...TARIF_22, offerId: OFFER_ID_EU,
-  bookable: false, unavailableReason: "quote_only", insuranceAvailable: false, insuranceDetails: null,
+  bookable: false, unavailableReason: "quote_only", priceCompleteness: "complete",
+  insuranceAvailable: false, insuranceDetails: null,
 };
+// Die Serverbeträge nach der Bindung: Geschäftsadresse = der Vergleichspreis, dazu die Absicherung.
+const LIEFERADRESSE = () => lieferadressZustand({
+  offerId: OFFER_ID_DE,
+  geschaeft: { net: 12.34, vat: 2.34, gross: 14.68 },
+  privat: { net: 15.52, vat: 2.95, gross: 18.47 },
+  zuschlag: { net: 3.18, vat: 0.61, gross: 3.79 },
+  insuranceAvailable: true, insuranceDetails: COVER_DETAILS,
+});
 
 const REPRICE_OK = (body) => ({
   selectedInsurance: "transit_cover",
@@ -180,10 +192,12 @@ async function setupRoutes(page, protokoll, { tarif = TARIF_22 } = {}) {
     }
     return json({});
   });
+  // NACH dem Sammel-Mock: Playwright prüft Routen in umgekehrter Reihenfolge.
+  await mockeLieferadresse(page, LIEFERADRESSE(), protokoll.lieferadresse);
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
 }
 
-const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [] });
+const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], lieferadresse: [] });
 const karte = (page, id) => page.locator(`.ins-card:has(input[value="${id}"])`);
 
 async function sichtbarerText(page) {
@@ -210,6 +224,8 @@ async function zurBuchungsseite(page) {
   assert.equal(await buchbar.count(), 1, "das Referenzangebot ist nicht buchbar dargestellt");
   await buchbar.first().locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
+  // TG22 Residential: erst die Art der Lieferadresse — danach ist das Angebot buchbar und absicherbar.
+  await waehleLieferadresse(page, false);
   if (await page.locator(".ins-cards").count() === 0) {
     await page.getByRole("button", { name: /^Weiter/ }).first().click();
   }
@@ -286,7 +302,8 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     const kartentext = (await angebot.innerText()).replace(/ /g, " ");
     // Der Preis steht in der Standardansicht netto — derselbe Umschalter wie für jedes Angebot.
     for (const erwartet of ["UPS", "Standard", "1–2 Tage", "Abholung", "bereit ab 09:00 Uhr",
-                            "12,34 €", "exkl. MwSt.", "Sendungsverfolgung", "Drucker erforderlich"]) {
+                            "12,34 €", "exkl. MwSt.", "Sendungsverfolgung", "Drucker erforderlich",
+                            "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen."]) {
       assert.ok(kartentext.includes(erwartet), `die Karte zeigt „${erwartet}" nicht: ${kartentext}`);
     }
     assert.equal(await angebot.locator("button.offer-cta-btn").isEnabled(), true, "der CTA ist gesperrt");
@@ -305,7 +322,9 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
                             // TG22 Golden Offer Contract: Kundennamen statt Serverschreibweise.
                             "Verfügbare Labelformate", "PDF · DIN A4 / Thermodruck",
                             "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
-                            "Zusätzliche Transportabsicherung"]) {
+                            // TG22 Residential: vor der Bindung ist der Preis vorläufig; die Absicherung
+                            // steht erst nach der Wahl der Lieferadresse zur Verfügung.
+                            "Vorläufiger Preis"]) {
       assert.ok(detailKlein.includes(erwartet.toLowerCase()), `die Details zeigen „${erwartet}" nicht: ${detailtext}`);
     }
     const terminAbschnitt = detailKlein.slice(detailKlein.indexOf("termin & abholung"));
@@ -333,8 +352,13 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     assert.ok(!body.insuranceSelection || body.insuranceSelection.type === "none",
       `ohne Wahl wurde eine Absicherung gesendet: ${JSON.stringify(body.insuranceSelection)}`);
     assert.equal(body.voucherCode ?? null, null);
-    assert.equal(body.priceInputs.collectionIsResidential, STANDARD_SENDUNGSANGABEN.collectionIsResidential);
-    assert.equal(body.priceInputs.deliveryIsResidential, STANDARD_SENDUNGSANGABEN.deliveryIsResidential);
+    // TG22 Residential: die Art der Lieferadresse kommt aus der Serverbindung (Geschäftsadresse), der
+    // Preisstand reist mit — keine Adressart aus dem Sendungsformular, keine Abholadressart.
+    assert.deepEqual(body.priceInputs, { deliveryIsResidential: false });
+    assert.equal(body.offerRevision, 1);
+    assert.ok(!("content" in body), "ein Angebot mit Preisangaben sendet eine eigene Inhaltsangabe");
+    assert.equal(protokoll.lieferadresse.filter((a) => a.pfad.endsWith("/price-inputs")).length, 1,
+      "die Lieferadresse wurde nicht genau einmal gebunden");
 
     await pruefeErfolgsbelege(page, protokoll);
     await keineEinkaufsquelle(page, "Erfolgsbildschirm");

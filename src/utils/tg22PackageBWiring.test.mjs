@@ -76,11 +76,12 @@ test("4 — der Spiegel trägt den Angebotsschlüssel", () => {
   const eff = abschnitt(booking, "setFlowBooking({", "const tariff = bookingData");
   assert.match(eff, /goodsAreNew, goodsAreFragile,\s*insuranceOfferKey,/);
   assert.match(eff, /goodsAreNew, goodsAreFragile, insuranceOfferKey,\s*trackingEmailEnabled/);
-  assert.match(booking, /const insuranceOfferKey = offerKey\(bookingData\?\.tariff\);/);
+  // TG22 Residential: der Schlüssel trägt zusätzlich den Preisstand (utils/insuranceRestore.mjs).
+  assert.match(booking, /const insuranceOfferKey = insuranceRestoreKey\(bookingData\?\.tariff\);/);
 });
 
 test("5 — Race: jede Änderung zählt die Sequenz hoch und bricht ab, bevor irgendetwas anderes passiert", () => {
-  const eff = abschnitt(booking, "useEffect(() => {\n    repriceSeq.current++;", "}, [insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile]);");
+  const eff = abschnitt(booking, "useEffect(() => {\n    repriceSeq.current++;", "}, [insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile, residentialBlocks]);");
   const seq = eff.indexOf("repriceSeq.current++");
   const abbruch = eff.indexOf("repriceAbort.current.abort()");
   const none = eff.indexOf('if (insuranceType === "none")');
@@ -141,7 +142,8 @@ test("10 — die Referenzeingabe wird bereinigt, der Feldfehler steht am Feld", 
 
 test("11 — der Erfolgsbildschirm zeigt ausschließlich den gebuchten Betrag", () => {
   assert.match(erfolg, /const betrag = bookingSuccessAmountView\(booking, priceView\);/);
-  assert.match(erfolg, /betrag\.showBreakdown \? \(\s*<PriceSummaryModule priceView=\{\{ \.\.\.priceView, totalGross: betrag\.totalGross \}\}/);
+  // TG22 Residential: die Aufstellung trägt zusätzlich die Bestandteile (bevorzugt aus der Buchungsantwort).
+  assert.match(erfolg, /betrag\.showBreakdown \? \(\s*<PriceSummaryModule priceView=\{\{ \.\.\.priceView, totalGross: betrag\.totalGross, components: bookingSuccessComponents\(booking, priceView\) \}\}/);
   assert.match(erfolg, /Gesamtbetrag brutto<\/span>\s*<span className="booking-total-amount">\{money\(betrag\.totalGross\)\}/);
   assert.match(erfolg, /id="booking-success-amount-hint">\{betrag\.hint\}/);
   assert.doesNotMatch(erfolg, /<PriceSummaryModule priceView=\{priceView\}/, "die ungeprüfte Aufstellung steht wieder da");

@@ -125,14 +125,15 @@ test("8 — ein vergangenes Entwurfsdatum wird nicht ersetzt, sondern geleert un
 
 /* ══════════ 4 — Absicherung gehört zu genau einem Angebot ══════════ */
 
+// TG22 Residential: der Schlüssel ist `offerKey:offerRevision` (utils/insuranceRestore.mjs).
 const GESPEICHERT = Object.freeze({
-  step: 2, insuranceOfferKey: "tg-1", insuranceType: "transit_cover", insuranceValue: "250",
+  step: 2, insuranceOfferKey: "tg-1:3", insuranceType: "transit_cover", insuranceValue: "250",
   insValueManual: true, goodsAreNew: true, goodsAreFragile: false,
 });
 const COVER = { selectionModel: "cover_value" };
 
 test("9 — gleiches Angebot: Schritt, Absicherung, Wert und beide Antworten kommen zurück", () => {
-  const t = { offerId: "tg-1", insuranceDetails: COVER, priceRevision: 7, ceShipmentId: 99 };
+  const t = { offerId: "tg-1", offerRevision: 3, insuranceDetails: COVER, ceShipmentId: 99 };
   assert.equal(insuranceRestoreApplies(GESPEICHERT, t), true);
   assert.deepEqual(restoredInsuranceState(GESPEICHERT, t), {
     step: 2, insuranceType: "transit_cover", insuranceValue: "250", insValueManual: true,
@@ -145,6 +146,10 @@ test("10 — anderes Angebot, fehlender Schlüssel oder Entwurf: neutraler Start
                     goodsAreNew: null, goodsAreFragile: null };
   const faelle = [
     [GESPEICHERT, { offerId: "tg-2", insuranceDetails: COVER }, "anderes Angebot"],
+    [GESPEICHERT, { offerId: "tg-1", offerRevision: 4, insuranceDetails: COVER }, "gleiches Angebot, neuer Preisstand"],
+    [GESPEICHERT, { offerId: "tg-1", insuranceDetails: COVER }, "gleiches Angebot ohne Preisstand"],
+    [{ ...GESPEICHERT, insuranceOfferKey: "tg-1" }, { offerId: "tg-1", offerRevision: 3, insuranceDetails: COVER },
+     "Schlüssel aus der Zeit ohne Preisstand"],
     [{ ...GESPEICHERT, insuranceOfferKey: null }, { offerId: "tg-1", insuranceDetails: COVER }, "ohne gespeicherten Schlüssel"],
     [{ ...GESPEICHERT, insuranceOfferKey: undefined }, { offerId: "tg-1" }, "älterer Vorgang"],
     [GESPEICHERT, { insuranceDetails: COVER }, "Angebot ohne Identität"],

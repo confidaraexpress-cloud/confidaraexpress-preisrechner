@@ -88,6 +88,13 @@ export const BOOK_FEHLER = {
     message: OFFER_ALREADY_USED_TEXT,
     retryable: false,
   },
+  // TG22 Residential: für dieses Angebot ist die Art der Lieferadresse noch nicht gewählt (oder
+  // muss neu bestätigt werden). Nichts beauftragt; die Handlung steht auf der Buchungsseite.
+  PREISANGABE_FEHLT: {
+    title: "Art der Lieferadresse fehlt",
+    message: "Bitte wählen Sie zuerst die Art der Lieferadresse.",
+    retryable: false,
+  },
 };
 
 // ─── CE-19: die REALEN Backendcodes, nach Handlungsklasse ──────────────────────────
@@ -134,6 +141,10 @@ const BOOK_CODE_FEHLER = {
   OFFER_MISMATCH:                 "NEU_BERECHNEN",
   COLLECTION_DATE_MISSING:        "NEU_BERECHNEN",
   LABEL_FORMAT_NOT_SUPPORTED:     "NEU_BERECHNEN",
+  // TG22 Residential — PRICE_INPUTS_REQUIRED: die Lieferadresse ist nicht gebunden; die Seite führt
+  // zurück an die Auswahl. PRICE_INPUTS_NOT_SUPPORTED: das Angebot kennt die Angabe nicht (mehr).
+  PRICE_INPUTS_REQUIRED:          "PREISANGABE_FEHLT",
+  PRICE_INPUTS_NOT_SUPPORTED:     "NEU_BERECHNEN",
 };
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe

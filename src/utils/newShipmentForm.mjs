@@ -143,11 +143,9 @@ export function createEmptyShipmentForm() {
   // Sie steht NACH der Schleife, damit die Schleife die Regel „alles leer" unverändert
   // ausspricht und die Ausnahme als solche sichtbar bleibt.
   form.packageCount = PACKAGE_COUNT_DEFAULT;
-  // Die vier Sendungsangaben, die vor dem Angebotsvergleich erhoben werden. Sie folgen
-  // derselben Regel wie alles andere: KEIN Vorgabewert. Die beiden Adressartfragen starten
-  // ausdrücklich als `null` und nicht als `false` — „noch nicht beantwortet" ist ein
-  // eigener Zustand, und ein vorausgewähltes „Geschäftsadresse" wäre eine preiswirksame
-  // Behauptung über eine Adresse, die niemand beschrieben hat.
+  // Die beiden Sendungsangaben (Inhalt, Warenwert), die vor dem Angebotsvergleich erhoben
+  // werden. Sie folgen derselben Regel wie alles andere: KEIN Vorgabewert. Die Art der
+  // Lieferadresse gehört nicht hierher — sie wird erst nach der Angebotsauswahl gefragt.
   Object.assign(form, blankDeclarations());
   form.max_price = "";
   form.latestDeliveryDate = "";

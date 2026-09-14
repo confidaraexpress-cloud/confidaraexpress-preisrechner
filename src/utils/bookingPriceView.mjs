@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { INSURANCE_TYPE_TRANSIT_COVER } from "./coverInsuranceView.mjs";
+import { readPriceComponents } from "./priceComponentsView.mjs";
 
 // Zentrale Frontend-Grenze für den Versicherungswert. Entspricht der bereits
 // bestehenden Inline-Grenze (BookingPage/InsuranceModule) und der Backend-Regel
@@ -40,6 +41,9 @@ export const PRICE_STATUS = {
   REPRICE_ERROR:     "REPRICE_ERROR",     // Reprice fehlgeschlagen
   STALE:             "STALE",             // Auswahl/Eingabe seit letztem Reprice geändert
   PRICE_CHANGED:     "PRICE_CHANGED",     // Server meldet Preisänderung → kein Betrag gilt, Buchung gesperrt
+  // TG22 Residential: das Angebot braucht die Art der Lieferadresse, und sie ist nicht (mehr)
+  // gebunden → der Angebotspreis ist vorläufig, Buchung gesperrt.
+  PRICE_INPUTS_REQUIRED: "PRICE_INPUTS_REQUIRED",
 };
 
 function num(v) {
@@ -93,6 +97,10 @@ function shippingRefFromTariff(t) {
 // wert); default true (abwärtssicher). `repriceError` akzeptiert bool ODER Fehlertext.
 // `priceChangePending` = der Server hat eine Preisänderung gemeldet, über die der
 // Kunde noch nicht entschieden hat (TG22 Golden Offer Contract).
+// `priceInputsRequired` = das Angebot braucht die Art der Lieferadresse, und sie ist nicht
+// gebunden (TG22 Residential). `components` überschreibt optional die Bestandteile; ohne Angabe
+// gelten die des gebundenen Angebots (ohne Absicherung) bzw. der Neubepreisung (mit Absicherung).
+// Bestandteile werden NUR zu einem bestätigten Preis ausgegeben und nie addiert.
 export function buildBookingPriceView({
   tariff,
   insuranceType,
@@ -102,6 +110,8 @@ export function buildBookingPriceView({
   repriceError = false,
   insValid = true,
   priceChangePending = false,
+  priceInputsRequired = false,
+  components,
 } = {}) {
   const t = tariff || {};
   const totals = (repriceResult && typeof repriceResult === "object"
@@ -133,6 +143,7 @@ export function buildBookingPriceView({
   // Kunde den Dialog, bleibt dieser Zustand; er endet erst mit Übernahme oder Neuberechnung.
   let status;
   if (priceChangePending === true)        status = PRICE_STATUS.PRICE_CHANGED;
+  else if (priceInputsRequired === true)  status = PRICE_STATUS.PRICE_INPUTS_REQUIRED;
   else if (!isInsuredType(insuranceType)) status = PRICE_STATUS.BASE_CONFIRMED;
   else if (hasError)                      status = PRICE_STATUS.REPRICE_ERROR;
   else if (insValid === false)            status = PRICE_STATUS.REPRICE_REQUIRED;
@@ -167,6 +178,9 @@ export function buildBookingPriceView({
     isStale:     status === PRICE_STATUS.STALE,
     hasError:    status === PRICE_STATUS.REPRICE_ERROR,
     isPriceChanged: status === PRICE_STATUS.PRICE_CHANGED,
+    isPriceInputsRequired: status === PRICE_STATUS.PRICE_INPUTS_REQUIRED,
+    // Serverbestandteile des bestätigten Preises (Versand, Zuschlag, Absicherung) — sonst null.
+    components: null,
   };
 
   if (status === PRICE_STATUS.PRICE_CHANGED) {
@@ -176,6 +190,11 @@ export function buildBookingPriceView({
     return { ...base, source: null, hasConfirmedPrice: false };
   }
 
+  if (status === PRICE_STATUS.PRICE_INPUTS_REQUIRED) {
+    // Der Angebotspreis ist vorläufig: als Referenz sichtbar, nie bestätigt, keine Bestandteile.
+    return { ...base, source: null, ...shippingRefFromTariff(t), hasConfirmedPrice: false };
+  }
+
   if (status === PRICE_STATUS.BASE_CONFIRMED) {
     const net = num(t.netPrice), vat = num(t.vatAmount), gross = num(t.finalPrice);
     return {
@@ -183,12 +202,14 @@ export function buildBookingPriceView({
       shippingNet: net, shippingVat: vat, shippingGross: gross,
       insuranceGross: 0, totalNet: net, totalGross: gross,
       hasConfirmedPrice: gross != null, // fail-closed ohne belegten Bruttopreis
+      components: readPriceComponents(components !== undefined ? components : t.priceComponents),
     };
   }
 
   if (status === PRICE_STATUS.REPRICE_CONFIRMED) {
     const p = fromTotals(totals);
-    return { ...base, source: "reprice", ...p, hasConfirmedPrice: p.totalGross != null && p.insuranceGross != null };
+    return { ...base, source: "reprice", ...p, hasConfirmedPrice: p.totalGross != null && p.insuranceGross != null,
+             components: readPriceComponents(components !== undefined ? components : repriceResult.components) };
   }
 
   if (status === PRICE_STATUS.STALE) {

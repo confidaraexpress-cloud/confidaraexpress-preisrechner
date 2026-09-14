@@ -84,27 +84,22 @@ const PACKAGE_KEYS = ["packageCount", "weight", "length", "width", "height"];
 // `undefined` → ""). Gleiche Disziplin wie bei trackingEmail/labelTrackingEmail.
 const CLIENT_FILTER_KEYS = ["max_price", "latestDeliveryDate", "latestDeliveryTime"];
 
-/* Die vier Sendungsangaben von Paket 9A. Sie sind seitdem PFLICHT vor dem
-   Angebotsvergleich — und sie gehören damit zwingend in den laufenden Vorgang.
+/* Die Sendungsangaben (Inhalt, Warenwert). Sie sind PFLICHT vor dem Angebotsvergleich —
+   und sie gehören damit zwingend in den laufenden Vorgang.
 
    Ohne sie ging beim Weg zurück von der Buchungsseite („← Zurück") genau das
    verloren, was den Vergleich überhaupt erst freigibt: der Kunde stand vor einem
-   dauerhaft deaktivierten „Angebote vergleichen" und musste Inhalt, Warenwert und
-   beide Adressarten erneut eintragen, um eine einzige Zahl zu ändern. Der Spiegel
-   schrieb sie ohnehin mit; verworfen hat sie allein diese Allowlist.
+   dauerhaft deaktivierten „Angebote vergleichen" und musste Inhalt und Warenwert
+   erneut eintragen, um eine einzige Zahl zu ändern.
 
    ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem älteren Bundle kennt
-   die Schlüssel nicht — die Textfelder werden dann zu "", die beiden Adressarten zu
-   `null` („noch nicht beantwortet"). Genau der Zustand eines frisch geöffneten
-   Formulars, und kein Grund, einen Vorgang zu verwerfen. */
-const DECLARATION_TEXT_KEYS = ["declaredContent", "declaredGoodsValue"];
+   die Schlüssel nicht — die Textfelder werden dann zu "". Genau der Zustand eines
+   frisch geöffneten Formulars, und kein Grund, einen Vorgang zu verwerfen.
 
-/* DREIWERTIG, und deshalb KEINE Zeichenketten. `str(false)` wäre "" — aus einem
-   bewussten „Geschäftsadresse" würde damit beim Zurückkehren „noch nicht
-   beantwortet", und der Kunde fände dieselbe Frage erneut vor. Sie laufen deshalb
-   durch `tristate()`, wie im Buchungsbereich nebenan. */
-const DECLARATION_TRISTATE_KEYS = Object.freeze(["collectionIsResidential", "deliveryIsResidential"]);
-const TRISTATE_FORM_KEYS = new Set(DECLARATION_TRISTATE_KEYS);
+   TG22 Residential: die beiden Adressartfragen stehen nicht mehr im Formular (die Art der
+   Lieferadresse wird erst nach der Angebotsauswahl gefragt). Ein älterer Vorgang, der sie
+   noch trägt, verliert sie hier still — die Positivliste kennt sie nicht mehr. */
+const DECLARATION_TEXT_KEYS = ["declaredContent", "declaredGoodsValue"];
 
 export const SHIPMENT_FORM_KEYS = Object.freeze([
   ...PARTY_SUFFIXES.map((k) => `s_${k}`),
@@ -112,7 +107,6 @@ export const SHIPMENT_FORM_KEYS = Object.freeze([
   ...PACKAGE_KEYS,
   ...CLIENT_FILTER_KEYS,
   ...DECLARATION_TEXT_KEYS,
-  ...DECLARATION_TRISTATE_KEYS,
 ]);
 
 export const CALCULATOR_FORM_KEYS = Object.freeze([
@@ -146,10 +140,10 @@ export const BOOKING_KEYS = Object.freeze([
   // DREIWERTIG wie die Adressangaben: ein gespeichertes `false` ist eine Antwort und bleibt
   // eine — sonst stünde dieselbe Frage nach jeder Rückkehr wieder offen.
   "goodsAreNew", "goodsAreFragile",
-  // TG22 Paket B: zu WELCHEM Angebot die Absicherung oben gehört (`offerKey`). Schritt,
-  // Absicherung und Antworten werden nur wiederhergestellt, wenn das aktuelle Angebot
-  // denselben Schlüssel trägt (utils/insuranceRestore.mjs). ADDITIV ohne Versionssprung:
-  // ein älterer Vorgang liefert `null` und stellt damit keine Absicherung wieder her.
+  // TG22 Paket B: zu WELCHEM Angebot die Absicherung oben gehört. Schritt, Absicherung und
+  // Antworten werden nur wiederhergestellt, wenn das aktuelle Angebot denselben Schlüssel
+  // trägt (utils/insuranceRestore.mjs — `offerKey` plus Preisstand). ADDITIV ohne
+  // Versionssprung: ein älterer Vorgang liefert `null` und stellt damit keine Absicherung wieder her.
   "insuranceOfferKey",
   // Optionale Zusatzempfänger für Versandinformationen. Reine Frontendeingaben
   // ohne Serverquelle — genau wie reference gehören sie in den laufenden Vorgang,
@@ -177,19 +171,10 @@ export const BOOKING_KEYS = Object.freeze([
   // und Reload übersteht. ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem
   // älteren Bundle liefert hier `undefined` → "" und wird nicht grundlos verworfen.
   "externalDeliveryNoteNumber",
-  // Angaben zur Art der Adresse (Wohn- oder Geschäftsadresse). Sie sind PREISRELEVANT:
-  // manche Zustelldienste erheben für Wohnadressen einen Zuschlag, und ohne die Angabe
-  // steht der Preis nicht fest.
-  //
-  // DREIWERTIG — das ist hier keine Feinheit, sondern die ganze Regel: `true` (ja),
-  // `false` (nein, Geschäftsadresse) und `null` (noch nicht beantwortet) sind DREI
-  // verschiedene Zustände. Ein `false` ist eine vollwertige Antwort und darf niemals
-  // wie „fehlt" behandelt werden — sonst fragt die Oberfläche immer wieder nach einer
-  // Angabe, die der Kunde längst gemacht hat.
-  //
-  // ADDITIV ohne Versionssprung: ein laufender Vorgang aus einem älteren Bundle liefert
-  // `undefined` → `null`, also „noch nicht beantwortet". Genau richtig.
-  "deliveryIsResidential", "collectionIsResidential",
+  // TG22 Residential: die Art der Lieferadresse steht NICHT im Vorgang. Sie ist serverseitig
+  // an das Angebot gebunden und wird nach einem Reload über die Optionsantwort
+  // (`boundValue`) wiederhergestellt — nie aus einem Clientspeicher. Ein älterer Vorgang,
+  // der die beiden Adressartwerte noch trägt, verliert sie hier still.
 ]);
 
 /* ══════════ defensive Helfer ═════════════════════════════════════════════ */
@@ -251,9 +236,7 @@ export function normalizeForm(raw, scope) {
   if (!keys) return null;
   const src = plainObjectOrNull(raw) || {};
   const out = {};
-  // Fast alle Formularwerte sind Zeichenketten (kontrollierte Eingaben). Die beiden
-  // Adressartfelder sind es ausdrücklich NICHT — sie tragen true/false/null.
-  for (const k of keys) out[k] = TRISTATE_FORM_KEYS.has(k) ? tristate(src[k]) : str(src[k]);
+  for (const k of keys) out[k] = str(src[k]);
   return out;
 }
 
@@ -364,9 +347,6 @@ export function emptyBooking() {
     insuranceOfferKey: null,
     trackingEmail: "",
     labelTrackingEmail: "",
-    // Noch nicht beantwortet — ausdrücklich nicht `false`.
-    deliveryIsResidential: null,
-    collectionIsResidential: null,
     updatedAt: null,
   };
 }
@@ -406,9 +386,6 @@ export function normalizeBooking(raw) {
     trackingEmailEnabled: bool(src.trackingEmailEnabled),
     labelTrackingEmailEnabled: bool(src.labelTrackingEmailEnabled),
     labelFormatEnabled: bool(src.labelFormatEnabled),
-    // Dreiwertig (siehe BOOKING_KEYS): ein gespeichertes `false` bleibt `false`.
-    deliveryIsResidential: tristate(src.deliveryIsResidential),
-    collectionIsResidential: tristate(src.collectionIsResidential),
     updatedAt: nonNegInt(src.updatedAt),
   };
 }

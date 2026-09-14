@@ -419,8 +419,9 @@ test("B3 — die Fragen zur Ware blockieren Neubepreisung und Buchung, bis sie b
   assert.match(seite, /if \(!insValid \|\| !goodsAnswersValid\) \{ setRepriceResult\(null\); return; \}/);
   assert.match(seite, /if \(isInsured && !goodsAnswersValid\) \{/);
   assert.match(seite, /insValid: insValid && goodsAnswersValid/);
-  // Die Fragen hängen in den Abhängigkeiten des Auto-Reprice.
-  assert.match(seite, /\}, \[insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile\]\);/);
+  // Die Fragen hängen in den Abhängigkeiten des Auto-Reprice — TG22 Residential: ebenso die Sperre
+  // durch die noch nicht gebundene Art der Lieferadresse.
+  assert.match(seite, /\}, \[insuranceType, goodsValue, insuranceValue, goodsAreNew, goodsAreFragile, residentialBlocks\]\);/);
 });
 
 test("B4 — /book: transit_cover mit dem Warenwert und dem bestätigten Gesamtbetrag; der Stufenkörper bleibt Zeile für Zeile", () => {
@@ -464,8 +465,18 @@ test("B6 — versicherte Buchungsablehnungen verwerfen die Absicherung nicht sti
   for (const fremd of [{ code: "DUPLICATE" }, { code: "OFFER_NOT_BOOKABLE" }, {}, null]) {
     assert.equal(isCoverBookError(fremd), false, JSON.stringify(fremd));
   }
-  // Nirgends auf der Seite wird die Absicherung still abgewählt.
-  assert.ok(!/setInsuranceType\("none"\)/.test(seite), "die Absicherung wurde still abgewählt");
+  // Nirgends auf der Seite wird die Absicherung still abgewählt. TG22 Residential: die einzige
+  // Stelle ist eine NEUE Bindung der Lieferadresse — der Server hebt die Absicherung dort selbst
+  // auf (`insuranceReset`, neuer Preisstand), und die Seite sagt es dem Kunden. Sie steht
+  // ausschließlich in `bindeZuschlag`.
+  const bindungStart = seite.indexOf("const bindeZuschlag = async");
+  const bindungEnde = seite.indexOf("const forderNeubindung = ", bindungStart);
+  assert.ok(bindungStart > 0 && bindungEnde > bindungStart, "die Bindung der Lieferadresse fehlt");
+  const ohneBindung = seite.slice(0, bindungStart) + seite.slice(bindungEnde);
+  assert.ok(!/setInsuranceType\("none"\)/.test(ohneBindung), "die Absicherung wurde still abgewählt");
+  assert.match(seite.slice(bindungStart, bindungEnde),
+    /if \(bindung\.insuranceReset \|\| bindung\.offerRevision !== vorherigerStand\) \{\s*setInsuranceType\("none"\);[\s\S]*?setResNotice\(RESIDENTIAL_TEXT\.insuranceReset\);/,
+    "die Absicherung wird ohne Serveraussage oder ohne Hinweis zurückgesetzt");
 });
 
 test("B7 — das Modul zeigt beide Pflichtfragen ohne Vorbelegung und KEIN Versicherungswert-Feld im Deckungsbetragsmodell", () => {

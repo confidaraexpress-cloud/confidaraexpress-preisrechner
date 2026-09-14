@@ -22,8 +22,10 @@
 // Logoauflösung bleibt bewusst draußen: carrierMap.js importiert SVG-Assets und
 // ist deshalb nicht node-testbar.
 
-import { isoDayDE } from "./formatters.js";
+import { isoDayDE, money } from "./formatters.js";
 import { deliveryContractOf, DELIVERY_ON_REQUEST } from "./deliveryContractView.mjs";
+import { INDICATIVE_PRICE_LABEL } from "./priceCompletenessView.mjs";
+import { readPriceComponents, PRICE_COMPONENT_TYPE } from "./priceComponentsView.mjs";
 
 // ── Übergabe ────────────────────────────────────────────────────────────────
 // serviceType ist der belegte, providerneutrale Vertrag ("pickup" | "dropoff").
@@ -73,8 +75,27 @@ export function priceInfo(priceView) {
   if (v.isPriceChanged === true) {
     return { confirmed: false, changed: true, label: PRICE_CHANGED_LABEL, gross: null, net: null };
   }
+  // TG22 Residential: solange die Art der Lieferadresse nicht gebunden ist, ist der Angebotspreis
+  // vorläufig — derselbe Wortlaut wie auf der Angebotskarte, dieselben Beträge des Angebots.
+  if (v.isPriceInputsRequired === true) {
+    return { confirmed: false, changed: false, label: INDICATIVE_PRICE_LABEL,
+             gross: v.baseShippingGross ?? null, net: v.baseShippingNet ?? null };
+  }
   const confirmed = v.hasConfirmedPrice === true;
   return confirmed
     ? { confirmed: true,  changed: false, label: "Gesamt",  gross: v.totalGross ?? null,        net: v.totalNet ?? null }
     : { confirmed: false, changed: false, label: "Versand", gross: v.baseShippingGross ?? null, net: v.baseShippingNet ?? null };
+}
+
+// ── Zuschlag Privatadresse (TG22 Residential) ────────────────────────────────
+// Trägt der BESTÄTIGTE Preis einen Zuschlag für die Privatadresse, nennen die Zusammenfassungen
+// ihn als kurze Zeile unter dem Preis. Bezeichnung und Betrag stammen aus dem Serverbestandteil —
+// es wird nichts gerechnet. Ohne bestätigten Preis oder ohne gültige Bestandteile: keine Zeile.
+export function surchargeSummaryNote(priceView) {
+  const v = priceView || {};
+  if (v.hasConfirmedPrice !== true || v.isPriceChanged === true) return null;
+  const liste = readPriceComponents(v.components);
+  const zuschlag = liste
+    ? liste.find((k) => k.type === PRICE_COMPONENT_TYPE.RESIDENTIAL_DELIVERY_SURCHARGE) : null;
+  return zuschlag ? `inkl. ${zuschlag.label} ${money(zuschlag.gross)}` : null;
 }

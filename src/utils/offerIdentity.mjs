@@ -89,6 +89,32 @@ export function offerBlocked(tariff) {
   return t.bookable === false || t.availableForDate === false;
 }
 
+/* ─── AUSWÄHLBAR, ABER NOCH NICHT BUCHBAR (TG22 Residential) ──────────────────
+   Ein Angebot kann eine preisrelevante Angabe brauchen, die erst NACH der Auswahl erhoben
+   wird: die Art der Lieferadresse. Der Server sagt das ausdrücklich — `bookable: false` mit
+   dem Grund `price_inputs_required` und `deliveryIsResidential` in `requiredPriceInputs`.
+
+   Ein solches Angebot ist AUSWÄHLBAR (Karte, Knopf, Weg zur Buchungsseite), aber nicht
+   buchbar: gebucht wird erst nach der Bindung auf der Buchungsseite. Deshalb bleibt
+   `offerBlocked`/`offerBookable` die Aussage über die Buchbarkeit (Auszeichnungen), und
+   `offerSelectable` beantwortet die Aktionsfrage. Ein unbekannter Grund oder eine Angabe, die
+   diese Oberfläche nicht erheben kann, macht nichts auswählbar — fail closed. */
+export const PRICE_INPUT_DELIVERY_RESIDENTIAL = "deliveryIsResidential";
+const PREISANGABE_AUSSTEHEND = "price_inputs_required";
+
+/** Wartet dieses Angebot ausschließlich auf die Angabe zur Lieferadresse? */
+export function offerAwaitsPriceInputs(tariff) {
+  const t = tariff && typeof tariff === "object" ? tariff : {};
+  return t.bookable === false && t.unavailableReason === PREISANGABE_AUSSTEHEND
+    && t.availableForDate !== false
+    && Array.isArray(t.requiredPriceInputs) && t.requiredPriceInputs.includes(PRICE_INPUT_DELIVERY_RESIDENTIAL);
+}
+
+/** Darf der Kunde dieses Angebot auswählen (Karte, Knopf, Buchungsseite)? */
+export function offerSelectable(tariff) {
+  return !offerBlocked(tariff) || offerAwaitsPriceInputs(tariff);
+}
+
 /* ── Warum nicht auswählbar? ─────────────────────────────────────────────────
    Der Backendgrund wird ÜBERSETZT, nie durchgereicht. Ein roher Code im
    sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status — und die
@@ -111,7 +137,7 @@ export const OFFER_DATE_UNAVAILABLE_HINT = "Bitte wählen Sie einen anderen Abho
 
 export function offerBlockedLabel(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
-  if (!offerBlocked(t)) return null;
+  if (offerSelectable(t)) return null;
   // Das Datum hat Vorrang: es ist die konkretere Aussage, und sie stand schon
   // vor der zweiten Einkaufsquelle so auf der Karte.
   if (t.availableForDate === false) return DATUM_NICHT_VERFUEGBAR;
@@ -122,7 +148,7 @@ export function offerBlockedLabel(tariff) {
 /** Handlungshinweis zum Sperrgrund — nur, wenn ein anderer Abholtermin tatsächlich hilft. */
 export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
-  if (!offerBlocked(t) || t.availableForDate === false) return null;
+  if (offerSelectable(t) || t.availableForDate === false) return null;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

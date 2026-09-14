@@ -8,11 +8,16 @@
    bestimmt hat — und bekommt er, wenn etwas schiefgeht, eine Handlung angeboten,
    die tatsächlich hilft?
 
-   Die vier Sendungsangaben werden vor dem Vergleich erhoben und serverseitig an
-   der Sendung eingefroren. Der Buchungspfad liest sie ausschliesslich von dort;
-   ein mitgeschickter Clientwert kann nichts mehr entscheiden, aber er kann
+   Inhalt und Warenwert werden vor dem Vergleich erhoben und serverseitig an der
+   Sendung eingefroren. Der Buchungspfad liest sie ausschliesslich von dort; ein
+   mitgeschickter Clientwert kann nichts mehr entscheiden, aber er kann
    WIDERSPRECHEN — und dann bricht die Buchung ab. Ein Bedienelement, das diesen
    Widerspruch erzeugen kann, ist deshalb kein Komfort, sondern eine Falle.
+
+   TG22 Residential: die Art der Lieferadresse ist keine Formularangabe mehr. Sie wird
+   nach der Angebotsauswahl gewählt, vom Server bepreist und am Angebot gebunden; ein
+   Wechsel ist eine neue Serverbindung, nie eine lokale Preisänderung. Die Einzelheiten
+   prüfen residentialPriceInputs.test.mjs und tg22ResidentialWiring.test.mjs.
 
    ─── WAS HIER NICHT GEPRÜFT WIRD ─────────────────────────────────────────────
    Serververhalten. Die Sperren liegen dort und sind dort geprüft; diese Datei
@@ -23,10 +28,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  adressangabenAnsicht, adressartText, ADRESSE_KURZ, ADRESSART_ANTWORT,
-  FELD_ZUSTELLUNG, FELD_ABHOLUNG,
-} from "./addressTypeQuestions.mjs";
 import {
   priceChangeAnsicht, preisIstBestaetigbar, PRICE_CHANGE_KIND, PREISAENDERUNG_TEXT,
 } from "./priceChangeView.mjs";
@@ -49,154 +50,61 @@ const ohneKommentar = (p) => lies(p)
   .replace(/^[ \t]*\/\/.*$/gm, "");
 
 const SEITE  = lies("pages/BookingPage.jsx");
-const MODUL  = lies("components/booking/AddressTypeModule.jsx");
 const AKTION = lies("components/booking/BookingActionModule.jsx");
 
 /* Die Listen, die der Server je Angebot deklariert. */
-const TG_DROPOFF = [FELD_ZUSTELLUNG];
-const TG_PICKUP  = [FELD_ZUSTELLUNG, FELD_ABHOLUNG];
+const TG22 = ["deliveryIsResidential"];
+const MEHRERE = ["deliveryIsResidential", "weitereAngabe"];
 const OHNE_BEDARF = [];
 
-/* ══════════ A — RESIDENTIAL: BEANTWORTET HEISST FEST ══════════════════════ */
+/* ══════════ A — ART DER LIEFERADRESSE: SERVERGEBUNDEN, NICHT AUS DEM FORMULAR ═ */
 
-test("A1 — eine beantwortete Angabe (false) wird gezeigt, nicht gefragt", () => {
-  // „Geschäftsadresse" ist eine vollwertige Antwort. Sie hat den Vergleichspreis
-  // mitbestimmt und darf danach nicht erneut zur Wahl stehen.
-  const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: false }, TG_DROPOFF);
-  assert.deepEqual(a.offen, [], "eine beantwortete Angabe wurde erneut gefragt");
-  assert.equal(a.fest.length, 1);
-  assert.equal(a.fest[0].feld, FELD_ZUSTELLUNG);
-  assert.equal(a.fest[0].wert, false);
-  assert.equal(a.fest[0].wertText, ADRESSART_ANTWORT.geschaeftlich);
-  assert.equal(a.fest[0].adresse, ADRESSE_KURZ[FELD_ZUSTELLUNG]);
-});
-
-test("A2 — eine beantwortete Angabe (true) ebenso", () => {
-  const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: true }, TG_DROPOFF);
-  assert.deepEqual(a.offen, []);
-  assert.equal(a.fest[0].wertText, ADRESSART_ANTWORT.privat);
-});
-
-test("A3 — eine UNBEANTWORTETE Pflichtangabe bleibt eine Frage", () => {
-  // Der Fall eines fortgesetzten Vorgangs aus der Zeit vor der Vorab-Erhebung:
-  // ohne diesen Zweig gäbe es keinen Weg mehr, die Angabe überhaupt zu machen.
-  const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: null }, TG_DROPOFF);
-  assert.deepEqual(a.fest, [], "eine fehlende Angabe wurde als feststehend gezeigt");
-  assert.deepEqual(a.offen, [FELD_ZUSTELLUNG]);
-});
-
-test("A4 — `false` gilt NIEMALS als unbeantwortet", () => {
-  // Die tragende Regel des ganzen Bereichs. Mit einer Truthiness-Prüfung wären
-  // „Geschäftsadresse" und „noch nichts gesagt" ununterscheidbar.
-  for (const leer of [null, undefined]) {
-    const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: leer }, TG_DROPOFF);
-    assert.equal(a.offen.length, 1, `${String(leer)} galt als Antwort`);
-  }
-  const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: false }, TG_DROPOFF);
-  assert.equal(a.offen.length, 0, "aus dem Nein wurde -noch nicht beantwortet-");
-  assert.equal(a.fest.length, 1);
-});
-
-test("A5 — die Abholangabe folgt derselben Regel und nur bei Bedarf", () => {
-  const beide = { [FELD_ABHOLUNG]: false, [FELD_ZUSTELLUNG]: true };
-  const p = adressangabenAnsicht(beide, TG_PICKUP);
-  assert.equal(p.fest.length, 2);
-  assert.deepEqual(p.offen, []);
-  // Reihenfolge des Servers: Zustellung zuerst.
-  assert.deepEqual(p.fest.map((e) => e.feld), [FELD_ZUSTELLUNG, FELD_ABHOLUNG]);
-  assert.equal(p.fest[1].wertText, ADRESSART_ANTWORT.geschaeftlich);
-  // Bei Shopabgabe kommt die Abholangabe in KEINER der beiden Listen vor —
-  // sie wird dort nicht gebraucht, also weder gezeigt noch gefragt.
-  const d = adressangabenAnsicht(beide, TG_DROPOFF);
-  assert.equal(d.fest.length, 1);
-  assert.deepEqual(d.offen, []);
-});
-
-test("A6 — ohne deklarierten Bedarf entsteht überhaupt nichts", () => {
-  // Der bestehende Buchungsweg: sein Preis hängt an keiner Adressartdeklaration,
-  // und er bekommt durch dieses Paket weder Karte noch Pflichtfrage.
-  for (const bedarf of [OHNE_BEDARF, undefined, null]) {
-    const a = adressangabenAnsicht({ [FELD_ZUSTELLUNG]: true }, bedarf);
-    assert.deepEqual(a.fest, [], "es entstand eine Anzeige ohne deklarierten Bedarf");
-    assert.deepEqual(a.offen, []);
-  }
-});
-
-test("A7 — es gibt kein Antwortwort für einen unbeantworteten Wert", () => {
-  assert.equal(adressartText(null), null);
-  assert.equal(adressartText(undefined), null);
-  // Ein Text für `null` wäre eine Behauptung über eine Angabe, die niemand gemacht hat.
-  assert.equal(adressartText(true), ADRESSART_ANTWORT.privat);
-  assert.equal(adressartText(false), ADRESSART_ANTWORT.geschaeftlich);
-});
-
-test("A8 — die Buchungsseite trennt Anzeige und Nachfrage", () => {
+test("A1 — die Buchungsseite übernimmt keine Adressart aus Formular oder Vorgang und fragt keine Abholadresse", () => {
   const s = ohneKommentar("pages/BookingPage.jsx");
-  assert.ok(/adresstypAnsicht\.fest\.length > 0/.test(s),
-    "die feststehenden Angaben werden nicht als eigene Flaeche gezeigt");
-  assert.ok(/adresstypAnsicht\.offen\.length > 0/.test(s),
-    "die Nachfrage haengt nicht mehr an den OFFENEN Angaben");
-  assert.ok(/fragen=\{adresstypAnsicht\.offen\}/.test(s),
-    "das Bedienelement bekommt nicht nur die offenen Fragen");
-  // Der frühere Zustand: die Karte erschien, sobald das Angebot Angaben verlangte —
-  // unabhängig davon, ob sie längst beantwortet waren.
-  assert.ok(!/\{adresstypFragen\.length > 0 && \(\s*<AddressTypeModule/.test(s),
-    "die Bedienelemente haengen weiterhin am reinen BEDARF statt am offenen Rest");
+  assert.ok(!/AddressTypeModule|AddressTypeSummary|addressTypeQuestions/.test(s),
+    "die frühere Adressartfläche steht wieder auf der Buchungsseite");
+  assert.ok(!/collectionIsResidential/.test(s), "es wird wieder nach der Abholadresse gefragt");
+  assert.ok(!/bookingData\?\.form\?\.deliveryIsResidential|flowBooking\?\.deliveryIsResidential/.test(s),
+    "die Adressart kommt wieder aus dem Formular oder dem Vorgang");
 });
 
-test("A9 — die feste Darstellung trägt kein Bedienelement", () => {
-  const jsx = ohneKommentar("components/booking/AddressTypeModule.jsx");
-  const start = jsx.indexOf("export function AddressTypeSummary");
-  assert.ok(start > 0, "die feste Darstellung fehlt");
-  const summary = jsx.slice(start);
-  for (const verboten of ["type=\"radio\"", "<input", "<select", "<Switch", "checked", "disabled"]) {
-    assert.ok(!summary.includes(verboten),
-      `die feste Darstellung enthaelt ${verboten} — sie soll lesbar sein, nicht bedienbar`);
-  }
-  // Ein `disabled` Radio waere die naheliegende und falsche Loesung: nicht
-  // fokussierbar und von Vorlesesoftware in der Regel uebersprungen.
-  assert.ok(/<button[\s\S]*?type="button"/.test(summary),
-    "die Aenderung ist kein echter Knopf und damit nicht per Tastatur erreichbar");
-});
-
-test("A10 — die Texte stehen im Modul, nicht im JSX", () => {
-  // Dieselbe Regel wie bei den Fragetexten: zwei Fassungen laufen auseinander.
-  const jsx = lies("components/booking/AddressTypeModule.jsx");
-  for (const wort of [ADRESSART_ANTWORT.privat, ADRESSART_ANTWORT.geschaeftlich,
-                      ADRESSE_KURZ[FELD_ZUSTELLUNG], ADRESSE_KURZ[FELD_ABHOLUNG]]) {
-    assert.ok(!jsx.includes(`>${wort}<`), `„${wort}" steht als Literal im JSX`);
-  }
-});
-
-/* ══════════ B — ÄNDERN FÜHRT ZURÜCK, NICHT WEITER ═════════════════════════ */
-
-test("B1 — „Ändern\" nutzt den vorhandenen Rückweg", () => {
+test("A2 — die Wahl entsteht ausschließlich über die Serverbindung, der Buchungskörper über den Helfer", () => {
   const s = ohneKommentar("pages/BookingPage.jsx");
-  assert.ok(/onEdit=\{goBackToOffers\}/.test(s),
-    "die Aenderung nutzt nicht den bestehenden Rueckweg");
+  assert.ok(/const r = await bindPriceInputs\(body, \{ signal: ac\.signal \}\);/.test(s),
+    "die Wahl wird nicht am Server gebunden");
+  assert.ok(/\.\.\.residentialBookPayload\(tariff\),/.test(s), "der Buchungskörper nutzt den Helfer nicht");
+  assert.ok(!/priceInputs:\s/.test(s), "die Seite setzt priceInputs wieder selbst");
 });
 
-test("B2 — auf der Buchungsseite entsteht KEINE neue Berechnung", () => {
+test("A3 — die Auswahl ist dreiwertig und ohne Vorauswahl", () => {
+  const jsx = ohneKommentar("components/booking/ResidentialPriceInputModule.jsx");
+  assert.ok(/checked=\{k\.checked === true\}/.test(jsx), "die Auswahl wertet Truthiness aus");
+  assert.ok(!/<Switch/.test(jsx), "eine dreiwertige Angabe steht als Schalter da");
+});
+
+/* ══════════ B — EIN WECHSEL IST EINE NEUE SERVERBINDUNG ═══════════════════ */
+
+test("B1 — ein Wechsel der Lieferadresse bindet neu, statt lokal umzurechnen", () => {
+  const s = ohneKommentar("pages/BookingPage.jsx");
+  assert.ok(/const waehleLieferadresse = \(wert\) => \{\s*if \(resStatus !== RESIDENTIAL_STATUS\.READY \|\| !resOptions\) return;\s*bindeZuschlag\(wert, resOptions\);/.test(s),
+    "die Auswahl läuft nicht über die Serverbindung");
+});
+
+test("B2 — auf der Buchungsseite entsteht KEINE neue Angebotsberechnung", () => {
   const s = ohneKommentar("pages/BookingPage.jsx");
   // Kein zweiter Preisweg: die Buchungsseite ruft die Angebotsberechnung nirgends.
   assert.ok(!/calculate-price/.test(s),
     "die Buchungsseite loest selbst eine Angebotsberechnung aus");
-  // Und die feste Darstellung schreibt keinen Zustand.
-  const jsx = ohneKommentar("components/booking/AddressTypeModule.jsx");
-  const summary = jsx.slice(jsx.indexOf("export function AddressTypeSummary"));
-  assert.ok(!/onChange/.test(summary),
-    "die feste Darstellung kann den Wert doch veraendern");
 });
 
-test("B3 — die vier Angaben bleiben preisbestimmend im Formular", () => {
+test("B3 — Inhalt und Warenwert bleiben preisbestimmend im Formular", () => {
   // Der Beweis, dass der Rückweg wirklich zu einer neuen Berechnung führt: ändert
-  // der Kunde dort eine der vier Angaben, verwirft `upd()` die vorhandenen Angebote.
+  // der Kunde dort eine der Angaben, verwirft `upd()` die vorhandenen Angebote.
   const formular = lies("pages/NewShipmentPage.jsx");
   const start = formular.indexOf("calcKeyRef.current = JSON.stringify(");
   assert.ok(start > -1, "der Recalc-Schluessel wurde nicht gefunden");
   const block = formular.slice(start, start + 1200);
-  for (const feld of ["declaredContent", "declaredGoodsValue",
-                      FELD_ABHOLUNG, FELD_ZUSTELLUNG]) {
+  for (const feld of ["declaredContent", "declaredGoodsValue"]) {
     assert.ok(block.includes(feld), `${feld} fehlt im Recalc-Schluessel`);
   }
   assert.ok(/if \(!FILTER_ONLY_FIELDS\.has\(k\)\) invalidateResults\(\);/.test(formular),
@@ -440,9 +348,9 @@ test("E6 — die Rechnungsdaten landen nicht im Adressenzweig", () => {
 /* ══════════ F — DER CONTENT-NAME AUF DER LEITUNG ══════════════════════════ */
 
 test("F1 — ein Angebot mit Vorab-Angaben sendet kein top-level `content`", () => {
-  assert.deepEqual(bookingContentPayload("Ersatzteile", TG_DROPOFF), {});
-  assert.deepEqual(bookingContentPayload("Ersatzteile", TG_PICKUP), {});
-  assert.deepEqual(bookingContentPayload("", TG_DROPOFF), {});
+  assert.deepEqual(bookingContentPayload("Ersatzteile", TG22), {});
+  assert.deepEqual(bookingContentPayload("Ersatzteile", MEHRERE), {});
+  assert.deepEqual(bookingContentPayload("", TG22), {});
 });
 
 test("F2 — der bestehende Weg sendet es unverändert", () => {
@@ -536,8 +444,8 @@ test("G6 — quote_only bleibt gesperrt", () => {
 test("G7 — kein Anbietername in den neuen Flächen", () => {
   const quellen = [
     ohneKommentar("utils/priceChangeView.mjs"),
-    ohneKommentar("utils/addressTypeQuestions.mjs"),
-    ohneKommentar("components/booking/AddressTypeModule.jsx"),
+    ohneKommentar("utils/residentialPriceInputs.mjs"),
+    ohneKommentar("components/booking/ResidentialPriceInputModule.jsx"),
     ohneKommentar("components/booking/BookingActionModule.jsx"),
   ].join("\n").toLowerCase();
   for (const w of ["transglobal", "jumingo"]) {
@@ -549,24 +457,21 @@ test("G7 — kein Anbietername in den neuen Flächen", () => {
    Jede prüft, dass die zuständige Zusicherung eine RÜCKNAHME bemerkt — nicht
    nur, dass der heutige Zustand passt. Sie fahren die frühere Fassung nach. */
 
-test("M1 — Residential wieder editierbar → A1/A8 fallen", () => {
-  // Frühere Fassung: die Karte hing am reinen BEDARF, nicht am offenen Rest.
-  const frueher = (werte, noetig) => ({
-    fest: [], offen: Array.isArray(noetig) ? noetig.slice() : [],
-  });
-  const a = frueher({ [FELD_ZUSTELLUNG]: false }, TG_DROPOFF);
-  assert.notDeepEqual(a.offen, [], "die Mutation ist wirkungslos");
+test("M1 — Adressart wieder aus dem Formular im Buchungskörper → A2 fällt", () => {
+  // Frühere Fassung: die Seite setzte `priceInputs` selbst aus den Formularwerten.
+  const frueher = "priceInputs:     adressangabenPayload(adresstyp, noetigeAdressangaben),";
+  assert.ok(/priceInputs:\s/.test(frueher), "die Mutation ist wirkungslos");
   assert.throws(() => {
-    assert.deepEqual(a.offen, [], "eine beantwortete Angabe wurde erneut gefragt");
-  }, "A1 bemerkt eine wieder editierbare Angabe nicht");
+    assert.ok(!/priceInputs:\s/.test(frueher), "die Seite setzt priceInputs wieder selbst");
+  }, "A2 bemerkt die zurückgekehrte Formularangabe nicht");
 });
 
-test("M2 — `false` als unbeantwortet → A4 fällt", () => {
+test("M2 — `false` als unbeantwortet → A3 fällt", () => {
   const frueher = (w) => w === true;   // Truthiness statt Dreiwertigkeit
   assert.equal(frueher(false), false, "die Mutation ist wirkungslos");
   assert.throws(() => {
     assert.equal(frueher(false), true, "aus dem Nein wurde -noch nicht beantwortet-");
-  }, "A4 bemerkt den Verlust der Dreiwertigkeit nicht");
+  }, "A3 bemerkt den Verlust der Dreiwertigkeit nicht");
 });
 
 test("M3 — TG-Preisänderung durch money(undefined) → C2/C5 fallen", () => {

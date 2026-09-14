@@ -20,6 +20,7 @@ import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { pickupContractOf, pickupTimeText, pickupWindowDetailText } from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
+import { projectedDeliveryText } from "../../utils/deliveryProjectionView.mjs";
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 
 const fmtDE = (iso) => {
@@ -87,16 +88,17 @@ function buildEnd(t, etaLabel, earlyNote) {
   //
   // Ohne Kalenderdatum steht hier die Laufzeit — und der Knoten heisst auch so.
   // „Lieferung / 1–2 Tage" las sich wie ein Zustelltermin, ist aber eine Dauer.
-  // Ein Datum daraus zu RECHNEN waere die naheliegende und falsche Loesung — wir
-  // kennen weder Abholtag noch Feiertage noch Cutoff, und eine erfundene
-  // Kalenderangabe waere eine Zusage, die niemand halten kann. Providerneutral:
-  // entschieden wird an den DATEN, nicht daran, von wem das Angebot stammt.
+  // Die Karte RECHNET daraus kein Datum. TG22 Package B: hat der SERVER aus Abholtag
+  // und Laufzeit eine voraussichtliche Lieferung gerechnet, heisst der Knoten
+  // „Voraussichtliche Lieferung" und zeigt ausschliesslich diese Tage — ohne Uhrzeit.
+  // Providerneutral: entschieden wird an den DATEN, nicht daran, von wem das Angebot stammt.
   const zustellung = deliveryContractOf(t);
   const title = zustellung.label;
   let primary;
-  if (zustellung.kind === "range")     primary = `${fmtDay(zustellung.dayFrom)} – ${fmtDay(zustellung.dayUntil)}`;
-  else if (zustellung.kind === "date") primary = fmtDay(zustellung.day);
-  else                                 primary = etaLabel;
+  if (zustellung.kind === "range")         primary = `${fmtDay(zustellung.dayFrom)} – ${fmtDay(zustellung.dayUntil)}`;
+  else if (zustellung.kind === "date")     primary = fmtDay(zustellung.day);
+  else if (zustellung.kind === "estimate") primary = projectedDeliveryText(zustellung.estimate);
+  else                                     primary = etaLabel;
 
   // Die NORMALE Lieferzeile bleibt neutral und zweizeilig: Datum als primäre
   // Information, Uhrzeit als sekundäre Unterzeile — für JEDEN Tarif gleich,

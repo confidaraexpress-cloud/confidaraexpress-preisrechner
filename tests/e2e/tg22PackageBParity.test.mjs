@@ -26,6 +26,7 @@ import path from "node:path";
 import {
   fuelleVersandformular, STANDARD_PAKET, ueberSidebar,
 } from "./helpers/newShipmentForm.mjs";
+import { mockeLieferadresse, lieferadressZustand, waehleLieferadresse } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5378, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 4790;
@@ -56,10 +57,11 @@ const TG = (offerId, extra = {}) => ({
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
   netPrice: 12.34, vatAmount: 2.34, finalPrice: 14.68, currency: "EUR",
-  bookable: true, unavailableReason: null, priceCompleteness: "complete",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
+  // TG22 Residential: auswählbar, erst nach der Wahl der Lieferadresse buchbar und absicherbar.
+  bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
+  requiredPriceInputs: ["deliveryIsResidential"],
   chargeableWeight: 2, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"], labelFormatOptions: [],
-  insuranceAvailable: true, insuranceDetails: COVER_DETAILS,
+  insuranceAvailable: false, insuranceDetails: null,
   trackingAvailable: true, printerRequired: true,
   tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
   ...extra,
@@ -127,6 +129,7 @@ const DRAFT_FORM_DATA = {
                addressAddition: "", postalCode: "80331", city: "Muenchen", country: "DE", phone: "+4989987654", email: "erika@example.com" },
   packages: { packageCount: 1, weight: 2, length: 30, width: 20, height: 10 },
   shippingOptions: { shippingDate: "2020-01-02", serviceFilter: "all", shippingModeFilter: "all", publicCarrierIds: [] },
+  // Ein Entwurf aus der Zeit der Adressfragen: die beiden Adressarten werden beim Fortsetzen ignoriert.
   declarations: { content: "Ersatzteile", goodsValue: 250, collectionIsResidential: false, deliveryIsResidential: true },
 };
 
@@ -196,10 +199,19 @@ async function setupRoutes(page, protokoll, szenario = {}) {
     }
     return json({});
   });
+  // TG22 Residential — NACH dem Sammel-Mock (Playwright prüft Routen in umgekehrter Reihenfolge).
+  // Je TG-Angebot ein Serverzustand; Geschäftsadresse = der Vergleichspreis.
+  const zuschlag = { net: 3.18, vat: 0.61, gross: 3.79 };
+  await mockeLieferadresse(page, [
+    lieferadressZustand({ offerId: TG_A.offerId, geschaeft: { net: 12.34, vat: 2.34, gross: 14.68 },
+      privat: { net: 15.52, vat: 2.95, gross: 18.47 }, zuschlag, insuranceAvailable: true, insuranceDetails: COVER_DETAILS }),
+    lieferadressZustand({ offerId: TG_B.offerId, geschaeft: { net: 13.36, vat: 2.54, gross: 15.9 },
+      privat: { net: 16.54, vat: 3.15, gross: 19.69 }, zuschlag, insuranceAvailable: true, insuranceDetails: COVER_DETAILS }),
+  ], protokoll.lieferadresse);
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
 }
 
-const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [], oeffentlich: [] });
+const neuesProtokoll = () => ({ pfade: [], reprice: [], book: [], calc: [], oeffentlich: [], lieferadresse: [] });
 // Beträge stehen mit geschütztem Leerzeichen vor dem Euro-Zeichen — für Vergleiche normalisiert.
 const NBSP = new RegExp(String.fromCharCode(160), "g");
 const text = async (loc) => (await loc.innerText()).replace(NBSP, " ");
@@ -228,6 +240,10 @@ async function waehle(page, tarif) {
   await karteVon(page, tarif).locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
   await page.waitForSelector("#booking-reference-toggle", { timeout: 20000 });
+  // TG22 Residential: ein Angebot mit Art der Lieferadresse wird erst mit der Wahl buchbar.
+  if (Array.isArray(tarif.requiredPriceInputs) && tarif.requiredPriceInputs.includes("deliveryIsResidential")) {
+    await waehleLieferadresse(page, false);
+  }
 }
 
 async function zuSchritt2(page) {
@@ -306,6 +322,9 @@ test("A — 1440: keine Formatauswahl, Lieferhinweis, bereinigte Referenz, Zusat
   assert.equal(body.trackingEmail, "lager@example.com");
   assert.equal(body.labelTrackingEmail, "versand@example.com");
   assert.equal(body.offerId, TG_A.offerId);
+  // TG22 Residential: die gebundene Wahl als Konsistenzwächter und der Preisstand der Bindung.
+  assert.deepEqual(body.priceInputs, { deliveryIsResidential: false });
+  assert.equal(body.offerRevision, 1);
 
   const wrap = page.locator(".booking-success-wrap");
   const knoepfe = wrap.getByRole("button", { name: /^Versandlabel.* herunterladen$/ });

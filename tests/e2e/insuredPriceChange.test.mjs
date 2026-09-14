@@ -46,7 +46,10 @@ const TARIF = {
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage",
   netPrice: 12.34, vatAmount: 2.34, finalPrice: 14.68, currency: "EUR",
   bookable: true, unavailableReason: null, priceCompleteness: "complete",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
+  // TG22 Residential: diese Suite prüft die ausdrückliche Preisübernahme (Paket A) — sie gilt für ein
+  // Absicherungsangebot OHNE Angabe nach der Auswahl. Ein Angebot mit Art der Lieferadresse bekommt
+  // bei einer Preisänderung stattdessen eine Neubestätigung (tg22ResidentialPriceInputs.test.mjs).
+  requiredPriceInputs: [],
   chargeableWeight: 2, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"],
   insuranceAvailable: true, insuranceDetails: COVER_DETAILS,
   trackingAvailable: true, printerRequired: true,

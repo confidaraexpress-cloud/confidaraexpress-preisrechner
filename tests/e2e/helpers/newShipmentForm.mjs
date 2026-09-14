@@ -70,10 +70,13 @@ const ADRESSFELDER = ["country", "state", "company", "firstName", "lastName",
                       "email", "phone", "street", "zip", "city"];
 const PAKETFELDER  = ["packageCount", "weight", "length", "width", "height"];
 
-/* Die vier Sendungsangaben, die seit Paket 9A VOR dem Angebotsvergleich erhoben werden:
-   Inhalt, Warenwert und je Seite die Adressart. Sie sind Pflicht, weil sie den Preis
-   mitbestimmen — ohne sie bleibt der CTA gesperrt, und das ist Produktverhalten, kein
-   Testproblem.
+/* Die beiden Sendungsangaben, die VOR dem Angebotsvergleich erhoben werden: Inhalt und
+   Warenwert. Sie sind Pflicht, weil sie den Preis mitbestimmen — ohne sie bleibt der CTA
+   gesperrt, und das ist Produktverhalten, kein Testproblem.
+
+   TG22 Residential: die Adressartfragen stehen nicht mehr im Formular. Die Art der
+   Lieferadresse wird erst NACH der Angebotsauswahl auf der Buchungsseite gewählt — und nur
+   für ein Angebot, das sie braucht (helpers/residentialPriceInputs.mjs).
 
    Auch hier gilt die Regel dieser Datei: EINE Stelle. Die vorherige Fassung dieses
    Helfers hätte nach der Produktänderung jede Suite gleichzeitig scheitern lassen, die
@@ -81,29 +84,16 @@ const PAKETFELDER  = ["packageCount", "weight", "length", "width", "height"];
 export const STANDARD_SENDUNGSANGABEN = Object.freeze({
   declaredContent: "Ersatzteile",
   declaredGoodsValue: "250",
-  collectionIsResidential: false,   // geschäftlich
-  deliveryIsResidential: true,      // privat
 });
 
-const ADRESSART_FELDER = ["collectionIsResidential", "deliveryIsResidential"];
-
-/** Füllt Inhalt und Warenwert und beantwortet beide Adressfragen.
- *
- *  Die Adressart ist DREIWERTIG: `true`/`false` klicken die jeweilige Option, `null`
- *  lässt die Frage ausdrücklich unbeantwortet — so prüft eine Suite den gesperrten
- *  Zustand, ohne den CTA zu erzwingen. */
+/** Füllt Inhalt und Warenwert. Ein Feld auf `null` bleibt ausdrücklich leer — so prüft eine
+ *  Suite den gesperrten Zustand, ohne den CTA zu erzwingen. Weitere Schlüssel (etwa eine
+ *  Adressart aus einer älteren Suite) werden ignoriert: das Formular kennt sie nicht mehr. */
 export async function fuelleSendungsangaben(page, angaben = STANDARD_SENDUNGSANGABEN) {
   for (const feld of ["declaredContent", "declaredGoodsValue"]) {
     const wert = angaben[feld];
     if (wert === undefined || wert === null) continue;
     await setzeFeld(page, `ns-${feld}`, wert);
-  }
-  for (const feld of ADRESSART_FELDER) {
-    const wert = angaben[feld];
-    if (wert !== true && wert !== false) continue;   // null = bewusst unbeantwortet
-    const radio = page.locator(`#${feld}-${wert ? "ja" : "nein"}`);
-    await radio.waitFor({ state: "visible", timeout: 20000 });
-    await radio.check();
   }
 }
 

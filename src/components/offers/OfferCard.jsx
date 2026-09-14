@@ -19,6 +19,8 @@ import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { pickupContractOf, pickupTimeText, pickupWindowDetailText } from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
+import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
+import { ServiceProfileDetails } from "./ServiceProfileDetails";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -304,10 +306,16 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
                    || zustellung.kind === "range" || zustellung.kind === "date" || zustellung.until);
   const hasHinweise = showPickupSurcharge;
   const hasLinks = carrierLinkItems.length > 0;
+  // TG22 Package A: trägt das Angebot ein kuratiertes Produktprofil, stehen statt Hauptmerkmalen, Einschränkungen
+  // und Versicherung fünf geordnete Abschnitte da — ohne zweite Laufzeit, Abholung, Druckerzeile oder
+  // Sendungsverfolgung. Ohne Profil bleibt der Detailbereich unverändert.
+  const profil = serviceDetailsView(t);
 
   return (
     <>
-      {hasMain && (
+      {profil && <ServiceProfileDetails view={profil} />}
+
+      {!profil && hasMain && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Hauptmerkmale</div>
           <div className="offer-feature-grid">
@@ -324,7 +332,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
         </div>
       )}
 
-      {hasLimits && (
+      {!profil && hasLimits && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Einschränkungen</div>
           <ul className="offer-limit-list">
@@ -342,7 +350,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
           Transportabsicherung bis zum Warenwert; diese nennt KEINEN Preis, weil
           er erst mit den Angaben des Kunden entsteht. Ohne kaufbaren Zusatz steht
           dort die Aussage des Servers (Grundabsicherung, Höchstdeckung). */}
-      {hasInsuranceSection && (
+      {!profil && hasInsuranceSection && (
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Versicherung</div>
           {insInsurable && insOffer.coverModel ? (

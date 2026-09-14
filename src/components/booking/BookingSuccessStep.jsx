@@ -39,6 +39,7 @@ import {
   bookingSuccessAmountView, bookingSuccessComponents,
 } from "../../utils/bookingSuccessView.mjs";
 import { NUMBER_LABELS, orderConfirmationNumberOf } from "../../utils/businessNumbers.mjs";
+import { sameDaySuccessPickupText, SAME_DAY_TEXT } from "../../utils/sameDayCollectionView.mjs";
 
 export function BookingSuccessStep({
   booking, bookingData, tariff, priceView, user, invoiceDeliveryMode, proformaEntry,
@@ -47,6 +48,8 @@ export function BookingSuccessStep({
   // TG22 Paket B: der gebuchte Betrag kommt ausschließlich aus der Buchungsantwort. Die
   // Aufstellung der Buchungsseite erscheint nur, wenn sie ihn auf den Cent trägt.
   const betrag = bookingSuccessAmountView(booking, priceView);
+  // TG22 Same-Day: die beim Buchen TATSÄCHLICH gesendete Abholzeit — aus der Buchungsantwort, nie aus dem Angebot.
+  const abholungHeute = sameDaySuccessPickupText(booking);
   return (
       <div className="booking-success-wrap">
         <div className="booking-success-icon"><Icon n="check" s={40} /></div>
@@ -113,6 +116,12 @@ export function BookingSuccessStep({
               <div className="summary-detail-row summary-detail-row-border">
                 <span className="text-sm text-muted summary-detail-key">Serviceart</span>
                 <span className="text-sm font-bold summary-detail-val">{tariff.serviceType === "pickup" ? "Abholung" : "Shopabgabe"}</span>
+              </div>
+            )}
+            {abholungHeute && (
+              <div className="summary-detail-row summary-detail-row-border" id="booking-success-pickup">
+                <span className="text-sm text-muted summary-detail-key">{SAME_DAY_TEXT.pickupLabel}</span>
+                <span className="text-sm font-bold summary-detail-val">{abholungHeute}</span>
               </div>
             )}
             {/* Drei Fälle, eine Quelle (`booking.amount`):

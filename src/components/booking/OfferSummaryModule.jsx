@@ -4,6 +4,7 @@ import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf } from "../../utils/pickupContractView.mjs";
+import { sameDaySummaryNote, sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 
 // Step 1 — „Ausgewähltes Angebot". Kompakte, ruhige Zusammenfassung des gewählten
 // Tarifs in drei Zonen: Identität (Carrier/Service) · Zustellung & relevante
@@ -43,6 +44,9 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
   // TG22 Residential: ein bestätigter Zuschlag für die Privatadresse steht als eigene Zeile unter dem
   // Preis — Bezeichnung und Betrag aus dem Serverbestandteil.
   const zuschlagHinweis = surchargeSummaryNote(priceView);
+  // TG22 Same-Day: der Zuschlag der Abholung am selben Tag und bis wann sie heute möglich ist — vom Server.
+  const sameDayHinweis = sameDaySummaryNote(priceView, tariff);
+  const sameDayBis = sameDayUntilText(tariff);
 
   return (
     <div className="calc-panel mb-16">
@@ -82,6 +86,9 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
                     {zuschlagHinweis && (
                       <div className="offsum-price-vat" id="offer-summary-surcharge-note">{zuschlagHinweis}</div>
                     )}
+                    {sameDayHinweis && (
+                      <div className="offsum-price-vat" id="offer-summary-sameday-note">{sameDayHinweis}</div>
+                    )}
                   </>
                 ) : (
                   <div className="offsum-price-vat">exkl. MwSt.</div>
@@ -110,6 +117,11 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
           {printerRequired && (
             <span className="offsum-flag" role="note">
               <Icon n="printer" s={13} c="currentColor" /> Drucker erforderlich
+            </span>
+          )}
+          {sameDayBis && (
+            <span className="offsum-flag" id="offer-summary-sameday-until" role="note">
+              <Icon n="clock" s={13} c="currentColor" /> {sameDayBis}
             </span>
           )}
         </div>

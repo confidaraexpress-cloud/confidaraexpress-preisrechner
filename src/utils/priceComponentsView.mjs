@@ -19,6 +19,8 @@
 
 export const PRICE_COMPONENT_TYPE = Object.freeze({
   SHIPPING_BASE: "shipping_base",
+  // TG22 Same-Day: der Zuschlag einer Abholung am selben Tag — steuerpflichtig wie der Versand.
+  SAME_DAY_COLLECTION_SURCHARGE: "same_day_collection_surcharge",
   RESIDENTIAL_DELIVERY_SURCHARGE: "residential_delivery_surcharge",
   TRANSPORT_INSURANCE: "transport_insurance",
 });
@@ -26,6 +28,7 @@ export const PRICE_COMPONENT_TYPE = Object.freeze({
 /* Die Bezeichnungen der Buchungsflächen — zentral aus dem Typ, nie aus der Antwort. */
 export const PRICE_COMPONENT_LABELS = Object.freeze({
   [PRICE_COMPONENT_TYPE.SHIPPING_BASE]: "Versand",
+  [PRICE_COMPONENT_TYPE.SAME_DAY_COLLECTION_SURCHARGE]: "Zuschlag für Abholung am selben Tag",
   [PRICE_COMPONENT_TYPE.RESIDENTIAL_DELIVERY_SURCHARGE]: "Zuschlag Privatadresse",
   [PRICE_COMPONENT_TYPE.TRANSPORT_INSURANCE]: "Zusätzliche Transportabsicherung",
 });
@@ -34,6 +37,7 @@ export const PRICE_COMPONENT_LABELS = Object.freeze({
    beschreibt sie etwas anderes als diesen Vertrag und wird nicht gezeigt. */
 const STEUERPFLICHTIG = Object.freeze({
   [PRICE_COMPONENT_TYPE.SHIPPING_BASE]: true,
+  [PRICE_COMPONENT_TYPE.SAME_DAY_COLLECTION_SURCHARGE]: true,
   [PRICE_COMPONENT_TYPE.RESIDENTIAL_DELIVERY_SURCHARGE]: true,
   [PRICE_COMPONENT_TYPE.TRANSPORT_INSURANCE]: false,
 });
@@ -94,4 +98,10 @@ export function priceSummaryComponents(view) {
 export function hasResidentialSurcharge(components) {
   return Array.isArray(components)
     && components.some((k) => k && k.type === PRICE_COMPONENT_TYPE.RESIDENTIAL_DELIVERY_SURCHARGE);
+}
+
+/** Trägt diese (bereits gelesene) Liste einen Zuschlag für die Abholung am selben Tag? */
+export function hasSameDayCollectionSurcharge(components) {
+  return Array.isArray(components)
+    && components.some((k) => k && k.type === PRICE_COMPONENT_TYPE.SAME_DAY_COLLECTION_SURCHARGE);
 }

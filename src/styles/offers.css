@@ -580,6 +580,13 @@
   line-height: 1.05; white-space: nowrap;
 }
 .offer-price-sub { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 4px; }
+/* TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — eine Zeile unter dem Preis,
+   ruhiger als der Preis, aber als Betrag lesbar. Sie bricht an ihren Wortgrenzen um und ragt auf schmalen
+   Karten nie über den Kartenrand. */
+.offer-sameday-surcharge {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--navy); margin-top: 4px;
+}
 .offer-price-na  { font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); text-align: right; }
 /* Nicht verfügbar: Preis bleibt sichtbar, aber weniger dominant */
 /* Der Preis behaelt seine volle Groesse und Farbe — er ist real, auch wenn das

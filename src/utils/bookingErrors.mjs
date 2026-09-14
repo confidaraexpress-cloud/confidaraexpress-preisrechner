@@ -14,6 +14,7 @@
 // Framework-frei und damit ohne DOM mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizeApiError } from "./apiError.mjs";
+import { SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "./sameDayCollectionView.mjs";
 
 // TG22 Paket B — derselbe Satz bei /book und bei der Neubepreisung der Absicherung.
 export const OFFER_ALREADY_USED_TEXT = "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.";
@@ -95,6 +96,14 @@ export const BOOK_FEHLER = {
     message: "Bitte wählen Sie zuerst die Art der Lieferadresse.",
     retryable: false,
   },
+  // TG22 Same-Day: die Abholung heute ist nicht mehr möglich (Abholschluss erreicht). Nichts beauftragt;
+  // dieselbe Angebotskennung trägt heute nicht mehr — die Handlung ist ein späterer Abholtag, also neu
+  // berechnen. Nie „erneut versuchen": die Zeit läuft nicht zurück.
+  ABHOLUNG_HEUTE_VORBEI: {
+    title: SAME_DAY_TEXT.unavailable,
+    message: SAME_DAY_TEXT.bookingUnavailable,
+    retryable: false,
+  },
 };
 
 // ─── CE-19: die REALEN Backendcodes, nach Handlungsklasse ──────────────────────────
@@ -145,7 +154,12 @@ const BOOK_CODE_FEHLER = {
   // zurück an die Auswahl. PRICE_INPUTS_NOT_SUPPORTED: das Angebot kennt die Angabe nicht (mehr).
   PRICE_INPUTS_REQUIRED:          "PREISANGABE_FEHLT",
   PRICE_INPUTS_NOT_SUPPORTED:     "NEU_BERECHNEN",
+  // TG22 Same-Day — 409, nichts beauftragt, ein späterer Abholtag ist die Handlung.
+  [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: "ABHOLUNG_HEUTE_VORBEI",
 };
+
+// Die Handlungsklassen „nichts beauftragt, dieselbe Angebotskennung trägt nicht mehr".
+const NEUBERECHNUNG_KLASSEN = Object.freeze(["NEU_BERECHNEN", "ABHOLUNG_HEUTE_VORBEI"]);
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
 // Angebotskennung nicht mehr trägt? Eigener Export, weil die Buchungsseite ihre
@@ -153,7 +167,7 @@ const BOOK_CODE_FEHLER = {
 // ohne ihn ein zweites Mal aufzuschreiben.
 export function fordertNeuberechnung(body) {
   const code = body && typeof body === "object" ? body.code : null;
-  return typeof code === "string" && BOOK_CODE_FEHLER[code] === "NEU_BERECHNEN";
+  return typeof code === "string" && NEUBERECHNUNG_KLASSEN.includes(BOOK_CODE_FEHLER[code]);
 }
 
 // Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?

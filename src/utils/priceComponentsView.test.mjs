@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
   PRICE_COMPONENT_LABELS, PRICE_COMPONENT_TYPE, readPriceComponents, hasResidentialSurcharge,
-  priceSummaryComponents,
+  priceSummaryComponents, hasSameDayCollectionSurcharge,
 } from "./priceComponentsView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -26,8 +26,10 @@ const ZUSCHLAG = Object.freeze({ type: "residential_delivery_surcharge", taxable
 const ABSICHERUNG = Object.freeze({ type: "transport_insurance", taxable: false, net: 4.5, vat: 0, gross: 4.5 });
 
 test("K1 — die Bezeichnungen kommen ausschließlich aus dem Typ", () => {
+  // TG22 Same-Day: der Zuschlag der Abholung am selben Tag ist ein eigener Typ mit eigener Bezeichnung.
   assert.deepEqual({ ...PRICE_COMPONENT_LABELS }, {
     shipping_base: "Versand",
+    same_day_collection_surcharge: "Zuschlag für Abholung am selben Tag",
     residential_delivery_surcharge: "Zuschlag Privatadresse",
     transport_insurance: "Zusätzliche Transportabsicherung",
   });
@@ -98,6 +100,26 @@ test("K6 — Zeilen der Preisaufstellung nur zum bestätigten Preis und nur pass
     { hasConfirmedPrice: true, insuranceGross: 0, components: null },
     null,
   ]) assert.equal(priceSummaryComponents(v), null, JSON.stringify(v));
+});
+
+test("K8 — TG22 Same-Day: der Zuschlag der Abholung am selben Tag ist steuerpflichtig und steht zwischen Versand und Privatadresse", () => {
+  const SELBER_TAG = Object.freeze({ type: "same_day_collection_surcharge", taxable: true, net: 3.02, vat: 0.58, gross: 3.6 });
+  const liste = readPriceComponents([BASIS, SELBER_TAG, ZUSCHLAG, ABSICHERUNG]);
+  assert.deepEqual(liste.map((k) => k.label),
+    ["Versand", "Zuschlag für Abholung am selben Tag", "Zuschlag Privatadresse", "Zusätzliche Transportabsicherung"]);
+  assert.deepEqual(liste.map((k) => k.taxable), [true, true, true, false]);
+  assert.equal(PRICE_COMPONENT_TYPE.SAME_DAY_COLLECTION_SURCHARGE, "same_day_collection_surcharge");
+  assert.equal(hasSameDayCollectionSurcharge(liste), true);
+  assert.equal(hasSameDayCollectionSurcharge(readPriceComponents([BASIS, ZUSCHLAG])), false);
+  assert.equal(hasSameDayCollectionSurcharge(null), false);
+  // Fail closed: steuerfrei behauptet, doppelt, oder ohne Versand an erster Stelle.
+  for (const f of [[BASIS, { ...SELBER_TAG, taxable: false }], [BASIS, SELBER_TAG, SELBER_TAG], [SELBER_TAG, BASIS],
+                   [BASIS, { ...SELBER_TAG, gross: "3.60" }]]) {
+    assert.equal(readPriceComponents(f), null, JSON.stringify(f));
+  }
+  // Die Aufstellung nennt ihn netto — die MwSt. steht in der eigenen Zeile, nichts wird addiert.
+  const zeilen = priceSummaryComponents({ hasConfirmedPrice: true, insuranceGross: 0, components: [BASIS, SELBER_TAG] });
+  assert.deepEqual(zeilen.taxable.map((k) => [k.label, k.net]), [["Versand", 12.34], ["Zuschlag für Abholung am selben Tag", 3.02]]);
 });
 
 test("K7 — das Modul rechnet nicht und nennt keinen Anbieter", () => {

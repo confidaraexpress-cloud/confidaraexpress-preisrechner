@@ -126,9 +126,15 @@ export function offerSelectable(tariff) {
 // TG22 Paket B: `date_unavailable` sendet der Server, wenn der gewählte Abholtag der EINZIGE
 // Grund ist — dann hilft ein anderer Abholtermin, und genau das sagt der Hinweis darunter.
 // Nie „nächster Werktag": welcher Tag trägt, weiß nur eine neue Berechnung.
+// TG22 Same-Day: `same_day_unavailable` sendet der Server, wenn eine Abholung HEUTE der einzige Grund ist
+// (Abholschluss erreicht oder Zuschlag nicht bestätigt) — ein späterer Abholtag hilft. Die Oberfläche
+// entscheidet das nie selbst: sie vergleicht keine Uhrzeit.
+export const OFFER_SAME_DAY_UNAVAILABLE_TEXT = "Abholung heute nicht mehr möglich.";
+export const OFFER_SAME_DAY_UNAVAILABLE_HINT = "Bitte wählen Sie einen späteren Abholtag.";
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
   date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
+  same_day_unavailable: OFFER_SAME_DAY_UNAVAILABLE_TEXT,
 };
 // Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
 const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
@@ -149,6 +155,7 @@ export function offerBlockedLabel(tariff) {
 export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   if (offerSelectable(t) || t.availableForDate === false) return null;
+  if (t.unavailableReason === "same_day_unavailable") return OFFER_SAME_DAY_UNAVAILABLE_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

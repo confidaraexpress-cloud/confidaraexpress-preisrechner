@@ -23,7 +23,8 @@
    ─── KEIN PROVIDERNAME ───────────────────────────────────────────────────────
    Weder in Feldnamen noch in Texten. */
 import { money } from "./formatters.js";
-import { readPriceComponents, hasResidentialSurcharge } from "./priceComponentsView.mjs";
+import { readPriceComponents, hasResidentialSurcharge, hasSameDayCollectionSurcharge } from "./priceComponentsView.mjs";
+import { readSameDayCollectionBlock, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_TEXT } from "./sameDayCollectionView.mjs";
 import { OFFER_ALREADY_USED_TEXT } from "./bookingErrors.mjs";
 import { offerAwaitsPriceInputs, PRICE_INPUT_DELIVERY_RESIDENTIAL } from "./offerIdentity.mjs";
 
@@ -68,6 +69,8 @@ export const RESIDENTIAL_ACTION = Object.freeze({
   USED: "used",                // Angebot verbraucht: in die Sendungsliste
   RECALCULATE: "recalculate",  // Angebot trägt nicht mehr: neu berechnen
   RETRY: "retry",              // vorübergehend: Fehlerhinweis mit „Erneut versuchen"
+  // TG22 Same-Day: die Abholung heute ist nicht mehr möglich — ein späterer Abholtag, also neu berechnen.
+  SAME_DAY_UNAVAILABLE: "same_day_unavailable",
 });
 
 const RELOAD_CODES = Object.freeze(["PRICE_INPUT_OPTIONS_EXPIRED", "OFFER_PRICE_CONFLICT", "PRICE_CONFIRMATION_REQUIRED"]);
@@ -177,6 +180,10 @@ export function readPriceInputOptions(body, tariff) {
   // anderes als diesen Vertrag.
   const geschaeft = options[0].surcharge;
   if (geschaeft.net !== 0 || geschaeft.vat !== 0 || geschaeft.gross !== 0) return null;
+  // TG22 Same-Day: eine Abholung am selben Tag nennt der Server als eigenen Block (Zuschlag, bis wann heute,
+  // „bereit ab"). Ein Block in anderer Form beschreibt etwas anderes als diesen Vertrag — fail closed.
+  const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
+  if (!selberTag.ok) return null;
   return Object.freeze({
     offerId,
     offerRevision,
@@ -184,6 +191,7 @@ export function readPriceInputOptions(body, tariff) {
     expiresAt: typeof d.expiresAt === "string" ? d.expiresAt : null,
     boundValue: d.boundValue === true ? true : (d.boundValue === false ? false : null),
     options: Object.freeze(options),
+    ...(selberTag.value ? { sameDayCollection: selberTag.value } : {}),
   });
 }
 
@@ -232,6 +240,10 @@ export function readPriceInputBinding(body, { tariff, value } = {}) {
   if (d.priceCompleteness !== "complete") return null;
   const components = readPriceComponents(d.components);
   if (!components || hasResidentialSurcharge(components) !== wert) return null;
+  // TG22 Same-Day: nennt die Bindung eine Abholung am selben Tag, muss der gebundene Preis ihren Zuschlag
+  // tragen. Umgekehrt genügt der Bestandteil: der Block trägt die Abholzeit, nicht den Preis.
+  const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
+  if (!selberTag.ok || (selberTag.value && !hasSameDayCollectionSurcharge(components))) return null;
   // Eine Bindung beschreibt den Versand — eine Absicherung gehört nicht dazu.
   if (components.some((k) => k.taxable !== true)) return null;
   const totals = leseTotals(d.totals);
@@ -261,6 +273,7 @@ export function readPriceInputBinding(body, { tariff, value } = {}) {
     overlay: Object.freeze(overlay),
     insuranceReset: d.insuranceReset === true,
     idempotent: d.idempotent === true,
+    ...(selberTag.value ? { sameDayCollection: selberTag.value } : {}),
   });
 }
 
@@ -274,6 +287,12 @@ export function readPriceInputBinding(body, { tariff, value } = {}) {
 export function tariffWithPriceInputBinding(tariff, binding) {
   const t = istObjekt(tariff) ? tariff : null;
   if (!t || !binding || kennung(t.offerId) !== binding.offerId) return null;
+  // TG22 Same-Day: die Bindung nennt die „bereit ab"-Zeit, die JETZT gälte — sie ersetzt die des
+  // Angebotsvergleichs. Für einen anderen Abholtag als den des Angebots gilt sie nicht: fail closed.
+  const selberTag = binding.sameDayCollection || null;
+  if (selberTag && kennung(t.collectionDate) !== null && kennung(t.collectionDate) !== selberTag.collectionDate) {
+    return null;
+  }
   return {
     ...t,
     ...binding.overlay,
@@ -281,6 +300,7 @@ export function tariffWithPriceInputBinding(tariff, binding) {
     offerRevision: binding.offerRevision,
     priceInputs: { [PRICE_INPUT_DELIVERY_RESIDENTIAL]: binding.value },
     priceComponents: binding.components,
+    ...(selberTag ? { collectionReadyFrom: selberTag.collectionReadyFrom } : {}),
   };
 }
 
@@ -316,6 +336,7 @@ export function residentialBookPayload(tariff) {
 export function residentialErrorAction(status, body) {
   const code = istObjekt(body) && typeof body.code === "string" ? body.code : null;
   if (code === "OFFER_ALREADY_USED") return RESIDENTIAL_ACTION.USED;
+  if (code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) return RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE;
   if (code && RELOAD_CODES.includes(code)) return RESIDENTIAL_ACTION.RELOAD;
   if ((code && RECALCULATE_CODES.includes(code)) || status === 404) return RESIDENTIAL_ACTION.RECALCULATE;
   return RESIDENTIAL_ACTION.RETRY;
@@ -348,6 +369,7 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
   const fehler = status === RESIDENTIAL_STATUS.ERROR;
   const art = !fehler ? null
     : (errorKind === RESIDENTIAL_ACTION.USED || errorKind === RESIDENTIAL_ACTION.RECALCULATE
+       || errorKind === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE
       ? errorKind : RESIDENTIAL_ACTION.RETRY);
   const zeigtKarten = !!options && (status === RESIDENTIAL_STATUS.READY || bindet);
   const cards = zeigtKarten ? options.options.map((o) => Object.freeze({
@@ -365,8 +387,10 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
     errorText: art === null ? null
       : art === RESIDENTIAL_ACTION.USED ? RESIDENTIAL_TEXT.used
       : art === RESIDENTIAL_ACTION.RECALCULATE ? RESIDENTIAL_TEXT.recalculate
+      : art === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE ? SAME_DAY_TEXT.bookingUnavailable
       : RESIDENTIAL_TEXT.error,
-    errorAction: art,
+    // TG22 Same-Day: dieselbe Handlung wie „neu berechnen" — ein späterer Abholtag entsteht nur so.
+    errorAction: art === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE ? RESIDENTIAL_ACTION.RECALCULATE : art,
     cards: Object.freeze(cards),
     locked: bindet,
     bindingText: bindet ? RESIDENTIAL_TEXT.binding : null,

@@ -6,6 +6,9 @@ import { ParcelShopFinderTrigger } from "./ParcelShopFinderTrigger";
 import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "../../utils/handoverMode.mjs";
 import { offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
 import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
+import {
+  sameDayOfferView, sameDaySurchargeLine, sameDayDetailValue, SAME_DAY_TEXT,
+} from "../../utils/sameDayCollectionView.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
@@ -289,6 +292,8 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   if (tariffId != null)            features.push({ icon: "info",    label: "Tarif-ID",               value: String(tariffId), subtle: true });
 
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
+  // TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — vom Server, nicht gerechnet.
+  const sameDay = sameDayOfferView(t);
   const hasMain  = features.length > 0;
   const hasLimits = limitLines.length > 0;
   const dropoffLabel = publicDropoffLabel(t);
@@ -397,6 +402,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
           {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
           {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
           {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
+          {sameDay && <DetailRow label={SAME_DAY_TEXT.surchargeLabel} value={sameDayDetailValue(sameDay)} />}
           {/* Die Erklärung zum vorläufigen Preis — hier ausführlich, auf der Karte nur als
               kurzes Etikett. Sie steht in der Preisaufschlüsselung, weil sie genau diese
               Zahlen betrifft, und erscheint AUSSCHLIESSLICH bei einem ausdrücklich
@@ -474,6 +480,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   const unavailableHint = offerBlockedHint(t);
   // „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." — nur, solange die Angabe aussteht.
   const surchargeHint = offerSurchargeHint(t);
+  // TG22 Same-Day: „Zuschlag für Abholung am selben Tag" und „Abholung heute möglich bis …" — nur, wenn der
+  // Server beides nennt. Der Kartenpreis enthält den Zuschlag bereits; hier wird nichts addiert.
+  const sameDay = sameDayOfferView(t);
   // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
   // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
   // `aria-controls` zeigte bei allen auf denselben Bereich.
@@ -673,6 +682,9 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                 <div className="offer-price-sub">
                   {vatMode === "gross" ? "inkl. MwSt." : "exkl. MwSt."}
                 </div>
+                {sameDay && (
+                  <div className="offer-sameday-surcharge">{sameDaySurchargeLine(sameDay, vatMode)}</div>
+                )}
               </>
             ) : (
               <div className="offer-price-na">Preis auf Anfrage</div>
@@ -700,6 +712,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           {/* TG22 Paket B: nur beim Abholtag als einzigem Grund — die HANDLUNG, nicht ein
               zweites Mal der Grund. */}
           {unavailableHint && <p className="offer-cta-hint">{unavailableHint}</p>}
+          {sameDay && <p className="offer-cta-hint offer-sameday-until">{sameDay.untilText}</p>}
           {/* TG22 Residential: der Preis darüber ist vorläufig („Vorläufiger Preis" in Zone 4); dieser
               Satz sagt, wovon der endgültige Betrag abhängt. Kein „ab"-Betrag, kein Anbietername. */}
           {surchargeHint && <p className="offer-cta-hint offer-surcharge-hint">{surchargeHint}</p>}

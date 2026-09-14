@@ -2,9 +2,9 @@
 
 - **Schema-Version:** 2.1
 - **Status:** CANONICAL PROJECT SOURCE
-- **Last verified:** 2026-09-14 (TG22-Same-Day-Abschnitte 1A, 5.1, 6.4, 8.1, 8.4, 9.4, 14, 15; TG22-Residential-Abschnitte 1A, 5.1, 5.4, 5.5, 6.4, 8.1, 8.4, 9.4, 14, 15); 2026-09-13 (TG22-Golden-Offer-Contract-Abschnitte 5.1, 5.12, 6.4, 8.4, 15; Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14); Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09
-- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `f745cc9` (wirksam nach Merge); TG22-Same-Day-Abschnitte gegen Branch `feature/tg22-same-day-colfee` auf `986963b` (wirksam nach Merge)
-- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `5b6dfb3` (wirksam nach Merge); TG22-Same-Day-Abschnitte gegen Branch `feature/tg22-same-day-colfee` auf `4d60a23` (wirksam nach Merge)
+- **Last verified:** 2026-09-14 (TG22-Package-A-Abschnitte 6.4, 14, 15; TG22-Same-Day-Abschnitte 1A, 5.1, 6.4, 8.1, 8.4, 9.4, 14, 15; TG22-Residential-Abschnitte 1A, 5.1, 5.4, 5.5, 6.4, 8.1, 8.4, 9.4, 14, 15); 2026-09-13 (TG22-Golden-Offer-Contract-Abschnitte 5.1, 5.12, 6.4, 8.4, 15; Package-C-Abschnitte 5.11, 5.14, 6.2, 6.4, 14); Transglobal-Abschnitte 2026-09-11; übrige Abschnitte Stand 2026-09-09
+- **Verified against Frontend `origin/main`:** `ba8e44c` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `f745cc9` (wirksam nach Merge); TG22-Same-Day-Abschnitte gegen Branch `feature/tg22-same-day-colfee` auf `986963b` (wirksam nach Merge); TG22-Package-A-Abschnitte gegen Branch `feature/tg22-product-details` auf Basis `44403de` (wirksam nach Merge)
+- **Verified against Backend `origin/main`:** `6e67fad` plus Paket TG-22 (Branch `claude/tg22-reference-enablement`, wirksam nach Merge); Package-C-Abschnitte gegen Branch `claude/package-c-operations-reconciliation` (wirksam nach Merge); TG22-Golden-Offer-Contract-Abschnitte gegen Branch `claude/tg22-golden-offer-contract` (wirksam nach Merge); TG22-Residential-Abschnitte gegen Branch `feature/tg22-residential-pricing` auf `5b6dfb3` (wirksam nach Merge); TG22-Same-Day-Abschnitte gegen Branch `feature/tg22-same-day-colfee` auf `4d60a23` (wirksam nach Merge); TG22-Package-A-Abschnitte gegen Branch `feature/tg22-product-details` auf Basis `b04a171` (wirksam nach Merge)
 - **Verification basis:** forensischer Read-only-Repository-Audit vom 2026-09-09, re-verifiziert bei der Integration am 2026-09-09; Transglobal-Stand im Paket TG-22 am 2026-09-11 gegen den Code geprüft
 
 ---
@@ -544,6 +544,8 @@ Art der Lieferadresse (TG22 Residential, wirksam nach Merge): Das Vergleichsange
 
 Abholung am selben Tag (TG22 Same-Day, wirksam nach Merge): Für Service 22 ist ein heutiger Abholtag buchbar, solange die Berliner Uhrzeit vor dem wirksamen Abholschluss liegt (`SameDayCollectionCutOffTime` des frischen Quotes minus 15 Minuten). Die Gebühr (`COLFEE`, optionales Extra außerhalb von `TotalCost`) wird zum Einkauf addiert und durchläuft die zentrale Preisfunktion; der Anbieter berechnet sie bei einem heutigen `CollectionDate` automatisch, BookShipment sendet kein Accessory. ReadyFrom ist die Uhrzeit der Bestellung, aufgerundet auf die Viertelstunde, mindestens die gespeicherte Bereitzeit. Angebot, Optionen, Bindung, Neubepreisung und `/book` prüfen dasselbe Zeitfenster; eine letzte Schranke unmittelbar vor der Bestellung verhindert eine Bestellung nach dem wirksamen Abholschluss (`409 SAME_DAY_COLLECTION_UNAVAILABLE`). Kein Schalter, keine ENV-Änderung, keine Schemaänderung; alle anderen Services und JUMiNGO unverändert.
 
+Produktdetails (TG22 Package A, wirksam nach Merge): Service 22 trägt ein kuratiertes Produktprofil — wirtschaftlicher Standardversand für weniger eilige Sendungen, ein Packstück je Sendung, höchstens 70 kg je Packstück, Volumendivisor 5.000 ausschließlich zur Erklärung des Abrechnungsgewichts, Paletten und Koffer nicht zugelassen. Öffentlich erscheint es als `serviceDetails` (Codes und Zahlen, dazu die Absicherungsgrenzen 50 € / 2.500 €) und als Tarifgrenze `weight <= 70`; nur Service 22 trägt beides. Die Service-Policy setzt die 70-kg-Grenze an denselben Stellen durch wie die Packstückzahl (Vergleich, Optionen, Revalidierung, `/book`): genau 70,0 kg ist erlaubt, darüber entsteht kein Angebot und keine Buchung, ohne belegtes Gewicht ist die 22 gesperrt. Das Abrechnungsgewicht bleibt der Anbieterwert, die Laufzeit „1–2 Tage" ohne Datum oder Uhrzeit. Nicht Teil des Profils: Access Point, Samstagszustellung, Länge und Gurtmaß, Zustellzusagen, statische Zuschläge oder Preise. Kein Schalter, keine ENV-Änderung, keine Schemaänderung; JUMiNGO und alle anderen Services unverändert.
+
 Nicht daraus ableiten, dass Transglobal heute produktiv buchbar ist: alle Schalter sind im Repository aus, der Runtime-Zustand ist UNKNOWN_RUNTIME_STATE.
 
 Unklare Transglobal-Ausgänge laufen durch dieselbe Buchungsklärung wie JUMiNGO (5.11); die bisherigen Transglobal-Adminpfade bleiben als Aliasse der providerneutralen Routen bestehen (Package C, wirksam nach Merge).
@@ -867,7 +869,7 @@ Production-Zustände nicht aus Repository-Defaults erfinden.
 | --- | --- | --- |
 | JUMiNGO Quote/Buchung | ACTIVE_CURRENT | produktiver Buchungspfad |
 | Transglobal Quote | ACTIVE_CURRENT / UNKNOWN_RUNTIME_STATE | benötigt Runtime-Konfiguration |
-| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus; öffentlich buchbar vorbereitet nur Service 22 DE→DE hinter Produktschalter, Buchungsschalter und Kontowährung; Art der Lieferadresse nach der Angebotsauswahl (TG22 Residential, wirksam nach Merge); Abholung am selben Tag bis zum wirksamen Abholschluss (TG22 Same-Day, wirksam nach Merge) |
+| Transglobal Booking | IMPLEMENTED_CONDITIONALLY | default aus; öffentlich buchbar vorbereitet nur Service 22 DE→DE hinter Produktschalter, Buchungsschalter und Kontowährung; Art der Lieferadresse nach der Angebotsauswahl (TG22 Residential, wirksam nach Merge); Abholung am selben Tag bis zum wirksamen Abholschluss (TG22 Same-Day, wirksam nach Merge); Produktprofil und 70-kg-Grenze je Packstück (TG22 Package A, wirksam nach Merge) |
 | Customs | IMPLEMENTED_DISABLED | opt-in aus + Launch-Scope blockiert Drittländer |
 | Legal Booking Gate | IMPLEMENTED_CONDITIONALLY | default aus |
 | Consolidated Invoicing | IMPLEMENTED_CONDITIONALLY | default aus |
@@ -915,6 +917,8 @@ Gemeinsamer Anzeigevertrag der Angebots- und Buchungsflächen (TG22 Golden Offer
 TG22 Residential (wirksam nach Merge): ein Angebot, das nur noch auf die Art der Lieferadresse wartet, zeigt „Vorläufiger Preis" und „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." — kein „ab"-Betrag, kein Anbieter. Die Wahl heißt „Art der Lieferadresse" mit „Geschäftsadresse + 0,00 €" und „Privatadresse + X,XX €" (Serverbetrag); die Bestandteilzeile heißt „Zuschlag Privatadresse". Bis zur Bindung ist die Absicherung nicht wählbar und die Buchung gesperrt.
 
 TG22 Same-Day (wirksam nach Merge): ein Angebot mit Abholung heute zeigt den Preis einschließlich Zuschlag, darunter „Zuschlag für Abholung am selben Tag: +X,XX €" und „Abholung heute möglich bis HH:MM Uhr" (wirksamer Abholschluss vom Server). Nach dem wirksamen Abholschluss bleibt es sichtbar, ist nicht auswählbar und zeigt „Abholung heute nicht mehr möglich." und „Bitte wählen Sie einen späteren Abholtag.". Buchungsseite, Erfolg, Auftragsbestätigung und Rechnungen führen die Zeile „Zuschlag für Abholung am selben Tag"; keine Checkbox, keine Anbieteruhrzeit, kein Anbietername.
+
+TG22 Package A (wirksam nach Merge): trägt ein Angebot `serviceDetails`, zeigen seine Details fünf Abschnitte statt Hauptmerkmalen, Einschränkungen und Versicherung — „Hauptmerkmale" (Kurzbeschreibung, „Abholung an Ihrer Adresse", „Sendungsverfolgung inklusive", „Versandlabel zum Ausdrucken" mit den Formaten), „Laufzeit" (genau einmal: „Voraussichtliche Laufzeit" und „Die Laufzeit ist eine Schätzung des Versanddienstleisters und keine Zustellzusage."), „Größe & Gewicht" („Packstücke: 1 je Sendung", „Max. Gewicht: 70 kg", Abrechnungsgewicht, „Volumengewicht: L × B × H ÷ 5.000"), „Transportabsicherung" („Grundabsicherung: bis 50 € Warenwert", „Zusätzliche Transportabsicherung: bis 2.500 € Warenwert", Selbstbeteiligung nur aus dem Serverwert) und „Einschränkungen" („Nicht zugelassen: Paletten, Koffer"). „Termin & Abholung" und „Preisaufschlüsselung" bleiben. Ohne gültiges Profil — jeder andere Service, JUMiNGO — bleibt der bisherige Detailbereich; entschieden wird am Feld, nie am Provider. Kein Datum, keine Uhrzeit, keine Zusage, kein externer Link.
 
 ### Icon-System
 
@@ -1169,6 +1173,14 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 ---
 
 ## 25. Changelog
+
+### v2.1 — 2026-09-14 (TG22 Package A: Produktdetails)
+
+- 6.4: kuratiertes Produktprofil des Referenzservices (Standardversand, ein Packstück, 70 kg je Packstück, Divisor 5.000 nur zur Erklärung, Paletten und Koffer nicht zugelassen) als `serviceDetails` und Tarifgrenze `weight <= 70`; die 70-kg-Grenze gilt in Vergleich, Optionen, Revalidierung und `/book`.
+- 14, 15: Feature-State und Anzeigevertrag der fünf Detailabschnitte ergänzt.
+- Keine Laufzeit- oder Datumsberechnung, keine Nachbelastung, keine Preis- oder Zuschlagsänderung; JUMiNGO und alle anderen Services unverändert.
+- Wirksam nach Merge der Branches `feature/tg22-product-details` (Backend vor Frontend); kein Schalter, keine ENV-Änderung, keine Schemaänderung.
+- Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-14 (TG22 Same-Day Collection)
 

@@ -196,6 +196,17 @@ Ob ein Angebot **heute** abgeholt werden kann, bis wann und mit welchem Zuschlag
 - **`SAME_DAY_COLLECTION_UNAVAILABLE`** (Optionen, Bindung, Neubepreisung, `/book`): der neutrale Satz und „Angebote neu berechnen" — nie „erneut versuchen". Eine Änderung des Zuschlags kommt als `PRICE_CHANGED` mit `priceInputsRebindRequired` und läuft über den bestehenden Neubestätigungsweg.
 - Ein Datumswechsel verwirft die Angebote (`resetResults`); Entwürfe und Vorgang speichern keine Same-Day-Angabe.
 
+### Produktprofil (TG22 Package A) — aktueller Vertrag
+
+Welche Produktangaben ein Angebot trägt, sagt ausschließlich der Server: `serviceDetails` (`summaryKey`, `volumetricDivisor`, `notAccepted`, `basicCoverMaxGoodsValue`, `maxCoverValue` — Codes und Zahlen) neben `tariffLimits`, `trackingAvailable`, `printerRequired`, `chargeableWeight`, Labelangaben und Laufzeit. `utils/serviceDetailsView.mjs` bildet daraus die Sätze, `components/offers/ServiceProfileDetails.jsx` zeigt sie.
+
+- **Nur mit gültigem Profil:** ein unbekannter Code, ein Divisor, der keine positive ganze Zahl ist, oder unvollständige Absicherungsgrenzen ergeben `null` — dann bleibt der bisherige Detailbereich (Merkmalsraster, Einschränkungen, Versicherung) unverändert. Keine ServiceID-, Carrier- oder Providerprüfung im JSX.
+- **Fünf Abschnitte statt Hauptmerkmale/Einschränkungen/Versicherung:** „Hauptmerkmale", „Laufzeit" (genau einmal), „Größe & Gewicht", „Transportabsicherung", „Einschränkungen". „Termin & Abholung", „Preisaufschlüsselung", Links und Zusatzhinweise bleiben für jedes Angebot.
+- **Nichts wird gerechnet:** der Divisor steht nur in „Volumengewicht: L × B × H ÷ 5.000"; das Abrechnungsgewicht ist der Serverwert; aus der Laufzeit entsteht kein Datum.
+- **Nie im Profil:** Access Point, Samstagszustellung, Länge oder Gurtmaß, Zustelldatum oder -uhrzeit, „garantiert", statische Zuschläge, Anbietername, externe Links.
+- **Selbstbeteiligung** nur aus `insuranceDetails` und nur, wenn die zusätzliche Absicherung wählbar ist; eine Absicherung in Stufen beschreibt das Profil nicht (dann bisheriger Bereich).
+- **Responsive:** `.offer-profile-*` mit Umbruchschutz; bis 767 px Merkmale einspaltig, bis 480 px Beschriftung über dem Wert.
+
 ### Preisänderung
 
 Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** Beträge trägt. Fehlt einer, wird kein Betrag angezeigt und nur die Neuberechnung angeboten — ein Einzelbetrag wird nicht zu „neuer Preis" umgedeutet. Entschieden wird an der **Form der Antwort**, nie an einem Requestfeld.

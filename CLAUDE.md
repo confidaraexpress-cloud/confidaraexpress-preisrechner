@@ -202,10 +202,21 @@ Welche Produktangaben ein Angebot trägt, sagt ausschließlich der Server: `serv
 
 - **Nur mit gültigem Profil:** ein unbekannter Code, ein Divisor, der keine positive ganze Zahl ist, oder unvollständige Absicherungsgrenzen ergeben `null` — dann bleibt der bisherige Detailbereich (Merkmalsraster, Einschränkungen, Versicherung) unverändert. Keine ServiceID-, Carrier- oder Providerprüfung im JSX.
 - **Fünf Abschnitte statt Hauptmerkmale/Einschränkungen/Versicherung:** „Hauptmerkmale", „Laufzeit" (genau einmal), „Größe & Gewicht", „Transportabsicherung", „Einschränkungen". „Termin & Abholung", „Preisaufschlüsselung", Links und Zusatzhinweise bleiben für jedes Angebot.
-- **Nichts wird gerechnet:** der Divisor steht nur in „Volumengewicht: L × B × H ÷ 5.000"; das Abrechnungsgewicht ist der Serverwert; aus der Laufzeit entsteht kein Datum.
-- **Nie im Profil:** Access Point, Samstagszustellung, Länge oder Gurtmaß, Zustelldatum oder -uhrzeit, „garantiert", statische Zuschläge, Anbietername, externe Links.
+- **Nichts wird gerechnet:** der Divisor steht nur in „Volumengewicht: L × B × H ÷ 5.000"; das Abrechnungsgewicht ist der Serverwert; aus der Laufzeit rechnet die Oberfläche kein Datum (die voraussichtliche Lieferung kommt fertig vom Server, siehe unten).
+- **Nie im Profil:** Access Point, Samstagszustellung, Länge oder Gurtmaß, Zustelluhrzeit, ein Zustelldatum außer der Prognose des Servers, „garantiert", statische Zuschläge, Anbietername, externe Links.
 - **Selbstbeteiligung** nur aus `insuranceDetails` und nur, wenn die zusätzliche Absicherung wählbar ist; eine Absicherung in Stufen beschreibt das Profil nicht (dann bisheriger Bereich).
 - **Responsive:** `.offer-profile-*` mit Umbruchschutz; bis 767 px Merkmale einspaltig, bis 480 px Beschriftung über dem Wert.
+
+### Voraussichtliche Lieferung (TG22 Package B) — aktueller Vertrag
+
+Ob ein Angebot eine voraussichtliche Lieferung trägt und welche Tage, sagt ausschließlich der Server: `deliveryProjection { kind: "estimated", dateMin, dateMax }` — eine Prognose von ConfidaraExpress aus Abholtag und Laufzeit (Montag bis Freitag, ohne Feiertage), keine Anbieterzusage. `utils/deliveryProjectionView.mjs` prüft und formatiert nur.
+
+- **Nichts wird gerechnet:** keine Versandtage, kein `Date.now`, keine Browseruhr, kein `toLocale…`; die Wochentage kommen aus einer festen Tabelle („Di., 15.09."). Ein ungültiges Datum, `dateMax` vor `dateMin` oder ein anderer `kind` ergibt keine Prognose — nie einen Fehler und nie einen Ersatz.
+- **Rangfolge** (`utils/deliveryContractView.mjs`): Zeitraum des Anbieters → Datum des Anbieters → Prognose → Laufzeit → „Auf Anfrage". Zustelldaten eines Anbieters haben immer Vorrang; JUMiNGO bleibt „Zustellung" mit „bis HH:MM Uhr".
+- **Karte:** Endknoten „Voraussichtliche Lieferung" mit „Di., 15.09. – Mi., 16.09.", „Di., 15.09." oder „ab Di., 15.09." (`dateMax: null`) — ohne Uhrzeit. Die Laufzeit („1–2 Tage") bleibt stehen.
+- **Detailbereich:** im Abschnitt „Laufzeit" unter „Voraussichtliche Laufzeit" genau eine Zeile „Voraussichtliche Lieferung" und der Hinweis „Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben."
+- **Buchungsflächen** (`deliveryInfo`): „Voraussichtliche Lieferung" mit TT.MM.JJJJ („15.09.2026 – 16.09.2026", „ab 15.09.2026"), kein `until`.
+- **Keine Autorität:** der Lieferdatumsfilter liest nur `deliveryDateMax`/`deliveryDate`, Auszeichnungen und Sortierung lesen Preis und Laufzeittage. Nie sichtbar: „garantiert", eine Uhrzeit, Anbietername, Quelle oder `kind`.
 
 ### Preisänderung
 
@@ -221,7 +232,7 @@ Mit Zusatzabsicherung übernimmt „Neuen Preis übernehmen" den Preis **ausschl
 
 ### Eine Preisprojektion
 
-Alle Preisflächen der Buchung (ausgewähltes Angebot, Live- und Sticky-Leiste, Preiszusammenfassung, Absicherungskarten, Buchungsgate) lesen **ein** `priceView` (`utils/bookingPriceView.mjs`); welcher Betrag gilt und wie er heißt („Gesamt"/„Versand"), entscheidet `priceInfo` (`utils/bookingSummaryView.mjs`). Der Nettogesamtbetrag ist `customerTotalNet` der Serverantwort — keine Addition im Client; fehlt er, bleibt er leer. Zustellung („Zustellung"/„Voraussichtliche Laufzeit") steht in `utils/deliveryContractView.mjs`, Abholung in `utils/pickupContractView.mjs`, Labelnamen („DIN A4", „Thermodruck") in `utils/labelFormatOptions.mjs` — Karte und Buchung nutzen dieselben Helfer.
+Alle Preisflächen der Buchung (ausgewähltes Angebot, Live- und Sticky-Leiste, Preiszusammenfassung, Absicherungskarten, Buchungsgate) lesen **ein** `priceView` (`utils/bookingPriceView.mjs`); welcher Betrag gilt und wie er heißt („Gesamt"/„Versand"), entscheidet `priceInfo` (`utils/bookingSummaryView.mjs`). Der Nettogesamtbetrag ist `customerTotalNet` der Serverantwort — keine Addition im Client; fehlt er, bleibt er leer. Zustellung („Zustellung"/„Voraussichtliche Lieferung"/„Voraussichtliche Laufzeit") steht in `utils/deliveryContractView.mjs`, Abholung in `utils/pickupContractView.mjs`, Labelnamen („DIN A4", „Thermodruck") in `utils/labelFormatOptions.mjs` — Karte und Buchung nutzen dieselben Helfer.
 
 ### Labelformat ist eine Fähigkeit des Angebots
 

@@ -52,7 +52,10 @@ export function ServiceProfileDetails({ view }) {
       {transit && (
         <Abschnitt id="transit" titel={SERVICE_DETAILS_TEXT.transitTitle}>
           {transit.rows.map((z) => <ProfilZeile key={z.id} zeile={z} />)}
-          <p className="offer-profile-note">{transit.note}</p>
+          {transit.note && <p className="offer-profile-note">{transit.note}</p>}
+          {transit.projectionNote && (
+            <p className="offer-profile-note" data-profile-note="projection">{transit.projectionNote}</p>
+          )}
         </Abschnitt>
       )}
 

@@ -22,6 +22,7 @@ import { handoverMode, HANDOVER_PICKUP } from "./handoverMode.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "./offerMetadataView.mjs";
 import { offerCardInsurance } from "./coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "./insuranceTerms.mjs";
+import { readDeliveryProjection, projectedDeliveryText, DELIVERY_PROJECTION_TEXT } from "./deliveryProjectionView.mjs";
 
 /* Die sichtbaren Texte — hier und nicht im JSX, damit sie geprüft werden können. */
 export const SERVICE_DETAILS_TEXT = Object.freeze({
@@ -136,10 +137,17 @@ export function serviceDetailsView(tariff) {
   }
 
   // ── 2. Laufzeit — genau einmal, als Schätzung ─────────────────────────────────
+  // TG22 Package B: darunter die voraussichtliche Lieferung, die der SERVER aus Abholtag und Laufzeit
+  // gerechnet hat — mit eigenem kurzen Hinweis. Die Laufzeit des Anbieters bleibt stehen.
   const laufzeit = fmtDelivery(t);
-  const transit = laufzeit
-    ? { rows: [{ id: "transit", label: SERVICE_DETAILS_TEXT.transitLabel, value: laufzeit }],
-        note: SERVICE_DETAILS_TEXT.transitNote }
+  const prognose = projectedDeliveryText(readDeliveryProjection(t));
+  const transitRows = [];
+  if (laufzeit) transitRows.push({ id: "transit", label: SERVICE_DETAILS_TEXT.transitLabel, value: laufzeit });
+  if (prognose) transitRows.push({ id: "projection", label: DELIVERY_PROJECTION_TEXT.label, value: prognose });
+  const transit = transitRows.length > 0
+    ? { rows: transitRows,
+        note: laufzeit ? SERVICE_DETAILS_TEXT.transitNote : null,
+        projectionNote: prognose ? DELIVERY_PROJECTION_TEXT.note : null }
     : null;
 
   // ── 3. Größe & Gewicht ────────────────────────────────────────────────────────

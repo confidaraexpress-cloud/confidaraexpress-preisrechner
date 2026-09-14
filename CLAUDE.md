@@ -161,7 +161,7 @@ Diese Regeln sind Frontend-spezifisch. Die **projektweiten** Provider-, Preis- u
 - `offerKey(tariff)` (`utils/offerIdentity.mjs`) ist die **einzige** Antwort auf „welches Angebot ist das?": `offerId` zuerst, Tarif-ID nur als Rückfall, sonst `null`.
 - `sameOffer()` vergleicht zwei `null` ausdrücklich als **verschieden**. Ohne diese Regel gälte `undefined === undefined` — jede kennungslose Karte wäre „ausgewählt", teilte sich ein Badge und eine DOM-Kennung.
 - `offerBlocked(t)` ist wahr **nur** bei einer ausdrücklichen Serveraussage (`bookable === false` oder `availableForDate === false`). Ein **fehlendes** Feld sperrt nichts — `!t.bookable` würde jedes Angebot aus einer älteren Antwort sperren.
-- `offerBookable()` steuert **Aktionen** (CTA, Kartenklick, Auszeichnungen), nicht die optische Wertigkeit. Ein nicht bestellbares Angebot bleibt eine vollwertige Preisauskunft und wird nicht blass gezeichnet; sein Preis bleibt sichtbar.
+- `offerBookable()` sagt, ob ein Angebot beauftragt werden kann (Auszeichnungen). Die **Aktionen** (CTA, Kartenklick, Weg zur Buchungsseite) hängen an `offerSelectable()`: buchbar **oder** nur noch auf die Art der Lieferadresse wartend (`unavailableReason: "price_inputs_required"`). Keines von beiden steuert die optische Wertigkeit — ein nicht bestellbares Angebot bleibt eine vollwertige Preisauskunft und wird nicht blass gezeichnet; sein Preis bleibt sichtbar.
 - Der Grund wird **übersetzt**, nie durchgereicht; ein unbekannter Grund ergibt den neutralen Satz. Kein Einkaufsprovider im sichtbaren Text.
 
 ### Sendungshandle
@@ -174,15 +174,16 @@ Kundenseitige Sendungsoperationen adressieren über **`ceShipmentId`** (`shipmen
 
 ### Angaben zur Art der Adresse — aktueller Vertrag
 
-Die Angaben werden im **Sendungsformular** erhoben, bestimmen dort den Vergleichspreis mit und werden serverseitig an der Sendung eingefroren.
+Die Art der Lieferadresse ist **keine Formularangabe** mehr. „Neue Sendung" erhebt vor dem Vergleich nur Inhalt und Warenwert; eine Abholadressfrage gibt es nicht. Eine Adressart aus einem älteren Entwurf oder Vorgang wird beim Zurücklesen ignoriert — nie gesendet, nie zur Sperre.
 
-Auf der Buchungsseite gilt seitdem:
-
-- **Bereits beantwortete Angaben sind read-only.** Sie werden als Wert angezeigt, nicht als Auswahl. Ein Bedienelement daneben würde behaupten, die Antwort bewirke dort noch etwas — der Preis ist aber bereits gerechnet.
-- **Eine editierbare Auswahl erscheint nur dort, wo die Angabe noch fehlt** (fortgesetzter Vorgang aus der Zeit vor der Vorab-Erhebung). Ohne diesen Zweig gäbe es keinen Weg mehr, sie nachzutragen.
-- **Kein `disabled` Radio** als Read-only-Darstellung: es ist nicht fokussierbar und wird von Vorlesesoftware in der Regel übersprungen — der Wert ginge genau dort verloren, wo er zur Kontrolle steht.
-- Geändert wird über den vorhandenen Rückweg zum Sendungsformular. **Keine Neuberechnung auf der Buchungsseite.** Eine Änderung dort verwirft über die bestehende Recalc-Logik die Angebote und erzwingt eine neue Berechnung.
-- `false` bleibt „Geschäftsadresse" und wird nie als „fehlt" behandelt.
+- **Welches Angebot fragt, sagt der Server:** nur ein Angebot, dessen `requiredPriceInputs` `deliveryIsResidential` nennt (`utils/residentialPriceInputs.mjs`). Im Vergleich ist es `bookable: false` mit `unavailableReason: "price_inputs_required"` — auswählbar, nicht buchbar; die Karte zeigt „Vorläufiger Preis" und „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." (kein „ab"-Betrag). Jedes andere Angebot bekommt weder Frage noch Anfrage.
+- **Schritt 1 der Buchungsseite lädt die Optionen selbst** (`POST /api/offers/price-input-options` über `src/api/client.js`) und zeigt zwei Karten mit den Serverbeträgen („+ X,XX € brutto", darunter „Y,YY € netto"). Kein lokaler Ersatzpreis: bei einem Fehler nur der Hinweis und „Erneut versuchen".
+- **Die Wahl bindet der Server** (`POST /api/offers/price-inputs`; `expectedShippingGross` ist nur ein Wächter). Während einer Bindung sind beide Karten gesperrt, ein Doppelklick bindet einmal. Die Antwort geht ins ausgewählte Angebot **und** in die Angebotsliste des Vorgangs (`offerRevision`, `priceInputs`, `priceComponents`); `requiredPriceInputs` bleibt die Liste des Vergleichs.
+- **Bis zur Bindung** ist der Preis vorläufig (`PRICE_STATUS.PRICE_INPUTS_REQUIRED`), die Absicherung weder sichtbar noch bepreisbar und die Buchung gesperrt (Weiter-Gate und `doBook`).
+- **Wiederherstellung** nach Reload oder Rückkehr ausschließlich über `boundValue` der Optionsantwort — nie aus einem Clientspeicher. Trägt das Angebot die Serverbindung nicht, wird dieselbe Wahl still und idempotent gebunden.
+- **Veralteter Stand** (`OFFER_PRICE_CONFLICT`, `PRICE_INPUT_OPTIONS_EXPIRED`, `PRICE_CONFIRMATION_REQUIRED`) lädt die Optionen neu, der Kunde wählt erneut. `PRICE_CHANGED` mit `priceInputsRebindRequired` (Neubepreisung oder `/book`) hat **keinen Übernahmeweg**: zurück an die Auswahl, neu bestätigen.
+- `/book` sendet für ein solches Angebot `offerRevision` und die gebundene Wahl als `priceInputs` (Konsistenzwächter) — nie einen Formularwert. `false` bleibt „Geschäftsadresse" und wird nie als „fehlt" behandelt.
+- **Bestandteile** (`shipping_base` „Versand", `residential_delivery_surcharge` „Zuschlag Privatadresse", `transport_insurance` „Zusätzliche Transportabsicherung") liest `utils/priceComponentsView.mjs` — nur zum bestätigten Preis, nie addiert. Ein unbekannter Typ ergibt keine Zeilen; die Server-Totals bleiben.
 
 ### Preisänderung
 
@@ -191,6 +192,7 @@ Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** B
 Mit Zusatzabsicherung übernimmt „Neuen Preis übernehmen" den Preis **ausschließlich** über die Neubepreisung mit `acceptPriceChange: { expectedTotalGross }` — nie über eine Buchung. Erst nach der Serverbindung (neue `priceRevision`) bucht der Kunde bewusst erneut; `/book` sendet diese Revision mit. Eine erneute Abweichung öffnet wieder den Dialog, ein Fehler lässt ihn mit neutralem Hinweis offen.
 
 - `recalculationRequired: true` ergibt **nie** einen Bestätigungsweg — auch nicht mit Beträgen und nicht aus dem zuletzt bestätigten Betrag ergänzt.
+- `priceInputsRebindRequired: true` ebenso wenig (`PRICE_CHANGE_KIND.REBIND`): die Art der Lieferadresse wird neu geladen und neu bestätigt.
 - Der Dialog ist nur die Anzeige: Escape und Hintergrund schließen ihn, die Preisänderung bleibt offen (`priceChangePending` im Price-View-Model → Status `PRICE_CHANGED`, kein Betrag, Buchung gesperrt). Der Bestellknopf bleibt durch den Hinweis ersetzt, bis übernommen oder neu berechnet wurde.
 - „Angebote neu berechnen" verwirft die gespeicherten Angebote des Vorgangs; Formular und Angaben bleiben.
 - Nach einer übernommenen Preisänderung trägt das Angebot die Versandbeträge der Serverantwort (`utils/acceptedOfferPrice.mjs`) — auf der Buchungsseite und in der Angebotsliste.
@@ -207,7 +209,8 @@ Alle Preisflächen der Buchung (ausgewähltes Angebot, Live- und Sticky-Leiste, 
 
 ### Absicherung gehört zu genau einem Angebot
 
-- Der Buchungsteil des Vorgangs trägt `insuranceOfferKey` (`offerKey`). Schritt, Absicherung, Versicherungswert und die beiden Warenantworten werden **nur** bei gleichem Schlüssel wiederhergestellt (`utils/insuranceRestore.mjs`); `null` passt nie, Entwürfe stellen nie eine Absicherung wieder her. Preisstand und `ceShipmentId` gehören nicht zum Schlüssel.
+- Der Buchungsteil des Vorgangs trägt `insuranceOfferKey` = `offerKey:offerRevision` (`insuranceRestoreKey`, `utils/insuranceRestore.mjs`). Schritt, Absicherung, Versicherungswert und die beiden Warenantworten werden **nur** bei gleichem Schlüssel wiederhergestellt; `null` passt nie, Entwürfe stellen nie eine Absicherung wieder her. `ceShipmentId` gehört nicht zum Schlüssel.
+- Eine neue Bindung der Lieferadresse (neuer Preisstand, `insuranceReset`) hebt die Absicherung auf: keine alte Auswahl, kein alter Preis, keine alten Antworten — und die Seite sagt es dem Kunden.
 - Jede relevante Eingabeänderung zählt die Neubepreisungssequenz hoch und bricht ab; nur die Antwort des neuesten Aufrufs darf den Preis bestätigen.
 
 ### Buchungsfehler: kein Wiederholen bei offenem Ausgang

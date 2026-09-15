@@ -50,6 +50,7 @@ export const SERVICE_DETAILS_TEXT = Object.freeze({
 /* Die Kurzbeschreibung je Code. Ein Code ohne Satz ergibt kein Profil. */
 export const SERVICE_SUMMARY_TEXT = Object.freeze({
   economy_standard: "Wirtschaftlicher Standardversand für weniger eilige Sendungen.",
+  express_urgent:   "Schneller Expressversand für eilige Sendungen.",
 });
 
 /* Die nicht zugelassenen Sendungsarten je Code. */

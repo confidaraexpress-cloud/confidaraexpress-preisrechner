@@ -218,6 +218,16 @@ Ob ein Angebot eine voraussichtliche Lieferung trägt und welche Tage, sagt auss
 - **Buchungsflächen** (`deliveryInfo`): „Voraussichtliche Lieferung" mit TT.MM.JJJJ („15.09.2026 – 16.09.2026", „ab 15.09.2026"), kein `until`.
 - **Keine Autorität:** der Lieferdatumsfilter liest nur `deliveryDateMax`/`deliveryDate`, Auszeichnungen und Sortierung lesen Preis und Laufzeittage. Nie sichtbar: „garantiert", eine Uhrzeit, Anbietername, Quelle oder `kind`.
 
+### Expressversand (TG23) — aktueller Vertrag
+
+Das zweite öffentlich freigegebene Transglobal-Produkt erscheint als „UPS · Expressversand" im **gemeinsamen** Angebots- und Buchungsfluss — ohne eigene Karte, eigene Seite oder ServiceID-Prüfung. Was es kann, sagt der Server über dieselben Felder wie oben:
+
+- **Profil:** `serviceDetails.summaryKey: "express_urgent"` → „Schneller Expressversand für eilige Sendungen." (`SERVICE_SUMMARY_TEXT` in `utils/serviceDetailsView.mjs` — die einzige TG23-Ergänzung im Produktionscode). Dazu aus den bestehenden Feldern: „1 je Sendung", „70 kg", „L × B × H ÷ 5.000", Paletten und Koffer, Sendungsverfolgung, „PDF · DIN A4 / Thermodruck".
+- **Laufzeit „1 Tag"** und „Voraussichtliche Lieferung" aus `deliveryProjection` (ein Tag, ohne Uhrzeit, keine Zusage) — nie „bis 12 Uhr", „Tagesende" oder „garantiert".
+- **Art der Lieferadresse, Abholung am selben Tag, Transportabsicherung, Preisbestandteile und Preisänderung** laufen unverändert über die Verträge oben; der Expressaufschlag steckt im Serverpreis, die Absicherung bleibt 1:1 und steuerfrei.
+- **JUMiNGO unverändert:** das JUMiNGO-Pendant heißt ebenfalls „Expressversand" und bleibt mit Anbieterdatum und „bis HH:MM Uhr" daneben sichtbar.
+- **Nie sichtbar:** Einkaufsquelle, ServiceID, QuoteID, Anbietercodes. Browserprüfung: `tests/e2e/tg23ExpressSaver.test.mjs`.
+
 ### Preisänderung
 
 Beträge und ein Bestätigungsknopf erscheinen nur, wenn die Antwort **beide** Beträge trägt. Fehlt einer, wird kein Betrag angezeigt und nur die Neuberechnung angeboten — ein Einzelbetrag wird nicht zu „neuer Preis" umgedeutet. Entschieden wird an der **Form der Antwort**, nie an einem Requestfeld.

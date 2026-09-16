@@ -24,7 +24,10 @@
    Weder in Feldnamen noch in Texten. */
 import { money } from "./formatters.js";
 import { readPriceComponents, hasResidentialSurcharge, hasSameDayCollectionSurcharge } from "./priceComponentsView.mjs";
-import { readSameDayCollectionBlock, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_TEXT } from "./sameDayCollectionView.mjs";
+import {
+  readSameDayCollectionBlock, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
+  SAME_DAY_TEXT,
+} from "./sameDayCollectionView.mjs";
 import { OFFER_ALREADY_USED_TEXT } from "./bookingErrors.mjs";
 import { offerAwaitsPriceInputs, PRICE_INPUT_DELIVERY_RESIDENTIAL } from "./offerIdentity.mjs";
 
@@ -69,9 +72,25 @@ export const RESIDENTIAL_ACTION = Object.freeze({
   USED: "used",                // Angebot verbraucht: in die Sendungsliste
   RECALCULATE: "recalculate",  // Angebot trägt nicht mehr: neu berechnen
   RETRY: "retry",              // vorübergehend: Fehlerhinweis mit „Erneut versuchen"
-  // TG22 Same-Day: die Abholung heute ist nicht mehr möglich — ein späterer Abholtag, also neu berechnen.
+  // TG22/TG23 Same-Day: die Abholung heute trägt nicht — ein späterer Abholtag, also neu berechnen. Je Art ein
+  // eigener Satz: zeitlich abgelaufen, nicht bestätigt, nicht verifizierbar (auch jede unbekannte Art).
   SAME_DAY_UNAVAILABLE: "same_day_unavailable",
+  SAME_DAY_UNCONFIRMED: "same_day_unconfirmed",
+  SAME_DAY_UNVERIFIABLE: "same_day_unverifiable",
 });
+
+// TG22/TG23 Same-Day: die Aktion je Art der Antwort und der Satz je Aktion.
+const SAME_DAY_AKTION_JE_ART = Object.freeze({
+  [SAME_DAY_UNAVAILABLE_KIND.EXPIRED]: RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE,
+  [SAME_DAY_UNAVAILABLE_KIND.UNCONFIRMED]: RESIDENTIAL_ACTION.SAME_DAY_UNCONFIRMED,
+  [SAME_DAY_UNAVAILABLE_KIND.UNVERIFIABLE]: RESIDENTIAL_ACTION.SAME_DAY_UNVERIFIABLE,
+});
+const SAME_DAY_TEXT_JE_AKTION = Object.freeze({
+  [RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE]: SAME_DAY_TEXT.bookingUnavailable,
+  [RESIDENTIAL_ACTION.SAME_DAY_UNCONFIRMED]: SAME_DAY_TEXT.bookingUnconfirmed,
+  [RESIDENTIAL_ACTION.SAME_DAY_UNVERIFIABLE]: SAME_DAY_TEXT.bookingUnverifiable,
+});
+const istSameDayAktion = (w) => typeof w === "string" && Object.prototype.hasOwnProperty.call(SAME_DAY_TEXT_JE_AKTION, w);
 
 const RELOAD_CODES = Object.freeze(["PRICE_INPUT_OPTIONS_EXPIRED", "OFFER_PRICE_CONFLICT", "PRICE_CONFIRMATION_REQUIRED"]);
 const RECALCULATE_CODES = Object.freeze([
@@ -336,7 +355,7 @@ export function residentialBookPayload(tariff) {
 export function residentialErrorAction(status, body) {
   const code = istObjekt(body) && typeof body.code === "string" ? body.code : null;
   if (code === "OFFER_ALREADY_USED") return RESIDENTIAL_ACTION.USED;
-  if (code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) return RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE;
+  if (code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) return SAME_DAY_AKTION_JE_ART[sameDayUnavailableKindOf(body)];
   if (code && RELOAD_CODES.includes(code)) return RESIDENTIAL_ACTION.RELOAD;
   if ((code && RECALCULATE_CODES.includes(code)) || status === 404) return RESIDENTIAL_ACTION.RECALCULATE;
   return RESIDENTIAL_ACTION.RETRY;
@@ -369,7 +388,7 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
   const fehler = status === RESIDENTIAL_STATUS.ERROR;
   const art = !fehler ? null
     : (errorKind === RESIDENTIAL_ACTION.USED || errorKind === RESIDENTIAL_ACTION.RECALCULATE
-       || errorKind === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE
+       || istSameDayAktion(errorKind)
       ? errorKind : RESIDENTIAL_ACTION.RETRY);
   const zeigtKarten = !!options && (status === RESIDENTIAL_STATUS.READY || bindet);
   const cards = zeigtKarten ? options.options.map((o) => Object.freeze({
@@ -387,10 +406,10 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
     errorText: art === null ? null
       : art === RESIDENTIAL_ACTION.USED ? RESIDENTIAL_TEXT.used
       : art === RESIDENTIAL_ACTION.RECALCULATE ? RESIDENTIAL_TEXT.recalculate
-      : art === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE ? SAME_DAY_TEXT.bookingUnavailable
+      : istSameDayAktion(art) ? SAME_DAY_TEXT_JE_AKTION[art]
       : RESIDENTIAL_TEXT.error,
     // TG22 Same-Day: dieselbe Handlung wie „neu berechnen" — ein späterer Abholtag entsteht nur so.
-    errorAction: art === RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE ? RESIDENTIAL_ACTION.RECALCULATE : art,
+    errorAction: istSameDayAktion(art) ? RESIDENTIAL_ACTION.RECALCULATE : art,
     cards: Object.freeze(cards),
     locked: bindet,
     bindingText: bindet ? RESIDENTIAL_TEXT.binding : null,

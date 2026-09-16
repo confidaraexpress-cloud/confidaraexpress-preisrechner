@@ -126,15 +126,23 @@ export function offerSelectable(tariff) {
 // TG22 Paket B: `date_unavailable` sendet der Server, wenn der gewählte Abholtag der EINZIGE
 // Grund ist — dann hilft ein anderer Abholtermin, und genau das sagt der Hinweis darunter.
 // Nie „nächster Werktag": welcher Tag trägt, weiß nur eine neue Berechnung.
-// TG22 Same-Day: `same_day_unavailable` sendet der Server, wenn eine Abholung HEUTE der einzige Grund ist
-// (Abholschluss erreicht oder Zuschlag nicht bestätigt) — ein späterer Abholtag hilft. Die Oberfläche
-// entscheidet das nie selbst: sie vergleicht keine Uhrzeit.
+// TG22/TG23 Same-Day: drei Gründe sendet der Server, wenn eine Abholung HEUTE der einzige Grund ist — ein
+// späterer Abholtag hilft in allen drei Fällen. „nicht mehr möglich" steht NUR beim zeitlichen Ablauf:
+//   same_day_unavailable   der wirksame Abholschluss ist erreicht
+//   same_day_unconfirmed   der Server kann die Abholung heute nicht bestätigen (kein Abholschluss)
+//   same_day_unverifiable  die Angaben für die Abholung heute sind unbrauchbar
+// Die Oberfläche entscheidet das nie selbst: sie vergleicht keine Uhrzeit und liest keinen Abholschluss.
 export const OFFER_SAME_DAY_UNAVAILABLE_TEXT = "Abholung heute nicht mehr möglich.";
+export const OFFER_SAME_DAY_UNCONFIRMED_TEXT = "Abholung heute für dieses Angebot nicht verfügbar.";
+export const OFFER_SAME_DAY_UNVERIFIABLE_TEXT = "Abholung heute kann derzeit nicht bestätigt werden.";
 export const OFFER_SAME_DAY_UNAVAILABLE_HINT = "Bitte wählen Sie einen späteren Abholtag.";
+export const OFFER_SAME_DAY_REASONS = Object.freeze(["same_day_unavailable", "same_day_unconfirmed", "same_day_unverifiable"]);
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
   date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
   same_day_unavailable: OFFER_SAME_DAY_UNAVAILABLE_TEXT,
+  same_day_unconfirmed: OFFER_SAME_DAY_UNCONFIRMED_TEXT,
+  same_day_unverifiable: OFFER_SAME_DAY_UNVERIFIABLE_TEXT,
 };
 // Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
 const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
@@ -155,7 +163,7 @@ export function offerBlockedLabel(tariff) {
 export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   if (offerSelectable(t) || t.availableForDate === false) return null;
-  if (t.unavailableReason === "same_day_unavailable") return OFFER_SAME_DAY_UNAVAILABLE_HINT;
+  if (OFFER_SAME_DAY_REASONS.includes(t.unavailableReason)) return OFFER_SAME_DAY_UNAVAILABLE_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

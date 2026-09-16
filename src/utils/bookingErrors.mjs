@@ -14,7 +14,9 @@
 // Framework-frei und damit ohne DOM mit `node --test` prüfbar.
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizeApiError } from "./apiError.mjs";
-import { SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "./sameDayCollectionView.mjs";
+import {
+  SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
+} from "./sameDayCollectionView.mjs";
 
 // TG22 Paket B — derselbe Satz bei /book und bei der Neubepreisung der Absicherung.
 export const OFFER_ALREADY_USED_TEXT = "Dieses Angebot wurde bereits verwendet. Bitte prüfen Sie Ihre Sendungen.";
@@ -96,15 +98,33 @@ export const BOOK_FEHLER = {
     message: "Bitte wählen Sie zuerst die Art der Lieferadresse.",
     retryable: false,
   },
-  // TG22 Same-Day: die Abholung heute ist nicht mehr möglich (Abholschluss erreicht). Nichts beauftragt;
-  // dieselbe Angebotskennung trägt heute nicht mehr — die Handlung ist ein späterer Abholtag, also neu
-  // berechnen. Nie „erneut versuchen": die Zeit läuft nicht zurück.
+  // TG22/TG23 Same-Day: die Abholung heute trägt nicht. Nichts beauftragt; dieselbe Angebotskennung trägt
+  // heute nicht mehr — die Handlung ist ein späterer Abholtag, also neu berechnen. Nie „erneut versuchen".
+  // Welcher Satz, sagt die Art der Antwort (`sameDayUnavailableKind`): „nicht mehr möglich" nur beim
+  // zeitlichen Ablauf; ohne oder mit unbekannter Art der zurückhaltende Satz „kann derzeit nicht bestätigt werden".
   ABHOLUNG_HEUTE_VORBEI: {
     title: SAME_DAY_TEXT.unavailable,
     message: SAME_DAY_TEXT.bookingUnavailable,
     retryable: false,
   },
+  ABHOLUNG_HEUTE_UNBESTAETIGT: {
+    title: SAME_DAY_TEXT.unconfirmed,
+    message: SAME_DAY_TEXT.bookingUnconfirmed,
+    retryable: false,
+  },
+  ABHOLUNG_HEUTE_NICHT_PRUEFBAR: {
+    title: SAME_DAY_TEXT.unverifiable,
+    message: SAME_DAY_TEXT.bookingUnverifiable,
+    retryable: false,
+  },
 };
+
+// TG22/TG23 Same-Day: die Fehlerklasse je Art der Antwort.
+const SAME_DAY_FEHLER_JE_ART = Object.freeze({
+  [SAME_DAY_UNAVAILABLE_KIND.EXPIRED]: "ABHOLUNG_HEUTE_VORBEI",
+  [SAME_DAY_UNAVAILABLE_KIND.UNCONFIRMED]: "ABHOLUNG_HEUTE_UNBESTAETIGT",
+  [SAME_DAY_UNAVAILABLE_KIND.UNVERIFIABLE]: "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
+});
 
 // ─── CE-19: die REALEN Backendcodes, nach Handlungsklasse ──────────────────────────
 // Ermittelt aus dem Code, nicht aus Auditbezeichnungen: `lib/booking/bookHandler.js`
@@ -154,12 +174,22 @@ const BOOK_CODE_FEHLER = {
   // zurück an die Auswahl. PRICE_INPUTS_NOT_SUPPORTED: das Angebot kennt die Angabe nicht (mehr).
   PRICE_INPUTS_REQUIRED:          "PREISANGABE_FEHLT",
   PRICE_INPUTS_NOT_SUPPORTED:     "NEU_BERECHNEN",
-  // TG22 Same-Day — 409, nichts beauftragt, ein späterer Abholtag ist die Handlung.
-  [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: "ABHOLUNG_HEUTE_VORBEI",
+  // TG22/TG23 Same-Day — 409, nichts beauftragt, ein späterer Abholtag ist die Handlung. Die Klasse hängt an
+  // der Art der Antwort (`fehlerKlasse`).
+  [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
 };
 
+// Die Fehlerklasse einer Antwort: über den Code — bei einer nicht verfügbaren Abholung heute über deren Art.
+function fehlerKlasse(code, body) {
+  if (code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) return SAME_DAY_FEHLER_JE_ART[sameDayUnavailableKindOf(body)];
+  return typeof code === "string" && Object.prototype.hasOwnProperty.call(BOOK_CODE_FEHLER, code)
+    ? BOOK_CODE_FEHLER[code] : null;
+}
+
 // Die Handlungsklassen „nichts beauftragt, dieselbe Angebotskennung trägt nicht mehr".
-const NEUBERECHNUNG_KLASSEN = Object.freeze(["NEU_BERECHNEN", "ABHOLUNG_HEUTE_VORBEI"]);
+const NEUBERECHNUNG_KLASSEN = Object.freeze([
+  "NEU_BERECHNEN", "ABHOLUNG_HEUTE_VORBEI", "ABHOLUNG_HEUTE_UNBESTAETIGT", "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
+]);
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
 // Angebotskennung nicht mehr trägt? Eigener Export, weil die Buchungsseite ihre
@@ -167,7 +197,7 @@ const NEUBERECHNUNG_KLASSEN = Object.freeze(["NEU_BERECHNEN", "ABHOLUNG_HEUTE_VO
 // ohne ihn ein zweites Mal aufzuschreiben.
 export function fordertNeuberechnung(body) {
   const code = body && typeof body === "object" ? body.code : null;
-  return typeof code === "string" && NEUBERECHNUNG_KLASSEN.includes(BOOK_CODE_FEHLER[code]);
+  return typeof code === "string" && NEUBERECHNUNG_KLASSEN.includes(fehlerKlasse(code, body));
 }
 
 // Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?
@@ -192,7 +222,8 @@ export function mapBookRestError(status, body) {
   // Transportklasse, ein Code ist eine fachliche Aussage über den Ausgang — und nur die
   // zweite weiß, ob eine Wiederholung eine zweite Sendung erzeugen würde.
   const code = body && typeof body === "object" ? body.code : null;
-  if (code && BOOK_CODE_FEHLER[code]) return BOOK_FEHLER[BOOK_CODE_FEHLER[code]];
+  const klasse = fehlerKlasse(code, body);
+  if (klasse) return BOOK_FEHLER[klasse];
   if (status === 404) return BOOK_FEHLER.ANGEBOT_WEG;   // abgelaufenes/fremdes Angebot — neu berechnen ist die Handlung
   if (status === 429) return BOOK_FEHLER.RATE_LIMITED;
   // TG22 Paket B: ein 5xx OHNE bekannten Code nach dem Absenden der finalen Buchung sagt nicht,

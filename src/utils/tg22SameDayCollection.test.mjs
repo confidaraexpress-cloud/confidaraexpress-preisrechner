@@ -15,11 +15,13 @@ import path from "node:path";
 import {
   sameDayOfferView, sameDaySurchargeLine, sameDayDetailValue, sameDayUntilText, sameDaySummaryNote,
   readSameDayCollectionBlock, sameDaySuccessPickupText, SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE,
-  SAME_DAY_UNAVAILABLE_REASON,
+  SAME_DAY_UNAVAILABLE_REASON, SAME_DAY_UNAVAILABLE_REASONS, SAME_DAY_UNAVAILABLE_KIND, sameDayUnavailableKindOf,
+  sameDayUnavailableView, sameDayUnavailableBookingText,
 } from "./sameDayCollectionView.mjs";
 import {
   offerSelectable, offerBookable, offerBlockedLabel, offerBlockedHint, offerAwaitsPriceInputs,
   OFFER_SAME_DAY_UNAVAILABLE_TEXT, OFFER_SAME_DAY_UNAVAILABLE_HINT, OFFER_DATE_UNAVAILABLE_HINT,
+  OFFER_SAME_DAY_UNCONFIRMED_TEXT, OFFER_SAME_DAY_UNVERIFIABLE_TEXT, OFFER_BLOCKED_FALLBACK,
 } from "./offerIdentity.mjs";
 import { PRICE_COMPONENT_LABELS, priceSummaryComponents, hasSameDayCollectionSurcharge } from "./priceComponentsView.mjs";
 import {
@@ -92,10 +94,18 @@ const TG22_HEUTE = Object.freeze({
   requiredPriceInputs: Object.freeze(["deliveryIsResidential"]), insuranceAvailable: false, insuranceDetails: null,
   pickupToday: true, pickupTodayUntil: "16:45", sameDaySurchargeNet: SD.net, sameDaySurchargeGross: SD.gross,
 });
+// Gesperrte Abholung heute: der Server nennt den Tag, aber keine „bereit ab"-Zeit (Same-Day-Grundvertrag).
 const TG22_HEUTE_VORBEI = Object.freeze({
   ...TG22_HEUTE, netPrice: B.net, vatAmount: B.vat, finalPrice: B.gross,
-  unavailableReason: "same_day_unavailable",
+  unavailableReason: "same_day_unavailable", collectionReadyFrom: null,
   pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
+});
+const TG22_HEUTE_UNBESTAETIGT = Object.freeze({ ...TG22_HEUTE_VORBEI, unavailableReason: "same_day_unconfirmed" });
+const TG22_HEUTE_UNPRUEFBAR = Object.freeze({ ...TG22_HEUTE_VORBEI, unavailableReason: "same_day_unverifiable" });
+// TG23 (Expressversand) trägt denselben Vertrag — die Oberfläche kennt keine ServiceID.
+const TG23_HEUTE_UNBESTAETIGT = Object.freeze({
+  ...TG22_HEUTE_UNBESTAETIGT, offerId: "23sd0000000000000000000000000023", publicServiceName: "Expressversand",
+  netPrice: 26.25, vatAmount: 4.99, finalPrice: 31.24,
 });
 const TG22_MORGEN = Object.freeze({
   ...TG22_HEUTE, collectionDate: "2026-09-15", collectionReadyFrom: "09:00",
@@ -238,42 +248,58 @@ test("7 — nach dem Abholschluss nicht auswählbar und nicht buchbar", () => {
   assert.match(karte, /disabled=\{unavailable\}/);
 });
 
-test("8 — neutraler Hinweis: derselbe Satz bei Optionen, Bindung, Neubepreisung und Buchung — Handlung „neu berechnen“", () => {
+test("8 — je Art derselbe Satz bei Optionen, Bindung, Neubepreisung und Buchung — Handlung „neu berechnen“", () => {
   assert.equal(OFFER_SAME_DAY_UNAVAILABLE_TEXT, "Abholung heute nicht mehr möglich.");
   assert.equal(OFFER_SAME_DAY_UNAVAILABLE_HINT, "Bitte wählen Sie einen späteren Abholtag.");
   assert.equal(SAME_DAY_TEXT.bookingUnavailable, "Abholung heute nicht mehr möglich. Bitte wählen Sie einen späteren Abholtag.");
+  assert.equal(SAME_DAY_TEXT.bookingUnconfirmed,
+    "Abholung heute für dieses Angebot nicht verfügbar. Bitte wählen Sie einen späteren Abholtag.");
+  assert.equal(SAME_DAY_TEXT.bookingUnverifiable,
+    "Abholung heute kann derzeit nicht bestätigt werden. Bitte wählen Sie einen späteren Abholtag.");
   for (const t of [OFFER_SAME_DAY_UNAVAILABLE_TEXT, OFFER_SAME_DAY_UNAVAILABLE_HINT, ...Object.values(SAME_DAY_TEXT),
                    sameDayOfferView(TG22_HEUTE).untilText]) {
     assert.doesNotMatch(t, VERBOTEN);
   }
   assert.equal(SAME_DAY_COLLECTION_UNAVAILABLE_CODE, "SAME_DAY_COLLECTION_UNAVAILABLE");
 
-  // Optionen und Bindung: Fehlerfläche mit dem Satz und dem Weg zur Neuberechnung — keine Karte, kein „erneut".
-  assert.equal(residentialErrorAction(409, { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE }), RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE);
-  const modul = residentialModuleView({ status: RESIDENTIAL_STATUS.ERROR, errorKind: RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE });
-  assert.equal(modul.errorText, SAME_DAY_TEXT.bookingUnavailable);
-  assert.equal(modul.errorAction, RESIDENTIAL_ACTION.RECALCULATE);
-  assert.deepEqual(modul.cards, []);
-
-  // Buchung: kein Wiederholen, dieselbe Handlung wie „nichts beauftragt, neu berechnen".
-  assert.equal(fordertNeuberechnung({ code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE }), true);
-  const f = mapBookRestError(409, { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, error: "Rohtext des Servers" });
-  assert.equal(f, BOOK_FEHLER.ABHOLUNG_HEUTE_VORBEI);
-  assert.equal(f.message, SAME_DAY_TEXT.bookingUnavailable);
-  assert.equal(f.retryable, false);
-  assert.doesNotMatch(`${f.title} ${f.message}`, /Rohtext|erneut versuchen/i);
-
-  // Neubepreisung der Absicherung: derselbe Satz.
-  assert.equal(coverRepriceErrorText(409, { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE }), SAME_DAY_TEXT.bookingUnavailable);
+  const JE_ART = [
+    ["expired", RESIDENTIAL_ACTION.SAME_DAY_UNAVAILABLE, BOOK_FEHLER.ABHOLUNG_HEUTE_VORBEI, SAME_DAY_TEXT.bookingUnavailable],
+    ["unconfirmed", RESIDENTIAL_ACTION.SAME_DAY_UNCONFIRMED, BOOK_FEHLER.ABHOLUNG_HEUTE_UNBESTAETIGT,
+     SAME_DAY_TEXT.bookingUnconfirmed],
+    ["unverifiable", RESIDENTIAL_ACTION.SAME_DAY_UNVERIFIABLE, BOOK_FEHLER.ABHOLUNG_HEUTE_NICHT_PRUEFBAR,
+     SAME_DAY_TEXT.bookingUnverifiable],
+  ];
+  for (const [art, aktion, fehler, text] of JE_ART) {
+    const body = { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableKind: art, error: "Rohtext des Servers" };
+    // Optionen und Bindung: Fehlerfläche mit dem Satz der Art und dem Weg zur Neuberechnung — keine Karte, kein „erneut".
+    assert.equal(residentialErrorAction(409, body), aktion, art);
+    const modul = residentialModuleView({ status: RESIDENTIAL_STATUS.ERROR, errorKind: aktion });
+    assert.equal(modul.errorText, text, art);
+    assert.equal(modul.errorAction, RESIDENTIAL_ACTION.RECALCULATE, art);
+    assert.deepEqual(modul.cards, [], art);
+    // Buchung: kein Wiederholen, dieselbe Handlung wie „nichts beauftragt, neu berechnen".
+    assert.equal(fordertNeuberechnung(body), true, art);
+    const f = mapBookRestError(409, body);
+    assert.equal(f, fehler, art);
+    assert.equal(f.message, text, art);
+    assert.equal(f.retryable, false, art);
+    assert.doesNotMatch(`${f.title} ${f.message}`, /Rohtext|erneut versuchen/i, art);
+    // Neubepreisung der Absicherung: derselbe Satz.
+    assert.equal(coverRepriceErrorText(409, body), text, art);
+    assert.equal(sameDayUnavailableBookingText(body), text, art);
+  }
+  // „nicht mehr möglich" steht nur beim zeitlichen Ablauf.
+  assert.doesNotMatch(SAME_DAY_TEXT.bookingUnconfirmed + SAME_DAY_TEXT.bookingUnverifiable, /nicht mehr/);
 
   // Seite: Neubepreisung und Übernahme ersetzen den Bestellknopf durch den Hinweis mit Neuberechnung.
   const seite = code(SEITE);
-  assert.match(seite, /import \{ SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE \} from "\.\.\/utils\/sameDayCollectionView\.mjs";/);
+  assert.match(seite, /import \{ sameDayUnavailableBookingText, SAME_DAY_COLLECTION_UNAVAILABLE_CODE \} from "\.\.\/utils\/sameDayCollectionView\.mjs";/);
   const lauf = abschnitt(seite, "const runReprice = async", "useEffect(() => {\n    repriceSeq.current++;");
-  assert.match(lauf, /if \(d\?\.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE\) \{\s*setRepriceError\(SAME_DAY_TEXT\.bookingUnavailable\);\s*setRecalcNotice\(SAME_DAY_TEXT\.bookingUnavailable\);\s*setRepriceLoading\(false\);\s*return;\s*\}/);
+  assert.match(lauf, /if \(d\?\.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE\) \{\s*setRepriceError\(sameDayUnavailableBookingText\(d\)\);\s*setRecalcNotice\(sameDayUnavailableBookingText\(d\)\);\s*setRepriceLoading\(false\);\s*return;\s*\}/);
   const annahme = abschnitt(seite, "const acceptInsuredPriceChange = async", "const continueWithNewPrice");
-  assert.match(annahme, /if \(d\?\.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE\) \{\s*setPriceChange\(null\);\s*setRecalcNotice\(SAME_DAY_TEXT\.bookingUnavailable\);\s*return;\s*\}/);
+  assert.match(annahme, /if \(d\?\.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE\) \{\s*setPriceChange\(null\);\s*setRecalcNotice\(sameDayUnavailableBookingText\(d\)\);\s*return;\s*\}/);
   assert.doesNotMatch(lauf + annahme, /doBook\(|\/api\/jumingo\/book/, "der Hinweis bucht");
+  assert.doesNotMatch(seite, /SAME_DAY_TEXT\.bookingUnavailable/, "die Seite setzt den Satz des zeitlichen Ablaufs pauschal");
 });
 
 test("9 — Zusammenfassungen: vorläufig aus dem Angebot, bestätigt aus dem Serverbestandteil, nie nach einer Preisänderung", () => {
@@ -496,7 +522,9 @@ test("19 — JUMiNGO unverändert: „Abholung heute“ ohne Zuschlagszeile, ohn
   assert.equal(pickupTimeText(pickupContractOf(JUMINGO_HEUTE)), "13:00–17:00 Uhr");
   assert.match(code(KARTE), /title = t\.pickupToday \? "Abholung heute" : "Abholung";/);
   for (const c of ["OFFER_NOT_BOOKABLE", "BOOKING_FAILED", "PRICE_UNCONFIRMED", "BOOKING_PENDING"]) {
-    assert.notEqual(mapBookRestError(409, { code: c }), BOOK_FEHLER.ABHOLUNG_HEUTE_VORBEI, c);
+    for (const k of ["ABHOLUNG_HEUTE_VORBEI", "ABHOLUNG_HEUTE_UNBESTAETIGT", "ABHOLUNG_HEUTE_NICHT_PRUEFBAR"]) {
+      assert.notEqual(mapBookRestError(409, { code: c, sameDayUnavailableKind: "expired" }), BOOK_FEHLER[k], `${c} ${k}`);
+    }
   }
   assert.equal(residentialErrorAction(409, { code: "OFFER_NOT_BOOKABLE" }), RESIDENTIAL_ACTION.RECALCULATE);
 });
@@ -507,5 +535,94 @@ test("20 — kein Anbieter, kein Anbietercode, kein Rohfeld in den Same-Day-Flä
     assert.doesNotMatch(code(datei), VERBOTEN, datei);
   }
   for (const t of Object.values(SAME_DAY_TEXT)) assert.doesNotMatch(t, /UPS Standard|Single/i);
-  assert.doesNotMatch(`${BOOK_FEHLER.ABHOLUNG_HEUTE_VORBEI.title} ${BOOK_FEHLER.ABHOLUNG_HEUTE_VORBEI.message}`, VERBOTEN);
+  for (const k of ["ABHOLUNG_HEUTE_VORBEI", "ABHOLUNG_HEUTE_UNBESTAETIGT", "ABHOLUNG_HEUTE_NICHT_PRUEFBAR"]) {
+    assert.doesNotMatch(`${BOOK_FEHLER[k].title} ${BOOK_FEHLER[k].message}`, VERBOTEN, k);
+  }
+});
+
+/* ══════════ Grundvertrag — abgelaufen · nicht bestätigt · nicht verifizierbar ══════════ */
+
+test("G1 — Karte: drei Gründe, drei Sätze, derselbe Hinweis; ein unbekannter Grund bleibt neutral", () => {
+  assert.deepEqual([...SAME_DAY_UNAVAILABLE_REASONS], ["same_day_unavailable", "same_day_unconfirmed", "same_day_unverifiable"]);
+  for (const [t, satz] of [[TG22_HEUTE_VORBEI, "Abholung heute nicht mehr möglich."],
+                           [TG22_HEUTE_UNBESTAETIGT, "Abholung heute für dieses Angebot nicht verfügbar."],
+                           [TG22_HEUTE_UNPRUEFBAR, "Abholung heute kann derzeit nicht bestätigt werden."]]) {
+    assert.equal(offerBlockedLabel(t), satz, t.unavailableReason);
+    assert.equal(offerBlockedHint(t), "Bitte wählen Sie einen späteren Abholtag.", t.unavailableReason);
+    assert.equal(offerSelectable(t), false, t.unavailableReason);
+    assert.equal(offerBookable(t), false, t.unavailableReason);
+    assert.equal(sameDayOfferView(t), null, t.unavailableReason);
+    assert.doesNotMatch(`${offerBlockedLabel(t)} ${offerBlockedHint(t)}`, VERBOTEN);
+  }
+  assert.equal(OFFER_SAME_DAY_UNCONFIRMED_TEXT, "Abholung heute für dieses Angebot nicht verfügbar.");
+  assert.equal(OFFER_SAME_DAY_UNVERIFIABLE_TEXT, "Abholung heute kann derzeit nicht bestätigt werden.");
+  // Unbekannter Grund: der neutrale Satz, kein Hinweis, kein Rohwert.
+  for (const grund of ["same_day_timeout", "same_day_cutoff_missing", "unconfirmed", "toString", ""]) {
+    const t = { ...TG22_HEUTE_VORBEI, unavailableReason: grund };
+    assert.equal(offerBlockedLabel(t), OFFER_BLOCKED_FALLBACK, grund);
+    assert.equal(offerBlockedHint(t), null, grund);
+  }
+  assert.equal(OFFER_BLOCKED_FALLBACK, "Derzeit nicht buchbar");
+});
+
+test("G2 — Ablehnung: fehlende oder unbekannte Art ist „nicht verifizierbar“ — nie „nicht mehr möglich“", () => {
+  assert.deepEqual({ ...SAME_DAY_UNAVAILABLE_KIND }, { EXPIRED: "expired", UNCONFIRMED: "unconfirmed", UNVERIFIABLE: "unverifiable" });
+  for (const body of [{ code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE },
+                      { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableKind: "timeout" },
+                      { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableKind: "EXPIRED" },
+                      { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableKind: "toString" },
+                      { code: SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableKind: null }, null, "expired"]) {
+    const name = JSON.stringify(body);
+    assert.equal(sameDayUnavailableKindOf(body), "unverifiable", name);
+    assert.deepEqual({ ...sameDayUnavailableView(body) },
+      { title: SAME_DAY_TEXT.unverifiable, message: SAME_DAY_TEXT.bookingUnverifiable }, name);
+    if (body && typeof body === "object") {
+      assert.equal(mapBookRestError(409, body), BOOK_FEHLER.ABHOLUNG_HEUTE_NICHT_PRUEFBAR, name);
+      assert.equal(fordertNeuberechnung(body), true, name);
+      assert.equal(coverRepriceErrorText(409, body), SAME_DAY_TEXT.bookingUnverifiable, name);
+      assert.equal(residentialErrorAction(409, body), RESIDENTIAL_ACTION.SAME_DAY_UNVERIFIABLE, name);
+    }
+  }
+  // Ein unbekannter Code bleibt ein unbekannter Code — die Art macht keinen Same-Day-Fall daraus.
+  assert.equal(residentialErrorAction(409, { code: "SOMETHING_ELSE", sameDayUnavailableKind: "expired" }), RESIDENTIAL_ACTION.RETRY);
+  assert.equal(fordertNeuberechnung({ code: "toString" }), false);
+  // Ein unbekannter Fehlerzustand des Moduls bleibt „erneut versuchen" — nie ein Same-Day-Satz.
+  assert.equal(residentialModuleView({ status: RESIDENTIAL_STATUS.ERROR, errorKind: "same_day_other" }).errorAction,
+    RESIDENTIAL_ACTION.RETRY);
+});
+
+test("G3 — gesperrte Abholung heute: keine „bereit ab“-Zeile, der Tag bleibt; verfügbar dynamisch; später 09:00", () => {
+  for (const t of [TG22_HEUTE_VORBEI, TG22_HEUTE_UNBESTAETIGT, TG22_HEUTE_UNPRUEFBAR, TG23_HEUTE_UNBESTAETIGT]) {
+    const vertrag = pickupContractOf(t);
+    assert.equal(vertrag.day, HEUTE, t.unavailableReason);
+    assert.equal(vertrag.readyFrom, null, t.unavailableReason);
+    assert.equal(pickupTimeText(vertrag), null, `${t.unavailableReason}: „bereit ab" für eine gesperrte Abholung heute`);
+  }
+  // Verfügbar: die dynamische Zeit des Servers (11:37 → 11:45), später Abholtag: die Vorgabezeit.
+  assert.equal(pickupTimeText(pickupContractOf({ ...TG22_HEUTE, collectionReadyFrom: "11:45" })), "bereit ab 11:45 Uhr");
+  assert.equal(pickupTimeText(pickupContractOf(TG22_MORGEN)), "bereit ab 09:00 Uhr");
+  // Die Karte liest die Abholzeit ausschließlich über den gemeinsamen Helfer — keine eigene Ersatzzeit.
+  const karte = code(KARTE);
+  assert.doesNotMatch(karte, /collectionReadyFrom|"09:00"/, "die Karte ergänzt eine Abholzeit");
+  assert.doesNotMatch(code("pickupContractView.mjs"), /"09:00"/, "der Helfer ergänzt eine Vorgabezeit");
+});
+
+test("G4 — TG22 und TG23: derselbe generische Weg — keine ServiceID in den Same-Day-Modulen", () => {
+  assert.equal(offerBlockedLabel(TG23_HEUTE_UNBESTAETIGT), offerBlockedLabel(TG22_HEUTE_UNBESTAETIGT));
+  assert.equal(offerBlockedHint(TG23_HEUTE_UNBESTAETIGT), offerBlockedHint(TG22_HEUTE_UNBESTAETIGT));
+  assert.equal(pickupTimeText(pickupContractOf(TG23_HEUTE_UNBESTAETIGT)), null);
+  for (const datei of ["sameDayCollectionView.mjs", "offerIdentity.mjs", "bookingErrors.mjs", "coverInsuranceView.mjs",
+                       "residentialPriceInputs.mjs", "pickupContractView.mjs"]) {
+    const q = ohneTexte(code(datei));
+    assert.doesNotMatch(q, /serviceId|providerServiceRef|\b2[23]\b/, `${datei} kennt eine ServiceID`);
+  }
+});
+
+test("G5 — JUMiNGO unberührt: keine Same-Day-Gründe, Abholfenster und Knopf wie bisher", () => {
+  assert.equal(offerBlockedLabel(JUMINGO_HEUTE), null);
+  assert.equal(offerBlockedHint(JUMINGO_HEUTE), null);
+  assert.equal(pickupTimeText(pickupContractOf(JUMINGO_HEUTE)), "13:00–17:00 Uhr");
+  const jumingoGesperrt = { ...JUMINGO_HEUTE, bookable: false, unavailableReason: "quote_only" };
+  assert.equal(offerBlockedLabel(jumingoGesperrt), "Derzeit nicht direkt buchbar");
+  assert.equal(offerBlockedHint(jumingoGesperrt), null);
 });

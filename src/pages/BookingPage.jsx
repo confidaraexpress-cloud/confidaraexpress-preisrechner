@@ -15,7 +15,7 @@ import {
 } from "../utils/labelFormatOptions.mjs";
 import { restoredInsuranceState, insuranceRestoreKey } from "../utils/insuranceRestore.mjs";
 import { sameOffer } from "../utils/offerIdentity.mjs";
-import { SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "../utils/sameDayCollectionView.mjs";
+import { sameDayUnavailableBookingText, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "../utils/sameDayCollectionView.mjs";
 import { tariffWithAcceptedShippingPrice, replaceOffer } from "../utils/acceptedOfferPrice.mjs";
 import { sanitizeReferenceInput } from "../utils/referenceNumber.mjs";
 import {
@@ -773,11 +773,12 @@ export default function BookingPage() {
           setRepriceLoading(false);
           return;
         }
-        // TG22 Same-Day: die Abholung heute ist nicht mehr möglich. Nichts bepreist, nichts beauftragt — die
-        // Fläche ersetzt den Bestellknopf, und der Weg führt zu einem späteren Abholtag (neu berechnen).
+        // TG22/TG23 Same-Day: die Abholung heute trägt nicht. Nichts bepreist, nichts beauftragt — die Fläche
+        // ersetzt den Bestellknopf, und der Weg führt zu einem späteren Abholtag (neu berechnen). Den Satz
+        // bestimmt die Art der Antwort.
         if (d?.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) {
-          setRepriceError(SAME_DAY_TEXT.bookingUnavailable);
-          setRecalcNotice(SAME_DAY_TEXT.bookingUnavailable);
+          setRepriceError(sameDayUnavailableBookingText(d));
+          setRecalcNotice(sameDayUnavailableBookingText(d));
           setRepriceLoading(false);
           return;
         }
@@ -1604,10 +1605,10 @@ export default function BookingPage() {
         setConflict(OFFER_ALREADY_USED_TEXT);
         return;
       }
-      // TG22 Same-Day: eine Übernahme ändert nichts daran, dass die Abholung heute nicht mehr möglich ist.
+      // TG22/TG23 Same-Day: eine Übernahme ändert nichts daran, dass die Abholung heute nicht trägt.
       if (d?.code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) {
         setPriceChange(null);
-        setRecalcNotice(SAME_DAY_TEXT.bookingUnavailable);
+        setRecalcNotice(sameDayUnavailableBookingText(d));
         return;
       }
       // TG22 Residential: für ein Angebot mit Art der Lieferadresse lehnt der Server die Übernahme ab und

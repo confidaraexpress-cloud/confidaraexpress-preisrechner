@@ -11,7 +11,7 @@
 // 390 px, kein horizontaler Überlauf) stehen in tests/e2e/tg22ProductDetails.test.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
@@ -98,7 +98,8 @@ test("1 — die Beschreibung entsteht aus dem Code des Servers", () => {
   const v = serviceDetailsView(TG22);
   assert.ok(v, "das Profil wurde nicht gebildet");
   assert.equal(v.main.summary, "Wirtschaftlicher Standardversand für weniger eilige Sendungen.");
-  assert.deepEqual(Object.keys(SERVICE_SUMMARY_TEXT), ["economy_standard"]);
+  // TG23 ergänzt genau einen Code: „express_urgent“ (Expressversand).
+  assert.deepEqual(Object.keys(SERVICE_SUMMARY_TEXT), ["economy_standard", "express_urgent"]);
   assert.equal(serviceDetailsView(mit({ serviceDetails: details({ summaryKey: "premium_express" }) })), null);
   assert.equal(serviceDetailsView(mit({ serviceDetails: details({ summaryKey: "constructor" }) })), null);
 });
@@ -366,4 +367,78 @@ test("Umbruchschutz — lange Werte brechen um; auf schmalen Karten steht die Be
   assert.match(mobil, /\.offer-profile-features\s*\{[^}]*grid-template-columns:\s*1fr;/);
   assert.ok(!/#[0-9a-f]{3,8}\b/i.test([".offer-profile-summary", ".offer-profile-feature-label", ".offer-profile-note"]
     .map(regel).join("")), "Farbliteral im Profil");
+});
+
+/* ══════════ TG23 — EXPRESSVERSAND IM SELBEN PROFIL ══════════ */
+
+// Das öffentliche TG23-Angebot (UPS · Expressversand), wie calculate-price es liefert: dieselbe Vertragsform wie oben,
+// ein eigener Kurzbeschreibungscode, Laufzeit „1“ und die Prognose des Servers (Fixturewerte, nie gerechnet).
+const TG23 = Object.freeze({
+  ...TG22,
+  offerId: "expr0000000000000000000000000001", publicServiceName: "Expressversand",
+  transitDaysMin: 1, transitDaysMax: 1, deliveryTime: "1 Tag",
+  deliveryProjection: { kind: "estimated", dateMin: "2026-09-17", dateMax: "2026-09-17" },
+  netPrice: 26.25, vatAmount: 4.99, finalPrice: 31.24,
+  serviceDetails: {
+    summaryKey: "express_urgent", volumetricDivisor: 5000, notAccepted: ["pallets", "suitcases"],
+    basicCoverMaxGoodsValue: 50, maxCoverValue: 2500,
+  },
+});
+
+test("TG23 — „express_urgent“ ergibt „Schneller Expressversand für eilige Sendungen.“ in denselben fünf Abschnitten", () => {
+  assert.equal(SERVICE_SUMMARY_TEXT.express_urgent, "Schneller Expressversand für eilige Sendungen.");
+  const v = serviceDetailsView(TG23);
+  assert.ok(v, "das Profil wurde nicht gebildet");
+  assert.equal(v.main.summary, "Schneller Expressversand für eilige Sendungen.");
+  assert.deepEqual(v.main.features.map((f) => [f.label, f.value]), [
+    ["Abholung an Ihrer Adresse", null], ["Sendungsverfolgung inklusive", null],
+    ["Versandlabel zum Ausdrucken", "PDF · DIN A4 / Thermodruck"],
+  ]);
+  assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", "Do., 17.09."]]);
+  assert.equal(v.transit.projectionNote,
+    "Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben.");
+  assert.deepEqual(v.size.rows.map((z) => [z.label, z.value]),
+    [["Packstücke", "1 je Sendung"], ["Max. Gewicht", "70 kg"], ["Abrechnungsgewicht", "2,00 kg"]]);
+  assert.equal(v.size.formula, "Volumengewicht: L × B × H ÷ 5.000");
+  assert.equal(nbsp(zeile(v.cover, "basicCover").value), "bis 50 € Warenwert");
+  assert.equal(nbsp(zeile(v.cover, "additionalCover").value), "bis 2.500 € Warenwert");
+  assert.deepEqual(v.restrictions.rows, [{ id: "notAccepted", label: "Nicht zugelassen", value: "Paletten, Koffer" }]);
+});
+
+test("TG23 — keine Uhrzeit, keine Garantie, kein Anbieter; ein fremder Code bleibt fail closed", () => {
+  const text = alleTexte(serviceDetailsView(TG23));
+  for (const verboten of [/garant/i, /\d{1,2}:\d{2}/, /\bUhr\b/, /Tagesende/i, /bis 12|bis 18/i,
+                          /samstag|access\s*point|gurtmaß/i, /transglobal|jumingo/i,
+                          /Service\s*23|ServiceID|QuoteID|UPS Express Saver/i]) {
+    assert.ok(!verboten.test(text), `${verboten} im Profil`);
+  }
+  for (const kaputt of ["express", "Express_Urgent", "express_urgent ", "urgent_express", "premium_express"]) {
+    assert.equal(serviceDetailsView({ ...TG23, serviceDetails: { ...TG23.serviceDetails, summaryKey: kaputt } }), null,
+      JSON.stringify(kaputt));
+  }
+  // Ohne Profil bleibt der bisherige Detailbereich — kein Ersatztext.
+  assert.equal(serviceDetailsView({ ...TG23, serviceDetails: null }), null);
+});
+
+test("TG23 — kein UI-Code verzweigt an einer ServiceID; den neuen Code kennt nur das Profilmodul", () => {
+  const WURZEL = path.join(HIER, "..");
+  const dateien = [];
+  const lauf = (rel) => {
+    for (const e of readdirSync(path.join(WURZEL, rel), { withFileTypes: true })) {
+      const p = path.join(rel, e.name);
+      if (e.isDirectory()) { lauf(p); continue; }
+      if (/\.(jsx|js|mjs)$/.test(e.name) && !/\.test\.mjs$/.test(e.name)) dateien.push(p);
+    }
+  };
+  lauf(".");
+  assert.ok(dateien.length > 50, `zu wenige Dateien: ${dateien.length}`);
+  const ID = "(?:providerServiceRef|provider_service_id|serviceId|serviceID|ServiceID)";
+  const weiche = new RegExp(`\\b${ID}\\b\\s*(?:===?|!==?)\\s*["'\`]?\\d+\\b|["'\`]?\\b\\d+\\b["'\`]?\\s*(?:===?|!==?)\\s*[\\w.]*\\b${ID}\\b`);
+  for (const datei of dateien) {
+    const quelle = code(path.relative(HIER, path.join(WURZEL, datei)));
+    assert.ok(!weiche.test(quelle), `${datei} verzweigt an einer ServiceID`);
+    assert.ok(!quelle.includes("express_urgent") || path.basename(datei) === "serviceDetailsView.mjs",
+      `${datei} kennt den Code „express_urgent“`);
+  }
 });

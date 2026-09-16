@@ -16,7 +16,11 @@
 
    ─── ES WIRD NICHTS GERECHNET ─────────────────────────────────────────────────
    Das Abrechnungsgewicht kommt vom Server. Der Divisor steht nur in der Erklärung („L × B × H ÷ 5.000“) —
-   aus ihm entsteht keine Zahl. Aus der Laufzeit wird kein Datum, aus einer Grenze kein Preis. */
+   aus ihm entsteht keine Zahl. Aus der Laufzeit wird kein Datum, aus einer Grenze kein Preis.
+
+   ─── EIN NICHT BELEGTER DIVISOR ───────────────────────────────────────────────
+   `volumetricDivisor: null` heißt „für diesen Service nicht belegt“ (UPS-Familie). Das Profil gilt dann
+   trotzdem; es entfällt nur die Volumengewichtserklärung — keine Formel, kein Hinweis, kein Ersatzwert. */
 import { fmtDelivery, money } from "./formatters.js";
 import { handoverMode, HANDOVER_PICKUP } from "./handoverMode.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "./offerMetadataView.mjs";
@@ -77,7 +81,9 @@ const grenzeEuro = (v) => new Intl.NumberFormat("de-DE", {
 function leseProfil(roh) {
   if (!istObjekt(roh)) return null;
   if (!hat(SERVICE_SUMMARY_TEXT, roh.summaryKey)) return null;
-  if (!Number.isSafeInteger(roh.volumetricDivisor) || roh.volumetricDivisor <= 0) return null;
+  // Eine positive ganze Zahl — oder ausdrücklich `null` („nicht belegt“). Ein fehlender Schlüssel ist keine Aussage.
+  const divisorNichtBelegt = roh.volumetricDivisor === null;
+  if (!divisorNichtBelegt && (!Number.isSafeInteger(roh.volumetricDivisor) || roh.volumetricDivisor <= 0)) return null;
   const liste = roh.notAccepted;
   if (!Array.isArray(liste) || liste.length === 0) return null;
   if (liste.some((code) => !hat(SERVICE_NOT_ACCEPTED_TEXT, code))) return null;
@@ -109,7 +115,7 @@ function grenzeVon(tariffLimits, operant) {
  * @returns {null | {
  *   main:         { summary: string, features: {id, icon, label, value: string|null}[] },
  *   transit:      { rows: {id, label, value}[], note: string } | null,
- *   size:         { rows: {id, label, value}[], note: string|null, formula: string },
+ *   size:         { rows: {id, label, value}[], note: string|null, formula: string|null } | null,
  *   cover:        { rows: {id, label, value}[], note: string|null } | null,
  *   restrictions: { rows: {id, label, value}[] },
  * }}
@@ -166,11 +172,13 @@ export function serviceDetailsView(tariff) {
   if (abrechnung !== null) {
     sizeRows.push({ id: "chargeableWeight", label: SERVICE_DETAILS_TEXT.chargeableWeightLabel, value: abrechnung });
   }
-  const size = {
+  // Die Volumengewichtserklärung nur mit belegtem Divisor; ohne Zeilen und ohne Erklärung kein Abschnitt.
+  const mitDivisor = profil.volumetricDivisor !== null;
+  const size = sizeRows.length > 0 || mitDivisor ? {
     rows: sizeRows,
-    note: SERVICE_DETAILS_TEXT.chargeableWeightNote,
-    formula: `${SERVICE_DETAILS_TEXT.volumetricLabel}: L × B × H ÷ ${ZAHL.format(profil.volumetricDivisor)}`,
-  };
+    note: mitDivisor ? SERVICE_DETAILS_TEXT.chargeableWeightNote : null,
+    formula: mitDivisor ? `${SERVICE_DETAILS_TEXT.volumetricLabel}: L × B × H ÷ ${ZAHL.format(profil.volumetricDivisor)}` : null,
+  } : null;
 
   // ── 4. Transportabsicherung ───────────────────────────────────────────────────
   // Die Grenzen aus dem Profil; die Selbstbeteiligung ausschließlich aus der Absicherungsangabe des Angebots,

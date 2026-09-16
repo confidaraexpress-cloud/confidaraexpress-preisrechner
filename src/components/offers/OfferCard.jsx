@@ -557,11 +557,13 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
     ? "offer-cta-btn--disabled"
     : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
 
+  // Kein `aria-disabled` an der Karte: der Zustand vererbt sich auf jedes bedienbare Kind, und „Details anzeigen"
+  // einer Preisauskunft hieße für Screenreader gesperrt, obwohl Profil, Laufzeit und Preis dort lesbar sind. Gesperrt
+  // ist allein der CTA (`disabled`, Grund im `aria-label`).
   return (
     <div
       className={`offer-card${selected ? " offer-card--selected" : ""}${unavailable ? " offer-card--unavailable" : ""}${offerDebugCardClass(t)}`}
       onClick={handleSelect}
-      aria-disabled={unavailable || undefined}
     >
       <div className="offer-card-inner">
         {/* Vergleichsmodus: die Faerbung ist die einzige SICHTBARE Aussage — die Karte

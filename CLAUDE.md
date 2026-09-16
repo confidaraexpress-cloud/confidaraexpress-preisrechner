@@ -204,9 +204,10 @@ Ob ein Angebot **heute** abgeholt werden kann, bis wann und mit welchem Zuschlag
 
 Welche Produktangaben ein Angebot trägt, sagt ausschließlich der Server: `serviceDetails` (`summaryKey`, `volumetricDivisor`, `notAccepted`, `basicCoverMaxGoodsValue`, `maxCoverValue` — Codes und Zahlen) neben `tariffLimits`, `trackingAvailable`, `printerRequired`, `chargeableWeight`, Labelangaben und Laufzeit. `utils/serviceDetailsView.mjs` bildet daraus die Sätze, `components/offers/ServiceProfileDetails.jsx` zeigt sie.
 
-- **Nur mit gültigem Profil:** ein unbekannter Code, ein Divisor, der keine positive ganze Zahl ist, oder unvollständige Absicherungsgrenzen ergeben `null` — dann bleibt der bisherige Detailbereich (Merkmalsraster, Einschränkungen, Versicherung) unverändert. Keine ServiceID-, Carrier- oder Providerprüfung im JSX.
+- **Nur mit gültigem Profil:** ein unbekannter Code, ein Divisor, der weder `null` noch eine positive ganze Zahl ist, oder unvollständige Absicherungsgrenzen ergeben `null` — dann bleibt der bisherige Detailbereich (Merkmalsraster, Einschränkungen, Versicherung) unverändert. Keine ServiceID-, Carrier- oder Providerprüfung im JSX.
+- **Nicht belegter Divisor** (`volumetricDivisor: null`): das Profil entsteht, aber „Größe & Gewicht" zeigt weder die Formel noch den Abrechnungshinweis; ohne Zeilen entfällt der Abschnitt (`size: null`).
 - **Fünf Abschnitte statt Hauptmerkmale/Einschränkungen/Versicherung:** „Hauptmerkmale", „Laufzeit" (genau einmal), „Größe & Gewicht", „Transportabsicherung", „Einschränkungen". „Termin & Abholung", „Preisaufschlüsselung", Links und Zusatzhinweise bleiben für jedes Angebot.
-- **Nichts wird gerechnet:** der Divisor steht nur in „Volumengewicht: L × B × H ÷ 5.000"; das Abrechnungsgewicht ist der Serverwert; aus der Laufzeit rechnet die Oberfläche kein Datum (die voraussichtliche Lieferung kommt fertig vom Server, siehe unten).
+- **Nichts wird gerechnet:** der Divisor steht nur in „Volumengewicht: L × B × H ÷ 5.000" (nur mit belegtem Divisor); das Abrechnungsgewicht ist der Serverwert; aus der Laufzeit rechnet die Oberfläche kein Datum (die voraussichtliche Lieferung kommt fertig vom Server, siehe unten).
 - **Nie im Profil:** Access Point, Samstagszustellung, Länge oder Gurtmaß, Zustelluhrzeit, ein Zustelldatum außer der Prognose des Servers, „garantiert", statische Zuschläge, Anbietername, externe Links.
 - **Selbstbeteiligung** nur aus `insuranceDetails` und nur, wenn die zusätzliche Absicherung wählbar ist; eine Absicherung in Stufen beschreibt das Profil nicht (dann bisheriger Bereich).
 - **Responsive:** `.offer-profile-*` mit Umbruchschutz; bis 767 px Merkmale einspaltig, bis 480 px Beschriftung über dem Wert.
@@ -231,6 +232,18 @@ Das zweite öffentlich freigegebene Transglobal-Produkt erscheint als „UPS · 
 - **Art der Lieferadresse, Abholung am selben Tag, Transportabsicherung, Preisbestandteile und Preisänderung** laufen unverändert über die Verträge oben; der Expressaufschlag steckt im Serverpreis, die Absicherung bleibt 1:1 und steuerfrei.
 - **JUMiNGO unverändert:** das JUMiNGO-Pendant heißt ebenfalls „Expressversand" und bleibt mit Anbieterdatum und „bis HH:MM Uhr" daneben sichtbar.
 - **Nie sichtbar:** Einkaufsquelle, ServiceID, QuoteID, Anbietercodes. Browserprüfung: `tests/e2e/tg23ExpressSaver.test.mjs`.
+
+### UPS-Familie (TG29 UPS · Express, TG26 UPS · Standardversand Mehrpaket) — aktueller Vertrag
+
+Beide Produkte laufen durch denselben Angebots-, Buchungs- und Sendungsfluss wie 22 und 23. Der Name kommt vom Server; kein Produktionsmodul buchstabiert „Express", „Mehrpaket" oder eine ServiceID nach (`utils/upsFamilyFrontend.test.mjs`).
+
+- **UPS · Express bis zur Freigabe:** `quote_only` — Preis sichtbar, Knopf „Derzeit nicht direkt buchbar", keine Adressfrage, keine Abholung heute, keine Absicherung, keine Auszeichnung. Das Profil (`express_urgent`) steht mit nicht belegtem Divisor und ohne Gewichtsgrenze da; „Voraussichtliche Lieferung" als ein Tag, nie eine Uhrzeit oder Zusage. Nach der Freigabe trägt der Server dieselben Felder wie bei 23 — die Oberfläche ändert sich nicht.
+- **UPS · Standardversand Mehrpaket:** Preisauskunft ohne Profil und ohne Prognose — der bisherige Detailbereich, keine erfundene Grenze.
+- **Preisauskunft bleibt lesbar:** gesperrt ist allein der CTA (`disabled`, Grund im `aria-label`). Die Karte trägt **kein** `aria-disabled` — es vererbt sich auf „Details anzeigen", Screenreader und Playwright hielten den Knopf für gesperrt.
+- **Mehrere Packstücke:** eine Gewichts-/Maßangabe je Paket × Anzahl („Identische Pakete"). `packageSummaryLine` ergibt „2 Pakete · je 4 kg · 40 × 30 × 20 cm" (Buchungsseite Schritt 1 und 2).
+- **Mehrere Belege:** die Knöpfe tragen die Servernamen („Versandlabel 1 von 2 (A4)" …) in Serverreihenfolge, das Abholetikett zuletzt; der Dateiname kommt aus `Content-Disposition` (eindeutig je Position und Format), der Rückfallname nur als Netz.
+- **Mehrere Trackingnummern:** Liste „2 Trackingnummern", Detail und Live-Ansicht vollständig, je Etappe „UPS · <Nummer>"; eine einzelne Nummer bleibt die bisherige Anzeige. Das Admin-Detail listet alle Referenzen und Anbieterbelege.
+- Browserprüfung: `tests/e2e/upsFamilyOffers.test.mjs` (Vergleich, Details, Preisrechner, Mehrpaketbuchung als reiner Serverwert, Meine Sendungen, 834/390 px).
 
 ### Preisänderung
 

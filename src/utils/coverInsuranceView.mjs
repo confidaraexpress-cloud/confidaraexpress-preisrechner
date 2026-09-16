@@ -26,7 +26,7 @@
 import { COVER_INSURANCE_TEXT, coverBasicCoverText, coverLimitText } from "./insuranceTerms.mjs";
 import { getBookingModules } from "./bookingModules.js";
 import { PRICE_CHANGE_KIND, priceChangeAnsicht } from "./priceChangeView.mjs";
-import { SAME_DAY_TEXT, SAME_DAY_COLLECTION_UNAVAILABLE_CODE } from "./sameDayCollectionView.mjs";
+import { SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableBookingText } from "./sameDayCollectionView.mjs";
 
 export const INSURANCE_TYPE_TRANSIT_COVER = "transit_cover";
 export const SELECTION_MODEL_COVER_VALUE = "cover_value";
@@ -178,8 +178,7 @@ const REPRICE_TEXT = Object.freeze({
   // TG22 Paket A
   OFFER_PRICE_CONFLICT: "Der Preis wurde zwischenzeitlich aktualisiert. Bitte prüfen Sie den Betrag erneut.",
   PRICE_CONFIRMATION_REQUIRED: "Bitte bestätigen Sie den neuen Preis erneut.",
-  // TG22 Same-Day: die Abholung heute ist nicht mehr möglich — ein späterer Abholtag hilft.
-  [SAME_DAY_COLLECTION_UNAVAILABLE_CODE]: SAME_DAY_TEXT.bookingUnavailable,
+  // TG22/TG23 Same-Day: der Satz hängt an der Art der Antwort (`coverRepriceErrorText`) — ein späterer Abholtag hilft.
 });
 
 /* TG22 Paket A — Texte der versicherten Preisänderung. Kein Anbieter, kein Einkaufspreis. */
@@ -197,6 +196,7 @@ export const COVER_PRICE_CHANGE_TEXT = Object.freeze({
 /** Kundentext eines fehlgeschlagenen Neubepreisungs-Aufrufs. */
 export function coverRepriceErrorText(status, body) {
   const code = body && typeof body === "object" && typeof body.code === "string" ? body.code : null;
+  if (code === SAME_DAY_COLLECTION_UNAVAILABLE_CODE) return sameDayUnavailableBookingText(body);
   if (code && REPRICE_TEXT[code]) return REPRICE_TEXT[code];
   if (status === 429) return "Zu viele Anfragen. Bitte später erneut versuchen.";
   if (status === 503) return REPRICE_TEXT.PRICE_UNCONFIRMED;

@@ -7,10 +7,12 @@
 //   B  Nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund am Knopf, Hinweis darunter
 //   C  Buchung heute + Privatadresse + Absicherung: Zusammenfassungen, frische „bereit ab“-Zeit, Bestandteile,
 //      /book-Körper ohne Same-Day-Angabe, Erfolg mit der gebuchten Abholzeit
-//   D  /book meldet SAME_DAY_COLLECTION_UNAVAILABLE: Hinweis statt Bestellknopf, Weg zur Neuberechnung
-//   E  Optionen melden SAME_DAY_COLLECTION_UNAVAILABLE: Fehlerfläche mit Neuberechnung, keine Auswahl
+//   B2 Grundvertrag: drei Gründe mit drei Sätzen und demselben Hinweis, TG23 identisch, keine „bereit ab“-Zeile
+//      für eine gesperrte Abholung heute, ein späterer Abholtag mit „bereit ab 09:00 Uhr“, unbekannter Grund neutral
+//   D  /book meldet SAME_DAY_COLLECTION_UNAVAILABLE: Hinweis statt Bestellknopf, Weg zur Neuberechnung — Satz je Art
+//   E  Optionen melden SAME_DAY_COLLECTION_UNAVAILABLE: Fehlerfläche mit Neuberechnung, keine Auswahl — Satz je Art
 //   F  Zurück zum Vergleich: gebundener Preis, Zuschlagszeile und frische Abholzeit bleiben — ohne Neuberechnung
-//   G  1440 / 834 / 390 px: Karte, Buchungsseite und Erfolg sichtbar, innerhalb der Fläche, ohne Überlauf
+//   G  1440 / 834 / 390 px: Karte, gesperrte Karte, Buchungsseite und Erfolg sichtbar, innerhalb der Fläche, ohne Überlauf
 //   H  Regression JUMiNGO: keine Zuschlagsanfrage, keine Same-Day-Zeile, /book unverändert
 //
 // Kein echtes Backend, keine Bestellung, kein Anbieter.
@@ -39,6 +41,11 @@ const HEUTE = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit",
 }).format(new Date());
 const HEUTE_DE = `${HEUTE.slice(8, 10)}.${HEUTE.slice(5, 7)}.${HEUTE.slice(0, 4)}`;
+// Ein späterer Abholtag — ebenfalls nur Fixturewert.
+const MORGEN = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit",
+}).format(new Date(Date.now() + 36 * 60 * 60 * 1000));
+const kennung = (kopf, fuss) => `${kopf}${fuss.padStart(32 - kopf.length, "0")}`;
 
 const USER = {
   id: 1, email: "max@example.com", company_name: "Muster GmbH", name: "Max Mustermann",
@@ -74,12 +81,33 @@ const TG = {
   pickupToday: true, pickupTodayUntil: "16:45", sameDaySurchargeNet: SD.net, sameDaySurchargeGross: SD.gross,
 };
 
-/* Dasselbe Angebot nach dem Abholschluss: sichtbar, Preis ohne Zuschlag, nicht auswählbar. */
+/* Dasselbe Angebot nach dem Abholschluss: sichtbar, Preis ohne Zuschlag, nicht auswählbar — der Server nennt den
+   Abholtag, aber keine „bereit ab"-Zeit mehr (Same-Day-Grundvertrag). */
 const TG_VORBEI = {
   ...TG, netPrice: B.net, vatAmount: B.vat, finalPrice: B.gross,
-  unavailableReason: "same_day_unavailable",
+  unavailableReason: "same_day_unavailable", collectionReadyFrom: null,
   pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
 };
+/* Dieselbe Sperre mit den beiden anderen Gründen, TG23 (Expressversand) mit demselben Vertrag, ein unbekannter
+   Grund und ein späterer Abholtag mit dem bestehenden Vertrag. */
+const TG_UNBESTAETIGT = { ...TG_VORBEI, offerId: kennung("22sd", "122"), unavailableReason: "same_day_unconfirmed" };
+const TG_UNPRUEFBAR = { ...TG_VORBEI, offerId: kennung("22sd", "222"), unavailableReason: "same_day_unverifiable" };
+const TG23_UNBESTAETIGT = {
+  ...TG_UNBESTAETIGT, offerId: kennung("23sd", "23"), publicServiceName: "Expressversand",
+  netPrice: 26.25, vatAmount: 4.99, finalPrice: 31.24, transitDaysMin: 1, transitDaysMax: 1, deliveryTime: "1 Tag",
+};
+const TG_UNBEKANNT = { ...TG_VORBEI, offerId: kennung("22sd", "322"), unavailableReason: "same_day_kuenftiger_grund" };
+const TG_MORGEN = {
+  ...TG, offerId: kennung("22sd", "422"), collectionDate: MORGEN, collectionReadyFrom: "09:00",
+  netPrice: B.net, vatAmount: B.vat, finalPrice: B.gross,
+  pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
+};
+const SATZ = {
+  expired: "Abholung heute nicht mehr möglich.",
+  unconfirmed: "Abholung heute für dieses Angebot nicht verfügbar.",
+  unverifiable: "Abholung heute kann derzeit nicht bestätigt werden.",
+};
+const HINWEIS = "Bitte wählen Sie einen späteren Abholtag.";
 
 /* Ein JUMiNGO-Tarif mit eigener Abholung heute — er trägt `pickupToday`, aber keinen Same-Day-Vertrag. */
 const JM = {
@@ -342,11 +370,56 @@ test("B — nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund 
   assert.equal(await inhalt(tg.locator("p.offer-cta-hint")), "Bitte wählen Sie einen späteren Abholtag.");
   assert.equal(await tg.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await tg.evaluate((el) => el.classList.contains("offer-card--unavailable")), true);
+  // Der Abholtag bleibt, eine „bereit ab"-Zeit nicht: 09:00 wäre heute eine überholte Zusage.
+  const start = await inhalt(tg.locator(".offer-tl-node--start"));
+  assert.match(start, /Abholung/);
+  assert.doesNotMatch(start, /bereit ab/, "eine gesperrte Abholung heute trägt eine „bereit ab“-Zeit");
   await tg.locator(".offer-carrier-name").click();
   await kurz(400);
   assert.equal(await page.locator(".steps-bar").count(), 0, "ein nicht auswählbares Angebot öffnete die Buchung");
   assert.equal(p.anfragen.length, 0);
   await keinAnbieter(page, "Angebotsliste nach dem Abholschluss");
+  assert.deepEqual(fehler, []);
+  await page.close();
+});
+
+test("B2 — Grundvertrag: drei Gründe, drei Sätze, ein Hinweis; TG23 identisch; keine „bereit ab“-Zeile; später 09:00", async () => {
+  const { page, fehler } = await neueSeite();
+  const p = await setup(page, { tariffs: [TG_VORBEI, TG_UNBESTAETIGT, TG_UNPRUEFBAR, TG23_UNBESTAETIGT, TG_UNBEKANNT, TG_MORGEN, JM] });
+  await zuDenAngeboten(page);
+
+  for (const [t, satz] of [[TG_VORBEI, SATZ.expired], [TG_UNBESTAETIGT, SATZ.unconfirmed],
+                           [TG_UNPRUEFBAR, SATZ.unverifiable], [TG23_UNBESTAETIGT, SATZ.unconfirmed]]) {
+    const karte = karteVon(page, t);
+    assert.equal(await karte.count(), 1, `${t.unavailableReason}: die Karte fehlt`);
+    const cta = karte.locator("button.offer-cta-btn");
+    assert.equal(await cta.isDisabled(), true, `${t.unavailableReason}: der CTA ist bedienbar`);
+    assert.equal(await inhalt(cta), satz, t.unavailableReason);
+    assert.equal(await inhalt(karte.locator("p.offer-cta-hint")), HINWEIS, t.unavailableReason);
+    const start = await inhalt(karte.locator(".offer-tl-node--start"));
+    assert.doesNotMatch(start, /bereit ab/, `${t.unavailableReason}: „bereit ab“ für eine gesperrte Abholung heute`);
+    assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
+  }
+  // „nicht mehr möglich" steht genau einmal — beim zeitlichen Ablauf.
+  assert.equal(await page.getByText("Abholung heute nicht mehr möglich.", { exact: true }).count(), 1);
+  // TG23 zeigt denselben Satz wie TG22 — ohne eigene Karte, ohne ServiceID.
+  assert.equal(await inhalt(karteVon(page, TG23_UNBESTAETIGT).locator("button.offer-cta-btn")),
+    await inhalt(karteVon(page, TG_UNBESTAETIGT).locator("button.offer-cta-btn")));
+  // Ein unbekannter Grund: der neutrale Satz, kein Hinweis.
+  const unbekannt = karteVon(page, TG_UNBEKANNT);
+  assert.equal(await inhalt(unbekannt.locator("button.offer-cta-btn")), "Derzeit nicht buchbar");
+  assert.equal(await unbekannt.locator("p.offer-cta-hint").count(), 0);
+  // Ein späterer Abholtag: der bestehende Vertrag „bereit ab 09:00 Uhr", auswählbar.
+  const morgen = karteVon(page, TG_MORGEN);
+  assert.match(await inhalt(morgen.locator(".offer-tl-node--start")), /bereit ab 09:00 Uhr/);
+  assert.equal(await morgen.locator("button.offer-cta-btn").isEnabled(), true);
+  // JUMiNGO bleibt mit eigener Abholung heute und bedienbar.
+  const jm = karteVon(page, JM);
+  assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  assert.equal(await jm.locator("button.offer-cta-btn").isEnabled(), true);
+  assert.equal(p.anfragen.length, 0);
+  await keinAnbieter(page, "Angebotsliste Grundvertrag");
+  await beleg(page, "grundvertrag");
   assert.deepEqual(fehler, []);
   await page.close();
 });
@@ -421,7 +494,8 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
 test("D — /book meldet SAME_DAY_COLLECTION_UNAVAILABLE: Hinweis statt Bestellknopf, Weg zur Neuberechnung", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, {
-    book: () => ({ status: 409, json: { error: SAME_DAY_SATZ, code: "SAME_DAY_COLLECTION_UNAVAILABLE" } }),
+    book: () => ({ status: 409, json: { error: SAME_DAY_SATZ, code: "SAME_DAY_COLLECTION_UNAVAILABLE",
+                                        sameDayUnavailableKind: "expired" } }),
   });
   await zuDenAngeboten(page);
   await waehle(page, TG);
@@ -444,10 +518,39 @@ test("D — /book meldet SAME_DAY_COLLECTION_UNAVAILABLE: Hinweis statt Bestellk
   await page.close();
 });
 
+test("D2 — /book je Art: „nicht bestätigt“ und „nicht verifizierbar“ — nie „nicht mehr möglich“, kein Wiederholen", async () => {
+  for (const [art, satz] of [["unconfirmed", SATZ.unconfirmed], ["unverifiable", SATZ.unverifiable]]) {
+    const { page, fehler } = await neueSeite();
+    const p = await setup(page, {
+      // Der Servertext wird nie angezeigt — der Satz entsteht aus der Art.
+      book: () => ({ status: 409, json: { error: "Rohtext des Servers", code: "SAME_DAY_COLLECTION_UNAVAILABLE",
+                                          sameDayUnavailableKind: art } }),
+    });
+    await zuDenAngeboten(page);
+    await waehle(page, TG);
+    await waehleLieferadresse(page, false);
+    await zuSchritt2(page);
+    await bestaetigen(page);
+    await buchenKnopf(page).click();
+    const box = page.locator(".booking-conflict-box");
+    await box.waitFor({ timeout: 20000 });
+    const text = await inhalt(box);
+    assert.ok(text.includes(`${satz} ${HINWEIS}`), `${art}: ${text}`);
+    assert.doesNotMatch(text, /nicht mehr möglich|erneut versuchen|Rohtext/i, art);
+    assert.equal(await buchenKnopf(page).count(), 0, `${art}: der Bestellknopf steht neben dem Hinweis`);
+    assert.equal(await box.getByRole("button", { name: "Angebote neu berechnen" }).count(), 1, art);
+    assert.equal(p.book.length, 1, art);
+    await keinAnbieter(page, `Buchung ${art}`);
+    assert.deepEqual(fehler, [], art);
+    await page.close();
+  }
+});
+
 test("E — Optionen melden SAME_DAY_COLLECTION_UNAVAILABLE: Fehlerfläche mit Neuberechnung, keine Auswahl", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, {
-    optionsReject: { status: 409, body: { error: SAME_DAY_SATZ, code: "SAME_DAY_COLLECTION_UNAVAILABLE" } },
+    optionsReject: { status: 409, body: { error: SAME_DAY_SATZ, code: "SAME_DAY_COLLECTION_UNAVAILABLE",
+                                          sameDayUnavailableKind: "expired" } },
   });
   await zuDenAngeboten(page);
   await waehle(page, TG);
@@ -460,6 +563,28 @@ test("E — Optionen melden SAME_DAY_COLLECTION_UNAVAILABLE: Fehlerfläche mit N
   assert.equal(p.lz.bindCalls.length, 0);
   assert.deepEqual(fehler, []);
   await page.close();
+});
+
+test("E2 — Optionen je Art: „nicht bestätigt“ und — ohne Art — „nicht verifizierbar“, jeweils mit Neuberechnung", async () => {
+  for (const [art, satz] of [["unconfirmed", SATZ.unconfirmed], [null, SATZ.unverifiable]]) {
+    const { page, fehler } = await neueSeite();
+    const body = { error: "Rohtext des Servers", code: "SAME_DAY_COLLECTION_UNAVAILABLE",
+                   ...(art ? { sameDayUnavailableKind: art } : {}) };
+    const p = await setup(page, { optionsReject: { status: 409, body } });
+    await zuDenAngeboten(page);
+    await waehle(page, TG);
+    const box = page.locator("#residential-options-error");
+    await box.waitFor({ timeout: 20000 });
+    const text = await inhalt(box);
+    assert.ok(text.includes(`${satz} ${HINWEIS}`), `${art}: ${text}`);
+    assert.doesNotMatch(text, /nicht mehr möglich|Rohtext/, String(art));
+    assert.equal(await page.locator("#residential-options-recalculate").count(), 1, `${art}: der Weg zur Neuberechnung fehlt`);
+    assert.equal(await page.locator("#residential-options-retry").count(), 0, `${art}: „Erneut versuchen“`);
+    assert.equal(await page.locator('input[name="residential-delivery"]').count(), 0, `${art}: Auswahl neben dem Hinweis`);
+    assert.equal(p.lz.bindCalls.length, 0);
+    assert.deepEqual(fehler, [], String(art));
+    await page.close();
+  }
 });
 
 test("F — Zurück zum Vergleich: gebundener Preis, Zuschlagszeile und frische Abholzeit bleiben — ohne Neuberechnung", async () => {
@@ -487,7 +612,7 @@ test("F — Zurück zum Vergleich: gebundener Preis, Zuschlagszeile und frische 
 for (const breite of [1440, 834, 390]) {
   test(`G — ${breite} px: Karte, Buchungsseite und Erfolg sichtbar, innerhalb der Fläche, kein horizontaler Überlauf`, async () => {
     const { page, fehler } = await neueSeite({ width: breite, height: 900 });
-    await setup(page, { insuranceAvailable: true });
+    await setup(page, { insuranceAvailable: true, tariffs: [TG, TG_UNBESTAETIGT, JM] });
     await zuDenAngeboten(page);
     assert.ok(await querUeberlauf(page) <= 0, `${breite}px: Angebotsliste mit horizontalem Überlauf`);
     const karte = karteVon(page, TG);
@@ -499,6 +624,18 @@ for (const breite of [1440, 834, 390]) {
     }
     await karte.scrollIntoViewIfNeeded();
     await beleg(page, `karte-${breite}`);
+    // Die gesperrte Abholung heute: Satz und Hinweis sichtbar und in der Karte, keine „bereit ab"-Zeile.
+    const gesperrt = karteVon(page, TG_UNBESTAETIGT);
+    for (const sel of ["button.offer-cta-btn", "p.offer-cta-hint"]) {
+      const el = gesperrt.locator(sel);
+      await el.scrollIntoViewIfNeeded();
+      assert.ok(await el.isVisible(), `${breite}px: gesperrte Karte ${sel} ist nicht sichtbar`);
+      await liegtInnerhalb(gesperrt, el, `${breite}px gesperrte Karte ${sel}`);
+    }
+    assert.equal(await inhalt(gesperrt.locator("button.offer-cta-btn")), SATZ.unconfirmed);
+    assert.doesNotMatch(await inhalt(gesperrt.locator(".offer-tl-node--start")), /bereit ab/);
+    await gesperrt.scrollIntoViewIfNeeded();
+    await beleg(page, `gesperrt-${breite}`);
 
     await waehle(page, TG);
     await waehleLieferadresse(page, true);

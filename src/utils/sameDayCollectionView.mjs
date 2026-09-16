@@ -6,9 +6,12 @@
    Ob ein Angebot heute abgeholt werden kann, bis wann das möglich ist und welcher Zuschlag dafür
    anfällt, sagt ausschließlich der Server: als Felder am Angebot (`pickupToday`, `pickupTodayUntil`,
    `sameDaySurchargeNet`, `sameDaySurchargeGross`), als Block `sameDayCollection` der Options-, Bindungs-
-   und Buchungsantwort, als Preisbestandteil `same_day_collection_surcharge` und als Grund
-   `same_day_unavailable`. Diese Datei vergleicht kein Datum, liest keine Uhr und gibt nichts frei: fehlt
-   eine Angabe oder ist sie unbrauchbar, entsteht keine Zeile.
+   und Buchungsantwort, als Preisbestandteil `same_day_collection_surcharge` und als einer von drei Gründen
+   (`same_day_unavailable`, `same_day_unconfirmed`, `same_day_unverifiable`) bzw. — bei einer abgelehnten
+   Anfrage — als Art `sameDayUnavailableKind` (`expired`, `unconfirmed`, `unverifiable`). Diese Datei
+   vergleicht kein Datum, liest keine Uhr und gibt nichts frei: fehlt eine Angabe oder ist sie unbrauchbar,
+   entsteht keine Zeile; eine unbekannte Art ergibt den zurückhaltenden Satz „kann derzeit nicht bestätigt
+   werden" — nie „nicht mehr möglich".
 
    ─── ES WIRD NICHTS GERECHNET ────────────────────────────────────────────────
    Der Angebotspreis enthält den Zuschlag bereits. Die Zeile nennt ihn — sie addiert ihn nicht, und
@@ -19,20 +22,45 @@
    Positionstext einer Anbieterrechnung. */
 import { money, isoDayDE } from "./formatters.js";
 import { readPriceComponents, PRICE_COMPONENT_TYPE, PRICE_COMPONENT_LABELS } from "./priceComponentsView.mjs";
-import { OFFER_SAME_DAY_UNAVAILABLE_TEXT, OFFER_SAME_DAY_UNAVAILABLE_HINT } from "./offerIdentity.mjs";
+import {
+  OFFER_SAME_DAY_UNAVAILABLE_TEXT, OFFER_SAME_DAY_UNCONFIRMED_TEXT, OFFER_SAME_DAY_UNVERIFIABLE_TEXT,
+  OFFER_SAME_DAY_UNAVAILABLE_HINT, OFFER_SAME_DAY_REASONS,
+} from "./offerIdentity.mjs";
 
-/** Der Grund eines Angebots, dessen Abholung heute nicht mehr möglich ist. */
+/** Der Grund eines Angebots, dessen Abholung heute ZEITLICH nicht mehr möglich ist. */
 export const SAME_DAY_UNAVAILABLE_REASON = "same_day_unavailable";
+/** Alle drei Gründe einer nicht angebotenen Abholung heute (abgelaufen, nicht bestätigt, nicht verifizierbar). */
+export const SAME_DAY_UNAVAILABLE_REASONS = OFFER_SAME_DAY_REASONS;
 /** Der Ablehnungscode von Optionen, Bindung, Neubepreisung und Buchung. */
 export const SAME_DAY_COLLECTION_UNAVAILABLE_CODE = "SAME_DAY_COLLECTION_UNAVAILABLE";
+/** Die Art einer solchen Ablehnung (`sameDayUnavailableKind` der Antwort). */
+export const SAME_DAY_UNAVAILABLE_KIND = Object.freeze({
+  EXPIRED: "expired",
+  UNCONFIRMED: "unconfirmed",
+  UNVERIFIABLE: "unverifiable",
+});
 
 /* Die sichtbaren Texte — hier und nicht im JSX, damit sie geprüft werden können. */
 export const SAME_DAY_TEXT = Object.freeze({
   surchargeLabel: PRICE_COMPONENT_LABELS[PRICE_COMPONENT_TYPE.SAME_DAY_COLLECTION_SURCHARGE],
   unavailable: OFFER_SAME_DAY_UNAVAILABLE_TEXT,
+  unconfirmed: OFFER_SAME_DAY_UNCONFIRMED_TEXT,
+  unverifiable: OFFER_SAME_DAY_UNVERIFIABLE_TEXT,
   unavailableHint: OFFER_SAME_DAY_UNAVAILABLE_HINT,
   bookingUnavailable: `${OFFER_SAME_DAY_UNAVAILABLE_TEXT} ${OFFER_SAME_DAY_UNAVAILABLE_HINT}`,
+  bookingUnconfirmed: `${OFFER_SAME_DAY_UNCONFIRMED_TEXT} ${OFFER_SAME_DAY_UNAVAILABLE_HINT}`,
+  bookingUnverifiable: `${OFFER_SAME_DAY_UNVERIFIABLE_TEXT} ${OFFER_SAME_DAY_UNAVAILABLE_HINT}`,
   pickupLabel: "Abholung",
+});
+
+// Kurzsatz und vollständiger Satz je Art — die EINE Zuordnung der Oberfläche.
+const TEXT_JE_ART = Object.freeze({
+  [SAME_DAY_UNAVAILABLE_KIND.EXPIRED]: Object.freeze({
+    title: SAME_DAY_TEXT.unavailable, message: SAME_DAY_TEXT.bookingUnavailable }),
+  [SAME_DAY_UNAVAILABLE_KIND.UNCONFIRMED]: Object.freeze({
+    title: SAME_DAY_TEXT.unconfirmed, message: SAME_DAY_TEXT.bookingUnconfirmed }),
+  [SAME_DAY_UNAVAILABLE_KIND.UNVERIFIABLE]: Object.freeze({
+    title: SAME_DAY_TEXT.unverifiable, message: SAME_DAY_TEXT.bookingUnverifiable }),
 });
 
 const UHRZEIT = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -42,6 +70,26 @@ const istObjekt = (w) => !!w && typeof w === "object" && !Array.isArray(w);
 const betrag = (w) => (typeof w === "number" && Number.isFinite(w) && w >= 0 ? w : null);
 const uhrzeit = (w) => (typeof w === "string" && UHRZEIT.test(w.trim()) ? w.trim() : null);
 const kalendertag = (w) => (typeof w === "string" && KALENDERTAG.test(w.trim()) ? w.trim() : null);
+
+/**
+ * Die Art einer Ablehnung `SAME_DAY_COLLECTION_UNAVAILABLE` — aus `sameDayUnavailableKind` der Antwort.
+ * Eine fehlende oder unbekannte Art ist fail closed „nicht verifizierbar": die Oberfläche behauptet keinen
+ * zeitlichen Ablauf, den der Server nicht genannt hat.
+ */
+export function sameDayUnavailableKindOf(body) {
+  const art = istObjekt(body) ? body.sameDayUnavailableKind : null;
+  return Object.prototype.hasOwnProperty.call(TEXT_JE_ART, art) ? art : SAME_DAY_UNAVAILABLE_KIND.UNVERIFIABLE;
+}
+
+/** Kurzsatz (`title`) und vollständiger Satz mit Hinweis (`message`) einer solchen Ablehnung. */
+export function sameDayUnavailableView(body) {
+  return TEXT_JE_ART[sameDayUnavailableKindOf(body)];
+}
+
+/** Der Kundentext einer solchen Ablehnung — Satz der Art und „Bitte wählen Sie einen späteren Abholtag.". */
+export function sameDayUnavailableBookingText(body) {
+  return sameDayUnavailableView(body).message;
+}
 
 /**
  * Die Aussage einer Angebotskarte zur Abholung am selben Tag — oder `null`.

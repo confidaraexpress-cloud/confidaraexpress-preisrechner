@@ -185,15 +185,19 @@ Die Art der Lieferadresse ist **keine Formularangabe** mehr. „Neue Sendung" er
 - `/book` sendet für ein solches Angebot `offerRevision` und die gebundene Wahl als `priceInputs` (Konsistenzwächter) — nie einen Formularwert. `false` bleibt „Geschäftsadresse" und wird nie als „fehlt" behandelt.
 - **Bestandteile** (`shipping_base` „Versand", `residential_delivery_surcharge` „Zuschlag Privatadresse", `transport_insurance` „Zusätzliche Transportabsicherung") liest `utils/priceComponentsView.mjs` — nur zum bestätigten Preis, nie addiert. Ein unbekannter Typ ergibt keine Zeilen; die Server-Totals bleiben. Für eine Abholung am selben Tag steht `same_day_collection_surcharge` („Zuschlag für Abholung am selben Tag") zwischen Versand und Privatadresse.
 
-### Abholung am selben Tag (TG22 Same-Day) — aktueller Vertrag
+### Abholung am selben Tag (TG22/TG23 Same-Day) — aktueller Vertrag
 
 Ob ein Angebot **heute** abgeholt werden kann, bis wann und mit welchem Zuschlag, sagt ausschließlich der Server. Die Oberfläche vergleicht kein Datum, liest keine Uhr und rechnet nichts (`utils/sameDayCollectionView.mjs`).
 
 - **Karte:** nur mit `pickupToday: true`, `pickupTodayUntil` („HH:MM") **und** beiden Beträgen `sameDaySurchargeNet`/`sameDaySurchargeGross` erscheinen „Zuschlag für Abholung am selben Tag: +X,XX €" (netto oder brutto wie der Kartenpreis, im Detailbereich beide) und „Abholung heute möglich bis HH:MM Uhr". Der Kartenpreis **enthält** den Zuschlag — nichts wird addiert. Ein Tarif mit `pickupToday`, aber ohne diese Angaben, bekommt keine Zeile.
-- **Nach dem Abholschluss** (`unavailableReason: "same_day_unavailable"`): sichtbar mit Preis, nicht auswählbar; der Knopf sagt „Abholung heute nicht mehr möglich.", darunter „Bitte wählen Sie einen späteren Abholtag.".
+- **Gesperrte Abholung heute** — drei Gründe, sichtbar mit Preis, nicht auswählbar; der Knopf sagt den Satz, darunter immer „Bitte wählen Sie einen späteren Abholtag.":
+  - `same_day_unavailable` (Abholschluss vorbei): „Abholung heute nicht mehr möglich."
+  - `same_day_unconfirmed` (kein bestätigter Abholschluss): „Abholung heute für dieses Angebot nicht verfügbar."
+  - `same_day_unverifiable` (Angaben nicht prüfbar): „Abholung heute kann derzeit nicht bestätigt werden."
+  - Ein unbekannter Grund ergibt den neutralen Satz. Der Server nennt den Tag, aber `collectionReadyFrom: null` — die Karte zeigt keine „bereit ab"-Zeile. Ein späterer Abholtag behält seine Zeit (09:00), eine verfügbare Abholung heute die dynamische.
 - **Buchungsseite:** Options- und Bindungsantwort tragen für eine Abholung heute den Block `sameDayCollection` (`pickupTodayUntil`, `collectionDate`, `collectionReadyFrom`, `surcharge`); ein Block in anderer Form verwirft die Antwort. Die Bindung übernimmt `collectionReadyFrom` ins Angebot — die „bereit ab"-Zeit, die jetzt gälte. Live-Leiste und ausgewähltes Angebot nennen „inkl. Zuschlag für Abholung am selben Tag X,XX €" (vorläufig aus dem Angebot, bestätigt aus dem Bestandteil) und den Abholschluss.
 - **`/book` sendet keine Same-Day-Angabe.** Der Erfolg nennt die tatsächlich gesendete Abholzeit ausschließlich aus `booking.sameDayCollection` — nie aus dem Angebot.
-- **`SAME_DAY_COLLECTION_UNAVAILABLE`** (Optionen, Bindung, Neubepreisung, `/book`): der neutrale Satz und „Angebote neu berechnen" — nie „erneut versuchen". Eine Änderung des Zuschlags kommt als `PRICE_CHANGED` mit `priceInputsRebindRequired` und läuft über den bestehenden Neubestätigungsweg.
+- **`SAME_DAY_COLLECTION_UNAVAILABLE`** (Optionen, Bindung, Neubepreisung, `/book`): der Satz zu `sameDayUnavailableKind` (`expired` / `unconfirmed` / `unverifiable`, über `sameDayUnavailableBookingText`) mit dem Hinweis und „Angebote neu berechnen" — nie „erneut versuchen". Fehlt die Art oder ist sie unbekannt, gilt „kann derzeit nicht bestätigt werden". Eine Änderung des Zuschlags kommt als `PRICE_CHANGED` mit `priceInputsRebindRequired` und läuft über den bestehenden Neubestätigungsweg.
 - Ein Datumswechsel verwirft die Angebote (`resetResults`); Entwürfe und Vorgang speichern keine Same-Day-Angabe.
 
 ### Produktprofil (TG22 Package A) — aktueller Vertrag

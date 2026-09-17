@@ -16,6 +16,13 @@
    Nach der Bindung gelten ausschließlich die Server-Totals und die Serverbestandteile; hier
    wird nichts addiert, nichts gerundet und kein Betrag aus einem anderen abgeleitet.
 
+   ─── DHL FOUNDATION: ERHOBEN, ABER OHNE ZUSCHLAG ─────────────────────────────
+   Nennt der Server die Angabe zusätzlich in `surchargeFreePriceInputs`, wird sie genauso erfragt
+   und gebunden — nach dem belegten Vertrag trägt sie aber keinen Zuschlag. Dann steht kein
+   Zuschlagshinweis auf der Karte, beide Optionen tragen „+ 0,00 €" und denselben Preis, und keine
+   Bindung trägt eine Zuschlagszeile. Fehlt die Liste, gilt der bisherige Vertrag. Welche Angebote
+   das betrifft, entscheidet ausschließlich dieses Feld — keine Service- oder Carrierprüfung.
+
    ─── DREIWERTIG ──────────────────────────────────────────────────────────────
    `true` (Privatadresse), `false` (Geschäftsadresse) und `null` (noch nicht gewählt) sind drei
    Zustände. `false` ist eine vollwertige Antwort.
@@ -46,6 +53,10 @@ export const RESIDENTIAL_TEXT = Object.freeze({
   binding: "Auswahl wird übernommen …",
   required: "Bitte wählen Sie zuerst die Art der Lieferadresse.",
   surchargeHint: "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.",
+  // DHL Foundation: dieselbe Frage ohne belegten Zuschlag — kein Zuschlag wird angekündigt oder berechnet.
+  addressTypeHint: "Die Art der Lieferadresse wird vor der Buchung abgefragt.",
+  loadingNoSurcharge: "Preis wird geprüft …",
+  errorNoSurcharge: "Der Preis konnte nicht geprüft werden.",
   rebind: "Der Preis für dieses Angebot hat sich geändert. Bitte wählen Sie die Art der Lieferadresse erneut.",
   reconfirm: "Die Angaben zum Zuschlag wurden aktualisiert. Bitte wählen Sie die Art der Lieferadresse erneut.",
   insuranceAfterChoice:
@@ -114,9 +125,20 @@ export function offerRequiresResidentialChoice(tariff) {
   return Array.isArray(t.requiredPriceInputs) && t.requiredPriceInputs.includes(PRICE_INPUT_DELIVERY_RESIDENTIAL);
 }
 
-/** Der Hinweis der Angebotskarte — nur, solange die Angabe noch aussteht. */
+/**
+ * Trägt die Angabe zur Lieferadresse DIESES Angebots nach dem Vertrag keinen Zuschlag? Die Liste kommt vom
+ * Server (`surchargeFreePriceInputs`); fehlt sie oder nennt sie die Angabe nicht, gilt der bisherige Vertrag.
+ */
+export function offerResidentialSurchargeFree(tariff) {
+  const t = istObjekt(tariff) ? tariff : {};
+  return offerRequiresResidentialChoice(t)
+    && Array.isArray(t.surchargeFreePriceInputs) && t.surchargeFreePriceInputs.includes(PRICE_INPUT_DELIVERY_RESIDENTIAL);
+}
+
+/** Der Hinweis der Angebotskarte — nur, solange die Angabe noch aussteht; ohne Zuschlag ein neutraler Satz. */
 export function offerSurchargeHint(tariff) {
-  return offerAwaitsPriceInputs(tariff) ? RESIDENTIAL_TEXT.surchargeHint : null;
+  if (!offerAwaitsPriceInputs(tariff)) return null;
+  return offerResidentialSurchargeFree(tariff) ? RESIDENTIAL_TEXT.addressTypeHint : RESIDENTIAL_TEXT.surchargeHint;
 }
 
 /** Der Preisstand des Angebots — 0, solange der Server keinen anderen genannt hat. */
@@ -138,7 +160,9 @@ export function residentialBoundValue(tariff) {
   if (wert !== true && wert !== false) return null;
   const komponenten = readPriceComponents(t.priceComponents);
   if (t.bookable !== true || t.priceCompleteness !== "complete" || komponenten === null) return null;
-  return hasResidentialSurcharge(komponenten) === wert ? wert : null;
+  // Ohne belegten Zuschlag trägt keine der beiden Adressarten eine Zuschlagszeile.
+  const zuschlagErwartet = offerResidentialSurchargeFree(t) ? false : wert;
+  return hasResidentialSurcharge(komponenten) === zuschlagErwartet ? wert : null;
 }
 
 /** Der Körper der Optionsanfrage — genau zwei Felder, kein Preis. */
@@ -199,6 +223,12 @@ export function readPriceInputOptions(body, tariff) {
   // anderes als diesen Vertrag.
   const geschaeft = options[0].surcharge;
   if (geschaeft.net !== 0 || geschaeft.vat !== 0 || geschaeft.gross !== 0) return null;
+  // Ohne belegten Zuschlag trägt auch die Privatadresse keinen, und beide Optionen tragen denselben Preis.
+  if (tariff !== undefined && offerResidentialSurchargeFree(tariff)) {
+    const privat = options[1];
+    if (privat.surcharge.net !== 0 || privat.surcharge.vat !== 0 || privat.surcharge.gross !== 0) return null;
+    if (TOTALS_FELDER.some((feld) => privat.totals[feld] !== options[0].totals[feld])) return null;
+  }
   // TG22 Same-Day: eine Abholung am selben Tag nennt der Server als eigenen Block (Zuschlag, bis wann heute,
   // „bereit ab"). Ein Block in anderer Form beschreibt etwas anderes als diesen Vertrag — fail closed.
   const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
@@ -258,7 +288,9 @@ export function readPriceInputBinding(body, { tariff, value } = {}) {
   if (value !== undefined && value !== wert) return null;
   if (d.priceCompleteness !== "complete") return null;
   const components = readPriceComponents(d.components);
-  if (!components || hasResidentialSurcharge(components) !== wert) return null;
+  // Ohne belegten Zuschlag trägt auch die gebundene Privatadresse keine Zuschlagszeile.
+  const zuschlagErwartet = tariff !== undefined && offerResidentialSurchargeFree(tariff) ? false : wert;
+  if (!components || hasResidentialSurcharge(components) !== zuschlagErwartet) return null;
   // TG22 Same-Day: nennt die Bindung eine Abholung am selben Tag, muss der gebundene Preis ihren Zuschlag
   // tragen. Umgekehrt genügt der Bestandteil: der Block trägt die Abholzeit, nicht den Preis.
   const selberTag = readSameDayCollectionBlock(d.sameDayCollection);
@@ -381,11 +413,15 @@ export const isPriceInputsRequired = (body) => istObjekt(body) && body.code === 
  * `errorKind` ist eine RESIDENTIAL_ACTION: „erneut versuchen" (vorübergehend), „neu berechnen"
  * (das Angebot trägt nicht mehr) oder „verwendet" (in die Sendungen). Es gibt keinen lokalen
  * Ersatzpreis und keine Karte neben einem Fehler.
+ *
+ * `surchargeFree` (aus `offerResidentialSurchargeFree`): dieselbe Auswahl ohne belegten Zuschlag —
+ * Lade- und Fehlertext sprechen dann vom Preis, nicht von einem Zuschlag.
  */
-export function residentialModuleView({ status, options, boundValue, pendingValue, errorKind, notice } = {}) {
+export function residentialModuleView({ status, options, boundValue, pendingValue, errorKind, notice, surchargeFree } = {}) {
   const laedt = status === RESIDENTIAL_STATUS.LOADING || status === RESIDENTIAL_STATUS.IDLE;
   const bindet = status === RESIDENTIAL_STATUS.BINDING;
   const fehler = status === RESIDENTIAL_STATUS.ERROR;
+  const ohneZuschlag = surchargeFree === true;
   const art = !fehler ? null
     : (errorKind === RESIDENTIAL_ACTION.USED || errorKind === RESIDENTIAL_ACTION.RECALCULATE
        || istSameDayAktion(errorKind)
@@ -402,11 +438,13 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
   })) : [];
   return Object.freeze({
     showLoading: laedt,
+    loadingText: ohneZuschlag ? RESIDENTIAL_TEXT.loadingNoSurcharge : RESIDENTIAL_TEXT.loading,
     showError: fehler,
     errorText: art === null ? null
       : art === RESIDENTIAL_ACTION.USED ? RESIDENTIAL_TEXT.used
       : art === RESIDENTIAL_ACTION.RECALCULATE ? RESIDENTIAL_TEXT.recalculate
       : istSameDayAktion(art) ? SAME_DAY_TEXT_JE_AKTION[art]
+      : ohneZuschlag ? RESIDENTIAL_TEXT.errorNoSurcharge
       : RESIDENTIAL_TEXT.error,
     // TG22 Same-Day: dieselbe Handlung wie „neu berechnen" — ein späterer Abholtag entsteht nur so.
     errorAction: istSameDayAktion(art) ? RESIDENTIAL_ACTION.RECALCULATE : art,

@@ -31,7 +31,7 @@ export function ResidentialPriceInputModule({ view, onSelect, onRetry, onRecalcu
         {v.showLoading && (
           <p className="res-state res-state--loading" id="residential-options-loading" role="status" aria-live="polite">
             <span className="spinner spinner-dark" />
-            <span>{RESIDENTIAL_TEXT.loading}</span>
+            <span>{v.loadingText || RESIDENTIAL_TEXT.loading}</span>
           </p>
         )}
 

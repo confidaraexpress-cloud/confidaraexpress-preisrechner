@@ -24,6 +24,7 @@ import {
   bindRequestBody, readPriceInputBinding, tariffWithPriceInputBinding, tariffMatchesOptionsBinding,
   optionsAfterBinding, residentialBookPayload, residentialErrorAction, conflictRevisionOf,
   isRebindRequired, isPriceInputsRequired, residentialModuleView, residentialBlocksBooking,
+  offerResidentialSurchargeFree,
 } from "../utils/residentialPriceInputs.mjs";
 import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
 import {
@@ -1824,6 +1825,8 @@ export default function BookingPage() {
   const residentialView = residentialModuleView({
     status: resStatus, options: resOptions, boundValue: resBoundValue, pendingValue: resPendingValue,
     errorKind: resErrorKind, notice: resNotice,
+    // Ob die Angabe nach dem Vertrag einen Zuschlag trägt, sagt allein das Serverfeld des Angebots.
+    surchargeFree: offerResidentialSurchargeFree(tariff),
   });
 
   // P0 — „Angebote neu berechnen" aus dem Abholfenster-Dialog: den nun veralteten

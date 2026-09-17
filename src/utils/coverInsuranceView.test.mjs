@@ -373,6 +373,12 @@ test("A11 — die Angebotskarte benutzt DASSELBE Gate wie die Buchungsseite", ()
   });
   assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).notice.kind, COVER_STATE.ABOVE_COVER_LIMIT);
   assert.equal(offerCardInsurance(TG_HOECHSTDECKUNG).explicitlyUnavailable, false);
+  // Solange die Art der Lieferadresse aussteht, sagt der Server über die Absicherung noch nichts — kein „nicht verfügbar".
+  const wartet = { ...TG_NICHT_VERSICHERBAR, unavailableReason: "price_inputs_required",
+                   requiredPriceInputs: ["deliveryIsResidential"] };
+  assert.deepEqual(offerCardInsurance(wartet),
+    { insurable: false, explicitlyUnavailable: false, coverModel: false, excessValue: null, notice: null });
+  assert.equal(offerCardInsurance({ ...wartet, unavailableReason: "quote_only" }).explicitlyUnavailable, true);
 });
 
 test("A12 — die Angebotskarte behauptet nicht mehr „nicht online auswählbar“ und nennt keinen Preis vorab", () => {

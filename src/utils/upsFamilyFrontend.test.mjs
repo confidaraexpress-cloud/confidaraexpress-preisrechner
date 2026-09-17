@@ -4,9 +4,14 @@
 //
 //   §A  UPS · Express bis zur Freigabe: Preisauskunft — nicht auswählbar, keine Frage, keine Absicherung, kein Same-Day
 //   §B  UPS · Express nach der Freigabe: dieselben Felder wie 23 genügen — die Oberfläche braucht keine Änderung
-//   §C  UPS · Standardversand Mehrpaket: Preisauskunft ohne Profil, ohne erfundene Grenze
-//   §D  Mehrpaket: Paketzeile, Versandbelege „1 von N“, Dokumentübersicht, mehrere Trackingnummern
+//   §C  UPS · Standardversand Mehrpaket (freigegeben, TG26): auswählbar mit der Frage nach der Lieferadresse, ohne Profil
+//       und Prognose; Grenze, Sendungsverfolgung und Drucker aus den Serverfeldern; nie eine Abholung heute
+//   §D  Mehrpaket: Paketzeile; GEMESSENE Belege (eine Nummer, „Versandlabel (A4)“ und „Versandlabel (Thermodruck)“);
+//       GENERISCH mehrere Nummern („1 von N“, Abholetikett zuletzt), Tracking und Admin-Detail
 //   §E  White Label und keine ServiceID-Weiche
+//
+// Die TG26-Werte sind Fixturewerte nach dem gemessenen Staging-Fall (zwei Packstücke je 2 kg, Standardaufschlag).
+// Die Sendungsnummer ist synthetisch: eine Staging-Platzhalternummer ist kein Produktionsvertrag.
 //
 // Browserprüfung: tests/e2e/upsFamilyOffers.test.mjs.
 import { test } from "node:test";
@@ -68,19 +73,30 @@ const TG29_GEBUNDEN = Object.freeze({
                       coverState: "available", coverValue: 500, basicCoverMaxGoodsValue: 50, maxCoverValue: 2500 },
 });
 
+// UPS · Standardversand Mehrpaket, wie calculate-price den freigegebenen Service mit zwei Packstücken liefert: vorläufiger
+// Geschäftspreis bis zur Art der Lieferadresse, Laufzeit „1–5 Tage", Abrechnungsgewicht 4 kg, höchstens zwei Packstücke.
 const TG26 = Object.freeze({
   offerId: "mp260000000000000000000000000026", publicCarrierId: "ups", publicServiceName: "Standardversand Mehrpaket",
-  serviceType: "pickup", collectionDate: "2026-09-16", collectionReadyFrom: "09:00",
+  serviceType: "pickup", collectionDate: "2026-09-18", collectionReadyFrom: "09:00",
   deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
-  transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage", deliveryProjection: null,
-  netPrice: 24, vatAmount: 4.56, finalPrice: 28.56, currency: "EUR",
-  bookable: false, unavailableReason: "quote_only", priceCompleteness: "indicative",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
-  chargeableWeight: 8, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"], labelFormatOptions: [],
-  insuranceAvailable: false, insuranceDetails: null, trackingAvailable: null, printerRequired: null,
-  tariffLimits: [], serviceDetails: null,
+  transitDaysMin: 1, transitDaysMax: 5, deliveryTime: "1–5 Tage", deliveryProjection: null,
+  netPrice: 31.93, vatAmount: 6.07, finalPrice: 38, currency: "EUR",
+  bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
+  requiredPriceInputs: ["deliveryIsResidential"],
+  chargeableWeight: 4, labelFormats: ["PDF"], labelSizes: ["A4", "Thermal"], labelFormatOptions: [],
+  insuranceAvailable: false, insuranceDetails: null, trackingAvailable: true, printerRequired: true,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 2 }], serviceDetails: null,
   pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
 });
+// Nach der Bindung „Privatadresse": die Serverwerte der Bindungsantwort — buchbar, Absicherung nach Warenwert wählbar.
+const TG26_GEBUNDEN = Object.freeze({
+  ...TG26, netPrice: 35.11, vatAmount: 6.67, finalPrice: 41.78,
+  bookable: true, unavailableReason: null, priceCompleteness: "complete",
+  insuranceAvailable: true, insuranceDetails: TG29_GEBUNDEN.insuranceDetails,
+});
+// Heute als Abholtag: der Server sperrt den Tag (keine kuratierte Abholung am selben Tag) und nennt keine „bereit ab"-Zeit.
+const TG26_HEUTE = Object.freeze({ ...TG26, collectionDate: "2026-09-17", collectionReadyFrom: null,
+                                   unavailableReason: "date_unavailable" });
 
 /* ══════════ §A  UPS · EXPRESS BIS ZUR FREIGABE ══════════ */
 
@@ -131,99 +147,159 @@ test("B2 — eine gesperrte Abholung heute nennt einen der drei Gründe und den 
 
 /* ══════════ §C  UPS · STANDARDVERSAND MEHRPAKET ══════════ */
 
-test("C1 — UPS · Standardversand Mehrpaket: Preisauskunft ohne Profil, ohne Prognose und ohne erfundene Grenze", () => {
-  assert.equal(offerSelectable(TG26), false);
-  assert.equal(offerBlockedLabel(TG26), "Derzeit nicht direkt buchbar");
-  assert.equal(offerSurchargeHint(TG26), null, "eine Preisauskunft stellt keine Adressfrage");
+test("C1 — UPS · Standardversand Mehrpaket ist auswählbar: erst die Art der Lieferadresse, kein Profil, keine Prognose", () => {
+  assert.equal(offerSelectable(TG26), true);
+  assert.equal(offerBookable(TG26), false, "gebucht wird erst nach der Bindung");
+  assert.equal(offerBlockedLabel(TG26), null);
+  assert.equal(offerRequiresResidentialChoice(TG26), true);
+  assert.equal(offerSurchargeHint(TG26), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   assert.equal(serviceDetailsView(TG26), null, "ohne Profil bleibt der bisherige Detailbereich");
   assert.equal(readDeliveryProjection(TG26), null);
-  assert.equal(offerCardInsurance(TG26).insurable, false);
-  assert.deepEqual(TG26.tariffLimits, [], "Vorbedingung: der Server nennt keine Grenze");
+  assert.equal(sameDayOfferView(TG26), null);
+  // Vor der Bindung sagt der Server über die Absicherung nichts — die Karte behauptet kein „nicht verfügbar".
+  const absicherung = offerCardInsurance(TG26);
+  assert.deepEqual([absicherung.insurable, absicherung.explicitlyUnavailable, absicherung.notice], [false, false, null]);
+  // Vorbedingung: Grenze, Sendungsverfolgung und Drucker sind Serverfelder — die Oberfläche kennt keine eigene Zahl.
+  assert.deepEqual([TG26.tariffLimits, TG26.trackingAvailable, TG26.printerRequired],
+    [[{ operant: "packages_count", operator: "<=", value: 2 }], true, true]);
+});
+
+test("C2 — gebunden: buchbar mit der Absicherung nach Warenwert — dieselben Felder wie bei 22 und 23", () => {
+  assert.equal(offerSelectable(TG26_GEBUNDEN), true);
+  assert.equal(offerBookable(TG26_GEBUNDEN), true);
+  assert.equal(offerBlockedLabel(TG26_GEBUNDEN), null);
+  assert.equal(offerSurchargeHint(TG26_GEBUNDEN), null, "nach der Bindung steht kein Zuschlagshinweis mehr da");
+  const absicherung = offerCardInsurance(TG26_GEBUNDEN);
+  assert.deepEqual([absicherung.insurable, absicherung.coverModel, absicherung.excessValue], [true, true, 20]);
+  assert.equal(sameDayOfferView(TG26_GEBUNDEN), null);
+});
+
+test("C3 — heute nie: der Server sperrt den Tag, die Karte nennt ihn und den Hinweis — keine Abholung am selben Tag", () => {
+  assert.equal(offerSelectable(TG26_HEUTE), false);
+  assert.equal(offerBlockedLabel(TG26_HEUTE), "Für dieses Abholdatum nicht verfügbar.");
+  assert.equal(offerBlockedHint(TG26_HEUTE), "Bitte wählen Sie einen anderen Abholtermin.");
+  assert.equal(offerSurchargeHint(TG26_HEUTE), null);
+  assert.equal(sameDayOfferView(TG26_HEUTE), null);
 });
 
 /* ══════════ §D  MEHRPAKET ══════════ */
 
 test("D1 — die Paketzeile nennt Anzahl und Maße JE Paket — genau das CE-Modell (gleiche Pakete)", () => {
+  assert.equal(packageSummaryLine({ packageCount: "2", weight: "2", length: "30", width: "20", height: "15" }),
+    "2 Pakete · je 2 kg · 30 × 20 × 15 cm");
   assert.equal(packageSummaryLine({ packageCount: "2", weight: "4", length: "40", width: "30", height: "20" }),
     "2 Pakete · je 4 kg · 40 × 30 × 20 cm");
   assert.equal(packageSummaryLine({ packageCount: "1", weight: "2", length: "30", width: "20", height: "15" }),
     "2 kg · 30 × 20 × 15 cm");
 });
 
-// Die Buchungsantwort einer Mehrpaketsendung: zwei Pakete, je A4 und Thermodruck, dazu das Abholetikett.
 const beleg = (ordinal, label, carrierReference, labelSize, type = "LABEL") => ({
   type, ordinal, label, carrierReference, labelSize, status: "ready",
   downloadPath: `/api/shipments/4711/provider-documents/${type}/${ordinal}`,
 });
-const ZWEI_PAKETE = [
-  beleg(0, "Versandlabel 1 von 2 (A4)", "1Z26MULTI00000001", "A4"),
-  beleg(1, "Versandlabel 1 von 2 (Thermodruck)", "1Z26MULTI00000001", "THERMAL"),
-  beleg(2, "Versandlabel 2 von 2 (A4)", "1Z26MULTI00000002", "A4"),
-  beleg(3, "Versandlabel 2 von 2 (Thermodruck)", "1Z26MULTI00000002", "THERMAL"),
-  beleg(0, "Abholetikett (A4)", "1Z26COLLECT0000001", "A4", "COLLECTION_LABEL"),
+// GEMESSEN (TG26): eine Sendungsnummer, ein A4- und ein Thermodruck-PDF mit je einer Seite je Paket — der Server nennt
+// sie „Versandlabel (A4)" und „Versandlabel (Thermodruck)". Kein Abholetikett.
+const AWB_26 = "1Z999AA10123456726";
+const GEMESSEN = [
+  beleg(0, "Versandlabel (A4)", AWB_26, "A4"),
+  beleg(1, "Versandlabel (Thermodruck)", AWB_26, "THERMAL"),
+];
+// GENERISCH (keine TG26-Aussage): mehrere Sendungsnummern und ein Abholetikett — die Oberfläche trägt jede Anzahl.
+const AWB_A = "1Z999AA10123456731";
+const AWB_B = "1Z999AA10123456742";
+const AWB_ABHOLUNG = "1Z999AA10123456753";
+const MEHRERE_NUMMERN = [
+  beleg(0, "Versandlabel 1 von 2 (A4)", AWB_A, "A4"),
+  beleg(1, "Versandlabel 1 von 2 (Thermodruck)", AWB_A, "THERMAL"),
+  beleg(2, "Versandlabel 2 von 2 (A4)", AWB_B, "A4"),
+  beleg(3, "Versandlabel 2 von 2 (Thermodruck)", AWB_B, "THERMAL"),
+  beleg(0, "Abholetikett (A4)", AWB_ABHOLUNG, "A4", "COLLECTION_LABEL"),
 ];
 
-test("D2 — Erfolgsbildschirm: je Beleg ein Knopf mit dem Servernamen „Versandlabel 1 von 2 (A4)“ — keine Dublette, kein fremder Pfad", () => {
+test("D2 — Erfolgsbildschirm (gemessen): zwei Knöpfe mit den Servernamen — keine Dublette, kein fremder Pfad, kein „1 von 2“", () => {
   const liste = bookingShippingDocuments({ shippingDocuments: [
-    ZWEI_PAKETE[4], ZWEI_PAKETE[2], ZWEI_PAKETE[0], ZWEI_PAKETE[3], ZWEI_PAKETE[1],
-    { ...ZWEI_PAKETE[0] },                                              // derselbe Pfad zweimal
-    { ...beleg(4, "Versandlabel 3 von 2", "X", "A4"), downloadPath: "https://provider.example/label" },
+    GEMESSEN[1], GEMESSEN[0],
+    { ...GEMESSEN[0] },                                                 // derselbe Pfad zweimal
+    { ...beleg(4, "Versandlabel (A4)", "X", "A4"), downloadPath: "https://provider.example/label" },
     { ...beleg(5, "", "Y", "A4") },
+  ] });
+  assert.deepEqual(liste.map(shippingDocumentButtonLabel),
+    ["Versandlabel (A4) herunterladen", "Versandlabel (Thermodruck) herunterladen"]);
+  assert.deepEqual(liste.map((d) => [d.type, d.ordinal, d.labelSize, d.carrierReference]),
+    [["LABEL", 0, "A4", AWB_26], ["LABEL", 1, "THERMAL", AWB_26]]);
+  assert.deepEqual(liste.map(shippingDocumentFallbackFilename), ["versandlabel-a4.pdf", "versandlabel-thermodruck.pdf"]);
+  assert.ok(!JSON.stringify(liste).includes("provider.example"));
+});
+
+test("D3 — Dokumentübersicht (gemessen): ein Versandlabel in zwei Formaten, dieselbe Nummer", () => {
+  const gruppen = groupShipmentDocuments({ documents: [
+    { ...GEMESSEN[1], category: "SHIPPING" }, { ...GEMESSEN[0], category: "SHIPPING" },
+  ] });
+  assert.equal(gruppen.length, 1);
+  assert.deepEqual(gruppen[0].documents.map(documentLabel), ["Versandlabel (A4)", "Versandlabel (Thermodruck)"]);
+  assert.deepEqual(gruppen[0].documents.map(documentCarrierReference), [AWB_26, AWB_26]);
+});
+
+test("D4 — GENERISCH mehrere Nummern: Knöpfe und Übersicht „1 von 2“ in Serverreihenfolge, das Abholetikett zuletzt", () => {
+  const liste = bookingShippingDocuments({ shippingDocuments: [
+    MEHRERE_NUMMERN[4], MEHRERE_NUMMERN[2], MEHRERE_NUMMERN[0], MEHRERE_NUMMERN[3], MEHRERE_NUMMERN[1],
   ] });
   assert.deepEqual(liste.map(shippingDocumentButtonLabel), [
     "Versandlabel 1 von 2 (A4) herunterladen", "Versandlabel 1 von 2 (Thermodruck) herunterladen",
     "Versandlabel 2 von 2 (A4) herunterladen", "Versandlabel 2 von 2 (Thermodruck) herunterladen",
     "Abholetikett (A4) herunterladen",
   ]);
-  assert.deepEqual(liste.map((d) => d.carrierReference),
-    ["1Z26MULTI00000001", "1Z26MULTI00000001", "1Z26MULTI00000002", "1Z26MULTI00000002", "1Z26COLLECT0000001"]);
-  assert.deepEqual(liste.map(shippingDocumentFallbackFilename).slice(0, 2), ["versandlabel-a4.pdf", "versandlabel-thermodruck.pdf"]);
-  assert.ok(!JSON.stringify(liste).includes("provider.example"));
-});
-
-test("D3 — Dokumentübersicht: Versandlabels nach der Serverreihenfolge, das Abholetikett direkt dahinter", () => {
+  assert.deepEqual(liste.map((d) => d.carrierReference), [AWB_A, AWB_A, AWB_B, AWB_B, AWB_ABHOLUNG]);
   const gruppen = groupShipmentDocuments({ documents: [
-    { ...ZWEI_PAKETE[4], category: "SHIPPING" }, { ...ZWEI_PAKETE[3], category: "SHIPPING" },
-    { ...ZWEI_PAKETE[0], category: "SHIPPING" }, { ...ZWEI_PAKETE[2], category: "SHIPPING" },
-    { ...ZWEI_PAKETE[1], category: "SHIPPING" },
+    { ...MEHRERE_NUMMERN[4], category: "SHIPPING" }, { ...MEHRERE_NUMMERN[3], category: "SHIPPING" },
+    { ...MEHRERE_NUMMERN[0], category: "SHIPPING" }, { ...MEHRERE_NUMMERN[2], category: "SHIPPING" },
+    { ...MEHRERE_NUMMERN[1], category: "SHIPPING" },
   ] });
   assert.equal(gruppen.length, 1);
   assert.deepEqual(gruppen[0].documents.map(documentLabel), [
     "Versandlabel 1 von 2 (A4)", "Versandlabel 1 von 2 (Thermodruck)", "Versandlabel 2 von 2 (A4)",
     "Versandlabel 2 von 2 (Thermodruck)", "Abholetikett (A4)",
   ]);
-  assert.deepEqual(gruppen[0].documents.map(documentCarrierReference).slice(0, 4),
-    ["1Z26MULTI00000001", "1Z26MULTI00000001", "1Z26MULTI00000002", "1Z26MULTI00000002"]);
+  assert.deepEqual(gruppen[0].documents.map(documentCarrierReference).slice(0, 4), [AWB_A, AWB_A, AWB_B, AWB_B]);
 });
 
-test("D4 — Tracking: eine Nummer bleibt die bisherige Anzeige; mehrere Nummern werden gelistet — ohne Paketzuordnung", () => {
-  assert.equal(multiTrackingReferencesOf({ trackingReferences: ["1Z29EXPRESS000001"] }), null);
-  const zwei = { trackingReferences: ["1Z26MULTI00000001", "1Z26MULTI00000002", "1Z26MULTI00000001", "https://x.example"] };
-  assert.deepEqual(trackingReferencesOf(zwei), ["1Z26MULTI00000001", "1Z26MULTI00000002"]);
-  assert.deepEqual(multiTrackingReferencesOf(zwei), ["1Z26MULTI00000001", "1Z26MULTI00000002"]);
+test("D5 — Tracking: eine Nummer (gemessen) bleibt die bisherige Anzeige; mehrere Nummern werden gelistet — ohne Paketzuordnung", () => {
+  assert.equal(multiTrackingReferencesOf({ trackingReferences: [AWB_26] }), null);
+  assert.deepEqual(trackingReferencesOf({ trackingReferences: [AWB_26, AWB_26] }), [AWB_26]);
+  const zwei = { trackingReferences: [AWB_A, AWB_B, AWB_A, "https://x.example"] };
+  assert.deepEqual(trackingReferencesOf(zwei), [AWB_A, AWB_B]);
+  assert.deepEqual(multiTrackingReferencesOf(zwei), [AWB_A, AWB_B]);
   assert.equal(trackingReferencesSummary(multiTrackingReferencesOf(zwei)), "2 Trackingnummern");
   // Die Sendungsliste liefert dieselbe Liste unter ihrem Spaltennamen.
   assert.deepEqual(multiTrackingReferencesOf({ tracking_references: zwei.trackingReferences }), trackingReferencesOf(zwei));
 });
 
-test("D5 — Admin-Detail: alle Trackingreferenzen und alle Anbieterbelege einer Mehrpaketsendung — vier Versandlabels, ein Abholetikett", () => {
-  const beleg = (id, documentType, ordinal, labelSize) =>
+test("D6 — Admin-Detail: alle Trackingreferenzen und Anbieterbelege — gemessen zwei Versandlabels, generisch vier und ein Abholetikett", () => {
+  const anbieterbeleg = (id, documentType, ordinal, labelSize) =>
     ({ id, documentType, ordinal, format: "PDF", labelSize, sizeBytes: 2048, bookingAttemptId: 901 });
-  const o = selectOperations({ operations: {
-    provider: "transglobal", providerServiceId: "26", providerBookingReference: "7201",
-    trackingReferences: ["1Z26MULTI00000001", "1Z26MULTI00000002"], bookedAt: "2026-09-16T08:00:00Z",
+  const betrieb = (trackingReferences, providerDocuments) => selectOperations({ operations: {
+    provider: "transglobal", providerServiceId: "26", providerBookingReference: "DE9900626",
+    trackingReferences, bookedAt: "2026-09-17T08:00:00Z",
     latestAttemptId: 901, attemptsTotal: 1, attemptsLimited: false, legacyWithoutAttempt: false,
     bookingAttempts: [{ id: 901, provider: "transglobal", attempt: 1, state: "booked", createdAt: "t", isLatest: true }],
-    documents: { storedLabel: false, providerDocuments: [
-      beleg(1, "LABEL", 0, "A4"), beleg(2, "LABEL", 1, "THERMAL"), beleg(3, "LABEL", 2, "A4"),
-      beleg(4, "LABEL", 3, "THERMAL"), beleg(5, "COLLECTION_LABEL", 0, "A4"),
-    ] },
+    documents: { storedLabel: false, providerDocuments },
   } });
-  assert.deepEqual(o.trackingReferences, ["1Z26MULTI00000001", "1Z26MULTI00000002"]);
-  assert.deepEqual(o.documents.providerDocuments.map((d) => [d.typeText, d.labelSize]), [
+
+  const gemessen = betrieb([AWB_26], [anbieterbeleg(1, "LABEL", 0, "A4"), anbieterbeleg(2, "LABEL", 1, "THERMAL")]);
+  assert.deepEqual(gemessen.trackingReferences, [AWB_26]);
+  assert.deepEqual(gemessen.documents.providerDocuments.map((d) => [d.typeText, d.labelSize]),
+    [["Versandlabel", "A4"], ["Versandlabel", "THERMAL"]]);
+  assert.deepEqual(documentsSummary(gemessen), { hasLabel: true, storedLabel: false, providerLabelCount: 2, providerDocumentCount: 2 });
+
+  const generisch = betrieb([AWB_A, AWB_B], [
+    anbieterbeleg(1, "LABEL", 0, "A4"), anbieterbeleg(2, "LABEL", 1, "THERMAL"), anbieterbeleg(3, "LABEL", 2, "A4"),
+    anbieterbeleg(4, "LABEL", 3, "THERMAL"), anbieterbeleg(5, "COLLECTION_LABEL", 0, "A4"),
+  ]);
+  assert.deepEqual(generisch.trackingReferences, [AWB_A, AWB_B]);
+  assert.deepEqual(generisch.documents.providerDocuments.map((d) => [d.typeText, d.labelSize]), [
     ["Versandlabel", "A4"], ["Versandlabel", "THERMAL"], ["Versandlabel", "A4"], ["Versandlabel", "THERMAL"], ["Abholetikett", "A4"],
   ]);
-  assert.deepEqual(documentsSummary(o), { hasLabel: true, storedLabel: false, providerLabelCount: 4, providerDocumentCount: 5 });
+  assert.deepEqual(documentsSummary(generisch), { hasLabel: true, storedLabel: false, providerLabelCount: 4, providerDocumentCount: 5 });
 });
 
 /* ══════════ §E  WHITE LABEL, BEDIENBARKEIT UND KEINE SERVICEID-WEICHE ══════════ */

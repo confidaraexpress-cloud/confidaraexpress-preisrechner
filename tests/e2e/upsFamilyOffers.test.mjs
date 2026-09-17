@@ -3,20 +3,25 @@
 //
 // Es gibt keine eigene Oberfläche für diese Produkte: dasselbe Angebotsformat wie Standard- und Expressversand, andere
 // Serverwerte. Gemessen wird, dass der gemeinsame Flow genau diese Werte zeigt — und nichts darüber hinaus:
-//   A  Vergleich mit einem Packstück: Standard- und Expressversand auswählbar; Express und Standardversand Mehrpaket als
-//      vollwertige Preisauskunft — gesperrt, Preis sichtbar, keine Adressfrage, kein Same-Day, keine Auszeichnung
+//   A  Vergleich mit einem Packstück: Standard- und Expressversand auswählbar; UPS · Express als vollwertige
+//      Preisauskunft — gesperrt, Preis sichtbar, keine Adressfrage, kein Same-Day, keine Auszeichnung
 //   B  Details UPS · Express: Express-Profil OHNE Volumengewichtsformel und OHNE Gewichtsgrenze, Prognose ohne Uhrzeit
-//   C  Details UPS · Standardversand Mehrpaket: kein Profil — der bisherige Detailbereich, keine erfundene Grenze
-//   D  Neue Sendung mit zwei Packstücken: Anzahl und Maße je Paket in der Anfrage; nur das Mehrpaketprodukt bleibt
-//   E  Preisrechner mit zwei Packstücken: „Identische Pakete", Hinweis je Paket, Mehrpaketprodukt als Preisauskunft
-//   F  Freigabe nur als Serverwert (hypothetisch): Paketzeile in Schritt 1 und 2, Buchung, vier Versandlabels + Abholetikett
-//   G  Meine Sendungen: Mehrpaketsendung mit zwei Trackingnummern, zwei Etappen und Belegen „1 von 2"; Express mit einer Nummer
-//   H  390 / 834 px: Vergleich, Erfolg und Sendungsliste ohne horizontalen Überlauf
+//   C  Details UPS · Standardversand Mehrpaket (freigegeben, TG26): kein Profil — der bisherige Detailbereich mit
+//      Sendungsverfolgung, Drucker und der Servergrenze von zwei Packstücken; keine Prognose, kein „nicht verfügbar"
+//   D  Neue Sendung mit zwei Packstücken: Anzahl und Maße je Paket in der Anfrage; das Mehrpaketprodukt ist auswählbar
+//      („Vorläufiger Preis", Zuschlagshinweis) — die Adressfrage entsteht erst auf der Buchungsseite
+//   E  Preisrechner mit zwei Packstücken: „Identische Pakete", Hinweis je Paket, Mehrpaketprodukt auswählbar
+//   F  Mehrpaketbuchung nach dem GEMESSENEN Fall: Paketzeile, Privatadresse, Absicherung 1:1, zwei Belege
+//      („Versandlabel (A4)", „Versandlabel (Thermodruck)") mit einer Nummer, kein Abholetikett
+//   G  Meine Sendungen: die Mehrpaketsendung mit einer Nummer und zwei Belegen; GENERISCH eine Sendung mit zwei Nummern,
+//      zwei Etappen und Belegen „1 von 2"; UPS · Express mit einer Nummer
+//   H  390 / 834 px: Vergleich, Buchung, Erfolg und Sendungsliste ohne horizontalen Überlauf
 // White Label wird auf jeder Fläche geprüft.
 //
-// Alle Beträge sind FIXTUREWERTE des gemockten Servers — die Oberfläche rechnet nichts. Die Freigabe in F ist keine
-// Produktaussage: sie belegt nur, dass die Oberfläche für mehrere Packstücke, Labels und Trackingnummern keine Änderung
-// braucht, sobald der Server ein solches Angebot freigibt.
+// Alle Beträge sind FIXTUREWERTE des gemockten Servers nach dem gemessenen Staging-Fall — die Oberfläche rechnet nichts.
+// Die Sendungsnummern sind synthetisch: eine Staging-Platzhalternummer ist kein Produktionsvertrag. Die Sendung mit
+// mehreren Nummern ist bewusst GENERISCH — sie belegt, dass die Oberfläche jede Anzahl verschiedener Nummern ohne
+// Änderung trägt, und sagt nichts darüber, wie viele Nummern eine Buchung trägt.
 //
 // Kein echtes Backend, keine Bestellung, kein Anbieter.
 import { test } from "node:test";
@@ -29,17 +34,22 @@ import {
   fuelleVersandformular, STANDARD_ABSENDER, STANDARD_EMPFAENGER,
 } from "./helpers/newShipmentForm.mjs";
 import {
-  LIEFERADRESSE_ID, lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
+  lieferadressZustand, mockeLieferadresse, waehleLieferadresse, bestandteile,
 } from "./helpers/residentialPriceInputs.mjs";
 
 const PORT = 5399, BASE = `http://127.0.0.1:${PORT}`;
 const CE_ID = 5026;
+const CE_ID_MEHRFACH = 5027;
 const CE_ID_EXPRESS = 5029;
 const AB = "CE-AB26-01026";
+const AB_MEHRFACH = "CE-AB26-01027";
 const AB_EXPRESS = "CE-AB26-01029";
-const AWB_1 = "1Z26MULTI00000001";
-const AWB_2 = "1Z26MULTI00000002";
-const AWB_ABHOLUNG = "1Z26COLLECT0000001";
+// Gemessen ist die STRUKTUR: eine Nummer für beide Belege der Mehrpaketsendung. Die Nummer selbst ist synthetisch.
+const AWB_MEHRPAKET = "1Z999AA10123456726";
+// Generisch: je Paket eine eigene Nummer und ein Abholetikett.
+const AWB_1 = "1Z999AA10123456731";
+const AWB_2 = "1Z999AA10123456742";
+const AWB_ABHOLUNG = "1Z999AA10123456753";
 const AWB_EXPRESS = "1Z999AA10123456785";
 const PDF = Buffer.from("%PDF-1.4\n% Testbeleg\n%%EOF\n", "utf8");
 
@@ -73,8 +83,9 @@ const USER = {
 const ABSENDER = { ...STANDARD_ABSENDER, zip: "63741", city: "Aschaffenburg" };
 const EMPFAENGER = { ...STANDARD_EMPFAENGER, zip: "10115", city: "Berlin" };
 const EIN_PAKET = { packageCount: "1", weight: "2", length: "30", width: "20", height: "15" };
-const ZWEI_PAKETE = { packageCount: "2", weight: "4", length: "40", width: "30", height: "20" };
-const PAKETZEILE = "2 Pakete · je 4 kg · 40 × 30 × 20 cm";
+// Der gemessene Fall: zwei gleiche Packstücke je 2 kg, 30 × 20 × 15 cm.
+const ZWEI_PAKETE = { packageCount: "2", weight: "2", length: "30", width: "20", height: "15" };
+const PAKETZEILE = "2 Pakete · je 2 kg · 30 × 20 × 15 cm";
 
 /* ══════════ Die öffentlichen Angebote (Fixturewerte) ══════════ */
 
@@ -125,24 +136,16 @@ const EXPRESS = angebot({
                     basicCoverMaxGoodsValue: 50, maxCoverValue: 2500 },
 });
 
-// UPS · Standardversand Mehrpaket bis zur Evidenz: keine kuratierte Fähigkeit, kein Profil, keine Prognose, keine Grenze.
-const mehrpaket = (extra) => angebot({
-  publicServiceName: "Standardversand Mehrpaket",
-  transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage", deliveryProjection: null,
-  bookable: false, unavailableReason: "quote_only", priceCompleteness: "indicative",
-  requiredPriceInputs: ["deliveryIsResidential", "collectionIsResidential"],
-  trackingAvailable: null, printerRequired: null, tariffLimits: [], serviceDetails: null,
-  ...extra,
+// UPS · Standardversand Mehrpaket, freigegeben (TG26): die Serverwerte des gemessenen Falls — vorläufiger Geschäftspreis
+// bis zur Art der Lieferadresse; Grenze, Sendungsverfolgung und Drucker aus der Kuration; kein Profil, keine Prognose.
+const MEHRPAKET = angebot({
+  offerId: "26z20000000000000000000000000026", publicServiceName: "Standardversand Mehrpaket",
+  transitDaysMin: 1, transitDaysMax: 5, deliveryTime: "1–5 Tage", deliveryProjection: null,
+  netPrice: 31.93, vatAmount: 6.07, finalPrice: 38,
+  bookable: false, unavailableReason: "price_inputs_required", priceCompleteness: "indicative",
+  requiredPriceInputs: ["deliveryIsResidential"], chargeableWeight: 4, trackingAvailable: true, printerRequired: true,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 2 }], serviceDetails: null,
 });
-const MEHRPAKET_EINS = mehrpaket({
-  offerId: "26e10000000000000000000000000026", netPrice: 14.4, vatAmount: 2.74, finalPrice: 17.14, chargeableWeight: 2,
-});
-const MEHRPAKET_ZWEI = mehrpaket({
-  offerId: "26z20000000000000000000000000026", netPrice: 24, vatAmount: 4.56, finalPrice: 28.56, chargeableWeight: 8,
-});
-// Hypothetische Freigabe — ausschließlich Serverwerte: auswählbar mit der Frage nach der Art der Lieferadresse.
-const MEHRPAKET_FREI = { ...MEHRPAKET_ZWEI, offerId: "26fr0000000000000000000000000026",
-  unavailableReason: "price_inputs_required", requiredPriceInputs: ["deliveryIsResidential"] };
 
 // JUMiNGO daneben — unverändert: Anbieterdatum mit Uhrzeit, Tarif-ID, Formatwahl, kein Profil.
 const JM_EXPRESS = {
@@ -162,18 +165,48 @@ const JM_MEHRPAKET = {
   pickupDate: `${MONTAG}T00:00:00Z`, pickupTimeFrom: "09:00", pickupTimeUntil: "17:00",
   deliveryDate: `${MITTWOCH}T00:00:00Z`,
   trackingAvailable: true, printerRequired: true, availableForDate: true, bookable: true, requiredPriceInputs: [],
-  labelFormatOptions: ["A4", "A6"], labelSizes: ["A4", "A6"], chargeableWeight: 8, tariffLimits: [], insuranceAvailable: false,
+  labelFormatOptions: ["A4", "A6"], labelSizes: ["A4", "A6"], chargeableWeight: 4, tariffLimits: [], insuranceAvailable: false,
 };
 
-const VERGLEICH_EIN_PAKET = [STANDARD, EXPRESSVERSAND, EXPRESS, MEHRPAKET_EINS, JM_EXPRESS];
-const VERGLEICH_ZWEI_PAKETE = [MEHRPAKET_ZWEI, JM_MEHRPAKET];
+const VERGLEICH_EIN_PAKET = [STANDARD, EXPRESSVERSAND, EXPRESS, JM_EXPRESS];
+const VERGLEICH_ZWEI_PAKETE = [MEHRPAKET, JM_MEHRPAKET];
 
-// Die Art der Lieferadresse der hypothetisch freigegebenen Mehrpaketsendung (Fixturewerte).
-const zustandMehrpaket = () => lieferadressZustand({
-  offerId: MEHRPAKET_FREI.offerId,
-  geschaeft: { net: 24, vat: 4.56, gross: 28.56 },
-  privat: { net: 27.18, vat: 5.16, gross: 32.34 },
+/* ══════════ Art der Lieferadresse und Absicherung (Fixturewerte des gemessenen Falls) ══════════ */
+
+// Die Absicherungsbeschreibung des gebundenen Angebots bei Warenwert 500 €.
+const COVER_500 = {
+  isInsurable: true, selectionModel: "cover_value", excessValue: 20,
+  requiresGoodsAreNew: true, requiresGoodsAreFragile: true, priceOnSelection: true,
+  coverValueSource: "goods_value", coverState: "available", coverValue: 500,
+  basicCoverMaxGoodsValue: 50, maxCoverValue: 2500,
+};
+const ABSICHERUNG_ZEILE = { type: "transport_insurance", taxable: false, net: 10, vat: 0, gross: 10 };
+// Die Summen der Neubepreisung: der Versand wie gebunden, die Absicherung 1:1 und steuerfrei obenauf.
+const ABSICHERUNG_SUMMEN = {
+  false: { customerShippingNet: 31.93, shippingVat: 6.07, customerShippingGross: 38,
+           insuranceGross: 10, customerTotalNet: 41.93, customerTotalGross: 48 },
+  true: { customerShippingNet: 35.11, shippingVat: 6.67, customerShippingGross: 41.78,
+          insuranceGross: 10, customerTotalNet: 45.11, customerTotalGross: 51.78 },
+};
+
+// Geschäftsadresse, Privatadresse und Zuschlag Privatadresse — mit Standardaufschlag und MwSt., wie der Server sie nennt.
+// `absicherung: true` ist der gemessene Fall (Absicherungsextra im Quote, Warenwert 500 €).
+const zustandMehrpaket = ({ absicherung = false } = {}) => lieferadressZustand({
+  offerId: MEHRPAKET.offerId,
+  geschaeft: { net: 31.93, vat: 6.07, gross: 38 },
+  privat: { net: 35.11, vat: 6.67, gross: 41.78 },
   zuschlag: { net: 3.18, vat: 0.6, gross: 3.78 },
+  ...(absicherung ? { insuranceAvailable: true, insuranceDetails: COVER_500 } : {}),
+});
+
+const absicherungsAntwort = (body, lz) => ({
+  selectedInsurance: "transit_cover",
+  insurance: { coverValue: body.coverValue, excessValue: 20, goodsAreNew: body.goodsAreNew,
+               goodsAreFragile: body.goodsAreFragile, insuranceGross: 10 },
+  totals: ABSICHERUNG_SUMMEN[String(lz.bound)],
+  tariff: { insuranceAvailable: true, insuranceDetails: lz.insuranceDetails },
+  components: [...bestandteile(lz, lz.bound), ABSICHERUNG_ZEILE],
+  priceRevision: lz.revision, priceChangeAccepted: false,
 });
 
 /* ══════════ Belege und Sendungen ══════════ */
@@ -182,28 +215,33 @@ const BELEG = (id, type, ordinal, label, carrierReference, labelSize) => ({
   type, category: "SHIPPING", status: "ready", label, ordinal, carrierReference, labelSize,
   downloadPath: `/api/shipments/${id}/provider-documents/${type}/${ordinal}`,
 });
-// Bewusst unsortiert — die Reihenfolge der Oberfläche darf nicht an der Antwort hängen.
+// GEMESSEN: ein A4- und ein Thermodruck-PDF (je eine Seite je Paket) mit derselben Nummer — bewusst Thermodruck zuerst,
+// die Reihenfolge der Oberfläche darf nicht an der Antwort hängen.
 const MEHRPAKET_BELEGE = [
-  BELEG(CE_ID, "COLLECTION_LABEL", 0, "Abholetikett (A4)", AWB_ABHOLUNG, "A4"),
-  BELEG(CE_ID, "LABEL", 3, "Versandlabel 2 von 2 (Thermodruck)", AWB_2, "THERMAL"),
-  BELEG(CE_ID, "LABEL", 0, "Versandlabel 1 von 2 (A4)", AWB_1, "A4"),
-  BELEG(CE_ID, "LABEL", 2, "Versandlabel 2 von 2 (A4)", AWB_2, "A4"),
-  BELEG(CE_ID, "LABEL", 1, "Versandlabel 1 von 2 (Thermodruck)", AWB_1, "THERMAL"),
+  BELEG(CE_ID, "LABEL", 1, "Versandlabel (Thermodruck)", AWB_MEHRPAKET, "THERMAL"),
+  BELEG(CE_ID, "LABEL", 0, "Versandlabel (A4)", AWB_MEHRPAKET, "A4"),
 ];
-const MEHRPAKET_KNOEPFE = [
-  "Versandlabel 1 von 2 (A4) herunterladen", "Versandlabel 1 von 2 (Thermodruck) herunterladen",
-  "Versandlabel 2 von 2 (A4) herunterladen", "Versandlabel 2 von 2 (Thermodruck) herunterladen",
-  "Abholetikett (A4) herunterladen",
+const MEHRPAKET_KNOEPFE = ["Versandlabel (A4) herunterladen", "Versandlabel (Thermodruck) herunterladen"];
+// GENERISCH — ebenfalls unsortiert.
+const MEHRFACH_BELEGE = [
+  BELEG(CE_ID_MEHRFACH, "COLLECTION_LABEL", 0, "Abholetikett (A4)", AWB_ABHOLUNG, "A4"),
+  BELEG(CE_ID_MEHRFACH, "LABEL", 3, "Versandlabel 2 von 2 (Thermodruck)", AWB_2, "THERMAL"),
+  BELEG(CE_ID_MEHRFACH, "LABEL", 0, "Versandlabel 1 von 2 (A4)", AWB_1, "A4"),
+  BELEG(CE_ID_MEHRFACH, "LABEL", 2, "Versandlabel 2 von 2 (A4)", AWB_2, "A4"),
+  BELEG(CE_ID_MEHRFACH, "LABEL", 1, "Versandlabel 1 von 2 (Thermodruck)", AWB_1, "THERMAL"),
 ];
 const EXPRESS_BELEGE = [
   BELEG(CE_ID_EXPRESS, "LABEL", 1, "Versandlabel (Thermodruck)", AWB_EXPRESS, "THERMAL"),
   BELEG(CE_ID_EXPRESS, "LABEL", 0, "Versandlabel (A4)", AWB_EXPRESS, "A4"),
 ];
-// Die Dateinamen, wie der Server sie für eine Mehrpaketsendung bildet (Position und Format je Beleg).
-const DATEINAME = {
-  "LABEL/0": `Versandlabel-${AB}-1-A4.pdf`, "LABEL/1": `Versandlabel-${AB}-1-Thermodruck.pdf`,
-  "LABEL/2": `Versandlabel-${AB}-2-A4.pdf`, "LABEL/3": `Versandlabel-${AB}-2-Thermodruck.pdf`,
-  "COLLECTION_LABEL/0": `Abholetikett-${AB}-A4.pdf`,
+// Die Dateinamen, wie der Server sie bildet: eine Nummer → nur das Format; mehrere Nummern → Position und Format.
+const DATEINAMEN = {
+  [CE_ID]: { "LABEL/0": `Versandlabel-${AB}-A4.pdf`, "LABEL/1": `Versandlabel-${AB}-Thermodruck.pdf` },
+  [CE_ID_MEHRFACH]: {
+    "LABEL/0": `Versandlabel-${AB_MEHRFACH}-1-A4.pdf`, "LABEL/1": `Versandlabel-${AB_MEHRFACH}-1-Thermodruck.pdf`,
+    "LABEL/2": `Versandlabel-${AB_MEHRFACH}-2-A4.pdf`, "LABEL/3": `Versandlabel-${AB_MEHRFACH}-2-Thermodruck.pdf`,
+    "COLLECTION_LABEL/0": `Abholetikett-${AB_MEHRFACH}-A4.pdf`,
+  },
 };
 
 const SENDUNG = (over) => ({
@@ -211,16 +249,23 @@ const SENDUNG = (over) => ({
   cancellation_status: null, ...over,
 });
 const SENDUNGEN = [
-  SENDUNG({ id: CE_ID, weight: 8, price_final: 28.56, order_confirmation_number: AB, business_order_number: "CE-BS26-01026",
-            tracking_number: AWB_1, tracking_references: [AWB_1, AWB_2] }),
+  SENDUNG({ id: CE_ID, weight: 4, price_final: 51.78, order_confirmation_number: AB, business_order_number: "CE-BS26-01026",
+            tracking_number: AWB_MEHRPAKET, tracking_references: [AWB_MEHRPAKET] }),
+  SENDUNG({ id: CE_ID_MEHRFACH, weight: 4, price_final: 38, order_confirmation_number: AB_MEHRFACH,
+            business_order_number: "CE-BS26-01027", tracking_number: AWB_1, tracking_references: [AWB_1, AWB_2] }),
   SENDUNG({ id: CE_ID_EXPRESS, weight: 2, price_final: 37.69, order_confirmation_number: AB_EXPRESS,
             business_order_number: "CE-BS26-01029", tracking_number: AWB_EXPRESS, tracking_references: [AWB_EXPRESS] }),
 ];
 
 const EV = (status, description, location, date, time) => ({ status, description, location, dateTime: { date, time } });
+const EINZELNUMMER = (shipmentId, nummer) => ({
+  shipmentId, tracking: null, trackingAvailable: true, trackingNumber: nummer,
+  trackingReferences: [nummer], trackingStatus: null, carrier: "UPS", carrierTrackingPage: null, source: "local",
+});
 const TRACKING = {
-  [CE_ID]: {
-    shipmentId: CE_ID, tracking: null, trackingAvailable: true, trackingNumber: AWB_1, trackingReferences: [AWB_1, AWB_2],
+  [CE_ID]: EINZELNUMMER(CE_ID, AWB_MEHRPAKET),
+  [CE_ID_MEHRFACH]: {
+    shipmentId: CE_ID_MEHRFACH, tracking: null, trackingAvailable: true, trackingNumber: AWB_1, trackingReferences: [AWB_1, AWB_2],
     trackingStatus: "in_transit", trackingStatusText: "Picked up", carrier: "UPS", carrierTrackingPage: null,
     liveTracking: true, source: "live",
     trackingLegs: [
@@ -230,12 +275,23 @@ const TRACKING = {
         events: [EV("in_transit", "Picked up", "Aschaffenburg DE", MONTAG, "15:12:30")] },
     ],
   },
-  [CE_ID_EXPRESS]: {
-    shipmentId: CE_ID_EXPRESS, tracking: null, trackingAvailable: true, trackingNumber: AWB_EXPRESS,
-    trackingReferences: [AWB_EXPRESS], trackingStatus: null, carrier: "UPS", carrierTrackingPage: null, source: "local",
-  },
+  [CE_ID_EXPRESS]: EINZELNUMMER(CE_ID_EXPRESS, AWB_EXPRESS),
 };
-const DOKUMENTE = { [CE_ID]: MEHRPAKET_BELEGE, [CE_ID_EXPRESS]: EXPRESS_BELEGE };
+const DOKUMENTE = { [CE_ID]: MEHRPAKET_BELEGE, [CE_ID_MEHRFACH]: MEHRFACH_BELEGE, [CE_ID_EXPRESS]: EXPRESS_BELEGE };
+
+const buchungsAntwort = (body, lz) => {
+  const versichert = !!body.insuranceSelection && body.insuranceSelection.type === "transit_cover";
+  const versand = lz.bound ? lz.privat : lz.geschaeft;
+  return {
+    message: "Sendung gebucht", ceShipmentId: CE_ID, invoiceNumber: "CE-RE26-01026",
+    businessOrderNumber: "CE-BS26-01026", dueDate: null,
+    amount: versichert ? ABSICHERUNG_SUMMEN[String(lz.bound)].customerTotalGross : versand.gross,
+    billingMode: "single", testBooking: false, voucherCode: null, deliveryNote: null,
+    orderConfirmation: { number: AB, issuedAt: `${HEUTE}T10:00:00Z` },
+    shippingDocuments: MEHRPAKET_BELEGE,
+    priceComponents: [...bestandteile(lz, lz.bound), ...(versichert ? [ABSICHERUNG_ZEILE] : [])],
+  };
+};
 
 /* ══════════ Prüfregeln ══════════ */
 
@@ -245,7 +301,7 @@ const VERBOTEN = /transglobal|jumingo|service[\s-]*id\b|quote[\s-]*id\b|UPS Expr
 const VERBOTENE_CODES = /\bTG\b|\bS2[2369]\b|\bCOLFEE\b|\bRES\b|\bINS\b|\bFRT\b/;
 // Der Name „Express" verspricht nichts: keine Uhrzeit, kein Vormittag, keine Garantie.
 const KEINE_ZUSAGE = /10:30|12:00|vormittag|garantiert|garantie|tagesende|zustellung bis/i;
-// Was das Profil der Preisauskunft nie sagt: belegfreie Grenzen und Formeln.
+// Was ein Angebot ohne belegte Angabe nie sagt: belegfreie Grenzen und Formeln.
 const KEINE_ERFUNDENE_GRENZE = /70 kg|5\.000|volumengewicht|gurtmaß|länge|max\. gewicht/i;
 const JUMINGO_ONLY = [/\/pickup-window/, /\/cart-total/, /\/commercial-invoice/];
 
@@ -253,7 +309,7 @@ let server, browser;
 
 /* Das Szenario: `tariffs` (Vergleich), `lz` (Zustand der Lieferadresse), `sendungen` (Meine Sendungen). */
 async function setup(page, szenario = {}) {
-  const p = { pfade: [], calc: [], book: [], anfragen: [] };
+  const p = { pfade: [], calc: [], book: [], reprice: [], anfragen: [] };
   const lz = szenario.lz || zustandMehrpaket();
   p.lz = lz;
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
@@ -263,7 +319,7 @@ async function setup(page, szenario = {}) {
     p.pfade.push(pfad);
     const beleg = /^\/api\/shipments\/(\d+)\/provider-documents\/([A-Z_]+)\/(\d)$/.exec(pfad);
     if (beleg) {
-      const name = Number(beleg[1]) === CE_ID ? DATEINAME[`${beleg[2]}/${beleg[3]}`] : null;
+      const name = (DATEINAMEN[beleg[1]] || {})[`${beleg[2]}/${beleg[3]}`] || null;
       return route.fulfill({ status: 200, body: PDF, headers: {
         "content-type": "application/pdf",
         ...(name ? { "content-disposition": `attachment; filename="${name}"`,
@@ -295,19 +351,21 @@ async function setup(page, szenario = {}) {
       });
     }
     if (pfad.includes("/api/insurance/reprice")) {
-      return json({ error: "Die Zusatzabsicherung ist für dieses Angebot nicht verfügbar.", code: "INSURANCE_UNAVAILABLE" }, 409);
+      const body = req.postDataJSON();
+      p.reprice.push(body);
+      if (lz.bound === null) {
+        return json({ error: "Bitte wählen Sie zuerst die Art der Lieferadresse.", code: "PRICE_INPUTS_REQUIRED" }, 409);
+      }
+      if (lz.insuranceAvailable !== true) {
+        return json({ error: "Die Zusatzabsicherung ist für dieses Angebot nicht verfügbar.", code: "INSURANCE_UNAVAILABLE" }, 409);
+      }
+      lz.insuranceSelected = true;
+      return json(absicherungsAntwort(body, lz));
     }
     if (pfad.includes("/api/jumingo/book")) {
       const body = req.postDataJSON();
       p.book.push(body);
-      return json({
-        message: "Sendung gebucht", ceShipmentId: CE_ID, invoiceNumber: "CE-RE26-01026",
-        businessOrderNumber: "CE-BS26-01026", dueDate: null, amount: 28.56, billingMode: "single",
-        testBooking: false, voucherCode: null, deliveryNote: null,
-        orderConfirmation: { number: AB, issuedAt: `${HEUTE}T10:00:00Z` },
-        shippingDocuments: MEHRPAKET_BELEGE,
-        priceComponents: bestandteile(lz, lz.bound),
-      });
+      return json(buchungsAntwort(body, lz));
     }
     return json({});
   });
@@ -374,6 +432,13 @@ async function keinAnbieter(page, wo) {
   assert.equal(treffer, null, `${wo}: unzulässiger Text „${treffer && treffer[0]}“`);
 }
 
+async function warteAufText(page, selektor, teil, timeout = 10000) {
+  await page.waitForFunction(({ s, t }) => {
+    const el = document.querySelector(s);
+    return !!el && el.textContent.replace(/ /g, " ").includes(t);
+  }, { s: selektor, t: teil }, { timeout });
+}
+
 /* Eine gesperrte Preisauskunft: Preis sichtbar, Knopf gesperrt mit dem neutralen Satz, keine Folgeschritte. */
 async function istPreisauskunft(karte, name) {
   assert.match(await karte.getAttribute("class"), /offer-card--unavailable/, `${name}: nicht als gesperrt dargestellt`);
@@ -388,24 +453,66 @@ async function istPreisauskunft(karte, name) {
   assert.equal(await karte.locator("button.offer-details-link").isEnabled(), true, `${name}: „Details anzeigen“ ist gesperrt`);
 }
 
+/* Ein Angebot, das nur noch auf die Art der Lieferadresse wartet: auswählbar, vorläufiger Preis, Zuschlagshinweis — keine
+   Auszeichnung, keine Abholung heute, keine Prognose. Sendungsverfolgung und Drucker kommen aus den Serverfeldern. */
+async function istAuswaehlbar(karte, name) {
+  assert.doesNotMatch(await karte.getAttribute("class"), /offer-card--unavailable/, `${name}: als gesperrt dargestellt`);
+  const cta = karte.locator("button.offer-cta-btn");
+  assert.equal(await cta.isEnabled(), true, `${name}: der CTA ist gesperrt`);
+  assert.match(await inhalt(cta), /Angebot auswählen/, name);
+  const text = await inhalt(karte);
+  for (const erwartet of ["Vorläufiger Preis", "Sendungsverfolgung", "Drucker erforderlich"]) {
+    assert.ok(text.includes(erwartet), `${name}: „${erwartet}“ fehlt: ${text}`);
+  }
+  assert.equal(await inhalt(karte.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.", name);
+  assert.doesNotMatch(text, /ab \d+,\d{2} €/, `${name}: „ab“-Betrag`);
+  assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0, `${name}: Abholung heute`);
+  assert.equal(await karte.locator(".offer-badge").count(), 0, `${name}: ein vorläufiges Angebot trägt eine Auszeichnung`);
+  assert.notEqual(await inhalt(karte.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Lieferung",
+    `${name}: ohne kuratierte Prognose erscheint eine voraussichtliche Lieferung`);
+}
+
+/* Die Teile einer Karte liegen seitlich vollständig in ihr. */
+async function liegtInKarte(karte, selektoren, wo) {
+  for (const sel of selektoren) {
+    const el = karte.locator(sel);
+    await el.scrollIntoViewIfNeeded();
+    assert.ok(await el.isVisible(), `${wo}: ${sel} ist nicht sichtbar`);
+    const a = await karte.boundingBox();
+    const i = await el.boundingBox();
+    assert.ok(i.x >= a.x - 1 && i.x + i.width <= a.x + a.width + 1, `${wo}: ${sel} ragt aus der Karte`);
+  }
+}
+
 async function beleg(page, name) {
   const ordner = path.join(process.cwd(), "tests", "e2e", "screenshots");
   mkdirSync(ordner, { recursive: true });
   await page.screenshot({ path: path.join(ordner, `ups-family-${name}.png`), fullPage: false });
 }
 
-async function bucheMehrpaket(page) {
-  const p = await setup(page, { tariffs: [MEHRPAKET_FREI, JM_MEHRPAKET] });
+/* Neue Sendung mit zwei Packstücken bis zur gebundenen Art der Lieferadresse. `vorDerAuswahl` prüft den Vergleich. */
+async function bucheMehrpaket(page, { privat = false, lz, vorDerAuswahl } = {}) {
+  const p = await setup(page, { tariffs: VERGLEICH_ZWEI_PAKETE, lz });
   await zuDenAngeboten(page, { paket: ZWEI_PAKETE });
-  await karteVon(page, MEHRPAKET_FREI).locator("button.offer-cta-btn").click();
+  if (vorDerAuswahl) await vorDerAuswahl(page);
+  await karteVon(page, MEHRPAKET).locator("button.offer-cta-btn").click();
   await page.waitForSelector(".steps-bar", { timeout: 20000 });
-  await waehleLieferadresse(page, false);
+  await waehleLieferadresse(page, privat);
   return p;
 }
 
-async function bestaetigenUndBuchen(page) {
+async function zuSchritt2(page) {
   await page.getByRole("button", { name: /^Weiter/ }).first().click();
   await page.waitForSelector(".booking-confirm-panel", { timeout: 20000 });
+}
+
+async function absichern(page) {
+  await page.locator(`.ins-card:has(input[value="transit_cover"]) .ins-card-name`).click();
+  await page.locator("#ins-goodsAreNew-ja").check();
+  await page.locator("#ins-goodsAreFragile-nein").check();
+}
+
+async function bestaetigenUndBuchen(page) {
   const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
   await checks.nth(0).check();
   await checks.nth(1).check();
@@ -437,12 +544,12 @@ test.after(async () => {
 
 /* ══════════ A — Vergleich mit einem Packstück ══════════ */
 
-test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express und UPS · Standardversand Mehrpaket als Preisauskunft", async () => {
+test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express als Preisauskunft", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page);
   await zuDenAngeboten(page);
-  assert.equal(await page.locator(".offer-card").count(), 5, "nicht alle Angebote stehen im Vergleich");
-  assert.equal(await page.locator(".offer-card--unavailable").count(), 2);
+  assert.equal(await page.locator(".offer-card").count(), 4, "nicht alle Angebote stehen im Vergleich");
+  assert.equal(await page.locator(".offer-card--unavailable").count(), 1);
 
   for (const [t, name] of [[STANDARD, "Standardversand"], [EXPRESSVERSAND, "Expressversand"]]) {
     const karte = karteVon(page, t);
@@ -463,20 +570,11 @@ test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express 
   await istPreisauskunft(express, "UPS · Express");
   assert.doesNotMatch(await inhalt(express), KEINE_ZUSAGE, "Zeit- oder Garantieaussage an UPS · Express");
 
-  const mehrpaket = karteVon(page, MEHRPAKET_EINS);
-  assert.equal(await inhalt(mehrpaket.locator(".offer-carrier-name")), "UPS");
-  assert.equal(await inhalt(mehrpaket.locator(".offer-service-type")), "Standardversand Mehrpaket");
-  assert.equal(await inhalt(mehrpaket.locator(".offer-eta")), "1–2 Tage");
-  assert.equal(await inhalt(mehrpaket.locator(".offer-price")), "14,40 €");
-  assert.notEqual(await inhalt(mehrpaket.locator(".offer-tl-node--end .offer-tl-title")), "Voraussichtliche Lieferung",
-    "ohne kuratierte Prognose erscheint eine voraussichtliche Lieferung");
-  await istPreisauskunft(mehrpaket, "UPS · Standardversand Mehrpaket");
-
   // Brutto: derselbe Umschalter wie für jedes Angebot, der Betrag vom Server.
   await page.getByRole("button", { name: "inkl. MwSt.", exact: true }).click();
   await page.waitForFunction((s) => (document.querySelector(s)?.textContent || "").replace(/ /g, " ").includes("37,69"),
     `.offer-card:has(button[aria-controls="offer-details-${EXPRESS.offerId}"]) .offer-price`, { timeout: 10000 });
-  assert.equal(await inhalt(mehrpaket.locator(".offer-price")), "17,14 €");
+  assert.equal(await inhalt(express.locator(".offer-price")), "37,69 €");
 
   // Ein Klick auf eine Preisauskunft führt nirgendwohin und fragt nichts an.
   await express.click({ position: { x: 20, y: 20 } });
@@ -528,58 +626,73 @@ test("B — Details UPS · Express: Express-Profil ohne Volumengewichtsformel un
 
 /* ══════════ C — Details UPS · Standardversand Mehrpaket ══════════ */
 
-test("C — Details UPS · Standardversand Mehrpaket: kein Profil, bisheriger Detailbereich, keine erfundene Grenze", async () => {
+test("C — Details UPS · Standardversand Mehrpaket: bisheriger Detailbereich mit Serverfähigkeiten und Servergrenze — kein Profil", async () => {
   const { page, fehler } = await neueSeite();
-  await setup(page);
-  await zuDenAngeboten(page);
-  const panel = await oeffneDetails(page, MEHRPAKET_EINS);
+  await setup(page, { tariffs: VERGLEICH_ZWEI_PAKETE });
+  await zuDenAngeboten(page, { paket: ZWEI_PAKETE });
+  const panel = await oeffneDetails(page, MEHRPAKET);
 
   assert.equal(await panel.locator("[data-profile-section]").count(), 0, "ohne kuratiertes Profil erscheint ein Profil");
-  const titel = await alleTexte(panel.locator(".offer-detail-section-title"));
-  for (const t of ["Hauptmerkmale", "Termin & Abholung", "Preisaufschlüsselung"]) assert.ok(titel.includes(t), `${t} fehlt: ${titel}`);
-  assert.ok(!titel.includes("Einschränkungen"), "ohne Servergrenze erscheint ein Einschränkungsabschnitt");
+  // Vor der Bindung sagt der Server nichts über die Absicherung — deshalb kein Versicherungsabschnitt.
+  assert.deepEqual(await alleTexte(panel.locator(".offer-detail-section-title")),
+    ["Hauptmerkmale", "Einschränkungen", "Termin & Abholung", "Preisaufschlüsselung"]);
   const merkmale = await alleTexte(panel.locator(".offer-feature-label"));
-  assert.ok(merkmale.includes("Voraussichtliche Laufzeit"), merkmale.join(" | "));
-  assert.ok(!merkmale.includes("Sendungsverfolgung") && !merkmale.includes("Drucker"),
-    `eine nicht kuratierte Fähigkeit wird behauptet: ${merkmale.join(" | ")}`);
+  const werte = await alleTexte(panel.locator(".offer-feature-value"));
+  const merkmal = (name) => werte[merkmale.indexOf(name)];
+  assert.equal(merkmal("Voraussichtliche Laufzeit"), "1–5 Tage");
+  assert.equal(merkmal("Sendungsverfolgung"), "Inklusive");
+  assert.equal(merkmal("Drucker"), "Erforderlich");
+  assert.ok(werte.includes("4,00 kg"), `das Abrechnungsgewicht des Servers fehlt: ${werte.join(" | ")}`);
+  // Die einzige Grenze ist die des Servers: zwei Packstücke. Kein Gewicht, keine Maße, keine Formel.
+  assert.deepEqual(await alleTexte(panel.locator(".offer-limit-item")),
+    ["Mit diesem Versandtarif können max. 2 Packstücke pro Sendung verschickt werden."]);
   const text = norm(await panel.textContent());
   const erfunden = text.match(KEINE_ERFUNDENE_GRENZE);
   assert.equal(erfunden, null, `belegfreie Angabe: „${erfunden && erfunden[0]}“`);
   assert.doesNotMatch(text, /Voraussichtliche Lieferung/);
+  assert.doesNotMatch(text, /Keine Zusatzversicherung verfügbar/, "vor der Bindung wird die Absicherung verneint");
   await keinAnbieter(page, "Details UPS · Standardversand Mehrpaket");
+  await beleg(page, "mehrpaket-details-1440");
   assert.deepEqual(fehler, []);
   await page.close();
 });
 
 /* ══════════ D — Neue Sendung mit zwei Packstücken ══════════ */
 
-test("D — Neue Sendung, zwei Packstücke: Anzahl und Maße je Paket in der Anfrage; nur das Mehrpaketprodukt bleibt", async () => {
+test("D — Neue Sendung, zwei Packstücke: Anzahl und Maße je Paket in der Anfrage; das Mehrpaketprodukt ist auswählbar", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { tariffs: VERGLEICH_ZWEI_PAKETE });
   await zuDenAngeboten(page, { paket: ZWEI_PAKETE });
 
   assert.equal(p.calc.length, 1);
   const anfrage = p.calc[0];
-  assert.deepEqual([anfrage.packageCount, anfrage.weight, anfrage.length, anfrage.width, anfrage.height], [2, 4, 40, 30, 20],
+  assert.deepEqual([anfrage.packageCount, anfrage.weight, anfrage.length, anfrage.width, anfrage.height], [2, 2, 30, 20, 15],
     "die Anfrage trägt nicht die Angaben je Paket");
   assert.ok(!("packages" in anfrage), "die Oberfläche baut selbst eine Paketliste");
   assert.equal(await page.locator(".offer-card").count(), 2);
-  const karte = karteVon(page, MEHRPAKET_ZWEI);
+  const karte = karteVon(page, MEHRPAKET);
+  assert.equal(await inhalt(karte.locator(".offer-carrier-name")), "UPS");
   assert.equal(await inhalt(karte.locator(".offer-service-type")), "Standardversand Mehrpaket");
-  assert.equal(await inhalt(karte.locator(".offer-price")), "24,00 €");
-  await istPreisauskunft(karte, "UPS · Standardversand Mehrpaket (2 Pakete)");
-  const panel = await oeffneDetails(page, MEHRPAKET_ZWEI);
-  assert.ok((await alleTexte(panel.locator(".offer-feature-value"))).includes("8,00 kg"),
-    "das Abrechnungsgewicht des Servers fehlt");
+  assert.equal(await inhalt(karte.locator(".offer-eta")), "1–5 Tage");
+  assert.equal(await inhalt(karte.locator(".offer-price")), "31,93 €");
+  await istAuswaehlbar(karte, "UPS · Standardversand Mehrpaket (2 Pakete)");
+  // Die Adressfrage entsteht erst auf der Buchungsseite — der Vergleich fragt nichts an.
+  assert.deepEqual(p.anfragen, [], "der Vergleich stellte eine Zuschlagsanfrage");
+
+  await page.getByRole("button", { name: "inkl. MwSt.", exact: true }).click();
+  await page.waitForFunction((s) => (document.querySelector(s)?.textContent || "").replace(/ /g, " ").includes("38,00"),
+    `.offer-card:has(button[aria-controls="offer-details-${MEHRPAKET.offerId}"]) .offer-price`, { timeout: 10000 });
+  assert.equal(await inhalt(karte.locator(".offer-price")), "38,00 €");
   assert.equal(await karteVon(page, JM_MEHRPAKET).locator("button.offer-cta-btn").isEnabled(), true);
   await keinAnbieter(page, "Vergleich mit zwei Packstücken");
+  await beleg(page, "mehrpaket-vergleich-1440");
   assert.deepEqual(fehler, []);
   await page.close();
 });
 
 /* ══════════ E — Preisrechner mit zwei Packstücken ══════════ */
 
-test("E — Preisrechner, zwei Packstücke: „Identische Pakete“, Hinweis je Paket, Mehrpaketprodukt als Preisauskunft", async () => {
+test("E — Preisrechner, zwei Packstücke: „Identische Pakete“, Hinweis je Paket, Mehrpaketprodukt auswählbar", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { tariffs: VERGLEICH_ZWEI_PAKETE });
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
@@ -589,76 +702,90 @@ test("E — Preisrechner, zwei Packstücke: „Identische Pakete“, Hinweis je 
   await page.fill("#calc-to-zip", "10115");
   await page.fill("#calc-to-city", "Berlin");
   await page.fill("#calc-packageCount", "2");
-  await page.fill("#calc-weight", "4");
-  await page.fill("#calc-length", "40");
-  await page.fill("#calc-width", "30");
-  await page.fill("#calc-height", "20");
+  await page.fill("#calc-weight", "2");
+  await page.fill("#calc-length", "30");
+  await page.fill("#calc-width", "20");
+  await page.fill("#calc-height", "15");
   const feld = page.locator(".field:has(#calc-packageCount)");
   assert.equal(await inhalt(feld.locator(".field-hint")), "Identische Pakete");
   assert.equal(await inhalt(page.locator(".pkg-count-note")), "Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.");
 
   await page.getByRole("button", { name: /Angebote vergleichen/i }).first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
-  assert.deepEqual([p.calc[0].packageCount, p.calc[0].weight, p.calc[0].length], [2, 4, 40]);
-  const karte = karteVon(page, MEHRPAKET_ZWEI);
+  assert.deepEqual([p.calc[0].packageCount, p.calc[0].weight, p.calc[0].length, p.calc[0].width, p.calc[0].height],
+    [2, 2, 30, 20, 15]);
+  const karte = karteVon(page, MEHRPAKET);
   assert.equal(await inhalt(karte.locator(".offer-service-type")), "Standardversand Mehrpaket");
-  await istPreisauskunft(karte, "Preisrechner: UPS · Standardversand Mehrpaket");
+  await istAuswaehlbar(karte, "Preisrechner: UPS · Standardversand Mehrpaket");
   await keinAnbieter(page, "Preisrechner");
   assert.deepEqual(fehler, []);
   await page.close();
 });
 
-/* ══════════ F — Freigabe als Serverwert: Buchungsseite und Erfolg ══════════ */
+/* ══════════ F — Mehrpaketbuchung nach dem gemessenen Fall ══════════ */
 
-test("F — Mehrpaketbuchung (Freigabe nur als Serverwert): Paketzeile, Bindung, vier Versandlabels und Abholetikett", async () => {
+test("F — Mehrpaketbuchung (gemessen): Paketzeile, Privatadresse, Absicherung 10,00 €, zwei Belege mit einer Nummer", async () => {
   const { page, fehler } = await neueSeite();
-  const p = await bucheMehrpaket(page);
+  const p = await bucheMehrpaket(page, { privat: true, lz: zustandMehrpaket({ absicherung: true }) });
 
-  // Schritt 1: Identität und die Paketzeile — Gewicht und Maße JE Paket.
+  // Schritt 1: Identität, Paketzeile — Gewicht und Maße JE Paket — und die gebundene Privatadresse.
   assert.equal(await inhalt(page.locator(".blsum-carrier")), "UPS");
   assert.equal(await inhalt(page.locator(".blsum-service")), "Standardversand Mehrpaket");
   const paket = page.locator('.shipment-summary-card .summary-detail-row:has(.summary-detail-key:text-is("Paket")) .summary-detail-val');
   assert.equal(await inhalt(paket), PAKETZEILE);
   assert.equal(await page.locator("#booking-labelformat-toggle").count(), 0, "ein Angebot ohne Formatwahl bietet eine an");
-  assert.deepEqual(p.lz.bindCalls.map((b) => b.deliveryIsResidential), [false]);
+  assert.deepEqual(p.lz.bindCalls.map((b) => [b.deliveryIsResidential, b.expectedShippingGross]), [[true, 41.78]]);
+  assert.equal(p.reprice.length, 0, "vor Schritt 2 wurde die Absicherung bepreist");
   await keinAnbieter(page, "Schritt 1 Mehrpaket");
 
-  await page.getByRole("button", { name: /^Weiter/ }).first().click();
-  await page.waitForSelector(".booking-confirm-panel", { timeout: 20000 });
+  // Schritt 2: dieselbe Paketzeile; die Absicherung nach Warenwert — 1:1 und steuerfrei, kein Aufschlag.
+  await zuSchritt2(page);
   assert.equal(await inhalt(page.locator('.booking-confirm-row:has(span:text-is("Paket")) .booking-confirm-val')), PAKETZEILE);
-  assert.match(await inhalt(page.locator(".booking-confirm-box")), /Gesamtbetrag brutto\s*28,56 €/);
-  const checks = page.getByRole("checkbox");
-  await checks.nth(0).check();
-  await checks.nth(1).check();
-  await buchenKnopf(page).click();
-  await page.waitForSelector(".booking-success-title", { timeout: 20000 });
+  await absichern(page);
+  await page.waitForSelector(".ins-status-ok", { timeout: 10000 });
+  assert.deepEqual(p.reprice.at(-1), { offerId: MEHRPAKET.offerId, coverValue: 500, goodsAreNew: true, goodsAreFragile: false });
+  await warteAufText(page, ".blsum-price-gross", "51,78");
+  assert.match(await inhalt(page.locator('[data-component="transport_insurance"]')),
+    /Zusätzliche Transportabsicherung\s*steuerfrei\s*10,00 €/);
+  const summe = await inhalt(page.locator(".booking-confirm-box"));
+  assert.match(summe, /Versicherter Betrag\s*500,00 €/);
+  assert.match(summe, /Selbstbeteiligung\s*20,00 €/);
+  assert.match(summe, /MwSt\. 19 %\s*6,67 €/);
+  assert.match(summe, /Gesamtbetrag brutto\s*51,78 €/);
 
+  await bestaetigenUndBuchen(page);
   assert.equal(p.book.length, 1);
   const body = p.book[0];
-  assert.equal(body.offerId, MEHRPAKET_FREI.offerId);
+  assert.equal(body.offerId, MEHRPAKET.offerId);
   assert.equal(body.ceShipmentId, CE_ID);
-  assert.deepEqual(body.priceInputs, { deliveryIsResidential: false });
+  assert.deepEqual(body.priceInputs, { deliveryIsResidential: true });
+  assert.equal(body.insuranceSelection && body.insuranceSelection.type, "transit_cover");
+  assert.equal(body.confirmedTotalGross, 51.78);
   assert.ok(!("labelFormat" in body), "ein Angebot ohne Formatwahl sendet ein Labelformat");
   assert.equal(body.tariffId ?? null, null);
-  assert.deepEqual(body.insuranceSelection, { type: "none" });
 
-  // Erfolg: je Beleg ein Knopf mit dem Servernamen — sortiert, ohne Dublette, das Abholetikett zuletzt.
+  // Erfolg: die Bestandteile des Servers — Versand, EIN Zuschlag Privatadresse, Absicherung.
+  const recap = await inhalt(page.locator(".booking-success-recap"));
+  assert.match(recap, /Carrier\s*UPS — Standardversand Mehrpaket/);
+  assert.match(recap, /Versand netto\s*31,93 €/);
+  assert.match(recap, /Zuschlag Privatadresse netto\s*3,18 €/);
+  assert.match(recap, /Zusätzliche Transportabsicherung/);
+  assert.match(recap, /Gesamtbetrag brutto\s*51,78 €/);
+  // Zwei Belege mit den Servernamen — ein Versandlabel in zwei Formaten, kein „1 von 2", kein Abholetikett.
   const knoepfe = belegKnoepfe(page);
-  await knoepfe.first().waitFor({ timeout: 15000 });
   assert.deepEqual((await knoepfe.allTextContents()).map((t) => t.trim()), MEHRPAKET_KNOEPFE);
   assert.equal(await page.locator(".booking-success-wrap").getByRole("button", { name: "Label herunterladen" }).count(), 0);
-  assert.match(await inhalt(page.locator(".booking-success-recap")), /Carrier\s*UPS — Standardversand Mehrpaket/);
 
   const [download] = await Promise.all([
     page.waitForEvent("download", { timeout: 15000 }),
-    page.locator(".booking-success-wrap").getByRole("button", { name: "Versandlabel 2 von 2 (Thermodruck) herunterladen" }).click(),
+    page.locator(".booking-success-wrap").getByRole("button", { name: "Versandlabel (Thermodruck) herunterladen" }).click(),
   ]);
-  assert.ok(p.pfade.includes(`/api/shipments/${CE_ID}/provider-documents/LABEL/3`), "das zweite Thermodrucklabel kam nicht über seinen Pfad");
-  assert.equal(download.suggestedFilename(), DATEINAME["LABEL/3"]);
+  assert.ok(p.pfade.includes(`/api/shipments/${CE_ID}/provider-documents/LABEL/1`), "der Thermodruckbeleg kam nicht über seinen Pfad");
+  assert.equal(download.suggestedFilename(), DATEINAMEN[CE_ID]["LABEL/1"]);
   assert.ok(!p.pfade.some((x) => /\/label$/.test(x)), "der Sammelpfad des ersten Labels wurde angesprochen");
   const jumingoOnly = p.pfade.filter((x) => JUMINGO_ONLY.some((re) => re.test(x)));
   assert.deepEqual(jumingoOnly, [], `JUMiNGO-only-Endpunkte angesprochen: ${jumingoOnly.join(", ")}`);
-  for (const anfrage of [...p.book, ...p.calc, ...p.anfragen.map((a) => a.body)]) {
+  for (const anfrage of [...p.book, ...p.calc, ...p.reprice, ...p.anfragen.map((a) => a.body)]) {
     assert.doesNotMatch(JSON.stringify(anfrage), /transglobal|serviceId|providerServiceRef|quoteId/i);
   }
   await keinAnbieter(page, "Erfolg Mehrpaket");
@@ -669,18 +796,43 @@ test("F — Mehrpaketbuchung (Freigabe nur als Serverwert): Paketzeile, Bindung,
 
 /* ══════════ G — Meine Sendungen ══════════ */
 
-test("G — Meine Sendungen: Mehrpaketsendung mit zwei Nummern, zwei Etappen und Belegen „1 von 2“; UPS · Express mit einer Nummer", async () => {
+test("G — Meine Sendungen: Mehrpaketsendung mit einer Nummer und zwei Belegen; generisch zwei Nummern; UPS · Express", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { sendungen: SENDUNGEN });
   await zurSendungsliste(page);
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
 
-  const mehr = zeileVon(page, AB);
+  // Gemessen: eine Nummer für beide Pakete — die bisherige Einzelanzeige. Generisch: mehrere Nummern werden gezählt.
+  const mehrpaket = zeileVon(page, AB);
+  assert.match(await mehrpaket.innerText(), new RegExp(`Trackingnummer: ${AWB_MEHRPAKET}`));
+  assert.doesNotMatch(await mehrpaket.innerText(), /Trackingnummern/);
+  assert.match(await zeileVon(page, AB_MEHRFACH).innerText(), /2 Trackingnummern/);
   const einzel = zeileVon(page, AB_EXPRESS);
-  assert.match(await mehr.innerText(), /2 Trackingnummern/);
   assert.match(await einzel.innerText(), new RegExp(`Trackingnummer: ${AWB_EXPRESS}`));
   assert.doesNotMatch(await einzel.innerText(), /Trackingnummern/);
 
+  // Die Belege der Mehrpaketsendung: ein Versandlabel in zwei Formaten, dieselbe Nummer, kein Abholetikett.
+  await mehrpaket.getByRole("button", { name: "Dokumente" }).click();
+  await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });
+  const belege = page.locator(".sdoc-group").first();
+  assert.deepEqual(await alleTexte(belege.locator(".sdoc-row-name")), ["Versandlabel (A4)", "Versandlabel (Thermodruck)"]);
+  assert.deepEqual(await alleTexte(belege.locator(".sdoc-row-number")), [AWB_MEHRPAKET, AWB_MEHRPAKET]);
+  assert.equal(await belege.getByRole("button", { name: /Herunterladen/ }).count(), 2);
+  assert.doesNotMatch(norm(await belege.innerText()), /Abholetikett|von 2/);
+  const [thermo] = await Promise.all([
+    page.waitForEvent("download", { timeout: 15000 }),
+    belege.locator(".sdoc-row", { hasText: "Versandlabel (Thermodruck)" }).getByRole("button", { name: /Herunterladen/ }).click(),
+  ]);
+  assert.ok(p.pfade.includes(`/api/shipments/${CE_ID}/provider-documents/LABEL/1`));
+  assert.equal(thermo.suggestedFilename(), DATEINAMEN[CE_ID]["LABEL/1"]);
+  await keinAnbieter(page, "Dokumente Mehrpaket");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".sdoc-drawer", { state: "detached", timeout: 10000 }).catch(() => {});
+
+  // GENERISCH: zwei Nummern — Tracking vollständig und je Etappe, Belege „1 von 2", das Abholetikett zuletzt.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector("table tbody tr", { timeout: 20000 });
+  const mehr = zeileVon(page, AB_MEHRFACH);
   await mehr.getByRole("button", { name: "Sendung verfolgen" }).click();
   await page.waitForSelector(".ce-list-table .shipment-track-detail .track-event", { timeout: 15000 });
   const detail = page.locator(".ce-list-table .shipment-track-detail");
@@ -702,9 +854,9 @@ test("G — Meine Sendungen: Mehrpaketsendung mit zwei Nummern, zwei Etappen und
     page.waitForEvent("download", { timeout: 15000 }),
     versand.locator(".sdoc-row", { hasText: "Versandlabel 2 von 2 (A4)" }).getByRole("button", { name: /Herunterladen/ }).click(),
   ]);
-  assert.ok(p.pfade.includes(`/api/shipments/${CE_ID}/provider-documents/LABEL/2`));
-  assert.equal(download.suggestedFilename(), DATEINAME["LABEL/2"]);
-  await keinAnbieter(page, "Dokumente Mehrpaket");
+  assert.ok(p.pfade.includes(`/api/shipments/${CE_ID_MEHRFACH}/provider-documents/LABEL/2`));
+  assert.equal(download.suggestedFilename(), DATEINAMEN[CE_ID_MEHRFACH]["LABEL/2"]);
+  await keinAnbieter(page, "Dokumente mit mehreren Nummern");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".sdoc-drawer", { state: "detached", timeout: 10000 }).catch(() => {});
 
@@ -723,21 +875,12 @@ test("G — Meine Sendungen: Mehrpaketsendung mit zwei Nummern, zwei Etappen und
 /* ══════════ H — Responsive ══════════ */
 
 for (const breite of [834, 390]) {
-  test(`H — ${breite} px: Preisauskünfte, Mehrpaketerfolg und Sendungsliste ohne horizontalen Überlauf`, async () => {
+  test(`H — ${breite} px: Preisauskunft, Mehrpaketbuchung, Erfolg und Sendungsliste ohne horizontalen Überlauf`, async () => {
     const vergleich = await neueSeite({ width: breite, height: 900 });
     await setup(vergleich.page);
     await zuDenAngeboten(vergleich.page);
-    for (const t of [EXPRESS, MEHRPAKET_EINS]) {
-      const karte = karteVon(vergleich.page, t);
-      for (const sel of [".offer-service-type", ".offer-price", "button.offer-cta-btn"]) {
-        const el = karte.locator(sel);
-        await el.scrollIntoViewIfNeeded();
-        assert.ok(await el.isVisible(), `${breite}px ${t.publicServiceName}: ${sel} ist nicht sichtbar`);
-        const a = await karte.boundingBox();
-        const i = await el.boundingBox();
-        assert.ok(i.x >= a.x - 1 && i.x + i.width <= a.x + a.width + 1, `${breite}px ${t.publicServiceName}: ${sel} ragt aus der Karte`);
-      }
-    }
+    await liegtInKarte(karteVon(vergleich.page, EXPRESS), [".offer-service-type", ".offer-price", "button.offer-cta-btn"],
+      `${breite}px UPS · Express`);
     await oeffneDetails(vergleich.page, EXPRESS);
     assert.ok(await querUeberlauf(vergleich.page) <= 0, `${breite}px: Vergleich mit horizontalem Überlauf`);
     await beleg(vergleich.page, `vergleich-${breite}`);
@@ -745,15 +888,23 @@ for (const breite of [834, 390]) {
     await vergleich.page.close();
 
     const buchung = await neueSeite({ width: breite, height: 900 });
-    await bucheMehrpaket(buchung.page);
+    await bucheMehrpaket(buchung.page, {
+      vorDerAuswahl: async (page) => {
+        await liegtInKarte(karteVon(page, MEHRPAKET),
+          [".offer-service-type", ".offer-price", "button.offer-cta-btn", ".offer-surcharge-hint"],
+          `${breite}px UPS · Standardversand Mehrpaket`);
+        assert.ok(await querUeberlauf(page) <= 0, `${breite}px: Vergleich mit zwei Packstücken mit horizontalem Überlauf`);
+      },
+    });
     assert.ok(await buchung.page.locator(".shipment-summary-card").isVisible());
     assert.ok(await querUeberlauf(buchung.page) <= 0, `${breite}px: Schritt 1 mit horizontalem Überlauf`);
+    await zuSchritt2(buchung.page);
     await bestaetigenUndBuchen(buchung.page);
     const kanten = await belegKnoepfe(buchung.page).evaluateAll((els) => els.map((b) => {
       const r = b.getBoundingClientRect();
       return [r.left, r.right];
     }));
-    assert.equal(kanten.length, 5, `${breite}px: nicht jeder Beleg hat seinen Knopf`);
+    assert.equal(kanten.length, 2, `${breite}px: nicht jeder Beleg hat seinen Knopf`);
     for (const [links, rechts] of kanten) {
       assert.ok(links >= 0 && rechts <= breite + 1, `${breite}px: ein Belegknopf läuft aus dem Bild (${links}–${rechts})`);
     }
@@ -767,7 +918,9 @@ for (const breite of [834, 390]) {
     await zurSendungsliste(liste.page);
     // Bis 1100 px zeigt die Liste Karten statt der Tabelle (patterns.css) — jede Nummer steht lesbar in der Karte.
     await liste.page.waitForSelector(".ce-list-card", { timeout: 20000 });
-    const karte = liste.page.locator(".ce-list-card", { hasText: AB }).first();
+    assert.match(await liste.page.locator(".ce-list-card", { hasText: AB }).first().innerText(),
+      new RegExp(`Trackingnummer: ${AWB_MEHRPAKET}`));
+    const karte = liste.page.locator(".ce-list-card", { hasText: AB_MEHRFACH }).first();
     assert.match(await karte.innerText(), /2 Trackingnummern/);
     assert.deepEqual(await alleTexte(karte.locator(".ce-list-card-val.mono span")), [AWB_1, AWB_2]);
     const rechts = await karte.locator(".ce-list-card-val.mono span").evaluateAll((els) => els.map((s) => s.getBoundingClientRect().right));

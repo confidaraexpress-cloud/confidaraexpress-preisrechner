@@ -27,6 +27,7 @@ import { COVER_INSURANCE_TEXT, coverBasicCoverText, coverLimitText } from "./ins
 import { getBookingModules } from "./bookingModules.js";
 import { PRICE_CHANGE_KIND, priceChangeAnsicht } from "./priceChangeView.mjs";
 import { SAME_DAY_COLLECTION_UNAVAILABLE_CODE, sameDayUnavailableBookingText } from "./sameDayCollectionView.mjs";
+import { offerAwaitsPriceInputs } from "./offerIdentity.mjs";
 
 export const INSURANCE_TYPE_TRANSIT_COVER = "transit_cover";
 export const SELECTION_MODEL_COVER_VALUE = "cover_value";
@@ -322,6 +323,10 @@ export function priceChangeBreakdownLines(view) {
  *
  * TG22 Paket B: ohne kaufbaren Zusatz kann der Tarif trotzdem etwas sagen — die enthaltene
  * Grundabsicherung oder die Höchstdeckung (`notice`). Das ist KEIN „nicht verfügbar".
+ *
+ * Solange ein Angebot auf die Art der Lieferadresse wartet, sagt der Server über die Absicherung
+ * noch nichts (`insuranceAvailable` ist an die Buchbarkeit gebunden). Auch das ist KEIN „nicht
+ * verfügbar" — ob sie wählbar ist, steht erst in der Bindungsantwort.
  */
 export function offerCardInsurance(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
@@ -330,7 +335,7 @@ export function offerCardInsurance(tariff) {
   const notice = insurable ? null : coverInsuranceNotice(t);
   return {
     insurable,
-    explicitlyUnavailable: !insurable && notice === null
+    explicitlyUnavailable: !insurable && notice === null && !offerAwaitsPriceInputs(t)
       && (t.insuranceAvailable === false || (d !== null && d.isInsurable === false)),
     coverModel: insurable && isCoverValueModel(t),
     excessValue: coverExcessValue(t),

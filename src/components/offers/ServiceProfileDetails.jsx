@@ -7,8 +7,8 @@ import { SERVICE_DETAILS_TEXT } from "../../utils/serviceDetailsView.mjs";
    Die Komponente zeigt ausschließlich, was `serviceDetailsView` gebildet hat: sie liest kein Angebot, kennt
    keine Einkaufsquelle und formuliert keinen Satz selbst. Fünf Abschnitte in fester Reihenfolge —
    Hauptmerkmale, Laufzeit, Größe & Gewicht, Transportabsicherung, Einschränkungen; ein Abschnitt ohne Inhalt
-   entsteht nicht. Die Zeilen tragen die Klassen des bestehenden Detailbereichs, ergänzt um Umbruchschutz
-   (`offer-profile-*`). */
+   entsteht nicht. Die Volumengewichtsformel steht nur mit belegtem Divisor. Die Zeilen tragen die Klassen des
+   bestehenden Detailbereichs, ergänzt um Umbruchschutz (`offer-profile-*`). */
 
 function ProfilZeile({ zeile }) {
   return (
@@ -59,11 +59,13 @@ export function ServiceProfileDetails({ view }) {
         </Abschnitt>
       )}
 
-      <Abschnitt id="size" titel={SERVICE_DETAILS_TEXT.sizeTitle}>
-        {size.rows.map((z) => <ProfilZeile key={z.id} zeile={z} />)}
-        {size.note && <p className="offer-profile-note">{size.note}</p>}
-        <p className="offer-profile-note" data-profile-note="formula">{size.formula}</p>
-      </Abschnitt>
+      {size && (
+        <Abschnitt id="size" titel={SERVICE_DETAILS_TEXT.sizeTitle}>
+          {size.rows.map((z) => <ProfilZeile key={z.id} zeile={z} />)}
+          {size.note && <p className="offer-profile-note">{size.note}</p>}
+          {size.formula && <p className="offer-profile-note" data-profile-note="formula">{size.formula}</p>}
+        </Abschnitt>
+      )}
 
       {cover && (
         <Abschnitt id="cover" titel={SERVICE_DETAILS_TEXT.coverTitle}>

@@ -162,7 +162,8 @@ test("7 — Erklärung des Volumengewichts: das höhere Gewicht zählt, L × B �
 test("8 — der Divisor kommt vom Server und rechnet nichts", () => {
   assert.equal(serviceDetailsView(mit({ serviceDetails: details({ volumetricDivisor: 6000 }) })).size.formula,
     "Volumengewicht: L × B × H ÷ 6.000");
-  for (const kaputt of ["5000", 0, -5000, 5000.5, null]) {
+  // `null` ist seit der UPS-Vervollständigung keine kaputte Form, sondern „nicht belegt“ (siehe TG29 unten).
+  for (const kaputt of ["5000", 0, -5000, 5000.5, undefined, "null", false]) {
     assert.equal(serviceDetailsView(mit({ serviceDetails: details({ volumetricDivisor: kaputt }) })), null, String(kaputt));
   }
   const modul = code(MODUL);
@@ -441,4 +442,56 @@ test("TG23 — kein UI-Code verzweigt an einer ServiceID; den neuen Code kennt n
     assert.ok(!quelle.includes("express_urgent") || path.basename(datei) === "serviceDetailsView.mjs",
       `${datei} kennt den Code „express_urgent“`);
   }
+});
+
+/* ══════════ TG29 — UPS EXPRESS: PROFIL OHNE BELEGTEN DIVISOR ══════════ */
+
+// Das öffentliche TG29-Angebot (UPS · Express), wie calculate-price es liefert — bis zur Freigabe eine Preisauskunft.
+// Der Divisor ist für die 29 nicht belegt (`null`), eine Gewichtsgrenze gibt es nicht, nur die Einzelstück-Grenze.
+const TG29 = Object.freeze({
+  ...TG22,
+  offerId: "ex290000000000000000000000000029", publicServiceName: "Express",
+  bookable: false, unavailableReason: "quote_only",
+  transitDaysMin: 1, transitDaysMax: 1, deliveryTime: "1 Tag",
+  deliveryProjection: { kind: "estimated", dateMin: "2026-09-17", dateMax: "2026-09-17" },
+  netPrice: 31.67, vatAmount: 6.02, finalPrice: 37.69,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
+  serviceDetails: {
+    summaryKey: "express_urgent", volumetricDivisor: null, notAccepted: ["pallets", "suitcases"],
+    basicCoverMaxGoodsValue: 50, maxCoverValue: 2500,
+  },
+});
+
+test("TG29 — ein nicht belegter Divisor ist eine Aussage: Profil ja, Volumengewichtsformel und -hinweis nein", () => {
+  const v = serviceDetailsView(TG29);
+  assert.ok(v, "das Profil wurde nicht gebildet");
+  assert.equal(v.main.summary, "Schneller Expressversand für eilige Sendungen.");
+  assert.deepEqual(v.size.rows.map((z) => [z.label, z.value]), [["Packstücke", "1 je Sendung"], ["Abrechnungsgewicht", "2,00 kg"]]);
+  assert.equal(v.size.formula, null);
+  assert.equal(v.size.note, null);
+  assert.ok(!/Volumengewicht|÷|5\.000|höhere Gewicht/.test(alleTexte(v)), "eine Volumengewichtserklärung ohne Beleg");
+  // Keine erfundene Gewichtsgrenze.
+  assert.equal(zeile(v.size, "maxWeight"), undefined);
+  // Die übrigen Abschnitte bleiben — Laufzeit, Prognose, Absicherungsgrenzen, Einschränkungen.
+  assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
+    [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", "Do., 17.09."]]);
+  assert.equal(nbsp(zeile(v.cover, "additionalCover").value), "bis 2.500 € Warenwert");
+  assert.deepEqual(v.restrictions.rows, [{ id: "notAccepted", label: "Nicht zugelassen", value: "Paletten, Koffer" }]);
+  // Keine Uhrzeit, keine Garantie, kein Anbieter.
+  for (const verboten of [/garant/i, /\d{1,2}:\d{2}/, /\bUhr\b/, /vormittag/i, /transglobal|jumingo/i, /ServiceID|QuoteID/i]) {
+    assert.ok(!verboten.test(alleTexte(v)), `${verboten} im Profil`);
+  }
+});
+
+test("TG29 — ohne Zeilen und ohne Divisor entsteht kein leerer Abschnitt „Größe & Gewicht“", () => {
+  const leer = serviceDetailsView({ ...TG29, tariffLimits: [], chargeableWeight: null });
+  assert.ok(leer, "das Profil wurde nicht gebildet");
+  assert.equal(leer.size, null);
+  // Die Komponente zeigt den Abschnitt nur mit Inhalt und die Formel nur, wenn es eine gibt.
+  const profil = code(PROFIL);
+  assert.match(profil, /\{size && \(/);
+  assert.match(profil, /\{size\.formula && <p className="offer-profile-note" data-profile-note="formula">\{size\.formula\}<\/p>\}/);
+  // Mit belegtem Divisor bleibt alles beim Alten (22 und 23).
+  assert.equal(serviceDetailsView(TG22).size.formula, "Volumengewicht: L × B × H ÷ 5.000");
+  assert.equal(serviceDetailsView(TG23).size.note, SERVICE_DETAILS_TEXT.chargeableWeightNote);
 });

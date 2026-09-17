@@ -385,13 +385,17 @@ test("scheitern die Queues, zeigt die Übersicht eine eigene Fehlerzeile — die
   assert.match(await fehler.textContent(), /Die Betriebs-Queues konnten nicht geladen werden\./);
   assert.equal(await page.locator(".adm-metric-value").count(), 5);
   assert.equal(await page.locator(".adm-inline-error").count(), 0, "der Queuefehler färbt die Kennzahlen ein");
-  const werte = await page.locator('.adm-ops-item[data-queue="reconciliation_open"] .adm-ops-count').textContent();
+  const ZAEHLER = '.adm-ops-item[data-queue="reconciliation_open"] .adm-ops-count';
+  const werte = await page.locator(ZAEHLER).textContent();
   assert.equal(werte.trim(), "—", "ohne Serverwert wird keine Zahl behauptet");
 
   state.queuesStatus = 200;
   await fehler.getByRole("button", { name: /Erneut versuchen/ }).click();
   await fehler.waitFor({ state: "detached" });
-  assert.equal((await page.locator('.adm-ops-item[data-queue="reconciliation_open"] .adm-ops-count').textContent()).trim(), "3");
+  // Die Fehlerzeile verschwindet schon, während neu geladen wird — bis dahin steht der Ladeplatzhalter „…" da.
+  // Gewartet wird deshalb auf den Serverwert; sofortiges Lesen war ein Wettlauf und färbte die Suite zufällig rot.
+  await page.waitForFunction((s) => (document.querySelector(s)?.textContent || "").trim() === "3", ZAEHLER, { timeout: 10000 });
+  assert.equal((await page.locator(ZAEHLER).textContent()).trim(), "3");
   await page.close();
 });
 

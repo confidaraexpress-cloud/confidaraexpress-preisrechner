@@ -157,10 +157,6 @@ export function repriceInsurance(payload, { signal } = {}) {
     method: "POST",
     auth: true,
     body: JSON.stringify(payload),
-    // Der Server bepreist die Absicherung mit einer vollständigen Preisanfrage beim Dienstleister (Frist dort
-    // 30 s, in langsamen Umgebungen mehr) — dieselbe Größenordnung wie die Zuschlagsoptionen, nicht der
-    // Standard von 30 s. Sonst bräche der Browser ab, bevor der Server seine eigene Antwort geben kann.
-    timeoutMs: 60000,
     signal,
   });
 }

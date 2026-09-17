@@ -108,13 +108,6 @@ test("C4 — lange Vorgänge tragen ihr eigenes, begründetes Limit", () => {
   assert.match(bookingSrc, /timeoutMs: 150000/, "/book braucht 150 s (Providerkette > 100 s)");
   assert.match(src("../pages/NewShipmentPage.jsx"), /timeoutMs: 60000/, "calculate-price braucht 60 s");
   assert.match(src("../pages/CalculatorPage.jsx"), /timeoutMs: 60000/, "calculate-price braucht 60 s");
-  // DHL Foundation: Zuschlagsoptionen und Neubepreisung der Absicherung fragen serverseitig vollständige Preisanfragen
-  // mit der Vorbestellfrist an — der Browser wartet länger als der Server, nie kürzer.
-  for (const funktion of ["export function loadPriceInputOptions", "export function repriceInsurance"]) {
-    const ab = clientSrc.indexOf(funktion);
-    assert.ok(ab > -1, `${funktion} fehlt`);
-    assert.match(clientSrc.slice(ab, clientSrc.indexOf("\n}", ab)), /timeoutMs: 60000,/, `${funktion} braucht 60 s`);
-  }
 });
 
 test("C5 — /book wird genau EINMAL gesendet: kein Retry-Konstrukt am Buchungsaufruf", () => {

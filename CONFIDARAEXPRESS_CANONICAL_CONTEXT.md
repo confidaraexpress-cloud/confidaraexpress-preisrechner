@@ -1206,7 +1206,7 @@ Eine KI oder ein Entwickler darf aus diesem Dokument insbesondere NICHT ableiten
 - 6.4: Kuratierung von 29 (nur belegte Werte, `volumetricDivisor: null`, keine Gewichtsgrenze) und 26 (keine Fähigkeiten, keine Grenzen), Mehrpaketvertrag (N gleiche Packstücke, dieselbe Entwurfszeile für Revalidierung und Buchung, mehrere Labels und Sendungsnummern), Absicherung nur für kuratierte Services, Bestandsdiagnose je Quote ohne zusätzlichen Request; Nachbelastungen nur dokumentiert, Stornierung unverändert.
 - 14, 15: Feature-State und Anzeigevertrag ergänzt (Preisauskunft mit bedienbaren Details, Paketzeile, Belegnamen „k von N", mehrere Trackingnummern); Profilformel nur mit belegtem Divisor.
 - 22 und 23, JUMiNGO, Preisfunktion, MwSt., Bestandteile, Belegversionen und Stornierung unverändert; keine Providerrequests in diesem Paket (die TG29-Quote-Evidenz stammt aus einem zuvor freigegebenen Staging-GetQuote).
-- Wirksam nach Merge der Branches `feature/complete-transglobal-ups-family` (Backend vor Frontend); kein Schalter, keine ENV-Änderung, keine Schemaänderung.
+- Wirksam nach Merge der Branches `feature/complete-transglobal-ups-family` (Frontend vor Backend, korrigiert 2026-09-17: erst Frontend-PR #431 mergen und den Frontend-Deploy gesund abwarten, danach Backend-PR #361 mergen und den Backend-Deploy gesund abwarten — nur das neue Frontend verneint die Absicherung nicht, solange die Lieferadresse eines TG26-Angebots nicht gebunden ist); kein Schalter, keine ENV-Änderung, keine Schemaänderung.
 - Schema-Version bleibt 2.1.
 
 ### v2.1 — 2026-09-16 (TG22/TG23 Same-Day: Grundvertrag)

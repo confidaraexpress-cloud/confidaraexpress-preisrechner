@@ -16,7 +16,7 @@ import { downloadLabel } from "../../utils/downloadLabel";
 import { downloadDocument } from "../../utils/downloadDocument";
 import {
   bookingShippingDocuments, shippingDocumentButtonLabel, shippingDocumentLoadingLabel,
-  shippingDocumentFallbackFilename, BOOKING_SHIPPING_DOCUMENTS_TEXT,
+  shippingDocumentFallbackFilename, BOOKING_SHIPPING_DOCUMENTS_TEXT, bookingShippingPrintNotice,
 } from "../../utils/bookingShippingDocuments.mjs";
 import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
@@ -45,6 +45,7 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
   // eigenem, servergelieferten Pfad. Es lädt immer nur einer; `versandPfad` ist der Pfad,
   // der gerade lädt.
   const versanddokumente = bookingShippingDocuments(booking);
+  const druckhinweis = bookingShippingPrintNotice(booking);
   const [versandPfad, setVersandPfad] = useState("");
 
   const handleDownloadLabel = async () => {
@@ -146,6 +147,13 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
                 : shippingDocumentButtonLabel(doc)}
             </button>
           ))}
+          {/* Der Druckhinweis des Servers zu mehrseitigen Belegen. Er steht VOR dem Hinweis
+              auf die dauerhafte Ablage: was der Kunde jetzt in der Hand hat, ist wichtiger
+              als der Ort, an dem er es später wiederfindet. Der Satz kommt wörtlich vom
+              Server — hier wird er weder gebildet noch an der Zahl der Belege entschieden. */}
+          {druckhinweis && (
+            <p className="text-muted text-sm mb-16">{druckhinweis}</p>
+          )}
           {/* Mehrere Belege: der Kunde erfährt, wo er sie dauerhaft wiederfindet — die
               Dokumentübersicht der Sendung lädt sie jederzeit neu vom Server. */}
           {versanddokumente.length > 1 && (

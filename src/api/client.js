@@ -28,9 +28,13 @@ export const triggerAuthError = () => { if (authErrorHandler) authErrorHandler()
 // (Verbindung angenommen, nie geantwortet) ließ jeden Lade-Spinner unbegrenzt
 // stehen. Jetzt trägt jeder apiFetch-Aufruf ein Standardlimit von 30 s bis zum
 // EINTREFFEN DER ANTWORTKOPFZEILEN; lang laufende Vorgänge übergeben ein
-// eigenes `timeoutMs` (Preisrechner 60 s — Providerkette serverseitig bis ~45 s;
-// Buchung 150 s — die /book-Kette spricht den Provider mehrfach mit Timeouts
-// von in Summe deutlich über 100 s; Zoll-PDF-Upload 90 s).
+// eigenes `timeoutMs`, das über der Serverfrist ihres Anbieteraufrufs liegt —
+// sonst bräche der Browser ab, bevor der Server seine Antwort (oder seinen
+// Fehler) senden kann: Angebotsvergleich in „Neue Sendung" und Preisrechner
+// 75 s, Adressart-Optionen und Neubepreisung der Absicherung 75 s (serverseitig
+// je ein Anbieterquote bis 55 s); Sendungsverfolgung 65 s (Trackingabruf bis
+// 50 s); Buchung 150 s — die /book-Kette spricht den Provider mehrfach mit
+// Timeouts von in Summe deutlich über 100 s; Zoll-PDF-Upload 90 s.
 //
 // Drei Fehlerklassen, strikt getrennt:
 //   • ApiTimeoutError  — UNSER Limit hat abgebrochen. Eigener Name/Code, damit
@@ -157,6 +161,9 @@ export function repriceInsurance(payload, { signal } = {}) {
     method: "POST",
     auth: true,
     body: JSON.stringify(payload),
+    // Je nach Angebot bepreist der Server die Absicherung mit einem frischen Anbieterquote
+    // (bis 55 s) — der Standard von 30 s bräche vorher ab.
+    timeoutMs: 75000,
     signal,
   });
 }
@@ -171,9 +178,9 @@ export function loadPriceInputOptions({ offerId, offerRevision }, { signal } = {
     method: "POST",
     auth: true,
     body: JSON.stringify({ offerId, offerRevision }),
-    // Der Server bepreist beide Möglichkeiten beim Dienstleister — dieselbe Größenordnung wie der
-    // Preisrechner, nicht der Standard von 30 s.
-    timeoutMs: 60000,
+    // Der Server bepreist beide Möglichkeiten beim Dienstleister (zwei parallele Quotes, je bis
+    // 55 s) — dieselbe Frist wie der Preisrechner, nicht der Standard von 30 s.
+    timeoutMs: 75000,
     signal,
   });
 }
@@ -255,7 +262,9 @@ function selectTracking(d) {
 // Kein Logging von Daten.
 export async function getTracking(shipmentId) {
   const id = encodeURIComponent(String(shipmentId ?? "").trim());
-  const r = await apiFetch(`/api/shipments/${id}/tracking`, { auth: true });
+  // Der Server fragt den Trackingstand live beim Anbieter ab (bis 50 s) und antwortet bei einem
+  // Ausfall mit dem gespeicherten Stand — der Standard von 30 s bräche vorher ab.
+  const r = await apiFetch(`/api/shipments/${id}/tracking`, { auth: true, timeoutMs: 65000 });
   if (!r.ok) return { ok: false, status: r.status };
   let d = {};
   try { d = await r.json(); } catch { /* leerer / kein JSON-Body → Defaults */ }

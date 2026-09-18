@@ -162,7 +162,8 @@ export async function downloadAdminShipmentLabel(id) {
 // Persistierung, kein Logging. Rohe Response zurück; der Aufrufer selektiert
 // defensiv nur die erlaubten Felder (nie das ganze Objekt, keine Events).
 export function getAdminShipmentTracking(id) {
-  return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/tracking`, { auth: true });
+  // Live-Abfrage beim Anbieter (bis 50 s) — der Standard von 30 s bräche vorher ab.
+  return apiFetch(`/admin/shipments/${encodeURIComponent(id)}/tracking`, { auth: true, timeoutMs: 65000 });
 }
 
 // POST /admin/shipments/:id/email-deliveries/:deliveryId/retry — stößt EINE bereits

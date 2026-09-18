@@ -459,9 +459,10 @@ export default function CalculatorPage() {
 
     try {
       const r = await apiFetch(`/api/jumingo/calculate-price`, {
-        // 60 s statt der 30-s-Vorgabe: der Server spricht für die Tarifliste den
-        // Provider (Draft + Rates) mit eigenen Timeouts — 30 s wären zu knapp.
-        method: "POST", auth: true, signal: ac.signal, timeoutMs: 60000,
+        // 75 s statt der 30-s-Vorgabe: der Server fragt für die Tarifliste die Anbieter
+        // mit eigenen Fristen an (bis 55 s) — der Browser muss danach noch auf die
+        // Antwort warten können.
+        method: "POST", auth: true, signal: ac.signal, timeoutMs: 75000,
         body: JSON.stringify({
           from_country:       form.from_country,
           from_zip:           form.from_zip,

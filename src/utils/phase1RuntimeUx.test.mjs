@@ -106,8 +106,30 @@ test("C3 — kein automatischer Retry im zentralen Client", () => {
 test("C4 — lange Vorgänge tragen ihr eigenes, begründetes Limit", () => {
   assert.match(clientSrc, /timeoutMs: 90000/, "Zoll-PDF-Upload braucht 90 s");
   assert.match(bookingSrc, /timeoutMs: 150000/, "/book braucht 150 s (Providerkette > 100 s)");
-  assert.match(src("../pages/NewShipmentPage.jsx"), /timeoutMs: 60000/, "calculate-price braucht 60 s");
-  assert.match(src("../pages/CalculatorPage.jsx"), /timeoutMs: 60000/, "calculate-price braucht 60 s");
+  // UPS-Abschluss: ein voller Anbieterquote darf serverseitig bis 55 s laufen.
+  assert.match(src("../pages/NewShipmentPage.jsx"), /timeoutMs: 75000/, "calculate-price braucht 75 s");
+  assert.match(src("../pages/CalculatorPage.jsx"), /timeoutMs: 75000/, "calculate-price braucht 75 s");
+});
+
+// Der Quelltext EINER Funktion — bis zur ersten schließenden Klammer am Zeilenanfang. CRLF-fest.
+const funktion = (code, name) => {
+  const start = code.indexOf(`function ${name}(`);
+  assert.ok(start > -1, `${name} fehlt`);
+  const rest = code.slice(start);
+  const ende = rest.search(/\r?\n\}\r?\n/);
+  assert.ok(ende > 0, `${name}: Ende nicht gefunden`);
+  return rest.slice(0, ende);
+};
+
+test("C6 — UPS-Abschluss: Optionen, Neubepreisung und Tracking warten länger als der Server", () => {
+  // Serverseitig darf ein Anbieterquote bis 55 s laufen, ein Trackingabruf bis 50 s. Endete der
+  // Browser vorher, sähe der Kunde einen Abbruch statt der Serverantwort (Preis, Fehlertext oder
+  // gespeicherter Trackingstand). Die Vorgabe für alle übrigen Aufrufe bleibt 30 s (C1).
+  const adminSrc = src("../api/adminApi.js");
+  assert.match(funktion(clientSrc, "loadPriceInputOptions"), /timeoutMs: 75000/, "Adressart-Optionen brauchen 75 s");
+  assert.match(funktion(clientSrc, "repriceInsurance"), /timeoutMs: 75000/, "die Neubepreisung braucht 75 s");
+  assert.match(funktion(clientSrc, "getTracking"), /timeoutMs: 65000/, "das Kunden-Tracking braucht 65 s");
+  assert.match(funktion(adminSrc, "getAdminShipmentTracking"), /timeoutMs: 65000/, "das Admin-Tracking braucht 65 s");
 });
 
 test("C5 — /book wird genau EINMAL gesendet: kein Retry-Konstrukt am Buchungsaufruf", () => {

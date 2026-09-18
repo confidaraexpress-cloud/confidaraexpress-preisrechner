@@ -31,6 +31,22 @@ export const BOOKING_SHIPPING_DOCUMENTS_TEXT = Object.freeze({
   whereToFind: "Alle Versanddokumente dieser Sendung finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
 });
 
+/**
+ * Der Druckhinweis zu mehrseitigen Versandbelegen — wörtlich vom Server.
+ *
+ * Ein Beleg kann neben den Paketetiketten ein Dokument enthalten, das der Carrier
+ * ausdrücklich NICHT auf dem Paket haben will. Welcher Satz das ist und WANN er gilt,
+ * entscheidet ausschließlich der Server: er allein kennt die Seitenzahl der gespeicherten
+ * Belege. Hier wird nichts formuliert, nichts abgeleitet und nichts aus der Paketzahl
+ * geschlossen — ein fehlender oder leerer Wert ergibt `null`, und dann steht keine Zeile da.
+ *
+ * @returns {string|null}
+ */
+export function bookingShippingPrintNotice(booking) {
+  const roh = booking && typeof booking.shippingPrintNotice === "string" ? booking.shippingPrintNotice.trim() : "";
+  return roh === "" ? null : roh;
+}
+
 const rang = (typ) => SHIPPING_DOCUMENT_TYPES.indexOf(typ);
 
 /**

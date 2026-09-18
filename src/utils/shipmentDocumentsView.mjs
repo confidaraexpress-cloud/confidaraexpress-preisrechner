@@ -267,6 +267,23 @@ export function groupShipmentDocuments(body) {
   return gruppen;
 }
 
+/**
+ * Der Druckhinweis zu mehrseitigen Versandbelegen — wörtlich aus der Serverantwort.
+ *
+ * Ein Anbieterbeleg kann neben den Paketetiketten ein Dokument enthalten, das der Carrier
+ * ausdrücklich NICHT auf dem Paket haben will. OB das hier der Fall ist, weiß allein der
+ * Server: er kennt die Seitenzahl der gespeicherten Belege, die Übersicht kennt sie nicht.
+ * Deshalb wird hier nichts formuliert, nichts aus der Zahl der Einträge geschlossen und
+ * keine Seite klassifiziert — ein fehlender oder leerer Wert ergibt `null`, und dann steht
+ * keine Zeile da.
+ *
+ * @returns {string|null}
+ */
+export function shipmentDocumentsPrintNotice(body) {
+  const roh = body && typeof body.printNotice === "string" ? body.printNotice.trim() : "";
+  return roh === "" ? null : roh;
+}
+
 /** Entsteht gerade noch mindestens ein Beleg? Nur dann wird nachgeladen. */
 export function hasProcessingDocument(gruppen) {
   if (!Array.isArray(gruppen)) return false;

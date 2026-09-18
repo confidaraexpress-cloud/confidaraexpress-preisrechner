@@ -4,7 +4,8 @@ import { useDialog } from "../../hooks/useDialog";
 import { getShipmentDocuments } from "../../api/client";
 import { downloadDocument } from "../../utils/downloadDocument";
 import {
-  DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, documentViewState, documentDownloadPath,
+  DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, shipmentDocumentsPrintNotice,
+  documentViewState, documentDownloadPath,
   documentLabel, documentNumber, documentIcon, documentFallbackFilename,
   documentCarrierReference, documentOrdinal, documentLabelSize,
   hasProcessingDocument, nextDocumentPollDelay,
@@ -84,6 +85,8 @@ function DocumentRow({ doc, onDownload, busy }) {
 
 export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) {
   const [groups, setGroups] = React.useState(null);   // null = noch nichts geladen
+  // Der Druckhinweis des Servers zu mehrseitigen Belegen. `null` = keiner nötig.
+  const [printNotice, setPrintNotice] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState(false);
   const [downloadError, setDownloadError] = React.useState("");
@@ -111,7 +114,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
         const r = await getShipmentDocuments(shipmentId);
         if (r.ok) {
           const d = await r.json().catch(() => null);
-          antwort = { gruppen: groupShipmentDocuments(d) };
+          antwort = { gruppen: groupShipmentDocuments(d), druckhinweis: shipmentDocumentsPrintNotice(d) };
         }
       } catch { /* still bleiben — der Fehlerzustand entsteht unten, genau einmal */ }
       if (abgebrochen) return;
@@ -119,6 +122,7 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
       if (antwort) {
         gezeigt = true;
         setGroups(antwort.gruppen);
+        setPrintNotice(antwort.druckhinweis);
         setLoadError(false);
         setLoading(false);
         // Nachgeladen wird NUR, solange tatsächlich noch ein Beleg entsteht.
@@ -230,6 +234,12 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
                     />
                   ))}
                 </ul>
+                {/* Der Druckhinweis steht bei den VERSANDbelegen — dort, wo die Etiketten
+                    stehen, auf die er sich bezieht. Er kommt wörtlich vom Server; welche
+                    Seite wohin gehört, druckt der Carrier auf das Dokument selbst. */}
+                {printNotice && gruppe.key === "SHIPPING" && (
+                  <p className="sdoc-group-note">{printNotice}</p>
+                )}
               </section>
             ))
           )}

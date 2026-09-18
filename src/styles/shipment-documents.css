@@ -37,6 +37,15 @@
   border-bottom: 1px solid var(--ce-color-border-subtle);
 }
 
+/* Druckhinweis unter den Versandbelegen: ein ruhiger Nebensatz, keine Warnung — er
+   erklärt den Umgang mit den Seiten, er meldet keinen Fehler. */
+.sdoc-group-note {
+  margin: var(--ce-space-3) 0 0;
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-muted);
+}
+
 .sdoc-list { display: flex; flex-direction: column; }
 .sdoc-row {
   display: flex;

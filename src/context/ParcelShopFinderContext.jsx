@@ -1,8 +1,10 @@
 import React, { createContext, Suspense, useCallback, useContext, useId, useRef, useState } from "react";
-import { searchAccessPoints } from "../api/client";
+import { searchAccessPoints, searchDropoffParcelShops } from "../api/client";
 import { normalizeAccessPointList } from "../utils/accessPointResponse.mjs";
-import { resolveAccessPointCarrierCode } from "../utils/carrierMap";
-import { OPENING_FILTER_ALL } from "../utils/accessPointView";
+import { resolveAccessPointCarrierCode, offerSupportsAccessPointSearch } from "../utils/carrierMap";
+import { OPENING_FILTER_ALL, normalizeAccessPointWorkState } from "../utils/accessPointView";
+import { offerKey } from "../utils/offerIdentity.mjs";
+import { offerRequiresDropoffParcelShop, normalizeDropoffParcelShop } from "../utils/dropoffParcelShop.mjs";
 
 /* ── Ein Paketshop-Finder für die ganze Anwendung ────────────────────────────
    Der Einstieg sitzt seit diesem Paket direkt am Angebot („Paketshops suchen“),
@@ -48,7 +50,35 @@ export function useParcelShopFinder() {
    den Carrier in der Identität würde die verspätete UPS-Antwort als „passend“
    gelten und die DPD-Ergebnisse überschreiben. */
 const sucheSchluessel = (p) =>
-  [p.carrierCode, p.countryCode, p.postCode, p.city, p.street, p.radius].join("|");
+  [p.portal ? "portal" : p.carrierCode, p.countryCode, p.postCode, p.city, p.street, p.radius].join("|");
+
+/* TG124: die serverseitig gekapselten DPD-Portalshops auf die Trefferlistenform des Finders abbilden.
+   Die Liste zeigt Name + Adresse (keine Entfernung/Öffnungszeiten — die liefert die Portalsuche nicht);
+   `dropoffShop` trägt die BUCHUNGSKOMPATIBLEN Kennungen für die verbindliche Auswahl. */
+function mapPortalShopsToList(shops) {
+  // Neutraler Öffnungsstatus: die Portalsuche liefert keinen workState — „nicht verfügbar" ist ehrlich,
+  // und die Liste rendert `status` immer (kein Absturz durch fehlendes Feld).
+  const statusUnbekannt = normalizeAccessPointWorkState(null);
+  return (Array.isArray(shops) ? shops : []).map((s) => {
+    const dropoffShop = normalizeDropoffParcelShop(s);
+    const strasse = [s.street, s.houseNumber].filter(Boolean).join(" ");
+    return {
+      // Der Schlüssel wird im Modal ohnehin neu vergeben; hier reicht ein stabiler Wert.
+      key: s.pickupLocationCode || null,
+      name: s.name || null,
+      address: [strasse, [s.postcode, s.city].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+      postCode: s.postcode || null,
+      city: s.city || null,
+      countryCode: s.countryCode || "DE",
+      status: statusUnbekannt,
+      hours: null,
+      hoursOfOperation: null,
+      distance: null,
+      distanceCode: null,
+      dropoffShop, // { parcelShopId, pickupLocationCode, … } | null — trägt die verbindliche Auswahl
+    };
+  }).filter((x) => x.dropoffShop); // nur gültige, auswählbare Shops
+}
 
 export function ParcelShopFinderProvider({ children }) {
   const titleId = useId();
@@ -73,6 +103,14 @@ export function ParcelShopFinderProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState(null); // null = noch nicht gesucht
+
+  // TG124: die VERBINDLICHE Shopauswahl je Angebot (offerKey → normalisierter Abgabe-Shop). Sie überlebt
+  // Schließen und Angebotswechsel und fließt — anders als der reine Kartenfokus — in /book. Nur für Angebote,
+  // die einen Abgabe-Shop brauchen (offerRequiresDropoffParcelShop); sonst bleibt sie leer.
+  const [selectedShops, setSelectedShops] = useState({});
+  // Nutzt das aktuell geöffnete Angebot die serverseitig gekapselte TG124-Portalsuche (statt der
+  // JUMiNGO-Access-Point-Suche)? Genau dann trägt die Trefferliste buchungskompatible Shop-Kennungen.
+  const usesPortalSearch = offerRequiresDropoffParcelShop(tariff, offerSupportsAccessPointSearch(tariff));
 
   // Laufende Suchen durchnummerieren: nur die jüngste darf schreiben. Sonst
   // überschriebe eine langsame ältere Antwort das frische Ergebnis.
@@ -100,6 +138,36 @@ export function ParcelShopFinderProvider({ children }) {
      gelesen, damit der Öffnungspfad mit der frisch übernommenen Adresse suchen
      kann, ohne auf den nächsten Render zu warten. */
   const sucheAus = useCallback(async (p) => {
+    // ── TG124-Portalsuche: nur PLZ+Land, serverseitig gekapselt, buchungskompatible Kennungen ──────────
+    if (p.portal) {
+      if (p.postCode.trim().length < 3) return;
+      const lauf = ++laufRef.current;
+      const aktuell = () => lauf === laufRef.current;
+      setLoading(true);
+      setError("");
+      try {
+        const r = await searchDropoffParcelShops({ postcode: p.postCode.trim(), countryCode: p.countryCode });
+        if (!aktuell()) return;
+        if (r.status === 401 || r.status === 403) { setLoading(false); return; }
+        let d = null;
+        try { d = await r.json(); } catch { d = null; }
+        if (!aktuell()) return;
+        if (!r.ok || !d || !Array.isArray(d.shops)) {
+          setResults(null);
+          setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
+          setLoading(false);
+          return;
+        }
+        setResults(mapPortalShopsToList(d.shops));
+        schluesselRef.current = sucheSchluessel(p);
+      } catch {
+        if (!aktuell()) return;
+        setResults(null);
+        setError("Die Paketshop-Suche ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.");
+      }
+      if (aktuell()) setLoading(false);
+      return;
+    }
     if (!p.carrierCode || p.postCode.trim().length < 3) return;
     if (p.city.trim().length < 2) {
       setResults(null);
@@ -161,9 +229,12 @@ export function ParcelShopFinderProvider({ children }) {
   const openFinder = useCallback(({ tariff: t, senderPrefill, triggerEl }) => {
     const code = resolveAccessPointCarrierCode(t);
     if (!code) return; // ohne Suchcode gibt es nichts zu öffnen
+    // TG124: ein buchbares Abgabe-Angebot nutzt die serverseitig gekapselte Portalsuche.
+    const portal = offerRequiresDropoffParcelShop(t, offerSupportsAccessPointSearch(t));
     const land = (senderPrefill?.country || "DE").toUpperCase();
     const p = {
       carrierCode: code,
+      portal,
       countryCode: land,
       postCode: String(senderPrefill?.postCode || "").trim(),
       city: String(senderPrefill?.city || "").trim(),
@@ -198,10 +269,25 @@ export function ParcelShopFinderProvider({ children }) {
   // „Suchen“ im Fenster — mit den dort ggf. geänderten Werten.
   const sucheAusFormular = useCallback(() => {
     if (!carrierCode) return;
-    sucheAus({ carrierCode, countryCode, postCode, city, street, radius });
-  }, [carrierCode, countryCode, postCode, city, street, radius, sucheAus]);
+    sucheAus({ carrierCode, portal: usesPortalSearch, countryCode, postCode, city, street, radius });
+  }, [carrierCode, usesPortalSearch, countryCode, postCode, city, street, radius, sucheAus]);
 
-  const wert = { openFinder, isOpen: open, activeTariff: tariff };
+  // TG124: einen Trefferzeilen-Shop verbindlich als Abgabe-Shop des aktiven Angebots wählen (fließt in /book).
+  // Die Liste reicht den `dropoffShop` der Zeile herein (bleibt durch das `...s`-Spread des Modals erhalten).
+  const selectShop = useCallback((shop) => {
+    const k = offerKey(tariff);
+    const normalisiert = normalizeDropoffParcelShop(shop);
+    if (!k || !normalisiert) return;
+    setSelectedShops((prev) => ({ ...prev, [k]: normalisiert }));
+    setOpen(false);
+  }, [tariff]);
+  // Der gebundene Abgabe-Shop eines Angebots (oder null).
+  const selectedShopFor = useCallback((t) => {
+    const k = offerKey(t);
+    return k ? (selectedShops[k] || null) : null;
+  }, [selectedShops]);
+
+  const wert = { openFinder, isOpen: open, activeTariff: tariff, selectShop, selectedShopFor };
 
   return (
     <ParcelShopFinderContext.Provider value={wert}>
@@ -230,6 +316,8 @@ export function ParcelShopFinderProvider({ children }) {
         results={results}
         countryCode={countryCode}
         carrierName={tariff?.publicCarrierName || null}
+        onSelectShop={usesPortalSearch ? selectShop : null}
+        selectedShopKey={usesPortalSearch ? (selectedShopFor(tariff)?.pickupLocationCode || null) : null}
       />
       </Suspense>
       )}

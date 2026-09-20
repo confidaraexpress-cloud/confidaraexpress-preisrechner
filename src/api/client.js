@@ -376,6 +376,15 @@ export function deleteDraft(id) {
 // Diese Liste ist die EINZIGE Quelle dafür, ob es zu einer Sendung eine
 // Proforma-Rechnung gibt. Sie wird nicht aus Zielland, Zollpflicht, Rechnungsmodus
 // oder Tarif abgeleitet — siehe utils/proformaDocumentView.mjs.
+// DPD-Paketshop-Abgabe: serverseitig gekapselte Paketshop-Suche (read-only). Liefert die zur Auswahl
+// noetigen, buchungskompatiblen Shopdaten. Nur aktiv, wenn der Abgabe-Buchungsweg serverseitig
+// freigeschaltet ist (sonst 404). Kein zweiter API-Layer — derselbe apiFetch-Vertrag wie sonst.
+// Der Pfad ist bewusst anbieterneutral: kein Einkaufsanbieter, keine ServiceID im Frontend.
+export function searchDropoffParcelShops({ postcode, countryCode = "DE", signal } = {}) {
+  const q = new URLSearchParams({ postcode: String(postcode ?? "").trim(), countryCode: String(countryCode ?? "DE").trim() });
+  return apiFetch(`/api/dropoff/parcelshops?${q.toString()}`, { auth: true, signal });
+}
+
 export function getShipmentDocuments(shipmentId, { signal } = {}) {
   return apiFetch(
     `/api/shipments/${encodeURIComponent(String(shipmentId ?? "").trim())}/documents`,

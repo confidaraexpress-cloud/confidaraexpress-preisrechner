@@ -10,7 +10,7 @@ import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../util
 // (AGB + Ausschlussgüter-Bestätigung + bestehende Gates).
 export function BookingActionModule({
   error, conflict, addressError, recalcNotice, loading, agbAccepted, prohibitedGoodsAccepted, insuranceBlocksBooking, pickupBlocksBooking, voucherChecking,
-  legalBlocksBooking, profileHint,
+  legalBlocksBooking, profileHint, dropoffShopBlocksBooking,
   priceChangeNotice, onReviewPriceChange, priceChangeActionRef,
   onBook, onNavigateShipments, onNavigateNew, onRecalculate, onNavigateProfile, userEmail,
 }) {
@@ -20,7 +20,7 @@ export function BookingActionModule({
   // Legal-Buchungsschranke (Paket 4-B): solange der Kontext lädt oder nicht auslieferbar ist,
   // steht nicht fest, welche Fassungen gelten — dann darf nicht bestellt werden. Bei
   // ausgeschalteter Schranke ist der Wert false und dieser Ausdruck unverändert.
-  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking })
+  const bookingAllowed = canSubmitBooking({ agbAccepted, prohibitedGoodsAccepted, loading, insuranceBlocksBooking, pickupBlocksBooking, dropoffShopBlocksBooking })
     && voucherChecking !== true
     && legalBlocksBooking !== true;
   return (

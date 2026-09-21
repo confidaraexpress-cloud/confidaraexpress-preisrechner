@@ -148,6 +148,7 @@ const SAME_DAY_FEHLER_JE_ART = Object.freeze({
 //   OFFER_MISMATCH                  409     nichts beauftragt          neu berechnen
 // ─── TG22 Paket B ──────────────────────────────────────────────────────────────────
 //   COLLECTION_DATE_MISSING         409     nichts beauftragt          neu berechnen
+//   COLLECTION_SLOT_REQUIRED        409     nichts beauftragt          neu berechnen  (TG110 GLS Portal)
 //   LABEL_FORMAT_NOT_SUPPORTED      400     nichts beauftragt          neu berechnen
 // Beide tragen mit derselben Angebotskennung nicht: ohne Abholtag gibt es keinen Auftrag, und
 // ein Format, das dieses Angebot nicht kennt, entsteht nur aus einem veralteten Angebotsstand.
@@ -169,6 +170,9 @@ const BOOK_CODE_FEHLER = {
   OFFER_ALREADY_USED:             "ANGEBOT_VERWENDET",
   OFFER_MISMATCH:                 "NEU_BERECHNEN",
   COLLECTION_DATE_MISSING:        "NEU_BERECHNEN",
+  // TG110 GLS Pick&Ship (Portal): der Fahrer-Abhol-Slot fehlt/ist ungueltig. Wie COLLECTION_DATE_MISSING:
+  // nichts beauftragt, und dieselbe Angebotskennung traegt ohne gueltigen Abholtag nicht — neu berechnen.
+  COLLECTION_SLOT_REQUIRED:       "NEU_BERECHNEN",
   LABEL_FORMAT_NOT_SUPPORTED:     "NEU_BERECHNEN",
   // TG22 Residential — PRICE_INPUTS_REQUIRED: die Lieferadresse ist nicht gebunden; die Seite führt
   // zurück an die Auswahl. PRICE_INPUTS_NOT_SUPPORTED: das Angebot kennt die Angabe nicht (mehr).

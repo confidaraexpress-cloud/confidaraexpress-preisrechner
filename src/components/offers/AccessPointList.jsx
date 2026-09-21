@@ -37,6 +37,9 @@ function WeekHours({ hoursOfOperation }) {
 
 export function AccessPointList({
   shops, focusedKey, onFocus, expandedKey, onToggleExpand, listRef, countryCode,
+  // TG124: verbindliche Auswahl (nur bei der Portalsuche gesetzt). onSelect(dropoffShop) | null;
+  // selectedShopKey = pickupLocationCode des aktuell gebundenen Shops.
+  onSelect, selectedShopKey,
 }) {
   return (
     <ul className="ap-list" ref={listRef}>
@@ -103,6 +106,22 @@ export function AccessPointList({
                 <WeekHours hoursOfOperation={s.hoursOfOperation} />
               </div>
             )}
+
+            {/* TG124: verbindliche Shopauswahl (nur bei der Portalsuche). Anders als der Kartenfokus
+                oben fließt DIESE Wahl in die Buchung. */}
+            {typeof onSelect === "function" && s.dropoffShop && (() => {
+              const gewaehlt = selectedShopKey && s.dropoffShop.pickupLocationCode === selectedShopKey;
+              return (
+                <button
+                  type="button"
+                  className={`ap-list-select${gewaehlt ? " ap-list-select--chosen" : ""}`}
+                  aria-pressed={gewaehlt === true}
+                  onClick={() => onSelect(s.dropoffShop)}
+                >
+                  {gewaehlt ? "Ausgewählt" : "Diesen Paketshop wählen"}
+                </button>
+              );
+            })()}
           </li>
         );
       })}

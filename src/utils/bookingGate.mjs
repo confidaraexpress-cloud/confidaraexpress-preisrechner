@@ -9,6 +9,7 @@
 //   - loading                  : Buchung läuft bereits
 //   - insuranceBlocksBooking   : Versicherungspfad ohne frischen/gültigen Reprice
 //   - pickupBlocksBooking      : Abholfenster wird noch geladen ODER Ladefehler (nur Pickup)
+//   - dropoffShopBlocksBooking : DPD-Paketshop-Abgabe (TG124), aber KEIN konkreter Shop gewählt (fail-closed)
 //
 // Buchung nur, wenn BEIDE Bestätigungen gesetzt sind und kein bestehendes Gate
 // blockiert. Die AGB-Bedingung bleibt eigenständig erhalten (nicht ersetzt).
@@ -18,12 +19,14 @@ export function canSubmitBooking({
   loading,
   insuranceBlocksBooking,
   pickupBlocksBooking,
+  dropoffShopBlocksBooking,
 } = {}) {
   return (
     agbAccepted === true &&
     prohibitedGoodsAccepted === true &&
     !loading &&
     !insuranceBlocksBooking &&
-    !pickupBlocksBooking
+    !pickupBlocksBooking &&
+    !dropoffShopBlocksBooking
   );
 }

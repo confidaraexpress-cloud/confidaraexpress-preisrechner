@@ -47,6 +47,8 @@ export function AccessPointFinderModal({
   loading, error, results, countryCode,
   // Aus welchem Angebot heraus geöffnet wurde — nur zur Beschriftung.
   carrierName,
+  // TG124: verbindliche Shopauswahl (nur bei der Portalsuche gesetzt). onSelectShop(key) | null.
+  onSelectShop, selectedShopKey,
 }) {
   // returnFocusTo zeigt auf den Suchknopf. Er wird beim Öffnen deaktiviert
   // (der Ladevorgang startet im selben Render), verliert dadurch den Fokus —
@@ -315,6 +317,8 @@ export function AccessPointFinderModal({
                   onToggleExpand={(key) => setExpandedKey((v) => (v === key ? null : key))}
                   listRef={listRef}
                   countryCode={countryCode}
+                  onSelect={onSelectShop}
+                  selectedShopKey={selectedShopKey}
                 />
               </div>
               <div className="ap-modal-mapcol">{karte}</div>

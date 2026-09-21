@@ -27,6 +27,10 @@ import {
   offerResidentialSurchargeFree,
 } from "../utils/residentialPriceInputs.mjs";
 import { bookingContentPayload } from "../utils/shipmentDeclarations.mjs";
+// TG124 DPD PaketShop: die verbindliche Abgabe-Shop-Auswahl (Finder-Kontext) + ihre Buchungssperre/Payload.
+import { useParcelShopFinder } from "../context/ParcelShopFinderContext";
+import { dropoffShopBlocksBooking, dropoffParcelShopBookPayload, offerRequiresDropoffParcelShop } from "../utils/dropoffParcelShop.mjs";
+import { offerSupportsAccessPointSearch } from "../utils/carrierMap";
 import {
   priceChangeAnsicht, preisIstBestaetigbar, pendingPriceChangeNotice,
   PREISAENDERUNG_TITEL, PREISAENDERUNG_TEXT,
@@ -112,6 +116,8 @@ export default function BookingPage() {
   // einem leeren Kontofeld — der Versandvorgang bleibt dabei vollständig erhalten.
   const [eoriRequired, setEoriRequired] = useState(false);
   const navigate = useNavigate();
+  // TG124: der app-weite Paketshop-Finder hält die verbindliche Abgabe-Shop-Auswahl (offerbezogen).
+  const parcelShopFinder = useParcelShopFinder();
   const location = useLocation();
   const { state: navState } = location;
 
@@ -528,6 +534,14 @@ export default function BookingPage() {
   const residentialBlocks = residentialBlocksBooking({
     required: residentialRequired, status: resStatus, boundValue: resBoundValue, tariff, options: resOptions,
   });
+
+  // TG124 DPD PaketShop: die gebundene Abgabe-Shop-Auswahl (aus dem Finder-Kontext) und die daraus folgende
+  // Buchungssperre. Für Angebote ohne (suchbare) Shopabgabe ist beides neutral — false bzw. {} im Payload.
+  const dropoffSupportsShopSearch = offerSupportsAccessPointSearch(tariff);
+  const dropoffShopRequired = offerRequiresDropoffParcelShop(tariff, dropoffSupportsShopSearch);
+  const selectedDropoffShop = parcelShopFinder && typeof parcelShopFinder.selectedShopFor === "function"
+    ? parcelShopFinder.selectedShopFor(tariff) : null;
+  const dropoffShopBlocks = dropoffShopBlocksBooking(tariff, selectedDropoffShop, dropoffSupportsShopSearch);
 
   // Paketdaten (Anzahl/Gewicht/Maße) als fertiger Anzeige-String — einmal
   // abgeleitet, in Step 1 (ShipmentSummaryModule) und Step 2 (Zusammenfassung)
@@ -1088,6 +1102,12 @@ export default function BookingPage() {
       setError(RESIDENTIAL_TEXT.required);
       return;
     }
+    // TG124: ohne gewählten DPD-Abgabe-Paketshop entsteht KEIN Request. Zurück an die Auswahl (Schritt 1).
+    if (dropoffShopBlocks) {
+      setStep(1);
+      setError("Bitte wählen Sie einen DPD-Paketshop für die Abgabe, bevor Sie buchen.");
+      return;
+    }
     // Bei versicherter Auswahl nur mit frischem, gültigem Reprice buchen (die
     // exakt gerepricte Auswahl wird gebucht — nie ein veralteter Stand).
     // Zusätzliche Transportabsicherung: ohne beide Antworten zur Ware keine Buchung. Eigene
@@ -1222,6 +1242,8 @@ export default function BookingPage() {
           // gebundene Wahl als reiner Konsistenzwächter — nie ein Wert aus dem Sendungsformular. Steht
           // VOR der Absicherung: deren bestätigter Preisstand aus der Neubepreisung gilt dann.
           ...residentialBookPayload(tariff),
+          // TG124: der serverseitig zu bindende Abgabe-Paketshop — nur bei Bedarf + gültiger Auswahl.
+          ...dropoffParcelShopBookPayload(tariff, selectedDropoffShop, dropoffSupportsShopSearch),
           ...insurancePayload,
           ...customsPayload,
         }),
@@ -2025,6 +2047,8 @@ export default function BookingPage() {
                   country:  bookingData?.form?.s_country,
                   street:   bookingData?.form?.s_street,
                 }}
+                required={dropoffShopRequired}
+                selectedShop={selectedDropoffShop}
               />
             )}
 
@@ -2315,6 +2339,7 @@ export default function BookingPage() {
                   prohibitedGoodsAccepted={prohibitedGoodsAccepted}
                   insuranceBlocksBooking={insuranceBlocksBooking}
                   pickupBlocksBooking={pickupHydrationBlocks}
+                  dropoffShopBlocksBooking={dropoffShopBlocks}
                   voucherChecking={voucherChecking}
                   legalBlocksBooking={legalBlocksBooking}
                   profileHint={profileHint}

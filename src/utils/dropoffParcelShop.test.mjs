@@ -7,10 +7,13 @@ import {
   dropoffShopBlocksBooking, dropoffParcelShopBookPayload,
 } from "./dropoffParcelShop.mjs";
 
-const dropoffBookbar = { bookable: true };            // auswählbar
-const dropoffAdressartOffen = { bookable: false, unavailableReason: "price_inputs_required", requiredPriceInputs: ["deliveryIsResidential"] }; // auswählbar
+const dropoffBookbar = { bookable: true, parcelShopSearch: "server" };            // auswählbar, serverseitige Portal-Suche (TG124)
+const dropoffAdressartOffen = { bookable: false, unavailableReason: "price_inputs_required", requiredPriceInputs: ["deliveryIsResidential"], parcelShopSearch: "server" }; // auswählbar
 const dropoffQuoteOnly = { bookable: false, unavailableReason: "quote_only" };                 // NICHT auswählbar
 const abholung = { bookable: true };                  // supportsAccessPointSearch=false (Abholung)
+// TG124-Abgrenzung: eine gewöhnliche Carrier-Shopabgabe (JUMiNGO) ist auswählbar UND suchbar, nutzt aber
+// die bestehende Access-Point-Suche (kein `parcelShopSearch`) — sie verlangt KEINEN serverseitigen Portal-Shop.
+const dropoffCarrierJumingo = { bookable: true };     // auswählbar + suchbar, aber parcelShopSearch fehlt
 
 const SHOP = { parcelShopId: "539869", pickupLocationCode: "DE45621", name: "Myflexbox - DPD Pickup Paketstation", street: "Bernhardstr.", houseNumber: "19", postcode: "63741", city: "Aschaffenburg", town: "Damm", countryCode: "DE" };
 
@@ -20,6 +23,7 @@ test("offerRequiresDropoffParcelShop: nur auswählbare + suchbare Shopabgabe-Ang
   assert.strictEqual(offerRequiresDropoffParcelShop(dropoffQuoteOnly, true), false, "quote_only verlangt keinen Shop");
   assert.strictEqual(offerRequiresDropoffParcelShop(abholung, false), false, "Abholung (keine Shopsuche) verlangt keinen Shop");
   assert.strictEqual(offerRequiresDropoffParcelShop(dropoffBookbar, false), false, "ohne suchbare Shopabgabe kein Shopzwang");
+  assert.strictEqual(offerRequiresDropoffParcelShop(dropoffCarrierJumingo, true), false, "gewöhnliche Carrier-Shopabgabe (keine serverseitige Portal-Suche) verlangt keinen Portal-Shop");
   assert.strictEqual(offerRequiresDropoffParcelShop(null, true), false);
 });
 

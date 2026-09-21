@@ -4,18 +4,25 @@
 // ihn; das Frontend übermittelt nur die zulässige Auswahl (parcelShopId + pickupLocationCode + Adresse).
 // Ohne Shop ist die Buchung fail-closed gesperrt.
 //
-// „Ist das eine (suchbare) Shopabgabe?" beantwortet ausschließlich `offerSupportsAccessPointSearch`
-// (carrierMap.js, baut auf handoverMode auf). Diese Datei baut die Regel NICHT nach: der boolesche Befund
-// wird HEREINGEREICHT (`supportsAccessPointSearch`). So bleibt das Modul frei von der SVG-behafteten
-// carrierMap und damit im Node-Test-Runner ladbar. „Braucht einen Shop" = auswählbares Angebot
-// (`offerSelectable`) UND suchbare Shopabgabe. Ein reines quote_only-Angebot ist nicht auswählbar.
+// „Ist das eine (suchbare) Shopabgabe?" beantwortet `offerSupportsAccessPointSearch` (carrierMap.js, baut
+// auf handoverMode auf). Diese Datei baut die Regel NICHT nach: der boolesche Befund wird HEREINGEREICHT
+// (`supportsAccessPointSearch`). So bleibt das Modul frei von der SVG-behafteten carrierMap und damit im
+// Node-Test-Runner ladbar.
+//
+// TG124: NICHT jede suchbare Shopabgabe braucht die SERVERSEITIGE Portal-Suche. Eine gewöhnliche
+// Carrier-Abgabe (JUMiNGO, DPD/UPS/…) sucht ihre Access Points weiter über den bestehenden Weg; nur ein
+// Angebot mit `parcelShopSearch === "server"` (vom Backend gesetzt) verlangt die verbindliche Auswahl eines
+// konkreten Abgabe-Paketshops über die serverseitig gekapselte Suche. „Braucht einen (Portal-)Shop" =
+// auswählbares Angebot (`offerSelectable`) UND suchbare Shopabgabe UND serverseitige Paketshop-Suche.
 
 import { offerSelectable } from "./offerIdentity.mjs";
 
-/** Verlangt dieses Angebot vor der Buchung die Auswahl eines konkreten Abgabe-Paketshops? */
+/** Verlangt dieses Angebot vor der Buchung die Auswahl eines konkreten (serverseitig gesuchten) Abgabe-Paketshops? */
 export function offerRequiresDropoffParcelShop(tariff, supportsAccessPointSearch) {
   if (!tariff || typeof tariff !== "object") return false;
-  return offerSelectable(tariff) === true && supportsAccessPointSearch === true;
+  return offerSelectable(tariff) === true
+    && supportsAccessPointSearch === true
+    && tariff.parcelShopSearch === "server";
 }
 
 const s = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : (typeof v === "number" && Number.isFinite(v) ? String(v) : null));

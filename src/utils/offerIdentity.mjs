@@ -137,12 +137,21 @@ export const OFFER_SAME_DAY_UNCONFIRMED_TEXT = "Abholung heute für dieses Angeb
 export const OFFER_SAME_DAY_UNVERIFIABLE_TEXT = "Abholung heute kann derzeit nicht bestätigt werden.";
 export const OFFER_SAME_DAY_UNAVAILABLE_HINT = "Bitte wählen Sie einen späteren Abholtag.";
 export const OFFER_SAME_DAY_REASONS = Object.freeze(["same_day_unavailable", "same_day_unconfirmed", "same_day_unverifiable"]);
+// Manche Produkte werden nur an Unternehmen zugestellt. Der Server sendet dafür einen eigenen,
+// kundenlösbaren Grund — das Angebot bleibt preislich sichtbar, ist aber nicht auswählbar,
+// solange beim Empfänger kein Firmenname hinterlegt ist. Der Text nennt weder Carrier noch
+// Einkaufsquelle noch eine ServiceID: warum ein Produkt Geschäftsempfänger verlangt, ist eine
+// Eigenschaft des Angebots und keine Auskunft darüber, bei wem ConfidaraExpress einkauft.
+export const OFFER_BUSINESS_RECIPIENT_REASON = "business_recipient_required";
+export const OFFER_BUSINESS_RECIPIENT_TEXT = "Nur für Geschäftsempfänger verfügbar.";
+export const OFFER_BUSINESS_RECIPIENT_HINT = "Bitte hinterlegen Sie beim Empfänger einen Firmennamen.";
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
   date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
   same_day_unavailable: OFFER_SAME_DAY_UNAVAILABLE_TEXT,
   same_day_unconfirmed: OFFER_SAME_DAY_UNCONFIRMED_TEXT,
   same_day_unverifiable: OFFER_SAME_DAY_UNVERIFIABLE_TEXT,
+  [OFFER_BUSINESS_RECIPIENT_REASON]: OFFER_BUSINESS_RECIPIENT_TEXT,
 };
 // Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
 const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
@@ -164,6 +173,8 @@ export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   if (offerSelectable(t) || t.availableForDate === false) return null;
   if (OFFER_SAME_DAY_REASONS.includes(t.unavailableReason)) return OFFER_SAME_DAY_UNAVAILABLE_HINT;
+  // Der einzige Hinweis, der keine Terminwahl betrifft: hier hilft eine Angabe beim Empfänger.
+  if (t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON) return OFFER_BUSINESS_RECIPIENT_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

@@ -444,6 +444,17 @@ export default function AdminShipmentDetailPage() {
                   ? <span className="adm-mask">{ops.trackingReferences.map((t) => maskTail(t) || t).join(" · ")}</span>
                   : "—"],
                 ["Label gespeichert", docSummary.storedLabel ? "Ja" : "Nein"],
+                /* MF-03: nur bei einem PORTAL-Buchungsvorgang. Dort kann das Versandlabel
+                   erst nach der Bestellung entstehen — die Buchung steht trotzdem. Ohne
+                   Portalvorgang fehlen diese Zeilen vollstaendig. */
+                ...(ops.portal ? [
+                  ["Portalvorgang", <span className="adm-mono">{ops.portal.portalService}{ops.portal.portalServiceId !== null ? ` · ${ops.portal.portalServiceId}` : ""}</span>],
+                  ["Auftragsreferenz (Portal)", ops.portal.orderReference
+                    ? <span className="adm-mono">{ops.portal.orderReference}</span> : "—"],
+                  ["Etikett beim Anbieter", ops.portal.labelStatusMeta
+                    ? <span className={`badge ${ops.portal.labelStatusMeta[0]}`}>{ops.portal.labelStatusMeta[1]}</span> : "—"],
+                  ["Zuletzt geprüft", fmtDateTime(ops.portal.lastCheckedAt)],
+                ] : []),
                 ["Anbieterbelege", docSummary.providerDocumentCount > 0
                   ? ops.documents.providerDocuments.map((d) => d.typeText).join(" · ") : "Keine"],
                 ["Rechnungsdokument", ops.invoice

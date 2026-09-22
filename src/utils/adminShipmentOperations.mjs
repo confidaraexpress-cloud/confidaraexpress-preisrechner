@@ -46,6 +46,23 @@ const DOCUMENT_STATUS_META = {
 };
 export const invoiceDocumentStatusMeta = (s) => DOCUMENT_STATUS_META[s] || statusFallback(s);
 
+/* ── MF-03: der Etikettenstand eines PORTAL-Buchungsvorgangs ────────────────
+   Manche Portalservices erzeugen das Versandlabel erst NACH der Bestellung. Die
+   Buchung ist dann vollständig, das Etikett aber noch nicht da, und ein
+   Nachlauf holt es. Drei Stände, und nur drei:
+
+     pending           es entsteht noch, der Nachlauf holt es
+     ready             es liegt
+     recovery_timeout  das Nachlauffenster ist abgelaufen — ein Mensch klärt
+
+   Adminintern. Diese Karte nennt Anbieter und Anbieterreferenzen ohnehin. */
+const PORTAL_LABEL_STATUS_META = {
+  pending: ["badge-yellow", "Wird beim Anbieter erzeugt"],
+  ready: ["badge-green", "Liegt vor"],
+  recovery_timeout: ["badge-red", "Nachlauf abgelaufen — bitte prüfen"],
+};
+export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statusFallback(s);
+
 function versuch(raw) {
   if (!raw || typeof raw !== "object") return null;
   const id = zahl(raw.id);
@@ -99,6 +116,9 @@ export function selectOperations(shipment) {
   const inv = o.invoice && typeof o.invoice === "object" ? o.invoice : null;
   const oc = o.orderConfirmation && typeof o.orderConfirmation === "object" ? o.orderConfirmation : null;
   const canc = o.cancellation && typeof o.cancellation === "object" ? o.cancellation : null;
+  // MF-03: nur eine Sendung MIT Portalvorgang trägt `portal`. Fehlt es (JUMiNGO, ein
+  // Transglobal-V2-Service, ein älteres Backend), bleibt es `null` und nichts wird gezeigt.
+  const prt = o.portal && typeof o.portal === "object" && !Array.isArray(o.portal) ? o.portal : null;
   return {
     provider: text(o.provider),
     providerText: o.provider ? providerLabel(o.provider) : "Noch kein gebuchter Anbieter",
@@ -121,6 +141,18 @@ export function selectOperations(shipment) {
       bookingWithoutOpenAttempt: rek.bookingWithoutOpenAttempt === true,
     },
     attempts: liste(o.bookingAttempts).map(versuch).filter(Boolean),
+    portal: prt && text(prt.portalService) ? {
+      portalService: text(prt.portalService),
+      portalServiceId: zahl(prt.portalServiceId),
+      state: text(prt.state),
+      orderReference: text(prt.orderReference),
+      carrierReference: text(prt.carrierReference),
+      errorReason: text(prt.errorReason),
+      labelStatus: text(prt.labelStatus),
+      labelStatusMeta: text(prt.labelStatus) ? portalLabelStatusMeta(prt.labelStatus) : null,
+      lastCheckedAt: prt.lastCheckedAt ?? null,
+      startedAt: prt.startedAt ?? null,
+    } : null,
     documents: {
       storedLabel: docs.storedLabel === true,
       providerDocuments: liste(docs.providerDocuments)

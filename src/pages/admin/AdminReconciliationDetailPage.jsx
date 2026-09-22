@@ -30,6 +30,9 @@ import {
   reconciliationActionSuccess,
   reconciliationStateMeta,
   resolutionMeta,
+  PORTAL_BLOCKS_RELEASE_TEXT,
+  portalServiceLabel,
+  portalStateMeta,
   tooEarlyText,
   validateProviderReferenceInput,
 } from "../../utils/adminReconciliation.mjs";
@@ -225,6 +228,10 @@ export default function AdminReconciliationDetailPage() {
     && (!req.insuranceDecisionRequired || insuranceConfirmed === true || insuranceConfirmed === false);
   const drift = a.invoiceDrift;
   const driftReviewed = Boolean(drift && drift.reviewedAt);
+  // MF-01: der Portalvorgang dieses Angebots. `blocksRelease` ist die Aussage des SERVERS —
+  // die Oberfläche leitet sie nicht selbst aus dem Zustand ab und entscheidet nichts.
+  const portal = a.portalAttempt;
+  const portalSperrt = Boolean(portal && portal.blocksRelease);
 
   const perform = async (kind) => {
     if (busy) return;
@@ -431,11 +438,14 @@ export default function AdminReconciliationDetailPage() {
                   </button>
                   <button
                     type="button" id="recon-confirm-not-booked" className="btn btn-outline btn-sm"
-                    disabled={!availability.available || busy} onClick={() => setDialog("notBooked")}
+                    disabled={!availability.available || portalSperrt || busy}
+                    aria-label={portalSperrt ? PORTAL_BLOCKS_RELEASE_TEXT : undefined}
+                    onClick={() => setDialog("notBooked")}
                   >
                     <Icon n="x" s={14} /> Als nicht gebucht bestätigen
                   </button>
                 </div>
+                {portalSperrt && <p className="adm-support-hint">{PORTAL_BLOCKS_RELEASE_TEXT}</p>}
               </>
             )}
 
@@ -479,6 +489,32 @@ export default function AdminReconciliationDetailPage() {
             ]} />
           </div>
         </div>
+
+        {/* 2b) Portalvorgang — nur, wenn es einen gibt (TG110/TG124). MF-01: diese
+            Recovery-Information stand bis hierher in einer Tabelle, die keine Oberfläche
+            liest — und genau sie entscheidet, ob eine Freigabe zulässig ist. */}
+        {portal && (
+          <div className="adm-card" id="recon-portal">
+            <div className="adm-card-head"><Icon n="truck" s={17} /> Portalvorgang</div>
+            <div className="adm-card-body">
+              <KV items={[
+                ["Portalservice", portalServiceLabel(portal.portalService)],
+                ["Portalstand", <Badge meta={portalStateMeta(portal.state)} />],
+                ["Auftragsreferenz (Portal)", portal.orderReference
+                  ? <span className="adm-mono">{portal.orderReference}</span> : "—"],
+                ["Sendungsnummer (Portal)", portal.carrierReference
+                  ? <span className="adm-mono">{portal.carrierReference}</span> : "—"],
+                ["Auftragsgruppe", portal.orderGroupId
+                  ? <span className="adm-mono">{portal.orderGroupId}</span> : "—"],
+                ["Technischer Grund", dash(portal.errorReason)],
+                ["Begonnen", fmtDateTime(portal.createdAt)],
+                ["Zuletzt geändert", fmtDateTime(portal.updatedAt)],
+                ["Freigabe möglich", portal.blocksRelease ? "Nein — Bestellung möglich" : "Ja"],
+              ]} />
+              {portal.blocksRelease && <p className="adm-support-hint">{PORTAL_BLOCKS_RELEASE_TEXT}</p>}
+            </div>
+          </div>
+        )}
 
         {/* 3) Sendung und lokaler Stand. */}
         <div className="adm-card">

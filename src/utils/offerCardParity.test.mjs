@@ -12,7 +12,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { offerBookable, offerBlocked, offerBlockedLabel } from "./offerIdentity.mjs";
+import { offerBookable, offerBlocked, offerBlockedLabel, offerBlockedHint, offerSelectable,
+         OFFER_BUSINESS_RECIPIENT_REASON, OFFER_BUSINESS_RECIPIENT_TEXT,
+         OFFER_BUSINESS_RECIPIENT_HINT } from "./offerIdentity.mjs";
 import { handoverMode, handoverLabelForTariff, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { fmtDelivery } from "./formatters.js";
 import { deliveryContractOf } from "./deliveryContractView.mjs";
@@ -309,10 +311,54 @@ test("(H1) ohne Buchbarkeit kein Klick, keine Auswahl, keine Folgeaktion", () =>
 
 test("(H2) der Grundtext nennt keinen Provider", () => {
   const texte = [offerBlockedLabel(TG_DROPOFF), offerBlockedLabel({ availableForDate: false }),
-                 offerBlockedLabel({ bookable: false, unavailableReason: "unbekannt" })];
+                 offerBlockedLabel({ bookable: false, unavailableReason: "unbekannt" }),
+                 offerBlockedLabel({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON })];
   for (const t of texte) {
     assert.ok(typeof t === "string" && t.length > 0);
     assert.ok(!/transglobal|jumingo/i.test(t), `Providername im Grundtext: ${t}`);
   }
   assert.equal(offerBlockedLabel(JUMINGO), null, "ein buchbares Angebot trägt keinen Grund");
+});
+
+/* ── Geschäftsempfänger: ein kundenlösbarer Grund, kein Providerleck ───────────── */
+
+test("(H3) business_recipient_required: neutraler Text, Handlungshinweis, NICHT auswählbar", () => {
+  const t = { bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON };
+  assert.equal(offerBlockedLabel(t), OFFER_BUSINESS_RECIPIENT_TEXT);
+  assert.equal(offerBlockedLabel(t), "Nur für Geschäftsempfänger verfügbar.");
+  assert.equal(offerBlockedHint(t), OFFER_BUSINESS_RECIPIENT_HINT);
+  assert.equal(offerBlockedHint(t), "Bitte hinterlegen Sie beim Empfänger einen Firmennamen.");
+  // Das Angebot bleibt sichtbar, ist aber nicht wählbar — anders als `price_inputs_required`.
+  assert.equal(offerSelectable(t), false, "das Angebot ist auswählbar geblieben");
+  assert.equal(offerBookable(t), false);
+  assert.equal(offerBlocked(t), true);
+});
+
+test("(H4) der Rohcode erreicht die Oberfläche nie — und nennt keinen Anbieter", () => {
+  const text = offerBlockedLabel({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON });
+  const hinweis = offerBlockedHint({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON });
+  for (const s of [text, hinweis]) {
+    assert.ok(!s.includes(OFFER_BUSINESS_RECIPIENT_REASON), `Rohcode im Text: ${s}`);
+    assert.ok(!/transglobal|jumingo|tnt|dhl|ups|dpd|gls/i.test(s), `Anbietername im Text: ${s}`);
+    assert.ok(!/\d{2,}/.test(s), `eine ServiceID im Text: ${s}`);
+  }
+});
+
+test("(H5) die bestehenden Gründe bleiben unverändert", () => {
+  // Preisangabe ausstehend: weiterhin auswählbar (die Wahl erfolgt auf der Buchungsseite).
+  const preis = { bookable: false, unavailableReason: "price_inputs_required",
+                  requiredPriceInputs: ["deliveryIsResidential"] };
+  assert.equal(offerSelectable(preis), true, "price_inputs_required ist nicht mehr auswählbar");
+  // Termin- und Same-Day-Gründe: unveränderter Text und unveränderter Hinweis.
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "date_unavailable" }),
+    "Für dieses Abholdatum nicht verfügbar.");
+  assert.equal(offerBlockedHint({ bookable: false, unavailableReason: "date_unavailable" }),
+    "Bitte wählen Sie einen anderen Abholtermin.");
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "same_day_unavailable" }),
+    "Abholung heute nicht mehr möglich.");
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "quote_only" }),
+    "Derzeit nicht direkt buchbar");
+  // Ein unbekannter Grund fällt weiterhin auf den neutralen Satz zurück.
+  assert.equal(offerBlockedLabel({ bookable: false, unavailableReason: "etwas_neues" }),
+    "Derzeit nicht buchbar");
 });

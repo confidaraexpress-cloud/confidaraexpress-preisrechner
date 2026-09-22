@@ -12,6 +12,7 @@ import {
   documentTypeLabel,
   mailStatusMeta,
   invoiceDocumentStatusMeta,
+  portalLabelStatusMeta,
 } from "./adminShipmentOperations.mjs";
 
 const OPS = (over = {}) => ({
@@ -110,5 +111,54 @@ test("Hinweise: offen mit Link, überfällig benannt, gesperrt ohne offenen Vers
   // Kein Hinweistext nennt einen Einkaufsanbieter oder einen technischen Code.
   for (const n of [...reconciliationNotices(offen), ...reconciliationNotices(gesperrt)]) {
     assert.doesNotMatch(n.text, /jumingo|transglobal|_/i);
+  }
+});
+
+/* ══════════ MF-03: der Etikettenstand eines Portalvorgangs ══════════════════════════ */
+
+const PORTAL = {
+  portalService: "tg124", portalServiceId: 124, state: "completed",
+  orderReference: "DE0052605", carrierReference: "01234567890123",
+  errorReason: "label_pending", labelStatus: "pending",
+  lastCheckedAt: "2026-09-20T09:15:00Z", startedAt: "2026-09-20T09:03:00Z",
+};
+
+test("ohne Portalvorgang bleibt `portal` null — nichts wird erfunden", () => {
+  assert.equal(selectOperations(OPS()).portal, null, "eine JUMiNGO-Sendung zeigt einen Portalvorgang");
+  for (const v of [null, undefined, [], "x", {}, { portalService: "" }, { portalServiceId: 124 }]) {
+    assert.equal(selectOperations(OPS({ portal: v })).portal, null, JSON.stringify(v));
+  }
+});
+
+test("mit Portalvorgang: die vier Anzeigegroessen stehen normalisiert bereit", () => {
+  const p = selectOperations(OPS({ portal: { ...PORTAL, portalServiceId: "124" } })).portal;
+  assert.equal(p.portalService, "tg124");
+  assert.equal(p.portalServiceId, 124, "die ServiceID wird nicht als Text weitergereicht");
+  assert.equal(p.orderReference, "DE0052605");
+  assert.equal(p.labelStatus, "pending");
+  assert.deepEqual(p.labelStatusMeta, ["badge-yellow", "Wird beim Anbieter erzeugt"]);
+  assert.equal(p.lastCheckedAt, PORTAL.lastCheckedAt);
+  assert.equal(p.startedAt, PORTAL.startedAt);
+});
+
+test("die drei Etikettenstaende sind unterscheidbar — und ein unbekannter faellt nicht durch", () => {
+  const stand = (v) => selectOperations(OPS({ portal: { ...PORTAL, labelStatus: v } })).portal;
+  assert.deepEqual(stand("pending").labelStatusMeta[0], "badge-yellow");
+  assert.deepEqual(stand("ready").labelStatusMeta, ["badge-green", "Liegt vor"]);
+  assert.deepEqual(stand("recovery_timeout").labelStatusMeta,
+    ["badge-red", "Nachlauf abgelaufen — bitte prüfen"]);
+  // Ohne Stand gibt es keine Zusage — und kein erfundenes Abzeichen.
+  assert.equal(stand(null).labelStatus, null);
+  assert.equal(stand(null).labelStatusMeta, null);
+  // Ein unbekannter Stand landet im gemeinsamen Rueckfall statt unbeschriftet zu bleiben.
+  assert.ok(Array.isArray(portalLabelStatusMeta("etwas_neues")));
+  assert.equal(portalLabelStatusMeta("ready")[1], "Liegt vor");
+});
+
+test("kein Etikettenstand erzeugt einen Hinweis in der Buchungsklaerung", () => {
+  // Ein nachlaufendes Etikett ist KEINE ungeklaerte Buchung: die Sendung ist gebucht.
+  for (const v of ["pending", "ready", "recovery_timeout"]) {
+    assert.deepEqual(reconciliationNotices(selectOperations(OPS({ portal: { ...PORTAL, labelStatus: v } }))), [],
+      `der Stand ${v} hat die Buchungsklaerung geoeffnet`);
   }
 });

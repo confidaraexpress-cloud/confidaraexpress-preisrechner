@@ -63,6 +63,35 @@ export function resolutionMeta(resolution) {
   return RESOLUTION_META[resolution] || statusFallback(resolution);
 }
 
+// ── Portalvorgang (MF-01) ───────────────────────────────────────────────────
+// Die Transglobal-Portalwege (TG110/TG124) führen ihren eigenen Zustandsnachweis.
+// Bis zu dieser Ergänzung stand er in einer Tabelle, die keine Oberfläche liest —
+// und genau er entscheidet, ob „nicht gebucht“ überhaupt zulässig ist. Adminintern
+// dürfen Anbieternamen erscheinen; in eine Kundenansicht gelangt hiervon nichts.
+const PORTAL_SERVICE_LABELS = {
+  tg110: "GLS Pick&Ship (110)",
+  tg124: "DPD PaketShop (124)",
+};
+export const portalServiceLabel = (s) =>
+  (Object.prototype.hasOwnProperty.call(PORTAL_SERVICE_LABELS, s) ? PORTAL_SERVICE_LABELS[s] : "Portalvorgang");
+
+// Der Portalzustand sagt, wie weit der Vorgang beim Anbieter gekommen ist. Die beiden
+// frühen Zustände beweisen, dass der Point of no return NICHT erreicht wurde; ab
+// „Zahlung vorbereitet" kann beim Anbieter eine Bestellung entstanden sein.
+const PORTAL_STATE_META = {
+  init: ["badge-gray", "Angelegt"],
+  cart_built: ["badge-gray", "Warenkorb erstellt"],
+  pending_payment: ["badge-yellow", "Zahlung vorbereitet"],
+  completing: ["badge-yellow", "Bestellung ausgelöst"],
+  completed: ["badge-blue", "Beim Anbieter bestellt"],
+  reconciliation_required: ["badge-yellow", "Klärung erforderlich"],
+};
+export const portalStateMeta = (state) => PORTAL_STATE_META[state] || statusFallback(state);
+
+export const PORTAL_BLOCKS_RELEASE_TEXT =
+  "Der Portalvorgang hat einen Stand erreicht, in dem beim Anbieter eine Bestellung entstanden sein kann. "
+  + "„Als nicht gebucht bestätigen“ ist deshalb gesperrt — bitte den Vorgang beim Anbieter prüfen.";
+
 const INVENTORY_LABELS = {
   not_applicable: "Kein Lagerbezug",
   reserved: "Reserviert",
@@ -97,6 +126,23 @@ export function normalizeReconciliationAttempt(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const id = zahl(raw.bookingAttemptId ?? raw.id);
   if (id === null) return null;
+  const p = raw.portalAttempt && typeof raw.portalAttempt === "object" && !Array.isArray(raw.portalAttempt)
+    ? raw.portalAttempt : null;
+  // Ohne Portalservice gibt es keinen Portalvorgang — ein halber Datensatz wird nicht gezeigt.
+  const portalAttempt = p && text(p.portalService) ? {
+    portalService: p.portalService,
+    portalServiceId: zahl(p.portalServiceId),
+    attemptId: zahl(p.attemptId),
+    state: text(p.state),
+    orderReference: text(p.orderReference),
+    carrierReference: text(p.carrierReference),
+    orderGroupId: text(p.orderGroupId),
+    errorReason: text(p.errorReason),
+    createdAt: p.createdAt ?? null,
+    updatedAt: p.updatedAt ?? null,
+    // Die Aussage des SERVERS, nicht eine eigene Ableitung aus dem Zustand.
+    blocksRelease: p.blocksRelease === true,
+  } : null;
   const d = raw.invoiceDrift && typeof raw.invoiceDrift === "object" ? raw.invoiceDrift : null;
   const drift = d && text(d.kind) ? {
     kind: d.kind,
@@ -140,6 +186,7 @@ export function normalizeReconciliationAttempt(raw) {
     insuranceCustomerGross: zahl(raw.insuranceCustomerGross),
     insuranceConfirmation: text(raw.insuranceConfirmation),
     invoiceDrift: drift,
+    portalAttempt,
     offerConsumedState: text(raw.offerConsumedState),
     shipmentStatus: text(raw.shipmentStatus),
     shipmentProvider: text(raw.shipmentProvider),
@@ -284,6 +331,11 @@ const CODE_TEXT = Object.freeze({
   already_resolved_differently: "Der Vorgang wurde bereits anders entschieden.",
   contradictory_booked_evidence: "Es liegt ein Buchungsnachweis des Anbieters vor — „nicht gebucht“ ist ausgeschlossen.",
   contradictory_not_booked_evidence: "Der Anbieter hat die Nichtbuchung belegt — „gebucht“ ist ausgeschlossen.",
+  // MF-01: der Portalvorgang hat einen Stand erreicht, in dem beim Anbieter eine Bestellung
+  // entstanden sein kann. Die Entscheidung fällt serverseitig unter der Zeilensperre.
+  contradictory_portal_evidence:
+    "Zu diesem Vorgang läuft oder lief ein Portalvorgang, bei dem eine Bestellung entstanden sein kann — „nicht gebucht“ ist ausgeschlossen.",
+  portal_attempt_unreadable: "Der Stand des Portalvorgangs ist nicht lesbar — so nicht abschließbar.",
   resource_busy: "Die Sendung wird gerade von einem anderen Vorgang bearbeitet. Bitte gleich erneut versuchen.",
   shipment_not_in_booking: "Die Sendung ist nicht mehr gesperrt.",
   shipment_missing: "Die Sendung existiert nicht mehr.",

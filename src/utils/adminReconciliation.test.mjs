@@ -27,6 +27,9 @@ import {
   reconciliationEmptyState,
   attemptLabel,
   RECONCILIATION_DIALOGS,
+  PORTAL_BLOCKS_RELEASE_TEXT,
+  portalServiceLabel,
+  portalStateMeta,
 } from "./adminReconciliation.mjs";
 
 const ROH = (over = {}) => ({
@@ -203,4 +206,64 @@ test("Dialoge sagen ausdrücklich: kein Anbieterkontakt, keine Stornierung", () 
 test("Leerzustand unterscheidet Filter und Gesamtbestand", () => {
   assert.equal(reconciliationEmptyState({ count: 2 }).show, false);
   assert.notEqual(reconciliationEmptyState({ count: 0 }).title, reconciliationEmptyState({ count: 0, provider: "jumingo" }).title);
+});
+
+// ── MF-01: der Portalvorgang (TG110/TG124) ──────────────────────────────────
+
+test("ein Vorgang ohne Portalanteil traegt portalAttempt null", () => {
+  assert.equal(normalizeReconciliationAttempt(ROH()).portalAttempt, null);
+  for (const p of [null, undefined, "x", 5, [], {}, { state: "completing" }]) {
+    assert.equal(normalizeReconciliationAttempt(ROH({ portalAttempt: p })).portalAttempt, null,
+      JSON.stringify(p));
+  }
+});
+
+test("der Portalvorgang wird Feld fuer Feld uebernommen — blocksRelease nur als echtes true", () => {
+  const a = normalizeReconciliationAttempt(ROH({
+    portalAttempt: {
+      portalService: "tg124", portalServiceId: 124, attemptId: 5, state: "completing",
+      orderReference: "DE0052605", carrierReference: null, orderGroupId: "49460",
+      errorReason: null, createdAt: "2026-09-21T10:00:00Z", updatedAt: "2026-09-21T10:01:00Z",
+      blocksRelease: true, heimlichesFeld: "wird nicht uebernommen",
+    },
+  }));
+  assert.deepEqual(a.portalAttempt, {
+    portalService: "tg124", portalServiceId: 124, attemptId: 5, state: "completing",
+    orderReference: "DE0052605", carrierReference: null, orderGroupId: "49460",
+    errorReason: null, createdAt: "2026-09-21T10:00:00Z", updatedAt: "2026-09-21T10:01:00Z",
+    blocksRelease: true,
+  });
+  // Die Sperraussage kommt vom SERVER — eine wahrheitsaehnliche Angabe zaehlt nicht.
+  for (const w of ["true", 1, undefined, null]) {
+    const b = normalizeReconciliationAttempt(ROH({
+      portalAttempt: { portalService: "tg110", state: "completed", blocksRelease: w } }));
+    assert.equal(b.portalAttempt.blocksRelease, false, String(w));
+  }
+});
+
+test("Portalservice und Portalstand haben Beschriftungen — unbekannte Werte fallen neutral zurueck", () => {
+  assert.equal(portalServiceLabel("tg110"), "GLS Pick&Ship (110)");
+  assert.equal(portalServiceLabel("tg124"), "DPD PaketShop (124)");
+  assert.equal(portalServiceLabel("tg999"), "Portalvorgang");
+  for (const z of ["init", "cart_built", "pending_payment", "completing", "completed", "reconciliation_required"]) {
+    const [cls, label] = portalStateMeta(z);
+    assert.match(cls, /^badge-/, z);
+    assert.ok(label && !/_/.test(label), `${z}: technischer Bezeichner im Text`);
+  }
+  assert.ok(Array.isArray(portalStateMeta("unbekannt")));
+});
+
+test("der Konfliktcode des Portalvorgangs hat einen Text — ohne technischen Bezeichner", () => {
+  const r = reconciliationActionError(409, { code: "contradictory_portal_evidence" });
+  assert.equal(r.kind, "conflict");
+  assert.ok(!/_/.test(r.message), r.message);
+  assert.match(r.message, /nicht gebucht/);
+  assert.ok(!/contradictory|portal_/.test(r.message));
+  const u = reconciliationActionError(422, { code: "portal_attempt_unreadable" });
+  assert.ok(!/_/.test(u.message), u.message);
+});
+
+test("der Sperrhinweis nennt die Folge, nicht den Code", () => {
+  assert.ok(!/_/.test(PORTAL_BLOCKS_RELEASE_TEXT), PORTAL_BLOCKS_RELEASE_TEXT);
+  assert.match(PORTAL_BLOCKS_RELEASE_TEXT, /gesperrt/);
 });

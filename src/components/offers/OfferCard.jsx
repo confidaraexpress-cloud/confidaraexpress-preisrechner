@@ -17,7 +17,8 @@ import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { pickupContractOf, pickupTimeText, pickupWindowDetailText } from "../../utils/pickupContractView.mjs";
+import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedNote }
+  from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
 import { projectedDeliveryText } from "../../utils/deliveryProjectionView.mjs";
@@ -71,6 +72,11 @@ function buildStart(t) {
   const abholung = pickupContractOf(t);
   const primary = abholung.day ? fmtDay(abholung.day) : null;
   const secondary = [];
+  // War der gewaehlte Versandtag fuer dieses Angebot nicht abholbar, steht hier der FRUEHESTE
+  // moegliche Tag — und die Unterzeile sagt genau das. Kein Grund, kein Wunschtag, kein Anbieter:
+  // ein stillschweigend verschobenes Datum waere die einzige Variante, die den Kunden taeuscht.
+  const abholHinweis = pickupAdjustedNote(abholung);
+  if (abholHinweis)                              secondary.push(abholHinweis);
   const abholZeit = pickupTimeText(abholung);
   if (abholZeit)                                 secondary.push(abholZeit);
   const dropoffLabel = publicDropoffLabel(t);
@@ -391,7 +397,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
         <div className="offer-details-section">
           <div className="offer-detail-section-title">Termin &amp; Abholung</div>
           {dropoffLabel && <DetailRow label="Abgabestelle" value={dropoffLabel} />}
-          {abholung.day && <DetailRow label="Abholtermin" value={fmtDE(abholung.day)} />}
+          {abholung.day && <DetailRow label={pickupDayLabel(abholung)} value={fmtDE(abholung.day)} />}
           {abholung.windowFrom && (
             <DetailRow label="Zeitfenster" value={pickupWindowDetailText(abholung)} />
           )}

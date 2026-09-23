@@ -20,15 +20,32 @@
  * ─── ES WIRD NICHT NACH DER EINKAUFSQUELLE GEFRAGT ──────────────────────────────────
  * Entschieden wird an den FELDERN, die das Angebot traegt. Fehlt eine Angabe, entsteht
  * keine Zeile — kein Platzhalter, kein Gedankenstrich.
+ *
+ * ─── DER GEWUENSCHTE TAG UND DER FRUEHESTE ─────────────────────────────────────────
+ * Der Kunde waehlt beim Rechnen einen Versandtag. Ist er fuer ein Angebot nicht abholbar
+ * — Wochenende, oder heute zu spaet —, traegt das Angebot den FRUEHESTEN tatsaechlich
+ * moeglichen Tag. Der Server sagt das mit einem Ja/Nein (`collectionDateAdjusted`): ohne
+ * Grund, ohne den Wunschtag und ohne Anbieterbezug.
+ *
+ * Diese Karte darf den verschobenen Tag deshalb nicht wie den gewaehlten aussehen lassen.
+ * Sie sagt genau das eine, was belegt ist — „Fruehester Abholtag" —, und erfindet keinen
+ * Grund dazu. WARUM der Wunschtag nicht ging, weiss die Oberflaeche nicht und behauptet
+ * es auch nicht.
  */
 
 const text = (w) => (typeof w === "string" && w.trim() !== "" ? w.trim() : null);
+
+// Dieselbe Aussage in zwei Schreibweisen: als Beschriftung einer Zeile und als Unterzeile
+// unter dem Datum. Beide stehen hier, damit die Formulierung nicht an zwei Orten driftet.
+const ABHOLTAG_LABEL = "Frühester Abholtag";
+const ABHOLTAG_NOTIZ = "frühester Abholtag";
 
 /**
  * Der Abholvertrag eines Angebots in neutraler Form.
  *
  * @param   {object} tarif  ein Angebot der calculate-price-Antwort
- * @returns {{day: string|null, windowFrom: string|null, windowUntil: string|null, readyFrom: string|null}}
+ * @returns {{day: string|null, windowFrom: string|null, windowUntil: string|null, readyFrom: string|null,
+ *            dayAdjusted: boolean}}
  */
 export function pickupContractOf(tarif) {
   const t = tarif && typeof tarif === "object" ? tarif : {};
@@ -41,7 +58,30 @@ export function pickupContractOf(tarif) {
     windowFrom: hasWindow ? from : null,
     windowUntil: hasWindow ? until : null,
     readyFrom: hasWindow ? null : text(t.collectionReadyFrom),
+    // Ohne Tag sagt die Verschiebung nichts — sie beschreibt einen Tag, der dann nicht dasteht.
+    dayAdjusted: day !== null && t.collectionDateAdjusted === true,
   });
+}
+
+/**
+ * Die Beschriftung der Abholtagszeile.
+ *
+ * Der Standardtext unterscheidet sich je Flaeche („Abholtermin" in den Angebotsdetails,
+ * „Abholung" in der Zusammenfassung) — die abweichende Aussage ist ueberall dieselbe.
+ *
+ * @param   {object} vertrag   Ergebnis von `pickupContractOf`
+ * @param   {string} standard  die Beschriftung, solange der Wunschtag gehalten wurde
+ * @returns {string}
+ */
+export function pickupDayLabel(vertrag, standard = "Abholtermin") {
+  const v = vertrag && typeof vertrag === "object" ? vertrag : {};
+  return v.dayAdjusted ? ABHOLTAG_LABEL : standard;
+}
+
+/** Die Unterzeile unter einem verschobenen Abholtag — sonst `null`. */
+export function pickupAdjustedNote(vertrag) {
+  const v = vertrag && typeof vertrag === "object" ? vertrag : {};
+  return v.dayAdjusted ? ABHOLTAG_NOTIZ : null;
 }
 
 /** Die kompakte Zeitzeile der Timeline — Fenster ODER „bereit ab", sonst `null`. */
@@ -70,7 +110,7 @@ export function pickupWindowDetailText(vertrag) {
  *
  * @param   {object} tarif               ein Angebot der calculate-price-Antwort
  * @param   {{from?: string, until?: string}|null} gewaehltesFenster  die Auswahl des Kunden
- * @returns {{day: string|null, time: string|null}}
+ * @returns {{day: string|null, time: string|null, dayAdjusted: boolean}}
  */
 export function pickupSummaryOf(tarif, gewaehltesFenster) {
   const vertrag = pickupContractOf(tarif);
@@ -80,5 +120,5 @@ export function pickupSummaryOf(tarif, gewaehltesFenster) {
   const zeit = vertrag.windowFrom && vertrag.windowUntil && von && bis
     ? `${von}–${bis} Uhr`
     : pickupTimeText(vertrag);
-  return Object.freeze({ day: vertrag.day, time: zeit });
+  return Object.freeze({ day: vertrag.day, time: zeit, dayAdjusted: vertrag.dayAdjusted });
 }

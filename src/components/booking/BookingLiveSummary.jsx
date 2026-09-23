@@ -6,7 +6,7 @@ import { isInsuredType } from "../../utils/bookingPriceView.mjs";
 import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
-import { pickupSummaryOf } from "../../utils/pickupContractView.mjs";
+import { pickupSummaryOf, pickupAdjustedNote } from "../../utils/pickupContractView.mjs";
 import { sameDaySummaryNote } from "../../utils/sameDayCollectionView.mjs";
 
 // Permanente Live-Zusammenfassungsleiste — REINE DARSTELLUNG, sichtbar in Schritt 1
@@ -33,6 +33,8 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   const abholung = pickupSummaryOf(tariff, pickupWindow);
   const handoverDate = abholung.day ? isoDayDE(abholung.day) : null;
   const win = handover.isPickup ? abholung.time : null;
+  // Derselbe Hinweis wie auf der Angebotskarte: der Tag ist der frueheste moegliche, nicht der gewaehlte.
+  const abholHinweis = pickupAdjustedNote(abholung);
 
   // ── Zustellung ──
   const zustellung = deliveryInfo(tariff);
@@ -86,6 +88,7 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
         {shopLabel && <span className="blsum-val">{shopLabel}</span>}
         {handover.isDropoff && <span className="blsum-sub">frei wählbar</span>}
         {handoverDate && <span className="blsum-val">{handoverDate}</span>}
+        {abholHinweis && <span className="blsum-sub">{abholHinweis}</span>}
         {win && <span className="blsum-sub">{win}</span>}
         {!shopLabel && !handoverDate && !win && !handover.isDropoff && <span className="blsum-sub">nach Auswahl</span>}
       </div>

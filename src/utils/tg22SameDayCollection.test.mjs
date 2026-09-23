@@ -626,3 +626,51 @@ test("G5 — JUMiNGO unberührt: keine Same-Day-Gründe, Abholfenster und Knopf 
   assert.equal(offerBlockedLabel(jumingoGesperrt), "Derzeit nicht direkt buchbar");
   assert.equal(offerBlockedHint(jumingoGesperrt), null);
 });
+
+/* ── Abholung heute OHNE Zuschlag: der gebührenfreie Abholvertrag (TNT 49, DHL 84) ────────────
+   Belegt durch je eine Stagingbuchung am Abholtag: die Anbieterrechnung ist centgenau das
+   Quote-Netto, es gibt keine Abholposition. Der Server sagt deshalb „heute", nennt aber keine
+   Zuschlagsbeträge. Die Oberfläche muss beides auseinanderhalten — den Tag zeigen, keinen
+   Zuschlag erfinden und keine leere Zeile bauen. */
+const DHL84_HEUTE_FREI = Object.freeze({
+  ...TG22_HEUTE, offerId: "84sd0000000000000000000000000084",
+  publicCarrierId: "dhl", publicServiceName: "Domestic Express",
+  bookable: true, unavailableReason: null, requiredPriceInputs: Object.freeze([]),
+  pickupToday: true, pickupTodayUntil: "14:45",
+  sameDaySurchargeNet: null, sameDaySurchargeGross: null,
+});
+
+test("Abholung heute ohne Zuschlag: der Tag gilt, die Zuschlagszeile entsteht nicht", () => {
+  // Kein Zuschlagsblock — und damit keine Zeile, kein „+0,00 €", kein Platzhalter.
+  assert.equal(sameDayOfferView(DHL84_HEUTE_FREI), null);
+  assert.equal(sameDaySurchargeLine(sameDayOfferView(DHL84_HEUTE_FREI), "gross"), null);
+  assert.equal(sameDayDetailValue(sameDayOfferView(DHL84_HEUTE_FREI)), null);
+  // Der Knotentitel der Timeline liest AUSSCHLIESSLICH `pickupToday` — er steht deshalb auch hier.
+  assert.match(code(KARTE), /title = t\.pickupToday \? "Abholung heute" : "Abholung"/);
+  // Und der Abholvertrag der Karte ist unverändert vollständig: Tag und „bereit ab"-Zeit.
+  const vertrag = pickupContractOf(DHL84_HEUTE_FREI);
+  assert.equal(vertrag.day, HEUTE);
+  assert.equal(pickupTimeText(vertrag), "bereit ab 11:30 Uhr");
+  assert.equal(vertrag.dayAdjusted, false);
+  // Ein halber Zuschlag bleibt verboten: nur EIN Betrag ergibt weiterhin keine Zeile.
+  for (const halb of [{ sameDaySurchargeNet: SD.net }, { sameDaySurchargeGross: SD.gross }]) {
+    assert.equal(sameDayOfferView({ ...DHL84_HEUTE_FREI, ...halb }), null, JSON.stringify(halb));
+  }
+  // Der gebührenpflichtige Vertrag daneben ist unverändert: derselbe Tag, aber MIT Zeile.
+  const mitZuschlag = sameDayOfferView(TG22_HEUTE);
+  assert.equal(mitZuschlag.until, "16:45");
+  assert.ok(mitZuschlag.surchargeGross > 0);
+});
+
+test("die Oberfläche entscheidet die Abholung heute nicht selbst — sie liest sie", () => {
+  // Keine Datumsrechnung, keine Uhr, keine ServiceID und kein Carriername in der Entscheidung:
+  // ob heute abgeholt wird, steht ausschließlich im Serverfeld.
+  const modul = code("./sameDayCollectionView.mjs");
+  for (const wort of ["Date.now", "new Date", "toLocale", "serviceId", "COLFEE"]) {
+    assert.ok(!modul.includes(wort), `die Ansicht entscheidet selbst über ${wort}`);
+  }
+  assert.equal(sameDayOfferView({ ...DHL84_HEUTE_FREI, pickupToday: false }), null);
+  for (const w of [undefined, null, "true", 1, 0]) {
+    assert.equal(sameDayOfferView({ ...TG22_HEUTE, pickupToday: w }), null, JSON.stringify(w));
+  }
+});

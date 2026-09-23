@@ -6,6 +6,7 @@ import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
+import { visibleOffers } from "../utils/offerSuppression.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { OffersList } from "../components/offers/OffersList";
@@ -517,7 +518,11 @@ export default function CalculatorPage() {
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
-      setTariffs(d.tariffs || []);
+      // Betreiberanweisung: eine eng umrissene Karte wird nicht gezeigt. Die Ausblendung
+      // steht HIER — vor Sortierung, Filtern, Zählern und Auswahl — damit keine Liste
+      // entsteht, in der die Karte unsichtbar ist, aber weiter mitzählt. Siehe
+      // src/utils/offerSuppression.mjs.
+      setTariffs(visibleOffers(d.tariffs));
       calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
       // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
       // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon

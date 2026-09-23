@@ -47,13 +47,18 @@ const preis = (netto) => ({ netPrice: netto, vatAmount: Number((netto * 0.19).to
 const karten = (mitDebug) => {
   const d = (block) => (mitDebug ? { debug: block } : {});
   return [
+    // Produktname "Express" statt "Expressversand" auf BEIDEN Seiten des Paares: die
+    // Kombination ups/Expressversand/quote_only wird seit der Betreiberanweisung nicht mehr
+    // gezeigt (src/utils/offerSuppression.mjs), und die TG-Seite dieses Paares ist genau so
+    // eine Preisauskunft. Gegenstand dieser Suite ist der Debugmodus — das Paar bleibt ein
+    // Paar, weil der Debugblock es setzt, nicht der Name.
     grund({ id: 501, shipper_tariff_id: 3309, offerId: "o-j-match",
-            publicCarrierId: "ups", publicCarrierName: "UPS", publicServiceName: "Expressversand",
+            publicCarrierId: "ups", publicCarrierName: "UPS", publicServiceName: "Express",
             ...preis(26),
             ...d({ provider: "jumingo", priceBasis: "customer_price",
                    matchedAcrossProviders: true, matchGroup: "m1" }) }),
     grund({ offerId: "o-t-match", bookable: false, unavailableReason: "quote_only",
-            publicCarrierId: "ups", publicCarrierName: "UPS", publicServiceName: "Expressversand",
+            publicCarrierId: "ups", publicCarrierName: "UPS", publicServiceName: "Express",
             ...preis(10),
             ...d({ provider: "transglobal", priceBasis: "provider_net",
                    matchedAcrossProviders: true, matchGroup: "m1" }) }),

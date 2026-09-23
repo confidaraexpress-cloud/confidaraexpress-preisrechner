@@ -196,9 +196,13 @@ test("(C5) JUMiNGO verliert dabei nichts Echtes", () => {
   // Was tatsächlich aus JUMiNGO-Daten stammt, bleibt: Kalenderangaben im Abschnitt
   // „Termin & Abholung". Weg fällt allein ein Wort ohne Quelle. Seit dem TG22 Golden Offer
   // Contract heißen die Zustellzeilen wie auf allen anderen Flächen „Zustell…".
-  for (const zeile of ["Abholtermin", "Zeitfenster", "Zustelltermin", "Zustellzeitraum"]) {
+  for (const zeile of ["Zeitfenster", "Zustelltermin", "Zustellzeitraum"]) {
     assert.ok(CARD.includes(`label="${zeile}"`), `die Kalenderangabe "${zeile}" ist verschwunden`);
   }
+  // Der Abholtag steht weiterhin da — seine Beschriftung kommt seit dem wirksamen Abholtag aus dem
+  // gemeinsamen Helfer, weil sie bei einem verschobenen Tag „Frühester Abholtag" lautet. Der WORTLAUT
+  // gehoert deshalb nicht mehr in die Karte; gemessen wird, dass die Zeile existiert.
+  assert.ok(CARD.includes("label={pickupDayLabel(abholung)}"), 'die Kalenderangabe "Abholtermin" ist verschwunden');
   assert.ok(CARD.includes('label="Zustellung"'), "die Zustellzeit ist verschwunden");
   const zeitraum = deliveryContractOf({ ...JUMINGO, deliveryDate: null,
     deliveryDateMin: "2026-09-11", deliveryDateMax: "2026-09-12", deliveryTimeUntil: "18:00" });

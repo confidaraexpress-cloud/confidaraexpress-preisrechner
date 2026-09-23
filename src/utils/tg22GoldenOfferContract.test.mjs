@@ -395,17 +395,20 @@ test("E5 — Karte, ausgewähltes Angebot, Live- und Sticky-Leiste zeigen diesel
 /* ══════════ §F  ABHOLUNG — FENSTER ODER „BEREIT AB“ ══════════════════════════════ */
 
 test("F1 — TG22: Tag und „bereit ab 09:00 Uhr“; eine Fensterwahl gilt dort nicht", () => {
-  assert.deepEqual({ ...pickupSummaryOf(TG22, null) }, { day: "2026-09-15", time: "bereit ab 09:00 Uhr" });
+  assert.deepEqual({ ...pickupSummaryOf(TG22, null) },
+    { day: "2026-09-15", time: "bereit ab 09:00 Uhr", dayAdjusted: false });
   assert.deepEqual({ ...pickupSummaryOf(TG22, { from: "10:00", until: "12:00" }) },
-    { day: "2026-09-15", time: "bereit ab 09:00 Uhr" }, "aus einer Wahl entstand bei „bereit ab“ eine Endzeit");
+    { day: "2026-09-15", time: "bereit ab 09:00 Uhr", dayAdjusted: false },
+    "aus einer Wahl entstand bei „bereit ab“ eine Endzeit");
 });
 
 test("F2 — mit echtem Fenster: Carrierfenster, nach Wahl das gewählte Fenster", () => {
-  assert.deepEqual({ ...pickupSummaryOf(JUMINGO, null) }, { day: "2026-09-15T00:00:00Z", time: "09:00–17:00 Uhr" });
+  assert.deepEqual({ ...pickupSummaryOf(JUMINGO, null) },
+    { day: "2026-09-15T00:00:00Z", time: "09:00–17:00 Uhr", dayAdjusted: false });
   assert.deepEqual({ ...pickupSummaryOf(JUMINGO, { from: "10:00", until: "12:00" }) },
-    { day: "2026-09-15T00:00:00Z", time: "10:00–12:00 Uhr" });
+    { day: "2026-09-15T00:00:00Z", time: "10:00–12:00 Uhr", dayAdjusted: false });
   assert.equal(pickupSummaryOf(JUMINGO, { from: "10:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster wurde übernommen");
-  assert.deepEqual({ ...pickupSummaryOf(null, null) }, { day: null, time: null });
+  assert.deepEqual({ ...pickupSummaryOf(null, null) }, { day: null, time: null, dayAdjusted: false });
 });
 
 test("F3 — ausgewähltes Angebot und Live-Leiste lesen den Abholvertrag, nicht die Rohfelder", () => {

@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { money, isoDayDE } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
-import { pickupSummaryOf } from "../../utils/pickupContractView.mjs";
+import { pickupSummaryOf, pickupDayLabel } from "../../utils/pickupContractView.mjs";
 import { sameDaySummaryNote, sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
 
 // Step 1 — „Ausgewähltes Angebot". Kompakte, ruhige Zusammenfassung des gewählten
@@ -109,7 +109,7 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
             </div>
             {pickupValue && (
               <div className="offsum-fact">
-                <dt>Abholung</dt>
+                <dt>{pickupDayLabel(abholung, "Abholung")}</dt>
                 <dd>{pickupValue}</dd>
               </div>
             )}

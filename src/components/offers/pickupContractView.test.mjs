@@ -26,6 +26,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupSummaryOf,
+  pickupDayLabel, pickupAdjustedNote,
 } from "../../utils/pickupContractView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -179,7 +180,7 @@ test("(9) Timeline UND Detailbereich der Karte lesen denselben Helfer", () => {
   const details = karte.slice(karte.indexOf("function DetailsPanel"), karte.indexOf("function OfferCardBase"));
   assert.ok(details.includes("pickupContractOf(t)"), "Detailbereich ohne Helfer");
   assert.ok(details.includes("abholung.readyFrom &&"), "der Detailbereich zeigt die „bereit ab\"-Zeit nicht");
-  for (const zeile of ['label="Abholtermin"', 'label="Zeitfenster"', 'label="Abholung"']) {
+  for (const zeile of ['label={pickupDayLabel(abholung)}', 'label="Zeitfenster"', 'label="Abholung"']) {
     assert.ok(details.includes(zeile), `Detailzeile ${zeile} fehlt`);
   }
 
@@ -200,12 +201,14 @@ test("(9) Timeline UND Detailbereich der Karte lesen denselben Helfer", () => {
 
 test("(11) Buchungsflächen: ein gewähltes Fenster gilt nur, wo das Angebot ein Fenster trägt", () => {
   assert.deepEqual({ ...pickupSummaryOf(TG_PICKUP, { from: "10:00", until: "12:00" }) },
-    { day: "2026-09-15", time: "bereit ab 09:00 Uhr" }, "aus einer Wahl entstand bei „bereit ab\" eine Endzeit");
-  assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, null) }, { day: "2026-09-16", time: "09:00–17:00 Uhr" });
+    { day: "2026-09-15", time: "bereit ab 09:00 Uhr", dayAdjusted: false },
+    "aus einer Wahl entstand bei „bereit ab\" eine Endzeit");
+  assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, null) },
+    { day: "2026-09-16", time: "09:00–17:00 Uhr", dayAdjusted: false });
   assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, { from: "11:00", until: "15:00" }) },
-    { day: "2026-09-16", time: "11:00–15:00 Uhr" });
+    { day: "2026-09-16", time: "11:00–15:00 Uhr", dayAdjusted: false });
   assert.equal(pickupSummaryOf(MIT_FENSTER, { from: "11:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster galt");
-  assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null });
+  assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null, dayAdjusted: false });
 });
 
 /* ══════════ §10  WHITE LABEL ═════════════════════════════════════════════ */
@@ -221,5 +224,80 @@ test("(10) keine Abholdarstellung nennt die Einkaufsquelle", () => {
   const roh = JSON.stringify({ tag: v.day, zeit: pickupTimeText(v) }).toLowerCase();
   for (const verboten of ["transglobal", "jumingo"]) {
     assert.ok(!roh.includes(verboten));
+  }
+});
+
+
+/* ══════════ §11  DER GEWUENSCHTE TAG UND DER FRUEHESTE ═══════════════════ */
+
+/* Der Kunde waehlt einen Versanddtag. Ist er fuer dieses Angebot nicht abholbar, traegt das
+   Angebot den FRUEHESTEN moeglichen — und der Server sagt das mit einem Ja/Nein. Die Karte
+   muss es sichtbar machen: ein stillschweigend verschobenes Datum ist die einzige Variante,
+   die den Kunden taeuscht. Sie darf dabei aber keinen Grund erfinden — sie kennt keinen. */
+
+const VERSCHOBEN = Object.freeze({ ...TG_PICKUP, collectionDate: "2026-09-24", collectionDateAdjusted: true });
+
+test("(12) ein verschobener Abholtag wird als solcher gelesen — und ein gehaltener nicht", () => {
+  assert.equal(pickupContractOf(VERSCHOBEN).dayAdjusted, true);
+  assert.equal(pickupContractOf(TG_PICKUP).dayAdjusted, false, "ein gehaltener Tag gilt als verschoben");
+  // Fail closed in beide Richtungen: nur das ausdrueckliche `true` zaehlt, und ohne Tag sagt es nichts.
+  for (const wert of [undefined, null, false, 0, "", "true", 1, {}]) {
+    assert.equal(pickupContractOf({ ...TG_PICKUP, collectionDateAdjusted: wert }).dayAdjusted, wert === true,
+      `collectionDateAdjusted=${JSON.stringify(wert)} wurde falsch ausgewertet`);
+  }
+  assert.equal(pickupContractOf({ collectionDateAdjusted: true }).dayAdjusted, false,
+    "ohne Abholtag beschreibt die Verschiebung einen Tag, der gar nicht dasteht");
+  assert.equal(pickupContractOf({ ...TG_DROPOFF, collectionDateAdjusted: true }).dayAdjusted, false,
+    "eine Paketshopabgabe hat keinen Abholtag und damit auch keinen verschobenen");
+});
+
+test("(13) die Aussage ist neutral: kein Grund, kein Wunschtag, kein Anbieter", () => {
+  const label = pickupDayLabel(pickupContractOf(VERSCHOBEN));
+  const notiz = pickupAdjustedNote(pickupContractOf(VERSCHOBEN));
+  assert.equal(label, "Frühester Abholtag");
+  assert.equal(notiz, "frühester Abholtag");
+  for (const w of [label, notiz]) {
+    // Kein Anbieter, keine Einkaufsquelle, kein Grundcode, kein Wunschtag.
+    assert.ok(!/transglobal|jumingo|ups|dhl|dpd|gls|tnt|provider/i.test(w), `Anbieterspur im Text: ${w}`);
+    assert.ok(!/same.?day|cutoff|shifted|weekend|wochenende|ausgebucht|leider/i.test(w), `Grund im Text: ${w}`);
+    assert.ok(!/\d/.test(w), `ein Datum oder eine Uhrzeit im Text: ${w}`);
+  }
+  // Ohne Verschiebung bleibt die bisherige Beschriftung — und es entsteht KEINE Unterzeile.
+  const gehalten = pickupContractOf(TG_PICKUP);
+  assert.equal(pickupDayLabel(gehalten), "Abholtermin");
+  assert.equal(pickupDayLabel(gehalten, "Abholung"), "Abholung");
+  assert.equal(pickupAdjustedNote(gehalten), null);
+  // Auch bei kaputter Eingabe entsteht nie eine halbe Zeile.
+  for (const v of [null, undefined, {}, "x", 7]) {
+    assert.equal(pickupAdjustedNote(v), null);
+    assert.equal(pickupDayLabel(v), "Abholtermin");
+  }
+});
+
+test("(14) alle drei Flaechen zeigen die Verschiebung — ueber denselben Helfer", () => {
+  // Die Zusammenfassung reicht sie durch, damit Karte und Buchungsflaechen nicht auseinanderlaufen.
+  assert.equal(pickupSummaryOf(VERSCHOBEN, null).dayAdjusted, true);
+  assert.equal(pickupSummaryOf(TG_PICKUP, null).dayAdjusted, false);
+  // Ein gewaehltes Fenster aendert an der Aussage nichts.
+  assert.equal(pickupSummaryOf({ ...VERSCHOBEN, pickupTimeFrom: "09:00", pickupTimeUntil: "17:00" },
+                               { from: "10:00", until: "12:00" }).dayAdjusted, true);
+
+  const karte = ohneKommentar(lies(KARTE));
+  const start = karte.slice(karte.indexOf("function buildStart"), karte.indexOf("function buildEnd"));
+  assert.ok(start.includes("pickupAdjustedNote(abholung)"), "die Timeline zeigt den fruehesten Abholtag nicht");
+  const details = karte.slice(karte.indexOf("function DetailsPanel"), karte.indexOf("function OfferCardBase"));
+  assert.ok(details.includes("pickupDayLabel(abholung)"), "der Detailbereich beschriftet den Tag nicht neu");
+  assert.ok(ohneKommentar(lies(SUMMARY)).includes("pickupDayLabel(abholung"), `${SUMMARY} ohne Hinweis`);
+  assert.ok(ohneKommentar(lies(LIVE)).includes("pickupAdjustedNote(abholung)"), `${LIVE} ohne Hinweis`);
+
+  // Die Formulierung steht AUSSCHLIESSLICH im Helfer — keine Flaeche schreibt sie selbst.
+  for (const datei of [KARTE, SUMMARY, LIVE]) {
+    assert.ok(!/[Ff]rühester Abholtag/.test(ohneKommentar(lies(datei))),
+      `${datei} formuliert den Hinweis selbst statt ihn zu lesen`);
+  }
+  // Und der Grund bleibt drinnen: kein Feld dieses Namens erreicht eine Flaeche.
+  for (const datei of [KARTE, SUMMARY, LIVE]) {
+    assert.ok(!/collectionDateAdjusted|requestedCollectionDate/.test(ohneKommentar(lies(datei))),
+      `${datei} liest das Rohfeld direkt statt ueber den Helfer`);
   }
 });

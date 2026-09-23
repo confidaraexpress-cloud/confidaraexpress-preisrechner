@@ -9,6 +9,7 @@ import { useLaunchScope } from "../hooks/useLaunchScope";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
+import { visibleOffers } from "../utils/offerSuppression.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -1311,7 +1312,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
-      setTariffs(d.tariffs || []);
+      // Betreiberanweisung: eine eng umrissene Karte wird nicht gezeigt. Die Ausblendung
+      // steht HIER — vor Sortierung, Filtern, Zählern und Auswahl — damit keine Liste
+      // entsteht, in der die Karte unsichtbar ist, aber weiter mitzählt. Siehe
+      // src/utils/offerSuppression.mjs.
+      setTariffs(visibleOffers(d.tariffs));
       setCeShipmentId(d.ceShipmentId ?? null);
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({

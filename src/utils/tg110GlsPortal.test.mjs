@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
@@ -100,6 +100,37 @@ test("(gls4) GLS-110 fragt KEINE Adressart (requiredPriceInputs leer, fixed_fals
 test("(gls5) GLS-110 ist buchbar und auswaehlbar (bookable:true)", () => {
   assert.equal(offerBookable(GLS110), true);
   assert.equal(offerSelectable(GLS110), true);
+});
+
+// Kommentarfrei messen: eine Begründung, die „110“ nennt, ist kein Programm.
+const ohneKommentare = (s) => s
+  .replace(/^[ \t]*\/\/.*$/gm, "")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+
+test("(gls7) die Stückgrenze der 110 (Server: höchstens 2) kommt ausschließlich aus `tariffLimits` — keine Zahl, keine ServiceID im Code", () => {
+  // Die Karte formuliert die Einschränkung aus dem Serverfeld — für jedes Angebot gleich.
+  const karte = ohneKommentare(readFileSync(path.join(HIER, "../components/offers/OfferCard.jsx"), "utf8"));
+  assert.match(karte, /buildLimitLines\(t\.tariffLimits\)/);
+  // Kein Produktionsmodul kennt die kuratierte Grenze oder verzweigt an einer Portal-ServiceID (47, 110, 124).
+  const WURZEL = path.join(HIER, "..");
+  const dateien = [];
+  const lauf = (rel) => {
+    for (const e of readdirSync(path.join(WURZEL, rel), { withFileTypes: true })) {
+      const p = path.join(rel, e.name);
+      if (e.isDirectory()) { lauf(p); continue; }
+      if (/\.(jsx|js|mjs)$/.test(e.name) && !/\.test\.mjs$/.test(e.name)) dateien.push(p);
+    }
+  };
+  lauf(".");
+  assert.ok(dateien.length > 50, `zu wenige Dateien: ${dateien.length}`);
+  const ID = "(?:providerServiceRef|provider_service_id|serviceId|serviceID|ServiceID)";
+  const weiche = new RegExp(`\\b${ID}\\b\\s*(?:===?|!==?)\\s*["'\`]?(?:47|110|124)\\b|["'\`]?\\b(?:47|110|124)\\b["'\`]?\\s*(?:===?|!==?)\\s*[\\w.]*\\b${ID}\\b`);
+  for (const datei of dateien) {
+    const quelle = ohneKommentare(readFileSync(path.join(WURZEL, datei), "utf8"));
+    assert.ok(!weiche.test(quelle), `${datei} verzweigt an einer Portal-ServiceID`);
+    assert.ok(!/\bmaxPackages\b/.test(quelle), `${datei} kennt die kuratierte Stückgrenze`);
+  }
 });
 
 test("(gls6) COLLECTION_SLOT_REQUIRED → neu berechnen, nichts beauftragt", () => {

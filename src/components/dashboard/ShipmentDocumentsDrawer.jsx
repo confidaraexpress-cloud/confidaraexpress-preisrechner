@@ -78,6 +78,11 @@ function DocumentRow({ doc, onDownload, busy }) {
         {zustand === DOC_STATUS.FAILED && (
           <span className="sdoc-row-state sdoc-row-state--muted">{DOCUMENTS_TEXT.failed}</span>
         )}
+        {/* INTERNAL-02: in CE entsteht keines mehr (etwa ein außerhalb von CE bereitgestelltes
+            Versandlabel) — ruhiger Text, kein Download, kein „wird erstellt". */}
+        {zustand === DOC_STATUS.UNAVAILABLE && (
+          <span className="sdoc-row-state sdoc-row-state--muted">{DOCUMENTS_TEXT.unavailable}</span>
+        )}
       </span>
     </li>
   );

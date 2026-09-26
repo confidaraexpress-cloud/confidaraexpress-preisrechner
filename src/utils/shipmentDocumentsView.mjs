@@ -18,12 +18,17 @@
 // unverändert weiter — es gibt genau EINE Regel, nicht zwei mit demselben Inhalt.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Zustände des Serververtrags (P5A). Mehr gibt es nicht; alles Unbekannte gilt
+// Zustände des Serververtrags (P5A, TG-6). Mehr gibt es nicht; alles Unbekannte gilt
 // als „in Arbeit", nie als ladbar.
 export const DOC_STATUS = {
   READY: "ready",
   PROCESSING: "processing",
   FAILED: "failed",
+  // TG-6 / INTERNAL-02: „in CE entsteht keines mehr" — etwa ein Versandlabel, das außerhalb von
+  // CE bereitgestellt wurde. Der Server meldet es seit TG-6; bis INTERNAL-02 fiel es hier in
+  // „in Arbeit" und stand dauerhaft als „Wird erstellt …" da. Keine Zusage, kein Nachladen,
+  // kein Download.
+  UNAVAILABLE: "unavailable",
 };
 
 /**
@@ -172,6 +177,7 @@ export const documentFallbackFilename = (type, ordinal, labelSize) => {
 export function documentViewState(doc) {
   if (!doc || typeof doc !== "object") return DOC_STATUS.PROCESSING;
   if (doc.status === DOC_STATUS.FAILED) return DOC_STATUS.FAILED;
+  if (doc.status === DOC_STATUS.UNAVAILABLE) return DOC_STATUS.UNAVAILABLE;
   if (doc.status === DOC_STATUS.READY && isSafeApiPath(doc.downloadPath)) return DOC_STATUS.READY;
   return DOC_STATUS.PROCESSING;
 }
@@ -306,6 +312,7 @@ export const DOCUMENTS_TEXT = {
   downloading: "Wird geladen …",
   processing: "Wird erstellt …",
   failed: "Derzeit nicht verfügbar",
+  unavailable: "Nicht im Kundenkonto verfügbar",
 };
 
 // Texte des Downloadversuchs. Kuratiert nach Fehlercode; der Serverfreitext wird

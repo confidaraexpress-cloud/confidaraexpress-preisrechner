@@ -61,3 +61,21 @@ export function dropoffParcelShopBookPayload(tariff, selectedShop, supportsAcces
   const shop = normalizeDropoffParcelShop(selectedShop);
   return shop ? { dropoffParcelShop: shop } : {};
 }
+
+// ─── Block C: der GEBUNDENE Abgabe-Paketshop nach der Buchung ─────────────────────────────────────────
+// Nach der Buchung zeigt jede Ansicht (Erfolgsseite, Kundenkonto, Adminsicht) den Shop, den der Server bei
+// der Buchung gebunden und gebucht hat — ausschließlich aus dem Serverfeld (`dropoffLocation` der
+// /book-Antwort bzw. `dropoff_location` von Kundenliste und Admindetail). Nie die lokale Auswahl, nie eine
+// Ableitung aus Tarif oder ServiceID: ohne Serverfeld gibt es keine Zeile. Dieselbe Beschriftung und
+// dieselbe Zeile wie Auftragsbestätigung (Mail und PDF) im Backend.
+export const DROPOFF_LOCATION_LABEL = "Abgabe-Paketshop";
+
+/** „Name, Straße, PLZ Ort" des gebundenen Shops eines Serverdatensatzes — oder `null`. */
+export function boundDropoffLocationLine(record) {
+  if (!record || typeof record !== "object") return null;
+  const ort = record.dropoffLocation ?? record.dropoff_location;
+  if (!ort || typeof ort !== "object") return null;
+  const name = s(ort.name), postalCode = s(ort.postalCode), city = s(ort.city);
+  if (!name || !postalCode || !city) return null;
+  return [name, s(ort.street), `${postalCode} ${city}`].filter(Boolean).join(", ");
+}

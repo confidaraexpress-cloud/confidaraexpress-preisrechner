@@ -26,6 +26,8 @@ import {
   readErrorCode,
 } from "../../utils/customerCancellation.mjs";
 import { BOOKING_IN_REVIEW_TEXT, isBookingInReview } from "../../utils/customerBookingStatus.mjs";
+// Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
+import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
 
 const TRACKING_ERROR_MESSAGES = {
   400: "Bitte geben Sie eine gültige Trackingnummer ein.",
@@ -427,6 +429,12 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 <div className="shipment-detail-item">
                                   <dt className="shipment-detail-label">Geplantes Versanddatum</dt>
                                   <dd className="shipment-detail-value">{isoDayDE(s.requested_shipping_date)}</dd>
+                                </div>
+                              )}
+                              {boundDropoffLocationLine(s) && (
+                                <div className="shipment-detail-item shipment-detail-dropoff-location">
+                                  <dt className="shipment-detail-label">{DROPOFF_LOCATION_LABEL}</dt>
+                                  <dd className="shipment-detail-value">{boundDropoffLocationLine(s)}</dd>
                                 </div>
                               )}
                             </dl>

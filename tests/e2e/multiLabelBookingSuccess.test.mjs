@@ -226,3 +226,25 @@ test("4 — auf 390 px stehen alle Belegknöpfe im Bild", async () => {
   assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
   await page.close();
 });
+
+// Block C: der beim Buchen gebundene Abgabe-Paketshop steht auf der Erfolgsseite — ausschließlich aus der
+// Buchungsantwort (`dropoffLocation`). Ohne das Serverfeld gibt es keine Zeile.
+test("5 — der gebundene Abgabe-Paketshop kommt aus der Buchungsantwort, ohne sie gibt es keine Zeile", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await setupRoutes(page, { buchung: { dropoffLocation: {
+    name: "Kiosk am Markt", street: "Bernhardstr. 19", postalCode: "63741", city: "Aschaffenburg", country: "DE",
+  } } });
+  await bucheBisErfolg(page);
+  const zeile = page.locator("#booking-success-dropoff-location");
+  await zeile.waitFor({ timeout: 15000 });
+  const text = await zeile.innerText();
+  assert.match(text, /Abgabe-Paketshop/);
+  assert.match(text, /Kiosk am Markt, Bernhardstr\. 19, 63741 Aschaffenburg/);
+  await page.close();
+
+  const ohne = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  await setupRoutes(ohne);
+  await bucheBisErfolg(ohne);
+  assert.equal(await ohne.locator("#booking-success-dropoff-location").count(), 0, "eine Zeile ohne Serverfeld");
+  await ohne.close();
+});

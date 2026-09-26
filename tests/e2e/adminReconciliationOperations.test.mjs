@@ -311,6 +311,37 @@ test("„Als gebucht bestätigen“ verlangt eine gültige Anbieterreferenz; ein
   await page.close();
 });
 
+test("V2-Auftrag ohne nutzbares Versandetikett: „gebucht“ erst mit der Zustellaussage — und genau sie reist mit", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const state = await setupRoutes(page, {
+    attempt: ATTEMPT({ provider: "transglobal", state: "booked", providerBookingReference: "DE0000001", primaryLabelUsable: false }),
+    actionResponse: (aktion) => (aktion === "confirm-booked"
+      ? { status: 200, body: { status: "resolved", resolution: "confirmed_booked", shipmentId: 77 } }
+      : { status: 500, body: {} }),
+  });
+  await page.goto(`${BASE}/admin/reconciliation/501`, { waitUntil: "networkidle" });
+  const gebucht = page.locator("#recon-confirm-booked");
+  await gebucht.waitFor({ state: "visible" });
+  const karten = await page.locator(".adm-cards").textContent();
+  assert.match(karten, /Versandetikett im Buchungsbeleg/);
+  assert.match(karten, /Fehlt — der Anbieter lieferte kein nutzbares Versandetikett/);
+  assert.equal(await page.locator("#recon-label-delivery").isVisible(), true);
+  assert.equal(await gebucht.isDisabled(), true, "ohne Zustellaussage ist „gebucht“ bestätigbar");
+  await page.locator("#recon-label-delivered").check();
+  assert.equal(await gebucht.isEnabled(), true);
+  await page.locator("#recon-label-delivered").uncheck();
+  assert.equal(await gebucht.isDisabled(), true, "die zurückgenommene Aussage gibt „gebucht“ frei");
+  await page.locator("#recon-label-delivered").check();
+
+  await gebucht.click();
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor({ state: "visible" });
+  await dialog.getByRole("button", { name: "Als gebucht bestätigen" }).click();
+  await page.locator("#recon-message").waitFor({ state: "visible" });
+  assert.deepEqual(state.calls.actions, [{ action: "confirm-booked", body: { confirm: true, labelDelivered: true } }]);
+  await page.close();
+});
+
 test("Rechnungsabweichung: Dialog, Vermerk, neu geladen — danach nicht erneut auslösbar", async () => {
   const page = await browser.newPage({ viewport: { width: 834, height: 1112 } });
   const drift = (geprueft) => ({ kind: "provider_charged_more", expectedNet: 20, actualNet: 22.52, deltaNet: 2.52,

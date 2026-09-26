@@ -12,6 +12,9 @@ import { resolveCarrierName } from "../../utils/carrierMap";
 import { maskTail, shipmentStatusMeta } from "../../utils/adminShipments";
 import { invoiceStatusMeta } from "../../utils/adminInvoices";
 import { orderConfirmationNumberOf, NUMBER_LABELS } from "../../utils/businessNumbers.mjs";
+// Block D: der beim Buchen eingefrorene Leistungsname — dieselbe Quelle und Beschriftung wie im
+// Kundenkonto (applied_tariff_display_name), wie Auftragsbestätigung und Rechnung.
+import { shipmentServiceNameOf, SHIPMENT_SERVICE_LABEL } from "../../utils/shipmentServiceNameView.mjs";
 import { eventWhenText } from "../../utils/trackingLegsView.mjs";
 import {
   TRACKING_HINTS,
@@ -386,6 +389,8 @@ export default function AdminShipmentDetailPage() {
           <div className="adm-card-head"><Icon n="package" s={17} /> Versanddaten</div>
           <div className="adm-card-body">
             <KV items={[
+              // Block D: der gebuchte Leistungsname — nie die Preisklasse als Name.
+              [SHIPMENT_SERVICE_LABEL, shipmentServiceNameOf(s) || "—"],
               ["Route", routeStr(s)],
               ["PLZ (Von → Bis)", (fromZipOf(s) || toZipOf(s)) ? `${dash(fromZipOf(s))} → ${dash(toZipOf(s))}` : "—"],
               ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],

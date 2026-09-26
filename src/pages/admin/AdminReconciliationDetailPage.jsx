@@ -33,6 +33,7 @@ import {
   PORTAL_BLOCKS_RELEASE_TEXT,
   portalServiceLabel,
   portalStateMeta,
+  primaryLabelUsableText,
   tooEarlyText,
   validateProviderReferenceInput,
 } from "../../utils/adminReconciliation.mjs";
@@ -117,6 +118,8 @@ export default function AdminReconciliationDetailPage() {
   const [referenceTouched, setReferenceTouched] = useState(false);
   // Dreiwertig: true / false / unbeantwortet — nie ein vorbelegter Schalter.
   const [insuranceConfirmed, setInsuranceConfirmed] = useState(null);
+  // Block G: die ausdrückliche Zustellaussage zu einem fehlenden V2-Versandetikett — nie vorbelegt.
+  const [labelDelivered, setLabelDelivered] = useState(false);
   const [reviewCode, setReviewCode] = useState("");
 
   const load = useCallback(async ({ keepMessage = false } = {}) => {
@@ -225,7 +228,9 @@ export default function AdminReconciliationDetailPage() {
   const decisionOpen = !a.resolution && (availability.available || tooEarly);
   const bookedReady = availability.available
     && (!req.providerReferenceRequired || refCheck.ok)
-    && (!req.insuranceDecisionRequired || insuranceConfirmed === true || insuranceConfirmed === false);
+    && (!req.insuranceDecisionRequired || insuranceConfirmed === true || insuranceConfirmed === false)
+    && (!req.labelDeliveryConfirmationRequired || labelDelivered === true);
+  const etikettText = primaryLabelUsableText(a.primaryLabelUsable);
   const drift = a.invoiceDrift;
   const driftReviewed = Boolean(drift && drift.reviewedAt);
   // MF-01: der Portalvorgang dieses Angebots. `blocksRelease` ist die Aussage des SERVERS —
@@ -243,7 +248,7 @@ export default function AdminReconciliationDetailPage() {
       if (kind === "booked") {
         let body;
         try {
-          body = buildConfirmBookedBody({ requirements: req, providerReference, insuranceConfirmed });
+          body = buildConfirmBookedBody({ requirements: req, providerReference, insuranceConfirmed, labelDelivered });
         } catch {
           setDialog(null);
           setMessage({ type: "error", text: "Bitte die erforderlichen Angaben vollständig und gültig ausfüllen." });
@@ -429,6 +434,23 @@ export default function AdminReconciliationDetailPage() {
                   </fieldset>
                 )}
 
+                {req.labelDeliveryConfirmationRequired && (
+                  <fieldset className="adm-recon-label" id="recon-label-delivery">
+                    <legend className="adm-edit-label">Versandetikett</legend>
+                    <p className="adm-support-hint">
+                      Der Anbieter hat den Auftrag bestätigt, aber kein nutzbares Versandetikett geliefert — ConfidaraExpress
+                      kann es nicht nachladen. Vor „Als gebucht bestätigen“ das Etikett beim Anbieter beschaffen und dem
+                      Kunden zustellen.
+                    </p>
+                    <label>
+                      <input
+                        type="checkbox" id="recon-label-delivered"
+                        checked={labelDelivered === true} onChange={(e) => setLabelDelivered(e.target.checked)} disabled={busy}
+                      /> Das Versandetikett liegt dem Kunden vor (beim Anbieter beschafft und zugestellt)
+                    </label>
+                  </fieldset>
+                )}
+
                 <div className="adm-recon-actions">
                   <button
                     type="button" id="recon-confirm-booked" className="btn btn-primary btn-sm"
@@ -529,6 +551,7 @@ export default function AdminReconciliationDetailPage() {
               ["Lager", inventoryStateLabel(a.inventoryState)],
               ["Bestellnummer vergeben", jaNein(a.hasBusinessOrderNumber)],
               ["Rechnung vorhanden", jaNein(a.hasInvoice)],
+              ...(etikettText ? [["Versandetikett im Buchungsbeleg", etikettText]] : []),
             ]} />
           </div>
         </div>

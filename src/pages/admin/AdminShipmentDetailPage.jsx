@@ -30,6 +30,8 @@ import {
 } from "../../utils/shipmentEmailDeliveryView.mjs";
 import { documentsSummary, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
 import { attemptLabel } from "../../utils/adminReconciliation.mjs";
+// Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
+import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
 import {
   trackStatusMeta, selectTracking, selectShipment,
   idOf, userIdOf, statusOf, carrierOf, serviceOf, dateOf, labelAvailOf,
@@ -391,6 +393,8 @@ export default function AdminShipmentDetailPage() {
               ["Gewicht", weightOf(s) != null ? `${weightOf(s)} kg` : "—"],
               ["Maße (L × B × H)", dimensions(s)],
               ["Pakete", pkgOf(s) != null ? String(pkgOf(s)) : "—"],
+              // Block C: nur bei einer Paketshopabgabe mit gebundenem Shop — sonst keine Zeile.
+              ...(boundDropoffLocationLine(s) ? [[DROPOFF_LOCATION_LABEL, boundDropoffLocationLine(s)]] : []),
               // Gewähltes Labeldruckformat. „Nicht erfasst" ist ausdrücklich NICHT dasselbe wie
               // A4: Sendungen aus der Zeit vor der Persistenz haben keinen gespeicherten Wert,
               // und ein stiller A4-Ersatz würde eine Kundenwahl behaupten, die niemand kennt.

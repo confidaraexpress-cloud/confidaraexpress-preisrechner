@@ -329,6 +329,11 @@ export default function BookingPage() {
   const [repriceStale, setRepriceStale]     = useState(false);
   const repriceSeq   = useRef(0);   // ignoriert veraltete Antworten
   const repriceAbort = useRef(null); // bricht In-Flight-Requests ab
+  // JUM-06: eine versicherte Neubepreisung im Stufenmodell schreibt die Versicherung in den
+  // Anbieterentwurf (PUT). Wählt der Kunde danach „keine“, muss der Entwurf wieder ohne Versicherung
+  // bepreist werden — sonst liest /book den versicherten Einkauf und lehnt mit „Preis geändert“ ab.
+  const entwurfVersichert = useRef(false);
+  const [entwurfRuecksetzung, setEntwurfRuecksetzung] = useState(false);
 
   // Beobachtungsziel der kompakten Sticky-Zusammenfassung: Sie erscheint genau
   // dann, wenn die große Live-Zusammenfassung nach oben aus dem Sichtfeld
@@ -710,6 +715,8 @@ export default function BookingPage() {
     priceChangePending: !!priceChange,
     // TG22 Residential: ohne gebundene Art der Lieferadresse ist der Preis vorläufig, Buchung gesperrt.
     priceInputsRequired: residentialBlocks,
+    // JUM-06: der Anbieterentwurf wird gerade ohne Versicherung neu bepreist.
+    draftResetPending: entwurfRuecksetzung,
   });
 
   // Kartenpreise: „ab"-Preselect ODER — nur für die AUSGEWÄHLTE, bestätigte Stufe —
@@ -760,6 +767,7 @@ export default function BookingPage() {
       // und Selbstbeteiligung aus dem gespeicherten Angebot. Der Versicherungswert ist der Warenwert
       // (TG22 Paket B) und reist nur als Konsistenzwächter mit. Stufenmodell: der bisherige Körper,
       // ergänzt um die Angebotskennung, an der der Server den Vertrag erkennt.
+      if (!coverModel && (type === "standard" || type === "premium")) entwurfVersichert.current = true;
       const r = await repriceInsurance(coverModel
         ? buildCoverRepricePayload({ offerId: tariff?.offerId, coverValue: coverValueNum, goodsAreNew, goodsAreFragile })
         : {
@@ -859,8 +867,28 @@ export default function BookingPage() {
     repriceSeq.current++;
     if (repriceAbort.current) repriceAbort.current.abort();
     setRepriceLoading(false);
+    setEntwurfRuecksetzung(false);
     if (insuranceType === "none") {
       setRepriceResult(null); setRepriceStale(false); setRepriceError(""); setRepriceNotice("");
+      // JUM-06: der Entwurf trägt noch die Versicherung einer früheren Neubepreisung — einmal ohne
+      // Versicherung neu bepreisen. Bis der Server das bestätigt, ist die Buchung gesperrt; scheitert
+      // es, bleibt alles wie bisher (die Buchung prüft den Preis ohnehin serverseitig).
+      if (!coverModel && entwurfVersichert.current) {
+        const seq = repriceSeq.current;
+        const ac = new AbortController(); repriceAbort.current = ac;
+        setEntwurfRuecksetzung(true);
+        repriceInsurance({
+          ceShipmentId:       bookingData?.ceShipmentId,
+          tariffId:           tariff?.id,
+          shipperTariffId:    tariff?.shipper_tariff_id,
+          insuranceType:      "none",
+          contentDescription,
+          ...(tariff?.offerId ? { offerId: tariff.offerId } : {}),
+        }, { signal: ac.signal })
+          .then((r) => { if (seq === repriceSeq.current && r && r.ok) entwurfVersichert.current = false; })
+          .catch(() => {})
+          .finally(() => { if (seq === repriceSeq.current) setEntwurfRuecksetzung(false); });
+      }
       return;
     }
     // TG22 Residential: vor der Bindung der Lieferadresse wird die Absicherung nicht bepreist — kein

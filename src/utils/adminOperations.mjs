@@ -25,8 +25,11 @@ export const OPERATIONS_QUEUES = Object.freeze([
     hint: "Anbieterrechnung weicht vom erwarteten Einkauf ab", target: "attempt", listTo: null, tone: "warning" },
   { key: "awb_missing", label: "Trackingnummer fehlt", icon: "mapPin",
     hint: "Gebucht, ohne Trackingreferenz nach der Betriebsfrist", target: "shipment", listTo: null, tone: "warning" },
-  { key: "label_missing", label: "Label fehlt", icon: "invoice",
-    hint: "Gebucht, ohne gesicherten Labelbeleg nach der Betriebsfrist", target: "shipment", listTo: null, tone: "warning" },
+  // INTERNAL-01: der Schlüssel bleibt `label_missing`; gezählt wird „kein Versandlabel in CE" (noch
+  // nicht abgerufen, beim Anbieter noch nicht bereit, Abruf gescheitert) — nie „fehlt beim Anbieter".
+  { key: "label_missing", label: "Versandlabel nicht in CE", icon: "invoice",
+    hint: "Gebucht, nach der Betriebsfrist ohne Label in CE — nicht abgerufen, nicht bereit oder Abruf gescheitert",
+    target: "shipment", listTo: null, tone: "warning" },
   { key: "cancellations_open", label: "Offene Stornierungen", icon: "ban",
     hint: "Offen oder in Prüfung", target: "cancellation", listTo: "/admin/cancellation-requests", tone: "warning" },
   { key: "additional_emails_failed", label: "Zusatzmails fehlgeschlagen", icon: "mail",

@@ -477,3 +477,59 @@ test("390px: gesperrt ohne offenen Versuch und Altbestand — Hinweise ohne Frei
   await keinUeberlauf(page, "Sendungsdetail 390px");
   await page.close();
 });
+
+console.log("\nINTERNAL-01 — Versandlabel: was CE weiß, nicht was beim Anbieter „fehlt“\n");
+
+test("außerhalb von CE zugestellt: Zustand und Hinweis sagen dasselbe — kein „fehlt“, kein „noch nicht verfügbar“", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setupRoutes(page, {
+    shipment: SHIPMENT(OPERATIONS({
+      provider: "transglobal", documents: { storedLabel: false, providerDocuments: [] },
+      labelAvailability: { state: "delivered_outside_ce", lastNotReadyAt: null, lastFailedAt: null, lastError: null },
+    }), { label_available: false }),
+  });
+  await page.goto(`${BASE}/admin/shipments/77`, { waitUntil: "networkidle" });
+  const zustand = page.locator("#adm-ship-ops-label");
+  await zustand.waitFor({ state: "visible" });
+  assert.equal((await zustand.textContent()).trim(), "Außerhalb von CE zugestellt");
+  const hinweis = (await page.locator("#adm-label-hint").textContent()).trim();
+  assert.match(hinweis, /außerhalb von CE zugestellt \(Buchungsklärung\) — in CE liegt keine Datei/);
+  const seite = await page.locator("body").textContent();
+  assert.doesNotMatch(seite, /Label fehlt|Label für diese Sendung noch nicht verfügbar/,
+    "eine alte Mangelaussage ist stehen geblieben");
+  await page.close();
+});
+
+test("390px: ein gescheiterter Abruf nennt Zeitpunkt und kurzen Code — die Queue heißt „Versandlabel nicht in CE“", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await setupRoutes(page, {
+    queues: { ...QUEUES, queues: { ...QUEUES.queues,
+      label_missing: { count: 2, oldestAt: "2026-09-12T09:00:00Z", oldestId: 77, target: "shipment" } } },
+    shipment: SHIPMENT(OPERATIONS({
+      documents: { storedLabel: false, providerDocuments: [] },
+      labelAvailability: { state: "fetch_failed", lastNotReadyAt: "2026-09-12T10:00:00Z",
+        lastFailedAt: "2026-09-12T11:00:00Z", lastError: "http_502" },
+    })),
+  });
+  await page.goto(`${BASE}/admin/shipments/77`, { waitUntil: "networkidle" });
+  const karte = page.locator("#adm-ship-ops");
+  await karte.waitFor({ state: "visible" });
+  const text = await karte.textContent();
+  assert.equal((await page.locator("#adm-ship-ops-label").textContent()).trim(), "Letzter Abruf gescheitert");
+  for (const erwartet of ["Letzter gescheiterter Labelabruf", "http_502", "Letzte Anbieterantwort ohne Label"]) {
+    assert.ok(text.includes(erwartet), `Betriebssicht zeigt „${erwartet}“ nicht`);
+  }
+  // Mit Bestellnummer bleibt der Supportabruf möglich — dann gibt es keinen Hinweis darunter.
+  assert.equal(await page.locator("#adm-label-hint").count(), 0);
+  await keinUeberlauf(page, "Sendungsdetail 390px Label");
+
+  await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
+  const queue = page.locator('.adm-ops-item[data-queue="label_missing"]');
+  await queue.locator(".adm-ops-count").filter({ hasText: "2" }).waitFor({ state: "visible" });
+  const qText = await queue.textContent();
+  assert.match(qText, /Versandlabel nicht in CE/);
+  assert.doesNotMatch(qText, /fehlt/);
+  assert.equal(await queue.getByRole("link", { name: "Ältesten Fall öffnen" }).getAttribute("href"), "/admin/shipments/77");
+  await keinUeberlauf(page, "Übersicht 390px Label");
+  await page.close();
+});

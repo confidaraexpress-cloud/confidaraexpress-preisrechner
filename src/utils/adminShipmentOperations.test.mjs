@@ -13,6 +13,9 @@ import {
   mailStatusMeta,
   invoiceDocumentStatusMeta,
   portalLabelStatusMeta,
+  labelAvailabilityMeta,
+  labelDownloadHint,
+  LABEL_DOWNLOAD_HINT_NEUTRAL,
 } from "./adminShipmentOperations.mjs";
 
 const OPS = (over = {}) => ({
@@ -161,4 +164,43 @@ test("kein Etikettenstand erzeugt einen Hinweis in der Buchungsklaerung", () => 
     assert.deepEqual(reconciliationNotices(selectOperations(OPS({ portal: { ...PORTAL, labelStatus: v } }))), [],
       `der Stand ${v} hat die Buchungsklaerung geoeffnet`);
   }
+});
+
+/* ── INTERNAL-01: was CE über das Versandlabel weiß ─────────────────────────── */
+
+test("INTERNAL-01: ohne `labelAvailability` (älteres Backend, nicht gebucht) bleibt es null — nichts wird erfunden", () => {
+  assert.equal(selectOperations(OPS()).labelAvailability, null);
+  for (const v of [null, undefined, [], "x", {}, { state: "" }, { lastError: "http_502" }]) {
+    assert.equal(selectOperations(OPS({ labelAvailability: v })).labelAvailability, null, JSON.stringify(v));
+  }
+  assert.equal(labelDownloadHint(null), LABEL_DOWNLOAD_HINT_NEUTRAL);
+  assert.equal(labelDownloadHint(selectOperations(OPS())), LABEL_DOWNLOAD_HINT_NEUTRAL);
+});
+
+test("INTERNAL-01: die fünf Labelzustände sind unterscheidbar — keiner behauptet, der Anbieter habe kein Label", () => {
+  const stand = (state, over = {}) => selectOperations(OPS({ labelAvailability: { state, ...over } })).labelAvailability;
+  assert.deepEqual(stand("available").meta, ["badge-green", "In CE"]);
+  assert.deepEqual(stand("delivered_outside_ce").meta, ["badge-blue", "Außerhalb von CE zugestellt"]);
+  assert.deepEqual(stand("fetch_failed").meta, ["badge-red", "Letzter Abruf gescheitert"]);
+  assert.deepEqual(stand("provider_not_ready").meta, ["badge-yellow", "Beim Anbieter noch nicht bereit"]);
+  assert.deepEqual(stand("not_in_ce_yet").meta, ["badge-gray", "Noch nicht in CE abgerufen"]);
+  const texte = ["available", "delivered_outside_ce", "fetch_failed", "provider_not_ready", "not_in_ce_yet"]
+    .map((s) => `${labelAvailabilityMeta(s)[1]} ${labelDownloadHint({ labelAvailability: { state: s } })}`);
+  for (const t of texte) assert.doesNotMatch(t, /fehlt|jumingo|transglobal/i, t);
+  // Ein unbekannter Zustand landet im gemeinsamen Rückfall, der Hinweis bleibt neutral.
+  assert.ok(Array.isArray(labelAvailabilityMeta("etwas_neues")));
+  assert.equal(labelDownloadHint({ labelAvailability: { state: "etwas_neues" } }), LABEL_DOWNLOAD_HINT_NEUTRAL);
+  // Zeitpunkte und der kurze Servercode werden durchgereicht, sonst nichts.
+  const g = stand("fetch_failed", { lastFailedAt: "2026-09-26T08:00:00Z", lastError: "http_502", roh: "x" });
+  assert.deepEqual(Object.keys(g).sort(), ["lastError", "lastFailedAt", "lastNotReadyAt", "meta", "state"]);
+  assert.deepEqual([g.lastFailedAt, g.lastError, g.lastNotReadyAt], ["2026-09-26T08:00:00Z", "http_502", null]);
+});
+
+test("INTERNAL-01: der Hinweis unter dem gesperrten Supportabruf folgt dem Serverzustand", () => {
+  const hinweis = (state) => labelDownloadHint(selectOperations(OPS({ labelAvailability: { state } })));
+  assert.match(hinweis("delivered_outside_ce"), /außerhalb von CE zugestellt.*keine Datei/);
+  assert.match(hinweis("available"), /Anbieterbeleg in CE/);
+  assert.match(hinweis("fetch_failed"), /technisch gescheitert/);
+  assert.match(hinweis("provider_not_ready"), /noch kein nutzbares Versandlabel/);
+  assert.equal(hinweis("not_in_ce_yet"), "In CE liegt noch kein Versandlabel.");
 });

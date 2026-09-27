@@ -5,6 +5,11 @@ import { Icon } from "../ui/Icon";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
+import { usePwaInstall } from "../../hooks/usePwaInstall";
+import {
+  markInstallHintDone, promptPwaInstall, requestInstallCardFocus,
+} from "../../utils/pwaInstallPrompt";
+import { INSTALL_STATE } from "../../utils/pwaInstallView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Informationsarchitektur der Kunden-Sidebar — EINE Konfiguration, aus der
@@ -224,6 +229,25 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // Preisrechner-Route, wo NewShipmentPage nicht gemountet ist) direkt ausloggen.
   const handleLogout = onLogout || (() => { logout(); navigate("/login"); });
 
+  // „ConfidaraExpress als App" — ein dezenter Entdeckungshinweis, KEIN neuer
+  // Produktbereich. Sichtbar nur, solange der Browser einen echten
+  // Installationsweg hat, die Seite nicht schon als App läuft und der Hinweis
+  // auf diesem Gerät noch nicht benutzt wurde (pwaInstallView.mjs). Der
+  // verlässliche Ort bleibt die Karte in den Kontoeinstellungen.
+  const pwa = usePwaInstall();
+  const handleInstallEntry = async () => {
+    markInstallHintDone();
+    if (pwa.state === INSTALL_STATE.PROMPT) {
+      // Installationsdialog des Browsers — ausschließlich auf diesen Klick.
+      setSidebarOpen(false);
+      await promptPwaInstall();
+      return;
+    }
+    // iPhone/iPad, Safari am Mac: zur Karte mit der Anleitung.
+    requestInstallCardFocus();
+    navigateTo("profile");
+  };
+
   const gruppe = (id) => NAV_GROUPS.find((g) => g.id === id);
 
   return (
@@ -297,6 +321,11 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
                   Aktion, kein Produktbereich: es trägt deshalb bewusst NICHT
                   das Gewicht der ersten Ebene. Funktional unverändert. */}
               <div className="pp-nav-utility-divider" aria-hidden="true" />
+              {pwa.showNavItem && (
+                <button type="button" className="nitem nitem--utility" onClick={handleInstallEntry}>
+                  <Icon n="devices" s={18} /><span>{pwa.navLabel}</span>
+                </button>
+              )}
               <button type="button" className="nitem nitem--utility" onClick={handleLogout}>
                 <Icon n="logout" s={18} /><span>Abmelden</span>
               </button>

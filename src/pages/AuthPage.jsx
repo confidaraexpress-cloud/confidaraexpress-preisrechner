@@ -10,6 +10,7 @@ import { TrustBar } from "../components/auth/TrustBar";
 import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
+import { safeReturnTarget } from "../utils/loginReturnTarget.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
 // damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
@@ -58,6 +59,10 @@ export default function AuthPage() {
   // Navigations-State der öffentlichen Confirm-Seite; keine neue/alte E-Mail
   // wird vorausgefüllt).
   const [emailChanged, setEmailChanged] = useState(!!location.state?.emailChanged);
+  // Rücksprungziel einer geschützten Adresse (ProtectedRoute/AdminRoute bzw.
+  // zentraler 401-Handler). Einmal beim Mount gelesen und SOFORT über die
+  // Allowlist geprüft — alles Übrige ergibt null und damit die Übersicht.
+  const [returnTarget] = useState(() => safeReturnTarget(location.state?.from));
   const [rememberMe, setRememberMe] = useState(false);
   const [step, setStep] = useState("credentials");
   const [resetToken, setResetToken] = useState("");
@@ -129,7 +134,7 @@ export default function AuthPage() {
       // Navigation endete kommentarlos wieder auf /login.
       const ok = await login(d.token);
       if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
-      navigate("/dashboard");
+      navigate(returnTarget || "/dashboard");
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };

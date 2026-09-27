@@ -17,6 +17,8 @@ import { UtilityCluster } from "../components/ui/PageHeader";
 import { UserChip } from "../components/ui/UserChip";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { ContentErrorBoundary } from "../components/common/ContentErrorBoundary";
+import { AppStatusNotice } from "../components/common/AppStatusNotice";
+import { updateNoticeSuppressed } from "../utils/appVersionCheck.mjs";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 
 // Takt der reinen Monatsbeobachtung (siehe Effekt unten). Bewusst ein LOKALER
@@ -647,6 +649,10 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Offline-/Versionshinweis. Im Bereich „Neue Sendung" kein
+            Versionshinweis: der Vorgang lebt nur im Speicher des Tabs. */}
+        <AppStatusNotice suppressUpdate={updateNoticeSuppressed({ page })} />
 
         {/* Der Utility-Cluster (Glocke + Benutzerchip) sitzt seit Paket A,
             Phase 3 IM Seitenkopf statt als freischwebender Mount darüber.

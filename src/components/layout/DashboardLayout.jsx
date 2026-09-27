@@ -11,6 +11,8 @@ import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
 import { BrandLogo } from "../ui/BrandLogo";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
+import { AppStatusNotice } from "../common/AppStatusNotice";
+import { updateNoticeSuppressed } from "../../utils/appVersionCheck.mjs";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -79,6 +81,9 @@ export function DashboardLayout() {
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>
         </div>
+        {/* Offline-/Versionshinweis. Auf der Buchungsseite kein
+            Versionshinweis: ein Neuladen kostete den laufenden Vorgang. */}
+        <AppStatusNotice suppressUpdate={updateNoticeSuppressed({ pathname: location.pathname })} />
         <ContentErrorBoundary key={location.pathname}>
         {ROUTE_HEADERS[activePage] && (
           <DashboardSectionHeader

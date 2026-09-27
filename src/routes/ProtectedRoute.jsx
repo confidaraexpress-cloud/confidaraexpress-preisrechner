@@ -1,10 +1,11 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/common/LoadingScreen";
 
 export function ProtectedRoute({ children }) {
   const { authed, loadingUser, sessionCheckFailed, retrySessionCheck, logout } = useAuth();
+  const location = useLocation();
   if (loadingUser) return <LoadingScreen />;
 
   // Sitzungsprüfung an Netz-/Serverfehler gescheitert (Token vorhanden, aber
@@ -33,6 +34,9 @@ export function ProtectedRoute({ children }) {
     );
   }
 
-  if (!authed) return <Navigate to="/login" replace />;
+  // Die gewünschte Adresse wandert als Router-State mit zur Anmeldung. Ob sie
+  // danach wirklich angesteuert wird, entscheidet AuthPage ausschließlich über
+  // die Allowlist in utils/loginReturnTarget.mjs.
+  if (!authed) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   return children;
 }

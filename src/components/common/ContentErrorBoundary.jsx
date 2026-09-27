@@ -57,10 +57,20 @@ export function isChunkLoadError(error) {
   return /ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(text);
 }
 
+/* Ein Codeabschnitt, der OHNE Netz nicht geladen werden konnte, ist kein
+   Versionswechsel. Ohne diese Unterscheidung behauptete die Fläche offline
+   „Eine neuere Version ist verfügbar" — sachlich falsch. `navigator.onLine`
+   ist hier nur Wortwahl, keine Entscheidung: die Handlung bleibt dieselbe
+   (Neuladen, sobald die Verbindung wieder besteht). */
 const TEXTE = {
   chunk: {
     title: "Eine neuere Version ist verfügbar",
     text: "Dieser Bereich konnte nicht geladen werden, weil im Hintergrund eine neuere Version bereitsteht. Ein Neuladen holt sie. Ihre gespeicherten Daten sind davon nicht betroffen.",
+    aktion: "Seite neu laden",
+  },
+  offline: {
+    title: "Keine Internetverbindung",
+    text: "Dieser Bereich konnte ohne Internetverbindung nicht geladen werden. Sobald die Verbindung wieder besteht, laden Sie die Seite bitte neu.",
     aktion: "Seite neu laden",
   },
   render: {
@@ -98,7 +108,8 @@ export class ContentErrorBoundary extends React.Component {
     if (!error) return this.props.children;
 
     const chunk = isChunkLoadError(error);
-    const t = chunk ? TEXTE.chunk : TEXTE.render;
+    const offline = chunk && typeof navigator !== "undefined" && navigator.onLine === false;
+    const t = offline ? TEXTE.offline : chunk ? TEXTE.chunk : TEXTE.render;
 
     /* `.page-body` ist der gemeinsame Inhaltsrahmen der App-Shell. Außerhalb
        davon (Wurzel, Auth, öffentliche Seiten) trägt der Aufrufer seinen

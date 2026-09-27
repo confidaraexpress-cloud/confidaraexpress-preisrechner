@@ -70,4 +70,8 @@
    Abschluss der Transglobal-Anbindung ersatzlos entfernbar — sie definiert
    nichts, worauf ein anderes Blatt zeigt. */
 @import './multi-provider-debug.css';
+/* ConfidaraExpress als App (PWA) — isolierter pwa-Scope (Installationskarte der
+   Kontoeinstellungen, Statuszeile der Shell). Reine Zusatzklassen auf den
+   Foundation-Tokens. Steht wie alle Bereichs-Stylesheets VOR patterns.css. */
+@import './pwa.css';
 @import './patterns.css';

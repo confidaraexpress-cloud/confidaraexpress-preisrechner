@@ -14,7 +14,8 @@ import { fileURLToPath } from "node:url";
 
 import { offerBookable, offerBlocked, offerBlockedLabel, offerBlockedHint, offerSelectable,
          OFFER_BUSINESS_RECIPIENT_REASON, OFFER_BUSINESS_RECIPIENT_TEXT,
-         OFFER_BUSINESS_RECIPIENT_HINT } from "./offerIdentity.mjs";
+         OFFER_BUSINESS_RECIPIENT_HINT, OFFER_ADDRESS_DETAILS_TOO_LONG_REASON,
+         OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT, OFFER_ADDRESS_DETAILS_TOO_LONG_HINT } from "./offerIdentity.mjs";
 import { handoverMode, handoverLabelForTariff, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "./handoverMode.mjs";
 import { fmtDelivery } from "./formatters.js";
 import { deliveryContractOf } from "./deliveryContractView.mjs";
@@ -339,13 +340,31 @@ test("(H3) business_recipient_required: neutraler Text, Handlungshinweis, NICHT 
 });
 
 test("(H4) der Rohcode erreicht die Oberfläche nie — und nennt keinen Anbieter", () => {
-  const text = offerBlockedLabel({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON });
-  const hinweis = offerBlockedHint({ bookable: false, unavailableReason: OFFER_BUSINESS_RECIPIENT_REASON });
-  for (const s of [text, hinweis]) {
-    assert.ok(!s.includes(OFFER_BUSINESS_RECIPIENT_REASON), `Rohcode im Text: ${s}`);
-    assert.ok(!/transglobal|jumingo|tnt|dhl|ups|dpd|gls/i.test(s), `Anbietername im Text: ${s}`);
-    assert.ok(!/\d{2,}/.test(s), `eine ServiceID im Text: ${s}`);
+  for (const grund of [OFFER_BUSINESS_RECIPIENT_REASON, OFFER_ADDRESS_DETAILS_TOO_LONG_REASON]) {
+    const text = offerBlockedLabel({ bookable: false, unavailableReason: grund });
+    const hinweis = offerBlockedHint({ bookable: false, unavailableReason: grund });
+    for (const s of [text, hinweis]) {
+      assert.ok(!s.includes(grund), `Rohcode im Text: ${s}`);
+      assert.ok(!/transglobal|jumingo|tnt|dhl|ups|dpd|gls|portal/i.test(s), `Anbietername im Text: ${s}`);
+      assert.ok(!/\d{2,}/.test(s), `eine ServiceID oder Grenze im Text: ${s}`);
+    }
   }
+});
+
+/* ── Zu lange Adressangaben: ein kundenlösbarer Grund, den nur der Server kennt ─────── */
+
+test("(H3b) address_details_too_long: neutraler Text, Handlungshinweis, NICHT auswählbar — keine Zahl, keine eigene Prüfung", () => {
+  const t = { bookable: false, unavailableReason: OFFER_ADDRESS_DETAILS_TOO_LONG_REASON };
+  assert.equal(offerBlockedLabel(t), OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT);
+  assert.equal(offerBlockedLabel(t), "Für diese Adressangaben nicht verfügbar.");
+  assert.equal(offerBlockedHint(t), OFFER_ADDRESS_DETAILS_TOO_LONG_HINT);
+  assert.equal(offerBlockedHint(t), "Bitte kürzen Sie Vor- und Nachname, Firmenname oder Adresszeilen von Absender oder Empfänger.");
+  assert.equal(offerSelectable(t), false, "das Angebot ist auswählbar geblieben");
+  assert.equal(offerBookable(t), false);
+  assert.equal(offerBlocked(t), true);
+  // Die Oberfläche prüft keine Namenslänge selbst: die Grenze steht ausschließlich im Server.
+  const quelle = ohneKommentar("utils/offerIdentity.mjs");
+  assert.ok(!/\b21\b/.test(quelle), "eine Namensgrenze im Frontend");
 });
 
 test("(H5) die bestehenden Gründe bleiben unverändert", () => {

@@ -47,6 +47,7 @@ test("(2) JEDES einzelne abweichende Merkmal lässt die Karte stehen", () => {
     { unavailableReason: "date_unavailable" },
     { unavailableReason: "same_day_unavailable" },
     { unavailableReason: "business_recipient_required" },
+    { unavailableReason: "address_details_too_long" },
     { unavailableReason: null },                          // ein buchbares Angebot
   ];
   for (const a of abweichungen) {

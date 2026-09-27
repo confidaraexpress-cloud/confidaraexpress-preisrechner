@@ -30,6 +30,7 @@ import {
   PORTAL_BLOCKS_RELEASE_TEXT,
   portalServiceLabel,
   portalStateMeta,
+  primaryLabelUsableText,
 } from "./adminReconciliation.mjs";
 
 const ROH = (over = {}) => ({
@@ -134,7 +135,8 @@ test("Wartezeit ist lesbar formatiert", () => {
 // ── „Als gebucht bestätigen" ────────────────────────────────────────────────
 test("Referenz nur ohne gespeicherte Anbieterreferenz; Absicherungsaussage nur bei unbestätigter TG-Absicherung", () => {
   assert.deepEqual(confirmBookedRequirements(normalizeReconciliationAttempt(ROH())),
-    { providerReferenceRequired: true, storedProviderReference: null, insuranceDecisionRequired: false });
+    { providerReferenceRequired: true, storedProviderReference: null, insuranceDecisionRequired: false,
+      labelDeliveryConfirmationRequired: false });
   assert.equal(confirmBookedRequirements(normalizeReconciliationAttempt(ROH({ providerBookingReference: "JO-1" }))).providerReferenceRequired, false);
   const tg = (over) => confirmBookedRequirements(normalizeReconciliationAttempt(ROH({ provider: "transglobal", ...over })));
   assert.equal(tg({ insuranceSelected: true, insuranceConfirmation: null }).insuranceDecisionRequired, true);
@@ -162,6 +164,43 @@ test("der Bestätigungsbody enthält genau das Verlangte — und nie ein unvolls
   assert.throws(() => buildConfirmBookedBody({ requirements: mitAbsicherung, insuranceConfirmed: null }), /insurance_decision_missing/);
   assert.deepEqual(buildConfirmBookedBody({ requirements: { providerReferenceRequired: false }, providerReference: "JO-1" }),
     { confirm: true }, "eine gespeicherte Referenz wird nicht überschrieben");
+});
+
+// ── Block G: V2-Auftrag ohne nutzbares Versandetikett ────────────────────────
+test("Etikettbefund: nur ein echter Boolean; die Zustellaussage nur bei TG ohne nutzbares Etikett", () => {
+  const n = (over) => normalizeReconciliationAttempt(ROH({ provider: "transglobal", ...over }));
+  assert.equal(n({ primaryLabelUsable: false }).primaryLabelUsable, false);
+  assert.equal(n({ primaryLabelUsable: true }).primaryLabelUsable, true);
+  for (const roh of [undefined, null, "false", 0]) {
+    assert.equal(n({ primaryLabelUsable: roh }).primaryLabelUsable, null, String(roh));
+  }
+  assert.equal(confirmBookedRequirements(n({ primaryLabelUsable: false })).labelDeliveryConfirmationRequired, true);
+  assert.equal(confirmBookedRequirements(n({ primaryLabelUsable: true })).labelDeliveryConfirmationRequired, false);
+  assert.equal(confirmBookedRequirements(n({})).labelDeliveryConfirmationRequired, false);
+  // JUMiNGO kennt den Befund nicht — der Server lehnt die Aussage dort ab.
+  assert.equal(confirmBookedRequirements(normalizeReconciliationAttempt(ROH({ primaryLabelUsable: false })))
+    .labelDeliveryConfirmationRequired, false);
+  assert.match(primaryLabelUsableText(false), /Fehlt/);
+  assert.equal(primaryLabelUsableText(true), "Vorhanden");
+  assert.equal(primaryLabelUsableText(null), null);
+});
+
+test("die Zustellaussage: nur ein angehaktes true baut die Anfrage — und nur, wenn verlangt", () => {
+  const mitEtikett = { providerReferenceRequired: false, insuranceDecisionRequired: false, labelDeliveryConfirmationRequired: true };
+  assert.deepEqual(buildConfirmBookedBody({ requirements: mitEtikett, labelDelivered: true }),
+    { confirm: true, labelDelivered: true });
+  for (const nein of [false, undefined, null, "true", 1]) {
+    assert.throws(() => buildConfirmBookedBody({ requirements: mitEtikett, labelDelivered: nein }),
+      /label_delivery_confirmation_missing/, String(nein));
+  }
+  assert.deepEqual(buildConfirmBookedBody({ requirements: { labelDeliveryConfirmationRequired: false }, labelDelivered: true }),
+    { confirm: true }, "eine nicht verlangte Aussage wird nicht gesendet");
+  for (const code of ["label_delivery_confirmation_required", "label_delivery_confirmation_invalid",
+                      "label_delivery_confirmation_not_applicable"]) {
+    const e = reconciliationActionError(422, { error: "x", code });
+    assert.ok(!e.message.includes(code) && e.message !== "Die Aktion konnte nicht ausgeführt werden.", code);
+  }
+  assert.match(reconciliationActionError(422, { code: "label_delivery_confirmation_required" }).message, /Versandetikett/);
 });
 
 // ── Serverantworten ──────────────────────────────────────────────────────────

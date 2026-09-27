@@ -31,7 +31,7 @@ import {
 import {
   canRetryDelivery, deliveryStatusMeta, deliveryTypeLabel, sortDeliveries,
 } from "../../utils/shipmentEmailDeliveryView.mjs";
-import { documentsSummary, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
+import { documentsSummary, labelDownloadHint, reconciliationNotices, selectOperations } from "../../utils/adminShipmentOperations.mjs";
 import { attemptLabel } from "../../utils/adminReconciliation.mjs";
 // Block C: der beim Buchen gebundene Abgabe-Paketshop — nur aus dem Serverfeld `dropoff_location`.
 import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dropoffParcelShop.mjs";
@@ -453,6 +453,19 @@ export default function AdminShipmentDetailPage() {
                   ? <span className="adm-mask">{ops.trackingReferences.map((t) => maskTail(t) || t).join(" · ")}</span>
                   : "—"],
                 ["Label gespeichert", docSummary.storedLabel ? "Ja" : "Nein"],
+                /* INTERNAL-01: was CE über das Versandlabel wirklich weiß — nur bei einer gebuchten
+                   Sendung und nur mit einem Backend, das den Zustand liefert. Der Code eines
+                   gescheiterten Abrufs ist ein kurzer Servercode, nie eine Anbieterantwort. */
+                ...(ops.labelAvailability ? [
+                  ["Versandlabel", <span className={`badge ${ops.labelAvailability.meta[0]}`} id="adm-ship-ops-label">
+                    {ops.labelAvailability.meta[1]}</span>],
+                  ...(ops.labelAvailability.lastFailedAt ? [["Letzter gescheiterter Labelabruf", <>
+                    {fmtDateTime(ops.labelAvailability.lastFailedAt)}
+                    {ops.labelAvailability.lastError && <> · <span className="adm-mono">{ops.labelAvailability.lastError}</span></>}
+                  </>]] : []),
+                  ...(ops.labelAvailability.lastNotReadyAt
+                    ? [["Letzte Anbieterantwort ohne Label", fmtDateTime(ops.labelAvailability.lastNotReadyAt)]] : []),
+                ] : []),
                 /* MF-03: nur bei einem PORTAL-Buchungsvorgang. Dort kann das Versandlabel
                    erst nach der Bestellung entstehen — die Buchung steht trotzdem. Ohne
                    Portalvorgang fehlen diese Zeilen vollstaendig. */
@@ -723,7 +736,7 @@ export default function AdminShipmentDetailPage() {
                     : <><Icon n="download" s={14} /> Label herunterladen</>}
                 </button>
               ) : (
-                <button type="button" className="btn btn-outline btn-sm" disabled title="Label noch nicht verfügbar">
+                <button type="button" className="btn btn-outline btn-sm" disabled title={labelDownloadHint(ops)}>
                   <Icon n="download" s={14} /> Label herunterladen
                 </button>
               )}
@@ -744,7 +757,7 @@ export default function AdminShipmentDetailPage() {
                   : <><Icon n="mapPin" s={14} /> {TRACKING_LABELS.lookupAction}</>}
               </button>
             </div>
-            {!labelAvailable && <p className="adm-support-hint">Label für diese Sendung noch nicht verfügbar.</p>}
+            {!labelAvailable && <p className="adm-support-hint" id="adm-label-hint">{labelDownloadHint(ops)}</p>}
             {!track.lookup.possible && (
               <p className="adm-support-hint" id="adm-track-lookup-hint">{track.lookup.hint}</p>
             )}

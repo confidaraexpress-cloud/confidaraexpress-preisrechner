@@ -311,6 +311,37 @@ test("„Als gebucht bestätigen“ verlangt eine gültige Anbieterreferenz; ein
   await page.close();
 });
 
+test("V2-Auftrag ohne nutzbares Versandetikett: „gebucht“ erst mit der Zustellaussage — und genau sie reist mit", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const state = await setupRoutes(page, {
+    attempt: ATTEMPT({ provider: "transglobal", state: "booked", providerBookingReference: "DE0000001", primaryLabelUsable: false }),
+    actionResponse: (aktion) => (aktion === "confirm-booked"
+      ? { status: 200, body: { status: "resolved", resolution: "confirmed_booked", shipmentId: 77 } }
+      : { status: 500, body: {} }),
+  });
+  await page.goto(`${BASE}/admin/reconciliation/501`, { waitUntil: "networkidle" });
+  const gebucht = page.locator("#recon-confirm-booked");
+  await gebucht.waitFor({ state: "visible" });
+  const karten = await page.locator(".adm-cards").textContent();
+  assert.match(karten, /Versandetikett im Buchungsbeleg/);
+  assert.match(karten, /Fehlt — der Anbieter lieferte kein nutzbares Versandetikett/);
+  assert.equal(await page.locator("#recon-label-delivery").isVisible(), true);
+  assert.equal(await gebucht.isDisabled(), true, "ohne Zustellaussage ist „gebucht“ bestätigbar");
+  await page.locator("#recon-label-delivered").check();
+  assert.equal(await gebucht.isEnabled(), true);
+  await page.locator("#recon-label-delivered").uncheck();
+  assert.equal(await gebucht.isDisabled(), true, "die zurückgenommene Aussage gibt „gebucht“ frei");
+  await page.locator("#recon-label-delivered").check();
+
+  await gebucht.click();
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor({ state: "visible" });
+  await dialog.getByRole("button", { name: "Als gebucht bestätigen" }).click();
+  await page.locator("#recon-message").waitFor({ state: "visible" });
+  assert.deepEqual(state.calls.actions, [{ action: "confirm-booked", body: { confirm: true, labelDelivered: true } }]);
+  await page.close();
+});
+
 test("Rechnungsabweichung: Dialog, Vermerk, neu geladen — danach nicht erneut auslösbar", async () => {
   const page = await browser.newPage({ viewport: { width: 834, height: 1112 } });
   const drift = (geprueft) => ({ kind: "provider_charged_more", expectedNet: 20, actualNet: 22.52, deltaNet: 2.52,
@@ -444,5 +475,61 @@ test("390px: gesperrt ohne offenen Versuch und Altbestand — Hinweise ohne Frei
   assert.match(text, /Noch kein gebuchter Anbieter/);
   assert.equal(await karte.getByRole("link", { name: "Zur Buchungsklärung" }).count(), 0, "ohne offenen Versuch gibt es nichts zu entscheiden");
   await keinUeberlauf(page, "Sendungsdetail 390px");
+  await page.close();
+});
+
+console.log("\nINTERNAL-01 — Versandlabel: was CE weiß, nicht was beim Anbieter „fehlt“\n");
+
+test("außerhalb von CE zugestellt: Zustand und Hinweis sagen dasselbe — kein „fehlt“, kein „noch nicht verfügbar“", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await setupRoutes(page, {
+    shipment: SHIPMENT(OPERATIONS({
+      provider: "transglobal", documents: { storedLabel: false, providerDocuments: [] },
+      labelAvailability: { state: "delivered_outside_ce", lastNotReadyAt: null, lastFailedAt: null, lastError: null },
+    }), { label_available: false }),
+  });
+  await page.goto(`${BASE}/admin/shipments/77`, { waitUntil: "networkidle" });
+  const zustand = page.locator("#adm-ship-ops-label");
+  await zustand.waitFor({ state: "visible" });
+  assert.equal((await zustand.textContent()).trim(), "Außerhalb von CE zugestellt");
+  const hinweis = (await page.locator("#adm-label-hint").textContent()).trim();
+  assert.match(hinweis, /außerhalb von CE zugestellt \(Buchungsklärung\) — in CE liegt keine Datei/);
+  const seite = await page.locator("body").textContent();
+  assert.doesNotMatch(seite, /Label fehlt|Label für diese Sendung noch nicht verfügbar/,
+    "eine alte Mangelaussage ist stehen geblieben");
+  await page.close();
+});
+
+test("390px: ein gescheiterter Abruf nennt Zeitpunkt und kurzen Code — die Queue heißt „Versandlabel nicht in CE“", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await setupRoutes(page, {
+    queues: { ...QUEUES, queues: { ...QUEUES.queues,
+      label_missing: { count: 2, oldestAt: "2026-09-12T09:00:00Z", oldestId: 77, target: "shipment" } } },
+    shipment: SHIPMENT(OPERATIONS({
+      documents: { storedLabel: false, providerDocuments: [] },
+      labelAvailability: { state: "fetch_failed", lastNotReadyAt: "2026-09-12T10:00:00Z",
+        lastFailedAt: "2026-09-12T11:00:00Z", lastError: "http_502" },
+    })),
+  });
+  await page.goto(`${BASE}/admin/shipments/77`, { waitUntil: "networkidle" });
+  const karte = page.locator("#adm-ship-ops");
+  await karte.waitFor({ state: "visible" });
+  const text = await karte.textContent();
+  assert.equal((await page.locator("#adm-ship-ops-label").textContent()).trim(), "Letzter Abruf gescheitert");
+  for (const erwartet of ["Letzter gescheiterter Labelabruf", "http_502", "Letzte Anbieterantwort ohne Label"]) {
+    assert.ok(text.includes(erwartet), `Betriebssicht zeigt „${erwartet}“ nicht`);
+  }
+  // Mit Bestellnummer bleibt der Supportabruf möglich — dann gibt es keinen Hinweis darunter.
+  assert.equal(await page.locator("#adm-label-hint").count(), 0);
+  await keinUeberlauf(page, "Sendungsdetail 390px Label");
+
+  await page.goto(`${BASE}/admin`, { waitUntil: "networkidle" });
+  const queue = page.locator('.adm-ops-item[data-queue="label_missing"]');
+  await queue.locator(".adm-ops-count").filter({ hasText: "2" }).waitFor({ state: "visible" });
+  const qText = await queue.textContent();
+  assert.match(qText, /Versandlabel nicht in CE/);
+  assert.doesNotMatch(qText, /fehlt/);
+  assert.equal(await queue.getByRole("link", { name: "Ältesten Fall öffnen" }).getAttribute("href"), "/admin/shipments/77");
+  await keinUeberlauf(page, "Übersicht 390px Label");
   await page.close();
 });

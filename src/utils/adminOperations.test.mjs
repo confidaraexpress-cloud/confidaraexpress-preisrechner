@@ -100,3 +100,13 @@ test("operationsViews liest nur queues und diagnostics — ein Backend ohne Endp
   assert.ok([...alt.queues, ...alt.diagnostics].every((v) => v.state === "unavailable"));
   assert.equal(operationsViews(null).generatedAt, null);
 });
+
+test("INTERNAL-01: `label_missing` behauptet keinen Mangel beim Anbieter — es zählt „kein Label in CE“", () => {
+  const q = def("label_missing");
+  assert.equal(q.label, "Versandlabel nicht in CE");
+  assert.match(q.hint, /nicht abgerufen/);
+  assert.match(q.hint, /nicht bereit/);
+  assert.match(q.hint, /Abruf gescheitert/);
+  // Weder die Überschrift noch der Hinweis sagen „fehlt“: CE hat es nur noch nicht.
+  assert.doesNotMatch(`${q.label} ${q.hint}`, /fehlt/i);
+});

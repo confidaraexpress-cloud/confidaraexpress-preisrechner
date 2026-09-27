@@ -409,3 +409,28 @@ test("J — Mehrpaketsendung auf 390 px: alle Downloads in ihrer Zeile, kein Que
   }
   await page.close();
 });
+
+/* ══════════ INTERNAL-02 — ein Versandlabel, das in CE nicht entsteht ══════════ */
+
+test("K — außerhalb von CE bereitgestellt: „Nicht im Kundenkonto verfügbar“, kein Download, kein Nachladen", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  let abrufe = 0;
+  // So meldet der Server ein Versandlabel, das außerhalb von CE bereitgestellt wurde: `unavailable`, ohne Pfad.
+  await setupRoutes(page, { dokumente: (n) => { abrufe = n + 1; return { body: { shipmentId: CE_ID, documents: [
+    DOK("LABEL", "SHIPPING", "unavailable"),
+    DOK("ORDER_CONFIRMATION", "ORDER", "ready", { number: "CE-AB-2026-000001" }),
+  ] } }; } });
+  await zurSendungsliste(page);
+  await dokumenteKnopf(page).click();
+  const zeile = page.locator(".sdoc-row", { hasText: "Versandlabel" });
+  await zeile.getByText("Nicht im Kundenkonto verfügbar").waitFor({ timeout: 15000 });
+  assert.equal(await zeile.getByRole("button", { name: /Herunterladen/ }).count(), 0, "ein Download wird angeboten");
+  assert.equal(await page.locator("text=Wird erstellt").count(), 0, "„Wird erstellt“ verspricht ein Label, das nicht kommt");
+  // Der Nachladetakt ist 2 s: nach 5 s ist es bei genau einem Abruf geblieben.
+  await page.waitForTimeout(5000);
+  assert.equal(abrufe, 1, `die Dokumentliste wurde ${abrufe}× geladen`);
+  // Die übrigen Belege bleiben ladbar.
+  assert.equal(await page.locator(".sdoc-row", { hasText: "Auftragsbestätigung" })
+    .getByRole("button", { name: /Herunterladen/ }).count(), 1);
+  await page.close();
+});

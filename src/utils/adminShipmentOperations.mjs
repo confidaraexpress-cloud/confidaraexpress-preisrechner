@@ -63,6 +63,42 @@ const PORTAL_LABEL_STATUS_META = {
 };
 export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statusFallback(s);
 
+/* ── INTERNAL-01: was CE über das Versandlabel einer GEBUCHTEN Sendung weiß ──
+   Der Zustand kommt fertig vom Server (`operations.labelAvailability`,
+   lib/labelAvailability.js); hier steht nur sein Anzeigetext. Keiner der Texte
+   behauptet, der ANBIETER habe kein Label: „noch nicht in CE" heißt ausdrücklich
+   nur, dass CE es noch nicht abgerufen hat.
+
+     available             das Label liegt in CE (gespeichert oder Anbieterbeleg)
+     delivered_outside_ce  per Buchungsklärung außerhalb von CE zugestellt
+     fetch_failed          der letzte Abruf ist technisch gescheitert
+     provider_not_ready    der Anbieter antwortete zuletzt ohne nutzbares Label
+     not_in_ce_yet         noch nicht abgerufen — keine Aussage über den Anbieter */
+const LABEL_AVAILABILITY_META = {
+  available: ["badge-green", "In CE"],
+  delivered_outside_ce: ["badge-blue", "Außerhalb von CE zugestellt"],
+  fetch_failed: ["badge-red", "Letzter Abruf gescheitert"],
+  provider_not_ready: ["badge-yellow", "Beim Anbieter noch nicht bereit"],
+  not_in_ce_yet: ["badge-gray", "Noch nicht in CE abgerufen"],
+};
+export const labelAvailabilityMeta = (s) => LABEL_AVAILABILITY_META[s] || statusFallback(s);
+
+// Der Hinweis unter dem gesperrten Supportabruf — je Zustand wahr, ohne Zustand neutral.
+// Der Supportabruf liefert nur ein gespeichertes Label oder den Dokumentabruf des Anbieters;
+// ein Anbieterbeleg liegt in CE, wird dort aber nicht ausgeliefert.
+const LABEL_DOWNLOAD_HINT = {
+  available: "Das Versandlabel liegt als Anbieterbeleg in CE (siehe „Anbieterbelege“) — dieser Abruf liefert es nicht.",
+  delivered_outside_ce: "Das Versandlabel wurde außerhalb von CE zugestellt (Buchungsklärung) — in CE liegt keine Datei.",
+  fetch_failed: "Der letzte Labelabruf ist technisch gescheitert — in CE liegt noch kein Versandlabel.",
+  provider_not_ready: "Beim letzten Abruf lag beim Anbieter noch kein nutzbares Versandlabel vor.",
+  not_in_ce_yet: "In CE liegt noch kein Versandlabel.",
+};
+export const LABEL_DOWNLOAD_HINT_NEUTRAL = "Für diese Sendung liegt kein Versandlabel zum Abruf vor.";
+export function labelDownloadHint(ops) {
+  const st = ops && ops.labelAvailability ? ops.labelAvailability.state : null;
+  return (st && LABEL_DOWNLOAD_HINT[st]) || LABEL_DOWNLOAD_HINT_NEUTRAL;
+}
+
 function versuch(raw) {
   if (!raw || typeof raw !== "object") return null;
   const id = zahl(raw.id);
@@ -119,6 +155,9 @@ export function selectOperations(shipment) {
   // MF-03: nur eine Sendung MIT Portalvorgang trägt `portal`. Fehlt es (JUMiNGO, ein
   // Transglobal-V2-Service, ein älteres Backend), bleibt es `null` und nichts wird gezeigt.
   const prt = o.portal && typeof o.portal === "object" && !Array.isArray(o.portal) ? o.portal : null;
+  // INTERNAL-01: nur eine GEBUCHTE Sendung trägt `labelAvailability`; ein älteres Backend liefert es nicht.
+  const lab = o.labelAvailability && typeof o.labelAvailability === "object" && !Array.isArray(o.labelAvailability)
+    ? o.labelAvailability : null;
   return {
     provider: text(o.provider),
     providerText: o.provider ? providerLabel(o.provider) : "Noch kein gebuchter Anbieter",
@@ -152,6 +191,13 @@ export function selectOperations(shipment) {
       labelStatusMeta: text(prt.labelStatus) ? portalLabelStatusMeta(prt.labelStatus) : null,
       lastCheckedAt: prt.lastCheckedAt ?? null,
       startedAt: prt.startedAt ?? null,
+    } : null,
+    labelAvailability: lab && text(lab.state) ? {
+      state: text(lab.state),
+      meta: labelAvailabilityMeta(lab.state),
+      lastNotReadyAt: lab.lastNotReadyAt ?? null,
+      lastFailedAt: lab.lastFailedAt ?? null,
+      lastError: text(lab.lastError),
     } : null,
     documents: {
       storedLabel: docs.storedLabel === true,

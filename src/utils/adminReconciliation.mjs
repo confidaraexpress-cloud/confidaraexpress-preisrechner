@@ -185,6 +185,9 @@ export function normalizeReconciliationAttempt(raw) {
     insuranceCoverValue: zahl(raw.insuranceCoverValue),
     insuranceCustomerGross: zahl(raw.insuranceCustomerGross),
     insuranceConfirmation: text(raw.insuranceConfirmation),
+    // Block G: trägt der gesicherte Buchungsbeleg ein nutzbares Versandetikett? `false` = V2-Auftrag ohne
+    // Etikett; `null` = nicht bewertet (Portal, JUMiNGO, Altbestand). Nur ein echter Boolean zählt.
+    primaryLabelUsable: typeof raw.primaryLabelUsable === "boolean" ? raw.primaryLabelUsable : null,
     invoiceDrift: drift,
     portalAttempt,
     offerConsumedState: text(raw.offerConsumedState),
@@ -272,7 +275,17 @@ export function confirmBookedRequirements(attempt) {
     // Nur eine angeforderte, vom Anbieter NICHT bestätigte Zusatzabsicherung verlangt eine Aussage.
     insuranceDecisionRequired: a.provider === "transglobal" && a.insuranceSelected === true
       && a.insuranceConfirmation !== "confirmed",
+    // Block G: ein V2-Auftrag ohne nutzbares Versandetikett schließt der Server nur mit der ausdrücklichen
+    // Aussage ab, dass das Etikett dem Kunden vorliegt (beim Anbieter beschafft und zugestellt).
+    labelDeliveryConfirmationRequired: a.provider === "transglobal" && a.primaryLabelUsable === false,
   };
+}
+
+/** Block G: der Etikettbefund des Buchungsbelegs in Anzeigeform — `null`, wenn er nicht bewertet wurde. */
+export function primaryLabelUsableText(value) {
+  if (value === false) return "Fehlt — der Anbieter lieferte kein nutzbares Versandetikett";
+  if (value === true) return "Vorhanden";
+  return null;
 }
 
 /** Dieselbe Regel wie serverseitig (`validateProviderReference`) — nur als frühe Rückmeldung. */
@@ -289,7 +302,7 @@ export function validateProviderReferenceInput(raw) {
 }
 
 /** Der Body von confirm-booked. Wirft, statt eine unvollständige Anfrage zu bauen. */
-export function buildConfirmBookedBody({ requirements, providerReference, insuranceConfirmed } = {}) {
+export function buildConfirmBookedBody({ requirements, providerReference, insuranceConfirmed, labelDelivered } = {}) {
   const r = requirements || {};
   const body = { confirm: true };
   if (r.providerReferenceRequired) {
@@ -300,6 +313,11 @@ export function buildConfirmBookedBody({ requirements, providerReference, insura
   if (r.insuranceDecisionRequired) {
     if (insuranceConfirmed !== true && insuranceConfirmed !== false) throw new Error("insurance_decision_missing");
     body.insuranceConfirmed = insuranceConfirmed;
+  }
+  // Block G: nur die ausdrückliche Bestätigung zählt — ein nicht angehakter Schalter baut keine Anfrage.
+  if (r.labelDeliveryConfirmationRequired) {
+    if (labelDelivered !== true) throw new Error("label_delivery_confirmation_missing");
+    body.labelDelivered = true;
   }
   return body;
 }
@@ -360,6 +378,10 @@ const CODE_TEXT = Object.freeze({
   insurance_confirmation_not_applicable: "Für diesen Vorgang ist keine Angabe zur Zusatzabsicherung vorgesehen.",
   insurance_snapshot_incomplete: "Der eingefrorene Stand der Zusatzabsicherung ist unvollständig.",
   contradictory_insurance_evidence: "Die Angabe widerspricht der bestätigten Absicherung des Anbieters.",
+  label_delivery_confirmation_required:
+    "Der Buchungsbeleg enthält kein nutzbares Versandetikett. Bitte bestätigen, dass das Etikett beim Anbieter beschafft und dem Kunden zugestellt wurde.",
+  label_delivery_confirmation_invalid: "Die Angabe zum Versandetikett ist ungültig.",
+  label_delivery_confirmation_not_applicable: "Für diesen Vorgang ist keine Angabe zum Versandetikett vorgesehen.",
   document_evidence_inconsistent: "Die gesicherten Belege stimmen nicht mit der Erklärung überein.",
   result_not_representable: "Der eingefrorene Stand ist widersprüchlich.",
   provider_not_supported: "Für diesen Anbieter gibt es keinen Abschlussweg.",

@@ -104,6 +104,9 @@ test("4 — nur ready MIT sicherem Serverpfad ist ladbar", () => {
   assert.equal(documentViewState({ status: "ready", downloadPath: pfad }), DOC_STATUS.READY);
   assert.equal(documentViewState({ status: "processing" }), DOC_STATUS.PROCESSING);
   assert.equal(documentViewState({ status: "failed" }), DOC_STATUS.FAILED);
+  // INTERNAL-02: „in CE entsteht keines mehr" ist ein eigener Zustand — auch mit Pfad nie ladbar.
+  assert.equal(documentViewState({ status: "unavailable", downloadPath: pfad }), DOC_STATUS.UNAVAILABLE);
+  assert.equal(documentDownloadPath({ status: "unavailable", downloadPath: pfad }), null);
   // Unbekanntes gilt NIE als ladbar.
   for (const unbekannt of ["READY", "fertig", "", null, undefined, 1, true]) {
     assert.equal(documentViewState({ status: unbekannt, downloadPath: pfad }), DOC_STATUS.PROCESSING);
@@ -225,10 +228,12 @@ test("11 — eine Dokumentaktion statt vieler; Tracking und Storno bleiben", () 
 
 /* ═════════ 6 — Darstellung und Texte ═════════ */
 
-test("12 — drei Zustände, drei Anzeigen, genau eine Aktion je Zeile", () => {
+test("12 — vier Zustände, vier Anzeigen, genau eine Aktion je Zeile", () => {
   assert.ok(drawerCode.includes("zustand === DOC_STATUS.READY"), "ready → Downloadknopf");
   assert.ok(drawerCode.includes("zustand === DOC_STATUS.PROCESSING"), "processing → Hinweis");
   assert.ok(drawerCode.includes("zustand === DOC_STATUS.FAILED"), "failed → Hinweis");
+  assert.ok(drawerCode.includes("zustand === DOC_STATUS.UNAVAILABLE"), "unavailable → Hinweis");
+  assert.equal(DOCUMENTS_TEXT.unavailable, "Nicht im Kundenkonto verfügbar");
   assert.equal(DOCUMENTS_TEXT.processing, "Wird erstellt …");
   assert.equal(DOCUMENTS_TEXT.failed, "Derzeit nicht verfügbar");
   assert.equal(DOCUMENTS_TEXT.empty, "Für diese Sendung sind derzeit keine Dokumente verfügbar.");
@@ -358,4 +363,22 @@ test("21 — Downloadfehler sind kuratiert, nie Serverfreitext", () => {
   }
   // Ein 401/403 gehört dem zentralen Auth-Redirect und erzeugt keine Bannermeldung.
   assert.ok(drawerCode.includes("e?.status !== 401 && e?.status !== 403"));
+});
+
+/* ═════════ INTERNAL-02 — ein Versandlabel, das in CE nicht mehr entsteht ═════════ */
+
+test("INTERNAL-02 — `unavailable`: kein Download, kein „Wird erstellt …“, kein Nachladen", () => {
+  // So meldet der Server ein außerhalb von CE bereitgestelltes Versandlabel (und jede Sendung, für
+  // die in CE keines mehr entsteht): Status `unavailable`, ohne Pfad.
+  const gruppen = groupShipmentDocuments({ documents: [
+    { type: "LABEL", category: "SHIPPING", status: "unavailable", label: "Versandlabel" },
+    { type: "ORDER_CONFIRMATION", category: "ORDER", status: "ready", label: "Auftragsbestätigung",
+      downloadPath: "/api/shipments/7/order-confirmation" },
+  ] });
+  const etikett = gruppen.flatMap((g) => g.documents).find((d) => d.type === "LABEL");
+  assert.equal(documentViewState(etikett), DOC_STATUS.UNAVAILABLE);
+  assert.equal(documentDownloadPath(etikett), null, "ein Download wird angeboten");
+  assert.equal(hasProcessingDocument(gruppen), false, "der Drawer lädt endlos nach");
+  assert.notEqual(DOCUMENTS_TEXT.unavailable, DOCUMENTS_TEXT.processing);
+  assert.doesNotMatch(DOCUMENTS_TEXT.unavailable, /erstellt|bereit|herunterladen/i);
 });

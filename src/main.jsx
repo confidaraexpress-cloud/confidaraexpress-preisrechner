@@ -4,7 +4,17 @@ import { BrowserRouter } from "react-router-dom";
 import "./styles/index.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ContentErrorBoundary } from "./components/common/ContentErrorBoundary";
+import { startPwaInstallCapture } from "./utils/pwaInstallPrompt";
+import { registerServiceWorker } from "./utils/serviceWorkerRegistration";
 import App from "./App";
+
+/* ConfidaraExpress als App: das Installationsereignis des Browsers kann früh
+   kommen — lange bevor die Kontoeinstellungen gerendert sind. Es wird deshalb
+   hier, vor dem ersten Rendern, abgefangen und aufbewahrt (nie automatisch
+   ausgelöst). Der Service Worker liefert ausschließlich die Offline-Seite und
+   wird nur im Produktionsbuild registriert. */
+startPwaInstallCapture();
+registerServiceWorker();
 
 /* Die äußerste Fehlergrenze. Sie liegt bewusst ÜBER Router und AuthProvider:
    die Bereichsgrenzen weiter innen hängen selbst am Router und können einen

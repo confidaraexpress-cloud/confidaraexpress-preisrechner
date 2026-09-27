@@ -15,6 +15,10 @@
          die groesste von iOS angeforderte Kantenlaenge. Vollflaechig — iOS legt
          seine eigene abgerundete Maske darueber. -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v1.png" />
+    <!-- Web-App-Manifest: macht ConfidaraExpress als App installierbar. Fester
+         Name (keine Versionsnummer), weil nginx es mit `no-cache` ausliefert;
+         vor und nach dem Login identisch — es enthält keine Kundendaten. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Browser-Chrome, KEIN Logoasset: bleibt deshalb beim UI-Token und wandert
          nicht auf die Markenfarbe mit. Stand zuvor auf #0B1F4D — einem Navy,
          den es sonst nirgends im Produkt gab. -->

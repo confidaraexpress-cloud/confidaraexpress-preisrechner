@@ -1,0 +1,78 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ConfidaraExpress als App (PWA) — isolierter pwa-Scope
+   ──────────────────────────────────────────────────────────────────────────
+   Zwei Bauteile, beide ohne eigene Bildsprache:
+     • die Installationskarte der Kontoeinstellungen — Kartenmaterial, Kopf
+       und Zeilenmechanik kommen aus den bestehenden Profilklassen
+       (table-card, profile-card-head, profile-form-body); hier steht nur, was
+       die Karte zusätzlich braucht;
+     • die Statuszeile der Shell (offline / neue Version) — .alert-Muster.
+   Ausschließlich Tokens, keine Farbliterale.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Sprung aus dem Navigationseintrag: die Karte landet unterhalb der klebenden
+   mobilen Topbar statt darunter verdeckt. */
+.pwa-card { scroll-margin-top: var(--ce-space-11); }
+
+/* Das CE-Signet sitzt in derselben Icon-Kachel wie die Liniensymbole der
+   übrigen Profilkarten — gleiche Kachel, gleiche Größe, eigene Marke. */
+.pwa-card-mark .ce-brandmark-img { width: 24px; }
+
+/* Erklärung links, Aktion rechts; auf schmalen Breiten rutscht die Aktion in
+   eine eigene Zeile (dieselbe Mechanik wie „Passwort ändern"). */
+.pwa-card-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ce-space-4);
+  flex-wrap: wrap;
+}
+.pwa-card-row .btn { flex: none; }
+
+.pwa-card-text {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ce-space-2);
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.5;
+  color: var(--ce-color-text-muted);
+}
+.pwa-card-text > svg { flex-shrink: 0; margin-top: 2px; }
+.pwa-card-text--status { color: var(--text-primary); font-weight: 600; }
+.pwa-card-text--status > svg { color: var(--ce-color-status-success-fg); }
+
+.pwa-card-guide { margin-top: var(--ce-space-4); }
+.pwa-card-steps {
+  margin: 0;
+  padding-left: var(--ce-space-5);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.pwa-card-steps li + li { margin-top: var(--ce-space-1); }
+.pwa-card-note {
+  margin: var(--ce-space-3) 0 0;
+  font-size: var(--ce-text-label-size);
+  line-height: 1.5;
+  color: var(--ce-color-text-muted);
+}
+.pwa-card-alert { margin-top: var(--ce-space-4); }
+
+/* Unter --ce-bp-sm (480 px) füllt die Aktion die Kartenbreite — ein
+   großes, gut treffbares Ziel statt eines halben Knopfes am Zeilenende. */
+@media (max-width: 480px) {
+  .pwa-card-row .btn { width: 100%; justify-content: center; }
+}
+
+/* ── Statuszeile der Shell ─────────────────────────────────────────────── */
+.pwa-notice { align-items: center; flex-wrap: wrap; }
+.pwa-notice-text { flex: 1 1 240px; min-width: 0; }
+.pwa-notice .btn { flex: none; }
+.pwa-notice--offline {
+  background: var(--ce-color-status-warning-surface);
+  border: 1px solid var(--ce-color-status-warning-border);
+  color: var(--ce-color-status-warning-fg);
+}

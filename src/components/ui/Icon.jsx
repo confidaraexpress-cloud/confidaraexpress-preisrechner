@@ -78,6 +78,10 @@ const paths = {
      Markup); ein zweiter Sonderfall wäre für ein Icon nicht gerechtfertigt. */
   image:        "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM11 9a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21",
   upload:       "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
+  /* Bildschirm mit Smartphone davor — „ConfidaraExpress als App". Lucide-
+     Geometrie (monitor-smartphone), der Standfuß als schlichte Strecke; das
+     Smartphone ist als Pfad gezeichnet (genau EIN <path>, siehe `image`). */
+  devices:      "M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 15v4M7 19h5M18 12h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z",
   /* ── Premium-Übersicht („Highend Blue") ── */
   form:         "M9 4h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM8 6H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2M8.5 12.5h7M8.5 16.5h4",
   layers:       "M12 2 21 7 12 12 3 7ZM3 12l9 5 9-5M3 17l9 5 9-5",

@@ -53,7 +53,9 @@ export function AuthProvider({ children }) {
       setSessionExpired(true);
       const path = window.location.pathname;
       if (path !== "/login" && path !== "/confirm-email-change") {
-        navigate("/login", { replace: true });
+        // Die gerade offene Adresse geht als Rücksprungwunsch mit; AuthPage
+        // steuert sie nach dem Login nur an, wenn die Allowlist sie erlaubt.
+        navigate("/login", { replace: true, state: { from: `${path}${window.location.search}` } });
       }
     });
     return () => setAuthErrorHandler(null);

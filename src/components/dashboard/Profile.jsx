@@ -17,6 +17,7 @@ import { EmailChangeSection } from "./EmailChangeSection";
 import { DeliveryNoteCard } from "./DeliveryNoteCard";
 import { BillingModeCard } from "./BillingModeCard";
 import { CompanyLogoCard } from "./CompanyLogoCard";
+import { AppInstallCard } from "./AppInstallCard";
 import { cardHead } from "./ProfileCardHead";
 import {
   companyBaseline, contactBaseline,
@@ -618,6 +619,9 @@ export function Profile({ user, utility }) {
             <DeliveryNoteCard user={user} />
             <BillingModeCard user={user} />
             {renderSecurityCard()}
+            {/* „ConfidaraExpress als App" — der dauerhafte Ort für die
+                Installation, direkt nach „Sicherheit" (dieses Gerät). */}
+            <AppInstallCard />
           </div>
         </div>
     </div>

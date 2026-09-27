@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { LoadingScreen } from "../components/common/LoadingScreen";
 
@@ -15,13 +15,15 @@ import { LoadingScreen } from "../components/common/LoadingScreen";
 // Nutzerdaten.
 export function AdminRoute({ children }) {
   const { authed, loadingUser, user } = useAuth();
+  const location = useLocation();
 
   // Während der initiale /kundenbereich-Check läuft: neutraler Ladezustand —
   // verhindert ein Aufblitzen des Redirects, bevor die Rolle bekannt ist.
   if (loadingUser) return <LoadingScreen />;
 
-  // Nicht eingeloggt → Login.
-  if (!authed) return <Navigate to="/login" replace />;
+  // Nicht eingeloggt → Login; die Adresse geht als Rücksprungwunsch mit
+  // (geprüft wird sie erst in AuthPage, siehe utils/loginReturnTarget.mjs).
+  if (!authed) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
 
   // Eingeloggt, aber keine Admin-Rolle → zurück in den Kundenbereich. Bewusst
   // ohne Hinweis, dass /admin existiert (keine Informationspreisgabe).

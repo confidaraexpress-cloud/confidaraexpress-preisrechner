@@ -11,6 +11,8 @@ import { UtilityCluster } from "../ui/PageHeader";
 import { UserChip } from "../ui/UserChip";
 import { BrandLogo } from "../ui/BrandLogo";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
+import { AppStatusNotice } from "../common/AppStatusNotice";
+import { updateNoticeSuppressed } from "../../utils/appVersionCheck.mjs";
 
 // Seitenköpfe der beiden route-basierten Versandseiten (Paket B) — dasselbe
 // Prinzip wie PAGE_HEADERS in DashboardPage.jsx, nur für die zwei Seiten, die
@@ -46,13 +48,16 @@ export function DashboardLayout() {
     location.pathname.startsWith("/inventory/products") ? "products" :
     location.pathname.startsWith("/inventory/orders")   ? "orders"   : "";
 
-  const navigateTo = (id) => {
+  // Dieselbe Signatur wie DashboardPage.navigateTo. Einen Verlassen-Guard gibt
+  // es auf diesen Routen nicht — die Folgeaktion des Ziels läuft sofort.
+  const navigateTo = (id, filter = null, onCommit = null) => {
     setSidebarOpen(false);
     if (id === "calculator") {
       navigate("/calculator");
     } else {
       navigate(`/dashboard?page=${id}`);
     }
+    if (onCommit) onCommit();
   };
 
   return (
@@ -79,6 +84,9 @@ export function DashboardLayout() {
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>
         </div>
+        {/* Offline-/Versionshinweis. Auf der Buchungsseite kein
+            Versionshinweis: ein Neuladen kostete den laufenden Vorgang. */}
+        <AppStatusNotice suppressUpdate={updateNoticeSuppressed({ pathname: location.pathname })} />
         <ContentErrorBoundary key={location.pathname}>
         {ROUTE_HEADERS[activePage] && (
           <DashboardSectionHeader

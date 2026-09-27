@@ -465,3 +465,33 @@ test("(P27) Deckungsbetrag ohne Neubepreisung oder mit offenen Fragen: KEIN Gesa
   assert.equal(std.coverInsuredAmount, null);
   assert.equal(std.coverExcessValue, null);
 });
+
+// ─── JUM-06: „keine“ nach einer versicherten Neubepreisung ────────────────────
+// Die versicherte Neubepreisung schreibt die Versicherung in den Anbieterentwurf. Solange der
+// Entwurf wieder ohne Versicherung bepreist wird, ist auch „keine“ nicht bestätigt — sonst bucht
+// der Kunde gegen einen Entwurf, der beim Anbieter noch versichert ist.
+test("(J6a) none während der Entwurfsrücksetzung → REPRICING, Buchung gesperrt, Versand nur als Referenz", () => {
+  const v = view({ insuranceType: "none", draftResetPending: true });
+  assert.equal(v.status, PRICE_STATUS.REPRICING);
+  assert.equal(v.hasConfirmedPrice, false);
+  assert.equal(priceViewBlocksBooking(v), true);
+  assert.equal(v.totalGross, null);
+  assert.equal(v.baseShippingGross, 37.19);
+});
+test("(J6b) none nach bestätigter Rücksetzung → wieder BASE_CONFIRMED", () => {
+  const v = view({ insuranceType: "none", draftResetPending: false });
+  assert.equal(v.status, PRICE_STATUS.BASE_CONFIRMED);
+  assert.equal(priceViewBlocksBooking(v), false);
+});
+test("(J6c) die Rücksetzung betrifft nur „keine“ — eine versicherte Auswahl bleibt unberührt", () => {
+  const v = view({ insuranceType: "standard", repriceResult: REPRICE_STD, draftResetPending: true });
+  assert.equal(v.status, PRICE_STATUS.REPRICE_CONFIRMED);
+});
+test("(J6d) BookingPage setzt den Entwurf zurück, sobald nach versicherter Neubepreisung „keine“ gewählt wird", () => {
+  const seite = read("../pages/BookingPage.jsx");
+  // Markiert wird VOR dem Request: der PUT kann den Entwurf versichert haben, auch wenn die Antwort ausbleibt.
+  assert.match(seite, /if \(!coverModel && \(type === "standard" \|\| type === "premium"\)\) entwurfVersichert\.current = true;\s*\n\s*const r = await repriceInsurance\(/);
+  // Die Rücksetzung ist eine Neubepreisung ohne Versicherung — derselbe Endpunkt, keine neue Serverlogik.
+  assert.match(seite, /if \(!coverModel && entwurfVersichert\.current\) \{[\s\S]{0,400}insuranceType:\s+"none"/);
+  assert.match(seite, /draftResetPending: entwurfRuecksetzung,/);
+});

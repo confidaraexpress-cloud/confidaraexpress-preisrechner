@@ -111,6 +111,9 @@ export function buildBookingPriceView({
   insValid = true,
   priceChangePending = false,
   priceInputsRequired = false,
+  // JUM-06: der Anbieterentwurf trägt noch die Versicherung einer früheren Neubepreisung und wird
+  // gerade ohne Versicherung neu bepreist — bis das bestätigt ist, ist auch „keine“ nicht bestätigt.
+  draftResetPending = false,
   components,
 } = {}) {
   const t = tariff || {};
@@ -144,7 +147,9 @@ export function buildBookingPriceView({
   let status;
   if (priceChangePending === true)        status = PRICE_STATUS.PRICE_CHANGED;
   else if (priceInputsRequired === true)  status = PRICE_STATUS.PRICE_INPUTS_REQUIRED;
-  else if (!isInsuredType(insuranceType)) status = PRICE_STATUS.BASE_CONFIRMED;
+  else if (!isInsuredType(insuranceType)) {
+    status = draftResetPending === true ? PRICE_STATUS.REPRICING : PRICE_STATUS.BASE_CONFIRMED;
+  }
   else if (hasError)                      status = PRICE_STATUS.REPRICE_ERROR;
   else if (insValid === false)            status = PRICE_STATUS.REPRICE_REQUIRED;
   else if (repriceLoading)                status = PRICE_STATUS.REPRICING;

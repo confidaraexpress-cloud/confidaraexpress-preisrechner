@@ -81,3 +81,74 @@ test("6 — Schutzrouten und zentraler 401-Handler geben das Ziel mit, AuthPage 
   assert.match(page, /navigate\(returnTarget \|\| "\/dashboard"\);/);
   assert.doesNotMatch(page, /navigate\(location\.state\?\.from/, "das Rohziel darf nie direkt angesteuert werden");
 });
+
+// Die echte Bereichsliste des Dashboards — aus dem Quelltext, nicht abgeschrieben.
+function arrayLiteral(src, name) {
+  const m = src.match(new RegExp(`const ${name} = (?:new Set\\()?\\[([\\s\\S]*?)\\]`));
+  assert.ok(m, `${name} nicht gefunden`);
+  return [...m[1].matchAll(/"([^"]+)"/g)].map((t) => t[1]).sort();
+}
+const DASHBOARD_PAGES = arrayLiteral(read("pages/DashboardPage.jsx"), "DASHBOARD_PAGES");
+
+test("7 — unbekannte Bereiche ergeben die Übersicht, nicht nur syntaktisch falsche", () => {
+  for (const unbekannt of ["evil", "admin", "booking", "calculator", "login", "settings", "dashboard",
+    "constructor", "__proto__", "tostring", "invoice", "ticket"]) {
+    assert.equal(safeReturnTarget(`/dashboard?page=${unbekannt}`), "/dashboard", `durchgelassen: page=${unbekannt}`);
+  }
+  // Auch mit an sich gültigem Zusatzparameter: ohne echten Bereich bleibt nichts übrig.
+  assert.equal(safeReturnTarget("/dashboard?page=evil&ticket=12&product=7"), "/dashboard");
+});
+
+test("8 — jeder echte Bereich des Dashboards bleibt erhalten", () => {
+  assert.ok(DASHBOARD_PAGES.length >= 14, `zu wenige Bereiche gelesen: ${DASHBOARD_PAGES.join(",")}`);
+  for (const bereich of DASHBOARD_PAGES) {
+    assert.equal(safeReturnTarget(`/dashboard?page=${bereich}`), `/dashboard?page=${bereich}`, `verworfen: ${bereich}`);
+  }
+});
+
+test("9 — ticket nur bei den Supportanfragen, product nur bei den Bewegungen", () => {
+  // Im eigenen Bereich bleiben sie erhalten …
+  assert.equal(safeReturnTarget("/dashboard?page=support&ticket=12"), "/dashboard?page=support&ticket=12");
+  assert.equal(safeReturnTarget("/dashboard?page=movements&product=7"), "/dashboard?page=movements&product=7");
+  // … in jedem anderen fallen sie weg, der Bereich bleibt.
+  for (const bereich of DASHBOARD_PAGES.filter((b) => b !== "support")) {
+    assert.equal(safeReturnTarget(`/dashboard?page=${bereich}&ticket=12`), `/dashboard?page=${bereich}`,
+      `${bereich}: ticket übernommen`);
+  }
+  for (const bereich of DASHBOARD_PAGES.filter((b) => b !== "movements")) {
+    assert.equal(safeReturnTarget(`/dashboard?page=${bereich}&product=7`), `/dashboard?page=${bereich}`,
+      `${bereich}: product übernommen`);
+  }
+  assert.equal(safeReturnTarget("/dashboard?page=invoices&ticket=12"), "/dashboard?page=invoices");
+  assert.equal(safeReturnTarget("/dashboard?page=stock&product=7"), "/dashboard?page=stock");
+  assert.equal(safeReturnTarget("/dashboard?page=support&ticket=12&product=7"), "/dashboard?page=support&ticket=12");
+  assert.equal(safeReturnTarget("/dashboard?page=movements&product=7&ticket=12"), "/dashboard?page=movements&product=7");
+  // Ungültige Werte im richtigen Bereich fallen ebenso weg.
+  assert.equal(safeReturnTarget("/dashboard?page=movements&product=0"), "/dashboard?page=movements");
+  assert.equal(safeReturnTarget("/dashboard?page=support&ticket=12abc"), "/dashboard?page=support");
+});
+
+test("10 — Parität: dieselben Bereiche und Zusatzparameter wie DashboardPage, keine zweite Navigation", () => {
+  const eigene = arrayLiteral(read("utils/loginReturnTarget.mjs"), "DASHBOARD_BEREICHE");
+  assert.deepEqual(eigene, DASHBOARD_PAGES, "Bereichsliste weicht von DASHBOARD_PAGES ab");
+  const dashboard = ohneKommentare(read("pages/DashboardPage.jsx"));
+  // product wirkt dort nur für die Bewegungen, ticket nur in den Supportanfragen.
+  assert.match(dashboard, /if \(p === "movements" && \/\^\[1-9\]\[0-9\]\*\$\/\.test\(produkt \|\| ""\)\)/);
+  assert.match(dashboard, /\{page === "support" && \([\s\S]*?initialTicketId=\{supportTicketId\}/);
+  // Der Rücksprung erzeugt nur eine Adresse für das bestehende Deep-Link-Modell.
+  const modul = ohneKommentare(read("utils/loginReturnTarget.mjs"));
+  assert.doesNotMatch(modul, /navigate\(|history\.|location\.(assign|replace|href)/, "eigene Navigation im Rücksprungmodul");
+});
+
+test("11 — der Open-Redirect-Schutz bleibt vollständig, auch mit gültigem Bereich", () => {
+  for (const boese of [
+    "//evil.example/dashboard?page=support&ticket=12", "https://evil.example/dashboard?page=invoices",
+    "/\\evil.example/dashboard?page=profile", "/%2F%2Fevil.example/dashboard?page=profile",
+    "https:/evil.example/dashboard?page=support", "\u0000/dashboard?page=invoices",
+  ]) {
+    assert.equal(safeReturnTarget(boese), null, `durchgelassen: ${JSON.stringify(boese)}`);
+  }
+  // Fremde Werte in Parametern werden nie übernommen.
+  assert.equal(safeReturnTarget("/dashboard?page=support&ticket=//evil.example"), "/dashboard?page=support");
+  assert.equal(safeReturnTarget("/dashboard?page=movements&product=https://evil.example"), "/dashboard?page=movements");
+});

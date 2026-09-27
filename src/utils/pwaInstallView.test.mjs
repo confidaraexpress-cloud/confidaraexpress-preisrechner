@@ -211,3 +211,62 @@ test("13 — der Navigationseintrag steht vor „Abmelden“ und nur unter seine
     "der Eintrag nutzt dieselbe Utility-Form wie „Abmelden“");
   assert.match(sidebar, /markInstallHintDone\(\);/, "nach Benutzung muss der Hinweis verschwinden");
 });
+
+/* ══════════ Fokuswunsch des Navigationseintrags ══════════════════════════ */
+
+test("14 — der Fokuswunsch ist gemeldeter Zustand: sofort sichtbar, genau einmal verbraucht", async () => {
+  const store = await import("./pwaInstallPrompt.js");
+  let meldungen = 0;
+  const abmelden = store.subscribePwaInstall(() => { meldungen += 1; });
+  try {
+    assert.equal(store.getPwaInstallSnapshot().cardFocusPending, false);
+    store.requestInstallCardFocus();
+    // Eine schon sichtbare Karte erfährt es sofort — ohne Remount.
+    assert.equal(store.getPwaInstallSnapshot().cardFocusPending, true);
+    assert.equal(meldungen, 1, "der Wunsch wird nicht gemeldet");
+    assert.equal(store.consumeInstallCardFocus(), true);
+    assert.equal(store.getPwaInstallSnapshot().cardFocusPending, false);
+    assert.equal(meldungen, 2, "das Verbrauchen wird nicht gemeldet");
+    // Verbraucht ist verbraucht: kein zweiter Sprung, keine weitere Meldung.
+    assert.equal(store.consumeInstallCardFocus(), false);
+    assert.equal(meldungen, 2);
+  } finally {
+    abmelden();
+  }
+});
+
+test("15 — die Karte reagiert auf den Wunsch, nicht nur beim Mount", () => {
+  assert.match(karte, /const \{ state, cardFocusPending \} = usePwaInstall\(\);/);
+  assert.match(karte, /useEffect\(\(\) => \{\s*if \(!cardFocusPending \|\| !consumeInstallCardFocus\(\)\) return;[\s\S]*?\}, \[cardFocusPending\]\);/,
+    "der Fokus-Effekt muss am gemeldeten Wunsch hängen");
+  assert.doesNotMatch(karte, /if \(!consumeInstallCardFocus\(\)\) return;/, "Verbrauch nur beim Mount (alter Randfall)");
+  const hook = ohneKommentare(read("hooks/usePwaInstall.js"));
+  assert.match(hook, /cardFocusPending: stand\.cardFocusPending/);
+});
+
+test("16 — „benutzt“ und Fokuswunsch erst mit der ausgeführten Navigation; Chromium-Dialog unverändert", () => {
+  const eintrag = sidebar.slice(sidebar.indexOf("const handleInstallEntry"), sidebar.indexOf("const gruppe ="));
+  // Chromium: Dialog weiterhin direkt und nur auf diesen Klick.
+  assert.match(eintrag, /if \(pwa\.state === INSTALL_STATE\.PROMPT\) \{\s*markInstallHintDone\(\);\s*setSidebarOpen\(false\);\s*await promptPwaInstall\(\);\s*return;\s*\}/);
+  // Anleitung: nichts vorab — beides läuft als Folgeaktion der Navigation.
+  const anleitung = eintrag.slice(eintrag.indexOf("return;"));
+  assert.doesNotMatch(anleitung, /markInstallHintDone\(\)|requestInstallCardFocus\(\)/, "vorab markiert oder vorgemerkt");
+  assert.match(anleitung, /navigateTo\("profile", null, zurAppKarte\);/);
+  assert.match(sidebar, /function zurAppKarte\(\) \{\s*markInstallHintDone\(\);\s*requestInstallCardFocus\(\);\s*\}/);
+  assert.equal((sidebar.match(/requestInstallCardFocus\(\)/g) || []).length, 1, "Fokuswunsch außerhalb der Folgeaktion");
+
+  // DashboardPage: die Folgeaktion reist im Zielobjekt durch den Guard und läuft
+  // nur in performNav — dem Weg jeder ausgeführten Navigation, auch nach dem Dialog.
+  const dashboard = ohneKommentare(read("pages/DashboardPage.jsx"));
+  assert.match(dashboard, /const navigateTo = \(id, filter = null, onCommit = null\) => \{\s*const target = \{ type: "page", page: id, onCommit \};\s*if \(page === "new" && id !== "new" && leaveGuardRef\.current && leaveGuardRef\.current\(target\)\) return;/);
+  assert.match(dashboard, /setPage\(target\.page\);\s*if \(target\.onCommit\) target\.onCommit\(\);\s*\};/);
+  assert.equal((dashboard.match(/\.onCommit\(\)/g) || []).length, 1, "Folgeaktion außerhalb von performNav");
+  assert.match(dashboard, /commitLeave=\{performNav\}/);
+  // Guard: „Weiter bearbeiten" verwirft das Ziel samt Folgeaktion, Bestätigen führt es aus.
+  const neu = ohneKommentare(read("pages/NewShipmentPage.jsx"));
+  assert.match(neu, /const continueEditing = \(\) => \{ if \(!saving\) \{ setPendingTarget\(null\);/);
+  assert.match(neu, /if \(target\) commitLeave\?\.\(target\);/);
+  // Routen ohne Guard (Preisrechner, Buchung, Lagerdetails): Folgeaktion sofort.
+  const layout = ohneKommentare(read("components/layout/DashboardLayout.jsx"));
+  assert.match(layout, /const navigateTo = \(id, filter = null, onCommit = null\) => \{[\s\S]*?if \(onCommit\) onCommit\(\);\s*\};/);
+});

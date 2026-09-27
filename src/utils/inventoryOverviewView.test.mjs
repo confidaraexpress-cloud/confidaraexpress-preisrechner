@@ -313,7 +313,8 @@ test("21 — jede Aufklappung führt auf eine bestehende Seite mit passendem Fil
 test("22 — der Startfilter wirkt genau einmal und ändert das Navigationsmodell nicht", () => {
   const code = ohneKommentare(dashboard);
   // Zweiter Parameter von navigateTo — kein neuer Routenbestand, keine URL.
-  assert.match(code, /const navigateTo = \(id, filter = null\) =>/);
+  // (Der dritte ist die Folgeaktion des App-Eintrags, siehe pwaInstallView.test.)
+  assert.match(code, /const navigateTo = \(id, filter = null, onCommit = null\) =>/);
   assert.match(code, /setInventoryFilter\(filter \? \{ page: id, filter \} : null\)/);
   // Der Filter trägt seine Zielseite mit, damit er nicht auf einer anderen landet.
   for (const seiteName of ["stock", "orders", "movements"]) {

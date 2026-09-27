@@ -27,7 +27,7 @@ import {
      • sonst ein ruhiger Satz ohne Schaltfläche.
    Keine automatische Nachfrage, kein Modal. */
 export function AppInstallCard() {
-  const { state } = usePwaInstall();
+  const { state, cardFocusPending } = usePwaInstall();
   const aktion = installCardAction(state);
   const [anleitungOffen, setAnleitungOffen] = useState(false);
   const [fehler, setFehler] = useState("");
@@ -39,15 +39,18 @@ export function AppInstallCard() {
   // Vom Navigationseintrag hierher geschickt: Karte zeigen, Anleitung öffnen,
   // Fokus auf den Titel (Tastatur und Screenreader landen am richtigen Ort).
   //
-  // Genau einmal beim Mount — die Anfrage wird dabei verbraucht. Erst wird die
-  // Anleitung aufgeklappt, positioniert wird im nächsten Effekt, wenn die Karte
-  // ihre endgültige Höhe hat.
+  // Der Wunsch ist gemeldeter Zustand, kein Mount-Signal: er greift beim Mount
+  // (aus einem anderen Bereich hierher) UND bei schon sichtbarer Karte — waren
+  // die Kontoeinstellungen bereits offen, gibt es keinen Remount, der ihn sonst
+  // auslöste. Verbraucht wird er genau einmal. Erst wird die Anleitung
+  // aufgeklappt, positioniert wird im nächsten Effekt, wenn die Karte ihre
+  // endgültige Höhe hat.
   useEffect(() => {
-    if (!consumeInstallCardFocus()) return;
+    if (!cardFocusPending || !consumeInstallCardFocus()) return;
     if (aktion && aktion.kind === "guide") setAnleitungOffen(true);
     setSprung(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cardFocusPending]);
 
   // Sofort statt der globalen weichen Scrollbewegung: die Karte steht am
   // Seitenende, eine Animation über die ganze Profilseite dauerte Sekunden.

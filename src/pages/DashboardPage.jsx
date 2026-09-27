@@ -515,6 +515,10 @@ export default function DashboardPage() {
     if (target.type === "route") { navigate(target.path, target.state ? { state: target.state } : undefined); return; }
     if (target.page === "calculator") { navigate("/calculator"); return; }
     setPage(target.page);
+    // Folgeaktion, die an GENAU dieses Ziel gebunden ist (App-Eintrag → Karte).
+    // Sie läuft erst hier, wenn die Navigation wirklich stattfindet — auch nach
+    // bestätigtem Verlassen-Dialog; ein verworfenes Ziel löst sie nie aus.
+    if (target.onCommit) target.onCommit();
   };
 
   // Navigation aus einer Glockenmeldung: Zielseite plus optionaler Deep-Link.
@@ -533,8 +537,10 @@ export default function DashboardPage() {
   // Bestandteil des Navigationsmodells: `page` bleibt der einzige Zustand, die
   // URL ändert sich nicht, und die Zielseite verbraucht den Filter genau einmal —
   // exakt das Muster, das der Adressbuch-Prefill seit jeher nutzt.
-  const navigateTo = (id, filter = null) => {
-    const target = { type: "page", page: id };
+  // Der dritte, ebenso optionale Parameter ist eine Folgeaktion des Ziels; sie
+  // reist im Zielobjekt durch den Guard und läuft in performNav (siehe dort).
+  const navigateTo = (id, filter = null, onCommit = null) => {
+    const target = { type: "page", page: id, onCommit };
     if (page === "new" && id !== "new" && leaveGuardRef.current && leaveGuardRef.current(target)) return;
     setInventoryFilter(filter ? { page: id, filter } : null);
     // „Neue Sendung" aus der Navigation heißt: NEUER Vorgang. Ein noch laufender

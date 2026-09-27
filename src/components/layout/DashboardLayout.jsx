@@ -48,13 +48,16 @@ export function DashboardLayout() {
     location.pathname.startsWith("/inventory/products") ? "products" :
     location.pathname.startsWith("/inventory/orders")   ? "orders"   : "";
 
-  const navigateTo = (id) => {
+  // Dieselbe Signatur wie DashboardPage.navigateTo. Einen Verlassen-Guard gibt
+  // es auf diesen Routen nicht — die Folgeaktion des Ziels läuft sofort.
+  const navigateTo = (id, filter = null, onCommit = null) => {
     setSidebarOpen(false);
     if (id === "calculator") {
       navigate("/calculator");
     } else {
       navigate(`/dashboard?page=${id}`);
     }
+    if (onCommit) onCommit();
   };
 
   return (

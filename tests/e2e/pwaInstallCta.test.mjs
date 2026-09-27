@@ -10,7 +10,12 @@
 //     verschwindet nach der ersten Benutzung (auch nach einem Neuladen).
 //   • Als App geöffnet: Status statt Aktion. iPhone/iPad und Safari am Mac:
 //     Anleitung statt nachgebautem Dialog. Firefox: ruhiger Satz ohne Knopf.
-//   • Kein horizontaler Überlauf bei 390/834/1440 px.
+//   • Der Anleitungs-Eintrag springt zur Karte, öffnet die Anleitung und setzt
+//     den Fokus — aus einem anderen Bereich ebenso wie bei schon offenen
+//     Kontoeinstellungen (ohne Remount); der Drawer schließt sich dabei.
+//   • Der Verlassen-Guard von „Neue Sendung" bleibt wirksam: Abbruch markiert
+//     nichts und hinterlässt keinen Fokuswunsch, Bestätigen löst ihn ein.
+//   • Kein horizontaler Überlauf bei 320/390/834/1440 px.
 //   • Geschützte Adresse → Login → dieselbe Adresse; fremde Ziele → Übersicht.
 //
 // Das Browserereignis `beforeinstallprompt` liefert Chromium nicht zuverlässig
@@ -66,6 +71,12 @@ async function neueSeite({ angemeldet = true, userAgent, viewport = { width: 144
     if (p === "/kunde/shipments") return json({ shipments: [], nextCursor: null });
     if (p === "/kunde/invoices") return json({ invoices: [], summary: { open_amount: 0, open_count: 0, overdue_count: 0, next_due_date: null, currency: "EUR", mixed_currency: false }, nextCursor: null });
     if (p === "/kunde/support-requests") return json({ supportRequests: [], nextCursor: null });
+    // „Neue Sendung" (nur für den Verlassen-Guard): leeres Adressbuch, keine
+    // Entwürfe, abgeschaltete Legal-Schranke. Eine Bestellung entsteht nie.
+    if (p.endsWith("/api/legal/booking-context")) return json({ enabled: false });
+    if (p.endsWith("/api/kunde/form-drafts") && req.method() === "GET") return json({ drafts: [], nextCursor: null });
+    if (p.includes("/addresses")) return json({ addresses: [], pagination: { total: 0 } });
+    if (p.includes("/address/")) return json({ status: "unsupported" });
     return json({ error: "nicht modelliert" }, 404);
   });
   await ctx.addInitScript(({ angemeldet: an, standalone: sa }) => {
@@ -98,6 +109,16 @@ async function installEreignis(page) {
 const promptAufrufe = (page) => page.evaluate(() => window.__promptAufrufe || 0);
 const karte = (page) => page.locator("#pwa-install-card");
 const navEintrag = (page, name) => page.locator(".pp-nav .nitem--utility", { hasText: name });
+const hinweisBenutzt = (page) => page.evaluate(() => localStorage.getItem("ce_pwa_hint_done") === "1");
+const drawerOffen = async (page) => (await page.locator("aside.pp-side.sidebar-open").count()) > 0;
+const fokusText = (page) => page.evaluate(() => document.activeElement && document.activeElement.textContent.trim());
+const karteImBild = (page) => page.evaluate(() => {
+  const r = document.querySelector("#pwa-install-card").getBoundingClientRect();
+  return r.top >= 0 && r.top < window.innerHeight;
+});
+// Der Sprung ist fertig, wenn der Kartentitel den Fokus hat.
+const aufKarteGesprungen = (page) => page.waitForFunction(
+  (t) => document.activeElement && document.activeElement.textContent.trim() === t, KARTENTITEL, { timeout: 10000 });
 
 async function kontoeinstellungen(page) {
   await page.goto(`${BASE}/dashboard?page=profile`, { waitUntil: "networkidle" });
@@ -222,9 +243,13 @@ test("C6 — iPhone: Anleitung statt Dialog, Drawer-Eintrag führt zur geöffnet
   assert.equal(await karte(page).locator(".pwa-card-steps li").count(), 3);
   assert.ok((await karte(page).textContent()).includes("Vom Home-Bildschirm öffnet ConfidaraExpress wie eine App"));
   assert.ok((await karte(page).textContent()).includes("Wählen Sie „Zum Home-Bildschirm“."));
-  assert.equal(await page.evaluate(() => document.activeElement && document.activeElement.textContent.trim()), KARTENTITEL,
-    "der Fokus liegt nicht auf der Karte");
+  await aufKarteGesprungen(page);
+  assert.equal(await fokusText(page), KARTENTITEL, "der Fokus liegt nicht auf der Karte");
   assert.ok((await karte(page).textContent()).includes("In der App melden Sie sich einmalig neu an."));
+  // Der Drawer ist zu, die Karte steht im Bild, der Hinweis gilt als benutzt.
+  assert.equal(await drawerOffen(page), false, "der Drawer bleibt offen");
+  assert.equal(await karteImBild(page), true, "die Karte steht nicht im Bild");
+  assert.equal(await hinweisBenutzt(page), true);
 
   // Zuklappen und wieder öffnen — ein normaler Umschalter.
   await knopf.click();
@@ -309,4 +334,95 @@ test("C9 — geschützte Adresse → Login → dieselbe Adresse; fremdes Ziel �
     assert.equal(new URL(page.url()).host, `127.0.0.1:${PORT}`, "fremdes Ziel angesteuert");
     await ctx.close();
   }
+});
+
+test("C10 — Kontoeinstellungen schon offen: der Eintrag springt ohne Remount zur geöffneten Anleitung", async () => {
+  for (const [name, optionen, ueberDrawer] of [
+    ["iPhone (Drawer)", { userAgent: UA.iphone, viewport: { width: 390, height: 844 } }, true],
+    ["Safari am Mac (Sidebar)", { userAgent: UA.safariMac }, false],
+  ]) {
+    const { ctx, page, fehler } = await neueSeite(optionen);
+    await kontoeinstellungen(page);
+    const knopf = karte(page).getByRole("button", { name: "Anleitung anzeigen" });
+    assert.equal(await knopf.getAttribute("aria-expanded"), "false", `${name}: Anleitung schon offen`);
+    assert.equal(await page.evaluate(() => window.scrollY), 0);
+    // Dieselbe Karte und dieselbe Seite müssen es bleiben — kein Remount, kein Reload.
+    await page.evaluate(() => { window.__ceKarte = document.querySelector("#pwa-install-card"); window.__ceMarker = "bleibt"; });
+
+    if (ueberDrawer) await page.locator(".mobile-topbar .hamburger-btn").click();
+    const eintrag = navEintrag(page, "Als App nutzen");
+    await eintrag.click();
+    await aufKarteGesprungen(page);
+
+    assert.equal(await knopf.getAttribute("aria-expanded"), "true", `${name}: Anleitung nicht geöffnet`);
+    assert.equal(await karteImBild(page), true, `${name}: Karte nicht angesprungen`);
+    const selbe = await page.evaluate(() => ({
+      karte: document.querySelector("#pwa-install-card") === window.__ceKarte,
+      seite: window.__ceMarker === "bleibt",
+    }));
+    assert.deepEqual(selbe, { karte: true, seite: true }, `${name}: Karte neu montiert oder Seite neu geladen`);
+    assert.equal(await drawerOffen(page), false, `${name}: der Drawer bleibt offen`);
+    assert.equal(await hinweisBenutzt(page), true);
+    if (ueberDrawer) await page.locator(".mobile-topbar .hamburger-btn").click();
+    assert.equal(await eintrag.count(), 0, `${name}: Eintrag nach Benutzung noch da`);
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  }
+});
+
+test("C11 — Verlassen-Guard: Abbruch markiert nichts und hinterlässt keinen Fokuswunsch; Bestätigen löst ihn ein", async () => {
+  const { ctx, page } = await neueSeite({ userAgent: UA.safariMac });
+  const dialog = page.locator('.dft-dialog-card[role="dialog"]');
+  const eintrag = navEintrag(page, "Als App nutzen");
+  const bereich = async (gruppe, name) => {
+    const kopf = page.locator("button.pp-nav-group-head", { hasText: gruppe });
+    if ((await kopf.getAttribute("aria-expanded")) !== "true") await kopf.click();
+    await page.locator(".pp-nav-group-items .nitem", { hasText: name }).click();
+  };
+  const ungespeichert = async () => {
+    await page.waitForSelector("#ns-weight", { timeout: 20000 });
+    await page.fill("#ns-weight", "5");
+  };
+
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "networkidle" });
+  await ungespeichert();
+
+  // 1. Abbruch: der Kunde bleibt bei seiner Sendung — nichts ist benutzt, nichts vorgemerkt.
+  await eintrag.click();
+  await dialog.waitFor();
+  await dialog.getByRole("button", { name: "Weiter bearbeiten" }).click();
+  await dialog.waitFor({ state: "detached" });
+  assert.equal(await page.inputValue("#ns-weight"), "5", "die Sendung wurde verlassen");
+  assert.equal(await karte(page).count(), 0);
+  assert.equal(await hinweisBenutzt(page), false, "Hinweis trotz Abbruch als benutzt markiert");
+  assert.equal(await eintrag.count(), 1, "Eintrag trotz Abbruch verschwunden");
+
+  // 2. Später auf anderem Weg in die Kontoeinstellungen: kein verspäteter Sprung.
+  await bereich("Konto", "Kontoeinstellungen");
+  await dialog.waitFor();
+  await dialog.locator(".dft-leave-discard").click();
+  await karte(page).waitFor();
+  await page.waitForTimeout(800);
+  // Ein verbrauchter Wunsch öffnet die Anleitung UND fokussiert den Titel in
+  // einem Schritt — beides darf hier nicht passiert sein. (Die Scrollposition
+  // taugt nicht als Beleg: ein page-Wechsel übernimmt die der Vorseite.)
+  const knopf = karte(page).getByRole("button", { name: "Anleitung anzeigen" });
+  assert.equal(await knopf.getAttribute("aria-expanded"), "false", "Anleitung ohne Wunsch geöffnet");
+  assert.notEqual(await fokusText(page), KARTENTITEL, "verspäteter Fokussprung zur Karte");
+  assert.equal(await hinweisBenutzt(page), false);
+  assert.equal(await eintrag.count(), 1);
+
+  // 3. Bestätigen: der Wunsch reist mit dem Ziel durch den Dialog und wird eingelöst.
+  await bereich("Versand", "Neue Sendung");
+  await ungespeichert();
+  await eintrag.click();
+  await dialog.waitFor();
+  await dialog.locator(".dft-leave-discard").click();
+  await karte(page).waitFor();
+  await aufKarteGesprungen(page);
+  assert.equal(await knopf.getAttribute("aria-expanded"), "true", "Anleitung nach Bestätigen nicht geöffnet");
+  assert.equal(await karteImBild(page), true);
+  assert.equal(await hinweisBenutzt(page), true);
+  assert.equal(await eintrag.count(), 0);
+  await ctx.close();
 });

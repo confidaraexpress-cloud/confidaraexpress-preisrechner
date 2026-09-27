@@ -32,10 +32,15 @@ function hinweisErledigt() {
   }
 }
 
-let stand = { canPrompt: false, installedNow: false, hintDone: false };
+let stand = { canPrompt: false, installedNow: false, hintDone: false, cardFocusPending: false };
 
 function melden() {
-  stand = { canPrompt: aufgeschoben !== null, installedNow: installiertJetzt, hintDone: hinweisErledigt() };
+  stand = {
+    canPrompt: aufgeschoben !== null,
+    installedNow: installiertJetzt,
+    hintDone: hinweisErledigt(),
+    cardFocusPending: kartenFokus,
+  };
   abonnenten.forEach((fn) => fn());
 }
 
@@ -89,12 +94,22 @@ export function markInstallHintDone() {
   melden();
 }
 
+// Navigationseintrag → Karte zeigen, Anleitung öffnen, Fokus setzen.
+//
+// Der offene Wunsch ist Teil des gemeldeten Zustands, kein Mount-Signal: eine
+// schon sichtbare Karte (Kontoeinstellungen bereits offen — kein Remount)
+// reagiert sofort, eine erst entstehende beim Mount. Die Karte verbraucht ihn
+// genau einmal. Angefordert wird er erst, wenn die Navigation dorthin
+// tatsächlich ausgeführt wird (DashboardSidebar, Folgeaktion von navigateTo) —
+// ein vom Verlassen-Guard verworfenes Ziel hinterlässt deshalb keinen Wunsch.
 export function requestInstallCardFocus() {
   kartenFokus = true;
+  melden();
 }
 
 export function consumeInstallCardFocus() {
-  const wert = kartenFokus;
+  if (!kartenFokus) return false;
   kartenFokus = false;
-  return wert;
+  melden();
+  return true;
 }

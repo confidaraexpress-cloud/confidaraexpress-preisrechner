@@ -114,6 +114,14 @@ const NAV_GROUPS = [
 // Tab hinaus entsteht dabei nicht.
 let sitzungsOffeneGruppe = null;
 
+// Folgeaktion des App-Eintrags (iPhone/iPad, Safari am Mac), sobald die
+// Navigation zu den Kontoeinstellungen ausgeführt ist: Hinweis gilt als
+// benutzt, die Karte springt ins Bild und öffnet die Anleitung.
+function zurAppKarte() {
+  markInstallHintDone();
+  requestInstallCardFocus();
+}
+
 // Ein Navigationseintrag. EIN Bauteil für die erste Ebene (Übersicht,
 // Adressbuch), für Gruppeneinträge und für „Abmelden" — die Ebene entscheidet
 // über das Aussehen, nicht ein zweites Bauteil: Gruppeneinträge erkennt das
@@ -236,16 +244,19 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
   // verlässliche Ort bleibt die Karte in den Kontoeinstellungen.
   const pwa = usePwaInstall();
   const handleInstallEntry = async () => {
-    markInstallHintDone();
     if (pwa.state === INSTALL_STATE.PROMPT) {
       // Installationsdialog des Browsers — ausschließlich auf diesen Klick.
+      markInstallHintDone();
       setSidebarOpen(false);
       await promptPwaInstall();
       return;
     }
-    // iPhone/iPad, Safari am Mac: zur Karte mit der Anleitung.
-    requestInstallCardFocus();
-    navigateTo("profile");
+    // iPhone/iPad, Safari am Mac: zur Karte mit der Anleitung. „Benutzt" und
+    // der Fokuswunsch hängen als Folgeaktion an GENAU dieser Navigation und
+    // entstehen erst, wenn sie tatsächlich ausgeführt wird. Fängt der
+    // Verlassen-Guard von „Neue Sendung" sie ab und bleibt der Kunde dort,
+    // passiert beides nie; bestätigt er das Verlassen, läuft es dann.
+    navigateTo("profile", null, zurAppKarte);
   };
 
   const gruppe = (id) => NAV_GROUPS.find((g) => g.id === id);

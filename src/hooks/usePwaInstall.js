@@ -54,5 +54,8 @@ export function usePwaInstall() {
     state,
     showNavItem: showInstallNavItem({ state, hintDone: stand.hintDone }),
     navLabel: installNavLabel(state),
+    // Offener Wunsch des Navigationseintrags, zur Karte zu springen
+    // (Vertrag in utils/pwaInstallPrompt.js).
+    cardFocusPending: stand.cardFocusPending,
   };
 }

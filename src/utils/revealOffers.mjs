@@ -33,12 +33,38 @@ const standardMatcher = () =>
     : null);
 
 /* Liefert true, wenn tatsächlich gescrollt wurde — sonst false (kein Anker im
- * DOM). Der Aufrufer darf daraus nie einen Ladezustand ableiten. */
-export function revealOffers(element, mediaMatcher = standardMatcher()) {
+ * DOM). Der Aufrufer darf daraus nie einen Ladezustand ableiten.
+ *
+ * `sofort`: nach einem Vergleich hinter dem Ladeoverlay springt der Bereich
+ * ohne Fahrt ins Bild. Das Overlay hat die Seite ohnehin verdeckt — eine
+ * zusätzliche Bewegung vom Formular zu den Angeboten trüge nichts bei. Und
+ * content-visibility (offers.css) rendert so die sichtbaren Karten schon im
+ * ersten Frame; bei einer weichen Fahrt lägen sie beim Einfügen noch
+ * außerhalb des Bildes und blieben einige Frames ohne Inhalt (gemessen). */
+export function revealOffers(element, mediaMatcher = standardMatcher(), { sofort = false } = {}) {
   if (!element || typeof element.scrollIntoView !== "function") return false;
   element.scrollIntoView({
-    behavior: offersScrollBehavior(mediaMatcher),
+    behavior: sofort ? "instant" : offersScrollBehavior(mediaMatcher),
     block: "start",
   });
+  return true;
+}
+
+/* Nach einem ERFOLGREICHEN Vergleich rückt der Bereich über revealOffers() ins
+ * Bild; zusätzlich landet der Fokus auf der Ergebniszeile („33 Angebote",
+ * tabIndex=-1 in OffersList) — nicht auf einer einzelnen Karte. Ein
+ * Screenreader hört damit, wie viele Angebote da sind, und die Tabulatortaste
+ * geht von dort in Filter und Karten weiter.
+ *
+ * `preventScroll`, damit der Fokus die (ggf. weiche) Bewegung nicht mit einem
+ * eigenen Sprung überschreibt. Liefert true, wenn der Fokus gesetzt wurde. */
+export const OFFERS_RESULT_SELECTOR = "[data-offers-result]";
+
+export function focusOffersResult(element) {
+  const ziel = element && typeof element.querySelector === "function"
+    ? element.querySelector(OFFERS_RESULT_SELECTOR)
+    : null;
+  if (!ziel || typeof ziel.focus !== "function") return false;
+  try { ziel.focus({ preventScroll: true }); } catch { ziel.focus(); }
   return true;
 }

@@ -87,6 +87,20 @@ async function zeigeAngebote(page) {
   await fuelleVersandformular(page, { absender: { ...STANDARD_ABSENDER, ...ABSENDER } });
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
+  // Seit dem Ladeoverlay rückt ein ERFOLGREICHER Vergleich die Angebote selbst
+  // ins Bild (sofort, hinter dem Overlay).
+  await angeboteAmSeitenanfang(page);
+}
+
+// Ein weicher Scroll läuft noch Frames nach „≤ 4 px" aus, und ein Sofortsprung
+// mittendrin wird von der Restanimation überschrieben (gemessen: scrollY endet
+// bei 2 statt 0). Vor jedem Zurücksetzen muss die Seite deshalb STEHEN.
+async function scrollSteht(page) {
+  await page.evaluate(() => { window.__ce_ruhe = undefined; });
+  await page.waitForFunction(() => {
+    const t = window.__ce_ruhe; window.__ce_ruhe = window.scrollY;
+    return t === window.scrollY;
+  }, null, { timeout: 5000, polling: 120 });
 }
 
 // ── Der Messpunkt, und warum er so scharf sein muss ────────────────────────
@@ -109,6 +123,7 @@ async function zeigeAngebote(page) {
 // bloße Sichtbarkeit. Und der Klick-Scroll wird VORHER selbst ausgeführt, damit
 // er als Ausgangslage feststeht und nicht als Ergebnis durchgeht.
 async function stelleAusgangslageHer(page) {
+  await scrollSteht(page);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForFunction(() => window.scrollY === 0, null, { timeout: 5000 });
   // Genau das, was `locator.click()` gleich ohnehin täte.
@@ -335,6 +350,11 @@ test("R7 — der Versandkostenrechner reagiert identisch", async () => {
   await rechnerCta.click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
   assert.equal(z.n, 1);
+  // Wie in zeigeAngebote(): erst die Enthüllung nach dem Erfolg ausklingen lassen.
+  await page.waitForFunction(() =>
+    Math.abs(document.querySelector(".offers-section").getBoundingClientRect().top) <= 4,
+  null, { timeout: 10000 });
+  await scrollSteht(page);
 
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await page.waitForFunction(() => window.scrollY === 0, null, { timeout: 5000 });

@@ -204,6 +204,11 @@ test("6 — vier Breiten: layoutstabil, kein Ueberlauf, Laufzeit ueberall sichtb
                                         ["Tablet", 834, 1112], ["Mobil", 390, 844]]) {
     const page = await browser.newPage();
     await angebote(page, { width, height });
+    // Gemessen wird das echte Kartenlayout. content-visibility (offers.css) hält
+    // Karten außerhalb des Bildes nur als Platzhalter vor — ihr innerText ist dort
+    // leer und ihre Höhe geschätzt. Für diese Layoutmessung liegen deshalb alle
+    // Karten vollständig im Layout.
+    await page.addStyleTag({ content: ".offer-card { content-visibility: visible !important; }" });
     const eta = await etaZeilen(page);
     assert.deepEqual(eta, ["1–2 Tage", "1–2 Tage", "1 Tag", "ab 1 Tag", "Auf Anfrage"], `${name}: Laufzeiten`);
 

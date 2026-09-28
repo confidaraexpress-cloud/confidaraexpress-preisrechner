@@ -16,6 +16,8 @@ import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResum
 import { validatePostalCode, postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../utils/postalCode";
 import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
+import { OfferComparisonLoadingOverlay } from "../components/offers/OfferComparisonLoadingOverlay";
+import { useComparisonLoadingFocus } from "../hooks/useComparisonLoadingFocus";
 import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
 import { businessTodayISO } from "../utils/businessDate.mjs";
@@ -531,6 +533,19 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
      ScrollToTop-Verhalten bleibt für alle anderen Wege unberührt. */
   const scrollWiederhergestelltRef = useRef(false);
   const offersRef = useRef(null);
+  // „Angebote vergleichen" — Rückgabeziel des Fokus nach einem Fehler.
+  const calcCtaRef = useRef(null);
+  // Während des Vergleichs ist der Seiteninhalt inert; wohin der Fokus danach
+  // gehört, meldet calculate() hierüber (hooks/useComparisonLoadingFocus.js).
+  const fokusNachVergleich = useComparisonLoadingFocus(loading, { offersRef, triggerRef: calcCtaRef });
+  // content-visibility (offers.css) lässt Karten außerhalb des Bildes nur mit
+  // ihrem Platzhalter im Layout. Für den Sprung auf eine GEMERKTE Pixelposition
+  // wäre das falsch: frisch montiert stünden alle Karten über dem Ziel mit
+  // Platzhalterhöhe da — gemessen bis ~620 px daneben (108 Angebote, 390 px).
+  // Bis der Sprung sitzt, liegen die Karten deshalb vollständig im Layout;
+  // `contain-intrinsic-size: auto` merkt sich dabei ihre echten Höhen, danach
+  // gilt wieder content-visibility, ohne dass sich etwas verschiebt.
+  const [kartenVollLayouten, setKartenVollLayouten] = useState(() => (flowInit?.scrollY ?? 0) > 0);
   useEffect(() => {
     if (scrollWiederhergestelltRef.current) return;
     if (!flowInit) { scrollWiederhergestelltRef.current = true; return; }
@@ -548,6 +563,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     const sanft = !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        setKartenVollLayouten(false);   // wirkt erst nach diesem Rückruf — der Sprung rechnet noch mit echten Höhen
         if (ziel > 0) { window.scrollTo(0, ziel); return; }
         if (offersRef.current) {
           offersRef.current.scrollIntoView({ behavior: sanft ? "smooth" : "auto", block: "start" });
@@ -556,7 +572,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         window.scrollTo(0, 0);
       });
     });
-    return () => cancelAnimationFrame(id);
+    return () => { cancelAnimationFrame(id); setKartenVollLayouten(false); };
   }, [flowInit, hasResults]);
 
   const selectedOption       = SERVICE_OPTIONS.find(o => o.id === serviceFilter)             || SERVICE_OPTIONS[0];
@@ -1255,6 +1271,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           if (startErr.kind === "conflict") setResumeConflict(true); // „Aktuelle Version laden" anbieten
           else if (startErr.kind === "notFound") setResumeNotice(startErr.message);
           else setError(startErr.message);                           // CONVERSION_IN_PROGRESS → Hinweis am CTA
+          fokusNachVergleich("ausloeser");
           setLoading(false);
           return;
         }
@@ -1266,8 +1283,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         const norm = normalizeApiError({ status: r.status, body: d, fieldMap: SHIPMENT_FIELD_MAP });
         if (norm.field) {
           setErrors((prev) => ({ ...prev, [norm.field]: norm.fieldMessage || norm.message }));
-          focusFirstError(norm.field);
         }
+        // Angesprungen wird das Feld (sonst der Knopf) erst nach dem Laden — bis
+        // dahin ist der Seiteninhalt inert, ein Fokus jetzt liefe ins Leere.
+        fokusNachVergleich(norm.field ? "feld" : "ausloeser", norm.field);
         // TG22 Paket B: 422 BUSINESS_PROFILE_INCOMPLETE ist keine abgelaufene Sitzung — der Kunde
         // bleibt angemeldet und bekommt den direkten Weg ins Unternehmensprofil.
         setProfileIncomplete(norm.code === "BUSINESS_PROFILE_INCOMPLETE");
@@ -1294,6 +1313,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         // (keine automatische Wiederholung).
         if (t.blocking || !hasSavableShipmentId(d.ceShipmentId)) {
           setError(SHIPMENT_PERSISTENCE_FAILED_MESSAGE);
+          fokusNachVergleich("ausloeser");
           setLoading(false);
           return;
         }
@@ -1330,6 +1350,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // ABSENDEN, nicht der aktuelle — eine zwischenzeitliche Eingabe hätte den
       // Request oben bereits verworfen.
       lastCalcKeyRef.current = reqKey;
+      // Alle Angebote erscheinen gemeinsam; danach rückt der Bereich ins Bild
+      // und der Fokus geht auf die Ergebniszeile (erst nach dem Laden).
+      fokusNachVergleich("angebote");
       setHasResults(true);
       setLoading(false);
     } catch (e) {
@@ -1339,6 +1362,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // fachlichen Ablehnungen sind oben behandelt. Kein roher Technikertext
       // („Failed to fetch") mehr im Kundenbanner.
       setError(normalizeThrownError(e).message);
+      fokusNachVergleich("ausloeser");
       setLoading(false);
     } finally {
       // Genau hier — und nur hier — wird der nächste Klick wieder freigegeben.
@@ -1605,10 +1629,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         onConfirm={applyReset}
       />
 
+      {/* Ladeoverlay des Vergleichs (Portal an <body>). Solange es steht, ist der
+          Seiteninhalt darunter inert und aria-busy — die Dialoge oben bleiben
+          bewusst außerhalb. */}
+      <OfferComparisonLoadingOverlay active={loading} />
+
       {/* Kein .page-body hier: der Elternknoten (DashboardPage.jsx, page==="new")
           bringt .page-body bereits mit — .calc-page-wrap liefert nur noch das
           vertikale Innenabstandsmaß (Paket B, keine zweite max-width). */}
-      <div className="calc-page-wrap">
+      <div className="calc-page-wrap" inert={loading} aria-busy={loading || undefined}>
         <div className="mb-24">
           {/* "Neue Sendung" ist bereits der Seitentitel im PageHeader
               (DashboardPage.jsx, PAGE_HEADERS.new). Dieser Titel war bisher ein
@@ -1927,6 +1956,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   wertlose Ergebnisse. `unverified`/`unavailable` blockieren NICHT — eine
                   Datenlücke darf niemanden am Versand hindern. */}
               <button
+                ref={calcCtaRef}
                 className="btn btn-primary btn-lg dft-cta-primary"
                 onClick={calculate}
                 disabled={loading || !calcValid || saving || addressBlocksCalculation || datumFehlt}
@@ -2030,7 +2060,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 </button>
               </div>
             )}
-            {error && <div className="alert alert-error mt-16"><Icon n="x" s={16} />{error}</div>}
+            {error && <div className="alert alert-error mt-16" role="alert"><Icon n="x" s={16} />{error}</div>}
             {/* TG22 Paket B: fehlende Profilangaben (422) — der Weg ins Profil steht direkt am Hinweis.
                 Keine Abmeldung, der Vorgang bleibt erhalten. */}
             {error && profileIncomplete && (
@@ -2048,7 +2078,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         {/* Stabiler Anker für die Rückkehr aus der Buchung: Ohne gemerkte
             Scrollposition wird gezielt hierher gescrollt — kein Pixelwert. */}
         {(hasResults || loading) && (
-          <div ref={offersRef} id="angebotsbereich">
+          <div ref={offersRef} id="angebotsbereich" className={kartenVollLayouten ? "offers-cv-voll" : undefined}>
           <OffersList
             sorted={sorted}
             filtered={filtered}

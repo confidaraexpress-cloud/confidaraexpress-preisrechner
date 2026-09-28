@@ -289,6 +289,25 @@
 }
 .offer-card:last-of-type { margin-bottom: 0; }
 
+/* Renderkosten langer Listen: Karten außerhalb des Bildes werden erst
+   gelayoutet und gezeichnet, wenn sie in die Nähe kommen. Die Liste erscheint
+   trotzdem vollständig und auf einmal — kein DOM-Entfernen, keine
+   Virtualisierung; Suche, Auswahl und Screenreader erreichen jede Karte.
+   Browser ohne Unterstützung verhalten sich wie bisher.
+
+   Der Platzhalter ist GEMESSEN (33/108 echte Angebote, eingeklappt): ab
+   1100 px 255 px bei 98 von 108 Karten, maximal 295 px; die Stufen darunter
+   stehen in den Media Queries. `auto` merkt sich nach dem ersten Rendern die
+   echte Höhe. */
+.offer-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 256px;
+}
+/* Rückkehr auf eine gemerkte Scrollposition (NewShipmentPage): bis der Sprung
+   sitzt, liegen alle Karten vollständig im Layout — sonst rechnete er mit
+   Platzhalterhöhen. Danach gilt wieder content-visibility. */
+.offers-cv-voll .offer-card { content-visibility: visible; }
+
 .offer-card:hover {
   /* Unterschied kommt aus der Kante, nicht aus mehr Tiefe. */
   border-color: var(--ce-color-border-strong);
@@ -821,6 +840,8 @@
   .offer-zone-2 { align-self: start; }
   .offer-eta { font-size: 24px; }
   .offer-cta-btn { min-width: 168px; }
+  /* Platzhalter: gemessen 390–414 px, im Mittel 400 (je zur Hälfte 390 und 408). */
+  .offer-card { contain-intrinsic-size: auto 400px; }
 
   /* Liste (Verhalten wie zuvor) */
   .offers-trust-strip { grid-template-columns: 1fr 1fr; }
@@ -862,6 +883,8 @@
 
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
   .offer-card { padding: 18px 16px; border-radius: var(--ce-radius-lg); margin-bottom: 12px; }
+  /* Platzhalter: gemessen 436–545 px (Median 453–480 von 430 bis 320 px Breite). */
+  .offer-card { contain-intrinsic-size: auto 460px; }
   .offer-card-inner {
     grid-template-columns: 1fr;
     grid-template-areas: "zone-1" "zone-2" "zone-3" "zone-4";

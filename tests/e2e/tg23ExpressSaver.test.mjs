@@ -228,7 +228,7 @@ const VERBOTENE_CODES = /\bTG\b|\bS23\b|\bCOLFEE\b|\bRES\b|\bINS\b|\bFRT\b/;
 const NIE_IM_PROFIL = /access\s*point|paketshop|samstag|saturday|länge|gurtmaß|\d+\s*cm\b|garant|\d{1,2}:\d{2}|\d{1,2}\.\d{1,2}\.\d{4}|tagesende|treibstoff|kraftstoff|fuel|entlegen|adresskorrektur/i;
 // Keine Zustelluhrzeit und keine Zusage auf der TG23-Karte.
 const KEINE_ZUSAGE = /garantiert|garantie|bis 12|bis 18|12:00|18:00|tagesende|zustellung bis/i;
-const PROGNOSE_HINWEIS = "Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben.";
+const PROGNOSE_HINWEIS = "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.";
 const GRUNDSCHUTZ_TEXT = "Bis zu einem Warenwert von 50 € ist bereits eine Grundabsicherung ohne Aufpreis enthalten.";
 const HOECHSTDECKUNG_TEXT = "Eine zusätzliche Transportabsicherung ist für diesen Tarif nur bis zu einem Warenwert von 2.500 € möglich.";
 

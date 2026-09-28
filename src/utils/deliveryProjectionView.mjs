@@ -20,7 +20,7 @@
 
 export const DELIVERY_PROJECTION_TEXT = Object.freeze({
   label: "Voraussichtliche Lieferung",
-  note: "Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben.",
+  note: "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.",
 });
 
 const KIND_ESTIMATED = "estimated";

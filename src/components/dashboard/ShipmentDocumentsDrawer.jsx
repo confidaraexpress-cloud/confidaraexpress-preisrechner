@@ -5,7 +5,7 @@ import { getShipmentDocuments } from "../../api/client";
 import { downloadDocument } from "../../utils/downloadDocument";
 import {
   DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, shipmentDocumentsPrintNotice,
-  documentViewState, documentDownloadPath,
+  documentViewState, documentDownloadPath, documentRetrievePath,
   documentLabel, documentNumber, documentIcon, documentFallbackFilename,
   documentCarrierReference, documentOrdinal, documentLabelSize,
   hasProcessingDocument, nextDocumentPollDelay,
@@ -35,8 +35,10 @@ import {
    einer Aktion beziehungsweise einem ruhigen Zustandstext.
    ───────────────────────────────────────────────────────────────────────── */
 
-function DocumentRow({ doc, onDownload, busy }) {
+function DocumentRow({ doc, onDownload, onRetrieve, busy }) {
   const zustand = documentViewState(doc);
+  // EXTRA: ein Beleg, der noch nicht in ConfidaraExpress liegt, beim Anbieter aber abrufbar ist.
+  const abruf = documentRetrievePath(doc);
   const nummer = documentNumber(doc);
   // TG-F5: die Carrier-Sendungsnummer unterscheidet mehrere Etiketten derselben Sendung. Sie
   // steht nur, wo es keine Belegnummer gibt — und nie als leerer Platzhalter.
@@ -69,7 +71,9 @@ function DocumentRow({ doc, onDownload, busy }) {
         {/* Zustände tragen TEXT, nicht nur Farbe — und der Fehlerfall ist ruhig:
             ein roter Alarm neben einer erfolgreich gebuchten Sendung läse sich
             wie ein Problem mit der Sendung selbst. Ein Wiederholen gibt es
-            bewusst nicht: der Kunde kann am Zustand des Belegs nichts ändern. */}
+            bewusst nicht: der Kunde kann am Zustand des Belegs nichts ändern —
+            außer beim ausdrücklichen Abruf darunter (EXTRA), den der Server nur
+            für einen beim Anbieter abrufbaren Beleg anbietet. */}
         {zustand === DOC_STATUS.PROCESSING && (
           <span className="sdoc-row-state" role="status">
             <span className="spinner spinner-dark" aria-hidden="true" /> {DOCUMENTS_TEXT.processing}
@@ -77,6 +81,21 @@ function DocumentRow({ doc, onDownload, busy }) {
         )}
         {zustand === DOC_STATUS.FAILED && (
           <span className="sdoc-row-state sdoc-row-state--muted">{DOCUMENTS_TEXT.failed}</span>
+        )}
+        {/* EXTRA: noch nicht in ConfidaraExpress, beim Anbieter abrufbar — der Zustand bleibt als
+            Text stehen, der Abruf ist eine eigene, ausdrückliche Aktion (nie „Herunterladen"). Hier
+            ändert der Kunde tatsächlich etwas: ein gelungener Abruf legt den Beleg ab. */}
+        {abruf && (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => onRetrieve(doc)}
+            disabled={busy}
+          >
+            {busy
+              ? <><span className="spinner spinner-dark" /> {DOCUMENTS_TEXT.retrieving}</>
+              : DOCUMENTS_TEXT.retrieve}
+          </button>
         )}
         {/* INTERNAL-02: in CE entsteht keines mehr (etwa ein außerhalb von CE bereitgestelltes
             Versandlabel) — ruhiger Text, kein Download, kein „wird erstellt". */}
@@ -174,6 +193,25 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
     setBusyPath("");
   };
 
+  // EXTRA: der ausdrückliche Abruf beim Anbieter — derselbe Serverweg wie ein Download, aber erst
+  // sein Erfolg macht den Beleg bereit. Danach wird die Liste neu geladen, damit sie den abgelegten
+  // Beleg als `ready` zeigt (ein reiner GET).
+  const handleRetrieve = async (doc) => {
+    const pfad = documentRetrievePath(doc);
+    if (!pfad || busyPath) return;
+    setBusyPath(pfad);
+    setDownloadError("");
+    let abgelegt = false;
+    try {
+      await downloadDocument(pfad, { fallbackFilename: documentFallbackFilename(doc.type, documentOrdinal(doc), documentLabelSize(doc)) });
+      abgelegt = true;
+    } catch (e) {
+      if (e?.status !== 401 && e?.status !== 403) setDownloadError(e.message); // globaler Auth-Redirect übernimmt sonst
+    }
+    setBusyPath("");
+    if (abgelegt) setVersuch((n) => n + 1);
+  };
+
   const leer = Array.isArray(groups) && groups.length === 0;
 
   return (
@@ -235,7 +273,9 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
                       key={`${doc.type}-${documentOrdinal(doc) ?? i}`}
                       doc={doc}
                       onDownload={handleDownload}
-                      busy={busyPath !== "" && busyPath === documentDownloadPath(doc)}
+                      onRetrieve={handleRetrieve}
+                      busy={busyPath !== ""
+                        && (busyPath === documentDownloadPath(doc) || busyPath === documentRetrievePath(doc))}
                     />
                   ))}
                 </ul>

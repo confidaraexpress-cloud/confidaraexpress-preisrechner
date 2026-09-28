@@ -104,6 +104,10 @@
   justify-content: flex-end;
   flex: 0 0 auto;
   margin-inline-start: auto;
+  /* Zustandstext und ausdrücklicher Abruf können nebeneinander stehen — unter 480 px bricht
+     der Knopf (volle Breite) unter den Text statt ihn zu quetschen. */
+  flex-wrap: wrap;
+  gap: var(--ce-space-2);
 }
 /* Zustände tragen Text, nicht nur Farbe. Der gescheiterte Beleg bleibt bewusst
    in der Mutedrolle: ein roter Alarm neben einer gebuchten Sendung läse sich wie

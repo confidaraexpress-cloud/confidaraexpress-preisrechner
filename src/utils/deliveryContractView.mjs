@@ -18,7 +18,7 @@
  *
  * ─── ES WIRD KEIN DATUM GERECHNET ─────────────────────────────────────────────────────
  * Aus einer Laufzeit entsteht hier kein Kalendertag. Eine voraussichtliche Lieferung rechnet
- * ausschliesslich der SERVER (aus Abholtag und Laufzeit, Montag bis Freitag, ohne Feiertage); sie
+ * ausschliesslich der SERVER (aus Abholtag und Laufzeit, Montag bis Freitag ohne die bundesweiten Feiertage); sie
  * gilt nur ohne Zustelldaten des Anbieters, traegt nie eine Uhrzeit und ist keine Zusage.
  *
  * ─── ES WIRD NICHT NACH DER EINKAUFSQUELLE GEFRAGT ────────────────────────────────────

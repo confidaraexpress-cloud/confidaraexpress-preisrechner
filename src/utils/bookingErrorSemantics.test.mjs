@@ -79,10 +79,19 @@ test("4 — ein Zustand OHNE Bestellung darf und soll wiederholt werden", () => 
 });
 
 test("5 — ein nicht mehr buchbares Angebot führt zum NEU BERECHNEN, nicht zum Wiederholen", () => {
-  for (const code of ["OFFER_NOT_BOOKABLE", "BOOKING_FAILED"]) {
-    const f = mapBookRestError(409, { code });
-    assert.equal(f, BOOK_FEHLER.NEU_BERECHNEN, `${code} wird falsch abgebildet`);
-    assert.match(f.message, /neu berechnen/);
+  const f = mapBookRestError(409, { code: "OFFER_NOT_BOOKABLE" });
+  assert.equal(f, BOOK_FEHLER.NEU_BERECHNEN, "OFFER_NOT_BOOKABLE wird falsch abgebildet");
+  assert.match(f.message, /neu berechnen/);
+  // P0-01: `BOOKING_FAILED` heißt „nachweislich NICHT bestellt" — eigener, ehrlicher Satz statt „Angebot nicht
+  // mehr buchbar" (das stimmt nicht: nach einer Neuberechnung kann es wieder tragen). Dieselbe Handlung —
+  // neu berechnen —, in JEDEM Transportstatus, auch einem 5xx.
+  for (const status of [409, 500, 502, 503]) {
+    const g = mapBookRestError(status, { code: "BOOKING_FAILED" });
+    assert.equal(g, BOOK_FEHLER.NICHT_DURCHGEFUEHRT, `BOOKING_FAILED/${status} wird falsch abgebildet`);
+    assert.match(g.message, /nichts beauftragt/);
+    assert.match(g.message, /berechnen Sie die Angebote neu/);
+    assert.equal(g.retryable, false);
+    assert.equal(fordertNeuberechnung({ code: "BOOKING_FAILED" }), true);
   }
 });
 

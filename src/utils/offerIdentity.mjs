@@ -151,6 +151,23 @@ export const OFFER_BUSINESS_RECIPIENT_HINT = "Bitte hinterlegen Sie beim Empfän
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_REASON = "address_details_too_long";
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT = "Für diese Adressangaben nicht verfügbar.";
 export const OFFER_ADDRESS_DETAILS_TOO_LONG_HINT = "Bitte kürzen Sie Vor- und Nachname, Firmenname oder Adresszeilen von Absender oder Empfänger.";
+// ─── Final Bookability Closure: vier weitere Gründe, die der Server seit P2-05/P2-08 sendet ───────
+// Jeder ist eine Eigenschaft des Angebots für DIESE Sendung — ohne Anbieter, ohne Grenzwert, ohne Zahl:
+//   business_sender_required      das Produkt verlangt einen Geschäftsabsender     → Firmenname beim Absender
+//   content_description_required  das Produkt verlangt die Inhaltsangabe          → Inhalt angeben
+//   package_dimensions_unverified die Grenzen des Produkts sind für diese Maße nicht sicher prüfbar
+//                                 (etwa ein Gurtmaß ohne belegte Formel) — nicht buchbar, statt zu raten
+//   area_surcharge_unconfirmed    für die Adresse fällt ein Gebietszuschlag an, dessen Höhe vor der
+//                                 Buchung nicht bestätigt ist — nicht buchbar, statt ihn zu verschweigen
+// Die beiden letzten hat der Kunde nicht in der Hand: sie bekommen KEINEN Handlungshinweis.
+export const OFFER_BUSINESS_SENDER_REASON = "business_sender_required";
+export const OFFER_BUSINESS_SENDER_TEXT = "Nur für Geschäftsabsender verfügbar.";
+export const OFFER_BUSINESS_SENDER_HINT = "Bitte hinterlegen Sie beim Absender einen Firmennamen.";
+export const OFFER_CONTENT_DESCRIPTION_REASON = "content_description_required";
+export const OFFER_CONTENT_DESCRIPTION_TEXT = "Nur mit Angabe des Inhalts buchbar.";
+export const OFFER_CONTENT_DESCRIPTION_HINT = "Bitte geben Sie den Inhalt der Sendung an.";
+export const OFFER_DIMENSIONS_UNVERIFIED_TEXT = "Für diese Maße nicht bestätigt.";
+export const OFFER_AREA_SURCHARGE_TEXT = "Gebietszuschlag nicht bestätigt.";
 const GRUND_TEXTE = {
   quote_only: "Derzeit nicht direkt buchbar",
   date_unavailable: "Für dieses Abholdatum nicht verfügbar.",
@@ -159,6 +176,10 @@ const GRUND_TEXTE = {
   same_day_unverifiable: OFFER_SAME_DAY_UNVERIFIABLE_TEXT,
   [OFFER_BUSINESS_RECIPIENT_REASON]: OFFER_BUSINESS_RECIPIENT_TEXT,
   [OFFER_ADDRESS_DETAILS_TOO_LONG_REASON]: OFFER_ADDRESS_DETAILS_TOO_LONG_TEXT,
+  [OFFER_BUSINESS_SENDER_REASON]: OFFER_BUSINESS_SENDER_TEXT,
+  [OFFER_CONTENT_DESCRIPTION_REASON]: OFFER_CONTENT_DESCRIPTION_TEXT,
+  package_dimensions_unverified: OFFER_DIMENSIONS_UNVERIFIED_TEXT,
+  area_surcharge_unconfirmed: OFFER_AREA_SURCHARGE_TEXT,
 };
 // Die ältere Datumsaussage (`availableForDate === false`) bleibt wortgleich.
 const DATUM_NICHT_VERFUEGBAR = "Nicht verfügbar für dieses Datum";
@@ -180,9 +201,11 @@ export function offerBlockedHint(tariff) {
   const t = tariff && typeof tariff === "object" ? tariff : {};
   if (offerSelectable(t) || t.availableForDate === false) return null;
   if (OFFER_SAME_DAY_REASONS.includes(t.unavailableReason)) return OFFER_SAME_DAY_UNAVAILABLE_HINT;
-  // Die beiden Hinweise, die keine Terminwahl betreffen: hier hilft eine Angabe an der Adresse.
+  // Die Hinweise, die keine Terminwahl betreffen: hier hilft eine Angabe an der Adresse oder zur Sendung.
   if (t.unavailableReason === OFFER_BUSINESS_RECIPIENT_REASON) return OFFER_BUSINESS_RECIPIENT_HINT;
   if (t.unavailableReason === OFFER_ADDRESS_DETAILS_TOO_LONG_REASON) return OFFER_ADDRESS_DETAILS_TOO_LONG_HINT;
+  if (t.unavailableReason === OFFER_BUSINESS_SENDER_REASON) return OFFER_BUSINESS_SENDER_HINT;
+  if (t.unavailableReason === OFFER_CONTENT_DESCRIPTION_REASON) return OFFER_CONTENT_DESCRIPTION_HINT;
   return t.unavailableReason === "date_unavailable" ? OFFER_DATE_UNAVAILABLE_HINT : null;
 }
 

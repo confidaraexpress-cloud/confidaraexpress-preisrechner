@@ -7,7 +7,7 @@ import { bookingBillingNotice } from "../utils/billingModeView.mjs";
 import { apiFetch, repriceInsurance, saveDraftPickupWindow, checkVoucher, loadPriceInputOptions, bindPriceInputs } from "../api/client";
 import { FormAlert } from "../components/ui/FormAlert";
 import { mapBookRestError, mapBookThrownError, mapBookUnreadableSuccess, istOffenerAusgang,
-  fordertNeuberechnung, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
+  fordertNeuberechnung, erlaubtSpaeterenVersuch, istUnklarerAusgang, BOOK_FEHLER, OFFER_ALREADY_USED_TEXT,
   REFERENCE_INVALID_TEXT } from "../utils/bookingErrors.mjs";
 import { customerText, normalizeApiError } from "../utils/apiError.mjs";
 import {
@@ -1437,6 +1437,16 @@ export default function BookingPage() {
           setLoading(false);
           return;
         }
+        // Final Bookability Closure: nichts beauftragt, dieselbe Buchung trägt später wieder (die Sendung
+        // ist nach dem Hinterlegen der Handelsrechnung noch nicht versandbereit). Bis hierher lief dieser
+        // 409 in den Sammelzweig ganz unten — „bereits verarbeitet" samt „Zu meinen Sendungen", wo nichts
+        // steht — oder bei versicherter Buchung in eine Neubepreisung, die nichts repariert. Der Hinweis
+        // lässt den Bestellknopf stehen.
+        if (erlaubtSpaeterenVersuch(d)) {
+          setError(mapBookRestError(r.status, d));
+          setLoading(false);
+          return;
+        }
         // Zusätzliche Transportabsicherung: fehlende oder abweichende Bindung, fehlende
         // Betragsbestätigung oder nicht mehr verfügbare Absicherung. Die Auswahl bleibt
         // stehen — sie wird hier weder still verworfen noch still gebucht. Wo ein neuer Preis
@@ -1552,6 +1562,14 @@ export default function BookingPage() {
         // TG22 Paket B: ein 5xx OHNE Code ist nach dem Absenden der finalen Buchung ein offener
         // Ausgang — beim Anbieter kann bereits bestellt sein. Er ERSETZT den Bestellknopf durch
         // „Zu meinen Sendungen" (Konflikt), statt neben einem weiterhin bedienbaren Knopf zu warnen.
+        // P0-01: ein 5xx MIT einem Code „nichts beauftragt" (BOOKING_FAILED, PROVIDER_UNAVAILABLE …) ist
+        // KEIN offener Ausgang — der Server hat bewiesen, dass nichts bestellt wurde. Er bekommt dieselbe
+        // Fläche wie der 409 dieser Klasse: „Angebote neu berechnen" statt des Bestellknopfs.
+        if (fordertNeuberechnung(d)) {
+          setRecalcNotice(mapBookRestError(r.status, d).message);
+          setLoading(false);
+          return;
+        }
         const fehler = mapBookRestError(r.status, d);
         if (istUnklarerAusgang(fehler)) {
           setConflict(fehler.message);

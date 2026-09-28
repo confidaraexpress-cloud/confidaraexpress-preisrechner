@@ -187,6 +187,22 @@ export function documentDownloadPath(doc) {
   return documentViewState(doc) === DOC_STATUS.READY ? doc.downloadPath.trim() : null;
 }
 
+/**
+ * EXTRA (Final Bookability Closure): der ausdrückliche ABRUF eines Belegs, der noch nicht in
+ * ConfidaraExpress liegt, beim Anbieter aber abrufbar ist (`retrievePath`, vom Server gesetzt).
+ *
+ * Bis hierher meldete der Server ein solches Versandlabel als `ready` MIT Downloadpfad — der Knopf
+ * „Herunterladen" versprach einen Beleg, den es in ConfidaraExpress noch nicht gab, und endete dann
+ * mit „noch nicht verfügbar". Jetzt heißt `ready` „liegt vor", und der Abruf ist eine eigene,
+ * ausdrückliche Aktion — nur in den Zuständen „in Arbeit" und „gescheitert", nur als sicherer Pfad
+ * auf diese API. Ein erfolgreicher Abruf legt den Beleg ab; danach meldet ihn die Liste als `ready`.
+ */
+export function documentRetrievePath(doc) {
+  const zustand = documentViewState(doc);
+  if (zustand !== DOC_STATUS.PROCESSING && zustand !== DOC_STATUS.FAILED) return null;
+  return isSafeApiPath(doc.retrievePath) ? doc.retrievePath.trim() : null;
+}
+
 /** Sichtbarer Name: der Servertext, sonst die Ersatzbeschriftung des Typs. */
 export function documentLabel(doc) {
   const l = doc && typeof doc.label === "string" ? doc.label.trim() : "";
@@ -313,6 +329,9 @@ export const DOCUMENTS_TEXT = {
   processing: "Wird erstellt …",
   failed: "Derzeit nicht verfügbar",
   unavailable: "Nicht im Kundenkonto verfügbar",
+  // EXTRA: der ausdrückliche Abruf eines noch nicht abgelegten Belegs — nie „Herunterladen".
+  retrieve: "Abrufen",
+  retrieving: "Wird abgerufen …",
 };
 
 // Texte des Downloadversuchs. Kuratiert nach Fehlercode; der Serverfreitext wird

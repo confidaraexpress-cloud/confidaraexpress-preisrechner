@@ -398,7 +398,7 @@ test("TG23 — „express_urgent“ ergibt „Schneller Expressversand für eili
   assert.deepEqual(v.transit.rows.map((z) => [z.label, z.value]),
     [["Voraussichtliche Laufzeit", "1 Tag"], ["Voraussichtliche Lieferung", "Do., 17.09."]]);
   assert.equal(v.transit.projectionNote,
-    "Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben.");
+    "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.");
   assert.deepEqual(v.size.rows.map((z) => [z.label, z.value]),
     [["Packstücke", "1 je Sendung"], ["Max. Gewicht", "70 kg"], ["Abrechnungsgewicht", "2,00 kg"]]);
   assert.equal(v.size.formula, "Volumengewicht: L × B × H ÷ 5.000");

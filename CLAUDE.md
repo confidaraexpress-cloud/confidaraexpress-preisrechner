@@ -217,12 +217,12 @@ Welche Produktangaben ein Angebot trägt, sagt ausschließlich der Server: `serv
 
 ### Voraussichtliche Lieferung (TG22 Package B) — aktueller Vertrag
 
-Ob ein Angebot eine voraussichtliche Lieferung trägt und welche Tage, sagt ausschließlich der Server: `deliveryProjection { kind: "estimated", dateMin, dateMax }` — eine Prognose von ConfidaraExpress aus Abholtag und Laufzeit (Montag bis Freitag, ohne Feiertage), keine Anbieterzusage. `utils/deliveryProjectionView.mjs` prüft und formatiert nur.
+Ob ein Angebot eine voraussichtliche Lieferung trägt und welche Tage, sagt ausschließlich der Server: `deliveryProjection { kind: "estimated", dateMin, dateMax }` — eine Prognose von ConfidaraExpress aus Abholtag und Laufzeit (Montag bis Freitag ohne die neun bundesweiten Feiertage), keine Anbieterzusage. `utils/deliveryProjectionView.mjs` prüft und formatiert nur.
 
 - **Nichts wird gerechnet:** keine Versandtage, kein `Date.now`, keine Browseruhr, kein `toLocale…`; die Wochentage kommen aus einer festen Tabelle („Di., 15.09."). Ein ungültiges Datum, `dateMax` vor `dateMin` oder ein anderer `kind` ergibt keine Prognose — nie einen Fehler und nie einen Ersatz.
 - **Rangfolge** (`utils/deliveryContractView.mjs`): Zeitraum des Anbieters → Datum des Anbieters → Prognose → Laufzeit → „Auf Anfrage". Zustelldaten eines Anbieters haben immer Vorrang; JUMiNGO bleibt „Zustellung" mit „bis HH:MM Uhr".
 - **Karte:** Endknoten „Voraussichtliche Lieferung" mit „Di., 15.09. – Mi., 16.09.", „Di., 15.09." oder „ab Di., 15.09." (`dateMax: null`) — ohne Uhrzeit. Die Laufzeit („1–2 Tage") bleibt stehen.
-- **Detailbereich:** im Abschnitt „Laufzeit" unter „Voraussichtliche Laufzeit" genau eine Zeile „Voraussichtliche Lieferung" und der Hinweis „Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben."
+- **Detailbereich:** im Abschnitt „Laufzeit" unter „Voraussichtliche Laufzeit" genau eine Zeile „Voraussichtliche Lieferung" und der Hinweis „Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben."
 - **Buchungsflächen** (`deliveryInfo`): „Voraussichtliche Lieferung" mit TT.MM.JJJJ („15.09.2026 – 16.09.2026", „ab 15.09.2026"), kein `until`.
 - **Keine Autorität:** der Lieferdatumsfilter liest nur `deliveryDateMax`/`deliveryDate`, Auszeichnungen und Sortierung lesen Preis und Laufzeittage. Nie sichtbar: „garantiert", eine Uhrzeit, Anbietername, Quelle oder `kind`.
 

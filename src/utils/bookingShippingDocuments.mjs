@@ -84,6 +84,48 @@ export function bookingShippingDocuments(booking) {
     .sort((a, b) => (rang(a.type) - rang(b.type)) || (a.ordinal - b.ordinal));
 }
 
+// ─── P2-01 / EXTRA: DER LABELSTAND DER BUCHUNGSANTWORT ──────────────────────────────
+// Ohne gemeldete Versandbelege bot der Erfolgsbildschirm bis hierher JEDER Buchung „Label
+// herunterladen" an — auch einer Portalbuchung, deren Etikett der Anbieter erst Stunden später
+// erzeugt, und einer Buchung, deren Etikett noch gar nicht in ConfidaraExpress liegt. Der Knopf
+// war eine Zusage ohne Beleg. Der Server nennt den Stand jetzt selbst (`labelStatus`, dieselbe
+// Definition wie Auftragsbestätigung und Betriebssicht):
+//   available  das Label liegt in ConfidaraExpress         → der Downloadknopf
+//   pending    es entsteht noch bzw. liegt beim Anbieter   → der Satz „wird erstellt"; nur mit
+//              `labelRetrievable` dazu der ausdrückliche Abruf (zweitrangig, nie „herunterladen")
+//   separate   außerhalb von ConfidaraExpress bereitgestellt → der Satz, kein Knopf
+//   unknown    kein Beleg (auch jeder unbekannte Wert)     → ein neutraler Verweis, kein Knopf
+// Fehlt das Feld ganz, antwortet ein Server vor diesem Stand: dann bleibt es beim bisherigen Knopf.
+export const BOOKING_LABEL_TEXT = Object.freeze({
+  pending: "Ihr Versandlabel wird erstellt. Sobald es verfügbar ist, können Sie es in Ihrem ConfidaraExpress-Konto abrufen.",
+  separate: "Das Versandlabel wurde Ihnen gesondert bereitgestellt.",
+  unknown: "Den aktuellen Stand Ihres Versandlabels finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
+  retrieve: "Versandlabel jetzt abrufen",
+  retrieving: "Versandlabel wird abgerufen …",
+});
+
+export const BOOKING_LABEL_MODE = Object.freeze({
+  DOWNLOAD: "download", PENDING: "pending", SEPARATE: "separate", UNKNOWN: "unknown",
+});
+
+/**
+ * Was der Erfolgsbildschirm zum Versandlabel anbieten darf, wenn die Antwort KEINE ladbaren
+ * Versandbelege meldet.
+ *
+ * @returns {{mode: string, retrievable: boolean, text: string|null}}
+ */
+export function bookingLabelView(booking) {
+  const b = booking && typeof booking === "object" ? booking : {};
+  const M = BOOKING_LABEL_MODE;
+  if (!Object.prototype.hasOwnProperty.call(b, "labelStatus")) return { mode: M.DOWNLOAD, retrievable: false, text: null };
+  switch (b.labelStatus) {
+    case "available": return { mode: M.DOWNLOAD, retrievable: false, text: null };
+    case "pending":   return { mode: M.PENDING, retrievable: b.labelRetrievable === true, text: BOOKING_LABEL_TEXT.pending };
+    case "separate":  return { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate };
+    default:          return { mode: M.UNKNOWN, retrievable: false, text: BOOKING_LABEL_TEXT.unknown };
+  }
+}
+
 /** Beschriftung des Downloadknopfs — der Servername plus die Aktion. */
 export const shippingDocumentButtonLabel = (doc) => `${doc.label} ${BOOKING_SHIPPING_DOCUMENTS_TEXT.download}`;
 

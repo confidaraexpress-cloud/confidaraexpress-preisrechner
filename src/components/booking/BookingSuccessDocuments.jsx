@@ -9,7 +9,9 @@
 //
 // TG-F5: meldet die Buchungsantwort Versandbelege (`booking.shippingDocuments`), bekommt
 // jeder davon einen eigenen Knopf — bei mehreren Paketen also jedes Etikett, nicht nur das
-// erste. Ohne diese Angabe bleibt es beim bisherigen Labelknopf.
+// erste. Ohne diese Angabe entscheidet seit P2-01 der vom Server genannte Labelstand
+// (`booking.labelStatus`): der bisherige Labelknopf nur, wenn das Label in ConfidaraExpress
+// liegt (oder ein älterer Server gar keinen Stand nennt).
 import { useState } from "react";
 import { Icon } from "../ui/Icon";
 import { downloadLabel } from "../../utils/downloadLabel";
@@ -17,6 +19,7 @@ import { downloadDocument } from "../../utils/downloadDocument";
 import {
   bookingShippingDocuments, shippingDocumentButtonLabel, shippingDocumentLoadingLabel,
   shippingDocumentFallbackFilename, BOOKING_SHIPPING_DOCUMENTS_TEXT, bookingShippingPrintNotice,
+  bookingLabelView, BOOKING_LABEL_MODE, BOOKING_LABEL_TEXT,
 } from "../../utils/bookingShippingDocuments.mjs";
 import { downloadDeliveryNote } from "../../utils/downloadDeliveryNote";
 import { downloadOrderConfirmation } from "../../utils/downloadOrderConfirmation";
@@ -47,6 +50,9 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
   const versanddokumente = bookingShippingDocuments(booking);
   const druckhinweis = bookingShippingPrintNotice(booking);
   const [versandPfad, setVersandPfad] = useState("");
+  // P2-01 / EXTRA: was ohne gemeldete Versandbelege zum Label angeboten werden darf — aus dem Stand,
+  // den der Server nennt (utils/bookingShippingDocuments.mjs), nie aus der Annahme „es gibt eins".
+  const labelAnsicht = bookingLabelView(booking);
 
   const handleDownloadLabel = async () => {
     // Der Label-Abruf läuft über den ConfidaraExpress-Sendungshandle
@@ -160,10 +166,28 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
             <p className="text-muted text-sm mb-16">{BOOKING_SHIPPING_DOCUMENTS_TEXT.whereToFind}</p>
           )}
         </>
-      ) : booking?.ceShipmentId && (
+      ) : !booking?.ceShipmentId ? null : labelAnsicht.mode === BOOKING_LABEL_MODE.DOWNLOAD ? (
         <button className="btn btn-primary btn-full mb-16" onClick={handleDownloadLabel} disabled={labelLoading}>
           {labelLoading ? <><span className="spinner" /> Label wird geladen…</> : "Label herunterladen"}
         </button>
+      ) : (
+        /* P2-01 / EXTRA: das Label liegt (noch) nicht in ConfidaraExpress, wurde gesondert
+           bereitgestellt oder sein Stand ist nicht belegt — dann KEIN Downloadknopf, sondern der
+           Satz, der stimmt. Nur ein beim Anbieter abrufbares Label bekommt den ausdrücklichen,
+           zweitrangigen Abruf: derselbe Weg wie der Download, aber als Anstoß, nicht als Zusage. */
+        <>
+          <div className="alert alert-info mb-16" role="status" id="booking-label-status">
+            <Icon n="info" s={16} />{labelAnsicht.text}
+          </div>
+          {labelAnsicht.retrievable && (
+            <button type="button" className="btn btn-outline btn-full mb-16" id="booking-label-retrieve"
+                    onClick={handleDownloadLabel} disabled={labelLoading}>
+              {labelLoading
+                ? <><span className="spinner spinner-dark" /> {BOOKING_LABEL_TEXT.retrieving}</>
+                : BOOKING_LABEL_TEXT.retrieve}
+            </button>
+          )}
+        </>
       )}
       {/* Auftragsbestätigung — erscheint NUR, wenn die Buchungsantwort tatsächlich
           eine gemeldet hat. Sie steht VOR dem Lieferschein: sie betrifft jede

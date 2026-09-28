@@ -45,17 +45,21 @@ const BASIS = {
 };
 
 // Vier Angebote, die die Sichtbarkeitsregel vollständig ausleuchten. Alles
-// kommt aus strukturierten Feldern — serviceType und publicCarrierId. Die
+// kommt aus strukturierten Feldern — serviceType, publicCarrierId und (P1-02)
+// die serverseitige Paketshopfähigkeit `accessPoint`. Die
 // NAMEN sind bewusst irreführend gewählt (ein Pickup-Angebot heißt
 // „Shopabgabe Express“, ein Angebot ohne Suchcode heißt „UPS“), damit eine
 // Namensheuristik hier auffliegen würde.
 const T_DPD_DROPOFF = {
   ...BASIS, id: 1, shipper_tariff_id: 1, publicCarrierId: "dpd", publicCarrierName: "DPD",
   publicServiceName: "Shopabgabe", serviceType: "dropoff",
+  // P1-02: der Paketshop-Finder erscheint nur mit serverseitiger Paketshopfaehigkeit (accessPoint).
+  accessPoint: { available: true, provider: "dpd" },
 };
 const T_UPS_DROPOFF = {
   ...BASIS, id: 2, shipper_tariff_id: 2, publicCarrierId: "ups", publicCarrierName: "UPS",
   publicServiceName: "Standardversand", serviceType: "dropoff", netPrice: 7.9, finalPrice: 9.4,
+  accessPoint: { available: true, provider: "ups" },
 };
 const T_PICKUP = {
   ...BASIS, id: 3, shipper_tariff_id: 3, publicCarrierId: "dpd", publicCarrierName: "DPD",

@@ -127,10 +127,38 @@ async function setup(page, v, { uhr = false } = {}) {
   return () => [...hosts].filter((h) => h !== `127.0.0.1:${PORT}` && h !== API_HOST);
 }
 
+/* Wartet, bis das Dokument wirklich stillsteht — dieselbe Synchronisation wie in
+   deliveryTimeFilter.test.mjs (`scrollBeruhigt`).
+
+   P2-03 (CI-Flake „N2 — Doppelklick"): `globals.css` setzt `html { scroll-behavior: smooth }`.
+   Das letzte `fill` fokussiert ein Feld, und der Browser zieht es in einer rund 500 ms langen
+   Scrollanimation ins Bild. Playwrights eigenes „scroll into view" vor dem Klick verdrängt eine
+   laufende Animation nur VORÜBERGEHEND — unter Last lief sie danach weiter, NACHDEM `pointerdown`
+   bereits auf dem Knopf lag: gemessen (lokal, 12 Kerne unter Last) traf `click` den Container
+   `.offers-form-section` statt des Knopfs, der zweite Klick ein Eingabefeld — keine Anfrage, kein
+   Overlay. Das ist eine Scroll-Wettlaufsituation der Testchoreografie, kein Verhalten der Seite:
+   ein Mensch klickt nicht in eine laufende Scrollanimation. Diese Funktion nimmt keiner Prüfung
+   etwas weg — sie stellt nur sicher, dass der Klick eine stehende Seite trifft. */
+async function scrollBeruhigt(page) {
+  await page.evaluate(() => new Promise((fertig) => {
+    let letzte = window.scrollY, ruhig = 0, frames = 0;
+    const tick = () => {
+      if (window.scrollY === letzte) ruhig += 1;
+      else { ruhig = 0; letzte = window.scrollY; }
+      // 5 ruhige Frames reichen; 180 Frames (~3 s) sind die Notbremse, damit ein
+      // dauerhaft scrollendes Dokument den Test nicht hängen lässt.
+      if (ruhig >= 5 || (frames += 1) > 180) return fertig();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+}
+
 async function oeffneNeueSendung(page) {
   await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".offers-form-section", { timeout: 20000 });
   await fuelleVersandformular(page, { absender: { ...STANDARD_ABSENDER, ...ABSENDER } });
+  await scrollBeruhigt(page);
 }
 
 async function fuelleRechner(page, { toZip = "63743" } = {}) {
@@ -149,6 +177,8 @@ async function fuelleRechner(page, { toZip = "63743" } = {}) {
 async function oeffneRechner(page, opts) {
   await page.goto(`${BASE}/calculator`, { waitUntil: "domcontentloaded" });
   await fuelleRechner(page, opts);
+  // Dieselbe Wettlaufsituation wie bei „Neue Sendung" (siehe `scrollBeruhigt`).
+  await scrollBeruhigt(page);
 }
 
 const rechnerCta = (page) => page.getByRole("button", { name: /Angebote vergleichen/i }).first();
@@ -455,14 +485,22 @@ test("P1 — vier Textstufen nach 8/20/45 s; ein neuer Vergleich beginnt wieder 
   const v = vergleich({ halten: true });
   await setup(page, v, { uhr: true });
   await oeffneNeueSendung(page);
+
+  // P2-03 (CI-Flake „Cannot fast-forward to the past"): die Seitenuhr wird VOR dem Klick angehalten,
+  // nicht erst nach der Montage des Overlays. Bis hierher las der Test `Date.now()` der laufenden
+  // Seitenuhr und hielt sie danach genau dort an — tickte sie dazwischen weiter, lag das Ziel in der
+  // Vergangenheit, und `pauseAt` warf. Jetzt:
+  //   • das Ziel liegt VORLAUF_MS in der Zukunft — die laufende Uhr kann es zwischen Lesen und
+  //     Anhalten nicht überholen (ein Sprung von Sekunden vor dem Klick berührt nichts, was hier
+  //     gemessen wird);
+  //   • der Klick setzt den Ladezustand ohne jeden Timer (NewShipmentPage `calculate`: kein await vor
+  //     `setLoading(true)`), das Overlay montiert also bei stehender Uhr und nimmt GENAU diesen
+  //     Zeitpunkt als Beginn. Jede Schwelle ist damit exakt: 1 ms davor gilt die alte Stufe, auf der
+  //     Schwelle die neue — enger als die frühere ±500-ms-Toleranz, nicht weiter.
+  const VORLAUF_MS = 5000;
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + VORLAUF_MS);
   await angebotsCta(page).click();
   await overlayDa(page);
-
-  // Ab hier steht die Seitenuhr und läuft nur noch per runFor: sonst holte die
-  // natürlich weiterlaufende Uhr eine zu spät gesetzte Schwelle beim Warten nach.
-  // Zwischen Montage des Overlays und Anhalten vergehen δ < 500 ms echte Zeit —
-  // deshalb wird 500 ms vor und nach jeder Schwelle geprüft.
-  await page.clock.pauseAt(await page.evaluate(() => Date.now()));
   const stufe = () => page.evaluate(() => document.querySelector(".cmp-loading-overlay")?.dataset.phase ?? null);
   const erwarte = async (id) => {
     for (let i = 0; i < 40 && (await stufe()) !== id; i += 1) await new Promise((r) => setTimeout(r, 50));
@@ -477,10 +515,10 @@ test("P1 — vier Textstufen nach 8/20/45 s; ein neuer Vergleich beginnt wieder 
   texte.push(await statusText(page));
   let uhr = 0;
   for (const [schwelle, vorher, id] of [[8000, "start", "weiter"], [20000, "weiter", "laenger"], [45000, "laenger", "lang"]]) {
-    await page.clock.runFor(schwelle - 500 - uhr);
+    await page.clock.runFor(schwelle - 1 - uhr);
     await bleibt(vorher);
-    await page.clock.runFor(1000);
-    uhr = schwelle + 500;
+    await page.clock.runFor(1);
+    uhr = schwelle;
     await erwarte(id);
     texte.push(await statusText(page));
   }

@@ -111,7 +111,7 @@ const JM = {
 };
 
 const VERBOTEN = /transglobal|jumingo|ServiceID|shipper_tariff_id|ce_projected|estimated|garantiert/i;
-const PROGNOSE_HINWEIS = "Aus Abholtag und Laufzeit berechnet; Wochenenden sind nicht mitgezählt. Feiertage können die Zustellung verschieben.";
+const PROGNOSE_HINWEIS = "Aus Abholtag und Laufzeit berechnet; Wochenenden und bundesweite Feiertage sind nicht mitgezählt. Regionale oder ausländische Feiertage können die Zustellung verschieben.";
 
 let server, browser;
 

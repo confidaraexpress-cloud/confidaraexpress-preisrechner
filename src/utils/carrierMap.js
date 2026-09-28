@@ -189,13 +189,31 @@ export function resolveAccessPointCarrierCode(tariff) {
  *
  * Fällt eine der beiden weg, erscheint KEIN Einstieg: kein deaktivierter Knopf
  * und kein „nicht verfügbar“-Text, der nichts anbietet.
+ *
+ * ─── P1-02: NUR MIT SERVERSEITIGER FÄHIGKEIT ─────────────────────────────────
+ * Dazu kommt eine DRITTE Bedingung: der Server muss die Suche für DIESES Angebot
+ * ausdrücklich zusagen — `accessPoint.available === true` (Access-Point-Vertrag,
+ * belegt je Tarif) oder `parcelShopSearch === "server"` (gekapselte Abgabe-Suche).
+ * Bis hierher genügte der Carrier-Code aus der öffentlichen `publicCarrierId`: eine
+ * DPD-, DHL- oder GLS-Abgabe bekam einen Finder, obwohl der Server für sie gerade
+ * keine Paketshopfähigkeit belegt (`accessPoint.available === false`). Der Finder
+ * versprach damit eine Abgabe, die CE nicht zusagt. Der Code-Rückfall bleibt nur
+ * die Übersetzung in den Suchcode einer ZUGESAGTEN Suche (TG124 trägt keinen
+ * Access-Point-Provider, nur `parcelShopSearch`).
  */
 export function offerSupportsAccessPointSearch(tariff) {
   // „Ist das eine Shopabgabe?" beantwortet ausschließlich handoverMode — dieselbe
   // Auslegung, die auch die Kennzeichnung auf der Angebotskarte und den
   // Knotentitel der Prozesslinie speist. Eine zweite Prüfung von serviceType
   // an dieser Stelle wäre eine zweite Auslegung derselben Businessregel.
-  return handoverMode(tariff) === HANDOVER_DROPOFF && Boolean(resolveAccessPointCarrierCode(tariff));
+  return handoverMode(tariff) === HANDOVER_DROPOFF
+    && offerHasParcelShopCapability(tariff)
+    && Boolean(resolveAccessPointCarrierCode(tariff));
+}
+
+/** P1-02: Sagt der Server für dieses Angebot eine Paketshop-Suche zu? Nur die beiden Vertragsfelder. */
+export function offerHasParcelShopCapability(tariff) {
+  return tariff?.accessPoint?.available === true || tariff?.parcelShopSearch === "server";
 }
 
 // ─── Versanddienst-Filter: Gruppierung, Sortierung, Auswahl ─────────────────

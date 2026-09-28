@@ -117,7 +117,73 @@ export const BOOK_FEHLER = {
     message: SAME_DAY_TEXT.bookingUnverifiable,
     retryable: false,
   },
+  // ─── P0-01: NACHWEISLICH NICHT BESTELLT ───────────────────────────────────────────
+  // Der Server sagt mit `BOOKING_FAILED`, dass beim Anbieter bewiesen NICHTS bestellt wurde — der
+  // Buchungsweg brach vor der Bestellung ab (Tarifabruf, Entwurf, Warenkorb, Verbindung) oder der Anbieter
+  // hat dokumentiert abgelehnt. Der Status ist dabei eine Transportaussage (409, aber auch 502/503/500):
+  // ein 5xx MIT diesem Code ist kein offener Ausgang. Bis hierher las die Seite ihn als „Angebot nicht
+  // mehr buchbar" — das stimmt nicht: das Angebot kann nach einer Neuberechnung wieder tragen.
+  NICHT_DURCHGEFUEHRT: {
+    title: "Buchung nicht durchgeführt",
+    message: "Die Buchung wurde nicht durchgeführt. Es wurde nichts beauftragt und nichts berechnet. Bitte berechnen Sie die Angebote neu und versuchen Sie es erneut.",
+    retryable: false,
+  },
+  // Der bestätigte Gutschein gilt unmittelbar vor der Bestellung nicht mehr. Nichts beauftragt; der
+  // Preis ohne Gutschein ist ein anderer — die Handlung ist eine Neuberechnung, kein Wiederholen.
+  GUTSCHEIN_NICHT_ANWENDBAR: {
+    title: "Gutschein nicht mehr anwendbar",
+    message: "Der Gutscheincode konnte nicht mehr angewendet werden. Es wurde nichts beauftragt und nichts berechnet. Bitte berechnen Sie die Angebote neu und prüfen Sie den Preis.",
+    retryable: false,
+  },
+  // Zollpflichtige Sendungen sind serverseitig gerade nicht buchbar. Nichts beauftragt; eine Neuberechnung
+  // repariert das nicht, ein späterer Versuch mit denselben Angaben schon.
+  ZOLL_DERZEIT_NICHT_BUCHBAR: {
+    title: "Zollpflichtige Buchung derzeit nicht möglich",
+    message: "Zollpflichtige Sendungen können derzeit nicht gebucht werden. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es später erneut.",
+    retryable: true,
+  },
+  // Nach dem Hinterlegen der eigenen Handelsrechnung ist die Sendung noch nicht versandbereit. Nichts
+  // beauftragt; dieselbe Buchung trägt, sobald die Sendung bereit ist.
+  ZOLL_NOCH_NICHT_BEREIT: {
+    title: "Sendung noch nicht versandbereit",
+    message: "Die Sendung ist nach dem Hinterlegen der Handelsrechnung noch nicht versandbereit. Es wurde nichts beauftragt und nichts berechnet. Bitte versuchen Sie es in einigen Minuten erneut.",
+    retryable: true,
+  },
+  // ─── P1-03: DER FRÜHESTE ABHOLTAG HAT SICH GEÄNDERT ───────────────────────────────
+  // Das Angebot zeigte einen Abholtag; unmittelbar vor der Buchung nennt der Anbieter einen anderen. Es
+  // wird nichts beauftragt — der Kunde bucht nie still einen anderen Tag, als er gesehen hat. Der Satz mit
+  // dem neuen Tag entsteht in `collectionDateChangedText` (der Wert kommt vom Server).
+  ABHOLTAG_GEAENDERT: {
+    title: "Abholtag geändert",
+    message: "Der früheste Abholtag hat sich geändert. Bitte Angebot neu berechnen.",
+    retryable: false,
+  },
 };
+
+const WOCHENTAGE = Object.freeze(["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]);
+
+/** Ein vom Server gelieferter Kalendertag (YYYY-MM-DD) als „Montag, 28.12.2026" — sonst null. */
+function kalendertagText(wert) {
+  const m = typeof wert === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(wert.trim()) : null;
+  if (!m) return null;
+  const tag = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  // Ein Kalendertag, den es nicht gibt (2026-02-30), wird nicht still in den Folgemonat gerechnet.
+  if (tag.getUTCFullYear() !== Number(m[1]) || tag.getUTCMonth() !== Number(m[2]) - 1 || tag.getUTCDate() !== Number(m[3])) {
+    return null;
+  }
+  return `${WOCHENTAGE[tag.getUTCDay()]}, ${m[3]}.${m[2]}.${m[1]}`;
+}
+
+/**
+ * P1-03: der Kundensatz zu `409 COLLECTION_DATE_CHANGED` — mit dem neuen frühesten Abholtag, wenn der
+ * Server ihn lesbar nennt; ohne ihn der Satz ohne Datum (nie ein geratenes Datum).
+ */
+export function collectionDateChangedText(body) {
+  const neu = kalendertagText(body && typeof body === "object" ? body.newCollectionDate : null);
+  return neu
+    ? `Der früheste Abholtag hat sich geändert auf ${neu}. Bitte Angebot neu berechnen.`
+    : BOOK_FEHLER.ABHOLTAG_GEAENDERT.message;
+}
 
 // TG22/TG23 Same-Day: die Fehlerklasse je Art der Antwort.
 const SAME_DAY_FEHLER_JE_ART = Object.freeze({
@@ -136,7 +202,7 @@ const SAME_DAY_FEHLER_JE_ART = Object.freeze({
 //   BOOKING_IN_PROGRESS         409      läuft bereits                 NIEMALS
 //   PRICE_UNCONFIRMED           503      nichts beauftragt             ja, sicher
 //   OFFER_NOT_BOOKABLE          409      nichts beauftragt             neu berechnen
-//   BOOKING_FAILED              409      nichts beauftragt             neu berechnen
+//   BOOKING_FAILED              409/5xx  nichts beauftragt             neu berechnen (s. u.)
 //
 // Die Zuordnung steht VOR der Statusauswertung, und das ist der Kern des Befunds: ein
 // `502 BOOKING_OUTCOME_UNKNOWN` fiel früher in den Sammelzweig `status >= 500` und bekam
@@ -158,13 +224,34 @@ const SAME_DAY_FEHLER_JE_ART = Object.freeze({
 // Ein Angebot wird serverseitig nur verbraucht, wenn beim Anbieter ein Auftrag existiert
 // oder existieren KANN (gebucht, unklarer Ausgang, klärungspflichtig). Er führt deshalb in die
 // Sendungsliste.
+//
+// ─── Final Bookability Closure: jeder „nichts beauftragt"-Code hat eine eigene Handlung ─
+//   BOOKING_FAILED                  409/5xx nachweislich nicht bestellt    neu berechnen (P0-01)
+//   PROVIDER_UNAVAILABLE            503     nichts beauftragt          neu berechnen
+//   SHIPMENT_PROVIDER_UNSUPPORTED   409     nichts beauftragt          neu berechnen
+//   VOUCHER_NOT_APPLICABLE          409     nichts beauftragt          neu berechnen
+//   COLLECTION_DATE_CHANGED         409     nichts beauftragt          neu berechnen (P1-03, mit Datum)
+//   CUSTOMS_BOOKING_UNAVAILABLE     503     nichts beauftragt          später erneut
+//   CUSTOMS_NOT_READY_AFTER_INVOICE_UPLOAD 409 nichts beauftragt       später erneut
+//   CHECKOUT_CHECK_FAILED (502) / CHECKOUT_NOT_READY (409) — die früheren Codes derselben
+//     Warenkorbprüfung VOR der Bestellung; ein Server vor diesem Stand sendet sie noch.
+// Bis hierher liefen die 5xx dieser Liste als offener Ausgang („wird geprüft", „Zu meinen Sendungen")
+// und die 409 als „bereits verarbeitet" — für einen Vorgang, bei dem nichts bestellt wurde.
 const BOOK_CODE_FEHLER = {
   BOOKING_OUTCOME_UNKNOWN: "PRUEFUNG_LAEUFT",
   BOOKING_PENDING:         "PRUEFUNG_LAEUFT",
   BOOKING_IN_PROGRESS:     "BUCHUNG_LAEUFT",
   PRICE_UNCONFIRMED:       "PREIS_UNBESTAETIGT",
   OFFER_NOT_BOOKABLE:      "NEU_BERECHNEN",
-  BOOKING_FAILED:          "NEU_BERECHNEN",
+  BOOKING_FAILED:          "NICHT_DURCHGEFUEHRT",
+  PROVIDER_UNAVAILABLE:    "NICHT_DURCHGEFUEHRT",
+  CHECKOUT_CHECK_FAILED:   "NICHT_DURCHGEFUEHRT",
+  CHECKOUT_NOT_READY:      "NICHT_DURCHGEFUEHRT",
+  SHIPMENT_PROVIDER_UNSUPPORTED: "NEU_BERECHNEN",
+  VOUCHER_NOT_APPLICABLE:        "GUTSCHEIN_NICHT_ANWENDBAR",
+  COLLECTION_DATE_CHANGED:       "ABHOLTAG_GEAENDERT",
+  CUSTOMS_BOOKING_UNAVAILABLE:   "ZOLL_DERZEIT_NICHT_BUCHBAR",
+  CUSTOMS_NOT_READY_AFTER_INVOICE_UPLOAD: "ZOLL_NOCH_NICHT_BEREIT",
   SHIPMENT_DECLARATIONS_MISMATCH: "NEU_BERECHNEN",
   SHIPMENT_DECLARATIONS_MISSING:  "NEU_BERECHNEN",
   OFFER_ALREADY_USED:             "ANGEBOT_VERWENDET",
@@ -193,7 +280,12 @@ function fehlerKlasse(code, body) {
 // Die Handlungsklassen „nichts beauftragt, dieselbe Angebotskennung trägt nicht mehr".
 const NEUBERECHNUNG_KLASSEN = Object.freeze([
   "NEU_BERECHNEN", "ABHOLUNG_HEUTE_VORBEI", "ABHOLUNG_HEUTE_UNBESTAETIGT", "ABHOLUNG_HEUTE_NICHT_PRUEFBAR",
+  "NICHT_DURCHGEFUEHRT", "GUTSCHEIN_NICHT_ANWENDBAR", "ABHOLTAG_GEAENDERT",
 ]);
+
+// Die Handlungsklassen „nichts beauftragt, dieselbe Buchung trägt später wieder" — kein Konflikt, keine
+// Neuberechnung: der Bestellknopf bleibt.
+const SPAETER_KLASSEN = Object.freeze(["ZOLL_DERZEIT_NICHT_BUCHBAR", "ZOLL_NOCH_NICHT_BEREIT"]);
 
 // Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe
 // Angebotskennung nicht mehr trägt? Eigener Export, weil die Buchungsseite ihre
@@ -202,6 +294,14 @@ const NEUBERECHNUNG_KLASSEN = Object.freeze([
 export function fordertNeuberechnung(body) {
   const code = body && typeof body === "object" ? body.code : null;
   return typeof code === "string" && NEUBERECHNUNG_KLASSEN.includes(fehlerKlasse(code, body));
+}
+
+// Trägt diese Antwort einen Ausgang, bei dem NICHTS beauftragt wurde und dieselbe Buchung später
+// wieder trägt? Dann ein Hinweis mit stehendem Bestellknopf — nie „Zu meinen Sendungen" (dort steht
+// nichts) und nie eine Versicherungsaktualisierung (sie repariert nichts).
+export function erlaubtSpaeterenVersuch(body) {
+  const code = body && typeof body === "object" ? body.code : null;
+  return typeof code === "string" && SPAETER_KLASSEN.includes(fehlerKlasse(code, body));
 }
 
 // Trägt diese Antwort einen Ausgang, bei dem der Provider bereits gebucht haben KANN?
@@ -227,6 +327,7 @@ export function mapBookRestError(status, body) {
   // zweite weiß, ob eine Wiederholung eine zweite Sendung erzeugen würde.
   const code = body && typeof body === "object" ? body.code : null;
   const klasse = fehlerKlasse(code, body);
+  if (klasse === "ABHOLTAG_GEAENDERT") return { ...BOOK_FEHLER.ABHOLTAG_GEAENDERT, message: collectionDateChangedText(body) };
   if (klasse) return BOOK_FEHLER[klasse];
   if (status === 404) return BOOK_FEHLER.ANGEBOT_WEG;   // abgelaufenes/fremdes Angebot — neu berechnen ist die Handlung
   if (status === 429) return BOOK_FEHLER.RATE_LIMITED;

@@ -74,4 +74,8 @@
    Kontoeinstellungen, Statuszeile der Shell). Reine Zusatzklassen auf den
    Foundation-Tokens. Steht wie alle Bereichs-Stylesheets VOR patterns.css. */
 @import './pwa.css';
+/* Ladeoverlay des Angebotsvergleichs — isolierter cmp-loading-Scope (Neue
+   Sendung, Preisrechner). Reine Zusatzklassen auf den Foundation-Tokens, kein
+   zweites Dialogsystem. Steht wie alle Bereichs-Stylesheets VOR patterns.css. */
+@import './comparison-loading.css';
 @import './patterns.css';

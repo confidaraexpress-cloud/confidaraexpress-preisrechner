@@ -1,0 +1,100 @@
+/* ═══════════ Ladeoverlay des Angebotsvergleichs ═══════════════════════════
+   Isolierter cmp-loading-Scope (components/offers/OfferComparisonLoadingOverlay.jsx).
+   Material wie die Dialoge der Musterebene — Surface, Radius XL, Elevation 3,
+   feine Kante, der eine Overlayton —, aber KEIN Dialog: nichts zu bedienen,
+   kein Schließen, keine Fokusfalle. Ausschließlich Foundation-Tokens, kein
+   backdrop-filter (patterns.css).
+
+   Die Live-Region `.cmp-loading-live` bleibt ohne Regel: leer hat sie keine
+   Höhe und fängt nichts ab. */
+
+.cmp-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ce-z-overlay);
+  display: flex;
+  padding: var(--ce-space-4);
+  overflow-y: auto;
+  background: var(--ce-color-overlay);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  animation: cmp-loading-fade var(--ce-motion-standard) var(--ce-motion-ease-entrance) both;
+}
+
+/* margin: auto statt align-items: center — bei zu wenig Höhe (Querformat,
+   kleines Telefon) scrollt das Overlay, statt die Karte oben abzuschneiden. */
+.cmp-loading-card {
+  margin: auto;
+  width: 100%;
+  max-width: var(--ce-size-dialog-sm);
+  box-sizing: border-box;
+  padding: var(--ce-space-7);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-xl);
+  box-shadow: var(--ce-elevation-3);
+  text-align: center;
+}
+
+/* Signet steht still; nur der Bogen darum dreht sich ruhig. */
+.cmp-loading-mark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto var(--ce-space-5);
+}
+.cmp-loading-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--ce-color-brand-border-soft);
+  border-top-color: var(--ce-color-brand);
+  border-right-color: var(--ce-color-brand-border);
+  border-radius: var(--ce-radius-full);
+  animation: spin 2.4s linear infinite;
+}
+.cmp-loading-signet { display: flex; justify-content: center; }
+.cmp-loading-signet .ce-brandmark-img { width: 44px; }
+
+.cmp-loading-title {
+  margin: 0 0 var(--ce-space-2);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
+  color: var(--ce-color-text-primary);
+  text-wrap: balance;
+}
+/* Ohne reservierte Leerzeile: die Karte bleibt in jeder Stufe ausgewogen und
+   wächst beim längsten Text (Stufe 3) symmetrisch um eine Zeile — sie ist
+   zentriert, es springt also nichts zur Seite. */
+.cmp-loading-text {
+  margin: 0;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+  text-wrap: pretty;
+}
+
+@keyframes cmp-loading-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 480px) {
+  .cmp-loading-card { padding: var(--ce-space-6); }
+  .cmp-loading-title { font-size: var(--ce-text-title-section-size-mobile); }
+}
+
+/* Querformat und kleine Höhen: kompakter, damit die Karte ohne Scrollen passt. */
+@media (max-height: 480px) {
+  .cmp-loading-card { padding: var(--ce-space-5); }
+  .cmp-loading-mark { width: 64px; height: 64px; margin-bottom: var(--ce-space-3); }
+  .cmp-loading-signet .ce-brandmark-img { width: 32px; }
+}
+
+/* Reduzierte Bewegung: der Bogen steht, nichts blendet ein. */
+@media (prefers-reduced-motion: reduce) {
+  .cmp-loading-overlay { animation: none; }
+  .cmp-loading-ring { animation: none; }
+}

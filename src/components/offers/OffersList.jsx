@@ -118,8 +118,10 @@ export function OffersList({
           {/* Nur die Zahl der SICHTBAREN Angebote — die Begründung steht bei
               offersCountLabel(). Der Filterzustand wird nicht doppelt erklärt:
               dafür stehen der Chip („Lieferung bis …") und „Zurücksetzen"
-              unmittelbar darunter in derselben Leiste. */}
-          <div className="offers-result-count">
+              unmittelbar darunter in derselben Leiste.
+              Fokusziel nach einem erfolgreichen Vergleich (focusOffersResult in
+              utils/revealOffers.mjs) — per Skript fokussierbar, nicht per Tab. */}
+          <div className="offers-result-count" tabIndex={-1} data-offers-result>
             {loading
               ? "Preise werden geladen…"
               : hasResults

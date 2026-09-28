@@ -11,6 +11,8 @@ import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
+import { OfferComparisonLoadingOverlay } from "../components/offers/OfferComparisonLoadingOverlay";
+import { useComparisonLoadingFocus } from "../hooks/useComparisonLoadingFocus";
 import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
 import { FormAlert } from "../components/ui/FormAlert";
@@ -163,6 +165,11 @@ export default function CalculatorPage() {
      sichtbar machen, wenn der Wiederverwendungszweig greift und deshalb NICHT
      neu gerechnet wird. Dieselbe Rolle wie `offersRef` in NewShipmentPage. */
   const offersRef = useRef(null);
+  // „Angebote vergleichen" — Rückgabeziel des Fokus nach einem Fehler.
+  const calcCtaRef = useRef(null);
+  // Während des Vergleichs ist der Seiteninhalt inert; wohin der Fokus danach
+  // gehört, meldet calculate() hierüber (hooks/useComparisonLoadingFocus.js).
+  const fokusNachVergleich = useComparisonLoadingFocus(loading, { offersRef, triggerRef: calcCtaRef });
 
   /* ── Spiegelung in den laufenden Vorgang ─────────────────────────────────
      Abhängigkeiten sind die tatsächlichen Zustandswerte; der Effekt läuft
@@ -501,8 +508,10 @@ export default function CalculatorPage() {
         if (reqKey !== calcKeyRef.current) { setLoading(false); return; }
         if (norm.field) {
           setFieldErrors({ [norm.field]: norm.fieldMessage || norm.message });
-          focusFirstError(norm.field);
         }
+        // Angesprungen wird das Feld (sonst der Knopf) erst nach dem Laden — bis
+        // dahin ist der Seiteninhalt inert, ein Fokus jetzt liefe ins Leere.
+        fokusNachVergleich(norm.field ? "feld" : "ausloeser", norm.field);
         setError({ title: norm.title, message: norm.message });
         setLoading(false);
         return;
@@ -528,6 +537,9 @@ export default function CalculatorPage() {
       // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon
       // verworfen.
       lastCalcKeyRef.current = reqKey;
+      // Alle Angebote erscheinen gemeinsam; danach rückt der Bereich ins Bild
+      // und der Fokus geht auf die Ergebniszeile (erst nach dem Laden).
+      fokusNachVergleich("angebote");
       setHasResults(true);
       setLoading(false);
     } catch (e) {
@@ -538,6 +550,7 @@ export default function CalculatorPage() {
       // rohe Text („Failed to fetch") erreicht den Kunden nicht mehr.
       const norm = normalizeThrownError(e);
       setError({ title: norm.title, message: norm.message });
+      fokusNachVergleich("ausloeser");
       setLoading(false);
     } finally {
       // Genau hier — und nur hier — wird der nächste Klick wieder freigegeben.
@@ -574,13 +587,16 @@ export default function CalculatorPage() {
 
   return (
     <div className="page-with-navbar">
+      {/* Ladeoverlay des Vergleichs (Portal an <body>). Solange es steht, ist der
+          Seiteninhalt darunter inert und aria-busy. */}
+      <OfferComparisonLoadingOverlay active={loading} />
       {/* .page-body: derselbe Inhaltsrahmen wie jede andere App-Shell-Seite
           (1240px, Paket B) — .calc-page-wrap bleibt für das vertikale
           Innenabstandsmaß dieser Seite zuständig, jetzt auf einem eigenen
           verschachtelten Element statt gemeinsam mit .page-body auf einem
           Knoten (vermeidet einen Kaskade-Konflikt bei padding-top/-bottom). */}
       <div className="page-body">
-        <div className="calc-page-wrap">
+        <div className="calc-page-wrap" inert={loading} aria-busy={loading || undefined}>
         <div className="offers-form-section">
 
           {/* ── Obere Premium-Filterleiste: vier Filter nebeneinander (Desktop),
@@ -763,7 +779,7 @@ export default function CalculatorPage() {
 
           {/* ── Calculate CTA ── */}
           <div className="offers-calc-cta">
-            <button className="btn btn-primary btn-lg btn-full" onClick={calculate} disabled={loading || !calcValid}>
+            <button ref={calcCtaRef} className="btn btn-primary btn-lg btn-full" onClick={calculate} disabled={loading || !calcValid}>
               {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={18} /> Angebote vergleichen</>}
             </button>
             {/* Direkt am Aktionsbutton: benennt das Problem und erklärt die

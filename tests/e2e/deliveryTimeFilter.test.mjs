@@ -582,6 +582,12 @@ test("13 — Tastaturbedienung wählt eine Zeit ohne Maus", async () => {
   const zaehler = { n: 0 };
   await bereitFuerZeitliste(page, zaehler);
 
+  // „Ohne Maus" heißt auch: der Zeiger parkt nicht über der Liste. Er stand
+  // noch auf dem angeklickten Kalendertag; scrollte die Seite danach weiter,
+  // wanderte die Liste unter ihm durch, und onMouseEnter markierte eine
+  // andere Option als die Tastatur (gemessen: Index 4 statt 2 vor „Enter").
+  await scrollBeruhigt(page);
+  await page.mouse.move(0, 0);
   await page.locator(".offers-time-trigger").focus();
   await page.keyboard.press("Enter");                    // öffnen
   await page.waitForSelector(".offers-time-list", { timeout: 5000 });

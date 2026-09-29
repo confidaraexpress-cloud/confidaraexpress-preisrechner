@@ -15,6 +15,7 @@ import {
   BILLING_MODES, DEFAULT_BILLING_MODE, BILLING_MODE_TEXT,
   billingMode, isConsolidatedBilling, buildBillingModePatch,
   bookingBillingNotice, formatCalendarDayDe, periodRangeLabel, consolidatedPeriodView,
+  consolidatedBillingAvailable, billingModeOptionSelectable,
 } from "./billingModeView.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -290,6 +291,62 @@ test("(G3) nichts wird persistiert", () => {
   for (const [name, s] of [["view", viewSrc], ["Profile", profileSrc], ["Abrechnungs-Karte", bmKarteSrc], ["Admin-Sektion", adminSecSrc]]) {
     assert.ok(!/localStorage|sessionStorage/.test(s), `${name} darf die Abrechnungsart nicht speichern`);
   }
+});
+
+// ── H. Wählbarkeit der Sammelabrechnung ──────────────────────────────────────
+console.log("\n── H. Wählbarkeit der Sammelabrechnung ──");
+
+const konto = (billing_mode, billingCapabilities) => ({ billing_mode, billingCapabilities });
+
+test("(H1) Fähigkeit true: ein Einzelrechnungskonto kann die Sammelrechnung wählen", () => {
+  const u = konto("single", { consolidated7dAvailable: true });
+  assert.equal(consolidatedBillingAvailable(u), true);
+  assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), true);
+  assert.equal(billingModeOptionSelectable(u, "single"), true);
+});
+
+test("(H2) Fähigkeit false: die Sammelrechnung ist NICHT neu wählbar, die Einzelrechnung schon", () => {
+  const u = konto("single", { consolidated7dAvailable: false });
+  assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), false);
+  assert.equal(billingModeOptionSelectable(u, "single"), true);
+});
+
+test("(H3) Fähigkeit fehlt oder ist unscharf: fail-closed — nie „verfügbar“", () => {
+  for (const cap of [undefined, null, {}, { consolidated7dAvailable: "true" }, { consolidated7dAvailable: 1 },
+                     { consolidated7dAvailable: null }, "true", true]) {
+    const u = konto("single", cap);
+    assert.equal(consolidatedBillingAvailable(u), false, JSON.stringify(cap));
+    assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), false, JSON.stringify(cap));
+  }
+  assert.equal(consolidatedBillingAvailable(undefined), false);
+  assert.equal(billingModeOptionSelectable({ billing_mode: "single" }, "quartalsweise"), false);
+});
+
+test("(H4) Bestandskonto mit Sammelrechnung: bleibt wählbar und sichtbar, der Rückweg auf Einzelrechnung ist frei", () => {
+  const u = konto("consolidated_7d", { consolidated7dAvailable: false });
+  assert.equal(billingMode(u), "consolidated_7d", "das Bestandskonto wird nie umgedeutet");
+  assert.equal(billingModeOptionSelectable(u, "consolidated_7d"), true);
+  assert.equal(billingModeOptionSelectable(u, "single"), true);
+  // Nach dem Wechsel ist die Sammelrechnung wieder ein NEUER Wechsel — und nicht mehr wählbar.
+  assert.equal(billingModeOptionSelectable(konto("single", { consolidated7dAvailable: false }), "consolidated_7d"), false);
+  assert.ok(/Rückkehr zur Sammelrechnung derzeit nicht möglich/.test(BILLING_MODE_TEXT.consolidatedKeptNote));
+});
+
+test("(H5) die Karte sperrt die Option und sendet keinen Auswahlversuch, der abgelehnt würde", () => {
+  assert.ok(/const selectable = billingModeOptionSelectable\(user, mode\);/.test(bmKarteSrc));
+  assert.ok(/disabled=\{!selectable\}/.test(bmKarteSrc), "die Option wird nicht gesperrt");
+  assert.ok(/\{!selectable && <span className="field-hint">\{BILLING_MODE_TEXT\.consolidatedUnavailable\}<\/span>\}/.test(bmKarteSrc));
+  const save = schnitt(bmKarteSrc, "const saveBillingMode", "const period = periodData", "(H5) BillingModeCard");
+  assert.ok(/if \(bmSaving \|\| mode === serverBmMode \|\| !billingModeOptionSelectable\(user, mode\)\) return;/.test(save));
+  assert.ok(/serverBmMode === "consolidated_7d" && !consolidatedBillingAvailable\(user\)/.test(bmKarteSrc),
+    "das Bestandskonto erfährt nicht, dass der Rückweg vorerst endgültig ist");
+});
+
+test("(H6) die Fähigkeit kommt aus /kundenbereich — eine Quelle, in das User-Objekt gefaltet", () => {
+  const authSrc = strip(src("context/AuthContext.jsx"));
+  assert.ok(/const billing = d\?\.billingCapabilities \?\? u\.billingCapabilities \?\? null;/.test(authSrc));
+  assert.ok(/billingCapabilities: billing \}/.test(authSrc));
+  assert.ok(!/CONSOLIDATED_INVOICING/.test(viewSrc + bmKarteSrc + authSrc), "das Frontend kennt keinen Serverschalter");
 });
 
 console.log(`\n${"═".repeat(50)}`);

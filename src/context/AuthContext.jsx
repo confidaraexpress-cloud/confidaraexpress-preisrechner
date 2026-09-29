@@ -20,11 +20,15 @@ const AuthContext = createContext(null);
 // METADATEN (Version, Typ, Größe, Maße), nie das Bild selbst.
 // Defensiv gegen ein Backend OHNE dieses Feld: dann steht hier null, und die
 // Oberfläche zeigt unverändert die Initiale — kein Fehler, kein leerer Kasten.
+// Dasselbe für die Wählbarkeit der Abrechnungsarten (`billingCapabilities`): TOP-LEVEL
+// geliefert, in das User-Objekt gefaltet. Fehlt sie (älteres Backend), steht hier null —
+// die Karte wertet das als „Sammelrechnung nicht neu wählbar" (fail-closed).
 function userFromKundenbereich(d) {
   const u = (d && d.user) || {};
   const pending = d?.pendingEmailChange ?? u.pendingEmailChange ?? null;
   const logo = d?.companyLogo ?? u.companyLogo ?? null;
-  return { ...u, pendingEmailChange: pending, companyLogo: logo };
+  const billing = d?.billingCapabilities ?? u.billingCapabilities ?? null;
+  return { ...u, pendingEmailChange: pending, companyLogo: logo, billingCapabilities: billing };
 }
 
 export function AuthProvider({ children }) {

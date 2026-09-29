@@ -28,6 +28,26 @@ export function isConsolidatedBilling(user) {
   return billingMode(user) === "consolidated_7d";
 }
 
+// ─── Wählbarkeit der Sammelabrechnung ────────────────────────────────────────────────
+// Ob die Sammelabrechnung NEU gewählt werden kann, sagt ausschließlich der Server
+// (/kundenbereich → billingCapabilities.consolidated7dAvailable). FAIL-CLOSED: fehlt das
+// Feld (ältere Backendversion) oder ist es nicht exakt `true`, gilt sie als nicht
+// verfügbar — eine gemischte Deploymentreihenfolge schaltet die Option nie versehentlich frei.
+export function consolidatedBillingAvailable(user) {
+  return user?.billingCapabilities?.consolidated7dAvailable === true;
+}
+
+// Ist diese Option wählbar? Die gespeicherte Wahl bleibt immer wählbar (ein Bestandskonto
+// wird nie umgedeutet), die Einzelrechnung immer; die Sammelabrechnung NEU nur mit
+// Serverfähigkeit. Die Serverprüfung bleibt die Wahrheit — dies verhindert nur einen
+// Auswahlversuch, der ohnehin abgelehnt würde.
+export function billingModeOptionSelectable(user, mode) {
+  if (!BILLING_MODES.includes(mode)) return false;
+  if (mode === billingMode(user)) return true;
+  if (mode === "consolidated_7d") return consolidatedBillingAvailable(user);
+  return true;
+}
+
 // Nur der eine Schlüssel — dieselbe strukturelle Mass-Assignment-Sicherheit wie bei den
 // übrigen Profilkarten. Ein ungültiger Wert wird gar nicht erst gesendet.
 export function buildBillingModePatch(mode) {
@@ -57,6 +77,11 @@ export const BILLING_MODE_TEXT = {
   // Steht als ruhiger Hinweis unter der Auswahl, nicht als Warnung: die Umstellung ist
   // ein normaler Vorgang, sie soll nur nicht mehr versprechen, als sie tut.
   changeNote: "Die Umstellung gilt für künftige Buchungen. Bereits gebuchte Sendungen behalten die Abrechnung, die zum Zeitpunkt ihrer Buchung galt.",
+  // Steht unter der Sammelrechnung, solange sie nicht neu gewählt werden kann.
+  consolidatedUnavailable: "Die Sammelrechnung ist derzeit nicht verfügbar.",
+  // Ein Konto, das die Sammelrechnung bereits nutzt, behält sie. Es erfährt aber vorher,
+  // dass ein Wechsel zur Einzelrechnung vorerst nicht rückgängig zu machen ist.
+  consolidatedKeptNote: "Ihr Konto nutzt weiterhin die Sammelrechnung. Wenn Sie zur Einzelrechnung wechseln, ist eine Rückkehr zur Sammelrechnung derzeit nicht möglich.",
   periodTitle: "Laufender Sammelzeitraum",
   periodEmpty: "In Ihrem laufenden Zeitraum ist noch keine Sendung gebucht.",
   // „Voraussichtlich": der Zeitraum läuft noch, es können Sendungen hinzukommen. Ein

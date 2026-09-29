@@ -7,7 +7,7 @@ import { normalizeThrownError } from "../../utils/apiError.mjs";
 import { money } from "../../utils/formatters";
 import {
   BILLING_MODES, BILLING_MODE_TEXT, billingMode, buildBillingModePatch,
-  consolidatedPeriodView,
+  consolidatedPeriodView, billingModeOptionSelectable, consolidatedBillingAvailable,
 } from "../../utils/billingModeView.mjs";
 import { cardHead } from "./ProfileCardHead";
 
@@ -51,7 +51,8 @@ export function BillingModeCard({ user }) {
   // Rückfall auf die Serverwahrheit bei einem Fehler — es bleibt nie eine Auswahl stehen,
   // die nicht gespeichert wurde.
   const saveBillingMode = async (mode) => {
-    if (bmSaving || mode === serverBmMode) return;
+    // Eine nicht wählbare Option wird gar nicht erst gesendet (Serverschranke bleibt die Wahrheit).
+    if (bmSaving || mode === serverBmMode || !billingModeOptionSelectable(user, mode)) return;
     setBmMode(mode);
     setBmSaving(true); setBmError(""); setBmSaved(false);
     try {
@@ -88,6 +89,8 @@ export function BillingModeCard({ user }) {
           {BILLING_MODES.map((mode) => {
             const opt = BILLING_MODE_TEXT.options[mode];
             const id = `bm-mode-${mode}`;
+            // Die Sammelrechnung ist NEU nur wählbar, wenn der Server sie anbietet (fail-closed).
+            const selectable = billingModeOptionSelectable(user, mode);
             return (
               <label key={mode} className={`dn-mode-option${bmMode === mode ? " selected" : ""}`} htmlFor={id}>
                 <input
@@ -96,16 +99,21 @@ export function BillingModeCard({ user }) {
                   name="billingMode"
                   value={mode}
                   checked={bmMode === mode}
+                  disabled={!selectable}
                   onChange={() => saveBillingMode(mode)}
                 />
                 <span className="dn-mode-text">
                   <span className="dn-mode-label">{opt.label}</span>
                   <span className="field-hint">{opt.hint}</span>
+                  {!selectable && <span className="field-hint">{BILLING_MODE_TEXT.consolidatedUnavailable}</span>}
                 </span>
               </label>
             );
           })}
         </fieldset>
+        {serverBmMode === "consolidated_7d" && !consolidatedBillingAvailable(user) && (
+          <p className="field-hint mt-8">{BILLING_MODE_TEXT.consolidatedKeptNote}</p>
+        )}
         <p className="field-hint mt-8">{BILLING_MODE_TEXT.changeNote}</p>
         {bmError && <FormAlert tone="error" message={bmError} className="mt-16" />}
         {bmSaved && !bmError && (

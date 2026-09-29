@@ -8,7 +8,14 @@
 //   • ein Sammelkonto zeigt Zeitraum, Anzahl, Betrag und den Vorschau-Vorbehalt,
 //   • ein Ausfall der Vorschau bricht die Karte nicht,
 //   • die Adminkarte stellt die Abrechnungsart um,
-//   • 390 px ohne horizontalen Überlauf.
+//   • 390 px ohne horizontalen Überlauf,
+//   • die Sammelrechnung ist NEU nur mit Serverfähigkeit wählbar (fail-closed), ein
+//     Bestandskonto behält sie, und bei einer Ablehnung hat der Server das letzte Wort.
+//
+// Der Mock bildet den Backendvertrag nach: /kundenbereich liefert `billingCapabilities`
+// TOP-LEVEL (fehlt das Feld, verhält er sich wie ein älteres Backend), und der Profil-PATCH
+// lehnt einen NEUEN Wechsel auf die Sammelrechnung bei geschlossener Serverschranke mit
+// 409 BILLING_MODE_UNAVAILABLE ab — dieselbe Regel wie routes/kunde/profile.js.
 //
 // NIEMALS eine echte Bestellung und NIE ein echter Sammelrechnungslauf: alle
 // Backendrufe sind abgefangen, und der Adminlauf-Endpunkt wird hier nicht aufgerufen.
@@ -53,11 +60,22 @@ async function setupRoutes(ziel, opts) {
     const method = req.method();
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
 
-    if (p.endsWith("/kundenbereich")) return json({ user: { ...BASE_USER, billing_mode: state.mode } });
+    if (p.endsWith("/kundenbereich")) {
+      return json({
+        user: { ...BASE_USER, billing_mode: state.mode },
+        ...(state.capabilities !== undefined ? { billingCapabilities: state.capabilities } : {}),
+      });
+    }
 
     if (p.endsWith("/kunde/profil") && method === "PATCH") {
       const body = JSON.parse(req.postData() || "{}");
       state.patches.push(body);
+      if (body.billing_mode === "consolidated_7d" && state.mode !== "consolidated_7d" && !state.serverGateOpen) {
+        return json({
+          error: "Die Sammelrechnung ist derzeit nicht verfügbar. Ihre Sendungen werden weiter einzeln abgerechnet.",
+          code: "BILLING_MODE_UNAVAILABLE", field: "billing_mode",
+        }, 409);
+      }
       if (typeof body.billing_mode === "string") state.mode = body.billing_mode;
       return json({ user: { ...BASE_USER, billing_mode: state.mode } });
     }
@@ -80,7 +98,10 @@ async function setupRoutes(ziel, opts) {
 }
 
 async function neueSeite(mode, extra = {}, viewport = { width: 1280, height: 1000 }) {
-  const state = { mode, patches: [], periodCalls: 0, periodFails: false, periodBody: null, ...extra };
+  // `capabilities` undefined = älteres Backend ohne das Feld. Die Serverschranke folgt derselben
+  // Regel wie die Fähigkeit, außer ein Test trennt beide ausdrücklich (`serverGateOpen`).
+  const state = { mode, patches: [], periodCalls: 0, periodFails: false, periodBody: null, capabilities: undefined, ...extra };
+  if (!("serverGateOpen" in extra)) state.serverGateOpen = state.capabilities?.consolidated7dAvailable === true;
   const ctx = await browser.newContext({ viewport });
   await setupRoutes(ctx, { state });
   const page = await ctx.newPage();
@@ -180,7 +201,8 @@ test("B5 — ein Ausfall der Vorschau bricht die Karte nicht", async () => {
 });
 
 test("B6 — die Umstellung sendet GENAU einen Schlüssel über den Profil-PATCH", async () => {
-  const { ctx, page, state, fehler } = await neueSeite("single");
+  // Die Umstellung setzt die Serverfähigkeit voraus (fail-closed, siehe B9–B11).
+  const { ctx, page, state, fehler } = await neueSeite("single", { capabilities: { consolidated7dAvailable: true } });
   await zumProfil(page);
   await page.locator("#bm-mode-consolidated_7d").click();
   await page.waitForSelector(".profile-saved", { timeout: 15000 });
@@ -211,6 +233,62 @@ test("B8 — 390 px: kein horizontaler Überlauf", async () => {
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assert.ok(overflow <= 1, `horizontaler Überlauf: ${overflow}px`);
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+// ─── Wählbarkeit der Sammelrechnung (Pre-Live Fix-Pack IB-2) ──────────────────────
+
+test("B9 — Fähigkeit fehlt oder ist false: die Sammelrechnung ist gesperrt, und es geht KEIN PATCH hinaus", async () => {
+  for (const capabilities of [undefined, { consolidated7dAvailable: false }]) {
+    const fall = JSON.stringify(capabilities) ?? "ohne Feld";
+    const { ctx, page, state, fehler } = await neueSeite("single", { capabilities });
+    await zumProfil(page);
+    assert.equal(await page.locator("#bm-mode-consolidated_7d").isDisabled(), true, `${fall}: Option nicht gesperrt`);
+    assert.equal(await page.locator("#bm-mode-single").isChecked(), true);
+    assert.equal(await page.getByText("Die Sammelrechnung ist derzeit nicht verfügbar.", { exact: true }).count(), 1,
+      `${fall}: der Hinweis fehlt`);
+    await page.locator("#bm-mode-consolidated_7d").click({ force: true });
+    await page.waitForTimeout(500);
+    assert.equal(state.patches.length, 0, `${fall}: eine gesperrte Option darf keinen Request erzeugen`);
+    assert.equal(await page.locator("#bm-mode-single").isChecked(), true, `${fall}: die Auswahl ist gewandert`);
+    assert.equal(state.periodCalls, 0, `${fall}: kein Sammelzeitraum für ein Einzelrechnungskonto`);
+    assert.deepEqual(fehler, []);
+    await ctx.close();
+  }
+});
+
+test("B10 — Bestandskonto ohne Fähigkeit: behält die Sammelrechnung, erfährt die Endgültigkeit, kann zurück — und nicht wieder hin", async () => {
+  const { ctx, page, state, fehler } = await neueSeite("consolidated_7d", { capabilities: { consolidated7dAvailable: false } });
+  await zumProfil(page);
+  assert.equal(await page.locator("#bm-mode-consolidated_7d").isChecked(), true, "das Bestandskonto wird nie umgedeutet");
+  assert.equal(await page.locator("#bm-mode-consolidated_7d").isDisabled(), false, "die gespeicherte Wahl bleibt wählbar");
+  const vermerk = page.getByText("Ihr Konto nutzt weiterhin die Sammelrechnung.", { exact: false });
+  assert.equal(await vermerk.count(), 1, "der Hinweis auf die Endgültigkeit des Rückwegs fehlt");
+  await page.locator("#bm-mode-single").click();
+  await page.waitForSelector(".profile-saved", { timeout: 15000 });
+  assert.deepEqual(state.patches, [{ billing_mode: "single" }], "der Rückweg sendet genau diesen einen Schlüssel");
+  // Danach ist die Sammelrechnung ein NEUER Wechsel — und ohne Fähigkeit gesperrt.
+  await page.waitForFunction(() => document.querySelector("#bm-mode-consolidated_7d")?.disabled === true, null, { timeout: 15000 });
+  assert.equal(await page.locator("#bm-mode-single").isChecked(), true);
+  assert.equal(await vermerk.count(), 0, "der Bestandsvermerk gilt nur, solange das Konto die Sammelrechnung führt");
+  assert.deepEqual(fehler, []);
+  await ctx.close();
+});
+
+test("B11 — Server lehnt ab (Lauf inzwischen aus): kein falscher Erfolg, die Auswahl fällt auf die Serverwahrheit zurück", async () => {
+  const { ctx, page, state, fehler } = await neueSeite("single", {
+    capabilities: { consolidated7dAvailable: true }, serverGateOpen: false,
+  });
+  await zumProfil(page);
+  await page.locator("#bm-mode-consolidated_7d").click();
+  await page.locator(".alert-error", { hasText: "Ihre Sendungen werden weiter einzeln abgerechnet." })
+    .waitFor({ timeout: 15000 });
+  assert.equal(state.patches.length, 1, "genau ein Versuch");
+  assert.equal(state.mode, "single", "der Server hat nichts umgestellt");
+  assert.equal(await page.locator("#bm-mode-single").isChecked(), true, "die Anzeige muss auf die Serverwahrheit zurückfallen");
+  assert.equal(await page.locator(".profile-saved").count(), 0, "keine Erfolgsmeldung bei einer Ablehnung");
+  assert.equal(state.periodCalls, 0, "kein Sammelzeitraum ohne Sammelrechnung");
   assert.deepEqual(fehler, []);
   await ctx.close();
 });

@@ -205,12 +205,12 @@ test("13 — ein vorhandener Wert öffnet seinen Bereich auch OHNE gespeicherte 
 
 test("14 — die Stellung wird gespiegelt, aber ein ausgeschalteter Wert nicht", () => {
   const eff = schnitt(bookingPage, "setFlowBooking({", "const tariff = bookingData", "Spiegel-Effekt (14)");
-  assert.match(eff, /referenceEnabled, trackingEmailEnabled, labelTrackingEmailEnabled, labelFormatEnabled,/,
-    "die Schalterstellungen werden nicht gespiegelt — ein Reload verlöre sie wieder");
+  assert.match(eff, /referenceEnabled, trackingEmailEnabled,\s*labelTrackingEmailEnabled: effectiveLabelTrackingEmailEnabled, labelFormatEnabled,/,
+    "die Schalterstellungen werden nicht gespiegelt bzw. der Carrier-Label-Vertrag wird nicht berücksichtigt");
   // Und die Werte weiterhin nur bei aktiver Option (unveränderte Regel).
   assert.match(eff, /reference: referenceEnabled \? form\.reference : ""/);
   assert.match(eff, /trackingEmail: trackingEmailEnabled \? trackingEmail : ""/);
-  assert.match(eff, /labelTrackingEmail: labelTrackingEmailEnabled \? labelTrackingEmail : ""/);
+  assert.match(eff, /labelTrackingEmail: effectiveLabelTrackingEmailEnabled \? labelTrackingEmail : ""/);
 });
 
 test("15 — die Stellung hat KEINE Buchungswirkung", () => {

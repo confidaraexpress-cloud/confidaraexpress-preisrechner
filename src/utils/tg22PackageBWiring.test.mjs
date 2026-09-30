@@ -75,7 +75,9 @@ test("3 — Schritt und Absicherung starten aus dem angebotsgebundenen Startzust
 test("4 — der Spiegel trägt den Angebotsschlüssel", () => {
   const eff = abschnitt(booking, "setFlowBooking({", "const tariff = bookingData");
   assert.match(eff, /goodsAreNew, goodsAreFragile,\s*insuranceOfferKey,/);
-  assert.match(eff, /goodsAreNew, goodsAreFragile, insuranceOfferKey,\s*trackingEmailEnabled/);
+  assert.match(eff, /goodsAreNew, goodsAreFragile,\s*insuranceOfferKey,/);
+  assert.match(eff, /trackingEmailEnabled/);
+  assert.match(eff, /effectiveLabelTrackingEmailEnabled/);
   // TG22 Residential: der Schlüssel trägt zusätzlich den Preisstand (utils/insuranceRestore.mjs).
   assert.match(booking, /const insuranceOfferKey = insuranceRestoreKey\(bookingData\?\.tariff\);/);
 });

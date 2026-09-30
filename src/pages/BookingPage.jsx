@@ -412,6 +412,7 @@ export default function BookingPage() {
   const [labelTrackingEmail, setLabelTrackingEmail] = useState(flowBooking?.labelTrackingEmail || "");
   const [labelTrackingEmailEnabled, setLabelTrackingEmailEnabled] = useState(
     () => flowBooking?.labelTrackingEmailEnabled === true || !!(flowBooking?.labelTrackingEmail || "").trim());
+  const effectiveLabelTrackingEmailEnabled = !carrierLabelAtPickup && labelTrackingEmailEnabled;
   // Fehler erscheinen erst, wenn der Kunde weitergehen will — nicht schon beim
   // Einschalten eines noch leeren Feldes (dieselbe Regel wie bei den Zollangaben).
   const [emailShowErrors, setEmailShowErrors] = useState(false);
@@ -453,7 +454,7 @@ export default function BookingPage() {
   // ungültiger Restwert darf die Buchung nicht blockieren, weil er auch nicht
   // gesendet wird. Das Frontend ersetzt die serverseitige Prüfung nicht.
   const trackingEmailProblem      = shipmentEmailError(trackingEmailEnabled, trackingEmail);
-  const labelTrackingEmailProblem = shipmentEmailError(!carrierLabelAtPickup && labelTrackingEmailEnabled, labelTrackingEmail);
+  const labelTrackingEmailProblem = shipmentEmailError(effectiveLabelTrackingEmailEnabled, labelTrackingEmail);
   const shipmentEmailsValid = !trackingEmailProblem && !labelTrackingEmailProblem;
 
   // ── Zollangaben (Phase 2): State im Orchestrator, nur bei customsRequired ───
@@ -502,7 +503,7 @@ export default function BookingPage() {
       // gebucht würde — sonst stünde ein bewusst ausgeschalteter Bereich nach der
       // Rückkehr wieder offen.
       trackingEmail: trackingEmailEnabled ? trackingEmail : "",
-      labelTrackingEmail: !carrierLabelAtPickup && labelTrackingEmailEnabled ? labelTrackingEmail : "",
+      labelTrackingEmail: effectiveLabelTrackingEmailEnabled ? labelTrackingEmail : "",
       // Dieselbe Regel: gespiegelt wird nur, was auch gesendet würde. Ist das Feld
       // gar nicht sichtbar (anderer Kontomodus oder Sendung ohne Lagerbezug), bleibt
       // der Vorgang leer — ein unsichtbarer Restwert darf nie mitgebucht werden.
@@ -511,7 +512,7 @@ export default function BookingPage() {
       // Sie tragen KEINE Buchungswirkung: der Payload verlangt zusätzlich einen nicht
       // leeren Wert, und ein ausgeschalteter Bereich spiegelt oben ohnehin leer.
       referenceEnabled, trackingEmailEnabled,
-      labelTrackingEmailEnabled: !carrierLabelAtPickup && labelTrackingEmailEnabled, labelFormatEnabled,
+      labelTrackingEmailEnabled: effectiveLabelTrackingEmailEnabled, labelFormatEnabled,
     });
   // Reihenfolge ohne Bedeutung für React — die vier E-Mail-Abhängigkeiten stehen
   // aber bewusst am Ende: sharedShipmentEmailOptions.test.mjs (6) verankert dort.
@@ -520,7 +521,7 @@ export default function BookingPage() {
   }, [step, labelFormat, referenceEnabled, form.reference, form.content, insuranceType,
       goodsValue, insuranceValue, insValueManual, labelFormatEnabled, setFlowBooking,
       showExternalDeliveryNote, externalDeliveryNoteNumber, goodsAreNew, goodsAreFragile, insuranceOfferKey,
-      carrierLabelAtPickup, trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
+      carrierLabelAtPickup, effectiveLabelTrackingEmailEnabled, trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail]);
 
   const tariff = bookingData?.tariff;
   // TG22 Paket B: welche Labelformate DIESES Angebot zur Wahl stellt (leer = keine Auswahl, kein
@@ -1250,7 +1251,7 @@ export default function BookingPage() {
           // vorhandene Adresse IST die Aktivierung (so der Backendvertrag).
           ...buildShipmentEmailPayload({
             trackingEmailEnabled, trackingEmail,
-            labelTrackingEmailEnabled: !carrierLabelAtPickup && labelTrackingEmailEnabled, labelTrackingEmail,
+            labelTrackingEmailEnabled: effectiveLabelTrackingEmailEnabled, labelTrackingEmail,
           }),
           // Eigene Lieferscheinnummer — nur wenn das Feld überhaupt sichtbar war und
           // etwas darinsteht. Ein unsichtbarer Restwert wird nie mitgebucht. Der Wert
@@ -2149,7 +2150,7 @@ export default function BookingPage() {
               trackingEmailError={emailShowErrors ? trackingEmailProblem : null}
               labelTrackingEmail={labelTrackingEmail}
               onLabelTrackingEmailChange={setLabelTrackingEmail}
-              labelTrackingEmailEnabled={labelTrackingEmailEnabled}
+              labelTrackingEmailEnabled={effectiveLabelTrackingEmailEnabled}
               onLabelTrackingEmailEnabledChange={setLabelTrackingEmailEnabled}
               labelTrackingEmailError={emailShowErrors ? labelTrackingEmailProblem : null}
               labelFormat={labelFormat}
@@ -2218,7 +2219,7 @@ export default function BookingPage() {
                 reference: form.reference,
                 trackingEmailEnabled,
                 trackingEmail,
-                labelTrackingEmailEnabled: !carrierLabelAtPickup && labelTrackingEmailEnabled,
+                labelTrackingEmailEnabled: effectiveLabelTrackingEmailEnabled,
                 labelTrackingEmail,
                 // TG22 Paket B: eine aktive Formatwahl nur, wenn dieses Angebot überhaupt eine anbietet.
                 labelFormatEnabled: labelFormatOptions.length > 0 && labelFormatEnabled,

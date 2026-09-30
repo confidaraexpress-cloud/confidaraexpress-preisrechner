@@ -99,13 +99,15 @@ export function bookingShippingDocuments(booking) {
 export const BOOKING_LABEL_TEXT = Object.freeze({
   pending: "Ihr Versandlabel wird erstellt. Sobald es verfügbar ist, können Sie es in Ihrem ConfidaraExpress-Konto abrufen.",
   separate: "Das Versandlabel wurde Ihnen gesondert bereitgestellt.",
+  carrierAtPickup: "Das Versandlabel wird bei der Abholung am Paket angebracht. Sie müssen kein Versandlabel ausdrucken.",
   unknown: "Den aktuellen Stand Ihres Versandlabels finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
   retrieve: "Versandlabel jetzt abrufen",
   retrieving: "Versandlabel wird abgerufen …",
 });
 
 export const BOOKING_LABEL_MODE = Object.freeze({
-  DOWNLOAD: "download", PENDING: "pending", SEPARATE: "separate", UNKNOWN: "unknown",
+  DOWNLOAD: "download", PENDING: "pending", SEPARATE: "separate",
+  CARRIER_AT_PICKUP: "carrier_at_pickup", UNKNOWN: "unknown",
 });
 
 /**
@@ -122,6 +124,7 @@ export function bookingLabelView(booking) {
     case "available": return { mode: M.DOWNLOAD, retrievable: false, text: null };
     case "pending":   return { mode: M.PENDING, retrievable: b.labelRetrievable === true, text: BOOKING_LABEL_TEXT.pending };
     case "separate":  return { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate };
+    case "carrier_at_pickup": return { mode: M.CARRIER_AT_PICKUP, retrievable: false, text: BOOKING_LABEL_TEXT.carrierAtPickup };
     default:          return { mode: M.UNKNOWN, retrievable: false, text: BOOKING_LABEL_TEXT.unknown };
   }
 }

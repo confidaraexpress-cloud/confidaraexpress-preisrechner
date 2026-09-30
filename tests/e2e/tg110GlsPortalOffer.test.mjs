@@ -8,6 +8,7 @@
 //   • die Karte erscheint als vollwertiges, buchbares Angebot (nicht gesperrt)
 //   • Carrier „GLS" + Servicename „Pick&Ship", Uebergabe „Abholung an Ihrer Adresse"
 //   • KEIN Paketshop-Finder (der ist Abgabe/dropoff vorbehalten)
+//   • „Kein Drucker nötig" und keine Downloadlabel-Formatzusage — GLS bringt das Label bei der Abholung an
 //   • White Label: nirgends „Transglobal", keine ServiceID/QuoteID
 // Alle Betraege sind Fixturewerte des gemockten Servers (Portalnachweis: netto 15,44 / brutto 18,37).
 import { test } from "node:test";
@@ -46,9 +47,10 @@ const GLS110 = {
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage", currency: "EUR",
   netPrice: 15.44, vatAmount: 2.93, finalPrice: 18.37,
   bookable: true, priceCompleteness: "complete", requiredPriceInputs: [],
-  labelFormats: ["PDF"], labelSizes: ["A4"], labelFormatOptions: [], insuranceAvailable: false, insuranceDetails: null,
+  labelFormats: [], labelSizes: [], labelFormatOptions: [], insuranceAvailable: false, insuranceDetails: null,
   pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
-  chargeableWeight: 2, trackingAvailable: true, printerRequired: true, tariffLimits: [],
+  chargeableWeight: 2, trackingAvailable: true, printerRequired: false,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
 };
 
 let server, browser;
@@ -130,6 +132,10 @@ test("GLS-110: buchbare Fahrerabholung mit GLS-Carrier, ohne Paketshop, White La
 
   // KEIN Paketshop-Finder bei Abholung (ps-trigger ist der Abgabe vorbehalten).
   assert.equal(await karte.locator(".ps-trigger").count(), 0, "GLS-110 (Abholung) zeigt faelschlich einen Paketshop-Finder");
+
+  // DE0052660: kein Kundendrucker/Downloadlabel fuer Pick&Ship.
+  assert.match(kartentext, /Kein Drucker nötig|Drucker Nicht erforderlich/, "Carrier-Label-Vertrag fehlt");
+  assert.doesNotMatch(kartentext, /Versandlabel zum Ausdrucken|PDF ·|DIN A4|Thermodruck/, "falsche Kundendruck-/Labelzusage");
 
   // White Label: kein Einkaufsprovider, keine ServiceID/QuoteID irgendwo auf der Seite.
   const seite = norm(await page.evaluate(() => document.body.innerText));

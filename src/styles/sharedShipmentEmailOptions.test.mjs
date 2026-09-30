@@ -68,7 +68,8 @@ test("5 — beide Schalter kommen aus der Stellung ODER aus der vorhandenen Adre
 
 test("6 — der Vorgang spiegelt nur aktive Adressen", () => {
   assert.match(bookingPage, /trackingEmail: trackingEmailEnabled \? trackingEmail : ""/);
-  assert.match(bookingPage, /labelTrackingEmail: labelTrackingEmailEnabled \? labelTrackingEmail : ""/);
+  assert.match(bookingPage, /labelTrackingEmail: effectiveLabelTrackingEmailEnabled \? labelTrackingEmail : ""/);
+  assert.match(bookingPage, /const effectiveLabelTrackingEmailEnabled = !carrierLabelAtPickup && labelTrackingEmailEnabled;/);
   // Und beides hängt in den Abhängigkeiten des Spiegel-Effekts.
   const eff = bookingPage.slice(bookingPage.indexOf("setFlowBooking({"), bookingPage.indexOf("const tariff = bookingData"));
   assert.match(eff, /trackingEmailEnabled, trackingEmail, labelTrackingEmailEnabled, labelTrackingEmail\]/);
@@ -85,7 +86,7 @@ test("7 — das Vorgangsschema wurde additiv und rückwärtskompatibel erweitert
 
 test("8 — validiert wird nur die aktive Option", () => {
   assert.match(bookingPage, /shipmentEmailError\(trackingEmailEnabled, trackingEmail\)/);
-  assert.match(bookingPage, /shipmentEmailError\(labelTrackingEmailEnabled, labelTrackingEmail\)/);
+  assert.match(bookingPage, /shipmentEmailError\(effectiveLabelTrackingEmailEnabled, labelTrackingEmail\)/);
   // Beide Gates (Weiter und Buchen) prüfen dieselbe abgeleitete Größe.
   assert.equal((bookingPage.match(/if \(!shipmentEmailsValid\)/g) || []).length, 2,
     "es braucht das Weiter-Gate UND den Buchen-Guard");
@@ -111,8 +112,9 @@ test("11 — der Payload trägt die Adresse, nie den Schalterzustand", () => {
   assert.ok(bookCall, "der /book-Aufruf muss auffindbar bleiben");
   const body = ohneKommentare(bookCall[1]);
   assert.match(body, /\.\.\.buildShipmentEmailPayload\(\{/);
-  assert.ok(!/trackingEmailEnabled\s*:/.test(body) && !/labelTrackingEmailEnabled\s*:/.test(body),
-    "UI-Aktivierungsflags gehören nicht in den Payload");
+  assert.match(body, /labelTrackingEmailEnabled:\s*effectiveLabelTrackingEmailEnabled/);
+  assert.doesNotMatch(body, /["']labelTrackingEmailEnabled["']\s*:/,
+    "ein UI-Aktivierungsflag wurde als JSON-Feld serialisiert");
   // Die bestehenden Felder bleiben unangetastet.
   // TG22 Paket B: labelFormat läuft über den Angebotshelfer (nur bei Formatwahl des Angebots).
   for (const feld of ["referenceNumber:", "...labelFormatBookPayload(tariff, labelFormat),", "sender:", "recipient:", "weight:"]) {

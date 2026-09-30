@@ -286,7 +286,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // Dieselbe Beschriftung wie der Timeline-Knoten: es ist eine Schätzung, keine Zusage.
   if (transitDetail)               features.push({ icon: "clock",   label: "Voraussichtliche Laufzeit", value: transitDetail });
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
-  if (carrierAppliesLabel(t))       features.push({ icon: "tag",     label: "Versandlabel",           value: LABEL_HANDLING_TEXT.offer });
+  if (carrierAppliesLabel(t))       features.push({ icon: "info",    label: "Versandlabel",           value: LABEL_HANDLING_TEXT.offer });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
   // ── Belegte Angebotsmetadaten ──────────────────────────────────────────────────
@@ -543,7 +543,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
     metaItems.push({ icon: "printer", label: "Kein Drucker nötig", tone: "default" });
   }
   if (carrierAppliesLabel(t)) {
-    metaItems.push({ icon: "tag", label: LABEL_HANDLING_TEXT.offer, tone: "info" });
+    metaItems.push({ icon: "info", label: LABEL_HANDLING_TEXT.offer, tone: "info" });
   }
 
   const toggleDetails = (e) => {

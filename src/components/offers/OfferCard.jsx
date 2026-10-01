@@ -285,6 +285,7 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
   // Dieselbe Beschriftung wie der Timeline-Knoten: es ist eine Schätzung, keine Zusage.
   if (transitDetail)               features.push({ icon: "clock",   label: "Voraussichtliche Laufzeit", value: transitDetail });
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
+  if (t.carrierAppliesLabelAtPickup === true) features.push({ icon: "package", label: "Versandlabel", value: "Wird bei der Abholung angebracht" });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
   // ── Belegte Angebotsmetadaten ──────────────────────────────────────────────────

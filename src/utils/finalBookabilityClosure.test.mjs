@@ -2,7 +2,7 @@
 // Final Bookability Closure (2026-09-28) — die Frontendseite der geschlossenen Buchbarkeitslücken.
 //
 //   P0-01  „nachweislich nicht bestellt“ (BOOKING_FAILED u. a.) ist nie „wird geprüft“ / „Zu meinen Sendungen“
-//   P1-02  Paketshop-Finder nur mit serverseitiger Fähigkeit; ehrliche Sperrgründe
+//   P1-02  ehrliche Sperrgründe; der Paketshop-Finder folgt seit 2026-10-01 wieder Abgabe + Suchcode (F6)
 //   P1-03  409 COLLECTION_DATE_CHANGED nennt den neuen Abholtag und führt zur Neuberechnung
 //   P2-05 / P2-08  Sperrgründe Gebietszuschlag, Maße, Geschäftsabsender, Inhaltsangabe
 //   P2-01 / EXTRA  der Labelstand der Buchungsantwort; „abrufbar“ ist nicht „bereit“
@@ -143,24 +143,29 @@ test("F5 — Sperrgründe: jeder neue Servergrund hat einen eigenen Text; Hinwei
   assert.equal(OFFER_AREA_SURCHARGE_TEXT, "Gebietszuschlag nicht bestätigt.");
 });
 
-test("F6 — P1-02: der Paketshop-Finder erscheint nur mit serverseitiger Paketshopfähigkeit", () => {
-  const abgabe = (extra) => ({ serviceType: "dropoff", publicCarrierId: "dpd", bookable: true, ...extra });
-  // Bisher genügte der Carrier-Code aus publicCarrierId — jetzt nicht mehr.
-  assert.equal(offerSupportsAccessPointSearch(abgabe({})), false, "Finder ohne jede Fähigkeit");
-  assert.equal(offerSupportsAccessPointSearch(abgabe({ accessPoint: { available: false, provider: null } })), false,
-    "Finder, obwohl der Server die Fähigkeit verneint");
-  for (const carrier of ["dpd", "dhl", "gls", "ups"]) {
+test("F6 — Paketshop-Finder: Abgabe + kontrollierter Suchcode, keine zusätzliche Fähigkeitssperre (Betreiberentscheidung 2026-10-01)", () => {
+  const abgabe = (extra) => ({ serviceType: "dropoff", bookable: true, ...extra });
+  // UPS, DHL, GLS, DPD — mit genau der Fähigkeitsangabe, die der Server für eine JUMiNGO-Abgabe sendet
+  // (`available` nur beim belegten UPS-Access-Point-Tarif), und ganz ohne sie.
+  for (const carrier of ["ups", "dhl", "gls", "dpd"]) {
     assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: carrier, accessPoint: { available: false, provider: null } })),
-      false, carrier);
+      true, carrier);
+    assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: carrier })), true, `${carrier} ohne accessPoint`);
   }
-  // Mit Fähigkeit: Access-Point-Vertrag (UPS, belegt) oder die serverseitige Abgabe-Suche (TG124).
   assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: "ups", accessPoint: { available: true, provider: "ups" } })), true);
-  assert.equal(offerSupportsAccessPointSearch(abgabe({ parcelShopSearch: "server" })), true);
-  // Eine Abholung bekommt nie einen Finder — auch nicht mit Fähigkeit.
+  // TG124: die serverseitige Paketshopsuche bleibt unverändert.
+  assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: "dpd", parcelShopSearch: "server" })), true);
+  // Kein Finder: Abholung (auch mit Fähigkeit), unbekannter oder nicht auflösbarer Carrier, keine Übergabeart.
   assert.equal(offerSupportsAccessPointSearch({ serviceType: "pickup", publicCarrierId: "ups",
     accessPoint: { available: true, provider: "ups" } }), false);
-  // Und ohne auflösbaren Suchcode bleibt es trotz Fähigkeit bei keinem Finder.
+  for (const id of ["other", "fedex", "tnt", "dhl-express", "", null, undefined]) {
+    assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: id })), false, String(id));
+  }
   assert.equal(offerSupportsAccessPointSearch(abgabe({ publicCarrierId: "other", accessPoint: { available: true, provider: "fedex" } })), false);
+  for (const serviceType of [undefined, null, "", "shop", "DROPOFF"]) {
+    assert.equal(offerSupportsAccessPointSearch({ serviceType, publicCarrierId: "dpd" }), false, String(serviceType));
+  }
+  // Der Fähigkeitsleser bleibt streng — er ist nur keine Finder-Bedingung mehr.
   assert.equal(offerHasParcelShopCapability({ accessPoint: { available: "true" } }), false, "nur ein echtes true zählt");
 });
 

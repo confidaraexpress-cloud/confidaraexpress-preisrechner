@@ -46,9 +46,10 @@ const GLS110 = {
   transitDaysMin: 1, transitDaysMax: 2, deliveryTime: "1–2 Tage", currency: "EUR",
   netPrice: 15.44, vatAmount: 2.93, finalPrice: 18.37,
   bookable: true, priceCompleteness: "complete", requiredPriceInputs: [],
-  labelFormats: ["PDF"], labelSizes: ["A4"], labelFormatOptions: [], insuranceAvailable: false, insuranceDetails: null,
+  labelFormats: [], labelSizes: [], labelFormatOptions: [], insuranceAvailable: false, insuranceDetails: null,
   pickupToday: false, pickupTodayUntil: null, sameDaySurchargeNet: null, sameDaySurchargeGross: null,
-  chargeableWeight: 2, trackingAvailable: true, printerRequired: true, tariffLimits: [],
+  chargeableWeight: 2, trackingAvailable: true, printerRequired: false, carrierAppliesLabelAtPickup: true,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }],
 };
 
 let server, browser;
@@ -127,6 +128,8 @@ test("GLS-110: buchbare Fahrerabholung mit GLS-Carrier, ohne Paketshop, White La
   assert.match(kartentext, /Abholung an Ihrer Adresse/, "Uebergabeart Abholung fehlt");
   // Preis sichtbar (netto 15,44 oder brutto 18,37 — die Oberflaeche rechnet nichts).
   assert.match(kartentext, /15,44|18,37/, "Preis fehlt");
+  assert.match(kartentext, /Kein Drucker nötig|Drucker Nicht erforderlich/, "TG110 verlangt faelschlich einen Drucker");
+  assert.match(kartentext, /Versandlabel.*Abholung|Abholung.*Versandlabel/i, "Hinweis auf Fahrerlabel fehlt");
 
   // KEIN Paketshop-Finder bei Abholung (ps-trigger ist der Abgabe vorbehalten).
   assert.equal(await karte.locator(".ps-trigger").count(), 0, "GLS-110 (Abholung) zeigt faelschlich einen Paketshop-Finder");

@@ -35,6 +35,7 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
     .filter(Boolean).join(" · ") || null;
 
   const printerRequired = tariff.printerRequired === true;
+  const carrierAppliesLabelAtPickup = tariff.carrierAppliesLabelAtPickup === true;
 
   const preis = priceInfo(priceView);
   const hatBetrag = preis.net != null || preis.gross != null;
@@ -117,6 +118,11 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
           {printerRequired && (
             <span className="offsum-flag" role="note">
               <Icon n="printer" s={13} c="currentColor" /> Drucker erforderlich
+            </span>
+          )}
+          {carrierAppliesLabelAtPickup && (
+            <span className="offsum-flag" role="note">
+              <Icon n="package" s={13} c="currentColor" /> Versandlabel wird bei der Abholung angebracht
             </span>
           )}
           {sameDayBis && (

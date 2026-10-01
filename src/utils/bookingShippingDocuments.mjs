@@ -99,13 +99,14 @@ export function bookingShippingDocuments(booking) {
 export const BOOKING_LABEL_TEXT = Object.freeze({
   pending: "Ihr Versandlabel wird erstellt. Sobald es verfügbar ist, können Sie es in Ihrem ConfidaraExpress-Konto abrufen.",
   separate: "Das Versandlabel wurde Ihnen gesondert bereitgestellt.",
+  carrierApplied: "Das Versandlabel wird bei der Abholung vom Fahrer an Ihrem Paket angebracht. Sie müssen kein Versandlabel ausdrucken.",
   unknown: "Den aktuellen Stand Ihres Versandlabels finden Sie jederzeit unter „Meine Sendungen“ → „Dokumente“.",
   retrieve: "Versandlabel jetzt abrufen",
   retrieving: "Versandlabel wird abgerufen …",
 });
 
 export const BOOKING_LABEL_MODE = Object.freeze({
-  DOWNLOAD: "download", PENDING: "pending", SEPARATE: "separate", UNKNOWN: "unknown",
+  DOWNLOAD: "download", PENDING: "pending", SEPARATE: "separate", CARRIER_APPLIED: "carrier_applied", UNKNOWN: "unknown",
 });
 
 /**
@@ -119,10 +120,11 @@ export function bookingLabelView(booking) {
   const M = BOOKING_LABEL_MODE;
   if (!Object.prototype.hasOwnProperty.call(b, "labelStatus")) return { mode: M.DOWNLOAD, retrievable: false, text: null };
   switch (b.labelStatus) {
-    case "available": return { mode: M.DOWNLOAD, retrievable: false, text: null };
-    case "pending":   return { mode: M.PENDING, retrievable: b.labelRetrievable === true, text: BOOKING_LABEL_TEXT.pending };
-    case "separate":  return { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate };
-    default:          return { mode: M.UNKNOWN, retrievable: false, text: BOOKING_LABEL_TEXT.unknown };
+    case "available":       return { mode: M.DOWNLOAD, retrievable: false, text: null };
+    case "pending":         return { mode: M.PENDING, retrievable: b.labelRetrievable === true, text: BOOKING_LABEL_TEXT.pending };
+    case "separate":        return { mode: M.SEPARATE, retrievable: false, text: BOOKING_LABEL_TEXT.separate };
+    case "carrier_applied": return { mode: M.CARRIER_APPLIED, retrievable: false, text: BOOKING_LABEL_TEXT.carrierApplied };
+    default:                return { mode: M.UNKNOWN, retrievable: false, text: BOOKING_LABEL_TEXT.unknown };
   }
 }
 

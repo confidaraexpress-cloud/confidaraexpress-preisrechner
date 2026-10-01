@@ -45,21 +45,17 @@ const BASIS = {
 };
 
 // Vier Angebote, die die Sichtbarkeitsregel vollständig ausleuchten. Alles
-// kommt aus strukturierten Feldern — serviceType, publicCarrierId und (P1-02)
-// die serverseitige Paketshopfähigkeit `accessPoint`. Die
+// kommt aus strukturierten Feldern — serviceType und publicCarrierId. Die
 // NAMEN sind bewusst irreführend gewählt (ein Pickup-Angebot heißt
 // „Shopabgabe Express“, ein Angebot ohne Suchcode heißt „UPS“), damit eine
 // Namensheuristik hier auffliegen würde.
 const T_DPD_DROPOFF = {
   ...BASIS, id: 1, shipper_tariff_id: 1, publicCarrierId: "dpd", publicCarrierName: "DPD",
   publicServiceName: "Shopabgabe", serviceType: "dropoff",
-  // P1-02: der Paketshop-Finder erscheint nur mit serverseitiger Paketshopfaehigkeit (accessPoint).
-  accessPoint: { available: true, provider: "dpd" },
 };
 const T_UPS_DROPOFF = {
   ...BASIS, id: 2, shipper_tariff_id: 2, publicCarrierId: "ups", publicCarrierName: "UPS",
   publicServiceName: "Standardversand", serviceType: "dropoff", netPrice: 7.9, finalPrice: 9.4,
-  accessPoint: { available: true, provider: "ups" },
 };
 const T_PICKUP = {
   ...BASIS, id: 3, shipper_tariff_id: 3, publicCarrierId: "dpd", publicCarrierName: "DPD",
@@ -478,4 +474,35 @@ test("13 — der Einstieg verdrängt weder Preis noch Hauptaktion", async () => 
     assert.ok(tBox.height <= cBox.height, `der Einstieg (${tBox.height}px) ist nicht kleiner als die Hauptaktion (${cBox.height}px) bei ${w}px`);
     await page.close();
   }
+});
+
+// ═══════════ Buchbare Abgabe: Einstieg UND Auswahl (Betreiberentscheidung 2026-10-01) ═════════
+
+test("14 — eine buchbare Abgabe ohne Access-Point-Zusage trägt den Einstieg und ist auswählbar; ein echter Sperrgrund bleibt", async () => {
+  // Die Serverfelder einer JUMiNGO-Abgabe: `accessPoint.available` ist nur beim belegten UPS-Access-Point-Tarif
+  // gesetzt — eine DHL- oder GLS-Abgabe traegt `false`. Ob sie buchbar ist, sagt allein `bookable`.
+  const ohneZusage = { accessPoint: { available: false, provider: null } };
+  const T_DHL = { ...BASIS, id: 5, shipper_tariff_id: 5, offerId: "d".repeat(32), publicCarrierId: "dhl",
+    publicCarrierName: "DHL Express", publicServiceName: "Standardversand", serviceType: "dropoff",
+    bookable: true, unavailableReason: null, ...ohneZusage };
+  const T_GLS_G4 = { ...BASIS, id: 6, shipper_tariff_id: 6, offerId: "e".repeat(32), publicCarrierId: "gls",
+    publicCarrierName: "GLS", publicServiceName: "Standardversand", serviceType: "dropoff", netPrice: 7.4, finalPrice: 8.81,
+    bookable: false, unavailableReason: "area_surcharge_unconfirmed", ...ohneZusage };
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+  await setupRoutes(page, { tariffs: [T_DHL, T_GLS_G4] });
+  await zeigeAngebote(page);
+  await page.waitForSelector(".ps-trigger", { timeout: 10000 });
+
+  const karteVon = (carrier) => page.locator(".offer-card", { has: page.locator(".offer-carrier-name", { hasText: carrier }) });
+  const dhl = karteVon("DHL Express");
+  assert.equal(await dhl.locator(".ps-trigger").count(), 1, "die buchbare DHL-Abgabe hat keinen Paketshop-Einstieg");
+  assert.equal(await dhl.locator(".offer-cta-btn").isDisabled(), false, "die buchbare Abgabe ist nicht auswählbar");
+  assert.match(await dhl.locator(".offer-cta-btn").innerText(), /Angebot auswählen/);
+  assert.doesNotMatch(await dhl.innerText(), /nicht direkt buchbar/i, "eine buchbare Abgabe erscheint als Preisauskunft");
+
+  // Ein echter Sperrgrund bleibt sichtbar und sperrt die Auswahl.
+  const gls = karteVon("GLS");
+  assert.equal(await gls.locator(".offer-cta-btn").isDisabled(), true, "trotz ungeklärtem Gebietszuschlag auswählbar");
+  assert.match(await gls.locator(".offer-cta-btn").innerText(), /Gebietszuschlag nicht bestätigt/);
+  await page.close();
 });

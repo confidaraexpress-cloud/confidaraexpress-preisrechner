@@ -38,8 +38,6 @@ const USER = {
 
 const DROPOFF_TARIFF = {
   id: 1, shipper_tariff_id: 1, publicCarrierId: "dpd", publicCarrierName: "DPD",
-  // P1-02: der Paketshop-Finder erscheint nur mit serverseitiger Paketshopfaehigkeit (accessPoint).
-  accessPoint: { available: true, provider: "dpd" },
   publicServiceName: "Shopabgabe", serviceType: "dropoff", netPrice: 6.9, vatAmount: 1.31,
   finalPrice: 8.21, currency: "EUR", transitDaysMin: 1, transitDaysMax: 2,
   trackingAvailable: true, printerRequired: false, availableForDate: true,

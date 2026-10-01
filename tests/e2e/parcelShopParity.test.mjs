@@ -58,8 +58,6 @@ const USER = {
 // Finder überhaupt. Preis-, Tarif- und Buchungslogik bleiben unberührt.
 const DROPOFF_TARIFF = {
   id: 1, shipper_tariff_id: 1, publicCarrierId: "dpd", publicCarrierName: "DPD",
-  // P1-02: der Paketshop-Finder erscheint nur mit serverseitiger Paketshopfaehigkeit (accessPoint).
-  accessPoint: { available: true, provider: "dpd" },
   publicServiceName: "Shopabgabe", serviceType: "dropoff", netPrice: 6.9, vatAmount: 1.31,
   finalPrice: 8.21, currency: "EUR", transitDaysMin: 1, transitDaysMax: 2,
   trackingAvailable: true, printerRequired: false, availableForDate: true,
@@ -356,8 +354,7 @@ test("10 — kein horizontaler Überlauf und lesbare Status auf allen Zielbreite
 test("11 — UPS zeigt dieselbe Menge wie DPD: kein Carrier-Sonderfall mehr", async () => {
   // Vor PR #306 galt die Eligibility-Kürzung nur für DPD — UPS zeigte dadurch
   // mehr Shops als DPD bei identischer Antwort. Beide müssen jetzt gleich sein.
-  const ups = { ...DROPOFF_TARIFF, publicCarrierId: "ups", publicCarrierName: "UPS",
-                accessPoint: { available: true, provider: "ups" } };
+  const ups = { ...DROPOFF_TARIFF, publicCarrierId: "ups", publicCarrierName: "UPS" };
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const suchen = await setupRoutes(page, { tariff: ups });
   await oeffneFinder(page);

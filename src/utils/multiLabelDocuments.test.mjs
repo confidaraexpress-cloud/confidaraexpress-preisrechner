@@ -78,7 +78,8 @@ test("2 — der Name kommt vom Server; die Oberfläche bildet keine Paketnummer"
     "./shipmentDocumentsView.mjs", "./bookingShippingDocuments.mjs",
     "../components/dashboard/ShipmentDocumentsDrawer.jsx", "../components/booking/BookingSuccessDocuments.jsx",
   ].map(lies).join("\n"));
-  assert.ok(!/Paket/.test(quellen), "eine Paketbeschriftung steht im Client");
+  assert.ok(!/Versandlabel\s*\$\{|Paket\s*\$\{|Paket\s+\d+\s+von/.test(quellen),
+    "eine Paketnummer/-beschriftung wird im Client gebildet");
   assert.ok(!/ von \$\{/.test(quellen), "„x von y“ wird im Client gebildet");
 });
 

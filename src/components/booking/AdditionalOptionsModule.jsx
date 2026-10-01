@@ -1,4 +1,5 @@
 import React from "react";
+import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
 import { Icon } from "../ui/Icon";
 import { Switch } from "../ui/Switch";
 
@@ -63,7 +64,7 @@ function EmailOption({ id, label, enabled, onEnabledChange, value, onChange, err
 export function AdditionalOptionsModule({
   reference, onReferenceChange, referenceEnabled, onReferenceEnabledChange, referenceError,
   labelFormat, onLabelFormatChange, labelFormatEnabled, onLabelFormatEnabledChange,
-  labelFormatOptions, labelDeliveryInfo,
+  labelFormatOptions, labelDeliveryInfo, labelHandling,
   trackingEmail, onTrackingEmailChange, trackingEmailEnabled, onTrackingEmailEnabledChange,
   trackingEmailError,
   labelTrackingEmail, onLabelTrackingEmailChange, labelTrackingEmailEnabled,
@@ -79,6 +80,7 @@ export function AdditionalOptionsModule({
   const wahlformate = Array.isArray(labelFormatOptions)
     ? LABEL_FORMATS.filter(f => labelFormatOptions.includes(f.id))
     : [];
+  const carrierBringtLabel = carrierAppliesLabel({ labelHandling });
   return (
     <div className="calc-panel addopt-panel mb-16">
       <div className="calc-panel-header"><Icon n="settings" s={18} c="var(--ce-color-brand-ink)" /><h3>Zusätzliche Optionen</h3></div>
@@ -126,16 +128,25 @@ export function AdditionalOptionsModule({
           error={trackingEmailError}
         />
 
-        {/* 3) Zusatzempfänger: Trackinginformationen UND Versandlabel als PDF. */}
-        <EmailOption
-          id="booking-label-email-toggle"
-          label="Versandlabel & Tracking-Link an weitere E-Mail-Adresse senden"
-          enabled={labelTrackingEmailEnabled}
-          onEnabledChange={onLabelTrackingEmailEnabledChange}
-          value={labelTrackingEmail}
-          onChange={onLabelTrackingEmailChange}
-          error={labelTrackingEmailError}
-        />
+        {/* 3) Zusatzempfänger: Trackinginformationen UND Versandlabel als PDF.
+            Bei carrier-applied Label existiert fuer den Kunden kein PDF-Label — dann wird
+            diese Option nicht angeboten und stattdessen der belegte Ablauf erklaert. */}
+        {carrierBringtLabel ? (
+          <div className="addopt-option addopt-label-info" id="booking-label-carrier-info">
+            <Icon n="info" s={16} c="var(--ce-color-text-muted)" />
+            <span className="field-hint">{LABEL_HANDLING_TEXT.booking}</span>
+          </div>
+        ) : (
+          <EmailOption
+            id="booking-label-email-toggle"
+            label="Versandlabel & Tracking-Link an weitere E-Mail-Adresse senden"
+            enabled={labelTrackingEmailEnabled}
+            onEnabledChange={onLabelTrackingEmailEnabledChange}
+            value={labelTrackingEmail}
+            onChange={onLabelTrackingEmailChange}
+            error={labelTrackingEmailError}
+          />
+        )}
 
         {/* 4) Labeldruckformat — nur die Formate, die DIESES Angebot anbietet, Default A4.
             Der Schalter heißt „ändern": ausgeschaltet gilt weiterhin das Standardformat,

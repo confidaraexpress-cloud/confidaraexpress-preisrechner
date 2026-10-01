@@ -54,7 +54,7 @@ const BELEG_KNOEPFE = /^(Versandlabel|Abholetikett).* herunterladen$/;
 
 let server, browser;
 
-async function setupRoutes(page, { buchung = {}, protokoll } = {}) {
+async function setupRoutes(page, { buchung = {}, protokoll, tarif = TARIFF, koerper } = {}) {
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const p = new URL(route.request().url()).pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
@@ -76,7 +76,7 @@ async function setupRoutes(page, { buchung = {}, protokoll } = {}) {
     if (p.includes("/api/kunde/drafts")) return json({ items: [], nextCursor: null });
     if (p.includes("/api/kunde/addresses")) return json({ addresses: [], pagination: { total: 0 } });
     if (p.includes("/api/jumingo/calculate-price")) return json({
-      ceShipmentId: CE_SHIPMENT_ID, tariffs: [TARIFF], availableShippingModes: ["standard"],
+      ceShipmentId: CE_SHIPMENT_ID, tariffs: [tarif], availableShippingModes: ["standard"],
       publicCarriers: [{ id: "dhl", name: "DHL Express" }],
       customsRequired: false, fromCountryCode: "DE", toCountryCode: "DE", exportDeclaration: null,
     });
@@ -84,10 +84,13 @@ async function setupRoutes(page, { buchung = {}, protokoll } = {}) {
       pickupWindow: null, availableFrom: "2026-08-07T09:00:00Z", availableUntil: "2026-08-07T17:00:00Z",
       minimumMinutes: 120, adjustable: true,
     });
-    if (p.includes("/api/jumingo/book")) return json({
-      message: "Sendung gebucht", ceShipmentId: CE_SHIPMENT_ID, trackingNumber: "TRACK1", labelUrl: null,
-      invoiceNumber: "CE-RE-2026-000001", ...buchung,
-    });
+    if (p.includes("/api/jumingo/book")) {
+      if (koerper) koerper.push(route.request().postData() || "");
+      return json({
+        message: "Sendung gebucht", ceShipmentId: CE_SHIPMENT_ID, trackingNumber: "TRACK1", labelUrl: null,
+        invoiceNumber: "CE-RE-2026-000001", ...buchung,
+      });
+    }
     return json({});
   });
   await page.addInitScript(() => localStorage.setItem("ce_token", "e2e-token"));
@@ -247,4 +250,69 @@ test("5 — der gebundene Abgabe-Paketshop kommt aus der Buchungsantwort, ohne s
   await bucheBisErfolg(ohne);
   assert.equal(await ohne.locator("#booking-success-dropoff-location").count(), 0, "eine Zeile ohne Serverfeld");
   await ohne.close();
+});
+
+// TG110 Final Closure: der Labelvertrag `carrier_at_pickup` (der Carrier bringt das Label bei der Abholung an).
+// Die Oberfläche liest ausschließlich die Serverfelder `labelHandling` (Tarif) und `labelStatus` (Buchungsantwort) —
+// kein Provider- oder ServiceID-Wissen. Geprüft: Zusatzoptionen ohne PDF-Label-Mail (Tracking-only bleibt), kein
+// Label-Mail-Feld im Buchungsrequest, Erfolgsseite ohne Download- und Abrufknopf und ohne „wird erstellt“ — auch auf 390 px.
+test("6 — carrier_at_pickup: keine Label-Mail, Tracking-only bleibt; Erfolgsseite ohne Download/Abruf, auch auf 390 px", async () => {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  const koerper = [];
+  await setupRoutes(page, {
+    tarif: { ...TARIFF, printerRequired: false, labelHandling: "carrier_at_pickup" },
+    buchung: { labelStatus: "carrier_at_pickup" },
+    koerper,
+  });
+  await page.goto(`${BASE}/dashboard?page=new`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".offers-form-section", { timeout: 20000 });
+  await fuelleVersandformular(page);
+  await page.locator(".offers-calc-cta button").first().click();
+  await page.waitForSelector(".offer-card", { timeout: 20000 });
+  const karte = await page.locator(".offer-card:not(.offer-card--unavailable)").first().innerText();
+  assert.match(karte, /Kein Drucker nötig|Nicht erforderlich/, "die Karte verlangt einen Drucker");
+  assert.match(karte, /Wird bei der Abholung angebracht/, "der Carrier-Label-Hinweis fehlt auf der Karte");
+  await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();
+
+  // Zusatzoptionen (erster Buchungsschritt, VOR „Weiter"): der Hinweis statt der PDF-Label-Mail — die reine
+  // Tracking-Mail bleibt angeboten. Erst warten, bis das Modul gerendert ist (`count()` wartet nicht).
+  await page.waitForSelector("#booking-tracking-email-toggle", { state: "attached", timeout: 20000 });
+  assert.equal(await page.locator("#booking-label-email-toggle").count(), 0, "die Label-Mail wird angeboten");
+  assert.equal(await page.locator("#booking-label-carrier-info").count(), 1, "der Carrier-Label-Hinweis fehlt");
+  assert.match(await page.locator("#booking-label-carrier-info").innerText(),
+    /bei der Abholung am Paket angebracht\. Sie müssen kein Versandlabel ausdrucken/);
+  assert.equal(await page.locator("#booking-tracking-email-toggle").count(), 1, "die Tracking-Mail wurde mit abgeschaltet");
+
+  await page.getByRole("button", { name: /^Weiter/ }).first().click();
+  await page.waitForTimeout(400);
+  const checks = page.getByRole("checkbox"); // AGB + Gefahrgut
+  await checks.nth(0).check();
+  await checks.nth(1).check();
+  await page.getByRole("button", { name: /Kostenpflichtig buchen/ }).click();
+  await page.waitForSelector(".booking-success-title", { timeout: 20000 });
+
+  // Der Request trägt keine Label-Mail — ein alter Schalter könnte keine Buchungswirkung entwickeln.
+  assert.equal(koerper.length, 1, "nicht genau eine Buchung");
+  const body = JSON.parse(koerper[0] || "{}");
+  assert.ok(!body.labelTrackingEmail, `Label-Mail im Buchungsrequest: ${JSON.stringify(body.labelTrackingEmail)}`);
+
+  // Erfolgsseite: der Hinweis — kein Download, kein Abruf, kein „wird erstellt“.
+  const status = page.locator("#booking-label-status");
+  await status.waitFor({ timeout: 15000 });
+  assert.match(await status.innerText(), /bei der Abholung am Paket angebracht\. Sie müssen kein Versandlabel ausdrucken/);
+  assert.equal(await page.getByRole("button", { name: /Label herunterladen/ }).count(), 0, "ein Downloadknopf");
+  assert.equal(await page.locator("#booking-label-retrieve").count(), 0, "ein Abrufknopf");
+  assert.doesNotMatch(await page.locator("body").innerText(), /wird erstellt|sobald verfügbar/i, "eine Pending-Zusage");
+
+  // 390 px: der Hinweis steht im Bild, kein horizontaler Überlauf.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  const messung = await page.evaluate(() => {
+    const r = document.querySelector("#booking-label-status").getBoundingClientRect();
+    return { links: r.left, rechts: r.right, fenster: window.innerWidth,
+      querUeberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  assert.ok(messung.links >= 0 && messung.rechts <= messung.fenster + 1, `Hinweis außerhalb des Bildes: ${JSON.stringify(messung)}`);
+  assert.ok(messung.querUeberlauf <= 0, `horizontaler Überlauf: ${messung.querUeberlauf} px`);
+  await page.close();
 });

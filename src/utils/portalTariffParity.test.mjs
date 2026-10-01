@@ -46,7 +46,8 @@ const { offerSupportsAccessPointSearch, publicCarrierDisplay } = await ladeAsset
 // ── Die Serverformen (p8-public-offers, passende Adressen) ─────────────────────
 const GEMEINSAM = Object.freeze({
   currency: "EUR", collectionDateAdjusted: false, labelFormats: ["PDF"], labelSizes: [], labelFormatOptions: [],
-  trackingAvailable: true, printerRequired: true, insuranceAvailable: false, pickupToday: false,
+  trackingAvailable: true, printerRequired: true, carrierAppliesLabelAtPickup: null,
+  insuranceAvailable: false, pickupToday: false,
 });
 const TNT47 = Object.freeze({ ...GEMEINSAM, offerId: "offer-tnt", publicCarrierId: "tnt", publicServiceName: "Express 9:00",
   serviceType: "pickup", collectionDate: "2026-09-16", collectionReadyFrom: "09:00",
@@ -57,7 +58,8 @@ const GLS110 = Object.freeze({ ...GEMEINSAM, offerId: "offer-gls", publicCarrier
   serviceType: "pickup", collectionDate: "2026-09-16", collectionReadyFrom: "09:00",
   netPrice: 18.53, vatAmount: 3.52, finalPrice: 22.05, bookable: true, unavailableReason: null,
   requiredPriceInputs: [], surchargeFreePriceInputs: [], parcelShopSearch: null,
-  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 2 }] });
+  labelFormats: [], printerRequired: false, carrierAppliesLabelAtPickup: true,
+  tariffLimits: [{ operant: "packages_count", operator: "<=", value: 1 }] });
 const DPD124 = Object.freeze({ ...GEMEINSAM, offerId: "offer-dpd", publicCarrierId: "dpd", publicServiceName: "PaketShop",
   serviceType: "dropoff", collectionDate: null, collectionReadyFrom: null,
   netPrice: 6.08, vatAmount: 1.16, finalPrice: 7.24, bookable: false, unavailableReason: "price_inputs_required",
@@ -118,18 +120,21 @@ test("(pp5) Preis brutto/netto: die Serverbeträge, ohne Rechnung im Client", ()
   assert.deepEqual([GLS110.finalPrice, GLS110.netPrice], [22.05, 18.53]);
 });
 
-test("(pp6) Stückgrenze nur aus `tariffLimits`: 110 = 2 (1 und 2 buchbar, 3 bietet der Server gar nicht an), 47/124 = 1", () => {
+test("(pp6) Stückgrenze nur aus `tariffLimits`: 47/110/124 = 1", () => {
   const grenze = (t) => t.tariffLimits.find((l) => l.operant === "packages_count").value;
-  assert.deepEqual([grenze(TNT47), grenze(GLS110), grenze(DPD124)], [1, 2, 1]);
+  assert.deepEqual([grenze(TNT47), grenze(GLS110), grenze(DPD124)], [1, 1, 1]);
   const karte = readFileSync(path.join(HIER, "../components/offers/OfferCard.jsx"), "utf8");
   assert.match(karte, /buildLimitLines\(t\.tariffLimits\)/);
 });
 
-test("(pp7) Labelangaben: nur das Format — keine Größe, die der Bestellweg nicht liefert", () => {
-  for (const t of [TNT47, GLS110, DPD124]) {
+test("(pp7) Labelangaben: TG110 hat kein Kundenlabel; 47/124 bleiben PDF ohne erfundene Größe", () => {
+  for (const t of [TNT47, DPD124]) {
     assert.equal(labelDeliveryInfo(t), null, `${t.offerId}: „verfügbar als …“ ohne Serverangabe`);
     assert.equal(labelCapabilityLine(t), "PDF", t.offerId);
   }
+  assert.equal(labelCapabilityLine(GLS110), null);
+  assert.equal(GLS110.printerRequired, false);
+  assert.equal(GLS110.carrierAppliesLabelAtPickup, true);
   // Gegenprobe: dieselbe Funktion nennt Größen, wenn der Server sie nennt — keine Portalweiche im Client.
   assert.equal(labelDeliveryInfo({ labelSizes: ["A4", "Thermal"] }), "Versandlabel verfügbar als DIN A4 und Thermodruck");
 });

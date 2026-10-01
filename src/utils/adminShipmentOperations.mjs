@@ -54,12 +54,15 @@ export const invoiceDocumentStatusMeta = (s) => DOCUMENT_STATUS_META[s] || statu
      pending           es entsteht noch, der Nachlauf holt es
      ready             es liegt
      recovery_timeout  das Nachlauffenster ist abgelaufen — ein Mensch klärt
+     carrier_applied   TG110 Final Closure: der Carrier bringt das Label bei der
+                       Abholung an — geschlossen, kein Kundenlabel, kein Nachlauf
 
    Adminintern. Diese Karte nennt Anbieter und Anbieterreferenzen ohnehin. */
 const PORTAL_LABEL_STATUS_META = {
   pending: ["badge-yellow", "Wird beim Anbieter erzeugt"],
   ready: ["badge-green", "Liegt vor"],
   recovery_timeout: ["badge-red", "Nachlauf abgelaufen — bitte prüfen"],
+  carrier_applied: ["badge-green", "Carrier bringt Label bei Abholung an"],
 };
 export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statusFallback(s);
 
@@ -71,12 +74,14 @@ export const portalLabelStatusMeta = (s) => PORTAL_LABEL_STATUS_META[s] || statu
 
      available             das Label liegt in CE (gespeichert oder Anbieterbeleg)
      delivered_outside_ce  per Buchungsklärung außerhalb von CE zugestellt
+     carrier_applied       der Carrier bringt das Label bei der Abholung an — geschlossen
      fetch_failed          der letzte Abruf ist technisch gescheitert
      provider_not_ready    der Anbieter antwortete zuletzt ohne nutzbares Label
      not_in_ce_yet         noch nicht abgerufen — keine Aussage über den Anbieter */
 const LABEL_AVAILABILITY_META = {
   available: ["badge-green", "In CE"],
   delivered_outside_ce: ["badge-blue", "Außerhalb von CE zugestellt"],
+  carrier_applied: ["badge-green", "Carrier bringt Label bei Abholung an"],
   fetch_failed: ["badge-red", "Letzter Abruf gescheitert"],
   provider_not_ready: ["badge-yellow", "Beim Anbieter noch nicht bereit"],
   not_in_ce_yet: ["badge-gray", "Noch nicht in CE abgerufen"],
@@ -89,6 +94,7 @@ export const labelAvailabilityMeta = (s) => LABEL_AVAILABILITY_META[s] || status
 const LABEL_DOWNLOAD_HINT = {
   available: "Das Versandlabel liegt als Anbieterbeleg in CE (siehe „Anbieterbelege“) — dieser Abruf liefert es nicht.",
   delivered_outside_ce: "Das Versandlabel wurde außerhalb von CE zugestellt (Buchungsklärung) — in CE liegt keine Datei.",
+  carrier_applied: "Der Carrier bringt das Versandlabel bei der Abholung am Paket an — es gibt kein Kundenlabel in CE.",
   fetch_failed: "Der letzte Labelabruf ist technisch gescheitert — in CE liegt noch kein Versandlabel.",
   provider_not_ready: "Beim letzten Abruf lag beim Anbieter noch kein nutzbares Versandlabel vor.",
   not_in_ce_yet: "In CE liegt noch kein Versandlabel.",

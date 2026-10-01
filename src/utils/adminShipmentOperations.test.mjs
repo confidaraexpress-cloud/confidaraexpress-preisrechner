@@ -150,6 +150,8 @@ test("die drei Etikettenstaende sind unterscheidbar — und ein unbekannter fael
   assert.deepEqual(stand("ready").labelStatusMeta, ["badge-green", "Liegt vor"]);
   assert.deepEqual(stand("recovery_timeout").labelStatusMeta,
     ["badge-red", "Nachlauf abgelaufen — bitte prüfen"]);
+  // TG110 Final Closure: der Carrier bringt das Label bei der Abholung an — ein GESCHLOSSENER Stand, eigene Beschriftung.
+  assert.deepEqual(stand("carrier_applied").labelStatusMeta, ["badge-green", "Carrier bringt Label bei Abholung an"]);
   // Ohne Stand gibt es keine Zusage — und kein erfundenes Abzeichen.
   assert.equal(stand(null).labelStatus, null);
   assert.equal(stand(null).labelStatusMeta, null);
@@ -160,7 +162,7 @@ test("die drei Etikettenstaende sind unterscheidbar — und ein unbekannter fael
 
 test("kein Etikettenstand erzeugt einen Hinweis in der Buchungsklaerung", () => {
   // Ein nachlaufendes Etikett ist KEINE ungeklaerte Buchung: die Sendung ist gebucht.
-  for (const v of ["pending", "ready", "recovery_timeout"]) {
+  for (const v of ["pending", "ready", "recovery_timeout", "carrier_applied"]) {
     assert.deepEqual(reconciliationNotices(selectOperations(OPS({ portal: { ...PORTAL, labelStatus: v } }))), [],
       `der Stand ${v} hat die Buchungsklaerung geoeffnet`);
   }
@@ -184,7 +186,10 @@ test("INTERNAL-01: die fünf Labelzustände sind unterscheidbar — keiner behau
   assert.deepEqual(stand("fetch_failed").meta, ["badge-red", "Letzter Abruf gescheitert"]);
   assert.deepEqual(stand("provider_not_ready").meta, ["badge-yellow", "Beim Anbieter noch nicht bereit"]);
   assert.deepEqual(stand("not_in_ce_yet").meta, ["badge-gray", "Noch nicht in CE abgerufen"]);
-  const texte = ["available", "delivered_outside_ce", "fetch_failed", "provider_not_ready", "not_in_ce_yet"]
+  // TG110 Final Closure: geschlossen, eigener Hinweis — kein „fehlt", keine Einkaufsquelle.
+  assert.deepEqual(stand("carrier_applied").meta, ["badge-green", "Carrier bringt Label bei Abholung an"]);
+  assert.match(labelDownloadHint({ labelAvailability: { state: "carrier_applied" } }), /bei der Abholung am Paket an/);
+  const texte = ["available", "delivered_outside_ce", "carrier_applied", "fetch_failed", "provider_not_ready", "not_in_ce_yet"]
     .map((s) => `${labelAvailabilityMeta(s)[1]} ${labelDownloadHint({ labelAvailability: { state: s } })}`);
   for (const t of texte) assert.doesNotMatch(t, /fehlt|jumingo|transglobal/i, t);
   // Ein unbekannter Zustand landet im gemeinsamen Rückfall, der Hinweis bleibt neutral.

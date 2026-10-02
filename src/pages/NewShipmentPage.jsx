@@ -26,6 +26,7 @@ import { focusFirstError } from "../utils/focusField";
 import { Field } from "../components/ui/Field";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, pickRestoreSource, droppedNotice } from "../utils/shippingFlowState.mjs";
+import { resolveCalculatorIntent, calculatorIntentNotice } from "../utils/calculatorShipmentHandoff.mjs";
 import {
   createEmptyShipmentForm, senderPatchFromProfile, hasProfileSenderData,
   packageErrors, packageComplete, packageHint, packagePayload, PACKAGE_PLACEHOLDERS,
@@ -292,6 +293,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   }
   const [flowNotice, setFlowNotice] = useState(flowNoticeRef.current);
 
+  // ── Angebotsabsicht aus dem Preisrechner (utils/calculatorShipmentHandoff.mjs) ──
+  // Kommt nur mit dem Sitzungsvorgang herein, also nie gegen einen Entwurf oder Adressbuch-
+  // Prefill (RESTORE_PRIORITY bleibt unverändert). Sie ist eine ABSICHT, kein Angebot: ausgewählt
+  // wird erst nach der nächsten echten Neuberechnung — und nur bei eindeutig derselben Identität.
+  const [calculatorIntent, setCalculatorIntent] = useState(() => (flowInit && flowInit.calculatorIntent) || null);
+  const [calculatorIntentResolution, setCalculatorIntentResolution] = useState(null);
+
   // ── Filters ──
   const [serviceFilter, setServiceFilter]         = useState(resumeInit ? resumeInit.serviceFilter : flowInit ? flowInit.serviceFilter : "all");
   const [serviceFilterOpen, setServiceFilterOpen] = useState(false);
@@ -426,6 +434,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // der Nutzer klickt wirkungslos. Bei einer neuen Sendung bleibt es unverändert
   // beim leeren Fehlerobjekt (der Nutzer füllt das Formular gerade erst aus).
   const [errors, setErrors]         = useState(() => (resumeInit ? getErrors(resumeInit.form) : {}));
+  // Dasselbe gilt für eine Übergabe aus dem Preisrechner: Route, Paket und Datum stehen da, Straße,
+  // Kontakt und Sendungsangaben fehlen — ohne Markierung wäre der gesperrte CTA unerklärt. Einmalig
+  // beim Mount und nur mit offener Absicht; die Vorrangkette des Initialisierers darüber bleibt unberührt.
+  useEffect(() => {
+    if (flowInit && flowInit.calculatorIntent) setErrors(getErrors(flowInit.form));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Quittung je Seite nach einer Adressbuchübernahme („s" | „r"). Reiner
   // Anzeigezustand: er wandert NICHT in den Vorgang, nicht in den Entwurf und
@@ -518,12 +533,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setFlowScope("shipment", {
       form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
       sortMode, vatMode, tariffs, publicCarriers, selected, ceShipmentId, customs,
-      inventoryContext,
+      inventoryContext, calculatorIntent,
       calculatedAt: calculatedAtRef.current,
     });
   }, [form, shippingDate, serviceFilter, shippingModeFilter, selectedPublicCarrierIds,
       sortMode, vatMode, tariffs, publicCarriers, selected, ceShipmentId, customs,
-      inventoryContext, setFlowScope]);
+      inventoryContext, calculatorIntent, setFlowScope]);
 
   /* ── Scrollposition wiederherstellen ─────────────────────────────────────
      Erst NACHDEM Formular und Angebotsbereich gerendert sind — vorher ist das
@@ -616,6 +631,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Sendung ist `errors` bis zum ersten Klick leer → kein Hinweis, Verhalten
   // unverändert. Bei einem fortgesetzten Entwurf ist es beim Mount vorbelegt.
   const calcHint = calcValid ? null : missingFieldsHint(errors);
+  // Hinweis zur Angebotsabsicht aus dem Preisrechner — offen, ausgewählt oder nicht zuzuordnen.
+  // Abgeleitet, keine eigene Wahrheit; ohne Übergabe ist er leer und erscheint nicht.
+  const calculatorHinweis = calculatorIntentNotice({
+    intent: calculatorIntent, resolution: calculatorIntentResolution, selected,
+  });
   // Zweite, sanftere Erklärung für den häufigsten Fall: das Paket ist noch nicht
   // vollständig. Sie erscheint als Hinweiszeile am deaktivierten Knopf, ohne
   // dass ein einziges Feld rot markiert wird — ein frisches Formular soll
@@ -893,6 +913,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     // eine geänderte Paketangabe mit erneuter Preisberechnung den Bezug zum
     // Artikel oder Auftrag nicht verliert. inventoryNotice folgt automatisch (abgeleitet).
     setInventoryContext(null);
+    // Ebenso endet eine offene Angebotsabsicht aus dem Preisrechner mit dem Vorgang.
+    setCalculatorIntent(null);
+    setCalculatorIntentResolution(null);
     resetResults();
     // Baseline auf den frischen Seed ziehen → das zurückgesetzte Formular ist
     // nicht „dirty" und der Verlassen-Guard schweigt zu Recht.
@@ -1205,6 +1228,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     setVatMode("net");
     setError(""); setProfileIncomplete(false); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
+    // Ein früheres Auflösungsergebnis gehört zur vorigen Liste. Eine noch offene Absicht bleibt
+    // stehen, bis eine Berechnung tatsächlich Angebote liefert.
+    setCalculatorIntentResolution(null);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
     // neutralisieren (nach consumed:true existiert der Draft ohnehin nicht mehr).
     setSaveStatus("idle");
@@ -1339,6 +1365,15 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       // eines konkurrierenden Providerpreises verborgen). Was angeboten wird, entscheidet der Server.
       setTariffs(Array.isArray(d.tariffs) ? d.tariffs : []);
       setCeShipmentId(d.ceShipmentId ?? null);
+      // Angebotsabsicht aus dem Preisrechner: genau EINMAL gegen diese frische, vollständig
+      // berechnete Liste auflösen. Ausgewählt wird nur ein eindeutig identisches, auswählbares
+      // Angebot — mit seinem NEUEN Serverpreis. Sonst nichts, und der Hinweis sagt es.
+      if (calculatorIntent) {
+        const aufloesung = resolveCalculatorIntent(d.tariffs, calculatorIntent);
+        if (aufloesung && aufloesung.offer) setSelected(aufloesung.offer);
+        setCalculatorIntentResolution(aufloesung);
+        setCalculatorIntent(null);
+      }
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({
         customsRequired:   d.customsRequired === true,
@@ -1679,6 +1714,12 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           {inventoryNotice && (
             <div className="dft-resume-info" role="status">
               <Icon n="layers" s={16} c="currentColor" /><span>{inventoryNotice}</span>
+            </div>
+          )}
+          {/* Angebot aus dem Preisrechner — derselbe Hinweisstil, keine zweite Darstellung. */}
+          {calculatorHinweis && (
+            <div className="dft-resume-info ns-calculator-intent" role="status">
+              <Icon n="info" s={16} c="currentColor" /><span>{calculatorHinweis}</span>
             </div>
           )}
 

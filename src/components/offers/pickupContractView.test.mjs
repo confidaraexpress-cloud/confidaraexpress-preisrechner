@@ -26,7 +26,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupSummaryOf,
-  pickupDayLabel, pickupAdjustedNote,
+  pickupDayLabel, pickupAdjustedNote, pickupSectionTitle,
 } from "../../utils/pickupContractView.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -200,15 +200,17 @@ test("(9) Timeline UND Detailbereich der Karte lesen denselben Helfer", () => {
 });
 
 test("(11) Buchungsflächen: ein gewähltes Fenster gilt nur, wo das Angebot ein Fenster trägt", () => {
+  // `handover` (Produktionsbefund 2026-10-02): die Buchungsflächen beschriften den Tag einer Shopabgabe
+  // als Abgabe — dieselbe Übergabeart wie die Angebotskarte, allein aus `serviceType`.
   assert.deepEqual({ ...pickupSummaryOf(TG_PICKUP, { from: "10:00", until: "12:00" }) },
-    { day: "2026-09-15", time: "bereit ab 09:00 Uhr", dayAdjusted: false },
+    { day: "2026-09-15", time: "bereit ab 09:00 Uhr", dayAdjusted: false, handover: "pickup" },
     "aus einer Wahl entstand bei „bereit ab\" eine Endzeit");
   assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, null) },
-    { day: "2026-09-16", time: "09:00–17:00 Uhr", dayAdjusted: false });
+    { day: "2026-09-16", time: "09:00–17:00 Uhr", dayAdjusted: false, handover: "pickup" });
   assert.deepEqual({ ...pickupSummaryOf(MIT_FENSTER, { from: "11:00", until: "15:00" }) },
-    { day: "2026-09-16", time: "11:00–15:00 Uhr", dayAdjusted: false });
+    { day: "2026-09-16", time: "11:00–15:00 Uhr", dayAdjusted: false, handover: "pickup" });
   assert.equal(pickupSummaryOf(MIT_FENSTER, { from: "11:00" }).time, "09:00–17:00 Uhr", "ein halbes Fenster galt");
-  assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null, dayAdjusted: false });
+  assert.deepEqual({ ...pickupSummaryOf(TG_DROPOFF, null) }, { day: null, time: null, dayAdjusted: false, handover: "dropoff" });
 });
 
 /* ══════════ §10  WHITE LABEL ═════════════════════════════════════════════ */
@@ -300,4 +302,60 @@ test("(14) alle drei Flaechen zeigen die Verschiebung — ueber denselben Helfer
     assert.ok(!/collectionDateAdjusted|requestedCollectionDate/.test(ohneKommentar(lies(datei))),
       `${datei} liest das Rohfeld direkt statt ueber den Helfer`);
   }
+});
+
+/* ══════════ §15  SHOPABGABE: DER TAG IST DER ABGABETAG ═══════════════════════
+   Produktionsbefund 2026-10-02: DHL Economy Drop-off (3072) und DPD Paketshop (2036) zeigten
+   „Versandart: Shopabgabe", „Abgabestelle: …" und daneben „Abholtermin: 05.10.2026". Der Tag
+   beschreibt die Abgabe des Kunden im Paketshop. Entschieden wird allein über die Übergabeart
+   (`serviceType` → handoverMode) — nie über Carrier, Name oder Einkaufsquelle. */
+
+/* Eine JUMiNGO-Shopabgabe mit Kalendertag, wie sie die Route liefert (Shopvariante „s-…"). */
+const J_DROPOFF = Object.freeze({
+  id: "s-2036", offerId: "d".repeat(32), publicCarrierId: "dpd", publicServiceName: "Standard Paketshop",
+  serviceType: "dropoff", pickupDate: "2026-10-05", pickupTimeFrom: "09:00", pickupTimeUntil: "18:00",
+  netPrice: 5.71, vatAmount: 1.08, finalPrice: 6.79, currency: "EUR", bookable: true,
+});
+const OHNE_UEBERGABEART = Object.freeze({ ...MIT_FENSTER, serviceType: undefined });
+
+test("(15) Wahrheitstabelle: Abholung „Abholtermin\", Shopabgabe „Abgabetermin\", verschoben jeweils „Frühester …tag\"", () => {
+  const fall = (t) => {
+    const v = pickupContractOf(t);
+    return [v.handover, pickupDayLabel(v), pickupAdjustedNote(v)];
+  };
+  assert.deepEqual(fall(MIT_FENSTER), ["pickup", "Abholtermin", null]);
+  assert.deepEqual(fall({ ...MIT_FENSTER, collectionDateAdjusted: true }), ["pickup", "Frühester Abholtag", "frühester Abholtag"]);
+  assert.deepEqual(fall(J_DROPOFF), ["dropoff", "Abgabetermin", null]);
+  assert.deepEqual(fall({ ...J_DROPOFF, collectionDateAdjusted: true }), ["dropoff", "Frühester Abgabetag", "frühester Abgabetag"]);
+  // Unbekannte Übergabeart: das bisherige neutrale Verhalten — es wird keine Abgabe behauptet.
+  assert.deepEqual(fall(OHNE_UEBERGABEART), [null, "Abholtermin", null]);
+  assert.deepEqual(fall({ ...OHNE_UEBERGABEART, collectionDateAdjusted: true }), [null, "Frühester Abholtag", "frühester Abholtag"]);
+  // Die flächenspezifische Abholbeschriftung gilt nur für die Abholung.
+  assert.equal(pickupDayLabel(pickupContractOf(MIT_FENSTER), "Abholung"), "Abholung");
+  assert.equal(pickupDayLabel(pickupContractOf(J_DROPOFF), "Abholung"), "Abgabetermin");
+});
+
+test("(16) Abschnittstitel: „Termin & Abgabe\" nur bei Shopabgabe — sonst unverändert", () => {
+  assert.equal(pickupSectionTitle(pickupContractOf(J_DROPOFF)), "Termin & Abgabe");
+  assert.equal(pickupSectionTitle(pickupContractOf(TG_DROPOFF)), "Termin & Abgabe");
+  assert.equal(pickupSectionTitle(pickupContractOf(MIT_FENSTER)), "Termin & Abholung");
+  assert.equal(pickupSectionTitle(pickupContractOf(OHNE_UEBERGABEART)), "Termin & Abholung");
+  // Die Karte liest Titel, Tagesbeschriftung und Timeline-Notiz aus demselben Vertrag.
+  const karte = ohneKommentar(lies(KARTE));
+  const details = karte.slice(karte.indexOf("function DetailsPanel"), karte.indexOf("function OfferCardBase"));
+  assert.ok(details.includes("{pickupSectionTitle(abholung)}"), "der Terminabschnitt trägt einen festen Titel");
+  assert.ok(!/Termin &amp; Abholung|Termin & Abholung/.test(details), "der Titel steht wieder fest im Detailbereich");
+  // Die Wörter selbst stehen ausschließlich im Helfer.
+  for (const datei of [KARTE, SUMMARY, LIVE]) {
+    assert.ok(!/Abgabetermin|[Ff]rühester Abgabetag/.test(ohneKommentar(lies(datei))),
+      `${datei} formuliert die Abgabe selbst statt sie zu lesen`);
+  }
+});
+
+test("(17) Buchungsflächen: eine Shopabgabe heißt dort ebenfalls Abgabe — über denselben Vertrag", () => {
+  const s = pickupSummaryOf(J_DROPOFF, null);
+  assert.equal(s.handover, "dropoff");
+  assert.equal(pickupDayLabel(s, "Abholung"), "Abgabetermin", "die Angebotszusammenfassung nennt eine Abholung");
+  assert.equal(pickupAdjustedNote(pickupSummaryOf({ ...J_DROPOFF, collectionDateAdjusted: true }, null)), "frühester Abgabetag");
+  assert.equal(pickupDayLabel(pickupSummaryOf(MIT_FENSTER, null), "Abholung"), "Abholung");
 });

@@ -18,7 +18,8 @@ import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
-import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedNote }
+import { pickupContractOf, pickupTimeText, pickupWindowDetailText, pickupDayLabel, pickupAdjustedNote,
+         pickupSectionTitle }
   from "../../utils/pickupContractView.mjs";
 import { deliveryContractOf } from "../../utils/deliveryContractView.mjs";
 import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
@@ -403,7 +404,9 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
 
       {hasTermin && (
         <div className="offer-details-section">
-          <div className="offer-detail-section-title">Termin &amp; Abholung</div>
+          {/* Bei einer Shopabgabe „Termin & Abgabe" — die Zeile darunter heißt dann „Abgabetermin"
+              (utils/pickupContractView.mjs, allein über die Übergabeart). */}
+          <div className="offer-detail-section-title">{pickupSectionTitle(abholung)}</div>
           {dropoffLabel && <DetailRow label="Abgabestelle" value={dropoffLabel} />}
           {abholung.day && <DetailRow label={pickupDayLabel(abholung)} value={fmtDE(abholung.day)} />}
           {abholung.windowFrom && (

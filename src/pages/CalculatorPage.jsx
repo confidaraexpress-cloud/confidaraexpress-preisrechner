@@ -4,7 +4,7 @@ import { apiFetch } from "../api/client";
 import { Icon } from "../components/ui/Icon";
 import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
-import { publicCarrierChipLabel } from "../utils/carrierMap";
+import { publicCarrierChipLabel, publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
@@ -21,6 +21,7 @@ import { focusFirstError, fieldErrorProps } from "../utils/focusField";
 import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength } from "../utils/postalCode";
 import { useShippingFlow } from "../context/ShippingFlowContext";
 import { formHasInput, droppedNotice } from "../utils/shippingFlowState.mjs";
+import { calculatorSelectionToShipmentTransfer } from "../utils/calculatorShipmentHandoff.mjs";
 
 // Reine Client-Filter (kein neuer /calculate-price-Request nötig): Änderungen
 // hieran verwerfen KEINE bestehenden Angebote. Alle übrigen Formularfelder
@@ -63,7 +64,8 @@ export default function CalculatorPage() {
   // Wie dort läuft die Wiederherstellung ausschließlich über die
   // useState-Initialisierer. Ein feldweiser Restore über upd() würde
   // invalidateResults() auslösen und die Angebote sofort wieder verwerfen.
-  const { calculator: flowCalculator, setScope: setFlowScope, droppedReason, consumeDroppedReason } = useShippingFlow();
+  const { calculator: flowCalculator, setScope: setFlowScope, clearScope: clearFlowScope,
+          droppedReason, consumeDroppedReason } = useShippingFlow();
   const flowInitRef = useRef(undefined);
   if (flowInitRef.current === undefined) {
     flowInitRef.current = (flowCalculator
@@ -561,12 +563,33 @@ export default function CalculatorPage() {
     }
   };
 
-  // Preisrechner has no full address form → redirect to "Neue Sendung" to complete booking
-  // useCallback: stabile Referenz, damit die memoisierten OfferCards durch onBook
-  // nicht unnötig neu rendern (navigate ist von react-router her stabil).
-  const handleBook = useCallback(() => {
+  // Preisrechner has no full address form → redirect to "Neue Sendung" to complete booking.
+  //
+  // Produktionsbefund 2026-10-02: hier stand nur `navigate(...)` — „Neue Sendung" öffnete leer,
+  // das Datum sprang auf heute, das gewählte Angebot war weg. Der Preisrechner-Stand lebt im
+  // Bereich „calculator", „Neue Sendung" liest „shipment". Jetzt wird EXPLIZIT übergeben
+  // (utils/calculatorShipmentHandoff.mjs): was der Preisrechner kennt, und das Angebot nur als
+  // Absicht. Ein alter Sendungsvorgang wird dafür vollständig ersetzt, nichts wird gemischt.
+  // Gebucht wird erst nach einer Neuberechnung mit den vollständigen Angaben.
+  //
+  // Die Werte liest der Knopf aus einer Ref: so bleibt onBook eine stabile Referenz, und die
+  // memoisierten OfferCards rendern durch ihn nicht unnötig neu.
+  const uebergabeRef = useRef(null);
+  uebergabeRef.current = { form, shippingDate, serviceFilter, shippingModeFilter, vatMode };
+  const handleBook = useCallback((tariff) => {
+    const uebergabe = calculatorSelectionToShipmentTransfer({
+      calculator: uebergabeRef.current,
+      tariff,
+      label: `${publicCarrierDisplay(tariff).name} · ${publicServiceName(tariff)}`,
+    });
+    // Der eigene Bereich merkt sich Auswahl und Scrollposition — ein Browser-Zurück findet den
+    // Preisrechner so vor, wie er verlassen wurde (dieselbe Geste wie in „Neue Sendung").
+    setSelected(tariff);
+    setFlowScope("calculator", { selected: tariff, scrollY: Math.round(window.scrollY || 0) });
+    clearFlowScope("shipment");
+    setFlowScope("shipment", uebergabe);
     navigate("/dashboard?page=new");
-  }, [navigate]);
+  }, [navigate, setFlowScope, clearFlowScope]);
 
   // Stabiles senderPrefill-Objekt (nur Paketshop-Suche bei Dropoff nutzt es).
   // useMemo verhindert ein neues Objekt bei jedem Render → sonst würde es den

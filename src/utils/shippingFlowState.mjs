@@ -33,6 +33,8 @@ import { FORM_SERVICE_FILTERS, FORM_SHIPPING_MODES } from "./formDraftsView.mjs"
 // Importzyklus) — hier nur verwendet und unter demselben Namen weiter exportiert,
 // damit bestehende Importe `from "./shippingFlowState.mjs"` unverändert gelten.
 import { normalizeInventoryContext } from "./inventoryView.mjs";
+// Die Angebotsabsicht aus dem Preisrechner — kanonisch in calculatorShipmentHandoff.mjs.
+import { normalizeCalculatorIntent } from "./calculatorShipmentHandoff.mjs";
 export { normalizeInventoryContext };
 
 export const FLOW_SCHEMA_VERSION = 1;
@@ -291,6 +293,11 @@ export function emptyScope(scope) {
     // liefert `undefined` → null. Er würde durch eine Versionserhöhung grundlos
     // verworfen (dieselbe Begründung wie bei trackingEmail/labelTrackingEmail).
     inventoryContext: null,
+    // Die ABSICHT eines im Preisrechner gewählten Angebots (calculatorShipmentHandoff.mjs):
+    // Anzeigename und Identität — nie Preis, nie Buchbarkeit, nie das Angebot selbst. Sie
+    // gehört nur zum Bereich „shipment", wird nach der ersten Neuberechnung in „Neue Sendung"
+    // genau einmal aufgelöst und ist danach `null`. Additiv ohne Versionssprung.
+    calculatorIntent: null,
     calculatedAt: null,
     scrollY: 0,
     updatedAt: null,
@@ -322,6 +329,7 @@ export function normalizeScope(raw, scope) {
       ? src.ceShipmentId : null,
     customs: plainObjectOrNull(src.customs),
     inventoryContext: normalizeInventoryContext(src.inventoryContext),
+    calculatorIntent: scope === "shipment" ? normalizeCalculatorIntent(src.calculatorIntent) : null,
     calculatedAt: nonNegInt(src.calculatedAt),
     scrollY: nonNegInt(src.scrollY) ?? 0,
     updatedAt: nonNegInt(src.updatedAt),

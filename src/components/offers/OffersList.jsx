@@ -7,7 +7,7 @@ import { money } from "../../utils/formatters";
 import { DateCalendar } from "../common/DateCalendar";
 import { fmtDE } from "../../utils/date";
 import {
-  activeResultFilterCount, deliveryChipLabel, emptyFilterHint as buildEmptyFilterHint,
+  activeResultFilterCount, deliveryChipLabel, deliveryDeadlineNotAssessable, emptyFilterHint as buildEmptyFilterHint,
   offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
 import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
@@ -422,6 +422,9 @@ export function OffersList({
             onBook={onBook}
             vatMode={vatMode}
             senderPrefill={senderPrefill}
+            /* K2: unter einem gesetzten Lieferzeitfilter bleibt ein nicht bewertbares Angebot sichtbar und
+               trägt einen neutralen Hinweis. Ein Wahrheitswert, kein neues Tariffeld — ohne Filter immer false. */
+            deliveryNotAssessable={deliveryDeadlineNotAssessable(t, { latestDeliveryDate, latestDeliveryTime })}
           />
         ))}
 

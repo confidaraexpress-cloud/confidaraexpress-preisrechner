@@ -233,7 +233,7 @@ Das zweite öffentlich freigegebene Transglobal-Produkt erscheint als „UPS · 
 - **Profil:** `serviceDetails.summaryKey: "express_urgent"` → „Schneller Expressversand für eilige Sendungen." (`SERVICE_SUMMARY_TEXT` in `utils/serviceDetailsView.mjs` — die einzige TG23-Ergänzung im Produktionscode). Dazu aus den bestehenden Feldern: „1 je Sendung", „70 kg", „L × B × H ÷ 5.000", Paletten und Koffer, Sendungsverfolgung, „PDF · DIN A4 / Thermodruck".
 - **Laufzeit „1 Tag"** und „Voraussichtliche Lieferung" aus `deliveryProjection` (ein Tag, ohne Uhrzeit, keine Zusage) — nie „bis 12 Uhr", „Tagesende" oder „garantiert".
 - **Art der Lieferadresse, Abholung am selben Tag, Transportabsicherung, Preisbestandteile und Preisänderung** laufen unverändert über die Verträge oben; der Expressaufschlag steckt im Serverpreis, die Absicherung bleibt 1:1 und steuerfrei.
-- **JUMiNGO unverändert:** das JUMiNGO-Pendant heißt ebenfalls „Expressversand" und bleibt mit Anbieterdatum und „bis HH:MM Uhr" daneben sichtbar.
+- **JUMiNGO:** das JUMiNGO-Pendant trägt seit Go-Live Block B seinen kuratierten Tarifnamen „Express Saver" (vom Server) und bleibt mit Anbieterdatum und „bis HH:MM Uhr" daneben sichtbar.
 - **Nie sichtbar:** Einkaufsquelle, ServiceID, QuoteID, Anbietercodes. Browserprüfung: `tests/e2e/tg23ExpressSaver.test.mjs`.
 
 ### UPS-Familie (TG29 UPS · Express, TG26 UPS · Standardversand Mehrpaket) — aktueller Vertrag

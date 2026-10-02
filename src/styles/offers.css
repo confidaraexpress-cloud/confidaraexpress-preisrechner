@@ -501,6 +501,29 @@
 }
 .offer-early-note-icon { display: flex; flex-shrink: 0; }
 
+/* „Zustelltermin nicht bewertbar" (Betreiberentscheidung K2, 2026-10-02): unter
+   einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne vergleichbare
+   Anbieterzusage sichtbar und trägt diesen Hinweis. Dieselbe Form und Lage wie
+   .offer-early-note (Geschwister unter .offer-tl-labels, kann die Timeline nicht
+   verziehen), aber bewusst NEUTRAL: keine Warnfarbe, kein Icon — es ist eine
+   Feststellung über fehlende Evidenz, kein Mangel des Angebots. Alle drei
+   Farbwerte sind Foundation-Tokens. */
+.offer-deadline-note {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  margin: 6px 0 0;
+  padding: 4px 9px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-neutral-surface);
+  border: 1px solid var(--ce-color-status-neutral-border);
+  color: var(--ce-color-status-neutral-fg);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+}
+
 /* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
    Dropdown). Der Auslöser trägt weiterhin `.field-select` aus forms.css und
    sieht damit aus wie jedes andere Auswahlfeld des Systems — nur die Liste ist

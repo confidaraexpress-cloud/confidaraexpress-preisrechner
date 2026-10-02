@@ -19,6 +19,7 @@ import { pruefeImTestlauf } from "../../scripts/governance.mjs";
 import {
   activeResultFilterCount, hasActiveResultFilter, deliveryChipLabel,
   emptyFilterHint, applyResultFilters, offersCountLabel,
+  deliveryDeadlineAssessment, deliveryDeadlineNotAssessable, DELIVERY_NOT_ASSESSABLE_TEXT,
 } from "./offersFilterView.mjs";
 import { TARIFE_41 } from "./offersFilterFixture.mjs";
 
@@ -293,26 +294,104 @@ test("F2 — Datum + 12:00 vergleicht das PAAR (Tag, Uhrzeit)", () => {
   assert.deepEqual(sichtbar, ["a", "b", "e"]);
 });
 
-test("F3 — ohne verwertbare Uhrzeit fällt ein Tarif bei gesetzter Zeit heraus (fail-safe)", () => {
+test("F3 — ohne verwertbare Uhrzeit am Stichtag: SICHTBAR und nicht bewertbar (K2), nie „erfüllt“", () => {
+  // Betreiberentscheidung K2 (2026-10-02): fehlende Evidenz ist kein Ausschlussgrund. Bis Block B fielen diese
+  // Tarife heraus (fail-safe); jetzt bleiben sie stehen und tragen den neutralen Hinweis. Es wird weiterhin
+  // weder „Tagesende“ noch „erfüllt die Frist“ unterstellt — die Bewertung lautet ausdrücklich „not_assessable“.
   const ohneZeit = [
     { id: "null", deliveryDateMax: "2026-08-31", deliveryTimeUntil: null },
     { id: "leer", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "" },
     { id: "murks", deliveryDateMax: "2026-08-31", deliveryTimeUntil: "abc" },
     { id: "fehlt", deliveryDateMax: "2026-08-31" },
   ];
-  // Es wird weder „Tagesende“ noch „erfüllt die Frist“ unterstellt.
-  assert.deepEqual(
-    applyResultFilters(ohneZeit, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" }), []);
-  // Ohne gesetzte Uhrzeit bleiben genau dieselben Tarife sichtbar wie bisher.
+  const frist = { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" };
+  assert.deepEqual(applyResultFilters(ohneZeit, frist).map((t) => t.id), ["null", "leer", "murks", "fehlt"]);
+  for (const t of ohneZeit) assert.equal(deliveryDeadlineAssessment(t, frist), "not_assessable", t.id);
+  // Ohne gesetzte Uhrzeit sind sie bewertbar — der Tag genügt — und bleiben wie bisher sichtbar.
   assert.equal(applyResultFilters(ohneZeit, { latestDeliveryDate: "2026-08-31" }).length, 4);
+  for (const t of ohneZeit) assert.equal(deliveryDeadlineAssessment(t, { latestDeliveryDate: "2026-08-31" }), "met", t.id);
 });
 
-test("F3b — fehlt das Lieferdatum selbst, bleibt die bisherige Semantik unverändert", () => {
+test("F3a — ohne Uhrzeit, aber an einem anderen Tag: der Tag allein entscheidet nachweislich", () => {
+  const frist = { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" };
+  const frueher = { id: "frueher", deliveryDateMax: "2026-08-30", deliveryTimeUntil: null };
+  const spaeter = { id: "spaeter", deliveryDateMax: "2026-09-01", deliveryTimeUntil: null };
+  assert.equal(deliveryDeadlineAssessment(frueher, frist), "met", "einen Tag früher hält jede Uhrzeit ein");
+  assert.equal(deliveryDeadlineAssessment(spaeter, frist), "too_late", "einen Tag später ist nachweislich zu spät");
+  assert.deepEqual(applyResultFilters([frueher, spaeter], frist).map((t) => t.id), ["frueher"]);
+});
+
+test("F3b — fehlt das Lieferdatum selbst: sichtbar wie bisher, jetzt ausdrücklich nicht bewertbar", () => {
   const ohneDatum = [{ id: "x", deliveryTimeUntil: "17:00" }];
   assert.equal(applyResultFilters(ohneDatum, { latestDeliveryDate: "2026-08-31" }).length, 1);
   assert.equal(
     applyResultFilters(ohneDatum, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" }).length, 1,
-    "diese Semantik wurde bewusst nicht nebenbei geändert");
+    "ein Tarif ohne Anbieterdatum fällt nie heraus");
+  for (const zeit of [undefined, "12:00"]) {
+    assert.equal(deliveryDeadlineAssessment(ohneDatum[0], { latestDeliveryDate: "2026-08-31", latestDeliveryTime: zeit }),
+      "not_assessable", String(zeit));
+  }
+});
+
+/* ══════════ K) K2 — „Zustelltermin nicht bewertbar“ ════════════════════════ */
+
+test("K1 — ohne Lieferzeitfilter: keine Bewertung, kein Hinweis — auch nicht bei fehlenden Daten", () => {
+  const ohneDaten = { id: "tg", deliveryDate: null, deliveryDateMax: null, deliveryTimeUntil: null };
+  for (const filter of [{}, { latestDeliveryDate: "" }, { latestDeliveryDate: null }, { latestDeliveryTime: "12:00" }]) {
+    assert.equal(deliveryDeadlineAssessment(ohneDaten, filter), null, JSON.stringify(filter));
+    assert.equal(deliveryDeadlineNotAssessable(ohneDaten, filter), false, JSON.stringify(filter));
+  }
+  assert.equal(DELIVERY_NOT_ASSESSABLE_TEXT, "Zustelltermin nicht bewertbar");
+});
+
+test("K2 — Transglobal-Zeitprodukte ohne Anbieterdatum: sichtbar + Hinweis; keine Uhrzeit aus dem Namen", () => {
+  // Der Tarifname nennt eine Uhrzeit, ein Anbieterdatum gibt es nicht — und eine CE-Rechnung zählt nicht als Zusage.
+  const tg = [
+    { offerId: "tg85", publicServiceName: "Domestic Express 9:00", deliveryDate: null, deliveryDateMax: null,
+      deliveryProjection: { kind: "estimated", dateMin: "2026-08-25", dateMax: "2026-08-25" } },
+    { offerId: "tg87", publicServiceName: "Domestic Express 12:00", deliveryDate: null, deliveryDateMax: null },
+    { offerId: "tg48", publicServiceName: "Express 10:00", deliveryDate: null, deliveryDateMax: null, deliveryTimeUntil: null },
+  ];
+  for (const frist of [{ latestDeliveryDate: "2026-08-25" }, { latestDeliveryDate: "2026-08-25", latestDeliveryTime: "10:00" },
+                       { latestDeliveryDate: "2026-08-20", latestDeliveryTime: "08:00" }]) {
+    assert.deepEqual(applyResultFilters(tg, frist).map((t) => t.offerId), ["tg85", "tg87", "tg48"], JSON.stringify(frist));
+    for (const t of tg) assert.equal(deliveryDeadlineNotAssessable(t, frist), true, `${t.offerId} ${JSON.stringify(frist)}`);
+  }
+});
+
+test("K3 — belegte Anbieterdaten filtern wie bisher; nur „too_late“ fällt heraus", () => {
+  const frist = { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" };
+  const erwartet = { a: "met", b: "met", c: "too_late", d: "too_late", e: "met" };
+  for (const fall of ZEITFAELLE) assert.equal(deliveryDeadlineAssessment(fall, frist), erwartet[fall.id], fall.warum);
+  // Ein unbrauchbarer Liefertag ist keine vergleichbare Zusage — sichtbar mit Hinweis statt Zeichenvergleich.
+  for (const dd of ["31.08.2026", "2026-8-31", "morgen", 42]) {
+    assert.equal(deliveryDeadlineAssessment({ deliveryDateMax: dd, deliveryTimeUntil: "10:00" }, frist), "not_assessable", String(dd));
+  }
+  // `deliveryDateMax` vor `deliveryDate` — derselbe späteste Liefertag wie bisher.
+  assert.equal(deliveryDeadlineAssessment({ deliveryDate: "2026-08-29", deliveryDateMax: "2026-09-02" },
+    { latestDeliveryDate: "2026-08-31" }), "too_late");
+});
+
+test("K4 — der Filter mutiert nichts und erfindet kein Tariffeld", () => {
+  const tarife = [
+    { id: 1, deliveryDateMax: "2026-08-31", deliveryTimeUntil: null },
+    { id: 2, deliveryDateMax: null },
+    { id: 3, deliveryDateMax: "2026-09-02", deliveryTimeUntil: "12:00" },
+  ];
+  const vorher = JSON.stringify(tarife);
+  const f = applyResultFilters(tarife, { latestDeliveryDate: "2026-08-31", latestDeliveryTime: "12:00" });
+  assert.equal(JSON.stringify(tarife), vorher, "die Eingabe wurde verändert");
+  assert.deepEqual(f.map((t) => t.id), [1, 2]);
+  assert.ok(f.every((t) => tarife.includes(t)), "der Filter gibt Kopien statt der Tarife zurück");
+});
+
+test("K5 — Karte und Liste: der Hinweis hängt allein am Bewertungsergebnis, der Text steht einmal", () => {
+  const liste = lies(OFFERS_LIST);
+  const karte = lies("src/components/offers/OfferCard.jsx");
+  assert.match(liste, /deliveryNotAssessable=\{deliveryDeadlineNotAssessable\(t, \{ latestDeliveryDate, latestDeliveryTime \}\)\}/);
+  assert.match(karte, /\{deliveryNotAssessable && \(\s*<p className="offer-deadline-note">\{DELIVERY_NOT_ASSESSABLE_TEXT\}<\/p>/);
+  // Der Satz steht als Text nur im Modul — keine zweite Schreibweise in Liste oder Karte.
+  assert.ok(!/Zustelltermin nicht bewertbar/.test(liste + karte.replace(/\/\/.*$/gm, "")), "der Hinweistext ist dupliziert");
 });
 
 test("F4 — die Uhrzeit steht in FILTER_ONLY_FIELDS: kein /calculate-price-Request", () => {

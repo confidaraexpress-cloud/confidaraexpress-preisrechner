@@ -157,8 +157,9 @@ test("12 — die Oberfläche rechnet KEINEN Preis, auch nicht für das zweite An
     assert.ok(!/\*\s*1\.19|\*\s*0\.19|\/\s*1\.19/.test(quelle), `${name} rechnet MwSt.`);
     assert.ok(!/netPrice\s*\+\s*vatAmount/.test(quelle), `${name} addiert den Bruttopreis selbst`);
   }
-  // Der Umschalter wählt einen gelieferten Betrag aus, er bildet keinen.
-  assert.match(offerCard, /vatMode === "gross"[\s\S]{0,120}money\(t\.finalPrice/);
+  // Der Umschalter wählt einen gelieferten Betrag aus, er bildet keinen — seit dem Netto/Brutto-Vertrag
+  // (2026-10-02) über den einen Präsentator, der nur zwischen `netPrice` und `finalPrice` wählt.
+  assert.match(offerCard, /vatDisplay\(\{ net: t\.netPrice, gross: t\.finalPrice \}, vatMode\)/);
 });
 
 test("13 — der Preis eines gesperrten Angebots bleibt sichtbar", () => {

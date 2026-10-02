@@ -5,6 +5,7 @@ import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap"
 import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf, pickupDayLabel } from "../../utils/pickupContractView.mjs";
 import { sameDaySummaryNote, sameDayUntilText } from "../../utils/sameDayCollectionView.mjs";
+import { isGrossVatMode } from "../../utils/vatDisplayView.mjs";
 
 // Step 1 — „Ausgewähltes Angebot". Kompakte, ruhige Zusammenfassung des gewählten
 // Tarifs in drei Zonen: Identität (Carrier/Service) · Zustellung & relevante
@@ -20,7 +21,7 @@ import { sameDaySummaryNote, sameDayUntilText } from "../../utils/sameDayCollect
 // Bewusst NICHT hier: Sendungsverfolgung und Abholzuschlag-Hinweis (redundant),
 // dominante MwSt.-Betragszeile (durch kompakten Hinweis ersetzt) sowie die
 // doppelte Lieferzeit-/Serviceart-Darstellung.
-export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
+export function OfferSummaryModule({ tariff, priceView, pickupWindow, vatMode }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
   const handover = handoverInfo(tariff);
   const serviceMode = handover.isPickup || handover.isDropoff ? handover.label : null;
@@ -47,6 +48,12 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
   // TG22 Same-Day: der Zuschlag der Abholung am selben Tag und bis wann sie heute möglich ist — vom Server.
   const sameDayHinweis = sameDaySummaryNote(priceView, tariff);
   const sameDayBis = sameDayUntilText(tariff);
+  // Netto/Brutto (2026-10-02): netto steht wie bisher vorn; in der Bruttoanzeige rückt der Bruttobetrag samt
+  // MwSt.- und Zuschlagshinweisen nach vorn, der Nettobetrag folgt. Nur die Reihenfolge ändert sich.
+  const bruttoZuerst = isGrossVatMode(vatMode) && preis.gross != null;
+  const nettoZeile = preis.net != null && (
+    <div className="offsum-price-net">{money(preis.net)}<span className="offsum-price-unit"> netto</span></div>
+  );
 
   return (
     <div className="calc-panel mb-16">
@@ -72,13 +79,11 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
             </div>
           </div>
 
-          <div className="offsum-price">
+          <div className={`offsum-price${bruttoZuerst ? " offsum-price--gross" : ""}`}>
             <div className="offsum-price-label">{preis.label}</div>
             {hatBetrag ? (
               <>
-                {preis.net != null && (
-                  <div className="offsum-price-net">{money(preis.net)}<span className="offsum-price-unit"> netto</span></div>
-                )}
+                {!bruttoZuerst && nettoZeile}
                 {preis.gross != null ? (
                   <>
                     <div className="offsum-price-gross">{money(preis.gross)} brutto</div>
@@ -93,6 +98,7 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow }) {
                 ) : (
                   <div className="offsum-price-vat">exkl. MwSt.</div>
                 )}
+                {bruttoZuerst && nettoZeile}
               </>
             ) : (
               <div className="offsum-price-na">{preis.changed ? PRICE_CHANGED_HINT : "Preis fehlt"}</div>

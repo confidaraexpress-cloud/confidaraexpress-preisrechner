@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDialog } from "../hooks/useDialog";
 import { useShippingFlow } from "../context/ShippingFlowContext";
@@ -98,6 +98,8 @@ import { carrierAppliesLabel } from "../utils/labelHandling.mjs";
 import { buildDraftBookingOptions } from "../utils/draftBookingOptions.mjs";
 import { showsExternalDeliveryNoteField, DELIVERY_NOTE_TEXT } from "../utils/profileView.mjs";
 import { BookingSuccessStep } from "../components/booking/BookingSuccessStep";
+import { VatModeToggle } from "../components/offers/VatModeToggle";
+import { normalizeVatMode, VAT_TEXT } from "../utils/vatDisplayView.mjs";
 import { CopyableNumber } from "../components/ui/CopyableNumber";
 
 // Serverseitige /book-Guard-Codes der Zollrechnung → klare deutsche Meldungen
@@ -157,6 +159,19 @@ export default function BookingPage() {
   // Stand null und ändert nichts.
   const [gebuchteBuchungsdaten, setGebuchteBuchungsdaten] = useState(null);
   const bookingData = laufendeBuchungsdaten ?? gebuchteBuchungsdaten;
+
+  // ── Netto/Brutto-Anzeige (Betreiberentscheidung 2026-10-02) ──────────────────
+  // Dieselbe Wahl wie in der Angebotsliste: gelesen aus dem laufenden Vorgang, ohne Vorgang netto. Sie ist
+  // REINE DARSTELLUNG — kein Request, keine Neubepreisung, keine Bindung, kein anderer Buchungsbetrag; der
+  // Buchungskörper kennt sie nicht. Lokal gehalten, damit der Erfolgsschritt dieselbe Darstellung behält,
+  // nachdem `clearFlow()` den Vorgang geleert hat; eine Änderung hier gilt im laufenden Vorgang weiter
+  // (Rückweg in die Angebotsliste).
+  const [vatMode, setVatMode] = useState(() => normalizeVatMode(flowShipment?.vatMode));
+  const waehleVatMode = useCallback((mode) => {
+    const naechster = normalizeVatMode(mode);
+    setVatMode(naechster);
+    if (flowShipment) setFlowScope("shipment", { vatMode: naechster });
+  }, [flowShipment, setFlowScope]);
   // Providerneutraler Labelvertrag des ausgewaehlten Angebots. Bei carrier-at-pickup darf
   // weder ein alter UI-Zustand noch ein wiederhergestellter Entwurf ein PDF-Label versprechen.
   const carrierLabelAtPickup = carrierAppliesLabel(bookingData?.tariff);
@@ -1901,6 +1916,8 @@ export default function BookingPage() {
     errorKind: resErrorKind, notice: resNotice,
     // Ob die Angabe nach dem Vertrag einen Zuschlag trägt, sagt allein das Serverfeld des Angebots.
     surchargeFree: offerResidentialSurchargeFree(tariff),
+    // Netto/Brutto: nur die Reihenfolge der beiden Serverbeträge auf den Karten.
+    vatMode,
   });
 
   // P0 — „Angebote neu berechnen" aus dem Abholfenster-Dialog: den nun veralteten
@@ -2071,10 +2088,16 @@ export default function BookingPage() {
             Innenabstand, der Außenabstand der Leiste bleibt unverändert. */}
         {(step === 1 || step === 2) && (
           <>
-            <div ref={liveSummaryRef}>
-              <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
+            {/* Netto/Brutto: derselbe Umschalter wie in der Angebotsliste — reine Darstellung. Er steht über
+                der Live-Leiste und nicht in ihr: die Leisten bleiben Zusammenfassungen ohne Bedienelemente. */}
+            <div className="booking-vat-row">
+              <span className="booking-vat-label" id="booking-vat-label">{VAT_TEXT.toggleLabel}</span>
+              <VatModeToggle vatMode={vatMode} onChange={waehleVatMode} labelledBy="booking-vat-label" />
             </div>
-            <BookingStickySummary tariff={tariff} priceView={priceView} observeRef={liveSummaryRef} />
+            <div ref={liveSummaryRef}>
+              <BookingLiveSummary tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
+            </div>
+            <BookingStickySummary tariff={tariff} priceView={priceView} observeRef={liveSummaryRef} vatMode={vatMode} />
           </>
         )}
 
@@ -2088,7 +2111,7 @@ export default function BookingPage() {
         {/* ── Step 1: Übersicht ── */}
         {step === 1 && (
           <div>
-            <OfferSummaryModule tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} />
+            <OfferSummaryModule tariff={tariff} priceView={priceView} pickupWindow={pickupWindow} vatMode={vatMode} />
 
             {tariff.serviceType === "dropoff" && (
               <DropoffNoticeModule
@@ -2337,6 +2360,7 @@ export default function BookingPage() {
                     priceView={priceView}
                     paymentTerm={user?.payment_term || 7}
                     voucherLines={voucherApplied ? voucherPriceLines({ voucher, fallbackGross: priceView.totalGross }) : null}
+                    vatMode={vatMode}
                   />
                   {/* Gutscheinfeld: unter der Preisaufstellung, VOR Bestätigungen und
                       Bestellknopf. Bewusst innerhalb derselben Übersichtskarte. */}
@@ -2428,6 +2452,7 @@ export default function BookingPage() {
             proformaEntry={proformaEntry}
             navigate={navigate}
             clearFlow={clearFlow}
+            vatMode={vatMode}
           />
         )}
 
@@ -2464,12 +2489,14 @@ export default function BookingPage() {
             {preisIstBestaetigbar(priceChange) && (
               <div className="price-drift-compare">
                 <div className="price-drift-col">
-                  <span className="price-drift-col-label">Bisheriger Preis</span>
+                  {/* Beide Beträge sind Bruttobeträge des Servers — ausdrücklich so benannt, weil die Seite
+                      auch in der Nettoanzeige stehen kann (Netto/Brutto, 2026-10-02). */}
+                  <span className="price-drift-col-label">Bisheriger Preis ({VAT_TEXT.gross})</span>
                   <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
                 </div>
                 <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="var(--ce-color-text-muted)" /></span>
                 <div className="price-drift-col price-drift-col--new">
-                  <span className="price-drift-col-label">Neuer Preis</span>
+                  <span className="price-drift-col-label">Neuer Preis ({VAT_TEXT.gross})</span>
                   <span className="price-drift-new">{money(priceChange.newPrice)}</span>
                 </div>
               </div>

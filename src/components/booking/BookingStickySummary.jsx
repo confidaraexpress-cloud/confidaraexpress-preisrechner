@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 import { handoverInfo, deliveryInfo, priceInfo } from "../../utils/bookingSummaryView.mjs";
+import { isGrossVatMode } from "../../utils/vatDisplayView.mjs";
 
 // ─── Kompakte Sticky-Zusammenfassung (BookingPage, Schritt 1 + 2) ────────────
 // REINE DARSTELLUNG. Sie erscheint erst, wenn die große Live-Zusammenfassung
@@ -27,7 +28,7 @@ import { handoverInfo, deliveryInfo, priceInfo } from "../../utils/bookingSummar
 // Informationen, die mit der großen Zusammenfassung ohnehin dauerhaft im DOM
 // stehen; ohne diese Kennzeichnung läse ein Screenreader jeden Wert doppelt.
 // Sie enthält bewusst keine Bedienelemente.
-export function BookingStickySummary({ tariff, priceView, observeRef }) {
+export function BookingStickySummary({ tariff, priceView, observeRef, vatMode }) {
   const layerRef = useRef(null);
   const [stuck, setStuck] = useState(false);
 
@@ -77,6 +78,15 @@ export function BookingStickySummary({ tariff, priceView, observeRef }) {
   const handover = handoverInfo(tariff);
   const delivery = deliveryInfo(tariff);
   const preis = priceInfo(priceView);
+  // Netto/Brutto (2026-10-02): derselbe Modus wie in der großen Leiste — nur die Reihenfolge der beiden
+  // Beträge aus priceInfo ändert sich, keiner wird gebildet. Ohne Nettobetrag bleibt die Bruttoanzeige.
+  const nettoZuerst = !isGrossVatMode(vatMode) && preis.net != null;
+  const bruttoZeile = (
+    <span className="bsum-price-gross">
+      {preis.gross != null ? money(preis.gross) : "—"}
+      <span className="bsum-price-unit"> brutto</span>
+    </span>
+  );
 
   return (
     <div
@@ -114,13 +124,19 @@ export function BookingStickySummary({ tariff, priceView, observeRef }) {
           {/* Rechts — geltender Preis. Das Label sagt, WAS der Betrag ist („Gesamt" oder
               „Versand") — ohne es stand hier nach einer bestätigten Absicherung ein anderer
               Betrag als in der Versandzeile darunter, und niemand sah, warum. */}
-          <div className="bsum-price">
+          <div className={`bsum-price${nettoZuerst ? " bsum-price--net" : ""}`}>
             <span className="bsum-price-label">{preis.label}</span>
-            <span className="bsum-price-gross">
-              {preis.gross != null ? money(preis.gross) : "—"}
-              <span className="bsum-price-unit"> brutto</span>
-            </span>
-            {preis.net != null && <span className="bsum-price-net">{money(preis.net)} netto</span>}
+            {nettoZuerst ? (
+              <>
+                <span className="bsum-price-net">{money(preis.net)}<span className="bsum-price-unit"> netto</span></span>
+                {bruttoZeile}
+              </>
+            ) : (
+              <>
+                {bruttoZeile}
+                {preis.net != null && <span className="bsum-price-net">{money(preis.net)} netto</span>}
+              </>
+            )}
           </div>
 
         </div>

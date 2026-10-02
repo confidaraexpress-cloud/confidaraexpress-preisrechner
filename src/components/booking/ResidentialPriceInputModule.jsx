@@ -81,9 +81,11 @@ export function ResidentialPriceInputModule({ view, onSelect, onRetry, onRecalcu
                   <span className="res-card-radio" aria-hidden="true" />
                   <span className="res-card-name">{k.label}</span>
                 </span>
+                {/* Netto/Brutto (2026-10-02): vorn der Zuschlag im gewählten Anzeigemodus, darunter der andere —
+                    beide unverändert aus der Optionsantwort des Servers. */}
                 <span className="res-card-price">
-                  <span className="res-card-price-val">{k.grossText}</span>
-                  <span className="res-card-price-sub">{k.netText}</span>
+                  <span className="res-card-price-val">{k.primaryText}</span>
+                  <span className="res-card-price-sub">{k.secondaryText}</span>
                 </span>
               </label>
             ))}

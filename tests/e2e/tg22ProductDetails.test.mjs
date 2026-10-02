@@ -401,7 +401,9 @@ test("D — Privatadresse und Absicherung unverändert: Hinweis, vorläufiger Pr
   await waehle(page, TG);
   const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
   await privatKarte.waitFor({ timeout: 20000 });
-  assert.match(await inhalt(privatKarte), /\+ 3,78 € brutto/);
+  // Netto/Brutto-Vertrag (2026-10-02): netto vorn, der Bruttobetrag darunter.
+  assert.match(await inhalt(privatKarte), /\+ 3,18 € netto/);
+  assert.match(await inhalt(privatKarte), /3,78 € brutto/);
   assert.equal(p.reprice.length, 0, "vor der Bindung wurde die Absicherung bepreist");
   await waehleLieferadresse(page, true);
   await warteAufText(page, ".blsum-price-gross", "18,94");

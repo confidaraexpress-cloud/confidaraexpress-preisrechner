@@ -6,7 +6,6 @@ import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
-import { visibleOffers } from "../utils/offerSuppression.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { OffersList } from "../components/offers/OffersList";
@@ -455,6 +454,9 @@ export default function CalculatorPage() {
     }
     setFieldErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
+    // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto — wie in
+    // „Neue Sendung" erst hier, nach der Validierung. Der Einblende-Zweig oben behält die Wahl.
+    setVatMode("net");
     setError(null); setLoading(true); setSelected(null);
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request
@@ -527,11 +529,9 @@ export default function CalculatorPage() {
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
-      // Betreiberanweisung: eine eng umrissene Karte wird nicht gezeigt. Die Ausblendung
-      // steht HIER — vor Sortierung, Filtern, Zählern und Auswahl — damit keine Liste
-      // entsteht, in der die Karte unsichtbar ist, aber weiter mitzählt. Siehe
-      // src/utils/offerSuppression.mjs.
-      setTariffs(visibleOffers(d.tariffs));
+      // Jedes gelieferte Angebot erscheint (Betreiberentscheidung 2026-10-02: kein Angebot wird wegen
+      // eines konkurrierenden Providerpreises verborgen). Was angeboten wird, entscheidet der Server.
+      setTariffs(Array.isArray(d.tariffs) ? d.tariffs : []);
       calculatedAtRef.current = Date.now();   // Ablauffrist des Vorgangs beginnt jetzt
       // Erst JETZT gilt der Schlüssel als berechnet: `reqKey` ist der Stand beim
       // ABSENDEN — eine zwischenzeitliche Eingabe hätte den Request oben schon

@@ -11,6 +11,7 @@ import {
   offersCountLabel,
 } from "../../utils/offersFilterView.mjs";
 import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
+import { VatModeToggle } from "./VatModeToggle.jsx";
 
 const SORT_OPTIONS = [
   { id: "recommended", label: "Empfehlung" },
@@ -208,28 +209,8 @@ export function OffersList({
                     (`OfferCard.jsx`): der Schalter sagt damit exakt, was danach
                     an der Karte steht. */}
                 <span className="offers-toolgroup-label" id={vatLabelId}>Preisanzeige</span>
-                <div
-                  className="offers-vat-toggle offers-segment offers-segment--secondary"
-                  role="group"
-                  aria-labelledby={vatLabelId}
-                >
-                  <button
-                    className={`offers-sort-btn offers-segment-item${vatMode !== "gross" ? " active" : ""}`}
-                    onClick={() => onVatToggle("net")}
-                    type="button"
-                    aria-pressed={vatMode !== "gross"}
-                  >
-                    exkl. MwSt.
-                  </button>
-                  <button
-                    className={`offers-sort-btn offers-segment-item${vatMode === "gross" ? " active" : ""}`}
-                    onClick={() => onVatToggle("gross")}
-                    type="button"
-                    aria-pressed={vatMode === "gross"}
-                  >
-                    inkl. MwSt.
-                  </button>
-                </div>
+                {/* Dieselbe Komponente wie auf der Buchungsseite: eine Wahl, eine Darstellung. */}
+                <VatModeToggle vatMode={vatMode} onChange={onVatToggle} labelledBy={vatLabelId} />
               </div>
             </div>
 

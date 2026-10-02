@@ -9,7 +9,6 @@ import { useLaunchScope } from "../hooks/useLaunchScope";
 import { money, fmtDelivery } from "../utils/formatters";
 import { publicCarrierChipLabel } from "../utils/carrierMap";
 import { applyResultFilters } from "../utils/offersFilterView.mjs";
-import { visibleOffers } from "../utils/offerSuppression.mjs";
 import { deliveryDeadlineOptions } from "../utils/deliveryTimeView.mjs";
 import { revealOffers } from "../utils/revealOffers.mjs";
 import { resumeInitialState, missingFieldsHint } from "../utils/newShipmentResume.mjs";
@@ -1200,6 +1199,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     }
     setErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
+    // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto. Erst hier — nach
+    // der Validierung, unmittelbar vor dem Request. Der Einblende-Zweig oben rechnet nicht neu und behält
+    // die Wahl des Kunden; ein abgelehnter Klick ändert sie ebenfalls nicht.
+    setVatMode("net");
     setError(""); setProfileIncomplete(false); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis
@@ -1332,11 +1335,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         const validIds = new Set(newPublicCarriers.map(pc => pc.id));
         setSelectedPublicCarrierIds(prev => prev.filter(id => validIds.has(id)));
       }
-      // Betreiberanweisung: eine eng umrissene Karte wird nicht gezeigt. Die Ausblendung
-      // steht HIER — vor Sortierung, Filtern, Zählern und Auswahl — damit keine Liste
-      // entsteht, in der die Karte unsichtbar ist, aber weiter mitzählt. Siehe
-      // src/utils/offerSuppression.mjs.
-      setTariffs(visibleOffers(d.tariffs));
+      // Jedes gelieferte Angebot erscheint (Betreiberentscheidung 2026-10-02: kein Angebot wird wegen
+      // eines konkurrierenden Providerpreises verborgen). Was angeboten wird, entscheidet der Server.
+      setTariffs(Array.isArray(d.tariffs) ? d.tariffs : []);
       setCeShipmentId(d.ceShipmentId ?? null);
       // Zoll-Felder additiv übernehmen (Backend entscheidet customsRequired).
       setCustoms({

@@ -8,6 +8,7 @@ import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { handoverInfo, deliveryInfo, priceInfo, PRICE_CHANGED_HINT, surchargeSummaryNote } from "../../utils/bookingSummaryView.mjs";
 import { pickupSummaryOf, pickupAdjustedNote } from "../../utils/pickupContractView.mjs";
 import { sameDaySummaryNote } from "../../utils/sameDayCollectionView.mjs";
+import { isGrossVatMode, VAT_TEXT } from "../../utils/vatDisplayView.mjs";
 
 // Permanente Live-Zusammenfassungsleiste — REINE DARSTELLUNG, sichtbar in Schritt 1
 // und 2. Vier Zonen: Versandprodukt · Übergabe · Zustellung · aktueller Preis. Alle
@@ -18,7 +19,7 @@ import { sameDaySummaryNote } from "../../utils/sameDayCollectionView.mjs";
 // Helfern wie Sticky-Leiste und ausgewähltes Angebot (bookingSummaryView,
 // pickupContractView). Vorher leitete jede der drei Flächen selbst ab — und die
 // Beschriftungen und Beträge liefen auseinander.
-export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
+export function BookingLiveSummary({ tariff, priceView, pickupWindow, vatMode }) {
   if (!tariff) return null;
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(tariff);
   const handover = handoverInfo(tariff);
@@ -48,6 +49,16 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
   const zuschlagHinweis = surchargeSummaryNote(v);
   // TG22 Same-Day: der Zuschlag der Abholung am selben Tag — Bezeichnung und Betrag vom Server.
   const sameDayHinweis = sameDaySummaryNote(v, tariff);
+  // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Modus bestimmt nur, welcher der beiden Beträge aus
+  // priceInfo vorn steht. Beide bleiben sichtbar, keiner wird gebildet; der Bruttobetrag behält seine Klasse
+  // und trägt in der Nettoanzeige den Hinweis „zahlbar". Ohne Nettobetrag bleibt die Bruttoanzeige.
+  const nettoZuerst = !isGrossVatMode(vatMode) && preis.net != null;
+  const bruttoZeile = (
+    <span className="blsum-price-gross">
+      {preis.gross != null ? money(preis.gross) : "—"}
+      <span className="blsum-price-unit"> brutto</span>
+    </span>
+  );
 
   // Sekundärzeile, solange KEIN Gesamtpreis bestätigt ist: der Versicherungszustand — oder,
   // nach einer gemeldeten Preisänderung, dass der bisherige Preis nicht mehr gilt. Ein
@@ -104,13 +115,20 @@ export function BookingLiveSummary({ tariff, priceView, pickupWindow }) {
           nach einer gemeldeten Preisänderung ohne Betrag. Label und Beträge aus priceInfo. */}
       <div className="blsum-zone blsum-price" aria-live="polite">
         <span className="blsum-price-label">{preis.label}</span>
-        <span className="blsum-price-box">
-          <span className="blsum-price-gross">
-            {preis.gross != null ? money(preis.gross) : "—"}
-            <span className="blsum-price-unit"> brutto</span>
+        {nettoZuerst ? (
+          <span className="blsum-price-box blsum-price-box--net">
+            <span className="blsum-price-net">{money(preis.net)}<span className="blsum-price-unit"> netto</span></span>
+            <span className="blsum-price-payline">
+              {bruttoZeile}
+              {preis.gross != null && <span className="blsum-price-payable"> · {VAT_TEXT.payable}</span>}
+            </span>
           </span>
-          {preis.net != null && <span className="blsum-price-net">{money(preis.net)} netto</span>}
-        </span>
+        ) : (
+          <span className="blsum-price-box">
+            {bruttoZeile}
+            {preis.net != null && <span className="blsum-price-net">{money(preis.net)} netto</span>}
+          </span>
+        )}
         {insNote && (
           <span className={`blsum-ins-note${insNoteError ? " blsum-ins-note--error" : ""}`}>
             {insNoteLoading && <span className="spinner spinner-dark" />}

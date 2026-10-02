@@ -179,7 +179,11 @@ test("1 — sichtbar: ein Angebot mit Abholung heute ist auswählbar und trägt 
 test("2 — der Kartenpreis ist der Serverpreis: der Zuschlag steckt darin, nichts wird addiert", () => {
   const karte = code(KARTE);
   const preisblock = abschnitt(karte, 'className="offer-price-block"', "className={`offer-cta-btn ${ctaClass}`}");
-  assert.match(preisblock, /vatMode === "gross"\s*\? money\(t\.finalPrice \?\? t\.netPrice\)\s*: money\(t\.netPrice\)/);
+  // Netto/Brutto (2026-10-02): der Kartenpreis kommt über den einen Präsentator, der nur zwischen den beiden
+  // Serverbeträgen wählt — der Zuschlag steckt darin, nichts wird addiert.
+  assert.match(karte, /const preisAnzeige = vatDisplay\(\{ net: t\.netPrice, gross: t\.finalPrice \}, vatMode\);/);
+  assert.match(preisblock, /money\(preisAnzeige\.primary\.amount\)/);
+  assert.doesNotMatch(preisblock, /netPrice\s*\+|finalPrice\s*[-+*/]/, "der Preisblock rechnet");
   assert.doesNotMatch(karte, /sameDaySurcharge(Net|Gross)/, "die Karte liest die Zuschlagsfelder selbst");
   assert.equal(TG22_HEUTE.finalPrice, S.gross);
   // Das Modul rechnet nicht: keine arithmetische Verknüpfung außerhalb von Texten und Mustern.

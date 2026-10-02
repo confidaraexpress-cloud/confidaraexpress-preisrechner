@@ -44,7 +44,7 @@ import { boundDropoffLocationLine, DROPOFF_LOCATION_LABEL } from "../../utils/dr
 
 export function BookingSuccessStep({
   booking, bookingData, tariff, priceView, user, invoiceDeliveryMode, proformaEntry,
-  navigate, clearFlow,
+  navigate, clearFlow, vatMode,
 }) {
   // TG22 Paket B: der gebuchte Betrag kommt ausschließlich aus der Buchungsantwort. Die
   // Aufstellung der Buchungsseite erscheint nur, wenn sie ihn auf den Cent trägt.
@@ -137,8 +137,10 @@ export function BookingSuccessStep({
                   • Aufstellung stimmt auf den Cent → Aufstellung mit dem gebuchten Gesamtbetrag,
                   • Betrag vorhanden, Aufstellung weicht ab → nur der gebuchte Gesamtbetrag,
                   • kein Betrag → kein Betrag, nur der Verweis auf Bestätigung und Rechnung. */}
+            {/* Netto/Brutto (2026-10-02): der Gesamtbetrag netto erscheint nur in der Aufstellung — also nur, wenn
+                sie den gebuchten Bruttobetrag auf den Cent trägt — und stammt aus demselben bestätigten Preis. */}
             {betrag.showBreakdown ? (
-              <PriceSummaryModule priceView={{ ...priceView, totalGross: betrag.totalGross, components: bookingSuccessComponents(booking, priceView) }} paymentTerm={user?.payment_term || 7} />
+              <PriceSummaryModule priceView={{ ...priceView, totalGross: betrag.totalGross, components: bookingSuccessComponents(booking, priceView) }} paymentTerm={user?.payment_term || 7} vatMode={vatMode} />
             ) : betrag.hasAmount ? (
               <div className="booking-total-row mt-8" id="booking-success-amount">
                 <span className="booking-total-label">Gesamtbetrag brutto</span>

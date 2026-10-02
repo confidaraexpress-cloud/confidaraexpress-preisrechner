@@ -339,14 +339,16 @@ test("B — Buchungsseite: Laden, Serverbeträge, Sperre ohne Wahl, Privatadress
   await privatKarte.waitFor({ timeout: 20000 });
   assert.deepEqual(p.lz.optionsCalls, [{ offerId: TG.offerId, offerRevision: 0 }]);
   assert.equal(await inhalt(page.locator("#residential-price-inputs-title")), "Art der Lieferadresse");
+  // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter der
+  // Bruttobetrag; beide unverändert aus der Optionsantwort.
   const g = await inhalt(geschaeftKarte);
   assert.match(g, /Geschäftsadresse/);
-  assert.match(g, /\+ 0,00 € brutto/);
-  assert.match(g, /0,00 € netto/);
+  assert.match(g, /\+ 0,00 € netto/);
+  assert.match(g, /0,00 € brutto/);
   const pr = await inhalt(privatKarte);
   assert.match(pr, /Privatadresse/);
-  assert.match(pr, /\+ 3,79 € brutto/);
-  assert.match(pr, /3,18 € netto/);
+  assert.match(pr, /\+ 3,18 € netto/);
+  assert.match(pr, /3,79 € brutto/);
   assert.doesNotMatch(`${g} ${pr}`, /MwSt/);
   assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "eine Art ist vorausgewählt");
 

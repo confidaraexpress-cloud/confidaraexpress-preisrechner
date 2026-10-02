@@ -37,6 +37,7 @@ import {
 } from "./sameDayCollectionView.mjs";
 import { OFFER_ALREADY_USED_TEXT } from "./bookingErrors.mjs";
 import { offerAwaitsPriceInputs, PRICE_INPUT_DELIVERY_RESIDENTIAL } from "./offerIdentity.mjs";
+import { isGrossVatMode } from "./vatDisplayView.mjs";
 
 export { PRICE_INPUT_DELIVERY_RESIDENTIAL };
 
@@ -416,8 +417,13 @@ export const isPriceInputsRequired = (body) => istObjekt(body) && body.code === 
  *
  * `surchargeFree` (aus `offerResidentialSurchargeFree`): dieselbe Auswahl ohne belegten Zuschlag —
  * Lade- und Fehlertext sprechen dann vom Preis, nicht von einem Zuschlag.
+ *
+ * `vatMode` (Netto/Brutto, 2026-10-02): `primaryText` ist der Zuschlag im gewählten Anzeigemodus
+ * („+ Y,YY € netto" bzw. „+ X,XX € brutto"), `secondaryText` der jeweils andere — beide Beträge stehen
+ * unverändert in der Optionsantwort des Servers. `grossText`/`netText` bleiben wie bisher erhalten.
  */
-export function residentialModuleView({ status, options, boundValue, pendingValue, errorKind, notice, surchargeFree } = {}) {
+export function residentialModuleView({ status, options, boundValue, pendingValue, errorKind, notice, surchargeFree, vatMode } = {}) {
+  const brutto = isGrossVatMode(vatMode);
   const laedt = status === RESIDENTIAL_STATUS.LOADING || status === RESIDENTIAL_STATUS.IDLE;
   const bindet = status === RESIDENTIAL_STATUS.BINDING;
   const fehler = status === RESIDENTIAL_STATUS.ERROR;
@@ -433,6 +439,12 @@ export function residentialModuleView({ status, options, boundValue, pendingValu
     label: o.value ? RESIDENTIAL_TEXT.private : RESIDENTIAL_TEXT.business,
     grossText: `+ ${money(o.surcharge.gross)} ${RESIDENTIAL_TEXT.gross}`,
     netText: `${money(o.surcharge.net)} ${RESIDENTIAL_TEXT.net}`,
+    primaryText: brutto
+      ? `+ ${money(o.surcharge.gross)} ${RESIDENTIAL_TEXT.gross}`
+      : `+ ${money(o.surcharge.net)} ${RESIDENTIAL_TEXT.net}`,
+    secondaryText: brutto
+      ? `${money(o.surcharge.net)} ${RESIDENTIAL_TEXT.net}`
+      : `${money(o.surcharge.gross)} ${RESIDENTIAL_TEXT.gross}`,
     checked: bindet ? pendingValue === o.value : boundValue === o.value,
     disabled: bindet,
   })) : [];

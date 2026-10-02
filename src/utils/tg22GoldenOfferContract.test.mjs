@@ -142,7 +142,8 @@ test("A6 — ausgewähltes Angebot, Live- und Sticky-Leiste lesen denselben Prei
 test("A7 — die Buchungsseite reicht DASSELBE priceView an alle Preisflächen", () => {
   const seite = code(SEITE);
   for (const muster of [
-    /<OfferSummaryModule tariff=\{tariff\} priceView=\{priceView\} pickupWindow=\{pickupWindow\} \/>/,
+    // Netto/Brutto (2026-10-02): dahinter steht zusätzlich `vatMode` — derselbe priceView bleibt die Quelle.
+    /<OfferSummaryModule tariff=\{tariff\} priceView=\{priceView\} pickupWindow=\{pickupWindow\}/,
     /<BookingLiveSummary tariff=\{tariff\} priceView=\{priceView\}/,
     /<BookingStickySummary tariff=\{tariff\} priceView=\{priceView\}/,
     /<PriceSummaryModule\s+priceView=\{priceView\}/,

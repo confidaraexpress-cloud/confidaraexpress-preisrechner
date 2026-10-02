@@ -13,6 +13,7 @@ import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { DELIVERY_NOT_ASSESSABLE_TEXT } from "../../utils/offersFilterView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
 import { offerCardInsurance } from "../../utils/coverInsuranceView.mjs";
@@ -289,6 +290,10 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   if (t.printerRequired != null)   features.push({ icon: "printer", label: "Drucker",                value: t.printerRequired ? "Erforderlich" : "Nicht erforderlich" });
   if (carrierAppliesLabel(t))       features.push({ icon: "info",    label: "Versandlabel",           value: LABEL_HANDLING_TEXT.offer });
   if (t.trackingAvailable != null) features.push({ icon: "truck",   label: "Sendungsverfolgung",     value: t.trackingAvailable ? "Inklusive" : "Nicht verfügbar" });
+  // Go-Live Block B (B3): ausschließlich das belegte Providerflag (`deliveryOnSaturday === true`, vom Server nur bei
+  // einem eindeutig aktiven Anbieterwert) — nie aus dem Namen gelesen. Auf der Kartenfläche trägt bereits der
+  // kuratierte Tarifname die Unterscheidung; hier steht sie als eine weitere Fähigkeit unter „Hauptmerkmale".
+  if (t.deliveryOnSaturday === true) features.push({ icon: "calendar", label: "Samstagszustellung",  value: "Ja" });
   if (serviceLabel)                features.push({ icon: "package", label: "Versandart",             value: serviceLabel });
   // ── Belegte Angebotsmetadaten ──────────────────────────────────────────────────
   // Beide kommen fertig vom Server und werden hier nur eingereiht — keine Rechnung,
@@ -479,10 +484,10 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
 // bewusst keine visuelle Hervorhebung mehr aus — es gibt keine "Top Empfehlung".
 // React.memo (Standard-Shallow-Vergleich): Eine Karte rendert nur neu, wenn sich
 // eine ihrer Props referenziell ändert (tariff, badge, selected, vatMode,
-// senderPrefill, onSelect, onBook, isTop). Interner Zustand (Details auf/zu)
+// senderPrefill, onSelect, onBook, isTop, deliveryNotAssessable). Interner Zustand (Details auf/zu)
 // löst weiterhin normal ein Re-Render genau dieser Karte aus. Voraussetzung für
 // den Nutzen: OffersList/Pages reichen stabile Callbacks & senderPrefill herein.
-function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill }) {
+function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, vatMode, senderPrefill, deliveryNotAssessable }) {
   const { name: carrierName, logo: carrierLogo } = publicCarrierDisplay(t);
   const [detailsOpen, setDetailsOpen]       = useState(false);
   const [detailsMounted, setDetailsMounted] = useState(false);
@@ -688,6 +693,12 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                   </span>
                   {earlyNote}
                 </p>
+              )}
+              {/* K2 (Go-Live Block B): unter einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne
+                  sicher vergleichbare Anbieterzusage sichtbar — mit genau diesem neutralen Satz unter dem
+                  Lieferende. Kein geschätzter Termin, keine Uhrzeit aus dem Tarifnamen; ohne Filter nie. */}
+              {deliveryNotAssessable && (
+                <p className="offer-deadline-note">{DELIVERY_NOT_ASSESSABLE_TEXT}</p>
               )}
             </div>
           )}

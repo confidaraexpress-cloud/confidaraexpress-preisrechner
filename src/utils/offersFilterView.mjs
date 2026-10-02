@@ -105,45 +105,72 @@ export function emptyFilterHint({ maxPrice, latestDeliveryDate, latestDeliveryTi
   return "Für diese Anfrage sind derzeit keine Angebote verfügbar.";
 }
 
+// ─── LIEFERFRIST: DREI AUSGÄNGE (Betreiberentscheidung K2, 2026-10-02) ──────
+// Ein Angebot wird gegen die späteste Lieferzeit AUSSCHLIESSLICH mit der
+// Zusage des Anbieters bewertet: `deliveryDateMax` (ersatzweise
+// `deliveryDate`) und `deliveryTimeUntil`. Fehlt eine Zusage, die sich sicher
+// mit der Frist vergleichen lässt, ist das KEIN Ausschlussgrund: das Angebot
+// bleibt sichtbar und trägt diesen neutralen Hinweis. Es wird kein Termin
+// geschätzt, keine Uhrzeit aus einem Tarifnamen gelesen und keine CE-Rechnung
+// zur Anbieterzusage gemacht. Nur ein nachweislich zu spätes Angebot fällt —
+// wie bisher — heraus.
+export const DELIVERY_NOT_ASSESSABLE_TEXT = "Zustelltermin nicht bewertbar";
+
+const ISO_TAG = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Bewertet EIN Angebot gegen den gesetzten Lieferzeitfilter:
+ *
+ *  - `null`             kein Lieferzeitfilter gesetzt — nichts zu bewerten
+ *  - `"met"`            die Anbieterzusage hält die Frist nachweislich ein
+ *  - `"too_late"`       die Anbieterzusage liegt nachweislich nach der Frist
+ *  - `"not_assessable"` keine sicher vergleichbare Anbieterzusage
+ *
+ *  NUR Datum → der späteste Liefertag muss am Stichtag oder davor liegen.
+ *  Datum UND Uhrzeit → Vergleich des PAARES (Tag, Uhrzeit): ein Tag davor
+ *  hält die Frist ein, ein Tag danach nicht — die Uhrzeit braucht es dafür
+ *  nicht. Am Stichtag selbst entscheidet die genannte Zeit: „bis 17:00"
+ *  erfüllt „bis 12:00" nicht, es wird keine Zeit unterstellt, die der Anbieter
+ *  nicht nennt. Nennt er am Stichtag GAR KEINE Zeit, ist die Frist nicht
+ *  bewertbar — bis Block B fiel das Angebot hier heraus.
+ *
+ *  Beide Werte sind fest formatiert ("YYYY-MM-DD" bzw. "HH:MM", beide
+ *  nullgepolstert), deshalb ist der lexikografische Vergleich hier zugleich
+ *  der chronologische. `normalizeDeliveryTime` erzwingt die Polsterung; ein
+ *  Liefertag in anderer Form ist keine vergleichbare Zusage. */
+export function deliveryDeadlineAssessment(tariff, { latestDeliveryDate, latestDeliveryTime } = {}) {
+  if (!latestDeliveryDate) return null;
+  const dd = tariff?.deliveryDateMax || tariff?.deliveryDate;
+  const tag = dd ? String(dd).split("T")[0] : "";
+  if (!ISO_TAG.test(tag)) return "not_assessable";
+  const grenzzeit = normalizeDeliveryTime(latestDeliveryTime);
+  if (!grenzzeit) return tag <= latestDeliveryDate ? "met" : "too_late";
+  if (tag < latestDeliveryDate) return "met";
+  if (tag > latestDeliveryDate) return "too_late";
+  const zeit = normalizeDeliveryTime(tariff?.deliveryTimeUntil);
+  if (!zeit) return "not_assessable";
+  return zeit <= grenzzeit ? "met" : "too_late";
+}
+
+/** true genau dann, wenn ein Lieferzeitfilter gesetzt ist UND das Angebot
+ *  gegen ihn nicht bewertbar ist — die Karte zeigt dann den Hinweis. Ohne
+ *  Filter nie. */
+export function deliveryDeadlineNotAssessable(tariff, filters) {
+  return deliveryDeadlineAssessment(tariff, filters) === "not_assessable";
+}
+
 /** DIE Ergebnisfilter-Regel — von NewShipmentPage UND CalculatorPage
  *  importiert, nicht kopiert. Rein: kein React, kein Date-Objekt, keine
  *  Zeitzone, keine Mutation der Eingabe.
  *
- *  Zwei Stufen, weil die Uhrzeit optional ist:
- *
- *  - NUR Datum → unverändertes Verhalten von vorher: der späteste Liefertag
- *    (`deliveryDateMax`, ersatzweise `deliveryDate`) muss am Stichtag oder
- *    davor liegen.
- *  - Datum UND Uhrzeit → strenger Vergleich des PAARES (Tag, Uhrzeit). Das
- *    erledigt die fachlich heikle Frage von selbst: ein Tarif, der am Stichtag
- *    „bis 17:00" zustellt, erfüllt „bis 12:00" nicht und fällt heraus — er wird
- *    also nicht behandelt, als hielte er eine Zeit ein, die er gar nicht nennt.
- *    Derselbe Tarif bleibt sichtbar, wenn er einen Tag FRÜHER zustellt, denn
- *    dann schlägt er die Frist nachweislich. Dafür braucht es keine Schwelle
- *    und keine Sonderregel — nur den Paarvergleich.
- *
- *  Beide Werte sind fest formatiert ("YYYY-MM-DD" bzw. "HH:MM", beide
- *  nullgepolstert), deshalb ist der lexikografische Vergleich hier zugleich der
- *  chronologische. `normalizeDeliveryTime` erzwingt die Polsterung.
- *
- *  Fehlt einem Tarif bei GESETZTER Uhrzeit eine verwertbare Zeit, fällt er
- *  heraus (fail-safe) — es wird weder „Tagesende" noch „erfüllt die Frist"
- *  unterstellt. Fehlt dagegen das Lieferdatum selbst, bleibt der Tarif wie
- *  bisher sichtbar; diese Semantik wurde bewusst nicht nebenbei geändert. */
+ *  Der Lieferzeitfilter entfernt ausschließlich nachweislich zu späte Angebote
+ *  (`deliveryDeadlineAssessment` oben). Ein nicht bewertbares Angebot bleibt
+ *  stehen — unverändert, ohne Zusatzfeld; den Hinweis bildet die Liste beim
+ *  Anzeigen aus demselben Ergebnis. */
 export function applyResultFilters(tariffs, { maxPrice, latestDeliveryDate, latestDeliveryTime } = {}) {
   let f = [...tariffs];
   if (maxPrice) f = f.filter(t => t.netPrice != null && t.netPrice <= Number(maxPrice));
   if (latestDeliveryDate) {
-    const grenzzeit = normalizeDeliveryTime(latestDeliveryTime);
-    f = f.filter(t => {
-      const dd = t.deliveryDateMax || t.deliveryDate;
-      if (!dd) return true;
-      const tag = String(dd).split("T")[0];
-      if (!grenzzeit) return tag <= latestDeliveryDate;
-      const zeit = normalizeDeliveryTime(t.deliveryTimeUntil);
-      if (!zeit) return false;
-      return `${tag} ${zeit}` <= `${latestDeliveryDate} ${grenzzeit}`;
-    });
+    f = f.filter(t => deliveryDeadlineAssessment(t, { latestDeliveryDate, latestDeliveryTime }) !== "too_late");
   }
   return f;
 }

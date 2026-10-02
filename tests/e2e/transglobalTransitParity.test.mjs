@@ -53,10 +53,10 @@ const TARIFE = [
     transitDaysMin: 1, transitDaysMax: 1, deliveryTime: "1 Tag",
     deliveryDate: null, deliveryDateMin: null, deliveryDateMax: null,
     bookable: false, unavailableReason: "quote_only", ...preis(7.2) },
-  // TG offen nach oben. Produktname "Express" (UPS · Express) statt "Expressversand":
-  // die Kombination ups/Expressversand/quote_only wird seit der Betreiberanweisung nicht
-  // mehr gezeigt (src/utils/offerSuppression.mjs). Gegenstand dieser Suite ist die
-  // Laufzeitparitaet — der Traeger ist beliebig, solange er eine TG-Preisauskunft ist.
+  // TG offen nach oben. Produktname "Express" (UPS · Express) — gewaehlt, als die Kombination
+  // ups/Expressversand/quote_only ausgeblendet wurde (bis 2026-10-02; seither wird kein
+  // Angebot mehr verborgen). Gegenstand dieser Suite ist die Laufzeitparitaet — der Traeger
+  // ist beliebig, solange er eine TG-Preisauskunft ist.
   { offerId: "o-t-open", publicCarrierId: "ups", publicCarrierName: "UPS",
     publicServiceName: "Express", serviceType: "pickup", currency: "EUR",
     transitDaysMin: 1, transitDaysMax: null, deliveryTime: "ab 1 Tag",

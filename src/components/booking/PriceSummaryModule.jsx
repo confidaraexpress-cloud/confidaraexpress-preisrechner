@@ -6,6 +6,7 @@ import { INSURANCE_TYPE_TRANSIT_COVER } from "../../utils/coverInsuranceView.mjs
 import { COVER_INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { PRICE_CHANGED_SUMMARY } from "../../utils/bookingSummaryView.mjs";
 import { priceSummaryComponents } from "../../utils/priceComponentsView.mjs";
+import { isGrossVatMode, VAT_TEXT } from "../../utils/vatDisplayView.mjs";
 
 // Ein fehlender Betrag erscheint als Gedankenstrich — `money(null)` ergäbe „0,00 €", also
 // einen erfundenen Nullbetrag in der verbindlichen Aufstellung.
@@ -34,9 +35,16 @@ const lowerFirst = (s) => (typeof s === "string" && s ? s.charAt(0).toLowerCase(
 // Zusätzliche Transportabsicherung (Deckungsbetragsmodell): eigene, neutrale Bezeichnung
 // und zusätzlich versicherter Betrag und Selbstbeteiligung — beide ausschließlich aus der
 // bestätigten Neubepreisung. Keine Stufenbegriffe.
-export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
+//
+// Netto/Brutto (Betreiberentscheidung 2026-10-02): in der Nettoanzeige steht VOR dem zahlbaren Gesamtbetrag
+// brutto der Gesamtbetrag netto — ausschließlich `totalNet` des Price-View-Models (`customerTotalNet` des
+// Servers bzw. der Nettopreis des Angebots), nie eine eigene Summe. Fehlt er, entfällt die Zeile. Die
+// Bruttoanzeige bleibt unverändert; der Gutscheinweg (nur Testbuchungen) ebenso.
+export function PriceSummaryModule({ priceView, paymentTerm, voucherLines, vatMode }) {
   const v = priceView || {};
   const confirmed = v.hasConfirmedPrice === true;
+  const nettoGesamt = !isGrossVatMode(vatMode) && typeof v.totalNet === "number" && Number.isFinite(v.totalNet)
+    ? v.totalNet : null;
   // TG22 Golden Offer Contract: nach einer gemeldeten Preisänderung gilt kein Betrag —
   // auch nicht der Versandpreis des Angebots. Die Aufstellung zeigt dann Striche und sagt,
   // warum; sie nennt den alten Preis nicht mehr, als gälte er noch.
@@ -142,10 +150,18 @@ export function PriceSummaryModule({ priceView, paymentTerm, voucherLines }) {
               </div>
             </>
           ) : (
-            <div className="booking-total-row mt-8">
-              <span className="booking-total-label">Gesamtbetrag brutto</span>
-              <span className="booking-total-amount">{money(v.totalGross)}</span>
-            </div>
+            <>
+              {nettoGesamt !== null && (
+                <div className="booking-total-row booking-total-row--net mt-8" data-vat-total="net">
+                  <span className="booking-total-label">{VAT_TEXT.netTotal}</span>
+                  <span className="booking-total-amount">{money(nettoGesamt)}</span>
+                </div>
+              )}
+              <div className="booking-total-row mt-8">
+                <span className="booking-total-label">Gesamtbetrag brutto</span>
+                <span className="booking-total-amount">{money(v.totalGross)}</span>
+              </div>
+            </>
           )}
         </>
       ) : (

@@ -569,13 +569,14 @@ test("C — Art der Lieferadresse: vorläufiger Preis, Serverbeträge, Sperre oh
   await privatKarte.waitFor({ timeout: 20000 });
   assert.deepEqual(p.lz.optionsCalls, [{ offerId: TG_MO.offerId, offerRevision: 0 }]);
   assert.equal(await inhalt(page.locator("#residential-price-inputs-title")), "Art der Lieferadresse");
+  // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter brutto.
   const g = await inhalt(geschaeftKarte);
   assert.match(g, /Geschäftsadresse/);
-  assert.match(g, /\+ 0,00 € brutto/);
+  assert.match(g, /\+ 0,00 € netto/);
   const pr = await inhalt(privatKarte);
   assert.match(pr, /Privatadresse/);
-  assert.match(pr, /\+ 4,09 € brutto/);
-  assert.match(pr, /3,44 € netto/);
+  assert.match(pr, /\+ 3,44 € netto/);
+  assert.match(pr, /4,09 € brutto/);
   assert.equal(await page.locator('input[name="residential-delivery"]:checked').count(), 0, "eine Art ist vorausgewählt");
 
   // Ohne Wahl: vorläufiger Preis, keine Absicherung, kein Schritt 2.

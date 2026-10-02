@@ -294,6 +294,12 @@
 .offsum-price-gross { font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary); margin-top: 3px; white-space: nowrap; }
 .offsum-price-vat { font-size: 11px; color: var(--ce-color-text-muted); margin-top: 2px; }
 .offsum-price-na { font-size: 15px; font-weight: 600; color: var(--ce-color-text-muted); }
+/* Netto/Brutto (2026-10-02): in der Bruttoanzeige ist der Bruttobetrag die Hauptzahl, netto steht darunter. */
+.offsum-price--gross .offsum-price-gross {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 24px; color: var(--navy); line-height: 1.15; margin-top: 0;
+}
+.offsum-price--gross .offsum-price-net { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; margin-top: 3px; }
 .offsum-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .offsum-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; }
 .offsum-fact { display: flex; align-items: baseline; gap: 6px; }
@@ -316,6 +322,9 @@
 .booking-total-row { display: flex; justify-content: space-between; padding-top: 12px; border-top: 2px solid var(--border); }
 .booking-total-label { font-size: 15px; font-weight: 600; color: var(--navy); }
 .booking-total-amount { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 24px; font-weight: 600; color: var(--blue2); }
+/* Netto/Brutto (2026-10-02): in der Nettoanzeige steht der Gesamtbetrag netto über dem zahlbaren Gesamtbetrag
+   brutto — zwei Summenzeilen, eine Trennlinie über dem Paar. */
+.booking-total-row--net + .booking-total-row { border-top: none; padding-top: 4px; }
 .booking-payment-note { text-align: right; font-size: 11px; color: var(--ce-color-text-muted); margin-top: 4px; }
 /* ── Gutscheinfeld (Bestellübersicht, Schritt 2) ───────────────────────────────
    Bewusst KEINE eigene Karte: das Feld liegt innerhalb der bestehenden Übersicht,
@@ -538,6 +547,21 @@
         Sichtfeld.
      4. `z-index: 1` hob sie über den Inhalt, ohne ihn abzudecken.
    Die klebende Rolle trägt jetzt `.booking-sticky-layer` (siehe unten). */
+/* ─── Netto/Brutto-Umschalter der Buchungsseite (2026-10-02) ───────────────────
+   Derselbe Umschalter wie in der Angebotsliste (Segmentklassen aus offers.css). Er steht über der
+   Live-Leiste, nicht in ihr: die Leisten bleiben Zusammenfassungen ohne Bedienelemente. */
+.booking-vat-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 10px; margin-bottom: 10px; }
+.booking-vat-label {
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-micro-size);
+  font-weight: var(--ce-text-micro-weight);
+  line-height: var(--ce-text-micro-line);
+  letter-spacing: var(--ce-text-micro-tracking);
+  text-transform: uppercase;
+  color: var(--ce-color-text-muted);
+  white-space: nowrap;
+}
+@media (max-width: 767px) { .booking-vat-row { justify-content: flex-start; } }
 .booking-livesum {
   display: grid; grid-template-columns: 1.6fr 1fr 1fr auto; align-items: stretch;
   margin-bottom: 20px; overflow: hidden;
@@ -564,6 +588,12 @@
 .blsum-price-unit { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); font-family: var(--font, inherit); letter-spacing: 0; }
 .blsum-ins-note { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--blue2); text-align: right; }
 .blsum-ins-note--error { color: var(--danger); }
+/* Netto/Brutto (2026-10-02): in der Nettoanzeige ist der Nettobetrag die Hauptzahl; der zahlbare Bruttobetrag
+   steht darunter, behält seine Klasse und trägt „zahlbar". Nur Gewichtung und Reihenfolge ändern sich. */
+.blsum-price-box--net .blsum-price-net { font-size: 20px; font-weight: 600; color: var(--navy); letter-spacing: -0.01em; }
+.blsum-price-box--net .blsum-price-gross { font-size: 12px; font-weight: 400; color: var(--ce-color-text-muted); letter-spacing: 0; }
+.blsum-price-payline { display: inline; text-align: inherit; }
+.blsum-price-payable { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
 /* Legacy (gescoped, nicht mehr aktiv genutzt). */
 
 /* ≤860px → drei Zeilen: Versandprodukt · [Übergabe|Zustellung] · Preis. */
@@ -584,6 +614,7 @@
   .blsum-handover { border-right: none; }
   .blsum-zone + .blsum-zone { border-top: 1px solid var(--border); }
   .blsum-price-gross { font-size: 18px; }
+  .blsum-price-box--net .blsum-price-net { font-size: 18px; }
 }
 
 /* ─── Kompakte Sticky-Zusammenfassung (BookingStickySummary) ──────────────────
@@ -697,6 +728,9 @@
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap;
 }
+/* Netto/Brutto (2026-10-02): dieselbe Gewichtung wie in der großen Leiste — netto vorn, brutto darunter. */
+.bsum-price--net .bsum-price-net { font-size: 16px; font-weight: 600; color: var(--ce-color-text-primary); letter-spacing: -0.01em; }
+.bsum-price--net .bsum-price-gross { font-size: 11px; font-weight: 400; color: var(--ce-color-text-muted); letter-spacing: 0; }
 
 /* ≤860px → zwei Zeilen: [Produkt | Preis] über [Übergabe · Zustellung].
    Reihenfolge nach Priorität: Carrier und Preis stehen oben, die Zustellung
@@ -724,6 +758,7 @@
 @media (max-width: 400px) {
   .bsum-delivery { display: none; }
   .bsum-price-gross { font-size: 15px; }
+  .bsum-price--net .bsum-price-net { font-size: 15px; }
 }
 
 /* Bewegung ist hier reine Zustandsreaktion und wird bei entsprechender

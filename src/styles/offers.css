@@ -599,6 +599,12 @@
   line-height: 1.05; white-space: nowrap;
 }
 .offer-price-sub { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 4px; }
+/* Netto/Brutto (2026-10-02): der jeweils andere Serverbetrag unter dem Kartenpreis — in der Nettoanzeige der
+   zahlbare Bruttobetrag. Ruhiger als der Preis, als Betrag lesbar; bricht an Wortgrenzen um. */
+.offer-price-alt {
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 12px; line-height: 1.4; color: var(--ce-color-text-secondary); margin-top: 2px;
+}
 /* TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — eine Zeile unter dem Preis,
    ruhiger als der Preis, aber als Betrag lesbar. Sie bricht an ihren Wortgrenzen um und ragt auf schmalen
    Karten nie über den Kartenrand. */

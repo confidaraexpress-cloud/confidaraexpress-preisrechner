@@ -455,6 +455,9 @@ export default function CalculatorPage() {
     }
     setFieldErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
+    // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto — wie in
+    // „Neue Sendung" erst hier, nach der Validierung. Der Einblende-Zweig oben behält die Wahl.
+    setVatMode("net");
     setError(null); setLoading(true); setSelected(null);
 
     // Race-Schutz: diesen Aufruf als neuesten markieren, laufenden Request

@@ -433,9 +433,10 @@ test("C — Buchung heute + Privatadresse + Absicherung: Zeilen auf allen Fläch
   const geschaeftKarte = page.locator(`label[for="${LIEFERADRESSE_ID.geschaeft}"]`);
   const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
   await privatKarte.waitFor({ timeout: 20000 });
-  assert.match(await inhalt(geschaeftKarte), /\+ 0,00 € brutto/);
-  assert.match(await inhalt(privatKarte), /\+ 3,78 € brutto/);
-  assert.match(await inhalt(privatKarte), /3,18 € netto/);
+  // Netto/Brutto-Vertrag (2026-10-02): eine neue Berechnung zeigt netto — vorn der Nettozuschlag, darunter brutto.
+  assert.match(await inhalt(geschaeftKarte), /\+ 0,00 € netto/);
+  assert.match(await inhalt(privatKarte), /\+ 3,18 € netto/);
+  assert.match(await inhalt(privatKarte), /3,78 € brutto/);
 
   // Vorläufig: der Preis enthält den Zuschlag, die Zeilen stammen aus den Serverfeldern des Angebots.
   assert.equal(await inhalt(page.locator(".blsum-price-label")), "Vorläufiger Preis");

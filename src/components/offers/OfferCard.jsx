@@ -24,6 +24,7 @@ import { serviceDetailsView } from "../../utils/serviceDetailsView.mjs";
 import { projectedDeliveryText } from "../../utils/deliveryProjectionView.mjs";
 import { ServiceProfileDetails } from "./ServiceProfileDetails";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
+import { vatDisplay, vatSuffixText, isGrossVatMode } from "../../utils/vatDisplayView.mjs";
 
 const fmtDE = (iso) => {
   if (!iso) return "";
@@ -221,7 +222,7 @@ function DetailRow({ label, value, strong, subtle }) {
   );
 }
 
-function DetailsPanel({ tariff: t, senderPrefill }) {
+function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   // Alle Felder/Sektionen werden defensiv gerendert: Eine Zeile/Sektion erscheint
   // ausschließlich, wenn der Wert real vorhanden ist. Keine erfundenen Werte,
   // kein null/undefined, keine technischen Rohwerte.
@@ -417,9 +418,10 @@ function DetailsPanel({ tariff: t, senderPrefill }) {
       {hasPrice && (
         <div className="offer-details-section offer-details-section--price">
           <div className="offer-detail-section-title">Preisaufschlüsselung</div>
-          {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} />}
+          {/* Beide Beträge stehen immer da; hervorgehoben ist der des gewählten Anzeigemodus. */}
+          {t.netPrice  != null && <DetailRow label="Netto"  value={money(t.netPrice)} strong={!isGrossVatMode(vatMode)} />}
           {t.vatAmount != null && <DetailRow label="MwSt."  value={money(t.vatAmount)} />}
-          {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong />}
+          {t.finalPrice != null && <DetailRow label="Brutto" value={money(t.finalPrice)} strong={isGrossVatMode(vatMode)} />}
           {sameDay && <DetailRow label={SAME_DAY_TEXT.surchargeLabel} value={sameDayDetailValue(sameDay)} />}
           {/* Die Erklärung zum vorläufigen Preis — hier ausführlich, auf der Karte nur als
               kurzes Etikett. Sie steht in der Preisaufschlüsselung, weil sie genau diese
@@ -501,6 +503,10 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // TG22 Same-Day: „Zuschlag für Abholung am selben Tag" und „Abholung heute möglich bis …" — nur, wenn der
   // Server beides nennt. Der Kartenpreis enthält den Zuschlag bereits; hier wird nichts addiert.
   const sameDay = sameDayOfferView(t);
+  // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Kartenpreis im gewählten Modus, darunter der jeweils
+  // andere Serverbetrag — so bleibt der zahlbare Bruttobetrag auch in der Nettoanzeige sichtbar. Gewählt wird nur
+  // zwischen `netPrice` und `finalPrice`; fehlt einer, steht „—" statt eines anderen Betrags.
+  const preisAnzeige = vatDisplay({ net: t.netPrice, gross: t.finalPrice }, vatMode);
   // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
   // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
   // `aria-controls` zeigte bei allen auf denselben Bereich.
@@ -698,13 +704,16 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             {t.netPrice != null ? (
               <>
                 <div className="offer-price">
-                  {vatMode === "gross"
-                    ? money(t.finalPrice ?? t.netPrice)
-                    : money(t.netPrice)}
+                  {preisAnzeige.primary.amount != null ? money(preisAnzeige.primary.amount) : "—"}
                 </div>
                 <div className="offer-price-sub">
-                  {vatMode === "gross" ? "inkl. MwSt." : "exkl. MwSt."}
+                  {vatSuffixText(preisAnzeige.primary.isGross)}
                 </div>
+                {preisAnzeige.secondary.amount != null && (
+                  <div className="offer-price-alt">
+                    {money(preisAnzeige.secondary.amount)} {vatSuffixText(preisAnzeige.secondary.isGross)}
+                  </div>
+                )}
                 {sameDay && (
                   <div className="offer-sameday-surcharge">{sameDaySurchargeLine(sameDay, vatMode)}</div>
                 )}
@@ -778,7 +787,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           role="region"
           aria-label={`Details für ${carrierName}`}
         >
-          <DetailsPanel tariff={t} senderPrefill={senderPrefill} />
+          <DetailsPanel tariff={t} senderPrefill={senderPrefill} vatMode={vatMode} />
         </div>
       )}
     </div>

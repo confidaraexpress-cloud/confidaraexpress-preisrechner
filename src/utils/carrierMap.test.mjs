@@ -214,6 +214,9 @@ test("kein Emoji und keine neue Abhängigkeit im Fallback", () => {
 
 test("Preis- und Auswahlpfad der Angebotskarte unverändert", () => {
   assert.ok(OFFER_CARD.includes("const handleSelect = () => { if (!unavailable) onSelect(t); };"));
-  assert.ok(OFFER_CARD.includes("money(t.finalPrice ?? t.netPrice)"));
+  // Netto/Brutto (2026-10-02): der Kartenpreis wählt über den einen Präsentator nur zwischen den beiden
+  // Serverbeträgen; die Aufschlüsselung zeigt weiter beide.
+  assert.ok(OFFER_CARD.includes("vatDisplay({ net: t.netPrice, gross: t.finalPrice }, vatMode)"));
+  assert.ok(OFFER_CARD.includes("money(preisAnzeige.primary.amount)"));
   assert.ok(OFFER_CARD.includes("money(t.netPrice)"));
 });

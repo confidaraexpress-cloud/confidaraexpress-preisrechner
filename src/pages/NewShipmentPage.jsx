@@ -1200,6 +1200,10 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
     }
     setErrors({});
     calcInFlight.current = true;   // erst NACH der Validierung: ein abgelehnter Klick blockiert nichts
+    // Betreiberentscheidung 2026-10-02: jede ECHTE neue Preisberechnung startet in Netto. Erst hier — nach
+    // der Validierung, unmittelbar vor dem Request. Der Einblende-Zweig oben rechnet nicht neu und behält
+    // die Wahl des Kunden; ein abgelehnter Klick ändert sie ebenfalls nicht.
+    setVatMode("net");
     setError(""); setProfileIncomplete(false); setLoading(true); setSelected(null);
     setResumeNotice(""); setResumeConflict(false);
     // Preisberechnung ist nicht „Draft speichern": den Inline-Erfolgshinweis

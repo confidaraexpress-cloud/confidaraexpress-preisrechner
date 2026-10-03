@@ -2,57 +2,53 @@
    Verifizierte Login-E-Mail-Änderung — isoliert unter .email-change-* (reine
    Zusatzklassen, keine Kollision, keine globalen .btn-/Form-Überschreibungen,
    kein !important). Drei Kontexte:
-     1) In-Card-Bereich in „Mein Profil → Sicherheit" (gemeinsames Light-Theme
-        der App-Shell — kein eigener Theme-Scope mehr).
-     2) Modal-Dialoge (heller Karten-Look, wie die bestehenden Bestätigungsdialoge).
-     3) Öffentliche Confirm-Seite (Auth-/Reset-Ästhetik, .auth-* wiederverwendet).
+     1) In-Card-Bereich in „Kontoeinstellungen → Sicherheit" (gemeinsames
+        Light-Theme der App-Shell).
+     2) Modal-Dialoge (gemeinsames Dialogmuster; seit dem Redesign 2026-10
+        ohne Iconmedaillon).
+     3) Öffentliche Confirm-Seite (Auth-/Reset-Ästhetik, .auth-* wiederverwendet)
+        — gehört zum unveränderten Auth-Bereich.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── 1) Profil-Sicherheitsbereich ──────────────────────────────────────────── */
-.email-change-section { margin-top: 14px; }
-.email-change-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.email-change-trigger { gap: 7px; }
+.email-change-section { margin-top: var(--ce-space-4); }
+.email-change-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
 
-.email-change-notice { margin-top: 12px; }
+.email-change-notice { margin-top: var(--ce-space-3); }
 
-/* Pending-Statusblock. */
+/* Ausstehende Änderung: ruhiger Statusblock ohne Symbol. */
 .email-change-pending {
-  margin-top: 12px;
-  border: 1px solid var(--border-subtle);
+  margin-top: var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  padding: 14px 16px;
-  background: var(--surface-subtle);
+  padding: var(--ce-space-4);
+  background: var(--ce-color-surface-subtle);
 }
 .email-change-pending-head {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-secondary);
 }
-.email-change-pending-head svg { flex-shrink: 0; color: var(--accent-blue); }
 .email-change-pending-email {
-  font-size: 15px; font-weight: 600; color: var(--text-primary);
-  margin: 7px 0 4px; word-break: break-word;
+  font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary);
+  margin: var(--ce-space-1) 0; overflow-wrap: break-word;
 }
-.email-change-pending-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0; }
-.email-change-pending-meta { font-size: 12px; color: var(--text-tertiary); margin: 7px 0 0; }
-.email-change-pending-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.email-change-pending-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); margin: 0; }
+.email-change-pending-meta { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); margin: var(--ce-space-2) 0 0; }
+.email-change-pending-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); margin-top: var(--ce-space-3); }
 
 /* ─── 2) Modal-Dialoge (Start + Abbrechen) ──────────────────────────────────── */
 /* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css);
    --sm bleibt dort die schmale Variante. */
-.email-change-modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.email-change-modal-icon {
-  width: 42px; height: 42px; border-radius: var(--ce-radius-md); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--blue-light); color: var(--blue2);
+.email-change-modal-head { display: flex; align-items: center; gap: var(--ce-space-3); margin-bottom: var(--ce-space-2); }
+.email-change-modal-title {
+  font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line);
+  font-weight: 600; color: var(--ce-color-text-primary);
 }
-.email-change-modal-icon--warn { background: var(--warn-bg); color: var(--warn); }
-.email-change-modal-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); letter-spacing: -0.01em; }
-.email-change-modal-desc { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.55; margin: 0 0 18px; }
+.email-change-modal-desc { font-size: var(--ce-text-body-size); color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); margin: 0 0 var(--ce-space-5); }
 .email-change-modal-actions {
-  display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px;
+  display: flex; gap: var(--ce-space-2); justify-content: flex-end; flex-wrap: wrap; margin-top: var(--ce-space-5);
 }
-/* Read-only aktuelle E-Mail: sichtbar als „nicht editierbar". */
-.email-change-readonly { background: var(--gray50); color: var(--ce-color-text-muted); cursor: default; }
+/* Read-only aktuelle E-Mail: lesbar, nicht wie deaktiviert ausgegraut. */
+.email-change-readonly { background: var(--ce-color-surface-subtle); color: var(--ce-color-text-secondary); cursor: default; }
 
 /* ─── 3) Öffentliche Confirm-Seite ──────────────────────────────────────────── */
 .email-change-confirm { width: 100%; max-width: 460px; }

@@ -2,114 +2,102 @@
    INFORMATIONEN ZUR TRANSPORTVERSICHERUNG (isolierter insinfo-Scope)
    ──────────────────────────────────────────────────────────────────────────
    Die Seite lehnt sich an die Rechtsseiten an (ruhige Leseseite außerhalb der
-   App-Shell), ist aber breiter, gegliedert und mit Sprungnavigation — sie ist
-   eine Informationsseite, kein Vertragstext.
+   App-Shell), ist aber gegliedert und mit Sprungnavigation — sie ist eine
+   Informationsseite, kein Vertragstext.
+
+   Redesign 2026-10 (Audit H39): dieselbe Lesesprache wie die Rechtsseiten.
+   Titel und Einordnungshinweis auf dem Canvas, die Abschnitte fortlaufend auf
+   EINER ruhigen weißen Fläche (keine Karte je Abschnitt; feine Kante, sehr leichter Schatten), die
+   Inhaltsnavigation als leise Liste daneben — mobil darüber. Text statt
+   Symbolen: keine Häkchenliste, keine Infoicons in den Hinweisen, keine
+   Versalzeilen. Lesebreite der Textspalte ≈ 720 px.
 
    Kein neues Designsystem: ausschließlich Foundation-Tokens (--ce-*), die
-   bestehende Typografieskala und die vorhandenen Primitives (.btn).
-   Reine Zusatzklassen mit insinfo-Präfix, keine Kollision mit anderen Scopes.
+   Typografieskala und die vorhandenen Primitives (.btn).
    ══════════════════════════════════════════════════════════════════════════ */
 
 .insinfo-wrap {
-  max-width: 1080px;
+  /* Navigation 240 px + Abstand 32 px + Lesespalte 720 px + Seitenränder. */
+  max-width: calc(240px + var(--ce-space-7) + var(--ce-size-prose) + 2 * var(--ce-page-gutter));
   margin: 0 auto;
-  padding: 40px 16px 80px;
+  padding: var(--ce-space-6) var(--ce-page-gutter) var(--ce-space-10);
   box-sizing: border-box;
 }
 
 /* ── Kopf ─────────────────────────────────────────────────────────────────── */
-.insinfo-head { margin-bottom: var(--ce-space-5); }
-.insinfo-eyebrow {
-  display: block;
-  margin-bottom: var(--ce-space-2);
-  font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: var(--ce-text-micro-line);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ce-color-text-muted);
-}
-/* DM Sans, nicht Cormorant: die Display-Schrift ist den Kundenseitentiteln
-   INNERHALB der App-Shell vorbehalten. Diese Seite liegt wie die Rechtsseiten
-   außerhalb und folgt deren Konvention (.heading → Sans, Gewicht 600). */
+.insinfo-head { margin-bottom: var(--ce-space-5); max-width: var(--ce-size-prose); }
+/* DM Sans 28/36 — dieselbe Titelrolle wie jede andere Seite. */
 .insinfo-title {
-  margin: 0 0 var(--ce-space-3);
+  margin: 0 0 var(--ce-space-2);
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-title-page-size);
   font-weight: var(--ce-text-title-page-weight);
   line-height: var(--ce-text-title-page-line);
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ce-text-title-page-tracking);
   color: var(--ce-color-text-primary);
 }
 .insinfo-lead {
-  max-width: 62ch;
   margin: 0;
   font-size: var(--ce-text-body-l-size);
   line-height: var(--ce-text-body-l-line);
   color: var(--ce-color-text-secondary);
 }
 
-/* ── Hinweisstreifen (oben und unten identisch) ───────────────────────────── */
+/* ── Einordnungshinweis (oben und unten identisch) ────────────────────────
+   Ein sachlicher Hinweiskasten: Text auf der Hinweisfläche, kein Symbol. */
 .insinfo-disclaimer {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ce-space-2);
-  margin: 0 0 var(--ce-space-6);
-  padding: 12px 14px;
+  max-width: var(--ce-size-prose);
+  margin: 0 0 var(--ce-space-7);
+  padding: var(--ce-space-3) var(--ce-space-4);
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-primary);
   background: var(--ce-color-status-warning-surface);
   border: 1px solid var(--ce-color-status-warning-border);
-  border-radius: var(--ce-radius-md);
+  border-radius: var(--ce-radius-sm);
 }
-.insinfo-disclaimer svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-status-warning-fg); }
-.insinfo-disclaimer--end { margin: var(--ce-space-6) 0 0; }
+/* Am Ende steht der Hinweis innerhalb der Lesefläche, direkt nach dem
+   letzten Abschnitt. */
+.insinfo-disclaimer--end { margin: var(--ce-space-2) 0 0; }
 
 /* ── Zweispaltiges Leselayout: Sprungnavigation links, Inhalt rechts ─────── */
 .insinfo-body {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--ce-space-6);
+  gap: var(--ce-space-7);
   align-items: start;
 }
 
+/* Inhaltsnavigation: eine leise Liste mit Trennlinie links — keine Karte. */
 .insinfo-toc {
   position: sticky;
-  /* Der öffentliche Navbar-Bereich hat eine feste Kopfhöhe; der Abstand hält
-     die Navigation darunter frei. */
+  /* Unter der fixierten Leiste (64 px) mit 24 px Luft. */
   top: 88px;
   min-width: 0;
-  padding: var(--ce-space-4);
-  background: var(--ce-color-surface);
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-lg);
-  box-shadow: var(--ce-elevation-1);
+  padding: 0 0 0 var(--ce-space-4);
+  border-left: 1px solid var(--ce-color-border-subtle);
   /* Auf kurzen Viewports scrollt die Navigation in sich statt zu überlaufen. */
   max-height: calc(100dvh - 120px);
   overflow-y: auto;
 }
 .insinfo-toc-title {
-  margin: 0 0 var(--ce-space-3);
+  margin: 0 0 var(--ce-space-2);
   font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: var(--ce-text-micro-line);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-label-size);
+  font-weight: 600;
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-primary);
 }
 .insinfo-toc-list { list-style: none; margin: 0; padding: 0; }
 .insinfo-toc-link {
   display: flex;
   align-items: baseline;
   gap: var(--ce-space-2);
-  /* 44 px Trefferfläche über Innenabstand statt fester Höhe — der Text darf
-     zweizeilig werden, ohne dass die Fläche kippt. */
+  /* Die Trefferfläche entsteht aus Innenabstand statt fester Höhe — der Text
+     darf zweizeilig werden, ohne dass die Fläche kippt. */
   min-height: 32px;
-  padding: 7px 6px;
-  margin-left: -6px;
+  padding: 6px var(--ce-space-2);
+  margin-left: calc(-1 * var(--ce-space-2));
   border-radius: var(--ce-radius-sm);
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
@@ -119,37 +107,45 @@
   word-break: normal;
   hyphens: none;
 }
-.insinfo-toc-link:hover { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
+.insinfo-toc-link:hover { background: var(--ce-color-surface-hover); color: var(--ce-color-brand-ink); }
 .insinfo-toc-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .insinfo-toc-num {
   flex-shrink: 0;
   font-family: var(--ce-font-numeric);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   color: var(--ce-color-text-muted);
 }
 
-/* ── Abschnitte ───────────────────────────────────────────────────────────── */
-.insinfo-main { min-width: 0; display: flex; flex-direction: column; gap: var(--ce-space-4); }
-
-.insinfo-sec {
+/* ── Abschnitte: EINE Lesefläche, fortlaufend ─────────────────────────────
+   Die Abschnitte stehen untereinander auf derselben weißen Fläche und trennen
+   sich über Abstand und eine Haarlinie — keine Karte je Abschnitt. */
+.insinfo-main {
   min-width: 0;
-  padding: var(--ce-space-5);
+  max-width: var(--ce-size-prose);
+  padding: var(--ce-space-2) var(--ce-space-8) var(--ce-space-8);
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-lg);
   box-shadow: var(--ce-elevation-1);
+}
+
+.insinfo-sec {
+  min-width: 0;
+  padding: var(--ce-space-6) 0;
+  border-top: 1px solid var(--border-hairline);
   /* Damit ein Ankersprung nicht unter der Navbar landet. */
   scroll-margin-top: 88px;
 }
+.insinfo-sec:first-child { border-top: 0; }
 .insinfo-sec-head { display: flex; align-items: baseline; gap: var(--ce-space-3); margin-bottom: var(--ce-space-3); }
 .insinfo-sec-num {
   flex-shrink: 0;
   font-family: var(--ce-font-numeric);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
   color: var(--ce-color-brand-ink);
@@ -161,85 +157,96 @@
   font-size: var(--ce-text-title-section-size);
   font-weight: var(--ce-text-title-section-weight);
   line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
   color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
 }
 .insinfo-sec-lead {
-  max-width: 68ch;
   margin: 0 0 var(--ce-space-3);
-  font-size: var(--ce-text-body-size);
-  line-height: var(--ce-text-body-line);
-  color: var(--ce-color-text-secondary);
+  font-size: var(--ce-text-body-l-size);
+  line-height: var(--ce-text-body-l-line);
+  color: var(--ce-color-text-primary);
 }
 .insinfo-sec-lead:last-child { margin-bottom: 0; }
 
-.insinfo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+/* Aufzählung als gewöhnliche Liste — keine Häkchen als Stilmittel. */
+.insinfo-list {
+  margin: 0;
+  padding-left: 22px;
+  list-style: disc;
+}
 .insinfo-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
   min-width: 0;
-  max-width: 68ch;
-  font-size: var(--ce-text-body-size);
-  line-height: var(--ce-text-body-line);
+  font-size: var(--ce-text-body-l-size);
+  line-height: var(--ce-text-body-l-line);
   color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
 }
-.insinfo-item-ico { flex-shrink: 0; margin-top: 3px; display: inline-flex; color: var(--success); }
+.insinfo-item + .insinfo-item { margin-top: var(--ce-space-1); }
+.insinfo-item::marker { color: var(--ce-color-text-muted); }
 
+/* Ergänzender Hinweis eines Abschnitts: ruhiger Textkasten, kein Symbol. */
 .insinfo-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: var(--ce-space-3) 0 0;
-  padding: 10px 12px;
-  max-width: 68ch;
+  margin: var(--ce-space-4) 0 0;
+  padding: var(--ce-space-3) var(--ce-space-4);
   font-size: var(--ce-text-body-s-size);
   line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-primary);
-  background: var(--ce-color-surface-muted);
-  border-left: 2px solid var(--ce-color-brand-border);
+  background: var(--ce-color-surface-subtle);
+  border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-sm);
 }
-.insinfo-note svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-text-muted); }
 
+/* Herkunft der Aussage — leise Beschriftung in Normalschrift. */
 .insinfo-quelle {
   margin: var(--ce-space-3) 0 0;
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: var(--ce-text-micro-line);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--ce-text-caption-size);
+  font-weight: 500;
+  line-height: var(--ce-text-caption-line);
   color: var(--ce-color-text-muted);
 }
 .insinfo-quelle-link {
   color: var(--ce-color-brand-ink);
-  text-decoration: none;
-  border-bottom: 1px solid var(--ce-color-brand-border);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.insinfo-quelle-link:hover { border-bottom-color: var(--blue2); }
+.insinfo-quelle-link:hover { color: var(--ce-color-brand-hover); }
 .insinfo-quelle-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); border-radius: var(--ce-radius-sm); }
 
-.insinfo-sec--support { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-border-soft); }
+/* „Noch Fragen?" — derselbe Abschnittsaufbau, keine eigene Farbfläche. */
 .insinfo-sec--support .btn { margin-top: var(--ce-space-2); }
 
 /* ── Reflow ───────────────────────────────────────────────────────────────
    Unter 960 px wandert die Sprungnavigation über den Inhalt und hört auf zu
    kleben: zwei Spalten wären dort schmaler als der Lesetext verträgt. */
 @media (max-width: 960px) {
-  .insinfo-body { grid-template-columns: minmax(0, 1fr); }
+  .insinfo-body { grid-template-columns: minmax(0, 1fr); gap: var(--ce-space-6); }
   .insinfo-toc { position: static; max-height: none; }
   .insinfo-toc-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+  .insinfo-main { max-width: none; }
+}
+
+@media (max-width: 767px) {
+  .insinfo-wrap {
+    padding-left: var(--ce-page-gutter-mobile);
+    padding-right: var(--ce-page-gutter-mobile);
+  }
 }
 
 @media (max-width: 600px) {
-  .insinfo-wrap { padding: 24px 14px 56px; }
+  .insinfo-wrap { padding-top: var(--ce-space-4); padding-bottom: var(--ce-space-9); }
+  .insinfo-title {
+    font-size: var(--ce-text-title-page-size-mobile);
+    line-height: var(--ce-text-title-page-line-mobile);
+    letter-spacing: var(--ce-text-title-page-tracking-mobile);
+  }
   .insinfo-toc-list { grid-template-columns: minmax(0, 1fr); }
-  .insinfo-sec { padding: var(--ce-space-4); }
+  .insinfo-main { padding: 0 var(--ce-space-4) var(--ce-space-5); }
+  .insinfo-sec { padding: var(--ce-space-5) 0; }
   /* Auf Touchbreiten erreicht jeder Sprunglink die volle Trefferfläche. */
   .insinfo-toc-link { min-height: 44px; align-items: center; }
 }

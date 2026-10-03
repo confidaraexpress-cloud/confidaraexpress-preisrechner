@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
@@ -105,10 +104,9 @@ function KV({ items }) {
 function Alert({ msg }) {
   if (!msg) return null;
   const cls = msg.type === "success" ? "alert-success" : msg.type === "info" ? "alert-info" : "alert-error";
-  const icon = msg.type === "success" ? "check" : msg.type === "info" ? "info" : "x";
   return (
     <div className={`alert ${cls}`} role={msg.type === "error" ? "alert" : "status"} style={{ marginBottom: 14 }}>
-      <Icon n={icon} s={16} />{msg.text}
+      {msg.text}
     </div>
   );
 }
@@ -167,7 +165,7 @@ export default function AdminInvoiceDetailPage() {
 
   const back = (
     <Link to="/admin/invoices" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Rechnungsliste
+      Zurück zur Rechnungsliste
     </Link>
   );
 
@@ -186,7 +184,6 @@ export default function AdminInvoiceDetailPage() {
         {back}
         <div className="ce-card">
           <EmptyState
-            icon="search"
             title={loadError.text}
             text="Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig."
             action={<Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>}
@@ -205,7 +202,7 @@ export default function AdminInvoiceDetailPage() {
             title={loadError?.text || INVOICE_DETAIL_ERROR}
             action={(
               <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
             secondaryAction={<Link className="btn btn-outline btn-sm" to="/admin/invoices">Zurück zur Rechnungsliste</Link>}
@@ -333,7 +330,6 @@ export default function AdminInvoiceDetailPage() {
           noch dort, direkt neben den Daten, die sie öffnet. */}
       <PageHeader
         variant="admin"
-        eyebrow="Abrechnung"
         backLink={back}
         title={`Rechnung ${number}`}
         subtitle={(
@@ -354,7 +350,7 @@ export default function AdminInvoiceDetailPage() {
 
       {!productive && (
         <p className="adm-nonproductive-note adm-head-note" role="note">
-          <Icon n="info" s={16} /> {NON_PRODUCTIVE_NOTE}
+          {NON_PRODUCTIVE_NOTE}
         </p>
       )}
 
@@ -363,7 +359,7 @@ export default function AdminInvoiceDetailPage() {
       <div className="adm-cards">
         {/* 2) Forderung und Fälligkeit */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="euro" s={17} /> {productive ? "Forderung und Fälligkeit" : "Beträge (nicht zahlungswirksam)"}</div>
+          <div className="adm-card-head">{productive ? "Forderung und Fälligkeit" : "Beträge (nicht zahlungswirksam)"}</div>
           <div className="adm-card-body">
             <KV items={[
               ["Netto", moneyOrDash(amounts.net)],
@@ -396,7 +392,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 3) Rechnungsempfänger — HISTORISCH aus dem Snapshot. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="idcard" s={17} /> Rechnungsempfänger zum Zeitpunkt der Rechnung</div>
+          <div className="adm-card-head">Rechnungsempfänger zum Zeitpunkt der Rechnung</div>
           <div className="adm-card-body">
             {recipient.known ? (
               <KV items={[
@@ -418,7 +414,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 4) Aktuelles Kundenkonto — bewusst getrennt vom Snapshot. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="building" s={17} /> Aktuelles Kundenkonto</div>
+          <div className="adm-card-head">Aktuelles Kundenkonto</div>
           <div className="adm-card-body">
             <KV items={[
               ["Firma (aktuell)", dash(account.company)],
@@ -427,7 +423,7 @@ export default function AdminInvoiceDetailPage() {
             {account.linkable ? (
               <div className="adm-track-link">
                 <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(account.userId)}`}>
-                  <Icon n="arrowRight" s={14} /> Aktuelles Kundenkonto öffnen
+                  Aktuelles Kundenkonto öffnen
                 </Link>
               </div>
             ) : (
@@ -438,7 +434,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 5) Zugehörige Sendung */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="package" s={17} /> Zugehörige Sendung</div>
+          <div className="adm-card-head">Zugehörige Sendung</div>
           <div className="adm-card-body">
             {shipment.linked ? (
               <>
@@ -454,7 +450,7 @@ export default function AdminInvoiceDetailPage() {
                 ]} />
                 <div className="adm-track-link">
                   <Link className="btn btn-outline btn-sm" to={`/admin/shipments/${encodeURIComponent(shipment.shipmentId)}`}>
-                    <Icon n="arrowRight" s={14} /> Sendung öffnen
+                    Sendung öffnen
                   </Link>
                 </div>
               </>
@@ -466,7 +462,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 6) Rechnungsdokument */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="form" s={17} /> Rechnungsdokument</div>
+          <div className="adm-card-head">Rechnungsdokument</div>
           <div className="adm-card-body">
             <Alert msg={docMsg} />
             <KV items={[
@@ -486,28 +482,28 @@ export default function AdminInvoiceDetailPage() {
               {doc.ready && (
                 <>
                   <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreviewOpen(true)} disabled={docDownloading}>
-                    <Icon n="eye" s={14} /> PDF ansehen
+                    PDF ansehen
                   </button>
                   <button type="button" className="btn btn-primary btn-sm" onClick={handleDocDownload} disabled={docDownloading}>
                     {docDownloading
                       ? <><span className="spinner spinner-dark" /> Wird geladen…</>
-                      : <><Icon n="download" s={14} /> PDF herunterladen</>}
+                      : <>PDF herunterladen</>}
                   </button>
                 </>
               )}
               {doc.status === "pending_document" && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDocMsg(null); setGenOpen(true); }} disabled={docBusy}>
-                  <Icon n="form" s={14} /> PDF erzeugen
+                  PDF erzeugen
                 </button>
               )}
               {doc.failed && (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setDocMsg(null); setGenOpen(true); }} disabled={docBusy}>
-                  <Icon n="refresh" s={14} /> PDF erneut erzeugen
+                  PDF erneut erzeugen
                 </button>
               )}
               {doc.status === "generating" && (
                 <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-                  <Icon n="refresh" s={14} /> Status aktualisieren
+                  Status aktualisieren
                 </button>
               )}
             </div>
@@ -519,7 +515,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 7) E-Mail-Versand — Normalzustand kompakt. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="mail" s={17} /> E-Mail-Versand</div>
+          <div className="adm-card-head">E-Mail-Versand</div>
           <div className="adm-card-body">
             <Alert msg={mailMsg} />
             <KV items={[
@@ -531,14 +527,14 @@ export default function AdminInvoiceDetailPage() {
             {mail.running && (
               <div className="adm-support">
                 <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-                  <Icon n="refresh" s={14} /> Status aktualisieren
+                  Status aktualisieren
                 </button>
               </div>
             )}
             {mail.action && (
               <div className="adm-support">
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setMailMsg(null); setMailOpen(true); }} disabled={mailBusy}>
-                  <Icon n="mail" s={14} /> {mail.action.label}
+                  {mail.action.label}
                 </button>
               </div>
             )}
@@ -548,8 +544,8 @@ export default function AdminInvoiceDetailPage() {
         {/* 8) Technische Informationen — eingeklappt, natives <details>. */}
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
-            <Icon n="settings" s={17} /> Technische Informationen
-            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
           </summary>
           <div className="adm-card-body">
             <KV items={[
@@ -572,7 +568,7 @@ export default function AdminInvoiceDetailPage() {
 
         {/* 9) Adminaktionen */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="headset" s={17} /> Adminaktionen</div>
+          <div className="adm-card-head">Adminaktionen</div>
           <div className="adm-card-body">
             {pay.payable ? (
               <>
@@ -591,7 +587,7 @@ export default function AdminInvoiceDetailPage() {
                     onClick={() => { setPayMsg(null); setPayOpen(true); }}
                     disabled={payBusy}
                   >
-                    <Icon n="euro" s={14} /> {PAY_DIALOG.confirm}
+                    {PAY_DIALOG.confirm}
                   </button>
                 </div>
               </>
@@ -604,7 +600,7 @@ export default function AdminInvoiceDetailPage() {
                     disabled
                     aria-describedby="adm-pay-blocked"
                   >
-                    <Icon n="check" s={14} /> {PAY_DIALOG.confirm}
+                    {PAY_DIALOG.confirm}
                   </button>
                 </div>
                 <p className="adm-support-hint" id="adm-pay-blocked">{pay.reason}</p>
@@ -623,7 +619,6 @@ export default function AdminInvoiceDetailPage() {
           note="Die Aktion wird im Admin-Audit protokolliert."
           confirmLabel={PAY_DIALOG.confirm}
           cancelLabel={PAY_DIALOG.cancel}
-          icon="euro"
           irreversible
           busy={payBusy}
           busyLabel="Wird gespeichert…"
@@ -634,8 +629,6 @@ export default function AdminInvoiceDetailPage() {
 
       {genOpen && (
         <ConfirmDialog
-          icon="form"
-          confirmIcon={doc.failed ? "refresh" : "check"}
           title={doc.failed ? "Rechnungsdokument erneut erzeugen?" : "Rechnungsdokument erzeugen?"}
           text={`Erzeugt das unveränderliche Rechnungs-PDF serverseitig${doc.failed ? " neu (Wiederholung nach Fehlschlag)" : ""}. Es entsteht keine neue Rechnung und keine neue Rechnungsnummer; ein bereits fertiges Dokument wird nicht überschrieben.`}
           subline={subline}
@@ -650,7 +643,6 @@ export default function AdminInvoiceDetailPage() {
 
       {mailOpen && (
         <ConfirmDialog
-          icon="mail"
           title={mailKind === "resend" ? "Rechnung erneut per E-Mail senden?" : "Rechnung per E-Mail senden?"}
           text={mailKind === "resend"
             ? "Die Rechnung wurde bereits versendet. Möchten Sie dasselbe unveränderte Rechnungsdokument erneut senden?"

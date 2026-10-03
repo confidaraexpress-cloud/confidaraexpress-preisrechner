@@ -114,13 +114,13 @@ export function classifyCancellationError(status, code) {
   if (status === 429) {
     return {
       kind: "rate_limited",
-      message: "Zu viele Anfragen in kurzer Zeit. Bitte versuche es später erneut.",
+      message: "Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut.",
       keepDialogOpen: true, refetch: false, markPending: false,
     };
   }
   return {
     kind: "generic",
-    message: "Die Stornierungsanfrage konnte nicht gesendet werden. Bitte versuche es erneut.",
+    message: "Die Stornierungsanfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
     keepDialogOpen: true, refetch: false, markPending: false,
   };
 }

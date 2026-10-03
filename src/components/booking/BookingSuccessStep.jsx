@@ -27,7 +27,6 @@
 // Kontextzugriff. Sie bekommt, was sie zeigt. Nach einer bezahlten Bestellung
 // darf diese Anzeige von keinem weiteren Request abhängen — ein fehlgeschlagener
 // Nachladeversuch würde einen erfolgreichen Vorgang unvollständig aussehen lassen.
-import { Icon } from "../ui/Icon";
 import { CopyableNumber } from "../ui/CopyableNumber";
 import { PriceSummaryModule } from "./PriceSummaryModule";
 import { BookingSuccessDocuments } from "./BookingSuccessDocuments";
@@ -55,7 +54,7 @@ export function BookingSuccessStep({
   const abgabeShop = boundDropoffLocationLine(booking);
   return (
       <div className="booking-success-wrap">
-        <div className="booking-success-icon"><Icon n="check" s={40} /></div>
+        {/* Redesign 2026-10: kein Häkchen-Medaillon — die Bestätigung trägt der Titel. */}
         <h2 className="booking-success-title">Sendung erfolgreich gebucht!</h2>
         {/* Die Auftragsbestätigungsnummer (CE-AB…) ist die primäre sichtbare
             Vorgangsnummer und steht zuerst; die Rechnungsnummer wird getrennt daneben
@@ -93,10 +92,9 @@ export function BookingSuccessStep({
           {!bookingBillingNotice(booking).consolidated && (() => {
             const hint = invoiceDeliveryHint(invoiceDeliveryMode);
             const cls = hint.tone === "success" ? "alert-success" : hint.tone === "error" ? "alert-error" : "alert-info";
-            const icon = hint.tone === "success" ? "check" : "info";
             return (
               <div className={`alert ${cls}`} role="status" aria-live="polite">
-                <Icon n={icon} s={16} />{hint.text}
+                {hint.text}
               </div>
             );
           })()}
@@ -105,7 +103,7 @@ export function BookingSuccessStep({
         {/* Kompakter Recap — ausschließlich aus bereits vorhandenem Tarif-/
             Formular-State abgeleitet, keine neue Server-Anfrage. */}
         <div className="calc-panel booking-success-recap mb-16">
-          <div className="calc-panel-header"><Icon n="invoice" s={18} c="var(--ce-color-brand-ink)" /><h3>Ihre Buchung</h3></div>
+          <div className="calc-panel-header"><h3>Ihre Buchung</h3></div>
           <div className="calc-panel-body">
             <div className="summary-detail-row summary-detail-row-border">
               <span className="text-sm text-muted summary-detail-key">Carrier</span>
@@ -163,12 +161,10 @@ export function BookingSuccessStep({
             Text irreführen — dann ehrlicher Hinweis statt „wird vorbereitet". */}
         {tariff.trackingAvailable === false ? (
           <p className="booking-tracking-note">
-            <Icon n="truck" s={15} c="currentColor" />
             <span>Für diesen Tarif ist keine Sendungsverfolgung verfügbar.</span>
           </p>
         ) : (
           <p className="booking-tracking-note">
-            <Icon n="truck" s={15} c="currentColor" />
             <span>
               Tracking wird vorbereitet. Die Sendungsverfolgung erscheint in Ihren
               Sendungen, sobald der Versanddienstleister die Sendung übernommen hat.
@@ -180,7 +176,7 @@ export function BookingSuccessStep({
             sekundärer Weg. Ziele/Links unverändert, nur Reihenfolge/Gewichtung. */}
         <div className="flex-center gap-12" style={{ flexWrap: "wrap" }}>
           <button className="btn btn-primary" onClick={() => navigate("/dashboard?page=shipments", { state: { justBooked: true } })}>
-            <Icon n="package" s={16} /> Zu meinen Sendungen
+            Zu meinen Sendungen
           </button>
           {/* Bewusster Neustart: der alte Vorgang ist beim Buchungserfolg
               bereits gelöscht — der erneute Aufruf schützt den Fall, dass
@@ -188,7 +184,7 @@ export function BookingSuccessStep({
               erreicht und dann neu beginnt. */}
           <button className="btn btn-outline" onClick={() => { clearFlow(); navigate("/calculator"); }}>Neue Sendung</button>
           <button className="btn btn-outline" onClick={() => navigate(INVOICES_DASHBOARD_TARGET)}>
-            <Icon n="invoice" s={16} /> Zu meinen Rechnungen
+            Zu meinen Rechnungen
           </button>
         </div>
       </div>  );

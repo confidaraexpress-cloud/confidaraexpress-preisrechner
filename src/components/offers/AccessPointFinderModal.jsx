@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
 import { AccessPointList } from "./AccessPointList";
 import { AccessPointMap } from "./AccessPointMap";
@@ -32,7 +31,12 @@ import {
        „Weitere anzeigen“ wäre eine Hürde ohne Zweck.
 
    Fokus, Fokusrückgabe und Escape kommen aus dem gemeinsamen useDialog-Hook —
-   kein zweites Dialogsystem. */
+   kein zweites Dialogsystem.
+
+   Redesign 2026-10: Text statt Symbolen — „Schließen" und „Suchen" sind
+   beschriftete Knöpfe, Hinweise stehen ohne Infosymbol, der mobile Wechsel
+   Liste/Karte ist ein Texttab-Paar. Kartenmarker und Kartensteuerung bleiben
+   als funktionale Ausnahme (AccessPointMap). */
 
 const MOBILE_BREAKPOINT = 860;
 
@@ -150,7 +154,6 @@ export function AccessPointFinderModal({
         {/* ── Kopf ── */}
         <header className="ap-modal-head">
           <div className="ap-modal-head-text">
-            <p className="ap-modal-eyebrow">Paketshop Finder</p>
             <h2 className="ap-modal-title" id={titleId}>Paketshops in Ihrer Nähe</h2>
             {/* Der Carrier gehört sichtbar hierher: Der Einstieg sitzt jetzt an
                 der einzelnen Angebotskarte, und die Ergebnisse gelten nur für
@@ -167,9 +170,8 @@ export function AccessPointFinderModal({
             className="ap-modal-close"
             onClick={onClose}
             aria-label="Paketshop Finder schließen"
-            title="Schließen"
           >
-            <Icon n="close" s={18} c="currentColor" />
+            Schließen
           </button>
         </header>
 
@@ -231,13 +233,12 @@ export function AccessPointFinderModal({
           <button type="submit" className="ap-modal-search-btn" disabled={!canSearch}>
             {loading
               ? <><span className="spinner" /> Suchen …</>
-              : <><Icon n="search" s={15} c="currentColor" /> Suchen</>}
+              : "Suchen"}
           </button>
         </form>
 
         {/* Fachliche Grenze — dieselbe Aussage wie auf der Hauptseite. */}
         <p className="ap-modal-note">
-          <Icon n="info" s={14} c="currentColor" />
           <span>
             Die Paketshop-Suche dient der Orientierung – eine verbindliche Auswahl
             eines Shops ist nicht erforderlich.
@@ -282,7 +283,6 @@ export function AccessPointFinderModal({
         <div className="ap-modal-body">
           {error && (
             <div className="ap-modal-state ap-finder-error" role="alert">
-              <Icon n="info" s={16} c="currentColor" />
               <span>{error}</span>
             </div>
           )}

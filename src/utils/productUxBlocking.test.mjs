@@ -37,25 +37,29 @@ const ohneKommentare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]
 
 /* ══════════ 1 — Aktionen der Artikelliste ═════════════════════════════════ */
 
-test("1 — „Öffnen“ und „Bearbeiten“ stehen auf derselben visuellen Stufe", () => {
+test("1 — der Artikelname öffnet die Detailseite, „Bearbeiten“ ist eine Textaktion", () => {
   const code = ohneKommentare(liste);
-  // Vorher war „Bearbeiten" ein btn-ghost und damit deutlich schwächer als
-  // „Öffnen" — obwohl beide gleich wichtig sind.
+  // Redesign 2026-10: der Name ist die Identität der Zeile und führt zur
+  // Detailseite — ein zusätzliches „Öffnen" wäre ein zweiter Weg zum selben
+  // Ziel in derselben Zeile (dieselbe Regel wie in der Auftragsliste).
   // Das Fenster ist bewusst großzügig statt `[^>]*`: die onClick-Pfeilfunktion
   // enthält selbst ein „>“ und würde eine engere Klasse vorzeitig beenden.
-  const oeffnen = (code.match(/btn-sm btn-outline"[\s\S]{0,160}?>Öffnen</g) || []).length;
-  const bearbeiten = (code.match(/btn-sm btn-outline"[\s\S]{0,160}?>Bearbeiten</g) || []).length;
-  assert.equal(oeffnen, 2, "„Öffnen“ fehlt in Tabelle oder Kartenansicht");
-  assert.equal(bearbeiten, 2, "„Bearbeiten“ steht nicht auf derselben Stufe wie „Öffnen“");
-  assert.ok(!/btn-ghost[\s\S]{0,160}?>Bearbeiten</.test(code), "„Bearbeiten“ ist noch der schwächere Ghost-Button");
+  assert.ok(!/>Öffnen</.test(code), "„Öffnen“ ist zurück — der Name führt bereits zur Detailseite");
+  const zurDetailseite = (code.match(/navigate\(`\/inventory\/products\/\$\{p\.id\}`\)\}>\{p\.name\}</g) || []).length;
+  assert.equal(zurDetailseite, 2, "der Name führt nicht in Tabelle UND Karte zur Detailseite");
+  const bearbeiten = (code.match(/btn-sm btn-ghost"[\s\S]{0,160}?>Bearbeiten</g) || []).length;
+  assert.equal(bearbeiten, 2, "„Bearbeiten“ fehlt als Textaktion in Tabelle oder Kartenansicht");
 });
 
-test("2 — „Versenden“ bleibt die klar hervorgehobene Hauptaktion", () => {
+test("2 — „Versenden“ bleibt die hervorgehobene Zeilenaktion", () => {
   const code = ohneKommentare(liste);
-  const versenden = (code.match(/className="btn btn-sm btn-primary"[\s\S]{0,160}?>Versenden/g) || []).length;
-  assert.equal(versenden, 2, "„Versenden“ ist nicht in beiden Ansichten Primary");
-  // Genau EIN Primary je Zeile — sonst gäbe es keine Hierarchie mehr.
-  assert.equal((code.match(/btn-sm btn-primary/g) || []).length, 2);
+  // Redesign 2026-10: hervorgehoben als Secondary — gefüllte Primärknöpfe
+  // gibt es nur einmal je Seite (Seitenkopf bzw. Leerzustand).
+  const versenden = (code.match(/className="btn btn-sm btn-outline"[\s\S]{0,160}?>Versenden/g) || []).length;
+  assert.equal(versenden, 2, "„Versenden“ ist nicht in beiden Ansichten die hervorgehobene Zeilenaktion");
+  assert.equal((code.match(/btn-sm btn-primary/g) || []).length, 0, "ein gefüllter Primärknopf je Zeile");
+  // Inaktive Artikel bleiben vom Versand ausgeschlossen — in beiden Ansichten.
+  assert.equal((code.match(/disabled=\{p\.status === "inactive"\}/g) || []).length, 2);
 });
 
 test("3 — der Versanddialog führt in den BESTEHENDEN Prozess, nicht in einen neuen", () => {

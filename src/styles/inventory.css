@@ -14,57 +14,80 @@
      • kein Glow, kein farbiger Schatten, keine Bewegung als Ambiente
      • höchstes Schriftgewicht 600, nichts unter 11 px
      • Umschaltung Tabelle ↔ Karten bei 1100 px VIEWPORT, nicht 768 px: in der
-       App-Shell ist die reale Contentbreite Viewport − 252 px Sidebar − 56 px
-       Rahmen (Vorbild: Rechnungsliste) */
+       App-Shell ist die reale Contentbreite Viewport − 248 px Sidebar − 2 ×
+       Seitenrand (Vorbild: Rechnungsliste)
 
-/* ── Kennzahlkarten ──
-   Bewusst NICHT die KPI-Familie der Übersicht (--ce-kpi-*): die gilt laut
-   Projektregel ausschließlich für die vier Karten der Kundenübersicht und darf
-   nicht ausgeweitet werden. Hier: gewöhnliche Base Cards. */
-/* Feste Spaltenzahlen statt auto-fit: es sind SECHS Karten, und `auto-fit` mit
-   200px-Minimum ergab auf breiten Screens fünf Karten in der ersten Reihe und
-   eine allein darunter. 3 / 2 / 1 teilen sechs restlos — es kann keine verwaiste
-   Karte mehr entstehen.
+   Redesign 2026-10: flache Flächen (keine Schatten außer Menüs/Dialogen),
+   keine Symbole, keine Versal-Beschriftungen, Statusbegriffe ohne Punkt. Die
+   Kennzahlen der Lagerübersicht stehen als EIN kompaktes Band statt als
+   Kartenraster. */
 
-   Die Schwellen sind Viewportbreiten, weil die reale Contentbreite in der
-   App-Shell davon abhängt (Viewport − 252 px Sidebar − 56 px Rahmen); 1100 px
-   ist dieselbe Schwelle, an der auch die Rechnungstabelle umschaltet. */
-.inv-stat-grid {
+/* ── Kennzahlenband ──
+   EINE flache Fläche mit sechs Zellen, getrennt durch Haarlinien — keine
+   Karte je Kennzahl, kein Symbol, kein Schatten. Kompakt und bewusst
+   sekundär: die operativen Listen darunter tragen die Arbeit.
+
+   Die Haarlinien entstehen aus der 1-px-Lücke des Rasters über dem
+   Linienton der Fläche — sie stimmen damit bei JEDER Spaltenzahl, ohne
+   Sonderregel für Zeilen- oder Spaltenenden.
+
+   Feste Spaltenzahlen statt auto-fit: es sind SECHS Zellen; 2 und 3 teilen
+   sechs restlos — es kann keine verwaiste Zelle entstehen. Die Schwelle ist
+   eine Viewportbreite, weil die reale Contentbreite in der App-Shell davon
+   abhängt; 1100 px ist dieselbe Schwelle wie bei den Listen.
+
+   Bewusst NICHT die KPI-Familie der Kundenübersicht (--ce-kpi-*): die gilt
+   laut Projektregel ausschließlich für deren Kennzahlenband. */
+.inv-stat-band {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--ce-space-4);
-  margin-bottom: var(--ce-space-6);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: var(--ce-space-7);
+  background: var(--border-hairline);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  overflow: hidden;
 }
-@media (min-width: 620px)  { .inv-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .inv-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .inv-stat-band { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-.inv-stat { padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0; }
-/* Aufklappbare Karte. Hover, Kante, Tiefe und Fokusring kommen vollständig aus
-   dem vorhandenen Primitive `.ce-card-interactive` — hier steht nur noch, was
-   ein <button> zusätzlich braucht: es zentriert seinen Text sonst und bringt
-   seine eigene Schrift mit. Kein zweites Kartenmaterial, keine eigene Tiefe. */
-.inv-stat--action { text-align: left; font: inherit; width: 100%; }
-.inv-stat--action:hover .inv-stat-chevron { color: var(--ce-color-brand-ink); }
-.inv-stat-chevron {
-  margin-left: auto; display: inline-flex; flex: 0 0 auto;
-  color: var(--ce-color-text-muted); transition: color 140ms ease;
+.inv-stat {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-width: 0;
+  padding: var(--ce-space-4) var(--ce-space-5);
+  background: var(--ce-color-surface);
 }
-.inv-stat-head { display: flex; align-items: center; gap: var(--ce-space-2); min-width: 0; }
-.inv-stat-ic { display: inline-flex; color: var(--ce-color-text-muted); flex: 0 0 auto; }
+/* Aufklappbare Zelle: ein echtes <button>. Es zentriert seinen Text sonst und
+   bringt seine eigene Schrift mit. Hover nur hier — die Zelle trägt eine
+   Aktion; der Fokusring liegt innen, weil das Band seine Ränder beschneidet. */
+.inv-stat--action {
+  width: 100%; text-align: left; font: inherit; color: inherit;
+  border: 0; border-radius: var(--ce-radius-0); cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.inv-stat--action:hover { background: var(--ce-color-surface-hover); }
+.inv-stat--action:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 .inv-stat-label {
-  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
   line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary);
   min-width: 0; overflow-wrap: break-word;
 }
 .inv-stat-value {
-  font-family: var(--fs); font-size: var(--ce-text-title-page-size); font-weight: 600;
-  line-height: 1.15; color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-numeric); font-size: var(--ce-text-title-page-size-mobile); font-weight: 600;
+  line-height: var(--ce-text-title-page-line-mobile); letter-spacing: -0.01em;
+  color: var(--ce-color-text-primary);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .inv-stat-hint {
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
-  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: 400;
+  line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted);
 }
+/* Die sichtbare Textaktion der aufklappbaren Zelle — ersetzt den früheren Pfeil. */
+.inv-stat-more {
+  margin-top: var(--ce-space-1);
+  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 600;
+  line-height: var(--ce-text-body-s-line); color: var(--ce-color-brand-ink);
+}
+.inv-stat--action:hover .inv-stat-more { text-decoration: underline; }
 .inv-stat--warn .inv-stat-value { color: var(--ce-color-status-warning-fg); }
 
 /* ── Abschnitte und Titel ── */
@@ -73,14 +96,9 @@
   line-height: var(--ce-text-title-section-line); color: var(--ce-color-text-primary);
   margin: 0 0 var(--ce-space-3);
 }
-.inv-quick, .inv-warehouses, .inv-detail-section, .inv-onboarding, .inv-ops {
-  padding: var(--ce-space-5); margin-bottom: var(--ce-space-4); min-width: 0;
-}
-.inv-quick-row { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); }
-.inv-quick-note {
-  margin: var(--ce-space-3) 0 0;
-  font-family: var(--fs); font-size: var(--ce-text-body-s-size); font-weight: 400;
-  line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
+/* Abschnittsflächen: Innenraum 24 px (mobil 16 px), 24 px Abstand. */
+.inv-warehouses, .inv-detail-section, .inv-onboarding, .inv-ops {
+  padding: var(--ce-space-6); margin-bottom: var(--ce-space-6); min-width: 0;
 }
 
 /* ── Vorschauliste einer Kennzahl ──
@@ -95,7 +113,7 @@
 .inv-preview-item {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--ce-space-3); padding: var(--ce-space-3) 0; min-width: 0;
-  border-bottom: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
 }
 .inv-preview-item:last-child { border-bottom: none; }
 .inv-preview-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -132,12 +150,13 @@
 }
 @media (min-width: 780px) { .inv-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .inv-step { display: flex; align-items: flex-start; gap: var(--ce-space-3); min-width: 0; }
+/* Die Schrittnummer ist Text in der Markenfarbe — keine Kachel, kein Kreis
+   (dieselbe Form wie im Onboarding der Übersicht). */
 .inv-step-num {
-  flex: 0 0 auto; width: 26px; height: 26px; border-radius: var(--ce-radius-full);
-  display: inline-flex; align-items: center; justify-content: center;
-  background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink);
-  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
-  line-height: 1; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  flex: 0 0 auto; min-width: 16px;
+  color: var(--ce-color-brand-ink);
+  font-family: var(--ce-font-numeric); font-size: var(--ce-text-title-card-size); font-weight: 600;
+  line-height: var(--ce-text-title-card-line); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .inv-step-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inv-step-title {
@@ -153,14 +172,15 @@
 /* ── Operative Hinweise ──
    Zwei gleichwertige Karten nebeneinander, gestapelt sobald es eng wird. */
 .inv-ops-grid {
-  display: grid; grid-template-columns: 1fr; gap: var(--ce-space-4);
-  margin-bottom: var(--ce-space-4);
+  display: grid; grid-template-columns: 1fr; gap: var(--ce-space-6);
+  margin-bottom: var(--ce-space-6);
 }
 @media (min-width: 1100px) { .inv-ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .inv-ops-grid .inv-ops { margin-bottom: 0; }
 .inv-ops-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
 .inv-ops-head .inv-section-title { margin-bottom: var(--ce-space-2); }
-.inv-ops-all { margin-top: var(--ce-space-3); }
+/* Textaktion bündig mit der Liste darüber — ohne den Innenabstand des Links. */
+.inv-ops-all { margin-top: var(--ce-space-3); padding-inline: 0; }
 .inv-warehouse-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .inv-warehouse-item { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; min-width: 0; }
 .inv-warehouse-name {
@@ -171,12 +191,18 @@
 /* ── Toolbar ──
    flex: 1 1 auto am Suchfeld: beim Stapeln (column) wird die Zeilen-basis zur
    HÖHE — ohne diese Regel bekäme das Feld auf Mobil eine feste Höhe. */
-.inv-toolbar { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); align-items: flex-end; margin-bottom: var(--ce-space-4); }
-.inv-toolbar-search { flex: 1 1 auto; min-width: 0; }
+.inv-toolbar { display: flex; flex-wrap: wrap; gap: var(--ce-space-3); align-items: flex-end; margin-bottom: var(--ce-space-5); }
+.inv-toolbar-search { flex: 1 1 280px; min-width: 0; }
 .inv-toolbar-filter { flex: 0 1 200px; min-width: 0; }
+/* Beschriftung und Feld rücken dicht zusammen — derselbe Abstand wie im
+   Formularsystem; die Werkzeugleiste trägt kein eigenes Feldmaß. */
+.inv-toolbar .field-label { margin-bottom: 6px; }
+/* align-self: flex-end — die Werkzeugleiste zentriert ihre Kinder
+   (.ce-toolbar); der Haken soll aber auf der Höhe der FELDER stehen, nicht
+   in der Mitte von Beschriftung + Feld. */
 .inv-toolbar-check {
   display: flex; align-items: center; gap: var(--ce-space-2);
-  min-height: 40px;
+  min-height: 40px; align-self: flex-end;
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
   cursor: pointer;
 }
@@ -214,6 +240,11 @@
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted);
   min-width: 0; overflow-wrap: break-word;
 }
+/* Die SKU als sekundäre Angabe UNTER dem Namen trägt den ruhigen Ton der
+   Metazeile, nicht das Gewicht einer Hauptangabe. */
+.inv-cell-meta .inv-cell-sku { font-weight: 500; color: var(--ce-color-text-secondary); }
+/* Der Artikelname als Identität der Zeile (Link zur Detailseite). */
+.inv-cell-title { font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.4286; }
 /* Textlink im Fließtext einer Zelle — keine Bedieneinheit mit fester Breite.
    `.btn` bringt `white-space: nowrap` mit, damit eine Knopfbeschriftung nicht
    zerrissen wird; für eine Artikelbezeichnung ist das falsch: sie muss an
@@ -254,8 +285,8 @@
    `.btn` bleibt seinerseits nowrap. */
 .inv-row-actions--tight { flex-wrap: nowrap; }
 
-/* Kebab für die selteneren Zeilenaktionen. Auslöser ist das vorhandene
-   Primitive `.btn.btn-icon`; eigenes Material braucht nur die Klappfläche. */
+/* „Weitere Aktionen" für die selteneren Zeilenaktionen. Auslöser ist eine
+   Textaktion (`.btn.btn-ghost`); eigenes Material braucht nur die Klappfläche. */
 .inv-actions { position: relative; flex-shrink: 0; }
 /* `fixed`, nicht `absolute` — die Koordinaten liefert RowActionsMenu aus dem
    echten Rechteck des Auslösers. Begründung dort: `.ce-table-container` trägt
@@ -265,7 +296,7 @@
 .inv-actions-menu {
   position: fixed; z-index: var(--ce-z-dropdown); min-width: 200px; max-width: calc(100vw - 16px);
   background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-lg); box-shadow: var(--ce-elevation-3);
+  border-radius: var(--ce-radius-md); box-shadow: var(--ce-elevation-dropdown);
   padding: 6px; display: flex; flex-direction: column;
 }
 .inv-actions-item {
@@ -275,12 +306,10 @@
   line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary); cursor: pointer;
   white-space: nowrap;
 }
-.inv-actions-item:hover, .inv-actions-item:focus-visible { background: var(--ce-color-surface-muted); }
+.inv-actions-item:hover, .inv-actions-item:focus-visible { background: var(--ce-color-surface-hover); }
 .inv-actions-item:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
-.inv-actions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
 /* Beschriftung und (nur im deaktivierten Zustand) ihre Begründung stehen
-   untereinander. Der Eintrag richtet sich dann oben aus, damit das Icon zur
-   Beschriftung gehört und nicht zwischen beide Zeilen rutscht. */
+   untereinander. Der Eintrag richtet sich dann oben aus. */
 .inv-actions-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .inv-actions-item:has(.inv-actions-item-reason) { align-items: flex-start; }
 /* Die Begründung bleibt bewusst LESBAR (`--ce-color-text-muted`, 5,11:1) und
@@ -318,9 +347,10 @@
 .inv-card-qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-weight: 600; }
 .inv-card-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--ce-space-3); margin: 0; }
 .inv-card-facts > div { min-width: 0; }
+/* Beschriftung in Normalschrift (keine Versalien) — Label 13/18. */
 .inv-card-facts dt {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-muted);
 }
 /* Dieselbe Regel wie beim Kennzahlenband oben: Beschriftung und Wert stehen
    untereinander, also linksbündig — `.ce-num` gehört in eine Tabellenspalte,
@@ -339,7 +369,7 @@
    Schmaler Streifen statt einer flächigen Zustandsfläche: bereits geladene
    Daten bleiben stehen (dieselbe Regel wie im Benachrichtigungspanel). */
 .inv-inline-error, .inv-inline-success {
-  display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap;
+  display: flex; align-items: center; gap: var(--ce-space-2) var(--ce-space-3); flex-wrap: wrap;
   padding: var(--ce-space-3) var(--ce-space-4);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
@@ -351,23 +381,27 @@
 .inv-inline-success { color: var(--ce-color-status-success-fg); border-color: var(--ce-color-status-success-border); background: var(--ce-color-status-success-surface); }
 
 /* ── Formulare ── */
-.inv-form { display: flex; flex-direction: column; gap: var(--ce-space-5); min-width: 0; }
-.inv-fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); min-width: 0; }
+.inv-form { display: flex; flex-direction: column; gap: var(--ce-space-6); min-width: 0; }
+.inv-fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--ce-space-4); min-width: 0; }
+/* Die Legende ist der Titel einer Feldgruppe (Card Title 16/24) — keine
+   Versal-Kleinzeile mehr. */
 .inv-legend {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ce-color-text-muted);
+  font-family: var(--fs); font-size: var(--ce-text-title-card-size); font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line); color: var(--ce-color-text-primary);
   padding: 0; margin-bottom: var(--ce-space-1);
 }
-.inv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* Beschriftung dauerhaft über dem Feld, 6 px Abstand. */
+.inv-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.inv-field > .field-label { margin-bottom: 0; }
 .inv-field-hint, .inv-field-error {
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   margin: 0; min-width: 0; overflow-wrap: break-word;
 }
 .inv-field-hint { color: var(--ce-color-text-muted); }
 .inv-field-error { color: var(--ce-color-status-error-fg); }
-.inv-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-3); }
-.inv-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ce-space-3); }
-.inv-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--ce-space-3); }
+.inv-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-4); }
+.inv-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ce-space-4); }
+.inv-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--ce-space-4); }
 .inv-form-note, .inv-dialog-note {
   font-family: var(--fs); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-muted); margin: 0; min-width: 0; overflow-wrap: break-word;
@@ -375,7 +409,7 @@
 /* Im Dialog steht der Hinweis zwischen zwei Blöcken und braucht Luft nach unten;
    im Formular sitzt er am Ende einer Gruppe und behält margin: 0. */
 .inv-dialog-note { margin-bottom: var(--ce-space-4); }
-.inv-form-actions { display: flex; gap: var(--ce-space-3); justify-content: flex-end; flex-wrap: wrap; }
+.inv-form-actions { display: flex; gap: var(--ce-space-2); justify-content: flex-end; flex-wrap: wrap; }
 .inv-dialog-lead {
   font-family: var(--fs); font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-primary); margin: 0 0 var(--ce-space-4);
@@ -403,11 +437,10 @@
   background: none; cursor: pointer; min-width: 0;
   font-family: var(--fs); font-size: var(--ce-text-body-s-size);
   color: var(--ce-color-text-primary);
-  transition: background-color 140ms ease, border-color 140ms ease;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-/* Hover: die vorhandene gedämpfte Fläche der Foundation — es gibt bewusst
-   kein eigenes Hover-Token und keinen neuen Farbwert. */
-.inv-picker-item:hover { background: var(--ce-color-surface-muted); }
+/* Hover: die Hover-Rolle der Foundation — kein eigener Farbwert. */
+.inv-picker-item:hover { background: var(--ce-color-surface-hover); }
 .inv-picker-item.on { border-color: var(--ce-color-brand-border); background: var(--ce-color-brand-soft); }
 /* Kein eigenes anywhere: die SKU im Picker trägt zusätzlich .inv-cell-sku
    und erbt deren lokale Bruchregel — eine Regel je technischem String. */
@@ -419,8 +452,8 @@
    Farbwert — dieselbe gedämpfte Fläche wie im Hover. */
 .inv-picker-item--added { background: var(--ce-color-surface-muted); }
 .inv-picker-added {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  letter-spacing: 0.04em; color: var(--ce-color-text-muted); white-space: nowrap;
+  font-family: var(--fs); font-size: var(--ce-text-caption-size); font-weight: 500;
+  color: var(--ce-color-text-muted); white-space: nowrap;
 }
 
 /* ── Auslöserzeile „Aus Adressbuch auswählen" ──
@@ -475,12 +508,12 @@
 .inv-stock-explain {
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  background: var(--ce-color-surface-muted);
+  background: var(--ce-color-surface-subtle);
   padding: var(--ce-space-3) var(--ce-space-4);
   min-width: 0;
 }
 .inv-stock-explain-title {
-  display: flex; align-items: center; gap: var(--ce-space-2); margin: 0 0 var(--ce-space-2);
+  display: block; margin: 0 0 var(--ce-space-2);
   font-family: var(--fs); font-size: var(--ce-text-title-card-size); font-weight: 600;
   line-height: var(--ce-text-title-card-line); color: var(--ce-color-text-primary);
 }
@@ -515,8 +548,8 @@
 .inv-detail-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--ce-space-4); margin-bottom: var(--ce-space-3); }
 .inv-detail-stock > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inv-detail-k {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-muted);
 }
 .inv-detail-v {
   font-family: var(--fs); font-size: var(--ce-text-title-section-size); font-weight: 600;
@@ -546,8 +579,8 @@
 .inv-detail-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--ce-space-3); margin: 0; }
 .inv-detail-list > div { min-width: 0; }
 .inv-detail-list dt {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ce-color-text-muted);
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-muted);
 }
 .inv-detail-list dd {
   margin: 2px 0 0;
@@ -555,6 +588,46 @@
   min-width: 0; overflow-wrap: break-word;
 }
 .inv-detail-table { margin-top: var(--ce-space-4); }
+/* Bestand je Lager ist ein echter Spaltenvergleich: auf schmalen Breiten
+   scrollt die Tabelle LOKAL in ihrem Rahmen, statt abgeschnitten zu werden
+   (.ce-table-container beschneidet sonst für die runden Ecken). */
+.inv-detail-table--scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Stammdaten und Versanddaten in EINER Fläche: zwei Gruppen nebeneinander,
+   unter 900 px untereinander. */
+.inv-detail-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ce-space-6); }
+@media (min-width: 900px) { .inv-detail-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.inv-detail-group { min-width: 0; }
+
+/* Auftragsdetail: Positionen als zentrale Arbeitsfläche (≈ 2/3), Empfänger
+   und Referenz sekundär daneben (≈ 1/3). Unter 1100 px untereinander —
+   die Positionen stehen auch dann zuerst (DOM-Reihenfolge). */
+.inv-order-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: var(--ce-space-6); margin-bottom: var(--ce-space-6); align-items: start;
+}
+.inv-order-layout > .inv-detail-section { margin-bottom: 0; }
+@media (min-width: 1101px) {
+  .inv-order-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+
+/* Positionen und Sendungen des Auftragsdetails als beschriftete Zeilen unter
+   1100 px — dieselbe Schwelle wie bei den Listen. Bewusst KEINE Karte in der
+   Karte: Zeilen mit Haarlinie innerhalb der Abschnittsfläche. Auf breiten
+   Viewports ausgeblendet, darunter ersetzen sie die Tabelle. */
+.inv-detail-cards { display: none; list-style: none; margin: var(--ce-space-3) 0 0; padding: 0; }
+.inv-detail-card {
+  display: flex; flex-direction: column; gap: var(--ce-space-2); min-width: 0;
+  padding: var(--ce-space-3) 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.inv-detail-card:last-child { border-bottom: 0; }
+@media (max-width: 1100px) {
+  .inv-detail-table--wide { display: none; }
+  .inv-detail-cards { display: flex; flex-direction: column; }
+}
+/* Mehrere Trackingnummern untereinander; lange Nummern brechen lokal um. */
+.inv-tracking-nr { display: block; overflow-wrap: anywhere; }
 .inv-address {
   font-family: var(--fs); font-size: var(--ce-text-body-size); font-style: normal;
   line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
@@ -564,11 +637,23 @@
 .inv-movement-item {
   display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap;
   padding-bottom: var(--ce-space-2);
-  border-bottom: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
   min-width: 0;
 }
 .inv-movement-item:last-child { border-bottom: 0; padding-bottom: 0; }
 .inv-movement-qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-weight: 600; min-width: 48px; }
+
+/* Zurück-Link der Detailseiten: bündig mit der Titelkante (der Link trägt
+   sonst den Innenabstand von .btn-link). */
+.inv-back { padding-inline: 0; }
+
+/* Ein Hinweis direkt unter einer Tabelle oder Positionsliste braucht Luft. */
+.inv-detail-table + .inv-form-note,
+.inv-detail-cards + .inv-form-note { margin-top: var(--ce-space-3); }
+
+/* Dialogkopf des Lagerbereichs: Titel links, Textaktion „Schließen" rechts. */
+.inv-dialog-head { align-items: center; justify-content: space-between; }
+.inv-dialog-close { margin-left: auto; flex: none; }
 
 .inv-dialog-picked {
   display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
@@ -584,7 +669,6 @@
   .inv-row-actions .btn,
   .inv-card-actions .btn,
   .inv-form-actions .btn,
-  .inv-quick-row .btn,
   .inv-picker-item,
   .inv-onboarding-actions .btn,
   .inv-ops-head .btn,
@@ -592,10 +676,13 @@
   .inv-addrpicker-open .btn,
   .inv-position-qty .btn { min-height: 44px; }
   .inv-toolbar-check { min-height: 44px; }
-  /* Die aufklappbare Kennzahlkarte ist selbst das Bedienelement — sie ist
+  /* Die aufklappbare Kennzahlzelle ist selbst das Bedienelement — sie ist
      ohnehin deutlich größer als 44 px, braucht aber die Regel, damit sie beim
      Kürzen der Innenabstände nicht darunter fällt. */
   .inv-stat--action { min-height: 44px; }
+  /* Kartenpolster 16 px auf Mobil. */
+  .inv-warehouses, .inv-detail-section, .inv-onboarding, .inv-ops { padding: var(--ce-space-4); }
+  .inv-stat { padding: var(--ce-space-3) var(--ce-space-4); }
 }
 
 /* ── Einklappbare Formularabschnitte ──
@@ -607,27 +694,37 @@
   border-radius: var(--ce-radius-md);
   min-width: 0;
 }
-.inv-section--open { background: var(--ce-color-surface-muted); }
+.inv-section--open { background: var(--ce-color-surface-subtle); }
 .inv-section-head {
   display: flex; align-items: center; gap: var(--ce-space-3);
-  width: 100%; padding: var(--ce-space-3) var(--ce-space-4);
-  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: 600;
-  line-height: var(--ce-text-label-line); letter-spacing: 0.06em; text-transform: uppercase;
-  text-align: left; color: var(--ce-color-text-secondary);
+  width: 100%; min-height: var(--ce-size-control-md); padding: var(--ce-space-3) var(--ce-space-4);
+  font-family: var(--fs); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: 1.4286;
+  text-align: left; color: var(--ce-color-text-primary);
   background: none; border: none; border-radius: var(--ce-radius-md); cursor: pointer;
-  transition: color 140ms ease;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.inv-section-head:hover { color: var(--ce-color-text-primary); }
+.inv-section-head:hover { background: var(--ce-color-surface-hover); }
 .inv-section-head[disabled] { cursor: default; opacity: 0.6; }
 .inv-section-label { min-width: 0; overflow-wrap: break-word; }
 /* Sagt vor dem Aufklappen, dass hier bereits etwas steht — sonst müsste man
    jeden Abschnitt öffnen, um das herauszufinden. */
 .inv-section-filled {
-  font-size: var(--ce-text-micro-size); font-weight: 600; letter-spacing: 0.04em;
-  color: var(--ce-color-brand-ink); text-transform: none;
+  font-size: var(--ce-text-caption-size); font-weight: 500;
+  color: var(--ce-color-brand-ink);
 }
-.inv-section-chevron { margin-left: auto; display: inline-flex; transition: transform 140ms ease; }
-.inv-section--open .inv-section-chevron { transform: rotate(180deg); }
+/* Klappmarke: zwei Kanten eines kleinen Quadrats, um 45° gedreht — rein per
+   CSS gezeichnet (dieselbe Form wie in der Sidebar), kein Icon. Geschlossen
+   zeigt sie nach unten, geöffnet nach oben. */
+.inv-section-chevron {
+  flex: none; margin-left: auto; margin-right: 4px;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  color: var(--ce-color-text-muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.inv-section--open .inv-section-chevron { transform: translateY(2px) rotate(225deg); }
 @media (prefers-reduced-motion: reduce) { .inv-section-chevron { transition: none; } }
 .inv-section-body {
   display: flex; flex-direction: column; gap: var(--ce-space-3);
@@ -674,7 +771,7 @@
 /* Niedriger Bestand als Information mit Handlung — keine Alarmfläche. */
 .inv-lowstock {
   display: flex; align-items: center; flex-wrap: wrap;
-  gap: var(--ce-space-3); margin-top: var(--ce-space-4);
+  gap: var(--ce-space-3) var(--ce-space-4); margin-top: var(--ce-space-4);
   padding: var(--ce-space-3) var(--ce-space-4);
   border: 1px solid var(--ce-color-status-warning-border);
   border-radius: var(--ce-radius-md);
@@ -698,7 +795,7 @@
 .inv-block-item {
   display: flex; align-items: center; flex-wrap: wrap;
   gap: var(--ce-space-3); padding: var(--ce-space-3) 0; min-width: 0;
-  border-bottom: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
 }
 .inv-block-item:last-child { border-bottom: none; }
 .inv-block-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 12rem; }
@@ -719,8 +816,8 @@
 }
 .inv-dialog-facts > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .inv-dialog-facts dt {
-  font-family: var(--fs); font-size: var(--ce-text-micro-size); font-weight: 600;
-  line-height: var(--ce-text-micro-line); letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--fs); font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
   color: var(--ce-color-text-muted);
 }
 .inv-dialog-facts dd {
@@ -750,8 +847,10 @@
 }
 .inv-outcome strong { font-weight: 600; color: var(--ce-color-text-primary); }
 
-/* Filterchip der Bewegungsliste — sagt, warum die Liste verkürzt ist. */
-.inv-toolbar-chip { align-self: flex-end; gap: var(--ce-space-2); }
+/* Filterchip der Bewegungsliste — sagt, warum die Liste verkürzt ist. Die
+   Aktion steht als Wort („entfernen") im Chip statt eines Kreuzsymbols. */
+.inv-toolbar-chip { align-self: flex-end; gap: var(--ce-space-2); white-space: normal; text-align: left; }
+.inv-toolbar-chip-action { color: var(--ce-color-brand-ink); font-weight: 600; white-space: nowrap; }
 .inv-toolbar-reset { align-self: flex-end; }
 
 /* ── Artikelfilter in der Werkzeugleiste ──
@@ -768,7 +867,7 @@
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  box-shadow: var(--ce-elevation-2);
+  box-shadow: var(--ce-elevation-dropdown);
 }
 /* Auf schmalen Viewports steht das Feld in voller Breite — die Liste darf dann
    nicht schmaler als der Bildschirmrand werden. */
@@ -789,6 +888,13 @@
   overflow: hidden; max-width: 32ch;
 }
 .inv-mv-ref { overflow-wrap: break-word; }
+
+/* Telefon: Suche und Filter stehen untereinander in voller Breite — keine
+   gequetschten Felder nebeneinander. */
+@media (max-width: 600px) {
+  .inv-toolbar-search,
+  .inv-toolbar-filter { flex: 1 1 100%; }
+}
 
 @media (max-width: 860px) {
   .inv-section-head,

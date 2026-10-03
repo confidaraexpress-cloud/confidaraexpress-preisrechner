@@ -7,10 +7,9 @@ export function DraftEmptyState({ onCreate }) {
   const copy = draftsEmptyCopy();
   return (
     <EmptyState
-      icon="form"
       title={copy.title}
       text={copy.desc}
-      action={<button type="button" className="btn btn-primary btn-sm" onClick={onCreate}>{copy.cta}</button>}
+      action={<button type="button" className="btn btn-primary" onClick={onCreate}>{copy.cta}</button>}
     />
   );
 }

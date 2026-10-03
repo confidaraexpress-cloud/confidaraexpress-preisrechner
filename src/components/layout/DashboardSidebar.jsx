@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Icon } from "../ui/Icon";
 import { SupportRequestDialog } from "../support/SupportRequestDialog";
 import { SUPPORT_CARD } from "../../utils/supportRequest.mjs";
 import { BrandLogo } from "../ui/BrandLogo";
@@ -36,20 +35,20 @@ import { INSTALL_STATE } from "../../utils/pwaInstallView.mjs";
 // ConfidaraExpress ist primär eine Versandplattform. Das Lagermodul ist ein
 // optionales Zusatzmodul und soll die Kernnavigation nicht anführen.
 //
-// Icons kommen ausschließlich aus components/ui/Icon.jsx (Lucide-Geometrie,
-// stroke 1.75, currentColor). lucide-react ist als Abhängigkeit bewusst
-// entfernt und durch drei Governance-Tests verboten — es wird hier nicht
-// wieder eingeführt.
+// Die Navigation ist reiner Text (Redesign 2026-10): keine Symbole vor den
+// Einträgen, keine Iconleiste. Orientierung tragen Beschriftung, Einrückung
+// und die aktive Fläche. Es gibt deshalb auch keine Iconzuordnung mehr in
+// dieser Konfiguration — lucide-react bleibt als Abhängigkeit verboten.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const OVERVIEW_ITEM = { id: "overview", label: "Übersicht", icon: "dashboard" };
-const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch", icon: "idcard" };
+const OVERVIEW_ITEM = { id: "overview", label: "Übersicht" };
+const ADDRESSBOOK_ITEM = { id: "addressbook", label: "Adressbuch" };
 // Rechnungen sind ein EIGENSTÄNDIGER Produktbereich, kein Unterpunkt des
 // Versands. Der Name ist bewusst neutral: der Bereich soll später auch
 // Abo- und andere Confidara-Abrechnungen aufnehmen können, ohne dass die
 // Navigation dann falsch beschriftet wäre. Der page-Wert bleibt „invoices" —
 // Route, Seite und Rechnungslogik sind unverändert.
-const INVOICES_ITEM = { id: "invoices", label: "Rechnungen", icon: "invoice" };
+const INVOICES_ITEM = { id: "invoices", label: "Rechnungen" };
 
 // Gruppen-ids sind KEINE page-Werte: sie adressieren nur den Klappzustand und
 // die aria-controls-Ziele. „warehouse" statt „inventory", damit die id nicht
@@ -58,41 +57,38 @@ const NAV_GROUPS = [
   {
     id: "shipping",
     label: "Versand",
-    icon: "truck",
     items: [
-      { id: "new",         label: "Neue Sendung",         icon: "plus"    },
+      { id: "new",         label: "Neue Sendung"         },
       // „Preisrechner" war zu unspezifisch — der Rechner berechnet
       // Versandkosten. Route (/calculator) und page-Wert sind unverändert.
-      { id: "calculator",  label: "Versandkostenrechner", icon: "zap"     },
-      { id: "drafts",      label: "Entwürfe",             icon: "form"    },
-      { id: "shipments",   label: "Sendungen",            icon: "package" },
-      { id: "tracking",    label: "Sendungsverfolgung",   icon: "mapPin"  },
+      { id: "calculator",  label: "Versandkostenrechner" },
+      { id: "drafts",      label: "Entwürfe"             },
+      { id: "shipments",   label: "Sendungen"            },
+      { id: "tracking",    label: "Sendungsverfolgung"   },
     ],
   },
   {
     id: "warehouse",
     label: "Lager & Aufträge",
-    icon: "layers",
     items: [
-      { id: "inventory", label: "Lagerübersicht", icon: "dashboard"   },
-      { id: "products",  label: "Artikel",        icon: "cube"        },
-      { id: "stock",     label: "Bestand",        icon: "layers"      },
-      { id: "orders",    label: "Aufträge",       icon: "cart"        },
-      { id: "movements", label: "Bewegungen",     icon: "packageMove" },
+      { id: "inventory", label: "Lagerübersicht" },
+      { id: "products",  label: "Artikel"        },
+      { id: "stock",     label: "Bestand"        },
+      { id: "orders",    label: "Aufträge"       },
+      { id: "movements", label: "Bewegungen"     },
     ],
   },
   {
     id: "account",
     label: "Konto",
-    icon: "user",
     items: [
       // „Unternehmen & Konto" unter der Gruppe „Konto" war eine sprachliche
       // Dopplung. Der page-Wert bleibt „profile".
-      { id: "profile", label: "Kontoeinstellungen", icon: "building" },
-      // Der Nachrichtenverlauf der eigenen Anfragen. Die Supportkarte weiter
-      // unten bleibt der schnelle Weg, eine NEUE Anfrage zu stellen — dieser
-      // Eintrag führt zu den bestehenden Vorgängen.
-      { id: "support", label: "Supportanfragen", icon: "mail" },
+      { id: "profile", label: "Kontoeinstellungen" },
+      // Der Nachrichtenverlauf der eigenen Anfragen. „Support kontaktieren"
+      // weiter unten bleibt der schnelle Weg, eine NEUE Anfrage zu stellen —
+      // dieser Eintrag führt zu den bestehenden Vorgängen.
+      { id: "support", label: "Supportanfragen" },
     ],
   },
 ];
@@ -135,7 +131,7 @@ function NavItem({ item, page, onNavigate, variant }) {
       aria-current={aktiv ? "page" : undefined}
       onClick={() => onNavigate(item)}
     >
-      <Icon n={item.icon} s={18} /><span>{item.label}</span>
+      <span>{item.label}</span>
     </button>
   );
 }
@@ -146,8 +142,10 @@ function NavItem({ item, page, onNavigate, variant }) {
 //
 // Der Kopf ist ein echtes <button> mit aria-expanded/aria-controls; ein
 // klickbares <div> bekäme weder Tastaturbedienung noch Rollenzuordnung. Er ist
-// gleichzeitig ein vollwertiger Eintrag der ERSTEN Ebene — gleiche Höhe,
-// gleiche Schriftgröße, gleiche Icongröße wie „Übersicht" und „Adressbuch".
+// gleichzeitig ein vollwertiger Eintrag der ERSTEN Ebene — gleiche Höhe und
+// gleiche Schrift wie „Übersicht" und „Adressbuch". Dass er auf- und zuklappt,
+// zeigt eine kleine, rein per CSS gezeichnete Klappmarke (kein Icon) und für
+// Screenreader aria-expanded.
 //
 // Die Einträge bleiben eingeklappt IM DOM (anders als zuvor): ohne Inhalt gibt
 // es nichts zu animieren, und die weiche Öffnung ist ausdrücklich gefordert.
@@ -173,9 +171,8 @@ function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
         aria-controls={itemsId}
         onClick={onToggle}
       >
-        <Icon n={group.icon} s={18} />
         <span className="pp-nav-group-label">{group.label}</span>
-        <span className="pp-nav-group-chevron" aria-hidden="true"><Icon n="chevron" s={18} /></span>
+        <span className="pp-nav-group-chevron" aria-hidden="true" />
       </button>
       {/* Zwei Ebenen mit je einer Aufgabe: der Panel-Container animiert seine
           Rasterspur von 0fr auf 1fr (robust, ohne die bekannte
@@ -192,10 +189,10 @@ function SidebarGroup({ group, page, open, onToggle, onNavigate }) {
   );
 }
 
-// Eine einzige Sidebar für den gesamten eingeloggten Bereich — tiefes Navy,
-// flach, ohne Glow. Aufbau: .pp-side (Positionierung, Mobile-Drawer) →
-// .pp-side-in (Inhaltsspalte) → Marke, Navigation, Supportkarte, Fußzeile.
-// Funktion und Routen unverändert.
+// Eine einzige Sidebar für den gesamten eingeloggten Bereich — Deep Navy,
+// flach, textbasiert. Aufbau: .pp-side (Positionierung, Mobile-Drawer) →
+// .pp-side-in (Inhaltsspalte) → Marke, Navigation, sekundäre Aktionen,
+// Fußzeile. Funktion und Routen unverändert.
 export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen, onLogout }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -269,35 +266,34 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
       <aside className={`sidebar pp-side ${sidebarOpen ? "sidebar-open" : ""}`} style={{ zIndex: 199 }}>
         <div className="pp-side-in">
 
-          {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo) und trägt
-              die Originalkomposition des Masters: Signet über dem Schriftzug.
-              Die Sidebar ist dunkel, also die Reverse-Variante. Die Marke ist
-              ein Bild ohne begleitenden Text und trägt den Markennamen deshalb
-              als alt-Text. Die Unterzeile ist ein Deskriptor dieser Fläche,
-              kein Bestandteil der Marke — sie wird vom Aufrufer mitgegeben und
-              behält ihre eigene Klasse. Kein Claim (siehe BrandLogo.jsx). */}
+          {/* Die Marke kommt aus dem gemeinsamen Bauteil (BrandLogo): die
+              Originalkomposition des Masters (Signet über Schriftzug) in der
+              Reverse-Fassung für die dunkle Navy-Sidebar — wie vor dem
+              Redesign. Darunter die Unterzeile (Feinkorrektur 2026-10), klein
+              und der Wortmarke untergeordnet. Kein Claim aus dem Master. */}
           <div className="pp-logo">
             <BrandLogo
               variant="lockup"
               tone="reverse"
-              sub={<span className="pp-brand-sub">B2B Versandplattform.</span>}
+              sub={<span className="pp-brand-sub">B2B Logistik- und Versandplattform</span>}
             />
-            <button className="sidebar-close-btn pp-close" aria-label="Navigation schließen" onClick={() => setSidebarOpen(false)}>
-              <Icon n="close" s={18} />
+            <button type="button" className="sidebar-close-btn pp-close" aria-label="Navigation schließen" onClick={() => setSidebarOpen(false)}>
+              Schließen
             </button>
           </div>
 
           {/* Der Scrollbereich der Spalte. Er umfasst BEWUSST Navigation,
-              Supportkarte UND Fußzeile — alles unterhalb der Marke. Läge er nur
-              um die Navigation, stünden Karte und Fußzeile unbeweglich darunter,
+              sekundäre Aktionen UND Fußzeile — alles unterhalb der Marke. Läge
+              er nur um die Navigation, stünden die Aktionen unbeweglich darunter,
               belegten dauerhaft Höhe und der letzte Navigationseintrag würde
               mittendrin abgeschnitten (genau der Fehler, der diese Konstruktion
               einmal ersetzt hat). Die Marke bleibt als Kopf darüber stehen. */}
           <div className="pp-side-scroll">
-            {/* Reihenfolge: Übersicht → Versand → Adressbuch → Lager & Aufträge
-                → Konto → Abmelden. Die Hierarchie entsteht aus Abstand und
-                Einrückung, nicht aus Rahmen, Karten oder Trennlinien. */}
-            <nav className="pp-nav">
+            {/* Reihenfolge: Übersicht → Versand → Adressbuch · Rechnungen →
+                Lager & Aufträge → Konto. Die Hierarchie entsteht aus Abstand,
+                Einrückung und Schriftgewicht — nicht aus Symbolen, Rahmen oder
+                Karten. */}
+            <nav className="pp-nav" aria-label="Hauptnavigation">
               <NavItem item={OVERVIEW_ITEM} page={page} onNavigate={handleNav} />
 
               <SidebarGroup
@@ -308,8 +304,10 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
                 onNavigate={handleNav}
               />
 
-              <NavItem item={ADDRESSBOOK_ITEM} page={page} onNavigate={handleNav} />
-              <NavItem item={INVOICES_ITEM} page={page} onNavigate={handleNav} />
+              <div className="pp-nav-block">
+                <NavItem item={ADDRESSBOOK_ITEM} page={page} onNavigate={handleNav} />
+                <NavItem item={INVOICES_ITEM} page={page} onNavigate={handleNav} />
+              </div>
 
               <SidebarGroup
                 group={gruppe("warehouse")}
@@ -326,52 +324,35 @@ export function DashboardSidebar({ page, navigateTo, sidebarOpen, setSidebarOpen
                 onToggle={() => toggleGroup("account")}
                 onNavigate={handleNav}
               />
-
-              {/* Sitzungsaktion optisch von der Inhaltsnavigation trennen — die
-                  einzige verbliebene Linie der Navigation. „Abmelden" ist eine
-                  Aktion, kein Produktbereich: es trägt deshalb bewusst NICHT
-                  das Gewicht der ersten Ebene. Funktional unverändert. */}
-              <div className="pp-nav-utility-divider" aria-hidden="true" />
-              {pwa.showNavItem && (
-                <button type="button" className="nitem nitem--utility" onClick={handleInstallEntry}>
-                  <Icon n="devices" s={18} /><span>{pwa.navLabel}</span>
-                </button>
-              )}
-              <button type="button" className="nitem nitem--utility" onClick={handleLogout}>
-                <Icon n="logout" s={18} /><span>Abmelden</span>
-              </button>
             </nav>
 
-            {/* Supportkarte: die GESAMTE Karte ist die Aktion — ein <button>, kein
-                mailto-Link mehr. Der Kunde schreibt seine Anfrage im Formular; das
-                Postfach ist nicht mehr der Einstieg. Wortlaut zentral in
-                utils/supportRequest.mjs.
+            {/* Sekundäre Aktionen, von der Inhaltsnavigation durch die einzige
+                Linie der Spalte getrennt: App installieren (nur mit echtem
+                Installationsweg), Support kontaktieren, Abmelden. Alle drei
+                sind Aktionen, keine Produktbereiche — sie tragen deshalb das
+                leisere Gewicht der Utility-Zeile.
 
-                Sie bleibt trotz „Konto → Supportanfragen" bestehen und wurde
-                bewusst NICHT entfernt: die beiden Wege führen zu verschiedenen
-                Zielen — der Navigationseintrag zu den BESTEHENDEN Vorgängen, die
-                Karte zu einer NEUEN Anfrage. Sie ist außerdem die einzige Karte
-                der Sidebar; die Regel „keine Box in der Box" richtet sich gegen
-                nachgebaute Navigationsflächen, nicht gegen diesen einen CTA. */}
-            <button type="button" className="pp-scard" onClick={() => setSupportOpen(true)}>
-              <div className="pp-scard-top">
-                <div className="scard-ic"><Icon n="mail" s={17} /></div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="scard-k">{SUPPORT_CARD.kicker}</div>
-                  <div className="scard-t">{SUPPORT_CARD.title}</div>
-                </div>
-              </div>
-              <div className="scard-a">
+                „Support kontaktieren" ersetzt die frühere große Supportkarte:
+                derselbe Handler (Anfrageformular), nur als Textaktion. Er bleibt
+                neben „Konto → Supportanfragen" bestehen, weil beide Wege zu
+                verschiedenen Zielen führen — der Navigationseintrag zu den
+                BESTEHENDEN Vorgängen, diese Aktion zu einer NEUEN Anfrage.
+                Wortlaut zentral in utils/supportRequest.mjs. */}
+            <div className="pp-side-actions">
+              {pwa.showNavItem && (
+                <button type="button" className="nitem nitem--utility" onClick={handleInstallEntry}>
+                  <span>{pwa.navLabel}</span>
+                </button>
+              )}
+              <button type="button" className="nitem nitem--utility pp-support-link" onClick={() => setSupportOpen(true)}>
                 <span>{SUPPORT_CARD.action}</span>
-                <Icon n="chevronRight" s={14} />
-              </div>
-              <div className="scard-s">{SUPPORT_CARD.hint}</div>
-            </button>
-
-            <div className="pp-foot">
-              <div>© 2026 ConfidaraExpress</div>
-              <div>Alle Rechte vorbehalten.</div>
+              </button>
+              <button type="button" className="nitem nitem--utility" onClick={handleLogout}>
+                <span>Abmelden</span>
+              </button>
             </div>
+
+            <div className="pp-foot">© 2026 ConfidaraExpress</div>
           </div>
         </div>
       </aside>

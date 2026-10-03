@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { BILLING_MODES, BILLING_MODE_TEXT } from "../../utils/billingModeView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,10 +39,8 @@ export function BillingModeSection({
       {/* Der Zustand steht doppelt codiert da: als Text im Kartenkopf und als
           Auswahlstellung — nie allein farblich. */}
       <div className="adm-card-head">
-        <Icon n="invoice" s={17} /> Abrechnung
-        <span className="badge badge--neutral" style={{ marginInlineStart: "auto" }}>
-          <span className="badge-dot" />{opt.label}
-        </span>
+        Abrechnung
+        <span className="badge badge--neutral adm-card-head-action">{opt.label}</span>
       </div>
       <div className="adm-card-body">
         <label className="field-label" htmlFor={BILLING_MODE_SELECT_ID}>
@@ -64,17 +61,16 @@ export function BillingModeSection({
         {/* Sagt ausdrücklich, was die Umstellung NICHT tut — sonst nimmt ein Admin an,
             offene Sendungen würden mit umgestellt. */}
         <div className="adm-note mt-8">
-          <Icon n="info" s={16} />
           <span>{BILLING_MODE_TEXT.changeNote}</span>
         </div>
         {error && (
           <div className="adm-note adm-note--error mt-8" role="alert">
-            <Icon n="alert" s={16} /><span>{error}</span>
+            <span>{error}</span>
           </div>
         )}
         {successText && !error && (
           <p className="profile-saved mt-8" role="status">
-            <Icon n="check" s={14} /> {successText}
+            {successText}
           </p>
         )}
       </div>

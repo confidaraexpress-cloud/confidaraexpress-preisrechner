@@ -1,6 +1,5 @@
 import React, { useId } from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Zentraler Bestätigungsdialog für mutierende Adminaktionen.
@@ -18,6 +17,11 @@ import { Icon } from "../ui/Icon";
 //   • eindeutige aria-labelledby/-describedby-IDs auch bei mehreren Dialogen
 //     auf derselben Seite (useId).
 //
+// Seit dem Redesign (2026-10) ohne Iconmedaillon: die Stufe der Aktion trägt
+// allein die bestätigende Schaltfläche (Primary · Warn-Outline · Danger) und ihr
+// Text. Der Dialog ist linksbündig gesetzt, die bestätigende Aktion steht rechts
+// außen.
+//
 // Der Dialog trifft KEINE fachliche Entscheidung — er bestätigt nur. Ob eine
 // Aktion überhaupt erlaubt ist, entscheidet das Backend.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,8 +32,6 @@ export function ConfirmDialog({
   note,              // ergänzender Hinweis (Auditierung o. Ä.)
   confirmLabel,
   cancelLabel = "Abbrechen",
-  confirmIcon = "check",
-  icon = "check",
   danger = false,
   // Dritte Stufe zwischen „alltäglich" und „gefährlich": eine Aktion, die
   // nichts zerstört, aber nicht zurückgenommen werden kann (z. B. „Als bezahlt
@@ -51,6 +53,10 @@ export function ConfirmDialog({
   // während eines laufenden Requests schließt Escape nicht.
   const dialogRef = useDialog({ onClose: onCancel, closeOnEscape: !busy });
 
+  // Stufe der Aktion als Klasse am Dialog — für die Titelfarbe der
+  // Gefahrstufe; die Schaltfläche trägt die Stufe ohnehin selbst.
+  const stufe = danger ? " adm-modal-danger" : irreversible ? " adm-modal-irreversible" : "";
+
   return (
     <div
       className="adm-modal-overlay"
@@ -58,19 +64,13 @@ export function ConfirmDialog({
       onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}
     >
       <div
-        className={`adm-modal${danger ? " adm-modal-danger" : ""}`}
+        className={`adm-modal${stufe}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
         ref={dialogRef}
       >
-        <div
-          className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : irreversible ? "adm-modal-icon-warning" : "adm-modal-icon-approve"}`}
-          aria-hidden="true"
-        >
-          <Icon n={icon} s={22} />
-        </div>
         <h2 id={titleId} className="adm-modal-title">{title}</h2>
         {subline && <p className="adm-modal-sub">{subline}</p>}
         <p id={descId} className="adm-modal-text">{text}</p>
@@ -88,7 +88,7 @@ export function ConfirmDialog({
           >
             {busy
               ? <><span className="spinner spinner-dark" /> {busyLabel}</>
-              : <><Icon n={confirmIcon} s={14} /> {confirmLabel}</>}
+              : confirmLabel}
           </button>
         </div>
       </div>

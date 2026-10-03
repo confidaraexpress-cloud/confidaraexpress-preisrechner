@@ -1,11 +1,14 @@
 import React from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Icon } from "../ui/Icon";
 import { BrandLogo } from "../ui/BrandLogo";
 import { Footer } from "./Footer";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 
+/* Öffentliche Leiste der Leseseiten (Redesign 2026-10): hell, ruhig, ohne
+   Symbole. Links die Original-Wortmarke, rechts die unveränderten Aktionen;
+   mobil öffnet der Textknopf „Menü" den dunklen Navy-Drawer. Routing und
+   Handler sind unverändert. */
 function Navbar() {
   const { authed } = useAuth();
   const navigate = useNavigate();
@@ -14,26 +17,22 @@ function Navbar() {
     <>
       <nav className="navbar">
         <div className="container navbar-inner">
-          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setDrawerOpen(true)}><Icon n="menu" s={22} /></button>
-          {/* Die Marke führt zum Login — vorher ein <div> mit onClick, also für
-              Tastatur und Screenreader gar kein Bedienelement. Jetzt ein echter
-              Button; die Beschriftung liefert die sichtbare Wortmarke. */}
+          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setDrawerOpen(true)}>
+            Menü
+          </button>
+          {/* Die Marke führt zum Login — ein echter Button. Sein zugänglicher
+              Name ist der alt-Text der Original-Wortmarke („ConfidaraExpress").
+              Flache helle Leiste → reine Wortmarke in der Standardfassung. */}
           <button type="button" className="navbar-logo" onClick={() => navigate("/login")}>
-            {/* Die reine Wortmarke (Band ohne Signet, 8,71:1) — kein Chip: eine
-                horizontale Textmarke gehört nicht in eine quadratische Fläche.
-                Größe gemessen, nicht geschätzt: bei 360 px ist bei 20 px Höhe
-                Schluss (22 px sprengt bereits die Zeile), ab 500 px bleibt bis
-                mindestens 32 px Luft. 20 px passt nachweislich auf jeder
-                Breite von 360 bis 1440 px — ein einheitlicher Wert genügt. */}
             <BrandLogo variant="wordmark" tone="standard" />
           </button>
           <div className="navbar-actions">
             {authed ? (
-              <button className="btn btn-primary btn-sm" onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/dashboard")}>Dashboard</button>
             ) : (
               <>
-                <button className="btn btn-ghost btn-sm navbar-login-btn" onClick={() => navigate("/login")}>Anmelden</button>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate("/register")}>Registrieren</button>
+                <button type="button" className="btn btn-ghost btn-sm navbar-login-btn" onClick={() => navigate("/login")}>Anmelden</button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/register")}>Registrieren</button>
               </>
             )}
           </div>
@@ -42,27 +41,24 @@ function Navbar() {
       {drawerOpen && (
         <>
           <div className="sidebar-overlay open" onClick={() => setDrawerOpen(false)} style={{ zIndex: 998 }} />
-          {/* Der Drawer lag bisher UNTER der fixierten Navigationsleiste
-              (999 gegen 1000): sein Kopf war dadurch verdeckt — bereits auf
-              origin/main, dort nur weniger sichtbar, weil er eine flache Zeile
-              trug. Mit der Originalkomposition zerschneidet die Leiste die
-              Marke sichtbar. Eine Stufe darüber genügt; das Overlay (998) und
-              die Leiste selbst bleiben unverändert. */}
+          {/* Der Drawer liegt eine Stufe über der fixierten Leiste (1001 gegen
+              1000), sonst verdeckte die Leiste seinen Kopf. Er trägt die dunkle
+              Navy-Fläche der Sidebar (dashboard.css) — die Marke steht deshalb
+              als Originalkomposition in der Reverse-Fassung, „Schließen" als Text. */}
           <div className="mobile-drawer open" style={{ zIndex: 1001 }}>
             <div className="mobile-drawer-header">
-              {/* Der Drawer ist dunkel (#0a1628) — hier gilt die Reverse-
-                  Variante (Standard misst dort 1,05:1). Anders als die flache
-                  Leiste hat er Höhe für die volle Originalkomposition. */}
-              <BrandLogo variant="lockup" tone="reverse" />
-              <button className="drawer-close-btn" aria-label="Navigation schließen" onClick={() => setDrawerOpen(false)}><Icon n="close" s={20} /></button>
+              <BrandLogo variant="lockup" tone="reverse" className="navbar-drawer-brand" />
+              <button type="button" className="drawer-close-btn" aria-label="Navigation schließen" onClick={() => setDrawerOpen(false)}>
+                Schließen
+              </button>
             </div>
             <nav className="mobile-drawer-nav">
               {authed ? (
-                <button className="drawer-nav-item" onClick={() => { navigate("/dashboard"); setDrawerOpen(false); }}><Icon n="dashboard" s={18} /> Dashboard</button>
+                <button type="button" className="drawer-nav-item" onClick={() => { navigate("/dashboard"); setDrawerOpen(false); }}>Dashboard</button>
               ) : (
                 <>
-                  <button className="drawer-nav-item" onClick={() => { navigate("/login"); setDrawerOpen(false); }}><Icon n="user" s={18} /> Anmelden</button>
-                  <div className="drawer-cta"><button className="btn btn-primary btn-full" onClick={() => { navigate("/register"); setDrawerOpen(false); }}>Registrieren</button></div>
+                  <button type="button" className="drawer-nav-item" onClick={() => { navigate("/login"); setDrawerOpen(false); }}>Anmelden</button>
+                  <div className="drawer-cta"><button type="button" className="btn btn-primary btn-full" onClick={() => { navigate("/register"); setDrawerOpen(false); }}>Registrieren</button></div>
                 </>
               )}
             </nav>

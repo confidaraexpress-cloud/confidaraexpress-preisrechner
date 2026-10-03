@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { Icon } from "../components/ui/Icon";
 import { Overview } from "../components/dashboard/Overview";
 import { ShipmentsList } from "../components/dashboard/ShipmentsList";
 import { InvoicesList } from "../components/dashboard/InvoicesList";
@@ -105,11 +104,8 @@ const PAGE_HEADERS = {
     title: "Rechnungen",
     subtitle: "Verlässliche Kostenübersicht für Ihre gebuchten Versanddienstleistungen.",
   },
-  support: {
-    eyebrow: "Konto & Support",
-    title: "Supportanfragen",
-    subtitle: "Ihre Anfragen an unser Supportteam mit vollständigem Nachrichtenverlauf.",
-  },
+  // „support" rendert seinen Seitenkopf seit dem Redesign (2026-10) selbst
+  // (SupportRequestsView), damit „Neue Anfrage" im Kopf stehen kann.
 };
 
 export default function DashboardPage() {
@@ -618,40 +614,31 @@ export default function DashboardPage() {
       />
       <main className="main-content">
         <div className="mobile-topbar">
-          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}><Icon n="menu" s={22} /></button>
+          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setSidebarOpen(true)}>Menü</button>
           <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
-          {/* Dieselbe Regel wie beim Seiten-Mount unten: die Übersicht trägt ihre
-              Glocke bereits in der eigenen Kopfzeile. Unterhalb von 860 px ist die
-              Topbar sichtbar — ohne diese Bedingung stünden auf der Übersicht dort
-              ZWEI Glocken (Topbar + Kopfzeile). Auf allen anderen Unterseiten ist
-              die Topbar der mobile Mount, weil der Seiten-Mount dort per CSS in der
-              Kopfzeile liegt. */}
-          {/* Menü, Wortmarke, Glocke — mehr nicht. Der frühere Initialen-Kreis
-              zeigte dieselbe Identität, die zwei Zentimeter weiter links schon
-              in der Sidebar-Firmenkarte steht. */}
-          {/* Auf der Übersicht bleibt die Topbar-Glocke aus: dort steht sie in der
-              eigenen Kopfzeile und ist auch mobil sichtbar. Auf allen anderen
-              Unterseiten ist die Topbar der mobile Mount, weil der Utility-
-              Cluster des Seitenkopfs unter 860 px ausblendet. */}
+          {/* Menü, Marke, Mitteilungen — mehr nicht. Unterhalb von 860 px ist die
+              Topbar der EINE mobile Mount von „Mitteilungen" auf JEDER Seite, auch
+              auf der Übersicht: seit dem Redesign (2026-10) läuft auch deren
+              Utility-Zeile über den gemeinsamen Seitenkopf, der sich dort
+              ausblendet. So ist in jeder Kombination aus Seite und Viewport genau
+              EIN Einstieg sichtbar. */}
           <div className="topbar-right">
-            {page !== "overview" && (
-              <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
-            )}
+            <NotificationBell variant="topbar" navigateTo={navigateFromNotification} />
           </div>
         </div>
 
         {bookingToast && (
           <div className="alert-wrapper">
             <div className="alert alert-success">
-              <Icon n="shield" s={16} /> Sendung erfolgreich gebucht! Ihre Sendungsliste wurde aktualisiert.
+              Sendung erfolgreich gebucht! Ihre Sendungsliste wurde aktualisiert.
             </div>
           </div>
         )}
 
         {loadError && (
           <div className="alert-wrapper">
-            <div className="alert alert-error" style={{ gap: 8 }}>
-              <Icon n="x" s={16} />{loadError}
+            <div className="alert alert-error">
+              {loadError}
             </div>
           </div>
         )}
@@ -751,7 +738,7 @@ export default function DashboardPage() {
             öffentlichen, nicht authentifizierten Endpunkt auf. */}
         {page === "tracking" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
-            <TrackingPage />
+            <TrackingPage utility={utilityCluster} />
           </Suspense>
         )}
 
@@ -773,6 +760,7 @@ export default function DashboardPage() {
         {page === "support" && (
           <Suspense fallback={<div className="loading-center"><span className="spinner spinner-dark" /></div>}>
             <SupportRequestsView
+              utility={utilityCluster}
               initialTicketId={supportTicketId}
               onTicketConsumed={() => setSupportTicketId(null)}
             />

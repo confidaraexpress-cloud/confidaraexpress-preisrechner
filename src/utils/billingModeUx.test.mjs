@@ -258,7 +258,11 @@ test("(F3) die Adminkarte entscheidet nichts — sie zeigt nur an", () => {
 });
 
 test("(F4) der Zustand ist doppelt codiert, nie allein farblich", () => {
-  assert.ok(/badge badge--neutral/.test(adminSecSrc) && /badge-dot/.test(adminSecSrc));
+  // Redesign 2026-10: das Badge-Primitive zeichnet keinen Zierpunkt mehr
+  // (primitives.css). Der Zustand steht als WORT in einem neutralen Badge —
+  // Text und Badgeform, nie Farbe allein; ein eigener Punkt käme nicht zurück.
+  assert.ok(/badge badge--neutral/.test(adminSecSrc));
+  assert.equal(/badge-dot/.test(adminSecSrc), false, "der Badge trägt wieder einen Zierpunkt");
   assert.ok(/\{opt\.label\}/.test(adminSecSrc), "der Badge trägt Text, nicht nur einen Punkt");
 });
 

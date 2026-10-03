@@ -16,11 +16,10 @@
   .auth-aurora-wave { width: 700px; height: 480px; bottom: -80px; left: -120px; }
 
   /* Dashboard — Sidebar-Drawer-Schwelle liegt bei 860px (siehe
-     dashboard-premium.css), damit die (jetzt einheitliche) Sidebar auf
-     jeder Seite bei derselben Breite kollabiert, nicht erst hier. */
-  .page-body { padding: 14px; }
-
-  /* DashboardSectionHeader — below sticky topbar */
+     dashboard-premium.css). Den Seitenrand von .page-body trägt seit dem
+     Redesign (2026-10) allein --shell-gutter (32 / 24 / 16 px) — hier steht
+     bewusst KEIN eigener Innenabstand mehr, sonst liefen Kopf und Inhalt
+     wieder auf zwei verschiedenen Kanten. */
 
   /* Forms */
   .field-row-2 { grid-template-columns: 1fr; }
@@ -37,7 +36,7 @@
 
   /* Booking step bar — hide labels, shrink circles */
   .step-label { display: none; }
-  .step-circle { width: 28px; height: 28px; font-size: 11px; }
+  .step-circle { width: 28px; height: 28px; font-size: var(--ce-text-micro-size); }
   .booking-wrap { padding-top: 16px; padding-bottom: 32px; }
 
   /* Auth — 480px */
@@ -48,8 +47,10 @@
   .auth-cta { padding: 14px 20px; font-size: 14px; }
   .auth-trust-title { font-size: 12px; }
   .auth-trust-sub { font-size: 11px; }
-  .auth-card { padding: 22px 14px; border-radius: var(--ce-radius-xl); }
-  .page-body { padding: 10px; }
+  /* Literal statt --ce-radius-xl: die Foundation-Radien sind mit dem
+     Redesign 2026-10 auf 8/12 px gewandert, der Auth-Bereich bleibt davon
+     ausdrücklich unberührt und behält seinen bisherigen Wert. */
+  .auth-card { padding: 22px 14px; border-radius: 20px; }
 }
 
 /* ═══════════ TOUCH-ZIELE UNTER 860 px ══════════════════════════════════════

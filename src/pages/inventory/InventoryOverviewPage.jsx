@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, ListSkeleton } from "../../components/ui/StateView";
 import { InventoryStatCard, InventoryPreviewList, InventoryDialog, InlineError } from "../../components/inventory/InventoryShared";
 import { getInventoryOverview, getWarehouses, createWarehouse } from "../../api/inventoryApi";
@@ -28,7 +27,13 @@ import {
 
    Der Einstieg ohne Lager ist Teil der Seite, nicht ein Sonderfall: ein Konto
    ohne Lager kann hier mit einem Klick sein Hauptlager anlegen — ohne dieses
-   fehlte allen anderen Bereichen die Grundlage. */
+   fehlte allen anderen Bereichen die Grundlage.
+
+   Redesign 2026-10: EIN Seitenkopf mit derselben Außenkante wie jede andere
+   Seite; die drei Schnellaktionen stehen dort als Kopfaktionen (eine
+   Hauptaktion, zwei Sekundäraktionen) statt in einer eigenen gerahmten Karte.
+   Die Kennzahlen bilden ein kompaktes, flaches Band ohne Symbole, darunter
+   folgen die operativen Listen. */
 export default function InventoryOverviewPage({ utility, onNavigate, onNewShipment }) {
   const [stats, setStats] = useState(null);
   const [warehouses, setWarehouses] = useState(null);
@@ -79,13 +84,31 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
     onNavigate(metric.target, metric.targetFilter || null);
   };
 
+  // Die Schnellaktionen erscheinen unter genau der Bedingung, unter der sie
+  // auch bisher standen: Lager eingerichtet und mindestens ein Artikel. Im
+  // leeren Lager trägt der Einstieg die EINE Hauptaktion — zwei identische
+  // Hauptaktionen untereinander wären eine Dopplung.
+  const schnellaktionen = !loading && hatLager && stats && !leer;
+
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title="Lagerübersicht"
         subtitle="Bestand, Reservierungen und offene Aufträge auf einen Blick."
         utility={utility}
+        actions={schnellaktionen && (
+          <>
+            <button type="button" className="btn btn-outline" onClick={() => onNavigate("orders")}>
+              Auftrag erstellen
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => onNavigate("stock")}>
+              Bestand einbuchen
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => onNavigate("products")}>
+              Artikel anlegen
+            </button>
+          </>
+        )}
       />
 
       <InlineError text={error} onRetry={load} />
@@ -94,7 +117,6 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
 
       {!loading && !hatLager && (
         <EmptyState
-          icon="layers"
           title="Noch kein Lager angelegt"
           text="Bestand, Artikel und Aufträge brauchen mindestens ein Lager. Legen Sie Ihr Hauptlager an — weitere Lager können Sie jederzeit ergänzen."
           action={
@@ -109,8 +131,9 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
         <>
           {/* Die Kennzahlen bleiben in JEDEM Zustand sichtbar — auch bei sechs
               Nullen. Sie sind der Rahmen der Seite; das Onboarding steht
-              darunter, nicht an ihrer Stelle. */}
-          <div className="inv-stat-grid">
+              darunter, nicht an ihrer Stelle. Ein flaches Band, kompakt und
+              ruhig — die operativen Listen darunter tragen die Arbeit. */}
+          <section className="inv-stat-band" aria-label="Kennzahlen des Lagers">
             {OVERVIEW_METRICS.map((m) => {
               const wert = stats[m.key];
               // Aufklappbar nur, wenn es auch etwas zu zeigen gibt: eine Karte,
@@ -120,7 +143,6 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
               return (
                 <InventoryStatCard
                   key={m.key}
-                  icon={m.icon}
                   label={m.label}
                   value={formatUnits(wert)}
                   hint={m.hint}
@@ -130,14 +152,13 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
                 />
               );
             })}
-          </div>
+          </section>
 
           {/* Zwei Zustände, ein Platz.
 
-              Eingerichtetes Lager: drei Schnellaktionen — keine Aktionsflut. Jede
-              führt auf einen Bereich, den die Sidebar ebenfalls kennt; hier ist
-              sie der kurze Weg in den jeweiligen Anlegevorgang. Darunter die
-              operativen Hinweise.
+              Eingerichtetes Lager: die operativen Hinweise. Die drei
+              Schnellaktionen stehen im Seitenkopf (siehe oben) — jede führt auf
+              einen Bereich, den die Sidebar ebenfalls kennt.
 
               Leeres Lager: EINE Karte, der Einstieg. Bewusst KEINE zweite
               Schnellaktionskarte darüber — sie trüge exakt denselben primären
@@ -147,27 +168,11 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
               erstellen" brauchen beide einen Artikel und würden ohnehin nur
               abgeschaltet dastehen; sie erscheinen, sobald es einen gibt. */}
           {leer ? <InventoryOnboarding onStart={() => onNavigate("products")} onNewShipment={onNewShipment} /> : (
-            <>
-              <section className="ce-card inv-quick">
-                <h2 className="inv-section-title">Schnellaktionen</h2>
-                <div className="inv-quick-row">
-                  <button type="button" className="btn btn-primary" onClick={() => onNavigate("products")}>
-                    <Icon n="plus" s={16} />Artikel anlegen
-                  </button>
-                  <button type="button" className="btn btn-outline" onClick={() => onNavigate("stock")}>
-                    <Icon n="packageMove" s={16} />Bestand einbuchen
-                  </button>
-                  <button type="button" className="btn btn-outline" onClick={() => onNavigate("orders")}>
-                    <Icon n="cart" s={16} />Auftrag erstellen
-                  </button>
-                </div>
-              </section>
-              <OperationalPanels
-                previews={previews}
-                onOpen={(key) => setOpenMetric(key)}
-                onNavigate={onNavigate}
-              />
-            </>
+            <OperationalPanels
+              previews={previews}
+              onOpen={(key) => setOpenMetric(key)}
+              onNavigate={onNavigate}
+            />
           )}
 
           <section className="ce-card inv-warehouses">
@@ -176,8 +181,8 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
               {warehouses.map((w) => (
                 <li key={w.id} className="inv-warehouse-item">
                   <span className="inv-warehouse-name">{w.name}</span>
-                  {w.isDefault && <span className="badge badge--info"><span className="badge-dot" aria-hidden="true" />Standard</span>}
-                  {w.status === "inactive" && <span className="badge badge--neutral"><span className="badge-dot" aria-hidden="true" />Inaktiv</span>}
+                  {w.isDefault && <span className="badge badge--info">Standard</span>}
+                  {w.status === "inactive" && <span className="badge badge--neutral">Inaktiv</span>}
                 </li>
               ))}
             </ul>
@@ -196,7 +201,6 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
         footer={dialogMetric && (
           <button type="button" className="btn btn-primary" onClick={() => zuBereich(dialogMetric)}>
             {dialogMetric.linkLabel}
-            <Icon n="chevronRight" s={16} />
           </button>
         )}
       >
@@ -220,7 +224,7 @@ export default function InventoryOverviewPage({ utility, onNavigate, onNewShipme
 }
 
 /* ── Einstieg für ein noch leeres Lager ──
-   Eine Karte, drei Schritte, eine Hauptaktion — kein Tutorial, keine Tour.
+   Eine Fläche, drei Schritte, eine Hauptaktion — kein Tutorial, keine Tour.
    Der dezente zweite Weg ist wichtig: die Lagerverwaltung ist eine ERWEITERUNG,
    kein Pflichtweg. Wer nur versenden will, muss hier wieder herausfinden. */
 function InventoryOnboarding({ onStart, onNewShipment }) {
@@ -256,12 +260,11 @@ function InventoryOnboarding({ onStart, onNewShipment }) {
       </ol>
       <div className="inv-onboarding-actions">
         <button type="button" className="btn btn-primary" onClick={onStart}>
-          <Icon n="plus" s={16} />Ersten Artikel anlegen
+          Ersten Artikel anlegen
         </button>
         {onNewShipment && (
           <button type="button" className="btn btn-link" onClick={onNewShipment}>
             Neue Sendung ohne Lager
-            <Icon n="chevronRight" s={14} />
           </button>
         )}
       </div>
@@ -291,7 +294,7 @@ function OperationalPanels({ previews, onOpen, onNavigate }) {
           </div>
           <InventoryPreviewList rows={niedrig} emptyText="" />
           <button type="button" className="btn btn-link btn-sm inv-ops-all" onClick={() => onNavigate("stock", "low")}>
-            Alle anzeigen<Icon n="chevronRight" s={14} />
+            Alle anzeigen
           </button>
         </section>
       )}
@@ -305,7 +308,7 @@ function OperationalPanels({ previews, onOpen, onNavigate }) {
           </div>
           <InventoryPreviewList rows={auftraege} emptyText="" />
           <button type="button" className="btn btn-link btn-sm inv-ops-all" onClick={() => onNavigate("orders", "open")}>
-            Alle anzeigen<Icon n="chevronRight" s={14} />
+            Alle anzeigen
           </button>
         </section>
       )}

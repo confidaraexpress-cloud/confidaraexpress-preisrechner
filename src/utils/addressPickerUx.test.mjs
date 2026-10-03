@@ -411,7 +411,10 @@ test("F3 keine neue Abhängigkeit für die Auswahl", () => {
 });
 
 test("F4 nichts wird in der Darstellung abgeschnitten", () => {
-  const block = abkCss.slice(abkCss.indexOf(".abk-pick-panel"), abkCss.indexOf("@media (max-width: 860px)"));
+  // Redesign 2026-10: addressbook.css trägt inzwischen auch VOR der Adressauswahl
+  // eine 860-px-Query — gemessen wird bis zur nächsten Query NACH dem Panel.
+  const start = abkCss.indexOf(".abk-pick-panel");
+  const block = abkCss.slice(start, abkCss.indexOf("@media (max-width: 860px)", start));
   assert.doesNotMatch(block, /text-overflow|line-clamp|white-space:\s*nowrap/);
   assert.match(block, /\.abk-pick-name \{[^}]*overflow-wrap: break-word/);
   assert.match(block, /\.abk-pick-person \{[^}]*overflow-wrap: break-word/);

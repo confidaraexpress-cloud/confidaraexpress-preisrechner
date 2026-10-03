@@ -288,9 +288,10 @@ test("13 — es gibt genau ein Markenbauteil mit drei Varianten und sechs Assets
   assert.match(brandLogo, /wordmark:\s*\{/);
   assert.match(brandLogo, /lockup:\s*\{/);
   assert.match(brandLogo, /tone = "standard"/);
-  // Außer dem Bauteil greift nur das Übersichts-Wasserzeichen direkt auf ein Asset zu.
+  // Außer dem Bauteil greift niemand direkt auf ein Asset zu — seit dem
+  // Redesign 2026-10 auch nicht mehr das (entfallene) Übersichts-Wasserzeichen.
   const direkt = QUELLEN.filter(([, s]) => /assets\/brand\//.test(s)).map(([f]) => f).sort();
-  assert.deepEqual(direkt, ["BrandLogo.jsx", "Overview.jsx"], `unerwartete Markenimporte: ${direkt}`);
+  assert.deepEqual(direkt, ["BrandLogo.jsx"], `unerwartete Markenimporte: ${direkt}`);
   for (const [datei, src] of QUELLEN) {
     const rein = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     assert.ok(!rein.includes("confidara-master"), `${datei}: der Master gehört nicht ins Bundle`);
@@ -413,9 +414,8 @@ test("18 — es entsteht kein seitenweites Wasserzeichen", () => {
     assert.ok(!/background[^;}]*url\([^)]*(signet|wordmark|lockup|brand\/|favicon)/i.test(regeln),
       `${datei}: Markenasset als Hintergrundbild`);
   }
+  // Redesign 2026-10: auch das lokale Trust-Wasserzeichen der Übersicht ist
+  // entfallen — es gibt keine Markendekoration auf Arbeitsflächen.
   const wm = QUELLEN.filter(([, s]) => /className="[^"]*watermark/i.test(s)).map(([f]) => f).sort();
-  assert.deepEqual(wm, ["Overview.jsx"], `unerwartete Wasserzeichen: ${wm}`);
-  const block = stripComments(read("./overview.css")).match(/\.pp-trust-watermark \{([^}]*)\}/)?.[1] ?? "";
-  assert.match(block, /position:\s*absolute/);
-  assert.doesNotMatch(block, /position:\s*(fixed|sticky)/);
+  assert.deepEqual(wm, [], `unerwartete Wasserzeichen: ${wm}`);
 });

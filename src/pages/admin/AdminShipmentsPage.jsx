@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
@@ -143,7 +142,7 @@ function StatusCell({ row }) {
         <span className="adm-ship-markers">
           {markers.map((m) => (
             <span key={m.key} className="adm-ship-marker">
-              <Icon n={m.key === "tracking" ? "mapPin" : "invoice"} s={12} /> {m.label}
+              {m.label}
             </span>
           ))}
         </span>
@@ -325,15 +324,15 @@ export default function AdminShipmentsPage() {
             {Number.isFinite(draftTotal) && draftTotal > 0 && (
               <button
                 type="button"
-                className="btn btn-outline btn-sm adm-btn-danger"
+                className="btn btn-outline btn-sm adm-danger-outline"
                 onClick={() => { setDeleteError(""); setDeleteNotice(""); setBulkOpen(true); }}
                 disabled={loading || deleteBusy}
               >
-                <Icon n="trash" s={14} /> {draftBulkConfirmLabel(draftTotal)}
+                {draftBulkConfirmLabel(draftTotal)}
               </button>
             )}
             <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading || deleteBusy}>
-              <Icon n="refresh" s={14} /> Aktualisieren
+              Aktualisieren
             </button>
           </>
         )}
@@ -344,12 +343,12 @@ export default function AdminShipmentsPage() {
           gewandert ist. role="status"/"alert" macht sie auch für Screenreader hörbar. */}
       {deleteNotice && !deleteError && (
         <div className="adm-note adm-note--info adm-head-note" role="status">
-          <Icon n="check" s={14} /> {deleteNotice}
+          {deleteNotice}
         </div>
       )}
       {deleteError && !pendingDelete && !bulkOpen && (
         <div className="adm-note adm-note--warning adm-head-note" role="alert">
-          <Icon n="info" s={14} /> {deleteError}
+          {deleteError}
         </div>
       )}
 
@@ -386,7 +385,7 @@ export default function AdminShipmentsPage() {
         </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-            <Icon n="filter" s={14} /> Anwenden
+            Anwenden
           </button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters} disabled={loading}>
             Zurücksetzen
@@ -406,7 +405,7 @@ export default function AdminShipmentsPage() {
           <span className="adm-filter-chips-label">Aktive Filter:</span>
           {chips.map((c) => <span key={c.key} className="adm-chip">{c.label}</span>)}
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters} disabled={loading}>
-            <Icon n="x" s={13} /> Filter zurücksetzen
+            Filter zurücksetzen
           </button>
         </div>
       )}
@@ -421,7 +420,7 @@ export default function AdminShipmentsPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -429,12 +428,11 @@ export default function AdminShipmentsPage() {
       ) : emptyState.show ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n={hasActiveShipmentFilters(applied) ? "search" : "package"} s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasActiveShipmentFilters(applied) && (
               <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
-                <Icon n="x" s={13} /> Filter zurücksetzen
+                Filter zurücksetzen
               </button>
             )}
           </div>
@@ -469,22 +467,27 @@ export default function AdminShipmentsPage() {
                       <td className="adm-num"><PriceCell row={row} /></td>
                       <td className="adm-col-action">
                         <div className="adm-row-actions">
-                          {f.id != null && (
-                            <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
-                          )}
                           {/* Ausschließlich bei Entwürfen. Bei jeder anderen Zeile
-                              existiert der Knopf gar nicht — nicht nur deaktiviert. */}
+                              existiert der Knopf gar nicht — nicht nur deaktiviert.
+                              Seit dem Redesign (2026-10) eine rote TEXTaktion als
+                              sekundäre Handlung statt eines roten Iconknopfs; die
+                              Bestätigung läuft unverändert über den Dialog. Sie
+                              steht VOR „Details", damit „Details" in jeder Zeile
+                              an derselben Stelle am rechten Rand bleibt. */}
                           {canDeleteShipmentDraft(row) && (
                             <button
                               type="button"
-                              className="btn btn-icon btn-sm adm-btn-danger"
+                              className="btn btn-ghost btn-sm adm-row-danger"
                               onClick={() => { setDeleteError(""); setDeleteNotice(""); setPendingDelete({ id: f.id, label: shipmentIdentity(row).primary }); }}
                               disabled={deleteBusy}
                               aria-label={`Entwurf ${shipmentIdentity(row).primary} löschen`}
                               title="Entwurf löschen"
                             >
-                              <Icon n="trash" s={14} />
+                              Löschen
                             </button>
+                          )}
+                          {f.id != null && (
+                            <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
                           )}
                         </div>
                       </td>
@@ -511,20 +514,20 @@ export default function AdminShipmentsPage() {
                     <div><dt>Preis</dt><dd><PriceCell row={row} /></dd></div>
                   </dl>
                   <div className="adm-scard-actions">
-                    {f.id != null && (
-                      <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
-                    )}
-                    {/* Auf der Karte trägt die Aktion ihre Beschriftung sichtbar — dort
-                        ist Platz, und ein alleinstehendes Icon wäre schwerer zu treffen. */}
+                    {/* Dieselbe rote Textaktion wie in der Tabellenzeile, in
+                        derselben Reihenfolge: „Details" steht rechts. */}
                     {canDeleteShipmentDraft(row) && (
                       <button
                         type="button"
-                        className="btn btn-outline btn-sm adm-btn-danger"
+                        className="btn btn-ghost btn-sm adm-row-danger"
                         onClick={() => { setDeleteError(""); setDeleteNotice(""); setPendingDelete({ id: f.id, label: shipmentIdentity(row).primary }); }}
                         disabled={deleteBusy}
                       >
-                        <Icon n="trash" s={14} /> Löschen
+                        Löschen
                       </button>
+                    )}
+                    {f.id != null && (
+                      <Link className="btn btn-outline btn-sm" to={detailPath(f.id)}>Details</Link>
                     )}
                   </div>
                 </li>
@@ -544,7 +547,7 @@ export default function AdminShipmentsPage() {
               weitere Seite nicht ausschließen. */}
           {pagination.showNav && (
             <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-              <Icon n="chevronLeft" s={14} /> Zurück
+              Zurück
             </button>
           )}
           {/* aria-live: ein Seitenwechsel wird Screenreadern angesagt, ohne den
@@ -552,7 +555,7 @@ export default function AdminShipmentsPage() {
           <span className="adm-page-ind" aria-live="polite">{pagination.label}</span>
           {pagination.showNav && (
             <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-              Weiter <Icon n="chevronRight" s={14} />
+              Weiter
             </button>
           )}
         </div>
@@ -566,8 +569,6 @@ export default function AdminShipmentsPage() {
           text="Dieser Entwurf wird endgültig gelöscht. Gebuchte oder abgeschlossene Sendungen sind davon nicht betroffen."
           subline={pendingDelete.label ? `Sendung ${pendingDelete.label}` : undefined}
           note={deleteError || "Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."}
-          icon="trash"
-          confirmIcon="trash"
           confirmLabel="Entwurf löschen"
           danger
           busy={deleteBusy}
@@ -586,8 +587,6 @@ export default function AdminShipmentsPage() {
           title="Entwürfe bereinigen?"
           text={draftBulkConfirmText(draftTotal)}
           note={deleteError || "Gilt systemweit — unabhängig von den gesetzten Filtern. Die Aktion wird im Admin-Audit protokolliert."}
-          icon="trash"
-          confirmIcon="trash"
           confirmLabel={draftBulkConfirmLabel(draftTotal)}
           danger
           busy={deleteBusy}

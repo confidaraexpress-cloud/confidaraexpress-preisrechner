@@ -426,11 +426,11 @@ export function classifyFormDraftTransition(transition) {
 const FORM_DRAFT_START_ERRORS = {
   FORM_DRAFT_CONFLICT: {
     kind: "conflict", clearsSource: false, allowsReload: true,
-    message: "Dieser Entwurf wurde inzwischen geändert. Lade die aktuelle Version neu, bevor du fortfährst.",
+    message: "Dieser Entwurf wurde inzwischen geändert. Laden Sie die aktuelle Version neu, bevor Sie fortfahren.",
   },
   FORM_DRAFT_NOT_FOUND: {
     kind: "notFound", clearsSource: true, allowsReload: false,
-    message: "Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neue Sendung weiterverwenden.",
+    message: "Dieser Entwurf ist nicht mehr verfügbar. Sie können die aktuellen Angaben als neue Sendung weiterverwenden.",
   },
   FORM_DRAFT_CONVERSION_IN_PROGRESS: {
     kind: "inProgress", clearsSource: false, allowsReload: false,

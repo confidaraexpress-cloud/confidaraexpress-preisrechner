@@ -315,8 +315,10 @@ test("Smoke 9 — im Adressbuch stehen dieselben Vorschläge zur Verfügung", as
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await page.goto(`${BASE}/dashboard?page=addressbook`, { waitUntil: "domcontentloaded" });
-  // Die Adressbuchseite öffnet den Drawer über „Neue Adresse“.
-  const neu = page.getByRole("button", { name: /Neue Adresse/ }).first();
+  // Die Adressbuchseite öffnet den Drawer über ihre Anlegeaktion. Redesign
+  // 2026-10: ist der Bereich leer, trägt sie allein der Leerzustand („Eigene
+  // Adresse anlegen" / „Empfänger anlegen"), sonst „Neue Adresse" im Kopf.
+  const neu = page.getByRole("button", { name: /Neue Adresse|Eigene Adresse anlegen|Empfänger anlegen/ }).first();
   await neu.waitFor({ timeout: 20000 });
   await neu.click();
   await page.waitForSelector("#abk-streetAndNumber", { timeout: 20000 });

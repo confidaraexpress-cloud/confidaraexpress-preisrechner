@@ -89,10 +89,14 @@ test("B2 der redundante „Öffnen“-Knopf ist weg", () => {
   assert.doesNotMatch(listCode, />Öffnen</, "zweiter Weg zum selben Ziel in derselben Zeile");
 });
 
-test("B3 „Versand vorbereiten“ bleibt die primäre Zeilenaktion", () => {
-  assert.match(listPage, /className="btn btn-sm btn-primary"[\s\S]{0,200}?Versand vorbereiten/);
-  // Genau eine primäre Aktion je Zeile — in Tabelle und Karte.
-  assert.equal((listPage.match(/btn-sm btn-primary/g) || []).length, 2);
+test("B3 „Versand vorbereiten“ bleibt die hervorgehobene Zeilenaktion", () => {
+  // Redesign 2026-10: gefüllte Primärknöpfe gibt es nur einmal je Seite
+  // (Seitenkopf bzw. Leerzustand). Die Zeilenaktion bleibt hervorgehoben — als
+  // Secondary — und ist in Tabelle UND Karte genau einmal vorhanden.
+  assert.match(listPage, /className="btn btn-sm btn-outline"[\s\S]{0,200}?Versand vorbereiten/);
+  assert.equal((listPage.match(/btn-sm btn-outline/g) || []).length, 2);
+  assert.equal((listPage.match(/btn-sm btn-primary/g) || []).length, 0,
+    "ein gefüllter Primärknopf je Zeile hebt die Seitenhierarchie auf");
 });
 
 test("B4 kein künstliches Zeilenmenü", () => {
@@ -187,9 +191,14 @@ test("C3 Grundstruktur und Positionstabelle bleiben erhalten", () => {
   for (const titel of ["Empfänger", "Positionen", "Verbundene Sendungen"]) {
     assert.ok(detailPage.includes(`<h2 className="inv-section-title">${titel}</h2>`), `Abschnitt ${titel} fehlt`);
   }
-  for (const spalte of ["SKU", "Artikel", "Bestellt", "Reserviert", "Versendet", "Stückgewicht"]) {
+  // Redesign 2026-10: die SKU steht als sekundäre Zeile UNTER dem Artikelnamen
+  // statt in einer eigenen schmalen Spalte — angezeigt bleibt sie unverändert
+  // (in Tabelle UND Mobilkarte).
+  for (const spalte of ["Artikel", "Bestellt", "Reserviert", "Versendet", "Stückgewicht"]) {
     assert.ok(detailPage.includes(`>${spalte}</th>`), `Positionsspalte ${spalte} fehlt`);
   }
+  assert.ok((detailPage.match(/<span className="inv-cell-sku">\{it\.sku\}<\/span>/g) || []).length >= 2,
+    "die SKU der Position fehlt in Tabelle oder Mobilkarte");
   assert.match(detailPage, /<dt>Lager<\/dt>/);
   assert.match(detailPage, /<dt>Erstellt<\/dt>/);
 });

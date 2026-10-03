@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { useLaunchScope } from "../../hooks/useLaunchScope";
 import { postalCodeExample, postalCodeInputMode, postalCodeMaxLength, isPostalCodeRequired } from "../../utils/postalCode.mjs";
 import {
@@ -153,15 +152,15 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
       >
         <div className="abk-drawer-header">
           <h2 id="abk-drawer-title" className="abk-drawer-title">{TITLES[mode] || TITLES.create}</h2>
-          <button type="button" className="abk-drawer-close" aria-label="Drawer schließen" onClick={requestClose}>
-            <Icon n="x" s={16} />
+          <button type="button" className="btn btn-ghost btn-sm abk-drawer-close" aria-label="Formular schließen" onClick={requestClose}>
+            Schließen
           </button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "contents" }}>
           <div className="abk-drawer-body">
             {submitError && (
-              <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={15} />{submitError}</div>
+              <div className="alert alert-error mb-16" role="alert">{submitError}</div>
             )}
 
             {/* Abschnitt 1 — Zuordnung */}
@@ -316,8 +315,7 @@ export function AddressFormDrawer({ mode, initialForm, onSubmit, onClose }) {
                 <label className="field-label" htmlFor="abk-notes">Interne Notiz <span className="field-optional">(optional)</span></label>
                 <textarea
                   id="abk-notes"
-                  className="field-input"
-                  style={{ minHeight: 80, resize: "vertical", fontFamily: "var(--ce-font-sans)" }}
+                  className="field-input field-textarea"
                   value={form.notes}
                   onChange={(e) => upd("notes", e.target.value)}
                   maxLength={500}

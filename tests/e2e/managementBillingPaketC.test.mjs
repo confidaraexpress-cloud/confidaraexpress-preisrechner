@@ -113,7 +113,9 @@ test("die Adressbuch-Suche überdeckt die sichtbare Liste nicht mit einem Skelet
   const timer = setInterval(async () => {
     try { if (await page.locator(".abk-skeleton-row").count() > 0) sawSkeleton = true; } catch { /* Seite ggf. schon zu */ }
   }, 25);
-  await page.getByPlaceholder("Suche nach Label, Firma, Ort, PLZ").fill("Zentral");
+  // Redesign 2026-10: das Suchfeld trägt eine sichtbare Beschriftung; es wird
+  // über seine stabile id angesprochen, nicht über den Platzhalter.
+  await page.locator("#abk-search-input").fill("Zentral");
   await page.waitForTimeout(700);
   clearInterval(timer);
 

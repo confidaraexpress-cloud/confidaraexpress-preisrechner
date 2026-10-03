@@ -279,11 +279,17 @@ test("2 — die Gruppe hat KEINE eigene Fläche; die Hierarchie kommt aus Abstan
      zusätzlich, dass die Hierarchie überhaupt sichtbar ist, nur eben über
      Abstand und Einrückung statt über Flächen und Kanten. */
   const gruppe = page.locator(".pp-nav-group").filter({ hasText: "Lager & Aufträge" }).first();
+  /* Redesign 2026-10: den Abstand zwischen den Gruppen trägt die Navigation
+     selbst (`gap` an .pp-nav) statt eines margin-top je Gruppe. Gemessen wird
+     deshalb der tatsächliche Abstand zum vorherigen Eintrag — dieselbe
+     Aussage, unabhängig davon, welche Regel ihn erzeugt. */
   const stil = await gruppe.evaluate((el) => {
     const s = getComputedStyle(el);
+    const vorher = el.previousElementSibling;
     return {
       bg: s.backgroundColor, border: s.borderTopWidth, radius: s.borderTopLeftRadius,
-      shadow: s.boxShadow, filter: s.backdropFilter, abstand: parseFloat(s.marginTop),
+      shadow: s.boxShadow, filter: s.backdropFilter,
+      abstand: vorher ? el.getBoundingClientRect().top - vorher.getBoundingClientRect().bottom : 0,
     };
   });
   assert.equal(stil.bg, "rgba(0, 0, 0, 0)", "die Gruppe hat wieder eine eigene Fläche");
@@ -317,7 +323,9 @@ test("3 — jeder der fünf Bereiche lässt sich öffnen und zeigt genau einen S
     const koepfe = page.locator(".ce-page-header");
     assert.equal(await koepfe.count(), 1, `${label}: ${await koepfe.count()} Seitenköpfe`);
     assert.equal(await page.locator(".ce-page-header-title").innerText(), titel);
-    assert.equal(await page.locator(".ce-page-header-eyebrow").innerText(), "LAGER & AUFTRÄGE".toUpperCase().slice(0, 0) || await page.locator(".ce-page-header-eyebrow").innerText());
+    // Redesign 2026-10: keine Versal-Eyebrow mehr über dem Titel — die
+    // Bereichszugehörigkeit zeigt die Navigation.
+    assert.equal(await page.locator(".ce-page-header-eyebrow").count(), 0, `${label}: die Eyebrow ist zurück`);
     // Und der Eintrag ist als aktiv erkennbar.
     const aktiv = (await page.locator(".pp-nav-group-items .nitem.on span").textContent()).trim();
     assert.equal(aktiv, label);

@@ -1,6 +1,5 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 import {
   approvalGateExplanation,
   confirmedMarkupLine,
@@ -40,7 +39,6 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
         aria-labelledby="adm-approve-title"
         aria-describedby="adm-approve-desc"
       >
-        <div className="adm-modal-icon adm-modal-icon-approve" aria-hidden="true"><Icon n="check" s={22} /></div>
         <h2 id="adm-approve-title" className="adm-modal-title">{title}</h2>
         <p className="adm-modal-sub">{targetLabel}</p>
         <p id="adm-approve-desc" className="adm-modal-text">
@@ -48,7 +46,7 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
         </p>
         {/* Der bestätigte Aufschlag ist im Dialog noch einmal sichtbar. */}
         {markupLine && (
-          <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
+          <p className="adm-approve-markup">{markupLine}</p>
         )}
         <div className="adm-modal-actions">
           <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
@@ -63,7 +61,7 @@ function ApprovalDialog({ title, targetLabel, markupLine, busy, onCancel, onConf
           >
             {busy
               ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
-              : <><Icon n="check" s={14} /> Freischalten bestätigen</>}
+              : <>Freischalten bestätigen</>}
           </button>
         </div>
       </div>
@@ -103,14 +101,14 @@ export function CustomerApprovalCard({
 
   return (
     <div className="adm-card adm-approve-card">
-      <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Kontostatus</div>
+      <div className="adm-card-head">Kontostatus</div>
       <div className="adm-card-body">
         {message && (
           <div
             className={`alert ${message.type === "success" ? "alert-success" : message.type === "info" ? "alert-info" : "alert-error"}`}
             role={message.type === "error" ? "alert" : "status"}
           >
-            <Icon n={message.type === "error" ? "x" : message.type === "info" ? "info" : "check"} s={16} />{message.text}
+            {message.text}
           </div>
         )}
 
@@ -120,7 +118,7 @@ export function CustomerApprovalCard({
             <p className="adm-danger-item-desc">{copy.description}</p>
             {!alreadyApproved && copy.hint && (
               <p className="adm-danger-item-desc adm-approve-reactivation">
-                <Icon n="info" s={14} /> {markupRequirementText(g.currentStatus)}
+                {markupRequirementText(g.currentStatus)}
               </p>
             )}
             <p className="adm-support-hint" style={{ marginTop: 6 }}>Statusänderungen werden protokolliert.</p>
@@ -134,7 +132,7 @@ export function CustomerApprovalCard({
                 disabled={busy || !g.allowed}
                 aria-describedby={!g.allowed ? "adm-approve-gate" : undefined}
               >
-                <Icon n="check" s={13} /> {cta}
+                {cta}
               </button>
             )}
             {/* Blockieren ist erreichbar, aber bewusst zurückhaltend gestaltet —
@@ -147,7 +145,7 @@ export function CustomerApprovalCard({
                 disabled={busy || blockDisabled}
                 aria-describedby={blockDisabled && blockDisabledReason ? "adm-block-reason" : undefined}
               >
-                <Icon n="lock" s={13} /> Kunde blockieren
+                Kunde blockieren
               </button>
             )}
           </div>
@@ -157,13 +155,12 @@ export function CustomerApprovalCard({
             bleibt sichtbar — der Grund steht unmittelbar daneben. */}
         {!g.allowed && !alreadyApproved && explanation.title && (
           <div className="adm-b2b-warn adm-approve-gate" id="adm-approve-gate" role="status">
-            <Icon n="shield" s={16} />
             <span>
               <strong>{explanation.title}</strong>
               <span className="adm-b2b-warn-text">{explanation.text}</span>
               {explanation.cta && typeof onJumpToMarkup === "function" && (
                 <button type="button" className="btn btn-outline btn-sm adm-approve-jump" onClick={onJumpToMarkup}>
-                  <Icon n="arrowRight" s={13} /> {explanation.cta}
+                  {explanation.cta}
                 </button>
               )}
             </span>
@@ -177,7 +174,7 @@ export function CustomerApprovalCard({
         {/* Bestätigter Aufschlag auch außerhalb des Dialogs sichtbar. */}
         {markupLine && !alreadyApproved && (
           <p className="adm-approve-markup adm-approve-markup-inline">
-            <Icon n="euro" s={15} /> {markupLine}
+            {markupLine}
           </p>
         )}
       </div>

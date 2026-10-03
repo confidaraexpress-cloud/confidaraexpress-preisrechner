@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import { getAdminCancellationRequest, updateAdminCancellationRequest } from "../../api/adminApi";
@@ -181,7 +180,7 @@ export default function AdminCancellationRequestDetailPage() {
 
   const back = (
     <Link to="/admin/cancellation-requests" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Übersicht
+      Zurück zur Übersicht
     </Link>
   );
 
@@ -197,7 +196,7 @@ export default function AdminCancellationRequestDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Stornierungsanfrage nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-title">Stornierungsanfrage nicht gefunden</div></div></div>
       </div>
     );
   }
@@ -206,10 +205,10 @@ export default function AdminCancellationRequestDetailPage() {
       <div className="adm-page">
         {back}
         <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+          <div className="alert alert-error" role="alert">{error || GENERIC_ERROR}</div>
           <div className="adm-loaderr-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
             <Link className="btn btn-outline btn-sm" to="/admin/cancellation-requests">Zurück zur Übersicht</Link>
           </div>
@@ -306,7 +305,6 @@ export default function AdminCancellationRequestDetailPage() {
   const alertClass = saveMsg
     ? (saveMsg.type === "success" ? "alert-success" : saveMsg.type === "info" ? "alert-info" : "alert-error")
     : "";
-  const alertIcon = saveMsg ? (saveMsg.type === "success" ? "check" : saveMsg.type === "info" ? "info" : "x") : "x";
 
   return (
     <div className="adm-page">
@@ -315,7 +313,6 @@ export default function AdminCancellationRequestDetailPage() {
           welchen Vorgang man ansieht, dann was für ihn gilt. */}
       <PageHeader
         variant="admin"
-        eyebrow="Verwaltung"
         backLink={back}
         title={`Stornierungsanfrage ${cancellationLabel(req).replace("Anfrage ", "")}`}
         subtitle={(
@@ -327,8 +324,8 @@ export default function AdminCancellationRequestDetailPage() {
         meta={(
           <>
             <span className={`badge ${statusCls}`}>{statusLabel}</span>
-            <span className="adm-chip"><Icon n="calendar" s={13} /> Eingegangen {fmtDateTime(req.createdAt)}</span>
-            <span className="adm-chip"><Icon n="clock" s={13} /> Zuletzt geändert {fmtDateTime(req.updatedAt)}</span>
+            <span className="adm-chip">Eingegangen {fmtDateTime(req.createdAt)}</span>
+            <span className="adm-chip">Zuletzt geändert {fmtDateTime(req.updatedAt)}</span>
           </>
         )}
       />
@@ -336,7 +333,6 @@ export default function AdminCancellationRequestDetailPage() {
       {/* Scope-Trennung: unmissverständlich, dass dies KEINE echte Stornierung
           beim Carrier/JUMiNGO ist und keine Erstattung/Gutschrift auslöst. */}
       <div className="adm-scope-note" role="note">
-        <Icon n="info" s={18} />
         <div>
           <strong>Interner Verwaltungsvorgang.</strong> Das Bearbeiten dieser Anfrage ändert nur ihren
           internen Bearbeitungsstatus bzw. Vermerk. Es wird <strong>keine</strong> Stornierung beim
@@ -347,14 +343,13 @@ export default function AdminCancellationRequestDetailPage() {
 
       {saveMsg && (
         <div className={`alert ${alertClass}`}>
-          <Icon n={alertIcon} s={16} />{saveMsg.text}
+          {saveMsg.text}
         </div>
       )}
 
       {conflict && (
         <div className="adm-conflict" role="alert" aria-live="assertive">
           <div className="adm-conflict-text">
-            <Icon n="refresh" s={16} />
             <span>
               {CANCELLATION_CONFLICT_TEXT} Ihre Änderung wurde <strong>nicht</strong> gespeichert.
               {conflict.current && (
@@ -366,7 +361,7 @@ export default function AdminCancellationRequestDetailPage() {
           </div>
           <div className="adm-conflict-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={reloadCurrent} disabled={saving}>
-              <Icon n="refresh" s={14} /> {CANCELLATION_CONFLICT_RELOAD}
+              {CANCELLATION_CONFLICT_RELOAD}
             </button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setConflict(null)} disabled={saving}>
               Abbrechen
@@ -379,7 +374,7 @@ export default function AdminCancellationRequestDetailPage() {
       <div className="adm-cards">
         {/* 2) Kundenwunsch / Grund (voller Text, read-only) */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="mail" s={17} /> Kundenwunsch</div>
+          <div className="adm-card-head">Kundenwunsch</div>
           <div className="adm-card-body">
             {req.reason && String(req.reason).trim() !== ""
               ? <p className="adm-reason">{String(req.reason)}</p>
@@ -389,7 +384,7 @@ export default function AdminCancellationRequestDetailPage() {
 
         {/* 3) Sendungsdaten (read-only, aus dem Join) */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="package" s={17} /> Sendung</div>
+          <div className="adm-card-head">Sendung</div>
           <div className="adm-card-body">
             <KV items={[
               [NUMBER_LABELS.orderConfirmation, ship.known
@@ -414,7 +409,7 @@ export default function AdminCancellationRequestDetailPage() {
             {sid != null && String(sid).trim() !== "" && (
               <div className="adm-track-link">
                 <Link className="btn btn-outline btn-sm" to={`/admin/shipments/${encodeURIComponent(sid)}`}>
-                  <Icon n="arrowRight" s={14} /> Sendung öffnen
+                  Sendung öffnen
                 </Link>
               </div>
             )}
@@ -423,7 +418,7 @@ export default function AdminCancellationRequestDetailPage() {
 
         {/* 4) Kundendaten (read-only, aus dem Join) */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="idcard" s={17} /> Kunde</div>
+          <div className="adm-card-head">Kunde</div>
           <div className="adm-card-body">
             <KV items={[
               ["Firma", cust.known ? cust.primary : <span className="adm-muted">{cust.primary}</span>],
@@ -434,7 +429,7 @@ export default function AdminCancellationRequestDetailPage() {
             {req.customer?.id != null && (
               <div className="adm-track-link">
                 <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(req.customer.id)}`}>
-                  <Icon n="arrowRight" s={14} /> Kundenkonto öffnen
+                  Kundenkonto öffnen
                 </Link>
               </div>
             )}
@@ -443,7 +438,7 @@ export default function AdminCancellationRequestDetailPage() {
 
         {/* 5) Interne Bearbeitung — Status (nur nicht-terminal) + Notiz (immer) */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Interne Bearbeitung</div>
+          <div className="adm-card-head">Interne Bearbeitung</div>
           <div className="adm-card-body">
             {/* Statusbereich */}
             {statusEditable ? (
@@ -493,7 +488,7 @@ export default function AdminCancellationRequestDetailPage() {
               <button type="button" className="btn btn-primary btn-sm" onClick={requestSave} disabled={!canSave}>
                 {saving
                   ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
-                  : <><Icon n="check" s={14} /> Änderung speichern</>}
+                  : <>Änderung speichern</>}
               </button>
               {!dirty && !saving && (
                 <span className="adm-support-hint" style={{ marginTop: 0, alignSelf: "center" }}>
@@ -512,7 +507,7 @@ export default function AdminCancellationRequestDetailPage() {
 
         {/* 6) Verlauf */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="clock" s={17} /> Verlauf</div>
+          <div className="adm-card-head">Verlauf</div>
           <div className="adm-card-body">
             <KV items={[
               ["Eingegangen am", fmtDateTime(req.createdAt)],
@@ -537,8 +532,8 @@ export default function AdminCancellationRequestDetailPage() {
         {/* 7) Technische Informationen — eingeklappt, natives <details>. */}
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
-            <Icon n="settings" s={17} /> Technische Informationen
-            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
           </summary>
           <div className="adm-card-body">
             <KV items={[
@@ -558,14 +553,12 @@ export default function AdminCancellationRequestDetailPage() {
           dass KEINE Carrier-/JUMiNGO-Stornierung ausgelöst wird. */}
       {decision && (
         <ConfirmDialog
-          icon={decision === "accepted" ? "check" : "x"}
           danger={decision === "rejected"}
           title={CANCELLATION_DECISION_DIALOG[decision].title}
           text={CANCELLATION_DECISION_DIALOG[decision].text}
           subline={`${cancellationLabel(req)} · ${cust.primary}`}
           note="Die Entscheidung wird im Admin-Audit protokolliert."
           confirmLabel={CANCELLATION_DECISION_DIALOG[decision].confirm}
-          confirmIcon={decision === "accepted" ? "check" : "x"}
           busy={saving}
           busyLabel="Wird gespeichert…"
           onCancel={() => { if (!saving) setDecision(null); }}

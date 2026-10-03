@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { validateEmailChangeForm, isEmailChangeFormValid, EMAIL_MAX_LENGTH } from "../../utils/emailChangeView.mjs";
 
@@ -75,7 +74,6 @@ export function EmailChangeDialog({ currentEmail, busy, error, onSubmit, onClose
         aria-describedby="ec-dialog-desc"
       >
         <div className="email-change-modal-head">
-          <div className="email-change-modal-icon" aria-hidden="true"><Icon n="mail" s={20} /></div>
           <h2 id="ec-dialog-title" className="email-change-modal-title">E-Mail-Adresse ändern</h2>
         </div>
         <p id="ec-dialog-desc" className="email-change-modal-desc">
@@ -85,7 +83,7 @@ export function EmailChangeDialog({ currentEmail, busy, error, onSubmit, onClose
 
         {error && (
           <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} /><span>{error}</span>
+            <span>{error}</span>
           </div>
         )}
 
@@ -133,7 +131,7 @@ export function EmailChangeDialog({ currentEmail, busy, error, onSubmit, onClose
           <div className="email-change-modal-actions">
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={busy}>Abbrechen</button>
             <button type="submit" className="btn btn-primary" disabled={!valid || busy}>
-              {busy ? <><span className="spinner" /> Wird geprüft …</> : <><Icon n="mail" s={14} /> Änderung bestätigen</>}
+              {busy ? <><span className="spinner" /> Wird geprüft …</> : "Änderung bestätigen"}
             </button>
           </div>
         </form>

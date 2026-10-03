@@ -833,13 +833,13 @@ test("G — Meine Sendungen: Mehrpaketsendung mit einer Nummer und zwei Belegen;
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
   const mehr = zeileVon(page, AB_MEHRFACH);
-  await mehr.getByRole("button", { name: "Sendung verfolgen" }).click();
+  await mehr.getByRole("button", { name: "Tracking", exact: true }).click();
   await page.waitForSelector(".ce-list-table .shipment-track-detail .track-event", { timeout: 15000 });
   const detail = page.locator(".ce-list-table .shipment-track-detail");
   assert.equal(norm(await page.locator(".ce-list-table .shipment-track-number").innerText()), `Trackingnummern: ${AWB_1}, ${AWB_2}`);
   assert.deepEqual(await alleTexte(detail.locator(".shipment-track-leg")), [`UPS · ${AWB_1}`, `UPS · ${AWB_2}`]);
   assert.doesNotMatch(norm(await detail.innerText()), /Paket \d|transglobal|UTC|GMT/i);
-  await mehr.getByRole("button", { name: "Sendung verfolgen" }).click(); // einklappen
+  await mehr.getByRole("button", { name: "Tracking", exact: true }).click(); // einklappen
 
   await mehr.getByRole("button", { name: "Dokumente" }).click();
   await page.waitForSelector(".sdoc-group-title", { timeout: 15000 });

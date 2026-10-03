@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { publicCarrierDisplay } from "../../utils/carrierMap";
 import { ParcelShopFinderTrigger } from "../offers/ParcelShopFinderTrigger";
 
@@ -24,7 +23,6 @@ export function DropoffNoticeModule({ tariff, senderPrefill, required = false, s
   return (
     <div className="calc-panel mb-16">
       <div className="calc-panel-header">
-        <Icon n="map" s={18} c="var(--ce-color-brand-ink)" />
         <h3>{required ? "Paketshop für die Abgabe wählen" : "Paketshop für die Abgabe finden"}</h3>
       </div>
       <div className="calc-panel-body">

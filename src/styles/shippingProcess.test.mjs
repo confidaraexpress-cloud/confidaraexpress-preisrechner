@@ -105,14 +105,16 @@ test("7 — Angebotskarten sind auf Interactive-Card-Tokens umgestellt", () => {
   const regel = offersCss.match(/\.offer-card\s*\{([^}]*)\}/);
   assert.ok(regel, ".offer-card muss in offers.css definiert sein");
   assert.match(regel[1], /var\(--ce-color-border-default\)/);
-  // Etwas rechteckiger + klarer abgehoben: Radius MD, Ruheschatten Elevation 2.
-  // Beides Tokens — die Regel schreibt keinen freien Radius- oder Schattenwert.
-  assert.match(regel[1], /var\(--ce-radius-md\)/);
-  assert.match(regel[1], /var\(--ce-elevation-2\)/);
+  // Redesign 2026-10: Karten tragen Radius 12 (LG). Feinschliff 2026-10: die
+  // Tarifkarte ist das Angebot der Seite und trägt wie in der Anfangsversion
+  // schon in Ruhe Stufe 2. Beides Tokens — die Regel schreibt keinen freien
+  // Radius- oder Schattenwert.
+  assert.match(regel[1], /var\(--ce-radius-lg\)/);
+  assert.match(regel[1], /box-shadow:\s*var\(--ce-elevation-2\)/);
   assert.ok(!/border-radius:\s*\d/.test(regel[1]), "kein freier Radiuswert");
   assert.ok(!/box-shadow:(?!\s*var\()/.test(regel[1]), "kein freier Schattenwert");
-  // Hover hebt NICHT die Tiefe an (Elevation 3 ist der Dialog-Overlay), sondern
-  // die Kante — sonst gäbe es für den Hover keine freie Stufe mehr.
+  // Hover bleibt auf Stufe 2 (Elevation 3 ist dem Dialog-Overlay vorbehalten)
+  // und zeigt sich an der stärkeren Kante.
   const hover = offersCss.match(/\.offer-card:hover\s*\{([^}]*)\}/);
   assert.ok(hover, ".offer-card:hover muss definiert sein");
   assert.match(hover[1], /var\(--ce-elevation-2\)/);
@@ -174,8 +176,10 @@ test("7c — das Frühzeit-Hinweisfeld nutzt Foundation-Tokens und trägt sichtb
   assert.match(karte, /\{end\.primary && <span className="offer-tl-primary">\{end\.primary\}<\/span>\}/);
   // Farbe ist nie der alleinige Träger: der Text steht vollständig im Feld.
   assert.match(karte, /\{earlyNote\}/);
-  assert.match(karte, /offer-early-note-icon[\s\S]{0,120}aria-hidden="true"/,
-    "das dekorative Icon muss vor Screenreadern verborgen sein");
+  // Redesign 2026-10: das Hinweisfeld trägt kein Symbol mehr — die Aussage steht
+  // vollständig im Text; es gibt kein dekoratives Element, das verborgen werden müsste.
+  assert.match(karte, /<p className="offer-early-note">\{earlyNote\}<\/p>/);
+  assert.ok(!/offer-early-note-icon/.test(karte), "das Hinweisfeld trägt wieder ein Symbol");
 });
 
 /* ══════════ 8 — Badge-Logik: „Günstigste" nie auf nicht verfügbarem Angebot ═ */

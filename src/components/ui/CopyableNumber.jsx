@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Icon } from "./Icon";
 
 // Zeigt eine Geschäftsnummer (Kunden-, Bestell- oder Rechnungsnummer) über die zentrale
 // `.mono`-Klasse an (proportionale Zahlenschrift mit tabular-nums, siehe layout.css) und
@@ -7,8 +6,9 @@ import { Icon } from "./Icon";
 // keine zusätzliche Karte: die Nummer fügt sich in das bestehende Layout ein.
 //
 // Barrierefreiheit:
-//   • Der Kopierbutton ist ein echter <button> (Tab/Enter/Space) mit sprechendem aria-label,
-//     das die Bezeichnung UND den Wert nennt.
+//   • Der Kopierbutton ist ein echter <button> (Tab/Enter/Space) mit sichtbarer
+//     Textbeschriftung „Kopieren" (Redesign 2026-10: kein Symbol mehr) und einem
+//     sprechenden aria-label, das die Bezeichnung UND den Wert nennt.
 //   • Die Rückmeldung „Kopiert" läuft über role="status" (aria-live) — sie ist damit nicht
 //     ausschließlich über Farbe/Icon erkennbar.
 //   • Die Nummer selbst bleibt vollständig als Text vorhanden (kein Abschneiden per CSS);
@@ -41,15 +41,13 @@ export function CopyableNumber({ value, label, size = "md" }) {
       <button
         type="button"
         onClick={copy}
-        className="btn btn-ghost btn-sm"
-        style={{ padding: "2px 6px", lineHeight: 1, flexShrink: 0 }}
+        className="btn btn-ghost btn-sm ce-copynum-btn"
         aria-label={`${label || "Nummer"} ${text} in die Zwischenablage kopieren`}
-        title="Kopieren"
       >
-        <Icon n={copied ? "check" : "copy"} s={13} />
+        Kopieren
       </button>
       {/* Nicht nur Farbe/Icon: die Statusmeldung wird Screenreadern aktiv mitgeteilt. */}
-      <span role="status" aria-live="polite" className="text-muted" style={{ fontSize: 11 }}>
+      <span role="status" aria-live="polite" className="text-muted" style={{ fontSize: 12 }}>
         {copied ? "Kopiert" : ""}
       </span>
     </span>

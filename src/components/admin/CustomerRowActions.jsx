@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { buildCustomerMenuModel, customerDisplayName } from "../../utils/adminCustomerView.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,20 +54,22 @@ export function CustomerRowActions({ user, currentAdminId, busy = false, onSelec
 
   return (
     <div className="adm-rowactions" ref={wrapRef}>
+      {/* Textauslöser statt Zahnrad (Redesign 2026-10): „Weitere Aktionen" —
+          der zugängliche Name beginnt mit dem sichtbaren Wort und nennt den
+          Kunden (WCAG 2.5.3). Während eines Requests trägt der Knopf den
+          Ladepunkt neben dem Text, seine Breite bleibt stabil. */}
       <button
         type="button"
         ref={triggerRef}
-        className="btn btn-outline btn-icon btn-sm"
+        className="btn btn-outline btn-sm"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Statusaktionen für ${customerDisplayName(user)}`}
-        title={`Statusaktionen für ${customerDisplayName(user)}`}
+        aria-label={`Weitere Aktionen für ${customerDisplayName(user)}`}
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >
-        {busy
-          ? <span className="spinner spinner-dark spinner-sm" />
-          : <Icon n="settings" s={16} />}
+        {busy && <span className="spinner spinner-dark spinner-sm" />}
+        Weitere Aktionen
       </button>
       {open && (
         <div className="adm-rowactions-menu" role="menu">
@@ -84,7 +85,7 @@ export function CustomerRowActions({ user, currentAdminId, busy = false, onSelec
                 disabled={item.disabled}
                 title={item.reason || undefined}
               >
-                <Icon n={item.icon} s={15} /> {item.label}
+                {item.label}
               </button>
               {/* Ein gesperrter Eintrag bleibt sichtbar — mit Grund, nie kommentarlos. */}
               {item.disabled && item.reason && (

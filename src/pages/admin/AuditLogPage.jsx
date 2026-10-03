@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { statusFallback } from "../../utils/statusFallback.mjs";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { DateField, DATE_FORMAT_HINT } from "../../components/admin/DateField";
 import { selectListTotal, selectListHasMore, selectListRows } from "../../utils/adminOverview.mjs";
@@ -226,7 +225,7 @@ export default function AuditLogPage() {
         subtitle={<>Protokollierte Administrationsvorgänge. Nur Einsicht — keine Änderungen.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button></>
         )}
       />
@@ -264,7 +263,7 @@ export default function AuditLogPage() {
         <DateField id="f-to" label="Bis" value={draft.to} onChange={(v) => setField("to", v)} />
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm">
-            <Icon n="filter" s={14} /> Anwenden
+            Anwenden
           </button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters} disabled={loading && activeCount === 0}>
             Zurücksetzen
@@ -282,7 +281,7 @@ export default function AuditLogPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -290,7 +289,6 @@ export default function AuditLogPage() {
       ) : rows.length === 0 ? (
         <div className="ce-card">
           <EmptyState
-            icon="layers"
             title={activeCount > 0 ? "Keine Treffer für diese Filter" : "Noch keine Audit-Logs"}
             text={activeCount > 0
               ? "Passen Sie die Filter an oder setzen Sie sie zurück."
@@ -346,7 +344,6 @@ export default function AuditLogPage() {
                                 onClick={() => toggleExpand(key)}
                                 aria-expanded={isOpen}
                               >
-                                <Icon n={isOpen ? "chevron" : "chevronRight"} s={14} />
                                 {isOpen ? "Verbergen" : "Details"}
                               </button>
                             ) : (
@@ -408,7 +405,6 @@ export default function AuditLogPage() {
                           onClick={() => toggleExpand(key)}
                           aria-expanded={isOpen}
                         >
-                          <Icon n={isOpen ? "chevron" : "chevronRight"} s={14} />
                           {isOpen ? "Metadata verbergen" : "Metadata anzeigen"}
                         </button>
                       </div>
@@ -434,11 +430,11 @@ export default function AuditLogPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">Seite {page}</span>
           <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}

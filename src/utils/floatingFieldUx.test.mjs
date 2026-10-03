@@ -14,6 +14,13 @@
 // Das gemessene VERHALTEN (Position, Höhe, Abstände, Fokus, Autofill) prüft
 // tests/e2e/newShipmentFloatingLabels.test.mjs im echten Browser; hier stehen
 // nur die Zusicherungen, die ein Quelltext tragen kann.
+//
+// Redesign 2026-10: Außerhalb des Auth-Bereichs gibt es KEINE schwebenden
+// Beschriftungen mehr — Labels stehen oberhalb des Feldes, auch in „Neue
+// Sendung". Die Variante bleibt als ruhendes Opt-in in Field.jsx und forms.css
+// (gescopet, ungenutzt); Aussage 2 gilt damit strenger als zuvor: KEINE Seite
+// aktiviert sie. Die Einheit (kg/cm) steht jetzt auch im gestapelten Feld als
+// Suffix — ein dritter Zweig in Field.jsx, ebenfalls über htmlFor verbunden.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -81,9 +88,13 @@ test("2 — jedes Feld ist mit seiner Beschriftung verbunden", () => {
   assert.match(feld, /useId\(\)/, "ohne useId gäbe es Felder ohne id");
   assert.match(feld, /const feldId = id \|\| `fld-\$\{reactId\}`/,
     "die id muss notfalls selbst entstehen");
-  // Beide Zweige (gestapelt und schwebend) verbinden über htmlFor.
+  // Alle drei Zweige (gestapelt, gestapelt mit Einheit, schwebend) verbinden
+  // über htmlFor.
   const htmlFor = [...feld.matchAll(/htmlFor=\{feldId\}/g)].length;
-  assert.equal(htmlFor, 2, `htmlFor fehlt in einem Zweig (gefunden: ${htmlFor})`);
+  assert.equal(htmlFor, 3, `htmlFor fehlt in einem Zweig (gefunden: ${htmlFor})`);
+  // Der Einheitenzweig ist gestapelt: Beschriftung über dem Feld, Einheit als Suffix.
+  assert.match(feld, /className=\{`field ce-field--has-unit[\s\S]*?className="field-label" htmlFor=\{feldId\}[\s\S]*?className="ce-field-control"/,
+    "die gestapelte Einheit steht nicht unter der Beschriftung im Feldrahmen");
 });
 
 test("3 — Fehler und Hinweis sind programmatisch verknüpft", () => {
@@ -120,8 +131,10 @@ test("6 — die Vorgabe ist die bisherige gestapelte Beschriftung", () => {
   assert.match(feld, /if \(!floating\) \{[\s\S]*?className="field-label" htmlFor=\{feldId\}/);
 });
 
-test("7 — nur „Neue Sendung\" aktiviert Floating", () => {
-  assert.ok(seite.includes('labelMode="floating"'), "die Seite nutzt die Variante nicht");
+test("7 — keine Seite aktiviert Floating (Redesign 2026-10)", () => {
+  // Früher: nur „Neue Sendung". Seit dem Redesign stehen alle Beschriftungen
+  // außerhalb von Auth oberhalb des Feldes — auch dort.
+  assert.ok(!seite.includes('labelMode="floating"'), "„Neue Sendung“ nutzt wieder schwebende Beschriftungen");
 
   const dateien = [];
   const sammle = (rel) => {
@@ -133,21 +146,29 @@ test("7 — nur „Neue Sendung\" aktiviert Floating", () => {
   sammle("src");
   const nutzer = dateien.filter((d) => /labelMode="floating"|<AddressSuggestInput[\s\S]{0,400}?\bfloating\b/
     .test(ohneKommentare(lies(d))));
-  assert.deepEqual(nutzer, ["src/pages/NewShipmentPage.jsx"],
-    `Floating ist über den Prototyp hinaus aktiviert: ${nutzer.join(", ")}`);
+  assert.deepEqual(nutzer, [],
+    `Floating ist wieder aktiviert: ${nutzer.join(", ")}`);
 });
 
-test("8 — AddressSuggestInput bleibt ohne die Prop unverändert", () => {
+test("8 — AddressSuggestInput: Darstellung opt-in, Barrierefreiheit immer", () => {
   assert.match(suggest, /floating = false/, "die Prop muss standardmäßig aus sein");
-  // Die zusätzlichen ARIA-Attribute und Klassen hängen ausnahmslos an `floating`
-  // — Adressbuch und Auftragsdialog bekommen dadurch kein anderes Markup.
+  // Klassen und Position der Beschriftung hängen weiterhin ausnahmslos an
+  // `floating` — Adressbuch, Auftragsdialog und „Neue Sendung" sehen gleich aus.
   for (const muster of [
-    /aria-required=\{floating && required \? "true" : undefined\}/,
-    /aria-describedby=\{floating \? beschreibung : undefined\}/,
     /\$\{floating \? " ce-field-input" : ""\}/,
     /\{!floating && beschriftung\}/,
     /\{floating && beschriftung\}/,
   ]) assert.match(suggest, muster, `Opt-in-Verdrahtung fehlt: ${muster}`);
+  // Redesign 2026-10: Pflichtangabe, Fehler und Hinweis sind in BEIDEN
+  // Fassungen programmatisch verbunden (vorher nur im Floating-Modus — die
+  // gestapelte Fassung verband Hinweis und Fehler gar nicht). Reine
+  // Barrierefreiheitsergänzung, keine sichtbare Änderung.
+  for (const muster of [
+    /aria-required=\{required \? "true" : undefined\}/,
+    /aria-describedby=\{beschreibung\}/,
+    /className="field-error" id=\{fehlerId\}/,
+    /className="field-hint" id=\{hinweisId\}/,
+  ]) assert.match(suggest, muster, `Verknüpfung fehlt: ${muster}`);
   // Combobox-Verhalten unverändert.
   for (const attr of ['role="combobox"', "aria-expanded", "aria-controls", "aria-autocomplete", "aria-activedescendant"])
     assert.ok(suggest.includes(attr), `${attr} ist verloren gegangen`);

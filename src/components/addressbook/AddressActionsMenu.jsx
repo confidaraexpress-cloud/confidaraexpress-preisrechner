@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { buildAddressMenuModel } from "../../utils/addressBookView.mjs";
 
-// Zugängliches Verwaltungs-Aktionsmenü (Kebab-Dropdown) — geteilt zwischen
+// Zugängliches Verwaltungs-Aktionsmenü (Textmenü „Weitere Aktionen", Redesign
+// 2026-10: kein Kebab-Symbol, keine Symbole in den Einträgen) — geteilt zwischen
 // Desktop-Zeile und Mobil-Karte. Enthält NUR Verwaltungsaktionen; „Sendung
 // erstellen"/„Neue Sendung" ist bewusst KEIN Menüpunkt mehr, sondern ein
 // direkt sichtbarer Zeilen-/Karten-Button (AddressCreateShipmentButton).
@@ -65,12 +65,12 @@ export function AddressActionsMenu({
         className="abk-actions-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Aktionen für ${address.label || address.company || address.contactName || "Adresse"}`}
-        title="Aktionen"
+        aria-label={`Weitere Aktionen für ${address.label || address.company || address.contactName || "Adresse"}`}
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
       >
-        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="dots" s={16} />}
+        {busy && <span className="spinner spinner-dark spinner-sm" />}
+        <span>Weitere Aktionen</span>
       </button>
       {open && (
         <div className="abk-actions-menu" role="menu">
@@ -84,7 +84,7 @@ export function AddressActionsMenu({
                 className={`abk-actions-item${item.danger ? " abk-actions-item--danger" : ""}`}
                 onClick={run(handlers[item.key])}
               >
-                <Icon n={item.icon} s={15} /> {item.label}
+                {item.label}
               </button>
             </React.Fragment>
           ))}

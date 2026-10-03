@@ -712,7 +712,9 @@ test("D1 — Geometrie von 320 bis 1920 px, auch quer: zentriert, kein waagerech
     } else if (!(g.t >= 0 && g.overlayScrollt)) {
       fehler.push(`zu hoch und nicht erreichbar (${g.t}–${g.b} bei ${g.vh})`);
     }
-    if (g.titel !== (g.vw <= 480 ? 18 : 20)) fehler.push(`Titel ${g.titel}px`);
+    // Redesign 2026-10: die Abschnittstitel-Stufe misst auf allen Breiten 18 px
+    // (--ce-text-title-section-size und -mobile); vorher 20/18.
+    if (g.titel !== 18) fehler.push(`Titel ${g.titel}px`);
     if (fehler.length) befunde.push(`${w}×${h}: ${fehler.join("; ")}`);
   }
   assert.deepEqual(befunde, []);
@@ -785,7 +787,7 @@ for (const sprung of ["weich", "sofort"]) test(`D3 — Rückkehr aus der Buchung
   await page.close();
 });
 
-test("D2 — reduzierte Bewegung: der Bogen steht; sonst dreht er ruhig, das Signet nie", async () => {
+test("D2 — reduzierte Bewegung: der Bogen steht; sonst dreht er ruhig (Redesign 2026-10: ohne Bildmarke)", async () => {
   for (const reducedMotion of ["reduce", "no-preference"]) {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, reducedMotion });
     const v = vergleich({ halten: true });
@@ -799,7 +801,8 @@ test("D2 — reduzierte Bewegung: der Bogen steht; sonst dreht er ruhig, das Sig
       return {
         ring: ring.animationName, dauer: ring.animationDuration, takt: ring.animationTimingFunction,
         wdh: ring.animationIterationCount, overlay: s(".cmp-loading-overlay").animationName,
-        signet: s(".cmp-loading-signet").animationName, bild: s(".cmp-loading-signet img").animationName,
+        // Redesign 2026-10: die frühere Signet-Grafik ist entfallen.
+        marken: document.querySelectorAll(".cmp-loading-card img, .cmp-loading-card svg").length,
         blur: s(".cmp-loading-overlay").backdropFilter,
       };
     });
@@ -809,8 +812,7 @@ test("D2 — reduzierte Bewegung: der Bogen steht; sonst dreht er ruhig, das Sig
     } else {
       assert.deepEqual([a.ring, a.dauer, a.takt, a.wdh], ["spin", "2.4s", "linear", "infinite"]);
     }
-    assert.equal(a.signet, "none");
-    assert.equal(a.bild, "none");
+    assert.equal(a.marken, 0, "die Statuskarte trägt keine Bildmarke");
     assert.equal(a.blur, "none");
     await v.freigeben();
     await page.close();

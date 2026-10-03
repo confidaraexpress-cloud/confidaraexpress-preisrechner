@@ -1,5 +1,15 @@
 // Sidebar-Informationsarchitektur — Quelltextprüfung.
 //
+// Redesign 2026-10: Die Sidebar ist Deep Navy und reiner Text (keine Icons),
+// der aktive Eintrag trägt Fläche und blaue Akzentkante. Feinkorrektur
+// 2026-10: Navigation 15/22 (Hauptpunkte 600, Unterpunkte 500), EIN
+// 44-px-Zeilenrhythmus mit 4 px Abstand, Unterzeile unter der Marke, leise
+// Lichtfläche, helle Innenkante und weicher Kantenschatten.
+// Informationsarchitektur, Reihenfolge, Accordion-Vertrag, Nicht-Persistenz,
+// Trefferflächen, weiches Öffnen und Fokus sind unverändert — die Tests dazu
+// sind übernommen; die Tests zu Typografie, Rhythmus und Fläche sichern den
+// aktuellen, freigegebenen Vertrag.
+//
 // Geprüft wird die fachliche Struktur, die diese Sidebar tragen soll, und die
 // Regeln, an denen sie schon einmal gescheitert ist:
 //   1. Reihenfolge und Zusammensetzung (Übersicht · Versand · Adressbuch ·
@@ -52,12 +62,17 @@ test("1 — genau drei direkte Einträge und drei Gruppen", () => {
   }
 });
 
-test("2 — die Reihenfolge im <nav> ist Übersicht → Versand → Adressbuch → Rechnungen → Lager → Konto → Abmelden", () => {
-  const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
-  const marken = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", "INVOICES_ITEM", '"warehouse"', '"account"', "handleLogout"];
+test("2 — die Reihenfolge ist Übersicht → Versand → Adressbuch → Rechnungen → Lager → Konto, Abmelden darunter", () => {
+  const nav = code.slice(code.indexOf('<nav className="pp-nav"'), code.indexOf("</nav>"));
+  const marken = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", "INVOICES_ITEM", '"warehouse"', '"account"'];
   const pos = marken.map((m) => nav.indexOf(m));
   assert.ok(pos.every((v) => v >= 0), `nicht alle Bausteine gefunden: ${JSON.stringify(marken.map((m, i) => [m, pos[i]]))}`);
   assert.deepEqual([...pos].sort((a, b) => a - b), pos, "die Reihenfolge im <nav> stimmt nicht");
+  // „Abmelden" ist eine Sitzungsaktion und steht in den sekundären Aktionen
+  // UNTER der Navigation — nicht als Inhaltsziel im <nav>.
+  assert.ok(!nav.includes("handleLogout"), "Abmelden gehört nicht in die Inhaltsnavigation");
+  const nachNav = code.slice(code.indexOf("</nav>"));
+  assert.ok(nachNav.indexOf("handleLogout") > 0, "Abmelden fehlt unter der Navigation");
 });
 
 test("3 — der Versandblock trägt genau fünf Einträge in fester Reihenfolge", () => {
@@ -77,7 +92,7 @@ test("4 — „Rechnungen“ ist ein eigenständiger Hauptpunkt zwischen Adressb
   assert.ok(!code.includes("Versandrechnungen"), "das alte Label „Versandrechnungen“ steht noch in der Sidebar");
   // Kein Gruppenkopf, sondern ein direkter Eintrag — er wird über NavItem
   // gerendert, nicht über SidebarGroup.
-  const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
+  const nav = code.slice(code.indexOf('<nav className="pp-nav"'), code.indexOf("</nav>"));
   assert.match(nav, /<NavItem item=\{INVOICES_ITEM\}/, "Rechnungen wird nicht als direkter Eintrag gerendert");
   const posAdressbuch = nav.indexOf("ADDRESSBOOK_ITEM");
   const posRechnungen = nav.indexOf("INVOICES_ITEM");
@@ -157,55 +172,37 @@ test("7 — ein Wert trägt den gesamten Klappzustand (Accordion by construction
 });
 
 test("8 — die Hervorhebung folgt AUSSCHLIESSLICH dem Klappzustand", () => {
-  // Zwei bewusste Umkehrungen gegenüber den Vorfassungen: es öffnet sich nichts
-  // von selbst, UND aus der Route wird auch keine Hervorhebung mehr abgeleitet.
-  // Vorher leuchtete „Lager & Aufträge" auf /stock, während die Gruppe nach
-  // einem Reload zu war — die Sidebar behauptete einen geöffneten Bereich, den
-  // es nicht gab. Jetzt gibt es genau EINE Aussage: hervorgehoben ist, was der
-  // Nutzer geöffnet hat.
+  // Es öffnet sich nichts von selbst, UND aus der Route wird keine
+  // Gruppen-Hervorhebung abgeleitet: hervorgehoben ist, was der Nutzer geöffnet hat.
   assert.ok(!/useEffect/.test(code), "die Sidebar darf keinen Klappzustand per Effekt setzen");
-
-  // Aus dem page-Wert entsteht KEIN Gruppenzustand mehr — weder Klappzustand
-  // noch Hervorhebung. Er markiert nur noch den einzelnen aktiven Eintrag.
   assert.ok(!/activeGroupId/.test(code),
     "aus dem page-Wert darf keine Gruppenmarkierung mehr abgeleitet werden");
   assert.ok(!/pp-nav-group--active/.test(code), "die routenabhängige Gruppenklasse ist noch vorhanden");
   assert.match(code, /"pp-nav-group" \+ \(open \? " pp-nav-group--open" : ""\)/,
     "die Gruppenklasse hängt nicht allein am Klappzustand");
 
-  // Es gibt GENAU EINE Regel, die den Kopf hervorhebt, und die hängt am
-  // Klappzustand. Eine zweite Quelle würde die Aussage wieder aufweichen.
-  // Den WERT prüfen, nicht per Lookahead überspringen: `\s*(?!none)` gibt beim
-  // Backtracking das Leerzeichen frei und greift dann auf ihm — `background: none`
-  // rutschte damit durch.
+  // Kein Ruhezustand des Kopfes trägt eine eigene Fläche — Fläche gibt es nur
+  // beim Hover. Den WERT prüfen, nicht per Lookahead überspringen.
   const kopfFlaechen = [...cssOhneKommentar.matchAll(/^([^{}\n]*\.pp-nav-group-head)\s*\{([^}]*)\}/gm)]
     .filter(([, , decls]) => (decls.match(/^\s*background:\s*([^;]+)/m)?.[1] ?? "none").trim() !== "none")
     .map(([, sel]) => sel.trim());
-  assert.deepEqual(kopfFlaechen, [".pp-nav-group--open .pp-nav-group-head"],
-    `die Hervorhebung des Kopfes kommt aus mehr als einer Quelle: ${kopfFlaechen.join(" | ")}`);
+  assert.deepEqual(kopfFlaechen, [], `ein Gruppenkopf trägt im Ruhezustand eine Fläche: ${kopfFlaechen.join(" | ")}`);
 
-  // Die Markierung ist SUBTIL — deutlich schwächer als ein aktiver Eintrag:
-  // flache Fläche statt Verlauf, schmalere Kante, keine Border.
+  // Die geöffnete Gruppe ist LEISER markiert als die aktive Seite: reines
+  // Weiß statt Fläche (Feinkorrektur 2026-10 — alle Hauptpunkte tragen
+  // dasselbe Gewicht). Die aktive Seite trägt Fläche, Akzentkante, hellen
+  // Text und Gewicht.
   const kopfAktiv = regel(".pp-nav-group--open .pp-nav-group-head");
   const eintragAktiv = regel(".nitem.on");
   assert.ok(kopfAktiv && eintragAktiv, "eine der beiden Aktivregeln fehlt");
-  assert.match(kopfAktiv, /background:\s*var\(--ce-sidebar-active-bg-soft\)/,
-    "der aktive Kopf trägt nicht die schwache Eigenfläche");
-  assert.ok(!/gradient/.test(kopfAktiv), "der aktive Kopf darf keinen Verlauf tragen");
-  assert.ok(!/border-color/.test(kopfAktiv), "der aktive Kopf darf keine Border tragen — sonst zwei gleich starke Karten");
-  // Die Akzentkante des Kopfes ist schmaler als die des aktiven Eintrags. Die
-  // des Eintrags steckt im Token (--ce-sidebar-active-shadow), nicht in der Regel.
-  const variables = lies("../../styles/variables.css");
-  const kopfKante = Number(kopfAktiv.match(/inset (\d+)px 0 0/)?.[1] ?? 0);
-  const eintragKante = Number(variables.match(/--ce-sidebar-active-shadow:\s*inset (\d+)px 0 0/)?.[1] ?? 0);
-  assert.ok(kopfKante > 0, "die Akzentkante des aktiven Kopfes fehlt");
-  assert.ok(kopfKante < eintragKante,
-    `Kopfkante ${kopfKante}px ist nicht schmaler als die Eintragskante ${eintragKante}px`);
-  assert.match(eintragAktiv, /box-shadow:\s*var\(--ce-sidebar-active-shadow\)/,
-    "der aktive Eintrag trägt seine Kante nicht mehr aus dem Token");
+  assert.match(kopfAktiv, /color:\s*var\(--ce-sidebar-text-strong\)/,
+    "die geöffnete Gruppe ist nicht über den hellsten Textton markiert");
+  assert.ok(!/background|box-shadow|border/.test(kopfAktiv),
+    "die geöffnete Gruppe darf keine Fläche, Kante oder Rahmen tragen — sonst konkurriert sie mit der aktiven Seite");
+  assert.match(eintragAktiv, /background:\s*var\(--ce-sidebar-active-bg\)/, "die aktive Seite trägt keine Fläche");
+  assert.match(eintragAktiv, /color:\s*var\(--ce-sidebar-active-text\)/, "die aktive Seite trägt keine eigene Textfarbe");
 
-  // Auch die route-basierten Seiten markieren ihren Bereich (Preisrechner →
-  // Versand, /inventory/products/:id → Lager & Aufträge).
+  // Auch die route-basierten Seiten markieren ihren Eintrag.
   assert.match(layout, /"\/calculator" \? "calculator"/, "der Preisrechner markiert seinen EINTRAG nicht");
   assert.match(layout, /startsWith\("\/inventory\/products"\)\s*\?\s*"products"/, "das Artikeldetail markiert seinen EINTRAG nicht");
 });
@@ -233,58 +230,78 @@ test("10 — keine Gruppe trägt eine eigene Fläche, Kante oder Rundung", () =>
     "die alte Modulblock-Klasse ist noch vorhanden");
 });
 
-test("11 — die Hierarchie entsteht aus Abstand und Einrückung", () => {
-  assert.match(regel(".pp-nav-group"), /margin-top:\s*\d+px/, "der Abstand vor einer Gruppe fehlt");
-  assert.match(regel(".pp-nav-group + .nitem"), /margin-top:\s*\d+px/,
-    "ein direkter Eintrag nach einer Gruppe braucht denselben Abstand");
-  assert.match(regel(".pp-nav-group-items .nitem"), /padding-inline-start:\s*\d+px/,
+test("11 — EIN gleichmäßiger Rhythmus; die Hierarchie tragen Einrückung und Gewicht", () => {
+  // Feinkorrektur 2026-10: zwischen ALLEN Zeilen 4 px — Einträge,
+  // Gruppenköpfe, Unterpunkte. Die Gruppe selbst trägt keinen Abstand: der
+  // Abstand zum ersten Unterpunkt liegt im Klappbereich und verschwindet mit
+  // ihm, eine geschlossene Gruppe steht im selben Takt wie jeder Eintrag.
+  assert.match(regel(".pp-nav"), /gap:\s*var\(--ce-space-1\)/, "der Zeilenabstand (4 px) zwischen den Einträgen fehlt");
+  assert.match(regel(".pp-nav-block"), /gap:\s*var\(--ce-space-1\)/, "der Zeilenabstand (4 px) im Block fehlt");
+  assert.match(regel(".pp-nav-group"), /gap:\s*0/,
+    "die Gruppe trägt einen eigenen Abstand — eine geschlossene Gruppe stünde aus dem Takt");
+  assert.match(regel(".pp-nav-group-items"), /gap:\s*var\(--ce-space-1\)/, "der Zeilenabstand (4 px) der Unterpunkte fehlt");
+  assert.match(regel(".pp-nav-group-items > :first-child"), /margin-top:\s*var\(--ce-space-1\)/,
+    "der Abstand zum ersten Unterpunkt liegt nicht im Klappbereich");
+  assert.match(regel(".pp-nav-group-items .nitem"), /padding-inline-start:/,
     "die Einrückung der Gruppeneinträge fehlt");
-  // Genau EINE Linie in der Navigation: vor „Abmelden". Keine Trenner zwischen
-  // den Inhaltsbereichen — dort trägt der Weißraum.
-  const nav = cssOhneKommentar.slice(cssOhneKommentar.indexOf(".pp-nav {"), cssOhneKommentar.indexOf(".nitem.on"));
+  // KEINE Linie zwischen den Inhaltsbereichen — dort trägt der Weißraum. Die
+  // einzige Linie der Spalte steht vor den sekundären Aktionen.
+  // Die Klappmarke zeichnet sich selbst über zwei Kanten — sie ist keine
+  // Trennlinie und wird deshalb vor der Prüfung herausgenommen.
+  const nav = cssOhneKommentar.slice(cssOhneKommentar.indexOf(".pp-nav {"), cssOhneKommentar.indexOf(".nitem.on"))
+    .replace(/\.pp-nav-group-chevron\s*\{[^}]*\}/g, "");
   const linien = [...nav.matchAll(/border-top:|border-bottom:/g)];
   assert.equal(linien.length, 0, "die Navigation trägt Trennlinien zwischen den Bereichen");
-  assert.ok(cssOhneKommentar.includes(".pp-nav-utility-divider"), "die Trennung vor „Abmelden“ fehlt");
+  assert.match(regel(".pp-side-actions"), /border-top:\s*1px solid var\(--ce-sidebar-divider\)/,
+    "die Trennung vor den sekundären Aktionen fehlt");
 });
 
 /* ══════════ 6 — Typografie, Trefferfläche, Icons, Fokus ═════════════════ */
 
 test("12 — die Einträge der ersten Ebene sind gleichrangig", () => {
   // Übersicht · Versand · Adressbuch · Rechnungen · Lager & Aufträge · Konto
-  // bilden EIN Hauptmenü. Ob ein Eintrag eine Gruppe ist, sagt der Chevron —
-  // nicht die Schriftgröße, nicht die Höhe, nicht der Innenabstand.
-  const item = regel("\n.nitem");
-  const head = regel(".pp-nav-group-head");
-  assert.ok(item && head, ".nitem oder .pp-nav-group-head fehlt");
-  const wert = (b, prop) => b.match(new RegExp(prop + ":\\s*([^;]+);"))?.[1]?.trim();
-  for (const prop of ["font-size", "font-weight", "min-height", "padding-block", "padding-inline", "gap", "border-radius"]) {
-    assert.equal(wert(head, prop), wert(item, prop),
-      `${prop}: Gruppenkopf (${wert(head, prop)}) ≠ Ebene-1-Eintrag (${wert(item, prop)})`);
-  }
-  assert.match(item, /font-size:\s*15px/, "die erste Ebene ist nicht auf 15px gewachsen");
-  assert.match(item, /font-weight:\s*600/, "die erste Ebene trägt nicht das kräftigere Gewicht");
-  const hoehe = parseFloat(item.match(/min-height:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(hoehe >= 44, `Eintragshöhe ${hoehe}px — mindestens 44px erwartet`);
-  // Auch die Icons: gleiche Größe auf der ersten Ebene.
-  assert.match(regel(".pp-nav-group-head svg"), /flex:\s*0 0 18px/, "das Gruppenkopf-Icon misst nicht 18px");
-  assert.match(regel("\n.nitem svg"), /flex:\s*0 0 18px/, "das Eintrags-Icon misst nicht 18px");
+  // bilden EIN Hauptmenü. Ob ein Eintrag eine Gruppe ist, sagt die kleine
+  // Klappmarke — nicht Schrift, Höhe oder Innenabstand. Beide teilen sich
+  // deshalb EINE Regel.
+  assert.match(cssOhneKommentar, /\.nitem,\s*\.pp-nav-group-head\s*\{/,
+    "Gruppenkopf und Eintrag der ersten Ebene teilen sich keine gemeinsame Regel");
+  const gemeinsam = regel(".pp-nav-group-head");
+  assert.ok(gemeinsam, ".pp-nav-group-head fehlt");
+  // Feinkorrektur 2026-10: die Kunden-Sidebar hat ihre eigene Stufe
+  // (--ce-sidebar-nav-*); die allgemeine Navigationsrolle (--ce-text-nav-*,
+  // Adminbereich und öffentlicher Drawer) bleibt 14/20, 500.
+  assert.match(gemeinsam, /font-size:\s*var\(--ce-sidebar-nav-size\)/, "Navigationsgröße 15 px aus dem Sidebar-Token erwartet");
+  assert.match(gemeinsam, /font-weight:\s*var\(--ce-sidebar-nav-weight\)/, "Navigationsgewicht 600 aus dem Sidebar-Token erwartet");
+  assert.match(gemeinsam, /min-height:\s*var\(--ce-sidebar-nav-row\)/, "Zeilenhöhe 44 px aus dem Sidebar-Token erwartet");
+  assert.match(gemeinsam, /border-radius:\s*var\(--ce-radius-sm\)/, "Radius 8 px erwartet");
+  const variables = lies("../../styles/variables.css");
+  assert.match(variables, /--ce-sidebar-nav-size:\s*var\(--ce-text-body-l-size\)/, "Kunden-Sidebar auf der Stufe body-l (15 px)");
+  assert.match(variables, /--ce-sidebar-nav-weight:\s*600/, "Hauptpunkte Gewicht 600");
+  assert.match(variables, /--ce-sidebar-nav-weight-sub:\s*500/, "Unterpunkte und sekundäre Aktionen Gewicht 500");
+  assert.match(variables, /--ce-sidebar-nav-row:\s*44px/, "Zeilenhöhe der Kunden-Sidebar 44 px");
+  assert.match(variables, /--ce-text-nav-weight-active:\s*600/, "aktiv Gewicht 600");
+  assert.match(variables, /--ce-text-nav-size:\s*14px/, "die allgemeine Navigationsrolle bleibt 14 px (Adminbereich)");
 });
 
-test("13 — die zweite Ebene ist ruhiger, aber weder klein noch grau", () => {
+test("13 — die zweite Ebene unterscheidet sich durch Einrückung und eine Gewichtsstufe", () => {
+  // Feinkorrektur 2026-10: dieselbe Größe und Zeilenhöhe wie die erste Ebene
+  // (15/22, 44 px), um 12 px eingerückt und eine Gewichtsstufe ruhiger (500
+  // statt 600) — weder kleiner noch grauer. Der aktive Unterpunkt trägt
+  // wieder 600 (.nitem.on steht später in der Datei).
   const sub = regel(".pp-nav-group-items .nitem");
   assert.ok(sub, ".pp-nav-group-items .nitem fehlt");
-  const groesse = parseFloat(sub.match(/font-size:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(groesse >= 14 && groesse < 15, `Unterpunkt ${groesse}px — erwartet 14px`);
-  assert.match(sub, /font-weight:\s*500/, "der Unterpunkt trägt nicht das leichtere Gewicht");
-  assert.match(sub, /padding-inline-start:\s*\d+px/, "die Einrückung der Unterpunkte fehlt");
-  const hoehe = parseFloat(sub.match(/min-height:\s*([\d.]+)px/)?.[1] ?? "0");
-  assert.ok(hoehe >= 38 && hoehe < 44, `Unterpunkthöhe ${hoehe}px — erwartet knapp unter der ersten Ebene`);
-  // Icons minimal leichter, nicht winzig.
-  assert.match(regel(".pp-nav-group-items .nitem svg"), /flex:\s*0 0 17px/, "das Unterpunkt-Icon misst nicht 17px");
-  // „Abmelden" ist eine Aktion, kein Produktbereich — zweite Ebene, ohne Einrückung.
+  assert.match(sub, /padding-inline-start:\s*calc\(var\(--ce-space-3\) \+ 12px\)/, "Einrückung 12 px erwartet");
+  assert.match(sub, /font-weight:\s*var\(--ce-sidebar-nav-weight-sub\)/, "die zweite Ebene trägt nicht das Gewicht 500");
+  for (const prop of ["font-size", "color", "min-height"]) {
+    assert.ok(!new RegExp(prop + ":").test(sub), `die zweite Ebene darf ${prop} nicht eigens setzen`);
+  }
+  assert.ok(cssOhneKommentar.indexOf(".nitem.on {") > cssOhneKommentar.indexOf(".pp-nav-group-items .nitem {"),
+    "der aktive Unterpunkt verlöre sein Gewicht 600 an die Regel der zweiten Ebene");
+  // „Abmelden" ist eine Aktion, kein Produktbereich — leiserer Ton, nicht eingerückt.
   const abmelden = regel(".nitem--utility");
   assert.ok(abmelden, ".nitem--utility fehlt");
-  assert.match(abmelden, /font-size:\s*14px/, "„Abmelden“ trägt das Gewicht der ersten Ebene");
+  assert.match(abmelden, /color:\s*var\(--ce-sidebar-text-muted\)/, "die sekundären Aktionen tragen den leiseren Ton nicht");
+  assert.match(abmelden, /font-weight:\s*var\(--ce-sidebar-nav-weight-sub\)/, "die sekundären Aktionen tragen nicht das ruhigere Gewicht");
   assert.ok(!/padding-inline-start/.test(abmelden), "„Abmelden“ darf nicht eingerückt sein");
 });
 
@@ -294,33 +311,25 @@ test("14 — unter 860 px erreicht jedes Bedienelement 44 px", () => {
     "die Klappköpfe fallen nicht unter die Touch-Regel");
 });
 
-test("15 — Icons kommen aus EINER Quelle, in zwei festen Größen", () => {
-  // Keine zweite Iconbibliothek: lucide-react ist als Abhängigkeit entfernt und
-  // durch designSystemClosure.test.mjs verboten. Icon.jsx trägt dieselbe
-  // Lucide-Geometrie (stroke 1.75, currentColor).
+test("15 — die Sidebar ist symbolfrei; die Klappmarke ist eine CSS-Form", () => {
+  // Redesign 2026-10: keine Iconleiste, keine Symbole vor Einträgen. Damit
+  // entfällt auch die Icon-Komponente in dieser Datei; lucide-react bleibt verboten.
   assert.ok(!/from\s+["']lucide-react["']/.test(sidebar), "lucide-react darf nicht zurückkehren");
-  assert.match(sidebar, /import \{ Icon \} from "\.\.\/ui\/Icon"/, "die gemeinsame Icon-Komponente fehlt");
-  // Einträge 18, Gruppenköpfe 16 — konsequent, nicht zufällig.
-  const groessen = [...code.matchAll(/<Icon n=\{?[^}>]*?\}? s=\{(\d+)\}/g)].map((m) => Number(m[1]));
-  assert.ok(groessen.length >= 3, "zu wenige Icons gefunden");
-  assert.ok(groessen.every((g) => [14, 16, 17, 18].includes(g)),
-    `unerwartete Icongrößen: ${[...new Set(groessen)].join(", ")}`);
-  // Keine Emojis oder Textzeichen als Chevron.
-  assert.ok(!/[˅›▸▾]/.test(code), "Textzeichen statt Icon als Chevron gefunden");
-  assert.match(code, /className="pp-nav-group-chevron"[\s\S]{0,80}<Icon n="chevron"/,
-    "der Chevron ist kein Icon aus Icon.jsx");
+  assert.ok(!/<Icon\b/.test(code), "die Sidebar rendert wieder ein Symbol");
+  assert.ok(!/import \{ Icon \}/.test(code), "der Icon-Import ist überflüssig");
+  // Keine Emojis oder Textzeichen als Klappmarke.
+  assert.ok(!/[˅›▸▾]/.test(code), "Textzeichen als Klappmarke gefunden");
+  assert.match(code, /<span className="pp-nav-group-chevron" aria-hidden="true" \/>/,
+    "die Klappmarke ist kein leeres, aria-hidden Element");
 });
 
 test("16 — Öffnen läuft weich, robust und in EINEM Takt", () => {
   const variables = lies("../../styles/variables.css");
-  // Ein gemeinsamer Takt für Rasterspur, Einblendung und Chevron — sonst
-  // zerfällt das Öffnen in drei Bewegungen mit drei Geschwindigkeiten.
   const dauer = Number(variables.match(/--ce-sidebar-expand-duration:\s*(\d+)ms/)?.[1] ?? 0);
   assert.ok(dauer >= 180 && dauer <= 240, `Dauer ${dauer}ms — erwartet 180…240ms`);
   assert.match(variables, /--ce-sidebar-expand-ease:/, "die gemeinsame Beschleunigungskurve fehlt");
 
-  // Robuste Technik: Rasterspur 0fr → 1fr. KEINE height:auto-Animation (läuft
-  // in keinem Browser verlässlich) und keine gemessene Pixelhöhe.
+  // Robuste Technik: Rasterspur 0fr → 1fr. KEINE height:auto-Animation.
   const panel = regel(".pp-nav-group-panel");
   assert.match(panel, /display:\s*grid/, "der Panel-Container ist kein Raster");
   assert.match(panel, /grid-template-rows:\s*0fr/, "der geschlossene Zustand hat keine 0fr-Spur");
@@ -329,23 +338,22 @@ test("16 — Öffnen läuft weich, robust und in EINEM Takt", () => {
   assert.match(cssOhneKommentar, /\.pp-nav-group--open \.pp-nav-group-panel \{ grid-template-rows: 1fr; \}/,
     "der geöffnete Zustand setzt keine 1fr-Spur");
   assert.ok(!/height:\s*auto/.test(cssOhneKommentar.slice(
-    cssOhneKommentar.indexOf(".pp-nav-group {"), cssOhneKommentar.indexOf("\n.nitem {"))),
+    cssOhneKommentar.indexOf(".pp-nav-group {"), cssOhneKommentar.indexOf(".nitem.on"))),
     "es darf keine height:auto-Animation geben");
 
-  // Der Überstand wird gekappt, und die Einträge erscheinen dezent.
+  // Der Überstand wird gekappt, die Einträge blenden ruhig ein (ohne Versatz).
   const items = regel(".pp-nav-group-items");
   assert.match(items, /overflow:\s*hidden/, "der Überstand wird nicht gekappt");
   assert.match(items, /min-height:\s*0/, "ohne min-height:0 kollabiert die Rasterspur nicht");
   assert.match(items, /opacity:\s*0/, "die Unterpunkte blenden nicht ein");
-  assert.match(items, /transform:\s*translateY\(-\d+px\)/, "die Unterpunkte erscheinen ohne Bewegung");
 
-  // Der Chevron dreht im selben Takt.
+  // Die Klappmarke dreht im selben Takt: geschlossen nach rechts, offen nach unten.
   const chevron = regel(".pp-nav-group-chevron");
-  assert.match(chevron, /transform:\s*rotate\(-90deg\)/, "der geschlossene Chevron zeigt nicht zur Seite");
+  assert.match(chevron, /transform:\s*rotate\(-45deg\)/, "die geschlossene Klappmarke zeigt nicht zur Seite");
   assert.match(chevron, /transition: transform var\(--ce-sidebar-expand-duration\)/,
-    "der Chevron läuft nicht im gemeinsamen Takt");
-  assert.match(cssOhneKommentar, /\.pp-nav-group--open \.pp-nav-group-chevron \{ transform: rotate\(0deg\); \}/,
-    "der geöffnete Chevron zeigt nicht nach unten");
+    "die Klappmarke läuft nicht im gemeinsamen Takt");
+  assert.match(cssOhneKommentar, /\.pp-nav-group--open \.pp-nav-group-chevron \{ transform: rotate\(45deg\)/,
+    "die geöffnete Klappmarke zeigt nicht nach unten");
 });
 
 test("16b — eingeklappte Unterpunkte sind nicht bedienbar", () => {
@@ -395,19 +403,40 @@ test("18 — die Sidebar-Regeln tragen weiterhin KEIN Farbliteral", () => {
   assert.ok(!/backdrop-filter/.test(sidebarCss), "backdrop-filter ist systemweit unzulässig");
 });
 
-test("19 — die Grundfläche ist Navy: der Blaukanal liegt klar über dem Rotkanal", () => {
+test("19 — die Grundfläche ist Deep Navy; getrennt über Kante, Innenkante und weichen Schatten", () => {
+  // ConfidaraExpress-Farbwelt: die Kunden-Sidebar trägt den Deep-Navy-Verlauf
+  // (Redesign 2026-10 in der ursprünglichen Farbwelt). Feinkorrektur 2026-10:
+  // darüber eine Lichtfläche hinter der Marke (oben luminöser) und ein
+  // Navy-Schleier nach unten (Veredelung 2026-10: unten tiefer); zur
+  // Hauptfläche trennen die feine Außenkante, eine helle Innenkante und ein
+  // weicher, statischer Schatten — keine Leuchtaura, kein Farbton.
   const variables = lies("../../styles/variables.css");
-  const stufen = ["top", "mid", "bottom"].map((s) => {
-    const hex = variables.match(new RegExp(`--ce-sidebar-bg-${s}:\\s*#([0-9a-fA-F]{6})`))?.[1];
-    assert.ok(hex, `--ce-sidebar-bg-${s} fehlt`);
-    return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  });
-  for (const [i, [r, , b]] of stufen.entries()) {
-    // Der Vorzustand lag bei 24/22/20 Punkten und las als mattes Anthrazit.
-    // Ein sattes Navy braucht spürbar mehr — sonst ist die Farbwelt nur behauptet.
-    assert.ok(b - r >= 30,
-      `Stufe ${i}: Blauüberschuss nur ${b - r} Punkte — mindestens 30 erwartet (sattes Navy)`);
+  for (const stop of ["top", "mid", "bottom"]) {
+    const hex = variables.match(new RegExp(`--ce-sidebar-bg-${stop}:\\s*#([0-9a-fA-F]{6})`))?.[1];
+    assert.ok(hex, `--ce-sidebar-bg-${stop} fehlt`);
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    assert.ok(Math.max(r, g, b) <= 0x50, `--ce-sidebar-bg-${stop} ist nicht dunkel`);
+    assert.ok(b - r >= 8, `--ce-sidebar-bg-${stop} wirkt neutralschwarz statt Navy`);
   }
-  // Und weiterhin nicht schwarz: die hellste Stufe trägt echte Helligkeit.
-  assert.ok(Math.max(...stufen[0]) >= 55, "die Sidebar ist zu dunkel — sie soll Navy sein, nicht schwarz");
+  assert.match(variables,
+    /--ce-sidebar-bg:\s*linear-gradient\([^;]*var\(--ce-sidebar-depth\)[^;]*radial-gradient\([^;]*var\(--ce-sidebar-light\)[^;]*linear-gradient\(/,
+    "--ce-sidebar-bg ist nicht Schleier + Lichtfläche über dem Navy-Verlauf");
+  const licht = variables.match(/--ce-sidebar-light:\s*rgba\(([^)]+)\)/)?.[1].split(",").map(Number);
+  assert.ok(licht && licht[3] <= 0.2, "die Lichtfläche der Sidebar ist zu stark");
+  // Der Schleier ist Navy (kein Schwarz, kein Farbton) und bleibt ein Hauch.
+  const tiefe = variables.match(/--ce-sidebar-depth:\s*rgba\(([^)]+)\)/)?.[1].split(",").map(Number);
+  assert.ok(tiefe, "--ce-sidebar-depth fehlt");
+  assert.ok(tiefe[2] > tiefe[0] && tiefe[3] <= 0.35, "der Schleier ist nicht Navy oder zu dicht");
+  const sb = regel(".sidebar.pp-side");
+  assert.match(sb, /border-right:\s*1px solid var\(--ce-app-divider\)/, "die feine Trennkante fehlt");
+  assert.match(sb, /box-shadow:\s*inset -1px 0 0 var\(--ce-sidebar-edge\), var\(--ce-sidebar-shadow\)/,
+    "Innenkante und Kantenschatten fehlen");
+  // Der Schatten bleibt weich und neutral: höchstens 10 % Deckkraft, kein Farbton.
+  const schatten = variables.match(/--ce-sidebar-shadow:\s*[^;]*rgba\(([^)]+)\)/)?.[1].split(",").map(Number);
+  assert.ok(schatten, "--ce-sidebar-shadow fehlt");
+  assert.ok(schatten[3] <= 0.14, `Kantenschatten zu kräftig (${schatten[3]})`);
+  assert.ok(Math.max(...schatten.slice(0, 3)) - Math.min(...schatten.slice(0, 3)) < 45, "Kantenschatten ist farbig");
+  // Geschlossen liegt der Drawer außerhalb — sein Schatten darf nicht als Streifen hereinragen.
+  assert.match(cssOhneKommentar, /@media \(max-width: 860px\) \{[\s\S]*?\.sidebar\.pp-side \{ box-shadow: none; \}/,
+    "der geschlossene Drawer wirft seinen Kantenschatten in den Bildschirm");
 });

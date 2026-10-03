@@ -13,7 +13,6 @@
 // (`booking.labelStatus`): der bisherige Labelknopf nur, wenn das Label in ConfidaraExpress
 // liegt (oder ein älterer Server gar keinen Stand nennt).
 import { useState } from "react";
-import { Icon } from "../ui/Icon";
 import { downloadLabel } from "../../utils/downloadLabel";
 import { downloadDocument } from "../../utils/downloadDocument";
 import {
@@ -177,7 +176,7 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
            zweitrangigen Abruf: derselbe Weg wie der Download, aber als Anstoß, nicht als Zusage. */
         <>
           <div className="alert alert-info mb-16" role="status" id="booking-label-status">
-            <Icon n="info" s={16} />{labelAnsicht.text}
+            {labelAnsicht.text}
           </div>
           {labelAnsicht.retrievable && (
             <button type="button" className="btn btn-outline btn-full mb-16" id="booking-label-retrieve"
@@ -232,12 +231,12 @@ export function BookingSuccessDocuments({ booking, proformaEntry }) {
       )}
       {proformaViewState(proformaEntry) === PROFORMA_VIEW.PROCESSING && (
         <div className="alert alert-info mb-16" role="status" aria-live="polite">
-          <Icon n="info" s={16} />{PROFORMA_TEXT.processing}
+          {PROFORMA_TEXT.processing}
         </div>
       )}
       {proformaViewState(proformaEntry) === PROFORMA_VIEW.FAILED && (
         <div className="alert alert-info mb-16" role="status">
-          <Icon n="info" s={16} />{PROFORMA_TEXT.failed}
+          {PROFORMA_TEXT.failed}
         </div>
       )}
     </>

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminUsers, setAdminUserStatus, getAdminCustomerPriceMarkup } from "../../api/adminApi";
 import { useAuth } from "../../context/AuthContext";
@@ -299,7 +298,7 @@ export default function AdminUsersPage() {
         subtitle={<>Übersicht aller Geschäftskunden. Statusänderungen werden protokolliert.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button></>
         )}
       />
@@ -341,7 +340,7 @@ export default function AdminUsersPage() {
             <span key={c.key} className="adm-chip">{c.label}</span>
           ))}
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
-            <Icon n="x" s={13} /> Filter zurücksetzen
+            Filter zurücksetzen
           </button>
         </div>
       )}
@@ -352,7 +351,7 @@ export default function AdminUsersPage() {
           role={actionMsg.type === "success" ? "status" : "alert"}
           aria-live="polite"
         >
-          <Icon n={actionMsg.type === "success" ? "check" : "x"} s={16} />{actionMsg.text}
+          {actionMsg.text}
         </div>
       )}
 
@@ -366,7 +365,7 @@ export default function AdminUsersPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut laden
+                Erneut laden
               </button>
             )}
           />
@@ -374,12 +373,11 @@ export default function AdminUsersPage() {
       ) : emptyState.show ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n={hasActiveFilters(filters) ? "search" : "admin"} s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasActiveFilters(filters) && (
               <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
-                <Icon n="x" s={13} /> Filter zurücksetzen
+                Filter zurücksetzen
               </button>
             )}
           </div>
@@ -471,13 +469,13 @@ export default function AdminUsersPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">
             Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}
           </span>
           <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}
@@ -545,22 +543,18 @@ function StatusConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="adm-modal"
+        className={`adm-modal${danger ? " adm-modal-danger" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="adm-status-title"
         aria-describedby="adm-status-desc"
       >
-        <div className={`adm-modal-icon ${danger ? "adm-modal-icon-danger" : "adm-modal-icon-approve"}`} aria-hidden="true">
-          <Icon n={danger ? "lock" : "check"} s={22} />
-        </div>
         <h2 id="adm-status-title" className="adm-modal-title">{title}</h2>
         <p className="adm-modal-sub">{name}</p>
         <p id="adm-status-desc" className="adm-modal-text">{text}</p>
 
         {missingB2B?.length > 0 && (
           <div className="adm-b2b-warn" role="status">
-            <Icon n="shield" s={16} />
             <span>
               <strong>{missingB2B.map((f) => f.missingText).join(" · ")}</strong>
               <span className="adm-b2b-warn-text">
@@ -580,17 +574,16 @@ function StatusConfirmDialog({
           </p>
         )}
         {markupLine && (
-          <p className="adm-approve-markup"><Icon n="euro" s={15} /> {markupLine}</p>
+          <p className="adm-approve-markup">{markupLine}</p>
         )}
         {gateInfo && gateInfo.title && (
           <div className="adm-b2b-warn" role="status">
-            <Icon n="shield" s={16} />
             <span>
               <strong>{gateInfo.title}</strong>
               <span className="adm-b2b-warn-text">{gateInfo.text}</span>
               {gateInfo.cta && (
                 <button type="button" className="btn btn-outline btn-sm adm-approve-jump" onClick={onJumpToMarkup}>
-                  <Icon n="arrowRight" s={13} /> {gateInfo.cta}
+                  {gateInfo.cta}
                 </button>
               )}
             </span>
@@ -611,7 +604,7 @@ function StatusConfirmDialog({
           >
             {busy
               ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
-              : <><Icon n={danger ? "lock" : "check"} s={14} /> {cta}</>}
+              : cta}
           </button>
         </div>
       </div>

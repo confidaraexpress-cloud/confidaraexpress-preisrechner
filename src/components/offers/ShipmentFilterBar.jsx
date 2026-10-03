@@ -1,4 +1,3 @@
-import { Icon } from "../ui/Icon";
 import { DateCalendar } from "../common/DateCalendar";
 import DeliveryTimeSelect from "./DeliveryTimeSelect.jsx";
 import { todayISO, addDaysISO, labelForDate, fmtShortDE } from "../../utils/date";
@@ -14,7 +13,12 @@ import { publicCarrierChipLabel } from "../../utils/carrierMap";
    das idPrefix und Blockenden). Es ist eine reine DARSTELLUNG: sämtlicher
    Zustand, alle Handler und die Optionslisten bleiben in den Seiten und kommen
    als Props — die Filterlogik (FILTER_ONLY_FIELDS, clearFilters, calcKeyRef)
-   ist bewusst NICHT Teil dieses Bauteils. */
+   ist bewusst NICHT Teil dieses Bauteils.
+
+   Redesign 2026-10: keine Symbole in den Filtern. Jeder Auslöser trägt
+   Beschriftung + aktuellen Wert als Text; dass er aufklappt, zeigt eine kleine,
+   rein per CSS gezeichnete Klappmarke (kein Icon) und aria-expanded. Werte
+   werden vollständig gezeigt — sie brechen um, statt abgeschnitten zu werden. */
 export function ShipmentFilterBar({
   serviceFilterOpen, setServiceFilterOpen, selectedOption, SERVICE_OPTIONS, serviceFilter, handleServiceFilter,
   datePickerOpen, setDatePickerOpen, shippingDate, handleDateChange,
@@ -35,15 +39,12 @@ export function ShipmentFilterBar({
                 aria-expanded={serviceFilterOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n={selectedOption.icon} s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Abholung / Shopabgabe</div>
                     <div className="service-filter-trigger-val">{selectedOption.label}</div>
                   </div>
                 </div>
-                <div className={`service-filter-chevron ${serviceFilterOpen ? "open" : ""}`}>
-                  <Icon n="chevron" s={16} c="#64748b" />
-                </div>
+                <span className={`service-filter-chevron ${serviceFilterOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {serviceFilterOpen && (
                 <div className="service-filter-dropdown" role="radiogroup" aria-label="Abholung / Shopabgabe">
@@ -74,15 +75,12 @@ export function ShipmentFilterBar({
                 aria-expanded={datePickerOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="clock" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versanddatum</div>
                     <div className="service-filter-trigger-val">{shippingDate ? labelForDate(shippingDate) : "Bitte Datum wählen"}</div>
                   </div>
                 </div>
-                <div className={`service-filter-chevron ${datePickerOpen ? "open" : ""}`}>
-                  <Icon n="chevron" s={16} c="#64748b" />
-                </div>
+                <span className={`service-filter-chevron ${datePickerOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {datePickerOpen && (
                 <div className="date-picker-body">
@@ -109,7 +107,6 @@ export function ShipmentFilterBar({
                 aria-expanded={carrierDropdownOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="truck" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versanddienst</div>
                     <div className="service-filter-trigger-val">{carrierLabel}</div>
@@ -118,9 +115,7 @@ export function ShipmentFilterBar({
                     <span className="carrier-badge">{selectedPublicCarrierIds.length}</span>
                   )}
                 </div>
-                <div className={`service-filter-chevron ${carrierDropdownOpen ? "open" : ""}`}>
-                  <Icon n="chevron" s={16} c="#64748b" />
-                </div>
+                <span className={`service-filter-chevron ${carrierDropdownOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {carrierDropdownOpen && (
                 <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
@@ -174,15 +169,12 @@ export function ShipmentFilterBar({
                 aria-expanded={shippingModeOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n={selectedShippingMode.icon} s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Versandart</div>
                     <div className="service-filter-trigger-val">{selectedShippingMode.label}</div>
                   </div>
                 </div>
-                <div className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`}>
-                  <Icon n="chevron" s={16} c="#64748b" />
-                </div>
+                <span className={`service-filter-chevron ${shippingModeOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {shippingModeOpen && (
                 <div className="service-filter-dropdown" role="radiogroup" aria-label="Versandart">
@@ -213,7 +205,6 @@ export function ShipmentFilterBar({
                 aria-expanded={latestOpen}
               >
                 <div className="service-filter-trigger-left">
-                  <Icon n="calendar" s={15} c="var(--ce-color-brand-ink)" />
                   <div>
                     <div className="service-filter-trigger-title">Späteste Lieferzeit</div>
                     <div className="service-filter-trigger-val">{latestDeliveryFieldValue(
@@ -222,9 +213,7 @@ export function ShipmentFilterBar({
                     )}</div>
                   </div>
                 </div>
-                <div className={`service-filter-chevron ${latestOpen ? "open" : ""}`}>
-                  <Icon n="chevron" s={16} c="#64748b" />
-                </div>
+                <span className={`service-filter-chevron ${latestOpen ? "open" : ""}`} aria-hidden="true" />
               </button>
               {latestOpen && (
                 <div className="date-picker-body date-picker-body--latest">

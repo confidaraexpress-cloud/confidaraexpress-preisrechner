@@ -88,12 +88,18 @@ test("die Übersicht ist bei vorhandenen Daten eine operative Arbeitsfläche", a
   assert.ok(await page.locator(".ov-inv-amount").isVisible(), "die offenen Rechnungen fehlen");
   assert.match(await page.locator(".ov-inv-overdue .badge--overdue").innerText(), /überfällig/);
 
-  // Die Marketingabschnitte bilden nicht mehr den Hauptteil …
-  assert.equal(await page.locator(".pp-flow").count(), 0, "„Ablauf\" steht noch auf der Arbeitsfläche");
-  assert.equal(await page.locator(".pp-bento").count(), 0, "„Vorteile\" steht noch auf der Arbeitsfläche");
-  assert.equal(await page.locator(".pp-trust").count(), 0, "der Trust-Block steht noch auf der Arbeitsfläche");
-  // … das Carrier-Netzwerk als Markenfläche bleibt.
-  assert.ok(await page.locator(".pp-net").isVisible(), "das Carrier-Netzwerk fehlt");
+  // Die Onboardingabschnitte bilden nicht den Hauptteil (Redesign 2026-10:
+  // .ov-steps/.ov-facts/.ov-trust, nur ohne operative Daten) …
+  assert.equal(await page.locator(".ov-steps").count(), 0, "„Ablauf\" steht noch auf der Arbeitsfläche");
+  assert.equal(await page.locator(".ov-facts").count(), 0, "„Vorteile\" steht noch auf der Arbeitsfläche");
+  assert.equal(await page.locator(".ov-trust").count(), 0, "der Trust-Block steht noch auf der Arbeitsfläche");
+  // … die frühere dunkle Carrier-Bühne bleibt entfallen; der Carrier-Bereich
+  // steht als helle, kompakte Fläche mit acht Carriern und der Vergleichsaktion
+  // da (Feinkorrektur 2026-10).
+  assert.equal(await page.locator(".pp-net").count(), 0, "die dunkle Carrier-Bühne ist zurück");
+  assert.equal(await page.locator(".ov-carriers .ov-carrier").count(), 8, "der Carrier-Bereich zeigt nicht acht Carrier");
+  assert.ok(await page.getByRole("button", { name: "Carrier-Angebote vergleichen" }).isVisible(),
+    "die Vergleichsaktion fehlt");
   await page.close();
 });
 
@@ -101,11 +107,11 @@ test("ein leeres Konto wird geführt statt mit leeren Tabellen begrüßt", async
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page, { empty: true });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".pp-flow", { timeout: 20000 });
+  await page.waitForSelector(".ov-steps", { timeout: 20000 });
   await page.waitForTimeout(400);
 
-  assert.ok(await page.locator(".pp-flow").isVisible(), "das Onboarding fehlt");
-  assert.ok(await page.locator(".pp-bento").isVisible(), "die Vorteile fehlen im Onboarding");
+  assert.ok(await page.locator(".ov-steps").isVisible(), "das Onboarding fehlt");
+  assert.ok(await page.locator(".ov-facts").isVisible(), "die Vorteile fehlen im Onboarding");
   assert.equal(await page.locator(".ov-list-row").count(), 0, "leere Sendungsliste statt Onboarding");
   // Auch im Onboarding gibt es keine Schnellaktionen mehr — ersatzlos entfernt
   // in beiden Zuständen, kein Platzhalter.

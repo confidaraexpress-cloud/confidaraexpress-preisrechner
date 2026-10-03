@@ -2,7 +2,10 @@
 
 /* Form layout for the new stacked design */
 .offers-form-section { }
-.offers-calc-cta { margin-top: 20px; }
+/* scroll-margin: nach einem Fehler holt useComparisonLoadingFocus den Block
+   mit `block: "nearest"` ins Bild — ohne Rand stünde die Meldung (letztes Kind)
+   bündig an der Unterkante und wäre bei Bruchteilpixeln knapp abgeschnitten. */
+.offers-calc-cta { margin-top: 20px; scroll-margin-bottom: var(--ce-space-4); }
 
 /* Full section container — Base Card (Paket B). */
 .offers-section {
@@ -25,15 +28,13 @@
   box-shadow: var(--ce-elevation-1);
 }
 
-/* ─── Result Header (Paket B) ─────────────────────────────────────────────────
-   Vormals eine großflächige Navy-zu-Blau-Ergebnisleiste — jetzt ein ruhiger
-   Summary-Kopf auf Surface-Fläche. Die Trefferzahl bleibt klar lesbar, aber
-   nicht mehr dekorativ (Section-Title-Stufe statt 24px Weiß auf Verlauf). Die
-   frühere zweite Trust-Leiste dieses Kopfs ist entfallen (siehe .offers-tipp/
-   TRUST_ITEMS — eine Erwähnung genügt). */
+/* ─── Result Header ───────────────────────────────────────────────────────────
+   Ruhiger Summary-Kopf auf der Kartenfläche (Redesign 2026-10): Trefferzahl in
+   der Abschnittstitel-Stufe, darunter ein Satz. Kein Verlauf, keine zweite
+   Trust-Leiste (eine Erwähnung genügt, siehe .offers-tipp/TRUST_ITEMS). */
 .offers-result-header {
   padding: 20px 28px;
-  background: var(--ce-color-surface-subtle);
+  background: var(--ce-color-surface);
   border-bottom: 1px solid var(--ce-color-border-subtle);
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
@@ -45,168 +46,177 @@
   color: var(--ce-color-text-primary);
 }
 .offers-result-sub {
-  font-size: 13px; color: var(--ce-color-text-muted); margin-top: 3px;
+  margin-top: 2px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
 
-/* ─── Toolbar: Sortierung · MwSt. · Filter · Zurücksetzen ────────────────────
-   Vier fachlich verschiedene Dinge, vier verschiedene Gewichte. Bis zu diesem
-   Paket lagen sie als EINE flache Reihe gleich aussehender Pills nebeneinander,
-   getrennt nur durch zwei 1-px-Striche: die Sortierung sah aus wie die
-   MwSt.-Umschaltung, und die sah aus wie ein Filter. Ein Nutzer musste die
-   Beschriftungen lesen, um die Bedienlogik zu erkennen.
+/* ─── Toolbar: Sortierung · Preisanzeige · Filter · Zurücksetzen ──────────────
+   Eine ruhige Ergebnis-Toolbar (Redesign 2026-10). Zwei Reihen auf einer leicht
+   abgesetzten Fläche: oben die Darstellung (Sortierung, Preisanzeige), unten
+   die Eingrenzung (Filter, Zurücksetzen). Die Bedienlogik steht im Material,
+   nicht in einer Akzentfarbe:
 
-   Die Hierarchie steht jetzt im Material, nicht im Text:
+     Sortierung, Preisanzeige  Segmentschalter — eine Spur, das aktive Segment
+                               liegt als weiße Fläche mit Kante darauf
+     Filter                    Chip mit Kante und Klappmarke; ein gesetzter
+                               Filter trägt Brand Soft
+     Zurücksetzen              Textaktion ohne Rahmen
 
-     Sortierung    primär       gefüllte Marke, weiße Schrift
-     MwSt.         sekundär     getönte Marke, Markentinte
-     Filter        kontextuell  Chip mit Kante (unverändert)
-     Zurücksetzen  Utility      Textaktion ohne Rahmen
-
-   Radius, Tiefe und Farben kommen ausschließlich aus der Foundation. ─────── */
+   Keine Vollfläche in der Markenfarbe in der Toolbar: gefüllt ist in der Liste nur die
+   Auswahlaktion des ausgewählten Angebots. Bedienhöhe 40 px (44 px bei grobem
+   Zeiger), Radius 8, ausschließlich Foundation-Tokens. */
 .offers-toolbar {
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 12px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px 28px;
   background: var(--ce-color-surface-subtle);
   border-bottom: 1px solid var(--ce-color-border-subtle);
 }
-/* Zwei Reihen: oben die Steuerung (Sortierung ↔ MwSt.), unten der Kontext
-   (Filter ↔ Zurücksetzen). `space-between` hält die sekundären Gruppen rechts,
-   ohne dass irgendwo eine feste Breite nötig wäre. */
+/* Zwei Reihen: `space-between` hält die zweite Gruppe rechts, ohne feste Breite. */
 .offers-toolbar-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px 24px; flex-wrap: wrap;
+  gap: 12px 24px; flex-wrap: wrap;
 }
-/* Die zweite Reihe sitzt optisch tiefer als die erste — eine feine Trennlinie
-   statt eines weiteren Kastens. Kein zweiter Rahmen, keine zweite Fläche. */
+/* Die Filterreihe ist durch eine feine Linie abgesetzt — kein zweiter Kasten. */
 .offers-toolbar-row--filter {
-  padding-top: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--ce-color-border-subtle);
 }
-/* Die Beschriftung steht NEBEN ihrer Gruppe, nicht darüber.
-   Gemessen: gestapelt maß die Leiste 184 px, nebeneinander 120 px. Beides
-   funktioniert; 120 px gewinnt, weil die Leiste über der Angebotsliste sitzt
-   und jede Zeile Höhe dort einen Angebotsblock nach unten schiebt. Der Gewinn
-   an Klarheit bleibt derselbe: jede Gruppe ist benannt und optisch geschlossen
-   — sie steht nur waagerecht statt senkrecht. */
-.offers-toolgroup { display: flex; align-items: center; gap: 10px; min-width: 0; }
-/* Micro-Stufe der Typografieskala (11 px / 600). Die Beschriftung benennt die
-   Gruppe — sie ersetzt die früheren Trennstriche, die nur trennten, ohne zu
-   sagen, was sie trennen. */
+/* Die Beschriftung steht NEBEN ihrer Gruppe, nicht darüber. Gemessen:
+   gestapelt maß die Leiste 184 px, nebeneinander 120 px — jede Zeile Höhe
+   schiebt die Angebote nach unten. */
+.offers-toolgroup { display: flex; align-items: center; gap: 12px; min-width: 0; }
+/* Label-Stufe (13/18 500) in normaler Schreibweise: sie benennt die Gruppe. */
 .offers-toolgroup-label {
   font-family: var(--ce-font-sans);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: var(--ce-text-micro-line);
-  letter-spacing: var(--ce-text-micro-tracking);
-  text-transform: uppercase;
-  color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-color-text-secondary);
   white-space: nowrap;
 }
 
-/* ── Segmented Control ──────────────────────────────────────────────────────
-   Eine Spur, mehrere Segmente: die Zusammengehörigkeit ist damit sichtbar,
-   ohne dass jedes Segment eine eigene Kante braucht. Genau das erzeugte vorher
-   den „Button-Teppich" — vier gleich starke Umrandungen nebeneinander. */
+/* ── Segmentschalter ────────────────────────────────────────────────────────
+   Eine Spur (Surface Muted), darin Segmente ohne eigene Kante; das aktive
+   Segment liegt als weiße Fläche mit Kante darauf. Gesamthöhe 40 px (Kante +
+   3 px Spurpolster + 32 px Segment). Die Selektoren sind höher spezifisch als
+   `.offers-sort-btn`: dessen Grundregel steht weiter unten und gewänne bei
+   gleicher Spezifität allein durch die Reihenfolge. */
 .offers-segment {
   display: inline-flex; align-items: center; gap: 2px;
   padding: 3px;
-  background: var(--ce-color-surface);
+  background: var(--ce-color-surface-muted);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  box-shadow: var(--ce-elevation-1);
   flex-wrap: wrap;
 }
-/* Höher spezifisch als `.offers-sort-btn` — und das ist kein Zufall, sondern
-   nötig: die Basisregel steht in dieser Datei WEITER UNTEN (die Chips bauen
-   darauf auf) und gewänne bei gleicher Spezifität allein durch die Reihenfolge.
-   Gemessen sah der erste Entwurf deshalb genauso aus wie vorher — vier weiße
-   Pillen mit eigener Kante, nur in einem Kasten. */
 .offers-segment .offers-segment-item {
+  min-height: 32px;
+  padding: 0 14px;
   border: 1px solid transparent;
   background: transparent;
-  box-shadow: none;
   border-radius: var(--ce-radius-sm);
-  padding: 7px 14px;
 }
 .offers-segment .offers-segment-item:hover {
-  background: var(--ce-color-surface-muted);
+  background: var(--ce-color-surface-subtle);
   border-color: transparent;
   color: var(--ce-color-text-primary);
 }
-/* Primär (Sortierung): gefüllt. Sie entscheidet, welches Angebot oben steht —
-   die folgenreichste Einstellung der Seite und deshalb die einzige mit
-   Vollfläche. */
-.offers-segment.offers-segment--primary .offers-segment-item.active,
-.offers-segment.offers-segment--primary .offers-segment-item.active:hover {
-  background: var(--ce-color-brand);
-  border-color: var(--ce-color-brand);
-  color: var(--ce-color-text-inverse);
-}
-/* Sekundär (MwSt.): getönt. Sie ändert nur die Schreibweise des Preises, nicht
-   das Ergebnis — dieselbe Formensprache, eine Stufe leiser. */
-.offers-segment.offers-segment--secondary .offers-segment-item.active,
-.offers-segment.offers-segment--secondary .offers-segment-item.active:hover {
-  background: var(--ce-color-brand-soft);
-  border-color: var(--ce-color-brand-border);
-  color: var(--ce-color-brand-ink);
+.offers-segment .offers-segment-item.active,
+.offers-segment .offers-segment-item.active:hover {
+  background: var(--ce-color-surface);
+  border-color: var(--ce-color-border-strong);
+  color: var(--ce-color-text-primary);
 }
 
 /* ── Basis aller Bedienelemente der Toolbar ────────────────────────────────
-   `.offers-sort-btn` bleibt die gemeinsame Grundlage (Chips bauen unverändert
-   darauf auf); die Segmente überschreiben davon oben nur Rahmen und Fläche. */
+   `.offers-sort-btn` bleibt die gemeinsame Grundlage (die Chips bauen darauf
+   auf); die Segmente überschreiben oben nur Rahmen, Fläche und Höhe. */
 .offers-sort-btn {
-  padding: 7px 14px; border-radius: var(--ce-radius-sm);
-  border: 1px solid var(--ce-color-border-subtle); background: var(--ce-color-surface);
-  font-size: 13px; font-weight: 600; color: var(--ce-color-text-secondary);
-  cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  font-family: var(--ce-font-sans); white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--ce-size-control-md); padding: 0 14px;
+  border-radius: var(--ce-radius-sm);
+  border: 1px solid var(--ce-color-border-default); background: var(--ce-color-surface);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary);
+  cursor: pointer; white-space: nowrap;
+  transition:
+    background var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.offers-sort-btn:hover { border-color: var(--ce-color-border-strong); color: var(--ce-color-text-primary); background: var(--ce-color-surface-subtle); }
+.offers-sort-btn:hover { border-color: var(--ce-color-border-strong); color: var(--ce-color-text-primary); background: var(--ce-color-surface-hover); }
 .offers-sort-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
-/* Aktiv außerhalb eines Segments (Rückfall) — Brand Soft, wie jeder andere
-   Filterchip im Versandprozess. */
+/* Aktiv außerhalb eines Segments (Rückfall) — Brand Soft wie ein gesetzter Filter. */
 .offers-sort-btn.active { border-color: var(--ce-color-brand-border); background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
 
 /* ── Filter-Chips „Lieferung" / „Preis" ────────────────────────────────────
-   Kontextuelle Eingrenzung: eigene Kante, damit sie als einzeln an- und
-   abschaltbar lesbar bleiben — anders als die Segmente, die sich eine Spur
-   teilen und immer genau einen aktiven Zustand haben. */
+   Einzeln an- und abschaltbare Eingrenzung: eigene Kante, Radius 8 (keine
+   Pillenform), Klappmarke rein per CSS. */
 .offers-chipset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.offers-filter-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--ce-radius-full); }
 .offers-filter-chip.has-filter { border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
 .offers-filter-chip.open { border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
-.offers-filter-chip-caret { display: inline-flex; align-items: center; margin-left: -1px; transition: transform 0.2s ease; }
-.offers-filter-chip.open .offers-filter-chip-caret { transform: rotate(180deg); }
+
+/* ── Klappmarke (Filter-Chips, Details, Uhrzeitauswahl, Öffnungszeiten) ────
+   Kein Icon (Redesign 2026-10): zwei Kanten eines gedrehten Quadrats in der
+   Textfarbe. Geschlossen zeigt sie nach unten, offen nach oben. Rein
+   dekorativ (aria-hidden) — den Zustand tragen aria-expanded und Knopftext. */
+.offers-filter-chip-caret,
+.offer-details-chevron,
+.offers-time-caret,
+.ap-list-toggle-caret {
+  display: inline-block; flex-shrink: 0;
+  width: 7px; height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.offers-filter-chip.open .offers-filter-chip-caret,
+.offer-details-chevron.open,
+.offers-time-trigger.is-open .offers-time-caret,
+.ap-list-toggle--open .ap-list-toggle-caret { transform: translateY(2px) rotate(225deg); }
 
 /* ── Zurücksetzen (Utility) ────────────────────────────────────────────────
-   Rahmenlos. Es ist eine Aufräumaktion, kein Steuerungselement: sichtbar,
-   sobald ein Filter greift, aber nie so laut wie das, was es zurücknimmt. */
+   Textaktion ohne Rahmen (Muster der Tertiäraktion): sichtbar, sobald ein
+   Filter greift, aber nie so laut wie das, was sie zurücknimmt. */
 .offers-filter-reset-btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 12px; border-radius: var(--ce-radius-sm);
+  min-height: var(--ce-size-control-md); padding: 0 12px;
+  border-radius: var(--ce-radius-sm);
   border: 1px solid transparent; background: transparent;
-  font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted);
-  cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
-  font-family: var(--ce-font-sans); white-space: nowrap; flex-shrink: 0;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-brand-ink);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.offers-filter-reset-btn:hover { background: var(--ce-color-surface-muted); color: var(--ce-color-text-primary); }
+.offers-filter-reset-btn:hover { background: var(--ce-color-brand-soft); }
 .offers-filter-reset-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 .offers-vat-toggle { flex-shrink: 0; }
 
-/* ─── Filter-Zone + rechts angedockte Dropdowns (JUMiNGO-artig) ────────────── */
-/* Die Zone umschließt Sortierleiste UND Dropdowns. Die Leiste selbst scrollt
-   auf Mobile horizontal (overflow) — die Dropdowns hängen daher bewusst an der
-   Zone statt am Chip, damit sie nicht vom Scroll-Container abgeschnitten werden.
-   Desktop: absolut, rechts angedockt über den Angeboten. Mobile: Block unter
-   der Leiste (siehe Media-Query < 768px). */
+/* Grober Zeiger: jedes Bedienelement der Toolbar erreicht 44 px. */
+@media (pointer: coarse) {
+  .offers-sort-btn,
+  .offers-filter-reset-btn { min-height: var(--ce-size-touch-target); }
+  .offers-segment .offers-segment-item { min-height: 36px; }
+}
+
+/* ─── Filter-Zone + rechts angedockte Dropdowns ─────────────────────────────── */
+/* Die Zone umschließt Toolbar UND Dropdowns. Die Dropdowns hängen an der Zone
+   statt am Chip, damit keine Reihe sie abschneidet. Desktop: absolut, rechts
+   angedockt über den Angeboten — Overlay-Material mit Dropdown-Schatten.
+   Mobile: Block unter der Leiste (siehe Media-Query < 768px). */
 .offers-filter-zone { position: relative; }
 
 .offers-filter-dropdown {
-  position: absolute; top: calc(100% + 6px); right: 20px; z-index: 40;
-  width: 320px; max-width: calc(100% - 40px);
-  background: white; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-overlay); padding: 18px 18px 16px;
+  position: absolute; top: calc(100% + 8px); right: 28px; z-index: 40;
+  width: 320px; max-width: calc(100% - 56px);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-dropdown);
+  padding: 16px;
   animation: offers-dd-in 0.16s ease;
 }
 @keyframes offers-dd-in {
@@ -214,77 +224,90 @@
   to   { opacity: 1; transform: none; }
 }
 .offers-filter-dd-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.offers-filter-dd-title { font-family: var(--ce-font-sans); font-size: 15px; font-weight: 600; color: var(--navy); }
+.offers-filter-dd-title {
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 600;
+  line-height: var(--ce-text-body-line); color: var(--ce-color-text-primary);
+}
 .offers-filter-dd-status {
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  color: var(--ce-color-text-muted); white-space: nowrap;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-text-secondary); white-space: nowrap;
 }
-.offers-filter-dd-status.is-set { color: var(--blue2); font-weight: 600; }
-.offers-filter-dd-sub { font-size: 12px; color: var(--ce-color-text-muted); margin: 4px 0 16px; }
-.offers-filter-dd-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.offers-filter-dd-status.is-set { color: var(--ce-color-brand-ink); }
+.offers-filter-dd-sub {
+  margin: 4px 0 16px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.offers-filter-dd-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
 .offers-filter-dd-clear {
-  background: none; border: none; cursor: pointer; padding: 2px 0;
-  font-family: var(--ce-font-sans); font-size: 12px; font-weight: 600; color: var(--blue2);
+  min-height: 32px; padding: 0 8px; margin-right: -8px;
+  background: none; border: none; border-radius: var(--ce-radius-sm); cursor: pointer;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-brand-ink);
 }
-.offers-filter-dd-clear:hover { text-decoration: underline; }
+.offers-filter-dd-clear:hover { background: var(--ce-color-brand-soft); }
+.offers-filter-dd-clear:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+@media (pointer: coarse) { .offers-filter-dd-clear { min-height: var(--ce-size-touch-target); } }
 
 /* Lieferzeit-Dropdown: dasselbe Material wie das Preis-Dropdown, nur etwas
-   breiter — der eingebettete Kalender (.dc, 7 Spalten) wird bei 320 px inkl.
-   36 px Innenabstand auf ~40 px je Tag gequetscht. 336 px hält die Tagesfelder
-   auf der Größe, die sie auch im Formular haben. Mobile (< 768px) übersteuert
+   breiter — der eingebettete Kalender (.dc, 7 Spalten) würde bei 320 px inkl.
+   Innenabstand auf ~40 px je Tag gequetscht. Mobile (< 768px) übersteuert
    .offers-filter-dropdown die Breite ohnehin auf `auto`. */
 .offers-delivery-dropdown { width: 336px; }
 
 .offers-price-slider {
-  width: 100%; height: 8px; border-radius: var(--radius-full);
-  background: var(--gray100); accent-color: var(--blue);
+  width: 100%; height: 8px; border-radius: var(--ce-radius-full);
+  background: var(--ce-color-surface-muted); accent-color: var(--ce-color-brand);
   cursor: pointer; outline: none;
 }
+.offers-price-slider:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .offers-price-slider:disabled { cursor: not-allowed; opacity: 0.5; }
 .offers-price-scale {
   display: flex; justify-content: space-between;
-  font-family: var(--ce-font-sans); font-size: 11px; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary);
 }
 .offers-price-slider:disabled ~ .offers-price-scale { opacity: 0.5; }
 
 /* ─── Body + Empty states ───────────────────────────────────────────────────── */
 .offers-body { padding: 20px 28px; }
 .offers-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 48px 24px; }
+/* Leerzustand ohne Iconfläche (Redesign 2026-10): ein Titel, ein Satz,
+   höchstens eine Aktion. */
 .offers-empty { text-align: center; padding: 48px 24px; }
-.offers-empty-icon {
-  width: 56px; height: 56px; margin: 0 auto 14px;
-  border-radius: 50%; background: var(--gray100); color: var(--ce-color-text-muted);
-  display: flex; align-items: center; justify-content: center;
+.offers-empty-title {
+  margin: 0 0 6px;
+  font-size: var(--ce-text-title-card-size); font-weight: 600; line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
 }
-.offers-empty-title { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
-.offers-empty-sub { font-size: 14px; color: var(--ce-color-text-muted); line-height: 1.55; max-width: 440px; margin: 0 auto; }
-/* Rückweg aus dem leeren Zustand: EINE Hauptaktion, mittig unter dem Text
-   (Musterebene „Zustände"). Nutzt das globale Button-Primitive, kein eigenes
-   Material. */
+.offers-empty-sub {
+  max-width: 440px; margin: 0 auto;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+/* Rückweg aus dem leeren Zustand: EINE Aktion, mittig unter dem Text
+   (Musterebene „Zustände"). Nutzt das globale Button-Primitive. */
 .offers-empty .btn { margin-top: 16px; }
 
-/* ─── Offer Card — Interactive Card (Paket B) ────────────────────────────────
-   Foundation-Tokens statt eigenem Material: Surface, Border Default, Radius LG,
-   Elevation 1 → Elevation 2 bei Hover. Kein translateY, kein blauer Glow —
-   Hover nur bei tatsächlich auswählbaren Karten (nicht bei --unavailable). */
+/* ─── Offer Card ──────────────────────────────────────────────────────────────
+   Die Tarifkarte ist das Angebot der Seite und trägt deshalb mehr Kartenwirkung
+   als eine Arbeitsfläche (Feinschliff 2026-10, näher an der Anfangsversion):
+   Surface, 1-px-Kante, Radius 12 und schon in Ruhe Stufe 2. Hover zeigt sich an
+   der stärkeren Kante (gleiche Tiefe — Stufe 3 ist dem Dialog vorbehalten),
+   nur bei auswählbaren Karten (nicht bei --unavailable). Kein translateY,
+   kein Glow, keine Symbole. */
 .offer-card {
   position: relative;
-  border: 1.5px solid var(--ce-color-border-default);
-  /* Etwas rechteckiger: Radius MD statt LG (12 statt 16 px) — ein vorhandenes
-     Token, kein neuer Wert. */
-  border-radius: var(--ce-radius-md);
-  padding: 18px 22px;
+  border: 1px solid var(--ce-color-border-default);
+  border-radius: var(--ce-radius-lg);
+  padding: 20px 24px;
   margin-bottom: 16px;
   cursor: pointer;
   background: var(--ce-color-surface);
-  /* Ruhezustand auf Elevation 2: die Karte hebt sich klarer von der Ivory-Fläche
-     ab, ohne Material-Optik. Hover bleibt bewusst AUF derselben Stufe und
-     unterscheidet sich über die Borderfarbe (siehe unten) — Elevation 3 ist der
-     Overlay-Schatten für Dialoge und auf einer Listenkarte deutlich zu viel.
-     Es wird kein freier Schattenwert geschrieben. */
   box-shadow: var(--ce-elevation-2);
   transition:
     border-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    background var(--ce-motion-fast) var(--ce-motion-ease-standard),
     box-shadow var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .offer-card:last-of-type { margin-bottom: 0; }
@@ -314,8 +337,8 @@
   box-shadow: var(--ce-elevation-2);
 }
 
-/* Ausgewählt: Brand Border + Brand Soft — kein Schatten-Ring, keine
-   Größenänderung. */
+/* Ausgewählt: Brand Border + Brand Soft auf Stufe 2 — kein Schatten-Ring,
+   keine Größenänderung. */
 .offer-card--selected {
   border-color: var(--ce-color-brand);
   background: var(--ce-color-brand-soft);
@@ -348,124 +371,102 @@
 .offer-card--unavailable:hover { border-color: var(--ce-color-border-default); box-shadow: var(--ce-elevation-2); }
 
 
-/* 4-zone grid (desktop): Zone1 | Zone2 | Zone3 in der Top-Row, Zone4 volle Breite */
+/* Kopfzeile (Desktop): Identität links · Übergabe und Zustellung mittig ·
+   Preis und Aktion rechts; die Hinweiszeile (Zone 4) läuft über die volle Breite. */
 .offer-card-inner {
   display: grid;
   grid-template-columns: 215px 1fr 235px;
   grid-template-areas:
     "zone-1 zone-2 zone-3"
     "zone-4 zone-4 zone-4";
-  column-gap: 26px;
+  column-gap: 24px;
   align-items: start;
 }
 
-/* ── Zone 1: Anbieter & Hauptnutzen ──────────────────────────────────────────── */
+/* ── Zone 1: Anbieter & Service ──────────────────────────────────────────────── */
 .offer-zone-1 { grid-area: zone-1; }
 .offer-logo-tile {
   width: 50px; height: 50px;
-  border-radius: var(--ce-radius-md); background: white;
-  border: 1px solid var(--border);
+  border-radius: var(--ce-radius-md); background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 10px; overflow: hidden;
-  box-shadow: var(--ce-elevation-1);
+  margin-bottom: 12px; overflow: hidden;
   flex-shrink: 0;
 }
 /* object-fit: contain + feste Box → jedes Logo bleibt unverzerrt und zentriert,
    unabhängig vom Seitenverhältnis der SVG-Datei. Der Innenabstand entsteht aus der
    Differenz zur 50-px-Kachel (6 px ringsum). */
 .offer-logo-tile img { width: 38px; height: 38px; object-fit: contain; display: block; }
-/* Generischer Carrier (publicCarrierId "other"): neutrales Paket-Icon statt Text.
-   Bewusst KEIN Text in der Kachel — er würde mehrzeilig umbrechen. */
-.offer-logo-tile--generic { color: var(--ce-color-text-muted); background: var(--gray50); }
+/* Generischer Carrier (publicCarrierId "other"): neutrales Paket-Zeichen statt
+   Text — funktionale Ausnahme (es besetzt die Carrier-Identität), kein Dekor.
+   Bewusst KEIN Text in der Kachel: er würde mehrzeilig umbrechen. */
+.offer-logo-tile--generic { color: var(--ce-color-text-muted); background: var(--ce-color-surface-subtle); }
 .offer-logo-tile--generic svg { display: block; }
 .offer-carrier-name {
-  font-family: var(--ce-font-sans); font-size: 16px; font-weight: 600;
-  color: var(--navy); line-height: 1.25; margin-bottom: 3px;
+  margin-bottom: 2px;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-title-card-size); font-weight: 600;
+  line-height: 1.35; color: var(--ce-color-text-primary);
 }
-/* Laufzeit — ruhig & hochwertig in DM Sans (Hausschrift, konsistent mit dem
-   Preis). Bewusst keine Display-Font (--fd): die Laufzeit soll
-   sachlich und schnell scanbar wirken, nicht charakterstark. Kein
-   font-variation-settings: die Fonts sind statisch, der Wert bliebe wirkungslos. */
+/* Laufzeit — wieder die markante Zeile des oberen Kartenbereichs (24/600 wie
+   in der Anfangsversion), eine Stufe unter dem Preis (28/600): der Preis
+   bleibt die eine dominante Zahl der Karte. */
 .offer-eta {
+  margin-bottom: 4px;
   font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  color: var(--navy); letter-spacing: -0.02em; line-height: 1; margin-bottom: 2px;
+  line-height: 1.2; letter-spacing: -0.02em; color: var(--ce-color-text-primary);
 }
 .offer-service-type {
-  font-size: 13px; font-weight: 500; color: var(--ce-color-text-muted); line-height: 1.35;
+  font-size: var(--ce-text-body-s-size); font-weight: 400; line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
 
-/* ── Zone 2: Versandablauf / Timeline ────────────────────────────────────────── */
-/* start statt center: Zone 1/3 sind bereits oben ausgerichtet und höher als
-   Zone 2 — das nutzt den dadurch ungenutzten Raum oben, ohne die (weiter von
-   Zone 1/3 bestimmte) Zeilenhöhe zu ändern. */
+/* ── Zone 2: Übergabe und Zustellung ─────────────────────────────────────────── */
+/* start statt center: Zone 1/3 sind oben ausgerichtet und meist höher. */
 .offer-zone-2 { grid-area: zone-2; align-self: start; min-width: 0; }
-/* Kompakte, zentrierte Timeline — Start & Ziel rücken enger zusammen, die
-   Linie ist kürzer und bewusst zurückhaltend (dezenter Konnektor), damit die
-   farbigen Punkte und die Texte dominieren, nicht die Linie. */
-.offer-timeline { display: flex; flex-direction: column; gap: 4px; max-width: 400px; margin: 0 auto; }
+/* Ruhige, zentrierte Prozesslinie: Start und Ziel, dazwischen eine feine Linie.
+   Kein Puls, kein Farbverlauf, kein Zwischenknoten (Redesign 2026-10). */
+.offer-timeline { display: flex; flex-direction: column; gap: 6px; max-width: 400px; margin: 0 auto; }
 
-/* Übergabeart als kleine Überschrift des Prozessbereichs. Body-Größe (14px)
-   statt Label (12px) für mehr Präsenz; Gewicht bleibt bei 600, dem laut
-   typography.test.mjs global höchsten zulässigen UI-Gewicht.
-
-   16px, nicht 12px: die Zeile stand ursprünglich INNERHALB von .offer-timeline
-   (gap: 4px) und maß dadurch 12 + 4 = 16px bis zur Prozesslinie. Seit sie —
-   damit sie auch auf einem nur preisauskunftsfähigen Angebot sichtbar bleibt —
-   vor der Verzweigung steht, greift dieser Gap nicht mehr; der Abstand trägt
-   die vollen 16px jetzt selbst. Der Rail→Labels-Abstand bleibt davon unberührt,
-   was der Grund war, ihn nie über den Gap zu lösen. */
+/* Übergabeart als kleine Überschrift des Prozessbereichs: Body-Stufe 14/600 in
+   normaler Schreibweise. Den Abstand von 16 px zur Prozesslinie trägt die Zeile
+   selbst — sie steht VOR .offer-timeline (damit sie auch auf einem nur
+   preisauskunftsfähigen Angebot sichtbar bleibt), dessen Gap hier nicht greift. */
 .offer-handover {
   margin: 0 0 16px;
   text-align: center;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-text-body-size);
-  font-weight: var(--ce-text-label-weight);
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: normal;
-  color: var(--navy);
+  color: var(--ce-color-text-primary);
 }
 .offer-tl-rail { display: flex; align-items: center; padding: 0 3px; }
+/* Die zwei Punkte der Strecke tragen wieder je ihre eigene Farbe (wie in der
+   Anfangsversion): Start im ConfidaraExpress-Blau, Ziel im ruhigen Grün der
+   Zustellung. Beide pulsieren sehr leicht — nur ein feiner Ring und ein Hauch
+   Deckkraft (@keyframes offerTlDotPulse, animations.css), kein Skalieren,
+   kein Glow; der Zielpunkt zeitversetzt. Die Linie dazwischen bleibt neutral.
+   Bei reduzierter Bewegung steht der Puls still (unten). */
 .offer-tl-dot {
-  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
-  animation: offerTlDotPulse 2.8s ease-in-out infinite;
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  animation: offerTlDotPulse 3.2s ease-in-out infinite;
 }
-/* Start = Blau (Shopabgabe/Versand), Ziel = dezentes Premium-Grün (Lieferung) —
-   die Linie führt den Verlauf weiter; Ziel-Punkt pulsiert leicht zeitversetzt. */
-.offer-tl-dot--start { background: var(--blue); --tl-ring: var(--ce-color-brand-border); }
-.offer-tl-dot--end   { background: var(--success); --tl-ring: rgba(16,185,129,0.3); animation-delay: 0.4s; }
-/* Transport = Zwischenstation auf der Linie, dezentes Amber (--warn) — bewusst
-   kleiner und langsamer/schwächer pulsierend als Start/Ziel, damit sie visuell
-   untergeordnet bleibt (rein konzeptionell, kein Live-Tracking-Status). */
-.offer-tl-dot--transport {
-  position: absolute; left: 50%; top: 50%; width: 7px; height: 7px;
-  transform: translate(-50%, -50%);
-  background: var(--warn); --tl-ring: rgba(245,158,11,0.22);
-  animation: offerTlDotPulse 4.2s ease-in-out infinite;
-}
+.offer-tl-dot--start { background: var(--ce-color-brand); --tl-ring: var(--ce-color-brand-border); }
+.offer-tl-dot--end   { background: var(--ce-color-success-solid); --tl-ring: var(--ce-color-success-ring); animation-delay: 0.4s; }
 .offer-tl-track {
-  position: relative;
   flex: 1; height: 2px; margin: 0 8px; border-radius: var(--ce-radius-sm);
-  background: linear-gradient(90deg,
-    rgba(83,103,232,0.45) 0%,
-    rgba(83,103,232,0.40) 20%,
-    rgba(245,158,11,0.38) 50%,
-    rgba(16,185,129,0.35) 80%,
-    rgba(16,185,129,0.40) 100%);
+  background: var(--ce-color-border-default);
 }
-/* 3-Spalten-Grid (1fr auto 1fr): Start links, Transport mittig, Ziel rechts.
-   Die mittlere auto-Spalte liegt durch die zwei gleich breiten 1fr-Spalten
-   immer exakt in der Zeilenmitte — deckungsgleich mit der Mitte der Rail
-   (Track = flex:1 zwischen zwei gleichen Dots). Dadurch sitzt das Truck-Icon
-   exakt unter dem gelben Punkt, unabhängig von den Seitenbreiten. */
-.offer-tl-labels { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: start; }
-.offer-tl-node { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+/* Zwei gleich breite Spalten: Start links, Ziel rechts — deckungsgleich mit
+   den beiden Enden der Linie. */
+.offer-tl-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.offer-tl-node { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .offer-tl-node--start { align-items: flex-start; text-align: left; }
 .offer-tl-node--end   { align-items: flex-end; text-align: right; }
-/* Transport-Node: rein visuell zentriert in der mittleren Spalte, nur Icon. */
-.offer-tl-node--transport { justify-self: center; align-items: center; text-align: center; }
-.offer-tl-title   { font-size: 15px; font-weight: 600; color: var(--navy); line-height: 1.25; }
-.offer-tl-primary { font-size: 14px; font-weight: 600; color: var(--ce-color-text-primary); line-height: 1.3; margin-top: 1px; }
-.offer-tl-sub     { font-size: 13px; font-weight: 500; color: var(--ce-color-text-muted); line-height: 1.3; }
+.offer-tl-title   { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); line-height: 1.3; }
+.offer-tl-primary { font-size: var(--ce-text-body-size); font-weight: 400; color: var(--ce-color-text-primary); line-height: 1.3; }
+.offer-tl-sub     { font-size: var(--ce-text-body-s-size); font-weight: 400; color: var(--ce-color-text-secondary); line-height: 1.35; }
 
 /* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten — „Lieferung bis
    10:30 Uhr“. Es ersetzt die frühere Inline-Färbung IN der Datumszeile
@@ -475,8 +476,8 @@
 
    Kleiner Statushinweis, kein Button und kein Marketing-Badge: sehr helle
    Success-Fläche, feine Kontur, kleiner Radius (SM = 8 px, bewusst keine
-   Pillenform), Label-Stufe 12/600 wie jeder andere Statusmarker des Systems.
-   Alle drei Farbwerte sind Foundation-Tokens — keine freie Grünfarbe.
+   Pillenform), 12/600 und seit dem Redesign (2026-10) ohne Symbol — der Text
+   steht vollständig da. Alle drei Farbwerte sind Foundation-Tokens.
 
    Es liegt als Geschwister UNTER .offer-tl-labels und damit außerhalb der
    1fr-Rasterspur des Endknotens: so kann es die Timeline nicht verziehen und
@@ -499,7 +500,6 @@
   line-height: 1.4;
   text-align: left;
 }
-.offer-early-note-icon { display: flex; flex-shrink: 0; }
 
 /* „Zustelltermin nicht bewertbar" (Betreiberentscheidung K2, 2026-10-02): unter
    einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne vergleichbare
@@ -525,36 +525,30 @@
 }
 
 /* Uhrzeitzeile des Lieferzeitfilters (beide Formular-Popover + Angebots-
-   Dropdown). Der Auslöser trägt weiterhin `.field-select` aus forms.css und
-   sieht damit aus wie jedes andere Auswahlfeld des Systems — nur die Liste ist
-   jetzt eigenes DOM statt einer vom Browser gezeichneten Select-Popup, deren
-   Öffnungsrichtung sich nicht steuern ließ. */
+   Dropdown). Der Auslöser trägt `.field-select` aus forms.css und sieht damit
+   aus wie jedes andere Auswahlfeld; die Liste ist eigenes DOM statt eines vom
+   Browser gezeichneten Select-Popups, dessen Öffnungsrichtung sich nicht
+   steuern ließ. */
 .offers-time-row { margin-top: 12px; }
 .offers-time-label {
-  display: block;
-  font-size: 12px; font-weight: 600; line-height: 1.4;
-  color: var(--ce-color-text-secondary); margin-bottom: 6px;
+  display: block; margin-bottom: 6px;
+  font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-primary);
 }
 
-/* Der Auslöser ist ein <button> mit derselben Feldoptik. `.field-select` bringt
-   Fläche, Kante, Höhe, Radius, Schrift und Fokusring mit; hier kommen nur die
-   Innenaufteilung und das Abschalten des Hintergrund-Chevrons dazu — der steckt
-   jetzt als Icon im Markup, damit er sich beim Öffnen drehen kann. */
+/* Der Auslöser ist ein <button> mit Feldoptik (`.field-select`). Hier kommen nur
+   die Innenaufteilung und das Abschalten des Hintergrund-Chevrons dazu — die
+   Klappmarke steht als CSS-Marke im Markup (gemeinsame Regel oben), damit sie
+   sich beim Öffnen drehen kann. Kein Uhr-Symbol (Redesign 2026-10). */
 .offers-time-trigger {
   display: flex; align-items: center; gap: 8px;
-  padding-right: 10px;
+  padding-right: 14px;
   background-image: none;
   text-align: left;
 }
-.offers-time-icon { display: flex; flex-shrink: 0; color: var(--ce-color-text-muted); }
 .offers-time-value { flex: 1 1 auto; min-width: 0; }
-.offers-time-caret {
-  display: flex; flex-shrink: 0; color: var(--ce-color-text-muted);
-  transition: transform var(--ce-motion-fast) var(--ce-motion-ease-standard);
-}
-.offers-time-trigger.is-open .offers-time-caret { transform: rotate(180deg); }
+.offers-time-caret { color: var(--ce-color-text-secondary); }
 .offers-time-trigger:disabled { cursor: not-allowed; }
-.offers-time-trigger:disabled .offers-time-icon,
 .offers-time-trigger:disabled .offers-time-caret { color: var(--ce-color-text-disabled); }
 
 /* Die Optionsliste. `position: fixed` + Portal an document.body: `.calc-panel`
@@ -572,136 +566,173 @@
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  box-shadow: var(--ce-elevation-3);
+  box-shadow: var(--ce-elevation-dropdown);
 }
 .offers-time-option {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  min-height: 36px; padding: 6px 10px;
+  min-height: 40px; padding: 6px 10px;
   border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans); font-size: 14px; line-height: 1.4;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); line-height: 1.4;
   color: var(--ce-color-text-primary);
   cursor: pointer;
 }
-.offers-time-option.is-marked { background: var(--ce-color-surface-subtle); }
-.offers-time-option.is-selected { font-weight: 600; }
-.offers-time-check { display: flex; flex-shrink: 0; color: var(--ce-color-brand-ink); }
+.offers-time-option.is-marked { background: var(--ce-color-surface-hover); }
+/* Gewählt: Gewicht, Markentinte und Brand Soft statt eines Häkchens. */
+.offers-time-option.is-selected { font-weight: 600; color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft); }
+.offers-time-option.is-selected.is-marked { background: var(--ce-color-brand-soft-hover); }
 
 .offers-time-hint {
-  font-size: 13px; line-height: 1.5; color: var(--ce-color-text-muted);
   margin: 6px 0 0;
-}
-.offer-tl-transport-icon  { display: flex; margin-top: 2px; color: var(--warn); }
-
-.offer-unavail {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
 
 /* ── Zone 3: Preis & Aktion ──────────────────────────────────────────────────── */
-.offer-zone-3 { grid-area: zone-3; display: flex; flex-direction: column; align-items: flex-end; }
-/* Reservierter Label-Slot: hält die Kartenhöhe konstant, egal ob ein Label da ist */
-.offer-zone-3-top { min-height: 20px; margin-bottom: 4px; display: flex; justify-content: flex-end; }
-.offer-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-family: var(--ce-font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.005em;
-  padding: 3px 9px; border-radius: var(--radius-full);
-  white-space: nowrap; border: 1px solid; line-height: 1.5;
+.offer-zone-3 { grid-area: zone-3; position: relative; display: flex; flex-direction: column; align-items: flex-end; }
+/* Preis und Aktion bilden einen eigenen Bereich der Karte: eine feine
+   senkrechte Linie mitten in der Spaltenlücke trennt ihn vom Ablauf — ohne
+   Spaltenbreiten zu verschieben. Nur im dreispaltigen Desktop-Aufbau; gestapelt
+   (≤ 1099 px) entfällt sie. */
+.offer-zone-3::before {
+  content: "";
+  position: absolute; top: 0; bottom: 0; left: -12px;
+  width: 1px;
+  background: var(--ce-color-border-subtle);
 }
-.offer-badge-green  { background: var(--success-bg); color: var(--success); border-color: rgba(16,185,129,0.28); }
-.offer-badge-violet { background: #f5f3ff; color: var(--ce-color-brand-violet-ink); border-color: rgba(124,58,237,0.22); }
+/* Reservierter Auszeichnungs-Slot: hält die Kartenhöhe konstant, egal ob eine
+   Auszeichnung da ist. */
+.offer-zone-3-top { min-height: 24px; margin-bottom: 6px; display: flex; justify-content: flex-end; }
+/* Auszeichnung („Günstigste", „Schnellste"): Badge-Stufe, Radius 8 statt
+   Pillenform, Farben ausschließlich aus Status-/Markentokens. */
+.offer-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: var(--ce-radius-sm); border: 1px solid;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-badge-size);
+  font-weight: var(--ce-text-badge-weight); line-height: var(--ce-text-badge-line);
+  white-space: nowrap;
+}
+.offer-badge-green  { background: var(--ce-color-status-success-surface); color: var(--ce-color-status-success-fg); border-color: var(--ce-color-status-success-border); }
+.offer-badge-violet { background: var(--ce-color-status-info-surface); color: var(--ce-color-status-info-fg); border-color: var(--ce-color-status-info-border); }
 .offer-badge-blue   { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); border-color: var(--ce-color-brand-border); }
 
 .offer-price-block { text-align: right; margin-bottom: 12px; }
-/* Preis bleibt stark (32/700). word-spacing weitet gezielt das geschützte
-   Leerzeichen (U+00A0) vor dem €-Zeichen, das Intl.NumberFormat liefert —
-   so wird aus dem optisch engen "15,26 €" ein sauberes "15,26 €", ganz ohne
-   Eingriff in die Preis-/Formatierungslogik. */
+/* Der Preis ist die eine dominante Zahl der Karte (28/600 wie in der
+   Anfangsversion, tabellarische Ziffern). word-spacing weitet gezielt das
+   geschützte Leerzeichen (U+00A0) vor dem €-Zeichen, das Intl.NumberFormat
+   liefert — ohne Eingriff in die Preis-/Formatierungslogik. */
 .offer-price {
-  font-family: var(--ce-font-sans); font-size: 28px; font-weight: 600;
-  color: var(--navy); letter-spacing: -0.02em; word-spacing: 0.08em;
-  line-height: 1.05; white-space: nowrap;
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: 28px; font-weight: 600; line-height: 1.15;
+  color: var(--ce-color-text-primary); letter-spacing: -0.02em; word-spacing: 0.08em;
+  white-space: nowrap;
 }
-.offer-price-sub { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 4px; }
+.offer-price-sub {
+  margin-top: 2px;
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-secondary);
+}
 /* Netto/Brutto (2026-10-02): der jeweils andere Serverbetrag unter dem Kartenpreis — in der Nettoanzeige der
    zahlbare Bruttobetrag. Ruhiger als der Preis, als Betrag lesbar; bricht an Wortgrenzen um. */
 .offer-price-alt {
   font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 12px; line-height: 1.4; color: var(--ce-color-text-secondary); margin-top: 2px;
+  font-size: var(--ce-text-caption-size); line-height: 1.4; color: var(--ce-color-text-secondary); margin-top: 2px;
 }
 /* TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — eine Zeile unter dem Preis,
    ruhiger als der Preis, aber als Betrag lesbar. Sie bricht an ihren Wortgrenzen um und ragt auf schmalen
    Karten nie über den Kartenrand. */
 .offer-sameday-surcharge {
   font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--navy); margin-top: 4px;
+  font-size: var(--ce-text-caption-size); font-weight: 600; line-height: 1.4; color: var(--ce-color-text-primary); margin-top: 4px;
 }
-.offer-price-na  { font-size: 14px; font-weight: 600; color: var(--ce-color-text-muted); text-align: right; }
-/* Nicht verfügbar: Preis bleibt sichtbar, aber weniger dominant */
-/* Der Preis behaelt seine volle Groesse und Farbe — er ist real, auch wenn das
-   Angebot gerade nicht bestellbar ist. Ihn zu verkleinern sagte dem Kunden
-   „diese Zahl gilt nicht so richtig", und das stimmt nicht. */
+.offer-price-na { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-secondary); text-align: right; }
+/* Der Preis behält auf einem nicht bestellbaren Angebot Größe und Farbe — er ist
+   real, auch wenn das Angebot gerade nicht bestellbar ist. */
 
+/* Auswahlaktion — die primäre Aktion der Tarifkarte (Feinschliff 2026-10):
+   gefüllt im ConfidaraExpress-Blau wie in der Anfangsversion, 44 px hoch,
+   Radius 8. Beim ausgewählten Angebot eine Stufe tiefer im Blau; gesperrt mit
+   lesbarem Grund. Die Beschriftung darf umbrechen — ein langer Sperrgrund wird
+   nie abgeschnitten. Kein Pfeil, kein Symbol. */
 .offer-cta-btn {
-  width: 100%; min-width: 180px; height: 44px;
-  border-radius: var(--radius); border: 1.5px solid var(--blue);
-  font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
-  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px;
+  width: 100%; min-width: 180px; min-height: var(--ce-size-touch-target);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--ce-radius-sm); border: 1px solid transparent;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size);
+  font-weight: var(--ce-text-button-weight); line-height: var(--ce-text-button-line);
+  text-align: center; cursor: pointer;
+  transition:
+    background var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.offer-cta-btn--outline { background: white; color: var(--blue2); }
-.offer-cta-btn--outline:hover { background: var(--ce-color-brand-soft); border-color: var(--blue2); color: var(--blue); }
-/* Hover auf der Karte: CTA-Kontrast leicht verstärken */
-.offer-card:hover .offer-cta-btn--outline { border-color: var(--blue2); }
-.offer-cta-btn--primary { background: var(--blue); color: white; }
-.offer-cta-btn--primary:hover { background: var(--navy); border-color: var(--navy); }
+.offer-cta-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.offer-cta-btn--primary { background: var(--ce-color-brand); border-color: var(--ce-color-brand); color: var(--ce-color-text-inverse); }
+.offer-cta-btn--primary:hover { background: var(--ce-color-brand-hover); border-color: var(--ce-color-brand-hover); }
+.offer-card--selected .offer-cta-btn--primary { background: var(--ce-color-brand-active); border-color: var(--ce-color-brand-active); }
+/* Gesperrt: der Grund steht IM Knopf und bleibt lesbar (Sekundärtext statt
+   Disabled-Grau) — die Karte bleibt eine vollwertige Preisauskunft. */
 .offer-cta-btn--disabled {
-  background: var(--gray100); color: var(--ce-color-text-muted);
-  border-color: var(--border); cursor: not-allowed;
+  background: var(--ce-color-surface-muted); border-color: var(--ce-color-border-default);
+  color: var(--ce-color-text-secondary); cursor: not-allowed;
 }
 /* TG22 Paket B: Handlungshinweis unter einem gesperrten CTA — nur wenn ein anderer
    Abholtermin tatsächlich hilft. Der Grund selbst steht weiterhin genau einmal im Knopf. */
-.offer-cta-hint { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--ce-color-text-muted); text-align: center; }
-/* .offer-cta-btn--pending (Paket B, entfernt): OfferCard.jsx baut ctaClass nur
-   aus --disabled/--primary/--outline (Zeile ~389) — --pending war nie erreichbar.
-   Der Dropoff-Guard selbst lebt unverändert im Buchungsschritt (siehe
-   DropoffNoticeModule.jsx), nicht auf der Angebotskarte. */
-
-.offer-details-link {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  color: var(--blue2); cursor: pointer; background: none; border: none; padding: 4px 0;
-  min-height: 36px; /* hit target */
+.offer-cta-hint {
+  margin: 6px 0 0; text-align: center;
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-secondary);
 }
-.offer-details-link:hover { color: var(--navy); }
-.offer-details-chevron { transition: transform 0.22s cubic-bezier(.2,.7,.3,1); display: inline-flex; }
-.offer-details-chevron.open { transform: rotate(180deg); }
+/* .offer-cta-btn--pending (Paket B, entfernt): OfferCard.jsx baut ctaClass nur
+   aus --disabled/--primary — --pending war nie erreichbar. Der Dropoff-Guard
+   lebt unverändert im Buchungsschritt (DropoffNoticeModule.jsx). */
 
-/* ── Zone 4: Meta-/Hinweis-Fußzeile (volle Breite, ruhig & kompakt) ──────────── */
+/* „Details anzeigen" — Textaktion (Muster der Tertiäraktion) mit CSS-Klappmarke. */
+.offer-details-link {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: var(--ce-size-control-md); margin: 8px -8px 0 0; padding: 0 8px;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-brand-ink); cursor: pointer;
+  background: none; border: none; border-radius: var(--ce-radius-sm);
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.offer-details-link:hover { background: var(--ce-color-brand-soft); }
+.offer-details-link:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+
+/* ── Zone 4: Leistungsmerkmale (volle Breite, ruhig und kompakt) ──────────────
+   Jede Angabe steht als eigene ruhige Textmarke (Feinschliff 2026-10): helle
+   Fläche, feine Kante, Radius 8 — klar gegliedert wie in der Anfangsversion,
+   aber ohne Symbole. „Sendungsverfolgung" und „Drucker erforderlich" lesen sich
+   so nie als ein Satz. */
+/* min-height reserviert genau eine Reihe Marken (14 px Abstand + 1 px Kante +
+   24 px Marke = 39 px): eine Karte ohne Merkmale ist so hoch wie eine mit. */
 .offer-zone-4 {
   grid-area: zone-4;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 7px 16px;
-  margin-top: 10px; padding-top: 9px;
-  border-top: 1px solid var(--border);
-  min-height: 34px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--ce-color-border-subtle);
+  min-height: 40px;
 }
-/* Alle Meta-Texte teilen dieselbe ruhige Textfarbe; nur die Icons tragen einen
-   dezenten Akzent — so wirken Tracking- und Druckerhinweis zusammengehörig und
-   nie lauter als Timeline, Laufzeit oder Preis. */
 .offer-meta-item {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 500; color: var(--ce-color-text-secondary);
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-subtle);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  font-weight: 500; color: var(--ce-color-text-secondary);
 }
-.offer-meta-item svg { color: var(--ce-color-text-muted); flex-shrink: 0; }
-/* Sendungsverfolgung: ruhiger, vertrauensvoller Blau-Akzent nur am Icon. */
-.offer-meta-item--info svg { color: var(--blue2); }
-/* Drucker erforderlich: Text bleibt ruhig (geerbtes gray600), nur das Icon
-   setzt einen sehr dezenten Warn-Akzent — kein dominanter Orange-Text mehr. */
-.offer-meta-item--warn svg { color: var(--warn); }
+/* „Vorläufiger Preis" betrifft den Betrag direkt darüber — dieselbe Marke im
+   Warnton. */
+.offer-meta-item--notice {
+  border-color: var(--ce-color-status-warning-border);
+  background: var(--ce-color-status-warning-surface);
+  font-weight: 600; color: var(--ce-color-status-warning-fg);
+}
 
 /* ─── Details Panel (lazy accordion) ────────────────────────────────────────── */
 .offer-details-panel--closed { display: none; }
 .offer-details-panel--open {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--ce-color-border-subtle);
   margin-top: 16px; padding-top: 16px;
   animation: offerPanelIn 0.18s ease;
 }
@@ -709,63 +740,63 @@
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.offer-details-section { margin-bottom: 18px; }
+.offer-details-section { margin-bottom: 20px; }
 .offer-details-section:last-child { margin-bottom: 0; }
-/* Preisaufschlüsselung bewusst sekundär: kompakter, ruhiger als Hauptmerkmale.
-   Brutto erhält eine dezente Trennlinie + etwas größeren Wert (Abschluss-Betonung,
-   kein Hintergrund-/Badge-Effekt). */
-.offer-details-section--price .offer-detail-row { padding: 5px 0; }
+/* Preisaufschlüsselung bewusst sekundär: kompakter, ruhiger als die Hauptmerkmale.
+   Der Abschlussbetrag erhält eine Trennlinie (kein Hintergrund-/Badge-Effekt). */
+.offer-details-section--price .offer-detail-row { padding: 6px 0; }
 .offer-details-section--price .offer-detail-row--strong {
-  margin-top: 3px; padding-top: 10px; border-top: 1px solid var(--border);
+  margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--ce-color-border-default);
 }
-.offer-details-section--price .offer-detail-row--strong .offer-detail-value { font-size: 14px; }
+.offer-details-section--price .offer-detail-row--strong .offer-detail-value { font-size: var(--ce-text-body-size); }
+/* Abschnittstitel in normaler Schreibweise (Redesign 2026-10, vorher Versalien). */
 .offer-detail-section-title {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.09em; color: var(--ce-color-text-muted); margin-bottom: 6px;
+  margin-bottom: 6px;
+  font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-primary);
 }
 .offer-detail-row {
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-  padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  padding: 8px 0; border-bottom: 1px solid var(--ce-color-border-subtle);
+  font-size: var(--ce-text-body-s-size);
 }
 .offer-detail-row:last-child { border-bottom: none; }
-.offer-detail-row--strong .offer-detail-value { font-weight: 600; color: var(--navy); }
-.offer-detail-label { color: var(--ce-color-text-muted); font-weight: 500; flex-shrink: 0; }
-.offer-detail-value { color: var(--navy); font-weight: 600; text-align: right; }
+.offer-detail-row--strong .offer-detail-value { font-weight: 600; color: var(--ce-color-text-primary); }
+.offer-detail-label { color: var(--ce-color-text-secondary); font-weight: 400; flex-shrink: 0; }
+.offer-detail-value { color: var(--ce-color-text-primary); font-weight: 500; text-align: right; }
 /* Tarif-ID & sekundäre technische Werte: dezent, nicht dominant. */
 .offer-detail-row--subtle .offer-detail-value {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary);
 }
 
-/* Hauptmerkmale — ruhiges 2-Spalten-Feature-Grid: Label dezent, Wert stark,
-   kleines Icon aus bestehender Icon-Sprache. Bewusst kein Card-in-Card-Look.
-   Kompakterer Gap lässt die Gruppe als eine zusammengehörige Einheit wirken. */
-.offer-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+/* Hauptmerkmale — ruhiges 2-Spalten-Raster: Beschriftung leise, Wert kräftig,
+   ohne Symbole (Redesign 2026-10). Bewusst kein Card-in-Card-Look. */
+.offer-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
 .offer-feature { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .offer-feature--wide { grid-column: 1 / -1; }
-.offer-feature-icon { flex-shrink: 0; margin-top: 1px; color: var(--ce-color-text-muted); display: inline-flex; }
-.offer-feature-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.offer-feature-label { font-size: 11px; font-weight: 500; color: var(--ce-color-text-muted); line-height: 1.3; }
+.offer-feature-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.offer-feature-label { font-size: var(--ce-text-caption-size); font-weight: 400; color: var(--ce-color-text-secondary); line-height: var(--ce-text-caption-line); }
 .offer-feature-value {
-  font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.35; overflow-wrap: break-word;
+  font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); line-height: 1.4; overflow-wrap: break-word;
 }
 .offer-feature-value--subtle {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-feature-settings: "tnum"; font-size: 12px; font-weight: 500; color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-secondary);
 }
 
-/* Einschränkungen — natürliche Sätze als ruhige Liste mit dezentem Punkt-Marker
-   (bewusst kein Tabellen-/Formular-Look). */
+/* Einschränkungen — natürliche Sätze als ruhige Liste mit neutralem
+   Listenpunkt (Typografie, kein Symbol). */
 .offer-limit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .offer-limit-item {
   position: relative; padding-left: 16px;
-  font-size: 13px; line-height: 1.5; color: var(--ce-color-text-primary);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-primary);
 }
 .offer-limit-item::before {
-  content: ""; position: absolute; left: 3px; top: 0.55em;
-  width: 5px; height: 5px; border-radius: 50%; background: var(--blue3);
+  content: ""; position: absolute; left: 4px; top: 0.6em;
+  width: 4px; height: 4px; border-radius: 50%; background: var(--ce-color-text-muted);
 }
 
 /* Versicherung — dezenter read-only Hinweis (keine Buchbarkeit). */
-.offer-insurance-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
+.offer-insurance-note { margin: 8px 0 0; font-size: var(--ce-text-caption-size); line-height: 1.5; color: var(--ce-color-text-secondary); }
 
 /* Produktprofil (TG22 Package A) — fünf Abschnitte im Detailbereich, in derselben Sprache wie die
    übrigen Abschnitte. Zusätzlich Umbruchschutz: ein langer Wert bricht um, statt die Zeile zu sprengen
@@ -793,65 +824,70 @@
   margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); overflow-wrap: break-word;
 }
 
-/* Links & Bedingungen — hochwertige, klar klickbare Zeilen mit dezenter
-   Hover-Fläche (gute Klickfläche, auch mobil), externes Ziel. */
+/* Links & Bedingungen — klar klickbare Zeilen mit Hover-Fläche (gute
+   Klickfläche, auch mobil). Das externe Ziel steht als Text („öffnet in neuem
+   Tab") statt als Symbol (Redesign 2026-10). */
 .offer-links-list { display: flex; flex-direction: column; gap: 2px; }
 .offer-link-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px; margin: 0 -12px; border-radius: var(--ce-radius-sm);
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  color: var(--blue2); text-decoration: none; transition: color 0.15s, background 0.15s;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap;
+  min-height: 44px; padding: 10px 12px; margin: 0 -12px; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-brand-ink); text-decoration: none;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.offer-link-row:hover { color: var(--blue); background: var(--gray50); }
-.offer-link-row svg { color: var(--ce-color-text-muted); flex-shrink: 0; transition: color 0.15s; }
-.offer-link-row:hover svg { color: var(--blue); }
+.offer-link-row:hover { background: var(--ce-color-brand-soft); }
+.offer-link-row:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.offer-link-label { min-width: 0; overflow-wrap: break-word; }
+.offer-link-hint {
+  flex-shrink: 0; white-space: nowrap;
+  font-size: var(--ce-text-caption-size); font-weight: 400; color: var(--ce-color-text-secondary);
+}
 
-/* ─── Trust Strip ────────────────────────────────────────────────────────────── */
+/* ─── Trust Strip ──────────────────────────────────────────────────────────────
+   Vier kurze Zusagen als ruhige Textspalten — ohne Symbolkacheln (Redesign 2026-10). */
 .offers-trust-strip {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--border);
-  background: var(--gray50);
+  border-top: 1px solid var(--ce-color-border-subtle);
+  background: var(--ce-color-surface-subtle);
 }
 .offers-trust-item {
-  padding: 18px 20px;
-  display: flex; align-items: flex-start; gap: 12px;
-  border-right: 1px solid var(--border);
+  min-width: 0; padding: 16px 20px;
+  border-right: 1px solid var(--ce-color-border-subtle);
 }
 .offers-trust-item:last-child { border-right: none; }
-.offers-trust-icon {
-  width: 34px; height: 34px; border-radius: var(--ce-radius-sm);
-  background: white; border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+.offers-trust-title {
+  margin-bottom: 2px;
+  font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-primary);
 }
-.offers-trust-title { font-size: 12px; font-weight: 600; color: var(--navy); margin-bottom: 2px; }
-.offers-trust-desc  { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.4; }
+.offers-trust-desc { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-secondary); }
 
-/* ─── Tipp Leiste ───────────────────────────────────────────────────────────── */
+/* ─── Tipp-Leiste ───────────────────────────────────────────────────────────────
+   Ein Hinweis, kein Alarm: neutrale Fläche, Text ohne Symbol. */
 .offers-tipp {
-  display: flex; align-items: flex-start; gap: 12px;
   padding: 14px 28px;
-  background: var(--warn-bg);
+  background: var(--ce-color-surface-subtle);
   border-top: 1px solid var(--ce-color-border-subtle);
 }
-.offers-tipp-icon {
-  width: 30px; height: 30px; border-radius: var(--ce-radius-sm);
-  background: var(--ce-color-surface);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+.offers-tipp-text {
+  margin: 0;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
-.offers-tipp-text { font-size: 13px; color: var(--ce-color-text-primary); line-height: 1.55; }
-.offers-tipp-text strong { color: var(--navy); font-weight: 600; }
+.offers-tipp-text strong { color: var(--ce-color-text-primary); font-weight: 600; }
 
-/* ─── Recalculate footer ─────────────────────────────────────────────────────── */
-.offers-recalc {
-  display: flex; justify-content: center; padding: 8px 28px 4px;
-}
+/* ─── Neu berechnen ─────────────────────────────────────────────────────────── */
+.offers-recalc { display: flex; justify-content: center; padding: 12px 28px 4px; }
 .offers-recalc-btn {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
-  color: var(--ce-color-text-muted); background: none; border: none; cursor: pointer;
-  padding: 8px 16px; border-radius: var(--radius); transition: color 0.15s, background 0.15s;
+  min-height: var(--ce-size-control-md); padding: 0 14px; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 600;
+  color: var(--ce-color-brand-ink); background: none; border: none; cursor: pointer;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.offers-recalc-btn:hover { color: var(--navy); background: var(--gray100); }
+.offers-recalc-btn:hover { background: var(--ce-color-brand-soft); }
+.offers-recalc-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+@media (pointer: coarse) { .offers-recalc-btn { min-height: var(--ce-size-touch-target); } }
 
 /* ─── Responsive: Tablet (768–1099px) ───────────────────────────────────────── */
 @media (max-width: 1099px) {
@@ -867,7 +903,18 @@
     row-gap: 16px;
   }
   .offer-zone-2 { align-self: start; }
-  .offer-eta { font-size: 24px; }
+  /* Gestapelt steht der Preisbereich nicht mehr neben dem Ablauf — die
+     senkrechte Trennlinie entfällt. */
+  .offer-zone-3::before { display: none; }
+  /* Zone 2 steht hier in einer eigenen Zeile und bestimmt die Kartenhöhe mit.
+     Die Beschriftung reserviert deshalb drei Textzeilen (Titel, Datum, Zusatz):
+     sonst ist ein Angebot mit Abholfenster eine Zeile höher als seine Nachbarn,
+     und ein höherer Block in einer Liste gleichartiger Karten liest sich als
+     Fehler. Zwei Zeilen der Titelstufe (× 1,3), eine der Zusatzstufe (× 1,35),
+     zweimal 2 px Knotenabstand. */
+  .offer-tl-labels {
+    min-height: calc(2.6 * var(--ce-text-body-size) + 1.35 * var(--ce-text-body-s-size) + 4px);
+  }
   .offer-cta-btn { min-width: 168px; }
   /* Platzhalter: gemessen 390–414 px, im Mittel 400 (je zur Hälfte 390 und 408). */
   .offer-card { contain-intrinsic-size: auto 400px; }
@@ -876,13 +923,13 @@
   .offers-trust-strip { grid-template-columns: 1fr 1fr; }
   .offers-trust-item:nth-child(2) { border-right: none; }
   .offers-trust-item:nth-child(1),
-  .offers-trust-item:nth-child(2) { border-bottom: 1px solid var(--border); }
+  .offers-trust-item:nth-child(2) { border-bottom: 1px solid var(--ce-color-border-subtle); }
 }
 
 /* ─── Responsive: Mobile (< 768px) ──────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .offers-result-header { padding: 16px 16px; gap: 10px; }
-  .offers-result-count { font-size: 18px; }
+  .offers-result-header { padding: 16px; gap: 10px; }
+  .offers-result-count { font-size: var(--ce-text-title-section-size-mobile); }
   /* Auf schmalen Viewports stapeln die Gruppen, statt horizontal zu scrollen:
      die Beschriftungen BLEIBEN sichtbar — sie sind hier wertvoller als auf dem
      Desktop, weil die Gruppen untereinander stehen und die räumliche
@@ -890,7 +937,7 @@
      `.offers-sort-label` aus und ließ die ganze Leiste seitwärts scrollen; die
      MwSt.-Umschaltung war damit auf einem Telefon unauffindbar, weil sie am
      rechten Ende des Scrollbereichs lag. */
-  .offers-toolbar { padding: 14px; gap: 12px; }
+  .offers-toolbar { padding: 14px 16px; gap: 12px; }
   .offers-toolbar-row { flex-direction: column; align-items: stretch; gap: 12px; }
   .offers-toolbar-row--filter { padding-top: 12px; }
   /* Die Beschriftung wandert ÜBER ihre Gruppe. Bliebe sie daneben, teilte sie
@@ -906,12 +953,11 @@
   .offers-segment .offers-segment-item {
     flex: 1 1 calc(50% - 1px); text-align: center; min-width: 0;
   }
-  .offers-sort-btn { font-size: 12px; padding: 7px 11px; }
-  .offers-filter-reset-btn { font-size: 12px; padding: 7px 11px; align-self: flex-start; }
-  .offers-body { padding: 14px; }
+  .offers-filter-reset-btn { align-self: flex-start; margin-left: -12px; }
+  .offers-body { padding: 16px; }
 
   /* Karte voll gestapelt: Zone 1 → Zone 2 → Zone 3 → Zone 4 */
-  .offer-card { padding: 18px 16px; border-radius: var(--ce-radius-lg); margin-bottom: 12px; }
+  .offer-card { padding: 16px; }
   /* Platzhalter: gemessen 436–545 px (Median 453–480 von 430 bis 320 px Breite). */
   .offer-card { contain-intrinsic-size: auto 460px; }
   .offer-card-inner {
@@ -924,24 +970,27 @@
   .offer-zone-1 { display: flex; align-items: center; gap: 14px; }
   .offer-logo-tile { margin-bottom: 0; }
   .offer-zone-1-main { min-width: 0; }
-  .offer-eta { font-size: 20px; }
 
-  /* Zone 2: horizontale 3-Stationen-Timeline auch auf Mobile (wie Desktop),
-     nur kompakter. Breitenlimit aufheben, damit die Rail die volle Breite
-     nutzt; Rail + Grid bleiben sichtbar, keine vertikale Pseudo-Linie. */
+  /* Zone 2: dieselbe waagerechte Prozesslinie wie auf dem Desktop, nur
+     kompakter. Breitenlimit aufheben, damit die Linie die volle Breite nutzt. */
   .offer-timeline { max-width: none; margin: 0; }
   /* Auf schmalen Karten steht die Kennzeichnung linksbündig über dem Ablauf —
      zentriert über einer linksbündigen Spalte wirkte sie verrutscht. */
   .offer-handover { text-align: left; }
-  .offer-tl-labels { gap: 8px; }
+  /* Dieselbe Reservierung von drei Textzeilen wie auf dem Tablet, in den
+     kleineren Stufen dieser Breite (Titel 13 px, Zusatz 12 px). */
+  .offer-tl-labels {
+    gap: 8px;
+    min-height: calc(2.6 * var(--ce-text-body-s-size) + 1.35 * var(--ce-text-caption-size) + 4px);
+  }
   /* Lange Shop-/Lieferzeitraum-Texte sauber an WORTGRENZEN umbrechen statt
      Overflow — break-word statt des früheren anywhere, das Shopnamen und
      Datumsangaben mitten im Wort trennen durfte. */
   .offer-tl-node--start,
   .offer-tl-node--end { overflow-wrap: break-word; }
-  .offer-tl-title   { font-size: 13px; }
-  .offer-tl-primary { font-size: 12px; }
-  .offer-tl-sub     { font-size: 12px; }
+  .offer-tl-title   { font-size: var(--ce-text-body-s-size); }
+  .offer-tl-primary { font-size: var(--ce-text-body-s-size); }
+  .offer-tl-sub     { font-size: var(--ce-text-caption-size); }
 
   /* Zone 3 volle Breite, CTA full-width */
   .offer-zone-3 { align-items: stretch; }
@@ -949,10 +998,11 @@
   .offer-zone-3-top:empty { margin-bottom: 0; }
   .offer-price-block { text-align: left; }
   .offer-cta-btn { width: 100%; min-width: 0; }
-  .offer-details-link { align-self: flex-start; }
+  .offer-details-link { align-self: flex-start; margin: 8px 0 0 -8px; }
 
-  /* Zone 4 darf umbrechen, bleibt ruhig */
-  .offer-zone-4 { min-height: 34px; margin-top: 12px; padding-top: 10px; gap: 6px 14px; }
+  /* Zone 4 darf umbrechen, bleibt ruhig. min-height reserviert eine Reihe
+     Marken (10 px Abstand + 1 px Kante + 24 px Marke, aufgerundet). */
+  .offer-zone-4 { min-height: 36px; margin-top: 12px; padding-top: 10px; }
 
   /* Details: Feature-Grid einspaltig, keine Überläufe */
   .offer-feature-grid { grid-template-columns: 1fr; gap: 10px; }
@@ -960,39 +1010,47 @@
 
   /* Liste */
   .offers-trust-strip { grid-template-columns: 1fr; }
-  .offers-trust-item { border-right: none; border-bottom: 1px solid var(--border); }
+  .offers-trust-item { border-right: none; border-bottom: 1px solid var(--ce-color-border-subtle); }
   .offers-trust-item:last-child { border-bottom: none; }
   .offers-tipp { padding: 14px 16px; }
-  .offers-recalc { padding: 8px 14px 4px; }
-  /* Dropdowns auf Mobile als Block sauber unter der Leiste (die Leiste selbst
-     scrollt horizontal — Zone/Dropdown tun das nicht, daher kein Clipping). */
+  .offers-recalc { padding: 8px 16px 4px; }
+  /* Dropdowns auf Mobile als Block sauber unter der Leiste — ohne Schatten,
+     eingebettet in die Toolbarfläche. */
   .offers-filter-dropdown {
     position: static; width: auto; max-width: none; right: auto; top: auto;
     border-radius: 0; border-left: none; border-right: none; border-top: none;
-    border-bottom: 1px solid var(--border); box-shadow: none; animation: none;
-    padding: 16px 14px; background: var(--gray50);
+    border-bottom: 1px solid var(--ce-color-border-subtle); box-shadow: none; animation: none;
+    padding: 16px; background: var(--ce-color-surface-subtle);
   }
 }
 
 @media (max-width: 480px) {
   .offer-logo-tile { width: 46px; height: 46px; }
   .offer-logo-tile img { width: 34px; height: 34px; }
-  .offer-eta { font-size: 20px; }
-  .offer-price { font-size: 24px; }
   /* Produktprofil: die Beschriftung steht über dem Wert — keine gequetschte Zeile, kein abgeschnittener Wert. */
   .offer-profile-row { flex-direction: column; align-items: flex-start; gap: 2px; }
   .offer-profile-row .offer-detail-value { margin-left: 0; text-align: left; }
 }
 
+/* Sehr schmal (< 360 px): zwei Marken passen nicht mehr in eine Reihe — die
+   Merkmale stehen hier als schlichter Text nebeneinander, damit die Karte nicht
+   um eine zweite Markenreihe höher wird als ihre Nachbarn. */
+@media (max-width: 359px) {
+  .offer-zone-4 { row-gap: 4px; }
+  .offer-meta-item { padding: 0; border: 0; background: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .offer-tl-dot { animation: none; }
+  .offers-filter-chip-caret, .offer-details-chevron, .offers-time-caret, .ap-list-toggle-caret,
+  .offers-sort-btn, .offer-cta-btn, .offer-card { transition: none; }
+  .offers-filter-dropdown, .offer-details-panel--open, .offer-tl-dot { animation: none; }
 }
 
 /* ─── Access-Point / Paketshop-Finder (read-only Orientierung) ──────────────── */
 
 /* ── Einstieg in den Paketshop-Finder am Angebot ─────────────────────────────
-   Hier standen bis zu diesem Paket die Regeln der großen Inline-Suchsektion
-   (.ap-finder, .ap-finder-form, .ap-finder-fields, .ap-finder-controls,
+   Hier standen früher die Regeln der großen Inline-Suchsektion (.ap-finder,
+   .ap-finder-form, .ap-finder-fields, .ap-finder-controls,
    .ap-finder-search-btn, .ap-finder-hint, .ap-finder-note, .ap-finder-receipt,
    .ap-finder-reopen). Die Sektion ist von der Angebotsseite verschwunden —
    ihre Regeln sind mit entfernt, statt ungenutzt liegen zu bleiben.
@@ -1000,40 +1058,50 @@
    Erhalten bleiben ausschließlich die Regeln, die das FENSTER weiterbenutzt:
    Feldbeschriftung, Eingaben, Pflicht-/Optionalmarker, Fehler und Leerzustand.
 
-   Der Einstieg selbst ist ein kleiner Textknopf — sekundär, damit er weder mit
-   dem Preis noch mit „Angebot auswählen“ konkurriert. */
+   Der Einstieg selbst ist eine kleine Textaktion („Paketshops suchen") ohne
+   Kartensymbol (Redesign 2026-10) — sekundär, damit er weder mit dem Preis noch
+   mit „Angebot auswählen“ konkurriert. */
 .ps-trigger {
   display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 8px; padding: 4px 8px; margin-left: -8px;
+  min-height: 32px; margin-top: 8px; margin-left: -8px; padding: 0 8px;
   border: none; border-radius: var(--ce-radius-sm); background: none;
-  color: var(--blue2); font-family: var(--ce-font-sans);
-  font-size: 12px; font-weight: 600; line-height: 1.4;
+  color: var(--ce-color-brand-ink); font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line);
   cursor: pointer; text-align: left;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ps-trigger:hover { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
-.ps-trigger:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
-.ps-trigger svg { flex-shrink: 0; }
+.ps-trigger:hover { background: var(--ce-color-brand-soft); }
+.ps-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+@media (pointer: coarse) { .ps-trigger { min-height: var(--ce-size-touch-target); } }
 
-/* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. */
-.ap-finder-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
-.ap-finder-optional { font-weight: 500; color: var(--ce-color-text-muted); }
-.ap-finder-required { font-weight: 600; color: var(--blue2); }
+/* Gemeinsame Feld- und Zustandsregeln — vom Fenster benutzt. Material wie
+   `.field-input` (forms.css): 40 px, 1-px-Kante, Radius 8, Standardfokus.
+   Das Auswahlfeld bleibt nativ (funktionale Ausnahme). */
+.ap-finder-label {
+  font-size: var(--ce-text-label-size); font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line); color: var(--ce-color-text-primary);
+}
+.ap-finder-optional,
+.ap-finder-required { font-weight: 400; color: var(--ce-color-text-secondary); }
 .ap-finder-input, .ap-finder-select {
-  height: 40px; border: 1.5px solid var(--border); border-radius: var(--radius);
-  padding: 0 12px; font-size: 14px; font-family: var(--ce-font-sans);
-  color: var(--navy); background: white; outline: none; transition: border-color 0.15s;
   width: 100%; box-sizing: border-box;
+  min-height: var(--ce-size-control-md); padding: 0 12px;
+  border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface);
+  font-family: var(--ce-font-sans); font-size: 14px; color: var(--ce-color-text-primary);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ap-finder-input:focus, .ap-finder-select:focus { border-color: var(--blue); }
+.ap-finder-input:hover, .ap-finder-select:hover { border-color: var(--ce-color-border-interactive-hover); }
+.ap-finder-input:focus, .ap-finder-select:focus {
+  border-color: var(--ce-color-border-focus);
+  outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset);
+}
 .ap-finder-error {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 10px 12px; border-radius: var(--radius);
-  background: var(--danger-bg); border: 1px solid rgba(239,68,68,0.22);
-  font-size: 13px; color: var(--ce-color-status-error-fg); line-height: 1.5;
+  padding: 10px 12px; border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-error-surface); border: 1px solid var(--ce-color-status-error-border);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-status-error-fg);
 }
-.ap-finder-error svg { color: var(--danger); flex-shrink: 0; margin-top: 1px; }
-.ap-finder-empty { padding: 14px 4px; font-size: 13px; color: var(--ce-color-text-muted); line-height: 1.5; }
+.ap-finder-empty { padding: 14px 4px; font-size: var(--ce-text-body-s-size); line-height: 1.5; color: var(--ce-color-text-secondary); }
 
 /* ── Großes Paketshop-Finder-Fenster ──────────────────────────────────────
    Ein Arbeitsfenster, kein Bestätigungsdialog: links die scrollende
@@ -1041,8 +1109,7 @@
    dem bestehenden System — es gibt keine zweite Dialogwelt.
 
    Die frühere Inline-Ergebnisliste (.ap-result*, .ap-more-btn, .ap-finder-sr)
-   ist entfallen: die Treffer stehen jetzt ausschließlich im Fenster. Ihre
-   Regeln wurden mit entfernt, statt ungenutzt liegen zu bleiben. */
+   ist entfallen: die Treffer stehen jetzt ausschließlich im Fenster. */
 
 /* Zwei Klassen mit Absicht: .ce-dialog-overlay aus patterns.css setzt 20 px
    Polster und wird NACH dieser Datei importiert (dokumentierte Reihenfolge).
@@ -1058,90 +1125,99 @@
   display: flex; flex-direction: column; min-height: 0;
   width: min(1280px, calc(100vw - 48px));
   height: min(820px, calc(100vh - 48px));
-  background: white; border-radius: var(--ce-radius-lg);
+  background: var(--ce-color-surface); border-radius: var(--ce-radius-lg);
   box-shadow: var(--ce-elevation-3); overflow: hidden;
 }
 .ap-modal:focus { outline: none; }
 
-/* Kopf */
+/* Kopf: Titel und ein Satz links, Text-„Schließen" rechts — keine Eyebrow,
+   kein Symbolknopf (Redesign 2026-10). */
 .ap-modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
-  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--ce-color-border-subtle);
 }
 .ap-modal-head-text { min-width: 0; }
-.ap-modal-eyebrow {
-  margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--ce-color-text-muted);
-}
 .ap-modal-title {
-  margin: 0; font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  line-height: 1.25; color: var(--navy);
+  margin: 0; font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size); font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line); color: var(--ce-color-text-primary);
 }
 .ap-modal-sub {
-  margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: var(--ce-color-text-secondary);
+  margin: 4px 0 0;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); color: var(--ce-color-text-secondary);
 }
+/* „Schließen" als Textaktion (Muster der Tertiäraktion, btn-ghost). */
 .ap-modal-close {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--radius);
-  border: 1.5px solid var(--border); background: white; color: var(--ce-color-text-secondary);
-  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--ce-size-control-md); padding: 0 12px; margin: -4px -8px 0 0;
+  border: 1px solid transparent; border-radius: var(--ce-radius-sm);
+  background: transparent; color: var(--ce-color-brand-ink);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size);
+  font-weight: var(--ce-text-button-weight); line-height: var(--ce-text-button-line);
+  cursor: pointer; transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ap-modal-close:hover { background: var(--gray50); color: var(--navy); }
-.ap-modal-close:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-modal-close:hover { background: var(--ce-color-brand-soft); }
+.ap-modal-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 /* Such- und Filterbereich — im Fenster änderbar, ohne es zu schließen. */
 .ap-modal-search {
-  display: grid; gap: 10px 12px; align-items: end;
+  display: grid; gap: 12px; align-items: end;
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 1fr) auto;
   padding: 16px 24px 12px;
 }
-.ap-modal-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ap-modal-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .ap-modal-search-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 40px; padding: 0 18px; border-radius: var(--radius);
-  border: 1.5px solid var(--blue); background: var(--blue); color: white;
-  font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--ce-size-control-md); padding: 0 18px; border-radius: var(--ce-radius-sm);
+  border: 1px solid var(--ce-color-brand); background: var(--ce-color-brand); color: var(--ce-color-text-inverse);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size); font-weight: var(--ce-text-button-weight);
+  cursor: pointer; white-space: nowrap;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ap-modal-search-btn:hover:not(:disabled) { background: var(--navy); border-color: var(--navy); }
+.ap-modal-search-btn:hover:not(:disabled) { background: var(--ce-color-brand-hover); border-color: var(--ce-color-brand-hover); }
 .ap-modal-search-btn:disabled {
-  background: var(--gray100); color: var(--ce-color-text-muted);
-  border-color: var(--border); cursor: not-allowed;
+  background: var(--ce-color-surface-muted); color: var(--ce-color-text-disabled);
+  border-color: var(--ce-color-border-default); cursor: not-allowed;
 }
-.ap-modal-search-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-modal-search-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 /* Fachliche Grenze — dieselbe Aussage wie auf der Hauptseite. */
 .ap-modal-note {
-  display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 0 24px 12px;
-  font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted);
+  margin: 0; padding: 0 24px 12px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary);
 }
-.ap-modal-note svg { flex-shrink: 0; margin-top: 2px; }
 
 /* Ergebniszeile + mobiler Umschalter */
 .ap-modal-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 0 24px 12px; border-bottom: 1px solid var(--border);
+  padding: 0 24px 12px; border-bottom: 1px solid var(--ce-color-border-subtle);
 }
-.ap-modal-count { margin: 0; font-size: 13px; font-weight: 600; color: var(--navy); line-height: 1.4; }
-.ap-modal-note-inline { font-weight: 400; color: var(--ce-color-text-muted); }
+.ap-modal-count { margin: 0; font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: 1.4; color: var(--ce-color-text-primary); }
+.ap-modal-note-inline { font-weight: 400; color: var(--ce-color-text-secondary); }
 
+/* „Liste" / „Karte" als Texttabs (Optik .ce-tab): 44 px, aktiver Tab mit
+   2-px-Unterkante in der Markenfarbe, die auf der Linie der Ergebniszeile sitzt. Rolle
+   (Gruppe mit aria-pressed) und Bedienung bleiben unverändert. */
 .ap-modal-toggle {
-  display: inline-flex; flex-shrink: 0; padding: 3px; gap: 3px;
-  background: var(--gray100); border-radius: var(--radius);
+  display: inline-flex; flex-shrink: 0; gap: var(--ce-space-5);
+  align-self: flex-end; margin-bottom: -13px;
 }
 .ap-modal-toggle-btn {
-  min-height: 34px; padding: 0 16px; border: none; border-radius: var(--ce-radius-sm);
-  background: transparent; color: var(--ce-color-text-secondary);
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; cursor: pointer;
+  min-height: var(--ce-size-touch-target); padding: 0 var(--ce-space-1);
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: none; color: var(--ce-color-text-secondary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 500; cursor: pointer;
 }
-.ap-modal-toggle-btn--on { background: white; color: var(--navy); box-shadow: var(--ce-elevation-1); }
-.ap-modal-toggle-btn:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-modal-toggle-btn:hover { color: var(--ce-color-text-primary); border-bottom-color: var(--ce-color-border-strong); }
+.ap-modal-toggle-btn--on,
+.ap-modal-toggle-btn--on:hover { color: var(--ce-color-brand-ink); font-weight: 600; border-bottom-color: var(--ce-color-brand); }
+.ap-modal-toggle-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 
 /* Inhalt */
 .ap-modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ap-modal-state { margin: 20px 24px; }
 .ap-modal-skeleton { display: flex; flex-direction: column; gap: 10px; }
-.ap-skeleton-row { height: 76px; border-radius: var(--radius); background: var(--gray100); animation: ce-skeleton-pulse 1.4s ease-in-out infinite; }
+.ap-skeleton-row { height: 76px; border-radius: var(--ce-radius-md); background: var(--ce-color-surface-muted); animation: ce-skeleton-pulse 1.4s ease-in-out infinite; }
 
 /* Desktop-Aufteilung: Liste ca. 40 %, Karte ca. 60 %. Die Liste scrollt
    eigenständig, die Karte bleibt stehen und füllt die volle Höhe. */
@@ -1149,84 +1225,110 @@
   flex: 1; min-height: 0; display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 }
-.ap-modal-listcol { min-height: 0; overflow-y: auto; border-right: 1px solid var(--border); }
-/* Die Kartenspalte trägt KEINE eigene Fläche mehr: der weiße Fenstergrund soll
-   um die Karte herum sichtbar bleiben. Den Innenabstand setzt .ap-map über
-   `inset` (siehe unten) — nicht `padding` hier, weil die Karte absolut in
-   dieser Spalte liegt und Padding sie deshalb gar nicht erreichen würde. */
+.ap-modal-listcol { min-height: 0; overflow-y: auto; border-right: 1px solid var(--ce-color-border-subtle); }
+/* Die Kartenspalte trägt KEINE eigene Fläche: der weiße Fenstergrund bleibt um
+   die Karte herum sichtbar. Den Innenabstand setzt .ap-map über `inset` — nicht
+   `padding` hier, weil die Karte absolut in dieser Spalte liegt. */
 .ap-modal-mapcol { min-height: 0; position: relative; }
 
-/* Liste */
+/* Liste — ruhige Zeilen ohne Begleitsymbole. */
 .ap-list { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .ap-list-item {
-  border: 1px solid var(--border); border-radius: var(--radius); background: white;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md); background: var(--ce-color-surface);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ap-list-item--focused { border-color: var(--blue); box-shadow: var(--ce-elevation-focus-ring); }
+/* Hervorgehoben (Kartenfokus): Kante in der Markenfarbe und Brand Soft — derselbe Ton wie
+   der aktive Kartenmarker. */
+.ap-list-item--focused { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
 .ap-list-hit {
   display: flex; gap: 12px; width: 100%; padding: 12px 14px; text-align: left;
   background: none; border: none; cursor: pointer; font-family: var(--ce-font-sans);
-  border-radius: var(--radius);
+  border-radius: var(--ce-radius-md);
 }
-.ap-list-hit:hover { background: var(--gray50); }
-.ap-list-hit:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
+.ap-list-hit:hover { background: var(--ce-color-surface-hover); }
+.ap-list-item--focused .ap-list-hit:hover { background: transparent; }
+.ap-list-hit:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
+/* Die Nummer ist ein Zähler (zulässige Kreisform) — dieselbe Zahl wie der
+   Kartenmarker. */
 .ap-list-num {
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 26px; height: 26px; border-radius: 50%;
-  background: var(--blue); color: white; font-size: 12px; font-weight: 600;
+  background: var(--ce-color-brand); color: var(--ce-color-text-inverse);
+  font-size: var(--ce-text-micro-size); font-weight: 600;
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
-.ap-list-item--focused .ap-list-num { background: var(--navy); }
+.ap-list-item--focused .ap-list-num { background: var(--ce-color-brand-active); }
 .ap-list-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .ap-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 /* break-word statt anywhere: Shopname und Adresse sind Menschentext und
    brechen an Wortgrenzen — die Entfernung daneben bleibt starr (Vorbildmuster
    „Meta hält, Text weicht"). */
-.ap-list-name { font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3; overflow-wrap: break-word; }
-.ap-list-dist { font-size: 13px; font-weight: 600; color: var(--blue2); white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.ap-list-addr { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; overflow-wrap: break-word; }
+.ap-list-name { font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
+.ap-list-dist {
+  flex-shrink: 0; white-space: nowrap;
+  font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-secondary);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.ap-list-addr { font-size: var(--ce-text-body-s-size); line-height: 1.4; color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
 .ap-list-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
 .ap-list-status { max-width: 100%; text-align: left; }
-.ap-list-hours {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4;
-}
-.ap-list-hours svg { flex-shrink: 0; }
-.ap-list-cc { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--ce-color-text-muted); }
+.ap-list-hours { font-size: var(--ce-text-caption-size); line-height: 1.4; color: var(--ce-color-text-secondary); }
+.ap-list-cc { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); }
 
-/* Wochenöffnungszeiten — hinter einem Umschalter, damit die Liste scanbar bleibt. */
+/* Wochenöffnungszeiten — hinter einer Textaktion mit CSS-Klappmarke, damit die
+   Liste scanbar bleibt. */
 .ap-list-toggle {
-  display: inline-flex; align-items: center; gap: 6px; margin: 0 14px 10px;
-  padding: 6px 10px; border: none; background: none; border-radius: var(--radius);
-  color: var(--blue2); font-family: var(--ce-font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; margin: 0 14px 10px;
+  min-height: 32px; padding: 0 8px; border: none; background: none; border-radius: var(--ce-radius-sm);
+  color: var(--ce-color-brand-ink); font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-label-size); font-weight: 600; cursor: pointer;
 }
-.ap-list-toggle:hover { background: var(--gray50); }
-.ap-list-toggle:focus-visible { outline: none; box-shadow: var(--ce-elevation-focus-ring); }
-.ap-list-toggle svg { transition: transform 0.15s; }
-.ap-list-toggle--open svg { transform: rotate(180deg); }
+.ap-list-toggle:hover { background: var(--ce-color-brand-soft); }
+.ap-list-toggle:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .ap-list-details { padding: 0 14px 12px; }
-.ap-week { margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.ap-week { margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .ap-week-row { display: flex; justify-content: space-between; gap: 12px; }
-.ap-week-day { font-size: 12px; color: var(--ce-color-text-secondary); }
-.ap-week-time { margin: 0; font-size: 12px; color: var(--navy); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; text-align: right; }
-.ap-week-time--closed { color: var(--ce-color-text-muted); }
-.ap-week-break { color: var(--ce-color-text-muted); }
-.ap-week-plain { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.5; }
+.ap-week-day { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary); }
+.ap-week-time {
+  margin: 0; text-align: right;
+  font-size: var(--ce-text-caption-size); color: var(--ce-color-text-primary);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.ap-week-time--closed { color: var(--ce-color-text-secondary); }
+.ap-week-break { color: var(--ce-color-text-secondary); }
+.ap-week-plain { margin: 0; font-size: var(--ce-text-caption-size); line-height: 1.5; color: var(--ce-color-text-secondary); }
+
+/* TG124: verbindliche Shopauswahl (nur Portalsuche) — Sekundärknopf in der
+   Zeile. Gewählt: Brand Soft mit Kante in der Markenfarbe und dem Wort „Ausgewählt";
+   aria-pressed trägt den Zustand für Screenreader. */
+.ap-list-select {
+  display: flex; align-items: center; justify-content: center;
+  width: fit-content; max-width: calc(100% - 28px); margin: 0 14px 12px;
+  min-height: var(--ce-size-control-md); padding: 0 14px;
+  border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface); color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size);
+  font-weight: var(--ce-text-button-weight); line-height: var(--ce-text-button-line);
+  text-align: center; cursor: pointer;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ap-list-select:hover { background: var(--ce-color-surface-hover); border-color: var(--ce-color-border-interactive-hover); }
+.ap-list-select:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.ap-list-select--chosen,
+.ap-list-select--chosen:hover { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); }
 
 /* Karte — ergänzend, nie autoritativ.
 
-   Sie klebte bis zu diesem Paket an der rechten und unteren Fensterkante. Jetzt
-   sitzt sie als eigenes, eingebettetes Modul mit Luft ringsum: gleicher Radius
-   und dieselbe Bordersprache wie jede andere Fläche des Systems, keine
-   zusätzliche Schattenkarte. `inset` statt `padding` am Elternteil, weil die
-   Karte absolut positioniert ist — und weil damit alle vier Abstände aus EINEM
-   Wert kommen. Der Zeichenbereich folgt dieser Größe automatisch: er liegt
-   `inset: 0` in .ap-map, und der ResizeObserver in AccessPointMap zieht
-   map.resize() nach (siehe dort). */
+   Sie sitzt als eingebettetes Modul mit Luft ringsum: gleicher Radius und
+   dieselbe Kantensprache wie jede andere Fläche, keine zusätzliche
+   Schattenkarte. `inset` statt `padding` am Elternteil, weil die Karte absolut
+   positioniert ist — und weil damit alle vier Abstände aus EINEM Wert kommen.
+   Der Zeichenbereich folgt dieser Größe automatisch: er liegt `inset: 0` in
+   .ap-map, und der ResizeObserver in AccessPointMap zieht map.resize() nach. */
 .ap-map {
   position: absolute; inset: var(--ce-space-4);
   border-radius: var(--ce-radius-md); overflow: hidden;
-  border: 1px solid var(--border); background: var(--gray50);
+  border: 1px solid var(--ce-color-border-subtle); background: var(--ce-color-surface-subtle);
 }
 /* Zwei Klassen UND eine explizite Größe — beides mit Anlass:
    maplibre hängt seinem Container die Klasse .maplibregl-map an, und sein
@@ -1241,58 +1343,59 @@
 .ap-map .ap-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .ap-map-loading, .ap-map-empty {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-size: 13px; color: var(--ce-color-text-muted);
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
 }
 .ap-map-context {
   position: absolute; left: 12px; bottom: 12px; margin: 0; max-width: calc(100% - 24px);
-  padding: 6px 10px; border-radius: var(--radius); background: rgba(255,255,255,0.94);
-  border: 1px solid var(--border); font-size: 12px; color: var(--ce-color-text-secondary);
+  padding: 6px 10px; border-radius: var(--ce-radius-sm); background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  font-size: var(--ce-text-caption-size); color: var(--ce-color-text-secondary);
 }
 .ap-map--error { display: flex; align-items: center; justify-content: center; padding: 24px; }
-.ap-map-fallback { text-align: center; max-width: 320px; color: var(--ce-color-text-muted); }
-.ap-map-fallback-title { margin: 10px 0 4px; font-size: 14px; font-weight: 600; color: var(--navy); }
-.ap-map-fallback-text { margin: 0; font-size: 13px; line-height: 1.55; }
+.ap-map-fallback { text-align: center; max-width: 320px; color: var(--ce-color-text-secondary); }
+.ap-map-fallback-title { margin: 0 0 4px; font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.ap-map-fallback-text { margin: 0; font-size: var(--ce-text-body-s-size); line-height: 1.55; }
 
-/* Marker: die Nummer des Listeneintrags — dieselbe Zahl, dieselbe Reihenfolge. */
+/* Marker (funktionale Ausnahme der Kartenbedienung): die Nummer des
+   Listeneintrags — dieselbe Zahl, dieselbe Reihenfolge. Der kleine
+   Dropdown-Schatten hält ihn auf jedem Kartenhintergrund lesbar. */
 .ap-map-marker {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
-  border: 2px solid white; background: var(--blue); color: white;
-  font-family: var(--ce-font-sans); font-size: 12px; font-weight: 600;
-  font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; box-shadow: var(--ce-elevation-2);
+  border: 2px solid var(--ce-color-surface); background: var(--ce-color-brand); color: var(--ce-color-text-inverse);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-micro-size); font-weight: 600;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; box-shadow: var(--ce-elevation-dropdown);
   transition: transform 0.15s, background 0.15s;
 }
-.ap-map-marker--active { background: var(--navy); transform: scale(1.22); }
+.ap-map-marker--active { background: var(--ce-color-brand-active); transform: scale(1.22); }
 
 /* Die Popup-Hülle stellt die Kartenbibliothek; hier bekommt sie das Material
-   des Designsystems (Rundung, Rand, Tiefe) statt ihrer Vorgabe. */
+   des Designsystems (Rundung, Kante, Popover-Tiefe) statt ihrer Vorgabe. */
 .ap-map-popup .maplibregl-popup-content {
-  padding: 12px 14px; border-radius: var(--radius);
-  border: 1px solid var(--border); box-shadow: var(--ce-elevation-2);
+  padding: 12px 14px; border-radius: var(--ce-radius-md);
+  border: 1px solid var(--ce-color-border-subtle); box-shadow: var(--ce-elevation-dropdown);
   font-family: var(--ce-font-sans);
 }
-.ap-map-popup .maplibregl-popup-tip { border-top-color: white; border-bottom-color: white; }
+.ap-map-popup .maplibregl-popup-tip { border-top-color: var(--ce-color-surface); border-bottom-color: var(--ce-color-surface); }
 
 .ap-map-popup-card { min-width: 0; }
 .ap-map-popup-name {
   display: flex; align-items: center; gap: 8px; margin: 0 0 2px;
-  font-size: 14px; font-weight: 600; color: var(--navy); line-height: 1.3;
+  font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.3; color: var(--ce-color-text-primary);
 }
 .ap-map-popup-num {
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-  width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: white;
-  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  width: 22px; height: 22px; border-radius: 50%; background: var(--ce-color-brand); color: var(--ce-color-text-inverse);
+  font-size: var(--ce-text-micro-size); font-weight: 600; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
-.ap-map-popup-addr { margin: 0 0 6px; font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.4; }
+.ap-map-popup-addr { margin: 0 0 6px; font-size: var(--ce-text-body-s-size); line-height: 1.4; color: var(--ce-color-text-secondary); }
 .ap-map-popup-meta { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; flex-wrap: wrap; }
-.ap-map-popup-dist { font-size: 13px; font-weight: 600; color: var(--blue2); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.ap-map-popup-hours { margin: 0; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4; }
-
-
+.ap-map-popup-dist { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-secondary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.ap-map-popup-hours { margin: 0; font-size: var(--ce-text-caption-size); line-height: 1.4; color: var(--ce-color-text-secondary); }
 
 /* Bewegung nur als kurze Zustandsreaktion — wer sie abbestellt hat, bekommt keine. */
 @media (prefers-reduced-motion: reduce) {
-  .ap-map-marker, .ap-list-toggle svg, .ap-list-item { transition: none; }
+  .ap-map-marker, .ap-list-item, .ps-trigger, .ap-list-select { transition: none; }
   .ap-skeleton-row { animation: none; }
 }
 
@@ -1310,7 +1413,6 @@
      Systemen mit sichtbarem Scrollbalken um deren Breite zu groß. */
   .ap-modal { width: 100%; height: 100dvh; border-radius: 0; max-width: none; flex-shrink: 0; }
   .ap-modal-head { padding: 16px 16px 12px; }
-  .ap-modal-title { font-size: 20px; }
   .ap-modal-search { grid-template-columns: 1fr 1fr; padding: 12px 16px; }
   .ap-modal-note, .ap-modal-bar { padding-left: 16px; padding-right: 16px; }
   .ap-modal-state { margin: 16px; }
@@ -1326,19 +1428,13 @@
      ein spürbarer Verlust, 12 px genügen für die Absetzung vom Fensterrand. */
   .ap-map { inset: var(--ce-space-3); }
   /* WCAG 2.5.5: jedes Bedienelement erreicht 44 px. */
-  .ap-modal-close { width: 44px; height: 44px; }
-  .ap-modal-toggle-btn { min-height: 44px; }
-  .ap-modal-search-btn, .ap-finder-input, .ap-finder-select { min-height: 44px; }
-  .ap-list-toggle { min-height: 44px; }
+  .ap-modal-close, .ap-modal-toggle-btn, .ap-list-toggle, .ap-list-select { min-height: var(--ce-size-touch-target); }
+  .ap-modal-search-btn, .ap-finder-input, .ap-finder-select { min-height: var(--ce-size-touch-target); }
+  /* Unter 16 px zoomt Safari auf iOS beim Fokussieren jedes Eingabefeld. */
+  .ap-finder-input, .ap-finder-select { font-size: 16px; }
 }
 
 @media (max-width: 767px) {
-  .ap-finder-fields { grid-template-columns: 1fr; }
-  .ap-finder-controls { flex-direction: column; align-items: stretch; }
-  /* Untereinander darf das Select die volle Kartenbreite nutzen — sonst bliebe
-     „Alle Öffnungszeiten“ neben viel leerem Raum abgeschnitten. */
-  .ap-finder-field--opening { flex: 1 1 auto; min-width: 0; }
-  .ap-finder-search-btn { width: 100%; min-height: 44px; }
   /* Der Suchbereich bleibt auch auf schmalen Geräten ZWEISPALTIG. Einspaltig
      verbrauchten fünf Felder plus Knopf fast den ganzen Bildschirm, und unter
      der Zählerzeile blieb genau ein Treffer sichtbar — der Kunde hätte an
@@ -1352,5 +1448,5 @@
    Der Radius steht hier — nicht als Eigenschaft jedes einzelnen Shops. */
 .ap-modal-bar-text { min-width: 0; }
 .ap-modal-context-line {
-  margin: 0 0 2px; font-size: 12px; color: var(--ce-color-text-muted); line-height: 1.4;
+  margin: 0 0 2px; font-size: var(--ce-text-caption-size); line-height: 1.4; color: var(--ce-color-text-secondary);
 }

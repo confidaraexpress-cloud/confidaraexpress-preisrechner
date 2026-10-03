@@ -365,7 +365,8 @@ test("29 — die drei Adminendpunkte laufen über das zentrale apiFetch", () => 
 });
 
 test("30 — Navigation und Routen sind vollständig verdrahtet", () => {
-  assert.match(adminSidebar, /\{ to: "\/admin\/support-requests", label: "Supportanfragen", icon: "mail" \}/,
+  // Redesign 2026-10: reine Textnavigation — der Eintrag trägt kein Symbol mehr.
+  assert.match(adminSidebar, /\{ to: "\/admin\/support-requests", label: "Supportanfragen" \}/,
     "Menüeintrag fehlt oder weicht ab");
   // Lazy-Loading beibehalten (Performance-Regel des Projekts).
   assert.match(appJsx, /React\.lazy\(\(\) => import\("\.\/pages\/admin\/AdminSupportRequestsPage"\)\)/, "Liste nicht lazy");

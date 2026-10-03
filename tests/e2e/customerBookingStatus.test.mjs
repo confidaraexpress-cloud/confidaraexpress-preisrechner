@@ -107,7 +107,7 @@ test("1 — Tabelle: die Buchungsklärung ist neutral und ohne Aktion; die gebuc
   assert.equal(await pruefung.getByRole("button").count(), 0, "die Buchungsklärung bietet eine Aktion an");
 
   const gebucht = page.locator("table tbody tr", { hasText: "CE-AB-2026-000050" }).first();
-  for (const name of ["Sendung verfolgen", "Dokumente", "Stornieren"]) {
+  for (const name of ["Tracking", "Dokumente", "Stornierung anfragen"]) {
     assert.equal(await gebucht.getByRole("button", { name }).count(), 1, `die gebuchte Sendung verliert „${name}"`);
   }
   assert.ok(!(await gebucht.innerText()).includes(HINWEIS_TEXT), "der Satz steht an der gebuchten Sendung");
@@ -118,7 +118,7 @@ test("1 — Tabelle: die Buchungsklärung ist neutral und ohne Aktion; die gebuc
   assert.ok(!(await page.content()).includes("TG-REF-E2E-1"), "die Anbieterreferenz steht im DOM");
 
   // Die gebuchte Sendung funktioniert unverändert — und für die Klärung wird nichts abgerufen.
-  await gebucht.getByRole("button", { name: "Sendung verfolgen" }).click();
+  await gebucht.getByRole("button", { name: "Tracking", exact: true }).click();
   await page.waitForSelector(".ce-list-table .shipment-track-number", { timeout: 15000 });
   assert.ok(protokoll.includes(`/api/shipments/${GEBUCHT_ID}/tracking`));
   assert.ok(!protokoll.some((p) => p.includes(`/shipments/${PRUEFUNG_ID}`)), "für die Buchungsklärung wurde ein Sendungsendpunkt gerufen");
@@ -136,7 +136,7 @@ test("2 — auf 390 px: dieselbe Aussage in der Karte, ohne Knopf und ohne Quer�
   assert.ok((await karte.innerText()).includes(HINWEIS_TEXT), "der beruhigende Satz fehlt in der Karte");
   assert.equal(await karte.getByRole("button").count(), 0, "die Karte der Buchungsklärung bietet eine Aktion an");
   const gebucht = page.locator(".ce-list-card", { hasText: "CE-AB-2026-000050" }).first();
-  assert.equal(await gebucht.getByRole("button", { name: "Sendung verfolgen" }).count(), 1);
+  assert.equal(await gebucht.getByRole("button", { name: "Tracking", exact: true }).count(), 1);
 
   assert.ok(!ANBIETERWERTE.test(await page.locator(".ce-list-cards").innerText()), "ein Anbieterwert ist sichtbar");
   const messung = await page.evaluate(() => ({

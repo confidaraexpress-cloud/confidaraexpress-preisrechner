@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Icon } from "../ui/Icon";
 
 // Handelsrechnungs-Upload — REINE DARSTELLUNG. Status/Handler kommen aus dem
 // Orchestrator (useCommercialInvoice). Nur im commercial-Modus gerendert. Kein
@@ -48,7 +47,7 @@ export function CommercialInvoiceUpload({ status, message, messageType, onFileSe
       <div id="ci-upload-status" className="ci-upload-status" aria-live="polite">
         {uploading && <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Handelsrechnung wird hochgeladen…</span>}
         {deleting && <span className="ci-status ci-status-busy"><span className="spinner spinner-dark" /> Handelsrechnung wird entfernt…</span>}
-        {present && <span className="ci-status ci-status-ok"><Icon n="check" s={15} c="currentColor" /> Handelsrechnung erfolgreich hinterlegt</span>}
+        {present && <span className="ci-status ci-status-ok">Handelsrechnung erfolgreich hinterlegt</span>}
       </div>
 
       {/* Upload-spezifische Meldung (Vorprüfung/Info). Status-„error" behandelt die Sektion. */}
@@ -63,7 +62,7 @@ export function CommercialInvoiceUpload({ status, message, messageType, onFileSe
 
       {present && !confirming && (
         <button type="button" className="btn btn-outline btn-sm ci-remove-btn" onClick={() => setConfirming(true)} disabled={deleting}>
-          <Icon n="trash" s={14} c="currentColor" /> Handelsrechnung entfernen
+          Handelsrechnung entfernen
         </button>
       )}
 
@@ -78,7 +77,7 @@ export function CommercialInvoiceUpload({ status, message, messageType, onFileSe
               onClick={() => { setConfirming(false); onRemove(); }}
               disabled={deleting}
             >
-              <Icon n="trash" s={14} c="currentColor" /> Entfernen bestätigen
+              Entfernen bestätigen
             </button>
           </div>
         </div>

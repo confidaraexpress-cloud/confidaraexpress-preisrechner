@@ -1,99 +1,117 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Entwürfe (drafts) — vollständig unter .dft-* isoliert. Reuse bestehender
-   Basis-Atome (.btn, .field-*, .badge, .empty, .alert, .spinner, .table-card,
-   .table-scroll) statt Duplikate. Executive-Luxury, ruhig: keine Aurora-/Blur-/
-   Dauerbewegungseffekte.
+   Entwürfe (drafts) — vollständig unter .dft-* isoliert. Reuse der Basis-Atome
+   (.btn, .field-*, .badge, .alert, .spinner, .table-card, .table-scroll) statt
+   Duplikate.
+
+   Redesign 2026-10: fünf Spalten statt sechs („Zuletzt gespeichert" als leise
+   Sekundärzeile unter dem Empfänger), Zeilenaktionen als Text („Fortsetzen",
+   „Weitere Aktionen") ohne Symbole, Typ als Text („Formularentwurf"),
+   Mobilkarten mit beschrifteten Werten, keine Iconmedaillons. Kein
+   Farbliteral; Radien und Tiefen ausschließlich aus der Foundation.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── Desktop-Tabelle (reuse .table-card/.table-scroll, nur Zellinhalte neu) ── */
 .dft-table th { text-align: left; }
-.dft-cell-recipient { font-size: 13px; font-weight: 600; color: var(--navy); }
+.dft-table td { vertical-align: middle; }
+/* Identität links: Empfänger als Hauptzeile, darunter leise der Typ und der
+   Zeitpunkt der letzten Speicherung. */
+.dft-cell-recipient { min-width: 0; }
+.dft-cell-recipient-name {
+  display: block;
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600;
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
+}
+.dft-cell-updated {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px;
+  margin-top: 2px;
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-muted);
+}
 /* Die Route („DE 63743 → FR 75019") ist eine kompakte technische Angabe und
-   bleibt eine Zeile — vorher brach sie in der gequetschten Spalte dreizeilig
-   (67 px). Ab dem 1100er-Umschalter hat die Tabelle dafür sicher Platz. */
-.dft-cell-route { font-size: 13px; color: var(--ce-color-text-primary); font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
-.dft-cell-package { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ce-color-text-secondary); }
-.dft-cell-package-count { color: var(--ce-color-text-primary); font-weight: 600; }
-.dft-cell-date { font-size: 12px; color: var(--ce-color-text-secondary); white-space: nowrap; }
-.dft-cell-updated { font-size: 12px; color: var(--ce-color-text-muted); white-space: nowrap; }
-.dft-cell-actions { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+   bleibt eine Zeile. */
+.dft-cell-route {
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+.dft-cell-package { display: flex; flex-direction: column; gap: 2px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.dft-cell-package-count { color: var(--ce-color-text-primary); font-weight: 500; }
+.dft-cell-date { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); white-space: nowrap; }
+/* Aktionen rechts. Darf umbrechen (schmale Tabellenbreiten), nie abschneiden. */
+.dft-cell-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ce-space-2); }
 
 /* ─── Mobil-Karten ────────────────────────────────────────────────────────── */
-.dft-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dft-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-3); }
 .dft-card {
-  background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-3);
 }
-.dft-card-route { font-size: 13px; font-weight: 600; color: var(--blue2); font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.dft-card-recipient { font-size: 15px; font-weight: 600; color: var(--navy); margin-top: 2px; overflow-wrap: break-word; }
-.dft-card-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ce-color-text-secondary); }
-.dft-card-info-row { display: flex; align-items: flex-start; gap: 8px; }
-.dft-card-info-row svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-text-muted); }
-.dft-card-meta { font-size: 12px; color: var(--ce-color-text-muted); }
-.dft-card-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
-.dft-card-actions .btn { flex: 1; }
+.dft-card-recipient { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
+.dft-card-route {
+  margin-top: 2px;
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary);
+  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+/* Beschriftete Werte statt Symbolzeilen: Schlüssel links, Wert rechts. */
+.dft-card-info { display: flex; flex-direction: column; gap: var(--ce-space-1); margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.dft-card-info-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.dft-card-info-row dt { color: var(--ce-color-text-muted); flex: none; }
+.dft-card-info-row dd { margin: 0; text-align: right; color: var(--ce-color-text-primary); min-width: 0; overflow-wrap: break-word; }
+.dft-card-meta { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
+.dft-card-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ce-space-2);
+  padding-top: var(--ce-space-3); border-top: 1px solid var(--border-hairline);
+}
+.dft-card-actions .dft-resume-btn { flex: 1 1 auto; }
 
-/* Verwaltungsaktionsmenü (Kebab-Dropdown) — „Löschen" ist damit kein
-   dauerhaft sichtbarer, roter Button mehr, sondern ein bewusst aufgerufener,
-   sekundärer Pfad (dasselbe Muster wie .abk-actions* im Adressbuch). */
+/* ─── Aktionsmenü „Weitere Aktionen" ─────────────────────────────────────────
+   Dasselbe Muster wie .abk-actions* im Adressbuch: Textauslöser, Dropdown mit
+   Dropdowntiefe. „Löschen" ist ein bewusst aufgerufener, sekundärer Pfad. */
 .dft-actions { position: relative; flex-shrink: 0; }
 .dft-actions-trigger {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: var(--ce-radius-md);
-  border: 1.5px solid var(--ce-color-border-default);
-  background: var(--ce-color-surface); color: var(--ce-color-text-secondary); cursor: pointer;
-  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--ce-size-control-sm); padding: 0 var(--ce-space-3);
+  border-radius: var(--ce-radius-md); border: 1px solid transparent;
+  background: transparent; color: var(--ce-color-brand-ink);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: 1.4;
+  white-space: nowrap; cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.dft-actions-trigger:hover { background: var(--ce-color-surface-muted); border-color: var(--ce-color-border-strong); }
-.dft-actions-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.dft-actions-trigger:hover:not(:disabled) { background: var(--ce-color-brand-soft); }
+.dft-actions-trigger[aria-expanded="true"] { background: var(--ce-color-brand-soft); }
+.dft-actions-trigger:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+.dft-actions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .dft-actions-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--ce-z-dropdown); min-width: 180px;
-  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
-  box-shadow: var(--ce-elevation-3); padding: 6px; display: flex; flex-direction: column;
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-dropdown); padding: var(--ce-space-1); display: flex; flex-direction: column;
 }
 .dft-actions-item {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 9px 10px; border: none; background: transparent; border-radius: var(--ce-radius-sm);
-  font-size: 13px; font-weight: 500; color: var(--navy); cursor: pointer;
+  display: flex; align-items: center; width: 100%; text-align: left;
+  min-height: var(--ce-size-control-md); padding: 0 var(--ce-space-3);
+  border: none; background: transparent; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 400; color: var(--ce-color-text-primary); cursor: pointer;
 }
-.dft-actions-item:hover, .dft-actions-item:focus-visible { background: var(--ce-color-surface-muted); }
-.dft-actions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
-.dft-actions-item--danger { color: var(--danger); }
-.dft-actions-item--danger svg { color: var(--danger); }
+.dft-actions-item:hover, .dft-actions-item:focus-visible { background: var(--ce-color-surface-hover); }
+.dft-actions-item--danger { color: var(--ce-color-status-error-fg); }
 
-/* Solide Danger-Bestätigung im Löschdialog — bewusst eigenständig (nicht
-   .btn-primary), damit Farbe die Irreversibilität zusätzlich zum Text „Löschen"
-   unterstreicht (Text bleibt der primäre, nicht-farbliche Signalträger). */
-.dft-delete-confirm-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 42px; padding: 0 20px; border-radius: var(--radius);
-  border: 1.5px solid var(--danger); background: var(--danger); color: #fff;
-  font-family: var(--ce-font-sans); font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.dft-delete-confirm-btn:hover:not(:disabled) { background: #dc2626; border-color: var(--ce-color-status-error-fg); }
-.dft-delete-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.dft-delete-confirm-btn:focus-visible { outline: 2px solid var(--ce-color-status-error-fg); outline-offset: 2px; }
-
-/* ─── Bestätigungsdialog (gleiches Muster wie price-drift-overlay/-card) ───── */
-/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
-.dft-dialog-icon {
-  width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
-  justify-content: center; margin-bottom: 14px; background: var(--danger-bg); color: var(--danger);
-}
-.dft-dialog-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-.dft-dialog-desc { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.55; margin-bottom: 20px; }
-.dft-dialog-target { font-weight: 600; color: var(--navy); }
-.dft-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+/* ─── Bestätigungsdialog ──────────────────────────────────────────────────────
+   Overlay und Karte aus dem gemeinsamen Dialogmuster (patterns.css); die
+   bestätigende Aktion ist das globale .btn-danger (Markup). */
+.dft-dialog-title { font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line); font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: var(--ce-space-2); }
+.dft-dialog-desc { font-size: var(--ce-text-body-size); color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); margin-bottom: var(--ce-space-5); }
+.dft-dialog-target { font-weight: 600; color: var(--ce-color-text-primary); }
+.dft-dialog-actions { display: flex; gap: var(--ce-space-2); justify-content: flex-end; flex-wrap: wrap; }
 
 /* ─── Load-more ───────────────────────────────────────────────────────────── */
-.dft-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+.dft-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--ce-space-2); margin-top: var(--ce-space-4); }
 
 /* ─── Skeleton ────────────────────────────────────────────────────────────── */
 /* Dieselbe ruhige Puls-Technik wie .ce-skeleton (patterns.css) — nur die Höhe
    ist entwurfsspezifisch (Tabellenzeile statt Listenkarte). */
 .dft-skeleton-row {
-  height: 64px; border-radius: var(--radius-lg);
+  height: 64px; border-radius: var(--ce-radius-lg);
   background: var(--ce-color-surface-muted);
   animation: ce-skeleton-pulse 1.4s ease-in-out infinite;
 }
@@ -101,113 +119,130 @@
 
 /* ─── Responsive ──────────────────────────────────────────────────────────────
    Karten unterhalb 1100 px — dieselbe gemessene, shell-bewusste Schwelle wie
-   Rechnungs- und Sendungsliste (Rechnungs-Vorbild in dashboard.css): Der alte
-   767er-Umschalter ignorierte die 252-px-Sidebar; im Band 861–1100 px lief
-   die sechsspaltige Tabelle mit nur 553–840 px Content, quetschte die
-   Routenspalte auf 67 px und versteckte „Fortsetzen"/Kebab hinter einem
-   unentdeckbaren Querscroll. */
+   Rechnungs- und Sendungsliste: im Band darunter bliebe der fünfspaltigen
+   Tabelle neben der Sidebar zu wenig Breite. */
 @media (min-width: 1101px) { .dft-cards { display: none; } }
 @media (max-width: 1100px) {
   .dft-table-card { display: none; }
 }
-/* Oberhalb des Umschalters läuft die Tabelle nach dem Rechnungs-Vorbild
-   (dashboard.css, .inv-table): table-layout: fixed mit gemessenen Fixspalten,
-   nur die Empfängerspalte ist flexibel. Eine fixe Tabelle wird NIE breiter
-   als ihr Container — erst das erlaubt den offenen Scroll-Rahmen darunter:
-   Auto-Layout hatte mit nowrap-Köpfen + nowrap-Route ~1024 px Mindestbreite
-   und lief im Band 1101–1276 px Viewport 76 px über die Seite (gemessen).
-   Der offene Rahmen wiederum ist nötig, weil der overflow-Scroller sonst das
-   absolut positionierte Kebab-Menü der letzten Zeile clippte (P2 des Audits).
+/* Oberhalb des Umschalters läuft die Tabelle mit table-layout: fixed und
+   festen Spalten; nur die Empfängerspalte ist flexibel. Eine fixe Tabelle
+   wird NIE breiter als ihr Container — erst das erlaubt den offenen Rahmen
+   (overflow: visible), den das Aktionsmenü der letzten Zeile braucht.
 
-   Spaltenwerte an Worst-Case-Daten gemessen (Playwright @1440, Auto-Layout):
-   Route 157 · Pakete-Zelle ≤ 140 · Versanddatum 124 · Gespeichert 148 ·
-   Kebab 62 — jeweils + Reserve. Die Köpfe dürfen zweizeilig werden
-   („Zuletzt gespeichert"), die ZELLINHALTE bleiben einzeilig. */
+   Die Aktionsspalte trägt „Fortsetzen" und „Weitere Aktionen" als Text. Bis
+   1279 px stehen beide untereinander (176 px), darüber nebeneinander (280 px)
+   — keine der beiden Aktionen wird je abgeschnitten (vorher 68 px für Knopf
+   UND Menü: „Fortsetzen" lief bei 1440 px über den Kartenrand). */
 @media (min-width: 1101px) {
   .dft-table-card { overflow: visible; }
   .dft-table-card .table-scroll { overflow: visible; }
   .dft-table { table-layout: fixed; width: 100%; }
   .dft-table th { white-space: normal; }
-  .dft-table th:nth-child(2), .dft-table td:nth-child(2) { width: 164px; }
-  .dft-table th:nth-child(3), .dft-table td:nth-child(3) { width: 148px; }
-  .dft-table th:nth-child(4), .dft-table td:nth-child(4) { width: 128px; }
-  .dft-table th:nth-child(5), .dft-table td:nth-child(5) { width: 152px; }
-  .dft-table th:nth-child(6), .dft-table td:nth-child(6) { width: 68px; }
+  .dft-table th:nth-child(2), .dft-table td:nth-child(2) { width: 156px; }
+  .dft-table th:nth-child(3), .dft-table td:nth-child(3) { width: 150px; }
+  .dft-table th:nth-child(4), .dft-table td:nth-child(4) { width: 132px; }
+  .dft-table th:nth-child(5), .dft-table td:nth-child(5) { width: 176px; }
+}
+@media (min-width: 1280px) {
+  .dft-table th:nth-child(5), .dft-table td:nth-child(5) { width: 280px; }
+  .dft-cell-actions { flex-wrap: nowrap; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Formularentwürfe (kind:"form") — additive Klassen im selben dft-Scope.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Typ-Badge: kennzeichnet den Entwurfstyp zusätzlich zur Farbe (Textlabel,
-   nicht rein farblich). align-self verhindert das Strecken in der Flex-Karte. */
+/* Typ-Kennzeichnung als Text in neutraler Badgeform — keine Versalien, kein
+   Symbol, nicht allein farbig. */
 .dft-badge {
-  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;
-  padding: 2px 8px; border-radius: 999px; line-height: 1.5;
+  display: inline-flex; align-items: center; align-self: flex-start;
+  padding: 0 6px; border-radius: var(--ce-radius-sm); line-height: 18px;
+  font-size: var(--ce-text-caption-size); font-weight: 500;
 }
-.dft-badge-form { color: var(--blue2); background: rgba(37, 99, 235, 0.10); border: 1px solid rgba(37, 99, 235, 0.22); }
-.dft-cell-recipient-name { display: block; margin-top: 4px; }
+.dft-badge-form {
+  color: var(--ce-color-status-neutral-fg);
+  background: var(--ce-color-status-neutral-surface);
+  border: 1px solid var(--ce-color-status-neutral-border);
+}
 
-/* „Fortsetzen" — sekundäre Aktion mit blauem Akzent (klar von „Löschen" getrennt). */
-.dft-resume-btn { color: var(--blue2); border-color: rgba(37, 99, 235, 0.28); }
-.dft-resume-btn:hover:not(:disabled) { background: rgba(37, 99, 235, 0.06); border-color: var(--blue2); }
-.dft-resume-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+/* „Fortsetzen" — die häufigste Zeilenaktion als Secondary (Outline aus dem
+   Buttonprimitive); nur der Fokusstandard steht hier ausdrücklich. */
+.dft-resume-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
-/* Fortsetzen-Banner auf „Neue Sendung" (ruhig, keine Dauerbewegung). */
+/* ── Hinweise auf „Neue Sendung" (Fortsetzen, Herkunft, Konflikt) ────────────
+   Ruhige Hinweiszeilen aus den Statustokens; Radius wie alle Hinweise. */
 .dft-resume-note, .dft-resume-info, .dft-resume-conflict {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; margin-bottom: 16px; border-radius: var(--radius-lg);
-  font-size: 13px; line-height: 1.5;
+  display: flex; align-items: center; gap: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-4); margin-bottom: var(--ce-space-4); border-radius: var(--ce-radius-sm);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
 }
 .dft-resume-note svg, .dft-resume-info svg, .dft-resume-conflict svg { flex-shrink: 0; }
-.dft-resume-note { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border); color: var(--navy); }
-.dft-resume-info { background: var(--gray50); border: 1px solid var(--border); color: var(--ce-color-text-primary); }
-.dft-resume-conflict { background: var(--warn-bg); border: 1px solid var(--warn); color: var(--ce-color-status-warning-fg); flex-wrap: wrap; }
+.dft-resume-note { background: var(--ce-color-brand-soft); border: 1px solid var(--ce-color-brand-border-soft); color: var(--ce-color-text-primary); }
+.dft-resume-info { background: var(--ce-color-surface-subtle); border: 1px solid var(--ce-color-border-subtle); color: var(--ce-color-text-primary); }
+.dft-resume-conflict {
+  background: var(--ce-color-status-warning-surface); border: 1px solid var(--ce-color-status-warning-border);
+  color: var(--ce-color-status-warning-fg); flex-wrap: wrap;
+}
 .dft-resume-conflict-text { flex: 1; min-width: 200px; }
 .dft-resume-conflict .btn { flex-shrink: 0; }
 
 /* ── Verlassen-Dialog („Sendung als Entwurf speichern?") ──────────────────── */
-/* Neutral-blaues Icon (nicht die rote Danger-Variante des Löschdialogs). */
-.dft-leave-icon { background: rgba(37, 99, 235, 0.10); color: var(--blue2); }
+.dft-leave-icon { background: var(--ce-color-brand-soft); color: var(--ce-color-brand-ink); }
 .dft-leave-alert {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; margin-bottom: 16px; border-radius: var(--radius);
-  background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.28); color: var(--danger);
-  font-size: 13px; line-height: 1.4;
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  padding: var(--ce-space-3) var(--ce-space-3); margin-bottom: var(--ce-space-4); border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-error-surface); border: 1px solid var(--ce-color-status-error-border);
+  color: var(--ce-color-status-error-fg);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
 }
 .dft-leave-alert svg { flex-shrink: 0; }
 /* Drei Aktionen: klare vertikale Hierarchie (primär oben), volle Breite,
    gut tappbar auf Mobil. */
-.dft-leave-actions { display: flex; flex-direction: column; gap: 8px; }
+.dft-leave-actions { display: flex; flex-direction: column; gap: var(--ce-space-2); }
 .dft-leave-actions .btn { width: 100%; }
 .dft-leave-discard { color: var(--ce-color-text-secondary); }
-.dft-leave-discard:hover:not(:disabled) { color: var(--danger); }
+.dft-leave-discard:hover:not(:disabled) { color: var(--ce-color-status-error-fg); }
 
 /* ── Sichtbare „Als Entwurf speichern"-Aktion in „Neue Sendung" ───────────── */
-/* Primär-CTA (Preise berechnen) bleibt dominant; Save ist sekundär (Outline). */
-.dft-cta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; }
+/* Primär-CTA (Preise berechnen) bleibt dominant; Speichern ist sekundär. */
+.dft-cta-row { display: flex; gap: var(--ce-space-3); flex-wrap: wrap; align-items: stretch; }
 .dft-cta-row .dft-cta-primary { flex: 2 1 240px; }
 .dft-cta-row .dft-savedraft-cta { flex: 1 1 190px; }
-.dft-savedraft-cta { color: var(--ce-color-brand-ink); border-color: var(--ce-color-brand-border); }
-.dft-savedraft-cta:hover:not(:disabled) { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-ink); }
-.dft-savedraft-cta:disabled { opacity: 0.55; cursor: not-allowed; }
-.dft-savedraft-cta:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.dft-savedraft-cta:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
-.dft-save-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--success); }
+.dft-save-status {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: var(--ce-space-3);
+  font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-secondary);
+}
 .dft-save-status svg { flex-shrink: 0; }
 .dft-save-alert {
-  display: flex; align-items: center; gap: 8px; margin-top: 12px;
-  padding: 10px 12px; border-radius: var(--radius);
-  background: var(--danger-bg); border: 1px solid rgba(239, 68, 68, 0.28); color: var(--danger);
-  font-size: 13px; line-height: 1.4;
+  display: flex; align-items: center; gap: var(--ce-space-2); margin-top: var(--ce-space-3);
+  padding: var(--ce-space-3); border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-error-surface); border: 1px solid var(--ce-color-status-error-border);
+  color: var(--ce-color-status-error-fg);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
 }
 .dft-save-alert svg { flex-shrink: 0; }
-.dft-save-conflict { flex-wrap: wrap; background: #fff7ed; border-color: var(--ce-color-status-warning-fg); color: var(--ce-color-status-warning-fg); }
+.dft-save-conflict {
+  flex-wrap: wrap;
+  background: var(--ce-color-status-warning-surface); border-color: var(--ce-color-status-warning-border);
+  color: var(--ce-color-status-warning-fg);
+}
 .dft-save-conflict-text { flex: 1; min-width: 180px; }
 .dft-save-conflict .btn { flex-shrink: 0; }
 
 @media (max-width: 560px) {
   .dft-cta-row { flex-direction: column; }
   .dft-cta-row .btn { flex: 1 1 auto; }
+}
+/* WCAG 2.5.5: unter der Drawer-Schwelle erreicht jedes Bedienelement 44 px.
+   responsive.css setzt das zentral, wird aber VOR dieser Datei importiert —
+   die kompakten Grundhöhen oben gewännen sonst bei gleicher Spezifität. */
+@media (max-width: 860px) {
+  .dft-actions-trigger,
+  .dft-actions-item { min-height: var(--ce-size-touch-target); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dft-actions-trigger { transition: none; }
 }

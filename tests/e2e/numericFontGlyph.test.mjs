@@ -194,19 +194,21 @@ test("die live gerenderte Schrittnummer 01 der Übersicht zeigt eine normale Nul
   });
   await page.addInitScript(() => { localStorage.setItem("ce_token", "e2e-glyph-token"); });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".pp-step-no");
+  // Redesign 2026-10: die Schrittnummer des Onboardings heißt .ov-step-no und
+  // steht als schlichte Zahl („1") statt zweistellig („01").
+  await page.waitForSelector(".ov-step-no");
   await page.evaluate(() => document.fonts.ready);
 
   const domInfo = await page.evaluate(() => {
-    const el = document.querySelectorAll(".pp-step-no")[0];
+    const el = document.querySelectorAll(".ov-step-no")[0];
     return { text: el.textContent, fontFamily: getComputedStyle(el).fontFamily };
   });
-  assert.equal(domInfo.text, "01");
+  assert.equal(domInfo.text, "1");
   assert.doesNotMatch(domInfo.fontFamily, /DM Mono/, "die Schrittnummer darf nicht mehr DM Mono referenzieren");
   assert.match(domInfo.fontFamily, /DM Sans/, "die Schrittnummer muss DM Sans referenzieren");
 
   const result = await page.evaluate(() => {
-    const el = document.querySelectorAll(".pp-step-no")[0];
+    const el = document.querySelectorAll(".ov-step-no")[0];
     const cs = getComputedStyle(el);
     const size = 640;
     const c = document.createElement("canvas");

@@ -355,7 +355,14 @@ test("18 — die Seite ist semantisch aufgebaut", () => {
   assert.match(seite, /<ol className="insinfo-toc-list">/);
   // Dekoratives ist vor Screenreadern verborgen.
   assert.match(seite, /<span className="insinfo-sec-num" aria-hidden="true">/);
-  assert.match(seite, /<span className="insinfo-item-ico" aria-hidden="true">/);
+  // Redesign 2026-10 (Audit H39): die Häkchen vor den Listenpunkten waren ein
+  // reines Stilmittel und sind entfallen — die Aufzählung ist eine gewöhnliche
+  // Liste, der Punkt trägt nur seinen Text. Ebenso tragen die Hinweise kein
+  // Infosymbol mehr. Geprüft wird deshalb die Abwesenheit, nicht das Verbergen.
+  assert.ok(!/insinfo-item-ico/.test(seite), "die dekorative Häkchenliste ist zurück");
+  assert.match(seite, /<li key=\{k\} className="insinfo-item">\{item\}<\/li>/,
+    "ein Listenpunkt trägt mehr als seinen Text");
+  assert.ok(!/<Icon\b/.test(seite), "die Seite setzt wieder ein Symbol");
 });
 
 test("19 — Sprungziele, Fokus und Trefferflächen sind gesetzt", () => {

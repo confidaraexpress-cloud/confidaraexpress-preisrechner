@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Icon } from "../ui/Icon";
 import { FormAlert } from "../ui/FormAlert";
 import { apiFetch, getCurrentConsolidatedPeriod } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
@@ -9,7 +8,7 @@ import {
   BILLING_MODES, BILLING_MODE_TEXT, billingMode, buildBillingModePatch,
   consolidatedPeriodView, billingModeOptionSelectable, consolidatedBillingAvailable,
 } from "../../utils/billingModeView.mjs";
-import { cardHead } from "./ProfileCardHead";
+import { SettingsSection } from "./ProfileCardHead";
 
 // Abrechnungsart der Kontoseite. Exakt dasselbe Muster wie die Lieferschein-
 // einstellung: eine Auswahl aus zwei Optionen hat keinen Bearbeiten-Modus, sie
@@ -81,8 +80,7 @@ export function BillingModeCard({ user }) {
   // Lieferscheinauswahl — kein zweites Auswahlbauteil, keine eigenen Klassen.
   const period = periodData ? consolidatedPeriodView(periodData) : null;
   return (
-    <div className="table-card profile-card">
-      {cardHead("invoice", BILLING_MODE_TEXT.title, BILLING_MODE_TEXT.subtitle, null)}
+    <SettingsSection title={BILLING_MODE_TEXT.title} subtitle={BILLING_MODE_TEXT.subtitle}>
       <div className="profile-section-body">
         <fieldset className="dn-mode-fieldset" disabled={bmSaving}>
           <legend className="field-label">{BILLING_MODE_TEXT.fieldLabel}</legend>
@@ -118,7 +116,7 @@ export function BillingModeCard({ user }) {
         {bmError && <FormAlert tone="error" message={bmError} className="mt-16" />}
         {bmSaved && !bmError && (
           <p className="profile-saved" role="status">
-            <Icon n="check" s={14} /> Einstellung gespeichert
+            Einstellung gespeichert
           </p>
         )}
         {/* Laufender Zeitraum — ausschließlich Serverwerte, nichts wird gerechnet.
@@ -164,6 +162,6 @@ export function BillingModeCard({ user }) {
           </div>
         )}
       </div>
-    </div>
+    </SettingsSection>
   );
 }

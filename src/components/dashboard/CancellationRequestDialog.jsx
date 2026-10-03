@@ -1,5 +1,4 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import {
   cancellationReasonState,
   CANCELLATION_REASON_MAX,
@@ -13,6 +12,11 @@ import {
 // busy) und Fokus-Restore analog zu den bestehenden Dialogen. `error` (String)
 // wird bei korrigierbaren Fehlern gesetzt; die Eingabe bleibt dabei erhalten,
 // weil der Dialog gemountet bleibt.
+//
+// Redesign 2026-10: kein Iconmedaillon, Hinweis und Fehler als ruhiger Text,
+// „Sie"-Ansprache wie im übrigen Kundenbereich. Die Aktionen stehen rechts —
+// „Abbrechen" links daneben, die bestätigende Aktion rechts außen (mobil
+// übereinander, die bestätigende oben; Muster aus patterns.css).
 export function CancellationRequestDialog({ shipment, busy = false, error = "", onSubmit, onClose }) {
   const [reason, setReason] = useState("");
   const cardRef = useRef(null);
@@ -72,17 +76,15 @@ export function CancellationRequestDialog({ shipment, busy = false, error = "", 
         aria-describedby={descId}
         onSubmit={submit}
       >
-        <div className="stn-dialog-icon" aria-hidden="true"><Icon n="ban" s={20} /></div>
         <h2 id={titleId} className="stn-dialog-title">Stornierung anfragen</h2>
         <p id={descId} className="stn-dialog-desc">
-          Bitte teile uns kurz mit, warum du diese Sendung stornieren möchtest. Wir prüfen deine
-          Anfrage und melden uns persönlich bei dir.
+          Bitte teilen Sie uns kurz mit, warum Sie diese Sendung stornieren möchten. Wir prüfen Ihre
+          Anfrage und melden uns persönlich bei Ihnen.
         </p>
 
-        <div className="stn-dialog-hint" role="note">
-          <Icon n="info" s={14} c="currentColor" />
-          <span>Eine Stornierung kann je nach Versandstatus möglicherweise nicht mehr oder nur gegen Gebühren möglich sein.</span>
-        </div>
+        <p className="stn-dialog-hint" role="note">
+          Eine Stornierung kann je nach Versandstatus möglicherweise nicht mehr oder nur gegen Gebühren möglich sein.
+        </p>
 
         {sendLabel && (
           <p className="stn-dialog-target">Sendung: <strong>{sendLabel}</strong></p>
@@ -95,7 +97,7 @@ export function CancellationRequestDialog({ shipment, busy = false, error = "", 
           className="stn-dialog-textarea"
           rows={4}
           maxLength={CANCELLATION_REASON_MAX}
-          placeholder="Bitte beschreibe kurz den Grund für deine Anfrage."
+          placeholder="Bitte beschreiben Sie kurz den Grund für Ihre Anfrage."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           disabled={busy}
@@ -113,16 +115,16 @@ export function CancellationRequestDialog({ shipment, busy = false, error = "", 
 
         {error && (
           <div id={errorId} className="stn-dialog-alert" role="alert">
-            <Icon n="x" s={14} c="currentColor" /><span>{error}</span>
+            <span>{error}</span>
           </div>
         )}
 
         <div className="stn-dialog-actions">
-          <button type="submit" className="btn btn-primary" disabled={!canSubmit} aria-busy={busy || undefined}>
-            {busy ? <><span className="spinner" /> Wird gesendet …</> : "Anfrage absenden"}
-          </button>
           <button type="button" className="btn btn-outline" onClick={onClose} disabled={busy}>
             Abbrechen
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit} aria-busy={busy || undefined}>
+            {busy ? <><span className="spinner" /> Wird gesendet …</> : "Anfrage absenden"}
           </button>
         </div>
       </form>

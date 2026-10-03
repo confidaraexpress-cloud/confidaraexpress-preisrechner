@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { CommercialInvoiceUpload } from "./CommercialInvoiceUpload";
 
 // „Zollrechnung" — REINE DARSTELLUNG. Radio-Gruppe (Proforma / eigene Handels-
@@ -100,7 +99,7 @@ export function CustomsInvoiceModeSection({
             onClick={ci.onRetryStatus}
             disabled={ci.status === "checking"}
           >
-            <Icon n="refresh" s={14} c="currentColor" /> Status erneut prüfen
+            Status erneut prüfen
           </button>
         </div>
       )}

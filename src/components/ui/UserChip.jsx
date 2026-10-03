@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Icon } from "./Icon";
 import { accountInitials } from "../../utils/accountIdentity.mjs";
 import { useCompanyLogo } from "../../hooks/useCompanyLogo";
 import { COMPANY_LOGO_TEXT } from "../../utils/companyLogoView.mjs";
@@ -19,8 +18,8 @@ import { COMPANY_LOGO_TEXT } from "../../utils/companyLogoView.mjs";
    Die Komponente rendert nur Struktur und ruft `onClick` auf. Sie kennt keine
    Route und keinen Zustand. */
 
-/* Firmenmarke: das hinterlegte Firmenlogo — und solange keines vorliegt, ein
-   flacher Squircle in der Akzentfarbe mit echter Konto-Initiale.
+/* Firmenmarke: das hinterlegte Firmenlogo — und solange keines vorliegt, eine
+   flache Fläche in der Akzentfarbe mit echter Konto-Initiale.
 
    DREI Wege führen zur Initiale zurück, und sie sind absichtlich alle drei
    abgedeckt:
@@ -55,7 +54,10 @@ export function CompanyMark({ initial, logoUrl = null }) {
 
   return (
     <svg className="ce-comark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="38" height="38" rx="11.5" fill="#2563eb" />
+      {/* Akzentfarbe des Bestands (vor dem Redesign unverändert #2563eb):
+          SVG-Präsentationsattribute lösen keine CSS-Variablen auf.
+          Radius 8/40 ≙ --ce-radius-sm. */}
+      <rect x="1" y="1" width="38" height="38" rx="8" fill="#2563eb" />
       {/* SVG-Präsentationsattribute lösen keine CSS-Variablen auf — die
           Familie steht hier deshalb als einziges Literal im Projekt; sie ist
           identisch mit --ce-font-sans. */}
@@ -106,7 +108,6 @@ export function UserChip({ user, onClick, label = "Zu meinem Profil" }) {
         <span className="pp-uname">{name}</span>
         {org && <span className="pp-ucomp">{org}</span>}
       </span>
-      <Icon n="chevron" s={15} />
     </button>
   );
 }

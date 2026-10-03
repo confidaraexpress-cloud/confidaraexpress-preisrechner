@@ -461,7 +461,9 @@ test("21 — mobile Kartenansicht ersetzt die Tabelle", () => {
     assert.match(listSrc, m);
   }
   assert.match(listSrc, /<div className="adm-scard-head">\s*<InvoiceCell row=\{row\} \/>\s*<StatusCell row=\{row\} now=\{now\} \/>/);
-  assert.match(cssSrc, /@media \(max-width: 900px\) \{[\s\S]*?\.adm-inv-table \{ display: none; \}/);
+  // Redesign 2026-10: Umschaltpunkt wie die Sendungsliste (1200px) — darunter
+  // wäre die Aktionsspalte (10 %) schmaler als der „Details"-Knopf.
+  assert.match(cssSrc, /@media \(max-width: 1200px\) \{\s*\.adm-inv-table \{ display: none; \}/);
   assert.match(cssSrc, /\.adm-inv-cards \{ display: none;/);
 });
 

@@ -1,6 +1,5 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 import { formatRecipientDisplay, formatRoute } from "../../utils/draftsView.mjs";
 import { FORM_DRAFT_KIND, formatFormRecipient, formatFormRoute } from "../../utils/formDraftsView.mjs";
 
@@ -25,7 +24,6 @@ export function DraftDeleteConfirmDialog({ draft, busy, onCancel, onConfirm }) {
   return (
     <div className="dft-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onCancel(); }}>
       <div className="dft-dialog-card" role="dialog" aria-modal="true" aria-labelledby="dft-delete-title" aria-describedby="dft-delete-desc" ref={dialogRef}>
-        <div className="dft-dialog-icon" aria-hidden="true"><Icon n="trash" s={20} /></div>
         <h2 id="dft-delete-title" className="dft-dialog-title">Entwurf wirklich löschen?</h2>
         <p id="dft-delete-desc" className="dft-dialog-desc">
           <span className="dft-dialog-target">{draftIdentity(draft)}</span><br />
@@ -35,7 +33,9 @@ export function DraftDeleteConfirmDialog({ draft, busy, onCancel, onConfirm }) {
           <button type="button" className="btn btn-outline" onClick={onCancel} disabled={busy}>
             Abbrechen
           </button>
-          <button type="button" className="dft-delete-confirm-btn" onClick={onConfirm} disabled={busy}>
+          {/* Destruktive Bestätigung über die globale Danger-Variante — die
+              Irreversibilität trägt zusätzlich der Text „Löschen". */}
+          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={busy}>
             {busy ? <><span className="spinner" /> Wird gelöscht …</> : "Löschen"}
           </button>
         </div>

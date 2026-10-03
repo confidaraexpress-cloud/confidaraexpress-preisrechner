@@ -375,7 +375,7 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     } else {
       const zeile = page.locator("table tbody tr", { hasText: AB_NUMMER }).first();
       await zeile.waitFor({ timeout: 20000 });
-      await zeile.getByRole("button", { name: "Sendung verfolgen" }).click();
+      await zeile.getByRole("button", { name: "Tracking", exact: true }).click();
       await page.waitForSelector(".shipment-track-detail .track-event", { timeout: 15000 });
       assert.ok(protokoll.pfade.includes(`/api/shipments/${CE_SHIPMENT_ID}/tracking`),
         "das Tracking kommt nicht über den CE-Sendungshandle");

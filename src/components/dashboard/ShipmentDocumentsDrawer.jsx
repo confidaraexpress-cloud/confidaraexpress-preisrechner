@@ -1,12 +1,11 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
 import { getShipmentDocuments } from "../../api/client";
 import { downloadDocument } from "../../utils/downloadDocument";
 import {
   DOC_STATUS, DOCUMENTS_TEXT, groupShipmentDocuments, shipmentDocumentsPrintNotice,
   documentViewState, documentDownloadPath, documentRetrievePath,
-  documentLabel, documentNumber, documentIcon, documentFallbackFilename,
+  documentLabel, documentNumber, documentFallbackFilename,
   documentCarrierReference, documentOrdinal, documentLabelSize,
   hasProcessingDocument, nextDocumentPollDelay,
 } from "../../utils/shipmentDocumentsView.mjs";
@@ -30,9 +29,11 @@ import {
 
    ── Aufbau ─────────────────────────────────────────────────────────────────
    Kopf (Titel + Kontextnummer aus bereits vorhandenen Zeilendaten, ohne
-   zusätzlichen Request) · Gruppen aus der servergelieferten `category` ·
-   je Dokument eine Zeile mit Icon, Name, optionaler Belegnummer und genau
-   einer Aktion beziehungsweise einem ruhigen Zustandstext.
+   zusätzlichen Request, daneben die Textaktion „Schließen") · Gruppen aus der
+   servergelieferten `category` · je Dokument EINE Zeile: links Name und
+   optionale Belegnummer, rechts genau eine Textaktion beziehungsweise ein
+   ruhiger Zustandstext. Seit dem Redesign (2026-10) ohne Dateisymbole — der
+   Name sagt, was das Dokument ist.
    ───────────────────────────────────────────────────────────────────────── */
 
 function DocumentRow({ doc, onDownload, onRetrieve, busy }) {
@@ -46,9 +47,6 @@ function DocumentRow({ doc, onDownload, onRetrieve, busy }) {
   const name = documentLabel(doc);
   return (
     <li className="sdoc-row">
-      <span className="sdoc-row-icon" aria-hidden="true">
-        <Icon n={documentIcon(doc.type)} s={18} />
-      </span>
       <span className="sdoc-row-text">
         <span className="sdoc-row-name">{name}</span>
         {/* Fehlt die Nummer, bleibt hier KEIN leerer Platzhalter stehen. */}
@@ -65,7 +63,7 @@ function DocumentRow({ doc, onDownload, onRetrieve, busy }) {
           >
             {busy
               ? <><span className="spinner spinner-dark" /> {DOCUMENTS_TEXT.downloading}</>
-              : <><Icon n="download" s={15} /> {DOCUMENTS_TEXT.download}</>}
+              : DOCUMENTS_TEXT.download}
           </button>
         )}
         {/* Zustände tragen TEXT, nicht nur Farbe — und der Fehlerfall ist ruhig:
@@ -233,14 +231,16 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
             {/* Kontext aus bereits vorhandenen Zeilendaten — kein zusätzlicher Request. */}
             {contextNumber && <p className="sdoc-subtitle mono">{contextNumber}</p>}
           </div>
-          <button type="button" className="btn btn-icon btn-ghost" aria-label={DOCUMENTS_TEXT.close} onClick={onClose}>
-            <Icon n="x" s={16} />
+          {/* Textaktion statt Kreuz. Der zugängliche Name („Dokumente schließen")
+              enthält das sichtbare Wort. */}
+          <button type="button" className="btn btn-ghost btn-sm sdoc-close" aria-label={DOCUMENTS_TEXT.close} onClick={onClose}>
+            Schließen
           </button>
         </div>
 
         <div className="ce-drawer-body sdoc-body">
           {downloadError && (
-            <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={15} />{downloadError}</div>
+            <div className="alert alert-error mb-16" role="alert">{downloadError}</div>
           )}
 
           {loading && groups === null ? (
@@ -250,7 +250,6 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
             </ul>
           ) : loadError && groups === null ? (
             <div className="sdoc-state" role="status">
-              <Icon n="info" s={24} />
               <p className="sdoc-state-text">{DOCUMENTS_TEXT.loadError}</p>
               {/* „Erneut versuchen" ist hier zulässig: es ist ein reiner GET, er
                   ändert nichts und die Sendungsdaten bleiben erhalten. */}
@@ -260,7 +259,6 @@ export function ShipmentDocumentsDrawer({ shipmentId, contextNumber, onClose }) 
             </div>
           ) : leer ? (
             <div className="sdoc-state" role="status">
-              <Icon n="form" s={24} />
               <p className="sdoc-state-text">{DOCUMENTS_TEXT.empty}</p>
             </div>
           ) : (

@@ -57,7 +57,7 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow, vatMode })
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="truck" s={18} c="var(--ce-color-brand-ink)" /><h3>Ausgewähltes Angebot</h3></div>
+      <div className="calc-panel-header"><h3>Ausgewähltes Angebot</h3></div>
       <div className="calc-panel-body">
         {/* Zone 1 (Identität) links · Zone 3 (Preis) rechts */}
         <div className="offsum-top">
@@ -122,12 +122,12 @@ export function OfferSummaryModule({ tariff, priceView, pickupWindow, vatMode })
           </dl>
           {printerRequired && (
             <span className="offsum-flag" role="note">
-              <Icon n="printer" s={13} c="currentColor" /> Drucker erforderlich
+              Drucker erforderlich
             </span>
           )}
           {sameDayBis && (
             <span className="offsum-flag" id="offer-summary-sameday-until" role="note">
-              <Icon n="clock" s={13} c="currentColor" /> {sameDayBis}
+              {sameDayBis}
             </span>
           )}
         </div>

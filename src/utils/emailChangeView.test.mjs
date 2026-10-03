@@ -86,7 +86,8 @@ test("11 — Rate-Limit-Text ist gesondert vorhanden", () => {
 // ── Resend-Fehlermapping ─────────────────────────────────────────────────────
 test("12 — Resend-Fehlercodes werden gemappt", () => {
   assert.match(mapEmailChangeResendError("EMAIL_CHANGE_REQUEST_NOT_FOUND"), /keine ausstehende/);
-  assert.match(mapEmailChangeResendError("EMAIL_CHANGE_RESEND_TOO_SOON"), /warte kurz/);
+  // Redesign 2026-10: Profilmeldungen in Sie-Ansprache.
+  assert.match(mapEmailChangeResendError("EMAIL_CHANGE_RESEND_TOO_SOON"), /warten Sie kurz/);
   assert.match(mapEmailChangeResendError("EMAIL_CHANGE_EMAIL_UNAVAILABLE"), /inzwischen nicht mehr/);
   assert.equal(mapEmailChangeResendError("???"), EMAIL_CHANGE_RESEND_GENERIC);
 });

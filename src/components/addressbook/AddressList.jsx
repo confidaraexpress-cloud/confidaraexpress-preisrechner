@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { AddressDesktopRow } from "./AddressDesktopRow";
 import { AddressCard } from "./AddressCard";
 import { AddressSkeleton } from "./AddressSkeleton";
@@ -24,7 +23,6 @@ export function AddressList({
   if (error) {
     return (
       <div className="alert alert-error">
-        <Icon n="x" s={16} />
         <span style={{ flex: 1 }}>{error}</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>Erneut versuchen</button>
       </div>
@@ -56,7 +54,7 @@ export function AddressList({
         <div className="abk-loadmore-wrap">
           {loadMoreError && (
             <div className="alert alert-error" style={{ width: "100%" }}>
-              <Icon n="x" s={16} />{loadMoreError}
+              {loadMoreError}
             </div>
           )}
           <button type="button" className="btn btn-outline" onClick={onLoadMore} disabled={loadingMore}>

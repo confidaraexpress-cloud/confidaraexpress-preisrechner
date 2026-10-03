@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { AddressPicker } from "./AddressPicker";
 
 /* ── Auslöser + schwebende Adressauswahl ─────────────────────────────────────
@@ -143,11 +142,9 @@ export function AddressPickerButton({ tab, onSelect, disabled, label = "Adresse 
         aria-controls={open ? popId : undefined}
         title={title}
       >
-        {/* `idcard` ist im ganzen Portal das Zeichen für das Adressbuch (siehe
-            DashboardSidebar) — kein zweites Symbol dafür. */}
-        <Icon n="idcard" s={16} />
+        {/* Reine Textaktion (Redesign 2026-10): kein Adressbuch-Symbol, kein
+            Chevron. Dass sich eine Auswahl öffnet, sagt aria-expanded. */}
         <span className="abk-pick-trigger-text">{label}</span>
-        <Icon n="chevron" s={14} />
       </button>
       {/* Bewusst KEINE Dialogrolle: die Fläche ist nicht modal und fängt den
           Fokus absichtlich NICHT ein — wer weitertabbt, verlässt sie, und sie

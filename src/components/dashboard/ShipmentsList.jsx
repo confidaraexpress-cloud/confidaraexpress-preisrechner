@@ -1,6 +1,5 @@
 import React from "react";
 import { StatusBadge } from "../ui/StatusBadge";
-import { Icon } from "../ui/Icon";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { resolveCarrierName } from "../../utils/carrierMap";
@@ -50,7 +49,13 @@ function CancellationStatusPill({ status }) {
 /* Aktionen einer Sendungszeile — identisch in Tabelle und Mobilkarte.
    Reine Darstellungs-Extraktion (Paket A, Phase 3): dieselben Bedingungen,
    dieselben Handler, keine geänderte Logik. `expanded` sagt Vorlesesoftware,
-   ob die Trackingansicht dieser Sendung gerade offen ist. */
+   ob die Trackingansicht dieser Sendung gerade offen ist.
+
+   Redesign 2026-10: drei klar benannte Textaktionen in EINER Gruppe
+   (.ce-row-actions) — „Tracking" klappt die bestehende Trackingansicht auf,
+   „Dokumente" öffnet den bestehenden Drawer, „Stornierung anfragen" den
+   bestehenden Dialog. Die Stornierung ist als einzige gefährliche Aktion
+   erkennbar sekundär (rote Textaktion), kein Symbol, keine Fläche. */
 function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
   /* Package C: eine Sendung in Buchungsklärung hat noch nichts, worauf sich eine
      Aktion beziehen könnte — keine Trackingnummer, keine Dokumente, nichts zu
@@ -58,30 +63,26 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
      Lage erklärt. Und kein „erneut buchen": der Ausgang ist offen. */
   if (isBookingInReview(s)) {
     return (
-      <div className="flex gap-8 stn-actions">
-        <span className="text-muted text-sm">{BOOKING_IN_REVIEW_TEXT.note}</span>
+      <div className="ce-row-actions stn-actions">
+        <span className="shipment-review-note">{BOOKING_IN_REVIEW_TEXT.note}</span>
       </div>
     );
   }
   return (
-    <div className="flex gap-8 stn-actions">
+    <div className="ce-row-actions stn-actions">
       {s.id && (
-        <button className="btn btn-ghost btn-sm" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Sendung verfolgen</button>
+        <button type="button" className="btn btn-ghost btn-sm" aria-expanded={expanded === true} onClick={() => onTrack(s.id)}>Tracking</button>
       )}
-      {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe. Vorher standen
-          hier „Label" und „Auftragsbestätigung" nebeneinander — je Dokumenttyp ein
-          weiterer Knopf, und jeder trug seine eigene Sichtbarkeitsbedingung aus der
-          Zeile (Status, vorhandene Nummer). Beides ist entfallen: welche Dokumente
-          es gibt, sagt der Server im Drawer, nicht diese Liste.
-
+      {/* EINE dokumentbezogene Aktion statt wachsender Einzelknöpfe: welche
+          Dokumente es gibt, sagt der Server im Drawer, nicht diese Liste.
           Tracking und Stornierung bleiben eigenständig — sie sind keine Dokumente. */}
       {s.id && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onDocuments(s)}>
-          <Icon n="form" s={15} /> {DOCUMENTS_TEXT.action}
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDocuments(s)}>
+          {DOCUMENTS_TEXT.action}
         </button>
       )}
       {canRequestCancellation(s) && (
-        <button className="btn btn-ghost btn-sm" onClick={() => onCancel(s)}>Stornieren</button>
+        <button type="button" className="btn btn-ghost btn-sm stn-request-btn" onClick={() => onCancel(s)}>Stornierung anfragen</button>
       )}
       {hasCancellationRequest(s) && <CancellationStatusPill status={s.cancellation_status} />}
     </div>
@@ -90,11 +91,11 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
 
 /* ── Trackingansicht einer Sendung ────────────────────────────────────────────
    TG22 Paket B: dieselbe Ansicht in der Tabellen-Detailzeile UND in der Mobilkarte.
-   Bis hierher war sie der Tabelle vorbehalten — unter 1100 px ist die Tabelle aber
-   ausgeblendet, und „Sendung verfolgen" auf der Karte lud den Stand, ohne ihn je zu zeigen.
 
    Reine Darstellung: Zustand, Endpunkt und „Aktualisieren" kommen aus der Liste. Beide
-   Stellen zeigen damit denselben Stand aus demselben Abruf. */
+   Stellen zeigen damit denselben Stand aus demselben Abruf. Die Ereignisse stehen als
+   ruhige chronologische Textliste: ein kleiner Punkt je Ereignis, der neueste in
+   der Markenfarbe — keine Symbole im Punkt. */
 function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
   if (loading) return <div className="loading-center"><span className="spinner spinner-dark" /></div>;
   if (tracking?.error) return <p className="text-muted text-sm">{tracking.error}</p>;
@@ -132,8 +133,8 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
           Tracking ist noch nicht verfügbar. Die Sendungsverfolgung erscheint,
           sobald der Versanddienstleister die Sendung übernommen hat.
         </p>
-        <button className="btn btn-ghost btn-sm" onClick={onRefresh}>
-          <Icon n="refresh" s={13} /> Aktualisieren
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh}>
+          Aktualisieren
         </button>
       </div>
     );
@@ -155,7 +156,7 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
           {statusLabel && <span className="badge badge--info">{statusLabel}</span>}
           {carrierUrl && (
             <a className="shipment-track-link" href={carrierUrl} target="_blank" rel="noopener noreferrer">
-              Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+              Beim Versanddienstleister verfolgen
             </a>
           )}
         </div>
@@ -166,15 +167,14 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
           {section.heading && <p className="text-muted text-sm shipment-track-leg">{section.heading}</p>}
           {section.link && (
             <a className="shipment-track-link" href={section.link} target="_blank" rel="noopener noreferrer">
-              Beim Versanddienstleister verfolgen <Icon n="external" s={12} c="currentColor" />
+              Beim Versanddienstleister verfolgen
             </a>
           )}
           {section.events.map((ev, i) => (
             <div key={i} className="track-event">
-              {/* Aktiver Punkt = neuestes Ereignis = letztes Element (aufsteigende Timeline) */}
-              <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`}>
-                {i === section.events.length - 1 ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
-              </div>
+              {/* Neuestes Ereignis = letztes Element (aufsteigende Timeline). Der
+                  Punkt ist reine Markierung — die Aussage steht im Text daneben. */}
+              <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`} aria-hidden="true" />
               <div className="track-info">
                 <div className="track-title">{ev.title}</div>
                 {ev.when && <div className="track-time">{ev.when}</div>}
@@ -300,7 +300,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
       }
     } catch {
       if (mountedRef.current) {
-        setCancelError("Die Stornierungsanfrage konnte nicht gesendet werden. Bitte versuche es erneut.");
+        setCancelError("Die Stornierungsanfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.");
       }
     } finally {
       submittingRef.current = false;
@@ -313,27 +313,39 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
       <div className="page-body">
         {notice && (
           <div className={`alert ${notice.type === "success" ? "alert-success" : "alert-info"} mb-16`} role="status">
-            <Icon n={notice.type === "success" ? "check" : "info"} s={16} />{notice.text}
+            {notice.text}
           </div>
         )}
         {loading ? (
           <div className="loading-center"><span className="spinner spinner-dark" /></div>
         ) : shipments.length === 0 ? (
-          <EmptyState icon="package" title="Noch keine Sendungen" />
+          <EmptyState title="Noch keine Sendungen" />
         ) : (
           <>
-          <div className="table-card ce-list-table">
+          {/* Desktop: Identität links (Auftragsbestätigung, darunter Carrier · Datum
+              und Trackingangabe), Zahlen rechts, Status als ganzer Begriff, Aktionen
+              als Textgruppe. Keine gleich breiten Spalten: jede Spalte bekommt die
+              Breite ihres Inhalts, die Identität den Rest. */}
+          <div className="table-card ce-list-table shipment-table">
             <div className="table-scroll">
               <table>
                 <caption className="sr-only">Ihre Sendungen</caption>
                 <thead>
-                  <tr><th scope="col">Auftragsbestätigung</th><th scope="col">Carrier</th><th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th><th scope="col">Status</th><th scope="col">Datum</th><th scope="col">Aktionen</th></tr>
+                  {/* Die beiden Zahlenspalten tragen den Marker auf Kopf UND Zelle
+                      (.ce-num, rechtsbündig, tabellarisch). */}
+                  <tr>
+                    <th scope="col">Auftragsbestätigung</th>
+                    <th scope="col" className="ce-num">Gewicht</th><th scope="col" className="ce-num">Preis</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" className="ce-col-actions"><span className="sr-only">Aktionen</span></th>
+                  </tr>
                 </thead>
                 <tbody>
                   {shipments.map((s) => {
                     const nums = customerShipmentNumbers(s);
                     // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
                     const alleNummern = multiTrackingReferencesOf(s);
+                    const carrier = s.selected_carrier ? resolveCarrierName(s.selected_carrier) : null;
                     return (
                     <React.Fragment key={s.id}>
                       <tr>
@@ -342,39 +354,40 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                             Sendungen aus der Zeit vor CE-AB zeigen einen neutralen Hinweis —
                             NIE die interne Bestellnummer (CE-BS…), NIE die interne Shipment-ID
                             und NIE die JUMiNGO-Shipment-/Ordernummer als Ersatz. */}
-                        <td>
-                          {nums.orderConfirmationNumber
-                            ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
-                            : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                          {/* TG-F6: in der engen Zelle nur die Anzahl — alle Nummern stehen im
-                              Sendungsdetail darunter. Eine Einzelnummer bleibt, wie sie war. */}
-                          {alleNummern ? (
-                            <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                              {trackingReferencesSummary(alleNummern)}
-                            </div>
-                          ) : nums.trackingNumber && (
-                            <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
-                              {NUMBER_LABELS.tracking}: {nums.trackingNumber}
-                            </div>
-                          )}
+                        <td className="shipment-id-cell">
+                          <div className="shipment-id">
+                            {nums.orderConfirmationNumber
+                              ? <span className="shipment-id-number mono" style={{ wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                              : <span className="shipment-id-fallback">{NO_ORDER_CONFIRMATION_TEXT}</span>}
+                            <span className="shipment-id-meta">
+                              {carrier && <>{carrier} · </>}{dateDE(s.created_at)}
+                            </span>
+                            {/* TG-F6: in der Zeile nur die Anzahl — alle Nummern stehen im
+                                Sendungsdetail darunter. Eine Einzelnummer bleibt, wie sie war. */}
+                            {alleNummern ? (
+                              <span className="shipment-id-sub">
+                                {trackingReferencesSummary(alleNummern)}
+                              </span>
+                            ) : nums.trackingNumber && (
+                              <span className="shipment-id-sub mono" style={{ wordBreak: "break-all" }}>
+                                {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                              </span>
+                            )}
+                            {nums.customerReference && (
+                              <span className="shipment-id-sub mono">Ref: {nums.customerReference}</span>
+                            )}
+                          </div>
                         </td>
-                        <td>
-                          {s.selected_carrier ? resolveCarrierName(s.selected_carrier) : "—"}
-                          {nums.customerReference && (
-                            <div className="text-muted mono" style={{ fontSize: 12, marginTop: 2 }}>Ref: {nums.customerReference}</div>
-                          )}
-                        </td>
-                        <td className="text-muted ce-num">{s.weight ? `${s.weight} kg` : "—"}</td>
-                        <td className="font-bold ce-num">{money(s.price_final)}</td>
-                        <td><StatusBadge status={s.status} /></td>
-                        <td className="text-muted">{dateDE(s.created_at)}</td>
+                        <td className="shipment-weight ce-num">{s.weight ? `${s.weight} kg` : "—"}</td>
+                        <td className="shipment-price ce-num">{money(s.price_final)}</td>
+                        <td className="shipment-status"><StatusBadge status={s.status} /></td>
                         <td className="ce-col-actions">
                           <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />
                         </td>
                       </tr>
                       {trackingId === s.id && (
-                        <tr>
-                          <td colSpan={7} className="shipment-detail-cell">
+                        <tr className="shipment-detail-row">
+                          <td colSpan={5} className="shipment-detail-cell">
                           <div className="ce-card-muted shipment-detail-card">
                             {/* Sendungsdetail: die drei kundensichtbaren Werte GETRENNT benannt.
                                 Die interne shipments.id (Sendungshandle für Track/Label/Storno)
@@ -392,7 +405,7 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                                 <div className="shipment-detail-item">
                                   <dt className="shipment-detail-label">{TRACKING_REFERENCES_TEXT.plural}</dt>
                                   <dd className="shipment-detail-value mono">
-                                    <ol className="shipment-tracking-references" style={{ margin: 0, paddingLeft: 18 }}>
+                                    <ol className="shipment-tracking-references">
                                       {alleNummern.map((nr) => (
                                         <li key={nr} style={{ wordBreak: "break-all" }}>{nr}</li>
                                       ))}
@@ -451,35 +464,38 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
             </div>
           </div>
 
-          {/* Mobile Kartenansicht (Paket A, Phase 3): bis 1100 px zeigt die
-              Liste Karten statt einer quer gescrollten Tabelle — dasselbe
-              Muster, das Rechnungen, Entwürfe, Adressbuch und die Adminlisten
-              bereits nutzen. Gleiche Daten, gleiche Aktionen, gleiche
-              Bedingungen. TG22 Paket B: „Sendung verfolgen" zeigt den Stand jetzt
-              auch hier — dieselbe Trackingansicht wie in der Detailzeile der Tabelle. */}
-          <ul className="ce-list-cards" aria-label="Sendungen">
+          {/* Kartenansicht (bis 1100 px statt einer quer gescrollten Tabelle) —
+              dasselbe Muster wie Rechnungen, Entwürfe, Adressbuch und die
+              Adminlisten. Gleiche Daten, gleiche Aktionen, gleiche Bedingungen:
+              Identität und Status zuerst, dann die beschrifteten Werte, dann die
+              Textaktionen. TG22 Paket B: „Tracking" zeigt den Stand auch hier —
+              dieselbe Trackingansicht wie in der Detailzeile der Tabelle. */}
+          <ul className="ce-list-cards shipment-cards" aria-label="Sendungen">
             {shipments.map((s) => {
               const nums = customerShipmentNumbers(s);
               // TG-F6: mehrere Trackingnummern — nur dann ändert sich die Anzeige.
               const alleNummern = multiTrackingReferencesOf(s);
               return (
-                <li className="ce-list-card" key={`card-${s.id}`}>
-                  <div className="ce-list-card-head">
-                    <div style={{ minWidth: 0 }}>
+                <li className="ce-list-card shipment-card" key={`card-${s.id}`}>
+                  {/* Nur Nummer und Status teilen sich die Kopfzeile; die Trackingangabe
+                      steht darunter über die volle Kartenbreite — neben dem Status würde
+                      eine lange Nummer schon bei 320 px mitten in der Ziffernfolge brechen. */}
+                  <div className="shipment-id shipment-card-ident">
+                    <div className="ce-list-card-head">
                       {nums.orderConfirmationNumber
-                        ? <span className="mono font-bold" style={{ fontSize: 13, wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
-                        : <span className="text-muted" style={{ fontSize: 12 }}>{NO_ORDER_CONFIRMATION_TEXT}</span>}
-                      {alleNummern ? (
-                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                          {trackingReferencesSummary(alleNummern)}
-                        </div>
-                      ) : nums.trackingNumber && (
-                        <div className="text-muted mono" style={{ fontSize: 11, marginTop: 2, wordBreak: "break-all" }}>
-                          {NUMBER_LABELS.tracking}: {nums.trackingNumber}
-                        </div>
-                      )}
+                        ? <span className="shipment-id-number mono" style={{ wordBreak: "break-all" }}>{nums.orderConfirmationNumber}</span>
+                        : <span className="shipment-id-fallback">{NO_ORDER_CONFIRMATION_TEXT}</span>}
+                      <span className="shipment-status"><StatusBadge status={s.status} /></span>
                     </div>
-                    <StatusBadge status={s.status} />
+                    {alleNummern ? (
+                      <span className="shipment-id-sub">
+                        {trackingReferencesSummary(alleNummern)}
+                      </span>
+                    ) : nums.trackingNumber && (
+                      <span className="shipment-id-sub mono" style={{ wordBreak: "break-all" }}>
+                        {NUMBER_LABELS.tracking}: {nums.trackingNumber}
+                      </span>
+                    )}
                   </div>
                   {/* TG-F6: die Karte hat Platz für die vollständige Liste — mobil soll
                       keine Nummer fehlen. */}
@@ -504,16 +520,16 @@ export function ShipmentsList({ shipments, loading, onCancellationRequested, has
                     </div>
                   )}
                   <div className="ce-list-card-row">
+                    <span className="ce-list-card-key">Datum</span>
+                    <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
+                  </div>
+                  <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Gewicht</span>
                     <span className="ce-list-card-val ce-num">{s.weight ? `${s.weight} kg` : "—"}</span>
                   </div>
                   <div className="ce-list-card-row">
                     <span className="ce-list-card-key">Preis</span>
-                    <span className="ce-list-card-val ce-num font-bold">{money(s.price_final)}</span>
-                  </div>
-                  <div className="ce-list-card-row">
-                    <span className="ce-list-card-key">Datum</span>
-                    <span className="ce-list-card-val">{dateDE(s.created_at)}</span>
+                    <span className="ce-list-card-val ce-num shipment-card-price">{money(s.price_final)}</span>
                   </div>
                   <div className="ce-list-card-actions">
                     <ShipmentRowActions s={s} expanded={trackingId === s.id} onTrack={loadTracking} onDocuments={setDocumentsShipment} onCancel={openCancel} />

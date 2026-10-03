@@ -401,8 +401,12 @@ test("7 — auf breitem Desktop ist die Angebotssektion schmaler und zentriert",
   assert.ok(Math.abs(mass.linksAussen - mass.rechtsAussen) <= 1,
     `nicht zentriert: ${mass.linksAussen} vs ${mass.rechtsAussen}`);
   assert.ok(mass.linksAussen > 40, "es entsteht sichtbarer Weißraum");
-  assert.equal(mass.radius, "12px", "etwas rechteckiger");
-  assert.notEqual(mass.schatten, "none", "die Karte trägt einen Ruheschatten");
+  assert.equal(mass.radius, "12px", "Kartenradius LG");
+  // Feinschliff 2026-10: die Tarifkarte trägt wie in der Anfangsversion schon
+  // in Ruhe Stufe 2 (--ce-elevation-2: Navy, Kontaktkante + weicher Hauch) —
+  // kein farbiger Schatten, keine Overlay-Tiefe.
+  assert.notEqual(mass.schatten, "none", "die Tarifkarte trägt keine Kartentiefe");
+  assert.match(mass.schatten, /^rgba\(17, 26, 51, 0\.0\d\) 0px 2px 4px/, `unerwarteter Ruheschatten: ${mass.schatten}`);
 
   // Das neue Hinweisfeld darf das Layout NICHT verziehen: eine Karte mit Feld
   // und eine ohne müssen dieselbe Timeline-Geometrie und dieselbe Preisspalte

@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { countries } from "../../utils/countries";
 import { AddressActionsMenu, AddressBadges } from "./AddressDesktopRow";
 import { AddressCreateShipmentButton } from "./AddressCreateShipmentButton";
@@ -9,8 +8,8 @@ const countryName = (code) => countries.find((c) => c.code === code)?.name || co
 // Mobil-Karte — enthält dieselben Informationen wie die Desktop-Zeile, aber
 // gestapelt statt in Spalten (keine horizontale Pflicht-Scroll-Tabelle). Die
 // beiden Aktionen liegen in einer sichtbaren Fußzeile: „Sendung erstellen"
-// (große Touchfläche, füllt die Breite) direkt neben dem Zahnrad — nicht im
-// Menü versteckt.
+// (große Touchfläche, füllt die Breite) direkt neben „Weitere Aktionen" —
+// nicht im Menü versteckt. Kontaktzeilen stehen als reiner Text, ohne Symbole.
 export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavorite, onSetDefaultSender, onSetDefaultRecipient, onNewShipment, onDelete }) {
   return (
     <li className="abk-card">
@@ -23,16 +22,15 @@ export function AddressCard({ address, busy, onEdit, onDuplicate, onToggleFavori
       <AddressBadges address={address} />
       <div className="abk-card-info">
         {address.contactName && (
-          <div className="abk-card-info-row"><Icon n="user" s={13} />{address.contactName}</div>
+          <div className="abk-card-info-row">{address.contactName}</div>
         )}
         <div className="abk-card-info-row">
-          <Icon n="mapPin" s={13} />
           <span>{[address.streetAndNumber, [address.postalCode, address.city].filter(Boolean).join(" "), countryName(address.country)].filter(Boolean).join(", ")}</span>
         </div>
         {/* Eigene Spans wie in der Desktop-Zeile: die E-Mail darf als
             technischer String lokal brechen, statt die Karte zu sprengen. */}
-        {address.email && <div className="abk-card-info-row"><Icon n="mail" s={13} /><span className="abk-contact-email">{address.email}</span></div>}
-        {address.phone && <div className="abk-card-info-row"><Icon n="phone" s={13} /><span className="abk-contact-phone">{address.phone}</span></div>}
+        {address.email && <div className="abk-card-info-row"><span className="abk-contact-email">{address.email}</span></div>}
+        {address.phone && <div className="abk-card-info-row"><span className="abk-contact-phone">{address.phone}</span></div>}
       </div>
       <div className="abk-card-actions">
         <AddressCreateShipmentButton address={address} onNewShipment={onNewShipment} />

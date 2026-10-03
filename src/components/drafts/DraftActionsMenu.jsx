@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 
-// Verwaltungsaktionsmenü (Kebab-Dropdown) einer Entwurfszeile/-karte — dasselbe
-// Muster wie AddressActionsMenu.jsx. „Löschen" ist damit kein dauerhaft
+// Verwaltungsaktionsmenü einer Entwurfszeile/-karte — dasselbe Muster wie
+// AddressActionsMenu.jsx: ein Textauslöser „Weitere Aktionen" (Redesign
+// 2026-10: kein Kebab-Symbol) und Einträge ohne Symbole. „Löschen" ist damit kein dauerhaft
 // sichtbarer, roter Button mehr, sondern ein bewusst aufgerufener, sekundärer
 // Pfad. „Fortsetzen" (Formularentwürfe) bleibt als eigenständiger, direkt
 // sichtbarer Button daneben — es ist die häufigere, wertschöpfende Aktion.
@@ -47,12 +47,12 @@ export function DraftActionsMenu({ draft, busy, disabled, onDelete }) {
         className="dft-actions-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Aktionen für diesen Entwurf"
-        title="Aktionen"
+        aria-label="Weitere Aktionen für diesen Entwurf"
         onClick={() => setOpen((v) => !v)}
         disabled={busy || disabled}
       >
-        {busy ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="dots" s={16} />}
+        {busy && <span className="spinner spinner-dark spinner-sm" />}
+        <span>Weitere Aktionen</span>
       </button>
       {open && (
         <div className="dft-actions-menu" role="menu">
@@ -63,7 +63,7 @@ export function DraftActionsMenu({ draft, busy, disabled, onDelete }) {
             className="dft-actions-item dft-actions-item--danger"
             onClick={runDelete}
           >
-            <Icon n="trash" s={15} /> Löschen
+            Löschen
           </button>
         </div>
       )}

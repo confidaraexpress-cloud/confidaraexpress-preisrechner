@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InventoryDialog } from "../../components/inventory/InventoryShared";
 import { getOrder, cancelOrder, getOrderShippingPrefill } from "../../api/inventoryApi";
@@ -27,7 +26,13 @@ import { multiTrackingReferencesOf } from "../../utils/trackingReferencesView.mj
 
    Hauptaktion ist „Versand vorbereiten". Sie erzeugt keine Sendung: sie holt
    den serverseitig bestimmten Prefill und übergibt ihn dem bestehenden Prozess
-   „Neue Sendung". Bei abgeschlossenem oder storniertem Auftrag entfällt sie. */
+   „Neue Sendung". Bei abgeschlossenem oder storniertem Auftrag entfällt sie.
+
+   Aufbau (Redesign 2026-10): Zurück (Text) → Identität + Status → Positionen
+   als zentrale Arbeitsfläche, Empfänger/Referenz sekundär daneben →
+   verbundene Sendungen mit Lieferscheinen. Unter 1100 px stehen Positionen
+   und Sendungen als beschriftete Karten untereinander — dieselben Daten,
+   dieselben Handler, jede Zahl bleibt erreichbar. */
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -123,15 +128,15 @@ export default function OrderDetailPage() {
   };
 
   const zurueck = (
-    <button type="button" className="btn btn-link ce-page-header-back adm-back" onClick={() => navigate("/dashboard?page=orders")}>
-      <Icon n="chevronLeft" s={16} />Zurück zu den Aufträgen
+    <button type="button" className="btn btn-link ce-page-header-back adm-back inv-back" onClick={() => navigate("/dashboard?page=orders")}>
+      Zurück zu den Aufträgen
     </button>
   );
 
   if (notFound) {
     return (
       <div className="page-body">
-        <PageHeader eyebrow="Lager & Aufträge" title="Auftrag" backLink={zurueck} utility={ctx.utility} />
+        <PageHeader title="Auftrag" backLink={zurueck} utility={ctx.utility} />
         <ErrorState
           title="Auftrag nicht gefunden"
           text="Dieser Auftrag existiert nicht oder gehört nicht zu Ihrem Konto."
@@ -152,16 +157,13 @@ export default function OrderDetailPage() {
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title={o ? o.orderNumber : "Auftrag"}
         subtitle={o?.customerReference ? `Ihre Referenz: ${o.customerReference}` : undefined}
         backLink={zurueck}
         utility={ctx.utility}
         meta={o && (
           <>
-            <span className={`badge ${statusCls}`} title={statusRoh ? `Serverwert: ${statusRoh}` : undefined}>
-              <span className="badge-dot" aria-hidden="true" />{statusText}
-            </span>
+            <span className={`badge ${statusCls}`} title={statusRoh ? `Serverwert: ${statusRoh}` : undefined}>{statusText}</span>
             {zusammenfassung && <span className="inv-order-summary">{zusammenfassung}</span>}
           </>
         )}
@@ -172,7 +174,7 @@ export default function OrderDetailPage() {
             )}
             {versandbereit && (
               <button type="button" className="btn btn-primary" disabled={preparing} onClick={versandVorbereiten}>
-                <Icon n="package" s={16} />{preparing ? "Wird vorbereitet …" : "Versand vorbereiten"}
+                {preparing ? "Wird vorbereitet …" : "Versand vorbereiten"}
               </button>
             )}
           </>
@@ -184,7 +186,67 @@ export default function OrderDetailPage() {
 
       {!loading && o && (
         <>
-          <section className="ce-card inv-detail-section">
+          <div className="inv-order-layout">
+          <section className="ce-card inv-detail-section inv-order-main">
+            <h2 className="inv-section-title">Positionen</h2>
+            <div className="ce-table-container inv-detail-table inv-detail-table--wide">
+              <table className="ce-list-table">
+                <caption className="sr-only">Auftragspositionen mit Reservierungsstand</caption>
+                <thead>
+                  <tr>
+                    {/* Identität links: der Artikelname führt, die SKU steht
+                        sekundär darunter — eine eigene, schmale SKU-Spalte
+                        zerbrach lange Nummern in der 2/3-Spalte zeichenweise. */}
+                    <th scope="col">Artikel</th>
+                    <th scope="col" className="ce-num">Bestellt</th>
+                    <th scope="col" className="ce-num">Reserviert</th>
+                    <th scope="col" className="ce-num">Versendet</th>
+                    <th scope="col" className="ce-num">Stückgewicht</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.items || []).map((it) => (
+                    <tr key={it.id}>
+                      <td>
+                        <div className="inv-cell-stack">
+                          <button type="button" className="btn btn-link inv-cell-link inv-cell-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
+                          <span className="inv-cell-meta"><span className="inv-cell-sku">{it.sku}</span></span>
+                        </div>
+                      </td>
+                      <td className="ce-num">{formatUnits(it.quantity)}</td>
+                      <td className="ce-num">{formatUnits(it.reservedQuantity)}</td>
+                      <td className="ce-num">{formatUnits(it.shippedQuantity)}</td>
+                      <td className="ce-num">{it.unitWeightKg != null ? formatKg(it.unitWeightKg) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Dieselben Positionen als beschriftete Karten unter 1100 px —
+                Bestellt, Reserviert, Versendet und Stückgewicht bleiben
+                vollständig lesbar, statt in einer abgeschnittenen Tabelle zu
+                verschwinden. */}
+            <ul className="inv-detail-cards" aria-label="Auftragspositionen">
+              {(data.items || []).map((it) => (
+                <li key={it.id} className="inv-detail-card">
+                  <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
+                  <span className="inv-cell-meta"><span className="inv-cell-sku">{it.sku}</span></span>
+                  <dl className="inv-card-facts">
+                    <div><dt>Bestellt</dt><dd>{formatUnits(it.quantity)}</dd></div>
+                    <div><dt>Reserviert</dt><dd>{formatUnits(it.reservedQuantity)}</dd></div>
+                    <div><dt>Versendet</dt><dd>{formatUnits(it.shippedQuantity)}</dd></div>
+                    <div><dt>Stückgewicht</dt><dd>{it.unitWeightKg != null ? formatKg(it.unitWeightKg) : "—"}</dd></div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <p className="inv-form-note">
+              Reservierte Ware liegt weiterhin im Lager und ist nur für diesen Auftrag vorgemerkt.
+              Aus dem Lager entfernt wird sie erst mit der Buchung der Sendung.
+            </p>
+          </section>
+
+          <section className="ce-card inv-detail-section inv-order-aside">
             <h2 className="inv-section-title">Empfänger</h2>
             <address className="inv-address">
               {o.recipient?.company && <>{o.recipient.company}<br /></>}
@@ -201,43 +263,7 @@ export default function OrderDetailPage() {
             </dl>
             {o.notes && <p className="inv-cell-meta">{o.notes}</p>}
           </section>
-
-          <section className="ce-card inv-detail-section">
-            <h2 className="inv-section-title">Positionen</h2>
-            <div className="ce-table-container inv-detail-table">
-              <table className="ce-list-table">
-                <caption className="sr-only">Auftragspositionen mit Reservierungsstand</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">SKU</th>
-                    <th scope="col">Artikel</th>
-                    <th scope="col" className="ce-num">Bestellt</th>
-                    <th scope="col" className="ce-num">Reserviert</th>
-                    <th scope="col" className="ce-num">Versendet</th>
-                    <th scope="col" className="ce-num">Stückgewicht</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data.items || []).map((it) => (
-                    <tr key={it.id}>
-                      <td className="inv-cell-sku">{it.sku}</td>
-                      <td>
-                        <button type="button" className="btn btn-link inv-cell-link" onClick={() => navigate(`/inventory/products/${it.productId}`)}>{it.name}</button>
-                      </td>
-                      <td className="ce-num">{formatUnits(it.quantity)}</td>
-                      <td className="ce-num">{formatUnits(it.reservedQuantity)}</td>
-                      <td className="ce-num">{formatUnits(it.shippedQuantity)}</td>
-                      <td className="ce-num">{it.unitWeightKg != null ? formatKg(it.unitWeightKg) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="inv-form-note">
-              Reservierte Ware liegt weiterhin im Lager und ist nur für diesen Auftrag vorgemerkt.
-              Aus dem Lager entfernt wird sie erst mit der Buchung der Sendung.
-            </p>
-          </section>
+          </div>
 
           <section className="ce-card inv-detail-section">
             <h2 className="inv-section-title">Verbundene Sendungen</h2>
@@ -245,7 +271,8 @@ export default function OrderDetailPage() {
             {(!data.shipments || data.shipments.length === 0)
               ? <p className="inv-cell-meta">Für diesen Auftrag wurde noch keine Sendung gebucht.</p>
               : (
-                <div className="ce-table-container inv-detail-table">
+                <>
+                <div className="ce-table-container inv-detail-table inv-detail-table--wide">
                   <table className="ce-list-table">
                     <caption className="sr-only">Sendungen zu diesem Auftrag</caption>
                     <thead>
@@ -290,6 +317,35 @@ export default function OrderDetailPage() {
                     </tbody>
                   </table>
                 </div>
+                {/* Mobil dieselben Sendungen als Karten: Identität und Status
+                    zuerst, Trackingnummern vollständig, Lieferschein mit
+                    derselben Downloadaktion. */}
+                <ul className="inv-detail-cards" aria-label="Sendungen zu diesem Auftrag">
+                  {data.shipments.map((s) => (
+                    <li key={s.id} className="inv-detail-card">
+                      <div className="inv-card-head">
+                        <span className="inv-card-title-static">{s.orderConfirmationNumber || "—"}</span>
+                        <StatusBadge status={s.status} />
+                      </div>
+                      <dl className="inv-card-facts">
+                        <div><dt>Carrier</dt><dd>{s.carrier || "—"}</dd></div>
+                        <div>
+                          <dt>Trackingnummer</dt>
+                          <dd>
+                            {multiTrackingReferencesOf(s)
+                              ? multiTrackingReferencesOf(s).map((nr) => (
+                                  <span key={nr} className="inv-tracking-nr">{nr}</span>
+                                ))
+                              : <span className="inv-tracking-nr">{s.trackingNumber || "—"}</span>}
+                          </dd>
+                        </div>
+                        <div><dt>Lieferschein</dt><dd>{renderDeliveryNoteCell(s)}</dd></div>
+                        <div><dt>Gebucht</dt><dd>{dDE(s.createdAt)}</dd></div>
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+                </>
               )}
             <p className="inv-form-note">
               Label und Sendungsverfolgung finden Sie wie gewohnt unter{" "}

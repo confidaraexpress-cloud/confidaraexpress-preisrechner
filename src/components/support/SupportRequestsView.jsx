@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { EmptyState, ErrorState } from "../ui/StateView";
+import { PageHeader } from "../ui/PageHeader";
 import { listSupportRequests } from "../../api/supportApi";
 import { SupportThread } from "./SupportThread";
 import { SupportRequestDialog } from "./SupportRequestDialog";
@@ -42,7 +42,14 @@ function selectRows(d) {
   return [];
 }
 
-export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }) {
+// Seitenkopf der Supportansicht. Seit dem Redesign (2026-10) rendert die
+// Ansicht ihren Kopf selbst — wie Adressbuch und Entwürfe —, damit „Neue
+// Anfrage" als die EINE Hauptaktion im Kopf steht statt in einer eigenen Zeile
+// darunter. Wortlaut unverändert (vorher PAGE_HEADERS.support in DashboardPage).
+const SEITENTITEL = "Supportanfragen";
+const SEITENTEXT = "Ihre Anfragen an unser Supportteam mit vollständigem Nachrichtenverlauf.";
+
+export function SupportRequestsView({ initialTicketId = null, onTicketConsumed, utility = null }) {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -86,25 +93,35 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
 
   useEffect(() => { if (!openId) load(); }, [load, openId]);
 
+  // „Neue Anfrage" ist die EINE Hauptaktion dieser Ansicht — und steht genau
+  // einmal da: im Seitenkopf, solange es Vorgänge gibt (oder noch geladen
+  // wird), im Leerzustand ausschließlich dort. Derselbe Handler in beiden Fällen.
+  const leer = !loading && !error && rows.length === 0;
+
   if (openId) {
     return (
-      <div className="page-body">
-        <SupportThread requestId={openId} onBack={() => setOpenId(null)} />
-      </div>
+      <>
+        <PageHeader title={SEITENTITEL} subtitle={SEITENTEXT} utility={utility} />
+        <div className="page-body">
+          <SupportThread requestId={openId} onBack={() => setOpenId(null)} />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="page-body">
-      {/* Der frühere Einleitungssatz stand wortgleich schon im Seitenkopf
-          (PAGE_HEADERS.support.subtitle) — die Dopplung ist entfallen. Es
-          bleibt die bestehende Supportaktion, rechtsbündig wie in jeder
-          anderen Werkzeugleiste. */}
-      <div className="sup-list-head">
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
-          <Icon n="plus" s={14} /> Neue Anfrage
+    <>
+    <PageHeader
+      title={SEITENTITEL}
+      subtitle={SEITENTEXT}
+      utility={utility}
+      actions={!leer ? (
+        <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+          Neue Anfrage
         </button>
-      </div>
+      ) : null}
+    />
+    <div className="page-body">
 
       {loading ? (
         <div className="loading-center" role="status" aria-live="polite">
@@ -115,42 +132,44 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
           title={error}
           action={(
             <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
           )}
         />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon="mail"
           title={SUPPORT_LIST_EMPTY_TITLE}
           text={SUPPORT_LIST_EMPTY_TEXT}
           action={(
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
-              <Icon n="plus" s={14} /> Neue Anfrage
+            <button type="button" className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+              Neue Anfrage
             </button>
           )}
         />
       ) : (
+        /* Eine ruhige Liste in EINER Fläche: Betreff als Titel, Ticketnummer und
+           Kategorie leise darunter, Status als ganzer Begriff, Datum rechts.
+           Die ganze Zeile öffnet den Verlauf — sie ist eine echte Aktion. */
         <ul className="sup-list">
           {rows.map((row) => {
             const [cls, fallback] = STATUS_META[row.status] || statusFallback(row.status);
             const [kat, katRoh] = supportCategoryDisplay(row.category);
             return (
               <li key={row.id}>
-                <button type="button" className="ce-card-interactive sup-list-item" onClick={() => setOpenId(row.id)}>
+                <button type="button" className="sup-list-item" onClick={() => setOpenId(row.id)}>
                   <span className="sup-list-main">
-                    <span className="sup-list-top">
-                      <span className="sup-ticket">{row.ticketNumber}</span>
-                      <span className={`badge ${cls}`}>{row.statusLabel || fallback}</span>
-                    </span>
                     {/* Betreff ist Kundeneingabe und wird als reiner Text gerendert. */}
                     <span className="sup-list-subject">{row.subject}</span>
                     <span className="sup-list-meta">
+                      <span className="sup-ticket">{row.ticketNumber}</span>
+                      {" · "}
                       <span title={katRoh ? `Serverwert: ${katRoh}` : undefined}>{kat}</span>
-                      {" · "}Zuletzt aktualisiert {fmt(row.updatedAt || row.createdAt)}
                     </span>
                   </span>
-                  <Icon n="chevron" s={16} />
+                  <span className="sup-list-status">
+                    <span className={`badge ${cls}`}>{row.statusLabel || fallback}</span>
+                  </span>
+                  <span className="sup-list-date">Zuletzt aktualisiert {fmt(row.updatedAt || row.createdAt)}</span>
                 </button>
               </li>
             );
@@ -165,5 +184,6 @@ export function SupportRequestsView({ initialTicketId = null, onTicketConsumed }
         />
       )}
     </div>
+    </>
   );
 }

@@ -30,9 +30,12 @@ test("2 — kein Scroll-Wrapper mehr, table-layout: fixed hebt die globale Minde
 });
 
 test("3 — genau vier starre Spalten haben feste Breiten (Betrag/Zahlungsstatus/Dokument/Aktion)", () => {
+  // Als MENGE geprüft: seit dem Redesign (2026-10) wird die Dokumentspalte ab 1280 px
+  // breiter (eine zweite Breitenangabe für Spalte 5) — es bleiben dieselben vier
+  // starren Spalten, Rechnung/Zeitraum bekommen weiterhin nie eine eigene Breite.
   const fixed = [...cssSrc.matchAll(/\.inv-table th:nth-child\((\d)\), \.inv-table td:nth-child\(\d\) \{ width: (\d+)px; \}/g)]
     .map((m) => Number(m[1]));
-  assert.deepEqual(fixed.sort(), [3, 4, 5, 6], "Rechnung/Zeitraum (1,2) müssen ohne feste Breite bleiben, den Rest teilen");
+  assert.deepEqual([...new Set(fixed)].sort(), [3, 4, 5, 6], "Rechnung/Zeitraum (1,2) müssen ohne feste Breite bleiben, den Rest teilen");
 });
 
 test("3b — überfällige Fälligkeit bleibt auch in der Mobilkarte rot (CSS-Spezifität)", () => {
@@ -42,13 +45,12 @@ test("3b — überfällige Fälligkeit bleibt auch in der Mobilkarte rot (CSS-Sp
   assert.match(cssSrc, /\.inv-card-kv-row dd\.inv-period-due--overdue \{ color: var\(--inv-critical-fg\); \}/);
 });
 
-test("4 — Mobilkarten unterhalb 1100px statt der Tabelle", () => {
-  // 1100px: gemessen gegen die echte gebaute App — darunter bricht bereits der
-  // Spaltenkopf „Rechnung" um (siehe dashboard.css). Der Punkt konnte gegenüber
-  // dem Vorpaket (1150px) sinken, weil mit den internen Zuständen auch die
-  // längsten Statuslabels entfallen sind.
+test("4 — Mobilkarten unterhalb 1200px statt der Tabelle", () => {
+  // Redesign 2026-10: 1199px statt 1100px — mit der 248-px-Sidebar brach die
+  // Rechnungsnummer zwischen 1101 und ~1170px am Bindestrich (gemessen, siehe
+  // dashboard.css). Vorher: 1100px, davor 1150px.
   assert.match(listSrc, /<ul className="inv-cards">/);
-  assert.match(cssSrc, /@media \(max-width: 1100px\) \{[\s\S]*?\.inv-table \{ display: none; \}[\s\S]*?\.inv-cards \{ display: flex; \}/);
+  assert.match(cssSrc, /@media \(max-width: 1199px\) \{[\s\S]*?\.inv-table \{ display: none; \}[\s\S]*?\.inv-cards \{ display: flex; \}/);
 });
 
 test("5 — Premium-Statussystem: vier Farbfamilien, KEINE generische StatusBadge für Zahlungsstatus", () => {

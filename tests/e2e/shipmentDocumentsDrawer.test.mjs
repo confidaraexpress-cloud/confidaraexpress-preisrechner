@@ -206,8 +206,8 @@ test("C — Tracking und Stornierung bleiben eigenständige Aktionen", async () 
   await zurSendungsliste(page);
 
   const zeile = page.locator("table tbody tr").first();
-  await zeile.getByRole("button", { name: "Sendung verfolgen" }).waitFor({ timeout: 10000 });
-  await zeile.getByRole("button", { name: "Stornieren" }).waitFor({ timeout: 10000 });
+  await zeile.getByRole("button", { name: "Tracking", exact: true }).waitFor({ timeout: 10000 });
+  await zeile.getByRole("button", { name: "Stornierung anfragen", exact: true }).waitFor({ timeout: 10000 });
   await zeile.getByRole("button", { name: "Dokumente" }).waitFor({ timeout: 10000 });
   // Die beiden früheren Einzelaktionen sind aus der Liste verschwunden.
   assert.equal(await zeile.getByRole("button", { name: "Label" }).count(), 0);

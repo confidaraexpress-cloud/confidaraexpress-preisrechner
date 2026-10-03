@@ -75,13 +75,15 @@ test("1 — es gibt genau ein PageHeader-Muster", () => {
   }
   assert.deepEqual(reste, [], `abgelöste Seitenkopf-Muster leben noch:\n  ${reste.join("\n  ")}`);
 
-  // Kunden- und Adminvariante unterscheiden sich nur in Titelstufe und Dichte.
-  assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-text-display-l-size\)/s, "Kunde: Display L");
-  assert.match(patterns, /\.ce-page-header--admin \.ce-page-header-title \{[^}]*var\(--ce-text-title-page-size\)/s,
-    "Admin: Page Title");
+  // Redesign 2026-10: Kunden- und Adminvariante teilen EINE Titelrolle (Page
+  // Title 28/36, mobil 24/32, DM Sans) und unterscheiden sich nur im Rahmen.
+  assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-text-title-page-size\)/s, "Seitentitel: Page Title");
+  assert.match(patterns, /\.ce-page-header-title \{[^}]*var\(--ce-font-sans\)/s, "Seitentitel: DM Sans");
+  assert.doesNotMatch(patterns, /\.ce-page-header--admin \.ce-page-header-title \{/,
+    "der Adminkopf trägt keine eigene Titelrolle");
   assert.doesNotMatch(
-    patterns.slice(patterns.indexOf(".ce-page-header--admin"), patterns.indexOf("2 — UTILITY")),
-    /--ce-font-display/, "im Adminkopf gibt es keine Cormorant-Schrift");
+    patterns.slice(patterns.indexOf(".ce-page-header {"), patterns.indexOf("2 — UTILITY")),
+    /--ce-font-display/, "im Seitenkopf gibt es keine Cormorant-Schrift");
 });
 
 /* ══════════ 2 — keine freischwebende Glocke ══════════════════════════════ */

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
-import { Icon } from "../../components/ui/Icon";
 import { InlineError, ProductFilterField } from "../../components/inventory/InventoryShared";
 import { getMovements, getProduct } from "../../api/inventoryApi";
 import {
@@ -33,7 +32,12 @@ function dtDE(value) {
 
    Die Zeile beantwortet acht Fragen: was (Artikel) · wann (Zeitpunkt) · warum
    (Typ + Grund + Notiz) · wie viel (Menge mit Vorzeichen) · was blieb (Bestand
-   danach) · wo (Lager) · wodurch (Referenz) · wer (erfassendes Konto). */
+   danach) · wo (Lager) · wodurch (Referenz) · wer (erfassendes Konto).
+
+   Redesign 2026-10: Artikelfilter, Typ und Zeitraum stehen in EINEM Raster;
+   der Typ steht als Text im Badge (ohne Punkt), die Menge trägt immer ihr
+   Vorzeichen. Mobil stehen Bewegungsart, Menge, Datum und Referenz als
+   beschriftete Textwerte untereinander. */
 // Der Startfilter „heutige Versandbewegungen" aus der Lagerübersicht. Das Datum
 // entsteht LOKAL (nicht per toISOString): der Nutzer meint seinen Tag, nicht den
 // UTC-Tag — vor 01:00 MEZ läge der UTC-Tag sonst einen Tag zurück.
@@ -129,7 +133,6 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title="Bewegungen"
         subtitle="Alle physischen Bestandsänderungen mit Zeitpunkt, Menge, Grund und Referenz nachvollziehen."
         utility={utility}
@@ -162,11 +165,13 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
             anzeigen" eines Artikels, ist die Liste gefiltert. Ohne sichtbaren
             Hinweis sähe er eine verkürzte Liste ohne erkennbaren Grund —
             deshalb ein abwählbarer Filterchip. */}
+        {/* Der Chip sagt, WAS gefiltert ist, und trägt seine Aktion als Wort
+            („entfernen") statt eines Kreuzsymbols. */}
         {productId && (
           <button type="button" className="btn btn-sm btn-outline inv-toolbar-chip"
                   onClick={() => { setProductId(""); setProductName(""); }}>
             Artikel: {productName || `#${productId}`}
-            <Icon n="close" s={14} />
+            <span className="inv-toolbar-chip-action">entfernen</span>
           </button>
         )}
         {/* Erst ab zwei gesetzten Filtern: einen einzelnen Filter räumt man an
@@ -182,7 +187,6 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
 
       {!loading && items.length === 0 && !hatFilter && (
         <EmptyState
-          icon="packageMove"
           title="Noch keine Bestandsbewegungen vorhanden"
           text="Wareneingänge, Versand und Bestandskorrekturen erscheinen hier automatisch."
         />
@@ -235,9 +239,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
                         <div className="inv-cell-meta"><span className="inv-cell-sku">{m.sku}</span></div>
                       </td>
                       <td>
-                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
-                          <span className="badge-dot" aria-hidden="true" />{text}
-                        </span>
+                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                         {/* Grund und Notiz sind zwei verschiedene Dinge und
                             stehen deshalb getrennt: der Grund ist die
                             strukturierte Ursache der Korrektur, die Notiz freier
@@ -267,9 +269,7 @@ export default function MovementsPage({ utility, initialFilter = null, onFilterA
               return (
                 <li key={m.id} className="ce-card inv-card">
                   <div className="inv-card-head">
-                    <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
-                      <span className="badge-dot" aria-hidden="true" />{text}
-                    </span>
+                    <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                     <span className={`inv-card-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                   </div>
                   <button type="button" className="btn btn-link inv-card-title"

@@ -61,7 +61,9 @@ test("2 — Admin-Kundendetail zeigt keine Kreditwerte", () => {
 test("3 — die Karte heißt „Aktivität und Zahlung“ (nicht mehr „Zahlung & Kredit“)", () => {
   // Zahlung und Kennzahlen sind zu EINER Karte zusammengeführt — die
   // Debitorenwerte standen vorher doppelt auf der Seite.
-  assert.match(userDetailSrc, /<Icon n="card" s=\{17\} \/> Aktivität und Zahlung<\/div>/,
+  // Redesign 2026-10: Kartenköpfe tragen kein Symbol mehr — der Titel steht
+  // allein im Kopf.
+  assert.match(userDetailSrc, /<div className="adm-card-head">Aktivität und Zahlung<\/div>/,
     "Kartentitel muss 'Aktivität und Zahlung' sein");
   assert.equal(/Zahlung &amp; Kredit/.test(userDetailSrc), false, "alter Titel muss weg sein");
   assert.equal(/Aggregierte Kennzahlen/.test(userDetailSrc), false, "die doppelte Kennzahlenkarte ist entfallen");

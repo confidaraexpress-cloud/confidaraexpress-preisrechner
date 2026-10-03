@@ -21,10 +21,9 @@ export function AddressEmptyState({ kind, tab, onCreate }) {
     if (!entry) return null;
     return (
       <EmptyState
-        icon="idcard"
         title={entry.title}
         text="Legen Sie eine Adresse an, um sie künftig schnell wiederzuverwenden."
-        action={<button type="button" className="btn btn-primary btn-sm" onClick={onCreate}>{entry.cta}</button>}
+        action={<button type="button" className="btn btn-primary" onClick={onCreate}>{entry.cta}</button>}
       />
     );
   }

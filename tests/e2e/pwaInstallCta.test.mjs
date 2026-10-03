@@ -108,7 +108,9 @@ async function installEreignis(page) {
 
 const promptAufrufe = (page) => page.evaluate(() => window.__promptAufrufe || 0);
 const karte = (page) => page.locator("#pwa-install-card");
-const navEintrag = (page, name) => page.locator(".pp-nav .nitem--utility", { hasText: name });
+// Redesign 2026-10: die sekundären Aktionen (App installieren · Support
+// kontaktieren · Abmelden) stehen in einem eigenen Block unter der Navigation.
+const navEintrag = (page, name) => page.locator(".pp-side-actions .nitem--utility", { hasText: name });
 const hinweisBenutzt = (page) => page.evaluate(() => localStorage.getItem("ce_pwa_hint_done") === "1");
 const drawerOffen = async (page) => (await page.locator("aside.pp-side.sidebar-open").count()) > 0;
 const fokusText = (page) => page.evaluate(() => document.activeElement && document.activeElement.textContent.trim());
@@ -165,11 +167,13 @@ test("C1 — vor dem Login kein eigener Installationszugang, auch nicht bei Brow
 test("C2 — nach dem Login: Karte direkt nach „Sicherheit“; ohne Browserereignis ruhiger Satz, kein Knopf", async () => {
   const { ctx, page, fehler } = await neueSeite();
   await kontoeinstellungen(page);
-  const titel = await page.evaluate(() => {
-    const spalten = document.querySelectorAll(".profile-grid .profile-col");
-    return [...spalten[1].querySelectorAll(".table-card-title")].map((t) => t.textContent.trim());
-  });
-  assert.deepEqual(titel.slice(-2), ["Sicherheit", KARTENTITEL], `rechte Spalte: ${JSON.stringify(titel)}`);
+  // Redesign 2026-10: die Kontoeinstellungen sind eine einspaltige Folge von
+  // Abschnitten (.profile-sections) statt eines zweispaltigen Rasters. Der
+  // Vertrag bleibt: „Als App nutzen" steht unmittelbar nach „Sicherheit".
+  const titel = await page.evaluate(() =>
+    [...document.querySelectorAll(".profile-sections > .profile-card .table-card-title")]
+      .map((t) => t.textContent.trim()));
+  assert.deepEqual(titel.slice(-2), ["Sicherheit", KARTENTITEL], `Abschnitte: ${JSON.stringify(titel)}`);
   assert.ok((await karte(page).textContent()).includes("Andernfalls finden Sie die Installation im Menü Ihres Browsers."));
   assert.equal(await karte(page).locator("button").count(), 0);
   assert.equal(await navEintrag(page, "App installieren").count(), 0);
@@ -208,10 +212,10 @@ test("C4 — der Navigationseintrag öffnet den Browserdialog ebenfalls nur auf 
   await installEreignis(page);
   const eintrag = navEintrag(page, "App installieren");
   await eintrag.waitFor();
-  // Er steht direkt vor „Abmelden".
+  // Er steht als erste sekundäre Aktion vor „Support kontaktieren" und „Abmelden".
   const reihenfolge = await page.evaluate(() =>
-    [...document.querySelectorAll(".pp-nav .nitem--utility")].map((b) => b.textContent.trim()));
-  assert.deepEqual(reihenfolge, ["App installieren", "Abmelden"]);
+    [...document.querySelectorAll(".pp-side-actions .nitem--utility")].map((b) => b.textContent.trim()));
+  assert.deepEqual(reihenfolge, ["App installieren", "Support kontaktieren", "Abmelden"]);
   assert.equal(await promptAufrufe(page), 0);
   await eintrag.click();
   await page.waitForFunction(() => window.__promptAufrufe === 1);
@@ -280,7 +284,9 @@ test("C7 — Safari am Mac: Anleitung zum Dock; Firefox: kein Knopf, kein Eintra
     await kontoeinstellungen(page);
     assert.ok((await karte(page).textContent()).includes("Ihr Browser bietet keine App-Installation an."));
     assert.equal(await karte(page).locator("button").count(), 0);
-    assert.equal(await page.locator(".pp-nav .nitem--utility").count(), 1, "nur „Abmelden“");
+    const aktionen = await page.locator(".pp-side-actions .nitem--utility").allTextContents();
+    assert.deepEqual(aktionen.map((t) => t.trim()), ["Support kontaktieren", "Abmelden"],
+      "ohne Installationsangebot nur „Support kontaktieren“ und „Abmelden“");
     await ctx.close();
   }
 });

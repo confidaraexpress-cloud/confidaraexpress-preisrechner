@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Icon } from "../ui/Icon";
 import { loadMapEngine } from "../../utils/mapEngine";
 import {
   mapStyle, MAP_FALLBACK_CENTER, MAP_FALLBACK_ZOOM,
@@ -132,7 +131,6 @@ export function AccessPointMap({
     return (
       <div className="ap-map ap-map--error" role="note">
         <div className="ap-map-fallback">
-          <Icon n="info" s={24} c="currentColor" />
           <p className="ap-map-fallback-title">Karte konnte nicht geladen werden.</p>
           <p className="ap-map-fallback-text">
             Die Paketshops stehen vollständig in der Liste — nur die Kartenansicht

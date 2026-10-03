@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import {
   getAdminUser,
@@ -302,7 +301,7 @@ export default function AdminUserDetailPage() {
 
   const back = (
     <Link to="/admin/users" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Kundenliste
+      Zurück zur Kundenliste
     </Link>
   );
 
@@ -318,7 +317,7 @@ export default function AdminUserDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Kunde nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-title">Kunde nicht gefunden</div></div></div>
       </div>
     );
   }
@@ -326,7 +325,7 @@ export default function AdminUserDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="alert alert-error"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+        <div className="alert alert-error">{error || GENERIC_ERROR}</div>
       </div>
     );
   }
@@ -566,7 +565,6 @@ export default function AdminUserDetailPage() {
              der Gefahrenzone am Seitenende. */}
       <PageHeader
         variant="admin"
-        eyebrow="Konto"
         backLink={back}
         title={companyOf(u) || nameOf(u) || `Kunde #${dash(idOf(u))}`}
         subtitle={(
@@ -583,8 +581,8 @@ export default function AdminUserDetailPage() {
               : <span className="adm-chip adm-chip-muted">Kundennummer nicht hinterlegt</span>}
             {/* Rolle nur bei Sonderkonten — normale Kunden tragen keine Rollenangabe. */}
             {roleOf(u) === "admin" && <span className={`badge ${roleCls}`}>{roleLabel}</span>}
-            <span className="adm-chip"><Icon n="calendar" s={13} /> Registriert {fmtDate(createdOf(u))}</span>
-            {anonAt && <span className="adm-chip"><Icon n="lock" s={13} /> Anonymisiert {fmtDate(anonAt)}</span>}
+            <span className="adm-chip">Registriert {fmtDate(createdOf(u))}</span>
+            {anonAt && <span className="adm-chip">Anonymisiert {fmtDate(anonAt)}</span>}
           </>
         )}
         actions={statusCopy.actionKind === "approve" ? (
@@ -595,7 +593,7 @@ export default function AdminUserDetailPage() {
             disabled={approveBusy || !gate.allowed}
             aria-describedby={!gate.allowed ? "adm-approve-gate" : undefined}
           >
-            <Icon n="check" s={14} /> {statusCopy.actionLabel}
+            {statusCopy.actionLabel}
           </button>
         ) : null}
       />
@@ -605,7 +603,6 @@ export default function AdminUserDetailPage() {
           solange die Angaben fehlen — der Hinweis macht das vor dem Klick sichtbar. */}
       {b2bHint.show && (
         <div className="adm-b2b-warn" role="status">
-          <Icon n="shield" s={16} />
           <span>
             <strong>{b2bHint.headline}</strong>
             <span className="adm-b2b-warn-text">{b2bHint.text}</span>
@@ -615,13 +612,13 @@ export default function AdminUserDetailPage() {
 
       {anonMsg && (
         <div className={`alert ${anonMsg.type === "success" ? "alert-success" : "alert-error"}`}>
-          <Icon n={anonMsg.type === "success" ? "check" : "x"} s={16} />{anonMsg.text}
+          {anonMsg.text}
         </div>
       )}
 
       {delMsg && (
         <div className={`alert ${delMsg.type === "info" ? "alert-info" : "alert-error"}`}>
-          <Icon n={delMsg.type === "info" ? "info" : "x"} s={16} />{delMsg.text}
+          {delMsg.text}
         </div>
       )}
 
@@ -629,7 +626,7 @@ export default function AdminUserDetailPage() {
       <div className="adm-cards">
         {/* 2) Unternehmen und Kontakt */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="building" s={17} /> Unternehmen und Kontakt</div>
+          <div className="adm-card-head">Unternehmen und Kontakt</div>
           <div className="adm-card-body">
             <KV items={[
               ["Firmenname", missingField(u, "company_name") || dash(companyOf(u))],
@@ -695,7 +692,7 @@ export default function AdminUserDetailPage() {
              doppelt in „Zahlung" und „Aggregierte Kennzahlen"). ConfidaraExpress
              kennt kein Kreditlimit; überfällige Rechnungen lösen NICHTS aus. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="card" s={17} /> Aktivität und Zahlung</div>
+          <div className="adm-card-head">Aktivität und Zahlung</div>
           <div className="adm-card-body">
             <div className="adm-summary">
               <Stat label="Sendungen gesamt" value={num(metrics.shipmentsTotal)} />
@@ -707,7 +704,7 @@ export default function AdminUserDetailPage() {
             </div>
             {metrics.hasOverdue && (
               <p className="adm-overdue-note" role="status">
-                <Icon n="info" s={15} /> {OVERDUE_NOTE}
+                {OVERDUE_NOTE}
               </p>
             )}
           </div>
@@ -723,8 +720,8 @@ export default function AdminUserDetailPage() {
              nicht nötig, für Support und Nachweis aber verfügbar. */}
         <details className="adm-card adm-tech">
           <summary className="adm-card-head adm-tech-summary">
-            <Icon n="settings" s={17} /> Technische Informationen
-            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
           </summary>
           <div className="adm-card-body">
             <KV items={[
@@ -743,7 +740,7 @@ export default function AdminUserDetailPage() {
 
         {/* 6) Gefahrenzone — DSGVO-Anonymisierung (irreversibel) und harte Löschung */}
         <div className="adm-card adm-danger-zone">
-          <div className="adm-card-head adm-danger-head"><Icon n="shield" s={17} /> Gefahrenzone</div>
+          <div className="adm-card-head adm-danger-head">Gefahrenzone</div>
           <div className="adm-card-body">
             <div className="adm-danger-item">
               <div className="adm-danger-item-text">
@@ -762,7 +759,7 @@ export default function AdminUserDetailPage() {
                   disabled={isAnonymized || selfAccount}
                   aria-describedby={selfAccount ? "adm-self-note" : undefined}
                 >
-                  <Icon n="user" s={13} /> Account anonymisieren
+                  Account anonymisieren
                 </button>
               </div>
             </div>
@@ -792,7 +789,7 @@ export default function AdminUserDetailPage() {
                   disabled={!deleteGate.allowed || selfAccount}
                   aria-describedby={!deleteGate.allowed ? "adm-delete-note" : (selfAccount ? "adm-self-note" : undefined)}
                 >
-                  <Icon n="trash" s={13} /> Kunde löschen
+                  Kunde löschen
                 </button>
               </div>
             </div>
@@ -822,7 +819,6 @@ export default function AdminUserDetailPage() {
             aria-describedby="adm-anon-desc"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="shield" s={22} /></div>
             <h2 id="adm-anon-title" className="adm-modal-title">Account wirklich anonymisieren?</h2>
             <p id="adm-anon-desc" className="adm-modal-text">
               Diese Aktion ist irreversibel. Der Kunde kann sich danach nicht mehr anmelden. Personenbezogene Kontodaten werden entfernt.
@@ -853,7 +849,7 @@ export default function AdminUserDetailPage() {
               >
                 {anonBusy
                   ? <><span className="spinner spinner-dark" /> Anonymisiere…</>
-                  : <><Icon n="shield" s={14} /> Anonymisierung bestätigen</>}
+                  : <>Anonymisierung bestätigen</>}
               </button>
             </div>
           </div>
@@ -872,7 +868,6 @@ export default function AdminUserDetailPage() {
             aria-describedby="adm-del-desc"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="trash" s={22} /></div>
             <h2 id="adm-del-title" className="adm-modal-title">Kunde wirklich löschen?</h2>
             <p id="adm-del-desc" className="adm-modal-text">
               Diese Aktion löscht den Kunden hart, sofern keine abhängigen Sendungs- oder Rechnungsdaten
@@ -904,7 +899,7 @@ export default function AdminUserDetailPage() {
               >
                 {delBusy
                   ? <><span className="spinner spinner-dark" /> Lösche…</>
-                  : <><Icon n="trash" s={14} /> Löschung bestätigen</>}
+                  : <>Löschung bestätigen</>}
               </button>
             </div>
           </div>
@@ -945,7 +940,6 @@ function BlockConfirmDialog({ name, busy, onCancel, onConfirm }) {
         aria-labelledby="adm-block-title"
         aria-describedby="adm-block-desc"
       >
-        <div className="adm-modal-icon adm-modal-icon-danger" aria-hidden="true"><Icon n="lock" s={22} /></div>
         <h2 id="adm-block-title" className="adm-modal-title">{BLOCK_DIALOG.title}</h2>
         <p className="adm-modal-sub">{name}</p>
         <p id="adm-block-desc" className="adm-modal-text">{BLOCK_DIALOG.text}</p>
@@ -962,7 +956,7 @@ function BlockConfirmDialog({ name, busy, onCancel, onConfirm }) {
           >
             {busy
               ? <><span className="spinner spinner-dark" /> Wird gespeichert…</>
-              : <><Icon n="lock" s={14} /> {BLOCK_DIALOG.confirm}</>}
+              : <>{BLOCK_DIALOG.confirm}</>}
           </button>
         </div>
       </div>

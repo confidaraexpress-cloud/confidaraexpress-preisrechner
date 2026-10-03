@@ -105,7 +105,7 @@ test("1 — Tabelle kompakt, Detail und Live-Ansicht vollständig, Einzelsendung
   assert.match(await einzelZeile.innerText(), /Trackingnummer: 1ZEINZEL0001/);
   assert.ok(!/Trackingnummern/.test(await einzelZeile.innerText()));
 
-  await multiZeile.getByRole("button", { name: "Sendung verfolgen" }).click();
+  await multiZeile.getByRole("button", { name: "Tracking", exact: true }).click();
   await page.waitForSelector(".shipment-tracking-references li", { timeout: 15000 });
   assert.deepEqual((await page.locator(".shipment-tracking-references li").allTextContents()).map((t) => t.trim()), DREI);
   await page.waitForSelector(".ce-list-table .shipment-track-number", { timeout: 15000 });
@@ -116,8 +116,8 @@ test("1 — Tabelle kompakt, Detail und Live-Ansicht vollständig, Einzelsendung
   assert.ok(!/undefined|null|Paket \d|transglobal/i.test(detail), `unzulässiger Text im Detail: ${detail}`);
 
   // Die Einzelsendung: eine Nummer, keine Liste.
-  await multiZeile.getByRole("button", { name: "Sendung verfolgen" }).click(); // einklappen
-  await einzelZeile.getByRole("button", { name: "Sendung verfolgen" }).click();
+  await multiZeile.getByRole("button", { name: "Tracking", exact: true }).click(); // einklappen
+  await einzelZeile.getByRole("button", { name: "Tracking", exact: true }).click();
   await page.waitForSelector(".ce-list-table .shipment-track-number", { timeout: 15000 });
   assert.equal((await page.locator(".ce-list-table .shipment-track-number").innerText()).trim(), "Trackingnummer: 1ZEINZEL0001");
   assert.equal(await page.locator(".shipment-tracking-references").count(), 0);

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 
 // Rechnungs-PDF-Vorschau (Phase 4, Fokusverhalten Phase 5) — wiederverwendbar
 // für Kunde UND Admin.
@@ -14,6 +13,9 @@ import { Icon } from "../ui/Icon";
 // aber ohnehin ausschließlich unser eigener, typgeprüfter Blob. Die Object-URL
 // wird beim Schließen UND beim Unmount zuverlässig freigegeben; es gibt keinen
 // permanenten Object-URL-Zustand und keine Storage-/internen IDs im DOM.
+//
+// Redesign 2026-10: Kopf mit Titel und zwei Textaktionen („Herunterladen",
+// „Schließen") — keine Symbole.
 //
 // Fokusverhalten (dasselbe Muster wie components/admin/ConfirmDialog.jsx):
 // Fokus beim Öffnen auf „Schließen", Escape schließt, der Fokus kehrt beim
@@ -100,12 +102,12 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
             {typeof onDownload === "function" && (
               <button type="button" className="btn btn-outline btn-sm" onClick={handleDownload} disabled={downloading || loading || !!error}>
                 {downloading
-                  ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</>
-                  : <><Icon n="download" s={14} /> Herunterladen</>}
+                  ? <><span className="spinner spinner-dark spinner-sm" /> Wird geladen …</>
+                  : "Herunterladen"}
               </button>
             )}
             <button type="button" ref={closeBtnRef} className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Vorschau schließen">
-              <Icon n="x" s={16} /> Schließen
+              Schließen
             </button>
           </div>
         </div>
@@ -113,8 +115,8 @@ export function InvoicePdfPreviewModal({ title, fetchPdf, onDownload, onClose })
           {loading ? (
             <div className="loading-center" role="status" aria-live="polite"><span className="spinner spinner-dark" /> PDF wird geladen…</div>
           ) : error ? (
-            <div className="alert alert-error" role="alert" style={{ margin: 16 }}>
-              <Icon n="x" s={16} />{error}
+            <div className="alert alert-error pdfview-error" role="alert">
+              {error}
             </div>
           ) : (
             <iframe className="pdfview-frame" src={pdfUrl} title={title} />

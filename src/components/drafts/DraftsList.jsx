@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { DraftDesktopRow } from "./DraftDesktopRow";
 import { DraftCard } from "./DraftCard";
 import { FormDraftDesktopRow } from "./FormDraftDesktopRow";
@@ -17,6 +16,11 @@ import { combinedDraftKey, FORM_DRAFT_KIND } from "../../utils/formDraftsView.mj
 // nur noch über Badge und Spaltenformatierung. React-Key ist
 // der Kombischlüssel (form:7 ≠ shipment:7), damit gleiche IDs nicht kollidieren.
 //
+// Redesign 2026-10: fünf Spalten statt sechs — „Zuletzt gespeichert" steht als
+// leise Sekundärzeile unter dem Empfänger (Identität links). Dadurch hat die
+// Aktionsspalte Platz für „Fortsetzen" und „Weitere Aktionen" als Text, ohne
+// dass eine Aktion abgeschnitten wird.
+//
 // canShowEmpty: nur true, wenn BEIDE Quellen erfolgreich UND leer waren. Bei
 // einem Teilfehler (eine Quelle fehlgeschlagen, andere leer) wird KEIN
 // „keine Entwürfe" behauptet — der Teilfehler-Hinweis steht oberhalb der Liste.
@@ -30,7 +34,6 @@ export function DraftsList({
   if (error) {
     return (
       <div className="alert alert-error">
-        <Icon n="x" s={16} />
         <span style={{ flex: 1 }}>{error}</span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>Erneut versuchen</button>
       </div>
@@ -66,9 +69,8 @@ export function DraftsList({
               <tr>
                 <th scope="col">Empfänger</th>
                 <th scope="col">Route</th>
-                <th scope="col">Pakete / Gewicht / Maße</th>
+                <th scope="col">Paketdaten</th>
                 <th scope="col">Versanddatum</th>
-                <th scope="col">Zuletzt gespeichert</th>
                 <th scope="col"><span className="sr-only">Aktionen</span></th>
               </tr>
             </thead>
@@ -87,7 +89,7 @@ export function DraftsList({
         <div className="dft-loadmore-wrap">
           {loadMoreError && (
             <div className="alert alert-error" style={{ width: "100%" }}>
-              <Icon n="x" s={16} />{loadMoreError}
+              {loadMoreError}
             </div>
           )}
           <button type="button" className="btn btn-outline" onClick={onLoadMore} disabled={loadingMore}>

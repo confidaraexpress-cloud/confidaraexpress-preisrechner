@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminInvoices } from "../../api/adminApi";
 import { money } from "../../utils/formatters";
@@ -214,7 +213,7 @@ export default function AdminInvoicesPage() {
             sind gekennzeichnet und zählen nicht als Kundenforderung.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button></>
         )}
       />
@@ -235,7 +234,7 @@ export default function AdminInvoicesPage() {
         </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-            <Icon n="filter" s={14} /> Anwenden
+            Anwenden
           </button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters} disabled={loading}>
             Zurücksetzen
@@ -246,7 +245,7 @@ export default function AdminInvoicesPage() {
             Freitextsuche über Firma/Kundennummer bietet das Backend nicht an;
             sie wird deshalb auch nicht vorgetäuscht. */}
         <details className="adm-filter-adv">
-          <summary><span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={14} /></span> Technischer Filter</summary>
+          <summary><span className="adm-tech-caret" aria-hidden="true" /> Technischer Filter</summary>
           <div className="adm-filter-adv-body">
             <div className="adm-filter-field">
               <label htmlFor="f-user">Kunden-ID (intern)</label>
@@ -285,7 +284,7 @@ export default function AdminInvoicesPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -293,7 +292,6 @@ export default function AdminInvoicesPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="invoice" s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasActiveInvoiceFilters(applied) && (
@@ -366,13 +364,13 @@ export default function AdminInvoicesPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">
             Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}
           </span>
           <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}

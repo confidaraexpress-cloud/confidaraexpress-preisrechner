@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockCells, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
@@ -18,7 +17,15 @@ const PAGE_LIMIT = 25;
    das Adressbuch seit jeher nimmt. Es gibt keinen zweiten Versandprozess.
 
    Kein Löschen: ein Artikel trägt Historie (Bewegungen, Auftragspositionen,
-   Versandpositionen). Nicht mehr geführte Artikel werden inaktiv gesetzt. */
+   Versandpositionen). Nicht mehr geführte Artikel werden inaktiv gesetzt.
+
+   Redesign 2026-10: der Artikelname ist die Identität der Zeile (als Link zur
+   Detailseite), die SKU steht sekundär darunter. Ein eigenes „Öffnen"
+   entfällt — der Name führt bereits dorthin (dieselbe Regel wie in der
+   Auftragsliste). Zeilenhierarchie: „Versenden" ist die hervorgehobene
+   Zeilenaktion (Secondary), „Bearbeiten" eine Textaktion — gefüllte
+   Primärknöpfe gibt es nur einmal je Seite. Zollangaben nennt die Seite nur,
+   wenn der bestehende Launch-Schalter sie anbietet. */
 export default function ProductsPage({ utility, onShipProduct }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -116,19 +123,23 @@ export default function ProductsPage({ utility, onShipProduct }) {
   };
 
   const hatFilter = Boolean(debouncedQ || statusFilter || lowOnly);
+  // Leere Liste ohne Filter: der Leerzustand trägt die EINE Hauptaktion
+  // „Artikel anlegen" — derselbe Knopf im Seitenkopf darüber wäre eine
+  // gleichwertige Dopplung. Der Handler ist in beiden Fällen derselbe.
+  const leer = !loading && items.length === 0 && !hatFilter;
+  const neuAnlegen = () => { setEditing(null); setFormError(""); setFormOpen(true); };
 
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title="Artikel"
         subtitle="Ihre Artikelstammdaten mit Bestand, Versand- und Zollangaben."
         utility={utility}
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => { setEditing(null); setFormError(""); setFormOpen(true); }}>
-            <Icon n="plus" s={16} />Artikel anlegen
+        actions={!leer && (
+          <button type="button" className="btn btn-primary" onClick={neuAnlegen}>
+            Artikel anlegen
           </button>
-        }
+        )}
       />
 
       <InlineSuccess text={success} />
@@ -156,12 +167,11 @@ export default function ProductsPage({ utility, onShipProduct }) {
 
       {loading && <ListSkeleton rows={5} label="Artikel werden geladen" />}
 
-      {!loading && items.length === 0 && !hatFilter && (
+      {leer && (
         <EmptyState
-          icon="cube"
           title="Noch keine Artikel"
           text="Legen Sie Ihre Artikel einmal an — Gewicht, Warenwert und Zollangaben stehen danach bei jedem Versand bereit."
-          action={<button type="button" className="btn btn-primary" onClick={() => { setEditing(null); setFormOpen(true); }}>Artikel anlegen</button>}
+          action={<button type="button" className="btn btn-primary" onClick={neuAnlegen}>Artikel anlegen</button>}
         />
       )}
 
@@ -182,7 +192,6 @@ export default function ProductsPage({ utility, onShipProduct }) {
               <caption className="sr-only">Artikelliste mit Bestand</caption>
               <thead>
                 <tr>
-                  <th scope="col">SKU</th>
                   <th scope="col">Artikel</th>
                   <th scope="col" className="ce-num">Bestand</th>
                   <th scope="col" className="ce-num">Reserviert</th>
@@ -195,23 +204,24 @@ export default function ProductsPage({ utility, onShipProduct }) {
               <tbody>
                 {items.map((p) => (
                   <tr key={p.id}>
-                    <td className="inv-cell-sku">{p.sku}</td>
                     <td>
-                      <button type="button" className="btn btn-link inv-cell-link" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
-                      <div className="inv-cell-meta">{formatKg(p.weightKg)}</div>
+                      {/* Identität: Name führt, SKU und Gewicht stehen darunter. */}
+                      <div className="inv-cell-stack">
+                        <button type="button" className="btn btn-link inv-cell-link inv-cell-title" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
+                        <span className="inv-cell-meta"><span className="inv-cell-sku">{p.sku}</span> · {formatKg(p.weightKg)}</span>
+                      </div>
                     </td>
                     <StockCells stock={p.stock} minStock={p.minStock} />
                     <td className="ce-num">{p.minStock === null || p.minStock === undefined ? "—" : formatUnits(p.minStock)}</td>
                     <td>
                       {p.status === "inactive"
-                        ? <span className="badge badge--neutral"><span className="badge-dot" aria-hidden="true" />Inaktiv</span>
+                        ? <span className="badge badge--neutral">Inaktiv</span>
                         : <StockBadge row={{ available: p.stock?.available, minStock: p.minStock }} /> || null}
                     </td>
                     <td className="ce-col-actions">
                       <div className="inv-row-actions">
-                        <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/products/${p.id}`)}>Öffnen</button>
-                        <button type="button" className="btn btn-sm btn-outline" onClick={() => { setEditing(p); setFormError(""); setFormOpen(true); }}>Bearbeiten</button>
-                        <button type="button" className="btn btn-sm btn-primary" disabled={p.status === "inactive"}
+                        <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormError(""); setFormOpen(true); }}>Bearbeiten</button>
+                        <button type="button" className="btn btn-sm btn-outline" disabled={p.status === "inactive"}
                                 onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
                       </div>
                     </td>
@@ -225,12 +235,12 @@ export default function ProductsPage({ utility, onShipProduct }) {
             {items.map((p) => (
               <li key={p.id} className="ce-card inv-card">
                 <div className="inv-card-head">
-                  <span className="inv-cell-sku">{p.sku}</span>
+                  <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
                   {p.status === "inactive"
-                    ? <span className="badge badge--neutral"><span className="badge-dot" aria-hidden="true" />Inaktiv</span>
+                    ? <span className="badge badge--neutral">Inaktiv</span>
                     : <StockBadge row={{ available: p.stock?.available, minStock: p.minStock }} />}
                 </div>
-                <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/products/${p.id}`)}>{p.name}</button>
+                <span className="inv-cell-meta"><span className="inv-cell-sku">{p.sku}</span></span>
                 <dl className="inv-card-facts">
                   <div><dt>Bestand</dt><dd>{formatUnits(p.stock?.onHand)}</dd></div>
                   <div><dt>Reserviert</dt><dd>{formatUnits(p.stock?.reserved)}</dd></div>
@@ -238,9 +248,8 @@ export default function ProductsPage({ utility, onShipProduct }) {
                   <div><dt>Gewicht</dt><dd>{formatKg(p.weightKg)}</dd></div>
                 </dl>
                 <div className="inv-card-actions">
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => navigate(`/inventory/products/${p.id}`)}>Öffnen</button>
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => { setEditing(p); setFormOpen(true); }}>Bearbeiten</button>
-                  <button type="button" className="btn btn-sm btn-primary" disabled={p.status === "inactive"}
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setEditing(p); setFormOpen(true); }}>Bearbeiten</button>
+                  <button type="button" className="btn btn-sm btn-outline" disabled={p.status === "inactive"}
                           onClick={() => { setShipTarget(p); setShipQty("1"); }}>Versenden</button>
                 </div>
               </li>

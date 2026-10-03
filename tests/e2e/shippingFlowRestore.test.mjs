@@ -1314,10 +1314,10 @@ test("34 — „Speichern und verlassen\" aus dem Verlassen-Dialog beendet den V
   await page.waitForTimeout(1200);
 
   // Die pausierte Navigation muss ankommen — nicht nur der Reset. Die
-  // Übersicht trägt keinen Titel „Übersicht", sondern die personalisierte
-  // Begrüßung (Paket D) — deshalb über das Muster prüfen, nicht den Text.
+  // Übersicht trägt als Seitentitel die persönliche Begrüßung (Feinkorrektur
+  // 2026-10: „Guten Tag, [Name]") — deshalb über das Muster prüfen.
   const z1 = await zustand(page);
-  assert.ok(/^Guten (Morgen|Tag|Abend)/.test(z1.titel || ""),
+  assert.ok(/^Guten Tag\b/.test(z1.titel || ""),
     `die pausierte Navigation kam nicht auf der Übersicht an (Titel: „${z1.titel}")`);
 
   // Und der Vorgang muss beendet sein — nicht nur die Navigation.

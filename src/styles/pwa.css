@@ -2,10 +2,10 @@
    ConfidaraExpress als App (PWA) — isolierter pwa-Scope
    ──────────────────────────────────────────────────────────────────────────
    Zwei Bauteile, beide ohne eigene Bildsprache:
-     • die Installationskarte der Kontoeinstellungen — Kartenmaterial, Kopf
-       und Zeilenmechanik kommen aus den bestehenden Profilklassen
-       (table-card, profile-card-head, profile-form-body); hier steht nur, was
-       die Karte zusätzlich braucht;
+     • der Installationsabschnitt der Kontoeinstellungen — Abschnittsform,
+       Kopf und Zeilenmechanik kommen aus den bestehenden Profilklassen
+       (profile-card, profile-card-head, profile-card-body); hier steht nur,
+       was der Abschnitt zusätzlich braucht;
      • die Statuszeile der Shell (offline / neue Version) — .alert-Muster.
    Ausschließlich Tokens, keine Farbliterale.
    ══════════════════════════════════════════════════════════════════════════ */
@@ -14,35 +14,32 @@
    mobilen Topbar statt darunter verdeckt. */
 .pwa-card { scroll-margin-top: var(--ce-space-11); }
 
-/* Das CE-Signet sitzt in derselben Icon-Kachel wie die Liniensymbole der
-   übrigen Profilkarten — gleiche Kachel, gleiche Größe, eigene Marke. */
-.pwa-card-mark .ce-brandmark-img { width: 24px; }
+/* Das CE-Signet ist das App-Symbol, das auf dem Gerät erscheint — es steht
+   klein am Zeilenanfang (bestehende PWA-Marke, bis eine finale
+   Markenfreigabe die App-Icons wechselt). */
+.pwa-card-mark { display: inline-flex; align-items: center; flex: none; }
+.pwa-card-mark .ce-brandmark-img { width: 28px; }
 
 /* Erklärung links, Aktion rechts; auf schmalen Breiten rutscht die Aktion in
    eine eigene Zeile (dieselbe Mechanik wie „Passwort ändern"). */
 .pwa-card-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--ce-space-4);
+  gap: var(--ce-space-3) var(--ce-space-4);
   flex-wrap: wrap;
 }
 .pwa-card-row .btn { flex: none; }
 
 .pwa-card-text {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ce-space-2);
   flex: 1 1 220px;
   min-width: 0;
   margin: 0;
   font-size: var(--ce-text-body-s-size);
-  line-height: 1.5;
-  color: var(--ce-color-text-muted);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
-.pwa-card-text > svg { flex-shrink: 0; margin-top: 2px; }
-.pwa-card-text--status { color: var(--text-primary); font-weight: 600; }
-.pwa-card-text--status > svg { color: var(--ce-color-status-success-fg); }
+.pwa-card-text--status { color: var(--ce-color-text-primary); font-weight: 600; }
 
 .pwa-card-guide { margin-top: var(--ce-space-4); }
 .pwa-card-steps {
@@ -50,18 +47,18 @@
   padding-left: var(--ce-space-5);
   font-size: var(--ce-text-body-s-size);
   line-height: 1.6;
-  color: var(--text-primary);
+  color: var(--ce-color-text-primary);
 }
 .pwa-card-steps li + li { margin-top: var(--ce-space-1); }
 .pwa-card-note {
   margin: var(--ce-space-3) 0 0;
-  font-size: var(--ce-text-label-size);
-  line-height: 1.5;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-muted);
 }
 .pwa-card-alert { margin-top: var(--ce-space-4); }
 
-/* Unter --ce-bp-sm (480 px) füllt die Aktion die Kartenbreite — ein
+/* Unter --ce-bp-sm (480 px) füllt die Aktion die Abschnittsbreite — ein
    großes, gut treffbares Ziel statt eines halben Knopfes am Zeilenende. */
 @media (max-width: 480px) {
   .pwa-card-row .btn { width: 100%; justify-content: center; }

@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import { Icon } from "../ui/Icon";
 import { FormAlert } from "../ui/FormAlert";
 import { useAuth } from "../../context/AuthContext";
 import { normalizeThrownError } from "../../utils/apiError.mjs";
@@ -11,7 +10,7 @@ import {
   COMPANY_LOGO_TEXT, LOGO_ACCEPT, companyLogoMeta,
   formatLogoSize, formatLogoDimensions, preCheckLogoFile, logoErrorMessage,
 } from "../../utils/companyLogoView.mjs";
-import { cardHead } from "./ProfileCardHead";
+import { SettingsSection } from "./ProfileCardHead";
 
 // Firmenlogo-Karte der Kontoseite. Der Upload läuft über den eigenen,
 // auth-geschützten Endpunkt (Multipart) — NICHT über PATCH /kunde/profil: der
@@ -83,8 +82,7 @@ export function CompanyLogoCard({ user }) {
   const dims = formatLogoDimensions(logoMeta);
   const facts = [size, dims].filter(Boolean).join(" · ");
   return (
-    <div className="table-card profile-card">
-      {cardHead("image", COMPANY_LOGO_TEXT.title, COMPANY_LOGO_TEXT.subtitle, null)}
+    <SettingsSection title={COMPANY_LOGO_TEXT.title} subtitle={COMPANY_LOGO_TEXT.subtitle}>
       <div className="profile-section-body">
         <div className="profile-logo-row">
           <CompanyLogoPreview logoUrl={logoUrl} initial={accountInitials(user)} />
@@ -117,7 +115,6 @@ export function CompanyLogoCard({ user }) {
             onClick={() => logoInputRef.current?.click()}
             disabled={logoBusy !== ""}
           >
-            <Icon n="upload" s={14} />
             {logoBusy === "upload" ? COMPANY_LOGO_TEXT.uploading : (logoMeta ? COMPANY_LOGO_TEXT.replace : COMPANY_LOGO_TEXT.choose)}
           </button>
           {logoMeta && (
@@ -139,10 +136,10 @@ export function CompanyLogoCard({ user }) {
         {logoError && <FormAlert tone="error" message={logoError} className="mt-16" />}
         {logoSaved && !logoError && (
           <p className="profile-saved" role="status">
-            <Icon n="check" s={14} /> {logoSaved}
+            {logoSaved}
           </p>
         )}
       </div>
-    </div>
+    </SettingsSection>
   );
 }

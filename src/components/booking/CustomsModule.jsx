@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { countries } from "../../utils/countries";
 import { CustomsInvoiceModeSection } from "./CustomsInvoiceModeSection";
@@ -54,7 +53,7 @@ export function CustomsModule({
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Angaben zum Wareninhalt</h3></div>
+      <div className="calc-panel-header"><h3>Angaben zum Wareninhalt</h3></div>
       <div className="calc-panel-body">
         <p className="customs-hint">
           Für Sendungen außerhalb der EU benötigen wir Angaben zum Wareninhalt.
@@ -93,7 +92,7 @@ export function CustomsModule({
                 disabled={items.length <= 1}
                 title={items.length <= 1 ? "Mindestens eine Position erforderlich" : "Position entfernen"}
               >
-                <Icon n="x" s={13} c="currentColor" /> Entfernen
+                Entfernen
               </button>
             </div>
 
@@ -191,7 +190,7 @@ export function CustomsModule({
         ))}
 
         <button type="button" className="btn btn-outline btn-sm customs-add-btn" onClick={onAddItem}>
-          <Icon n="plus" s={14} c="currentColor" /> Weitere Position hinzufügen
+          Weitere Position hinzufügen
         </button>
 
         <div className="customs-summary">

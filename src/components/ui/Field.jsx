@@ -41,9 +41,10 @@ import React, { useId, useState } from "react";
    trotzdem bekommen, trägt das Label eine unsichtbare Ergänzung: `unitLabel="in
    Kilogramm"` ergibt den zugänglichen Namen „Gewicht in Kilogramm" bei sichtbar
    „Gewicht" — einmal vorgelesen, nicht doppelt.
-   Die Einheit erscheint bewusst erst im Schwebezustand: im Ruhezustand belegt
-   das Label die Textzeile, ein gleichzeitig sichtbares „kg" läse sich als Teil
-   der Beschriftung.
+   Gestapelt (Vorgabe, seit dem Redesign 2026-10 auch in „Neue Sendung") steht
+   die Einheit dauerhaft als Suffix im Feld. Im Floating-Modus erscheint sie
+   erst im Schwebezustand: im Ruhezustand belegt das Label die Textzeile, ein
+   gleichzeitig sichtbares „kg" läse sich als Teil der Beschriftung.
 
    Bewusst NICHT enthalten: Formularkontext, Validierungsschema, Masken,
    Formatter, Währungslogik, asynchrone Resolver. Die Komponente ist ein
@@ -155,6 +156,23 @@ export function Field({
     : hint ? <span className="field-hint" id={hinweisId}>{hint}</span> : null;
 
   if (!floating) {
+    // Gestapelt: Beschriftung als eigener Block ÜBER dem Feld. Eine Einheit
+    // (kg, cm, EUR) steht seit dem Redesign (2026-10) auch hier sichtbar als
+    // Suffix rechts im Feld — dekorativ (aria-hidden); vorgelesen wird sie
+    // über den unsichtbaren Labelzusatz `unitLabel`. Ohne `unit` ist das
+    // Markup exakt das bisherige.
+    if (unit) {
+      return (
+        <div className={`field ce-field--has-unit ${className}`.trim()}>
+          <label className="field-label" htmlFor={feldId}>{beschriftung}</label>
+          <div className="ce-field-control">
+            {eingabe}
+            <span className="ce-field-unit" aria-hidden="true">{unit}</span>
+          </div>
+          {fuss}
+        </div>
+      );
+    }
     return (
       <div className={`field ${className}`.trim()}>
         <label className="field-label" htmlFor={feldId}>{beschriftung}</label>

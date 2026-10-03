@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { Icon } from "../ui/Icon";
 import { EmptyState, ErrorState, ListSkeleton } from "../ui/StateView";
 import { useNotifications } from "../../context/NotificationsContext";
 import {
@@ -103,9 +102,8 @@ export function NotificationPanel({ onClose, onSelect }) {
             className="ntf-close"
             onClick={onClose}
             aria-label="Benachrichtigungen schließen"
-            title="Benachrichtigungen schließen"
           >
-            <Icon n="x" s={16} />
+            Schließen
           </button>
         </div>
       </div>
@@ -126,7 +124,7 @@ export function NotificationPanel({ onClose, onSelect }) {
           <div className="ntf-inline-error" role="alert">
             <span>{LOAD_ERROR_TEXT}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={refresh}>
-              <Icon n="refresh" s={14} /> {RETRY_LABEL}
+              {RETRY_LABEL}
             </button>
           </div>
         )}
@@ -141,12 +139,12 @@ export function NotificationPanel({ onClose, onSelect }) {
             title={LOAD_ERROR_TEXT}
             action={(
               <button type="button" className="btn btn-outline btn-sm" onClick={refresh}>
-                <Icon n="refresh" s={14} /> {RETRY_LABEL}
+                {RETRY_LABEL}
               </button>
             )}
           />
         ) : items.length === 0 ? (
-          <EmptyState icon="bell" title={EMPTY_TITLE} text={EMPTY_TEXT} />
+          <EmptyState title={EMPTY_TITLE} text={EMPTY_TEXT} />
         ) : (
           <ul className="ntf-list">
             {items.map((n) => (
@@ -158,7 +156,9 @@ export function NotificationPanel({ onClose, onSelect }) {
                 >
                   <span className="ntf-item-main">
                     <span className="ntf-item-title">
-                      {!n.read && <span className="ntf-dot" aria-hidden="true" />}
+                      {/* Ungelesen steht als Wort „Neu" da — nicht allein als
+                          Punkt oder Farbe (Redesign 2026-10). */}
+                      {!n.read && <span className="ntf-new">Neu</span>}
                       {n.title}
                     </span>
                     {/* Kundeneingaben erscheinen hier nicht; Beleg-/Ticketnummern

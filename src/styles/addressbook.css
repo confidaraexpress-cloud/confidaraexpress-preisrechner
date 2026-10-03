@@ -1,148 +1,150 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Adressbuch (addressbook) — vollständig unter .abk-* isoliert. Reuse bestehender
-   Basis-Atome (.btn, .field-*, .badge, .kpi-*, .empty, .alert, .spinner) statt
-   Duplikate; nur adressbuchspezifische Layouts/Komponenten sind hier neu.
-   Executive-Luxury, aber ruhig: keine Aurora-/Blur-/Dauerbewegungseffekte.
+   Adressbuch (addressbook) — vollständig unter .abk-* isoliert. Reuse der
+   Basis-Atome (.btn, .field-*, .badge, .ce-tabs, .alert, .spinner) statt
+   Duplikate; hier stehen nur adressbuchspezifische Layouts.
+
+   Redesign 2026-10: Texttabs statt Pillfläche, Werkzeugleiste ohne eigene
+   Außenkarte (sichtbares Suchlabel statt Lupe, Favoritenfilter als
+   Textschalter), die Liste als EINE ruhige Fläche mit Trennlinien statt
+   gestapelter Einzelkarten, Zeilenaktionen als Text („Sendung erstellen",
+   „Weitere Aktionen"), Dialoge und Drawer ohne Symbole. Kein Farbliteral,
+   Radien und Tiefen ausschließlich aus der Foundation.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Segmentierte Navigation (Meine Adressen / Empfänger) ──────────────────── */
-.abk-tabs {
-  display: inline-flex; align-items: center; gap: 4px; padding: 4px;
-  background: var(--gray50); border: 1px solid var(--border); border-radius: var(--radius-full);
-  margin-bottom: 16px;
-}
-.abk-tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 16px; border: none; background: transparent; border-radius: var(--radius-full);
-  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted);
-  cursor: pointer; transition: background 0.15s, color 0.15s;
-}
-.abk-tab:hover { color: var(--navy); }
-.abk-tab--active { background: var(--ce-color-surface); color: var(--navy); box-shadow: var(--ce-elevation-1); }
-.abk-tab-count { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); }
-.abk-tab--active .abk-tab-count { color: var(--blue2); }
-.abk-tab:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+/* ─── Bereichsreiter (Meine Adressen / Empfänger) ───────────────────────────
+   Optik aus dem gemeinsamen Tab-Muster (.ce-tabs/.ce-tab, patterns.css) —
+   hier steht nur der Abstand zur Werkzeugleiste. */
+.abk-tabs { margin-bottom: var(--ce-space-5); }
+.abk-tab-count { font-size: var(--ce-text-caption-size); font-weight: 500; color: var(--ce-color-text-muted); }
+.abk-tab--active .abk-tab-count { color: var(--ce-color-brand-ink); }
 
-/* ─── Werkzeugleiste ──────────────────────────────────────────────────────── */
+/* ─── Werkzeugleiste ──────────────────────────────────────────────────────────
+   Keine eigene Außenkarte: Suche und Filter stehen direkt über der Liste. Die
+   Suche trägt ein sichtbares Label; der Favoritenfilter ist ein Textschalter
+   (aria-pressed) auf der Höhe der Eingabe. */
 .abk-toolbar {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 14px 16px; margin-bottom: 16px;
-  background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  box-shadow: var(--ce-elevation-1);
+  display: flex; align-items: flex-end; gap: var(--ce-space-3) var(--ce-space-4); flex-wrap: wrap;
+  margin-bottom: var(--ce-space-4);
 }
-.abk-search { position: relative; flex: 1 1 260px; min-width: 200px; }
-.abk-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ce-color-text-muted); pointer-events: none; }
+.abk-search { flex: 1 1 320px; min-width: 200px; max-width: 480px; }
+.abk-search-label { margin-bottom: 6px; }
+.abk-search-field { position: relative; }
 .abk-search-input {
-  width: 100%; height: 40px; padding: 0 12px 0 38px;
-  border: 1.5px solid var(--border); border-radius: var(--radius);
-  font-size: 14px; font-family: var(--ce-font-sans); color: var(--navy);
-  background: var(--gray50); outline: none; transition: border-color 0.15s, background 0.15s;
+  width: 100%; min-height: var(--ce-size-control-md); padding: 0 40px 0 12px;
+  border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md);
+  font-size: var(--ce-text-body-size); font-family: var(--ce-font-sans); color: var(--ce-color-text-primary);
+  background: var(--ce-color-surface);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.abk-search-input:focus { background: var(--ce-color-surface); border-color: var(--ce-color-border-focus); box-shadow: var(--ce-elevation-focus-ring); }
-.abk-search-status { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; }
+.abk-search-input::placeholder { color: var(--ce-color-text-placeholder); opacity: 1; }
+.abk-search-input:hover { border-color: var(--ce-color-border-interactive-hover); }
+.abk-search-input:focus { border-color: var(--ce-color-border-focus); outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
+.abk-search-status { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; }
 
-.abk-toolbar-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.abk-toolbar-filters { display: flex; align-items: center; gap: var(--ce-space-2); flex-wrap: wrap; }
 .abk-filter-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  height: 40px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: var(--radius-full);
-  background: var(--ce-color-surface); color: var(--ce-color-text-secondary); font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
+  min-height: var(--ce-size-control-md); padding: 0 var(--ce-space-4);
+  border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface); color: var(--ce-color-text-primary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.abk-filter-pill:hover { border-color: var(--border2); }
-.abk-filter-pill--active { background: var(--blue-light); border-color: var(--ce-color-brand-border); color: var(--blue2); }
-.abk-filter-pill svg { flex-shrink: 0; }
-.abk-filter-pill:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.abk-filter-pill:hover { background: var(--ce-color-surface-hover); border-color: var(--ce-color-border-interactive-hover); }
+/* Aktiv: Kante in der Markenfarbe, Brand-Soft-Fläche UND Gewicht 600 — nicht allein farbig. */
+.abk-filter-pill--active { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand); color: var(--ce-color-brand-ink); font-weight: 600; }
+.abk-filter-pill--active:hover { background: var(--ce-color-brand-soft-hover); border-color: var(--ce-color-brand); }
+.abk-filter-pill:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
 /* ─── Listen-Wrapper ──────────────────────────────────────────────────────── */
 .abk-list-wrap { min-height: 120px; }
-.abk-desktop-list, .abk-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Die Desktopliste ist EINE Fläche mit Trennlinien zwischen den Zeilen —
+   keine gestapelten Einzelkarten. Bewusst ohne overflow:hidden: das
+   Aktionsmenü einer Zeile darf über den Rand hinaus aufklappen. */
+.abk-desktop-list, .abk-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.abk-desktop-list {
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+.abk-cards { gap: var(--ce-space-3); }
 
 /* Desktop-Zeile: kompakte Listen-/Tabellen-Hybridansicht als CSS-Grid (kein
-   <table>, damit Badges/Aktionsmenü flexibel umbrechen — kein horizontales
+   <table>, damit Badges/Aktionen flexibel umbrechen — kein horizontales
    Pflicht-Scrollen).
 
    Spaltenlogik (Informationshierarchie der Zeile):
      • Identität und Detail sind PRIMÄR und die einzigen nachgiebigen Spalten
        — deshalb minmax(0, …): sie schrumpfen, ihre Texte brechen an
        natürlichen Grenzen (E-Mail kontrolliert, s. u.).
-     • Badges sind METADATEN und eine EINHEIT: fit-content statt des früheren
-       0.6fr. Die fr-Spalte hatte keinen Boden — zusammen mit dem alten
-       Badge-`anywhere` kollabierte sie auf 54 px und faltete
-       „Standard-Absender & -Empfänger" in 13 Buchstabenzeilen. fit-content
-       gibt der Spalte ihren Inhalt bis zum Deckel: 240 px = einzeilige
-       max-content-Breite des breitesten realen Badges („Standard-Absender &
-       -Empfänger", gemessen 236 px inkl. Punkt und Padding) + Reserve. Wird
-       der Container enger, schrumpft die Spalte unter den Deckel und die
-       Badges fließen an WORTGRENZEN in mehrere Zeilen.
+     • Badges sind METADATEN und eine EINHEIT: fit-content statt einer
+       bodenlosen fr-Spalte (die faltete „Standard-Absender & -Empfänger"
+       einst in 13 Buchstabenzeilen). 240 px = einzeilige Breite des breitesten
+       realen Badges + Reserve; wird der Container enger, fließen die Badges an
+       WORTGRENZEN in mehrere Zeilen.
      • Aktionen sind starr (auto): Buttons geben nie Breite ab — dafür wechselt
        die Zeile unten per Container-Query die Struktur, statt Primärspalten
        zu quetschen.
 
-   Der Listen-Wrapper (.abk-list-wrap) ist Size-Container: Die Stufen unten
-   messen die REALE Inhaltsbreite — die 252-px-Sidebar der Shell ist damit
-   automatisch eingepreist (Media Queries sahen nur den Viewport und ließen
-   die Zeile im Band 861–1100 px mit 553–840 px Content kollabieren).
-   Vorbild: Container-Queries der Versicherungskarten (calculator.css). */
+   Der Listen-Wrapper (.abk-list-wrap) ist Size-Container: die Stufen unten
+   messen die REALE Inhaltsbreite — die Sidebar der Shell ist damit
+   automatisch eingepreist. */
 .abk-list-wrap { container-type: inline-size; }
 .abk-row {
-  display: grid; align-items: center; gap: 16px;
+  display: grid; align-items: center; gap: var(--ce-space-4);
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) fit-content(240px) auto;
-  padding: 14px 18px; background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  transition: box-shadow 0.15s, border-color 0.15s;
+  min-height: 72px;
+  padding: var(--ce-space-4) var(--ce-space-5);
+  background: transparent;
+  border-bottom: 1px solid var(--border-hairline);
 }
-.abk-row:hover { box-shadow: var(--ce-elevation-2); border-color: var(--border2); }
-.abk-row-identity { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.abk-row-name { font-size: 14px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; }
-.abk-row-company { font-size: 12px; color: var(--ce-color-text-muted); overflow-wrap: break-word; }
-.abk-row-contact { font-size: 12px; color: var(--ce-color-text-secondary); }
-.abk-row-detail { min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ce-color-text-secondary); }
-.abk-row-addr { overflow-wrap: break-word; line-height: 1.4; }
-/* Kontaktzeile: wrap + Schrumpfglieder. Vorher Flex OHNE wrap und ohne
-   min-width: 0 — die unteilbare E-Mail lief sichtbar unter die Badge-Spalte
-   (Textüberlagerung, gemessen bei 900 px). E-Mail und Telefon sind jetzt
-   eigene Glieder (Spans im Markup): die E-Mail als technischer String darf
-   LOKAL überall brechen, das Telefon bleibt als Einheit zusammen und wechselt
-   stattdessen die Zeile. */
-.abk-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; color: var(--ce-color-text-muted); }
-.abk-row-meta svg { flex-shrink: 0; }
+.abk-row:last-child { border-bottom: 0; }
+.abk-row-identity { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.abk-row-name { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
+.abk-row-company { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); overflow-wrap: break-word; }
+.abk-row-contact { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); }
+.abk-row-detail { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.abk-row-addr { overflow-wrap: break-word; }
+/* Kontaktzeile: wrap + Schrumpfglieder. E-Mail und Telefon sind eigene Glieder
+   (Spans im Markup): die E-Mail als technischer String darf LOKAL überall
+   brechen, das Telefon bleibt als Einheit zusammen und wechselt stattdessen
+   die Zeile. */
+.abk-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; color: var(--ce-color-text-muted); }
 .abk-contact-email { min-width: 0; overflow-wrap: anywhere; }
 .abk-contact-phone { white-space: nowrap; }
-.abk-row-badges { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; min-width: 0; }
-.abk-row-actions { display: flex; align-items: center; gap: 6px; justify-self: end; }
+.abk-row-badges { display: flex; flex-wrap: wrap; gap: var(--ce-space-1); justify-content: flex-start; min-width: 0; }
+.abk-row-actions { display: flex; align-items: center; gap: var(--ce-space-2); justify-self: end; }
 
-/* Stufe 2 — mittlere Inhaltsbreite (Container < 880 px): Die vier Spalten
+/* Stufe 2 — mittlere Inhaltsbreite (Container < 880 px): die vier Spalten
    passen nicht mehr nebeneinander, ohne dass Primärtexte unter
    Lesbarkeitsbreite fallen. Die Zeile wird ZWEIZEILIG: oben Identität und
-   Detail (primär), unten Badges links und Aktionen rechts. DOM-Reihenfolge
-   bleibt unverändert (Identität → Detail → Badges → Aktionen) — nur die
-   Grid-Plätze wandern; Fokusreihenfolge und Vorlesereihenfolge sind identisch. */
+   Detail, unten Badges links und Aktionen rechts. DOM-Reihenfolge bleibt
+   unverändert — nur die Grid-Plätze wandern; Fokus- und Vorlesereihenfolge
+   sind identisch. */
 @container (max-width: 879px) {
   .abk-row {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     grid-template-areas:
       "identity detail"
       "badges   actions";
-    row-gap: 10px;
+    row-gap: var(--ce-space-3);
     align-items: start;
   }
   .abk-row-identity { grid-area: identity; }
   .abk-row-detail   { grid-area: detail; }
-  .abk-row-badges   { grid-area: badges; align-self: center; }
+  /* Auf die Zeile begrenzt: die Container-Stufe trifft auch die Karten, und
+     dort zentrierte align-self die Badges in der Flex-Spalte horizontal. */
+  .abk-row .abk-row-badges { grid-area: badges; align-self: center; }
   .abk-row-actions  { grid-area: actions; align-self: center; }
 }
 
-/* Stufe 3 — schmaler Container (< 640 px): Die Zeilenform trägt nicht mehr;
-   es übernimmt die bestehende Kartenansicht (identischer Informationsumfang,
-   vertikal). Der frühere Umschalter hing am 767-px-VIEWPORT und ließ die
-   Zeile in der Shell (861–948 px Viewport ⇒ < 640 px Content) gequetscht
-   stehen. Die Viewport-Query unten bleibt als Fallback für Browser ohne
-   Container-Query-Support bestehen — dort gilt weiterhin 767 px.
-
+/* Stufe 3 — schmaler Container (< 640 px): die Zeilenform trägt nicht mehr;
+   es übernimmt die Kartenansicht (identischer Informationsumfang, vertikal).
    Die Reihenfolge ist tragend: die Basisregel (Karten aus) steht VOR der
-   Container-Stufe. @container erhöht die Spezifität nicht — bei gleicher
-   Spezifität gewinnt die spätere Regel im Quelltext. Stünde die Basisregel
-   hinter der Stufe, blendete sie im Kartenband BEIDE Listen aus (gemessen:
-   900 px Viewport ⇒ leere Seite). */
+   Container-Stufe — @container erhöht die Spezifität nicht, bei Gleichstand
+   gewinnt die spätere Regel. */
 @supports (container-type: inline-size) {
   .abk-cards { display: none; }
 }
@@ -151,151 +153,181 @@
   .abk-cards { display: flex; }
 }
 
-/* Mobil-Karte */
+/* Mobil-Karte — dieselben Informationen, gestapelt und als reiner Text. */
 .abk-card {
-  background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-3);
 }
-.abk-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.abk-card-name { font-size: 15px; font-weight: 600; color: var(--navy); overflow-wrap: break-word; }
-.abk-card-company { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; overflow-wrap: break-word; }
-.abk-card-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ce-color-text-secondary); }
-.abk-card-info-row { display: flex; align-items: flex-start; gap: 8px; }
-.abk-card-info-row svg { flex-shrink: 0; margin-top: 2px; color: var(--ce-color-text-muted); }
-.abk-card-actions { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+.abk-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-3); }
+.abk-card-name { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: break-word; }
+.abk-card-company { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); margin-top: 2px; overflow-wrap: break-word; }
+.abk-card-info { display: flex; flex-direction: column; gap: 2px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.abk-card-info-row { min-width: 0; }
+/* Fußzeile: „Sendung erstellen" füllt die Breite, „Weitere Aktionen" daneben;
+   auf sehr schmalen Breiten bricht die Zeile um, statt einen Knopf zu kappen. */
+/* Bricht „Weitere Aktionen" um (320 px), steht es rechts — sein Menü öffnet
+   rechtsbündig und bleibt damit in der Karte statt links aus dem Bild. */
+.abk-card-actions {
+  display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ce-space-2);
+  padding-top: var(--ce-space-3); border-top: 1px solid var(--border-hairline);
+}
+.abk-card-actions .abk-create-shipment { flex: 1 1 auto; }
 
-/* ─── Sichtbare Hauptaktion „Sendung erstellen" (Desktop-Zeile + Mobil-Karte) ──
-   Sekundärer Outline-Button (.btn.btn-outline.btn-sm) — bewusst ruhiger als der
-   globale Primär-Button „+ Neue Adresse". Nur lokale, additive Regeln; KEINE
-   Überschreibung globaler .btn-Styles, kein !important. Feste Höhe = exakte
-   optische Bündigkeit mit dem 34px-Zahnrad daneben. */
-.abk-create-shipment { height: 34px; }
-/* In der Mobil-Fußzeile füllt der Button die Breite (große Touchfläche); das
-   Zahnrad bleibt daneben in fester Größe. */
-.abk-card-actions .abk-create-shipment { flex: 1; }
-
-/* ─── Aktionsmenü (Kebab-Dropdown) ───────────────────────────────────────── */
+/* ─── Aktionsmenü „Weitere Aktionen" ─────────────────────────────────────────
+   Textauslöser (keine Symbolfläche) mit derselben Geometrie wie eine
+   Textaktion; das Menü ist ein Dropdown mit der Dropdowntiefe. */
 .abk-actions { position: relative; flex-shrink: 0; }
 .abk-actions-trigger {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; border-radius: var(--radius); border: 1.5px solid var(--border);
-  background: var(--ce-color-surface); color: var(--ce-color-text-secondary); cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--ce-size-control-sm); padding: 0 var(--ce-space-3);
+  border-radius: var(--ce-radius-md); border: 1px solid transparent;
+  background: transparent; color: var(--ce-color-brand-ink);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: 1.4;
+  white-space: nowrap; cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.abk-actions-trigger:hover { background: var(--gray50); border-color: var(--border2); }
-.abk-actions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.abk-actions-trigger:hover:not(:disabled) { background: var(--ce-color-brand-soft); }
+.abk-actions-trigger[aria-expanded="true"] { background: var(--ce-color-brand-soft); }
+.abk-actions-trigger:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+.abk-actions-trigger:focus-visible { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 .abk-actions-menu {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--ce-z-dropdown); min-width: 220px;
-  background: var(--ce-color-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  box-shadow: var(--ce-elevation-3); padding: 6px; display: flex; flex-direction: column;
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: var(--ce-z-dropdown); min-width: 256px;
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-md);
+  box-shadow: var(--ce-elevation-dropdown); padding: var(--ce-space-1); display: flex; flex-direction: column;
 }
 .abk-actions-item {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-  padding: 9px 10px; border: none; background: transparent; border-radius: var(--ce-radius-sm);
-  font-size: 13px; font-weight: 500; color: var(--navy); cursor: pointer;
+  display: flex; align-items: center; width: 100%; text-align: left;
+  min-height: var(--ce-size-control-md); padding: 0 var(--ce-space-3);
+  border: none; background: transparent; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-body-size); font-weight: 400; color: var(--ce-color-text-primary); cursor: pointer;
 }
-.abk-actions-item:hover, .abk-actions-item:focus-visible { background: var(--gray50); }
-.abk-actions-item svg { flex-shrink: 0; color: var(--ce-color-text-muted); }
-.abk-actions-item--danger { color: var(--danger); }
-.abk-actions-item--danger svg { color: var(--danger); }
-.abk-actions-item:disabled { opacity: 0.45; cursor: not-allowed; }
-.abk-actions-divider { height: 1px; background: var(--border); margin: 5px 2px; }
+.abk-actions-item:hover, .abk-actions-item:focus-visible { background: var(--ce-color-surface-hover); }
+.abk-actions-item--danger { color: var(--ce-color-status-error-fg); }
+.abk-actions-item:disabled { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+.abk-actions-divider { height: 1px; background: var(--ce-color-border-subtle); margin: var(--ce-space-1) 2px; }
 
 /* ─── Mehr laden ──────────────────────────────────────────────────────────── */
-.abk-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; }
+.abk-loadmore-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--ce-space-2); margin-top: var(--ce-space-4); }
 
 /* ─── Skeleton (Ladezustand) ─────────────────────────────────────────────── */
 /* Dieselbe ruhige Puls-Technik wie .ce-skeleton (patterns.css). */
 .abk-skeleton-row {
-  height: 74px; border-radius: var(--radius-lg);
+  height: 72px; border-radius: var(--ce-radius-lg);
   background: var(--ce-color-surface-muted);
   animation: ce-skeleton-pulse 1.4s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) { .abk-skeleton-row { animation: none; } }
 
-/* ─── Drawer (Create/Edit/Duplicate) ─────────────────────────────────────── */
-/* Overlay, Fläche und Kopf kommen aus dem gemeinsamen Drawermuster (patterns.css). */
-.abk-drawer-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); }
-.abk-drawer-close {
-  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-  border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--ce-color-surface); color: var(--ce-color-text-secondary); cursor: pointer;
+/* ─── Drawer (Neu / Bearbeiten / Duplizieren) ────────────────────────────────
+   Overlay, Fläche und Kopf kommen aus dem gemeinsamen Drawermuster
+   (patterns.css). Schließen ist eine Textaktion (.btn.btn-ghost im Markup);
+   die Abschnitte tragen feste, ruhige Überschriften und Trennlinien. */
+.abk-drawer-title {
+  font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line);
+  font-weight: 600; color: var(--ce-color-text-primary);
 }
-.abk-drawer-close:hover { background: var(--gray50); }
-.abk-drawer-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
-.abk-drawer-body { flex: 1; overflow-y: auto; padding: 22px 24px; }
+.abk-drawer-close { flex: none; margin-right: calc(-1 * var(--ce-space-2)); }
+.abk-drawer-body { flex: 1; overflow-y: auto; padding: var(--ce-space-5) var(--ce-space-6); }
 .abk-drawer-footer {
-  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-  padding: 16px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ce-space-2);
+  padding: var(--ce-space-4) var(--ce-space-6); border-top: 1px solid var(--ce-color-border-subtle); flex-shrink: 0;
 }
-.abk-drawer-section { margin-bottom: 26px; }
+.abk-drawer-section { margin-bottom: var(--ce-space-6); }
+.abk-drawer-section + .abk-drawer-section { padding-top: var(--ce-space-5); border-top: 1px solid var(--border-hairline); }
 .abk-drawer-section:last-child { margin-bottom: 0; }
 .abk-drawer-section-title {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--ce-color-text-muted); margin-bottom: 12px;
+  font-size: var(--ce-text-title-card-size); line-height: var(--ce-text-title-card-line); font-weight: 600;
+  color: var(--ce-color-text-primary); margin-bottom: var(--ce-space-3);
 }
-.abk-drawer-unsaved-note { font-size: 12px; color: var(--ce-color-text-muted); margin-right: auto; }
-/* Altbestandshinweis im Kontaktabschnitt: nennt den bisher gespeicherten Namen, während
-   Vor- und Nachname noch leer sind. Steht im Abschnittsfluss, nicht in der Fußzeile — deshalb ohne das `margin-right: auto` der Zeile darüber.
-   Nur Foundation-Tokens, kein Farbliteral. */
-.abk-drawer-hint { font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); margin: -4px 0 4px; }
+.abk-drawer-unsaved-note { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); margin-right: auto; }
+/* Altbestandshinweis im Kontaktabschnitt: nennt den bisher gespeicherten Namen,
+   während Vor- und Nachname noch leer sind. */
+.abk-drawer-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); margin: -4px 0 var(--ce-space-4); }
 
-.abk-role-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.abk-role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ce-space-2); }
 .abk-role-option {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 10px 8px; border: 1.5px solid var(--border); border-radius: var(--radius);
-  background: var(--ce-color-surface); cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s;
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: var(--ce-size-touch-target); padding: var(--ce-space-2);
+  border: 1px solid var(--ce-color-border-interactive); border-radius: var(--ce-radius-md);
+  background: var(--ce-color-surface); cursor: pointer; text-align: center;
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
+.abk-role-option:hover { border-color: var(--ce-color-border-interactive-hover); }
 .abk-role-option input { position: absolute; opacity: 0; width: 0; height: 0; }
-.abk-role-option-label { font-size: 12px; font-weight: 600; color: var(--navy); }
-.abk-role-option--selected { border-color: var(--blue); background: var(--blue-light); }
-.abk-role-option:focus-within { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.abk-role-option-label { font-size: var(--ce-text-body-s-size); font-weight: 500; color: var(--ce-color-text-primary); }
+.abk-role-option--selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
+.abk-role-option--selected .abk-role-option-label { color: var(--ce-color-brand-ink); font-weight: 600; }
+.abk-role-option:focus-within { outline: var(--ce-focus-ring); outline-offset: var(--ce-focus-ring-offset); }
 
-.abk-check-row { display: flex; align-items: center; gap: 9px; padding: 9px 0; }
-.abk-check-row input[type="checkbox"] { accent-color: var(--blue); width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; }
-.abk-check-row input[type="checkbox"]:disabled { cursor: not-allowed; opacity: 0.5; }
-.abk-check-row label { font-size: 13px; color: var(--navy); cursor: pointer; }
-.abk-check-hint { font-size: 11px; color: var(--ce-color-text-muted); margin: 2px 0 0 26px; }
+.abk-check-row { display: flex; align-items: center; gap: var(--ce-space-3); min-height: 40px; }
+.abk-check-row input[type="checkbox"] { cursor: pointer; flex-shrink: 0; }
+.abk-check-row input[type="checkbox"]:disabled { cursor: not-allowed; }
+/* Die Beschriftung ist die Trefferfläche: sie füllt die ganze Zeilenhöhe statt
+   nur der Texthöhe (vorher rund 18 px treffbar). */
+.abk-check-row label {
+  flex: 1 1 auto; align-self: stretch; display: flex; align-items: center;
+  font-size: var(--ce-text-body-size); color: var(--ce-color-text-primary); cursor: pointer;
+}
+.abk-check-row input[type="checkbox"]:disabled + label { color: var(--ce-color-text-disabled); cursor: not-allowed; }
+.abk-check-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-muted); margin: 0 0 var(--ce-space-2) 30px; }
 
-/* ─── Zentrierte Bestätigungsdialoge (Löschen / both-Rollenwahl) ───────────
-   Gleiches Muster wie price-drift-overlay/-card (Booking): fixed Overlay +
-   zentrierte Karte, role=dialog/aria-modal. */
-/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
-.abk-dialog-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-.abk-dialog-icon--warn { background: var(--warn-bg); color: var(--warn); }
-.abk-dialog-icon--info { background: var(--blue-light); color: var(--blue2); }
-.abk-dialog-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-.abk-dialog-desc { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.55; margin-bottom: 20px; }
-.abk-dialog-note { font-size: 12px; color: var(--warn); background: var(--warn-bg); border-radius: var(--radius-sm); padding: 8px 11px; margin: -8px 0 16px; line-height: 1.5; }
-.abk-dialog-error { font-size: 13px; color: var(--danger); background: var(--danger-bg); border-radius: var(--radius-sm); padding: 9px 11px; margin: 0 0 16px; line-height: 1.5; }
-.abk-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+/* ─── Bestätigungsdialoge (Löschen / Rollenwahl) ──────────────────────────────
+   Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css);
+   keine Iconmedaillons. */
+.abk-dialog-title { font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line); font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: var(--ce-space-2); }
+.abk-dialog-desc { font-size: var(--ce-text-body-size); color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); margin-bottom: var(--ce-space-5); }
+.abk-dialog-note {
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-status-warning-fg); background: var(--ce-color-status-warning-surface);
+  border: 1px solid var(--ce-color-status-warning-border); border-radius: var(--ce-radius-sm);
+  padding: var(--ce-space-2) var(--ce-space-3); margin: -8px 0 var(--ce-space-4);
+}
+.abk-dialog-error {
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-status-error-fg); background: var(--ce-color-status-error-surface);
+  border: 1px solid var(--ce-color-status-error-border); border-radius: var(--ce-radius-sm);
+  padding: var(--ce-space-2) var(--ce-space-3); margin: 0 0 var(--ce-space-4);
+}
+.abk-dialog-actions { display: flex; gap: var(--ce-space-2); justify-content: flex-end; flex-wrap: wrap; }
 .abk-dialog-actions--stack { flex-direction: column; }
 .abk-dialog-actions--stack .btn { width: 100%; }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────────
    Der Zeilen↔Karten-Umschalter läuft oben über Container-Stufen an der REALEN
-   Inhaltsbreite (Basisregel „Karten aus" + zwei @container-Stufen, s. o. bei
-   .abk-row). Die frühere Viewport-Fassung (767/768) bleibt ausschließlich als
-   Fallback für Browser ohne Container-Query-Support — mit Support würde sie
-   die Container-Stufe im Shell-Band (861–948 px Viewport ⇒ Karten) sonst per
-   Quelltextreihenfolge wieder überstimmen. */
+   Inhaltsbreite. Die Viewport-Fassung (767/768) bleibt ausschließlich als
+   Fallback für Browser ohne Container-Query-Support. */
 @supports not (container-type: inline-size) {
   @media (min-width: 768px) { .abk-cards { display: none; } }
   @media (max-width: 767px) { .abk-desktop-list { display: none; } }
 }
 @media (max-width: 767px) {
   /* Gestapelte Werkzeugleiste. flex-basis wirkt in der SPALTENrichtung auf
-     die HÖHE: ohne das Zurücksetzen bekam das Suchfeld die 260 px seiner
-     Zeilen-Basis als Mindesthöhe — eine Leerfläche mit mittig schwebender
-     Lupe (die absolut auf 50 % der aufgeblähten Höhe saß), gemessen bei
-     360 px. Dieselbe Falle ist im Seitenkopf dokumentiert gelöst
-     (patterns.css, .ce-page-header-text). */
+     die HÖHE: ohne das Zurücksetzen bekäme das Suchfeld die 320 px seiner
+     Zeilen-Basis als Mindesthöhe (dieselbe Falle wie im Seitenkopf). */
   .abk-toolbar { flex-direction: column; align-items: stretch; }
-  .abk-search { flex: 1 1 auto; min-width: 0; }
-  .abk-toolbar-filters { justify-content: space-between; }
+  .abk-search { flex: 1 1 auto; min-width: 0; max-width: none; }
+  .abk-toolbar-filters { justify-content: flex-start; }
   .abk-drawer { width: 100%; }
 }
 @media (max-width: 480px) {
   .abk-role-options { grid-template-columns: 1fr; }
-  .abk-dialog-card { padding: 20px; }
+}
+/* WCAG 2.5.5: unter der Drawer-Schwelle erreicht jedes Bedienelement 44 px.
+   responsive.css setzt das zentral, wird aber VOR dieser Datei importiert —
+   die kompakten Grundhöhen oben gewännen sonst bei gleicher Spezifität. */
+@media (max-width: 860px) {
+  .abk-actions-trigger,
+  .abk-actions-item,
+  .abk-search-input,
+  .abk-filter-pill,
+  .abk-check-row { min-height: var(--ce-size-touch-target); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .abk-search-input,
+  .abk-filter-pill,
+  .abk-actions-trigger,
+  .abk-role-option { transition: none; }
 }
 
 /* ─── Adressauswahl (AddressPicker / AddressPickerButton) ─────────────────────
@@ -325,7 +357,7 @@
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
-  box-shadow: var(--ce-elevation-2);
+  box-shadow: var(--ce-elevation-dropdown);
 }
 
 .abk-pick-panel { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

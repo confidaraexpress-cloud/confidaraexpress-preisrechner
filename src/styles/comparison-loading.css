@@ -3,7 +3,8 @@
    Material wie die Dialoge der Musterebene — Surface, Radius XL, Elevation 3,
    feine Kante, der eine Overlayton —, aber KEIN Dialog: nichts zu bedienen,
    kein Schließen, keine Fokusfalle. Ausschließlich Foundation-Tokens, kein
-   backdrop-filter (patterns.css).
+   backdrop-filter (patterns.css). Seit dem Redesign (2026-10) ohne Bildmarke:
+   ein schlichter Ladebogen, Titel und ein Satz.
 
    Die Live-Region `.cmp-loading-live` bleibt ohne Regel: leer hat sie keine
    Höhe und fängt nichts ab. */
@@ -36,14 +37,14 @@
   text-align: center;
 }
 
-/* Signet steht still; nur der Bogen darum dreht sich ruhig. */
+/* Der Bogen ist die einzige Bewegung — klein und ruhig. */
 .cmp-loading-mark {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto var(--ce-space-5);
 }
 .cmp-loading-ring {
@@ -55,8 +56,6 @@
   border-radius: var(--ce-radius-full);
   animation: spin 2.4s linear infinite;
 }
-.cmp-loading-signet { display: flex; justify-content: center; }
-.cmp-loading-signet .ce-brandmark-img { width: 44px; }
 
 .cmp-loading-title {
   margin: 0 0 var(--ce-space-2);
@@ -89,8 +88,7 @@
 /* Querformat und kleine Höhen: kompakter, damit die Karte ohne Scrollen passt. */
 @media (max-height: 480px) {
   .cmp-loading-card { padding: var(--ce-space-5); }
-  .cmp-loading-mark { width: 64px; height: 64px; margin-bottom: var(--ce-space-3); }
-  .cmp-loading-signet .ce-brandmark-img { width: 32px; }
+  .cmp-loading-mark { width: 32px; height: 32px; margin-bottom: var(--ce-space-3); }
 }
 
 /* Reduzierte Bewegung: der Bogen steht, nichts blendet ein. */

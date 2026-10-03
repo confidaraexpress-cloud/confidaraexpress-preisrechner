@@ -1,6 +1,5 @@
 import React from "react";
 import { carrierAppliesLabel, LABEL_HANDLING_TEXT } from "../../utils/labelHandling.mjs";
-import { Icon } from "../ui/Icon";
 import { Switch } from "../ui/Switch";
 
 // Zusätzliche Optionen — REINE DARSTELLUNG. Bündelt die optionale Referenznummer
@@ -83,7 +82,7 @@ export function AdditionalOptionsModule({
   const carrierBringtLabel = carrierAppliesLabel({ labelHandling });
   return (
     <div className="calc-panel addopt-panel mb-16">
-      <div className="calc-panel-header"><Icon n="settings" s={18} c="var(--ce-color-brand-ink)" /><h3>Zusätzliche Optionen</h3></div>
+      <div className="calc-panel-header"><h3>Zusätzliche Optionen</h3></div>
       <div className="calc-panel-body">
         {/* 1) Optionale Referenznummer — max. 35 Zeichen; spitze Klammern und unsichtbare
             Steuerzeichen entfernt der Orchestrator bereits bei der Eingabe. */}
@@ -133,7 +132,6 @@ export function AdditionalOptionsModule({
             diese Option nicht angeboten und stattdessen der belegte Ablauf erklaert. */}
         {carrierBringtLabel ? (
           <div className="addopt-option addopt-label-info" id="booking-label-carrier-info">
-            <Icon n="info" s={16} c="var(--ce-color-text-muted)" />
             <span className="field-hint">{LABEL_HANDLING_TEXT.booking}</span>
           </div>
         ) : (
@@ -190,7 +188,6 @@ export function AdditionalOptionsModule({
           </div>
         ) : labelDeliveryInfo ? (
           <div className="addopt-option addopt-label-info" id="booking-label-delivery-info">
-            <Icon n="info" s={16} c="var(--ce-color-text-muted)" />
             <span className="field-hint">{labelDeliveryInfo}</span>
           </div>
         ) : null}

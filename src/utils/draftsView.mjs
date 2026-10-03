@@ -160,7 +160,7 @@ export function hasSavableShipmentId(shipmentId) {
 export function draftsEmptyCopy() {
   return {
     title: "Noch keine Entwürfe",
-    desc: "Speichere eine angefangene Sendung, um sie später weiterzubearbeiten.",
+    desc: "Speichern Sie eine angefangene Sendung, um sie später weiterzubearbeiten.",
     cta: "Neue Sendung erstellen",
   };
 }

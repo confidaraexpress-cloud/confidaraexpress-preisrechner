@@ -62,8 +62,13 @@ test("4 — der Badge bleibt für Screenreader vorlesbar", () => {
   assert.equal(badgeAriaLabel(0), "Benachrichtigungen");
   assert.equal(badgeAriaLabel(1), "Benachrichtigungen: 1 ungelesen");
   assert.equal(badgeAriaLabel(12), "Benachrichtigungen: 12 ungelesen");
-  // Die Zahl steht im aria-label des Knopfes; das visuelle "9+" ist aria-hidden.
-  assert.match(bell, /aria-label=\{badgeAriaLabel\(unread\)\}/);
+  // Redesign 2026-10: der Einstieg ist der Textknopf „Mitteilungen". Sein
+  // zugänglicher Name beginnt mit dem sichtbaren Wort (WCAG 2.5.3) und nennt
+  // die Zahl ausgeschrieben; das visuelle "9+" bleibt aria-hidden.
+  assert.match(bell, /const KNOPF_TEXT = "Mitteilungen";/, "der sichtbare Knopftext fehlt");
+  assert.match(bell, /aria-label=\{knopfName\(unread\)\}/, "der zugängliche Name nennt die Zahl nicht");
+  assert.match(bell, /`\$\{KNOPF_TEXT\}, \$\{Math\.floor\(n\)\} ungelesen`/, "die Zahl wird nicht ausgeschrieben");
+  assert.match(bell, /<span className="ntf-bell-text">\{KNOPF_TEXT\}<\/span>/, "der Knopf zeigt kein Wort");
   assert.match(bell, /<span className="ntf-badge" aria-hidden="true">/);
 });
 
@@ -279,17 +284,22 @@ test("23 — die vorhandene Glocke der Übersicht ist jetzt eine echte Schaltfl�
   // Die frühere rein dekorative Fassung ist verschwunden …
   assert.ok(!/<span className="pp-bell" aria-hidden="true">/.test(overview),
     "die dekorative Glocke steht noch dort");
-  // … und an derselben Stelle (innerhalb von .pp-actions) steht die echte Glocke.
-  // Endanker war bis Paket D der „Neue Sendung"-Knopf .pp-cta; der ist entfallen
-  // (dasselbe Ziel steht jetzt als primäre Schnellaktion darunter), deshalb
-  // begrenzt das schließende </header> den Ausschnitt.
-  const start = overview.indexOf('className="pp-actions"');
-  const actions = overview.slice(start, overview.indexOf("</header>", start));
-  assert.ok(start > -1 && actions.length > 0, "der Kopfbereich der Übersicht ist nicht auffindbar");
-  assert.match(actions, /<NotificationBell variant="overview"/, "die Glocke sitzt nicht mehr an ihrer Position");
-  // Genau EINE Identitätsanzeige neben der Glocke, kein zweiter Knopf daneben.
-  assert.match(actions, /<UserChip user=\{user\}/, "der Benutzerchip fehlt im Kopfbereich");
-  assert.ok(!/pp-cta/.test(overview), "der doppelte „Neue Sendung\"-Einstieg ist zurück");
+  // Redesign 2026-10: die Übersicht läuft über den gemeinsamen Seitenkopf. Der
+  // Einstieg „Mitteilungen" und der Benutzerchip stehen in dessen
+  // Utility-Zeile (UtilityCluster) — an derselben Stelle wie auf jeder Seite.
+  const start = overview.indexOf("utility={(");
+  const utility = overview.slice(start, overview.indexOf("</UtilityCluster>", start));
+  assert.ok(start > -1 && utility.length > 0, "die Utility-Zeile der Übersicht ist nicht auffindbar");
+  assert.match(utility, /<NotificationBell variant="overview"/, "„Mitteilungen“ sitzt nicht in der Utility-Zeile");
+  // Genau EINE Identitätsanzeige neben „Mitteilungen".
+  assert.match(utility, /<UserChip user=\{user\}/, "der Benutzerchip fehlt in der Utility-Zeile");
+  // Die Übersicht trägt genau EINE Hauptaktion: „Neue Sendung" (Audit G/H01) —
+  // derselbe Handler wie in der Navigation, kein zweiter Einstieg daneben.
+  assert.ok(!/pp-cta/.test(overview), "die alte Knopffamilie .pp-cta ist zurück");
+  const primaer = overview.match(/className="btn btn-primary"/g) || [];
+  assert.equal(primaer.length, 1, "die Übersicht trägt mehr als eine Hauptaktion");
+  assert.match(overview, /className="btn btn-primary" onClick=\{onNewShipment\}>\s*Neue Sendung/,
+    "die Hauptaktion „Neue Sendung“ nutzt nicht den bestehenden Handler");
   // Sie wurde NICHT in die Sidebar verschoben.
   const sidebar = read("components/layout/DashboardSidebar.jsx");
   assert.ok(!/NotificationBell/.test(sidebar), "die Glocke wurde in die Sidebar verschoben");
@@ -331,7 +341,7 @@ test("26 — es wurde KEINE neue vollständige Desktop-Kopfleiste gebaut", () =>
   assert.ok(!/topbar-brand|hamburger/.test(cluster.slice(0, 400)),
     "der Utility-Cluster ist zu einer vollen Kopfleiste geworden");
   const patterns = read("styles/patterns.css");
-  assert.match(patterns, /\.ce-page-header \{[^}]*max-width: var\(--ce-size-content\)/s,
+  assert.match(patterns, /\.ce-page-header \{[^}]*max-width: calc\(var\(--ce-size-content\) \+ 2 \* var\(--ce-ph-gutter\)\)/s,
     "der Seitenkopf nutzt nicht den gemeinsamen Inhaltsrahmen");
   // Unterhalb von 860 px blendet der Cluster aus — sonst stünde die Glocke
   // gleichzeitig in Topbar und Kopf.
@@ -388,7 +398,8 @@ test("30 — Lade-, Leer- und Fehlerzustand mit erneutem Versuch", () => {
   // Spinners, der Leerzustand eine EmptyState-Fläche. role="status" trägt
   // jetzt die gemeinsame Komponente — die Zusicherung wandert mit.
   assert.match(panel, /<ListSkeleton rows=\{3\}/, "beim ersten Laden fehlt das Skeleton");
-  assert.match(panel, /<EmptyState icon="bell"/, "der Leerzustand nutzt das gemeinsame Muster nicht");
+  // Redesign 2026-10: Leerzustände tragen kein Symbol mehr.
+  assert.match(panel, /<EmptyState title=\{EMPTY_TITLE\} text=\{EMPTY_TEXT\} \/>/, "der Leerzustand nutzt das gemeinsame Muster nicht");
   assert.match(stateView, /className="ce-skeleton-list" role="status"/, "ListSkeleton meldet sich nicht als Status");
   // Ein Ladefehler darf bereits geladene Meldungen NICHT ersetzen.
   assert.match(panel, /error && items\.length > 0/, "der Fehler ersetzt weiterhin die geladene Liste");
@@ -430,7 +441,6 @@ test("33 — das Stylesheet nutzt Layout-Tokens statt eigener Farbwerte", () => 
   // Paket D: das Panel führt gar kein Farbliteral mehr (vorher zwei — das Weiß
   // des Badges und der Fallback des Warntons).
   assert.deepEqual(literals, [], `zu viele Farbliterale: ${literals.join(", ")}`);
-  assert.match(css, /var\(--surface\)/);
   assert.match(css, /var\(--ce-color-surface\)/);
   assert.match(css, /var\(--ce-color-border-subtle\)/);
   // Der Akzent läuft über die Foundation-Markenrollen: Fläche über --ce-color-brand,

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { BrandLogo } from "../ui/BrandLogo";
 import { comparisonLoadingView, msUntilNextComparisonPhase } from "../../utils/comparisonLoadingView.mjs";
 
 /* Ladeoverlay des Angebotsvergleichs — „Neue Sendung" und Preisrechner.
@@ -18,7 +17,11 @@ import { comparisonLoadingView, msUntilNextComparisonPhase } from "../../utils/c
  *
  * Die Live-Region bleibt dauerhaft im DOM und ist leer, solange nichts lädt:
  * Screenreader melden verlässlich nur Änderungen an einer Region, die es schon
- * gab — eine samt Inhalt eingefügte Region wird oft verschluckt. */
+ * gab — eine samt Inhalt eingefügte Region wird oft verschluckt.
+ *
+ * Redesign 2026-10: ruhig und ohne Bildmarke — ein schlichter Ladebogen als
+ * funktionale Rückmeldung, darüber nichts Dekoratives; die Aussage tragen Titel
+ * und Satz der jeweiligen Wartestufe. Das frühere Signet (alte Marke) entfällt. */
 
 function Ladeanzeige() {
   const [verstrichenMs, setVerstrichenMs] = useState(0);
@@ -48,7 +51,6 @@ function Ladeanzeige() {
       <div className="cmp-loading-card">
         <div className="cmp-loading-mark" aria-hidden="true">
           <span className="cmp-loading-ring" />
-          <BrandLogo variant="signet" tone="standard" alt="" className="cmp-loading-signet" />
         </div>
         <p className="cmp-loading-title">{stufe.title}</p>
         <p className="cmp-loading-text">{stufe.text}</p>

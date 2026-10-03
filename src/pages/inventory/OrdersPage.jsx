@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog } from "../../components/inventory/InventoryShared";
 import { OrderCreateForm } from "../../components/inventory/OrderCreateForm";
@@ -25,7 +24,14 @@ const PAGE_LIMIT = 25;
    Beim Anlegen wird Bestand reserviert. Das passiert vollständig serverseitig
    und in EINER Transaktion: ist eine Position nicht deckbar, entsteht gar kein
    Auftrag. Die Anzeige „Verfügbar: X" im Formular ist Orientierung — ob
-   reserviert werden darf, entscheidet ausschließlich das Backend. */
+   reserviert werden darf, entscheidet ausschließlich das Backend.
+
+   Redesign 2026-10: Suche und Status in einer Zeile; im Leerzustand steht die
+   Hauptaktion „Auftrag erstellen" GENAU EINMAL (im Leerzustand, nicht
+   zusätzlich im Kopf), „Neue Sendung ohne Auftrag" ist eine Textaktion.
+   „Versand vorbereiten" bleibt die hervorgehobene Zeilenaktion — als
+   Secondary, nicht als gefüllter Primärknopf in jeder Zeile. Statusbegriffe
+   stehen ohne Punkt. */
 export default function OrdersPage({ utility, onNavigate, onPrepareShipment, initialFilter = null, onFilterApplied }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -135,19 +141,23 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
   };
 
   const hatFilter = Boolean(debouncedQ || statusFilter);
+  // Leere Liste ohne Filter: der Leerzustand trägt die EINE Hauptaktion —
+  // derselbe Primärknopf im Kopf darüber wäre eine gleichwertige Dopplung
+  // (Auditbefund E09). Der Handler ist in beiden Fällen derselbe.
+  const leer = !loading && items.length === 0 && !hatFilter;
+  const neuerAuftrag = () => { setFormError(""); setFormOpen(true); };
 
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title="Aufträge"
         subtitle="Verwalten Sie Aufträge mit Artikeln und bereiten Sie daraus direkt Sendungen vor."
         utility={utility}
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => { setFormError(""); setFormOpen(true); }}>
-            <Icon n="plus" s={16} />Auftrag erstellen
+        actions={!leer && (
+          <button type="button" className="btn btn-primary" onClick={neuerAuftrag}>
+            Auftrag erstellen
           </button>
-        }
+        )}
       />
 
       <InlineSuccess text={success} />
@@ -173,18 +183,17 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
 
       {loading && <ListSkeleton rows={5} label="Aufträge werden geladen" />}
 
-      {!loading && items.length === 0 && !hatFilter && (
+      {leer && (
         /* Ein Auftrag ist kein Pflichtweg — wer nur etwas verschicken will, kommt
            ohne ihn aus. Der zweite Weg steht deshalb NUR hier im leeren Zustand
            und nicht dauerhaft auf der Seite. */
         <EmptyState
-          icon="cart"
           title="Noch keine Aufträge vorhanden"
           text="Erstellen Sie einen Auftrag, wenn Sie Artikel für einen Empfänger reservieren und anschließend gemeinsam versenden möchten."
-          action={<button type="button" className="btn btn-primary" onClick={() => setFormOpen(true)}>Auftrag erstellen</button>}
+          action={<button type="button" className="btn btn-primary" onClick={neuerAuftrag}>Auftrag erstellen</button>}
           secondaryAction={onNavigate && (
             <button type="button" className="btn btn-link" onClick={() => onNavigate("new")}>
-              Neue Sendung ohne Auftrag<Icon n="arrowRight" s={16} />
+              Neue Sendung ohne Auftrag
             </button>
           )}
         />
@@ -236,9 +245,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
                       <td className="ce-num">{formatUnits(o.openQuantity)}</td>
                       <td className="ce-num">{formatUnits(o.shippedQuantity)}</td>
                       <td>
-                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
-                          <span className="badge-dot" aria-hidden="true" />{text}
-                        </span>
+                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                       </td>
                       <td className="inv-cell-meta">{dateShort(o.createdAt)}</td>
                       <td className="ce-col-actions">
@@ -248,7 +255,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
                             Rauschen. */}
                         <div className="inv-row-actions">
                           {isOrderShippable(o) && (
-                            <button type="button" className="btn btn-sm btn-primary" disabled={preparingId === o.id}
+                            <button type="button" className="btn btn-sm btn-outline" disabled={preparingId === o.id}
                                     onClick={() => versandVorbereiten(o)}>
                               {preparingId === o.id ? "Wird vorbereitet …" : "Versand vorbereiten"}
                             </button>
@@ -269,9 +276,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
                 <li key={o.id} className="ce-card inv-card">
                   <div className="inv-card-head">
                     <button type="button" className="btn btn-link inv-card-title" onClick={() => navigate(`/inventory/orders/${o.id}`)}>{o.orderNumber}</button>
-                    <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
-                      <span className="badge-dot" aria-hidden="true" />{text}
-                    </span>
+                    <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                   </div>
                   <div className="inv-cell-meta">
                     {[o.recipient?.company || o.recipient?.fullName || "—", o.recipient?.city,
@@ -284,7 +289,7 @@ export default function OrdersPage({ utility, onNavigate, onPrepareShipment, ini
                   </dl>
                   <div className="inv-card-actions">
                     {isOrderShippable(o) && (
-                      <button type="button" className="btn btn-sm btn-primary" disabled={preparingId === o.id} onClick={() => versandVorbereiten(o)}>
+                      <button type="button" className="btn btn-sm btn-outline" disabled={preparingId === o.id} onClick={() => versandVorbereiten(o)}>
                         Versand vorbereiten
                       </button>
                     )}

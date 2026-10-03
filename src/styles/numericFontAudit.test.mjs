@@ -116,8 +116,12 @@ function regelRuempfe(css, selektor) {
 
 test("5 — bekannte Ziffern-/Geschäftsnummernselektoren verwenden var(--ce-font-numeric)", () => {
   const SELEKTOREN = [
-    ["overview.css", ".pp-step-no"],
-    ["overview.css", ".pp-car-time"],
+    // Redesign 2026-10: Schrittnummern, Kennzahlen, Beträge der Übersicht
+    // (die frühere Carrier-Bühne mit .pp-car-time ist entfallen).
+    ["overview.css", ".ov-step-no"],
+    ["overview.css", ".ov-kpi-value"],
+    ["overview.css", ".ov-list-num"],
+    ["overview.css", ".ov-inv-amount"],
     ["dashboard.css", ".inv-cell-number-value"],
     ["dashboard-premium.css", ".ce-mail-dialog-addr"],
     ["drafts.css", ".dft-cell-route"],
@@ -133,7 +137,9 @@ test("5 — bekannte Ziffern-/Geschäftsnummernselektoren verwenden var(--ce-fon
     ["calculator.css", ".blsum-price-gross"],
     ["calculator.css", ".price-drift-old"],
     ["calculator.css", ".price-drift-new"],
-    ["calculator.css", ".tracking-id-value"],
+    // Der Tracking-Block ist mit dem Redesign aus calculator.css nach
+    // dashboard.css gewandert (Sendungsverfolgung, nicht Preisrechner).
+    ["dashboard.css", ".tracking-id-value"],
     ["admin.css", ".adm-action-raw"],
     ["admin.css", ".adm-party-id"],
     ["admin.css", ".adm-mono"],
@@ -178,12 +184,18 @@ test("6 — Ausrichtung (tabular-nums) bleibt an spaltenkritischen Stellen erhal
   }
 });
 
-test("7 — KPI-Karten bleiben unverändert (kein --fm, keine Regression aus vorheriger Session)", () => {
+test("7 — das Kennzahlenband läuft in DM Sans (kein --fm, keine Regression)", () => {
+  // Redesign 2026-10: die vier KPI-Karten sind ein flaches Kennzahlenband
+  // (.ov-kpis). Der Wert läuft über die Zahlenrolle — DM Sans, tabellarisch.
   const overview = read(path.join(SRC, "styles", "overview.css"));
-  const kpiStart = overview.indexOf(".pp-kpis");
-  const kpiSektion = overview.slice(kpiStart, overview.indexOf(".pp-sec {", kpiStart));
+  const kpiStart = overview.indexOf(".ov-kpis");
+  assert.ok(kpiStart > -1, "das Kennzahlenband fehlt");
+  const kpiSektion = overview.slice(kpiStart, overview.indexOf(".ov-mod-grid", kpiStart));
   assert.ok(!/var\(--fm\)/.test(kpiSektion), "KPI-Sektion darf --fm nicht referenzieren");
-  assert.match(kpiSektion, /\.knum\s*\{[^}]*font-family:\s*var\(--fs\)/, "KPI-Wert muss weiterhin --fs (DM Sans) nutzen");
+  assert.match(kpiSektion, /\.ov-kpi-value\s*\{[^}]*font-family:\s*var\(--ce-font-numeric\)/,
+    "KPI-Wert muss die Zahlenrolle (DM Sans) nutzen");
+  assert.match(kpiSektion, /\.ov-kpi-value\s*\{[^}]*font-variant-numeric:\s*tabular-nums/,
+    "KPI-Wert muss tabellarische Ziffern nutzen");
 });
 
 test("8 — DM-Mono-Fontdateien sind aus dem Repository entfernt", () => {

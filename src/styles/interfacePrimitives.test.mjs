@@ -230,6 +230,7 @@ test("5 — alle Eingaben tragen die interaktive Rahmenfarbe", () => {
 test("6 — der Fokusstandard läuft über die Foundation-Tokens", () => {
   assert.equal(tok("ce-focus-ring"), "2px solid var(--ce-color-border-focus)");
   assert.equal(tok("ce-focus-ring-offset"), "2px");
+  // Der Fokus läuft im Markenindigo (#5367e8) — auf Weiß 4,69:1 (WCAG 1.4.11).
   assert.equal(tok("ce-color-border-focus"), "#5367e8");
 
   // Grundlinie mit Spezifität 0 deckt alles Fokussierbare ab.
@@ -286,9 +287,11 @@ test("7 — die Primitives verwenden nur die definierten Radiuswerte", () => {
       assert.ok(erlaubt.has(wert), `${r.selektor}: Radius ${wert} liegt außerhalb der Skala`);
     }
   }
-  // Buttons und Eingaben tragen exakt md.
+  // Buttons und Eingaben tragen exakt md — Redesign 2026-10: 8 px
+  // (Controls/Badges 8, Karten/Tabellen/Dialoge 12).
   assert.match(buttonRegeln.find((r) => r.selektor === ".btn").body, /border-radius:\s*var\(--ce-radius-md\)/);
-  assert.equal(tok("ce-radius-md"), "12px");
+  assert.equal(tok("ce-radius-md"), "8px");
+  assert.equal(tok("ce-radius-lg"), "12px");
   // Badges tragen sm (8px) — kein Pill.
   assert.match(primitivRegeln.find((r) => r.selektor === ".badge").body, /border-radius:\s*var\(--ce-radius-sm\)/);
   assert.equal(tok("ce-radius-sm"), "8px");
@@ -296,13 +299,14 @@ test("7 — die Primitives verwenden nur die definierten Radiuswerte", () => {
 
 /* ══════════ 8 — Statusbadges ═════════════════════════════════════════════ */
 
-test("8 — Badges tragen einen Statuspunkt und genau die zehn Statusgruppen", () => {
+test("8 — Badges sind ruhige Statusmarken ohne Punkt, genau die zehn Statusgruppen", () => {
   const basis = primitivRegeln.find((r) => r.selektor === ".badge");
   assert.ok(basis, ".badge fehlt");
   assert.match(basis.body, /min-height:\s*24px/, "Kunde: mindestens 24px");
-  assert.match(basis.body, /font-size:\s*var\(--ce-text-label-size\)/);
-  assert.equal(tok("ce-text-label-size"), "12px");
-  assert.equal(tok("ce-text-label-weight"), "600");
+  // Redesign 2026-10: eigene Badge-Rolle (12/18 500) statt der Label-Rolle.
+  assert.match(basis.body, /font-size:\s*var\(--ce-text-badge-size\)/);
+  assert.equal(tok("ce-text-badge-size"), "12px");
+  assert.equal(tok("ce-text-badge-weight"), "500");
   assert.doesNotMatch(basis.body, /white-space:\s*nowrap/, "lange deutsche Begriffe müssen umbrechen dürfen");
   // Seit der Responsive-Härtung ist das Badge eine EINHEIT: Umbruch nur an
   // Wortgrenzen. Das frühere `overflow-wrap: anywhere` senkte die
@@ -312,11 +316,11 @@ test("8 — Badges tragen einen Statuspunkt und genau die zehn Statusgruppen", (
   assert.match(basis.body, /overflow-wrap:\s*normal/);
   assert.doesNotMatch(basis.body, /overflow-wrap:\s*anywhere/);
 
-  // Statuspunkt ist Pflicht.
-  const punkt = primitivRegeln.find((r) => r.selektor === ".badge::before");
-  assert.ok(punkt, "der Statuspunkt (.badge::before) fehlt");
-  assert.match(punkt.body, /border-radius:\s*var\(--ce-radius-full\)/);
-  assert.match(punkt.body, /background:\s*currentColor/);
+  // Redesign 2026-10: der Status steht als WORT auf getönter Fläche — der
+  // frühere Statuspunkt (.badge::before) ist als dekoratives Zeichen entfallen.
+  // Die Bedeutung trägt der Begriff, nie die Farbe allein (WCAG 1.4.1).
+  assert.ok(!primitivRegeln.some((r) => /^\.badge::?before$/.test(r.selektor)),
+    "der dekorative Statuspunkt (.badge::before) ist zurück");
 
   // Adminstufe.
   assert.match(primitives, /\.adm-shell \.badge \{[^}]*min-height:\s*22px/);

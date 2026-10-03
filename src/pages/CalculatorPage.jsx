@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { Icon } from "../components/ui/Icon";
 import { normalizeCountryCode } from "../utils/countries";
 import { useLaunchScope } from "../hooks/useLaunchScope";
 import { publicCarrierChipLabel, publicCarrierDisplay, publicServiceName } from "../utils/carrierMap";
@@ -613,13 +612,15 @@ export default function CalculatorPage() {
       {/* Ladeoverlay des Vergleichs (Portal an <body>). Solange es steht, ist der
           Seiteninhalt darunter inert und aria-busy. */}
       <OfferComparisonLoadingOverlay active={loading} />
-      {/* .page-body: derselbe Inhaltsrahmen wie jede andere App-Shell-Seite
-          (1240px, Paket B) — .calc-page-wrap bleibt für das vertikale
-          Innenabstandsmaß dieser Seite zuständig, jetzt auf einem eigenen
-          verschachtelten Element statt gemeinsam mit .page-body auf einem
-          Knoten (vermeidet einen Kaskade-Konflikt bei padding-top/-bottom). */}
+      {/* .page-body: derselbe Inhaltsrahmen wie jede andere App-Shell-Seite —
+          .calc-page-wrap bleibt für das vertikale Innenabstandsmaß dieser Seite
+          zuständig, auf einem eigenen verschachtelten Element statt gemeinsam
+          mit .page-body auf einem Knoten (vermeidet einen Kaskade-Konflikt bei
+          padding-top/-bottom). `--calculator` begrenzt die Formularbreite
+          (Redesign 2026-10): Route und Paket werden nicht unnötig über die
+          volle Inhaltsbreite gestreckt; die Angebotsliste darunter bleibt breit. */}
       <div className="page-body">
-        <div className="calc-page-wrap" inert={loading} aria-busy={loading || undefined}>
+        <div className="calc-page-wrap calc-page-wrap--calculator" inert={loading} aria-busy={loading || undefined}>
         <div className="offers-form-section">
 
           {/* ── Obere Premium-Filterleiste: vier Filter nebeneinander (Desktop),
@@ -647,7 +648,7 @@ export default function CalculatorPage() {
 
           {/* ── Versandroute — Land + PLZ ── */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Versandroute</h3></div>
+            <div className="calc-panel-header"><h3>Versandroute</h3></div>
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
 
@@ -655,8 +656,9 @@ export default function CalculatorPage() {
                 <div>
                   <div className="calc-section-title">Herkunft</div>
                   <div className="field">
-                    <label className="field-label">Land</label>
+                    <label className="field-label" htmlFor="calc-from-country">Land</label>
                     <select
+                      id="calc-from-country"
                       className="field-input field-select"
                       value={form.from_country}
                       onChange={e => { upd("from_country", e.target.value); resetResults(); }}
@@ -700,8 +702,9 @@ export default function CalculatorPage() {
                 <div>
                   <div className="calc-section-title">Ziel</div>
                   <div className="field">
-                    <label className="field-label">Land</label>
+                    <label className="field-label" htmlFor="calc-to-country">Land</label>
                     <select
+                      id="calc-to-country"
                       className="field-input field-select"
                       value={form.to_country}
                       onChange={e => { upd("to_country", e.target.value); resetResults(); }}
@@ -747,39 +750,57 @@ export default function CalculatorPage() {
 
           {/* ── Paketdaten ── */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="package" s={18} c="var(--ce-color-brand-ink)" /><h3>Paketdaten</h3></div>
+            <div className="calc-panel-header"><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys unverändert). Anzahl = Anzahl identischer Pakete
                   (pro Paket: Gewicht + Maße), nur an /calculate-price. */}
               {/* Jedes Paketfeld kann seinen eigenen Fehler tragen (markiert,
                   beschrieben, per aria-describedby verbunden und anspringbar). */}
+              {/* Dieselbe Feldsprache wie „Neue Sendung" (Redesign 2026-10): die
+                  Einheit steht nicht mehr im sichtbaren Beschriftungstext, sondern
+                  als Suffix rechts im Feld (dekorativ, aria-hidden); vorgelesen
+                  wird sie über den unsichtbaren Labelzusatz. IDs, Werte, Fehler-
+                  und Hinweisverknüpfung sind unverändert. */}
               <div className="field-row field-row-5">
                 {[
                   // Die Beispiele sind PLACEHOLDER, keine Werte. Eine nackte „5"
                   // in einem Zahlenfeld ist von einer echten Eingabe nicht zu
                   // unterscheiden — deshalb steht „z. B." davor.
-                  { key: "packageCount", label: "Anzahl *",     ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
-                  { key: "weight",       label: "Gewicht kg *", ph: "z. B. 5"  },
-                  { key: "length",       label: "Länge cm *",   ph: "z. B. 30" },
-                  { key: "width",        label: "Breite cm *",  ph: "z. B. 20" },
-                  { key: "height",       label: "Höhe cm *",    ph: "z. B. 15" },
-                ].map(({ key, label, ph, hint, extra }) => {
+                  { key: "packageCount", label: "Anzahl",  ph: "1",  hint: "Identische Pakete", extra: { min: "1", max: "99", step: "1" } },
+                  { key: "weight",       label: "Gewicht", unit: "kg", unitLabel: "in Kilogramm",  ph: "z. B. 5"  },
+                  { key: "length",       label: "Länge",   unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 30" },
+                  { key: "width",        label: "Breite",  unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 20" },
+                  { key: "height",       label: "Höhe",    unit: "cm", unitLabel: "in Zentimetern", ph: "z. B. 15" },
+                ].map(({ key, label, unit, unitLabel, ph, hint, extra }) => {
                   const err = fieldErrors[key];
                   const a11y = fieldErrorProps(key, err);
+                  const eingabe = (
+                    <input
+                      id={`calc-${key}`}
+                      className={`field-input${err ? " field-input-error" : ""}`}
+                      type="number"
+                      value={form[key]}
+                      onChange={e => upd(key, e.target.value)}
+                      placeholder={ph}
+                      aria-required="true"
+                      {...(extra || {})}
+                      {...a11y.input}
+                    />
+                  );
                   return (
-                    <div className="field" key={key}>
-                      <label className="field-label" htmlFor={`calc-${key}`}>{label}</label>
-                      <input
-                        id={`calc-${key}`}
-                        className={`field-input${err ? " field-input-error" : ""}`}
-                        type="number"
-                        value={form[key]}
-                        onChange={e => upd(key, e.target.value)}
-                        placeholder={ph}
-                        {...(extra || {})}
-                        {...a11y.input}
-                      />
+                    <div className={`field${unit ? " ce-field--has-unit" : ""}`} key={key}>
+                      <label className="field-label" htmlFor={`calc-${key}`}>
+                        {label}
+                        {unitLabel && <span className="sr-only"> {unitLabel}</span>}
+                        <span aria-hidden="true"> *</span>
+                      </label>
+                      {unit ? (
+                        <div className="ce-field-control">
+                          {eingabe}
+                          <span className="ce-field-unit" aria-hidden="true">{unit}</span>
+                        </div>
+                      ) : eingabe}
                       {err
                         ? <span className="field-error" id={a11y.errorId}>{err}</span>
                         : (hint && <span className="field-hint">{hint}</span>)}
@@ -788,7 +809,6 @@ export default function CalculatorPage() {
                 })}
               </div>
               <p className="pkg-count-note">
-                <Icon n="info" s={13} c="currentColor" />
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
               </p>
               {volWeight && (
@@ -803,7 +823,7 @@ export default function CalculatorPage() {
           {/* ── Calculate CTA ── */}
           <div className="offers-calc-cta">
             <button ref={calcCtaRef} className="btn btn-primary btn-lg btn-full" onClick={calculate} disabled={loading || !calcValid}>
-              {loading ? <><span className="spinner" /> Berechne…</> : <><Icon n="zap" s={18} /> Angebote vergleichen</>}
+              {loading ? <><span className="spinner" /> Berechne…</> : "Angebote vergleichen"}
             </button>
             {/* Direkt am Aktionsbutton: benennt das Problem und erklärt die
                 Korrektur. Bei mehreren Feldfehlern steht zusätzlich die

@@ -2,7 +2,8 @@
 //
 // Prüft das, was eine reine Quelltextprüfung nicht erreicht:
 //   • dass die Adminnavigation den aktiven Eintrag mehrfach codiert
-//     (Fläche + Kante + Akzentkante), nicht allein über Farbe,
+//     (Fläche + Textfarbe + Schriftschnitt + aria-current), nicht allein über
+//     Farbe (Redesign 2026-10: ohne Akzentkante, wie die Kunden-Sidebar),
 //   • dass der Bestätigungsdialog eine echte Fokusfalle mit Fokusrückgabe hat
 //     und der Fokus beim Öffnen NICHT auf der bestätigenden Aktion liegt,
 //   • dass ein leeres Datumsfeld „TT.MM.JJJJ" zeigt und nicht „mm/dd/yyyy",
@@ -104,15 +105,20 @@ test("1 — der aktive Navigationseintrag ist mehrfach codiert", async () => {
   await aktiv.waitFor({ state: "visible" });
   const stil = await aktiv.evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, border: s.borderTopColor, shadow: s.boxShadow, weight: s.fontWeight };
+    return { bg: s.backgroundColor, color: s.color, weight: s.fontWeight, current: el.getAttribute("aria-current") };
   });
   const inaktiv = await page.locator(".adm-nitem:not(.adm-nitem-on)").first().evaluate((el) => {
     const s = getComputedStyle(el);
-    return { bg: s.backgroundColor, weight: s.fontWeight };
+    return { bg: s.backgroundColor, color: s.color, weight: s.fontWeight };
   });
   assert.notEqual(stil.bg, inaktiv.bg, "der aktive Eintrag hat keine eigene Fläche");
+  assert.notEqual(stil.color, inaktiv.color, "der aktive Eintrag hat keine eigene Textfarbe");
   assert.notEqual(stil.weight, inaktiv.weight, "der aktive Eintrag hat keinen eigenen Schriftschnitt");
-  assert.match(stil.shadow, /inset/, "die Akzentkante des aktiven Eintrags fehlt");
+  assert.equal(stil.current, "page", "der aktive Eintrag ist nicht semantisch als aktuelle Seite markiert");
+  // Reine Textnavigation: kein Symbol in der Sidebar. Die Marke ist die
+  // Originalkomposition als <img>, kein Inline-SVG.
+  assert.equal(await page.locator(".adm-side svg").count(), 0,
+    "die Adminnavigation trägt wieder Symbole");
   await page.close();
 });
 
@@ -223,10 +229,14 @@ test("5 — die Kennzahlen der Übersicht kommen aus dem Serverzähler", async (
   // exakt die Zähler aus der Pagination, nichts Hochgerechnetes.
   assert.deepEqual(werte.map((w) => w.trim()), ["3", "2", "2", "4", "5"]);
 
-  // Handlungsbedarf wird nicht allein über die Farbe vermittelt.
-  const iconFlaechen = await page.locator(".adm-metric-ic").evaluateAll((els) =>
-    els.map((e) => getComputedStyle(e).backgroundColor));
-  assert.ok(new Set(iconFlaechen).size >= 2, "alle Kennzahlen sehen gleich aus");
+  // Handlungsbedarf wird nicht allein über die Farbe vermittelt — er steht
+  // als WORT in der Zelle (Redesign 2026-10: kein Symbol mehr). Überfällige
+  // Rechnungen (2), Stornierungen (4) und Support (5) haben Bedarf, Kunden
+  // und offene Rechnungen nicht.
+  const flags = await page.locator(".adm-metric").evaluateAll((els) =>
+    els.map((e) => e.querySelector(".adm-metric-flag")?.textContent.trim() || ""));
+  assert.deepEqual(flags, ["", "", "Handlungsbedarf", "Handlungsbedarf", "Handlungsbedarf"],
+    "Handlungsbedarf steht nicht als Text an den betroffenen Kennzahlen");
   await page.close();
 });
 

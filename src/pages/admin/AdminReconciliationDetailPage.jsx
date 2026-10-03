@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
@@ -178,7 +177,7 @@ export default function AdminReconciliationDetailPage() {
 
   const back = (
     <Link to="/admin/reconciliation" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Übersicht
+      Zurück zur Übersicht
     </Link>
   );
 
@@ -196,7 +195,6 @@ export default function AdminReconciliationDetailPage() {
         {back}
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div>
             <div className="empty-title">Dieser Buchungsvorgang wurde nicht gefunden.</div>
             <Link className="btn btn-outline btn-sm" to="/admin/reconciliation">Zurück zur Übersicht</Link>
           </div>
@@ -213,7 +211,7 @@ export default function AdminReconciliationDetailPage() {
             title={loadError || LOAD_ERROR}
             action={(
               <button type="button" className="btn btn-primary btn-sm" onClick={() => load()}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -300,14 +298,12 @@ export default function AdminReconciliationDetailPage() {
   const alertClass = message
     ? (message.type === "success" ? "alert-success" : message.type === "info" ? "alert-info" : "alert-error")
     : "";
-  const alertIcon = message ? (message.type === "success" ? "check" : message.type === "info" ? "info" : "x") : "x";
   const [shipCls, shipLabel] = a.shipmentStatus ? shipmentStatusMeta(a.shipmentStatus) : ["badge-gray", "—"];
 
   return (
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        eyebrow="Buchungsklärung"
         backLink={back}
         title={attemptLabel(a)}
         subtitle={(
@@ -320,19 +316,18 @@ export default function AdminReconciliationDetailPage() {
           <>
             <Badge meta={reconciliationStateMeta(a.state)} />
             <Badge meta={resolutionMeta(a.resolution)} />
-            <span className="adm-chip"><Icon n="calendar" s={13} /> Begonnen {fmtDateTime(a.createdAt)}</span>
+            <span className="adm-chip">Begonnen {fmtDateTime(a.createdAt)}</span>
             {!a.isLatest && <span className="adm-chip">Überholt</span>}
           </>
         )}
         actions={(
           <button type="button" className="btn btn-outline btn-sm" onClick={() => load()} disabled={loading || busy}>
-            <Icon n="refresh" s={14} /> Aktualisieren
+            Aktualisieren
           </button>
         )}
       />
 
       <div className="adm-scope-note" role="note">
-        <Icon n="info" s={18} />
         <div>
           <strong>Hier wird nur festgehalten, was beim Anbieter festgestellt wurde.</strong> Es wird kein
           Anbieter kontaktiert, nichts storniert und nichts erstattet. Jede Entscheidung wird im Admin-Audit
@@ -342,19 +337,18 @@ export default function AdminReconciliationDetailPage() {
 
       {message && (
         <div className={`alert ${alertClass}`} id="recon-message" role={message.type === "error" ? "alert" : "status"} aria-live="polite">
-          <Icon n={alertIcon} s={16} />{message.text}
+          {message.text}
         </div>
       )}
 
       {conflict && (
         <div className="adm-conflict" id="recon-conflict" role="alert" aria-live="assertive">
           <div className="adm-conflict-text">
-            <Icon n="refresh" s={16} />
             <span>{conflict.text} Die Aktion wurde <strong>nicht</strong> ausgeführt.</span>
           </div>
           <div className="adm-conflict-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => load()} disabled={busy}>
-              <Icon n="refresh" s={14} /> Aktuellen Stand laden
+              Aktuellen Stand laden
             </button>
           </div>
         </div>
@@ -363,7 +357,7 @@ export default function AdminReconciliationDetailPage() {
       <div className="adm-cards">
         {/* 1) Entscheidung — zuerst, weil hier gehandelt wird. */}
         <div className="adm-card" id="recon-decision">
-          <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Entscheidung</div>
+          <div className="adm-card-head">Entscheidung</div>
           <div className="adm-card-body">
             {a.resolution && (
               <KV items={[
@@ -375,14 +369,12 @@ export default function AdminReconciliationDetailPage() {
 
             {!a.resolution && !availability.available && !tooEarly && (
               <div className="adm-note adm-note--info adm-recon-unavailable" id="recon-unavailable" role="note">
-                <Icon n="info" s={16} />
                 <span>{AVAILABILITY_TEXT[availability.reason] || AVAILABILITY_TEXT.unknown}</span>
               </div>
             )}
 
             {tooEarly && (
               <div className="adm-note adm-note--warning adm-recon-wait" id="recon-countdown" role="status" aria-live="polite">
-                <Icon n="clockDelay" s={16} />
                 <span>{tooEarlyText(availability.remainingSeconds)}</span>
               </div>
             )}
@@ -456,7 +448,7 @@ export default function AdminReconciliationDetailPage() {
                     type="button" id="recon-confirm-booked" className="btn btn-primary btn-sm"
                     disabled={!bookedReady || busy} onClick={() => setDialog("booked")}
                   >
-                    <Icon n="check" s={14} /> Als gebucht bestätigen
+                    Als gebucht bestätigen
                   </button>
                   <button
                     type="button" id="recon-confirm-not-booked" className="btn btn-outline btn-sm"
@@ -464,7 +456,7 @@ export default function AdminReconciliationDetailPage() {
                     aria-label={portalSperrt ? PORTAL_BLOCKS_RELEASE_TEXT : undefined}
                     onClick={() => setDialog("notBooked")}
                   >
-                    <Icon n="x" s={14} /> Als nicht gebucht bestätigen
+                    Als nicht gebucht bestätigen
                   </button>
                 </div>
                 {portalSperrt && <p className="adm-support-hint">{PORTAL_BLOCKS_RELEASE_TEXT}</p>}
@@ -484,7 +476,7 @@ export default function AdminReconciliationDetailPage() {
                   </select>
                 </div>
                 <button type="button" id="recon-review" className="btn btn-outline btn-sm" onClick={() => perform("review")} disabled={busy}>
-                  <Icon n="clock" s={14} /> Prüfvermerk speichern
+                  Prüfvermerk speichern
                 </button>
               </div>
             )}
@@ -494,7 +486,7 @@ export default function AdminReconciliationDetailPage() {
 
         {/* 2) Vorgang — was beim Anbieter angefragt wurde und was er gesagt hat. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="package" s={17} /> Vorgang</div>
+          <div className="adm-card-head">Vorgang</div>
           <div className="adm-card-body">
             <KV items={[
               ["Anbieter", providerLabel(a.provider)],
@@ -517,7 +509,7 @@ export default function AdminReconciliationDetailPage() {
             liest — und genau sie entscheidet, ob eine Freigabe zulässig ist. */}
         {portal && (
           <div className="adm-card" id="recon-portal">
-            <div className="adm-card-head"><Icon n="truck" s={17} /> Portalvorgang</div>
+            <div className="adm-card-head">Portalvorgang</div>
             <div className="adm-card-body">
               <KV items={[
                 ["Portalservice", portalServiceLabel(portal.portalService)],
@@ -540,7 +532,7 @@ export default function AdminReconciliationDetailPage() {
 
         {/* 3) Sendung und lokaler Stand. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Sendung und lokaler Stand</div>
+          <div className="adm-card-head">Sendung und lokaler Stand</div>
           <div className="adm-card-body">
             <KV items={[
               ["Sendung", a.shipmentId != null
@@ -558,7 +550,7 @@ export default function AdminReconciliationDetailPage() {
 
         {/* 4) Eingefrorener kaufmännischer Stand. */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="euro" s={17} /> Eingefrorener Stand</div>
+          <div className="adm-card-head">Eingefrorener Stand</div>
           <div className="adm-card-body">
             <KV items={[
               ["Kundenpreis brutto", moneyOrDash(a.customerGross)],
@@ -580,7 +572,7 @@ export default function AdminReconciliationDetailPage() {
         {/* 5) Rechnungsabweichung — nur, wenn es einen Befund gibt. */}
         {drift && (
           <div className="adm-card" id="recon-drift">
-            <div className="adm-card-head"><Icon n="invoice" s={17} /> Rechnungsabweichung</div>
+            <div className="adm-card-head">Rechnungsabweichung</div>
             <div className="adm-card-body">
               <KV items={[
                 ["Befund", driftKindLabel(drift.kind)],
@@ -597,7 +589,7 @@ export default function AdminReconciliationDetailPage() {
                   type="button" id="recon-drift-review" className="btn btn-outline btn-sm"
                   onClick={() => setDialog("drift")} disabled={driftReviewed || busy}
                 >
-                  <Icon n="check" s={14} /> {driftReviewed ? "Bereits als geprüft vermerkt" : "Als geprüft markieren"}
+                  {driftReviewed ? "Bereits als geprüft vermerkt" : "Als geprüft markieren"}
                 </button>
               </div>
             </div>
@@ -612,8 +604,6 @@ export default function AdminReconciliationDetailPage() {
           subline={`${attemptLabel(a)} · ${providerLabel(a.provider)}${a.shipmentId != null ? ` · Sendung #${a.shipmentId}` : ""}`}
           note="Die Entscheidung wird im Admin-Audit protokolliert."
           confirmLabel={RECONCILIATION_DIALOGS[dialog].confirm}
-          icon={dialog === "notBooked" ? "x" : "check"}
-          confirmIcon={dialog === "notBooked" ? "x" : "check"}
           danger={dialog === "notBooked"}
           irreversible={dialog === "booked"}
           busy={busy}

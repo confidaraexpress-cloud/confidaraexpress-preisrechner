@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { ErrorState } from "../ui/StateView";
 import { FormAlert } from "../ui/FormAlert";
 import { getSupportRequest, replySupportRequest, confirmSupportViewed } from "../../api/supportApi";
@@ -152,14 +151,14 @@ export function SupportThread({ requestId, onBack }) {
   if (error || !data) {
     return (
       <div className="sup-thread">
-        <button type="button" className="btn btn-outline btn-sm sup-back" onClick={onBack}>
-          <Icon n="chevron" s={14} /> Zurück zur Übersicht
+        <button type="button" className="btn btn-ghost btn-sm sup-back" onClick={onBack}>
+          Zurück zur Übersicht
         </button>
         <ErrorState
           title={error || SUPPORT_DETAIL_ERROR}
           action={(
             <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
           )}
         />
@@ -174,8 +173,8 @@ export function SupportThread({ requestId, onBack }) {
 
   return (
     <div className="sup-thread">
-      <button type="button" className="btn btn-outline btn-sm sup-back" onClick={onBack}>
-        <Icon n="chevron" s={14} /> Zurück zur Übersicht
+      <button type="button" className="btn btn-ghost btn-sm sup-back" onClick={onBack}>
+        Zurück zur Übersicht
       </button>
 
       <div className="ce-card sup-thread-head">
@@ -192,7 +191,7 @@ export function SupportThread({ requestId, onBack }) {
 
       {reopened && (
         <div className="alert alert-success" role="status">
-          <Icon n="shield" s={16} />{SUPPORT_REOPEN_HINT}
+          {SUPPORT_REOPEN_HINT}
         </div>
       )}
 
@@ -241,7 +240,7 @@ export function SupportThread({ requestId, onBack }) {
                 : "Ihre Antwort erreicht unser Supportteam direkt."}
           </span>
           <button type="submit" className="btn btn-primary btn-sm" disabled={!state.valid || sending}>
-            {sending ? <><span className="spinner" /> Wird gesendet …</> : <><Icon n="mail" s={14} /> {SUPPORT_REPLY_SUBMIT}</>}
+            {sending ? <><span className="spinner" /> Wird gesendet …</> : SUPPORT_REPLY_SUBMIT}
           </button>
         </div>
       </form>

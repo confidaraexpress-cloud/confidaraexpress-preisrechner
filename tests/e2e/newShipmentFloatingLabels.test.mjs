@@ -1,14 +1,20 @@
-// Browser-Smokes: innenliegende Beschriftung („Floating Label") auf „Neue Sendung".
+// Browser-Smokes: Beschriftungen auf „Neue Sendung".
+//
+// Redesign 2026-10: „Neue Sendung" nutzt wieder GESTAPELTE Beschriftungen
+// (Label über dem Feld, Masterprompt/Audit H02 „Formularfelder mit festen
+// Labels") — die frühere innenliegende Floating-Variante ist zurückgenommen.
+// Der Dateiname bleibt (er steht in Verträgen und Berichten); geprüft wird der
+// neue Vertrag mit derselben Methode:
 //
 // Echter Dev-Server, echtes Rendering, echte Kaskade. Gemessen wird mit
 // getBoundingClientRect und getComputedStyle — NICHT anhand von Screenshots und
-// nicht anhand des Quelltexts. Der Prototyp steht und fällt mit Geometrie:
+// nicht anhand des Quelltexts:
 //
-//   • liegt die Beschriftung im Ruhezustand tatsächlich IM Feld,
-//   • überlappt sie im Schwebezustand den Feldtext NICHT,
-//   • springt beim Fokussieren nichts (Bounding Box des Feldes unverändert),
+//   • steht die Beschriftung über dem Feld und berührt den Feldtext nie,
+//   • springt beim Fokussieren oder Füllen nichts (Label und Feld bleiben stehen),
 //   • bleibt die Vorschlagsliste der Adressprüfung direkt unter dem Feld,
 //   • kollidiert die Einheit (kg/cm) mit nichts,
+//   • messen die Felder 40 px (44 px bei grobem Zeiger),
 //   • bleibt „Neue Sendung" weiterhin vollständig leer.
 //
 // NIEMALS eine echte Bestellung: alle Backendrufe sind abgefangen, /book
@@ -107,6 +113,7 @@ async function messung(page, id) {
       labelColor: ls ? ls.color : null,
       floating: input.closest(".ce-field--floating")?.classList.contains("is-floating") ?? null,
       hatFloatingKlasse: !!input.closest(".ce-field--floating"),
+      placeholderOpacity: getComputedStyle(input, "::placeholder").opacity,
     };
   }, id);
 }
@@ -164,71 +171,66 @@ test("1 — die frische Seite ist vollständig leer, Labels sind keine Werte", a
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 2 — Ruhezustand: Beschriftung liegt IM Feld ══════════════════ */
+/* ══════════ 2 — gestapelt: die Beschriftung steht ÜBER dem Feld ══════════
+   Redesign 2026-10: vorher lag sie im Ruhezustand IM Feld (Floating Label). */
 
-test("2 — im Ruhezustand liegt die Beschriftung innerhalb der Feldfläche", async () => {
+test("2 — die Beschriftung steht über dem Feld, nicht darin", async () => {
   const { ctx, page } = await neueSeite();
   try {
-    for (const id of ["ns-s-firstName", "ns-weight", "ns-s-zip"]) {
+    for (const id of ["ns-s-firstName", "ns-weight", "ns-s-zip", "ns-s-country"]) {
       const m = await messung(page, id);
       assert.ok(m, `${id} fehlt`);
-      assert.equal(m.hatFloatingKlasse, true, `${id} nutzt die Floating-Variante nicht`);
-      assert.equal(m.floating, false, `${id} steht beim Start bereits im Schwebezustand`);
-      // Beschriftung vollständig innerhalb des Feldkastens.
-      assert.ok(m.label.y > m.input.y, `${id}: Label oberhalb des Feldes (${m.label.y} ≤ ${m.input.y})`);
-      assert.ok(m.label.bottom < m.input.y + m.input.h,
-        `${id}: Label ragt unten aus dem Feld (${m.label.bottom} ≥ ${m.input.y + m.input.h})`);
-      assert.equal(m.labelFontSize, m.inputFontSize,
-        `${id}: im Ruhezustand soll die Beschriftung so groß sein wie der Feldtext`);
+      assert.equal(m.hatFloatingKlasse, false, `${id} nutzt noch die Floating-Variante`);
+      assert.ok(m.label.bottom <= m.input.y + 0.5,
+        `${id}: das Label ragt ins Feld (${m.label.bottom} > ${m.input.y})`);
+      assert.ok(m.input.y - m.label.bottom <= 12, `${id}: das Label steht zu weit über dem Feld`);
+      assert.ok(Math.abs(m.label.x - m.input.x) <= 1, `${id}: Label und Feld fluchten links nicht`);
     }
+    // Label-Stufe 13 px (Foundation --ce-text-label-size), Feldtext 14 px.
+    const m = await messung(page, "ns-s-firstName");
+    assert.equal(m.labelFontSize, "13px");
+    assert.equal(m.inputFontSize, "14px");
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 3 — Fokus hebt an, ohne Layoutsprung ═════════════════════════ */
+/* ══════════ 3 — Fokus: kein Layoutsprung ═════════════════════════════════ */
 
-test("3 — Fokus hebt die Beschriftung an und verschiebt das Feld nicht", async () => {
+test("3 — Fokus verschiebt weder Beschriftung noch Feld", async () => {
   const { ctx, page } = await neueSeite();
   try {
     const vorher = await messung(page, "ns-s-firstName");
     await page.focus("#ns-s-firstName");
     await page.waitForTimeout(250);
     const nachher = await messung(page, "ns-s-firstName");
-
-    assert.equal(nachher.floating, true, "das Label ist nicht angehoben");
-    assert.ok(nachher.label.y < vorher.label.y, "das Label ist nicht nach oben gewandert");
-    assert.equal(nachher.labelFontSize, "12px", "das angehobene Label soll 12 px messen");
-    // Kein Layout Shift: dieselbe Position, dieselbe Größe.
     assert.deepEqual(nachher.input, vorher.input, "die Bounding Box des Feldes hat sich verändert");
+    assert.deepEqual(nachher.label, vorher.label, "die Beschriftung ist gewandert");
   } finally { await ctx.close(); }
 });
 
 /* ══════════ 4 — Wert eingeben, Blur, leeren ══════════════════════════════ */
 
-test("4 — gefüllt bleibt oben, geleert kehrt in die Ruheposition zurück", async () => {
+test("4 — Füllen und Leeren lassen die Beschriftung stehen", async () => {
   const { ctx, page } = await neueSeite();
   try {
+    const ruhe = await messung(page, "ns-s-firstName");
     await page.fill("#ns-s-firstName", "Max");
-    await page.waitForTimeout(200);
-    assert.equal((await messung(page, "ns-s-firstName")).floating, true, "gefüllt + fokussiert");
-
     await page.click("body", { position: { x: 5, y: 5 } });
     await page.waitForTimeout(250);
-    const geblurrt = await messung(page, "ns-s-firstName");
-    assert.equal(geblurrt.floating, true, "gefüllt + unfokussiert muss oben bleiben");
-    assert.equal(geblurrt.labelFontSize, "12px");
+    const gefuellt = await messung(page, "ns-s-firstName");
+    assert.deepEqual(gefuellt.label, ruhe.label, "gefüllt: die Beschriftung ist gewandert");
 
     await page.fill("#ns-s-firstName", "");
     await page.click("body", { position: { x: 5, y: 5 } });
     await page.waitForTimeout(250);
     const leer = await messung(page, "ns-s-firstName");
-    assert.equal(leer.floating, false, "leer + unfokussiert muss zurückkehren");
-    assert.equal(leer.labelFontSize, leer.inputFontSize);
+    assert.deepEqual(leer.label, ruhe.label, "geleert: die Beschriftung ist gewandert");
+    assert.deepEqual(leer.input, ruhe.input);
   } finally { await ctx.close(); }
 });
 
 /* ══════════ 5 — Bounding-Box-Prüfung: kein Textkontakt ═══════════════════ */
 
-test("5 — angehobenes Label und Feldtext überschneiden sich nirgends", async () => {
+test("5 — Beschriftung und Feldtext überschneiden sich nirgends", async () => {
   const { ctx, page } = await neueSeite();
   try {
     const felder = [
@@ -241,35 +243,30 @@ test("5 — angehobenes Label und Feldtext überschneiden sich nirgends", async 
     await page.click("body", { position: { x: 5, y: 5 } });
     await page.waitForTimeout(300);
 
-    for (const [id] of felder) {
+    for (const [id] of [...felder, ["ns-s-country"]]) {
       const m = await messung(page, id);
       const abstand = +(m.textTop - m.label.bottom).toFixed(2);
       assert.ok(abstand >= 2,
         `${id}: nur ${abstand} px zwischen Labelunterkante und Textoberkante`);
     }
-    // Auch der Select — sein Label steht dauerhaft oben.
-    const land = await messung(page, "ns-s-country");
-    assert.equal(land.floating, true, "das Label des Selects muss dauerhaft oben stehen");
-    assert.ok(+(land.textTop - land.label.bottom).toFixed(2) >= 2, "Select: zu wenig Abstand");
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 6 — Platzhalter erscheint erst im Schwebezustand ═════════════ */
+/* ══════════ 6 — Platzhalter ══════════════════════════════════════════════ */
 
-test("6 — der Beispiel-Platzhalter wird erst nach dem Fokussieren sichtbar", async () => {
+test("6 — der Beispiel-Platzhalter ist von Anfang an sichtbar", async () => {
+  // Redesign 2026-10: mit der gestapelten Beschriftung konkurriert der
+  // Platzhalter nicht mehr mit einem Label IM Feld — er ist sofort lesbar und
+  // bleibt durch „z. B." als Beispiel erkennbar, nicht als Wert.
   const { ctx, page } = await neueSeite();
   try {
-    const sichtbarkeit = async () => page.evaluate(() => {
+    const m = await page.evaluate(() => {
       const el = document.getElementById("ns-weight");
-      return { text: el.placeholder, opacity: getComputedStyle(el, "::placeholder").opacity };
+      return { text: el.placeholder, wert: el.value, opacity: getComputedStyle(el, "::placeholder").opacity };
     });
-    const ruhe = await sichtbarkeit();
-    assert.equal(ruhe.text, "z. B. 5", "der Platzhalter muss das Beispiel tragen");
-    assert.equal(ruhe.opacity, "0", "im Ruhezustand darf der Platzhalter nicht sichtbar sein");
-
-    await page.focus("#ns-weight");
-    await page.waitForTimeout(250);
-    assert.equal((await sichtbarkeit()).opacity, "1", "nach Fokus muss das Beispiel erscheinen");
+    assert.equal(m.text, "z. B. 5", "der Platzhalter muss das Beispiel tragen");
+    assert.equal(m.wert, "", "der Platzhalter ist kein Wert");
+    assert.equal(m.opacity, "1", "der Platzhalter muss sichtbar sein");
   } finally { await ctx.close(); }
 });
 
@@ -286,7 +283,7 @@ test("7 — kg und cm stehen rechts im Feld und überdecken den Wert nicht", asy
     const einheiten = await page.evaluate(() => {
       const lies = (id) => {
         const input = document.getElementById(id);
-        const feld = input.closest(".ce-field--floating");
+        const feld = input.closest(".field");
         const unit = feld.querySelector(".ce-field-unit");
         const ir = input.getBoundingClientRect(), ur = unit.getBoundingClientRect();
         const cs = getComputedStyle(input);
@@ -321,7 +318,7 @@ test("7 — kg und cm stehen rechts im Feld und überdecken den Wert nicht", asy
 
 /* ══════════ 8 — Fehlerzustand ════════════════════════════════════════════ */
 
-test("8 — der Fehlerzustand färbt Label und Rahmen und meldet ihn zugänglich", async () => {
+test("8 — der Fehlerzustand färbt den Rahmen und meldet ihn zugänglich", async () => {
   // Auf dieser Seite ist der CTA deaktiviert, solange `getErrors(form)` etwas
   // findet — ein leeres Formular kann also gar nicht abgeschickt werden, und
   // rote Markierungen entstehen NICHT von selbst (bewusstes Produktverhalten,
@@ -362,33 +359,33 @@ test("8 — der Fehlerzustand färbt Label und Rahmen und meldet ihn zugänglich
       return b && !b.disabled;
     }, { timeout: 15000 });
     await cta.click();
-    await page.waitForSelector(".ce-field--floating.is-error", { timeout: 15000 });
+    await page.waitForSelector("#ns-s-zip.field-input-error", { timeout: 15000 });
     await page.waitForTimeout(400);   // der 120-ms-Farbübergang darf nicht mitgemessen werden
 
     const z = await page.evaluate(() => {
       const el = document.getElementById("ns-s-zip");
-      const feld = el.closest(".ce-field--floating");
-      const label = document.querySelector('label[for="ns-s-zip"]');
+      const feld = el.closest(".field");
       const fehler = feld.querySelector(".field-error");
       return {
-        istFehler: feld.classList.contains("is-error"),
+        istFehler: el.classList.contains("field-input-error"),
         ariaInvalid: el.getAttribute("aria-invalid"),
         describedby: el.getAttribute("aria-describedby"),
         fehlerId: fehler ? fehler.id : null,
         fehlerText: fehler ? fehler.textContent : null,
-        labelFarbe: getComputedStyle(label).color,
         rahmen: getComputedStyle(el).borderTopColor,
-        angehoben: feld.classList.contains("is-floating"),
+        fehlerFarbe: getComputedStyle(fehler).color,
+        floating: !!el.closest(".ce-field--floating"),
       };
     });
     assert.equal(z.istFehler, true, "die Fehlerklasse fehlt");
     assert.equal(z.ariaInvalid, "true");
     assert.ok(z.fehlerText && z.fehlerText.length > 0, "kein Fehlertext");
     assert.equal(z.describedby, z.fehlerId, "aria-describedby zeigt nicht auf die Meldung");
-    // #9b3535 = --ce-color-status-error-fg
-    assert.equal(z.labelFarbe, "rgb(155, 53, 53)", "das Label trägt nicht die Fehlerfarbe");
+    // #9b3535 = --ce-color-status-error-fg: Rahmen UND Meldung tragen die
+    // Fehlerrolle; die gestapelte Beschriftung bleibt neutral (Redesign 2026-10).
     assert.equal(z.rahmen, "rgb(155, 53, 53)", "der Rahmen trägt nicht die Fehlerfarbe");
-    assert.equal(z.angehoben, true, "im Fehlerzustand muss das Label oben stehen");
+    assert.equal(z.fehlerFarbe, "rgb(155, 53, 53)", "die Meldung trägt nicht die Fehlerfarbe");
+    assert.equal(z.floating, false, "im Fehlerzustand entsteht keine Floating-Variante");
   } finally { await ctx.close(); }
 });
 
@@ -417,7 +414,7 @@ test("9 — die Vorschlagsliste bleibt direkt unter dem Feld und verdeckt es nic
         labelUeberListe: label.getBoundingClientRect().bottom <= lr.top,
       };
     });
-    // 4 px laut address-validation.css — die höhere Feldfläche verschiebt das nicht.
+    // 4 px laut address-validation.css.
     assert.ok(g.abstand >= 3 && g.abstand <= 6, `Liste steht ${g.abstand} px unter dem Feld`);
     assert.equal(g.breiteGleich, true, "die Liste ist nicht so breit wie das Feld");
     assert.ok(g.eintraege > 0, "keine Vorschläge");
@@ -436,7 +433,7 @@ test("9 — die Vorschlagsliste bleibt direkt unter dem Feld und verdeckt es nic
 
 /* ══════════ 10 — Fokusring bleibt der Standard ═══════════════════════════ */
 
-test("10 — der Fokusring ist unverändert der Foundation-Ring", async () => {
+test("10 — der Fokusring ist der Foundation-Ring", async () => {
   const { ctx, page } = await neueSeite();
   try {
     await page.focus("#ns-s-firstName");
@@ -454,38 +451,36 @@ test("10 — der Fokusring ist unverändert der Foundation-Ring", async () => {
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 11 — Feldhöhe und Typografie ═════════════════════════════════ */
+/* ══════════ 11 — Feldhöhe ════════════════════════════════════════════════ */
 
-test("11 — die Floating-Felder messen 54 px, die Standardfelder bleiben 40 px", async () => {
+test("11 — Neue Sendung und Preisrechner nutzen dasselbe 40-px-Feld", async () => {
+  // Redesign 2026-10: Buttons und Eingaben messen 40 px (44 px bei grobem
+  // Zeiger). Die frühere 54-px-Floating-Fläche und das 44-px-Sondermaß des
+  // Preisrechners (`.offers-form-section .field-input`, 11px 14px) sind
+  // entfallen — beide Seiten zeigen das Feld-Primitive aus forms.css.
   const { ctx, page } = await neueSeite();
   try {
     const hoehen = await page.evaluate(() =>
       ["ns-s-firstName", "ns-s-zip", "ns-s-country", "ns-weight", "ns-packageCount"]
         .map((id) => ({ id, h: Math.round(document.getElementById(id).getBoundingClientRect().height) })));
-    for (const { id, h } of hoehen) assert.equal(h, 54, `${id} misst ${h} px statt 54`);
+    for (const { id, h } of hoehen) assert.equal(h, 40, `${id} misst ${h} px statt 40`);
 
-    // Gegenprobe auf dem PREISRECHNER — der aussagekräftigsten Nachbarseite: sie
-    // besitzt den Scope `.offers-form-section`, mit dem die Floating-Variante
-    // kollidieren könnte, und teilt sich .field-input mit „Neue Sendung".
     await page.goto(`${BASE}/calculator`, { waitUntil: "networkidle" });
     await page.waitForSelector(".field-input", { timeout: 25000 });
     const fremd = await page.evaluate(() => {
-      const el = document.querySelector(".field-input");
+      // Ein Texteingabefeld — ein Select trägt zusätzlich rechts Platz für den Pfeil.
+      const el = document.querySelector("input.field-input");
       return {
         floatingFelder: document.querySelectorAll(".ce-field--floating").length,
-        floating: !!el.closest(".ce-field--floating"),
         h: Math.round(el.getBoundingClientRect().height),
         padding: getComputedStyle(el).padding,
         anzahl: document.querySelectorAll(".field-input").length,
       };
     });
     assert.equal(fremd.floatingFelder, 0, "der Preisrechner hat Floating-Felder bekommen");
-    assert.equal(fremd.floating, false);
     assert.ok(fremd.anzahl > 0, "auf dem Preisrechner wurden gar keine Felder gefunden");
-    // 44 px und `11px 14px` sind der BESTAND des Preisrechners
-    // (.offers-form-section .field-input, calculator.css) — unverändert.
-    assert.equal(fremd.padding, "11px 14px", `Preisrechner-Padding verändert: ${fremd.padding}`);
-    assert.equal(fremd.h, 44, `Preisrechner-Feldhöhe verändert: ${fremd.h} px`);
+    assert.equal(fremd.padding, "8px 12px", `Preisrechner-Padding weicht vom Primitive ab: ${fremd.padding}`);
+    assert.equal(fremd.h, 40, `Preisrechner-Feldhöhe: ${fremd.h} px`);
   } finally { await ctx.close(); }
 });
 
@@ -502,8 +497,8 @@ test("12 — 390 px: kein Überlauf, 44-px-Ziele, keine Überlappung", async () 
     for (const id of felder) {
       const m = await messung(page, id);
       assert.ok(m.input.h >= 44, `${id}: nur ${m.input.h} px hoch (WCAG 2.5.5)`);
-      assert.ok(m.label.bottom < m.input.y + m.input.h, `${id}: Label ragt aus dem Feld`);
-      assert.ok(m.label.x >= m.input.x, `${id}: Label links außerhalb`);
+      assert.ok(m.label.bottom <= m.input.y + 0.5, `${id}: Label ragt ins Feld`);
+      assert.ok(m.label.x >= m.input.x - 1, `${id}: Label links außerhalb`);
     }
     // Der Feldtext ist auf Touch 16 px — sonst zoomt iOS beim Fokussieren.
     const schrift = await page.evaluate(() =>
@@ -533,9 +528,13 @@ test("13 — 460 px: die Paketfelder bleiben zweispaltig und lesbar", async () =
         const el = document.getElementById(id);
         const r = el.getBoundingClientRect();
         const label = document.querySelector(`label[for="${id}"]`);
-        const lr = label.getBoundingClientRect();
+        // Gestapelt ist das Label ein Block über dem Feld (Redesign 2026-10) —
+        // gemessen wird deshalb die Breite seines TEXTES, nicht die des Kastens.
+        const text = document.createRange();
+        text.selectNodeContents(label);
+        const tr = text.getBoundingClientRect();
         return { id, x: Math.round(r.x), w: Math.round(r.width),
-                 labelPasst: lr.width <= r.width - 20 };
+                 labelPasst: tr.width <= r.width && label.scrollWidth <= label.clientWidth + 1 };
       });
     });
     const spalten = new Set(raster.map((r) => r.x));
@@ -547,20 +546,14 @@ test("13 — 460 px: die Paketfelder bleiben zweispaltig und lesbar", async () =
   } finally { await ctx.close(); }
 });
 
-/* ══════════ 14 — Autofill hebt das Label ebenfalls an ════════════════════ */
+/* ══════════ 14 — programmatisch gefüllt (Passwortmanager/Autofill) ═══════ */
 
-test("14 — ein programmatisch gefülltes Feld hebt die Beschriftung an", async () => {
+test("14 — ein programmatisch gefülltes Feld zeigt den Wert, die Beschriftung bleibt stehen", async () => {
   const { ctx, page } = await neueSeite();
   try {
+    const vorher = await messung(page, "ns-s-company");
     // So füllt ein Passwortmanager (und im Regelfall auch Chrome-Autofill): der
     // Wert wird über den nativen Setter gesetzt und ein input-Event ausgelöst.
-    // React nimmt das auf, der Schwebezustand folgt dem Wert.
-    //
-    // Der zweite Weg — Chromes Vorschauphase, in der der Wert NICHT an
-    // JavaScript geht — lässt sich hier nicht auslösen; ihn deckt die
-    // CSS-Ergänzung (:-webkit-autofill/:autofill) ab, deren Existenz
-    // src/utils/floatingFieldUx.test.mjs prüft. Das CSSOM taugt dafür nicht:
-    // im Vite-Dev-Modus liefert document.styleSheets 0 Regeln (gemessen).
     await page.evaluate(() => {
       const el = document.getElementById("ns-s-company");
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
@@ -569,8 +562,8 @@ test("14 — ein programmatisch gefülltes Feld hebt die Beschriftung an", async
     });
     await page.waitForTimeout(300);
     const m = await messung(page, "ns-s-company");
-    assert.equal(m.floating, true, "ein programmatisch gefülltes Feld muss das Label anheben");
-    assert.equal(m.labelFontSize, "12px");
+    assert.equal(await page.inputValue("#ns-s-company"), "Muster GmbH");
+    assert.deepEqual(m.label, vorher.label, "die Beschriftung ist gewandert");
     assert.ok(+(m.textTop - m.label.bottom).toFixed(2) >= 2, "Label berührt den Text");
   } finally { await ctx.close(); }
 });

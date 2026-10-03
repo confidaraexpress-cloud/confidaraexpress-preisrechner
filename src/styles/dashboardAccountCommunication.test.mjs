@@ -311,7 +311,8 @@ test("16 — das Panel verliert bei einem Ladefehler keine bereits geladenen Ein
   assert.match(panel, /\{error && items\.length > 0 && \(/, "der Fehler ersetzt weiterhin die Liste");
   assert.match(panel, /error && items\.length === 0 \?/, "ohne Inhalt fehlt die volle Fehlerfläche");
   assert.match(panel, /<ListSkeleton rows=\{3\}/, "beim ersten Laden fehlt das Skeleton");
-  assert.match(panel, /<EmptyState icon="bell"/, "der Leerzustand nutzt das gemeinsame Muster nicht");
+  // Redesign 2026-10: Leerzustände ohne Symbol.
+  assert.match(panel, /<EmptyState title=\{EMPTY_TITLE\}/, "der Leerzustand nutzt das gemeinsame Muster nicht");
 });
 
 test("17 — es gibt keinen toten „Alle anzeigen\"-Knopf", () => {
@@ -323,11 +324,18 @@ test("17 — es gibt keinen toten „Alle anzeigen\"-Knopf", () => {
 
 /* ══════════ 18/19 — genau eine Glocke, genau ein Avatar ═══════════════ */
 
-test("18 — auf der Übersicht steht genau EINE Glocke, auf Unterseiten ebenfalls", () => {
+test("18 — auf der Übersicht steht genau EIN „Mitteilungen“-Einstieg, auf Unterseiten ebenfalls", () => {
   assert.equal((overview.match(/<NotificationBell/g) || []).length, 1);
   assert.equal((dashPage.match(/<NotificationBell/g) || []).length, 2, "Topbar + Utility-Cluster");
-  // Auf der Übersicht bleibt die Topbar-Glocke aus (sonst zwei auf Mobil).
-  assert.match(dashPage, /\{page !== "overview" && \(\s*<NotificationBell variant="topbar"/);
+  // Redesign 2026-10: auch die Übersicht trägt „Mitteilungen“ in der
+  // Utility-Zeile des gemeinsamen Seitenkopfs, die sich unter 860 px
+  // ausblendet. Die Topbar ist deshalb auf JEDER Seite der mobile Mount —
+  // ohne Sonderfall für die Übersicht. Je Viewport bleibt es EIN Einstieg.
+  assert.match(dashPage, /<div className="topbar-right">\s*<NotificationBell variant="topbar"/,
+    "die Topbar trägt „Mitteilungen“ nicht auf jeder Seite");
+  assert.doesNotMatch(dashPage, /page !== "overview" && \(\s*<NotificationBell/,
+    "die Übersicht ist wieder vom mobilen Mount ausgenommen");
+  assert.match(overview, /<UtilityCluster>/, "die Übersicht nutzt nicht die gemeinsame Utility-Zeile");
 });
 
 test("19 — die mobile Topbar trägt Menü, Wortmarke und Glocke — keinen zweiten Avatar", () => {

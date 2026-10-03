@@ -151,7 +151,7 @@ test("1 — angemeldet: Stand, alle Ereignisse, Abschnitte mit Carrier und Numme
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
 
   const zeile = page.locator("table tbody tr", { hasText: "CE-AB-2026-000100" }).first();
-  await zeile.getByRole("button", { name: "Sendung verfolgen" }).click();
+  await zeile.getByRole("button", { name: "Tracking", exact: true }).click();
   await page.waitForSelector(".shipment-track-detail .track-event", { timeout: 15000 });
   assert.ok(protokoll.includes(`/api/shipments/${ID}/tracking`), "die Live-Ansicht kommt nicht vom Server");
 

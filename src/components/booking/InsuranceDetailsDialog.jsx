@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 import { INSURANCE_DIALOG, INSURANCE_TEXT } from "../../utils/insuranceTerms.mjs";
 import { INSURANCE_INFO_ROUTE } from "../../utils/insuranceInfo.mjs";
 
@@ -39,17 +38,15 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
         aria-describedby="insdlg-intro"
       >
         <div className="ce-dialog-head">
-          <span className="ce-dialog-icon insdlg-icon" aria-hidden="true">
-            <Icon n="shieldCheck" s={20} c="currentColor" />
-          </span>
           <h2 id="insdlg-title" className="ce-dialog-title">{INSURANCE_DIALOG.title}</h2>
+          {/* Text statt Kreuz (Redesign 2026-10); der zugängliche Name enthält das sichtbare Wort. */}
           <button
             type="button"
             className="insdlg-close"
             onClick={onClose}
             aria-label="Versicherungsdetails schließen"
           >
-            <Icon n="x" s={18} c="currentColor" />
+            Schließen
           </button>
         </div>
 
@@ -62,9 +59,6 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
               <ul className="insdlg-list">
                 {section.items.map((item, i) => (
                   <li key={i} className="insdlg-item">
-                    <span className="insdlg-item-ico" aria-hidden="true">
-                      <Icon n="check" s={14} c="currentColor" />
-                    </span>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -73,7 +67,6 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
           ))}
 
           <div className="insdlg-notice">
-            <Icon n="info" s={14} c="currentColor" />
             <div>
               <p className="insdlg-notice-title">{INSURANCE_DIALOG.noticeTitle}</p>
               <ul className="insdlg-notice-list">
@@ -85,7 +78,6 @@ export function InsuranceDetailsDialog({ open, onClose, returnFocusTo }) {
           {/* Interner Weg in die Tiefe — kein externer Absprung. */}
           <Link className="insdlg-more-link" to={INSURANCE_INFO_ROUTE} onClick={onClose}>
             <span>{INSURANCE_TEXT.moreInfo}</span>
-            <Icon n="arrowRight" s={14} c="currentColor" />
           </Link>
         </div>
 

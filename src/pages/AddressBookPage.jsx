@@ -115,6 +115,9 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
   const emptyKind = resolveEmptyStateKind({
     resultCount: items.length, hasQuery: debouncedQ.length > 0, favoritesOnly,
   });
+  // Nachweislich leerer Bereich (fertig geladen, kein Fehler, keine Suche, kein
+  // Filter): dann trägt der Leerzustand die eine Hauptaktion „anlegen".
+  const bereichLeer = !loading && !error && items.length === 0 && emptyKind === "none";
 
   // ── Drawer öffnen (Create/Edit/Duplicate) ─────────────────────────────────
   const openCreate = () => setDrawer({ mode: "create", initialForm: emptyAddressForm(tab === TAB_SENDER ? ROLE_SENDER : ROLE_RECIPIENT), editingId: null });
@@ -212,7 +215,7 @@ export default function AddressBookPage({ onUseForNewShipment, utility }) {
 
   return (
     <>
-      <AddressBookHeader onCreate={openCreate} utility={utility} />
+      <AddressBookHeader onCreate={openCreate} utility={utility} showCreate={!bereichLeer} />
 
       <div className="page-body">
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}

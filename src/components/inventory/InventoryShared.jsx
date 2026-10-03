@@ -1,42 +1,38 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { useDialog } from "../../hooks/useDialog";
 import { formatUnits, isLowStock, stockLevelView } from "../../utils/inventoryView.mjs";
 import { getProducts } from "../../api/inventoryApi";
 
 /* ── Wiederverwendbare Bauteile des Lagerbereichs ────────────────────────────
    Bewusst wenige, dafür überall dieselben. Alle bauen auf den bestehenden
-   Primitives auf (.ce-card, .badge, .btn, .field-input, .ce-dialog*) — es
-   entsteht kein zweites Karten-, Badge-, Button- oder Dialogsystem. */
+   Primitives auf (.badge, .btn, .field-input, .ce-dialog*) — es entsteht kein
+   zweites Karten-, Badge-, Button- oder Dialogsystem. Seit dem Redesign
+   (2026-10) ohne Symbole: Aktionen und Zustände tragen Text. */
 
-/* ── Kennzahlkarte ──
-   Bewusst NICHT die KPI-Karten der Übersicht (.pp-kpi / --ce-kpi-*): jene
-   Familie gilt laut CLAUDE.md ausschließlich für die vier Karten der
-   Kundenübersicht und darf nicht ausgeweitet werden. Diese Karte ist eine
-   gewöhnliche Base Card mit der bestehenden Zahlentypografie. */
-export function InventoryStatCard({ icon, label, value, hint, tone = "", onClick, detailLabel }) {
+/* ── Kennzahlzelle ──
+   Eine Zelle des Kennzahlenbands der Lagerübersicht (.inv-stat-band): eine
+   flache Fläche, Haarlinien zwischen den Zellen, keine Karte je Kennzahl,
+   kein Symbol. Bewusst NICHT die KPI-Familie der Kundenübersicht
+   (--ce-kpi-*): jene gilt ausschließlich für deren Kennzahlenband.
+
+   Aufklappbar ist eine Zelle nur, wenn es etwas zu zeigen gibt — dann ist sie
+   ein echtes <button> (Tastatur, Rolle, Fokusring) und trägt die sichtbare
+   Textaktion „Details anzeigen" statt des früheren Pfeilsymbols. `detailLabel`
+   sagt an, wohin der Klick führt — „128" allein wäre für einen Screenreader
+   keine Handlungsaufforderung; es endet mit demselben sichtbaren Wortlaut. */
+export function InventoryStatCard({ label, value, hint, tone = "", onClick, detailLabel }) {
   const inhalt = (
     <>
-      <div className="inv-stat-head">
-        <span className="inv-stat-ic"><Icon n={icon} s={18} /></span>
-        <span className="inv-stat-label">{label}</span>
-        {onClick && <span className="inv-stat-chevron" aria-hidden="true"><Icon n="chevronRight" s={16} /></span>}
-      </div>
-      <div className="inv-stat-value">{value}</div>
-      {hint && <div className="inv-stat-hint">{hint}</div>}
+      <span className="inv-stat-label">{label}</span>
+      <span className="inv-stat-value">{value}</span>
+      {hint && <span className="inv-stat-hint">{hint}</span>}
+      {onClick && <span className="inv-stat-more">Details anzeigen</span>}
     </>
   );
-  const klassen = `ce-card inv-stat${tone ? ` inv-stat--${tone}` : ""}`;
-  // Ein echtes <button>, kein <div onClick>: Tastaturbedienung (Enter/Space),
-  // Rollenzuordnung und der Fokusring der Foundation kommen sonst nicht von
-  // selbst. `detailLabel` sagt an, wohin der Klick führt — „128" allein wäre für
-  // einen Screenreader keine Handlungsaufforderung.
+  const klassen = `inv-stat${tone ? ` inv-stat--${tone}` : ""}`;
   if (!onClick) return <div className={klassen}>{inhalt}</div>;
-  // `.ce-card-interactive` ist das vorhandene Primitive für eine anklickbare
-  // Karte: Hover, Kante, Tiefe und Fokusring kommen von dort, nicht aus einer
-  // zweiten Eigenbaulösung.
   return (
-    <button type="button" className={`${klassen} ce-card-interactive inv-stat--action`} onClick={onClick} aria-label={detailLabel}>
+    <button type="button" className={`${klassen} inv-stat--action`} onClick={onClick} aria-label={detailLabel}>
       {inhalt}
     </button>
   );
@@ -74,11 +70,8 @@ export function StockBadge({ row }) {
   const level = stockLevelView(row);
   if (!level) return null;
   const [cls, text] = level;
-  return (
-    <span className={`badge ${cls}`}>
-      <span className="badge-dot" aria-hidden="true" />{text}
-    </span>
-  );
+  // Der Zustand steht als Text im Badge — kein dekorativer Punkt.
+  return <span className={`badge ${cls}`}>{text}</span>;
 }
 
 export function StockCells({ stock, minStock }) {
@@ -100,7 +93,6 @@ export function InlineError({ text, onRetry }) {
   if (!text) return null;
   return (
     <div className="inv-inline-error" role="alert">
-      <Icon n="info" s={16} />
       <span>{text}</span>
       {onRetry && <button type="button" className="btn btn-link btn-sm" onClick={onRetry}>Erneut versuchen</button>}
     </div>
@@ -111,7 +103,7 @@ export function InlineSuccess({ text }) {
   if (!text) return null;
   return (
     <div className="inv-inline-success" role="status">
-      <Icon n="check" s={16} /><span>{text}</span>
+      <span>{text}</span>
     </div>
   );
 }
@@ -135,10 +127,12 @@ export function InventoryDialog({ open, onClose, title, children, footer, size =
   return (
     <div className="ce-dialog-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
       <div className={`ce-dialog ce-dialog--${size}${scrollBody ? " inv-dialog-split" : ""}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
-        <div className="ce-dialog-head">
+        <div className="ce-dialog-head inv-dialog-head">
           <h2 className="ce-dialog-title">{title}</h2>
-          <button type="button" className="btn btn-icon btn-sm" aria-label="Dialog schließen" onClick={onClose} disabled={busy}>
-            <Icon n="close" s={18} />
+          {/* Text statt Kreuzsymbol. Der zugängliche Name enthält das sichtbare
+              Wort (WCAG 2.5.3). */}
+          <button type="button" className="btn btn-ghost btn-sm inv-dialog-close" aria-label="Dialog schließen" onClick={onClose} disabled={busy}>
+            Schließen
           </button>
         </div>
         <div className="ce-dialog-body">{children}</div>
@@ -159,7 +153,10 @@ export function InventoryDialog({ open, onClose, title, children, footer, size =
    mitgeschickt.
 
    `filled` markiert einen Abschnitt, der bereits Daten trägt — er startet
-   geöffnet (siehe ProductForm), damit vorhandene Angaben nie versteckt werden. */
+   geöffnet (siehe ProductForm), damit vorhandene Angaben nie versteckt werden.
+
+   Die Klappmarke ist eine kleine, rein per CSS gezeichnete Kennzeichnung
+   (dieselbe wie in der Sidebar) — kein Icon; den Zustand sagt aria-expanded. */
 export function CollapsibleSection({ id, title, hint, open, onToggle, filled, children, disabled }) {
   return (
     <div className={`inv-section${open ? " inv-section--open" : ""}`}>
@@ -173,7 +170,7 @@ export function CollapsibleSection({ id, title, hint, open, onToggle, filled, ch
       >
         <span className="inv-section-label">{title}</span>
         {filled && !open && <span className="inv-section-filled">ausgefüllt</span>}
-        <span className="inv-section-chevron" aria-hidden="true"><Icon n="chevron" s={16} /></span>
+        <span className="inv-section-chevron" aria-hidden="true" />
       </button>
       {open && (
         <div id={id} className="inv-section-body">
@@ -196,7 +193,10 @@ export function CollapsibleSection({ id, title, hint, open, onToggle, filled, ch
    zusammen 336 px messen — die Aktionsspalte bekommt selbst auf 1920 px nur
    271 px. Nebeneinander brachen sie deshalb IMMER um, mit der dritten Aktion
    allein auf einer zweiten, rechtsbündigen Zeile. Sichtbar bleibt die häufigste
-   Aktion; die selteneren stehen mit vollem Namen im Menü. */
+   Aktion; die selteneren stehen mit vollem Namen im Menü.
+
+   Seit dem Redesign (2026-10) ist der Auslöser eine Textaktion „Weitere
+   Aktionen" statt eines Drei-Punkte-Symbols; die Einträge tragen nur Text. */
 export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -269,16 +269,14 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
       <button
         type="button"
         ref={triggerRef}
-        className="btn btn-sm btn-icon"
+        className="btn btn-sm btn-ghost inv-actions-trigger"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        title={label}
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
       >
-        {/* Drei Punkte, kein Zahnrad: hier stehen Vorgänge, keine Einstellungen. */}
-        <Icon n="dots" s={16} />
+        Weitere Aktionen
       </button>
       {open && (
         <div className="inv-actions-menu" role="menu" ref={menuRef} style={{ top: pos.top, left: pos.left }}>
@@ -292,7 +290,6 @@ export function RowActionsMenu({ items, label = "Weitere Aktionen", disabled }) 
               onClick={() => fuehreAus(item)}
               disabled={item.disabled}
             >
-              {item.icon && <Icon n={item.icon} s={15} />}
               <span className="inv-actions-item-text">
                 {item.label}
                 {/* Der Grund steht im Menü selbst und NUR im deaktivierten

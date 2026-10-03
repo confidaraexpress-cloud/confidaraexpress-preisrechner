@@ -437,9 +437,13 @@ test("7 — eine interne Adminnotiz erreicht den Kundenbereich nie", async () =>
 // Unterseite ebenfalls ZWEI (Topbar + Seiten-Mount). Ein reiner Strukturtest
 // findet das nicht, weil beide Elemente im DOM stehen und nur die Media Query
 // über die Sichtbarkeit entscheidet.
+//
+// Redesign 2026-10: auch die Übersicht läuft über den gemeinsamen Seitenkopf,
+// dessen Utility-Zeile unter 860 px entfällt — dort trägt die mobile Topbar
+// „Mitteilungen" auf JEDER Seite, auch auf der Übersicht.
 for (const viewport of [{ width: 1440, height: 1100 }, { width: 390, height: 780 }]) {
   for (const [seite, erwartet] of [
-    ["overview", "ntf-bell-overview"],
+    ["overview", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-overview"],
     ["invoices", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],
     ["shipments", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],
     ["profile", viewport.width <= 860 ? "ntf-bell-topbar" : "ntf-bell-page"],

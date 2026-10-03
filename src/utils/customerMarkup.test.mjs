@@ -566,7 +566,8 @@ test("34 — der bestätigte Prozentwert erscheint im Freischaltungsdialog", () 
   assert.equal(confirmedMarkupLine(null), null);
   // In beiden Dialogen sichtbar.
   assert.match(approveSrc, /const markupLine = confirmedMarkupLine\(pricing\);/);
-  assert.match(approveSrc, /\{markupLine && \(\s*<p className="adm-approve-markup"><Icon n="euro" s=\{15\} \/> \{markupLine\}<\/p>/);
+  // Redesign 2026-10: die Zeile steht als reiner Text (ohne Eurosymbol-Icon).
+  assert.match(approveSrc, /\{markupLine && \(\s*<p className="adm-approve-markup">\{markupLine\}<\/p>/);
   assert.match(listSrc, /const markupLine = confirm\.target === "approved" \? confirmedMarkupLine\(confirmPricing\.data\) : null;/);
 });
 
@@ -752,9 +753,10 @@ test("45 — die bestehende Kundenliste funktioniert unverändert", () => {
 test("46 — die bestehende Kundendetailansicht bleibt vollständig erhalten", () => {
   // Karten und Werte, die die bestehenden Tests absichern (neue Sektionsnamen).
   for (const marker of [
-    /<Icon n="building" s=\{17\} \/> Unternehmen und Kontakt<\/div>/,
-    /<Icon n="card" s=\{17\} \/> Aktivität und Zahlung<\/div>/,
-    /<Icon n="settings" s=\{17\} \/> Technische Informationen/,
+    // Redesign 2026-10: Kartenköpfe ohne Symbol — dieselben Abschnitte.
+    /<div className="adm-card-head">Unternehmen und Kontakt<\/div>/,
+    /<div className="adm-card-head">Aktivität und Zahlung<\/div>/,
+    /Technische Informationen/,
     /Account anonymisieren/,
     /Kunde löschen/,
     /ANONYMIZE_USER/,

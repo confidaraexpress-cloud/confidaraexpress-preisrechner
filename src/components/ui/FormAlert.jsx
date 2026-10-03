@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "./Icon";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Einheitliche Fehler-/Statusmeldung für Formulare.
@@ -15,9 +14,9 @@ import { Icon } from "./Icon";
    möglich.
 
    Nutzt die bestehenden .alert-Klassen (dashboard.css); es kommt nur die
-   Titel-/Textstruktur hinzu.
+   Titel-/Textstruktur hinzu. Seit dem Redesign (2026-10) ohne Symbol: der
+   Ton steckt in Fläche, Kante und Titel, die Aussage im Text.
    ───────────────────────────────────────────────────────────────────────────── */
-const ICONS = { error: "x", info: "info", success: "check", warning: "info" };
 
 export function FormAlert({ tone = "error", title, message, children, className = "", id }) {
   if (!title && !message && !children) return null;
@@ -28,7 +27,6 @@ export function FormAlert({ tone = "error", title, message, children, className 
       className={`alert ${toneClass} form-alert${className ? ` ${className}` : ""}`}
       role="alert"
     >
-      <Icon n={ICONS[tone] || "info"} s={16} />
       <div className="form-alert-body">
         {title && <strong className="form-alert-title">{title}</strong>}
         {message && <span className="form-alert-text">{message}</span>}

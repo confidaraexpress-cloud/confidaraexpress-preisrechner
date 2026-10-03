@@ -1,60 +1,92 @@
-/* ── Benachrichtigungscenter (Glocke + Panel) ───────────────────────────────────
+/* ── Benachrichtigungscenter („Mitteilungen" + Panel) ───────────────────────────
    Eigener Scope `ntf-`, additiv wie die übrigen Bereichs-Stylesheets. Nutzt
-   ausschließlich die App-Layout-Tokens (--surface, --border-*, --text-*,
-   --accent-blue, --shadow-card) — keine eigenen Hex-Werte, keine neuen Verläufe,
-   kein Blau als Fläche.
+   ausschließlich Foundation-Tokens — keine eigenen Hex-Werte, keine Verläufe.
 
-   Die Glocke in der Übersicht behält ihre bisherige Geometrie (44 px, rund),
-   damit die Kopfzeile der Übersicht optisch unverändert bleibt. Sie trägt
-   dafür `.ntf-bell.ntf-bell-overview` (siehe unten) — die frühere, nie
-   gemeinsam gesetzte Regel `.pp-bell` in overview.css ist mit Paket D
-   entfallen.
+   Seit dem Redesign (2026-10) ist der Einstieg ein Knopf „Mitteilungen" mit
+   der Zahl ungelesener Meldungen — keine Glocke, kein runder Iconknopf. Auf
+   dem Desktop steht er als Soft Button, in der mobilen Topbar als
+   Textaktion. Die Klassennamen .ntf-bell* bleiben als Aufrufweg bestehen.
 
-   Bewusst KEINE Animation und kein pulsierender Badge: im App-Chrome ist Bewegung
-   nur als kurze Zustandsreaktion vorgesehen (Hover/Fokus ≤ 200 ms), nie als
-   Ambiente. Der Schutztest appShellChrome.test.mjs prüft das für Sidebar/Topbar. */
+   Bewusst KEINE Animation und kein pulsierender Zähler: Bewegung gibt es nur
+   als kurze Zustandsreaktion (Hover/Fokus), nie als Ambiente. */
 
 .ntf-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
 
-/* ── Knopf ── */
+/* ── Knopf ──
+   Grundform (mobile Topbar): Textaktion auf der Höhenskala (40 px Desktop,
+   44 px Touch), Text in der Primärrolle, Zähler als kleine Fläche in der
+   Markenfarbe daneben. Kein Kreis. Die Desktop-Varianten setzen darauf die
+   Soft-Button-Fläche (unten). */
 .ntf-bell {
   position: relative;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface);
-  color: var(--text-secondary);
-  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ce-space-2);
+  min-height: var(--ce-size-control-md);
+  padding: 0 var(--ce-space-3);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ce-color-text-primary);
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-button-size);
+  font-weight: 500;
+  line-height: var(--ce-text-button-line);
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ntf-bell:hover { background: var(--surface-muted); color: var(--text-primary); }
+.ntf-bell:hover { background: var(--ce-color-surface-hover); }
+.ntf-bell[aria-expanded="true"] { background: var(--ce-color-surface-pressed); }
 .ntf-bell:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.ntf-bell-topbar { min-height: var(--ce-size-touch-target); margin-right: calc(-1 * var(--ce-space-2)); }
 
-/* Übersicht: exakt die bisherige Fläche der dekorativen Glocke. */
-.ntf-bell-overview { width: 44px; height: 44px; }
-/* Mobile Topbar und Unterseiten-Mount: etwas kompakter. */
-.ntf-bell-topbar { width: 36px; height: 36px; }
-.ntf-bell-page   { width: 38px; height: 38px; }
+/* Desktop — Utility-Zeile der Übersicht und der Unterseiten: Soft Button
+   (Feinkorrektur 2026-10). Brand-Soft-Fläche, leise Markenkante, Schrift in
+   der Markentinte, 40 px hoch wie „Neue Sendung" — klar als Aktion lesbar,
+   aber deutlich schwächer als die gefüllte Hauptaktion. Die mobile Topbar
+   behält die Textaktion neben „Menü". Kein Schatten, kein Symbol. */
+.ntf-bell-overview,
+.ntf-bell-page {
+  padding: 0 var(--ce-space-3) 0 var(--ce-space-4);
+  border-color: var(--ce-color-brand-border-soft);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-weight: var(--ce-text-button-weight);
+  transition:
+    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.ntf-bell-overview:hover,
+.ntf-bell-page:hover,
+.ntf-bell-overview[aria-expanded="true"],
+.ntf-bell-page[aria-expanded="true"] {
+  background: var(--ce-color-brand-soft-hover);
+  border-color: var(--ce-color-brand-border);
+}
+/* Ohne Zähler trägt der Knopf rechts denselben Innenabstand wie links. */
+.ntf-bell-overview:not(:has(.ntf-badge)),
+.ntf-bell-page:not(:has(.ntf-badge)) { padding-right: var(--ce-space-4); }
 
-/* ── Badge ── */
-/* font-size 11px ist die Untergrenze des Projekts für Sekundärtexte im Chrome
-   (Test 30 in appShellChrome.test.mjs lässt darunter nichts zu). */
+/* ── Zähler ──
+   Die Zahl steht als Text neben dem Wort (aria-hidden — der zugängliche Name
+   des Knopfes nennt sie ausgeschrieben). Markenfarbe statt Rot: ungelesen ist ein
+   Hinweis, kein Fehler. */
 .ntf-badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: var(--ce-radius-full);
-  background: var(--danger);
+  background: var(--ce-color-brand);
   color: var(--ce-color-text-inverse);
-  font-size: var(--ce-text-micro-size);
-  font-weight: var(--ce-text-micro-weight);
-  line-height: 18px;
-  text-align: center;
-  border: 2px solid var(--surface);
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 /* ── Overlay ──
@@ -74,12 +106,11 @@
 }
 
 /* ── Panel ── */
-/* Fläche, Kante, Radius und Tiefe kommen seit Paket D aus der Foundation:
-   --ce-color-surface / --ce-color-border-subtle / --ce-radius-lg /
-   --ce-elevation-3. Der frühere Radius 14px lag außerhalb der Skala. */
+/* Fläche, Kante, Radius und Tiefe aus der Foundation: ein Dropdown trägt die
+   Dropdownstufe (--ce-elevation-dropdown), nicht die Dialogtiefe. */
 .ntf-panel {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   right: 0;
   z-index: calc(var(--ce-z-dropdown) + 1);
   width: min(380px, calc(100vw - 32px));
@@ -89,7 +120,7 @@
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-lg);
-  box-shadow: var(--ce-elevation-3);
+  box-shadow: var(--ce-elevation-dropdown);
   overflow: hidden;
 }
 .ntf-panel:focus { outline: none; }
@@ -126,17 +157,20 @@
 .ntf-markall:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
 
 .ntf-close {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--ce-space-2);
   border: none;
   background: none;
   border-radius: var(--ce-radius-sm);
-  color: var(--ce-color-text-muted);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  color: var(--ce-color-brand-ink);
   cursor: pointer;
 }
-.ntf-close:hover { background: var(--surface-muted); color: var(--text-primary); }
+.ntf-close:hover { background: var(--ce-color-brand-soft); }
 .ntf-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 1px; }
 
 .ntf-body { overflow-y: auto; }
@@ -192,9 +226,9 @@
   cursor: pointer;
   transition: background-color 140ms ease;
 }
-.ntf-item:hover { background: var(--surface-muted); }
+.ntf-item:hover { background: var(--ce-color-surface-hover); }
 .ntf-item:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
-/* Ungelesen ist mehrfach codiert (Punkt + Schriftschnitt), nicht allein farbig. */
+/* Ungelesen ist mehrfach codiert (Wort „Neu" + Schriftschnitt), nicht allein farbig. */
 .ntf-item-unread .ntf-item-title { font-weight: 600; color: var(--text-primary); }
 
 .ntf-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -209,12 +243,16 @@
   line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-primary);
 }
-.ntf-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand);
+/* „Neu" statt Punkt (Redesign 2026-10): ungelesen steht als Wort da. */
+.ntf-new {
   flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
+  line-height: 18px;
 }
 .ntf-item-sub {
   font-size: var(--ce-text-label-size);
@@ -251,7 +289,7 @@
 
 /* Rechte Gruppe der mobilen Topbar — seit Paket A, Phase 3 trägt sie
    ausschließlich die Glocke; ein zweiter Avatar existiert dort nicht mehr. */
-.topbar-right { display: flex; align-items: center; gap: 10px; }
+.topbar-right { display: flex; align-items: center; gap: var(--ce-space-2); }
 
 /* ── Mobil: das Panel wird zur Vollbreiten-Schublade unter der Topbar ── */
 @media (max-width: 560px) {

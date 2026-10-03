@@ -1,40 +1,39 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { dtDE } from "../../utils/formatters";
 import { fmtDE } from "../../utils/date";
 import { formatFormRecipient, formatFormRoute, formatFormPackage, formFormShippingDate } from "../../utils/formDraftsView.mjs";
 import { DraftActionsMenu } from "./DraftActionsMenu";
 
-// Mobil-Karte für einen frühen Formularentwurf — Route + Empfänger prominent,
-// Typ-Badge (nicht rein farblich), „Fortsetzen" + „Löschen" als vollwertige,
-// gut tappbare Buttons mit Textlabel (kein Icon-only-Versehen).
+// Mobil-Karte für einen frühen Formularentwurf — Empfänger prominent, Route
+// und Paketdaten sekundär, der Typ als Text („Formularentwurf"); „Fortsetzen"
+// und „Weitere Aktionen" als gut tappbare Textbuttons (Redesign 2026-10).
 export function FormDraftCard({ draft, busy, resuming, onDelete, onResume }) {
   const pkg = formatFormPackage(draft);
   const shipDate = formFormShippingDate(draft);
   const anyBusy = busy || resuming;
   return (
     <li className="dft-card">
-      <span className="dft-badge dft-badge-form"><Icon n="form" s={11} c="currentColor" /> Formularentwurf</span>
+      <span className="dft-badge dft-badge-form">Formularentwurf</span>
       <div>
-        <div className="dft-card-route">{formatFormRoute(draft)}</div>
         <div className="dft-card-recipient">{formatFormRecipient(draft)}</div>
+        <div className="dft-card-route">{formatFormRoute(draft)}</div>
       </div>
-      <div className="dft-card-info">
+      <dl className="dft-card-info">
         <div className="dft-card-info-row">
-          <Icon n="package" s={13} />
-          <span>{pkg.countLabel || "—"}{pkg.weightLabel ? ` · ${pkg.weightLabel}` : " · Gewicht noch offen"}</span>
+          <dt>Paketdaten</dt>
+          <dd>{pkg.countLabel || "—"}{pkg.weightLabel ? ` · ${pkg.weightLabel}` : " · Gewicht noch offen"}</dd>
         </div>
         <div className="dft-card-info-row">
-          <Icon n="calendar" s={13} />
-          <span>{shipDate ? fmtDE(shipDate) : "Versanddatum noch offen"}</span>
+          <dt>Versanddatum</dt>
+          <dd>{shipDate ? fmtDE(shipDate) : "Noch offen"}</dd>
         </div>
-      </div>
+      </dl>
       <div className="dft-card-meta">
         {draft.updatedAt ? `Zuletzt bearbeitet: ${dtDE(draft.updatedAt)}` : ""}
       </div>
       <div className="dft-card-actions">
-        <button type="button" className="btn btn-outline dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
-          {resuming ? <span className="spinner spinner-dark spinner-sm" /> : <Icon n="arrowRight" s={15} />} Fortsetzen
+        <button type="button" className="btn btn-outline btn-sm dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
+          {resuming && <span className="spinner spinner-dark spinner-sm" />} Fortsetzen
         </button>
         <DraftActionsMenu draft={draft} busy={busy} disabled={resuming} onDelete={onDelete} />
       </div>

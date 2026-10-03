@@ -168,13 +168,15 @@ test("15 — der Erfolgsdialog verweist auf den Verlauf und bietet den Direktein
   assert.match(dialog, /onClick=\{onClose\}>Schließen<\/button>/);
 });
 
-test("16 — die Sidebar-Supportkarte ist unverändert geblieben", () => {
+test("16 — der Weg zu einer neuen Anfrage bleibt neben dem Weg zu den Vorgängen", () => {
+  // Redesign 2026-10: „Support kontaktieren“ (neue Anfrage) ist eine
+  // Textaktion; „Konto → Supportanfragen“ führt weiterhin zu den bestehenden
+  // Vorgängen. Die Navigation ist textbasiert (kein Iconfeld mehr).
   const sidebar = read("components/layout/DashboardSidebar.jsx");
-  assert.match(sidebar, /className="pp-scard"/);
+  assert.match(sidebar, /className="nitem nitem--utility pp-support-link"/);
   assert.match(sidebar, /setSupportOpen\(true\)/);
   assert.match(sidebar, /SUPPORT_CARD\.action/);
-  // Zusätzlich gibt es jetzt einen Weg zu den bestehenden Vorgängen.
-  assert.match(sidebar, /\{ id: "support", label: "Supportanfragen", icon: "mail" \}/);
+  assert.match(sidebar, /\{ id: "support", label: "Supportanfragen" \}/);
 });
 
 test("17 — Deep-Link und Seite sind verdrahtet", () => {

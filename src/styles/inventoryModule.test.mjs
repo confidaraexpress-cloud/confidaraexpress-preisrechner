@@ -60,7 +60,12 @@ test("1 — die Lagergruppe steht unter Adressbuch und trägt fünf Einträge", 
   assert.ok(idxLager < idxKonto, "die Lagergruppe muss VOR der Kontogruppe stehen");
 
   // Reihenfolge im Markup: Übersicht → Versand → Adressbuch → Lager → Konto.
-  const nav = code.slice(code.indexOf('<nav className="pp-nav">'), code.indexOf("</nav>"));
+  // Redesign 2026-10: das <nav> trägt zusätzlich aria-label="Hauptnavigation" —
+  // gesucht wird deshalb der öffnende Tag mit seiner Klasse, nicht der exakte
+  // Tag-Wortlaut.
+  const navStart = code.search(/<nav className="pp-nav"[^>]*>/);
+  assert.ok(navStart >= 0, "das <nav> der Sidebar fehlt");
+  const nav = code.slice(navStart, code.indexOf("</nav>"));
   const folge = ["OVERVIEW_ITEM", '"shipping"', "ADDRESSBOOK_ITEM", '"warehouse"', '"account"']
     .map((m) => nav.indexOf(m));
   assert.ok(folge.every((v) => v > 0), `nicht alle Bausteine im <nav> gefunden: ${folge}`);
@@ -150,9 +155,15 @@ test("4 — die Lagergruppe hat KEINE eigene Fläche mehr", () => {
   for (const verboten of ["background", "border:", "border-radius", "box-shadow", "backdrop-filter"]) {
     assert.ok(!gruppe.includes(verboten), `die Gruppe darf kein ${verboten} tragen`);
   }
-  // Die Hierarchie kommt aus Abstand und Einrückung.
-  assert.match(gruppe, /margin-top:\s*\d+px/, "der Gruppenabstand fehlt");
-  assert.match(containerRegel(".pp-nav-group-items .nitem"), /padding-inline-start:\s*\d+px/,
+  // Die Hierarchie kommt aus Abstand und Einrückung. Seit dem Redesign
+  // (2026-10) trägt der Gruppenabstand die Navigation selbst (`.pp-nav` mit
+  // `gap` aus der Abstandsskala) statt eines margin-top je Gruppe — dieselbe
+  // Aussage, eine Stelle. Die Einrückung kann ein Token-Ausdruck sein.
+  const navRegel = containerRegel(".pp-nav");
+  assert.ok(navRegel, ".pp-nav fehlt");
+  assert.ok(/(?:^|;)\s*gap:\s*(?:\d+px|var\(--ce-space-\d+\))/.test(navRegel) || /margin-top:\s*\d+px/.test(gruppe),
+    "der Gruppenabstand fehlt");
+  assert.match(containerRegel(".pp-nav-group-items .nitem"), /padding-inline-start:\s*(?:\d+px|calc\([^;]*\)|var\([^;]*\))/,
     "die Einrückung der Gruppeneinträge fehlt");
   // Und weiterhin kein Farbliteral im Sidebarbereich — Farben stehen in variables.css.
   const ohneKommentar = dashboardCss.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -239,12 +250,18 @@ test("10 — Dialoge laufen über den globalen Mechanismus (Fokusfalle, Escape, 
   }
 });
 
-test("11 — Statusbadges tragen IMMER Punkt und Text (nie nur Farbe)", () => {
+test("11 — Statusbadges tragen IMMER Text (nie nur Farbe) und keinen Zierpunkt", () => {
+  // Redesign 2026-10: der Statuspunkt war Dekoration — er wiederholte nur die
+  // Farbe. Die Zusicherung „nie nur Farbe" bleibt unverändert streng: jedes
+  // Badge trägt seinen Zustand als TEXT. Neu verlangt wird die Abwesenheit des
+  // Punktes, damit er nicht als zweites Statussignal zurückkehrt.
   for (const d of [...SEITEN, ...BAUTEILE]) {
     const src = lies(d);
     for (const m of src.matchAll(/<span className={?`?badge[^>]*>/g)) {
-      const rest = src.slice(m.index, m.index + 260);
-      assert.ok(rest.includes("badge-dot"), `${d}: ein Badge ohne Punkt bei „${m[0].slice(0, 60)}“`);
+      const ende = src.indexOf("</span>", m.index + m[0].length);
+      const inhalt = src.slice(m.index + m[0].length, ende);
+      assert.ok(!inhalt.includes("badge-dot"), `${d}: ein Badge mit Zierpunkt bei „${m[0].slice(0, 60)}“`);
+      assert.ok(/\S/.test(inhalt.replace(/<[^>]+>/g, "")), `${d}: ein Badge ohne Text bei „${m[0].slice(0, 60)}“`);
     }
   }
 });
@@ -305,7 +322,10 @@ test("16 — Tabelle und Karten schalten bei realer Contentbreite um, nicht bei 
 test("17 — unter 860 px erreicht jedes Bedienelement 44 px (WCAG 2.5.5)", () => {
   const block = inventoryCss.slice(inventoryCss.indexOf("@media (max-width: 860px)"));
   assert.ok(block.includes("min-height: 44px"), "die Trefferflächenregel fehlt");
-  for (const sel of ["inv-row-actions", "inv-card-actions", "inv-form-actions", "inv-quick-row"]) {
+  // Die frühere Schnellaktionszeile (.inv-quick-row) ist mit dem Redesign in
+  // den Seitenkopf gewandert; dort greift die globale 44-px-Regel für
+  // `.main-content .btn` (responsive.css). Geprüft bleiben die Bereichsflächen.
+  for (const sel of ["inv-row-actions", "inv-card-actions", "inv-form-actions", "inv-picker-item"]) {
     assert.ok(block.includes(sel), `${sel} bleibt unter 44 px`);
   }
 });

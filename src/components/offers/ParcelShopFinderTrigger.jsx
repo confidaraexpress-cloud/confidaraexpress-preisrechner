@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { Icon } from "../ui/Icon";
 import { useParcelShopFinder } from "../../context/ParcelShopFinderContext";
 import { offerSupportsAccessPointSearch, publicCarrierDisplay, publicServiceName } from "../../utils/carrierMap";
 
@@ -18,9 +17,9 @@ import { offerSupportsAccessPointSearch, publicCarrierDisplay, publicServiceName
    Carrier-Suchcode). Kein deaktivierter Knopf, kein „nicht verfügbar“ — ein
    Einstieg, der nichts öffnet, ist schlechter als gar keiner.
 
-   Das Icon kommt aus dem projekteigenen Iconsystem (components/ui/Icon.jsx).
-   Eine externe Iconbibliothek wird hier NICHT eingeführt; das Projekt hat
-   lucide-react bewusst entfernt und verbietet es über mehrere Tests. */
+   Reine Textaktion (Redesign 2026-10): kein Standortsymbol. Eine externe
+   Iconbibliothek wird hier NICHT eingeführt; das Projekt hat lucide-react
+   bewusst entfernt und verbietet es über mehrere Tests. */
 
 export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "" }) {
   const finder = useParcelShopFinder();
@@ -48,7 +47,6 @@ export function ParcelShopFinderTrigger({ tariff, senderPrefill, className = "" 
         finder.openFinder({ tariff, senderPrefill, triggerEl: knopfRef.current });
       }}
     >
-      <Icon n="mapPin" s={14} c="currentColor" />
       <span>Paketshops suchen</span>
     </button>
   );

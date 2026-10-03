@@ -1,5 +1,4 @@
 import React, { useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { InsuranceDetailsDialog } from "./InsuranceDetailsDialog";
 import {
@@ -130,9 +129,7 @@ export function InsuranceCoverNotice({ text }) {
   return (
     <div className="booking-insurance-box" role="note">
       <div className="ins-head">
-        <span className="ins-head-title">
-          <Icon n="shieldCheck" s={18} c="currentColor" /> {COVER_INSURANCE_TEXT.sectionTitle}
-        </span>
+        <span className="ins-head-title">{COVER_INSURANCE_TEXT.sectionTitle}</span>
       </div>
       <p className="ins-head-sub" id="ins-cover-notice">{text}</p>
     </div>
@@ -165,9 +162,7 @@ export function InsuranceModule({
   return (
     <div className="booking-insurance-box">
       <div className="ins-head">
-        <span className="ins-head-title">
-          <Icon n="shieldCheck" s={18} c="currentColor" /> {coverModel ? COVER_INSURANCE_TEXT.sectionTitle : INSURANCE_TEXT.sectionTitle}
-        </span>
+        <span className="ins-head-title">{coverModel ? COVER_INSURANCE_TEXT.sectionTitle : INSURANCE_TEXT.sectionTitle}</span>
         <span className="ins-badge-taxfree">steuerfrei</span>
       </div>
       <p className="ins-head-sub">{coverModel ? COVER_INSURANCE_TEXT.sectionIntro : INSURANCE_TEXT.sectionIntro}</p>
@@ -218,10 +213,7 @@ export function InsuranceModule({
               {copy.bullets.length > 0 && (
                 <ul className="ins-card-bullets">
                   {copy.bullets.map((b, i) => (
-                    <li key={i} className="ins-card-bullet">
-                      <span className={`ins-bullet-ico ins-bullet-ico--${b.info ? "info" : "check"}`}>
-                        <Icon n={b.info ? "info" : "check"} s={14} c="currentColor" />
-                      </span>
+                    <li key={i} className={`ins-card-bullet${b.info ? " ins-card-bullet--info" : ""}`}>
                       <span className="ins-bullet-txt">{withAmountNoWrap(b.text)}</span>
                     </li>
                   ))}
@@ -251,7 +243,6 @@ export function InsuranceModule({
                     rel={EXTERNAL_LINK_REL}
                   >
                     <span>{INSURANCE_TEXT.carrierTerms}</span>
-                    <Icon n="external" s={13} c="currentColor" />
                   </a>
                 </span>
               )}
@@ -304,7 +295,6 @@ export function InsuranceModule({
 
           {goodsOverMax && (
             <p className="ins-overmax" role="note">
-              <Icon n="info" s={14} c="currentColor" />
               <span>
                 Der Warenwert liegt über dem maximal versicherbaren Betrag.
                 Bitte wählen Sie einen Versicherungswert bis {money(insuranceValueMax)}.
@@ -357,14 +347,14 @@ export function InsuranceModule({
         <div className="ins-after">
           <div className="ins-status" aria-live="polite">
             {repriceError ? (
-              <span className="ins-status-error"><Icon n="info" s={14} c="currentColor" /> {repriceError}</span>
+              <span className="ins-status-error">{repriceError}</span>
             ) : repriceNotice ? (
               <span className="field-hint" id="ins-reprice-notice">{repriceNotice}</span>
             ) : pending ? (
               <span className="ins-status-loading"><span className="spinner spinner-dark" /> Preis wird aktualisiert…</span>
             ) : repriceConfirmed ? (
               <span className="ins-status-ok">
-                <Icon n="check" s={14} c="currentColor" /> {coverModel ? COVER_INSURANCE_TEXT.confirmed : "Versicherungspreis bestätigt"}
+                {coverModel ? COVER_INSURANCE_TEXT.confirmed : "Versicherungspreis bestätigt"}
               </span>
             ) : null}
           </div>

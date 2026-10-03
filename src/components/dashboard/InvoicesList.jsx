@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { EmptyState, NoResultsState, ErrorState } from "../ui/StateView";
 import { money, dateDE, isoDayDE } from "../../utils/formatters";
 import { InvoicePdfPreviewModal } from "./InvoicePdfPreviewModal";
@@ -25,6 +24,11 @@ import {
 // zentralen View-Model (customerInvoiceView.mjs) — keine eigene Fachlogik hier.
 // „Ansehen"/„Herunterladen" erscheinen AKTIV nur bei serverseitigem
 // download_available === true; die Policy wird NICHT im Frontend rekonstruiert.
+//
+// Redesign 2026-10: der Zahlungsstatus bleibt der EINE Hauptstatus der Zeile
+// (ruhige Statusfläche ohne Punkt). Dokument- und Versandinformation stehen
+// als leise Textzeilen statt als weitere Badgeflächen; die Aktionen sind
+// Textaktionen „Ansehen" und „PDF herunterladen" ohne Symbole.
 
 function StatusPill({ tone, label, title }) {
   return (
@@ -60,7 +64,7 @@ function InvoiceSummaryCard({ invoices, summary, onReload, loading }) {
         </div>
         {typeof onReload === "function" && (
           <button type="button" className="btn btn-outline btn-sm" onClick={onReload} disabled={loading} aria-label="Rechnungsliste aktualisieren">
-            <Icon n="refresh" s={14} /> Aktualisieren
+            Aktualisieren
           </button>
         )}
       </div>
@@ -125,6 +129,13 @@ function PaymentStatusCell({ inv }) {
   return <StatusPill tone={tone} label={label} />;
 }
 
+// Dokumentinformation als ruhige Textzeile(n) — keine zweite Badgefläche neben dem
+// Zahlungsstatus. Der Ton färbt allein den Fehlerfall (critical); alles andere bleibt
+// leiser Sekundärtext.
+function DocumentInfo({ tone, label }) {
+  return <span className={`inv-doc-line inv-doc-line--${tone}`}>{label}</span>;
+}
+
 function DocumentCell({ inv }) {
   const [docTone, docLabel] = documentStatusMeta(inv);
   // Nur der abgeschlossene Versand wird gezeigt. Ein fehlgeschlagener oder noch laufender
@@ -134,8 +145,8 @@ function DocumentCell({ inv }) {
   const sentAt = mail ? formatEmailSentAt(inv.email_sent_at) : "";
   return (
     <div className="inv-doc-cell">
-      <StatusPill tone={docTone} label={docLabel} />
-      {mail && <StatusPill tone={mail[0]} label={mail[1]} />}
+      <DocumentInfo tone={docTone} label={docLabel} />
+      {mail && <DocumentInfo tone={mail[0]} label={mail[1]} />}
       {sentAt && <span className="inv-doc-note">{sentAt}</span>}
     </div>
   );
@@ -150,16 +161,16 @@ function ActionButtons({ inv, downloadingId, onView, onDownload }) {
           {canPreviewInvoice(inv) && (
             <button
               type="button" className="btn btn-ghost btn-sm" onClick={() => onView(inv)}
-              disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} ansehen`} title="Rechnung ansehen"
+              disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} ansehen`}
             >
-              <Icon n="eye" s={14} /> Ansehen
+              Ansehen
             </button>
           )}
           <button
             type="button" className="btn btn-ghost btn-sm" onClick={() => onDownload(inv)}
-            disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`} title="Rechnung als PDF herunterladen"
+            disabled={downloadingId != null} aria-label={`Rechnung ${inv.invoice_number} als PDF herunterladen`}
           >
-            {busy ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Lädt…</> : <><Icon n="download" s={14} /> PDF</>}
+            {busy ? <><span className="spinner spinner-dark spinner-sm" /> Wird geladen …</> : "PDF herunterladen"}
           </button>
         </div>
       </div>
@@ -170,6 +181,8 @@ function ActionButtons({ inv, downloadingId, onView, onDownload }) {
 }
 
 // ── Mobilkarte ───────────────────────────────────────────────────────────────
+// Reihenfolge nach Bedeutung: Nummer und Zahlungsstatus, dann der Betrag, dann
+// die Daten — Dokument- und Versandinformation zuletzt als leiser Text.
 function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
   const [payTone, payLabel] = paymentStatus(inv);
   const p = invoicePeriod(inv);
@@ -182,13 +195,13 @@ function InvoiceCard({ inv, downloadingId, onView, onDownload }) {
         <StatusPill tone={payTone} label={payLabel} />
       </div>
       <dl className="inv-card-kv">
-        <div className="inv-card-kv-row"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
+        <div className="inv-card-kv-row inv-card-kv-row--amount"><dt>Betrag</dt><dd>{formatInvoiceAmount(inv.gross_amount ?? inv.amount, inv.currency)}</dd></div>
+        {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
         <div className="inv-card-kv-row"><dt>Rechnungsdatum</dt><dd>{isoDayDE(p.issuedDay)}</dd></div>
         {p.serviceDay && <div className="inv-card-kv-row"><dt>Leistung</dt><dd>{isoDayDE(p.serviceDay)}</dd></div>}
-        {p.dueDay && <div className="inv-card-kv-row"><dt>Fällig</dt><dd className={p.overdue ? "inv-period-due--overdue" : undefined}>{isoDayDE(p.dueDay)}</dd></div>}
-        <div className="inv-card-kv-row"><dt>Dokument</dt><dd><StatusPill tone={docTone} label={docLabel} /></dd></div>
+        <div className="inv-card-kv-row"><dt>Dokument</dt><dd><DocumentInfo tone={docTone} label={docLabel} /></dd></div>
         {/* Zeile nur bei tatsächlich erfolgtem Versand — kein interner Betriebszustand. */}
-        {mail && <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><StatusPill tone={mail[0]} label={mail[1]} /></dd></div>}
+        {mail && <div className="inv-card-kv-row"><dt>E-Mail</dt><dd><DocumentInfo tone={mail[0]} label={mail[1]} /></dd></div>}
       </dl>
       <div className="inv-card-actions">
         <ActionButtons inv={inv} downloadingId={downloadingId} onView={onView} onDownload={onDownload} />
@@ -280,7 +293,6 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
         <InvoiceSummaryCard invoices={list} summary={summary} onReload={manualReload} loading={loading || reloadBusy} />
         {refreshError && (
           <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} />
             Die Rechnungsliste konnte nicht aktualisiert werden. Die Anzeige zeigt den letzten geladenen Stand — bitte versuchen Sie es erneut.
           </div>
         )}
@@ -303,7 +315,7 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
 
         {downloadError && (
           <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} />{downloadError}
+            {downloadError}
           </div>
         )}
 
@@ -312,10 +324,10 @@ export function InvoicesList({ invoices, summary, loading, error, onReload, onRe
         ) : error ? (
           <ErrorState
             title={error || LOAD_ERROR_TEXT}
-            action={<button type="button" className="btn btn-primary btn-sm" onClick={onRetry}><Icon n="refresh" s={14} /> Erneut versuchen</button>}
+            action={<button type="button" className="btn btn-primary btn-sm" onClick={onRetry}>Erneut versuchen</button>}
           />
         ) : list.length === 0 ? (
-          <EmptyState icon="invoice" title={LIST_EMPTY_TITLE} text={LIST_EMPTY_TEXT} />
+          <EmptyState title={LIST_EMPTY_TITLE} text={LIST_EMPTY_TEXT} />
         ) : filtered.length === 0 ? (
           <NoResultsState
             title={FILTER_EMPTY_TEXT}

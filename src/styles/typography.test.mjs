@@ -7,6 +7,13 @@
 //
 // Bewusst NICHT geprüft: Abstände, Layout, Kartenmaterial, Radien, Schatten —
 // die gehören zu Phase 1/2 und haben dort ihre eigene Governance.
+//
+// Redesign 2026-10: die Skala folgt den freigegebenen Typografierollen
+// (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext
+// 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl
+// 32/38). Cormorant gibt es nur noch im Auth-Bereich. Der Auth-Bereich ist
+// ausdrücklich eingefroren — seine eigenen Größen (11 px Versalzeilen) bleiben
+// unverändert und sind die EINZIGE Ausnahme von der neuen Untergrenze 12 px.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { pruefeImTestlauf } from "../../scripts/governance.mjs";
@@ -47,7 +54,21 @@ function medienbereiche(text) {
   return out;
 }
 
-// Alle font-size-Vorkommen als { datei, zeile, wert, media }.
+// Selektor der Regel, in der eine Fundstelle steht.
+function selektorVor(text, index) {
+  const auf = text.lastIndexOf("{", index);
+  const davor = Math.max(text.lastIndexOf("}", auf), text.lastIndexOf("{", auf - 1));
+  return text.slice(davor + 1, auf).replace(/\s+/g, " ").trim();
+}
+
+// Der eingefrorene Auth-Bereich: auth.css vollständig und jede Regel, deren
+// Selektoren ausschließlich .auth-* ansprechen (z. B. dessen mobile Varianten
+// in responsive.css).
+const AUTH_DATEI = "auth.css";
+const istAuth = (g) => g.datei === AUTH_DATEI
+  || g.selektor.split(",").every((t) => /^\.auth-[\w-]+/.test(t.trim()));
+
+// Alle font-size-Vorkommen als { datei, zeile, wert, media, selektor }.
 function alleGroessen() {
   const out = [];
   for (const [datei, text] of Object.entries(css)) {
@@ -58,6 +79,7 @@ function alleGroessen() {
         zeile: text.slice(0, m.index).split("\n").length,
         wert: parseFloat(m[1]),
         media: bereiche.some(([a, b]) => a <= m.index && m.index <= b),
+        selektor: selektorVor(text, m.index),
       });
     }
   }
@@ -93,17 +115,25 @@ test("1 — es gibt keine Halb-Pixel-Schriftgrößen mehr", () => {
 
 /* ══════════ 2 — Untergrenze 11 px ════════════════════════════════════════ */
 
-test("2 — keine Schriftgröße unter 11 px", () => {
+test("2 — nichts unter 11 px; außerhalb des Auth-Bereichs nichts unter 12 px", () => {
   const treffer = GROESSEN.filter((g) => g.wert < 11)
     .map((g) => `${g.datei}:${g.zeile} (${g.wert}px)`);
   assert.deepEqual(treffer, [], `zu kleine Schrift:\n  ${treffer.join("\n  ")}`);
-  assert.equal(tok("ce-text-micro-size"), "11px", "die kleinste Stufe ist Micro (11px)");
+  // Redesign 2026-10: die kleinste Stufe ist Micro/Caption mit 12 px
+  // (Tabellenkopf, Bildunterschrift, Badge). 11 px bleibt allein dem
+  // eingefrorenen Auth-Bereich.
+  assert.equal(tok("ce-text-micro-size"), "12px", "die kleinste Stufe ist Micro (12px)");
+  assert.equal(tok("ce-text-caption-size"), "12px", "Caption liegt auf 12px");
+  assert.equal(tok("ce-text-badge-size"), "12px", "Badges liegen auf 12px");
+  const klein = GROESSEN.filter((g) => g.wert < 12 && !istAuth(g))
+    .map((g) => `${g.datei}:${g.zeile} ${g.selektor} (${g.wert}px)`);
+  assert.deepEqual(klein, [], `unter 12 px außerhalb von Auth:\n  ${klein.join("\n  ")}`);
 
   const jsx = [];
   for (const pfad of quelldateien()) {
     const inhalt = readFileSync(pfad, "utf8");
     for (const m of inhalt.matchAll(/fontSize:\s*(\d+)(?![\d.])/g)) {
-      if (Number(m[1]) < 11) jsx.push(`${kurz(pfad)}: ${m[1]}px`);
+      if (Number(m[1]) < 12) jsx.push(`${kurz(pfad)}: ${m[1]}px`);
     }
   }
   assert.deepEqual(jsx, [], `zu kleine Inline-Größen: ${jsx.join(", ")}`);
@@ -113,23 +143,38 @@ test("2 — keine Schriftgröße unter 11 px", () => {
 
 test("3 — jede Schriftgröße liegt auf einer definierten Stufe der Skala", () => {
   // Die Skala kennt Desktop- und Mobilwerte; beide sind zulässige Stufen.
-  // Zusätzlich erlaubt: 40px — der Mobilwert der Numeric-Display-Stufe.
+  // Der eingefrorene Auth-Bereich behält seine eigenen Größen (Redesign 2026-10).
   const erlaubt = new Set([...SKALA]);
-  const treffer = GROESSEN.filter((g) => !erlaubt.has(g.wert))
-    .map((g) => `${g.datei}:${g.zeile} (${g.wert}px)`);
+  const treffer = GROESSEN.filter((g) => !erlaubt.has(g.wert) && !istAuth(g))
+    .map((g) => `${g.datei}:${g.zeile} ${g.selektor} (${g.wert}px)`);
   assert.deepEqual(treffer, [], `Größen außerhalb der Skala:\n  ${treffer.join("\n  ")}`);
-  // Die Skala selbst ist vollständig und trägt die vorgegebenen Werte.
+  // Die Skala selbst ist vollständig und trägt die freigegebenen Werte. Die
+  // beiden Display-Stufen sind mit dem Redesign auf den Seitentitel
+  // zurückgeführt — es gibt keine größere Überschrift als den Seitentitel.
   for (const [stufe, desktop, mobil] of [
-    ["display-xl", "52px", "38px"], ["display-l", "36px", "28px"],
-    ["title-page", "24px", "20px"], ["title-section", "20px", "18px"],
+    ["display-xl", "28px", "24px"], ["display-l", "28px", "24px"],
+    ["title-page", "28px", "24px"], ["title-section", "18px", "18px"],
     ["title-card", "16px", "16px"], ["body-l", "15px", "15px"],
     ["body", "14px", "14px"], ["body-s", "13px", "13px"],
-    ["label", "12px", "12px"], ["micro", "11px", "11px"],
-    ["numeric-display", "48px", "40px"],
+    ["label", "13px", "13px"], ["micro", "12px", "12px"],
+    ["numeric-display", "32px", "28px"],
   ]) {
     assert.equal(tok(`ce-text-${stufe}-size`), desktop, `--ce-text-${stufe}-size`);
     assert.equal(tok(`ce-text-${stufe}-size-mobile`), mobil, `--ce-text-${stufe}-size-mobile`);
   }
+  // Rollen ohne Mobilwert.
+  for (const [rolle, wert] of [["caption", "12px"], ["badge", "12px"], ["button", "14px"], ["nav", "14px"]]) {
+    assert.equal(tok(`ce-text-${rolle}-size`), wert, `--ce-text-${rolle}-size`);
+  }
+  assert.equal(tok("ce-text-button-weight"), "600", "Buttons 14/20 600");
+  assert.equal(tok("ce-text-nav-weight"), "500", "Navigation 14/20 500 (Adminbereich, öffentlicher Drawer)");
+  assert.equal(tok("ce-text-nav-weight-active"), "600", "aktive Navigation 600");
+  // Die Kunden-Sidebar trägt seit der Feinkorrektur 2026-10 eine eigene,
+  // präsentere Stufe — auf der Skala (body-l, 15 px), nicht daneben.
+  assert.equal(tok("ce-sidebar-nav-size"), tok("ce-text-body-l-size"), "Kunden-Sidebar auf der Stufe body-l");
+  assert.equal(tok("ce-sidebar-nav-size"), "15px", "Kunden-Sidebar 15 px");
+  assert.equal(tok("ce-sidebar-nav-weight"), "600", "Hauptpunkte der Kunden-Sidebar 600");
+  assert.equal(tok("ce-sidebar-nav-weight-sub"), "500", "Unterpunkte und sekundäre Aktionen 500");
 });
 
 /* ══════════ 4 — Gewicht ══════════════════════════════════════════════════ */
@@ -196,14 +241,14 @@ test("5 — keine neue Verwendung von Libre Franklin", () => {
   }
 });
 
-/* ══════════ 6/7 — Cormorant nur im Kundendisplay ═════════════════════════ */
+/* ══════════ 6/7 — Cormorant nur noch im Auth-Bereich ═════════════════════ */
 
 const CORMORANT_ERLAUBT = new Set([
-  // Seit Paket A, Phase 3 gibt es genau EINEN Kundenseitentitel — die früheren
-  // Eigenköpfe von Adressbuch, Entwürfen und Dashboard-Unterseiten sind auf das
-  // gemeinsame PageHeader-Muster zusammengeführt.
-  ".ce-page-header-title",
-  ".pp-h1",                // Begrüßung der Übersicht
+  // Redesign 2026-10: der Kundenseitentitel (.ce-page-header-title) und die
+  // Begrüßung der Übersicht (.pp-h1, entfallen) laufen in DM Sans. Cormorant
+  // bleibt allein im eingefrorenen Auth-Bereich. Die beiden früheren
+  // Erlaubnisse sind entfallen — eine Erlaubnis für etwas Nichtvorhandenes
+  // erlaubt still auch seine Wiedereinführung (siehe unten).
   ".auth-title",           // Auth-Bereich (eigene Welt)
 ]);
 // Abschlusspaket: `.auth-hero-title` stand hier als Erlaubnis, obwohl die Klasse
@@ -240,22 +285,23 @@ test("7 — das Adminportal ist vollständig Sans", () => {
   const admin = css["admin.css"];
   assert.doesNotMatch(admin, /Cormorant|--ce-font-display|var\(--fd\)/,
     "im Adminbereich gibt es keine Serifen-Titel");
-  // Der Adminseitentitel liegt auf der Page-Title-Stufe (24/20), nicht auf
-  // Display. Seit Paket E kommt er aus dem gemeinsamen Seitenkopf
-  // (.ce-page-header--admin, patterns.css) — die frühere Eigenregel .adm-title
-  // ist mit ihrem letzten Aufrufer entfallen.
+  // Redesign 2026-10: Kunden- und Adminbereich teilen EINEN Seitentitel —
+  // .ce-page-header-title auf der Page-Title-Stufe (28/36, mobil 24/32). Die
+  // Adminvariante ändert nur den Rahmen, keine Schriftrolle.
   const muster = css["patterns.css"];
-  const titel = muster.match(/\.ce-page-header--admin \.ce-page-header-title \{([^}]*)\}/)[1];
+  const titel = muster.match(/\.ce-page-header-title \{([^}]*)\}/)[1];
   assert.match(titel, /font-family:\s*var\(--ce-font-sans\)/);
   assert.match(titel, /font-size:\s*var\(--ce-text-title-page-size\)/);
-  assert.equal(tok("ce-text-title-page-size"), "24px");
-  assert.equal(tok("ce-text-title-page-size-mobile"), "20px");
+  assert.equal(tok("ce-text-title-page-size"), "28px");
+  assert.equal(tok("ce-text-title-page-size-mobile"), "24px");
   assert.equal(tok("ce-text-title-page-weight"), "600");
-  assert.match(muster, /\.ce-page-header--admin \.ce-page-header-title \{ font-size: var\(--ce-text-title-page-size-mobile\); \}/,
-    "mobil 20px");
+  assert.match(muster, /\.ce-page-header-title \{\s*font-size: var\(--ce-text-title-page-size-mobile\);/,
+    "mobil 24px");
+  assert.doesNotMatch(muster, /\.ce-page-header--admin \.ce-page-header-title \{[^}]*font-(family|size)/,
+    "der Admintitel trägt keine eigene Schriftrolle");
   assert.doesNotMatch(admin, /\.adm-title[\s{]/, "die abgelöste Eigenregel .adm-title ist noch da");
-  // Admin-Tabellen und -Filter bleiben auf der dichten Stufe.
-  assert.match(admin, /\.adm-filter-field label \{[^}]*font-size:\s*11px/);
+  // Filterbeschriftungen liegen auf der Label-Stufe (13/18 500).
+  assert.match(admin, /\.adm-filter-field label \{[^}]*font-size:\s*var\(--ce-text-label-size\)/);
 });
 
 /* ══════════ 8/9 — Textfarben ═════════════════════════════════════════════ */
@@ -278,7 +324,7 @@ test("8 — die Legacy-Graustufen tragen keine Textrolle mehr", () => {
     "Muted-Text muss auf Weiß mindestens 4,5:1 erreichen");
   assert.ok(kontrast(tok("ce-color-text-secondary"), "#ffffff") >= 4.5);
   assert.ok(kontrast(tok("ce-color-text-primary"), "#ffffff") >= 4.5);
-  // Auch gegen den warmen Rampenkopf der App-Fläche.
+  // Auch gegen den warmen Rampenkopf der App-Fläche (Ivory).
   for (const rolle of ["ce-color-text-primary", "ce-color-text-secondary", "ce-color-text-muted"]) {
     assert.ok(kontrast(tok(rolle), tok("ce-color-bg-canvas-top")) >= 4.5,
       `--${rolle} unterschreitet auf der Ivory-Fläche 4,5:1`);
@@ -361,12 +407,16 @@ test("11 — Zahlen laufen tabellarisch und in DM Sans", () => {
   assert.match(tok("ce-font-numeric"), /DM Sans/);
   assert.doesNotMatch(tok("ce-font-numeric"), /Cormorant|Georgia|Times|\bserif\b(?<!sans-serif)/,
     "Zahlen laufen nie in einer Serifenschrift");
-  // Der KPI-Wert steht exakt auf der Numeric-Display-Stufe.
-  const knum = css["overview.css"].match(/\.knum \{([^}]*)\}/)[1];
-  assert.match(knum, /font-size:\s*48px/);
-  assert.match(knum, /font-weight:\s*600/);
-  assert.match(knum, /font-variant-numeric:\s*tabular-nums/);
-  assert.match(css["overview.css"], /\.knum \{ font-size: 40px; \}/, "Numeric Display mobil");
+  // Der KPI-Wert steht exakt auf der Numeric-Display-Stufe (Redesign 2026-10:
+  // 32/38 600, mobil 28 — das kompakte Kennzahlband).
+  const wert = css["overview.css"].match(/\.ov-kpi-value \{([^}]*)\}/)[1];
+  assert.match(wert, /font-size:\s*var\(--ce-text-numeric-display-size\)/);
+  assert.match(wert, /font-weight:\s*var\(--ce-text-numeric-display-weight\)/);
+  assert.match(wert, /font-variant-numeric:\s*tabular-nums/);
+  assert.equal(tok("ce-text-numeric-display-size"), "32px");
+  assert.equal(tok("ce-text-numeric-display-weight"), "600");
+  assert.match(css["overview.css"], /\.ov-kpi-value \{ font-size: var\(--ce-text-numeric-display-size-mobile\); \}/,
+    "Numeric Display mobil");
 });
 
 /* ══════════ 12 — keine Layout- oder Routingänderung ══════════════════════ */
@@ -424,9 +474,10 @@ test("13 — die Governance aus Phase 1 und 2 bleibt registriert", () => {
   ]) {
     assert.ok(pruefeImTestlauf(t), `${t} muss im Testlauf bleiben`);
   }
-  // Die Phase-2-Primitives lesen weiterhin die Typografietokens.
+  // Die Phase-2-Primitives lesen weiterhin die Typografietokens — Feldlabels
+  // die Label-Rolle, Badges (Redesign 2026-10) die eigene Badge-Rolle.
   assert.match(css["forms.css"], /font-size:\s*var\(--ce-text-label-size\)/);
-  assert.match(css["primitives.css"], /font-size:\s*var\(--ce-text-label-size\)/);
+  assert.match(css["primitives.css"], /font-size:\s*var\(--ce-text-badge-size\)/);
 });
 
 /* ── Hilfsmittel ──────────────────────────────────────────────────────────── */

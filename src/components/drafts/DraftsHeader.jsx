@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { PageHeader } from "../ui/PageHeader";
 
 // Seitenkopf „Entwürfe" — seit Paket A, Phase 3 über das eine gemeinsame
@@ -7,18 +6,21 @@ import { PageHeader } from "../ui/PageHeader";
 //
 // KEINE Gesamtzahl-Kennzahl: GET /drafts liefert kein total, nur eine
 // paginierte Teilmenge — eine Zahl aus items.length wäre irreführend.
-export function DraftsHeader({ onNewShipment, utility }) {
+//
+// `showCreate` (Redesign 2026-10): ist die Liste nachweislich leer, trägt der
+// Leerzustand die eine Hauptaktion — der Kopf wiederholt „Neue Sendung" dann
+// nicht (Auditbefund E06: doppelte Hauptaktion). Derselbe Handler.
+export function DraftsHeader({ onNewShipment, utility, showCreate = true }) {
   return (
     <PageHeader
-      eyebrow="Verwaltung"
       title="Entwürfe"
       subtitle="Gespeicherte Sendungen später weiterbearbeiten oder löschen."
       utility={utility}
-      actions={(
+      actions={showCreate ? (
         <button type="button" className="btn btn-primary" onClick={onNewShipment}>
-          <Icon n="plus" s={16} /> Neue Sendung
+          Neue Sendung
         </button>
-      )}
+      ) : null}
     />
   );
 }

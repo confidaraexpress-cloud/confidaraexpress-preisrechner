@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, NoResultsState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, ProductPicker, QuantityField, RowActionsMenu } from "../../components/inventory/InventoryShared";
 import { getBalances, getProducts, getWarehouses, postReceipt, postAdjustment, postBlock, postUnblock } from "../../api/inventoryApi";
@@ -27,7 +26,13 @@ const PAGE_LIMIT = 25;
    aus und schickt keinen Bestandswert.
 
    Die Vorschauen im Dialog sind reine Darstellung (utils/inventoryView.mjs) —
-   sie sagen, was der eingetippte Wert bedeutet, und entscheiden nichts. */
+   sie sagen, was der eingetippte Wert bedeutet, und entscheiden nichts.
+
+   Redesign 2026-10: Filter → Bestandsliste → bestehende Dialoge. Der
+   Artikelname ist die Identität der Zeile, die SKU steht darunter; Zahlen
+   stehen rechtsbündig und tabellarisch. Zeilenaktionen sind Text. Die
+   Kopfaktionen dürfen in eine eigene Zeile umbrechen — es wird nichts in
+   eine Zeile gezwungen. */
 export default function StockPage({ utility, onNavigate, initialFilter = null, onFilterApplied }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -215,38 +220,44 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
       <RowActionsMenu
         label={`Weitere Aktionen für ${b.productName}, ${b.warehouseName}`}
         items={[
-          { key: "adjust", icon: "refresh", label: "Bestand korrigieren", onClick: () => oeffne("adjust", ausZeile(b)) },
+          { key: "adjust", label: "Bestand korrigieren", onClick: () => oeffne("adjust", ausZeile(b)) },
           Number(b.blocked ?? 0) > 0
-            ? { key: "unblock", icon: "shield", label: "Sperre verwalten", onClick: () => oeffne("unblock", ausZeile(b)) }
-            : { key: "block", icon: "shield", label: "Bestand sperren", disabled: Number(b.available ?? 0) < 1,
+            ? { key: "unblock", label: "Sperre verwalten", onClick: () => oeffne("unblock", ausZeile(b)) }
+            : { key: "block", label: "Bestand sperren", disabled: Number(b.available ?? 0) < 1,
                 disabledReason: "Keine verfügbaren Einheiten", onClick: () => oeffne("block", ausZeile(b)) },
           // Beantwortet die Frage, die eine Bestandszahl offen lässt: warum ist
           // er jetzt so hoch? Der Bewegungsendpunkt filtert nach ARTIKEL, nicht
           // nach Lager — deshalb heißt die Aktion bewusst nur „Bewegungen
           // anzeigen" und behauptet keinen Lagerfilter. Das Lager steht in der
           // Bewegungstabelle als eigene Spalte.
-          { key: "movements", icon: "layers", label: "Bewegungen anzeigen",
+          { key: "movements", label: "Bewegungen anzeigen",
             onClick: () => onNavigate("movements", { productId: b.productId }) },
         ]}
       />
     </>
   );
 
+  // Leere Liste ohne Filter: der Leerzustand trägt die EINE Hauptaktion
+  // „Bestand einbuchen" — der gleichlautende Primärknopf im Kopf entfällt dann.
+  // „Bestand korrigieren" bleibt als Sekundäraktion erreichbar.
+  const leer = !loading && items.length === 0 && !hatFilter;
+
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title="Bestand"
         subtitle="Physischer Bestand, Reservierungen, gesperrte Ware und verfügbare Menge je Artikel und Lager. Verfügbar = physisch − reserviert − gesperrt."
         utility={utility}
         actions={
           <>
             <button type="button" className="btn btn-outline" onClick={() => oeffne("adjust")}>
-              <Icon n="refresh" s={16} />Bestand korrigieren
+              Bestand korrigieren
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => oeffne("receipt")}>
-              <Icon n="plus" s={16} />Bestand einbuchen
-            </button>
+            {!leer && (
+              <button type="button" className="btn btn-primary" onClick={() => oeffne("receipt")}>
+                Bestand einbuchen
+              </button>
+            )}
           </>
         }
       />
@@ -271,13 +282,12 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
 
       {loading && <ListSkeleton rows={5} label="Bestand wird geladen" />}
 
-      {!loading && items.length === 0 && !hatFilter && (
+      {leer && (
         <EmptyState
-          icon="layers"
           title="Noch kein Bestand gebucht"
           text="Sobald Sie Ware einbuchen, sehen Sie hier den physischen Bestand, offene Reservierungen und die verfügbare Menge."
           action={<button type="button" className="btn btn-primary" onClick={() => oeffne("receipt")}>Bestand einbuchen</button>}
-          secondaryAction={<button type="button" className="btn btn-outline" onClick={() => onNavigate("products")}>Zu den Artikeln</button>}
+          secondaryAction={<button type="button" className="btn btn-link" onClick={() => onNavigate("products")}>Zu den Artikeln</button>}
         />
       )}
 
@@ -317,13 +327,14 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
                     <tr key={`${b.productId}-${b.warehouseId}`}>
                       <td>
                         {/* Beide sind Inline-Elemente — ohne den Stapel stünden
-                            SKU und Bezeichnung in EINER Zeile hintereinander. */}
+                            Bezeichnung und SKU in EINER Zeile hintereinander.
+                            Der Name ist die Identität und führt zum Artikel —
+                            von der Zahl zum Stammsatz, ohne Umweg über die
+                            Artikelliste; die SKU steht sekundär darunter. */}
                         <div className="inv-cell-stack">
-                          <span className="inv-cell-sku">{b.sku}</span>
-                          {/* Der Artikelname führt zum Artikel — von der Zahl zum
-                              Stammsatz, ohne Umweg über die Artikelliste. */}
-                          <button type="button" className="btn btn-link inv-cell-link"
+                          <button type="button" className="btn btn-link inv-cell-link inv-cell-title"
                                   onClick={() => navigate(`/inventory/products/${b.productId}`)}>{b.productName}</button>
+                          <span className="inv-cell-meta"><span className="inv-cell-sku">{b.sku}</span></span>
                         </div>
                       </td>
                       <td>{b.warehouseName}</td>
@@ -355,12 +366,11 @@ export default function StockPage({ utility, onNavigate, initialFilter = null, o
               return (
                 <li key={`${b.productId}-${b.warehouseId}`} className="ce-card inv-card">
                   <div className="inv-card-head">
-                    <span className="inv-cell-sku">{b.sku}</span>
-                    {isLowStock(b) && <span className="badge badge--warning"><span className="badge-dot" aria-hidden="true" />Niedriger Bestand</span>}
+                    <button type="button" className="btn btn-link inv-card-title"
+                            onClick={() => navigate(`/inventory/products/${b.productId}`)}>{b.productName}</button>
+                    {isLowStock(b) && <span className="badge badge--warning">Niedriger Bestand</span>}
                   </div>
-                  <button type="button" className="btn btn-link inv-card-title"
-                          onClick={() => navigate(`/inventory/products/${b.productId}`)}>{b.productName}</button>
-                  <div className="inv-cell-meta">{b.warehouseName}</div>
+                  <div className="inv-cell-meta"><span className="inv-cell-sku">{b.sku}</span> · {b.warehouseName}</div>
                   <dl className="inv-card-facts">
                     <div><dt>Physisch</dt><dd>{formatUnits(b.onHand)}</dd></div>
                     <div><dt>Reserviert</dt><dd>{formatUnits(b.reserved)}</dd></div>

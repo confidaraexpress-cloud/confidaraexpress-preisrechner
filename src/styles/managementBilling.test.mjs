@@ -44,44 +44,61 @@ const dashboardCss = stripComments(read("./dashboard.css"));
 const draftsCss = stripComments(read("./drafts.css"));
 const addressbookCss = stripComments(read("./addressbook.css"));
 
-/* ══════════ 1 — PageHeader-Eyebrows ═══════════════════════════════════════ */
+/* ══════════ 1 — Seitenkopf ohne Eyebrow ═══════════════════════════════════ */
 
-test("1 — Sendungen, Entwürfe, Adressbuch und Rechnungen tragen die Eyebrow „Verwaltung“", () => {
-  assert.match(dashboardPage, /shipments:\s*\{\s*eyebrow:\s*"Verwaltung"/, "Sendungen ohne Eyebrow");
-  assert.match(dashboardPage, /invoices:\s*\{\s*eyebrow:\s*"Verwaltung"/, "Rechnungen ohne Eyebrow");
-  assert.match(draftsHeader, /eyebrow="Verwaltung"/, "Entwürfe ohne Eyebrow");
-  const addressBookHeader = read("../components/addressbook/AddressBookHeader.jsx");
-  assert.match(addressBookHeader, /eyebrow="Verwaltung"/, "Adressbuch ohne Eyebrow");
+// Redesign 2026-10 (vorher: Eyebrow „Verwaltung" über jedem Verwaltungskopf):
+// keine dekorative Versal-Eyebrow mehr — die Bereichszugehörigkeit zeigt die
+// Navigation. Geprüft wird der EINE Renderer, nicht jeder Aufrufer: der
+// gemeinsame Seitenkopf stellt keine Eyebrow mehr dar, egal was übergeben wird.
+test("1 — der gemeinsame Seitenkopf stellt keine Eyebrow mehr dar", () => {
+  const pageHeader = read("../components/ui/PageHeader.jsx")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/ce-page-header-eyebrow/.test(pageHeader), "der Seitenkopf rendert wieder eine Eyebrow");
+  assert.ok(!/\{eyebrow\}/.test(pageHeader), "der Seitenkopf gibt die Eyebrow wieder aus");
+  // Die Verwaltungsseiten laufen weiterhin über genau diesen Seitenkopf.
+  assert.match(draftsHeader, /<PageHeader/);
+  assert.match(read("../components/addressbook/AddressBookHeader.jsx"), /<PageHeader/);
 });
 
-/* ══════════ 2 — Sendungen: „Track“ vollständig ersetzt ═══════════════════ */
+/* ══════════ 2 — Sendungen: Zeilenaktionen als klar benannte Textaktionen ══ */
 
-test("2 — „Track“ ist vollständig durch „Sendung verfolgen“ ersetzt", () => {
+// Redesign 2026-10: die drei Zeilenaktionen heißen „Tracking", „Dokumente" und
+// „Stornierung anfragen" (Audit-Vertrag „Row Actions"). Der frühere englische
+// Rohtext „Track" bleibt ausgeschlossen; adressiert wird weiterhin über den
+// ConfidaraExpress-Sendungshandle (shipments.id), nie über die Providerreferenz.
+test("2 — die Trackingaktion heißt „Tracking“ und hängt am CE-Handle", () => {
   assert.ok(!/>Track</.test(shipmentsList), "der rohe Button-Text „Track“ darf nicht mehr vorkommen");
-  // Adressiert wird über den ConfidaraExpress-Sendungshandle (shipments.id),
-  // nicht mehr über die Providerreferenz.
-  assert.match(shipmentsList, /onTrack\(s\.id\)\}>Sendung verfolgen</);
+  assert.match(shipmentsList, /onTrack\(s\.id\)\}>Tracking</);
+  assert.match(shipmentsList, />Stornierung anfragen</, "die Stornoaktion ist nicht als Anfrage benannt");
+  assert.match(shipmentsList, /className="ce-row-actions stn-actions"/, "die Zeilenaktionen sind nicht als Textgruppe gebündelt");
 });
 
 /* ══════════ 3 — Sendungsdetail: Muted Card statt Inline-Style ════════════ */
 
 test("3 — Sendungsdetail nutzt die Muted Card statt eines Inline-Style-Hintergrunds", () => {
   assert.ok(!/style=\{\{ background: "var\(--gray50\)"/.test(shipmentsList), "der alte Inline-Style-Hintergrund darf nicht mehr vorkommen");
-  assert.match(shipmentsList, /<td colSpan=\{7\} className="shipment-detail-cell">/);
+  // Redesign 2026-10: fünf Spalten (Identität · Gewicht · Preis · Status ·
+  // Aktionen) — Carrier und Datum stehen in der Identitätszelle.
+  assert.match(shipmentsList, /<td colSpan=\{5\} className="shipment-detail-cell">/);
   assert.match(shipmentsList, /<div className="ce-card-muted shipment-detail-card">/);
   assert.match(dashboardCss, /\.shipment-detail-card \{ padding: 20px 24px; \}/);
 });
 
-/* ══════════ 4 — Tracking-Glyphen sind echte Icons ═════════════════════════ */
+/* ══════════ 4 — Tracking: ruhige Punkte statt Glyphen oder Symbolen ════════ */
 
-test("4 — track-dot und step-circle zeigen Icons statt roher „●“/„✓“-Glyphen", () => {
+// Redesign 2026-10 (vorher: Icons statt roher Glyphen): der Verlauf ist eine
+// ruhige Textliste. Der Punkt je Ereignis ist reine Markierung (aria-hidden)
+// und trägt WEDER eine Glyphe NOCH ein Symbol; die Fortschrittsstufen zeigen
+// ihre Zahl, der Zustand steht zusätzlich im Text der Stufe.
+test("4 — track-dot und step-circle tragen weder Glyphen noch Symbole", () => {
   for (const [datei, quelle] of [["ShipmentsList.jsx", shipmentsList], ["TrackingPage.jsx", trackingPage]]) {
     assert.ok(!/["'`]●["'`]/.test(quelle), `${datei}: rohe „●“-Glyphe noch vorhanden`);
     assert.ok(!/["'`]✓["'`]/.test(quelle), `${datei}: rohe „✓“-Glyphe noch vorhanden`);
+    assert.ok(!/<Icon\b/.test(quelle), `${datei}: trägt wieder ein Symbol`);
+    assert.match(quelle, /<div className=\{`track-dot \$\{[^`]+\}`\} aria-hidden="true" \/>/,
+      `${datei}: der Ereignispunkt ist keine leere, verborgene Markierung`);
   }
-  assert.match(shipmentsList, /<Icon n="mapPin" s=\{14\} \/> : <Icon n="check" s=\{14\} \/>/);
-  assert.match(trackingPage, /<Icon n="mapPin" s=\{14\} \/> : <Icon n="check" s=\{14\} \/>/);
-  assert.match(trackingPage, /\{i < stepIndex \? <Icon n="check" s=\{14\} \/> : i \+ 1\}/);
+  assert.match(trackingPage, /aria-hidden="true">\s*\{i \+ 1\}\s*<\/div>/, "die Stufe zeigt ihre Zahl nicht");
 });
 
 /* ══════════ 5 — track-dot ohne Verlauf/Glow ═══════════════════════════════ */
@@ -92,7 +109,10 @@ test("5 — .track-dot ist eine flache Fläche ohne Verlauf oder farbigen Schatt
   assert.ok(!/box-shadow/.test(block), "kein Glow-Schatten mehr im aktiven track-dot");
   const doneBlock = dashboardCss.match(/\.track-dot\.done\s*\{([^}]*)\}/)[1];
   assert.ok(!/box-shadow/.test(doneBlock), "kein Glow-Schatten mehr im erledigten track-dot");
-  assert.match(dashboardCss, /\.track-dot\.active \{ border-color: var\(--ce-color-brand\); background: var\(--ce-color-brand\); color: white; \}/);
+  // Redesign 2026-10: das neueste Ereignis in der Markenfarbe, alle früheren ruhig in der
+  // starken Kantenrolle — kein Symbol im Punkt, deshalb auch keine Textfarbe.
+  assert.match(dashboardCss, /\.track-dot\.active \{ border-color: var\(--ce-color-brand\); background: var\(--ce-color-brand\); \}/);
+  assert.match(dashboardCss, /\.track-dot\.done\s+\{ border-color: var\(--ce-color-border-strong\); background: var\(--ce-color-border-strong\); \}/);
 });
 
 /* ══════════ 6 — Entwürfe: Löschen ist kein Dauerbutton mehr ══════════════ */
@@ -111,12 +131,15 @@ test("6 — Löschen läuft in allen vier Entwurfsansichten über das Kebab-Men�
   assert.match(formDraftCard, /dft-resume-btn/);
 });
 
-test("7 — das Entwürfe-Kebab-Menü hat Fokusfalle-Zutaten (Escape, Außenklick, Fokusrückgabe) und einen beschrifteten Trigger", () => {
+test("7 — das Entwürfe-Aktionsmenü hat Fokusfalle-Zutaten (Escape, Außenklick, Fokusrückgabe) und einen beschrifteten Trigger", () => {
   assert.match(draftActionsMenu, /e\.key === "Escape"/);
   assert.match(draftActionsMenu, /mousedown/);
   assert.match(draftActionsMenu, /triggerRef\.current\?\.focus\(\)/);
-  assert.match(draftActionsMenu, /aria-label="Aktionen für diesen Entwurf"/);
-  assert.match(draftActionsMenu, /title="Aktionen"/);
+  // Redesign 2026-10: der Auslöser ist ein Textknopf „Weitere Aktionen" statt
+  // eines Symbols; sein zugänglicher Name beginnt mit dem sichtbaren Wort
+  // (Label-in-Name, WCAG 2.5.3). Ein title ist damit entbehrlich.
+  assert.match(draftActionsMenu, /<span>Weitere Aktionen<\/span>/);
+  assert.match(draftActionsMenu, /aria-label="Weitere Aktionen[^"]*"/);
 });
 
 /* ══════════ 8 — dtDE() ohne Sekunden ══════════════════════════════════════ */
@@ -184,7 +207,9 @@ test("13 — die Rechnungstabelle zeigt „Betrag“ nur noch im Spaltenkopf, ni
 test("14 — Rechnungsliste nutzt EmptyState/NoResultsState/ErrorState statt eigenem Markup", () => {
   assert.match(invoicesList, /import \{ EmptyState, NoResultsState, ErrorState \} from "\.\.\/ui\/StateView"/);
   assert.match(invoicesList, /<ErrorState\s/);
-  assert.match(invoicesList, /<EmptyState icon="invoice"/);
+  // Redesign 2026-10: Zustände ohne Bildmarke — kein icon-Prop mehr.
+  assert.match(invoicesList, /<EmptyState title=\{LIST_EMPTY_TITLE\}/);
+  assert.ok(!/<EmptyState icon=/.test(invoicesList), "der Leerzustand trägt wieder ein Symbol");
   assert.match(invoicesList, /<NoResultsState\s/);
 });
 
@@ -200,8 +225,11 @@ test("15 — .inv-status bleibt eine bewusst dokumentierte Ausnahme (keine still
   assert.match(dashboardCss, /--inv-positive-fg:\s*var\(--ce-color-status-success-fg\);/);
   assert.match(dashboardCss, /--inv-critical-bg:\s*var\(--ce-color-status-overdue-surface\);/);
   assert.match(dashboardCss, /--inv-critical-fg:\s*var\(--ce-color-status-overdue-fg\);/);
-  // attention/neutral bleiben bewusst eigenständig (kein Foundation-Pendant im selben Wert).
-  assert.match(dashboardCss, /--inv-attention-fg:\s*#8a6a3f;/);
+  // Redesign 2026-10: auch attention/neutral liegen auf den Statusrollen der
+  // Foundation (Hinweis bzw. Neutral) — es gibt keine eigene Rechnungsfarbe mehr.
+  assert.match(dashboardCss, /--inv-attention-fg:\s*var\(--ce-color-status-warning-fg\);/);
+  assert.match(dashboardCss, /--inv-neutral-fg:\s*var\(--ce-color-status-neutral-fg\);/);
+  assert.ok(!/--inv-[\w-]+:\s*#/.test(dashboardCss), "eine Rechnungsstatusfarbe ist wieder ein Hex-Literal");
   // Die Statuslogik selbst (welcher Backendwert -> welcher Ton) bleibt unverändert.
   assert.match(customerInvoiceView, /if \(inv && inv\.status === "paid"\) return \[TONE\.POSITIVE, "Bezahlt"\];/);
 });
@@ -229,8 +257,16 @@ test("17 — addressbook.css und drafts.css tragen keine rohen #fff/white-Fläch
 /* ══════════ 18 — Kontrastfix: aktiver Filterchip bleibt auch bei :hover lesbar ═ */
 
 test("18 — .inv-filter-chip--active bleibt bei :hover lesbar (Regressionsschutz für den gefundenen Kontrastfehler)", () => {
-  assert.match(dashboardCss, /\.inv-filter-chip--active:hover \{ color: var\(--ce-color-text-inverse\); \}/,
-    "ohne diese Regel wird der aktive Filterchip bei :hover unsichtbar (Navy auf Navy)");
+  // Redesign 2026-10: der aktive Filter trägt Brand Soft mit Text in der
+  // Markenfarbe statt einer dunklen Vollfläche. Der Regressionsschutz bleibt:
+  // unter dem Zeiger behält der aktive Chip seine Markenschrift, statt auf den Hoverton des
+  // inaktiven Chips zurückzufallen.
+  assert.match(dashboardCss, /\.inv-filter-chip--active:hover \{ color: var\(--ce-color-brand-ink\);/,
+    "ohne diese Regel fällt der aktive Filterchip bei :hover auf den inaktiven Zustand zurück");
+  assert.match(dashboardCss, /\.inv-filter-chip--active \{ background: var\(--ce-color-brand-soft\);/);
+  // Die Filter bleiben Umschaltknöpfe mit aria-pressed — keine exklusiven Tabs.
+  assert.match(invoicesList, /aria-pressed=\{filter === f\.value\}/);
+  assert.ok(!/role="tab"/.test(invoicesList), "die Statusfilter sind zu Tabs umgedeutet worden");
 });
 
 /* ══════════ 19 — Adressbuch-Suche wischt die sichtbare Liste nicht weg ════ */
@@ -239,26 +275,45 @@ test("19 — AddressList zeigt das Skeleton nur bei echter Erstladung, nicht bei
   assert.match(addressList, /if \(loading && items\.length === 0\) return <AddressSkeleton \/>;/);
 });
 
-/* ══════════ 20 — Icon-Farbfix: kein rohes Hex mehr im Tracking-Icon ═══════ */
+/* ══════════ 20 — Tracking ohne Symbole, ohne rohe Farbwerte ══════════════ */
 
-test("20 — TrackingPage nutzt für das Kartenicon einen Foundation-Token statt eines rohen Hex-Werts", () => {
-  assert.ok(!/c="#1D4ED8"/.test(trackingPage), "das rohe Blau muss durch einen Token ersetzt sein");
-  assert.match(trackingPage, /c="var\(--ce-color-brand-ink\)"/);
+// Redesign 2026-10 (vorher: Kartenicon mit Token statt Hex): die Trackingseite
+// trägt gar kein Symbol mehr — weder am Ergebnis noch im Knopf („Verfolgen").
+test("20 — TrackingPage kommt ohne Symbole und ohne rohe Farbwerte aus", () => {
+  assert.ok(!/c="#1D4ED8"/.test(trackingPage), "das rohe Blau darf nicht zurückkehren");
+  assert.ok(!/import \{ Icon \}/.test(trackingPage), "die Trackingseite importiert wieder die Iconkomponente");
+  assert.ok(!/c="#[0-9a-fA-F]{3,6}"/.test(trackingPage), "ein roher Farbwert steht im Markup");
+});
+
+/* ══════════ 20b — Trackingfeld programmatisch beschriftet (Audit P1) ══════ */
+
+test("20b — das Trackingfeld ist über htmlFor/id beschriftet und per aria-describedby erklärt", () => {
+  assert.match(trackingPage, /<label className="field-label" htmlFor=\{FELD_ID\}>Trackingnummer<\/label>/);
+  assert.match(trackingPage, /<input\s+id=\{FELD_ID\}/);
+  assert.match(trackingPage, /aria-describedby=\{HINWEIS_ID\}/);
+  assert.match(trackingPage, /id=\{HINWEIS_ID\}/);
+  // Abfrage, Enter und Autofokus sind unverändert.
+  assert.match(trackingPage, /onKeyDown=\{e => e\.key === "Enter" && track\(\)\}/);
+  assert.match(trackingPage, /\n\s*autoFocus\n/);
 });
 
 /* ══════════ 21 — TrackingPage bleibt ohne PageHeader (kein doppelter Kopf) ═ */
 
 test("21 — TrackingPage rendert weiterhin ihre eigene Überschrift statt eines PageHeaders", () => {
   assert.ok(!/from ["']\.\.\/components\/ui\/PageHeader["']/.test(trackingPage), "TrackingPage darf keinen PageHeader importieren");
-  assert.match(trackingPage, /<h1 className="section-title">Sendung verfolgen<\/h1>/);
+  // Redesign 2026-10: dieselbe Titelrolle wie jeder Seitenkopf (28/36, mobil 24/32).
+  assert.match(trackingPage, /<h1 className="tracking-title">Sendung verfolgen<\/h1>/);
+  assert.match(dashboardCss, /\.tracking-title \{[^}]*font-size: var\(--ce-text-title-page-size\);/);
 });
 
 /* ══════════ 22 — Adressbuch-Kebab-Trigger ist vollständig beschriftet ═════ */
 
-test("22 — der Adressbuch-Kebab-Trigger trägt sowohl aria-label als auch title", () => {
+test("22 — der Adressbuch-Aktionsauslöser ist ein beschrifteter Textknopf", () => {
   const trigger = addressActionsMenu.match(/<button[\s\S]*?abk-actions-trigger[\s\S]*?<\/button>/)[0];
-  assert.match(trigger, /aria-label=\{/);
-  assert.match(trigger, /title="Aktionen"/);
+  // Redesign 2026-10: sichtbares Wort statt Symbol; der zugängliche Name beginnt
+  // mit dem sichtbaren Wort und nennt die Adresse.
+  assert.match(trigger, /<span>Weitere Aktionen<\/span>/);
+  assert.match(trigger, /aria-label=\{`Weitere Aktionen/);
 });
 
 /* ══════════ 23 — Business-/API-Verträge unverändert ═══════════════════════ */

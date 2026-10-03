@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { formatDistance, weekOpeningHours, normalizeOpeningHours, HOURS_UNAVAILABLE } from "../../utils/accessPointView";
 
 /* ── Ergebnisliste des Paketshop-Finders ─────────────────────────────────────
@@ -80,10 +79,7 @@ export function AccessPointList({
                     {s.status.label}
                   </span>
                   {s.hours && (
-                    <span className="ap-list-hours">
-                      <Icon n="clock" s={13} c="currentColor" />
-                      {s.hours}
-                    </span>
+                    <span className="ap-list-hours">{s.hours}</span>
                   )}
                   {showCc && <span className="ap-list-cc">{s.countryCode}</span>}
                 </span>
@@ -98,7 +94,8 @@ export function AccessPointList({
               onClick={() => onToggleExpand(s.key)}
             >
               Öffnungszeiten
-              <Icon n="chevron" s={14} c="currentColor" />
+              {/* Klappmarke rein per CSS — kein Icon (Redesign 2026-10). */}
+              <span className="ap-list-toggle-caret" aria-hidden="true" />
             </button>
 
             {offen && (

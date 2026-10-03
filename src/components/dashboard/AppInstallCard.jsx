@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { BrandLogo } from "../ui/BrandLogo";
 import { FormAlert } from "../ui/FormAlert";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
@@ -11,11 +10,13 @@ import {
 } from "../../utils/pwaInstallView.mjs";
 
 /* ── Kontoeinstellungen: „ConfidaraExpress als App" ──────────────────────────
-   Der verlässliche, dauerhafte Ort für die Installation — rechte Spalte der
-   Kontoeinstellungen, direkt nach „Sicherheit". Dasselbe Kartenmaterial wie
-   jede Profilkarte (table-card + Kartenkopf), dieselbe Zeilenmechanik wie
-   „Passwort ändern": Erklärung links, Aktion rechts, auf schmalen Breiten
-   darunter.
+   Der verlässliche, dauerhafte Ort für die Installation — letzter Abschnitt
+   der Kontoeinstellungen, direkt nach „Sicherheit". Dieselbe Abschnittsform
+   wie jeder Einstellungsabschnitt (Titel links, Inhalt rechts; Redesign
+   2026-10), dieselbe Zeilenmechanik wie „Passwort ändern": Erklärung links,
+   Aktion rechts, auf schmalen Breiten darunter. Das kleine CE-Signet ist das
+   App-Symbol, das auf dem Gerät erscheint — es bleibt die bestehende
+   PWA-Marke, bis eine finale Markenfreigabe die App-Icons wechselt.
 
    Was angeboten wird, entscheidet pwaInstallView.mjs aus dem, was der Browser
    tatsächlich kann:
@@ -90,26 +91,24 @@ export function AppInstallCard() {
   const istApp = state === INSTALL_STATE.INSTALLED || state === INSTALL_STATE.JUST_INSTALLED;
 
   return (
-    <div className="table-card profile-card pwa-card" ref={karteRef} id="pwa-install-card">
+    <section className="table-card profile-card pwa-card" ref={karteRef} id="pwa-install-card">
       <div className="table-card-header profile-card-head">
-        <div className="profile-card-icon pwa-card-mark" aria-hidden="true">
-          <BrandLogo variant="signet" tone="standard" alt="" />
-        </div>
-        <div className="profile-card-heading">
-          <span className="table-card-title" ref={titelRef} tabIndex={-1}>{INSTALL_TEXT.cardTitle}</span>
-          <span className="profile-card-sub">{INSTALL_TEXT.cardSubtitle}</span>
-        </div>
+        <h2 className="table-card-title" ref={titelRef} tabIndex={-1}>{INSTALL_TEXT.cardTitle}</h2>
+        <p className="profile-card-sub">{INSTALL_TEXT.cardSubtitle}</p>
       </div>
 
+      <div className="profile-card-body">
       <div className="profile-form-body">
         <div className="pwa-card-row">
+          <span className="pwa-card-mark" aria-hidden="true">
+            <BrandLogo variant="signet" tone="standard" alt="" />
+          </span>
           <p className={`pwa-card-text${istApp ? " pwa-card-text--status" : ""}`} aria-live="polite">
-            {istApp && <Icon n="check" s={16} />}
             <span>{installCardText(state)}</span>
           </p>
           {aktion && aktion.kind === "prompt" && (
             <button type="button" className="btn btn-outline" onClick={installieren} disabled={laeuft}>
-              <Icon n="devices" s={16} /> {aktion.label}
+              {aktion.label}
             </button>
           )}
           {aktion && aktion.kind === "guide" && (
@@ -120,7 +119,7 @@ export function AppInstallCard() {
               aria-expanded={anleitungOffen}
               aria-controls="pwa-install-guide"
             >
-              <Icon n="devices" s={16} /> {aktion.label}
+              {aktion.label}
             </button>
           )}
         </div>
@@ -136,6 +135,7 @@ export function AppInstallCard() {
 
         {fehler && <FormAlert tone="error" message={fehler} className="pwa-card-alert" />}
       </div>
-    </div>
+      </div>
+    </section>
   );
 }

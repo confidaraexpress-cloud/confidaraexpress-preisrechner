@@ -1,742 +1,434 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   ÜBERSICHT — Inhaltsschicht („Clean Executive Logistics")
+   ÜBERSICHT — Inhaltsschicht (Redesign 2026-10, Designreferenz)
    ───────────────────────────────────────────────────────────────────────────
-   Nachfolger von vapor.css. Der frühere Seiten-Scope .dashboard-vapor ist
-   entfallen: Der Hintergrund kommt jetzt für alle eingeloggten Seiten aus
-   .app-shell (dashboard-premium.css), diese Datei beschreibt nur noch die
-   Inhalte der Übersicht. Alle Selektoren hier sind übersichtsspezifisch
-   (.pp-main, .pp-kpis, .tile, .pp-medal …) und kollidieren nicht mit den
-   Sidebar-Atomen (.pp-side*, .nitem, .pp-nav-group*, .pp-scard, .pp-foot).
+   Die Übersicht läuft über den gemeinsamen Seitenkopf (PageHeader) und den
+   gemeinsamen Inhaltsrahmen (.page-body) — dieselbe Titelkante, dieselben
+   Seitenränder wie jede andere Seite. Diese Datei beschreibt nur noch die
+   Inhalte: die Begrüßung im Seitenkopf, das Kennzahlenband, die operativen
+   Module, den Carrier-Bereich, die Onboarding-Texte und den Benutzerchip der
+   Utility-Zeile.
 
-   Entfallen gegenüber vapor.css: die Hintergrund-Atmosphäre (.vp-bg, driftende
-   Aurora-Wolken mit blur(80px), Bloom-Puls, Logistik-Netz-SVG mit Knoten und
-   Halos, Noise, Vignette) samt Keyframes vpDriftA/B/C, vpBloom und den
-   gestaffelten Einblend-Animationen vpRise — die Komponente VaporBackground ist
-   gelöscht. Struktur, Maße und Copy der Übersicht bleiben unverändert.
+   Entfallen: Serifengruß, Status-Chips, KPI-Karten mit Verlauf, Schatten und
+   Symbolen, die dunkle Carrier-Bühne mit Netzstruktur, das dunkle Bento,
+   Iconmedaillons und das Wasserzeichen. Der Carrier-Bereich ist als helle,
+   kompakte Fläche zurück (Feinkorrektur 2026-10). Kein Farbliteral.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ══════════ Geteilte Atome der Übersicht ══════════ */
+/* ══════════ Begrüßung ══════════
+   „Guten Tag, [Name]" ist der Seitentitel (Titelrolle aus patterns.css). Der
+   Name trägt die Markentinte — dieselbe Schrift, dasselbe Gewicht, nur der
+   Ton hebt ihn leise hervor. */
+.ov-greeting-name { color: var(--ce-color-brand-ink); }
 
-/* Inhaltsfläche: weiß, feine Border, sehr flacher Schatten — kein Glas,
-   kein backdrop-filter, kein Verlauf. Das Material steht seit Paket A,
-   Phase 2 zentral im Base-Card-Primitive (primitives.css); .tile ist dort
-   als kompatibler Klassenname mitgeführt. */
-
-/* Icon-Medaillon: ruhige, leicht getönte Fläche statt Radial-Glanz + Glow. */
-.pp-medal {
-  display: grid; place-items: center; border-radius: 50%; flex-shrink: 0;
-  color: var(--mc);
-  background: var(--surface-muted);
-  border: 1px solid var(--border-subtle);
-  box-shadow: none;
-}
-/* Nur noch ein Ton: die KPI-Karten tragen kein .pp-medal mehr, sondern ihren
-   eigenen Squircle (.pp-kpi-icon). Die Töne m-hero/m-mint/m-green/m-amber
-   waren damit von keinem Markup mehr referenziert. */
-.m-blue { --mc: var(--accent-blue); }
-
-/* ══════════ Main + Header ══════════ */
-.pp-main {
-  position: relative;
-  max-width: 1420px; margin: 0 auto;
-  padding: 40px 46px 60px;
-  font-family: var(--fs);
-  color: var(--text-primary);
-}
-.pp-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-.pp-hero { min-width: 0; }
-
-.pp-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.pp-pill {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 6px 12px; border-radius: 99px;
-  font-family: var(--fs); font-size: 11px; font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-}
-.pp-pill svg { color: var(--accent-blue); }
-
-/* Begrüßung: Cormorant-Serif bleibt (bestehende Vorgabe). Der Name wird nicht
-   mehr als Farbverlauf gefüllt, sondern trägt die Akzentfarbe. */
-.pp-h1 {
-  font-family: var(--fd); font-weight: 500; font-size: 52px;
-  line-height: 1.05; letter-spacing: -0.005em;
-  color: var(--text-primary); margin-top: 18px;
-}
-.pp-hname { font-style: italic; color: var(--accent-blue); }
-.pp-hsub { font-family: var(--fs); font-size: 15px; font-weight: 400; color: var(--text-secondary); margin-top: 14px; }
-
-.pp-actions { display: flex; align-items: center; gap: 12px; padding-top: 6px; flex-shrink: 0; }
-/* .pp-bell ist entfallen: die Glocke der Übersicht ist seit dem
-   Benachrichtigungscenter ein echter Knopf mit .ntf-bell.ntf-bell-overview
-   (notifications.css) und trug diese Klasse nie zusätzlich — die Regel war
-   ohne Markup. */
+/* ══════════ Benutzerchip (Utility-Zeile aller Seiten) ══════════
+   Firmenmarke (Logo oder Initiale) + Name + Firma. Flach, 40 px hoch, Radius
+   8 px, keine Pill, kein Chevron. Der Chip ist die EINE Stelle der
+   Utility-Zeile, die bei Platzmangel nachgibt: Name und Firma ellipsieren
+   (Volltext im title-Attribut des Buttons). */
 .pp-uchip {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 14px 6px 6px; border-radius: 99px;
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  min-height: var(--ce-size-control-md);
+  padding: 4px var(--ce-space-3) 4px 4px;
+  border-radius: var(--ce-radius-sm);
   cursor: pointer; text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  transition: border-color 0.15s ease, background 0.15s ease;
-  min-width: 0; max-width: 300px;
+  background: none;
+  border: 1px solid transparent;
+  font-family: var(--ce-font-sans);
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  min-width: 0; max-width: 280px;
 }
-.pp-uchip:hover { border-color: var(--border-strong, #cbd5e1); background: var(--surface-subtle); }
-.ce-comark { width: 36px; height: 36px; flex-shrink: 0; display: block; }
+.pp-uchip:hover { background: var(--ce-color-surface-hover); }
+.pp-uchip:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
+.ce-comark { width: 32px; height: 32px; flex-shrink: 0; display: block; }
 /* Firmenlogo im Chip. `contain` ist tragend: ein Kundenlogo hat ein beliebiges
-   Seitenverhältnis (ein Wortmarken-Logo misst leicht 8:1), und `cover` würde es
-   beschneiden, ein gesetztes width+height ohne object-fit es stauchen. Es wird
-   deshalb in die 36-px-Fläche EINGEPASST — schmaler oder niedriger, aber nie
-   verzerrt und nie angeschnitten. Die helle Trägerfläche gibt Logos mit
-   transparentem Hintergrund einen definierten Grund; der Radius ist derselbe
-   wie beim Initialen-Squircle daneben (11.5/40 ≈ 10.35/36 → md). */
+   Seitenverhältnis — es wird in die Fläche EINGEPASST, nie verzerrt und nie
+   angeschnitten. Die helle Trägerfläche gibt Logos mit transparentem
+   Hintergrund einen definierten Grund. */
 .ce-comark-img {
   object-fit: contain;
-  border-radius: var(--ce-radius-md);
+  border-radius: var(--ce-radius-sm);
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
 }
-/* Der Chip ist die EINE Stelle der Kopfzeilen, die bei Platzmangel nachgibt:
-   Name und Firma ellipsieren (Volltext im title-Attribut des Buttons), Glocke
-   und Seitenaktion bleiben starr. Ohne diese Kette machte ein langer
-   Firmenname den Kopf breiter als den Viewport (bis 146 px, unsichtbar
-   abgeschnitten). Der Deckel begrenzt den Chip zusätzlich in max-content-
-   Kontexten: 300 px ≈ Bildmarke + rund 34 Zeichen der 13-px-Zeile — mehr
-   Identität braucht keine Kopfzeile, der Rest steht im Profil. */
 .pp-uchip-text { min-width: 0; display: flex; flex-direction: column; }
-.pp-uname { font-family: var(--fs); font-size: 13px; font-weight: 600; line-height: 1.25; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-ucomp { font-family: var(--fs); font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-uchip > svg { color: var(--text-tertiary); flex-shrink: 0; }
-
-/* .pp-cta ist mit Paket D entfallen: der „Neue Sendung"-Knopf der Kopfzeile
-   stand für dasselbe Ziel wie die (jetzt vorhandene) primäre Schnellaktion
-   darunter — doppelte Navigation. Der Knopf war zudem die letzte eigene
-   Buttonfamilie der Übersicht; es bleiben die globalen .btn-Primitives. */
-
-.pp-uchip:focus-visible {
-  outline: var(--ce-focus-ring); outline-offset: 2px;
+.pp-uname {
+  font-size: var(--ce-text-body-s-size); font-weight: 600; line-height: 1.3;
+  color: var(--ce-color-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pp-ucomp {
+  font-size: var(--ce-text-caption-size); line-height: 1.4;
+  color: var(--ce-color-text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* ══════════ KPI-Karten — „Executive Metric Cards" ══════════ */
-/* Vier GLEICHWERTIGE Karten. Die frühere Hervorhebung der ersten Karte
-   (Akzent-Border + blaue Beschriftung + blaue Zahl) ist entfallen: die Karten
-   sind nicht bedienbar, eine „ausgewählte" Karte behauptete einen Zustand, den
-   es nicht gibt. Unterschieden werden sie jetzt allein über Icon und Eckton.
-
-   Gleiche Höhe entsteht durch das Grid selbst (Zeilen sind standardmäßig
-   gleich hoch, `align-items: stretch`) — es braucht keine feste Höhe und keine
-   Sonderregel für eine letzte Position.
-
-   Sämtliche Farbwerte stehen als --ce-kpi-* in variables.css; hier steht
-   bewusst kein Farbliteral (Ausnahme: der transparente Endstopp des
-   Eckschimmers, der keine Farbe ist). */
-.pp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
-
-.pp-kpi {
-  /* Kartenidentität — je Karte über .kt-* gesetzt, hier nur die Vorbelegung. */
-  --kc: var(--ce-kpi-active);
-  --kf: var(--ce-kpi-active-face);
-  --ke: var(--ce-kpi-active-edge);
-  --kt: var(--ce-kpi-active-tint);
-
-  position: relative;
-  /* Ohne min-width:0 bleibt der Browser-Default min-width:auto in Kraft:
-     eine Grid-Spalte mit `1fr` darf nicht unter den Inhalts-Mindestbedarf
-     ihrer Karte schrumpfen. Die erste Karte trägt gelegentlich den 24-h-
-     Nachsatz (nowrap) und wird dadurch minimal breiter im Inhalt als die
-     anderen drei — ohne diese Zeile blieben die Spalten dadurch sichtbar
-     ungleich breit (gemessen: 205.7 px vs. 159.1 px bei 1081 px Breite).
-     Dasselbe Muster wie bei `.main-content > *` in dashboard-premium.css. */
-  min-width: 0;
-  border-radius: 20px;
-  padding: 22px 22px 20px;
-  /* Fünf Ebenen, von oben nach unten: kleiner radialer Akzent rechts oben,
-     darunter der zurückhaltende lineare Verlauf. Rahmen, Innenkante und der
-     weiche Navy-Schatten kommen aus border/box-shadow. */
-  background:
-    radial-gradient(128% 104% at 100% 0%, var(--kt) 0%, rgba(255, 255, 255, 0) 62%),
-    var(--ce-kpi-surface);
+/* ══════════ Kennzahlenband ══════════
+   EIN Band mit vier gleich breiten Zellen, getrennt durch Haarlinien — mit
+   feiner Kante und dem sehr leichten Schatten der Arbeitsflächen
+   (--ce-elevation-1, Veredelung 2026-10). Keine Karte je Kennzahl, kein
+   Verlauf, kein Symbol, kein eigener Farbton. Die Zellen sind reine Informationsflächen — kein Cursor,
+   keine Hover-Reaktion. Gleich breit ohne Sonderregel: min-width:0 hält eine
+   Zelle mit Nachsatz davon ab, ihre Spalte auf Kosten der anderen zu weiten. */
+.ov-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--ce-kpi-surface);
   border: 1px solid var(--ce-kpi-border);
-  box-shadow: var(--ce-kpi-shadow);
-  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  overflow: hidden;
 }
-.kt-active    { --kc: var(--ce-kpi-active);    --kf: var(--ce-kpi-active-face);    --ke: var(--ce-kpi-active-edge);    --kt: var(--ce-kpi-active-tint); }
-.kt-transit   { --kc: var(--ce-kpi-transit);   --kf: var(--ce-kpi-transit-face);   --ke: var(--ce-kpi-transit-edge);   --kt: var(--ce-kpi-transit-tint); }
-.kt-delivered { --kc: var(--ce-kpi-delivered); --kf: var(--ce-kpi-delivered-face); --ke: var(--ce-kpi-delivered-edge); --kt: var(--ce-kpi-delivered-tint); }
-.kt-delayed   { --kc: var(--ce-kpi-delayed);   --kf: var(--ce-kpi-delayed-face);   --ke: var(--ce-kpi-delayed-edge);   --kt: var(--ce-kpi-delayed-tint); }
-
-/* Die Karten sind reine Informationsflächen: kein Cursorwechsel, kein Anheben,
-   keine Skalierung. Es bleibt die schwächstmögliche Rückmeldung — Rahmen und
-   Schatten ziehen eine Spur nach. */
-.pp-kpi:hover { border-color: var(--ce-kpi-border-hover); box-shadow: var(--ce-kpi-shadow-hover); }
-
-/* Kopfzeile: Beschriftung links, Icon rechts. Die min-height hält die vier
-   Zahlen auf EINER Grundlinie, auch wenn eine Beschriftung in einer engen
-   Spalte doch einmal zweizeilig wird. */
-.pp-kpi-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; min-height: 36px; margin-bottom: 16px;
+.ov-kpi {
+  display: flex; flex-direction: column; gap: var(--ce-space-1);
+  min-width: 0;
+  padding: var(--ce-space-5) var(--ce-space-6);
 }
-.pp-kpi-label {
-  font-family: var(--fs); font-size: 12px; font-weight: 500;
-  line-height: 1.35; letter-spacing: 0.005em; text-transform: none;
-  color: var(--ce-kpi-label); min-width: 0;
+.ov-kpi + .ov-kpi { border-left: 1px solid var(--ce-kpi-divider); }
+.ov-kpi-label {
+  font-size: var(--ce-text-label-size);
+  font-weight: var(--ce-text-label-weight);
+  line-height: var(--ce-text-label-line);
+  color: var(--ce-kpi-label);
 }
-/* Weiche Squircle-Fläche statt Kreis — bewusst KEINE kreisförmige Umrandung.
-   Fläche und Kante tragen die Kartenfarbe in niedriger Deckkraft, gefüllt wird
-   nichts. Die Strichstärke kommt aus dem Stylesheet: CSS schlägt das
-   Präsentationsattribut stroke-width der Icon-Komponente, ohne deren globale
-   Voreinstellung (1.8) für die übrige App anzufassen. */
-.pp-kpi-icon {
-  width: 36px; height: 36px; border-radius: 11.5px;
-  display: grid; place-items: center; flex-shrink: 0;
-  color: var(--kc);
-  background: var(--kf);
-  border: 1px solid var(--ke);
-}
-.pp-kpi-icon svg { stroke-width: 1.6; }
-
-/* Wert. Sans-Serif aus dem vorhandenen System: --fs (DM Sans) liegt als
-   Variable Font vor und rendert Gewicht 600 tatsächlich. Die frühere dritte
-   Familie (Libre Franklin, --fh) lag nur als 700 und 800 vor und fiel bei 600
-   still auf 700 zurück — sie ist mit dem Abschlusspaket ganz entfernt. Der
-   Serifensatz der Übersicht (--fd) kommt in dieser Sektion nicht vor. */
-.pp-kpi-num { display: flex; align-items: baseline; line-height: 1; }
-.knum {
-  font-family: var(--fs); font-weight: 600; font-size: 48px; line-height: 1;
-  letter-spacing: -0.035em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+.ov-kpi-value {
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-numeric-display-size);
+  font-weight: var(--ce-text-numeric-display-weight);
+  line-height: var(--ce-text-numeric-display-line);
+  letter-spacing: var(--ce-text-numeric-display-tracking);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   color: var(--ce-kpi-value);
 }
-.kcur { font-family: var(--fs); font-size: 20px; font-weight: 500; color: var(--ce-kpi-context); margin-left: 6px; }
-
-/* Kontextzeile — knapp unter dem Wert, ohne Trennlinie und ohne Statuspunkt. */
-.pp-kpi-sub {
-  margin-top: 10px;
-  font-family: var(--fs); font-size: 12px; line-height: 1.5;
+.ov-kpi-context {
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
   color: var(--ce-kpi-context);
 }
-/* Bewusst KEIN white-space:nowrap mehr: der Nachsatz ist ein dynamischer,
-   unbegrenzt langer Text ("128 neu in 24 h" ist länger als "1 neu in 24 h").
-   nowrap hielt ihn zwar als EINE visuelle Einheit zusammen, lief aber im
-   schmalen Vierspaltenraster (1085–1240 px) messbar über die Kartenbreite
-   hinaus (scrollWidth 160 px bei nur 130 px verfügbarer Breite) — ein
-   abgeschnittener Inhalt, den die Vorgabe ausdrücklich verbietet. Normales
-   Wrapping verhindert das zuverlässig, auf Kosten eines gelegentlichen
-   Umbruchs mitten im Nachsatz an sehr schmalen Breiten. */
-.pp-kpi-note { white-space: normal; }
+.ov-kpi-note { white-space: normal; }
 
-/* ══════════ Operative Module (Paket D) ══════════
-   Letzte Sendungen, offene Rechnungen und Benachrichtigungen. Material
-   ausschließlich aus der Foundation: Flächen/Kanten/Tiefen kommen aus
-   .ce-card bzw. .ce-card-interactive (primitives.css), Farben aus den
-   --ce-color-*-Rollen, Radien aus --ce-radius-*. Hier steht nur Layout. */
-.ov-mod { margin-top: 34px; }
+/* ══════════ Operative Module ══════════
+   Letzte Sendungen (≈ 2/3) und offene Rechnungen (≈ 1/3) nebeneinander;
+   darunter bricht alles einspaltig. Material ausschließlich aus der
+   Foundation (.ce-card): 1-px-Kante, sehr leichter Schatten, Radius 12 px. */
+.ov-mod { margin-top: var(--ce-space-7); min-width: 0; }
 .ov-mod-head {
-  display: flex; align-items: baseline; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   gap: var(--ce-space-4); margin-bottom: var(--ce-space-3);
+  min-height: 32px;
 }
 .ov-mod-title {
   margin: 0;
-  font-family: var(--fs);
+  font-family: var(--ce-font-sans);
   font-size: var(--ce-text-title-section-size);
   font-weight: var(--ce-text-title-section-weight);
   line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
   color: var(--ce-color-text-primary);
 }
-/* Zwei gleichwertige Module nebeneinander; darunter bricht alles einspaltig.
-   .ov-mod-grid folgt seit der Entfernung der Schnellaktionen (ersatzlos,
-   keine Platzhaltersektion) direkt auf die KPI-Reihe weiter oben — deshalb
-   trägt der Abstand hier bewusst denselben Wert wie .pp-sec (64px, s. u.),
-   NICHT mehr den kleineren 34-px-Rhythmus der übrigen Modulfolge
-   (.ov-mod-grid → Benachrichtigungen bleibt bei 34px, siehe .ov-mod oben):
-   der Übergang von den Kennzahlen zu „Letzte Sendungen" ist jetzt der erste
-   Abschnittswechsel der Seite und soll sich auch so lesen — weder direkt an
-   die KPI-Karten angeklebt noch ein zufälliges Loch. */
-.ov-mod-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--ce-space-5); align-items: start; }
-.ov-mod-grid > .ov-mod { margin-top: 64px; min-width: 0; }
+.ov-mod-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--ce-space-6);
+  align-items: start;
+}
 
 .ov-card { overflow: hidden; }
-.ov-card--pad { padding: var(--ce-space-5); }
+.ov-card--pad { padding: var(--ce-space-5) var(--ce-space-6); }
 .ov-quiet {
   margin: 0;
-  font-size: var(--ce-text-body-s-size);
-  line-height: var(--ce-text-body-s-line);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
   color: var(--ce-color-text-secondary);
 }
 
-/* ── Listenmodule (letzte Sendungen, Benachrichtigungen) ────────────────── */
+/* ── Listenmodule (letzte Sendungen, Benachrichtigungen) ── */
 .ov-list { list-style: none; margin: 0; padding: 0; }
 .ov-list-row {
-  display: flex; align-items: center; gap: var(--ce-space-3);
+  display: flex; align-items: center; gap: var(--ce-space-4);
+  min-height: 64px;
   padding: var(--ce-space-3) var(--ce-space-5);
-  border-bottom: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--border-hairline);
 }
 .ov-list-row:last-child { border-bottom: 0; }
 .ov-list-row--button { padding: 0; }
 .ov-list-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .ov-list-primary {
   display: flex; align-items: center; gap: var(--ce-space-2);
-  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  font-size: var(--ce-text-body-size); font-weight: 600; line-height: 1.4286;
   color: var(--ce-color-text-primary); overflow-wrap: anywhere;
 }
 .ov-list-secondary {
-  font-size: var(--ce-text-body-s-size);
-  color: var(--ce-color-text-muted); overflow-wrap: anywhere;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary); overflow-wrap: anywhere;
 }
+/* Status als ganzer Begriff — er bricht nie mitten im Wort. */
+.ov-list-status { flex: none; }
 .ov-list-num {
+  flex: none;
+  min-width: 80px;
   font-family: var(--ce-font-numeric);
-  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  font-size: var(--ce-text-body-size); font-weight: 600;
   color: var(--ce-color-text-primary);
 }
-.ov-list-action { flex: none; }
 
-/* ── Offene Rechnungen ──────────────────────────────────────────────────── */
+/* ── Offene Rechnungen ── */
 .ov-inv-amount {
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 28px; font-weight: 600; line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: var(--ce-text-numeric-display-size);
+  font-weight: var(--ce-text-numeric-display-weight);
+  line-height: var(--ce-text-numeric-display-line);
+  letter-spacing: var(--ce-text-numeric-display-tracking);
   color: var(--ce-color-text-primary);
 }
 .ov-inv-meta {
-  display: flex; flex-wrap: wrap; gap: 6px var(--ce-space-4);
+  display: flex; flex-direction: column; gap: 2px;
   margin-top: var(--ce-space-2);
   font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
 }
 .ov-inv-overdue { margin: var(--ce-space-3) 0 0; }
-.ov-inv-note { margin-top: var(--ce-space-3); }
+.ov-inv-note { margin-top: var(--ce-space-3); font-size: var(--ce-text-body-s-size); }
 
-/* ── Benachrichtigungsmodul ─────────────────────────────────────────────── */
+/* ── Benachrichtigungsmodul ──
+   Die Zeile IST eine Aktion (öffnet das Ziel) — deshalb trägt sie, anders als
+   reine Datenzeilen, eine Hover-Fläche. */
 .ov-ntf-btn {
-  display: flex; align-items: center; gap: var(--ce-space-3); width: 100%;
+  display: flex; align-items: center; gap: var(--ce-space-4); width: 100%;
+  min-height: 64px;
   padding: var(--ce-space-3) var(--ce-space-5);
-  min-height: 44px;
   background: none; border: 0; cursor: pointer; text-align: left;
-  color: inherit; font-family: var(--fs);
-  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
+  color: inherit; font-family: var(--ce-font-sans);
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ov-ntf-btn:hover { background: var(--ce-color-surface-muted); }
-.ov-ntf-btn > svg { flex: none; color: var(--ce-color-text-muted); }
-.ov-ntf-dot {
-  width: 7px; height: 7px; border-radius: var(--ce-radius-full);
-  background: var(--ce-color-brand); flex: none;
+.ov-ntf-btn:hover { background: var(--ce-color-surface-hover); }
+.ov-ntf-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
+/* Ungelesen als Wort — nicht allein als Punkt oder Farbe. */
+.ov-ntf-new {
+  flex: none;
+  padding: 0 6px;
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 600;
+  line-height: 18px;
 }
 .ov-ntf-time {
   flex: none;
-  font-size: var(--ce-text-label-size);
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
   color: var(--ce-color-text-muted); white-space: nowrap;
 }
 
+/* ══════════ Onboarding (nur ohne operative Daten) ══════════
+   Ruhige Textabschnitte: Titel, ein Satz, darunter die Punkte als Raster.
+   Keine Symbole, keine Nummernkacheln, keine dunklen Flächen. */
+.ov-section { margin-top: var(--ce-space-7); }
+.ov-section-title {
+  margin: 0;
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
+  color: var(--ce-color-text-primary);
+}
+.ov-section-desc {
+  margin: var(--ce-space-1) 0 0;
+  max-width: var(--ce-size-prose);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+.ov-steps,
+.ov-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  list-style: none;
+  margin: var(--ce-space-4) 0 0;
+  padding: 0;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  overflow: hidden;
+}
+.ov-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ov-step,
+.ov-fact {
+  display: flex; gap: var(--ce-space-3);
+  min-width: 0;
+  padding: var(--ce-space-5) var(--ce-space-6);
+}
+.ov-fact { flex-direction: column; gap: var(--ce-space-1); }
+.ov-step + .ov-step { border-left: 1px solid var(--border-hairline); }
+.ov-fact:nth-child(even) { border-left: 1px solid var(--border-hairline); }
+.ov-fact:nth-child(n + 3) { border-top: 1px solid var(--border-hairline); }
+/* Die Schrittnummer ist Text — die Reihenfolge trägt zusätzlich das <ol>. */
+.ov-step-no {
+  flex: none;
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-title-card-size);
+  font-weight: 600;
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-brand-ink);
+}
+.ov-step-text { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
+.ov-step-title,
+.ov-fact-title {
+  font-size: var(--ce-text-body-size);
+  font-weight: 600;
+  line-height: 1.4286;
+  color: var(--ce-color-text-primary);
+}
+.ov-step-desc,
+.ov-fact-desc {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.ov-trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ce-space-6);
+  list-style: none;
+  margin: var(--ce-space-7) 0 0;
+  padding: var(--ce-space-5) 0 0;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.ov-trust-item { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
+
+/* ══════════ Carrier-Bereich ══════════
+   Eine helle Fläche im Material der übrigen Module (Fläche, 1-px-Kante,
+   Radius 12 px, sehr leichter Schatten): oben Titel, ein Satz und die Vergleichsaktion
+   (Secondary — die Seite hat genau eine Hauptaktion), darunter die acht
+   Carrier als ruhige Kacheln. Breit eine Reihe zu acht, sonst vier und auf
+   dem Telefon zwei je Reihe. Logos in Originalproportion (contain). */
+.ov-carriers {
+  margin-top: var(--ce-space-7);
+  padding: var(--ce-space-6);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+.ov-carriers-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--ce-space-4) var(--ce-space-6);
+}
+.ov-carriers-intro { min-width: 0; flex: 1 1 320px; }
+.ov-carriers-title {
+  margin: 0;
+  font-size: var(--ce-text-title-section-size);
+  font-weight: var(--ce-text-title-section-weight);
+  line-height: var(--ce-text-title-section-line);
+  letter-spacing: var(--ce-text-title-section-tracking);
+  color: var(--ce-color-text-primary);
+}
+.ov-carriers-desc {
+  margin: var(--ce-space-1) 0 0;
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+.ov-carriers-cta { flex: none; }
+.ov-carrier-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: var(--ce-space-3);
+  list-style: none;
+  margin: var(--ce-space-5) 0 0;
+  padding: 0;
+}
+.ov-carrier {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 0;
+  padding: var(--ce-space-3) var(--ce-space-2);
+  background: var(--ce-color-surface-subtle);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-sm);
+  text-align: center;
+}
+/* Einheitliche Logofläche für alle acht Marken; das Logo selbst bleibt in
+   seiner Originalproportion. Die Assets sind meist 48 × 30 mit eigenem
+   Innenrand — deshalb eine feste Höhe statt einer Maximalhöhe, sonst blieben
+   sie winzig. Die Breitengrenze hält ein Querformat (Emons, 3 : 1) auf dem
+   optischen Gewicht der übrigen. */
+.ov-carrier-logo {
+  display: grid; place-items: center;
+  width: 100%; height: 40px;
+  margin-bottom: var(--ce-space-1);
+}
+.ov-carrier-logo img {
+  display: block;
+  height: 36px; width: auto;
+  max-width: min(72px, 100%);
+  object-fit: contain;
+}
+.ov-carrier-service {
+  font-size: var(--ce-text-body-s-size);
+  font-weight: 600;
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-primary);
+}
+.ov-carrier-time {
+  font-family: var(--ce-font-numeric);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* ══════════ Responsive ══════════
+   Ab 1200 px: vier Kennzahlzellen, darunter 2 : 1. Darunter stapeln die
+   Module; das Kennzahlband wird 2 × 2, sobald die Zellen zu schmal würden. */
+/* Acht Carrier in einer Reihe nur, wenn jede Kachel Platz für ihr Logo hat;
+   darunter zwei Reihen zu vier. */
+@media (max-width: 1359px) {
+  .ov-carrier-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 @media (max-width: 1120px) {
-  .ov-mod-grid { grid-template-columns: 1fr; }
+  .ov-mod-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .ov-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-step:nth-child(odd) { border-left: 0; }
+  .ov-step:nth-child(n + 3) { border-top: 1px solid var(--border-hairline); }
+}
+@media (max-width: 1080px) {
+  .ov-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-kpi:nth-child(odd) { border-left: 0; }
+  .ov-kpi:nth-child(n + 3) { border-top: 1px solid var(--ce-kpi-divider); }
 }
 @media (max-width: 720px) {
   /* Auf schmalen Breiten stapeln die Zeilen: Status und Betrag rutschen unter
      den Haupttext, statt ihn auf wenige Zeichen zusammenzudrücken. */
-  .ov-list-row { flex-wrap: wrap; }
+  .ov-list-row { flex-wrap: wrap; row-gap: var(--ce-space-2); }
   .ov-list-main { flex: 1 1 100%; }
-  .ov-list-num { margin-left: auto; }
+  .ov-list-num { margin-left: auto; min-width: 0; }
+  .ov-steps,
+  .ov-facts,
+  .ov-trust { grid-template-columns: minmax(0, 1fr); }
+  .ov-steps > .ov-step,
+  .ov-facts > .ov-fact { border-left: 0; }
+  .ov-step + .ov-step,
+  .ov-fact + .ov-fact { border-top: 1px solid var(--border-hairline); }
 }
-/* Der prefers-reduced-motion-Block der Übersicht steht gesammelt am Dateiende —
-   .ov-ntf-btn ist dort mit aufgenommen. Ein zweiter Block hier oben würde die
-   bestehende Regelgruppe aufspalten. */
-
-/* ══════════ Sektionen ══════════ */
-.pp-sec { margin-top: 64px; }
-
-/* ── Gemeinsames Section-Header-System ──────────────────────────────────────
-   Drei Abschnitte, EIN Kopf: Indexmarke · Hairline · Label, darunter Titel und
-   genau eine erklärende Zeile. Die Indexmarke ist bewusst klein und ruhig
-   gehalten (kein Formularlabel, keine große Pill-Navigation); die Hairline
-   ersetzt den Schrägstrich der Schreibweise „01 / ABLAUF" grafisch.
-   Die sichtbare Abschnittsnummer läuft über --ce-font-numeric — dieselbe
-   normale Nullform wie alle übrigen Ziffern der App (siehe variables.css). */
-.pp-shead { max-width: 660px; }
-.pp-shead-top { display: flex; align-items: center; gap: 10px; }
-.pp-shead-no {
-  display: inline-grid; place-items: center;
-  min-width: 27px; height: 21px; padding: 0 7px;
-  border-radius: 6px;
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-  color: var(--ce-sec-accent);
-  background: var(--ce-sec-index-face);
-  border: 1px solid var(--ce-sec-index-edge);
-}
-.pp-shead-rule { width: 22px; height: 1px; background: var(--ce-sec-rule); flex-shrink: 0; }
-.pp-shead-label {
-  font-family: var(--fs); font-size: 11px; font-weight: 600;
-  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ce-sec-label);
-}
-.pp-shead-title {
-  font-family: var(--fs); font-weight: 600; font-size: 20px; line-height: 1.3;
-  letter-spacing: -0.015em; color: var(--text-primary); margin-top: 14px;
-}
-.pp-shead-desc {
-  font-family: var(--fs); font-size: 14px; line-height: 1.6;
-  color: var(--text-secondary); margin-top: 10px;
-}
-/* Invertiert — identische Struktur und Maße, nur andere Tonwerte. */
-.pp-shead--invert .pp-shead-no { color: var(--ce-sec-accent-inv); background: var(--ce-sec-index-face-inv); border-color: var(--ce-sec-index-edge-inv); }
-.pp-shead--invert .pp-shead-rule { background: var(--ce-sec-rule-inv); }
-.pp-shead--invert .pp-shead-label { color: var(--ce-sec-label-inv); }
-.pp-shead--invert .pp-shead-title { color: var(--ce-net-ink); }
-.pp-shead--invert .pp-shead-desc { color: var(--ce-net-ink-soft); }
-
-/* ── 01 Ablauf — zusammenhängendes Prozesspanel ────────────────────────────
-   Ein gemeinsames helles Panel statt vier loser Elemente auf der Seitenfläche.
-   Die Prozessführung entsteht aus EINER Regel: jede Station außer der letzten
-   zeichnet ihre Verbindung selbst (::after). Waagerecht läuft sie von der
-   rechten Icon-Kante über die Rasterlücke bis zur linken Icon-Kante der
-   nächsten Station, senkrecht von der Icon-Unterkante bis zur nächsten
-   Station. Beides ist über --flow-ic/--flow-gap exakt an die Icon-Zentren
-   gebunden und bleibt korrekt, wenn sich Icongröße oder Abstand ändern — die
-   frühere Fassung positionierte die Linie mit festen Pixelwerten (left:72px,
-   right:-16px) und lag dadurch sichtbar neben den Zentren.
-   Als Pseudo-Element erzeugt die Linie keinen DOM-Knoten und damit auch
-   keinen Eintrag im Accessibility-Baum. */
-.pp-flow {
-  margin-top: 30px;
-  padding: 34px 34px 32px;
-  border-radius: var(--radius-lg);
-  background: var(--ce-flow-surface);
-  border: 1px solid var(--ce-flow-border);
-  box-shadow: var(--ce-flow-shadow);
-}
-.pp-flow-track {
-  --flow-ic: 54px;
-  --flow-gap: 30px;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--flow-gap);
-  list-style: none; margin: 0; padding: 0;
-}
-.pp-flow-step { position: relative; min-width: 0; }
-.pp-flow-step::after {
-  content: ''; position: absolute; pointer-events: none;
-  background: var(--ce-flow-rail);
-  top: calc(var(--flow-ic) / 2);
-  left: var(--flow-ic);
-  right: calc(-1 * var(--flow-gap));
-  height: 1px;
-}
-.pp-flow-step:last-child::after { content: none; }
-.pp-flow-ic {
-  position: relative; z-index: 1;
-  width: var(--flow-ic); height: var(--flow-ic);
-  display: grid; place-items: center;
-  border-radius: 17px;
-  color: var(--ce-sec-accent);
-  background: var(--ce-flow-ic-face);
-  border: 1px solid var(--ce-flow-ic-edge);
-  box-shadow: var(--ce-flow-ic-shadow);
-}
-/* Schrittzahl und Text rücken dicht an das Icon — die frühere Fassung ließ
-   dazwischen deutlich mehr Leerraum als zwischen den Stationen selbst. */
-.pp-flow-step .pp-step-no {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
-  color: var(--ce-sec-accent); margin-top: 18px;
-}
-.pp-flow-t {
-  font-family: var(--fs); font-size: 15px; font-weight: 600;
-  letter-spacing: -0.012em; color: var(--text-primary); margin-top: 7px;
-}
-.pp-flow-d {
-  font-family: var(--fs); font-size: 12px; line-height: 1.6;
-  color: var(--text-secondary); margin-top: 8px;
+@media (max-width: 600px) {
+  /* Carrier: zwei je Reihe, die Vergleichsaktion als volle Trefferfläche. */
+  .ov-carriers { padding: var(--ce-space-4); }
+  .ov-carrier-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--ce-space-4); }
+  .ov-carriers-cta { flex: 1 1 100%; }
+  /* KPI 2 × 2, kompakt: kein vierfach gestapelter Satz großer Zahlen. */
+  .ov-kpi { padding: var(--ce-space-4); }
+  .ov-kpi-value { font-size: var(--ce-text-numeric-display-size-mobile); }
+  .ov-card--pad { padding: var(--ce-space-4); }
+  /* Die Zeile mit Knopf polstert über den Knopf — nicht doppelt. */
+  .ov-list-row:not(.ov-list-row--button),
+  .ov-ntf-btn { padding: var(--ce-space-3) var(--ce-space-4); }
 }
 
-/* ── 02 Vorteile — editoriales Bento ───────────────────────────────────────
-   Asymmetrisch, aber geschlossen: eine hohe dunkle Leitkarte links (zwei
-   Rasterzeilen), eine breite und zwei kompakte helle Karten rechts. Alle vier
-   Inhalte bleiben gleichwertig lesbar — die Hierarchie entsteht aus Fläche und
-   Tonwert, nicht aus unterschiedlicher Textmenge. */
-.pp-bento {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 16px; margin-top: 30px;
-}
-.pp-bento-item {
-  display: flex; flex-direction: column; min-width: 0;
-  border-radius: var(--radius-lg); padding: 22px 22px 24px;
-  background: var(--ce-bento-surface);
-  border: 1px solid var(--ce-bento-border);
-  box-shadow: var(--ce-bento-shadow);
-  transition: box-shadow 0.16s ease, border-color 0.16s ease;
-}
-.pp-bento-item:hover { box-shadow: var(--ce-bento-shadow-hover); border-color: var(--ce-bento-border-hover); }
-/* Die breite Nebenkarte einen Hauch kühler — zwei Tonwerte, kein zweiter Stil.
-   Sie legt das Icon NEBEN den Text statt darüber: über zwei Rasterspalten
-   hinweg stünde die Zeile sonst nur auf halber Kartenbreite und ließe die
-   rechte Hälfte leer. Reine Layoutumschaltung über Grid — dieselben drei
-   Kindelemente wie in jeder anderen Karte, kein Sonder-Markup. */
-.pp-bento-item--wide {
-  grid-column: 2 / span 2; grid-row: 1;
-  background: var(--ce-bento-surface-alt);
-  display: grid; grid-template-columns: auto 1fr;
-  column-gap: 18px; align-content: start;
-}
-.pp-bento-item--wide .pp-bento-ic { grid-row: 1 / span 2; margin-bottom: 0; }
-.pp-bento-item--wide .pp-bento-t,
-.pp-bento-item--wide .pp-bento-d { grid-column: 2; }
-.pp-bento-item--hero {
-  grid-column: 1; grid-row: 1 / span 2;
-  padding: 28px 26px 26px;
-  background: var(--ce-bento-hero-surface);
-  border-color: var(--ce-bento-hero-border);
-  box-shadow: var(--ce-bento-hero-shadow);
-}
-.pp-bento-item--hero:hover { box-shadow: var(--ce-bento-hero-shadow); border-color: var(--ce-bento-hero-border); }
-.pp-bento-ic {
-  display: grid; place-items: center; flex-shrink: 0;
-  width: 42px; height: 42px; border-radius: 13px; margin-bottom: 16px;
-  color: var(--ce-sec-accent);
-  background: var(--ce-bento-ic-face);
-  border: 1px solid var(--ce-bento-ic-edge);
-}
-.pp-bento-item--hero .pp-bento-ic {
-  width: 46px; height: 46px; border-radius: 14px;
-  color: var(--ce-sec-accent-inv);
-  background: var(--ce-bento-hero-ic-face);
-  border-color: var(--ce-bento-hero-ic-edge);
-}
-.pp-bento-t {
-  font-family: var(--fs); font-size: 15px; font-weight: 600;
-  letter-spacing: -0.012em; color: var(--text-primary);
-}
-.pp-bento-d {
-  font-family: var(--fs); font-size: 13px; line-height: 1.5;
-  color: var(--text-secondary); margin-top: 8px;
-}
-.pp-bento-item--hero .pp-bento-t { font-size: 16px; color: var(--ce-bento-hero-ink); }
-.pp-bento-item--hero .pp-bento-d { font-size: 13px; color: var(--ce-bento-hero-ink-soft); }
-/* Eine einzige, echte Kennzahl: die tatsächliche Länge der Carrier-Liste. */
-.pp-bento-fact {
-  display: flex; align-items: baseline; gap: 9px;
-  margin-top: auto; padding-top: 20px;
-  border-top: 1px solid var(--ce-bento-hero-rule);
-}
-.pp-bento-fact-n {
-  font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
-  color: var(--ce-bento-hero-ink); line-height: 1;
-}
-.pp-bento-fact-l {
-  font-family: var(--fs); font-size: 11px; line-height: 1.5;
-  color: var(--ce-bento-hero-ink-soft);
-}
-
-/* ── 03 Carrier-Netzwerk — dunkle Signature-Fläche ─────────────────────────
-   Abschluss und Höhepunkt der Seite: Navy als Verbindung zur Sidebar, darauf
-   eine sehr schwache Netzstruktur.
-
-   Zur Hintergrundregel aus CLAUDE.md: das dortige Dekorationsverbot gilt der
-   SEITENWEITEN Ebene (.app-shell) — die gelöschten VaporBackground/
-   PremiumBackground. Diese Struktur liegt ausschließlich INNERHALB dieser
-   einen Karte, exakt wie das bestehende .pp-trust-watermark: statisch, ohne
-   Filter, ohne backdrop-filter, ohne Animation, hinter dem Inhalt und an der
-   Kartenrundung beschnitten. Keine zweite Hintergrundebene der Seite. */
-.pp-net {
-  position: relative; overflow: hidden;
-  border-radius: var(--radius-lg);
-  margin-top: 30px;
-  padding: 34px 34px 32px;
-  background: var(--ce-net-surface);
-  border: 1px solid var(--ce-net-border);
-  box-shadow: var(--ce-net-shadow);
-}
-.pp-net-bg {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  z-index: 0; pointer-events: none; user-select: none;
-}
-.pp-net-route { fill: none; stroke: var(--ce-net-line); stroke-width: 1.25; }
-.pp-net-node { fill: var(--ce-net-node); stroke: none; }
-.pp-net-in { position: relative; z-index: 1; }
-.pp-net-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-.pp-net-cta {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 11px 19px; border-radius: 99px;
-  cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  font-family: var(--fs); font-size: 13px; font-weight: 600;
-  color: var(--ce-net-ink);
-  background: var(--ce-net-cta-face);
-  border: 1px solid var(--ce-net-cta-edge);
-  transition: background 0.16s ease, border-color 0.16s ease;
-}
-.pp-net-cta:hover { background: var(--ce-net-cta-face-hover); }
-.pp-net-cta:focus-visible { outline: 2px solid var(--ce-net-focus); outline-offset: 2px; }
-
-.pp-cars {
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px;
-  list-style: none; margin: 32px 0 0; padding: 0;
-}
-.pp-car { display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0; }
-/* Einheitliche Logofläche: gleiche Maße für alle acht Marken, das Logo selbst
-   bleibt in Originalproportion (object-fit: contain, keine feste Breite). */
-.pp-car-chip {
-  width: 100%; max-width: 108px; height: 60px; padding: 0 12px;
-  border-radius: var(--radius); display: grid; place-items: center;
-  background: var(--ce-net-chip);
-  box-shadow: var(--ce-net-chip-shadow);
-  transition: background 0.16s ease;
-}
-.pp-car:hover .pp-car-chip { background: var(--ce-net-chip-hover); }
-.car-logo { max-height: 26px; max-width: 100%; width: auto; object-fit: contain; display: block; }
-.pp-car-svc { font-family: var(--fs); font-size: 12px; font-weight: 600; color: var(--ce-net-ink); }
-.pp-car-time { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 11px; color: var(--ce-net-ink-soft); }
-
-/* Trust */
-/* position:relative + overflow:hidden tragen das lokale Wasserzeichen und
-   schneiden es an der Kartenrundung an. Höhe, Raster und Inhalt des Tiles
-   bleiben unverändert — das <img> ist absolut positioniert und damit aus dem
-   Grid-Fluss. */
-.pp-trust {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  padding: 24px 12px; border-radius: var(--radius-lg); margin-top: 38px;
-  position: relative;
-  overflow: hidden;
-}
-/* Lokales Markendetail des Trust-Tiles. Unten rechts angeschnitten, hinter dem
-   Inhalt, ohne Animation, Filter, Glow oder Verlauf. Nicht fixed/sticky — es
-   scrollt normal mit der Karte.
-
-   Maßgeblich für die Größe ist der real bedruckte Textbereich, nicht die
-   Elementbox: das Tile ist nur 110 px hoch und in drei Spalten gefüllt.
-   Gemessen bleiben rechts der Glyphen 94 px (1920), 102 px (1440) und
-   49 px (1280) frei. Die sichtbare Breite ist daher auf 44 px begrenzt —
-   damit bleibt auch im engsten Desktop-Fall ein Abstand zum Text. Die
-   ursprünglich angedachten 140 px hätten die Textzeilen zwangsläufig
-   unterlaufen. Zum Ausgleich der kleineren Fläche liegt die Opazität am
-   oberen Ende des zulässigen Bandes (Grenze 0.08). */
-.pp-trust-watermark {
-  position: absolute;
-  right: -64px;
-  bottom: -52px;
-  width: 104px;          /* sichtbar: 40 × 52 px (angeschnitten) */
-  height: auto;
-  opacity: 0.075;
-  z-index: 0;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.pp-trust-item { display: flex; align-items: center; gap: 16px; padding: 0 24px; position: relative; z-index: 1; }
-.pp-trust-item + .pp-trust-item::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 1px; height: 46px; background: var(--border-subtle); }
-.pp-trust-item .pp-medal { width: 46px; height: 46px; }
-.pp-trust-t { font-family: var(--fs); font-size: 15px; font-weight: 600; color: var(--text-primary); }
-.pp-trust-d { font-family: var(--fs); font-size: 12px; line-height: 1.5; color: var(--text-secondary); margin-top: 4px; }
-
-/* ══════════ Responsive ══════════ */
-@media (max-width: 1440px) { .pp-cars { grid-template-columns: repeat(4, 1fr); } }
-/* Wasserzeichen ── Tablet: etwas kleiner. Mobil ausgeblendet: bei gestapeltem
-   Tile und ~38 px sichtbarer Fläche wäre es weder erkennbar noch konfliktfrei
-   zu platzieren — lieber ganz weg als ein unlesbarer Rest. */
-@media (max-width: 1120px) {
-  .pp-trust-watermark { width: 88px; right: -50px; bottom: -44px; opacity: 0.07; }
-}
-@media (max-width: 560px) {
-  .pp-trust-watermark { display: none; }
-}
-
-/* Ablauf ── unterhalb von 1120 px wird aus der Reihe eine SENKRECHTE Kette,
-   nicht ein 2×2-Feld: bei zwei Spalten müsste die Prozesslinie entweder in der
-   Zeilenmitte abbrechen oder von rechts unten nach links oben zurückspringen —
-   beides liest sich falsch. Senkrecht bleibt die Leserichtung eindeutig und
-   die Verbindung durchgehend. Icon links, Text rechts; die Linie läuft von der
-   Icon-Unterkante über die Rasterlücke bis zum nächsten Icon. */
-@media (max-width: 1120px) {
-  .pp-bento { grid-template-columns: repeat(2, 1fr); }
-  .pp-bento-item--hero { grid-column: 1 / span 2; grid-row: auto; }
-  .pp-bento-item--wide { grid-column: 1 / span 2; grid-row: auto; }
-  .pp-flow { padding: 28px 26px 26px; }
-  .pp-flow-track { --flow-gap: 26px; grid-template-columns: 1fr; }
-  .pp-flow-step {
-    display: grid; grid-template-columns: var(--flow-ic) 1fr;
-    column-gap: 18px; align-items: start;
-  }
-  .pp-flow-step .pp-flow-ic { grid-column: 1; grid-row: 1 / span 3; }
-  .pp-flow-step .pp-step-no,
-  .pp-flow-step .pp-flow-t,
-  .pp-flow-step .pp-flow-d { grid-column: 2; }
-  .pp-flow-step .pp-step-no { margin-top: 2px; }
-  .pp-flow-step .pp-flow-t { margin-top: 5px; }
-  .pp-flow-step::after {
-    top: var(--flow-ic); bottom: calc(-1 * var(--flow-gap));
-    left: calc(var(--flow-ic) / 2); right: auto;
-    width: 1px; height: auto;
-  }
-  .pp-h1 { font-size: 38px; }
-  .pp-trust { grid-template-columns: 1fr; gap: 18px; }
-  .pp-trust-item + .pp-trust-item::before { display: none; }
-}
-@media (max-width: 980px) {
-  .pp-main { max-width: none; padding: 30px 22px 60px; }
-  .pp-top { flex-direction: column-reverse; }
-  .pp-actions { padding-top: 0; flex-wrap: wrap; }
-  .pp-cars { grid-template-columns: repeat(2, 1fr); }
-  .pp-net { padding: 28px 22px 26px; }
-  .pp-net-cta { width: 100%; justify-content: center; }
-}
-/* KPI-Raster: EIGENER Breakpoint bei 1080 px, bewusst getrennt vom globalen
-   980-px-Wechsel oben (der weiterhin ausschließlich .pp-main/.pp-top/
-   .pp-actions/.pp-cars betrifft und unverändert bleibt).
-
-   Grund: im alten, gemeinsamen 980-px-Wechsel begann die Vierspaltenreihe
-   direkt bei 981 px — dort blieben pro Karte nur rund 160 px, zu wenig für
-   „Aktive Sendungen" neben dem Icon, und zwei weitere Breiten-Stufen mussten
-   Schrift und Abstand eigens verkleinern, um den Umbruch abzufedern.
-
-   Bei 1080 px beginnt die Vierspaltenreihe stattdessen erst bei 1081 px.
-   Gemessen (nicht geschätzt, inklusive der 252 px breiten Sidebar, die den
-   verfügbaren Raum bereits VOR dem KPI-Raster abzieht): 171 px pro Karte bei
-   1081 px, 201 px bei 1200 px, 202 px ab 1205 px. „Aktive Sendungen" braucht
-   rund 107 px ungebrochen — das steht erst ab 1205 px zur Verfügung. Zwischen
-   1081 und 1200 px bricht die Beschriftung deshalb weiterhin auf zwei Zeilen
-   um; das ist eine reine Platzfrage der festen Sidebarbreite und der (bewusst
-   gesperrten) Icon-/Schriftgröße, kein CSS-Fehler. Verhindert wird dabei
-   ausschließlich, dass dieser Umbruch „problematisch" wird: `.pp-kpi-head`
-   reserviert 36 px Mindesthöhe (reicht für zwei Zeilen bei 12,5 px), sodass
-   Kopfzeilenhöhe, Zahlengrundlinie und Kartenbreite über die ganze Rasterzeile
-   hinweg gleich bleiben, egal ob eine, zwei, drei oder alle vier Beschriftungen
-   umbrechen. Innenabstand und Schriftgröße sind dadurch in der gesamten
-   Vierspaltenreihe (≥ 1081 px) einheitlich — keine Zwischenstufe verkleinert
-   sie künstlich mehr. `min-width: 0` auf `.pp-kpi` verhindert zusätzlich, dass
-   eine einzelne breitere Karte (z. B. mit dem 24-h-Nachsatz) ihre Spalte auf
-   Kosten der anderen drei verbreitert (dasselbe Muster wie bei
-   `.main-content > *` in dashboard-premium.css). Geprüft über einen
-   Breitendurchlauf von 360 bis 1920 px in 5-px-Schritten. */
-@media (max-width: 1080px) {
-  .pp-kpis { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 640px) {
-  .pp-bento { grid-template-columns: 1fr; }
-  .pp-bento-item--hero, .pp-bento-item--wide { grid-column: 1; }
-  /* Einspaltig ist die Karte zu schmal für Icon neben Text — zurück auf die
-     gemeinsame Form aller Karten (Icon oben). */
-  .pp-bento-item--wide { display: flex; }
-  .pp-bento-item--wide .pp-bento-ic { margin-bottom: 16px; }
-  .pp-shead-title { font-size: 18px; }
-  .pp-flow { padding: 24px 18px 22px; }
-  .pp-flow-track { --flow-ic: 46px; --flow-gap: 22px; }
-  .pp-flow-step { column-gap: 14px; }
-  .pp-flow-ic { border-radius: 14px; }
-}
-@media (max-width: 560px) {
-  .pp-kpis { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 560px) {
-  .pp-kpi { padding: 20px 20px 18px; }
-  .knum { font-size: 40px; }
-}
-
-/* Die einzige Bewegung der Karten ist der Übergang von Rahmen, Fläche und
-   Schatten beim Hover — keine Verschiebung, keine Skalierung, keine dauerhaft
-   laufende Animation. Wer Bewegung abbestellt hat, bekommt den Zielzustand
-   sofort. */
 @media (prefers-reduced-motion: reduce) {
-  .pp-kpi { transition: none; }
-  .pp-bento-item { transition: none; }
-  .pp-car-chip { transition: none; }
-  .pp-net-cta { transition: none; }
-  .ov-ntf-btn { transition: none; }
+  .ov-ntf-btn,
+  .pp-uchip { transition: none; }
 }

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Icon } from "../ui/Icon";
 import { deliveryTimeOptionLabel } from "../../utils/deliveryTimeView.mjs";
 
 /* ─── Uhrzeit der „Spätesten Lieferzeit“ ───────────────────────────────────────
@@ -38,11 +37,11 @@ import { deliveryTimeOptionLabel } from "../../utils/deliveryTimeView.mjs";
  * Ein Portal an `document.body` nimmt beide Fallen strukturell aus dem Weg:
  * kein Vorfahr kann mehr clippen oder neu verankern.
  *
- * OPTIK UNVERÄNDERT: der Auslöser trägt weiterhin `.field-select` (forms.css) —
- * dieselbe Fläche, Kante, Höhe, Schrift und derselbe Fokusring. Der Chevron ist
- * vom Hintergrundbild auf `<Icon n="chevron">` gewechselt: identischer Pfad
- * (`M6 9l6 6 6-6`), identische Strichstärke — nur lässt er sich als Element beim
- * Öffnen drehen.
+ * OPTIK: der Auslöser trägt weiterhin `.field-select` (forms.css) — dieselbe
+ * Fläche, Kante, Höhe, Schrift und derselbe Fokusring wie jedes Auswahlfeld. Die
+ * Klappmarke ist seit dem Redesign (2026-10) rein per CSS gezeichnet (kein Icon,
+ * kein Uhrsymbol davor); sie dreht sich beim Öffnen. Die gewählte Option trägt
+ * Fläche + Schriftschnitt + aria-selected statt eines Häkchens.
  *
  * TASTATUR: Der Fokus bleibt beim geöffneten Zustand auf dem Auslöser (Muster
  * „select-only combobox“, WAI-ARIA 1.2). Dadurch liegt die gesamte Bedienung an
@@ -247,13 +246,8 @@ export default function DeliveryTimeSelect({ options, value, onChange, hasDate, 
         onClick={() => (open ? schliessen() : oeffne(Math.max(0, werte.indexOf(aktiv))))}
         onKeyDown={beiTaste}
       >
-        <span className="offers-time-icon" aria-hidden="true">
-          <Icon n="clock" s={15} c="currentColor" />
-        </span>
         <span className="offers-time-value">{deliveryTimeOptionLabel(aktiv)}</span>
-        <span className="offers-time-caret" aria-hidden="true">
-          <Icon n="chevron" s={16} c="currentColor" />
-        </span>
+        <span className="offers-time-caret" aria-hidden="true" />
       </button>
 
       {/* Ohne Datum ist das Feld echt deaktiviert (nicht nur ausgegraut) UND
@@ -286,11 +280,6 @@ export default function DeliveryTimeSelect({ options, value, onChange, hasDate, 
               onMouseEnter={() => setMarkiert(i)}
             >
               <span>{deliveryTimeOptionLabel(v)}</span>
-              {v === aktiv && (
-                <span className="offers-time-check" aria-hidden="true">
-                  <Icon n="check" s={14} c="currentColor" />
-                </span>
-              )}
             </li>
           ))}
         </ul>,

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "../ui/Icon";
 import { listAdminSupportRequests } from "../../api/adminApi";
 import {
   SUPPORT_LIST_ERROR,
@@ -101,7 +100,7 @@ export function CustomerSupportSection({ userId }) {
 
   return (
     <div className="adm-card">
-      <div className="adm-card-head"><Icon n="mail" s={17} /> Supportanfragen</div>
+      <div className="adm-card-head">Supportanfragen</div>
       <div className="adm-card-body">
         {loading ? (
           <div className="loading-center" role="status" aria-live="polite">
@@ -109,10 +108,10 @@ export function CustomerSupportSection({ userId }) {
           </div>
         ) : error ? (
           <>
-            <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
+            <div className="alert alert-error" role="alert">{error}</div>
             <div className="adm-sup-actions">
               <button type="button" className="btn btn-outline btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             </div>
           </>

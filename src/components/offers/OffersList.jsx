@@ -1,5 +1,4 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { OfferCard } from "./OfferCard";
 import { assignBadges } from "../../utils/offerBadges";
 import { offerKey, sameOffer } from "../../utils/offerIdentity.mjs";
@@ -20,11 +19,12 @@ const SORT_OPTIONS = [
   { id: "priciest",    label: "Teuerste"   },
 ];
 
+// Ruhige Textzeile unter den Ergebnissen (Redesign 2026-10: ohne Symbole).
 const TRUST_ITEMS = [
-  { icon: "shield",  title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselt, DSGVO-konform" },
-  { icon: "leaf",    title: "Nachhaltige Optionen",   desc: "Umweltfreundliche Versandwege" },
-  { icon: "clock",   title: "Zeitsparnis",            desc: "Vergleich in Sekunden, nicht Stunden" },
-  { icon: "headset", title: "Persönlicher Support",   desc: "Ihr Team ist jederzeit erreichbar" },
+  { title: "Sicher & zuverlässig",  desc: "SSL-verschlüsselt, DSGVO-konform" },
+  { title: "Nachhaltige Optionen",   desc: "Umweltfreundliche Versandwege" },
+  { title: "Zeitsparnis",            desc: "Vergleich in Sekunden, nicht Stunden" },
+  { title: "Persönlicher Support",   desc: "Ihr Team ist jederzeit erreichbar" },
 ];
 
 export function OffersList({
@@ -235,11 +235,9 @@ export function OffersList({
                     aria-haspopup="true"
                     aria-expanded={openFilter === "delivery"}
                   >
-                    <Icon n="calendar" s={12} c="currentColor" />
                     {deliveryChipLabel(latestDeliveryDate, latestDeliveryTime)}
-                    <span className="offers-filter-chip-caret" aria-hidden="true">
-                      <Icon n="chevron" s={13} c="currentColor" />
-                    </span>
+                    {/* Klappmarke rein per CSS — kein Icon (Redesign 2026-10). */}
+                    <span className="offers-filter-chip-caret" aria-hidden="true" />
                   </button>
 
                   {/* Filterpunkt „Preis" → rechts angedocktes Dropdown */}
@@ -250,11 +248,8 @@ export function OffersList({
                     aria-haspopup="dialog"
                     aria-expanded={openFilter === "price"}
                   >
-                    <Icon n="filter" s={12} c="currentColor" />
                     {maxPrice ? `Preis · bis ${money(Number(maxPrice))}` : "Preis"}
-                    <span className="offers-filter-chip-caret" aria-hidden="true">
-                      <Icon n="chevron" s={13} c="currentColor" />
-                    </span>
+                    <span className="offers-filter-chip-caret" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -266,7 +261,6 @@ export function OffersList({
                      sein, aber nicht so laut wie die Steuerung selbst. */}
               {hasFilter && (
                 <button className="offers-filter-reset-btn" onClick={onClearFilters} type="button">
-                  <Icon n="x" s={11} c="currentColor" />
                   Zurücksetzen
                 </button>
               )}
@@ -380,7 +374,6 @@ export function OffersList({
 
         {!loading && hasResults && tariffs.length === 0 && (
           <div className="offers-empty">
-            <div className="offers-empty-icon"><Icon n="search" s={26} c="currentColor" /></div>
             <p className="offers-empty-title">Keine Tarife gefunden</p>
             <p className="offers-empty-sub">
               Für diese Route und das gewählte Datum wurden keine Tarife gefunden.
@@ -391,7 +384,6 @@ export function OffersList({
 
         {!loading && hasResults && tariffs.length > 0 && filtered.length === 0 && (
           <div className="offers-empty">
-            <div className="offers-empty-icon"><Icon n="filter" s={26} c="currentColor" /></div>
             <p className="offers-empty-title">Filter anpassen</p>
             {/* Der Text nennt die TATSÄCHLICHE Ursache. Vorher stand hier
                 unabhängig vom gesetzten Filter „Erhöhen Sie das Preislimit" —
@@ -431,7 +423,7 @@ export function OffersList({
         {hasResults && !loading && (
           <div className="offers-recalc">
             <button className="offers-recalc-btn" onClick={onRecalculate} type="button">
-              <Icon n="refresh" s={13} c="currentColor" /> Neu berechnen
+              Neu berechnen
             </button>
           </div>
         )}
@@ -442,13 +434,8 @@ export function OffersList({
         <div className="offers-trust-strip">
           {TRUST_ITEMS.map(item => (
             <div key={item.title} className="offers-trust-item">
-              <div className="offers-trust-icon">
-                <Icon n={item.icon} s={17} c="var(--ce-color-brand)" />
-              </div>
-              <div>
-                <div className="offers-trust-title">{item.title}</div>
-                <div className="offers-trust-desc">{item.desc}</div>
-              </div>
+              <div className="offers-trust-title">{item.title}</div>
+              <div className="offers-trust-desc">{item.desc}</div>
             </div>
           ))}
         </div>
@@ -457,9 +444,6 @@ export function OffersList({
       {/* ── Tipp Leiste ── */}
       {showTrust && (
         <div className="offers-tipp">
-          <div className="offers-tipp-icon">
-            <Icon n="lightbulb" s={15} c="var(--warn)" />
-          </div>
           <p className="offers-tipp-text">
             <strong>Tipp:</strong> Vergleichen Sie Preis, Laufzeit und Abholart, bevor Sie ein Angebot auswählen.
           </p>

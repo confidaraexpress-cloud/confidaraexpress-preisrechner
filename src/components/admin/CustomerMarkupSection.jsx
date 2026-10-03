@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import {
   MARKUP_TEXTS,
   formatConfirmedBy,
@@ -133,7 +132,7 @@ export function CustomerMarkupSection({
   return (
     <div className="adm-card adm-markup" id={MARKUP_SECTION_ID} ref={sectionRef}>
       <div className="adm-card-head">
-        <Icon n="euro" s={17} /> {MARKUP_TEXTS.sectionTitle}
+        {MARKUP_TEXTS.sectionTitle}
         {!loading && !loadError && (
           <span className={`badge ${badgeCls} adm-card-head-action`}>{badgeLabel}</span>
         )}
@@ -147,10 +146,10 @@ export function CustomerMarkupSection({
         ) : loadError ? (
           <div className="adm-markup-loaderr">
             <div className="alert alert-error" role="alert">
-              <Icon n="x" s={16} />{loadError}
+              {loadError}
             </div>
             <button type="button" className="btn btn-outline btn-sm" onClick={onReload}>
-              <Icon n="refresh" s={14} /> Erneut laden
+              Erneut laden
             </button>
           </div>
         ) : (
@@ -186,7 +185,6 @@ export function CustomerMarkupSection({
                 die sachliche Einordnung (kein Warnzustand, keine Störung). */}
             {!confirmed && (
               <p className="adm-markup-note" role="status">
-                <Icon n="info" s={15} />
                 <span>
                   {notice?.headline && <strong className="adm-markup-note-head">{notice.headline}</strong>}
                   {notice?.text || MARKUP_TEXTS.confirmRequired}
@@ -196,12 +194,11 @@ export function CustomerMarkupSection({
 
             {successText && (
               <div className="alert alert-success adm-markup-success" role="status">
-                <Icon n="check" s={16} />
                 <span className="adm-markup-success-body">
                   <span>{successText}</span>
                   {typeof onApproveNow === "function" && (
                     <button type="button" className="btn btn-primary btn-sm adm-markup-approve-now" onClick={onApproveNow}>
-                      <Icon n="check" s={13} /> Kunde jetzt freischalten
+                      Kunde jetzt freischalten
                     </button>
                   )}
                 </span>
@@ -209,7 +206,7 @@ export function CustomerMarkupSection({
             )}
 
             {saveError && !saveError.field && (
-              <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{saveError.text}</div>
+              <div className="alert alert-error" role="alert">{saveError.text}</div>
             )}
 
             {/* Bearbeitung — echtes Label, sichtbares %-Suffix, Hilfetext direkt
@@ -283,7 +280,7 @@ export function CustomerMarkupSection({
                     onClick={useStandardForExpress}
                     disabled={busy || expressDraft === ""}
                   >
-                    <Icon n="refresh" s={13} /> {MARKUP_TEXTS.expressFallbackAction}
+                    {MARKUP_TEXTS.expressFallbackAction}
                   </button>
                 </div>
                 <p id="adm-express-markup-help" className="adm-markup-help">{MARKUP_TEXTS.expressInputHelp}</p>
@@ -297,7 +294,6 @@ export function CustomerMarkupSection({
                   gesagt, statt einen noch nicht gespeicherten Wert als aktiv zu
                   zeigen. */}
               <p className="adm-markup-effective" role="status">
-                <Icon n="info" s={15} />{" "}
                 <span>
                   {effectiveExpressLine(pricing)}
                   {expressDirty && <em className="adm-markup-effective-dirty"> — noch nicht gespeichert</em>}
@@ -319,7 +315,7 @@ export function CustomerMarkupSection({
                 >
                   {busy
                     ? <><span className="spinner spinner-dark" /> {markupActionBusyLabel(pricing)}</>
-                    : <><Icon n="check" s={14} /> {markupActionLabel(pricing)}</>}
+                    : <>{markupActionLabel(pricing)}</>}
                 </button>
               </div>
             </form>

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Icon } from "../ui/Icon";
 import { AdminSidebar } from "./AdminSidebar";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 
@@ -8,6 +7,10 @@ import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
 // Routing). Kein Bezug zum State-basierten Kunden-Dashboard und keine
 // Vermischung mit ce-dark-/auth-Themes. Die eigentlichen Seiten werden über
 // <Outlet /> gerendert.
+//
+// Seit dem Redesign (2026-10) dieselbe Geometrie wie die Kunden-Shell: helle
+// Sidebar (248 px, Trennlinie statt Schatten), reine Textnavigation, mobile
+// Topbar mit dem Textknopf „Menü" statt eines Burger-Symbols.
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
@@ -19,11 +22,12 @@ export function AdminLayout() {
       <main className="adm-main">
         <div className="adm-topbar">
           <button
+            type="button"
             className="adm-topbar-burger"
             onClick={() => setSidebarOpen(true)}
             aria-label="Menü öffnen"
           >
-            <Icon n="menu" s={22} />
+            Menü
           </button>
           <span className="adm-topbar-title">Adminbereich</span>
           <span className="adm-topbar-spacer" aria-hidden="true" />

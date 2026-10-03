@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { Icon } from "../components/ui/Icon";
 // `normalizeCountryCode` wird hier nicht mehr gebraucht: die Länder-
 // Normalisierung ist mit dem Profil-Seed nach newShipmentForm.mjs gewandert
 // (senderPatchFromProfile) — sie greift dort unverändert weiter.
@@ -1421,7 +1420,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       if (r.status === 401 || r.status === 403) { setReloadingResume(false); return; }
       if (r.status === 404) {
         setResumeSource(null); setResumeConflict(false);
-        setResumeNotice("Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neue Sendung weiterverwenden.");
+        setResumeNotice("Dieser Entwurf ist nicht mehr verfügbar. Sie können die aktuellen Angaben als neue Sendung weiterverwenden.");
         setReloadingResume(false); return;
       }
       let d = null; try { d = await r.json(); } catch { d = null; }
@@ -1528,24 +1527,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   const addressBlocksCalculation =
     addressBlocksSubmit(senderCheck.status) || addressBlocksSubmit(recipientCheck.status);
 
-  /* ── Felder dieser Seite laufen über <Field labelMode="floating" /> ─────────
-     Prototyp der künftigen systemweiten Feldsprache: die Beschriftung liegt IM
-     Feld und wandert bei Fokus oder vorhandenem Wert nach oben. Aktiviert ist
-     das ausschließlich hier — jede andere Seite nutzt dieselbe Komponente
-     unverändert im gestapelten Modus bzw. gar nicht.
+  /* ── Felder dieser Seite laufen über <Field /> (gestapelt) ─────────────────
+     Seit dem Redesign (2026-10) steht die Beschriftung wie auf jeder anderen
+     Seite dauerhaft ÜBER dem Feld — der frühere Floating-Prototyp dieser Seite
+     ist zurückgenommen. IDs, `data-field`, Hilfetexte, Werte und Fokusführung
+     (focusFirstError) sind unverändert; Einheiten (kg, cm, EUR) stehen als
+     Suffix im Feld (Field `unit`).
 
-     Nebenbei geschlossen: die Beschriftungen dieser Seite hatten bisher weder
-     `id` noch `htmlFor` (13 Stellen). Ein Label ohne Verbindung ist für einen
-     Screenreader kein Label — <Field /> erzwingt beides. Ebenso trägt jedes Feld
-     jetzt `data-field`, womit focusFirstError() nach einem Serverfehler nicht
-     mehr nur die beiden PLZ-Felder findet. */
+     <Field /> erzwingt `id` + `htmlFor`: ein Label ohne Verbindung ist für einen
+     Screenreader kein Label. Ebenso trägt jedes Feld `data-field`, womit
+     focusFirstError() nach einem Serverfehler nicht nur die PLZ-Felder findet. */
   const addrField = (p, key, label, type = "text", placeholder = "", optional = false) => {
     const fk = `${p}_${key}`;
     return (
       <Field
         id={`ns-${p}-${key}`}
         fieldKey={fk}
-        labelMode="floating"
         label={label}
         required={!optional}
         optional={optional}
@@ -1559,8 +1556,8 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   };
 
   // PLZ: Beschriftung und Beispiel sind zwei verschiedene Dinge. Der Platzhalter
-  // trägt deshalb ausschließlich das landesabhängige Beispiel — der frühere
-  // Rückfallwert "PLZ" hätte im Floating-Modus nur die Beschriftung wiederholt.
+  // trägt deshalb ausschließlich das landesabhängige Beispiel — ein Rückfallwert
+  // "PLZ" hätte nur die Beschriftung darüber wiederholt.
   // Hinweiszeile, Eingabemodus, Maximallänge und Validierung sind unverändert.
   const zipField = (p) => {
     const fk = `${p}_zip`;
@@ -1570,7 +1567,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
       <Field
         id={`ns-${p}-zip`}
         fieldKey={fk}
-        labelMode="floating"
         label="PLZ"
         required
         value={form[fk]}
@@ -1590,16 +1586,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Sendung — beim Empfänger besonders fragwürdig, und beim Absender überschrieb
   // sie stillschweigend das, was im Konto stand. Die Auswahl bleibt Pflicht
   // (getErrors), die Optionsliste ist unverändert dieselbe wie überall sonst.
-  // Ein <select> zeigt immer einen Wert an — auch „Land auswählen" ist einer.
-  // Es gibt dort keinen sichtbaren Leerzustand, den eine ruhende Beschriftung
-  // besetzen könnte; ihr Label steht deshalb dauerhaft oben (in <Field /> aus
-  // `as="select"` abgeleitet), statt einen Leerzustand vorzutäuschen.
   const countrySelect = (p) => (
     <Field
       id={`ns-${p}-country`}
       fieldKey={`${p}_country`}
       as="select"
-      labelMode="floating"
       label="Land"
       required
       value={form[`${p}_country`]}
@@ -1624,7 +1615,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
         id={`ns-${p}-state`}
         fieldKey={`${p}_state`}
         as="select"
-        labelMode="floating"
         label="Bundesstaat"
         required
         value={form[`${p}_state`]}
@@ -1674,29 +1664,22 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           bringt .page-body bereits mit — .calc-page-wrap liefert nur noch das
           vertikale Innenabstandsmaß (Paket B, keine zweite max-width). */}
       <div className="calc-page-wrap" inert={loading} aria-busy={loading || undefined}>
-        <div className="mb-24">
-          {/* "Neue Sendung" ist bereits der Seitentitel im PageHeader
-              (DashboardPage.jsx, PAGE_HEADERS.new). Dieser Titel war bisher ein
-              zweiter, konkurrierender <h1> — er wird zum Abschnittskopf der
-              Formularsektion herabgestuft (Paket B), Inhalt bleibt erhalten. */}
-          <h2 className="calc-page-title">Versandpreis berechnen</h2>
-          <p className="calc-page-sub">Vergleichen Sie Preise von 8+ Carriern in Echtzeit</p>
-        </div>
-
+        {/* Kein zweiter Abschnittskopf: „Neue Sendung" ist der Seitentitel im
+            PageHeader (DashboardPage.jsx, PAGE_HEADERS.new). Der frühere Kopf
+            „Versandpreis berechnen" wiederholte ihn und riss eine große Lücke
+            zwischen Titel und Formular auf (Auditbefund E03). */}
         {/* ── Form section ── */}
         <div className="offers-form-section">
 
           {/* Fortsetzen-Kontext (nur bei aktivem Formularentwurf-Übergang). */}
           {resumeSource && !resumeConflict && (
             <div className="dft-resume-note" role="note">
-              <Icon n="form" s={16} c="var(--ce-color-brand-ink)" />
               <span>Sie setzen einen gespeicherten Formularentwurf fort. Prüfen Sie die Angaben und berechnen Sie die Preise neu.</span>
             </div>
           )}
           {resumeConflict && (
             <div className="dft-resume-conflict" role="alert">
-              <Icon n="info" s={16} c="currentColor" />
-              <span className="dft-resume-conflict-text">Dieser Entwurf wurde inzwischen geändert. Lade die aktuelle Version neu, bevor du fortfährst.</span>
+              <span className="dft-resume-conflict-text">Dieser Entwurf wurde inzwischen geändert. Laden Sie die aktuelle Version neu, bevor Sie fortfahren.</span>
               <button type="button" className="btn btn-outline btn-sm" onClick={reloadFormDraft} disabled={reloadingResume}>
                 {reloadingResume ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Wird geladen …</> : "Aktuelle Version laden"}
               </button>
@@ -1704,7 +1687,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
           )}
           {resumeNotice && (
             <div className="dft-resume-info" role="status">
-              <Icon n="info" s={16} c="currentColor" /><span>{resumeNotice}</span>
+              <span>{resumeNotice}</span>
             </div>
           )}
           {/* Herkunftshinweis eines Vorgangs aus Lager oder Auftrag. Bewusst
@@ -1713,13 +1696,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               Text leer und die Zeile erscheint nicht. */}
           {inventoryNotice && (
             <div className="dft-resume-info" role="status">
-              <Icon n="layers" s={16} c="currentColor" /><span>{inventoryNotice}</span>
+              <span>{inventoryNotice}</span>
             </div>
           )}
           {/* Angebot aus dem Preisrechner — derselbe Hinweisstil, keine zweite Darstellung. */}
           {calculatorHinweis && (
             <div className="dft-resume-info ns-calculator-intent" role="status">
-              <Icon n="info" s={16} c="currentColor" /><span>{calculatorHinweis}</span>
+              <span>{calculatorHinweis}</span>
             </div>
           )}
 
@@ -1748,7 +1731,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
           {/* Versandroute */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="globe" s={18} c="var(--ce-color-brand-ink)" /><h3>Versandroute</h3></div>
+            <div className="calc-panel-header"><h3>Versandroute</h3></div>
             <div className="calc-panel-body">
               <div className="booking-addr-grid">
                 <div>
@@ -1769,12 +1752,11 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     {profilAbsenderVerfuegbar && (
                       <button
                         type="button"
-                        className="btn btn-outline btn-sm"
+                        className="btn btn-ghost btn-sm"
                         onClick={uebernimmProfilAbsender}
                         disabled={loading}
                         title="Absenderadresse aus Ihrem Konto übernehmen"
                       >
-                        <Icon n="user" s={16} />
                         Eigene Adresse
                       </button>
                     )}
@@ -1797,7 +1779,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   </div>
                   <AddressSuggestInput
                     id="ns-s-street"
-                    floating
                     label="Straße & Hausnr."
                     required
                     value={form.s_street}
@@ -1807,13 +1788,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     placeholder="Musterstraße 1"
                     error={errors.s_street}
                     autoComplete="address-line1"
+                    className="field"
                   />
                   {addrField("s", "addition", "Adresszusatz",      "text",  "Etage, c/o …",   true)}
                   <div className="field-row field-row-2">
                     {zipField("s")}
                     <AddressSuggestInput
                       id="ns-s-city"
-                      floating
                       label="Stadt"
                       required
                       value={form.s_city}
@@ -1823,6 +1804,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       placeholder="Stuttgart"
                       error={errors.s_city}
                       autoComplete="address-level2"
+                      className="field"
                     />
                   </div>
                   {countrySelect("s")}
@@ -1860,7 +1842,6 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   </div>
                   <AddressSuggestInput
                     id="ns-r-street"
-                    floating
                     label="Straße & Hausnr."
                     required
                     value={form.r_street}
@@ -1870,13 +1851,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                     placeholder="Beispielweg 5"
                     error={errors.r_street}
                     autoComplete="address-line1"
+                    className="field"
                   />
                   {addrField("r", "addition", "Adresszusatz",      "text",  "Etage, c/o …", true)}
                   <div className="field-row field-row-2">
                     {zipField("r")}
                     <AddressSuggestInput
                       id="ns-r-city"
-                      floating
                       label="Stadt"
                       required
                       value={form.r_city}
@@ -1886,6 +1867,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                       placeholder="Zürich"
                       error={errors.r_city}
                       autoComplete="address-level2"
+                      className="field"
                     />
                   </div>
                   {countrySelect("r")}
@@ -1908,7 +1890,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
           {/* Paketdaten */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="package" s={18} c="var(--ce-color-brand-ink)" /><h3>Paketdaten</h3></div>
+            <div className="calc-panel-header"><h3>Paketdaten</h3></div>
             <div className="calc-panel-body">
               {/* Reihenfolge: Anzahl · Gewicht · Länge · Breite · Höhe (nur Anzeige;
                   Bindings/State-Keys/Validierung unverändert). Anzahl = Anzahl
@@ -1920,30 +1902,29 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                   Kilogramm", nicht doppelt. Die Platzhalter bleiben unverändert
                   Beispiele aus PACKAGE_PLACEHOLDERS und werden nie zu Werten. */}
               <div className="field-row field-row-5">
-                <Field id="ns-packageCount" fieldKey="packageCount" labelMode="floating"
+                <Field id="ns-packageCount" fieldKey="packageCount"
                        label="Anzahl" required type="number" min="1" max="99" step="1"
                        value={form.packageCount} onChange={(v) => upd("packageCount", v)}
                        placeholder={PACKAGE_PLACEHOLDERS.packageCount}
                        error={errors.packageCount} hint="Identische Pakete" />
-                <Field id="ns-weight" fieldKey="weight" labelMode="floating"
+                <Field id="ns-weight" fieldKey="weight"
                        label="Gewicht" required type="number" unit="kg" unitLabel="in Kilogramm"
                        value={form.weight} onChange={(v) => upd("weight", v)}
                        placeholder={PACKAGE_PLACEHOLDERS.weight} error={errors.weight} />
-                <Field id="ns-length" fieldKey="length" labelMode="floating"
+                <Field id="ns-length" fieldKey="length"
                        label="Länge" required type="number" unit="cm" unitLabel="in Zentimetern"
                        value={form.length} onChange={(v) => upd("length", v)}
                        placeholder={PACKAGE_PLACEHOLDERS.length} error={errors.length} />
-                <Field id="ns-width" fieldKey="width" labelMode="floating"
+                <Field id="ns-width" fieldKey="width"
                        label="Breite" required type="number" unit="cm" unitLabel="in Zentimetern"
                        value={form.width} onChange={(v) => upd("width", v)}
                        placeholder={PACKAGE_PLACEHOLDERS.width} error={errors.width} />
-                <Field id="ns-height" fieldKey="height" labelMode="floating"
+                <Field id="ns-height" fieldKey="height"
                        label="Höhe" required type="number" unit="cm" unitLabel="in Zentimetern"
                        value={form.height} onChange={(v) => upd("height", v)}
                        placeholder={PACKAGE_PLACEHOLDERS.height} error={errors.height} />
               </div>
               <p className="pkg-count-note">
-                <Icon n="info" s={13} c="currentColor" />
                 <span>Gewicht und Maße gelten je Paket. Der Preis gilt für alle Pakete zusammen.</span>
               </p>
               {volWeight && (
@@ -1969,17 +1950,17 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
 
               Kein Providername, kein Vorgabewert, keine Vorauswahl. */}
           <div className="calc-panel mb-16">
-            <div className="calc-panel-header"><Icon n="form" s={18} c="var(--ce-color-brand-ink)" /><h3>Angaben zur Sendung</h3></div>
+            <div className="calc-panel-header"><h3>Angaben zur Sendung</h3></div>
             <div className="calc-panel-body">
               <div className="field-row field-row-2">
-                <Field id="ns-declaredContent" fieldKey="declaredContent" labelMode="floating"
+                <Field id="ns-declaredContent" fieldKey="declaredContent"
                        label="Inhalt der Sendung" required type="text"
                        maxLength={DECLARED_CONTENT_MAX}
                        value={form.declaredContent} onChange={(v) => upd("declaredContent", v)}
                        placeholder="z. B. Ersatzteile"
                        error={errors.declaredContent}
                        hint="Kurze Beschreibung des Inhalts." />
-                <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue" labelMode="floating"
+                <Field id="ns-declaredGoodsValue" fieldKey="declaredGoodsValue"
                        label="Warenwert" required type="number" unit="EUR" unitLabel="in Euro"
                        min="0" step="0.01"
                        value={form.declaredGoodsValue} onChange={(v) => upd("declaredGoodsValue", v)}
@@ -2008,7 +1989,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               >
                 {loading
                   ? <><span className="spinner" /> Berechne…</>
-                  : <><Icon n="zap" s={18} /> Angebote vergleichen</>
+                  : "Angebote vergleichen"
                 }
               </button>
               <button
@@ -2021,7 +2002,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
               >
                 {saving
                   ? <><span className="spinner spinner-dark" /> Wird gespeichert …</>
-                  : <><Icon n="form" s={16} /> Als Entwurf speichern</>
+                  : "Als Entwurf speichern"
                 }
               </button>
               {/* Sekundärste Stufe: der laufende Vorgang bleibt bei einem Wechsel
@@ -2043,7 +2024,7 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 inzwischen vergangen). Normaler Hinweisstil, keine Rohmeldung. */}
             {flowNotice && (
               <div className="dft-save-status" role="status">
-                <Icon n="info" s={15} c="currentColor" /><span>{flowNotice}</span>
+                <span>{flowNotice}</span>
               </div>
             )}
 
@@ -2055,13 +2036,13 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 hier steht, warum. */}
             {datumFehlt && !loading && (
               <div className="dft-save-status" role="status" id="ns-date-missing">
-                <Icon n="info" s={15} c="currentColor" /><span>{DATUM_FEHLT_HINWEIS}</span>
+                <span>{DATUM_FEHLT_HINWEIS}</span>
               </div>
             )}
 
             {calcHint && !loading && (
               <div className="dft-save-status" role="status">
-                <Icon n="info" s={15} c="currentColor" /><span>{calcHint}</span>
+                <span>{calcHint}</span>
               </div>
             )}
 
@@ -2072,42 +2053,40 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
                 Sobald geklickt wurde, übernimmt `calcHint` (spezifischer). */}
             {!calcHint && paketHinweis && !loading && (
               <div className="dft-save-status" role="status">
-                <Icon n="info" s={15} c="currentColor" /><span>{paketHinweis}</span>
+                <span>{paketHinweis}</span>
               </div>
             )}
 
             {showInlineSave && saveStatus === "saved" && !isDirty && !saving && (
-              <div className="dft-save-status" role="status"><Icon n="check" s={15} c="var(--success)" /><span>Entwurf gespeichert.</span></div>
+              <div className="dft-save-status dft-save-status--ok" role="status"><span>Entwurf gespeichert.</span></div>
             )}
             {showInlineSave && saveMode === "error" && (
-              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Der Entwurf konnte nicht gespeichert werden. Bitte versuche es erneut.</span></div>
+              <div className="dft-save-alert" role="alert"><span>Der Entwurf konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.</span></div>
             )}
             {/* Getrennt von "error": hier hilft kein erneuter Versuch, sondern nur
                 die Korrektur des markierten Feldes. */}
             {showInlineSave && saveMode === "fieldError" && (
-              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Eine Angabe im Formular ist nicht gültig. Das markierte Feld bitte korrigieren und erneut speichern.</span></div>
+              <div className="dft-save-alert" role="alert"><span>Eine Angabe im Formular ist nicht gültig. Das markierte Feld bitte korrigieren und erneut speichern.</span></div>
             )}
             {showInlineSave && saveMode === "notFound" && (
-              <div className="dft-save-alert" role="status"><Icon n="info" s={14} c="currentColor" /><span>Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neuen Entwurf speichern.</span></div>
+              <div className="dft-save-alert" role="status"><span>Dieser Entwurf ist nicht mehr verfügbar. Sie können die aktuellen Angaben als neuen Entwurf speichern.</span></div>
             )}
             {showInlineSave && saveMode === "rateLimited" && (
-              <div className="dft-save-alert" role="alert"><Icon n="info" s={14} c="currentColor" /><span>Zu viele Speicheranfragen. Bitte versuche es in Kürze erneut.</span></div>
+              <div className="dft-save-alert" role="alert"><span>Zu viele Speicheranfragen. Bitte versuchen Sie es in Kürze erneut.</span></div>
             )}
             {showInlineSave && saveMode === "conflict" && (
               <div className="dft-save-alert dft-save-conflict" role="alert">
-                <Icon n="info" s={14} c="currentColor" />
                 <span className="dft-save-conflict-text">Dieser Entwurf wurde inzwischen an anderer Stelle geändert.</span>
                 <button type="button" className="btn btn-outline btn-sm" onClick={reloadCurrentDraft} disabled={saving}>
                   {saving ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Wird geladen …</> : "Aktuelle Version laden"}
                 </button>
               </div>
             )}
-            {error && <div className="alert alert-error mt-16" role="alert"><Icon n="x" s={16} />{error}</div>}
+            {error && <div className="alert alert-error mt-16" role="alert">{error}</div>}
             {/* TG22 Paket B: fehlende Profilangaben (422) — der Weg ins Profil steht direkt am Hinweis.
                 Keine Abmeldung, der Vorgang bleibt erhalten. */}
             {error && profileIncomplete && (
               <div className="dft-resume-info mt-8" role="note" id="ns-profile-incomplete">
-                <Icon n="info" s={16} c="currentColor" />
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => navigate(PROFILE_DASHBOARD_TARGET)}>
                   Unternehmensprofil vervollständigen
                 </button>

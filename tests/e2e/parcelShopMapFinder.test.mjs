@@ -224,14 +224,16 @@ test("4 — Close-Button und Escape schließen, der Fokus kehrt zum Suchbutton z
   await page.close();
 });
 
-test("5 — der Close-Button trägt ein aria-label und ein title", async () => {
+test("5 — „Schließen“ steht als Text da, der zugängliche Name enthält das Wort", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await setupRoutes(page);
   await oeffneFinder(page);
   await suche(page);
   const close = page.locator(".ap-modal-close");
-  assert.ok((await close.getAttribute("aria-label"))?.length > 0);
-  assert.ok((await close.getAttribute("title"))?.length > 0);
+  // Redesign 2026-10: Textknopf statt Schließkreuz — der Tooltip (title) ist mit
+  // dem sichtbaren Wort entbehrlich; der zugängliche Name enthält es (WCAG 2.5.3).
+  assert.equal((await close.innerText()).trim(), "Schließen");
+  assert.match(await close.getAttribute("aria-label") ?? "", /schließen/i);
   await page.close();
 });
 

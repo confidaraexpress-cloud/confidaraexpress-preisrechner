@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { Icon } from "../ui/Icon";
 
 // Kleiner Bestätigungsdialog vor dem Abbrechen einer ausstehenden E-Mail-
 // Änderung. Fokus geht beim Öffnen auf „Zurück" (nicht-destruktive Vorauswahl),
@@ -50,17 +49,16 @@ export function EmailChangeCancelDialog({ open, busy, error, onConfirm, onClose 
         aria-describedby="ec-cancel-desc"
       >
         <div className="email-change-modal-head">
-          <div className="email-change-modal-icon email-change-modal-icon--warn" aria-hidden="true"><Icon n="info" s={20} /></div>
           <h2 id="ec-cancel-title" className="email-change-modal-title">E-Mail-Änderung abbrechen?</h2>
         </div>
         <p id="ec-cancel-desc" className="email-change-modal-desc">
-          Die neue E-Mail-Adresse wird nicht übernommen. Deine bisherige Login-E-Mail
+          Die neue E-Mail-Adresse wird nicht übernommen. Ihre bisherige Login-E-Mail
           bleibt unverändert.
         </p>
 
         {error && (
           <div className="alert alert-error mb-16" role="alert">
-            <Icon n="x" s={16} /><span>{error}</span>
+            <span>{error}</span>
           </div>
         )}
 

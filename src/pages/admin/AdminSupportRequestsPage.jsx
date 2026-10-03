@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link, useSearchParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminSupportRequests } from "../../api/adminApi";
 import { selectListTotal, selectListHasMore } from "../../utils/adminOverview.mjs";
@@ -113,7 +112,6 @@ function MailProblemCell({ row }) {
   if (problems.length === 0) return null;
   return (
     <span className="adm-sup-mailwarn" title={`Zustellproblem: ${problems.join(", ")}`}>
-      <Icon n="info" s={13} c="currentColor" />
       {problems.length === 2 ? "Beide E-Mails" : problems[0]}
     </span>
   );
@@ -234,7 +232,7 @@ export default function AdminSupportRequestsPage() {
             weder Sendungen noch Rechnungen.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button></>
         )}
       />
@@ -275,7 +273,7 @@ export default function AdminSupportRequestsPage() {
         </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-            <Icon n="filter" s={14} /> Anwenden
+            Anwenden
           </button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilter} disabled={loading}>
             Zurücksetzen
@@ -315,7 +313,7 @@ export default function AdminSupportRequestsPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -323,7 +321,6 @@ export default function AdminSupportRequestsPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="mail" s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {hasAnyFilter && (
@@ -395,13 +392,13 @@ export default function AdminSupportRequestsPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">
             Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}
           </span>
           <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}

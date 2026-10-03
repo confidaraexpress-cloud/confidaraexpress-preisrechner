@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState } from "../../components/ui/StateView";
 import {
@@ -42,35 +41,42 @@ const METRICS_ERROR_FULL = "Die Kennzahlen konnten nicht geladen werden.";
 const METRICS_ERROR_PARTIAL = "Einige Kennzahlen konnten nicht geladen werden.";
 
 const BEREICHE = [
-  { to: "/admin/users", icon: "admin", title: "Kunden",
+  { to: "/admin/users", title: "Kunden",
     desc: "Konten prüfen, freischalten, sperren und Aufschläge pflegen." },
-  { to: "/admin/shipments", icon: "package", title: "Sendungen",
+  { to: "/admin/shipments", title: "Sendungen",
     desc: "Sendungen einsehen, Label und Tracking prüfen." },
-  { to: "/admin/reconciliation", icon: "clockDelay", title: "Buchungsklärung",
+  { to: "/admin/reconciliation", title: "Buchungsklärung",
     desc: "Ungeklärte Buchungsvorgänge prüfen und entscheiden." },
-  { to: "/admin/invoices", icon: "invoice", title: "Rechnungen",
+  { to: "/admin/invoices", title: "Rechnungen",
     desc: "Forderungen, Zahlungsstatus und Rechnungsdokumente." },
-  { to: "/admin/invoices/backfill", icon: "shieldCheck", title: "Produktion & Backfill",
+  { to: "/admin/invoices/backfill", title: "Produktion & Backfill",
     desc: "Produktionsbereitschaft prüfen und fehlende Dokumente erzeugen." },
-  { to: "/admin/cancellation-requests", icon: "ban", title: "Stornierungsanfragen",
+  { to: "/admin/cancellation-requests", title: "Stornierungsanfragen",
     desc: "Kundenwünsche prüfen und intern bearbeiten." },
-  { to: "/admin/support-requests", icon: "mail", title: "Supportanfragen",
+  { to: "/admin/support-requests", title: "Supportanfragen",
     desc: "Vorgänge beantworten, Status und interne Vermerke pflegen." },
-  { to: "/admin/audit-logs", icon: "shieldCheck", title: "Audit-Logs",
+  { to: "/admin/audit-logs", title: "Audit-Logs",
     desc: "Protokollierte Administrationsvorgänge einsehen und filtern." },
 ];
 
+// Eine Zelle des Kennzahlenbands (Redesign 2026-10): Beschriftung, Zahl,
+// Kontextzeile — kein Symbol, keine eigene Karte. Handlungsbedarf steht als
+// WORT in der Zelle („Handlungsbedarf"), nie allein als Farbe.
 function MetricCard({ view }) {
   const klassen = ["adm-metric", view.actionable ? "adm-metric--actionable" : ""]
     .filter(Boolean).join(" ");
   return (
     <li>
-      <Link to={view.to} className={`ce-card-interactive ${klassen}`} aria-label={`${view.label} — ${view.linkLabel}`}>
-        <span className="adm-metric-head">
-          <span className="adm-metric-ic" aria-hidden="true"><Icon n={view.icon} s={18} /></span>
-          <span className="adm-metric-label">{view.label}</span>
+      <Link
+        to={view.to}
+        className={klassen}
+        aria-label={`${view.label}${view.actionable ? " — Handlungsbedarf" : ""} — ${view.linkLabel}`}
+      >
+        <span className="adm-metric-label">{view.label}</span>
+        <span className="adm-metric-row">
+          <span className="adm-metric-value" aria-live="off">{view.display}</span>
+          {view.actionable && <span className="badge badge--warning adm-metric-flag">Handlungsbedarf</span>}
         </span>
-        <span className="adm-metric-value" aria-live="off">{view.display}</span>
         <span className="adm-metric-hint">
           {view.state === "unavailable" ? view.unavailableText : view.hint}
         </span>
@@ -97,11 +103,11 @@ function OpsCard({ view, loading }) {
     view.tone === "diagnostic" ? "adm-ops-item--diagnostic" : ""].filter(Boolean).join(" ");
   return (
     <li className={klassen} data-queue={view.key}>
-      <span className="adm-ops-head">
-        <span className="adm-ops-ic" aria-hidden="true"><Icon n={view.icon} s={16} /></span>
-        <span className="adm-ops-label">{view.label}</span>
+      <span className="adm-ops-label">{view.label}</span>
+      <span className="adm-ops-row">
+        <span className="adm-ops-count" aria-live="off">{loading ? "…" : view.display}</span>
+        {!loading && view.actionable && <span className="badge badge--warning adm-ops-flag">Handlungsbedarf</span>}
       </span>
-      <span className="adm-ops-count" aria-live="off">{loading ? "…" : view.display}</span>
       <span className="adm-ops-hint">{!loading && view.state === "unavailable" ? OPERATIONS_UNAVAILABLE : view.hint}</span>
       {oldest.kind === "date" && <span className="adm-ops-oldest">Ältester Fall: {fmtDateTime(oldest.at)}</span>}
       {oldest.kind === "unknown_start" && <span className="adm-ops-oldest">{OPERATIONS_START_UNKNOWN}</span>}
@@ -196,12 +202,11 @@ export default function AdminOverviewPage() {
     <div className="adm-page">
       <PageHeader
         variant="admin"
-        eyebrow="Administration"
         title="Adminbereich"
         subtitle="Offene Vorgänge auf einen Blick. Alle Bereiche sind zusätzlich serverseitig geschützt."
         actions={(
           <button type="button" className="btn btn-outline btn-sm" onClick={() => { load(); loadOps(); }} disabled={laedt}>
-            <Icon n="refresh" s={14} /> Aktualisieren
+            Aktualisieren
           </button>
         )}
       />
@@ -213,10 +218,9 @@ export default function AdminOverviewPage() {
             darüber. Nur wenn gar kein Wert vorliegt, füllt er die Fläche. */}
         {error && !allesLeer && (
           <div className="adm-note adm-note--warning adm-inline-error" role="alert">
-            <Icon n="info" s={16} />
             <span>{error}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={load} disabled={laedt}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
           </div>
         )}
@@ -228,7 +232,7 @@ export default function AdminOverviewPage() {
               text="Die Bereiche unten sind davon unabhängig erreichbar."
               action={(
                 <button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={laedt}>
-                  <Icon n="refresh" s={14} /> Erneut versuchen
+                  Erneut versuchen
                 </button>
               )}
             />
@@ -245,10 +249,9 @@ export default function AdminOverviewPage() {
         {/* Eigene Fehlerzeile — nicht die der Kennzahlen: beide Abrufe sind unabhängig. */}
         {ops.error && (
           <div className="adm-note adm-note--warning adm-ops-error" role="alert">
-            <Icon n="info" s={16} />
             <span>{ops.error}</span>
             <button type="button" className="btn btn-ghost btn-sm" onClick={loadOps} disabled={ops.loading}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
           </div>
         )}
@@ -261,20 +264,21 @@ export default function AdminOverviewPage() {
         </ul>
       </section>
 
+      {/* Sekundäre Bereichslinks (Redesign 2026-10): eine ruhige Textliste statt
+          gleichgewichtiger Iconkacheln — dieselben Ziele stehen ohnehin in der
+          Navigation; hier ergänzen sie nur die kurze Beschreibung. */}
       <section className="adm-section" aria-labelledby="adm-ov-bereiche">
         <h2 className="adm-section-title" id="adm-ov-bereiche">Bereiche</h2>
-        <div className="adm-tiles">
+        <ul className="adm-tiles">
           {BEREICHE.map((b) => (
-            <Link key={b.to} to={b.to} className="ce-card-interactive adm-tile">
-              <span className="adm-tile-ic" aria-hidden="true"><Icon n={b.icon} s={20} /></span>
-              <span className="adm-tile-body">
+            <li key={b.to}>
+              <Link to={b.to} className="adm-tile">
                 <span className="adm-tile-title">{b.title}</span>
                 <span className="adm-tile-desc">{b.desc}</span>
-              </span>
-              <span className="adm-tile-arrow" aria-hidden="true"><Icon n="chevronRight" s={18} /></span>
-            </Link>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     </div>
   );

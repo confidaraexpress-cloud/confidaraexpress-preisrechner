@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { EmptyState, ErrorState, ListSkeleton, LoadingState } from "../../components/ui/StateView";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
@@ -60,16 +59,16 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
   return (
     <div className="adm-card">
       <div className="adm-card-head">
-        <Icon n="shieldCheck" s={17} /> Produktionsbereitschaft Rechnungen
+        Produktionsbereitschaft Rechnungen
         <button type="button" className="btn btn-outline btn-sm adm-card-head-action" onClick={onReload} disabled={loading}>
-          <Icon n="refresh" s={13} /> Aktualisieren
+          Aktualisieren
         </button>
       </div>
       <div className="adm-card-body">
         {loading ? (
           <LoadingState text="Produktionsbereitschaft wird geprüft …" />
         ) : error ? (
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error}</div>
+          <div className="alert alert-error" role="alert">{error}</div>
         ) : !readiness ? (
           <p className="adm-muted">Keine Bereitschaftsdaten verfügbar.</p>
         ) : (
@@ -77,7 +76,7 @@ function ReadinessCard({ readiness, loading, error, onReload }) {
             <div className="adm-readiness-head">
               <span className={`badge ${cls}`}>{label}</span>
               {readiness.registerRequired && (
-                <span className="adm-chip"><Icon n="info" s={13} /> Registerpflicht (eingetragene Rechtsform)</span>
+                <span className="adm-chip">Registerpflicht (eingetragene Rechtsform)</span>
               )}
             </div>
             <dl className="adm-kv">
@@ -228,7 +227,7 @@ export default function AdminBackfillPage() {
 
   const back = (
     <Link to="/admin/invoices" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Rechnungsliste
+      Zurück zur Rechnungsliste
     </Link>
   );
 
@@ -241,14 +240,12 @@ export default function AdminBackfillPage() {
           kein Wort entfallen. */}
       <PageHeader
         variant="admin"
-        eyebrow="Abrechnung"
         backLink={back}
         title="Interne Vorschau-PDFs erzeugen"
         subtitle={'Erzeugt für bestehende, tatsächlich gebuchte Sendungen ein fehlendes Rechnungs-PDF als interne Vorschau — mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN".'}
       />
 
       <p className="adm-note adm-head-note" role="note">
-        <Icon n="shieldCheck" s={16} />
         <span>
           Das Dokument bleibt dauerhaft ein Testdokument: Es wird <strong>nicht</strong> produktiv,
           verbraucht <strong>keine</strong> neue Rechnungsnummer, ändert <strong>keine</strong>
@@ -261,7 +258,7 @@ export default function AdminBackfillPage() {
 
       {pageMsg && (
         <div className={`alert ${pageMsg.type === "success" ? "alert-success" : pageMsg.type === "info" ? "alert-info" : "alert-error"}`} role={pageMsg.type === "error" ? "alert" : "status"}>
-          <Icon n={pageMsg.type === "success" ? "check" : pageMsg.type === "info" ? "info" : "x"} s={16} />{pageMsg.text}
+          {pageMsg.text}
         </div>
       )}
 
@@ -271,11 +268,11 @@ export default function AdminBackfillPage() {
           <p className="adm-section-sub">Alle Rechnungen zu tatsächlich gebuchten Sendungen. Die Aktion ist nur aktiv, wenn das PDF objektiv erzeugbar ist.</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" onClick={loadList} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button>
       </div>
 
-      <form className="adm-filters" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
+      <form className="adm-filters adm-filters--narrow" onSubmit={(e) => { e.preventDefault(); applyFilters(); }}>
         <div className="adm-filter-field">
           <label htmlFor="f-status">Status</label>
           <select id="f-status" value={draft.status} onChange={(e) => setField("status", e.target.value)}>
@@ -293,7 +290,7 @@ export default function AdminBackfillPage() {
           </select>
         </div>
         <div className="adm-filter-actions">
-          <button type="submit" className="btn btn-primary btn-sm"><Icon n="filter" s={14} /> Anwenden</button>
+          <button type="submit" className="btn btn-primary btn-sm">Anwenden</button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>Zurücksetzen</button>
         </div>
       </form>
@@ -306,7 +303,7 @@ export default function AdminBackfillPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-outline btn-sm" onClick={loadList}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -314,7 +311,6 @@ export default function AdminBackfillPage() {
       ) : rows.length === 0 ? (
         <div className="ce-card">
           <EmptyState
-            icon="invoice"
             title="Keine Rechnungen gefunden"
             text="Für die gewählten Filter gibt es keine Kandidaten für einen PDF-Backfill."
           />
@@ -349,8 +345,8 @@ export default function AdminBackfillPage() {
                       <td className="adm-mono">{dash(shipmentOf(c))}</td>
                       <td>
                         <div className="adm-row-actions">
-                          <button type="button" className="btn btn-primary btn-xs" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
-                            <Icon n="form" s={13} /> Vorschau-PDF erzeugen
+                          <button type="button" className="btn btn-outline btn-xs" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
+                            Vorschau-PDF erzeugen
                           </button>
                         </div>
                       </td>
@@ -382,8 +378,8 @@ export default function AdminBackfillPage() {
                   <div><dt>Shipment-ID</dt><dd className="adm-mono">{dash(shipmentOf(c))}</dd></div>
                 </dl>
                 <div className="adm-scard-actions">
-                  <button type="button" className="btn btn-primary btn-sm" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
-                    <Icon n="form" s={13} /> Vorschau-PDF erzeugen
+                  <button type="button" className="btn btn-outline btn-sm" disabled={!canBackfillCandidate(c)} onClick={() => openModal(c)}>
+                    Vorschau-PDF erzeugen
                   </button>
                 </div>
               </li>
@@ -396,11 +392,11 @@ export default function AdminBackfillPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={() => page > 1 && setPage((p) => p - 1)} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}</span>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => hasMore && setPage((p) => p + 1)} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}
@@ -416,7 +412,6 @@ export default function AdminBackfillPage() {
           text={'Erzeugt aus den gespeicherten historischen Daten dieser Rechnung eine INTERNE VORSCHAU (PDF mit Wasserzeichen „INTERNE VORSCHAU – NICHT ZAHLEN"). Das Dokument bleibt ein Testdokument und wird NICHT produktiv. Es entsteht KEINE neue Rechnungsnummer; Beträge und Rechnungs-/Leistungsdatum bleiben unverändert. Es wird KEINE E-Mail versendet.'}
           subline={`Rechnung ${dash(numberOf(modalCandidate))} · #${dash(idOf(modalCandidate))}`}
           note="Die Aktion wird im Admin-Audit protokolliert und serverseitig erneut geprüft."
-          icon="form"
           confirmLabel="Vorschau erzeugen"
           busy={modalBusy}
           busyLabel="Wird erzeugt …"

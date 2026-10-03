@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Icon } from "../ui/Icon";
 import { FormAlert } from "../ui/FormAlert";
 import { apiFetch } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
@@ -7,7 +6,7 @@ import { normalizeThrownError } from "../../utils/apiError.mjs";
 import {
   DELIVERY_NOTE_MODES, DELIVERY_NOTE_TEXT, deliveryNoteMode, buildDeliveryNotePatch,
 } from "../../utils/profileView.mjs";
-import { cardHead } from "./ProfileCardHead";
+import { SettingsSection } from "./ProfileCardHead";
 
 // Lieferscheineinstellung der Kontoseite. Eigener Speicherzustand statt der
 // Ein-Karten-Editregel von Profile.jsx: eine Auswahl aus drei Optionen hat
@@ -59,8 +58,7 @@ export function DeliveryNoteCard({ user }) {
   // Native Radios auf dem globalen forms.css-Primitive — dasselbe Muster wie die
   // Zollrechnungsauswahl der Buchung. Kein zweites Auswahlbauteil.
   return (
-    <div className="table-card profile-card">
-      {cardHead("form", DELIVERY_NOTE_TEXT.title, DELIVERY_NOTE_TEXT.subtitle, null)}
+    <SettingsSection title={DELIVERY_NOTE_TEXT.title} subtitle={DELIVERY_NOTE_TEXT.subtitle}>
       <div className="profile-section-body">
         <fieldset className="dn-mode-fieldset" disabled={dnSaving}>
           <legend className="field-label">{DELIVERY_NOTE_TEXT.fieldLabel}</legend>
@@ -88,10 +86,10 @@ export function DeliveryNoteCard({ user }) {
         {dnError && <FormAlert tone="error" message={dnError} className="mt-16" />}
         {dnSaved && !dnError && (
           <p className="profile-saved" role="status">
-            <Icon n="check" s={14} /> Einstellung gespeichert
+            Einstellung gespeichert
           </p>
         )}
       </div>
-    </div>
+    </SettingsSection>
   );
 }

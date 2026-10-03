@@ -269,25 +269,28 @@ test("3 — Adressbuch-Reflow: Zeile ≥1250, Zwischenmodus im Shell-Band, Karte
   await ctx.close();
 });
 
-test("4 — Adressbuch-Toolbar @360: Suchfeld kompakt, Lupe im Feld, kein Overflow", async () => {
+test("4 — Adressbuch-Toolbar @360: Suchfeld kompakt, Beschriftung darüber, kein Overflow", async () => {
+  // Redesign 2026-10: die Suche trägt eine sichtbare Beschriftung über dem Feld
+  // („Adressen durchsuchen", per for/id verbunden) statt einer Lupe im Feld.
+  // Die Höhenfalle (260-px-Basis wird in Spaltenrichtung zur Höhe) wird jetzt
+  // am Feldrahmen gemessen — der Container enthält zusätzlich die Beschriftung.
   const { ctx, page } = await seite(360, 800);
   await page.goto(`${BASE}/dashboard?page=addressbook`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   const t = await page.evaluate(() => {
-    const such = document.querySelector(".abk-search");
+    const feld = document.querySelector(".abk-search-field");
     const input = document.querySelector(".abk-search-input");
-    const lupe = document.querySelector(".abk-search svg");
-    const s = such.getBoundingClientRect(), i = input.getBoundingClientRect(), l = lupe.getBoundingClientRect();
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    const f = feld.getBoundingClientRect(), i = input.getBoundingClientRect();
+    const l = label ? label.getBoundingClientRect() : null;
     return {
-      suchHoehe: Math.round(s.height),
-      lupeImFeld: l.top >= i.top && l.bottom <= i.bottom,
+      feldHoehe: Math.round(f.height),
+      beschriftungDarueber: Boolean(l && l.bottom <= i.top + 0.5 && l.height > 0),
       inputBreite: Math.round(i.width),
     };
   });
-  // Vorher: 260px-Zeilen-Basis wurde in der Spaltenrichtung zur HÖHE — eine
-  // Leerfläche mit mittig schwebender Lupe.
-  assert.ok(t.suchHoehe <= 60, `Suchfeld-Container ist ${t.suchHoehe}px hoch (Basis-Falle zurück?)`);
-  assert.ok(t.lupeImFeld, "die Lupe schwebt außerhalb des Eingabefelds");
+  assert.ok(t.feldHoehe <= 60, `Suchfeld ist ${t.feldHoehe}px hoch (Basis-Falle zurück?)`);
+  assert.ok(t.beschriftungDarueber, "die Suche hat keine sichtbare, verbundene Beschriftung über dem Feld");
   assert.ok(t.inputBreite >= 240, `Suchfeld nur ${t.inputBreite}px breit`);
   assert.ok((await page.evaluate(OVERFLOW)) <= 1, "Seiten-Overflow bei 360px");
   await ctx.close();
@@ -442,12 +445,22 @@ test("9 — Smoke: zuvor saubere Bereiche bleiben ohne Overflow, Fehler und Badg
   }
 });
 
-test("10 — Rechnungen @1440: die Dokument-Pill „Per E-Mail versendet\" ist einzeilig", async () => {
+test("10 — Rechnungen @1440: die Dokumentangabe „Per E-Mail versendet\" ist einzeilig", async () => {
+  // Redesign 2026-10: Dokument- und Mailangaben stehen als ruhiger Text
+  // (.inv-doc-line) neben dem einen Zahlungsstatus — keine zweite Badgefläche.
+  // Der Vertrag bleibt: die Angabe passt in ihre Spalte, ohne umzubrechen.
   const { ctx, page } = await seite(1440);
   await page.goto(`${BASE}/dashboard?page=invoices`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
-  const pill = (await page.evaluate(BADGE_MESSUNG)).find((b) => b.text === "Per E-Mail versendet");
-  assert.ok(pill, "die Dokument-Pill wurde nicht gefunden");
-  assert.equal(pill.zeilen, 1, `„Per E-Mail versendet" ist ${pill.zeilen}-zeilig (Spalte zu schmal)`);
+  const zeile = await page.evaluate(() => {
+    const el = [...document.querySelectorAll(".inv-doc-line")]
+      .find((e) => e.getClientRects().length && e.textContent.trim() === "Per E-Mail versendet");
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
+    return { zeilen: Math.max(1, Math.round(el.getBoundingClientRect().height / lh)) };
+  });
+  assert.ok(zeile, "die Dokumentangabe wurde nicht gefunden");
+  assert.equal(zeile.zeilen, 1, `„Per E-Mail versendet" ist ${zeile.zeilen}-zeilig (Spalte zu schmal)`);
   await ctx.close();
 });

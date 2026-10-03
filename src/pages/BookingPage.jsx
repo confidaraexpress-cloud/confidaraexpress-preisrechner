@@ -36,7 +36,6 @@ import {
   PREISAENDERUNG_TITEL, PREISAENDERUNG_TEXT,
   PREISAENDERUNG_NEU_BERECHNEN, PREISAENDERUNG_FORTFAHREN,
 } from "../utils/priceChangeView.mjs";
-import { Icon } from "../components/ui/Icon";
 import { countries } from "../utils/countries";
 import { money } from "../utils/formatters";
 import { publicCarrierDisplay, publicServiceName, publicDropoffLabel } from "../utils/carrierMap";
@@ -2065,15 +2064,19 @@ export default function BookingPage() {
         {/* Seitentitel kommt aus dem PageHeader der App-Shell (DashboardLayout,
             ROUTE_HEADERS.booking) — kein zweiter Titel hier (Paket B). */}
 
-        {/* Step-Indicator */}
+        {/* Step-Indicator — ruhig und textbasiert (Redesign 2026-10): jeder Schritt trägt
+            seine Nummer, ein erledigter Schritt ist an der Fläche UND für Screenreader am
+            Zusatz „abgeschlossen" erkennbar; kein Häkchen-Symbol. */}
         <div className="steps-bar mb-24">
           {steps.map((s, i) => (
-            <div key={i} className="step-item">
+            <div key={i} className="step-item" aria-current={i + 1 === step ? "step" : undefined}>
               <div className="step-wrap">
                 <div className={`step-circle ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
-                  {i + 1 < step ? <Icon n="check" s={14} /> : i + 1}
+                  {i + 1}
                 </div>
-                <span className={`step-label ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>{s}</span>
+                <span className={`step-label ${i + 1 === step ? "active" : i + 1 < step ? "done" : ""}`}>
+                  {s}{i + 1 < step && <span className="sr-only"> (abgeschlossen)</span>}
+                </span>
               </div>
               {i < steps.length - 1 && <div className={`step-line ${i + 1 < step ? "done" : ""}`} />}
             </div>
@@ -2264,7 +2267,7 @@ export default function BookingPage() {
             <div className="flex gap-12">
               <button className="btn btn-outline" onClick={goBackToOffers}>← Zurück</button>
               <button className="btn btn-primary btn-grow" onClick={goToStep2}>
-                Weiter: Buchung <Icon n="arrow" s={16} />
+                Weiter: Buchung
               </button>
             </div>
           </div>
@@ -2275,7 +2278,6 @@ export default function BookingPage() {
           <div>
             <div className="calc-panel booking-confirm-panel mb-16">
               <div className="calc-panel-header booking-confirm-header">
-                <Icon n="shield" s={18} c="var(--ce-color-brand-ink)" />
                 <h3>Verbindliche Bestellung</h3>
               </div>
               <div className="calc-panel-body">
@@ -2379,7 +2381,6 @@ export default function BookingPage() {
                 </div>
                 {voucherApplied && (
                   <div className="booking-test-note" role="note">
-                    <Icon n="info" s={15} c="currentColor" />
                     <span>
                       Testsendung: Diese Buchung wird als Test ausgeführt. Das erzeugte
                       Versandlabel ist ein <strong>Testlabel</strong> und darf nicht für den
@@ -2389,7 +2390,6 @@ export default function BookingPage() {
                 )}
                 {modules.printerNote && (
                   <div className="booking-printer-note" role="note">
-                    <Icon n="printer" s={15} c="currentColor" />
                     <span>
                       Für diesen Tarif ist ein Drucker erforderlich, da das Versandlabel
                       vor Übergabe ausgedruckt werden muss.
@@ -2476,7 +2476,6 @@ export default function BookingPage() {
             aria-describedby="price-drift-desc"
             ref={priceDriftRef}
           >
-            <div className="price-drift-badge" aria-hidden="true"><Icon n="info" s={24} c="var(--ce-color-brand-ink)" /></div>
             <h2 id="price-drift-title" className="price-drift-title">{PREISAENDERUNG_TITEL}</h2>
             <p id="price-drift-desc" className="price-drift-desc">
               {priceChange.insured ? COVER_PRICE_CHANGE_TEXT.intro : PREISAENDERUNG_TEXT[priceChange.kind]}
@@ -2494,7 +2493,6 @@ export default function BookingPage() {
                   <span className="price-drift-col-label">Bisheriger Preis ({VAT_TEXT.gross})</span>
                   <span className="price-drift-old">{money(priceChange.oldPrice)}</span>
                 </div>
-                <span className="price-drift-arrow" aria-hidden="true"><Icon n="arrow" s={18} c="var(--ce-color-text-muted)" /></span>
                 <div className="price-drift-col price-drift-col--new">
                   <span className="price-drift-col-label">Neuer Preis ({VAT_TEXT.gross})</span>
                   <span className="price-drift-new">{money(priceChange.newPrice)}</span>
@@ -2573,7 +2571,6 @@ export default function BookingPage() {
             aria-describedby="pickup-drift-desc"
             ref={pickupDriftRef}
           >
-            <div className="price-drift-badge" aria-hidden="true"><Icon n="clock" s={24} c="var(--ce-color-brand-ink)" /></div>
             <h2 id="pickup-drift-title" className="price-drift-title">Abholzeitfenster geändert</h2>
             <p id="pickup-drift-desc" className="price-drift-desc">
               Das verfügbare Abholzeitfenster hat sich seit Ihrer Auswahl geändert. Ihr zuvor

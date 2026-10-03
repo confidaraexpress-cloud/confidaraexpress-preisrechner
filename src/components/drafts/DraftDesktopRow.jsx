@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { dtDE } from "../../utils/formatters";
 import { fmtDE } from "../../utils/date";
 import { formatRecipientDisplay, formatRoute, formatPackageSummary, shippingDateValue } from "../../utils/draftsView.mjs";
@@ -19,7 +18,10 @@ export function DraftDesktopRow({ draft, busy, resuming, onDelete, onResume }) {
   const anyBusy = busy || resuming;
   return (
     <tr>
-      <td className="dft-cell-recipient">{formatRecipientDisplay(draft)}</td>
+      <td className="dft-cell-recipient">
+        <span className="dft-cell-recipient-name">{formatRecipientDisplay(draft)}</span>
+        <span className="dft-cell-updated">{draft.updatedAt ? `Zuletzt gespeichert: ${dtDE(draft.updatedAt)}` : "—"}</span>
+      </td>
       <td className="dft-cell-route">{formatRoute(draft)}</td>
       <td>
         <div className="dft-cell-package">
@@ -28,11 +30,10 @@ export function DraftDesktopRow({ draft, busy, resuming, onDelete, onResume }) {
         </div>
       </td>
       <td className="dft-cell-date">{shipDate ? fmtDE(shipDate) : "Noch nicht festgelegt"}</td>
-      <td className="dft-cell-updated">{draft.updatedAt ? dtDE(draft.updatedAt) : "—"}</td>
       <td>
         <div className="dft-cell-actions">
           <button type="button" className="btn btn-outline btn-sm dft-resume-btn" onClick={() => onResume(draft)} disabled={anyBusy}>
-            {resuming ? <span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> : <Icon n="arrowRight" s={14} />} Fortsetzen
+            {resuming && <span className="spinner spinner-dark spinner-sm" />} Fortsetzen
           </button>
           <DraftActionsMenu draft={draft} busy={busy} disabled={resuming} onDelete={onDelete} />
         </div>

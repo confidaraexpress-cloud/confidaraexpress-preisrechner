@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { PageHeader } from "../ui/PageHeader";
 import { StatusBadge } from "../ui/StatusBadge";
-import { Icon } from "../ui/Icon";
 import { PasswordField } from "../ui/PasswordField";
 import { FormAlert } from "../ui/FormAlert";
 import { apiFetch, authH, triggerAuthError } from "../../api/client";
@@ -18,7 +17,7 @@ import { DeliveryNoteCard } from "./DeliveryNoteCard";
 import { BillingModeCard } from "./BillingModeCard";
 import { CompanyLogoCard } from "./CompanyLogoCard";
 import { AppInstallCard } from "./AppInstallCard";
-import { cardHead } from "./ProfileCardHead";
+import { SettingsSection } from "./ProfileCardHead";
 import {
   companyBaseline, contactBaseline,
   buildCompanyPatch, buildContactPatch,
@@ -273,18 +272,20 @@ export function Profile({ user, utility }) {
   };
 
   // ── Render-Helfer ──────────────────────────────────────────────────────────
-  // Der gemeinsame Kartenkopf (cardHead) kommt aus ProfileCardHead.jsx — dieselbe
-  // Fassung nutzen auch die drei ausgelagerten Einstellungskarten.
+  // Der gemeinsame Abschnitt (SettingsSection) kommt aus ProfileCardHead.jsx —
+  // dieselbe Fassung nutzen auch die drei ausgelagerten Einstellungsabschnitte.
+  // „Bearbeiten" ist eine Textaktion oben rechts in der Inhaltsfläche; der
+  // zugängliche Name nennt zusätzlich den Bereich und enthält das sichtbare Wort.
   const editButton = (card, ref, onClick, label) => (
     <button
       type="button"
       ref={ref}
-      className="profile-card-edit-action"
+      className="btn btn-ghost btn-sm profile-card-edit-action"
       onClick={onClick}
       disabled={isEditActionDisabled(editCard, card)}
       aria-label={label}
     >
-      <Icon n="settings" s={14} /> Bearbeiten
+      Bearbeiten
     </button>
   );
 
@@ -312,7 +313,7 @@ export function Profile({ user, utility }) {
     <div className="profile-form-actions">
       <button type="button" className="btn btn-outline" onClick={cancelEdit} disabled={saving}>Abbrechen</button>
       <button type="button" className="btn btn-primary" onClick={() => saveCard(which)} disabled={!canSave}>
-        {saving ? <><span className="spinner" /> Wird gespeichert…</> : <><Icon n="check" s={14} /> Speichern</>}
+        {saving ? <><span className="spinner" /> Wird gespeichert…</> : "Speichern"}
       </button>
     </div>
   );
@@ -320,13 +321,15 @@ export function Profile({ user, utility }) {
   const renderCompanyCard = () => {
     const editing = editCard === "company";
     return (
-      <div className="table-card profile-card">
-        {cardHead("building", PROFILE_TEXT.companyTitle, PROFILE_TEXT.companySubtitle,
-          !editing && editButton("company", companyBtnRef, startCompanyEdit, "Unternehmensdaten bearbeiten"))}
+      <SettingsSection
+        title={PROFILE_TEXT.companyTitle}
+        subtitle={PROFILE_TEXT.companySubtitle}
+        action={!editing && editButton("company", companyBtnRef, startCompanyEdit, "Unternehmensdaten bearbeiten")}
+      >
         {editing ? (
           <div className="profile-form-body profile-inline-form">
             {cardError && (
-              <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={16} />{cardError}</div>
+              <div className="alert alert-error mb-16" role="alert">{cardError}</div>
             )}
             <p className="profile-required-hint">
               Firmenname ist eine Pflichtangabe — ConfidaraExpress ist eine reine Geschäftskundenplattform.
@@ -420,20 +423,22 @@ export function Profile({ user, utility }) {
             ])}
           </div>
         )}
-      </div>
+      </SettingsSection>
     );
   };
 
   const renderContactCard = () => {
     const editing = editCard === "contact";
     return (
-      <div className="table-card profile-card">
-        {cardHead("user", PROFILE_TEXT.contactTitle, PROFILE_TEXT.contactSubtitle,
-          !editing && editButton("contact", contactBtnRef, startContactEdit, "Ansprechpartner bearbeiten"))}
+      <SettingsSection
+        title={PROFILE_TEXT.contactTitle}
+        subtitle={PROFILE_TEXT.contactSubtitle}
+        action={!editing && editButton("contact", contactBtnRef, startContactEdit, "Ansprechpartner bearbeiten")}
+      >
         {editing ? (
           <div className="profile-form-body profile-inline-form">
             {cardError && (
-              <div className="alert alert-error mb-16" role="alert"><Icon n="x" s={16} />{cardError}</div>
+              <div className="alert alert-error mb-16" role="alert">{cardError}</div>
             )}
             <p className="profile-required-hint">
               Der Ansprechpartner ist eine Pflichtangabe und kann nicht entfernt werden.
@@ -454,30 +459,29 @@ export function Profile({ user, utility }) {
             ])}
           </div>
         )}
-      </div>
+      </SettingsSection>
     );
   };
 
+  // Der Kontostatus steht genau EINMAL — im Identitätskopf. Dieser Abschnitt
+  // trägt die Zahlungsbedingungen (vorher doppelt: Status und Zahlungsziel
+  // standen zusätzlich als Chips im Kopf).
   const renderAccountCard = () => (
-    <div className="table-card profile-card">
-      {cardHead("card", PROFILE_TEXT.accountTitle, "Informationen zu Ihrem Geschäftskonto", null)}
+    <SettingsSection title={PROFILE_TEXT.accountTitle} subtitle="Informationen zu Ihrem Geschäftskonto">
       <div className="profile-section-body">
         {renderRows([
-          { k: "Status", v: <StatusBadge status={user?.status} /> },
           { k: PROFILE_TEXT.paymentMethodLabel, v: PROFILE_TEXT.paymentMethodValue },
           { k: PROFILE_TEXT.paymentTermLabel, v: paymentTerm, empty: !user?.payment_term },
         ])}
         <div className="profile-hint">
-          <Icon n="info" s={15} />
           <div className="profile-hint-text"><p>{PROFILE_TEXT.paymentHint}</p></div>
         </div>
       </div>
-    </div>
+    </SettingsSection>
   );
 
   const renderSecurityCard = () => (
-    <div className="table-card profile-card">
-      {cardHead("shield", "Sicherheit", "Schützen Sie Ihr Konto", null)}
+    <SettingsSection title="Sicherheit" subtitle="Schützen Sie Ihr Konto">
       <div className="profile-section-body">
         {renderRows([
           { k: "Login-E-Mail", v: user?.email || "Nicht angegeben", empty: !user?.email },
@@ -486,7 +490,6 @@ export function Profile({ user, utility }) {
             getrennt von der Passwortänderung (eigener State/Fehler/Busy). */}
         <EmailChangeSection user={user} />
         <div className="profile-hint">
-          <Icon n="lock" s={15} />
           <div className="profile-hint-text"><p>{PROFILE_TEXT.securityHint}</p></div>
         </div>
       </div>
@@ -505,7 +508,7 @@ export function Profile({ user, utility }) {
               onClick={openPwForm}
               aria-expanded={false}
             >
-              <Icon n="lock" s={14} /> Passwort ändern
+              Passwort ändern
             </button>
           )}
         </div>
@@ -549,80 +552,73 @@ export function Profile({ user, utility }) {
             <div className="profile-form-actions">
               <button type="button" className="btn btn-outline" onClick={closePwForm} disabled={pwSaving}>Abbrechen</button>
               <button type="button" className="btn btn-primary" onClick={handlePasswordChange} disabled={pwSaving}>
-                {pwSaving ? <><span className="spinner" /> Wird geändert…</> : <><Icon n="lock" s={14} /> Passwort ändern</>}
+                {pwSaving ? <><span className="spinner" /> Wird geändert…</> : "Passwort ändern"}
               </button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </SettingsSection>
   );
 
   return (
     <div className="page-body">
         <PageHeader
-          eyebrow="Konto"
           title={<>Kontoeinstellungen</>}
           subtitle="Verwalten Sie Ihre Unternehmens- und Kontodaten sicher an einem Ort."
           utility={utility}
           className="profile-page-head"
         />
 
-        {/* Profilhero als Base Card (Paket D): dasselbe Material wie jede
-            andere Fläche des eingeloggten Bereichs — kein eigener Verlauf,
-            keine eigene Kante, keine eigene Tiefe mehr.
-            Die Initiale kommt aus derselben Quelle wie Sidebar und
-            Benutzerchip; die frühere fest verdrahtete Marke „CE" zeigte für
-            ein Konto „Muster GmbH" das falsche Zeichen. */}
+        {/* Kompakter Identitätskopf: Firmenmarke (Initiale aus derselben Quelle
+            wie Benutzerchip), Firmenname, Login-E-Mail, Kundennummer und der
+            Kontostatus — genau EINMAL. Zahlungsziel und Zahlungsweise stehen im
+            Abschnitt „Konto & Zahlungsbedingungen", nicht zusätzlich hier. */}
         <div className="ce-card profile-account-header">
           <div className="profile-account-identity">
             <div className="profile-avatar-lg" aria-hidden="true">{accountInitials(user)}</div>
             <div className="profile-account-info">
               <div className="profile-account-name">{accountDisplayName(user, "Nicht angegeben")}</div>
-              <div className="profile-account-email">
-                <Icon n="mail" s={14} /> {user?.email || "Nicht angegeben"}
-              </div>
+              <div className="profile-account-email">{user?.email || "Nicht angegeben"}</div>
               {/* Kundennummer (CE-K-…) — rein lesend, nicht editierbar und bewusst NICHT an
                   users.id gekoppelt. Bestandskonten ohne Nummer zeigen einen neutralen
                   Hinweis statt eines technischen Leerwerts. */}
-              <div className="profile-account-customer-number" style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span className="text-muted" style={{ fontSize: 12 }}>{NUMBER_LABELS.customer}:</span>
+              <div className="profile-account-customer-number">
+                <span className="profile-account-number-label">{NUMBER_LABELS.customer}:</span>
                 {customerNumber
                   ? <CopyableNumber value={customerNumber} label={NUMBER_LABELS.customer} />
-                  : <span className="text-muted" style={{ fontSize: 13 }}>{NOT_ASSIGNED_TEXT}</span>}
-              </div>
-              <div className="profile-meta-row">
-                <StatusBadge status={user?.status} />
-                <span className="profile-meta-chip"><Icon n="building" s={13} /> B2B-Konto</span>
-                <span className="profile-meta-chip profile-meta-chip-accent"><Icon n="clock" s={13} /> Zahlungsziel: {paymentTerm}</span>
+                  : <span className="profile-account-number-empty">{NOT_ASSIGNED_TEXT}</span>}
               </div>
             </div>
+          </div>
+          <div className="profile-meta-row">
+            <StatusBadge status={user?.status} />
           </div>
         </div>
 
         {savedCard && editCard === null && (
           <div className="alert alert-success mb-16" role="status">
-            <Icon n="shield" s={16} /> Profil erfolgreich gespeichert.
+            Profil erfolgreich gespeichert.
           </div>
         )}
 
-        <div className="profile-grid">
-          <div className="profile-col">
-            {renderCompanyCard()}
-            {/* Das Logo gehört zu den Unternehmensdaten und steht deshalb
-                direkt darunter — nicht in der Kontospalte. */}
-            <CompanyLogoCard user={user} />
-            {renderContactCard()}
-          </div>
-          <div className="profile-col">
-            {renderAccountCard()}
-            <DeliveryNoteCard user={user} />
-            <BillingModeCard user={user} />
-            {renderSecurityCard()}
-            {/* „ConfidaraExpress als App" — der dauerhafte Ort für die
-                Installation, direkt nach „Sicherheit" (dieses Gerät). */}
-            <AppInstallCard />
-          </div>
+        {/* Einspaltige Abschnitte in der Reihenfolge der Kontopflege:
+            Unternehmensdaten → Ansprechpartner → Logo → Versanddokumente →
+            Abrechnung → Sicherheit → App. Jeder Abschnitt: links Titel und
+            Erklärung, rechts Daten bzw. Bedienelemente. */}
+        <div className="profile-sections">
+          {renderCompanyCard()}
+          {renderContactCard()}
+          {/* Das Logo gehört zu den Unternehmensdaten und steht deshalb
+              direkt nach ihnen. */}
+          <CompanyLogoCard user={user} />
+          <DeliveryNoteCard user={user} />
+          {renderAccountCard()}
+          <BillingModeCard user={user} />
+          {renderSecurityCard()}
+          {/* „ConfidaraExpress als App" — der dauerhafte Ort für die
+              Installation, direkt nach „Sicherheit" (dieses Gerät). */}
+          <AppInstallCard />
         </div>
     </div>
   );

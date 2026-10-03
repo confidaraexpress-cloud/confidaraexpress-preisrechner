@@ -36,6 +36,11 @@
 
 /* ── Feldrahmen und Beschriftung ─────────────────────────────────────────── */
 .field { margin-bottom: var(--ce-space-3); }
+/* Formularrhythmus des Redesigns (2026-10): Felder stehen vertikal 20 px
+   auseinander, Spalten 16 px. Bewusst auf die Nicht-Auth-Rahmen begrenzt —
+   der Auth-Bereich nutzt .field/.field-row ebenfalls und bleibt unverändert. */
+:is(.app-shell, .adm-shell) .field { margin-bottom: var(--ce-space-5); }
+:is(.app-shell, .adm-shell) .field-row { column-gap: var(--ce-space-4); row-gap: 0; }
 .field-label {
   display: block;
   margin-bottom: 6px;
@@ -148,11 +153,12 @@
   background-size: 16px;
 }
 
-/* ── Textarea ────────────────────────────────────────────────────────────── */
+/* ── Textarea ──────────────────────────────────────────────────────────────
+   Mindestens 112 px, vertikal vergrößerbar — keine feste Höhe für Eingaben. */
 .field-textarea,
 .adm-note-input,
 textarea.field-input {
-  min-height: 88px;
+  min-height: 112px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -315,6 +321,40 @@ input[type="radio"]:focus-visible {
 .field-input-wrap { position: relative; }
 .field-input-wrap .field-input { padding-right: 42px; }
 .field-input-wrap .field-input-dark { padding-right: 42px; }
+
+/* ── Einheit als Suffix im gestapelten Feld (Redesign 2026-10) ─────────────
+   „Neue Sendung" nutzt die gestapelte Beschriftung; die Einheit (kg, cm, EUR)
+   steht deshalb dauerhaft rechts IM Feld — dekorativ (aria-hidden), vorgelesen
+   wird sie über den unsichtbaren Labelzusatz (unitLabel). */
+.field.ce-field--has-unit:not(.ce-field--floating) .ce-field-control { position: relative; }
+.field.ce-field--has-unit:not(.ce-field--floating) .field-input { padding-right: 52px; }
+.field.ce-field--has-unit:not(.ce-field--floating) .ce-field-unit {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: var(--ce-text-body-s-size);
+  line-height: 1;
+  color: var(--ce-color-text-muted);
+  pointer-events: none;
+}
+/* Die nativen Zählpfeile eines Zahlenfeldes säßen genau dort, wo die Einheit
+   steht — sie entfallen NUR in Feldern mit Einheit. */
+.field.ce-field--has-unit .field-input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.field.ce-field--has-unit .field-input[type="number"]::-webkit-outer-spin-button,
+.field.ce-field--has-unit .field-input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ── Mobile Texteingabe: mindestens 16 px ────────────────────────────────────
+   Unter 16 px zoomt Safari auf iOS beim Fokussieren jedes Eingabefeld. */
+@media (max-width: 860px), (pointer: coarse) {
+  .field-input,
+  .field-select,
+  .field-textarea { font-size: 16px; }
+}
 
 /* ── Touchziel ───────────────────────────────────────────────────────────── */
 @media (pointer: coarse) {

@@ -281,8 +281,9 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   const limitLines = buildLimitLines(t.tariffLimits);
   const carrierLinkItems = buildCarrierLinks(t.carrierLinks);
 
-  // ── Hauptmerkmale als Feature-Grid: dezentes Label + starker Wert + kleines
-  // Icon aus der bestehenden Icon-Sprache. Nur real vorhandene Felder. Infos,
+  // ── Hauptmerkmale als Feature-Grid: dezentes Label + starker Wert. Das
+  // `icon`-Feld bleibt als fachliche Kategorie im Datensatz, wird seit dem
+  // Redesign (2026-10) aber nicht mehr gezeichnet. Nur real vorhandene Felder. Infos,
   // die "Termin & Abholung" konkreter zeigt (Abgabestelle, Lieferzeit), werden
   // hier bewusst NICHT wiederholt. Der Tarifname spannt die volle Breite.
   const features = [];
@@ -338,7 +339,6 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
           <div className="offer-feature-grid">
             {features.map(f => (
               <div key={f.label} className={`offer-feature${f.wide ? " offer-feature--wide" : ""}`}>
-                <span className="offer-feature-icon"><Icon n={f.icon} s={15} c="currentColor" /></span>
                 <span className="offer-feature-body">
                   <span className="offer-feature-label">{f.label}</span>
                   <span className={`offer-feature-value${f.subtle ? " offer-feature-value--subtle" : ""}`}>{f.value}</span>
@@ -456,7 +456,7 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
                 rel="noopener noreferrer"
               >
                 <span className="offer-link-label">{link.label}</span>
-                <Icon n="external" s={13} c="currentColor" />
+                <span className="offer-link-hint">öffnet in neuem Tab</span>
               </a>
             ))}
           </div>
@@ -527,7 +527,8 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // keine behauptet.
   const handoverText = handoverLabel(handoverMode(t));
 
-  // Zone 4: Meta-Hinweise als ruhige, monochrome Icon+Text-Items.
+  // Zone 4: Meta-Hinweise als ruhige Textangaben (Redesign 2026-10: ohne Symbole;
+  // das `icon`-Feld bleibt nur als Kategorie im Datensatz).
   // Service-Typ (Abholung/Shopabgabe) wird hier NICHT wiederholt — er ist
   // bereits der Start-Knoten in Zone 2.
   const metaItems = [];
@@ -546,7 +547,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // vorläufigen und einem vollständig berechneten Preis desselben Angebots gemessen
   // identische Werte.
   if (isIndicativePrice(t)) {
-    metaItems.push({ icon: "info", label: INDICATIVE_PRICE_LABEL, tone: "info" });
+    metaItems.push({ icon: "info", label: INDICATIVE_PRICE_LABEL, tone: "notice" });
   }
   if (t.trackingAvailable) {
     metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "info" });
@@ -578,9 +579,10 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // nichts selbst (siehe utils/offerDebugView.mjs).
   const debugAnsicht = offerDebugView(t);
 
-  const ctaClass = unavailable
-    ? "offer-cta-btn--disabled"
-    : selected ? "offer-cta-btn--primary" : "offer-cta-btn--outline";
+  // Die Auswahlaktion ist die primäre Aktion der Tarifkarte — im
+  // ConfidaraExpress-Blau, gesperrt grau mit dem Grund (Feinschliff 2026-10).
+  // Den ausgewählten Zustand zeigt die Karte selbst (Kante, Fläche).
+  const ctaClass = unavailable ? "offer-cta-btn--disabled" : "offer-cta-btn--primary";
 
   // Kein `aria-disabled` an der Karte: der Zustand vererbt sich auf jedes bedienbare Kind, und „Details anzeigen"
   // einer Preisauskunft hieße für Screenreader gesperrt, obwohl Profil, Laufzeit und Preis dort lesbar sind. Gesperrt
@@ -603,9 +605,12 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
         {/* ── Zone 1: Anbieter & Hauptnutzen ── */}
         <div className="offer-zone-1">
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten
-              Carrier (publicCarrierId "other") — ein neutrales Paket-Icon. NIEMALS
+              Carrier (publicCarrierId "other") — ein neutrales Paket-Zeichen. NIEMALS
               Text in der Kachel: der Name ist zu lang für 50 px und bräche mehrzeilig
-              um. Der lesbare Name steht ohnehin direkt daneben in .offer-carrier-name. */}
+              um. Der lesbare Name steht ohnehin direkt daneben in .offer-carrier-name.
+              Das Paket-Zeichen ist die einzige verbliebene Grafik der Karte und eine
+              bewusste funktionale Ausnahme des Redesigns (2026-10): es besetzt den
+              Platz der Carrier-Identität, ist kein Dekor. */}
           <div className={`offer-logo-tile${carrierLogo ? "" : " offer-logo-tile--generic"}`}>
             {carrierLogo
               ? <img src={carrierLogo} alt={carrierName} width="44" height="44" />
@@ -636,7 +641,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               beschreibt genau deren linkes Ende. Neben dem Preis oder am Carrier
               wäre sie eine Behauptung ohne Zusammenhang. Reine Typografie, kein
               Badge — sie soll schnell lesbar sein, aber Preis und Hauptaktion
-              nicht Konkurrenz machen. Die Versalien macht das Stylesheet.
+              nicht Konkurrenz machen. Normale Schreibweise, keine Versalien.
 
               Sie steht bewusst VOR der Verzweigung und damit auch auf einem
               Angebot, das gerade nicht auswählbar ist. Vorher ersetzte die
@@ -656,11 +661,11 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               steht dort, wo sie hingehoert: an der Aktion. */}
           {(
             <div className="offer-timeline">
+              {/* Ruhige Prozesslinie: Start- und Endpunkt tragen die Ablaufstruktur,
+                  ohne Symbol, ohne Puls, ohne Verlauf (Redesign 2026-10). */}
               <div className="offer-tl-rail" aria-hidden="true">
                 <span className="offer-tl-dot offer-tl-dot--start" />
-                <span className="offer-tl-track">
-                  <span className="offer-tl-dot offer-tl-dot--transport" />
-                </span>
+                <span className="offer-tl-track" />
                 <span className="offer-tl-dot offer-tl-dot--end" />
               </div>
               <div className="offer-tl-labels">
@@ -668,13 +673,6 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                   <span className="offer-tl-title">{start.title}</span>
                   {start.primary && <span className="offer-tl-primary">{start.primary}</span>}
                   {start.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
-                </div>
-                {/* Rein visuelle Zwischenstation — nur Truck-Icon, bewusst ohne
-                    sichtbares Label, ohne Datum/Uhrzeit und ohne Live-Tracking-
-                    Wortwahl. aria-label erhält die Bedeutung für Screenreader,
-                    da der mittlere Node sonst rein dekorativ (icon-only) wäre. */}
-                <div className="offer-tl-node offer-tl-node--transport" aria-label="Transport">
-                  <span className="offer-tl-transport-icon"><Icon n="truck" s={12} c="currentColor" /></span>
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
@@ -687,15 +685,10 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                   Endknotens: dessen Spalte ist eine 1fr-Rasterspur, ein breiteres
                   Kind darin verzöge die Timeline und damit die Preisspalte. Hier
                   steht es unter dem Lieferende, hat die volle Timelinebreite und
-                  kann das Layout nicht verschieben. Das Icon ist dekorativ — die
-                  Aussage steht vollständig im sichtbaren Text. */}
+                  kann das Layout nicht verschieben. Seit dem Redesign (2026-10)
+                  ohne Symbol — die Aussage steht vollständig im Text. */}
               {earlyNote && (
-                <p className="offer-early-note">
-                  <span className="offer-early-note-icon" aria-hidden="true">
-                    <Icon n="check" s={13} c="currentColor" />
-                  </span>
-                  {earlyNote}
-                </p>
+                <p className="offer-early-note">{earlyNote}</p>
               )}
               {/* K2 (Go-Live Block B): unter einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne
                   sicher vergleichbare Anbieterzusage sichtbar — mit genau diesem neutralen Satz unter dem
@@ -753,7 +746,7 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
           >
             {unavailable
               ? unavailableText
-              : <>Angebot auswählen <Icon n="arrow" s={15} c="currentColor" /></>}
+              : "Angebot auswählen"}
           </button>
           {/* TG22 Paket B: nur beim Abholtag als einzigem Grund — die HANDLUNG, nicht ein
               zweites Mal der Grund. */}
@@ -770,9 +763,8 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
             aria-controls={detailsId}
           >
             {detailsOpen ? "Details ausblenden" : "Details anzeigen"}
-            <span className={`offer-details-chevron${detailsOpen ? " open" : ""}`} aria-hidden="true">
-              <Icon n="chevron" s={14} c="currentColor" />
-            </span>
+            {/* Klappmarke rein per CSS — kein Icon (Redesign 2026-10). */}
+            <span className={`offer-details-chevron${detailsOpen ? " open" : ""}`} aria-hidden="true" />
           </button>
         </div>
 
@@ -782,10 +774,10 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
         <div className="offer-zone-4">
           {metaItems.map((m, i) => {
             const toneClass = m.tone === "warn" ? " offer-meta-item--warn"
+                            : m.tone === "notice" ? " offer-meta-item--notice"
                             : m.tone === "info" ? " offer-meta-item--info" : "";
             return (
               <span key={i} className={`offer-meta-item${toneClass}`}>
-                <Icon n={m.icon} s={14} c="currentColor" />
                 {m.label}
               </span>
             );

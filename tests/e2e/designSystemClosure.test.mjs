@@ -14,8 +14,10 @@
 //      durch Icons ersetzt; im gerenderten Text darf keins mehr vorkommen.
 //   4. Fokusrückgabe der beiden Kunden-Kebabmenüs. Der Menüeintrag verschwindet
 //      beim Öffnen des Dialogs; ohne Rückgabe landet der Fokus auf <body>.
-//   5. Ein Blau. Marke, aktive Navigation und Fokus laufen auf #5367e8 —
-//      gemessen an den gerenderten Farbwerten, nicht am Stylesheet.
+//   5. Ein Blau. Marke, aktive Navigation und Fokus laufen auf dem
+//      ConfidaraExpress-Indigo #5367E8 (Redesign 2026-10 in der ursprünglichen
+//      Farbwelt) — gemessen an den gerenderten Farbwerten, nicht am Stylesheet.
+//      Weder das Legacy-Blau noch das zurückgenommene Petrol wird gezeichnet.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -240,7 +242,7 @@ test("4 — Adressbuch und Entwürfe geben den Fokus an ihren Kebab zurück", as
 
 /* ══════════ 5 — ein Blau ════════════════════════════════════════════════ */
 
-test("5 — Marke, aktive Navigation und Fokus laufen auf derselben Farbe", async () => {
+test("5 — Marke, aktive Navigation und Fokus laufen auf dem ConfidaraExpress-Indigo", async () => {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await setupRoutes(page);
   await dashboard(page, "overview");
@@ -249,18 +251,41 @@ test("5 — Marke, aktive Navigation und Fokus laufen auf derselben Farbe", asyn
     getComputedStyle(document.documentElement).getPropertyValue("--ce-color-brand").trim());
   assert.equal(marke, "#5367e8");
 
-  // Das ausgelaufene Legacy-Blau #1d4ed8 = rgb(29, 78, 216) darf in keiner
-  // gerenderten Farbe mehr auftauchen.
-  const legacy = await page.evaluate(() => {
+  // Der aktive Navigationseintrag der Navy-Sidebar: heller Text, Gewicht 600,
+  // die blaue Akzentkante links (#6197ff = rgb(97, 151, 255)).
+  const aktiv = await page.evaluate(() => {
+    const el = document.querySelector(".pp-nav .nitem.on");
+    if (!el) return null;
+    const s = getComputedStyle(el);
+    return { farbe: s.color, gewicht: s.fontWeight, kante: s.boxShadow };
+  });
+  assert.ok(aktiv, "kein aktiver Navigationseintrag");
+  assert.equal(aktiv.farbe, "rgb(255, 255, 255)", "der aktive Eintrag trägt keinen hellen Text");
+  assert.equal(aktiv.gewicht, "600");
+  assert.match(aktiv.kante, /rgb\(97, 151, 255\)/, "die blaue Akzentkante fehlt");
+
+  // Fokus im Inhaltsbereich: der Ring läuft im Markenindigo.
+  await page.locator(".ce-page-header .btn-primary").first().focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  const fokus = await page.evaluate(() => {
+    const el = document.activeElement;
+    return el && el !== document.body ? getComputedStyle(el).outlineColor : null;
+  });
+  assert.equal(fokus, "rgb(83, 103, 232)", "der Fokusring läuft nicht auf #5367E8");
+
+  // Weder das Legacy-Blau #1d4ed8 = rgb(29, 78, 216) noch das zurückgenommene
+  // Petrol #0b5d5b = rgb(11, 93, 91) darf in einer gerenderten Farbe auftauchen.
+  const fremd = await page.evaluate(() => {
     const treffer = [];
     for (const el of document.querySelectorAll("*")) {
       const s = getComputedStyle(el);
       for (const eigenschaft of ["color", "backgroundColor", "borderTopColor", "borderLeftColor"]) {
-        if (/rgba?\(29, 78, 216/.test(s[eigenschaft])) treffer.push(`${el.className}:${eigenschaft}`);
+        if (/rgba?\((29, 78, 216|11, 93, 91)/.test(s[eigenschaft])) treffer.push(`${el.className}:${eigenschaft}`);
       }
     }
     return treffer.slice(0, 10);
   });
-  assert.deepEqual(legacy, [], `Legacy-Blau gerendert: ${legacy.join(", ")}`);
+  assert.deepEqual(fremd, [], `fremder Akzent gerendert: ${fremd.join(", ")}`);
   await page.close();
 });

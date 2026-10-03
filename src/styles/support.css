@@ -10,49 +10,47 @@
         ein Fallback stand, griff der Fallback, wo keiner stand, war die
         Deklaration ungültig und der Wert wurde geerbt. Alles kommt jetzt aus
         der Foundation.
-   Keine --auth-/--ce-Tokens, keine globalen Button-/Badge-Regeln überschrieben.
-   Die Supportkarte der Sidebar selbst liegt weiterhin in dashboard-premium.css
-   (sie gehört zum App-Chrome und nutzt ausschließlich --ce-sidebar-*-Tokens).
+   Keine --auth-Tokens, keine globalen Button-/Badge-Regeln überschrieben. Der
+   Einstieg „Support kontaktieren" der Sidebar liegt in dashboard-premium.css
+   (App-Chrome).
    =========================================================================== */
 
 /* ── Kundendialog ─────────────────────────────────────────────────────────── */
-/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css). */
-.sup-dialog-icon {
-  width: 44px; height: 44px; border-radius: var(--ce-radius-md);
-  background: var(--blue-light); color: var(--blue2);
-  display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+/* Overlay und Karte kommen aus dem gemeinsamen Dialogmuster (patterns.css).
+   Seit dem Redesign (2026-10) ohne Iconmedaillon: Titel, ein Satz, Felder. */
+.sup-dialog-title {
+  font-size: var(--ce-text-title-section-size); line-height: var(--ce-text-title-section-line);
+  font-weight: 600; color: var(--ce-color-text-primary); margin-bottom: var(--ce-space-2);
 }
-/* Erfolgsansicht: dieselbe Geometrie, nur die Farbrolle wechselt. */
-.sup-dialog-icon-ok { background: var(--success-bg); color: var(--success); }
-
-.sup-dialog-title { font-size: 20px; line-height: 1.3; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-.sup-dialog-desc { font-size: 13px; color: var(--ce-color-text-secondary); line-height: 1.55; margin-bottom: 16px; }
+.sup-dialog-desc { font-size: var(--ce-text-body-size); color: var(--ce-color-text-secondary); line-height: var(--ce-text-body-line); margin-bottom: var(--ce-space-5); }
 
 .sup-dialog-success {
-  padding: 12px 14px; margin-bottom: 14px; border-radius: var(--radius);
-  background: var(--success-bg); border: 1px solid var(--ce-color-status-success-border);
-  color: var(--ce-color-status-success-fg); font-size: 13px; line-height: 1.55; font-weight: 600;
+  padding: var(--ce-space-3) var(--ce-space-4); margin-bottom: var(--ce-space-4); border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border);
+  color: var(--ce-color-status-success-fg);
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line); font-weight: 600;
 }
 
-/* Die Feldsprache des Dialogs kommt seit Paket D vollständig aus forms.css
-   (.field-label/.field-input/.field-select/.field-textarea) — die frühere,
-   parallel gepflegte Fassung mit eigener Höhe, eigener Kante und rohem #fff
-   ist entfallen. Hier bleibt nur der Abstand zwischen den Feldgruppen. */
-.sup-dialog-label { margin-top: 14px; }
+/* Die Feldsprache des Dialogs kommt vollständig aus forms.css
+   (.field-label/.field-input/.field-select/.field-textarea). Hier bleibt nur
+   der Abstand zwischen den Feldgruppen. */
+.sup-dialog-label { margin-top: var(--ce-space-4); }
 .sup-dialog-label:first-of-type { margin-top: 0; }
-.sup-dialog-textarea { min-height: 120px; }
+.sup-dialog-textarea { min-height: 128px; }
 
-.sup-dialog-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
-.sup-dialog-counter { font-size: 11px; color: var(--ce-color-text-muted); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-.sup-dialog-min { font-size: 11px; color: var(--danger); font-weight: 600; }
+.sup-dialog-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3); margin-top: 6px; }
+.sup-dialog-counter {
+  font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+.sup-dialog-min { font-size: var(--ce-text-caption-size); color: var(--ce-color-status-error-fg); font-weight: 500; }
 
 /* Die Fehlermeldung ist eine FormAlert — hier steht nur ihr Abstand. */
-.sup-dialog-error { margin-top: 12px; }
+.sup-dialog-error { margin-top: var(--ce-space-3); }
 
 /* Der Footer folgt dem gemeinsamen Dialogmuster (patterns.css): Aktionen
    rechts, bestätigende Aktion rechts außen; unter 480 px stapelt das Muster
-   sie global. Die frühere eigene Stapelung mit vollbreiten Knöpfen auf ALLEN
-   Breiten ist entfallen. */
+   sie global. */
 
 /* ── Adminbereich: Liste ──────────────────────────────────────────────────── */
 /* Betreffvorschau: nutzergenerierter Freitext, in der Liste auf zwei Zeilen begrenzt.
@@ -65,6 +63,12 @@
 .adm-sup-sub { display: block; font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
 .adm-sup-cust { display: flex; flex-direction: column; }
 .adm-sup-cust-name { font-weight: 600; }
+/* Verlinkte Ticket- und Kundennamen: Markenfarbe wie jeder Adminlink, kein
+   Browser-Blau. Unterstrichen erst beim Überfahren. */
+a.adm-sup-ticket,
+a.adm-sup-cust-name { color: var(--ce-color-brand-ink); text-decoration: none; }
+a.adm-sup-ticket:hover,
+a.adm-sup-cust-name:hover { text-decoration: underline; }
 .adm-sup-time { white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* Zustellproblem-Hinweis in der Liste: dezent, aber sichtbar — und bewusst KEIN roter
@@ -72,7 +76,7 @@
    nie der technische Fehlertext (der steht im Detail). */
 .adm-sup-mailwarn {
   display: inline-flex; align-items: center; gap: 4px; margin-top: 5px;
-  font-size: 11px; line-height: 1.3; color: var(--ce-color-status-warning-fg);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-status-warning-fg);
 }
 .adm-sup-mailwarn svg { flex-shrink: 0; }
 
@@ -92,9 +96,11 @@
   overflow-wrap: anywhere;
 }
 
-/* Mobil: Kartenansicht statt Tabelle (identische Umschaltung wie die übrigen Adminlisten). */
+/* Kartenansicht statt Tabelle unter 1200 px — wie Rechnungen und Audit-Logs:
+   zwischen 901 und 1199 px lief die sechsspaltige Tabelle neben der Sidebar
+   über, „Details" war nur seitlich scrollend erreichbar (gemessen). */
 .adm-sup-cards { display: none; list-style: none; margin: 0; padding: 0; }
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .adm-sup-table { display: none; }
   .adm-sup-cards { display: grid; gap: 12px; }
 }
@@ -135,152 +141,171 @@
 
 /* ── Kundensicht: „Meine Supportanfragen" ───────────────────────────────────────
    Scope `sup-` (Kunde), getrennt vom Adminscope `adm-sup-`. Ausschließlich
-   App-Layout-Tokens — keine eigenen Hex-Werte, kein Blau als Fläche. */
+   Foundation-Tokens — keine eigenen Farbwerte, keine Symbole.
 
-/* Die Werkzeugleiste trägt nur noch die Aktion (der Einleitungssatz stand
-   wortgleich im Seitenkopf) — deshalb rechtsbündig statt space-between. */
-.sup-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+   Redesign 2026-10: die Vorgänge stehen als EINE ruhige Liste in einer Fläche
+   (Trennlinien statt Einzelkarten): Betreff als Titel, Ticketnummer und
+   Kategorie leise darunter, Status als ganzer Begriff, Datum rechts. Die ganze
+   Zeile öffnet den Verlauf — sie ist eine echte Aktion und trägt deshalb Hover. */
+
+/* „Neue Anfrage" steht seit dem Redesign (2026-10) im Seitenkopf — die frühere
+   Werkzeugleiste .sup-list-head über der Liste ist entfallen. */
+
+.sup-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+  overflow: hidden;
 }
+.sup-list > li + li { border-top: 1px solid var(--border-hairline); }
 
-.sup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-
-/* Zeilenkarte: Fläche, Kante, Radius und Tiefe kommen seit Paket D aus dem
-   Interactive-Card-Primitive (.ce-card-interactive, primitives.css) — inklusive
-   Hover und Fokusring. Hier bleibt nur die Zeilenaufteilung. */
 .sup-list-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: var(--ce-space-2) var(--ce-space-5);
   width: 100%;
-  padding: 14px 16px;
+  min-height: 64px;
+  padding: var(--ce-space-3) var(--ce-space-5);
   text-align: left;
-  color: var(--text-tertiary);
-  /* Touchziel: die ganze Zeile ist die Aktion. */
-  min-height: 44px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
+.sup-list-item:hover { background: var(--ce-color-surface-hover); }
+.sup-list-item:focus-visible { outline: var(--ce-focus-ring); outline-offset: -2px; }
 
-.sup-list-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.sup-list-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-/* Der Betreff bricht mehrzeilig an Wortgrenzen — das war schon immer das
-   tatsächliche Verhalten: die frühere text-overflow/overflow-Kombination war
-   ohne nowrap wirkungslos (tote Regel, entfernt). Der Volltext gehört hier
-   hin; die Detailansicht wiederholt ihn ohnehin. */
+.sup-list-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* Der Betreff bricht mehrzeilig an Wortgrenzen; den Volltext zeigt der Verlauf. */
 .sup-list-subject {
-  font-size: 15px;
+  font-size: var(--ce-text-body-size);
+  line-height: 1.4286;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
 }
-.sup-list-meta { font-size: 12px; color: var(--text-secondary); }
+.sup-list-meta { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+/* Status als ganzer Begriff — er bricht nie mitten im Wort. */
+.sup-list-status { flex: none; }
+.sup-list-date {
+  font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted);
+  white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
 
 .sup-ticket {
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
-  font-size: 12px;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
+  font-size: var(--ce-text-body-s-size);
+  color: var(--ce-color-text-secondary);
 }
 
-/* Leer- und Fehlerzustand kommen seit Paket D aus dem gemeinsamen
-   Zustandsmuster (StateView / .ce-state*) — die bereichseigene Fläche
-   .sup-empty samt Titel und Text ist entfallen. */
+/* Leer- und Fehlerzustand kommen aus dem gemeinsamen Zustandsmuster
+   (StateView / .ce-state*) — keine bereichseigene Fläche. */
 
 /* ── Nachrichtenverlauf ── */
-.sup-thread { display: flex; flex-direction: column; gap: 16px; }
-.sup-back { align-self: flex-start; }
+.sup-thread { display: flex; flex-direction: column; gap: var(--ce-space-4); }
+.sup-back { align-self: flex-start; margin-left: calc(-1 * var(--ce-space-3)); }
 
-/* Ticketkopf: Fläche/Kante/Radius/Tiefe aus .ce-card (Markup trägt die Klasse). */
-.sup-thread-head { padding: 16px 18px; }
-.sup-thread-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Ticketkopf: Fläche/Kante/Radius aus .ce-card (Markup trägt die Klasse). */
+.sup-thread-head { padding: var(--ce-space-5) var(--ce-space-6); }
+.sup-thread-title { display: flex; align-items: center; gap: var(--ce-space-3); flex-wrap: wrap; }
 .sup-subject {
-  margin: 8px 0 4px;
+  margin: var(--ce-space-2) 0 var(--ce-space-1);
   font-size: var(--ce-text-title-section-size);
   font-weight: var(--ce-text-title-section-weight);
   line-height: var(--ce-text-title-section-line);
-  color: var(--text-primary);
+  color: var(--ce-color-text-primary);
 }
-.sup-thread-meta { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.sup-thread-meta { margin: 0; font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); }
 
 /* Dialogartige Anordnung — bewusst ohne Live-Chat-Anmutung: keine Onlinepunkte,
-   keine Tippanzeige, keine Animation. Die Zuordnung ist zusätzlich im Text
-   ausgewiesen und hängt nicht allein an der Ausrichtung. */
+   keine Tippanzeige, keine Animation. Die Herkunft trägt die Ausrichtung, die
+   Fläche UND der Autorenname im Text (leise Metaebene über der Nachricht). */
 .sup-msgs {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ce-space-3);
 }
-/* Ruhige Sprechkarten statt Chat-Blasen: gemeinsamer Foundation-Radius, keine
-   übergroßen Rundungen, kein Schwanz, keine Animation. Die Herkunft wird
-   dreifach getragen — Ausrichtung, Fläche UND Autorenname im Text. */
 .sup-msg {
   max-width: 78%;
-  padding: 12px 14px;
+  padding: var(--ce-space-3) var(--ce-space-4);
   border: 1px solid var(--ce-color-border-subtle);
   border-radius: var(--ce-radius-md);
   background: var(--ce-color-surface);
 }
 /* Support links auf neutraler Fläche … */
 .sup-msg-support { align-self: flex-start; }
-/* … Kunde rechts in Brand-Soft (Paket D): die eigene Stimme hebt sich damit
-   ruhig ab, ohne eine zweite Statusfarbe einzuführen. */
+/* … Kunde rechts in Brand-Soft: die eigene Stimme hebt sich ruhig ab, ohne
+   eine zweite Statusfarbe einzuführen. */
 .sup-msg-customer {
   align-self: flex-end;
   background: var(--ce-color-brand-soft);
-  border-color: var(--ce-color-brand-border);
+  border-color: var(--ce-color-brand-border-soft);
 }
 
 .sup-msg-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 5px;
+  gap: var(--ce-space-3);
+  margin-bottom: var(--ce-space-1);
 }
-.sup-msg-author { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.sup-msg-time { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+.sup-msg-author { font-size: var(--ce-text-caption-size); font-weight: 600; color: var(--ce-color-text-secondary); }
+.sup-msg-time { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); white-space: nowrap; }
 .sup-msg-body {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-primary);
+  font-size: var(--ce-text-body-size);
+  line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 /* ── Antwortformular ──
-   Fläche aus .ce-card (Markup), Eingabefeld aus forms.css
-   (.field-input/.field-textarea) — die frühere eigene Feldfassung ist
-   entfallen. */
+   Fläche aus .ce-card (Markup), Eingabefeld aus forms.css. */
 .sup-reply {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px;
+  gap: var(--ce-space-3);
+  padding: var(--ce-space-5) var(--ce-space-6);
 }
-.sup-reply-field { min-height: 96px; }
+.sup-reply-label { margin-bottom: 0; }
+.sup-reply-field { min-height: 112px; }
 .sup-reply-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--ce-space-4);
   flex-wrap: wrap;
 }
-.sup-reply-hint { font-size: 12px; color: var(--text-secondary); }
+.sup-reply-hint { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
 
 @media (max-width: 700px) {
   .sup-msg { max-width: 92%; }
-  .sup-list-head { align-items: stretch; }
+  /* Liste: Titel oben über die volle Breite, darunter Status und Datum. */
+  .sup-list-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "main main" "status date";
+    padding: var(--ce-space-3) var(--ce-space-4);
+  }
+  .sup-list-main { grid-area: main; }
+  .sup-list-status { grid-area: status; }
+  .sup-list-date { grid-area: date; justify-self: end; }
+  .sup-thread-head,
+  .sup-reply { padding: var(--ce-space-4); }
   .sup-reply-actions { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sup-list-item { transition: none; }
 }
 
 /* ── Adminbereich: öffentlicher Verlauf + Antwortformular ───────────────────────
@@ -339,7 +364,10 @@
 .adm-sup-internal { color: var(--ce-color-text-muted); }
 
 /* Antwortbedarf in der Liste — zusätzlich zum Status, nie an seiner Stelle. */
-.adm-sup-replybadge { margin-left: 6px; }
+/* Zweites Badge (Antwortstand): der Abstand hängt am ersten Badge, damit ein
+   umbrechendes zweites Badge bündig links beginnt statt eingerückt. */
+.adm-sup-replybadge { margin-block: 2px; }
+.badge:has(+ .adm-sup-replybadge) { margin: 2px 6px 2px 0; }
 
 @media (max-width: 700px) {
   .adm-sup-msg { max-width: 94%; }

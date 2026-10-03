@@ -196,10 +196,13 @@ test("15 — die API-Aufrufe sind minimal: kein Body, keine IDs, keine Filter im
   assert.ok(!/buildQuery|\?|params/.test(bulkFn.replace(/\/\/.*$/gm, "")), "der Bulk-Aufruf sendet Query-Parameter");
 });
 
-test("16 — keine neue Icon-Abhängigkeit; das bestehende Icon-System trägt die Aktion", () => {
-  assert.ok(pageCode.includes('n="trash"'), "das Trash-Icon des bestehenden Systems fehlt");
-  const icons = read("components/ui/Icon.jsx");
-  assert.ok(/\btrash\b\s*:/.test(icons), "trash ist im gemeinsamen Icon-Satz nicht definiert");
+test("16 — keine neue Icon-Abhängigkeit; die Aktion steht als Text", () => {
+  // Redesign 2026-10: die Löschaktion der Zeile ist eine rote TEXTaktion
+  // („Löschen") statt eines Iconknopfs. Der zugängliche Name bleibt der
+  // vollständige Satz mit der Sendungskennung (Test 17).
+  assert.equal(pageCode.includes('n="trash"'), false, "die Zeile trägt wieder ein Symbol statt Text");
+  assert.match(pageCode, /className="btn btn-ghost btn-sm adm-row-danger"[\s\S]{0,400}?>\s*Löschen\s*<\/button>/,
+    "die Löschaktion der Tabellenzeile trägt keine sichtbare Beschriftung");
   assert.ok(!/lucide|react-icons|@heroicons/.test(page), "neue Icon-Abhängigkeit eingeführt");
 });
 
@@ -218,7 +221,11 @@ test("18 — die Sammelaktion konkurriert nicht mit „Aktualisieren\" und steht
   assert.ok(header.includes("Aktualisieren"), "Aktualisieren steht nicht mehr im Seitenkopf");
   // … und die Sammelaktion ist sekundär/destruktiv, nicht die primäre Aktion.
   assert.ok(!/btn-primary[^>]*draftBulkConfirmLabel/.test(header), "der Bulk-Knopf ist als primäre Aktion gestaltet");
-  assert.ok(header.includes("adm-btn-danger"), "der Bulk-Knopf ist nicht als destruktiv gekennzeichnet");
+  // Redesign 2026-10: destruktiv gekennzeichnet über die rote Kante
+  // (.adm-danger-outline) — die gefüllte rote Fläche bleibt dem
+  // Bestätigungsdialog vorbehalten.
+  assert.ok(header.includes("adm-danger-outline"), "der Bulk-Knopf ist nicht als destruktiv gekennzeichnet");
+  assert.ok(!header.includes("adm-btn-danger"), "der Bulk-Knopf ist wieder eine gefüllte rote Hauptaktion");
   // Nicht im Filterformular.
   const filters = pageCode.slice(pageCode.indexOf("<form className=\"adm-filters\""), pageCode.indexOf("</form>"));
   assert.ok(!/draftBulkConfirmLabel|Entwürfe löschen/.test(filters), "die Sammelaktion steckt im Filterbereich");

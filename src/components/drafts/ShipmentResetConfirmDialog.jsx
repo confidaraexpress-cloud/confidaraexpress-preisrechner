@@ -1,6 +1,5 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 
 // Rückfrage vor dem bewussten Zurücksetzen der Sendungseingaben.
 //
@@ -28,7 +27,6 @@ export function ShipmentResetConfirmDialog({ open, hasOffers, onCancel, onConfir
         ref={dialogRef}
       >
         <div className="ce-dialog-head">
-          <span className="ce-dialog-icon" aria-hidden="true"><Icon n="refresh" s={20} /></span>
           <div className="ce-dialog-body">
             <h2 id="ns-reset-title" className="ce-dialog-title">Eingaben zurücksetzen?</h2>
             <p id="ns-reset-desc" className="ce-dialog-desc">

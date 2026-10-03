@@ -148,7 +148,9 @@ test("Sitzung beim Mount: Netzwerkfehler löscht das Token NICHT und bietet Retr
   // Retry mit wiederhergestellter Verbindung führt in den Kundenbereich.
   fail = false;
   await page.getByRole("button", { name: "Erneut versuchen" }).click();
-  await page.waitForSelector(".pp-step-no", { timeout: 15000 });
+  // Anker „Kundenbereich geladen": das Kennzahlenband der Übersicht (Redesign
+  // 2026-10: .ov-kpis — in beiden Zuständen der Übersicht vorhanden).
+  await page.waitForSelector(".ov-kpis", { timeout: 15000 });
   assert.match(page.url(), /\/dashboard/);
   await page.close();
 });
@@ -212,7 +214,9 @@ test("Regression: erfolgreicher Login führt unverändert ins Dashboard", async 
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   await fillLogin(page);
   await page.getByRole("button", { name: /^Anmelden$/ }).last().click();
-  await page.waitForSelector(".pp-step-no", { timeout: 15000 });
+  // Anker „Kundenbereich geladen": das Kennzahlenband der Übersicht (Redesign
+  // 2026-10: .ov-kpis — in beiden Zuständen der Übersicht vorhanden).
+  await page.waitForSelector(".ov-kpis", { timeout: 15000 });
   assert.match(page.url(), /\/dashboard/);
   await page.close();
 });

@@ -85,11 +85,11 @@ async function setupRoutes(page, { stornoAntwort, protokoll } = {}) {
 async function stornoAbsenden(page) {
   await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("table tbody tr", { timeout: 20000 });
-  await page.getByRole("button", { name: "Stornieren" }).first().click();
+  await page.getByRole("button", { name: "Stornierung anfragen", exact: true }).first().click();
   await page.waitForSelector(".stn-dialog-textarea", { timeout: 10000 });
   await page.locator(".stn-dialog-textarea").fill("Die Ware wird doch nicht mehr benötigt.");
-  // Im DIALOG klicken, nicht in der Zeile dahinter: „Stornieren" heißt der
-  // Auslöser der Liste, „Anfrage absenden" der Knopf des Dialogs.
+  // Im DIALOG klicken, nicht in der Zeile dahinter: „Stornierung anfragen" heißt
+  // der Auslöser der Liste, „Anfrage absenden" der Knopf des Dialogs.
   await page.locator(".stn-dialog-card").getByRole("button", { name: "Anfrage absenden" }).click();
 }
 
@@ -153,7 +153,7 @@ test("1 — geänderter Serverzustand: kein Laufzeitfehler, Abgleich läuft, Zei
     "die Liste wurde nach dem Abgleich nicht neu geladen");
 
   // Die Oberfläche bleibt bedienbar.
-  await page.getByRole("button", { name: "Sendung verfolgen" }).first().waitFor({ timeout: 5000 });
+  await page.getByRole("button", { name: "Tracking", exact: true }).first().waitFor({ timeout: 5000 });
   await page.getByRole("button", { name: "Dokumente" }).first().waitFor({ timeout: 5000 });
   await page.close();
 });

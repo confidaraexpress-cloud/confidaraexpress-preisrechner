@@ -1,6 +1,5 @@
 import React from "react";
 import { useDialog } from "../../hooks/useDialog";
-import { Icon } from "../ui/Icon";
 
 // „Beides"-Adressen sind für „Neue Sendung" nicht eindeutig zuordenbar — vor
 // der Navigation entscheidet der Nutzer bewusst, als welche Rolle die Adresse
@@ -16,7 +15,6 @@ export function NewShipmentRoleDialog({ address, onCancel, onChoose }) {
   return (
     <div className="abk-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div className="abk-dialog-card" role="dialog" aria-modal="true" aria-labelledby="abk-role-title" aria-describedby="abk-role-desc" ref={dialogRef}>
-        <div className="abk-dialog-icon abk-dialog-icon--info" aria-hidden="true"><Icon n="zap" s={20} /></div>
         <h2 id="abk-role-title" className="abk-dialog-title">Als was verwenden?</h2>
         <p id="abk-role-desc" className="abk-dialog-desc">
           „{name}" ist sowohl als Absender als auch als Empfänger hinterlegt. Wählen Sie,

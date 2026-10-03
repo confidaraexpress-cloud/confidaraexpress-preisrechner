@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { listAdminCancellationRequests } from "../../api/adminApi";
 import { resolveCarrierName } from "../../utils/carrierMap";
@@ -183,7 +182,7 @@ export default function AdminCancellationRequestsPage() {
             das Bearbeiten löst KEINE Carrier-/JUMiNGO-Stornierung und keine Erstattung aus.</>}
         actions={(
           <><button type="button" className="btn btn-outline btn-sm" onClick={load} disabled={loading}>
-          <Icon n="refresh" s={14} /> Aktualisieren
+          Aktualisieren
         </button></>
         )}
       />
@@ -202,7 +201,7 @@ export default function AdminCancellationRequestsPage() {
         </div>
         <div className="adm-filter-actions">
           <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
-            <Icon n="filter" s={14} /> Anwenden
+            Anwenden
           </button>
           <button type="button" className="btn btn-outline btn-sm" onClick={resetFilter} disabled={loading}>
             Zurücksetzen
@@ -230,7 +229,7 @@ export default function AdminCancellationRequestsPage() {
             title={error}
             action={(
               <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-                <Icon n="refresh" s={14} /> Erneut versuchen
+                Erneut versuchen
               </button>
             )}
           />
@@ -238,7 +237,6 @@ export default function AdminCancellationRequestsPage() {
       ) : rows.length === 0 ? (
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="mail" s={24} /></div>
             <div className="empty-title">{emptyState.title}</div>
             <p className="empty-text">{emptyState.text}</p>
             {appliedStatus && (
@@ -313,13 +311,13 @@ export default function AdminCancellationRequestsPage() {
       {showPagination && (
         <div className="adm-pagination">
           <button type="button" className="btn btn-outline btn-sm" onClick={goPrev} disabled={loading || page <= 1}>
-            <Icon n="chevronLeft" s={14} /> Zurück
+            Zurück
           </button>
           <span className="adm-page-ind">
             Seite {page}{Number.isFinite(total) ? ` · ${total} gesamt` : ""}
           </span>
           <button type="button" className="btn btn-outline btn-sm" onClick={goNext} disabled={loading || !hasMore}>
-            Weiter <Icon n="chevronRight" s={14} />
+            Weiter
           </button>
         </div>
       )}

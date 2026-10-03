@@ -217,12 +217,13 @@ test("11 — eine Dokumentaktion statt vieler; Tracking und Storno bleiben", () 
   }
   assert.ok(!/s\.status === "booked" \|\| s\.status === "label_ready"/.test(listeCode),
     "die Liste leitet Dokumentverfügbarkeit wieder aus dem Status ab");
-  // Was NICHT dokumentbezogen ist, bleibt unangetastet.
+  // Was NICHT dokumentbezogen ist, bleibt unangetastet. Seit dem Redesign
+  // (2026-10) heißen die beiden Textaktionen „Tracking" und „Stornierung anfragen".
   assert.ok(/onTrack\(s\.id\)/.test(listeCode), "Tracking wurde entfernt");
-  assert.ok(/Sendung verfolgen/.test(liste), "der Trackingknopf wurde entfernt");
+  assert.ok(/>Tracking</.test(liste), "der Trackingknopf wurde entfernt");
   assert.ok(/canRequestCancellation\(s\)/.test(listeCode) && /onCancel\(s\)/.test(listeCode),
     "die Stornoaktion wurde entfernt");
-  assert.ok(/Stornieren/.test(liste) && /CancellationRequestDialog/.test(liste));
+  assert.ok(/Stornierung anfragen/.test(liste) && /CancellationRequestDialog/.test(liste));
   assert.ok(/CancellationStatusPill/.test(listeCode), "das Stornostatus-Badge wurde entfernt");
 });
 
@@ -316,6 +317,11 @@ test("18 — der Drawer verhält sich wie jeder Dialog des Systems", () => {
   assert.ok(/role="dialog"/.test(drawerCode) && /aria-modal="true"/.test(drawerCode));
   assert.ok(/aria-labelledby="sdoc-drawer-title"/.test(drawerCode));
   assert.ok(/aria-label=\{DOCUMENTS_TEXT\.close\}/.test(drawerCode), "der Schließknopf hat keine Beschriftung");
+  // Redesign 2026-10: „Schließen" steht als sichtbares Wort — und der zugängliche
+  // Name („Dokumente schließen") enthält es (Label-in-Name, WCAG 2.5.3).
+  assert.ok(/onClick=\{onClose\}>\s*Schließen\s*<\/button>/.test(drawerCode), "der Schließknopf ist kein Textknopf");
+  assert.ok(/schließen/i.test(DOCUMENTS_TEXT.close));
+  assert.ok(!/<Icon\b/.test(drawerCode), "der Drawer trägt wieder Symbole");
   // Downloadaktionen sind echte Knöpfe, keine Links auf einen zusammengebauten Pfad.
   assert.ok(/<button\s+type="button"/.test(drawerCode));
   assert.ok(!/<a\s+href=\{/.test(drawerCode), "der Drawer verlinkt einen Pfad direkt");

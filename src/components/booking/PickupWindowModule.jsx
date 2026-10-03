@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Icon } from "../ui/Icon";
 import { isoDayDE } from "../../utils/formatters";
 import { getDraftPickupWindow, saveDraftPickupWindow } from "../../api/client";
 import {
@@ -123,7 +122,7 @@ export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHy
 
   return (
     <div className="calc-panel mb-16">
-      <div className="calc-panel-header"><Icon n="clock" s={18} c="var(--ce-color-brand-ink)" /><h3>Gewünschter Abholtermin</h3></div>
+      <div className="calc-panel-header"><h3>Gewünschter Abholtermin</h3></div>
       <div className="calc-panel-body">
         {tariff?.pickupDate && (
           <div className="summary-detail-row summary-detail-row-border">
@@ -188,7 +187,7 @@ export function PickupWindowModule({ tariff, ceShipmentId, value, onChange, onHy
               <div className="alert alert-error mt-12" role="alert">Speichern des Abholfensters fehlgeschlagen. Bitte erneut versuchen.</div>
             )}
             {valid && touched && !isFull && saveState === "saved" && (
-              <p className="text-sm mt-8 pw-saved"><Icon n="check" s={14} c="currentColor" /> Abholfenster gespeichert</p>
+              <p className="text-sm mt-8 pw-saved">Abholfenster gespeichert</p>
             )}
           </>
         )}

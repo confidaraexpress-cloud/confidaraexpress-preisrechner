@@ -123,8 +123,10 @@ test("8 — Statusmeldung im Portal, kein Dialog, keine Fokusübernahme", () => 
   for (const verboten of [/role="dialog"/, /aria-modal/, /\.focus\(/, /autoFocus/, /tabIndex/, /useDialog/]) {
     assert.doesNotMatch(code, verboten, `Overlay: ${verboten}`);
   }
-  // Das Signet ist Dekor der Statusmeldung — sonst läse die Region den Markennamen mit.
-  assert.match(code, /<BrandLogo variant="signet" tone="standard" alt="" className="cmp-loading-signet" \/>/);
+  // Redesign 2026-10: keine Bildmarke mehr in der Statusmeldung — die frühere
+  // Signet-Grafik (alte Marke) ist entfallen; der Ladebogen bleibt Dekor und vor
+  // Screenreadern verborgen, damit die Region nur Titel und Satz vorliest.
+  assert.doesNotMatch(code, /<BrandLogo|<Icon|<img/, "das Overlay zeigt keine Bildmarke");
   assert.match(code, /className="cmp-loading-mark" aria-hidden="true"/);
 });
 
@@ -189,8 +191,8 @@ test("13 — der Bogen dreht ruhig und steht bei reduzierter Bewegung", () => {
   const rm = code.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
   assert.match(rm, /\.cmp-loading-ring \{ animation: none; \}/);
   assert.match(rm, /\.cmp-loading-overlay \{ animation: none; \}/);
-  // Das Signet selbst bewegt sich nie.
-  assert.doesNotMatch(code.match(/\.cmp-loading-signet[^{]*\{([^}]*)\}/)?.[1] ?? "", /animation/);
+  // Redesign 2026-10: es gibt keine Bildmarke mehr, die sich (nicht) bewegen könnte.
+  assert.doesNotMatch(code, /\.cmp-loading-signet/, "keine Regeln für eine entfallene Bildmarke");
 });
 
 /* ── 5. content-visibility der Karten ───────────────────────────────────── */
@@ -229,8 +231,11 @@ for (const [name, quelle] of SEITEN) {
 
   test(`15 — ${name}: EIN Ladezustand steuert Overlay, inert und aria-busy`, () => {
     assert.equal((code.match(/<OfferComparisonLoadingOverlay active=\{loading\} \/>/g) || []).length, 1);
+    // Redesign 2026-10: der Rahmen darf eine Breitenvariante tragen
+    // (`calc-page-wrap--calculator`) — geprüft wird weiterhin, dass GENAU dieser
+    // Rahmen inert und aria-busy am Ladezustand trägt.
     assert.equal(
-      (code.match(/<div className="calc-page-wrap" inert=\{loading\} aria-busy=\{loading \|\| undefined\}>/g) || []).length, 1,
+      (code.match(/<div className="calc-page-wrap(?: [\w-]+)*" inert=\{loading\} aria-busy=\{loading \|\| undefined\}>/g) || []).length, 1,
       `${name}: der Seiteninhalt wird während des Vergleichs nicht gesperrt`,
     );
     // Keine zweite Wahrheit neben `loading`: genau ein setLoading(true), und

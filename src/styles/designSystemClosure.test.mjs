@@ -6,11 +6,14 @@
 // bereichsübergreifenden Verbote zentral stehen — die Paket-Tests bleiben für
 // ihre jeweiligen Bereichsausnahmen zuständig.
 //
-// Drei dokumentierte Ausnahmen, jede mit eigener Begründung und eigener
+// Zwei dokumentierte Ausnahmen, jede mit eigener Begründung und eigener
 // Governance:
-//   • auth.css                — Glaswelt des Auth-Bereichs (eigenes Paket)
-//   • overview.css            — die vier KPI-Karten (overviewKpiCards.test.mjs)
+//   • auth.css                — Glaswelt des Auth-Bereichs (eigenes Paket,
+//                               vom Redesign 2026-10 ausdrücklich unberührt)
 //   • dashboard-premium.css   — Sidebar-Chrome (appShellChrome.test.mjs)
+// overview.css ist seit dem Redesign 2026-10 KEINE Ausnahme mehr: die
+// Übersicht trägt kein Eigenmaterial (KPI-Karten mit Verlauf/Schatten) mehr
+// und unterliegt damit denselben Verboten wie jede Bereichsdatei.
 //
 // Run: node --test src/styles/designSystemClosure.test.mjs
 import test from "node:test";
@@ -40,17 +43,18 @@ const QUELLEN = quellen();
 const QUELLTEXT = QUELLEN.map(([, t]) => t).join("\n");
 
 // Bereichsdateien, die ihr eigenes, geprüftes Material tragen.
-const EIGENMATERIAL = ["auth.css", "overview.css", "dashboard-premium.css"];
+const EIGENMATERIAL = ["auth.css", "dashboard-premium.css"];
 const MIGRIERT = ALLE_CSS.filter((f) => f !== "variables.css" && f !== "fonts.css" && !EIGENMATERIAL.includes(f));
 
 /* ══════════ 1 — eine Markenfarbe, eine Textfarbrolle ═════════════════════ */
 
 test("1 — es gibt genau eine Markenfarbe und ein Legacy-Blau zeigt darauf", () => {
+  // Indigo #5367e8 ist die EINE Markenfarbe (ConfidaraExpress-Farbwelt).
   assert.match(variables, /--ce-color-brand:\s*#5367e8;/);
-  // Jeder verbliebene Blaualias löst auf die Marke auf.
+  // Jeder verbliebene Blaualias löst auf die Marke auf (--blue3 und
+  // --accent-blue sind mit ihrem letzten Aufrufer entfallen, Redesign 2026-10).
   for (const [alias, ziel] of [["blue", "ce-color-brand-active"], ["blue2", "ce-color-brand"],
-                               ["blue3", "ce-color-brand"], ["blue-light", "ce-color-brand-soft"],
-                               ["accent-blue", "ce-color-brand"]]) {
+                               ["blue-light", "ce-color-brand-soft"]]) {
     assert.match(variables, new RegExp(`--${alias}:\\s*var\\(--${ziel}\\);`), `--${alias} zeigt nicht auf --${ziel}`);
   }
   // Und in den migrierten Blättern taucht kein rohes Legacy-Blau mehr auf.
@@ -108,8 +112,8 @@ test("4 — kein freier Schatten und kein farbiger Glow außerhalb des Auth-Bere
   assert.deepEqual(frei, [], `frei geschriebene Schatten:\n  ${frei.join("\n  ")}`);
 
   // (b) Kein farbiger Glow. Jeder Schattenton der Ablage ist neutral (Navy
-  //     rgba(17,26,51) / rgba(6,10,24)) oder weißes Streiflicht. Einzige
-  //     Ausnahme: --auth-blue-glow, das Signaturlicht des Auth-Bereichs.
+  //     rgba(17,26,51)) oder weißes Streiflicht. Einzige Ausnahme:
+  //     --auth-blue-glow, das Signaturlicht des Auth-Bereichs.
   const bunt = [];
   for (const m of variables.matchAll(/(--[\w-]*(?:shadow|elevation|glow)[\w-]*):\s*([^;]+);/g)) {
     if (m[1].startsWith("--auth-")) continue;
@@ -142,6 +146,7 @@ test("5 — es gibt genau einen Overlayton", () => {
     }
   }
   assert.deepEqual(eigen, [], `eigener Overlayton:\n  ${eigen.join("\n  ")}`);
+  // Ein Overlayton in Navy; der Navigations-Drawer etwas dichter.
   assert.match(variables, /--ce-color-overlay:\s*rgba\(17, 26, 51, 0\.45\);/);
   assert.match(variables, /--ce-color-overlay-drawer:\s*rgba\(17, 26, 51, 0\.55\);/);
 });

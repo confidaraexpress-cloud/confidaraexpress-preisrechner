@@ -9,9 +9,17 @@
                Tertiary/Ghost (.btn-ghost) · Danger (.btn-danger) ·
                Icon (.btn-icon) · Link Action (.btn-link)
    Höhen       Small 32px (.btn-sm) · Medium 40px (Standard) · Large 48px (.btn-lg)
+               — auf grobem Zeiger (Finger) mindestens 44px.
+
+   Redesign 2026-10: Innenabstand 0 16 px, Schrift 14/20 600, Radius 8 px.
+   Primary weiß auf der Markenfarbe; Secondary weiß mit interaktiver Kante;
+   Tertiary (.btn-ghost) ist eine Textaktion in der Markenfarbe mit
+   Brand-Soft-Hover.
+   Eine Hauptaktion pro Aufgabe. Buttons tragen Text — Symbole sind keine
+   Beschriftung (siehe .btn-icon für die wenigen funktionalen Ausnahmen).
 
    Verbindlich und hier durchgesetzt:
-     • Radius ausschließlich --ce-radius-md.
+     • Radius ausschließlich --ce-radius-md (8 px).
      • Primary trägt --ce-color-brand, Hover --ce-color-brand-hover,
        Active --ce-color-brand-active; Danger trägt --ce-color-danger-solid.
      • Kein Glow, kein farbiger Schatten, überhaupt kein box-shadow außer dem
@@ -41,8 +49,8 @@
 /* ── Basis (Medium, 40px) ────────────────────────────────────────────────── */
 .btn {
   --ce-btn-height: var(--ce-size-control-md);
-  --ce-btn-padding-x: var(--ce-space-5);
-  --ce-btn-font-size: 14px;
+  --ce-btn-padding-x: var(--ce-space-4);
+  --ce-btn-font-size: var(--ce-text-button-size);
   --ce-btn-icon-size: 18px;
   --ce-btn-gap: var(--ce-space-2);
 
@@ -66,8 +74,8 @@
   background: transparent;
   font-family: var(--ce-font-sans);
   font-size: var(--ce-btn-font-size);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: var(--ce-text-button-weight);
+  line-height: var(--ce-text-button-line);
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
@@ -107,8 +115,8 @@
 }
 .btn-lg {
   --ce-btn-height: var(--ce-size-control-lg);
-  --ce-btn-padding-x: var(--ce-space-6);
-  --ce-btn-font-size: 15px;
+  --ce-btn-padding-x: var(--ce-space-5);
+  --ce-btn-font-size: var(--ce-text-button-size);
   --ce-btn-icon-size: 20px;
   --ce-btn-gap: var(--ce-space-2);
 }
@@ -140,32 +148,35 @@
   color: var(--ce-color-text-primary);
 }
 .btn-outline:hover:not(:disabled) {
-  background: var(--ce-color-surface-subtle);
+  background: var(--ce-color-surface-hover);
   border-color: var(--ce-color-border-interactive-hover);
 }
 .btn-outline:active:not(:disabled) {
-  background: var(--ce-color-surface-muted);
+  background: var(--ce-color-surface-pressed);
   border-color: var(--ce-color-border-interactive-hover);
 }
 .btn-outline:disabled {
-  background: var(--ce-color-surface-subtle);
+  background: var(--ce-color-surface-muted);
   border-color: var(--ce-color-border-default);
   color: var(--ce-color-text-disabled);
 }
 
-/* ── Tertiary / Ghost ───────────────────────────────────────────────────── */
+/* ── Tertiary / Text ────────────────────────────────────────────────────────
+   Textaktion in der Markenfarbe mit klarer Handlungsbezeichnung („Ansehen",
+   „Herunterladen", „Schließen"). Transparente Fläche; Hover Brand Soft,
+   Druck Brand Soft Hover. */
 .btn-ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--ce-color-text-secondary);
+  color: var(--ce-color-brand-ink);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--ce-color-surface-muted);
-  color: var(--ce-color-text-primary);
+  background: var(--ce-color-brand-soft);
+  color: var(--ce-color-brand-ink);
 }
 .btn-ghost:active:not(:disabled) {
-  background: var(--ce-color-surface-muted);
-  color: var(--ce-color-text-primary);
+  background: var(--ce-color-brand-soft-hover);
+  color: var(--ce-color-brand-active);
 }
 .btn-ghost:disabled {
   background: transparent;
@@ -216,7 +227,7 @@
 /* ── Link Action ────────────────────────────────────────────────────────── */
 .btn-link {
   min-width: 0;
-  padding: 0 var(--ce-space-1);
+  padding: 0 var(--ce-space-2);
   border-color: transparent;
   background: transparent;
   color: var(--ce-color-brand-ink);
@@ -238,11 +249,13 @@
   outline-offset: var(--ce-focus-ring-offset);
 }
 
-/* Grober Zeiger (Finger): ein Iconbutton hat kein Textlabel, das die Trefffläche
-   mitträgt — er wird deshalb auf das 44px-Touchziel angehoben. Textbuttons
-   bleiben auf ihrer Stufe: dort tragen Label und Padding die Fläche, und eine
-   vierte Höhe wäre nicht Teil des Systems. */
+/* Grober Zeiger (Finger): jeder Button erreicht das 44-px-Touchziel — auch
+   die dichte Stufe (.btn-sm) und der Iconbutton. Auf Zeigergeräten bleibt die
+   Dichte unverändert. */
 @media (pointer: coarse) {
+  .btn,
+  .btn-sm,
+  .btn-xs,
   .btn-icon { --ce-btn-height: var(--ce-size-touch-target); }
 }
 

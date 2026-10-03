@@ -1,32 +1,24 @@
 /* ════════════════════════════════════════════════════════════════════════
    ConfidaraExpress — Gemeinsames App-Layout des eingeloggten Bereichs
-   „Executive Ivory + Deep Navy"
+   Frontend-Redesign 2026-10 in der ConfidaraExpress-Farbwelt
    ────────────────────────────────────────────────────────────────────────
    EIN Layout, EIN Hintergrund, EINE Sidebar — für alle Kundenseiten
-   (Übersicht, Neue Sendung, Preisrechner, Entwürfe, Sendungen,
-   Sendungsverfolgung, Adressbuch, Rechnungen, Unternehmen & Konto).
+   (Übersicht, Neue Sendung, Versandkostenrechner, Entwürfe, Sendungen,
+   Sendungsverfolgung, Adressbuch, Rechnungen, Lager & Aufträge, Konto).
 
-   Gestaltungsprinzip: warme Ivory-Grundfläche (Rampe mit Warm-kalt-Wechsel),
-   weiße Inhaltsflächen (--surface), feine Borders, ruhige Materialtiefe,
-   klare Typografie, kontrollierte Abstände. Blau ausschließlich als gezielter
-   Akzent (aktive Navigation, Links, Fokus) — nie als Fläche. Keine Dekoration,
-   keine Glows, keine dauerhaften Hintergrundanimationen.
+   Gestaltungsprinzip: ruhige Arbeitsfläche auf dem Ivory-Grund der
+   ConfidaraExpress-Shell, weiße Inhaltsflächen mit 1-px-Kante, die
+   Deep-Navy-Sidebar mit reiner Textnavigation. Indigo als Aktions- und
+   Zustandsakzent (aktive Navigation, Primäraktion, Links, Fokus) — nie als
+   Fläche. Licht nur als sehr leise, statische Verläufe (höchstens zwei
+   Lichtflächen im Hintergrund, eine in der Sidebar); keine Symbole in der
+   Navigation.
 
-   Farben stehen AUSSCHLIESSLICH in variables.css (--ce-app-* / --ce-sidebar-*).
-   In diesem Abschnitt dürfen keine Farbliterale mehr auftauchen.
+   Farben stehen AUSSCHLIESSLICH in variables.css (--ce-app-* /
+   --ce-sidebar-*). In diesem Abschnitt stehen keine Farbliterale.
 
-   Entfallen (vormals hier definiert):
-     • .pbg-* / .ce-dark .pbg-* — Punkte-Raster, gestrichelte Routen-SVGs,
-       Glow-Knoten, schwebende Logistik-Glyphen, Vignetten (Komponente
-       PremiumBackground ist gelöscht).
-     • die vier seitenabhängigen Hintergrund-Scopes .dashboard-soft-premium /
-       -neutral-premium / -profile-premium (+ .dashboard-vapor in overview.css).
-     • der komplette tote .ce-dark-Themeblock samt .ce-overview/.ce-page/
-       .ce-card/.ce-table/.ce-hero/.ce-aurora/.ce-steps/.ce-carriers/.ce-footer
-       (wurde von keinem Markup mehr referenziert).
-
-   Der Adminbereich (.adm-*) und der Auth-Bereich (--auth-*) sind eigene,
-   unberührte Scopes. Tokens: src/styles/variables.css.
+   Der Adminbereich (.adm-*) und der Auth-Bereich (--auth-*) sind eigene
+   Scopes. Tokens: src/styles/variables.css.
    ──────────────────────────────────────────────────────────────────────── */
 
 /* ════════════════════════════════════════════════════════════════════════ */
@@ -34,51 +26,38 @@
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .app-shell {
-  /* Zwei Rollen, beide aus der Foundation: --fs trägt alles Funktionale,
-     --fd die wenigen Display-Momente. Die frühere dritte Rolle --fh
-     (Libre Franklin) ist entfallen — im Abschlusspaket auch ihre Fontdateien. */
+  /* Beide Rollen zeigen auf DM Sans: --fd war die Displayschrift
+     (Cormorant) und ist mit dem Redesign im eingeloggten Bereich entfallen.
+     Der Name bleibt für bestehende Aufrufer erhalten. */
   --fs: var(--ce-font-sans);
-  --fd: var(--ce-font-display);
+  --fd: var(--ce-font-sans);
+  /* Seitenrand der Inhaltsfläche: 32 px Desktop, 24 px Tablet, 16 px Mobil
+     (Stufen unten im Responsive-Block). Seitenkopf, Inhaltsrahmen,
+     Hinweisleiste und Footer lesen DIESEN Wert — eine Kante für alle. */
+  --shell-gutter: var(--ce-page-gutter);
 
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--text-primary);
-
-  /* Ivory — EINE Hintergrundebene auf der gemeinsamen Shell, statisch.
-     Aufbau von unten nach oben:
-       1. background-color = Endton der Rampe. Er füllt alles unterhalb der
-          Verlaufshöhe, wodurch lange Seiten ohne sichtbare Kante weiterlaufen
-          (der Verlauf endet exakt in derselben Farbe).
-       2. Lineare Rampe über feste 1400 px statt 100 %: bei 100 % würde sie sich
-          über die gesamte Dokumenthöhe strecken und auf langen Seiten völlig
-          flach wirken. 1400 px halten den warmen Teil über die ersten ein bis
-          zwei Bildschirme — dort, wo der Grund tatsächlich wahrgenommen wird.
-       3. Statische Lichtfläche oben rechts, in Pixeln dimensioniert, damit sie
-          unabhängig von der Seitenlänge an derselben Stelle sitzt. Kein Blur,
-          keine Animation.
-     .main-content trägt bewusst KEINE eigene Flächenfarbe, damit es genau eine
-     Hintergrundebene pro Seite gibt. */
+  font-family: var(--ce-font-sans);
+  /* Der gemeinsame Grund aller Nicht-Auth-Flächen (Veredelung 2026-10) —
+     EINE statische Hintergrundebene auf der Shell, aus der Foundation
+     (--ce-color-bg-atmosphere über --ce-app-bg):
+       1. background-color = Endton der Rampe; lange Seiten laufen ohne Kante
+          weiter (der Verlauf endet exakt in derselben Farbe).
+       2. Kühle, helle Rampe über feste 1400 px.
+       3. Zwei Lichtflächen in Markenindigo (oben links, hinter dem
+          Seitenkopf) und Markenviolett (oben rechts). Kein Blur, keine
+          Animation, keine Form — nur Licht, das in die Rampe ausläuft.
+     .main-content trägt bewusst KEINE eigene Flächenfarbe. */
   background-color: var(--ce-app-bg-bottom);
-  background-image:
-    radial-gradient(circle at 88% 4%, var(--ce-app-sheen), transparent 34%),
-    linear-gradient(
-      180deg,
-      var(--ce-app-bg-top) 0%,
-      var(--ce-app-bg-mid) 46%,
-      var(--ce-app-bg-bottom) 100%
-    );
-  background-repeat: no-repeat, no-repeat;
-  background-size: 100% 820px, 100% 1400px;
-  background-position: left top, left top;
-  background-attachment: scroll, scroll;
+  background-image: var(--ce-app-bg);
 }
 
 /* Flex-Spalte, damit der Footer (.app-footer, margin-top:auto) auf kurzen
-   Seiten am unteren Rand der Hauptfläche sitzt und nicht mitten in einer
-   leeren Fläche schwebt. Auf langen Seiten folgt er normal dem Inhalt.
-   min-height ist an die Shell gekoppelt (die Sidebar ist position:fixed,
-   trägt also nicht zur Höhe bei). */
+   Seiten am unteren Rand der Hauptfläche sitzt. min-height ist an die Shell
+   gekoppelt (die Sidebar ist position:fixed, trägt also nicht zur Höhe bei). */
 .main-content {
   position: relative;
   min-width: 0;
@@ -89,56 +68,63 @@
 }
 /* Zwei Flexbox-Eigenheiten, die hier zusammenwirken:
    1. Flex-Items haben min-width:auto und schrumpfen nicht unter ihre
-      Min-Content-Breite — die Mindestbreite der Sendungstabelle (480 px) würde
-      die Hauptfläche auf schmalen Viewports auseinanderdrücken, statt dass
-      .table-scroll wie vorgesehen horizontal scrollt.
-   2. Kinder mit `margin: 0 auto` (u. a. .page-body, .dash-section-header)
-      schalten `align-items: stretch` ab und fallen auf Fit-Content-Breite
-      zurück — also erneut auf die Tabellenbreite.
-   width:100% stellt die Vollbreite wieder her; die vorhandenen max-width-Werte
-   und auto-Margins zentrieren weiterhin wie zuvor. */
+      Min-Content-Breite — eine breite Tabelle würde die Hauptfläche auf
+      schmalen Viewports auseinanderdrücken, statt lokal zu scrollen.
+   2. Kinder mit `margin: 0 auto` (u. a. .page-body, .ce-page-header)
+      schalten `align-items: stretch` ab und fielen auf Fit-Content-Breite
+      zurück. width:100% stellt die Vollbreite wieder her. */
 .main-content > * { min-width: 0; width: 100%; }
 
-/* Der geteilte .page-with-navbar-Wrapper (Preisrechner, Neue Sendung, Tracking)
-   bringt für den öffentlichen Bereich eine eigene Flächenfarbe mit. Innerhalb
-   der App-Shell soll stattdessen die gemeinsame Grundfläche gelten. */
+/* Der geteilte .page-with-navbar-Wrapper (Preisrechner, Neue Sendung,
+   Tracking) bringt für den öffentlichen Bereich eine eigene Flächenfarbe mit.
+   Innerhalb der App-Shell gilt die gemeinsame Grundfläche. */
 .app-shell .page-with-navbar { background: transparent; }
 
-/* ── Mobile-Topbar ── */
+/* ── Mobile-Topbar ──
+   Drei Teile, alle als Text: „Menü", die Marke, „Mitteilungen". */
 .mobile-topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border-subtle);
 }
-/* Die Marke der Topbar trägt ihre Farbe im Asset — keine Sonderregel nötig. */
-.hamburger-btn { color: var(--text-secondary); background: none; border: none; cursor: pointer; }
-.hamburger-btn:hover { background: var(--surface-muted); }
-/* Die Menüschaltfläche liegt außerhalb von .pp-side und braucht daher einen
-   eigenen sichtbaren Fokuszustand (heller Grund → dunkler Akzent). */
+.app-shell .hamburger-btn {
+  display: none; align-items: center; justify-content: center;
+  min-height: var(--ce-size-touch-target);
+  padding: 0 var(--ce-space-3);
+  margin-left: calc(-1 * var(--ce-space-2));
+  background: none; border: 0; border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-button-size);
+  font-weight: var(--ce-text-button-weight);
+  line-height: var(--ce-text-button-line);
+  color: var(--ce-color-text-primary);
+  cursor: pointer;
+}
+.app-shell .hamburger-btn:hover { background: var(--ce-color-surface-hover); }
 .mobile-topbar .hamburger-btn:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* Drawer-Overlay — NUR im eingeloggten Bereich. .sidebar-overlay wird auch vom
    öffentlichen NavbarLayout-Drawer verwendet; ohne diesen Scope würde die
-   Änderung dorthin durchschlagen. Ruhig und dunkel, kein backdrop-filter. */
+   Änderung dorthin durchschlagen. Ruhig, kein backdrop-filter. */
 .app-shell .sidebar-overlay { background: var(--ce-app-overlay); }
 
 /* ── Footer der App-Shell ──
    Links Copyright, rechts die Rechtlinks. Gerendert von LegalLinks.jsx —
-   dem einen Footer des eingeloggten Bereichs. Der öffentliche Footer
-   (Footer.jsx im NavbarLayout) ist davon unberührt. */
+   dem einen Footer des eingeloggten Bereichs. Gleicher Inhaltsrahmen wie
+   Seitenkopf und .page-body. */
 .app-footer {
-  margin-top: auto;               /* drückt den Footer auf kurzen Seiten nach unten */
+  margin-top: auto;
   display: flex;
-  align-items: baseline;          /* Copyright und Links auf einer Grundlinie */
+  align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px 24px;
-  max-width: 1240px;              /* gleicher Inhaltsrahmen wie .page-body */
+  gap: var(--ce-space-2) var(--ce-space-6);
+  max-width: calc(var(--ce-size-content) + 2 * var(--shell-gutter));
   width: 100%;
   margin-inline: auto;
-  padding: 22px 28px 26px;
+  padding: var(--ce-space-5) var(--shell-gutter) var(--ce-space-6);
   border-top: 1px solid var(--border-subtle);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
 }
 .app-footer-copy { margin: 0; color: var(--text-secondary); }
 .app-footer-legal { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
@@ -146,7 +132,7 @@
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: 4px;
-  transition: color 0.15s ease;
+  transition: color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 /* Hover/Fokus sind nicht rein farblich codiert — die Unterstreichung trägt
    den Zustand zusätzlich. */
@@ -158,60 +144,44 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  SIDEBAR — „Deep Navy", matt, ohne Glow                                   */
+/*  SIDEBAR — Deep Navy, flach, textbasiert                                  */
 /*  Eine einzige Definition für ALLE eingeloggten Seiten.                    */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .sidebar.pp-side {
   padding: 0;
-  /* Deep-Navy-Verlauf — deutlich dunkler als der warme Hauptbereich, satt im
-     Blaukanal, bewusst nicht schwarz und nicht glasig. */
-  background: linear-gradient(
-    180deg,
-    var(--ce-sidebar-bg-top) 0%,
-    var(--ce-sidebar-bg-mid) 54%,
-    var(--ce-sidebar-bg-bottom) 100%
-  );
-  /* Übergang zur Hauptfläche: feine Kante + weicher, statischer Schatten —
-     keine harte schwarze Kante, keine Leuchtaura. */
+  /* Deep-Navy-Verlauf der ConfidaraExpress-Sidebar mit der leisen
+     Lichtfläche hinter der Marke (--ce-sidebar-bg). */
+  background: var(--ce-sidebar-bg);
+  /* Übergang zur Hauptfläche: feine Außenkante, helle Innenkante und der
+     weiche, statische Schatten der ursprünglichen Shell — keine Leuchtaura. */
   border-right: 1px solid var(--ce-app-divider);
-  box-shadow: var(--ce-sidebar-shadow);
+  box-shadow: inset -1px 0 0 var(--ce-sidebar-edge), var(--ce-sidebar-shadow);
   overflow: visible;
 }
 
-/* Die Spalte selbst scrollt NICHT mehr — sie ist der Rahmen. Die Marke bleibt
-   oben stehen, alles darunter liegt in EINEM Scrollbereich (.pp-side-scroll).
-
-   Warum genau so: früher lag overflow-y auf .pp-nav allein. Reichte die Höhe
-   nicht, wurde dort ein Eintrag hart mittendrin abgeschnitten, während
-   Supportkarte und Fußzeile unbeweglich darunter stehen blieben — sie lagen
-   AUSSERHALB des Scrollbereichs und belegten dauerhaft Platz. Danach scrollte
-   deshalb die gesamte Spalte inklusive Marke.
-   Beides ist jetzt aufgelöst: der Scrollbereich umfasst Navigation, Supportkarte
-   UND Fußzeile, also alles, was scrollen soll — nichts bleibt gestrandet. Die
-   Marke steht als Kopf darüber und ist der einzige Teil, der nicht mitscrollt.
-   Wer den Scrollbereich wieder auf .pp-nav verengt, holt den alten Fehler
-   zurück. */
+/* Die Spalte selbst scrollt NICHT — sie ist der Rahmen. Die Marke bleibt
+   oben stehen, alles darunter liegt in EINEM Scrollbereich (.pp-side-scroll):
+   Navigation, sekundäre Aktionen UND Fußzeile. Wer den Scrollbereich wieder
+   auf .pp-nav verengt, holt den alten Fehler zurück (abgeschnittene Einträge,
+   gestrandete Fußzeile). */
 .pp-side-in {
   position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
-  /* Mehr horizontaler Innenabstand: die Navigation soll nicht wie eine Liste
-     direkt an der Außenkante kleben. */
-  padding: 22px 14px 16px;
+  padding: var(--ce-space-4);
   background: none;
   border: none;
   border-radius: 0;
   box-shadow: none;
-  /* Kein eigener Scroll: der Rahmen ist unbeweglich, gescrollt wird innen. */
   overflow: hidden;
 }
 
 /* Der Scrollbereich. min-height:0 ist tragend — ein Flex-Kind bekommt sonst
-   min-height:auto und wächst über den Container hinaus, statt zu scrollen; die
-   Leiste erschiene nie. overflow-x bleibt hidden: die Sidebar darf durch diese
-   Änderung keinen Querbalken bekommen. */
+   min-height:auto und wächst über den Container hinaus, statt zu scrollen.
+   overflow-x bleibt hidden: die Sidebar bekommt keinen Querbalken. Zwei
+   Schreibweisen der Leiste, bewusst BEIDE (Standard + ::-webkit-). */
 .pp-side-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -219,19 +189,8 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Schmale, zurückhaltende Leiste in der vorhandenen Sidebar-Farbfamilie —
-     kein heller Standardbalken, keine Library, kein JavaScript.
-
-     Zwei Schreibweisen, bewusst BEIDE: Chromium und Firefox verstehen die
-     Standardeigenschaften; ältere WebKit-Stände nur ::-webkit-scrollbar. Sobald
-     `scrollbar-width` gesetzt ist, ignoriert Chromium die ::-webkit-Regeln
-     vollständig — der Hover-Zustand muss dort deshalb ebenfalls über
-     `scrollbar-color` laufen, sonst bliebe er in genau dem Browser wirkungslos,
-     in dem die Anwendung überwiegend läuft. */
   scrollbar-width: thin;
   scrollbar-color: var(--ce-sidebar-scroll-thumb) transparent;
-  /* Trägheitsfreies Anhalten am Rand — verhindert, dass der Hauptinhalt
-     weiterscrollt, wenn die Navigation ihr Ende erreicht. */
   overscroll-behavior: contain;
 }
 .pp-side-scroll::-webkit-scrollbar { width: 6px; }
@@ -244,142 +203,111 @@
 .pp-side-scroll:hover { scrollbar-color: var(--ce-sidebar-scroll-thumb-hover) transparent; }
 
 /* ── Marke ──
-   Ruhige, leicht hellere Iconfläche + klarere Hierarchie zwischen Wortmarke
-   und Untertitel. Kein neues Logo, keine Animation. Der Bodenabstand ist die
-   EINZIGE Distanz zwischen Marke und Navigation (die frühere Firmenkarte
-   darunter ist entfallen, siehe unten) — deshalb 28px statt der früheren 20px:
-   ein einzelner, bewusster Übergang statt eines leeren Rests der alten
-   Kartenlücke. */
-/* flex:0 0 auto — die Marke ist der unbewegliche Kopf der Spalte und darf beim
-   Schrumpfen der Höhe weder wachsen noch gestaucht werden. */
-.pp-logo { flex: 0 0 auto; display: flex; align-items: center; gap: 11px; padding: 2px 6px 22px; }
-/* Die Marke kommt aus components/ui/BrandLogo.jsx — ein Bauteil für das ganze
-   Produkt. Hier steht nur noch, was DIESE Fläche anders macht als die
-   Grundregel in primitives.css: eine etwas größere Chipfläche (36 statt 34)
-   und die passende Bildgröße. Flächenfarbe, Kante und die durchgehend helle
-   Reverse-Wortmarke kommen aus dem Grundbauteil (tone="reverse").
-
-   Feste Maße bleiben zwingend: die Assetdatei trägt selbst width/height="256"
-   und würde ohne CSS-Größe in Originalgröße rendern. Die Reverse-Variante ist
-   bereits in Zielfarbe ausgeliefert — kein filter, keine Einfärbung. Die
-   36×36-Fläche und die Zeilenabstände bleiben unverändert, damit Wortmarke,
-   Unterzeile und Close-Button nicht wandern. */
-.pp-logo .ce-brand { flex: 1; }
-/* Die Marke steht hier in der ORIGINALKOMPOSITION des Masters: Signet über dem
-   Schriftzug. Sie braucht deshalb Höhe statt Breite — die frühere 36er-Chipzeile
-   ist entfallen, weil eine gestapelte Marke keine quadratische Trägerfläche hat.
-   168px Breite: die Spalte bietet 252 − 2×14 (Spalte) − 2×6 (Logoblock) = 212px;
-   die verbleibende Luft ist bewusster Freiraum, kein Rest. */
+   Die Originalkomposition des Masters (Signet über Schriftzug, BrandLogo
+   variant="lockup" tone="reverse") — 168 px breit wie vor dem Redesign —
+   und darunter die Unterzeile „B2B Logistik- und Versandplattform".
+   Die Spalte bietet 248 − 2 × 16 − 8 = 208 px: die Unterzeile (≈ 203 px)
+   passt einzeilig, rechts trägt die Spalte ihren eigenen Rand. Kein Claim.
+   flex:0 0 auto — die Marke ist der unbewegliche Kopf der Spalte. */
+.pp-logo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ce-space-3);
+  min-height: 32px;
+  padding: 0 0 0 var(--ce-space-2);
+  margin-bottom: var(--ce-space-6);
+}
+.pp-logo .ce-brand { flex: 1; min-width: 0; gap: var(--ce-space-2); }
+/* Feste Breite ist zwingend: die Assetdatei trägt selbst width/height und
+   würde ohne CSS-Größe in Originalgröße rendern. Proportional, nie verzerrt. */
 .pp-logo .ce-brandmark-img { width: 168px; }
-.pp-brand-sub { font-family: var(--fs); font-size: 11px; line-height: 1.4; font-weight: 500; color: var(--ce-sidebar-text-muted); margin-top: 3px; letter-spacing: 0.01em; white-space: nowrap; }
-.pp-close { margin-left: auto; color: var(--ce-sidebar-text-muted); }
+/* Unterzeile: Caption-Stufe 12/18, Gewicht 500, im gedämpften Sidebarton —
+   klein, ruhig und deutlich der Wortmarke untergeordnet. Einzeilig. */
+.pp-brand-sub {
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 500;
+  line-height: var(--ce-text-caption-line);
+  letter-spacing: 0;
+  color: var(--ce-sidebar-text-muted);
+  white-space: nowrap;
+}
+.pp-close { margin-left: auto; }
 
-/* Die frühere Firmenkarte (Avatar + Firmenname + E-Mail, direkt unter der
-   Marke) samt ihrer Tokens (--ce-sidebar-card/-card-shadow) ist ersatzlos
-   entfernt — kein Platzhalter, kein Ersatzblock. Die Supportkarte weiter
-   unten bleibt die einzige Karte in der Sidebar und trägt ihr Material
-   deshalb jetzt vollständig eigenständig (siehe „Supportkarte" unten). */
-
-/* ── Navigation ── */
-/* flex:1 0 auto — füllt die freie Höhe (Support-Karte bleibt auf hohen Screens
-   unten), schrumpft aber nie unter die eigene Inhaltshöhe. */
-.pp-nav { flex: 1 0 auto; display: flex; flex-direction: column; gap: 2px; }
-.pp-nav-utility-divider { height: 1px; margin: 14px 12px 6px; background: var(--ce-sidebar-divider); }
+/* ── Navigation ──
+   EIN Rhythmus (Feinkorrektur 2026-10): jede Zeile 44 px, zwischen allen
+   Zeilen 4 px — zwischen Einträgen, Gruppenköpfen und Unterpunkten gleich.
+   Die Hierarchie trägt AUSSCHLIESSLICH Einrückung und Schriftgewicht —
+   keine Symbole, keine Rahmen, keine Karten, keine Sonderabstände. */
+.pp-nav { flex: 1 0 auto; display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.pp-nav-block { display: flex; flex-direction: column; gap: var(--ce-space-1); }
 
 /* ── Navigationsgruppe (Versand · Lager & Aufträge · Konto) ──
-   EIN Muster für alle drei Gruppen. Vorher trug „Lager & Aufträge" eine eigene
-   Kartenfläche (Rahmen + Radius + vertiefter Grund, .pp-nav-module), während
-   Versand und Konto nur unbedienbare Überschriften waren — drei Bereiche, drei
-   verschiedene Erscheinungsbilder.
+   EIN Muster für alle drei Gruppen. Der Gruppenkopf IST ein Eintrag der
+   ersten Ebene: gleiche Höhe, gleiche Schrift, gleicher Innenabstand wie
+   „Übersicht" und „Adressbuch" — nur die kleine Klappmarke unterscheidet ihn.
+   Ohne eigenen Abstand: der Abstand zum ersten Unterpunkt liegt im
+   Klappbereich und verschwindet mit ihm — eine geschlossene Gruppe steht
+   im selben Takt wie jeder andere Eintrag. */
+.pp-nav-group { display: flex; flex-direction: column; gap: 0; }
 
-   Die Kartenfläche ist ERSATZLOS entfernt: kein Rahmen, kein Radius, keine
-   zweite Hintergrundebene, kein zweiter Innenabstand. Innerhalb der Sidebar
-   entsteht damit keine zweite optische Sidebar mehr — die Gruppen sind
-   strukturell und visuell gleichrangige Teile derselben Fläche.
-
-   Die Hierarchie trägt jetzt AUSSCHLIESSLICH Abstand und Einrückung:
-   Gruppenkopf auf Höhe der direkten Einträge, Gruppeneinträge um eine Stufe
-   eingerückt. Die einzige verbliebene Linie der Navigation steht vor
-   „Abmelden" (Sitzungsaktion, kein Inhaltsziel). */
-.pp-nav-group { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
-/* Ein direkter Eintrag nach einer Gruppe (Adressbuch nach Versand) bekommt
-   denselben Abstand — sonst klebte er am Gruppenkopf. */
-.pp-nav-group + .nitem { margin-top: 6px; }
-
-/* Der Gruppenkopf IST ein Eintrag der ersten Ebene — keine Rubrikenüberschrift.
-   Er teilt deshalb Höhe, Schriftgröße, Schriftschnitt, Icongröße, Innenabstand
-   und Radius mit „Übersicht" und „Adressbuch"; nur der Chevron unterscheidet
-   ihn.
-
-   KEINE Versalien mehr — gemessen, nicht gewählt: für das Label bleiben in der
-   252-px-Spalte 137 px. „LAGER & AUFTRÄGE" braucht in Versalien bei 15 px
-   zwischen 143 px (ohne Laufweite) und 153 px (0.04em) und bricht damit in
-   JEDER Variante auf zwei Zeilen — der Kopf maß dann 62 px neben 44 px hohen
-   Nachbarn. Versalien wären nur zulässig, solange das Ergebnis hochwertig
-   bleibt; ein zweizeiliger Kopf ist es nicht. Gemischt misst dasselbe Label
-   122 px und passt mit Luft. Damit sehen die fünf Einträge der ersten Ebene
-   tatsächlich gleich aus, statt es nur ungefähr zu tun. */
+/* Erste Ebene (Einträge UND Gruppenköpfe): 15/22, Gewicht 600, 44 px hoch,
+   Radius 8 px — die eigene Stufe der Kunden-Sidebar (--ce-sidebar-nav-*). */
+.nitem,
 .pp-nav-group-head {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; min-height: 44px; text-align: left;
-  padding-block: 9px; padding-inline: 12px; border-radius: 9px;
-  font-family: var(--fs); font-size: 15px; font-weight: 600; line-height: 1.4;
+  position: relative;
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  width: 100%; min-height: var(--ce-sidebar-nav-row); text-align: left;
+  padding: 11px var(--ce-space-3);
+  border-radius: var(--ce-radius-sm);
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-sidebar-nav-size);
+  font-weight: var(--ce-sidebar-nav-weight);
+  line-height: var(--ce-sidebar-nav-line);
   color: var(--ce-sidebar-text);
-  background: none; border: 1px solid transparent;
+  background: none; border: 0;
   cursor: pointer;
-  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+  /* Nur Farbwechsel — kein transform, kein filter, kein Schattenaufbau. */
+  transition:
+    background-color var(--ce-motion-fast) var(--ce-motion-ease-standard),
+    color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.pp-nav-group-head:hover { color: var(--ce-sidebar-text-strong); background: var(--ce-sidebar-surface-hover); }
-.pp-nav-group-head svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
-.pp-nav-group-head:hover svg { color: var(--ce-sidebar-text-muted); }
+.nitem:hover,
+.pp-nav-group-head:hover { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text-strong); }
 
-/* Die GEÖFFNETE Gruppe — und nur sie. Die Hervorhebung folgt ausschließlich
-   dem Klappzustand, nicht der Route: vorher leuchtete „Lager & Aufträge" auch
-   auf /stock, während die Gruppe nach einem Reload zu war, und behauptete
-   damit einen geöffneten Bereich, den es nicht gab. Da höchstens eine Gruppe
-   offen sein kann, leuchtet auch höchstens eine.
+/* Die GEÖFFNETE Gruppe — und nur sie: leiser markiert als die aktive Seite
+   (reines Weiß statt Fläche; das Gewicht tragen alle Hauptpunkte gleich).
+   Die Hervorhebung folgt ausschließlich dem Klappzustand, nicht der Route;
+   höchstens eine Gruppe ist offen. */
+.pp-nav-group--open .pp-nav-group-head { color: var(--ce-sidebar-text-strong); }
 
-   Bewusst deutlich schwächer als ein aktiver Eintrag: flache, sehr leichte
-   Fläche statt Verlauf, 2px-Kante statt 3px, keine Border. Der aktive
-   Unterpunkt bleibt die deutliche Markierung, der Kopf die dezente — zwei
-   gleich starke Flächen übereinander wären keine Hierarchie. */
-.pp-nav-group--open .pp-nav-group-head {
-  color: var(--ce-sidebar-text-strong);
-  background: var(--ce-sidebar-active-bg-soft);
-  box-shadow: inset 2px 0 0 var(--ce-sidebar-active-accent);
-}
-.pp-nav-group--open .pp-nav-group-head svg { color: var(--ce-sidebar-active-icon); }
-
-/* Das Label darf schrumpfen, damit der Chevron nie aus der Spalte gedrückt
-   wird; „LAGER & AUFTRÄGE" bricht dann an der Wortgrenze um. */
+/* Das Label darf schrumpfen, damit die Klappmarke nie aus der Spalte
+   gedrückt wird. */
 .pp-nav-group-label { min-width: 0; }
-/* Der Chevron sitzt rechts und zeigt den Zustand an. Gedreht statt zweites
-   Icon: eine Form, eine Bedeutung. Er läuft in DERSELBEN Dauer wie das
-   Aufklappen, damit beides als eine Bewegung gelesen wird. */
+/* Klappmarke: zwei Kanten eines kleinen Quadrats, um 45° gedreht — rein per
+   CSS gezeichnet, kein Icon. Geschlossen zeigt sie nach rechts, offen nach
+   unten. Sie läuft in DERSELBEN Dauer wie das Aufklappen. */
 .pp-nav-group-chevron {
+  flex: none;
   margin-left: auto;
-  display: flex;
-  transform: rotate(-90deg);
+  margin-right: 4px;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  color: var(--ce-sidebar-section);
+  transform: rotate(-45deg);
   transition: transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease);
 }
-.pp-nav-group--open .pp-nav-group-chevron { transform: rotate(0deg); }
+.pp-nav-group--open .pp-nav-group-chevron { transform: rotate(45deg) translate(-1px, -1px); }
 
 /* ── Weiches Auf- und Zuklappen ──
-   Die Rasterspur läuft von 0fr auf 1fr. Das ist der robuste Weg: eine
-   Animation zwischen `height: 0` und `height: auto` läuft in keinem Browser
-   verlässlich, und eine gemessene Pixelhöhe müsste bei jeder Textänderung neu
-   berechnet werden. Keine Bibliothek, kein JavaScript, keine gemessene Höhe.
-
-   Drei Ebenen, je eine Aufgabe:
-     .pp-nav-group-panel  animiert die Spur (Höhe)
-     .pp-nav-group-items  kappt den Überstand und trägt das dezente Erscheinen
-     die Einträge selbst bleiben unverändert
-
-   `visibility` ist der tragende Teil für die Bedienbarkeit: eingeklappt sind
-   die Einträge zwar im DOM (sonst gäbe es nichts zu animieren), aber NICHT
-   fokussierbar und nicht im Accessibility-Baum. Der Wechsel ist verzögert
-   (`0s linear <Dauer>`), damit sie während des Zuklappens sichtbar bleiben und
-   nicht vorzeitig verschwinden. */
+   Die Rasterspur läuft von 0fr auf 1fr — robust, ohne height:auto-Falle,
+   ohne Bibliothek, ohne gemessene Höhe. `visibility` ist der tragende Teil
+   für die Bedienbarkeit: eingeklappt sind die Einträge im DOM, aber NICHT
+   fokussierbar und nicht im Accessibility-Baum. Der Wechsel ist verzögert,
+   damit sie während des Zuklappens sichtbar bleiben. */
 .pp-nav-group-panel {
   display: grid;
   grid-template-rows: 0fr;
@@ -387,33 +315,27 @@
 }
 .pp-nav-group--open .pp-nav-group-panel { grid-template-rows: 1fr; }
 
-/* Die Einrückung sitzt am EINTRAG, nicht am Behälter: so bleibt die Hover- und
-   Aktivfläche über die volle Spaltenbreite durchgehend, und nur der Inhalt
-   rückt ein. */
+/* Die Einrückung (12 px) sitzt am EINTRAG, nicht am Behälter: so bleibt die
+   Hover- und Aktivfläche über die volle Spaltenbreite durchgehend. */
 .pp-nav-group-items {
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: var(--ce-space-1);
   min-height: 0; overflow: hidden;
   opacity: 0;
-  transform: translateY(-3px);
   visibility: hidden;
   transition:
     opacity var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
-    transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
     visibility 0s linear var(--ce-sidebar-expand-duration);
 }
 .pp-nav-group--open .pp-nav-group-items {
   opacity: 1;
-  transform: none;
   visibility: visible;
   transition:
     opacity var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
-    transform var(--ce-sidebar-expand-duration) var(--ce-sidebar-expand-ease),
     visibility 0s;
 }
-/* Der erste Eintrag braucht etwas Luft zum Kopf, sonst klebt die zweite Ebene
-   direkt an der ersten. Der Abstand liegt am Behälter, damit er bei
-   geschlossener Gruppe mit eingeklappt wird. */
-.pp-nav-group-items > :first-child { margin-top: 2px; }
+/* Der erste Unterpunkt bekommt Luft zum Kopf; der Abstand liegt am Behälter,
+   damit er bei geschlossener Gruppe mit eingeklappt wird. */
+.pp-nav-group-items > :first-child { margin-top: var(--ce-space-1); }
 
 @media (prefers-reduced-motion: reduce) {
   .pp-nav-group-chevron,
@@ -424,119 +346,54 @@
   .pp-nav-group-items { transition: visibility 0s; }
 }
 
-/* Erste Navigationsebene: Übersicht · Versand · Adressbuch · Lager & Aufträge ·
-   Konto. Alle fünf tragen dieselbe Höhe, Schrift, Icongröße und denselben
-   Innenabstand — welcher davon eine Gruppe ist, sagt allein der Chevron. */
-.nitem {
-  position: relative; display: flex; align-items: center; gap: 12px;
-  width: 100%; min-height: 44px; text-align: left;
-  padding-block: 9px; padding-inline: 12px; border-radius: 9px;
-  font-family: var(--fs); font-size: 15px; font-weight: 600; line-height: 1.4;
-  color: var(--ce-sidebar-text); background: none; border: 1px solid transparent;
-  cursor: pointer;
-  /* Nur Farbwechsel — kein transform, kein filter, kein Schattenaufbau. */
-  transition:
-    background-color 140ms ease,
-    color 140ms ease,
-    border-color 140ms ease;
-}
-
-/* Zweite Ebene: eine Stufe ruhiger, aber ausdrücklich nicht klein und nicht
-   grau — 14 px gegen 15 px, Gewicht 500 gegen 600, Icon 17 gegen 18 px. Der
-   Unterschied soll die Hierarchie zeigen, nicht die Lesbarkeit kosten. */
+/* Zweite Ebene: dieselbe Größe und Zeilenhöhe, um 12 px eingerückt und eine
+   Gewichtsstufe ruhiger (500) — der aktive Unterpunkt trägt wieder 600. */
 .pp-nav-group-items .nitem {
-  min-height: 40px;
-  padding-block: 8px;
-  padding-inline-start: 26px;
-  font-size: 14px;
-  font-weight: 500;
+  padding-inline-start: calc(var(--ce-space-3) + 12px);
+  font-weight: var(--ce-sidebar-nav-weight-sub);
 }
-.pp-nav-group-items .nitem svg { flex: 0 0 17px; width: 17px; height: 17px; }
 
-/* „Abmelden" ist eine Sitzungsaktion, kein Produktbereich — es trägt deshalb
-   das Gewicht der zweiten Ebene, aber ohne Einrückung. */
-.nitem--utility { min-height: 40px; padding-block: 8px; font-size: 14px; font-weight: 500; }
-/* Definierte Iconspalte → Beschriftungen fluchten exakt untereinander,
-   unabhängig von der optischen Breite des jeweiligen Glyphen. */
-.nitem svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ce-sidebar-icon); }
-.nitem:hover { background: var(--ce-sidebar-surface-hover); color: var(--ce-sidebar-text-strong); }
-.nitem:hover svg { color: var(--ce-sidebar-text-muted); }
-
-/* Aktiver Eintrag: blau getönter Verlauf + Akzentborder + linke Akzentkante +
-   ruhige Tiefe. Die Kante ist ein INSET-Schatten statt eines ::before-Elements
-   — sie folgt damit der Rundung, verschiebt kein Layout und springt bei Hover
-   nicht. Der Zustand ist zusätzlich zur Farbe an Fläche, Border, Kante und
-   Schriftschnitt erkennbar (nicht allein farbcodiert). */
+/* Aktiver Eintrag: heller Text auf dem blau getönten Verlauf, blaue
+   Akzentkante links, Gewicht 600 — zusätzlich semantisch über aria-current.
+   Der Zustand ist an Fläche, Kante, Farbe UND Schriftschnitt erkennbar (nicht
+   allein farbcodiert). Kein Schattenaufbau. */
 .nitem.on {
-  color: var(--ce-sidebar-text-strong);
-  font-weight: 600;
+  color: var(--ce-sidebar-active-text);
+  font-weight: var(--ce-text-nav-weight-active);
   background: var(--ce-sidebar-active-bg);
-  border-color: var(--ce-sidebar-active-border);
-  box-shadow: var(--ce-sidebar-active-shadow);
+  box-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent);
 }
-.nitem.on svg { color: var(--ce-sidebar-active-icon); }
 .nitem.on:hover { background: var(--ce-sidebar-active-bg); }
 
-/* ── Supportkarte ──
-   Die einzige Karte in der Sidebar (die frühere Firmenkarte ist entfallen):
-   vertiefte Eigenfläche (dunkler als der Sidebargrund), kein Schatten, kein
-   Glassmorphism, kein backdrop-filter. Sie IST interaktiv und trägt Hover
-   und Fokus.
-
-   Auszeichnung: <button>, nicht <a>. Die Karte öffnet den Supportdialog und
-   navigiert nirgendwohin — ein Link wäre hier fachlich falsch. Die
-   Button-Defaults des Browsers (Eigenfläche, Rahmen, zentrierter Text,
-   Systemschrift) werden deshalb explizit zurückgesetzt. */
-.pp-scard {
-  display: block; width: 100%; text-align: left; text-decoration: none;
-  font: inherit; color: inherit; cursor: pointer;
-  margin-top: 14px;
-  padding: 12px 12px; border-radius: 11px;
-  background: var(--ce-sidebar-well);
-  border: 1px solid var(--ce-sidebar-border);
-  box-shadow: none;
-  transition:
-    background-color 140ms ease,
-    border-color 140ms ease;
+/* ── Sekundäre Aktionen ──
+   App installieren (nur mit echtem Installationsweg), Support kontaktieren,
+   Abmelden — Aktionen, keine Produktbereiche. Die einzige Linie der Spalte
+   trennt sie von der Inhaltsnavigation. */
+.pp-side-actions {
+  display: flex; flex-direction: column; gap: var(--ce-space-1);
+  margin-top: var(--ce-space-6);
+  padding-top: var(--ce-space-4);
+  border-top: 1px solid var(--ce-sidebar-divider);
 }
-.pp-scard:hover { border-color: var(--ce-sidebar-active-border); }
-.pp-scard-top { display: flex; align-items: center; gap: 11px; }
-.scard-ic {
-  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
-  display: grid; place-items: center; color: var(--ce-sidebar-active-icon);
-  background: var(--ce-sidebar-surface);
-  border: 1px solid var(--ce-sidebar-border);
-  box-shadow: none;
-}
-.scard-k { font-family: var(--fs); font-size: 11px; line-height: 1.4; color: var(--ce-sidebar-text-muted); }
-.scard-t { display: flex; align-items: center; gap: 7px; margin-top: 3px; font-family: var(--fs); font-size: 13px; font-weight: 600; color: var(--ce-sidebar-text-strong); }
-/* Aufforderung zur Handlung — Blau bleibt Akzent (Text + Pfeil), NIE Fläche.
-   Der Pfeil rückt beim Hover der gesamten Karte leicht nach: kurze
-   Zustandsreaktion (140 ms), kein Ambiente. */
-.scard-a {
-  display: flex; align-items: center; gap: 5px; margin-top: 9px;
-  font-family: var(--fs); font-size: 12px; font-weight: 600;
-  color: var(--ce-sidebar-active-icon);
-}
-.scard-a svg { transition: transform 140ms ease; }
-.pp-scard:hover .scard-a svg { transform: translateX(2px); }
-.scard-s { font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-text-muted); margin-top: 9px; }
+.nitem--utility { color: var(--ce-sidebar-text-muted); font-weight: var(--ce-sidebar-nav-weight-sub); }
+.nitem--utility:hover { color: var(--ce-sidebar-text); }
 
-/* Fußzeile — gedämpft, aber bewusst nicht blasser als die Gruppenüberschriften. */
-/* Sidebar-Fußzeile: von 10 px auf 11 px — der kleinste Text der Anwendung war
-   ohne angestrengtes Lesen kaum erfassbar. Farbe bleibt sekundär, misst aber
-   WCAG AA gegen das Verlaufsende (siehe appShellChrome.test.mjs). */
-.pp-foot { padding: 13px 12px 0; font-family: var(--fs); font-size: 11px; line-height: 1.5; color: var(--ce-sidebar-section); }
+/* Fußzeile — leise, aber lesbar (Caption, AA gegen die Sidebarfläche). */
+.pp-foot {
+  padding: var(--ce-space-4) var(--ce-space-3) 0;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-caption-size);
+  line-height: var(--ce-text-caption-line);
+  color: var(--ce-sidebar-section);
+}
 
-/* Ein sichtbarer Fokuszustand für ALLE interaktiven Sidebarbereiche
-   (Navigation, Abmelden, Schließen-Button, Supportkarte). Ersetzt kein
-   outline ersatzlos — der Ring ist der Ersatz. */
+/* Ein sichtbarer Fokuszustand für ALLE interaktiven Sidebarbereiche — auf
+   dem Navy-Grund im hellen Blau; der aktive Eintrag behält seine Kante. */
 .pp-side :focus-visible { outline: 2px solid var(--ce-sidebar-active-icon); outline-offset: 2px; box-shadow: none; }
 .pp-side .nitem.on:focus-visible { box-shadow: inset 3px 0 0 var(--ce-sidebar-active-accent); }
 
-/* Statuspunkt (Übersicht: „Live-Übersicht") — flacher Punkt, keine Pulsanimation,
-   kein Glow. Die Sidebar-Supportkarte nutzt ihn seit dem Umbau auf das
-   Anfrageformular NICHT mehr; die Klasse bleibt für die Übersichtsseite. */
+/* Statuspunkt — wird von keiner Fläche des Redesigns mehr gesetzt; die Klasse
+   bleibt für ältere Aufrufer flach und ohne Animation erhalten. */
 .ce-live {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
   background: var(--success);
@@ -544,7 +401,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  KONTAKT-DIALOG (ContactMailMenu) — auf Light umgestellt                  */
+/*  KONTAKT-DIALOG (ContactMailMenu)                                         */
 /* ════════════════════════════════════════════════════════════════════════ */
 
 .ce-mail-dialog {
@@ -558,17 +415,19 @@
   box-shadow: var(--shadow-overlay);
   outline: none;
 }
-.ce-mail-dialog::backdrop { background: rgba(23, 32, 51, 0.32); }
+.ce-mail-dialog::backdrop { background: var(--ce-color-overlay); }
 .ce-mail-dialog-inner { padding: 22px 22px 18px; display: flex; flex-direction: column; }
 .ce-mail-dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .ce-mail-dialog-title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
 .ce-mail-dialog-close {
   display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: 1px solid transparent; border-radius: 8px;
-  color: var(--text-tertiary); cursor: pointer; padding: 4px 6px; line-height: 0;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  min-height: 32px;
+  background: none; border: 1px solid transparent; border-radius: var(--ce-radius-sm);
+  color: var(--ce-color-brand-ink); cursor: pointer; padding: 4px 8px;
+  font-family: var(--ce-font-sans); font-size: 13px; font-weight: 600;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ce-mail-dialog-close:hover { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-muted); }
+.ce-mail-dialog-close:hover { background: var(--ce-color-brand-soft); }
 .ce-mail-dialog-close:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .ce-mail-dialog-addr { font-size: 12px; color: var(--text-secondary); margin: 0 0 16px; font-family: var(--ce-font-numeric); letter-spacing: 0.01em; }
@@ -577,13 +436,13 @@
 .ce-mail-dialog-provider {
   display: flex; align-items: center; justify-content: space-between;
   padding: 11px 14px; border-radius: var(--radius-sm);
-  background: var(--surface-subtle);
+  background: var(--surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ce-mail-dialog-provider:hover { background: var(--surface-muted); border-color: var(--border-strong, #cbd5e1); }
+.ce-mail-dialog-provider:hover { background: var(--ce-color-surface-hover); border-color: var(--border-strong); }
 .ce-mail-dialog-provider:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 .ce-mail-dialog-divider { height: 1px; background: var(--border-subtle); margin: 14px 0; }
@@ -593,116 +452,224 @@
   padding: 10px 14px; border-radius: var(--radius-sm);
   background: none; border: 1px solid var(--border-subtle);
   color: var(--text-secondary); font-size: 13px; cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
-.ce-mail-dialog-copy:hover { color: var(--text-primary); background: var(--surface-muted); }
+.ce-mail-dialog-copy:hover { color: var(--text-primary); background: var(--ce-color-surface-hover); }
 .ce-mail-dialog-copy:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
 
 /* ════════════════════════════════════════════════════════════════════════ */
-/*  UNTERNEHMEN & KONTO                                                      */
-/*  Layout/Maße unverändert aus dem bisherigen Profil-Scope übernommen —      */
-/*  nur die Farbwelt wechselt von dunklem Navy-Glas auf die gemeinsame        */
-/*  Light-Oberfläche. Die Regeln sind jetzt ungescoped, weil es keinen        */
-/*  seitenabhängigen Theme-Wrapper mehr gibt; alle Selektoren sind            */
-/*  profilspezifisch (.profile-*) und kollidieren mit nichts.                 */
+/*  UNTERNEHMEN & KONTO — Kontoeinstellungen (Redesign 2026-10)              */
+/*  Ruhiges Settings-Muster: ein kompakter Identitätskopf, darunter          */
+/*  einspaltige Abschnitte — links Titel und Erklärung, rechts EINE          */
+/*  Inhaltsfläche mit Daten bzw. Bedienelementen; Abschnitte trennt eine     */
+/*  Linie, keine weitere Karte. Keine Iconköpfe, keine Chips, nur die       */
+/*  leichte Tiefe der Arbeitsflächen.                                       */
+/*  Die Grundregeln der Profilklassen stehen in dashboard.css (früher        */
+/*  importiert) — hier stehen die Überschreibungen des Redesigns.            */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-.profile-page-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 18px; padding: 8px 0 26px;
-}
-/* Der Profilkopf läuft seit Paket A, Phase 3 über das gemeinsame
-   PageHeader-Muster; hier bleibt nur die engere Zeilenlänge des Untertitels. */
+/* Der Seitenkopf läuft über das gemeinsame PageHeader-Muster; hier bleibt nur
+   die engere Zeilenlänge des Untertitels. */
 .profile-page-head .ce-page-header-sub { max-width: 560px; }
 
-/* max-width:none hebt die 600px-Basis aus dashboard.css auf — die Rahmenbreite
-   setzt jetzt .page-body. */
-.profile-grid { max-width: none; gap: 28px; }
-.profile-col { gap: 20px; }
-
-/* Konto-Kopf (Profilhero). Seit Paket D trägt das Markup .ce-card — Fläche,
-   Kante, Radius und Tiefe kommen damit aus dem Base-Card-Primitive
-   (primitives.css). Hier bleibt nur noch das Layout stehen; die frühere,
-   parallel gepflegte Materialdeklaration ist entfallen. */
+/* ── Identitätskopf ─────────────────────────────────────────────────────────
+   Material aus dem Base-Card-Primitive (.ce-card im Markup) — hier steht nur
+   das Layout. Firmenmarke, Name, Login-E-Mail, Kundennummer links; der
+   Kontostatus genau einmal rechts. */
 .profile-account-header {
   position: relative;
-  display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap;
-  gap: 16px;
-  padding: 30px 36px; margin: 0 0 26px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--ce-space-4);
+  padding: var(--ce-space-5) var(--ce-space-6);
+  margin: 0 0 var(--ce-space-7);
 }
-.profile-account-identity { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.profile-account-identity { display: flex; align-items: center; gap: var(--ce-space-4); min-width: 0; flex: 1 1 320px; }
+/* Initialenfläche: dieselbe Form wie die Firmenmarke im Benutzerchip (Radius
+   der Bedienelemente, Markenfarbe) — keine Kreisform, kein Schatten. */
 .profile-avatar-lg {
-  width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%;
+  width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--ce-radius-md);
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  letter-spacing: -0.02em; color: var(--ce-color-text-inverse);
-  background: var(--accent-blue);
+  font-family: var(--ce-font-sans); font-size: 18px; font-weight: 600;
+  letter-spacing: 0; color: var(--ce-color-text-inverse);
+  background: var(--ce-color-brand);
   box-shadow: none;
 }
-.profile-account-info { min-width: 0; }
+.profile-account-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .profile-account-name {
-  font-family: var(--ce-font-sans); font-size: 24px; font-weight: 600;
-  color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.3;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-section-size); font-weight: 600;
+  line-height: var(--ce-text-title-section-line); letter-spacing: var(--ce-text-title-section-tracking);
+  color: var(--ce-color-text-primary);
   overflow-wrap: break-word;
 }
+/* Die Login-E-Mail bricht als Ganzes um, statt abgeschnitten zu werden. */
 .profile-account-email {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 14px; color: var(--text-secondary); margin-top: 6px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+  overflow-wrap: break-word; min-width: 0;
 }
-.profile-account-email svg { flex-shrink: 0; opacity: 0.7; }
+.profile-account-customer-number {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--ce-space-2);
+  margin-top: var(--ce-space-1);
+}
+.profile-account-number-label,
+.profile-account-number-empty {
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-muted);
+}
+.profile-meta-row { margin: 0; gap: var(--ce-space-2); }
 
-.profile-meta-row { margin-top: 16px; gap: 10px; }
-.profile-meta-row .badge,
-.profile-meta-chip { padding: 5px 12px; font-size: 12px; }
-.profile-meta-row .badge { gap: 6px; }
-.profile-meta-row .badge::before {
-  content: ''; width: 6px; height: 6px; border-radius: 50%;
-  background: currentColor; box-shadow: none;
+/* ── Einstellungsabschnitte ─────────────────────────────────────────────────
+   Das Markup trägt weiterhin .table-card.profile-card (bestehende Klassen);
+   innerhalb der Abschnittsliste wird daraus eine Zeile ohne eigenes Material:
+   links Titel und Erklärung, rechts die Inhaltsfläche. Unter 1024 px stehen
+   beide untereinander. */
+.profile-sections { display: flex; flex-direction: column; }
+.profile-sections > .profile-card {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+  column-gap: var(--ce-space-7);
+  row-gap: var(--ce-space-3);
+  align-items: start;
+  padding: var(--ce-space-7) 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  border-top: 1px solid var(--ce-color-border-subtle);
+}
+.profile-sections > .profile-card:first-child { border-top: 0; padding-top: 0; }
+
+.profile-sections .profile-card-head {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+.profile-sections .profile-card-head .table-card-title {
+  display: block;
+  font-size: var(--ce-text-title-card-size);
+  font-weight: var(--ce-text-title-card-weight);
+  line-height: var(--ce-text-title-card-line);
+  color: var(--ce-color-text-primary);
+}
+.profile-card-sub {
+  display: block;
+  margin: var(--ce-space-1) 0 0;
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
 }
 
-.profile-grid .table-card { border-radius: var(--radius-lg); }
-.profile-card-head { padding: 18px 24px; }
-.table-card-title { font-size: 15px; }
-.profile-card-icon { width: 42px; height: 42px; border-radius: 12px; }
-.profile-section-body { padding: 12px 24px 22px; }
-.profile-row { padding: 14px 0; }
-.profile-row-key, .profile-row-val { font-size: 13px; }
-.profile-hint { padding: 13px 15px; border-radius: 12px; }
-.profile-form-body { padding: 18px 24px; }
+/* Die EINE Inhaltsfläche eines Abschnitts. */
+.profile-card-body {
+  min-width: 0;
+  padding: var(--ce-space-5) var(--ce-space-6);
+  background: var(--ce-color-surface);
+  border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg);
+  box-shadow: var(--ce-elevation-1);
+}
+/* „Bearbeiten" steht oben rechts in der Inhaltsfläche — nah an den Daten, die
+   es verändert. */
+.profile-card-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: calc(-1 * var(--ce-space-2)) calc(-1 * var(--ce-space-3)) 0 0;
+}
+.profile-sections .profile-section-body,
+.profile-sections .profile-form-body { padding: 0; }
+.profile-sections .profile-password-section {
+  margin-top: var(--ce-space-5);
+  padding-top: var(--ce-space-5);
+  border-top: 1px solid var(--border-hairline);
+}
 
-/* ── Lieferscheineinstellung ────────────────────────────────────────────────
-   Drei Optionen als native Radios auf dem globalen forms.css-Primitive (dort steht
-   die Grundlinie für accent-color und Fokusring) — kein zweites Auswahlbauteil und
-   kein eigenes Farbliteral. Auswahl über Fläche + Rand + Schriftschnitt, also
-   mehrfach codiert und nicht allein farbig. */
-.dn-mode-fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.dn-mode-fieldset > .field-label { padding: 0; margin-bottom: 2px; }
+/* „Bearbeiten" ist eine Textaktion (.btn.btn-ghost.btn-sm im Markup). Die
+   frühere eigene Fassung aus dashboard.css (getönte Fläche, eigener Rahmen,
+   12-px-Schrift) wird hier vollständig auf das Buttonprimitive zurückgeführt. */
+.btn.profile-card-edit-action {
+  margin-left: 0;
+  padding: var(--ce-space-1) var(--ce-btn-padding-x);
+  font-size: var(--ce-btn-font-size);
+  line-height: var(--ce-text-button-line);
+  color: var(--ce-color-brand-ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ce-radius-md);
+}
+.btn.profile-card-edit-action:disabled { opacity: 1; background: transparent; color: var(--ce-color-text-disabled); }
+
+/* ── Datenzeilen ── */
+.profile-sections .profile-row { min-height: 44px; padding: var(--ce-space-3) 0; gap: var(--ce-space-4); }
+.profile-sections .profile-row-border { border-bottom: 1px solid var(--border-hairline); }
+.profile-row-key { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.profile-row-val {
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 500;
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
+}
+.profile-row-empty { font-weight: 400; color: var(--ce-color-text-muted); }
+
+/* ── Hinweis (Zahlungsbedingungen, Sicherheit) — Text ohne Symbol ── */
+.profile-hint {
+  display: block;
+  margin-top: var(--ce-space-4);
+  padding: var(--ce-space-3) var(--ce-space-4);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-color-surface-subtle);
+  border: 1px solid var(--ce-color-border-subtle);
+}
+.profile-hint p {
+  font-size: var(--ce-text-body-s-size);
+  line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* ── Bearbeitungsformular im Abschnitt ── */
+.profile-sections .profile-inline-form .field + .field { margin-top: 0; }
+.profile-required-hint { margin: 0 0 var(--ce-space-4); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.profile-field-error { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.profile-form-actions { margin-top: var(--ce-space-2); gap: var(--ce-space-2); }
+
+/* ── Passwortzeile ── */
+.profile-password-title { font-size: var(--ce-text-body-size); line-height: 1.4286; color: var(--ce-color-text-primary); }
+.profile-password-desc { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+
+/* ── Auswahlfelder (Lieferscheine, Abrechnung) ──────────────────────────────
+   Native Radios auf dem globalen forms.css-Primitive — kein zweites
+   Auswahlbauteil, kein Farbliteral. Die gewählte Option ist über Kante,
+   Fläche UND Schriftschnitt erkennbar, nicht allein farbig. Speichern
+   geschieht unverändert sofort beim Umstellen. */
+.dn-mode-fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.dn-mode-fieldset > .field-label { padding: 0; margin-bottom: var(--ce-space-1); }
 .dn-mode-fieldset:disabled { opacity: .6; }
 .dn-mode-option {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px 14px; cursor: pointer;
+  display: flex; align-items: flex-start; gap: var(--ce-space-3);
+  min-height: 44px;
+  padding: var(--ce-space-3) var(--ce-space-4); cursor: pointer;
   border: 1px solid var(--ce-color-border-default); border-radius: var(--ce-radius-md);
   background: var(--ce-color-surface);
+  transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
 .dn-mode-option:hover { border-color: var(--ce-color-border-strong); }
 .dn-mode-option.selected { border-color: var(--ce-color-brand); background: var(--ce-color-brand-soft); }
 .dn-mode-option input[type="radio"] { margin-top: 2px; flex-shrink: 0; }
-.dn-mode-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.dn-mode-label { font-size: var(--ce-text-body-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.dn-mode-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dn-mode-label { font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); }
 .dn-mode-option .field-hint { margin: 0; }
 .profile-saved {
-  display: flex; align-items: center; gap: 6px; margin: 12px 0 0;
-  font-size: var(--ce-text-body-s-size); color: var(--ce-color-success-solid);
+  display: flex; align-items: center; gap: 6px; margin: var(--ce-space-3) 0 0;
+  font-size: var(--ce-text-body-s-size); font-weight: 500;
+  color: var(--ce-color-status-success-fg);
 }
 
-/* ── Unternehmenslogo (Kontoeinstellungen) ─────────────────────────────────
+/* ── Unternehmenslogo ───────────────────────────────────────────────────────
    Vorschau links, Erklärung rechts, Aktionen darunter. Unter 560 px stapelt
-   die Zeile — Reflow statt Stauchung, wie überall im System. */
-.profile-logo-row { display: flex; align-items: flex-start; gap: 16px; }
+   die Zeile — Reflow statt Stauchung. */
+.profile-logo-row { display: flex; align-items: flex-start; gap: var(--ce-space-4); }
 .profile-logo-copy { min-width: 0; flex: 1 1 auto; }
 .profile-logo-desc {
-  margin: 0; font-size: var(--ce-text-body-s-size); line-height: 1.5;
+  margin: 0; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
   color: var(--ce-color-text-secondary);
 }
 .profile-logo-meta {
@@ -713,51 +680,49 @@
 /* Dieselbe Einpassung wie im Chip (siehe .ce-comark-img in overview.css):
    `contain` hält jedes Seitenverhältnis unverzerrt. Die Fläche ist quadratisch
    wie die Initialenfläche daneben, damit der Wechsel Logo ↔ Initiale die
-   Kartenhöhe nicht springen lässt. */
+   Abschnittshöhe nicht springen lässt. */
 .profile-logo-preview {
-  width: 68px; height: 68px; flex-shrink: 0;
+  width: 64px; height: 64px; flex-shrink: 0;
   object-fit: contain;
   border-radius: var(--ce-radius-md);
   background: var(--ce-color-surface);
   border: 1px solid var(--ce-color-border-subtle);
 }
-.profile-logo-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.profile-logo-req { display: block; margin-top: 10px; }
+.profile-logo-row .profile-avatar-lg { width: 64px; height: 64px; font-size: 24px; }
+.profile-logo-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); margin-top: var(--ce-space-4); }
+.profile-logo-req { display: block; margin-top: var(--ce-space-3); }
 
+@media (max-width: 1023px) {
+  .profile-sections > .profile-card { grid-template-columns: minmax(0, 1fr); row-gap: var(--ce-space-4); }
+}
 @media (max-width: 560px) {
   .profile-logo-row { flex-direction: column; }
 }
+
+/* Kontaktdialog (ContactMailMenu): der Texthinweis ersetzt das frühere
+   Symbol für „öffnet in neuem Tab" — leise neben dem Anbieternamen. */
+.ce-mail-dialog-provider-hint {
+  flex: none;
+  margin-left: var(--ce-space-3);
+  font-size: var(--ce-text-caption-size);
+  font-weight: 400;
+  color: var(--ce-color-text-muted);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dn-mode-option { transition: none; }
+}
+
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /*  RESPONSIVE                                                               */
 /* ════════════════════════════════════════════════════════════════════════ */
 
-/* Kurze Viewports (Laptops, Mobile-Drawer): der vertikale Rhythmus wird
-   gestrafft, damit möglichst viel Navigation ohne Scrollen sichtbar ist.
-
-   Anders als früher ist das KEIN Versprechen mehr, dass alles hineinpasst — mit
-   drei aufklappbaren Gruppen reicht die Höhe auf 1366×768 und darunter
-   nachweislich nicht. Dafür ist der Scrollbereich zuständig; diese Straffung
-   verringert nur, wie oft und wie weit gescrollt werden muss. Reine Abstände,
-   keine Struktur- oder Reihenfolgeänderung.
-
-   Die Einträge bleiben hier bewusst großzügig: die erste Ebene ist auf sechs
-   Zeilen geschrumpft (Übersicht · drei Gruppenköpfe · Adressbuch · Abmelden),
-   und wer eine Gruppe nicht braucht, lässt sie zu — das spart mehr Höhe als
-   jede weitere Stauchung. Gruppenkopf und Ebene-1-Eintrag werden GEMEINSAM
-   gestaucht, sonst fiele die mühsam hergestellte Gleichrangigkeit auf kurzen
-   Viewports wieder auseinander. */
-@media (max-height: 940px) {
-  .pp-side-in { padding: 16px 14px 12px; }
-  .pp-logo { padding: 0 6px 16px; }
-  .nitem,
-  .pp-nav-group-head { min-height: 41px; padding-block: 8px; }
-  .pp-nav-group-items .nitem,
-  .nitem--utility { min-height: 38px; padding-block: 7px; }
-  .pp-nav-utility-divider { margin: 11px 12px 5px; }
-  .pp-scard { margin-top: 11px; padding: 10px; }
-  .scard-s { margin-top: 7px; }
-  .pp-foot { padding: 10px 12px 0; }
+/* Seitenrand: 32 px ab 1200 px, 24 px auf Tablet, 16 px unterhalb der
+   Drawer-Schwelle. */
+@media (max-width: 1199px) {
+  .app-shell { --shell-gutter: var(--ce-page-gutter-tablet); }
 }
 
 /* Mobil: Copyright und Links untereinander, Links mit größerer Trefferfläche. */
@@ -766,38 +731,46 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    padding: 20px 16px 24px;
   }
   .app-footer-legal { gap: 2px 16px; }
   .app-footer-legal a { padding: 6px 0; }
 }
 
 @media (max-width: 860px) {
-  /* Einheitliche Drawer-Schwelle für die eine Sidebar auf allen Seiten. */
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.sidebar-open { transform: translateX(0); }
-  .sidebar-close-btn { display: flex; }
+  .app-shell { --shell-gutter: var(--ce-page-gutter-mobile); }
+
+  /* Einheitliche Drawer-Schwelle für die eine Sidebar auf allen Seiten.
+     Der Drawer misst höchstens 320 px und lässt rechts immer mindestens
+     32 px vom Inhalt sichtbar. Im geöffneten Zustand ist er ein Overlay —
+     nur dann trägt er die Overlaytiefe. */
+  .sidebar { transform: translateX(-100%); width: min(320px, calc(100vw - 32px)); }
+  /* Geschlossen liegt der Drawer links außerhalb — sein Kantenschatten fiele
+     sonst als Streifen an den Bildschirmrand. */
+  .sidebar.pp-side { box-shadow: none; }
+  .sidebar.sidebar-open { transform: translateX(0); box-shadow: var(--ce-elevation-3); }
+  .sidebar-close-btn { display: inline-flex; }
   .app-shell .main-content { margin-left: 0; }
   .mobile-topbar { display: flex; }
   /* .hamburger-btn ist generisch (auch NavbarLayout, 768px) — hier gezielt nur
      die Dashboard-Instanz an die 860px-Schwelle angleichen. */
-  .mobile-topbar .hamburger-btn { display: flex; }
+  .mobile-topbar .hamburger-btn { display: inline-flex; }
 
-  .profile-page-head { flex-direction: column; align-items: stretch; gap: 14px; padding: 20px 0 18px; }
-  .profile-account-header { padding: 22px; gap: 14px; }
-  .profile-account-identity { min-width: 100%; gap: 14px; }
-  .profile-avatar-lg { width: 58px; height: 58px; font-size: 20px; }
-  .profile-account-name { font-size: 20px; }
-  .profile-grid { flex-direction: column; }
-  .profile-card-head { padding: 16px 18px; }
-  .profile-section-body { padding: 10px 18px 16px; }
-  .profile-form-body { padding: 16px 18px; }
+  /* Kontoeinstellungen: kompakter Kopf, schmalere Abschnittsränder. */
+  .profile-account-header { padding: var(--ce-space-4); gap: var(--ce-space-3); }
+  .profile-account-identity { gap: var(--ce-space-3); }
+  .profile-sections > .profile-card { padding: var(--ce-space-6) 0; }
+  .profile-card-body { padding: var(--ce-space-4); }
+}
+
+/* Unter 360 px (Drawer 288 px) teilt sich die Marke die Kopfzeile mit
+   „Schließen": 168 + 12 + 86 px passten nicht in 240 px. Die Marke wird
+   proportional kleiner — dieselbe Originalkomposition, nie verzerrt. */
+@media (max-width: 359px) {
+  .pp-logo .ce-brandmark-img { width: 136px; }
 }
 
 @media (max-width: 600px) {
-  /* Auf schmalen Screens darf „Bearbeiten" unter Titel/Subline rutschen. */
-  .profile-card-head { flex-wrap: wrap; row-gap: 10px; }
-  .profile-card-edit-action { margin-left: 0; }
-  .profile-row { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .profile-row-val { text-align: left; width: 100%; word-break: break-word; }
+  /* Kontoeinstellungen: Schlüssel über dem Wert, Werte linksbündig. */
+  .profile-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .profile-row-val { text-align: left; width: 100%; }
 }

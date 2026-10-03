@@ -90,7 +90,7 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft, utility }
         setFormOk(fOk); setShipmentOk(sOk);
 
         if (!fOk && !sOk) setError("Entwürfe konnten nicht geladen werden.");
-        else if (!fOk || !sOk) setPartialError("Ein Teil deiner Entwürfe konnte nicht geladen werden.");
+        else if (!fOk || !sOk) setPartialError("Ein Teil Ihrer Entwürfe konnte nicht geladen werden.");
         setLoading(false);
       });
   }, []);
@@ -189,10 +189,13 @@ export default function DraftsPage({ onNewShipment, onResumeFormDraft, utility }
   const hasMore = !!formCursor || !!shipmentCursor;
   const canShowEmpty = resolveCombinedEmpty({ formOk, shipmentOk, formCount: formItems.length, shipmentCount: shipmentItems.length });
   const dialogBusy = !!deleteTarget && deletingKey === combinedDraftKey(deleteTarget);
+  // Nachweislich leer (beide Quellen geladen, nichts da): dann trägt der
+  // Leerzustand die eine Hauptaktion „Neue Sendung erstellen".
+  const listeLeer = !loading && !error && items.length === 0 && canShowEmpty;
 
   return (
     <>
-      <DraftsHeader onNewShipment={onNewShipment} utility={utility} />
+      <DraftsHeader onNewShipment={onNewShipment} utility={utility} showCreate={!listeLeer} />
 
       <div className="page-body">
         {successMsg && <div className="alert alert-success mb-16" role="status"><span>{successMsg}</span></div>}

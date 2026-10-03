@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { SERVICE_DETAILS_TEXT } from "../../utils/serviceDetailsView.mjs";
 
 /* TG22 Package A — das kuratierte Produktprofil eines Angebots im Detailbereich der Karte.
@@ -8,7 +7,10 @@ import { SERVICE_DETAILS_TEXT } from "../../utils/serviceDetailsView.mjs";
    keine Einkaufsquelle und formuliert keinen Satz selbst. Fünf Abschnitte in fester Reihenfolge —
    Hauptmerkmale, Laufzeit, Größe & Gewicht, Transportabsicherung, Einschränkungen; ein Abschnitt ohne Inhalt
    entsteht nicht. Die Volumengewichtsformel steht nur mit belegtem Divisor. Die Zeilen tragen die Klassen des
-   bestehenden Detailbereichs, ergänzt um Umbruchschutz (`offer-profile-*`). */
+   bestehenden Detailbereichs, ergänzt um Umbruchschutz (`offer-profile-*`).
+
+   Seit dem Redesign (2026-10) ohne Symbole: das `icon`-Feld der Merkmale bleibt als
+   fachliche Kategorie im Datensatz (serviceDetailsView), wird aber nicht gezeichnet. */
 
 function ProfilZeile({ zeile }) {
   return (
@@ -38,7 +40,6 @@ export function ServiceProfileDetails({ view }) {
           <ul className="offer-profile-features">
             {main.features.map((f) => (
               <li key={f.id} className="offer-profile-feature" data-profile-feature={f.id}>
-                <span className="offer-feature-icon"><Icon n={f.icon} s={15} c="currentColor" /></span>
                 <span className="offer-profile-feature-body">
                   <span className="offer-profile-feature-label">{f.label}</span>
                   {f.value && <span className="offer-profile-feature-value">{f.value}</span>}

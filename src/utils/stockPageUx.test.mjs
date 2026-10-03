@@ -247,30 +247,37 @@ test("E3g die Begründung erscheint nur im deaktivierten Zustand", () => {
   assert.match(block, /item\.disabled &&/, "die Zeile hängt nicht am Disabled-Zustand");
 });
 
-test("E3h der Auslöser trägt Drei-Punkte, kein Zahnrad", () => {
+test("E3h der Auslöser ist eine Textaktion „Weitere Aktionen“, kein Zahnrad", () => {
   // Ab dem Auslöser suchen: `{open &&` steht schon weiter oben in
   // CollapsibleSection, ein globales indexOf ergäbe einen leeren Ausschnitt —
   // und ein leerer Ausschnitt bestünde jede doesNotMatch-Prüfung.
   const ab = shared.indexOf('aria-haspopup="menu"');
   assert.ok(ab > 0, "Auslöser des Zeilenmenüs nicht gefunden");
   const trigger = shared.slice(ab, shared.indexOf("{open &&", ab));
-  assert.match(trigger, /<Icon n="dots"/, "Zahnrad statt Drei-Punkte im Auslöser");
+  // Redesign 2026-10: Text statt Drei-Punkte-Symbol. Das Zahnrad bleibt
+  // verboten — hier stehen Vorgänge, keine Einstellungen.
+  assert.match(trigger, />\s*Weitere Aktionen\s*</, "der Auslöser trägt keine sichtbare Beschriftung");
+  assert.doesNotMatch(trigger, /<Icon\b/, "der Auslöser trägt wieder ein Symbol");
   assert.doesNotMatch(trigger, /n="settings"/);
-  // Das Icon kommt aus dem bestehenden System, nicht aus einer neuen Library.
-  assert.match(icon, /^\s*dots:/m, "dots fehlt im paths-Objekt von Icon.jsx");
+  // Der zugängliche Name beginnt mit dem sichtbaren Wortlaut (WCAG 2.5.3).
+  assert.match(shared, /label = "Weitere Aktionen"/);
+  assert.match(stockPage, /label=\{`Weitere Aktionen für /);
 });
 
-test("E3i dieselbe Funktion trägt überall dasselbe Icon", () => {
-  // Adressbuch und Entwürfe nutzen dasselbe „Weitere Aktionen"-Konzept.
+test("E3i dieselbe Funktion trägt überall dieselbe Beschriftung", () => {
+  // Adressbuch und Entwürfe nutzen dasselbe „Weitere Aktionen"-Konzept —
+  // seit dem Redesign (2026-10) überall als sichtbarer Text.
   for (const [name, quelle] of [["Adressbuch", adressMenu], ["Entwürfe", entwurfMenu]]) {
-    assert.match(quelle, /<Icon n="dots" s=\{16\} \/>/, `${name}: Auslöser trägt kein Drei-Punkte-Icon`);
+    assert.match(quelle, /Weitere Aktionen/, `${name}: Auslöser heißt nicht „Weitere Aktionen“`);
     assert.doesNotMatch(quelle, /n="settings"/, `${name}: Zahnrad noch vorhanden`);
   }
 });
 
 test("E3j in Adressbuch und Entwürfen wurde NUR das Icon getauscht", () => {
   // Menüinhalt und Verhalten bleiben unangetastet.
-  assert.match(entwurfMenu, /<Icon n="trash" s=\{15\} \/> Löschen/);
+  // Der Löschen-Eintrag bleibt — ob mit oder ohne Symbol, entscheidet das
+  // Entwurfsmenü selbst (Redesign 2026-10: Symbole entfallen).
+  assert.match(entwurfMenu, /Löschen/);
   for (const quelle of [adressMenu, entwurfMenu]) {
     assert.match(quelle, /role="menu"/);
     assert.match(quelle, /role="menuitem"/);

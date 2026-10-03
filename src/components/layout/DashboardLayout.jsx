@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Icon } from "../ui/Icon";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardSectionHeader } from "./DashboardSectionHeader";
 import { LegalLinks } from "./LegalLinks";
@@ -74,12 +73,12 @@ export function DashboardLayout() {
       />
       <main className="main-content">
         <div className="mobile-topbar">
-          <button className="hamburger-btn" aria-label="Navigation öffnen" onClick={() => setSidebarOpen(true)}>
-            <Icon n="menu" s={22} />
+          <button type="button" className="hamburger-btn" aria-label="Menü – Navigation öffnen" onClick={() => setSidebarOpen(true)}>
+            Menü
           </button>
           <BrandLogo variant="signet" tone="standard" className="topbar-brand" />
-          {/* Menü, Wortmarke, Glocke — keine zweite Identität neben der
-              Firmenkarte der Sidebar (Paket A, Phase 3). */}
+          {/* Menü, Marke, Mitteilungen — keine zweite Identität neben der
+              Sidebar (Paket A, Phase 3). Alle drei als Text, ohne Symbole. */}
           <div className="topbar-right">
             <NotificationBell variant="topbar" navigateTo={navigateTo} />
           </div>

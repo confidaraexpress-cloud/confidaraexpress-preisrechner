@@ -201,13 +201,16 @@ test("12 — die Karte sitzt in der rechten Spalte direkt nach „Sicherheit“"
 });
 
 test("13 — der Navigationseintrag steht vor „Abmelden“ und nur unter seiner Bedingung", () => {
-  const nav = sidebar.slice(sidebar.indexOf('<nav className="pp-nav">'), sidebar.indexOf("</nav>"));
-  const trenner = nav.indexOf("pp-nav-utility-divider");
-  const eintrag = nav.indexOf("{pwa.showNavItem && (");
-  const abmelden = nav.indexOf("onClick={handleLogout}");
-  assert.ok(trenner > -1 && eintrag > trenner && abmelden > eintrag,
-    "Reihenfolge: Trennlinie → App-Eintrag → Abmelden");
-  assert.match(nav, /className="nitem nitem--utility" onClick=\{handleInstallEntry\}/,
+  // Redesign 2026-10: die sekundären Aktionen (App installieren · Support
+  // kontaktieren · Abmelden) stehen in einem eigenen Block UNTER der
+  // Inhaltsnavigation, getrennt durch die eine Linie der Spalte.
+  const start = sidebar.indexOf('className="pp-side-actions"');
+  const block = sidebar.slice(start, sidebar.indexOf('className="pp-foot"', start));
+  const eintrag = block.indexOf("{pwa.showNavItem && (");
+  const abmelden = block.indexOf("onClick={handleLogout}");
+  assert.ok(start > sidebar.indexOf("</nav>") && eintrag > -1 && abmelden > eintrag,
+    "Reihenfolge: Trennlinie (Aktionsblock) → App-Eintrag → Abmelden");
+  assert.match(block, /className="nitem nitem--utility" onClick=\{handleInstallEntry\}/,
     "der Eintrag nutzt dieselbe Utility-Form wie „Abmelden“");
   assert.match(sidebar, /markInstallHintDone\(\);/, "nach Benutzung muss der Hinweis verschwinden");
 });

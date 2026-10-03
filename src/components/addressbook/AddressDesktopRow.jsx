@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { countries } from "../../utils/countries";
 import { addressBadgeList } from "../../utils/addressBookView.mjs";
 import { AddressActionsMenu } from "./AddressActionsMenu";
@@ -38,15 +37,15 @@ export function AddressDesktopRow({ address, busy, onEdit, onDuplicate, onToggle
              waren beide unteilbare anonyme Flex-Items, und die E-Mail lief
              sichtbar unter die Badge-Spalte. */
           <span className="abk-row-meta">
-            {address.email && <><Icon n="mail" s={12} c="currentColor" /><span className="abk-contact-email">{address.email}</span></>}
+            {address.email && <span className="abk-contact-email">{address.email}</span>}
             {address.email && address.phone && <span aria-hidden="true">·</span>}
-            {address.phone && <><Icon n="phone" s={12} c="currentColor" /><span className="abk-contact-phone">{address.phone}</span></>}
+            {address.phone && <span className="abk-contact-phone">{address.phone}</span>}
           </span>
         )}
       </div>
       <AddressBadges address={address} />
-      {/* Aktionen rechts: sichtbarer „Sendung erstellen"-Button VOR dem Zahnrad
-          (Reihenfolge Badges → Button → Zahnrad). Der Button startet den
+      {/* Aktionen rechts als Text: „Sendung erstellen" VOR „Weitere Aktionen"
+          (Reihenfolge Badges → Aktion → Menü). Die Aktion startet den
           bestehenden onNewShipment-Flow direkt, ohne das Menü zu öffnen. */}
       <div className="abk-row-actions">
         <AddressCreateShipmentButton address={address} onNewShipment={onNewShipment} />

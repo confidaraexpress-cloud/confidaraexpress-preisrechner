@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { getAddresses } from "../../api/addressBookApi";
 import {
   TAB_SENDER, TAB_RECIPIENT,
@@ -205,7 +204,7 @@ export function AddressPicker({ tab, onSelect, onClose, disabled }) {
         })}
       </div>
       <p className="abk-pick-hint">
-        <Icon n="info" s={14} /> Die Adresse wird nur in dieses Formular übernommen. Änderungen hier
+        Die Adresse wird nur in dieses Formular übernommen. Änderungen hier
         wirken sich nicht auf das Adressbuch aus.
       </p>
     </div>

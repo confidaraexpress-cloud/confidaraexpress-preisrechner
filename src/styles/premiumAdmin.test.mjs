@@ -56,11 +56,21 @@ const ALLE_ADMIN_QUELLEN = [
 /* ══════════ 1 — Foundation statt eigener Welt ═════════════════════════════ */
 
 test("1 — das Adminportal nutzt die globale Foundation", () => {
-  // Der Adminbereich steht auf derselben Ivory-Rampe wie die Kunden-Shell.
+  // Der Adminbereich steht auf demselben Grund wie die Kunden-Shell — der
+  // gemeinsamen Atmosphäre der Foundation über --ce-app-bg (Veredelung 2026-10).
   const shell = admin.slice(admin.indexOf(".adm-shell {"), admin.indexOf(".adm-side {"));
-  for (const t of ["--ce-app-bg-top", "--ce-app-bg-mid", "--ce-app-bg-bottom"]) {
+  for (const t of ["--ce-app-bg", "--ce-app-bg-bottom"]) {
     assert.ok(shell.includes(`var(${t})`), `.adm-shell liest ${t} nicht`);
   }
+  // Die Admin-Sidebar ist bewusst HELL (nicht Deep Navy wie im Kundenportal):
+  // Fläche und Kante aus der Foundation, Struktur und Breite wie die
+  // Kunden-Sidebar (Redesign 2026-10).
+  const side = admin.match(/\.adm-side \{([^}]*)\}/)[1];
+  assert.match(side, /background:\s*var\(--ce-color-surface\)/);
+  assert.match(side, /border-right:\s*1px solid var\(--ce-color-border-subtle\)/);
+  assert.match(side, /width:\s*var\(--ce-size-sidebar-admin\)/);
+  assert.equal(tok("ce-size-sidebar-admin"), "248px");
+  assert.equal(/var\(--ce-sidebar-/.test(admin), false, "admin.css liest die Navy-Familie der Kunden-Sidebar");
   // Marken-Indigo, Navy und die Statusrollen kommen aus der Foundation.
   for (const t of ["--ce-color-brand-soft", "--ce-color-brand-ink", "--ce-color-text-primary",
                    "--ce-color-surface", "--ce-color-border-subtle"]) {
@@ -86,8 +96,11 @@ test("2 — admin.css enthält kein einziges Farbliteral mehr", () => {
 
 test("3 — kein Legacy-Blau als Fläche und kein eigener Schatten", () => {
   // Jede Tiefe stammt aus der Elevationsskala.
+  // Redesign 2026-10: Menüs und Dropdowns tragen die eigene Overlaystufe
+  // --ce-elevation-dropdown (Dialoge/Drawer: --ce-elevation-3).
   const erlaubt = new Set(["none", "var(--ce-elevation-0)", "var(--ce-elevation-1)",
-    "var(--ce-elevation-2)", "var(--ce-elevation-3)", "var(--ce-elevation-focus-ring)"]);
+    "var(--ce-elevation-2)", "var(--ce-elevation-3)", "var(--ce-elevation-dropdown)",
+    "var(--ce-elevation-focus-ring)"]);
   const fremd = [];
   for (const m of admin.matchAll(/box-shadow:\s*([^;}]+)/g)) {
     const wert = m[1].trim();
@@ -123,8 +136,15 @@ test("5 — es gibt keine zweite Buttonfamilie im Adminbereich", () => {
   const audit = seite("AuditLogPage.jsx");
   assert.match(audit, /className="btn btn-ghost btn-sm"[\s\S]{0,200}aria-expanded=\{isOpen\}/,
     "der Metadata-Umschalter ist kein Button aus dem System");
-  assert.match(komponente("CustomerRowActions.jsx"), /className="btn btn-outline btn-icon btn-sm"/,
-    "der Kebab-Trigger ist kein Button aus dem System");
+  // Redesign 2026-10: der Menüauslöser ist ein beschrifteter Textknopf
+  // („Weitere Aktionen") aus dem Buttonsystem statt eines Zahnrad-Iconknopfs.
+  const menu = komponente("CustomerRowActions.jsx");
+  assert.match(menu, /className="btn btn-outline btn-sm"[\s\S]{0,120}aria-haspopup="menu"/,
+    "der Menüauslöser ist kein Button aus dem System");
+  assert.match(menu, />\s*\{busy && <span className="spinner spinner-dark spinner-sm" \/>\}\s*Weitere Aktionen\s*</,
+    "der Menüauslöser trägt keine sichtbare Beschriftung");
+  assert.match(menu, /aria-label=\{`Weitere Aktionen für \$\{customerDisplayName\(user\)\}`\}/,
+    "der zugängliche Name beginnt nicht mit dem sichtbaren Wort (WCAG 2.5.3)");
   // Die Gefahrvariante bleibt im Buttonsystem definiert, nicht in admin.css.
   assert.match(buttons, /\.adm-btn-danger,/);
   assert.equal(/\.adm-btn-danger\s*\{/.test(admin), false, "admin.css definiert die Danger-Variante erneut");
@@ -218,7 +238,11 @@ test("10 — gefährliche Aktionen sind als solche erkennbar und bestätigt", ()
   // Der Dialog kennt drei Stufen: alltäglich, unumkehrbar, gefährlich.
   assert.match(dialog, /danger \? "adm-btn-danger"/);
   assert.match(dialog, /irreversible \? "btn-outline adm-irreversible-action"/);
-  assert.match(dialog, /adm-modal-icon-danger.*adm-modal-icon-warning.*adm-modal-icon-approve/s);
+  // Redesign 2026-10: kein Iconmedaillon mehr — die Stufe steht an der
+  // bestätigenden Schaltfläche und als Klasse am Dialog (Titel in Fehlerfarbe).
+  assert.equal(/adm-modal-icon/.test(dialog), false, "der Dialog trägt wieder ein Medaillon");
+  assert.match(dialog, /danger \? " adm-modal-danger" : irreversible \? " adm-modal-irreversible"/);
+  assert.match(admin, /\.adm-modal-danger \.adm-modal-title \{[^}]*var\(--ce-color-status-error-fg\)/);
   // Abbrechen links, bestätigende Aktion rechts außen.
   const aktionen = dialog.slice(dialog.indexOf('className="adm-modal-actions"'));
   assert.ok(aktionen.indexOf("cancelLabel") < aktionen.indexOf("confirmLabel"),
@@ -277,9 +301,13 @@ test("12 — Lade-, Fehler- und Leerzustände kommen aus dem Zustandsmuster", ()
     assert.equal(/className="loading-center"/.test(src), false, `${f}: eigener Ladeblock`);
     assert.equal(/className="adm-loaderr"/.test(src), false, `${f}: eigene Fehlerfläche`);
   }
-  // Zustandsflächen tragen ein Icon aus dem internen System, keine Emojis.
-  const state = read("../components/ui/StateView.jsx");
-  assert.match(state, /<Icon\b/);
+  // Redesign 2026-10: Zustandsflächen tragen weder Emoji noch Symbol — ein
+  // Zustand ist eine Aussage (Titel + Satz + Aktion), keine Illustration.
+  const state = stripJs(read("../components/ui/StateView.jsx"));
+  assert.equal(/<Icon\b/.test(state), false, "StateView zeichnet wieder ein Symbol");
+  for (const [name, src] of ALLE_ADMIN_QUELLEN) {
+    assert.equal(/empty-icon/.test(src), false, `${name}: Leerzustand mit Iconfläche`);
+  }
   for (const [name, src] of ALLE_ADMIN_QUELLEN) {
     assert.equal(/[\u{1F300}-\u{1FAFF}\u{2700}-\u{27BF}]/u.test(src), false, `${name}: Emoji im Adminbereich`);
   }
@@ -298,9 +326,13 @@ test("13 — jede Adminseite hat genau EINEN Seitenkopf", () => {
     // Kein zweiter Seitentitel daneben.
     assert.equal(/<h1\b/.test(src), false, `${f}: eigenes <h1> neben dem Seitenkopf`);
   }
-  // Im Adminportal gibt es keine Serifenschrift.
+  // Im Adminportal gibt es keine Serifenschrift. Redesign 2026-10: Kunden-
+  // und Adminbereich teilen EINE Titelrolle (DM Sans, Page Title) — es gibt
+  // keine eigene Admin-Titelregel mehr.
   assert.doesNotMatch(admin, /Cormorant|--ce-font-display|var\(--fd\)/);
-  assert.match(patterns, /\.ce-page-header--admin \.ce-page-header-title \{[\s\S]*?var\(--ce-font-sans\)/);
+  const titel = patterns.match(/\.ce-page-header-title \{([^}]*)\}/)[1];
+  assert.match(titel, /font-family:\s*var\(--ce-font-sans\)/);
+  assert.match(titel, /font-size:\s*var\(--ce-text-title-page-size\)/);
 });
 
 test("14 — der Zurück-Link steht im Seitenkopf, nicht daneben", () => {
@@ -449,6 +481,7 @@ test("20 — die Admin-Dichte bleibt, die Touch-Ziele wachsen nur mobil", () => 
     assert.ok(block.includes(sel), `${sel} bekommt mobil kein 44-px-Ziel`);
   }
   assert.equal(/min-height:\s*4[0-3]px/.test(admin), false, "Touch-Ziel unter 44 px");
+  assert.match(block, /min-height:\s*var\(--ce-size-touch-target\)/, "die Touch-Ziele lesen nicht das Token");
 });
 
 /* ══════════ 21 — Selbsttest ═════════════════════════════════════════════ */

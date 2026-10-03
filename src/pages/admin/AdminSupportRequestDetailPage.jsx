@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { getAdminSupportRequest, updateAdminSupportRequest, replyAdminSupportRequest } from "../../api/adminApi";
 import { newIdempotencyKey } from "../../utils/idempotencyKey.mjs";
@@ -182,7 +181,7 @@ export default function AdminSupportRequestDetailPage() {
 
   const back = (
     <Link to="/admin/support-requests" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Übersicht
+      Zurück zur Übersicht
     </Link>
   );
 
@@ -229,7 +228,7 @@ export default function AdminSupportRequestDetailPage() {
     return (
       <div className="adm-page">
         {back}
-        <div className="table-card"><div className="empty"><div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div><div className="empty-title">Supportanfrage nicht gefunden</div></div></div>
+        <div className="table-card"><div className="empty"><div className="empty-title">Supportanfrage nicht gefunden</div></div></div>
       </div>
     );
   }
@@ -238,10 +237,10 @@ export default function AdminSupportRequestDetailPage() {
       <div className="adm-page">
         {back}
         <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || SUPPORT_DETAIL_ERROR}</div>
+          <div className="alert alert-error" role="alert">{error || SUPPORT_DETAIL_ERROR}</div>
           <div className="adm-loaderr-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={load}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
             <Link className="btn btn-outline btn-sm" to="/admin/support-requests">Zurück zur Übersicht</Link>
           </div>
@@ -322,7 +321,6 @@ export default function AdminSupportRequestDetailPage() {
   const alertClass = saveMsg
     ? (saveMsg.type === "success" ? "alert-success" : saveMsg.type === "info" ? "alert-info" : "alert-error")
     : "";
-  const alertIcon = saveMsg ? (saveMsg.type === "success" ? "check" : saveMsg.type === "info" ? "info" : "x") : "x";
 
   return (
     <div className="adm-page">
@@ -332,7 +330,6 @@ export default function AdminSupportRequestDetailPage() {
           verändert). */}
       <PageHeader
         variant="admin"
-        eyebrow="Konto & Support"
         backLink={back}
         title={supportLabel(req)}
         subtitle={req.categoryLabel || "—"}
@@ -351,7 +348,6 @@ export default function AdminSupportRequestDetailPage() {
       {/* Scope-Trennung: unmissverständlich, dass das Bearbeiten hier NICHTS an die
           Kundschaft sendet und nichts an Sendung, Rechnung oder Zahlung ändert. */}
       <div className="adm-scope-note" role="note">
-        <Icon n="info" s={18} />
         <div>
           <strong>Interner Bearbeitungsstand.</strong> Status und Vermerk sind rein organisatorisch.
           Es wird <strong>keine</strong> Nachricht an den Kunden versendet und <strong>nichts</strong> an
@@ -362,14 +358,13 @@ export default function AdminSupportRequestDetailPage() {
 
       {saveMsg && (
         <div className={`alert ${alertClass}`}>
-          <Icon n={alertIcon} s={16} />{saveMsg.text}
+          {saveMsg.text}
         </div>
       )}
 
       {conflict && (
         <div className="adm-conflict" role="alert" aria-live="assertive">
           <div className="adm-conflict-text">
-            <Icon n="refresh" s={16} />
             <span>
               {SUPPORT_CONFLICT_TEXT} Ihre Änderung wurde <strong>nicht</strong> gespeichert.
               {conflict.current && (
@@ -381,7 +376,7 @@ export default function AdminSupportRequestDetailPage() {
           </div>
           <div className="adm-conflict-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={reloadCurrent} disabled={saving}>
-              <Icon n="refresh" s={14} /> {SUPPORT_CONFLICT_RELOAD}
+              {SUPPORT_CONFLICT_RELOAD}
             </button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setConflict(null)} disabled={saving}>
               Abbrechen
@@ -490,10 +485,10 @@ export default function AdminSupportRequestDetailPage() {
                 }}
               />
               <p className="adm-sup-hint adm-sup-public">
-                <Icon n="mail" s={13} /> {ADMIN_REPLY_PUBLIC_HINT}
+                {ADMIN_REPLY_PUBLIC_HINT}
               </p>
               {replyError && (
-                <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{replyError}</div>
+                <div className="alert alert-error" role="alert">{replyError}</div>
               )}
               <div className="adm-sup-actions">
                 <button
@@ -557,13 +552,12 @@ export default function AdminSupportRequestDetailPage() {
               onChange={(e) => setEditNote(e.target.value)}
             />
             <p className="adm-sup-hint adm-sup-internal">
-              <Icon n="lock" s={13} /> {ADMIN_NOTE_INTERNAL_HINT} Ein leeres Feld löscht einen
+              {ADMIN_NOTE_INTERNAL_HINT} Ein leeres Feld löscht einen
               vorhandenen Vermerk.
             </p>
 
             {missingRevision && (
               <div className="alert alert-error" role="alert">
-                <Icon n="x" s={16} />
                 Der Bearbeitungsstand ist unvollständig geladen. Bitte laden Sie die Anfrage neu,
                 bevor Sie speichern.
               </div>

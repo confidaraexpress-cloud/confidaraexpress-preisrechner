@@ -16,12 +16,16 @@ import React, { useEffect, useId, useRef, useState } from "react";
 // als der schwebende Adressbuch-Picker, der wegen `overflow: hidden` auf `.calc-panel`
 // gemessen platziert werden muss. Hier ist das nicht nötig: das Feld sitzt im normalen
 // Formularfluss, und die Liste ist kurz (max. 8 Einträge).
-// `floating` ist eine reine Darstellungsoption und ausdrücklich OPT-IN: ohne sie
-// rendert die Komponente exakt dasselbe Markup wie zuvor. Sie wird in dieser
-// Ausbaustufe nur von „Neue Sendung" gesetzt — Adressbuch und Auftragsdialog
-// nutzen dieselbe Komponente unverändert weiter. Combobox-Verhalten, ARIA,
-// Tastaturbedienung, Vorschlagsquelle und Auswahl sind in beiden Fassungen
-// identisch; verschoben wird ausschließlich die Beschriftung.
+// `floating` ist eine reine Darstellungsoption und ausdrücklich OPT-IN. Seit dem
+// Redesign (2026-10) setzt sie keine Seite mehr: auch „Neue Sendung" nutzt die
+// gestapelte Beschriftung über dem Feld. Combobox-Verhalten, Tastaturbedienung,
+// Vorschlagsquelle und Auswahl sind in beiden Fassungen identisch.
+//
+// Die Verknüpfung von Pflichtangabe, Fehler und Hinweis (aria-required,
+// aria-describedby samt ids) gilt seitdem in BEIDEN Fassungen — vorher hing sie
+// allein am Floating-Modus, sodass die gestapelte Fassung (Adressbuch,
+// Auftragsdialog) ihren Hinweis und Fehler nicht programmatisch verband. Das ist
+// eine reine Barrierefreiheitsergänzung: Markup, Werte und Verhalten bleiben.
 export function AddressSuggestInput({
   id, label, value, onChange, onSelect, suggestions = [], placeholder, maxLength,
   error, hint, required, disabled, autoComplete, inputMode, className = "",
@@ -126,8 +130,8 @@ export function AddressSuggestInput({
           aria-autocomplete="list"
           aria-activedescendant={activeId}
           aria-invalid={error ? "true" : undefined}
-          aria-required={floating && required ? "true" : undefined}
-          aria-describedby={floating ? beschreibung : undefined}
+          aria-required={required ? "true" : undefined}
+          aria-describedby={beschreibung}
           autoComplete={autoComplete || "off"}
           inputMode={inputMode}
           value={value}
@@ -165,10 +169,10 @@ export function AddressSuggestInput({
         )}
       </div>
       {error
-        ? <span className="field-error" id={floating ? fehlerId : undefined}>{error}</span>
+        ? <span className="field-error" id={fehlerId}>{error}</span>
         : hint
-          ? <span className="field-hint" id={floating ? hinweisId : undefined}>{hint}</span>
-          : (emptyHint ? <span className="field-hint" id={floating ? hinweisId : undefined}>{emptyHint}</span> : null)}
+          ? <span className="field-hint" id={hinweisId}>{hint}</span>
+          : (emptyHint ? <span className="field-hint" id={hinweisId}>{emptyHint}</span> : null)}
     </div>
   );
 }

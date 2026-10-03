@@ -535,14 +535,14 @@ test("M — Entwurf mit vergangenem Datum: leer, erklärt, keine Berechnung bis 
 /* ══════════ N — Mobile Sendungsverfolgung ══════════ */
 
 for (const [name, viewport] of [["390", { width: 390, height: 844 }], ["834", { width: 834, height: 1112 }]]) {
-  test(`N — ${name} px: „Sendung verfolgen" zeigt den Stand in der Karte`, async () => {
+  test(`N — ${name} px: „Tracking" zeigt den Stand in der Karte`, async () => {
     const { page, fehler } = await neueSeite(viewport);
     const protokoll = neuesProtokoll();
     await setupRoutes(page, protokoll, { sendungen: [SENDUNG] });
     await page.goto(`${BASE}/dashboard?page=shipments`, { waitUntil: "domcontentloaded" });
     const karte = page.locator(".ce-list-card", { hasText: AB }).first();
     await karte.waitFor({ timeout: 20000 });
-    const knopf = karte.getByRole("button", { name: "Sendung verfolgen" });
+    const knopf = karte.getByRole("button", { name: "Tracking", exact: true });
     assert.equal(await knopf.getAttribute("aria-expanded"), "false");
     await knopf.click();
     await karte.locator(".shipment-card-tracking .track-event").first().waitFor({ timeout: 15000 });

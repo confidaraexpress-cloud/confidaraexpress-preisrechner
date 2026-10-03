@@ -1,5 +1,4 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 import { FormAlert } from "../ui/FormAlert";
 import { createSupportRequest } from "../../api/supportApi";
 import {
@@ -118,14 +117,13 @@ export function SupportRequestDialog({ onClose, onCreated }) {
           aria-modal="true"
           aria-labelledby={titleId}
         >
-          <div className="sup-dialog-icon sup-dialog-icon-ok" aria-hidden="true"><Icon n="check" s={20} /></div>
           <h2 id={titleId} className="sup-dialog-title">Anfrage übermittelt</h2>
           {/* role="status" statt "alert": eine Erfolgsmeldung ist keine Warnung. */}
           <p className="sup-dialog-success" role="status">{success.text}</p>
           <p className="sup-dialog-desc">
             Sie erhalten zusätzlich eine Bestätigung per E-Mail. Unsere Antwort finden Sie im
             Nachrichtenverlauf des Vorgangs unter „Supportanfragen" — wir benachrichtigen Sie
-            über die Glocke, sobald sie vorliegt.
+            unter „Mitteilungen", sobald sie vorliegt.
           </p>
           <div className="sup-dialog-actions">
             {onCreated && success.id ? (
@@ -150,7 +148,6 @@ export function SupportRequestDialog({ onClose, onCreated }) {
           aria-describedby={descId}
           onSubmit={submit}
         >
-          <div className="sup-dialog-icon" aria-hidden="true"><Icon n="mail" s={20} /></div>
           <h2 id={titleId} className="sup-dialog-title">Support kontaktieren</h2>
           <p id={descId} className="sup-dialog-desc">
             Beschreiben Sie uns kurz Ihr Anliegen. Wir melden uns zeitnah per E-Mail bei Ihnen.

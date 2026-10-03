@@ -16,6 +16,11 @@ import { todayISO, toISODateLocal, parseISODateLocal } from "../../utils/date";
 //                                        kein Service). Aktuell übergibt niemand
 //                                        Daten → es werden KEINE Punkte gerendert.
 //                                        Keine erfundenen/roten Marker ohne Datenbasis.
+//
+// Redesign 2026-10: die beiden Monatspfeile sind eine FUNKTIONALE Ausnahme der
+// textbasierten Oberfläche (Kalenderbedienung, wie Kartensteuerung und native
+// Auswahlfelder) — Name über aria-label, kein Dekor. Sonst trägt der Kalender
+// keine Symbole.
 
 const MONTHS_DE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
   "August", "September", "Oktober", "November", "Dezember"];

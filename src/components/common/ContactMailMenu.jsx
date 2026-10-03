@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Icon } from "../ui/Icon";
 
 const EMAIL = "support@confidaraexpress.de";
 
@@ -84,7 +83,7 @@ export function ContactMailMenu({ open, onClose }) {
             onClick={onClose}
             aria-label="Dialog schließen"
           >
-            <Icon n="x" s={16} />
+            Schließen
           </button>
         </div>
 
@@ -102,7 +101,7 @@ export function ContactMailMenu({ open, onClose }) {
             >
               {p.label}
               {p.id !== "mailto" && (
-                <Icon n="arrowRight" s={14} c="currentColor" />
+                <span className="ce-mail-dialog-provider-hint">Öffnet in neuem Tab</span>
               )}
             </a>
           ))}
@@ -115,7 +114,6 @@ export function ContactMailMenu({ open, onClose }) {
           className="ce-mail-dialog-copy"
           onClick={copyEmail}
         >
-          <Icon n={copied ? "check" : "copy"} s={15} c="currentColor" />
           {copied ? "Kopiert!" : "E-Mail-Adresse kopieren"}
         </button>
       </div>

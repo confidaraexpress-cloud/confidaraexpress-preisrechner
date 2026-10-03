@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { useAppUpdateAvailable } from "../../hooks/useAppUpdateAvailable";
 import { APP_NOTICE_TEXT } from "../../utils/appVersionCheck.mjs";
@@ -13,7 +12,8 @@ import { APP_NOTICE_TEXT } from "../../utils/appVersionCheck.mjs";
    aus (Buchungsseite, „Neue Sendung"); der Offlinehinweis bleibt dort, weil er
    gerade dort gebraucht wird.
 
-   Neu geladen wird AUSSCHLIESSLICH auf Klick. */
+   Neu geladen wird AUSSCHLIESSLICH auf Klick. Seit dem Redesign (2026-10)
+   ohne Symbol: der Satz trägt die Aussage, die Fläche den Ton. */
 export function AppStatusNotice({ suppressUpdate = false }) {
   const online = useOnlineStatus();
   const neueVersion = useAppUpdateAvailable();
@@ -22,7 +22,6 @@ export function AppStatusNotice({ suppressUpdate = false }) {
     return (
       <div className="alert-wrapper">
         <div className="alert pwa-notice pwa-notice--offline" role="status">
-          <Icon n="info" s={16} />
           <span className="pwa-notice-text">{APP_NOTICE_TEXT.offline}</span>
         </div>
       </div>
@@ -33,7 +32,6 @@ export function AppStatusNotice({ suppressUpdate = false }) {
     return (
       <div className="alert-wrapper">
         <div className="alert alert-info pwa-notice" role="status">
-          <Icon n="refresh" s={16} />
           <span className="pwa-notice-text">{APP_NOTICE_TEXT.update}</span>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => window.location.reload()}>
             {APP_NOTICE_TEXT.reload}

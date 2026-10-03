@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { canSubmitBooking } from "../../utils/bookingGate";
 import { PREISAENDERUNG_ANSEHEN, PREISAENDERUNG_NEU_BERECHNEN } from "../../utils/priceChangeView.mjs";
 
@@ -47,7 +46,7 @@ export function BookingActionModule({
           Buchung erneut auslösbar. */}
       {profileHint && (
         <div className="booking-conflict-box" role="alert" id="booking-profile-incomplete">
-          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {profileHint}</p>
+          <p className="booking-conflict-text">{profileHint}</p>
           <button type="button" className="btn btn-outline btn-full" onClick={onNavigateProfile}>
             Unternehmensprofil vervollständigen
           </button>
@@ -55,7 +54,7 @@ export function BookingActionModule({
       )}
       {conflict ? (
         <div className="booking-conflict-box">
-          <p className="booking-conflict-text"><Icon n="shield" s={16} c="var(--ce-color-brand-ink)" /> {conflict}</p>
+          <p className="booking-conflict-text">{conflict}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateShipments}>
             Zu meinen Sendungen
           </button>
@@ -68,7 +67,7 @@ export function BookingActionModule({
            berechnet wurde. Den Dialog erneut öffnen kann nur, wer etwas zu bestätigen hat —
            ohne bestätigbares Preispaar bleibt allein die Neuberechnung. */
         <div className="booking-conflict-box" id="booking-price-change-pending">
-          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {priceChangeNotice.text}</p>
+          <p className="booking-conflict-text">{priceChangeNotice.text}</p>
           <div className="booking-conflict-actions">
             {priceChangeNotice.reviewable && (
               <button
@@ -103,14 +102,14 @@ export function BookingActionModule({
            Wie der Konfliktzweig ERSETZT auch dieser den Bestellknopf: mit derselben
            Angebotskennung entstünde ohnehin dieselbe Ablehnung. */
         <div className="booking-conflict-box">
-          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {recalcNotice}</p>
+          <p className="booking-conflict-text">{recalcNotice}</p>
           <button className="btn btn-primary btn-full" onClick={onRecalculate}>
             Angebote neu berechnen
           </button>
         </div>
       ) : addressError ? (
         <div className="booking-conflict-box">
-          <p className="booking-conflict-text"><Icon n="info" s={16} c="var(--ce-color-brand-ink)" /> {addressError}</p>
+          <p className="booking-conflict-text">{addressError}</p>
           <button className="btn btn-primary btn-full" onClick={onNavigateNew}>
             Adressen vervollständigen &amp; neu berechnen
           </button>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Icon } from "../../components/ui/Icon";
 import { ErrorState, ListSkeleton } from "../../components/ui/StateView";
 import { InlineError, InlineSuccess, InventoryDialog, QuantityField, StockBadge } from "../../components/inventory/InventoryShared";
 import { ProductForm } from "../../components/inventory/ProductForm";
@@ -28,7 +27,12 @@ function dtDE(value) {
    „Versenden" führt in den bestehenden Prozess „Neue Sendung". Weil dieser als
    page-State in DashboardPage lebt, wandert der Prefill über den
    History-State — dieselbe Mechanik, mit der DashboardPage schon heute seinen
-   Bereich transportiert. */
+   Bereich transportiert.
+
+   Aufbau (Redesign 2026-10): Zurück (Text) → Identität (Name, SKU) →
+   Bestand → Stammdaten und Versanddaten in EINER Fläche → Zolldaten →
+   Sperrinformationen → letzte Bewegungen. Weniger gleich gewichtete Karten,
+   keine Symbole, keine Badgepunkte. */
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -140,15 +144,15 @@ export default function ProductDetailPage() {
   };
 
   const zurueck = (
-    <button type="button" className="btn btn-link ce-page-header-back adm-back" onClick={() => navigate("/dashboard?page=products")}>
-      <Icon n="chevronLeft" s={16} />Zurück zu den Artikeln
+    <button type="button" className="btn btn-link ce-page-header-back adm-back inv-back" onClick={() => navigate("/dashboard?page=products")}>
+      Zurück zu den Artikeln
     </button>
   );
 
   if (notFound) {
     return (
       <div className="page-body">
-        <PageHeader eyebrow="Lager & Aufträge" title="Artikel" backLink={zurueck} utility={ctx.utility} />
+        <PageHeader title="Artikel" backLink={zurueck} utility={ctx.utility} />
         <ErrorState
           title="Artikel nicht gefunden"
           text="Dieser Artikel existiert nicht oder gehört nicht zu Ihrem Konto."
@@ -166,7 +170,6 @@ export default function ProductDetailPage() {
   return (
     <div className="page-body">
       <PageHeader
-        eyebrow="Lager & Aufträge"
         title={p ? p.name : "Artikel"}
         subtitle={p ? `SKU ${p.sku}` : undefined}
         backLink={zurueck}
@@ -175,7 +178,7 @@ export default function ProductDetailPage() {
           <>
             <button type="button" className="btn btn-outline" onClick={() => { setFormError(""); setEditOpen(true); }}>Bearbeiten</button>
             <button type="button" className="btn btn-primary" disabled={p.status === "inactive"} onClick={() => { setShipQty("1"); setShipOpen(true); }}>
-              <Icon n="package" s={16} />Versenden
+              Versenden
             </button>
           </>
         )}
@@ -212,13 +215,12 @@ export default function ProductDetailPage() {
                 die es behebt. Kein zweiter Wareneingangspfad: derselbe Dialog. */}
             {niedrig && (
               <div className="inv-lowstock" role="status">
-                <Icon n="info" s={16} />
                 <span className="inv-lowstock-text">
                   <strong>{formatUnits(niedrig.available)} verfügbar</strong> bei Mindestbestand {formatUnits(niedrig.minStock)} —{" "}
                   {formatUnits(niedrig.missing)} {niedrig.missing === 1 ? "Einheit" : "Einheiten"} fehlen.
                 </span>
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => oeffneStock("receipt")}>
-                  <Icon n="packageMove" s={16} />Bestand einbuchen
+                  Bestand einbuchen
                 </button>
               </div>
             )}
@@ -235,22 +237,25 @@ export default function ProductDetailPage() {
             <div className="inv-detail-actions">
               {!niedrig && (
                 <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("receipt")}>
-                  <Icon n="packageMove" s={16} />Bestand einbuchen
+                  Bestand einbuchen
                 </button>
               )}
               <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("block")}
                       disabled={Number(p.stock?.available ?? 0) < 1}>
-                <Icon n="shield" s={16} />Bestand sperren
+                Bestand sperren
               </button>
               {gesperrt > 0 && (
                 <button type="button" className="btn btn-sm btn-outline" onClick={() => oeffneStock("unblock")}>
-                  <Icon n="check" s={16} />Sperre aufheben
+                  Sperre aufheben
                 </button>
               )}
             </div>
 
+            {/* Bestand je Lager: eine echte Spaltenvergleichstabelle. Auf
+                schmalen Breiten scrollt sie LOKAL in ihrem Rahmen (siehe
+                .inv-detail-table--scroll), statt abgeschnitten zu werden. */}
             {data.balances?.length > 0 && (
-              <div className="ce-table-container inv-detail-table">
+              <div className="ce-table-container inv-detail-table inv-detail-table--scroll">
                 <table className="ce-list-table">
                   <caption className="sr-only">Bestand je Lager</caption>
                   <thead>
@@ -281,30 +286,34 @@ export default function ProductDetailPage() {
             )}
           </section>
 
-          <section className="ce-card inv-detail-section">
-            <h2 className="inv-section-title">Stammdaten</h2>
-            <dl className="inv-detail-list">
-              <div><dt>SKU</dt><dd>{p.sku}</dd></div>
-              <div><dt>EAN / GTIN</dt><dd>{p.ean || "—"}</dd></div>
-              <div><dt>Status</dt><dd>{p.status === "active" ? "Aktiv" : "Inaktiv"}</dd></div>
-              <div><dt>Beschreibung</dt><dd>{p.description || "—"}</dd></div>
-            </dl>
-          </section>
-
-          <section className="ce-card inv-detail-section">
-            <h2 className="inv-section-title">Versanddaten</h2>
-            <dl className="inv-detail-list">
-              <div><dt>Gewicht</dt><dd>{formatKg(p.weightKg)}</dd></div>
-              <div><dt>Maße (L × B × H)</dt><dd>
-                {p.lengthCm || p.widthCm || p.heightCm
-                  ? `${p.lengthCm ?? "—"} × ${p.widthCm ?? "—"} × ${p.heightCm ?? "—"} cm`
-                  : "—"}
-              </dd></div>
-            </dl>
-            <p className="inv-form-note">
-              Artikelmaße sind Stammdaten. Sie werden beim Versand nicht automatisch zu Paketmaßen
-              verrechnet — die Paketdaten bestätigen Sie im Versandformular.
-            </p>
+          {/* Stammdaten und Versanddaten teilen sich EINE Fläche — zwei Gruppen
+              nebeneinander (mobil untereinander) statt zweier gleich
+              gewichteter Karten. */}
+          <section className="ce-card inv-detail-section inv-detail-columns">
+            <div className="inv-detail-group">
+              <h2 className="inv-section-title">Stammdaten</h2>
+              <dl className="inv-detail-list">
+                <div><dt>SKU</dt><dd>{p.sku}</dd></div>
+                <div><dt>EAN / GTIN</dt><dd>{p.ean || "—"}</dd></div>
+                <div><dt>Status</dt><dd>{p.status === "active" ? "Aktiv" : "Inaktiv"}</dd></div>
+                <div><dt>Beschreibung</dt><dd>{p.description || "—"}</dd></div>
+              </dl>
+            </div>
+            <div className="inv-detail-group">
+              <h2 className="inv-section-title">Versanddaten</h2>
+              <dl className="inv-detail-list">
+                <div><dt>Gewicht</dt><dd>{formatKg(p.weightKg)}</dd></div>
+                <div><dt>Maße (L × B × H)</dt><dd>
+                  {p.lengthCm || p.widthCm || p.heightCm
+                    ? `${p.lengthCm ?? "—"} × ${p.widthCm ?? "—"} × ${p.heightCm ?? "—"} cm`
+                    : "—"}
+                </dd></div>
+              </dl>
+              <p className="inv-form-note">
+                Artikelmaße sind Stammdaten. Sie werden beim Versand nicht automatisch zu Paketmaßen
+                verrechnet — die Paketdaten bestätigen Sie im Versandformular.
+              </p>
+            </div>
           </section>
 
           <section className="ce-card inv-detail-section">
@@ -335,7 +344,6 @@ export default function ProductDetailPage() {
                 {sperrEintraege.map((b) => (
                   <li key={b.id} className="inv-block-item">
                     <span className={`badge ${b.action === "block" ? "badge--warning" : "badge--neutral"}`}>
-                      <span className="badge-dot" aria-hidden="true" />
                       {b.action === "block" ? "Gesperrt" : "Freigegeben"}
                     </span>
                     <span className="inv-block-main">
@@ -356,7 +364,7 @@ export default function ProductDetailPage() {
               {data.movements?.length > 0 && (
                 <button type="button" className="btn btn-link btn-sm"
                         onClick={() => navigate(`/dashboard?page=movements&product=${encodeURIComponent(id)}`)}>
-                  Alle Bewegungen anzeigen<Icon n="chevronRight" s={14} />
+                  Alle Bewegungen anzeigen
                 </button>
               )}
             </div>
@@ -370,9 +378,7 @@ export default function ProductDetailPage() {
                     const [cls, text, roh] = movementTypeView(m.type);
                     return (
                       <li key={m.id} className="inv-movement-item">
-                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>
-                          <span className="badge-dot" aria-hidden="true" />{text}
-                        </span>
+                        <span className={`badge ${cls}`} title={roh ? `Serverwert: ${roh}` : undefined}>{text}</span>
                         <span className={`ce-num inv-movement-qty${Number(m.quantity) < 0 ? " inv-num-out" : " inv-num-in"}`}>{signedQuantity(m.quantity)}</span>
                         <span className="inv-cell-meta">Bestand danach: <span className="ce-num">{formatUnits(m.onHandAfter)}</span></span>
                         {/* Nur manuelle Korrekturen tragen einen Grund; er steht

@@ -112,12 +112,12 @@ Alle Seiten sind `React.lazy`-geladen; neue Seiten ebenso einbinden.
 | --- | --- |
 | `--ce-app-*`, `--ce-sidebar-*` | App-Chrome des eingeloggten Bereichs |
 | `--surface*`, `--border-*`, `--text-*`, `--shadow-card*` | Inhaltsflächen im eingeloggten Bereich |
-| `--ce-kpi-*` | ausschließlich die KPI-Karten der Übersicht |
+| `--ce-kpi-*` | ausschließlich das Kennzahlenband der Übersicht |
 | `--auth-*` | ausschließlich Auth-Bereich |
 | `--adm-*` / `.adm-*` | ausschließlich Adminbereich |
 | Legacy (`--navy`, `--gray*`, `--blue*`) | Booking, Legal, Angebots-/Preisrechnerkarten |
 
-Farbwerte, Radien und Tiefen kommen aus `variables.css` (`--ce-radius-*`, `--ce-elevation-*`). Bereichs-Stylesheets tragen keine Farbliterale.
+Farbwerte, Radien und Tiefen kommen aus `variables.css` (`--ce-radius-*`, `--ce-elevation-*`). Bereichs-Stylesheets tragen keine Farbliterale. Arbeitsflächen (Karten, Tabellen, Kennzahlen, Module, Formular-/Filterflächen) tragen feine Kante plus `--ce-elevation-1` (sehr leichter Schatten); Hover/Auswahl bedienbarer Karten Stufe 2, Overlays Stufe 3/Dropdown — nie ein freier Schattenwert. Die Tarifkarte ist das Angebot der Seite: schon in Ruhe Stufe 2, Auswahlaktion gefüllt im Markenblau, Preis 28 px, Laufzeit 24 px, Preisbereich durch eine feine Linie abgesetzt; ihre zwei Ablaufpunkte (Start Blau, Ziel Grün) pulsieren leicht — neben Ladeanzeigen die einzige Daueranimation außerhalb von Auth, bei reduzierter Bewegung aus.
 
 ### Importreihenfolge (`styles/index.css`) — tragend
 
@@ -127,15 +127,15 @@ Farbwerte, Radien und Tiefen kommen aus `variables.css` (`--ce-radius-*`, `--ce-
 
 Buttons (`.btn` + Varianten), Eingaben (`.field-*`), `Switch`, Badges, Karten, `Icon.jsx`, `PageHeader`, `UserChip`, `StateView`, `useDialog`, `statusFallback` — vor jedem neuen Bauteil prüfen, ob das Muster bereits existiert.
 
-**Eigenes Icon-System** (`components/ui/Icon.jsx`). Keine externe Icon-Bibliothek einführen; mehrere Tests verbieten das ausdrücklich.
+**Eigenes Icon-System** (`components/ui/Icon.jsx`). Keine externe Icon-Bibliothek einführen; mehrere Tests verbieten das ausdrücklich. Außerhalb von Auth gilt: keine dekorativen Icons — Handlungen stehen als Text („Schließen“, „Herunterladen“, „Weitere Aktionen“ …). Funktionale Ausnahmen: native Formularsteuerungen, Karte, Carrier-Logos, die Marke.
 
 ### Typografie
 
-Eine Skala aus `--ce-text-*`. Cormorant nur für Kundenseitentitel und die Begrüßung, DM Sans für alles Funktionale und alle Zahlen. Keine Halbpixel, nichts unter 11 px, höchstes Gewicht 600. Zahlen tabellarisch und in Zahlenspalten rechtsbündig.
+Eine Skala aus `--ce-text-*` (Seitentitel 28/36, mobil 24/32 · Abschnitt 18/26 · Karte 16/24 · Fließtext 14/22 · klein 13/20 · Label 13/18 · Caption/Tabellenkopf 12/18 · Kennzahl 32/38). Die Kunden-Sidebar hat eine eigene Stufe (`--ce-sidebar-nav-*`: 15/22, Hauptpunkte 600, Unterpunkte und sekundäre Aktionen 500, jede Zeile 44 px); die allgemeine Navigationsrolle (`--ce-text-nav-*`, Admin, öffentlicher Drawer) bleibt 14/20, 500. DM Sans für alles außerhalb des Auth-Bereichs, auch für Seitentitel und alle Zahlen; Cormorant nur noch im (unveränderten) Auth-Bereich. Keine Halbpixel, nichts unter 12 px außerhalb von Auth, höchstes Gewicht 600. Zahlen tabellarisch und in Zahlenspalten rechtsbündig.
 
 ### App-Shell und Sidebar
 
-`.app-shell` ist der einzige Layoutrahmen des eingeloggten Bereichs — keine seitenabhängigen Theme-Klassen, keine zweite Hintergrundebene, keine Dekoration im Hintergrund. Die Navigation hat genau zwei Ebenen; höchstens eine Gruppe ist offen, und der Klappzustand ist ein Wert, keine Booleanmenge.
+`.app-shell` ist der einzige Layoutrahmen des eingeloggten Bereichs — keine seitenabhängigen Theme-Klassen, keine zweite Hintergrundebene, keine Muster oder Formen im Hintergrund. Der Grund ist EINE gemeinsame Atmosphäre (`--ce-color-bg-atmosphere`, in der Shell über `--ce-app-bg`) für Kundenbereich, Admin und öffentliche Seiten: kühle Rampe aus den Flächentönen der Farbwelt mit genau zwei Lichtflächen (Markenindigo, Markenviolett), deren Deckkraft so bemessen ist, dass Sekundärtext auch im Lichtzentrum WCAG AA hält. Die Navigation hat genau zwei Ebenen; höchstens eine Gruppe ist offen, und der Klappzustand ist ein Wert, keine Booleanmenge. Die Kunden-Sidebar trägt die Deep-Navy-Fläche der ConfidaraExpress-Farbwelt (oben eine Lichtfläche hinter der Marke, unten ein Navy-Schleier, helle Innenkante und weicher Kantenschatten) mit reiner Textnavigation und der Originalmarke (`BrandLogo variant="lockup" tone="reverse"`) samt Unterzeile „B2B Logistik- und Versandplattform"; die Admin-Sidebar ist hell (Standardfassung). Es gibt keine weitere Markenvariante.
 
 `min-height: 100dvh` statt `100vh` bei Vollbildlayouts.
 

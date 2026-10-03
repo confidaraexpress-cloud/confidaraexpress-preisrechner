@@ -8,27 +8,27 @@
    liegt direkt unter .main-content, „Neue Sendung"/Sendungsverfolgung dagegen
    in .page-body (dort griff der frühere Direktkind-Selektor nicht). */
 .app-shell .page-with-navbar {
-  padding-top: 8px;
+  padding-top: 0;
   min-height: auto;
 }
 
 .sidebar-overlay {
   position: fixed; inset: 0; z-index: 198;
   background: var(--ce-color-overlay-drawer); opacity: 0; pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--ce-motion-slow) var(--ce-motion-ease-standard);
 }
 .sidebar-overlay.open { opacity: 1; pointer-events: all; }
 
 /* Struktur der Sidebar (Maße, Positionierung, Drawer-Transition). Die Optik
-   — Verlauf, Kante, Tiefe — liegt vollständig in dashboard-premium.css unter
+   — Fläche, Trennlinie — liegt vollständig in dashboard-premium.css unter
    .sidebar.pp-side; hier steht nur ein deckender Grundton als Fallback, damit
    beim Öffnen des Drawers nie eine transparente Fläche aufblitzt. */
 .sidebar {
   width: var(--sidebar-width); min-height: 100vh;
-  background: var(--ce-sidebar-bg-mid);
+  background: var(--ce-sidebar-bg);
   display: flex; flex-direction: column;
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 199;
-  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard);
 }
 /* .sidebar-close-btn wird von der (jetzt einzigen) Sidebar-Komponente
    weiterverwendet — bleibt hier. Die frühere zweite Sidebar-Variante
@@ -36,28 +36,46 @@
    entfernt, siehe DashboardSidebar.jsx) ist restlos entfernt: es gibt nur
    noch eine Sidebar (.dpx-*, Theme in dashboard-premium.css). .user-avatar
    bleibt: wird unabhängig davon in .mobile-topbar verwendet. */
-.sidebar-close-btn { display: none; background: none; border: none; cursor: pointer; color: var(--ce-sidebar-text-muted); padding: 4px; border-radius: var(--ce-radius-sm); margin-left: auto; }
+.sidebar-close-btn {
+  display: none; align-items: center; justify-content: center;
+  min-height: var(--ce-size-touch-target); padding: 0 var(--ce-space-3);
+  background: none; border: 0; border-radius: var(--ce-radius-sm); cursor: pointer;
+  margin-left: auto;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size);
+  font-weight: var(--ce-text-button-weight); line-height: var(--ce-text-button-line);
+  color: var(--ce-sidebar-text-muted);
+}
+.sidebar-close-btn:hover { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text-strong); }
 
 .main-content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; }
 
 .mobile-topbar {
-  display: none; align-items: center; justify-content: space-between;
-  padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border-subtle);
+  display: none; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
+  min-height: 56px;
+  padding: 6px var(--ce-space-4); background: var(--surface); border-bottom: 1px solid var(--border-subtle);
   position: sticky; top: 0; z-index: 100;
 }
-/* Die mobile Topbar trug die Wortmarke bisher als reinen Text. Jetzt dieselbe
-   Marke wie überall (BrandLogo, Standardvariante — die Leiste ist hell), aber
-   ohne Chipfläche: neben Menü- und Glockenschaltfläche zählt hier jeder Pixel.
-   Gerechnet bei 360 px: 44 (Menü) + 44 (Glocke) + 32 (Innenabstand) + 20
-   (Signet) + 8 (Abstand) + ~130 (Wortmarke) = ~278 px. Die Wortmarke bricht
-   also auf keiner unterstützten Breite um und wird nie abgeschnitten. */
+/* Die flache Topbar trägt das Original-Signet (wie vor dem Redesign) —
+   die volle Komposition liefe hier auf wenige Pixel Schrifthöhe hinaus.
+   Neben „Menü" und „Mitteilungen" bleibt dafür auch bei 320 px Platz. */
 .topbar-brand .ce-brandmark-img { width: 30px; }
-/* Gleiche Rahmenbreite wie .page-body/.dash-section-header. */
-.alert-wrapper { padding: 16px 28px 0; max-width: 1240px; margin: 0 auto; }
+/* Gleiche Rahmenbreite und Kante wie Seitenkopf und .page-body. */
+.alert-wrapper {
+  max-width: calc(var(--ce-size-content) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
+  margin: 0 auto;
+  padding: var(--ce-space-4) var(--shell-gutter, var(--ce-page-gutter)) 0;
+}
 
-/* Gemeinsamer Inhaltsrahmen aller Unterseiten — begrenzte Zeilenlänge, damit
-   Tabellen und Karten auf breiten Screens (1440 px+) nicht auseinanderlaufen. */
-.page-body { padding: 24px 28px; max-width: 1240px; margin: 0 auto; }
+/* Gemeinsamer Inhaltsrahmen aller Unterseiten — Inhalt maximal 1200 px,
+   Seitenrand 32 / 24 / 16 px (--shell-gutter). Oben kein Innenabstand: den
+   Abstand Kopf → Inhalt (24 px) trägt der Seitenkopf selbst; steht der Kopf
+   INNERHALB von .page-body (Lager, Konto, Adressbuch, Entwürfe), läuft er über
+   genau dieselbe Kante (patterns.css: .page-body > .ce-page-header). */
+.page-body {
+  max-width: calc(var(--ce-size-content) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
+  margin: 0 auto;
+  padding: 0 var(--shell-gutter, var(--ce-page-gutter)) var(--ce-space-9);
+}
 
 /* ─── DashboardSectionHeader ─────────────────────────────────────────────── */
 /* Seitenkopf — links ausgerichtet und in kontrollierter Größe. Vorher zentriert
@@ -73,14 +91,26 @@
 /* Das Material von .table-card (Fläche, Kante, Radius, Tiefe, overflow) steht
    seit Paket A, Phase 2 zentral im Table-Container-Primitive (primitives.css).
    Hier bleibt nur, was diese Tabelle strukturell ausmacht. */
-.table-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; }
-.table-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.table-card-header { padding: var(--ce-space-4) var(--ce-space-5); border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3); }
+.table-card-title { font-size: var(--ce-text-title-card-size); font-weight: 600; line-height: var(--ce-text-title-card-line); color: var(--text-primary); }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Ruhige, scanbare Tabelle: Kopf mindestens 40 px, Zeilen mindestens 56 px,
+   Zellen 12 / 16 px, keine vertikalen Gitterlinien. Der Kopf steht in
+   Normalschrift (keine Versalien), 12/18 600. Eine Zeile reagiert NICHT
+   pauschal auf Hover — nur dort, wo sie tatsächlich eine Aktion trägt. */
 table { width: 100%; border-collapse: collapse; min-width: 480px; }
-th { padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
-td { padding: 13px 14px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border-hairline); }
+th {
+  height: 40px; padding: var(--ce-space-3) var(--ce-space-4); text-align: left;
+  font-size: var(--ce-text-micro-size); font-weight: var(--ce-text-micro-weight); line-height: var(--ce-text-micro-line);
+  color: var(--text-secondary); text-transform: none; letter-spacing: 0;
+  background: var(--surface-subtle); border-bottom: 1px solid var(--border-subtle); white-space: nowrap;
+}
+td {
+  height: 56px; padding: var(--ce-space-3) var(--ce-space-4);
+  font-size: var(--ce-text-body-size); line-height: 1.4286;
+  color: var(--text-primary); border-bottom: 1px solid var(--border-hairline);
+}
 tr:last-child td { border-bottom: none; }
-tr:hover td { background: var(--surface-subtle); }
 
 /* ─── Badges ─────────────────────────────────────────────────────────────────
    Das Badge-Grundsystem (.badge samt Statuspunkt und allen zehn Statusgruppen)
@@ -94,7 +124,7 @@ tr:hover td { background: var(--surface-subtle); }
    entfallen: Tiefe kommt im ganzen Produkt aus der Elevationsskala und nie
    farbig. Fläche, Kante und Text stammen jetzt aus demselben Statustripel —
    vorher waren Kante und Text aus verschiedenen Quellen gemischt. */
-.alert { padding: 11px 14px; border-radius: var(--ce-radius-sm); font-size: var(--ce-text-body-s-size); margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
+.alert { padding: var(--ce-space-3) var(--ce-space-4); border-radius: var(--ce-radius-sm); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); margin-bottom: var(--ce-space-4); display: flex; align-items: flex-start; gap: 8px; }
 .alert-error   { background: var(--ce-color-status-error-surface);   border: 1px solid var(--ce-color-status-error-border);   color: var(--ce-color-status-error-fg); }
 .alert-success { background: var(--ce-color-status-success-surface); border: 1px solid var(--ce-color-status-success-border); color: var(--ce-color-status-success-fg); }
 .alert-info    { background: var(--ce-color-status-info-surface);    border: 1px solid var(--ce-color-status-info-border);    color: var(--ce-color-status-info-fg); }
@@ -107,43 +137,204 @@ tr:hover td { background: var(--surface-subtle); }
 .form-alert-title { font-weight: 600; line-height: 1.35; }
 .form-alert-text { line-height: 1.5; }
 
-/* ─── Tracking ───────────────────────────────────────────────────────────── */
-.tracking-timeline { padding: 8px 0; }
-.track-event { display: flex; gap: 14px; padding-bottom: 22px; position: relative; }
-.track-event::before { content: ''; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--border); }
+/* ─── Tracking ───────────────────────────────────────────────────────────────
+   Redesign 2026-10: der Verlauf ist eine ruhige chronologische Textliste — ein
+   kleiner Punkt je Ereignis auf einer feinen Linie, das neueste Ereignis in
+   der Markenfarbe. Keine Symbole in den Punkten, keine Kreisflächen mit Glyphen: die
+   Aussage steht im Text daneben (Ereignis, Zeit, Ort). Gilt für die
+   öffentliche Trackingseite UND die aufgeklappte Sendungszeile. */
+.tracking-timeline { padding: 0; }
+.tracking-timeline + .tracking-timeline { margin-top: var(--ce-space-6); }
+.track-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  column-gap: var(--ce-space-3);
+  padding-bottom: var(--ce-space-4);
+}
+.track-event::before {
+  content: ''; position: absolute; left: 4px; top: 23px; bottom: 0; width: 2px;
+  background: var(--ce-color-border-subtle);
+}
 .track-event:last-child::before { display: none; }
-.track-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--ce-color-border-default); background: var(--ce-color-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ce-color-text-muted); }
-.track-dot.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand); color: white; }
-.track-dot.done   { border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid); color: white; }
+.track-dot {
+  width: 10px; height: 10px; margin-top: 9px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--ce-color-border-strong); background: var(--ce-color-surface);
+}
+.track-dot.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand); }
+.track-dot.done   { border-color: var(--ce-color-border-strong); background: var(--ce-color-border-strong); }
 /* `min-width: 0` + `overflow-wrap`: eine lange Ortsangabe oder Trackingnummer bricht in der
    schmalen Mobilkarte um, statt die Timeline seitlich aus der Karte zu schieben. */
 .track-info { flex: 1; min-width: 0; padding-top: 4px; overflow-wrap: anywhere; }
-.track-title { font-size: 13px; font-weight: 600; color: var(--navy); }
-.track-time { font-size: 12px; color: var(--ce-color-text-muted); margin-top: 2px; }
+.track-title {
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 500;
+  color: var(--ce-color-text-primary);
+}
+.track-time {
+  margin-top: 2px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
 
-/* Post-Order Tracking-Detail in der Sendungsliste (Light-Theme Sub-Seite) */
-.shipment-track-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
-.shipment-track-number { font-size: 13px; color: var(--ce-color-text-secondary); }
-.shipment-track-number strong { color: var(--navy); font-weight: 600; }
-.shipment-track-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--blue2); text-decoration: none; }
-.shipment-track-link:hover { color: var(--blue); text-decoration: underline; }
-.shipment-track-pending { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
-.shipment-track-noevents { margin-top: 4px; }
+/* ─── Tracking page ──────────────────────────────────────────────────────────
+   Dieselbe Seite steht öffentlich (/tracking, NavbarLayout) und im Kundenbereich
+   (page „tracking"). Öffentlich: eine schmale, zentrierte Lesespalte. Im
+   Kundenbereich: dieselbe Inhaltskante wie Seitenkopf und .page-body der Shell
+   (--shell-gutter), Formular und Ergebnis in Formularbreite. Die Seitenregeln
+   standen bis zum Redesign in calculator.css; sie gehören fachlich hierher
+   (eigener tracking-*-Scope, keine Überschneidung mit den Preisrechner-Klassen). */
+.tracking-page-wrap {
+  max-width: calc(var(--ce-size-prose) + 2 * var(--ce-space-4));
+  margin: 0 auto;
+  padding: var(--ce-space-7) var(--ce-space-4) var(--ce-space-9);
+}
+.app-shell .tracking-page-wrap {
+  max-width: calc(var(--ce-size-content) + 2 * var(--shell-gutter, var(--ce-page-gutter)));
+  padding: var(--ce-space-7) var(--shell-gutter, var(--ce-page-gutter)) var(--ce-space-9);
+}
+/* Im Kundenbereich trägt auch die Tracking-Seite die Utility-Zeile
+   („Mitteilungen" + Benutzerchip) über dem Titel — wie jeder Seitenkopf. */
+@media (min-width: 861px) {
+  .app-shell .tracking-page-wrap:has(> .tracking-utility) { padding-top: var(--ce-space-4); }
+}
+.tracking-utility { margin-bottom: var(--ce-space-3); }
+.app-shell .tracking-head,
+.app-shell .tracking-search,
+.app-shell .tracking-result { max-width: var(--ce-size-form); }
+
+/* Titelrolle wie jede andere Seite (PageHeader): 28/36, mobil 24/32. */
+.tracking-head { margin-bottom: var(--ce-space-6); }
+.tracking-title {
+  margin: 0;
+  font-family: var(--ce-font-sans);
+  font-size: var(--ce-text-title-page-size);
+  font-weight: var(--ce-text-title-page-weight);
+  line-height: var(--ce-text-title-page-line);
+  letter-spacing: var(--ce-text-title-page-tracking);
+  color: var(--ce-color-text-primary);
+}
+.tracking-page-sub {
+  margin: var(--ce-space-1) 0 0;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+
+/* Suchfeld: EIN beschriftetes Feld, daneben „Verfolgen" auf derselben Grundlinie.
+   Reicht die Breite nicht, rutscht der Knopf in eine eigene Zeile und nimmt die
+   volle Breite — nichts wird gestaucht. */
+.tracking-search { padding: var(--ce-space-6); }
+.tracking-search-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--ce-space-3); }
+.tracking-search-field { flex: 1 1 280px; min-width: 0; margin-bottom: 0; }
+.app-shell .tracking-search-field { margin-bottom: 0; }
+.tracking-search-btn { flex: 0 0 auto; }
+.tracking-search-error { margin: var(--ce-space-3) 0 0; }
+
+/* Ergebnis: Status zuerst (wichtigste Information), Meta darunter, dann der
+   Fortschritt und der Verlauf. Linksbündig wie jede andere Fläche. */
+.tracking-result { margin-top: var(--ce-space-6); padding: var(--ce-space-6); }
+.tracking-result-title {
+  margin: 0 0 var(--ce-space-2);
+  font-size: var(--ce-text-label-size); line-height: var(--ce-text-label-line);
+  font-weight: var(--ce-text-label-weight);
+  color: var(--ce-color-text-secondary);
+}
+/* break-word statt anywhere: Der Status ist Klartext („In Zustellung") — er
+   bricht an Wortgrenzen; anywhere hätte ihn mitten im Wort trennen dürfen.
+   Der Meta-WERT darunter behält sein anywhere bewusst: dort stehen
+   Trackingnummern (technische Strings, lokale Bruchregel korrekt). */
+.tracking-hero { padding: 0 0 var(--ce-space-4); }
+.tracking-hero-status {
+  font-size: var(--ce-text-title-page-size-mobile);
+  line-height: var(--ce-text-title-page-line-mobile);
+  font-weight: 600; letter-spacing: var(--ce-text-title-page-tracking-mobile);
+  color: var(--ce-color-text-primary); overflow-wrap: break-word;
+}
+.tracking-hero-desc {
+  margin: var(--ce-space-1) 0 0;
+  font-size: var(--ce-text-body-size); line-height: var(--ce-text-body-line);
+  color: var(--ce-color-text-secondary);
+}
+.tracking-hero-when {
+  margin-top: var(--ce-space-1);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-muted);
+}
+.tracking-hero-meta {
+  display: flex; gap: var(--ce-space-3) var(--ce-space-7); flex-wrap: wrap;
+  margin: 0 0 var(--ce-space-6); padding: var(--ce-space-4) 0;
+  border-top: 1px solid var(--ce-color-border-subtle);
+  border-bottom: 1px solid var(--ce-color-border-subtle);
+}
+.tracking-hero-meta-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tracking-hero-meta-label {
+  font-size: var(--ce-text-label-size); line-height: var(--ce-text-label-line);
+  font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-secondary);
+}
+.tracking-hero-meta-value {
+  margin: 0;
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600;
+  color: var(--ce-color-text-primary); overflow-wrap: anywhere;
+}
+.tracking-id-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; user-select: all; }
+.tracking-steps { margin-bottom: var(--ce-space-6); }
+
+/* Tagesgruppe und Abschnittskopf (mehrere Transportabschnitte) — Normalschrift,
+   keine Versal-Eyebrow. */
+.tracking-day-label {
+  margin: var(--ce-space-5) 0 var(--ce-space-2);
+  font-size: var(--ce-text-label-size); line-height: var(--ce-text-label-line);
+  font-weight: 600; color: var(--ce-color-text-secondary);
+}
+.tracking-day-label:first-child { margin-top: 0; }
+
+@media (max-width: 860px) {
+  .app-shell .tracking-page-wrap { padding-top: var(--ce-space-6); }
+  .tracking-title {
+    font-size: var(--ce-text-title-page-size-mobile);
+    line-height: var(--ce-text-title-page-line-mobile);
+    letter-spacing: var(--ce-text-title-page-tracking-mobile);
+  }
+}
+@media (max-width: 600px) {
+  .tracking-page-wrap { padding-top: var(--ce-space-6); }
+  .tracking-search,
+  .tracking-result { padding: var(--ce-space-4); }
+  .tracking-search-btn { flex: 1 1 100%; }
+}
+
+/* Post-Order Tracking-Detail in der Sendungsliste (aufgeklappte Zeile / Karte) */
+.shipment-track-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2) var(--ce-space-4); margin-bottom: var(--ce-space-4); }
+.shipment-track-number { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-secondary); }
+.shipment-track-number strong { color: var(--ce-color-text-primary); font-weight: 600; }
+/* Externer Verweis als Textaktion — ohne Pfeilsymbol, unterstrichen bei Hover. */
+.shipment-track-link {
+  display: inline-flex; align-items: center; min-height: 32px;
+  font-size: var(--ce-text-body-s-size); font-weight: 600;
+  color: var(--ce-color-brand-ink); text-decoration: none;
+}
+.shipment-track-link:hover { text-decoration: underline; }
+.shipment-track-leg { margin: 0 0 var(--ce-space-1); }
+.shipment-track-pending { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ce-space-3); }
+.shipment-track-noevents { margin-top: var(--ce-space-1); }
 
 /* Sendungsdetail-Zahlenblock: Muted Card statt Inline-Style (Paket C). */
-.shipment-detail-cell { padding: 16px; }
+.shipment-detail-cell { padding: var(--ce-space-4); }
 .shipment-detail-card { padding: 20px 24px; }
-.shipment-detail-numbers { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0 0 16px; }
-.shipment-detail-item { display: flex; flex-direction: column; gap: 2px; }
-.shipment-detail-label { font-size: var(--ce-text-micro-size); color: var(--ce-color-text-muted); }
-.shipment-detail-value { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.shipment-detail-numbers { display: flex; flex-wrap: wrap; gap: var(--ce-space-3) var(--ce-space-7); margin: 0 0 var(--ce-space-5); }
+.shipment-detail-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shipment-detail-label {
+  font-size: var(--ce-text-label-size); line-height: var(--ce-text-label-line);
+  font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-secondary);
+}
+.shipment-detail-value { margin: 0; font-size: var(--ce-text-body-size); line-height: 1.4286; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
+.shipment-tracking-references { margin: 0; padding-left: 18px; }
 /* TG22 Paket B: dieselbe Trackingansicht in der Mobilkarte — abgesetzt unter den Aktionen,
    mit eigenem Innenabstand statt der Detailzeile der Tabelle. */
-.shipment-card-tracking { margin-top: 12px; padding: 12px 4px 0; border-top: 1px solid var(--border-subtle); min-width: 0; }
+.shipment-card-tracking { margin-top: var(--ce-space-3); padding: var(--ce-space-4) 0 0; border-top: 1px solid var(--border-subtle); min-width: 0; }
 .shipment-card-tracking .shipment-track-head { gap: 6px 10px; }
 
 /* ─── Steps (Paket B) ────────────────────────────────────────────────────────
-   Kreis 32px, aktiv = Marken-Indigo, erledigt = Success, zukünftig = neutral —
+   Kreis 32px, aktiv = Markenfarbe, erledigt = Success, zukünftig = neutral —
    flache Flächen statt Verlauf/Glow, Verbindungslinie 2px. */
 .steps-bar { display: flex; align-items: center; overflow-x: auto; }
 .step-item { display: flex; align-items: center; flex: 1; min-width: 0; }
@@ -151,35 +342,52 @@ tr:hover td { background: var(--surface-subtle); }
 .step-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--ce-color-border-default); background: var(--ce-color-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--ce-color-text-muted); flex-shrink: 0; transition: border-color var(--ce-motion-fast) var(--ce-motion-ease-standard), background var(--ce-motion-fast) var(--ce-motion-ease-standard), color var(--ce-motion-fast) var(--ce-motion-ease-standard); }
 .step-circle.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand); color: white; }
 .step-circle.done   { border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid); color: white; }
-.step-label { font-size: 11px; font-weight: 600; color: var(--ce-color-text-muted); margin-top: 5px; white-space: nowrap; }
+.step-label { font-size: var(--ce-text-micro-size); font-weight: 600; color: var(--ce-color-text-muted); margin-top: 5px; white-space: nowrap; }
 .step-label.active { color: var(--ce-color-brand-ink); }
 .step-label.done { color: var(--ce-color-success-solid); }
 .step-line { flex: 1; height: 2px; background: var(--ce-color-border-default); margin: 0 4px; }
 .step-line.done { background: var(--ce-color-success-solid); }
 
 /* ─── Mobile Drawer ──────────────────────────────────────────────────────── */
+/* Drawer der öffentlichen Leseseiten — dieselbe Deep-Navy-Fläche wie die
+   Sidebar des eingeloggten Bereichs, in der Struktur des Redesigns. */
 .mobile-drawer {
   position: fixed; top: 0; left: 0; bottom: 0;
-  width: min(300px, 85vw); background: #0a1628;
-  border-right: 1px solid rgba(255,255,255,0.08);
+  width: min(320px, calc(100vw - 32px)); background: var(--ce-sidebar-bg);
+  border-right: 1px solid var(--ce-sidebar-border);
+  box-shadow: var(--ce-elevation-3);
   z-index: 999; transform: translateX(-100%);
-  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  transition: transform var(--ce-motion-slow) var(--ce-motion-ease-standard);
   display: flex; flex-direction: column; overflow-y: auto;
 }
 .mobile-drawer.open { transform: translateX(0); }
-.mobile-drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-/* Die Wortmarke im Drawer trägt ihre helle Farbe jetzt selbst (Reverse-Variante
-   des Markenbauteils) — die frühere Sonderregel auf .logo-text ist entfallen. */
-.drawer-close-btn { background: rgba(255,255,255,0.08); border: none; cursor: pointer; color: white; padding: 7px; border-radius: var(--radius-sm); display: flex; align-items: center; }
-.mobile-drawer-nav { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 3px; }
-.drawer-nav-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: var(--radius); color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: var(--ce-font-sans); }
-.drawer-nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
-.drawer-cta { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+.mobile-drawer-header { display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3); padding: var(--ce-space-4); border-bottom: 1px solid var(--ce-sidebar-divider); }
+.drawer-close-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--ce-size-touch-target); padding: 0 var(--ce-space-3);
+  background: none; border: 0; border-radius: var(--ce-radius-sm); cursor: pointer;
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-button-size); font-weight: var(--ce-text-button-weight);
+  color: var(--ce-sidebar-text-muted);
+}
+.drawer-close-btn:hover { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text-strong); }
+/* Fokus auf dem Navy-Grund im hellen Blau — wie in der Sidebar. */
+.mobile-drawer :focus-visible { outline: 2px solid var(--ce-sidebar-active-icon); outline-offset: 2px; }
+.mobile-drawer-nav { flex: 1; padding: var(--ce-space-4); display: flex; flex-direction: column; gap: var(--ce-space-1); }
+.drawer-nav-item {
+  display: flex; align-items: center; gap: var(--ce-space-2);
+  min-height: var(--ce-size-touch-target); padding: 10px var(--ce-space-3);
+  border-radius: var(--ce-radius-sm); color: var(--ce-sidebar-text);
+  font-size: var(--ce-text-nav-size); font-weight: var(--ce-text-nav-weight); line-height: var(--ce-text-nav-line);
+  cursor: pointer; border: none; background: none; width: 100%; text-align: left; font-family: var(--ce-font-sans);
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.drawer-nav-item:hover { background: var(--ce-sidebar-hover); color: var(--ce-sidebar-text-strong); }
+.drawer-cta { margin-top: var(--ce-space-3); padding-top: var(--ce-space-3); border-top: 1px solid var(--ce-sidebar-divider); }
 
 /* ─── Loading ────────────────────────────────────────────────────────────── */
 .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; flex-shrink: 0; }
-.spinner-dark { border-color: var(--border); border-top-color: var(--blue); }
-.loading-center { display: flex; align-items: center; justify-content: center; padding: 56px; gap: 10px; color: var(--ce-color-text-muted); }
+.spinner-dark { border-color: var(--border); border-top-color: var(--blue2); }
+.loading-center { display: flex; align-items: center; justify-content: center; padding: 56px; gap: 10px; color: var(--ce-color-text-muted); font-size: var(--ce-text-body-s-size); }
 
 /* ─── Empty ──────────────────────────────────────────────────────────────── */
 /* .empty/.empty-icon/.empty-title stehen seit Paket A, Phase 3 zentral im
@@ -187,163 +395,251 @@ tr:hover td { background: var(--surface-subtle); }
 
 /* ─── Overview empty state ───────────────────────────────────────────────── */
 
-/* ─── Shipment row ───────────────────────────────────────────────────────── */
+/* ─── Shipment row (Sendungsliste, Redesign 2026-10) ─────────────────────────
+   Identität links gebündelt: die Auftragsbestätigung als Hauptzeile, darunter
+   Carrier · Datum und die Trackingangabe als leise Sekundärzeilen. Zahlen rechts
+   und tabellarisch, der Status als GANZER Begriff (bricht nie mitten im Wort),
+   die Aktionen als Textgruppe rechts. Gewicht, Preis und Status bekommen die
+   Breite ihres Inhalts (`width: 1%` + nowrap) — keine willkürlich gleich
+   breiten Spalten. Die Aktionsspalte bleibt ohne Breitenvorgabe: mit Platz
+   stehen die drei Textaktionen in EINER Zeile, kurz über dem Umschaltpunkt
+   zur Kartenansicht bricht die Gruppe nach dem Muster um, statt die
+   Identität zu quetschen. */
+.shipment-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.shipment-id-number {
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600;
+  color: var(--ce-color-text-primary);
+}
+.shipment-id-fallback {
+  font-size: var(--ce-text-body-size); line-height: 1.4286;
+  color: var(--ce-color-text-secondary);
+}
+.shipment-id-meta {
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.shipment-id-sub {
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-muted);
+}
+.shipment-table td { vertical-align: top; }
+.shipment-table td.shipment-weight,
+.shipment-table td.shipment-price,
+.shipment-table td.shipment-status { width: 1%; white-space: nowrap; }
+.shipment-table td.shipment-weight { color: var(--ce-color-text-secondary); }
+.shipment-table td.shipment-price { font-weight: 600; }
+/* Bis 1360 px reicht die Breite ohnehin nicht für alle drei Aktionen in einer
+   Zeile: dann nimmt die Gruppe nur ihre Mindestbreite, und die Identität
+   bekommt den Rest (gemessen 1101/1280/1366/1440). */
+@media (max-width: 1360px) {
+  .shipment-table td.ce-col-actions { width: 1%; }
+}
+.shipment-status .badge { white-space: nowrap; }
+.shipment-review-note {
+  max-width: 280px;
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary); white-space: normal; text-align: right;
+}
+/* Mobilkarte: Nummer und Status teilen sich die Kopfzeile; reicht die Breite
+   nicht für beide („Ohne Vorgangsnummer" + langer Status), rutscht der Status in
+   eine eigene Zeile, statt über die Karte zu ragen. Die Trackingangabe steht
+   darunter über die volle Breite. Aktionen linksbündig unter den Werten, der
+   Preis hervorgehoben. */
+.shipment-card-ident .ce-list-card-head { flex-wrap: wrap; row-gap: var(--ce-space-1); }
+.shipment-card .ce-row-actions { justify-content: flex-start; }
+.shipment-card .shipment-review-note { text-align: left; max-width: none; }
+.shipment-card-price { font-weight: 600; }
 
-/* ─── Rechnungen: Dokumentstatus + Download (Phase 3) ─────────────────────── */
-
-/* ─── Rechnungen: Premium-Statussystem (Phase 5) ─────────────────────────────
+/* ─── Rechnungen: Statussystem ──────────────────────────────────────────────
    Vier Statusfamilien, AUSSCHLIESSLICH für Rechnungen (inv-status--*) — bewusst
-   KEINE globale .badge-*-Migration, um andere Kundenbereiche (Sendungen,
-   Konto) nicht zu verändern. Ruhiger als .badge: reduzierte Rundung (8px statt
-   Pill), etwas mehr horizontales Padding, kein weißer/grelle Vollton-Hintergrund
-   — nur die bereits vorhandenen Light-Tokens in gedämpfter, entsättigter Form.
-   Kein Umbruchzwang (anders als .badge/nowrap): die Labels sind länger
-   ("PDF-Erstellung fehlgeschlagen") und brechen bei Bedarf kontrolliert um,
-   statt eine Spalte zu sprengen. Keine Schatten, keine Animation. */
+   KEINE globale .badge-*-Migration, um andere Kundenbereiche nicht zu
+   verändern. Seit dem Redesign (2026-10) liegen alle vier Familien auf den
+   Statusrollen der Foundation (Erfolg · Hinweis · Fehler · Neutral) und tragen
+   die Badge-Grundform: Radius 8, 12/18 500, Innenabstand 3 × 8 px, KEIN
+   Statuspunkt — der Zustand steht als Text da. Der Zahlungsstatus ist der EINE
+   Hauptstatus einer Rechnung; Dokument- und Versandinformation stehen daneben
+   als ruhiger Text (.inv-doc-line), nicht als weitere Badgeflächen. */
 :root {
-  --inv-neutral-bg: var(--gray100);
-  --inv-neutral-fg: var(--gray600);
-  /* positive/critical sind wertgleich mit den Status-Foundation-Tokens (nur
-     hier referenziert statt ein zweites Mal als Hex hinterlegt); attention
-     bleibt eine eigene, etwas gedämpftere Abstufung ohne Foundation-Pendant. */
+  --inv-neutral-bg: var(--ce-color-status-neutral-surface);
+  --inv-neutral-fg: var(--ce-color-status-neutral-fg);
   --inv-positive-bg: var(--ce-color-status-success-surface);
   --inv-positive-fg: var(--ce-color-status-success-fg);
-  --inv-attention-bg: #f6f0e4;
-  --inv-attention-fg: #8a6a3f;
+  --inv-attention-bg: var(--ce-color-status-warning-surface);
+  --inv-attention-fg: var(--ce-color-status-warning-fg);
   --inv-critical-bg: var(--ce-color-status-overdue-surface);
   --inv-critical-fg: var(--ce-color-status-overdue-fg);
 }
 .inv-status {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 12px; border-radius: var(--ce-radius-sm);
-  font-size: 12px; font-weight: 600; line-height: 1.35;
+  display: inline-flex; align-items: center;
+  min-height: 24px; padding: 3px 8px; border-radius: var(--ce-radius-sm);
+  font-size: var(--ce-text-badge-size); font-weight: var(--ce-text-badge-weight);
+  line-height: var(--ce-text-badge-line);
 }
-.inv-status::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.65; }
-/* Der Label-Text ist ein eigenes Flex-Item mit min-width:0 — ohne das würde der
-   implizite min-width:auto von Flex-Items den Text NIE umbrechen lassen, auch
-   nicht bei mehrwortigen Labels wie „Nicht zahlungswirksam" (bekannter
-   Flexbox-Effekt bei Textknoten als direktem Flex-Kind). */
-/* hyphens:auto (mit lang="de" auf <html>) bricht lange, unteilbare deutsche
-   Komposita ("zahlungswirksam", "Kundenversand") an echten Silbengrenzen mit
-   Trennstrich statt an einer beliebigen Stelle — overflow-wrap bleibt als
-   Rückfallebene für den seltenen Fall, dass die Silbentrennung selbst nicht
-   ausreicht. */
-.inv-status-text { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
-.inv-status--neutral   { background: var(--inv-neutral-bg);   color: var(--inv-neutral-fg);   border: 1px solid rgba(71,85,105,0.14); }
-.inv-status--positive  { background: var(--inv-positive-bg);  color: var(--inv-positive-fg);  border: 1px solid rgba(47,107,82,0.16); }
-.inv-status--attention { background: var(--inv-attention-bg); color: var(--inv-attention-fg); border: 1px solid rgba(138,106,63,0.18); }
-.inv-status--critical  { background: var(--inv-critical-bg);  color: var(--inv-critical-fg);  border: 1px solid rgba(140,63,63,0.18); }
+/* Der Label-Text ist ein eigenes Flex-Item mit min-width:0. Ein Status ist ein
+   GANZER Begriff: er bricht höchstens an Wortgrenzen, nie mitten im Wort. */
+.inv-status-text { min-width: 0; overflow-wrap: normal; hyphens: manual; }
+.inv-status--neutral   { background: var(--inv-neutral-bg);   color: var(--inv-neutral-fg);   border: 1px solid var(--ce-color-status-neutral-border); }
+.inv-status--positive  { background: var(--inv-positive-bg);  color: var(--inv-positive-fg);  border: 1px solid var(--ce-color-status-success-border); }
+.inv-status--attention { background: var(--inv-attention-bg); color: var(--inv-attention-fg); border: 1px solid var(--ce-color-status-warning-border); }
+.inv-status--critical  { background: var(--inv-critical-bg);  color: var(--inv-critical-fg);  border: 1px solid var(--ce-color-status-overdue-border); }
 
 /* ─── Rechnungen: Zusammenfassung oberhalb der Liste ─────────────────────────
-   Ersetzt den früheren einzeiligen Balken. Drei Zustände (offen/keine offene
-   Forderung/keine Rechnungen) — siehe customerInvoiceSummary() in
-   customerInvoiceView.mjs. Ruhige Kartenoptik statt Alert-Farbe. */
-.inv-summary { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 16px; box-shadow: var(--shadow-card); }
-.inv-summary-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.inv-summary-label { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--ce-color-text-muted); text-transform: uppercase; margin: 0 0 4px; }
-.inv-summary-amount { font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1.2; }
-.inv-summary-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font-size: 13px; color: var(--ce-color-text-secondary); }
-.inv-summary-meta strong { color: var(--navy); font-weight: 600; }
-.inv-summary-title { font-size: 15px; font-weight: 600; color: var(--navy); margin: 0; }
-.inv-summary-sub { font-size: 13px; color: var(--ce-color-text-muted); margin: 4px 0 0; }
-.inv-summary-note { font-size: 12px; color: var(--inv-neutral-fg); margin-top: 8px; }
-
-/* ─── Rechnungen: Filter ──────────────────────────────────────────────────── */
-.inv-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.inv-filter-chip {
-  border: 1px solid var(--border); background: var(--ce-color-surface); color: var(--ce-color-text-secondary);
-  font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: var(--ce-radius-sm);
-  cursor: pointer;
+   Drei Zustände (offen/keine offene Forderung/keine Rechnungen) — siehe
+   customerInvoiceSummary() in customerInvoiceView.mjs. Arbeitsfläche mit leichter Tiefe, keine
+   Versal-Beschriftung; der offene Betrag in derselben Zahlenrolle wie das
+   Kennzahlenband der Übersicht. */
+.inv-summary {
+  background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle);
+  border-radius: var(--ce-radius-lg); box-shadow: var(--ce-elevation-1);
+  padding: var(--ce-space-5) var(--ce-space-6);
+  margin-bottom: var(--ce-space-6);
 }
-.inv-filter-chip:hover { border-color: var(--border2); color: var(--navy); }
+.inv-summary-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-4); flex-wrap: wrap; }
+.inv-summary-label {
+  margin: 0 0 var(--ce-space-1);
+  font-size: var(--ce-text-label-size); line-height: var(--ce-text-label-line);
+  font-weight: var(--ce-text-label-weight); color: var(--ce-color-text-secondary);
+}
+.inv-summary-amount {
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-numeric-display-size); line-height: var(--ce-text-numeric-display-line);
+  font-weight: var(--ce-text-numeric-display-weight); letter-spacing: var(--ce-text-numeric-display-tracking);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  color: var(--ce-color-text-primary);
+}
+.inv-summary-meta {
+  display: flex; flex-wrap: wrap; gap: var(--ce-space-1) var(--ce-space-5); margin-top: var(--ce-space-2);
+  font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line);
+  color: var(--ce-color-text-secondary);
+}
+.inv-summary-meta strong { color: var(--ce-color-text-primary); font-weight: 600; }
+.inv-summary-title {
+  margin: 0;
+  font-size: var(--ce-text-title-card-size); line-height: var(--ce-text-title-card-line);
+  font-weight: 600; color: var(--ce-color-text-primary);
+}
+.inv-summary-sub { font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-muted); margin: var(--ce-space-1) 0 0; }
+.inv-summary-note {
+  margin-top: var(--ce-space-2);
+  font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line);
+  color: var(--ce-color-text-muted);
+}
+
+/* ─── Rechnungen: Filter ─────────────────────────────────────────────────────
+   Weiterhin vier Umschaltknöpfe mit aria-pressed (KEINE Tabs, keine neue
+   Semantik) — nur ruhiger: helle Fläche, Kante, aktiver Zustand in Brand Soft
+   mit Text in der Markenfarbe statt einer vollen dunklen Fläche. Die Leiste hat die
+   gemeinsame Toolbarhöhe (patterns.css, 56 px); align-items: center hält die
+   Knöpfe auf ihrer eigenen Höhe, statt sie auf die Leistenhöhe zu dehnen. */
+.inv-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-2); margin-bottom: var(--ce-space-4); }
+.inv-filter-chip {
+  min-height: 32px; padding: 0 var(--ce-space-3);
+  border: 1px solid var(--ce-color-border-default); background: var(--ce-color-surface);
+  color: var(--ce-color-text-secondary);
+  font-family: var(--ce-font-sans); font-size: var(--ce-text-label-size); font-weight: 500;
+  border-radius: var(--ce-radius-sm); cursor: pointer;
+  transition: background-color var(--ce-motion-fast) var(--ce-motion-ease-standard), border-color var(--ce-motion-fast) var(--ce-motion-ease-standard);
+}
+.inv-filter-chip:hover { border-color: var(--ce-color-border-strong); background: var(--ce-color-surface-hover); color: var(--ce-color-text-primary); }
 .inv-filter-chip:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; }
-.inv-filter-chip--active { background: var(--navy); border-color: var(--navy); color: var(--ce-color-text-inverse); }
-/* Ohne diese Regel würde :hover (oben) die Textfarbe auf Navy zurücksetzen —
-   auf dem ebenfalls navyfarbenen Active-Grund unsichtbar (Kontrast 1:1). */
-.inv-filter-chip--active:hover { color: var(--ce-color-text-inverse); }
+.inv-filter-chip--active { background: var(--ce-color-brand-soft); border-color: var(--ce-color-brand-border); color: var(--ce-color-brand-ink); font-weight: 600; }
+/* Ohne diese Regel würde :hover (oben) Fläche und Textfarbe des aktiven Chips
+   auf den Hoverton zurücksetzen — der aktive Zustand muss auch unter dem
+   Zeiger erkennbar bleiben. */
+.inv-filter-chip--active:hover { color: var(--ce-color-brand-ink); background: var(--ce-color-brand-soft-hover); border-color: var(--ce-color-brand-border); }
+@media (max-width: 860px) {
+  .inv-filter-chip { min-height: 44px; }
+}
 
 /* ─── Rechnungen: Tabelle ohne horizontales Scrollen (sechs Bereiche) ────────
    Die globale Regel `table { min-width: 480px }` wird hier gezielt aufgehoben.
-   Betrag/Zahlungsstatus/Dokument/Aktion sind starr (Zahl, Statuslabel, Buttons)
-   und bekommen feste Breiten; Rechnung und Zeitraum teilen sich den Rest
-   (fixed-Layout, kein weiteres width nötig). Breiten empirisch gegen die echte
-   gebaute App gemessen (Playwright, 1440–320 px). Lange Statuslabels ("Nicht
-   zahlungswirksam", "Kein Kundenversand") brechen dank hyphens:auto an echten
-   Silbengrenzen (.inv-status-text) — die Spalten müssen sie deshalb NICHT
-   unwrapped aufnehmen, nur eng genug für einen sauberen Silbenumbruch sein. */
+   Betrag/Zahlungsstatus/Dokument/Aktion sind starr (Zahl, Statuslabel, Text,
+   Textaktionen) und bekommen feste Breiten; Rechnung und Zeitraum teilen sich
+   den Rest (fixed-Layout, kein weiteres width nötig). Die Dokumentangabe ist
+   seit dem Redesign Text statt Badge und darf zweizeilig umbrechen; die beiden
+   Textaktionen stehen untereinander, sobald die Spalte für beide nicht reicht. */
 .inv-table table { min-width: 0; table-layout: fixed; }
 .inv-table th, .inv-table td { vertical-align: top; }
 .inv-table th { white-space: normal; }
-.inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 124px; }
-.inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 124px; }
-/* 192 statt 156: Platz für die breiteste Dokument-Pill „Per E-Mail versendet"
-   in EINER Zeile — an der ECHTEN Pill gemessen (max-content inkl. Punkt,
-   6-px-Gap und 2 × 12 px Eigenpadding, DM Sans 12/600): 159 px + 2 × 14 px
-   Zellpadding + Reserve. In der schmaleren Spalte brach die Pill dauerhaft
-   zweizeilig — als einzige der Fixspalten war sie gegen ihren realen Inhalt
-   zu knapp bemessen. */
-.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 192px; }
-.inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 138px; }
+.inv-table th:nth-child(3), .inv-table td:nth-child(3) { width: 116px; }
+.inv-table th:nth-child(4), .inv-table td:nth-child(4) { width: 136px; }
+.inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 164px; }
+.inv-table th:nth-child(6), .inv-table td:nth-child(6) { width: 184px; }
+/* Ab 1280 px steht „Versendet am 30.9.2026" in EINER Zeile; Rechnung und
+   Zeitraum behalten dabei genug Breite für Nummer und Datum (gemessen). */
+@media (min-width: 1280px) {
+  .inv-table th:nth-child(5), .inv-table td:nth-child(5) { width: 192px; }
+}
 /* Betragsspalte rechtsbündig wie jede Zahlenspalte. Die Ausrichtung läuft über
    dieselbe nth-child-Mechanik wie die Spaltenbreiten — diese Tabelle trägt
    bewusst keine Marker-Klassen im Markup (Paket A, Phase 2.5). */
 .inv-table th:nth-child(3), .inv-table td:nth-child(3) { text-align: right; }
+/* Die Aktionsspalte steht rechts — wie die Aktionen jeder anderen Liste. */
+.inv-table th:nth-child(6) { text-align: right; }
+.inv-table td:nth-child(6) .inv-actions { align-items: flex-end; text-align: right; }
+.inv-table td:nth-child(6) .inv-actions-row { justify-content: flex-end; }
 
-.inv-cell-number { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.inv-cell-number-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: 12px; font-weight: 600; color: var(--navy); overflow-wrap: anywhere; }
+.inv-cell-number { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-cell-number-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); overflow-wrap: anywhere; }
 
-.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ce-color-text-secondary); min-width: 0; }
-/* BEWUSST kein display:flex hier (anders als eine frühere Fassung): Label und
-   Datum sind beide je ein unteilbares Wort ("Rechnung"/"Fällig", "30.7.2026")
-   — als Flex-Items könnten sie mangels Leerzeichen nie umbrechen und dann auch
-   nicht schrumpfen (derselbe Effekt wie bei .inv-status ohne inneren Textknoten,
-   hier aber ohne einfachen Ausweg über min-width:0, weil das Datum selbst nicht
-   sinnvoll umbrechen kann). Im normalen Textfluss darf die Zeile bei Bedarf
-   zwischen Label und Datum umbrechen, statt zu überlaufen. */
+.inv-period { display: flex; flex-direction: column; gap: 2px; font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); min-width: 0; }
+/* BEWUSST kein display:flex hier: Label und Datum sind beide je ein
+   unteilbares Wort ("Rechnung"/"Fällig", "30.7.2026"). Im normalen Textfluss
+   darf die Zeile bei Bedarf zwischen Label und Datum umbrechen, statt zu
+   überlaufen. */
 .inv-period-row { min-width: 0; }
 .inv-period-label { color: var(--ce-color-text-muted); }
 .inv-period-due--overdue { color: var(--inv-critical-fg); font-weight: 600; }
 
-.inv-amount-value { font-family: var(--ce-font-numeric); font-size: 14px; font-weight: 600; color: var(--navy); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.inv-amount-value { font-family: var(--ce-font-numeric); font-size: var(--ce-text-body-size); line-height: 1.4286; font-weight: 600; color: var(--ce-color-text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
-.inv-doc-cell { display: flex; flex-direction: column; gap: 5px; }
-.inv-doc-note { font-size: 11px; color: var(--ce-color-text-muted); }
+/* Dokument- und Versandinformation: leiser Text, eine Zeile je Angabe. Nur der
+   Fehlerfall trägt Farbe (Fehlerrolle) — „bereit" und „versendet" sind die
+   erwartbare Normalität und bleiben Sekundärtext. */
+.inv-doc-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-doc-line { font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); color: var(--ce-color-text-secondary); }
+.inv-doc-line--critical { color: var(--ce-color-status-error-fg); font-weight: 500; }
+.inv-doc-note { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); }
 
-.inv-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.inv-actions-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.inv-action-reason { font-size: 11px; color: var(--ce-color-text-muted); line-height: 1.35; }
+.inv-actions { display: flex; flex-direction: column; gap: var(--ce-space-1); align-items: flex-start; }
+.inv-actions-row { display: flex; gap: var(--ce-space-1) var(--ce-space-2); flex-wrap: wrap; }
+.inv-action-reason { font-size: var(--ce-text-caption-size); color: var(--ce-color-text-muted); line-height: var(--ce-text-caption-line); }
 
-/* ─── Rechnungen: Mobilkarten — unterhalb ~900 px statt der Tabelle ────────── */
-.inv-cards { display: none; list-style: none; flex-direction: column; gap: 12px; margin: 0; padding: 0; }
-.inv-card { background: var(--surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 16px 18px; }
-.inv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+/* ─── Rechnungen: Mobilkarten — unterhalb ~1100 px statt der Tabelle ──────────
+   Reihenfolge nach Bedeutung: Nummer + Zahlungsstatus, Betrag, Fälligkeit,
+   dann die übrigen Daten; Dokument und Versand zuletzt als leiser Text. */
+.inv-cards { display: none; list-style: none; flex-direction: column; gap: var(--ce-space-3); margin: 0; padding: 0; }
+.inv-card { background: var(--ce-color-surface); border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-lg); box-shadow: var(--ce-elevation-1); padding: var(--ce-space-4); }
+.inv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ce-space-3); margin-bottom: var(--ce-space-3); }
 /* Das Statuspill darf NICHT schrumpfen: eine sehr lange Rechnungsnummer (Altbestand
    aus einer Migration) presst es sonst so schmal, dass „Offen" Buchstabe für
    Buchstabe untereinander umbricht. Die Nummer selbst hat min-width:0 und bricht
    kontrolliert um — sie ist der nachgebende Teil, nicht der Status. */
 .inv-card-head > .inv-status { flex: none; }
-.inv-card-kv { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; font-size: 13px; }
-.inv-card-kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.inv-card-kv-row dt { color: var(--ce-color-text-muted); flex: none; }
+.inv-card-kv { display: flex; flex-direction: column; gap: var(--ce-space-2); margin: 0 0 var(--ce-space-3); font-size: var(--ce-text-body-s-size); line-height: var(--ce-text-body-s-line); }
+.inv-card-kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ce-space-3); }
+.inv-card-kv-row dt { color: var(--ce-color-text-secondary); flex: none; }
 .inv-card-kv-row dd { margin: 0; text-align: right; color: var(--ce-color-text-primary); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.inv-card-kv-row--amount dd {
+  font-family: var(--ce-font-numeric);
+  font-size: var(--ce-text-title-card-size); line-height: var(--ce-text-title-card-line);
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
 /* Höhere Spezifität nötig: ".inv-card-kv-row dd" (Klasse+Typ) schlägt sonst
    ".inv-period-due--overdue" (nur Klasse) und die überfällige Fälligkeit bliebe
    in der Mobilkarte fälschlich grau statt rot. */
 .inv-card-kv-row dd.inv-period-due--overdue { color: var(--inv-critical-fg); }
-.inv-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.inv-card-kv-row dd .inv-doc-line { font-weight: 400; }
+.inv-card-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); padding-top: var(--ce-space-3); border-top: 1px solid var(--border-hairline); }
 
-/* Umschaltpunkt bei 1100px statt der bei sechsspaltigen Admin-Listen üblichen
-   900px: die vier starren Spalten (Betrag/Zahlungsstatus/Dokument/Aktion)
-   belegen zusammen ca. 530px; darunter bleiben Rechnung/Zeitraum zu schmal für
-   ihre eigenen Spaltenköpfe (gemessen gegen die echte gebaute App: 1100px
-   sauber, 1050px bricht bereits „Rechnung" im Spaltenkopf um).
-
-   Go-live: der Umschaltpunkt konnte von 1150px auf 1100px sinken, weil mit den
-   internen Zuständen auch die längsten Statuslabels entfallen sind („Nicht
-   zahlungswirksam", „Kein Kundenversand"). Zahlungsstatus/Dokument brauchen
-   jetzt nur noch Platz für „Überfällig" bzw. „PDF-Erstellung fehlgeschlagen".
-   Gleiches Muster wie .adm-canc-table. */
-@media (max-width: 1100px) {
+/* Umschaltpunkt unter 1200px (Redesign 2026-10, vorher 1100px): die vier
+   starren Spalten (Betrag/Zahlungsstatus/Dokument/Aktion) belegen zusammen
+   600px. Mit der 248-px-Sidebar und 24 px Seitenrand blieben zwischen 1101 und
+   etwa 1170px unter 105px je Spalte — die Rechnungsnummer brach am
+   Bindestrich („CE-RE26-" / „00010", gemessen). Ab 1200px bleiben 120px.
+   Gleiche Schwelle wie die Adminlisten Rechnungen/Audit-Logs. */
+@media (max-width: 1199px) {
   .inv-table { display: none; }
   .inv-cards { display: flex; }
 }
@@ -354,7 +650,8 @@ tr:hover td { background: var(--surface-subtle); }
    Breite und Material der gemeinsamen XL-Dialogbreite, bleibt aber eine
    eigene Regel statt Teil der .ce-dialog-Gruppe: die Gruppe setzt Padding und
    max-height/overflow-y für textlastige Dialoge — dieser hier braucht eine
-   FESTE Höhe und einen randlosen Body, damit der iframe den Platz ausfüllt. */
+   FESTE Höhe und einen randlosen Body, damit der iframe den Platz ausfüllt.
+   Kopf: Titel links, die Textaktionen „Herunterladen" und „Schließen" rechts. */
 .pdfview-modal {
   --ce-dialog-width: var(--ce-size-dialog-xl);
   width: 100%; max-width: var(--ce-dialog-width);
@@ -365,17 +662,23 @@ tr:hover td { background: var(--surface-subtle); }
   box-shadow: var(--ce-elevation-3);
 }
 .pdfview-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ce-space-3);
+  padding: var(--ce-space-3) var(--ce-space-5); border-bottom: 1px solid var(--ce-color-border-subtle);
 }
-.pdfview-title { font-size: 14px; font-weight: 600; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pdfview-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.pdfview-body { flex: 1; min-height: 0; background: var(--gray100); display: flex; flex-direction: column; }
+.pdfview-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--ce-text-title-card-size); line-height: var(--ce-text-title-card-line);
+  font-weight: 600; color: var(--ce-color-text-primary);
+}
+.pdfview-actions { display: flex; align-items: center; gap: var(--ce-space-2); flex-shrink: 0; }
+.pdfview-body { flex: 1; min-height: 0; background: var(--ce-color-surface-muted); display: flex; flex-direction: column; }
 .pdfview-frame { border: 0; width: 100%; height: 100%; flex: 1; }
+.pdfview-error { margin: var(--ce-space-4); }
 /* Mobil: Vollbilddarstellung (dynamische Viewport-Höhe wie Auth/Overview). */
 @media (max-width: 600px) {
   .pdfview-overlay { padding: 0; }
   .pdfview-modal { width: 100%; height: 100dvh; border-radius: 0; }
+  .pdfview-head { padding: var(--ce-space-2) var(--ce-space-4); }
 }
 
 /* ─── Profile ─────────────────────────────────────────────────────────────── */
@@ -450,22 +753,10 @@ tr:hover td { background: var(--surface-subtle); }
 .profile-hint p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ce-color-text-muted); }
 .profile-hint p + p { margin-top: 3px; }
 
-/* Account-Hero: Status/Konto-Chips */
+/* Account-Kopf: Statuszeile. Seit dem Redesign 2026-10 trägt sie genau einen
+   Status (Badge) — die früheren Konto-Chips (.profile-meta-chip) sind mit
+   ihrem letzten Aufrufer entfallen. */
 .profile-meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; }
-/* Der Chip bricht an WORTGRENZEN, statt starr nowrap zu bleiben. Er ist eine
-   Beschriftung, keine Bedieneinheit — nowrap ist ausdrücklich nur für `.btn`
-   reserviert. Gemessen: mit „Zahlungsziel: 7 Tage nach Rechnungserhalt" ragte der
-   Chip auf 390 px um 5 px aus dem Bild, und die Zeile darüber (.profile-meta-row)
-   konnte das nicht auffangen — sie umbricht zwischen den Chips, nicht in einem.
-   Kein `anywhere`/`break-all`: Reflow vor Mid-Word-Break. */
-.profile-meta-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 10px; border-radius: var(--radius-full);
-  font-size: 11px; font-weight: 600; white-space: normal;
-  background: var(--gray100); color: var(--ce-color-text-secondary);
-  border: 1px solid var(--ce-color-border-subtle);
-}
-.profile-meta-chip-accent { background: var(--blue-light); color: var(--blue2); border-color: var(--ce-color-brand-border-soft); }
 
 /* Der Footer des eingeloggten Bereichs (.app-footer) steht in
    dashboard-premium.css. Die frühere zentrierte .legal-links-Zeile ist

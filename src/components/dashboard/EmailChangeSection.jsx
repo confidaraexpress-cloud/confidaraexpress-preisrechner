@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Icon } from "../ui/Icon";
 import { useAuth } from "../../context/AuthContext";
 import { startEmailChange, resendEmailChange, cancelEmailChange, triggerAuthError } from "../../api/client";
 import { dtDE } from "../../utils/formatters";
@@ -56,7 +55,7 @@ export function EmailChangeSection({ user }) {
         if (d?.pending) updateUser({ pendingEmailChange: d.pending });
         setDialogOpen(false);
         if (d?.mailSent === false) {
-          showNotice("Die Änderung wurde gespeichert, aber die Bestätigungs-E-Mail konnte nicht versendet werden. Bitte sende sie erneut.", "warn");
+          showNotice("Die Änderung wurde gespeichert, aber die Bestätigungs-E-Mail konnte nicht versendet werden. Bitte senden Sie sie erneut.", "warn");
         } else {
           showNotice("Wir haben eine Bestätigungs-E-Mail an die neue Adresse gesendet.", "success");
         }
@@ -139,14 +138,13 @@ export function EmailChangeSection({ user }) {
     <div className="email-change-section">
       {notice && (
         <div className={`alert ${noticeKind === "warn" ? "alert-error" : "alert-success"} email-change-notice`} role="status">
-          <Icon n={noticeKind === "warn" ? "info" : "check"} s={16} /><span>{notice}</span>
+          <span>{notice}</span>
         </div>
       )}
 
       {pending ? (
         <div className="email-change-pending">
           <div className="email-change-pending-head">
-            <Icon n="clock" s={16} />
             <span>Neue E-Mail-Adresse wartet auf Bestätigung</span>
           </div>
           <div className="email-change-pending-email">{pending.newEmail}</div>
@@ -156,7 +154,7 @@ export function EmailChangeSection({ user }) {
           )}
           {resendError && (
             <div className="alert alert-error email-change-notice" role="alert">
-              <Icon n="x" s={16} /><span>{resendError}</span>
+              <span>{resendError}</span>
             </div>
           )}
           <div className="email-change-pending-actions">
@@ -170,8 +168,8 @@ export function EmailChangeSection({ user }) {
         </div>
       ) : (
         <div className="email-change-actions">
-          <button type="button" className="btn btn-outline email-change-trigger" onClick={openDialog}>
-            <Icon n="mail" s={14} /> E-Mail-Adresse ändern
+          <button type="button" className="btn btn-outline btn-sm email-change-trigger" onClick={openDialog}>
+            E-Mail-Adresse ändern
           </button>
         </div>
       )}

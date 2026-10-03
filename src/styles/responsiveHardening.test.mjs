@@ -59,8 +59,13 @@ test("3 — die lokalen Bruchregeln technischer Strings bestehen weiter", () => 
     "die Adressbuch-E-Mail hat ihre lokale anywhere-Regel verloren");
   assert.match(css["dashboard.css"], /\.inv-cell-number-value\s*\{[^}]*overflow-wrap:\s*anywhere/,
     "Rechnungsnummern haben ihre lokale Bruchregel verloren");
-  assert.match(css["calculator.css"], /\.tracking-hero-meta-value\s*\{[^}]*overflow-wrap:\s*anywhere/,
+  // Redesign 2026-10: der Tracking-Block ist aus calculator.css nach
+  // dashboard.css gezogen (er gehört zur Sendungsverfolgung, nicht zum
+  // Preisrechner) — die Regel wandert unverändert mit.
+  assert.match(css["dashboard.css"], /\.tracking-hero-meta-value\s*\{[^}]*overflow-wrap:\s*anywhere/,
     "Tracking-Metawerte (IDs) haben ihre lokale Bruchregel verloren");
+  assert.ok(!/\.tracking-hero-meta-value\s*\{/.test(css["calculator.css"]),
+    "die Tracking-Metawerte sind doppelt definiert");
   // Und das Telefon bleibt eine Einheit.
   assert.match(css["addressbook.css"], /\.abk-contact-phone\s*\{[^}]*white-space:\s*nowrap/,
     "das Telefon darf nicht mehr als Einheit stehen");
@@ -95,20 +100,37 @@ test("5 — die Reflow-Stufen des Adressbuchs existieren und messen den Containe
 });
 
 test("6 — die Listen-Umschalter sind shell-bewusst (1100er-Muster)", () => {
-  // Generikum (Sendungen) und Entwürfe folgen der gemessenen Rechnungs-Schwelle.
+  // Generikum (Sendungen) und Entwürfe schalten bei 1100.
   assert.match(css["patterns.css"], /@media \(max-width: 1100px\)\s*\{\s*\.ce-list-table\s*\{\s*display:\s*none/,
     ".ce-list-* schaltet nicht mehr bei 1100");
   assert.match(css["drafts.css"], /@media \(max-width: 1100px\)\s*\{\s*\.dft-table-card\s*\{\s*display:\s*none/,
     "die Entwurfstabelle schaltet nicht mehr bei 1100");
-  assert.match(css["dashboard.css"], /@media \(max-width: 1100px\)/,
-    "die Rechnungs-Referenzschwelle ist verschwunden");
+  // Redesign 2026-10: die Rechnungen (vier starre Spalten, 600 px) schalten
+  // gemessen erst unter 1200 — sonst bricht die Rechnungsnummer neben der
+  // 248-px-Sidebar am Bindestrich. Gleiche Schwelle wie die Adminlisten.
+  assert.match(css["dashboard.css"], /@media \(max-width: 1199px\)\s*\{\s*\.inv-table\s*\{\s*display:\s*none/,
+    "die Rechnungsschwelle ist verschwunden");
 });
 
 test("7 — der Seitenkopf kann schrumpfen, der Chip ellipsiert (R4)", () => {
-  assert.ok(!/flex-shrink:\s*0/.test(block("patterns.css", ".ce-page-header-aside")),
-    "der Aside ist wieder shrink-fest — der Primärbutton kann aus dem Bild laufen");
-  assert.match(block("patterns.css", ".ce-page-header-aside"), /min-width:\s*0/,
-    "dem Aside fehlt das Schrumpfglied");
+  // Redesign 2026-10: der frühere Aside (Glocke + Chip + Aktion in EINEM
+  // shrink-gefährdeten Block) ist aufgeteilt — Utility-Zeile über dem Titel,
+  // Aktionen in der Titelzeile. R4 bleibt gelöst, nur anders: die Titelzeile
+  // bricht um, die Aktionsgruppe zieht als Ganzes unter den Titel und ist auf
+  // die Zeilenbreite gedeckelt; der Titeltext kann schrumpfen.
+  assert.match(block("patterns.css", ".ce-page-header-main"), /flex-wrap:\s*wrap/,
+    "die Titelzeile bricht nicht um — die Aktionen können aus dem Bild laufen");
+  const aktionen = block("patterns.css", ".ce-page-header-actions");
+  assert.match(aktionen, /max-width:\s*100%/, "die Aktionsgruppe ist nicht auf die Zeilenbreite gedeckelt");
+  assert.match(aktionen, /flex-wrap:\s*wrap/, "die Aktionsgruppe kann nicht umbrechen");
+  assert.match(block("patterns.css", ".ce-page-header-text"), /min-width:\s*0/,
+    "dem Titeltext fehlt das Schrumpfglied");
+  assert.match(block("patterns.css", ".ce-utility"), /min-width:\s*0/,
+    "der Utility-Zeile fehlt das Schrumpfglied");
+  // Ein überlanger Titel bricht nur im Notfall — ohne die min-content-Breite zu
+  // senken (deshalb break-word, nicht anywhere).
+  assert.match(block("patterns.css", ".ce-page-header-title"), /overflow-wrap:\s*break-word/,
+    "ein überlanger Seitentitel kann auf 320 px aus dem Bild laufen");
   const uname = block("overview.css", ".pp-uname");
   assert.match(uname, /text-overflow:\s*ellipsis/, "der Chip-Name ellipsiert nicht mehr");
   assert.match(block("overview.css", ".pp-uchip"), /max-width/,
@@ -166,10 +188,17 @@ test("8 — keine globale min-width-0-, anywhere- oder break-all-Regel", () => {
   //     (sanktionierter technischer String, bis 255 Zeichen) und lief auf 390 px aus dem Bild.
   //   • `.booking-success-wrap .btn-full` — Belegknöpfe mit Vorgangsnummer
   //     („Auftragsbestätigung CE-AB… herunterladen") auf dem Erfolgsbildschirm.
+  //
+  // +1 (37) für `.inv-tracking-nr` (Redesign 2026-10): die Trackingnummern
+  // einer Auftragssendung stehen im Auftragsdetail unter 1100 px als
+  // beschriftete Zeile statt als Tabellenzelle. Eine Trackingnummer ist der
+  // sanktionierte technische String ohne Wortgrenzen; lokal an EINEM eigenen
+  // Element, nicht auf der Zeile. (Die nach dashboard.css gewanderte Regel
+  // `.tracking-hero-meta-value` zählt unverändert mit, siehe Test 3.)
   const gesamt = Object.entries(css)
     .filter(([f]) => f !== "auth.css")
     .reduce((n, [, t]) => n + (t.match(/overflow-wrap:\s*anywhere/g) || []).length, 0);
-  assert.ok(gesamt <= 36, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 36)`);
+  assert.ok(gesamt <= 37, `overflow-wrap:anywhere breitet sich wieder aus (${gesamt} Vorkommen, erlaubt 37)`);
 });
 
 /* ══════════ 9 — Toolbar-Falle bleibt geschlossen ═════════════════════════ */

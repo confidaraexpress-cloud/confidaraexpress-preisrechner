@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "../components/ui/Icon";
 import {
   INSURANCE_INFO_PAGE,
   INSURANCE_INFO_SECTIONS,
@@ -19,6 +18,12 @@ import {
 // und sagt an zwei Stellen ausdrücklich, dass die geltenden
 // Versicherungsbedingungen maßgeblich sind. Sie ersetzt sie nicht und gibt auch
 // nicht vor, sie wiederzugeben.
+//
+// Redesign 2026-10 (Audit H39): dieselbe ruhige Lesesprache wie die
+// Rechtsseiten — Text statt Symbolen (keine Häkchenliste, keine Infoicons in
+// den Hinweisen), keine Versal-Eyebrow über dem Titel (sie wiederholte nur
+// „Transportversicherung"), EINE Lesefläche statt einer Karte je Abschnitt.
+// Inhalt, Reihenfolge, Quellen und Hinweise sind unverändert.
 
 const TOC = insuranceInfoToc();
 
@@ -27,7 +32,6 @@ export default function InsuranceInfoPage() {
     <div className="page-with-navbar">
       <div className="insinfo-wrap">
         <header className="insinfo-head">
-          <span className="insinfo-eyebrow">{INSURANCE_INFO_PAGE.eyebrow}</span>
           <h1 className="insinfo-title">{INSURANCE_INFO_PAGE.title}</h1>
           <p className="insinfo-lead">{INSURANCE_INFO_PAGE.lead}</p>
         </header>
@@ -35,8 +39,7 @@ export default function InsuranceInfoPage() {
         {/* Der Hinweis steht am Anfang UND am Ende — wer nur überfliegt, soll
             ihn trotzdem sehen. */}
         <p className="insinfo-disclaimer" role="note">
-          <Icon n="info" s={16} c="currentColor" />
-          <span>{INSURANCE_INFO_PAGE.disclaimer}</span>
+          {INSURANCE_INFO_PAGE.disclaimer}
         </p>
 
         <div className="insinfo-body">
@@ -68,21 +71,13 @@ export default function InsuranceInfoPage() {
                 {s.items?.length > 0 && (
                   <ul className="insinfo-list">
                     {s.items.map((item, k) => (
-                      <li key={k} className="insinfo-item">
-                        <span className="insinfo-item-ico" aria-hidden="true">
-                          <Icon n="check" s={14} c="currentColor" />
-                        </span>
-                        <span>{item}</span>
-                      </li>
+                      <li key={k} className="insinfo-item">{item}</li>
                     ))}
                   </ul>
                 )}
 
                 {s.note && (
-                  <p className="insinfo-note">
-                    <Icon n="info" s={14} c="currentColor" />
-                    <span>{s.note}</span>
-                  </p>
+                  <p className="insinfo-note">{s.note}</p>
                 )}
 
                 {/* Herkunft der Aussage — nicht als Dekoration, sondern damit
@@ -107,8 +102,7 @@ export default function InsuranceInfoPage() {
             </section>
 
             <p className="insinfo-disclaimer insinfo-disclaimer--end" role="note">
-              <Icon n="info" s={16} c="currentColor" />
-              <span>{INSURANCE_INFO_PAGE.disclaimer}</span>
+              {INSURANCE_INFO_PAGE.disclaimer}
             </p>
           </main>
         </div>

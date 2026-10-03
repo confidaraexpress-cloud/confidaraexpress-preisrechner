@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Icon } from "../../components/ui/Icon";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/admin/ConfirmDialog";
 import {
@@ -185,7 +184,7 @@ export default function AdminShipmentDetailPage() {
 
   const back = (
     <Link to="/admin/shipments" className="adm-back">
-      <Icon n="chevronLeft" s={16} /> Zurück zur Liste
+      Zurück zur Liste
     </Link>
   );
 
@@ -204,7 +203,6 @@ export default function AdminShipmentDetailPage() {
         {back}
         <div className="table-card">
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true"><Icon n="search" s={24} /></div>
             <div className="empty-title">Die Sendung wurde nicht gefunden.</div>
             <p className="empty-text">
               Möglicherweise wurde sie entfernt oder die Adresse ist nicht mehr gültig.
@@ -223,10 +221,10 @@ export default function AdminShipmentDetailPage() {
       <div className="adm-page">
         {back}
         <div className="adm-loaderr">
-          <div className="alert alert-error" role="alert"><Icon n="x" s={16} />{error || GENERIC_ERROR}</div>
+          <div className="alert alert-error" role="alert">{error || GENERIC_ERROR}</div>
           <div className="adm-loaderr-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={load} disabled={loading}>
-              <Icon n="refresh" s={14} /> Erneut versuchen
+              Erneut versuchen
             </button>
             <Link className="btn btn-outline btn-sm" to="/admin/shipments">Zurück zur Sendungsliste</Link>
           </div>
@@ -336,7 +334,6 @@ export default function AdminShipmentDetailPage() {
           jetzt nur noch dort, direkt neben den Kundendaten. */}
       <PageHeader
         variant="admin"
-        eyebrow="Verwaltung"
         backLink={back}
         title={ident.primary}
         subtitle={(
@@ -349,9 +346,9 @@ export default function AdminShipmentDetailPage() {
         meta={(
           <>
             <span className={`badge ${statusCls}`}>{statusLabel}</span>
-            <span className="adm-chip"><Icon n="package" s={13} />{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
+            <span className="adm-chip">{carrierOf(s) ? resolveCarrierName(carrierOf(s)) : "Carrier noch nicht gewählt"}</span>
             <span className="adm-chip">{shippingModeLabel(s)}</span>
-            <span className="adm-chip"><Icon n="calendar" s={13} />{fmtDate(dateOf(s))}</span>
+            <span className="adm-chip">{fmtDate(dateOf(s))}</span>
             {sections.label && <span className="badge badge-green">Label verfügbar</span>}
             {/* Aussage ausschließlich über die GESPEICHERTE Nummer — nicht
                 über Live-Daten oder einen Carrier-Link. Gleiche Quelle wie
@@ -368,7 +365,7 @@ export default function AdminShipmentDetailPage() {
              ohne E-Mail/Kontoadresse: dafür ist die Kundendetailseite zuständig. */}
         {sections.customer && (
           <div className="adm-card">
-            <div className="adm-card-head"><Icon n="building" s={17} /> Kunde</div>
+            <div className="adm-card-head">Kunde</div>
             <div className="adm-card-body">
               <KV items={[
                 ["Firmenname", cust.known ? cust.primary : <span className="adm-muted">{cust.primary}</span>],
@@ -378,7 +375,7 @@ export default function AdminShipmentDetailPage() {
               {userIdOf(s) != null && (
                 <div className="adm-track-link">
                   <Link className="btn btn-outline btn-sm" to={`/admin/users/${encodeURIComponent(userIdOf(s))}`}>
-                    <Icon n="arrowRight" s={14} /> Kundendetail öffnen
+                    Kundendetail öffnen
                   </Link>
                 </div>
               )}
@@ -388,7 +385,7 @@ export default function AdminShipmentDetailPage() {
 
         {/* 3) Versanddaten */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="package" s={17} /> Versanddaten</div>
+          <div className="adm-card-head">Versanddaten</div>
           <div className="adm-card-body">
             <KV items={[
               // Block D: der gebuchte Leistungsname — nie die Preisklasse als Name.
@@ -432,11 +429,10 @@ export default function AdminShipmentDetailPage() {
              Buchungsklärung, nicht hier. */}
         {ops && (
           <div className="adm-card" id="adm-ship-ops">
-            <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Buchung &amp; Betrieb</div>
+            <div className="adm-card-head">Buchung &amp; Betrieb</div>
             <div className="adm-card-body">
               {opsNotices.map((n) => (
                 <div key={n.kind} className={`adm-note ${n.tone === "info" ? "adm-note--info" : "adm-note--warning"} adm-opnote`} role="note">
-                  <Icon n={n.tone === "info" ? "info" : "clockDelay"} s={16} />
                   <span>
                     {n.text}
                     {n.to && <> <Link to={n.to}>Zur Buchungsklärung</Link></>}
@@ -537,7 +533,7 @@ export default function AdminShipmentDetailPage() {
 
         {/* 3) Preisbereich (nur Anzeige) */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="euro" s={17} /> Preis</div>
+          <div className="adm-card-head">Preis</div>
           <div className="adm-card-body">
             <KV items={[
               ["Ursprungspreis", firstDefined(s.price_original, s.priceOriginal) != null ? money(firstDefined(s.price_original, s.priceOriginal)) : "—"],
@@ -552,7 +548,7 @@ export default function AdminShipmentDetailPage() {
              der gespeicherten Werte; eine leere Karte würde eine Absicherung behaupten. */}
         {insurance && (
           <div className="adm-card">
-            <div className="adm-card-head"><Icon n="shieldCheck" s={17} /> Versicherung</div>
+            <div className="adm-card-head">Versicherung</div>
             <div className="adm-card-body">
               <KV items={[
                 ["Art", insurance.typeLabel],
@@ -568,7 +564,7 @@ export default function AdminShipmentDetailPage() {
 
         {/* 4) Rechnungsbereich */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="invoice" s={17} /> Rechnung</div>
+          <div className="adm-card-head">Rechnung</div>
           <div className="adm-card-body">
             {invoice ? (
               <KV items={[
@@ -592,7 +588,7 @@ export default function AdminShipmentDetailPage() {
              neue Adminseite, kein Menüpunkt, kein Dashboardmodul. */}
         {emailDeliveries.length > 0 && (
           <div className="adm-card">
-            <div className="adm-card-head"><Icon n="mail" s={17} /> Zusätzliche E-Mail-Zustellungen</div>
+            <div className="adm-card-head">Zusätzliche E-Mail-Zustellungen</div>
             <div className="adm-card-body">
               {retryMsg && (
                 <div
@@ -600,7 +596,6 @@ export default function AdminShipmentDetailPage() {
                   role="status"
                   aria-live="polite"
                 >
-                  <Icon n={retryMsg.type === "success" ? "check" : "info"} s={16} />
                   {retryMsg.text}
                 </div>
               )}
@@ -649,10 +644,9 @@ export default function AdminShipmentDetailPage() {
 
         {/* 5) Adressbereich / PII — standardmäßig eingeklappt */}
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="lock" s={17} /> Adressdaten</div>
+          <div className="adm-card-head">Adressdaten</div>
           <div className="adm-card-body">
             <div className="adm-pii-warn">
-              <Icon n="lock" s={16} />
               <span>
                 Diese Daten enthalten personenbezogene Absender- und Empfängerinformationen.
                 Der Detailzugriff wird protokolliert.
@@ -664,7 +658,6 @@ export default function AdminShipmentDetailPage() {
               onClick={() => setShowPii((v) => !v)}
               aria-expanded={showPii}
             >
-              <Icon n={showPii ? "eyeOff" : "eye"} s={14} />
               {showPii ? "Adressdaten ausblenden" : "Adressdaten anzeigen"}
             </button>
 
@@ -683,7 +676,7 @@ export default function AdminShipmentDetailPage() {
              die fachliche Zollprüfung bleibt vollständig im Backend. */}
         {sections.customs && (
           <div className="adm-card">
-            <div className="adm-card-head"><Icon n="globe" s={17} /> Zoll</div>
+            <div className="adm-card-head">Zoll</div>
             <div className="adm-card-body">
               <KV items={[
                 ["Zollrelevant", "Ja — Sendung verlässt den EU-Zollraum"],
@@ -700,32 +693,12 @@ export default function AdminShipmentDetailPage() {
           </div>
         )}
 
-        {/* Technische Informationen — eingeklappt, natives <details>. */}
-        <details className="adm-card adm-tech">
-          <summary className="adm-card-head adm-tech-summary">
-            <Icon n="settings" s={17} /> Technische Informationen
-            <span className="adm-tech-caret" aria-hidden="true"><Icon n="chevron" s={16} /></span>
-          </summary>
-          <div className="adm-card-body">
-            <KV items={[
-              ["Interne Sendungs-ID", dash(idOf(s))],
-              ["Interne Kunden-ID", dash(userIdOf(s))],
-              ["Interner Status", dash(statusOf(s))],
-              ["Versandart (roh)", dash(serviceOf(s))],
-              ["JUMiNGO-Sendungs-ID", jumingoOf(s) ? <span className="adm-mask">{maskTail(jumingoOf(s))}</span> : "—"],
-              ["JUMiNGO-Ordernummer", orderOf(s) ? <span className="adm-mask">{maskTail(orderOf(s))}</span> : "—"],
-              ["Erstellt am", fmtDateTime(dateOf(s))],
-              ["Zuletzt getrackt", fmtDateTime(firstDefined(s.last_tracked_at, s.lastTrackedAt))],
-            ]} />
-          </div>
-        </details>
-
         <div className="adm-card">
-          <div className="adm-card-head"><Icon n="headset" s={17} /> Support-Aktionen</div>
+          <div className="adm-card-head">Support-Aktionen</div>
           <div className="adm-card-body">
             {labelMsg && (
               <div className={`alert ${labelMsg.type === "success" ? "alert-success" : "alert-error"}`} role={labelMsg.type === "success" ? "status" : "alert"} style={{ marginBottom: 12 }}>
-                <Icon n={labelMsg.type === "success" ? "check" : "x"} s={16} />{labelMsg.text}
+                {labelMsg.text}
               </div>
             )}
             <div className="adm-support">
@@ -733,11 +706,11 @@ export default function AdminShipmentDetailPage() {
                 <button type="button" className="btn btn-outline btn-sm" onClick={openLabelConfirm} disabled={labelBusy}>
                   {labelBusy
                     ? <><span className="spinner spinner-dark" /> Wird geladen…</>
-                    : <><Icon n="download" s={14} /> Label herunterladen</>}
+                    : <>Label herunterladen</>}
                 </button>
               ) : (
                 <button type="button" className="btn btn-outline btn-sm" disabled title={labelDownloadHint(ops)}>
-                  <Icon n="download" s={14} /> Label herunterladen
+                  Label herunterladen
                 </button>
               )}
               {/* Live-Abfrage nur anbieten, wenn sie fachlich möglich ist (Aussage
@@ -754,7 +727,7 @@ export default function AdminShipmentDetailPage() {
               >
                 {trackBusy
                   ? <><span className="spinner spinner-dark" /> Lade Live-Tracking…</>
-                  : <><Icon n="mapPin" s={14} /> {TRACKING_LABELS.lookupAction}</>}
+                  : <>{TRACKING_LABELS.lookupAction}</>}
               </button>
             </div>
             {!labelAvailable && <p className="adm-support-hint" id="adm-label-hint">{labelDownloadHint(ops)}</p>}
@@ -765,7 +738,7 @@ export default function AdminShipmentDetailPage() {
 
             {trackError && (
               <div className="alert alert-error" style={{ marginTop: 12 }}>
-                <Icon n="x" s={16} />{trackError}
+                {trackError}
               </div>
             )}
             {/* Live-Block — ausschließlich Zustand 2 und 3. Er trifft KEINE
@@ -804,7 +777,7 @@ export default function AdminShipmentDetailPage() {
                 <div className="adm-track-link">
                   {track.link.available ? (
                     <a className="btn btn-outline btn-sm" href={track.link.url} target="_blank" rel="noopener noreferrer">
-                      <Icon n="external" s={14} /> {TRACKING_LABELS.carrierLink} öffnen
+                      {TRACKING_LABELS.carrierLink} öffnen
                     </a>
                   ) : (
                     <span className="adm-support-hint">{track.link.hint}</span>
@@ -834,7 +807,7 @@ export default function AdminShipmentDetailPage() {
                       </dl>
                       {leg.errorMessages.length > 0 && (
                         <div className="alert alert-error adm-track-leg-errors" style={{ marginTop: 12 }}>
-                          <Icon n="x" s={16} />{TRACKING_LABELS.legErrors}: {leg.errorMessages.join(" · ")}
+                          {TRACKING_LABELS.legErrors}: {leg.errorMessages.join(" · ")}
                         </div>
                       )}
                       {leg.events.length > 0 ? (
@@ -856,6 +829,28 @@ export default function AdminShipmentDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Technische Informationen — eingeklappt, natives <details>. Seit dem
+            Redesign (2026-10) als letzter Abschnitt: erst die fachlichen Daten
+            und die Support-Aktionen, dann die technischen Schlüssel. */}
+        <details className="adm-card adm-tech">
+          <summary className="adm-card-head adm-tech-summary">
+            Technische Informationen
+            <span className="adm-tech-caret" aria-hidden="true" />
+          </summary>
+          <div className="adm-card-body">
+            <KV items={[
+              ["Interne Sendungs-ID", dash(idOf(s))],
+              ["Interne Kunden-ID", dash(userIdOf(s))],
+              ["Interner Status", dash(statusOf(s))],
+              ["Versandart (roh)", dash(serviceOf(s))],
+              ["JUMiNGO-Sendungs-ID", jumingoOf(s) ? <span className="adm-mask">{maskTail(jumingoOf(s))}</span> : "—"],
+              ["JUMiNGO-Ordernummer", orderOf(s) ? <span className="adm-mask">{maskTail(orderOf(s))}</span> : "—"],
+              ["Erstellt am", fmtDateTime(dateOf(s))],
+              ["Zuletzt getrackt", fmtDateTime(firstDefined(s.last_tracked_at, s.lastTrackedAt))],
+            ]} />
+          </div>
+        </details>
       </div>
 
       {/* Bestätigungsdialog — Download erst nach bewusster Bestätigung. Bis
@@ -866,8 +861,6 @@ export default function AdminShipmentDetailPage() {
         <ConfirmDialog
           title="Label herunterladen"
           text="Dieses Label enthält Absender- und Empfängeradressen. Der Download wird protokolliert."
-          icon="download"
-          confirmIcon="download"
           confirmLabel="Download bestätigen"
           onCancel={() => setConfirmLabel(false)}
           onConfirm={confirmDownload}

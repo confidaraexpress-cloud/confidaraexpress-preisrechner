@@ -196,12 +196,16 @@ test("mark-read scheitert: sichtbare Meldung im Panel, Zustand wird zurückgerol
     "/kunde/notifications": (route, json) => json({ notifications: [ntf], unreadCount: 1, snapshotAt: "s", pagination: {} }),
   });
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-  // Anker: die KPI-Reihe steht seit Paket D in BEIDEN Zuständen der Übersicht
-  // (Arbeitsfläche und Onboarding). Die früher benutzte Schrittnummer
-  // .pp-step-no gehört zum Onboarding und fehlt, sobald das Konto — wie hier —
-  // eine Sendung hat.
-  await page.waitForSelector(".pp-kpis", { timeout: 15000 });
-  await page.locator('button[aria-label*="Benachrichtigungen"]').first().click();
+  // Anker: das Kennzahlenband steht in BEIDEN Zuständen der Übersicht
+  // (Arbeitsfläche und Onboarding) — seit dem Redesign (2026-10) als .ov-kpis.
+  // Die Schrittnummern gehören zum Onboarding und fehlen, sobald das Konto —
+  // wie hier — eine Sendung hat.
+  await page.waitForSelector(".ov-kpis", { timeout: 15000 });
+  // Der Einstieg ist seit dem Redesign der Textknopf „Mitteilungen"; sein
+  // zugänglicher Name beginnt mit dem sichtbaren Wort.
+  // Es gibt zwei Einstiege (Topbar mobil, Seitenkopf am Desktop) — geklickt
+  // wird der sichtbare.
+  await page.locator('button[aria-label^="Mitteilungen"]').locator("visible=true").first().click();
   await page.waitForSelector(".ntf-item, .ntf-body", { timeout: 10000 });
   await page.getByRole("button", { name: /Alle als gelesen|gelesen markieren/i }).first().click().catch(async () => {
     await page.locator(".ntf-item").first().click();

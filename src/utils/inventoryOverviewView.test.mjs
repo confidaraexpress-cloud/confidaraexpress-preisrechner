@@ -223,7 +223,10 @@ test("14 — der Einstieg erscheint bei „kein Artikel“, aber nie beim Laden"
 
 test("15 — die Kennzahlen bleiben auch im leeren Zustand sichtbar", () => {
   const code = ohneKommentare(seite);
-  const gridIdx = code.indexOf("inv-stat-grid");
+  // Redesign 2026-10: die Kennzahlen stehen als EIN Band (.inv-stat-band)
+  // statt als Kartenraster — die Zusicherung (immer sichtbar, über dem
+  // Einstieg) gilt unverändert.
+  const gridIdx = code.indexOf("inv-stat-band");
   const onboardingIdx = code.indexOf("InventoryOnboarding");
   assert.ok(gridIdx > 0 && onboardingIdx > 0, "Ankerpunkte nicht gefunden");
   assert.ok(gridIdx < onboardingIdx, "der Einstieg steht über den Kennzahlen");
@@ -255,9 +258,12 @@ test("17 — ohne Artikel führt keine Schnellaktion ins Leere", () => {
   // Die drei Schnellaktionen hängen am eingerichteten Zustand: „Bestand
   // einbuchen“ und „Auftrag erstellen“ brauchen beide einen Artikel und
   // erscheinen erst, sobald es einen gibt.
-  const idxLeer = code.indexOf("{leer ?");
-  const idxQuick = code.indexOf("inv-quick-row");
-  assert.ok(idxLeer > 0 && idxQuick > idxLeer, "die Schnellaktionen hängen nicht am eingerichteten Zustand");
+  // Redesign 2026-10: die drei Schnellaktionen stehen als Kopfaktionen im
+  // Seitenkopf statt in einer eigenen Karte. Sie hängen weiterhin am
+  // eingerichteten Zustand — jetzt über EINE benannte Bedingung.
+  assert.match(code, /const schnellaktionen = !loading && hatLager && stats && !leer;/,
+    "die Schnellaktionen hängen nicht am eingerichteten Zustand");
+  assert.match(code, /actions=\{schnellaktionen && \(/, "die Kopfaktionen hängen nicht an der Bedingung");
   for (const ziel of ["products", "stock", "orders"]) {
     assert.ok(code.includes(`onNavigate("${ziel}")`), `Schnellaktion fehlt: ${ziel}`);
   }
@@ -279,8 +285,12 @@ test("18 — die Kennzahlkarte ist ein echtes Bedienelement, kein <div onClick>"
   assert.ok(!/<div[^>]*onClick/.test(block), "Klickfunktion auf einem <div>");
   // Ansage für Screenreader: „128“ allein ist keine Handlungsaufforderung.
   assert.match(block, /aria-label=\{detailLabel\}/);
-  // Hover, Kante, Tiefe und Fokusring kommen aus dem vorhandenen Primitive.
-  assert.match(block, /ce-card-interactive/);
+  // Redesign 2026-10: eine Zelle des Kennzahlenbands, keine Karte je Zahl.
+  // Hover und Fokus kommen aus der Bandregel (.inv-stat--action), und die
+  // Handlung steht als sichtbarer Text da statt als Pfeilsymbol.
+  assert.match(block, /inv-stat--action/);
+  assert.ok(!/ce-card/.test(block), "die Kennzahl ist wieder eine eigene Karte");
+  assert.match(block, />Details anzeigen</, "die sichtbare Textaktion fehlt");
 });
 
 test("19 — eine Karte ohne Inhalt ist nicht klickbar (kein leerer Dialog)", () => {
@@ -328,21 +338,23 @@ test("22 — der Startfilter wirkt genau einmal und ändert das Navigationsmodel
 
 /* ══════════ 8 — Raster und Responsivität ══════════════════════════════════ */
 
-test("23 — sechs Karten in 3/2/1 Spalten — keine verwaiste Einzelkarte", () => {
+test("23 — sechs Kennzahlzellen in 3/2 Spalten — keine verwaiste Einzelzelle", () => {
   const regeln = css.replace(/\/\*[\s\S]*?\*\//g, "");
   // auto-fit war die Ursache: bei 200px-Minimum passten fünf Karten in die
-  // erste Reihe, die sechste stand allein darunter.
-  const grid = regeln.slice(regeln.indexOf(".inv-stat-grid"), regeln.indexOf(".inv-stat ", regeln.indexOf(".inv-stat-grid")));
-  assert.ok(!/auto-fit|auto-fill/.test(grid), "das Raster nutzt wieder auto-fit");
-  assert.match(regeln, /@media \(min-width: 620px\)\s*\{\s*\.inv-stat-grid \{ grid-template-columns: repeat\(2/);
-  assert.match(regeln, /@media \(min-width: 1100px\)\s*\{\s*\.inv-stat-grid \{ grid-template-columns: repeat\(3/);
+  // erste Reihe, die sechste stand allein darunter. Redesign 2026-10: ein
+  // Band mit zwei Spalten (Telefon/Tablet) bzw. drei (ab 1100 px) — beide
+  // teilen sechs restlos.
+  const band = regeln.slice(regeln.indexOf(".inv-stat-band {"), regeln.indexOf("}", regeln.indexOf(".inv-stat-band {")));
+  assert.ok(!/auto-fit|auto-fill/.test(band), "das Band nutzt wieder auto-fit");
+  assert.match(band, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(regeln, /@media \(min-width: 1100px\)\s*\{\s*\.inv-stat-band \{ grid-template-columns: repeat\(3/);
   assert.equal(OVERVIEW_METRICS.length % 3, 0, "die Kennzahlzahl teilt sich nicht mehr restlos durch 3");
   assert.equal(OVERVIEW_METRICS.length % 2, 0, "die Kennzahlzahl teilt sich nicht mehr restlos durch 2");
 });
 
 test("24 — die neuen Flächen bleiben im Designsystem", () => {
   const regeln = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const neu = ["inv-preview-item", "inv-onboarding-lead", "inv-step-num", "inv-ops-grid", "inv-stat-chevron"];
+  const neu = ["inv-preview-item", "inv-onboarding-lead", "inv-step-num", "inv-ops-grid", "inv-stat-more"];
   for (const k of neu) assert.ok(regeln.includes(`.${k}`), `Regel fehlt: .${k}`);
   // Keine eigenen Farb-, Radius- oder Schattenwerte (der Bereichstest prüft das
   // für die ganze Datei; hier zusätzlich der Blick auf die neuen Blöcke).

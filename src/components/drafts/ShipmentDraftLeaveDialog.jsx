@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { Icon } from "../ui/Icon";
 
 // Verlassen-Dialog: erscheint, wenn der Nutzer ConfidaraExpress-intern eine
 // andere Seite öffnen möchte, während in „Neue Sendung" fachlich relevante,
@@ -16,8 +15,8 @@ const MODE_MESSAGES = {
   // unauffindbar — der Kunde probierte es wieder und wieder erfolglos.
   fieldError: "Eine Angabe im Formular ist nicht gültig. Das betroffene Feld ist markiert — bitte korrigieren Sie es und speichern erneut.",
   conflict: "Dieser Entwurf wurde inzwischen an anderer Stelle geändert.",
-  notFound: "Dieser Entwurf ist nicht mehr verfügbar. Du kannst die aktuellen Angaben als neuen Entwurf speichern.",
-  rateLimited: "Zu viele Speicheranfragen. Bitte versuche es in Kürze erneut.",
+  notFound: "Dieser Entwurf ist nicht mehr verfügbar. Sie können die aktuellen Angaben als neuen Entwurf speichern.",
+  rateLimited: "Zu viele Speicheranfragen. Bitte versuchen Sie es in Kürze erneut.",
 };
 
 export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, onReloadCurrent, onDiscard, onContinue }) {
@@ -57,7 +56,6 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
   return (
     <div className="dft-dialog-overlay" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onContinue(); }}>
       <div ref={cardRef} className="dft-dialog-card" role="dialog" aria-modal="true" aria-labelledby="dft-leave-title" aria-describedby="dft-leave-desc">
-        <div className="dft-dialog-icon dft-leave-icon" aria-hidden="true"><Icon n="form" s={20} /></div>
         <h2 id="dft-leave-title" className="dft-dialog-title">Sendung als Entwurf speichern?</h2>
         <p id="dft-leave-desc" className="dft-dialog-desc">
           Du hast bereits Angaben zu dieser Sendung gemacht. Möchtest du sie als Entwurf speichern, bevor du diesen Bereich verlässt?
@@ -65,7 +63,7 @@ export function ShipmentDraftLeaveDialog({ mode = "idle", busy = false, onSave, 
 
         {message && (
           <div className="dft-leave-alert" role="alert">
-            <Icon n="info" s={14} c="currentColor" /><span>{message}</span>
+            <span>{message}</span>
           </div>
         )}
 

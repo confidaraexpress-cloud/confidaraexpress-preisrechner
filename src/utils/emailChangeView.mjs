@@ -37,17 +37,17 @@ export function validateEmailChangeForm(form, currentEmail) {
   const currentPassword = form?.currentPassword || "";
 
   if (!newEmail) {
-    errors.newEmail = "Bitte gib eine neue E-Mail-Adresse ein.";
+    errors.newEmail = "Bitte geben Sie eine neue E-Mail-Adresse ein.";
   } else if (newEmail.length > EMAIL_MAX_LENGTH) {
     errors.newEmail = `Die E-Mail-Adresse darf höchstens ${EMAIL_MAX_LENGTH} Zeichen lang sein.`;
   } else if (!EMAIL_RE.test(newEmail)) {
-    errors.newEmail = "Bitte gib eine gültige E-Mail-Adresse ein.";
+    errors.newEmail = "Bitte geben Sie eine gültige E-Mail-Adresse ein.";
   } else if (currentEmail != null && newEmail === currentEmail) {
-    errors.newEmail = "Die neue E-Mail-Adresse entspricht bereits deiner aktuellen Login-E-Mail.";
+    errors.newEmail = "Die neue E-Mail-Adresse entspricht bereits Ihrer aktuellen Login-E-Mail.";
   }
 
   if (!currentPassword) {
-    errors.currentPassword = "Bitte gib dein aktuelles Passwort ein.";
+    errors.currentPassword = "Bitte geben Sie Ihr aktuelles Passwort ein.";
   }
 
   return errors;
@@ -62,13 +62,13 @@ export function isEmailChangeFormValid(form, currentEmail) {
 // Keine Backend-Rohcodes anzeigen; unbekannte Codes → generische Meldung.
 const START_ERROR_MESSAGES = {
   CURRENT_PASSWORD_INVALID: "Das aktuelle Passwort ist nicht korrekt.",
-  EMAIL_CHANGE_EMAIL_INVALID: "Bitte gib eine gültige E-Mail-Adresse ein.",
-  EMAIL_CHANGE_SAME_EMAIL: "Die neue E-Mail-Adresse entspricht bereits deiner aktuellen Login-E-Mail.",
+  EMAIL_CHANGE_EMAIL_INVALID: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+  EMAIL_CHANGE_SAME_EMAIL: "Die neue E-Mail-Adresse entspricht bereits Ihrer aktuellen Login-E-Mail.",
   EMAIL_CHANGE_EMAIL_UNAVAILABLE: "Diese E-Mail-Adresse kann nicht verwendet werden.",
-  EMAIL_CHANGE_CONFIGURATION_ERROR: "Die E-Mail-Änderung ist derzeit nicht verfügbar. Bitte versuche es später erneut.",
+  EMAIL_CHANGE_CONFIGURATION_ERROR: "Die E-Mail-Änderung ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.",
 };
-export const EMAIL_CHANGE_START_GENERIC = "Die E-Mail-Änderung konnte nicht gestartet werden. Bitte versuche es erneut.";
-export const EMAIL_CHANGE_RATE_LIMIT = "Zu viele Versuche in kurzer Zeit. Bitte versuche es später erneut.";
+export const EMAIL_CHANGE_START_GENERIC = "Die E-Mail-Änderung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.";
+export const EMAIL_CHANGE_RATE_LIMIT = "Zu viele Versuche in kurzer Zeit. Bitte versuchen Sie es später erneut.";
 
 export function mapEmailChangeStartError(code) {
   return START_ERROR_MESSAGES[code] || EMAIL_CHANGE_START_GENERIC;
@@ -77,7 +77,7 @@ export function mapEmailChangeStartError(code) {
 // ── Fehlercode-Mapping: Resend ──────────────────────────────────────────────
 const RESEND_ERROR_MESSAGES = {
   EMAIL_CHANGE_REQUEST_NOT_FOUND: "Es ist keine ausstehende E-Mail-Änderung mehr vorhanden.",
-  EMAIL_CHANGE_RESEND_TOO_SOON: "Bitte warte kurz, bevor du die E-Mail erneut sendest.",
+  EMAIL_CHANGE_RESEND_TOO_SOON: "Bitte warten Sie kurz, bevor Sie die E-Mail erneut senden.",
   EMAIL_CHANGE_EMAIL_UNAVAILABLE: "Diese E-Mail-Adresse kann inzwischen nicht mehr verwendet werden.",
 };
 export const EMAIL_CHANGE_RESEND_GENERIC = "Die Bestätigungs-E-Mail konnte nicht erneut gesendet werden.";
@@ -96,7 +96,7 @@ export function isResendRequestGone(code) {
 // ── Cancel-Fehlermapping ────────────────────────────────────────────────────
 // „Nicht mehr vorhanden" ist hier faktisch schon der Zielzustand (nichts mehr
 // abzubrechen) — der Aufrufer behandelt es als Erfolg + Refetch.
-export const EMAIL_CHANGE_CANCEL_GENERIC = "Die ausstehende E-Mail-Änderung konnte nicht abgebrochen werden. Bitte versuche es erneut.";
+export const EMAIL_CHANGE_CANCEL_GENERIC = "Die ausstehende E-Mail-Änderung konnte nicht abgebrochen werden. Bitte versuchen Sie es erneut.";
 
 // ── Bestätigungsseite: Klassifikation ───────────────────────────────────────
 // HTTP-Status (+ optionaler Fehlercode) → UI-Zustand. Robust gegen die exakten

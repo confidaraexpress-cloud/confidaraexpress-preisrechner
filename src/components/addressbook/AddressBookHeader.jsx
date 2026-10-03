@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { PageHeader } from "../ui/PageHeader";
 
 // Seitenkopf „Adressbuch" — seit Paket A, Phase 3 über das eine gemeinsame
@@ -10,18 +9,21 @@ import { PageHeader } from "../ui/PageHeader";
 // Listenresponse liefert nur { items, nextCursor } — KEIN total. Eine Zahl aus
 // einer paginierten Teilmenge anzuzeigen würde als (falsche) Gesamtzahl
 // missverstanden werden können.
-export function AddressBookHeader({ onCreate, utility }) {
+//
+// `showCreate` (Redesign 2026-10): ist der Bereich nachweislich leer, trägt der
+// Leerzustand die eine Hauptaktion — der Kopf wiederholt sie dann nicht. Es
+// bleibt derselbe Handler; nur die doppelte gleichwertige Schaltfläche entfällt.
+export function AddressBookHeader({ onCreate, utility, showCreate = true }) {
   return (
     <PageHeader
-      eyebrow="Verwaltung"
       title="Adressbuch"
       subtitle="Verwalten Sie wiederkehrende Absender- und Empfängeradressen zentral."
       utility={utility}
-      actions={(
+      actions={showCreate ? (
         <button type="button" className="btn btn-primary" onClick={onCreate}>
-          <Icon n="plus" s={16} /> Neue Adresse
+          Neue Adresse
         </button>
-      )}
+      ) : null}
     />
   );
 }

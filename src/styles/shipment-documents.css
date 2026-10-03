@@ -8,6 +8,11 @@
 
    Kein zweites Drawer-, Karten-, Button- oder Badgesystem. Keine eigenen
    Farbliterale, keine Glasflächen, keine Bewegung als Ambiente.
+
+   Redesign 2026-10: keine Dateisymbole mehr. Je Dokument EINE Zeile — links
+   Name und Belegnummer, rechts genau eine Textaktion („Herunterladen",
+   „Abrufen") oder ein ruhiger Zustandstext. Der Kopf trägt die
+   Sendungsidentität und die Textaktion „Schließen".
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .sdoc-head-text { min-width: 0; }
@@ -17,6 +22,7 @@
   font-weight: 600;
   color: var(--ce-color-text-primary);
 }
+.sdoc-close { flex: 0 0 auto; }
 .sdoc-subtitle {
   margin-top: 2px;
   font-size: var(--ce-text-body-s-size);
@@ -26,13 +32,12 @@
 .sdoc-body { padding: var(--ce-space-5) var(--ce-space-6); }
 
 .sdoc-group + .sdoc-group { margin-top: var(--ce-space-6); }
+/* Gruppenkopf in Normalschrift (keine Versal-Eyebrow). */
 .sdoc-group-title {
-  font-size: var(--ce-text-micro-size);
-  line-height: var(--ce-text-micro-line);
+  font-size: var(--ce-text-label-size);
+  line-height: var(--ce-text-label-line);
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ce-color-text-muted);
+  color: var(--ce-color-text-secondary);
   padding-bottom: var(--ce-space-2);
   border-bottom: 1px solid var(--ce-color-border-subtle);
 }
@@ -54,32 +59,22 @@
   /* Wird es eng, bricht die ZEILE um (Aktion unter den Text) — der Text wird
      nicht zeichenweise zerlegt und nichts wird gestaucht. */
   flex-wrap: wrap;
-  padding: var(--ce-space-4) 0;
+  min-height: 56px;
+  padding: var(--ce-space-3) 0;
 }
-.sdoc-row + .sdoc-row { border-top: 1px solid var(--ce-color-border-subtle); }
+.sdoc-row + .sdoc-row { border-top: 1px solid var(--border-hairline); }
 
-.sdoc-row-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--ce-radius-md);
-  background: var(--ce-color-surface-muted);
-  color: var(--ce-color-text-secondary);
-}
 .sdoc-row-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* Das nachgiebige Glied der Zeile: der Name weicht, Icon und Aktion halten. */
+  /* Das nachgiebige Glied der Zeile: der Name weicht, die Aktion hält. */
   flex: 1 1 auto;
   min-width: 0;
 }
 .sdoc-row-name {
   font-size: var(--ce-text-body-size);
-  line-height: var(--ce-text-body-line);
+  line-height: 1.4286;
   font-weight: 600;
   color: var(--ce-color-text-primary);
 }
@@ -141,7 +136,7 @@
 }
 
 .sdoc-skeleton { display: flex; flex-direction: column; gap: var(--ce-space-3); }
-.sdoc-skeleton-row { height: 56px; border-radius: var(--ce-radius-md); }
+.sdoc-skeleton-row { height: 56px; border-radius: var(--ce-radius-sm); }
 
 @media (max-width: 480px) {
   .sdoc-body { padding: var(--ce-space-4); }

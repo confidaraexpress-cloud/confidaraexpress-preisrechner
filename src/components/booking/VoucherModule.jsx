@@ -1,5 +1,4 @@
 import React, { useId } from "react";
-import { Icon } from "../ui/Icon";
 import { money } from "../../utils/formatters";
 import { VOUCHER_STATUS, VOUCHER_INVALID_MESSAGE, VOUCHER_ERROR_MESSAGE, canSubmitVoucher } from "../../utils/voucherView.mjs";
 
@@ -23,7 +22,6 @@ export function VoucherModule({ status, code, percent, inputCode, onInputChange,
     return (
       <div className="booking-voucher booking-voucher--applied">
         <div className="booking-voucher-applied-row">
-          <Icon n="check" s={16} c="currentColor" />
           <span className="booking-voucher-applied-text">
             Gutschein angewendet
             <span className="booking-voucher-applied-meta">

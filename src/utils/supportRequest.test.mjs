@@ -218,9 +218,13 @@ test("21 — Dialogsprache und Barrierefreiheit wie beim bestehenden Dialog", ()
   assert.match(dialogJsx, /e\.target === e\.currentTarget && !busy/, "Backdrop-Guard fehlt");
 });
 
-test("22 — nur das bestehende Icon-System, keine neue Dependency", () => {
+test("22 — keine neue Icon-Dependency; der Dialog kommt ohne Symbole aus", () => {
+  // Redesign 2026-10: der Dialog trägt keine dekorativen Symbole mehr. Falls je
+  // wieder ein funktionales Symbol nötig wird, dann ausschließlich aus Icon.jsx.
   assert.ok(!dialogJsx.includes("lucide-react"), "lucide-react ist im Projekt nicht zulässig");
-  assert.match(dialogJsx, /from "\.\.\/ui\/Icon"/, "die zentrale Icon-Komponente fehlt");
+  const fremdeIcons = dialogJsx.match(/from "[^"]*(icons?|lucide)[^"]*"/gi) || [];
+  assert.ok(fremdeIcons.every((imp) => /\.\.\/ui\/Icon"/.test(imp)),
+    `Symbole dürfen nur aus der zentralen Icon-Komponente kommen: ${fremdeIcons.join(", ")}`);
 });
 
 /* ── Verdrahtung: API-Schicht ────────────────────────────────────────────── */
@@ -253,8 +257,11 @@ test("26 — der festgelegte Wortlaut der Karte steht genau einmal zentral", () 
   }
 });
 
-test("27 — die Karte öffnet den Dialog und führt nicht mehr ins Postfach", () => {
-  assert.match(sidebarJsx, /<button type="button" className="pp-scard"/, "Karte ist keine Schaltfläche");
+test("27 — „Support kontaktieren“ öffnet den Dialog und führt nicht ins Postfach", () => {
+  // Redesign 2026-10: die frühere Supportkarte ist eine Textaktion in den
+  // sekundären Aktionen der Sidebar — derselbe Handler, dieselbe Zielaktion.
+  assert.match(sidebarJsx, /<button type="button" className="nitem nitem--utility pp-support-link" onClick=\{\(\) => setSupportOpen\(true\)\}>/,
+    "„Support kontaktieren“ ist keine Schaltfläche");
   assert.ok(!sidebarJsx.includes("mailto:"), "mailto-Einstieg wurde nicht entfernt");
   assert.match(sidebarJsx, /\{supportOpen && <SupportRequestDialog onClose=/, "Dialog wird nicht gerendert");
 });
@@ -283,13 +290,14 @@ test("29 — der Kundenpfad kennt weiterhin nur category/subject/message", () =>
   assert.deepEqual(Object.keys(body).sort(), ["category", "message", "subject"]);
 });
 
-test("30 — die Sidebar-Supportkarte ist unverändert", () => {
-  assert.match(sidebarJsx, /<button type="button" className="pp-scard"/, "Karte ist keine Schaltfläche mehr");
+test("30 — der Support-Einstieg der Sidebar bleibt eine Textaktion ohne Postfach", () => {
   const code = sidebarJsx.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.match(code, /pp-support-link" onClick=\{\(\) => setSupportOpen\(true\)\}/, "die Textaktion fehlt");
+  assert.match(code, /\{SUPPORT_CARD\.action\}/, "der zentrale Wortlaut fehlt");
   assert.ok(!/Live Support/.test(code), "„Live Support“ ist zurück");
   assert.ok(!/ce-live/.test(code), "der Statuspunkt ist zurück");
   assert.ok(!/mailto:/.test(code), "der mailto-Einstieg ist zurück");
-  assert.match(code, /n="mail"/, "das mail-Icon fehlt");
+  assert.ok(!/<Icon\b/.test(code), "die Sidebar trägt wieder ein Symbol");
 });
 
 test("31 — die bestehende Stornierungsfunktion ist unberührt", () => {

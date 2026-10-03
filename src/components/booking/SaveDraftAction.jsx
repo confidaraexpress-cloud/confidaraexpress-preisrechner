@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Icon } from "../ui/Icon";
 import { saveDraft } from "../../api/client";
 import { hasSavableShipmentId, mapDraftErrorToMessage } from "../../utils/draftsView.mjs";
 
@@ -54,7 +53,6 @@ export function SaveDraftAction({ shipmentId, bookingOptions, onNavigateDrafts, 
     <div className="bk-savedraft" role="note">
       {status === "saved" ? (
         <div className="bk-savedraft-done">
-          <Icon n="check" s={15} c="var(--success)" />
           <span>Entwurf gespeichert.</span>
           {onNavigateDrafts && (
             <button type="button" className="bk-savedraft-link" onClick={onNavigateDrafts}>Zu Entwürfen</button>
@@ -70,10 +68,10 @@ export function SaveDraftAction({ shipmentId, bookingOptions, onNavigateDrafts, 
           >
             {status === "saving"
               ? <><span className="spinner spinner-dark" style={{ width: 13, height: 13 }} /> Wird gespeichert …</>
-              : <><Icon n="form" s={14} /> Als Entwurf speichern</>}
+              : "Als Entwurf speichern"}
           </button>
           {status === "error" && (
-            <span className="bk-savedraft-error" role="alert"><Icon n="info" s={13} c="currentColor" />{errorMsg}</span>
+            <span className="bk-savedraft-error" role="alert">{errorMsg}</span>
           )}
         </>
       )}

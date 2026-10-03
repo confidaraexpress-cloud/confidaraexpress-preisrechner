@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import { StatusBadge } from "../ui/StatusBadge";
 import { EmptyState } from "../ui/StateView";
 import { money, dateDE } from "../../utils/formatters";
@@ -9,21 +8,20 @@ import { notificationSubline, relativeTime } from "../../utils/notificationsView
 import { recentShipments, overviewInvoiceFacts, topNotifications } from "../../utils/overviewModules.mjs";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   OPERATIVE ÜBERSICHTSMODULE (Paket D, Teil 1)
+   OPERATIVE ÜBERSICHTSMODULE (Paket D, Redesign 2026-10)
    ───────────────────────────────────────────────────────────────────────────
    Drei Module über den bereits vorhandenen Daten der Dashboardseite:
-   letzte Sendungen, offene Rechnungen, Benachrichtigungen. Die frühere
-   Schnellaktionen-Sektion ist ersatzlos entfernt — ihre fünf Ziele sind
-   bereits über die permanente Sidebar erreichbar, eine zweite Verlinkung war
-   redundant.
+   letzte Sendungen, offene Rechnungen, Benachrichtigungen.
 
    Kein Modul lädt selbst Daten, keines kennt eine Route, keines rechnet einen
    Geschäftswert nach. Alles kommt als Prop herein; Sortierung und Auswahl
    liefert utils/overviewModules.mjs (rein und getestet).
 
-   Material ausschließlich aus der Foundation: .ce-card, .ce-card-interactive,
-   .badge, .btn, Icon.jsx, StateView. Keine eigene Farbwelt, keine eigenen
-   Radien oder Schatten.
+   Seit dem Redesign ohne Symbole: der Modulkopf trägt genau eine Textaktion,
+   die Zeilen der letzten Sendungen tragen KEINE eigene „Öffnen"-Aktion mehr —
+   sie führte nur zur ganzen Sendungsliste, also zum selben Ziel wie „Alle
+   Sendungen" (Auditbefund P1 · Aktionssemantik). Eine echte Einzelansicht
+   wäre eine Funktionsänderung und ist bewusst nicht Teil des Redesigns.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Gemeinsamer Modulkopf: Titel links, genau eine optionale Textaktion rechts. */
@@ -33,7 +31,7 @@ function ModuleHead({ title, actionLabel, onAction }) {
       <h2 className="ov-mod-title">{title}</h2>
       {actionLabel && onAction && (
         <button type="button" className="btn btn-link btn-sm" onClick={onAction}>
-          <span>{actionLabel}</span> <Icon n="chevronRight" s={14} />
+          {actionLabel}
         </button>
       )}
     </div>
@@ -43,13 +41,10 @@ function ModuleHead({ title, actionLabel, onAction }) {
 /* ── Letzte Sendungen ───────────────────────────────────────────────────────
    Kompakte Auswahl, KEINE zweite Sendungsliste: keine Pagination, keine Suche,
    kein Filter, keine eigene Abfrage. Gezeigt werden ausschließlich Felder, die
-   die bestehende Sendungsantwort bereits enthält.
-
-   Bewusst OHNE Empfänger-/Zielspalte: die Kundenantwort /kunde/shipments führt
-   keine Empfängerdaten (die Sendungsliste selbst zeigt dort ebenfalls keine).
-   Ein Zielwert würde hier erfunden — siehe Abschlussbericht, zurückgestellte
-   Module. */
-export function RecentShipments({ shipments, loading, onAll, onOpen }) {
+   die bestehende Sendungsantwort bereits enthält (Nummer, Carrier, Datum,
+   Status, Preis). Bewusst OHNE Empfänger-/Zielspalte: die Kundenantwort
+   /kunde/shipments führt keine Empfängerdaten. */
+export function RecentShipments({ shipments, loading, onAll }) {
   const rows = recentShipments(shipments, 4);
   return (
     <section className="ov-mod" aria-labelledby="ov-ship-title">
@@ -65,7 +60,6 @@ export function RecentShipments({ shipments, loading, onAll, onOpen }) {
           </div>
         ) : rows.length === 0 ? (
           <EmptyState
-            icon="package"
             title="Noch keine Sendungen"
             text="Sobald Sie einen Versandauftrag gebucht haben, erscheint er hier."
           />
@@ -85,13 +79,8 @@ export function RecentShipments({ shipments, loading, onAll, onOpen }) {
                       {dateDE(s.created_at)}
                     </span>
                   </div>
-                  <StatusBadge status={s.status} />
+                  <span className="ov-list-status"><StatusBadge status={s.status} /></span>
                   <span className="ov-list-num ce-num">{money(s.price_final)}</span>
-                  <span className="ov-list-action">
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={onOpen}>
-                      Öffnen
-                    </button>
-                  </span>
                 </li>
               );
             })}
@@ -153,7 +142,7 @@ export function OpenInvoices({ invoices, summary, onAll }) {
    Höchstens drei Meldungen aus dem BESTEHENDEN Benachrichtigungscontext.
    Keine zweite Gelesen-/Ungelesen-Logik, kein zweites Polling, kein eigener
    Zustand: Auswahl über topNotifications, Klickverhalten über denselben
-   Handler, den auch das Panel benutzt. */
+   Handler, den auch das Panel benutzt. Ungelesen steht als Wort „Neu" da. */
 export function OverviewNotifications({ items, onSelect }) {
   const rows = topNotifications(items, 3);
   if (rows.length === 0) return null;
@@ -167,13 +156,12 @@ export function OverviewNotifications({ items, onSelect }) {
               <button type="button" className="ov-ntf-btn" onClick={() => onSelect(n)}>
                 <span className="ov-list-main">
                   <span className="ov-list-primary">
-                    {!n.read && <span className="ov-ntf-dot" aria-hidden="true" />}
+                    {!n.read && <span className="ov-ntf-new">Neu</span>}
                     {n.title}
                   </span>
                   <span className="ov-list-secondary">{notificationSubline(n)}</span>
                 </span>
                 <span className="ov-ntf-time">{relativeTime(n.updatedAt || n.createdAt)}</span>
-                <Icon n="chevronRight" s={15} />
               </button>
             </li>
           ))}

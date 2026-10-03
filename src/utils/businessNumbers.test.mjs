@@ -398,7 +398,9 @@ test("(Tabellen) Spaltenanzahl und colSpan bleiben konsistent", () => {
   // <th[ >] statt <th>: die Zahlenspalten tragen seit Paket A, Phase 2.5 eine
   // Ausrichtungsklasse. Geprüft wird weiterhin die Spaltenzahl, nicht das Attribut.
   const cols = (head.match(/<th[ >]/g) || []).length;
-  assert.equal(cols, 7, "Sendungsliste hat nicht die erwartete Spaltenzahl");
+  // Redesign 2026-10: fünf Spalten — Identität (Auftragsbestätigung mit Carrier ·
+  // Datum und Trackingangabe darunter) · Gewicht · Preis · Status · Aktionen.
+  assert.equal(cols, 5, "Sendungsliste hat nicht die erwartete Spaltenzahl");
   const spans = [...src.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
   for (const sp of spans) assert.equal(sp, cols, `colSpan ${sp} passt nicht zu ${cols} Spalten`);
 });

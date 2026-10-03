@@ -1,20 +1,21 @@
 import React from "react";
 
-const SECTION_STYLE = { marginBottom: 28 };
-const H2_STYLE      = { fontSize: 16, fontWeight: 600, marginBottom: 8, color: "var(--text, #111)" };
-const P_STYLE       = { lineHeight: 1.75, margin: 0, color: "var(--legal-text)" };
+/* Rechtsseite im gemeinsamen Leselayout (Redesign 2026-10): Titel und Stand
+   auf dem Canvas, der Text auf EINER ruhigen weißen Fläche (layout.css,
+   .legal-*). Der Rechtstext selbst ist wortgleich; Anker unverändert. */
 
 export default function ImpressumPage() {
   return (
     <div className="page-with-navbar">
-      <div className="container" style={{ maxWidth: 720, padding: "40px 16px 80px" }}>
-        <h1 className="heading mb-24">Impressum</h1>
-        <div className="calc-panel">
-          <div className="calc-panel-body" style={{ lineHeight: 1.75 }}>
+      <div className="legal-wrap">
+        <header className="legal-head">
+          <h1 className="legal-title">Impressum</h1>
+        </header>
+        <article className="legal-sheet">
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Angaben gemäß § 5 DDG</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Angaben gemäß § 5 DDG</h2>
+              <p className="legal-p">
                 Confidara Express GbR<br />
                 Weiherstraße 25<br />
                 73207 Plochingen<br />
@@ -22,38 +23,38 @@ export default function ImpressumPage() {
               </p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Vertreten durch die Gesellschafter</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Vertreten durch die Gesellschafter</h2>
+              <p className="legal-p">
                 Miguel Vance<br />
                 Patrick Werner
               </p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Kontakt</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Kontakt</h2>
+              <p className="legal-p">
                 Telefon: 015118003775<br />
                 E-Mail:{" "}
-                <a href="mailto:support@confidaraexpress.de" style={{ color: "inherit" }}>
+                <a href="mailto:support@confidaraexpress.de">
                   support@confidaraexpress.de
                 </a>
               </p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Umsatzsteuer-Identifikationsnummer</h2>
-              <p style={P_STYLE}>Eine Umsatzsteuer-Identifikationsnummer ist nicht vorhanden.</p>
+            <div className="legal-section">
+              <h2 className="legal-h2">Umsatzsteuer-Identifikationsnummer</h2>
+              <p className="legal-p">Eine Umsatzsteuer-Identifikationsnummer ist nicht vorhanden.</p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Handelsregister</h2>
-              <p style={P_STYLE}>Die Gesellschaft ist nicht im Handelsregister eingetragen.</p>
+            <div className="legal-section">
+              <h2 className="legal-h2">Handelsregister</h2>
+              <p className="legal-p">Die Gesellschaft ist nicht im Handelsregister eingetragen.</p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
+              <p className="legal-p">
                 Miguel Vance<br />
                 Patrick Werner<br />
                 Weiherstraße 25<br />
@@ -62,14 +63,14 @@ export default function ImpressumPage() {
               </p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Datenquellen und Lizenzhinweise</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Datenquellen und Lizenzhinweise</h2>
+              <p className="legal-p">
                 Für die Prüfung und Vervollständigung von Postleitzahlen, Orten und Straßennamen in
                 Deutschland, Österreich, der Schweiz und Liechtenstein nutzen wir das offene
                 Verzeichnis der <strong>OpenPLZ API</strong> (openplzapi.org).
               </p>
-              <p style={P_STYLE}>
+              <p className="legal-p">
                 Die dort bereitgestellten Daten stehen unter der{" "}
                 <strong>Open Data Commons Open Database License (ODbL) v1.0</strong>. Der Lizenztext
                 ist unter{" "}
@@ -77,7 +78,6 @@ export default function ImpressumPage() {
                   href="https://opendatacommons.org/licenses/odbl/1-0/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "var(--ce-color-brand-ink)" }}
                 >
                   opendatacommons.org/licenses/odbl/1-0/
                 </a>{" "}
@@ -86,16 +86,15 @@ export default function ImpressumPage() {
               </p>
             </div>
 
-            <div style={SECTION_STYLE}>
-              <h2 style={H2_STYLE}>Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
-              <p style={P_STYLE}>
+            <div className="legal-section">
+              <h2 className="legal-h2">Verbraucherstreitbeilegung / Universalschlichtungsstelle</h2>
+              <p className="legal-p">
                 Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
                 Verbraucherschlichtungsstelle teilzunehmen.
               </p>
             </div>
 
-          </div>
-        </div>
+        </article>
       </div>
     </div>
   );

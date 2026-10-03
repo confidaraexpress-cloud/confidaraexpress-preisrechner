@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { API } from "../api/client";
-import { Icon } from "../components/ui/Icon";
 import { EmptyState } from "../components/ui/StateView";
 import { resolveCarrierName } from "../utils/carrierMap";
 import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
@@ -29,7 +28,7 @@ function nachTagen(liste) {
   return gruppen;
 }
 
-export default function TrackingPage() {
+export default function TrackingPage({ utility = null } = {}) {
   const [id, setId] = useState("");
   const [searchedKey, setSearchedKey] = useState("");
   const [result, setResult] = useState(null);
@@ -116,127 +115,137 @@ export default function TrackingPage() {
     }))),
   }));
 
-  return (
-    <div className="page-with-navbar">
-      <div className="container tracking-page-wrap">
-        <div className="text-center mb-32">
-          <h1 className="section-title">Sendung verfolgen</h1>
-          <p className="tracking-page-sub">Geben Sie Ihre Trackingnummer ein, um den aktuellen Status Ihrer Sendung zu sehen.</p>
-        </div>
+  /* ── Darstellung (Redesign 2026-10) ──────────────────────────────────────────────────────────
+     Dieselbe Titelrolle wie jede andere Seite (DM Sans 28/36, links), darunter EIN beschriftetes
+     Feld mit „Verfolgen", dann der Ergebnisstatus und der Verlauf als ruhige chronologische
+     Textliste. Öffentlich (/tracking) steht die Seite in schmaler Lesebreite, im Kundenbereich auf
+     derselben Inhaltskante wie die Shell (dashboard.css, .tracking-page-wrap).
 
-        <div className="calc-panel">
-          <div className="calc-panel-body">
-            <div className="field">
-              <label className="field-label">Trackingnummer</label>
+     Barrierefreiheit (Auditbefund P1): das sichtbare Label ist über htmlFor/id mit dem Feld
+     verbunden, der erklärende Satz darüber über aria-describedby. Abfrage, Autofokus,
+     Enter-Verhalten und Deep-Link sind unverändert. */
+  const FELD_ID = "tracking-number-input";
+  const HINWEIS_ID = "tracking-number-hint";
+
+  return (
+    <div className="page-with-navbar tracking-page">
+      <div className="tracking-page-wrap">
+        {utility && <div className="ce-page-header-utility tracking-utility">{utility}</div>}
+        <header className="tracking-head">
+          <h1 className="tracking-title">Sendung verfolgen</h1>
+          <p className="tracking-page-sub" id={HINWEIS_ID}>Geben Sie Ihre Trackingnummer ein, um den aktuellen Status Ihrer Sendung zu sehen.</p>
+        </header>
+
+        <div className="ce-card tracking-search">
+          <div className="tracking-search-row">
+            <div className="field tracking-search-field">
+              <label className="field-label" htmlFor={FELD_ID}>Trackingnummer</label>
               <input
+                id={FELD_ID}
                 className="field-input"
                 value={id}
                 onChange={e => setId(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && track()}
                 placeholder="Trackingnummer aus Ihrer Buchungsbestätigung"
+                aria-describedby={HINWEIS_ID}
                 autoFocus
               />
             </div>
-            {error && (
-              <div className="alert alert-error mb-16">
-                <Icon n="x" s={16} />{error}
-              </div>
-            )}
             {/* `() => track()` statt `track`: als Handler übergeben bekäme `track` das
                 Klickereignis als `keyArg` — gesucht würde dann „[object Object]" statt der
                 eingegebenen Nummer. */}
-            <button className="btn btn-primary btn-full" onClick={() => track()} disabled={loading || !id.trim()}>
-              {loading ? <><span className="spinner" /> Suche…</> : <><Icon n="search" s={16} /> Verfolgen</>}
+            <button type="button" className="btn btn-primary tracking-search-btn" onClick={() => track()} disabled={loading || !id.trim()}>
+              {loading ? <><span className="spinner" /> Suche…</> : "Verfolgen"}
             </button>
           </div>
+          {error && (
+            <div className="alert alert-error tracking-search-error" role="alert">
+              {error}
+            </div>
+          )}
         </div>
 
         {result && (
-          <div className="calc-panel mt-16">
-            <div className="calc-panel-header">
-              <Icon n="map" s={18} c="var(--ce-color-brand-ink)" />
-              <h3>Sendungsverfolgung</h3>
-            </div>
-            <div className="calc-panel-body">
-              {/* ── Header: Status zuerst (wichtigste Information), Meta darunter ── */}
-              <div className="tracking-hero">
-                <div className="tracking-hero-status">{heroStatus}</div>
-                {heroDesc && <p className="tracking-hero-desc">{heroDesc}</p>}
-                {heroWhen && <div className="tracking-hero-when">{heroWhen}</div>}
-              </div>
+          <section className="ce-card tracking-result" aria-labelledby="tracking-result-title">
+            <h2 className="tracking-result-title" id="tracking-result-title">Sendungsverfolgung</h2>
 
-              <div className="tracking-hero-meta">
+            {/* ── Status zuerst (wichtigste Information), Meta darunter ── */}
+            <div className="tracking-hero">
+              <div className="tracking-hero-status">{heroStatus}</div>
+              {heroDesc && <p className="tracking-hero-desc">{heroDesc}</p>}
+              {heroWhen && <div className="tracking-hero-when">{heroWhen}</div>}
+            </div>
+
+            <dl className="tracking-hero-meta">
+              <div className="tracking-hero-meta-item">
+                <dt className="tracking-hero-meta-label">Trackingnummer</dt>
+                {/* .tracking-id-value: user-select all — vorbereitet für eine
+                    spätere Copy-Funktion (bewusst noch ohne Button). */}
+                <dd className="tracking-hero-meta-value tracking-id-value">{searchedKey}</dd>
+              </div>
+              {carrierDisplay && (
                 <div className="tracking-hero-meta-item">
-                  <span className="tracking-hero-meta-label">Trackingnummer</span>
-                  {/* .tracking-id-value: user-select all — vorbereitet für eine
-                      spätere Copy-Funktion (bewusst noch ohne Button). */}
-                  <span className="tracking-hero-meta-value tracking-id-value">{searchedKey}</span>
+                  <dt className="tracking-hero-meta-label">Versanddienstleister</dt>
+                  <dd className="tracking-hero-meta-value">{carrierDisplay}</dd>
                 </div>
-                {carrierDisplay && (
-                  <div className="tracking-hero-meta-item">
-                    <span className="tracking-hero-meta-label">Versanddienstleister</span>
-                    <span className="tracking-hero-meta-value">{carrierDisplay}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="steps-bar mb-24">
-                {STATUS_STEPS.map((label, i) => (
-                  <div key={label} className="step-item">
-                    <div className="step-wrap">
-                      <div className={`step-circle ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`}>
-                        {i < stepIndex ? <Icon n="check" s={14} /> : i + 1}
-                      </div>
-                      <span className={`step-label ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`}>{label}</span>
-                    </div>
-                    {i < STATUS_STEPS.length - 1 && <div className={`step-line ${i < stepIndex ? "done" : ""}`} />}
-                  </div>
-                ))}
-              </div>
-
-              {eventCount > 0 ? (
-                sections.map((section) => (
-                  <div key={section.key} className="tracking-timeline">
-                    {section.heading && <div className="tracking-day-label tracking-leg-heading">{section.heading}</div>}
-                    {section.dayGroups.map((group, gi) => (
-                      <div key={gi} className="tracking-day-group">
-                        <div className="tracking-day-label">{group.day}</div>
-                        {group.items.map((ev, i) => {
-                          // Aktiver Punkt = neuestes Ereignis = letztes Element
-                          // der letzten Tagesgruppe (Timeline läuft aufsteigend).
-                          const isLatest = gi === section.dayGroups.length - 1 && i === group.items.length - 1;
-                          return (
-                          <div key={i} className="track-event">
-                            <div className={`track-dot ${isLatest ? "active" : "done"}`}>
-                              {isLatest ? <Icon n="mapPin" s={14} /> : <Icon n="check" s={14} />}
-                            </div>
-                            <div className="track-info">
-                              <div className="track-title">{ev.description}</div>
-                              {ev.timeText && (
-                                <div className="track-time">{ev.timeText}</div>
-                              )}
-                              {ev.location && (
-                                <div className="track-time">{ev.location}</div>
-                              )}
-                            </div>
-                          </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))
-              ) : (
-                <EmptyState
-                  icon="package"
-                  title="Keine Ereignisse verfügbar"
-                  text={result.liveTracking === false
-                    ? TRACKING_LEGS_TEXT.liveUnavailable
-                    : "Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden."}
-                />
               )}
+            </dl>
+
+            {/* Fortschritt in vier Stufen — Zahl statt Häkchen, der Zustand steht zusätzlich
+                im Text der Stufe. */}
+            <div className="steps-bar tracking-steps">
+              {STATUS_STEPS.map((label, i) => (
+                <div key={label} className="step-item">
+                  <div className="step-wrap">
+                    <div className={`step-circle ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`} aria-hidden="true">
+                      {i + 1}
+                    </div>
+                    <span className={`step-label ${i === stepIndex ? "active" : i < stepIndex ? "done" : ""}`}>{label}</span>
+                  </div>
+                  {i < STATUS_STEPS.length - 1 && <div className={`step-line ${i < stepIndex ? "done" : ""}`} />}
+                </div>
+              ))}
             </div>
-          </div>
+
+            {eventCount > 0 ? (
+              sections.map((section) => (
+                <div key={section.key} className="tracking-timeline">
+                  {section.heading && <div className="tracking-day-label tracking-leg-heading">{section.heading}</div>}
+                  {section.dayGroups.map((group, gi) => (
+                    <div key={gi} className="tracking-day-group">
+                      <div className="tracking-day-label">{group.day}</div>
+                      {group.items.map((ev, i) => {
+                        // Neuestes Ereignis = letztes Element der letzten Tagesgruppe
+                        // (Timeline läuft aufsteigend). Der Punkt ist reine Markierung.
+                        const isLatest = gi === section.dayGroups.length - 1 && i === group.items.length - 1;
+                        return (
+                        <div key={i} className="track-event">
+                          <div className={`track-dot ${isLatest ? "active" : "done"}`} aria-hidden="true" />
+                          <div className="track-info">
+                            <div className="track-title">{ev.description}</div>
+                            {ev.timeText && (
+                              <div className="track-time">{ev.timeText}</div>
+                            )}
+                            {ev.location && (
+                              <div className="track-time">{ev.location}</div>
+                            )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                title="Keine Ereignisse verfügbar"
+                text={result.liveTracking === false
+                  ? TRACKING_LEGS_TEXT.liveUnavailable
+                  : "Für diese Sendung sind noch keine Tracking-Ereignisse vorhanden."}
+              />
+            )}
+          </section>
         )}
       </div>
     </div>

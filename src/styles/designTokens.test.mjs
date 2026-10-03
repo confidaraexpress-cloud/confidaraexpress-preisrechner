@@ -6,8 +6,11 @@
 // Komponente. Dieser Test hält genau das fest:
 //
 //   • Die Foundation ist vollständig und trägt die Werte der freigegebenen
-//     Spezifikation — inklusive der vier Werte, an denen die ganze Farbwelt hängt
-//     (#5367e8, #111a33, #667284, #8891a3).
+//     Spezifikation — inklusive der vier Werte, an denen die ganze Farbwelt hängt.
+//     Das sind #5367e8 (Marke), #111a33 (Primärtext), #667284 (gedämpfter Text)
+//     und #8891a3 (Kante bedienbarer Elemente) — die ConfidaraExpress-Farbwelt;
+//     die zwischenzeitliche Petrol-Fassung des Redesigns 2026-10 ist
+//     zurückgenommen (Betreiberentscheidung).
 //   • Die Legacy-Namen zeigen auf die vorgesehenen Foundation-Tokens, damit ein
 //     Wertwechsel künftig an EINER Stelle passiert.
 //   • Die beiden bisher undefinierten Tokens sind definiert.
@@ -80,7 +83,7 @@ test("2 — die Farb-Foundation ist vollständig", () => {
     "ce-color-text-placeholder", "ce-color-text-disabled", "ce-color-text-inverse",
     "ce-color-text-inverse-soft",
     "ce-color-bg-canvas-top", "ce-color-bg-canvas-mid", "ce-color-bg-canvas-bottom",
-    "ce-color-bg-sheen",
+    "ce-color-bg-light-brand", "ce-color-bg-light-violet", "ce-color-bg-atmosphere",
     "ce-color-surface", "ce-color-surface-subtle", "ce-color-surface-muted",
     "ce-color-surface-raised", "ce-color-surface-inverse", "ce-color-surface-inverse-edge",
     "ce-color-border-subtle", "ce-color-border-default", "ce-color-border-strong",
@@ -92,7 +95,10 @@ test("2 — die Farb-Foundation ist vollständig", () => {
   assert.deepEqual(fehlend, [], `fehlende Farbtokens: ${fehlend.join(", ")}`);
 });
 
-test("3 — die vier tragenden Farbwerte stimmen exakt", () => {
+test("3 — die vier tragenden Farbwerte stimmen exakt (ConfidaraExpress-Farbwelt)", () => {
+  // Redesign 2026-10: die Farben sind die ursprünglichen ConfidaraExpress-Werte
+  // (Stand vor dem Redesign); die zwischenzeitliche Petrol-Farbwelt ist
+  // zurückgenommen (Betreiberentscheidung).
   assert.equal(wert("ce-color-brand"), "#5367e8", "Markenakzent");
   assert.equal(wert("ce-color-text-primary"), "#111a33", "Navy / Primärtext");
   assert.equal(wert("ce-color-text-muted"), "#667284", "gedämpfter Text");
@@ -102,16 +108,26 @@ test("3 — die vier tragenden Farbwerte stimmen exakt", () => {
   assert.equal(wert("ce-color-brand-active"), "#3b4cc4");
   assert.equal(wert("ce-color-brand-ink"), "#3d4fcf");
   assert.equal(wert("ce-color-brand-soft"), "#eef0fd");
+  assert.equal(wert("ce-color-brand-soft-hover"), "#e3e7fb");
+  assert.equal(wert("ce-color-text-secondary"), "#5f6d80");
+  assert.equal(wert("ce-color-border-focus"), "#5367e8", "Fokus");
+  // Violett bleibt zweiter Markenton (Auszeichnungen), nie Aktionsfarbe.
+  assert.equal(wert("ce-color-brand-violet"), "#7a5ce6", "zweiter Markenton");
 });
 
-test("4 — die Ivory-Rampe trägt die Werte der Spezifikation", () => {
-  assert.equal(wert("ce-color-bg-canvas-top"), "#faf9f6");
-  assert.equal(wert("ce-color-bg-canvas-mid"), "#f5f3ef");
+test("4 — der Grund ist eine kühle, helle Rampe aus den Flächentönen der Farbwelt", () => {
+  // Veredelung 2026-10: statt des warmen Ivory ein kühler Verlauf aus
+  // vorhandenen Flächentönen — Surface Subtle → Surface Muted → der bisherige
+  // Endton (Ladebildschirm, App-Start). Keine neuen Farbwerte.
+  assert.equal(wert("ce-color-bg-canvas-top"), "#f8f9fc");
+  assert.equal(wert("ce-color-bg-canvas-top"), wert("ce-color-surface-subtle"), "Kopf = Surface Subtle");
+  assert.equal(wert("ce-color-bg-canvas-mid"), "#f2f4f8");
+  assert.equal(wert("ce-color-bg-canvas-mid"), wert("ce-color-surface-muted"), "Mitte = Surface Muted");
   assert.equal(wert("ce-color-bg-canvas-bottom"), "#eff0f2");
   assert.equal(wert("ce-color-surface"), "#ffffff");
   // Die Chrome-Tokens der App-Shell speisen sich aus derselben Quelle.
   for (const [chrome, quelle] of [
-    ["ce-app-bg-top", "ce-color-bg-canvas-top"],
+    ["ce-app-bg", "ce-color-bg-atmosphere"],
     ["ce-app-bg-mid", "ce-color-bg-canvas-mid"],
     ["ce-app-bg-bottom", "ce-color-bg-canvas-bottom"],
   ]) {
@@ -179,13 +195,16 @@ test("7 — Skalenwerte entsprechen der Spezifikation", () => {
   for (const [i, px] of [[1, 4], [2, 8], [3, 12], [4, 16], [5, 20], [6, 24], [7, 32], [8, 40], [9, 48], [10, 64], [11, 80], [12, 96]]) {
     assert.equal(wert(`ce-space-${i}`), `${px}px`, `--ce-space-${i}`);
   }
+  // Zwei Radienstufen (Redesign 2026-10): 8 px Controls/Badges, 12 px
+  // Karten/Tabellen/Dialoge/Drawer — die vier Rollennamen bleiben bestehen.
   assert.equal(wert("ce-radius-sm"), "8px");
-  assert.equal(wert("ce-radius-md"), "12px");
-  assert.equal(wert("ce-radius-lg"), "16px");
-  assert.equal(wert("ce-radius-xl"), "20px");
+  assert.equal(wert("ce-radius-md"), "8px");
+  assert.equal(wert("ce-radius-lg"), "12px");
+  assert.equal(wert("ce-radius-xl"), "12px");
   assert.equal(wert("ce-radius-full"), "9999px");
-  assert.equal(wert("ce-size-content"), "1240px");
-  assert.equal(wert("ce-size-sidebar"), "252px");
+  assert.equal(wert("ce-size-content"), "1200px");
+  assert.equal(wert("ce-size-form"), "760px");
+  assert.equal(wert("ce-size-sidebar"), "248px");
   assert.equal(wert("ce-bp-shell"), "860px");
   // Keine Halbpixel in der Typografieskala.
   for (const [name, v] of werte) {
@@ -218,19 +237,20 @@ test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => 
   // --accent-blue-border und --shadow-card-hover (dessen einziger Nutzer die
   // abgelöste Regel .kpi-card:hover war). Die Prüfung am Ende dieses Tests hält
   // fest, dass sich kein neuer toter Alias ansammelt.
+  //
+  // Redesign 2026-10: neun weitere Aliase haben mit der Umstellung der
+  // Bereiche ihren letzten Aufrufer verloren und sind entfallen — --blue3,
+  // --gray600, --success-bg, --warn-bg, --danger-bg, --legal-text,
+  // --text-tertiary, --accent-blue und --shadow-card (Karten sind flach).
   const abbildung = {
     navy: "ce-color-text-primary",
     blue: "ce-color-brand-active",
     blue2: "ce-color-brand",
-    blue3: "ce-color-brand",
     "blue-light": "ce-color-brand-soft",
     white: "ce-color-surface",
     success: "ce-color-success-solid",
-    "success-bg": "ce-color-status-success-surface",
     warn: "ce-color-status-warning-fg",
-    "warn-bg": "ce-color-status-warning-surface",
     danger: "ce-color-danger-solid",
-    "danger-bg": "ce-color-status-error-surface",
     border: "ce-color-border-default",
     border2: "ce-color-border-strong",
     "radius-lg": "ce-radius-lg",
@@ -242,9 +262,6 @@ test("9 — Legacy-Tokens zeigen auf die vorgesehenen Foundation-Tokens", () => 
     "border-subtle": "ce-color-border-subtle",
     "text-primary": "ce-color-text-primary",
     "text-secondary": "ce-color-text-secondary",
-    "text-tertiary": "ce-color-text-muted",
-    "accent-blue": "ce-color-brand",
-    "shadow-card": "ce-elevation-1",
     "shadow-overlay": "ce-elevation-3",
     "ce-kpi-navy": "ce-color-text-primary",
     "ce-kpi-active": "ce-color-brand",
@@ -281,21 +298,19 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
   assert.equal(roheZuweisung("radius-sm"), "var(--ce-radius-sm)");
   assert.equal(wert("radius-sm"), "8px");
   assert.equal(roheZuweisung("radius"), "var(--ce-radius-md)");
-  assert.equal(wert("radius"), "12px");
+  assert.equal(wert("radius"), "8px");
 
   // Und projektweit liegt jeder Radius auf der Skala. Ausgenommen bleibt der
   // Auth-Bereich mit seiner eigenen, dokumentierten Glaswelt.
   const SKALA = new Set(["0", "50%", "inherit", "999px", "9999px",
     ...["0", "sm", "md", "lg", "xl", "full"].map((n) => `var(--ce-radius-${n})`),
     ...["", "-sm", "-lg", "-full"].map((n) => `var(--radius${n})`)]);
-  // Drei dokumentierte Ausnahmen, jede mit eigenem, gemessenem Material und
-  // eigener Governance:
+  // Zwei dokumentierte Ausnahmen, jede mit eigener Governance:
   //   auth.css              — die Glaswelt des Auth-Bereichs (eigenes Paket)
-  //   overview.css          — die vier KPI-Karten (overviewKpiCards.test.mjs)
-  //   dashboard-premium.css — Sidebar-Chrome und ihre Karten (appShellChrome.test.mjs)
-  // Ihre Radien sind dort gemessen und festgeschrieben; sie hier zu
-  // vereinheitlichen hieße, an einem geprüften Material vorbeizuarbeiten.
-  const EIGENMATERIAL = ["auth.css", "overview.css", "dashboard-premium.css"];
+  //   dashboard-premium.css — Shell-Chrome (appShellChrome.test.mjs)
+  // overview.css ist seit dem Redesign 2026-10 keine Ausnahme mehr — die
+  // Übersicht nutzt ausschließlich die Radienskala.
+  const EIGENMATERIAL = ["auth.css", "dashboard-premium.css"];
   const fremd = [];
   for (const f of readdirSync(new URL("./", import.meta.url))) {
     if (!f.endsWith(".css") || f === "variables.css" || EIGENMATERIAL.includes(f)) continue;

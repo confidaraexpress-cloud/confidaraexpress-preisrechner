@@ -1,5 +1,4 @@
 import React from "react";
-import { Icon } from "../ui/Icon";
 import {
   ADDRESS_STATUS, ADDRESS_MESSAGES, addressStatusTone, showsAddressStatus,
   addressNeedsAcknowledgement,
@@ -14,6 +13,9 @@ import {
 // Bei `unverified` und `unavailable` steht eine Möglichkeit zum Weitermachen daneben — eine
 // Datenlücke oder ein Ausfall des Prüfdienstes darf einen realen Kunden nicht am Versand
 // hindern. Nur der eindeutige Widerspruch (`invalid`) bietet diesen Ausweg NICHT.
+//
+// Seit dem Redesign (2026-10) ohne Symbol: der Ton steckt in Fläche und Text
+// (addr-status--success/-warning/-error), die Aussage im Satz selbst.
 export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySuggestions = [], onPickCity }) {
   if (!showsAddressStatus(status)) return null;
 
@@ -29,11 +31,9 @@ export function AddressStatusLine({ status, onAcknowledge, acknowledged, citySug
   const tone = addressStatusTone(status);
   const message = ADDRESS_MESSAGES[status] || "";
   const canAcknowledge = addressNeedsAcknowledgement(status) && !acknowledged && typeof onAcknowledge === "function";
-  const icon = tone === "success" ? "check" : "info";
 
   return (
     <div className={`addr-status addr-status--${tone}`} role="status" aria-live="polite">
-      <Icon n={icon} s={15} c="currentColor" />
       <span className="addr-status-text">
         {acknowledged && addressNeedsAcknowledgement(status)
           ? "Adresse wird wie eingegeben übernommen."

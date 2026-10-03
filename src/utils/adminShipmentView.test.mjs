@@ -272,7 +272,8 @@ test("11 — mobile Kartenansicht ersetzt die Tabelle", () => {
   assert.match(cssSrc, /@media \(max-width: 900px\) \{[\s\S]*?\.adm-ships-table \{ display: none; \}/);
   assert.match(cssSrc, /\.adm-ships-cards \{ display: none;/);
   // Touch-Ziel seit Paket E auf 44 px (WCAG 2.5.8) statt 40 px.
-  assert.match(cssSrc, /\.adm-scard-actions \.btn \{ min-height: 44px;/);
+  // Redesign 2026-10: die 44 px kommen aus dem Touch-Token statt als Literal.
+  assert.match(cssSrc, /\.adm-scard-actions \.btn \{ min-height: (?:44px|var\(--ce-size-touch-target\));/);
 });
 
 // ═══ D) Filter ═══════════════════════════════════════════════════════════════

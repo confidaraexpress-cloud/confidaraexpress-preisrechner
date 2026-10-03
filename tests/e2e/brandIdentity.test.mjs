@@ -65,19 +65,38 @@ const KONTRAST_FN = `(vorne, hinten) => {
 /* Die tragenden Flächen sind VERLÄUFE (background-image) — getComputedStyle()
    .backgroundColor meldet dort transparent. Wer nur diesen Wert liest, läuft bis
    zum weißen <body> durch und misst Weiß auf Weiß. Deshalb werden beide Quellen
-   gelesen und alle Farbstopps eingesammelt; gewertet wird der ungünstigste. */
+   gelesen und alle Farbstopps eingesammelt; gewertet wird der ungünstigste.
+
+   Halbtransparente Stopps (die leise Lichtfläche der Sidebar, Feinkorrektur
+   2026-10) sind keine eigene Fläche: sie liegen ÜBER den deckenden Stopps.
+   Gewertet wird deshalb ihre Mischung mit jedem deckenden Stopp — nicht der
+   Lichtton, als wäre er deckend. Hat ein Element nur halbtransparente Stopps,
+   wird weiter oben nach der deckenden Fläche gesucht. */
 const GRUND_FN = `(el) => {
+  const teile = (c) => c.match(/[\\d.]+/g).map(Number);
+  const licht = [];
   for (let n = el; n; n = n.parentElement) {
     const s = getComputedStyle(n);
-    const k = [];
+    const deckend = [];
+    const nimm = (c) => {
+      const [r, g, b, a = 1] = teile(c);
+      if (a === 0) return;
+      (a < 1 ? licht : deckend).push([r, g, b, a]);
+    };
     const bg = s.backgroundColor;
-    if (bg && !/rgba\\([^)]*,\\s*0\\)/.test(bg) && bg !== "transparent") k.push(bg);
+    if (bg && bg !== "transparent") nimm(bg);
     if (s.backgroundImage && s.backgroundImage !== "none") {
-      for (const m of s.backgroundImage.matchAll(/rgba?\\([^)]+\\)/g)) {
-        if (!/rgba\\([^)]*,\\s*0\\)/.test(m[0])) k.push(m[0]);
-      }
+      for (const m of s.backgroundImage.matchAll(/rgba?\\([^)]+\\)/g)) nimm(m[0]);
     }
-    if (k.length) return k;
+    if (deckend.length) {
+      const k = deckend.map(([r, g, b]) => "rgb(" + r + ", " + g + ", " + b + ")");
+      for (const [r, g, b, a] of licht) {
+        for (const [R, G, B] of deckend) {
+          k.push("rgb(" + (r * a + R * (1 - a)) + ", " + (g * a + G * (1 - a)) + ", " + (b * a + B * (1 - a)) + ")");
+        }
+      }
+      return k;
+    }
   }
   return ["rgb(255, 255, 255)"];
 }`;
@@ -166,8 +185,26 @@ test("1 — die Kunden-Sidebar trägt die Originalkomposition, hell auf dunkel",
     return b.left >= s.left - 0.5 && b.right <= s.right + 0.5;
   });
   assert.ok(passt, "die Marke ragt aus der Sidebarspalte");
-  // Und die Unterzeile steht darunter, nicht darin.
-  assert.equal(await page.locator(".pp-brand-sub").textContent(), "B2B Versandplattform.");
+  // Feinkorrektur 2026-10: unter der Marke steht die Unterzeile — klein,
+  // einzeilig, unter dem Schriftzug und innerhalb der Spalte. Kein Claim.
+  const unterzeile = await page.evaluate(() => {
+    const el = document.querySelector(".pp-logo .pp-brand-sub");
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const bild = document.querySelector(".pp-logo .ce-brandmark-img").getBoundingClientRect();
+    const spalte = document.querySelector(".pp-side-in").getBoundingClientRect();
+    return {
+      text: el.textContent, groesse: getComputedStyle(el).fontSize, hoehe: r.height,
+      unterDerMarke: r.top >= bild.bottom - 0.5, linksBuendig: Math.abs(r.left - bild.left) <= 1,
+      inDerSpalte: r.right <= spalte.right + 0.5,
+    };
+  });
+  assert.ok(unterzeile, "die Unterzeile fehlt");
+  assert.equal(unterzeile.text, "B2B Logistik- und Versandplattform");
+  assert.equal(unterzeile.groesse, "12px", "die Unterzeile steht nicht in der Caption-Stufe");
+  assert.ok(unterzeile.hoehe <= 20, `die Unterzeile bricht um (${unterzeile.hoehe}px hoch)`);
+  assert.ok(unterzeile.unterDerMarke && unterzeile.linksBuendig, "die Unterzeile steht nicht bündig unter der Marke");
+  assert.ok(unterzeile.inDerSpalte, "die Unterzeile ragt aus der Sidebarspalte");
   await page.close();
 });
 
@@ -227,7 +264,9 @@ test("3 — die Anmeldung trägt genau einen Markenanker, das Formular bleibt", 
 /* ══════════ 4 — mobile Kopfzeile ═══════════════════════════════════════ */
 
 test("4 — die flache mobile Kopfzeile trägt das Signet, unverzerrt und im Rahmen", async () => {
-  for (const breite of [360, 390, 430, 768]) {
+  // Redesign 2026-10: auch 320 px; „Menü" und „Mitteilungen" stehen als Text
+  // daneben, und der geöffnete Sidebar-Drawer trägt die Originalkomposition.
+  for (const breite of [320, 360, 390, 430, 768]) {
     const page = await browser.newPage({ viewport: { width: breite, height: 844 } });
     await setupRoutes(page);
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
@@ -255,6 +294,32 @@ test("4 — die flache mobile Kopfzeile trägt das Signet, unverzerrt und im Rah
       const x = window.scrollX; window.scrollTo(0, 0); return x;
     });
     assert.equal(ueberlauf, 0, `${wo}: waagerechter Überlauf`);
+
+    // Der geöffnete Sidebar-Drawer: Originalkomposition in Reverse, unverzerrt,
+    // im Rahmen und ohne Überlappung mit „Schließen".
+    await page.getByRole("button", { name: "Menü – Navigation öffnen" }).click();
+    await page.waitForTimeout(400);
+    const d = await marke(page, ".pp-logo .ce-brand");
+    assert.ok(d && d.sichtbar, `${wo}: keine Marke im Sidebar-Drawer`);
+    pruefeProportion(d, "lockup", `Sidebar-Drawer ${wo}`);
+    assert.equal(d.ton, "reverse", `${wo}: die Navy-Sidebar braucht die Reverse-Fassung`);
+    const frei = await page.evaluate(() => {
+      const b = document.querySelector(".pp-logo .ce-brandmark-img").getBoundingClientRect();
+      const k = document.querySelector(".pp-logo .sidebar-close-btn").getBoundingClientRect();
+      const s = document.querySelector(".pp-side-in").getBoundingClientRect();
+      return b.left >= s.left - 0.5 && b.right <= s.right + 0.5 && b.right <= k.left + 0.5;
+    });
+    assert.ok(frei, `${wo}: die Marke ragt aus dem Drawer oder liegt unter „Schließen“`);
+    // Die Unterzeile (Feinkorrektur 2026-10) kreuzt „Schließen" nicht und
+    // bleibt im Drawer.
+    const unterzeileFrei = await page.evaluate(() => {
+      const u = document.querySelector(".pp-logo .pp-brand-sub").getBoundingClientRect();
+      const k = document.querySelector(".pp-logo .sidebar-close-btn").getBoundingClientRect();
+      const s = document.querySelector(".pp-side-in").getBoundingClientRect();
+      const schneidet = u.left < k.right && u.right > k.left && u.top < k.bottom && u.bottom > k.top;
+      return !schneidet && u.right <= s.right + 0.5;
+    });
+    assert.ok(unterzeileFrei, `${wo}: die Unterzeile liegt unter „Schließen“ oder ragt aus dem Drawer`);
     await page.close();
   }
 });
@@ -279,10 +344,10 @@ async function keinLeistenUeberlauf(page) {
 }
 
 test("5 — die öffentliche Leiste trägt die reine Wortmarke, ohne Überlauf auf jeder Breite", async () => {
-  // Gemessen (nicht geschätzt): bei 360 px ist bei 174 px Breite Schluss,
-  // 192 px sprengt bereits die Zeile; ab 500 px bleibt bis mindestens 279 px
-  // Luft. 174 px trägt deshalb einheitlich von 360 bis 1440 px.
-  for (const breite of [360, 390, 430, 768, 1024, 1440]) {
+  // Redesign 2026-10: links steht jetzt der Textknopf „Menü" (statt eines
+  // Symbols). Die Wortmarke trägt 174 px ab 421 px, darunter 140 px und unter
+  // 360 px 112 px (layout.css) — proportional, gemessen ohne Überlauf.
+  for (const breite of [320, 360, 390, 430, 768, 1024, 1440]) {
     const page = await browser.newPage({ viewport: { width: breite, height: 700 } });
     await page.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
     const wo = `öffentliche Leiste ${breite}px`;
@@ -315,7 +380,7 @@ test("7 — der Drawer trägt die volle Komposition, Reverse, ohne Abschneiden",
   // volle Komposition, Reverse.
   const mobil = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await mobil.goto(`${BASE}/impressum`, { waitUntil: "networkidle" });
-  await mobil.locator(".navbar .hamburger-btn").click();
+  await mobil.getByRole("button", { name: "Menü – Navigation öffnen" }).click();
   await mobil.waitForTimeout(600);
   const drawer = await marke(mobil, ".mobile-drawer-header .ce-brand");
   assert.ok(drawer?.sichtbar, "keine Marke im Drawer");

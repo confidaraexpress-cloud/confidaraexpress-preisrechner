@@ -219,7 +219,8 @@ test("11 — die mobile Kartenansicht ersetzt die Tabelle ohne Seitenüberlauf",
   assert.match(cssSrc, /@media \(max-width: 820px\) \{[\s\S]*?\.adm-users-table \{ display: none; \}/);
   assert.match(cssSrc, /\.adm-users-cards \{ display: none;/);
   // Touch-Ziel seit Paket E auf 44 px (WCAG 2.5.8) statt 40 px.
-  assert.match(cssSrc, /\.adm-ucard-actions \.btn \{ min-height: 44px;/);
+  // Redesign 2026-10: die 44 px kommen aus dem Touch-Token statt als Literal.
+  assert.match(cssSrc, /\.adm-ucard-actions \.btn \{ min-height: (?:44px|var\(--ce-size-touch-target\));/);
   // Lange Werte brechen kontrolliert statt zu überlaufen.
   assert.match(cssSrc, /\.adm-email \{[^}]*overflow-wrap: anywhere;/);
   assert.match(cssSrc, /\.adm-cust-name \{[^}]*overflow-wrap: anywhere;/);
@@ -227,12 +228,17 @@ test("11 — die mobile Kartenansicht ersetzt die Tabelle ohne Seitenüberlauf",
 
 test("12 — die Tabelle erzwingt keine Mindestbreite mehr (kein horizontales Scrollen)", () => {
   // Die globale Regel `table { min-width: 480px }` wird für die Kundenliste
-  // gezielt aufgehoben; die Spaltenbreiten sind relativ.
+  // gezielt aufgehoben. Redesign 2026-10: die Aktionsspalte trägt zwei
+  // TEXTaktionen („Details" + „Weitere Aktionen") und bekommt deshalb wie die
+  // übrigen starren Spalten (Kundennummer, Status) eine feste Breite; Kunde und
+  // Kontakt teilen sich den Rest — dasselbe Muster wie .adm-ships-table.
   assert.match(cssSrc, /\.adm-users-table table \{ min-width: 0; table-layout: fixed; \}/);
-  const widths = cssSrc.match(/\.adm-users-table th:nth-child\(\d\)[^{]*\{ width: (\d+)%; \}/g) || [];
-  assert.equal(widths.length, 5, "alle fünf Spalten haben relative Breiten");
-  const sum = widths.map((w) => Number(w.match(/(\d+)%/)[1])).reduce((a, b) => a + b, 0);
-  assert.equal(sum, 100, `Spaltenbreiten müssen 100 % ergeben, sind ${sum}`);
+  const feste = cssSrc.match(/\.adm-users-table th:nth-child\(([345])\)[^{]*\{ width: (\d+)px; \}/g) || [];
+  assert.equal(feste.length, 3, "Kundennummer, Status und Aktion haben feste Breiten");
+  assert.equal(/\.adm-users-table th:nth-child\([12]\)[^{]*\{ width:/.test(cssSrc), false,
+    "Kunde und Kontakt teilen sich die Restbreite");
+  const aktion = Number((cssSrc.match(/\.adm-users-table th:nth-child\(5\)[^{]*\{ width: (\d+)px; \}/) || [])[1]);
+  assert.ok(aktion >= 240, `die Aktionsspalte ist zu schmal für zwei Textaktionen: ${aktion}px`);
   // Kein Scroll-Wrapper mehr um die Kundentabelle.
   assert.equal(/adm-users-table[\s\S]{0,120}table-scroll/.test(listSrc), false);
 });
@@ -333,7 +339,8 @@ test("19 — Zahlungswerte stehen genau einmal auf der Seite", () => {
     assert.equal(hits, 1, `„${label}" darf genau einmal vorkommen, gefunden: ${hits}`);
   }
   assert.equal(/Aggregierte Kennzahlen/.test(detailSrc), false, "die doppelte Kennzahlenkarte ist entfallen");
-  assert.match(detailSrc, /<Icon n="card" s=\{17\} \/> Aktivität und Zahlung<\/div>/);
+  // Redesign 2026-10: Kartenköpfe tragen kein Symbol mehr.
+  assert.match(detailSrc, /<div className="adm-card-head">Aktivität und Zahlung<\/div>/);
   // Eine Quelle für alle Werte.
   const m = activityMetrics({ shipments_total: 4, invoices_total: 3, invoices_unpaid: 2, invoices_overdue: 1, open_amount: "199.5" });
   assert.deepEqual(m, { shipmentsTotal: 4, invoicesTotal: 3, invoicesUnpaid: 2, invoicesOverdue: 1, openAmount: 199.5, hasOverdue: true });

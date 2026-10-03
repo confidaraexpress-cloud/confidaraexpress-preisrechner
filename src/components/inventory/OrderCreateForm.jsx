@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { Icon } from "../ui/Icon";
 import { InlineError, ProductPicker, CollapsibleSection } from "./InventoryShared";
 import { AddressPicker } from "../addressbook/AddressPicker";
 import { getProduct, getProducts, getWarehouses } from "../../api/inventoryApi";
@@ -38,7 +37,12 @@ import {
 
    Was dieses Formular ausdrücklich NICHT tut: Carrierpreise berechnen, eine
    Sendung erzeugen, ein Label buchen oder Paketmaße verlangen. Ein Auftrag
-   reserviert Bestand — mehr nicht. */
+   reserviert Bestand — mehr nicht.
+
+   Redesign 2026-10: Beschriftungen stehen dauerhaft über den Feldern, alle
+   Aktionen tragen Text statt Symbolen („Aus Adressbuch auswählen",
+   „Position hinzufügen", „Entfernen"). Feldlogik, Prüfungen und Payload sind
+   unverändert. */
 
 function Feld({ id, label, value, onChange, error, hint, ...rest }) {
   return (
@@ -241,9 +245,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
           : (
             <div className="inv-addrpicker-open">
               <button type="button" className="btn btn-outline btn-sm" onClick={() => { setPrefillNote(""); setAddressPickerOpen(true); }}>
-                {/* `idcard` ist im ganzen Portal das Zeichen für das Adressbuch
-                    (siehe DashboardSidebar) — kein zweites Symbol dafür. */}
-                <Icon n="idcard" s={16} />Aus Adressbuch auswählen
+                Aus Adressbuch auswählen
               </button>
               {prefillNote && <span className="inv-field-hint">{prefillNote}</span>}
             </div>
@@ -323,7 +325,7 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
         <legend className="inv-legend">Positionen</legend>
         <p className="inv-field-hint">Welche Artikel gehören zu diesem Auftrag und in welcher Menge?</p>
 
-        {stockConflict && <div className="inv-inline-error" role="alert"><Icon n="info" s={16} /><span>{stockConflict}</span></div>}
+        {stockConflict && <div className="inv-inline-error" role="alert"><span>{stockConflict}</span></div>}
         {positionNote && <p className="inv-field-error" role="status">{positionNote}</p>}
         {showErrors && positions.length === 0 && !positionNote && (
           <p className="inv-field-error">Mindestens eine Position ist erforderlich.</p>
@@ -350,9 +352,11 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
                            ref={(el) => { positionMengeRef.current[String(product.id)] = el; }}
                            aria-invalid={fehler ? "true" : undefined}
                            value={quantity} onChange={(e) => mengeSetzen(product.id, e.target.value)} />
-                    <button type="button" className="btn btn-icon btn-sm" aria-label={`Position ${product.name} entfernen`}
+                    {/* Text statt Papierkorbsymbol; der zugängliche Name beginnt
+                        mit dem sichtbaren Wort und nennt den Artikel. */}
+                    <button type="button" className="btn btn-ghost btn-sm" aria-label={`Entfernen: Position ${product.name}`}
                             onClick={() => positionWeg(product.id)}>
-                      <Icon n="trash" s={16} />
+                      Entfernen
                     </button>
                   </div>
                   {/* Erst der Fehler, dann die Vorschau: bei zu großer Menge gibt
@@ -371,15 +375,15 @@ export function OrderCreateForm({ busy, error, onSubmit, onCancel }) {
           ? <ProductPicker products={pickerItems} loading={pickerLoading} value={null} onChange={positionHinzu}
                            onSearch={sucheArtikel} disabled={busy} addedIds={positions.map(p => p.product.id)} />
           : (
-            <button type="button" className="btn btn-outline" onClick={() => { setPositionNote(""); setPickerOpen(true); }}>
-              <Icon n="plus" s={16} />Position hinzufügen
+            <button type="button" className="btn btn-outline inv-add-position" onClick={() => { setPositionNote(""); setPickerOpen(true); }}>
+              Position hinzufügen
             </button>
           )}
 
         {/* Eine Erklärung, an der Stelle, an der die Mengen entstehen — der
             frühere Fußzeilensatz unter den Buttons ist dafür entfallen. */}
         <div className="inv-stock-explain">
-          <h3 className="inv-stock-explain-title"><Icon n="info" s={16} />{STOCK_EXPLANATION.title}</h3>
+          <h3 className="inv-stock-explain-title">{STOCK_EXPLANATION.title}</h3>
           <ul className="inv-stock-explain-list">
             {STOCK_EXPLANATION.lines.map((satz) => <li key={satz}>{satz}</li>)}
           </ul>

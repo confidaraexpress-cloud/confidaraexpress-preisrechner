@@ -119,18 +119,18 @@ export function ShipmentFilterBar({
               </button>
               {carrierDropdownOpen && (
                 <div className="carrier-dropdown" role="group" aria-label="Versanddienst">
-                  {/* Multi-Select mit Premium-Radio-Optik (wie „Versandart"): runder
-                      Auswahlkreis + Label. role="checkbox" behält die Mehrfachauswahl-
-                      Semantik; Chip-Key = publicCarrier.id, Label = publicCarrier.name
-                      („other" → „Versanddienstleister"). */}
+                  {/* Mehrfachauswahl: quadratisches Auswahlfeld statt des Kreises der
+                      Einfachauswahl (Feinschliff 2026-10, reine Darstellung). role="checkbox"
+                      trägt die Mehrfachauswahl-Semantik; Chip-Key = publicCarrier.id, Label =
+                      publicCarrier.name („other" → „Versanddienstleister"). */}
                   <button
                     type="button"
-                    className={`service-filter-option service-filter-option--radio ${selectedPublicCarrierIds.length === 0 ? "selected" : ""}`}
+                    className={`service-filter-option service-filter-option--check ${selectedPublicCarrierIds.length === 0 ? "selected" : ""}`}
                     role="checkbox"
                     aria-checked={selectedPublicCarrierIds.length === 0}
                     onClick={() => { setSelectedPublicCarrierIds([]); resetResults(); }}
                   >
-                    <span className="service-filter-radio" aria-hidden="true" />
+                    <span className="service-filter-check" aria-hidden="true" />
                     <div className="service-filter-option-text">
                       <div className="service-filter-option-label">Alle Dienstleister</div>
                     </div>
@@ -144,12 +144,12 @@ export function ShipmentFilterBar({
                         <button
                           key={pc.id}
                           type="button"
-                          className={`service-filter-option service-filter-option--radio ${selectedPublicSet.has(pc.id) ? "selected" : ""}`}
+                          className={`service-filter-option service-filter-option--check ${selectedPublicSet.has(pc.id) ? "selected" : ""}`}
                           role="checkbox"
                           aria-checked={selectedPublicSet.has(pc.id)}
                           onClick={() => handleTogglePublicCarrier(pc.id)}
                         >
-                          <span className="service-filter-radio" aria-hidden="true" />
+                          <span className="service-filter-check" aria-hidden="true" />
                           <div className="service-filter-option-text">
                             <div className="service-filter-option-label">{publicCarrierChipLabel(pc)}</div>
                           </div>

@@ -7,7 +7,7 @@ import { TRACKING_NOT_FOUND } from "../utils/trackingMessages";
 import { STATUS_STEPS, buildTrackingView } from "./trackingView";
 import {
   trackingLegsOf, trackingLegEventCount, latestTrackingLegEvent, eventWhenText, trackingLegHeading,
-  TRACKING_LEGS_TEXT,
+  trackingEventTone, TRACKING_LEGS_TEXT,
 } from "../utils/trackingLegsView.mjs";
 
 const ERROR_MESSAGES = {
@@ -104,14 +104,17 @@ export default function TrackingPage({ utility = null } = {}) {
   const carrierDisplay = carrierName ? resolveCarrierName(carrierName) : null;
 
   // Ereignisse nach Tag gruppieren, Reihenfolge bleibt erhalten — je Abschnitt eine Timeline.
+  // Der Ton jedes Punkts entsteht VOR dem Gruppieren aus derselben Regel wie in der Kundenansicht
+  // (trackingEventTone): jedes erreichte Ereignis grün, das neueste im Stand „Ausnahme" warnfarben.
   const sections = legs.map((leg) => ({
     key: leg.key,
     heading: legs.length > 1 ? trackingLegHeading(leg) : null,
-    dayGroups: nachTagen(leg.events.map((ev) => ({
+    dayGroups: nachTagen(leg.events.map((ev, i) => ({
       description: ev.description,
       timeText: ev.time ? `${ev.time} ${TRACKING_LEGS_TEXT.timeSuffix}` : null,
       location: ev.location,
       groupKey: ev.day || TRACKING_LEGS_TEXT.noDate,
+      tone: trackingEventTone(leg, i),
     }))),
   }));
 
@@ -192,7 +195,9 @@ export default function TrackingPage({ utility = null } = {}) {
             </dl>
 
             {/* Fortschritt in vier Stufen — Zahl statt Häkchen, der Zustand steht zusätzlich
-                im Text der Stufe. */}
+                im Text der Stufe. Erreichte und aktuelle Stufe grün (dashboard.css, nur
+                .tracking-steps); bei einer belegten Ausnahme ist keine Stufe markiert
+                (stepIndex -1, ./trackingView) — die Ausnahme steht im Hero. */}
             <div className="steps-bar tracking-steps">
               {STATUS_STEPS.map((label, i) => (
                 <div key={label} className="step-item">
@@ -215,12 +220,11 @@ export default function TrackingPage({ utility = null } = {}) {
                     <div key={gi} className="tracking-day-group">
                       <div className="tracking-day-label">{group.day}</div>
                       {group.items.map((ev, i) => {
-                        // Neuestes Ereignis = letztes Element der letzten Tagesgruppe
-                        // (Timeline läuft aufsteigend). Der Punkt ist reine Markierung.
-                        const isLatest = gi === section.dayGroups.length - 1 && i === group.items.length - 1;
+                        // Der Punkt ist reine Markierung (Ton aus trackingEventTone, oben) — die
+                        // Aussage steht im Text daneben.
                         return (
                         <div key={i} className="track-event">
-                          <div className={`track-dot ${isLatest ? "active" : "done"}`} aria-hidden="true" />
+                          <div className={`track-dot ${ev.tone}`} aria-hidden="true" />
                           <div className="track-info">
                             <div className="track-title">{ev.description}</div>
                             {ev.timeText && (

@@ -109,10 +109,14 @@ test("5 — .track-dot ist eine flache Fläche ohne Verlauf oder farbigen Schatt
   assert.ok(!/box-shadow/.test(block), "kein Glow-Schatten mehr im aktiven track-dot");
   const doneBlock = dashboardCss.match(/\.track-dot\.done\s*\{([^}]*)\}/)[1];
   assert.ok(!/box-shadow/.test(doneBlock), "kein Glow-Schatten mehr im erledigten track-dot");
-  // Redesign 2026-10: das neueste Ereignis in der Markenfarbe, alle früheren ruhig in der
-  // starken Kantenrolle — kein Symbol im Punkt, deshalb auch keine Textfarbe.
-  assert.match(dashboardCss, /\.track-dot\.active \{ border-color: var\(--ce-color-brand\); background: var\(--ce-color-brand\); \}/);
-  assert.match(dashboardCss, /\.track-dot\.done\s+\{ border-color: var\(--ce-color-border-strong\); background: var\(--ce-color-border-strong\); \}/);
+  // Betreiberentscheidung 2026-10-04 (wie vor dem Redesign): chronologischer grüner Fortschritt —
+  // das neueste UND alle früheren Ereignisse in der Success-Familie; nur das neueste Ereignis eines
+  // Abschnitts im Stand „Ausnahme" in der Warnfarbe. Kein Symbol im Punkt, deshalb keine Textfarbe.
+  assert.match(dashboardCss, /\.track-dot\.active \{ border-color: var\(--ce-color-success-solid\); background: var\(--ce-color-success-solid\); \}/);
+  assert.match(dashboardCss, /\.track-dot\.done\s+\{ border-color: var\(--ce-color-success-solid\); background: var\(--ce-color-success-solid\); \}/);
+  assert.match(dashboardCss, /\.track-dot\.problem \{ border-color: var\(--ce-color-status-warning-fg\); background: var\(--ce-color-status-warning-fg\); \}/);
+  const problemBlock = dashboardCss.match(/\.track-dot\.problem \{([^}]*)\}/)[1];
+  assert.ok(!/gradient|box-shadow/.test(problemBlock), "kein Verlauf und kein Glow im Problempunkt");
 });
 
 /* ══════════ 6 — Entwürfe: Löschen ist kein Dauerbutton mehr ══════════════ */

@@ -131,9 +131,15 @@ test("GLS-110: buchbare Fahrerabholung mit GLS-Carrier, ohne Paketshop, White La
   assert.match(kartentext, /15,44|18,37/, "Preis fehlt");
 
   // Finaler TG110-Labelvertrag: kein Kundendruck; der Carrier bringt das Label bei der Abholung an.
-  assert.match(kartentext, /Kein Drucker nötig|Nicht erforderlich/, "TG110 verlangt faelschlich einen Drucker");
-  assert.match(kartentext, /Wird bei der Abholung angebracht/, "Carrier-at-Pickup-Hinweis fehlt");
+  // Gleich hohe Karten (2026-10-04): beide Angaben stehen in den Details der Karte.
   assert.doesNotMatch(kartentext, /Versandlabel verfügbar als|PDF|DIN A4|Thermodruck/, "TG110 bewirbt faelschlich ein Kundenlabel");
+  await karte.locator("button.offer-details-link").click();
+  const panel = karte.locator(".offer-details-panel--open");
+  await panel.waitFor({ timeout: 10000 });
+  const detailtext = norm(await panel.textContent());
+  assert.match(detailtext, /Kein Drucker nötig|Nicht erforderlich/, "TG110 verlangt faelschlich einen Drucker");
+  assert.match(detailtext, /Wird bei der Abholung angebracht/, "Carrier-at-Pickup-Hinweis fehlt");
+  assert.doesNotMatch(detailtext, /Versandlabel verfügbar als|PDF|DIN A4|Thermodruck/, "TG110 bewirbt faelschlich ein Kundenlabel");
 
   // KEIN Paketshop-Finder bei Abholung (ps-trigger ist der Abgabe vorbehalten).
   assert.equal(await karte.locator(".ps-trigger").count(), 0, "GLS-110 (Abholung) zeigt faelschlich einen Paketshop-Finder");

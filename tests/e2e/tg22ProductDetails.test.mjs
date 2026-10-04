@@ -365,7 +365,7 @@ test("B — ausgeschlossene Aussagen: kein Access Point, kein Samstag, keine Ma�
   await page.close();
 });
 
-test("C — Abholung am selben Tag: Zuschlag auf Karte, in der Preisaufschlüsselung und auf der Buchungsseite — neben dem Profil", async () => {
+test("C — Abholung am selben Tag: Zuschlag in der Preisaufschlüsselung und auf der Buchungsseite — neben dem Profil", async () => {
   const { page, fehler } = await neueSeite();
   const lz = lieferadressZustand({
     offerId: TG_HEUTE.offerId, geschaeft: S, privat: PS, zuschlag: RES,
@@ -374,10 +374,12 @@ test("C — Abholung am selben Tag: Zuschlag auf Karte, in der Preisaufschlüsse
   const p = await setup(page, { tariffs: [TG_HEUTE, JM], lz });
   await zuDenAngeboten(page);
   const karte = karteVon(page, TG_HEUTE);
-  assert.equal(await inhalt(karte.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,02 €");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  // Gleich hohe Karten (2026-10-04): die Fläche sagt „Abholung heute"; Zuschlag und Abholschluss stehen in den Details.
+  assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
+  assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
 
   const panel = await oeffneDetails(page, TG_HEUTE);
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
   assert.equal(await abschnittVon(panel, "main").count(), 1, "das Profil fehlt neben der Abholung heute");
   const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
@@ -396,7 +398,10 @@ test("D — Privatadresse und Absicherung unverändert: Hinweis, vorläufiger Pr
   await zuDenAngeboten(page);
   const karte = karteVon(page, TG);
   assert.match(await inhalt(karte), /Vorläufiger Preis/);
-  assert.equal(await inhalt(karte.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
+  // Gleich hohe Karten (2026-10-04): der Satz steht in der Preisaufschlüsselung der Details.
+  const details = await oeffneDetails(page, TG);
+  assert.equal(await inhalt(details.locator(".offer-details-section--price .offer-surcharge-hint")),
+    "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
 
   await waehle(page, TG);
   const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);

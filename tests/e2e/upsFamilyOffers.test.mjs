@@ -445,8 +445,9 @@ async function istPreisauskunft(karte, name) {
   const cta = karte.locator("button.offer-cta-btn");
   assert.equal(await cta.isDisabled(), true, `${name}: der CTA ist bedienbar`);
   assert.equal(await inhalt(cta), "Derzeit nicht direkt buchbar", name);
-  assert.equal(await karte.locator(".offer-cta-hint").count(), 0, `${name}: Hinweis, Adressfrage oder Same-Day an einer Preisauskunft`);
-  assert.equal(await karte.locator(".offer-sameday-surcharge").count(), 0, name);
+  // Gleich hohe Karten (2026-10-04): unter dem CTA steht auf keiner Karte mehr ein Satz.
+  assert.equal(await karte.locator(".offer-zone-3 p").count(), 0, `${name}: Hinweis, Adressfrage oder Same-Day an einer Preisauskunft`);
+  assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-blocked-hint, .offer-surcharge-hint").count(), 0, name);
   assert.equal(await karte.locator(".offer-badge").count(), 0, `${name}: eine Preisauskunft trägt eine Auszeichnung`);
   // Gesperrt ist allein der CTA: die Details einer Preisauskunft bleiben bedienbar — auch für Screenreader.
   assert.equal(await karte.getAttribute("aria-disabled"), null, `${name}: die Karte sperrt ihre Kinder`);
@@ -461,10 +462,17 @@ async function istAuswaehlbar(karte, name) {
   assert.equal(await cta.isEnabled(), true, `${name}: der CTA ist gesperrt`);
   assert.match(await inhalt(cta), /Angebot auswählen/, name);
   const text = await inhalt(karte);
-  for (const erwartet of ["Vorläufiger Preis", "Sendungsverfolgung", "Drucker erforderlich"]) {
-    assert.ok(text.includes(erwartet), `${name}: „${erwartet}“ fehlt: ${text}`);
+  assert.ok(text.includes("Vorläufiger Preis"), `${name}: „Vorläufiger Preis“ fehlt: ${text}`);
+  // Gleich hohe Karten (2026-10-04): Sendungsverfolgung, Druckpflicht und Zuschlagshinweis stehen in den Details.
+  await karte.locator("button.offer-details-link").click();
+  const panel = karte.locator(".offer-details-panel--open");
+  await panel.locator(".offer-details-section").first().waitFor({ timeout: 10000 });
+  const details = norm(await panel.textContent());
+  for (const erwartet of [/Sendungsverfolgung/, /Drucker\s*Erforderlich|Versandlabel zum Ausdrucken/]) {
+    assert.match(details, erwartet, `${name}: ${erwartet} fehlt in den Details: ${details}`);
   }
-  assert.equal(await inhalt(karte.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.", name);
+  assert.equal(await inhalt(panel.locator(".offer-details-section--price .offer-surcharge-hint")),
+    "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.", name);
   assert.doesNotMatch(text, /ab \d+,\d{2} €/, `${name}: „ab“-Betrag`);
   assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0, `${name}: Abholung heute`);
   assert.equal(await karte.locator(".offer-badge").count(), 0, `${name}: ein vorläufiges Angebot trägt eine Auszeichnung`);
@@ -555,7 +563,10 @@ test("A — Vergleich: Standard- und Expressversand auswählbar; UPS · Express 
     const karte = karteVon(page, t);
     assert.equal(await inhalt(karte.locator(".offer-service-type")), name);
     assert.equal(await karte.locator("button.offer-cta-btn").isEnabled(), true, `${name}: nicht mehr auswählbar`);
-    assert.equal(await inhalt(karte.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
+    // Gleich hohe Karten (2026-10-04): der Zuschlagshinweis steht in der Preisaufschlüsselung der Details.
+    const panel = await oeffneDetails(page, t);
+    assert.equal(await inhalt(panel.locator(".offer-details-section--price .offer-surcharge-hint")),
+      "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   }
 
   const express = karteVon(page, EXPRESS);
@@ -890,6 +901,8 @@ for (const breite of [834, 390]) {
     const buchung = await neueSeite({ width: breite, height: 900 });
     await bucheMehrpaket(buchung.page, {
       vorDerAuswahl: async (page) => {
+        // Gleich hohe Karten (2026-10-04): der Zuschlagshinweis steht in den Details — auch dort innerhalb der Karte.
+        await oeffneDetails(page, MEHRPAKET);
         await liegtInKarte(karteVon(page, MEHRPAKET),
           [".offer-service-type", ".offer-price", "button.offer-cta-btn", ".offer-surcharge-hint"],
           `${breite}px UPS · Standardversand Mehrpaket`);

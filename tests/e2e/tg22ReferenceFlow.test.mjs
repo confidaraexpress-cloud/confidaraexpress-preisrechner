@@ -8,7 +8,8 @@
 // Labelformate A4/Thermal und die zusätzliche Transportabsicherung.
 //
 // Gemessen wird, was eine Quelltextprüfung nicht erreicht:
-//   • die Karte zeigt Carrier, Service, Laufzeit, Abholung, Preis, Tracking, Drucker und Label
+//   • die Karte zeigt Carrier, Service, Laufzeit, Abholung und Preis; Tracking, Drucker und Label stehen
+//     seit 2026-10-04 (gleich hohe Karten) in ihren Details
 //     und ist buchbar — derselbe Abholvertrag in Timeline und Details,
 //   • Buchung ohne und mit Transportabsicherung über die Angebotskennung, ohne Tarifkennung,
 //     ohne JUMiNGO-only-Endpunkt und ohne Gutscheinfeld,
@@ -301,9 +302,9 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
     const angebot = page.locator(".offer-card").first();
     const kartentext = (await angebot.innerText()).replace(/ /g, " ");
     // Der Preis steht in der Standardansicht netto — derselbe Umschalter wie für jedes Angebot.
+    // Gleich hohe Karten (2026-10-04): Sendungsverfolgung, Drucker und Zuschlagshinweis stehen in den Details (unten).
     for (const erwartet of ["UPS", "Standard", "1–2 Tage", "Abholung", "bereit ab 09:00 Uhr",
-                            "12,34 €", "exkl. MwSt.", "Sendungsverfolgung", "Drucker erforderlich",
-                            "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen."]) {
+                            "12,34 €", "exkl. MwSt.", "Vorläufiger Preis"]) {
       assert.ok(kartentext.includes(erwartet), `die Karte zeigt „${erwartet}" nicht: ${kartentext}`);
     }
     assert.equal(await angebot.locator("button.offer-cta-btn").isEnabled(), true, "der CTA ist gesperrt");
@@ -324,9 +325,11 @@ for (const [name, viewport] of [["Desktop 1440", { width: 1440, height: 1000 }],
                             "Mit diesem Versandtarif kann max. 1 Packstück pro Sendung verschickt werden.",
                             // TG22 Residential: vor der Bindung ist der Preis vorläufig; die Absicherung
                             // steht erst nach der Wahl der Lieferadresse zur Verfügung.
-                            "Vorläufiger Preis"]) {
+                            "Vorläufiger Preis", "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.",
+                            "Sendungsverfolgung"]) {
       assert.ok(detailKlein.includes(erwartet.toLowerCase()), `die Details zeigen „${erwartet}" nicht: ${detailtext}`);
     }
+    assert.match(detailKlein, /drucker\s+erforderlich/, `die Details zeigen die Druckpflicht nicht: ${detailtext}`);
     const terminAbschnitt = detailKlein.slice(detailKlein.indexOf("termin & abholung"));
     assert.ok(terminAbschnitt.includes("bereit ab 09:00 uhr"), "der Detailbereich zeigt die bereit-ab-Zeit nicht");
     assert.ok(!/\bbis\b|–/.test(terminAbschnitt.slice(0, terminAbschnitt.indexOf("preisaufschlüsselung"))),

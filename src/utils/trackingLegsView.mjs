@@ -109,6 +109,24 @@ export function trackingLegsOf(result) {
     });
 }
 
+// ─── Ton eines Ereignispunkts — chronologischer grüner Fortschritt ────────────────────────
+// Betreiberentscheidung 2026-10-04 (wie vor dem Redesign): jedes gelieferte Ereignis IST
+// erreicht — die früheren tragen „done", das neueste „active", beide in der Success-Familie.
+// Einzige Ausnahme: steht der Abschnitt im normalisierten Stand `exception`, trägt sein
+// neuestes Ereignis „problem" (Warnfarbe). Gelesen wird ausschließlich der Stand, den der
+// Server für DIESEN Abschnitt bestimmt hat (`leg.status`) — kein Rohstatus eines Anbieters,
+// kein Ereignistext und keine abgeleitete Stufe. Fehlt der Stand, entsteht kein Problemton.
+// Eine Regel für die öffentliche Trackingseite UND die Kundenansicht der Sendungen.
+export const TRACKING_EVENT_TONE = Object.freeze({ DONE: "done", CURRENT: "active", PROBLEM: "problem" });
+
+/** Ton des Ereignisses `index` im Abschnitt `leg` — oder `null` für einen Index ohne Ereignis. */
+export function trackingEventTone(leg, index) {
+  const events = leg && typeof leg === "object" && Array.isArray(leg.events) ? leg.events : [];
+  if (!Number.isInteger(index) || index < 0 || index >= events.length) return null;
+  if (index < events.length - 1) return TRACKING_EVENT_TONE.DONE;
+  return leg.status === "exception" ? TRACKING_EVENT_TONE.PROBLEM : TRACKING_EVENT_TONE.CURRENT;
+}
+
 /** Anzahl aller Ereignisse über alle Abschnitte. */
 export function trackingLegEventCount(legs) {
   return (Array.isArray(legs) ? legs : []).reduce((n, l) => n + (Array.isArray(l.events) ? l.events.length : 0), 0);

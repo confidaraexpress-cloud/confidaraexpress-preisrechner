@@ -143,14 +143,20 @@ test("F11/F12 — der Hinweis hängt NICHT am Netto-/Brutto-Umschalter", () => {
   const code = ohneKommentar(offerCard);
   // Der Umschalter heisst `vatMode`. Zwischen ihm und dem Hinweis darf keine Verbindung
   // bestehen: der Betrag wechselt, sein Status nicht.
-  const hinweisIndex = code.indexOf("INDICATIVE_PRICE_LABEL");
-  assert.ok(hinweisIndex > 0, "der Hinweis steht nicht in der Karte");
+  const hinweisIndex = code.indexOf("{INDICATIVE_PRICE_LABEL}</div>");
+  assert.ok(hinweisIndex > 0, "der Hinweis steht nicht auf der Kartenfläche");
   const umgebung = code.slice(Math.max(0, hinweisIndex - 400), hinweisIndex + 400);
   assert.ok(!umgebung.includes("vatMode"),
     "der Hinweis steht im Wirkungsbereich des MwSt.-Umschalters und verschwände in einer Stellung");
-  // Und er entsteht in den `metaItems` — der Zone, die vom Preisblock getrennt ist.
-  assert.ok(/metaItems\.push\(\{\s*icon:\s*"info",\s*label:\s*INDICATIVE_PRICE_LABEL/.test(code),
-    "der Hinweis steht nicht in der providerneutralen Meta-Zeile");
+  // Seit 2026-10-04 (gleich hohe Karten) steht er als Marke neben dem Carrier, im Platz der Auszeichnung —
+  // getrennt vom Preisblock und ohne eigene Zeile; vorher in der Merkmalszeile (`metaItems`).
+  assert.match(code, /const indicativePrice = isIndicativePrice\(t\);/);
+  assert.ok(/\{indicativePrice && \(\s*<div className="offer-price-status">\{INDICATIVE_PRICE_LABEL\}<\/div>/.test(code),
+    "der Hinweis steht nicht als Marke neben dem Carrier");
+  // Eigene Klasse: „Vorläufiger Preis" ist keine Auszeichnung (`.offer-badge` bleibt „Günstigste"/„Schnellste").
+  assert.doesNotMatch(code, /offer-badge[^"]*">\{INDICATIVE_PRICE_LABEL\}/);
+  const preisblock = code.slice(code.indexOf('className="offer-price-block"'), code.indexOf("offer-cta-btn ${ctaClass}"));
+  assert.ok(!preisblock.includes("INDICATIVE_PRICE_LABEL"), "der Hinweis steht im Preisblock am Umschalter");
 });
 
 test("F19 — die Erklärung erscheint NUR bei einem vorläufigen Preis", () => {

@@ -226,16 +226,20 @@ test("(D1) Abholung und Paketshopabgabe erscheinen auf beiden Quellen gleich", (
 
 /* ══════════ E — FÄHIGKEITEN NUR, WENN BELEGT ══════════════════════════════ */
 
-test("(E1) die Featureleiste zeigt nur, was das Angebot wirklich trägt", () => {
-  const bau = CARD_CODE.slice(CARD_CODE.indexOf("const metaItems = []"),
-                              CARD_CODE.indexOf("const toggleDetails"));
-  // Tracking nur bei ausdrücklichem Flag — nicht als Vermutung.
-  assert.ok(/if \(t\.trackingAvailable\)/.test(bau));
-  // Drucker DREIWERTIG: true → erforderlich, false → nicht nötig, fehlend → gar nichts.
-  assert.ok(/t\.printerRequired === true/.test(bau) && /t\.printerRequired === false/.test(bau),
+test("(E1) die Merkmale zeigen nur, was das Angebot wirklich trägt", () => {
+  // Seit 2026-10-04 (gleich hohe Karten) trägt die Kartenfläche keine Merkmalsleiste mehr — Tracking,
+  // Drucker und Versandlabel stehen in den Details. Dort gilt dieselbe Regel: nur ausdrücklich Belegtes.
+  assert.ok(!CARD_CODE.includes("metaItems"), "die Kartenfläche baut wieder eine Merkmalsleiste");
+  const bau = CARD_CODE.slice(CARD_CODE.indexOf("function DetailsPanel"),
+                              CARD_CODE.indexOf("function OfferCardBase"));
+  // Tracking nur bei ausdrücklicher Angabe — nicht als Vermutung.
+  assert.ok(/if \(t\.trackingAvailable != null\)/.test(bau));
+  // Drucker DREIWERTIG: true → erforderlich, false → nicht erforderlich, fehlend → gar nichts —
+  // auch neben einem Produktprofil, das selbst nur die Druckpflicht nennt.
+  assert.ok(/if \(t\.printerRequired != null\)/.test(bau) && /t\.printerRequired === false/.test(bau),
     "die Druckerangabe wird nicht dreiwertig gelesen — ein fehlender Wert würde behauptet");
   // Kein Platzhalter nur für gleiche Breite.
-  assert.ok(!/metaItems\.push\(\{[^}]*label: ""/.test(bau));
+  assert.ok(!/features\.push\(\{[^}]*label: ""/.test(bau));
 });
 
 test("(E2) ein TG-Angebot behauptet weder Tracking noch Druckerbedarf", () => {

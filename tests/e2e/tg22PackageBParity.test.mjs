@@ -420,8 +420,14 @@ test("J — gemischt: beide Anbieter, Abholdatum als Sperrgrund mit Hinweis, Car
   const cta = datumKarte.locator("button.offer-cta-btn");
   assert.equal(await cta.isDisabled(), true);
   assert.equal((await cta.innerText()).trim(), "Für dieses Abholdatum nicht verfügbar.");
-  assert.equal((await datumKarte.locator(".offer-cta-hint").innerText()).trim(), "Bitte wählen Sie einen anderen Abholtermin.");
-  assert.equal(await karteVon(page, JU).locator(".offer-cta-hint").count(), 0);
+  // Gleich hohe Karten (2026-10-04): der Handlungshinweis steht in den Details (Zusatzhinweise), nicht unter dem CTA.
+  await datumKarte.locator("button.offer-details-link").click();
+  const hinweis = datumKarte.locator(".offer-details-panel--open .offer-blocked-hint");
+  await hinweis.waitFor({ state: "visible", timeout: 10000 });
+  assert.equal((await hinweis.innerText()).trim(), "Bitte wählen Sie einen anderen Abholtermin.");
+  await karteVon(page, JU).locator("button.offer-details-link").click();
+  await karteVon(page, JU).locator(".offer-details-panel--open").waitFor({ state: "visible", timeout: 10000 });
+  assert.equal(await karteVon(page, JU).locator(".offer-blocked-hint").count(), 0);
   assert.equal((await text(page.locator("body"))).match(VERBOTEN), null);
 
   await page.locator(".service-filter-trigger", { hasText: "Versanddienst" }).click();

@@ -191,6 +191,17 @@ const inhalt = async (loc) => norm(await loc.first().textContent());
 const kurz = (ms) => new Promise((r) => setTimeout(r, ms));
 const querUeberlauf = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 const karteVon = (page, t) => page.locator(`.offer-card:has(button[aria-controls="offer-details-${t.offerId}"])`);
+// Gleich hohe Karten (2026-10-04): unter dem Kartenpreis steht kein zweiter Betrag mehr — Netto, MwSt. und Brutto
+// stehen in der Preisaufschlüsselung der Details. Ein Betrag dort, über seine Beschriftung.
+const betragIn = (details, label) =>
+  details.locator(`.offer-details-section--price .offer-detail-row:has(.offer-detail-label:text-is("${label}")) .offer-detail-value`);
+async function oeffneDetails(page, t) {
+  const knopf = karteVon(page, t).locator("button.offer-details-link");
+  if ((await knopf.getAttribute("aria-expanded")) !== "true") await knopf.click();
+  const details = page.locator(`#offer-details-${t.offerId}`);
+  await details.locator(".offer-details-section--price").waitFor({ timeout: 10000 });
+  return details;
+}
 const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ });
 const umschalter = (page, name) => page.getByRole("button", { name, exact: true });
 const NETTO = "exkl. MwSt.", BRUTTO = "inkl. MwSt.";
@@ -317,7 +328,7 @@ test.after(async () => {
   }
 });
 
-test("N1 — neue Berechnung: Karte netto vorn, darunter der zahlbare Bruttobetrag; Details heben netto hervor", async () => {
+test("N1 — neue Berechnung: Karte netto, der zahlbare Bruttobetrag in der Preisaufschlüsselung; Details heben netto hervor", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page);
   await zuDenAngeboten(page);
@@ -328,11 +339,11 @@ test("N1 — neue Berechnung: Karte netto vorn, darunter der zahlbare Bruttobetr
   const karte = karteVon(page, JM);
   assert.equal(await inhalt(karte.locator(".offer-price")), "10,80 €");
   assert.equal(await inhalt(karte.locator(".offer-price-sub")), "exkl. MwSt.");
-  assert.equal(await inhalt(karte.locator(".offer-price-alt")), "12,85 € inkl. MwSt.", "der zahlbare Bruttobetrag fehlt");
+  assert.equal(await karte.locator(".offer-price-alt").count(), 0, "unter dem Kartenpreis steht wieder ein zweiter Betrag");
 
-  await karte.locator("button.offer-details-link").click();
-  const details = page.locator(`#offer-details-${JM.offerId}`);
-  await details.waitFor({ timeout: 10000 });
+  const details = await oeffneDetails(page, JM);
+  assert.equal(await inhalt(betragIn(details, "Brutto")), "12,85 €", "der zahlbare Bruttobetrag fehlt");
+  assert.equal(await inhalt(betragIn(details, "Netto")), "10,80 €");
   assert.equal(await inhalt(details.locator(".offer-detail-row--strong .offer-detail-label")), "Netto");
   assert.equal(await details.locator(".offer-detail-row--strong").count(), 1);
   await beleg(page, "liste-netto");
@@ -340,7 +351,7 @@ test("N1 — neue Berechnung: Karte netto vorn, darunter der zahlbare Bruttobetr
   await page.close();
 });
 
-test("N2 — Umschalten in der Liste: kein Request; Karte, Details und Zuschlagszeile wechseln gemeinsam", async () => {
+test("N2 — Umschalten in der Liste: kein Request; Karte und Details wechseln gemeinsam, der Zuschlag nennt beide Beträge", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { tariffs: [JM, TG] });
   await zuDenAngeboten(page);
@@ -348,25 +359,26 @@ test("N2 — Umschalten in der Liste: kein Request; Karte, Details und Zuschlags
   const reihenfolge = async () => page.locator(".offer-card button.offer-details-link").evaluateAll(
     (knoepfe) => knoepfe.map((k) => k.getAttribute("aria-controls")));
   const vorher = await reihenfolge();
-  await jm.locator("button.offer-details-link").click();
-  const details = page.locator(`#offer-details-${JM.offerId}`);
-  await details.waitFor({ timeout: 10000 });
-  assert.equal(await inhalt(tg.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,02 €");
+  const details = await oeffneDetails(page, JM);
+  const tgDetails = await oeffneDetails(page, TG);
+  const zuschlag = tgDetails.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag")) .offer-detail-value');
+  assert.equal(await inhalt(zuschlag), "+3,02 € netto · +3,60 € brutto");
 
   await schalte(page, p, BRUTTO, "Liste");
   assert.equal(await inhalt(jm.locator(".offer-price")), "12,85 €");
   assert.equal(await inhalt(jm.locator(".offer-price-sub")), "inkl. MwSt.");
-  assert.equal(await inhalt(jm.locator(".offer-price-alt")), "10,80 € exkl. MwSt.");
+  assert.equal(await jm.locator(".offer-price-alt").count(), 0);
   assert.equal(await inhalt(details.locator(".offer-detail-row--strong .offer-detail-label")), "Brutto");
   assert.equal(await inhalt(tg.locator(".offer-price")), "18,28 €");
-  assert.equal(await inhalt(tg.locator(".offer-price-alt")), "15,36 € exkl. MwSt.");
-  assert.equal(await inhalt(tg.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,60 €");
+  assert.equal(await tg.locator(".offer-price-alt, .offer-sameday-surcharge").count(), 0);
+  assert.equal(await inhalt(betragIn(tgDetails, "Netto")), "15,36 €");
+  assert.equal(await inhalt(zuschlag), "+3,02 € netto · +3,60 € brutto", "der Zuschlag der Details hängt am Umschalter");
   assert.deepEqual(await reihenfolge(), vorher, "das Umschalten hat die Liste umsortiert");
   await beleg(page, "liste-brutto");
 
   await schalte(page, p, NETTO, "Liste");
   assert.equal(await inhalt(jm.locator(".offer-price")), "10,80 €");
-  assert.equal(await inhalt(jm.locator(".offer-price-alt")), "12,85 € inkl. MwSt.");
+  assert.equal(await inhalt(betragIn(details, "Brutto")), "12,85 €");
   assert.equal(await inhalt(details.locator(".offer-detail-row--strong .offer-detail-label")), "Netto");
   assert.equal(p.calc.length, 1, "das Umschalten hat neu berechnet");
   assert.equal(p.anfragen.length, 0, "das Umschalten hat eine Zuschlagsanfrage ausgelöst");
@@ -402,7 +414,8 @@ test("N4 — Brutto + geänderte Eingabe + „Angebote vergleichen“: genau ein
   assert.equal(p.calc.length, 2, "die geänderte Sendung wurde nicht neu berechnet");
   assert.equal(await gedrueckt(page, NETTO), true, "eine echte Neuberechnung startet nicht in Netto");
   assert.equal(await inhalt(karteVon(page, JM).locator(".offer-price")), "10,80 €");
-  assert.equal(await inhalt(karteVon(page, JM).locator(".offer-price-alt")), "12,85 € inkl. MwSt.");
+  assert.equal(await inhalt(karteVon(page, JM).locator(".offer-price-sub")), "exkl. MwSt.");
+  assert.equal(await inhalt(betragIn(await oeffneDetails(page, JM), "Brutto")), "12,85 €");
   assert.deepEqual(fehler, []);
   await page.close();
 });
@@ -428,7 +441,8 @@ test("N5 — Versandkostenrechner: neue Berechnung netto, Einblenden behält bru
   const karte = karteVon(page, JM);
   assert.equal(await gedrueckt(page, NETTO), true, "der Rechner startet nicht in Netto");
   assert.equal(await inhalt(karte.locator(".offer-price")), "10,80 €");
-  assert.equal(await inhalt(karte.locator(".offer-price-alt")), "12,85 € inkl. MwSt.");
+  assert.equal(await karte.locator(".offer-price-alt").count(), 0);
+  assert.equal(await inhalt(betragIn(await oeffneDetails(page, JM), "Brutto")), "12,85 €");
 
   await schalte(page, p, BRUTTO, "Rechner");
   assert.equal(await inhalt(karte.locator(".offer-price")), "12,85 €");
@@ -695,10 +709,10 @@ test("N11 — fehlender Betrag: „—“ statt eines anderen Betrags; ein abwei
   await schalte(page, p, BRUTTO, "Liste");
   assert.equal(await inhalt(ohne.locator(".offer-price")), "—", "der Nettobetrag steht als Bruttobetrag da");
   assert.equal(await inhalt(ohne.locator(".offer-price-sub")), "inkl. MwSt.");
-  assert.equal(await inhalt(ohne.locator(".offer-price-alt")), "9,99 € exkl. MwSt.");
-  await ohne.locator("button.offer-details-link").click();
-  const details = page.locator(`#offer-details-${OHNE_BRUTTO.offerId}`);
-  await details.waitFor({ timeout: 10000 });
+  const details = await oeffneDetails(page, OHNE_BRUTTO);
+  // Der vorhandene Nettobetrag bleibt in der Preisaufschlüsselung erreichbar; eine Bruttozeile entsteht nicht.
+  assert.equal(await inhalt(betragIn(details, "Netto")), "9,99 €");
+  assert.equal(await details.locator('.offer-detail-label:text-is("Brutto")').count(), 0, "ein fehlender Bruttobetrag erscheint als Zeile");
   assert.equal(await details.locator(".offer-detail-row--strong").count(), 0, "eine fehlende Bruttozeile ist hervorgehoben");
   await schalte(page, p, NETTO, "Liste");
 
@@ -718,9 +732,15 @@ test("N12 — 390 px: Umschalter und beide Beträge sichtbar, innerhalb der Flä
   const p = await setup(page);
   await zuDenAngeboten(page);
   const karte = karteVon(page, JM);
-  await karte.locator(".offer-price-alt").scrollIntoViewIfNeeded();
-  assert.equal(await karte.locator(".offer-price-alt").isVisible(), true);
-  await liegtInnerhalb(karte, karte.locator(".offer-price-alt"), "Karte 390 px");
+  // Gleich hohe Karten (2026-10-04): der Kartenpreis allein auf der Fläche, beide Beträge in der Preisaufschlüsselung.
+  await liegtInnerhalb(karte, karte.locator(".offer-price"), "Kartenpreis 390 px");
+  const details = await oeffneDetails(page, JM);
+  for (const label of ["Netto", "Brutto"]) {
+    const betrag = betragIn(details, label);
+    await betrag.scrollIntoViewIfNeeded();
+    assert.equal(await betrag.isVisible(), true, `${label} ist nicht sichtbar`);
+    await liegtInnerhalb(karte, betrag, `${label} in den Details 390 px`);
+  }
   assert.ok((await querUeberlauf(page)) <= 0, "die Angebotsliste läuft seitlich über");
 
   await waehle(page, JM);

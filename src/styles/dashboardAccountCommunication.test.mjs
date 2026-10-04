@@ -372,9 +372,14 @@ test("21 — keine neuen freien Farben, Radien oder Schatten", () => {
       assert.deepEqual(radien, [], `${datei}: freier Radius in ${block.slice(0, 40)}…`);
       // Jede Tiefe muss aus der Elevation-Skala kommen. Geprüft wird die ganze
       // Deklaration (ein Lookahead direkt hinter dem Doppelpunkt würde über das
-      // Leerzeichen zurückspringen und immer anschlagen).
+      // Leerzeichen zurückspringen und immer anschlagen). Einzige Ausnahme
+      // (Betreiberentscheidung 2026-10-04): die Navy-Fläche des Carrier-Bereichs
+      // und ihre Logo-Kacheln tragen die Tiefen ihrer eigenen zentralen Familie
+      // aus variables.css (--ce-net-shadow, --ce-net-chip-shadow) — nur dort.
+      const carrierBlock = /^\.ov-carrier/.test(block);
       const schatten = (block.match(/box-shadow:[^;}]*/g) || [])
-        .filter((d) => !/var\(--ce-elevation|none/.test(d));
+        .filter((d) => !/var\(--ce-elevation|none/.test(d))
+        .filter((d) => !(carrierBlock && /^box-shadow:\s*var\(--ce-net-(?:chip-)?shadow\)\s*$/.test(d)));
       assert.deepEqual(schatten, [], `${datei}: freier Schatten in ${block.slice(0, 40)}…`);
     }
   }

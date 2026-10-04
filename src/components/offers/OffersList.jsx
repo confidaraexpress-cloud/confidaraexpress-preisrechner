@@ -363,8 +363,10 @@ export function OffersList({
         </div>
       )}
 
-      {/* ── Body ── */}
-      <div className="offers-body">
+      {/* ── Body ── Unter einem gesetzten Lieferzeitfilter kann eine Karte „Zustelltermin nicht
+          bewertbar" tragen; auf schmalen Karten hält dann jede Karte die zweite Hinweiszeile frei
+          (offers.css, `.offers-body--frist`) — gleich hohe Karten auch in dieser Ansicht. */}
+      <div className={`offers-body${latestDeliveryDate ? " offers-body--frist" : ""}`}>
         {loading && (
           <div className="offers-loading">
             <span className="spinner spinner-dark" />

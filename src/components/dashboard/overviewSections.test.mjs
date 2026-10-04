@@ -8,9 +8,10 @@
 // ist eine Arbeitsübersicht — Seitenkopf mit persönlicher Begrüßung „Guten
 // Tag, [Name]", Datum/Einordnung und EINER Hauptaktion, Kennzahlenband,
 // letzte Sendungen und offene Rechnungen (≈ 2 : 1), vorhandene Meldungen und
-// der Carrier-Bereich: die acht Carrier als kompakte, helle Fläche mit
-// „Carrier-Angebote vergleichen". Die frühere dunkle Carrier-Bühne mit
-// Netzstruktur bleibt entfallen; die Onboarding-Abschnitte („Ablauf",
+// der Carrier-Bereich: die acht Carrier mit „Carrier-Angebote vergleichen" —
+// seit der Betreiberentscheidung 2026-10-04 wieder in der Optik vor dem
+// Redesign (Navy-Fläche mit Routenlinien, weiße Logo-Kacheln), ausschließlich
+// in diesem Block und ohne die alten pp-*-Klassen; die Onboarding-Abschnitte („Ablauf",
 // „Vorteile", Zusicherungen) bleiben mit unverändertem Inhalt — aber
 // ausschließlich für Konten OHNE operative Daten und als ruhiger Text ohne
 // Symbole.
@@ -194,9 +195,10 @@ test("13 — Onboarding ist ruhiger Text: keine Symbole, keine dunklen Flächen,
 
 // ══════════ Carrier-Bereich ══════════
 
-test("14 — der Carrier-Bereich: acht Carrier, kompakt und hell, mit der Vergleichsaktion", () => {
-  // Feinkorrektur 2026-10: inhaltlich zurück (Logos, Botschaft, Vergleich) —
-  // im neuen Designsystem, ohne die frühere dunkle Bühne und ohne Netzgrafik.
+test("14 — der Carrier-Bereich: acht Carrier auf Navy mit Routenlinien, mit der Vergleichsaktion", () => {
+  // Feinkorrektur 2026-10: inhaltlich zurück (Logos, Botschaft, Vergleich). Betreiberentscheidung
+  // 2026-10-04: dazu wieder die Optik vor dem Redesign (Stand 2c4cf1b) — nur in diesem Block, mit
+  // Klassen im ov-Namensraum statt der alten pp-*-Klassen.
   const carriers = array("CARRIERS");
   assert.equal(zaehle(carriers, /logo:/g), 8, "genau acht Carrier erwartet");
   assert.match(code, /Acht Carrier\. Eine zentrale Plattform\./, "der Titel nennt die Zahl nicht als Wort");
@@ -206,19 +208,46 @@ test("14 — der Carrier-Bereich: acht Carrier, kompakt und hell, mit der Vergle
   assert.match(code,
     /<button type="button" className="btn btn-outline ov-carriers-cta" onClick=\{\(\) => navigate\("\/calculator"\)\}>\s*Carrier-Angebote vergleichen/,
     "„Carrier-Angebote vergleichen“ führt nicht zum Versandkostenrechner");
+  // Die alten Klassen kommen nicht zurück — die Optik lebt im ov-Namensraum.
   for (const tot of ["pp-net", "NetworkPattern", "pp-cars", "pp-car-chip"]) {
-    assert.ok(!code.includes(tot), `${tot}: die dunkle Carrier-Bühne ist zurück`);
+    assert.ok(!code.includes(tot), `${tot}: eine alte pp-Klasse ist zurück`);
   }
   // Jede Kachel: Logo mit Markennamen als alt-Text, Leistung, Laufzeit.
   assert.match(code, /<img src=\{c\.logo\} alt=\{c\.alt\} \/>/, "das Logo trägt keinen alt-Text");
   assert.match(code, /className="ov-carrier-service">\{c\.service\}/, "die Leistung fehlt");
   assert.match(code, /className="ov-carrier-time">\{c\.time\}/, "die Laufzeit fehlt");
-  // Material der übrigen Module: helle Fläche, 1-px-Kante, sehr leichter Schatten, kein Verlauf.
+  // Die Routenlinien: rein dekorativ, als erstes Kind DIESES Blocks, der Inhalt liegt darüber.
+  const block = code.slice(code.indexOf('<section className="ov-carriers"'), code.indexOf("</section>", code.indexOf('<section className="ov-carriers"')));
+  assert.match(block, /<section className="ov-carriers" aria-labelledby="ov-car-title">\s*<CarrierRoutes \/>\s*<div className="ov-carriers-in">/,
+    "die Routenlinien stehen nicht hinter dem Inhalt des Carrier-Bereichs");
+  assert.match(code, /<svg className="ov-carriers-net" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">/,
+    "die Routenlinien sind nicht rein dekorativ");
+  assert.equal(zaehle(code, /<path d="/g), 3, "drei Routen erwartet");
+  assert.equal(zaehle(code, /<circle cx="/g), 5, "fünf Knoten erwartet");
+  assert.equal(zaehle(code, /<CarrierRoutes \/>/g), 1, "die Routenlinien gehören ausschließlich in den Carrier-Bereich");
+  // Die Fläche: Navy aus der eigenen Familie, an der Rundung beschnitten; Linien hinter, Inhalt vor.
   const flaeche = rule(".ov-carriers");
-  assert.match(flaeche, /background:\s*var\(--ce-color-surface\)/, "helle Fläche erwartet");
-  assert.match(flaeche, /border:\s*1px solid var\(--ce-color-border-subtle\)/, "ruhige 1-px-Kante erwartet");
-  assert.match(flaeche, /box-shadow:\s*var\(--ce-elevation-1\)/, "die leichte Tiefe der Arbeitsflächen fehlt");
-  assert.ok(!/gradient/.test(flaeche), "kein Verlauf");
+  assert.match(flaeche, /position:\s*relative;\s*overflow:\s*hidden/, "die Linien werden nicht an der Karte beschnitten");
+  assert.match(flaeche, /background:\s*var\(--ce-net-surface\)/, "die Navy-Fläche fehlt");
+  assert.match(flaeche, /border:\s*1px solid var\(--ce-net-border\)/, "die Kante der Navy-Fläche fehlt");
+  assert.match(flaeche, /box-shadow:\s*var\(--ce-net-shadow\)/, "die Tiefe der Navy-Fläche fehlt");
+  assert.match(rule(".ov-carriers-net"), /position:\s*absolute;\s*inset:\s*0;[\s\S]*z-index:\s*0;\s*pointer-events:\s*none/);
+  assert.match(rule(".ov-carriers-in"), /position:\s*relative;\s*z-index:\s*1/);
+  assert.match(rule(".ov-carriers-route"), /stroke:\s*var\(--ce-net-line\)/);
+  assert.match(rule(".ov-carriers-node"), /fill:\s*var\(--ce-net-node\)/);
+  // Weiße Logo-Kacheln, Schrift und Aktion hell auf Navy — die Aktion bleibt der Secondary-Button.
+  assert.match(rule(".ov-carrier-logo"), /background:\s*var\(--ce-net-chip\)/, "die weiße Logo-Kachel fehlt");
+  assert.match(rule(".ov-carriers-title"), /color:\s*var\(--ce-net-ink\)/);
+  assert.match(rule(".ov-carriers-desc"), /color:\s*var\(--ce-net-ink-soft\)/);
+  assert.match(rule(".ov-carriers .ov-carriers-cta"), /color:\s*var\(--ce-net-ink\);\s*background:\s*var\(--ce-net-cta-face\);\s*border-color:\s*var\(--ce-net-cta-edge\)/);
+  assert.match(rule(".ov-carriers .ov-carriers-cta:focus-visible"), /outline:\s*2px solid var\(--ce-net-focus\)/, "der Fokus ist auf Navy nicht sichtbar");
+  // Die Familie --ce-net-* wird ausschließlich hier benutzt — keine globale Farb- oder Hintergrundänderung.
+  for (const [name, inhalt] of [["Overview.jsx", code], ["OverviewModules.jsx", modules]]) {
+    assert.ok(!/--ce-net-/.test(inhalt), `${name} setzt Navy-Werte inline`);
+  }
+  const netzRegeln = (cssBare.match(/[^{}]+\{[^}]*--ce-net-[^}]*\}/g) || []).map((r) => r.split("{")[0].trim());
+  assert.ok(netzRegeln.length > 0 && netzRegeln.every((s) => s.split(",").every((t) => /\.ov-carrier/.test(t))),
+    `Navy-Werte außerhalb des Carrier-Bereichs: ${netzRegeln.filter((s) => !/\.ov-carrier/.test(s)).join(" | ")}`);
   // Kompakt: breit eine Reihe zu acht, sonst vier, auf dem Telefon zwei.
   assert.match(rule(".ov-carrier-grid"), /grid-template-columns:\s*repeat\(8, minmax\(0, 1fr\)\)/);
   assert.match(cssBare, /@media \(max-width: 1359px\) \{\s*\.ov-carrier-grid \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/,
@@ -227,6 +256,35 @@ test("14 — der Carrier-Bereich: acht Carrier, kompakt und hell, mit der Vergle
     "auf dem Telefon stehen die Carrier nicht zu zweit");
   // Logos in Originalproportion — eingepasst, nie verzerrt.
   assert.match(rule(".ov-carrier-logo img"), /object-fit:\s*contain/, "Logos werden nicht eingepasst");
+});
+
+test("14b — die Schrift auf der Navy-Fläche erfüllt WCAG AA an jeder Stelle des Verlaufs", () => {
+  const vars = src("../../styles/variables.css");
+  const wert = (name) => {
+    const m = vars.match(new RegExp(`--${name}:\\s*([^;]+);`));
+    assert.ok(m, `--${name} fehlt in variables.css`);
+    return m[1].trim();
+  };
+  const farbe = (s) => {
+    const hex = s.match(/^#([0-9a-f]{6})$/i);
+    if (hex) return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)).concat(1);
+    const r = s.match(/^rgba?\(([^)]+)\)$/i);
+    assert.ok(r, `unlesbare Farbe: ${s}`);
+    const t = r[1].split(",").map((x) => Number(x.trim()));
+    return [t[0], t[1], t[2], t.length > 3 ? t[3] : 1];
+  };
+  const mische = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
+  const kanal = (c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const leuchte = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b);
+  const kontrast = (a, b) => { const [x, y] = [leuchte(a), leuchte(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const stellen = [...wert("ce-net-surface").matchAll(/#[0-9a-f]{6}/gi)].map((m) => farbe(m[0]).slice(0, 3));
+  assert.equal(stellen.length, 3, "der Navy-Verlauf hat nicht drei Stellen");
+  for (const stelle of stellen) {
+    for (const rolle of ["ce-net-ink", "ce-net-ink-soft"]) {
+      const c = kontrast(mische(farbe(wert(rolle)), stelle), stelle);
+      assert.ok(c >= 4.5, `${rolle} auf ${stelle.join(",")}: ${c.toFixed(2)}:1 unterschreitet 4,5:1`);
+    }
+  }
 });
 
 // ══════════ Ruhe und Daten ══════════

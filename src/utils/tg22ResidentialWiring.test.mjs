@@ -144,7 +144,10 @@ test("W9 — der Absicherungsstand gehört zu Angebot UND Preisstand", () => {
 test("W10 — Angebotskarte: auswählbar über die eine Regel, Zuschlagshinweis aus dem Helfer", () => {
   assert.match(karte, /const unavailable = !offerSelectable\(t\);/);
   assert.match(karte, /const surchargeHint = offerSurchargeHint\(t\);/);
-  assert.match(karte, /\{surchargeHint && <p className="offer-cta-hint offer-surcharge-hint">\{surchargeHint\}<\/p>\}/);
+  // Gleich hohe Karten (2026-10-04): der Satz steht in der Preisaufschlüsselung der Details, nicht mehr unter dem CTA.
+  const preisDetails = karte.slice(karte.indexOf('className="offer-details-section offer-details-section--price"'),
+                                   karte.indexOf("{hasLinks && ("));
+  assert.match(preisDetails, /\{surchargeHint && <p className="offer-detail-note offer-surcharge-hint">\{surchargeHint\}<\/p>\}/);
   assert.ok(karte.includes("const handleSelect = () => { if (!unavailable) onSelect(t); };"));
   assert.doesNotMatch(karte, /Bei einer privaten Lieferadresse/, "der Hinweis steht als Literal in der Karte");
 });

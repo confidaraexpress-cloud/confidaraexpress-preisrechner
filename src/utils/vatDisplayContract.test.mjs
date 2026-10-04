@@ -194,13 +194,15 @@ test("11 — der Modus verlässt die Seite nie: nur Darstellungs-Props, kein API
 
 /* ══════════ §4  ALLE PREISFLÄCHEN FOLGEN DEM MODUS — OHNE EIGENE BETRAGSLOGIK ═══════ */
 
-test("12 — Karte: Hauptpreis im Modus, darunter der andere Serverbetrag; fehlt der Betrag, steht „—“", () => {
+test("12 — Karte: Hauptpreis im Modus, der andere Serverbetrag in der Preisaufschlüsselung; fehlt der Betrag, steht „—“", () => {
   const karte = code(KARTE);
   assert.match(karte, /const preisAnzeige = vatDisplay\(\{ net: t\.netPrice, gross: t\.finalPrice \}, vatMode\);/);
   const block = abschnitt(karte, 'className="offer-price-block"', "className={`offer-cta-btn ${ctaClass}`}");
   assert.match(block, /\{preisAnzeige\.primary\.amount != null \? money\(preisAnzeige\.primary\.amount\) : "—"\}/);
   assert.match(block, /\{vatSuffixText\(preisAnzeige\.primary\.isGross\)\}/);
-  assert.match(block, /preisAnzeige\.secondary\.amount != null && \(\s*<div className="offer-price-alt">/);
+  // Gleich hohe Karten (2026-10-04): kein zweiter, kleiner Betrag mehr unter dem Kartenpreis — Netto, MwSt. und
+  // Brutto stehen in der Preisaufschlüsselung (unten), der zahlbare Bruttobetrag bleibt so erreichbar.
+  assert.doesNotMatch(block, /preisAnzeige\.secondary|offer-price-alt/, "unter dem Kartenpreis steht wieder ein zweiter Betrag");
   assert.ok(!/finalPrice \?\? t\.netPrice/.test(karte), "der Kartenpreis fällt wieder auf den Nettobetrag zurück");
   // Tarifdetails: beide Beträge, hervorgehoben der des Modus.
   assert.match(karte, /<DetailRow label="Netto" {2}value=\{money\(t\.netPrice\)\} strong=\{!isGrossVatMode\(vatMode\)\} \/>/);

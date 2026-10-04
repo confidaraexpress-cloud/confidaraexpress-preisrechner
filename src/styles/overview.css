@@ -301,21 +301,36 @@
 .ov-trust-item { display: flex; flex-direction: column; gap: var(--ce-space-1); min-width: 0; }
 
 /* ══════════ Carrier-Bereich ══════════
-   Eine helle Fläche im Material der übrigen Module (Fläche, 1-px-Kante,
-   Radius 12 px, sehr leichter Schatten): oben Titel, ein Satz und die Vergleichsaktion
-   (Secondary — die Seite hat genau eine Hauptaktion), darunter die acht
-   Carrier als ruhige Kacheln. Breit eine Reihe zu acht, sonst vier und auf
-   dem Telefon zwei je Reihe. Logos in Originalproportion (contain). */
+   Betreiberentscheidung 2026-10-04: die Optik unmittelbar vor dem Redesign
+   (Stand 2c4cf1b) — und nur in diesem Block. Navy als Verbindung zur Sidebar,
+   darauf die sehr schwachen Routenlinien mit Knoten (.ov-carriers-net), oben
+   Titel, ein Satz und die Vergleichsaktion hell auf Navy, darunter die acht
+   Carrier als weiße Logo-Kacheln mit Leistung und Laufzeit. Breit eine Reihe
+   zu acht, sonst vier und auf dem Telefon zwei je Reihe; Logos in
+   Originalproportion (contain). Alle Farben aus der Familie --ce-net-*.
+
+   Zur Hintergrundregel der App-Shell (CLAUDE.md): die Linien sind keine
+   Seitenebene. Sie liegen ausschließlich INNERHALB dieser einen Karte —
+   statisch, ohne Filter, ohne backdrop-filter, ohne Animation, hinter dem
+   Inhalt und an der Kartenrundung beschnitten. */
 .ov-carriers {
+  position: relative; overflow: hidden;
   margin-top: var(--ce-space-7);
-  padding: var(--ce-space-6);
-  background: var(--ce-color-surface);
-  border: 1px solid var(--ce-color-border-subtle);
+  padding: var(--ce-space-7);
+  background: var(--ce-net-surface);
+  border: 1px solid var(--ce-net-border);
   border-radius: var(--ce-radius-lg);
-  box-shadow: var(--ce-elevation-1);
+  box-shadow: var(--ce-net-shadow);
 }
+.ov-carriers-net {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; user-select: none;
+}
+.ov-carriers-route { fill: none; stroke: var(--ce-net-line); stroke-width: 1.25; }
+.ov-carriers-node { fill: var(--ce-net-node); stroke: none; }
+.ov-carriers-in { position: relative; z-index: 1; }
 .ov-carriers-head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: flex-end; justify-content: space-between;
   flex-wrap: wrap; gap: var(--ce-space-4) var(--ce-space-6);
 }
 .ov-carriers-intro { min-width: 0; flex: 1 1 320px; }
@@ -325,42 +340,59 @@
   font-weight: var(--ce-text-title-section-weight);
   line-height: var(--ce-text-title-section-line);
   letter-spacing: var(--ce-text-title-section-tracking);
-  color: var(--ce-color-text-primary);
+  color: var(--ce-net-ink);
 }
 .ov-carriers-desc {
   margin: var(--ce-space-1) 0 0;
   font-size: var(--ce-text-body-size);
   line-height: var(--ce-text-body-line);
-  color: var(--ce-color-text-secondary);
+  color: var(--ce-net-ink-soft);
 }
+/* Die Vergleichsaktion bleibt der Secondary-Button (Klasse, Fokus, 44 px
+   Bedienhöhe aus buttons.css) — hier nur ihre Farben auf Navy, wie vor dem
+   Redesign: helle Schrift, durchscheinende Fläche, feine helle Kante. */
 .ov-carriers-cta { flex: none; }
+.ov-carriers .ov-carriers-cta {
+  color: var(--ce-net-ink);
+  background: var(--ce-net-cta-face);
+  border-color: var(--ce-net-cta-edge);
+}
+.ov-carriers .ov-carriers-cta:hover,
+.ov-carriers .ov-carriers-cta:active {
+  color: var(--ce-net-ink);
+  background: var(--ce-net-cta-face-hover);
+  border-color: var(--ce-net-cta-edge);
+}
+.ov-carriers .ov-carriers-cta:focus-visible { outline: 2px solid var(--ce-net-focus); outline-offset: 2px; }
 .ov-carrier-grid {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: var(--ce-space-3);
   list-style: none;
-  margin: var(--ce-space-5) 0 0;
+  margin: var(--ce-space-7) 0 0;
   padding: 0;
 }
 .ov-carrier {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--ce-space-1);
   min-width: 0;
-  padding: var(--ce-space-3) var(--ce-space-2);
-  background: var(--ce-color-surface-subtle);
-  border: 1px solid var(--ce-color-border-subtle);
-  border-radius: var(--ce-radius-sm);
   text-align: center;
 }
-/* Einheitliche Logofläche für alle acht Marken; das Logo selbst bleibt in
-   seiner Originalproportion. Die Assets sind meist 48 × 30 mit eigenem
-   Innenrand — deshalb eine feste Höhe statt einer Maximalhöhe, sonst blieben
-   sie winzig. Die Breitengrenze hält ein Querformat (Emons, 3 : 1) auf dem
-   optischen Gewicht der übrigen. */
+/* Die weiße Logo-Kachel: gleiche Maße für alle acht Marken, das Logo selbst
+   bleibt in seiner Originalproportion. Die Assets sind meist 48 × 30 mit
+   eigenem Innenrand — deshalb eine feste Logohöhe statt einer Maximalhöhe,
+   sonst blieben sie winzig. Die Breitengrenze hält ein Querformat (Emons,
+   3 : 1) auf dem optischen Gewicht der übrigen. */
 .ov-carrier-logo {
   display: grid; place-items: center;
-  width: 100%; height: 40px;
+  width: 100%; max-width: 108px; height: 60px;
   margin-bottom: var(--ce-space-1);
+  padding: 0 var(--ce-space-3);
+  border-radius: var(--ce-radius-sm);
+  background: var(--ce-net-chip);
+  box-shadow: var(--ce-net-chip-shadow);
+  transition: background var(--ce-motion-fast) var(--ce-motion-ease-standard);
 }
+.ov-carrier:hover .ov-carrier-logo { background: var(--ce-net-chip-hover); }
 .ov-carrier-logo img {
   display: block;
   height: 36px; width: auto;
@@ -371,14 +403,14 @@
   font-size: var(--ce-text-body-s-size);
   font-weight: 600;
   line-height: var(--ce-text-body-s-line);
-  color: var(--ce-color-text-primary);
+  color: var(--ce-net-ink);
 }
 .ov-carrier-time {
   font-family: var(--ce-font-numeric);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   font-size: var(--ce-text-caption-size);
   line-height: var(--ce-text-caption-line);
-  color: var(--ce-color-text-secondary);
+  color: var(--ce-net-ink-soft);
 }
 
 /* ══════════ Responsive ══════════
@@ -416,8 +448,8 @@
 }
 @media (max-width: 600px) {
   /* Carrier: zwei je Reihe, die Vergleichsaktion als volle Trefferfläche. */
-  .ov-carriers { padding: var(--ce-space-4); }
-  .ov-carrier-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--ce-space-4); }
+  .ov-carriers { padding: var(--ce-space-6) var(--ce-space-5); }
+  .ov-carrier-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--ce-space-6); }
   .ov-carriers-cta { flex: 1 1 100%; }
   /* KPI 2 × 2, kompakt: kein vierfach gestapelter Satz großer Zahlen. */
   .ov-kpi { padding: var(--ce-space-4); }
@@ -430,5 +462,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ov-ntf-btn,
+  .ov-carrier-logo,
   .pp-uchip { transition: none; }
 }

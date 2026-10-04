@@ -289,8 +289,11 @@
      12 px für Karten, Tabellencontainer, Dialoge und Drawer. Die vier
      Rollennamen bleiben erhalten (sm/md → 8, lg/xl → 12), damit kein
      Bereichs-Stylesheet seine Rollenwahl ändern musste. Keine Pill-Formen
-     außer Avataren und Zählern (full). */
+     außer Avataren und Zählern (full).
+     xs (4 px) ist ausschließlich das kleine quadratische Auswahlfeld einer
+     Mehrfachauswahl (16 px) — dort wären 8 px schon ein Kreis. */
   --ce-radius-0: 0;
+  --ce-radius-xs: 4px;
   --ce-radius-sm: 8px;
   --ce-radius-md: 8px;
   --ce-radius-lg: 12px;
@@ -380,6 +383,9 @@
   --ce-size-content-wide: 1420px;
   --ce-size-content-admin: 1440px;
   --ce-size-form: 760px;
+  /* Arbeitsspalte der Buchung (/booking): breit genug für zwei Absicherungs-
+     karten nebeneinander; Spalte und Seitenkopf hängen an diesem einen Wert. */
+  --ce-size-booking: 800px;
   --ce-size-prose: 720px;
   --ce-size-sidebar: 248px;
   --ce-size-sidebar-admin: 248px;
@@ -496,6 +502,37 @@
   --ce-kpi-value: var(--ce-kpi-navy);
   --ce-kpi-label: #4a5670;                            /* weiß 7,35:1 */
   --ce-kpi-context: #5a6780;                          /* weiß 5,70:1 */
+
+  /* ── Carrier-Bereich der Übersicht ───────────────────────────────────────
+     Betreiberentscheidung 2026-10-04: der Carrier-Bereich trägt wieder die
+     Optik unmittelbar vor dem Redesign (Stand 2c4cf1b) — Werte unverändert
+     übernommen. Eigene Familie für GENAU diesen Block: Navy als Verbindung zur
+     Sidebar, sehr schwache Routenlinien, weiße Logo-Kacheln, Aktion hell auf
+     Navy. Weiß auf der Fläche ≥ 14:1, die gedämpfte Schrift ≥ 7:1. */
+  --ce-net-surface: linear-gradient(
+    148deg,
+    #1c2650 0%,
+    #17203f 40%,
+    #121a33 100%);
+  --ce-net-border: rgba(122, 92, 230, 0.24);
+  --ce-net-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 28px 54px -28px rgba(17, 26, 51, 0.55);
+  --ce-net-ink: #ffffff;
+  --ce-net-ink-soft: rgba(226, 232, 246, 0.76);
+  /* Logofläche: nahezu weiß, damit die Carrier-Marken exakt in ihren eigenen
+     Farben stehen (keine Verfremdung durch Tönung oder Mischung). */
+  --ce-net-chip: rgba(255, 255, 255, 0.95);
+  --ce-net-chip-hover: #ffffff;
+  --ce-net-chip-shadow: 0 4px 14px -6px rgba(6, 10, 24, 0.5);
+  /* Dekorative Routenlinien — bewusst sehr schwach, statisch, ohne Filter. */
+  --ce-net-line: rgba(159, 180, 255, 0.16);
+  --ce-net-node: rgba(159, 180, 255, 0.3);
+  /* Die Vergleichsaktion auf dunklem Grund. */
+  --ce-net-cta-face: rgba(255, 255, 255, 0.1);
+  --ce-net-cta-face-hover: rgba(255, 255, 255, 0.16);
+  --ce-net-cta-edge: rgba(255, 255, 255, 0.24);
+  --ce-net-focus: #9fb4ff;
 
   /* ── AUTH Premium-Tokens (isoliertes --auth-* Präfix) ─────────────────────
      Unverändert: der Auth-Bereich ist vom Redesign ausdrücklich ausgenommen. */

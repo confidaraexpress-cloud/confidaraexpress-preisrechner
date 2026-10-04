@@ -15,7 +15,7 @@ import {
   multiTrackingReferencesOf, trackingReferencesSummary, TRACKING_REFERENCES_TEXT,
 } from "../../utils/trackingReferencesView.mjs";
 import {
-  trackingLegsOf, trackingStatusLabel, eventWhenText, trackingLegHeading, TRACKING_LEGS_TEXT,
+  trackingLegsOf, trackingStatusLabel, eventWhenText, trackingLegHeading, trackingEventTone, TRACKING_LEGS_TEXT,
 } from "../../utils/trackingLegsView.mjs";
 import {
   canRequestCancellation,
@@ -94,8 +94,9 @@ function ShipmentRowActions({ s, expanded, onTrack, onDocuments, onCancel }) {
 
    Reine Darstellung: Zustand, Endpunkt und „Aktualisieren" kommen aus der Liste. Beide
    Stellen zeigen damit denselben Stand aus demselben Abruf. Die Ereignisse stehen als
-   ruhige chronologische Textliste: ein kleiner Punkt je Ereignis, der neueste in
-   der Markenfarbe — keine Symbole im Punkt. */
+   ruhige chronologische Textliste: ein kleiner Punkt je Ereignis — jedes erreichte grün,
+   das neueste eines Abschnitts im Stand „Ausnahme" in der Warnfarbe (trackingEventTone,
+   dieselbe Regel wie die öffentliche Trackingseite). Keine Symbole im Punkt. */
 function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
   if (loading) return <div className="loading-center"><span className="spinner spinner-dark" /></div>;
   if (tracking?.error) return <p className="text-muted text-sm">{tracking.error}</p>;
@@ -116,10 +117,11 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
     key: leg.key,
     heading: legs.length > 1 ? trackingLegHeading(leg) : null,
     link: legs.length > 1 ? leg.carrierTrackingPage : null,
-    events: leg.events.map((ev) => ({
+    events: leg.events.map((ev, i) => ({
       title: ev.description,
       when: eventWhenText(ev, { withSuffix: false }) || "",
       location: ev.location,
+      tone: trackingEventTone(leg, i),
     })),
   }));
   const eventCount = sections.reduce((n, sec) => n + sec.events.length, 0);
@@ -174,7 +176,7 @@ function ShipmentTrackingDetail({ tracking, loading, onRefresh }) {
             <div key={i} className="track-event">
               {/* Neuestes Ereignis = letztes Element (aufsteigende Timeline). Der
                   Punkt ist reine Markierung — die Aussage steht im Text daneben. */}
-              <div className={`track-dot ${i === section.events.length - 1 ? "active" : "done"}`} aria-hidden="true" />
+              <div className={`track-dot ${ev.tone}`} aria-hidden="true" />
               <div className="track-info">
                 <div className="track-title">{ev.title}</div>
                 {ev.when && <div className="track-time">{ev.when}</div>}

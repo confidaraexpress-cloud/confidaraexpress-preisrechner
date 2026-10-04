@@ -201,11 +201,18 @@ test("14 — Karten außerhalb des Bildes sparen Renderarbeit, mit gemessenem Pl
   const offers = nurCode(leseQuelle("src/styles/offers.css"));
   // Genau EINE Regel schaltet content-visibility ein — auf .offer-card selbst.
   assert.equal((offers.match(/content-visibility: auto/g) || []).length, 1);
-  assert.match(offers, /\n\.offer-card \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 256px;\s*\}/);
-  assert.match(schnitt(offers, "@media (max-width: 1099px)", "@media (max-width: 767px)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 400px; \}/);
-  assert.match(schnitt(offers, "@media (max-width: 767px)", "@media (max-width: 480px)"),
-    /\.offer-card \{ contain-intrinsic-size: auto 460px; \}/);
+  // Feinschliff 2026-10: die Karte richtet sich nach ihrer eigenen Breite (Container `offers`);
+  // die Platzhalter stehen deshalb in denselben Container-Stufen und tragen die neu gemessenen Höhen.
+  // Seit 2026-10-04 sind alle Karten einer Stufe gleich hoch (Hinweise in den Details) — neu gemessen,
+  // dazu die schmale Stufe bis 320 px Kartenbreite.
+  assert.match(offers, /\n\.offer-card \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 190px;\s*\}/);
+  assert.match(offers, /\.offers-body \{ container-type: inline-size; container-name: offers; \}/);
+  assert.match(schnitt(offers, "@container offers (max-width: 949px)", "@container offers (max-width: 639px)"),
+    /\.offer-card \{ contain-intrinsic-size: auto 294px; \}/);
+  assert.match(schnitt(offers, "@container offers (max-width: 639px)", "@container offers (max-width: 354px)"),
+    /\.offer-card \{ contain-intrinsic-size: auto 381px; \}/);
+  assert.match(schnitt(offers, "@container offers (max-width: 320px)", "@supports not (container-type: inline-size)"),
+    /\.offer-card \{ contain-intrinsic-size: auto 473px; \}/);
   // Kein Ausblenden, keine Virtualisierung.
   assert.doesNotMatch(offers, /content-visibility: hidden/);
   const pkg = leseQuelle("package.json");

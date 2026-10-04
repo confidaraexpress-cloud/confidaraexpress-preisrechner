@@ -312,12 +312,18 @@ test("A — Angebotsliste: auswählbar mit vorläufigem Preis und Zuschlagshinwe
   assert.match(text, /Vorläufiger Preis/);
   assert.match(text, /12,34 €/);
   assert.doesNotMatch(text, /ab \d+,\d{2} €/, "die Karte zeigt einen „ab“-Betrag");
-  assert.equal(await inhalt(tg.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   assert.equal(await tg.evaluate((el) => el.classList.contains("offer-card--unavailable")), false, "die Karte ist gesperrt");
   const cta = tg.locator("button.offer-cta-btn");
   assert.equal(await cta.isEnabled(), true, "der CTA ist gesperrt");
   assert.match(await inhalt(cta), /Angebot auswählen/);
   assert.equal(await tg.locator(".offer-badge").count(), 0, "ein vorläufiges Angebot trägt eine Auszeichnung");
+  // Gleich hohe Karten (2026-10-04): der Zuschlagshinweis steht in der Preisaufschlüsselung der Details.
+  for (const karte of [tg, karteVon(page, JM)]) {
+    await karte.locator("button.offer-details-link").click();
+    await karte.locator(".offer-details-panel--open .offer-details-section--price").waitFor({ timeout: 10000 });
+  }
+  assert.equal(await inhalt(tg.locator(".offer-details-section--price .offer-surcharge-hint")),
+    "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   assert.equal(await karteVon(page, JM).locator(".offer-surcharge-hint").count(), 0, "das Vergleichsangebot trägt den Hinweis");
   assert.equal(p.anfragen.length, 0, "vor der Auswahl entstand eine Zuschlagsanfrage");
   await keinAnbieter(page, "Angebotsliste");
@@ -459,6 +465,8 @@ test("E — Zurück zu den Angeboten und wieder hinein: gebundener Preis in der 
   const text = await inhalt(karte);
   assert.match(text, /15,52 €/, `die Liste zeigt den gebundenen Preis nicht: ${text}`);
   assert.doesNotMatch(text, /Vorläufiger Preis/);
+  await karte.locator("button.offer-details-link").click();
+  await karte.locator(".offer-details-panel--open .offer-details-section--price").waitFor({ timeout: 10000 });
   assert.equal(await karte.locator(".offer-surcharge-hint").count(), 0);
 
   const optionsVorher = p.lz.optionsCalls.length;

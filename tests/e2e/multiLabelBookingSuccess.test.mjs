@@ -269,7 +269,12 @@ test("6 — carrier_at_pickup: keine Label-Mail, Tracking-only bleibt; Erfolgsse
   await fuelleVersandformular(page);
   await page.locator(".offers-calc-cta button").first().click();
   await page.waitForSelector(".offer-card", { timeout: 20000 });
-  const karte = await page.locator(".offer-card:not(.offer-card--unavailable)").first().innerText();
+  // Gleich hohe Karten (2026-10-04): Drucker- und Labelangabe stehen in den Details der Karte.
+  const angebot = page.locator(".offer-card:not(.offer-card--unavailable)").first();
+  await angebot.locator("button.offer-details-link").click();
+  const panel = angebot.locator(".offer-details-panel--open");
+  await panel.waitFor({ timeout: 10000 });
+  const karte = await panel.innerText();
   assert.match(karte, /Kein Drucker nötig|Nicht erforderlich/, "die Karte verlangt einen Drucker");
   assert.match(karte, /Wird bei der Abholung angebracht/, "der Carrier-Label-Hinweis fehlt auf der Karte");
   await page.locator(".offer-card:not(.offer-card--unavailable)").first().locator("button.offer-cta-btn").click();

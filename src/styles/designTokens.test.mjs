@@ -167,7 +167,7 @@ test("6 — Typografie-, Abstands-, Radius-, Tiefen-, Ebenen-, Bewegungs- und Ma
     ]);
   }
   pruefe(Array.from({ length: 13 }, (_, i) => `ce-space-${i}`));
-  pruefe(["ce-radius-0", "ce-radius-sm", "ce-radius-md", "ce-radius-lg", "ce-radius-xl", "ce-radius-full"]);
+  pruefe(["ce-radius-0", "ce-radius-xs", "ce-radius-sm", "ce-radius-md", "ce-radius-lg", "ce-radius-xl", "ce-radius-full"]);
   pruefe([
     "ce-elevation-0", "ce-elevation-1", "ce-elevation-2", "ce-elevation-3",
     "ce-elevation-material-raised", "ce-elevation-material-signature", "ce-elevation-focus-ring",
@@ -197,6 +197,9 @@ test("7 — Skalenwerte entsprechen der Spezifikation", () => {
   }
   // Zwei Radienstufen (Redesign 2026-10): 8 px Controls/Badges, 12 px
   // Karten/Tabellen/Dialoge/Drawer — die vier Rollennamen bleiben bestehen.
+  // Dazu 4 px allein für das quadratische Auswahlfeld der Mehrfachauswahl
+  // (Feinschliff 2026-10): bei 16 px Kantenlänge wären 8 px fast ein Kreis.
+  assert.equal(wert("ce-radius-xs"), "4px");
   assert.equal(wert("ce-radius-sm"), "8px");
   assert.equal(wert("ce-radius-md"), "8px");
   assert.equal(wert("ce-radius-lg"), "12px");
@@ -303,7 +306,7 @@ test("10 — es gibt genau EINE Radienfamilie im Produkt", () => {
   // Und projektweit liegt jeder Radius auf der Skala. Ausgenommen bleibt der
   // Auth-Bereich mit seiner eigenen, dokumentierten Glaswelt.
   const SKALA = new Set(["0", "50%", "inherit", "999px", "9999px",
-    ...["0", "sm", "md", "lg", "xl", "full"].map((n) => `var(--ce-radius-${n})`),
+    ...["0", "xs", "sm", "md", "lg", "xl", "full"].map((n) => `var(--ce-radius-${n})`),
     ...["", "-sm", "-lg", "-full"].map((n) => `var(--radius${n})`)]);
   // Zwei dokumentierte Ausnahmen, jede mit eigener Governance:
   //   auth.css              — die Glaswelt des Auth-Bereichs (eigenes Paket)

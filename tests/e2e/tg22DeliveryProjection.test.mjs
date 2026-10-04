@@ -316,13 +316,14 @@ test("D — Abholung am selben Tag: Zuschlag, Abholschluss und Prognose nebenein
   await setup(page, { tariffs: [TG_HEUTE, JM], lzOffer: TG_HEUTE });
   await zuDenAngeboten(page);
   const karte = karteVon(page, TG_HEUTE);
-  assert.equal(await inhalt(karte.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,02 €");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  // Gleich hohe Karten (2026-10-04): Zuschlagszeile und Abholschluss stehen in den Details, nicht auf der Fläche.
+  assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
   const ende = karte.locator(".offer-tl-node--end");
   assert.equal(await inhalt(ende.locator(".offer-tl-title")), "Voraussichtliche Lieferung");
   assert.equal(await inhalt(ende.locator(".offer-tl-primary")), `${kurz(HEUTE_MIN)} – ${kurz(HEUTE_MAX)}`);
   const panel = await oeffneDetails(page, TG_HEUTE);
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
   const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
   assert.deepEqual(fehler, []);

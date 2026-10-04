@@ -208,20 +208,28 @@ test("C5 — die normale Datumszeile trägt den früheren Inline-Stil nicht mehr
     "buildEnd darf die Frühzeit nicht zweitklassifizieren");
 });
 
-test("C6 — das Hinweisfeld steht am Lieferende, nicht beim Preis oder Carrier", () => {
+test("C6 — das Hinweisfeld steht IM Endknoten direkt unter dem Lieferdatum, nicht beim Preis oder Carrier", () => {
   const karte = lies(OFFER_CARD);
   const i = karte.indexOf("offer-early-note");
   assert.ok(i > 0, "das Hinweisfeld fehlt in der Karte");
   const zone3 = karte.indexOf("offer-zone-3");
   assert.ok(i < zone3, "es darf nicht in der Preis-/Aktionszone stehen");
-  // Semantische Nähe: es steht innerhalb der Timeline, direkt nach den Knoten.
-  const labels = karte.indexOf("offer-tl-labels");
-  assert.ok(labels > 0 && labels < i, "es muss NACH den Timeline-Knoten stehen");
-  // Aber NICHT im Endknoten selbst — dessen 1fr-Rasterspur würde sich sonst
-  // verziehen und die Preisspalte verschieben.
+  // Feinschliff 2026-10 (Betreiberauftrag): das Feld gehört zum Lieferdatum. Es steht
+  // deshalb IM Endknoten, NACH dessen Datums- und Unterzeilen — vorher hing es als
+  // Geschwister unter beiden Knoten und damit unter der längeren Startspalte.
   const endeKnoten = karte.indexOf('offer-tl-node--end');
-  const knotenEndeSchluss = karte.indexOf("</div>", karte.indexOf("offer-tl-sub", endeKnoten));
-  assert.ok(i > knotenEndeSchluss, "das Feld darf kein Kind des Endknotens sein");
+  const unterzeilen = karte.indexOf("offer-tl-sub", endeKnoten);
+  assert.ok(endeKnoten > 0 && unterzeilen > endeKnoten && unterzeilen < i,
+    "das Feld muss im Endknoten nach Datum und Unterzeilen stehen");
+  const knotenSchluss = karte.indexOf("</div>", unterzeilen);
+  assert.ok(i < knotenSchluss, "das Feld steht nicht mehr im Endknoten");
+  // Die Spur des Endknotens kann sich nicht aufweiten — Timeline und Preisspalte
+  // verziehen sich durch das Feld nicht (gemessen: deliveryTimeFilter-E2E, Test 7).
+  const css = lies("src/styles/offers.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const spuren = css.match(/\.offer-tl-labels\s*\{([^}]*)\}/);
+  assert.ok(spuren, ".offer-tl-labels fehlt");
+  assert.match(spuren[1], /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/,
+    "die Spuren der Timeline-Beschriftung sind nicht auf minmax(0, 1fr) begrenzt");
 });
 
 /* ══════════ U) Uhrzeitauswahl — ein Feld statt vieler Pillen ══════════════ */

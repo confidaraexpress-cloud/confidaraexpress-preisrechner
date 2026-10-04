@@ -189,9 +189,12 @@ test("15 — öffentliche Trackingseite: der Knopf übergibt kein Klickereignis 
   assert.doesNotMatch(tracking, /onClick=\{track\}/);
 });
 
-test("16 — date_unavailable: Hinweis unter dem CTA, der Grund steht weiter nur im Knopf", () => {
-  assert.match(karte, /const unavailableHint = offerBlockedHint\(t\);/);
-  assert.match(karte, /\{unavailableHint && <p className="offer-cta-hint">\{unavailableHint\}<\/p>\}/);
+test("16 — date_unavailable: Hinweis in den Details, der Grund steht weiter nur im Knopf", () => {
+  // Gleich hohe Karten (2026-10-04): unter dem CTA steht kein Hinweis mehr; der Handlungshinweis steht unter
+  // „Zusatzhinweise" im Detailbereich — derselbe Helfer, derselbe Wortlaut.
+  assert.match(karte, /const blockedHint = offerBlockedHint\(t\);/);
+  assert.match(karte, /\{blockedHint && <p className="offer-detail-note offer-blocked-hint">\{blockedHint\}<\/p>\}/);
+  assert.doesNotMatch(karte, /offer-cta-hint/, "unter dem CTA steht wieder ein Hinweis");
 });
 
 /* ══════════ 7 — Responsive ══════════ */

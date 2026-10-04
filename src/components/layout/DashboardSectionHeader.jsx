@@ -6,8 +6,10 @@ import { PageHeader } from "../ui/PageHeader";
    PageHeader-Muster. Dieser Name bleibt als Aufrufweg bestehen, damit kein
    Aufrufer angefasst werden musste — er reicht nur durch und nimmt zusätzlich
    Utility-Cluster, Seitenaktionen und eine Metazeile entgegen. Eine übergebene
-   `eyebrow` wird seit dem Redesign (2026-10) nicht mehr dargestellt. */
-export function DashboardSectionHeader({ title, subtitle, utility, actions, meta }) {
+   `eyebrow` wird seit dem Redesign (2026-10) nicht mehr dargestellt.
+   `className` reicht einen Kopf-Modifier durch (etwa die Achse der zentrierten
+   Buchungsspalte, `.ce-page-header--booking`). */
+export function DashboardSectionHeader({ title, subtitle, utility, actions, meta, className }) {
   return (
     <PageHeader
       title={title}
@@ -15,6 +17,7 @@ export function DashboardSectionHeader({ title, subtitle, utility, actions, meta
       meta={meta}
       utility={utility}
       actions={actions}
+      className={className}
     />
   );
 }

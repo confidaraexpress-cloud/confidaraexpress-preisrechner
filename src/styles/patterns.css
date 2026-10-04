@@ -74,6 +74,17 @@
 }
 .ce-page-header-text { min-width: 0; flex: 1 1 360px; }
 
+/* Seitenkopf über der zentrierten Buchungsspalte (/booking, Feinschliff
+   2026-10): Titel und Untertitel stehen auf derselben Achse wie die
+   Arbeitsspalte darunter (.booking-wrap). Die Utility-Zeile (Mitteilungen,
+   Benutzerchip) bleibt am gemeinsamen Rahmen und springt beim Seitenwechsel
+   nicht. */
+.ce-page-header--booking .ce-page-header-main {
+  width: 100%;
+  max-width: var(--ce-size-booking);
+  margin-inline: auto;
+}
+
 .ce-page-header-title {
   margin: 0;
   font-family: var(--ce-font-sans);

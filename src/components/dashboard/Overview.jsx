@@ -31,15 +31,16 @@ import transOFlexLogo from "../../assets/carriers/trans-o-flex.svg";
      Kennzahlen  ein kompaktes Band mit vier gleich breiten Zellen
      Arbeit      Letzte Sendungen (≈ 2/3) · Offene Rechnungen (≈ 1/3)
      Meldungen   höchstens drei vorhandene Benachrichtigungen
-     Carrier     die acht Carrier als kompakte, helle Fläche mit
+     Carrier     die acht Carrier auf der Navy-Fläche mit Routenlinien und
                  „Carrier-Angebote vergleichen"
 
    Feinkorrektur 2026-10: Begrüßung und Carrier-Bereich sind inhaltlich
-   zurück — im neuen Designsystem (DM Sans, helle Fläche, keine Netzgrafik,
-   keine Symbole), nicht als Kopie der früheren Fassung.
+   zurück — im neuen Designsystem (DM Sans, keine Symbole). Der Carrier-
+   Bereich trägt seit der Betreiberentscheidung 2026-10-04 wieder die Optik
+   vor dem Redesign (Navy, Routenlinien, weiße Logo-Kacheln) — nur er.
    Entfallen bleiben: Serifengruß, dekorative Chips (Datum/Live/DSGVO),
-   Symbole an den Kennzahlen, die dunkle Carrier-Bühne mit Netzstruktur und
-   die redundanten „Öffnen"-Aktionen. Die erklärenden Onboarding-Abschnitte
+   Symbole an den Kennzahlen und die redundanten „Öffnen"-Aktionen. Die
+   erklärenden Onboarding-Abschnitte
    bleiben — wie bisher ausschließlich für ein Konto OHNE operative Daten — in
    ruhiger Textform erhalten.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -63,6 +64,33 @@ const CARRIERS = [
   { key: "emons",        logo: emonsLogo,      alt: "Emons",        service: "Standard", time: "2–4 Tage" },
   { key: "trans-o-flex", logo: transOFlexLogo, alt: "trans-o-flex", service: "Express",  time: "1–2 Tage" },
 ];
+
+/* ── Routenlinien des Carrier-Bereichs ──
+   Betreiberentscheidung 2026-10-04: der Carrier-Bereich trägt wieder die Optik
+   unmittelbar vor dem Redesign (Stand 2c4cf1b) — dieselbe Geometrie: drei ruhige,
+   geschwungene Routen mit Knoten an ihren Kurvenpunkten. Rein dekorativ
+   (aria-hidden, nicht fokussierbar), statisch, ohne Filter und ohne Animation;
+   die Farben kommen aus --ce-net-line/--ce-net-node. Die Linien liegen
+   ausschließlich IN diesem Block, hinter dem Inhalt und an der Kartenrundung
+   beschnitten — keine zweite Hintergrundebene der Seite. */
+function CarrierRoutes() {
+  return (
+    <svg className="ov-carriers-net" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g className="ov-carriers-route">
+        <path d="M-40 318 C 220 250, 340 120, 620 150 S 1000 250, 1260 118" />
+        <path d="M-40 178 C 260 128, 420 300, 700 300 S 1020 158, 1260 212" />
+        <path d="M120 430 C 300 330, 560 380, 780 250 S 1080 60, 1240 38" />
+      </g>
+      <g className="ov-carriers-node">
+        <circle cx="620" cy="150" r="3" />
+        <circle cx="700" cy="300" r="3" />
+        <circle cx="780" cy="250" r="3" />
+        <circle cx="1260" cy="118" r="2" />
+        <circle cx="1240" cy="38" r="2" />
+      </g>
+    </svg>
+  );
+}
 
 /* ── Onboarding-Inhalte (Copy wortgleich zum bisherigen Stand) ── */
 const STEPS = [
@@ -267,31 +295,35 @@ export function Overview({
         )}
 
         {/* ── Carrier-Bereich ──
-            Kompakt und hell: Titel, ein Satz und die Vergleichsaktion, darunter
-            die acht Carrier als ruhige Kacheln (Logo, Leistung, Laufzeit).
-            Keine dunkle Bühne, keine Netzgrafik, keine Symbole. Die Aktion
-            führt wie bisher zum Versandkostenrechner (/calculator). */}
+            Navy-Fläche mit den Routenlinien (Optik vor dem Redesign,
+            Betreiberentscheidung 2026-10-04): Titel, ein Satz und die
+            Vergleichsaktion, darunter die acht Carrier als weiße Logo-Kacheln mit
+            Leistung und Laufzeit. Inhalt, Aktion und Ziel unverändert — die
+            Aktion führt wie bisher zum Versandkostenrechner (/calculator). */}
         <section className="ov-carriers" aria-labelledby="ov-car-title">
-          <div className="ov-carriers-head">
-            <div className="ov-carriers-intro">
-              <h2 className="ov-carriers-title" id="ov-car-title">Acht Carrier. Eine zentrale Plattform.</h2>
-              <p className="ov-carriers-desc">Preise und Laufzeiten führender Versanddienstleister direkt vergleichen.</p>
+          <CarrierRoutes />
+          <div className="ov-carriers-in">
+            <div className="ov-carriers-head">
+              <div className="ov-carriers-intro">
+                <h2 className="ov-carriers-title" id="ov-car-title">Acht Carrier. Eine zentrale Plattform.</h2>
+                <p className="ov-carriers-desc">Preise und Laufzeiten führender Versanddienstleister direkt vergleichen.</p>
+              </div>
+              <button type="button" className="btn btn-outline ov-carriers-cta" onClick={() => navigate("/calculator")}>
+                Carrier-Angebote vergleichen
+              </button>
             </div>
-            <button type="button" className="btn btn-outline ov-carriers-cta" onClick={() => navigate("/calculator")}>
-              Carrier-Angebote vergleichen
-            </button>
+            <ul className="ov-carrier-grid">
+              {CARRIERS.map((c) => (
+                <li className="ov-carrier" key={c.key}>
+                  <span className="ov-carrier-logo">
+                    <img src={c.logo} alt={c.alt} />
+                  </span>
+                  <span className="ov-carrier-service">{c.service}</span>
+                  <span className="ov-carrier-time">{c.time}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="ov-carrier-grid">
-            {CARRIERS.map((c) => (
-              <li className="ov-carrier" key={c.key}>
-                <span className="ov-carrier-logo">
-                  <img src={c.logo} alt={c.alt} />
-                </span>
-                <span className="ov-carrier-service">{c.service}</span>
-                <span className="ov-carrier-time">{c.time}</span>
-              </li>
-            ))}
-          </ul>
         </section>
       </div>
     </>

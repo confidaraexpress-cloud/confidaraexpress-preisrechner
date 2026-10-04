@@ -161,8 +161,14 @@ tr:last-child td { border-bottom: none; }
   width: 10px; height: 10px; margin-top: 9px; border-radius: 50%; flex-shrink: 0;
   border: 2px solid var(--ce-color-border-strong); background: var(--ce-color-surface);
 }
-.track-dot.active { border-color: var(--ce-color-brand); background: var(--ce-color-brand); }
-.track-dot.done   { border-color: var(--ce-color-border-strong); background: var(--ce-color-border-strong); }
+/* Chronologischer grüner Fortschritt (Betreiberentscheidung 2026-10-04, wie vor dem Redesign):
+   jedes gelieferte Ereignis ist erreicht — die früheren (.done) und das neueste (.active) in der
+   Success-Familie. Nur das neueste Ereignis eines Abschnitts im Stand „Ausnahme" trägt die
+   Warnfarbe (.problem). Welcher Punkt welchen Ton trägt, entscheidet trackingEventTone
+   (utils/trackingLegsView.mjs) — für die öffentliche Trackingseite und die Kundenansicht gleich. */
+.track-dot.active { border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid); }
+.track-dot.done   { border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid); }
+.track-dot.problem { border-color: var(--ce-color-status-warning-fg); background: var(--ce-color-status-warning-fg); }
 /* `min-width: 0` + `overflow-wrap`: eine lange Ortsangabe oder Trackingnummer bricht in der
    schmalen Mobilkarte um, statt die Timeline seitlich aus der Karte zu schieben. */
 .track-info { flex: 1; min-width: 0; padding-top: 4px; overflow-wrap: anywhere; }
@@ -277,6 +283,15 @@ tr:last-child td { border-bottom: none; }
 }
 .tracking-id-value { font-family: var(--ce-font-numeric); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; user-select: all; }
 .tracking-steps { margin-bottom: var(--ce-space-6); }
+/* Stufenleiste der Sendungsverfolgung (Betreiberentscheidung 2026-10-04): erreichte UND aktuelle
+   Stufe grün, zukünftige neutral — bei der Zustellung sind alle vier grün. Ausschließlich unter
+   .tracking-steps: der Buchungs-Stepper (.steps-bar ohne diese Klasse) behält für den aktuellen
+   Schritt seine Markenfarbe. Bei einer belegten Ausnahme ist keine Stufe markiert (trackingView.mjs). */
+.tracking-steps .step-circle.active {
+  border-color: var(--ce-color-success-solid); background: var(--ce-color-success-solid);
+  color: var(--ce-color-text-inverse);
+}
+.tracking-steps .step-label.active { color: var(--ce-color-success-solid); }
 
 /* Tagesgruppe und Abschnittskopf (mehrere Transportabschnitte) — Normalschrift,
    keine Versal-Eyebrow. */

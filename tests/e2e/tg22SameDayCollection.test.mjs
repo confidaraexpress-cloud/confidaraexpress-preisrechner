@@ -223,6 +223,17 @@ const kurz = (ms) => new Promise((r) => setTimeout(r, ms));
 const karteVon = (page, t) => page.locator(`.offer-card:has(button[aria-controls="offer-details-${t.offerId}"])`);
 const buchenKnopf = (page) => page.getByRole("button", { name: /Kostenpflichtig buchen/ });
 
+/* Gleich hohe Karten (2026-10-04): Zuschlagszeile, Abholschluss und Handlungshinweis stehen im Detailbereich
+   der Karte, nicht mehr auf ihrer Fläche. Öffnet ihn (falls zu) und liefert ihn zurück. */
+async function oeffneDetails(karte) {
+  const knopf = karte.locator("button.offer-details-link");
+  if ((await knopf.getAttribute("aria-expanded")) !== "true") await knopf.click();
+  const panel = karte.locator(".offer-details-panel--open");
+  await panel.waitFor({ state: "visible", timeout: 10000 });
+  return panel;
+}
+const flaecheVon = (karte) => karte.locator(".offer-card-inner");
+
 async function warteBis(pruefe, wo, timeout = 10000) {
   const ende = Date.now() + timeout;
   for (;;) {
@@ -319,36 +330,38 @@ test.after(async () => {
   }
 });
 
-test("A — Angebotsliste: Preis inkl. Zuschlag, Zuschlagszeile netto/brutto, Abholschluss, Details; JUMiNGO ohne Zuschlagszeile", async () => {
+test("A — Angebotsliste: Preis inkl. Zuschlag; Zuschlag netto/brutto und Abholschluss in den Details; JUMiNGO ohne Zuschlagszeile", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page);
   await zuDenAngeboten(page);
 
   const tg = karteVon(page, TG);
   assert.equal(await inhalt(tg.locator(".offer-price")), "15,36 €", "der Kartenpreis ist nicht der Serverpreis mit Zuschlag");
-  assert.equal(await inhalt(tg.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,02 €");
-  assert.equal(await inhalt(tg.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  // Gleich hohe Karten (2026-10-04): die Fläche sagt „Abholung heute"; Zuschlag und Abholschluss stehen in den Details.
+  assert.equal(await flaecheVon(tg).locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await inhalt(tg.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
   assert.match(await inhalt(tg.locator(".offer-tl-node--start")), /bereit ab 11:30 Uhr/);
   assert.equal(await tg.evaluate((el) => el.classList.contains("offer-card--unavailable")), false, "die Karte ist gesperrt");
   assert.equal(await tg.locator("button.offer-cta-btn").isEnabled(), true, "der CTA ist gesperrt");
   assert.equal(await tg.locator(".offer-badge").count(), 0, "ein vorläufiges Angebot trägt eine Auszeichnung");
 
-  // Brutto: Preis UND Zeile wechseln gemeinsam — beide Werte vom Server.
+  // Brutto: der Kartenpreis wechselt — ein Serverbetrag, nichts addiert.
   await page.getByRole("button", { name: "inkl. MwSt.", exact: true }).click();
   await warteBis(async () => (await inhalt(tg.locator(".offer-price"))) === "18,28 €", "Bruttopreis der Karte");
-  assert.equal(await inhalt(tg.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,60 €");
 
-  // Details: der Zuschlag mit beiden Beträgen.
-  await tg.locator("button.offer-details-link").click();
-  const detail = page.locator(`#offer-details-${TG.offerId} .offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))`);
+  // Details: der Zuschlag mit beiden Beträgen, der Abholschluss unter „Termin & Abholung".
+  const panel = await oeffneDetails(tg);
+  const detail = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
   await detail.waitFor({ timeout: 10000 });
   assert.equal(await inhalt(detail.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
 
-  // JUMiNGO mit eigener Abholung heute: der Titel bleibt, eine Zuschlagszeile entsteht nicht.
+  // JUMiNGO mit eigener Abholung heute: der Titel bleibt, eine Zuschlagszeile entsteht nicht — auch nicht in den Details.
   const jm = karteVon(page, JM);
   assert.equal(await inhalt(jm.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
+  await oeffneDetails(jm);
   assert.equal(await jm.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
+  assert.equal(await jm.locator('.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag")').count(), 0);
   assert.equal(p.anfragen.length, 0, "vor der Auswahl entstand eine Zuschlagsanfrage");
   await keinAnbieter(page, "Angebotsliste");
   await beleg(page, "angebotsliste");
@@ -356,7 +369,7 @@ test("A — Angebotsliste: Preis inkl. Zuschlag, Zuschlagszeile netto/brutto, Ab
   await page.close();
 });
 
-test("B — nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund am Knopf, Hinweis darunter", async () => {
+test("B — nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund am Knopf, Hinweis in den Details", async () => {
   const { page, fehler } = await neueSeite();
   const p = await setup(page, { tariffs: [TG_VORBEI, JM] });
   await zuDenAngeboten(page);
@@ -367,7 +380,8 @@ test("B — nach dem Abholschluss: sichtbar mit Preis, nicht auswählbar, Grund 
   const cta = tg.locator("button.offer-cta-btn");
   assert.equal(await cta.isDisabled(), true, "der CTA ist bedienbar");
   assert.equal(await inhalt(cta), "Abholung heute nicht mehr möglich.");
-  assert.equal(await inhalt(tg.locator("p.offer-cta-hint")), "Bitte wählen Sie einen späteren Abholtag.");
+  const panel = await oeffneDetails(tg);
+  assert.equal(await inhalt(panel.locator("p.offer-blocked-hint")), "Bitte wählen Sie einen späteren Abholtag.");
   assert.equal(await tg.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await tg.evaluate((el) => el.classList.contains("offer-card--unavailable")), true);
   // Der Abholtag bleibt, eine „bereit ab"-Zeit nicht: 09:00 wäre heute eine überholte Zusage.
@@ -395,7 +409,8 @@ test("B2 — Grundvertrag: drei Gründe, drei Sätze, ein Hinweis; TG23 identisc
     const cta = karte.locator("button.offer-cta-btn");
     assert.equal(await cta.isDisabled(), true, `${t.unavailableReason}: der CTA ist bedienbar`);
     assert.equal(await inhalt(cta), satz, t.unavailableReason);
-    assert.equal(await inhalt(karte.locator("p.offer-cta-hint")), HINWEIS, t.unavailableReason);
+    const panel = await oeffneDetails(karte);
+    assert.equal(await inhalt(panel.locator("p.offer-blocked-hint")), HINWEIS, t.unavailableReason);
     const start = await inhalt(karte.locator(".offer-tl-node--start"));
     assert.doesNotMatch(start, /bereit ab/, `${t.unavailableReason}: „bereit ab“ für eine gesperrte Abholung heute`);
     assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
@@ -408,7 +423,8 @@ test("B2 — Grundvertrag: drei Gründe, drei Sätze, ein Hinweis; TG23 identisc
   // Ein unbekannter Grund: der neutrale Satz, kein Hinweis.
   const unbekannt = karteVon(page, TG_UNBEKANNT);
   assert.equal(await inhalt(unbekannt.locator("button.offer-cta-btn")), "Derzeit nicht buchbar");
-  assert.equal(await unbekannt.locator("p.offer-cta-hint").count(), 0);
+  await oeffneDetails(unbekannt);
+  assert.equal(await unbekannt.locator("p.offer-blocked-hint").count(), 0);
   // Ein späterer Abholtag: der bestehende Vertrag „bereit ab 09:00 Uhr", auswählbar.
   const morgen = karteVon(page, TG_MORGEN);
   assert.match(await inhalt(morgen.locator(".offer-tl-node--start")), /bereit ab 09:00 Uhr/);
@@ -601,11 +617,14 @@ test("F — Zurück zum Vergleich: gebundener Preis, Zuschlagszeile und frische 
   assert.equal(p.calc.length, berechnungen, "der Rückweg hat neu berechnet");
   const karte = karteVon(page, TG);
   assert.equal(await inhalt(karte.locator(".offer-price")), "15,36 €");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,02 €");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
   assert.doesNotMatch(await inhalt(karte), /Vorläufiger Preis/);
   assert.match(await inhalt(karte.locator(".offer-tl-node--start")), /bereit ab 11:45 Uhr/,
     "die frische Abholzeit der Bindung fehlt in der Liste");
+  // Gleich hohe Karten (2026-10-04): Zuschlag und Abholschluss bleiben — im Detailbereich der Karte.
+  const panel = await oeffneDetails(karte);
+  const zuschlag = panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))');
+  assert.equal(await inhalt(zuschlag.locator(".offer-detail-value")), "+3,02 € netto · +3,60 € brutto");
+  assert.equal(await inhalt(panel.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
   assert.deepEqual(fehler, []);
   await page.close();
 });
@@ -617,17 +636,20 @@ for (const breite of [1440, 834, 390]) {
     await zuDenAngeboten(page);
     assert.ok(await querUeberlauf(page) <= 0, `${breite}px: Angebotsliste mit horizontalem Überlauf`);
     const karte = karteVon(page, TG);
-    for (const sel of [".offer-sameday-surcharge", ".offer-sameday-until"]) {
-      const el = karte.locator(sel);
+    // Gleich hohe Karten (2026-10-04): Zuschlag und Abholschluss stehen im Detailbereich — dort sichtbar und innerhalb der Karte.
+    const panel = await oeffneDetails(karte);
+    for (const el of [panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))'),
+                      panel.locator(".offer-sameday-until")]) {
       await el.scrollIntoViewIfNeeded();
-      assert.ok(await el.isVisible(), `${breite}px: ${sel} ist nicht sichtbar`);
-      await liegtInnerhalb(karte, el, `${breite}px ${sel}`);
+      assert.ok(await el.isVisible(), `${breite}px: Same-Day-Angabe in den Details ist nicht sichtbar`);
+      await liegtInnerhalb(karte, el, `${breite}px Same-Day-Angabe in den Details`);
     }
     await karte.scrollIntoViewIfNeeded();
     await beleg(page, `karte-${breite}`);
-    // Die gesperrte Abholung heute: Satz und Hinweis sichtbar und in der Karte, keine „bereit ab"-Zeile.
+    // Die gesperrte Abholung heute: Satz (Knopf) und Hinweis (Details) sichtbar und in der Karte, keine „bereit ab"-Zeile.
     const gesperrt = karteVon(page, TG_UNBESTAETIGT);
-    for (const sel of ["button.offer-cta-btn", "p.offer-cta-hint"]) {
+    await oeffneDetails(gesperrt);
+    for (const sel of ["button.offer-cta-btn", "p.offer-blocked-hint"]) {
       const el = gesperrt.locator(sel);
       await el.scrollIntoViewIfNeeded();
       assert.ok(await el.isVisible(), `${breite}px: gesperrte Karte ${sel} ist nicht sichtbar`);

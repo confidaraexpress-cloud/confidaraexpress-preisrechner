@@ -158,20 +158,23 @@ const gebundenAn = (wert) =>
 
 /* ══════════ §48 — Frontend-Pflichttests ══════════ */
 
-test("1 — sichtbar: ein Angebot mit Abholung heute ist auswählbar und trägt Zuschlags- und Abholschlusszeile", () => {
+test("1 — sichtbar: ein Angebot mit Abholung heute ist auswählbar und trägt Zuschlags- und Abholschlusszeile in den Details", () => {
   const v = sameDayOfferView(TG22_HEUTE);
   assert.ok(v, "die Serveraussage wird nicht gelesen");
   assert.equal(offerSelectable(TG22_HEUTE), true);
   assert.equal(offerAwaitsPriceInputs(TG22_HEUTE), true);
   assert.equal(offerBlockedLabel(TG22_HEUTE), null, "der Knopf trägt einen Sperrgrund statt „Angebot auswählen“");
   const karte = code(KARTE);
-  assert.match(karte, /import \{\s*sameDayOfferView, sameDaySurchargeLine, sameDayDetailValue, SAME_DAY_TEXT,\s*\} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
-  assert.match(karte, /const sameDay = sameDayOfferView\(t\);/);
-  assert.match(karte, /\{sameDay && \(\s*<div className="offer-sameday-surcharge">\{sameDaySurchargeLine\(sameDay, vatMode\)\}<\/div>\s*\)\}/);
-  assert.match(karte, /\{sameDay && <p className="offer-cta-hint offer-sameday-until">\{sameDay\.untilText\}<\/p>\}/);
-  // Die Zeile gehört zum Preis: sie steht im Preisblock, nicht in der Timeline.
-  const preisblock = abschnitt(karte, 'className="offer-price-block"', "className={`offer-cta-btn ${ctaClass}`}");
-  assert.ok(preisblock.includes("offer-sameday-surcharge"), "die Zuschlagszeile steht nicht am Preis");
+  assert.match(karte, /import \{\s*sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT,\s*\} from "\.\.\/\.\.\/utils\/sameDayCollectionView\.mjs";/);
+  // Gleich hohe Karten (2026-10-04): die Kartenfläche trägt weder die Zuschlagszeile noch den Abholschluss — der
+  // Startknoten sagt „Abholung heute", der Kartenpreis enthält den Zuschlag. Beides steht im Detailbereich:
+  // der Zuschlag mit beiden Beträgen in der Preisaufschlüsselung (Test 4), der Abholschluss unter „Termin & Abholung".
+  const details = abschnitt(karte, "function DetailsPanel", "function OfferCardBase");
+  assert.match(details, /const sameDay = sameDayOfferView\(t\);/);
+  const termin = abschnitt(details, "{hasTermin && (", "{hasPrice && (");
+  assert.match(termin, /\{sameDay && <p className="offer-detail-note offer-sameday-until">\{sameDay\.untilText\}<\/p>\}/);
+  const flaeche = karte.slice(karte.indexOf("function OfferCardBase"));
+  assert.doesNotMatch(flaeche, /sameDay|offer-sameday-surcharge|offer-sameday-until/, "die Kartenfläche trägt wieder eine Same-Day-Zeile");
   const timeline = abschnitt(karte, 'className="offer-zone-2"', 'className="offer-zone-3"');
   assert.doesNotMatch(timeline, /sameDay/, "die Timeline trägt die Zuschlagszeile");
 });
@@ -227,7 +230,7 @@ test("5 — „Abholung heute möglich bis HH:MM Uhr“ nennt die Uhrzeit des Se
   assert.equal(sameDayUntilText(null), null);
 });
 
-test("6 — nach dem Abholschluss bleibt das Angebot sichtbar: Preis, Grund am Knopf, Hinweis darunter", () => {
+test("6 — nach dem Abholschluss bleibt das Angebot sichtbar: Preis, Grund am Knopf, Hinweis in den Details", () => {
   assert.equal(TG22_HEUTE_VORBEI.unavailableReason, SAME_DAY_UNAVAILABLE_REASON);
   assert.equal(offerBlockedLabel(TG22_HEUTE_VORBEI), "Abholung heute nicht mehr möglich.");
   assert.equal(offerBlockedHint(TG22_HEUTE_VORBEI), "Bitte wählen Sie einen späteren Abholtag.");
@@ -237,8 +240,10 @@ test("6 — nach dem Abholschluss bleibt das Angebot sichtbar: Preis, Grund am K
   for (const datei of ["../pages/NewShipmentPage.jsx", "../components/offers/OffersList.jsx", "offerBadges.js"]) {
     assert.doesNotMatch(code(datei), /same_day_unavailable|pickupTodayUntil|sameDaySurcharge/, datei);
   }
-  const karte = code(KARTE);
-  assert.match(karte, /\{unavailableHint && <p className="offer-cta-hint">\{unavailableHint\}<\/p>\}/);
+  // Gleich hohe Karten (2026-10-04): der Hinweis steht unter „Zusatzhinweise" im Detailbereich, nicht mehr unter dem CTA.
+  const details = abschnitt(code(KARTE), "function DetailsPanel", "function OfferCardBase");
+  assert.match(details, /const blockedHint = offerBlockedHint\(t\);/);
+  assert.match(details, /\{blockedHint && <p className="offer-detail-note offer-blocked-hint">\{blockedHint\}<\/p>\}/);
 });
 
 test("7 — nach dem Abholschluss nicht auswählbar und nicht buchbar", () => {

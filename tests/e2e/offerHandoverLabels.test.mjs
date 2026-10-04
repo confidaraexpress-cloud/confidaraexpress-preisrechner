@@ -294,11 +294,12 @@ test("9 — die Zeile wirkt als kleine Überschrift des Prozessbereichs", async 
   // größere Stufe plus Navy machen sie kräftiger, ohne mit ihnen zu konkurrieren.
   assert.ok(mass.groesse < mass.preisGroesse, "die Zeile konkurriert mit dem Preis");
   assert.ok(mass.groesse < mass.carrierGroesse, "die Zeile konkurriert mit dem Carriernamen");
-  // Höhenbedarf bleibt klein (eine Zeile), der Abstand zur Prozesslinie ist
-  // jetzt deutlich großzügiger — sichtbare Ruhe statt einer weiteren Metazeile.
+  // Höhenbedarf bleibt klein (eine Zeile). Der Abstand zur Prozesslinie ist seit
+  // dem Feinschliff (2026-10, kompaktere Tarifkarten) 8 px statt 16 px — die Zeile
+  // bleibt die Überschrift des Ablaufs, ohne eine eigene Ebene zu öffnen.
   assert.ok(mass.hoehe <= 20, `die Zeile ist ${mass.hoehe}px hoch`);
-  assert.ok(mass.abstandZurLinie >= 14 && mass.abstandZurLinie <= 16,
-    `Abstand zur Prozesslinie außerhalb 14–16px: ${mass.abstandZurLinie}px`);
+  assert.ok(mass.abstandZurLinie >= 7 && mass.abstandZurLinie <= 9,
+    `Abstand zur Prozesslinie außerhalb 7–9px: ${mass.abstandZurLinie}px`);
   // Position: die Zeile beginnt jetzt auf derselben Höhe wie Zone 1 (Carrier-
   // Logo/-Name) statt mittig im Prozessbereich zu stehen — „fast am oberen
   // Rand", ohne dass die Kartenzeile dafür wachsen musste.

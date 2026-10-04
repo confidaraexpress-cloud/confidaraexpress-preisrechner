@@ -7,12 +7,13 @@ import { handoverMode, handoverLabel, HANDOVER_PICKUP, HANDOVER_DROPOFF } from "
 import { offerKey, offerSelectable, offerBlockedLabel, offerBlockedHint } from "../../utils/offerIdentity.mjs";
 import { offerSurchargeHint } from "../../utils/residentialPriceInputs.mjs";
 import {
-  sameDayOfferView, sameDaySurchargeLine, sameDayDetailValue, SAME_DAY_TEXT,
+  sameDayOfferView, sameDayDetailValue, SAME_DAY_TEXT,
 } from "../../utils/sameDayCollectionView.mjs";
 import { isIndicativePrice, INDICATIVE_PRICE_LABEL, INDICATIVE_PRICE_EXPLANATION }
   from "../../utils/priceCompletenessView.mjs";
 import { isHttpUrl } from "../../utils/externalLink.mjs";
 import { earlyDeliveryNote, deliveryTimeLabel } from "../../utils/deliveryTimeView.mjs";
+import { serviceNameSegments } from "../../utils/serviceNameTimeView.mjs";
 import { DELIVERY_NOT_ASSESSABLE_TEXT } from "../../utils/offersFilterView.mjs";
 import { offerDebugView, offerDebugCardClass } from "../../utils/offerDebugView.mjs";
 import { chargeableWeightLine, labelCapabilityLine, OFFER_METADATA_LABEL } from "../../utils/offerMetadataView.mjs";
@@ -51,7 +52,7 @@ const fmtDay = (iso) => {
 // fällt der Ziel-Knoten sauber auf die relative Laufzeit zurück.
 // Knoten als { title, primary, secondary[] }: der Titel (Abholung/Lieferung)
 // und die primäre Zeile (Datum bzw. relative Laufzeit) tragen das visuelle
-// Gewicht; Uhrzeit/Shopname bleiben sekundär und dezent.
+// Gewicht; Hinweis und Uhrzeit bleiben sekundär und dezent.
 function buildStart(t) {
   // Die Übergabeart kommt aus dem gemeinsamen Helfer, damit Knotentitel und
   // Kennzeichnung darüber nie auseinanderlaufen können — es gibt genau eine
@@ -83,8 +84,9 @@ function buildStart(t) {
   if (abholHinweis)                              secondary.push(abholHinweis);
   const abholZeit = pickupTimeText(abholung);
   if (abholZeit)                                 secondary.push(abholZeit);
-  const dropoffLabel = publicDropoffLabel(t);
-  if (dropoffLabel)                              secondary.push(dropoffLabel);
+  // Die Abgabestelle („DPD Paketshop") steht seit 2026-10-04 nicht mehr im Knoten: sie wiederholte
+  // Carrier und Kopfzeile („Abgabe im Paketshop") und machte die schmale Startspalte zweizeilig.
+  // Sie steht vollständig unter „Termin & Abgabe" (Abgabestelle).
   return { title, primary, secondary };
 }
 
@@ -314,20 +316,31 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
   const hasPrice = t.netPrice != null || t.vatAmount != null || t.finalPrice != null;
   // TG22 Same-Day: der im Preis enthaltene Zuschlag der Abholung am selben Tag — vom Server, nicht gerechnet.
   const sameDay = sameDayOfferView(t);
+  // Was bis zur Betreiberentscheidung vom 2026-10-04 unter dem CTA der Karte stand, steht nur noch hier —
+  // dieselben Helfer, derselbe Wortlaut, nur der Ort ist neu: die Kartenhöhe hängt so an keinem Zusatztext.
+  //   surchargeHint  „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." (solange die Angabe aussteht)
+  //   blockedHint    der Handlungshinweis zu einem Sperrgrund („Bitte wählen Sie einen späteren Abholtag.")
+  const surchargeHint = offerSurchargeHint(t);
+  const blockedHint = offerBlockedHint(t);
   const hasMain  = features.length > 0;
   const hasLimits = limitLines.length > 0;
   const dropoffLabel = publicDropoffLabel(t);
   // Derselbe Abholvertrag wie im Startknoten der Timeline — ein Angebot mit „bereit ab"-Zeit
   // zeigt ihn damit auch hier, und ein echtes Fenster bleibt ein Fenster.
   const abholung = pickupContractOf(t);
-  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom
+  const hasTermin = !!(dropoffLabel || abholung.day || abholung.windowFrom || abholung.readyFrom || sameDay
                    || zustellung.kind === "range" || zustellung.kind === "date" || zustellung.until);
-  const hasHinweise = showPickupSurcharge;
   const hasLinks = carrierLinkItems.length > 0;
   // TG22 Package A: trägt das Angebot ein kuratiertes Produktprofil, stehen statt Hauptmerkmalen, Einschränkungen
   // und Versicherung fünf geordnete Abschnitte da — ohne zweite Laufzeit, Abholung, Druckerzeile oder
   // Sendungsverfolgung. Ohne Profil bleibt der Detailbereich unverändert.
   const profil = serviceDetailsView(t);
+  // Die Merkmalsmarken der Kartenfläche gibt es seit 2026-10-04 nicht mehr. Ohne Profil nennen die Hauptmerkmale
+  // Drucker und Versandlabel; das Profil nennt nur „Versandlabel zum Ausdrucken" und die Sendungsverfolgung. Die
+  // beiden übrigen Aussagen stehen dann in den Zusatzhinweisen — mit dem Wortlaut der Hauptmerkmale.
+  const profilOhneDrucker = profil !== null && t.printerRequired === false;
+  const profilLabelBeiAbholung = profil !== null && carrierAppliesLabel(t);
+  const hasHinweise = showPickupSurcharge || blockedHint !== null || profilOhneDrucker || profilLabelBeiAbholung;
 
   return (
     <>
@@ -420,6 +433,8 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
           )}
           {zustellung.kind === "date" && <DetailRow label="Zustelltermin" value={fmtDE(zustellung.day)} />}
           {zustellung.until && <DetailRow label="Zustellung" value={`${zustellung.until} Uhr`} />}
+          {/* Der Abholschluss einer Abholung am selben Tag — der Satz des Servers, vorher unter dem CTA. */}
+          {sameDay && <p className="offer-detail-note offer-sameday-until">{sameDay.untilText}</p>}
         </div>
       )}
 
@@ -440,6 +455,8 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
             <DetailRow label={INDICATIVE_PRICE_LABEL}
                        value={INDICATIVE_PRICE_EXPLANATION} subtle />
           )}
+          {/* TG22 Residential: wovon der endgültige Betrag abhängt. Kein „ab"-Betrag, kein Anbietername. */}
+          {surchargeHint && <p className="offer-detail-note offer-surcharge-hint">{surchargeHint}</p>}
         </div>
       )}
 
@@ -469,6 +486,10 @@ function DetailsPanel({ tariff: t, senderPrefill, vatMode }) {
           {showPickupSurcharge && (
             <DetailRow label="Abholzuschlag" value="Im Tarif berücksichtigt" />
           )}
+          {profilOhneDrucker && <DetailRow label="Drucker" value="Nicht erforderlich" />}
+          {profilLabelBeiAbholung && <DetailRow label="Versandlabel" value={LABEL_HANDLING_TEXT.offer} />}
+          {/* Der Grund steht im Knopf der Karte; hier, was der Kunde dagegen tun kann. */}
+          {blockedHint && <p className="offer-detail-note offer-blocked-hint">{blockedHint}</p>}
         </div>
       )}
 
@@ -505,15 +526,14 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // sichtbaren Text wäre dieselbe Fehlerklasse wie ein roher Status, und er
   // nennt den Einkaufsprovider nicht.
   const unavailableText = offerBlockedLabel(t);
-  const unavailableHint = offerBlockedHint(t);
-  // „Bei einer privaten Lieferadresse kann ein Zuschlag anfallen." — nur, solange die Angabe aussteht.
-  const surchargeHint = offerSurchargeHint(t);
-  // TG22 Same-Day: „Zuschlag für Abholung am selben Tag" und „Abholung heute möglich bis …" — nur, wenn der
-  // Server beides nennt. Der Kartenpreis enthält den Zuschlag bereits; hier wird nichts addiert.
-  const sameDay = sameDayOfferView(t);
-  // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Kartenpreis im gewählten Modus, darunter der jeweils
-  // andere Serverbetrag — so bleibt der zahlbare Bruttobetrag auch in der Nettoanzeige sichtbar. Gewählt wird nur
-  // zwischen `netPrice` und `finalPrice`; fehlt einer, steht „—" statt eines anderen Betrags.
+  // Gleich hohe Karten (Betreiberentscheidung 2026-10-04): die Kartenfläche trägt nur noch, was jedes Angebot
+  // trägt — Identität, Ablauf, Preis, Aktion. Handlungshinweis, Hinweis zur Art der Lieferadresse, Abholschluss,
+  // Zuschlagszeile, Merkmalsmarken und der zweite Betrag stehen im Detailbereich (DetailsPanel oben), mit
+  // denselben Helfern und demselben Wortlaut. Ein Angebot mit mehr Hinweisen ist damit nicht höher als sein Nachbar.
+  //
+  // Netto/Brutto (Betreiberentscheidung 2026-10-02): der Kartenpreis im gewählten Modus. Gewählt wird nur
+  // zwischen `netPrice` und `finalPrice`; fehlt einer, steht „—" statt eines anderen Betrags. Beide Beträge
+  // nennt die Preisaufschlüsselung — der zahlbare Bruttobetrag bleibt so auch in der Nettoanzeige erreichbar.
   const preisAnzeige = vatDisplay({ net: t.netPrice, gross: t.finalPrice }, vatMode);
   // DOM-Kennung des Detailbereichs. Über die Angebotsidentität, nicht über `id`:
   // mehrere Angebote ohne `id` trügen sonst denselben Knotennamen, und
@@ -527,39 +547,19 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
   // keine behauptet.
   const handoverText = handoverLabel(handoverMode(t));
 
-  // Zone 4: Meta-Hinweise als ruhige Textangaben (Redesign 2026-10: ohne Symbole;
-  // das `icon`-Feld bleibt nur als Kategorie im Datensatz).
-  // Service-Typ (Abholung/Shopabgabe) wird hier NICHT wiederholt — er ist
-  // bereits der Start-Knoten in Zone 2.
-  const metaItems = [];
   // ─── VORLÄUFIGER PREIS ────────────────────────────────────────────────────────────
-  // Zuerst in der Zeile, weil es die einzige Aussage hier ist, die den PREIS betrifft —
-  // und der Preis steht direkt darüber.
-  //
-  // Bewusst in Zone 4 und NICHT im Preisblock: dort hängt die Anzeige am Netto-/Brutto-
-  // Umschalter, und der Hinweis wäre in einer der beiden Stellungen verschwunden. Der
-  // Betrag wechselt, sein Status nicht. Zone 4 trägt ohnehin eine Mindesthöhe für gleiche
-  // Kartenhöhen — es entsteht kein zusätzlicher Platzbedarf, der CTA rückt nicht, und der
-  // Text ist ein echter Knoten und damit für Screenreader lesbar.
+  // Die eine Hinweismarke, die auf der Kartenfläche bleibt: sie betrifft den Hauptpreis.
+  // Sie steht als Marke neben dem Carrier, im Platz der Auszeichnung („Günstigste") —
+  // beide sind kurze Etiketten, und eine Karte mit Marke ist nicht höher als eine ohne.
+  // Bewusst NICHT im Preisblock: dort hängt die Anzeige am Netto-/Brutto-Umschalter, und
+  // der Hinweis wäre in einer der beiden Stellungen verschwunden. Der Betrag wechselt,
+  // sein Status nicht. Die Erklärung steht in der Preisaufschlüsselung.
   //
   // Das Signal ist ausschließlich `priceCompleteness === "indicative"`. NICHT `bookable`,
   // NICHT `unavailableReason`, NICHT `requiredPriceInputs`: die drei tragen bei einem
   // vorläufigen und einem vollständig berechneten Preis desselben Angebots gemessen
   // identische Werte.
-  if (isIndicativePrice(t)) {
-    metaItems.push({ icon: "info", label: INDICATIVE_PRICE_LABEL, tone: "notice" });
-  }
-  if (t.trackingAvailable) {
-    metaItems.push({ icon: "truck", label: "Sendungsverfolgung", tone: "info" });
-  }
-  if (t.printerRequired === true) {
-    metaItems.push({ icon: "printer", label: "Drucker erforderlich", tone: "warn" });
-  } else if (t.printerRequired === false) {
-    metaItems.push({ icon: "printer", label: "Kein Drucker nötig", tone: "default" });
-  }
-  if (carrierAppliesLabel(t)) {
-    metaItems.push({ icon: "info", label: LABEL_HANDLING_TEXT.offer, tone: "info" });
-  }
+  const indicativePrice = isIndicativePrice(t);
 
   const toggleDetails = (e) => {
     e.stopPropagation();
@@ -606,31 +606,42 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
         <div className="offer-zone-1">
           {/* Logokachel: entweder das Carrierlogo oder — bei einem echten unbekannten
               Carrier (publicCarrierId "other") — ein neutrales Paket-Zeichen. NIEMALS
-              Text in der Kachel: der Name ist zu lang für 50 px und bräche mehrzeilig
-              um. Der lesbare Name steht ohnehin direkt daneben in .offer-carrier-name.
-              Das Paket-Zeichen ist die einzige verbliebene Grafik der Karte und eine
-              bewusste funktionale Ausnahme des Redesigns (2026-10): es besetzt den
-              Platz der Carrier-Identität, ist kein Dekor. */}
+              Text in der Kachel: der Name ist zu lang für die Kachel und bräche
+              mehrzeilig um. Der lesbare Name steht ohnehin direkt daneben in
+              .offer-carrier-name. Das Paket-Zeichen ist die einzige verbliebene Grafik
+              der Karte und eine bewusste funktionale Ausnahme des Redesigns (2026-10):
+              es besetzt den Platz der Carrier-Identität, ist kein Dekor. Seit dem
+              Feinschliff (2026-10) steht die Kachel kompakt LINKS neben dem Text. */}
           <div className={`offer-logo-tile${carrierLogo ? "" : " offer-logo-tile--generic"}`}>
             {carrierLogo
-              ? <img src={carrierLogo} alt={carrierName} width="44" height="44" />
-              : <Icon n="package" s={24} c="currentColor" />
+              ? <img src={carrierLogo} alt={carrierName} width="30" height="30" />
+              : <Icon n="package" s={22} c="currentColor" />
             }
           </div>
           <div className="offer-zone-1-main">
-            <div className="offer-carrier-name">{carrierName}</div>
+            {/* Die Auszeichnung („Günstigste", „Schnellste") steht direkt neben dem
+                Carrier (Feinschliff 2026-10). Vorher hielt ein eigener Slot über dem
+                Preis 30 px Höhe frei — auch auf jeder Karte ohne Auszeichnung. Im selben
+                Platz steht „Vorläufiger Preis" (2026-10-04, vorher in der Merkmalszeile). */}
+            <div className="offer-carrier-row">
+              <div className="offer-carrier-name">{carrierName}</div>
+              {badge && (
+                <div className={`offer-badge offer-badge-${badge.color}`}>{badge.label}</div>
+              )}
+              {indicativePrice && (
+                <div className="offer-price-status">{INDICATIVE_PRICE_LABEL}</div>
+              )}
+            </div>
             <div className="offer-eta">{etaLabel}</div>
-            <div className="offer-service-type">{publicServiceName(t)}</div>
-            {/* Sekundärer Einstieg in den Paketshop-Finder — nur bei Angeboten,
-                die ihn tatsächlich anbieten können. Er steht bewusst hier bei
-                den Serviceinformationen und NICHT neben Preis oder Haupt-CTA.
-
-                Auf einem gesperrten Angebot erscheint er nicht: die Suche führt
-                zu Abgabestellen für eine Sendung, die von dieser Karte aus gar
-                nicht beauftragt werden kann. Das ist kein neuer Sonderfall,
-                sondern dieselbe Grenze wie beim CTA — was nicht auswählbar ist,
-                bekommt auch keinen Folgeschritt. */}
-            {!unavailable && <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />}
+            {/* Servicename. Eine darin BEREITS sichtbare frühe Uhrzeit („Express 9:00")
+                erscheint rein optisch grün (Betreiberentscheidung 2026-10-03,
+                utils/serviceNameTimeView.mjs). Der Text bleibt Zeichen für Zeichen der
+                Servername — keine Zustellzeit, keine Zusage, keine Filterwirkung. */}
+            <div className="offer-service-type">
+              {serviceNameSegments(publicServiceName(t)).map((s, i) => (s.time
+                ? <span key={i} className="offer-service-time">{s.text}</span>
+                : <React.Fragment key={i}>{s.text}</React.Fragment>))}
+            </div>
           </div>
         </div>
 
@@ -672,58 +683,58 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
                 <div className="offer-tl-node offer-tl-node--start">
                   <span className="offer-tl-title">{start.title}</span>
                   {start.primary && <span className="offer-tl-primary">{start.primary}</span>}
-                  {start.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                  {/* Genau EINE Unterzeile (2026-10-04) — die erste ist die wichtigste: ein
+                      verschobener Tag („frühester Abholtag") vor der Zeit. Die Zeit steht dann
+                      vollständig unter „Termin & Abholung" (Abholung, Zeitfenster); die Karte
+                      wird davon nicht höher. */}
+                  {start.secondary.length > 0 && <span className="offer-tl-sub">{start.secondary[0]}</span>}
                 </div>
                 <div className="offer-tl-node offer-tl-node--end">
                   <span className="offer-tl-title">{end.title}</span>
                   {end.primary && <span className="offer-tl-primary">{end.primary}</span>}
                   {end.secondary.map((s, i) => <span key={i} className="offer-tl-sub">{s}</span>)}
+                  {/* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten — seit dem
+                      Feinschliff (2026-10) IM Endknoten, direkt unter dem Lieferdatum, zu dem
+                      es gehört. Vorher hing es als Geschwister unter beiden Knoten und stand
+                      damit unter der längeren Startspalte, ein bis zwei Zeilen vom Datum
+                      entfernt. Die Spuren sind `minmax(0, 1fr)`: ein breiteres Kind kann die
+                      Spalte nicht mehr aufweiten, Timeline und Preisspalte verziehen sich
+                      nicht. Ohne Symbol — die Aussage steht vollständig im Text. */}
+                  {earlyNote && (
+                    <p className="offer-early-note">{earlyNote}</p>
+                  )}
+                  {/* K2 (Go-Live Block B): unter einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne
+                      sicher vergleichbare Anbieterzusage sichtbar — mit genau diesem neutralen Satz am
+                      Lieferende. Kein geschätzter Termin, keine Uhrzeit aus dem Tarifnamen; ohne Filter nie. */}
+                  {deliveryNotAssessable && (
+                    <p className="offer-deadline-note">{DELIVERY_NOT_ASSESSABLE_TEXT}</p>
+                  )}
                 </div>
               </div>
-              {/* Zusätzliches Hinweisfeld für besonders frühe Zustellzeiten.
-                  Bewusst ein GESCHWISTER von .offer-tl-labels statt ein Kind des
-                  Endknotens: dessen Spalte ist eine 1fr-Rasterspur, ein breiteres
-                  Kind darin verzöge die Timeline und damit die Preisspalte. Hier
-                  steht es unter dem Lieferende, hat die volle Timelinebreite und
-                  kann das Layout nicht verschieben. Seit dem Redesign (2026-10)
-                  ohne Symbol — die Aussage steht vollständig im Text. */}
-              {earlyNote && (
-                <p className="offer-early-note">{earlyNote}</p>
-              )}
-              {/* K2 (Go-Live Block B): unter einem gesetzten Lieferzeitfilter bleibt ein Angebot ohne
-                  sicher vergleichbare Anbieterzusage sichtbar — mit genau diesem neutralen Satz unter dem
-                  Lieferende. Kein geschätzter Termin, keine Uhrzeit aus dem Tarifnamen; ohne Filter nie. */}
-              {deliveryNotAssessable && (
-                <p className="offer-deadline-note">{DELIVERY_NOT_ASSESSABLE_TEXT}</p>
-              )}
             </div>
           )}
         </div>
 
         {/* ── Zone 3: Preis & Aktion ── */}
         <div className="offer-zone-3">
-          <div className="offer-zone-3-top">
-            {badge && (
-              <div className={`offer-badge offer-badge-${badge.color}`}>{badge.label}</div>
-            )}
-          </div>
           <div className="offer-price-block">
             {t.netPrice != null ? (
               <>
-                <div className="offer-price">
-                  {preisAnzeige.primary.amount != null ? money(preisAnzeige.primary.amount) : "—"}
-                </div>
-                <div className="offer-price-sub">
-                  {vatSuffixText(preisAnzeige.primary.isGross)}
-                </div>
-                {preisAnzeige.secondary.amount != null && (
-                  <div className="offer-price-alt">
-                    {money(preisAnzeige.secondary.amount)} {vatSuffixText(preisAnzeige.secondary.isGross)}
+                {/* Preis und Steuerangabe teilen sich eine Zeile (Feinschliff 2026-10) —
+                    „exkl. MwSt." steht kleiner auf der Grundlinie neben dem Betrag statt
+                    als eigene Ebene darunter. Reicht die Breite nicht, bricht die Angabe
+                    unter den Betrag um; die Zuordnung bleibt eindeutig. */}
+                <div className="offer-price-line">
+                  <div className="offer-price">
+                    {preisAnzeige.primary.amount != null ? money(preisAnzeige.primary.amount) : "—"}
                   </div>
-                )}
-                {sameDay && (
-                  <div className="offer-sameday-surcharge">{sameDaySurchargeLine(sameDay, vatMode)}</div>
-                )}
+                  <div className="offer-price-sub">
+                    {vatSuffixText(preisAnzeige.primary.isGross)}
+                  </div>
+                </div>
+                {/* Kein zweiter Betrag mehr unter dem Preis (2026-10-04): Netto, MwSt. und Brutto
+                    stehen in der Preisaufschlüsselung, der Zuschlag einer Abholung am selben Tag dort
+                    mit beiden Beträgen. Der Kartenpreis enthält ihn — addiert wird nichts. */}
               </>
             ) : (
               <div className="offer-price-na">Preis auf Anfrage</div>
@@ -748,40 +759,41 @@ function OfferCardBase({ tariff: t, badge, isTop, selected, onSelect, onBook, va
               ? unavailableText
               : "Angebot auswählen"}
           </button>
-          {/* TG22 Paket B: nur beim Abholtag als einzigem Grund — die HANDLUNG, nicht ein
-              zweites Mal der Grund. */}
-          {unavailableHint && <p className="offer-cta-hint">{unavailableHint}</p>}
-          {sameDay && <p className="offer-cta-hint offer-sameday-until">{sameDay.untilText}</p>}
-          {/* TG22 Residential: der Preis darüber ist vorläufig („Vorläufiger Preis" in Zone 4); dieser
-              Satz sagt, wovon der endgültige Betrag abhängt. Kein „ab"-Betrag, kein Anbietername. */}
-          {surchargeHint && <p className="offer-cta-hint offer-surcharge-hint">{surchargeHint}</p>}
-          <button
-            className="offer-details-link"
-            onClick={toggleDetails}
-            type="button"
-            aria-expanded={detailsOpen}
-            aria-controls={detailsId}
-          >
-            {detailsOpen ? "Details ausblenden" : "Details anzeigen"}
-            {/* Klappmarke rein per CSS — kein Icon (Redesign 2026-10). */}
-            <span className={`offer-details-chevron${detailsOpen ? " open" : ""}`} aria-hidden="true" />
-          </button>
+          {/* Unter der Aktion steht nichts mehr (2026-10-04): der Handlungshinweis zu einem
+              Sperrgrund, der Hinweis zur Art der Lieferadresse und der Abholschluss einer
+              Abholung am selben Tag stehen im Detailbereich. Der Grund selbst steht weiter
+              genau einmal — im Knopf. */}
         </div>
 
-        {/* ── Zone 4: Meta-/Hinweis-Fußzeile ──
-            Fehlen Tracking/Drucker, bleibt die Zeile bewusst leer (Mindesthöhe
-            sorgt für gleiche Kartenhöhe) — kein redundanter Fallback-Text. */}
+        {/* ── Zone 4: Folgeaktionen ──
+            Die Textaktionen „Details anzeigen" und — nur wo das Angebot es kann — der
+            Paketshop-Einstieg (Feinschliff 2026-10). Die Merkmalsmarken links daneben
+            (Sendungsverfolgung, Drucker, Versandlabel) gibt es seit 2026-10-04 nicht mehr:
+            sie stehen in den Details, und die Zeile ist auf jeder Karte gleich. */}
         <div className="offer-zone-4">
-          {metaItems.map((m, i) => {
-            const toneClass = m.tone === "warn" ? " offer-meta-item--warn"
-                            : m.tone === "notice" ? " offer-meta-item--notice"
-                            : m.tone === "info" ? " offer-meta-item--info" : "";
-            return (
-              <span key={i} className={`offer-meta-item${toneClass}`}>
-                {m.label}
-              </span>
-            );
-          })}
+          <div className="offer-actions">
+            {/* Sekundärer Einstieg in den Paketshop-Finder — nur bei Angeboten, die ihn
+                tatsächlich anbieten können. Bewusst eine leise Textaktion neben „Details
+                anzeigen" und NICHT neben Preis oder Haupt-CTA.
+
+                Auf einem gesperrten Angebot erscheint er nicht: die Suche führt zu
+                Abgabestellen für eine Sendung, die von dieser Karte aus gar nicht
+                beauftragt werden kann. Das ist kein neuer Sonderfall, sondern dieselbe
+                Grenze wie beim CTA — was nicht auswählbar ist, bekommt auch keinen
+                Folgeschritt. */}
+            {!unavailable && <ParcelShopFinderTrigger tariff={t} senderPrefill={senderPrefill} />}
+            <button
+              className="offer-details-link"
+              onClick={toggleDetails}
+              type="button"
+              aria-expanded={detailsOpen}
+              aria-controls={detailsId}
+            >
+              {detailsOpen ? "Details ausblenden" : "Details anzeigen"}
+              {/* Klappmarke rein per CSS — kein Icon (Redesign 2026-10). */}
+              <span className={`offer-details-chevron${detailsOpen ? " open" : ""}`} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
 

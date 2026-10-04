@@ -86,11 +86,20 @@ export function resolveStepIndex(status) {
   return 0;
 }
 
+// Der Problemstand des internen Modells. Bei ihm ist im Vertrag NICHT belegt, welche normale Stufe
+// zuletzt erreicht wurde: der Stand ersetzt den Fortschritt, und die Ereignisse eines Anbieters
+// tragen keinen eigenen Stand. Die Leiste markiert dann KEINE Stufe — weder erreicht noch aktuell
+// (`stepIndex: -1`); die Ausnahme zeigt der Hero, das neueste Ereignis trägt die Warnfarbe
+// (utils/trackingLegsView.mjs, trackingEventTone). Es gibt keinen eigenen Verzögerungsstand.
+const PROBLEM_STATUS = "exception";
+
 // Komponiert die reine Anzeige-Sicht. hasEvents = ob die Timeline echte Carrier-Events hat.
 // Regeln:
 //  - „Zugestellt"/Stufe 3 NUR bei explizitem Transport-„delivered" (auch bei leerer Eventliste).
 //  - Ohne Events UND ohne explizites delivered bleibt die Timeline auf Stufe 0 und der Hero wird
 //    NIE „Zugestellt" (kein künstlicher Fortschritt) → nie „Zugestellt" + „Keine Ereignisse" zugleich.
+//  - Belegte Ausnahme (Events + `exception`): keine Stufe markiert (`stepIndex: -1`, `problem: true`) —
+//    es wird keine normale Stufe geraten.
 //  - Unbekannt/fehlend: Trackingnummer vorhanden → „Daten übermittelt"; sonst „Tracking noch nicht verfügbar".
 export function buildTrackingView(result, opts = {}) {
   const hasEvents = Boolean(opts.hasEvents);
@@ -98,7 +107,8 @@ export function buildTrackingView(result, opts = {}) {
   const isDelivered = transportStatus === "delivered";
   const hasNumber = Boolean(resolveTrackingNumber(result));
   const advanced = hasEvents || isDelivered;             // Fortschritt nur mit Beleg (Events) ODER explizitem delivered
-  const stepIndex = advanced ? resolveStepIndex(transportStatus) : 0;
+  const problem = advanced && transportStatus === PROBLEM_STATUS;
+  const stepIndex = problem ? -1 : advanced ? resolveStepIndex(transportStatus) : 0;
   const knownLabel = statusLabelFor(transportStatus);
   const heroStatus = isDelivered
     ? "Zugestellt"
@@ -106,5 +116,5 @@ export function buildTrackingView(result, opts = {}) {
       ? knownLabel
       : (hasNumber ? HERO_DATA_RECEIVED : HERO_UNAVAILABLE);
   const heroDesc = STATUS_DESCRIPTIONS[heroStatus] || null;
-  return { transportStatus, isDelivered, stepIndex, statusLabel: knownLabel, heroStatus, heroDesc };
+  return { transportStatus, isDelivered, problem, stepIndex, statusLabel: knownLabel, heroStatus, heroDesc };
 }

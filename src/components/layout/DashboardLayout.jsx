@@ -27,6 +27,9 @@ const ROUTE_HEADERS = {
     eyebrow: "Versand",
     title: "Sendung buchen",
     subtitle: "Schließen Sie Ihre Versandbuchung sicher und nachvollziehbar ab.",
+    // Titel und Untertitel auf der Achse der zentrierten Buchungsspalte (Feinschliff 2026-10);
+    // die Utility-Zeile bleibt am gemeinsamen Rahmen.
+    className: "ce-page-header--booking",
   },
 };
 
@@ -92,6 +95,7 @@ export function DashboardLayout() {
             eyebrow={ROUTE_HEADERS[activePage].eyebrow}
             title={ROUTE_HEADERS[activePage].title}
             subtitle={ROUTE_HEADERS[activePage].subtitle}
+            className={ROUTE_HEADERS[activePage].className}
             utility={(
               <UtilityCluster>
                 <NotificationBell variant="page" navigateTo={navigateTo} />

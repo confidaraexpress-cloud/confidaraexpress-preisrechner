@@ -310,13 +310,14 @@ test("A — Angebotsliste: TG22 und Vergleichsangebot in einer Sprache, Tarif-ID
   assert.match(tgText, /bereit ab 09:00 Uhr/);
   assert.match(tgText, /15,33 €/);
   assert.doesNotMatch(tgText, /\bLieferung\b|\bZustellung\b/, "die Laufzeit ist wieder als Termin benannt");
-  // TG22 Residential: vorläufiger Preis und Zuschlagshinweis — ohne „ab“-Betrag.
+  // TG22 Residential: vorläufiger Preis und Zuschlagshinweis — ohne „ab“-Betrag. Seit 2026-10-04 (gleich hohe
+  // Karten) steht der Zuschlagshinweis in den Details, „Vorläufiger Preis" weiter auf der Karte.
   assert.match(tgText, /Vorläufiger Preis/);
-  assert.match(tgText, /Bei einer privaten Lieferadresse kann ein Zuschlag anfallen\./);
   assert.doesNotMatch(tgText, /ab \d+,\d{2} €/);
   await tg.locator(`button[aria-controls="offer-details-${TG22().offerId}"]`).click();
   await page.locator(`#offer-details-${TG22().offerId}`).waitFor({ timeout: 10000 });
   const tgDetails = await inhalt(page.locator(`#offer-details-${TG22().offerId}`));
+  assert.match(tgDetails, /Bei einer privaten Lieferadresse kann ein Zuschlag anfallen\./);
   assert.match(tgDetails, /Verfügbare Labelformate\s*PDF · DIN A4 \/ Thermodruck/);
   assert.doesNotMatch(tgDetails, /Thermal|A4 \/ Thermal/);
   assert.doesNotMatch(tgDetails, /Tarif-ID/, "das TG22-Angebot zeigt eine Tarif- oder Servicekennung");

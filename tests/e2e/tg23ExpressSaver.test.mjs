@@ -446,10 +446,17 @@ test("A — TG23-Karte: UPS · Expressversand · 1 Tag · voraussichtliche Liefe
 
   assert.equal(await inhalt(karte.locator(".offer-price")), "26,25 €", "der Kartenpreis ist nicht der Serverpreis");
   const text = await inhalt(karte);
-  for (const erwartet of ["Vorläufiger Preis", "Abholung", "Sendungsverfolgung", "Drucker erforderlich"]) {
+  for (const erwartet of ["Vorläufiger Preis", "Abholung"]) {
     assert.ok(text.includes(erwartet), `die Karte zeigt „${erwartet}“ nicht: ${text}`);
   }
-  assert.equal(await inhalt(karte.locator(".offer-surcharge-hint")), "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
+  // Gleich hohe Karten (2026-10-04): Sendungsverfolgung, Druckpflicht und der Zuschlagshinweis stehen in den Details.
+  const details = await oeffneDetails(page, TG_MO);
+  const detailText = norm(await details.textContent());
+  for (const erwartet of ["Sendungsverfolgung inklusive", "Versandlabel zum Ausdrucken"]) {
+    assert.ok(detailText.includes(erwartet), `die Details zeigen „${erwartet}“ nicht: ${detailText}`);
+  }
+  assert.equal(await inhalt(details.locator(".offer-details-section--price .offer-surcharge-hint")),
+    "Bei einer privaten Lieferadresse kann ein Zuschlag anfallen.");
   assert.doesNotMatch(text, /ab \d+,\d{2} €/, "die Karte zeigt einen „ab“-Betrag");
   assert.equal(await karte.locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.doesNotMatch(text, KEINE_ZUSAGE, "Zustelluhrzeit oder Zusage auf der TG23-Karte");
@@ -610,21 +617,22 @@ test("D — Abholung am selben Tag: Zuschlag, wirksamer Abholschluss, frische un
 
   const karte = karteVon(page, TG_HEUTE);
   assert.equal(await inhalt(karte.locator(".offer-price")), "29,52 €", "der Kartenpreis enthält den Zuschlag nicht");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,27 €");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-until")), "Abholung heute möglich bis 16:45 Uhr");
+  // Gleich hohe Karten (2026-10-04): Zuschlag und Abholschluss stehen in den Details, nicht auf der Fläche.
+  assert.equal(await karte.locator(".offer-card-inner").locator(".offer-sameday-surcharge, .offer-sameday-until").count(), 0);
   assert.equal(await inhalt(karte.locator(".offer-tl-node--start .offer-tl-title")), "Abholung heute");
   assert.match(await inhalt(karte.locator(".offer-tl-node--start")), /bereit ab 11:30 Uhr/);
   assert.equal(await inhalt(karte.locator(".offer-tl-node--end .offer-tl-primary")), kurz(HEUTE_PLUS_1));
-  // Der Abholschluss des Anbieters bleibt intern — sichtbar ist nur der wirksame.
-  assert.doesNotMatch(await inhalt(karte), /17:00/, "der Abholschluss des Anbieters ist sichtbar");
 
   await page.getByRole("button", { name: "inkl. MwSt.", exact: true }).click();
   await warteBis(async () => (await inhalt(karte.locator(".offer-price"))) === "35,13 €", "Bruttopreis der Karte");
-  assert.equal(await inhalt(karte.locator(".offer-sameday-surcharge")), "Zuschlag für Abholung am selben Tag: +3,89 €");
   await karte.locator("button.offer-details-link").click();
   const detail = page.locator(`#offer-details-${TG_HEUTE.offerId} .offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))`);
   await detail.waitFor({ timeout: 10000 });
   assert.equal(await inhalt(detail.locator(".offer-detail-value")), "+3,27 € netto · +3,89 € brutto");
+  assert.equal(await inhalt(page.locator(`#offer-details-${TG_HEUTE.offerId} .offer-sameday-until`)),
+    "Abholung heute möglich bis 16:45 Uhr");
+  // Der Abholschluss des Anbieters bleibt intern — sichtbar ist nur der wirksame, auch in den Details.
+  assert.doesNotMatch(await inhalt(karte), /17:00/, "der Abholschluss des Anbieters ist sichtbar");
 
   await waehle(page, TG_HEUTE);
   const privatKarte = page.locator(`label[for="${LIEFERADRESSE_ID.privat}"]`);
@@ -1015,13 +1023,20 @@ for (const breite of [1440, 834, 390]) {
     assert.ok(await querUeberlauf(page) <= 0, `${breite}px: Angebotsliste mit horizontalem Überlauf`);
 
     const karte = karteVon(page, TG_HEUTE);
-    for (const sel of [".offer-service-type", ".offer-tl-node--end", ".offer-sameday-surcharge", ".offer-sameday-until"]) {
+    for (const sel of [".offer-service-type", ".offer-tl-node--end"]) {
       const el = karte.locator(sel);
       await el.scrollIntoViewIfNeeded();
       assert.ok(await el.isVisible(), `${breite}px: ${sel} ist nicht sichtbar`);
       await liegtInnerhalb(karte, el, `${breite}px ${sel}`);
     }
     const panel = await oeffneDetails(page, TG_HEUTE);
+    // Gleich hohe Karten (2026-10-04): Zuschlag und Abholschluss stehen im Detailbereich der Karte.
+    for (const el of [panel.locator('.offer-detail-row:has(.offer-detail-label:text-is("Zuschlag für Abholung am selben Tag"))'),
+                      panel.locator(".offer-sameday-until")]) {
+      await el.scrollIntoViewIfNeeded();
+      assert.ok(await el.isVisible(), `${breite}px: Same-Day-Angabe in den Details ist nicht sichtbar`);
+      await liegtInnerhalb(karte, el, `${breite}px Same-Day-Angabe in den Details`);
+    }
     for (const id of ["main", "transit", "size", "cover", "restrictions"]) {
       const bereich = abschnittVon(panel, id);
       await bereich.scrollIntoViewIfNeeded();

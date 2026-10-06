@@ -6,6 +6,8 @@ import { AuthProvider } from "./context/AuthContext";
 import { ContentErrorBoundary } from "./components/common/ContentErrorBoundary";
 import { startPwaInstallCapture } from "./utils/pwaInstallPrompt";
 import { registerServiceWorker } from "./utils/serviceWorkerRegistration";
+import { startReferralCapture } from "./utils/referralCapture.mjs";
+import { loadSalesPartnerPublicConfig } from "./api/partnerApi";
 import App from "./App";
 
 /* ConfidaraExpress als App: das Installationsereignis des Browsers kann früh
@@ -15,6 +17,14 @@ import App from "./App";
    wird nur im Produktionsbuild registriert. */
 startPwaInstallCapture();
 registerServiceWorker();
+
+/* Vertriebspartnerprogramm: ein Empfehlungscode aus /register?ref=… bzw.
+   /partner-registrieren?ref=… wird HIER gelesen — vor dem ersten Rendern, damit
+   ihn weder der Router noch eine Weiterleitung (etwa der zentrale 401-Handler
+   bei abgelaufenem Token) verliert. Der Parameter verschwindet sofort aus der
+   Adresse; gespeichert wird erst nach ausdrücklicher Freigabe durch die
+   öffentliche Konfiguration (utils/referralCapture.mjs). */
+startReferralCapture({ loadConfig: loadSalesPartnerPublicConfig });
 
 /* Die äußerste Fehlergrenze. Sie liegt bewusst ÜBER Router und AuthProvider:
    die Bereichsgrenzen weiter innen hängen selbst am Router und können einen

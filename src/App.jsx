@@ -24,6 +24,10 @@ const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
 const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
 
+// Vertriebspartnerprogramm: öffentliche Partnerregistrierung (eigener Flow,
+// nicht die Kundenregistrierung).
+const PartnerRegisterPage = React.lazy(() => import("./pages/PartnerRegisterPage"));
+
 // Lager & Aufträge: DETAILseiten mit echter Route. Die fünf Listenbereiche
 // laufen als page-State in DashboardPage (unverändertes Navigationsmodell);
 // eine Entitäts-ID gehört aber nicht in einen page-String — dafür gibt es hier
@@ -64,6 +68,14 @@ function AuthAreaBoundary() {
   );
 }
 
+/* Alias /registrieren → /register. Der Suchteil geht vollständig mit (der
+   Empfehlungscode selbst ist zu diesem Zeitpunkt schon erfasst und aus der
+   Adresse entfernt — main.jsx, utils/referralCapture.mjs). */
+function RegistrierenAlias() {
+  const { search, hash } = useLocation();
+  return <Navigate to={{ pathname: "/register", search, hash }} replace />;
+}
+
 export default function App() {
   const { authed, loadingUser } = useAuth();
   if (loadingUser) return <LoadingScreen />;
@@ -94,6 +106,11 @@ export default function App() {
           {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
               Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
           <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
+
+          {/* Öffentliche Partnerregistrierung und der deutschsprachige Alias
+              der Kundenregistrierung. */}
+          <Route path="/partner-registrieren" element={<PartnerRegisterPage />} />
+          <Route path="/registrieren" element={<RegistrierenAlias />} />
         </Route>
 
         {/* Protected: calculator + booking inside dashboard layout (sidebar visible).

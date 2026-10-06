@@ -11,6 +11,9 @@ import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { safeReturnTarget } from "../utils/loginReturnTarget.mjs";
+// Der Empfehlungscode des Kundenlinks wird bei der Kundenregistrierung
+// mitgesendet (nur Art „customer").
+import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
 // damit sie ohne React-Render-Infrastruktur mit `node --test` prüfbar sind.
@@ -18,6 +21,7 @@ import {
   getRegErrors,
   mapApiRegistrationError,
   buildRegistrationPayload,
+  withReferralCode,
   REG_PASSWORD_TEXTS,
 } from "../utils/registrationValidation.mjs";
 // Passwort-Längenregel (8–128, Zählung in Code-Points). Einzige Quelle der
@@ -152,7 +156,9 @@ export default function AuthPage() {
       const r = await fetch(`${API}/register`, {
         method: "POST",
         headers: jsonH,
-        body: JSON.stringify(buildRegistrationPayload(regForm)),
+        // Ein gültiger Code des Kundenlinks geht als eigenes Feld mit; ohne
+        // Code ist der Body exakt der bisherige.
+        body: JSON.stringify(withReferralCode(buildRegistrationPayload(regForm), referralCodeFor("customer"))),
       });
       let d = {};
       try { d = await r.json(); } catch { d = {}; }
@@ -165,6 +171,7 @@ export default function AuthPage() {
         setLoading(false);
         return;
       }
+      clearReferral("customer");
       setSuccess("Firmenkonto beantragt! Wir prüfen Ihre Angaben und melden uns nach der Freischaltung per E-Mail.");
       setTab("login");
     } catch (e) { setError(mapAuthThrownError(e)); }

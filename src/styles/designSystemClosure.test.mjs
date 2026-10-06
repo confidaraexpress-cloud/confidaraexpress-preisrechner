@@ -300,7 +300,12 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Lager & Aufträge: NUR die beiden Detailseiten sind Routen.
                   // Die fünf Listenbereiche laufen als page-State — eine
                   // Entitäts-ID gehört nicht in einen page-String.
-                  "/inventory/products/:id", "/inventory/orders/:id", "*"];
+                  "/inventory/products/:id", "/inventory/orders/:id",
+                  // Vertriebspartnerprogramm (bewusste Ankeränderung): öffentliche
+                  // Partnerregistrierung und der Alias der Kundenregistrierung
+                  // (Auth-Bereich).
+                  "/partner-registrieren", "/registrieren",
+                  "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");
 

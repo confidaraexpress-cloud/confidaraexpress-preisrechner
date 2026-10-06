@@ -11,8 +11,9 @@ import { Icon } from "../components/ui/Icon";
 import { BrandLogo } from "../components/ui/BrandLogo";
 import { useAuth } from "../context/AuthContext";
 import { safeReturnTarget } from "../utils/loginReturnTarget.mjs";
-// Der Empfehlungscode des Kundenlinks wird bei der Kundenregistrierung
-// mitgesendet (nur Art „customer").
+// Vertriebspartner landen im Partnerportal; der Empfehlungscode des
+// Kundenlinks wird bei der Kundenregistrierung mitgesendet (nur Art „customer").
+import { isSalesPartner, landingPathFor } from "../utils/roleLanding.mjs";
 import { clearReferral, referralCodeFor } from "../utils/referralCapture.mjs";
 
 // Validierung, B2B-Wording und Feldfehler-Mapping liegen in einem reinen Modul,
@@ -138,7 +139,10 @@ export default function AuthPage() {
       // Navigation endete kommentarlos wieder auf /login.
       const ok = await login(d.token);
       if (!ok) { setError(KUNDENBEREICH_NACH_LOGIN_FEHLER); setLoading(false); return; }
-      navigate(returnTarget || "/dashboard");
+      // Ein Vertriebspartner hat keinen Kundenbereich: sein Ziel ist immer das
+      // Partnerportal, nie ein (für ihn gesperrtes) Kunden-Rücksprungziel.
+      if (isSalesPartner(ok)) navigate(landingPathFor(ok));
+      else navigate(returnTarget || "/dashboard");
     } catch (e) { setError(mapAuthThrownError(e)); }
     setLoading(false);
   };

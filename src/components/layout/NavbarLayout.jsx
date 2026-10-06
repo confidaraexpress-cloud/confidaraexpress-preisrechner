@@ -4,15 +4,19 @@ import { useAuth } from "../../context/AuthContext";
 import { BrandLogo } from "../ui/BrandLogo";
 import { Footer } from "./Footer";
 import { ContentErrorBoundary } from "../common/ContentErrorBoundary";
+import { landingPathFor } from "../../utils/roleLanding.mjs";
 
 /* Öffentliche Leiste der Leseseiten (Redesign 2026-10): hell, ruhig, ohne
    Symbole. Links die Original-Wortmarke, rechts die unveränderten Aktionen;
    mobil öffnet der Textknopf „Menü" den dunklen Navy-Drawer. Routing und
    Handler sind unverändert. */
 function Navbar() {
-  const { authed } = useAuth();
+  const { authed, user } = useAuth();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // „Dashboard" führt rollenabhängig: Vertriebspartner ins Partnerportal,
+  // alle anderen unverändert in den Kundenbereich.
+  const startziel = landingPathFor(user);
   return (
     <>
       <nav className="navbar">
@@ -28,7 +32,7 @@ function Navbar() {
           </button>
           <div className="navbar-actions">
             {authed ? (
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => navigate(startziel)}>Dashboard</button>
             ) : (
               <>
                 <button type="button" className="btn btn-ghost btn-sm navbar-login-btn" onClick={() => navigate("/login")}>Anmelden</button>
@@ -54,7 +58,7 @@ function Navbar() {
             </div>
             <nav className="mobile-drawer-nav">
               {authed ? (
-                <button type="button" className="drawer-nav-item" onClick={() => { navigate("/dashboard"); setDrawerOpen(false); }}>Dashboard</button>
+                <button type="button" className="drawer-nav-item" onClick={() => { navigate(startziel); setDrawerOpen(false); }}>Dashboard</button>
               ) : (
                 <>
                   <button type="button" className="drawer-nav-item" onClick={() => { navigate("/login"); setDrawerOpen(false); }}>Anmelden</button>

@@ -8,6 +8,8 @@ import { LoadingScreen } from "./components/common/LoadingScreen";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { AdminRoute } from "./routes/AdminRoute";
+import { PartnerRoute } from "./routes/PartnerRoute";
+import { landingPathFor } from "./utils/roleLanding.mjs";
 import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
@@ -25,8 +27,10 @@ const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
 
 // Vertriebspartnerprogramm: öffentliche Partnerregistrierung (eigener Flow,
-// nicht die Kundenregistrierung).
+// nicht die Kundenregistrierung) und das Partnerportal (nur Rolle
+// sales_partner, eigene schlanke Hülle statt DashboardLayout).
 const PartnerRegisterPage = React.lazy(() => import("./pages/PartnerRegisterPage"));
+const PartnerPortalPage   = React.lazy(() => import("./pages/PartnerPortalPage"));
 
 // Lager & Aufträge: DETAILseiten mit echter Route. Die fünf Listenbereiche
 // laufen als page-State in DashboardPage (unverändertes Navigationsmodell);
@@ -77,7 +81,7 @@ function RegistrierenAlias() {
 }
 
 export default function App() {
-  const { authed, loadingUser } = useAuth();
+  const { authed, loadingUser, user } = useAuth();
   if (loadingUser) return <LoadingScreen />;
 
   return (
@@ -140,6 +144,10 @@ export default function App() {
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
+        {/* Partnerportal: ausschließlich Rolle sales_partner (PartnerRoute).
+            Die vier Bereiche laufen als page-State in der Seite. */}
+        <Route path="/partner" element={<PartnerRoute><PartnerPortalPage /></PartnerRoute>} />
+
         {/* Admin: eigenes Layout, URL-basiert, hinter AdminRoute (UX-Gate).
             requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -162,8 +170,10 @@ export default function App() {
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 
-        <Route index element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
-        <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
+        {/* Startziel rollenabhängig: Vertriebspartner ins Partnerportal,
+            alle anderen unverändert in den Kundenbereich. */}
+        <Route index element={<Navigate to={authed ? landingPathFor(user) : "/login"} replace />} />
+        <Route path="*" element={<Navigate to={authed ? landingPathFor(user) : "/login"} replace />} />
       </Routes>
     </Suspense>
     </ParcelShopFinderProvider>

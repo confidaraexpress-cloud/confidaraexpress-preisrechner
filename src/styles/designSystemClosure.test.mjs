@@ -303,8 +303,9 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   "/inventory/products/:id", "/inventory/orders/:id",
                   // Vertriebspartnerprogramm (bewusste Ankeränderung): öffentliche
                   // Partnerregistrierung und der Alias der Kundenregistrierung
-                  // (Auth-Bereich).
-                  "/partner-registrieren", "/registrieren",
+                  // (Auth-Bereich) sowie das Partnerportal (nur Rolle
+                  // sales_partner; seine vier Bereiche sind page-State).
+                  "/partner-registrieren", "/registrieren", "/partner",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

@@ -5,6 +5,7 @@ import { PartnerOverviewPanel } from "../components/partner/PartnerOverviewPanel
 import { PartnerCustomersPanel } from "../components/partner/PartnerCustomersPanel";
 import { PartnerCommissionsPanel } from "../components/partner/PartnerCommissionsPanel";
 import { PartnerTeamPanel } from "../components/partner/PartnerTeamPanel";
+import { PartnerAccountPanel } from "../components/partner/PartnerAccountPanel";
 import { useAuth } from "../context/AuthContext";
 import { getPartnerOverview, getPartnerTeam } from "../api/partnerApi";
 import { usePartnerData } from "../hooks/usePartnerData";
@@ -21,9 +22,11 @@ const FEHLER_TEAM = "Ihr Team konnte nicht geladen werden.";
 
 /* ── Partnerportal (/partner) ────────────────────────────────────────────────
    Nur hinter PartnerRoute erreichbar (Rolle sales_partner). Vier Bereiche als
-   page-State — Übersicht, Meine Kunden, Provisionen und (nur mit Einträgen)
-   Mein Team. Es werden ausschließlich /api/sales-partner/me/* aufgerufen; kein
-   Kundenbaustein, keine Kundenroute.
+   page-State — Übersicht, Meine Kunden, Provisionen, (nur mit Einträgen)
+   Mein Team und Konto. Die Bereiche rufen /api/sales-partner/me/* auf; „Konto"
+   nutzt zusätzlich genau die für Partner freigegebenen Kontoendpunkte
+   (Passwort, Login-E-Mail) über die Bausteine der Kontoeinstellungen. Kein
+   Kundenlayout, keine andere Kundenroute.
 
    Übersicht und Team werden beim Start geladen: die Übersicht ist der erste
    Bereich, und ob „Mein Team" überhaupt erscheint, entscheiden die Einträge
@@ -77,6 +80,7 @@ export default function PartnerPortalPage() {
           <PartnerCommissionsPanel currentMonth={overview.data?.currentMonth.month || null} />
         )}
         {aktiv === "team" && <PartnerTeamPanel state={team} onRetry={team.reload} />}
+        {aktiv === "account" && <PartnerAccountPanel user={user} />}
       </div>
     </PartnerLayout>
   );

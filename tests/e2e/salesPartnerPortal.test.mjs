@@ -1,15 +1,20 @@
 // E2E: Partnerportal und Rollenweiche.
 //
 // Echter Dev-Server, echtes Chromium, GEMOCKTES Backend (page.route). Der
-// Kernvertrag: ein Vertriebspartner ruft NIE einen Kundenendpunkt (/kunde/*)
-// auf — der Server antwortete dort mit 403, und das zentrale apiFetch meldete
-// ab. Jeder Request auf /kunde/* wird deshalb mitgezählt und muss 0 bleiben.
+// Kernvertrag: ein Vertriebspartner ruft keinen Kundenendpunkt (/kunde/*) auf —
+// der Server antwortete dort mit 403, und das zentrale apiFetch meldete ab.
+// Freigegeben sind laut Backendvertrag nur die Kontoendpunkte: PATCH
+// /kunde/password und die E-Mail-Änderung. Abgefangen werden genau die Pfade,
+// die der Client tatsächlich aufruft (/kunde/password, /kunde/email-change …);
+// jeder andere Request auf /kunde/* wird mitgezählt und muss 0 bleiben.
 //   1. Login als Partner → /partner, Kennzahlen sichtbar.
 //   2. Partner öffnet /dashboard, /booking, /calculator, / und eine unbekannte
 //      Adresse → jeweils /partner, ohne Abmeldung.
 //   3. Bereiche: Kunden, Provisionen (Monatswechsel sendet den Monat), Team.
 //   4. Ohne Teameinträge gibt es keinen Teambereich.
 //   5. Ein Kunde auf /partner landet im Kundenbereich.
+//   7. Konto: Passwortänderung (PATCH /kunde/password); ein 401 mit falschem
+//      Passwort meldet nicht ab; kein anderer /kunde/*-Aufruf.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -62,13 +67,26 @@ const TEAM_LEER = { limits: { level1: 10, level2: 10 }, level1: [], level2: [] }
 
 let server, browser;
 
-async function setup(page, { user = PARTNER, team = TEAM, token = true } = {}) {
-  const state = { kunde: [], commissionMonths: [], partnerCalls: [], other: [] };
+// Antworten des Passwortendpunkts in Aufrufreihenfolge (Standard: Erfolg).
+async function setup(page, { user = PARTNER, team = TEAM, token = true, passwordResponses = [] } = {}) {
+  const state = { kunde: [], commissionMonths: [], partnerCalls: [], other: [], password: [], emailChange: [] };
+  const pwAntworten = [...passwordResponses];
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
     const p = url.pathname;
     const json = (b, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(b) });
+    // Freigegebene Kontoendpunkte — exakt die Pfade des Clients (api/client.js,
+    // PasswordChangeSection.jsx). Der Body wird nur strukturell geprüft.
+    if (p.endsWith("/kunde/password") && req.method() === "PATCH") {
+      state.password.push(Object.keys(req.postDataJSON() || {}).sort());
+      const [status, body] = pwAntworten.shift() || [200, { message: "Passwort geändert" }];
+      return json(body, status);
+    }
+    if (/\/kunde\/email-change(\/resend)?$/.test(p)) {
+      state.emailChange.push(`${req.method()} ${p}`);
+      return json({ ok: true });
+    }
     if (p.includes("/kunde/") || p.endsWith("/kunde")) {
       state.kunde.push(p);
       // Wie der echte Server bei einem Partner: verboten.
@@ -180,7 +198,8 @@ test("4 — ohne Teameinträge gibt es keinen Bereich „Mein Team“", async ()
   await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
   await page.locator("#spp-tab-overview").waitFor({ state: "visible" });
   assert.equal(await page.locator("#spp-tab-team").count(), 0);
-  assert.equal(await page.locator('[role="tab"]').count(), 3);
+  assert.equal(await page.locator('[role="tab"]').count(), 4, "Übersicht, Kunden, Provisionen, Konto");
+  assert.equal(await page.locator("#spp-tab-account").count(), 1);
   await page.close();
 });
 
@@ -200,5 +219,50 @@ test("6 — ein Kunde auf /partner landet im Kundenbereich", async () => {
   await page.goto(`${BASE}/partner`, { waitUntil: "domcontentloaded" });
   await page.waitForURL((u) => u.pathname === "/dashboard");
   assert.deepEqual(state.partnerCalls, [], "ein Kunde darf keine Partnerendpunkte aufrufen");
+  await page.close();
+});
+
+test("7 — Konto: Passwortänderung, ein falsches Passwort meldet nicht ab, keine andere Kundenroute", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page, {
+    passwordResponses: [
+      [401, { error: "Das aktuelle Passwort ist falsch.", code: "CURRENT_PASSWORD_INVALID" }],
+      [200, { message: "Passwort wurde geändert." }],
+    ],
+  });
+  await page.goto(`${BASE}/partner`, { waitUntil: "networkidle" });
+  await page.locator("#spp-tab-account").click();
+  await page.locator("#spp-account").waitFor({ state: "visible" });
+  const konto = await page.locator("#spp-account").innerText();
+  assert.match(konto, /Petra Partner/);
+  assert.match(konto, /Vertrieb Süd GmbH/);
+  assert.match(konto, /petra@partner-vertrieb\.de/);
+  assert.equal(await page.getByRole("button", { name: "E-Mail-Adresse ändern" }).count(), 1, "E-Mail-Änderung fehlt");
+
+  // Formular öffnen: der Fokus liegt im ersten Feld (Verhalten der Kontoeinstellungen).
+  await page.getByRole("button", { name: "Passwort ändern" }).click();
+  await page.locator("#pf-pw-current").waitFor({ state: "visible" });
+  assert.equal(await page.evaluate(() => document.activeElement?.id), "pf-pw-current");
+
+  // 1. Versuch: falsches aktuelles Passwort → Feldmeldung, KEINE Abmeldung.
+  await page.fill("#pf-pw-current", "FalschesPasswort1");
+  await page.fill("#pf-pw-new", "NeuesSicheresPasswort2026");
+  await page.fill("#pf-pw-confirm", "NeuesSicheresPasswort2026");
+  await page.locator(".profile-password-form .btn-primary").click();
+  await page.locator(".profile-password-form").getByText("Das aktuelle Passwort ist nicht korrekt.").waitFor({ state: "visible" });
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-partner-token", "der Partner wurde abgemeldet");
+  assert.equal(pfad(page), "/partner");
+
+  // 2. Versuch: korrekt → Quittung, Formular geschlossen.
+  await page.fill("#pf-pw-current", "AltesPasswort2026");
+  await page.locator(".profile-password-form .btn-primary").click();
+  await page.getByText("Passwort erfolgreich geändert.").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#pf-pw-current").count(), 0, "das Formular bleibt nach dem Erfolg offen");
+
+  assert.equal(state.password.length, 2);
+  assert.deepEqual(state.password[1], ["currentPassword", "newPassword", "newPasswordConfirm"]);
+  assert.deepEqual(state.kunde, [], `andere Kundenendpunkte aufgerufen: ${state.kunde.join(", ")}`);
+  assert.deepEqual(state.emailChange, [], "ohne Nutzeraktion darf keine E-Mail-Änderung angestoßen werden");
+  assert.equal(await page.evaluate(() => localStorage.getItem("ce_token")), "e2e-partner-token");
   await page.close();
 });

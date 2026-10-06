@@ -298,6 +298,31 @@ export const PARTNER_TABS = Object.freeze([
   Object.freeze({ id: "customers", label: "Meine Kunden" }),
   Object.freeze({ id: "commissions", label: "Provisionen" }),
   Object.freeze({ id: "team", label: "Mein Team" }),
+  // Login-E-Mail und Passwort: dieselben Bausteine wie in den
+  // Kontoeinstellungen der Kunden (Backendvertrag: für Partner freigegeben).
+  Object.freeze({ id: "account", label: "Konto" }),
 ]);
 
 export const visiblePartnerTabs = (team) => PARTNER_TABS.filter((t) => t.id !== "team" || teamVisible(team));
+
+// ── Konto ───────────────────────────────────────────────────────────────────
+// Nur lesend: Stammdaten ändert ein Partner hier nicht (PATCH /kunde/profil ist
+// eine Kundenfunktion). Fehlende Werte stehen als „Nicht angegeben".
+const anzeige = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
+
+export function partnerAccountRows(user) {
+  const u = obj(user);
+  const zeile = (key, k, roh) => {
+    const v = anzeige(roh);
+    return { key, k, v: v || "Nicht angegeben", empty: !v };
+  };
+  return [
+    zeile("name", "Name", u.name),
+    zeile("company", "Firma", u.company_name),
+  ];
+}
+
+export function partnerLoginEmailRow(user) {
+  const v = anzeige(obj(user).email);
+  return { key: "email", k: "Login-E-Mail", v: v || "Nicht angegeben", empty: !v };
+}

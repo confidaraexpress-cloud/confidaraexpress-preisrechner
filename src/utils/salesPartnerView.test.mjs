@@ -29,6 +29,8 @@ import {
   normalizeOverview,
   normalizeTeam,
   overviewKpis,
+  partnerAccountRows,
+  partnerLoginEmailRow,
   partnerStatusMeta,
   payableLabel,
   relevanceLabel,
@@ -190,7 +192,8 @@ test("9 — Provisionen: Rücknahmen und Korrekturen erkennbar, Gegenüber je Eb
 test("10 — „Mein Team“ erscheint nur mit Einträgen; Relevanz mit Rang", () => {
   const leer = normalizeTeam({ limits: { level1: 10, level2: 10 }, level1: [], level2: [] });
   assert.equal(teamVisible(leer), false);
-  assert.deepEqual(visiblePartnerTabs(leer).map((t) => t.id), ["overview", "customers", "commissions"]);
+  assert.deepEqual(visiblePartnerTabs(leer).map((t) => t.id), ["overview", "customers", "commissions", "account"],
+    "ohne Teameinträge kein Teambereich; „Konto“ steht immer da");
   const team = normalizeTeam({ limits: { level1: 10, level2: 10 },
     level1: [{ name: "Tom Team", status: "active", relevant: true, rank: 2, commissionCurrentMonthCents: 500, commissionTotalCents: 9000 }],
     level2: [] });
@@ -200,6 +203,20 @@ test("10 — „Mein Team“ erscheint nur mit Einträgen; Relevanz mit Rang", (
   assert.equal(relevanceLabel({ relevant: false, rank: 1 }), "Nein");
   assert.equal(teamLevelHeading(1, team), "Ebene 1 · 1 von 10");
   assert.equal(teamLevelHeading(2, normalizeTeam({ level2: [] })), "Ebene 2");
+});
+
+test("10b — Konto: Name, Firma und Login-E-Mail nur lesend, fehlende Werte benannt", () => {
+  const user = { id: 42, name: " Petra Partner ", email: "petra@partner-vertrieb.de", company_name: "Vertrieb Süd GmbH",
+    role: "sales_partner", password_hash: "x" };
+  assert.deepEqual(partnerAccountRows(user), [
+    { key: "name", k: "Name", v: "Petra Partner", empty: false },
+    { key: "company", k: "Firma", v: "Vertrieb Süd GmbH", empty: false },
+  ]);
+  assert.deepEqual(partnerLoginEmailRow(user), { key: "email", k: "Login-E-Mail", v: "petra@partner-vertrieb.de", empty: false });
+  const leer = partnerAccountRows({ name: "", company_name: null });
+  assert.deepEqual(leer.map((r) => [r.v, r.empty]), [["Nicht angegeben", true], ["Nicht angegeben", true]]);
+  assert.equal(partnerLoginEmailRow(null).v, "Nicht angegeben");
+  assert.equal(PARTNER_TABS[PARTNER_TABS.length - 1].label, "Konto");
 });
 
 /* ══════════ Verdrahtung des Portals ═════════════════════════════════════ */
@@ -220,4 +237,39 @@ test("11 — das Portal ruft nur Partnerendpunkte auf und nutzt kein Kundenlayou
   assert.match(seite, /<PartnerLayout\b/);
   assert.match(seite, /visiblePartnerTabs\(/, "der Teambereich muss an den Einträgen hängen");
   assert.match(seite, /role="tablist"/);
+  assert.match(seite, /\{aktiv === "account" && <PartnerAccountPanel user=\{user\} \/>\}/);
+});
+
+test("12 — „Konto“ nutzt nur die für Partner freigegebenen Kontobausteine", () => {
+  // Aus dem Kundenbereich darf das Partnerportal genau drei Bausteine holen:
+  // den Abschnittsrahmen, die E-Mail-Änderung und die Passwortänderung.
+  const quellen = ["pages/PartnerPortalPage.jsx", "components/layout/PartnerLayout.jsx"]
+    .concat(readdirSync(path.join(SRC, "components/partner")).map((f) => `components/partner/${f}`));
+  const kundenImporte = new Set();
+  for (const datei of quellen) {
+    for (const m of read(datei).matchAll(/from "(\.\.\/)+(?:components\/)?dashboard\/([\w]+)"/g)) kundenImporte.add(m[2]);
+  }
+  assert.deepEqual([...kundenImporte].sort(), ["EmailChangeSection", "PasswordChangeSection", "ProfileCardHead"],
+    "das Partnerportal bezieht einen weiteren Baustein aus dem Kundenbereich");
+  // Und diese Bausteine sprechen ausschließlich die freigegebenen Endpunkte an:
+  // die Passwortänderung genau PATCH /kunde/password …
+  const pw = ohneKommentare(read("components/dashboard/PasswordChangeSection.jsx"));
+  assert.deepEqual([...pw.matchAll(/apiFetch\(`([^`]+)`/g)].map((m) => m[1]), ["/kunde/password"]);
+  // … die E-Mail-Änderung nur die drei E-Mail-Funktionen des zentralen Clients
+  // (und refreshUser → GET /kundenbereich) — keinen eigenen Request.
+  // Auch Zeilenend-Kommentare entfernen (die Datei erklärt „globaler Logout via apiFetch“).
+  const mail = ohneKommentare(read("components/dashboard/EmailChangeSection.jsx")).replace(/(^|[^:])\/\/.*$/gm, "$1");
+  assert.match(mail,/import \{ startEmailChange, resendEmailChange, cancelEmailChange, triggerAuthError \} from "\.\.\/\.\.\/api\/client";/);
+  assert.doesNotMatch(mail, /apiFetch|\bfetch\(/);
+  const client = ohneKommentare(read("api/client.js"));
+  for (const fn of ["startEmailChange", "resendEmailChange", "cancelEmailChange"]) {
+    const block = client.slice(client.indexOf(`export function ${fn}`));
+    const pfad = block.match(/apiFetch\(`([^`]+)`/);
+    assert.ok(pfad && /^\/kunde\/email-change(\/resend)?$/.test(pfad[1]), `${fn}: unerwarteter Pfad ${pfad && pfad[1]}`);
+  }
+  // Der Abschnittsrahmen ist reine Darstellung.
+  assert.doesNotMatch(read("components/dashboard/ProfileCardHead.jsx"), /apiFetch|\bfetch\(|\/kunde\//);
+  // Keine Profilbearbeitung im Partnerportal.
+  const konto = ohneKommentare(read("components/partner/PartnerAccountPanel.jsx"));
+  assert.doesNotMatch(konto, /kunde\/profil|Bearbeiten|<input/);
 });

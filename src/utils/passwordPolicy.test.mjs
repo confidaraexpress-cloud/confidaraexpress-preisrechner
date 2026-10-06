@@ -25,6 +25,9 @@ const readSrc = (rel) => readFileSync(join(SRC, rel), "utf8");
 const registerFormSrc = readSrc("components/auth/RegisterForm.jsx");
 const authPageSrc     = readSrc("pages/AuthPage.jsx");
 const profileSrc      = readSrc("components/dashboard/Profile.jsx");
+// Die Passwortänderung ist aus Profile.jsx in eine eigene Komponente gewandert
+// (auch vom Partnerportal genutzt); die Prüfungen folgen ihr dorthin.
+const pwSectionSrc    = readSrc("components/dashboard/PasswordChangeSection.jsx");
 
 // Gültiges Formular; nur das Passwort variiert je Test.
 const VALID = {
@@ -164,10 +167,14 @@ test("18 — alle drei Passwortformulare beziehen die zentrale Regel", () => {
   for (const [name, src] of [
     ["RegisterForm.jsx", registerFormSrc],
     ["AuthPage.jsx",     authPageSrc],
-    ["Profile.jsx",      profileSrc],
+    ["PasswordChangeSection.jsx", pwSectionSrc],
   ]) {
     assert.match(src, /from ["'][^"']*passwordPolicy\.mjs["']/, `${name}: kein Import der zentralen Regel`);
   }
+  // Die Kontoeinstellungen rendern genau diese Komponente — das Formular ist
+  // nur umgezogen, nicht verschwunden.
+  assert.match(profileSrc, /import \{ PasswordChangeSection \} from "\.\/PasswordChangeSection";/);
+  assert.match(profileSrc, /<PasswordChangeSection \/>/);
 });
 
 test("19 — die sichtbare Zusage im Formular kommt aus derselben Konstante", () => {
@@ -234,7 +241,8 @@ test("22 — handleRegister validiert vor dem Senden erneut (nicht nur der Butto
 });
 
 test("23 — kein Passwortwert wird geloggt", () => {
-  for (const [name, src] of [["AuthPage.jsx", authPageSrc], ["Profile.jsx", profileSrc]]) {
+  for (const [name, src] of [["AuthPage.jsx", authPageSrc], ["Profile.jsx", profileSrc],
+                             ["PasswordChangeSection.jsx", pwSectionSrc]]) {
     for (const line of src.split("\n")) {
       if (/console\.(log|info|warn|error)/.test(line)) {
         assert.ok(!/password|passwort/i.test(line), `${name}: Passwort im Log — ${line.trim()}`);

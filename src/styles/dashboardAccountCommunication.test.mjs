@@ -22,6 +22,11 @@ const modules = read("components/dashboard/OverviewModules.jsx");
 const overviewLogic = read("utils/overviewModules.mjs");
 const dashPage = read("pages/DashboardPage.jsx");
 const profile = read("components/dashboard/Profile.jsx");
+// Die Passwortänderung ist seit dem Vertriebspartnerprogramm eine eigene
+// Abschnittskomponente (wortgleich aus Profile.jsx ausgelagert, auch vom
+// Partnerportal genutzt). Die Prüfungen 10/11 lesen deshalb diese Datei — und
+// prüfen zusätzlich, dass das Profil sie rendert und keine eigene Fassung führt.
+const passwort = read("components/dashboard/PasswordChangeSection.jsx");
 const sidebar = read("components/layout/DashboardSidebar.jsx");
 const userChip = read("components/ui/UserChip.jsx");
 const identity = read("utils/accountIdentity.mjs");
@@ -39,6 +44,8 @@ const PAKET_D_DATEIEN = [
   "components/dashboard/Overview.jsx",
   "components/dashboard/OverviewModules.jsx",
   "components/dashboard/Profile.jsx",
+  // Ausgelagerte Passwortänderung (früher Teil von Profile.jsx).
+  "components/dashboard/PasswordChangeSection.jsx",
   // Die drei ausgelagerten Einstellungskarten tragen frühere Profile-Abschnitte —
   // die Paket-D-Garantien (Emojis, Iconbutton-Beschriftung) gelten dort weiter.
   "components/dashboard/DeliveryNoteCard.jsx",
@@ -191,33 +198,45 @@ test("9 — der Profilhero trägt das Base-Card-Material statt einer eigenen Fas
 /* ══════════ 10/11 — Passwortbereich ════════════════════════════════════ */
 
 test("10 — das Passwortformular ist initial geschlossen und öffnet erst auf Nutzeraktion", () => {
-  assert.match(profile, /const \[pwOpen, setPwOpen\] = useState\(false\)/);
-  assert.match(profile, /\{pwOpen && \(/, "das Formular hängt nicht am geöffneten Zustand");
-  assert.match(profile, /\{!pwOpen && \(/, "der Öffnen-Knopf hängt nicht am geschlossenen Zustand");
-  assert.match(profile, /onClick=\{openPwForm\}/);
+  assert.match(passwort, /const \[pwOpen, setPwOpen\] = useState\(false\)/);
+  assert.match(passwort, /\{pwOpen && \(/, "das Formular hängt nicht am geöffneten Zustand");
+  assert.match(passwort, /\{!pwOpen && \(/, "der Öffnen-Knopf hängt nicht am geschlossenen Zustand");
+  assert.match(passwort, /onClick=\{openPwForm\}/);
   // Abbrechen stellt den geschlossenen Zustand wieder her.
-  assert.match(profile, /onClick=\{closePwForm\}/);
-  assert.match(profile, /const closePwForm = \(\) => \{[\s\S]*?setPwOpen\(false\);/);
+  assert.match(passwort, /onClick=\{closePwForm\}/);
+  assert.match(passwort, /const closePwForm = \(\) => \{[\s\S]*?setPwOpen\(false\);/);
+  // Das Profil rendert genau diese Komponente in der Sicherheitskarte — und
+  // führt keine zweite Fassung der Passwortänderung.
+  const von = profile.indexOf("const renderSecurityCard");
+  const bis = profile.indexOf("\n  return (", von);
+  assert.ok(von > -1 && bis > von, "Sicherheitskarte nicht gefunden");
+  const sicherheit = profile.slice(von, bis);
+  assert.equal((sicherheit.match(/<PasswordChangeSection \/>/g) || []).length, 1,
+    "die Sicherheitskarte rendert die Passwortänderung nicht");
+  assert.ok(!/pwOpen|pwForm|kunde\/password|PW_CHANGE_TEXTS|passwordLengthError/.test(stripJs(profile)),
+    "Profile.jsx führt wieder eine eigene Passwortänderung");
 });
 
 test("11 — Passwortregeln, Felder und API sind unverändert", () => {
-  assert.match(profile, /apiFetch\(`\/kunde\/password`, \{\s*method: "PATCH",\s*headers: authH\(\),/);
-  assert.match(profile, /JSON\.stringify\(pwForm\)/);
+  assert.match(passwort, /apiFetch\(`\/kunde\/password`, \{\s*method: "PATCH",\s*headers: authH\(\),/);
+  assert.match(passwort, /JSON\.stringify\(pwForm\)/);
+  // Kein `auth: true` in der ganzen Komponente — sie hat genau diesen einen Request.
+  assert.ok(!/auth: true/.test(stripJs(passwort)), "die Passwortänderung nutzt auth: true");
   for (const regel of [
     "Bitte geben Sie Ihr aktuelles Passwort ein.",
     "Das neue Passwort darf nicht mit dem aktuellen Passwort identisch sein.",
     "Die neuen Passwörter stimmen nicht überein.",
   ]) {
-    assert.ok(profile.includes(regel), `Passwortregel verändert: ${regel}`);
+    assert.ok(passwort.includes(regel), `Passwortregel verändert: ${regel}`);
   }
   // Die beiden LÄNGENtexte tragen seit der UAT-Korrektur T-003 die Zahl nicht
   // mehr als Literal, sondern aus passwordPolicy.mjs — Text und Prüfung können
   // damit nicht auseinanderlaufen. Geprüft wird deshalb zweistufig: die Quelle
   // interpoliert die zentrale Konstante, UND der daraus entstehende Satz ist
   // wortgleich zum bisherigen Wortlaut.
-  assert.match(profile, /mindestens \$\{PASSWORD_MIN_LEN\} Zeichen lang sein\./,
+  assert.match(passwort, /mindestens \$\{PASSWORD_MIN_LEN\} Zeichen lang sein\./,
     "Längentext nutzt nicht mehr die zentrale Konstante");
-  assert.match(profile, /höchstens \$\{PASSWORD_MAX_LEN\} Zeichen lang sein\./,
+  assert.match(passwort, /höchstens \$\{PASSWORD_MAX_LEN\} Zeichen lang sein\./,
     "Längentext nutzt nicht mehr die zentrale Konstante");
   assert.equal(
     `Das neue Passwort muss mindestens ${PASSWORD_MIN_LEN} Zeichen lang sein.`,
@@ -230,13 +249,18 @@ test("11 — Passwortregeln, Felder und API sind unverändert", () => {
     "Der sichtbare Wortlaut hat sich geändert",
   );
   // Die Längenprüfung läuft über die zentrale Regel, nicht über .length.
-  assert.match(profile, /passwordLengthError\(newPassword, PW_CHANGE_TEXTS\)/);
-  assert.ok(!/newPassword\.length\s*[<>]/.test(profile),
-    "Profile.jsx prüft die Passwortlänge wieder selbst statt über passwordPolicy.mjs");
+  assert.match(passwort, /passwordLengthError\(newPassword, PW_CHANGE_TEXTS\)/);
+  for (const [name, code] of [["PasswordChangeSection.jsx", passwort], ["Profile.jsx", profile]]) {
+    assert.ok(!/newPassword\.length\s*[<>]/.test(code),
+      `${name} prüft die Passwortlänge wieder selbst statt über passwordPolicy.mjs`);
+  }
   // Der bewusste Verzicht auf auth:true (401 = falsches Passwort, nicht Session-Ende)
   // bleibt bestehen.
-  assert.match(profile, /triggerAuthError\(\)/);
-  assert.match(profile, /Das aktuelle Passwort ist nicht korrekt\./);
+  assert.match(passwort, /triggerAuthError\(\)/);
+  assert.match(passwort, /Das aktuelle Passwort ist nicht korrekt\./);
+  // Der Sitzungssentinel und 429 bleiben wortgleich.
+  assert.match(passwort, /d\.error === "Sitzung abgelaufen\. Bitte melden Sie sich erneut an\."/);
+  assert.match(passwort, /Zu viele Versuche\. Bitte versuchen Sie es später erneut\./);
 });
 
 /* ══════════ 12 — Supportstatus-Fallback ═══════════════════════════════ */

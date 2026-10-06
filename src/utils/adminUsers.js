@@ -18,6 +18,8 @@ export const userStatusMeta = (s) => USER_STATUS_META[s] || ["badge-gray", "Unbe
 const USER_ROLE_META = {
   admin: ["badge-blue", "Admin"],
   customer: ["badge-gray", "Kunde"],
+  // Vertriebspartnerprogramm: eigene Rolle mit eigenem Portal (/partner).
+  sales_partner: ["badge--progress", "Vertriebspartner"],
 };
 // Eine unbekannte Rolle ist fachlich derselbe Fall wie ein unbekannter Status:
 // nie der Rohwert im sichtbaren Text.

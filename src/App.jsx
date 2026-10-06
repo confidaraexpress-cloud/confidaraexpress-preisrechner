@@ -56,6 +56,11 @@ const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSup
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
 const AdminReconciliationPage = React.lazy(() => import("./pages/admin/AdminReconciliationPage"));
 const AdminReconciliationDetailPage = React.lazy(() => import("./pages/admin/AdminReconciliationDetailPage"));
+// Vertriebspartnerverwaltung: Liste, Detail, globale Einstellungen, Versandnachweise.
+const AdminSalesPartnersPage        = React.lazy(() => import("./pages/admin/AdminSalesPartnersPage"));
+const AdminSalesPartnerDetailPage   = React.lazy(() => import("./pages/admin/AdminSalesPartnerDetailPage"));
+const AdminSalesPartnerSettingsPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerSettingsPage"));
+const AdminDispatchEvidencePage     = React.lazy(() => import("./pages/admin/AdminDispatchEvidencePage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
    und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
@@ -167,6 +172,11 @@ export default function App() {
           <Route path="/admin/reconciliation/:attemptId" element={<AdminReconciliationDetailPage />} />
           <Route path="/admin/support-requests"     element={<AdminSupportRequestsPage />} />
           <Route path="/admin/support-requests/:id" element={<AdminSupportRequestDetailPage />} />
+          {/* Vertriebspartner — statische Unterseiten vor '/:id'. */}
+          <Route path="/admin/partners"                   element={<AdminSalesPartnersPage />} />
+          <Route path="/admin/partners/settings"          element={<AdminSalesPartnerSettingsPage />} />
+          <Route path="/admin/partners/dispatch-evidence" element={<AdminDispatchEvidencePage />} />
+          <Route path="/admin/partners/:id"               element={<AdminSalesPartnerDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 

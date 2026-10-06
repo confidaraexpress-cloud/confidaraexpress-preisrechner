@@ -301,11 +301,15 @@ test("11 — weder API noch Routen wurden im Abschlusspaket verändert", () => {
                   // Die fünf Listenbereiche laufen als page-State — eine
                   // Entitäts-ID gehört nicht in einen page-String.
                   "/inventory/products/:id", "/inventory/orders/:id",
-                  // Vertriebspartnerprogramm (bewusste Ankeränderung): öffentliche
-                  // Partnerregistrierung und der Alias der Kundenregistrierung
-                  // (Auth-Bereich) sowie das Partnerportal (nur Rolle
-                  // sales_partner; seine vier Bereiche sind page-State).
+                  // Vertriebspartnerprogramm (bewusste Ankeränderung, +7):
+                  // öffentliche Partnerregistrierung und der Alias der
+                  // Kundenregistrierung (Auth-Bereich), das Partnerportal
+                  // (nur Rolle sales_partner; seine vier Bereiche sind
+                  // page-State) und die Adminverwaltung — Liste, Detail und
+                  // zwei statische Unterseiten (Einstellungen, Versandnachweise).
                   "/partner-registrieren", "/registrieren", "/partner",
+                  "/admin/partners", "/admin/partners/settings",
+                  "/admin/partners/dispatch-evidence", "/admin/partners/:id",
                   "*"];
   const gefunden = [...app.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(gefunden.sort(), [...ROUTEN].sort(), "der Routenbestand hat sich verändert");

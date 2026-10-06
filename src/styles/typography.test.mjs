@@ -454,11 +454,13 @@ test("12 — Phase 2.5 fasst nur Typografie an", () => {
   const pfadlos = (app.match(/<Route /g) || []).length - mitPfad - indexRt;
   // Package C (dokumentierte Ankeränderung): +2 für die Buchungsklärung
   // (/admin/reconciliation und /admin/reconciliation/:attemptId).
-  // Vertriebspartnerprogramm (dokumentierte Ankeränderung): +3 — /partner-registrieren,
-  // /registrieren (Alias) und /partner. Keine neue Layoutroute: das Partnerportal
-  // bringt seine Hülle in der Seite mit.
-  assert.equal(mitPfad + indexRt, 34,
-    "die Zahl der ansteuerbaren Routen ist unverändert (34 seit dem Vertriebspartnerprogramm)");
+  // Vertriebspartnerprogramm (dokumentierte Ankeränderung): +7 —
+  // /partner-registrieren, /registrieren (Alias), /partner sowie
+  // /admin/partners, /admin/partners/settings, /admin/partners/dispatch-evidence
+  // und /admin/partners/:id. Keine neue Layoutroute: das Partnerportal bringt
+  // seine Hülle in der Seite mit, die übrigen hängen an bestehenden Rahmen.
+  assert.equal(mitPfad + indexRt, 38,
+    "die Zahl der ansteuerbaren Routen ist unverändert (38 seit dem Vertriebspartnerprogramm)");
   assert.equal(pfadlos, 4,
     "die Zahl der pfadlosen Layoutrouten ist unverändert (4: Dashboard, öffentlich, Admin, Auth)");
 });

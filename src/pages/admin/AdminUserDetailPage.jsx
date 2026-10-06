@@ -36,6 +36,7 @@ import { useAuth } from "../../context/AuthContext";
 import { CustomerMarkupSection } from "../../components/admin/CustomerMarkupSection";
 import { CustomerApprovalCard } from "../../components/admin/CustomerApprovalCard";
 import { CustomerSupportSection } from "../../components/admin/CustomerSupportSection";
+import { SalesPartnerAttributionSection } from "../../components/admin/SalesPartnerAttributionSection";
 import { BillingModeSection } from "../../components/admin/BillingModeSection";
 import { setAdminUserBillingMode } from "../../api/adminApi";
 import { billingMode as readBillingMode } from "../../utils/billingModeView.mjs";
@@ -715,6 +716,13 @@ export default function AdminUserDetailPage() {
              Anfrage, damit es genau EINEN Schreibpfad gibt. Die Sektion lädt
              eigenständig und kann diese Seite bei einem Fehler nicht blockieren. */}
         <CustomerSupportSection userId={idOf(u)} />
+
+        {/* 4c) Vertriebspartner-Zuordnung — selbstladend wie die Supportsektion;
+             ein Fehler dort blockiert diese Seite nicht. Nur für Kundenkonten:
+             ein Admin- oder Partnerkonto hat keine Kundenzuordnung. */}
+        {roleOf(u) !== "admin" && roleOf(u) !== "sales_partner" && (
+          <SalesPartnerAttributionSection userId={idOf(u)} />
+        )}
 
         {/* 5) Technische Informationen — bewusst eingeklappt: für den Alltag
              nicht nötig, für Support und Nachweis aber verfügbar. */}

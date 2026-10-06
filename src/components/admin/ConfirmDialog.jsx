@@ -43,6 +43,12 @@ export function ConfirmDialog({
   busyLabel = "Wird gespeichert…",
   onCancel,
   onConfirm,
+  // Additiv (Vertriebspartnerverwaltung): Eingaben, die zur Bestätigung
+  // gehören (z. B. Grundprovision bei der Freigabe; geprüft wird beim
+  // Bestätigen im Aufrufer), und eine stabile Kennung der bestätigenden Aktion
+  // für Browserprüfungen. Ohne diese Props ist der Dialog unverändert.
+  children = null,
+  confirmId,
 }) {
   const uid = useId();
   const titleId = `adm-confirm-title-${uid}`;
@@ -75,6 +81,7 @@ export function ConfirmDialog({
         {subline && <p className="adm-modal-sub">{subline}</p>}
         <p id={descId} className="adm-modal-text">{text}</p>
         {note && <p className="adm-support-hint adm-modal-note">{note}</p>}
+        {children && <div className="adm-modal-form">{children}</div>}
         <div className="adm-modal-actions">
           <button type="button" className="btn btn-outline btn-sm" onClick={onCancel} disabled={busy}>
             {cancelLabel}
@@ -82,6 +89,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={`btn btn-sm ${danger ? "adm-btn-danger" : irreversible ? "btn-outline adm-irreversible-action" : "btn-primary"}`}
+            id={confirmId}
             onClick={onConfirm}
             disabled={busy}
             aria-busy={busy ? "true" : undefined}

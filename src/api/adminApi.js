@@ -662,3 +662,73 @@ export function replyAdminSupportRequest(id, message, idempotencyKey) {
     body: JSON.stringify({ message }),
   });
 }
+
+// ── Vertriebspartnerprogramm (Admin) ─────────────────────────────────────────
+// Eigene Parameter-Allowlists — die Kundenverträge (USER_PARAMS,
+// SETTABLE_USER_STATUS) bleiben unangetastet. Jeder Body entsteht über die
+// build…Body-Funktionen aus utils/adminSalesPartnerView.mjs; hier wird nur
+// transportiert. Alle Endpunkte sind serverseitig adminpflichtig.
+const SALES_PARTNER_LIST_PARAMS = ["status", "q", "limit", "offset"];
+const SALES_PARTNER_COMMISSION_PARAMS = ["month"];
+const DISPATCH_EVIDENCE_QUEUE_PARAMS = ["limit", "offset"];
+
+const partnerPath = (id) => `/admin/sales-partners/${encodeURIComponent(id)}`;
+const jsonPost = (path, body, method = "POST") =>
+  apiFetch(path, { method, auth: true, body: JSON.stringify(body) });
+
+// GET /admin/sales-partners — page/pageSize → limit/offset wie bei den übrigen Listen.
+export function listAdminSalesPartners(params = {}) {
+  const { page = 1, pageSize = 25, ...filters } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { ...filters, limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/sales-partners${buildQuery(query, SALES_PARTNER_LIST_PARAMS)}`, { auth: true });
+}
+
+export function getAdminSalesPartner(id) {
+  return apiFetch(partnerPath(id), { auth: true });
+}
+
+export const approveAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/approve`, body);
+export const rejectAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/reject`, body);
+export const deactivateAdminSalesPartner = (id, body) => jsonPost(`${partnerPath(id)}/deactivate`, body);
+export const reactivateAdminSalesPartner = (id) => jsonPost(`${partnerPath(id)}/reactivate`, {});
+export const setAdminSalesPartnerLogin = (id, body) => jsonPost(`${partnerPath(id)}/login`, body, "PUT");
+export const createAdminSalesPartnerRates = (id, body) => jsonPost(`${partnerPath(id)}/rates`, body);
+export const createAdminSalesPartnerLevelRules = (id, body) => jsonPost(`${partnerPath(id)}/level-rules`, body);
+
+// GET /admin/sales-partners/:id/commissions?month=YYYY-MM — nur ein gültiger Monat.
+export function listAdminSalesPartnerCommissions(id, month) {
+  const query = typeof month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? { month } : {};
+  return apiFetch(`${partnerPath(id)}/commissions${buildQuery(query, SALES_PARTNER_COMMISSION_PARAMS)}`, { auth: true });
+}
+
+// Globale Level-Regeln und Obergrenzen (je aktuelle Version + Historie).
+export const getAdminSalesPartnerLevelRules = () => apiFetch("/admin/sales-partner-level-rules", { auth: true });
+export const createAdminSalesPartnerGlobalLevelRules = (body) => jsonPost("/admin/sales-partner-level-rules", body);
+export const getAdminSalesPartnerCaps = () => apiFetch("/admin/sales-partner-caps", { auth: true });
+export const createAdminSalesPartnerCap = (body) => jsonPost("/admin/sales-partner-caps", body);
+
+// Provisionen: Rücknahme einer Entscheidung und manuelle Korrekturbuchung.
+export const reverseAdminSalesPartnerDecision = (decisionId, body) =>
+  jsonPost(`/admin/sales-partner-commissions/decisions/${encodeURIComponent(decisionId)}/reverse`, body);
+export const createAdminSalesPartnerAdjustment = (body) => jsonPost("/admin/sales-partner-commissions/adjustments", body);
+
+// Kundenzuordnung eines Kontos (Kundendetail).
+export const getAdminUserSalesPartnerAttribution = (userId) =>
+  apiFetch(`/admin/users/${encodeURIComponent(userId)}/sales-partner-attribution`, { auth: true });
+export const setAdminUserSalesPartnerAttribution = (userId, body) =>
+  jsonPost(`/admin/users/${encodeURIComponent(userId)}/sales-partner-attribution`, body, "PUT");
+
+// Versandnachweise: Queue „Versandnachweis fehlt" und Entscheidung je Sendung.
+export function listAdminDispatchEvidenceQueue(params = {}) {
+  const { page = 1, pageSize = 25 } = params || {};
+  const size = Number(pageSize) > 0 ? Math.floor(Number(pageSize)) : 25;
+  const p = Number(page) >= 1 ? Math.floor(Number(page)) : 1;
+  const query = { limit: size, offset: (p - 1) * size };
+  return apiFetch(`/admin/dispatch-evidence/queue${buildQuery(query, DISPATCH_EVIDENCE_QUEUE_PARAMS)}`, { auth: true });
+}
+export const getAdminShipmentDispatchEvidence = (shipmentId) =>
+  apiFetch(`/admin/shipments/${encodeURIComponent(shipmentId)}/dispatch-evidence`, { auth: true });
+export const createAdminShipmentDispatchEvidence = (shipmentId, body) =>
+  jsonPost(`/admin/shipments/${encodeURIComponent(shipmentId)}/dispatch-evidence`, body);

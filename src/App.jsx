@@ -8,6 +8,8 @@ import { LoadingScreen } from "./components/common/LoadingScreen";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { AdminRoute } from "./routes/AdminRoute";
+import { PartnerRoute } from "./routes/PartnerRoute";
+import { landingPathFor } from "./utils/roleLanding.mjs";
 import { NavbarLayout } from "./components/layout/NavbarLayout";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { AdminLayout } from "./components/layout/AdminLayout";
@@ -23,6 +25,12 @@ const DatenschutzPage = React.lazy(() => import("./pages/DatenschutzPage"));
 const AGBPage         = React.lazy(() => import("./pages/AGBPage"));
 const WiderrufPage    = React.lazy(() => import("./pages/WiderrufPage"));
 const InsuranceInfoPage = React.lazy(() => import("./pages/InsuranceInfoPage"));
+
+// Vertriebspartnerprogramm: öffentliche Partnerregistrierung (eigener Flow,
+// nicht die Kundenregistrierung) und das Partnerportal (nur Rolle
+// sales_partner, eigene schlanke Hülle statt DashboardLayout).
+const PartnerRegisterPage = React.lazy(() => import("./pages/PartnerRegisterPage"));
+const PartnerPortalPage   = React.lazy(() => import("./pages/PartnerPortalPage"));
 
 // Lager & Aufträge: DETAILseiten mit echter Route. Die fünf Listenbereiche
 // laufen als page-State in DashboardPage (unverändertes Navigationsmodell);
@@ -48,6 +56,11 @@ const AdminSupportRequestsPage = React.lazy(() => import("./pages/admin/AdminSup
 const AdminSupportRequestDetailPage = React.lazy(() => import("./pages/admin/AdminSupportRequestDetailPage"));
 const AdminReconciliationPage = React.lazy(() => import("./pages/admin/AdminReconciliationPage"));
 const AdminReconciliationDetailPage = React.lazy(() => import("./pages/admin/AdminReconciliationDetailPage"));
+// Vertriebspartnerverwaltung: Liste, Detail, globale Einstellungen, Versandnachweise.
+const AdminSalesPartnersPage        = React.lazy(() => import("./pages/admin/AdminSalesPartnersPage"));
+const AdminSalesPartnerDetailPage   = React.lazy(() => import("./pages/admin/AdminSalesPartnerDetailPage"));
+const AdminSalesPartnerSettingsPage = React.lazy(() => import("./pages/admin/AdminSalesPartnerSettingsPage"));
+const AdminDispatchEvidencePage     = React.lazy(() => import("./pages/admin/AdminDispatchEvidencePage"));
 
 /* Der Auth-Bereich hat als einziger Bereich KEIN Layout — Login, Registrierung
    und die E-Mail-Bestätigung hängen direkt an <Routes>. Damit auch dort ein
@@ -64,8 +77,16 @@ function AuthAreaBoundary() {
   );
 }
 
+/* Alias /registrieren → /register. Der Suchteil geht vollständig mit (der
+   Empfehlungscode selbst ist zu diesem Zeitpunkt schon erfasst und aus der
+   Adresse entfernt — main.jsx, utils/referralCapture.mjs). */
+function RegistrierenAlias() {
+  const { search, hash } = useLocation();
+  return <Navigate to={{ pathname: "/register", search, hash }} replace />;
+}
+
 export default function App() {
-  const { authed, loadingUser } = useAuth();
+  const { authed, loadingUser, user } = useAuth();
   if (loadingUser) return <LoadingScreen />;
 
   return (
@@ -94,6 +115,11 @@ export default function App() {
           {/* Öffentliche Bestätigung der Login-E-Mail-Änderung (E-Mail-Token, kein
               Login nötig; eigene Auth-Ästhetik, nicht im Dashboard). */}
           <Route path="/confirm-email-change" element={<EmailChangeConfirmPage />} />
+
+          {/* Öffentliche Partnerregistrierung und der deutschsprachige Alias
+              der Kundenregistrierung. */}
+          <Route path="/partner-registrieren" element={<PartnerRegisterPage />} />
+          <Route path="/registrieren" element={<RegistrierenAlias />} />
         </Route>
 
         {/* Protected: calculator + booking inside dashboard layout (sidebar visible).
@@ -123,6 +149,10 @@ export default function App() {
 
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
+        {/* Partnerportal: ausschließlich Rolle sales_partner (PartnerRoute).
+            Die vier Bereiche laufen als page-State in der Seite. */}
+        <Route path="/partner" element={<PartnerRoute><PartnerPortalPage /></PartnerRoute>} />
+
         {/* Admin: eigenes Layout, URL-basiert, hinter AdminRoute (UX-Gate).
             requireAdmin schützt die /admin/*-Endpunkte serverseitig. */}
         <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -142,11 +172,18 @@ export default function App() {
           <Route path="/admin/reconciliation/:attemptId" element={<AdminReconciliationDetailPage />} />
           <Route path="/admin/support-requests"     element={<AdminSupportRequestsPage />} />
           <Route path="/admin/support-requests/:id" element={<AdminSupportRequestDetailPage />} />
+          {/* Vertriebspartner — statische Unterseiten vor '/:id'. */}
+          <Route path="/admin/partners"                   element={<AdminSalesPartnersPage />} />
+          <Route path="/admin/partners/settings"          element={<AdminSalesPartnerSettingsPage />} />
+          <Route path="/admin/partners/dispatch-evidence" element={<AdminDispatchEvidencePage />} />
+          <Route path="/admin/partners/:id"               element={<AdminSalesPartnerDetailPage />} />
           <Route path="/admin/audit-logs"   element={<AuditLogPage />} />
         </Route>
 
-        <Route index element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
-        <Route path="*" element={<Navigate to={authed ? "/dashboard" : "/login"} replace />} />
+        {/* Startziel rollenabhängig: Vertriebspartner ins Partnerportal,
+            alle anderen unverändert in den Kundenbereich. */}
+        <Route index element={<Navigate to={authed ? landingPathFor(user) : "/login"} replace />} />
+        <Route path="*" element={<Navigate to={authed ? landingPathFor(user) : "/login"} replace />} />
       </Routes>
     </Suspense>
     </ParcelShopFinderProvider>

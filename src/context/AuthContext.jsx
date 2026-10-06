@@ -23,12 +23,16 @@ const AuthContext = createContext(null);
 // Dasselbe für die Wählbarkeit der Abrechnungsarten (`billingCapabilities`): TOP-LEVEL
 // geliefert, in das User-Objekt gefaltet. Fehlt sie (älteres Backend), steht hier null —
 // die Karte wertet das als „Sammelrechnung nicht neu wählbar" (fail-closed).
+// Vertriebspartner (Rolle `sales_partner`): `salesPartner` ({ status }) kommt
+// ebenfalls TOP-LEVEL und wird gleich gefaltet; bei Kunden und Admins fehlt es
+// und steht als null im Objekt — für sie ändert sich nichts.
 function userFromKundenbereich(d) {
   const u = (d && d.user) || {};
+  const partner = d?.salesPartner ?? u.salesPartner ?? null;
   const pending = d?.pendingEmailChange ?? u.pendingEmailChange ?? null;
   const logo = d?.companyLogo ?? u.companyLogo ?? null;
   const billing = d?.billingCapabilities ?? u.billingCapabilities ?? null;
-  return { ...u, pendingEmailChange: pending, companyLogo: logo, billingCapabilities: billing };
+  return { ...u, salesPartner: partner, pendingEmailChange: pending, companyLogo: logo, billingCapabilities: billing };
 }
 
 export function AuthProvider({ children }) {
@@ -105,10 +109,13 @@ export function AuthProvider({ children }) {
       });
       if (!r.ok) throw new Error();
       const d = await r.json();
-      setUser(userFromKundenbereich(d));
+      const angemeldet = userFromKundenbereich(d);
+      setUser(angemeldet);
       setAuthed(true);
       setSessionExpired(false);
-      return true;
+      // Das Benutzerobjekt statt `true` (weiterhin truthy): AuthPage wählt damit
+      // das rollenabhängige Ziel, ohne auf den nächsten Render zu warten.
+      return angemeldet;
     } catch {
       localStorage.removeItem("ce_token");
       return false;

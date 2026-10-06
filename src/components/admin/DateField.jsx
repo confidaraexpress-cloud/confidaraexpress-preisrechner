@@ -24,7 +24,10 @@ import React from "react";
 
 export const DATE_FORMAT_HINT = "TT.MM.JJJJ";
 
-export function DateField({ id, label, value, onChange, disabled = false }) {
+// `min`/`max` (ISO) und `invalid` sind additiv (Formulare der Vertriebspartner-
+// verwaltung: „gültig ab heute", „nicht in der Zukunft"). Ohne sie ist das Feld
+// unverändert; maßgeblich bleibt in jedem Fall die Prüfung des Servers.
+export function DateField({ id, label, value, onChange, disabled = false, min, max, invalid = false }) {
   const hintId = `${id}-format`;
   const leer = !value;
   return (
@@ -37,8 +40,11 @@ export function DateField({ id, label, value, onChange, disabled = false }) {
           lang="de"
           value={value}
           disabled={disabled}
+          min={min}
+          max={max}
           onChange={(e) => onChange(e.target.value)}
           aria-describedby={hintId}
+          aria-invalid={invalid ? "true" : undefined}
         />
         {leer && <span className="adm-datefield-ph" aria-hidden="true">{DATE_FORMAT_HINT}</span>}
       </span>

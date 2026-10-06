@@ -11,6 +11,8 @@ import { BrandLogo } from "../ui/BrandLogo";
 const PRIMARY_NAV = [
   { to: "/admin", label: "Übersicht", end: true },
   { to: "/admin/users", label: "Kunden" },
+  // Vertriebspartnerprogramm: Anträge, Partner, Einstellungen, Versandnachweise.
+  { to: "/admin/partners", label: "Vertriebspartner" },
   { to: "/admin/shipments", label: "Sendungen" },
   { to: "/admin/reconciliation", label: "Buchungsklärung" },
   { to: "/admin/invoices", label: "Rechnungen", end: true },

@@ -24,6 +24,23 @@ const ACTION_LABELS = {
   "admin.shipment.reconcile_not_booked": "Buchung als nicht gebucht bestätigt",
   "admin.shipment.reconcile_review": "Buchungsklärung geprüft",
   "admin.shipment.invoice_drift_review": "Rechnungsabweichung geprüft",
+  // Vertriebspartnerprogramm: Partnerstatus …
+  "sales_partner.approve": "Vertriebspartner freigegeben",
+  "sales_partner.reject": "Vertriebspartnerantrag abgelehnt",
+  "sales_partner.deactivate": "Vertriebspartner deaktiviert",
+  "sales_partner.reactivate": "Vertriebspartner reaktiviert",
+  "sales_partner.login_status": "Login eines Vertriebspartners geändert",
+  // … Sätze und Regeln …
+  "sales_partner.rates_version": "Provisionssätze: neue Version",
+  "sales_partner.level_rules_version": "Level-Regeln eines Partners: neue Version",
+  "sales_partner.level_rules_global_version": "Globale Level-Regeln: neue Version",
+  "sales_partner.cap_version": "Obergrenzen: neue Version",
+  // … Zuordnung und Provisionen …
+  "sales_partner.attribution_change": "Vertriebspartner-Zuordnung geändert",
+  "sales_partner.commission_reversal": "Provisionsentscheidung zurückgenommen",
+  "sales_partner.commission_adjustment": "Provisionskorrektur gebucht",
+  // … und Versand.
+  "shipment.dispatch_evidence_decision": "Versandnachweis entschieden",
 };
 
 // [badge-Klasse, Label]. Unbekannte Werte → grau + Rohwert (harmlos).

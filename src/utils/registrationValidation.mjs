@@ -13,6 +13,8 @@
 // nach dem Absenden. Grenzwerte bewusst identisch gehalten.
 
 import { PASSWORD_MIN_LEN, PASSWORD_MAX_LEN, passwordLengthError } from "./passwordPolicy.mjs";
+// Formprüfung des Empfehlungscodes (Vertriebspartnerprogramm, unten ergänzt).
+import { normalizeReferralCode } from "./referralCapture.mjs";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -119,4 +121,102 @@ export function buildRegistrationPayload(form = {}) {
   }
   if (typeof form.email === "string") payload.email = form.email.trim();
   return payload;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Vertriebspartnerprogramm — ausschließlich ADDITIV ergänzt. Die Kundenregeln
+// oben (Feldnamen, Pflichtfelder, Payload) sind unverändert.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Kundenregistrierung: der Empfehlungscode kommt als EIGENES Feld hinzu — und
+// nur, wenn ein formal gültiger Code vorliegt. Ohne Code ist der Payload exakt
+// der bisherige (dieselben Schlüssel, dieselbe Reihenfolge). Ob der Code gilt,
+// entscheidet allein der Server; die Antwort verrät es nicht.
+export function withReferralCode(payload, code) {
+  const sauber = normalizeReferralCode(code);
+  return sauber ? { ...payload, referralCode: sauber } : payload;
+}
+
+// Partnerregistrierung: eigener Flow, eigene Feldnamen (camelCase laut
+// Partnervertrag), dieselben Regeln für E-Mail und Passwort wie oben.
+export const PARTNER_NAME_RULE = Object.freeze({ apiField: "name", label: "Name", minLen: 2, maxLen: 100 });
+export const PARTNER_COMPANY_MAX = 200;
+export const PARTNER_PHONE_MAX = 40;
+const PARTNER_PHONE_RE = /^[0-9+()/. -]*$/;
+
+export const PARTNER_REG_TEXTS = Object.freeze({
+  agreementRequired: "Bitte bestätigen Sie die Vertriebspartnervereinbarung.",
+  companyTooLong: `Firma darf maximal ${PARTNER_COMPANY_MAX} Zeichen enthalten.`,
+  phoneTooLong: `Telefon darf maximal ${PARTNER_PHONE_MAX} Zeichen enthalten.`,
+  phoneInvalid: "Bitte eine gültige Telefonnummer eingeben.",
+  disabled: "Die Registrierung für Vertriebspartner ist derzeit nicht geöffnet.",
+  emailTaken: "Diese E-Mail-Adresse ist bereits registriert.",
+  rateLimited: "Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es anschließend erneut.",
+  generic: "Die Registrierung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+  success: "Ihr Antrag ist eingegangen und wird geprüft. Eine Anmeldung ist erst nach der Freigabe möglich.",
+});
+
+// Rückgabe wie getRegErrors: { <feld>: "<Text>" } — leer = absendbar.
+// Feldschlüssel: name, email, password, passwordRepeat, companyName, phone, agreement.
+export function getPartnerRegErrors(form = {}, passwordRepeat = "") {
+  const e = {};
+  const nameError = b2bFieldError(PARTNER_NAME_RULE, form.name);
+  if (nameError) e.name = nameError;
+  // E-Mail, Passwortlänge und Wiederholung über EXAKT die Kundenregeln — keine
+  // zweite Fassung. Die B2B-Pflichtfelder der Kundenregistrierung spielen hier
+  // keine Rolle und werden verworfen.
+  const basis = getRegErrors({ email: form.email, password: form.password }, passwordRepeat);
+  for (const k of ["email", "password", "passwordRepeat"]) if (basis[k]) e[k] = basis[k];
+  if (trimmed(form.companyName).length > PARTNER_COMPANY_MAX) e.companyName = PARTNER_REG_TEXTS.companyTooLong;
+  const phone = trimmed(form.phone);
+  if (phone.length > PARTNER_PHONE_MAX) e.phone = PARTNER_REG_TEXTS.phoneTooLong;
+  else if (!PARTNER_PHONE_RE.test(phone)) e.phone = PARTNER_REG_TEXTS.phoneInvalid;
+  if (form.agreementAccepted !== true) e.agreement = PARTNER_REG_TEXTS.agreementRequired;
+  return e;
+}
+
+// Body für POST /api/sales-partner/register. Optionale Felder nur, wenn sie
+// einen Wert tragen; der Sponsorcode nur, wenn er formal gültig ist; die
+// Vereinbarungsfassung nur bei bestätigter Zustimmung.
+export function buildPartnerRegistrationPayload(form = {}, { sponsorCode = null, agreementVersion = null } = {}) {
+  const payload = {
+    name: trimmed(form.name),
+    email: trimmed(form.email),
+    password: typeof form.password === "string" ? form.password : "",
+  };
+  const company = trimmed(form.companyName);
+  if (company) payload.companyName = company;
+  const phone = trimmed(form.phone);
+  if (phone) payload.phone = phone;
+  const sponsor = normalizeReferralCode(sponsorCode);
+  if (sponsor) payload.sponsorCode = sponsor;
+  const version = trimmed(agreementVersion);
+  if (form.agreementAccepted === true && version) payload.acceptedAgreementVersion = version;
+  return payload;
+}
+
+const PARTNER_FORM_FIELDS = Object.freeze({
+  name: "name", email: "email", password: "password", companyName: "companyName", phone: "phone",
+  acceptedAgreementVersion: "agreement", agreement: "agreement",
+});
+
+// Fehlerantwort → { disabled, fieldErrors, generalError }. Ein Ablehnungsgrund
+// wird nie geraten; Servertexte nur bei Eingabefehlern (400/422), nie bei 5xx.
+export function mapPartnerRegistrationError(status, payload) {
+  const d = payload && typeof payload === "object" ? payload : {};
+  const code = typeof d.code === "string" ? d.code.trim() : "";
+  const serverText = typeof d.error === "string" && d.error.trim() ? d.error.trim() : "";
+  const ergebnis = (fieldErrors = {}, generalError = "", disabled = false) => ({ disabled, fieldErrors, generalError });
+
+  // Abgeschaltet oder (noch) nicht vorhanden: fail-closed wie „nicht geöffnet".
+  if (status === 404) return ergebnis({}, "", true);
+  if (code === "AGREEMENT_REQUIRED") return ergebnis({ agreement: PARTNER_REG_TEXTS.agreementRequired });
+  if (status === 409) return ergebnis({ email: serverText || PARTNER_REG_TEXTS.emailTaken });
+  if (status === 429) return ergebnis({}, PARTNER_REG_TEXTS.rateLimited);
+  if (status === 400 || status === 422) {
+    const field = typeof d.field === "string" ? PARTNER_FORM_FIELDS[d.field.trim()] : undefined;
+    if (field) return ergebnis({ [field]: serverText || PARTNER_REG_TEXTS.generic });
+    return ergebnis({}, serverText || PARTNER_REG_TEXTS.generic);
+  }
+  return ergebnis({}, PARTNER_REG_TEXTS.generic);
 }

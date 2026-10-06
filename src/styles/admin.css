@@ -1280,3 +1280,75 @@ a.adm-recon-no:hover { text-decoration: underline; }
   .adm-tile,
   .adm-tech-caret { transition: none; }
 }
+
+/* ── Vertriebspartnerverwaltung (adm-sp-) ────────────────────────────────── */
+/* Liste, Detail, Einstellungen, Versandnachweise und die Zuordnungskarte im
+   Kundendetail. Reine Zusatzklassen: Karten, Badges, Buttons, Dialoge und
+   Felder kommen aus den gemeinsamen Mustern; hier steht nur die Anordnung. */
+
+/* Eingaben im zentralen Bestätigungsdialog (ConfirmDialog, additiv). */
+.adm-modal-form { display: flex; flex-direction: column; gap: var(--ce-space-3); margin-top: var(--ce-space-3); }
+
+/* Listen: Tabelle ↔ Karten am selben Umschaltpunkt wie Stornierungen. */
+.adm-sp-table table,
+.adm-sp-evidence-table table { min-width: 0; table-layout: auto; }
+.adm-sp-table th, .adm-sp-table td,
+.adm-sp-evidence-table th, .adm-sp-evidence-table td { vertical-align: top; }
+.adm-sp-table th,
+.adm-sp-evidence-table th { white-space: normal; }
+.adm-sp-table th:nth-child(1) { width: 20%; }
+.adm-sp-table th:nth-child(2) { width: 11%; }
+.adm-sp-table th:nth-child(3) { width: 14%; }
+.adm-sp-cards,
+.adm-sp-evidence-cards { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: var(--ce-space-3); }
+@media (max-width: 1080px) {
+  .adm-sp-table { display: none; }
+  .adm-sp-cards { display: flex; }
+  .adm-sp-evidence-table { display: none; }
+  .adm-sp-evidence-cards { display: flex; }
+}
+
+.adm-sp-partner { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-sp-name { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-brand-ink); text-decoration: none; }
+a.adm-sp-name:hover { text-decoration: underline; }
+a.adm-sp-name:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-sp-sub { font-size: var(--ce-text-caption-size); line-height: var(--ce-text-caption-line); color: var(--ce-color-text-muted); overflow-wrap: break-word; }
+.adm-sp-mail { word-break: break-word; }
+.adm-sp-block { display: block; margin-top: 2px; }
+
+/* Detail: Aktionen, Unterüberschriften, Verläufe. */
+.adm-sp-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: var(--ce-space-4); }
+.adm-sp-subtitle { margin: var(--ce-space-5) 0 var(--ce-space-2); font-size: var(--ce-text-label-size); font-weight: 600; line-height: var(--ce-text-label-line); color: var(--ce-color-text-secondary); }
+.adm-sp-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.adm-sp-history-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ce-space-1) var(--ce-space-3); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); }
+.adm-sp-history-item { border: 1px solid var(--ce-color-border-subtle); border-radius: var(--ce-radius-sm); padding: var(--ce-space-2) var(--ce-space-3); background: var(--ce-color-surface-subtle); }
+.adm-sp-history-item > summary { cursor: pointer; font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); }
+.adm-sp-history-item[open] > summary { margin-bottom: var(--ce-space-3); }
+.adm-sp-history-item > summary:focus-visible { outline: var(--ce-focus-ring); outline-offset: 2px; border-radius: var(--ce-radius-sm); }
+.adm-sp-stack { display: flex; flex-direction: column; gap: var(--ce-space-4); }
+
+/* Formulare der Karten: Felder im Raster, Begründung über die volle Breite. */
+.adm-sp-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--ce-space-3) var(--ce-space-4); align-items: start; }
+.adm-sp-form-wide { grid-column: 1 / -1; }
+.adm-sp-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+.adm-sp-datefield { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.adm-sp-field-narrow { max-width: 320px; }
+.adm-sp-fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--ce-space-2); }
+.adm-sp-choice { display: flex; align-items: center; gap: var(--ce-space-2); font-size: var(--ce-text-body-s-size); color: var(--ce-color-text-primary); }
+
+/* Level-Tabelle (Anzeige und Eingabe): kompakt, ohne globale Mindestbreite. */
+.adm-sp-ruleset { display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.adm-sp-editor { display: flex; flex-direction: column; gap: var(--ce-space-3); }
+.adm-sp-levels table,
+.adm-sp-mini-table table { min-width: 0; }
+.adm-sp-levels th[scope="row"] { font-size: var(--ce-text-body-s-size); font-weight: 600; color: var(--ce-color-text-primary); background: none; white-space: nowrap; border-bottom: 1px solid var(--border-hairline); }
+.adm-sp-levels tr:last-child th[scope="row"] { border-bottom: none; }
+.adm-sp-level-input { width: 100%; min-width: 88px; }
+
+/* Provisionen: Monatsfilter und Summen, Zeilen mit Rücknahme/Korrektur. */
+.adm-sp-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--ce-space-3) var(--ce-space-5); margin-bottom: var(--ce-space-4); }
+.adm-sp-totals { grid-template-columns: repeat(2, minmax(140px, auto)); }
+.adm-sp-row-actions { display: flex; flex-wrap: wrap; gap: var(--ce-space-2); }
+.adm-sp-row-correction td { background: var(--ce-color-surface-subtle); }
+.adm-sp-decision-row td { background: var(--ce-color-surface-subtle); }
+.adm-sp-decision { gap: var(--ce-space-3) var(--ce-space-5); }

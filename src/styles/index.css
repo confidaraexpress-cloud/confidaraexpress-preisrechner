@@ -78,4 +78,9 @@
    Sendung, Preisrechner). Reine Zusatzklassen auf den Foundation-Tokens, kein
    zweites Dialogsystem. Steht wie alle Bereichs-Stylesheets VOR patterns.css. */
 @import './comparison-loading.css';
+/* Partnerportal der Vertriebspartner — isolierter spp-Scope (Kopfleiste ohne
+   Sidebar, Kennzahlkacheln, Linkliste). Reine Zusatzklassen auf den
+   Foundation-Tokens, Karten/Tabs/Listen aus den gemeinsamen Mustern. Steht wie
+   alle Bereichs-Stylesheets VOR patterns.css. */
+@import './partner.css';
 @import './patterns.css';

@@ -199,8 +199,15 @@ test("14 — Feldfehler werden am Eingabefeld gerendert", () => {
 
 test("15 — Submit bei ungültigen Pflichtfeldern wird verhindert", () => {
   // Der Guard muss VOR dem Netzwerkaufruf stehen und aus dem Handler zurückkehren.
-  const handler = profileSrc.slice(profileSrc.indexOf("const saveCard = async"));
-  const body = handler.slice(0, handler.indexOf("\n  const updPw"));
+  // Ausschnitt: saveCard bis zum nächsten Abschnitt (die Passwortänderung, die
+  // hier früher folgte, ist in PasswordChangeSection.jsx umgezogen). Beide Anker
+  // müssen existieren — sonst prüfte der Test still einen falschen Ausschnitt.
+  const startIdx = profileSrc.indexOf("const saveCard = async");
+  assert.ok(startIdx > -1, "saveCard nicht gefunden");
+  const handler = profileSrc.slice(startIdx);
+  const endIdx = handler.indexOf("\n  // ── Render-Helfer");
+  assert.ok(endIdx > -1, "End-Anker des saveCard-Ausschnitts nicht gefunden");
+  const body = handler.slice(0, endIdx);
   const idxGuard = body.indexOf("if (!isFormValid(errors))");
   const idxFetch = body.indexOf("apiFetch(");
   assert.ok(idxGuard > -1, "Gültigkeits-Guard fehlt");

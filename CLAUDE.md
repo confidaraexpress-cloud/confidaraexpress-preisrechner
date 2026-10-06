@@ -102,6 +102,13 @@ Logische Schichten unter `src/`:
 
 Alle Seiten sind `React.lazy`-geladen; neue Seiten ebenso einbinden.
 
+### Rollen und Routenschutz (Vertriebspartner, Canonical Context 12A)
+
+- Drei Rollen, gelesen aus `GET /kundenbereich` (nie aus dem JWT): `customer`, `admin`, `sales_partner`. Die Weiche entscheidet ausschließlich `utils/roleLanding.mjs` (strikter Vergleich).
+- `ProtectedRoute` leitet einen Vertriebspartner auf `/partner` um, **bevor** ein Kundenbaustein montiert wird; `PartnerRoute` lässt nur `sales_partner` ins Portal. Beides ist UX — die Grenze zieht der Server.
+- Ein Partner ruft außer den Kontofunktionen (`/kundenbereich`, `PATCH /kunde/password`, E-Mail-Wechsel) **keinen** Kundenendpunkt auf: der Server antwortet 403, und `apiFetch` meldet bei jedem 401/403 eines angemeldeten Requests ab. Neue Aufrufe in gemeinsamen Hüllen (Layout, Kontext, Mitteilungen) deshalb rollenabhängig halten.
+- Empfehlungscodes (`?ref=` auf `/register`, `/registrieren`, `/partner-registrieren`) liest `main.jsx` vor dem ersten Rendern (`utils/referralCapture.mjs`). In `localStorage` landet ein Code nur nach ausdrücklicher Serverfreigabe (`GET /api/sales-partner/public-config`, `referralsEnabled`) — Datenschutzgate. Ob ein Code gilt, weiß nur der Server; die Oberfläche prüft nur die Form und verrät es nie.
+
 ---
 
 ## Design- und CSS-Architektur

@@ -147,6 +147,16 @@ export function saveDraftPickupWindow({ ceShipmentId, pickupTimeFrom, pickupTime
   });
 }
 
+// ── „Versandbereich aktiv" (auth, TG-Cold-Start 2026-10-06) ───────────────────
+// POST /api/offers/prepare — ohne Body, Antwort 204. Der Server entscheidet still, ob ein Anbieter vorgewärmt
+// wird; die Oberfläche wartet nicht darauf, zeigt nichts an und verschluckt jeden Fehler. Kurze eigene Frist:
+// die Antwort kommt sofort, ein hängender Request darf nichts offenhalten.
+export function notifyShippingActive(trigger) {
+  const t = encodeURIComponent(String(trigger || "page"));
+  return apiFetch(`/api/offers/prepare?trigger=${t}`, { method: "POST", auth: true, timeoutMs: 10000 })
+    .then(() => undefined, () => undefined);
+}
+
 // ── Versicherung: Live-Repricing (auth) ──────────────────────────────────────
 // POST /api/insurance/reprice — die providerneutrale Neubepreisung einer gewählten
 // Zusatzabsicherung. Welcher Vertrag gilt, entscheidet der Server anhand der

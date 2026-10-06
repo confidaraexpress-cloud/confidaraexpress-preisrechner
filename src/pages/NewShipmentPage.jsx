@@ -16,6 +16,7 @@ import { OffersList } from "../components/offers/OffersList";
 import { ShipmentFilterBar } from "../components/offers/ShipmentFilterBar";
 import { OfferComparisonLoadingOverlay } from "../components/offers/OfferComparisonLoadingOverlay";
 import { useComparisonLoadingFocus } from "../hooks/useComparisonLoadingFocus";
+import { useShippingWarmup } from "../hooks/useShippingWarmup";
 import { useAuth } from "../context/AuthContext";
 import { todayISO } from "../utils/date";
 import { businessTodayISO } from "../utils/businessDate.mjs";
@@ -551,6 +552,9 @@ export default function NewShipmentPage({ prefillAddress, onPrefillApplied, pref
   // Während des Vergleichs ist der Seiteninhalt inert; wohin der Fokus danach
   // gehört, meldet calculate() hierüber (hooks/useComparisonLoadingFocus.js).
   const fokusNachVergleich = useComparisonLoadingFocus(loading, { offersRef, triggerRef: calcCtaRef });
+  // „Versandbereich aktiv": still beim Betreten, beim Wieder-Sichtbarwerden und bei Aktivität nach Ruhe — der Server
+  // wärmt ggf. den Anbieter vor, damit der spätere Vergleich nicht kalt startet (hooks/useShippingWarmup.js).
+  useShippingWarmup();
   // content-visibility (offers.css) lässt Karten außerhalb des Bildes nur mit
   // ihrem Platzhalter im Layout. Für den Sprung auf eine GEMERKTE Pixelposition
   // wäre das falsch: frisch montiert stünden alle Karten über dem Ziel mit

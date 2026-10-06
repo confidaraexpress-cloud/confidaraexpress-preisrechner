@@ -11,6 +11,8 @@
 //   4. Einstellungen: Schwellen der Level-Regeln sind NICHT vorbelegt, die
 //      Boni und Mindestpakete schon; Obergrenzen-Hinweis sichtbar.
 //   5. Kundendetail: Karte „Vertriebspartner-Zuordnung" lädt selbständig.
+//   6. Login sperren/entsperren nach dem exakten Backendvertrag (loginStatus =
+//      users.status: approved → sperren, blocked → entsperren, pending keine Aktion).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -33,14 +35,14 @@ const ZEILEN = [
     loginStatus: "pending", activeSince: null, customersCount: 0, packagesLastMonth: 0, teamLevel1Count: 0,
     teamLevel2Count: 0, ownRatePercent: null, createdAt: "2026-10-01T09:30:00Z" },
   { id: 6, name: "Sam Sponsor", email: "sam@vertrieb-nord.de", companyName: "Vertrieb Nord GmbH", status: "active",
-    loginStatus: "enabled", activeSince: "2026-03-01", customersCount: 12, packagesLastMonth: 1530, teamLevel1Count: 2,
+    loginStatus: "approved", activeSince: "2026-03-01", customersCount: 12, packagesLastMonth: 1530, teamLevel1Count: 2,
     teamLevel2Count: 1, ownRatePercent: "27.50", createdAt: "2026-02-20T09:30:00Z" },
 ];
 
 function detail(status) {
   return {
     partner: { id: 5, name: "Petra Partner", email: "petra@partner-vertrieb.de", companyName: "Vertrieb Süd GmbH",
-      phone: null, status, loginStatus: status === "active" ? "enabled" : "pending", referralCode: "ABCD2345",
+      phone: null, status, loginStatus: status === "active" ? "approved" : "pending", referralCode: "ABCD2345",
       sponsor: { id: 6, name: "Sam Sponsor" }, sponsorCodeUsed: "WXYZ6789", agreementVersion: "2026-10",
       agreementAcceptedAt: "2026-10-01T09:30:00Z", createdAt: "2026-10-01T09:30:00Z",
       approvedAt: status === "active" ? "2026-10-06T10:00:00Z" : null, contractEndedOn: null, deactivationReason: null },
@@ -57,7 +59,7 @@ function detail(status) {
 let server, browser;
 
 async function setup(page) {
-  const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [] };
+  const state = { list: [], approve: [], evidence: [], partnerStatus: "pending", other: [], login: [], login6: "approved" };
   await page.route("**/api.confidaraexpress.de/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -78,7 +80,18 @@ async function setup(page) {
       state.partnerStatus = "active";
       return json({ ok: true });
     }
-    if (p.endsWith("/admin/sales-partners/5/commissions")) {
+    // Partner 6: aktiv; sein Login lässt sich sperren und entsperren.
+    if (p.endsWith("/admin/sales-partners/6") && req.method() === "GET") {
+      const d = detail("active");
+      return json({ ...d, partner: { ...d.partner, id: 6, name: "Sam Sponsor", loginStatus: state.login6 } });
+    }
+    if (p.endsWith("/admin/sales-partners/6/login") && req.method() === "PUT") {
+      const body = req.postDataJSON();
+      state.login.push(body);
+      state.login6 = body.enabled === true ? "approved" : "blocked";
+      return json({ ok: true, loginStatus: state.login6 });
+    }
+    if (/\/admin\/sales-partners\/[56]\/commissions$/.test(p)) {
       return json({ month: "2026-10", totals: { accruedCents: 0, payableCents: 0 }, entries: [] });
     }
     if (p.endsWith("/admin/dispatch-evidence/queue")) {
@@ -228,5 +241,32 @@ test("5 — Kundendetail: die Zuordnungskarte lädt selbständig", async () => {
   await page.locator("#adm-sp-attribution-current").waitFor({ state: "visible" });
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Sam Sponsor/);
   assert.match(await page.locator("#adm-sp-attribution").innerText(), /Empfehlungslink/);
+  await page.close();
+});
+
+test("6 — Login sperren und entsperren nach dem exakten Backendvertrag", async () => {
+  const page = await browser.newPage();
+  const state = await setup(page);
+  // Antrag (pending): „Noch kein Login“, keine Login-Aktion, kein Unbekannt-Hinweis.
+  await page.goto(`${BASE}/admin/partners/5`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-login").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-login").innerText(), "Noch kein Login");
+  assert.equal(await page.locator("#adm-sp-login-off, #adm-sp-login-on").count(), 0);
+  assert.equal(await page.locator("#adm-sp-login-unknown").count(), 0);
+
+  // Aktiver Partner (approved): sperren → PUT { enabled:false } → „Login gesperrt“.
+  await page.goto(`${BASE}/admin/partners/6`, { waitUntil: "networkidle" });
+  await page.locator("#adm-sp-login").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#adm-sp-login").innerText(), "Login aktiv");
+  await page.locator("#adm-sp-login-off").click();
+  await page.locator("#adm-sp-dialog-confirm").click();
+  await page.waitForFunction(() => document.querySelector("#adm-sp-login")?.textContent === "Login gesperrt");
+  assert.equal(await page.locator("#adm-sp-login-off").count(), 0);
+
+  // Entsperren → PUT { enabled:true } → wieder „Login aktiv“.
+  await page.locator("#adm-sp-login-on").click();
+  await page.locator("#adm-sp-dialog-confirm").click();
+  await page.waitForFunction(() => document.querySelector("#adm-sp-login")?.textContent === "Login aktiv");
+  assert.deepEqual(state.login, [{ enabled: false }, { enabled: true }]);
   await page.close();
 });

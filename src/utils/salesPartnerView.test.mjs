@@ -107,6 +107,10 @@ test("4 — Status, Buchungsart und Ebene tragen deutsche Labels; Unbekanntes ni
     const [, label] = meta("weird_backend_value");
     assert.equal(label, "Unbekannter Status");
     assert.notEqual(label, "weird_backend_value");
+    // Ein Wert wie „constructor" trifft nie den Objektprototyp.
+    for (const tueckisch of ["constructor", "__proto__", "toString", "hasOwnProperty"]) {
+      assert.equal(meta(tueckisch)[1], "Unbekannter Status", `${tueckisch} wurde zugeordnet`);
+    }
   }
   assert.equal(commissionLevelLabel(0), "Eigene Kunden");
   assert.equal(commissionLevelLabel(2), "Team Ebene 2");

@@ -101,27 +101,36 @@ export function monthOptions(month, count = 12) {
 }
 
 // ── Statuslabels ────────────────────────────────────────────────────────────
+/** [Badge-Klasse, Label] aus einer Zuordnung — ausschließlich über EIGENE
+ *  Schlüssel (ein Wert wie „constructor" trifft so nie den Objektprototyp),
+ *  sonst statusFallback: „Unbekannter Status", der Rohwert nur im title. */
+export function statusMetaFrom(map, value) {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(map, value)
+    ? map[value]
+    : statusFallback(value);
+}
+
 const PARTNER_STATUS_META = Object.freeze({
   active: ["badge-green", "Aktiv"],
   inactive: ["badge-gray", "Inaktiv"],
   pending: ["badge-yellow", "In Prüfung"],
   rejected: ["badge-red", "Abgelehnt"],
 });
-export const partnerStatusMeta = (status) => PARTNER_STATUS_META[status] || statusFallback(status);
+export const partnerStatusMeta = (status) => statusMetaFrom(PARTNER_STATUS_META, status);
 
 const CUSTOMER_STATUS_META = Object.freeze({
   active: ["badge-green", "Aktiv"],
   pending: ["badge-yellow", "In Prüfung"],
   inactive: ["badge-gray", "Inaktiv"],
 });
-export const customerAccountStatusMeta = (status) => CUSTOMER_STATUS_META[status] || statusFallback(status);
+export const customerAccountStatusMeta = (status) => statusMetaFrom(CUSTOMER_STATUS_META, status);
 
 const COMMISSION_TYPE_META = Object.freeze({
   accrual: ["badge-blue", "Provision"],
   reversal: ["badge-red", "Rücknahme"],
   adjustment: ["badge-yellow", "Korrektur"],
 });
-export const commissionTypeMeta = (type) => COMMISSION_TYPE_META[type] || statusFallback(type);
+export const commissionTypeMeta = (type) => statusMetaFrom(COMMISSION_TYPE_META, type);
 
 const LEVEL_LABELS = Object.freeze({ 0: "Eigene Kunden", 1: "Team Ebene 1", 2: "Team Ebene 2" });
 export const commissionLevelLabel = (level) =>

@@ -17,7 +17,9 @@ import {
   buildRejectBody,
   deactivationReasonLabel,
   formatTimestamp,
+  loginActionErrorText,
   loginEnabledState,
+  loginStatusKnown,
   loginStatusMeta,
   partnerDisplayName,
 } from "../../utils/adminSalesPartnerView.mjs";
@@ -127,7 +129,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
         if (r.status === 401 || r.status === 403) return;     // zentraler Logout
         let body = null;
         try { body = await r.json(); } catch { body = null; }
-        setDialog((d) => (d ? { ...d, error: adminActionErrorText(r.status, body) } : d));
+        const text = kind === "loginOff" || kind === "loginOn"
+          ? loginActionErrorText(r.status, body)
+          : adminActionErrorText(r.status, body);
+        setDialog((d) => (d ? { ...d, error: text } : d));
         return;
       }
       setDialog(null);
@@ -179,8 +184,10 @@ export function SalesPartnerStatusCard({ partner, statusHistory = [], onChanged 
             <button type="button" id="adm-sp-login-on" className="btn btn-outline btn-sm" onClick={() => oeffnen("loginOn")}>Login entsperren</button>
           )}
         </div>
-        {login === null && partner.loginStatus && (
-          <p className="adm-support-hint">Der Loginzustand ist unbekannt — eine Login-Aktion wird deshalb nicht angeboten.</p>
+        {/* „Noch kein Login" (pending) erklärt sich selbst; nur ein nicht
+            zugeordneter Zustand (anonymisiert oder unbekannt) bekommt den Hinweis. */}
+        {login === null && partner.loginStatus && !loginStatusKnown(partner.loginStatus) && (
+          <p className="adm-support-hint" id="adm-sp-login-unknown">Der Loginzustand ist unbekannt — eine Login-Aktion wird deshalb nicht angeboten.</p>
         )}
 
         {statusHistory.length > 0 && (

@@ -18,9 +18,8 @@
 //
 // Framework-frei (.mjs), damit `node --test` es ohne DOM prüfen kann.
 
-import { statusFallback } from "./statusFallback.mjs";
 import { customerText } from "./apiError.mjs";
-import { partnerStatusMeta } from "./salesPartnerView.mjs";
+import { partnerStatusMeta, statusMetaFrom } from "./salesPartnerView.mjs";
 
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
 const arr = (v) => (Array.isArray(v) ? v : []);
@@ -58,23 +57,40 @@ export function toSalesPartnerApiFilters({ status, q } = {}) {
   return out;
 }
 
-// Der Loginzustand ist ein eigener Wert neben dem Partnerstatus. Der Vertrag
-// nennt seine Werte nicht abschließend: gelesen werden die naheliegenden
-// Formen, alles andere ist „Unbekannter Status" (und dann bietet die Seite
-// bewusst keine Login-Aktion an — fail-closed).
-const LOGIN_AKTIV = new Set(["enabled", "active", "approved"]);
-const LOGIN_GESPERRT = new Set(["disabled", "blocked", "inactive"]);
-export function loginStatusMeta(status) {
-  if (LOGIN_AKTIV.has(status)) return ["badge-green", "Login aktiv"];
-  if (LOGIN_GESPERRT.has(status)) return ["badge-red", "Login gesperrt"];
-  if (status === "pending") return ["badge-yellow", "Noch kein Login"];
-  return statusFallback(status);
-}
-/** true = Login aktiv, false = gesperrt, null = unbekannt. */
+// Der Loginzustand (`loginStatus`) ist `users.status` des Partnerkontos —
+// laut Backend genau 'pending', 'approved', 'blocked' oder 'anonymized'.
+// Zugeordnet werden ausschließlich die drei Zustände, an denen eine Aussage
+// hängt; 'anonymized' und jeder andere Wert laufen über statusFallback, und
+// dann bietet die Seite bewusst keine Login-Aktion an (fail-closed).
+const LOGIN_STATUS_META = Object.freeze({
+  approved: Object.freeze(["badge-green", "Login aktiv"]),
+  blocked: Object.freeze(["badge-red", "Login gesperrt"]),
+  pending: Object.freeze(["badge-yellow", "Noch kein Login"]),
+});
+export const loginStatusMeta = (status) => statusMetaFrom(LOGIN_STATUS_META, status);
+
+/** true = Login aktiv (Aktion: sperren), false = gesperrt (Aktion: entsperren),
+ *  null = keine Login-Aktion (pending, anonymized, unbekannt). */
 export function loginEnabledState(status) {
-  if (LOGIN_AKTIV.has(status)) return true;
-  if (LOGIN_GESPERRT.has(status)) return false;
+  if (status === "approved") return true;
+  if (status === "blocked") return false;
   return null;
+}
+
+/** Ist der Loginzustand einer der drei zugeordneten Werte? */
+export const loginStatusKnown = (status) => Object.prototype.hasOwnProperty.call(LOGIN_STATUS_META, status);
+
+// PUT …/login antwortet bei einem Konflikt mit einem dieser Codes. Der Text
+// sagt, warum nichts geändert wurde; ein unbekannter Code fällt auf den
+// allgemeinen Admintext zurück.
+const LOGIN_ACTION_ERRORS = Object.freeze({
+  SALES_PARTNER_NOT_APPROVED: "Der Login lässt sich erst nach der Freigabe des Vertriebspartners sperren oder entsperren. Es wurde nichts geändert.",
+  ACCOUNT_ANONYMIZED: "Das Konto ist anonymisiert; der Login lässt sich nicht mehr ändern. Es wurde nichts geändert.",
+});
+export function loginActionErrorText(status, body) {
+  const code = body && typeof body === "object" && typeof body.code === "string" ? body.code.trim() : "";
+  if (status === 409 && Object.prototype.hasOwnProperty.call(LOGIN_ACTION_ERRORS, code)) return LOGIN_ACTION_ERRORS[code];
+  return adminActionErrorText(status, body);
 }
 
 export const DEACTIVATION_REASON_OPTIONS = Object.freeze([
@@ -109,7 +125,7 @@ const EVIDENCE_STATUS_META = Object.freeze({
 /** Ohne Entscheidung (null) heißt der Zustand „Nachweis fehlt". */
 export function evidenceStatusMeta(status) {
   if (status === null || status === undefined || status === "") return ["badge-yellow", "Nachweis fehlt"];
-  return EVIDENCE_STATUS_META[status] || statusFallback(status);
+  return statusMetaFrom(EVIDENCE_STATUS_META, status);
 }
 export const EVIDENCE_TYPE_OPTIONS = Object.freeze([
   Object.freeze({ value: "carrier_portal", label: "Carrier-Portal" }),

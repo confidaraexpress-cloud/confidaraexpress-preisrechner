@@ -32,7 +32,9 @@ import {
   currentLocalMonth,
   isIsoDate,
   localIsoDate,
+  loginActionErrorText,
   loginEnabledState,
+  loginStatusKnown,
   loginStatusMeta,
   normalizeAdminCommissions,
   normalizeAdminPartnerDetail,
@@ -215,11 +217,24 @@ test("14 — Versandnachweis: „Versendet“ verlangt Datum (nicht in der Zukun
 /* ══════════ Labels und Normalisierung ═══════════════════════════════════ */
 
 test("15 — Labels ohne Rohwerte", () => {
-  assert.deepEqual(loginStatusMeta("enabled"), ["badge-green", "Login aktiv"]);
-  assert.deepEqual(loginStatusMeta("disabled"), ["badge-red", "Login gesperrt"]);
-  assert.equal(loginStatusMeta("strange")[1], "Unbekannter Status");
-  assert.equal(loginEnabledState("strange"), null, "unbekannt: keine Login-Aktion");
-  assert.equal(loginEnabledState("blocked"), false);
+  // loginStatus ist users.status: genau pending | approved | blocked | anonymized.
+  assert.deepEqual([...loginStatusMeta("approved")], ["badge-green", "Login aktiv"]);
+  assert.deepEqual([...loginStatusMeta("blocked")], ["badge-red", "Login gesperrt"]);
+  assert.deepEqual([...loginStatusMeta("pending")], ["badge-yellow", "Noch kein Login"]);
+  assert.equal(loginEnabledState("approved"), true, "aktiv: Aktion „sperren“");
+  assert.equal(loginEnabledState("blocked"), false, "gesperrt: Aktion „entsperren“");
+  assert.equal(loginEnabledState("pending"), null, "noch kein Login: keine Aktion");
+  // anonymized und alles Unbekannte: statusFallback, keine Aktion (fail-closed) —
+  // ausdrücklich auch die früher geratenen Aliasse.
+  for (const wert of ["anonymized", "enabled", "active", "disabled", "inactive", "strange", "constructor", "__proto__", "toString"]) {
+    const [, label, roh] = loginStatusMeta(wert);
+    assert.equal(label, "Unbekannter Status", `${wert} wird zugeordnet`);
+    assert.equal(roh, wert, "der Rohwert steht nur im title");
+    assert.equal(loginEnabledState(wert), null, `${wert}: Login-Aktion angeboten`);
+    assert.equal(loginStatusKnown(wert), false);
+  }
+  assert.deepEqual(loginStatusMeta(null), ["badge-gray", "—", null]);
+  assert.equal(loginStatusKnown("pending"), true);
   assert.equal(deactivationReasonLabel("contract_ended"), "Vertrag beendet");
   assert.equal(deactivationReasonLabel("x"), "Unbekannter Grund");
   assert.equal(attributionSourceLabel("referral_link"), "Empfehlungslink");
@@ -229,6 +244,18 @@ test("15 — Labels ohne Rohwerte", () => {
   assert.equal(evidenceStatusMeta("weird")[1], "Unbekannter Status");
   assert.equal(evidenceTypeLabel("handover_receipt"), "Übergabebeleg");
   assert.equal(evidenceSourceLabel("carrier_tracking"), "Sendungsverfolgung");
+});
+
+test("15b — Login-Aktion: Konfliktcodes des Servers mit eigenem Text", () => {
+  assert.match(loginActionErrorText(409, { code: "SALES_PARTNER_NOT_APPROVED", error: "x" }), /erst nach der Freigabe/);
+  assert.match(loginActionErrorText(409, { code: "ACCOUNT_ANONYMIZED", error: "x" }), /anonymisiert/);
+  assert.equal(loginActionErrorText(409, { code: "ANDERS", error: "Serverhinweis" }), "Serverhinweis");
+  assert.match(loginActionErrorText(500, { code: "ACCOUNT_ANONYMIZED" }), /nicht ausgeführt/, "Codes nur bei 409");
+  for (const meta of [loginStatusMeta("approved"), evidenceStatusMeta("unclear")]) {
+    assert.ok(Array.isArray(meta) && meta.length >= 2);
+  }
+  // Auch die übrigen Zuordnungen lesen nur eigene Schlüssel.
+  assert.equal(evidenceStatusMeta("constructor")[1], "Unbekannter Status");
 });
 
 test("16 — Filter: nur bekannte Statuswerte, Suche getrimmt", () => {
